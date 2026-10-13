@@ -109,14 +109,14 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     if (!file.size || file.size > 32 * 1024 * 1024) throw new Error('Choose an original proof up to 32 MB.');
     const exact = new Uint8Array(await file.arrayBuffer());
     const opened = await unsigned.artifacts.verifyAndOpen(new File([exact], file.name, { type: file.type }));
-    const deposit = projectHeldDeposit(opened, exact, file.name, binding.identityOwnerReceizId);
+    const deposit = projectHeldDeposit(opened, exact, file.name, binding.artifactOwnerReceizId);
     if (lifetime.signal.aborted) throw new Error('The identity was closed before deposit.');
     await saveDepositSource(binding, exact, file.name, deposit.digest); return deposit;
   }
   async function listDeposits() {
     const sources = await loadDepositSources(binding), result: HeldDeposit[] = [];
     for (const source of sources) {
-      try { const opened = await unsigned.artifacts.verifyAndOpen(new File([new Uint8Array(source.bytes)], source.filename)); result.push(projectHeldDeposit(opened, source.bytes, source.filename, binding.identityOwnerReceizId)); } catch { /* Only actual reopened proof sources appear. */ }
+      try { const opened = await unsigned.artifacts.verifyAndOpen(new File([new Uint8Array(source.bytes)], source.filename)); result.push(projectHeldDeposit(opened, source.bytes, source.filename, binding.artifactOwnerReceizId)); } catch { /* Only actual reopened proof sources appear. */ }
     }
     return result;
   }

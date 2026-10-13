@@ -35,3 +35,9 @@ No production deployment. Cross-device QR/NFC URLs target the supplied bank.rece
 The connected marketplace MCP remains nonfinancial128, separate from installed SDK/MCP/AI packages129; no profile swap or agent-executed money action was used. Complete SDK primitives do not by themselves prove operational deployment or custody. The full bank objective is unfinished.
 
 Final implementation checks before review: 133 tests in38files passed; TypeScript and production build passed. No chunk-size warning after retaining dynamic SDK loading.
+
+## Independent review and one fix pass
+
+A fresh reviewer inspected immutable 842314a..d092fcd. Four Important product defects, no Critical findings: own proof holding compared the artifact owner with the device owner; Receive exported the device coordinate; card returns discarded the Deposit route; cold initial wallet failures lost their error during retry. Each defect was reproduced RED before correction and passed GREEN. The bank now preserves artifact-owner matching and foreign-owner refusal, public Receive discovery coordinates, the restored Deposit sheet, and the explicit initial source failure while retrying. Final suite after the pass: **137 tests in 40 files passed**, TypeScript passed. No real custody, card payment, transfer or signing credential was created during review.
+
+The review excluded live human-operated payments/import/hardware qualification, unfinished financial features, deployment, explicit device removal, and the already-reviewed history/layout subsystem. Those exclusions remain qualification limits or open work, not completion claims.

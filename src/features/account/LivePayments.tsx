@@ -12,7 +12,7 @@ type NfcConstructor = new () => { write: (message: { records: { recordType: 'url
 export function LiveReceive({ identity }: { identity: OpenIdentity }) {
   const [amount, setAmount] = useState(''), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false); const nfc = useRef<AbortController | null>(null);
   useEffect(() => () => nfc.current?.abort(), []);
-  const coordinate = identity.binding.identityOwnerReceizId;
+  const coordinate = identity.binding.artifactOwnerReceizId;
   const request = useMemo(() => { try { const link = buildPaymentRequest(coordinate, amount); return { link, path: paymentQrPath(paymentQr(link)), error: '' }; } catch (cause) { return { link: '', path: '', error: cause instanceof Error ? cause.message : 'This request could not be created.' }; } }, [coordinate, amount]);
   const copy = async () => { try { await navigator.clipboard.writeText(request.link); setNotice('Payment link copied.'); } catch { setNotice('Select and copy the payment link below.'); } };
   const share = async () => { try { if (navigator.share) await navigator.share({ title: 'Receiz Bank payment', url: request.link }); else await copy(); } catch (cause) { if (!(cause instanceof Error && cause.name === 'AbortError')) setNotice('Sharing is unavailable. Copy the payment link below.'); } };

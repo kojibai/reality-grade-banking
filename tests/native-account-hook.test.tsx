@@ -49,3 +49,13 @@ it('finishes the initial wallet opening before the new settled account becomes v
   custody.create.mockResolvedValue(identity);
   await observe(async read => { let opening!: Promise<void>; await act(async () => { opening = read().create(true); }); expect(read().identity).toBeNull(); await act(async () => { finish({ userId: 'new-user', totalUsdCents: '0' }); await opening; }); expect(read().identity).toBe(identity); expect(read().wallet?.totalUsdCents).toBe('0'); });
 });
+it('preserves the initial wallet source failure while a retry is still pending', async () => {
+  const readWallet = vi.fn().mockRejectedValueOnce(new Error('Initial source unavailable')).mockReturnValueOnce(new Promise(() => {}));
+  custody.create.mockResolvedValue(held(readWallet));
+  await observe(async read => {
+    await act(async () => { await read().create(true); });
+    expect(read().wallet).toBeNull();
+    expect(read().error ?? '').toContain('Initial source unavailable');
+    expect(read().busy).toBe(true);
+  });
+});
