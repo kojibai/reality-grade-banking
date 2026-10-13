@@ -3,9 +3,10 @@ import react from '@vitejs/plugin-react';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { publicMarketPlugin } from './server/public-market';
+import { publicNetworkPlugin } from './server/public-network';
 
 export default defineConfig({
-  plugins: [react(), publicMarketPlugin(), { name: 'receiz-bank-offline-shell', generateBundle(_, bundle) {
+  plugins: [react(), publicMarketPlugin(), publicNetworkPlugin(), { name: 'receiz-bank-offline-shell', generateBundle(_, bundle) {
     const files = Object.values(bundle).filter(file => file.type === 'asset' && /\.(css|wasm)$/.test(file.fileName) || file.type === 'chunk').map(file => `/${file.fileName}`);
     const template = readFileSync(new URL('./src/pwa/sw.template.js', import.meta.url), 'utf8');
     const version = createHash('sha256').update(files.join('|') + template).digest('hex').slice(0, 12);

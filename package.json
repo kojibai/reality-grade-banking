@@ -9,7 +9,8 @@
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
-    "market:seed": "node scripts/seed-public-market.mjs"
+    "market:seed": "node scripts/seed-public-market.mjs",
+    "ledger:seed": "node scripts/seed-public-ledger.mjs"
   },
   "dependencies": {
     "@receiz/ai-skills": "129.0.0",
