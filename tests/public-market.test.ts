@@ -43,4 +43,15 @@ describe('Receiz public Market catalog', () => {
     const after = parsePublicMarket(membership([original(2)]));
     expect(before.items).toHaveLength(2); expect(after.items.map(item => item.id)).toEqual(['profile:alice:2']);
   });
+  it('accepts only public source, proof and original-download path contracts', () => {
+    const item = parsePublicMarket(membership([original(1, { canonicalHref: '/api/connect/wallet/me', verifyHref: '/api/oidc/authorize', profileOriginal: { media: { originalDownloadSrc: '/api/storage/object?private=true' } } })])).items[0];
+    expect(item.sourceUrl).toBeNull(); expect(item.verifyUrl).toBeNull(); expect(item.originalUrl).toBeNull();
+    const valid = parsePublicMarket(membership([original(1, { verifyHref: '/v/20261013_1200/AB12CD34/14610000?a=abcd1234&ms=1791892800000' })])).items[0];
+    expect(valid.sourceUrl).toContain('/alice/verified/'); expect(valid.verifyUrl).toContain('/v/20261013_1200/');
+  });
+  it('shows the public showcase owner without inventing ownership for the viewer', () => {
+    const item = parsePublicMarket(membership([original(1, { ownerUsername: 'current_holder', ownerDisplayName: 'Current Holder', creatorUsername: 'alice' })])).items[0];
+    expect(item.ownerUsername).toBe('current_holder'); expect(item.ownerProfileUrl).toBe('https://receiz.com/current_holder');
+    expect(item.canTrade).toBe(false);
+  });
 });

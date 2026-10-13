@@ -24,6 +24,12 @@ Refresh while Market is visible, retain last successful data on temporary errors
 show stale status, deduplicate by exact object ID, search the whole collection,
 render incrementally for mobile. Discovery is never limited to the first page.
 
+User refinements: load the next batch automatically while scrolling, before the
+end enters view; retain a manual fallback only when observation is unavailable.
+Show the actual public showcase owner and their public profile in asset details.
+Do not infer the current owner from an object's creator or identifier, and do
+not label the viewer's unclaimed holding as the public object's ownership.
+
 Selected public objects must never reach the demo trade reducer. Opening a public
 object uses a separate public source sheet in the same visual container. Buy/sell
 requires the bank's later admitted financial execution path and genuine offer;

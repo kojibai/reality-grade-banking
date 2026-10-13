@@ -1,13 +1,37 @@
 // @vitest-environment happy-dom
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { usePublicMarket } from '../src/receiz/usePublicMarket';
 import { parsePublicMarket } from '../src/receiz/public-market';
 const network = vi.hoisted(() => ({ membership: vi.fn(), quotes: vi.fn() }));
 vi.mock('../src/receiz/public-market', async original => ({ ...await original<typeof import('../src/receiz/public-market')>(), fetchPublicMarket: network.membership, fetchPublicQuotes: network.quotes }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+beforeEach(() => { network.membership.mockReset(); network.quotes.mockReset(); });
 afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
+const sourceInput = (items = ['a', 'b'], complete = true) => ({ ok: true, transport: { publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: complete ? 'canonical-complete' : 'partial', isComplete: complete, itemCount: items.length, revision: 'r1' }, publicOriginals: items.map(id => ({ id, receizId: id, title: id, valueUsd: 10 })) } });
+const quoteInput = (priceUsd = 10) => ({ ok: true, data: { schema: 'receiz.market.public-snapshot.v1', generatedAt: '2026-10-13T12:00:00Z', liveMarkets: [{ itemId: 'a', visibility: 'public', priceUsd, quoteUsdPerPhi: 1, chart: [{ value: 9 }, { value: priceUsd }] }] } });
+async function observe(run: (read: () => ReturnType<typeof usePublicMarket>) => Promise<void>) {
+  let state!: ReturnType<typeof usePublicMarket>; const root = createRoot(document.createElement('div'));
+  function Probe() { state = usePublicMarket(); return null; }
+  vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
+  try { await act(async () => { root.render(<Probe />); }); await run(() => state); } finally { act(() => root.unmount()); }
+}
+it('retains the complete public collection after an incomplete refresh', async () => {
+  network.membership.mockResolvedValueOnce(parsePublicMarket(sourceInput())).mockResolvedValueOnce(parsePublicMarket(sourceInput(['a'], false)));
+  network.quotes.mockResolvedValue(quoteInput());
+  await observe(async read => { expect(read().catalog?.items).toHaveLength(2); await act(async () => { await read().refresh(); }); expect(read().catalog?.items).toHaveLength(2); expect(read().status).toBe('stale'); });
+});
+it('marks retained quotes stale when their read fails or returns an invalid shape', async () => {
+  network.membership.mockResolvedValue(parsePublicMarket(sourceInput()));
+  network.quotes.mockResolvedValueOnce(quoteInput()).mockRejectedValueOnce(new Error('Unavailable')).mockResolvedValueOnce({ ok: true, data: {} });
+  await observe(async read => { await act(async () => { await read().refresh(); }); expect(read().quoteStatus).toBe('stale'); await act(async () => { await read().refresh(); }); expect(read().quoteStatus).toBe('stale'); });
+});
+it('updates known public quotes even when membership is temporarily unavailable', async () => {
+  network.membership.mockResolvedValueOnce(parsePublicMarket(sourceInput())).mockRejectedValueOnce(new Error('Unavailable'));
+  network.quotes.mockResolvedValueOnce(quoteInput()).mockResolvedValueOnce(quoteInput(28));
+  await observe(async read => { await act(async () => { await read().refresh(); }); expect(read().catalog?.items[0].priceUsd).toBe(28); expect(read().status).toBe('stale'); });
+});
 it('retains previously obtained public charts until refreshed quotes arrive', async () => {
   const input = { ok: true, transport: { publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: 1, revision: 'r1' }, publicOriginals: [{ id: 'a', receizId: 'a', title: 'A', valueUsd: 10 }] } };
   const seed = { ...input, snapshot: { ok: true, data: { schema: 'receiz.market.public-snapshot.v1', liveMarkets: [{ itemId: 'a', visibility: 'public', priceUsd: 10, quoteUsdPerPhi: 1, chart: [{ value: 9 }, { value: 10 }] }] } } };
