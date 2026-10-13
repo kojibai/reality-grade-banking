@@ -9,6 +9,7 @@ import { protectIdentityKeyFile } from './identity-protection';
 import type { ProtectedIdentityTransport } from './identity-vault';
 import { identityNeedsPhrase } from './identity-lock';
 import { parseSharedWallet } from './shared-wallet';
+import { physicalDeliveryInstructions } from './custody-delivery';
 
 export interface OpenIdentity {
   binding: ReceizIdentityPublicBinding; needsPhrase: boolean; knownWallet: () => import('./wallet-observation').WalletObservation | null;
@@ -125,7 +126,8 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const asset = validateAssetIntake(input);
     if (attachment && attachment.size > 8 * 1024 * 1024) throw new Error('Use a photo or document up to 8 MB.');
     const evidence = attachment ? { filename: attachment.name, mimeType: attachment.type, bytesB64u: sdk.receizBase64UrlEncode(new Uint8Array(await attachment.arrayBuffer())) } : null;
-    const payload = { schema: 'receiz.bank.asset-intake-request.v1', requestId: crypto.randomUUID(), asset, evidence, custody: 'awaiting-receipt', createsSpendableValue: false, kai: sdk.receizKaiNow() };
+    const requestId = crypto.randomUUID();
+    const payload = { schema: 'receiz.bank.asset-intake-request.v1', requestId, asset, evidence, delivery: asset.category === 'physical' ? physicalDeliveryInstructions(requestId) : null, custody: 'awaiting-receipt', createsSpendableValue: false, kai: sdk.receizKaiNow() };
     const sealer = await ownedSealer();
     const sealed = await sealer.seal({ bytes: new TextEncoder().encode(JSON.stringify(payload)), filename: 'asset-deposit.json', mimeType: 'application/json' });
     return holdProof(new File([new Uint8Array(sealed.artifactBytes)], sealed.filename, { type: sealed.mimeType }));

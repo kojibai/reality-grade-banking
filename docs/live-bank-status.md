@@ -56,6 +56,14 @@ sources. Fractional sale/currency actions require genuine ownership/backing
 sources and atomic payment/delivery recovery, not a sealed assertion of a new
 balance. None of those operator-side facts have been observed for this bank.
 
+The user selected Receiz/@receiz as the operator and the Kojib business address
+1270 Ave of the Americas, 7th Fl, New York, NY 10020. The physical Deposit form
+now shows that destination. New sealed requests carry its exact instructions
+and unique reference; saved Assets reopen the same source. This configures
+shipping metadata only: native receipt issuer admission, physical verification
+and transferable asset ownership remain unfinished. Original sources are not
+rewritten when configuration changes.
+
 All three local packages are pinned to 129.0.0. The currently connected MCP host
 reported its marketplace release as 128.0.0 and no granted scopes. Its financial
 execution restriction cannot be bypassed by swapping its profile or running a

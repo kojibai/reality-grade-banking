@@ -96,3 +96,7 @@
 .qr-upload input { display: none; }
 .payment-scanner { margin: 16px 0 22px; }
 .known-account-paint .balance-display:disabled, .known-account-paint .growth-panel:disabled { opacity: 1; }
+.custody-delivery { padding: 18px; margin: 18px 0; border: 1px solid var(--line); border-radius: 14px; background: #f7f9fc; }
+.custody-delivery h3 { font-size: 14px; margin: 0 0 12px; }
+.custody-delivery address { font-style: normal; font-size: 13px; line-height: 1.7; margin-bottom: 12px; }
+.custody-delivery .proof-coordinate { display: block; font-size: 11px; margin: 9px 0; overflow-wrap: anywhere; }

@@ -7,6 +7,7 @@ import { BANK_CARD_CONSENT } from '../../receiz/config';
 import { AmountInput } from '../../components/AmountInput';
 import { formatMoney } from '../../core/money';
 import { ReceizCardCheckout } from './ReceizCardCheckout';
+import { CustodyDelivery } from './CustodyDelivery';
 
 export function LiveDeposit({ identity, onClose, onRefresh }: { identity: OpenIdentity; onClose: () => void; onRefresh: () => void }) {
   const [kind, setKind] = useState<'choose' | 'asset' | 'dollars' | 'proof'>('choose');
@@ -33,12 +34,14 @@ export function LiveDeposit({ identity, onClose, onRefresh }: { identity: OpenId
       <label className="form-field"><span>Asset type</span><select value={asset.category} onChange={event => setAsset({ ...asset, category: event.target.value as AssetIntake['category'] })}><option value="physical">Physical item or gold</option><option value="stock">Stocks & securities</option><option value="property">Property</option></select></label>
       <div className="form-columns"><AmountInput label="Quantity" value={asset.quantity} onChange={quantity => setAsset({ ...asset, quantity })} /><AmountInput label="Estimated value per unit" value={asset.estimatedValue} onChange={estimatedValue => setAsset({ ...asset, estimatedValue })} dollars /></div>
       <label className="upload-choice"><Upload size={18} /><span>{attachment?.name ?? 'Add a photo or ownership document'}<input type="file" accept="image/*,.pdf" onChange={event => setAttachment(event.target.files?.[0])} /></span></label>
+      {asset.category === 'physical' && <CustodyDelivery />}
       <p className="body-copy small-copy">Continue saves a sealed deposit request on this device. Final ownership and value follow receipt and verification. This device may enroll its public sealing key with Receiz.</p>
       <button className="primary-button" disabled={busy} onClick={() => void run(async () => { const ticket = generation.current, value = await identity.startAssetIntake(asset, attachment); if (ticket === generation.current) { setDeposit(value); onRefresh(); } })}>{busy ? 'Sealing your deposit…' : 'Continue'}<ArrowRight size={17} /></button>
     </>}
     {deposit && <><div className={`status-icon ${deposit.kind === 'proof' ? 'success' : ''}`}>{deposit.kind === 'proof' ? <Check size={34} /> : <Package size={31} />}</div><h1 className="sheet-hero">{deposit.kind === 'intake' ? 'Your deposit request is saved.' : 'Your proof is in your account.'}</h1><p className="body-copy">{deposit.kind === 'intake' ? `${deposit.title} stays yours. Ownership becomes transferable once custody is verified.` : 'The complete original proof is verified and held privately on this device.'}</p>
-      <div className="detail-list"><div><span>Asset</span><strong>{deposit.title}</strong></div>{deposit.intake && <div><span>Quantity</span><strong>{deposit.intake.quantity}</strong></div>}<div><span>Status</span><strong>{deposit.kind === 'intake' ? 'Awaiting custody instructions' : 'Original proof held'}</strong></div>{deposit.pulse && <div><span>Kai pulse</span><strong>{deposit.pulse}</strong></div>}</div>
-      <div className="note-box"><ShieldCheck size={18} /><p>{deposit.kind === 'intake' ? 'Shipping and custody receipt must be connected before an item is sent. Your request does not credit cash or confirm physical custody.' : 'Ownership recovery and spendable value follow the proof’s native admission and execution rules.'}</p></div>
+      <div className="detail-list"><div><span>Asset</span><strong>{deposit.title}</strong></div>{deposit.intake && <div><span>Quantity</span><strong>{deposit.intake.quantity}</strong></div>}<div><span>Status</span><strong>{deposit.kind === 'intake' ? deposit.delivery ? 'Awaiting verified receipt' : 'Awaiting custody instructions' : 'Original proof held'}</strong></div>{deposit.pulse && <div><span>Kai pulse</span><strong>{deposit.pulse}</strong></div>}</div>
+      {deposit.delivery && <CustodyDelivery instructions={deposit.delivery} />}
+      <div className="note-box"><ShieldCheck size={18} /><p>{deposit.kind === 'intake' ? deposit.delivery ? 'Your request is saved. Physical custody and value are confirmed by the verified receipt after your item arrives.' : 'Delivery or ownership instructions are needed for this asset. Your request does not credit cash or confirm custody.' : 'Ownership recovery and spendable value follow the proof’s native admission and execution rules.'}</p></div>
       <button className="primary-button" onClick={saveProof}>Save original proof</button><button className="secondary-button" onClick={onClose}>Done</button>
     </>}
     {kind === 'dollars' && !checkout && <><h1 className="sheet-hero">Add to your balance.</h1><p className="body-copy">Fund your Reserve and put it to work.</p><AmountInput label="Amount" value={amount} onChange={setAmount} dollars />
