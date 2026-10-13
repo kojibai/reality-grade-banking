@@ -1,0 +1,7 @@
+import { expect, it } from 'vitest';
+import { applyOperation, projectBalance } from '../src/core/account';
+import { createDemoState } from '../src/core/demo';
+
+it('backs currency without counting free money, backing, and issued holdings twice', () => { const operation = { id: 'currency-1', kind: 'create-currency', name: 'Neighborhood', symbol: 'HOOD', supplyMicro: '1000000000', backingPhiMicro: '100000000', rail: 'reserve' } as const; const state = applyOperation(createDemoState(), operation); expect(state.reservePhiMicro).toBe('8100500000'); expect(state.currencies[0].backingPhiMicro).toBe('100000000'); expect(projectBalance(state).totalUsdCents).toBe('2468050'); expect(applyOperation(state, operation)).toEqual(state); });
+it('allows eligible Settlement to back a currency while preserving its rail', () => { const state = applyOperation(createDemoState(), { id: 'settlement-currency', kind: 'create-currency', name: 'Creative', symbol: 'ART', supplyMicro: '3000000000', backingPhiMicro: '100000000', rail: 'settlement' }); expect(state.settlementPhiMicro).toBe('6810000000'); expect(state.currencies[0].rail).toBe('settlement'); expect(projectBalance(state).totalUsdCents).toBe('2468050'); });
+it('rejects unfunded currency issuance before any state write', () => expect(() => applyOperation(createDemoState(), { id: 'unfunded', kind: 'create-currency', name: 'Bad', symbol: 'BAD', supplyMicro: '1000000', backingPhiMicro: '999999999999', rail: 'reserve' })).toThrow('Insufficient'));
