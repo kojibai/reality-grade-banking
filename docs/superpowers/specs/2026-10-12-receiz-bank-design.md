@@ -2,9 +2,9 @@
 
 This application gives people one place to deposit what they own and use the value. The customer promise is **Deposit anything. Get liquidity.** The experience feels like a bank: one account, one displayed balance, a prominent Deposit action, and simple navigation at the bottom of an installable mobile browser app.
 
-The physical asset model is a funded purchase. The bank receives the item or verifies the required title and custody, inspects it, makes a transparent purchase offer, and credits Reserve when the accepted purchase completes. Proof objects use Receiz's existing verification, ownership, and Settlement admission primitives. Dollar funding enters Reserve through the actual funding and credit evidence.
+The physical asset model is custody with transferable, divisible proof-backed ownership. The bank receives or verifies title/custody, inspects the asset, and issues its exact owned quantity through the qualified proof contract. Depositors can hold, transfer, sell shares to the bank or market, buy ownership back, or redeem under the custody terms. An accepted funded liquidation credits Reserve and removes the corresponding owned quantity; custody alone does not create cash. Proof objects use Receiz's existing verification, ownership, and Settlement admission primitives. Dollar funding enters Reserve through the actual funding and credit evidence.
 
-The approved design makes cash offers the physical deposit journey. Market is for investing and trading; customer item listings are outside the first release. The bank can sell acquired inventory in Market without adding a decision to the customer's deposit flow.
+The user revised the deposit model during implementation: deposits retain asset ownership by default, with cash-now liquidation available as a simple action. Market is for investing and trading; customer item listings are outside the first release. The bank can sell acquired inventory in Market without adding a decision to the customer's deposit flow.
 
 ## Agreed experience
 
@@ -27,7 +27,7 @@ The screen opens directly into the account. The top contains the Receiz identity
 
 **Deposit** appears once in the prominent bottom navigation. The central account actions are **Send** and **Receive**. A readable balance chart and recorded Settlement growth provide immediate context. Recent verified account movements appear below them. A small assets summary links to owned proof objects, positions, currencies, and pending physical deposits. Empty accounts show the same settled structure with the invitation **Make your first deposit**.
 
-Tapping the balance opens its explanation: Reserve, admitted Settlement, any locked amounts, and the exact display conversion basis. Pending inspections, unaccepted offers, asking prices, model valuations, and investment positions do not inflate the liquid account balance. Position values belong in Assets and cannot be counted again as spendable liquidity. Every spend or withdrawal preview identifies its actual rail and eligible amount.
+Tapping the balance opens its explanation: Reserve, admitted Settlement, any locked amounts, and the exact display conversion basis. Pending inspections and unaccepted offers do not inflate the account. The combined account value includes each held asset once at its identified current valuation; the detail view separates owned assets, committed backing, Reserve and Settlement. An asset valuation is not simultaneously counted as freely spendable funds. Every spend or withdrawal preview identifies its actual rail and eligible amount.
 
 The prominent combined balance is a display projection over admitted value, not a new value rail. Use the canonical exact Phi amounts and SDK-issued conversion basis. The v129 proof valuation calculator does not itself create spendable Settlement.
 
@@ -162,3 +162,7 @@ Acceptance checks cover:
 - [Installed v129 capability execution coverage](/Users/bjklock/Kai-Turah/Receiz-app-template/node_modules/@receiz/sdk/docs/capability-execution-coverage.md)
 - [Installed v129 proof valuation guide](/Users/bjklock/Kai-Turah/Receiz-app-template/node_modules/@receiz/sdk/docs/offline-proof-valuation.md)
 - [Receiz value rail skill](/Users/bjklock/Kai-Turah/Receiz-app-template/ai-skills/receiz-value-rails/SKILL.md)
+
+## Custody and fractional ownership correction
+
+The bank holds the physical asset while ownership can move without physical delivery. Deposited stocks and property follow their actual qualified transfer/title route. A person may sell 50 percent or 1 percent to the bank or a market buyer, retain the remainder, sell additional portions later and buy ownership back. Exact ownership quantities and original asset supply remain conserved. Redemption requires the actual whole-asset or shared-ownership redemption terms; a fractional owner cannot unilaterally redeem the entire original. The frontend distinguishes bank liquidity from another user funding a trade. These corrections supersede earlier cash-on-every-deposit wording.
