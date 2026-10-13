@@ -7,7 +7,7 @@ document.querySelector('#run').onclick = async () => {
   const binding={keyId:'test-only-key',artifactSha256:await hash(source)};
   await saveDeviceIdentity(source,'test-only.bin','not-an-authentication-phrase',true);
   assert(new TextDecoder().decode((await loadDeviceIdentity()).bytes)==='test-only-not-an-identity','Exact private source reopens');
-  const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('receiz-bank-private-custody',2);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+  const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('receiz-bank-private-custody',3);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
   const row=await new Promise(resolve=>{const r=db.transaction('identity').objectStore('identity').get('current');r.onsuccess=()=>resolve(r.result);}); db.close();
   assert(!row.wrappingKey.extractable&&new TextDecoder().decode(row.bytes)!=='test-only-not-an-identity','Private source is encrypted under non-exportable key');
   const wallet={userId:'fixture-account',totalUsdCents:'321',reserveUsdCents:'100',settlementUsdCents:'221',balancePhiMicro:'321',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:null,kaiUpulse:null};

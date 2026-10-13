@@ -1,8 +1,8 @@
 import { BANK_APPLICATION_ID } from './config';
 export interface ProtectedIdentityTransport { bytes: Uint8Array; phrase: string; }
-interface SavedIdentity { schema: 'receiz.bank.device-identity.v1'; bytes: ArrayBuffer; artifactIv?: Uint8Array; filename: string; wrappingKey: CryptoKey; iv: Uint8Array; wrappedPhrase: ArrayBuffer; readConsent: boolean; protectedTransport?: { iv: Uint8Array; bytes: ArrayBuffer }; cardOperation?: { operationId: string; iv: Uint8Array; bytes: ArrayBuffer }; }
+interface SavedIdentity { schema: 'receiz.bank.device-identity.v1'; bytes: ArrayBuffer; artifactIv?: Uint8Array; filename: string; wrappingKey: CryptoKey; iv: Uint8Array; wrappedPhrase: ArrayBuffer; readConsent: boolean; protectedTransport?: { iv: Uint8Array; bytes: ArrayBuffer }; cardOperation?: { operationId: string; iv: Uint8Array; bytes: ArrayBuffer }; bankOperation?: { operationId: string; state: string; key: string; }; }
 async function identityBytes(saved: SavedIdentity): Promise<Uint8Array> { return saved.artifactIv ? new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(saved.artifactIv), additionalData: new TextEncoder().encode('receiz.bank.private-identity-source.v1') }, saved.wrappingKey, saved.bytes)) : new Uint8Array(saved.bytes); }
-async function database(): Promise<IDBDatabase> { return new Promise((resolve, reject) => { const request = indexedDB.open('receiz-bank-private-custody', 2); request.onupgradeneeded = () => { if (!request.result.objectStoreNames.contains('identity')) request.result.createObjectStore('identity'); if (!request.result.objectStoreNames.contains('sources')) request.result.createObjectStore('sources'); }; request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); }
+async function database(): Promise<IDBDatabase> { return new Promise((resolve, reject) => { const request = indexedDB.open('receiz-bank-private-custody', 3); request.onupgradeneeded = () => { if (!request.result.objectStoreNames.contains('identity')) request.result.createObjectStore('identity'); if (!request.result.objectStoreNames.contains('sources')) request.result.createObjectStore('sources'); if (!request.result.objectStoreNames.contains('operations')) request.result.createObjectStore('operations'); }; request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); }
 async function held(): Promise<SavedIdentity | null> { const db = await database(); try { return await new Promise((resolve, reject) => { const request = db.transaction('identity').objectStore('identity').get('current'); request.onsuccess = () => resolve(request.result ?? null); request.onerror = () => reject(request.error); }); } finally { db.close(); } }
 export async function saveDeviceIdentity(bytes: Uint8Array, filename: string, phrase: string, readConsent: boolean, protectedTransport?: ProtectedIdentityTransport) {
   const wrappingKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
@@ -70,6 +70,66 @@ export async function saveCardOperation(binding: { artifactSha256: string }, val
       const next = { ...current }; if (bytes) next.cardOperation = { operationId: (value as { operationId: string }).operationId, iv, bytes }; else delete next.cardOperation; store.put(next, 'current');
     };
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(new Error('An unfinished card deposit already exists, or your identity changed. Reopen Deposit to check it.'));
+  }); } finally { db.close(); }
+}
+
+// Encrypted choreography checkpoints are recovery mechanics, never proof
+// admission. Every use must reopen their complete sources with the SDK.
+type BankCheckpoint = import('./bank-execution').BankExecutionCheckpoint;
+interface PrivateBankOperation { key: string; iv: Uint8Array; bytes: ArrayBuffer; }
+function bankOperationKey(binding: { artifactSha256: string }, operationId: string): string {
+  if (!/^[a-f0-9]{64}$/.test(binding.artifactSha256) || !/^[A-Za-z0-9_.:-]{1,200}$/.test(operationId)) throw new Error('BANK_EXECUTION_CHECKPOINT_INVALID');
+  return `bank-operation|${BANK_APPLICATION_ID}|${binding.artifactSha256}|${operationId}`;
+}
+async function sameSavedIdentity(saved: SavedIdentity, binding: { artifactSha256: string }) {
+  const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(await identityBytes(saved))))].map(byte => byte.toString(16).padStart(2, '0')).join('');
+  if (digest !== binding.artifactSha256) throw new Error('BANK_EXECUTION_IDENTITY_CHANGED');
+}
+export async function loadBankOperation(binding: { artifactSha256: string }): Promise<BankCheckpoint | null> {
+  const saved = await held(); if (!saved?.bankOperation) return null;
+  await sameSavedIdentity(saved, binding);
+  const key = bankOperationKey(binding, saved.bankOperation.operationId);
+  if (key !== saved.bankOperation.key) throw new Error('BANK_EXECUTION_APPLICATION_OR_SOURCE_CHANGED');
+  const db = await database(); let row: PrivateBankOperation | undefined;
+  try { row = await new Promise((resolve, reject) => { const request = db.transaction('operations').objectStore('operations').get(key); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); } finally { db.close(); }
+  if (!row || row.key !== key) throw new Error('BANK_EXECUTION_EXACT_CHECKPOINT_UNAVAILABLE');
+  const clear = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, row.bytes);
+  const value = JSON.parse(new TextDecoder().decode(clear)) as BankCheckpoint;
+  if (value.schema !== 'bank.execution-checkpoint.v1' || value.operationId !== saved.bankOperation.operationId || value.state !== saved.bankOperation.state || value.plan.applicationId !== BANK_APPLICATION_ID || value.plan.attemptId !== value.operationId) throw new Error('BANK_EXECUTION_CHECKPOINT_INVALID');
+  return value;
+}
+export async function saveBankOperation(binding: { artifactSha256: string }, value: BankCheckpoint, mode: 'new' | 'replace'): Promise<void> {
+  if (value.schema !== 'bank.execution-checkpoint.v1' || value.plan.applicationId !== BANK_APPLICATION_ID || value.plan.attemptId !== value.operationId || !['prepared', 'unknown', 'committed', 'zero-write'].includes(value.state)) throw new Error('BANK_EXECUTION_CHECKPOINT_INVALID');
+  const previous = mode === 'replace' ? await loadBankOperation(binding) : null;
+  if (mode === 'replace') {
+    if (!previous || previous.operationId !== value.operationId) throw new Error('BANK_EXECUTION_CHECKPOINT_CHANGED');
+    // These are exact retained mechanics, not proof admission. A changed plan
+    // or source requires a new human review and cannot overwrite this intent.
+    if (JSON.stringify(previous.plan) !== JSON.stringify(value.plan) || JSON.stringify(previous.transitionSet) !== JSON.stringify(value.transitionSet)) throw new Error('BANK_EXECUTION_INTENT_CHANGED');
+    if (['committed', 'zero-write'].includes(previous.state) && (previous.state !== value.state || JSON.stringify(previous.recovery) !== JSON.stringify(value.recovery))) throw new Error('BANK_EXECUTION_TERMINAL');
+  }
+  const saved = await held(); if (!saved) throw new Error('BANK_EXECUTION_IDENTITY_UNAVAILABLE');
+  await sameSavedIdentity(saved, binding);
+  const key = bankOperationKey(binding, value.operationId), clear = new TextEncoder().encode(JSON.stringify(value));
+  if (clear.length > 32 * 1024 * 1024) throw new Error('BANK_EXECUTION_CHECKPOINT_CAPACITY');
+  const iv = crypto.getRandomValues(new Uint8Array(12)), encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, clear);
+  const row: PrivateBankOperation = { key, iv, bytes: encrypted };
+  const db = await database(); try { await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(['identity', 'operations'], 'readwrite'), identities = tx.objectStore('identity'), operations = tx.objectStore('operations'), read = identities.get('current');
+    const prior = new Uint8Array(saved.bytes), priorIv = new Uint8Array(saved.iv); let reason = 'BANK_EXECUTION_CHECKPOINT_CHANGED';
+    read.onsuccess = () => {
+      const current = read.result as SavedIdentity | undefined;
+      if (!current || current.bytes.byteLength !== prior.length || !new Uint8Array(current.bytes).every((byte, i) => byte === prior[i]) || !new Uint8Array(current.iv).every((byte, i) => byte === priorIv[i])) { reason = 'BANK_EXECUTION_IDENTITY_CHANGED'; tx.abort(); return; }
+      if (mode === 'new' && current.bankOperation && ['prepared', 'unknown'].includes(current.bankOperation.state)) { reason = 'BANK_EXECUTION_PENDING'; tx.abort(); return; }
+      if (mode === 'replace' && (current.bankOperation?.operationId !== value.operationId || current.bankOperation.key !== key || current.bankOperation.state !== previous?.state)) { tx.abort(); return; }
+      const existing = operations.get(key);
+      existing.onsuccess = () => {
+        if (mode === 'new' && existing.result) { reason = 'BANK_EXECUTION_ATTEMPT_ALREADY_RETAINED'; tx.abort(); return; }
+        // History entries remain held when a later intent becomes current.
+        operations.put(row, key); identities.put({ ...current, bankOperation: { operationId: value.operationId, state: value.state, key } }, 'current');
+      };
+    };
+    tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(new Error(reason));
   }); } finally { db.close(); }
 }
 

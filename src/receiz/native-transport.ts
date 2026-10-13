@@ -6,6 +6,7 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
   '/api/connect/wallet/me': 'GET',
   '/api/connect/payments/checkout': 'POST',
   '/api/connect/payments/session': 'GET',
+  '/api/sdk/v1/runtime/qualify': 'POST',
 };
 export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }

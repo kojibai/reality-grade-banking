@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { BANK_APPLICATION_ID, BANK_READ_SCOPES } from '../src/receiz/config';
 import { openCanonicalIdentity } from '../src/receiz/native-identity';
 // Protocol-mechanics fixtures only. They are not canonical SDK admission/live-user evidence.
-const protocol = vi.hoisted(() => ({ grant: vi.fn(), scopes: vi.fn(), wallet: vi.fn(), continueId: vi.fn(), client: vi.fn() }));
+const protocol = vi.hoisted(() => ({ grant: vi.fn(), scopes: vi.fn(), wallet: vi.fn(), continueId: vi.fn(), client: vi.fn(), qualify: vi.fn() }));
 vi.mock('../src/receiz/client', () => ({ loadReceiz: async () => ({
   verifyReceizArtifact: async () => ({ status: 'verified-artifact' }), createReceizArtifactAdmissionEngine: () => async () => ({ verdict: 'canonical-identity' }), isSdkIssuedReceizArtifactAdmission: () => true,
   readReceizIdentityPublicBinding: async () => ({ keyId: 'fixture-key', artifactSha256: 'a'.repeat(64) }),
@@ -14,7 +14,16 @@ beforeEach(() => {
   protocol.continueId.mockReset().mockResolvedValue({ ok: true, session: { uid: 'fixture-owner' } });
   protocol.grant.mockReset().mockResolvedValue({ applicationId: BANK_APPLICATION_ID, keyId: 'fixture-key', artifactDigest: 'a'.repeat(64), grantedScopes: [...BANK_READ_SCOPES], accessToken: 'local-fixture', expiresAtKai: 200 });
   protocol.scopes.mockReset().mockResolvedValue([...BANK_READ_SCOPES]); protocol.wallet.mockReset().mockResolvedValue({ ok: true, wallet: { userId: 'fixture-owner', balanceUsd: '3.00', balancePhiMicro: '2', valueStates: { settledBalanceUsdCents: '100', ecosystemBalanceUsdCents: '200' }, sync: {}, rollup: {} } });
-  protocol.client.mockReset().mockImplementation((options: { accessToken?: string }) => options.accessToken ? { auth: { grantedScopes: protocol.scopes }, connect: { wallet: protocol.wallet } } : { identity: { continueReceizId: protocol.continueId, signLoginProof: async () => ({}), exchangeProofAuthority: protocol.grant } });
+  protocol.qualify.mockReset().mockRejectedValue(new Error('Native scope missing'));
+  protocol.client.mockReset().mockImplementation((options: { accessToken?: string }) => options.accessToken ? { auth: { grantedScopes: protocol.scopes }, connect: { wallet: protocol.wallet }, runtime: { qualifyV124: protocol.qualify } } : { identity: { continueReceizId: protocol.continueId, signLoginProof: async () => ({}), exchangeProofAuthority: protocol.grant } });
+});
+it('a read-only connection check reports missing native access without requesting expanded permissions or qualifying unavailable operations', async () => {
+  const identity = await openCanonicalIdentity(new Uint8Array([1]), 'fixture-phrase', 'fixture.receiz', true);
+  try {
+    const report = await identity.nativeReadiness();
+    expect(report.status).toBe('permissions-needed'); expect(report.missingScopes).toContain('receiz:reserve.write'); expect(report.readyToTransact).toBe(false);
+    expect(protocol.grant.mock.calls[0][0].scopes).toEqual(BANK_READ_SCOPES); expect(protocol.qualify).not.toHaveBeenCalled();
+  } finally { identity.dispose(); }
 });
 it('does not start account transport without actual UI consent', async () => {
   const identity = await openCanonicalIdentity(new Uint8Array([1]), 'fixture-phrase', 'fixture.receiz');

@@ -1,6 +1,6 @@
 import type { ReceizClient, ReceizIdentityPublicBinding, ReceizKeyFile, ReceizIdentityAccountProjection } from '@receiz/sdk';
 import { loadReceiz } from './client';
-import { BANK_APPLICATION_ID, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES } from './config';
+import { BANK_APPLICATION_ID, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES, BANK_NATIVE_CONSENT, BANK_NATIVE_SCOPES } from './config';
 import { parseCardCheckout, parseCardDepositStatus, parseDepositDollars, readCardOperation, type CardCheckout, type CardDepositStatus } from './card-deposit';
 import { nativeFetch } from './native-transport';
 import { loadDeviceIdentity, saveDeviceIdentity, loadWalletObservation, saveWalletObservation, loadDepositSources, saveDepositSource, loadCardOperation, saveCardOperation } from './identity-vault';
@@ -10,6 +10,7 @@ import type { ProtectedIdentityTransport } from './identity-vault';
 import { identityNeedsPhrase } from './identity-lock';
 import { parseSharedWallet } from './shared-wallet';
 import { physicalDeliveryInstructions } from './custody-delivery';
+import { BANK_NATIVE_OPERATIONS, summarizeNativeBankReadiness, type BankNativeReadiness } from './bank-native-readiness';
 
 export interface OpenIdentity {
   binding: ReceizIdentityPublicBinding; needsPhrase: boolean; knownWallet: () => import('./wallet-observation').WalletObservation | null;
@@ -18,6 +19,7 @@ export interface OpenIdentity {
   pendingCardDeposit: () => Promise<CardCheckout | null>;
   startAssetIntake: (asset: AssetIntake, attachment?: File) => Promise<HeldDeposit>; holdProof: (file: File) => Promise<HeldDeposit>;
   listDeposits: () => Promise<HeldDeposit[]>;
+  nativeReadiness: (approveNativeAccess?: boolean) => Promise<BankNativeReadiness>;
   persistDeviceCustody: () => Promise<void>;
   dispose: () => void; backup: () => { bytes: Uint8Array; filename: string; phrase: string };
 }
@@ -132,7 +134,16 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const sealed = await sealer.seal({ bytes: new TextEncoder().encode(JSON.stringify(payload)), filename: 'asset-deposit.json', mimeType: 'application/json' });
     return holdProof(new File([new Uint8Array(sealed.artifactBytes)], sealed.filename, { type: sealed.mimeType }));
   }
-  return { binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, localHistory, readWallet, beginCardDeposit, checkCardDeposit, pendingCardDeposit, startAssetIntake, holdProof, listDeposits, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  async function nativeReadiness(approveNativeAccess = false) {
+    const current = await connectClient(approveNativeAccess ? BANK_NATIVE_SCOPES : BANK_READ_SCOPES, approveNativeAccess ? BANK_NATIVE_CONSENT : BANK_READ_CONSENT);
+    const missingScopes = BANK_NATIVE_SCOPES.filter(scope => !grantedScopes.includes(scope));
+    // Report actual permission introspection before attempting native runtime
+    // qualification. This is an access check, never an operational success.
+    if (missingScopes.length) return { status: 'permissions-needed' as const, missingScopes, unavailableOperations: [], readyToTransact: false as const };
+    const report = await current.runtime.qualifyV124({ applicationId: BANK_APPLICATION_ID, operations: BANK_NATIVE_OPERATIONS });
+    return summarizeNativeBankReadiness(report);
+  }
+  return { binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, localHistory, readWallet, beginCardDeposit, checkCardDeposit, pendingCardDeposit, startAssetIntake, holdProof, listDeposits, nativeReadiness, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

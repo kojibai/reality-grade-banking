@@ -1,0 +1,34 @@
+<!doctype html><meta charset="utf-8"><title>Isolated native bank custody checks</title><h1>Test-only execution custody</h1><p>Separate test origin. Uses dummy bytes and an unadmitted source-check checkpoint. Creates no Receiz ID, credential, bank account or financial operation.</p><button id="run">Run native custody checks</button><pre id="output">Ready</pre><script type="module">
+import { saveDeviceIdentity, forgetDeviceIdentity } from '/src/receiz/identity-vault.ts';
+import { deviceBankExecutionStore } from '/src/receiz/bank-execution-vault.ts';
+import { BANK_APPLICATION_ID } from '/src/receiz/config.ts';
+document.querySelector('#run').onclick = async () => {
+ const checks=[], assert=(value,label)=>{if(!value)throw Error(label);checks.push(label);};
+ try {
+  const bytes=new TextEncoder().encode('test-only-not-an-identity');
+  const digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(byte=>byte.toString(16).padStart(2,'0')).join('');
+  const binding={artifactSha256:digest}; await saveDeviceIdentity(bytes,'test-only.bin','dummy-not-a-recovery-phrase',true);
+  const store=deviceBankExecutionStore(binding);
+  const nonce=crypto.randomUUID(),attempt=`test-only-${nonce}`,other=`competing-${nonce}`;
+  const checkpoint={schema:'bank.execution-checkpoint.v1',operationId:attempt,state:'prepared',plan:{applicationId:BANK_APPLICATION_ID,attemptId:attempt},transitionSet:{testOnlyPrivateSource:'private-fixture-exact-byte-coordinate'}};
+  const competing={...checkpoint,operationId:other,plan:{...checkpoint.plan,attemptId:other}};
+  const attempts=await Promise.allSettled([store.saveNew(checkpoint),store.saveNew(competing)]);
+  assert(attempts.filter(item=>item.status==='fulfilled').length===1,'One concurrent intent retained');
+  const current=await store.load(); assert(current&&[attempt,other].includes(current.operationId),'Exact intent reopens');
+  assert(current.transitionSet.testOnlyPrivateSource==='private-fixture-exact-byte-coordinate','Complete private source checkpoint retained');
+  const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('receiz-bank-private-custody',3);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+  const row=await new Promise(resolve=>{const r=db.transaction('identity').objectStore('identity').get('current');r.onsuccess=()=>resolve(r.result);});
+  const held=await new Promise(resolve=>{const r=db.transaction('operations').objectStore('operations').get(row.bankOperation.key);r.onsuccess=()=>resolve(r.result);});db.close();
+  assert(!row.wrappingKey.extractable&&!new TextDecoder().decode(held.bytes).includes('private-fixture-exact-byte-coordinate'),'Checkpoint encrypted under non-exportable device key');
+  let refused=false;try{await store.replace({...current,operationId:'foreign-attempt',state:'committed'});}catch{refused=true;}assert(refused,'Foreign result cannot replace pending intent');
+  refused=false;try{await store.replace({...current,plan:{...current.plan,semanticIdempotencyKey:'changed'},state:'unknown'});}catch{refused=true;}assert(refused,'Plan and exact source cannot change under retained attempt');
+  await store.replace({...current,state:'unknown'});assert((await deviceBankExecutionStore(binding).load()).state==='unknown','Unknown state survives reopening');
+  const next={...checkpoint,operationId:`next-${nonce}`,plan:{...checkpoint.plan,attemptId:`next-${nonce}`}};
+  await store.replace({...current,state:'zero-write'});refused=false;try{await store.replace({...current,state:'unknown'});}catch{refused=true;}assert(refused&&(await store.load()).state==='zero-write','A known terminal result cannot become unknown');
+  await store.saveNew(next);refused=false;try{await store.replace({...current,state:'committed'});}catch{refused=true;}assert(refused,'Late result cannot erase new intent');
+  await forgetDeviceIdentity();refused=false;try{await store.replace({...next,state:'unknown'});}catch{refused=true;}assert(refused,'Removed identity cannot be revived by late result');
+  await saveDeviceIdentity(new Uint8Array([9,8,7]),'other-test-only.bin','dummy',true);refused=false;try{await store.saveNew(checkpoint);}catch{refused=true;}assert(refused,'Changed identity refuses former intent');await forgetDeviceIdentity();
+  document.querySelector('#output').textContent='PASS\n'+checks.join('\n');
+ }catch(error){document.querySelector('#output').textContent='FAIL\n'+error.message;}
+};
+</script>

@@ -1,0 +1,10 @@
+import { writeFile } from 'node:fs/promises';
+import { compileReceizDomain } from '@receiz/sdk/compiler';
+import { RECEIZ_CURRENT_CONSTITUTION_REGISTRY, RECEIZ_CURRENT_REGISTRY_DIGEST, digestReceizConstitution } from '@receiz/sdk';
+import { BANK_DOMAIN_DEFINITION } from '../server/bank-domain-contract.ts';
+const actual = await digestReceizConstitution(RECEIZ_CURRENT_CONSTITUTION_REGISTRY);
+if (actual !== RECEIZ_CURRENT_REGISTRY_DIGEST) throw new Error('REGISTRY_DIGEST_MISMATCH');
+const compiled = await compileReceizDomain(BANK_DOMAIN_DEFINITION, { registry: RECEIZ_CURRENT_CONSTITUTION_REGISTRY });
+const evidence = { schema: 'bank.domain-compilation-evidence.v1', sdkVersion: '129.0.0', definition: BANK_DOMAIN_DEFINITION, registryDigest: compiled.registryDigest, compilationDigest: compiled.compilationDigest, implementationContract: compiled.implementationContract, proposedFiles: compiled.files.map(file => ({ path: file.path, ownership: file.ownership })), authority: { compilerIsProofAuthority: false, deployed: false, financialExecutionQualified: false } };
+await writeFile(new URL('../docs/native-bank-domain-contract.json', import.meta.url), `${JSON.stringify(evidence, null, 2)}\n`);
+console.log(JSON.stringify({ registryDigest: compiled.registryDigest, compilationDigest: compiled.compilationDigest, proposedFiles: compiled.files.length, applied: false, financialExecutionQualified: false }));

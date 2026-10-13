@@ -1,5 +1,7 @@
 # Live bank conversion — observed state
 
+Native bank preparation now adds SDK custody-source checks, exact fractional/supply proposals, full Kai proof composition and encrypted native execution recovery. The requested live custody, transfers, sales and currency issuance remain unfinished; the existing bank UI is preserved. See [native-bank-domain-verification.md](native-bank-domain-verification.md) for the exact 2026-10-13 evidence and missing operator/backend/permission boundaries.
+
 ## Public Market: connected
 
 The bank Market reads the same complete public showcase collection as
