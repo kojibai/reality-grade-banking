@@ -4,7 +4,7 @@ Verified locally on 13 October 2026. This is a reviewable Demo account frontend;
 
 ## Automated checks
 
-`npm test` passed 41/41; `npm run typecheck`, `npm run build`, and `git diff --check` exited zero. These are the release checks. The suite covers exact amount parsing, account/ownership conservation, duplicate operation IDs, fractional trades, backing conservation, exchange rejection, receiver continuity, pseudonym consent, durable restore, direct routes, activity direction and service-worker boundaries. Actual v129 verifier tests reject ordinary text and serialized verification claims; no fabricated positive proof result is substituted.
+`npm test` passed 49/49; `npm run typecheck`, `npm run build`, and `git diff --check` exited zero. These are the release checks. The suite covers exact amount parsing, account/ownership conservation, duplicate operation IDs, fractional trades, backing conservation, exchange rejection, receiver continuity, pseudonym consent, durable restore, direct routes, activity direction and service-worker boundaries. Actual v129 verifier tests reject ordinary text and serialized verification claims; no fabricated positive proof result is substituted.
 
 ## Browser checks
 
@@ -51,4 +51,23 @@ A real release still requires app/identity registration, physical custody/title 
 5. Integrate transfer sheet routing with Market so ownership actions respond immediately. If wrong, the larger integration commit needs splitting/review.
 6. Browser chooser stalled: establish rejection with actual SDK tests and leave browser upload unverified. If wrong, a browser-specific intake defect may remain.
 
-Independent review and its outcomes are recorded below after completion.
+## Independent review and fixes
+
+A fresh-context reviewer inspected commits 8bb4f5d..ee00fc3 and independently ran the original 41 tests. No Critical issues or deferred Minors. Four Important findings were reproduced RED and fixed GREEN in one pass, followed by the full 49-test suite:
+
+1. Currency exchange overspent because display unit-price truncation differed from exact backing. One rational quote now drives preview and execution, including a unit price below one micro-unit. Tests cover 60 million and 600 million supply, exact payment and received quantity.
+2. Oversized accepted balances/events failed restore and erased local history. Credit, holdings, asset quantities and calculated event values must now satisfy the same persisted bounds before a cloned transition can commit. Tests cover overflowing funding, maximum accepted rail balance, huge custody valuations, and exact restore after an eleven-step custody/trading/currency journey.
+3. Mixed hover and keyboard period changes retained an invalid chart index. Rendering guards the selected point, and period changes reset chart selection. A mounted React DOM regression reproduces the old crash and now passes.
+4. Immediate PWA activation deleted cached lazy chunks referenced by open clients. The worker now uses the normal waiting lifecycle. A two-version worker test retains old-client verifier availability while the update waits. Close all Receiz tabs and reopen to activate a waiting build.
+
+Package checks also identified outdated test/tool transitive dependencies. Updated Vitest to 5.0.4 and applied a compatible Underscore 1.13.8 override; all Receiz packages remain pinned to 129.0.0. npm audit reports zero advisories. Primary notices: [Vitest](https://github.com/vitest-dev/vitest/security/advisories/GHSA-82fw-gwwq-j7x9), [Tinypool](https://github.com/tinylibs/tinypool/security/advisories/GHSA-85c8-ppgw-ccpr), [Underscore](https://github.com/jashkenas/underscore/security/advisories/GHSA-qpx9-hpmf-5gmw).
+
+## Review rulings
+
+7. Live custody, fiat execution, market counterparties, mandates, currency contracts and institutional routes stay outside this frontend release under the approved scope; demo/unavailable states remain explicit. Cost if wrong: a separate backend implementation and qualification is needed.
+8. Live ledger success and browser artifact upload remain unverified, with concrete failures disclosed. Cost if wrong: integration-specific defects may remain.
+9. OS/browser text enlargement stays a documented validation limitation rather than an inferred pass. Cost if wrong: a zoom-specific layout defect may remain.
+10. Shared-owner redemption requires backend terms; the full-ownership guard stands. Cost if wrong: a negotiated fractional-redemption experience needs implementation.
+11. Apply patched test tooling and a compatible transitive patch while preserving exact Receiz versions. Cost if wrong: dependency compatibility needs rechecking; the full suite and build were rerun.
+
+Deferred minors: none.

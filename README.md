@@ -20,7 +20,7 @@ npm run build
 npm run preview -- --host 127.0.0.1 --port 4173 --strictPort
 ```
 
-Open http://127.0.0.1:4173. Install through your browser's Install / Add to Home Screen action. The production service worker retains the shell and verifier chunks; it never replays financial API calls.
+Open http://127.0.0.1:4173. Install through your browser's Install / Add to Home Screen action. The production service worker retains the shell and verifier chunks; it never replays financial API calls. Updates wait for existing clients: close all Receiz app tabs and reopen to activate a waiting build.
 
 ## What works
 
@@ -50,3 +50,5 @@ The live public read failed with `Failed to fetch` in the local browser during v
 - [Verification record](docs/verification.md)
 
 SDK chunks are lazy-loaded to keep first paint small. The native SDK chunk triggers Vite's size warning; production offline installation downloads these chunks in the background.
+
+The test runner is Vitest 5.0.4. A compatible Underscore 1.13.8 override resolves the existing snarkjs transitive advisory while all Receiz packages remain 129.0.0. Package audit reports zero advisories after the update.

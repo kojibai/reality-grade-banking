@@ -1,5 +1,6 @@
 import type { BankOperation, BankState, BalanceView, BankEvent } from './types';
 import { SCALE, exactAmount, demoUsdCents } from './money';
+import { quoteExchange } from './exchange';
 
 export function assetValuePhiMicro(state: BankState, assetId: string, quantityMicro?: string): string {
   const asset = state.assets.find(a => a.id === assetId);
@@ -21,7 +22,7 @@ export function applyOperation(state: BankState, operation: BankOperation): Bank
   const next = structuredClone(state);
   const event: BankEvent = { id: operation.id, title: '', kind: operation.kind, amountPhiMicro: '0', time: 'Just now', actor: state.identity.actor, proofRef: `demo:${operation.id}`, source: 'demo' };
   const debit = (rail: 'reserve' | 'settlement', amount: bigint) => { const key = rail === 'reserve' ? 'reservePhiMicro' : 'settlementPhiMicro'; if (BigInt(next[key]) < amount) throw new Error('Insufficient available value.'); next[key] = (BigInt(next[key]) - amount).toString(); };
-  const credit = (rail: 'reserve' | 'settlement', amount: bigint) => { const key = rail === 'reserve' ? 'reservePhiMicro' : 'settlementPhiMicro'; next[key] = (BigInt(next[key]) + amount).toString(); };
+  const credit = (rail: 'reserve' | 'settlement', amount: bigint) => { const key = rail === 'reserve' ? 'reservePhiMicro' : 'settlementPhiMicro'; next[key] = exactAmount((BigInt(next[key]) + amount).toString()).toString(); };
   const owned = (assetId: string, quantity: bigint) => { const holding = next.holdings.find(h => h.assetId === assetId); if (!holding || BigInt(holding.quantityMicro) < quantity) throw new Error('You do not own that amount.'); return holding; };
   switch (operation.kind) {
     case 'intake': {
@@ -76,13 +77,16 @@ export function applyOperation(state: BankState, operation: BankOperation): Bank
     }
     case 'exchange': {
       const amount = exactAmount(operation.amountPhiMicro, true), asset = next.assets.find(a => a.id === operation.assetId);
-      if (!asset || BigInt(asset.pricePhiMicro) <= 0n) throw new Error('An exact exchange quote is unavailable.');
-      const quantity = amount * SCALE / BigInt(asset.pricePhiMicro);
-      if (!quantity || quantity > BigInt(asset.availableMicro)) throw new Error('Insufficient available exchange liquidity.');
-      const value = BigInt(assetValuePhiMicro(next, asset.id, quantity.toString())); debit(operation.rail, value);
+      if (!asset) throw new Error('An exact exchange quote is unavailable.');
+      const currency = next.currencies.find(c => c.id === asset.id);
+      const quote = quoteExchange({ amountPhiMicro: amount.toString(), pricePhiMicro: asset.pricePhiMicro, availableMicro: asset.availableMicro, backingPhiMicro: currency?.backingPhiMicro, supplyMicro: currency?.supplyMicro });
+      const quantity = BigInt(quote.quantityMicro), value = BigInt(quote.costPhiMicro); debit(operation.rail, value);
       const holding = next.holdings.find(h => h.assetId === asset.id); if (holding) holding.quantityMicro = (BigInt(holding.quantityMicro) + quantity).toString(); else next.holdings.push({ assetId: asset.id, quantityMicro: quantity.toString() });
       asset.availableMicro = (BigInt(asset.availableMicro) - quantity).toString(); event.title = `Exchanged into ${asset.title}`; event.assetId = asset.id; event.quantityMicro = quantity.toString(); event.amountPhiMicro = value.toString(); event.rail = operation.rail; break;
     }
   }
+  exactAmount(event.amountPhiMicro);
+  for (const asset of next.assets) { exactAmount(asset.pricePhiMicro); exactAmount(asset.totalUnitsMicro, true); exactAmount(asset.availableMicro); }
+  for (const holding of next.holdings) exactAmount(holding.quantityMicro);
   next.events.unshift(event); next.appliedOperations[operation.id] = signature; return next;
 }

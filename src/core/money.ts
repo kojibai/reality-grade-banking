@@ -11,7 +11,8 @@ export function parseAmount(value: string): string {
 export function exactAmount(value: string, positive = false): bigint {
   if (!/^(0|[1-9]\d{0,24})$/.test(value)) throw new Error('Invalid exact amount.');
   const amount = BigInt(value);
-  if (amount > MAX_AMOUNT || (positive && amount === 0n)) throw new Error('Enter an amount greater than zero.');
+  if (amount > MAX_AMOUNT) throw new Error('Amount exceeds the supported limit.');
+  if (positive && amount === 0n) throw new Error('Enter an amount greater than zero.');
   return amount;
 }
 export function formatUnits(value: string, decimals = 6): string {
