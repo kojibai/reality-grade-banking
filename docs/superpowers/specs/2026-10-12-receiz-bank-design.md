@@ -25,7 +25,7 @@ Deposit means liquidity. Physical deposits follow the bank's cash offer and veri
 
 The screen opens directly into the account. The top contains the Receiz identity entry and a small account control. A large amount labeled **Balance** is the visual anchor. The account carries Reserve and Settlement together; transfer availability is shown for the selected receiving route rather than declaring Settlement permanently unavailable to external institutions.
 
-The main actions are **Deposit**, **Send**, and **Receive**. A readable balance chart and recorded Settlement growth provide immediate context. Recent verified account movements appear below them. A small assets summary links to owned proof objects, positions, currencies, and pending physical deposits. Empty accounts show the same settled structure with the invitation **Make your first deposit**.
+**Deposit** appears once in the prominent bottom navigation. The central account actions are **Send** and **Receive**. A readable balance chart and recorded Settlement growth provide immediate context. Recent verified account movements appear below them. A small assets summary links to owned proof objects, positions, currencies, and pending physical deposits. Empty accounts show the same settled structure with the invitation **Make your first deposit**.
 
 Tapping the balance opens its explanation: Reserve, admitted Settlement, any locked amounts, and the exact display conversion basis. Pending inspections, unaccepted offers, asking prices, model valuations, and investment positions do not inflate the liquid account balance. Position values belong in Assets and cannot be counted again as spendable liquidity. Every spend or withdrawal preview identifies its actual rail and eligible amount.
 
@@ -53,7 +53,7 @@ Deposit is visually prominent. All navigation uses labeled icons, generous touch
 
 ## Deposit journey
 
-The sheet asks **What are you depositing?** and shows three concrete choices: **An item**, **Dollars**, and **A proof object**. The customer never selects a settlement rail.
+The sheet asks **What are you depositing?** and shows three concrete choices: **An asset**, **Dollars**, and **A proof object**. The customer never selects a settlement rail.
 
 ### Physical items
 
