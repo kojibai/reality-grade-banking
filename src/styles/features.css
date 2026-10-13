@@ -45,6 +45,10 @@
 .negative { color: #b24955; }
 .public-market-more { width: 100%; margin: 12px 0; }
 .proof-coordinate { overflow-wrap: anywhere; text-align: right; max-width: 65%; }
+.ledger-public-rows .row-copy { min-width: 0; }
+.ledger-public-rows .row-copy strong { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.ledger-public-rows .row-value { flex-shrink: 0; max-width: 36%; overflow-wrap: anywhere; font-size: 12px; }
+.public-market-sentinel { height: 1px; }
 .asset-actions a { display: flex; gap: 8px; align-items: center; color: var(--blue); font-size: 13px; }
 .featured-asset { padding: 5px 0 22px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 16px; width: 100%; text-align: left; }
 .featured-asset > div:first-child { width: 46%; }.featured-asset h2 { font-size: 17px; }.featured-asset p { color: #8290a4; margin-top: 5px; font-size: 12px; }.featured-asset strong { display: block; font-size: 28px; letter-spacing: -.7px; margin: 13px 0 7px; }.featured-asset .positive { display: block; font-size: 14px; font-weight: 600; }.featured-asset .value-chart { flex: 1; margin: 0; }.view-asset { color: var(--blue); display: flex; align-items: center; gap: 5px; font-size: 12px; margin-top: 17px; }

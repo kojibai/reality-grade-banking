@@ -35,6 +35,6 @@ export default function App() {
   };
   return <BankContext.Provider value={context}><ConsoleShell panel={panel} onNavigate={navigate} onDeposit={() => open({ kind: 'deposit' })} onProfile={() => open({ kind: 'profile' })}>
     <div hidden={panel !== 'account'}><Account state={state} view={{ balance: formatMoney(balance.totalUsdCents), growth: formatMoney(balance.growthUsdCents), values: [...accountCurve.slice(0, -1), Number(balance.totalUsdCents) / 100] }} onSend={() => open({ kind: 'send' })} onReceive={() => open({ kind: 'receive' })} onBalance={() => open({ kind: 'balance' })} onAssets={() => navigate('assets')} onAsset={assetId => open({ kind: 'asset', assetId })} onLedger={() => navigate('ledger')} onGrowth={() => open({ kind: 'growth' })} /></div>
-    <div hidden={panel !== 'market'}><Market active={panel === 'market'} /></div><div hidden={panel !== 'assets'}><Assets /></div><div hidden={panel !== 'ledger'}><Ledger /></div>
+    <div hidden={panel !== 'market'}><Market active={panel === 'market'} /></div><div hidden={panel !== 'assets'}><Assets /></div><div hidden={panel !== 'ledger'}><Ledger active={panel === 'ledger'} /></div>
   </ConsoleShell>{sheet && <ActionSheets key={`${sheet.kind}-${'assetId' in sheet ? sheet.assetId : ''}-${'depositId' in sheet ? sheet.depositId : ''}`} action={sheet} />}</BankContext.Provider>;
 }

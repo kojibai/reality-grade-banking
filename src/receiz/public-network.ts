@@ -14,6 +14,7 @@ function text(input: unknown, max = 2048): string | null { return typeof input =
 function digits(input: unknown, max = 25): string | null { const value = typeof input === 'number' && Number.isSafeInteger(input) && input >= 0 ? String(input) : text(input, max); return value && /^(0|[1-9]\d*)$/.test(value) && value.length <= max ? value : null; }
 function alias(input: unknown): string | null { const value = text(input, 36); return value && /^[1-9A-HJ-NP-Za-km-z]{26,36}$/.test(value) ? value : null; }
 function date(input: unknown): string | null { const value = text(input, 64); return value && Number.isFinite(Date.parse(value)) ? value : null; }
+function digestEvidence(digest: string | null): Record<string, string> { const evidence: Record<string, string> = {}; if (digest) evidence.artifactDigest = digest; return evidence; }
 function row(source: PublicSource, raw: unknown): PublicRecord | null {
   const value = object(raw), id = text(value.id, 512); if (!id) return null;
   const kind = text(value.actionKind ?? value.kind ?? value.ledgerKind, 128) ?? 'public record';
@@ -33,7 +34,7 @@ export function parsePublicNetworkPage(source: PublicSource, input: unknown): Pu
   const envelope = object(input);
   if (source === 'proofs') {
     const catalog = parsePublicMarket(input);
-    return { source, nextCursor: null, complete: catalog.complete, total: String(catalog.sourceCount), records: catalog.items.map<PublicRecord>(item => ({ id: `proofs:${item.id}`, sourceId: item.id, source, kind: 'proof recorded', title: item.title, detail: 'Public showcase proof', time: item.sealedAt, actor: null, amountUsdCents: null, kaiUpulse: null, pulse: item.pulse, sourceUrl: item.sourceUrl, evidence: item.originalDigest ? { artifactDigest: item.originalDigest } : {}, authority: 'public-source-projection' })) };
+    return { source, nextCursor: null, complete: catalog.complete, total: String(catalog.sourceCount), records: catalog.items.map<PublicRecord>(item => ({ id: `proofs:${item.id}`, sourceId: item.id, source, kind: 'proof recorded', title: item.title, detail: 'Public showcase proof', time: item.sealedAt, actor: null, amountUsdCents: null, kaiUpulse: null, pulse: item.pulse, sourceUrl: item.sourceUrl, evidence: digestEvidence(item.originalDigest), authority: 'public-source-projection' })) };
   }
   if (envelope.source && envelope.source !== source || envelope.ok !== true && envelope.source !== source) throw new Error('Public source returned an unsupported response.');
   const rows = envelope.rows ?? (source === 'actions' ? envelope.actions ?? envelope.events : source === 'wallet' ? envelope.events : envelope.ledgerRows);
