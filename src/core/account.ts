@@ -10,7 +10,7 @@ export function assetValuePhiMicro(state: BankState, assetId: string, quantityMi
 }
 export function projectBalance(state: BankState): BalanceView {
   const assets = state.holdings.reduce((sum, holding) => sum + BigInt(assetValuePhiMicro(state, holding.assetId, holding.quantityMicro)), 0n);
-  const backing = state.currencies.reduce((sum, currency) => sum + BigInt(currency.backingPhiMicro), 0n);
+  const backing = state.currencies.reduce((sum, currency) => sum + BigInt(assetValuePhiMicro(state, currency.id)), 0n);
   const total = BigInt(state.reservePhiMicro) + BigInt(state.settlementPhiMicro) + assets;
   return { totalUsdCents: demoUsdCents(total.toString()), reserveUsdCents: demoUsdCents(state.reservePhiMicro), settlementUsdCents: demoUsdCents(state.settlementPhiMicro), assetsUsdCents: demoUsdCents(assets.toString()), backingUsdCents: demoUsdCents(backing.toString()), growthUsdCents: demoUsdCents(state.growthPhiMicro) };
 }

@@ -12,14 +12,14 @@ The user revised the deposit model during implementation: deposits retain asset 
 - The application uses one persistent console with bottom navigation. Actions open within the console as sheets or panels.
 - Deposits include physical assets, fiat funding, and Receiz proof objects.
 - Reserve and Settlement retain their distinct authority and execution rules beneath the combined account display.
-- Physical deposits produce funded liquidity after the bank receives and verifies the asset and completes the accepted purchase.
+- Physical deposits preserve owned quantity after custody and verification. Selling a chosen portion to the bank or a funded market buyer produces liquidity.
 - People can use their value, invest, trade proof objects and positions, and eventually create currencies with verifiable backing and supply.
 - A public social ledger carries inspectable proof and cryptographic actor names. Displaying a Receiz username requires explicit consent.
 - SDK, MCP, and AI skills target the coordinated Receiz 129.0.0 distribution.
 
 ## Deposit and marketplace roles
 
-Deposit means liquidity. Physical deposits follow the bank's cash offer and verified acquisition path. Market means investing and trading: proof objects, positions, bank inventory, and currencies. The initial deposit screen never asks the person to choose a sales strategy. A declined offer preserves existing ownership and presents the actual return or recovery path.
+Deposit puts owned value into the account. Physical deposits follow custody and verification, preserving whole or fractional ownership. Hold, send ownership, sell a chosen portion to the bank or Market, buy ownership back, and redeem appear as simple asset actions. The first deposit screen never asks for a sales strategy. A cash offer is a separate funded sale with explicit ownership transfer.
 
 ## Account screen
 
@@ -57,11 +57,11 @@ The sheet asks **What are you depositing?** and shows three concrete choices: **
 
 ### Physical items
 
-The person supplies photos and the minimum information needed to identify the item and establish ownership. The experience shows the bank's indicative cash offer, the inspection conditions, expected handoff, and any actual fees before the person commits to delivery. Indicative offers are labeled estimates; they are not credited funds.
+The person supplies photos and the minimum information needed to identify the item and establish ownership. The experience shows an indicative valuation, inspection conditions, expected custody handoff, and any actual fees before delivery. Estimates are not credited cash. Stocks and property use their actual title and qualified custody process.
 
-The app provides the appropriate handoff: shipping, drop-off, or title and custody verification for assets that cannot be shipped. Pending deposits remain visible in Assets with plain states: **Awaiting delivery**, **Received**, **Verifying**, **Offer ready**, and **Paid**.
+The app provides the appropriate handoff: shipping, drop-off, or title and custody verification for assets that cannot be shipped. Pending deposits remain visible in Assets with plain states: **Awaiting delivery**, **Received**, **Verifying**, and **Held in custody**. Liquidation has separate **Offer ready** and **Paid** states.
 
-After receipt and verification, the final purchase offer states the net amount, the ownership transfer, and the attached proof. Accepting that offer authorizes the exact purchase. Reserve is credited only when the funded purchase completes. The successful screen says **Added to your balance** and opens the verified receipt. The instant-cash promise refers to the completed, verified deposit; shipping and inspection do not masquerade as completed liquidity.
+After receipt and verification, the accepted custody contract records exact quantity, ownership, custody, redemption terms, and the enclosing proof. The successful screen shows **Held in your account** with **$0 cash created**. The person may then keep, send, sell any eligible portion, or redeem. Selling to the bank or a funded buyer states the net amount and exact ownership transfer; Reserve is credited only when that funded sale completes.
 
 The bank's operational surface handles intake, condition, authentication, custody, quotes, funding, and inventory resale. These operations are a separate subsystem beneath the customer's single deposit journey. Physical authenticity and fair market purchase prices require actual inspection and quote evidence; an AI description or sealed photograph alone does not establish them.
 
@@ -141,7 +141,7 @@ Physical intake and acquisition operations, live app registration and custody, c
 
 Acceptance checks cover:
 
-1. A new person can find Deposit and understand the expected credit without learning rails or trading terminology.
+1. A new person can find Deposit and understand custody, owned quantity and optional liquidity without learning rails or trading terminology.
 2. Navigation and sheets work at 320, 390, and 430 pixel widths without hidden actions or horizontal scrolling.
 3. A pending item or valuation cannot increase available Reserve or admitted Settlement.
 4. Accepted purchases produce one credit and one corresponding ownership outcome, including reload and unknown-response recovery.

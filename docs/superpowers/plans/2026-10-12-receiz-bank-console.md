@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking. The proposed execution method is native implementation in this chat with a final independent review.
 
-**Goal:** Build a polished, installable mobile banking console with cash-now deposits, one displayed balance, Settlement growth, investing and exchange, currency backing, and an inspectable social ledger.
+**Goal:** Build a polished, installable mobile banking console with custody deposits and simple fractional liquidation, one displayed account value, Settlement growth, investing and exchange, currency backing, and an inspectable social ledger.
 
 **Architecture:** React and Vite provide one persistent responsive console. Focused feature panels consume an exact-money state model and separate Receiz v129 adapters. The local reviewable experience identifies demonstration data explicitly; real proof verification and public ledger reads use canonical SDK methods, while live financial actions remain dependent on registered application authority, custody, and qualified backend routes.
 
@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - One persistent console; bottom navigation is Account, Market, Deposit, Assets, Ledger.
-- Physical deposits mean the bank's cash offer and verified acquisition. Market is investing and trading; no customer item listing flow in this release.
+- Physical deposits preserve ownership in custody. People can hold, send, sell portions to the bank or a funded market buyer, buy back and redeem. Market is investing and trading; a separate customer listing workflow is outside this release.
 - Reserve and Settlement are distinct proof-native rails underneath one displayed balance.
 - Settlement growth remains Settlement. Destination proof and continuity support determines external receiving availability.
 - Customer copy uses deposit, balance, growth, exchange, create a currency, and transfer out; no crypto terminology.
@@ -66,9 +66,9 @@
 
 **Files:** Create `src/core/*`, `tests/account.test.ts`, `tests/money.test.ts`.
 
-**Interfaces:** Produces `BankState`, `Rail = 'reserve' | 'settlement'`, `parseAmount(value: string): string`, `projectBalance(state: BankState): BalanceView`, and `applyOperation(state: BankState, operation: BankOperation): BankState`. Money remains canonical decimal micro-unit strings; arithmetic uses BigInt. USD display composes `quoteReceizDisplayUsdV122(amountPhiMicro, usdPerPhiMicrocents)`.
+**Interfaces:** Produces `BankState`, `Rail = 'reserve' | 'settlement'`, `parseAmount(value: string): string`, `projectBalance(state: BankState): BalanceView`, and `applyOperation(state: BankState, operation: BankOperation): BankState`. Money remains canonical decimal micro-unit strings; arithmetic uses BigInt. USD display uses exact demo arithmetic at a labeled 1 Phi = $1 demonstration basis. Live projections require the actual SDK quote basis.
 
-- [ ] Write failing contracts: Reserve plus Settlement forms the displayed total; pending deposits/holdings do not add liquidity; backing removes free value once; duplicate semantic operation IDs return unchanged amounts; malformed/negative/overprecise values reject without writes.
+- [ ] Write failing contracts: Reserve plus Settlement forms the displayed total; pending deposits and held assets do not add liquid rail funds; backing removes free value once; duplicate semantic operation IDs return unchanged amounts; malformed/negative/overprecise values reject without writes.
 - [ ] Run `npm run test -- tests/account.test.ts tests/money.test.ts` and observe failure before implementation.
 - [ ] Implement exact money, separate demo snapshots, transition conservation, schema-checked local persistence, and Account's balance/growth/recent movements.
 - [ ] Persist only explicit demonstration state or qualified projected data with provenance. Keep real SDK runtime verification custody outside JSON persistence.
@@ -80,9 +80,9 @@
 
 **Interfaces:** Consumes Task 2 state/operations. Produces item intake state and `verifyOriginalArtifact(file: File): Promise<ReceizArtifactVerificationResult>` through the real v129 `verifyReceizArtifact` export.
 
-- [ ] Write failing contracts: an intake creates a pending asset without credit; rejected/unverified/unsupported proof creates no money; only a completed accepted funded purchase adds Reserve once; verification cannot substitute for Settlement admission.
+- [ ] Write failing contracts: an intake creates a pending asset without credit; rejected/unverified/unsupported proof creates no money; custody preserves quantity without creating cash, and only a completed funded liquidation adds Reserve once; verification cannot substitute for Settlement admission.
 - [ ] Observe these contracts fail, then implement them.
-- [ ] Build the deposit sheet with **An item**, **Dollars**, **A proof object**. Item intake collects the minimum details and shows delivery, verification and accepted-offer stages. Any demo completion identifies its demonstration status.
+- [ ] Build the deposit sheet with **An item**, **Dollars**, **A proof object**. Item intake collects the minimum details and shows delivery, verification and custody stages, followed by optional liquidation. Any demo completion identifies its demonstration status.
 - [ ] Implement original-file selection and canonical result handling. Retain the exact source in runtime and display actual verified/invalid/denied/unsupported outcomes.
 - [ ] Dollar and proof funding reviews expose the actual live-route prerequisites. Local demo funds never imply a provider payment or admitted real Settlement.
 - [ ] Run the focused contracts, typecheck and build. Verify the complete demo item deposit and rejection of an ordinary unsealed file in the browser.
