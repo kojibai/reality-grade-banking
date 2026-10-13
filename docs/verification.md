@@ -71,3 +71,7 @@ Package checks also identified outdated test/tool transitive dependencies. Updat
 11. Apply patched test tooling and a compatible transitive patch while preserving exact Receiz versions. Cost if wrong: dependency compatibility needs rechecking; the full suite and build were rerun.
 
 Deferred minors: none.
+
+12. Keep the local feat/receiz-bank branch for review: this new repository has no base branch or remote, and the user approved building here. Cost if wrong: integration or publication remains a later action.
+
+Final production restart after the review fixes passed offline. Reopened the waiting update, inspected exact exchange spend in the native UI, restored a clean demonstration account, and captured docs/design/account-native-final.png. Browser console returned no error or warning entries. The final local preview is http://127.0.0.1:4173/#account.
