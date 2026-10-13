@@ -1,7 +1,7 @@
 import { PUBLIC_SOURCES, mergePublicRecords, type PublicRecord, type PublicSource } from './public-network';
 import { safeReceizPublicUrl } from './public-market';
 
-export interface PublicNetworkCache { records: PublicRecord[]; capturedAt: string | null; coverage: { source: PublicSource; complete: boolean }[]; }
+export interface PublicNetworkCache { records: PublicRecord[]; capturedAt: string | null; coverage: { source: PublicSource; complete: boolean; anchorIds?: string[]; observedAt?: number }[]; }
 export function parsePublicNetworkCache(input: unknown): PublicNetworkCache {
   const value = input as { schema?: string; authority?: string; records?: PublicRecord[]; capturedAt?: string; coverage?: PublicNetworkCache['coverage'] };
   if (!value || value.schema !== 'receiz.bank.public-ledger-cache.v1' || value.authority !== 'public-source-projection' || !Array.isArray(value.records) || value.records.length > 100_000 || !Array.isArray(value.coverage)) throw new Error('A public-only discovery cache is required.');
@@ -14,14 +14,16 @@ export function parsePublicNetworkCache(input: unknown): PublicNetworkCache {
     return { ...row, actor, time: row.time && Number.isFinite(Date.parse(row.time)) ? row.time : null, evidence, sourceUrl: safeReceizPublicUrl(row.sourceUrl, 'proof') ?? safeReceizPublicUrl(row.sourceUrl, 'source') };
   });
   return { records: mergePublicRecords([], records), capturedAt: typeof value.capturedAt === 'string' && Number.isFinite(Date.parse(value.capturedAt)) ? value.capturedAt : null,
-    coverage: value.coverage.filter(item => PUBLIC_SOURCES.includes(item.source)).map(item => ({ source: item.source, complete: item.complete === true })) };
+    coverage: value.coverage.filter(item => PUBLIC_SOURCES.includes(item.source)).map(item => ({ source: item.source, complete: item.complete === true, observedAt: Number.isSafeInteger(item.observedAt) && item.observedAt! >= 0 ? item.observedAt : undefined, anchorIds: Array.isArray(item.anchorIds) ? item.anchorIds.filter(id => typeof id === 'string' && id.startsWith(`${item.source}:`) && id.length <= 520).slice(0, 100_000) : undefined })) };
 }
 async function database(): Promise<IDBDatabase> { return new Promise((resolve, reject) => {
   const request = indexedDB.open('receiz-bank-public-projections', 1);
   request.onupgradeneeded = () => request.result.createObjectStore('public'); request.onerror = () => reject(request.error); request.onsuccess = () => resolve(request.result);
 }); }
 export async function loadPublicNetworkCache(): Promise<PublicNetworkCache | null> {
-  try { const db = await database(); try { const input = await new Promise<unknown>((resolve, reject) => { const request = db.transaction('public').objectStore('public').get('network'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); return input ? parsePublicNetworkCache(input) : null; } finally { db.close(); } } catch { return null; }
+  try { const db = await database(); try { const input = await new Promise<unknown>((resolve, reject) => { const request = db.transaction('public').objectStore('public').get('network'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); if (!input) return null; const cache = parsePublicNetworkCache(input);
+    // Older caches did not distinguish complete anchors from interrupted additions.
+    cache.coverage = cache.coverage.map(item => ({ ...item, complete: item.complete && Array.isArray(item.anchorIds) })); return cache; } finally { db.close(); } } catch { return null; }
 }
 export async function loadPublicNetworkSeed(signal?: AbortSignal): Promise<PublicNetworkCache | null> {
   try {
@@ -41,7 +43,20 @@ export async function savePublicNetworkCache(cache: PublicNetworkCache): Promise
   try { const db = await database(); try { await new Promise<void>((resolve, reject) => {
     const tx = db.transaction('public', 'readwrite'), store = tx.objectStore('public'), read = store.get('network');
     read.onsuccess = () => { let previous: PublicNetworkCache | null = null; try { if (read.result) previous = parsePublicNetworkCache(read.result); } catch { /* Reject invalid projection cache. */ }
-      store.put({ ...cache, records: mergePublicRecords(previous?.records ?? [], cache.records), schema: 'receiz.bank.public-ledger-cache.v1', authority: 'public-source-projection' }, 'network'); };
+      const coverage = PUBLIC_SOURCES.map(source => {
+        const incoming = cache.coverage.find(item => item.source === source), prior = previous?.coverage.find(item => item.source === source);
+        return prior && (prior.observedAt ?? 0) > (incoming?.observedAt ?? 0) ? prior : incoming ?? prior ?? { source, complete: false };
+      });
+      const records = PUBLIC_SOURCES.flatMap(source => {
+        const incoming = cache.coverage.find(item => item.source === source), prior = previous?.coverage.find(item => item.source === source);
+        const oldRows = previous?.records.filter(row => row.source === source) ?? [], newRows = cache.records.filter(row => row.source === source);
+        if (['graph', 'proofs'].includes(source)) {
+          if ((prior?.observedAt ?? 0) > (incoming?.observedAt ?? 0)) return oldRows;
+          if (incoming?.complete) return newRows;
+        }
+        return mergePublicRecords(oldRows, newRows);
+      });
+      store.put({ ...cache, coverage, records: mergePublicRecords([], records), schema: 'receiz.bank.public-ledger-cache.v1', authority: 'public-source-projection' }, 'network'); };
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
-  }); } finally { db.close(); } } catch { /* Cache is additive convenience, never financial authority. */ }
+  }); } finally { db.close(); } } catch { /* Cache is discovery convenience, never financial authority. */ }
 }

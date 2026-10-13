@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { PUBLIC_SOURCES, mergePublicRecords, readPublicNetworkPage, type PublicRecord, type PublicSource } from './public-network';
 import { loadPublicNetworkCache, loadPublicNetworkSeed, savePublicNetworkCache } from './public-network-cache';
 
-export interface PublicSourceState { status: 'loading' | 'live' | 'stale' | 'error'; cursor: string | null; complete: boolean; busy: boolean; error: string | null; }
+export interface PublicSourceState { status: 'loading' | 'live' | 'stale' | 'error'; cursor: string | null; complete: boolean; busy: boolean; error: string | null; observedAt?: number; }
 type Sources = Record<PublicSource, PublicSourceState>;
 function initialSources(): Sources { return Object.fromEntries(PUBLIC_SOURCES.map(source => [source, { status: 'loading', cursor: null, complete: false, busy: false, error: null }])) as Sources; }
 export function usePublicNetwork(active = true) {
@@ -35,7 +35,7 @@ export function usePublicNetwork(active = true) {
         if (phase === 'head' && existing.size && !reachedHeld && !page.complete && page.nextCursor && ['actions', 'wallet'].includes(source)) { cursor = page.nextCursor; continue; }
         const complete = page.complete || phase === 'head' && reachedHeld && before.complete;
         update(source, { status: page.complete || source !== 'proofs' ? 'live' : 'stale', complete,
-          cursor: complete ? null : phase === 'head' && existing.size && before.cursor ? before.cursor : page.nextCursor, busy: false,
+          observedAt: complete ? Date.now() : before.observedAt, cursor: complete ? null : phase === 'head' && existing.size && before.cursor ? before.cursor : page.nextCursor, busy: false,
           error: source === 'proofs' && !page.complete ? 'Public showcase collection is incomplete.' : null });
         if (complete) completeAnchors.current[source] = new Set(rows.current.filter(row => row.source === source).map(row => row.id));
         break;
@@ -60,8 +60,9 @@ export function usePublicNetwork(active = true) {
           const cachedComplete = cache?.coverage.some(item => item.source === source && item.complete);
           const seededComplete = seed?.coverage.some(item => item.source === source && item.complete);
           const anchor = cachedComplete ? cache : seededComplete ? seed : null;
-          if (anchor) completeAnchors.current[source] = new Set(anchor.records.filter(row => row.source === source).map(row => row.id));
-          update(source, { status: 'stale', complete: Boolean(anchor) });
+          const anchorCoverage = anchor?.coverage.find(item => item.source === source);
+          if (anchor) completeAnchors.current[source] = new Set(anchorCoverage?.anchorIds ?? anchor.records.filter(row => row.source === source).map(row => row.id));
+          update(source, { status: 'stale', complete: Boolean(anchor), observedAt: anchorCoverage?.observedAt });
         }
       }
       setBootstrap(false); void refresh();
@@ -73,7 +74,7 @@ export function usePublicNetwork(active = true) {
   }, [active, refresh]);
   useEffect(() => {
     if (bootstrap || !records.length) return;
-    const timer = setTimeout(() => { void savePublicNetworkCache({ records: rows.current, capturedAt, coverage: PUBLIC_SOURCES.map(source => ({ source, complete: sourceState.current[source].complete })) }); }, 1_000);
+    const timer = setTimeout(() => { void savePublicNetworkCache({ records: rows.current, capturedAt, coverage: PUBLIC_SOURCES.map(source => ({ source, complete: sourceState.current[source].complete, anchorIds: completeAnchors.current[source] ? [...completeAnchors.current[source]!] : undefined, observedAt: sourceState.current[source].observedAt })) }); }, 1_000);
     return () => clearTimeout(timer);
   }, [records, bootstrap, capturedAt]);
   return { records, sources, bootstrap, capturedAt, refresh, loadMore };

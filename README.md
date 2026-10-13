@@ -30,6 +30,7 @@ Open http://127.0.0.1:4173. Install through your browser's Install / Add to Home
 - Custody creates no cash. A deposit preserves its owned quantity; a funded sale exchanges the chosen quantity for value. Held asset value appears once in the total, separately from liquid rails.
 - Local demo state restores after reload; semantic operation IDs prevent duplicate application. Profile provides Reset demonstration account.
 - Actual `@receiz/sdk@129.0.0` original-byte `verifyReceizArtifact` integration. A verified artifact alone grants neither value credit nor ownership.
+- Live public Ledger combining the same actions, wallet movements, Proof Graph and public showcase sources as Receiz Mind Activity. Retained real capture plus live additions, independent source coverage, infinite scrolling and safe source inspection. My history stays separate from global/demo data.
 - Actual `client.wallet.publicLedger` read adapter. SDK projection is labeled separately from enclosing proof verification; a failed read retains existing history.
 - Cryptographic aliases by default, with explicit demo username consent.
 - External Settlement support is assessed at the receiving institution. An unqualified destination is unavailable without changing the source balance.
@@ -42,7 +43,7 @@ Coordinated packages are pinned to **129.0.0**: `@receiz/sdk`, `@receiz/mcp-serv
 
 Real execution requires a dedicated registered application, device-held identity and consent, exact admitted source contracts, custody/title evidence, genuine Reserve/Settlement funding, funded bank or market quotes, and qualified receiving routes. Currency issuance, backing, redemption and bridges require sealed supply/ownership terms and continuity without duplicate spendable value. Draft rules require admitted mandates before activation. Secrets never belong in frontend configuration. The [live-bank status](docs/live-bank-status.md) records what is actually connected and what remains unfinished.
 
-The Market uses a bounded same-origin public GET proxy in Vite development and preview; a static-only deployment must provide equivalent Node middleware for `/api/bank/public-market/*`. Refreshes never forward private cookies or bearer tokens. The separate legacy public wallet-ledger adapter had a browser CORS failure during earlier verification. The canonical verifier passed actual rejection tests; browser upload remains unverified.
+The Market uses a bounded same-origin public GET proxy in Vite development and preview; a static-only deployment must provide equivalent Node middleware for `/api/bank/public-market/*` and `/api/bank/public-network`. Refreshes never forward private cookies or bearer tokens. The separate legacy public wallet-ledger adapter had a browser CORS failure during earlier verification. The canonical verifier passed actual rejection tests; browser upload remains unverified.
 
 Refresh the dated public discovery seed with `npm run market:seed` (Node.js 22.18+ or 24+). It reads Receiz public data, preserves its observation date, and grants no ownership or financial authority.
 
@@ -56,3 +57,5 @@ Refresh the dated public discovery seed with `npm run market:seed` (Node.js 22.1
 SDK chunks are lazy-loaded to keep first paint small. The native SDK chunk triggers Vite's size warning; production offline installation downloads these chunks in the background.
 
 The test runner is Vitest 5.0.4. A compatible Underscore 1.13.8 override resolves the existing snarkjs transitive advisory while all Receiz packages remain 129.0.0. Package audit reports zero advisories after the update.
+
+Public Ledger source and final-review evidence: [shared-ledger verification](docs/shared-ledger-verification.md).

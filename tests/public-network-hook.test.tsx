@@ -5,11 +5,11 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { usePublicNetwork } from '../src/receiz/usePublicNetwork';
 import { parsePublicNetworkPage, type PublicSource } from '../src/receiz/public-network';
 const network = vi.hoisted(() => ({ read: vi.fn() }));
-const cache = vi.hoisted(() => ({ load: vi.fn(), seed: vi.fn() }));
+const cache = vi.hoisted(() => ({ load: vi.fn(), seed: vi.fn(), save: vi.fn() }));
 vi.mock('../src/receiz/public-network', async original => ({ ...await original<typeof import('../src/receiz/public-network')>(), readPublicNetworkPage: network.read }));
-vi.mock('../src/receiz/public-network-cache', () => ({ loadPublicNetworkCache: cache.load, loadPublicNetworkSeed: cache.seed, savePublicNetworkCache: async () => {} }));
+vi.mock('../src/receiz/public-network-cache', () => ({ loadPublicNetworkCache: cache.load, loadPublicNetworkSeed: cache.seed, savePublicNetworkCache: cache.save }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-beforeEach(() => { network.read.mockReset(); cache.load.mockReset().mockResolvedValue(null); cache.seed.mockReset().mockResolvedValue(null); });
+beforeEach(() => { network.read.mockReset(); cache.load.mockReset().mockResolvedValue(null); cache.seed.mockReset().mockResolvedValue(null); cache.save.mockReset().mockResolvedValue(undefined); });
 function page(source: PublicSource, ids: string[] = [], cursor: string | null = null) {
   return { source, records: parsePublicNetworkPage('actions', { ok: true, actions: ids.map(id => ({ id, actionKind: 'record', summary: `Record ${id}`, pulse: 100 })), nextCursor: cursor }).records.map(item => ({ ...item, source, id: `${source}:${item.sourceId}` })), nextCursor: cursor, total: null, complete: cursor === null };
 }
@@ -35,4 +35,29 @@ it('fills the gap between an incomplete recent cache and the complete public see
   cache.seed.mockResolvedValue({ records: page('actions', ['older']).records, capturedAt: null, coverage: [{ source: 'actions', complete: true }] });
   network.read.mockImplementation(async (source: PublicSource, cursor?: string) => source === 'actions' ? page(source, cursor ? ['gap', 'older'] : ['head'], cursor ? null : '42') : page(source));
   await observe(async read => { expect(read().records.map(item => item.sourceId)).toEqual(expect.arrayContaining(['head', 'gap', 'older'])); expect(read().sources.actions.complete).toBe(true); });
+});
+
+it('persists the complete anchor separately so interrupted catch-up resumes after reload', async () => {
+  vi.useFakeTimers();
+  try {
+    const seed = { records: page('actions', ['old']).records, capturedAt: null, coverage: [{ source: 'actions', complete: true }] };
+    cache.seed.mockResolvedValue(seed);
+    network.read.mockImplementation(async (source: PublicSource, cursor?: string) => {
+      if (source !== 'actions') return page(source);
+      if (cursor) throw new Error('Interrupted');
+      return page(source, ['new'], 'gap');
+    });
+    await observe(async read => {
+      expect(read().sources.actions.status).toBe('stale');
+      await act(async () => { await vi.advanceTimersByTimeAsync(1001); });
+    });
+    const saved = structuredClone(cache.save.mock.calls.at(-1)![0]);
+    cache.load.mockResolvedValue(saved);
+    network.read.mockClear().mockImplementation(async (source: PublicSource, cursor?: string) => source === 'actions' ? page(source, cursor ? ['missing', 'old'] : ['new'], cursor ? null : 'gap') : page(source));
+    await observe(async read => {
+      expect(read().records.map(row => row.sourceId)).toEqual(expect.arrayContaining(['new', 'missing', 'old']));
+      expect(read().sources.actions.status).toBe('live');
+      expect(network.read.mock.calls.some(([source, cursor]) => source === 'actions' && cursor === 'gap')).toBe(true);
+    });
+  } finally { vi.useRealTimers(); }
 });

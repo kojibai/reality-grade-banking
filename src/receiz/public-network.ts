@@ -15,8 +15,8 @@ function digits(input: unknown, max = 25): string | null { const value = typeof 
 function alias(input: unknown): string | null { const value = text(input, 36); return value && /^[1-9A-HJ-NP-Za-km-z]{26,36}$/.test(value) ? value : null; }
 function date(input: unknown): string | null { const value = text(input, 64); return value && Number.isFinite(Date.parse(value)) ? value : null; }
 function digestEvidence(digest: string | null): Record<string, string> { const evidence: Record<string, string> = {}; if (digest) evidence.artifactDigest = digest; return evidence; }
-function row(source: PublicSource, raw: unknown): PublicRecord | null {
-  const value = object(raw), id = text(value.id, 512); if (!id) return null;
+function row(source: PublicSource, raw: unknown): PublicRecord {
+  const value = object(raw), id = text(value.id, 512); if (!id) throw new Error('Public source returned a record without a valid ID.');
   const kind = text(value.actionKind ?? value.kind ?? value.ledgerKind, 128) ?? 'public record';
   const proof = object(value.proofBundle), actor = object(value.actor ?? value.sender ?? value.fromActor);
   const evidence: Record<string, string> = {};
@@ -42,7 +42,7 @@ export function parsePublicNetworkPage(source: PublicSource, input: unknown): Pu
   const nextCursor = envelope.nextCursor ?? null;
   if (nextCursor !== null && (typeof nextCursor !== 'string' || !/^[a-zA-Z0-9_-]{1,2048}$/.test(nextCursor))) throw new Error('Public source returned an invalid cursor.');
   const rollup = object(envelope.rollup);
-  return { source, records: mergePublicRecords([], rows.map(raw => row(source, raw)).filter((item): item is PublicRecord => item !== null)), nextCursor,
+  return { source, records: mergePublicRecords([], rows.map(raw => row(source, raw))), nextCursor,
     total: digits(rollup.count ?? rollup.totalLedgerEntries, 20), complete: nextCursor === null };
 }
 export function mergePublicRecords(known: readonly PublicRecord[], incoming: readonly PublicRecord[]): PublicRecord[] {

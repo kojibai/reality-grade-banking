@@ -21,3 +21,9 @@ it('fails closed on invalid response or cursor shapes instead of claiming comple
   expect(() => parsePublicNetworkPage('wallet', { ok: true, events: [], nextCursor: 2 })).toThrow();
   expect(() => parsePublicNetworkPage('wallet', { source: 'actions', rows: [] })).toThrow();
 });
+
+it('rejects malformed required row IDs rather than accepting an empty complete snapshot', () => {
+  expect(() => parsePublicNetworkPage('graph', { ok: true, ledgerRows: [{ renamedId: 'gone' }] })).toThrow();
+  expect(() => parsePublicNetworkPage('actions', { ok: true, actions: [{ id: 'valid' }, null] })).toThrow();
+  expect(parsePublicNetworkPage('graph', { ok: true, ledgerRows: [] }).complete).toBe(true);
+});
