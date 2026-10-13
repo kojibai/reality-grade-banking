@@ -68,3 +68,18 @@
 .ledger-tabs { max-width: 460px; margin: 0 0 23px; }.ledger-public-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 18px; font-size: 11px; }.ledger-public-header span { display: flex; align-items: center; gap: 6px; color: #6d829e; }.ledger-public-header button { display: flex; gap: 6px; align-items: center; color: var(--blue); font-size: 11px; }
 .ledger-event + .ledger-event { border-top: 1px solid var(--line); }.ledger-event .row-copy strong { font-size: 12px; line-height: 1.4; }.projection-detail { padding: 0 16px 18px; color: #718099; font-size: 12px; line-height: 1.7; }.projection-detail code, .projection-detail pre { display: block; overflow-wrap: anywhere; white-space: pre-wrap; word-break: break-all; font-size: 10px; }.projection-detail code { margin: 9px 0; }.projection-detail pre { max-height: 270px; overflow: auto; background: #f3f5f8; padding: 12px; border-radius: 8px; }.projection-detail a { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; }
 .pwa-status { background: #f0f3f8; border-radius: 12px; margin-top: 24px; padding: 15px; font-size: 12px; color: #71839d; }.pwa-status strong { display: block; color: var(--navy); margin: 7px 0; }.pwa-status p { line-height: 1.6; }
+
+.identity-entrance { min-height: 100dvh; padding-bottom: max(32px, env(safe-area-inset-bottom)); }
+.entrance-content { max-width: 430px; margin: 7vh auto 0; padding: 0 24px; }
+.entrance-symbol { display: inline-flex; padding: 15px; background: #eef3ff; color: #315ce7; border-radius: 22px; margin-bottom: 28px; }
+.entrance-content h1 { font-size: clamp(34px, 9vw, 44px); letter-spacing: -.045em; line-height: 1.1; margin-bottom: 18px; }
+.entrance-content .page-subtitle { line-height: 1.5; max-width: 300px; margin-bottom: 28px; }
+.identity-consent { display: flex; gap: 10px; align-items: flex-start; margin: 25px 0; font-size: 14px; }
+.identity-consent input { margin-top: 3px; flex-shrink: 0; accent-color: #315ce7; }
+.identity-consent small { display: block; color: var(--muted); font-size: 11px; line-height: 1.5; margin-top: 7px; }
+.entrance-content > button { width: 100%; margin-bottom: 12px; }
+.entrance-note { font-size: 11px; color: var(--muted); line-height: 1.6; margin: 25px 0 0; }
+.identity-import { display: grid; gap: 14px; margin: 20px 0; }
+.identity-import label { display: grid; gap: 8px; font-size: 13px; }
+.identity-import input { width: 100%; min-width: 0; padding: 13px; border-radius: 12px; border: 1px solid var(--line); font-size: 16px; }
+.live-account-chart { height: 138px; display: grid; place-items: center; padding: 24px; color: var(--muted); text-align: center; font-size: 13px; background: linear-gradient(180deg, transparent, #f1f5fe); border-radius: 16px; margin: 18px 0; }

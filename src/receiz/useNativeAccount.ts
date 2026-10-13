@@ -1,0 +1,29 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createNativeIdentity, importNativeIdentity, restoreNativeIdentity, forgetDeviceIdentity, type OpenIdentity } from './native-identity';
+import type { SharedWallet } from './shared-wallet';
+export function useNativeAccount() {
+  const [identity, setIdentity] = useState<OpenIdentity | null>(null), [wallet, setWallet] = useState<SharedWallet | null>(null);
+  const [opening, setOpening] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [observedAt, setObservedAt] = useState<string | null>(null);
+  const held = useRef<OpenIdentity | null>(null), generation = useRef(0), pending = useRef(false);
+  const refresh = useCallback(async () => {
+    const current = held.current, ticket = generation.current;
+    if (!current || pending.current) return; pending.current = true; setBusy(true);
+    try { const value = await current.readWallet(); if (ticket === generation.current) { setWallet(value); setObservedAt(new Date().toISOString()); setError(null); } }
+    catch { if (ticket === generation.current) setError('Receiz could not update this account. Your Identity Seal stays on this device. Try again when the source is available.'); }
+    finally { if (ticket === generation.current) { pending.current = false; setBusy(false); } }
+  }, []);
+  const accept = useCallback((next: OpenIdentity) => { held.current?.dispose(); held.current = next; generation.current++; pending.current = false; setWallet(null); setObservedAt(null); setError(null); setIdentity(next); setOpening(false); void refresh(); }, [refresh]);
+  useEffect(() => {
+    let alive = true;
+    void restoreNativeIdentity().then(next => { if (alive) { if (next) accept(next); else setOpening(false); } else next?.dispose(); }).catch(() => { if (alive) { setOpening(false); setError('The saved ID could not be opened. Import your Identity Seal to restore it.'); } });
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 60_000);
+    const wake = () => { if (document.visibilityState === 'visible') void refresh(); };
+    addEventListener('online', wake); document.addEventListener('visibilitychange', wake);
+    return () => { alive = false; held.current?.dispose(); held.current = null; generation.current++; clearInterval(timer); removeEventListener('online', wake); document.removeEventListener('visibilitychange', wake); };
+  }, [accept, refresh]);
+  const open = async (operation: () => Promise<OpenIdentity>) => { setBusy(true); setError(null); try { accept(await operation()); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Your ID could not be opened.'); } finally { if (!held.current) setBusy(false); } };
+  const create = (consent: boolean) => open(() => createNativeIdentity(consent));
+  const importId = (file: File, phrase: string, consent: boolean) => open(() => importNativeIdentity(file, phrase, consent));
+  const forget = async () => { held.current?.dispose(); held.current = null; generation.current++; pending.current = false; setIdentity(null); setWallet(null); setObservedAt(null); setBusy(false); await forgetDeviceIdentity(); };
+  return { identity, wallet, opening, busy, error, observedAt, refresh, create, importId, forget };
+}

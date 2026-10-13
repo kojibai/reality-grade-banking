@@ -22,30 +22,21 @@ npm run preview -- --host 127.0.0.1 --port 4173 --strictPort
 
 Open http://127.0.0.1:4173. Install through your browser's Install / Add to Home Screen action. The production service worker retains the shell and verifier chunks; it never replays financial API calls. Updates wait for existing clients: close all Receiz app tabs and reopen to activate a waiting build.
 
-## What works
+## Current integration
 
-- Persistent, responsive single-page console, charts, categories/search, action sheets and shareable asset references.
-- Live public Market discovery from Receiz's complete public showcase collection, with real public quotes/charts, whole-collection search and original source inspection. The saved public feed contains 1,678 actual objects and refreshes while Market is visible.
-- Explicit local Demo account: custody deposits, exact whole/fractional ownership, Reserve and Settlement, sale to the bank or simulated market buyer, buy-back, ownership transfer, full-ownership redemption, exchange, currency backing and draft allocation rules.
-- Custody creates no cash. A deposit preserves its owned quantity; a funded sale exchanges the chosen quantity for value. Held asset value appears once in the total, separately from liquid rails.
-- Local demo state restores after reload; semantic operation IDs prevent duplicate application. Profile provides Reset demonstration account.
-- Actual `@receiz/sdk@129.0.0` original-byte `verifyReceizArtifact` integration. A verified artifact alone grants neither value credit nor ownership.
-- Live public Ledger combining the same actions, wallet movements, Proof Graph and public showcase sources as Receiz Mind Activity. Retained real capture plus live additions, independent source coverage, infinite scrolling and safe source inspection. My history stays separate from global/demo data.
-- Actual `client.wallet.publicLedger` read adapter. SDK projection is labeled separately from enclosing proof verification; a failed read retains existing history.
-- Cryptographic aliases by default, with explicit demo username consent.
-- External Settlement support is assessed at the receiving institution. An unqualified destination is unavailable without changing the source balance.
+- Native Create / Import Receiz Identity Seal entrance and device-held restoration. Returning users open Account. The routed app does not read or display old demo storage.
+- Dedicated Receiz Bank public client `rc_QlCRCxBk8zyT4ajGLrIRPIQd`, read-only wallet/Reserve/Settlement scopes, no client secret.
+- Canonical SDK verification/admission, encrypted device custody, signed native read consent, proof-authority exchange and scope inspection.
+- Shared account read through `client.connect.wallet()`, the same wallet loader used by Receiz. Exact Reserve, Settlement and total, no second balance, no synthetic account chart. Real deposits on Receiz are reflected by the next successful shared read.
+- Live public Market from Receiz's full public showcase collection, real quotes/charts, search, infinite scroll, owner display and exact original-source verification.
+- Public Ledger using the same recorded actions, wallet movements, Proof Graph and public showcase sources as Mind Activity, with independent refresh/paging and safe details.
+- Personal history only from the opened identity's SDK-verified portable state. Live private additions remain unfinished.
 
-## Demo and live boundaries
+A real user's identity grant, shared-wallet response and reload still need user-operated validation. The bank's custody intake, native transfers, fractional sales, currency issuance and financial recovery are **not yet connected**. Current action sheets expose native Receiz wallet links or an explicit unavailable boundary. Old demo helpers remain solely in unexposed source/test fixtures; they do not process live actions.
 
-Account balances, holdings, growth, deposits, currency creation and financial actions remain **demonstration data**. Public Market discovery, prices and charts come from actual Receiz public feeds and stay separate from account authority. Public objects cannot be purchased through the demo reducer. Demo account display uses exact BigInt Phi micro-units at an explicitly described 1 Phi = $1 basis. No real funds, assets, custody, issuance, delegation or public publication are performed.
+All three coordinated Receiz packages remain **129.0.0**. No external provider or dependency was added. Canonical proof resource SHA-256 hashes match the SDK manifest. The service worker caches only the shell/proof resources, never account APIs or financial requests. Private signing material and grant bearers never enter public caches.
 
-Coordinated packages are pinned to **129.0.0**: `@receiz/sdk`, `@receiz/mcp-server`, `@receiz/ai-skills`. MCP and AI skills are installed for trusted-host integration and stay out of the browser bundle. The existing connected MCP host reported compatibility `>=128.0.0 <129.0.0`; package installation does not upgrade or qualify that host. The restricted marketplace profile is not used to execute financial actions.
-
-Real execution requires a dedicated registered application, device-held identity and consent, exact admitted source contracts, custody/title evidence, genuine Reserve/Settlement funding, funded bank or market quotes, and qualified receiving routes. Currency issuance, backing, redemption and bridges require sealed supply/ownership terms and continuity without duplicate spendable value. Draft rules require admitted mandates before activation. Secrets never belong in frontend configuration. The [live-bank status](docs/live-bank-status.md) records what is actually connected and what remains unfinished.
-
-The Market uses a bounded same-origin public GET proxy in Vite development and preview; a static-only deployment must provide equivalent Node middleware for `/api/bank/public-market/*` and `/api/bank/public-network`. Refreshes never forward private cookies or bearer tokens. The separate legacy public wallet-ledger adapter had a browser CORS failure during earlier verification. The canonical verifier passed actual rejection tests; browser upload remains unverified.
-
-Refresh the dated public discovery seed with `npm run market:seed` (Node.js 22.18+ or 24+). It reads Receiz public data, preserves its observation date, and grants no ownership or financial authority.
+Vite dev/preview provide fixed native and public middleware. Static-only hosting requires equivalent Node routes. A production domain/deployment has not been configured. See [live-bank status](docs/live-bank-status.md) for the actual qualification boundary.
 
 ## Source and verification
 
@@ -54,7 +45,7 @@ Refresh the dated public discovery seed with `npm run market:seed` (Node.js 22.1
 - [Verification record](docs/verification.md)
 - [Public Market integration](docs/superpowers/plans/2026-10-13-live-public-market.md)
 
-SDK chunks are lazy-loaded to keep first paint small. The native SDK chunk triggers Vite's size warning; production offline installation downloads these chunks in the background.
+SDK chunks are lazy-loaded to keep first paint small. Canonical SDK and offline sealing chunks are split and downloaded during offline shell installation.
 
 The test runner is Vitest 5.0.4. A compatible Underscore 1.13.8 override resolves the existing snarkjs transitive advisory while all Receiz packages remain 129.0.0. Package audit reports zero advisories after the update.
 

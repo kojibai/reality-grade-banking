@@ -38,18 +38,15 @@ quote read and do not constitute an executable price.
 
 ## Full live bank: not yet qualified
 
-The existing Account, deposits, ownership actions, currency creation and exchange
-remain the previous explicit demonstration implementation. The new public Market
-does not upgrade their JSON state to admitted proof or connect public IDs to
-their reducer. The request to remove all demo flows and provide native Create /
-Import Receiz ID entrance, returning local-identity restore, and complete live
-financial execution remains unfinished.
+The routed app now uses genuine SDK Identity Seal creation/import and device-held restoration. A non-exportable AES-GCM device key wraps the recovery phrase in a private IndexedDB database. Canonical artifact verification and identity admission precede wallet access. The app never promotes old demo storage, local JSON, a public listing or a transport response to admitted ownership/value.
 
-The user selected a dedicated new bank application. No registered public client
-ID or bank domain was supplied; this project has no bank credential configuration.
-The template application's credentials are deliberately not reused. The exact
-registered Receiz-generated client ID must be preserved through device-held
-scope consent and native qualification.
+The dedicated Receiz Bank public client **rc_QlCRCxBk8zyT4ajGLrIRPIQd** was created in Receiz Connect on 2026-10-13 with explicit action-time user approval. It is active, public, token auth `none`, with no client secret. Allowed scopes are openid, profile, receiz:wallet.read, receiz:settlement.read and receiz:reserve.read. The two registered local callback URLs use ports 4173 and 5173. A production domain has not been supplied or deployed. No template credentials were reused.
+
+After explicit read consent, the device uses the SDK's signed identity continuation, canonical proof-authority challenge/exchange, actual granted-scope introspection, and `client.connect.wallet()`. The latter calls the same `loadWalletSummaryForUser` used by Receiz's wallet. Exact Reserve (`settledBalanceUsdCents`), Settlement (`ecosystemBalanceUsdCents`) and total are presented once; missing/inconsistent or foreign-user data fails closed. Refreshes update the shared source, never a shadow wallet. Late responses after removing an identity cannot restore its balance.
+
+“My history” projects only that SDK-opened identity's verified portable account history at its carried head. Live private additions are not yet connected. Public Ledger independently uses the same public sources as Mind. Account history charts and holdings are unavailable until their actual owned proof sources are opened; no fabricated curve, growth or zero balance is substituted.
+
+The native entrance was observed at 390×844 with no demo data and no horizontal overflow. Canonical invalid-file refusal and transport/mechanics tests pass. **A human user's genuine Create/Import, grant, shared-wallet read and reload have not yet been observed end to end.** Identity creation/import involves private signing custody and must be completed by the person in the app; no private files/passphrases are requested in chat. The read registration does not grant financial writes. Native bank custody intake, transfers, fractional trading, issuance and qualified execution remain unfinished; user-driven native Receiz wallet links are available for existing actions.
 
 Physical deposits require an actual bank/custodian's verified receipt of the
 asset. Platform liquidity requires actual eligible funded Reserve or Settlement

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, Plus, Search, ArrowLeftRight, RefreshCw } from 'lucide-react';
-import { useBank } from '../../core/useBank';
+import { BankContext, type UIAction } from '../../core/useBank';
 import { AssetMark } from '../../components/AssetMark';
 import { ValueChart } from '../../components/ValueChart';
 import { Sheet } from '../../components/Sheet';
@@ -10,8 +10,8 @@ import { PublicAssetDetail } from './PublicAssetDetail';
 
 function selectedObject(): string | null { try { return location.hash.startsWith('#market/public/') ? decodeURIComponent(location.hash.slice('#market/public/'.length)) : null; } catch { return null; } }
 function Change({ value }: { value: number | null }) { return value === null ? null : <span className={value >= 0 ? 'positive' : 'negative'}>{value > 0 ? '+' : ''}{value}%</span>; }
-export function Market({ active = true }: { active?: boolean }) {
-  const { open } = useBank(); const { catalog, status, quoteStatus, error, refresh } = usePublicMarket(active);
+export function Market({ active = true, onAction }: { active?: boolean; onAction?: (action: UIAction) => void }) {
+  const bank = useContext(BankContext); const open = onAction ?? bank?.open ?? (() => {}); const { catalog, status, quoteStatus, error, refresh } = usePublicMarket(active);
   const [query, setQuery] = useState(''), [filter, setFilter] = useState('All'), [shown, setShown] = useState(50), [selectedId, setSelectedId] = useState(selectedObject);
   const labels = ['All', 'Proofs', 'Currencies', 'Physical', 'Stocks'];
   const assets = useMemo(() => (catalog?.items ?? []).filter(asset => (!query || `${asset.title} ${asset.summary} ${asset.assetId}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())) && ['All', 'Proofs'].includes(filter)), [catalog, query, filter]);
