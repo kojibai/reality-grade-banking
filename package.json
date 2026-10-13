@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc -b --pretty false",
-    "test": "vitest run"
+    "test": "vitest run",
+    "market:seed": "node scripts/seed-public-market.mjs"
   },
   "dependencies": {
     "@receiz/ai-skills": "129.0.0",

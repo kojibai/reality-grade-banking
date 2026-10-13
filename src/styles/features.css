@@ -35,6 +35,17 @@
 .filters { display: flex; gap: 7px; overflow-x: auto; padding: 2px 0 5px; margin: 18px 0 21px; scrollbar-width: none; }
 .filters button { border: 1px solid #e0e4ec; border-radius: 22px; padding: 10px 13px; color: #667690; font-size: 12px; white-space: nowrap; }
 .filters button.active { background: var(--blue); color: white; border-color: var(--blue); }
+.market-source-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #8290a4; font-size: 11px; margin: -10px 0 14px; }
+.market-error { margin-bottom: 14px; }
+.public-proof-preview { display: flex; flex: 1; align-items: center; justify-content: center; flex-direction: column; gap: 12px; color: #8290a4; font-size: 11px; }
+.market-rows .row-copy { min-width: 0; }
+.market-rows .row-copy strong { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.market-rows .price-stack { flex-shrink: 0; max-width: 40%; text-align: right; }
+.featured-asset h2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
+.negative { color: #b24955; }
+.public-market-more { width: 100%; margin: 12px 0; }
+.proof-coordinate { overflow-wrap: anywhere; text-align: right; max-width: 65%; }
+.asset-actions a { display: flex; gap: 8px; align-items: center; color: var(--blue); font-size: 13px; }
 .featured-asset { padding: 5px 0 22px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 16px; width: 100%; text-align: left; }
 .featured-asset > div:first-child { width: 46%; }.featured-asset h2 { font-size: 17px; }.featured-asset p { color: #8290a4; margin-top: 5px; font-size: 12px; }.featured-asset strong { display: block; font-size: 28px; letter-spacing: -.7px; margin: 13px 0 7px; }.featured-asset .positive { display: block; font-size: 14px; font-weight: 600; }.featured-asset .value-chart { flex: 1; margin: 0; }.view-asset { color: var(--blue); display: flex; align-items: center; gap: 5px; font-size: 12px; margin-top: 17px; }
 .market-rows .asset-row { padding-left: 0; padding-right: 0; min-height: 78px; }.market-rows .asset-row:hover { background: transparent; }.price-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; font-size: 12px; }.price-stack strong { font-weight: 650; }.price-stack .positive { font-size: 12px; }.result-count { font-size: 11px; }

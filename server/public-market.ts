@@ -62,4 +62,9 @@ export async function publicMarketMiddleware(request: IncomingMessage, response:
   try { const result = await loadPublicResponse(target); response.setHeader('Content-Type', result.type); response.writeHead(200); response.end(result.bytes); }
   catch { response.writeHead(503, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ ok: false, error: 'Receiz public source is temporarily unavailable.' })); }
 }
+/** Build-time public discovery seed. Report-only projection, never a held account. */
+export async function readReceizPublicMarketSource(kind: 'membership' | 'quotes'): Promise<unknown> {
+  const target = resolvePublicMarketTarget(`${PREFIX}${kind}`); if (!target) throw new Error('Unsupported public source.');
+  return JSON.parse(new TextDecoder().decode((await loadPublicResponse(target)).bytes));
+}
 export function publicMarketPlugin(): Plugin { return { name: 'receiz-public-market', configureServer(server) { server.middlewares.use((req, res, next) => { void publicMarketMiddleware(req, res, next); }); }, configurePreviewServer(server) { server.middlewares.use((req, res, next) => { void publicMarketMiddleware(req, res, next); }); } }; }

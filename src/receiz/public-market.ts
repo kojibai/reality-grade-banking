@@ -55,7 +55,9 @@ export function mergePublicQuotes(catalog: PublicMarketCatalog, snapshot: unknow
 export async function fetchPublicMarket(signal?: AbortSignal): Promise<PublicMarketCatalog> {
   const response = await fetch('/api/bank/public-market/membership', { signal, credentials: 'omit' });
   if (!response.ok) throw new Error('The public Market could not be refreshed.');
-  return parsePublicMarket(await response.json());
+  const input = await response.json(); const catalog = parsePublicMarket(input);
+  try { localStorage.setItem('receiz-bank-public-discovery-v1', JSON.stringify(input)); } catch { /* Storage capacity does not change source availability. */ }
+  return catalog;
 }
 export async function fetchPublicQuotes(signal?: AbortSignal): Promise<unknown> {
   const response = await fetch('/api/bank/public-market/quotes', { signal, credentials: 'omit' });
