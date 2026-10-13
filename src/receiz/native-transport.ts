@@ -4,10 +4,18 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
   '/api/sdk/v1/identity/proof-authority/exchange': 'POST',
   '/api/sdk/v1/auth/granted-scopes': 'GET',
   '/api/connect/wallet/me': 'GET',
+  '/api/connect/payments/checkout': 'POST',
+  '/api/connect/payments/session': 'GET',
 };
+export function permittedNativePath(path: string, method: string): boolean {
+  let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
+  if (url.origin !== 'https://receiz.com' || url.username || url.password || NATIVE_PATHS[url.pathname] !== method.toUpperCase() || url.hash) return false;
+  if (!url.search) return url.pathname !== '/api/connect/payments/session';
+  return url.pathname === '/api/connect/payments/session' && [...url.searchParams.keys()].length === 1 && /^cs_[a-zA-Z0-9_]{8,200}$/.test(url.searchParams.get('sessionId') ?? '');
+}
 export const nativeFetch: typeof fetch = (input, init) => {
   const url = new URL(input instanceof Request ? input.url : String(input), 'https://receiz.com');
   const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
-  if (url.origin !== 'https://receiz.com' || url.search || !NATIVE_PATHS[url.pathname] || NATIVE_PATHS[url.pathname] !== method.toUpperCase()) throw new Error('Unsupported Receiz bank transport.');
-  return fetch(`/api/bank/native${url.pathname}`, { ...init, credentials: 'omit', redirect: 'error', signal: init?.signal ?? AbortSignal.timeout(60_000) });
+  if (!permittedNativePath(url.href, method)) throw new Error('Unsupported Receiz bank transport.');
+  return fetch(`/api/bank/native${url.pathname}${url.search}`, { ...init, credentials: 'omit', redirect: 'error', signal: init?.signal ?? AbortSignal.timeout(60_000) });
 };

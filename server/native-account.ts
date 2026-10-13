@@ -1,10 +1,10 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
-import { NATIVE_PATHS } from '../src/receiz/native-transport';
+import { permittedNativePath } from '../src/receiz/native-transport';
 const PREFIX = '/api/bank/native'; const LIMIT = 32 * 1024 * 1024;
 export function nativeRequestPath(path: string, method: string): string | null {
   if (!path.startsWith(PREFIX)) return null;
-  const native = path.slice(PREFIX.length); return NATIVE_PATHS[native] === method ? native : null;
+  const native = path.slice(PREFIX.length); return native.startsWith('/api/') && permittedNativePath(native, method) ? native : null;
 }
 async function bytes(stream: AsyncIterable<Uint8Array>, max = LIMIT): Promise<Buffer> { let length = 0; const parts: Buffer[] = []; for await (const chunk of stream) { length += chunk.length; if (length > max) throw new Error('Source exceeds supported transport capacity.'); parts.push(Buffer.from(chunk)); } return Buffer.concat(parts); }
 export async function nativeAccountMiddleware(req: IncomingMessage, res: ServerResponse, next: () => void) {

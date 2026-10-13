@@ -1,0 +1,54 @@
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight, Building2, Check, ChevronRight, CircleDollarSign, FileCheck2, Package, ShieldCheck, Upload } from 'lucide-react';
+import type { OpenIdentity } from '../../receiz/native-identity';
+import type { AssetIntake, HeldDeposit } from '../../receiz/deposit-source';
+import type { CardCheckout } from '../../receiz/card-deposit';
+import { BANK_CARD_CONSENT } from '../../receiz/config';
+import { AmountInput } from '../../components/AmountInput';
+import { formatMoney } from '../../core/money';
+import { ReceizCardCheckout } from './ReceizCardCheckout';
+
+export function LiveDeposit({ identity, onClose, onRefresh }: { identity: OpenIdentity; onClose: () => void; onRefresh: () => void }) {
+  const [kind, setKind] = useState<'choose' | 'asset' | 'dollars' | 'proof'>('choose');
+  const [asset, setAsset] = useState<AssetIntake>({ title: '', category: 'physical', quantity: '1', estimatedValue: '' });
+  const [attachment, setAttachment] = useState<File>(), [amount, setAmount] = useState(''), [method, setMethod] = useState<'card' | 'wire'>('card');
+  const [deposit, setDeposit] = useState<HeldDeposit | null>(null), [checkout, setCheckout] = useState<CardCheckout | null>(null);
+  const [busy, setBusy] = useState(false), [error, setError] = useState(''), [cardStatus, setCardStatus] = useState('');
+  const generation = useRef(0), pending = useRef(false);
+  useEffect(() => () => { generation.current++; }, []);
+  useEffect(() => { let alive = true; void identity.pendingCardDeposit?.().then(value => { if (alive && value) { setCheckout(value); setKind('dollars'); } }).catch(cause => { if (alive) { setKind('dollars'); setError(cause instanceof Error ? cause.message : 'Check your unfinished deposit before trying again.'); } }); return () => { alive = false; }; }, [identity]);
+  const run = async (operation: () => Promise<void>) => { if (pending.current) return; pending.current = true; const ticket = generation.current; setBusy(true); setError(''); try { await operation(); } catch (cause) { if (ticket === generation.current) setError(cause instanceof Error ? cause.message : 'This deposit could not be opened.'); } finally { pending.current = false; if (ticket === generation.current) setBusy(false); } };
+  const hold = async (file?: File) => { if (!file) return; const ticket = generation.current; await run(async () => { const value = await identity.holdProof(file); if (ticket === generation.current) { setDeposit(value); onRefresh(); } }); };
+  const checkCard = () => run(async () => { if (!checkout) return; const result = await identity.checkCardDeposit(checkout); if (result.status === 'credited') { setCardStatus('credited'); onRefresh(); } else setCardStatus(result.status); });
+  const saveProof = () => { if (!deposit) return; const url = URL.createObjectURL(new Blob([new Uint8Array(deposit.bytes)])), link = document.createElement('a'); link.href = url; link.download = deposit.filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+  return <div className="deposit-flow">
+    {kind !== 'choose' && !deposit && !checkout && <button className="back-link" disabled={busy} onClick={() => { setKind('choose'); setError(''); }}><ArrowLeft size={16} />All deposits</button>}
+    {kind === 'choose' && <><h1 className="sheet-hero">Turn what you own<br />into liquidity.</h1><p className="body-copy">Choose what you’re depositing.</p><div className="deposit-options">
+      <button onClick={() => setKind('asset')}><span className="choice-icon blue"><Building2 /></span><span><strong>An asset</strong><small>Jordans, gold, stocks, property.<br />Anything you own.</small></span><ChevronRight size={20} /></button>
+      <button onClick={() => setKind('dollars')}><span className="choice-icon green"><CircleDollarSign /></span><span><strong>Dollars</strong><small>Add money to your account.</small></span><ChevronRight size={20} /></button>
+      <button onClick={() => setKind('proof')}><span className="choice-icon purple"><FileCheck2 /></span><span><strong>A proof object</strong><small>Bring your verified value with you.</small></span><ChevronRight size={20} /></button>
+    </div><p className="trust-line"><ShieldCheck size={18} />One account. Your value stays connected.</p></>}
+    {kind === 'asset' && !deposit && <><h1 className="sheet-hero">Keep the asset.<br />Unlock the possibilities.</h1><p className="body-copy">We hold it in custody. You hold its transferable ownership.</p>
+      <label className="form-field"><span>What are you depositing?</span><input value={asset.title} onChange={event => setAsset({ ...asset, title: event.target.value })} placeholder="Jordans, a painting, gold…" maxLength={80} /></label>
+      <label className="form-field"><span>Asset type</span><select value={asset.category} onChange={event => setAsset({ ...asset, category: event.target.value as AssetIntake['category'] })}><option value="physical">Physical item or gold</option><option value="stock">Stocks & securities</option><option value="property">Property</option></select></label>
+      <div className="form-columns"><AmountInput label="Quantity" value={asset.quantity} onChange={quantity => setAsset({ ...asset, quantity })} /><AmountInput label="Estimated value per unit" value={asset.estimatedValue} onChange={estimatedValue => setAsset({ ...asset, estimatedValue })} dollars /></div>
+      <label className="upload-choice"><Upload size={18} /><span>{attachment?.name ?? 'Add a photo or ownership document'}<input type="file" accept="image/*,.pdf" onChange={event => setAttachment(event.target.files?.[0])} /></span></label>
+      <p className="body-copy small-copy">Continue saves a sealed deposit request on this device. Final ownership and value follow receipt and verification. This device may enroll its public sealing key with Receiz.</p>
+      <button className="primary-button" disabled={busy} onClick={() => void run(async () => { const ticket = generation.current, value = await identity.startAssetIntake(asset, attachment); if (ticket === generation.current) { setDeposit(value); onRefresh(); } })}>{busy ? 'Sealing your deposit…' : 'Continue'}<ArrowRight size={17} /></button>
+    </>}
+    {deposit && <><div className={`status-icon ${deposit.kind === 'proof' ? 'success' : ''}`}>{deposit.kind === 'proof' ? <Check size={34} /> : <Package size={31} />}</div><h1 className="sheet-hero">{deposit.kind === 'intake' ? 'Your deposit request is saved.' : 'Your proof is in your account.'}</h1><p className="body-copy">{deposit.kind === 'intake' ? `${deposit.title} stays yours. Ownership becomes transferable once custody is verified.` : 'The complete original proof is verified and held privately on this device.'}</p>
+      <div className="detail-list"><div><span>Asset</span><strong>{deposit.title}</strong></div>{deposit.intake && <div><span>Quantity</span><strong>{deposit.intake.quantity}</strong></div>}<div><span>Status</span><strong>{deposit.kind === 'intake' ? 'Awaiting custody instructions' : 'Original proof held'}</strong></div>{deposit.pulse && <div><span>Kai pulse</span><strong>{deposit.pulse}</strong></div>}</div>
+      <div className="note-box"><ShieldCheck size={18} /><p>{deposit.kind === 'intake' ? 'Shipping and custody receipt must be connected before an item is sent. Your request does not credit cash or confirm physical custody.' : 'Ownership recovery and spendable value follow the proof’s native admission and execution rules.'}</p></div>
+      <button className="primary-button" onClick={saveProof}>Save original proof</button><button className="secondary-button" onClick={onClose}>Done</button>
+    </>}
+    {kind === 'dollars' && !checkout && <><h1 className="sheet-hero">Add to your balance.</h1><p className="body-copy">Fund your Reserve and put it to work.</p><AmountInput label="Amount" value={amount} onChange={setAmount} dollars />
+      <div className="quick-amounts">{['100', '250', '500', '1000'].map(value => <button key={value} onClick={() => setAmount(value)}>${value}</button>)}</div>
+      <div className="segmented"><button className={method === 'card' ? 'active' : ''} onClick={() => setMethod('card')}>Card</button><button className={method === 'wire' ? 'active' : ''} onClick={() => setMethod('wire')}>Wire</button></div>
+      {method === 'card' ? <><p className="body-copy small-copy">{BANK_CARD_CONSENT}</p><button className="primary-button" disabled={busy} onClick={() => void run(async () => { const ticket = generation.current, value = await identity.beginCardDeposit(amount, true); if (ticket === generation.current) setCheckout(value); })}>{busy ? 'Opening secure checkout…' : 'Continue'}<ArrowRight size={17} /></button></> : <div className="note-box"><Building2 size={18} /><p>Your Receiz receiving bank instructions must be configured before a wire can be sent. Routing details will appear here when available.</p></div>}
+    </>}
+    {checkout && cardStatus !== 'credited' && <><h1 className="sheet-hero">Add {formatMoney(checkout.amountUsdCents)}.</h1><p className="body-copy">Secure card deposit through Receiz.</p><ReceizCardCheckout checkout={checkout} onCheck={checkCard} />{cardStatus && <p className="body-copy" role="status">{cardStatus === 'settling' ? 'Payment received. Receiz is confirming the Reserve credit.' : cardStatus === 'expired' ? 'This checkout expired. No deposit was confirmed.' : cardStatus === 'unpaid' ? 'Payment was not completed.' : 'This payment is still open.'}</p>}</>}
+    {checkout && cardStatus === 'credited' && <><div className="status-icon success"><Check size={34} /></div><h1 className="sheet-hero">Added to your balance.</h1><div className="success-amount">{formatMoney(checkout.amountUsdCents)}</div><p className="body-copy">Receiz confirmed the deposit into your shared Reserve account.</p><button className="primary-button" onClick={onClose}>Done</button></>}
+    {kind === 'proof' && !deposit && <><h1 className="sheet-hero">Bring your value<br />with you.</h1><p className="body-copy">Open the original proof object. Receiz verifies the bytes and current owner before holding it in your account.</p><label className="file-drop"><Upload size={30} /><strong>{busy ? 'Verifying original proof…' : 'Choose your proof object'}</strong><span>Original PNG, PDF, SVG, JSON or supported file</span><input disabled={busy} type="file" onChange={event => void hold(event.target.files?.[0])} aria-label="Choose original proof object" /></label></>}
+    {error && <p className="error-message" role="alert">{error}</p>}
+  </div>;
+}

@@ -4,10 +4,10 @@ import { createRoot } from 'react-dom/client';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { useNativeAccount } from '../src/receiz/useNativeAccount';
 import type { OpenIdentity } from '../src/receiz/native-identity';
-const custody = vi.hoisted(() => ({ restore: vi.fn(), create: vi.fn(), forget: vi.fn() }));
-vi.mock('../src/receiz/native-identity', () => ({ restoreNativeIdentity: custody.restore, createNativeIdentity: custody.create, importNativeIdentity: vi.fn(), forgetDeviceIdentity: custody.forget }));
+const custody = vi.hoisted(() => ({ restore: vi.fn(), fast: vi.fn(), create: vi.fn(), forget: vi.fn() }));
+vi.mock('../src/receiz/native-identity', () => ({ restoreNativeIdentity: custody.restore, restoreKnownWalletObservation: custody.fast, createNativeIdentity: custody.create, importNativeIdentity: vi.fn(), forgetDeviceIdentity: custody.forget }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-beforeEach(() => { custody.restore.mockReset().mockResolvedValue(null); custody.create.mockReset(); custody.forget.mockReset().mockResolvedValue(undefined); });
+beforeEach(() => { custody.restore.mockReset().mockResolvedValue(null); custody.fast.mockReset().mockResolvedValue(null); custody.create.mockReset(); custody.forget.mockReset().mockResolvedValue(undefined); });
 function held(readWallet: () => Promise<unknown>) { return { readWallet, dispose: vi.fn(), binding: { keyId: 'test-fixture' }, localHistory: { authority: 'identity-only', portableStateVerified: false } } as unknown as OpenIdentity; }
 async function observe(run: (read: () => ReturnType<typeof useNativeAccount>) => Promise<void>) {
   let state!: ReturnType<typeof useNativeAccount>; const root = createRoot(document.createElement('div'));
@@ -30,4 +30,22 @@ it('keeps the last genuine observation on read failure without substituting a ne
   const readWallet = vi.fn().mockResolvedValueOnce({ userId: 'same-user', totalUsdCents: '500' }).mockRejectedValueOnce(new Error('Source unavailable'));
   custody.restore.mockResolvedValue(held(readWallet));
   await observe(async read => { await act(async () => { await read().refresh(); }); expect(read().wallet?.totalUsdCents).toBe('500'); expect(read().error).toContain('could not update'); });
+});
+it('first-paints the exact held wallet while the background read is still pending', async () => {
+  let finish!: (value: unknown) => void; const pending = new Promise(resolve => { finish = resolve; });
+  const identity = held(() => pending); identity.knownWallet = () => ({ wallet: { userId: 'same-user', totalUsdCents: '321' }, observedAt: '2026-10-13T12:00:00Z' }) as ReturnType<OpenIdentity['knownWallet']>;
+  custody.restore.mockResolvedValue(identity);
+  await observe(async read => { expect(read().busy).toBe(true); expect(read().wallet?.totalUsdCents).toBe('321'); await act(async () => { finish({ userId: 'same-user', totalUsdCents: '654' }); }); expect(read().wallet?.totalUsdCents).toBe('654'); });
+});
+it('paints the exact historical observation before canonical identity opening finishes, without creating authority', async () => {
+  let finish!: (value: unknown) => void; custody.restore.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  custody.fast.mockResolvedValue({ wallet: { userId: 'known-user', totalUsdCents: '321' }, observedAt: '2026-10-13T12:00:00Z' });
+  await observe(async read => { expect(read().opening).toBe(true); expect(read().identity).toBeNull(); expect(read().wallet?.totalUsdCents).toBe('321'); await act(async () => { finish(null); }); expect(read().identity).toBeNull(); });
+});
+it('finishes the initial wallet opening before the new settled account becomes visible', async () => {
+  let finish!: (value: unknown) => void, known: ReturnType<OpenIdentity['knownWallet']> = null;
+  const initial = new Promise(resolve => { finish = resolve; });
+  const identity = held(async () => { const wallet = await initial; known = { wallet, observedAt: '2026-10-13T12:00:00Z' } as ReturnType<OpenIdentity['knownWallet']>; return wallet; }); identity.knownWallet = () => known;
+  custody.create.mockResolvedValue(identity);
+  await observe(async read => { let opening!: Promise<void>; await act(async () => { opening = read().create(true); }); expect(read().identity).toBeNull(); await act(async () => { finish({ userId: 'new-user', totalUsdCents: '0' }); await opening; }); expect(read().identity).toBe(identity); expect(read().wallet?.totalUsdCents).toBe('0'); });
 });
