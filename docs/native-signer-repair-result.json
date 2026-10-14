@@ -38,7 +38,11 @@
   "authenticatedPreviewQualificationObserved": false,
   "fullHostReleaseFreezePassed": false,
   "hostFixCiRunId": 38509351055,
-  "hostFixCiState": "in_progress",
+  "hostFixCiState": "completed_failure_release_step_cancelled",
+  "hostFixLocalMainCommitted": true,
+  "hostFixLocalMainCommit": "2058014de55a7780f7c424065109c8ad5d20a2c5",
+  "hostFixMainPushedByAgent": false,
+  "authenticatedPreviewPreflightHttpStatus": 204,
   "localQualificationDiagnosticsEnabled": false,
   "nativeBankDomainLive": false,
   "financialOperationsExecuted": false
