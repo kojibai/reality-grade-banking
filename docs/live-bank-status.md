@@ -2,6 +2,8 @@
 
 Native bank preparation now adds SDK custody-source checks, exact fractional/supply proposals, full Kai proof composition and encrypted native execution recovery. The requested live custody, transfers, sales and currency issuance remain unfinished; the existing bank UI is preserved. See [native-bank-domain-verification.md](native-bank-domain-verification.md) for the exact 2026-10-13 evidence and missing operator/backend/permission boundaries.
 
+The approved native public registration was created at 19:59:21 local with ID **rc_uV6aT6wZJCQDspB0_SJ1DcEm**. It is now the bank's configured client, with all 15 approved scopes, unchanged callbacks and no secret. The older clients remain active for original attempts. The user's existing read-only account restored and freshly read under the new client; native private access awaits that person's separate displayed consent. Registration creates no custody issuer, bank domain adapter or financial execution evidence. The read/card registration section below describes the preceding stage.
+
 ## Public Market: connected
 
 The bank Market reads the same complete public showcase collection as

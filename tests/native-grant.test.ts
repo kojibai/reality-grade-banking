@@ -1,8 +1,9 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-import { BANK_APPLICATION_ID, BANK_READ_SCOPES } from '../src/receiz/config';
+import { BANK_APPLICATION_ID, BANK_READ_SCOPES, BANK_CARD_SCOPES } from '../src/receiz/config';
 import { openCanonicalIdentity } from '../src/receiz/native-identity';
 // Protocol-mechanics fixtures only. They are not canonical SDK admission/live-user evidence.
-const protocol = vi.hoisted(() => ({ grant: vi.fn(), scopes: vi.fn(), wallet: vi.fn(), continueId: vi.fn(), client: vi.fn(), qualify: vi.fn() }));
+const protocol = vi.hoisted(() => ({ grant: vi.fn(), scopes: vi.fn(), wallet: vi.fn(), continueId: vi.fn(), client: vi.fn(), qualify: vi.fn(), pendingCard: null as unknown, checkoutSession: vi.fn() }));
+vi.mock('../src/receiz/identity-vault', async importOriginal => ({ ...await importOriginal<typeof import('../src/receiz/identity-vault')>(), loadCardOperation: async () => protocol.pendingCard }));
 vi.mock('../src/receiz/client', () => ({ loadReceiz: async () => ({
   verifyReceizArtifact: async () => ({ status: 'verified-artifact' }), createReceizArtifactAdmissionEngine: () => async () => ({ verdict: 'canonical-identity' }), isSdkIssuedReceizArtifactAdmission: () => true,
   readReceizIdentityPublicBinding: async () => ({ keyId: 'fixture-key', artifactSha256: 'a'.repeat(64) }),
@@ -15,7 +16,22 @@ beforeEach(() => {
   protocol.grant.mockReset().mockResolvedValue({ applicationId: BANK_APPLICATION_ID, keyId: 'fixture-key', artifactDigest: 'a'.repeat(64), grantedScopes: [...BANK_READ_SCOPES], accessToken: 'local-fixture', expiresAtKai: 200 });
   protocol.scopes.mockReset().mockResolvedValue([...BANK_READ_SCOPES]); protocol.wallet.mockReset().mockResolvedValue({ ok: true, wallet: { userId: 'fixture-owner', balanceUsd: '3.00', balancePhiMicro: '2', valueStates: { settledBalanceUsdCents: '100', ecosystemBalanceUsdCents: '200' }, sync: {}, rollup: {} } });
   protocol.qualify.mockReset().mockRejectedValue(new Error('Native scope missing'));
-  protocol.client.mockReset().mockImplementation((options: { accessToken?: string }) => options.accessToken ? { auth: { grantedScopes: protocol.scopes }, connect: { wallet: protocol.wallet }, runtime: { qualifyV124: protocol.qualify } } : { identity: { continueReceizId: protocol.continueId, signLoginProof: async () => ({}), exchangeProofAuthority: protocol.grant } });
+  protocol.pendingCard = null; protocol.checkoutSession.mockReset();
+  protocol.client.mockReset().mockImplementation((options: { accessToken?: string }) => options.accessToken ? { auth: { grantedScopes: protocol.scopes }, connect: { wallet: protocol.wallet, checkoutSession: protocol.checkoutSession }, runtime: { qualifyV124: protocol.qualify } } : { identity: { continueReceizId: protocol.continueId, signLoginProof: async () => ({}), exchangeProofAuthority: protocol.grant } });
+});
+it('checks the original card registration and then reads the upgraded account under its current registration', async () => {
+  const checkout = { sessionId: 'cs_test_12345678', clientSecret: 'private-fixture', amountUsdCents: '500' };
+  protocol.pendingCard = { schema: 'receiz.bank.card-operation.v1', stage: 'ready', operationId: 'legacy-fixture', amountUsdCents: '500', checkout };
+  protocol.grant.mockImplementation(async ({ applicationId, scopes }: { applicationId: string; scopes: string[] }) => ({ applicationId, keyId: 'fixture-key', artifactDigest: 'a'.repeat(64), grantedScopes: scopes, accessToken: 'local-fixture', expiresAtKai: 200 }));
+  protocol.scopes.mockResolvedValue([...BANK_CARD_SCOPES]);
+  protocol.checkoutSession.mockResolvedValue({ ok: true, session: { sessionId: checkout.sessionId, currency: 'usd', amountUsdCents: '500', isPaid: false, state: 'open' } });
+  const identity = await openCanonicalIdentity(new Uint8Array([1]), 'fixture-phrase', 'fixture.receiz', true);
+  try {
+    expect((await identity.checkCardDeposit(checkout)).status).toBe('open');
+    expect(protocol.grant.mock.calls[0][0].applicationId).toBe('rc_ELkGAUBINd9Nw4bE5zMqUsgc');
+    expect((await identity.readWallet()).totalUsdCents).toBe('300');
+    expect(protocol.grant.mock.calls.at(-1)?.[0].applicationId).toBe(BANK_APPLICATION_ID);
+  } finally { identity.dispose(); }
 });
 it('a read-only connection check reports missing native access without requesting expanded permissions or qualifying unavailable operations', async () => {
   const identity = await openCanonicalIdentity(new Uint8Array([1]), 'fixture-phrase', 'fixture.receiz', true);

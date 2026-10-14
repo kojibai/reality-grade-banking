@@ -1,14 +1,21 @@
+import { BANK_CARD_APPLICATION_IDS, BANK_PREVIOUS_CARD_APPLICATION_ID } from './config';
 export interface CardCheckout { sessionId: string; clientSecret: string; amountUsdCents: string; }
 export interface CardDepositStatus { status: 'open' | 'settling' | 'credited' | 'expired' | 'unpaid'; amountPhiMicro?: string; }
-export interface CardOperation { schema: 'receiz.bank.card-operation.v1'; stage: 'creating' | 'ready'; operationId: string; amountUsdCents: string; checkout?: CardCheckout; }
+export interface CardOperation { schema: 'receiz.bank.card-operation.v1'; applicationId: string; stage: 'creating' | 'ready'; operationId: string; amountUsdCents: string; checkout?: CardCheckout; }
+export function cardOperationApplicationId(value: unknown): string {
+  const applicationId = value ?? BANK_PREVIOUS_CARD_APPLICATION_ID;
+  if (!BANK_CARD_APPLICATION_IDS.some(id => id === applicationId)) throw new Error('The unfinished deposit belongs to an unsupported bank registration.');
+  return applicationId as string;
+}
 export function readCardOperation(value: unknown): CardOperation | null {
   if (value === null) return null; const input = record(value);
+  const applicationId = cardOperationApplicationId(input.applicationId);
   if (input.schema !== 'receiz.bank.card-operation.v1' || !['creating', 'ready'].includes(String(input.stage)) || typeof input.operationId !== 'string' || !/^[a-zA-Z0-9-]{1,100}$/.test(input.operationId) || typeof input.amountUsdCents !== 'string' || !/^[1-9]\d{0,7}$/.test(input.amountUsdCents)) throw new Error('The unfinished card deposit cannot be read. Check its status before creating another.');
   if (input.stage === 'ready') {
     const checkout = record(input.checkout);
-    return { ...input, checkout: parseCardCheckout({ ok: true, checkout: { ...checkout, mode: 'embedded', currency: 'usd' } }, input.amountUsdCents) } as unknown as CardOperation;
+    return { ...input, applicationId, checkout: parseCardCheckout({ ok: true, checkout: { ...checkout, mode: 'embedded', currency: 'usd' } }, input.amountUsdCents) } as unknown as CardOperation;
   }
-  return input as unknown as CardOperation;
+  return { ...input, applicationId } as unknown as CardOperation;
 }
 function record(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Receiz card deposit response is unavailable.'); return value as Record<string, unknown>; }
 export function parseDepositDollars(value: string) {

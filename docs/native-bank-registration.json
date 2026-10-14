@@ -17,5 +17,7 @@
     "http://127.0.0.1:5173/auth/receiz/callback"
   ],
   "purpose": "Proof-native custody, ownership, funded sales and currency/backing actions inside Receiz Bank. Each customer separately consents and approves exact financial actions.",
-  "status": "proposed-not-created"
+  "status": "created",
+  "clientId": "rc_uV6aT6wZJCQDspB0_SJ1DcEm",
+  "createdAtLocal": "2026-10-13T19:59:21-04:00"
 }

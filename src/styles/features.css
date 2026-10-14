@@ -81,6 +81,8 @@
 .identity-import { display: grid; gap: 14px; margin: 20px 0; }
 .identity-import label { display: grid; gap: 8px; font-size: 13px; }
 .identity-import input { width: 100%; min-width: 0; padding: 13px; border-radius: 12px; border: 1px solid var(--line); font-size: 16px; }
+.identity-import .consent-option { display: flex; gap: 10px; margin: 16px 0; }
+.identity-import .consent-option input { flex: 0 0 18px; width: 18px; height: 18px; padding: 0; }
 .live-account-chart { height: 138px; display: grid; place-items: center; padding: 24px; color: var(--muted); text-align: center; font-size: 13px; background: linear-gradient(180deg, transparent, #f1f5fe); border-radius: 16px; margin: 18px 0; }
 
 .live-account, .live-account > *, .live-account .growth-panel > div { min-width: 0; }

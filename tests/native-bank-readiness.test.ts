@@ -1,9 +1,10 @@
 import { expect, it } from 'vitest';
 import { summarizeNativeBankReadiness } from '../src/receiz/bank-native-readiness';
+import { BANK_APPLICATION_ID } from '../src/receiz/config';
 import type { ReceizOperationalCapabilityReportV124 } from '@receiz/sdk';
 const operations = ['subject-admission', 'namespace-resolution', 'durable-execution', 'verified-replay', 'multi-domain-transaction', 'public-recipient-resolution', 'source-publication'];
 function report(scopes: string[]): ReceizOperationalCapabilityReportV124 { return {
-  schema: 'receiz.operational-capability-report.v124', applicationId: 'rc_ELkGAUBINd9Nw4bE5zMqUsgc', requestedOperations: operations, qualifiedAtKaiUPulse: 1,
+  schema: 'receiz.operational-capability-report.v124', applicationId: BANK_APPLICATION_ID, requestedOperations: operations, qualifiedAtKaiUPulse: 1,
   reportDigest: 'a'.repeat(64), runtimeReceiptDigest: 'b'.repeat(64), authority: { reportIsProofAuthority: false, reportIsOperationalAuthority: false, strongerTruth: 'receiz-identity-artifact' },
   results: operations.map(operation => ({ operation, status: 'available', actualGrantedScopes: scopes, serviceVersion: '124.0.0', registryVersion: '127.0.0', reducerVersion: '120.0.0', publicDependencyHeads: {}, dependencyHealth: 'healthy', reasonCode: null, retry: { strategy: 'none', retryAfterKaiUPulse: null }, evidence: { runtime: 'ready', transportSignature: 'available', registry: 'compatible', reducer: 'compatible', publicHeads: 'current', distributedLimiter: 'not-required' } })),
 }; }

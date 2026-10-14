@@ -1,10 +1,15 @@
 import { expect, it } from 'vitest';
-import { parseCardCheckout, parseCardDepositStatus, parseDepositDollars } from '../src/receiz/card-deposit';
+import { parseCardCheckout, parseCardDepositStatus, parseDepositDollars, readCardOperation } from '../src/receiz/card-deposit';
 it('uses exact dollar cents within the native Receiz card limits', () => {
   expect(parseDepositDollars('250')).toEqual({ amountUsd: '250.00', amountUsdCents: '25000' });
   expect(() => parseDepositDollars('0.10')).toThrow();
   expect(() => parseDepositDollars('1.001')).toThrow();
   expect(() => parseDepositDollars('100000.01')).toThrow();
+});
+it('an unfinished deposit stays bound to its original registration across the native bank upgrade', () => {
+  const legacy = { schema: 'receiz.bank.card-operation.v1', stage: 'creating', operationId: 'unfinished-fixture', amountUsdCents: '500' };
+  expect(readCardOperation(legacy)?.applicationId).toBe('rc_ELkGAUBINd9Nw4bE5zMqUsgc');
+  expect(() => readCardOperation({ ...legacy, applicationId: 'foreign-client' })).toThrow('registration');
 });
 it('requires the actual embedded Receiz envelope and the exact requested amount', () => {
   const envelope = { ok: true, checkout: { mode: 'embedded', sessionId: 'cs_test_12345678', clientSecret: 'private-test-fixture', amountUsdCents: '25000', currency: 'usd' } };

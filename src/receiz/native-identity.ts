@@ -1,6 +1,6 @@
 import type { ReceizClient, ReceizIdentityPublicBinding, ReceizKeyFile, ReceizIdentityAccountProjection } from '@receiz/sdk';
 import { loadReceiz } from './client';
-import { BANK_APPLICATION_ID, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES, BANK_NATIVE_CONSENT, BANK_NATIVE_SCOPES } from './config';
+import { BANK_APPLICATION_ID, BANK_CARD_APPLICATION_IDS, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES, BANK_NATIVE_CONSENT, BANK_NATIVE_SCOPES } from './config';
 import { parseCardCheckout, parseCardDepositStatus, parseDepositDollars, readCardOperation, type CardCheckout, type CardDepositStatus } from './card-deposit';
 import { nativeFetch } from './native-transport';
 import { loadDeviceIdentity, saveDeviceIdentity, loadWalletObservation, saveWalletObservation, loadDepositSources, saveDepositSource, loadCardOperation, saveCardOperation } from './identity-vault';
@@ -58,21 +58,23 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     if (transportKeyFile.crypto.privateKeyPkcs8B64u || transportBinding.keyId !== binding.keyId || transportBinding.identityOwnerReceizId !== binding.identityOwnerReceizId || transportKeyFile.crypto.publicKeyRawB64u !== keyFile.crypto.publicKeyRawB64u) throw new Error('Protected custody does not carry the same identity.');
     transportPhrase = protectedTransport.phrase; transportBytes = protectedTransport.bytes;
   }
-  let client: ReceizClient | null = null, expiresAtKai = 0, accountUid: string | null = null, grantedScopes: readonly string[] = [];
-  async function connectClient(scopes: readonly string[], statement: string) {
+  let client: ReceizClient | null = null, clientApplicationId: string | null = null, expiresAtKai = 0, accountUid: string | null = null, grantedScopes: readonly string[] = [];
+  async function connectClient(scopes: readonly string[], statement: string, applicationId: string = BANK_APPLICATION_ID) {
     if (!consentApproved || lifetime.signal.aborted) throw new Error('Receiz account read consent is required.');
-    if (!client || sdk.receizKaiNow().pulse >= expiresAtKai || scopes.some(scope => !grantedScopes.includes(scope))) {
+    if (!BANK_CARD_APPLICATION_IDS.some(id => id === applicationId)) throw new Error('Unsupported bank registration.');
+    if (!client || clientApplicationId !== applicationId || sdk.receizKaiNow().pulse >= expiresAtKai || scopes.some(scope => !grantedScopes.includes(scope))) {
+      const targetUnsigned = applicationId === BANK_APPLICATION_ID ? unsigned : sdk.createReceizClient({ applicationId, baseUrl: 'https://receiz.com', fetchImpl: heldFetch });
       // Signed transport metadata comes from the genuine admitted identity. It is not a replacement source.
-      const continued = await unsigned.identity.continueReceizId({ schema: 'receiz.device.identity.v1', createdAt: keyFile.issuedAt, updatedAt: keyFile.issuedAt, localUid: keyFile.owner.uid, username: keyFile.owner.username ?? keyFile.keyId, displayName: keyFile.owner.displayName ?? keyFile.owner.username ?? 'Receiz account', deviceName: null, keyFile: transportKeyFile }, { passphrase: transportPhrase });
+      const continued = await targetUnsigned.identity.continueReceizId({ schema: 'receiz.device.identity.v1', createdAt: keyFile.issuedAt, updatedAt: keyFile.issuedAt, localUid: keyFile.owner.uid, username: keyFile.owner.username ?? keyFile.keyId, displayName: keyFile.owner.displayName ?? keyFile.owner.username ?? 'Receiz account', deviceName: null, keyFile: transportKeyFile }, { passphrase: transportPhrase });
       const session = continued.session as { uid?: unknown } | undefined;
       if (continued.ok !== true || typeof session?.uid !== 'string') throw new Error('Your Receiz account could not be opened. Your local Identity Seal remains available.');
-      const created = sdk.createReceizProofAuthorityChallenge({ applicationId: BANK_APPLICATION_ID, artifactDigest: transportBinding.artifactSha256, scopes, consentStatementDigest: await sdk.sha256ReceizBytes(new TextEncoder().encode(statement)), ttlPulses: 30 });
-      const proof = await unsigned.identity.signLoginProof({ keyFile: transportKeyFile, passphrase: transportPhrase, challengeB64Url: created.challengeB64Url });
-      const grant = await unsigned.identity.exchangeProofAuthority({ artifact: transportBytes, challenge: { ...created.challenge, proof }, applicationId: BANK_APPLICATION_ID, scopes });
-      if (grant.applicationId !== BANK_APPLICATION_ID || grant.keyId !== transportBinding.keyId || grant.artifactDigest !== transportBinding.artifactSha256 || scopes.some(scope => !grant.grantedScopes.includes(scope))) throw new Error('Receiz did not grant this bank access to the same identity and scopes.');
-      const protectedClient = sdk.createReceizClient({ applicationId: BANK_APPLICATION_ID, baseUrl: 'https://receiz.com', accessToken: grant.accessToken, fetchImpl: heldFetch });
+      const created = sdk.createReceizProofAuthorityChallenge({ applicationId, artifactDigest: transportBinding.artifactSha256, scopes, consentStatementDigest: await sdk.sha256ReceizBytes(new TextEncoder().encode(statement)), ttlPulses: 30 });
+      const proof = await targetUnsigned.identity.signLoginProof({ keyFile: transportKeyFile, passphrase: transportPhrase, challengeB64Url: created.challengeB64Url });
+      const grant = await targetUnsigned.identity.exchangeProofAuthority({ artifact: transportBytes, challenge: { ...created.challenge, proof }, applicationId, scopes });
+      if (grant.applicationId !== applicationId || grant.keyId !== transportBinding.keyId || grant.artifactDigest !== transportBinding.artifactSha256 || scopes.some(scope => !grant.grantedScopes.includes(scope))) throw new Error('Receiz did not grant this bank access to the same identity and scopes.');
+      const protectedClient = sdk.createReceizClient({ applicationId, baseUrl: 'https://receiz.com', accessToken: grant.accessToken, fetchImpl: heldFetch });
       const granted = await protectedClient.auth.grantedScopes(); if (scopes.some(scope => !granted.includes(scope))) throw new Error('Receiz wallet permission is unavailable.');
-      client = protectedClient; grantedScopes = granted; expiresAtKai = grant.expiresAtKai; accountUid = session.uid;
+      client = protectedClient; clientApplicationId = applicationId; grantedScopes = granted; expiresAtKai = grant.expiresAtKai; accountUid = session.uid;
     }
     return client;
   }
@@ -87,7 +89,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     if (await loadCardOperation(binding)) throw new Error('Your previous card deposit is unfinished. Reopen Deposit to check it before starting another.');
     const exact = parseDepositDollars(amount), current = await connectClient(BANK_CARD_SCOPES, BANK_CARD_CONSENT);
     const returnUrl = `${location.origin}/?cardReturn=1&session_id={CHECKOUT_SESSION_ID}`;
-    const operation = { schema: 'receiz.bank.card-operation.v1', stage: 'creating', operationId: crypto.randomUUID(), amountUsdCents: exact.amountUsdCents };
+    const operation = { schema: 'receiz.bank.card-operation.v1', applicationId: BANK_APPLICATION_ID, stage: 'creating', operationId: crypto.randomUUID(), amountUsdCents: exact.amountUsdCents };
     await saveCardOperation(binding, operation, true);
     // A timeout or malformed reply retains this attempt. Never create another
     // checkout merely because the response was not delivered.
@@ -102,7 +104,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   }
   async function checkCardDeposit(checkout: CardCheckout) {
     const operation = readCardOperation(await loadCardOperation(binding)), held = operation?.checkout; if (!held || held.sessionId !== checkout.sessionId || held.amountUsdCents !== checkout.amountUsdCents) throw new Error('Open your actual unfinished deposit before checking it.');
-    const current = await connectClient(BANK_CARD_SCOPES, BANK_CARD_CONSENT);
+    const current = await connectClient(BANK_CARD_SCOPES, BANK_CARD_CONSENT, operation!.applicationId);
     const status = parseCardDepositStatus(await current.connect.checkoutSession({ sessionId: checkout.sessionId }), checkout.sessionId, checkout.amountUsdCents, accountUid!);
     if (['credited', 'expired', 'unpaid'].includes(status.status)) await saveCardOperation(binding, null, false, operation!.operationId);
     return status;

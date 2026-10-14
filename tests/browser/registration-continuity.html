@@ -1,0 +1,25 @@
+<!doctype html><meta charset="utf-8"><title>Isolated bank registration continuity</title><h1>Test-only registration migration</h1><p>Separate test origin. Dummy encrypted storage only. No identity, account, checkout or financial action.</p><button id="run">Run migration checks</button><pre id="output">Ready</pre><script type="module">
+import { saveDeviceIdentity, loadCardOperation, saveCardOperation, restoreKnownWalletObservation, forgetDeviceIdentity } from '/src/receiz/identity-vault.ts';
+import { BANK_APPLICATION_ID } from '/src/receiz/config.ts';
+document.querySelector('#run').onclick=async()=>{
+ const checks=[],assert=(value,label)=>{if(!value)throw Error(label);checks.push(label);};
+ try{
+  const bytes=new TextEncoder().encode('test-only-not-an-identity'),digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join(''),binding={artifactSha256:digest,keyId:'fixture-key'};
+  await saveDeviceIdentity(bytes,'fixture.bin','test-only-not-a-recovery-phrase',true);
+  const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('receiz-bank-private-custody',3);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+  const saved=await new Promise(resolve=>{const r=db.transaction('identity').objectStore('identity').get('current');r.onsuccess=()=>resolve(r.result);});
+  // Author the exact historical storage format on this isolated dummy origin.
+  const old='rc_ELkGAUBINd9Nw4bE5zMqUsgc',operation={schema:'receiz.bank.card-operation.v1',stage:'creating',operationId:'legacy-fixture',amountUsdCents:'500'},iv=crypto.getRandomValues(new Uint8Array(12));
+  saved.cardOperation={operationId:operation.operationId,iv,bytes:await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode(`receiz.bank.card|${old}|${digest}`)},saved.wrappingKey,new TextEncoder().encode(JSON.stringify(operation)))};
+  const wallet={userId:'fixture-account',totalUsdCents:'300',reserveUsdCents:'100',settlementUsdCents:'200',balancePhiMicro:'300'},observation={schema:'receiz.bank.private-wallet-observation.v1',authority:'read-only-observation',applicationId:old,...binding,wallet,observedAt:'2026-10-13T20:00:00Z'},walletIv=crypto.getRandomValues(new Uint8Array(12));
+  saved.walletObservation={iv:walletIv,binding,bytes:await crypto.subtle.encrypt({name:'AES-GCM',iv:walletIv,additionalData:new TextEncoder().encode(`receiz.bank.wallet|${binding.keyId}|${digest}`)},saved.wrappingKey,new TextEncoder().encode(JSON.stringify(observation)))};
+  await new Promise((resolve,reject)=>{const tx=db.transaction('identity','readwrite');tx.objectStore('identity').put(saved,'current');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});db.close();
+  const held=await loadCardOperation(binding);assert(held.operationId==='legacy-fixture'&&held.applicationId===old,'Historical encrypted checkout reopens under original client');
+  assert((await restoreKnownWalletObservation()).wallet.totalUsdCents==='300','Historical held balance supplies first paint');
+  await saveCardOperation(binding,{...held,stage:'creating'});assert((await loadCardOperation(binding)).applicationId===old,'Updating an old attempt preserves original client');
+  let blocked=false;try{await saveCardOperation(binding,{...operation,operationId:'new-fixture'},true);}catch{blocked=true;}assert(blocked,'Upgrade cannot replace an unfinished deposit');
+  await saveCardOperation(binding,null,false,held.operationId);await saveCardOperation(binding,{...operation,operationId:'new-fixture'},true);assert((await loadCardOperation(binding)).applicationId===BANK_APPLICATION_ID,'New deposits use current client');
+  await forgetDeviceIdentity();document.querySelector('#output').textContent='PASS\n'+checks.join('\n');
+ }catch(error){document.querySelector('#output').textContent='FAIL\n'+error.message;}
+};
+</script>

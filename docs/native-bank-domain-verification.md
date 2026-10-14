@@ -2,6 +2,16 @@
 
 The full live bank domain is unfinished. This change preserves the existing mobile console and adds source verification, conservation and execution recovery composition. It does not activate custody issuance, ownership transfers, sales or currencies.
 
+## Native registration follow-up
+
+After the user's exact approval, Receiz Connect created public client **rc_uV6aT6wZJCQDspB0_SJ1DcEm** at 2026-10-13 19:59:21 local. The visible registration confirms all 15 approved scopes, public/token-auth-none/no client secret and the unchanged bank.receiz.com/local 4173/5173 callbacks. The former read/card and read-only clients remain active.
+
+The bank now uses that exact ID. Historical wallet observations remain eligible for identity-bound first paint. Card attempts retain their original registered client in authenticated encrypted custody; old untagged attempts use the known prior card client. Status queries obtain the same original client grant, while new deposits and account reads use the current client. Tests cover this selection and foreign-client refusal. The isolated browser migration page passed five checks, including actual legacy AES-GCM reopening, old balance first paint, preserved old attempts, concurrent-start refusal and current-client new attempts.
+
+Profile → Bank connection now has a displayed native consent, an unchecked checkbox and an approval button. Ordinary checks remain read-only. Broader grants are requested only after the person's explicit approval. The agent did not grant native access for the open account; that separate action-time approval is pending. Its real read grant under the new client succeeded and freshly displayed the same $0.00 shared account. Native service qualification remains unobserved.
+
+Follow-up verification: **171 tests across 48 files passed**, TypeScript/production build passed. Evidence: `native-bank-registration-created.png` and `native-bank-access-consent-mobile.png` in the task visualization directory. The native registration approval is fulfilled; the remaining private consent, custodian-source and backend boundaries below remain distinct.
+
 ## Implemented
 
 - `bank-custody.ts` opens exact native sealed receipt and intake sources through SDK 129. It requires a genuine attestation authority bound to the bank's trusted operator-policy artifact, correct holder/type/request/quantity, current credential history and admitted full KKS coordinate. It retains exact receipt custody privately. The SDK initial credential plan/apply composition requires the same pinned authority, an actually issued attestation and its held exact bank plan/confirmation. No actual operator authority or receipt was created.
@@ -40,7 +50,7 @@ Evidence images in the task visualization directory: `native-bank-account-mobile
 
 ## Exact remaining boundary
 
-1. **Native registration approval is pending.** The prepared public registration adds the eight native scopes and preserves existing read/card scopes and callbacks. It has not been created. The active client remains `rc_ELkGAUBINd9Nw4bE5zMqUsgc`. Each user's private native consent remains separate from app registration.
+1. **Private native consent is pending.** The public registration is created and the active client is `rc_uV6aT6wZJCQDspB0_SJ1DcEm`. Each user's private native consent remains separate from app registration. The current account has a read grant; the agent has not expanded it.
 2. **Custodian source is absent.** Receiz/@receiz and the selected Kojib address configure delivery metadata. They do not supply a sealed custody domain-authority policy, an admitted issuer role, authenticated inspection evidence or the operator's signing custody. No positive receipt issuance/import path has been qualified.
 3. **Bank backend composition is absent.** The inspected Receiz host `prepareExecution` accepts single native value/access operations and complete world composites. It returns `UNSUPPORTED_ATOMICITY` for multiple operations and unregistered custom bank operations. This change has not implemented/applied a production adapter or database migration. Native subject publication/session/replay, original-source preparation, atomic payment plus ownership/backing, exact committed recovery and live browser callbacks remain required.
 4. **Live evidence is absent.** No custody receipt, ownership transfer, bank/user fractional sale, buyback, physical redemption, currency issuance, currency transfer, backing commitment or currency redemption was executed. No public deployment or full bank release lock occurred. The fresh final native-subsystem review remains pending completion of that implementation.
