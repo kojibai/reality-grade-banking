@@ -1,0 +1,16 @@
+{
+  "schema": "receiz.bank.signer-bearer-repair-proposal.v1",
+  "isProofAuthority": false,
+  "teamId": "team_S3vdXAClCjFZBPbR6i8gcUYR",
+  "sourceProject": "prj_CaIzvnEahD7QipTX2lO64bY7q611",
+  "sourceEnvironmentKey": "RECEIZ_SIGNING_V4_REMOTE_SIGN_BEARER_TOKEN",
+  "sourceEnvironment": "production",
+  "targetProject": "prj_yp7PptVXhuJ9BIsEBrRiQU4A5iZu",
+  "targetEnvironmentKey": "RECEIZ_SIGNER_SERVICE_BEARER_TOKENS_JSON",
+  "preserveExistingTargetsAndEntries": true,
+  "createOrRotateCredentials": false,
+  "changeKeyringOrContexts": false,
+  "redeployExistingDeploymentId": "dpl_Fq27sHjpJR4f6sGMH9MA87LY3tuA",
+  "sourceCommit": "0912baa6383ba9bb013dab185a50a44901c3d188",
+  "financialActionsAuthorized": false
+}

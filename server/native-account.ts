@@ -22,6 +22,12 @@ export async function nativeAccountMiddleware(req: IncomingMessage, res: ServerR
       headers['Content-Type'] = 'application/json'; body = await bytes(req);
     }
     const response = await fetch(`https://receiz.com${path}`, { method: req.method, headers, body: body?.toString('utf8'), credentials: 'omit', redirect: 'error', signal: AbortSignal.timeout(60_000) });
+    if (!response.ok && path.startsWith('/api/sdk/v1/runtime/qualify?')) {
+      const requestId = response.headers.get('x-vercel-id');
+      // Public transport correlation only: never log a bearer, query, body,
+      // proof, response payload or arbitrary upstream diagnostic header.
+      console.warn('receiz-bank native qualification', { status: response.status, requestId: requestId && /^[a-zA-Z0-9:.-]{1,160}$/.test(requestId) ? requestId : null });
+    }
     const output = response.body ? await bytes(response.body as unknown as AsyncIterable<Uint8Array>) : Buffer.alloc(0);
     res.writeHead(response.status, { 'Content-Type': 'application/json' }); res.end(output);
   } catch { res.writeHead(503, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'Receiz account transport is temporarily unavailable.' })); }

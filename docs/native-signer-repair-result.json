@@ -1,0 +1,23 @@
+{
+  "schema": "receiz.bank.signer-configuration-repair-result.v1",
+  "isProofAuthority": false,
+  "rootAndContextsApplied": true,
+  "receizSourceChanged": false,
+  "signerSourceChanged": false,
+  "sdkVersion": "129.0.0",
+  "sourceCommit": "0912baa6383ba9bb013dab185a50a44901c3d188",
+  "deploymentId": "dpl_Fq27sHjpJR4f6sGMH9MA87LY3tuA",
+  "deploymentState": "READY",
+  "publicKeyringObservedAt": "2026-10-14T02:14:35.672Z",
+  "activeRootKid": "receiz.v4.prod.2026-03-02",
+  "publicRootMatchesSdk": true,
+  "publicKeyCount": 1,
+  "rootRepairConfirmationDigest": "142740254c8ae78799f9542437b3e9c3f8beadc9d5d8b7b6f2100bd6eef18849",
+  "bankQualificationHttpStatus": 503,
+  "bankQualificationPublicCode": "SERVICE_CAPACITY_UNAVAILABLE",
+  "bankQualificationRequestId": "iad1::iad1::zkzzm-1791944123726-360e8f7043e4",
+  "signerConfiguredUsableBearerCount": 0,
+  "signerBearerRepairApplied": false,
+  "nativeBankDomainLive": false,
+  "financialOperationsExecuted": false
+}

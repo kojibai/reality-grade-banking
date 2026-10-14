@@ -2,6 +2,14 @@
 
 The full live bank domain is unfinished. This change preserves the existing mobile console and adds source verification, conservation and execution recovery composition. It does not activate custody issuance, ownership transfers, sales or currencies.
 
+## Signer configuration repair follow-up
+
+On 2026-10-13 at 22:14 local, the user's protected signer repair was applied without editing Receiz or signer source. The existing matching root and four signing contexts were restored, and the exact previous signer commit was redeployed as `dpl_Fq27sHjpJR4f6sGMH9MA87LY3tuA`. The public keyring now exposes the expected active root. This administrative configuration repair uses the installed 129.0.0 packages and requires no new package release.
+
+The actual bank qualification still returned HTTP 503 after refreshing the same previously approved native access. Protected diagnosis found zero usable signer authentication tokens, despite Receiz having its existing production bearer configured. A separate exact accepted-token-list repair is prepared and awaits approval; no authentication configuration has been changed yet. See `native-signer-repair.md` and `native-signer-repair-result.json`. This update supersedes the earlier statements below that no deployment or private configuration access had occurred; those statements describe their earlier verification stage.
+
+The separate bearer helper preserves existing token entries/ignored malformed representation and refuses invalid source credentials. The exact deployed handler fixture reproduces the authentication 503 and independently verifies a signature after preparation. Fixture and configuration evidence remain separate from real SDK qualification, source admission and financial execution.
+
 ## Native registration follow-up
 
 After the user's exact approval, Receiz Connect created public client **rc_uV6aT6wZJCQDspB0_SJ1DcEm** at 2026-10-13 19:59:21 local. The visible registration confirms all 15 approved scopes, public/token-auth-none/no client secret and the unchanged bank.receiz.com/local 4173/5173 callbacks. The former read/card and read-only clients remain active.
