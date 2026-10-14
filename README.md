@@ -25,7 +25,7 @@ Open http://127.0.0.1:4173. Install through your browser's Install / Add to Home
 ## Current integration
 
 - Native Create / Import Receiz Identity Seal entrance and device-held restoration. Returning users open Account. The routed app does not read or display old demo storage.
-- Dedicated Receiz Bank public client `rc_ELkGAUBINd9Nw4bE5zMqUsgc`, shared wallet reads plus user-approved Receiz card checkout/status, no client secret.
+- Dedicated Receiz Bank public client `rc_uV6aT6wZJCQDspB0_SJ1DcEm`, with the approved read/card/native scopes and no client secret. Earlier card attempts retain their original public client.
 - Canonical SDK verification/admission, encrypted device custody, signed native read consent, proof-authority exchange and scope inspection.
 - Shared account read through `client.connect.wallet()`, the same wallet loader used by Receiz. Exact Reserve, Settlement and total, no second balance, no synthetic account chart. Real deposits on Receiz are reflected by the next successful shared read.
 - Live public Market from Receiz's full public showcase collection, real quotes/charts, search, infinite scroll, owner display and exact original-source verification.
@@ -38,7 +38,7 @@ Physical delivery is configured for Receiz at the operator-selected Kojib busine
 
 All three coordinated Receiz packages remain **129.0.0**. No external provider or dependency was added. Canonical proof resource SHA-256 hashes match the SDK manifest. The service worker caches only the shell/proof resources, never account APIs or financial requests. Private signing material and grant bearers never enter public caches.
 
-Vite dev/preview provide fixed native and public middleware. Static-only hosting requires equivalent Node routes. The chosen public origin is https://bank.receiz.com and its callback is registered. No production deployment has been performed; cross-device request links require that deployment. See [live-bank status](docs/live-bank-status.md) for the actual qualification boundary.
+Vite dev/preview provide fixed native and public middleware. **This checkpoint does not yet include production Vercel API functions.** A static Vite deployment serves the console, but `/api/bank/native/*`, `/api/bank/public-market/*` and `/api/bank/public-network` need equivalent Node routes for live reads and identity access. The chosen public origin is https://bank.receiz.com and its callback is registered. No bank production deployment has been performed. See [launch status](docs/launch-status.md) for the exact remaining work, and [live-bank status](docs/live-bank-status.md) for the observed qualification boundary.
 
 ## Source and verification
 
@@ -56,3 +56,11 @@ Public Ledger source and final-review evidence: [shared-ledger verification](doc
 Native account registration, shared-wallet path and final-review evidence: [native account verification](docs/native-account-verification.md).
 
 In-app flow, registration and recovery evidence: [payment verification](docs/in-app-payments-verification.md).
+
+## Native account checkpoint
+
+The Receiz host sorting fix is now deployed on main; SDK 129 admitted signed production qualification with source-publication available. This is independent of the bank frontend release and requires no new Receiz package release.
+
+The bank now retains exact private account-source admission requests and composes source publication plus authority-session open/refresh with encrypted pending-request recovery. The current real account admission is refused with `SUBJECT_OWNER_CONFLICT`; its session profile name differs from the name carried by the signed identity. Original identity/proof bytes remain preserved, and no account owner is substituted to bypass admission. No authority session or financial operation has completed for this source. Fixture tests cover request/recovery mechanics, not live financial authority.
+
+When moving from localhost to the public domain, device custody remains scoped to the browser origin. Back up the existing Identity Seal and its phrase, if one exists, and use **Use existing ID** on the new domain to reopen the same identity. Private material belongs in the bank's local import flow, not Vercel environment variables or chat.
