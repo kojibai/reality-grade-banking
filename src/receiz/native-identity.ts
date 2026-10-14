@@ -5,7 +5,7 @@ import { parseCardCheckout, parseCardDepositStatus, parseDepositDollars, readCar
 import { nativeFetch } from './native-transport';
 import { loadDeviceIdentity, saveDeviceIdentity, loadWalletObservation, saveWalletObservation, loadDepositSources, saveDepositSource, loadCardOperation, saveCardOperation, loadBankSessionIntent, saveBankSessionIntent } from './identity-vault';
 import { projectHeldDeposit, validateAssetIntake, type AssetIntake, type HeldDeposit } from './deposit-source';
-import { protectIdentityKeyFile } from './identity-protection';
+import { protectIdentityKeyFile, unprotectIdentityKeyFile } from './identity-protection';
 import type { ProtectedIdentityTransport } from './identity-vault';
 import { identityNeedsPhrase } from './identity-lock';
 import { parseSharedWallet } from './shared-wallet';
@@ -15,14 +15,18 @@ import { BankConnectionError } from './bank-connection-error';
 import { createBankSubjectSource, openBankSubjectSource, type BankSubjectSource } from './bank-native-source';
 import { createBankNativeSession } from './bank-native-session';
 import { browserBankKaiFactory } from './bank-kai';
+import { validateAssetDefinition, type AssetDefinition } from './asset-definition';
+import { readCarriedWalletObservation } from './wallet-observation';
+import { appendWalletPoint } from './wallet-series';
 
 export interface OpenIdentity {
   binding: ReceizIdentityPublicBinding; needsPhrase: boolean; knownWallet: () => import('./wallet-observation').WalletObservation | null;
-  username: string | null; localHistory: ReceizIdentityAccountProjection; readWallet: () => Promise<ReturnType<typeof parseSharedWallet>>;
+  username: string | null; accountUsername?: () => string | null; localHistory: ReceizIdentityAccountProjection; readWallet: () => Promise<ReturnType<typeof parseSharedWallet>>;
   beginCardDeposit: (amount: string, approved: boolean) => Promise<CardCheckout>; checkCardDeposit: (checkout: CardCheckout) => Promise<CardDepositStatus>;
   pendingCardDeposit: () => Promise<CardCheckout | null>;
   startAssetIntake: (asset: AssetIntake, attachment?: File) => Promise<HeldDeposit>; holdProof: (file: File) => Promise<HeldDeposit>;
   listDeposits: () => Promise<HeldDeposit[]>;
+  createAsset: (definition: AssetDefinition) => Promise<HeldDeposit>;
   nativeReadiness: (approveNativeAccess?: boolean) => Promise<BankNativeReadiness>;
   connectNativeAccount: (approved: boolean) => Promise<{ subjectId: string; sourceDigest: string; sessionExpiresKaiUPulse: number; readyToTransact: false }>;
   persistDeviceCustody: () => Promise<void>;
@@ -40,6 +44,9 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const keyFile: ReceizKeyFile = await sdk.readReceizIdentityArtifact(bytes);
   const localHistory = await sdk.projectReceizIdentityAccount(keyFile);
   let knownWallet = await loadWalletObservation(binding);
+  // Known same-owner source truth paints immediately. Foreign account placement
+  // still requires continuation plus a protected same-account wallet read.
+  knownWallet ??= readCarriedWalletObservation(localHistory);
   const lifetime = new AbortController();
   const heldFetch: typeof fetch = (input, init) => nativeFetch(input, { ...init, signal: AbortSignal.any([lifetime.signal, AbortSignal.timeout(60_000)]) });
   const unsigned = sdk.createReceizClient({ applicationId: BANK_APPLICATION_ID, baseUrl: 'https://receiz.com', fetchImpl: heldFetch });
@@ -65,6 +72,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     transportPhrase = protectedTransport.phrase; transportBytes = protectedTransport.bytes;
   }
   let client: ReceizClient | null = null, clientApplicationId: string | null = null, expiresAtKai = 0, accountUid: string | null = null, grantedScopes: readonly string[] = [];
+  let presentationUsername = keyFile.owner.username;
   async function connectClient(scopes: readonly string[], statement: string, applicationId: string = BANK_APPLICATION_ID) {
     if (!consentApproved || lifetime.signal.aborted) throw new Error('Receiz account read consent is required.');
     if (!BANK_CARD_APPLICATION_IDS.some(id => id === applicationId)) throw new Error('Unsupported bank registration.');
@@ -72,7 +80,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       const targetUnsigned = applicationId === BANK_APPLICATION_ID ? unsigned : sdk.createReceizClient({ applicationId, baseUrl: 'https://receiz.com', fetchImpl: heldFetch });
       // Signed transport metadata comes from the genuine admitted identity. It is not a replacement source.
       const continued = await targetUnsigned.identity.continueReceizId({ schema: 'receiz.device.identity.v1', createdAt: keyFile.issuedAt, updatedAt: keyFile.issuedAt, localUid: keyFile.owner.uid, username: keyFile.owner.username ?? keyFile.keyId, displayName: keyFile.owner.displayName ?? keyFile.owner.username ?? 'Receiz account', deviceName: null, keyFile: transportKeyFile }, { passphrase: transportPhrase });
-      const session = continued.session as { uid?: unknown } | undefined;
+      const session = continued.session as { uid?: unknown; username?: unknown } | undefined;
       if (continued.ok !== true || typeof session?.uid !== 'string') throw new Error('Your Receiz account could not be opened. Your local Identity Seal remains available.');
       const created = sdk.createReceizProofAuthorityChallenge({ applicationId, artifactDigest: transportBinding.artifactSha256, scopes, consentStatementDigest: await sdk.sha256ReceizBytes(new TextEncoder().encode(statement)), ttlPulses: 30 });
       const proof = await targetUnsigned.identity.signLoginProof({ keyFile: transportKeyFile, passphrase: transportPhrase, challengeB64Url: created.challengeB64Url });
@@ -81,13 +89,15 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       const protectedClient = sdk.createReceizClient({ applicationId, baseUrl: 'https://receiz.com', accessToken: grant.accessToken, fetchImpl: heldFetch });
       const granted = await protectedClient.auth.grantedScopes(); if (scopes.some(scope => !granted.includes(scope))) throw new Error('Receiz account permission is unavailable.');
       client = protectedClient; clientApplicationId = applicationId; grantedScopes = granted; expiresAtKai = grant.expiresAtKai; accountUid = session.uid;
+      // The confirmed account's profile name is display metadata, never proof ownership.
+      if (typeof session.username === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(session.username)) presentationUsername = session.username;
     }
     return client;
   }
   async function readWallet() {
     const current = await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT);
     const wallet = parseSharedWallet(await current.connect.wallet(), accountUid!);
-    if (!lifetime.signal.aborted) { knownWallet = { wallet, observedAt: new Date().toISOString() }; await saveWalletObservation(binding, wallet, knownWallet.observedAt); }
+    if (!lifetime.signal.aborted) { const observedAt = new Date().toISOString(); const history = appendWalletPoint(knownWallet?.history ?? [], wallet, observedAt, String(sdk.receizKaiNow().uPulse)); knownWallet = { wallet, observedAt, history }; await saveWalletObservation(binding, wallet, observedAt, history); }
     return wallet;
   }
   async function beginCardDeposit(amount: string, approved: boolean) {
@@ -154,6 +164,15 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     try { return summarizeNativeBankReadiness(await current.runtime.qualifyV124({ applicationId: BANK_APPLICATION_ID, operations: BANK_NATIVE_OPERATIONS })); }
     catch (error) { throw new BankConnectionError('native-services', error); }
   }
+  async function createAsset(input: AssetDefinition): Promise<HeldDeposit> {
+    const definition = validateAssetDefinition(input);
+    const linked = definition.linkedProofDigest ? (await listDeposits()).find(source => source.kind === 'proof' && source.digest === definition.linkedProofDigest) : null;
+    if (definition.linkedProofDigest && !linked) throw new Error('The selected original proof is no longer held by this ID.');
+    const payload = { schema: 'receiz.bank.asset-definition.v1', definition, issuerReceizId: binding.artifactOwnerReceizId, createsSpendableValue: false, backingCommitted: false, kai: sdk.receizKaiNow(), linkedSource: linked ? { digest: linked.digest, filename: linked.filename, exactArtifactB64u: sdk.receizBase64UrlEncode(linked.bytes) } : null };
+    const sealer = await ownedSealer();
+    const sealed = await sealer.seal({ bytes: new TextEncoder().encode(JSON.stringify(payload)), filename: `${definition.symbol.toLowerCase()}.receiz-asset.json`, mimeType: 'application/json' });
+    return holdProof(new File([new Uint8Array(sealed.artifactBytes)], sealed.filename, { type: sealed.mimeType }));
+  }
   let nativeConnectionBusy = false;
   const nativeSessions = new WeakMap<ReceizClient, Map<string, ReturnType<typeof createBankNativeSession>>>();
   async function connectNativeAccount(approved: boolean) {
@@ -209,7 +228,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     } catch (error) { throw error instanceof BankConnectionError ? error : new BankConnectionError(stage, error); }
     finally { nativeConnectionBusy = false; }
   }
-  return { binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, localHistory, readWallet, beginCardDeposit, checkCardDeposit, pendingCardDeposit, startAssetIntake, holdProof, listDeposits, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, beginCardDeposit, checkCardDeposit, pendingCardDeposit, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');
@@ -218,9 +237,20 @@ export async function createNativeIdentity(consentApproved: boolean): Promise<Op
   const { createReceizOfflineSealer, createReceizIndexedDbSealStore } = await import('@receiz/sdk/offline');
   const sealer = createReceizOfflineSealer({ store: createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer'), resources: { wasm: resources[0], zkey: resources[1] }, fetch: nativeFetch });
   await sealer.enroll();
-  const phrase = sdk.receizBase64UrlEncode(crypto.getRandomValues(new Uint8Array(32)));
-  const sealed = await sealer.createIdentity({ passphrase: phrase });
-  const identity = await openCanonicalIdentity(sealed.artifactBytes, phrase, sealed.filename, true);
+  // v129's onboarding sealer requires protected bootstrap custody. This secret
+  // stays internal; the actual user-held download is sealed with the same key
+  // in its supported no-phrase form, then independently admitted again.
+  const protectionSecret = sdk.receizBase64UrlEncode(crypto.getRandomValues(new Uint8Array(32)));
+  const protectedSeal = await sealer.createIdentity({ passphrase: protectionSecret });
+  const verification = await sdk.verifyReceizArtifact(protectedSeal.artifactBytes);
+  const admission = await sdk.createReceizArtifactAdmissionEngine()(verification, { profile: 'identity', identityPassphrase: protectionSecret });
+  const protectedBinding = await sdk.readReceizIdentityPublicBinding(admission);
+  const protectedKey = await sdk.readReceizIdentityArtifact(protectedSeal.artifactBytes);
+  const portableKey = await unprotectIdentityKeyFile(protectedKey, protectionSecret);
+  const owned = createReceizOfflineSealer({ ownerIdentityAdmission: admission, store: createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer'), resources: { wasm: resources[0], zkey: resources[1] }, fetch: nativeFetch });
+  const sealed = await owned.seal({ bytes: new TextEncoder().encode(sdk.serializeReceizIdentityArtifact(portableKey)), filename: 'identity.receizkey', mimeType: 'application/json' });
+  const identity = await openCanonicalIdentity(sealed.artifactBytes, '', sealed.filename, true, { bytes: new Uint8Array(protectedSeal.artifactBytes), phrase: protectionSecret });
+  if (identity.needsPhrase || identity.binding.keyId !== protectedBinding.keyId || identity.binding.artifactOwnerReceizId !== protectedBinding.artifactOwnerReceizId) { identity.dispose(); throw new Error('The self-contained Identity Seal did not preserve its original identity.'); }
   await identity.persistDeviceCustody(); return identity;
 }
 export async function importNativeIdentity(file: File, phrase: string, consentApproved: boolean): Promise<OpenIdentity> {

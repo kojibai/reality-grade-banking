@@ -4,7 +4,7 @@ import type { SharedWallet } from './shared-wallet';
 export function useNativeAccount() {
   const [identity, setIdentity] = useState<OpenIdentity | null>(null), [wallet, setWallet] = useState<SharedWallet | null>(null);
   const [opening, setOpening] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [observedAt, setObservedAt] = useState<string | null>(null);
-  const held = useRef<OpenIdentity | null>(null), generation = useRef(0), pending = useRef(false);
+  const held = useRef<OpenIdentity | null>(null), generation = useRef(0), pending = useRef(false), openingOperation = useRef(false);
   const refresh = useCallback(async () => {
     const current = held.current, ticket = generation.current;
     if (!current || pending.current) return; pending.current = true; setBusy(true);
@@ -23,7 +23,7 @@ export function useNativeAccount() {
     addEventListener('online', wake); document.addEventListener('visibilitychange', wake);
     return () => { alive = false; held.current?.dispose(); held.current = null; generation.current++; clearInterval(timer); removeEventListener('online', wake); document.removeEventListener('visibilitychange', wake); };
   }, [accept, refresh]);
-  const open = async (operation: () => Promise<OpenIdentity>) => { setBusy(true); setError(null); try { const next = await operation(); let initialError: string | null = null; if (!next.knownWallet?.()) { try { await next.readWallet(); } catch (cause) { initialError = cause instanceof Error ? cause.message : 'Receiz could not open your balance. Try again when the source is available.'; } } accept(next, initialError); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Your ID could not be opened.'); } finally { if (!held.current) setBusy(false); } };
+  const open = async (operation: () => Promise<OpenIdentity>) => { if (openingOperation.current) return; openingOperation.current = true; const ticket = generation.current; setBusy(true); setError(null); try { const next = await operation(); if (ticket !== generation.current) { next.dispose(); await forgetDeviceIdentity(); return; } let initialError: string | null = null; if (!next.knownWallet?.()) { try { await next.readWallet(); } catch (cause) { initialError = cause instanceof Error ? cause.message : 'Receiz could not open your balance. Try again when the source is available.'; } } if (ticket !== generation.current) { next.dispose(); await forgetDeviceIdentity(); return; } accept(next, initialError); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Your ID could not be opened.'); } finally { openingOperation.current = false; if (!held.current) setBusy(false); } };
   const create = (consent: boolean) => open(() => createNativeIdentity(consent));
   const importId = (file: File, phrase: string, consent: boolean) => open(() => importNativeIdentity(file, phrase, consent));
   const forget = async () => { held.current?.dispose(); held.current = null; generation.current++; pending.current = false; setIdentity(null); setWallet(null); setObservedAt(null); setBusy(false); await forgetDeviceIdentity(); };

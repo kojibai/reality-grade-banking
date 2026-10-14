@@ -1,0 +1,47 @@
+--- a/proxy.ts
++++ b/proxy.ts
+@@ -463,6 +463,12 @@
+   return /^\/world\/embed\/[^/]+\/?$/.test(pathname);
+ }
+ 
++// The bank is the sole approved production parent for native card checkout.
++const BANK_CHECKOUT_FRAME_ANCESTORS = "frame-ancestors 'self' https://bank.receiz.com http://127.0.0.1:4173 http://127.0.0.1:5173";
++function isBankCheckoutEmbedPath(pathname: string): boolean {
++  return normalizedPathname(pathname) === "/payments/embed/checkout";
++}
++
+ function buildContentSecurityPolicy(request: NextRequest, mode: CspMode, nonce?: string | null): string {
+   const reportEndpoint = new URL(CSP_REPORT_ENDPOINT_PATH, request.nextUrl.origin).toString();
+   const scriptSrc =
+@@ -491,7 +497,9 @@
+     "default-src 'self'",
+     "base-uri 'self'",
+     "object-src 'none'",
+-    isPublicTwinEmbedPath(request.nextUrl.pathname)
++    isBankCheckoutEmbedPath(request.nextUrl.pathname)
++      ? BANK_CHECKOUT_FRAME_ANCESTORS
++      : isPublicTwinEmbedPath(request.nextUrl.pathname)
+       ? "frame-ancestors *"
+       : "frame-ancestors 'self'",
+     // Chrome applies form-action to the consent POST's cross-origin callback.
+@@ -564,7 +572,7 @@
+ 
+ function applySecurityHeaders(request: NextRequest, response: NextResponse, cspNonce?: string | null): NextResponse {
+   response.headers.set("X-Content-Type-Options", "nosniff");
+-  if (isPublicTwinEmbedPath(request.nextUrl.pathname)) {
++  if (isPublicTwinEmbedPath(request.nextUrl.pathname) || isBankCheckoutEmbedPath(request.nextUrl.pathname)) {
+     response.headers.delete("X-Frame-Options");
+   } else {
+     response.headers.set("X-Frame-Options", "SAMEORIGIN");
+@@ -609,6 +617,11 @@
+     response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+   }
+ 
++  if (isBankCheckoutEmbedPath(request.nextUrl.pathname)) {
++    const currentCsp = response.headers.get("Content-Security-Policy") ?? "";
++    const otherDirectives = currentCsp.split(";").map((part) => part.trim()).filter((part) => part && !part.startsWith("frame-ancestors"));
++    response.headers.set("Content-Security-Policy", [...otherDirectives, BANK_CHECKOUT_FRAME_ANCESTORS].join("; "));
++  }
+   return response;
+ }
+ 

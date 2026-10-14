@@ -8,3 +8,10 @@ it('restores only the exact identity-bound, consistent private source observatio
   expect(readWalletObservation({ ...input, wallet: { ...input.wallet, totalUsdCents: '99999' } }, binding)).toBeNull();
   expect(readWalletObservation({ ...input, authority: 'funding-authority' }, binding)).toBeNull();
 });
+it('does not turn a signer-authenticated foreign placement into an independently bound wallet', async () => {
+  const { readCarriedWalletObservation } = await import('../src/receiz/wallet-observation');
+  const projection = { portableStateVerified: true, authority: 'verified-identity-portable-state', owner: { uid: 'local-device' }, verifiedState: { account: { userId: 'foreign' }, exportedAt: '2026-10-14T12:00:00Z', wallet: { routeSummary: { userId: 'foreign', balanceUsd: '1.00', balancePhiMicro: '10', valueStates: { settledBalanceUsdCents: '0', ecosystemBalanceUsdCents: '100' }, sync: {}, rollup: {} } } } } as unknown as import('@receiz/sdk').ReceizIdentityAccountProjection;
+  expect(readCarriedWalletObservation(projection)).toBeNull();
+  projection.owner.uid = 'foreign';
+  expect(readCarriedWalletObservation(projection)?.wallet.totalUsdCents).toBe('100');
+});

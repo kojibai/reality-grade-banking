@@ -16,3 +16,16 @@ it('retains a valid chart render when a hovered selection outlives keyboard peri
   expect(host.querySelector('svg')?.getAttribute('aria-label')).toContain('to 8');
   act(() => root.unmount()); host.remove();
 });
+it('shows exact touch tooltips and keeps an isolated live balance point centered', () => {
+  const host = document.createElement('div'), root = createRoot(host);
+  try {
+    act(() => root.render(<ValueChart values={[123]} tooltip={() => ({ value: '$123.00', label: 'Today · Settlement' })} />));
+    const svg = host.querySelector('svg')!;
+    Object.defineProperty(svg, 'getBoundingClientRect', { value: () => ({ left: 0, width: 320 }) });
+    act(() => svg.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 140 })));
+    expect(host.textContent).toContain('$123.00'); expect(host.textContent).toContain('Today · Settlement');
+    expect(host.querySelector('circle')?.getAttribute('cx')).toBe('160');
+    act(() => root.render(<ValueChart values={[]} />));
+    expect(host.innerHTML).not.toContain('NaN'); expect(host.innerHTML).not.toContain('undefined');
+  } finally { act(() => root.unmount()); }
+});

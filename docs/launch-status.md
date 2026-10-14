@@ -20,11 +20,11 @@ The user will push, merge and deploy this checkpoint. The task creates local com
 
 ## Vercel configuration for the current frontend
 
-Use the bank repository and the branch/commit selected by the user, framework **Vite**, install **npm ci**, build **npm run build**, output **dist**. Connect **bank.receiz.com** after selecting the intended project. The registered public client and origin are in the bank config; a client secret is neither needed nor included. Do not copy Receiz root keys, signer bearers, private Identity Seals or recovery phrases into this frontend project.
+Use the bank repository and the branch/commit selected by the user, framework **Vite**, install **npm ci**, build **npm run build**, output **dist**. **bank.receiz.com** is now publicly reachable on the bank project. The registered public client and origin are in the bank config; a client secret is neither needed nor included. Do not copy Receiz root keys, signer bearers, private Identity Seals or recovery phrases into this frontend project.
 
-The user deployed frontend commit `3313e81` to the Vercel bank project. This task adds and tests its missing Node API routes locally; it does not push or deploy them. A successful build does not qualify the remaining financial authority boundaries above.
+The initial frontend deployment was `3313e81`; the user subsequently deployed the bank API correction. On October 14 the public bank origin responded HTTP 200 and the user confirmed real account balances there. New refinements still require the user to push/deploy their bank commit. A successful build does not qualify the remaining financial authority boundaries above.
 
-Browser device custody is origin-specific: use the backed-up existing Identity Seal in the app's **Use existing ID** flow on the public origin to reopen that same identity. Localhost IndexedDB does not move automatically to the new domain.
+Browser device custody is origin-specific: use the backed-up existing Identity Seal in the app's **Use existing account** flow on the public origin to reopen that same identity. Localhost IndexedDB does not move automatically to the new domain.
 
 See [native domain verification](native-bank-domain-verification.md) and [live status](live-bank-status.md) for request/deployment evidence and test scope.
 

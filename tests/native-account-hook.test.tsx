@@ -59,3 +59,14 @@ it('preserves the initial wallet source failure while a retry is still pending',
     expect(read().busy).toBe(true);
   });
 });
+it('keeps creation and import/open operations single-flight while the first identity is opening', async () => {
+  let finish!: (value: OpenIdentity) => void;
+  custody.create.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  await observe(async read => {
+    let first!: Promise<void>;
+    await act(async () => { first = read().create(true); await read().create(true); });
+    expect(custody.create).toHaveBeenCalledTimes(1);
+    await act(async () => { finish(held(async () => ({ userId: 'fixture', totalUsdCents: '0' }))); await first; });
+    expect(read().identity).not.toBeNull();
+  });
+});

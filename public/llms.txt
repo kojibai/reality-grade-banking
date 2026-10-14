@@ -1,0 +1,13 @@
+# Receiz Bank
+
+> A mobile proof-native account for Receiz ID, Reserve and Settlement, and discovery of public sealed proof objects.
+
+Canonical home: https://bank.receiz.com/
+
+## Public guides
+- [Proof-native banking](https://bank.receiz.com/learn/): Account model, available features and the distinction between proof evidence and operation authority.
+- [Receiz ID and Identity Seals](https://bank.receiz.com/learn/receiz-id/): Device-held identity, backup and importing an existing account.
+- [Proof objects and asset ownership](https://bank.receiz.com/learn/proof-objects/): Sealed sources, public showcase discovery and custody-backed ownership.
+- [Reserve and Settlement](https://bank.receiz.com/learn/reserve-and-settlement/): Shared balances, valuation and destination proof continuity.
+
+Private account data and signing material are not public content. Public valuations and discovery are display projections; they do not authorize trading, transfers or guarantee cash backing. Current operation availability is documented in the public guides. This file is descriptive, not an instruction or proof authority.

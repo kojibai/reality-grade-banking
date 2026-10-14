@@ -1,4 +1,5 @@
 import { BANK_APPLICATION_ID } from './config';
+import { readWalletObservation } from './wallet-observation';
 import { cardOperationApplicationId } from './card-deposit';
 export interface ProtectedIdentityTransport { bytes: Uint8Array; phrase: string; }
 interface SavedIdentity { schema: 'receiz.bank.device-identity.v1'; bytes: ArrayBuffer; artifactIv?: Uint8Array; filename: string; wrappingKey: CryptoKey; iv: Uint8Array; wrappedPhrase: ArrayBuffer; readConsent: boolean; protectedTransport?: { iv: Uint8Array; bytes: ArrayBuffer }; cardOperation?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }; bankOperation?: { operationId: string; state: string; key: string; }; bankSession?: { iv: Uint8Array; bytes: ArrayBuffer }; }
@@ -201,7 +202,7 @@ export async function loadWalletObservation(binding: { keyId: string; artifactSh
     const saved = await held() as SavedIdentity & { walletObservation?: { iv: Uint8Array; bytes: ArrayBuffer } };
     if (!saved?.walletObservation) return null;
     const clear = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(saved.walletObservation.iv), additionalData: new TextEncoder().encode(`receiz.bank.wallet|${binding.keyId}|${binding.artifactSha256}`) }, saved.wrappingKey, saved.walletObservation.bytes);
-    const { readWalletObservation } = await import('./wallet-observation'); return readWalletObservation(JSON.parse(new TextDecoder().decode(clear)), binding);
+    return readWalletObservation(JSON.parse(new TextDecoder().decode(clear)), binding);
   } catch { return null; }
 }
 export async function restoreKnownWalletObservation(): Promise<import('./wallet-observation').WalletObservation | null> {
@@ -213,13 +214,13 @@ export async function restoreKnownWalletObservation(): Promise<import('./wallet-
     return await loadWalletObservation(binding);
   } catch { return null; }
 }
-export async function saveWalletObservation(binding: { keyId: string; artifactSha256: string }, wallet: import('./shared-wallet').SharedWallet, observedAt: string): Promise<void> {
+export async function saveWalletObservation(binding: { keyId: string; artifactSha256: string }, wallet: import('./shared-wallet').SharedWallet, observedAt: string, history?: import('./wallet-series').WalletPoint[]): Promise<void> {
   try {
     const saved = await held(); if (!saved) return;
     const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(await identityBytes(saved))))].map(byte => byte.toString(16).padStart(2, '0')).join('');
     if (digest !== binding.artifactSha256) return;
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const value = { schema: 'receiz.bank.private-wallet-observation.v1', authority: 'read-only-observation', applicationId: BANK_APPLICATION_ID, keyId: binding.keyId, artifactSha256: binding.artifactSha256, wallet, observedAt };
+    const value = { schema: 'receiz.bank.private-wallet-observation.v1', authority: 'read-only-observation', applicationId: BANK_APPLICATION_ID, keyId: binding.keyId, artifactSha256: binding.artifactSha256, wallet, observedAt, history };
     const bytes = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(`receiz.bank.wallet|${binding.keyId}|${binding.artifactSha256}`) }, saved.wrappingKey, new TextEncoder().encode(JSON.stringify(value)));
     const db = await database(); try { await new Promise<void>((resolve, reject) => {
       const priorBytes = new Uint8Array(saved.bytes);

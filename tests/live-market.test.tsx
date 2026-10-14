@@ -11,7 +11,7 @@ const source = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
 vi.mock('../src/receiz/usePublicMarket', () => ({ usePublicMarket: () => source.value }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const roots: ReturnType<typeof createRoot>[] = [];
-afterEach(() => { for (const root of roots.splice(0)) act(() => root.unmount()); document.body.replaceChildren(); history.replaceState({}, '', '#market'); vi.unstubAllGlobals(); });
+afterEach(() => { for (const root of roots.splice(0)) act(() => root.unmount()); document.body.replaceChildren(); localStorage.clear(); history.replaceState({}, '', '#market'); vi.unstubAllGlobals(); });
 function mount() {
   const host = document.createElement('div'); document.body.append(host); const root = createRoot(host); roots.push(root);
   const commit = vi.fn(), open = vi.fn();
@@ -68,7 +68,9 @@ it('loads more public rows automatically before reaching the list end', () => {
 it('removes objects on full refresh and does not synthesize a chart from a single value', () => {
   source.value = { catalog: catalog(2), status: 'live', error: null, refresh: vi.fn() };
   const { host, root } = mount();
-  expect(host.querySelectorAll('.value-chart')).toHaveLength(0);
+  expect(host.querySelectorAll('.market-overview .value-chart')).toHaveLength(1);
+  expect(host.querySelectorAll('.market-overview svg path[stroke]')).toHaveLength(1);
+  expect(host.querySelector('.market-overview svg path[stroke]')?.getAttribute('d')?.split('C')).toHaveLength(1);
   source.value = { ...source.value, catalog: catalog(1) };
   act(() => root.render(<BankContext.Provider value={{ state: createDemoState(), commit: vi.fn(), open: vi.fn(), close: vi.fn(), navigate: vi.fn(), saveRule: vi.fn(), updateIdentity: vi.fn(), resetDemo: vi.fn() }}><Market /></BankContext.Provider>));
   expect(host.querySelectorAll('.market-rows .asset-row')).toHaveLength(1);

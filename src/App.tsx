@@ -10,6 +10,8 @@ import { parseRoute, routeHash, sheetCloseBehavior } from './core/routes';
 import type { UIAction } from './core/useBank';
 import { useNativeAccount } from './receiz/useNativeAccount';
 import { projectPersonalHistory } from './receiz/personal-history';
+import { usePublicMarket } from './receiz/usePublicMarket';
+import { projectAccountShowcase } from './receiz/account-showcase';
 import { LiveAssets } from './features/assets/LiveAssets';
 import { BANK_PUBLIC_ORIGIN } from './receiz/config';
 import { parsePaymentRequest } from './receiz/payment-request';
@@ -17,6 +19,8 @@ import { CardDepositReturn, readCardReturn } from './features/deposit/CardDeposi
 export default function App() { const session = readCardReturn(location.search); return session ? <CardDepositReturn sessionId={session} /> : <BankApp />; }
 function BankApp() {
   const account = useNativeAccount();
+  const publicMarket = usePublicMarket(Boolean(account.identity));
+  const showcase = useMemo(() => projectAccountShowcase(publicMarket.catalog, account.identity?.accountUsername?.() ?? account.identity?.username ?? null), [publicMarket.catalog, account.identity, account.wallet]);
   const [paymentRequest] = useState(() => { try { return location.search ? parsePaymentRequest(`${BANK_PUBLIC_ORIGIN}/${location.search}`) : null; } catch { return null; } });
   const [sourceRevision, setSourceRevision] = useState(0);
   const [panel, setPanel] = useState<Panel>('account'), [sheet, setSheet] = useState<UIAction | null>(null);
@@ -32,9 +36,9 @@ function BankApp() {
     return <Entrance opening={account.opening} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId} />;
   }
   return <ConsoleShell panel={panel} onNavigate={navigate} onDeposit={() => open({ kind: 'deposit' })} onProfile={() => open({ kind: 'profile' })}>
-    <div hidden={panel !== 'account'}><LiveAccount wallet={account.wallet} busy={account.busy} error={account.error} observedAt={account.observedAt} onRefresh={() => void account.refresh()} onSend={() => open({ kind: 'send' })} onReceive={() => open({ kind: 'receive' })} onBalance={() => open({ kind: 'balance' })} onAssets={() => navigate('assets')} onLedger={() => navigate('ledger')} /></div>
-    <div hidden={panel !== 'market'}><Market active={panel === 'market'} onAction={open} /></div>
-    <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={panel === 'assets'} revision={sourceRevision} onOpen={open} /></div>
+    <div hidden={panel !== 'account'}><LiveAccount walletHistory={account.identity.knownWallet?.()?.history} showcase={showcase} wallet={account.wallet} busy={account.busy} error={account.error} observedAt={account.observedAt} onRefresh={() => void account.refresh()} onSend={() => open({ kind: 'send' })} onReceive={() => open({ kind: 'receive' })} onBalance={() => open({ kind: 'balance' })} onAssets={() => navigate('assets')} onLedger={() => navigate('ledger')} /></div>
+    <div hidden={panel !== 'market'}><Market source={publicMarket} active={panel === 'market'} onAction={open} /></div>
+    <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={panel === 'assets'} revision={sourceRevision} showcase={showcase} showcaseBusy={publicMarket.status === 'loading'} onOpen={open} /></div>
     <div hidden={panel !== 'ledger'}><Ledger active={panel === 'ledger'} personalHistory={personalHistory} /></div>
     {sheet && <LiveActions key={sheet.kind} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} onClose={close} onRefresh={() => { setSourceRevision(value => value + 1); void account.refresh(); }} onForget={async () => { setSheet(null); await account.forget(); }} />}
   </ConsoleShell>;
