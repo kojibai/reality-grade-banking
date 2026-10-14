@@ -1,0 +1,14 @@
+{
+  "sourceCommit": "ad836e9c7f97057a1dd8bc72b2c9c6824fbe185c",
+  "isProofAuthority": false,
+  "runtimeSourceSha256": "668fa0535506dd754f8805f88514f86a6c9f7a8530b85ce6e75c2b32abc445fa",
+  "dependencySourceSha256": "695efa41dc83b872d169036f1a11da66581717389cc792af57a94fa88fb1197c",
+  "exactHeadsTypeScript": "function exactHeads(value: unknown, code: string, allowEmpty = false): Readonly<Record<string, string>> {\n  const source = record(value, code);\n  const keys = Object.keys(source);\n  if ((!allowEmpty && keys.length === 0) || keys.some((key, index) => index > 0 && keys[index - 1]!.localeCompare(key) >= 0)) fail(code);\n  return freeze(Object.fromEntries(keys.map((key) => [token(key, code), digest(source[key], code)])));\n}",
+  "sortedHeadsTypeScript": "function sortedHeads(value: Readonly<Record<string, string>>): Readonly<Record<string, string>> {\n  return freeze(Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right))));\n}",
+  "sourcePublicationAssignmentOrder": [
+    "registry",
+    "reducer",
+    "runtime",
+    "source-publication"
+  ]
+}

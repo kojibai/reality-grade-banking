@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
 import { permittedNativePath } from '../src/receiz/native-transport';
+import { probeNativeQualification } from './native-qualification-probe';
 const PREFIX = '/api/bank/native'; const LIMIT = 32 * 1024 * 1024;
 export function nativeRequestPath(path: string, method: string): string | null {
   if (!path.startsWith(PREFIX)) return null;
@@ -29,6 +30,10 @@ export async function nativeAccountMiddleware(req: IncomingMessage, res: ServerR
       console.warn('receiz-bank native qualification', { status: response.status, requestId: requestId && /^[a-zA-Z0-9:.-]{1,160}$/.test(requestId) ? requestId : null });
     }
     const output = response.body ? await bytes(response.body as unknown as AsyncIterable<Uint8Array>) : Buffer.alloc(0);
+    if (process.env.RECEIZ_BANK_QUALIFICATION_DIAGNOSTICS === '1' && response.status === 503 && path.startsWith('/api/sdk/v1/runtime/qualify?') && body) {
+      const probes = await probeNativeQualification(body.toString('utf8'), req.headers.authorization);
+      for (const probe of probes) console.warn('receiz-bank native qualification probe', probe);
+    }
     res.writeHead(response.status, { 'Content-Type': 'application/json' }); res.end(output);
   } catch { res.writeHead(503, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'Receiz account transport is temporarily unavailable.' })); }
 }

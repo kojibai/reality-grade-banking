@@ -1,0 +1,11 @@
+--- a/app/lib/receiz/v124/runtimeDependencies.server.ts
++++ b/app/lib/receiz/v124/runtimeDependencies.server.ts
+@@ -3323,7 +3323,7 @@
+         serviceVersion: SERVICE_VERSION,
+         registryVersion: REGISTRY_VERSION,
+         reducerVersion: REDUCER_VERSION,
+-        publicDependencyHeads: freeze(publicDependencyHeads),
++        publicDependencyHeads: sortedHeads(publicDependencyHeads),
+         runtimeReady,
+         registryCompatible: publicDependencyHeads.registry === RECEIZ_CURRENT_REGISTRY_DIGEST,
+         reducerCompatible: publicDependencyHeads.reducer === RECEIZ_LIVING_SUBJECT_REDUCER_DIGEST,
