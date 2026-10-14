@@ -1,4 +1,4 @@
-import { BANK_APPLICATION_ID } from './config';
+import { BANK_APPLICATION_ID } from './config.js';
 
 export const NATIVE_PATHS: Readonly<Record<string, string>> = {
   '/api/signer/v4/receiz/enroll': 'POST',

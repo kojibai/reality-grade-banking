@@ -79,7 +79,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       const grant = await targetUnsigned.identity.exchangeProofAuthority({ artifact: transportBytes, challenge: { ...created.challenge, proof }, applicationId, scopes });
       if (grant.applicationId !== applicationId || grant.keyId !== transportBinding.keyId || grant.artifactDigest !== transportBinding.artifactSha256 || scopes.some(scope => !grant.grantedScopes.includes(scope))) throw new Error('Receiz did not grant this bank access to the same identity and scopes.');
       const protectedClient = sdk.createReceizClient({ applicationId, baseUrl: 'https://receiz.com', accessToken: grant.accessToken, fetchImpl: heldFetch });
-      const granted = await protectedClient.auth.grantedScopes(); if (scopes.some(scope => !granted.includes(scope))) throw new Error('Receiz wallet permission is unavailable.');
+      const granted = await protectedClient.auth.grantedScopes(); if (scopes.some(scope => !granted.includes(scope))) throw new Error('Receiz account permission is unavailable.');
       client = protectedClient; clientApplicationId = applicationId; grantedScopes = granted; expiresAtKai = grant.expiresAtKai; accountUid = session.uid;
     }
     return client;

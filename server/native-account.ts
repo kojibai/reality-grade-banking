@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
-import { permittedNativePath } from '../src/receiz/native-transport';
-import { probeNativeQualification } from './native-qualification-probe';
+import { permittedNativePath } from '../src/receiz/native-transport.js';
+import { probeNativeQualification } from './native-qualification-probe.js';
 const PREFIX = '/api/bank/native'; const LIMIT = 32 * 1024 * 1024;
 export function nativeRequestPath(path: string, method: string): string | null {
   if (!path.startsWith(PREFIX)) return null;

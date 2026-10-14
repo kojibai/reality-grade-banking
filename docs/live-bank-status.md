@@ -33,9 +33,9 @@ network counts, public presence, and UI checks never admit ownership or funds.
 Public objects have `canTrade: false` until the bank has an admitted offer,
 verified ownership, and qualified financial execution.
 
-The GET proxy is installed in Vite dev and preview. A production deployment
-must run equivalent Node middleware; static hosting alone cannot serve
-`/api/bank/public-market/*`. No deployment has been performed. Refresh reads
+The GET proxy is shared by Vite dev/preview and the new Vercel Node entry.
+The user deployed the previous static frontend; the API fix requires their
+next push/redeployment. Refresh reads
 allowlisted Receiz sources without user cookies or bearer tokens. The raw
 discovery transport is stripped of full works, private/session fields and
 unrelated prediction books before reaching the browser.
@@ -84,3 +84,7 @@ skills: `8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065`.
 This read is not execution or value authority. Financial ordering and expiry
 must use admitted KKS/Kai coordinates; dates shown in public details are local
 descriptive display only.
+
+## Vercel transport follow-up — October 14
+
+The user deployed frontend commit3313e81 as production bank deployment dpl_ChEMtiQzD2fSQF77zznppufNFpfh and observed offline_seal_enrollment_failed:404. That checkpoint had no Vercel API handler; environment values cannot supply a missing route. The fix adds a shared Web-standard Node entry and an unnamed rewrite, with no mandatory app environment variables or new dependency. Exact emitted Node imports and routes are tested separately from the frontend build. Account creation/import, owner binding, custody and financial completion remain subject to actual deployed checks. See vercel-transport-verification.md.

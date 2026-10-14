@@ -1,5 +1,5 @@
-import { BANK_APPLICATION_ID } from '../src/receiz/config';
-import { BANK_NATIVE_OPERATIONS } from '../src/receiz/bank-native-readiness';
+import { BANK_APPLICATION_ID } from '../src/receiz/config.js';
+import { BANK_NATIVE_OPERATIONS } from '../src/receiz/bank-native-readiness.js';
 export interface NativeQualificationProbe { operation: string; status: number | null; requestId: string | null; }
 // Optional operator diagnostics only. Qualification is read-only; no source,
 // session, plan or financial route is invoked. This cannot enable transactions.

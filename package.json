@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
+    "vercel:check": "node scripts/check-vercel-build.mjs",
     "market:seed": "node scripts/seed-public-market.mjs",
     "ledger:seed": "node scripts/seed-public-ledger.mjs",
     "bank:contract": "node scripts/compile-bank-domain.mts"

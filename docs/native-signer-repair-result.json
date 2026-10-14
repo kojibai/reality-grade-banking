@@ -71,10 +71,16 @@
   "accountAuthoritySessionOpened": false,
   "additionalReceizCodeChangedAfterApprovedHostFix": false,
   "newPackageReleaseRequiredForHostFix": false,
-  "latestBankUnitTestsPassed": 211,
-  "latestBankTestFilesPassed": 60,
+  "latestBankUnitTestsPassed": 217,
+  "latestBankTestFilesPassed": 61,
   "latestBankTypecheckBuildPassed": true,
   "checkpointReviewCriticalFindingsRemaining": 0,
   "checkpointReviewImportantFindingsRemaining": 0,
-  "fullNativeBankReviewCompleted": false
+  "fullNativeBankReviewCompleted": false,
+  "bankVercelApiPrepared": true,
+  "bankVercelApiDeployed": false,
+  "bankVercelApiLocalBuildPassed": true,
+  "bankVercelCompiledFunctionCheckPassed": true,
+  "bankRequiredApplicationEnvironmentVariables": [],
+  "bankVercelFrontendDeploymentId": "dpl_ChEMtiQzD2fSQF77zznppufNFpfh"
 }

@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
-import { readReceizPublicMarketSource } from './public-market.ts';
+import { readReceizPublicMarketSource } from './public-market.js';
 import type { PublicSource } from '../src/receiz/public-network';
 
 const PATH = '/api/bank/public-network';

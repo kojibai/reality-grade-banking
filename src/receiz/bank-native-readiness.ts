@@ -1,5 +1,5 @@
 import type { ReceizOperationalCapabilityReportV124 } from '@receiz/sdk';
-import { BANK_APPLICATION_ID, BANK_NATIVE_SCOPES } from './config';
+import { BANK_APPLICATION_ID, BANK_NATIVE_SCOPES } from './config.js';
 export const BANK_NATIVE_OPERATIONS = ['subject-admission', 'namespace-resolution', 'durable-execution', 'verified-replay', 'multi-domain-transaction', 'public-recipient-resolution', 'source-publication'] as const;
 export interface BankNativeReadiness {
   status: 'permissions-needed' | 'runtime-unavailable' | 'bank-domain-needed';
