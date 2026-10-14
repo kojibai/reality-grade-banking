@@ -1,0 +1,52 @@
+// @vitest-environment happy-dom
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { beforeEach, expect, it, vi } from 'vitest';
+import { usePrivateHistory } from '../src/receiz/usePrivateHistory';
+import { parsePrivateHistoryPage } from '../src/receiz/private-history';
+import type { OpenIdentity } from '../src/receiz/native-identity';
+const vault = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn() }));
+vi.mock('../src/receiz/identity-vault', () => ({ loadPrivateHistoryCache: vault.load, savePrivateHistoryCache: vault.save }));
+Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+const page = (uid: string, ids: string[], nextCursor: string | null = null) => parsePrivateHistoryPage({ ok: true, accountUserId: uid, nextCursor, events: ids.map(id => ({ id, kind: 'reserve_credit', createdAt: '2026-10-14T12:00:00Z', amountUsdCents: '100' })) }, uid);
+beforeEach(() => { vault.load.mockReset().mockResolvedValue(null); vault.save.mockReset().mockResolvedValue(undefined); });
+async function observe(readPrivateHistory: ReturnType<typeof vi.fn>, run: (read: () => ReturnType<typeof usePrivateHistory>) => Promise<void>) {
+  const identity = { binding: { artifactSha256: 'a'.repeat(64) }, readPrivateHistory } as unknown as OpenIdentity;
+  let state!: ReturnType<typeof usePrivateHistory>; const root = createRoot(document.createElement('div'));
+  function Probe() { state = usePrivateHistory(identity, 'A', true); return null; }
+  try { await act(async () => root.render(<Probe />)); await run(() => state); } finally { act(() => root.unmount()); }
+}
+it('refuses freshly authenticated history from another account before display or retention', async () => {
+  await observe(vi.fn().mockResolvedValue(page('B', ['private-B'])), async read => { expect(read().cache).toBeNull(); expect(vault.save).not.toHaveBeenCalled(); expect(read().error).toBeTruthy(); });
+});
+it('awaits encrypted restoration so a fast head read cannot erase retained older rows', async () => {
+  let restore!: (value: unknown) => void;
+  vault.load.mockImplementation(() => new Promise(resolve => { restore = resolve; }));
+  const network = vi.fn().mockResolvedValue(page('A', ['head'], 'older'));
+  await observe(network, async read => {
+    await act(async () => { restore({ schema: 'bank.private-history-cache.v1', accountUid: 'A', observedAt: '2026-10-14T10:00:00Z', records: page('A', ['head', 'retained-older']).records, nextCursor: null }); });
+    expect(read().cache?.records.map(row => row.sourceId)).toContain('retained-older');
+    expect(vault.save.mock.calls.at(-1)?.[1].records.map((row: { sourceId: string }) => row.sourceId)).toContain('retained-older');
+  });
+});
+it('pauses repeated or failed pagination until an explicit refresh', async () => {
+  const network = vi.fn().mockResolvedValueOnce(page('A', ['head'], 'cursor-one')).mockResolvedValueOnce(page('A', ['older'], 'cursor-one')).mockResolvedValue(page('A', ['head'], 'cursor-one'));
+  await observe(network, async read => {
+    await act(async () => { await read().loadMore(); });
+    expect(read().error).toBeTruthy();
+    await act(async () => { await read().loadMore(); }); expect(network).toHaveBeenCalledTimes(2);
+    await act(async () => { await read().refresh(); }); expect(network).toHaveBeenCalledTimes(3);
+  });
+});
+it('ignores callbacks captured before switching identities', async () => {
+  const a = { binding: { artifactSha256: 'a'.repeat(64) }, readPrivateHistory: vi.fn().mockResolvedValue(page('A', ['a'], 'older-a')) } as unknown as OpenIdentity;
+  const b = { binding: { artifactSha256: 'b'.repeat(64) }, readPrivateHistory: vi.fn().mockResolvedValue(page('B', ['b'], 'older-b')) } as unknown as OpenIdentity;
+  let state!: ReturnType<typeof usePrivateHistory>; const root = createRoot(document.createElement('div'));
+  function Probe({ id, uid }: { id: OpenIdentity; uid: string }) { state = usePrivateHistory(id, uid, true); return null; }
+  try {
+    await act(async () => root.render(<Probe id={a} uid="A" />)); const oldLoad = state.loadMore;
+    await act(async () => root.render(<Probe id={b} uid="B" />));
+    await act(async () => { await oldLoad(); });
+    expect(state.cache?.accountUid).toBe('B'); expect(state.canLoadMore).toBe(true); expect(state.error).toBeNull(); expect(a.readPrivateHistory).toHaveBeenCalledTimes(1);
+  } finally { act(() => root.unmount()); }
+});

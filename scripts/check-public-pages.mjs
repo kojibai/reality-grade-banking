@@ -15,7 +15,8 @@ for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/
   assert.match(page, /property="og:image" content="https:\/\/bank\.receiz\.com\/receiz-bank-learn-share\.jpg"/);
   assert.match(page, /name="twitter:image:alt"/);
   assert.match(page, /href="\/learn\/learn.css"/); assert.match(page, /src="\/learn\/learn.js" defer/);
-  assert.ok(!page.includes('/assets/index-'), 'Public guides must not load the private app runtime');
+  assert.ok(!/<script type="module"[^>]*src="\/assets\/index-/.test(page), 'Public guides must not execute the private app runtime');
+  assert.ok(page.includes('id="receiz-navigation"'), 'Public guide transitions are preloaded');
   for (const json of page.matchAll(/<script type="application\/ld\+json">([^<]+)<\/script>/g)) JSON.parse(json[1]);
   assert.ok(sitemap.includes(`https://bank.receiz.com/learn/${path}`));
 }

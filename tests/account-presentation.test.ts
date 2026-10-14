@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { projectPersonalHistory } from '../src/receiz/personal-history';
 import { projectAccountShowcase } from '../src/receiz/account-showcase';
 import { parsePublicMarket } from '../src/receiz/public-market';
-import { appendWalletPoint, settlementDayChange } from '../src/receiz/wallet-series';
+import { appendWalletPoint, settlementDayChange, settlementVisibleChange } from '../src/receiz/wallet-series';
 import type { ReceizIdentityAccountProjection } from '@receiz/sdk';
 import type { SharedWallet } from '../src/receiz/shared-wallet';
 const projected = (state: unknown) => ({ authority: 'verified-identity-portable-state', portableStateVerified: true, owner: { uid: 'owner' }, verifiedState: state, completeAtSealedHead: true }) as ReceizIdentityAccountProjection;
@@ -23,4 +23,11 @@ it('compares settlement with the last observed balance before the exact v129 Kai
   expect(settlementDayChange(current, '17491270422')).toMatchObject({ deltaCents: '2000', percent: 20 });
   expect(settlementDayChange(current.slice(1), '17491270422')).toBeNull();
   expect(appendWalletPoint(current, { ...wallet, userId: 'different' }, '2026-10-14T10:02:00Z', '17491270423')).toHaveLength(1);
+});
+it('shows real available movement with its observed interval when the Kai-day opening is absent', () => {
+  const wallet = { userId: 'owner', totalUsdCents: '10000', reserveUsdCents: '0', settlementUsdCents: '10000' } as SharedWallet;
+  const first = appendWalletPoint([], wallet, '2026-10-14T10:00:00Z', '17491270422');
+  const points = appendWalletPoint(first, { ...wallet, totalUsdCents: '9000', settlementUsdCents: '9000' }, '2026-10-14T10:01:00Z', '17491270423');
+  expect(settlementVisibleChange(points)).toMatchObject({ deltaCents: '-1000', percent: -10, period: 'observed', from: '2026-10-14T10:00:00Z' });
+  expect(settlementVisibleChange(first)).toBeNull();
 });

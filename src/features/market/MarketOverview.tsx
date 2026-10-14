@@ -1,23 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ArrowRight, Info } from 'lucide-react';
-import { ValueChart } from '../../components/ValueChart';
+import { ValueChart, Periods, type ChartPeriod } from '../../components/ValueChart';
 import { formatMoney } from '../../core/money';
-import { publicMarketCapitalization, type MarketCapPoint } from '../../receiz/market-capitalization';
-import type { PublicMarketCatalog } from '../../receiz/public-market';
-const KEY = 'receiz-bank-public-capitalization-v1';
-function restore(): MarketCapPoint[] { try { const saved = JSON.parse(localStorage.getItem(KEY) ?? '[]'); return Array.isArray(saved) ? saved.slice(-512).filter(point => typeof point.at === 'string' && Number.isFinite(Date.parse(point.at)) && typeof point.usdCents === 'string' && /^\d{1,40}$/.test(point.usdCents) && Number.isSafeInteger(point.count) && point.count > 0) : []; } catch { return []; } }
-export function MarketOverview({ catalog, quoteStatus, onExplore }: { catalog: PublicMarketCatalog | null; quoteStatus: string; onExplore: () => void }) {
-  const cap = useMemo(() => publicMarketCapitalization(catalog), [catalog]), [points, setPoints] = useState(restore), [info, setInfo] = useState(false);
-  useEffect(() => {
-    if (!catalog || !cap.complete || !cap.count || quoteStatus !== 'fresh') return;
-    setPoints(previous => { const at = new Date().toISOString(), last = previous.at(-1); if (last && Date.parse(at) - Date.parse(last.at) < 30_000) return previous; const next = [...previous, { at, usdCents: cap.usdCents, count: cap.count }].slice(-512); try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* Public history storage is optional. */ } return next; });
-  }, [catalog, cap, quoteStatus]);
-  const current = useMemo(() => ({ at: new Date().toISOString(), usdCents: cap.usdCents, count: cap.count }), [cap]);
-  const last = points.at(-1);
-  const display = !catalog || !cap.valued ? [] : !cap.complete || !points.length ? [current] : last?.usdCents === cap.usdCents && last.count === cap.count ? points : [...points, current];
-  return <div className="market-overview"><div className="market-overview-heading"><span>{cap.complete ? 'Total market capitalization' : 'Public market value'}</span><button className="icon-button" aria-label="About market capitalization" aria-expanded={info} onClick={() => setInfo(!info)}><Info size={17} /></button></div><strong className="market-cap-amount">{catalog && cap.valued ? formatMoney(cap.usdCents) : '—'}</strong><p className="market-cap-subtitle">{cap.count.toLocaleString()} public proof objects{!cap.complete && cap.count ? ` · ${cap.valued.toLocaleString()} valued` : ''}</p>
-    {info && <p className="market-cap-explanation">The sum of Receiz’s latest public valuations, once per asset. This is indicative asset value; it does not measure cash backing or executable sale proceeds. The chart records complete market observations, without inventing a past price series.</p>}
-    <ValueChart values={display.map(point => Number(point.usdCents) / 100)} label="Total public market value in dollars" tooltip={index => ({ value: formatMoney(display[index].usdCents), label: `${new Date(display[index].at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · ${display[index].count.toLocaleString()} objects` })} />
+import { chartChange } from '../../core/chart-history';
+import { useMarketCapitalization } from '../../receiz/market-projection/useMarketCapitalization';
+export function MarketOverview({ active = true, onExplore }: { active?: boolean; onExplore: () => void }) {
+  const [info, setInfo] = useState(false), [period, setPeriod] = useState<ChartPeriod>('ALL');
+  const { source, points, status } = useMarketCapitalization(period, active);
+  const change = points.length > 1 ? chartChange(points[0].usdCents, points.at(-1)!.usdCents) : null;
+  return <div className="market-overview"><div className="market-overview-heading"><span>Total market capitalization</span><button className="icon-button" aria-label="About market capitalization" aria-expanded={info} onClick={() => setInfo(!info)}><Info size={17} /></button></div><strong className="market-cap-amount">{source ? formatMoney(String(Math.round(source.currentUsd * 100))) : '—'}</strong><p className="market-cap-subtitle">{source ? `${source.marketAssetsPriced.toLocaleString()} valued market assets · ${source.cardsInCirculation.toLocaleString()} sports cards` : 'Receiz public Proof Graph'}{source && status !== 'live' ? ' · retained source' : ''}</p>
+    {info && <p className="market-cap-explanation">The same total as Receiz Proof Graph: public market assets and the sports economy. History applies the current public source’s deterministic value rules at earlier Kai pulses. It is projected value history, rather than a record of historic holdings or trades. Valuation does not measure cash backing or committed sale proceeds.{source && <> Source captured {new Date(source.generatedAt).toLocaleString()}.</>}</p>}
+    {change && <div className={`chart-period-change ${change.trend === 'down' ? 'negative' : change.trend === 'up' ? 'positive' : 'muted'}`}><strong>{change.trend === 'up' ? '↗' : change.trend === 'down' ? '↘' : '→'} {BigInt(change.deltaCents) > 0n ? '+' : ''}{formatMoney(change.deltaCents)} {change.percent !== null && `(${change.percent > 0 ? '+' : ''}${change.percent.toFixed(2)}%)`}</strong><span>{period === 'ALL' ? 'Since first issuance' : period} · projected value</span></div>}
+    <ValueChart key={period} times={points.map(point => Date.parse(point.at))} color={change?.trend === 'down' ? 'red' : change?.trend === 'up' ? 'green' : 'blue'} values={points.map(point => Number(point.usdCents) / 100)} label="Total market capitalization · projected value history" tooltip={index => ({ value: formatMoney(points[index].usdCents), label: `${new Date(points[index].at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })} · Kai ${points[index].pulse.toLocaleString()}` })} />
+    <Periods value={period} onChange={setPeriod} />
+    {points.length > 0 && <div className="chart-date-range"><span>{new Date(points[0].at).toLocaleDateString()}</span><span>{new Date(points.at(-1)!.at).toLocaleDateString()}</span></div>}
     <button className="market-view-assets" onClick={onExplore}>View assets<ArrowRight size={16} /></button>
   </div>;
 }

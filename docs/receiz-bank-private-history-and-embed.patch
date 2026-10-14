@@ -1,0 +1,81 @@
+diff --git a/app/api/wallet/ledger/route.ts b/app/api/wallet/ledger/route.ts
+index 02e053b31..e211c7efb 100644
+--- a/app/api/wallet/ledger/route.ts
++++ b/app/api/wallet/ledger/route.ts
+@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
+ import { NextResponse } from "next/server";
+ import { formatReceizTimestampNY } from "@/app/lib/time";
+ import { getSession, sbAdmin } from "@/app/lib/premium/server";
++import { requireOidcAccessToken } from "@/app/lib/oidc/resourceAuth";
+ import { hmacHex } from "@/app/lib/sign";
+ import { projectWalletLedgerValueReceipt } from "@/app/lib/wallet/valueReceipt";
+ import { computeAnchorId, getAnchorRecord, upsertAnchorRecord } from "@/app/lib/receizAnchorStore";
+@@ -921,7 +922,8 @@ function etagForLedgerPayload(payload: WalletLedgerResponseBody): string {
+ }
+ 
+ function respondLedgerJson(req: Request, payload: WalletLedgerResponseBody, actorUserId: string): Response {
+-  const etag = etagForLedgerPayload(payload);
++  const accountPayload = { ...payload, accountUserId: actorUserId };
++  const etag = etagForLedgerPayload(accountPayload);
+   const ifNoneMatch = parseIfNoneMatchHeader(req.headers.get("if-none-match"));
+   if (ifNoneMatch.has("*") || ifNoneMatch.has(etag)) {
+     return new Response(null, {
+@@ -932,7 +934,7 @@ function respondLedgerJson(req: Request, payload: WalletLedgerResponseBody, acto
+       },
+     });
+   }
+-  return NextResponse.json(payload, {
++  return NextResponse.json(accountPayload, {
+     status: 200,
+     headers: {
+       "cache-control": "no-store, max-age=0",
+@@ -1279,7 +1281,13 @@ function compareWalletLedgerEventToCursor(event: WalletLedgerEvent, cursor: Ledg
+ 
+ export async function GET(req: Request) {
+   try {
+-    const session = await getSession();
++    // A supplied bearer never falls back to a website cookie. The account is
++    // taken only from the verified scoped token, never a query/body field.
++    const access = req.headers.has("authorization")
++      ? await requireOidcAccessToken({ req, requiredScopes: ["receiz:wallet.read"] })
++      : null;
++    if (access && !access.ok) return access.response;
++    const session = access?.ok ? { uid: access.principal.userId } : await getSession();
+     if (!session) {
+       return NextResponse.json(
+         { ok: false, error: "signin_required" },
+@@ -1297,7 +1305,8 @@ export async function GET(req: Request) {
+     const legacySince = parseCursor(url.searchParams.get("since"));
+     const search = parseLedgerSearchQuery(url.searchParams.get("search"));
+     const windowLimit = Math.max(20, Math.min(220, limit * 3));
+-    const includeReceizAnchors = shouldIncludeReceizAnchors(url.searchParams.get("includeReceiz"));
++    // Delegated history reads do not create anchors or other ledger writes.
++    const includeReceizAnchors = !access && shouldIncludeReceizAnchors(url.searchParams.get("includeReceiz"));
+     const receizSecret = includeReceizAnchors ? (process.env.RECEIZ_SIGNING_KEY ?? "").trim() : "";
+ 
+     const sb = sbAdmin();
+diff --git a/app/components/layout/GlobalAuthChrome.tsx b/app/components/layout/GlobalAuthChrome.tsx
+index 8706e0e01..ca0332500 100644
+--- a/app/components/layout/GlobalAuthChrome.tsx
++++ b/app/components/layout/GlobalAuthChrome.tsx
+@@ -745,6 +745,7 @@ export function GlobalAuthChrome({ defaultBottomSafe, initialSession = null }: G
+   const leaseRoutePathname = pathname || runtimePathname;
+   const isConformanceRoute = currentPath === "/conformance" || /\/conformance(?:\/|$)/.test(currentPath);
+   const isHomeRoute = currentPath === "/";
++  const isPaymentEmbedRoute = currentPath === "/payments/embed/checkout" || currentPath === "/payments/embed/checkout/";
+   const isContactsRoute = currentPath === "/contacts" || currentPath.startsWith("/contacts/");
+   const isSignInRoute = currentPath === "/signin" || currentPath.startsWith("/signin/");
+   const isMarketRoute =
+@@ -776,10 +777,10 @@ export function GlobalAuthChrome({ defaultBottomSafe, initialSession = null }: G
+   const localProfileRouteIsSettled =
+     Boolean(activeLocalProfileUsername) &&
+     (currentPath === activeLocalProfilePath || currentPath === activeLegacyProfilePath);
+-  const showPrivateChromeRuntime = loggedIn && !isHomeRoute && !isSignInRoute && !isSignalRunEmbedRoute && !isWorldRoute && !isPublicLiveRoomRoute;
++  const showPrivateChromeRuntime = !isPaymentEmbedRoute && loggedIn && !isHomeRoute && !isSignInRoute && !isSignalRunEmbedRoute && !isWorldRoute && !isPublicLiveRoomRoute;
+   const showLeaseSafePrivateChromeRuntime = showPrivateChromeRuntime && !isLeaseRoute;
+   const showSportsSafePrivateChromeRuntime = showLeaseSafePrivateChromeRuntime;
+-  const showGlobalFooterRuntime = !isSignalRunEmbedRoute && !isLeaseRoute && !isProofGraphRoute && !isFraudRoute && !isAgentsRoute;
++  const showGlobalFooterRuntime = !isPaymentEmbedRoute && !isSignalRunEmbedRoute && !isLeaseRoute && !isProofGraphRoute && !isFraudRoute && !isAgentsRoute;
+   const chromeWarmDelayMs = isMarketRoute ? 520 : 120;
+   const navIconClass = isImmersiveDarkChromeRoute
+     ? "bottom-bar__action inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#d7e6ff] transition-colors duration-150 hover:bg-white/[0.08] hover:text-[#f7fbff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8fb8ef]/35 focus-visible:ring-offset-1 focus-visible:ring-offset-[#07111d]"

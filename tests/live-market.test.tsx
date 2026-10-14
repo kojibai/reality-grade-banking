@@ -8,6 +8,7 @@ import { Market } from '../src/features/market/Market';
 import { parsePublicMarket } from '../src/receiz/public-market';
 
 const source = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
+vi.mock('../src/receiz/market-projection/useMarketCapitalization', () => ({ useMarketCapitalization: () => ({ source: null, points: [], status: 'unavailable' }) }));
 vi.mock('../src/receiz/usePublicMarket', () => ({ usePublicMarket: () => source.value }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const roots: ReturnType<typeof createRoot>[] = [];
@@ -68,10 +69,15 @@ it('loads more public rows automatically before reaching the list end', () => {
 it('removes objects on full refresh and does not synthesize a chart from a single value', () => {
   source.value = { catalog: catalog(2), status: 'live', error: null, refresh: vi.fn() };
   const { host, root } = mount();
-  expect(host.querySelectorAll('.market-overview .value-chart')).toHaveLength(1);
-  expect(host.querySelectorAll('.market-overview svg path[stroke]')).toHaveLength(1);
-  expect(host.querySelector('.market-overview svg path[stroke]')?.getAttribute('d')?.split('C')).toHaveLength(1);
+  expect(host.querySelectorAll('.market-overview .value-chart')).toHaveLength(0);
+  expect(host.textContent).toContain('Total market capitalization');
+  expect(host.textContent).toContain('Value history will appear here.');
   source.value = { ...source.value, catalog: catalog(1) };
   act(() => root.render(<BankContext.Provider value={{ state: createDemoState(), commit: vi.fn(), open: vi.fn(), close: vi.fn(), navigate: vi.fn(), saveRule: vi.fn(), updateIdentity: vi.fn(), resetDemo: vi.fn() }}><Market /></BankContext.Provider>));
   expect(host.querySelectorAll('.market-rows .asset-row')).toHaveLength(1);
+});
+
+it('discloses partial sports valuation independently of fresh public quotes', () => {
+  source.value = { catalog: { ...catalog(1), sportsCoverage: 'partial' }, sportsStatus: 'fresh', quoteStatus: 'fresh', status: 'live', error: null, refresh: vi.fn() };
+  expect(mount().host.textContent).toContain('sports partially valued');
 });

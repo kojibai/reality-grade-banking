@@ -11,8 +11,8 @@ export default defineConfig({
   plugins: [react(), publicMarketPlugin(), publicNetworkPlugin(), nativeAccountPlugin(), { name: 'receiz-bank-offline-shell', generateBundle(_, bundle) {
     const files = Object.values(bundle).filter(file => file.type === 'asset' && /\.(css|wasm)$/.test(file.fileName) || file.type === 'chunk' && !file.fileName.includes('qr-decoder')).map(file => `/${file.fileName}`);
     const template = readFileSync(new URL('./src/pwa/sw.template.js', import.meta.url), 'utf8');
-    const version = createHash('sha256').update(files.join('|') + template).digest('hex').slice(0, 12);
-    const shell = ['/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png', '/zk/document-seal.wasm', '/zk/document-seal.zkey', '/zk/kai-sigil.wasm', '/zk/kai-sigil.zkey', ...files];
+    const version = createHash('sha256').update(files.join('|') + template + ['public/learn/learn.css', 'public/learn/learn.js', 'scripts/learn-template.mjs', 'scripts/build-public-pages.mjs'].map(path => readFileSync(new URL(path, import.meta.url), 'utf8')).join('|')).digest('hex').slice(0, 12);
+    const shell = ['/learn/learn.css', '/learn/learn.js', '/learn/proof-glass.webp', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png', '/zk/document-seal.wasm', '/zk/document-seal.zkey', '/zk/kai-sigil.wasm', '/zk/kai-sigil.zkey', ...files];
     const source = template.replace('__CACHE_VERSION__', version).replace('__SHELL_ASSETS__', JSON.stringify(shell));
     this.emitFile({ type: 'asset', fileName: 'sw.js', source });
   } }],

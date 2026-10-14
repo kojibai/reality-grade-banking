@@ -1,5 +1,6 @@
 <!doctype html><meta charset="utf-8"><title>Isolated bank storage checks</title><h1>Test-only private storage</h1><p>Run on a separate test origin, never your actual bank origin. Uses dummy bytes and observations. Creates no Receiz ID, account, deposit, payment or ownership.</p><button id="run">Run storage checks</button><pre id="output">Ready</pre><script type="module">
-import { saveDeviceIdentity, loadDeviceIdentity, saveWalletObservation, loadWalletObservation, restoreKnownWalletObservation, saveDepositSource, loadDepositSources, saveCardOperation, loadCardOperation, forgetDeviceIdentity } from '/src/receiz/identity-vault.ts';
+import { saveDeviceIdentity, loadDeviceIdentity, saveWalletObservation, loadWalletObservation, restoreKnownWalletObservation, saveDepositSource, loadDepositSources, saveCardOperation, loadCardOperation, savePrivateHistoryCache, loadPrivateHistoryCache, forgetDeviceIdentity } from '/src/receiz/identity-vault.ts';
+import { parsePrivateHistoryPage } from '/src/receiz/private-history.ts';
 document.querySelector('#run').onclick = async () => {
  const checks=[], assert=(value,label)=>{if(!value)throw Error(label);checks.push(label);};
  try {
@@ -13,6 +14,10 @@ document.querySelector('#run').onclick = async () => {
   const wallet={userId:'fixture-account',totalUsdCents:'321',reserveUsdCents:'100',settlementUsdCents:'221',balancePhiMicro:'321',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:null,kaiUpulse:null};
   await saveWalletObservation(binding,wallet,'2026-10-13T00:00:00Z'); assert((await loadWalletObservation(binding)).wallet.totalUsdCents==='321','Exact read-only observation retained'); assert((await restoreKnownWalletObservation()).wallet.totalUsdCents==='321','Fast paint binds exact source');
   await saveDepositSource(binding,source,'test-only.bin',binding.artifactSha256); assert((await loadDepositSources(binding)).length===1,'Exact private source retained');
+  const privatePage=parsePrivateHistoryPage({ok:true,accountUserId:wallet.userId,nextCursor:'fixture-older',events:[{id:'test-only-event',kind:'reserve_credit',createdAt:'2026-10-13T00:00:00Z',amountUsdCents:'100'}]},wallet.userId);
+  await savePrivateHistoryCache(binding,{schema:'bank.private-history-cache.v1',accountUid:wallet.userId,observedAt:'2026-10-13T00:00:00Z',records:privatePage.records,nextCursor:privatePage.nextCursor});
+  assert((await loadPrivateHistoryCache(binding,wallet.userId)).records[0].sourceId==='test-only-event','Encrypted private history reopens for the bound account');
+  assert(await loadPrivateHistoryCache(binding,'another-fixture-account')===null,'Private history never opens under another account');
   const operation={schema:'receiz.bank.card-operation.v1',stage:'creating',operationId:'fixture-attempt',amountUsdCents:'500'};
   const attempts=await Promise.allSettled([saveCardOperation(binding,operation,true),saveCardOperation(binding,{...operation,operationId:'competing'},true)]); assert(attempts.filter(value=>value.status==='fulfilled').length===1,'Only one concurrent card start retained');
   const old=await loadCardOperation(binding); assert(old.stage==='creating','Unknown attempt survives reopening');

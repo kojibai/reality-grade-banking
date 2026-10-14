@@ -6,7 +6,7 @@ export interface PublicRecord {
   id: string; sourceId: string; source: PublicSource; kind: string; title: string;
   detail: string; time: string | null; actor: string | null; amountUsdCents: string | null;
   kaiUpulse: string | null; pulse: string | null; sourceUrl: string | null;
-  evidence: Record<string, string>; authority: 'public-source-projection';
+  evidence: Record<string, string>; authority: 'public-source-projection' | 'account-source-projection'; origin?: 'identity-carried' | 'private-account';
 }
 export interface PublicNetworkPage { source: PublicSource; records: PublicRecord[]; nextCursor: string | null; total: string | null; complete: boolean; }
 function object(input: unknown): Record<string, unknown> { return input !== null && typeof input === 'object' && !Array.isArray(input) ? input as Record<string, unknown> : {}; }

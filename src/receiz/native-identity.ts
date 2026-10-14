@@ -18,6 +18,7 @@ import { browserBankKaiFactory } from './bank-kai';
 import { validateAssetDefinition, type AssetDefinition } from './asset-definition';
 import { readCarriedWalletObservation } from './wallet-observation';
 import { appendWalletPoint } from './wallet-series';
+import { parsePrivateHistoryPage, privateHistoryPath, type PrivateHistoryPage } from './private-history';
 
 export interface OpenIdentity {
   binding: ReceizIdentityPublicBinding; needsPhrase: boolean; knownWallet: () => import('./wallet-observation').WalletObservation | null;
@@ -27,6 +28,7 @@ export interface OpenIdentity {
   startAssetIntake: (asset: AssetIntake, attachment?: File) => Promise<HeldDeposit>; holdProof: (file: File) => Promise<HeldDeposit>;
   listDeposits: () => Promise<HeldDeposit[]>;
   createAsset: (definition: AssetDefinition) => Promise<HeldDeposit>;
+  readPrivateHistory: (cursor?: string) => Promise<PrivateHistoryPage>;
   nativeReadiness: (approveNativeAccess?: boolean) => Promise<BankNativeReadiness>;
   connectNativeAccount: (approved: boolean) => Promise<{ subjectId: string; sourceDigest: string; sessionExpiresKaiUPulse: number; readyToTransact: false }>;
   persistDeviceCustody: () => Promise<void>;
@@ -99,6 +101,10 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const wallet = parseSharedWallet(await current.connect.wallet(), accountUid!);
     if (!lifetime.signal.aborted) { const observedAt = new Date().toISOString(); const history = appendWalletPoint(knownWallet?.history ?? [], wallet, observedAt, String(sdk.receizKaiNow().uPulse)); knownWallet = { wallet, observedAt, history }; await saveWalletObservation(binding, wallet, observedAt, history); }
     return wallet;
+  }
+  async function readPrivateHistory(cursor?: string) {
+    const path = privateHistoryPath(cursor), current = await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT);
+    return parsePrivateHistoryPage(await current.request(path), accountUid!);
   }
   async function beginCardDeposit(amount: string, approved: boolean) {
     if (!approved) throw new Error('Approve this card deposit before continuing.');
@@ -228,7 +234,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     } catch (error) { throw error instanceof BankConnectionError ? error : new BankConnectionError(stage, error); }
     finally { nativeConnectionBusy = false; }
   }
-  return { binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, beginCardDeposit, checkCardDeposit, pendingCardDeposit, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

@@ -2,9 +2,11 @@ import { writeFile } from 'node:fs/promises';
 import { readReceizPublicMarketSource } from '../server/public-market.ts';
 import { parsePublicMarket } from '../src/receiz/public-market.ts';
 
-const [membership, snapshot] = await Promise.all([
+const [membership, snapshot, sports, capitalization] = await Promise.all([
   readReceizPublicMarketSource('membership'),
   readReceizPublicMarketSource('quotes'),
+  readReceizPublicMarketSource('sports'),
+  readReceizPublicMarketSource('capitalization'),
 ]);
 const catalog = parsePublicMarket(membership, snapshot);
 if (!catalog.complete) throw new Error('The public source did not return its complete collection; seed not replaced.');
@@ -14,3 +16,6 @@ const source = { ...membership, snapshot: quotes };
 const bytes = JSON.stringify(source);
 await writeFile(new URL('../public/receiz-public-market.json', import.meta.url), bytes);
 console.log(JSON.stringify({ source: 'https://receiz.com/api/market/public-membership', count: catalog.items.length, observedAt: catalog.observedAt, bytes: Buffer.byteLength(bytes), authority: 'projection-only' }));
+
+await writeFile(new URL('../public/receiz-public-sports.json', import.meta.url), JSON.stringify(sports));
+await writeFile(new URL('../public/receiz-public-capitalization.json', import.meta.url), JSON.stringify(capitalization));
