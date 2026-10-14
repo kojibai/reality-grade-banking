@@ -11,6 +11,7 @@ import { identityNeedsPhrase } from './identity-lock';
 import { parseSharedWallet } from './shared-wallet';
 import { physicalDeliveryInstructions } from './custody-delivery';
 import { BANK_NATIVE_OPERATIONS, summarizeNativeBankReadiness, type BankNativeReadiness } from './bank-native-readiness';
+import { BankConnectionError } from './bank-connection-error';
 
 export interface OpenIdentity {
   binding: ReceizIdentityPublicBinding; needsPhrase: boolean; knownWallet: () => import('./wallet-observation').WalletObservation | null;
@@ -137,13 +138,15 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     return holdProof(new File([new Uint8Array(sealed.artifactBytes)], sealed.filename, { type: sealed.mimeType }));
   }
   async function nativeReadiness(approveNativeAccess = false) {
-    const current = await connectClient(approveNativeAccess ? BANK_NATIVE_SCOPES : BANK_READ_SCOPES, approveNativeAccess ? BANK_NATIVE_CONSENT : BANK_READ_CONSENT);
+    let current: ReceizClient;
+    try { current = await connectClient(approveNativeAccess ? BANK_NATIVE_SCOPES : BANK_READ_SCOPES, approveNativeAccess ? BANK_NATIVE_CONSENT : BANK_READ_CONSENT); }
+    catch (error) { throw new BankConnectionError('account-access', error); }
     const missingScopes = BANK_NATIVE_SCOPES.filter(scope => !grantedScopes.includes(scope));
     // Report actual permission introspection before attempting native runtime
     // qualification. This is an access check, never an operational success.
     if (missingScopes.length) return { status: 'permissions-needed' as const, missingScopes, unavailableOperations: [], readyToTransact: false as const };
-    const report = await current.runtime.qualifyV124({ applicationId: BANK_APPLICATION_ID, operations: BANK_NATIVE_OPERATIONS });
-    return summarizeNativeBankReadiness(report);
+    try { return summarizeNativeBankReadiness(await current.runtime.qualifyV124({ applicationId: BANK_APPLICATION_ID, operations: BANK_NATIVE_OPERATIONS })); }
+    catch (error) { throw new BankConnectionError('native-services', error); }
   }
   return { binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, localHistory, readWallet, beginCardDeposit, checkCardDeposit, pendingCardDeposit, startAssetIntake, holdProof, listDeposits, nativeReadiness, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }

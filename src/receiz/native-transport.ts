@@ -1,3 +1,5 @@
+import { BANK_APPLICATION_ID } from './config';
+
 export const NATIVE_PATHS: Readonly<Record<string, string>> = {
   '/api/signer/v4/receiz/enroll': 'POST',
   '/api/auth/receiz-id/continue': 'POST',
@@ -11,6 +13,7 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
 export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
   if (url.origin !== 'https://receiz.com' || url.username || url.password || NATIVE_PATHS[url.pathname] !== method.toUpperCase() || url.hash) return false;
+  if (url.pathname === '/api/sdk/v1/runtime/qualify') return [...url.searchParams.keys()].length === 1 && url.searchParams.get('applicationId') === BANK_APPLICATION_ID;
   if (!url.search) return url.pathname !== '/api/connect/payments/session';
   return url.pathname === '/api/connect/payments/session' && [...url.searchParams.keys()].length === 1 && /^cs_[a-zA-Z0-9_]{8,200}$/.test(url.searchParams.get('sessionId') ?? '');
 }

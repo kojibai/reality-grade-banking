@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-import { BANK_APPLICATION_ID, BANK_READ_SCOPES, BANK_CARD_SCOPES } from '../src/receiz/config';
+import { BANK_APPLICATION_ID, BANK_READ_SCOPES, BANK_CARD_SCOPES, BANK_NATIVE_SCOPES } from '../src/receiz/config';
 import { openCanonicalIdentity } from '../src/receiz/native-identity';
 // Protocol-mechanics fixtures only. They are not canonical SDK admission/live-user evidence.
 const protocol = vi.hoisted(() => ({ grant: vi.fn(), scopes: vi.fn(), wallet: vi.fn(), continueId: vi.fn(), client: vi.fn(), qualify: vi.fn(), pendingCard: null as unknown, checkoutSession: vi.fn() }));
@@ -39,6 +39,18 @@ it('a read-only connection check reports missing native access without requestin
     const report = await identity.nativeReadiness();
     expect(report.status).toBe('permissions-needed'); expect(report.missingScopes).toContain('receiz:reserve.write'); expect(report.readyToTransact).toBe(false);
     expect(protocol.grant.mock.calls[0][0].scopes).toEqual(BANK_READ_SCOPES); expect(protocol.qualify).not.toHaveBeenCalled();
+  } finally { identity.dispose(); }
+});
+it('separates an approved native grant from a refused service and reuses that grant for an ordinary recheck', async () => {
+  protocol.grant.mockResolvedValue({ applicationId: BANK_APPLICATION_ID, keyId: 'fixture-key', artifactDigest: 'a'.repeat(64), grantedScopes: [...BANK_NATIVE_SCOPES], accessToken: 'local-fixture', expiresAtKai: 200 });
+  protocol.scopes.mockResolvedValue([...BANK_NATIVE_SCOPES]);
+  protocol.qualify.mockRejectedValue(Object.assign(new Error('private response text'), { status: 400, payload: { code: 'APPLICATION_MISMATCH', accessToken: 'private-response' } }));
+  const identity = await openCanonicalIdentity(new Uint8Array([1]), 'fixture-phrase', 'fixture.receiz', true);
+  try {
+    await expect(identity.nativeReadiness(true)).rejects.toMatchObject({ stage: 'native-services', status: 400, code: 'APPLICATION_MISMATCH' });
+    await expect(identity.nativeReadiness()).rejects.toMatchObject({ stage: 'native-services', status: 400, code: 'APPLICATION_MISMATCH' });
+    expect(protocol.grant).toHaveBeenCalledTimes(1); expect(protocol.grant.mock.calls[0][0].scopes).toEqual(BANK_NATIVE_SCOPES);
+    expect(protocol.qualify).toHaveBeenCalledTimes(2);
   } finally { identity.dispose(); }
 });
 it('does not start account transport without actual UI consent', async () => {

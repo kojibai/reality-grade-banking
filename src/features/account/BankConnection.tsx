@@ -2,16 +2,18 @@ import { useState } from 'react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { BankNativeReadiness } from '../../receiz/bank-native-readiness';
 import { BANK_NATIVE_CONSENT } from '../../receiz/config';
+import { BankConnectionError } from '../../receiz/bank-connection-error';
 
 export function BankConnection({ identity }: { identity: OpenIdentity }) {
   const [report, setReport] = useState<BankNativeReadiness | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [consent, setConsent] = useState(false);
+  const [diagnostic, setDiagnostic] = useState<BankConnectionError | null>(null);
   const check = async (approveNative = false) => {
     if (approveNative && !consent) return;
-    setBusy(true); setReport(null); setError('');
+    setBusy(true); setReport(null); setError(''); setDiagnostic(null);
     try { setReport(approveNative ? await identity.nativeReadiness(true) : await identity.nativeReadiness()); }
-    catch { setError('The bank connection could not be checked. Your held proofs are preserved.'); }
+    catch (error) { setError('The bank connection could not be checked. Your held proofs are preserved.'); if (error instanceof BankConnectionError) setDiagnostic(error); }
     finally { setBusy(false); setConsent(false); }
   };
   return <details className="identity-import"><summary>Bank connection</summary>
@@ -25,5 +27,6 @@ export function BankConnection({ identity }: { identity: OpenIdentity }) {
       {report.status === 'permissions-needed' && <><p className="body-copy small-copy">Connect this ID for ownership, sales and currencies. Every financial action still has its own review.</p><details><summary>Read bank access</summary><p className="body-copy small-copy">{BANK_NATIVE_CONSENT}</p></details><label className="consent-option"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} /><span>I allow the listed Receiz Bank access for this ID.</span></label><button className="primary-button" disabled={busy || !consent} onClick={() => void check(true)}>Approve bank access</button></>}
     </div>}
     {error && <p className="error-message" role="status">{error}</p>}
+    {diagnostic && <details><summary>Connection details</summary><p className="body-copy small-copy">{diagnostic.stage === 'account-access' ? 'Account access' : 'Native services'}{diagnostic.status ? ` · HTTP ${diagnostic.status}` : ''}{diagnostic.code ? ` · ${diagnostic.code}` : ''}</p></details>}
   </details>;
 }
