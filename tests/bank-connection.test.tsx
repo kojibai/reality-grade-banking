@@ -6,6 +6,23 @@ import { BankConnection } from '../src/features/account/BankConnection';
 import type { OpenIdentity } from '../src/receiz/native-identity';
 import { BankConnectionError } from '../src/receiz/bank-connection-error';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+it('keeps connection checks read-only and connects private account proofs only after explicit approval', async () => {
+  const host = document.createElement('div'), root = createRoot(host);
+  const connect = vi.fn(async () => ({ subjectId: 'fixture-subject', sourceDigest: 'a'.repeat(64), sessionExpiresKaiUPulse: 20, readyToTransact: false }));
+  const identity = { nativeReadiness: async () => ({ status: 'bank-domain-needed', missingScopes: [], unavailableOperations: [], readyToTransact: false }), connectNativeAccount: connect } as unknown as OpenIdentity;
+  try {
+    act(() => root.render(<BankConnection identity={identity} />));
+    await act(async () => host.querySelector('button')!.click());
+    expect(connect).not.toHaveBeenCalled();
+    const button = Array.from(host.querySelectorAll('button')).find(value => value.textContent === 'Connect account proof');
+    expect(button).toBeDefined(); expect(button!.disabled).toBe(true);
+    act(() => host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+    await act(async () => button!.click());
+    expect(connect).toHaveBeenCalledExactlyOnceWith(true);
+    expect(host.textContent).toContain('Account proof connected');
+    expect(host.textContent).not.toContain('Ready to transact');
+  } finally { act(() => root.unmount()); }
+});
 it('checks native connection on request without reporting the bank’s transactions enabled', async () => {
   const host = document.createElement('div'), root = createRoot(host);
   const identity = { nativeReadiness: async () => ({ status: 'permissions-needed', missingScopes: ['receiz:reserve.write'], unavailableOperations: [], readyToTransact: false }) } as unknown as OpenIdentity;

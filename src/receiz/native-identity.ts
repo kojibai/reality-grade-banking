@@ -3,7 +3,7 @@ import { loadReceiz } from './client';
 import { BANK_APPLICATION_ID, BANK_CARD_APPLICATION_IDS, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES, BANK_NATIVE_CONSENT, BANK_NATIVE_SCOPES } from './config';
 import { parseCardCheckout, parseCardDepositStatus, parseDepositDollars, readCardOperation, type CardCheckout, type CardDepositStatus } from './card-deposit';
 import { nativeFetch } from './native-transport';
-import { loadDeviceIdentity, saveDeviceIdentity, loadWalletObservation, saveWalletObservation, loadDepositSources, saveDepositSource, loadCardOperation, saveCardOperation } from './identity-vault';
+import { loadDeviceIdentity, saveDeviceIdentity, loadWalletObservation, saveWalletObservation, loadDepositSources, saveDepositSource, loadCardOperation, saveCardOperation, loadBankSessionIntent, saveBankSessionIntent } from './identity-vault';
 import { projectHeldDeposit, validateAssetIntake, type AssetIntake, type HeldDeposit } from './deposit-source';
 import { protectIdentityKeyFile } from './identity-protection';
 import type { ProtectedIdentityTransport } from './identity-vault';
@@ -12,6 +12,9 @@ import { parseSharedWallet } from './shared-wallet';
 import { physicalDeliveryInstructions } from './custody-delivery';
 import { BANK_NATIVE_OPERATIONS, summarizeNativeBankReadiness, type BankNativeReadiness } from './bank-native-readiness';
 import { BankConnectionError } from './bank-connection-error';
+import { createBankSubjectSource, openBankSubjectSource, type BankSubjectSource } from './bank-native-source';
+import { createBankNativeSession } from './bank-native-session';
+import { browserBankKaiFactory } from './bank-kai';
 
 export interface OpenIdentity {
   binding: ReceizIdentityPublicBinding; needsPhrase: boolean; knownWallet: () => import('./wallet-observation').WalletObservation | null;
@@ -21,6 +24,7 @@ export interface OpenIdentity {
   startAssetIntake: (asset: AssetIntake, attachment?: File) => Promise<HeldDeposit>; holdProof: (file: File) => Promise<HeldDeposit>;
   listDeposits: () => Promise<HeldDeposit[]>;
   nativeReadiness: (approveNativeAccess?: boolean) => Promise<BankNativeReadiness>;
+  connectNativeAccount: (approved: boolean) => Promise<{ subjectId: string; sourceDigest: string; sessionExpiresKaiUPulse: number; readyToTransact: false }>;
   persistDeviceCustody: () => Promise<void>;
   dispose: () => void; backup: () => { bytes: Uint8Array; filename: string; phrase: string };
 }
@@ -31,6 +35,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   if (verification.status !== 'verified-artifact') throw new Error('Import your complete, encrypted Receiz Identity Seal. This file is not a verified identity proof.');
   const admission = await sdk.createReceizArtifactAdmissionEngine()(verification, { profile: 'identity', identityPassphrase: phrase });
   if (admission.verdict !== 'canonical-identity' || !sdk.isSdkIssuedReceizArtifactAdmission(admission)) throw new Error('This Identity Seal could not be opened with that recovery phrase.');
+  const ownerAdmission = admission;
   const binding = await sdk.readReceizIdentityPublicBinding(admission);
   const keyFile: ReceizKeyFile = await sdk.readReceizIdentityArtifact(bytes);
   const localHistory = await sdk.projectReceizIdentityAccount(keyFile);
@@ -122,6 +127,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   async function listDeposits() {
     const sources = await loadDepositSources(binding), result: HeldDeposit[] = [];
     for (const source of sources) {
+      if (source.role === 'account-coordination' || source.role === 'account-genesis') continue;
       try { const opened = await unsigned.artifacts.verifyAndOpen(new File([new Uint8Array(source.bytes)], source.filename)); result.push(projectHeldDeposit(opened, source.bytes, source.filename, binding.artifactOwnerReceizId)); } catch { /* Only actual reopened proof sources appear. */ }
     }
     return result;
@@ -148,7 +154,62 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     try { return summarizeNativeBankReadiness(await current.runtime.qualifyV124({ applicationId: BANK_APPLICATION_ID, operations: BANK_NATIVE_OPERATIONS })); }
     catch (error) { throw new BankConnectionError('native-services', error); }
   }
-  return { binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, localHistory, readWallet, beginCardDeposit, checkCardDeposit, pendingCardDeposit, startAssetIntake, holdProof, listDeposits, nativeReadiness, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  let nativeConnectionBusy = false;
+  const nativeSessions = new WeakMap<ReceizClient, Map<string, ReturnType<typeof createBankNativeSession>>>();
+  async function connectNativeAccount(approved: boolean) {
+    if (!approved || lifetime.signal.aborted) throw new Error('BANK_ACCOUNT_PROOF_CONSENT_REQUIRED');
+    if (nativeConnectionBusy) throw new Error('BANK_SESSION_IN_PROGRESS');
+    nativeConnectionBusy = true;
+    let stage: 'account-access' | 'account-proof' = 'account-access';
+    try {
+      const current = await connectClient(BANK_NATIVE_SCOPES, BANK_NATIVE_CONSENT);
+      stage = 'account-proof';
+      const saved = await loadDepositSources(binding);
+      let source: BankSubjectSource | null = null;
+      let legacySeed: { bytes: Uint8Array; filename: string } | undefined;
+      let missingCurrentSource = false;
+      // A complete held proof is not a durable subject admission. Publish only
+      // a source matching the canonical subject API's current accepted state.
+      for (const original of saved) {
+        if (original.role !== 'account-coordination') continue;
+        const opened = await openBankSubjectSource(new File([new Uint8Array(original.bytes)], original.filename), ownerAdmission);
+        try {
+          const state = await current.subjects.state(opened.subjectId);
+          if (state.stateDigest !== opened.stateDigest || state.head !== opened.subjectHead || state.ownerReceizId !== binding.artifactOwnerReceizId) { missingCurrentSource = true; continue; }
+          source = opened; break;
+        } catch (error) {
+          if ((error as { status?: unknown })?.status !== 404) throw error;
+          // Preserve this unadmitted document as an original genesis source;
+          // its JSON projection cannot become a remote subject by publication.
+          legacySeed ??= original;
+        }
+      }
+      if (!source) {
+        if (missingCurrentSource) throw new Error('BANK_SUBJECT_CURRENT_SOURCE_REQUIRED');
+        const seed = saved.find(original => original.role === 'account-genesis') ?? legacySeed;
+        const created = await createBankSubjectSource({ ownerIdentityAdmission: ownerAdmission, sealer: await ownedSealer(), kaiFactory: await browserBankKaiFactory(), client: current, seed, retainSeed: value => saveDepositSource(binding, value.bytes, value.filename, value.digest, 'account-genesis') });
+        if (lifetime.signal.aborted) throw new Error('BANK_SESSION_IDENTITY_CLOSED');
+        await saveDepositSource(binding, created.bytes, created.filename, created.source.artifactDigest, 'account-coordination');
+        source = created.source;
+      }
+      let sessionsBySource = nativeSessions.get(current);
+      if (!sessionsBySource) { sessionsBySource = new Map(); nativeSessions.set(current, sessionsBySource); }
+      let sessions = sessionsBySource.get(source.artifactDigest);
+      if (!sessions) {
+        const sourceDigest = source.artifactDigest;
+        sessions = createBankNativeSession({ client: current, identityBytes: transportBytes, signal: lifetime.signal, store: { load: () => loadBankSessionIntent(binding, sourceDigest), save: (value, expected) => saveBankSessionIntent(binding, value, expected) }, signFreshChallenge: async () => {
+          const created = sdk.createReceizProofAuthorityChallenge({ applicationId: BANK_APPLICATION_ID, artifactDigest: transportBinding.artifactSha256, scopes: BANK_NATIVE_SCOPES, consentStatementDigest: await sdk.sha256ReceizBytes(new TextEncoder().encode(BANK_NATIVE_CONSENT)), ttlPulses: 30 });
+          const proof = await unsigned.identity.signLoginProof({ keyFile: transportKeyFile, passphrase: transportPhrase, challengeB64Url: created.challengeB64Url });
+          return { ...created.challenge, proof };
+        } });
+        sessionsBySource.set(source.artifactDigest, sessions);
+      }
+      const session = await sessions.connect(source);
+      return { subjectId: source.subjectId, sourceDigest: source.artifactDigest, sessionExpiresKaiUPulse: session.expiresAtKaiUPulse, readyToTransact: false as const };
+    } catch (error) { throw error instanceof BankConnectionError ? error : new BankConnectionError(stage, error); }
+    finally { nativeConnectionBusy = false; }
+  }
+  return { binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, localHistory, readWallet, beginCardDeposit, checkCardDeposit, pendingCardDeposit, startAssetIntake, holdProof, listDeposits, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

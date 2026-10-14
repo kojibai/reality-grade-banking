@@ -1,0 +1,29 @@
+<!doctype html><meta charset="utf-8"><title>Isolated native session custody checks</title><h1>Test-only session custody</h1><p>Separate origin; dummy bytes only. No Receiz identity, session, credential or financial action is created.</p><button id="run">Run session custody checks</button><pre id="output">Ready</pre><script type="module">
+import { saveDeviceIdentity, forgetDeviceIdentity, loadBankSessionIntent, saveBankSessionIntent } from '/src/receiz/identity-vault.ts';
+document.querySelector('#run').onclick = async () => {
+ const checks=[], assert=(value,label)=>{if(!value)throw Error(label);checks.push(label);};
+ try {
+  const bytes=new TextEncoder().encode(`test-only-session-custody-${crypto.randomUUID()}`);
+  const binding={artifactSha256:[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(byte=>byte.toString(16).padStart(2,'0')).join('')};
+  await saveDeviceIdentity(bytes,'dummy.bin','not-a-recovery-phrase',true);
+  const base={schema:'bank.native-session-intent.v1',sourceDigest:'a'.repeat(64),actorSubjectId:'fixture-subject',identityDigest:'b'.repeat(64),operation:'open',challenge:{nonce:'private-fixture-session-nonce'},rails:[],namespaces:[],state:'pending'};
+  const attempts=await Promise.allSettled([saveBankSessionIntent(binding,base,null),saveBankSessionIntent(binding,{...base,challenge:{nonce:'competing-fixture-nonce'}},null)]);
+  assert(attempts.filter(value=>value.status==='fulfilled').length===1,'One concurrent session intent retained');
+  const held=await loadBankSessionIntent(binding);
+  assert(held.state==='pending'&&['private-fixture-session-nonce','competing-fixture-nonce'].includes(held.challenge.nonce),'Exact pending request reopens');
+  const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('receiz-bank-private-custody',3);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+  const row=await new Promise(resolve=>{const r=db.transaction('identity').objectStore('identity').get('current');r.onsuccess=()=>resolve(r.result);});db.close();
+  assert(!row.wrappingKey.extractable&&!new TextDecoder().decode(row.bankSession.bytes).includes(held.challenge.nonce),'Request encrypted under non-exportable device key');
+  let refused=false;try{await saveBankSessionIntent(binding,{...held,state:'active'},null);}catch{refused=true;}assert(refused,'Changed expected request refuses a late update');
+  const next={...held,state:'active',session:{testOnly:'not-an-admitted-session'}};
+  await saveBankSessionIntent(binding,next,held);
+  assert((await loadBankSessionIntent(binding)).state==='active','Session recovery input survives storage reopening');
+  const other={...base,sourceDigest:'c'.repeat(64),challenge:{nonce:'other-source-fixture'}};
+  await saveBankSessionIntent(binding,other,null);
+  assert((await loadBankSessionIntent(binding,held.sourceDigest)).state==='active'&&(await loadBankSessionIntent(binding,other.sourceDigest)).state==='pending','Different sources preserve both complete session intents');
+  await forgetDeviceIdentity();refused=false;try{await saveBankSessionIntent(binding,{...next,state:'pending'},next);}catch{refused=true;}assert(refused,'Removed identity cannot be revived');
+  await saveDeviceIdentity(new Uint8Array([9,8,7]),'other-dummy.bin','dummy',true);refused=false;try{await loadBankSessionIntent(binding);}catch{refused=true;}assert(refused,'Replaced identity refuses former session custody');
+  await forgetDeviceIdentity();document.querySelector('#output').textContent='PASS\n'+checks.join('\n');
+ }catch(error){document.querySelector('#output').textContent='FAIL\n'+error.message;}
+};
+</script>

@@ -1,7 +1,7 @@
 import { BANK_APPLICATION_ID } from './config';
 import { cardOperationApplicationId } from './card-deposit';
 export interface ProtectedIdentityTransport { bytes: Uint8Array; phrase: string; }
-interface SavedIdentity { schema: 'receiz.bank.device-identity.v1'; bytes: ArrayBuffer; artifactIv?: Uint8Array; filename: string; wrappingKey: CryptoKey; iv: Uint8Array; wrappedPhrase: ArrayBuffer; readConsent: boolean; protectedTransport?: { iv: Uint8Array; bytes: ArrayBuffer }; cardOperation?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }; bankOperation?: { operationId: string; state: string; key: string; }; }
+interface SavedIdentity { schema: 'receiz.bank.device-identity.v1'; bytes: ArrayBuffer; artifactIv?: Uint8Array; filename: string; wrappingKey: CryptoKey; iv: Uint8Array; wrappedPhrase: ArrayBuffer; readConsent: boolean; protectedTransport?: { iv: Uint8Array; bytes: ArrayBuffer }; cardOperation?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }; bankOperation?: { operationId: string; state: string; key: string; }; bankSession?: { iv: Uint8Array; bytes: ArrayBuffer }; }
 async function identityBytes(saved: SavedIdentity): Promise<Uint8Array> { return saved.artifactIv ? new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(saved.artifactIv), additionalData: new TextEncoder().encode('receiz.bank.private-identity-source.v1') }, saved.wrappingKey, saved.bytes)) : new Uint8Array(saved.bytes); }
 async function database(): Promise<IDBDatabase> { return new Promise((resolve, reject) => { const request = indexedDB.open('receiz-bank-private-custody', 3); request.onupgradeneeded = () => { if (!request.result.objectStoreNames.contains('identity')) request.result.createObjectStore('identity'); if (!request.result.objectStoreNames.contains('sources')) request.result.createObjectStore('sources'); if (!request.result.objectStoreNames.contains('operations')) request.result.createObjectStore('operations'); }; request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); }
 async function held(): Promise<SavedIdentity | null> { const db = await database(); try { return await new Promise((resolve, reject) => { const request = db.transaction('identity').objectStore('identity').get('current'); request.onsuccess = () => resolve(request.result ?? null); request.onerror = () => reject(request.error); }); } finally { db.close(); } }
@@ -24,15 +24,15 @@ export async function loadDeviceIdentity(): Promise<{ bytes: Uint8Array; filenam
 }
 export async function forgetDeviceIdentity() { const db = await database(); try { await new Promise<void>((resolve, reject) => { const tx = db.transaction('identity', 'readwrite'); tx.objectStore('identity').delete('current'); tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error); }); } finally { db.close(); } }
 
-interface PrivateSource { key: string; identityDigest: string; filename: string; iv: Uint8Array; bytes: ArrayBuffer; }
-export async function saveDepositSource(binding: { artifactSha256: string }, bytes: Uint8Array, filename: string, digest: string): Promise<void> {
+interface PrivateSource { key: string; identityDigest: string; filename: string; iv: Uint8Array; bytes: ArrayBuffer; role?: 'account-coordination' | 'account-genesis'; }
+export async function saveDepositSource(binding: { artifactSha256: string }, bytes: Uint8Array, filename: string, digest: string, role?: PrivateSource['role']): Promise<void> {
   if (bytes.length > 32 * 1024 * 1024 || !/^[a-f0-9]{64}$/.test(digest)) throw new Error('This proof exceeds supported device custody.');
   const saved = await held(); if (!saved) throw new Error('Open your identity before saving a proof.');
   const hash = async (source: ArrayBuffer) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', source))].map(byte => byte.toString(16).padStart(2, '0')).join('');
   if (await hash(new Uint8Array(await identityBytes(saved)).buffer) !== binding.artifactSha256 || await hash(new Uint8Array(bytes).buffer) !== digest) throw new Error('The held proof or identity changed before saving.');
   const key = `${binding.artifactSha256}|${digest}`, iv = crypto.getRandomValues(new Uint8Array(12));
   const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, new Uint8Array(bytes));
-  const value: PrivateSource = { key, identityDigest: binding.artifactSha256, filename, iv, bytes: encrypted };
+  const value: PrivateSource = { key, identityDigest: binding.artifactSha256, filename, iv, bytes: encrypted, ...(role ? { role } : {}) };
   const db = await database(); try { await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(['identity', 'sources'], 'readwrite'), read = tx.objectStore('identity').get('current'), prior = new Uint8Array(saved.bytes);
     read.onsuccess = () => { const current = read.result as SavedIdentity | undefined;
@@ -42,13 +42,13 @@ export async function saveDepositSource(binding: { artifactSha256: string }, byt
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(new Error('Your identity changed before the proof was saved.'));
   }); } finally { db.close(); }
 }
-export async function loadDepositSources(binding: { artifactSha256: string }): Promise<{ bytes: Uint8Array; filename: string }[]> {
+export async function loadDepositSources(binding: { artifactSha256: string }): Promise<{ bytes: Uint8Array; filename: string; role?: PrivateSource['role'] }[]> {
   const saved = await held(); if (!saved) return [];
   const db = await database(); let values: PrivateSource[];
   try { values = await new Promise((resolve, reject) => { const req = db.transaction('sources').objectStore('sources').getAll(); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); } finally { db.close(); }
-  const sources: { bytes: Uint8Array; filename: string }[] = [];
+  const sources: { bytes: Uint8Array; filename: string; role?: PrivateSource['role'] }[] = [];
   for (const value of values.filter(value => value.identityDigest === binding.artifactSha256)) {
-    try { const bytes = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(value.iv), additionalData: new TextEncoder().encode(value.key) }, saved.wrappingKey, value.bytes); sources.push({ bytes: new Uint8Array(bytes), filename: value.filename }); } catch { /* Unavailable exact sources cannot project holdings. */ }
+    try { const bytes = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(value.iv), additionalData: new TextEncoder().encode(value.key) }, saved.wrappingKey, value.bytes); sources.push({ bytes: new Uint8Array(bytes), filename: value.filename, ...(value.role ? { role: value.role } : {}) }); } catch { /* Unavailable exact sources cannot project holdings. */ }
   }
   return sources;
 }
@@ -89,6 +89,63 @@ function bankOperationKey(binding: { artifactSha256: string }, operationId: stri
 async function sameSavedIdentity(saved: SavedIdentity, binding: { artifactSha256: string }) {
   const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(await identityBytes(saved))))].map(byte => byte.toString(16).padStart(2, '0')).join('');
   if (digest !== binding.artifactSha256) throw new Error('BANK_EXECUTION_IDENTITY_CHANGED');
+}
+type BankSessionIntent = import('./bank-native-session').BankSessionIntent;
+function sessionAad(binding: { artifactSha256: string }): Uint8Array<ArrayBuffer> {
+  if (!/^[a-f0-9]{64}$/.test(binding.artifactSha256)) throw new Error('BANK_SESSION_IDENTITY_INVALID');
+  return new TextEncoder().encode(`bank-session|${BANK_APPLICATION_ID}|${binding.artifactSha256}`);
+}
+async function sessionIntent(saved: SavedIdentity, binding: { artifactSha256: string }, cipher = saved.bankSession): Promise<BankSessionIntent | null> {
+  if (!cipher) return null;
+  const clear = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(cipher.iv), additionalData: sessionAad(binding) }, saved.wrappingKey, cipher.bytes);
+  const value = JSON.parse(new TextDecoder().decode(clear)) as BankSessionIntent;
+  if (value.schema !== 'bank.native-session-intent.v1' || !['pending', 'active', 'zero-write'].includes(value.state) || !['open', 'refresh'].includes(value.operation)) throw new Error('BANK_SESSION_INTENT_INVALID');
+  return value;
+}
+function sessionKey(binding: { artifactSha256: string }, sourceDigest: string) {
+  if (!/^[a-f0-9]{64}$/.test(sourceDigest)) throw new Error('BANK_SESSION_SOURCE_INVALID');
+  return `bank-session|${BANK_APPLICATION_ID}|${binding.artifactSha256}|${sourceDigest}`;
+}
+export async function loadBankSessionIntent(binding: { artifactSha256: string }, sourceDigest?: string): Promise<BankSessionIntent | null> {
+  const saved = await held(); if (!saved) throw new Error('BANK_SESSION_IDENTITY_UNAVAILABLE');
+  await sameSavedIdentity(saved, binding);
+  const current = await sessionIntent(saved, binding);
+  if (!sourceDigest || current?.sourceDigest === sourceDigest) return current;
+  const key = sessionKey(binding, sourceDigest), db = await database();
+  let row: { key: string; iv: Uint8Array; bytes: ArrayBuffer } | undefined;
+  try { row = await new Promise((resolve, reject) => { const request = db.transaction('operations').objectStore('operations').get(key); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); } finally { db.close(); }
+  if (!row) return null;
+  const value = await sessionIntent(saved, binding, row);
+  if (row.key !== key || value?.sourceDigest !== sourceDigest) throw new Error('BANK_SESSION_SOURCE_CHANGED');
+  return value;
+}
+export async function saveBankSessionIntent(binding: { artifactSha256: string }, value: BankSessionIntent, expected: BankSessionIntent | null): Promise<void> {
+  const saved = await held(); if (!saved) throw new Error('BANK_SESSION_IDENTITY_UNAVAILABLE');
+  await sameSavedIdentity(saved, binding);
+  const previousCurrent = await sessionIntent(saved, binding);
+  if (expected && expected.sourceDigest !== value.sourceDigest || JSON.stringify(await loadBankSessionIntent(binding, value.sourceDigest)) !== JSON.stringify(expected)) throw new Error('BANK_SESSION_INTENT_CHANGED');
+  const clear = new TextEncoder().encode(JSON.stringify(value));
+  if (value.schema !== 'bank.native-session-intent.v1' || clear.length > 256 * 1024) throw new Error('BANK_SESSION_INTENT_INVALID');
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: sessionAad(binding) }, saved.wrappingKey, clear);
+  const equalBytes = (a: ArrayBuffer | Uint8Array | undefined, b: ArrayBuffer | Uint8Array | undefined) => !a && !b || !!a && !!b && a.byteLength === b.byteLength && new Uint8Array(a).every((byte, index) => byte === new Uint8Array(b)[index]);
+  const db = await database(); try { await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(['identity', 'operations'], 'readwrite'), identities = tx.objectStore('identity'), operations = tx.objectStore('operations'), read = identities.get('current');
+    read.onsuccess = () => {
+      const current = read.result as SavedIdentity | undefined;
+      if (!current || !equalBytes(current.bytes, saved.bytes) || !equalBytes(current.iv, saved.iv) || !equalBytes(current.bankSession?.bytes, saved.bankSession?.bytes) || !equalBytes(current.bankSession?.iv, saved.bankSession?.iv)) { tx.abort(); return; }
+      // Different source objects have separate retained session requests.
+      // Switching the displayed connection never discards the earlier intent.
+      if (previousCurrent && current.bankSession && previousCurrent.sourceDigest !== value.sourceDigest) {
+        const previousKey = sessionKey(binding, previousCurrent.sourceDigest);
+        operations.put({ ...current.bankSession, key: previousKey }, previousKey);
+      }
+      const key = sessionKey(binding, value.sourceDigest);
+      operations.put({ key, iv, bytes: encrypted }, key);
+      identities.put({ ...current, bankSession: { iv, bytes: encrypted } }, 'current');
+    };
+    tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(new Error('BANK_SESSION_IDENTITY_OR_INTENT_CHANGED'));
+  }); } finally { db.close(); }
 }
 export async function loadBankOperation(binding: { artifactSha256: string }): Promise<BankCheckpoint | null> {
   const saved = await held(); if (!saved?.bankOperation) return null;
