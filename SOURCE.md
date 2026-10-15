@@ -4,7 +4,7 @@ Original reference software is [GPL-3.0-only](LICENSE). Preserve [NOTICE](NOTICE
 
 ## Source supplied with each build
 
-`npm run build` produces a content-addressed `.tar.gz` under `dist/source/`, an exact file/hash inventory at `/source/index.json`, and a direct download from `/legal/`. The archive contains the application preferred source, tests, configuration/lockfile, documentation, runtime assets and the matching native source/build package in [native/](native/README.md). `SOURCE-ARCHIVE.json` inside the archive names and hashes every included file.
+`npm run build` produces a content-addressed `.tgz` under `dist/source/`, an exact file/hash inventory at `/source/index.json`, and a direct download from `/legal/`. The archive contains the application preferred source, tests, configuration/lockfile, documentation, runtime assets and the matching native source/build package in [native/](native/README.md). `SOURCE-ARCHIVE.json` inside the archive names and hashes every included file.
 
 The archive uses the explicit allowlist in `scripts/source-files.mjs`. It excludes `.git`, installed `node_modules`, build output, operator environment files, credentials, account storage and the maintainer’s temporary source-assembly workspace. Native files are additionally checked against the exact [manifest](native/manifest.json) and [disclosure boundary](native/DISCLOSURE.md). A clone receives implementation code and applicable reuse rights; it does not receive production authority or a private backend.
 

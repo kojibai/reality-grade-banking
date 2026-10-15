@@ -29,7 +29,7 @@ for (const entry of entries) {
 }
 blocks.push(Buffer.alloc(1024));
 const bytes = gzipSync(Buffer.concat(blocks), { level: 9 });
-const url = `/source/reality-grade-banking-${sourceTreeSha256.slice(0, 20)}.tar.gz`;
+const url = `/source/reality-grade-banking-${sourceTreeSha256.slice(0, 20)}.tgz`;
 await mkdir('dist/source', { recursive: true });
 await writeFile(`dist${url}`, bytes);
 await writeFile('dist/source/index.json', JSON.stringify({ schema: inventory.schema, url, sha256: hash(bytes), sourceTreeSha256, bytes: bytes.length, files: files.length, nativeVersion: '129.0.0' }, null, 2) + '\n');

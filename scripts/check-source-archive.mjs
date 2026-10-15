@@ -7,7 +7,7 @@ import { resolve, dirname } from 'node:path';
 import { sourceFiles, hash } from './source-files.mjs';
 
 const index = JSON.parse(await readFile('dist/source/index.json', 'utf8'));
-assert.match(index.url, /^\/source\/reality-grade-banking-[a-f0-9]{20}\.tar\.gz$/);
+assert.match(index.url, /^\/source\/reality-grade-banking-[a-f0-9]{20}\.tgz$/);
 const compressed = await readFile(`dist${index.url}`); assert.equal(hash(compressed), index.sha256); assert.equal(compressed.length, index.bytes);
 const tar = gunzipSync(compressed), entries = new Map(), modes = new Map();
 const text = bytes => bytes.toString('utf8').replace(/\0.*$/s, '');
