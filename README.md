@@ -1,5 +1,7 @@
 # Reality-Grade Banking
 
+[![Verify reference](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml/badge.svg?branch=feat%2Freceiz-bank)](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml) [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE) [![Receiz v129](https://img.shields.io/badge/Receiz-129.0.0-2349d8.svg)](package.json) [![Matching native source](https://img.shields.io/badge/Native%20source-reproducible-16836b.svg)](native/README.md)
+
 **Your value should carry its proof.**
 
 The Bankeiz reference application and receiving integration kit: a mobile banking console built on proof objects, with device-held identity, independently inspectable sources and explicit continuity requirements.
@@ -8,7 +10,7 @@ The Bankeiz reference application and receiving integration kit: a mobile bankin
 
 **Reserve · Proof-backed funds.** Funded value represented through verified sources and connected payment rails.
 
-One account view brings the rails together. The app keeps Send and Receive central, with Account, Market, Deposit, Assets and Ledger in persistent bottom navigation. Ownership, exact value and admitted history remain grounded in the proof object. A listing, image, account projection or service response cannot create financial authority.
+One account view brings the rails together. The app keeps Send and Receive central, with Account, Market, Deposit, Assets and Ledger in persistent bottom navigation. The verified proof object is the source of authority for ownership, exact value and carried history. A listing, image, account projection or service response cannot create financial authority.
 
 [Conformance Console](https://bank.receiz.com/conformance/) · [Receiving kit](institution/README.md) · [Receiving standard](institution/receiving-standard.md) · [Run locally](#run-locally) · [Release process](docs/release-process.md) · [Licensing](#licensing)
 
@@ -72,6 +74,17 @@ npm run preview -- --host 127.0.0.1 --port 4173 --strictPort
 
 Open `http://127.0.0.1:4173`. Install through the browser's Install / Add to Home Screen action. The service worker retains public shell/verifier/art assets on their defined cache paths and never replays financial APIs. First-use artwork requires its assets to have loaded; offline UI availability is separate from qualified financial custody. Close all Bank tabs and reopen to activate a waiting service-worker build.
 
+## Matching native source
+
+The included [native source package](native/README.md) lets developers rebuild the actual note/verifier modules, inspect the public circuits and reproduce the published SDK JavaScript. A normal build links its exact source download from `/legal/`; `/source/index.json` records its SHA-256 and inventory. The source extraction excludes the broader Receiz backend, operator secrets and customer data. See the [public disclosure boundary](native/DISCLOSURE.md). These are source/reproduction checks, not an institution certification.
+
+```sh
+npm run native:check
+npm run native:rebuild -- --sdk
+npm run build
+npm run source:verify -- --rebuild
+```
+
 ## Architecture and trust
 
 The SDK, MCP server and AI Skills are coordinated at **129.0.0**. The active registry ruleset is **127.0.0**. Exact registry and operation-matrix digests are pinned in [receiver-profile.json](institution/receiver-profile.json). Retained SDK names with earlier version suffixes are part of the v129 contract.
@@ -107,6 +120,6 @@ Copyright (C) 2026 **Brian Joseph Klock (BJ Klock)**. Original software and acco
 
 **[Bankeiz.com](https://bankeiz.com/) is the official reference implementation.** Independent implementations may use their own branding and demonstrate the same published receiving requirements. [Trademark rights](TRADEMARKS.md) and [conformance claims](CONFORMANCE.md) are separate from GPL software permissions; a fork is not automatically an official or qualified receiver.
 
-Existing package, vendored-code and font licenses remain in force. Preserve [third-party notices](THIRD_PARTY_NOTICES.md) and supply applicable complete Corresponding Source for covered binary distributions. [SOURCE.md](SOURCE.md) records native source/build materials still required for a complete native binary release; copied notices or a source map alone are insufficient. The license change does not alter the native financial runtime or qualify unfinished capabilities.
+Existing package, vendored-code and font licenses remain in force. Preserve [third-party notices](THIRD_PARTY_NOTICES.md) and supply applicable complete Corresponding Source for covered binary distributions. [SOURCE.md](SOURCE.md) describes the included matching native/SDK source, preferred cryptographic dependency source and content-addressed source archive published with every build. `npm run source:verify -- --rebuild` verifies that a clean archive extraction reproduces the native modules and published SDK JavaScript without a private checkout. The license change does not alter the native financial runtime or qualify unfinished capabilities.
 
 [Contribution process](CONTRIBUTING.md) · [Governance](GOVERNANCE.md) · [Security reporting](SECURITY.md)

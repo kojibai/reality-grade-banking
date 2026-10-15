@@ -1,5 +1,5 @@
 node_modules/
-dist/
+/dist/
 .vercel/
 .env*
 !.env.example
@@ -7,3 +7,4 @@ dist/
 *.log
 *.tsbuildinfo
 .DS_Store
+.source-work/

@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://receiz.com/schemas/v127/attestation-domain.schema.json",
+  "$comment": "Runtime-only: NFC normalization, canonical order, nested uniqueness, and current registry law lookup are enforced by parseReceizAttestationDomainV125.",
+  "title": "Receiz v127 attestation domain definition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "domainId", "credentialTypes", "claimSchemas", "evidenceRequirements", "evaluationRules", "outcomeCodes", "actorRoles", "workflow", "reviewPolicy", "lifecycle", "consent", "visibility", "constitutionalLawIds", "registryDigest", "authority"],
+  "properties": {
+    "schema": { "const": "receiz.attestation.domain.v125" },
+    "domainId": { "$ref": "#/$defs/name" },
+    "credentialTypes": { "type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": { "$ref": "#/$defs/name" } },
+    "claimSchemas": { "type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": { "$ref": "#/$defs/claimSchema" } },
+    "evidenceRequirements": { "type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": { "$ref": "#/$defs/evidenceRequirement" } },
+    "evaluationRules": { "type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": { "$ref": "#/$defs/evaluationRule" } },
+    "outcomeCodes": { "type": "array", "minItems": 2, "maxItems": 256, "uniqueItems": true, "items": { "$ref": "#/$defs/name" } },
+    "actorRoles": { "type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": { "$ref": "#/$defs/actorRole" } },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["automatedEvaluation", "humanReview", "minimumApprovers", "applicationWindowKai", "evaluatorImplementationDigest"],
+      "properties": {
+        "automatedEvaluation": { "type": "boolean" },
+        "humanReview": { "type": "boolean" },
+        "minimumApprovers": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "applicationWindowKai": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+        "evaluatorImplementationDigest": {
+          "anyOf": [
+            { "$ref": "#/$defs/hex64" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "allOf": [{
+        "if": { "properties": { "automatedEvaluation": { "const": true } } },
+        "then": { "properties": { "evaluatorImplementationDigest": { "$ref": "#/$defs/hex64" } } },
+        "else": { "properties": { "evaluatorImplementationDigest": { "type": "null" } } }
+      }]
+    },
+    "reviewPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["satisfiedOutcomeCode", "unsatisfiedOutcomeCode"],
+      "properties": {
+        "satisfiedOutcomeCode": { "$ref": "#/$defs/name" },
+        "unsatisfiedOutcomeCode": { "$ref": "#/$defs/name" }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["renewable", "suspendable", "revocable", "replaceable"],
+      "properties": {
+        "renewable": { "type": "boolean" },
+        "suspendable": { "type": "boolean" },
+        "revocable": { "type": "boolean" },
+        "replaceable": { "type": "boolean" }
+      }
+    },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "binding"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "binding": { "const": "accepted-proof-head" }
+      }
+    },
+    "visibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publicClaims", "selectiveClaims", "privateClaims", "evidence"],
+      "properties": {
+        "publicClaims": { "const": "public" },
+        "selectiveClaims": { "const": "consent-bound" },
+        "privateClaims": { "const": "commitment-only" },
+        "evidence": { "const": "reference-only" }
+      }
+    },
+    "constitutionalLawIds": { "type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": { "$ref": "#/$defs/lawId" } },
+    "registryDigest": { "const": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065" },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["definitionIsProofAuthority", "strongerTruth"],
+      "properties": {
+        "definitionIsProofAuthority": { "const": false },
+        "strongerTruth": { "const": "sealed-receiz-proof-object" }
+      }
+    }
+  },
+  "$defs": {
+    "hex64": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[a-z][a-z0-9]*(?:[._:-][a-z0-9]+)*$" },
+    "lawId": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "disclosure": { "enum": ["public", "selective", "private"] },
+    "claimSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "schemaId", "schemaVersion", "valueType", "disclosure", "issuerPolicy", "verifierPolicy"],
+      "properties": {
+        "name": { "$ref": "#/$defs/name" },
+        "schemaId": { "$ref": "#/$defs/name" },
+        "schemaVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "valueType": { "enum": ["string", "boolean", "integer", "date", "digest"] },
+        "disclosure": { "$ref": "#/$defs/disclosure" },
+        "issuerPolicy": { "$ref": "#/$defs/name" },
+        "verifierPolicy": { "$ref": "#/$defs/name" }
+      }
+    },
+    "evidenceRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceType", "classification", "minimumCount", "verifierBinding", "evaluatorPolicy"],
+      "properties": {
+        "evidenceType": { "$ref": "#/$defs/name" },
+        "classification": { "$ref": "#/$defs/disclosure" },
+        "minimumCount": { "type": "integer", "minimum": 1, "maximum": 1024 },
+        "verifierBinding": { "$ref": "#/$defs/name" },
+        "evaluatorPolicy": { "$ref": "#/$defs/name" }
+      }
+    },
+    "evaluationRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ruleId", "evidenceType", "operator", "threshold", "satisfiedOutcomeCode", "unsatisfiedOutcomeCode"],
+      "properties": {
+        "ruleId": { "$ref": "#/$defs/name" },
+        "evidenceType": { "$ref": "#/$defs/name" },
+        "operator": { "const": "minimum-count" },
+        "threshold": { "type": "integer", "minimum": 1, "maximum": 1024 },
+        "satisfiedOutcomeCode": { "$ref": "#/$defs/name" },
+        "unsatisfiedOutcomeCode": { "$ref": "#/$defs/name" }
+      }
+    },
+    "actorRole": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "allowedActions"],
+      "properties": {
+        "role": { "$ref": "#/$defs/name" },
+        "allowedActions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": { "enum": ["submitted", "evidence_requested", "evidence_submitted", "evaluation_complete", "review_complete", "approval_recorded", "issued", "denied", "withdrawn", "expired"] }
+        }
+      }
+    }
+  }
+}

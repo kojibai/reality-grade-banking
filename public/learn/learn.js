@@ -103,7 +103,7 @@
     }
     window.dispatchEvent(new Event('receiz-bank:surface'));
     if (!learn) requestAnimationFrame(() => { if (document.body.dataset.bankSurface !== 'bank') return; const target = bankFocus?.isConnected ? bankFocus : bankRoot.querySelector('h1,main'); if (target) { if (!bankFocus) target.tabIndex = -1; target.focus({ preventScroll: true }); } });
-    if (restoring && history.state?.publicNavigation) scrollTo(0, history.state.publicNavigation.scroll);
+    if (restoring && history.state?.publicNavigation?.url === snapshot().url) scrollTo(0, history.state.publicNavigation.scroll);
     else {
       let id; try { id = decodeURIComponent(location.hash.slice(1)); } catch { id = ''; }
       const target = learn && id ? document.getElementById(id) : null;

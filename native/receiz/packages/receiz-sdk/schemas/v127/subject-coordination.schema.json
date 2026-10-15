@@ -1,0 +1,1178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.receiz.com/v125/subject-coordination.schema.json",
+  "title": "Receiz v127 subject coordination",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/relationshipEvent"
+    },
+    {
+      "$ref": "#/$defs/presence"
+    },
+    {
+      "$ref": "#/$defs/discovery"
+    },
+    {
+      "$ref": "#/$defs/relationshipSourceAppend"
+    },
+    {
+      "$ref": "#/$defs/relationshipProjection"
+    },
+    {
+      "$ref": "#/$defs/relationshipPlan"
+    },
+    {
+      "$ref": "#/$defs/relationshipApply"
+    },
+    {
+      "$ref": "#/$defs/relationshipSourceReference"
+    },
+    {
+      "$ref": "#/$defs/presenceEvent"
+    },
+    {
+      "$ref": "#/$defs/presenceSourceReference"
+    },
+    {
+      "$ref": "#/$defs/presenceProjection"
+    },
+    {
+      "$ref": "#/$defs/presencePlan"
+    },
+    {
+      "$ref": "#/$defs/presenceApply"
+    }
+  ],
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "kai": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$"
+    },
+    "relationshipEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "kind",
+        "subjectA",
+        "subjectB",
+        "actorSubjectId",
+        "actorReceizId",
+        "actorPresence",
+        "introducerSubjectId",
+        "subjectHeads",
+        "expectedPriorHead",
+        "consentDigest",
+        "eventKai",
+        "idempotencyKey",
+        "eventDigest",
+        "authority"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.relationship-event.v125"
+        },
+        "kind": {
+          "enum": [
+            "relationship_requested",
+            "relationship_accepted",
+            "relationship_declined",
+            "relationship_revoked",
+            "subject_blocked",
+            "subject_unblocked",
+            "subject_reported",
+            "introduction_requested",
+            "introduction_accepted",
+            "introduction_declined",
+            "introduction_expired"
+          ]
+        },
+        "subjectA": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subjectB": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actorSubjectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actorReceizId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actorPresence": {
+          "$ref": "pbi-ceremony.schema.json#/$defs/receipt"
+        },
+        "introducerSubjectId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "subjectHeads": {
+          "type": "object",
+          "minProperties": 2,
+          "maxProperties": 3,
+          "additionalProperties": {
+            "$ref": "#/$defs/digest"
+          }
+        },
+        "expectedPriorHead": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "consentDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "eventKai": {
+          "$ref": "#/$defs/kai"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "eventDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "authority": {
+          "const": {
+            "eventIsIdentityAuthority": false,
+            "strongerTruth": "sealed-subject-proof"
+          }
+        }
+      }
+    },
+    "presence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "subjectId",
+        "subjectHead",
+        "visibility",
+        "coarseCell",
+        "eventId",
+        "issuedKai",
+        "expiresAtKai",
+        "expectedPriorHead",
+        "presenceHead",
+        "authority"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.presence.v125"
+        },
+        "subjectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subjectHead": {
+          "$ref": "#/$defs/digest"
+        },
+        "visibility": {
+          "enum": [
+            "connections",
+            "introduced",
+            "event",
+            "public"
+          ]
+        },
+        "coarseCell": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "eventId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "issuedKai": {
+          "$ref": "#/$defs/kai"
+        },
+        "expiresAtKai": {
+          "$ref": "#/$defs/kai"
+        },
+        "expectedPriorHead": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "presenceHead": {
+          "$ref": "#/$defs/digest"
+        },
+        "authority": {
+          "const": {
+            "presenceIsIdentityAuthority": false,
+            "strongerTruth": "sealed-subject-proof"
+          }
+        }
+      }
+    },
+    "discovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "viewerSubjectId",
+        "selectedKai",
+        "query",
+        "subjects",
+        "resultDigest",
+        "authority"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.discovery-result.v125"
+        },
+        "viewerSubjectId": {
+          "type": "string"
+        },
+        "selectedKai": {
+          "$ref": "#/$defs/kai"
+        },
+        "query": {
+          "type": "object"
+        },
+        "subjects": {
+          "type": "array"
+        },
+        "resultDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "authority": {
+          "const": {
+            "discoveryProjectionIsAuthority": false,
+            "strongerTruth": "sealed-subject-proof"
+          }
+        }
+      }
+    },
+    "sealedArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "exactBytesB64u",
+        "filename",
+        "mimeType",
+        "artifactSha256",
+        "payloadSha256"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.sealed-artifact-bytes.v124"
+        },
+        "exactBytesB64u": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "filename": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mimeType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifactSha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "payloadSha256": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "relationshipSourceAppend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "event",
+        "participantArtifactDigests",
+        "identityArtifactDigest",
+        "sources"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.relationship-source-append.v125"
+        },
+        "event": {
+          "$ref": "#/$defs/relationshipEvent"
+        },
+        "participantArtifactDigests": {
+          "type": "object",
+          "minProperties": 2,
+          "maxProperties": 3,
+          "additionalProperties": {
+            "$ref": "#/$defs/digest"
+          }
+        },
+        "identityArtifactDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sealedArtifact"
+          }
+        }
+      }
+    },
+    "relationshipProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "subjectA",
+        "subjectB",
+        "status",
+        "acceptedHead",
+        "latestKai",
+        "reported",
+        "authority"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.relationship-projection.v125"
+        },
+        "subjectA": {
+          "type": "string"
+        },
+        "subjectB": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "none",
+            "requested",
+            "connected",
+            "declined",
+            "revoked",
+            "blocked"
+          ]
+        },
+        "acceptedHead": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latestKai": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/kai"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reported": {
+          "type": "boolean"
+        },
+        "authority": {
+          "const": {
+            "projectionIsIdentityAuthority": false,
+            "strongerTruth": "sealed-subject-proof"
+          }
+        }
+      }
+    },
+    "relationshipPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "event",
+        "planIdentity",
+        "confirmationDigest",
+        "confirmationRequired",
+        "writesPerformed",
+        "authority"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.relationship-plan.v125"
+        },
+        "event": {
+          "$ref": "#/$defs/relationshipEvent"
+        },
+        "planIdentity": {
+          "$ref": "#/$defs/digest"
+        },
+        "confirmationDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "confirmationRequired": {
+          "const": true
+        },
+        "writesPerformed": {
+          "const": 0
+        },
+        "transitionPlan": {
+          "type": "object",
+          "description": "Canonical SDK-issued artifact append plan; structural validation never recreates runtime custody.",
+          "required": [
+            "planDigest",
+            "transitionDigest",
+            "transition",
+            "actor",
+            "resource"
+          ],
+          "properties": {
+            "planDigest": {
+              "type": "object"
+            },
+            "transitionDigest": {
+              "type": "object"
+            },
+            "transition": {
+              "type": "object"
+            },
+            "actor": {
+              "type": "object"
+            },
+            "resource": {
+              "type": "string"
+            }
+          }
+        },
+        "authority": {
+          "const": {
+            "planIsAdmission": false,
+            "strongerTruth": "sealed-subject-proof"
+          }
+        }
+      }
+    },
+    "relationshipApply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "history",
+        "projection",
+        "append",
+        "sourceArtifact",
+        "committedTransition",
+        "writesPerformed",
+        "authority"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.relationship-apply.v125"
+        },
+        "history": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/relationshipEvent"
+          }
+        },
+        "projection": {
+          "$ref": "#/$defs/relationshipProjection"
+        },
+        "append": {
+          "$ref": "#/$defs/relationshipEvent"
+        },
+        "sourceArtifact": {
+          "$ref": "#/$defs/sealedArtifact"
+        },
+        "committedTransition": {
+          "type": "object",
+          "description": "Canonical runtime commit result; sourceArtifact carries the portable sealed successor bytes.",
+          "required": [
+            "status",
+            "acceptance",
+            "artifact",
+            "artifactDigest",
+            "history",
+            "proofHistoryHead",
+            "receipt",
+            "committed"
+          ],
+          "properties": {
+            "status": {
+              "const": "committed-artifact-transition"
+            },
+            "acceptance": {
+              "enum": [
+                "committed",
+                "idempotent"
+              ]
+            },
+            "artifact": {
+              "type": "object"
+            },
+            "artifactDigest": {
+              "type": "object"
+            },
+            "history": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "proofHistoryHead": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "receipt": {
+              "type": "object"
+            },
+            "committed": {
+              "const": true
+            }
+          }
+        },
+        "writesPerformed": {
+          "enum": [
+            0,
+            1
+          ],
+          "description": "New accepted canonical transitions: 1 for committed, 0 for idempotent. Staging and one-use PBI are subordinate state."
+        },
+        "authority": {
+          "const": {
+            "applyIsIdentityAuthority": false,
+            "strongerTruth": "sealed-subject-proof"
+          }
+        },
+        "sourceFamily": {
+          "title": "Receiz closed portable subject source family v125",
+          "description": "Exact source transport only. Binding selections and family digest do not establish proof authority or Identity admission. Host RP/origin policy is not portable material.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema",
+            "artifacts",
+            "bindings",
+            "familySetDigest"
+          ],
+          "properties": {
+            "schema": {
+              "const": "receiz.subject-source-family.v125"
+            },
+            "familySetDigest": {
+              "$ref": "#/$defs/sourceFamilydigest"
+            },
+            "artifacts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/sourceFamilyartifact"
+              }
+            },
+            "bindings": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/sourceFamilybinding"
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "committedTransition": {
+                "properties": {
+                  "acceptance": {
+                    "const": "committed"
+                  }
+                },
+                "required": [
+                  "acceptance"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "writesPerformed": {
+                "const": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "writesPerformed": {
+                "const": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "relationshipSourceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "event",
+        "participantArtifactDigests",
+        "identityArtifactDigest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.relationship-source-reference.v125"
+        },
+        "event": {
+          "$ref": "#/$defs/relationshipEvent"
+        },
+        "participantArtifactDigests": {
+          "type": "object",
+          "minProperties": 2,
+          "maxProperties": 3,
+          "additionalProperties": {
+            "$ref": "#/$defs/digest"
+          }
+        },
+        "identityArtifactDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "sourceFamilydigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sourceFamilyartifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "exactBytesB64u",
+        "filename",
+        "mimeType",
+        "artifactSha256",
+        "payloadSha256"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.sealed-artifact-bytes.v124"
+        },
+        "exactBytesB64u": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "filename": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mimeType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifactSha256": {
+          "$ref": "#/$defs/sourceFamilydigest"
+        },
+        "payloadSha256": {
+          "$ref": "#/$defs/sourceFamilydigest"
+        }
+      }
+    },
+    "sourceFamilybinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currentArtifactSha256",
+        "identityArtifactSha256",
+        "subjectArtifactSha256"
+      ],
+      "properties": {
+        "currentArtifactSha256": {
+          "$ref": "#/$defs/sourceFamilydigest"
+        },
+        "identityArtifactSha256": {
+          "$ref": "#/$defs/sourceFamilydigest"
+        },
+        "subjectArtifactSha256": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sourceFamilydigest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "presenceEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "kind",
+        "actorReceizId",
+        "actorPresence",
+        "expectedPriorHead",
+        "consentDigest",
+        "eventKai",
+        "idempotencyKey",
+        "eventDigest",
+        "authority",
+        "subjectId",
+        "subjectHead",
+        "presence"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.presence-event.v125"
+        },
+        "kind": {
+          "enum": [
+            "presence_opted_in",
+            "presence_renewed",
+            "presence_revoked"
+          ]
+        },
+        "actorReceizId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actorPresence": {
+          "$ref": "pbi-ceremony.schema.json#/$defs/receipt"
+        },
+        "expectedPriorHead": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "consentDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "eventKai": {
+          "$ref": "#/$defs/kai"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "eventDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "authority": {
+          "const": {
+            "eventIsIdentityAuthority": false,
+            "strongerTruth": "sealed-subject-proof"
+          }
+        },
+        "subjectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subjectHead": {
+          "$ref": "#/$defs/digest"
+        },
+        "presence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/presence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "presence_revoked"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "presence": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "presence": {
+                "$ref": "#/$defs/presence"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "presenceSourceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "event",
+        "predecessorArtifactDigest",
+        "identityArtifactDigest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.presence-source-reference.v125"
+        },
+        "event": {
+          "$ref": "#/$defs/presenceEvent"
+        },
+        "predecessorArtifactDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "identityArtifactDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "presenceProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "subjectId",
+        "sourceHead",
+        "selectedKai",
+        "status",
+        "presence",
+        "acceptedHead",
+        "history",
+        "authority"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.presence-projection.v125"
+        },
+        "subjectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceHead": {
+          "$ref": "#/$defs/digest"
+        },
+        "selectedKai": {
+          "$ref": "#/$defs/kai"
+        },
+        "status": {
+          "enum": [
+            "none",
+            "current",
+            "expired",
+            "not-yet-current",
+            "revoked"
+          ]
+        },
+        "presence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/presence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acceptedHead": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/presenceEvent"
+          }
+        },
+        "authority": {
+          "const": {
+            "presenceIsIdentityAuthority": false,
+            "strongerTruth": "sealed-subject-proof"
+          }
+        }
+      }
+    },
+    "presencePlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "event",
+        "planIdentity",
+        "confirmationDigest",
+        "confirmationRequired",
+        "writesPerformed",
+        "authority",
+        "transitionPlan"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.presence-plan.v125"
+        },
+        "event": {
+          "$ref": "#/$defs/presenceEvent"
+        },
+        "planIdentity": {
+          "$ref": "#/$defs/digest"
+        },
+        "confirmationDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "confirmationRequired": {
+          "const": true
+        },
+        "writesPerformed": {
+          "const": 0
+        },
+        "transitionPlan": {
+          "type": "object",
+          "description": "Canonical SDK-issued artifact append plan; structural validation never recreates runtime custody.",
+          "required": [
+            "planDigest",
+            "transitionDigest",
+            "transition",
+            "actor",
+            "resource"
+          ],
+          "properties": {
+            "planDigest": {
+              "type": "object"
+            },
+            "transitionDigest": {
+              "type": "object"
+            },
+            "transition": {
+              "type": "object"
+            },
+            "actor": {
+              "type": "object"
+            },
+            "resource": {
+              "type": "string"
+            }
+          }
+        },
+        "authority": {
+          "const": {
+            "planIsAdmission": false,
+            "strongerTruth": "sealed-subject-proof"
+          }
+        }
+      }
+    },
+    "presenceApply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "projection",
+        "append",
+        "sourceArtifact",
+        "committedTransition",
+        "writesPerformed",
+        "authority",
+        "sourceFamily"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.presence-apply.v125"
+        },
+        "projection": {
+          "$ref": "#/$defs/presenceProjection"
+        },
+        "append": {
+          "$ref": "#/$defs/presenceEvent"
+        },
+        "sourceArtifact": {
+          "$ref": "#/$defs/sealedArtifact"
+        },
+        "committedTransition": {
+          "type": "object",
+          "description": "Canonical runtime commit result; sourceArtifact carries the portable sealed successor bytes.",
+          "required": [
+            "status",
+            "acceptance",
+            "artifact",
+            "artifactDigest",
+            "history",
+            "proofHistoryHead",
+            "receipt",
+            "committed"
+          ],
+          "properties": {
+            "status": {
+              "const": "committed-artifact-transition"
+            },
+            "acceptance": {
+              "enum": [
+                "committed",
+                "idempotent"
+              ]
+            },
+            "artifact": {
+              "type": "object"
+            },
+            "artifactDigest": {
+              "type": "object"
+            },
+            "history": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "proofHistoryHead": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "receipt": {
+              "type": "object"
+            },
+            "committed": {
+              "const": true
+            }
+          }
+        },
+        "writesPerformed": {
+          "enum": [
+            0,
+            1
+          ],
+          "description": "New accepted canonical transitions: 1 for committed, 0 for idempotent. Staging and one-use PBI are subordinate state."
+        },
+        "authority": {
+          "const": {
+            "applyIsIdentityAuthority": false,
+            "strongerTruth": "sealed-subject-proof"
+          }
+        },
+        "sourceFamily": {
+          "title": "Receiz closed portable subject source family v125",
+          "description": "Exact source transport only. Binding selections and family digest do not establish proof authority or Identity admission. Host RP/origin policy is not portable material.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema",
+            "artifacts",
+            "bindings",
+            "familySetDigest"
+          ],
+          "properties": {
+            "schema": {
+              "const": "receiz.subject-source-family.v125"
+            },
+            "familySetDigest": {
+              "$ref": "#/$defs/sourceFamilydigest"
+            },
+            "artifacts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/sourceFamilyartifact"
+              }
+            },
+            "bindings": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/sourceFamilybinding"
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "committedTransition": {
+                "properties": {
+                  "acceptance": {
+                    "const": "committed"
+                  }
+                },
+                "required": [
+                  "acceptance"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "writesPerformed": {
+                "const": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "writesPerformed": {
+                "const": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

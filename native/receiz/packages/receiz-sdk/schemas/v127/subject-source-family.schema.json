@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://receiz.com/schemas/v127/subject-source-family.schema.json",
+  "title": "Receiz closed portable subject source family v125",
+  "description": "Exact source transport only. Binding selections and family digest do not establish proof authority or Identity admission. Host RP/origin policy is not portable material.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "artifacts", "bindings", "familySetDigest"],
+  "properties": {
+    "schema": { "const": "receiz.subject-source-family.v125" },
+    "familySetDigest": { "$ref": "#/$defs/digest" },
+    "artifacts": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/artifact" } },
+    "bindings": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/binding" } }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "artifact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema", "exactBytesB64u", "filename", "mimeType", "artifactSha256", "payloadSha256"],
+      "properties": {
+        "schema": { "const": "receiz.sealed-artifact-bytes.v124" },
+        "exactBytesB64u": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+        "filename": { "type": "string", "minLength": 1 },
+        "mimeType": { "type": "string", "minLength": 1 },
+        "artifactSha256": { "$ref": "#/$defs/digest" },
+        "payloadSha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["currentArtifactSha256", "identityArtifactSha256", "subjectArtifactSha256"],
+      "properties": {
+        "currentArtifactSha256": { "$ref": "#/$defs/digest" },
+        "identityArtifactSha256": { "$ref": "#/$defs/digest" },
+        "subjectArtifactSha256": { "anyOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }] }
+      }
+    }
+  }
+}

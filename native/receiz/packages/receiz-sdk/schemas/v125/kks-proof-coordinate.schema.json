@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.receiz.com/schemas/v125/kks-proof-coordinate.schema.json",
+  "title": "Receiz KKSv1.0 KaiSigil Proof Coordinate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "kksVersion", "kaiPulse", "kaiUpulse", "source", "kaiSigil", "authority"],
+  "properties": {
+    "schema": { "const": "receiz.kks-v1.proof-coordinate.v1" },
+    "kksVersion": { "const": "KKSv1.0" },
+    "kaiPulse": { "$ref": "#/$defs/uint" },
+    "kaiUpulse": { "$ref": "#/$defs/uint" },
+    "source": { "$ref": "#/$defs/source" },
+    "kaiSigil": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "payload", "payloadHashBlake3", "zkPoseidonHash", "groth16", "proofHead"],
+      "properties": {
+        "schema": { "const": "receiz.kaisigil.temporal-proof.v1" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema", "kksVersion", "kaiPulse", "kaiUpulse", "source", "beat", "stepIndex", "weekday", "chakraDay", "previousKaiSigilProofHead"],
+          "properties": {
+            "schema": { "const": "receiz.kaisigil.temporal-payload.v1" },
+            "kksVersion": { "const": "KKSv1.0" },
+            "kaiPulse": { "$ref": "#/$defs/uint" },
+            "kaiUpulse": { "$ref": "#/$defs/uint" },
+            "source": { "$ref": "#/$defs/source" },
+            "beat": { "type": "integer", "minimum": 0 },
+            "stepIndex": { "type": "integer", "minimum": 0 },
+            "weekday": { "type": "string", "minLength": 1 },
+            "chakraDay": { "type": "string", "minLength": 1 },
+            "previousKaiSigilProofHead": {
+              "anyOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }]
+            }
+          }
+        },
+        "payloadHashBlake3": { "$ref": "#/$defs/digest" },
+        "zkPoseidonHash": { "$ref": "#/$defs/uint" },
+        "groth16": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema", "verificationKeyId", "proof", "publicSignals"],
+          "properties": {
+            "schema": { "const": "receiz.kaisigil.groth16-poseidon.v1" },
+            "verificationKeyId": { "const": "sha256:7889fc795b72acb774d72c86bb5c09cf726dcffdbb95c9c7b8ffb6337fbf2b21" },
+            "proof": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["pi_a", "pi_b", "pi_c", "protocol", "curve"],
+              "properties": {
+                "pi_a": { "$ref": "#/$defs/triple" },
+                "pi_b": {
+                  "type": "array",
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "items": { "$ref": "#/$defs/pair" }
+                },
+                "pi_c": { "$ref": "#/$defs/triple" },
+                "protocol": { "const": "groth16" },
+                "curve": { "const": "bn128" }
+              }
+            },
+            "publicSignals": { "$ref": "#/$defs/pair" }
+          }
+        },
+        "proofHead": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["temporalAuthority", "intrinsicProof", "causalOrder", "chronosRole", "createdAtAuthority", "networkRequired"],
+      "properties": {
+        "temporalAuthority": { "const": "kai-pulse-monotonic-frequency-from-genesis" },
+        "intrinsicProof": { "const": "kaisigil-blake3-poseidon-groth16" },
+        "causalOrder": { "const": "verified-previous-head-then-strictly-greater-kai-upulse" },
+        "chronosRole": { "const": "descriptive-projection-only" },
+        "createdAtAuthority": { "const": false },
+        "networkRequired": { "const": false }
+      }
+    }
+  },
+  "$defs": {
+    "uint": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "source": { "enum": ["live-monotonic-frequency-from-genesis", "sealed-carried-coordinate"] },
+    "pair": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/uint" }
+    },
+    "triple": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/uint" }
+    }
+  }
+}

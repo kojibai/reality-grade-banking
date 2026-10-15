@@ -1,0 +1,329 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://receiz.com/schemas/v125/sealed-lifecycle.schema.json",
+  "title": "Receiz v125 sealed attestation and credential lifecycle transitions",
+  "$comment": "Structure only. Canonical admission, original SDK plan custody, domain role verification, exact KKS and committed source retention are runtime requirements; JSON validation does not recreate them.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/plan"
+    },
+    {
+      "$ref": "#/$defs/apply"
+    }
+  ],
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sealedArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "exactBytesB64u",
+        "filename",
+        "mimeType",
+        "artifactSha256",
+        "payloadSha256"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.sealed-artifact-bytes.v124"
+        },
+        "exactBytesB64u": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "filename": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mimeType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifactSha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "payloadSha256": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "required": [
+        "schema",
+        "eventDigest",
+        "actorReceizId",
+        "actorProof",
+        "expectedPriorHead",
+        "eventKai",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "schema": {
+          "enum": [
+            "receiz.attestation.event.v125",
+            "receiz.credential.lifecycle-event.v125"
+          ]
+        },
+        "eventDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "actorReceizId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actorProof": {
+          "type": "object"
+        },
+        "expectedPriorHead": {
+          "$ref": "#/$defs/digest"
+        },
+        "eventKai": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "event",
+        "planIdentity",
+        "confirmationDigest",
+        "confirmationRequired",
+        "writesPerformed",
+        "authority"
+      ],
+      "properties": {
+        "schema": {
+          "enum": [
+            "receiz.attestation.event-plan.v125",
+            "receiz.credential.lifecycle-plan.v125"
+          ]
+        },
+        "event": {
+          "$ref": "#/$defs/event"
+        },
+        "planIdentity": {
+          "$ref": "#/$defs/digest"
+        },
+        "confirmationDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "confirmationRequired": {
+          "const": true
+        },
+        "writesPerformed": {
+          "const": 0
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "planIsAdmission",
+            "strongerTruth"
+          ],
+          "properties": {
+            "planIsAdmission": {
+              "const": false
+            },
+            "strongerTruth": {
+              "const": "sealed-receiz-proof-object"
+            }
+          }
+        },
+        "transitionPlan": {
+          "type": "object",
+          "description": "Canonical SDK-issued artifact append plan; structural validation never recreates runtime custody.",
+          "required": [
+            "planDigest",
+            "transitionDigest",
+            "transition",
+            "actor",
+            "resource"
+          ],
+          "properties": {
+            "planDigest": {
+              "type": "object"
+            },
+            "transitionDigest": {
+              "type": "object"
+            },
+            "transition": {
+              "type": "object"
+            },
+            "actor": {
+              "type": "object"
+            },
+            "resource": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "apply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "state",
+        "history",
+        "append",
+        "sourceArtifact",
+        "committedTransition",
+        "writesPerformed",
+        "authority"
+      ],
+      "properties": {
+        "schema": {
+          "enum": [
+            "receiz.attestation.event-apply.v125",
+            "receiz.credential.lifecycle-apply.v125"
+          ]
+        },
+        "state": {
+          "type": "object"
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/event"
+          }
+        },
+        "append": {
+          "$ref": "#/$defs/event"
+        },
+        "sourceArtifact": {
+          "$ref": "#/$defs/sealedArtifact"
+        },
+        "committedTransition": {
+          "type": "object",
+          "description": "Canonical runtime commit result; sourceArtifact carries the portable sealed successor bytes.",
+          "required": [
+            "status",
+            "acceptance",
+            "artifact",
+            "artifactDigest",
+            "history",
+            "proofHistoryHead",
+            "receipt",
+            "committed"
+          ],
+          "properties": {
+            "status": {
+              "const": "committed-artifact-transition"
+            },
+            "acceptance": {
+              "enum": [
+                "committed",
+                "idempotent"
+              ]
+            },
+            "artifact": {
+              "type": "object"
+            },
+            "artifactDigest": {
+              "type": "object"
+            },
+            "history": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "proofHistoryHead": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "receipt": {
+              "type": "object"
+            },
+            "committed": {
+              "const": true
+            }
+          }
+        },
+        "writesPerformed": {
+          "enum": [
+            0,
+            1
+          ]
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "applyIsProofAuthority",
+            "strongerTruth"
+          ],
+          "properties": {
+            "applyIsProofAuthority": {
+              "const": false
+            },
+            "strongerTruth": {
+              "const": "sealed-receiz-proof-object"
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "writesPerformed": {
+                "const": 1
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "committedTransition": {
+                "type": "object",
+                "properties": {
+                  "acceptance": {
+                    "const": "committed"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "writesPerformed": {
+                "const": 0
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "committedTransition": {
+                "type": "object",
+                "properties": {
+                  "acceptance": {
+                    "const": "idempotent"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

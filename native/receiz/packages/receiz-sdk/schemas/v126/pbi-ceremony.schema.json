@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.receiz.com/v125/pbi-ceremony.schema.json",
+  "title": "Receiz v126 PBI holder-presence ceremony",
+  "oneOf": [
+    { "$ref": "#/$defs/challenge" },
+    { "$ref": "#/$defs/approval" },
+    { "$ref": "#/$defs/receipt" },
+    { "$ref": "#/$defs/verification" }
+  ],
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "kai": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+    "challenge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "verifierReceizId", "holderReceizId", "proofObjectId", "acceptedHead", "presentationDigest", "disclosureDigest", "consentDigest", "issuedKai", "expiresAtKai", "nonce", "challengeDigest"],
+      "properties": {
+        "schema": { "const": "receiz.pbi.ceremony-challenge.v125" },
+        "verifierReceizId": { "type": "string", "minLength": 1 },
+        "holderReceizId": { "type": "string", "minLength": 1 },
+        "proofObjectId": { "type": "string", "minLength": 1 },
+        "acceptedHead": { "$ref": "#/$defs/digest" },
+        "presentationDigest": { "$ref": "#/$defs/digest" },
+        "disclosureDigest": { "$ref": "#/$defs/digest" },
+        "consentDigest": { "$ref": "#/$defs/digest" },
+        "issuedKai": { "$ref": "#/$defs/kai" },
+        "expiresAtKai": { "$ref": "#/$defs/kai" },
+        "nonce": { "type": "string", "minLength": 1 },
+        "challengeDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "challengeDigest", "holderReceizId", "pbiAuthorship", "receizIdPublicKeyRawB64u", "holderProof", "approvalDigest"],
+      "properties": {
+        "schema": { "const": "receiz.pbi.ceremony-approval.v125" },
+        "challengeDigest": { "$ref": "#/$defs/digest" },
+        "holderReceizId": { "type": "string", "minLength": 1 },
+        "pbiAuthorship": { "type": "array", "minItems": 1, "items": { "type": "object" } },
+        "receizIdPublicKeyRawB64u": { "type": "string", "minLength": 1 },
+        "holderProof": { "type": "object" },
+        "approvalDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "verifierReceizId", "holderReceizId", "proofObjectId", "acceptedHead", "presentationDigest", "disclosureDigest", "consentDigest", "issuedKai", "expiresAtKai", "nonce", "challengeDigest", "approval", "receiptDigest", "authority"],
+      "properties": {
+        "schema": { "const": "receiz.pbi.ceremony-receipt.v125" },
+        "verifierReceizId": { "type": "string", "minLength": 1 },
+        "holderReceizId": { "type": "string", "minLength": 1 },
+        "proofObjectId": { "type": "string", "minLength": 1 },
+        "acceptedHead": { "$ref": "#/$defs/digest" },
+        "presentationDigest": { "$ref": "#/$defs/digest" },
+        "disclosureDigest": { "$ref": "#/$defs/digest" },
+        "consentDigest": { "$ref": "#/$defs/digest" },
+        "issuedKai": { "$ref": "#/$defs/kai" },
+        "expiresAtKai": { "$ref": "#/$defs/kai" },
+        "nonce": { "type": "string", "minLength": 1 },
+        "challengeDigest": { "$ref": "#/$defs/digest" },
+        "approval": { "$ref": "#/$defs/approval" },
+        "receiptDigest": { "$ref": "#/$defs/digest" },
+        "authority": {
+          "const": { "receiptIsIdentityAuthority": false, "strongerTruth": "pbi-authorship-and-receiz-id-proof" }
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "valid", "code", "proofObjectId", "acceptedHead", "holderReceizId", "verifierReceizId", "writesPerformed", "authority"],
+      "properties": {
+        "schema": { "const": "receiz.pbi.ceremony-verification.v125" },
+        "valid": { "type": "boolean" },
+        "code": { "enum": ["verified", "invalid", "expired", "replayed", "binding-mismatch"] },
+        "proofObjectId": { "type": "string", "minLength": 1 },
+        "acceptedHead": { "$ref": "#/$defs/digest" },
+        "holderReceizId": { "type": "string", "minLength": 1 },
+        "verifierReceizId": { "type": "string", "minLength": 1 },
+        "writesPerformed": { "enum": [0, 1] },
+        "authority": {
+          "const": { "receiptIsIdentityAuthority": false, "strongerTruth": "pbi-authorship-and-receiz-id-proof" }
+        }
+      }
+    }
+  }
+}

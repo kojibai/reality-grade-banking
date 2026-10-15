@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.receiz.com/schemas/v127/authority-flow.schema.json",
+  "title": "Receiz v127 Forward-Only Authority Flow",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "stages",
+    "direction",
+    "terminalAuthority",
+    "representationIsAuthority",
+    "sourceMayBeReconstructedFromRepresentation",
+    "externalAuthorityAboveProofObject",
+    "highestCashOutFrame"
+  ],
+  "properties": {
+    "schema": { "const": "receiz.authority-flow.v1" },
+    "stages": {
+      "type": "array",
+      "prefixItems": [
+        { "const": "source" },
+        { "const": "evidence" },
+        { "const": "relationship" },
+        { "const": "permissible-inference" },
+        { "const": "representation" }
+      ],
+      "items": false,
+      "minItems": 5,
+      "maxItems": 5
+    },
+    "direction": { "const": "forward-only" },
+    "terminalAuthority": { "const": "actual-sealed-proof-object" },
+    "representationIsAuthority": { "const": false },
+    "sourceMayBeReconstructedFromRepresentation": { "const": false },
+    "externalAuthorityAboveProofObject": { "const": false },
+    "highestCashOutFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "statement", "readerPosition", "readerIsAuthority"],
+      "properties": {
+        "label": { "const": "Highest Cash-Out Frame" },
+        "statement": { "const": "source + law + sequence + object + evidence. And the reader underneath them." },
+        "readerPosition": { "const": "underneath-authority" },
+        "readerIsAuthority": { "const": false }
+      }
+    }
+  }
+}

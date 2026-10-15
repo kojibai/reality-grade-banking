@@ -28,4 +28,7 @@ jobs:
       - run: npm test
       - run: npm run typecheck
       - run: npm run receiver:check
+      - run: npm run native:check
+      - run: npm run native:rebuild -- --sdk
       - run: npm run build
+      - run: npm run source:verify -- --rebuild

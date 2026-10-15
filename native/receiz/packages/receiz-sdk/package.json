@@ -1,0 +1,197 @@
+{
+  "name": "@receiz/sdk",
+  "version": "129.0.0",
+  "description": "TypeScript SDK for Receiz proof-native artifact, public proof, wallet, sports, Twin, World, and Connect integrations.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "receiz": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./compiler": {
+      "types": "./dist/compiler.d.ts",
+      "import": "./dist/compiler.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    },
+    "./schemas/v120/living-subjects": "./schemas/v120/living-subjects.schema.json",
+    "./schemas/v125/attestation-domain": "./schemas/v125/attestation-domain.schema.json",
+    "./schemas/v125/claim-set": "./schemas/v125/claim-set.schema.json",
+    "./schemas/v125/evidence-bundle": "./schemas/v125/evidence-bundle.schema.json",
+    "./schemas/v125/kks-proof-coordinate": "./schemas/v125/kks-proof-coordinate.schema.json",
+    "./schemas/v125/authority-flow": "./schemas/v125/authority-flow.schema.json",
+    "./schemas/v125/credential": "./schemas/v125/credential.schema.json",
+    "./schemas/v125/initial-source": "./schemas/v125/initial-source.schema.json",
+    "./schemas/v125/pbi-ceremony": "./schemas/v125/pbi-ceremony.schema.json",
+    "./schemas/v125/credential-presentation": "./schemas/v125/credential-presentation.schema.json",
+    "./schemas/v125/subject-coordination": "./schemas/v125/subject-coordination.schema.json",
+    "./schemas/v125/subject-source-family": "./schemas/v125/subject-source-family.schema.json",
+    "./schemas/v125/external-execution": "./schemas/v125/external-execution.schema.json",
+    "./schemas/v125/lawful-action": "./schemas/v125/lawful-action.schema.json",
+    "./fixtures/*": "./fixtures/*",
+    "./docs/*": "./docs/*",
+    "./package.json": "./package.json",
+    "./function-inventory": {
+      "types": "./dist/publicFunctionInventory.generated.d.ts",
+      "import": "./dist/publicFunctionInventory.generated.js"
+    },
+    "./schemas/v126/credential-presentation": "./schemas/v126/credential-presentation.schema.json",
+    "./schemas/v126/attestation-domain": "./schemas/v126/attestation-domain.schema.json",
+    "./schemas/v126/credential": "./schemas/v126/credential.schema.json",
+    "./schemas/v126/subject-thread-source-family": "./schemas/v126/subject-thread-source-family.schema.json",
+    "./schemas/v126/claim-set": "./schemas/v126/claim-set.schema.json",
+    "./schemas/v126/external-execution": "./schemas/v126/external-execution.schema.json",
+    "./schemas/v126/sealed-lifecycle": "./schemas/v126/sealed-lifecycle.schema.json",
+    "./schemas/v126/pbi-ceremony": "./schemas/v126/pbi-ceremony.schema.json",
+    "./schemas/v126/kks-proof-coordinate": "./schemas/v126/kks-proof-coordinate.schema.json",
+    "./schemas/v126/initial-source": "./schemas/v126/initial-source.schema.json",
+    "./schemas/v126/subject-source-family": "./schemas/v126/subject-source-family.schema.json",
+    "./schemas/v126/subject-coordination": "./schemas/v126/subject-coordination.schema.json",
+    "./schemas/v126/lawful-action": "./schemas/v126/lawful-action.schema.json",
+    "./schemas/v126/authority-flow": "./schemas/v126/authority-flow.schema.json",
+    "./schemas/v126/evidence-bundle": "./schemas/v126/evidence-bundle.schema.json",
+    "./offline": {
+      "types": "./dist/offlineSeal.d.ts",
+      "import": "./dist/offlineSeal.js",
+      "default": "./dist/offlineSeal.js"
+    },
+    "./offline/node": {
+      "types": "./dist/offlineSealNode.d.ts",
+      "import": "./dist/offlineSealNode.js",
+      "default": "./dist/offlineSealNode.js"
+    },
+    "./offline-resources/*": "./offline-resources/*",
+    "./schemas/v127/credential-presentation": "./schemas/v127/credential-presentation.schema.json",
+    "./schemas/v127/attestation-domain": "./schemas/v127/attestation-domain.schema.json",
+    "./schemas/v127/credential": "./schemas/v127/credential.schema.json",
+    "./schemas/v127/subject-thread-source-family": "./schemas/v127/subject-thread-source-family.schema.json",
+    "./schemas/v127/claim-set": "./schemas/v127/claim-set.schema.json",
+    "./schemas/v127/external-execution": "./schemas/v127/external-execution.schema.json",
+    "./schemas/v127/sealed-lifecycle": "./schemas/v127/sealed-lifecycle.schema.json",
+    "./schemas/v127/pbi-ceremony": "./schemas/v127/pbi-ceremony.schema.json",
+    "./schemas/v127/kks-proof-coordinate": "./schemas/v127/kks-proof-coordinate.schema.json",
+    "./schemas/v127/initial-source": "./schemas/v127/initial-source.schema.json",
+    "./schemas/v127/subject-source-family": "./schemas/v127/subject-source-family.schema.json",
+    "./schemas/v127/subject-coordination": "./schemas/v127/subject-coordination.schema.json",
+    "./schemas/v127/lawful-action": "./schemas/v127/lawful-action.schema.json",
+    "./schemas/v127/authority-flow": "./schemas/v127/authority-flow.schema.json",
+    "./schemas/v127/evidence-bundle": "./schemas/v127/evidence-bundle.schema.json",
+    "./subjects/node": {
+      "types": "./dist/v127SubjectRuntimeNode.d.ts",
+      "import": "./dist/v127SubjectRuntimeNode.js"
+    },
+    "./offline/kai": {
+      "types": "./dist/offlineKaiProof.d.ts",
+      "import": "./dist/offlineKaiProof.js",
+      "default": "./dist/offlineKaiProof.js"
+    },
+    "./offline/kai/node": {
+      "types": "./dist/offlineKaiProofNode.d.ts",
+      "import": "./dist/offlineKaiProofNode.js",
+      "default": "./dist/offlineKaiProofNode.js"
+    },
+    "./valuation": {
+      "types": "./dist/valuation.d.ts",
+      "import": "./dist/valuation.js",
+      "default": "./dist/valuation.js"
+    }
+  },
+  "files": [
+    "dist",
+    "schemas",
+    "README.md",
+    "docs/app-*.md",
+    "docs/artifact-verification.md",
+    "docs/capability-discovery.md",
+    "docs/capability-execution-coverage.md",
+    "docs/capability-execution-coverage.json",
+    "docs/cli-and-conformance.md",
+    "docs/conformance.md",
+    "docs/connect-transfers.md",
+    "docs/copy-paste-integrations.md",
+    "docs/errors-and-repair.md",
+    "docs/framework-adapters.md",
+    "docs/generated-files-and-upgrades.md",
+    "docs/identity-login-and-recovery.md",
+    "docs/package-entry-points.md",
+    "docs/proof-memory-and-projections.md",
+    "docs/public-proof-rendering.md",
+    "docs/signed-public-store-publish.md",
+    "docs/sports-card-event-proofs.md",
+    "docs/testing-emulator.md",
+    "docs/twin-and-world.md",
+    "docs/v124.1-source-carried-capabilities.md",
+    "docs/v125-edge-value-transfers.md",
+    "docs/v106.0.0-migration-contract.json",
+    "docs/v106.0.0-v105-sdk-write-inventory.json",
+    "docs/wallet-ledger-reads.md",
+    "docs/webhook-signatures.md",
+    "examples",
+    "fixtures",
+    "offline-resources",
+    "docs/offline-sealing.md",
+    "docs/local-subject-runtime.md",
+    "docs/historical-http.md",
+    "docs/registered-native-runtime.md",
+    "docs/offline-proof-valuation.md"
+  ],
+  "scripts": {
+    "clean": "node scripts/clean-dist.mjs",
+    "build": "pnpm clean && node ../../scripts/sync_canonical_anchor_parser.mjs --check && node ../../scripts/sync_sigil_valuation_core.mjs --check && tsc -p tsconfig.json && node scripts/compact-registry-projections.mjs",
+    "test": "pnpm test:package-boundary && pnpm build && node --import tsx --test --test-concurrency=4 test/*.test.ts",
+    "test:package-boundary": "node --import tsx --test test/v125AttestationPackageBoundary.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "pnpm --dir ../.. test:coordinated-release-identity && pnpm build",
+    "prepublishOnly": "pnpm --dir ../.. test:coordinated-release-identity && pnpm test"
+  },
+  "keywords": [
+    "receiz",
+    "proof",
+    "artifact",
+    "wallet",
+    "sports",
+    "connect",
+    "settlement",
+    "sdk"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@noble/hashes": "^2.3.0",
+    "hash-wasm": "^4.12.0",
+    "@receiz/ai-skills": "129.0.0",
+    "fflate": "^0.8.3",
+    "snarkjs": "^0.7.6"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0 <20.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "ajv": "8.20.0",
+    "fake-indexeddb": "^6.2.5",
+    "react": "19.2.8",
+    "tsx": "^4.23.12",
+    "typescript": "^5.9.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

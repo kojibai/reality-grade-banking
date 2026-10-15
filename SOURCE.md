@@ -1,33 +1,46 @@
-# Source and GPL distribution
+# Source and reproducible distribution
 
-Original software in this repository is [GPL-3.0-only](LICENSE). Preserve [NOTICE](NOTICE), [third-party notices](THIRD_PARTY_NOTICES.md) and upstream terms. This is a build/source map, not an assertion that an incomplete source package satisfies the license.
+Original reference software is [GPL-3.0-only](LICENSE). Preserve [NOTICE](NOTICE), [third-party notices](THIRD_PARTY_NOTICES.md) and existing upstream terms. Matching source availability, reproducible bytes and financial conformance are separate questions.
 
-## Application
+## Source supplied with each build
 
-Preferred source lives in `src/`, `server/`, `api/`, `scripts/`, `conformance/`, `institution/`, `branding/` and the root configuration/lockfiles. Tests and documentation explain behavior. Runtime assets, note presentation sources and font provenance are in `public/` and `public/notes/README.md`. Dependencies retain their licenses.
+`npm run build` produces a content-addressed `.tar.gz` under `dist/source/`, an exact file/hash inventory at `/source/index.json`, and a direct download from `/legal/`. The archive contains the application preferred source, tests, configuration/lockfile, documentation, runtime assets and the matching native source/build package in [native/](native/README.md). `SOURCE-ARCHIVE.json` inside the archive names and hashes every included file.
 
-Follow the Node/npm requirements in [README](README.md), then `npm ci`, `npm run build` and `npm run preview`. A build does not establish receiver qualification.
+The archive uses the explicit allowlist in `scripts/source-files.mjs`. It excludes `.git`, installed `node_modules`, build output, operator environment files, credentials, account storage and the maintainer’s temporary source-assembly workspace. Native files are additionally checked against the exact [manifest](native/manifest.json) and [disclosure boundary](native/DISCLOSURE.md). A clone receives implementation code and applicable reuse rights; it does not receive production authority or a private backend.
 
-## Native artifacts
+## Rebuild the application and native artifacts
 
-| Distributed artifact | Matching source/build materials |
+Use Node.js 24 (the CI version) and npm. Public dependency installation needs network access; native reproduction after installation does not.
+
+```sh
+npm ci
+npm test
+npm run typecheck
+npm run receiver:check
+npm run native:check
+npm run native:rebuild -- --sdk
+npm run build
+npm run source:verify -- --rebuild
+```
+
+The final command validates the archive against the exact release sources, extracts it into an empty temporary directory and rebuilds both native modules and all 211 published SDK JavaScript files using only publicly locked npm dependencies. It does not read the original Receiz checkout or access private services. Standalone recipients can extract the archive, run `npm ci` there, and use the same commands.
+
+| Artifact | Matching source and verified reproduction |
 | --- | --- |
-| `public/native/receiver-verifier.v129.mjs` | Adjacent complete `.map` and input-hash `.manifest.json`, `institution/receiver-verifier.entry.mjs`, `scripts/build-receiver-verifier.mjs` |
-| `public/native/offline-notes.v129.mjs` | Adjacent `.manifest.json`, exact Receiz v129 native input tree, `scripts/build-offline-note-runtime.mjs` |
-| SDK and ZK resources in the covered build | Exact versions, preferred source and required resource-generation/build instructions |
+| `public/native/offline-notes.v129.mjs` | Original browser dependency closure, seven exact runtime package snapshots, pinned esbuild recipe; all 285 original input hashes and exact module bytes |
+| `public/native/receiver-verifier.v129.mjs` and `.map` | Original browser closure and institution entry point; exact module bytes, ordered 219 carried sources and normalized source-map bytes |
+| Published v129 SDK JavaScript | Full matching SDK preferred source, canonical generators/registry projections, TypeScript 5.9.3 and package compaction script; all 211 JavaScript output hashes |
+| SDK sealing core and Kai worker | Canonical unbundled source and exact generated output comparison |
+| Public proof WASM and setup keys | Included circuit/Poseidon source, public Powers of Tau parameters and existing public resources; hash checks plus optional independent circuit verification |
 
-Native rebuild scripts currently require a separate matching Receiz v129 checkout and its build dependencies. The receiver manifest identifies its source revision and imported hashes. Its source map exposes imported text, but an upstream browser bundle may itself require additional preferred source/build inputs. The note runtime manifest does not embed its complete source. This repository alone is not claimed to reproduce every native module.
+`native/manifest.json` records exact source provenance, preferred upstream cryptographic source trees, build input paths and SHA-256 hashes. `scripts/rebuild-native.mjs` uses the included files, not a private host checkout. The old build command names remain local wrappers around that same recipe. Developer tools and public npm dependency installation are pinned by `package-lock.json`; dependency terms remain in force.
 
-## Release obligations
+For circuit verification, install general-purpose Circom **2.1.6** and run `npm run native:resources -- --circuit`. It reproduces the witness WASM exactly and verifies the original public proving keys against the rebuilt circuit. Existing setup keys are not regenerated; secret setup entropy is neither needed nor supplied. See [native build instructions](native/README.md) for tool configuration and scope.
 
-For distributed covered object code, including browser JavaScript/WASM where applicable:
+## Retention and operator releases
 
-1. Record the exact source revision, patches, lockfile, build commands and environment requirements, plus module/resource hashes.
-2. Provide complete matching Corresponding Source required by GPLv3 sections 1 and 6: original app/native source, necessary dependency source and scripts/materials controlling compilation and installation. Include applicable Installation Information. General-purpose tools and qualifying System Libraries follow the license's own exclusions.
-3. Use a permitted source-delivery method for its required period. With network downloads, provide clear access to the corresponding source alongside object-code access. A mutable default branch, source map alone, license declaration or unsupported promise of later source is insufficient.
-4. Verify a recipient can rebuild from the supplied materials without the maintainer's private checkout. Document non-bit-reproducible inputs accurately. Keep upstream copyright/license notices intact.
-5. Exclude private credentials, Identity Seals, customer/account data, signing keys and bearers. Document operator configuration using public/synthetic fixtures.
+Keep the matching archive available alongside its covered object-code release. Its content-addressed URL, SHA-256, source-tree hash and file count are in `/source/index.json` and `/legal/release.json`. Preserve prior archives when continuing to distribute older artifacts. A new deployment must not turn an older build’s source link into unrelated source; archive retention belongs in the operator’s release process.
 
-**Current native release-material requirement:** assemble and verify the complete matching preferred native/dependency source and build materials before treating a native binary distribution as complete. License adoption grants modification rights; it does not retroactively certify missing materials or relicense the rest of the private Receiz host repository.
+GPLv3 sections 1 and 6 define Corresponding Source, delivery methods and applicable Installation Information. Include operator modifications and any additional materials required for that operator’s covered build. A successful local rebuild is evidence about the named artifacts, not a blanket legal certification of every downstream distribution or an institution conformance assessment. Root and upstream licenses govern their respective work.
 
-The official source location is [kojibai/reality-grade-banking](https://github.com/kojibai/reality-grade-banking). Forks/operators must identify their own exact source and release materials. Bankeiz.com identifies the official reference, not a corresponding-source archive for every operator's build.
+The official source repository is [kojibai/reality-grade-banking](https://github.com/kojibai/reality-grade-banking). [Bankeiz.com](https://bankeiz.com/) is the official reference implementation. Independent operators identify their own exact source, service, permissions and qualification evidence.

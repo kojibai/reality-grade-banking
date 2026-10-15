@@ -1,0 +1,24 @@
+Matching native source for the Reality-Grade Banking reference implementation
+Extracted from Receiz v129 at the exact revision in manifest.json.
+
+Brian Joseph Klock's original native application sources supplied here are
+licensed under GNU GPL version 3 only, except where separate existing terms
+apply. The complete license is ../LICENSE. Copyright (C) 2026 Brian Joseph
+Klock (BJ Klock). This extraction does not license the rest of another repository.
+
+The published @receiz/sdk package and its corresponding SDK sources retain
+their existing MIT grant and copyright notices. The package's existing grant
+is not narrowed by the surrounding application's GPL license. Preserve the
+SDK's existing source comments and package metadata. Its published package
+declares MIT without supplying a standalone license file; the observed
+dependency inventory records that fact rather than inventing upstream notices.
+
+Upstream source/package directories retain their own copyright and license
+notices. See their LICENSE/COPYING files, manifest.json, ../THIRD_PARTY_NOTICES.md
+and ../public/native/licenses/. GPL version permissions and permissive upstream
+grants are not narrowed. General-purpose build tools retain their own terms.
+
+No signing authority, credentials, identity, account ownership, funded value,
+trademark license or institution conformance assessment is conveyed by source
+availability. The software license, brand policy and technical evidence remain
+separate. See ../LICENSING.md, ../TRADEMARKS.md and ../CONFORMANCE.md.

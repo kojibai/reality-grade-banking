@@ -33,7 +33,7 @@ Use your own identity for an independent service or modified product, retain app
 
 Preserve [third-party notices](THIRD_PARTY_NOTICES.md) and provide applicable complete Corresponding Source with distributed covered object code, including served browser JS/WASM where required. [SOURCE.md](SOURCE.md) identifies native build/source requirements. Source maps or copied notices alone do not establish complete distribution compliance.
 
-The existing native bundles were compiled from a separate Receiz checkout. Their provenance and available source map do not prove that every required preferred source/build input is supplied. Native binary releases require the matching materials described in SOURCE.md. Adopting compatible terms resolves the earlier no-modification conflict; it is not a blanket certification of every distribution.
+The matching native browser and SDK source, preferred cryptographic dependency source, public circuit/setup resources and independent rebuild recipe are supplied in `native/`. Each application build publishes an exact source archive alongside the license page; [SOURCE.md](SOURCE.md) describes its inventory and verification. Downstream operators must include their modifications and retain the source corresponding to each distributed covered build. Successful reproduction does not constitute a blanket legal certification of every distribution.
 
 GPLv3 supplies its own patent permissions, termination/reinstatement, warranty and liability provisions. No extra invention-reservation clause overrides those permissions. Copyright remains with its holders; this license does not transfer ownership or establish patents or trademark registrations.
 

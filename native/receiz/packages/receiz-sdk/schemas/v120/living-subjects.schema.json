@@ -1,0 +1,1897 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.receiz.com/v120/living-subjects.schema.json",
+  "title": "Receiz v120 Living Proof Subjects",
+  "version": "120.0.0",
+  "schemas": {
+    "subject": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.v1",
+      "title": "receiz.subject.v1",
+      "description": "Immutable subject identity bound to append-only proof, ownership, and byte-preserved namespaces.",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.v1"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "proofObjectId": {
+          "type": "string"
+        },
+        "subjectType": {
+          "type": "string"
+        },
+        "ownerReceizId": {
+          "type": "string"
+        },
+        "identityDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "genesisDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "createdAtKai": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "ownershipHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "currentOwnerReceizId": {
+          "type": "string"
+        },
+        "namespaces": {
+          "type": "object",
+          "description": "Extensible namespace bytes encoded as base64url. Unknown keys and exact values must be preserved byte-for-byte.",
+          "required": [
+            "identity",
+            "canonicalState",
+            "selfModel",
+            "memory",
+            "relationships",
+            "inventory",
+            "abilities",
+            "condition",
+            "worldPosition",
+            "mandates",
+            "eventHistory",
+            "projections",
+            "applicationNamespaces"
+          ],
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$"
+          }
+        }
+      },
+      "required": [
+        "schema",
+        "subjectId",
+        "proofObjectId",
+        "subjectType",
+        "ownerReceizId",
+        "identityDigest",
+        "genesisDigest",
+        "createdAtKai",
+        "head",
+        "ownershipHead",
+        "currentOwnerReceizId",
+        "namespaces"
+      ],
+      "additionalProperties": false
+    },
+    "subjectMind": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.mind.v1",
+      "title": "receiz.subject.mind.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.mind.v1"
+        },
+        "subjectArtifact": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "brainHead": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "portableWindow": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "completeHistory": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "publicMemoryIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privateMemoryIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "priorMindHead": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mindDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "exactBytesB64u": {
+          "type": "string"
+        },
+        "registryDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "reducerDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "schema",
+        "subjectArtifact",
+        "brainHead",
+        "portableWindow",
+        "completeHistory",
+        "publicMemoryIds",
+        "privateMemoryIds",
+        "priorMindHead",
+        "mindDigest",
+        "exactBytesB64u",
+        "registryDigest",
+        "reducerDigest"
+      ],
+      "additionalProperties": false
+    },
+    "subjectSelfModel": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.self_model.v1",
+      "title": "receiz.subject.self_model.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.self_model.v1"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "subjectHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "namespaceBytes": {
+          "type": "string"
+        },
+        "selfModelDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "schema",
+        "subjectId",
+        "subjectHead",
+        "namespaceBytes",
+        "selfModelDigest"
+      ],
+      "additionalProperties": false
+    },
+    "subjectMandate": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.mandate.v1",
+      "title": "receiz.subject.mandate.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.mandate.v1"
+        },
+        "mandateId": {
+          "type": "string"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "ownerReceizId": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "mandateDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "active",
+            "paused",
+            "revoked",
+            "expired"
+          ]
+        },
+        "activatedCapabilityDigest": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "activatedAtKai": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revokedAtKai": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema",
+        "mandateId",
+        "subjectId",
+        "ownerReceizId",
+        "policy",
+        "mandateDigest",
+        "status",
+        "activatedCapabilityDigest",
+        "activatedAtKai",
+        "revokedAtKai"
+      ],
+      "additionalProperties": false
+    },
+    "subjectCapability": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.capability.v1",
+      "title": "receiz.subject.capability.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.capability.v1"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "receizId": {
+          "type": "string"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expiresAtKai": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "capabilityDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "schema",
+        "subjectId",
+        "receizId",
+        "actions",
+        "expiresAtKai",
+        "capabilityDigest"
+      ],
+      "additionalProperties": false
+    },
+    "subjectIntent": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.intent.v1",
+      "title": "receiz.subject.intent.v1",
+      "description": "Non-authoritative model output. World effects require deterministic command admission.",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.intent.v1"
+        },
+        "speech": {
+          "type": "string"
+        },
+        "proposedIntents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "memoryCitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "performance": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "modelAudit": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "schema",
+        "proposedIntents",
+        "memoryCitations",
+        "modelAudit"
+      ],
+      "additionalProperties": false
+    },
+    "subjectMemoryEvent": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.memory_event.v1",
+      "title": "receiz.subject.memory_event.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.memory_event.v1"
+        },
+        "memoryId": {
+          "type": "string"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "conversation",
+            "episodic-world",
+            "relationship",
+            "battle",
+            "discovery",
+            "ownership-care",
+            "inventory-trade"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "eventIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "proofObjectIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "private"
+          ]
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "kai": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      },
+      "required": [
+        "schema",
+        "memoryId",
+        "subjectId",
+        "type",
+        "summary",
+        "eventIds",
+        "proofObjectIds",
+        "visibility",
+        "head",
+        "kai"
+      ],
+      "additionalProperties": false
+    },
+    "subjectMemoryProjection": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.memory_projection.v1",
+      "title": "receiz.subject.memory_projection.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.memory_projection.v1"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "throughHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "memories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "projectionDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "rebuildable": {
+          "const": true
+        }
+      },
+      "required": [
+        "schema",
+        "subjectId",
+        "throughHead",
+        "memories",
+        "projectionDigest",
+        "rebuildable"
+      ],
+      "additionalProperties": false
+    },
+    "subjectRelationship": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.relationship.v1",
+      "title": "receiz.subject.relationship.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.relationship.v1"
+        },
+        "relationshipId": {
+          "type": "string"
+        },
+        "subjectIds": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "enum": [
+            "proposed",
+            "active",
+            "declined",
+            "blocked"
+          ]
+        },
+        "familiarity": {
+          "type": "number"
+        },
+        "trust": {
+          "type": "number"
+        },
+        "rivalry": {
+          "type": "number"
+        },
+        "affection": {
+          "type": "number"
+        },
+        "mentorship": {
+          "type": "number"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "private"
+          ]
+        },
+        "eventIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "schema",
+        "relationshipId",
+        "subjectIds",
+        "status",
+        "familiarity",
+        "trust",
+        "rivalry",
+        "affection",
+        "mentorship",
+        "visibility",
+        "eventIds",
+        "head"
+      ],
+      "additionalProperties": false
+    },
+    "subjectInteractionPolicy": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.interaction_policy.v1",
+      "title": "receiz.subject.interaction_policy.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.interaction_policy.v1"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "private"
+          ]
+        },
+        "allowedSubjectIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blockedSubjectIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ownerBlocklist": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "policyDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "schema",
+        "subjectId",
+        "visibility",
+        "allowedSubjectIds",
+        "blockedSubjectIds",
+        "ownerBlocklist",
+        "policyDigest"
+      ],
+      "additionalProperties": false
+    },
+    "subjectInventory": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.inventory.v1",
+      "title": "receiz.subject.inventory.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.inventory.v1"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "schema",
+        "subjectId",
+        "head",
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "subjectTradeIntent": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.trade_intent.v1",
+      "title": "receiz.subject.trade_intent.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.trade_intent.v1"
+        },
+        "tradeId": {
+          "type": "string"
+        },
+        "fromSubjectId": {
+          "type": "string"
+        },
+        "toSubjectId": {
+          "type": "string"
+        },
+        "itemIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expectedHeads": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "mandateDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "intentDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "schema",
+        "tradeId",
+        "fromSubjectId",
+        "toSubjectId",
+        "itemIds",
+        "expectedHeads",
+        "intentDigest"
+      ],
+      "additionalProperties": false
+    },
+    "subjectTradeReceipt": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.trade_receipt.v1",
+      "title": "receiz.subject.trade_receipt.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.trade_receipt.v1"
+        },
+        "tradeId": {
+          "type": "string"
+        },
+        "receiptId": {
+          "type": "string"
+        },
+        "eventIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "priorHeads": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "nextHeads": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "worldHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "schema",
+        "tradeId",
+        "receiptId",
+        "eventIds",
+        "priorHeads",
+        "nextHeads",
+        "worldHead"
+      ],
+      "additionalProperties": false
+    },
+    "subjectRuntimeJob": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.runtime_job.v1",
+      "title": "receiz.subject.runtime_job.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.runtime_job.v1"
+        },
+        "jobId": {
+          "type": "string"
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "leased",
+            "completed",
+            "failed",
+            "cancelled",
+            "stale"
+          ]
+        },
+        "leaseUntilKai": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attemptCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eventIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "failureCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema",
+        "jobId",
+        "input",
+        "status",
+        "leaseUntilKai",
+        "attemptCount",
+        "eventIds",
+        "failureCode"
+      ],
+      "additionalProperties": false
+    },
+    "subjectOwnershipTransition": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.ownership_transition.v1",
+      "title": "receiz.subject.ownership_transition.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.ownership_transition.v1"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "identityDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "priorOwnerReceizId": {
+          "type": "string"
+        },
+        "nextOwnerReceizId": {
+          "type": "string"
+        },
+        "priorOwnershipHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "nextOwnershipHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "transferId": {
+          "type": "string"
+        },
+        "policyDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "eventIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "kai": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      },
+      "required": [
+        "schema",
+        "subjectId",
+        "identityDigest",
+        "priorOwnerReceizId",
+        "nextOwnerReceizId",
+        "priorOwnershipHead",
+        "nextOwnershipHead",
+        "transferId",
+        "policyDigest",
+        "eventIds",
+        "kai"
+      ],
+      "additionalProperties": false
+    },
+    "subjectProofBrain": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.proof_brain.v1",
+      "title": "receiz.subject.proof_brain.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.proof_brain.v1"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "subjectDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "subjectHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "historyHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "indexRoot": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "objectMerkleRoot": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "objectCount": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "operationCount": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "maximumKai": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "priorBrainHead": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fibonacci": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "registryDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "reducerDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "schema",
+        "subjectId",
+        "subjectDigest",
+        "subjectHead",
+        "historyHead",
+        "indexRoot",
+        "objectMerkleRoot",
+        "objectCount",
+        "operationCount",
+        "maximumKai",
+        "priorBrainHead",
+        "fibonacci",
+        "registryDigest",
+        "reducerDigest",
+        "authority"
+      ],
+      "additionalProperties": false
+    },
+    "subjectProofIndex": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.proof_index.v1",
+      "title": "receiz.subject.proof_index.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.proof_index.v1"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "subjectHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "indexRoot": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "segmentDigests": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "required": [
+        "schema",
+        "subjectId",
+        "subjectHead",
+        "indexRoot",
+        "segmentDigests"
+      ],
+      "additionalProperties": false
+    },
+    "subjectProofIndexSegment": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.proof_index_segment.v1",
+      "title": "receiz.subject.proof_index_segment.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.proof_index_segment.v1"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "startOrdinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "endOrdinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "segmentDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "schema",
+        "subjectId",
+        "startOrdinal",
+        "endOrdinal",
+        "references",
+        "segmentDigest"
+      ],
+      "additionalProperties": false
+    },
+    "subjectProofReference": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.proof_reference.v1",
+      "title": "receiz.subject.proof_reference.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.proof_reference.v1"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "subjectHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "proofObjectId": {
+          "type": "string"
+        },
+        "objectDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "kai": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "score": {
+          "type": "number"
+        },
+        "matchedTerms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "eventIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "membership": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "schema",
+        "subjectId",
+        "subjectHead",
+        "proofObjectId",
+        "objectDigest",
+        "kai",
+        "score",
+        "matchedTerms",
+        "eventIds",
+        "membership"
+      ],
+      "additionalProperties": false
+    },
+    "subjectProofContext": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.proof_context.v1",
+      "title": "receiz.subject.proof_context.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.proof_context.v1"
+        },
+        "head": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "primaryObjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "passages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "receipt": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "schema",
+        "head",
+        "references",
+        "primaryObjects",
+        "passages",
+        "receipt"
+      ],
+      "additionalProperties": false
+    },
+    "subjectProofRetrievalReceipt": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.subject.proof_retrieval_receipt.v1",
+      "title": "receiz.subject.proof_retrieval_receipt.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.subject.proof_retrieval_receipt.v1"
+        },
+        "retrievalReceiptId": {
+          "type": "string"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "subjectHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "historyHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "indexRoot": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "queryDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "referenceDigests": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "primaryObjectDigests": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "registryDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "reducerDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "kai": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "schema",
+        "retrievalReceiptId",
+        "subjectId",
+        "subjectHead",
+        "historyHead",
+        "indexRoot",
+        "queryDigest",
+        "referenceDigests",
+        "primaryObjectDigests",
+        "registryDigest",
+        "reducerDigest",
+        "kai",
+        "authority"
+      ],
+      "additionalProperties": false
+    },
+    "worldCommand": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.world.command.v1",
+      "title": "receiz.world.command.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.world.command.v1"
+        },
+        "commandId": {
+          "type": "string"
+        },
+        "commandDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "schema",
+        "commandId",
+        "commandDigest",
+        "input"
+      ],
+      "additionalProperties": false
+    },
+    "worldEvent": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.world.event.v1",
+      "title": "receiz.world.event.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.world.event.v1"
+        },
+        "eventId": {
+          "type": "string"
+        },
+        "commandId": {
+          "type": "string"
+        },
+        "worldId": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "actorSubjectId": {
+          "type": "string"
+        },
+        "participantSubjectIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "causalParents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "priorHeads": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "nextHeads": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "priorWorldHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "worldHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "mandateDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "kai": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "registryDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "reducerDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "schema",
+        "eventId",
+        "commandId",
+        "worldId",
+        "kind",
+        "actorSubjectId",
+        "participantSubjectIds",
+        "payload",
+        "causalParents",
+        "priorHeads",
+        "nextHeads",
+        "priorWorldHead",
+        "worldHead",
+        "kai",
+        "registryDigest",
+        "reducerDigest"
+      ],
+      "additionalProperties": false
+    },
+    "worldReceipt": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.world.receipt.v1",
+      "title": "receiz.world.receipt.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.world.receipt.v1"
+        },
+        "receiptId": {
+          "type": "string"
+        },
+        "commandId": {
+          "type": "string"
+        },
+        "attemptId": {
+          "type": "string"
+        },
+        "eventIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "actorSubjectId": {
+          "type": "string"
+        },
+        "mandateDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "priorHeads": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "nextHeads": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "worldHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "reducerDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "registryDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "kai": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      },
+      "required": [
+        "schema",
+        "receiptId",
+        "commandId",
+        "attemptId",
+        "eventIds",
+        "actorSubjectId",
+        "priorHeads",
+        "nextHeads",
+        "worldHead",
+        "reducerDigest",
+        "registryDigest",
+        "kai"
+      ],
+      "additionalProperties": false
+    },
+    "worldCheckpoint": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.world.checkpoint.v1",
+      "title": "receiz.world.checkpoint.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.world.checkpoint.v1"
+        },
+        "worldId": {
+          "type": "string"
+        },
+        "throughHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "subjectHeads": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "checkpointDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "registryDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "reducerDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "schema",
+        "worldId",
+        "throughHead",
+        "events",
+        "subjectHeads",
+        "checkpointDigest",
+        "registryDigest",
+        "reducerDigest"
+      ],
+      "additionalProperties": false
+    },
+    "worldTransaction": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.world.transaction.v1",
+      "title": "receiz.world.transaction.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.world.transaction.v1"
+        },
+        "transactionId": {
+          "type": "string"
+        },
+        "transactionDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "worldId": {
+          "type": "string"
+        },
+        "participants": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expectedHeads": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "commands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "registryDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "reducerDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "schema",
+        "transactionId",
+        "transactionDigest",
+        "worldId",
+        "participants",
+        "expectedHeads",
+        "commands",
+        "registryDigest",
+        "reducerDigest"
+      ],
+      "additionalProperties": false
+    },
+    "bearerTransferPlan": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.bearer.transfer_plan.v1",
+      "title": "receiz.bearer.transfer_plan.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.bearer.transfer_plan.v1"
+        },
+        "transferId": {
+          "type": "string"
+        },
+        "transferDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "subjectDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "expectedSubjectHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "expectedOwnershipHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "currentOwnerReceizId": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "object",
+          "properties": {
+            "recipientReceizId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "openBearer": {
+              "type": "boolean"
+            },
+            "expiresAtKai": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            "requiresRecipientAcceptance": {
+              "type": "boolean"
+            },
+            "priorOwnerConversationPolicy": {
+              "enum": [
+                "encrypted-evidence",
+                "inherited",
+                "excluded"
+              ]
+            },
+            "inventoryDisposition": {
+              "type": "object",
+              "additionalProperties": {
+                "enum": [
+                  "transfer",
+                  "retain",
+                  "detach"
+                ]
+              }
+            }
+          },
+          "required": [
+            "recipientReceizId",
+            "openBearer",
+            "expiresAtKai",
+            "requiresRecipientAcceptance",
+            "priorOwnerConversationPolicy",
+            "inventoryDisposition"
+          ],
+          "additionalProperties": false
+        },
+        "policyDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "registryDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "reducerDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "schema",
+        "transferId",
+        "transferDigest",
+        "subjectId",
+        "subjectDigest",
+        "expectedSubjectHead",
+        "expectedOwnershipHead",
+        "currentOwnerReceizId",
+        "policy",
+        "policyDigest",
+        "registryDigest",
+        "reducerDigest"
+      ],
+      "additionalProperties": false
+    },
+    "bearerInstrument": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.bearer.instrument.v1",
+      "title": "receiz.bearer.instrument.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.bearer.instrument.v1"
+        },
+        "plan": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "oneTimeClaimDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "issuedAtKai": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "exactBytesB64u": {
+          "type": "string"
+        },
+        "artifactDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "status": {
+          "enum": [
+            "issued",
+            "pending-acceptance",
+            "claimed",
+            "cancelled",
+            "expired"
+          ]
+        }
+      },
+      "required": [
+        "schema",
+        "plan",
+        "oneTimeClaimDigest",
+        "issuedAtKai",
+        "exactBytesB64u",
+        "artifactDigest",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "bearerClaim": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.bearer.claim.v1",
+      "title": "receiz.bearer.claim.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.bearer.claim.v1"
+        },
+        "transferId": {
+          "type": "string"
+        },
+        "instrumentDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "recipientReceizId": {
+          "type": "string"
+        },
+        "recipientCapabilityDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "accepted": {
+          "type": "boolean"
+        },
+        "idempotencyKey": {
+          "type": "string"
+        },
+        "kai": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      },
+      "required": [
+        "schema",
+        "transferId",
+        "instrumentDigest",
+        "recipientReceizId",
+        "recipientCapabilityDigest",
+        "accepted",
+        "idempotencyKey",
+        "kai"
+      ],
+      "additionalProperties": false
+    },
+    "bearerTransferReceipt": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "receiz.bearer.transfer_receipt.v1",
+      "title": "receiz.bearer.transfer_receipt.v1",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "receiz.bearer.transfer_receipt.v1"
+        },
+        "receiptId": {
+          "type": "string"
+        },
+        "transferId": {
+          "type": "string"
+        },
+        "instrumentDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "identityDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "priorOwnerReceizId": {
+          "type": "string"
+        },
+        "nextOwnerReceizId": {
+          "type": "string"
+        },
+        "priorSubjectHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "nextSubjectHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "priorOwnershipHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "nextOwnershipHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "eventIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "revokedMandateDigests": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "revokedCapabilityDigests": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "cancelledRuntimeJobIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "inventoryDispositionDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "memoryPolicyDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "sealedArtifact": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "kai": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "registryDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "reducerDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "schema",
+        "receiptId",
+        "transferId",
+        "instrumentDigest",
+        "subjectId",
+        "identityDigest",
+        "priorOwnerReceizId",
+        "nextOwnerReceizId",
+        "priorSubjectHead",
+        "nextSubjectHead",
+        "priorOwnershipHead",
+        "nextOwnershipHead",
+        "eventIds",
+        "revokedMandateDigests",
+        "revokedCapabilityDigests",
+        "cancelledRuntimeJobIds",
+        "inventoryDispositionDigest",
+        "memoryPolicyDigest",
+        "sealedArtifact",
+        "kai",
+        "registryDigest",
+        "reducerDigest"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

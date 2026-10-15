@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.receiz.com/v122/subject-world.schema.json",
+  "title": "Receiz v122 Remote Subject and World Runtime",
+  "version": "122.0.0",
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "exactSegment": {
+      "type": "object",
+      "properties": {
+        "exactBytesB64u": { "type": "string", "pattern": "^[A-Za-z0-9_-]*$" },
+        "digest": { "$ref": "#/$defs/digest" }
+      },
+      "required": ["exactBytesB64u", "digest"],
+      "additionalProperties": false
+    },
+    "receiptAuthority": {
+      "type": "object",
+      "properties": {
+        "receiptIsProofAuthority": { "const": false },
+        "strongerTruth": { "const": "sealed-receiz-proof-object" }
+      },
+      "required": ["receiptIsProofAuthority", "strongerTruth"],
+      "additionalProperties": false
+    },
+    "subjectAdmissionReceipt": {
+      "type": "object",
+      "properties": {
+        "schema": { "const": "receiz.subject.admission-receipt.v122" },
+        "subjectId": { "type": "string", "pattern": "^receiz:subject:[0-9a-f]{64}$" },
+        "proofObjectId": { "type": "string", "minLength": 1 },
+        "admittedProofDigest": { "$ref": "#/$defs/digest" },
+        "immutableProofVersion": { "type": "string", "minLength": 1 },
+        "ownerReceizId": { "type": "string", "minLength": 1 },
+        "ownerProofDigest": { "$ref": "#/$defs/digest" },
+        "genesisHead": { "$ref": "#/$defs/digest" },
+        "registryDigest": { "$ref": "#/$defs/digest" },
+        "reducerDigest": { "$ref": "#/$defs/digest" },
+        "kai": { "type": "integer", "minimum": 0 },
+        "idempotencyIdentityDigest": { "$ref": "#/$defs/digest" },
+        "authority": { "$ref": "#/$defs/receiptAuthority" },
+        "receiptDigest": { "$ref": "#/$defs/digest" }
+      },
+      "required": [
+        "schema", "subjectId", "proofObjectId", "admittedProofDigest", "immutableProofVersion",
+        "ownerReceizId", "ownerProofDigest", "genesisHead", "registryDigest", "reducerDigest",
+        "kai", "idempotencyIdentityDigest", "authority", "receiptDigest"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "schemas": {
+    "subjectAdmissionRequest": {
+      "type": "object",
+      "description": "Transport projection after the SDK snapshots the existing ReceizArtifactInput exactly.",
+      "properties": {
+        "proofObject": {
+          "type": "object",
+          "properties": {
+            "exactBytesB64u": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+            "filename": { "type": "string" },
+            "mimeType": { "type": "string" }
+          },
+          "required": ["exactBytesB64u", "filename", "mimeType"],
+          "additionalProperties": false
+        },
+        "ownerReceizId": { "type": "string", "minLength": 1 },
+        "idempotencyKey": { "type": "string", "minLength": 1 },
+        "expectedAbsent": { "const": true }
+      },
+      "required": ["proofObject", "ownerReceizId", "idempotencyKey", "expectedAbsent"],
+      "additionalProperties": false
+    },
+    "subjectAdmissionSuccess": {
+      "type": "object",
+      "properties": {
+        "ok": { "const": true },
+        "subjectId": { "type": "string", "pattern": "^receiz:subject:[0-9a-f]{64}$" },
+        "head": { "$ref": "#/$defs/digest" },
+        "proofDigest": { "$ref": "#/$defs/digest" },
+        "registryDigest": { "$ref": "#/$defs/digest" },
+        "reducerDigest": { "$ref": "#/$defs/digest" },
+        "receipt": { "$ref": "#/$defs/subjectAdmissionReceipt" }
+      },
+      "required": ["ok", "subjectId", "head", "proofDigest", "registryDigest", "reducerDigest", "receipt"],
+      "additionalProperties": false
+    },
+    "subjectAdmissionFailure": {
+      "type": "object",
+      "properties": {
+        "ok": { "const": false },
+        "code": {
+          "enum": [
+            "IDEMPOTENCY_CONFLICT", "SUBJECT_PROOF_CONFLICT", "SUBJECT_OWNER_CONFLICT",
+            "INVALID_ENCLOSING_PROOF", "INVALID_OWNER_PROOF", "REGISTRY_INCOMPATIBLE",
+            "REDUCER_INCOMPATIBLE", "EXACT_BYTES_INVALID", "UNAUTHORIZED"
+          ]
+        },
+        "writes": { "const": 0 }
+      },
+      "required": ["ok", "code", "writes"],
+      "additionalProperties": false
+    },
+    "subjectState": {
+      "type": "object",
+      "properties": {
+        "schema": { "const": "receiz.subject.state.v122" },
+        "subjectId": { "type": "string", "pattern": "^receiz:subject:[0-9a-f]{64}$" },
+        "proofObjectId": { "type": "string", "minLength": 1 },
+        "admittedProofDigest": { "$ref": "#/$defs/digest" },
+        "immutableProofVersion": { "type": "string", "minLength": 1 },
+        "subjectType": { "type": "string", "minLength": 1 },
+        "opaqueNamespaces": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "namespace": { "type": "string", "minLength": 1 },
+              "exactBytesB64u": { "type": "string", "pattern": "^[A-Za-z0-9_-]*$" },
+              "digest": { "$ref": "#/$defs/digest" }
+            },
+            "required": ["namespace", "exactBytesB64u", "digest"],
+            "additionalProperties": false
+          }
+        },
+        "genesisHead": { "$ref": "#/$defs/digest" },
+        "head": { "$ref": "#/$defs/digest" },
+        "ownerReceizId": { "type": "string", "minLength": 1 },
+        "ownershipHead": { "$ref": "#/$defs/digest" },
+        "ownerProofDigest": { "$ref": "#/$defs/digest" },
+        "registryDigest": { "$ref": "#/$defs/digest" },
+        "reducerDigest": { "$ref": "#/$defs/digest" },
+        "admissionReceipt": { "$ref": "#/$defs/subjectAdmissionReceipt" },
+        "causalParents": { "type": "array", "items": { "$ref": "#/$defs/digest" } },
+        "accessKeyHead": { "anyOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }] },
+        "replay": {
+          "type": "object",
+          "properties": {
+            "appendCursor": { "type": "string", "minLength": 1 },
+            "eventCursor": { "type": "string", "minLength": 1 }
+          },
+          "required": ["appendCursor", "eventCursor"],
+          "additionalProperties": false
+        },
+        "authority": {
+          "type": "object",
+          "properties": {
+            "stateIsProofAuthority": { "const": false },
+            "strongerTruth": { "const": "sealed-receiz-proof-object" }
+          },
+          "required": ["stateIsProofAuthority", "strongerTruth"],
+          "additionalProperties": false
+        },
+        "stateDigest": { "$ref": "#/$defs/digest" }
+      },
+      "required": [
+        "schema", "subjectId", "proofObjectId", "admittedProofDigest", "immutableProofVersion", "subjectType",
+        "opaqueNamespaces", "genesisHead", "head", "ownerReceizId", "ownershipHead", "ownerProofDigest",
+        "registryDigest", "reducerDigest", "admissionReceipt", "causalParents", "accessKeyHead", "replay",
+        "authority", "stateDigest"
+      ],
+      "additionalProperties": false
+    },
+    "subjectEdgeBundle": {
+      "type": "object",
+      "properties": {
+        "schema": { "const": "receiz.subject.edge_bundle.v122" },
+        "proof": {
+          "type": "object",
+          "properties": {
+            "exactBytesB64u": { "type": "string", "pattern": "^[A-Za-z0-9_-]*$" },
+            "digest": { "$ref": "#/$defs/digest" },
+            "filename": { "type": "string" },
+            "mimeType": { "type": "string" },
+            "admittedProofDigest": { "$ref": "#/$defs/digest" }
+          },
+          "required": ["exactBytesB64u", "digest", "filename", "mimeType", "admittedProofDigest"],
+          "additionalProperties": false
+        },
+        "subjectState": { "$ref": "#/schemas/subjectState" },
+        "appendChain": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "exactBytesB64u": { "type": "string", "pattern": "^[A-Za-z0-9_-]*$" },
+              "digest": { "$ref": "#/$defs/digest" },
+              "head": { "$ref": "#/$defs/digest" },
+              "parentHeads": { "type": "array", "items": { "$ref": "#/$defs/digest" } }
+            },
+            "required": ["exactBytesB64u", "digest", "head", "parentHeads"],
+            "additionalProperties": false
+          }
+        },
+        "ownerEvidence": { "$ref": "#/$defs/exactSegment" },
+        "registryArtifacts": { "type": "array", "items": { "$ref": "#/$defs/exactSegment" } },
+        "reducerArtifacts": { "type": "array", "items": { "$ref": "#/$defs/exactSegment" } },
+        "mandateHistory": { "type": "array", "items": { "$ref": "#/$defs/exactSegment" } },
+        "privateEnvelopeSegments": { "type": "array", "items": { "$ref": "#/$defs/exactSegment" } },
+        "encryptedAccessKit": { "anyOf": [{ "$ref": "#/$defs/exactSegment" }, { "type": "null" }] },
+        "valueProofReferences": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "exactBytesB64u": { "type": "string", "pattern": "^[A-Za-z0-9_-]*$" },
+              "digest": { "$ref": "#/$defs/digest" },
+              "rail": { "enum": ["settlement", "reserve"] }
+            },
+            "required": ["exactBytesB64u", "digest", "rail"],
+            "additionalProperties": false
+          }
+        },
+        "manifestDigest": { "$ref": "#/$defs/digest" }
+      },
+      "required": [
+        "schema", "proof", "subjectState", "appendChain", "ownerEvidence", "registryArtifacts",
+        "reducerArtifacts", "mandateHistory", "privateEnvelopeSegments", "encryptedAccessKit",
+        "valueProofReferences", "manifestDigest"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://receiz.com/schemas/v126/subject-thread-source-family.schema.json",
+  "title": "Receiz closed canonical conversation and temporal source family v125",
+  "description": "Exact source transport and explicit selection only. New conversation provenance events require event-specific actor evidence and are not admitted by this prerequisite.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "originalArtifacts",
+    "temporalArtifacts",
+    "originalArtifactSha256",
+    "currentArtifactSha256",
+    "subjectFamily",
+    "authors",
+    "familySetDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "receiz.subject-thread-source-family.v125"
+    },
+    "originalArtifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    },
+    "temporalArtifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    },
+    "originalArtifactSha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "currentArtifactSha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "subjectFamily": {
+      "$ref": "https://receiz.com/schemas/v126/subject-source-family.schema.json"
+    },
+    "authors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sourceArtifactSha256",
+          "selection"
+        ],
+        "properties": {
+          "sourceArtifactSha256": {
+            "$ref": "#/$defs/digest"
+          },
+          "selection": {
+            "$ref": "#/$defs/selection"
+          }
+        }
+      }
+    },
+    "familySetDigest": {
+      "$ref": "#/$defs/digest"
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "exactBytesB64u",
+        "filename",
+        "mimeType",
+        "artifactSha256",
+        "payloadSha256"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.sealed-artifact-bytes.v124"
+        },
+        "exactBytesB64u": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "filename": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mimeType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifactSha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "payloadSha256": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currentArtifactSha256",
+        "identityArtifactSha256",
+        "subjectArtifactSha256",
+        "accessNamespace"
+      ],
+      "properties": {
+        "currentArtifactSha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "identityArtifactSha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "subjectArtifactSha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "accessNamespace": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+        }
+      }
+    }
+  }
+}

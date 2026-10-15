@@ -1,0 +1,71 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "es2022"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "server-only": [
+        "./app/lib/runtime/serverOnly.ts"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "**/*.mts",
+    "**/*.d.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "output/**",
+    "tmp/**",
+    ".receiz-generated-project-*/**",
+    ".next/dev/types/**",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "scripts/**",
+    "packages/**",
+    "ai-skills/**",
+    "receiz-docs/**",
+    "fixtures/**",
+    "public/**/*.ts",
+    "public/**/*.tsx",
+    "**/* copy.ts",
+    "**/* copy.tsx",
+    "**/* copy.js",
+    "**/* copy.jsx",
+    "**/* copy 2.ts",
+    "**/* copy 2.tsx",
+    "**/* copy 2.js",
+    "**/* copy 2.jsx",
+    "PBI"
+  ]
+}

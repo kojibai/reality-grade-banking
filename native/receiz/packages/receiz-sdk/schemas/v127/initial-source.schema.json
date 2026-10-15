@@ -1,0 +1,315 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://receiz.com/schemas/v127/initial-source.schema.json",
+  "title": "Receiz proposed initial sealed source plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "kind",
+    "resource",
+    "ownerReceizId",
+    "actorId",
+    "commitDomain",
+    "operation",
+    "planDigest",
+    "confirmationDigest",
+    "idempotencyDigest",
+    "proposedGenesisHead",
+    "payloadSha256",
+    "kaiUpulse",
+    "writesPerformed",
+    "authority",
+    "source"
+  ],
+  "properties": {
+    "schema": {
+      "const": "receiz.initial-source-plan.v125"
+    },
+    "kind": {
+      "enum": [
+        "attestation",
+        "credential"
+      ]
+    },
+    "resource": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "ownerReceizId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "actorId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "commitDomain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scheme",
+        "value"
+      ],
+      "properties": {
+        "scheme": {
+          "const": "receiz-commit-domain.v1"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "operation": {
+      "enum": [
+        "attestation.create",
+        "credential.create"
+      ]
+    },
+    "planDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "binds",
+        "value"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "sha-256"
+        },
+        "binds": {
+          "const": "artifact-append-plan"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "confirmationDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "idempotencyDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "proposedGenesisHead": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "payloadSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "kaiUpulse": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$"
+    },
+    "writesPerformed": {
+      "const": 0
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planIsProofAuthority",
+        "genesisIsAccepted",
+        "strongerTruth"
+      ],
+      "properties": {
+        "planIsProofAuthority": {
+          "const": false
+        },
+        "genesisIsAccepted": {
+          "const": false
+        },
+        "strongerTruth": {
+          "const": "sealed-receiz-proof-object"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "domainArtifactSha256",
+        "acceptedDomainHead",
+        "domainProofObjectId",
+        "domainDigest",
+        "identity",
+        "sourceBindings"
+      ],
+      "properties": {
+        "domainArtifactSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "acceptedDomainHead": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "domainProofObjectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "domainDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "artifactSha256",
+            "actor"
+          ],
+          "properties": {
+            "artifactSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "actor": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "actorId",
+                "evidenceDigest",
+                "admissionProfile",
+                "registryDigest"
+              ],
+              "properties": {
+                "actorId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "evidenceDigest": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "algorithm",
+                    "binds",
+                    "value"
+                  ],
+                  "properties": {
+                    "algorithm": {
+                      "const": "sha-256"
+                    },
+                    "binds": {
+                      "const": "verified-actor-evidence"
+                    },
+                    "value": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  }
+                },
+                "admissionProfile": {
+                  "const": "identity"
+                },
+                "registryDigest": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "algorithm",
+                    "binds",
+                    "value"
+                  ],
+                  "properties": {
+                    "algorithm": {
+                      "const": "sha-256"
+                    },
+                    "binds": {
+                      "const": "constitution-registry"
+                    },
+                    "value": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "sourceBindings": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "maxProperties": 0
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "issuanceSource",
+                "issuanceArtifactSha256",
+                "issuanceProofObjectId",
+                "acceptedIssuanceHistoryHead",
+                "acceptedApplicationHead"
+              ],
+              "properties": {
+                "issuanceSource": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "schema",
+                    "exactBytesB64u",
+                    "filename",
+                    "mimeType",
+                    "artifactSha256",
+                    "payloadSha256"
+                  ],
+                  "properties": {
+                    "schema": {
+                      "const": "receiz.sealed-artifact-bytes.v124"
+                    },
+                    "exactBytesB64u": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+$"
+                    },
+                    "filename": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "mimeType": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "artifactSha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "payloadSha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  }
+                },
+                "issuanceArtifactSha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "issuanceProofObjectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "acceptedIssuanceHistoryHead": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "acceptedApplicationHead": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

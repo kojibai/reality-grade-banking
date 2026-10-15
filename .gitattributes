@@ -3,3 +3,8 @@ docs/*.patch -whitespace
 
 # Bundled dependencies contain significant template-literal whitespace.
 public/native/*.mjs -whitespace
+
+# Matching upstream sources preserve their original bytes, including whitespace.
+native/** -text -whitespace
+public/native/** -text
+public/zk/** -text

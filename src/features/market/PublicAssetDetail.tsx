@@ -22,7 +22,7 @@ export function PublicAssetDetail({ item }: { item: PublicMarketItem }) {
       if (!response.ok) throw new Error('The original is not publicly downloadable. Open its public source to inspect its access terms.');
       const bytes = new Uint8Array(await response.arrayBuffer());
       await verifyPublicOriginalBytes(bytes, item.originalDigest);
-      if (current()) setVerification('Original verified with Receiz v129. The enclosing artifact matches this public source.');
+      if (current()) setVerification('Original verified. The enclosing artifact matches this public source.');
     } catch (cause) { if (current()) setVerification(cause instanceof Error ? cause.message : 'Original verification is unavailable.'); }
     finally { if (current()) { setBusy(false); pending.current = null; } }
   }

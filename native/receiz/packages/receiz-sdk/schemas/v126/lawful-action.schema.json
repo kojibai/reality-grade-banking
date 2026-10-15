@@ -1,0 +1,254 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://receiz.com/schemas/v126/lawful-action.schema.json",
+  "title": "Receiz v126 lawful action protocol",
+  "oneOf": [
+    { "$ref": "#/$defs/law" },
+    { "$ref": "#/$defs/proof" },
+    { "$ref": "#/$defs/admission" },
+    { "$ref": "#/$defs/valueHead" },
+    { "$ref": "#/$defs/execution" }
+  ],
+  "$defs": {
+    "hex64": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "kai": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+    "receizId": { "type": "string", "pattern": "^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?\\.receiz\\.id$" },
+    "lawExpression": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "value"],
+          "properties": { "op": { "const": "literal" }, "value": {} }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "value"],
+          "properties": { "op": { "const": "path" }, "value": { "type": "string", "minLength": 1 } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "left", "right"],
+          "properties": {
+            "op": { "const": "equal" },
+            "left": { "$ref": "#/$defs/lawExpression" },
+            "right": { "$ref": "#/$defs/lawExpression" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "values"],
+          "properties": {
+            "op": { "enum": ["all", "any"] },
+            "values": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/lawExpression" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "value"],
+          "properties": { "op": { "const": "not" }, "value": { "$ref": "#/$defs/lawExpression" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "path", "from", "to"],
+          "properties": {
+            "op": { "const": "transition" },
+            "path": { "type": "string", "minLength": 1 },
+            "from": {},
+            "to": {}
+          }
+        }
+      ]
+    },
+    "law": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "version", "lawId", "domain", "actionType", "registryDigest", "registryBindingLawId", "actorRule", "custodyRule", "causalPreconditions", "permittedTransition", "completionWitness", "duplicateRule", "conservationRule", "idempotencyRule", "verifierBinding", "causalVerifierBinding", "universalValueLawId", "authority", "lawDigest"],
+      "properties": {
+        "schema": { "const": "receiz.lawful-action-law.v125" },
+        "version": { "const": "125.0.0" },
+        "lawId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "domain": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "actionType": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "registryDigest": { "$ref": "#/$defs/hex64" },
+        "registryBindingLawId": { "const": "receiz.action.current-registry-law.v125" },
+        "actorRule": { "const": "verified-receiz-id" },
+        "custodyRule": { "const": "canonical-current-owner" },
+        "causalPreconditions": { "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": { "$ref": "#/$defs/lawExpression" } },
+        "permittedTransition": { "$ref": "#/$defs/lawExpression" },
+        "completionWitness": { "const": "sealed-output-commitment" },
+        "duplicateRule": { "const": "one-admission-per-proof-digest" },
+        "conservationRule": { "const": "one-spendable-membership-per-enclosing-artifact" },
+        "idempotencyRule": { "const": "proof-digest-and-causal-heads" },
+        "verifierBinding": { "const": "receiz.artifact-admission.v112" },
+        "causalVerifierBinding": { "const": "receiz.portable-execution-authority.v124" },
+        "universalValueLawId": { "const": "receiz.value.universal-deterministic-kai.v125" },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["lawManifestIsProofAuthority", "registrationRequiresSealedEnclosingProof", "developerMayDeclarePhiAmount", "institutionReceivesProofExemption"],
+          "properties": {
+            "lawManifestIsProofAuthority": { "const": false },
+            "registrationRequiresSealedEnclosingProof": { "const": true },
+            "developerMayDeclarePhiAmount": { "const": false },
+            "institutionReceivesProofExemption": { "const": false }
+          }
+        },
+        "lawDigest": { "$ref": "#/$defs/hex64" }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "version", "lawId", "lawDigest", "lawArtifactDigest", "registryDigest", "actorReceizId", "subjectId", "subjectHead", "causalParentHeads", "inputCommitment", "outputCommitment", "completionWitnessDigest", "startKai", "completionKai", "idempotencyKey", "verifierBinding", "causalVerifierBinding", "causalCompletionEvidence", "enclosingProofBinding", "proofDigest"],
+      "properties": {
+        "schema": { "const": "receiz.lawful-action-proof.v125" },
+        "version": { "const": "125.0.0" },
+        "lawId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "lawDigest": { "$ref": "#/$defs/hex64" },
+        "lawArtifactDigest": { "$ref": "#/$defs/hex64" },
+        "registryDigest": { "$ref": "#/$defs/hex64" },
+        "actorReceizId": { "$ref": "#/$defs/receizId" },
+        "subjectId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "subjectHead": { "$ref": "#/$defs/hex64" },
+        "causalParentHeads": { "type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": { "$ref": "#/$defs/hex64" } },
+        "inputCommitment": { "$ref": "#/$defs/hex64" },
+        "outputCommitment": { "$ref": "#/$defs/hex64" },
+        "completionWitnessDigest": { "$ref": "#/$defs/hex64" },
+        "startKai": { "$ref": "#/$defs/kai" },
+        "completionKai": { "$ref": "#/$defs/kai" },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "verifierBinding": { "const": "receiz.artifact-admission.v112" },
+        "causalVerifierBinding": { "const": "receiz.portable-execution-authority.v124" },
+        "causalCompletionEvidence": {
+          "type": "object",
+          "required": ["schema", "profile"],
+          "properties": {
+            "schema": { "const": "receiz.portable-execution-authority.v124" },
+            "profile": { "const": "portable-state" }
+          }
+        },
+        "enclosingProofBinding": { "const": "exact-sealed-artifact-derived-at-verification" },
+        "proofDigest": { "$ref": "#/$defs/hex64" }
+      }
+    },
+    "admission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "proofDigest", "enclosingArtifactId", "enclosingArtifactDigest", "lawDigest", "lawArtifactDigest", "registryDigest", "actorReceizId", "subjectId", "subjectHead", "causalParentHeads", "idempotencyKey", "startKai", "completionKai", "genesisOwnerReceizId", "currentOwnerReceizId", "ownershipHistoryDigest", "ownershipAppendCount", "priorAdmissionDigest", "membershipId", "authority", "admissionDigest"],
+      "properties": {
+        "schema": { "const": "receiz.lawful-action-admission.v125" },
+        "proofDigest": { "$ref": "#/$defs/hex64" },
+        "enclosingArtifactId": { "$ref": "#/$defs/hex64" },
+        "enclosingArtifactDigest": { "$ref": "#/$defs/hex64" },
+        "lawDigest": { "$ref": "#/$defs/hex64" },
+        "lawArtifactDigest": { "$ref": "#/$defs/hex64" },
+        "registryDigest": { "$ref": "#/$defs/hex64" },
+        "actorReceizId": { "$ref": "#/$defs/receizId" },
+        "subjectId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "subjectHead": { "$ref": "#/$defs/hex64" },
+        "causalParentHeads": { "type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": { "$ref": "#/$defs/hex64" } },
+        "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "startKai": { "$ref": "#/$defs/kai" },
+        "completionKai": { "$ref": "#/$defs/kai" },
+        "genesisOwnerReceizId": { "$ref": "#/$defs/receizId" },
+        "currentOwnerReceizId": { "$ref": "#/$defs/receizId" },
+        "ownershipHistoryDigest": { "$ref": "#/$defs/hex64" },
+        "ownershipAppendCount": { "type": "integer", "minimum": 0 },
+        "priorAdmissionDigest": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/hex64" }] },
+        "membershipId": { "$ref": "#/$defs/hex64" },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["receiptIsProofAuthority", "strongerTruth", "writesPerformed"],
+          "properties": {
+            "receiptIsProofAuthority": { "const": false },
+            "strongerTruth": { "const": "sealed-receiz-proof-object" },
+            "writesPerformed": { "const": 1 }
+          }
+        },
+        "admissionDigest": { "$ref": "#/$defs/hex64" }
+      }
+    },
+    "valueHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "membershipId", "actionAdmissionDigest", "enclosingArtifactId", "enclosingArtifactDigest", "lawDigest", "registryDigest", "currentOwnerReceizId", "ownershipHistoryDigest", "startKai", "completionKai", "valuationKai", "universalValueLawId", "projectorVersion", "settlementPhiMicro", "priorValueHeadDigest", "authority", "valueHeadDigest"],
+      "properties": {
+        "schema": { "const": "receiz.lawful-action-value-head.v125" },
+        "membershipId": { "$ref": "#/$defs/hex64" },
+        "actionAdmissionDigest": { "$ref": "#/$defs/hex64" },
+        "enclosingArtifactId": { "$ref": "#/$defs/hex64" },
+        "enclosingArtifactDigest": { "$ref": "#/$defs/hex64" },
+        "lawDigest": { "$ref": "#/$defs/hex64" },
+        "registryDigest": { "$ref": "#/$defs/hex64" },
+        "currentOwnerReceizId": { "$ref": "#/$defs/receizId" },
+        "ownershipHistoryDigest": { "$ref": "#/$defs/hex64" },
+        "startKai": { "$ref": "#/$defs/kai" },
+        "completionKai": { "$ref": "#/$defs/kai" },
+        "valuationKai": { "$ref": "#/$defs/kai" },
+        "universalValueLawId": { "const": "receiz.value.universal-deterministic-kai.v125" },
+        "projectorVersion": { "const": "receiz.lawful-action-value-projector.v125" },
+        "settlementPhiMicro": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+        "priorValueHeadDigest": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/hex64" }] },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["valueHeadIsProofAuthority", "strongerTruth", "developerDeclaredAmount", "oneSpendableMembership"],
+          "properties": {
+            "valueHeadIsProofAuthority": { "const": false },
+            "strongerTruth": { "const": "sealed-receiz-proof-object" },
+            "developerDeclaredAmount": { "const": false },
+            "oneSpendableMembership": { "const": true }
+          }
+        },
+        "valueHeadDigest": { "$ref": "#/$defs/hex64" }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "valueHeadDigest", "membershipId", "intent", "authority", "executionDigest"],
+      "properties": {
+        "schema": { "const": "receiz.lawful-action-execution.v125" },
+        "valueHeadDigest": { "$ref": "#/$defs/hex64" },
+        "membershipId": { "$ref": "#/$defs/hex64" },
+        "intent": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema", "rail", "amountPhiMicro", "usdPerPhiMicrocents", "quotedUsdCents", "priceBasisDigest", "sourceProofObjectId", "sourceValueHead", "destinationSubjectId", "expectedDestinationHead", "idempotencyKey", "valueIntentDigest"],
+          "properties": {
+            "schema": { "const": "receiz.world.value-intent.v122" },
+            "rail": { "const": "settlement" },
+            "amountPhiMicro": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+            "usdPerPhiMicrocents": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+            "quotedUsdCents": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+            "priceBasisDigest": { "$ref": "#/$defs/hex64" },
+            "sourceProofObjectId": { "type": "string", "minLength": 1, "maxLength": 512 },
+            "sourceValueHead": { "$ref": "#/$defs/hex64" },
+            "destinationSubjectId": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "expectedDestinationHead": { "$ref": "#/$defs/hex64" },
+            "idempotencyKey": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "valueIntentDigest": { "$ref": "#/$defs/hex64" }
+          }
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["executionPlanIsProofAuthority", "strongerTruth", "existingExecutionRail"],
+          "properties": {
+            "executionPlanIsProofAuthority": { "const": false },
+            "strongerTruth": { "const": "settlement-proof-object" },
+            "existingExecutionRail": { "const": "receiz.world.value-intent.v122" }
+          }
+        },
+        "executionDigest": { "$ref": "#/$defs/hex64" }
+      }
+    }
+  }
+}

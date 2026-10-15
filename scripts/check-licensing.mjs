@@ -23,7 +23,8 @@ assert.equal(metadata.copyrightHolder, 'Brian Joseph Klock');
 assert.equal(metadata.referenceImplementation, 'https://bankeiz.com/');
 assert.equal(metadata.licenseSha256, hash(license));
 assert.equal(metadata.institutionConformance, 'not-assessed');
-assert.equal(metadata.nativeSourceMaterials, 'external-matching-source-required');
+assert.equal(metadata.nativeSourceMaterials, 'included-pinned-source');
+assert.deepEqual(metadata.correspondingSource, JSON.parse(await readFile('dist/source/index.json', 'utf8')));
 const inventory = JSON.parse(await readFile('dist/legal/dependencies.json', 'utf8'));
 const production = Object.entries(lock.packages).filter(([path, value]) => path && !value.dev);
 assert.equal(inventory.packages.length, production.length);
@@ -40,6 +41,7 @@ for (const [path, value] of production) {
 }
 const html = await readFile('dist/legal/index.html', 'utf8');
 assert.ok(html.includes('Brian Joseph Klock') && html.includes('/legal/LICENSE.txt') && html.includes('/legal/SOURCE.md'));
+assert.ok(html.includes(metadata.correspondingSource.url) && html.includes('Download this build’s source'));
 assert.ok(html.includes('Read the complete GNU GPL version 3') && html.includes('END OF TERMS AND CONDITIONS'), 'The complete license must be readable without a download or JavaScript.');
 assert.ok(!html.includes('<script type="module"'), 'The legal page must not load the account runtime.');
-console.log(`Verified unmodified GPLv3, ownership, public legal copies and notices for ${production.length} locked production dependencies. Native source delivery remains a separate release obligation.`);
+console.log(`Verified unmodified GPLv3, ownership, public legal copies, matching source download and notices for ${production.length} locked production dependencies.`);

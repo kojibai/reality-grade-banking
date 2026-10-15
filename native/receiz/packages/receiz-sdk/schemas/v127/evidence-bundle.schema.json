@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://receiz.com/schemas/v127/evidence-bundle.schema.json",
+  "$comment": "Runtime-only: NFC normalization, canonical order, evidence domain lookup, nested uniqueness, and digest recomputation are enforced by parseReceizEvidenceBundleV125.",
+  "title": "Receiz v127 attestation evidence bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "domainId", "credentialType", "subjectId", "registryDigest", "domainDigest", "evidence", "collectedKai", "predecessorHead", "acceptedHead", "authority", "evidenceBundleDigest"],
+  "properties": {
+    "schema": { "const": "receiz.attestation.evidence-bundle.v125" },
+    "domainId": { "$ref": "#/$defs/name" },
+    "credentialType": { "$ref": "#/$defs/name" },
+    "subjectId": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "registryDigest": { "const": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065" },
+    "domainDigest": { "$ref": "#/$defs/hex64" },
+    "evidence": { "type": "array", "minItems": 1, "maxItems": 1024, "uniqueItems": true, "items": { "$ref": "#/$defs/evidence" } },
+    "collectedKai": { "$ref": "#/$defs/kai" },
+    "predecessorHead": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/hex64" }] },
+    "acceptedHead": { "$ref": "#/$defs/hex64" },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceBundleIsProofAuthority", "strongerTruth"],
+      "properties": {
+        "evidenceBundleIsProofAuthority": { "const": false },
+        "strongerTruth": { "const": "sealed-receiz-proof-object" }
+      }
+    },
+    "evidenceBundleDigest": { "$ref": "#/$defs/hex64" }
+  },
+  "$defs": {
+    "hex64": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "kai": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[a-z][a-z0-9]*(?:[._:-][a-z0-9]+)*$" },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceId", "evidenceType", "classification", "verifierBinding", "evaluatorPolicy", "artifactSha256", "proofObjectId", "subjectId", "custodyHead", "contentCommitment"],
+      "properties": {
+        "evidenceId": { "$ref": "#/$defs/name" },
+        "evidenceType": { "$ref": "#/$defs/name" },
+        "classification": { "enum": ["public", "selective", "private"] },
+        "verifierBinding": { "$ref": "#/$defs/name" },
+        "evaluatorPolicy": { "$ref": "#/$defs/name" },
+        "artifactSha256": { "$ref": "#/$defs/hex64" },
+        "proofObjectId": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "subjectId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "custodyHead": { "$ref": "#/$defs/hex64" },
+        "contentCommitment": { "$ref": "#/$defs/hex64" }
+      }
+    }
+  }
+}
