@@ -1,0 +1,8 @@
+{
+  "schema": "receiz.bank.native-runtime-build.v1",
+  "version": "129.0.0",
+  "moduleSha256": "c968ad2f9c8d030ab832641e6a95d6f55dc3ba63de21f14566ab09398d4b8463",
+  "sourceTreeSha256": "79c8cc2d6a33bb319c552860350950e62d1ef7b9e9ee524ac8be0f9efe25e948",
+  "inputs": 285,
+  "bytes": 2221244
+}

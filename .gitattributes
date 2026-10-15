@@ -1,2 +1,5 @@
 # Unified patches retain whitespace-only context lines from their source.
 docs/*.patch -whitespace
+
+# Bundled dependencies contain significant template-literal whitespace.
+public/native/*.mjs -whitespace

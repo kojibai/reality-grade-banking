@@ -44,6 +44,6 @@ function BankApp() {
     <div hidden={panel !== 'market'}><Market source={publicMarket} active={onBank && panel === 'market'} onAction={open} /></div>
     <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={onBank && panel === 'assets'} revision={sourceRevision} showcase={showcase} showcaseBusy={publicMarket.status === 'loading'} onOpen={open} /></div>
     <div hidden={panel !== 'ledger'}><Ledger active={onBank && panel === 'ledger'} personalHistory={personalHistory} privateHistory={privateHistory} /></div>
-    {sheet && <LiveActions key={sheet.kind} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} onClose={close} onRefresh={() => { setSourceRevision(value => value + 1); void account.refresh(); }} onForget={async () => { setSheet(null); await account.forget(); }} />}
+    {sheet && <LiveActions key={sheet.kind} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} onClose={close} onRefresh={() => { setSourceRevision(value => value + 1); void account.refresh(); }} onForget={async () => { await account.forget(); setSheet(null); }} />}
   </ConsoleShell>;
 }

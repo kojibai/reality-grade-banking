@@ -1,3 +1,6 @@
+import { loadOfflineNoteState, saveOfflineNoteState, saveOfflineNoteBlob, loadOfflineNoteBlob } from './identity-vault';
+import { createBankNoteAttestationFetch } from './note-attestation-transport';
+import { loadBankNoteRuntime, bankNoteArtwork, type BankOfflineNotes, type BankNoteRuntime } from './offline-notes';
 import type { ReceizClient, ReceizIdentityPublicBinding, ReceizKeyFile, ReceizIdentityAccountProjection } from '@receiz/sdk';
 import { loadReceiz } from './client';
 import { BANK_APPLICATION_ID, BANK_CARD_APPLICATION_IDS, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES, BANK_NATIVE_CONSENT, BANK_NATIVE_SCOPES } from './config';
@@ -21,6 +24,7 @@ import { appendWalletPoint } from './wallet-series';
 import { parsePrivateHistoryPage, privateHistoryPath, type PrivateHistoryPage } from './private-history';
 
 export interface OpenIdentity {
+  offlineNotes?: () => Promise<BankOfflineNotes>;
   binding: ReceizIdentityPublicBinding; needsPhrase: boolean; knownWallet: () => import('./wallet-observation').WalletObservation | null;
   username: string | null; accountUsername?: () => string | null; localHistory: ReceizIdentityAccountProjection; readWallet: () => Promise<ReturnType<typeof parseSharedWallet>>;
   beginCardDeposit: (amount: string, approved: boolean) => Promise<CardCheckout>; checkCardDeposit: (checkout: CardCheckout) => Promise<CardDepositStatus>;
@@ -53,8 +57,10 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const lifetime = new AbortController();
   const heldFetch: typeof fetch = (input, init) => nativeFetch(input, { ...init, signal: AbortSignal.any([lifetime.signal, AbortSignal.timeout(60_000)]) });
   const unsigned = sdk.createReceizClient({ applicationId: BANK_APPLICATION_ID, baseUrl: 'https://receiz.com', fetchImpl: heldFetch });
+  let sealingResources: { wasm: Uint8Array; zkey: Uint8Array } | undefined;
   async function ownedSealer() {
     const resources = await Promise.all(['/zk/document-seal.wasm', '/zk/document-seal.zkey'].map(async path => { const response = await fetch(path, { credentials: 'omit', signal: lifetime.signal }); if (!response.ok) throw new Error('Receiz proof resources are unavailable.'); return new Uint8Array(await response.arrayBuffer()); }));
+    sealingResources = { wasm: resources[0], zkey: resources[1] };
     const { createReceizOfflineSealer, createReceizIndexedDbSealStore } = await import('@receiz/sdk/offline');
     const sealer = createReceizOfflineSealer({ ownerIdentityAdmission: admission, store: createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer'), resources: { wasm: resources[0], zkey: resources[1] }, fetch: heldFetch });
     await sealer.enroll(); return sealer;
@@ -102,6 +108,50 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const wallet = parseSharedWallet(await current.connect.wallet(), accountUid!);
     if (!lifetime.signal.aborted) { const observedAt = new Date().toISOString(); const history = appendWalletPoint(knownWallet?.history ?? [], wallet, observedAt, String(sdk.receizKaiNow().uPulse)); knownWallet = { wallet, observedAt, history }; await saveWalletObservation(binding, wallet, observedAt, history); }
     return wallet;
+  }
+  let noteRuntime: BankNoteRuntime | undefined;
+  const noteOpen = () => { if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.'); };
+  async function offlineNotes(): Promise<BankOfflineNotes> {
+    noteOpen();
+    accountUid ??= knownWallet?.wallet.userId ?? null;
+    if (!accountUid) await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT);
+    if (!noteRuntime) {
+      const module = await loadBankNoteRuntime(); await ownedSealer();
+      const { createReceizIndexedDbSealStore } = await import('@receiz/sdk/offline');
+      const enrollment = await createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer').load();
+      if (!enrollment || !sealingResources) throw new Error('Your device sealing key is unavailable.');
+      const sealDocument = await module.createBankNativeNoteSealer({ enrollment, resources: sealingResources });
+      const request = async (path: string, options: { method: 'GET' | 'POST'; body?: Record<string, unknown> }) => { noteOpen(); const current = await connectClient(BANK_NATIVE_SCOPES, BANK_NATIVE_CONSENT); const response = await current.request(path, options); noteOpen(); return response; };
+      noteRuntime = module.createBankOfflineNotesRuntime({ keyId: binding.keyId, uid: accountUid!, localUid: keyFile.owner.uid, origin: location.origin, passphrase: transportPhrase, request, fetchImpl: createBankNoteAttestationFetch({ origin: location.origin, request, signal: lifetime.signal }), sealDocument, read: () => loadOfflineNoteState(binding), retain: (bytes: Uint8Array) => saveOfflineNoteBlob(binding, bytes), restore: (digest: string) => loadOfflineNoteBlob(binding, digest), write: (next: unknown, previous: unknown) => saveOfflineNoteState(binding, next, previous), assertOpen: noteOpen, artwork: bankNoteArtwork });
+    }
+    const held = noteRuntime!;
+    const lock = async <T,>(operation: () => Promise<T>) => {
+      if (!navigator.locks) throw new Error('This browser cannot safely retain Offline Notes. Use a current browser with device custody support.');
+      return navigator.locks.request(`receiz-bank-notes:${binding.keyId}`, { signal: lifetime.signal }, async () => { noteOpen(); return operation(); });
+    };
+    return {
+      savedNotes: () => held.savedNotes(),
+      pending: () => held.pending(),
+      create: amount => lock(async () => {
+        const pending = await held.pending();
+        let source: unknown = transportKeyFile;
+        if (!pending) {
+          const current = await connectClient(BANK_NATIVE_SCOPES, BANK_NATIVE_CONSENT), response = await current.connect.wallet() as { ok?: boolean; wallet?: Record<string, unknown> };
+          parseSharedWallet(response, accountUid!);
+          const prior = transportKeyFile.portableState?.snapshot as Record<string, unknown> | undefined;
+          source = await sdk.appendReceizIdentityPortableState({ keyFile: transportKeyFile, passphrase: transportPhrase, schema: 'receiz.account.state.v3', snapshot: { ...prior, schema: 'receiz.account.state.v3', account: { ...(prior?.account as Record<string, unknown> | undefined), userId: accountUid! }, wallet: { ...(prior?.wallet as Record<string, unknown> | undefined), routeSummary: response.wallet } } });
+        }
+        const result = await held.createNote(amount, source); noteOpen();
+        // The exact note/account successors are already retained. Background
+        // account read may display the accepted online Reserve without blocking save.
+        void readWallet().catch(() => {}); return result;
+      }),
+      cancelUnfunded: () => lock(() => held.cancelUnfunded()),
+      receivingRequest: () => lock(() => held.receivingRequest()),
+      transfer: (noteId, request) => lock(() => held.transferNote(noteId, request)),
+      inspect: image => held.inspectNote(image),
+      deposit: image => lock(async () => { const result = await held.depositNote(image); noteOpen(); void readWallet().catch(() => {}); return result; }),
+    };
   }
   async function readPrivateHistory(cursor?: string) {
     const path = privateHistoryPath(cursor), current = await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT);
@@ -244,7 +294,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     } catch (error) { throw error instanceof BankConnectionError ? error : new BankConnectionError(stage, error); }
     finally { nativeConnectionBusy = false; }
   }
-  return { binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');
