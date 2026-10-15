@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { Fingerprint, ArrowUpRight, Upload } from 'lucide-react';
 import { inspectIdentityLock } from '../../receiz/identity-lock';
-import { BANK_READ_CONSENT } from '../../receiz/config';
 import { branding } from '../../../branding/profile.mjs';
 import { EntranceConformanceStatus } from './EntranceConformanceStatus';
 export function Entrance({ opening, busy, error, onCreate, onImport }: { opening: boolean; busy: boolean; error: string | null; onCreate: (consent: boolean) => Promise<void>; onImport: (file: File, phrase: string, consent: boolean) => Promise<void> }) {
@@ -27,5 +26,5 @@ export function Entrance({ opening, busy, error, onCreate, onImport }: { opening
       <input ref={picker} type="file" accept=".png,.pdf,.receiz,.receizkey,.json,application/octet-stream" hidden onChange={event => { const selected = event.target.files?.[0] ?? null; event.target.value = ''; void chooseFile(selected); }} />
       {file && <form className="identity-import" onSubmit={event => { event.preventDefault(); if (needsPhrase && phrase && !busy && !inspecting && !fileError) void onImport(file, phrase, true); }}><span className="small-copy">{file.name}</span>{needsPhrase && <><label>Unlock phrase<input type="password" autoComplete="off" value={phrase} onChange={event => setPhrase(event.target.value)} placeholder="Unlock your Identity Seal" /></label><button className="primary-button" disabled={busy || inspecting || Boolean(fileError) || !phrase}>Unlock account</button></>}{inspecting && <p className="body-copy" role="status">Opening your ID…</p>}{fileError && <p className="form-error" role="alert">{fileError}</p>}</form>}
       {busy && <p role="status" className="body-copy">Opening your proof-backed identity…</p>}
-    <p className="entrance-consent">By creating or opening your ID, you approve the following:<br />{BANK_READ_CONSENT}</p></>}{error && <p role="alert" className="form-error">{error}</p>}<p className="entrance-note">Your signing key stays on this device. Receiz registers this device to protect your ID.</p><a className="entrance-learn" href="/learn/">Explore proof-native banking</a></main></div>;
+    <p className="entrance-consent">By continuing, you allow Bankeiz to open your <a href="/learn/account-access/">account</a> and read your balances. Your <a href="/learn/signing-key/">signing key</a> stays on this device.</p></>}{error && <p role="alert" className="form-error">{error}</p>}<a className="entrance-learn" href="/learn/">Explore proof-native banking</a></main></div>;
 }

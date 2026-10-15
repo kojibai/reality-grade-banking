@@ -8,7 +8,14 @@ assert.match(html, /name="twitter:card" content="summary_large_image"/);
 assert.match(html, /rel="canonical" href="https:\/\/bankeiz\.com\/"/);
 assert.equal(image.readUInt32BE(16), 1730); assert.equal(image.readUInt32BE(20), 909); assert.ok(image.length < 5_000_000);
 const sitemap = await readFile('dist/sitemap.xml', 'utf8');
-for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/']) {
+for (const [slug, section] of [['account-access', 'account-access'], ['signing-key', 'device-held-signing']]) {
+  const notice = await readFile(`dist/learn/${slug}/index.html`, 'utf8');
+  assert.ok(html.includes(`href="/learn/${slug}/"`), `Entrance must link to the ${slug} explanation`);
+  assert.ok(notice.includes(`id="${section}"`), `The ${slug} link must resolve to its exact section`);
+}
+assert.ok(html.includes('By continuing, you allow Bankeiz to open your'));
+assert.ok(!html.includes('By creating or opening your ID, you approve the following:'));
+for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/', 'account-access/', 'signing-key/']) {
   const page = await readFile(`dist/learn/${path}index.html`, 'utf8');
   assert.ok(page.includes(`<link rel="canonical" href="https://bankeiz.com/learn/${path}">`));
   assert.ok(page.includes('<h1>')); assert.ok(page.includes('<h2>')); assert.ok(!page.includes('<div id="root"></div>'));
@@ -58,4 +65,4 @@ for (const rail of ['reserve', 'settlement']) {
   assert.ok(!note.includes(Buffer.from('receiz.bank.note')), 'Learn specimens must not contain issued proof payloads');
 }
 assert.ok(!learn.includes('still being connected'));
-console.log('Share image, static metadata, prerendered entrance, four canonical public guides, structured data, sitemap, robots and QR lazy loading verified.');
+console.log('Share image, static metadata, prerendered entrance, canonical public guides and account notices, structured data, sitemap, robots and QR lazy loading verified.');

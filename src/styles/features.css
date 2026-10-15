@@ -76,8 +76,8 @@
 .entrance-content .page-subtitle { font-size: var(--entrance-subtitle-size); line-height: 1.5; white-space: nowrap; margin-bottom: 28px; }
 .entrance-hairline { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; margin: 26px 0 -7px; color: #87909d; font-weight: 600; text-align: center; }
 .entrance-consent { color: var(--muted); font-size: var(--entrance-fine-print-size); line-height: 1.65; margin-top: 20px; }
+.entrance-consent a { color: inherit; text-decoration: underline; text-underline-offset: .18em; }
 .entrance-content > button { width: 100%; margin-bottom: 12px; }
-.entrance-note { font-size: var(--entrance-fine-print-size); color: var(--muted); line-height: 1.65; margin: 18px 0 0; }
 .identity-import { display: grid; gap: 14px; margin: 20px 0; }
 .identity-import label { display: grid; gap: 8px; font-size: 13px; }
 .identity-import input { width: 100%; min-width: 0; padding: 13px; border-radius: 12px; border: 1px solid var(--line); font-size: 16px; }

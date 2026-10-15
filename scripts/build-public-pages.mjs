@@ -4,6 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { learnAssets } from './learn-assets.mjs';
 import { learnHome, learnArticle } from './learn-template.mjs';
+import { accountNoticePages } from './account-notice-pages.mjs';
 const origin = 'https://bankeiz.com';
 const pages = [
   { slug: '', title: 'Proof-native banking', description: 'How Bankeiz connects your identity, proof objects, Reserve and Settlement in one mobile account.', intro: 'Your value. More possibilities.', sections: [
@@ -43,6 +44,8 @@ const publicPages = {};
 const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' });
 try {
   const { Entrance } = await server.ssrLoadModule('/src/features/identity/Entrance.tsx');
+  const { BANK_READ_CONSENT, BANK_READ_SCOPES } = await server.ssrLoadModule('/src/receiz/config.ts');
+  pages.push(...accountNoticePages(BANK_READ_CONSENT, BANK_READ_SCOPES));
   const html = await readFile('dist/index.html', 'utf8');
   const entrance = renderToStaticMarkup(createElement(Entrance, { opening: false, busy: false, error: null, onCreate: async () => {}, onImport: async () => {} }));
   bankHtml = html.replace('<div id="root"></div>', `<div id="root">${entrance}</div><noscript><p style="text-align:center">Enable JavaScript to open your account. You can read the <a href="/learn/">public bank guides</a> without JavaScript.</p></noscript>`);
