@@ -19,3 +19,4 @@ console.log(JSON.stringify({ source: 'https://receiz.com/api/market/public-membe
 
 await writeFile(new URL('../public/receiz-public-sports.json', import.meta.url), JSON.stringify(sports));
 await writeFile(new URL('../public/receiz-public-capitalization.json', import.meta.url), JSON.stringify(capitalization));
+await import('./seed-market-history.mjs');

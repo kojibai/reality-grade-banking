@@ -50,7 +50,7 @@ async function loadPublicResponse(target: URL): Promise<CachedResponse> {
         }) };
       } else if (target.pathname === '/api/game/sports/economy') {
         if (input.ok !== true || input.schema !== 'receiz.sports_economy.live_inventory.v1' || !Array.isArray(input.cards) || input.cards.length > 100000) throw new Error('Public sports inventory is unavailable.');
-        const fields = ['collectibleId', 'claimHash', 'athlete', 'sport', 'rarity', 'issueLine', 'liveValueUsd', 'totalValueUsd', 'vaultCount', 'pricedCount', 'route'];
+        const fields = ['collectibleId', 'claimHash', 'athlete', 'sport', 'rarity', 'issueLine', 'liveValueUsd', 'totalValueUsd', 'issuedCount', 'vaultCount', 'pricedCount', 'route'];
         input.cards = input.cards.map((card: Record<string, unknown>) => Object.fromEntries(fields.map(key => [key, card[key]])));
         const publicInput = { ok: true, schema: input.schema, generatedAt: input.generatedAt, fallback: input.fallback === true, cards: input.cards };
         for (const key of Object.keys(input)) delete input[key];

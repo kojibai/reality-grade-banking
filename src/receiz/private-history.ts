@@ -8,8 +8,17 @@ export function privateHistoryPath(cursor?: string): string {
 // Neither its balances nor its rows supply ownership or execution authority.
 export function parsePrivateHistoryPage(input: unknown, accountUid: string): PrivateHistoryPage {
   const value = input as { ok?: unknown; accountUserId?: unknown; events?: unknown; nextCursor?: unknown } | null;
-  if (!accountUid || value?.accountUserId !== accountUid) throw new Error('PRIVATE_HISTORY_ACCOUNT_MISMATCH');
+  if (!accountUid || value?.accountUserId !== accountUid) throw new Error(value?.accountUserId === undefined ? 'PRIVATE_HISTORY_ACCOUNT_MISMATCH_BINDING_MISSING' : 'PRIVATE_HISTORY_ACCOUNT_MISMATCH');
   if (value.ok !== true || !Array.isArray(value.events) || value.events.length > 100) throw new Error('PRIVATE_HISTORY_PAGE_INVALID');
   if (value.nextCursor !== null && (typeof value.nextCursor !== 'string' || !/^[A-Za-z0-9_-]{1,2048}$/.test(value.nextCursor))) throw new Error('PRIVATE_HISTORY_CURSOR_INVALID');
   return { accountUid, records: parsePublicNetworkPage('wallet', value).records.map(record => ({ ...record, authority: 'account-source-projection', origin: 'private-account' })), nextCursor: value.nextCursor, origin: 'private-account' };
+}
+/** Bounded diagnostics only: never expose a private payload, token or account ID. */
+export function privateHistoryFailureCode(cause: unknown): string {
+  const status = (cause as { status?: unknown } | null)?.status;
+  if (typeof status === 'number' && Number.isInteger(status) && status >= 400 && status <= 599) return `HTTP_${status}`;
+  const message = cause instanceof Error ? cause.message : '';
+  if (/^PRIVATE_HISTORY_(ACCOUNT_MISMATCH(?:_BINDING_MISSING)?|PAGE_INVALID|CURSOR_INVALID)$/.test(message)) return message;
+  if (message === 'Repeated private history cursor.') return 'PRIVATE_HISTORY_REPEATED_CURSOR';
+  return 'PRIVATE_HISTORY_READ_UNAVAILABLE';
 }

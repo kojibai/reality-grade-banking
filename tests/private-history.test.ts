@@ -14,3 +14,8 @@ it('restricts private reads to fixed bounded pagination without account selector
   expect(permittedNativePath(privateHistoryPath(), 'POST')).toBe(false);
   expect(() => privateHistoryPath('../foreign')).toThrow();
 });
+it('exports only bounded failure diagnostics, never private response payloads or messages', async () => {
+  const { privateHistoryFailureCode } = await import('../src/receiz/private-history');
+  expect(privateHistoryFailureCode({ status: 401, payload: { bearer: 'do-not-export' } })).toBe('HTTP_401');
+  expect(privateHistoryFailureCode(new Error('private account and arbitrary secret'))).toBe('PRIVATE_HISTORY_READ_UNAVAILABLE');
+});
