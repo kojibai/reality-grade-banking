@@ -1,0 +1,19 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>v129 receiver verifier · read-only browser check</title>
+<h1>Receiver verifier check</h1>
+<p>Read-only reference mechanics. No identity, account, funding, custody or credit is created.</p>
+<button id="run">Check verification boundaries</button><p id="result" role="status">Ready</p>
+<script type="module">
+const { openReserveNoteImage, inspectReserveNote, exportReserveNoteSource } = await import(/* @vite-ignore */ new URL('/native/receiver-verifier.v129.mjs', location.origin).href);
+document.querySelector('#run').onclick = async () => {
+  const result = document.querySelector('#result');
+  try {
+    let refused = 0;
+    for (const read of [() => inspectReserveNote({ verified: true }), () => exportReserveNoteSource({ noteId: 'forged' }), () => openReserveNoteImage(new TextEncoder().encode('{"paid":true}'))]) {
+      try { await read(); } catch { refused++; }
+    }
+    if (refused !== 3) throw Error('Unverified input accepted');
+    result.textContent = 'PASS · v129 browser verifier imported · forged handles and unsigned input refused · no financial action';
+  } catch (error) { result.textContent = 'FAIL · ' + error.message; }
+};
+</script>

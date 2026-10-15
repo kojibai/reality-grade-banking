@@ -7,7 +7,7 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
   if (event.request.mode === 'navigate') {
     event.respondWith(fetch(event.request).catch(() => caches.match('/index.html', { ignoreVary: true })));
-  } else if (url.pathname.startsWith('/assets/') || SHELL.includes(url.pathname)) {
+  } else if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/notes/') || url.pathname.startsWith('/native/') || SHELL.includes(url.pathname)) {
     event.respondWith(caches.match(event.request, { ignoreVary: true }).then(cached => cached || fetch(event.request).then(response => { if (response.ok) { const saved = response.clone(); void caches.open(CACHE).then(cache => cache.put(event.request, saved)); } return response; })));
   }
 });

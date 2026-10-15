@@ -88,6 +88,7 @@
 .live-account, .live-account > *, .live-account .growth-panel > div { min-width: 0; }
 .live-account .balance-amount { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .live-account .growth-panel strong { overflow-wrap: anywhere; }
+.growth-panel .settlement-label { display: flex; gap: 7px; align-items: baseline; flex-wrap: wrap; }.settlement-label small { color: var(--muted); font-size: 10px; font-weight: 400; }
 .receiz-card-frame { width: 100%; min-height: 570px; border: 0; border-radius: 14px; margin: 12px 0; background: #f7f9ff; }
 .payment-qr { display: block; width: min(100%, 245px); height: auto; background: white; border-radius: 12px; }
 .receiving-card .receiving-coordinate { font-size: 12px; max-width: 100%; overflow-wrap: anywhere; letter-spacing: 0; text-align: center; }
@@ -140,6 +141,7 @@
 .chart-date-range{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:2px 8px 12px}
 
 .market-inventory-detail{display:block;font-size:11px;margin-top:4px}
-.offline-note-preview { margin: 18px 0; }.offline-note-preview svg { display: block; width: 100%; border-radius: 10px; box-shadow: 0 12px 30px #152e4310; }.offline-note-preview .note-brand { font: 800 70px system-ui; letter-spacing: -4px; }.offline-note-preview .note-bank { font-weight: 400; font-size: 49px; letter-spacing: -2px; }.offline-note-preview .note-overline { font: 500 23px system-ui; letter-spacing: 8px; }.offline-note-preview .note-denomination { font-family: Georgia, serif; font-weight: 600; letter-spacing: -5px; }.offline-note-preview .note-caption { font: 24px Georgia, serif; }.offline-note-preview .note-preview-label { font: 500 20px system-ui; letter-spacing: 4px; fill: #536675; }.offline-note-preview figcaption { font-size: 11px; color: var(--muted); margin-top: 10px; text-align: center; }
+@font-face { font-family: 'Reserve Note Serif'; src: url('/notes/fonts/Cinzel.ttf') format('truetype'); font-style: normal; font-weight: 400 900; font-display: swap; }
+.offline-note-preview { margin: 18px 0; }.offline-note-preview > svg { display: block; width: 100%; height: auto; border-radius: 3px; box-shadow: 0 12px 30px #152e4310; }.offline-note-preview figcaption { font-size: 11px; color: var(--muted); margin-top: 10px; text-align: center; }
 
 .note-action{display:block;margin:0 0 20px auto}.issued-note-image{display:block;width:100%;height:auto;border-radius:14px;margin:20px 0;box-shadow:0 10px 32px #172d4a12}.offline-notes-flow .detail-list{margin-top:20px}

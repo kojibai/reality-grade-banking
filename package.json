@@ -12,7 +12,10 @@
     "vercel:check": "node scripts/check-vercel-build.mjs",
     "market:seed": "node scripts/seed-public-market.mjs",
     "ledger:seed": "node scripts/seed-public-ledger.mjs",
-    "bank:contract": "node scripts/compile-bank-domain.mts"
+    "bank:contract": "node scripts/compile-bank-domain.mts",
+    "receiver:check": "node institution/check.mjs",
+    "receiver:inspect": "node institution/inspect-note.mjs",
+    "receiver:build": "node scripts/build-receiver-verifier.mjs"
   },
   "dependencies": {
     "@receiz/ai-skills": "129.0.0",
