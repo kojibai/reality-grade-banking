@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc -b && vite build && node scripts/build-public-pages.mjs && node scripts/check-conformance-build.mjs",
+    "build": "tsc -b && vite build && node scripts/build-public-pages.mjs && node scripts/build-license-notices.mjs && node scripts/check-conformance-build.mjs && node scripts/check-licensing.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
@@ -16,7 +16,8 @@
     "receiver:check": "node institution/check.mjs",
     "receiver:inspect": "node institution/inspect-note.mjs",
     "receiver:build": "node scripts/build-receiver-verifier.mjs",
-    "conformance:check": "node scripts/check-conformance-build.mjs"
+    "conformance:check": "node scripts/check-conformance-build.mjs",
+    "license:check": "node scripts/check-licensing.mjs"
   },
   "dependencies": {
     "@receiz/ai-skills": "129.0.0",
@@ -39,5 +40,7 @@
   },
   "overrides": {
     "underscore": "1.13.8"
-  }
+  },
+  "license": "GPL-3.0-only",
+  "author": "Brian Joseph Klock (BJ Klock)"
 }

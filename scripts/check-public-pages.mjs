@@ -31,5 +31,17 @@ assert.ok(css.toString().includes('prefers-reduced-motion:reduce'));
 assert.ok(css.toString().includes('animation-play-state:paused'));
 assert.ok(motion.toString().includes('IntersectionObserver'));
 const learn = await readFile('dist/learn/index.html', 'utf8');
-assert.ok(learn.includes('fractional sales, and funded asset creation are still being connected.'));
+assert.ok(learn.includes('Carry value.<br>Keep the proof.'));
+assert.ok(learn.includes('Unissued specimens, with no spendable value.'));
+assert.ok(learn.includes('legacy payment rails') && !learn.includes('familiar payment rails'));
+assert.ok(learn.indexOf('id="notes"') > learn.indexOf('class="rail-section'));
+for (const rail of ['reserve', 'settlement']) {
+  assert.ok(learn.includes(`src="/learn/${rail}-note.webp" width="1620" height="972" loading="lazy"`));
+  const note = await readFile(`dist/learn/${rail}-note.webp`);
+  assert.equal(note.toString('ascii', 0, 4), 'RIFF');
+  assert.equal(note.toString('ascii', 8, 12), 'WEBP');
+  assert.ok(note.length < 700_000, 'Below-fold note artwork budget');
+  assert.ok(!note.includes(Buffer.from('receiz.bank.note')), 'Learn specimens must not contain issued proof payloads');
+}
+assert.ok(!learn.includes('still being connected'));
 console.log('Share image, static metadata, prerendered entrance, four canonical public guides, structured data, sitemap, robots and QR lazy loading verified.');

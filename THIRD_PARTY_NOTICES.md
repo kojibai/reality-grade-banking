@@ -1,6 +1,6 @@
 # Third-party inventory and distribution review
 
-These notices identify existing dependency rights. They are not a new license for the Bank's original work and do not establish distribution compliance for a combined build. Review this file with [LICENSE-PROPOSAL.md](LICENSE-PROPOSAL.md) before public redistribution or making reuse claims.
+Original Bankeiz reference work is licensed under [GPL-3.0-only](LICENSE), with scope in [LICENSING.md](LICENSING.md). These notices preserve existing dependency rights; they do not relicense upstream work or certify complete source delivery.
 
 ## Read-only native receiver bundle
 
@@ -20,10 +20,14 @@ The bundled `ffjavascript` browser distribution incorporates additional code. Th
 
 The coordinated `@receiz/sdk`, `@receiz/mcp-server` and `@receiz/ai-skills` packages are pinned to 129.0.0 and declare MIT in their published package metadata. That declaration does not remove their dependencies' separate terms. The Bank's original native runtime and built application also use the existing cryptographic dependency tree, so review must cover the complete distributed application, not only the new verifier.
 
-Other direct/runtime dependencies are recorded by `package-lock.json` and their own installed notices. QR decoding retains [jsQR's license](src/vendor/jsqr/LICENSE). Note typography retains [Cinzel's SIL Open Font License](public/notes/fonts/OFL.txt). [Note artwork provenance](public/notes/README.md) describes the generated presentation assets; artwork never grants financial authority.
+Other direct/runtime dependencies are recorded by `package-lock.json` and their own installed notices. QR decoding retains [jsQR's Apache-2.0 license](src/vendor/jsqr/LICENSE); the build publishes its exact text at `/legal/vendor/jsqr-Apache-2.0.txt`. Note typography retains [Cinzel's SIL Open Font License](public/notes/fonts/OFL.txt). [Note artwork provenance](public/notes/README.md) describes the generated presentation assets; artwork never grants financial authority.
 
-## Unresolved release gate
+## Compatible grant and source delivery
 
-The requested license prohibits modifications except narrowly defined branding. Existing GPL grants and obligations cannot be overridden by that restriction. Counsel must evaluate the combined work, the scope of covered/separable files, distribution terms and complete corresponding-source/build obligations before a public release. A source map, an upstream URL or copied license texts alone do not settle that analysis. This repository does not claim that a branding-only license is currently compatible with the combined distribution.
+The owner authorized modification-friendly GPL-compatible terms on 2026-10-15. The earlier branding-only proposal is superseded. No no-modification rule, paid certification requirement or trademark policy is imposed as an extra condition on GPL software rights.
 
-Keep copyright, license and attribution notices, document the exact distributed versions, and provide the legally required corresponding source/materials under the applicable terms. Do not apply a blanket restrictive license to third-party code or claim that this proposal removes existing MIT/GPL modification rights.
+The installed production dependency graph also declares GPL terms for `@iden3/bigarray@0.0.2`, `@iden3/binfileutils@0.0.12`, `fastfile@0.0.20` and `r1csfile@0.0.48` (including its `ffjavascript@0.3.0`). Keep each component's applicable terms and source. The emitted `/legal/dependencies.json` records installed production package versions, declared licenses and supplied notice files; it is an observed inventory, not a legal clearance or source-completeness certificate. Some published packages declare a license without shipping a standalone notice; the inventory discloses that rather than inventing an upstream copyright notice.
+
+Supply complete corresponding source and required build/installation materials for covered object-code distributions. Native input source outside this repository must be supplied with the matching release as described in [SOURCE.md](SOURCE.md). A source map, package metadata, an upstream URL or copied license text alone does not establish the complete required delivery.
+
+The unmodified root GPL text is obtained from the [SPDX license-list-data GPL-3.0-only text](https://github.com/spdx/license-list-data/blob/main/text/GPL-3.0-only.txt). Its SHA-256 is pinned by the license checker. Bundled upstream notice texts are preserved as distributed by their packages. Keep their attributions; do not replace existing MIT/GPL/font permissions with project-branding rules.

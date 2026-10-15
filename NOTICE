@@ -1,0 +1,20 @@
+Reality-Grade Banking — Bankeiz reference implementation
+Copyright (C) 2026 Brian Joseph Klock (also known as BJ Klock).
+
+Official reference implementation: https://bankeiz.com/
+Reference source: https://github.com/kojibai/reality-grade-banking
+
+Brian Joseph Klock's original software and accompanying documentation in this
+repository are licensed under GNU GPL version 3 only (GPL-3.0-only), except
+material already identified under separate terms. The complete, unmodified
+license is LICENSE. You may use, study, modify and redistribute covered work
+under its terms. Its warranty and liability provisions are in sections 15–17.
+
+Other contributors and upstream authors retain their copyrights. This notice
+does not assign their work or replace existing third-party grants; see
+THIRD_PARTY_NOTICES.md. Patent permissions follow GPLv3 section 11 and any
+applicable separate licenses, without additional restrictions from this notice.
+
+Brand identity and official-reference claims follow TRADEMARKS.md. Technical
+assessment is explained in CONFORMANCE.md. Neither policy adds restrictions to
+GPL software rights or grants endorsement, certification or financial authority.
