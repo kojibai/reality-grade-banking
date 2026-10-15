@@ -1,0 +1,29 @@
+{
+  "schema": "receiz.bank.receiver-profile.v1",
+  "name": "Reality-Grade Banking receiving conformance",
+  "profileVersion": "1.0.0",
+  "receizVersion": "129.0.0",
+  "ruleset": "127.0.0",
+  "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
+  "operationMatrixDigest": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1",
+  "capabilities": {
+    "reserve-note-inspection": "implemented",
+    "reserve-note-receive-and-redemption": "native-bank-integration-required",
+    "settlement-note": "native-extension-required",
+    "settlement-digital-payment": "sdk-primitives-available-bank-route-unfinished",
+    "reserve-digital-payment": "sdk-primitives-available-bank-route-unfinished"
+  },
+  "requiredEvidence": [
+    "exact-enclosing-source-verification", "canonical-registry-and-root-binding",
+    "verified-ownership-and-complete-causal-history", "explicit-rail-and-denomination",
+    "receiver-identity-and-origin-binding", "qualified-current-custody",
+    "exact-source-and-destination-heads", "verified-kaisigil-bound-kks-coordinate",
+    "explicit-capability-and-exact-operation-consent", "exclusive-value-allocation",
+    "atomic-once-only-consumption-and-credit", "durable-exact-intent-recovery",
+    "independent-receipt-and-source-reverification", "byte-exact-unknown-namespace-preservation",
+    "immediate-known-local-projection", "receiver-specific-live-qualification"
+  ],
+  "reportIsAuthority": false,
+  "institutionConformance": "not-assessed",
+  "grantsProductionAccess": false
+}

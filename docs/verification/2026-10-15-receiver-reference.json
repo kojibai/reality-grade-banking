@@ -1,0 +1,152 @@
+{
+  "schema": "receiz.bank.receiver-reference-checks.v1",
+  "localChecksPassed": true,
+  "receizVersion": "129.0.0",
+  "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
+  "checks": [
+    {
+      "id": "coordinated-v129-packages-and-registry",
+      "passed": true
+    },
+    {
+      "id": "native-module-provenance-and-auditable-source",
+      "passed": true
+    },
+    {
+      "id": "installed-v129-mcp-conformance-and-release-context",
+      "passed": true
+    },
+    {
+      "id": "canonical-kaisigil-temporal-authority-vectors",
+      "passed": true
+    },
+    {
+      "id": "ordinary-paper-image-has-no-note-authority",
+      "passed": true
+    },
+    {
+      "id": "unsigned-payment-json-has-no-note-authority",
+      "passed": true
+    },
+    {
+      "id": "oversize-image-refused-before-verification",
+      "passed": true
+    },
+    {
+      "id": "forged-handle-cannot-expose-verified-head",
+      "passed": true
+    },
+    {
+      "id": "transported-property-bag-cannot-export-source",
+      "passed": true
+    }
+  ],
+  "mcpEvidence": [
+    {
+      "name": "receiz_conformance_run",
+      "sdkVersion": "129.0.0",
+      "summary": {
+        "passed": 15,
+        "failed": 0,
+        "networkCalls": 0,
+        "dbCalls": 0
+      },
+      "evidenceDigest": "8a695e2c386c9224c5586627ed5340e07cb197d5480b634d7424f28317f2ca96",
+      "writesPerformed": 0
+    },
+    {
+      "name": "receiz_release_verify",
+      "sdkVersion": "129.0.0",
+      "summary": {
+        "passed": 15,
+        "failed": 0,
+        "networkCalls": 0,
+        "dbCalls": 0
+      },
+      "evidenceDigest": "8a695e2c386c9224c5586627ed5340e07cb197d5480b634d7424f28317f2ca96",
+      "writesPerformed": 0
+    }
+  ],
+  "temporalEvidence": {
+    "reportDigest": "71c5e815002de46fff91c497c2fd50a39b29db8d74c74b646edac5630c6ec976",
+    "checks": [
+      {
+        "checkId": "valid-kaisigil-proof-admitted",
+        "passed": true,
+        "outcomeCode": "VALID_KAISIGIL_PROOF_ADMITTED",
+        "evidenceDigest": "fd87e6d1f2822ba75eaa65a17b5f3e988ca1ed6167bfc05f156bbe88960994d3"
+      },
+      {
+        "checkId": "bare-upulse-rejected",
+        "passed": true,
+        "outcomeCode": "V125_KKS_PROOF_COORDINATE_SHAPE_INVALID",
+        "evidenceDigest": "312ad674b0fadfcf67f4679dded959d72e4ad504efb8697659396ef544c0abb2"
+      },
+      {
+        "checkId": "kks-lattice-binding-enforced",
+        "passed": true,
+        "outcomeCode": "V125_KAI_SIGIL_KKS_LATTICE_MISMATCH",
+        "evidenceDigest": "05a66fd4fe258be80d89750b061fa93d06f47212fdf7bb5ff7cf6deb69d42ccb"
+      },
+      {
+        "checkId": "blake3-poseidon-binding-enforced",
+        "passed": true,
+        "outcomeCode": "V125_KAI_SIGIL_COMMITMENT_MISMATCH",
+        "evidenceDigest": "1d07d3ce731c5007c168d83d7dbabaca4008f52edb2c0a976db9b56643f354d0"
+      },
+      {
+        "checkId": "groth16-public-signal-binding-enforced",
+        "passed": true,
+        "outcomeCode": "V125_KAI_SIGIL_GROTH16_PUBLIC_SIGNAL_MISMATCH",
+        "evidenceDigest": "0d7211041766c1e817c128385cac71301e0c06e21b4f3a97f8e12b4e4b9e6037"
+      },
+      {
+        "checkId": "groth16-proof-verification-enforced",
+        "passed": true,
+        "outcomeCode": "V125_KAI_SIGIL_GROTH16_VERIFICATION_FAILED",
+        "evidenceDigest": "ad16e257d283b819b7e02c803f018e955517d3af02c56f0250f375fec77efbfd"
+      },
+      {
+        "checkId": "previous-head-binding-enforced",
+        "passed": true,
+        "outcomeCode": "V125_KAI_SIGIL_PREVIOUS_HEAD_MISMATCH",
+        "evidenceDigest": "881ef2f3fe12bd545ce3cc1fa069e034180d719405d6614eadb591c0f36b1a08"
+      },
+      {
+        "checkId": "strictly-monotonic-append-enforced",
+        "passed": true,
+        "outcomeCode": "V125_KAI_SIGIL_KAI_NONCAUSAL",
+        "evidenceDigest": "9f0859b06e5d5d8401997705d6066509d30572d2c4786d3d37fba1bdab3ea1ae"
+      },
+      {
+        "checkId": "future-coordinate-rejected",
+        "passed": true,
+        "outcomeCode": "V125_KAI_SIGIL_KAI_FROM_FUTURE",
+        "evidenceDigest": "0b58a4b64801ddbb072296dee2e8eaf27407fce5411032f84898b1873ae4f230"
+      },
+      {
+        "checkId": "chronos-authority-rejected",
+        "passed": true,
+        "outcomeCode": "V125_KKS_PROOF_COORDINATE_SHAPE_INVALID",
+        "evidenceDigest": "e7e34111a2ac76c5036c1c71af737954e5dc6a51cc672bdc691e697eda53abfa"
+      },
+      {
+        "checkId": "sealed-projection-preserves-exact-upulse",
+        "passed": true,
+        "outcomeCode": "SEALED_EXACT_UPULSE_PRESERVED",
+        "evidenceDigest": "1bdbed5e720e7f4477549d77d1edf021488332ecbba7b55190c355dce3b44b89"
+      }
+    ]
+  },
+  "institutionConformance": "not-assessed",
+  "grantsProductionAccess": false,
+  "creditAuthorized": false,
+  "remainingEvidence": [
+    "qualified-real-device",
+    "admitted-funded-positive-note",
+    "receiver-bound-handoff",
+    "atomic-once-only-credit",
+    "lost-response-recovery",
+    "receiver-specific-independent-assessment"
+  ]
+}

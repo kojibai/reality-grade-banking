@@ -8,6 +8,6 @@ export function buildPaymentRequest(to: string, dollars?: string): string {
 }
 export function parsePaymentRequest(input: string): PaymentRequest {
   const url = new URL(input);
-  if (url.origin !== BANK_PUBLIC_ORIGIN || url.pathname !== '/' || url.username || url.password || url.hash || [...url.searchParams.keys()].some(key => !['to', 'amount'].includes(key)) || url.searchParams.getAll('to').length !== 1 || url.searchParams.getAll('amount').length > 1) throw new Error('Scan a Receiz Bank payment request.');
+  if (url.origin !== BANK_PUBLIC_ORIGIN || url.pathname !== '/' || url.username || url.password || url.hash || [...url.searchParams.keys()].some(key => !['to', 'amount'].includes(key)) || url.searchParams.getAll('to').length !== 1 || url.searchParams.getAll('amount').length > 1) throw new Error('Scan a Bankeiz payment request.');
   return { recipient: recipient(url.searchParams.get('to') ?? ''), amount: amount(url.searchParams.get('amount') ?? undefined) };
 }

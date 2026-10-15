@@ -12,6 +12,7 @@ function dispatch(request: Request): Promise<Response> | undefined {
 }
 it('restores immutable app scripts offline despite Vary Origin on cached responses', async () => { const response = await dispatch(new Request('http://localhost/assets/app.js', { headers: { Origin: 'http://localhost' } })); expect(await response?.text()).toBe('export const bank = true;'); });
 it('never responds from the app cache for financial API calls', () => expect(dispatch(new Request('http://localhost/api/wallet/me'))).toBeUndefined());
+it.each(['/notes/banknote-engraving.webp', '/notes/denomination-engraving.png', '/notes/fonts/Cinzel.ttf', '/native/offline-notes.v129.mjs'])('retains note presentation and runtime assets for offline reuse: %s', async path => { expect(await (await dispatch(new Request(`http://localhost${path}`)))?.text()).toBe('export const bank = true;'); });
 it('keeps an open old client able to load its verifier offline while an update waits', async () => {
   const stores = new Map<string, Map<string, Response>>();
   const caches = {

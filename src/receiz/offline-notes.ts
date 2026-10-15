@@ -36,18 +36,4 @@ export function loadBankNoteRuntime() {
   const moduleUrl = new URL('/native/offline-notes.v129.mjs', location.origin).href;
   return runtime ??= import(/* @vite-ignore */ moduleUrl).catch(error => { runtime = undefined; throw error; });
 }
-export async function bankNoteArtwork(cents: string, noteId: string, compact = false): Promise<Uint8Array> {
-  const engraving = new Image(); engraving.src = '/notes/banknote-engraving.webp'; await engraving.decode();
-  const canvas = document.createElement('canvas'); canvas.width = compact ? 360 : 810; canvas.height = compact ? 216 : 486;
-  const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('The note image could not be prepared.');
-  ctx.scale(canvas.width / 810, canvas.height / 486); ctx.drawImage(engraving, 0, 0, 810, 486); ctx.fillStyle = '#152e43';
-  ctx.font = '700 34px Arial'; ctx.fillText('receiz bank', 80, 125);
-  ctx.font = '600 12px Arial'; ctx.fillText('OFFLINE NOTE · RESERVE FUNDED', 82, 157);
-  const dollars = `${BigInt(cents) / 100n}.${(BigInt(cents) % 100n).toString().padStart(2, '0')}`;
-  ctx.font = `700 ${dollars.length > 8 ? 45 : 68}px Arial`; ctx.fillText(`$${dollars}`, 76, 280);
-  ctx.font = '500 13px Arial'; ctx.fillText('Your value. In your hands.', 82, 330);
-  ctx.font = '10px monospace'; ctx.fillText(noteId, 82, 391);
-  ctx.font = '9px Arial'; ctx.fillText('Complete Receiz proof carried in this image', 82, 413);
-  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('The note image could not be saved.')), 'image/png'));
-  return new Uint8Array(await blob.arrayBuffer());
-}
+export { bankNoteArtwork } from './note-artwork';
