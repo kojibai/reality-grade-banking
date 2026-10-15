@@ -2,7 +2,7 @@
 
 **Your value should carry its proof.**
 
-The Bankeiz reference application and receiving integration kit: a mobile banking console built on Receiz proof objects, with device-held identity, independently inspectable sources and explicit continuity requirements.
+The Bankeiz reference application and receiving integration kit: a mobile banking console built on proof objects, with device-held identity, independently inspectable sources and explicit continuity requirements.
 
 **Settlement · Proof-native value.** Value derived and transacted through the native proof system.
 
@@ -10,7 +10,7 @@ The Bankeiz reference application and receiving integration kit: a mobile bankin
 
 One account view brings the rails together. The app keeps Send and Receive central, with Account, Market, Deposit, Assets and Ledger in persistent bottom navigation. Ownership, exact value and admitted history remain grounded in the proof object. A listing, image, account projection or service response cannot create financial authority.
 
-[Conformance Console](https://bank.receiz.com/conformance/) · [Receiving kit](institution/README.md) · [Receiving standard](institution/receiving-standard.md) · [Run locally](#run-locally) · [Release process](docs/release-process.md) · [Licensing status](#licensing-status)
+[Conformance Console](https://bank.receiz.com/conformance/) · [Receiving kit](institution/README.md) · [Receiving standard](institution/receiving-standard.md) · [Run locally](#run-locally) · [Release process](docs/release-process.md) · [Licensing](#licensing)
 
 ## Build a receiver
 
@@ -95,16 +95,18 @@ Native financial source verification remains stronger than databases, APIs, cach
 
 ## Deployment and operations
 
-The reference public origin is `https://bank.receiz.com`. Deploy this repository as Vite: install `npm ci`, build `npm run build`, output `dist`. `vercel.json` binds `/api/bank/*` to the fixed Node transport in `api/index.ts`. No Bank client secret or Receiz root key is required in this frontend.
+The designated official reference is `https://bankeiz.com`. The currently registered public deployment origin remains `https://bank.receiz.com` until the [domain rollout](docs/bankeiz-brand-rollout.md) is completed. Deploy this repository as Vite: install `npm ci`, build `npm run build`, output `dist`. `vercel.json` binds `/api/bank/*` to the fixed Node transport in `api/index.ts`. No Bank client secret or Receiz root key is required in this frontend.
 
 A different operator must use its own registered application, identity, consent and explicitly authorized native receiving composition. Cloning this repo does not grant the Bank's production service permissions. The Bank's existing protected origin/client checks remain intact.
 
 Follow the [release process](docs/release-process.md). Existing service restoration, host migrations, protected signer context and real-device funded note exercises must be completed separately. [Earlier launch records](docs/launch-status.md) and [verification records](docs/verification.md) retain historical checkpoints; their dates and reported limitations matter.
 
-## Licensing status
+## Licensing
 
-The owner selected a source-available reference model: free implementation and deployment of covered unchanged code with narrowly permitted branding customization. **[LICENSE-PROPOSAL.md](LICENSE-PROPOSAL.md) is a draft, not an effective license grant.** Definitive ownership, covered-file, integration, patent and redistribution terms require legal review and owner approval. Public visibility alone does not grant reuse rights.
+Copyright (C) 2026 **Brian Joseph Klock (BJ Klock)**. Original software and accompanying documentation are licensed under **[GNU GPL version 3 only](LICENSE)**, with modification, rebranding, deployment and redistribution rights. [LICENSING.md](LICENSING.md) explains the grant and separate terms; [NOTICE](NOTICE) identifies ownership. The former branding-only proposal is superseded.
 
-Published Receiz packages currently declare MIT licensing; those existing permissions and all third-party licenses remain separate. The native verifier and existing dependency tree also include GPL-3.0 components. [Third-party inventory](THIRD_PARTY_NOTICES.md) records them; combined-work distribution compatibility and corresponding-source obligations require review before public redistribution. The proposed reference restriction cannot remove them. See [note asset/font provenance](public/notes/README.md) and the bundled font/vendor notices. Do not describe this repository as OSI open source under the proposed no-code-change model.
+**[Bankeiz.com](https://bankeiz.com/) is the official reference implementation.** Independent implementations may use their own branding and demonstrate the same published receiving requirements. [Trademark rights](TRADEMARKS.md) and [conformance claims](CONFORMANCE.md) are separate from GPL software permissions; a fork is not automatically an official or qualified receiver.
+
+Existing package, vendored-code and font licenses remain in force. Preserve [third-party notices](THIRD_PARTY_NOTICES.md) and supply applicable complete Corresponding Source for covered binary distributions. [SOURCE.md](SOURCE.md) records native source/build materials still required for a complete native binary release; copied notices or a source map alone are insufficient. The license change does not alter the native financial runtime or qualify unfinished capabilities.
 
 [Contribution process](CONTRIBUTING.md) · [Governance](GOVERNANCE.md) · [Security reporting](SECURITY.md)

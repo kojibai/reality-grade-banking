@@ -4,7 +4,7 @@
 
 Settlement is **proof-native value**. Reserve is **proof-backed funds**. Both require verified sources, an explicit rail, qualified authority and continuous history. A denomination, account balance, image or service response is a projection of evidence; it cannot create spending authority.
 
-This is a reference implementation and integration contract, not a blanket institution certification. The [machine-readable profile](receiver-profile.json) reports the supported surfaces and the evidence still required. See [licensing status](../LICENSE-PROPOSAL.md) before redistribution: the proposed branding-only exception is not yet an effective license grant. Separately licensed dependencies keep their existing terms.
+This is a reference implementation and integration contract, not a blanket institution certification. The [machine-readable profile](receiver-profile.json) reports the supported surfaces and the evidence still required. Original reference code is [GPL-3.0-only](../LICENSE), permitting modification and redistribution under its terms. Bankeiz.com is the official reference implementation. Separate [branding](../TRADEMARKS.md), [conformance claims](../CONFORMANCE.md) and [source-distribution requirements](../SOURCE.md) preserve their own distinct boundaries; upstream dependencies keep their existing terms.
 
 ## Start here
 
