@@ -1,0 +1,53 @@
+export interface BankNoteImage { noteId: string; amountUsdCents: string; image: Uint8Array; transferred?: boolean; transferPending?: boolean; }
+export interface BankNoteInspection { noteId: string; amountUsdCents: string; amountPhiMicro: string; }
+export interface BankNoteDeposit { noteId: string; amountUsdCents: string; proofBytes: Uint8Array; reserveAfterUsdCents: string; }
+export interface BankOfflineNotes {
+  savedNotes(): Promise<BankNoteImage[]>;
+  pending(): Promise<{ noteId: string; amountUsdCents: string; canCancel?: boolean } | null>;
+  cancelUnfunded(): Promise<void>;
+  create(amount: string): Promise<BankNoteImage>;
+  receivingRequest(): Promise<Uint8Array>;
+  transfer(noteId: string, request?: Uint8Array): Promise<{ noteId: string; image: Uint8Array }>;
+  inspect(image: Uint8Array): Promise<BankNoteInspection>;
+  deposit(image: Uint8Array): Promise<BankNoteDeposit>;
+}
+export interface BankNoteRuntime {
+  savedNotes(): Promise<BankNoteImage[]>;
+  pending(): Promise<{ noteId: string; amountUsdCents: string; canCancel?: boolean } | null>;
+  cancelUnfunded(): Promise<void>;
+  createNote(amountUsdCents: string, accountProof: unknown): Promise<BankNoteImage & { successorAccountProof: unknown }>;
+  receivingRequest(): Promise<Uint8Array>;
+  transferNote(noteId: string, request?: Uint8Array): Promise<{ noteId: string; image: Uint8Array }>;
+  inspectNote(image: Uint8Array): Promise<BankNoteInspection>;
+  depositNote(image: Uint8Array): Promise<BankNoteDeposit>;
+}
+export type BankNoteRuntimeFactory = (input: {
+  keyId: string; uid: string; localUid: string; origin: string; passphrase: string; fetchImpl: typeof fetch;
+  request: (path: string, options: { method: 'GET' | 'POST'; body?: Record<string, unknown> }) => Promise<unknown>;
+  sealDocument: (input: { fileBytes: Uint8Array; filename: string; mime: string; options?: Record<string, unknown> }) => Promise<unknown>;
+  retain: (bytes: Uint8Array) => Promise<string>; restore: (digest: string) => Promise<Uint8Array>;
+  read: () => Promise<unknown>; write: (next: unknown, previous: unknown) => Promise<void>; assertOpen: () => void;
+  artwork: (amount: string, noteId: string, compact?: boolean) => Promise<Uint8Array>;
+}) => BankNoteRuntime;
+let runtime: Promise<{ createBankOfflineNotesRuntime: BankNoteRuntimeFactory; createBankNativeNoteSealer: (input: unknown) => Promise<Parameters<BankNoteRuntimeFactory>[0]['sealDocument']> }> | undefined;
+export function loadBankNoteRuntime() {
+  // Built from the pinned Receiz v129 host primitives. Loaded only when a note
+  // action is opened; it never delays account or market first paint.
+  const moduleUrl = new URL('/native/offline-notes.v129.mjs', location.origin).href;
+  return runtime ??= import(/* @vite-ignore */ moduleUrl).catch(error => { runtime = undefined; throw error; });
+}
+export async function bankNoteArtwork(cents: string, noteId: string, compact = false): Promise<Uint8Array> {
+  const engraving = new Image(); engraving.src = '/notes/banknote-engraving.webp'; await engraving.decode();
+  const canvas = document.createElement('canvas'); canvas.width = compact ? 360 : 810; canvas.height = compact ? 216 : 486;
+  const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('The note image could not be prepared.');
+  ctx.scale(canvas.width / 810, canvas.height / 486); ctx.drawImage(engraving, 0, 0, 810, 486); ctx.fillStyle = '#152e43';
+  ctx.font = '700 34px Arial'; ctx.fillText('receiz bank', 80, 125);
+  ctx.font = '600 12px Arial'; ctx.fillText('OFFLINE NOTE · RESERVE FUNDED', 82, 157);
+  const dollars = `${BigInt(cents) / 100n}.${(BigInt(cents) % 100n).toString().padStart(2, '0')}`;
+  ctx.font = `700 ${dollars.length > 8 ? 45 : 68}px Arial`; ctx.fillText(`$${dollars}`, 76, 280);
+  ctx.font = '500 13px Arial'; ctx.fillText('Your value. In your hands.', 82, 330);
+  ctx.font = '10px monospace'; ctx.fillText(noteId, 82, 391);
+  ctx.font = '9px Arial'; ctx.fillText('Complete Receiz proof carried in this image', 82, 413);
+  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('The note image could not be saved.')), 'image/png'));
+  return new Uint8Array(await blob.arrayBuffer());
+}

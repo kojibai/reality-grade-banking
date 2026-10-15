@@ -7,10 +7,11 @@ import { BANK_CARD_CONSENT } from '../../receiz/config';
 import { AmountInput } from '../../components/AmountInput';
 import { formatMoney } from '../../core/money';
 import { ReceizCardCheckout } from './ReceizCardCheckout';
+import { OfflineNotes } from '../notes/OfflineNotes';
 import { CustodyDelivery } from './CustodyDelivery';
 
 export function LiveDeposit({ identity, onClose, onRefresh }: { identity: OpenIdentity; onClose: () => void; onRefresh: () => void }) {
-  const [kind, setKind] = useState<'choose' | 'asset' | 'dollars' | 'proof'>('choose');
+  const [kind, setKind] = useState<'choose' | 'asset' | 'dollars' | 'proof' | 'note'>('choose');
   const [asset, setAsset] = useState<AssetIntake>({ title: '', category: 'physical', quantity: '1', estimatedValue: '' });
   const [attachment, setAttachment] = useState<File>(), [amount, setAmount] = useState(''), [method, setMethod] = useState<'card' | 'wire'>('card');
   const [deposit, setDeposit] = useState<HeldDeposit | null>(null), [checkout, setCheckout] = useState<CardCheckout | null>(null);
@@ -23,12 +24,14 @@ export function LiveDeposit({ identity, onClose, onRefresh }: { identity: OpenId
   const hold = async (file?: File) => { if (!file) return; const ticket = generation.current; await run(async () => { const value = await identity.holdProof(file); if (ticket === generation.current) { setDeposit(value); onRefresh(); } }); };
   const checkCard = () => run(async () => { if (!checkout) return; const ticket = generation.current, result = await identity.checkCardDeposit(checkout); if (ticket !== generation.current) return; if (['credited', 'expired', 'unpaid'].includes(result.status)) { terminalCheckouts.current.add(checkout.sessionId); setRetainedCheckouts(values => values.filter(value => value.sessionId !== checkout.sessionId)); } if (result.status === 'credited') { setCardStatus('credited'); onRefresh(); } else setCardStatus(result.status); });
   const saveProof = () => { if (!deposit) return; const url = URL.createObjectURL(new Blob([new Uint8Array(deposit.bytes)])), link = document.createElement('a'); link.href = url; link.download = deposit.filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+  if (kind === 'note') return <OfflineNotes identity={identity} mode="deposit" onBack={() => setKind('choose')} onRefresh={onRefresh} />;
   return <div className="deposit-flow">
     {kind !== 'choose' && <button className="back-link" disabled={busy} onClick={() => { setKind('choose'); setDeposit(null); setAmount(''); setCheckout(null); setCardStatus(''); setError(''); }}><ArrowLeft size={16} />All deposits</button>}
     {kind === 'choose' && <><h1 className="sheet-hero">Turn what you own<br />into liquidity.</h1><p className="body-copy">Choose what you’re depositing.</p><div className="deposit-options">
       <button onClick={() => setKind('asset')}><span className="choice-icon blue"><Building2 /></span><span><strong>An asset</strong><small>Jordans, gold, stocks, property.<br />Anything you own.</small></span><ChevronRight size={20} /></button>
       <button onClick={() => setKind('dollars')}><span className="choice-icon green"><CircleDollarSign /></span><span><strong>Dollars</strong><small>Add money to your account.</small></span><ChevronRight size={20} /></button>
       <button onClick={() => setKind('proof')}><span className="choice-icon purple"><FileCheck2 /></span><span><strong>A proof object</strong><small>Bring your verified value with you.</small></span><ChevronRight size={20} /></button>
+      <button onClick={() => setKind('note')}><span className="choice-icon green"><FileCheck2 /></span><span><strong>An Offline Note</strong><small>Deposit a note into Reserve.</small></span><ChevronRight size={20} /></button>
     </div><p className="trust-line"><ShieldCheck size={18} />One account. Your value stays connected.</p></>}
     {kind === 'asset' && !deposit && <><h1 className="sheet-hero">Keep the asset.<br />Unlock the possibilities.</h1><p className="body-copy">We hold it in custody. You hold its transferable ownership.</p>
       <label className="form-field"><span>What are you depositing?</span><input value={asset.title} onChange={event => setAsset({ ...asset, title: event.target.value })} placeholder="Jordans, a painting, gold…" maxLength={80} /></label>

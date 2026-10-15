@@ -1,0 +1,17 @@
+import { createRequire } from 'node:module';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { resolve, relative } from 'node:path';
+import { createHash } from 'node:crypto';
+const source = resolve(process.argv[2] ?? '../receiz/.worktrees/receiz-v129-main');
+const packageJson = JSON.parse(await readFile(resolve(source, 'package.json'), 'utf8'));
+if (packageJson.version !== '129.0.0') throw new Error('Pinned Receiz v129 source required.');
+const hostRequire = createRequire(resolve(source, 'package.json'));
+const require = createRequire(hostRequire.resolve('tsx/package.json'));
+const { build } = require('esbuild');
+const target = resolve('public/native'); await mkdir(target, { recursive: true });
+const result = await build({ absWorkingDir: source, entryPoints: ['app/lib/wallet/bankNotes/browser.ts'], bundle: true, format: 'esm', platform: 'browser', target: 'es2022', minify: true, treeShaking: true, alias: { '@': source }, external: ['node:*'], outfile: resolve(target, 'offline-notes.v129.mjs'), metafile: true, legalComments: 'inline', banner: { js: '/*! Receiz Bank Offline Notes — composed from Receiz v129 native primitives. Generated; do not edit. */' } });
+const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+const files = await Promise.all(Object.keys(result.metafile.inputs).sort().map(async path => ({ path: relative(source, resolve(source, path)), sha256: hash(await readFile(resolve(source, path))) })));
+const bytes = await readFile(resolve(target, 'offline-notes.v129.mjs'));
+await writeFile(resolve(target, 'offline-notes.v129.manifest.json'), JSON.stringify({ schema: 'receiz.bank.native-runtime-build.v1', version: '129.0.0', moduleSha256: hash(bytes), sourceTreeSha256: hash(JSON.stringify(files)), inputs: files.length, bytes: bytes.length }, null, 2) + '\n');
+console.log(`Built lazy v129 note runtime: ${bytes.length} bytes from ${files.length} inputs.`);

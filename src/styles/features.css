@@ -141,3 +141,5 @@
 
 .market-inventory-detail{display:block;font-size:11px;margin-top:4px}
 .offline-note-preview { margin: 18px 0; }.offline-note-preview svg { display: block; width: 100%; border-radius: 10px; box-shadow: 0 12px 30px #152e4310; }.offline-note-preview .note-brand { font: 800 70px system-ui; letter-spacing: -4px; }.offline-note-preview .note-bank { font-weight: 400; font-size: 49px; letter-spacing: -2px; }.offline-note-preview .note-overline { font: 500 23px system-ui; letter-spacing: 8px; }.offline-note-preview .note-denomination { font-family: Georgia, serif; font-weight: 600; letter-spacing: -5px; }.offline-note-preview .note-caption { font: 24px Georgia, serif; }.offline-note-preview .note-preview-label { font: 500 20px system-ui; letter-spacing: 4px; fill: #536675; }.offline-note-preview figcaption { font-size: 11px; color: var(--muted); margin-top: 10px; text-align: center; }
+
+.note-action{display:block;margin:0 0 20px auto}.issued-note-image{display:block;width:100%;height:auto;border-radius:14px;margin:20px 0;box-shadow:0 10px 32px #172d4a12}.offline-notes-flow .detail-list{margin-top:20px}

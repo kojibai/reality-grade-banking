@@ -70,3 +70,11 @@ it('keeps creation and import/open operations single-flight while the first iden
     expect(read().identity).not.toBeNull();
   });
 });
+it('keeps the account open when note custody prevents device removal', async () => {
+  const identity = held(async () => ({ userId: 'same-user', totalUsdCents: '200' })); custody.restore.mockResolvedValue(identity);
+  custody.forget.mockRejectedValue(new Error('Keep this device while Offline Notes are held or pending.'));
+  await observe(async read => {
+    await act(async () => { await expect(read().forget()).rejects.toThrow('Offline Notes'); });
+    expect(read().identity).toBe(identity); expect(read().wallet?.totalUsdCents).toBe('200'); expect(identity.dispose).not.toHaveBeenCalled();
+  });
+});
