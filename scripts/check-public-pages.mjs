@@ -20,6 +20,18 @@ for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/
   for (const json of page.matchAll(/<script type="application\/ld\+json">([^<]+)<\/script>/g)) JSON.parse(json[1]);
   assert.ok(sitemap.includes(`https://bank.receiz.com/learn/${path}`));
 }
+// Every public entry carries the same routes, including legal notices, so
+// navigation does not depend on fetching a replacement document.
+const navigationPattern = /<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/;
+const navigation = JSON.parse(html.match(navigationPattern)[1]);
+assert.ok(navigation.pages['/legal/'], 'Legal notices must use the retained public header too');
+const sharedHeader = navigation.pages['/learn/'].content.match(/<header class="learn-header">[\s\S]*?<\/header>/)[0];
+for (const [path, entry] of Object.entries(navigation.pages)) {
+  const output = await readFile(`dist${path}index.html`, 'utf8');
+  assert.deepEqual(JSON.parse(output.match(navigationPattern)[1]), navigation, `Public navigation differs at ${path}`);
+  assert.equal(entry.content.match(/<header class="learn-header">[\s\S]*?<\/header>/)[0], sharedHeader, `Shared header links differ at ${path}`);
+  assert.ok(output.includes('id="public-learn-root"'));
+}
 const robots = await readFile('dist/robots.txt', 'utf8'); assert.match(robots, /Disallow: \/api\//); assert.ok(!sitemap.includes('#'));
 const sw = await readFile('dist/sw.js', 'utf8'); assert.ok(!sw.includes('qr-decoder'));
 for (const url of html.matchAll(/(?:href|src)="(\/learn\/learn\.(?:css|js)\?v=[a-f0-9]{12})"/g)) assert.ok(sw.includes(JSON.stringify(url[1])), `Versioned Learn asset must be precached: ${url[1]}`);
