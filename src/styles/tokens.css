@@ -1,6 +1,7 @@
-:root { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #172B45; background: #eef0f4; font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; --bg: #FCFBF8; --navy: #172B45; --blue: #244DCB; --green: #18856A; --muted: #87909D; --line: #e9eaf0; --surface: #fff; --radius: 17px; }
+:root { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #172B45; background: var(--bg); color-scheme: light; font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; --bg: #FCFBF8; --navy: #172B45; --blue: #244DCB; --green: #18856A; --muted: #87909D; --line: #e9eaf0; --surface: #fff; --radius: 17px; }
 * { box-sizing: border-box; }
-body { margin: 0; }
+body { margin: 0; background: var(--bg); }
+@media (min-width: 720px) { :root, body { background: #eef0f4; } }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; -webkit-tap-highlight-color: transparent; color: inherit; }
 button:disabled { cursor: not-allowed; opacity: .48; }
