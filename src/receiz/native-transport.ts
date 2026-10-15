@@ -18,6 +18,7 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
 export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
   if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return false;
+  if (url.pathname === '/api/connect/offline-notes/custody/attestation') return ['GET', 'POST'].includes(method.toUpperCase()) && url.searchParams.getAll('origin').length === 1 && [...url.searchParams.keys()].every(key => key === 'origin') && ['https://bank.receiz.com', 'http://localhost:4173', 'http://localhost:5173'].includes(url.searchParams.get('origin') ?? '');
   if (url.pathname === '/api/wallet/ledger') return method.toUpperCase() === 'GET' && url.searchParams.get('limit') === '100' && url.searchParams.get('includeReceiz') === '0' && [...url.searchParams.keys()].every(key => ['limit', 'includeReceiz', 'cursor'].includes(key) && url.searchParams.getAll(key).length === 1) && (!url.searchParams.has('cursor') || /^[A-Za-z0-9_-]{1,2048}$/.test(url.searchParams.get('cursor')!));
   if (/^\/api\/sdk\/v1\/subjects\/receiz%3Asubject%3A[a-f0-9]{64}\/state$/.test(url.pathname)) return method.toUpperCase() === 'GET' && !url.search;
   if (NATIVE_PATHS[url.pathname] !== method.toUpperCase()) return false;
