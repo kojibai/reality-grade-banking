@@ -18,6 +18,8 @@ npm run receiver:inspect -- /absolute/path/to/original-note.png
 
 `receiver:check` validates pinned packages, bundled source integrity, canonical KaiSigil temporal vectors and refusal of forged note inputs. Its success means these local checks passed. It does **not** authorize a credit, grant production access or assess your institution.
 
+The [Conformance Console](https://bank.receiz.com/conformance/) offers the browser reference checks, original-note inspector, qualification requirements and JSON evidence export. Run locally at `/conformance/` after starting the app. File inspection remains on the device; a reference pass never awards institution conformance. The recorded MCP baseline is identified separately from the checks executed in the browser.
+
 `receiver:inspect` opens the exact original Reserve Note PNG under the native v129 canonical roots. A successful inspection establishes the carried chain only. It does not check whether another device has since transferred or consumed the note, acquire its current custody or redeem it. Artwork without carried proof is refused. This command is read-only and requires no account, signing key, client secret or live payment.
 
 | Lifecycle | Implementation path | Current boundary |

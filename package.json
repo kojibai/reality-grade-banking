@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc -b && vite build && node scripts/build-public-pages.mjs",
+    "build": "tsc -b && vite build && node scripts/build-public-pages.mjs && node scripts/check-conformance-build.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
@@ -15,7 +15,8 @@
     "bank:contract": "node scripts/compile-bank-domain.mts",
     "receiver:check": "node institution/check.mjs",
     "receiver:inspect": "node institution/inspect-note.mjs",
-    "receiver:build": "node scripts/build-receiver-verifier.mjs"
+    "receiver:build": "node scripts/build-receiver-verifier.mjs",
+    "conformance:check": "node scripts/check-conformance-build.mjs"
   },
   "dependencies": {
     "@receiz/ai-skills": "129.0.0",

@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Receiz Bank",
-  "short_name": "Receiz",
+  "name": "Bankeiz",
+  "short_name": "Bankeiz",
   "description": "All your value. One account.",
   "start_url": "/",
   "scope": "/",

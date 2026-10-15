@@ -1,6 +1,6 @@
 # Design QA — note renderer and value framing
 
-Date: 2026-10-15. Scope: the approved engraved note design, matching Reserve/Settlement presentation, unchanged paper, subtle Account/Learn wording and default branding. The newly requested Conformance Console is a separate subsequent scope and is not covered by this result.
+Date: 2026-10-15. Scope of the original record below: the approved engraved note design, matching Reserve/Settlement presentation, unchanged paper and subtle Account/Learn wording. The subsequent Conformance Console and Bankeiz rebrand have their own completed record linked below.
 
 **final result: passed**
 
@@ -30,3 +30,7 @@ The visualization root is `/Users/bjklock/.codex/visualizations/2026/10/13/01a13
 Intentional deviations from the original generated reference are exactly the requested titles/subtitles, dynamic amounts, typed rail, readable outlined corner values and source-derived serial presentation. The original reference did not define a real issued source. Every saved sample here is unissued artwork and is refused by the financial verifier.
 
 No live Settlement Note financial support or institution qualification is claimed by visual QA. Those separate native integration and real-device release gates remain in the linked contracts.
+
+## Conformance Console and Bankeiz
+
+**final result: passed** for the public precision console and requested presentation-only rebrand. The accepted concept and current browser screenshots were visually compared, desktop/mobile states were exercised, actual reference checks passed 7/7, and unissued artwork was refused. The [full verification and fidelity ledger](docs/verification/2026-10-15-conformance-console.md) records evidence, intentional differences, independent review and remaining financial/domain/license boundaries. Bankeiz retains the existing application palette, typography, flows and Reality-Grade Banking line. Native note artwork is unchanged.

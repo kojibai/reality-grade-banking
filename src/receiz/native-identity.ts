@@ -168,7 +168,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     // A known checkout is retained for explicit resumption; a new reviewed amount
     // is a distinct user intent. A timeout or malformed reply retains this attempt. Never create another
     // checkout merely because the response was not delivered.
-    const checkout = parseCardCheckout(await current.connect.checkout({ amountUsd: exact.amountUsd, currency: 'usd', uiMode: 'embedded', returnUrl, successUrl: returnUrl, referenceId: operation.operationId, description: 'Receiz Bank Reserve deposit' }), exact.amountUsdCents);
+    const checkout = parseCardCheckout(await current.connect.checkout({ amountUsd: exact.amountUsd, currency: 'usd', uiMode: 'embedded', returnUrl, successUrl: returnUrl, referenceId: operation.operationId, description: 'Bankeiz Reserve deposit' }), exact.amountUsdCents);
     await saveCardOperation(binding, { ...operation, stage: 'ready', checkout }, false, operation.operationId); return checkout;
   }
   async function pendingCardDeposit() {

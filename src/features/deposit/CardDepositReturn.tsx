@@ -7,5 +7,5 @@ export function readCardReturn(search: string): string | null {
 // cannot assert payment or settlement.
 export function CardDepositReturn({ sessionId }: { sessionId: string }) {
   useEffect(() => { if (window.parent !== window) window.parent.postMessage({ source: 'receiz-bank-card-return', type: 'checkout-returned', sessionId }, location.origin); }, [sessionId]);
-  return <main className="entrance-content"><h1>Returning to your deposit.</h1><p className="body-copy">Receiz Bank will check the payment and your Reserve credit.</p><a className="primary-button" href="/#account/deposit" target="_top">Return to my account</a></main>;
+  return <main className="entrance-content"><h1>Returning to your deposit.</h1><p className="body-copy">Bankeiz will check the payment and your Reserve credit.</p><a className="primary-button" href="/#account/deposit" target="_top">Return to my account</a></main>;
 }

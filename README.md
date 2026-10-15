@@ -2,7 +2,7 @@
 
 **Your value should carry its proof.**
 
-The Receiz Bank reference application and receiving integration kit: a mobile banking console built on Receiz proof objects, with device-held identity, independently inspectable sources and explicit continuity requirements.
+The Bankeiz reference application and receiving integration kit: a mobile banking console built on Receiz proof objects, with device-held identity, independently inspectable sources and explicit continuity requirements.
 
 **Settlement · Proof-native value.** Value derived and transacted through the native proof system.
 
@@ -10,7 +10,7 @@ The Receiz Bank reference application and receiving integration kit: a mobile ba
 
 One account view brings the rails together. The app keeps Send and Receive central, with Account, Market, Deposit, Assets and Ledger in persistent bottom navigation. Ownership, exact value and admitted history remain grounded in the proof object. A listing, image, account projection or service response cannot create financial authority.
 
-[Receiving kit](institution/README.md) · [Receiving standard](institution/receiving-standard.md) · [Run locally](#run-locally) · [Release process](docs/release-process.md) · [Licensing status](#licensing-status)
+[Conformance Console](https://bank.receiz.com/conformance/) · [Receiving kit](institution/README.md) · [Receiving standard](institution/receiving-standard.md) · [Run locally](#run-locally) · [Release process](docs/release-process.md) · [Licensing status](#licensing-status)
 
 ## Build a receiver
 
@@ -30,6 +30,8 @@ npm run receiver:inspect -- /absolute/path/to/original-note.png
 ```
 
 Inspection verifies carried evidence. It does not acquire custody, prove current spendability, authorize a credit or certify an institution. A receiver must demonstrate the exact capability with admitted sources and qualified execution. Unknown conformance is **not demonstrated**; a verified failed assessment is **nonconforming for its assessed capability** until corrected and reassessed.
+
+Open `/conformance/` locally for the browser workspace: seven real reference checks, original Reserve Note inspection, the receiving requirements and downloadable evidence. It loads independently from the Bank, reads selected PNGs on the device and performs no financial actions. Local reference results and recorded MCP evidence remain separate from institution assessment.
 
 ## Current capability boundaries
 
@@ -82,6 +84,7 @@ The SDK, MCP server and AI Skills are coordinated at **129.0.0**. The active reg
 | Native note lifecycle and exact recovery | `src/receiz/offline-notes.ts`, `src/features/notes/` |
 | Exact native generated runtime and provenance | `public/native/`, `scripts/build-offline-note-runtime.mjs` |
 | Institution receiver and independent inspection | `institution/`, `scripts/build-receiver-verifier.mjs` |
+| Public Conformance Console | `conformance/`, `src/conformance/` |
 | Public Learn pages and instant navigation | `scripts/learn-template.mjs`, `scripts/build-public-pages.mjs`, `public/learn/` |
 | Fixed-origin native transport | `server/`, `api/index.ts`, `vercel.json` |
 | Display-only brand profile | `branding/identity.json`, `branding/README.md` |
