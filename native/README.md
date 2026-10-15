@@ -41,3 +41,9 @@ This compiles `receiz/zk/sigil_proof.circom` with the included Poseidon source, 
 Read [DISCLOSURE.md](DISCLOSURE.md) and [NOTICE](NOTICE). The source is usable and modifiable under its applicable licenses; disclosure is intentional. A clone gains implementation knowledge, not production permissions, custody, customer identities, funded balances or official endorsement. Source availability and reproducible bytes are separate from financial qualification.
 
 The normal application build publishes an exact, content-addressed source archive and inventory at `/source/index.json`, linked from `/legal/`. `npm run source:verify -- --rebuild` checks that archive and rebuilds the native artifacts and SDK from its clean extraction, reusing only publicly locked npm dependencies. Preserve the archive alongside the object-code release; do not replace old source archives with unrelated new revisions.
+
+## Application composition changes
+
+The source commit identifies the upstream v129 base. `manifest.json` additionally records application-specific composition patches with their original and modified source hashes. The Bankeiz WebAuthn realm patch changes only the Bank note browser composition: Bankeiz uses `bankeiz.com`, while existing Receiz Bank credentials retain `receiz.com`. It does not modify the pinned SDK package sources, published SDK JavaScript, verification roots or note custody requirements.
+
+After an intentional composition-source edit, update its indexed source/input hashes and run `node scripts/rebuild-native.mjs --refresh-composition --output public/native`. Normal builds continue to require exact reproduction of the committed artifacts.

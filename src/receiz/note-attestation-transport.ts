@@ -1,3 +1,4 @@
+import { bankNoteRpId } from './config';
 type JsonRequest = (path: string, options: { method: 'GET' | 'POST'; body?: Record<string, unknown> }) => Promise<unknown>;
 const CEREMONY = '/api/wallet/notes/custody/attestation';
 const object = (value: unknown): Record<string, unknown> | null => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -5,9 +6,9 @@ const object = (value: unknown): Record<string, unknown> | null => value && type
  * still require SDK certificate verification; no ticket grants note authority. */
 export function createBankNoteAttestationFetch(input: { origin: string; request: JsonRequest; signal?: AbortSignal }): typeof fetch {
   const realm = new URL(input.origin);
-  if (realm.origin !== input.origin || !(realm.origin === 'https://bank.receiz.com' || realm.protocol === 'http:' && realm.hostname === 'localhost' && ['4173', '5173'].includes(realm.port))) throw new Error('BANK_NOTE_TRANSPORT_REALM_INVALID');
+  const rpId = bankNoteRpId(input.origin);
+  if (realm.origin !== input.origin || !rpId) throw new Error('BANK_NOTE_TRANSPORT_REALM_INVALID');
   const target = `/api/connect/offline-notes/custody/attestation?origin=${encodeURIComponent(input.origin)}`;
-  const rpId = realm.hostname === 'localhost' ? 'localhost' : 'receiz.com';
   const tickets = new Map<string, { value: string; expiresAt: number }>();
   const assertOpen = () => { if (input.signal?.aborted) { tickets.clear(); throw new Error('BANK_NOTE_IDENTITY_CLOSED'); } };
   return async (resource, options) => {

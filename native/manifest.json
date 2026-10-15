@@ -124,7 +124,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "a032be240481f092035e10659f749b88a15d9804e4d5ea7b54be8cb5753a3074"
+      "sha256": "f7e1aa1cc197d8ae8c22dae89d39b2600a08c4e1bd1b558bc96a7cf68b341be4"
     },
     {
       "path": "app/lib/wallet/bankNotes/bytePacking.ts",
@@ -1270,7 +1270,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "a032be240481f092035e10659f749b88a15d9804e4d5ea7b54be8cb5753a3074"
+      "sha256": "f7e1aa1cc197d8ae8c22dae89d39b2600a08c4e1bd1b558bc96a7cf68b341be4"
     },
     {
       "path": "app/lib/wallet/bankNotes/bytePacking.ts",
@@ -5088,7 +5088,7 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "a032be240481f092035e10659f749b88a15d9804e4d5ea7b54be8cb5753a3074",
+      "sha256": "f7e1aa1cc197d8ae8c22dae89d39b2600a08c4e1bd1b558bc96a7cf68b341be4",
       "bytes": 28433,
       "mode": 420
     },
@@ -11721,6 +11721,16 @@
     {
       "path": "dist/verifier/types.js",
       "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    }
+  ],
+  "applicationPatches": [
+    {
+      "id": "bankeiz-webauthn-realm",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "a032be240481f092035e10659f749b88a15d9804e4d5ea7b54be8cb5753a3074",
+      "sha256": "f7e1aa1cc197d8ae8c22dae89d39b2600a08c4e1bd1b558bc96a7cf68b341be4",
+      "purpose": "Bind Bankeiz note custody to its own WebAuthn RP while preserving the original Receiz Bank and localhost realms. SDK package sources and published SDK outputs are unchanged.",
+      "upstreamCommit": "67d4461833caffba984bf09b21d30328e0b1a0e5"
     }
   ]
 }

@@ -8,6 +8,8 @@ import { execFileSync } from 'node:child_process';
 import { build, version } from 'esbuild';
 
 const bank = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const refreshComposition = process.argv.includes('--refresh-composition');
+assert.ok(!refreshComposition || process.argv.includes('--output'), 'Refreshing composition requires an explicit output directory.');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const manifest = JSON.parse(await readFile(resolve(bank, 'native/manifest.json'), 'utf8'));
 assert.equal(version, manifest.esbuildVersion, 'Use the pinned esbuild from npm ci.');
@@ -37,9 +39,12 @@ try {
   const common = { absWorkingDir: source, bundle: true, format: 'esm', platform: 'browser', target: 'es2022', minify: true, treeShaking: true, external: ['node:*'], write: false, metafile: true, legalComments: 'inline' };
   const notes = await build({ ...common, entryPoints: ['app/lib/wallet/bankNotes/browser.ts'], alias: { '@': source }, outfile: resolve(bank, 'public/native/offline-notes.v129.mjs'), banner: { js: '/*! Receiz Bank Offline Notes — composed from Receiz v129 native primitives. Generated; do not edit. */' } });
   const notesBytes = notes.outputFiles[0].contents;
-  assert.equal(hash(notesBytes), JSON.parse(await readFile(resolve(bank, 'public/native/offline-notes.v129.manifest.json'), 'utf8')).moduleSha256, 'Offline Note rebuild differs.');
+  const notesManifestPath = resolve(bank, 'public/native/offline-notes.v129.manifest.json');
+  const notesManifest = JSON.parse(await readFile(notesManifestPath, 'utf8'));
+  if (!refreshComposition) assert.equal(hash(notesBytes), notesManifest.moduleSha256, 'Offline Note rebuild differs.');
   const inputList = await Promise.all(Object.keys(notes.metafile.inputs).sort().map(async path => ({ path: relative(source, resolve(source, path)), sha256: hash(await readFile(resolve(source, path))) })));
   assert.deepEqual(inputList, manifest.notesInputs, 'Native input closure differs.');
+  if (refreshComposition) await writeFile(notesManifestPath, JSON.stringify({ ...notesManifest, moduleSha256: hash(notesBytes), sourceTreeSha256: hash(JSON.stringify(inputList)), inputs: inputList.length, bytes: notesBytes.length, applicationPatches: manifest.applicationPatches ?? [] }, null, 2) + '\n');
 
   const receiver = await build({ ...common, entryPoints: [resolve(bank, 'institution/receiver-verifier.entry.mjs')], alias: { 'receiz-native-note-image': resolve(source, 'app/lib/wallet/bankNotes/noteImage.ts'), 'receiz-native-note-source': resolve(source, 'app/lib/wallet/bankNotes/fundedNote.ts'), '@': source }, outfile: resolve(bank, 'public/native/receiver-verifier.v129.mjs'), sourcemap: 'external', sourcesContent: true, banner: { js: '/*! Reality-Grade Banking — read-only v129 receiver verifier. No funding, signing, custody consumption or credit authority. Includes GPL-3.0 snarkjs/ffjavascript components: see /native/licenses/README.md and the adjacent complete source map. Distribution licensing review remains required. */' } });
   const receiverBytes = receiver.outputFiles.find(file => file.path.endsWith('.mjs')).contents;

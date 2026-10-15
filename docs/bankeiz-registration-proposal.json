@@ -1,0 +1,33 @@
+{
+  "name": "Bankeiz",
+  "clientType": "public",
+  "tokenEndpointAuthMethod": "none",
+  "scopes": [
+    "openid",
+    "profile",
+    "receiz:wallet.read",
+    "receiz:settlement.read",
+    "receiz:reserve.read",
+    "receiz:payments.create",
+    "receiz:payments.read",
+    "receiz:subjects.read",
+    "receiz:subjects.write",
+    "receiz:domains.read",
+    "receiz:domains.write",
+    "receiz:settlement.write",
+    "receiz:reserve.write",
+    "receiz:record",
+    "receiz:seal"
+  ],
+  "redirectUris": [
+    "https://bank.receiz.com/auth/receiz/callback",
+    "http://127.0.0.1:4173/auth/receiz/callback",
+    "http://127.0.0.1:5173/auth/receiz/callback",
+    "https://bankeiz.com/auth/receiz/callback",
+    "http://localhost:4173/auth/receiz/callback",
+    "http://localhost:5173/auth/receiz/callback"
+  ],
+  "purpose": "Existing Bank client, unchanged scopes and identity authority. Add exact Bankeiz callback and localhost callbacks for the already-allowlisted local note realms; preserve every current callback.",
+  "status": "proposed-origin-update-not-applied",
+  "clientId": "rc_uV6aT6wZJCQDspB0_SJ1DcEm"
+}

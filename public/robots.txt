@@ -3,4 +3,4 @@ Allow: /
 Disallow: /api/
 Disallow: /auth/
 Disallow: /*?cardReturn=
-Sitemap: https://bank.receiz.com/sitemap.xml
+Sitemap: https://bankeiz.com/sitemap.xml

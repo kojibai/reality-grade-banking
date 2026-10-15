@@ -1,8 +1,18 @@
 {
   "schema": "receiz.bank.native-runtime-build.v1",
   "version": "129.0.0",
-  "moduleSha256": "c968ad2f9c8d030ab832641e6a95d6f55dc3ba63de21f14566ab09398d4b8463",
-  "sourceTreeSha256": "79c8cc2d6a33bb319c552860350950e62d1ef7b9e9ee524ac8be0f9efe25e948",
+  "moduleSha256": "60d72716b8c6f68ae861df4c5b60e7e2a344bd64e9f60f0a1e68391c10dbba55",
+  "sourceTreeSha256": "1bfc87d31eaaca9959929e1d82c0ea8c786f76654dd92ab94905979483e40820",
   "inputs": 285,
-  "bytes": 2221244
+  "bytes": 2221431,
+  "applicationPatches": [
+    {
+      "id": "bankeiz-webauthn-realm",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "a032be240481f092035e10659f749b88a15d9804e4d5ea7b54be8cb5753a3074",
+      "sha256": "f7e1aa1cc197d8ae8c22dae89d39b2600a08c4e1bd1b558bc96a7cf68b341be4",
+      "purpose": "Bind Bankeiz note custody to its own WebAuthn RP while preserving the original Receiz Bank and localhost realms. SDK package sources and published SDK outputs are unchanged.",
+      "upstreamCommit": "67d4461833caffba984bf09b21d30328e0b1a0e5"
+    }
+  ]
 }

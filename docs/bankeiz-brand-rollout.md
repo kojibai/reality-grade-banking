@@ -8,7 +8,7 @@ The two sharing images were edited with ImageGen from the exact prior assets, pr
 
 ## Bankeiz.com activation
 
-The desired new public origin is `https://bankeiz.com`. This commit changes branding, not the existing application permission boundary. The currently registered `https://bank.receiz.com` origin, callbacks, public client IDs, checkout framing rules and native host allowlists remain unchanged. Canonical URLs continue to identify the current registered deployment until the domain migration is executed.
+The public origin is `https://bankeiz.com`. New payment requests and canonical, social and public guide URLs now use Bankeiz. Existing legacy payment requests remain readable. The existing client IDs, scopes and signed source coordinates are preserved. The host's exact Bankeiz origin repair is committed separately on Receiz main; the owner-authorized callback update and live activation remain distinct. See [the current activation checkpoint](bankeiz-origin-activation.md).
 
 Before serving financial flows from Bankeiz.com:
 

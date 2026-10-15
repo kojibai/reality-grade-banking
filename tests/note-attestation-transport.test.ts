@@ -9,6 +9,7 @@ it('permits only the exact delegated Bank attestation path, realm and two ceremo
   expect(permittedNativePath(path, 'GET')).toBe(true); expect(permittedNativePath(path, 'POST')).toBe(true);
   for (const candidate of [path + '&origin=https%3A%2F%2Fbank.receiz.com', path + '&extra=1', path.replace('bank.receiz.com', 'foreign.test'), path.replace('https%', 'http%'), path.split('?')[0]]) expect(permittedNativePath(candidate, 'POST')).toBe(false);
   expect(permittedNativePath(path, 'DELETE')).toBe(false);
+  for (const origin of ['constructor', '__proto__', 'toString']) expect(permittedNativePath('/api/connect/offline-notes/custody/attestation?origin=' + origin, 'GET')).toBe(false);
 });
 it('routes the canonical ceremony through Receiz and carries its exact private challenge ticket', async () => {
   const request = vi.fn().mockResolvedValueOnce({ ok: true, origin, rpId: 'receiz.com', challengeB64u: nonce, ticket: 'private-fixture-ticket' }).mockResolvedValueOnce({ ok: true, certificate: { fixture: true } });
@@ -36,4 +37,16 @@ it('refuses a foreign realm, unexpected network request, unsolicited response an
   expect(request).toHaveBeenCalledTimes(1);
   controller.abort(); await expect(transport(route)).rejects.toThrow('CLOSED');
   expect(request).toHaveBeenCalledTimes(1);
+});
+
+it('binds Bankeiz ceremonies to its own RP and rejects cross-domain certificates', async () => {
+  const bankeizOrigin = 'https://bankeiz.com';
+  const path = '/api/connect/offline-notes/custody/attestation?origin=https%3A%2F%2Fbankeiz.com';
+  expect(permittedNativePath(path, 'GET')).toBe(true); expect(permittedNativePath(path, 'POST')).toBe(true);
+  expect(permittedNativePath('/api/connect/offline-notes/funding?origin=https%3A%2F%2Fbankeiz.com', 'POST')).toBe(true);
+  expect(permittedNativePath('/api/connect/offline-notes/redemption?origin=https%3A%2F%2Fbankeiz.com', 'POST')).toBe(true);
+  const request = vi.fn().mockResolvedValueOnce({ ok: true, origin: bankeizOrigin, rpId: 'bankeiz.com', challengeB64u: nonce, ticket: 'bankeiz-fixture-ticket' }).mockResolvedValueOnce({ ok: true, origin: bankeizOrigin, rpId: 'receiz.com', challengeB64u: otherNonce, ticket: 'wrong-realm' });
+  const transport = createBankNoteAttestationFetch({ origin: bankeizOrigin, request });
+  expect(await (await transport(route)).json()).toMatchObject({ origin: bankeizOrigin, rpId: 'bankeiz.com' });
+  await expect(transport(route)).rejects.toThrow('CHALLENGE');
 });

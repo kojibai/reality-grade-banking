@@ -4,7 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { learnAssets } from './learn-assets.mjs';
 import { learnHome, learnArticle } from './learn-template.mjs';
-const origin = 'https://bank.receiz.com';
+const origin = 'https://bankeiz.com';
 const pages = [
   { slug: '', title: 'Proof-native banking', description: 'How Bankeiz connects your identity, proof objects, Reserve and Settlement in one mobile account.', intro: 'Your value. More possibilities.', sections: [
     ['One account for connected value', 'Bankeiz is a mobile web application built around your Receiz ID. Open an existing Identity Seal or create an account, then view the same Reserve and Settlement balances used by Receiz. The account keeps Send, Receive, Deposit, Assets, Market and Ledger together in a familiar console.'],

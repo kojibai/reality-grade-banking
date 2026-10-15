@@ -12,9 +12,9 @@ it('generates the bank QR and writes only the public request URL to NFC on expli
   const host = document.createElement('div'), root = createRoot(host);
   try { act(() => root.render(<LiveReceive identity={{ binding: { identityOwnerReceizId: 'receiz_device_fixture', artifactOwnerReceizId: 'test-public-coordinate' } } as OpenIdentity} />));
     expect(host.querySelector('svg[aria-label="Your Bankeiz payment QR"]')).not.toBeNull(); expect(write).not.toHaveBeenCalled();
-    expect(host.querySelector('.payment-link')!.textContent).toBe('https://bank.receiz.com/?to=test-public-coordinate');
+    expect(host.querySelector('.payment-link')!.textContent).toBe('https://bankeiz.com/?to=test-public-coordinate');
     await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Set up NFC tag'))!.click());
-    expect(write.mock.calls[0][0]).toEqual({ records: [{ recordType: 'url', data: 'https://bank.receiz.com/?to=test-public-coordinate' }] });
+    expect(write.mock.calls[0][0]).toEqual({ records: [{ recordType: 'url', data: 'https://bankeiz.com/?to=test-public-coordinate' }] });
     expect(host.textContent).toContain('Tag ready.');
   } finally { act(() => root.unmount()); delete (window as unknown as { NDEFReader?: unknown }).NDEFReader; }
 });

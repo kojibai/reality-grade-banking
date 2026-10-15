@@ -108,11 +108,11 @@ Native financial source verification remains stronger than databases, APIs, cach
 
 ## Deployment and operations
 
-The designated official reference is `https://bankeiz.com`. The currently registered public deployment origin remains `https://bank.receiz.com` until the [domain rollout](docs/bankeiz-brand-rollout.md) is completed. Deploy this repository as Vite: install `npm ci`, build `npm run build`, output `dist`. `vercel.json` binds `/api/bank/*` to the fixed Node transport in `api/index.ts`. No Bank client secret or Receiz root key is required in this frontend.
+The designated official reference and public application origin is `https://bankeiz.com`. Payment requests and public metadata use that origin. The separate [host and registration activation checkpoint](docs/bankeiz-origin-activation.md) records which domain permissions are committed and which still require owner-authorized activation. Deploy this repository as Vite: install `npm ci`, build `npm run build`, output `dist`. `vercel.json` binds `/api/bank/*` to the fixed Node transport in `api/index.ts`. No Bank client secret or Receiz root key is required in this frontend.
 
 A different operator must use its own registered application, identity, consent and explicitly authorized native receiving composition. Cloning this repo does not grant the Bank's production service permissions. The Bank's existing protected origin/client checks remain intact.
 
-Follow the [release process](docs/release-process.md). Existing service restoration, host migrations, protected signer context and real-device funded note exercises must be completed separately. [Earlier launch records](docs/launch-status.md) and [verification records](docs/verification.md) retain historical checkpoints; their dates and reported limitations matter.
+Follow the [release process](docs/release-process.md). Qualify the actual funding and transition storage, protected signer context and real-device funded note operations separately. [Earlier launch records](docs/launch-status.md) and [verification records](docs/verification.md) retain historical checkpoints; their dates and reported limitations matter.
 
 ## Licensing
 

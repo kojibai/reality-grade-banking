@@ -1,0 +1,51 @@
+diff --git a/app/lib/wallet/bankNotes/attestationRealm.ts b/app/lib/wallet/bankNotes/attestationRealm.ts
+index 79b052ee4..7905b39b0 100644
+--- a/app/lib/wallet/bankNotes/attestationRealm.ts
++++ b/app/lib/wallet/bankNotes/attestationRealm.ts
+@@ -8,10 +8,10 @@ export function resolveBankNoteAttestationRealm(
+   try {
+     const url = new URL(candidate);
+     if (candidate !== url.origin || url.username || url.password) return null;
+-    const production = url.origin === "https://bank.receiz.com";
++    const production = url.origin === "https://bankeiz.com" || url.origin === "https://bank.receiz.com";
+     const local = url.protocol === "http:" && url.hostname === "localhost" && ["4173", "5173"].includes(url.port);
+     if (!production && !local) return null;
+     if (!client.redirectUris.some(value => { try { return new URL(value).origin === url.origin; } catch { return false; } })) return null;
+-    return Object.freeze({ origin: url.origin, rpId: local ? "localhost" : "receiz.com" });
++    return Object.freeze({ origin: url.origin, rpId: local ? "localhost" : url.origin === "https://bankeiz.com" ? "bankeiz.com" : "receiz.com" });
+   } catch { return null; }
+ }
+diff --git a/app/lib/wallet/bankNotes/browser.ts b/app/lib/wallet/bankNotes/browser.ts
+index 74f77992a..9d8174e28 100644
+--- a/app/lib/wallet/bankNotes/browser.ts
++++ b/app/lib/wallet/bankNotes/browser.ts
+@@ -88,7 +88,15 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
+     assertOpen(): void;
+     artwork?(amountUsdCents: string, noteId: string, compact?: boolean): Promise<Uint8Array>;
+ }>) {
+-    const rpId = new URL(input.origin).hostname === "localhost" ? "localhost" : "receiz.com";
++    // Application composition: each production origin keeps its own WebAuthn realm.
++    const realms: Readonly<Record<string, string>> = {
++        "https://bankeiz.com": "bankeiz.com",
++        "https://bank.receiz.com": "receiz.com",
++        "http://localhost:4173": "localhost",
++        "http://localhost:5173": "localhost",
++    };
++    const rpId = Object.hasOwn(realms, input.origin) ? realms[input.origin] : null;
++    if (!rpId) throw Error("BANK_NOTE_TRANSPORT_REALM_INVALID");
+     const path = (kind: string) => `/api/connect/offline-notes/${kind}?origin=${encodeURIComponent(input.origin)}`;
+     const noteAdapter = (slotId: string) => createKairosNoteBrowserPwaCustodyAdapter({ slotId, rpId, origin: input.origin, fetchImpl: input.fetchImpl });
+     async function load(): Promise<State> { input.assertOpen(); const raw = await input.read(); if (!raw)
+diff --git a/proxy.ts b/proxy.ts
+index fc6473c42..e1e7c1535 100644
+--- a/proxy.ts
++++ b/proxy.ts
+@@ -464,7 +464,7 @@ function isPublicTwinEmbedPath(pathname: string): boolean {
+ }
+ 
+ // The bank is the sole approved production parent for native card checkout.
+-const BANK_CHECKOUT_FRAME_ANCESTORS = "frame-ancestors 'self' https://bank.receiz.com http://127.0.0.1:4173 http://127.0.0.1:5173";
++const BANK_CHECKOUT_FRAME_ANCESTORS = "frame-ancestors 'self' https://bankeiz.com https://bank.receiz.com http://127.0.0.1:4173 http://127.0.0.1:5173";
+ function isBankCheckoutEmbedPath(pathname: string): boolean {
+   return normalizedPathname(pathname) === "/payments/embed/checkout";
+ }

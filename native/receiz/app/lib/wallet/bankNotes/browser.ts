@@ -88,7 +88,15 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
     assertOpen(): void;
     artwork?(amountUsdCents: string, noteId: string, compact?: boolean): Promise<Uint8Array>;
 }>) {
-    const rpId = new URL(input.origin).hostname === "localhost" ? "localhost" : "receiz.com";
+    // Application composition: each production origin keeps its own WebAuthn realm.
+    const realms: Readonly<Record<string, string>> = {
+        "https://bankeiz.com": "bankeiz.com",
+        "https://bank.receiz.com": "receiz.com",
+        "http://localhost:4173": "localhost",
+        "http://localhost:5173": "localhost",
+    };
+    const rpId = Object.hasOwn(realms, input.origin) ? realms[input.origin] : null;
+    if (!rpId) throw Error("BANK_NOTE_TRANSPORT_REALM_INVALID");
     const path = (kind: string) => `/api/connect/offline-notes/${kind}?origin=${encodeURIComponent(input.origin)}`;
     const noteAdapter = (slotId: string) => createKairosNoteBrowserPwaCustodyAdapter({ slotId, rpId, origin: input.origin, fetchImpl: input.fetchImpl });
     async function load(): Promise<State> { input.assertOpen(); const raw = await input.read(); if (!raw)

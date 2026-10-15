@@ -3,7 +3,16 @@ export const BANK_APPLICATION_ID = 'rc_uV6aT6wZJCQDspB0_SJ1DcEm';
 export const BANK_PREVIOUS_CARD_APPLICATION_ID = 'rc_ELkGAUBINd9Nw4bE5zMqUsgc';
 export const BANK_CARD_APPLICATION_IDS = [BANK_APPLICATION_ID, BANK_PREVIOUS_CARD_APPLICATION_ID] as const;
 export const BANK_OBSERVATION_APPLICATION_IDS = [...BANK_CARD_APPLICATION_IDS, 'rc_QlCRCxBk8zyT4ajGLrIRPIQd'] as const;
-export const BANK_PUBLIC_ORIGIN = 'https://bank.receiz.com';
+export const BANK_PUBLIC_ORIGIN = 'https://bankeiz.com';
+// Existing QR/NFC requests remain readable; new requests use the public Bankeiz origin.
+export const BANK_PAYMENT_ORIGINS = [BANK_PUBLIC_ORIGIN, 'https://bank.receiz.com'] as const;
+const BANK_NOTE_REALMS: Readonly<Record<string, string>> = Object.freeze({
+  'https://bankeiz.com': 'bankeiz.com',
+  'https://bank.receiz.com': 'receiz.com',
+  'http://localhost:4173': 'localhost',
+  'http://localhost:5173': 'localhost',
+});
+export const bankNoteRpId = (origin: string): string | null => Object.hasOwn(BANK_NOTE_REALMS, origin) ? BANK_NOTE_REALMS[origin] : null;
 export const BANK_READ_SCOPES = ['receiz:wallet.read', 'receiz:settlement.read', 'receiz:reserve.read'] as const;
 export const BANK_CARD_SCOPES = [...BANK_READ_SCOPES, 'receiz:payments.create', 'receiz:payments.read'] as const;
 // Registered native integration contract. Each device still grants its own

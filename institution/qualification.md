@@ -21,6 +21,6 @@ For every proposed live capability, record the receiver identity/application, ex
 
 Synthetic custom-root sources may test diagnostic mechanics, but must be visibly isolated and must never qualify production funds. Do not create a fictitious positive “sealed note” from an unsigned fixture merely to get a green test. The checked-in unissued artwork samples are deliberately rejected as financial authority.
 
-The Bank host's current real-service/hardware release gates are in [offline-notes-release.md](../docs/offline-notes-release.md). Supabase service restoration, the reviewed host migration, protected signer context and user-operated real-device funded round trip remain separate operational prerequisites. A passing build or a code deployment does not complete them.
+The Bank host's financial and hardware release gates are in [offline-notes-release.md](../docs/offline-notes-release.md). Qualified actual funding and transition storage, the protected signer context and a user-operated real-device funded round trip remain separate operational prerequisites. A passing build or a code deployment does not complete them.
 
 Settlement Note financial support additionally requires the [native signed-rail extension](../docs/settlement-note-contract.md). Do not generalize Reserve qualification to Settlement. Generic digital transfer integration must supply a qualified actual transition store and source/signing workflow before claiming the SDK example is a production receiver.
