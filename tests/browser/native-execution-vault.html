@@ -23,10 +23,12 @@ document.querySelector('#run').onclick = async () => {
   let refused=false;try{await store.replace({...current,operationId:'foreign-attempt',state:'committed'});}catch{refused=true;}assert(refused,'Foreign result cannot replace pending intent');
   refused=false;try{await store.replace({...current,plan:{...current.plan,semanticIdempotencyKey:'changed'},state:'unknown'});}catch{refused=true;}assert(refused,'Plan and exact source cannot change under retained attempt');
   await store.replace({...current,state:'unknown'});assert((await deviceBankExecutionStore(binding).load()).state==='unknown','Unknown state survives reopening');
+  refused=false;try{await forgetDeviceIdentity();}catch{refused=true;}assert(refused&&(await store.load()).state==='unknown','Pending transaction prevents losing its device recovery custody');
+  refused=false;try{await saveDeviceIdentity(new Uint8Array([6,5,4]),'replacement.bin','dummy',true);}catch{refused=true;}assert(refused&&(await store.load()).operationId===current.operationId,'A different identity cannot replace unresolved transaction custody');
   const next={...checkpoint,operationId:`next-${nonce}`,plan:{...checkpoint.plan,attemptId:`next-${nonce}`}};
   await store.replace({...current,state:'zero-write'});refused=false;try{await store.replace({...current,state:'unknown'});}catch{refused=true;}assert(refused&&(await store.load()).state==='zero-write','A known terminal result cannot become unknown');
   await store.saveNew(next);refused=false;try{await store.replace({...current,state:'committed'});}catch{refused=true;}assert(refused,'Late result cannot erase new intent');
-  await forgetDeviceIdentity();refused=false;try{await store.replace({...next,state:'unknown'});}catch{refused=true;}assert(refused,'Removed identity cannot be revived by late result');
+  await store.replace({...next,state:'zero-write',zeroWriteReason:'STALE_HEAD'});await forgetDeviceIdentity();refused=false;try{await store.replace({...next,state:'unknown'});}catch{refused=true;}assert(refused,'Removed identity cannot be revived by late result');
   await saveDeviceIdentity(new Uint8Array([9,8,7]),'other-test-only.bin','dummy',true);refused=false;try{await store.saveNew(checkpoint);}catch{refused=true;}assert(refused,'Changed identity refuses former intent');await forgetDeviceIdentity();
   document.querySelector('#output').textContent='PASS\n'+checks.join('\n');
  }catch(error){document.querySelector('#output').textContent='FAIL\n'+error.message;}

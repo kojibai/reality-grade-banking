@@ -3,8 +3,9 @@ import type { OpenIdentity } from '../../receiz/native-identity';
 import type { BankNativeReadiness } from '../../receiz/bank-native-readiness';
 import { BANK_NATIVE_CONSENT } from '../../receiz/config';
 import { BankConnectionError } from '../../receiz/bank-connection-error';
+import { BankExecutionRecoveryPanel } from './BankExecutionRecoveryPanel';
 
-export function BankConnection({ identity }: { identity: OpenIdentity }) {
+export function BankConnection({ identity, onRefresh }: { identity: OpenIdentity; onRefresh?: () => void }) {
   const [report, setReport] = useState<BankNativeReadiness | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [consent, setConsent] = useState(false);
@@ -25,6 +26,7 @@ export function BankConnection({ identity }: { identity: OpenIdentity }) {
     finally { setBusy(false); setProofConsent(false); }
   };
   return <details className="identity-import"><summary>Bank connection</summary>
+    <BankExecutionRecoveryPanel identity={identity} onRefresh={onRefresh} />
     <p className="body-copy small-copy">Check the account connection used for custody, ownership and currency actions.</p>
     <button className="secondary-button" disabled={busy} onClick={() => void check()}>{busy ? 'Checking connection…' : 'Check connection'}</button>
     {report && <div role="status">

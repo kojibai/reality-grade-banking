@@ -19,7 +19,7 @@ export function Entrance({ opening, busy, error, onCreate, onImport }: { opening
     } catch { if (ticket === inspection.current) setFileError('This file could not be read as a Receiz ID. Choose your original Identity Seal.'); }
     finally { if (ticket === inspection.current) setInspecting(false); }
   };
-  return <div className="console identity-entrance"><header className="app-header"><span className="wordmark">{branding.wordmark}<span>{branding.descriptor}</span></span><EntranceConformanceStatus /></header><main className="entrance-content"><span className="entrance-symbol"><Fingerprint size={39} strokeWidth={1.4} /></span><h1>Your value.<br />More possibilities.</h1><p className="page-subtitle">One place for all your value. Wherever you are.</p>
+  return <div className="console identity-entrance"><header className="app-header"><span className="wordmark">{branding.wordmark}<span>{branding.descriptor}</span></span><EntranceConformanceStatus /></header><main className="entrance-content"><span className="entrance-symbol"><Fingerprint size={39} strokeWidth={1.4} /></span><h1>Your value.<br />More possibilities.</h1><p className="page-subtitle">One place for all your value. Wherever you go.</p>
     {opening ? <p role="status" className="body-copy">Opening your Receiz ID…</p> : <><p className="entrance-hairline">Create your account</p>
       <button className="primary-button" disabled={busy || inspecting} onClick={() => void onCreate(true)}>Enter<ArrowUpRight size={20} /></button>
       <button className="secondary-button" disabled={busy || inspecting} onClick={() => picker.current?.click()}><Upload size={18} />Use existing account</button>

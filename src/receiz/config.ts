@@ -14,6 +14,8 @@ const BANK_NOTE_REALMS: Readonly<Record<string, string>> = Object.freeze({
 });
 export const bankNoteRpId = (origin: string): string | null => Object.hasOwn(BANK_NOTE_REALMS, origin) ? BANK_NOTE_REALMS[origin] : null;
 export const BANK_READ_SCOPES = ['receiz:wallet.read', 'receiz:settlement.read', 'receiz:reserve.read'] as const;
+export const BANK_RECOVERY_SCOPES = ['receiz:domains.read'] as const;
+export const BANK_RECOVERY_CONSENT = 'Allow Bankeiz to read the recorded result of my retained transaction using its original operation reference. Receiz receives my protected Identity Seal and signed consent for receiz:domains.read. This read-only access does not authorize a transfer, purchase, sale or new execution.';
 export const BANK_CARD_SCOPES = [...BANK_READ_SCOPES, 'receiz:payments.create', 'receiz:payments.read'] as const;
 // Registered native integration contract. Each device still grants its own
 // exact scopes; registration is not user consent or financial authority.

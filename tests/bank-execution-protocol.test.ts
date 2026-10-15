@@ -1,4 +1,4 @@
-import { expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 import * as sdk from '@receiz/sdk';
 import { createBankExecution, type BankExecutionCheckpoint, type BankExecutionStore } from '../src/receiz/bank-execution';
 import { BANK_APPLICATION_ID } from '../src/receiz/config';
@@ -7,9 +7,11 @@ import { BANK_APPLICATION_ID } from '../src/receiz/config';
 // to exercise lost responses and device state. This file does not verify bank
 // proof sources or qualify any financial operation. The separate rejection
 // tests use the unchanged actual SDK verifier.
+const temporal = vi.hoisted(() => ({ sourceAdmissible: true }));
+beforeEach(() => { temporal.sourceAdmissible = true; });
 vi.mock('../src/receiz/client', () => ({ loadReceiz: async () => {
   const actual = await import('@receiz/sdk');
-  return { ...actual, verifyReceizPortableExecutionTransitionSetV124: async (raw: sdk.ReceizPortableExecutionTransitionSetV124) => ({ operationPlan: raw.members[0].operationPlan, proposedParticipantHeads: raw.proposedParticipantHeads, members: raw.members }) };
+  return { ...actual, verifyReceizPortableExecutionTransitionSetV124: async (raw: sdk.ReceizPortableExecutionTransitionSetV124) => { if (!temporal.sourceAdmissible) throw new Error('EXPIRED'); return { operationPlan: raw.members[0].operationPlan, proposedParticipantHeads: raw.proposedParticipantHeads, members: raw.members }; } };
 } }));
 async function fixture() {
   const namespace = 'custom:bank-source-check', heads = { fixture: 'a'.repeat(64) };
@@ -52,4 +54,48 @@ it('never reports committed from a caller-shaped successful response without can
   const runtime = createBankExecution(client, store), review = await runtime.inspect(plan, source);
   expect(await runtime.execute(review, review.confirmationDigest, null)).toEqual({ status: 'unknown', operationId: plan.attemptId });
   expect((await store.load())?.state).toBe('unknown');
+});
+
+it('retains an exact SDK staging refusal as zero-write and reopens it offline', async () => {
+  const { plan, source } = await fixture(), store = memoryStore();
+  const rejection = new sdk.ReceizExecutionZeroWriteErrorV124({ ...plan, schema: 'receiz.zero-write-failure.v124', executionId: null, reasonCode: 'STALE_HEAD', writes: 0 } as never);
+  const stagePrepared = vi.fn(async () => { throw rejection; }), execute = vi.fn(), lookup = vi.fn(async () => { throw new Error('offline'); });
+  const client = { execution: { stagePrepared, execute, resolveByIdempotencyKey: lookup } } as unknown as sdk.ReceizClient;
+  const runtime = createBankExecution(client, store), review = await runtime.inspect(plan, source);
+  expect(await runtime.execute(review, review.confirmationDigest, null)).toEqual({ status: 'zero-write', reasonCode: 'STALE_HEAD' });
+  expect((await store.load())?.state).toBe('zero-write');
+  expect(await createBankExecution(client, store).resolve()).toEqual({ status: 'zero-write', reasonCode: 'STALE_HEAD' });
+  expect(stagePrepared).toHaveBeenCalledTimes(1); expect(execute).not.toHaveBeenCalled(); expect(lookup).not.toHaveBeenCalled();
+});
+
+it('keeps a foreign SDK refusal unknown instead of asserting zero writes for this attempt', async () => {
+  const { plan, source } = await fixture(), store = memoryStore();
+  const client = { execution: { stagePrepared: async () => { throw new sdk.ReceizExecutionZeroWriteErrorV124({ ...plan, schema: 'receiz.zero-write-failure.v124', attemptId: 'another-attempt', executionId: null, reasonCode: 'STALE_HEAD', writes: 0 } as never); } } } as unknown as sdk.ReceizClient;
+  const runtime = createBankExecution(client, store), review = await runtime.inspect(plan, source);
+  expect(await runtime.execute(review, review.confirmationDigest, null)).toEqual({ status: 'unknown', operationId: plan.attemptId });
+});
+
+it('keeps the exact held review usable when local retention fails before staging', async () => {
+  const { plan, source } = await fixture(), store = memoryStore();
+  const save = store.saveNew; let failRetention = true;
+  store.saveNew = async checkpoint => { if (failRetention) throw new Error('device-full'); return save(checkpoint); };
+  const stagePrepared = vi.fn(async () => { throw new Error('offline'); });
+  const runtime = createBankExecution({ execution: { stagePrepared } } as unknown as sdk.ReceizClient, store), review = await runtime.inspect(plan, source);
+  await expect(runtime.execute(review, review.confirmationDigest, null)).rejects.toThrow('device-full');
+  expect(stagePrepared).not.toHaveBeenCalled(); expect(await store.load()).toBeNull();
+  failRetention = false;
+  expect(await runtime.execute(review, review.confirmationDigest, null)).toEqual({ status: 'unknown', operationId: plan.attemptId });
+  expect(stagePrepared).toHaveBeenCalledTimes(1);
+});
+
+it('can resolve the original pending coordinate to zero-write after its candidate capability expires', async () => {
+  const { plan, source } = await fixture(), store = memoryStore();
+  const lookup = vi.fn(async () => ({ ...plan, status: 'zero-write', writes: 0, reasonCode: 'UNAUTHORIZED' }));
+  const client = { execution: { stagePrepared: async () => { throw new Error('reply-lost'); }, resolveByIdempotencyKey: lookup } } as unknown as sdk.ReceizClient;
+  const runtime = createBankExecution(client, store), review = await runtime.inspect(plan, source);
+  await runtime.execute(review, review.confirmationDigest, null); temporal.sourceAdmissible = false;
+  expect(await createBankExecution(client, store).resolve()).toEqual({ status: 'zero-write', reasonCode: 'UNAUTHORIZED' });
+  expect(lookup).toHaveBeenCalledWith({ applicationId: plan.applicationId, domainId: plan.domainId, operationKind: plan.operationKind, semanticIdempotencyKey: plan.semanticIdempotencyKey });
+  expect(await createBankExecution(client, store).resolve()).toEqual({ status: 'zero-write', reasonCode: 'UNAUTHORIZED' });
+  expect(lookup).toHaveBeenCalledTimes(1);
 });

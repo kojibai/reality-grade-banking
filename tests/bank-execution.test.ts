@@ -2,6 +2,7 @@ import { expect, it, vi } from 'vitest';
 import { createReceizClient, createReceizCustomReducerBindingsV124, planAtomicOperationV124 } from '@receiz/sdk';
 import { BANK_APPLICATION_ID } from '../src/receiz/config';
 import { createBankExecution } from '../src/receiz/bank-execution';
+import { createBankExecutionRecovery } from '../src/receiz/bank-execution-recovery';
 
 // Nonfinancial source-check fixtures test canonical refusal. These are not
 // ownership admissions, receipts, funding sources or deployed bank operations.
@@ -21,4 +22,13 @@ it('the actual SDK refuses a transition set reconstructed from a verified flag',
   const runtime = createBankExecution(createReceizClient({ applicationId: BANK_APPLICATION_ID, fetchImpl: request }));
   await expect(runtime.inspect(await plan(), { status: 'verified-portable-execution-transition-set', verified: true } as never)).rejects.toThrow();
   expect(request).not.toHaveBeenCalled();
+});
+it('reopens committed sources before a retained checkpoint can show a success label', async () => {
+  const original = await plan(), connect = vi.fn();
+  const recovery = createBankExecutionRecovery({
+    store: { load: async () => ({ schema: 'bank.execution-checkpoint.v1', operationId: original.attemptId, plan: original, transitionSet: {} as never, recovery: {} as never, state: 'committed' }), saveNew: vi.fn(), replace: vi.fn() },
+    connect, assertOpen: () => {}, lock: async fn => fn(),
+  });
+  await expect(recovery.status()).rejects.toThrow();
+  expect(connect).not.toHaveBeenCalled();
 });

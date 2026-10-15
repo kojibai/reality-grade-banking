@@ -1,0 +1,18 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Local account genesis check</title><p style="margin:14px;color:#68778b;font:12px system-ui">Isolated local test · throwaway signing keys · no enrollment, persisted identity, account registration or funds</p><button id="run">Run local account genesis check</button><p id="result">Ready</p><div id="fixture"></div><script type="module">
+import React from 'react';import{createRoot}from'react-dom/client';
+import{createReceizIdIdentity,projectReceizIdentityAccount}from'@receiz/sdk';
+import{initializeFreshBankAccount}from'/src/receiz/new-account-genesis.ts';
+import{readCarriedWalletObservation}from'/src/receiz/wallet-observation.ts';
+import{LiveAccount}from'/src/features/account/LiveAccount.tsx';
+import'/src/styles/tokens.css';import'/src/styles/app.css';import'/src/styles/features.css';
+const noop=()=>{};
+document.querySelector('#run').onclick=async()=>{
+ try{
+  const fixture=await createReceizIdIdentity(),key=await initializeFreshBankAccount(fixture.keyFile),projection=await projectReceizIdentityAccount(key),known=readCarriedWalletObservation(projection);
+  if(!projection.portableStateVerified||known?.source!=='account-genesis'||known.wallet.totalUsdCents!=='0'||!known.history?.length)throw Error('Missing signed local genesis');
+  createRoot(document.querySelector('#fixture')).render(React.createElement(LiveAccount,{wallet:known.wallet,walletHistory:known.history,observedAt:known.observedAt,busy:false,error:null,onRefresh:noop,onSend:noop,onReceive:noop,onBalance:noop,onAssets:noop,onLedger:noop}));
+  document.querySelector('#result').textContent='PASS · Signed local account genesis, balance and chart. No account API read.';
+  document.querySelector('#run').disabled=true;
+ }catch(error){document.querySelector('#result').textContent='FAIL · '+error.message;}
+};
+</script>

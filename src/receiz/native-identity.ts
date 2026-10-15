@@ -3,7 +3,7 @@ import { createBankNoteAttestationFetch } from './note-attestation-transport';
 import { loadBankNoteRuntime, bankNoteArtwork, type BankOfflineNotes, type BankNoteRuntime } from './offline-notes';
 import type { ReceizClient, ReceizIdentityPublicBinding, ReceizKeyFile, ReceizIdentityAccountProjection } from '@receiz/sdk';
 import { loadReceiz } from './client';
-import { BANK_APPLICATION_ID, BANK_CARD_APPLICATION_IDS, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES, BANK_NATIVE_CONSENT, BANK_NATIVE_SCOPES } from './config';
+import { BANK_APPLICATION_ID, BANK_CARD_APPLICATION_IDS, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES, BANK_NATIVE_CONSENT, BANK_NATIVE_SCOPES, BANK_RECOVERY_SCOPES, BANK_RECOVERY_CONSENT } from './config';
 import { parseCardCheckout, parseCardDepositStatus, parseDepositDollars, readCardOperation, type CardCheckout, type CardDepositStatus } from './card-deposit';
 import { nativeFetch } from './native-transport';
 import { loadDeviceIdentity, saveDeviceIdentity, loadWalletObservation, saveWalletObservation, loadDepositSources, saveDepositSource, loadCardOperation, loadCardOperations, saveCardOperation, loadBankSessionIntent, saveBankSessionIntent } from './identity-vault';
@@ -22,8 +22,12 @@ import { validateAssetDefinition, type AssetDefinition } from './asset-definitio
 import { readCarriedWalletObservation } from './wallet-observation';
 import { appendWalletPoint } from './wallet-series';
 import { parsePrivateHistoryPage, privateHistoryPath, type PrivateHistoryPage } from './private-history';
+import { createBankExecutionRecovery, type BankExecutionRecovery } from './bank-execution-recovery';
+import { deviceBankExecutionStore } from './bank-execution-vault';
+import { initializeFreshBankAccount } from './new-account-genesis';
 
 export interface OpenIdentity {
+  executionRecovery?: () => BankExecutionRecovery;
   offlineNotes?: () => Promise<BankOfflineNotes>;
   binding: ReceizIdentityPublicBinding; needsPhrase: boolean; knownWallet: () => import('./wallet-observation').WalletObservation | null;
   username: string | null; accountUsername?: () => string | null; localHistory: ReceizIdentityAccountProjection; readWallet: () => Promise<ReturnType<typeof parseSharedWallet>>;
@@ -106,7 +110,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   async function readWallet() {
     const current = await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT);
     const wallet = parseSharedWallet(await current.connect.wallet(), accountUid!);
-    if (!lifetime.signal.aborted) { const observedAt = new Date().toISOString(); const history = appendWalletPoint(knownWallet?.history ?? [], wallet, observedAt, String(sdk.receizKaiNow().uPulse)); knownWallet = { wallet, observedAt, history }; await saveWalletObservation(binding, wallet, observedAt, history); }
+    if (!lifetime.signal.aborted) { const observedAt = new Date().toISOString(); const prior = knownWallet?.source === 'account-genesis' ? knownWallet.history?.map(point => ({ ...point, userId: wallet.userId })) ?? [] : knownWallet?.history ?? []; const history = appendWalletPoint(prior, wallet, observedAt, String(sdk.receizKaiNow().uPulse)); knownWallet = { wallet, observedAt, history }; await saveWalletObservation(binding, wallet, observedAt, history); }
     return wallet;
   }
   let noteRuntime: BankNoteRuntime | undefined;
@@ -240,6 +244,15 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     return holdProof(new File([new Uint8Array(sealed.artifactBytes)], sealed.filename, { type: sealed.mimeType }));
   }
   let nativeConnectionBusy = false;
+  const executionRecovery = createBankExecutionRecovery({
+    store: deviceBankExecutionStore(binding),
+    connect: () => connectClient(BANK_RECOVERY_SCOPES, BANK_RECOVERY_CONSENT),
+    assertOpen: () => { if (lifetime.signal.aborted) throw new Error('BANK_EXECUTION_IDENTITY_CLOSED'); },
+    lock: async operation => {
+      if (!navigator.locks) throw new Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');
+      return navigator.locks.request(`receiz-bank-execution:${binding.artifactSha256}`, { signal: lifetime.signal }, operation);
+    },
+  });
   const nativeSessions = new WeakMap<ReceizClient, Map<string, ReturnType<typeof createBankNativeSession>>>();
   async function connectNativeAccount(approved: boolean) {
     if (!approved || lifetime.signal.aborted) throw new Error('BANK_ACCOUNT_PROOF_CONSENT_REQUIRED');
@@ -294,7 +307,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     } catch (error) { throw error instanceof BankConnectionError ? error : new BankConnectionError(stage, error); }
     finally { nativeConnectionBusy = false; }
   }
-  return { offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');
@@ -312,12 +325,17 @@ export async function createNativeIdentity(consentApproved: boolean): Promise<Op
   const admission = await sdk.createReceizArtifactAdmissionEngine()(verification, { profile: 'identity', identityPassphrase: protectionSecret });
   const protectedBinding = await sdk.readReceizIdentityPublicBinding(admission);
   const protectedKey = await sdk.readReceizIdentityArtifact(protectedSeal.artifactBytes);
-  const portableKey = await unprotectIdentityKeyFile(protectedKey, protectionSecret);
+  const initializedKey = await initializeFreshBankAccount(protectedKey, protectionSecret);
+  const portableKey = await unprotectIdentityKeyFile(initializedKey, protectionSecret);
   const owned = createReceizOfflineSealer({ ownerIdentityAdmission: admission, store: createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer'), resources: { wasm: resources[0], zkey: resources[1] }, fetch: nativeFetch });
   const sealed = await owned.seal({ bytes: new TextEncoder().encode(sdk.serializeReceizIdentityArtifact(portableKey)), filename: 'identity.receizkey', mimeType: 'application/json' });
   const identity = await openCanonicalIdentity(sealed.artifactBytes, '', sealed.filename, true, { bytes: new Uint8Array(protectedSeal.artifactBytes), phrase: protectionSecret });
   if (identity.needsPhrase || identity.binding.keyId !== protectedBinding.keyId || identity.binding.artifactOwnerReceizId !== protectedBinding.artifactOwnerReceizId) { identity.dispose(); throw new Error('The self-contained Identity Seal did not preserve its original identity.'); }
-  await identity.persistDeviceCustody(); return identity;
+  const genesis = identity.knownWallet();
+  if (!genesis || genesis.source !== 'account-genesis') { identity.dispose(); throw new Error('The signed account genesis could not be opened.'); }
+  await identity.persistDeviceCustody();
+  await saveWalletObservation(identity.binding, genesis.wallet, genesis.observedAt, genesis.history, genesis.source);
+  return identity;
 }
 export async function importNativeIdentity(file: File, phrase: string, consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before importing your ID.');

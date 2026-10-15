@@ -78,3 +78,16 @@ it('keeps the account open when note custody prevents device removal', async () 
     expect(read().identity).toBe(identity); expect(read().wallet?.totalUsdCents).toBe('200'); expect(identity.dispose).not.toHaveBeenCalled();
   });
 });
+
+it('opens a new account from its signed genesis immediately and treats a failed background sync separately', async () => {
+  const readWallet = vi.fn().mockRejectedValue(new Error('Transport unavailable'));
+  const identity = held(readWallet);
+  identity.knownWallet = () => ({ source: 'account-genesis', wallet: { userId: 'new-user', totalUsdCents: '0', reserveUsdCents: '0', settlementUsdCents: '0', balancePhiMicro: '0' }, observedAt: '2026-10-15T22:00:00Z', history: [{ userId: 'new-user', at: '2026-10-15T22:00:00Z', kaiUPulse: null, totalUsdCents: '0', reserveUsdCents: '0', settlementUsdCents: '0' }] }) as ReturnType<OpenIdentity['knownWallet']>;
+  custody.create.mockResolvedValue(identity);
+  await observe(async read => {
+    await act(async () => { await read().create(true); });
+    expect(read().identity).toBe(identity); expect(read().wallet?.totalUsdCents).toBe('0');
+    expect(read().error).toBeNull(); expect(read().syncPending).toBe(true);
+    expect(identity.knownWallet()?.history).toHaveLength(1); expect(readWallet).toHaveBeenCalledTimes(1);
+  });
+});
