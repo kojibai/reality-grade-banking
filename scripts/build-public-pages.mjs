@@ -35,7 +35,7 @@ const pages = [
 const escape = text => String(text).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 let bankHtml;
 const publicPages = {};
-const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom' });
+const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' });
 try {
   const { Entrance } = await server.ssrLoadModule('/src/features/identity/Entrance.tsx');
   const html = await readFile('dist/index.html', 'utf8');

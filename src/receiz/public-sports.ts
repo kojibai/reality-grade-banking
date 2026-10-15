@@ -10,9 +10,9 @@ export function mergePublicSports(catalog: PublicMarketCatalog, input: unknown):
   for (const raw of data.cards) {
     const card = object(raw), id = card.collectibleId, claim = card.claimHash;
     if (typeof id !== 'string' || !/^rsc_[a-f0-9]{16}$/i.test(id) || typeof claim !== 'string' || !/^[a-f0-9]{64}$/i.test(claim) || !['baseball', 'soccer', 'fight'].includes(String(card.sport)) || typeof card.athlete !== 'string' || !card.athlete || card.athlete.length > 160) { complete = false; continue; }
-    const vault = count(card.vaultCount), pricedRaw = count(card.pricedCount);
-    const circulation = Math.max(vault ?? 0, pricedRaw ?? 0, 1), priced = pricedRaw ?? 0;
-    if (vault === null || pricedRaw === null || priced > (vault ?? 0)) complete = false;
+    const issued = count(card.issuedCount), vault = count(card.vaultCount), pricedRaw = count(card.pricedCount);
+    const circulation = Math.max(issued ?? 0, vault ?? 0, pricedRaw ?? 0, 1), priced = pricedRaw ?? 0;
+    if (issued === null || vault === null || pricedRaw === null || vault > (issued ?? 0) || priced > (vault ?? 0)) complete = false;
     const total = cents(card.totalValueUsd), unit = cents(card.liveValueUsd);
     if (total === null || unit === null || priced !== circulation) complete = false;
     const normalized = id.toLowerCase(), existing = items.get(normalized);

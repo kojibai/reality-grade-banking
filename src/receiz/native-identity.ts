@@ -3,7 +3,7 @@ import { loadReceiz } from './client';
 import { BANK_APPLICATION_ID, BANK_CARD_APPLICATION_IDS, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES, BANK_NATIVE_CONSENT, BANK_NATIVE_SCOPES } from './config';
 import { parseCardCheckout, parseCardDepositStatus, parseDepositDollars, readCardOperation, type CardCheckout, type CardDepositStatus } from './card-deposit';
 import { nativeFetch } from './native-transport';
-import { loadDeviceIdentity, saveDeviceIdentity, loadWalletObservation, saveWalletObservation, loadDepositSources, saveDepositSource, loadCardOperation, saveCardOperation, loadBankSessionIntent, saveBankSessionIntent } from './identity-vault';
+import { loadDeviceIdentity, saveDeviceIdentity, loadWalletObservation, saveWalletObservation, loadDepositSources, saveDepositSource, loadCardOperation, loadCardOperations, saveCardOperation, loadBankSessionIntent, saveBankSessionIntent } from './identity-vault';
 import { projectHeldDeposit, validateAssetIntake, type AssetIntake, type HeldDeposit } from './deposit-source';
 import { protectIdentityKeyFile, unprotectIdentityKeyFile } from './identity-protection';
 import type { ProtectedIdentityTransport } from './identity-vault';
@@ -25,6 +25,7 @@ export interface OpenIdentity {
   username: string | null; accountUsername?: () => string | null; localHistory: ReceizIdentityAccountProjection; readWallet: () => Promise<ReturnType<typeof parseSharedWallet>>;
   beginCardDeposit: (amount: string, approved: boolean) => Promise<CardCheckout>; checkCardDeposit: (checkout: CardCheckout) => Promise<CardDepositStatus>;
   pendingCardDeposit: () => Promise<CardCheckout | null>;
+  pendingCardDeposits?: () => Promise<CardCheckout[]>;
   startAssetIntake: (asset: AssetIntake, attachment?: File) => Promise<HeldDeposit>; holdProof: (file: File) => Promise<HeldDeposit>;
   listDeposits: () => Promise<HeldDeposit[]>;
   createAsset: (definition: AssetDefinition) => Promise<HeldDeposit>;
@@ -108,15 +109,17 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   }
   async function beginCardDeposit(amount: string, approved: boolean) {
     if (!approved) throw new Error('Approve this card deposit before continuing.');
-    if (await loadCardOperation(binding)) throw new Error('Your previous card deposit is unfinished. Reopen Deposit to check it before starting another.');
+    const previous = readCardOperation(await loadCardOperation(binding));
+    if (previous?.stage === 'creating') throw new Error(`Your previous checkout’s result is unknown. Keep its reference and resolve it before starting another: ${previous.operationId}`);
     const exact = parseDepositDollars(amount), current = await connectClient(BANK_CARD_SCOPES, BANK_CARD_CONSENT);
     const returnUrl = `${location.origin}/?cardReturn=1&session_id={CHECKOUT_SESSION_ID}`;
     const operation = { schema: 'receiz.bank.card-operation.v1', applicationId: BANK_APPLICATION_ID, stage: 'creating', operationId: crypto.randomUUID(), amountUsdCents: exact.amountUsdCents };
-    await saveCardOperation(binding, operation, true);
-    // A timeout or malformed reply retains this attempt. Never create another
+    await saveCardOperation(binding, operation, true, previous?.operationId, Boolean(previous));
+    // A known checkout is retained for explicit resumption; a new reviewed amount
+    // is a distinct user intent. A timeout or malformed reply retains this attempt. Never create another
     // checkout merely because the response was not delivered.
     const checkout = parseCardCheckout(await current.connect.checkout({ amountUsd: exact.amountUsd, currency: 'usd', uiMode: 'embedded', returnUrl, successUrl: returnUrl, referenceId: operation.operationId, description: 'Receiz Bank Reserve deposit' }), exact.amountUsdCents);
-    await saveCardOperation(binding, { ...operation, stage: 'ready', checkout }); return checkout;
+    await saveCardOperation(binding, { ...operation, stage: 'ready', checkout }, false, operation.operationId); return checkout;
   }
   async function pendingCardDeposit() {
     const operation = readCardOperation(await loadCardOperation(binding));
@@ -124,11 +127,18 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     if (operation.stage === 'creating') throw new Error(`Receiz may have opened your previous card checkout. Do not create another until its result is resolved. Deposit reference: ${operation.operationId}`);
     return operation.checkout!;
   }
+  async function pendingCardDeposits() {
+    const operations = (await loadCardOperations(binding)).map(readCardOperation).filter(value => value !== null);
+    // An unresolved current request blocks new creation, but cannot hide older
+    // known checkout sessions that remain safe to inspect or explicitly resume.
+    return operations.filter(value => value.stage === 'ready').map(value => value.checkout!);
+  }
   async function checkCardDeposit(checkout: CardCheckout) {
-    const operation = readCardOperation(await loadCardOperation(binding)), held = operation?.checkout; if (!held || held.sessionId !== checkout.sessionId || held.amountUsdCents !== checkout.amountUsdCents) throw new Error('Open your actual unfinished deposit before checking it.');
-    const current = await connectClient(BANK_CARD_SCOPES, BANK_CARD_CONSENT, operation!.applicationId);
+    const operation = (await loadCardOperations(binding)).map(readCardOperation).find(value => value?.checkout?.sessionId === checkout.sessionId && value.checkout.amountUsdCents === checkout.amountUsdCents);
+    if (!operation?.checkout) throw new Error('Open your actual unfinished deposit before checking it.');
+    const current = await connectClient(BANK_CARD_SCOPES, BANK_CARD_CONSENT, operation.applicationId);
     const status = parseCardDepositStatus(await current.connect.checkoutSession({ sessionId: checkout.sessionId }), checkout.sessionId, checkout.amountUsdCents, accountUid!);
-    if (['credited', 'expired', 'unpaid'].includes(status.status)) await saveCardOperation(binding, null, false, operation!.operationId);
+    if (['credited', 'expired', 'unpaid'].includes(status.status)) await saveCardOperation(binding, null, false, operation.operationId);
     return status;
   }
   async function holdProof(file: File) {
@@ -234,7 +244,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     } catch (error) { throw error instanceof BankConnectionError ? error : new BankConnectionError(stage, error); }
     finally { nativeConnectionBusy = false; }
   }
-  return { binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

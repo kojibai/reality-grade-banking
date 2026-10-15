@@ -2,6 +2,7 @@ import { computeIntrinsicUnsigned, type SigilMetadataLite } from '@receiz/sdk/va
 import { DEFAULT_ISSUANCE_POLICY, quotePhiForUsd } from '../canonical-market-issuance';
 import type { MarketCapSource, MarketValueRow } from './source';
 import type { ChartPeriod } from '../../core/chart-history';
+import { marketPulseTime, marketPeriodPulses } from './coordinates';
 // Canonical public Proof Graph display rules from the v129 Receiz host.
 // This projection does not assert historic membership or actual transaction prices.
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
@@ -40,13 +41,5 @@ export function marketCapUsdAtPulse(seed: MarketCapSource, pulse: number): numbe
   const quote = rate(pulse), previous = rate(Math.max(0, pulse - 1)), quoteMove = Math.abs(quote - previous) / previous;
   return round(seed.valueRows.reduce((sum, row) => sum + (row.source === 'market-desk-live-asset' ? marketValue(row, pulse, quote) : sportsValue(row, pulse, quoteMove)), 0));
 }
-// Same phi-exact UTC presentation bridge as Receiz. UTC is a label, never proof authority.
-const T_NUM = 5236067977499789696409173668731276235440618359611525724270897245n, T_DEN = 10n ** 60n;
-export function marketPulseTime(pulse: number): number { const n = BigInt(pulse) * T_NUM, q = n / T_DEN, r = n % T_DEN; return Number(1715323541888n + q + (r * 2n > T_DEN || r * 2n === T_DEN && q % 2n === 1n ? 1n : 0n)); }
-const daySpans = { '1D': 1, '1W': 7, '1M': 31, '3M': 93, '1Y': 366 };
-export function marketPeriodPulses(seed: MarketCapSource, period: ChartPeriod, count = 64): number[] {
-  const last = seed.serverPulse, span = period === 'ALL' ? last - seed.firstIssuancePulse : Math.ceil(daySpans[period] * 86400000 / (3 + Math.sqrt(5)) / 1000), first = Math.max(seed.firstIssuancePulse, last - span);
-  const size = Math.min(count, last - first + 1);
-  return Array.from({ length: size }, (_, i) => size === 1 ? last : Math.round(first + (last - first) * i / (size - 1)));
-}
+export { marketPulseTime, marketPeriodPulses } from './coordinates';
 export function projectMarketPeriod(seed: MarketCapSource, period: ChartPeriod) { return marketPeriodPulses(seed, period).map(pulse => ({ at: new Date(marketPulseTime(pulse)).toISOString(), pulse, usdCents: String(Math.round(marketCapUsdAtPulse(seed, pulse) * 100)) })); }

@@ -2,7 +2,7 @@ import { BANK_APPLICATION_ID } from './config';
 import { readWalletObservation } from './wallet-observation';
 import { cardOperationApplicationId } from './card-deposit';
 export interface ProtectedIdentityTransport { bytes: Uint8Array; phrase: string; }
-interface SavedIdentity { schema: 'receiz.bank.device-identity.v1'; bytes: ArrayBuffer; artifactIv?: Uint8Array; filename: string; wrappingKey: CryptoKey; iv: Uint8Array; wrappedPhrase: ArrayBuffer; readConsent: boolean; protectedTransport?: { iv: Uint8Array; bytes: ArrayBuffer }; cardOperation?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }; bankOperation?: { operationId: string; state: string; key: string; }; bankSession?: { iv: Uint8Array; bytes: ArrayBuffer }; }
+interface SavedIdentity { schema: 'receiz.bank.device-identity.v1'; bytes: ArrayBuffer; artifactIv?: Uint8Array; filename: string; wrappingKey: CryptoKey; iv: Uint8Array; wrappedPhrase: ArrayBuffer; readConsent: boolean; protectedTransport?: { iv: Uint8Array; bytes: ArrayBuffer }; cardOperation?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }; cardArchive?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }[]; bankOperation?: { operationId: string; state: string; key: string; }; bankSession?: { iv: Uint8Array; bytes: ArrayBuffer }; }
 async function identityBytes(saved: SavedIdentity): Promise<Uint8Array> { return saved.artifactIv ? new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(saved.artifactIv), additionalData: new TextEncoder().encode('receiz.bank.private-identity-source.v1') }, saved.wrappingKey, saved.bytes)) : new Uint8Array(saved.bytes); }
 async function database(): Promise<IDBDatabase> { return new Promise((resolve, reject) => { const request = indexedDB.open('receiz-bank-private-custody', 3); request.onupgradeneeded = () => { if (!request.result.objectStoreNames.contains('identity')) request.result.createObjectStore('identity'); if (!request.result.objectStoreNames.contains('sources')) request.result.createObjectStore('sources'); if (!request.result.objectStoreNames.contains('operations')) request.result.createObjectStore('operations'); }; request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); }
 async function held(): Promise<SavedIdentity | null> { const db = await database(); try { return await new Promise((resolve, reject) => { const request = db.transaction('identity').objectStore('identity').get('current'); request.onsuccess = () => resolve(request.result ?? null); request.onerror = () => reject(request.error); }); } finally { db.close(); } }
@@ -62,8 +62,22 @@ export async function loadCardOperation(binding: { artifactSha256: string }): Pr
   if (value.applicationId && value.applicationId !== applicationId) throw new Error('The unfinished deposit registration changed.');
   return { ...value, applicationId };
 }
-export async function saveCardOperation(binding: { artifactSha256: string }, value: unknown | null, onlyIfEmpty = false, expectedOperationId?: string): Promise<void> {
+export async function loadCardOperations(binding: { artifactSha256: string }): Promise<unknown[]> {
+  const saved = await held(); if (!saved) return []; await sameSavedIdentity(saved, binding);
+  if ((saved.cardArchive?.length ?? 0) > 24) throw new Error('Check your retained card deposits before continuing.');
+  const rows = [...(saved.cardOperation ? [saved.cardOperation] : []), ...(saved.cardArchive ?? []).slice().reverse()], result: unknown[] = [];
+  for (const row of rows) {
+    const applicationId = cardOperationApplicationId(row.applicationId);
+    const clear = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(`receiz.bank.card|${applicationId}|${binding.artifactSha256}`) }, saved.wrappingKey, row.bytes);
+    const value = JSON.parse(new TextDecoder().decode(clear));
+    if (value.operationId !== row.operationId || value.applicationId && value.applicationId !== applicationId) throw new Error('The retained deposit binding changed.');
+    result.push({ ...value, applicationId });
+  }
+  return result;
+}
+export async function saveCardOperation(binding: { artifactSha256: string }, value: unknown | null, onlyIfEmpty = false, expectedOperationId?: string, archivePrevious = false): Promise<void> {
   const saved = await held(); if (!saved) throw new Error('Open your identity before starting a deposit.');
+  if (archivePrevious) { const previous = await loadCardOperation(binding) as { stage?: string; operationId?: string } | null; if (!value || !expectedOperationId || previous?.stage !== 'ready' || previous.operationId !== expectedOperationId) throw new Error('Resolve the previous checkout before starting another.'); }
   const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(await identityBytes(saved))))].map(byte => byte.toString(16).padStart(2, '0')).join('');
   if (digest !== binding.artifactSha256) throw new Error('Your identity changed before deposit.');
   const applicationId = cardOperationApplicationId((value as { applicationId?: unknown } | null)?.applicationId ?? BANK_APPLICATION_ID);
@@ -71,9 +85,15 @@ export async function saveCardOperation(binding: { artifactSha256: string }, val
   const db = await database(); try { await new Promise<void>((resolve, reject) => {
     const tx = db.transaction('identity', 'readwrite'), store = tx.objectStore('identity'), read = store.get('current'), prior = new Uint8Array(saved.bytes), priorIv = new Uint8Array(saved.iv);
     read.onsuccess = () => { const current = read.result as SavedIdentity | undefined;
-      if (!current || current.bytes.byteLength !== prior.length || !new Uint8Array(current.bytes).every((byte, index) => byte === prior[index]) || !new Uint8Array(current.iv).every((byte, index) => byte === priorIv[index]) || onlyIfEmpty && current.cardOperation) { tx.abort(); return; }
-      if (expectedOperationId && current.cardOperation?.operationId !== expectedOperationId) return;
-      const next = { ...current }; if (bytes) next.cardOperation = { operationId: (value as { operationId: string }).operationId, applicationId, iv, bytes }; else delete next.cardOperation; store.put(next, 'current');
+      if (!current || current.bytes.byteLength !== prior.length || !new Uint8Array(current.bytes).every((byte, index) => byte === prior[index]) || !new Uint8Array(current.iv).every((byte, index) => byte === priorIv[index]) || onlyIfEmpty && current.cardOperation && !archivePrevious) { tx.abort(); return; }
+      if (expectedOperationId && current.cardOperation?.operationId !== expectedOperationId) {
+        if (archivePrevious || bytes) { tx.abort(); return; }
+        if (!bytes && current.cardArchive?.some(item => item.operationId === expectedOperationId)) store.put({ ...current, cardArchive: current.cardArchive.filter(item => item.operationId !== expectedOperationId) }, 'current');
+        return;
+      }
+      const next = { ...current };
+      if (archivePrevious && current.cardOperation) { if ((current.cardArchive?.length ?? 0) >= 24) { tx.abort(); return; } next.cardArchive = [...(current.cardArchive ?? []), current.cardOperation]; }
+      if (bytes) next.cardOperation = { operationId: (value as { operationId: string }).operationId, applicationId, iv, bytes }; else delete next.cardOperation; store.put(next, 'current');
     };
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(new Error('An unfinished card deposit already exists, or your identity changed. Reopen Deposit to check it.'));
   }); } finally { db.close(); }

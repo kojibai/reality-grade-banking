@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bank account style checks</title><p style="margin:14px;color:#68778b;font:12px system-ui">Style check · test amounts · no account or money movement</p><div id="fixture"></div><script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {LiveAccount} from '/src/features/account/LiveAccount.tsx';
+import '/src/styles/tokens.css';import '/src/styles/app.css';import '/src/styles/features.css';
+const noop=()=>{},wallet={userId:'style-fixture',totalUsdCents:'20000',reserveUsdCents:'0',settlementUsdCents:'20000',balancePhiMicro:'1',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:null,kaiUPulse:null};
+createRoot(document.querySelector('#fixture')).render(React.createElement(LiveAccount,{wallet,busy:false,error:null,observedAt:'2026-10-14T12:00:00Z',walletHistory:[{userId:'style-fixture',at:'2026-10-14T10:00:00Z',totalUsdCents:'25000',settlementUsdCents:'25000',reserveUsdCents:'0',kaiUPulse:'1'},{userId:'style-fixture',at:'2026-10-14T12:00:00Z',totalUsdCents:'20000',settlementUsdCents:'20000',reserveUsdCents:'0',kaiUPulse:'2'}],onRefresh:noop,onSend:noop,onReceive:noop,onBalance:noop,onAssets:noop,onLedger:noop}));
+</script>

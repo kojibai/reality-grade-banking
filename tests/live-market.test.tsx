@@ -77,7 +77,7 @@ it('removes objects on full refresh and does not synthesize a chart from a singl
   expect(host.querySelectorAll('.market-rows .asset-row')).toHaveLength(1);
 });
 
-it('discloses partial sports valuation independently of fresh public quotes', () => {
+it('discloses partial card inventory independently of fresh public quotes', () => {
   source.value = { catalog: { ...catalog(1), sportsCoverage: 'partial' }, sportsStatus: 'fresh', quoteStatus: 'fresh', status: 'live', error: null, refresh: vi.fn() };
-  expect(mount().host.textContent).toContain('sports partially valued');
+  expect(mount().host.textContent).toContain('card inventory partial');
 });

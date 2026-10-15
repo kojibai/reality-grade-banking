@@ -3,7 +3,7 @@ import { mergePublicSports } from '../src/receiz/public-sports';
 import { parsePublicMarket } from '../src/receiz/public-market';
 import { publicMarketCapitalization } from '../src/receiz/market-capitalization';
 const base = () => parsePublicMarket({ ok: true, transport: { publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: 1 }, publicOriginals: [{ id: 'original', receizId: 'original', title: 'Original', valueUsd: 10 }] } });
-const card = { collectibleId: 'rsc_0123456789abcdef', claimHash: 'a'.repeat(64), athlete: 'Public athlete', sport: 'baseball', rarity: 'Rare', liveValueUsd: 25, totalValueUsd: 50, vaultCount: 2, pricedCount: 2, route: '/game/sports/card/rsc_0123456789abcdef?claimHash=' + 'a'.repeat(64) };
+const card = { collectibleId: 'rsc_0123456789abcdef', claimHash: 'a'.repeat(64), athlete: 'Public athlete', sport: 'baseball', rarity: 'Rare', liveValueUsd: 25, totalValueUsd: 50, issuedCount: 2, vaultCount: 2, pricedCount: 2, route: '/game/sports/card/rsc_0123456789abcdef?claimHash=' + 'a'.repeat(64) };
 it('adds public sports circulation and its reported aggregate value once per stable collectible', () => {
   const catalog = mergePublicSports(base(), { ok: true, schema: 'receiz.sports_economy.live_inventory.v1', generatedAt: '2026-10-14T12:00:00Z', cards: [card, card] });
   expect(catalog.items).toHaveLength(2);
@@ -27,4 +27,9 @@ it('normalizes sports identity casing and merges proof collisions without double
   const merged = mergePublicSports(catalog, { ok: true, schema: 'receiz.sports_economy.live_inventory.v1', cards: [card, { ...card, collectibleId: card.collectibleId.toUpperCase() }] });
   expect(merged.items).toHaveLength(1); expect(merged.items[0].id).toBe('original');
   expect(publicMarketCapitalization(merged)).toMatchObject({ usdCents: '5000', count: 2, valued: 2, complete: true });
+});
+
+it('counts all issued copies while keeping vault and priced subsets distinct', () => {
+ const catalog = mergePublicSports(base(), { ok: true, schema: 'receiz.sports_economy.live_inventory.v1', cards: [{ ...card, issuedCount: 5, vaultCount: 2, pricedCount: 2 }] });
+ expect(publicMarketCapitalization(catalog)).toMatchObject({ count: 6, cards: 5, proofs: 1, valued: 3, complete: false });
 });
