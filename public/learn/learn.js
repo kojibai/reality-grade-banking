@@ -57,10 +57,11 @@
   const schedule = () => { if (!scheduled) { scheduled = true; requestAnimationFrame(readProgress); } };
   addEventListener('scroll', schedule, { passive: true });
   addEventListener('resize', schedule, { passive: true });
+  addEventListener('receiz-learn:page', schedule);
   readProgress();
 })();
 
-// All four public pages are preloaded, public build output. Keep the mounted
+// All public guides and legal notices are preloaded, public build output. Keep the mounted
 // account DOM and device session when entering/returning from the guides.
 (() => {
   const element = document.getElementById('receiz-navigation');
@@ -70,13 +71,40 @@
   let bankLoaded = Boolean(bankRoot), bankUrl = '/', bankFocus = null;
   const pathname = path => path === '/' ? '/' : path.endsWith('/') ? path : path + '/';
   const publicPath = path => Object.hasOwn(pages, pathname(path));
+  let renderedPublicPath = publicRoot && publicPath(location.pathname) ? pathname(location.pathname) : null;
   const snapshot = () => ({ url: location.pathname + location.search + location.hash, scroll: scrollY });
   const remember = () => history.replaceState({ ...history.state, publicNavigation: snapshot() }, '');
   const restoreHead = head => {
     const template = document.createElement('template'); template.innerHTML = head;
     const selector = 'title,meta[name="viewport"],meta[name="description"],meta[name="theme-color"],meta[name="robots"],meta[name^="apple-"],meta[property^="og:"],meta[name^="twitter:"],link[rel="canonical"],link[rel="manifest"],link[rel="icon"],link[rel="apple-touch-icon"],script[type="application/ld+json"]';
-    document.head.querySelectorAll(selector).forEach(node => node.remove());
-    template.content.querySelectorAll(selector).forEach(node => document.head.append(node));
+    // Keep shared viewport, icons and other unchanged metadata attached. Replacing
+    // the viewport on each guide can relayout mobile browser chrome.
+    const key = node => node.tagName + ':' + (node.getAttribute('name') || node.getAttribute('property') || node.getAttribute('rel') || node.getAttribute('type') || '');
+    const retained = new Map();
+    document.head.querySelectorAll(selector).forEach(node => {
+      const name = key(node); if (!retained.has(name)) retained.set(name, []);
+      retained.get(name).push(node);
+    });
+    template.content.querySelectorAll(selector).forEach(next => {
+      const current = retained.get(key(next))?.shift();
+      if (!current) { document.head.append(next); return; }
+      for (const attribute of [...current.attributes]) if (!next.hasAttribute(attribute.name)) current.removeAttribute(attribute.name);
+      for (const attribute of next.attributes) if (current.getAttribute(attribute.name) !== attribute.value) current.setAttribute(attribute.name, attribute.value);
+      if (current.textContent !== next.textContent) current.textContent = next.textContent;
+    });
+    for (const remaining of retained.values()) remaining.forEach(node => node.remove());
+  };
+  const renderPublicContent = content => {
+    const template = document.createElement('template'); template.innerHTML = content;
+    const header = publicRoot.querySelector(':scope > .learn-header'), nextHeader = template.content.querySelector('.learn-header');
+    const skip = publicRoot.querySelector(':scope > .skip-link');
+    if (!header || !nextHeader) { publicRoot.replaceChildren(template.content); return; }
+    nextHeader.remove();
+    if (skip) template.content.querySelector('.skip-link')?.remove();
+    // Do not detach the retained header, even into a fragment: its painted
+    // surface, scroll state and focused navigation remain continuous.
+    for (const child of [...publicRoot.childNodes]) if (child !== header && child !== skip) child.remove();
+    publicRoot.append(template.content);
   };
   const styles = on => {
     for (const url of bank.styles) {
@@ -87,21 +115,31 @@
   };
   const render = async (restoring = false) => {
     const path = pathname(location.pathname), learn = publicPath(path);
+    let focusPublic = false;
     if (!learn && path !== '/') return;
     document.documentElement.classList.toggle('learn-surface', learn); document.body.dataset.bankSurface = learn ? 'learn' : 'bank';
     if (learn) {
       if (bankRoot) { if (bankRoot.contains(document.activeElement)) bankFocus = document.activeElement; bankRoot.hidden = true; bankRoot.setAttribute('inert', ''); }
       if (!publicRoot) { publicRoot = document.createElement('div'); publicRoot.id = 'public-learn-root'; document.body.append(publicRoot); }
-      publicRoot.hidden = false; publicRoot.innerHTML = pages[path].content; restoreHead(pages[path].head); styles(false);
-      window.dispatchEvent(new Event('receiz-learn:page'));
-      const main = publicRoot.querySelector('main'); if (main) { main.tabIndex = -1; main.focus({ preventScroll: true }); }
+      const returning = publicRoot.hidden;
+      publicRoot.hidden = false;
+      const changed = renderedPublicPath !== path;
+      if (changed) { renderPublicContent(pages[path].content); renderedPublicPath = path; }
+      restoreHead(pages[path].head); styles(false);
+      if (changed) {
+        window.dispatchEvent(new Event('receiz-learn:page'));
+      }
+      focusPublic = changed || returning;
     } else {
       if (publicRoot) publicRoot.hidden = true;
       if (!bankRoot) { bankRoot = document.createElement('div'); bankRoot.id = 'root'; document.body.append(bankRoot); }
       bankRoot.hidden = false; bankRoot.removeAttribute('inert'); restoreHead(bank.head); styles(true);
       if (!bankLoaded) { bankLoaded = true; try { await import(bank.entry); } catch { bankLoaded = false; bankRoot.textContent = 'The bank could not open. Please check your connection and try again.'; } }
     }
+    // The bank synchronously suspends any native dialog and releases its scroll
+    // lock before public focus and destination scrolling are applied.
     window.dispatchEvent(new Event('receiz-bank:surface'));
+    if (focusPublic) { const main = publicRoot.querySelector('main'); if (main) { main.tabIndex = -1; main.focus({ preventScroll: true }); } }
     if (!learn) requestAnimationFrame(() => { if (document.body.dataset.bankSurface !== 'bank') return; const target = bankFocus?.isConnected ? bankFocus : bankRoot.querySelector('h1,main'); if (target) { if (!bankFocus) target.tabIndex = -1; target.focus({ preventScroll: true }); } });
     if (restoring && history.state?.publicNavigation?.url === snapshot().url) scrollTo(0, history.state.publicNavigation.scroll);
     else {

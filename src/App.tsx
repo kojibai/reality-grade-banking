@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { ConsoleShell } from './components/ConsoleShell';
 import type { Panel } from './components/BottomNav';
 import { Market } from './features/market/Market';
@@ -20,7 +21,7 @@ import { CardDepositReturn, readCardReturn } from './features/deposit/CardDeposi
 export default function App() { const session = readCardReturn(location.search); return session ? <CardDepositReturn sessionId={session} /> : <BankApp />; }
 function BankApp() {
   const [onBank, setOnBank] = useState(location.pathname === '/');
-  useEffect(() => { const change = () => setOnBank(location.pathname === '/'); addEventListener('receiz-bank:surface', change); return () => removeEventListener('receiz-bank:surface', change); }, []);
+  useEffect(() => { const change = () => flushSync(() => setOnBank(location.pathname === '/')); addEventListener('receiz-bank:surface', change); return () => removeEventListener('receiz-bank:surface', change); }, []);
   const account = useNativeAccount();
   const publicMarket = usePublicMarket(onBank && Boolean(account.identity));
   const showcase = useMemo(() => projectAccountShowcase(publicMarket.catalog, account.identity?.accountUsername?.() ?? account.identity?.username ?? null), [publicMarket.catalog, account.identity, account.wallet]);
@@ -44,6 +45,6 @@ function BankApp() {
     <div hidden={panel !== 'market'}><Market source={publicMarket} active={onBank && panel === 'market'} onAction={open} /></div>
     <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={onBank && panel === 'assets'} revision={sourceRevision} showcase={showcase} showcaseBusy={publicMarket.status === 'loading'} onOpen={open} /></div>
     <div hidden={panel !== 'ledger'}><Ledger active={onBank && panel === 'ledger'} personalHistory={personalHistory} privateHistory={privateHistory} /></div>
-    {sheet && <LiveActions key={sheet.kind} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} onClose={close} onRefresh={() => { setSourceRevision(value => value + 1); void account.refresh(); }} onForget={async () => { await account.forget(); setSheet(null); }} />}
+    {sheet && <LiveActions key={sheet.kind} active={onBank} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} onClose={close} onRefresh={() => { setSourceRevision(value => value + 1); void account.refresh(); }} onForget={async () => { await account.forget(); setSheet(null); }} />}
   </ConsoleShell>;
 }

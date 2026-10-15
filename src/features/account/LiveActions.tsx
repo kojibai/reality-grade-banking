@@ -10,7 +10,7 @@ import type { PaymentRequest } from '../../receiz/payment-request';
 import { LiveAssetDetail } from '../assets/LiveAssets';
 import { CreateAsset } from '../assets/CreateAsset';
 import { BankConnection } from './BankConnection';
-export function LiveActions({ action, identity, wallet, onClose, onForget, onRefresh, paymentRequest }: { action: UIAction; identity: OpenIdentity; wallet: SharedWallet | null; onClose: () => void; onForget: () => Promise<void>; onRefresh: () => void; paymentRequest?: PaymentRequest | null }) {
+export function LiveActions({ action, identity, wallet, onClose, onForget, onRefresh, paymentRequest, active = true }: { active?: boolean; action: UIAction; identity: OpenIdentity; wallet: SharedWallet | null; onClose: () => void; onForget: () => Promise<void>; onRefresh: () => void; paymentRequest?: PaymentRequest | null }) {
   const [backup, setBackup] = useState(false), [removalError, setRemovalError] = useState('');
   const titles: Record<string, string> = { deposit: 'Deposit', send: 'Send', receive: 'Receive', balance: 'Your balance', growth: 'Settlement', profile: 'Your Receiz ID', currency: 'Create an asset', exchange: 'Exchange', rules: 'Money rules' };
   const backupId = () => { const held = identity.backup(), url = URL.createObjectURL(new Blob([new Uint8Array(held.bytes)])); const link = document.createElement('a'); link.href = url; link.download = held.filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1_000); setBackup(true); };
@@ -23,5 +23,5 @@ export function LiveActions({ action, identity, wallet, onClose, onForget, onRef
   else if (action.kind === 'send') body = <LiveSend identity={identity} onRefresh={onRefresh} wallet={wallet} initialRequest={paymentRequest} onClose={onClose} />;
   else if (action.kind === 'pending' || action.kind === 'asset') body = <LiveAssetDetail identity={identity} digest={action.kind === 'pending' ? action.depositId : action.assetId} />;
   else body = <div className="empty-state"><h3>Open the required proof sources</h3><p>This action needs admitted ownership, funding and a qualified execution route. This bank has account read access; issuance and trading are not connected yet.</p></div>;
-  return <Sheet title={titles[action.kind] ?? 'Your asset'} onClose={onClose}>{body}</Sheet>;
+  return <Sheet active={active} title={titles[action.kind] ?? 'Your asset'} onClose={onClose}>{body}</Sheet>;
 }
