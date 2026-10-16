@@ -19,6 +19,8 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
 export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
   if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return false;
+  if (url.pathname === '/api/connect/account-proof') return method.toUpperCase() === 'GET' && [...url.searchParams.keys()].length === 1 && url.searchParams.get('applicationId') === BANK_APPLICATION_ID;
+  if (url.pathname === '/api/connect/account-proof/sharing') return ['GET', 'POST'].includes(method.toUpperCase()) && [...url.searchParams.keys()].length === 1 && url.searchParams.get('applicationId') === BANK_APPLICATION_ID;
   if (url.pathname.startsWith('/api/sdk/v1/execution/') && !NATIVE_EXECUTION_POST_PATHS.includes(url.pathname)) return permittedNativeExecutionRead(url, method);
   if (NATIVE_EXECUTION_POST_PATHS.includes(url.pathname)) return method.toUpperCase() === 'POST' && [...url.searchParams.keys()].length === 1 && url.searchParams.get('applicationId') === BANK_APPLICATION_ID;
   if (['/api/connect/offline-notes/funding', '/api/connect/offline-notes/redemption'].includes(url.pathname)) {

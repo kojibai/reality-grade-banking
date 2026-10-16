@@ -44,7 +44,7 @@ self.addEventListener('message', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== self.location.origin || url.pathname === '/api' || url.pathname.startsWith('/api/')) return;
-  const page = event.request.mode === 'navigate' && PAGES[url.pathname];
+  const page = event.request.mode === 'navigate' && (PAGES[url.pathname] || (/^\/verify\/[a-f0-9]{64}\/?$/.test(url.pathname) && PAGES['/verify/']));
   const nativeBuild = url.pathname.startsWith('/native/') && url.searchParams.size === 1 && url.searchParams.get('build') === RESOURCES[url.pathname]?.sha256;
   const path = page || (RESOURCES[url.pathname + url.search] ? url.pathname + url.search : nativeBuild ? url.pathname : undefined);
   if (path) event.respondWith(fromBuild(path));

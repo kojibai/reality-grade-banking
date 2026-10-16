@@ -12,6 +12,7 @@ assert.ok(!/skipWaiting\s*\(|clients\.claim\s*\(|indexedDB|localStorage/.test(sw
 assert.ok(!shell.some(url => url.startsWith('/api/') || /source\/|\.map$/.test(url)), 'Never precache private APIs, source downloads or source maps.');
 for (const url of ['/index.html', '/native/offline-notes.v129.mjs', '/native/receiver-verifier.v129.mjs', '/notes/banknote-engraving.webp', '/notes/denomination-engraving.png', '/notes/fonts/Cinzel.ttf', '/zk/document-seal.wasm', '/zk/document-seal.zkey', '/zk/kai-sigil.wasm', '/zk/kai-sigil.zkey', '/learn/', '/learn/receiz-id/', '/legal/']) assert.ok(shell.includes(url), `Required offline resource missing: ${url}`);
 assert.ok(shell.some(url => url.includes('qr-decoder')), 'The lazy camera decoder must also be available offline.');
+assert.ok(shell.includes('/verify/'), 'The public account-proof reader must be available offline after installation.');
 for (const entry of manifest.resources) {
   const url = new URL(entry.url, 'https://bankeiz.com');
   assert.equal(url.origin, 'https://bankeiz.com');

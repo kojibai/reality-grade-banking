@@ -11,6 +11,6 @@ it('opens the actual ID entrance without demo balances, with separate new and ex
   const host = document.createElement('div'), root = createRoot(host);
   try { act(() => root.render(<App />)); expect(host.textContent).not.toContain('Create your account'); expect(host.textContent).toContain('Enter'); expect(host.textContent).toContain('Use existing account'); expect(host.textContent).not.toContain('Demo'); expect(host.textContent).not.toContain('99999999');
     const create = [...host.querySelectorAll('button')].find(button => button.textContent?.trim() === 'Enter')!;
-    expect(create.disabled).toBe(false); expect(host.querySelector('input[type="checkbox"]')).toBeNull(); expect(host.textContent).toContain('By continuing, you allow Bankeiz'); expect(host.querySelector('a[href="/learn/account-access/"]')?.textContent).toBe('account'); expect(host.querySelector('a[href="/learn/signing-key/"]')?.textContent).toBe('signing key'); act(() => create.click()); expect(account.state.create).toHaveBeenCalledWith(true);
+    expect(create.disabled).toBe(false); expect(host.querySelector('input[type="checkbox"]')).toBeNull(); expect(host.textContent).toContain('By continuing, you authorize'); expect(host.querySelector('a[href="/learn/account-access/"]')?.textContent).toBe('account access'); expect(host.querySelector('a[href="/learn/signing-key/"]')?.textContent).toBe('signing key'); act(() => create.click()); expect(account.state.create).toHaveBeenCalledWith(true);
   } finally { act(() => root.unmount()); localStorage.clear(); }
 });

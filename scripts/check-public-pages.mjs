@@ -13,7 +13,7 @@ for (const [slug, section] of [['account-access', 'account-access'], ['signing-k
   assert.ok(html.includes(`href="/learn/${slug}/"`), `Entrance must link to the ${slug} explanation`);
   assert.ok(notice.includes(`id="${section}"`), `The ${slug} link must resolve to its exact section`);
 }
-assert.ok(html.includes('By continuing, you allow Bankeiz to open your'));
+assert.ok(html.includes('By continuing, you authorize'));
 assert.ok(!html.includes('By creating or opening your ID, you approve the following:'));
 for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/', 'account-access/', 'signing-key/']) {
   const page = await readFile(`dist/learn/${path}index.html`, 'utf8');

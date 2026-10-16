@@ -3,6 +3,20 @@ import bankApi from '../api/index';
 import { BANK_APPLICATION_ID } from '../src/receiz/config';
 
 afterEach(() => vi.unstubAllGlobals());
+it('distributes only the exact public account-proof route without private headers or cookie propagation', async () => {
+  const wire = '{"schema":"public transport fixture"}', upstream = vi.fn<typeof fetch>(async () => new Response(wire)); vi.stubGlobal('fetch', upstream);
+  const digest = 'a'.repeat(64), response = await bankApi.fetch(new Request(`https://bank.example/api/bank/account-proof?proof=${digest}`, { headers: { Authorization: 'Bearer private-test-only', Cookie: 'private-test-only' } }));
+  expect(response.status).toBe(200); expect(await response.text()).toBe(wire); expect(response.headers.get('cache-control')).toBe('no-store');
+  expect(upstream.mock.calls[0][0]).toBe(`https://receiz.com/api/account-proofs/${digest}`);
+  expect(upstream.mock.calls[0][1]).toMatchObject({ credentials: 'omit', redirect: 'error', headers: { Accept: 'application/json' } });
+  expect(JSON.stringify(upstream.mock.calls[0][1])).not.toContain('private-test-only');
+});
+it('refuses arbitrary public-account upstreams, account selectors, duplicate digests and mutation methods', async () => {
+  const upstream = vi.fn(); vi.stubGlobal('fetch', upstream); const base = `https://bank.example/api/bank/account-proof?proof=${'a'.repeat(64)}`;
+  for (const url of [base + '&url=https://evil.invalid', base + '&accountUid=foreign', base + `&proof=${'b'.repeat(64)}`, base + '&view=private']) expect((await bankApi.fetch(new Request(url))).status).toBe(400);
+  expect((await bankApi.fetch(new Request(base, { method: 'POST' }))).status).toBe(400);
+  expect(upstream).not.toHaveBeenCalled();
+});
 const origin = 'https://bank.example';
 const request = (path: string, init?: RequestInit) => new Request(`${origin}${path}`, init);
 

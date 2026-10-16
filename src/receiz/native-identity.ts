@@ -27,6 +27,8 @@ import { deviceBankExecutionStore } from './bank-execution-vault';
 import { initializeFreshBankAccount } from './new-account-genesis';
 
 export interface OpenIdentity {
+  accountProof?: () => Promise<import('./account-proof').VerifiedAccountProof>;
+  accountProofSharing?: () => Promise<import('./account-proof-sharing').AccountProofSharing>;
   proofLibrary?: () => Promise<import('./proof-library').ProofLibrary>;
   executionRecovery?: () => BankExecutionRecovery;
   offlineNotes?: () => Promise<BankOfflineNotes>;
@@ -316,7 +318,27 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     } catch (error) { throw error instanceof BankConnectionError ? error : new BankConnectionError(stage, error); }
     finally { nativeConnectionBusy = false; }
   }
-  return { proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  async function accountProof() {
+    const module = await import('./account-proof');
+    if (!module.accountProofSourceConfigured()) throw Error('ACCOUNT_PROOF_SOURCE_UNAVAILABLE');
+    const current = await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT);
+    const { ACCOUNT_PROOF_PATH } = await import('./account-proof-policy');
+    const response = await current.request(`${ACCOUNT_PROOF_PATH}?applicationId=${encodeURIComponent(BANK_APPLICATION_ID)}`, { method: 'GET' });
+    if (lifetime.signal.aborted) throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED');
+    const encoded = new TextEncoder().encode(JSON.stringify(response));
+    const result = await module.verifyAccountProof(new File([encoded], 'account-proof.json'), binding);
+    if (lifetime.signal.aborted) throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED');
+    return result;
+  }
+  async function accountProofSharing() {
+    const { createAccountProofSharing } = await import('./account-proof-sharing');
+    return createAccountProofSharing({ keyId: binding.keyId, receizId: binding.artifactOwnerReceizId, assertOpen: () => { if (lifetime.signal.aborted) throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED'); },
+      request: async (path, method, body) => {
+        const current = method === 'GET' ? await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT) : await connectClient([...BANK_READ_SCOPES, 'receiz:domains.write'], 'Allow Bankeiz to apply the public account-proof sharing choice I explicitly review: publish my verified balances and complete transaction statement, optionally keep future proofs publicly updated, or turn off live updates. This does not authorize a payment or export my signing key.');
+        return current.request(path, { method, ...(body ? { body } : {}) });
+      } });
+  }
+  return { accountProof, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

@@ -78,6 +78,8 @@ An open Bank tab continues using its own build while an update waits. Close all 
 
 ## Matching native source
 
+The public [account-proof reader](https://bankeiz.com/verify/) inspects original proof images/files without login. Its share interface preserves the exact source snapshot and requires explicit consent for public and future-history disclosure. Production exports remain disabled until the native public writer is independently qualified and pinned. The [Crystal handoff](docs/crystal-public-account-proof-contract.md) specifies the exact source, public distribution and revocation contract; private Identity Seal and recovery backups are never public proof exports.
+
 The included [native source package](native/README.md) lets developers rebuild the actual note/verifier modules, inspect the public circuits and reproduce the published SDK JavaScript. A normal build links its exact source download from `/legal/`; `/source/index.json` records its SHA-256 and inventory. The source extraction excludes the broader Receiz backend, operator secrets and customer data. See the [public disclosure boundary](native/DISCLOSURE.md). These are source/reproduction checks, not an institution certification.
 
 ```sh

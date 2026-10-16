@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Download, FileCheck2, Upload } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { ProofLibrary, ProofReview, ProofSummary } from '../../receiz/proof-library';
+import { AccountProofPanel } from './AccountProofPanel';
 
 function save(value: { bytes: Uint8Array; filename: string }) {
   const url = URL.createObjectURL(new Blob([new Uint8Array(value.bytes)], { type: 'application/octet-stream' }));
@@ -41,6 +42,8 @@ export function ProofPortabilityPanel({ identity }: { identity: OpenIdentity }) 
   };
   if (!identity.proofLibrary) return null;
   return <details className="identity-import proof-portability"><summary>Account proofs &amp; receipts</summary>
+    <AccountProofPanel identity={identity} />
+    <div className="proof-private-heading">Private evidence archive</div>
     <p className="body-copy small-copy">Keep your originals, asset definitions and verified receipts together. This private archive preserves your evidence; it does not sign you in.</p>
     <button className="secondary-button" disabled={busy} onClick={() => void run(async (lib, current) => {
       const backup = await lib.exportBackup(); if (current()) { save(backup); setNotice('Proof backup saved. Keep this private file with your Identity Seal.'); }

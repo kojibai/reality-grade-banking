@@ -4,6 +4,7 @@ import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import { nativeAccountMiddleware } from './native-account.js';
 import { publicMarketMiddleware } from './public-market.js';
 import { publicNetworkMiddleware } from './public-network.js';
+import { accountProofPublicMiddleware } from './account-proof-public.js';
 
 // One production entry reuses the same bounded transports as Vite. The
 // adapter changes HTTP interfaces only; it never parses or reseals a proof.
@@ -19,7 +20,7 @@ export async function handleBankApi(request: Request): Promise<Response> {
     end(bytes?: string | Uint8Array) { output = typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes ?? new Uint8Array(); ended = true; },
   } as unknown as ServerResponse;
   try {
-    for (const middleware of [nativeAccountMiddleware, publicMarketMiddleware, publicNetworkMiddleware]) {
+    for (const middleware of [nativeAccountMiddleware, accountProofPublicMiddleware, publicMarketMiddleware, publicNetworkMiddleware]) {
       let next = false;
       await middleware(req, response, () => { next = true; });
       if (ended) {

@@ -1,10 +1,10 @@
 # Proof backup and recovery
 
-Open your Receiz ID panel in Bankeiz and expand **Proof backup**. These controls use the pinned v129 verifiers and local encrypted storage. They request no new account access and execute no financial action.
+Open your Receiz ID panel in Bankeiz and expand **Account proofs & receipts**. The private archive controls use the pinned v129 verifiers and local encrypted storage. They request no new account access and execute no financial action.
 
 ## Save your proofs
 
-**Save proof backup** downloads a private `bankeiz.proof-backup.v1` JSON collection containing the exact owned originals and asset definitions held on this device, verified transaction recovery evidence, and retained note images and completed deposit receipts. The collection is bound to the opened identity and application. Every original is reopened by its v129 verifier before export; a filename, claimed balance, digest or transport envelope is never proof admission.
+**Save private proof backup** downloads a private `bankeiz.proof-backup.v1` JSON collection containing the exact owned originals and asset definitions held on this device, verified transaction recovery evidence, and retained note images and completed deposit receipts. The collection is bound to the opened identity and application. Every original is reopened by its v129 verifier before export; a filename, claimed balance, digest or transport envelope is never proof admission.
 
 Keep this downloaded file secure: it contains private proof data and is not password encrypted. Imported custody is encrypted at rest with the device's nonextractable wrapping key. The download does not include that key, an unlock phrase, permission tokens, unfinished payment attempts or hardware-bound note credentials. Back up the Identity Seal separately using the existing **Back up my Identity Seal** control.
 
@@ -30,3 +30,5 @@ Receipt import is evidence retention. It does not resubmit a payment, issue or r
 The automated suite tests canonical refusal using the installed SDK, and separately labels simulated admission fixtures used to test UI choreography. Isolated browser fixtures exercise actual IndexedDB/WebCrypto storage, exact-byte reopening, remove/reopen/restore, concurrent deduplication, bounded all-or-none writes, and preservation of pending transaction state. These checks do not claim a positive funded transaction, hardware ceremony or credit qualification.
 
 The shared Crystal financial writer remains a separate integration boundary. This local proof feature neither depends on that writer nor changes its implementation.
+
+The separate public reader is `/verify/`. Public proof images never export this private archive. See the [exact Crystal public-source and sharing contract](crystal-public-account-proof-contract.md).

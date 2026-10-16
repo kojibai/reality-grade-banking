@@ -1,0 +1,23 @@
+.account-proof-result { padding: 16px; margin-top: 16px; border: 1px solid var(--line, #d9e2ed); border-radius: 12px; background: var(--surface, #fff); font-size: 12px; min-width: 0; }
+.account-proof-heading { display: flex; align-items: center; gap: 8px; color: var(--green); }
+.account-proof-caption { margin-top: 9px; color: #7b8798; font-size: 11px; line-height: 1.65; }
+.account-proof-facts { margin: 13px 0 0; }
+.account-proof-facts > div { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.account-proof-facts dt { color: #7b8798; flex-shrink: 0; }
+.account-proof-facts dd { margin: 0; text-align: right; overflow-wrap: anywhere; min-width: 0; }
+.account-proof-facts code { font-size: 10px; }
+.account-proof-evidence { margin-top: 14px; }
+.account-proof-evidence > summary { cursor: pointer; color: #64768d; font-size: 11px; }
+.account-proof-history { list-style: none; margin: 14px 0 0; padding: 0; max-height: 260px; overflow: auto; }
+.account-proof-history li { display: grid; gap: 5px; padding: 11px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; font-size: 11px; }
+.account-proof-history span, .account-proof-history code { color: #7b8798; font-size: 10px; }
+.account-proof-history-pages { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; color: #7b8798; font-size: 10px; }
+.account-proof-history-pages button { padding: 8px; color: #64768d; border: 1px solid var(--line, #d9e2ed); border-radius: 6px; background: transparent; font-size: 11px; }
+.account-proof-history-pages button:disabled { opacity: .45; }
+.account-proof-refresh { margin-top: 15px; background: transparent; border: 1px solid #d9e2ed; border-radius: 7px; padding: 10px 13px; color: #526b87; font-size: 11px; cursor: pointer; }
+.account-proof-version-choice { display: flex; gap: 5px; padding: 4px; margin-top: 17px; background: #f0f3f8; border-radius: 8px; }
+.account-proof-version-choice button { flex: 1; background: transparent; border: 0; padding: 10px 7px; border-radius: 6px; font-size: 11px; color: #74839a; cursor: pointer; }
+.account-proof-version-choice button[aria-pressed=true] { background: #fff; color: #243f64; box-shadow: 0 1px 4px #172e440a; }
+.account-proof-movements { display: flex; flex-wrap: wrap; gap: 5px 14px; }
+.account-proof-movements span[data-direction=up] { color: #16886b; }
+.account-proof-movements span[data-direction=down] { color: #ad3e50; }
