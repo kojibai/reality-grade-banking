@@ -2,9 +2,9 @@
   "schema": "receiz.bank.browser-reference-checks.v1",
   "receizVersion": "129.0.0",
   "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
-  "verifierModuleSha256": "db56eaa6bbb833732f59a18bc7170dd3fee5696cc8c6949a5b4997304f17f6bf",
-  "startedAt": "2026-10-16T00:08:58.370Z",
-  "completedAt": "2026-10-16T00:08:58.749Z",
+  "verifierModuleSha256": "218e79372f11736cb9406aae34a3809092decbb8029ec3f38565dc9a36145c70",
+  "startedAt": "2026-10-16T00:38:16.811Z",
+  "completedAt": "2026-10-16T00:38:17.160Z",
   "checks": [
     {
       "id": "release",
@@ -13,17 +13,17 @@
         "sdkVersion": "129.0.0",
         "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065"
       },
-      "durationMs": 138
+      "durationMs": 115
     },
     {
       "id": "integrity",
       "passed": true,
       "evidence": {
-        "moduleSha256": "db56eaa6bbb833732f59a18bc7170dd3fee5696cc8c6949a5b4997304f17f6bf",
+        "moduleSha256": "218e79372f11736cb9406aae34a3809092decbb8029ec3f38565dc9a36145c70",
         "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52",
         "verificationIsFinancialAdmission": false
       },
-      "durationMs": 77
+      "durationMs": 66
     },
     {
       "id": "source",
@@ -128,7 +128,7 @@
         ],
         "reportIsTemporalAuthority": false
       },
-      "durationMs": 154
+      "durationMs": 159
     },
     {
       "id": "edges",

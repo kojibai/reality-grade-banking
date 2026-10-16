@@ -72,13 +72,14 @@ export async function saveDepositSource(binding: { artifactSha256: string }, byt
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(new Error('Your identity changed before the proof was saved.'));
   }); } finally { db.close(); }
 }
-export async function loadDepositSources(binding: { artifactSha256: string }): Promise<{ bytes: Uint8Array; filename: string; role?: PrivateSource['role'] }[]> {
-  const saved = await held(); if (!saved) return [];
+export async function loadDepositSources(binding: { artifactSha256: string }, options: { requireComplete?: boolean; originalsOnly?: boolean } = {}): Promise<{ bytes: Uint8Array; filename: string; role?: PrivateSource['role'] }[]> {
+  const saved = await held(); if (!saved) { if (options.requireComplete) throw Error('PROOF_IDENTITY_CLOSED'); return []; }
+  if (options.requireComplete) await sameSavedIdentity(saved, binding);
   const db = await database(); let values: PrivateSource[];
   try { values = await new Promise((resolve, reject) => { const req = db.transaction('sources').objectStore('sources').getAll(); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); } finally { db.close(); }
   const sources: { bytes: Uint8Array; filename: string; role?: PrivateSource['role'] }[] = [];
-  for (const value of values.filter(value => value.identityDigest === binding.artifactSha256)) {
-    try { const bytes = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(value.iv), additionalData: new TextEncoder().encode(value.key) }, saved.wrappingKey, value.bytes); sources.push({ bytes: new Uint8Array(bytes), filename: value.filename, ...(value.role ? { role: value.role } : {}) }); } catch { /* Unavailable exact sources cannot project holdings. */ }
+  for (const value of values.filter(value => value.identityDigest === binding.artifactSha256 && (!options.originalsOnly || !value.role))) {
+    try { const bytes = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(value.iv), additionalData: new TextEncoder().encode(value.key) }, saved.wrappingKey, value.bytes); sources.push({ bytes: new Uint8Array(bytes), filename: value.filename, ...(value.role ? { role: value.role } : {}) }); } catch (cause) { if (options.requireComplete) throw cause; /* Unavailable exact sources cannot project holdings. */ }
   }
   return sources;
 }
@@ -368,4 +369,147 @@ export async function loadOfflineNoteBlob(binding: { artifactSha256: string }, d
   const bytes = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, row.bytes));
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(v => v.toString(16).padStart(2, '0')).join('');
   if (hash !== digest) throw new Error('BANK_NOTE_EXACT_SOURCE_MISMATCH'); return bytes;
+}
+
+/** Portable proof evidence is retained separately from live execution/note
+ * checkpoints. These bytes never establish balances or device custody. */
+type PortableProof = import('./proof-library').ProofSource;
+const proofArchivePrefix = (binding: { artifactSha256: string }) => `proof-archive|${BANK_APPLICATION_ID}|${binding.artifactSha256}|`;
+async function retainedOperationRows(prefix: string): Promise<PrivateBankOperation[]> {
+  const db = await database();
+  try { return await new Promise((resolve, reject) => {
+    const read = db.transaction('operations').objectStore('operations').getAll(IDBKeyRange.bound(prefix, prefix + '\uffff'));
+    read.onsuccess = () => resolve(read.result); read.onerror = () => reject(read.error);
+  }); } finally { db.close(); }
+}
+function proofFrame(source: PortableProof): Uint8Array {
+  const meta = new TextEncoder().encode(JSON.stringify({ kind: source.kind, filename: source.filename }));
+  const bytes = new Uint8Array(4 + meta.length + source.bytes.length);
+  new DataView(bytes.buffer).setUint32(0, meta.length); bytes.set(meta, 4); bytes.set(source.bytes, 4 + meta.length); return bytes;
+}
+function openProofFrame(bytes: Uint8Array): PortableProof {
+  if (bytes.length < 5) throw Error('PROOF_ARCHIVE_INVALID');
+  const size = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(0);
+  if (size > 1024 || size + 4 >= bytes.length) throw Error('PROOF_ARCHIVE_INVALID');
+  const meta = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.slice(4, 4 + size)));
+  if (!meta || Object.keys(meta).sort().join('|') !== 'filename|kind' || !['execution-recovery', 'note-image', 'note-deposit'].includes(meta.kind)
+    || typeof meta.filename !== 'string' || !meta.filename || meta.filename.length > 240 || /[\x00-\x1f\x7f/\\]/u.test(meta.filename)) throw Error('PROOF_ARCHIVE_INVALID');
+  return { kind: meta.kind, filename: meta.filename, bytes: bytes.slice(4 + size) };
+}
+export async function loadProofArchive(binding: { artifactSha256: string }): Promise<PortableProof[]> {
+  const saved = await held(); if (!saved) throw Error('PROOF_IDENTITY_CLOSED'); await sameSavedIdentity(saved, binding);
+  const prefix = proofArchivePrefix(binding), rows = await retainedOperationRows(prefix), result: PortableProof[] = [];
+  if (rows.length > 1000) throw Error('PROOF_BACKUP_CAPACITY');
+  for (const row of rows) {
+    const clear = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(row.key) }, saved.wrappingKey, row.bytes));
+    const source = openProofFrame(clear), digest = await import('./proof-library').then(m => m.proofDigest(source.bytes));
+    if (row.key !== prefix + digest) throw Error('PROOF_SOURCE_DIGEST_MISMATCH'); result.push(source);
+  }
+  return result;
+}
+export async function loadExportableRecoveries(binding: { artifactSha256: string }): Promise<PortableProof[]> {
+  const saved = await held(); if (!saved) throw Error('PROOF_IDENTITY_CLOSED'); await sameSavedIdentity(saved, binding);
+  const rows = await retainedOperationRows(`bank-operation|${BANK_APPLICATION_ID}|${binding.artifactSha256}|`), result: PortableProof[] = [];
+  for (const row of rows) {
+    const value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(row.key) }, saved.wrappingKey, row.bytes))) as BankCheckpoint;
+    if (value.state !== 'committed') continue;
+    if (value.schema !== 'bank.execution-checkpoint.v1' || !value.recovery || value.plan.applicationId !== BANK_APPLICATION_ID || value.operationId !== value.plan.attemptId) throw Error('BANK_EXECUTION_CHECKPOINT_INVALID');
+    result.push({ kind: 'execution-recovery', filename: `bank-execution-${value.plan.exactPlanDigest}.receiz-recovery.json`, bytes: new TextEncoder().encode(JSON.stringify(value.recovery)) });
+  }
+  return result;
+}
+type ProofStoredRow = PrivateSource | PrivateBankOperation;
+type ProofSnapshot = { sources: Map<string, PrivateSource>; archive: Map<string, PrivateBankOperation> };
+// Read only this identity's bounded proof collections.
+// Crypto runs outside the write transaction; the complete snapshot is compared
+// again in that transaction so another tab cannot bypass capacity or dedupe.
+async function proofSnapshot(db: IDBDatabase, sourcePrefix: string, prefix: string): Promise<ProofSnapshot> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['sources', 'operations']);
+    let sources: PrivateSource[] = [], archive: PrivateBankOperation[] = [];
+    const read = tx.objectStore('operations').getAll(IDBKeyRange.bound(prefix, prefix + '\uffff'), 1001);
+    read.onsuccess = () => { archive = read.result; };
+    const owned = tx.objectStore('sources').getAll(IDBKeyRange.bound(sourcePrefix, sourcePrefix + '\uffff'), 1003);
+    owned.onsuccess = () => { sources = owned.result; };
+    tx.oncomplete = () => resolve({ sources: new Map(sources.map(row => [row.key, row])), archive: new Map(archive.map(row => [row.key, row])) });
+    tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error ?? Error('PROOF_STORAGE_UNAVAILABLE'));
+  });
+}
+function sameProofRow(a: ProofStoredRow | undefined, b: ProofStoredRow | undefined): boolean {
+  return !a && !b || !!a && !!b && a.key === b.key && equalCipher(a.bytes, b.bytes) && equalCipher(a.iv, b.iv)
+    && (a as PrivateSource).filename === (b as PrivateSource).filename && (a as PrivateSource).role === (b as PrivateSource).role
+    && (a as PrivateSource).identityDigest === (b as PrivateSource).identityDigest;
+}
+export async function retainProofBatch(binding: { artifactSha256: string }, originals: PortableProof[]): Promise<import('./proof-library').ProofRetention> {
+  if (originals.length > 1000) throw Error('PROOF_BACKUP_CAPACITY');
+  const saved = await held(); if (!saved) throw Error('PROOF_IDENTITY_CLOSED'); await sameSavedIdentity(saved, binding);
+  const { proofDigest } = await import('./proof-library'), sources = originals.map(value => ({ ...value, bytes: new Uint8Array(value.bytes) }));
+  const prepared: { store: 'sources' | 'operations'; key: string; source: PortableProof; value: ProofStoredRow }[] = [];
+  const seen = new Map<string, string>(); let total = 0;
+  for (const source of sources) {
+    total += source.bytes.length;
+    if (!source.bytes.length || source.bytes.length > 32 * 1024 * 1024 || total > 64 * 1024 * 1024
+      || !['owned-source', 'execution-recovery', 'note-image', 'note-deposit'].includes(source.kind)
+      || !source.filename || source.filename.length > 240 || /[\x00-\x1f\x7f/\\]/u.test(source.filename)) throw Error('PROOF_SOURCE_INVALID');
+    const digest = await proofDigest(source.bytes), prior = seen.get(digest);
+    if (prior && prior !== source.kind) throw Error('PROOF_SOURCE_KIND_CONFLICT');
+    if (prior) continue; seen.set(digest, source.kind);
+    const owned = source.kind === 'owned-source', key = owned ? `${binding.artifactSha256}|${digest}` : proofArchivePrefix(binding) + digest;
+    const iv = crypto.getRandomValues(new Uint8Array(12)), clear = owned ? source.bytes : proofFrame(source);
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, new Uint8Array(clear));
+    prepared.push({ store: owned ? 'sources' : 'operations', key, source, value: owned ? { key, identityDigest: binding.artifactSha256, filename: source.filename, iv, bytes: encrypted } : { key, iv, bytes: encrypted } });
+  }
+  const db = await database(), prefix = proofArchivePrefix(binding), sourcePrefix = `${binding.artifactSha256}|`;
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const snapshot = await proofSnapshot(db, sourcePrefix, prefix), writes = new Set<string>(), sizes = new Map<string, number>();
+      if (snapshot.archive.size > 1000 || snapshot.sources.size >= 1003) throw Error('PROOF_BACKUP_CAPACITY');
+      const decrypt = (row: ProofStoredRow) => crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(row.key) }, saved.wrappingKey, row.bytes);
+      const imported = new Set(prepared.map(v => v.key));
+      for (const [key, row] of [...snapshot.archive, ...snapshot.sources] as [string, ProofStoredRow][]) {
+        if (imported.has(key) || (row as PrivateSource).role) continue;
+        // Old-key ciphertext remains untouched unless its verified exact
+        // original is supplied. Its encrypted length is a safe capacity bound.
+        let clear: ArrayBuffer | undefined; try { clear = await decrypt(row); } catch { /* Lost key or damaged ciphertext. */ }
+        sizes.set(key, clear ? snapshot.sources.has(key) ? clear.byteLength : openProofFrame(new Uint8Array(clear)).bytes.length : row.bytes.byteLength);
+      }
+      let alreadyHeld = 0;
+      for (const item of prepared) {
+        const prior = item.store === 'sources' ? snapshot.sources.get(item.key) : snapshot.archive.get(item.key);
+        let clear: ArrayBuffer | undefined;
+        if (prior) { try { clear = await decrypt(prior); } catch { /* Restore verified bytes under the current wrapping key. */ } }
+        if (clear) {
+          const heldSource = item.store === 'sources' ? new Uint8Array(clear) : openProofFrame(new Uint8Array(clear));
+          const heldBytes = heldSource instanceof Uint8Array ? heldSource : heldSource.bytes;
+          if (!(heldSource instanceof Uint8Array) && heldSource.kind !== item.source.kind) throw Error('PROOF_SOURCE_KIND_CONFLICT');
+          if (!equalCipher(heldBytes, item.source.bytes)) throw Error('PROOF_SOURCE_DIGEST_MISMATCH');
+          alreadyHeld++;
+        } else {
+          if ((prior as PrivateSource | undefined)?.role) throw Error('PROOF_INTERNAL_SOURCE_UNAVAILABLE');
+          writes.add(item.key);
+        }
+        if (!(prior as PrivateSource | undefined)?.role) sizes.set(item.key, item.source.bytes.length);
+      }
+      if (sizes.size > 1000 || [...sizes.values()].reduce((sum, size) => sum + size, 0) > 64 * 1024 * 1024) throw Error('PROOF_BACKUP_CAPACITY');
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(['identity', 'sources', 'operations'], 'readwrite');
+          let current: SavedIdentity | undefined, archive: PrivateBankOperation[] = [], currentSources: PrivateSource[] = [], completed = 0, failure = 'PROOF_IMPORT_NOT_COMMITTED';
+          const complete = () => {
+            if (++completed !== 3) return;
+            if (!current || !equalCipher(current.bytes, saved.bytes) || !equalCipher(current.iv, saved.iv)) { failure = 'PROOF_IDENTITY_CHANGED'; tx.abort(); return; }
+            if (archive.length !== snapshot.archive.size || archive.some(row => !sameProofRow(row, snapshot.archive.get(row.key)))
+              || currentSources.length !== snapshot.sources.size || currentSources.some(row => !sameProofRow(row, snapshot.sources.get(row.key)))) { failure = 'PROOF_IMPORT_RETRY'; tx.abort(); return; }
+            for (const item of prepared) if (writes.has(item.key)) tx.objectStore(item.store).put(item.value, item.key);
+          };
+          const identityRead = tx.objectStore('identity').get('current'); identityRead.onsuccess = () => { current = identityRead.result; complete(); };
+          const archiveRead = tx.objectStore('operations').getAll(IDBKeyRange.bound(prefix, prefix + '\uffff'), 1001); archiveRead.onsuccess = () => { archive = archiveRead.result; complete(); };
+          const ownedRead = tx.objectStore('sources').getAll(IDBKeyRange.bound(sourcePrefix, sourcePrefix + '\uffff'), 1003); ownedRead.onsuccess = () => { currentSources = ownedRead.result; complete(); };
+          tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(Error(failure));
+        });
+        return { added: writes.size, alreadyHeld };
+      } catch (cause) { if (!(cause instanceof Error) || cause.message !== 'PROOF_IMPORT_RETRY' || attempt === 2) throw cause; }
+    }
+    throw Error('PROOF_IMPORT_NOT_COMMITTED');
+  } finally { db.close(); }
 }

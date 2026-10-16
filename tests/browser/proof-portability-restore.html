@@ -1,0 +1,27 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bankeiz proof restore regressions</title>
+<h1>Proof restore regressions</h1><p>Run on an isolated test origin. Storage mechanics only: dummy bytes, no financial admission.</p><button id="run">Run restore checks</button><button id="capacity">Run archive limit checks</button><pre id="output">Ready</pre>
+<script type="module">
+import { saveDeviceIdentity, forgetDeviceIdentity, retainProofBatch, loadDepositSources, loadProofArchive, saveDepositSource } from '/src/receiz/identity-vault.ts';
+import { proofDigest } from '/src/receiz/proof-library.ts';
+async function run(capacityOnly=false){
+ const checks=[],check=(value,label)=>{if(!value)throw Error(label);checks.push(label);},bytes=value=>new TextEncoder().encode(value);
+ try{
+  const identity=bytes('isolated-restore-test-'+crypto.randomUUID()),binding={artifactSha256:await proofDigest(identity)};
+  await saveDeviceIdentity(identity,'dummy.bin','not-a-real-phrase',true);
+  const original={kind:'owned-source',filename:'original.receiz',bytes:bytes('exact-original')},receipt={kind:'execution-recovery',filename:'receipt.json',bytes:bytes('exact-receipt')};
+  await retainProofBatch(binding,[original,receipt]);
+  if(!capacityOnly){await saveDepositSource(binding,bytes('private-coordination'),'internal.receiz',await proofDigest(bytes('private-coordination')),'account-coordination');await forgetDeviceIdentity();await saveDeviceIdentity(identity,'dummy.bin','not-a-real-phrase',true);
+  const restored=await retainProofBatch(binding,[original,receipt]);
+  const owned=(await loadDepositSources(binding,{requireComplete:true,originalsOnly:true}))[0],archive=(await loadProofArchive(binding))[0];
+  check(restored.added===2&&await proofDigest(owned.bytes)===await proofDigest(original.bytes)&&await proofDigest(archive.bytes)===await proofDigest(receipt.bytes),'Remove, reopen and restore replaces inaccessible ciphertext in both stores');
+  const repeat=await retainProofBatch(binding,[original,receipt]);check(repeat.alreadyHeld===2&&repeat.added===0,'Restored originals deduplicate under the current key');}
+  await retainProofBatch(binding,Array.from({length:997},(_,i)=>({...receipt,bytes:bytes('capacity-proof-'+i)})));
+  const race=await Promise.allSettled(['a','b'].map(value=>retainProofBatch(binding,[{...receipt,bytes:bytes('last-slot-'+value)}])));
+  check(race.filter(result=>result.status==='fulfilled').length===1&&race.filter(result=>result.status==='rejected'&&String(result.reason).includes('PROOF_BACKUP_CAPACITY')).length===1,'Concurrent imports cannot exceed the cumulative limit');
+  let refused=false;try{await retainProofBatch(binding,[{...receipt,bytes:bytes('one-too-many')}]);}catch{refused=true;}
+  check(refused&&(await loadProofArchive(binding)).length===999&&(await loadDepositSources(binding,{requireComplete:true,originalsOnly:true})).length===1,'Cumulative capacity includes owned originals and preserves the complete archive');
+  document.querySelector('#output').textContent=JSON.stringify({passed:true,checks},null,2);
+ }catch(error){document.querySelector('#output').textContent=JSON.stringify({passed:false,checks,error:String(error)},null,2);throw error;}
+};
+document.querySelector('#run').onclick=()=>run();document.querySelector('#capacity').onclick=()=>run(true);
+</script>

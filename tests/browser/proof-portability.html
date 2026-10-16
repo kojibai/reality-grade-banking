@@ -1,0 +1,38 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bankeiz proof portability checks</title>
+<h1>Proof storage checks</h1><p>Isolated test origin only. Dummy bytes, no identity, money or hardware custody qualification.</p><button id="run">Run storage checks</button><pre id="output">Ready</pre>
+<script type="module">
+import { saveDeviceIdentity, loadDeviceIdentity, loadDepositSources, retainProofBatch, loadProofArchive, loadExportableRecoveries, saveBankOperation, loadBankOperation } from '/src/receiz/identity-vault.ts';
+import { proofDigest } from '/src/receiz/proof-library.ts';
+import { BANK_APPLICATION_ID } from '/src/receiz/config.ts';
+document.querySelector('#run').onclick=async()=>{
+ const checks=[],check=(value,label)=>{if(!value)throw Error(label);checks.push(label);},bytes=value=>new TextEncoder().encode(value);
+ try{
+  const previous=await loadDeviceIdentity();
+  if(previous&&new TextDecoder().decode(previous.bytes)==='test-only-proof-storage-identity'){
+   const previousBinding={artifactSha256:await proofDigest(previous.bytes)},pending=await loadBankOperation(previousBinding);
+   if(pending?.operationId==='pending-fixture'&&pending.state==='unknown')await saveBankOperation(previousBinding,{...pending,state:'zero-write'},'replace');
+  }
+  const identity=bytes('test-only-proof-storage-'+crypto.randomUUID()),binding={artifactSha256:await proofDigest(identity)};
+  await saveDeviceIdentity(identity,'dummy.bin','not-a-real-phrase',true);
+  const original={kind:'owned-source',filename:'original.receiz',bytes:bytes('test-only-original')},receipt={kind:'execution-recovery',filename:'receipt.json',bytes:bytes('test-only-no-admission')};
+  const initial=await retainProofBatch(binding,[original,receipt]);check(initial.added===2,'One batch retains exact source and receipt');
+  const raw=(await loadDepositSources(binding,{requireComplete:true,originalsOnly:true}))[0],archive=(await loadProofArchive(binding))[0];
+  check(await proofDigest(raw.bytes)===await proofDigest(original.bytes)&&await proofDigest(archive.bytes)===await proofDigest(receipt.bytes),'Exact bytes reopen across both custody stores');
+  const repeat=await retainProofBatch(binding,[original,receipt]);check(repeat.added===0&&repeat.alreadyHeld===2,'Duplicate import is immutable and idempotent');
+  const plan={applicationId:BANK_APPLICATION_ID,attemptId:'pending-fixture',exactPlanDigest:'b'.repeat(64)};
+  await saveBankOperation(binding,{schema:'bank.execution-checkpoint.v1',operationId:plan.attemptId,plan,transitionSet:{},state:'unknown'},'new');
+  await retainProofBatch(binding,[{...receipt,bytes:bytes('another-receipt')}]);check((await loadBankOperation(binding)).state==='unknown','Proof import never changes a pending transaction');
+  check((await loadExportableRecoveries(binding)).length===0,'Pending attempts are never exported as successful recoveries');
+  let refused=false;try{await retainProofBatch(binding,[{...original,bytes:bytes('must-not-be-written')},{...receipt,filename:'../bad.json'}]);}catch{refused=true;}
+  check(refused&&(await loadDepositSources(binding,{requireComplete:true,originalsOnly:true})).length===1,'Invalid mixed batch retains no partial sources');
+  const results=await Promise.all([retainProofBatch(binding,[{...receipt,bytes:bytes('parallel-receipt')}]),retainProofBatch(binding,[{...receipt,bytes:bytes('parallel-receipt')}])]);
+  check(results.reduce((n,r)=>n+r.added,0)===1,'Concurrent tabs retain one original copy');
+  let foreign=false;try{await retainProofBatch({artifactSha256:'f'.repeat(64)},[receipt]);}catch{foreign=true;}check(foreign,'A different identity cannot import into held custody');
+  const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('receiz-bank-private-custody',3);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+  const records=await new Promise(resolve=>{const r=db.transaction('operations').objectStore('operations').getAll();r.onsuccess=()=>resolve(r.result);});db.close();
+  check(records.filter(r=>r.key.startsWith('proof-archive|')).every(r=>!new TextDecoder().decode(r.bytes).includes('receipt')),'Archived proof contents remain encrypted');
+  await saveBankOperation(binding,{...(await loadBankOperation(binding)),state:'zero-write'},'replace');
+  document.querySelector('#output').textContent=JSON.stringify({passed:true,checks},null,2);
+ }catch(error){document.querySelector('#output').textContent=JSON.stringify({passed:false,checks,error:String(error)},null,2);throw error;}
+};
+</script>

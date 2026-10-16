@@ -2,6 +2,8 @@
 // module includes its sources for audit and exposes no signer or funding API.
 import { openBankNoteImage } from 'receiz-native-note-image';
 import { readBankFundedNoteHead, readBankFundedNoteSource } from 'receiz-native-note-source';
+import { openBankNoteDepositReceipt, verifyBankReserveCreditArtifact, exportBankNoteDepositReceipt } from 'receiz-native-note-credit';
+import { unpackBankNoteBytes } from 'receiz-native-note-compression';
 
 /** Verifies complete carried sources under the pinned canonical roots.
  * It does not prove live spendability, consume custody or authorize a credit. */
@@ -25,3 +27,14 @@ export function inspectReserveNote(handle) {
 /** Exact complete source transport for a separately verified receiver. Exported
  * bytes/objects must be reverified; this snapshot never becomes authority. */
 export function exportReserveNoteSource(handle) { return readBankFundedNoteSource(handle); }
+
+/** Read-only archival inspection. Reopens the credit, complete terminal/funding
+ * sources and private opening. It never applies a credit or resumes custody. */
+export async function inspectNoteDepositReceipt(bytes) {
+  const proof = await openBankNoteDepositReceipt(bytes.slice());
+  return Object.freeze({ rail: proof.rail, noteId: proof.credit.noteId, receiverKeyId: proof.credit.receiverKeyId });
+}
+export async function exportVerifiedNoteDepositReceipt(credit, snapshot, terminal) {
+  const proof = await verifyBankReserveCreditArtifact(credit.slice(), snapshot.slice(), { terminalSource: await unpackBankNoteBytes(terminal) });
+  return exportBankNoteDepositReceipt(proof);
+}

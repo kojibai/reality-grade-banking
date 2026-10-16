@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowUpRight, FileText } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import { BankConnection } from './BankConnection';
+import { ProofPortabilityPanel } from './ProofPortabilityPanel';
 
 export function IdentityProfile({ identity, onForget, onRefresh }: { identity: OpenIdentity; onForget: () => Promise<void>; onRefresh: () => void }) {
   const [backup, setBackup] = useState(false), [removalError, setRemovalError] = useState('');
@@ -28,6 +29,7 @@ export function IdentityProfile({ identity, onForget, onRefresh }: { identity: O
       {identity.needsPhrase && <input type="password" readOnly value={identity.backup().phrase} aria-label="Private recovery phrase" />}
       <button className="text-button" onClick={() => setBackup(false)}>{identity.needsPhrase ? 'Hide recovery phrase' : 'Hide backup details'}</button>
     </div>}
+    <ProofPortabilityPanel identity={identity} />
     <BankConnection identity={identity} onRefresh={onRefresh} />
     <section className="profile-device" aria-label="Device custody">
       <button className="secondary-button profile-remove" onClick={() => void remove()}>Remove ID from this device</button>

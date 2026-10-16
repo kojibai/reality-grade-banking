@@ -2,10 +2,10 @@
   "schema": "receiz.bank.receiver-verifier-build.v1",
   "version": "129.0.0",
   "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52",
-  "moduleSha256": "db56eaa6bbb833732f59a18bc7170dd3fee5696cc8c6949a5b4997304f17f6bf",
-  "sourceMapSha256": "2a1db03eb690ab6295dd34f131300c64a7a05c046c3bde7b7cdb1bfa306a984e",
-  "sourceTreeSha256": "18d2150a64a2e04afa678dfe61e43c279ea0585b1726a57dae4067834e67f621",
-  "bytes": 2035672,
+  "moduleSha256": "218e79372f11736cb9406aae34a3809092decbb8029ec3f38565dc9a36145c70",
+  "sourceMapSha256": "0afc3b001436e2d953565b6ec5cd9ace7211e2caaf52a81750e84af9feabe108",
+  "sourceTreeSha256": "0dc5118ad69b1feb25971659b6077c42ed996edca51b3a2daf819630e55a6f11",
+  "bytes": 2045736,
   "inputs": [
     {
       "path": "receiz/node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/_u64.js",
@@ -888,8 +888,16 @@
       "sha256": "f7bab1c2e9a97c781365fda9f18780fede67e6bc38d572d0cd9adbb9eb9a3ed6"
     },
     {
+      "path": "receiz/app/lib/wallet/bankNotes/credit.ts",
+      "sha256": "19abdf97f03b79228d7efe331b088900fd1d4a6aae8af2b9f7f3e529e773db14"
+    },
+    {
+      "path": "receiz/app/lib/wallet/bankNotes/redemption.ts",
+      "sha256": "60a791bdbe2a4412495e8b9185f43b89e105e2fcf1b5d06c1a8061b3b2399e45"
+    },
+    {
       "path": "bank/institution/receiver-verifier.entry.mjs",
-      "sha256": "7f6931378a300377ea2c7dab6b4ea641528a4ad6a5a6ac9f7730e585739be0e0"
+      "sha256": "8ab603203b4d041b7bb0a5f71b2cce9a1260c312c5a84edcc38a19845b62d041"
     }
   ],
   "verificationIsFinancialAdmission": false
