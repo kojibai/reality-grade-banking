@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
-import { accountProofRoute } from '../src/receiz/account-proof-links';
+import { accountProofRoute } from '../src/receiz/account-proof-links.js';
 export async function accountProofPublicMiddleware(req: IncomingMessage, res: ServerResponse, next: () => void) {
   const url = new URL(req.url ?? '/', 'http://localhost');
   if (url.pathname !== '/api/bank/account-proof') { next(); return; }
