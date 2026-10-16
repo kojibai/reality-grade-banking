@@ -5,7 +5,7 @@ import { ValueChart } from '../../components/ValueChart';
 import { formatPublicPrice, type PublicMarketItem } from '../../receiz/public-market';
 import { verifyPublicOriginalBytes } from '../../receiz/public-original';
 
-export function PublicAssetDetail({ item }: { item: PublicMarketItem }) {
+export function PublicAssetDetail({ item, onTrade }: { item: PublicMarketItem; onTrade?: (mode: 'buy' | 'sell', digest: string) => void }) {
   const [verification, setVerification] = useState<string | null>(null), [busy, setBusy] = useState(false);
   const pending = useRef<AbortController | null>(null);
   const sourceKey = `${item.id}|${item.originalDigest}|${item.originalUrl}`;
@@ -31,11 +31,11 @@ export function PublicAssetDetail({ item }: { item: PublicMarketItem }) {
     {item.changePct !== null && <div className={`price-change ${item.changePct >= 0 ? 'positive' : 'negative'}`}>{item.changePct > 0 ? '+' : ''}{item.changePct}%</div>}
     {item.chart.length > 1 && <ValueChart values={item.chart} label="Public Market value in dollars" />}
     <p className="body-copy asset-description">{item.summary}</p>
-    <div className="dual-actions"><button className="primary-button" disabled title="Requires an admitted offer and connected live account">Buy ownership</button><button className="secondary-button" disabled title="Requires your verified ownership">Take cash</button></div>
+    <div className="dual-actions"><button className="primary-button" disabled={!onTrade || !item.originalDigest} onClick={() => { if (item.originalDigest) onTrade?.('buy', item.originalDigest); }}>Buy ownership</button><button className="secondary-button" disabled={!onTrade || !item.originalDigest} onClick={() => { if (item.originalDigest) onTrade?.('sell', item.originalDigest); }}>Take cash</button></div>
     <div className="asset-actions">{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={18} />Open public source</a>}{item.verifyUrl && <a href={item.verifyUrl} target="_blank" rel="noreferrer"><FileCheck2 size={18} />Inspect proof</a>}</div>
     <div className="detail-list"><div><span>Owner</span><strong>{item.ownerProfileUrl ? <a href={item.ownerProfileUrl} target="_blank" rel="noreferrer">@{item.ownerUsername}</a> : item.ownerDisplayName ?? 'Not supplied by the public source'}</strong></div><div><span>Object</span><strong className="proof-coordinate">{item.assetId}</strong></div><div><span>Sealed</span><strong>{item.sealedAt ? new Date(item.sealedAt).toLocaleString() : 'Not supplied'}</strong></div>{item.pulse && <div><span>Kai pulse</span><strong>{item.pulse}</strong></div>}</div>
     {item.originalUrl && item.originalDigest && <button className="secondary-button" onClick={() => void inspect()} disabled={busy}><ShieldCheck size={18} />{busy ? 'Verifying original…' : 'Verify original here'}</button>}
     {verification && <p className="body-copy" role="status">{verification}</p>}
-    <p className="body-copy small-copy">Public values and discovery come from Receiz Market. Trading requires an admitted offer, ownership and payment proof.</p>
+    <p className="body-copy small-copy">Explore public asset values here. Before a trade, its offer, ownership and payment proofs must verify.</p>
   </>;
 }

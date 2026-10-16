@@ -7,19 +7,25 @@ import { LiveDeposit } from '../deposit/LiveDeposit';
 import { LiveSend, LiveReceive } from './LivePayments';
 import type { PaymentRequest } from '../../receiz/payment-request';
 import { LiveAssetDetail } from '../assets/LiveAssets';
+import { LiveOwnership } from '../assets/LiveOwnership';
+import { LiveExchange } from '../market/LiveExchange';
+import type { PublicMarketItem } from '../../receiz/public-market';
 import { CreateAsset } from '../assets/CreateAsset';
 import { IdentityProfile } from './IdentityProfile';
 import { ArrowUpRight, ShieldCheck } from 'lucide-react';
-export function LiveActions({ action, identity, wallet, onClose, onForget, onRefresh, paymentRequest, active = true }: { active?: boolean; action: UIAction; identity: OpenIdentity; wallet: SharedWallet | null; onClose: () => void; onForget: () => Promise<void>; onRefresh: () => void; paymentRequest?: PaymentRequest | null }) {
+export function LiveActions({ action, identity, wallet, onClose, onForget, onRefresh, paymentRequest, active = true, marketItems = [] }: { marketItems?: PublicMarketItem[]; active?: boolean; action: UIAction; identity: OpenIdentity; wallet: SharedWallet | null; onClose: () => void; onForget: () => Promise<void>; onRefresh: () => void; paymentRequest?: PaymentRequest | null }) {
   const titles: Record<string, string> = { deposit: 'Deposit', send: 'Send', receive: 'Receive', balance: 'Your balance', growth: 'Settlement', profile: 'Your Receiz ID', currency: 'Create an asset', exchange: 'Exchange', rules: 'Money rules' };
   let body;
   if (action.kind === 'balance' || action.kind === 'growth') body = <><h1 className="sheet-hero">Value, settled in proof.</h1><p className="body-copy">Settlement is proof-native value. Reserve is proof-backed funds for legacy payment rails.</p><div className="detail-list"><div><span>Settlement</span><strong>{wallet ? formatMoney(wallet.settlementUsdCents) : 'Unavailable'}</strong></div><div><span>Reserve</span><strong>{wallet ? formatMoney(wallet.reserveUsdCents) : 'Unavailable'}</strong></div><div><span>Total</span><strong>{wallet ? formatMoney(wallet.totalUsdCents) : 'Unavailable'}</strong></div>{wallet?.pulse && <div><span>Kai pulse</span><strong>{wallet.pulse}</strong></div>}{wallet?.kaiUpulse && <div><span>Kai uPulse</span><strong>{wallet.kaiUpulse}</strong></div>}</div><aside className="balance-proof-notice" aria-label="Proof continuity"><span className="balance-proof-mark" aria-hidden="true"><ShieldCheck size={18} strokeWidth={1.7} /></span><div><h2>Proof continuity</h2><p>Your verified proof establishes value, ownership and history. Receiving institutions must demonstrate that they preserve that proof continuity.</p><a href="/learn/reserve-and-settlement/#the-receiving-standard">The receiving standard<ArrowUpRight size={14} strokeWidth={1.7} aria-hidden="true" /></a></div></aside></>;
   else if (action.kind === 'profile') body = <IdentityProfile identity={identity} onForget={onForget} onRefresh={onRefresh} />;
   else if (action.kind === 'currency') body = <CreateAsset identity={identity} onRefresh={onRefresh} onClose={onClose} />;
+  else if (action.kind === 'trade') body = <LiveOwnership identity={identity} mode={action.mode} initialDigest={action.assetId} onRefresh={onRefresh} />;
+  else if (action.kind === 'exchange') body = <LiveExchange identity={identity} items={marketItems} onRefresh={onRefresh} />;
   else if (action.kind === 'receive') body = <LiveReceive identity={identity} onRefresh={onRefresh} />;
   else if (action.kind === 'deposit') body = <LiveDeposit identity={identity} onClose={onClose} onRefresh={onRefresh} />;
   else if (action.kind === 'send') body = <LiveSend identity={identity} onRefresh={onRefresh} wallet={wallet} initialRequest={paymentRequest} onClose={onClose} />;
-  else if (action.kind === 'pending' || action.kind === 'asset') body = <LiveAssetDetail identity={identity} digest={action.kind === 'pending' ? action.depositId : action.assetId} />;
-  else body = <div className="empty-state"><h3>Open the required proof sources</h3><p>This action needs admitted ownership, funding and a qualified execution route. This bank has account read access; issuance and trading are not connected yet.</p></div>;
+  else if (action.kind === 'pending' || action.kind === 'asset' || action.kind === 'proof') body = <LiveAssetDetail identity={identity} onRefresh={onRefresh} digest={action.kind === 'pending' ? action.depositId : action.assetId} />;
+  else if (action.kind === 'bridge') body = <LiveOwnership identity={identity} mode="send" initialDigest={action.assetId} onRefresh={onRefresh} />;
+  else body = <div className="empty-state"><h3>Automatic transfers are not available yet.</h3><p>You can review and approve each transfer from Send.</p></div>;
   return <Sheet active={active} title={titles[action.kind] ?? 'Your asset'} onClose={onClose}>{body}</Sheet>;
 }

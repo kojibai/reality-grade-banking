@@ -20,7 +20,7 @@ export function Entrance({ opening, busy, error, onCreate, onImport }: { opening
     finally { if (ticket === inspection.current) setInspecting(false); }
   };
   return <div className="console identity-entrance"><header className="app-header"><span className="wordmark">{branding.wordmark}<span>{branding.descriptor}</span></span><EntranceConformanceStatus /></header><main className="entrance-content"><span className="entrance-symbol"><Fingerprint size={39} strokeWidth={1.4} /></span><h1>Your value.<br />More possibilities.</h1><p className="page-subtitle">One place for all your value. Wherever you go.</p>
-    {opening ? <p role="status" className="body-copy">Opening your Receiz ID…</p> : <>
+    {opening ? <p role="status" className="body-copy">Opening your account…</p> : <>
       <button className="primary-button" disabled={busy || inspecting} onClick={() => void onCreate(true)}>Enter<ArrowUpRight size={20} /></button>
       <button className="secondary-button" disabled={busy || inspecting} onClick={() => picker.current?.click()}><Upload size={18} />Use existing account</button>
       <input ref={picker} type="file" accept=".png,.pdf,.receiz,.receizkey,.json,application/octet-stream" hidden onChange={event => { const selected = event.target.files?.[0] ?? null; event.target.value = ''; void chooseFile(selected); }} />

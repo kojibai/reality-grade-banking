@@ -1,6 +1,6 @@
 # Reality-Grade Banking
 
-[![Verify reference](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml/badge.svg?branch=feat%2Freceiz-bank)](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml) [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE) [![Receiz v129](https://img.shields.io/badge/Receiz-129.0.0-2349d8.svg)](package.json) [![Matching native source](https://img.shields.io/badge/Native%20source-reproducible-16836b.svg)](native/README.md)
+[![Verify reference](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml) [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE) [![Receiz v129](https://img.shields.io/badge/Receiz-129.0.0-2349d8.svg)](package.json) [![Matching native source](https://img.shields.io/badge/Native%20source-reproducible-16836b.svg)](native/README.md)
 
 **Your value should carry its proof.**
 
@@ -12,7 +12,7 @@ The Bankeiz reference application and receiving integration kit: a mobile bankin
 
 One account view brings the rails together. The app keeps Send and Receive central, with Account, Market, Deposit, Assets and Ledger in persistent bottom navigation. The verified proof object is the source of authority for ownership, exact value and carried history. A listing, image, account projection or service response cannot create financial authority.
 
-[Conformance Console](https://bank.receiz.com/conformance/) · [Receiving kit](institution/README.md) · [Receiving standard](institution/receiving-standard.md) · [Run locally](#run-locally) · [Release process](docs/release-process.md) · [Licensing](#licensing)
+[Conformance Console](https://bankeiz.com/conformance/) · [Receiving kit](institution/README.md) · [Receiving standard](institution/receiving-standard.md) · [Run locally](#run-locally) · [Release process](docs/release-process.md) · [Licensing](#licensing)
 
 ## Build a receiver
 
@@ -35,6 +35,8 @@ Inspection verifies carried evidence. It does not acquire custody, prove current
 
 Open `/conformance/` locally for the browser workspace: seven real reference checks, original Reserve Note inspection, the receiving requirements and downloadable evidence. It loads independently from the Bank, reads selected PNGs on the device and performs no financial actions. Local reference results and recorded MCP evidence remain separate from institution assessment.
 
+See the [current function boundaries](docs/current-function-boundaries.md) and [native financial adapter contract](docs/bank-prepared-operation-contract.md) for the exact remaining production work. Generic proof-history verification alone does not establish financial effects.
+
 ## Current capability boundaries
 
 | Surface | Current state |
@@ -45,8 +47,8 @@ Open `/conformance/` locally for the browser workspace: seven real reference che
 | Account assets/history | Retained verified sources plus public showcase discovery; private additions depend on host service/admission |
 | Card deposits | Receiz SDK checkout/status composition, embedded inside Bank; a live payment requires customer operation and credit confirmation |
 | Physical assets | Sealed intake and carried delivery instructions; actual custodian acceptance, transferable ownership and fractional sales remain unfinished |
-| Digital Send / exchange | Review/request UI and native SDK primitives; full Bank execution adapter remains unfinished |
-| Asset creation | Sealed definition/authorship; funded issuance, markets and buybacks remain unfinished |
+| Digital Send / exchange | In-bank request/review/recovery composition; production preparation and execution remain gated pending admitted financial effects |
+| Asset creation | Sealed definition/authorship plus funded-creation review; native backing and issuance effects require qualification |
 | Reserve Notes | Funded native creation, receiving request, qualified handoff and Reserve redemption integration; production migration/signer/service/hardware qualification remains |
 | Settlement Notes | Matching artwork; separate signed funding/custody/credit extension remains unfinished |
 | Institution receiving | Public verification, integration contracts and local checks; each institution needs its own authorized native integration and live assessment |

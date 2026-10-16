@@ -11,7 +11,7 @@ it('generates the bank QR and writes only the public request URL to NFC on expli
   const write = vi.fn().mockResolvedValue(undefined); vi.stubGlobal('isSecureContext', true); Object.assign(window, { NDEFReader: class { write = write; } });
   const host = document.createElement('div'), root = createRoot(host);
   try { act(() => root.render(<LiveReceive identity={{ binding: { identityOwnerReceizId: 'receiz_device_fixture', artifactOwnerReceizId: 'test-public-coordinate' } } as OpenIdentity} />));
-    expect(host.querySelector('svg[aria-label="Your Bankeiz payment QR"]')).not.toBeNull(); expect(write).not.toHaveBeenCalled();
+    expect(host.querySelector('svg[aria-label="Your payment QR"]')).not.toBeNull(); expect(write).not.toHaveBeenCalled();
     expect(host.querySelector('.payment-link')!.textContent).toBe('https://bankeiz.com/?to=test-public-coordinate');
     await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Set up NFC tag'))!.click());
     expect(write.mock.calls[0][0]).toEqual({ records: [{ recordType: 'url', data: 'https://bankeiz.com/?to=test-public-coordinate' }] });

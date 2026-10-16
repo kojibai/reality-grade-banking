@@ -21,7 +21,7 @@ it('opens the public activity feed without simulated bank receipts', () => {
 });
 it('keeps an unopened identity personal history separate from the public feed and demo', () => {
   network.state = feed(); const host = mount(); act(() => [...host.querySelectorAll('button')].find(button => button.textContent === 'My history')!.click());
-  expect(host.textContent).toContain('Receiz ID'); expect(host.textContent).not.toContain('Public source 99'); expect(host.textContent).not.toContain('Demo receipt');
+  expect(host.textContent).toContain('Open your account'); expect(host.textContent).not.toContain('Public source 99'); expect(host.textContent).not.toContain('Demo receipt');
 });
 it('appends visible rows automatically before the list end', () => {
   let reveal: ((items: { isIntersecting: boolean }[]) => void) | undefined;

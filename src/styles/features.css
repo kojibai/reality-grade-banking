@@ -96,8 +96,9 @@
 .profile-public-id { display: block; margin-top: 9px; color: var(--navy); font-size: 15px; font-weight: 550; line-height: 1.55; overflow-wrap: anywhere; user-select: all; }
 .profile-identity p { margin-top: 7px; color: #788597; font-size: 12px; line-height: 1.5; }
 .identity-profile > .primary-button { margin-top: 21px; }
-.identity-profile :is(.bank-connection, .proof-portability) { margin: 19px 0 0; font-size: 12px; }
-.identity-profile :is(.bank-connection, .proof-portability) > summary { padding: 12px 0; color: #64768d; font-size: 12px; cursor: pointer; }
+.identity-profile :is(.bank-connection, .proof-portability) { display: block; margin: 4px 0 0; font-size: 12px; }
+.identity-profile .proof-portability { margin-top: 12px; }
+.identity-profile :is(.bank-connection, .proof-portability) > summary { padding: 9px 0; min-height: 40px; color: #64768d; font-size: 12px; cursor: pointer; }
 .profile-owner-coordinate { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
 .profile-owner-coordinate span { display: block; font-size: 10px; color: #7c8797; }
 .profile-owner-coordinate code { display: block; margin-top: 6px; color: #64768d; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; user-select: all; }
@@ -234,3 +235,5 @@
 .proof-import-items li > span { color: #71809a; }
 .proof-import-items code { font-size: .74rem; }
 .proof-import-items .text-button { align-self: flex-start; display: flex; align-items: center; gap: .35rem; }
+
+.native-operation-fields{border:0;padding:0;margin:0;min-width:0}.transaction-proof-details,.deposit-consent-details{margin:18px 0;color:var(--muted,#7e8ba0);font-size:12px;line-height:1.7}.transaction-proof-details summary,.deposit-consent-details summary{cursor:pointer;font-weight:550}.transaction-proof-details p{overflow-wrap:anywhere;margin-top:10px}.deposit-consent-details>p{margin-top:12px}.native-operation-review strong{overflow-wrap:anywhere;text-align:right}.native-operation-result .bank-execution-recovery{margin-top:22px}

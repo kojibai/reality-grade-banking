@@ -2,7 +2,7 @@ import type { ReceizClient, ReceizOperationPlanV124, ReceizPortableExecutionTran
 import { BANK_APPLICATION_ID } from './config';
 import { loadReceiz } from './client';
 type ZeroWriteReason = ReceizZeroWriteFailureV124['reasonCode'];
-export interface BankExecutionCheckpoint { schema: 'bank.execution-checkpoint.v1'; operationId: string; plan: ReceizOperationPlanV124; transitionSet: ReceizPortableExecutionTransitionSetV124; state: 'prepared' | 'unknown' | 'committed' | 'zero-write'; recovery?: ReceizPortableExecutionTransitionRecoveryV124; zeroWriteReason?: ZeroWriteReason; }
+export interface BankExecutionCheckpoint { schema: 'bank.execution-checkpoint.v1'; operationId: string; plan: ReceizOperationPlanV124; transitionSet: ReceizPortableExecutionTransitionSetV124; state: 'prepared' | 'unknown' | 'committed' | 'zero-write'; recovery?: ReceizPortableExecutionTransitionRecoveryV124; zeroWriteReason?: ZeroWriteReason; accountSubjectId?: string; sourcesRestored?: true; }
 export interface BankExecutionStore { load(): Promise<BankExecutionCheckpoint | null>; saveNew(value: BankExecutionCheckpoint): Promise<void>; replace(value: BankExecutionCheckpoint): Promise<void>; }
 export interface BankExecutionReview { confirmationDigest: string; participantCount: number; writesPerformed: 0; }
 export type BankExecutionResult = { status: 'committed'; recovery: ReceizPortableExecutionTransitionRecoveryV124 } | { status: 'zero-write'; reasonCode: string } | { status: 'unknown'; operationId: string };
@@ -52,8 +52,8 @@ export function createBankExecution(client: { execution: Pick<ReceizClient['exec
     await store!.replace({ ...checkpoint, state: 'unknown' });
     return { status: 'unknown', operationId: checkpoint.operationId };
   }
-  async function inspect(plan: ReceizOperationPlanV124, transitionSet: ReceizPortableExecutionTransitionSetV124): Promise<BankExecutionReview> {
-    const checkpoint: BankExecutionCheckpoint = structuredClone({ schema: 'bank.execution-checkpoint.v1', operationId: plan.attemptId, plan, transitionSet, state: 'prepared' });
+  async function inspect(plan: ReceizOperationPlanV124, transitionSet: ReceizPortableExecutionTransitionSetV124, accountSubjectId?: string): Promise<BankExecutionReview> {
+    const checkpoint: BankExecutionCheckpoint = structuredClone({ schema: 'bank.execution-checkpoint.v1', operationId: plan.attemptId, plan, transitionSet, state: 'prepared', ...(accountSubjectId ? { accountSubjectId } : {}) });
     const admitted = await admit(checkpoint);
     const review = Object.freeze({ confirmationDigest: admitted.plan.exactPlanDigest, participantCount: admitted.source.members.length, writesPerformed: 0 as const });
     reviews.set(review, checkpoint); return review;

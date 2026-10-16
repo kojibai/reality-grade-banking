@@ -24,9 +24,11 @@ import { appendWalletPoint } from './wallet-series';
 import { parsePrivateHistoryPage, privateHistoryPath, type PrivateHistoryPage } from './private-history';
 import { createBankExecutionRecovery, type BankExecutionRecovery } from './bank-execution-recovery';
 import { deviceBankExecutionStore } from './bank-execution-vault';
+import { createBankCommittedSourceRestoration } from './bank-committed-sources';
 import { initializeFreshBankAccount } from './new-account-genesis';
 
 export interface OpenIdentity {
+  operations?: () => Promise<import('./bank-operations').BankOperations>;
   accountProof?: () => Promise<import('./account-proof').VerifiedAccountProof>;
   accountProofSharing?: () => Promise<import('./account-proof-sharing').AccountProofSharing>;
   proofLibrary?: () => Promise<import('./proof-library').ProofLibrary>;
@@ -265,7 +267,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     commit: sources => retainProofBatch(binding, sources),
   })).catch(cause => { proofLibraryPromise = undefined; throw cause; });
   const nativeSessions = new WeakMap<ReceizClient, Map<string, ReturnType<typeof createBankNativeSession>>>();
-  async function connectNativeAccount(approved: boolean) {
+  async function connectNativeContext(approved: boolean, rails: readonly ('reserve' | 'settlement')[] = []) {
     if (!approved || lifetime.signal.aborted) throw new Error('BANK_ACCOUNT_PROOF_CONSENT_REQUIRED');
     if (nativeConnectionBusy) throw new Error('BANK_SESSION_IN_PROGRESS');
     nativeConnectionBusy = true;
@@ -313,11 +315,53 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
         } });
         sessionsBySource.set(source.artifactDigest, sessions);
       }
-      const session = await sessions.connect(source);
-      return { subjectId: source.subjectId, sourceDigest: source.artifactDigest, sessionExpiresKaiUPulse: session.expiresAtKaiUPulse, readyToTransact: false as const };
+      const session = await sessions.connect(source, rails);
+      return { client: current, session, source };
     } catch (error) { throw error instanceof BankConnectionError ? error : new BankConnectionError(stage, error); }
     finally { nativeConnectionBusy = false; }
   }
+  async function connectNativeAccount(approved: boolean) {
+    const { source, session } = await connectNativeContext(approved);
+    return { subjectId: source.subjectId, sourceDigest: source.artifactDigest, sessionExpiresKaiUPulse: session.expiresAtKaiUPulse, readyToTransact: false as const };
+  }
+  let operationsPromise: Promise<import('./bank-operations').BankOperations> | undefined;
+  const restoreCommittedBankSources = createBankCommittedSourceRestoration({
+    store: deviceBankExecutionStore(binding), ownerReceizId: binding.artifactOwnerReceizId,
+    assertOpen: () => { if (lifetime.signal.aborted) throw Error('BANK_EXECUTION_IDENTITY_CLOSED'); },
+    openSubject: file => openBankSubjectSource(file, ownerAdmission),
+    saveSource: (exact, filename, digest, role) => saveDepositSource(binding, exact, filename, digest, role),
+  });
+  const operations = () => operationsPromise ??= import('./bank-operations').then(({ createBankOperations }) => createBankOperations({
+    ownerReceizId: binding.artifactOwnerReceizId, store: deviceBankExecutionStore(binding),
+    assertOpen: () => { if (lifetime.signal.aborted) throw Error('BANK_EXECUTION_IDENTITY_CLOSED'); },
+    context: async rails => {
+      await restoreCommittedBankSources();
+      const report = await nativeReadiness();
+      if (report.missingScopes.length) throw Error('BANK_OPERATION_ACCESS_REQUIRED');
+      if (report.unavailableOperations.length) throw Error('BANK_OPERATION_RUNTIME_UNAVAILABLE');
+      return connectNativeContext(true, rails);
+    },
+    retainCommitted: restoreCommittedBankSources,
+    sources: async operation => {
+      const digests = 'assetDigest' in operation ? [operation.assetDigest] : operation.kind === 'fund-asset' && operation.definition.linkedProofDigest ? [operation.definition.linkedProofDigest] : [];
+      if (!digests.length) return [];
+      const saved = await loadDepositSources(binding, { requireComplete: true, originalsOnly: true, digests }), sources: import('@receiz/sdk').ReceizPortableSealedArtifactV124[] = [];
+      for (const source of saved) {
+        let identitySource = false;
+        try { await sdk.readReceizIdentityArtifact(source.bytes); identitySource = true; } catch { /* Only non-identity proof originals may be supplied here. */ }
+        if (identitySource) throw Error('BANK_OPERATION_IDENTITY_SOURCE_FORBIDDEN');
+        const opened = await unsigned.artifacts.verifyAndOpen(new File([new Uint8Array(source.bytes)], source.filename));
+        if (opened.sealedArtifact.kind !== 'receiz.native-record-seal') throw Error('BANK_OPERATION_CURRENT_SOURCE_REQUIRED');
+        if (opened.sealedArtifact.continuity.ownerReceizId !== binding.artifactOwnerReceizId || !digests.includes(opened.sealedArtifact.artifactSha256)) throw Error('BANK_OPERATION_SOURCE_MISMATCH');
+        sources.push(await sdk.transportReceizSealedArtifactV124(opened.sealedArtifact));
+      }
+      return sources;
+    },
+    lock: async operation => {
+      if (!navigator.locks) throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');
+      return await navigator.locks.request(`receiz-bank-execution:${binding.artifactSha256}`, { signal: lifetime.signal }, operation);
+    },
+  })).catch(error => { operationsPromise = undefined; throw error; });
   async function accountProof() {
     const module = await import('./account-proof');
     if (!module.accountProofSourceConfigured()) throw Error('ACCOUNT_PROOF_SOURCE_UNAVAILABLE');
@@ -338,7 +382,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
         return current.request(path, { method, ...(body ? { body } : {}) });
       } });
   }
-  return { accountProof, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { operations, accountProof, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

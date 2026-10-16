@@ -72,11 +72,16 @@ export async function saveDepositSource(binding: { artifactSha256: string }, byt
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(new Error('Your identity changed before the proof was saved.'));
   }); } finally { db.close(); }
 }
-export async function loadDepositSources(binding: { artifactSha256: string }, options: { requireComplete?: boolean; originalsOnly?: boolean } = {}): Promise<{ bytes: Uint8Array; filename: string; role?: PrivateSource['role'] }[]> {
+export async function loadDepositSources(binding: { artifactSha256: string }, options: { requireComplete?: boolean; originalsOnly?: boolean; digests?: readonly string[] } = {}): Promise<{ bytes: Uint8Array; filename: string; role?: PrivateSource['role'] }[]> {
+  if (options.digests && (options.digests.length > 8 || options.digests.some(digest => !/^[a-f0-9]{64}$/u.test(digest)))) throw Error('PROOF_SOURCE_INVALID');
   const saved = await held(); if (!saved) { if (options.requireComplete) throw Error('PROOF_IDENTITY_CLOSED'); return []; }
   if (options.requireComplete) await sameSavedIdentity(saved, binding);
   const db = await database(); let values: PrivateSource[];
-  try { values = await new Promise((resolve, reject) => { const req = db.transaction('sources').objectStore('sources').getAll(); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); } finally { db.close(); }
+  try {
+    const store = db.transaction('sources').objectStore('sources');
+    values = options.digests ? (await Promise.all([...new Set(options.digests)].map(digest => new Promise<PrivateSource | undefined>((resolve, reject) => { const req = store.get(`${binding.artifactSha256}|${digest}`); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); })))).filter((value): value is PrivateSource => Boolean(value))
+      : await new Promise((resolve, reject) => { const req = store.getAll(); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
+  } finally { db.close(); }
   const sources: { bytes: Uint8Array; filename: string; role?: PrivateSource['role'] }[] = [];
   for (const value of values.filter(value => value.identityDigest === binding.artifactSha256 && (!options.originalsOnly || !value.role))) {
     try { const bytes = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(value.iv), additionalData: new TextEncoder().encode(value.key) }, saved.wrappingKey, value.bytes); sources.push({ bytes: new Uint8Array(bytes), filename: value.filename, ...(value.role ? { role: value.role } : {}) }); } catch (cause) { if (options.requireComplete) throw cause; /* Unavailable exact sources cannot project holdings. */ }
@@ -219,6 +224,7 @@ export async function saveBankOperation(binding: { artifactSha256: string }, val
     // These are exact retained mechanics, not proof admission. A changed plan
     // or source requires a new human review and cannot overwrite this intent.
     if (JSON.stringify(previous.plan) !== JSON.stringify(value.plan) || JSON.stringify(previous.transitionSet) !== JSON.stringify(value.transitionSet)) throw new Error('BANK_EXECUTION_INTENT_CHANGED');
+    if (previous.accountSubjectId !== value.accountSubjectId || previous.sourcesRestored && !value.sourcesRestored) throw new Error('BANK_EXECUTION_ACCOUNT_SOURCE_CHANGED');
     if (['committed', 'zero-write'].includes(previous.state) && (previous.state !== value.state || JSON.stringify(previous.recovery) !== JSON.stringify(value.recovery))) throw new Error('BANK_EXECUTION_TERMINAL');
   }
   const saved = await held(); if (!saved) throw new Error('BANK_EXECUTION_IDENTITY_UNAVAILABLE');
