@@ -8,6 +8,9 @@ const fixture = vi.hoisted(() => ({ identity: { binding: { identityOwnerReceizId
 vi.mock('../src/receiz/useNativeAccount', () => ({ useNativeAccount: () => ({ identity: fixture.identity, wallet: null, opening: false, busy: false, error: null, observedAt: null, refresh: async () => {}, forget: async () => {} }) }));
 vi.mock('../src/features/market/Market', () => ({ Market: () => null }));
 vi.mock('../src/features/ledger/Ledger', () => ({ Ledger: () => null }));
+// Route/modal tests use a local account fixture. Public discovery has its own
+// tests and must not make localhost requests while exercising navigation.
+vi.mock('../src/receiz/usePublicMarket', () => ({ usePublicMarket: () => ({ catalog: null, status: 'loading', refresh: async () => {} }) }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 it('reopens Deposit after admission when returning from card checkout', async () => {
   history.replaceState(null, '', '/#account/deposit');
