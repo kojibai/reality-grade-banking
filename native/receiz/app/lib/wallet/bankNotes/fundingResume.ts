@@ -9,7 +9,7 @@ export type BankFundingResume = Readonly<{
 function challenge(digest: string, at: number) { return receizBase64UrlEncode(new TextEncoder().encode(`receiz.bank.note-funding-resume.v1:${digest}:${at}`)); }
 export async function createBankFundingResume(keyFile: ReceizKeyFileV1, passphrase: string, digest: string): Promise<BankFundingResume> { const issuedAtMs = Date.now(); if (!/^[a-f0-9]{64}$/.test(digest))
     throw Error("BANK_NOTE_FUNDING_RESUME_INVALID"); const signed = await signReceizIdentityLoginProof({ keyFile, passphrase, challengeB64Url: challenge(digest, issuedAtMs) }); return { schema: "receiz.bank.note-funding-resume.v1", authorizationDigest: digest, issuedAtMs, signatureB64Url: signed.signatureB64Url }; }
-export async function verifyBankFundingResume(input: unknown, auth: KairosOfflineCashFundingAuthorizationV1, nowMs = Date.now()) {
+export async function verifyBankFundingResume(input: unknown, auth: Pick<KairosOfflineCashFundingAuthorizationV1, "authorizationDigest" | "identityPublicKeyRawB64u" | "identityAlgorithm">, nowMs = Date.now()) {
     const v = input as BankFundingResume;
     if (!v || Object.keys(v).sort().join("|") !== "authorizationDigest|issuedAtMs|schema|signatureB64Url" || v.schema !== "receiz.bank.note-funding-resume.v1" || v.authorizationDigest !== auth.authorizationDigest || !Number.isSafeInteger(v.issuedAtMs) || v.issuedAtMs > nowMs + 30000 || nowMs - v.issuedAtMs > 300000 || !v.signatureB64Url)
         throw Error("BANK_NOTE_FUNDING_RESUME_INVALID");

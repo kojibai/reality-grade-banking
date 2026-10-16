@@ -16,18 +16,16 @@ rail and redemption basis.
 
 The shared renderer accepts a typed rail and produces matching RESERVE NOTE / SETTLEMENT NOTE mastheads, PROOF-BACKED VALUE / PROOF-NATIVE VALUE subtitles respectively, exact denomination, four corner amounts and amount-in-words. The print line and RN/SN serial prefix identify the rail. These templates are unissued artwork until the existing native financial workflow admits a note.
 
-The Bank's runtime callback still receives only `(amountUsdCents, noteId, compact)` and defaults to Reserve. No Settlement create option has been enabled in the real money flow. No note source, funding request, signature purpose, transport schema, account mutation or redemption behavior has been changed by the artwork work.
+The runtime callback receives `(amountUsdCents, noteId, compact, rail)`. The Create note panel's **From** field selects Reserve or Settlement; the same choice drives the preview and exported image. A retained attempt keeps its exact rail and source through restart. Deposit derives its account from the admitted source and displays exact Phi for Settlement.
 
-## Required native extension
+## Native proof and API composition
 
-The existing Receiz host explicitly admits `receiz.bank.reserve-allocation.v1`, derives funding from `settledBalanceUsdCents`, activates qualified Reserve custody and emits `receiz.bank.note-reserve-credit.v1`. Its atomic accounting functions debit and credit funded Reserve. Reusing those proofs with a Settlement label would be incorrect.
+Settlement authorization, allocation, qualified custody, funded image admission, terminal redemption and credit verification use distinct source-bound schemas. The API enforces each rail's own write scope. The protected issuer refuses any opening that differs from the original signed amount or rail. Existing Reserve sources and interrupted attempts remain compatible.
 
-Before enabling Settlement Notes:
+The provider-free host composition is `createBankNoteServicesForSource` in `app/lib/wallet/bankNotes/sourceServices.server.ts`. Its store must come from the shared native account/activity writer being completed in the Crystal source infrastructure task. The host integration contract is [bankeiz-settlement-notes.md](https://github.com/kojibai/receiz/blob/main/docs/integrations/bankeiz-settlement-notes.md).
 
-1. Bind `settlement` into the signed funding authorization, exact verified account predecessor, allocation artifact, qualified consumption chain, complete note source and terminal credit. Preserve legacy Reserve source verification and recovery.
-2. Derive available Settlement from verified proof-carried sources and their lawful admission, including exclusive allocation/encumbrance. An observed display balance or a database row alone must never authorize funding. A note allocation must remove the same value from other spending paths.
-3. Require one atomic Settlement debit per exact operation and one atomic Settlement credit after irreversible exact-head consumption. The receiver cannot select Reserve for a Settlement source or convert the source by editing a request or the image.
-4. Retain exact-Phi redemption for Settlement and original-dollar redemption for Reserve, together with the selected account head and rail, through retries, transfer, image saving and redemption. Recovery must never allocate or credit another rail, abandon an unknown outcome, or recover a different amount.
-5. Test real v129 sealing/admission, source mutation and rail substitution rejection, once-only issuance/redemption, concurrent double spending, interrupted outcomes, restoration, older Reserve notes and the complete image round trip. Require the existing independent-verification, conformance and release gates before claiming live Settlement support.
+## Remaining production boundary
 
-This is an integration contract, not evidence that the Settlement financial extension is implemented or qualified. Existing Reserve financial release prerequisites remain in `offline-notes-release.md`.
+The current main compatibility selector still supplies the prior Reserve adapter. Production Settlement funding refuses before a debit until the shared native writer is selected. The proof/UI tests are not a claim that the financial writer or real hardware has been qualified. The native writer must preserve one atomic commit domain across account value, allocation capacity, consumed note custody, activity and exact idempotent outcomes. It must use complete admitted source scope rather than a display balance or a new independent wallet.
+
+This checkpoint includes no new database migration or package version change. Installed SDK, MCP and AI skills remain 129.0.0. Existing real-device and production release prerequisites remain in `offline-notes-release.md`.

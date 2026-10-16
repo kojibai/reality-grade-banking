@@ -2,9 +2,9 @@
   "schema": "receiz.bank.browser-reference-checks.v1",
   "receizVersion": "129.0.0",
   "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
-  "verifierModuleSha256": "388cbe72e2ab110cba1feec7a57ddace2395a54d2a6b07a93b1a825446c1b052",
-  "startedAt": "2026-10-15T17:58:51.353Z",
-  "completedAt": "2026-10-15T17:59:00.642Z",
+  "verifierModuleSha256": "db56eaa6bbb833732f59a18bc7170dd3fee5696cc8c6949a5b4997304f17f6bf",
+  "startedAt": "2026-10-16T00:08:58.370Z",
+  "completedAt": "2026-10-16T00:08:58.749Z",
   "checks": [
     {
       "id": "release",
@@ -13,17 +13,17 @@
         "sdkVersion": "129.0.0",
         "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065"
       },
-      "durationMs": 2504
+      "durationMs": 138
     },
     {
       "id": "integrity",
       "passed": true,
       "evidence": {
-        "moduleSha256": "388cbe72e2ab110cba1feec7a57ddace2395a54d2a6b07a93b1a825446c1b052",
+        "moduleSha256": "db56eaa6bbb833732f59a18bc7170dd3fee5696cc8c6949a5b4997304f17f6bf",
         "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52",
         "verificationIsFinancialAdmission": false
       },
-      "durationMs": 4460
+      "durationMs": 77
     },
     {
       "id": "source",
@@ -33,7 +33,7 @@
         "unsignedPaymentJson": "Invalid PNG: bad signature",
         "sourceRequired": true
       },
-      "durationMs": 10
+      "durationMs": 2
     },
     {
       "id": "custody",
@@ -42,7 +42,7 @@
         "forgedHandleRefused": true,
         "transportedPropertyBagRefused": true
       },
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "transport",
@@ -51,7 +51,7 @@
         "maximumCarrierBytes": 8388608,
         "oversizeRefused": true
       },
-      "durationMs": 3
+      "durationMs": 0
     },
     {
       "id": "temporal",
@@ -128,7 +128,7 @@
         ],
         "reportIsTemporalAuthority": false
       },
-      "durationMs": 2253
+      "durationMs": 154
     },
     {
       "id": "edges",
@@ -155,7 +155,7 @@
         "signingPerformed": false,
         "commitsPerformed": 0
       },
-      "durationMs": 53
+      "durationMs": 6
     }
   ],
   "localChecksPassed": true,

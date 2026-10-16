@@ -13,7 +13,7 @@ export async function openReserveNoteImage(bytes) {
 export function inspectReserveNote(handle) {
   const head = readBankFundedNoteHead(handle);
   return Object.freeze({
-    schema: 'receiz.bank.receiver-note-inspection.v1', rail: 'reserve',
+    schema: 'receiz.bank.receiver-note-inspection.v1', rail: handle.rail,
     noteId: handle.noteId, noteArtifactSha256: handle.noteArtifactSha256,
     fundingArtifactSha256: handle.fundingArtifactSha256, allocationId: handle.allocationId,
     amountUsdCents: handle.amountUsdCents, amountPhiMicro: handle.amountPhiMicro,

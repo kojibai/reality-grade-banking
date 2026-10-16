@@ -1,4 +1,4 @@
-import { verifyBankReserveAllocationArtifact } from "./allocation";
+import { verifyBankNoteAllocation, bankAllocationRail, bankAllocatedPhi, type BankNoteRail } from "./allocationEvidence";
 import { parseReceizPortableAssetDocument } from "../../../../packages/receiz-sdk/src/portableAsset";
 import { createReceizArtifactAdmissionEngine } from "../../../../packages/receiz-sdk/src/artifactAdmission";
 import { verifyReceizArtifactWithCanonicalRoots } from "../../../../packages/receiz-sdk/src/artifactVerification";
@@ -22,6 +22,7 @@ export type BankFundedNoteSource = Readonly<{
     noteArtifacts: readonly Uint8Array[];
 }>;
 export type BankVerifiedFundedNote = Readonly<{
+    rail: BankNoteRail;
     noteId: string;
     noteArtifactSha256: string;
     fundingArtifactSha256: string;
@@ -64,8 +65,8 @@ export async function verifyBankFundedNoteSource(input: BankFundedNoteSource, op
     if ("code" in admission || admission.verdict === "profile-denied" || admission.profile !== "portable-state")
         throw new Error("BANK_NOTE_COMPLETE_FUNDING_SOURCE_REQUIRED");
     const fundingDocument = await parseReceizPortableAssetDocument(admission.recoveredState);
-    const evidence = fundingDocument.settlement.state === "bank_allocated_reserve"
-        ? await verifyBankReserveAllocationArtifact(source.fundingArtifactBytes, options)
+    const evidence = ["bank_allocated_reserve", "bank_allocated_settlement"].includes(String(fundingDocument.settlement.state))
+        ? await verifyBankNoteAllocation(source.fundingArtifactBytes, options)
         : await verifyKairosOfflineReserveFundingArtifactAdmission(admission);
     const allocationId = "allocationId" in evidence.funding ? evidence.funding.allocationId : null;
     const receiving = await verifyKairosNoteReceivingCustody(source.fundingCustody, { roots: options.roots });
@@ -74,7 +75,7 @@ export async function verifyBankFundedNoteSource(input: BankFundedNoteSource, op
     if (receiving.qualificationDigest !== funding.qualificationDigest || receiving.installationCommitment !== funding.installationCommitment)
         fail();
     let qualification = await createReceizOfflineNoteCustodyQualification({ profileId: receiving.profileId, profileEvidenceDigest: receiving.profileEvidenceDigest, adapterKind: receiving.adapterKind, custodyPublicKeyRawB64u: receiving.custodyPublicKeyRawB64u, stateCommitment: receiving.stateCommitment, stateSequence: receiving.stateSequence });
-    let balancePhi = funding.fundedReservePhiMicro, balanceUsd = funding.amountUsdCents;
+    let balancePhi = bankAllocatedPhi(funding), balanceUsd = funding.amountUsdCents;
     let accountHead: string | null = null, kai = BigInt(funding.fundedAtKai);
     let finalReceipt: ReceizOfflineReserveWebAuthnConsumptionReceiptV1 | null = null;
     for (const candidate of source.reserveConsumptions) {
@@ -140,7 +141,7 @@ export async function verifyBankFundedNoteSource(input: BankFundedNoteSource, op
         previous = opened;
     }
     const note = previous!;
-    const result = Object.freeze({ noteId: note.packet.noteId, noteArtifactSha256: note.artifactSha256, fundingArtifactSha256: evidence.artifactSha256, allocationId, amountPhiMicro: finalReceipt!.amountPhiMicro, amountUsdCents: finalReceipt!.amountUsdCents, usdPerPhiMicrocents: finalReceipt!.usdPerPhiMicrocents });
+    const result = Object.freeze({ rail: bankAllocationRail(funding), noteId: note.packet.noteId, noteArtifactSha256: note.artifactSha256, fundingArtifactSha256: evidence.artifactSha256, allocationId, amountPhiMicro: finalReceipt!.amountPhiMicro, amountUsdCents: finalReceipt!.amountUsdCents, usdPerPhiMicrocents: finalReceipt!.usdPerPhiMicrocents });
     custody.set(result, Object.freeze({ source, note }));
     return result;
 }

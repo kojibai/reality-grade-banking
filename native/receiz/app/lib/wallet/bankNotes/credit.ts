@@ -10,7 +10,7 @@ import type { ReceizSignatureV4RootPublicKey } from "../../../../packages/receiz
 import { BANK_RESERVE_ALLOCATION_SIGN_CONTEXT, type BankAllocationRootSignature } from "./allocation";
 import { verifyBankNoteRedemption } from "./redemption";
 export type BankReserveCreditBasis = Readonly<{
-    schema: "receiz.bank.note-reserve-credit.v1";
+    schema: "receiz.bank.note-reserve-credit.v1" | "receiz.bank.note-settlement-credit.v1";
     noteId: string;
     redemptionDigest: string;
     terminalArtifactSha256: string;
@@ -23,7 +23,7 @@ export type BankReserveCreditBasis = Readonly<{
     privateAccountSnapshotSha256: string;
 }>;
 export type BankReserveCreditSnapshot = Readonly<{
-    schema: "receiz.bank.credit-cash-snapshot.v1";
+    schema: "receiz.bank.credit-cash-snapshot.v1" | "receiz.bank.settlement-credit-cash-snapshot.v1";
     noteId: string;
     receiverUserId: string;
     receiverKeyId: string;
@@ -39,7 +39,7 @@ const held = new WeakMap<object, {
 }>();
 export const bankCreditSnapshotBytes = (value: BankReserveCreditSnapshot) => new TextEncoder().encode(canonicalizeReceizConstitution(value));
 export function bankCreditSigningBytes(basis: BankReserveCreditBasis) {
-    if (!basis || basis.schema !== "receiz.bank.note-reserve-credit.v1" || Object.keys(basis).sort().join("|") !== "acceptedAtKai|amountPhiMicro|amountUsdCents|creditLedgerId|noteId|privateAccountSnapshotSha256|receiverKeyId|receiverUserId|redemptionDigest|schema|terminalArtifactSha256" || ![basis.redemptionDigest, basis.terminalArtifactSha256, basis.receiverKeyId, basis.privateAccountSnapshotSha256].every(x => /^[a-f0-9]{64}$/.test(x)) || ![basis.amountPhiMicro, basis.amountUsdCents].every(x => /^[1-9][0-9]*$/.test(x)) || !/^(0|[1-9][0-9]*)$/.test(basis.acceptedAtKai))
+    if (!basis || !["receiz.bank.note-reserve-credit.v1","receiz.bank.note-settlement-credit.v1"].includes(basis.schema) || Object.keys(basis).sort().join("|") !== "acceptedAtKai|amountPhiMicro|amountUsdCents|creditLedgerId|noteId|privateAccountSnapshotSha256|receiverKeyId|receiverUserId|redemptionDigest|schema|terminalArtifactSha256" || ![basis.redemptionDigest, basis.terminalArtifactSha256, basis.receiverKeyId, basis.privateAccountSnapshotSha256].every(x => /^[a-f0-9]{64}$/.test(x)) || ![basis.amountPhiMicro, basis.amountUsdCents].every(x => /^[1-9][0-9]*$/.test(x)) || !/^(0|[1-9][0-9]*)$/.test(basis.acceptedAtKai))
         throw Error("BANK_NOTE_CREDIT_INVALID");
     return new TextEncoder().encode(`${BANK_RESERVE_ALLOCATION_SIGN_CONTEXT}\0${canonicalizeReceizConstitution(basis)}`);
 }
@@ -55,28 +55,31 @@ export async function verifyBankReserveCreditArtifact(bytesInput: Uint8Array, pr
     roots?: ReadonlyMap<string, ReceizSignatureV4RootPublicKey>;
     terminalSource: Uint8Array;
 }>) {
+    privateSnapshot = privateSnapshot.slice();
+    const terminalSource = options.terminalSource.slice();
     const bytes = bytesInput.slice(), verification = options.roots ? await verifyReceizArtifactWithCanonicalRoots(bytes, options.roots) : await verifyReceizArtifact(bytes);
     const a = await createReceizArtifactAdmissionEngine({ canonicalSignatureV4RootPublicKeys: options.roots })(verification, { profile: "portable-state" });
     if (a.verdict === "profile-denied" || "code" in a || a.profile !== "portable-state")
         throw Error("BANK_NOTE_CREDIT_SOURCE_REQUIRED");
     const document = await parseReceizPortableAssetDocument(a.recoveredState), payload = await extractReceizPortableAssetPayload(document);
-    if (document.assetType !== "reserve_funding" || document.settlement.state !== "bank_note_reserve_credit" || payload.mimeType !== "application/json")
+    const rail = document.settlement.state === "bank_note_settlement_credit" ? "settlement" as const : "reserve" as const;
+    if (document.assetType !== (rail === "settlement" ? "proof_object" : "reserve_funding") || document.settlement.state !== `bank_note_${rail}_credit` || payload.mimeType !== "application/json")
         throw Error("BANK_NOTE_CREDIT_SOURCE_REQUIRED");
     const body = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(payload.bytes));
     if (Object.keys(body).sort().join("|") !== "credit|creditSignature")
         throw Error("BANK_NOTE_CREDIT_SOURCE_REQUIRED");
     const credit = body.credit as BankReserveCreditBasis;
     await verifyBankCreditSignature(credit, body.creditSignature, options.roots);
-    const terminal = await verifyBankNoteRedemption(options.terminalSource, options);
-    if (terminal.artifactSha256 !== credit.terminalArtifactSha256 || terminal.redemptionDigest !== credit.redemptionDigest || terminal.noteId !== credit.noteId || terminal.receiverUserId !== credit.receiverUserId || terminal.receiverKeyId !== credit.receiverKeyId || terminal.amountPhiMicro !== credit.amountPhiMicro || terminal.amountUsdCents !== credit.amountUsdCents || document.ownership.ownerReceizId !== `c_${credit.receiverKeyId.slice(0, 22)}.receiz.id` || document.provenance.root !== `receiz.bank.note-credit:${credit.noteId}`)
+    const terminal = await verifyBankNoteRedemption(terminalSource, options);
+    if (terminal.rail !== rail || credit.schema !== `receiz.bank.note-${rail}-credit.v1` || terminal.artifactSha256 !== credit.terminalArtifactSha256 || terminal.redemptionDigest !== credit.redemptionDigest || terminal.noteId !== credit.noteId || terminal.receiverUserId !== credit.receiverUserId || terminal.receiverKeyId !== credit.receiverKeyId || terminal.amountPhiMicro !== credit.amountPhiMicro || terminal.amountUsdCents !== credit.amountUsdCents || document.ownership.ownerReceizId !== `c_${credit.receiverKeyId.slice(0, 22)}.receiz.id` || document.provenance.root !== `receiz.bank.note-credit:${credit.noteId}`)
         throw Error("BANK_NOTE_CREDIT_BINDING_MISMATCH");
     if (await sha256ReceizBytes(privateSnapshot) !== credit.privateAccountSnapshotSha256)
         throw Error("BANK_NOTE_CREDIT_SNAPSHOT_MISMATCH");
     const snapshot = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(privateSnapshot)) as BankReserveCreditSnapshot;
-    if (snapshot.schema !== "receiz.bank.credit-cash-snapshot.v1" || Object.keys(snapshot).sort().join("|") !== "noteId|receiverKeyId|receiverUserId|reserveAfterUsdCents|reserveBeforeUsdCents|schema|walletAfterPhiMicro|walletBeforePhiMicro" || snapshot.noteId !== credit.noteId || snapshot.receiverKeyId !== credit.receiverKeyId || snapshot.receiverUserId !== credit.receiverUserId || ![snapshot.reserveBeforeUsdCents, snapshot.reserveAfterUsdCents, snapshot.walletBeforePhiMicro, snapshot.walletAfterPhiMicro].every(x => /^(0|[1-9][0-9]*)$/.test(x)) || BigInt(snapshot.reserveAfterUsdCents) - BigInt(snapshot.reserveBeforeUsdCents) !== BigInt(credit.amountUsdCents) || BigInt(snapshot.walletAfterPhiMicro) - BigInt(snapshot.walletBeforePhiMicro) !== BigInt(credit.amountPhiMicro))
+    if (snapshot.schema !== (rail === "settlement" ? "receiz.bank.settlement-credit-cash-snapshot.v1" : "receiz.bank.credit-cash-snapshot.v1") || Object.keys(snapshot).sort().join("|") !== "noteId|receiverKeyId|receiverUserId|reserveAfterUsdCents|reserveBeforeUsdCents|schema|walletAfterPhiMicro|walletBeforePhiMicro" || snapshot.noteId !== credit.noteId || snapshot.receiverKeyId !== credit.receiverKeyId || snapshot.receiverUserId !== credit.receiverUserId || ![snapshot.reserveBeforeUsdCents, snapshot.reserveAfterUsdCents, snapshot.walletBeforePhiMicro, snapshot.walletAfterPhiMicro].every(x => /^(0|[1-9][0-9]*)$/.test(x)) || BigInt(snapshot.reserveAfterUsdCents) - BigInt(snapshot.reserveBeforeUsdCents) !== (rail === "settlement" ? 0n : BigInt(credit.amountUsdCents)) || BigInt(snapshot.walletAfterPhiMicro) - BigInt(snapshot.walletBeforePhiMicro) !== BigInt(credit.amountPhiMicro))
         throw Error("BANK_NOTE_CREDIT_SNAPSHOT_MISMATCH");
-    const result = Object.freeze({ credit: Object.freeze(structuredClone(credit)), snapshot: Object.freeze(snapshot), artifactSha256: a.artifactSha256 });
-    held.set(result, { basis: credit, bytes,privateSnapshot:privateSnapshot.slice(),terminalSource:options.terminalSource.slice() });
+    const result = Object.freeze({ rail, credit: Object.freeze(structuredClone(credit)), snapshot: Object.freeze(snapshot), artifactSha256: a.artifactSha256 });
+    held.set(result, { basis: credit, bytes,privateSnapshot:privateSnapshot.slice(),terminalSource });
     return result;
 }
 

@@ -55,3 +55,50 @@ test('an interrupted transfer offers Resume and never claims ownership already m
     expect(host.textContent).toContain('Your note is transferred.');
   } finally { act(() => root.unmount()); }
 });
+test('Settlement note review binds its rail and deposit derives Settlement from verified inspection', async () => {
+  const create = vi.fn(async () => ({ noteId: 'settlement-fixture', rail: 'settlement', amountUsdCents: '10000', amountPhiMicro: '50000000', image: new Uint8Array([1]) }));
+  const identity = { offlineNotes: async () => ({ pending: async () => null, create }) } as unknown as OpenIdentity;
+  const host = document.createElement('div'), root = createRoot(host);
+  try {
+    await act(async () => root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()} />));
+    const from = host.querySelector('select[aria-label="From account"]') as HTMLSelectElement;
+    expect(from).not.toBeNull();
+    act(() => { from.value = 'settlement'; from.dispatchEvent(new Event('change', { bubbles: true })); }); act(() => click(host, 'Review note'));
+    expect(host.textContent).toContain('exact Phi'); expect(create).not.toHaveBeenCalled();
+    await act(async () => click(host, 'Create funded note'));
+    expect(create).toHaveBeenCalledExactlyOnceWith('10000', 'settlement');
+    expect(host.querySelector('img')?.alt).toContain('Settlement Note');
+  } finally { act(() => root.unmount()); }
+});
+test('recovery after a competing creation restores the pending rail and amount before resuming', async () => {
+  const pending = vi.fn().mockResolvedValueOnce(null).mockResolvedValue({ noteId: 'other-tab', rail: 'reserve', amountUsdCents: '12345' });
+  const create = vi.fn().mockRejectedValueOnce(new Error('BANK_NOTE_RESUME_EXACT_AMOUNT')).mockResolvedValue({ noteId: 'other-tab', rail: 'reserve', amountUsdCents: '12345', image: new Uint8Array([1]) });
+  const identity = { offlineNotes: async () => ({ pending, create }) } as unknown as OpenIdentity;
+  const host = document.createElement('div'), root = createRoot(host);
+  try {
+    await act(async () => root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()} />));
+    const from = host.querySelector('select[aria-label="From account"]') as HTMLSelectElement;
+    act(() => { from.value = 'settlement'; from.dispatchEvent(new Event('change', { bubbles: true })); });
+    act(() => click(host, 'Review note'));
+    await act(async () => click(host, 'Create funded note'));
+    expect(from.disabled).toBe(true); expect(from.value).toBe('reserve');
+    expect(host.textContent).toContain('$123.45');
+    await act(async () => click(host, 'Resume this note'));
+    expect(create).toHaveBeenLastCalledWith('12345');
+    expect(host.textContent).toContain('Your note is ready.');
+  } finally { act(() => root.unmount()); }
+});
+test('Settlement inspection and deposit preserve exact Phi beyond Number precision', async () => {
+  const value = { noteId: 'large-exact', rail: 'settlement', amountUsdCents: '100', amountPhiMicro: '9007199254740993' };
+  const identity = { offlineNotes: async () => ({ inspect: async () => value, deposit: async () => ({ ...value, proofBytes: new Uint8Array([1]), reserveAfterUsdCents: '0' }) }) } as unknown as OpenIdentity;
+  const host = document.createElement('div'), root = createRoot(host);
+  try {
+    await act(async () => root.render(<OfflineNotes identity={identity} mode="deposit" onBack={vi.fn()} onRefresh={vi.fn()} />));
+    const upload = host.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(upload, 'files', { value: [{ size: 1, arrayBuffer: async () => new Uint8Array([1]).buffer }] });
+    await act(async () => upload.dispatchEvent(new Event('change', { bubbles: true })));
+    expect(host.textContent).toContain('9,007,199,254.740993 Φ');
+    await act(async () => click(host, 'Deposit exact Phi'));
+    expect(host.querySelector('.success-amount')?.textContent).toBe('9,007,199,254.740993 Φ');
+  } finally { act(() => root.unmount()); }
+});

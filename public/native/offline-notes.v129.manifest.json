@@ -1,10 +1,10 @@
 {
   "schema": "receiz.bank.native-runtime-build.v1",
   "version": "129.0.0",
-  "moduleSha256": "60d72716b8c6f68ae861df4c5b60e7e2a344bd64e9f60f0a1e68391c10dbba55",
-  "sourceTreeSha256": "1bfc87d31eaaca9959929e1d82c0ea8c786f76654dd92ab94905979483e40820",
-  "inputs": 285,
-  "bytes": 2221431,
+  "moduleSha256": "13aa96bb1042951623bdba93db4504c86f3f9b7b1b01116ca2e958161e007d46",
+  "sourceTreeSha256": "1afdc79077feac8303076a0542da0e10997b6402c19dee842bc989df70129642",
+  "inputs": 289,
+  "bytes": 2234174,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -13,6 +13,83 @@
       "sha256": "f7e1aa1cc197d8ae8c22dae89d39b2600a08c4e1bd1b558bc96a7cf68b341be4",
       "purpose": "Bind Bankeiz note custody to its own WebAuthn RP while preserving the original Receiz Bank and localhost realms. SDK package sources and published SDK outputs are unchanged.",
       "upstreamCommit": "67d4461833caffba984bf09b21d30328e0b1a0e5"
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/allocationEvidence.ts",
+      "baseSha256": null,
+      "sha256": "65e930ed994005fe750f637c9450b1f287f4cb2df14b6be2185a5d2b6795e554",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/settlementAllocation.ts",
+      "baseSha256": null,
+      "sha256": "bc6f990897d39267956389c8d5804fae056f1e07bb17a9333f29b394a781a6db",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/settlementCashSnapshot.ts",
+      "baseSha256": null,
+      "sha256": "3abe492ced8be0f628c0304fcf6e6f012cd888246e15cdd32986be2831678a91",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/settlementFundingAuthorization.ts",
+      "baseSha256": null,
+      "sha256": "7259a5e6c5afdc0d4ec26593b6b372482020122db6efa9e964e2e24885b2d7f4",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "f7e1aa1cc197d8ae8c22dae89d39b2600a08c4e1bd1b558bc96a7cf68b341be4",
+      "sha256": "70709aff9c7adeef600605b3d6505786996e8c52cc877b288048318be7bd1a6e",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/fundedNote.ts",
+      "baseSha256": "38b606f81e763ad2fd1458e39a01c9b08e98cb4b9ba975a5ac0c9da5dfd05cb6",
+      "sha256": "65e352631f997a21fa74d5ac7a131d04fda84aaa7982eb5aee86724dcc06488a",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/redemption.ts",
+      "baseSha256": "0a2486129e408c42b047963b570e592c5f3eb03acb2ade62d39ad3c52375a7bd",
+      "sha256": "60a791bdbe2a4412495e8b9185f43b89e105e2fcf1b5d06c1a8061b3b2399e45",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/credit.ts",
+      "baseSha256": "05d6884eff8fab50867ecf87cc51dc79092398cca2f00198288d754fa656ce9d",
+      "sha256": "19abdf97f03b79228d7efe331b088900fd1d4a6aae8af2b9f7f3e529e773db14",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/fundingResume.ts",
+      "baseSha256": "73fcbc4a6370e37fe3797cb790bdab25d4579846ed89123be5c9f2e783cfae57",
+      "sha256": "e92a62a3db84d3e4f3658c44e2c4231bdc13665427963454da24309567463950",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
+      "baseSha256": "51e3557cf9e4e9dd6ed1e2b2202dd67f1e45ae5f7472b8935edcfc86ce704775",
+      "sha256": "1f79a96b0c6e242bf9d511bf0103cbe7763833ce4060c8cb7da524939f861c87",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/kairosOfflineNoteLocalIssuance.ts",
+      "baseSha256": "b7de97e7118d5d2e5c1fe2327470fa928ea9abe426c86c8b450fba0987feec68",
+      "sha256": "82dd3b4562b587ebefd5f14df5456ee5822adb48846b3467dafdf6c10d69ef17",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
     }
   ]
 }

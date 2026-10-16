@@ -123,8 +123,12 @@
       "sha256": "e0a433dbafdd61b314026caccb290495365c489ec2bdf307769ed66aa79f2596"
     },
     {
+      "path": "app/lib/wallet/bankNotes/allocationEvidence.ts",
+      "sha256": "65e930ed994005fe750f637c9450b1f287f4cb2df14b6be2185a5d2b6795e554"
+    },
+    {
       "path": "app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "f7e1aa1cc197d8ae8c22dae89d39b2600a08c4e1bd1b558bc96a7cf68b341be4"
+      "sha256": "70709aff9c7adeef600605b3d6505786996e8c52cc877b288048318be7bd1a6e"
     },
     {
       "path": "app/lib/wallet/bankNotes/bytePacking.ts",
@@ -140,15 +144,15 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/credit.ts",
-      "sha256": "05d6884eff8fab50867ecf87cc51dc79092398cca2f00198288d754fa656ce9d"
+      "sha256": "19abdf97f03b79228d7efe331b088900fd1d4a6aae8af2b9f7f3e529e773db14"
     },
     {
       "path": "app/lib/wallet/bankNotes/fundedNote.ts",
-      "sha256": "38b606f81e763ad2fd1458e39a01c9b08e98cb4b9ba975a5ac0c9da5dfd05cb6"
+      "sha256": "65e352631f997a21fa74d5ac7a131d04fda84aaa7982eb5aee86724dcc06488a"
     },
     {
       "path": "app/lib/wallet/bankNotes/fundingResume.ts",
-      "sha256": "73fcbc4a6370e37fe3797cb790bdab25d4579846ed89123be5c9f2e783cfae57"
+      "sha256": "e92a62a3db84d3e4f3658c44e2c4231bdc13665427963454da24309567463950"
     },
     {
       "path": "app/lib/wallet/bankNotes/noteImage.ts",
@@ -156,7 +160,19 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/redemption.ts",
-      "sha256": "0a2486129e408c42b047963b570e592c5f3eb03acb2ade62d39ad3c52375a7bd"
+      "sha256": "60a791bdbe2a4412495e8b9185f43b89e105e2fcf1b5d06c1a8061b3b2399e45"
+    },
+    {
+      "path": "app/lib/wallet/bankNotes/settlementAllocation.ts",
+      "sha256": "bc6f990897d39267956389c8d5804fae056f1e07bb17a9333f29b394a781a6db"
+    },
+    {
+      "path": "app/lib/wallet/bankNotes/settlementCashSnapshot.ts",
+      "sha256": "3abe492ced8be0f628c0304fcf6e6f012cd888246e15cdd32986be2831678a91"
+    },
+    {
+      "path": "app/lib/wallet/bankNotes/settlementFundingAuthorization.ts",
+      "sha256": "7259a5e6c5afdc0d4ec26593b6b372482020122db6efa9e964e2e24885b2d7f4"
     },
     {
       "path": "app/lib/wallet/bankNotes/sourceCodec.ts",
@@ -212,7 +228,7 @@
     },
     {
       "path": "app/lib/wallet/kairosOfflineNoteLocalIssuance.ts",
-      "sha256": "b7de97e7118d5d2e5c1fe2327470fa928ea9abe426c86c8b450fba0987feec68"
+      "sha256": "82dd3b4562b587ebefd5f14df5456ee5822adb48846b3467dafdf6c10d69ef17"
     },
     {
       "path": "app/lib/wallet/kairosReserveAccountSuccessor.ts",
@@ -224,7 +240,7 @@
     },
     {
       "path": "app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
-      "sha256": "51e3557cf9e4e9dd6ed1e2b2202dd67f1e45ae5f7472b8935edcfc86ce704775"
+      "sha256": "1f79a96b0c6e242bf9d511bf0103cbe7763833ce4060c8cb7da524939f861c87"
     },
     {
       "path": "app/lib/wallet/noteClaimStatusLink.client.ts",
@@ -1270,7 +1286,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "f7e1aa1cc197d8ae8c22dae89d39b2600a08c4e1bd1b558bc96a7cf68b341be4"
+      "sha256": "70709aff9c7adeef600605b3d6505786996e8c52cc877b288048318be7bd1a6e"
     },
     {
       "path": "app/lib/wallet/bankNotes/bytePacking.ts",
@@ -1286,15 +1302,15 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/credit.ts",
-      "sha256": "05d6884eff8fab50867ecf87cc51dc79092398cca2f00198288d754fa656ce9d"
+      "sha256": "19abdf97f03b79228d7efe331b088900fd1d4a6aae8af2b9f7f3e529e773db14"
     },
     {
       "path": "app/lib/wallet/bankNotes/fundedNote.ts",
-      "sha256": "38b606f81e763ad2fd1458e39a01c9b08e98cb4b9ba975a5ac0c9da5dfd05cb6"
+      "sha256": "65e352631f997a21fa74d5ac7a131d04fda84aaa7982eb5aee86724dcc06488a"
     },
     {
       "path": "app/lib/wallet/bankNotes/fundingResume.ts",
-      "sha256": "73fcbc4a6370e37fe3797cb790bdab25d4579846ed89123be5c9f2e783cfae57"
+      "sha256": "e92a62a3db84d3e4f3658c44e2c4231bdc13665427963454da24309567463950"
     },
     {
       "path": "app/lib/wallet/bankNotes/noteImage.ts",
@@ -1302,7 +1318,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/redemption.ts",
-      "sha256": "0a2486129e408c42b047963b570e592c5f3eb03acb2ade62d39ad3c52375a7bd"
+      "sha256": "60a791bdbe2a4412495e8b9185f43b89e105e2fcf1b5d06c1a8061b3b2399e45"
     },
     {
       "path": "app/lib/wallet/bankNotes/sourceCodec.ts",
@@ -1358,7 +1374,7 @@
     },
     {
       "path": "app/lib/wallet/kairosOfflineNoteLocalIssuance.ts",
-      "sha256": "b7de97e7118d5d2e5c1fe2327470fa928ea9abe426c86c8b450fba0987feec68"
+      "sha256": "82dd3b4562b587ebefd5f14df5456ee5822adb48846b3467dafdf6c10d69ef17"
     },
     {
       "path": "app/lib/wallet/kairosReserveAccountSuccessor.ts",
@@ -1370,7 +1386,7 @@
     },
     {
       "path": "app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
-      "sha256": "51e3557cf9e4e9dd6ed1e2b2202dd67f1e45ae5f7472b8935edcfc86ce704775"
+      "sha256": "1f79a96b0c6e242bf9d511bf0103cbe7763833ce4060c8cb7da524939f861c87"
     },
     {
       "path": "app/lib/wallet/noteClaimStatusLink.client.ts",
@@ -2861,6 +2877,12 @@
       "mode": 420
     },
     {
+      "path": "npm/ffjavascript@0.3.1/test.js",
+      "sha256": "4f763ad72936a3f5b58b95fd4fe2fa3addea1c197c61ec84034a3681f3747721",
+      "bytes": 4586,
+      "mode": 420
+    },
+    {
       "path": "npm/ffjavascript@0.3.1/test/algebra.js",
       "sha256": "a24e23dba4274afa8d84a26cefe63b31cf358ff09e178b516aa588a6f55a5932",
       "bytes": 9368,
@@ -2906,12 +2928,6 @@
       "path": "npm/ffjavascript@0.3.1/test/zqfield.js",
       "sha256": "93bbbec22937d3482fb5e739092c8a4ec3e15ca0c78edfd3499aa19a8b1d571c",
       "bytes": 1361,
-      "mode": 420
-    },
-    {
-      "path": "npm/ffjavascript@0.3.1/test.js",
-      "sha256": "4f763ad72936a3f5b58b95fd4fe2fa3addea1c197c61ec84034a3681f3747721",
-      "bytes": 4586,
       "mode": 420
     },
     {
@@ -4337,6 +4353,12 @@
       "mode": 420
     },
     {
+      "path": "npm/qrcode@1.5.4/lib/renderer/terminal.js",
+      "sha256": "227348f2f20ab09dda29e404c95a58a90b25c5511f9208c71516dc69f0b88fa3",
+      "bytes": 271,
+      "mode": 420
+    },
+    {
       "path": "npm/qrcode@1.5.4/lib/renderer/terminal/terminal-small.js",
       "sha256": "1b1d711cea09c0e96dab8eb1f12373315eb730016215dd2ad26beacda4ffcd80",
       "bytes": 2398,
@@ -4346,12 +4368,6 @@
       "path": "npm/qrcode@1.5.4/lib/renderer/terminal/terminal.js",
       "sha256": "298a44e0a8f8080d4c76fd7078ebfb9cecbd0b869207fb70cd583e40b89dba23",
       "bytes": 1220,
-      "mode": 420
-    },
-    {
-      "path": "npm/qrcode@1.5.4/lib/renderer/terminal.js",
-      "sha256": "227348f2f20ab09dda29e404c95a58a90b25c5511f9208c71516dc69f0b88fa3",
-      "bytes": 271,
       "mode": 420
     },
     {
@@ -5087,9 +5103,15 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/wallet/bankNotes/allocationEvidence.ts",
+      "sha256": "65e930ed994005fe750f637c9450b1f287f4cb2df14b6be2185a5d2b6795e554",
+      "bytes": 2151,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "f7e1aa1cc197d8ae8c22dae89d39b2600a08c4e1bd1b558bc96a7cf68b341be4",
-      "bytes": 28433,
+      "sha256": "70709aff9c7adeef600605b3d6505786996e8c52cc877b288048318be7bd1a6e",
+      "bytes": 31035,
       "mode": 420
     },
     {
@@ -5112,20 +5134,20 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/credit.ts",
-      "sha256": "05d6884eff8fab50867ecf87cc51dc79092398cca2f00198288d754fa656ce9d",
-      "bytes": 8991,
+      "sha256": "19abdf97f03b79228d7efe331b088900fd1d4a6aae8af2b9f7f3e529e773db14",
+      "bytes": 9564,
       "mode": 420
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/fundedNote.ts",
-      "sha256": "38b606f81e763ad2fd1458e39a01c9b08e98cb4b9ba975a5ac0c9da5dfd05cb6",
-      "bytes": 11047,
+      "sha256": "65e352631f997a21fa74d5ac7a131d04fda84aaa7982eb5aee86724dcc06488a",
+      "bytes": 11190,
       "mode": 420
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/fundingResume.ts",
-      "sha256": "73fcbc4a6370e37fe3797cb790bdab25d4579846ed89123be5c9f2e783cfae57",
-      "bytes": 2263,
+      "sha256": "e92a62a3db84d3e4f3658c44e2c4231bdc13665427963454da24309567463950",
+      "bytes": 2343,
       "mode": 420
     },
     {
@@ -5136,8 +5158,26 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/redemption.ts",
-      "sha256": "0a2486129e408c42b047963b570e592c5f3eb03acb2ade62d39ad3c52375a7bd",
-      "bytes": 11626,
+      "sha256": "60a791bdbe2a4412495e8b9185f43b89e105e2fcf1b5d06c1a8061b3b2399e45",
+      "bytes": 12287,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/wallet/bankNotes/settlementAllocation.ts",
+      "sha256": "bc6f990897d39267956389c8d5804fae056f1e07bb17a9333f29b394a781a6db",
+      "bytes": 7071,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/wallet/bankNotes/settlementCashSnapshot.ts",
+      "sha256": "3abe492ced8be0f628c0304fcf6e6f012cd888246e15cdd32986be2831678a91",
+      "bytes": 2847,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/wallet/bankNotes/settlementFundingAuthorization.ts",
+      "sha256": "7259a5e6c5afdc0d4ec26593b6b372482020122db6efa9e964e2e24885b2d7f4",
+      "bytes": 7643,
       "mode": 420
     },
     {
@@ -5220,8 +5260,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/kairosOfflineNoteLocalIssuance.ts",
-      "sha256": "b7de97e7118d5d2e5c1fe2327470fa928ea9abe426c86c8b450fba0987feec68",
-      "bytes": 32028,
+      "sha256": "82dd3b4562b587ebefd5f14df5456ee5822adb48846b3467dafdf6c10d69ef17",
+      "bytes": 33888,
       "mode": 420
     },
     {
@@ -5238,8 +5278,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
-      "sha256": "51e3557cf9e4e9dd6ed1e2b2202dd67f1e45ae5f7472b8935edcfc86ce704775",
-      "bytes": 26294,
+      "sha256": "1f79a96b0c6e242bf9d511bf0103cbe7763833ce4060c8cb7da524939f861c87",
+      "bytes": 30304,
       "mode": 420
     },
     {
@@ -11731,6 +11771,83 @@
       "sha256": "f7e1aa1cc197d8ae8c22dae89d39b2600a08c4e1bd1b558bc96a7cf68b341be4",
       "purpose": "Bind Bankeiz note custody to its own WebAuthn RP while preserving the original Receiz Bank and localhost realms. SDK package sources and published SDK outputs are unchanged.",
       "upstreamCommit": "67d4461833caffba984bf09b21d30328e0b1a0e5"
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/allocationEvidence.ts",
+      "baseSha256": null,
+      "sha256": "65e930ed994005fe750f637c9450b1f287f4cb2df14b6be2185a5d2b6795e554",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/settlementAllocation.ts",
+      "baseSha256": null,
+      "sha256": "bc6f990897d39267956389c8d5804fae056f1e07bb17a9333f29b394a781a6db",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/settlementCashSnapshot.ts",
+      "baseSha256": null,
+      "sha256": "3abe492ced8be0f628c0304fcf6e6f012cd888246e15cdd32986be2831678a91",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/settlementFundingAuthorization.ts",
+      "baseSha256": null,
+      "sha256": "7259a5e6c5afdc0d4ec26593b6b372482020122db6efa9e964e2e24885b2d7f4",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "f7e1aa1cc197d8ae8c22dae89d39b2600a08c4e1bd1b558bc96a7cf68b341be4",
+      "sha256": "70709aff9c7adeef600605b3d6505786996e8c52cc877b288048318be7bd1a6e",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/fundedNote.ts",
+      "baseSha256": "38b606f81e763ad2fd1458e39a01c9b08e98cb4b9ba975a5ac0c9da5dfd05cb6",
+      "sha256": "65e352631f997a21fa74d5ac7a131d04fda84aaa7982eb5aee86724dcc06488a",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/redemption.ts",
+      "baseSha256": "0a2486129e408c42b047963b570e592c5f3eb03acb2ade62d39ad3c52375a7bd",
+      "sha256": "60a791bdbe2a4412495e8b9185f43b89e105e2fcf1b5d06c1a8061b3b2399e45",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/credit.ts",
+      "baseSha256": "05d6884eff8fab50867ecf87cc51dc79092398cca2f00198288d754fa656ce9d",
+      "sha256": "19abdf97f03b79228d7efe331b088900fd1d4a6aae8af2b9f7f3e529e773db14",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/fundingResume.ts",
+      "baseSha256": "73fcbc4a6370e37fe3797cb790bdab25d4579846ed89123be5c9f2e783cfae57",
+      "sha256": "e92a62a3db84d3e4f3658c44e2c4231bdc13665427963454da24309567463950",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
+      "baseSha256": "51e3557cf9e4e9dd6ed1e2b2202dd67f1e45ae5f7472b8935edcfc86ce704775",
+      "sha256": "1f79a96b0c6e242bf9d511bf0103cbe7763833ce4060c8cb7da524939f861c87",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/kairosOfflineNoteLocalIssuance.ts",
+      "baseSha256": "b7de97e7118d5d2e5c1fe2327470fa928ea9abe426c86c8b450fba0987feec68",
+      "sha256": "82dd3b4562b587ebefd5f14df5456ee5822adb48846b3467dafdf6c10d69ef17",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
     }
   ]
 }

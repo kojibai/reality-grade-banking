@@ -1,13 +1,14 @@
 import { createBankFundingResume } from "./fundingResume";
 import { packBankNoteBytes, unpackBankNoteBytes } from "./compression";
-import { receizBase64UrlDecode as decode, type ReceizKeyFileV1 } from "../../../../packages/receiz-sdk/src/identity";
+import { parseReceizIdentityArtifactText, receizBase64UrlDecode as decode, type ReceizKeyFileV1 } from "../../../../packages/receiz-sdk/src/identity";
 import { createReceizBrowserAdmissionStore } from "../../../../packages/receiz-sdk/src/browserAdmissionStore";
 import { createKairosNoteBrowserWebAuthnClient, createKairosNoteIndexedDbPwaCustodyStorage, createKairosReserveIndexedDbPwaCustodyStorage, createKairosNoteBrowserPwaCustodyAdapter } from "../kairosNoteBrowserPwaCustody";
 import { createKairosNotePwaCustodyAdapter } from "../kairosNotePwaCustodyAdapter";
 import { createKairosReservePwaCustodyAdapter } from "../kairosReservePwaCustodyAdapter";
 import { createKairosOfflineCashFundingAuthorization } from "../kairosOfflineCashFundingAuthorization";
 import { createKairosOfflineNoteBrowserIssuanceStageStore, createKairosOfflineNoteBrowserProofCustodyStore, issueKairosOfflineNoteLocally } from "../kairosOfflineNoteLocalIssuance";
-import { verifyBankReserveAllocationArtifact } from "./allocation";
+import { verifyBankNoteAllocation, bankAllocationRail, bankAllocatedPhi, type BankNoteRail } from "./allocationEvidence";
+import { createBankSettlementNoteFundingAuthorization } from "./settlementFundingAuthorization";
 import { verifyBankFundedNoteSource, readBankFundedNoteHead, readBankFundedNoteSource, type BankFundedNoteSource } from "./fundedNote";
 import { exportBankNoteImage, openBankNoteImage } from "./noteImage";
 import { prepareBankNoteRedemption, readBankNoteRedemption, type BankNoteRedemptionIntent } from "./redemption";
@@ -34,6 +35,7 @@ type IssueIntent = {
     transitionNonce: string;
 };
 type CreateAttempt = {
+    rail?: BankNoteRail;
     id: string;
     phase: "preparing" | "funding" | "issuing" | "complete";
     amountUsdCents: string;
@@ -86,7 +88,7 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
     retain(bytes:Uint8Array):Promise<string>;restore(digest:string):Promise<Uint8Array>;
     write(next: unknown, previous: unknown): Promise<void>;
     assertOpen(): void;
-    artwork?(amountUsdCents: string, noteId: string, compact?: boolean): Promise<Uint8Array>;
+    artwork?(amountUsdCents: string, noteId: string, compact?: boolean, rail?: BankNoteRail): Promise<Uint8Array>;
 }>) {
     // Application composition: each production origin keeps its own WebAuthn realm.
     const realms: Readonly<Record<string, string>> = {
@@ -105,15 +107,15 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
     async function save(state: State, previous: State | null) { input.assertOpen(); await input.write(state, previous); input.assertOpen(); }
     async function change(state: State, mutate: (next: State) => void) { const next = structuredClone(state); mutate(next); await save(next, state); return next; }
     async function imageFor(source: BankFundedNoteSource) { const admitted = await verifyBankFundedNoteSource(source), head = readBankFundedNoteHead(admitted); const verification = await verifyReceizArtifact(head.artifactBytes), a = await createReceizArtifactAdmissionEngine()(verification, { profile: "portable-state" }); if (a.verdict === "profile-denied" || "code" in a || a.profile !== "portable-state")
-        throw Error("BANK_NOTE_SOURCE_REQUIRED"); const document = await parseReceizPortableAssetDocument(a.recoveredState), payload = await extractReceizPortableAssetPayload(document); return exportBankNoteImage(admitted, input.artwork ? await input.artwork(admitted.amountUsdCents, admitted.noteId) : payload.bytes); }
+        throw Error("BANK_NOTE_SOURCE_REQUIRED"); const document = await parseReceizPortableAssetDocument(a.recoveredState), payload = await extractReceizPortableAssetPayload(document); return exportBankNoteImage(admitted, input.artwork ? await input.artwork(admitted.amountUsdCents, admitted.noteId, false, admitted.rail) : payload.bytes); }
     return Object.freeze({
         async savedNotes() { const state = await load(), result = []; for (const saved of Object.values(state.notes)) {
             if (!saved.imageRef || state.deposits[saved.intent.noteId]?.creditRef)
                 continue;
             const image = await input.restore(saved.imageRef), note = await openBankNoteImage(image);
-            result.push({ noteId: note.noteId, amountUsdCents: note.amountUsdCents, image, transferred: saved.transferComplete === true, transferPending: Boolean(saved.transfer) && saved.transferComplete !== true });
+            result.push({ rail: note.rail, amountPhiMicro: note.amountPhiMicro, noteId: note.noteId, amountUsdCents: note.amountUsdCents, image, transferred: saved.transferComplete === true, transferPending: Boolean(saved.transfer) && saved.transferComplete !== true });
         } return result; },
-        async pending() { const state = await load(); return state.create && state.create.phase !== "complete" ? { amountUsdCents: state.create.amountUsdCents, noteId: state.create.intent.noteId, canCancel: state.create.phase === "preparing" || state.create.phase === "funding" } : null; },
+        async pending() { const state = await load(); return state.create && state.create.phase !== "complete" ? { rail: state.create.rail ?? "reserve", amountUsdCents: state.create.amountUsdCents, noteId: state.create.intent.noteId, canCancel: state.create.phase === "preparing" || state.create.phase === "funding" } : null; },
         async cancelUnfunded() {
             const state = await load(), attempt = state.create;
             if (!attempt || !["preparing", "funding"].includes(attempt.phase)) throw Error("BANK_NOTE_FUNDING_PENDING");
@@ -126,7 +128,9 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
             }
             await change(state, next => { next.create = null; });
         },
-        async createNote(amountUsdCents: string, accountProof: ReceizKeyFileV1) {
+        async createNote(amountUsdCents: string, accountProof: ReceizKeyFileV1, rail: BankNoteRail = "reserve") {
+            if(rail !== "reserve" && rail !== "settlement")throw Error("BANK_NOTE_RAIL_INVALID");
+            accountProof=parseReceizIdentityArtifactText(JSON.stringify(accountProof));
             let state = await load(), attempt = state.create;
             if (attempt?.phase === "complete") {
                 attempt = null;
@@ -137,13 +141,13 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
                 if (accountProof.keyId !== input.keyId || accountProof.crypto.privateKeyPkcs8B64u)
                     throw Error("BANK_NOTE_PROTECTED_IDENTITY_REQUIRED");
                 const at = new Date();
-                attempt = { id: crypto.randomUUID(), phase: "preparing", amountUsdCents, accountProofRef:await input.retain(new TextEncoder().encode(JSON.stringify(accountProof))), intent: { preparationId: crypto.randomUUID(), noteId: crypto.randomUUID(), noteToken: crypto.randomUUID().replace(/-/g, ""), mintedAt: at.toISOString(), acceptedAtKai: nowKai(), transitionNonce: crypto.randomUUID() } };
+                attempt = { rail, id: crypto.randomUUID(), phase: "preparing", amountUsdCents, accountProofRef:await input.retain(new TextEncoder().encode(JSON.stringify(accountProof))), intent: { preparationId: crypto.randomUUID(), noteId: crypto.randomUUID(), noteToken: crypto.randomUUID().replace(/-/g, ""), mintedAt: at.toISOString(), acceptedAtKai: nowKai(), transitionNonce: crypto.randomUUID() } };
                 const prior = await input.read();
                 const next = { ...state, create: attempt };
                 await input.write(next, prior);
                 state = next;
             }
-            else if (attempt.amountUsdCents !== amountUsdCents)
+            else if (attempt.amountUsdCents !== amountUsdCents || (attempt.rail ?? "reserve") !== rail)
                 throw Error("BANK_NOTE_RESUME_EXACT_AMOUNT");
             const heldAttempt = attempt;
         const accountProofSource=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(await input.restore(attempt.accountProofRef))) as ReceizKeyFileV1;
@@ -161,10 +165,16 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
                 const receivingCustody = await qualifier.createReceivingCommitment(q);
                 requireKairosNoteAttestedReceivingCustody(receivingCustody);
                 const prepared = await reserve.inspectFundingPrepared();
-                const auth = prepared?.fundingAuthorization ?? await createKairosOfflineCashFundingAuthorization({ keyFile: accountProofSource, passphrase: input.passphrase, accountUserId: input.uid, predecessorAccountPortableStateDigest: accountProofSource.portableState!.proof!.digestSha256Hex, amountUsdCents, qualificationDigest: receivingCustody.qualificationDigest, installationCommitment: receivingCustody.installationCommitment, receivingCustodyCommitmentDigest: receivingCustody.receivingCustodyCommitmentDigest });
+                const commitment = prepared?.receivingCustody ?? receivingCustody;
+                const common = {keyFile:accountProofSource,passphrase:input.passphrase,accountUserId:input.uid,amountUsdCents,qualificationDigest:commitment.qualificationDigest,installationCommitment:commitment.installationCommitment,receivingCustodyCommitmentDigest:commitment.receivingCustodyCommitmentDigest};
+                const summary=(accountProofSource.portableState!.snapshot as {wallet:{routeSummary:{quote:{usdPerPhiMicrocents:string}}}}).wallet.routeSummary;
+                const rate=BigInt(summary.quote.usdPerPhiMicrocents);
+                if(rate<=0n)throw Error("BANK_NOTE_ALLOCATION_QUOTE_MISMATCH");
+                const auth = rail === "settlement" ? await createBankSettlementNoteFundingAuthorization({...common,amountPhiMicro:((BigInt(amountUsdCents)*1000000000000n+rate/2n)/rate).toString(),usdPerPhiMicrocents:rate.toString()})
+                  : prepared?.fundingAuthorization ?? await createKairosOfflineCashFundingAuthorization({...common,predecessorAccountPortableStateDigest:accountProofSource.portableState!.proof!.digestSha256Hex});
                 const qualified = (await qualStorage.read())!;
                 if (!await reserve.inspectFundingPrepared())
-                    await reserve.prepareFundingCustody({ credential: qualified.credential, qualification: q, receivingCustody, predecessorAccountProof: accountProofSource, fundingAuthorization: auth });
+                    await reserve.prepareFundingCustody({ credential: qualified.credential, qualification: q, receivingCustody, predecessorAccountProof: accountProofSource, ...(rail === "reserve" ? {fundingAuthorization: auth as import("../kairosOfflineCashFundingAuthorization").KairosOfflineCashFundingAuthorizationV1} : {}) });
                 state = await change(state, next => { next.create = { ...heldAttempt, phase: "funding", authorization: auth, receivingCustody: prepared?.receivingCustody ?? receivingCustody }; });
                 attempt = state.create!;
             }
@@ -174,12 +184,14 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
                 const result = recovered.found === false ? obj(await input.request(path("funding"), { method: "POST", body: { authorization: attempt.authorization, receivingCustody: attempt.receivingCustody, accountProof: accountProofSource, resumeAuthorization: await createBankFundingResume(accountProofSource, input.passphrase, String(auth.authorizationDigest)) } })) : recovered;
                 if (result.ok !== true || typeof result.artifactBytes !== "string" || typeof result.privateCashSnapshot !== "string")
                     throw Error("BANK_NOTE_FUNDING_PENDING");
-                const evidence = await verifyBankReserveAllocationArtifact(decode(result.artifactBytes));
-                await reserve.activateBankAllocatedReserve({ evidence, privateCashSnapshot: decode(result.privateCashSnapshot) });
+                const evidence = await verifyBankNoteAllocation(decode(result.artifactBytes));
+                if(bankAllocationRail(evidence.funding) !== rail)throw Error("BANK_NOTE_FUNDING_RAIL_MISMATCH");
+                if("fundedSettlementPhiMicro" in evidence.funding)await reserve.activateBankAllocatedSettlement({evidence: evidence as import("./settlementAllocation").BankSettlementAllocationEvidence,privateCashSnapshot:decode(result.privateCashSnapshot)});
+                else await reserve.activateBankAllocatedReserve({ evidence: evidence as import("./allocation").BankReserveAllocationEvidence, privateCashSnapshot: decode(result.privateCashSnapshot) });
                 state = await change(state, next => { next.create = { ...next.create!, phase: "issuing", fundingBytes: result.artifactBytes as string, privateCash: result.privateCashSnapshot as string }; });
                 attempt = state.create!;
             }
-            const evidence = await verifyBankReserveAllocationArtifact(decode(attempt.fundingBytes!)), stages = createKairosOfflineNoteBrowserIssuanceStageStore(), proofs = createKairosOfflineNoteBrowserProofCustodyStore();
+            const evidence = await verifyBankNoteAllocation(decode(attempt.fundingBytes!)), stages = createKairosOfflineNoteBrowserIssuanceStageStore(), proofs = createKairosOfflineNoteBrowserProofCustodyStore();
             const fundedAt = evidence.funding.fundedAtKai;
             if (BigInt(attempt.intent.acceptedAtKai) < BigInt(fundedAt)) {
                 if (await stages.read(attempt.intent.preparationId))
@@ -188,13 +200,13 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
                 attempt = state.create!;
             }
             input.assertOpen();
-            const issued = await issueKairosOfflineNoteLocally({ preparationId: attempt.intent.preparationId, accountProof: accountProofSource, identityPassphrase: input.passphrase, deviceIdentity: { localUid: input.localUid, keyId: input.keyId }, accountBinding: { accountUserId: input.uid, receizKeyId: input.keyId }, amountPhiMicro: BigInt(evidence.funding.fundedReservePhiMicro), amountUsdCents: BigInt(evidence.funding.amountUsdCents), usdPerPhiMicrocents: BigInt(evidence.funding.usdPerPhiMicrocents), acceptedAtKai: attempt.intent.acceptedAtKai, transitionNonce: attempt.intent.transitionNonce, note: { noteId: attempt.intent.noteId, noteToken: attempt.intent.noteToken, mintedAt: attempt.intent.mintedAt, mintClientNonce: attempt.intent.transitionNonce }, reserveCustody: reserve, noteCustody, stageStore: stages, proofCustody: proofs, admissionStore: createReceizBrowserAdmissionStore({ databaseName: "receiz-bank-offline-note-admission-v129", namespace: `${input.uid}:allocation:${evidence.funding.allocationId}` }), assertSelectedPredecessor: input.assertOpen }, { sealDocument: input.sealDocument, ...(input.artwork ? { rasterizeSvg: () => input.artwork!(evidence.funding.amountUsdCents, attempt!.intent.noteId, true) } : {}) });
+            const issued = await issueKairosOfflineNoteLocally({ preparationId: attempt.intent.preparationId, accountProof: accountProofSource, identityPassphrase: input.passphrase, deviceIdentity: { localUid: input.localUid, keyId: input.keyId }, accountBinding: { accountUserId: input.uid, receizKeyId: input.keyId }, fundingRail: rail, amountPhiMicro: BigInt(bankAllocatedPhi(evidence.funding)), amountUsdCents: BigInt(evidence.funding.amountUsdCents), usdPerPhiMicrocents: BigInt(evidence.funding.usdPerPhiMicrocents), acceptedAtKai: attempt.intent.acceptedAtKai, transitionNonce: attempt.intent.transitionNonce, note: { noteId: attempt.intent.noteId, noteToken: attempt.intent.noteToken, mintedAt: attempt.intent.mintedAt, mintClientNonce: attempt.intent.transitionNonce }, reserveCustody: reserve, noteCustody, stageStore: stages, proofCustody: proofs, admissionStore: createReceizBrowserAdmissionStore({ databaseName: "receiz-bank-offline-note-admission-v129", namespace: `${input.uid}:allocation:${evidence.funding.allocationId}` }), assertSelectedPredecessor: input.assertOpen }, { sealDocument: input.sealDocument, ...(input.artwork ? { rasterizeSvg: () => input.artwork!(evidence.funding.amountUsdCents, attempt!.intent.noteId, true, rail) } : {}) });
             const stage = (await stages.read(issued.preparationId))!;
             const source: BankFundedNoteSource = { schema: "receiz.bank.funded-note-source.v1", fundingArtifactBytes: evidence.artifactBytes, fundingCustody: attempt.receivingCustody as BankFundedNoteSource["fundingCustody"], reserveConsumptions: [stage.reserveReceipt!], noteArtifacts: [issued.noteGenesis.artifactBytes] };
             const image = await imageFor(source);
             const sourceRef=await input.retain(new TextEncoder().encode(JSON.stringify(encodeBankFundedSource(source)))),imageRef=await input.retain(image);
             state = await change(state, next => { const complete = { ...next.create!, phase: "complete" as const, sourceRef,imageRef }; next.create = null; next.notes[issued.noteGenesis.noteId] = complete; });
-            return { noteId: issued.noteGenesis.noteId, amountUsdCents: issued.noteGenesis.amountUsdCents, image, successorAccountProof: issued.accountSuccessor.proof };
+            return { rail, amountPhiMicro: issued.noteGenesis.amountPhiMicro, noteId: issued.noteGenesis.noteId, amountUsdCents: issued.noteGenesis.amountUsdCents, image, successorAccountProof: issued.accountSuccessor.proof };
         },
         async receivingRequest() {
             const state = await load();
@@ -239,7 +251,7 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
             state = await change(state, next => { next.notes[noteId] = { ...next.notes[noteId]!, sourceRef,imageRef, transferComplete: true }; });
             return { noteId, image };
         },
-        async inspectNote(image: Uint8Array) { const note = await openBankNoteImage(image); return { noteId: note.noteId, amountUsdCents: note.amountUsdCents, amountPhiMicro: note.amountPhiMicro }; },
+        async inspectNote(image: Uint8Array) { const note = await openBankNoteImage(image); return { rail: note.rail, noteId: note.noteId, amountUsdCents: note.amountUsdCents, amountPhiMicro: note.amountPhiMicro }; },
         async depositNote(image: Uint8Array) {
             let state = await load();
             const note = await openBankNoteImage(image), head = readBankFundedNoteHead(note), packet = head.packet;
@@ -248,9 +260,9 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
             let attempt = state.deposits[note.noteId];
             if (!attempt) {
                 const preview = obj(await input.request(path("redemption"), { method: "POST", body: { action: "preview", keyId: input.keyId, source: await packBankNoteBytes(new TextEncoder().encode(JSON.stringify(encodeBankFundedSource(readBankFundedNoteSource(note))))) } }));
-                if (preview.ok !== true || preview.noteId !== note.noteId || preview.amountUsdCents !== note.amountUsdCents)
+                if (preview.ok !== true || preview.noteId !== note.noteId || preview.amountUsdCents !== note.amountUsdCents || preview.amountPhiMicro !== note.amountPhiMicro || preview.rail !== note.rail)
                     throw Error("BANK_NOTE_DEPOSIT_UNAVAILABLE");
-                const intent: BankNoteRedemptionIntent = { schema: "receiz.bank.note-redemption.v1", noteId: note.noteId, noteArtifactSha256: note.noteArtifactSha256, receiverUserId: input.uid, receiverKeyId: input.keyId, amountPhiMicro: note.amountPhiMicro, amountUsdCents: note.amountUsdCents, acceptedAtKai: laterKai(packet.acceptedAtKai), nonce: crypto.randomUUID() };
+                const intent: BankNoteRedemptionIntent = { schema: note.rail === "settlement" ? "receiz.bank.note-redemption.v2" : "receiz.bank.note-redemption.v1", ...(note.rail === "settlement" ? {rail: "settlement" as const} : {}), noteId: note.noteId, noteArtifactSha256: note.noteArtifactSha256, receiverUserId: input.uid, receiverKeyId: input.keyId, amountPhiMicro: note.amountPhiMicro, amountUsdCents: note.amountUsdCents, acceptedAtKai: laterKai(packet.acceptedAtKai), nonce: crypto.randomUUID() };
                 const prior = await input.read();
                 state.deposits[note.noteId] = { intent, imageRef:await input.retain(image) };
                 await input.write(state, prior);
@@ -290,7 +302,7 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
                 attempt = state.deposits[note.noteId]!;
             }
             const proof = await verifyBankReserveCreditArtifact(await input.restore(attempt.creditRef!), decode(attempt.privateCash!), { terminalSource: await unpackBankNoteBytes(new TextDecoder().decode(await input.restore(attempt.terminalRef!))) });
-            return { noteId: note.noteId, amountUsdCents: proof.credit.amountUsdCents, proofBytes: await exportBankNoteDepositReceipt(proof), reserveAfterUsdCents: proof.snapshot.reserveAfterUsdCents };
+            return { rail: proof.rail, amountPhiMicro: proof.credit.amountPhiMicro, walletAfterPhiMicro: proof.snapshot.walletAfterPhiMicro, noteId: note.noteId, amountUsdCents: proof.credit.amountUsdCents, proofBytes: await exportBankNoteDepositReceipt(proof), reserveAfterUsdCents: proof.snapshot.reserveAfterUsdCents };
         }
     });
 }

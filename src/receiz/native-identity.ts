@@ -136,7 +136,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     return {
       savedNotes: () => held.savedNotes(),
       pending: () => held.pending(),
-      create: amount => lock(async () => {
+      create: (amount, rail = 'reserve') => lock(async () => {
         const pending = await held.pending();
         let source: unknown = transportKeyFile;
         if (!pending) {
@@ -145,7 +145,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
           const prior = transportKeyFile.portableState?.snapshot as Record<string, unknown> | undefined;
           source = await sdk.appendReceizIdentityPortableState({ keyFile: transportKeyFile, passphrase: transportPhrase, schema: 'receiz.account.state.v3', snapshot: { ...prior, schema: 'receiz.account.state.v3', account: { ...(prior?.account as Record<string, unknown> | undefined), userId: accountUid! }, wallet: { ...(prior?.wallet as Record<string, unknown> | undefined), routeSummary: response.wallet } } });
         }
-        const result = await held.createNote(amount, source); noteOpen();
+        const result = await held.createNote(amount, source, rail); noteOpen();
         // The exact note/account successors are already retained. Background
         // account read may display the accepted online Reserve without blocking save.
         void readWallet().catch(() => {}); return result;

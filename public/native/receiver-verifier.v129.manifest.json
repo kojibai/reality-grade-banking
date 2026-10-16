@@ -2,10 +2,10 @@
   "schema": "receiz.bank.receiver-verifier-build.v1",
   "version": "129.0.0",
   "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52",
-  "moduleSha256": "388cbe72e2ab110cba1feec7a57ddace2395a54d2a6b07a93b1a825446c1b052",
-  "sourceMapSha256": "7159a81fbc09102b9783b3fe72dca06c7f69877c8bab3645e207b036cf62e4b0",
-  "sourceTreeSha256": "71ae7e42a1dbbd061c340e75ca5b2ba3af03a19953cd3e8445db08e1b519370f",
-  "bytes": 2032000,
+  "moduleSha256": "db56eaa6bbb833732f59a18bc7170dd3fee5696cc8c6949a5b4997304f17f6bf",
+  "sourceMapSha256": "2a1db03eb690ab6295dd34f131300c64a7a05c046c3bde7b7cdb1bfa306a984e",
+  "sourceTreeSha256": "18d2150a64a2e04afa678dfe61e43c279ea0585b1726a57dae4067834e67f621",
+  "bytes": 2035672,
   "inputs": [
     {
       "path": "receiz/node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/_u64.js",
@@ -740,8 +740,16 @@
       "sha256": "6988ccde326869c149c46a132e2aed4161a0c3993e5801a9e760dcdf0c4cd285"
     },
     {
+      "path": "receiz/app/lib/wallet/bankNotes/settlementAllocation.ts",
+      "sha256": "bc6f990897d39267956389c8d5804fae056f1e07bb17a9333f29b394a781a6db"
+    },
+    {
+      "path": "receiz/app/lib/wallet/bankNotes/allocationEvidence.ts",
+      "sha256": "65e930ed994005fe750f637c9450b1f287f4cb2df14b6be2185a5d2b6795e554"
+    },
+    {
       "path": "receiz/app/lib/wallet/bankNotes/fundedNote.ts",
-      "sha256": "38b606f81e763ad2fd1458e39a01c9b08e98cb4b9ba975a5ac0c9da5dfd05cb6"
+      "sha256": "65e352631f997a21fa74d5ac7a131d04fda84aaa7982eb5aee86724dcc06488a"
     },
     {
       "path": "receiz/app/lib/wallet/kairosReserveFundingBinding.ts",
@@ -881,7 +889,7 @@
     },
     {
       "path": "bank/institution/receiver-verifier.entry.mjs",
-      "sha256": "a943bc446cb156a66baac172a7e9c9a81751fa2a264bec443a028ade3bf7d011"
+      "sha256": "7f6931378a300377ea2c7dab6b4ea641528a4ad6a5a6ac9f7730e585739be0e0"
     }
   ],
   "verificationIsFinancialAdmission": false

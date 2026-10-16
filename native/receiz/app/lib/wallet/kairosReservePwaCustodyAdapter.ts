@@ -1,3 +1,6 @@
+import { isBankSettlementAllocationEvidence, type BankSettlementAllocationEvidence } from "./bankNotes/settlementAllocation";
+import { openBankSettlementAllocationCashSnapshot } from "./bankNotes/settlementCashSnapshot";
+import { parseReceizIdentityArtifactText } from "../../../packages/receiz-sdk/src/identity";
 import {isBankReserveAllocationEvidence,type BankReserveAllocationEvidence} from "./bankNotes/allocation";
 import {openBankAllocationCashSnapshot} from "./bankNotes/cashSnapshot";
 import { assertReserveAccountSourcePreserved } from "./kairosReserveAccountSuccessor";
@@ -58,6 +61,8 @@ type BoundState = Readonly<{
   reservePhiMicro?: string;
   reserveUsdCents: string;
   bankAllocationId?: string;
+  bankAllocationRail?: "reserve" | "settlement";
+  bankAllocationUsdPerPhiMicrocents?: string;
   fundingArtifactSha256?: string;
   fundingBindingDigest?: string;
   fundingPredecessorAccountProof?: ReceizKeyFileV1;
@@ -86,6 +91,8 @@ type PendingState = Readonly<{
   receipt: KairosReserveConsumptionReceiptV1;
   accountProof?: ReceizKeyFileV1;
   bankAllocationId?: string;
+  bankAllocationRail?: "reserve" | "settlement";
+  bankAllocationUsdPerPhiMicrocents?: string;
   fundingArtifactSha256?: string;
   fundingBindingDigest?: string;
   fundingPredecessorAccountProof?: ReceizKeyFileV1;
@@ -255,6 +262,34 @@ export function createKairosReservePwaCustodyAdapter(input: Readonly<{
       await input.storage.write(Object.freeze({schema:STATE_SCHEMA,status:"bound",credential:state.credential,qualification:state.qualification,accountPortableStateDigest:funding.predecessorAccountPortableStateDigest,accountProof:structuredClone(proof),reservePhiMicro:funding.fundedReservePhiMicro,reserveUsdCents:funding.amountUsdCents,bankAllocationId:funding.allocationId,fundingArtifactSha256:args.evidence.artifactSha256,fundingBindingDigest:funding.allocationId,fundingPredecessorAccountProof:structuredClone(proof)}));
     },
 
+    /** The qualified custody kernel reserves exact Phi for note issuance. Its
+     * internal reserve budget is distinct from the user's USD Reserve rail. */
+    async activateBankAllocatedSettlement(args: Readonly<{ evidence: BankSettlementAllocationEvidence; privateCashSnapshot: Uint8Array }>): Promise<void> {
+      if (!isBankSettlementAllocationEvidence(args.evidence)) throw Error("BANK_ALLOCATION_CUSTODY_REQUIRED");
+      const funding = args.evidence.funding;
+      const opening = await openBankSettlementAllocationCashSnapshot(args.evidence, args.privateCashSnapshot);
+      const state = await input.storage.read();
+      if (state?.status === "bound" && state.bankAllocationRail === "settlement" && state.bankAllocationId === funding.allocationId && state.fundingArtifactSha256 === args.evidence.artifactSha256) return;
+      if (!state || state.status !== "funding-prepared" || !state.predecessorAccountProof) throw Error("OFFLINE_RESERVE_PRESELECTED_CUSTODY_REQUIRED");
+      const proof = parseReceizIdentityArtifactText(JSON.stringify(state.predecessorAccountProof));
+      const projection = accountReserveProjection(proof);
+      const summary = record(record(record(proof.portableState?.snapshot)?.wallet)?.routeSummary);
+      const totalPhi = canonicalUint(summary?.balancePhiMicro);
+      const settlementUsd = canonicalUint(record(summary?.valueStates)?.ecosystemBalanceUsdCents);
+      if (await verifyReceizIdentityPortableStateProof(proof) !== "verified" || !projection || totalPhi === null || settlementUsd === null
+        || proof.keyId !== funding.receizKeyId || proof.portableState?.proof?.digestSha256Hex !== funding.predecessorAccountPortableStateDigest
+        || projection.userId !== funding.accountUserId || projection.reserveUsdCents.toString() !== opening.reserveBeforeUsdCents
+        || projection.usdPerPhiMicrocents.toString() !== funding.usdPerPhiMicrocents
+        || totalPhi.toString() !== opening.walletBeforePhiMicro || totalPhi - projection.reservePhiMicro < BigInt(funding.fundedSettlementPhiMicro)
+        || state.qualification.qualificationDigest !== funding.qualificationDigest
+        || state.receivingCustody.installationCommitment !== funding.installationCommitment
+        || state.receivingCustody.receivingCustodyCommitmentDigest !== funding.receivingCustodyCommitmentDigest) throw Error("OFFLINE_SETTLEMENT_FUNDING_BINDING_MISMATCH");
+      await input.storage.write(Object.freeze({ schema: STATE_SCHEMA, status: "bound", credential: state.credential, qualification: state.qualification,
+        accountPortableStateDigest: funding.predecessorAccountPortableStateDigest, accountProof: structuredClone(proof), reservePhiMicro: funding.fundedSettlementPhiMicro,
+        reserveUsdCents: funding.amountUsdCents, bankAllocationId: funding.allocationId, bankAllocationRail: "settlement", bankAllocationUsdPerPhiMicrocents: funding.usdPerPhiMicrocents, fundingArtifactSha256: args.evidence.artifactSha256,
+        fundingBindingDigest: funding.allocationId, fundingPredecessorAccountProof: structuredClone(proof) }));
+    },
+
     async activateFundedReserve(args: Readonly<{
       evidence: KairosVerifiedOfflineReserveFundingEvidence;
       successorAccountProof: ReceizKeyFileV1;
@@ -359,6 +394,8 @@ export function createKairosReservePwaCustodyAdapter(input: Readonly<{
         reservePhiMicro: state.reservePhiMicro,
         reserveUsdCents: state.reserveUsdCents,
         bankAllocationId: state.bankAllocationId,
+        bankAllocationRail: state.bankAllocationRail,
+        bankAllocationUsdPerPhiMicrocents: state.bankAllocationUsdPerPhiMicrocents,
         fundingArtifactSha256: state.fundingArtifactSha256,
         fundingBindingDigest: state.fundingBindingDigest,
         fundingPredecessorAccountProof: state.fundingPredecessorAccountProof ? structuredClone(state.fundingPredecessorAccountProof) : undefined,
@@ -446,7 +483,9 @@ export function createKairosReservePwaCustodyAdapter(input: Readonly<{
           qualification: nextQualification, input: split, intentDigest, receipt,
           accountProof: state.accountProof ? structuredClone(state.accountProof) : undefined,
           bankAllocationId: state.bankAllocationId,
-        fundingArtifactSha256: state.fundingArtifactSha256,
+          bankAllocationRail: state.bankAllocationRail,
+          bankAllocationUsdPerPhiMicrocents: state.bankAllocationUsdPerPhiMicrocents,
+          fundingArtifactSha256: state.fundingArtifactSha256,
           fundingBindingDigest: state.fundingBindingDigest,
           fundingPredecessorAccountProof: state.fundingPredecessorAccountProof ? structuredClone(state.fundingPredecessorAccountProof) : undefined,
         }));
@@ -495,6 +534,8 @@ export function createKairosReservePwaCustodyAdapter(input: Readonly<{
         reservePhiMicro: state.input.reserveAfterPhiMicro,
         reserveUsdCents: state.input.reserveAfterUsdCents,
         bankAllocationId: state.bankAllocationId,
+        bankAllocationRail: state.bankAllocationRail,
+        bankAllocationUsdPerPhiMicrocents: state.bankAllocationUsdPerPhiMicrocents,
         fundingArtifactSha256: state.fundingArtifactSha256,
         fundingBindingDigest: state.fundingBindingDigest,
         fundingPredecessorAccountProof: state.fundingPredecessorAccountProof ? structuredClone(state.fundingPredecessorAccountProof) : undefined,

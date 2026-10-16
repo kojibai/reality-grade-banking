@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile, writeFile, mkdir, mkdtemp, copyFile, symlink, rm } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, mkdtemp, copyFile, symlink, rm, realpath } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { resolve, dirname, relative } from 'node:path';
@@ -43,17 +43,30 @@ try {
   const notesManifest = JSON.parse(await readFile(notesManifestPath, 'utf8'));
   if (!refreshComposition) assert.equal(hash(notesBytes), notesManifest.moduleSha256, 'Offline Note rebuild differs.');
   const inputList = await Promise.all(Object.keys(notes.metafile.inputs).sort().map(async path => ({ path: relative(source, resolve(source, path)), sha256: hash(await readFile(resolve(source, path))) })));
-  assert.deepEqual(inputList, manifest.notesInputs, 'Native input closure differs.');
+  if (refreshComposition) { manifest.notesInputs = inputList; await writeFile(resolve(bank, 'native/manifest.json'), JSON.stringify(manifest, null, 2) + '\n'); }
+  else assert.deepEqual(inputList, manifest.notesInputs, 'Native input closure differs.');
   if (refreshComposition) await writeFile(notesManifestPath, JSON.stringify({ ...notesManifest, moduleSha256: hash(notesBytes), sourceTreeSha256: hash(JSON.stringify(inputList)), inputs: inputList.length, bytes: notesBytes.length, applicationPatches: manifest.applicationPatches ?? [] }, null, 2) + '\n');
 
   const receiver = await build({ ...common, entryPoints: [resolve(bank, 'institution/receiver-verifier.entry.mjs')], alias: { 'receiz-native-note-image': resolve(source, 'app/lib/wallet/bankNotes/noteImage.ts'), 'receiz-native-note-source': resolve(source, 'app/lib/wallet/bankNotes/fundedNote.ts'), '@': source }, outfile: resolve(bank, 'public/native/receiver-verifier.v129.mjs'), sourcemap: 'external', sourcesContent: true, banner: { js: '/*! Reality-Grade Banking — read-only v129 receiver verifier. No funding, signing, custody consumption or credit authority. Includes GPL-3.0 snarkjs/ffjavascript components: see /native/licenses/README.md and the adjacent complete source map. Distribution licensing review remains required. */' } });
   const receiverBytes = receiver.outputFiles.find(file => file.path.endsWith('.mjs')).contents;
   const receiverManifest = JSON.parse(await readFile(resolve(bank, 'public/native/receiver-verifier.v129.manifest.json'), 'utf8'));
-  assert.equal(hash(receiverBytes), receiverManifest.moduleSha256, 'Receiver rebuild differs.');
+  if (!refreshComposition) assert.equal(hash(receiverBytes), receiverManifest.moduleSha256, 'Receiver rebuild differs.');
   const map = JSON.parse(new TextDecoder().decode(receiver.outputFiles.find(file => file.path.endsWith('.map')).contents));
-  assert.deepEqual(map.sourcesContent.map(hash), receiverManifest.inputs.map(entry => entry.sha256), 'Receiver source-map inputs differ.');
+  if (refreshComposition) {
+    const canonicalSource = await realpath(source), canonicalBank = await realpath(bank);
+    receiverManifest.inputs = map.sources.map((name, i) => {
+      const absolute = resolve(bank, 'public/native', name);
+      const path = absolute.startsWith(canonicalSource + '/') ? 'receiz/' + relative(canonicalSource, absolute) : absolute.startsWith(canonicalBank + '/') ? 'bank/' + relative(canonicalBank, absolute) : null;
+      assert.ok(path, `Source map escaped included source: ${name} (${absolute}; source ${source})`);
+      return { path, sha256: hash(map.sourcesContent[i]) };
+    });
+    receiverManifest.moduleSha256 = hash(receiverBytes);
+    receiverManifest.bytes = receiverBytes.length;
+    receiverManifest.sourceTreeSha256 = hash(JSON.stringify(receiverManifest.inputs));
+  } else assert.deepEqual(map.sourcesContent.map(hash), receiverManifest.inputs.map(entry => entry.sha256), 'Receiver source-map inputs differ.');
   map.sources = receiverManifest.inputs.map(entry => entry.path); map.file = 'receiver-verifier.v129.mjs';
-  assert.equal(hash(JSON.stringify(map)), receiverManifest.sourceMapSha256, 'Normalized receiver source map differs.');
+  if (refreshComposition) { receiverManifest.sourceMapSha256 = hash(JSON.stringify(map)); await writeFile(resolve(bank, 'public/native/receiver-verifier.v129.manifest.json'), JSON.stringify(receiverManifest, null, 2) + '\n'); }
+  else assert.equal(hash(JSON.stringify(map)), receiverManifest.sourceMapSha256, 'Normalized receiver source map differs.');
 
   const core = await build({ ...common, entryPoints: ['app/lib/documentSeal/offlineSdkSource.ts'], supported: { 'template-literal': false }, external: ['snarkjs', 'hash-wasm', 'fflate', '@noble/hashes/*'], legalComments: 'none' });
   assert.equal('// Generated from the canonical app seal core by scripts/build_offline_sdk_runtime.mjs.\n' + core.outputFiles[0].text, await readFile(resolve(source, 'packages/receiz-sdk/src/offlineSealImplementation.js'), 'utf8'), 'Preferred SDK sealing source differs.');

@@ -17,7 +17,7 @@ export const checks = [
 export type CheckId = typeof checks[number]['id'];
 export type CheckResult = { id: CheckId; passed: boolean; durationMs: number; evidence: unknown; error?: string };
 export type ReferenceReport = { schema: 'receiz.bank.browser-reference-checks.v1'; receizVersion: string; registryDigest: string; verifierModuleSha256: string; startedAt: string; completedAt: string; checks: CheckResult[]; localChecksPassed: boolean; institutionConformance: 'not-assessed'; creditAuthorized: false; financialActionsPerformed: 0; timestampsAreAuthority: false };
-export interface NoteInspection { schema: string; rail: 'reserve'; noteId: string; noteArtifactSha256: string; fundingArtifactSha256: string; allocationId: string; amountUsdCents: string; amountPhiMicro: string; receivingCustodyCommitmentDigest: string; carriedChainVerified: true; currentSpendabilityChecked: false; custodyConsumed: false; creditAuthorized: false; }
+export interface NoteInspection { schema: string; rail: 'reserve' | 'settlement'; noteId: string; noteArtifactSha256: string; fundingArtifactSha256: string; allocationId: string; amountUsdCents: string; amountPhiMicro: string; receivingCustodyCommitmentDigest: string; carriedChainVerified: true; currentSpendabilityChecked: false; custodyConsumed: false; creditAuthorized: false; }
 interface NativeVerifier { openReserveNoteImage(bytes: Uint8Array): Promise<unknown>; inspectReserveNote(handle: unknown): NoteInspection; exportReserveNoteSource(handle: unknown): unknown; }
 let nativeLoad: Promise<NativeVerifier> | undefined;
 export function loadNativeVerifier() {

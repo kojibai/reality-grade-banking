@@ -197,3 +197,9 @@
 .entrance-conformance-footer a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .entrance-conformance-footer button { padding: 2px 0; border-radius: 3px; color: #77869a; font-size: 10px; }
 @keyframes entrance-conformance-spin { to { transform: rotate(360deg); } }
+
+.note-rail-choice { position: relative; display: inline-flex; align-items: center; color: var(--navy); }
+.note-rail-choice select { appearance: none; border: 0; border-radius: 7px; background: transparent; color: inherit; font: inherit; font-weight: 650; text-align: right; padding: 9px 24px 9px 12px; min-height: 40px; cursor: pointer; }
+.note-rail-choice svg { position: absolute; right: 2px; pointer-events: none; }
+.note-rail-choice select:disabled { opacity: 0.65; cursor: default; }
+.note-rail-choice select:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
