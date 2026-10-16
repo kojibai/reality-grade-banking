@@ -82,7 +82,6 @@
 .entrance-symbol { display: inline-flex; padding: 15px; background: #eef3ff; color: #315ce7; border-radius: 22px; margin-bottom: 28px; }
 .entrance-content h1 { font-size: clamp(34px, 9vw, 44px); letter-spacing: -.045em; line-height: 1.1; margin-bottom: 18px; }
 .entrance-content .page-subtitle { font-size: var(--entrance-subtitle-size); line-height: 1.5; white-space: nowrap; margin-bottom: 28px; }
-.entrance-hairline { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; margin: 26px 0 -7px; color: #87909d; font-weight: 600; text-align: center; }
 .entrance-consent { color: var(--muted); font-size: var(--entrance-fine-print-size); line-height: 1.65; margin-top: 20px; }
 .entrance-consent a { color: inherit; text-decoration: underline; text-underline-offset: .18em; }
 .entrance-content > button { width: 100%; margin-bottom: 12px; }
@@ -97,8 +96,8 @@
 .profile-public-id { display: block; margin-top: 9px; color: var(--navy); font-size: 15px; font-weight: 550; line-height: 1.55; overflow-wrap: anywhere; user-select: all; }
 .profile-identity p { margin-top: 7px; color: #788597; font-size: 12px; line-height: 1.5; }
 .identity-profile > .primary-button { margin-top: 21px; }
-.identity-profile .bank-connection { margin: 19px 0 0; font-size: 12px; }
-.identity-profile .bank-connection > summary { padding: 12px 0; color: #64768d; font-size: 12px; cursor: pointer; }
+.identity-profile :is(.bank-connection, .proof-portability) { margin: 19px 0 0; font-size: 12px; }
+.identity-profile :is(.bank-connection, .proof-portability) > summary { padding: 12px 0; color: #64768d; font-size: 12px; cursor: pointer; }
 .profile-owner-coordinate { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
 .profile-owner-coordinate span { display: block; font-size: 10px; color: #7c8797; }
 .profile-owner-coordinate code { display: block; margin-top: 6px; color: #64768d; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; user-select: all; }

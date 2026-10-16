@@ -35,6 +35,7 @@ export function loadBankNoteRuntime() {
   // Built from the pinned Receiz v129 host primitives. Loaded only when a note
   // action is opened; it never delays account or market first paint.
   const moduleUrl = new URL('/native/offline-notes.v129.mjs', location.origin).href;
-  return runtime ??= import(/* @vite-ignore */ moduleUrl).catch(error => { runtime = undefined; throw error; });
+  return runtime ??= import(/* @vite-ignore */ `${moduleUrl}?build=${noteRuntimeBuild.moduleSha256}`).catch(error => { runtime = undefined; throw error; });
 }
 export { bankNoteArtwork } from './note-artwork';
+import noteRuntimeBuild from '../../public/native/offline-notes.v129.manifest.json';

@@ -72,7 +72,9 @@ npm run build
 npm run preview -- --host 127.0.0.1 --port 4173 --strictPort
 ```
 
-Open `http://127.0.0.1:4173`. Install through the browser's Install / Add to Home Screen action. The service worker retains public shell/verifier/art assets on their defined cache paths and never replays financial APIs. First-use artwork requires its assets to have loaded; offline UI availability is separate from qualified financial custody. Close all Bank tabs and reopen to activate a waiting service-worker build.
+Open `http://127.0.0.1:4173`. Install through the browser's Install / Add to Home Screen action. A completed background installation retains one complete build: the Bank interface, public guides, native verifier and note runtime, proving resources, note artwork and lazy QR decoder. Resource hashes are checked before caching; offline readiness requires the complete inventory. A first installation requires connectivity. Offline interface availability is separate from qualified financial custody, and financial APIs are never cached or replayed.
+
+An open Bank tab continues using its own build while an update waits. Close all Bank tabs and reopen to activate it normally. Updates preserve encrypted identity custody, original proofs, receipts, pending operations and unknown account namespaces; they do not reset account storage or force a reload. Run `node tests/browser/offline-continuity-server.mjs` for the isolated, nonfinancial offline/update browser fixture; its terminal accepts `A`, `B`, `offline` and `online`.
 
 ## Matching native source
 

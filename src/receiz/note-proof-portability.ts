@@ -1,4 +1,5 @@
 import type { ProofSource } from './proof-library';
+import receiverBuild from '../../public/native/receiver-verifier.v129.manifest.json';
 type Receiver = {
   openReserveNoteImage(bytes: Uint8Array): Promise<unknown>;
   inspectReserveNote(value: unknown): { rail: string; noteId: string };
@@ -7,7 +8,7 @@ type Receiver = {
 };
 let pending: Promise<Receiver> | undefined;
 function receiver() {
-  const url = new URL('/native/receiver-verifier.v129.mjs', location.origin).href;
+  const url = new URL(`/native/receiver-verifier.v129.mjs?build=${receiverBuild.moduleSha256}`, location.origin).href;
   return pending ??= import(/* @vite-ignore */ url).catch(error => { pending = undefined; throw error; });
 }
 export async function inspectNoteProof(source: ProofSource, keyId: string): Promise<{ title: string }> {

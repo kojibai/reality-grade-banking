@@ -40,11 +40,11 @@ export function ProofPortabilityPanel({ identity }: { identity: OpenIdentity }) 
     finally { if (current()) { running.current = false; setBusy(false); } }
   };
   if (!identity.proofLibrary) return null;
-  return <details className="identity-import proof-portability"><summary>Proof backup</summary>
-    <p className="body-copy small-copy">Keep your originals, asset definitions and verified receipts together. Import a backup, original proof or transaction recovery file here.</p>
+  return <details className="identity-import proof-portability"><summary>Account proofs &amp; receipts</summary>
+    <p className="body-copy small-copy">Keep your originals, asset definitions and verified receipts together. This private archive preserves your evidence; it does not sign you in.</p>
     <button className="secondary-button" disabled={busy} onClick={() => void run(async (lib, current) => {
       const backup = await lib.exportBackup(); if (current()) { save(backup); setNotice('Proof backup saved. Keep this private file with your Identity Seal.'); }
-    })}><Download size={16} />Save proof backup</button>
+    })}><Download size={16} />Save private proof backup</button>
     <label className={`secondary-button proof-import-choice${busy ? ' disabled' : ''}`}><Upload size={16} />Import backup or proof<input type="file" aria-label="Proof backup or recovery file" disabled={busy} accept=".json,.receiz,.receizbundle,.png,.svg,.zip,.jpg,.jpeg,.webp,.pdf" onChange={event => {
       const file = event.target.files?.[0]; event.target.value = ''; if (!file) return; setReview(null);
       void run(async (lib, current) => { const value = await lib.inspect(file); if (current()) setReview(value); });

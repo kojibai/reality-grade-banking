@@ -40,7 +40,7 @@ for (const [path, entry] of Object.entries(navigation.pages)) {
   assert.ok(output.includes('id="public-learn-root"'));
 }
 const robots = await readFile('dist/robots.txt', 'utf8'); assert.match(robots, /Disallow: \/api\//); assert.ok(!sitemap.includes('#'));
-const sw = await readFile('dist/sw.js', 'utf8'); assert.ok(!sw.includes('qr-decoder'));
+const sw = await readFile('dist/sw.js', 'utf8'); assert.ok(sw.includes('qr-decoder'), 'The decoder stays lazily executed but is cached for offline scanning.');
 for (const url of html.matchAll(/(?:href|src)="(\/learn\/learn\.(?:css|js)\?v=[a-f0-9]{12})"/g)) assert.ok(sw.includes(JSON.stringify(url[1])), `Versioned Learn asset must be precached: ${url[1]}`);
 const css = await readFile('dist/learn/learn.css'), motion = await readFile('dist/learn/learn.js');
 assert.ok(gzipSync(css).length + gzipSync(motion).length < 12_000, 'Public presentation runtime budget');
