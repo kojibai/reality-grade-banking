@@ -1,0 +1,4 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><div id="root"></div><script type="module">
+import React,{useState} from 'react';import{createRoot}from'react-dom/client';import{Sheet}from'/src/components/Sheet.tsx';import'/src/styles/tokens.css';import'/src/styles/app.css';
+function Fixture(){const[opened,setOpened]=useState(false);return React.createElement('main',{style:{padding:24}},React.createElement('button',{id:'opener',className:'balance-display',onClick:()=>setOpened(true)},'Open balance panel'),React.createElement('button',null,'Next control'),opened&&React.createElement(Sheet,{title:'Fixture panel',onClose:()=>setOpened(false)},'Synthetic layout only. No account or funds.'));}createRoot(document.querySelector('#root')).render(React.createElement(Fixture));
+</script>

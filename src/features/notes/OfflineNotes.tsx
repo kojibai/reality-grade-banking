@@ -25,6 +25,9 @@ function exactPhi(value?: string): string {
 function noteError(cause: unknown): string {
   const code = cause instanceof Error ? cause.message : '';
   if (/OFFLINE_NOTE_CUSTODY_UNSUPPORTED|ATTESTATION|ROLLBACK/.test(code)) return 'This device could not qualify secure Offline Note custody. Use a supported device with an attested, single-device credential.';
+  if (/INSUFFICIENT_PREPARED_FUNDS/.test(code)) return 'This device does not have enough value ready for this note. Choose a lower amount.';
+  if (/PREPARED_RESOURCE_REQUIRED|PREPARED_RECEIVER_REQUIRED/.test(code)) return 'Reconnect to prepare secure note capacity on this device, then try again.';
+  if (/TRANSPORT_CAPACITY/.test(code)) return 'This note needs more space for its complete proof. Its current value stays held on this device.';
   if (/INSUFFICIENT_SETTLEMENT/.test(code)) return 'Choose an amount within your available Settlement balance.';
   if (/INSUFFICIENT_RESERVE/.test(code)) return 'This note needs enough funded Reserve. Add money or choose a lower amount.';
   if (/EXACT_HEAD|IRREVERSIBLY_CONSUMED/.test(code)) return 'This device does not hold this note’s current custody. Ask the sender to use your receiving request and send the resulting note image.';

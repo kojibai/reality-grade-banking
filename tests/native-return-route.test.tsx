@@ -6,12 +6,20 @@ import { expect, it, vi } from 'vitest';
 import App from '../src/App';
 const fixture = vi.hoisted(() => ({ identity: { binding: { identityOwnerReceizId: 'receiz_device_fixture', artifactOwnerReceizId: 'fixture.receiz.id' }, localHistory: {}, listDeposits: async () => [], pendingCardDeposit: async () => null } }));
 vi.mock('../src/receiz/useNativeAccount', () => ({ useNativeAccount: () => ({ identity: fixture.identity, wallet: null, opening: false, busy: false, error: null, observedAt: null, refresh: async () => {}, forget: async () => {} }) }));
-vi.mock('../src/features/market/Market', () => ({ Market: () => null }));
+vi.mock('../src/features/market/Market', () => ({ Market: ({active}:{active:boolean}) => <span data-market-active={String(active)}/> }));
 vi.mock('../src/features/ledger/Ledger', () => ({ Ledger: () => null }));
 // Route/modal tests use a local account fixture. Public discovery has its own
 // tests and must not make localhost requests while exercising navigation.
 vi.mock('../src/receiz/usePublicMarket', () => ({ usePublicMarket: () => ({ catalog: null, status: 'loading', refresh: async () => {} }) }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+it('resumes the retained bank surface after returning from an in-app receipt',async()=>{
+ history.replaceState(null,'','/#market');const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
+ try{await act(async()=>root.render(<App/>));expect(host.querySelector('[data-market-active]')?.getAttribute('data-market-active')).toBe('true');
+ history.pushState({bankReceipt:true},'','/receipt/#r=invalid');await act(async()=>{window.dispatchEvent(new Event('bankeiz:receipt'));window.dispatchEvent(new Event('receiz-bank:surface'));});expect(host.querySelector('[data-market-active]')?.getAttribute('data-market-active')).toBe('false');
+ history.replaceState(null,'','/#market');await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')));expect(host.querySelector('[data-market-active]')?.getAttribute('data-market-active')).toBe('true');
+ }finally{act(()=>root.unmount());host.remove();history.replaceState(null,'','/');}
+});
+
 it('reopens Deposit after admission when returning from card checkout', async () => {
   history.replaceState(null, '', '/#account/deposit');
   const host = document.createElement('div'), root = createRoot(host);

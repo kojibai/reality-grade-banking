@@ -1,0 +1,29 @@
+<!doctype html><meta charset="utf-8"><title>Prepared note atomic storage · synthetic checks</title><button id="run">Run isolated storage checks</button><pre id="result">No identity, account or funds connected.</pre><script type="module">
+import {saveDeviceIdentity,savePreparedNoteState,loadPreparedNoteState,loadWalletObservation,saveWalletObservation,forgetDeviceIdentity} from '/src/receiz/identity-vault.ts';
+import {createBankPreparedCashStorage} from '/native/receiz/app/lib/wallet/bankNotes/preparedCashStorage.ts';
+import {saveOfflineNoteBlob,loadOfflineNoteBlob} from '/src/receiz/identity-vault.ts';
+const hash=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');
+const check=(value,message)=>{if(!value)throw Error(message);};
+document.querySelector('#run').onclick=async()=>{try{
+ await new Promise((resolve,reject)=>{const r=indexedDB.deleteDatabase('receiz-bank-private-custody');r.onsuccess=resolve;r.onerror=()=>reject(r.error);});
+ const identity=new TextEncoder().encode('synthetic browser storage fixture; not proof authority'),binding={artifactSha256:await hash(identity),keyId:'fixture-only'};await saveDeviceIdentity(identity,'fixture.txt','',true);
+ const wallet={userId:'fixture-only',totalUsdCents:'200',reserveUsdCents:'200',settlementUsdCents:'0',balancePhiMicro:'1000000',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:'14692714',kaiUpulse:'14692714000000'};
+ const observation={wallet,observedAt:'2026-10-17T12:00:00Z',source:'local-note-head',localHeadDigest:'a'.repeat(64),history:[{...wallet,at:'2026-10-17T12:00:00Z',kaiUPulse:wallet.kaiUpulse}]};
+ const state={schema:'receiz.bank.prepared-notes-device.v1',create:null,slots:{},components:{credit:{exhausted:false}},journal:{deposits:{}},notes:{}};
+ await savePreparedNoteState(binding,state,null,observation);check((await loadWalletObservation(binding)).wallet.totalUsdCents==='200','atomic balance missing');check((await loadPreparedNoteState(binding)).components.credit.exhausted===false,'atomic operation missing');
+ await saveWalletObservation(binding,{...wallet,totalUsdCents:'999',reserveUsdCents:'999'},'2026-10-17T12:00:01Z',[]);check((await loadWalletObservation(binding)).wallet.totalUsdCents==='200','plain remote read replaced native head');
+ let refused=false;try{await forgetDeviceIdentity();}catch{refused=true;}check(refused,'funded component removal allowed');
+ const outcomes=await Promise.allSettled([savePreparedNoteState(binding,{...state,create:{id:'one'}},state,{...observation,localHeadDigest:'b'.repeat(64)}),savePreparedNoteState(binding,{...state,create:{id:'two'}},state,{...observation,localHeadDigest:'c'.repeat(64)})]);check(outcomes.filter(r=>r.status==='fulfilled').length===1,'CAS accepted concurrent heads');
+ const current=await loadPreparedNoteState(binding),head=await loadWalletObservation(binding);check(head.localHeadDigest===(current.create.id==='one'?'b':'c').repeat(64),'wallet and operation committed different heads');
+ const cash=createBankPreparedCashStorage({keyId:binding.keyId,uid:'fixture-only',assertOpen(){},read:()=>loadPreparedNoteState(binding),write:(next,previous)=>savePreparedNoteState(binding,next,previous),retain:bytes=>saveOfflineNoteBlob(binding,bytes),restore:ref=>loadOfflineNoteBlob(binding,ref)},'test-slot');
+ // The choreography has no financial authority; this is an exact private-state storage fixture.
+ await savePreparedNoteState(binding,{...current,keyId:binding.keyId,uid:'fixture-only'},current);
+ await cash.write({accountProof:{privateNamespace:{secret:'PRIVATE-CASH-CONTENT'}}});check((await cash.read()).accountProof.privateNamespace.secret==='PRIVATE-CASH-CONTENT','cash state exact restart failed');
+ const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('receiz-bank-private-custody');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+ const rows=await new Promise((resolve,reject)=>{const r=db.transaction('operations').objectStore('operations').getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();
+ check(rows.every(row=>!new TextDecoder().decode(row.bytes).includes('PRIVATE-CASH-CONTENT')),'private cash content stored in plaintext');
+ const withCash=await loadPreparedNoteState(binding);
+ const finished={...state,components:{credit:{exhausted:true}},slots:{receiver:{status:'used'}},create:null};await savePreparedNoteState(binding,finished,withCash);await forgetDeviceIdentity();
+ document.querySelector('#result').textContent='PASS · atomic account/head and note state · remote downgrade refused · concurrent writer refused · prepared value removal guard · completed cleanup. Storage checks only; no financial qualification.';
+ }catch(error){document.querySelector('#result').textContent='FAIL · '+error.message;}};
+</script>

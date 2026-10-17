@@ -23,3 +23,5 @@ for (const entry of manifest.resources) {
 const navigation = JSON.parse((await readFile('dist/index.html', 'utf8')).match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)[1]);
 for (const path of Object.keys(navigation.pages)) assert.equal(manifest.pages[path], path, `Missing offline public route ${path}`);
 console.log(`Verified complete offline build ${manifest.version}: ${shell.length} exact public resources, final public routes, lazy decoder and safe waiting updates.`);
+
+assert.equal(manifest.pages['/receipt/'], '/receipt/', 'Receipt links must reopen offline using their retained read-only entry.');

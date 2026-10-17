@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import { ConsoleShell } from './components/ConsoleShell';
 import type { Panel } from './components/BottomNav';
 import { Market } from './features/market/Market';
+import {ReceiptView} from './features/receipts/ReceiptView';
 import { Ledger } from './features/ledger/Ledger';
 import { Entrance } from './features/identity/Entrance';
 import { LiveAccount } from './features/account/LiveAccount';
@@ -18,10 +19,16 @@ import { LiveAssets } from './features/assets/LiveAssets';
 import { BANK_PUBLIC_ORIGIN } from './receiz/config';
 import { parsePaymentRequest } from './receiz/payment-request';
 import { CardDepositReturn, readCardReturn } from './features/deposit/CardDepositReturn';
-export default function App() { const session = readCardReturn(location.search); return session ? <CardDepositReturn sessionId={session} /> : <BankApp />; }
+export default function App() {
+ const [receipt,setReceipt]=useState(location.pathname==='/receipt/');
+ const bankMounted=useRef(!receipt);
+ useEffect(()=>{const changed=()=>{setReceipt(location.pathname==='/receipt/');if(location.pathname==='/')bankMounted.current=true;};addEventListener('popstate',changed);addEventListener('bankeiz:receipt',changed);return()=>{removeEventListener('popstate',changed);removeEventListener('bankeiz:receipt',changed);};},[]);
+ const session=readCardReturn(location.search);
+ return <>{(bankMounted.current||!receipt)&&<div hidden={receipt} inert={receipt}>{session?<CardDepositReturn sessionId={session}/>:<BankApp/>}</div>}{receipt&&<ReceiptView onBack={()=>{if(history.state?.bankReceipt)history.back();else{history.replaceState(null,'','/#ledger');dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));}}}/>}</>;
+}
 function BankApp() {
   const [onBank, setOnBank] = useState(location.pathname === '/');
-  useEffect(() => { const change = () => flushSync(() => setOnBank(location.pathname === '/')); addEventListener('receiz-bank:surface', change); return () => removeEventListener('receiz-bank:surface', change); }, []);
+  useEffect(() => { const change = () => flushSync(() => setOnBank(location.pathname === '/')); addEventListener('receiz-bank:surface', change); addEventListener('popstate',change); return () => { removeEventListener('receiz-bank:surface', change);removeEventListener('popstate',change); }; }, []);
   const account = useNativeAccount();
   const publicMarket = usePublicMarket(onBank && Boolean(account.identity));
   const showcase = useMemo(() => projectAccountShowcase(publicMarket.catalog, account.identity?.accountUsername?.() ?? account.identity?.username ?? null), [publicMarket.catalog, account.identity, account.wallet]);

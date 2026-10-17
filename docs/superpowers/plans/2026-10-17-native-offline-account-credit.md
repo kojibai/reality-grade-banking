@@ -55,11 +55,11 @@
 
 **Interfaces:** Prepared source/custody capacity is discoverable locally. Create consumes a verified available component and prequalified note slot. Deposit returns the exact verified account successor and retains a source usable by the next Create. Existing API methods and screens remain compatible.
 
-- [ ] Write failing creation/deposit/restart tests with fresh network requests disabled.
-- [ ] Reuse actual prepared exclusive budgets and prequalified custody resources; never allocate additional funds without consent.
-- [ ] Retain original intents and exact full source bytes across restart and partial writes.
-- [ ] Adopt verified local account successors for balance/chart and later native operations without an online wallet read.
-- [ ] Preserve per-account locks, foreign-ID refusal, previews, review amount, saving and legacy recovery.
+- [x] Write failing creation/deposit/restart tests with fresh network requests disabled.
+- [x] Reuse actual prepared exclusive budgets and prequalified custody resources; never allocate additional funds without consent.
+- [x] Retain original intents and exact full source bytes across restart and partial writes.
+- [x] Adopt verified local account successors for balance/chart and later native operations without an online wallet read.
+- [x] Preserve per-account locks, foreign-ID refusal, previews, review amount, saving and legacy recovery.
 
 ## Task 3: Native reconciliation, exact modules and release evidence
 
@@ -80,9 +80,10 @@
 ## Checkpoint status — October 17, 2026
 
 Task 1 core qualification is committed on Receiz main at `ce455bfe444f88000be183afdae5455f8ff8d94b`.
-Task 2 recovery/account-pointer work is implemented and tested, but browser
-resource preparation, verified balance/chart adoption and production selection
-are still pending. Task 3 included-source/module and browser/package checks pass;
+Task 2 now includes reusable browser resource preparation, encrypted cash/source
+retention, exact restart and verified local balance/chart adoption. Both rails
+pass network-denied native journeys and the Bank bridge/storage checks. The
+production selector remains disabled for the independent gates below. Task 3 included-source/module and browser/package checks pass;
 shared-writer reconciliation, changing quotes/mixed rails and physical-device
 qualification remain pending. See `../../native-offline-credit-qualification.md`.
 Do not treat this checkpoint as completion of the full disconnected release.

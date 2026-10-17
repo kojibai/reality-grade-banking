@@ -28,13 +28,15 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   }
   visit('index.html');
   if (manifest['verify/index.html']) { visit('verify/index.html'); urls.add('/verify/'); }
+  if (manifest['receipt/index.html']) {visit('receipt/index.html');urls.add('/receipt/');}
   // Vite emits module-worker files outside the entry's manifest dependency list.
   for (const name of await readdir(resolve(root, 'assets'))) if (/^worker-[\w-]+\.js$/.test(name)) urls.add('/assets/' + name);
   const index = await readFile(resolve(root, 'index.html'), 'utf8');
   const navigation = JSON.parse(index.match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)?.[1] ?? 'null');
   if (!navigation?.pages) throw Error('OFFLINE_FINAL_NAVIGATION_REQUIRED');
-  const pages = { '/': '/index.html', '/index.html': '/index.html' };
+  const pages = { '/': '/index.html', '/index.html': '/index.html', '/receipt/':'/index.html' };
   if (manifest['verify/index.html']) { pages['/verify/'] = '/verify/'; pages['/verify'] = '/verify/'; }
+  if (manifest['receipt/index.html']) pages['/receipt/']='/receipt/';
   for (const path of Object.keys(navigation.pages)) {
     if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && path !== '/legal/') throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     urls.add(path); pages[path] = path; if (path !== '/') pages[path.slice(0, -1)] = path;

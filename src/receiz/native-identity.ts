@@ -1,4 +1,4 @@
-import { loadOfflineNoteState, saveOfflineNoteState, saveOfflineNoteBlob, loadOfflineNoteBlob } from './identity-vault';
+import { loadOfflineNoteState, saveOfflineNoteState, loadPreparedNoteState, savePreparedNoteState, saveOfflineNoteBlob, loadOfflineNoteBlob } from './identity-vault';
 import { createBankNoteAttestationFetch } from './note-attestation-transport';
 import { loadBankNoteRuntime, bankNoteArtwork, type BankOfflineNotes, type BankNoteRuntime } from './offline-notes';
 import type { ReceizClient, ReceizIdentityPublicBinding, ReceizKeyFile, ReceizIdentityAccountProjection } from '@receiz/sdk';
@@ -26,6 +26,9 @@ import { createBankExecutionRecovery, type BankExecutionRecovery } from './bank-
 import { deviceBankExecutionStore } from './bank-execution-vault';
 import { createBankCommittedSourceRestoration } from './bank-committed-sources';
 import { initializeFreshBankAccount } from './new-account-genesis';
+import {loadBankProofResources} from './proof-resource-continuity';
+import {readLocalAccountCheckpoint} from './local-account-checkpoint';
+import {BANK_PREPARED_NOTE_CREDIT_ENABLED} from './config';
 import { readNoteAccountObservation } from './note-account-observation';
 
 export interface OpenIdentity {
@@ -66,7 +69,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   function persistWalletObservation(observation: NonNullable<typeof knownWallet>) {
     const write = walletPersistence.catch(() => {}).then(async () => {
       if (lifetime.signal.aborted || knownWallet !== observation) return;
-      await saveWalletObservation(binding, observation.wallet, observation.observedAt, observation.history, observation.source);
+      await saveWalletObservation(binding, observation.wallet, observation.observedAt, observation.history, observation.source, observation.localHeadDigest);
     });
     walletPersistence = write;
     return write;
@@ -79,10 +82,9 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const unsigned = sdk.createReceizClient({ applicationId: BANK_APPLICATION_ID, baseUrl: 'https://receiz.com', fetchImpl: heldFetch });
   let sealingResources: { wasm: Uint8Array; zkey: Uint8Array } | undefined;
   async function ownedSealer() {
-    const resources = await Promise.all(['/zk/document-seal.wasm', '/zk/document-seal.zkey'].map(async path => { const response = await fetch(path, { credentials: 'omit', signal: lifetime.signal }); if (!response.ok) throw new Error('Receiz proof resources are unavailable.'); return new Uint8Array(await response.arrayBuffer()); }));
-    sealingResources = { wasm: resources[0], zkey: resources[1] };
+    sealingResources ??= await loadBankProofResources(fetch, undefined, lifetime.signal);
     const { createReceizOfflineSealer, createReceizIndexedDbSealStore } = await import('@receiz/sdk/offline');
-    const sealer = createReceizOfflineSealer({ ownerIdentityAdmission: admission, store: createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer'), resources: { wasm: resources[0], zkey: resources[1] }, fetch: heldFetch });
+    const sealer = createReceizOfflineSealer({ ownerIdentityAdmission: admission, store: createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer'), resources: sealingResources, fetch: heldFetch });
     await sealer.enroll(); return sealer;
   }
   let transportKeyFile = keyFile, transportPhrase = phrase, transportBytes = bytes, transportBinding = binding;
@@ -123,17 +125,20 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     }
     return client;
   }
+  const hasLocalWalletHead = () => knownWallet?.source === 'local-note-head';
   async function readWallet() {
+    if (hasLocalWalletHead() && knownWallet) return knownWallet.wallet;
     const startedRevision = walletRevision;
     const current = await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT);
     const wallet = parseSharedWallet(await current.connect.wallet(), accountUid!);
     // A read that began before a completed local note result cannot overwrite
     // that result when its delayed response finally arrives.
-    if (startedRevision !== walletRevision && knownWallet) return knownWallet.wallet;
+    if ((startedRevision !== walletRevision || hasLocalWalletHead()) && knownWallet) return knownWallet.wallet;
     if (!lifetime.signal.aborted) { const observedAt = new Date().toISOString(); const prior = knownWallet?.source === 'account-genesis' ? knownWallet.history?.map(point => ({ ...point, userId: wallet.userId })) ?? [] : knownWallet?.history ?? []; const history = appendWalletPoint(prior, wallet, observedAt, String(sdk.receizKaiNow().uPulse)); knownWallet = { wallet, observedAt, history }; await persistWalletObservation(knownWallet); }
     return startedRevision !== walletRevision && knownWallet ? knownWallet.wallet : wallet;
   }
   let noteRuntime: BankNoteRuntime | undefined;
+  let preparedNoteRuntime: import('./offline-notes').BankPreparedNoteRuntime | undefined;
   const noteOpen = () => { if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.'); };
   async function offlineNotes(): Promise<BankOfflineNotes> {
     noteOpen();
@@ -148,15 +153,44 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       const request = async (path: string, options: { method: 'GET' | 'POST'; body?: Record<string, unknown> }) => { noteOpen(); const current = await connectClient(BANK_NATIVE_SCOPES, BANK_NATIVE_CONSENT); const response = await current.request(path, options); noteOpen(); return response; };
       noteRuntime = module.createBankOfflineNotesRuntime({ keyId: binding.keyId, uid: accountUid!, localUid: keyFile.owner.uid, origin: location.origin, passphrase: transportPhrase, request, fetchImpl: createBankNoteAttestationFetch({ origin: location.origin, request, signal: lifetime.signal }), sealDocument, read: () => loadOfflineNoteState(binding), retain: (bytes: Uint8Array) => saveOfflineNoteBlob(binding, bytes), restore: (digest: string) => loadOfflineNoteBlob(binding, digest), write: (next: unknown, previous: unknown) => saveOfflineNoteState(binding, next, previous), assertOpen: noteOpen, artwork: bankNoteArtwork });
     }
+    if (!preparedNoteRuntime) {
+      const module = await loadBankNoteRuntime();
+      if (typeof module.createBankPreparedBrowserRuntime === 'function') preparedNoteRuntime = module.createBankPreparedBrowserRuntime({
+        keyId:binding.keyId,uid:accountUid!,localUid:keyFile.owner.uid,identity:transportKeyFile,passphrase:transportPhrase,origin:location.origin,
+        fetchImpl:createBankNoteAttestationFetch({origin:location.origin,request:async(path,options)=>{noteOpen();const current=await connectClient(BANK_NATIVE_SCOPES,BANK_NATIVE_CONSENT);return current.request(path,options);},signal:lifetime.signal}),
+        sealDocument:await module.createBankNativeNoteSealer({enrollment:await (await import('@receiz/sdk/offline')).createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer').load(),resources:sealingResources}),
+        read:()=>loadPreparedNoteState(binding),retain:(source:Uint8Array)=>saveOfflineNoteBlob(binding,source),restore:(ref:string)=>loadOfflineNoteBlob(binding,ref),assertOpen:noteOpen,artwork:bankNoteArtwork,
+        write:async(next:unknown,previous:unknown,proof?:unknown)=>{
+          const observation=proof?await readLocalAccountCheckpoint(proof as ReceizKeyFile,transportKeyFile,accountUid!,knownWallet,new Date().toISOString()):undefined;
+          noteOpen();await savePreparedNoteState(binding,next,previous,observation);noteOpen();
+          if(observation){knownWallet=observation;walletRevision++;}
+        },
+      });
+    }
     const held = noteRuntime!;
     const lock = async <T,>(operation: () => Promise<T>) => {
       if (!navigator.locks) throw new Error('This browser cannot safely retain Offline Notes. Use a current browser with device custody support.');
       return navigator.locks.request(`receiz-bank-notes:${binding.keyId}`, { signal: lifetime.signal }, async () => { noteOpen(); return operation(); });
     };
+    const prepared = preparedNoteRuntime;
+    const local = () => {
+      if (!BANK_PREPARED_NOTE_CREDIT_ENABLED || !prepared) throw Error('BANK_LOCAL_CREDIT_QUALIFICATION_REQUIRED');
+      return prepared;
+    };
     return {
-      savedNotes: () => held.savedNotes(),
-      pending: () => held.pending(),
+      prepareResources:count=>lock(()=>local().prepareResources(count)),
+      savedNotes: async () => [...await held.savedNotes(), ...(prepared ? await prepared.savedNotes() : [])],
+      pending: async () => await prepared?.pending() ?? held.pending(),
       create: (amount, rail = 'reserve') => lock(async () => {
+        if (BANK_PREPARED_NOTE_CREDIT_ENABLED && prepared) {
+          const pending=await prepared.pending();
+          if(pending||await prepared.hasPreparedFunding(rail)){
+            // Refill only the resource this explicitly reviewed action needs.
+            // Existing ready capacity is discovered locally by the native runtime.
+            if(!pending)await prepared.prepareResources({notes:1,receivers:0});
+            return prepared.createNote(amount,transportKeyFile,rail);
+          }
+        }
         const pending = await held.pending();
         const displayBaseline = knownWallet;
         let sourceMatchesDisplay = !displayBaseline;
@@ -191,10 +225,19 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
         }
       }),
       cancelUnfunded: () => lock(() => held.cancelUnfunded()),
-      receivingRequest: () => lock(() => held.receivingRequest()),
-      transfer: (noteId, request) => lock(() => held.transferNote(noteId, request)),
+      receivingRequest: () => lock(async () => {
+        if (!BANK_PREPARED_NOTE_CREDIT_ENABLED || !prepared) return held.receivingRequest();
+        try {return await prepared.receivingRequest();}
+        catch(cause){if(!(cause instanceof Error)||cause.message!=='BANK_NOTE_PREPARED_RECEIVER_REQUIRED')throw cause;}
+        // A fresh receiver is an explicit user preparation action. Already held
+        // capacity above never depends on refilling unrelated note resources.
+        await prepared.prepareResources({notes:2,receivers:1});return prepared.receivingRequest();
+      }),
+      transfer: (noteId, request) => lock(async () => prepared && (await prepared.savedNotes()).some(note=>note.noteId===noteId) ? local().transferNote(noteId,request) : held.transferNote(noteId, request)),
       inspect: image => held.inspectNote(image),
-      deposit: image => lock(async () => { const result = await held.depositNote(image); noteOpen(); void readWallet().catch(() => {}); return result; }),
+      deposit: image => lock(async () => {
+        if (BANK_PREPARED_NOTE_CREDIT_ENABLED && prepared && await prepared.holdsReceivingCustody(image)) return prepared.depositNote(image,transportKeyFile);
+        const result = await held.depositNote(image); noteOpen(); void readWallet().catch(() => {}); return result; }),
     };
   }
   async function readPrivateHistory(cursor?: string) {

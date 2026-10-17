@@ -37,6 +37,7 @@ export type BankVerifiedFundedNote = Readonly<{
 const custody = new WeakMap<BankVerifiedFundedNote, Readonly<{
     source: BankFundedNoteSource;
     note: KairosNoteOpenedCarrier;
+    cashSuccessor: Readonly<{qualification: Awaited<ReturnType<typeof createReceizOfflineNoteCustodyQualification>>; amountPhiMicro: string; amountUsdCents: string; accountHead: string; acceptedAtKai: string}>;
     issuance: Readonly<{ receipt: ReceizOfflineReserveWebAuthnConsumptionReceiptV1; packet: KairosNoteOpenedCarrier["packet"]; account: { userId: string; keyId: string } | null }>;
 }>>();
 const fail = (): never => { throw new Error("BANK_NOTE_COMPLETE_FUNDING_SOURCE_REQUIRED"); };
@@ -56,6 +57,11 @@ export function readBankFundedNoteIssuance(value: BankVerifiedFundedNote) {
     const held = custody.get(value);
     if (!held) throw Error("BANK_NOTE_SOURCE_CUSTODY_REQUIRED");
     return structuredClone(held.issuance);
+}
+export function readBankFundedNoteCashSuccessor(value: BankVerifiedFundedNote) {
+    const held = custody.get(value);
+    if (!held) throw Error("BANK_NOTE_SOURCE_CUSTODY_REQUIRED");
+    return structuredClone(held.cashSuccessor);
 }
 export async function verifyBankFundedNoteSource(input: BankFundedNoteSource, options: Readonly<{
     roots?: ReadonlyMap<string, ReceizSignatureV4RootPublicKey>;
@@ -180,6 +186,6 @@ export async function verifyBankFundedNoteSource(input: BankFundedNoteSource, op
     }
     const note = previous!;
     const result = Object.freeze({ rail: fundingRail, noteId: note.packet.noteId, noteArtifactSha256: note.artifactSha256, fundingArtifactSha256, allocationId, amountPhiMicro: finalReceipt!.amountPhiMicro, amountUsdCents: finalReceipt!.amountUsdCents, usdPerPhiMicrocents: finalReceipt!.usdPerPhiMicrocents });
-    custody.set(result, Object.freeze({ source, note, issuance: { receipt: finalReceipt!, packet: genesis!.packet, account: fundingAccount } }));
+    custody.set(result, Object.freeze({ source, note, cashSuccessor: {qualification,amountPhiMicro:balancePhi,amountUsdCents:balanceUsd,accountHead:accountHead!,acceptedAtKai:String(kai)}, issuance: { receipt: finalReceipt!, packet: genesis!.packet, account: fundingAccount } }));
     return result;
 }

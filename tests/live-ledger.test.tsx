@@ -29,3 +29,12 @@ it('appends visible rows automatically before the list end', () => {
   network.state = feed(); const host = mount(); expect(host.querySelectorAll('.ledger-event')).toHaveLength(50);
   act(() => reveal!([{ isIntersecting: true }])); expect(host.querySelectorAll('.ledger-event')).toHaveLength(100);
 });
+it('filters public transfers and offers only compact receipt open and copy controls',async()=>{
+ network.state={...feed(0),records:[...parsePublicNetworkPage('wallet',{ok:true,events:[{id:'transfer',kind:'chat_transfer',summary:'Payment sent',pulse:14692714,amountUsdCents:'1200'},{id:'deposit',kind:'reserve_credit',summary:'Reserve deposit',amountUsdCents:'2000'}]}).records,...parsePublicNetworkPage('actions',{ok:true,actions:[{id:'action',actionKind:'record',summary:'Recorded action'}]}).records]};
+ const copy=vi.fn().mockResolvedValue(undefined);vi.stubGlobal('navigator',{clipboard:{writeText:copy}});
+ const host=mount();expect(host.querySelectorAll('.ledger-receipt-actions')).toHaveLength(2);
+ act(()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Transfers')!.click());
+ expect(host.querySelectorAll('.ledger-event')).toHaveLength(1);expect(host.textContent).not.toContain('Reserve deposit');expect(host.textContent).not.toContain('Recorded action');
+ const icons=host.querySelector('.ledger-receipt-actions')!;expect(icons.querySelector('a')?.getAttribute('href')).toContain('https://bankeiz.com/receipt/#r=');
+ await act(async()=>icons.querySelector('button')!.click());expect(copy).toHaveBeenCalledOnce();expect(copy.mock.calls[0][0]).toContain('/receipt/#r=');
+});

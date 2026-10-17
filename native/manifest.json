@@ -128,7 +128,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "70709aff9c7adeef600605b3d6505786996e8c52cc877b288048318be7bd1a6e"
+      "sha256": "b3ff101097e1a820228ef356688d367a5eb03f32d2e08b44769589d60715870f"
     },
     {
       "path": "app/lib/wallet/bankNotes/bytePacking.ts",
@@ -152,7 +152,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/fundedNote.ts",
-      "sha256": "03caf69ded3a7ff89f0ff064d312ffc76a51a0b2aca4c070e8d3002218d02b0e"
+      "sha256": "05f8914ef5384e68736950be9faccfb122832a4ca83b5e889e6ba8cd2cbf5e25"
     },
     {
       "path": "app/lib/wallet/bankNotes/fundingResume.ts",
@@ -164,11 +164,19 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/localCreditJournal.ts",
-      "sha256": "8ee55452259bc37a843336a344c35cde669237096ab39ab652c7df0929978aa4"
+      "sha256": "f8b30144696f60eb745c5589fe71b06d48822d2f0fcfadc5644fef8c9c5c4301"
     },
     {
       "path": "app/lib/wallet/bankNotes/noteImage.ts",
-      "sha256": "f7bab1c2e9a97c781365fda9f18780fede67e6bc38d572d0cd9adbb9eb9a3ed6"
+      "sha256": "b6c71147847c2b2b7797a737b092add1bade744da1cd39b56ca30ac1110344a0"
+    },
+    {
+      "path": "app/lib/wallet/bankNotes/preparedBrowser.ts",
+      "sha256": "438e391cd6077645ab3bc498d9845e4be19e7c644a38bef8b7e612bd9d37de79"
+    },
+    {
+      "path": "app/lib/wallet/bankNotes/preparedCashStorage.ts",
+      "sha256": "d543ad9ce8da3144286974fb97f9a8d6a86953bca9da30b713708895ef4dfe3e"
     },
     {
       "path": "app/lib/wallet/bankNotes/redemption.ts",
@@ -240,7 +248,7 @@
     },
     {
       "path": "app/lib/wallet/kairosOfflineNoteLocalIssuance.ts",
-      "sha256": "82dd3b4562b587ebefd5f14df5456ee5822adb48846b3467dafdf6c10d69ef17"
+      "sha256": "ab7ab17bf0b43fb8da79d9e62133c9ad7e61945ceb412866db615c6ede8f20fd"
     },
     {
       "path": "app/lib/wallet/kairosReserveAccountSuccessor.ts",
@@ -1298,7 +1306,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "70709aff9c7adeef600605b3d6505786996e8c52cc877b288048318be7bd1a6e"
+      "sha256": "b3ff101097e1a820228ef356688d367a5eb03f32d2e08b44769589d60715870f"
     },
     {
       "path": "app/lib/wallet/bankNotes/bytePacking.ts",
@@ -1318,7 +1326,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/fundedNote.ts",
-      "sha256": "03caf69ded3a7ff89f0ff064d312ffc76a51a0b2aca4c070e8d3002218d02b0e"
+      "sha256": "05f8914ef5384e68736950be9faccfb122832a4ca83b5e889e6ba8cd2cbf5e25"
     },
     {
       "path": "app/lib/wallet/bankNotes/fundingResume.ts",
@@ -1326,7 +1334,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/noteImage.ts",
-      "sha256": "f7bab1c2e9a97c781365fda9f18780fede67e6bc38d572d0cd9adbb9eb9a3ed6"
+      "sha256": "b6c71147847c2b2b7797a737b092add1bade744da1cd39b56ca30ac1110344a0"
     },
     {
       "path": "app/lib/wallet/bankNotes/redemption.ts",
@@ -1386,7 +1394,7 @@
     },
     {
       "path": "app/lib/wallet/kairosOfflineNoteLocalIssuance.ts",
-      "sha256": "82dd3b4562b587ebefd5f14df5456ee5822adb48846b3467dafdf6c10d69ef17"
+      "sha256": "ab7ab17bf0b43fb8da79d9e62133c9ad7e61945ceb412866db615c6ede8f20fd"
     },
     {
       "path": "app/lib/wallet/kairosReserveAccountSuccessor.ts",
@@ -5122,8 +5130,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "70709aff9c7adeef600605b3d6505786996e8c52cc877b288048318be7bd1a6e",
-      "bytes": 31035,
+      "sha256": "b3ff101097e1a820228ef356688d367a5eb03f32d2e08b44769589d60715870f",
+      "bytes": 32667,
       "mode": 420
     },
     {
@@ -5158,8 +5166,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/fundedNote.ts",
-      "sha256": "03caf69ded3a7ff89f0ff064d312ffc76a51a0b2aca4c070e8d3002218d02b0e",
-      "bytes": 14786,
+      "sha256": "05f8914ef5384e68736950be9faccfb122832a4ca83b5e889e6ba8cd2cbf5e25",
+      "bytes": 15365,
       "mode": 420
     },
     {
@@ -5176,14 +5184,26 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/localCreditJournal.ts",
-      "sha256": "8ee55452259bc37a843336a344c35cde669237096ab39ab652c7df0929978aa4",
-      "bytes": 15630,
+      "sha256": "f8b30144696f60eb745c5589fe71b06d48822d2f0fcfadc5644fef8c9c5c4301",
+      "bytes": 18918,
       "mode": 420
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/noteImage.ts",
-      "sha256": "f7bab1c2e9a97c781365fda9f18780fede67e6bc38d572d0cd9adbb9eb9a3ed6",
-      "bytes": 2161,
+      "sha256": "b6c71147847c2b2b7797a737b092add1bade744da1cd39b56ca30ac1110344a0",
+      "bytes": 3347,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/wallet/bankNotes/preparedBrowser.ts",
+      "sha256": "438e391cd6077645ab3bc498d9845e4be19e7c644a38bef8b7e612bd9d37de79",
+      "bytes": 32778,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/wallet/bankNotes/preparedCashStorage.ts",
+      "sha256": "d543ad9ce8da3144286974fb97f9a8d6a86953bca9da30b713708895ef4dfe3e",
+      "bytes": 1961,
       "mode": 420
     },
     {
@@ -5290,8 +5310,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/kairosOfflineNoteLocalIssuance.ts",
-      "sha256": "82dd3b4562b587ebefd5f14df5456ee5822adb48846b3467dafdf6c10d69ef17",
-      "bytes": 33888,
+      "sha256": "ab7ab17bf0b43fb8da79d9e62133c9ad7e61945ceb412866db615c6ede8f20fd",
+      "bytes": 34155,
       "mode": 420
     },
     {
@@ -11950,6 +11970,62 @@
       "sha256": "9100a20f0a3f169045deaa6ac052f59f0544adb71cf0860bfa4153e08e074b20",
       "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
       "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-prepared-browser-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "70709aff9c7adeef600605b3d6505786996e8c52cc877b288048318be7bd1a6e",
+      "sha256": "b3ff101097e1a820228ef356688d367a5eb03f32d2e08b44769589d60715870f",
+      "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
+      "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-prepared-browser-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/preparedBrowser.ts",
+      "baseSha256": null,
+      "sha256": "438e391cd6077645ab3bc498d9845e4be19e7c644a38bef8b7e612bd9d37de79",
+      "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
+      "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-prepared-browser-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/fundedNote.ts",
+      "baseSha256": "03caf69ded3a7ff89f0ff064d312ffc76a51a0b2aca4c070e8d3002218d02b0e",
+      "sha256": "05f8914ef5384e68736950be9faccfb122832a4ca83b5e889e6ba8cd2cbf5e25",
+      "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
+      "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-prepared-browser-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/localCreditJournal.ts",
+      "baseSha256": "8ee55452259bc37a843336a344c35cde669237096ab39ab652c7df0929978aa4",
+      "sha256": "f8b30144696f60eb745c5589fe71b06d48822d2f0fcfadc5644fef8c9c5c4301",
+      "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
+      "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-prepared-browser-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/noteImage.ts",
+      "baseSha256": "f7bab1c2e9a97c781365fda9f18780fede67e6bc38d572d0cd9adbb9eb9a3ed6",
+      "sha256": "b6c71147847c2b2b7797a737b092add1bade744da1cd39b56ca30ac1110344a0",
+      "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
+      "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-prepared-browser-v129",
+      "path": "receiz/app/lib/wallet/kairosOfflineNoteLocalIssuance.ts",
+      "baseSha256": "82dd3b4562b587ebefd5f14df5456ee5822adb48846b3467dafdf6c10d69ef17",
+      "sha256": "ab7ab17bf0b43fb8da79d9e62133c9ad7e61945ceb412866db615c6ede8f20fd",
+      "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
+      "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-prepared-browser-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/preparedCashStorage.ts",
+      "baseSha256": null,
+      "sha256": "d543ad9ce8da3144286974fb97f9a8d6a86953bca9da30b713708895ef4dfe3e",
+      "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
+      "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
     }
   ]
 }

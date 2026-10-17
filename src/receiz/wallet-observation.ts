@@ -1,7 +1,7 @@
 import { parseSharedWallet, type SharedWallet } from './shared-wallet';
 import { BANK_APPLICATION_ID, BANK_OBSERVATION_APPLICATION_IDS } from './config';
 import type { WalletPoint } from './wallet-series';
-export interface WalletObservation { wallet: SharedWallet; observedAt: string; history?: WalletPoint[]; source?: 'account-genesis'; }
+export interface WalletObservation { wallet: SharedWallet; observedAt: string; history?: WalletPoint[]; source?: 'account-genesis' | 'local-note-head'; localHeadDigest?: string; }
 export function readWalletObservation(input: unknown, binding: { keyId: string; artifactSha256: string }): WalletObservation | null {
   if (!input || typeof input !== 'object') return null;
   const value = input as Record<string, unknown>, wallet = value.wallet as SharedWallet;
@@ -14,7 +14,7 @@ export function readWalletObservation(input: unknown, binding: { keyId: string; 
     if (![point.totalUsdCents, point.reserveUsdCents, point.settlementUsdCents].every(amount => typeof amount === 'string' && /^(0|[1-9]\d{0,39})$/.test(amount))) return false;
     return BigInt(point.totalUsdCents) === BigInt(point.reserveUsdCents) + BigInt(point.settlementUsdCents);
   }) : [];
-  return { wallet, observedAt: value.observedAt, ...(history.length ? { history } : {}), ...(value.source === 'account-genesis' && wallet.totalUsdCents === '0' && wallet.balancePhiMicro === '0' ? { source: 'account-genesis' as const } : {}) };
+  return { wallet, observedAt: value.observedAt, ...(history.length ? { history } : {}), ...(value.source === 'local-note-head' && typeof value.localHeadDigest === 'string' && /^[a-f0-9]{64}$/.test(value.localHeadDigest) ? { source: 'local-note-head' as const, localHeadDigest: value.localHeadDigest } : {}), ...(value.source === 'account-genesis' && wallet.totalUsdCents === '0' && wallet.balancePhiMicro === '0' ? { source: 'account-genesis' as const } : {}) };
 }
 
 /** A signer-authenticated snapshot cannot establish a foreign account placement. */

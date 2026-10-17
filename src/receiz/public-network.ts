@@ -1,4 +1,5 @@
-import { safeReceizPublicUrl, parsePublicMarket } from './public-market.ts';
+import {safeLedgerSourceUrl} from './ledger-receipts';
+import { parsePublicMarket } from './public-market.ts';
 
 export const PUBLIC_SOURCES = ['actions', 'wallet', 'graph', 'proofs'] as const;
 export type PublicSource = typeof PUBLIC_SOURCES[number];
@@ -6,7 +7,7 @@ export interface PublicRecord {
   id: string; sourceId: string; source: PublicSource; kind: string; title: string;
   detail: string; time: string | null; actor: string | null; amountUsdCents: string | null;
   kaiUpulse: string | null; pulse: string | null; sourceUrl: string | null;
-  evidence: Record<string, string>; authority: 'public-source-projection' | 'account-source-projection'; origin?: 'identity-carried' | 'private-account';
+  sender?:string|null; recipient?:string|null; evidence: Record<string, string>; authority: 'public-source-projection' | 'account-source-projection'; origin?: 'identity-carried' | 'private-account';
 }
 export interface PublicNetworkPage { source: PublicSource; records: PublicRecord[]; nextCursor: string | null; total: string | null; complete: boolean; }
 function object(input: unknown): Record<string, unknown> { return input !== null && typeof input === 'object' && !Array.isArray(input) ? input as Record<string, unknown> : {}; }
@@ -27,7 +28,8 @@ function row(source: PublicSource, raw: unknown): PublicRecord {
     title: text(value.summary ?? value.label, 4096) ?? kind.replace(/[._]/g, ' '), detail: text(value.detail ?? value.objectLabel, 2048) ?? '',
     time: date(value.occurredAt ?? value.createdAt), actor: alias(value.actorUserId) ?? alias(actor.userId ?? actor.phiKey),
     amountUsdCents: typeof value.amountUsdCents === 'string' ? digits(value.amountUsdCents) : null,
-    kaiUpulse, pulse, sourceUrl: safeReceizPublicUrl(value.transactionHref ?? value.verifyHref, 'proof') ?? safeReceizPublicUrl(value.transactionHref ?? value.canonicalHref, 'source'),
+    sender:text(object(value.sender).displayName??object(value.sender).username??object(value.sender).userId,128),recipient:text(object(value.recipient).displayName??object(value.recipient).username??object(value.recipient).userId,128),
+    kaiUpulse, pulse, sourceUrl: safeLedgerSourceUrl(value.transactionHref) ?? safeLedgerSourceUrl(value.verifyHref) ?? safeLedgerSourceUrl(value.canonicalHref),
     evidence, authority: 'public-source-projection' };
 }
 export function parsePublicNetworkPage(source: PublicSource, input: unknown): PublicNetworkPage {

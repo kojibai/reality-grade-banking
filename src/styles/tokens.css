@@ -18,3 +18,6 @@ h3 { font-size: 16px; font-weight: 650; }
 .positive { color: var(--green); }
 .body-copy { color: #667386; font-size: 14px; line-height: 1.6; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+
+/* Container focus supports route announcements without outlining whole pages. */
+main[tabindex="-1"]:focus, h1[tabindex="-1"]:focus, dialog:focus, [data-pointer-focus-return]:focus { outline: none; }

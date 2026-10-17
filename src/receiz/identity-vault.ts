@@ -2,7 +2,7 @@ import { BANK_APPLICATION_ID } from './config';
 import { readWalletObservation } from './wallet-observation';
 import { cardOperationApplicationId } from './card-deposit';
 export interface ProtectedIdentityTransport { bytes: Uint8Array; phrase: string; }
-interface SavedIdentity { schema: 'receiz.bank.device-identity.v1'; bytes: ArrayBuffer; artifactIv?: Uint8Array; filename: string; wrappingKey: CryptoKey; iv: Uint8Array; wrappedPhrase: ArrayBuffer; readConsent: boolean; protectedTransport?: { iv: Uint8Array; bytes: ArrayBuffer }; cardOperation?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }; cardArchive?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }[]; bankOperation?: { operationId: string; state: string; key: string; }; bankSession?: { iv: Uint8Array; bytes: ArrayBuffer }; }
+interface SavedIdentity { schema: 'receiz.bank.device-identity.v1'; bytes: ArrayBuffer; artifactIv?: Uint8Array; filename: string; wrappingKey: CryptoKey; iv: Uint8Array; wrappedPhrase: ArrayBuffer; readConsent: boolean; walletObservation?:{iv:Uint8Array;bytes:ArrayBuffer;binding:{keyId:string;artifactSha256:string};localHeadDigest?:string}; protectedTransport?: { iv: Uint8Array; bytes: ArrayBuffer }; cardOperation?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }; cardArchive?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }[]; bankOperation?: { operationId: string; state: string; key: string; }; bankSession?: { iv: Uint8Array; bytes: ArrayBuffer }; }
 async function identityBytes(saved: SavedIdentity): Promise<Uint8Array> { return saved.artifactIv ? new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(saved.artifactIv), additionalData: new TextEncoder().encode('receiz.bank.private-identity-source.v1') }, saved.wrappingKey, saved.bytes)) : new Uint8Array(saved.bytes); }
 async function database(): Promise<IDBDatabase> { return new Promise((resolve, reject) => { const request = indexedDB.open('receiz-bank-private-custody', 3); request.onupgradeneeded = () => { if (!request.result.objectStoreNames.contains('identity')) request.result.createObjectStore('identity'); if (!request.result.objectStoreNames.contains('sources')) request.result.createObjectStore('sources'); if (!request.result.objectStoreNames.contains('operations')) request.result.createObjectStore('operations'); }; request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); }
 async function held(): Promise<SavedIdentity | null> { const db = await database(); try { return await new Promise((resolve, reject) => { const request = db.transaction('identity').objectStore('identity').get('current'); request.onsuccess = () => resolve(request.result ?? null); request.onerror = () => reject(request.error); }); } finally { db.close(); } }
@@ -10,16 +10,25 @@ const equalCipher = (a: ArrayBuffer | Uint8Array | undefined, b: ArrayBuffer | U
 async function noteRemovalGuard(saved: SavedIdentity) {
   if (saved.bankOperation && ['prepared', 'unknown'].includes(saved.bankOperation.state)) throw new Error('Keep this device until the retained transaction outcome is resolved. An Identity Seal backup does not include its private execution recovery.');
   const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(await identityBytes(saved))))].map(v => v.toString(16).padStart(2, '0')).join('');
-  const key = `offline-notes|${BANK_APPLICATION_ID}|${digest}`, db = await database(); let row: PrivateBankOperation | undefined;
-  try { row = await new Promise((resolve, reject) => { const r = db.transaction('operations').objectStore('operations').get(key); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); }); } finally { db.close(); }
-  if (row) {
-    const clear = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, row.bytes);
-    const state = JSON.parse(new TextDecoder().decode(clear));
-    // Conservative bookkeeping guard, never financial admission. Receiving slots
-    // may already be addressed by an incoming note even before this tab sees it.
-    if (state && (state.schema !== 'receiz.bank.offline-notes-device.v1' || state.create || Object.keys(state.receivers ?? {}).length || Object.values(state.deposits ?? {}).some(v => !(v as { creditRef?: string }).creditRef) || Object.entries(state.notes ?? {}).some(([id, v]) => !(v as { transferComplete?: boolean }).transferComplete && !state.deposits?.[id]?.creditRef))) throw new Error('Keep this device while Offline Notes or receiving requests are held or pending. Deposit or transfer your notes before removing this ID. An Identity Seal backup does not restore device note custody.');
-  }
-  return { key, row };
+  const db = await database();
+  const rows: {key:string;row:PrivateBankOperation|undefined}[]=[];
+  try {
+    for (const family of ['offline-notes','prepared-notes']) {
+      const key=`${family}|${BANK_APPLICATION_ID}|${digest}`;
+      const row=await new Promise<PrivateBankOperation|undefined>((resolve,reject)=>{const read=db.transaction('operations').objectStore('operations').get(key);read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error);});
+      rows.push({key,row});
+      if(!row)continue;
+      const clear=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(row.iv),additionalData:new TextEncoder().encode(key)},saved.wrappingKey,row.bytes);
+      const state=JSON.parse(new TextDecoder().decode(clear));
+      // This retention guard grants no financial authority. A reserved receiving
+      // slot may already be addressed by an incoming note outside this tab.
+      const held=family==='offline-notes'
+        ? state.schema!=='receiz.bank.offline-notes-device.v1'||state.create||Object.keys(state.receivers??{}).length||Object.values(state.deposits??{}).some(v=>!(v as {creditRef?:string}).creditRef)||Object.entries(state.notes??{}).some(([id,v])=>!(v as {transferComplete?:boolean}).transferComplete&&!state.deposits?.[id]?.creditRef)
+        : state.schema!=='receiz.bank.prepared-notes-device.v1'||state.create||Object.values(state.slots??{}).some(v=>(v as {status:string}).status==='reserved')||Object.values(state.components??{}).some(v=>!(v as {exhausted?:boolean}).exhausted)||Object.values(state.journal?.deposits??{}).some(v=>(v as {phase:string}).phase!=='complete')||Object.entries(state.notes??{}).some(([id,v])=>!(v as {transferComplete?:boolean}).transferComplete&&state.journal?.deposits?.[id]?.phase!=='complete');
+      if(held)throw new Error('Keep this device while Offline Notes, prepared value or receiving requests are held or pending. Deposit or transfer your notes before removing this ID. An Identity Seal backup does not restore device note custody.');
+    }
+  } finally {db.close();}
+  return rows;
 }
 async function changeHeldIdentity(previous: SavedIdentity | null, next: SavedIdentity | null, guard?: Awaited<ReturnType<typeof noteRemovalGuard>>) {
   const db = await database(); try { await new Promise<void>((resolve, reject) => {
@@ -29,7 +38,8 @@ async function changeHeldIdentity(previous: SavedIdentity | null, next: SavedIde
       const current = read.result as SavedIdentity | undefined;
       if (!equalCipher(current?.bytes, previous?.bytes) || !equalCipher(current?.iv, previous?.iv) || JSON.stringify(current?.bankOperation) !== JSON.stringify(previous?.bankOperation)) { tx.abort(); return; }
       if (!guard) { apply(); return; }
-      const check = tx.objectStore('operations').get(guard.key); check.onsuccess = () => { const row = check.result as PrivateBankOperation | undefined; if (!equalCipher(row?.bytes, guard.row?.bytes) || !equalCipher(row?.iv, guard.row?.iv)) { tx.abort(); return; } apply(); };
+      let remaining=guard.length;
+      for(const item of guard){const check=tx.objectStore('operations').get(item.key);check.onsuccess=()=>{const row=check.result as PrivateBankOperation|undefined;if(!equalCipher(row?.bytes,item.row?.bytes)||!equalCipher(row?.iv,item.row?.iv)){tx.abort();return;}if(--remaining===0)apply();};}
     };
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(new Error('Device identity or note custody changed. Reopen this action and try again.'));
   }); } finally { db.close(); }
@@ -270,20 +280,20 @@ export async function restoreKnownWalletObservation(): Promise<import('./wallet-
     return await loadWalletObservation(binding);
   } catch { return null; }
 }
-export async function saveWalletObservation(binding: { keyId: string; artifactSha256: string }, wallet: import('./shared-wallet').SharedWallet, observedAt: string, history?: import('./wallet-series').WalletPoint[], source?: 'account-genesis'): Promise<void> {
+export async function saveWalletObservation(binding: { keyId: string; artifactSha256: string }, wallet: import('./shared-wallet').SharedWallet, observedAt: string, history?: import('./wallet-series').WalletPoint[], source?: import('./wallet-observation').WalletObservation['source'], localHeadDigest?: string): Promise<void> {
   try {
     const saved = await held(); if (!saved) return;
     const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(await identityBytes(saved))))].map(byte => byte.toString(16).padStart(2, '0')).join('');
     if (digest !== binding.artifactSha256) return;
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const value = { schema: 'receiz.bank.private-wallet-observation.v1', authority: 'read-only-observation', applicationId: BANK_APPLICATION_ID, keyId: binding.keyId, artifactSha256: binding.artifactSha256, wallet, observedAt, history, ...(source ? { source } : {}) };
+    const value = { schema: 'receiz.bank.private-wallet-observation.v1', authority: 'read-only-observation', applicationId: BANK_APPLICATION_ID, keyId: binding.keyId, artifactSha256: binding.artifactSha256, wallet, observedAt, history, ...(source ? { source } : {}), ...(localHeadDigest ? {localHeadDigest} : {}) };
     const bytes = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(`receiz.bank.wallet|${binding.keyId}|${binding.artifactSha256}`) }, saved.wrappingKey, new TextEncoder().encode(JSON.stringify(value)));
     const db = await database(); try { await new Promise<void>((resolve, reject) => {
       const priorBytes = new Uint8Array(saved.bytes);
       const tx = db.transaction('identity', 'readwrite'), store = tx.objectStore('identity'), read = store.get('current');
       read.onsuccess = () => { const current = read.result as SavedIdentity | undefined;
         // Compare exact held bytes in the write transaction; a replaced/removed ID cannot be revived.
-        if (current && current.bytes.byteLength === saved.bytes.byteLength && new Uint8Array(current.bytes).every((byte, index) => byte === priorBytes[index])) store.put({ ...current, walletObservation: { iv, bytes, binding: { keyId: binding.keyId, artifactSha256: binding.artifactSha256 } } }, 'current'); };
+        if (current && current.bytes.byteLength === saved.bytes.byteLength && new Uint8Array(current.bytes).every((byte, index) => byte === priorBytes[index]) && (!current.walletObservation?.localHeadDigest || current.walletObservation.localHeadDigest === localHeadDigest)) store.put({ ...current, walletObservation: { iv, bytes, binding: { keyId: binding.keyId, artifactSha256: binding.artifactSha256 }, ...(localHeadDigest ? {localHeadDigest} : {}) } }, 'current'); };
       tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
     }); } finally { db.close(); }
   } catch { /* Retention failure changes no account source or identity. */ }
@@ -315,18 +325,18 @@ export async function savePrivateHistoryCache(binding: { artifactSha256: string 
 }
 
 /** Encrypted note choreography; all financial sources are reopened by v129. */
-export async function loadOfflineNoteState(binding: { artifactSha256: string }): Promise<unknown> {
+async function loadNoteState(binding: { artifactSha256: string }, family: string): Promise<unknown> {
   const saved = await held(); if (!saved) throw new Error('BANK_NOTE_IDENTITY_UNAVAILABLE'); await sameSavedIdentity(saved, binding);
-  const key = `offline-notes|${BANK_APPLICATION_ID}|${binding.artifactSha256}`, db = await database();
+  const key = `${family}|${BANK_APPLICATION_ID}|${binding.artifactSha256}`, db = await database();
   let row: PrivateBankOperation | undefined;
   try { row = await new Promise((resolve, reject) => { const r = db.transaction('operations').objectStore('operations').get(key); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); }); } finally { db.close(); }
   if (!row) return null;
   const bytes = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, row.bytes);
   return JSON.parse(new TextDecoder().decode(bytes));
 }
-export async function saveOfflineNoteState(binding: { artifactSha256: string }, value: unknown, expected: unknown): Promise<void> {
+async function saveNoteState(binding: { artifactSha256: string; keyId?: string }, family: string, value: unknown, expected: unknown, observation?: import('./wallet-observation').WalletObservation): Promise<void> {
   const saved = await held(); if (!saved) throw new Error('BANK_NOTE_IDENTITY_UNAVAILABLE'); await sameSavedIdentity(saved, binding);
-  const key = `offline-notes|${BANK_APPLICATION_ID}|${binding.artifactSha256}`, clear = new TextEncoder().encode(JSON.stringify(value));
+  const key = `${family}|${BANK_APPLICATION_ID}|${binding.artifactSha256}`, clear = new TextEncoder().encode(JSON.stringify(value));
   if (clear.length > 32 * 1024 * 1024) throw new Error('BANK_NOTE_DEVICE_CAPACITY');
   const db = await database();
   const equal = (a: ArrayBuffer | Uint8Array | undefined, b: ArrayBuffer | Uint8Array | undefined) => !a && !b || !!a && !!b && a.byteLength === b.byteLength && new Uint8Array(a).every((v, index) => v === new Uint8Array(b)[index]);
@@ -335,6 +345,15 @@ export async function saveOfflineNoteState(binding: { artifactSha256: string }, 
     const previous = prior ? JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(prior.iv), additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, prior.bytes))) : null;
     if (JSON.stringify(previous) !== JSON.stringify(expected)) throw new Error('BANK_NOTE_INTENT_CHANGED');
     const iv = crypto.getRandomValues(new Uint8Array(12)), bytes = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, clear);
+    let walletObservation: {iv:Uint8Array;bytes:ArrayBuffer;binding:{keyId:string;artifactSha256:string};localHeadDigest:string} | undefined;
+    if (observation) {
+      if (!binding.keyId || observation.source !== 'local-note-head' || !observation.localHeadDigest) throw Error('BANK_NOTE_ACCOUNT_SUCCESSOR_INVALID');
+      const record = {schema:'receiz.bank.private-wallet-observation.v1',authority:'read-only-observation',applicationId:BANK_APPLICATION_ID,keyId:binding.keyId,artifactSha256:binding.artifactSha256,...observation};
+      if (!readWalletObservation(record,{keyId:binding.keyId,artifactSha256:binding.artifactSha256})) throw Error('BANK_NOTE_ACCOUNT_SUCCESSOR_INVALID');
+      const walletIv=crypto.getRandomValues(new Uint8Array(12));
+      const walletBytes=await crypto.subtle.encrypt({name:'AES-GCM',iv:walletIv,additionalData:new TextEncoder().encode(`receiz.bank.wallet|${binding.keyId}|${binding.artifactSha256}`)},saved.wrappingKey,new TextEncoder().encode(JSON.stringify(record)));
+      walletObservation={iv:walletIv,bytes:walletBytes,localHeadDigest:observation.localHeadDigest,binding:{keyId:binding.keyId,artifactSha256:binding.artifactSha256}};
+    }
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(['identity', 'operations'], 'readwrite'), identities = tx.objectStore('identity'), operations = tx.objectStore('operations'), read = identities.get('current');
       read.onsuccess = () => {
@@ -345,12 +364,18 @@ export async function saveOfflineNoteState(binding: { artifactSha256: string }, 
           const held = operation.result as PrivateBankOperation | undefined;
           if (!equal(held?.bytes, prior?.bytes) || !equal(held?.iv, prior?.iv)) { tx.abort(); return; }
           operations.put({ key, iv, bytes }, key);
+          if (walletObservation) identities.put({...current,walletObservation},'current');
         };
       };
       tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(new Error('BANK_NOTE_IDENTITY_OR_INTENT_CHANGED'));
     });
   } finally { db.close(); }
 }
+
+export const loadOfflineNoteState = (binding:{artifactSha256:string}) => loadNoteState(binding,'offline-notes');
+export const saveOfflineNoteState = (binding:{artifactSha256:string},value:unknown,expected:unknown) => saveNoteState(binding,'offline-notes',value,expected);
+export const loadPreparedNoteState = (binding:{artifactSha256:string}) => loadNoteState(binding,'prepared-notes');
+export const savePreparedNoteState = (binding:{artifactSha256:string;keyId:string},value:unknown,expected:unknown,observation?:import('./wallet-observation').WalletObservation) => saveNoteState(binding,'prepared-notes',value,expected,observation);
 
 /** Immutable encrypted byte custody; digest references never replace SDK admission. */
 export async function saveOfflineNoteBlob(binding: { artifactSha256: string }, input: Uint8Array): Promise<string> {

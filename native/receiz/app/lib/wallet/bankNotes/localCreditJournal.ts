@@ -4,6 +4,12 @@ import type { ReceizSignatureV4RootPublicKey } from "../../../../packages/receiz
 import type { KairosNotePwaCustodyAdapter, KairosNotePwaCustodyState } from "../kairosNotePwaCustodyAdapter";
 import type { createKairosReservePwaCustodyAdapter } from "../kairosReservePwaCustodyAdapter";
 import type { receizeDocumentBytesClient } from "../../documentSeal/receizeDocumentBytesClient";
+import { projectReceizIdentityAccount } from "../../../../packages/receiz-sdk/src/identity";
+import { verifyBankNoteAllocation } from "./allocationEvidence";
+import { openBankAllocationCashSnapshot } from "./cashSnapshot";
+import { openBankSettlementAllocationCashSnapshot } from "./settlementCashSnapshot";
+import type { BankReserveAllocationEvidence } from "./allocation";
+import type { BankSettlementAllocationEvidence } from "./settlementAllocation";
 import { packBankNoteRedemptionSource } from "./redemption";
 import { decodeBankFundedSource, encodeBankFundedSource } from "./sourceCodec";
 import { readBankFundedNoteSource, verifyBankFundedNoteSource, type BankVerifiedFundedNote } from "./fundedNote";
@@ -26,6 +32,7 @@ export type BankLocalCreditJournalState = {
   accountProofRef: string | null;
   deposits: Record<string, BankLocalCreditDeposit>;
   components: Record<string, { noteId: string; creditSourceRef: string; successorProofRef: string }>;
+  preparedFunding?: { accountProofRef: string; artifactRef: string; privateCashRef: string };
   issuances?: Record<string, { noteSourceRef: string; predecessorProofRef: string; successorProofRef: string }>;
 };
 export type BankLocalCreditJournalHead = Readonly<{ userId: string; keyId: string; digest: string }>;
@@ -116,6 +123,12 @@ export function createBankLocalCreditJournal(input: Inputs) {
     if (!reference) return null;
     if (visited.has(reference) || visited.size >= 1024) throw Error("BANK_LOCAL_CREDIT_JOURNAL_INVALID");
     visited.add(reference);
+    if (state.preparedFunding?.accountProofRef === reference) {
+      const seed = state.preparedFunding;
+      const proof = parseReceizIdentityArtifactText(JSON.stringify(await restoreJson(seed.accountProofRef)));
+      await verifyPreparedAccount(proof, await input.restore(seed.artifactRef), await input.restore(seed.privateCashRef));
+      return proof;
+    }
     const issued = Object.values(state.issuances ?? {}).find(value => value.successorProofRef === reference);
     if (issued) {
       const before = await currentAccount(state, issued.predecessorProofRef, visited);
@@ -134,7 +147,30 @@ export function createBankLocalCreditJournal(input: Inputs) {
       || component.successorProofRef !== item.successorProofRef) throw Error("BANK_LOCAL_CREDIT_JOURNAL_BINDING_MISMATCH");
     return verified.successorAccountProof;
   }
+  async function verifyPreparedAccount(proof: ReceizKeyFileV1, artifactBytes: Uint8Array, privateCashSnapshot: Uint8Array) {
+    sameIdentity(proof);
+    const projection = await projectReceizIdentityAccount(proof), evidence = await verifyBankNoteAllocation(artifactBytes, input), f = evidence.funding;
+    const state = projection.verifiedState as {account?: {userId?:string}; wallet?:{routeSummary?:{userId?:string}}} | null;
+    if (!projection.portableStateVerified || projection.accountStateSchema !== "receiz.account.state.v3" || state?.account?.userId !== input.uid || state.wallet?.routeSummary?.userId !== input.uid
+      || f.accountUserId !== input.uid || f.receizKeyId !== identity.keyId || f.predecessorAccountPortableStateDigest !== proof.portableState?.proof?.digestSha256Hex
+      || canonical(proof.portableState?.snapshot) !== canonical(projection.verifiedState)) throw Error("BANK_LOCAL_CREDIT_ACCOUNT_BINDING_MISMATCH");
+    if ("fundedSettlementPhiMicro" in f) await openBankSettlementAllocationCashSnapshot(evidence as BankSettlementAllocationEvidence, privateCashSnapshot);
+    else await openBankAllocationCashSnapshot(evidence as BankReserveAllocationEvidence, privateCashSnapshot);
+  }
   return Object.freeze({
+    async initializePreparedFunding(args: Readonly<{accountProof: ReceizKeyFileV1; artifactBytes: Uint8Array; privateCashSnapshot: Uint8Array}>) {
+      await verifyPreparedAccount(args.accountProof, args.artifactBytes, args.privateCashSnapshot);
+      const loaded = await load();
+      if (loaded.state.accountProofRef) {
+        const seed = loaded.state.preparedFunding;
+        if (!seed || canonical(await restoreJson(seed.accountProofRef)) !== canonical(args.accountProof)
+          || canonical(Array.from(await input.restore(seed.artifactRef))) !== canonical(Array.from(args.artifactBytes))) throw Error("BANK_LOCAL_CREDIT_ACCOUNT_HEAD_CONFLICT");
+        return;
+      }
+      if (Object.keys(loaded.state.deposits).length) throw Error("BANK_LOCAL_CREDIT_RECOVERY_REQUIRED");
+      const accountProofRef = await input.retain(encode(args.accountProof)), artifactRef = await input.retain(args.artifactBytes), privateCashRef = await input.retain(args.privateCashSnapshot);
+      await change(loaded.previous, loaded.state, next => { next.preparedFunding = {accountProofRef, artifactRef, privateCashRef}; next.accountProofRef = accountProofRef; });
+    },
     async accountProof() { return currentAccount((await load()).state); },
     async accountHead(): Promise<BankLocalCreditJournalHead | null> {
       const {state} = await load();

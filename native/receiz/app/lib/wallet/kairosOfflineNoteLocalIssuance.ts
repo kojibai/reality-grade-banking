@@ -114,6 +114,8 @@ export type KairosOfflineNoteIssuanceInput = Readonly<{
   proofCustody: KairosOfflineNoteProofCustodyStore;
   admissionStore: ReceizAdmissionStore;
   assertSelectedPredecessor?: () => void;
+  /** Resource reservation only; never financial admission. Runs before consuming cash. */
+  preflightTransport?: (note: Readonly<{artifactBytes: Uint8Array}>) => Promise<void>;
   projectCommittedSuccessors?: (value: KairosOfflineNoteCommittedProofCustody) => Promise<void>;
   admissionRootPublicKeys?: ReadonlyMap<string, ReceizSignatureV4RootPublicKey>;
 }>;
@@ -620,7 +622,7 @@ export async function issueKairosOfflineNoteLocally(
     await verifyStagedProofs(stage, input.admissionRootPublicKeys);
   }
 
-  if (stage.phase === "prepared") input.assertSelectedPredecessor?.();
+  if (stage.phase === "prepared") { input.assertSelectedPredecessor?.(); await input.preflightTransport?.({artifactBytes: stage.note.artifactBytes.slice()}); }
   const reserveReceipt = await input.reserveCustody.consumeExactSuccessor(stage.reserveInput);
   if (stage.phase === "prepared") {
     stage = Object.freeze({ ...stage, phase: "consumed", reserveReceipt });

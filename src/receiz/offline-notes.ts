@@ -3,6 +3,7 @@ export interface BankNoteImage { noteId: string; rail?: BankNoteRail; amountPhiM
 export interface BankNoteInspection { rail?: BankNoteRail; noteId: string; amountUsdCents: string; amountPhiMicro: string; }
 export interface BankNoteDeposit { rail?: BankNoteRail; amountPhiMicro?: string; walletAfterPhiMicro?: string; noteId: string; amountUsdCents: string; proofBytes: Uint8Array; reserveAfterUsdCents: string; }
 export interface BankOfflineNotes {
+  prepareResources?(count:{notes:number;receivers:number}):Promise<void>;
   savedNotes(): Promise<BankNoteImage[]>;
   pending(): Promise<{ noteId: string; rail?: BankNoteRail; amountUsdCents: string; canCancel?: boolean } | null>;
   cancelUnfunded(): Promise<void>;
@@ -30,7 +31,15 @@ export type BankNoteRuntimeFactory = (input: {
   read: () => Promise<unknown>; write: (next: unknown, previous: unknown) => Promise<void>; assertOpen: () => void;
   artwork: (amount: string, noteId: string, compact?: boolean, rail?: BankNoteRail) => Promise<Uint8Array>;
 }) => BankNoteRuntime;
-let runtime: Promise<{ createBankOfflineNotesRuntime: BankNoteRuntimeFactory; createBankNativeNoteSealer: (input: unknown) => Promise<Parameters<BankNoteRuntimeFactory>[0]['sealDocument']> }> | undefined;
+export interface BankPreparedNoteRuntime extends Omit<BankNoteRuntime,'cancelUnfunded'|'depositNote'> {
+  prepareResources(count:{notes:number;receivers:number}):Promise<void>;
+  accountProof():Promise<unknown|null>;
+  hasPreparedFunding(rail:BankNoteRail):Promise<boolean>;
+  holdsReceivingCustody(image:Uint8Array):Promise<boolean>;
+  depositNote(image:Uint8Array,accountProof:unknown):Promise<BankNoteDeposit & {successorAccountProof:unknown}>;
+}
+export type BankPreparedNoteFactory = (input: Omit<Parameters<BankNoteRuntimeFactory>[0],'request'|'write'> & {identity:unknown;write(next:unknown,previous:unknown,proof?:unknown):Promise<void>})=>BankPreparedNoteRuntime;
+let runtime: Promise<{ createBankPreparedBrowserRuntime?:BankPreparedNoteFactory; createBankOfflineNotesRuntime: BankNoteRuntimeFactory; createBankNativeNoteSealer: (input: unknown) => Promise<Parameters<BankNoteRuntimeFactory>[0]['sealDocument']> }> | undefined;
 export function loadBankNoteRuntime() {
   // Built from the pinned Receiz v129 host primitives. Loaded only when a note
   // action is opened; it never delays account or market first paint.

@@ -119,3 +119,46 @@ application-patch manifest; SDK, MCP and AI skill packages remain 129.0.0.
 These checks establish the stated checkpoint. They do not satisfy the remaining
 activation gates above or establish that the whole Bank application can perform
 these new financial transitions while disconnected.
+
+## Browser resource checkpoint — October 17, 2026
+
+The included v129 composition now exports `createBankPreparedBrowserRuntime`.
+It uses already funded complete sources and prequalified native note slots.
+Private account/cash state, staging and original proof bytes remain in the
+Bank's encrypted, identity-bound retention ports. The hardware database holds
+public custody credentials and counters; it is not a second account journal.
+Known receiving capacity is consumed without network refill.
+
+Creating a note verifies the original component budget and exact consumption
+prefix before native custody changes. Transfer retains its original receiving
+intent and artwork, validates the PNG, and reserves conservative successor
+carrier growth before consuming custody. Refusal leaves the predecessor
+unconsumed. A retained account successor and its balance/chart observation
+commit in the same IndexedDB transaction. Concurrent writers are rejected; a
+plain wallet read cannot overwrite the local financial descendant. Descriptive
+clock rollback does not remove earlier chart points.
+
+Synthetic native tests cover both rails, process restart, interrupted head
+adoption and credit-pointer repair, two subsequent partial notes, altered cash
+budgets, original intent replay, and image-capacity refusal before cash or note
+consumption. Actual Chrome checks cover encrypted state, exact private cash
+reopening, atomic state/checkpoint writes, compare-and-swap, removal guards and
+remote-downgrade refusal. These storage checks use synthetic records and do not
+claim financial admission. The actual refreshed browser verifier report is
+[`2026-10-17-browser-resources.json`](verification/2026-10-17-browser-resources.json).
+
+This finishes the scoped browser implementation and its local qualification.
+It does **not** enable the new financial family in production. Shared-writer
+reconciliation, changing quotes/mixed rails and physical-device qualification
+remain separate release gates. The general Send/trading adapter also still
+refuses financial preparation; it needs the source/effect implementation in
+[`bank-prepared-operation-contract.md`](bank-prepared-operation-contract.md).
+A runtime capability list, SDK package version or successful browser test does
+not substitute for that financial-effect evidence.
+
+Receiz main commit `d8bd278a1fa7c1957a81d15ebb83e08e04f63007` contains the nine-file browser resource
+checkpoint. Final combined native suite: **20 passed**, scoped TypeScript and
+ESLint passed; Bank suite: **470 passed**, TypeScript and production build
+passed. v129 MCP: **15 passed**, no network/database calls or writes. The
+final included source and modules reproduce exactly. Mobile/desktop receipts
+and pointer/keyboard focus behavior were inspected in isolated Chrome.

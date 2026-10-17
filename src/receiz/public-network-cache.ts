@@ -1,5 +1,5 @@
 import { PUBLIC_SOURCES, mergePublicRecords, type PublicRecord, type PublicSource } from './public-network';
-import { safeReceizPublicUrl } from './public-market';
+import {safeLedgerSourceUrl} from './ledger-receipts';
 
 export interface PublicNetworkCache { records: PublicRecord[]; capturedAt: string | null; coverage: { source: PublicSource; complete: boolean; anchorIds?: string[]; observedAt?: number }[]; }
 export function parsePublicNetworkCache(input: unknown): PublicNetworkCache {
@@ -11,7 +11,7 @@ export function parsePublicNetworkCache(input: unknown): PublicNetworkCache {
     const actor = typeof row.actor === 'string' && /^[1-9A-HJ-NP-Za-km-z]{26,36}$/.test(row.actor) ? row.actor : null;
     const evidence: Record<string, string> = {};
     for (const key of ['entryHash', 'prevHash', 'transferId', 'objectId', 'proofHead', 'bundleHash', 'capsuleHash', 'claimHash', 'artifactDigest']) { const item = row.evidence?.[key]; if (typeof item === 'string' && item.length <= 512) evidence[key] = item; }
-    return { ...row, actor, time: row.time && Number.isFinite(Date.parse(row.time)) ? row.time : null, evidence, sourceUrl: safeReceizPublicUrl(row.sourceUrl, 'proof') ?? safeReceizPublicUrl(row.sourceUrl, 'source') };
+    return { ...row, actor, time: row.time && Number.isFinite(Date.parse(row.time)) ? row.time : null, evidence, sourceUrl: safeLedgerSourceUrl(row.sourceUrl) };
   });
   return { records: mergePublicRecords([], records), capturedAt: typeof value.capturedAt === 'string' && Number.isFinite(Date.parse(value.capturedAt)) ? value.capturedAt : null,
     coverage: value.coverage.filter(item => PUBLIC_SOURCES.includes(item.source)).map(item => ({ source: item.source, complete: item.complete === true, observedAt: Number.isSafeInteger(item.observedAt) && item.observedAt! >= 0 ? item.observedAt : undefined, anchorIds: Array.isArray(item.anchorIds) ? item.anchorIds.filter(id => typeof id === 'string' && id.startsWith(`${item.source}:`) && id.length <= 520).slice(0, 100_000) : undefined })) };

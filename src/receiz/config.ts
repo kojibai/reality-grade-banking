@@ -23,3 +23,7 @@ export const BANK_NATIVE_SCOPES = [...BANK_CARD_SCOPES, 'receiz:subjects.read', 
 export const BANK_NATIVE_CONSENT = 'Allow Bankeiz to open my proof-native account sources and prepare custody, ownership, sales and currency actions inside this bank. Receiz receives my protected Identity Seal and signed consent for the listed native scopes. My signing key stays on this device. Every transfer, sale, redemption and backing commitment still requires my review and explicit approval of its exact proof-bound operation.';
 export const BANK_CARD_CONSENT = 'Continuing authorizes only your selected card deposit and its status checks. Receiz processes the payment and credits your Reserve after settlement. Unfinished checkout details are encrypted on this device so you can resume. This does not authorize transfers or asset purchases.';
 export const BANK_READ_CONSENT = 'Allow Bankeiz to open my account using my proof objects and read my Reserve and Settlement balances. Receiz receives my encrypted Identity Seal and signed consent to open this account. My signing key stays on this device. This permission does not authorize transfers, purchases or sales.';
+
+// Browser composition is implemented and qualified separately from the shared
+// native writer, changed-rate and physical-device production release gates.
+export const BANK_PREPARED_NOTE_CREDIT_ENABLED = false;

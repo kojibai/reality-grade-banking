@@ -6,15 +6,17 @@ import { parseSharedWallet } from '../src/receiz/shared-wallet';
 
 // Boundary choreography only. Native funding/hardware are not qualified by
 // this fixture. Portable-state signatures use the unmodified local v129 SDK.
-const fixture = vi.hoisted(() => ({ keyFile: null as unknown, initial: null as unknown, wallet: vi.fn(), create: vi.fn(), save: vi.fn(), pending: vi.fn() }));
+const fixture = vi.hoisted(() => ({ keyFile: null as unknown, initial: null as unknown, wallet: vi.fn(), create: vi.fn(), save: vi.fn(), pending: vi.fn(), preparedEnabled:false, preparedWrite:null as null|((next:unknown,previous:unknown,proof?:unknown)=>Promise<void>),preparedSave:vi.fn(),receivingRequest:vi.fn(),prepareResources:vi.fn() }));
+vi.mock('../src/receiz/config',async()=>({...await vi.importActual<typeof import('../src/receiz/config')>('../src/receiz/config'),get BANK_PREPARED_NOTE_CREDIT_ENABLED(){return fixture.preparedEnabled;}}));
 vi.mock('../src/receiz/identity-vault', () => ({
   loadWalletObservation: async () => fixture.initial,
   saveWalletObservation: fixture.save,
+  loadPreparedNoteState:vi.fn(),savePreparedNoteState:fixture.preparedSave,
   loadOfflineNoteState: vi.fn(), saveOfflineNoteState: vi.fn(), saveOfflineNoteBlob: vi.fn(), loadOfflineNoteBlob: vi.fn(),
 }));
 vi.mock('@receiz/sdk/offline', () => ({ createReceizOfflineSealer: () => ({ enroll: async () => {} }), createReceizIndexedDbSealStore: () => ({ load: async () => ({ privateKey: {} }) }) }));
 vi.mock('../src/receiz/offline-notes', () => ({
-  bankNoteArtwork: vi.fn(), loadBankNoteRuntime: async () => ({ createBankNativeNoteSealer: async () => vi.fn(), createBankOfflineNotesRuntime: () => ({ pending: fixture.pending, createNote: fixture.create }) }),
+  bankNoteArtwork: vi.fn(), loadBankNoteRuntime: async () => ({ createBankNativeNoteSealer: async () => vi.fn(), createBankPreparedBrowserRuntime:(ports:{write:typeof fixture.preparedWrite})=>{fixture.preparedWrite=ports.write;return{receivingRequest:fixture.receivingRequest,prepareResources:fixture.prepareResources,pending:async()=>null,hasPreparedFunding:async()=>true,createNote:async()=>{const result=await fixture.create();await fixture.preparedWrite!({journal:{head:'fixture'}},null,result.successorAccountProof);return result;}};},createBankOfflineNotesRuntime: () => ({ pending: fixture.pending, createNote: fixture.create }) }),
 }));
 vi.mock('../src/receiz/client', async () => {
   const actual = await vi.importActual<typeof import('@receiz/sdk')>('@receiz/sdk');
@@ -31,6 +33,7 @@ vi.mock('../src/receiz/client', async () => {
 });
 function wallet(cents: string) { return { userId: 'connected-account', balanceUsd: `${BigInt(cents) / 100n}.${(BigInt(cents) % 100n).toString().padStart(2, '0')}`, balancePhiMicro: cents, valueStates: { settledBalanceUsdCents: cents, ecosystemBalanceUsdCents: '0' }, sync: {}, rollup: {} }; }
 beforeEach(async () => {
+  fixture.preparedEnabled=false;fixture.preparedSave.mockReset().mockResolvedValue(undefined);fixture.preparedWrite=null;fixture.prepareResources.mockReset().mockResolvedValue(undefined);fixture.receivingRequest.mockReset();
   vi.restoreAllMocks(); fixture.wallet.mockReset(); fixture.create.mockReset(); fixture.save.mockReset().mockResolvedValue(undefined); fixture.pending.mockReset().mockResolvedValue(null);
   fixture.keyFile = (await sdk.createReceizIdIdentity({ passphrase: 'local-test-passphrase' })).keyFile;
   fixture.initial = { wallet: parseSharedWallet({ ok: true, wallet: wallet('600') }, 'connected-account'), observedAt: '2026-10-17T11:00:00.000Z' };
@@ -104,4 +107,27 @@ it('preserves an account observation that changed while issuance was running', a
     expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('650');
     expect(fixture.save).toHaveBeenCalledTimes(1);
   } finally { identity.dispose(); vi.unstubAllGlobals(); }
+});
+it('retains a restored local head through refresh without opening an online wallet', async () => {
+  fixture.initial = {...fixture.initial as object,source:'local-note-head',localHeadDigest:'b'.repeat(64)};
+  fixture.wallet.mockRejectedValue(Error('NETWORK_DISABLED'));
+  const identity = await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
+  try {expect((await identity.readWallet()).totalUsdCents).toBe('600');expect(fixture.wallet).not.toHaveBeenCalled();expect(identity.knownWallet()?.source).toBe('local-note-head');}
+  finally {identity.dispose();vi.unstubAllGlobals();}
+});
+
+it('adopts the prepared local account head atomically for balance and chart without a wallet or resource fetch',async()=>{
+ fixture.preparedEnabled=true;
+ vi.stubGlobal('caches',{match:async()=>new Response(new Uint8Array([1]))});
+ const network=vi.fn(async()=>{throw Error('NETWORK_DISABLED');});vi.stubGlobal('fetch',network);
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
+ try{await (await identity.offlineNotes!()).create('100');expect(identity.knownWallet()?.source).toBe('local-note-head');expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('500');expect(identity.knownWallet()?.history?.at(-1)?.reserveUsdCents).toBe('500');expect((await identity.readWallet()).totalUsdCents).toBe('500');expect(fixture.prepareResources).toHaveBeenCalledWith({notes:1,receivers:0});expect(fixture.preparedSave).toHaveBeenCalledOnce();expect(fixture.preparedSave.mock.calls[0][3]).toMatchObject({source:'local-note-head',wallet:{totalUsdCents:'500'}});expect(fixture.wallet).not.toHaveBeenCalled();expect(network).not.toHaveBeenCalled();}
+ finally{identity.dispose();vi.unstubAllGlobals();}
+});
+
+it('returns an existing prepared receiver offline without replenishing unrelated note slots',async()=>{
+ fixture.preparedEnabled=true;fixture.receivingRequest.mockResolvedValue(new Uint8Array([1,2]));fixture.prepareResources.mockRejectedValue(Error('NETWORK_DISABLED'));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
+ try{expect(await(await identity.offlineNotes!()).receivingRequest()).toEqual(new Uint8Array([1,2]));expect(fixture.prepareResources).not.toHaveBeenCalled();}
+ finally{identity.dispose();vi.unstubAllGlobals();}
 });

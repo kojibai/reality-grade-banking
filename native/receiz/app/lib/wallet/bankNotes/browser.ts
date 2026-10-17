@@ -1,3 +1,5 @@
+import {createBankPreparedCashStorage} from "./preparedCashStorage";
+import {createBankPreparedNotesRuntime,type BankPreparedNotesInput} from "./preparedBrowser";
 import { createBankFundingResume } from "./fundingResume";
 import { packBankNoteBytes, unpackBankNoteBytes } from "./compression";
 import { parseReceizIdentityArtifactText, receizBase64UrlDecode as decode, type ReceizKeyFileV1 } from "../../../../packages/receiz-sdk/src/identity";
@@ -326,4 +328,15 @@ export async function createBankNativeNoteSealer(input: Readonly<{
         attachTrustedSignature: async (bundle) => { const signatureV4 = await maybeSignReceizBundleV4(bundle, { cert: input.enrollment.cert, sign: async (bytes) => new Uint8Array(await crypto.subtle.sign("Ed25519", input.enrollment.privateKey, bytes.slice().buffer)) }); if (!signatureV4)
             throw Error("BANK_NOTE_NATIVE_SEAL_REQUIRED"); return { ...bundle, signatureV4 }; }
     });
+}
+
+/** The same v129 browser custody primitives, composed over previously funded
+ * complete sources and prequalified slots. No network fund allocator here. */
+export function createBankPreparedBrowserRuntime(input:Omit<BankPreparedNotesInput,"slot"|"createSlot"|"cash"|"admission"|"clock"|"roots"> & {keyId:string;origin:string;fetchImpl:typeof fetch}) {
+  const realms:Readonly<Record<string,string>>={"https://bankeiz.com":"bankeiz.com","https://bank.receiz.com":"receiz.com","http://localhost:4173":"localhost","http://localhost:5173":"localhost"};
+  const rpId=Object.hasOwn(realms,input.origin)?realms[input.origin]:null;
+  if(!rpId||input.identity.keyId!==input.keyId)throw Error("BANK_NOTE_TRANSPORT_REALM_INVALID");
+  const webAuthn=createKairosNoteBrowserWebAuthnClient({origin:input.origin,rpId,fetchImpl:input.fetchImpl});
+  const slot=(id:string)=>({adapter:createKairosNoteBrowserPwaCustodyAdapter({slotId:id,rpId,origin:input.origin,fetchImpl:input.fetchImpl}),read:()=>createKairosNoteIndexedDbPwaCustodyStorage(id).read()});
+  return createBankPreparedNotesRuntime({...input,slot,createSlot:async id=>slot(id),cash:id=>createKairosReservePwaCustodyAdapter({webAuthn,storage:createBankPreparedCashStorage(input,id)}),admission:id=>createReceizBrowserAdmissionStore({databaseName:"receiz-bank-prepared-admission-v1",namespace:`bank-prepared:${input.keyId}:${input.uid}:${id}`}),clock:()=>({acceptedAtKai:nowKai(),exportedAt:new Date().toISOString()})});
 }
