@@ -1,6 +1,9 @@
 import { packBankRepeatedBytes, unpackBankRepeatedBytes } from "./bytePacking";
 import { receizBase64UrlEncode, receizBase64UrlDecode } from "../../../../packages/receiz-sdk/src/identity";
-const MAX_CLEAR = 32 * 1024 * 1024, MAX_WIRE = 4 * 1024 * 1024;
+// Keep decoded graphs bounded and leave room for artwork inside the unchanged
+// 8 MiB PNG carrier cap. A local-credit successor needs more than the old 4 MiB
+// wire budget; the complete output image is independently size-checked.
+const MAX_CLEAR = 32 * 1024 * 1024, MAX_WIRE = 6 * 1024 * 1024;
 async function collect(stream: ReadableStream<Uint8Array>, max: number) { const reader = stream.getReader(), parts: Uint8Array[] = []; let length = 0; try {
     for (;;) {
         const item = await reader.read();

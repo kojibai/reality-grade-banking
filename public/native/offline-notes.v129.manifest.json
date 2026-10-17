@@ -1,10 +1,10 @@
 {
   "schema": "receiz.bank.native-runtime-build.v1",
   "version": "129.0.0",
-  "moduleSha256": "13aa96bb1042951623bdba93db4504c86f3f9b7b1b01116ca2e958161e007d46",
-  "sourceTreeSha256": "1afdc79077feac8303076a0542da0e10997b6402c19dee842bc989df70129642",
-  "inputs": 289,
-  "bytes": 2234174,
+  "moduleSha256": "16f13c77a005bfb74bbee374c71f2aee5e500c84fd146add9992443372cdea1a",
+  "sourceTreeSha256": "9e18de1004f3ce99e5f6e0d010a60d82deefea624656675f1fac5521a0e33978",
+  "inputs": 292,
+  "bytes": 2250605,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -90,6 +90,78 @@
       "baseSha256": "b7de97e7118d5d2e5c1fe2327470fa928ea9abe426c86c8b450fba0987feec68",
       "sha256": "82dd3b4562b587ebefd5f14df5456ee5822adb48846b3467dafdf6c10d69ef17",
       "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/credit.ts",
+      "baseSha256": "19abdf97f03b79228d7efe331b088900fd1d4a6aae8af2b9f7f3e529e773db14",
+      "sha256": "98241dc9f748d999fe0efae6652878e290d0080f13244837bf18b008a1a659f8",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/fundedNote.ts",
+      "baseSha256": "65e352631f997a21fa74d5ac7a131d04fda84aaa7982eb5aee86724dcc06488a",
+      "sha256": "03caf69ded3a7ff89f0ff064d312ffc76a51a0b2aca4c070e8d3002218d02b0e",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/redemption.ts",
+      "baseSha256": "60a791bdbe2a4412495e8b9185f43b89e105e2fcf1b5d06c1a8061b3b2399e45",
+      "sha256": "ab588b93ce7f4fc5833174e44519173d3ceff28df24038359a3b7d750ddddca3",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/sourceCodec.ts",
+      "baseSha256": "1c7b8c7d40f2129d5acca1417cf69907a0907ab5cc06f7079fab021c6cd5bdea",
+      "sha256": "0329d952ff212de56ba593fb1c848b13aec0325e4e8aba9cd24a5edf4d0b73c6",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
+      "baseSha256": "1f79a96b0c6e242bf9d511bf0103cbe7763833ce4060c8cb7da524939f861c87",
+      "sha256": "ce9128ccc105dd73e62406d3876085bfe9f1421866e3bc5e1f1bbf94cdbb5b3d",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/localAccountCredit.ts",
+      "baseSha256": null,
+      "sha256": "08bf48093ec3530b5c2cc7f22240382977712d434cec902784118db7422f528b",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/localCreditJournal.ts",
+      "baseSha256": null,
+      "sha256": "8ee55452259bc37a843336a344c35cde669237096ab39ab652c7df0929978aa4",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/cashAccountRebase.ts",
+      "baseSha256": null,
+      "sha256": "d51a34e8826de40af5996f013d595f1450c51c49b5823ef438e993e017fce591",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/compression.ts",
+      "baseSha256": "2fa449e8eec85559405a4e799efd42b69932d5e0a5664a461cf04bd2972628f2",
+      "sha256": "9100a20f0a3f169045deaa6ac052f59f0544adb71cf0860bfa4153e08e074b20",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
     }
   ]
 }

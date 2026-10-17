@@ -135,24 +135,36 @@
       "sha256": "65dde652abb54ef1a02716129d564f547a566360393af3e1f3f513f3124fd6ab"
     },
     {
+      "path": "app/lib/wallet/bankNotes/cashAccountRebase.ts",
+      "sha256": "d51a34e8826de40af5996f013d595f1450c51c49b5823ef438e993e017fce591"
+    },
+    {
       "path": "app/lib/wallet/bankNotes/cashSnapshot.ts",
       "sha256": "c547eb1d40d763841534f8e7dfded537fd21876c020911b56aeb557089f3baac"
     },
     {
       "path": "app/lib/wallet/bankNotes/compression.ts",
-      "sha256": "2fa449e8eec85559405a4e799efd42b69932d5e0a5664a461cf04bd2972628f2"
+      "sha256": "9100a20f0a3f169045deaa6ac052f59f0544adb71cf0860bfa4153e08e074b20"
     },
     {
       "path": "app/lib/wallet/bankNotes/credit.ts",
-      "sha256": "19abdf97f03b79228d7efe331b088900fd1d4a6aae8af2b9f7f3e529e773db14"
+      "sha256": "98241dc9f748d999fe0efae6652878e290d0080f13244837bf18b008a1a659f8"
     },
     {
       "path": "app/lib/wallet/bankNotes/fundedNote.ts",
-      "sha256": "65e352631f997a21fa74d5ac7a131d04fda84aaa7982eb5aee86724dcc06488a"
+      "sha256": "03caf69ded3a7ff89f0ff064d312ffc76a51a0b2aca4c070e8d3002218d02b0e"
     },
     {
       "path": "app/lib/wallet/bankNotes/fundingResume.ts",
       "sha256": "e92a62a3db84d3e4f3658c44e2c4231bdc13665427963454da24309567463950"
+    },
+    {
+      "path": "app/lib/wallet/bankNotes/localAccountCredit.ts",
+      "sha256": "08bf48093ec3530b5c2cc7f22240382977712d434cec902784118db7422f528b"
+    },
+    {
+      "path": "app/lib/wallet/bankNotes/localCreditJournal.ts",
+      "sha256": "8ee55452259bc37a843336a344c35cde669237096ab39ab652c7df0929978aa4"
     },
     {
       "path": "app/lib/wallet/bankNotes/noteImage.ts",
@@ -160,7 +172,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/redemption.ts",
-      "sha256": "60a791bdbe2a4412495e8b9185f43b89e105e2fcf1b5d06c1a8061b3b2399e45"
+      "sha256": "ab588b93ce7f4fc5833174e44519173d3ceff28df24038359a3b7d750ddddca3"
     },
     {
       "path": "app/lib/wallet/bankNotes/settlementAllocation.ts",
@@ -176,7 +188,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/sourceCodec.ts",
-      "sha256": "1c7b8c7d40f2129d5acca1417cf69907a0907ab5cc06f7079fab021c6cd5bdea"
+      "sha256": "0329d952ff212de56ba593fb1c848b13aec0325e4e8aba9cd24a5edf4d0b73c6"
     },
     {
       "path": "app/lib/wallet/kaiSigilWatermark.ts",
@@ -240,7 +252,7 @@
     },
     {
       "path": "app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
-      "sha256": "1f79a96b0c6e242bf9d511bf0103cbe7763833ce4060c8cb7da524939f861c87"
+      "sha256": "ce9128ccc105dd73e62406d3876085bfe9f1421866e3bc5e1f1bbf94cdbb5b3d"
     },
     {
       "path": "app/lib/wallet/noteClaimStatusLink.client.ts",
@@ -1298,15 +1310,15 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/compression.ts",
-      "sha256": "2fa449e8eec85559405a4e799efd42b69932d5e0a5664a461cf04bd2972628f2"
+      "sha256": "9100a20f0a3f169045deaa6ac052f59f0544adb71cf0860bfa4153e08e074b20"
     },
     {
       "path": "app/lib/wallet/bankNotes/credit.ts",
-      "sha256": "19abdf97f03b79228d7efe331b088900fd1d4a6aae8af2b9f7f3e529e773db14"
+      "sha256": "98241dc9f748d999fe0efae6652878e290d0080f13244837bf18b008a1a659f8"
     },
     {
       "path": "app/lib/wallet/bankNotes/fundedNote.ts",
-      "sha256": "65e352631f997a21fa74d5ac7a131d04fda84aaa7982eb5aee86724dcc06488a"
+      "sha256": "03caf69ded3a7ff89f0ff064d312ffc76a51a0b2aca4c070e8d3002218d02b0e"
     },
     {
       "path": "app/lib/wallet/bankNotes/fundingResume.ts",
@@ -1318,11 +1330,11 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/redemption.ts",
-      "sha256": "60a791bdbe2a4412495e8b9185f43b89e105e2fcf1b5d06c1a8061b3b2399e45"
+      "sha256": "ab588b93ce7f4fc5833174e44519173d3ceff28df24038359a3b7d750ddddca3"
     },
     {
       "path": "app/lib/wallet/bankNotes/sourceCodec.ts",
-      "sha256": "1c7b8c7d40f2129d5acca1417cf69907a0907ab5cc06f7079fab021c6cd5bdea"
+      "sha256": "0329d952ff212de56ba593fb1c848b13aec0325e4e8aba9cd24a5edf4d0b73c6"
     },
     {
       "path": "app/lib/wallet/kaiSigilWatermark.ts",
@@ -1386,7 +1398,7 @@
     },
     {
       "path": "app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
-      "sha256": "1f79a96b0c6e242bf9d511bf0103cbe7763833ce4060c8cb7da524939f861c87"
+      "sha256": "ce9128ccc105dd73e62406d3876085bfe9f1421866e3bc5e1f1bbf94cdbb5b3d"
     },
     {
       "path": "app/lib/wallet/noteClaimStatusLink.client.ts",
@@ -5121,6 +5133,12 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/wallet/bankNotes/cashAccountRebase.ts",
+      "sha256": "d51a34e8826de40af5996f013d595f1450c51c49b5823ef438e993e017fce591",
+      "bytes": 5695,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/wallet/bankNotes/cashSnapshot.ts",
       "sha256": "c547eb1d40d763841534f8e7dfded537fd21876c020911b56aeb557089f3baac",
       "bytes": 2736,
@@ -5128,26 +5146,38 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/compression.ts",
-      "sha256": "2fa449e8eec85559405a4e799efd42b69932d5e0a5664a461cf04bd2972628f2",
-      "bytes": 2011,
+      "sha256": "9100a20f0a3f169045deaa6ac052f59f0544adb71cf0860bfa4153e08e074b20",
+      "bytes": 2244,
       "mode": 420
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/credit.ts",
-      "sha256": "19abdf97f03b79228d7efe331b088900fd1d4a6aae8af2b9f7f3e529e773db14",
-      "bytes": 9564,
+      "sha256": "98241dc9f748d999fe0efae6652878e290d0080f13244837bf18b008a1a659f8",
+      "bytes": 9741,
       "mode": 420
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/fundedNote.ts",
-      "sha256": "65e352631f997a21fa74d5ac7a131d04fda84aaa7982eb5aee86724dcc06488a",
-      "bytes": 11190,
+      "sha256": "03caf69ded3a7ff89f0ff064d312ffc76a51a0b2aca4c070e8d3002218d02b0e",
+      "bytes": 14786,
       "mode": 420
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/fundingResume.ts",
       "sha256": "e92a62a3db84d3e4f3658c44e2c4231bdc13665427963454da24309567463950",
       "bytes": 2343,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/wallet/bankNotes/localAccountCredit.ts",
+      "sha256": "08bf48093ec3530b5c2cc7f22240382977712d434cec902784118db7422f528b",
+      "bytes": 16996,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/wallet/bankNotes/localCreditJournal.ts",
+      "sha256": "8ee55452259bc37a843336a344c35cde669237096ab39ab652c7df0929978aa4",
+      "bytes": 15630,
       "mode": 420
     },
     {
@@ -5158,8 +5188,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/redemption.ts",
-      "sha256": "60a791bdbe2a4412495e8b9185f43b89e105e2fcf1b5d06c1a8061b3b2399e45",
-      "bytes": 12287,
+      "sha256": "ab588b93ce7f4fc5833174e44519173d3ceff28df24038359a3b7d750ddddca3",
+      "bytes": 17170,
       "mode": 420
     },
     {
@@ -5182,8 +5212,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/sourceCodec.ts",
-      "sha256": "1c7b8c7d40f2129d5acca1417cf69907a0907ab5cc06f7079fab021c6cd5bdea",
-      "bytes": 1216,
+      "sha256": "0329d952ff212de56ba593fb1c848b13aec0325e4e8aba9cd24a5edf4d0b73c6",
+      "bytes": 1541,
       "mode": 420
     },
     {
@@ -5278,8 +5308,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
-      "sha256": "1f79a96b0c6e242bf9d511bf0103cbe7763833ce4060c8cb7da524939f861c87",
-      "bytes": 30304,
+      "sha256": "ce9128ccc105dd73e62406d3876085bfe9f1421866e3bc5e1f1bbf94cdbb5b3d",
+      "bytes": 38149,
       "mode": 420
     },
     {
@@ -11848,6 +11878,78 @@
       "baseSha256": "b7de97e7118d5d2e5c1fe2327470fa928ea9abe426c86c8b450fba0987feec68",
       "sha256": "82dd3b4562b587ebefd5f14df5456ee5822adb48846b3467dafdf6c10d69ef17",
       "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/credit.ts",
+      "baseSha256": "19abdf97f03b79228d7efe331b088900fd1d4a6aae8af2b9f7f3e529e773db14",
+      "sha256": "98241dc9f748d999fe0efae6652878e290d0080f13244837bf18b008a1a659f8",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/fundedNote.ts",
+      "baseSha256": "65e352631f997a21fa74d5ac7a131d04fda84aaa7982eb5aee86724dcc06488a",
+      "sha256": "03caf69ded3a7ff89f0ff064d312ffc76a51a0b2aca4c070e8d3002218d02b0e",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/redemption.ts",
+      "baseSha256": "60a791bdbe2a4412495e8b9185f43b89e105e2fcf1b5d06c1a8061b3b2399e45",
+      "sha256": "ab588b93ce7f4fc5833174e44519173d3ceff28df24038359a3b7d750ddddca3",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/sourceCodec.ts",
+      "baseSha256": "1c7b8c7d40f2129d5acca1417cf69907a0907ab5cc06f7079fab021c6cd5bdea",
+      "sha256": "0329d952ff212de56ba593fb1c848b13aec0325e4e8aba9cd24a5edf4d0b73c6",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
+      "baseSha256": "1f79a96b0c6e242bf9d511bf0103cbe7763833ce4060c8cb7da524939f861c87",
+      "sha256": "ce9128ccc105dd73e62406d3876085bfe9f1421866e3bc5e1f1bbf94cdbb5b3d",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/localAccountCredit.ts",
+      "baseSha256": null,
+      "sha256": "08bf48093ec3530b5c2cc7f22240382977712d434cec902784118db7422f528b",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/localCreditJournal.ts",
+      "baseSha256": null,
+      "sha256": "8ee55452259bc37a843336a344c35cde669237096ab39ab652c7df0929978aa4",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/cashAccountRebase.ts",
+      "baseSha256": null,
+      "sha256": "d51a34e8826de40af5996f013d595f1450c51c49b5823ef438e993e017fce591",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/compression.ts",
+      "baseSha256": "2fa449e8eec85559405a4e799efd42b69932d5e0a5664a461cf04bd2972628f2",
+      "sha256": "9100a20f0a3f169045deaa6ac052f59f0544adb71cf0860bfa4153e08e074b20",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
     }
   ]
 }

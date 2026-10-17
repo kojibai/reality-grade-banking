@@ -8,7 +8,7 @@ import { parseReceizPortableAssetDocument, extractReceizPortableAssetPayload } f
 import { receizCurrentPinnedSignatureV4Roots } from "../../../../packages/receiz-sdk/src/verifier/roots";
 import type { ReceizSignatureV4RootPublicKey } from "../../../../packages/receiz-sdk/src/verifier/signatureV4";
 import { BANK_RESERVE_ALLOCATION_SIGN_CONTEXT, type BankAllocationRootSignature } from "./allocation";
-import { verifyBankNoteRedemption } from "./redemption";
+import { verifyBankNoteRedemption, readBankNoteRedemption } from "./redemption";
 export type BankReserveCreditBasis = Readonly<{
     schema: "receiz.bank.note-reserve-credit.v1" | "receiz.bank.note-settlement-credit.v1";
     noteId: string;
@@ -71,6 +71,7 @@ export async function verifyBankReserveCreditArtifact(bytesInput: Uint8Array, pr
     const credit = body.credit as BankReserveCreditBasis;
     await verifyBankCreditSignature(credit, body.creditSignature, options.roots);
     const terminal = await verifyBankNoteRedemption(terminalSource, options);
+    if (readBankNoteRedemption(terminal).intent.schema === "receiz.bank.note-local-credit.v1") throw Error("BANK_LOCAL_CREDIT_RECONCILIATION_REQUIRED");
     if (terminal.rail !== rail || credit.schema !== `receiz.bank.note-${rail}-credit.v1` || terminal.artifactSha256 !== credit.terminalArtifactSha256 || terminal.redemptionDigest !== credit.redemptionDigest || terminal.noteId !== credit.noteId || terminal.receiverUserId !== credit.receiverUserId || terminal.receiverKeyId !== credit.receiverKeyId || terminal.amountPhiMicro !== credit.amountPhiMicro || terminal.amountUsdCents !== credit.amountUsdCents || document.ownership.ownerReceizId !== `c_${credit.receiverKeyId.slice(0, 22)}.receiz.id` || document.provenance.root !== `receiz.bank.note-credit:${credit.noteId}`)
         throw Error("BANK_NOTE_CREDIT_BINDING_MISMATCH");
     if (await sha256ReceizBytes(privateSnapshot) !== credit.privateAccountSnapshotSha256)

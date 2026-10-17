@@ -1,3 +1,8 @@
+import { readBankLocalCreditJournalHead, type BankLocalCreditJournalHead } from "./bankNotes/localCreditJournal";
+import { prepareBankCashAccountRebase, verifyBankCashAccountRebase, bankCashRebaseChallenge, type BankCashAccountRebaseReceipt } from "./bankNotes/cashAccountRebase";
+import { readBankLocalAccountCredit, verifyBankLocalCreditAccountSuccessor, type BankLocalAccountCreditEvidence } from "./bankNotes/localAccountCredit";
+import { readBankFundedNoteHead } from "./bankNotes/fundedNote";
+import type { KairosNotePwaCustodyState } from "./kairosNotePwaCustodyAdapter";
 import { isBankSettlementAllocationEvidence, type BankSettlementAllocationEvidence } from "./bankNotes/settlementAllocation";
 import { openBankSettlementAllocationCashSnapshot } from "./bankNotes/settlementCashSnapshot";
 import { parseReceizIdentityArtifactText } from "../../../packages/receiz-sdk/src/identity";
@@ -26,6 +31,7 @@ import {
 } from "./kairosReserveFundingBinding";
 import {
   verifyKairosNoteReceivingCustody,
+  requireKairosNoteAttestedReceivingCustody,
   type KairosVerifiedReceivingCustody,
 } from "./kairosNoteCustodyVerification";
 import type { KairosOfflineCashFundingAuthorizationV1 } from "./kairosOfflineCashFundingAuthorization";
@@ -60,6 +66,7 @@ type BoundState = Readonly<{
   accountProof?: ReceizKeyFileV1;
   reservePhiMicro?: string;
   reserveUsdCents: string;
+  bankAccountRebases?: readonly BankCashAccountRebaseReceipt[];
   bankAllocationId?: string;
   bankAllocationRail?: "reserve" | "settlement";
   bankAllocationUsdPerPhiMicrocents?: string;
@@ -90,6 +97,7 @@ type PendingState = Readonly<{
   intentDigest: string;
   receipt: KairosReserveConsumptionReceiptV1;
   accountProof?: ReceizKeyFileV1;
+  bankAccountRebases?: readonly BankCashAccountRebaseReceipt[];
   bankAllocationId?: string;
   bankAllocationRail?: "reserve" | "settlement";
   bankAllocationUsdPerPhiMicrocents?: string;
@@ -290,6 +298,43 @@ export function createKairosReservePwaCustodyAdapter(input: Readonly<{
         fundingBindingDigest: funding.allocationId, fundingPredecessorAccountProof: structuredClone(proof) }));
     },
 
+    /** Qualification-only native extension. No browser/API route selects this
+     * family until the shared writer and offline acceptance suite qualify it. */
+    async activateBankLocalAccountCredit(args: Readonly<{
+      evidence: BankLocalAccountCreditEvidence;
+      predecessorAccountProof: ReceizKeyFileV1;
+      successorAccountProof: ReceizKeyFileV1;
+      consumedNoteCustody: KairosNotePwaCustodyState;
+    }>): Promise<void> {
+      const held = readBankLocalAccountCredit(args.evidence), evidence = args.evidence;
+      if (held.intent.schema !== "receiz.bank.note-local-credit.v1") throw Error("BANK_LOCAL_CREDIT_SOURCE_REQUIRED");
+      await verifyBankLocalCreditAccountSuccessor({ schema: "receiz.bank.local-account-credit-preparation.v1", intent: held.intent,
+        predecessorAccountProof: args.predecessorAccountProof, successorAccountProof: args.successorAccountProof });
+      const consumed = structuredClone(args.consumedNoteCustody), head = readBankFundedNoteHead(held.note);
+      if (head.packet.custodyMode !== "qualified-anonymous") throw Error("BANK_LOCAL_CREDIT_QUALIFIED_SUCCESSOR_REQUIRED");
+      const receiving = head.packet.currentCustody;
+      requireKairosNoteAttestedReceivingCustody(receiving);
+      if (head.packet.custodyMode !== "qualified-anonymous" || consumed.status !== "retired"
+        || consumed.code !== "OFFLINE_NOTE_CUSTODY_IRREVERSIBLY_CONSUMED"
+        || consumed.consumptionReceipt?.receiptDigest !== held.receipt.receiptDigest
+        || consumed.credential.custodyPublicKeyRawB64u !== evidence.qualification.custodyPublicKeyRawB64u
+        || consumed.credential.credentialIdB64u !== receiving.platformAttestationCertificate.credentialIdB64u
+        || consumed.credential.origin !== held.receipt.origin || consumed.credential.rpId !== held.receipt.rpId) throw Error("BANK_LOCAL_CREDIT_QUALIFIED_SUCCESSOR_REQUIRED");
+      const existing = await input.storage.read();
+      if (existing) {
+        if (existing.status === "bound" && existing.bankAllocationId === evidence.creditId
+          && existing.fundingArtifactSha256 === evidence.artifactSha256
+          && existing.accountPortableStateDigest === evidence.successorAccountPortableStateDigest) return;
+        throw Error("BANK_LOCAL_CREDIT_CUSTODY_ALREADY_BOUND");
+      }
+      await input.storage.write(Object.freeze({ schema: STATE_SCHEMA, status: "bound", credential: consumed.credential,
+        qualification: evidence.qualification, accountPortableStateDigest: evidence.successorAccountPortableStateDigest,
+        accountProof: structuredClone(args.successorAccountProof), reservePhiMicro: evidence.amountPhiMicro,
+        reserveUsdCents: evidence.amountUsdCents, bankAllocationId: evidence.creditId, bankAllocationRail: evidence.rail,
+        bankAllocationUsdPerPhiMicrocents: evidence.usdPerPhiMicrocents, fundingArtifactSha256: evidence.artifactSha256,
+        fundingBindingDigest: evidence.creditId, fundingPredecessorAccountProof: structuredClone(args.predecessorAccountProof) }));
+    },
+
     async activateFundedReserve(args: Readonly<{
       evidence: KairosVerifiedOfflineReserveFundingEvidence;
       successorAccountProof: ReceizKeyFileV1;
@@ -384,6 +429,38 @@ export function createKairosReservePwaCustodyAdapter(input: Readonly<{
       }));
     },
 
+    async rebaseBankAccount(args: Readonly<{ head: BankLocalCreditJournalHead; acceptedAtKai: string; nonce: string }>) {
+      const successor = await readBankLocalCreditJournalHead(args.head), state = await input.storage.read();
+      if (!state || state.status !== "bound" || !state.accountProof || !state.bankAllocationId || !state.fundingArtifactSha256 || state.reservePhiMicro === undefined) throw Error("BANK_LOCAL_CREDIT_ACCOUNT_SOURCE_REQUIRED");
+      const previous = parseReceizIdentityArtifactText(JSON.stringify(state.accountProof));
+      const priorAccount = record(record(previous.portableState?.snapshot)?.account);
+      const nextAccount = record(record(successor.portableState?.snapshot)?.account);
+      if (await verifyReceizIdentityPortableStateProof(previous) !== "verified" || await verifyReceizIdentityPortableStateProof(successor) !== "verified"
+        || previous.portableState?.proof?.digestSha256Hex !== state.accountPortableStateDigest
+        || successor.keyId !== previous.keyId || successor.owner.uid !== previous.owner.uid || successor.alg !== previous.alg
+        || successor.crypto.publicKeyRawB64u !== previous.crypto.publicKeyRawB64u || args.head.keyId !== previous.keyId
+        || priorAccount?.userId !== args.head.userId || nextAccount?.userId !== args.head.userId) throw Error("BANK_LOCAL_CREDIT_ACCOUNT_BINDING_MISMATCH");
+      const last = state.bankAccountRebases?.at(-1);
+      if (state.accountPortableStateDigest === args.head.digest && last?.successorAccountPortableStateDigest === args.head.digest) return structuredClone(last);
+      const prepared = await prepareBankCashAccountRebase({schema:"receiz.bank.cash-account-head-rebase.v1",fundingArtifactSha256:state.fundingArtifactSha256,
+        qualificationDigest:state.qualification.qualificationDigest,installationCommitment:state.qualification.installationCommitment,custodyPublicKeyRawB64u:state.credential.custodyPublicKeyRawB64u,
+        rpId:state.credential.rpId,origin:state.credential.origin,predecessorAccountPortableStateDigest:state.accountPortableStateDigest,successorAccountPortableStateDigest:args.head.digest,
+        reservePhiMicro:state.reservePhiMicro,reserveUsdCents:state.reserveUsdCents,expectedStateCommitment:state.qualification.stateCommitment,expectedStateSequence:state.qualification.stateSequence,
+        nextStateSequence:String(BigInt(state.qualification.stateSequence)+1n),acceptedAtKai:args.acceptedAtKai,nonce:args.nonce});
+      const accountKai = record(record(record(successor.portableState?.snapshot)?.wallet)?.routeSummary);
+      const latestKai = record(accountKai?.rollup)?.lastEntryKaiPulse;
+      if (!/^(0|[1-9][0-9]*)$/.test(args.acceptedAtKai) || typeof latestKai !== "string" || BigInt(args.acceptedAtKai) < BigInt(latestKai)
+        || state.lastCommittedReceipt && BigInt(args.acceptedAtKai) <= BigInt(state.lastCommittedReceipt.acceptedAtKai)
+        || last && BigInt(args.acceptedAtKai) < BigInt(last.acceptedAtKai)) throw Error("BANK_CASH_ACCOUNT_REBASE_INVALID");
+      await readBankLocalCreditJournalHead(args.head);
+      const assertion = await input.webAuthn.assert({credentialIdB64u:state.credential.credentialIdB64u,challengeB64u:bankCashRebaseChallenge(prepared.receiptDigest)});
+      const receipt = Object.freeze({...prepared,...assertion});
+      const qualification = await verifyBankCashAccountRebase(receipt,{qualification:state.qualification,fundingArtifactSha256:state.fundingArtifactSha256,rpId:state.credential.rpId,origin:state.credential.origin,
+        accountHead:state.accountPortableStateDigest,reservePhiMicro:state.reservePhiMicro,reserveUsdCents:state.reserveUsdCents});
+      await input.storage.write(Object.freeze({...state,qualification,accountPortableStateDigest:args.head.digest,accountProof:successor,bankAccountRebases:[...(state.bankAccountRebases??[]),receipt]}));
+      return receipt;
+    },
+
     async inspectBoundHead() {
       const state = await input.storage.read();
       if (!state || state.status !== "bound") return null;
@@ -393,6 +470,7 @@ export function createKairosReservePwaCustodyAdapter(input: Readonly<{
         accountProof: state.accountProof ? structuredClone(state.accountProof) : undefined,
         reservePhiMicro: state.reservePhiMicro,
         reserveUsdCents: state.reserveUsdCents,
+        bankAccountRebases: state.bankAccountRebases,
         bankAllocationId: state.bankAllocationId,
         bankAllocationRail: state.bankAllocationRail,
         bankAllocationUsdPerPhiMicrocents: state.bankAllocationUsdPerPhiMicrocents,
@@ -482,7 +560,8 @@ export function createKairosReservePwaCustodyAdapter(input: Readonly<{
           schema: STATE_SCHEMA, status: "pending", credential: state.credential,
           qualification: nextQualification, input: split, intentDigest, receipt,
           accountProof: state.accountProof ? structuredClone(state.accountProof) : undefined,
-          bankAllocationId: state.bankAllocationId,
+          bankAccountRebases: state.bankAccountRebases,
+        bankAllocationId: state.bankAllocationId,
           bankAllocationRail: state.bankAllocationRail,
           bankAllocationUsdPerPhiMicrocents: state.bankAllocationUsdPerPhiMicrocents,
           fundingArtifactSha256: state.fundingArtifactSha256,
@@ -533,6 +612,7 @@ export function createKairosReservePwaCustodyAdapter(input: Readonly<{
         accountProof: structuredClone(args.successorAccountProof),
         reservePhiMicro: state.input.reserveAfterPhiMicro,
         reserveUsdCents: state.input.reserveAfterUsdCents,
+        bankAccountRebases: state.bankAccountRebases,
         bankAllocationId: state.bankAllocationId,
         bankAllocationRail: state.bankAllocationRail,
         bankAllocationUsdPerPhiMicrocents: state.bankAllocationUsdPerPhiMicrocents,
