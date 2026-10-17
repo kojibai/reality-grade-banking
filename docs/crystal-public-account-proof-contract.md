@@ -82,20 +82,30 @@ Publish:
 
 ```ts
 { applicationId, action: 'publish', expectedSharingHead,
-  sourceDigest, accountHead, liveUpdates, idempotencyKey }
+  sourceDigest, accountHead, liveUpdates, idempotencyKey, consentProof }
 ```
 
-The key is `digestReceizCanonicalV122({keyId, ...bodyWithoutIdempotencyKey})`. Resolve the retained complete source; verify same account and the accepted account head. The first checkbox approves public disclosure of **both balances and all transactions**. A separate default-off checkbox authorizes **future public statements** until revocation. Stale account/consent heads must conflict instead of silently publishing different data. Exact retries are idempotent; lost responses may already have published data.
+The key is `digestReceizCanonicalV122({keyId, ...commandWithoutIdempotencyKey})`, excluding `consentProof`. The existing v129 identity signs the base64url-encoded canonical JSON `{schema:'bankeiz.account-proof-disclosure-consent.v1',keyId,command}` where `command` includes the key. `consentProof` uses the existing `receiz.identity.login_proof.v1` signature container; its domain-separated challenge authorizes only this exact disclosure command, never login or financial execution. Independently derive the public key binding from the admitted caller, verify the signature, and refuse extra command fields. Retain the exact consent bytes in private content-addressed custody.
+
+Resolve the retained complete source; verify same account and the accepted account head. The first checkbox approves public disclosure of **both balances and all transactions**. A separate default-off checkbox authorizes **future public statements** until revocation. Stale account/consent heads must conflict instead of silently publishing different data. Exact retries are idempotent; lost responses may already have published data. An already accepted enable request cannot re-enable sharing after revocation.
 
 Off switch:
 
 ```ts
-{ applicationId, action: 'disable-live-updates', expectedSharingHead, idempotencyKey }
+{ applicationId, action: 'disable-live-updates', expectedSharingHead, idempotencyKey, consentProof }
 ```
 
 Revocation needs **no fresh balance proof**. Atomically advance the sharing head, stop future disclosure/background publication and disable the latest route for every original link covered by that consent. Return off status only after durable acceptance. Do not revoke financial custody or delete private history. Previously published snapshots and copies can remain readable; the UI explains that. Test worker/cache/mirror/retry races so no post-revocation proof leaks through an old lease. Status and revocation must work after reload. CAS conflicts require re-reading the consent head, never blind overwrite.
 
 Return 409 for head conflicts, 413 for capacity, and structured unavailable when production source creation is not qualified. Never return an unsigned successful balance or silently downgrade to a wallet observation.
+
+## Native disclosure coordinator
+
+Receiz's `app/lib/wallet/bankNotes/accountProofSharing.ts` composes these disclosure rules with the existing v129 `ReceizAdmissionStore` and exact private source storage. Its publish commit includes the native account coordinate as a read dependency, so account-head changes conflict atomically. Snapshot and live reads reopen the original consent; live reads recheck the consent head after opening the source. Worker publication cannot commit through revocation. This coordinator creates no wallet, funding or public account statement and is not selected by any production API route yet.
+
+The owning native runtime must supply its actual shared durable store, exact source custody, admitted caller/key binding and qualified writer coordinate. It must update `bankWalletAccountAggregate(applicationId,keyId)` in the same native wallet transaction; a separately mirrored head is insufficient. No store is initialized by a missing wallet observation. The real-v129 test seals use ephemeral roots and zero-value disclosure specimens, with an in-memory admission store. They establish signature and coordination behavior, not persistent-process recovery, financial authority or production writer qualification. Keep the Bank writer pin and financial gates closed until the required evidence below is supplied.
+
+Each digest URL retains its first publication's consent epoch. An old static link cannot become live, and a revoked link cannot restart live updates through reusing its artifact. New consent needs a freshly sealed public artifact, even when the underlying wallet head is unchanged. The source producer must support that refresh without a wallet write. Exact accepted request retries remain idempotent; an unchanged live-worker source is a read-only retry within its current epoch.
 
 ## Evidence Crystal must deliver before enabling the pin
 

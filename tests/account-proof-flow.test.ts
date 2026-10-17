@@ -55,12 +55,16 @@ it('requires exact disclosure consent, then confirms anonymous publication; revo
   const request = vi.fn(async (_path: string, method: string, body?: Record<string, unknown>) => {
     if (method === 'POST') { expect(body?.expectedSharingHead).toBe(status.sharingHead); status = { ...status, sharingHead: h('f'), liveUpdates: body?.action === 'publish' && body?.liveUpdates === true, latestSourceDigest: proof.sourceDigest }; } return status;
   });
-  const api = createAccountProofSharing({ keyId: proof.statement.account.keyId, receizId: proof.statement.account.receizId, assertOpen: () => {}, request });
+  const signed: string[] = [];
+  const api = createAccountProofSharing({ keyId: proof.statement.account.keyId, receizId: proof.statement.account.receizId, assertOpen: () => {}, request,
+    signConsent: async challengeB64Url => { signed.push(challengeB64Url); return { schema: 'receiz.identity.login_proof.v1', keyId: proof.statement.account.keyId, alg: 'Ed25519', challengeB64Url, signatureB64Url: 'simulation-only' }; } });
   await expect(api.publish(proof, { approved: false, liveUpdates: true })).rejects.toThrow('CONSENT_REQUIRED'); expect(request).not.toHaveBeenCalled();
   const network = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(await input.text()));
   try {
     const result = await api.publish(proof, { approved: true, liveUpdates: true }); expect(result.status.liveUpdates).toBe(true); expect(result.url).toContain(`/verify/${proof.sourceDigest}/`);
     const body = request.mock.calls.find(v => v[1] === 'POST')?.[2]; expect(body?.liveUpdates).toBe(true); expect(JSON.stringify(body)).not.toMatch(/privateKey|passphrase|IdentitySeal|accessToken/u);
+    expect(body?.consentProof).toMatchObject({ keyId: proof.statement.account.keyId, challengeB64Url: signed[0] });
+    expect(JSON.parse(new TextDecoder().decode(sdk.receizBase64UrlDecode(signed[0])))).toMatchObject({ schema: 'bankeiz.account-proof-disclosure-consent.v1', command: { sourceDigest: proof.sourceDigest, accountHead: proof.statement.checkpoint.accountHead, liveUpdates: true } });
     expect(network.mock.calls[0][1]).toMatchObject({ credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer' });
     state.now += 100_000_000; expect((await api.disable()).liveUpdates).toBe(false);
   } finally { network.mockRestore(); }

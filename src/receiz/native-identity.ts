@@ -455,6 +455,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   async function accountProofSharing() {
     const { createAccountProofSharing } = await import('./account-proof-sharing');
     return createAccountProofSharing({ keyId: binding.keyId, receizId: binding.artifactOwnerReceizId, assertOpen: () => { if (lifetime.signal.aborted) throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED'); },
+      signConsent: challengeB64Url => unsigned.identity.signLoginProof({ keyFile: transportKeyFile, passphrase: transportPhrase, challengeB64Url }),
       request: async (path, method, body) => {
         const current = method === 'GET' ? await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT) : await connectClient([...BANK_READ_SCOPES, 'receiz:domains.write'], 'Allow Bankeiz to apply the public account-proof sharing choice I explicitly review: publish my verified balances and complete transaction statement, optionally keep future proofs publicly updated, or turn off live updates. This does not authorize a payment or export my signing key.');
         return current.request(path, { method, ...(body ? { body } : {}) });

@@ -2,6 +2,8 @@ import { exportAccountProof, isVerifiedAccountProof, type VerifiedAccountProof }
 import { confirmPublicAccountProof } from './account-proof-public';
 import { BANK_APPLICATION_ID } from './config';
 import { loadReceiz } from './client';
+import { accountProofConsentChallenge } from './account-proof-consent';
+import type { ReceizIdentityLoginProof } from '@receiz/sdk';
 export interface AccountProofSharingStatus { schema: 'bankeiz.account-proof-sharing.v1'; sharingHead: string; liveUpdates: boolean; latestSourceDigest: string | null; }
 export interface AccountProofSharing {
   status(): Promise<AccountProofSharingStatus>;
@@ -13,14 +15,17 @@ function parse(v: unknown): AccountProofSharingStatus {
   if (!s || Object.keys(s).sort().join(',') !== 'latestSourceDigest,liveUpdates,schema,sharingHead' || s.schema !== 'bankeiz.account-proof-sharing.v1' || !/^[a-f0-9]{64}$/u.test(s.sharingHead) || typeof s.liveUpdates !== 'boolean' || s.latestSourceDigest !== null && !/^[a-f0-9]{64}$/u.test(s.latestSourceDigest)) throw Error('ACCOUNT_PROOF_SHARING_UNCONFIRMED');
   return Object.freeze({ ...s });
 }
-export function createAccountProofSharing(input: { keyId: string; receizId: string; request(path: string, method: 'GET' | 'POST', body?: Record<string, unknown>): Promise<unknown>; assertOpen(): void }): AccountProofSharing {
+export function createAccountProofSharing(input: { keyId: string; receizId: string; request(path: string, method: 'GET' | 'POST', body?: Record<string, unknown>): Promise<unknown>; signConsent(challengeB64Url: string): Promise<ReceizIdentityLoginProof>; assertOpen(): void }): AccountProofSharing {
   const path = `/api/connect/account-proof/sharing?applicationId=${encodeURIComponent(BANK_APPLICATION_ID)}`;
   const status = async () => { input.assertOpen(); const result = parse(await input.request(path, 'GET')); input.assertOpen(); return result; };
   async function change(action: string, fields: Record<string, unknown>) {
     const prior = await status(), sdk = await loadReceiz();
     const command = { applicationId: BANK_APPLICATION_ID, action, expectedSharingHead: prior.sharingHead, ...fields };
     const idempotencyKey = await sdk.digestReceizCanonicalV122({ keyId: input.keyId, ...command });
-    const next = parse(await input.request(path, 'POST', { ...command, idempotencyKey })); input.assertOpen(); return next;
+    const exact = { ...command, idempotencyKey }, challengeB64Url = await accountProofConsentChallenge(exact, input.keyId);
+    input.assertOpen(); const consentProof = await input.signConsent(challengeB64Url); input.assertOpen();
+    if (consentProof.keyId !== input.keyId || consentProof.challengeB64Url !== challengeB64Url || consentProof.schema !== 'receiz.identity.login_proof.v1') throw Error('ACCOUNT_PROOF_CONSENT_INVALID');
+    const next = parse(await input.request(path, 'POST', { ...exact, consentProof })); input.assertOpen(); return next;
   }
   return {
     status,
