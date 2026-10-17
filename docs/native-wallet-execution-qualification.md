@@ -18,7 +18,9 @@ that would leave a Reserve claim without backing is refused before acceptance.
 
 The public statement producer currently supports the native wallet-only source
 profile: native empty genesis, no separate profile/artifact or entitlement value,
-and no unsupported account activity. Other accounts require their complete
+no unsupported account activity, and a separately selected, complete global
+lawful-value source. A new account does not imply an empty global inventory;
+this profile requires an explicitly installed native empty inventory. Other accounts require their complete
 financial source closures. They are refused; their missing components are never
 represented as zero. Source creation, cache reuse, publication and live reads
 all enforce that boundary. A previously shared immutable snapshot remains a
