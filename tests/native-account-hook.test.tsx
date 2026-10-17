@@ -37,6 +37,18 @@ it('first-paints the exact held wallet while the background read is still pendin
   custody.restore.mockResolvedValue(identity);
   await observe(async read => { expect(read().busy).toBe(true); expect(read().wallet?.totalUsdCents).toBe('321'); await act(async () => { finish({ userId: 'same-user', totalUsdCents: '654' }); }); expect(read().wallet?.totalUsdCents).toBe('654'); });
 });
+it('paints a newly retained native result even when an earlier balance refresh is still pending', async () => {
+  let known = { wallet: { userId: 'same-user', totalUsdCents: '321' }, observedAt: '2026-10-17T12:00:00Z' } as NonNullable<ReturnType<OpenIdentity['knownWallet']>>;
+  const identity = held(() => new Promise(() => {})); identity.knownWallet = () => known;
+  custody.restore.mockResolvedValue(identity);
+  await observe(async read => {
+    expect(read().wallet?.totalUsdCents).toBe('321');
+    known = { ...known, wallet: { ...known.wallet, totalUsdCents: '221' }, observedAt: '2026-10-17T12:01:00Z' };
+    await act(async () => { await read().refresh(); });
+    expect(read().wallet?.totalUsdCents).toBe('221');
+    expect(read().observedAt).toBe(known.observedAt);
+  });
+});
 it('paints the exact historical observation before canonical identity opening finishes, without creating authority', async () => {
   let finish!: (value: unknown) => void; custody.restore.mockReturnValue(new Promise(resolve => { finish = resolve; }));
   custody.fast.mockResolvedValue({ wallet: { userId: 'known-user', totalUsdCents: '321' }, observedAt: '2026-10-13T12:00:00Z' });

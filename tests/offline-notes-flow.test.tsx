@@ -102,3 +102,36 @@ test('Settlement inspection and deposit preserve exact Phi beyond Number precisi
     expect(host.querySelector('.success-amount')?.textContent).toBe('9,007,199,254.740993 Φ');
   } finally { act(() => root.unmount()); }
 });
+test.each(['noteId', 'rail', 'amountPhiMicro', 'amountUsdCents'])('does not present a different %s as the reviewed deposited note', async field => {
+  const inspected = { noteId: 'reviewed-note', rail: 'settlement', amountUsdCents: '100', amountPhiMicro: '9007199254740993' };
+  const result = { ...inspected, [field]: field === 'rail' ? 'reserve' : field === 'noteId' ? 'another-note' : '1', proofBytes: new Uint8Array([1]), reserveAfterUsdCents: '0' };
+  const identity = { offlineNotes: async () => ({ inspect: async () => inspected, deposit: async () => result }) } as unknown as OpenIdentity;
+  const host = document.createElement('div'), root = createRoot(host), refresh = vi.fn();
+  try {
+    await act(async () => root.render(<OfflineNotes identity={identity} mode="deposit" onBack={vi.fn()} onRefresh={refresh} />));
+    const upload = host.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(upload, 'files', { configurable: true, value: [{ size: 1, arrayBuffer: async () => new Uint8Array([1]).buffer }] });
+    await act(async () => upload.dispatchEvent(new Event('change', { bubbles: true })));
+    await act(async () => click(host, 'Deposit exact Phi'));
+    expect(host.textContent).not.toContain('Added to Settlement.');
+    expect(host.querySelector('.success-amount')).toBeNull();
+    expect(refresh).not.toHaveBeenCalled();
+    expect(host.querySelector('[role="alert"]')).not.toBeNull();
+  } finally { act(() => root.unmount()); }
+});
+test('choosing a new invalid note clears the earlier deposit review', async () => {
+  const inspect = vi.fn().mockResolvedValueOnce({ noteId: 'old-note', rail: 'reserve', amountUsdCents: '100', amountPhiMicro: '10' }).mockRejectedValueOnce(new Error('BANK_NOTE_SOURCE_REQUIRED'));
+  const identity = { offlineNotes: async () => ({ inspect }) } as unknown as OpenIdentity;
+  const host = document.createElement('div'), root = createRoot(host);
+  try {
+    await act(async () => root.render(<OfflineNotes identity={identity} mode="deposit" onBack={vi.fn()} onRefresh={vi.fn()} />));
+    const upload = host.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(upload, 'files', { configurable: true, value: [{ size: 1, arrayBuffer: async () => new Uint8Array([1]).buffer }] });
+    await act(async () => upload.dispatchEvent(new Event('change', { bubbles: true })));
+    expect(host.textContent).toContain('Deposit $1.00');
+    Object.defineProperty(upload, 'files', { value: [{ size: 1, arrayBuffer: async () => new Uint8Array([2]).buffer }] });
+    await act(async () => upload.dispatchEvent(new Event('change', { bubbles: true })));
+    expect(host.textContent).not.toContain('Deposit $1.00');
+    expect(host.querySelector('[role="alert"]')).not.toBeNull();
+  } finally { act(() => root.unmount()); }
+});

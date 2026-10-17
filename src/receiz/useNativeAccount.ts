@@ -8,7 +8,12 @@ export function useNativeAccount() {
   const held = useRef<OpenIdentity | null>(null), generation = useRef(0), pending = useRef(false), openingOperation = useRef(false);
   const refresh = useCallback(async () => {
     const current = held.current, ticket = generation.current;
-    if (!current || pending.current) return; pending.current = true; setBusy(true);
+    if (!current) return;
+    // A native action may have retained a newer account successor while an
+    // earlier remote read is still pending. Paint that result immediately.
+    const known = current.knownWallet?.();
+    if (known) { setWallet(known.wallet); setObservedAt(known.observedAt); }
+    if (pending.current) return; pending.current = true; setBusy(true);
     try { const value = await current.readWallet(); if (ticket === generation.current) { setWallet(value); setObservedAt(new Date().toISOString()); setError(null); setSyncPending(false); } }
     catch { if (ticket === generation.current) { setSyncPending(true); if (current.knownWallet?.()?.source !== 'account-genesis') setError('Receiz could not update this account. Your Identity Seal stays on this device. Try again when the source is available.'); } }
     finally { if (ticket === generation.current) { pending.current = false; setBusy(false); } }

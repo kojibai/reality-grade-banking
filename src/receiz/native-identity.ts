@@ -26,6 +26,7 @@ import { createBankExecutionRecovery, type BankExecutionRecovery } from './bank-
 import { deviceBankExecutionStore } from './bank-execution-vault';
 import { createBankCommittedSourceRestoration } from './bank-committed-sources';
 import { initializeFreshBankAccount } from './new-account-genesis';
+import { readNoteAccountObservation } from './note-account-observation';
 
 export interface OpenIdentity {
   operations?: () => Promise<import('./bank-operations').BankOperations>;
@@ -60,6 +61,16 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const keyFile: ReceizKeyFile = await sdk.readReceizIdentityArtifact(bytes);
   const localHistory = await sdk.projectReceizIdentityAccount(keyFile);
   let knownWallet = await loadWalletObservation(binding);
+  let walletRevision = 0;
+  let walletPersistence = Promise.resolve();
+  function persistWalletObservation(observation: NonNullable<typeof knownWallet>) {
+    const write = walletPersistence.catch(() => {}).then(async () => {
+      if (lifetime.signal.aborted || knownWallet !== observation) return;
+      await saveWalletObservation(binding, observation.wallet, observation.observedAt, observation.history, observation.source);
+    });
+    walletPersistence = write;
+    return write;
+  }
   // Known same-owner source truth paints immediately. Foreign account placement
   // still requires continuation plus a protected same-account wallet read.
   knownWallet ??= readCarriedWalletObservation(localHistory);
@@ -113,10 +124,14 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     return client;
   }
   async function readWallet() {
+    const startedRevision = walletRevision;
     const current = await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT);
     const wallet = parseSharedWallet(await current.connect.wallet(), accountUid!);
-    if (!lifetime.signal.aborted) { const observedAt = new Date().toISOString(); const prior = knownWallet?.source === 'account-genesis' ? knownWallet.history?.map(point => ({ ...point, userId: wallet.userId })) ?? [] : knownWallet?.history ?? []; const history = appendWalletPoint(prior, wallet, observedAt, String(sdk.receizKaiNow().uPulse)); knownWallet = { wallet, observedAt, history }; await saveWalletObservation(binding, wallet, observedAt, history); }
-    return wallet;
+    // A read that began before a completed local note result cannot overwrite
+    // that result when its delayed response finally arrives.
+    if (startedRevision !== walletRevision && knownWallet) return knownWallet.wallet;
+    if (!lifetime.signal.aborted) { const observedAt = new Date().toISOString(); const prior = knownWallet?.source === 'account-genesis' ? knownWallet.history?.map(point => ({ ...point, userId: wallet.userId })) ?? [] : knownWallet?.history ?? []; const history = appendWalletPoint(prior, wallet, observedAt, String(sdk.receizKaiNow().uPulse)); knownWallet = { wallet, observedAt, history }; await persistWalletObservation(knownWallet); }
+    return startedRevision !== walletRevision && knownWallet ? knownWallet.wallet : wallet;
   }
   let noteRuntime: BankNoteRuntime | undefined;
   const noteOpen = () => { if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.'); };
@@ -143,17 +158,37 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       pending: () => held.pending(),
       create: (amount, rail = 'reserve') => lock(async () => {
         const pending = await held.pending();
+        const displayBaseline = knownWallet;
+        let sourceMatchesDisplay = !displayBaseline;
         let source: unknown = transportKeyFile;
         if (!pending) {
           const current = await connectClient(BANK_NATIVE_SCOPES, BANK_NATIVE_CONSENT), response = await current.connect.wallet() as { ok?: boolean; wallet?: Record<string, unknown> };
-          parseSharedWallet(response, accountUid!);
+          const sourceWallet = parseSharedWallet(response, accountUid!);
+          sourceMatchesDisplay = !displayBaseline || sdk.canonicalizeReceizConstitution(sourceWallet) === sdk.canonicalizeReceizConstitution(displayBaseline.wallet);
           const prior = transportKeyFile.portableState?.snapshot as Record<string, unknown> | undefined;
           source = await sdk.appendReceizIdentityPortableState({ keyFile: transportKeyFile, passphrase: transportPhrase, schema: 'receiz.account.state.v3', snapshot: { ...prior, schema: 'receiz.account.state.v3', account: { ...(prior?.account as Record<string, unknown> | undefined), userId: accountUid! }, wallet: { ...(prior?.wallet as Record<string, unknown> | undefined), routeSummary: response.wallet } } });
         }
         const result = await held.createNote(amount, source, rail); noteOpen();
-        // The exact note/account successors are already retained. Background
-        // account read may display the accepted online Reserve without blocking save.
-        void readWallet().catch(() => {}); return result;
+        // Issuance has already verified and retained its financial sources.
+        // Reverify its signed account successor for display without making a
+        // second online request a condition of saving the completed note.
+        try {
+          // A resumed attempt uses its original retained account source. It
+          // cannot replace a later observation, even with a new display time.
+          if (pending || !sourceMatchesDisplay || knownWallet !== displayBaseline) throw Error('BANK_NOTE_ACCOUNT_BASELINE_CHANGED');
+          const observation = await readNoteAccountObservation(result.successorAccountProof as ReceizKeyFile, transportKeyFile, accountUid!); noteOpen();
+          if (knownWallet !== displayBaseline) throw Error('BANK_NOTE_ACCOUNT_BASELINE_CHANGED');
+          // Display when this completed result was observed. The proof's
+          // export time may precede a long-running funding/recovery attempt.
+          observation.observedAt = new Date().toISOString();
+          observation.history = appendWalletPoint(knownWallet?.history ?? [], observation.wallet, observation.observedAt, String(sdk.receizKaiNow().uPulse));
+          knownWallet = observation; walletRevision++;
+          await persistWalletObservation(observation); noteOpen();
+          return result;
+        } catch {
+          noteOpen();
+          return { ...result, accountUpdateWarning: 'Your note is saved. Refresh your account to update its displayed balance.' };
+        }
       }),
       cancelUnfunded: () => lock(() => held.cancelUnfunded()),
       receivingRequest: () => lock(() => held.receivingRequest()),

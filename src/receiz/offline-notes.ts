@@ -1,5 +1,5 @@
 export type BankNoteRail = 'reserve' | 'settlement';
-export interface BankNoteImage { noteId: string; rail?: BankNoteRail; amountPhiMicro?: string; amountUsdCents: string; image: Uint8Array; transferred?: boolean; transferPending?: boolean; }
+export interface BankNoteImage { noteId: string; rail?: BankNoteRail; amountPhiMicro?: string; amountUsdCents: string; image: Uint8Array; transferred?: boolean; transferPending?: boolean; accountUpdateWarning?: string; }
 export interface BankNoteInspection { rail?: BankNoteRail; noteId: string; amountUsdCents: string; amountPhiMicro: string; }
 export interface BankNoteDeposit { rail?: BankNoteRail; amountPhiMicro?: string; walletAfterPhiMicro?: string; noteId: string; amountUsdCents: string; proofBytes: Uint8Array; reserveAfterUsdCents: string; }
 export interface BankOfflineNotes {
