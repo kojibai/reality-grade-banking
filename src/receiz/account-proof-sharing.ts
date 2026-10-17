@@ -20,12 +20,25 @@ export function createAccountProofSharing(input: { keyId: string; receizId: stri
   const status = async () => { input.assertOpen(); const result = parse(await input.request(path, 'GET')); input.assertOpen(); return result; };
   async function change(action: string, fields: Record<string, unknown>) {
     const prior = await status(), sdk = await loadReceiz();
+    const matches = (value: AccountProofSharingStatus) => action === 'disable-live-updates'
+      ? !value.liveUpdates : value.latestSourceDigest === fields.sourceDigest && value.liveUpdates === fields.liveUpdates;
+    // Recover already accepted disclosure instead of creating a second epoch.
+    // Publishing still independently reopens the anonymous original below.
+    if (matches(prior)) return prior;
     const command = { applicationId: BANK_APPLICATION_ID, action, expectedSharingHead: prior.sharingHead, ...fields };
     const idempotencyKey = await sdk.digestReceizCanonicalV122({ keyId: input.keyId, ...command });
     const exact = { ...command, idempotencyKey }, challengeB64Url = await accountProofConsentChallenge(exact, input.keyId);
     input.assertOpen(); const consentProof = await input.signConsent(challengeB64Url); input.assertOpen();
     if (consentProof.keyId !== input.keyId || consentProof.challengeB64Url !== challengeB64Url || consentProof.schema !== 'receiz.identity.login_proof.v1') throw Error('ACCOUNT_PROOF_CONSENT_INVALID');
-    const next = parse(await input.request(path, 'POST', { ...exact, consentProof })); input.assertOpen(); return next;
+    try {
+      const next = parse(await input.request(path, 'POST', { ...exact, consentProof })); input.assertOpen(); return next;
+    } catch (error) {
+      // The server may have durably accepted before delivery was interrupted.
+      // Observe only; never retry or replace the signed command automatically.
+      const current = await status().catch(() => null);
+      if (current && matches(current)) return current;
+      throw error;
+    }
   }
   return {
     status,

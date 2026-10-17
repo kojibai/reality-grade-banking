@@ -69,3 +69,34 @@ it('requires exact disclosure consent, then confirms anonymous publication; revo
     state.now += 100_000_000; expect((await api.disable()).liveUpdates).toBe(false);
   } finally { network.mockRestore(); }
 });
+
+it('recovers accepted publication and revocation after a lost response without another consent or write', async () => {
+  const input = await file(), proof = await verifyAccountProof(input);
+  let status = { schema: 'bankeiz.account-proof-sharing.v1', sharingHead: h('e'), liveUpdates: false, latestSourceDigest: null as string | null }, writes = 0, signatures = 0;
+  const api = createAccountProofSharing({ keyId: statement.account.keyId, receizId: statement.account.receizId, assertOpen: () => {},
+    signConsent: async challengeB64Url => { signatures++; return { schema: 'receiz.identity.login_proof.v1', keyId: statement.account.keyId, alg: 'Ed25519', challengeB64Url, signatureB64Url: 'simulation-only' }; },
+    request: async (_path, method, body) => {
+      if (method === 'POST') { writes++; status = { ...status, sharingHead: h(writes === 1 ? 'f' : 'd'), liveUpdates: body?.action === 'publish', latestSourceDigest: proof.sourceDigest }; throw Error('response_lost'); }
+      return status;
+    } });
+  const network = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(await input.text()));
+  try {
+    expect((await api.publish(proof, { approved: true, liveUpdates: true })).status.liveUpdates).toBe(true);
+    expect((await api.publish(proof, { approved: true, liveUpdates: true })).status.liveUpdates).toBe(true);
+    expect(writes).toBe(1); expect(signatures).toBe(1);
+    state.now += 100_000_000;
+    expect((await api.disable()).liveUpdates).toBe(false);
+    expect((await api.disable()).liveUpdates).toBe(false);
+    expect(writes).toBe(2); expect(signatures).toBe(2);
+  } finally { network.mockRestore(); }
+});
+
+it('does not report a lost publication as accepted when its exact requested state is absent', async () => {
+  const proof = await verifyAccountProof(await file()); let writes = 0;
+  const status = { schema: 'bankeiz.account-proof-sharing.v1', sharingHead: h('e'), liveUpdates: true, latestSourceDigest: h('f') };
+  const api = createAccountProofSharing({ keyId: statement.account.keyId, receizId: statement.account.receizId, assertOpen: () => {},
+    signConsent: async challengeB64Url => ({ schema: 'receiz.identity.login_proof.v1', keyId: statement.account.keyId, alg: 'Ed25519', challengeB64Url, signatureB64Url: 'simulation-only' }),
+    request: async (_path, method) => { if (method === 'POST') { writes++; throw Error('response_lost'); } return status; } });
+  await expect(api.publish(proof, { approved: true, liveUpdates: true })).rejects.toThrow('response_lost');
+  expect(writes).toBe(1);
+});
