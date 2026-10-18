@@ -26,6 +26,7 @@
 .balance-proof-notice h2 { margin: 1px 0 6px; color: var(--navy); font-size: 11px; line-height: 1.4; font-weight: 650; letter-spacing: .025em; }
 .balance-proof-notice p { margin: 0; color: #68798e; font-size: 11.5px; line-height: 1.65; }
 .balance-proof-notice a { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; color: #233e60; font-size: 11px; line-height: 1.5; font-weight: 600; text-decoration: none; }
+.balance-proof-notice a + a { margin-left: 16px; }
 .balance-proof-notice a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .balance-proof-notice a:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; border-radius: 2px; }
 .balance-proof-notice a svg { flex: 0 0 auto; }

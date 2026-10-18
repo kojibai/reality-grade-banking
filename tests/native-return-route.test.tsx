@@ -69,7 +69,7 @@ it('releases the native modal before focusing and scrolling the public guide des
     const dialog = host.querySelector('dialog')!; expect(dialog.open).toBe(true);
     const script = '// All public guides' + readFileSync('public/learn/learn.js', 'utf8').split('// All public guides')[1];
     new Function('window', 'document', 'location', 'history', 'scrollTo', 'Event', 'URL', script)(window, document, location, history, scroll, Event, URL);
-    await act(async () => (host.querySelector('a[href^="/learn/"]') as HTMLAnchorElement).click());
+    await act(async () => (host.querySelector('a[href="/learn/reserve-and-settlement/#the-receiving-standard"]') as HTMLAnchorElement).click());
     expect(location.pathname).toBe('/learn/reserve-and-settlement/'); expect(dialog.open).toBe(false); expect(host.hidden).toBe(true);
     expect(focusedAtAnchor).toBe(document.querySelector('#public-learn-root main'));
     expect(document.body.style.position).not.toBe('fixed');

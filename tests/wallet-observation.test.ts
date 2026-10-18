@@ -23,3 +23,11 @@ it('does not turn a signer-authenticated foreign placement into an independently
   projection.owner.uid = 'foreign';
   expect(readCarriedWalletObservation(projection)?.wallet.totalUsdCents).toBe('100');
 });
+
+it('retains full display coverage only when every same-owner history point survives decoding',()=>{
+ const binding={keyId:'key',artifactSha256:'a'.repeat(64)},point={userId:'owner',at:'2026-10-13T19:00:00Z',kaiUPulse:'1000000',totalUsdCents:'300',reserveUsdCents:'100',settlementUsdCents:'200'};
+ const input={schema:'receiz.bank.private-wallet-observation.v1',authority:'read-only-observation',applicationId:BANK_APPLICATION_ID,...binding,observedAt:'2026-10-13T20:00:00Z',wallet:{userId:'owner',totalUsdCents:'300',reserveUsdCents:'100',settlementUsdCents:'200',balancePhiMicro:'1000'},history:[point],historyBasis:{schema:'bank.account-history-display.v1',startKaiUPulse:'1000000',endKaiUPulse:'1000000',retainedStateSha256:'b'.repeat(64)}};
+ expect(readWalletObservation(input,binding)?.historyBasis).toEqual(input.historyBasis);
+ expect(readWalletObservation({...input,history:[point,{...point,userId:'foreign'}]},binding)?.historyBasis).toBeUndefined();
+ expect(readWalletObservation({...input,history:Array.from({length:4097},()=>point)},binding)?.historyBasis).toBeUndefined();
+});

@@ -22,7 +22,7 @@ const coordinate = (value: unknown) => {
 /** Read-only history beneath the SDK's complete, admitted same-owner carrier.
  * Reconcile both rails and gross Phi with the carried wallet before drawing.
  * No snapshot alias, missing-rail inference, login grant or spending authority. */
-export function projectCarriedWalletHistory(projection: ReceizIdentityAccountProjection, observation: WalletObservation): WalletPoint[] | null {
+export function projectCarriedWalletObservation(projection: ReceizIdentityAccountProjection, observation: WalletObservation): WalletObservation | null {
   try {
     if (projection.authority !== 'verified-identity-portable-state' || !projection.portableStateVerified || !projection.completeAtSealedHead) return null;
     const state = record(projection.verifiedState), owner = projection.owner.uid;
@@ -63,6 +63,8 @@ export function projectCarriedWalletHistory(projection: ReceizIdentityAccountPro
       movements.push({ kaiUPulse: coordinate(action.kaiUpulse ?? action.kai_upulse), reserveDeltaUsdCents: '0', settlementDeltaPhiMicro: '0' });
     }
     const history = projectHistoricalWallet({ transactions: movements, userId: owner, endKaiUPulse: end });
-    return appendWalletPoint(history, observation.wallet, walletPointTime(end), end);
+    return {...observation,history:appendWalletPoint(history, observation.wallet, walletPointTime(end), end),historyBasis:{schema:'bank.account-history-display.v1',startKaiUPulse:history[0]?.kaiUPulse??end,endKaiUPulse:end,settlementPhiMicro:settlement.toString(),reserveUsdCents:reserve.toString(),balancePhiMicro:gross.toString()}};
   } catch { return null; }
 }
+
+export function projectCarriedWalletHistory(projection:ReceizIdentityAccountProjection,observation:WalletObservation):WalletPoint[]|null{return projectCarriedWalletObservation(projection,observation)?.history??null;}

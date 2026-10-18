@@ -37,3 +37,8 @@ it('keeps an actual observed quote over a model sample at the exact same display
   const later={...observed,at:'2026-10-18T12:01:00Z',totalUsdCents:'102',settlementUsdCents:'102'};
   expect(mergeWalletPoints([[model,observed,later]],'owner')).toEqual([observed,later]);
 });
+it('uses distinct full selected windows from the original history even when recent observations are sparse',()=>{
+ const end=Date.UTC(2026,9,18,12),points=[400,2,0].map(days=>({at:new Date(end-days*86400000).toISOString()}));
+ for(const [period,days]of [['1D',1],['1W',7],['1M',31],['3M',93],['1Y',366]]as const)expect(chartPeriodBounds(points,period)).toEqual({start:end-days*86400000,end});
+ expect(chartPeriodBounds(points,'ALL')?.start).toBe(end-400*86400000);
+});

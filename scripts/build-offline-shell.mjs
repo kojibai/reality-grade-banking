@@ -32,6 +32,9 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   if (manifest['ledger/index.html']) {visit('ledger/index.html');urls.add('/ledger/');}
   // Vite emits module-worker files outside the entry's manifest dependency list.
   for (const name of await readdir(resolve(root, 'assets'))) if (/^worker-[\w-]+\.js$/.test(name)) urls.add('/assets/' + name);
+  // The public calculator is emitted separately from Vite's app manifest.
+  // Retain every lazy module so its verifier/replay also opens offline.
+  for (const name of await readdir(resolve(root, 'learn'))) if (/^value-explainer-(?:main|chunk)-[A-Za-z0-9]+\.js$/.test(name)) urls.add('/learn/' + name);
   const index = await readFile(resolve(root, 'index.html'), 'utf8');
   const navigation = JSON.parse(index.match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)?.[1] ?? 'null');
   if (!navigation?.pages) throw Error('OFFLINE_FINAL_NAVIGATION_REQUIRED');

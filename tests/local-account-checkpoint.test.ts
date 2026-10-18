@@ -27,3 +27,10 @@ it('keeps prior chart observations when the descriptive wall clock moves backwar
  const next=await readLocalAccountCheckpoint(proof,identity,uid,before,'2026-10-17T10:00:00.000Z');
  expect(next.history?.map(row=>row.totalUsdCents)).toEqual(['100','200']);
 });
+
+it('does not carry old closing holdings or complete-history claims across a new Note successor',async()=>{
+ const identity=(await sdk.createReceizIdIdentity({passphrase:phrase})).keyFile;
+ const proof=await sdk.appendReceizIdentityPortableState({keyFile:identity,passphrase:phrase,snapshot:{account:{userId:uid},wallet:{routeSummary:summary('200')}},exportedAt:'2026-10-17T12:00:00.000Z'});
+ const next=await readLocalAccountCheckpoint(proof,identity,uid,{wallet:{userId:uid,totalUsdCents:'100',reserveUsdCents:'100',settlementUsdCents:'0',balancePhiMicro:'100',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:'14692713',kaiUpulse:'14692713000000'},observedAt:'2026-10-17T11:00:00Z',history:[{userId:uid,at:'2026-10-17T11:00:00Z',kaiUPulse:'14692713000000',totalUsdCents:'100',reserveUsdCents:'100',settlementUsdCents:'0'}],historyBasis:{schema:'bank.account-history-display.v1',startKaiUPulse:'14692713000000',endKaiUPulse:'14692713000000',balancePhiMicro:'100',settlementPhiMicro:'0',reserveUsdCents:'100'}});
+ expect(next.wallet.totalUsdCents).toBe('200');expect(next.historyBasis).toBeUndefined();expect(next.history).toHaveLength(2);
+});

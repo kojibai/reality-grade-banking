@@ -70,7 +70,7 @@ it('adds verified source history after entry without rewinding a later wallet re
 it('retains the authenticated full source and paints its newer same-account balance',async()=>{
  p.known=observation('1000','100000001');
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
- try{expect(await identity.accountProof!()).toBe(proof);expect(p.retain).toHaveBeenCalledWith(proof,'bound-user');expect(identity.knownWallet()?.wallet.reserveUsdCents).toBe('600');expect(p.save).toHaveBeenCalledTimes(1);}finally{identity.dispose();}
+ try{expect(await identity.accountProof!()).toBe(proof);expect(p.retain).toHaveBeenCalledWith(proof,'bound-user');expect(identity.knownWallet()?.wallet.reserveUsdCents).toBe('600');await vi.waitFor(()=>expect(p.save).toHaveBeenCalledTimes(1));}finally{identity.dispose();}
 });
 it('keeps a later wallet response when an earlier account-source read finishes afterwards',async()=>{
  p.known=observation('1000','100000001');let finish!:(value:unknown)=>void;
@@ -188,4 +188,46 @@ it('serializes post-import display retention with a later balance so a late seed
   finish();await vi.waitFor(()=>expect(p.save).toHaveBeenCalledTimes(2));
   expect(p.save.mock.calls.at(-1)![1].totalUsdCents).toBe('800');
  }finally{finish();identity.dispose();}
+});
+
+function completeObservation(){
+ const value=observation();
+ const opening={userId:value.wallet.userId,at:'2024-05-10T06:45:41.888Z',kaiUPulse:'0',totalUsdCents:'0',reserveUsdCents:'0',settlementUsdCents:'0'};
+ value.history=[opening,{...opening,at:value.observedAt,kaiUPulse:value.wallet.kaiUpulse,totalUsdCents:value.wallet.totalUsdCents,reserveUsdCents:value.wallet.reserveUsdCents,settlementUsdCents:value.wallet.settlementUsdCents}];
+ value.historyBasis={schema:'bank.account-history-display.v1',startKaiUPulse:'0',endKaiUPulse:value.wallet.kaiUpulse!};
+ return value;
+}
+it('settles a ready retained view after checking for a stronger retained source without a server',async()=>{
+ p.known=completeObservation();p.restore.mockResolvedValue(null);
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const known=await identity.prepareAccountView();expect(known).toBe(p.known);expect(known.history?.[0].kaiUPulse).toBe('0');expect(p.continueId).not.toHaveBeenCalled();expect(p.wallet).not.toHaveBeenCalled();expect(p.restore).toHaveBeenCalledWith(p.known);}finally{identity.dispose();}
+});
+it('waits for complete retained history before preparing a formerly balance-only account view',async()=>{
+ p.known=observation();let finish!:(value:unknown)=>void;p.restore.mockReturnValue(new Promise(resolve=>{finish=resolve;}));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ let settled=false;const preparing=identity.prepareAccountView().then(value=>{settled=true;return value;});
+ try{await new Promise(resolve=>setTimeout(resolve,0));expect(settled).toBe(false);finish({proof,observation:completeObservation()});expect((await preparing).history?.[0].kaiUPulse).toBe('0');expect(p.continueId).not.toHaveBeenCalled();}finally{identity.dispose();}
+});
+it('preserves an older admitted account without inventing a complete cash timeline or requiring a native migration',async()=>{
+ p.known=observation();p.proof.mockRejectedValue(Error('HISTORY_SOURCE_UNAVAILABLE'));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const first=identity.prepareAccountView(),second=identity.prepareAccountView();expect(first).toBe(second);const opened=await first;expect(opened.wallet.totalUsdCents).toBe('600');expect(opened.historyBasis).toBeUndefined();expect(opened.history).toHaveLength(1);expect(p.proof).not.toHaveBeenCalled();expect(p.wallet).not.toHaveBeenCalled();}finally{identity.dispose();}
+});
+
+it('opens a genuine local Note successor without requiring unavailable remote cash history',async()=>{
+ p.known={...observation('400','100000005'),source:'local-note-head',localHeadDigest:'c'.repeat(64)};
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const value=await identity.prepareAccountView();expect(value.source).toBe('local-note-head');expect(value.wallet.totalUsdCents).toBe('400');expect(value.historyBasis).toBeUndefined();expect(p.proof).not.toHaveBeenCalled();expect(p.wallet).not.toHaveBeenCalled();}finally{identity.dispose();}
+});
+
+it('lets the real wallet finish when an unsupported native source fails first on a cold legacy import',async()=>{
+ p.known=null;p.proof.mockRejectedValue(Error('NATIVE_ACCOUNT_SOURCE_UNAVAILABLE'));
+ let finish!:(value:unknown)=>void;p.wallet.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ const preparing=identity.prepareAccountView();
+ try{await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));await Promise.resolve();finish({ok:true,wallet:{userId:'bound-user',balanceUsd:'8.00',balancePhiMicro:'4000000',valueStates:{settledBalanceUsdCents:'800',ecosystemBalanceUsdCents:'0'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'100000003'}}});expect((await preparing).wallet.totalUsdCents).toBe('800');expect(identity.knownWallet()?.historyBasis).toBeUndefined();}finally{identity.dispose();}
+});
+it('checks a newer retained source even beside a formerly settled display cache',async()=>{
+ p.known=completeObservation();const next=completeObservation();next.wallet={...next.wallet,totalUsdCents:'400',reserveUsdCents:'400',kaiUpulse:'100000005'};next.history![next.history!.length-1]={...next.history!.at(-1)!,kaiUPulse:'100000005',totalUsdCents:'400',reserveUsdCents:'400'};next.historyBasis!.endKaiUPulse='100000005';p.restore.mockResolvedValue({proof,observation:next});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);try{expect((await identity.prepareAccountView()).wallet.totalUsdCents).toBe('400');expect(p.wallet).not.toHaveBeenCalled();}finally{identity.dispose();}
 });

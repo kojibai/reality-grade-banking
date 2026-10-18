@@ -1,6 +1,7 @@
 import type {PublicRecord} from './public-network';
 import {safeReceizPublicUrl} from './public-market';
 import {BANK_PUBLIC_ORIGIN} from './config';
+import {ledgerValueForRecord,readLedgerValueDisplay,type LedgerValueDisplay} from './ledger-value';
 export const ACTIVITY_FILTERS=['all','transactions','transfers','actions','proofs'] as const;
 export type ActivityCategory=typeof ACTIVITY_FILTERS[number];
 export function activityCategory(record:Pick<PublicRecord,'source'|'kind'|'amountUsdCents'>):Exclude<ActivityCategory,'all'>{
@@ -8,7 +9,7 @@ export function activityCategory(record:Pick<PublicRecord,'source'|'kind'|'amoun
  if(record.source==='wallet'||/purchase|sale|trade|exchange|note_(mint|claim)|reserve_credit|deposit|withdraw/i.test(record.kind))return 'transactions';
  return record.source==='actions'?'actions':'proofs';
 }
-export interface LedgerReceipt {schema:'bankeiz.ledger-receipt.v1';id:string;kind:string;title:string;amountUsdCents:string|null;pulse:string|null;kaiUpulse:string|null;time:string|null;sender:string|null;recipient:string|null;sourceUrl:string|null;evidence:Record<string,string>;}
+export interface LedgerReceipt {schema:'bankeiz.ledger-receipt.v1';id:string;kind:string;title:string;amountUsdCents:string|null;pulse:string|null;kaiUpulse:string|null;time:string|null;sender:string|null;recipient:string|null;sourceUrl:string|null;evidence:Record<string,string>;value:LedgerValueDisplay|null;}
 export function safeReceiptSourceUrl(input:unknown):string|null{
  if(typeof input!=='string'||input.length>24000)return null;
  try{const url=new URL(input,'https://receiz.com');return url.origin==='https://receiz.com'&&!url.username&&!url.password&&!url.hash&&/^\/[tv]\/\d{8}_\d{4}\/[A-Z0-9]{8,32}\/[1-9]\d{0,23}\/?$/i.test(url.pathname)&&[...url.searchParams.keys()].every(key=>['a','ms','c','p','tz','r'].includes(key)&&url.searchParams.getAll(key).length===1)?url.href:null;}catch{return null;}
@@ -22,11 +23,10 @@ function read(input:unknown):LedgerReceipt{
  if(v.schema!=='bankeiz.ledger-receipt.v1'||!id||!kind||!title)throw Error('RECEIPT_INVALID');
  const evidence:Record<string,string>={};
  if(v.evidence&&typeof v.evidence==='object')for(const [key,value]of Object.entries(v.evidence)){if(['entryHash','prevHash','transferId','objectId','proofHead','bundleHash','capsuleHash','claimHash','artifactDigest'].includes(key)&&text(value,512))evidence[key]=value as string;}
- return{schema:'bankeiz.ledger-receipt.v1',id,kind,title,amountUsdCents:uint(v.amountUsdCents),pulse:uint(v.pulse,24),kaiUpulse:uint(v.kaiUpulse),time:text(v.time,64)&&Number.isFinite(Date.parse(String(v.time)))?String(v.time):null,sender:text(v.sender,128),recipient:text(v.recipient,128),sourceUrl:safeLedgerSourceUrl(v.sourceUrl),evidence};
+ return{schema:'bankeiz.ledger-receipt.v1',id,kind,title,amountUsdCents:uint(v.amountUsdCents),pulse:uint(v.pulse,24),kaiUpulse:uint(v.kaiUpulse),time:text(v.time,64)&&Number.isFinite(Date.parse(String(v.time)))?String(v.time):null,sender:text(v.sender,128),recipient:text(v.recipient,128),sourceUrl:safeLedgerSourceUrl(v.sourceUrl),evidence,value:readLedgerValueDisplay(v.value)};
 }
-export function receiptLink(record:PublicRecord):string|null{
- if(!['transfers','transactions'].includes(activityCategory(record)))return null;
- const receipt=read({schema:'bankeiz.ledger-receipt.v1',id:record.sourceId,kind:record.kind,title:record.title,amountUsdCents:record.amountUsdCents,pulse:record.pulse,kaiUpulse:record.kaiUpulse,time:record.time,sender:record.sender,recipient:record.recipient,sourceUrl:record.sourceUrl,evidence:record.evidence});
+export function receiptLink(record:PublicRecord,value=ledgerValueForRecord(record)):string|null{
+ const receipt=read({schema:'bankeiz.ledger-receipt.v1',id:record.sourceId,kind:record.kind,title:record.title,amountUsdCents:record.amountUsdCents,pulse:record.pulse,kaiUpulse:record.kaiUpulse,time:record.time,sender:record.sender,recipient:record.recipient,sourceUrl:record.sourceUrl,evidence:record.evidence,value});
  const bytes=new TextEncoder().encode(JSON.stringify(receipt));if(bytes.length>24000)return null;
  let raw='';for(const byte of bytes)raw+=String.fromCharCode(byte);
  return `${BANK_PUBLIC_ORIGIN}/receipt/#r=${btoa(raw).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}`;

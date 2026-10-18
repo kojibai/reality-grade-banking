@@ -89,6 +89,6 @@ it('uses the displayed period opening for change and never carries an older out-
     act(()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='1D')!.click());
     expect(host.querySelector('.chart-period-change')!.textContent).toContain('20.00%');
     expect(host.querySelector('svg')!.getAttribute('aria-label')).toContain('from 100 to 120');
-    expect(Number(host.querySelector('svg')!.getAttribute('data-range-start'))).toBe(end-2*3600000);
+    expect(Number(host.querySelector('svg')!.getAttribute('data-range-start'))).toBe(end-86400000);
   }finally{act(()=>root.unmount());}
 });

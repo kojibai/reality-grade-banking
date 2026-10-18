@@ -1,134 +1,58 @@
 // @vitest-environment happy-dom
-import { act } from 'react';
-import { createRoot } from 'react-dom/client';
-import { beforeEach, expect, it, vi } from 'vitest';
-import { useNativeAccount } from '../src/receiz/useNativeAccount';
-import type { OpenIdentity } from '../src/receiz/native-identity';
-const custody = vi.hoisted(() => ({ restore: vi.fn(), fast: vi.fn(), create: vi.fn(), forget: vi.fn() }));
-vi.mock('../src/receiz/native-identity', () => ({ restoreNativeIdentity: custody.restore, restoreKnownWalletObservation: custody.fast, createNativeIdentity: custody.create, importNativeIdentity: vi.fn(), forgetDeviceIdentity: custody.forget }));
-Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-beforeEach(() => { custody.restore.mockReset().mockResolvedValue(null); custody.fast.mockReset().mockResolvedValue(null); custody.create.mockReset(); custody.forget.mockReset().mockResolvedValue(undefined); });
-function held(readWallet: () => Promise<unknown>) { return { readWallet, dispose: vi.fn(), binding: { keyId: 'test-fixture' }, localHistory: { authority: 'identity-only', portableStateVerified: false } } as unknown as OpenIdentity; }
-async function observe(run: (read: () => ReturnType<typeof useNativeAccount>) => Promise<void>) {
-  let state!: ReturnType<typeof useNativeAccount>; const root = createRoot(document.createElement('div'));
-  function Probe() { state = useNativeAccount(); return null; }
-  try { await act(async () => root.render(<Probe />)); await run(() => state); } finally { act(() => root.unmount()); }
+import {act} from 'react';
+import {createRoot} from 'react-dom/client';
+import {beforeEach,expect,it,vi} from 'vitest';
+import {useNativeAccount} from '../src/receiz/useNativeAccount';
+import type {OpenIdentity} from '../src/receiz/native-identity';
+import type {WalletObservation} from '../src/receiz/wallet-observation';
+const custody=vi.hoisted(()=>({restore:vi.fn(),create:vi.fn(),importId:vi.fn(),forget:vi.fn()}));
+vi.mock('../src/receiz/native-identity',()=>({restoreNativeIdentity:custody.restore,createNativeIdentity:custody.create,importNativeIdentity:custody.importId,forgetDeviceIdentity:custody.forget}));
+Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+const observation=(amount='100'):WalletObservation=>({wallet:{userId:'owner',totalUsdCents:amount,reserveUsdCents:amount,settlementUsdCents:'0',balancePhiMicro:'1000000',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:'10',kaiUpulse:'10000000'},observedAt:'2026-10-18T12:00:00Z',history:[{userId:'owner',at:'2024-05-10T06:45:41.888Z',kaiUPulse:'0',totalUsdCents:'0',reserveUsdCents:'0',settlementUsdCents:'0'},{userId:'owner',at:'2026-10-18T12:00:00Z',kaiUPulse:'10000000',totalUsdCents:amount,reserveUsdCents:amount,settlementUsdCents:'0'}],historyBasis:{schema:'bank.account-history-display.v1',startKaiUPulse:'0',endKaiUPulse:'10000000'}});
+function held(known=observation()){
+ let current=known;
+ const identity={binding:{keyId:'fixture'},localHistory:{authority:'identity-only'},dispose:vi.fn(),knownWallet:()=>current,prepareAccountView:vi.fn(async()=>current),readWallet:vi.fn(async()=>current.wallet),setKnown:(value:WalletObservation)=>{current=value;}};
+ return identity as unknown as OpenIdentity & {setKnown(value:WalletObservation):void};
 }
-it('restores the device identity and reads updates from its shared wallet rather than local demo storage', async () => {
-  localStorage.setItem('receiz-bank-demo-v1', JSON.stringify({ balance: 99999999 }));
-  const readWallet = vi.fn().mockResolvedValueOnce({ userId: 'same-user', totalUsdCents: '100' }).mockResolvedValueOnce({ userId: 'same-user', totalUsdCents: '300' });
-  custody.restore.mockResolvedValue(held(readWallet));
-  await observe(async read => { expect(read().wallet?.totalUsdCents).toBe('100'); await act(async () => { await read().refresh(); }); expect(read().wallet?.totalUsdCents).toBe('300'); expect(readWallet).toHaveBeenCalledTimes(2); });
-  localStorage.clear();
+beforeEach(()=>{custody.restore.mockReset().mockResolvedValue(null);custody.create.mockReset();custody.importId.mockReset();custody.forget.mockReset().mockResolvedValue(undefined);});
+async function observe(run:(read:()=>ReturnType<typeof useNativeAccount>,frames:ReturnType<typeof useNativeAccount>[])=>Promise<void>){
+ let state!:ReturnType<typeof useNativeAccount>;const frames:typeof state[]=[];const root=createRoot(document.createElement('div'));
+ function Probe(){state=useNativeAccount();frames.push({...state});return null;}
+ try{await act(async()=>root.render(<Probe/>));await run(()=>state,frames);}finally{act(()=>root.unmount());}
+}
+it('publishes identity, balance and original history in one settled frame without an immediate second read',async()=>{
+ const identity=held();custody.restore.mockResolvedValue(identity);
+ await observe(async(read,frames)=>{expect(read().identity).toBe(identity);expect(read().walletHistory[0].kaiUPulse).toBe('0');expect(read().wallet?.totalUsdCents).toBe('100');expect(read().busy).toBe(false);expect(identity.readWallet).not.toHaveBeenCalled();expect(frames.filter(frame=>frame.identity).every(frame=>frame.wallet&&frame.walletHistory.length===2&&!frame.opening)).toBe(true);});
 });
-it('clears private account data and ignores a delayed wallet response after removing the identity', async () => {
-  let finish!: (value: unknown) => void; const pending = new Promise(resolve => { finish = resolve; }); const identity = held(() => pending);
-  custody.restore.mockResolvedValue(identity);
-  await observe(async read => { await act(async () => { await read().forget(); finish({ userId: 'former-user', totalUsdCents: '900' }); }); expect(read().identity).toBeNull(); expect(read().wallet).toBeNull(); expect(identity.dispose).toHaveBeenCalled(); });
+it('keeps the account private while complete history is still opening instead of publishing a flat balance preview',async()=>{
+ const identity=held();let finish!:(value:WalletObservation)=>void;vi.mocked(identity.prepareAccountView).mockReturnValue(new Promise(resolve=>{finish=resolve;}));custody.restore.mockResolvedValue(identity);
+ await observe(async(read,frames)=>{expect(read().identity).toBeNull();expect(read().wallet).toBeNull();expect(read().walletHistory).toEqual([]);expect(read().opening).toBe(true);await act(async()=>{finish(observation());});expect(read().identity).toBe(identity);expect(frames.filter(frame=>frame.identity).every(frame=>frame.walletHistory.length===2)).toBe(true);});
 });
-it('keeps the last genuine observation on read failure without substituting a new balance', async () => {
-  const readWallet = vi.fn().mockResolvedValueOnce({ userId: 'same-user', totalUsdCents: '500' }).mockRejectedValueOnce(new Error('Source unavailable'));
-  custody.restore.mockResolvedValue(held(readWallet));
-  await observe(async read => { await act(async () => { await read().refresh(); }); expect(read().wallet?.totalUsdCents).toBe('500'); expect(read().error).toContain('could not update'); });
+it('waits for settled import preparation and keeps account opening single-flight',async()=>{
+ const identity=held();let finish!:(value:WalletObservation)=>void;vi.mocked(identity.prepareAccountView).mockReturnValue(new Promise(resolve=>{finish=resolve;}));custody.importId.mockResolvedValue(identity);
+ await observe(async read=>{let pending!:Promise<void>;await act(async()=>{pending=read().importId({}as File,'',true);});expect(read().identity).toBeNull();await act(async()=>{await read().create(true);});expect(custody.create).not.toHaveBeenCalled();await act(async()=>{finish(observation());await pending;});expect(read().identity).toBe(identity);expect(read().walletHistory).toEqual(observation().history);});
 });
-it('first-paints the exact held wallet while the background read is still pending', async () => {
-  let finish!: (value: unknown) => void; const pending = new Promise(resolve => { finish = resolve; });
-  const identity = held(() => pending); identity.knownWallet = () => ({ wallet: { userId: 'same-user', totalUsdCents: '321' }, observedAt: '2026-10-13T12:00:00Z' }) as ReturnType<OpenIdentity['knownWallet']>;
-  custody.restore.mockResolvedValue(identity);
-  await observe(async read => { expect(read().busy).toBe(true); expect(read().wallet?.totalUsdCents).toBe('321'); await act(async () => { finish({ userId: 'same-user', totalUsdCents: '654' }); }); expect(read().wallet?.totalUsdCents).toBe('654'); });
+it('does not publish an incomplete account or erase its Identity Seal when preparation fails',async()=>{
+ const identity=held();vi.mocked(identity.prepareAccountView).mockRejectedValue(Error('Complete original history is unavailable'));custody.create.mockResolvedValue(identity);
+ await observe(async read=>{await act(async()=>{await read().create(true);});expect(read().identity).toBeNull();expect(read().wallet).toBeNull();expect(read().error).toContain('Complete original');expect(identity.dispose).toHaveBeenCalled();expect(custody.forget).not.toHaveBeenCalled();});
 });
-it('paints a newly retained native result even when an earlier balance refresh is still pending', async () => {
-  let known = { wallet: { userId: 'same-user', totalUsdCents: '321' }, observedAt: '2026-10-17T12:00:00Z' } as NonNullable<ReturnType<OpenIdentity['knownWallet']>>;
-  const identity = held(() => new Promise(() => {})); identity.knownWallet = () => known;
-  custody.restore.mockResolvedValue(identity);
-  await observe(async read => {
-    expect(read().wallet?.totalUsdCents).toBe('321');
-    known = { ...known, wallet: { ...known.wallet, totalUsdCents: '221' }, observedAt: '2026-10-17T12:01:00Z' };
-    await act(async () => { await read().refresh(); });
-    expect(read().wallet?.totalUsdCents).toBe('221');
-    expect(read().observedAt).toBe(known.observedAt);
-  });
+it('refreshes explicitly while retaining the settled opening history',async()=>{
+ const identity=held();custody.restore.mockResolvedValue(identity);
+ await observe(async read=>{identity.setKnown(observation('300'));await act(async()=>{await read().refresh();});expect(read().wallet?.totalUsdCents).toBe('300');expect(read().walletHistory).toEqual(observation('300').history);expect(identity.readWallet).toHaveBeenCalledTimes(1);});
 });
-it('paints the exact historical observation before canonical identity opening finishes, without creating authority', async () => {
-  let finish!: (value: unknown) => void; custody.restore.mockReturnValue(new Promise(resolve => { finish = resolve; }));
-  custody.fast.mockResolvedValue({ wallet: { userId: 'known-user', totalUsdCents: '321' }, observedAt: '2026-10-13T12:00:00Z' });
-  await observe(async read => { expect(read().opening).toBe(true); expect(read().identity).toBeNull(); expect(read().wallet?.totalUsdCents).toBe('321'); await act(async () => { finish(null); }); expect(read().identity).toBeNull(); });
+it('retains the settled frame if a later update fails',async()=>{
+ const identity=held();vi.mocked(identity.readWallet).mockRejectedValue(Error('Source unavailable'));custody.restore.mockResolvedValue(identity);
+ await observe(async read=>{await act(async()=>{await read().refresh();});expect(read().wallet?.totalUsdCents).toBe('100');expect(read().error).toContain('could not update');expect(read().syncPending).toBe(true);});
 });
-it('keeps the retained chart beside its balance through the first account paint and background refresh', async () => {
-  let finish!: (value: OpenIdentity) => void;
-  custody.restore.mockReturnValue(new Promise(resolve => { finish = resolve; }));
-  const wallet = { userId: 'known-user', totalUsdCents: '321', reserveUsdCents: '21', settlementUsdCents: '300', balancePhiMicro: '1000000', portfolioUsdCents: null, pnlUsdCents: null, withdrawableUsdCents: null, projectionComplete: true, pulse: '100', kaiUpulse: '100000002' };
-  const history = [{ ...wallet, at: '2026-10-18T10:00:00Z', kaiUPulse: '100000000' }, { ...wallet, at: '2026-10-18T12:00:00Z', kaiUPulse: '100000002' }];
-  const known = { wallet, history, observedAt: history[1].at } as NonNullable<ReturnType<OpenIdentity['knownWallet']>>;
-  custody.fast.mockResolvedValue(known);
-  const identity = held(() => new Promise(() => {})); identity.knownWallet = () => known;
-  await observe(async read => {
-    expect(read().wallet?.totalUsdCents).toBe('321'); expect(read().walletHistory).toEqual(history);
-    await act(async () => { finish(identity); });
-    expect(read().identity).toBe(identity); expect(read().walletHistory).toEqual(history);
-    await act(async () => { await read().refresh(); });
-    expect(read().walletHistory).toEqual(history);
-    await act(async () => { await read().forget(); });
-    expect(read().walletHistory).toEqual([]);
-  });
+it('preserves the current account if device removal is refused by held custody',async()=>{
+ const identity=held();custody.restore.mockResolvedValue(identity);custody.forget.mockRejectedValue(Error('Notes remain in custody'));
+ await observe(async read=>{await act(async()=>{await expect(read().forget()).rejects.toThrow('Notes');});expect(read().identity).toBe(identity);expect(identity.dispose).not.toHaveBeenCalled();});
 });
-it('opens the verified identity immediately while the first remote wallet read is still pending', async () => {
-  let finish!: (value: unknown) => void, known: ReturnType<OpenIdentity['knownWallet']> = null;
-  const initial = new Promise(resolve => { finish = resolve; });
-  const identity = held(async () => { const wallet = await initial; known = { wallet, observedAt: '2026-10-13T12:00:00Z' } as ReturnType<OpenIdentity['knownWallet']>; return wallet; }); identity.knownWallet = () => known;
-  custody.create.mockResolvedValue(identity);
-  await observe(async read => { let opening!: Promise<void>; await act(async () => { opening = read().create(true); }); expect(read().identity).toBe(identity); expect(read().wallet).toBeNull(); expect(read().opening).toBe(false); await opening; await act(async () => { finish({ userId: 'new-user', totalUsdCents: '0' }); }); expect(read().wallet?.totalUsdCents).toBe('0'); });
+it('clears the frame and prevents a pending update from reopening a removed identity',async()=>{
+ const identity=held();custody.restore.mockResolvedValue(identity);let finish!:(value:unknown)=>void;vi.mocked(identity.readWallet).mockReturnValue(new Promise(resolve=>{finish=resolve;})as never);
+ await observe(async read=>{let pending!:Promise<void>;await act(async()=>{pending=read().refresh();});await act(async()=>{await read().forget();finish(observation('999').wallet);await pending;});expect(read().identity).toBeNull();expect(read().wallet).toBeNull();expect(read().walletHistory).toEqual([]);});
 });
-it('preserves initial wallet failure without automatically repeating the failed account opening', async () => {
-  const readWallet = vi.fn().mockRejectedValueOnce(new Error('Initial source unavailable')).mockReturnValueOnce(new Promise(() => {}));
-  custody.create.mockResolvedValue(held(readWallet));
-  await observe(async read => {
-    await act(async () => { await read().create(true); });
-    expect(read().wallet).toBeNull();
-    expect(read().error ?? '').toContain('balance could not be opened');
-    expect(read().busy).toBe(false); expect(readWallet).toHaveBeenCalledTimes(1);
-  });
-});
-it('keeps creation and import/open operations single-flight while the first identity is opening', async () => {
-  let finish!: (value: OpenIdentity) => void;
-  custody.create.mockReturnValue(new Promise(resolve => { finish = resolve; }));
-  await observe(async read => {
-    let first!: Promise<void>;
-    await act(async () => { first = read().create(true); await read().create(true); });
-    expect(custody.create).toHaveBeenCalledTimes(1);
-    await act(async () => { finish(held(async () => ({ userId: 'fixture', totalUsdCents: '0' }))); await first; });
-    expect(read().identity).not.toBeNull();
-  });
-});
-it('keeps the account open when note custody prevents device removal', async () => {
-  const identity = held(async () => ({ userId: 'same-user', totalUsdCents: '200' })); custody.restore.mockResolvedValue(identity);
-  custody.forget.mockRejectedValue(new Error('Keep this device while Offline Notes are held or pending.'));
-  await observe(async read => {
-    await act(async () => { await expect(read().forget()).rejects.toThrow('Offline Notes'); });
-    expect(read().identity).toBe(identity); expect(read().wallet?.totalUsdCents).toBe('200'); expect(identity.dispose).not.toHaveBeenCalled();
-  });
-});
-
-it('opens a new account from its signed genesis immediately and treats a failed background sync separately', async () => {
-  const readWallet = vi.fn().mockRejectedValue(new Error('Transport unavailable'));
-  const identity = held(readWallet);
-  identity.knownWallet = () => ({ source: 'account-genesis', wallet: { userId: 'new-user', totalUsdCents: '0', reserveUsdCents: '0', settlementUsdCents: '0', balancePhiMicro: '0' }, observedAt: '2026-10-15T22:00:00Z', history: [{ userId: 'new-user', at: '2026-10-15T22:00:00Z', kaiUPulse: null, totalUsdCents: '0', reserveUsdCents: '0', settlementUsdCents: '0' }] }) as ReturnType<OpenIdentity['knownWallet']>;
-  custody.create.mockResolvedValue(identity);
-  await observe(async read => {
-    await act(async () => { await read().create(true); });
-    expect(read().identity).toBe(identity); expect(read().wallet?.totalUsdCents).toBe('0');
-    expect(read().error).toBeNull(); expect(read().syncPending).toBe(true);
-    expect(identity.knownWallet()?.history).toHaveLength(1); expect(readWallet).toHaveBeenCalledTimes(1);
-  });
-});
-
-it('keeps a replay-store outage distinct from a replayed Identity Seal and permits a manual retry',async()=>{
- const readWallet=vi.fn().mockRejectedValueOnce(new Error('proof_replay_guard_unavailable')).mockResolvedValueOnce({userId:'same-user',totalUsdCents:'100'});
- custody.create.mockResolvedValue(held(readWallet));
- await observe(async read=>{
-  await act(async()=>{await read().create(true);});
-  expect(read().identity).not.toBeNull();expect(read().busy).toBe(false);expect(readWallet).toHaveBeenCalledTimes(1);
-  expect(read().error).toContain('Secure account access is temporarily unavailable');expect(read().error).not.toContain('proof_replay');
-  await act(async()=>{await read().refresh();});expect(read().wallet?.totalUsdCents).toBe('100');expect(read().error).toBeNull();
- });
+it('does not publish an opening identity after removal wins the generation',async()=>{
+ const identity=held();let finish!:(value:WalletObservation)=>void;vi.mocked(identity.prepareAccountView).mockReturnValue(new Promise(resolve=>{finish=resolve;}));custody.restore.mockResolvedValue(identity);
+ await observe(async read=>{await act(async()=>{await read().forget();finish(observation());});expect(read().identity).toBeNull();expect(read().wallet).toBeNull();expect(identity.dispose).toHaveBeenCalled();});
 });

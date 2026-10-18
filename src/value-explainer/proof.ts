@@ -1,0 +1,58 @@
+import { createReceizArtifactAdmissionEngine, digestReceizCanonicalV122, quoteReceizDisplayUsdV122, verifyReceizArtifact } from '@receiz/sdk';
+import {
+  exportReceizProofValueReplayV129,
+  projectReceizProofValueV129,
+  sampleReceizProofValueV129,
+  verifyReceizProofValueReplayV129,
+  type ReceizProofValueSourceV129,
+  type ReceizProofValueUsdBasisV129,
+} from '@receiz/sdk/valuation';
+import { canonicalInteger, MAX_INPUT_BYTES, parseEvaluationCoordinates, VALUE_POLICY } from './model';
+
+/** An explicitly selected educational rate. The digest binds it, not a market. */
+export async function createDisplayBasis(rate: string): Promise<ReceizProofValueUsdBasisV129> {
+  canonicalInteger(rate, 'Display rate', true);
+  const priceBasis = Object.freeze({ algorithm: 'receiz.display-usd.v122' as const, version: '1' as const, usdPerPhiMicrocents: rate, purpose: 'user-selected-educational-display' });
+  return { algorithm: priceBasis.algorithm, version: priceBasis.version, usdPerPhiMicrocents: rate, priceBasis, priceBasisDigest: await digestReceizCanonicalV122(priceBasis) };
+}
+
+export function quoteDisplayUsd(phiMicro: string, rate: string): string {
+  canonicalInteger(phiMicro, 'Phi micro-units');
+  canonicalInteger(rate, 'Display rate', true);
+  return phiMicro === '0' ? '0' : quoteReceizDisplayUsdV122(phiMicro, rate);
+}
+
+export async function inspectHeldProof(input: Readonly<{ file: File; evaluationKaiUPulse: string; additionalCoordinates: string; portableHistory: boolean; usdPerPhiMicrocents?: string }>) {
+  if (input.file.size > MAX_INPUT_BYTES) throw new Error('Public proof exceeds the 64 MiB reader limit.');
+  const coordinates = parseEvaluationCoordinates(input.evaluationKaiUPulse, input.additionalCoordinates);
+  const verification = await verifyReceizArtifact(input.file);
+  if (verification.status !== 'verified-artifact') {
+    const detail = verification.status === 'denied' ? verification.code : verification.status === 'unsupported' ? verification.reason : verification.errors.map(error => error.code).join(', ');
+    throw new Error(`Proof rejected: ${verification.status}${detail ? ` · ${detail}` : ''}`);
+  }
+  let source: ReceizProofValueSourceV129 = verification;
+  if (input.portableHistory) {
+    const admission = await createReceizArtifactAdmissionEngine()(verification, { profile: 'portable-state' });
+    if (admission.profile !== 'portable-state' || (admission.verdict !== 'bearer-recovery' && admission.verdict !== 'foreign-owner')) throw new Error('Portable history was not admitted.');
+    source = admission;
+  }
+  const basis = {
+    source,
+    expectedProofDigest: verification.artifactDigest.value,
+    policy: VALUE_POLICY,
+    ...(input.usdPerPhiMicrocents ? { usdBasis: await createDisplayBasis(input.usdPerPhiMicrocents) } : {}),
+  };
+  const projection = await projectReceizProofValueV129({ ...basis, valuationKaiUPulse: input.evaluationKaiUPulse });
+  if (projection.status === 'unavailable') return { projection, chart: null, replay: null, replayVerification: null };
+  const chart = await sampleReceizProofValueV129({ ...basis, valuationKaiUPulses: coordinates });
+  const replay = await exportReceizProofValueReplayV129({ ...basis, valuationKaiUPulses: coordinates });
+  const replayVerification = await verifyReceizProofValueReplayV129(replay);
+  if (replayVerification.status !== 'verified-replay') throw new Error(`Replay rejected: ${replayVerification.code}`);
+  return { projection, chart, replay, replayVerification };
+}
+
+export async function inspectReplayFile(file: File) {
+  if (file.size > MAX_INPUT_BYTES) throw new Error('Replay exceeds the 64 MiB reader limit.');
+  const replay: unknown = JSON.parse(await file.text());
+  return verifyReceizProofValueReplayV129(replay);
+}

@@ -39,24 +39,36 @@ extrema and a valuation grid for All, 1D, 1W, 1M, 3M and 1Y. Input is bounded at
 at the existing chart limit. Same-pulse samples share their calculation. The
 exact original history remains retained separately from sampled display data.
 
-Identity-bound encrypted display storage keeps the balance, observation time
-and computed history together for the next first paint. A cold complete carried
-source can reconstruct its history locally after canonical admission, without
-waiting for account continuation or optional full-source restoration. Newer
-accepted sources enrich the screen through the existing adoption rules. A
-stronger local Note successor cannot be rewound by a shared read. A recorded
-observation wins over a computed point at the same display coordinate.
+Identity-bound encrypted display storage keeps the balance, observation time,
+computed history and source coverage together. Account entry prepares that frame
+before publishing the admitted identity to the account screen. The entrance stays
+visible until this preparation finishes; there is no fixed timer and no interim
+balance-only account shell. Canonical SDK identity admission already verifies the
+carried account projection, so Bankeiz reuses that held SDK result.
 
-An older sparse cache is enriched when its matching complete carried source or
-retained accepted account statement opens. Following entries read the retained
-computed series directly. Post-import retention shares the same ordered,
-revision-checked write queue as later reads, so a delayed seed cannot overwrite
-a newer observation. Optional display persistence never delays wallet delivery.
+The retained Ledger is checked before accepting a display cache. An exact hash
+of its private stored bytes can reuse the matching already retained display;
+a different durable source must reopen and verify. This preserves a newer
+accepted source even if the browser closed before its optional display-cache
+write completed. No cache hash grants financial authority.
+
+Each period keeps its requested time domain, bounded by the actual known source
+beginning. A same-head account read can extend deterministic samples from its
+admitted closing holdings only when account, financial coordinate, Reserve and
+gross Phi still match. Changed financial holdings invalidate that display
+coverage until their complete source replays. New Note observations preserve
+access and earlier chart points without copying old closing holdings.
 
 An incomplete, foreign, missing-rail or unreconciled carrier cannot manufacture
-a complete timeline. Its existing valid balance remains readable; absent history
-still requires the original accepted account source. This change does not alter
-identity admission, financial writers, current wallet amounts or package versions.
+a complete timeline. Older aggregate wallets can include artifact and lawful
+value beyond native cash movements. Their existing valid balance and genuine
+observations remain accessible and explicitly identify missing history. A
+native cash-only statement cannot replace a different aggregate amount. The
+current v129 legacy export does not carry the full historical artifact/lawful
+ownership and valuation operands; that source is required for a complete
+aggregate historical chart. Login, current holdings and public activity rows
+cannot supply it. This change does not alter identity admission, financial
+writers, current wallet amounts or package versions.
 
 ## Verification scope
 

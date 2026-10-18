@@ -4,6 +4,7 @@ import { verifyAccountProofContinuation } from './account-proof-public';
 import { loadReceiz } from './client';
 import type { WalletObservation } from './wallet-observation';
 import { appendWalletPoint, mergeWalletPoints, walletPointTime, type WalletPoint } from './wallet-series';
+import { hasSettledAccountView } from './account-view';
 import {projectHistoricalWallet} from './historical-wallet';
 
 type State = { schema: 'bank.account-ledger.v1'; accountUid: string; observedAt: string; sourceJson: string };
@@ -14,6 +15,7 @@ export interface LocalAccountLedger { proof: VerifiedAccountProof; observation: 
  * same-account observation whose last transaction coordinate it covers. A
  * locally committed note successor always wins over a delayed shared read. */
 export function canAdoptAccountLedgerObservation(current: WalletObservation | null, next: WalletObservation): boolean {
+  if (next.walletScope === 'native-cash-only' && (!current || (['totalUsdCents','reserveUsdCents','settlementUsdCents','balancePhiMicro'] as const).some(key => current.wallet[key] !== next.wallet[key]))) return false;
   if (!current) return true;
   if (current.source === 'local-note-head') return false;
   if (current.source === 'account-genesis') return true;
@@ -30,7 +32,7 @@ export function canAdoptAccountLedgerObservation(current: WalletObservation | nu
 export function mergeAccountLedgerObservation(current: WalletObservation | null, next: WalletObservation): WalletObservation {
   const history = mergeWalletPoints([next.history ?? [], current?.history ?? []], next.wallet.userId);
   if (current && current.wallet.userId === next.wallet.userId && (['totalUsdCents', 'reserveUsdCents', 'settlementUsdCents', 'balancePhiMicro'] as const).every(key => current.wallet[key] === next.wallet[key])) {
-    return history.length === (current.history?.length ?? 0) && history.every((point, index) => point === current.history?.[index]) ? current : { ...current, history };
+    return history.length === (current.history?.length ?? 0) && history.every((point, index) => point === current.history?.[index]) && !!current.historyBasis ? current : { ...current, history, historyBasis: next.historyBasis ?? current.historyBasis };
   }
   const observedAt = current && Date.parse(current.observedAt) >= Date.parse(next.observedAt)
     ? new Date(Math.max(Date.now(), Date.parse(current.observedAt) + 1)).toISOString() : next.observedAt;
@@ -56,7 +58,9 @@ export async function accountLedgerObservation(proof: VerifiedAccountProof, acco
   const history:WalletPoint[]=projectHistoricalWallet({transactions:proof.statement.transactions,userId:accountUid,endKaiUPulse:c.kaiUPulse});
   // Historical model samples use their own Kai price. The accepted source's
   // exact checkpoint quote and wallet remain unchanged and win at its endpoint.
-  return { wallet, observedAt, history: appendWalletPoint(history, wallet, walletPointTime(c.kaiUPulse), c.kaiUPulse) };
+  const separate = proof.statement.components;
+  const excludesAggregate = separate && (BigInt(separate.artifactIntrinsicPhiMicro) > 0n || separate.lawfulValues.some(value=>BigInt(value.settlementPhiMicro)>0n));
+  return { wallet, observedAt, ...(excludesAggregate ? {walletScope:'native-cash-only' as const} : {}), history: appendWalletPoint(history, wallet, walletPointTime(c.kaiUPulse), c.kaiUPulse), historyBasis: { schema: 'bank.account-history-display.v1', startKaiUPulse: history[0]?.kaiUPulse ?? c.kaiUPulse, endKaiUPulse: c.kaiUPulse, settlementPhiMicro: c.settlementPhiMicro, balancePhiMicro: c.balancePhiMicro!, reserveUsdCents: c.reserveUsdCents } };
 }
 
 /** Encrypted storage beneath canonical verification. The host account alias is
@@ -64,13 +68,16 @@ export async function accountLedgerObservation(proof: VerifiedAccountProof, acco
  * it is display routing, never ownership, funding or execution authority. */
 export function createLocalAccountLedger(input: { owner: Owner; read(): Promise<unknown>; write(value: State, expected: unknown): Promise<void>; assertOpen(): void }) {
   let pending: Promise<unknown> = Promise.resolve();
+  async function stateDigest(value: unknown) { const sdk = await loadReceiz(); return sdk.sha256ReceizBytes(new TextEncoder().encode(JSON.stringify(value))); }
   async function open(value: unknown): Promise<LocalAccountLedger | null> {
     if (value === null || value === undefined) return null;
     const s = value as State;
     if (!s || typeof s !== 'object' || Object.keys(s).sort().join(',') !== 'accountUid,observedAt,schema,sourceJson' || s.schema !== 'bank.account-ledger.v1' || typeof s.sourceJson !== 'string' || typeof s.accountUid !== 'string' || typeof s.observedAt !== 'string') throw Error('ACCOUNT_LEDGER_SOURCE_REQUIRED');
     const proof = await verifyAccountProof(new File([s.sourceJson], 'account-ledger.json', { type: 'application/json' }), input.owner);
     input.assertOpen();
-    return { proof, observation: await accountLedgerObservation(proof, s.accountUid, s.observedAt) };
+    const observation = await accountLedgerObservation(proof, s.accountUid, s.observedAt);
+    observation.historyBasis!.retainedStateSha256 = await stateDigest(value);
+    return { proof, observation };
   }
   async function retain(proof: VerifiedAccountProof, accountUid: string): Promise<LocalAccountLedger> {
     input.assertOpen();
@@ -87,7 +94,7 @@ export function createLocalAccountLedger(input: { owner: Owner; read(): Promise<
       const observedAt = new Date().toISOString(), observation = await accountLedgerObservation(proof, accountUid, observedAt);
       const state: State = { schema: 'bank.account-ledger.v1', accountUid, observedAt, sourceJson: new TextDecoder('utf-8', { fatal: true }).decode(heldAccountProofBytes(proof)) };
       input.assertOpen();
-      try { await input.write(state, previous); input.assertOpen(); return { proof, observation }; }
+      try { await input.write(state, previous); input.assertOpen(); observation.historyBasis!.retainedStateSha256 = await stateDigest(state); return { proof, observation }; }
       catch (cause) {
         input.assertOpen();
         // A competing tab may have kept another genuine extension. Reopen it
@@ -98,7 +105,13 @@ export function createLocalAccountLedger(input: { owner: Owner; read(): Promise<
     throw Error('ACCOUNT_LEDGER_RETENTION_CHANGED');
   }
   return {
-    async restore() { input.assertOpen(); await pending.catch(() => {}); const opened = await open(await input.read()); input.assertOpen(); return opened; },
+    async restore(current?: WalletObservation | null) {
+      input.assertOpen(); await pending.catch(() => {}); const value = await input.read(); input.assertOpen();
+      // Exact retained bytes are already represented in this identity-bound
+      // display cache. A different durable source must still be reopened.
+      if (value && hasSettledAccountView(current ?? null) && current?.historyBasis?.retainedStateSha256 === await stateDigest(value)) return null;
+      const opened = await open(value); input.assertOpen(); return opened;
+    },
     retain(proof: VerifiedAccountProof, accountUid: string) {
       const operation = pending.catch(() => {}).then(() => retain(proof, accountUid));
       pending = operation;

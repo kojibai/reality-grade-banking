@@ -1,0 +1,35 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bankeiz settled entry regression</title></head><body><div id="root"></div><script type="module">
+import React,{useLayoutEffect,useState}from'react';import{createRoot}from'react-dom/client';
+import{createReceizIdIdentity,appendReceizIdentityPortableState,projectReceizIdentityAccount,receizKaiNow,quoteReceizDisplayUsdV122}from'@receiz/sdk';
+import{historicalWalletUsdRate}from'/src/receiz/historical-wallet.ts';import{projectCarriedWalletHistory}from'/src/receiz/carried-wallet-history.ts';import{readCarriedWalletObservation}from'/src/receiz/wallet-observation.ts';
+import{useNativeAccount}from'/src/receiz/useNativeAccount.ts';import{LiveAccount}from'/src/features/account/LiveAccount.tsx';
+import'/src/styles/tokens.css';import'/src/styles/app.css';import'/src/styles/features.css';
+const noop=()=>{},root=createRoot(document.querySelector('#root'));window.accountFrames=[];
+async function source(){
+ const id=await createReceizIdIdentity(),owner=id.keyFile.owner.uid,end=String(receizKaiNow().uPulse),start=String(BigInt(end)-6600000000000n),rate=historicalWalletUsdRate(end),settlement=quoteReceizDisplayUsdV122('75000000',rate);
+ const head={kaiPulse:String(BigInt(end)/1000000n),kaiUpulse:end},exportedAt=new Date().toISOString();
+ const wallet={userId:owner,balanceUsd:((100000n+BigInt(settlement))/100n).toString()+'.'+((100000n+BigInt(settlement))%100n).toString().padStart(2,'0'),balancePhiMicro:'75000000',valueStates:{settledBalanceUsdCents:'100000',ecosystemBalanceUsdCents:settlement},quote:{usdPerPhiMicrocents:rate},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:String(BigInt(start)+2000000n)}};
+ const snapshot={account:{userId:owner},exportedAt,accountStateHead:head,ledger:{entries:[{kaiUpulse:start,actorUserId:owner,subjectUserId:null}]},wallet:{routeSummary:wallet,ledgerEntries:[{id:'reserve',user_id:owner,direction:'credit',entry_kind:'admin_adjustment',amount_phi_micro:'0',amount_usd_cents:'100000',kai_upulse:start,metadata:{}},{id:'settlement',user_id:owner,direction:'credit',entry_kind:'chat_transfer',amount_phi_micro:'100000000',amount_usd_cents:'100000',kai_upulse:String(BigInt(start)+1000000n),metadata:{rail:'settlement'}},{id:'sent',user_id:owner,direction:'debit',entry_kind:'chat_transfer',amount_phi_micro:'25000000',amount_usd_cents:'100000',kai_upulse:String(BigInt(start)+2000000n),metadata:{rail:'settlement'}}]},portableCompleteness:{schema:'receiz.account.portable-completeness.v2',completeAtSealedHead:true,accountStateHead:head,domains:Object.fromEntries(['profile','showcase','actionLedger','calendar','contacts','wallet','market','sports','signalVault','media','preferences','proofHistory'].map(key=>[key,true]))}};
+ const key=await appendReceizIdentityPortableState({keyFile:id.keyFile,schema:'receiz.account.state.v3',snapshot}),projection=await projectReceizIdentityAccount(key);
+ if(!projection.completeAtSealedHead)throw Error('SDK did not admit the synthetic source');
+ const known=readCarriedWalletObservation(projection),history=projectCarriedWalletHistory(projection,known);
+ if(!history?.length)throw Error('Missing complete carried history');
+ return {...known,history,historyBasis:{schema:'bank.account-history-display.v1',startKaiUPulse:start,endKaiUPulse:end}};
+}
+function Session({services,started}){
+ const account=useNativeAccount(services);
+ useLayoutEffect(()=>{if(account.identity){const frame={elapsedMs:performance.now()-started,amount:account.wallet.totalUsdCents,points:account.walletHistory.length,start:account.walletHistory[0].kaiUPulse,busy:account.busy};window.accountFrames.push(frame);window.entryResult=frame;}},[account.identity,account.wallet,account.walletHistory]);
+ return account.identity?React.createElement('div',{className:'console'},React.createElement('main',{className:'main-panel'},React.createElement(LiveAccount,{wallet:account.wallet,walletHistory:account.walletHistory,observedAt:account.observedAt,busy:account.busy,error:account.error,onRefresh:noop,onSend:noop,onReceive:noop,onBalance:noop,onAssets:noop,onLedger:noop}))):React.createElement('p',{role:'status',id:'opening'},'Opening complete synthetic account…');
+}
+function Harness(){
+ const[session,setSession]=useState(null),[held,setHeld]=useState(null);
+ async function run(delay){
+  window.entryResult=null;window.accountFrames=[];const started=performance.now(),ready=source();let release;const gate=delay?new Promise(resolve=>release=resolve):Promise.resolve();
+  const identity={prepareAccountView:async()=>{const known=await ready;await gate;identity.knownWallet=()=>known;return known;},knownWallet:()=>null,dispose:noop,readWallet:()=>{throw Error('No account API is allowed in this local fixture');}};
+  const services={restoreNativeIdentity:async()=>identity,createNativeIdentity:async()=>identity,importNativeIdentity:async()=>identity,forgetDeviceIdentity:async()=>{}};
+  setHeld(release?()=>release:null);setSession({services,started,key:crypto.randomUUID()});
+ }
+ return React.createElement(React.Fragment,null,React.createElement('div',{style:{padding:'12px 21px',font:'12px system-ui',color:'#68778b'}},'Synthetic signed source · actual v129 calculator and entry hook · no account, enrollment or financial operation'),React.createElement('div',{style:{padding:'0 21px 12px',display:'flex',gap:12}},React.createElement('button',{onClick:()=>run(false)},'Open local source'),React.createElement('button',{onClick:()=>run(true)},'Hold history'),held&&React.createElement('button',{onClick:()=>{held();setHeld(null);}},'Release history')),session&&React.createElement(Session,{...session,key:session.key}));
+}
+root.render(React.createElement(Harness));
+</script></body></html>

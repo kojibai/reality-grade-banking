@@ -30,8 +30,10 @@ import {loadBankProofResources} from './proof-resource-continuity';
 import {readLocalAccountCheckpoint} from './local-account-checkpoint';
 import {BANK_PREPARED_NOTE_CREDIT_ENABLED} from './config';
 import { readNoteAccountObservation } from './note-account-observation';
+import { hasSettledAccountView } from './account-view';
 
 export interface OpenIdentity {
+  prepareAccountView: () => Promise<import('./wallet-observation').WalletObservation>;
   operations?: () => Promise<import('./bank-operations').BankOperations>;
   accountProof?: () => Promise<import('./account-proof').VerifiedAccountProof>;
   retainAccountArtifactSource?: (file:File) => Promise<string>;
@@ -63,14 +65,19 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const ownerAdmission = admission;
   const binding = await sdk.readReceizIdentityPublicBinding(admission);
   const keyFile: ReceizKeyFile = await sdk.readReceizIdentityArtifact(bytes);
-  const localHistory = await sdk.projectReceizIdentityAccount(keyFile);
+  // v129 already verified this segmented account projection during canonical
+  // identity admission. Reuse that SDK-held result rather than verifying every
+  // carried segment a second time on the entry path.
+  const recovered = admission.recoveredState as unknown as ReceizIdentityAccountProjection | undefined;
+  const localHistory = recovered?.schema === 'receiz.sdk.identity_account_projection.v1' && recovered.keyId === keyFile.keyId && recovered.owner?.uid === keyFile.owner.uid
+    ? recovered : await sdk.projectReceizIdentityAccount(keyFile);
   let knownWallet = await loadWalletObservation(binding);
   let walletRevision = 0;
   let walletPersistence = Promise.resolve();
   function persistWalletObservation(observation: NonNullable<typeof knownWallet>) {
     const write = walletPersistence.catch(() => {}).then(async () => {
       if (lifetime.signal.aborted || knownWallet !== observation) return;
-      await saveWalletObservation(binding, observation.wallet, observation.observedAt, observation.history, observation.source, observation.localHeadDigest);
+      await saveWalletObservation(binding, observation.wallet, observation.observedAt, observation.history, observation.source, observation.localHeadDigest, observation.historyBasis);
     });
     walletPersistence = write;
     return write;
@@ -80,26 +87,27 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const carriedWallet = readCarriedWalletObservation(localHistory);
   knownWallet ??= carriedWallet;
   let enrichedCarriedHistory = false;
-  if (knownWallet && carriedWallet && knownWallet.source !== 'local-note-head' && localHistory.completeAtSealedHead && !knownWallet.history?.some(point => point.valuation === 'deterministic-v129')) {
+  if (knownWallet && carriedWallet && knownWallet.source !== 'local-note-head' && localHistory.completeAtSealedHead && !hasSettledAccountView(knownWallet)) {
     // Upgrade an older display cache only when the original covers exactly
     // that same balance/head. Never replace a later or locally spent wallet.
     const sameAmounts = (['userId','totalUsdCents','reserveUsdCents','settlementUsdCents','balancePhiMicro','kaiUpulse'] as const).every(key => knownWallet!.wallet[key] === carriedWallet.wallet[key]);
     if (sameAmounts && Date.parse(knownWallet.observedAt) >= Date.parse(carriedWallet.observedAt)) {
       try {
-        const { projectCarriedWalletHistory } = await import('./carried-wallet-history');
-        const history = projectCarriedWalletHistory(localHistory, carriedWallet);
-        if (history) { knownWallet = { ...knownWallet, history: mergeWalletPoints([history, knownWallet.history ?? []], knownWallet.wallet.userId) }; enrichedCarriedHistory = true; }
+        const { projectCarriedWalletObservation } = await import('./carried-wallet-history');
+        const projected = projectCarriedWalletObservation(localHistory, carriedWallet), history = projected?.history;
+        if (history) { knownWallet = { ...knownWallet, history: mergeWalletPoints([history, knownWallet.history ?? []], knownWallet.wallet.userId), historyBasis: projected!.historyBasis }; enrichedCarriedHistory = true; }
       } catch { /* Optional chart resources cannot prevent valid local identity entry. */ }
     }
   }
   const lifetime = new AbortController();
   if (enrichedCarriedHistory && knownWallet) void persistWalletObservation(knownWallet).catch(() => {});
   const {createLocalAccountLedger,canAdoptAccountLedgerObservation,mergeAccountLedgerObservation}=await import('./account-ledger');
+  const {extendWalletHistory}=await import('./extend-wallet-history');
   const localLedger=createLocalAccountLedger({owner:binding,read:()=>loadAccountLedgerState(binding),write:(value,expected)=>saveAccountLedgerState(binding,value,expected),assertOpen:()=>{if(lifetime.signal.aborted)throw Error('ACCOUNT_LEDGER_IDENTITY_CLOSED');}});
   let accountUid: string | null = null;
   async function restoreLedger() {
     try {
-      const restored = await localLedger.restore();
+      const restored = await localLedger.restore(knownWallet);
       if (!restored || lifetime.signal.aborted) return;
       if (canAdoptAccountLedgerObservation(knownWallet, restored.observation)) {
         const observation = mergeAccountLedgerObservation(knownWallet, restored.observation);
@@ -113,8 +121,8 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       if (!accountUid && knownWallet?.wallet.userId === restored.observation.wallet.userId) accountUid = restored.observation.wallet.userId;
     } catch { /* Optional source enrichment cannot replace the verified identity or invent a balance. */ }
   }
-  // A retained display observation already supplies the first account frame.
-  // Reopening the full original enriches it without delaying local entry.
+  // A complete retained frame needs no second verification/repricing pass on
+  // entry. Balance-only legacy caches must finish their original history first.
   const restoringLedger = restoreLedger();
   if (!knownWallet) await restoringLedger;
 
@@ -222,7 +230,11 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       && /^\d{1,30}$/.test(wallet.kaiUpulse) && /^\d{1,30}$/.test(knownWallet.wallet.kaiUpulse)
       && BigInt(wallet.kaiUpulse) < BigInt(knownWallet.wallet.kaiUpulse);
     if ((hasLocalWalletHead() || olderSharedCoordinate || startedRevision !== walletRevision && !laterSharedCoordinate) && knownWallet) return knownWallet.wallet;
-    if (!lifetime.signal.aborted) { const observedAt = new Date().toISOString(); const prior = knownWallet?.source === 'account-genesis' ? knownWallet.history?.map(point => ({ ...point, userId: wallet.userId })) ?? [] : knownWallet?.history ?? []; const history = appendWalletPoint(prior, wallet, observedAt, String(sdk.receizKaiNow().uPulse)); knownWallet = { wallet, observedAt, history }; void persistWalletObservation(knownWallet).catch(()=>{}); }
+    if (!lifetime.signal.aborted) {
+      const previous = knownWallet?.source === 'account-genesis' ? {...knownWallet, history: knownWallet.history?.map(point=>({...point,userId:wallet.userId}))} : knownWallet;
+      knownWallet = extendWalletHistory(previous, wallet, new Date().toISOString(), String(sdk.receizKaiNow().uPulse));
+      void persistWalletObservation(knownWallet).catch(()=>{});
+    }
     return startedRevision !== walletRevision && knownWallet ? knownWallet.wallet : wallet;
   }
   let noteRuntime: BankNoteRuntime | undefined;
@@ -304,6 +316,8 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
           // export time may precede a long-running funding/recovery attempt.
           observation.observedAt = new Date().toISOString();
           observation.history = appendWalletPoint(knownWallet?.history ?? [], observation.wallet, observation.observedAt, String(sdk.receizKaiNow().uPulse));
+          // The successor is a real observation, but a new financial movement
+          // needs its own complete replay before extending chart coverage.
           knownWallet = observation; walletRevision++;
           await persistWalletObservation(observation); noteOpen();
           return result;
@@ -645,7 +659,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
             // Chart enrichment preserves the wallet and source head. Repaint it
             // without invalidating a pending honest read at that same head.
             const headChanged=observation.wallet!==before?.wallet||observation.source!==before?.source||observation.localHeadDigest!==before?.localHeadDigest;
-            knownWallet=observation;if(headChanged)walletRevision++;await persistWalletObservation(observation);assertOpen();
+            knownWallet=observation;if(headChanged)walletRevision++;void persistWalletObservation(observation).catch(()=>{});assertOpen();
             if(typeof dispatchEvent==='function')dispatchEvent(new Event('bankeiz:account-observation'));
           }
         }
@@ -678,13 +692,45 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const api=make(BANK_APPLICATION_ID, make(BANK_PREVIOUS_NATIVE_APPLICATION_ID));
     return {...api,async publish(...args:Parameters<typeof api.publish>){assertPublicAccountSource();const result=await api.publish(...args);if(hasLocalWalletHead())throw Error('ACCOUNT_PROOF_LOCAL_CUSTODY_PUBLICATION_UNCONFIRMED');return result;}};
   }
+  let preparingView: Promise<import('./wallet-observation').WalletObservation> | undefined;
+  async function settleAccountView() {
+    noteOpen();
+    // Older caches contain a balance or login observations, not full history.
+    // Finish the retained-source path before deciding a network read is needed.
+    await restoringLedger; noteOpen();
+    if (knownWallet && hasSettledAccountView(knownWallet)) return knownWallet;
+    // Older aggregate wallets and held Note successors are valid sources for
+    // their current amounts, but do not imply a complete native cash timeline.
+    // Preserve access and genuine observations without inventing that history.
+    if (knownWallet) {
+      if (!knownWallet.history?.length) knownWallet = {...knownWallet, history: appendWalletPoint([], knownWallet.wallet, knownWallet.observedAt, knownWallet.wallet.kaiUpulse)};
+      return knownWallet;
+    }
+    const [, proofResult] = await Promise.allSettled([readWallet(), accountProof()]); noteOpen();
+    if (proofResult.status === 'rejected') { if (knownWallet) return knownWallet; throw proofResult.reason; }
+    const proof = proofResult.value;
+    const {accountLedgerObservation} = await import('./account-ledger');
+    const observation = await accountLedgerObservation(proof, accountUid!, new Date().toISOString()); noteOpen();
+    if (canAdoptAccountLedgerObservation(knownWallet, observation)) {
+      knownWallet = mergeAccountLedgerObservation(knownWallet, observation);
+      void persistWalletObservation(knownWallet).catch(()=>{});
+    }
+    if (!knownWallet || !hasSettledAccountView(knownWallet)) throw Error('Your complete account history could not be opened. Your Identity Seal is unchanged. Try again when its source is available.');
+    return knownWallet;
+  }
+  const prepareAccountView = () => {
+    if (preparingView) return preparingView;
+    const attempt = settleAccountView().catch(cause => { if (knownWallet) { if (!knownWallet.history?.length) knownWallet={...knownWallet,history:appendWalletPoint([],knownWallet.wallet,knownWallet.observedAt,knownWallet.wallet.kaiUpulse)}; return knownWallet; } throw new Error('Your complete account history could not be opened. Your Identity Seal is unchanged. Try again when its source is available.', {cause}); }); preparingView = attempt;
+    void attempt.finally(()=>{if(preparingView===attempt)preparingView=undefined;}).catch(()=>{});
+    return attempt;
+  };
   async function persistDeviceCustody() {
     await saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport);
     // Seed display retention through the same revision-checked queue as later
     // reads. A delayed import save cannot overwrite a newer account frame.
     if (knownWallet) void persistWalletObservation(knownWallet).catch(() => {});
   }
-  return { operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { prepareAccountView, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

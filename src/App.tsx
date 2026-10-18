@@ -30,7 +30,7 @@ function BankApp() {
   const [onBank, setOnBank] = useState(location.pathname === '/');
   useEffect(() => { const change = () => flushSync(() => setOnBank(location.pathname === '/')); addEventListener('receiz-bank:surface', change); addEventListener('popstate',change); return () => { removeEventListener('receiz-bank:surface', change);removeEventListener('popstate',change); }; }, []);
   const account = useNativeAccount();
-  const publicMarket = usePublicMarket(onBank && Boolean(account.identity));
+  const publicMarket = usePublicMarket(onBank);
   const showcase = useMemo(() => projectAccountShowcase(publicMarket.catalog, account.identity?.accountUsername?.() ?? account.identity?.username ?? null), [publicMarket.catalog, account.identity, account.wallet]);
   const [paymentRequest] = useState(() => { try { return location.search ? parsePaymentRequest(`${BANK_PUBLIC_ORIGIN}/${location.search}`) : null; } catch { return null; } });
   const [sourceRevision, setSourceRevision] = useState(0);
@@ -44,11 +44,10 @@ function BankApp() {
   useEffect(() => { const back = () => { if (location.pathname !== '/') return; const route = parseRoute(location.hash); setPanel(route.panel); setSheet(route.sheet); }; addEventListener('popstate', back); addEventListener('receiz-bank:surface', back); return () => { removeEventListener('popstate', back); removeEventListener('receiz-bank:surface', back); }; }, []);
   useEffect(() => { if (account.identity && onBank) { const route = paymentRequest ? { panel: 'account' as const, sheet: { kind: 'send' as const } } : parseRoute(location.hash); setPanel(route.panel); setSheet(route.sheet); history.replaceState(route, '', `${location.search}${routeHash(route.panel, route.sheet)}`); } }, [account.identity, paymentRequest, onBank]);
   if (!account.identity) {
-    if (account.opening && account.wallet) return <ConsoleShell locked panel="account" onNavigate={() => {}} onDeposit={() => {}} onProfile={() => {}}><div className="known-account-paint"><LiveAccount ready={false} wallet={account.wallet} walletHistory={account.walletHistory} busy={false} error={null} observedAt={account.observedAt} onRefresh={() => {}} onSend={() => {}} onReceive={() => {}} onBalance={() => {}} onAssets={() => {}} onLedger={() => {}} /></div></ConsoleShell>;
     return <Entrance opening={account.opening} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId} />;
   }
   return <ConsoleShell panel={panel} onNavigate={navigate} onDeposit={() => open({ kind: 'deposit' })} onProfile={() => open({ kind: 'profile' })}>
-    <div hidden={panel !== 'account'}><LiveAccount walletHistory={account.walletHistory} showcase={showcase} wallet={account.wallet} busy={account.busy} error={account.error} observedAt={account.observedAt} onRefresh={() => void account.refresh()} onSend={() => open({ kind: 'send' })} onReceive={() => open({ kind: 'receive' })} onBalance={() => open({ kind: 'balance' })} onAssets={() => navigate('assets')} onLedger={() => navigate('ledger')} /></div>
+    <div hidden={panel !== 'account'}><LiveAccount walletHistory={account.walletHistory} historyComplete={account.historyComplete} showcase={showcase} wallet={account.wallet} busy={account.busy} error={account.error} observedAt={account.observedAt} onRefresh={() => void account.refresh()} onSend={() => open({ kind: 'send' })} onReceive={() => open({ kind: 'receive' })} onBalance={() => open({ kind: 'balance' })} onAssets={() => navigate('assets')} onLedger={() => navigate('ledger')} /></div>
     <div hidden={panel !== 'market'}><Market source={publicMarket} active={onBank && panel === 'market'} onAction={open} /></div>
     <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={onBank && panel === 'assets'} revision={sourceRevision} showcase={showcase} showcaseBusy={publicMarket.status === 'loading'} onOpen={open} /></div>
     <div hidden={panel !== 'ledger'}><Ledger active={onBank && panel === 'ledger'} personalHistory={personalHistory} privateHistory={privateHistory} /></div>

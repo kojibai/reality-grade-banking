@@ -1,12 +1,12 @@
 import {beforeEach,expect,it,vi} from 'vitest';
-import {quoteReceizDisplayUsdV122} from '@receiz/sdk';
+import {quoteReceizDisplayUsdV122,sha256ReceizBytes} from '@receiz/sdk';
 import {accountLedgerObservation,canAdoptAccountLedgerObservation,mergeAccountLedgerObservation,createLocalAccountLedger} from '../src/receiz/account-ledger';
 import type {VerifiedAccountProof} from '../src/receiz/account-proof';
 const p=vi.hoisted(()=>({known:new WeakSet<object>(),files:new Map<string,unknown>()}));
 // Retention/projection mechanics only. Canonical proof verification has its own
 // unmocked tests and the native browser fixture; these are not issuer evidence.
 vi.mock('../src/receiz/account-proof',()=>({isVerifiedAccountProof:(v:object)=>p.known.has(v),heldAccountProofBytes:(v:{sourceDigest:string})=>new TextEncoder().encode(v.sourceDigest),verifyAccountProof:async(file:File,owner:{keyId:string;artifactOwnerReceizId:string})=>{const proof=p.files.get(await file.text()) as VerifiedAccountProof;if(!proof||proof.statement.account.keyId!==owner.keyId||proof.statement.account.receizId!==owner.artifactOwnerReceizId)throw Error('ACCOUNT_PROOF_OWNER_MISMATCH');return proof;}}));
-vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({quoteReceizDisplayUsdV122})}));
+vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({quoteReceizDisplayUsdV122,sha256ReceizBytes})}));
 beforeEach(()=>p.files.clear());
 function proof(count:number,reserve='1000',settlement='0',rate='200000000'){
  const value={sourceDigest:String(count).repeat(64),writer:'writer.receiz.id',statement:{schema:'bankeiz.public-account-statement.v2',applicationId:'app',account:{keyId:'a'.repeat(64),receizId:'owner.receiz.id'},checkpoint:{genesisHead:'b'.repeat(64),kaiUPulse:String(100000000+count),reserveUsdCents:reserve,settlementPhiMicro:settlement,balancePhiMicro:'5000000',usdPerPhiMicrocents:rate},transactions:Array.from({length:count},(_,i)=>({sequence:i+1,transactionId:'tx'+i,eventDigest:String(i),previousEventDigest:String(i-1),kaiUPulse:String(100000001+i),reserveDeltaUsdCents:i?(i===1?(BigInt(reserve)-1000n).toString():'0'):'1000',settlementDeltaPhiMicro:'0'}))}} as unknown as VerifiedAccountProof;p.known.add(value);p.files.set(value.sourceDigest,value);return value;
@@ -100,4 +100,21 @@ it('merges restored financial history even when a later genuine wallet already h
  expect(merged.observedAt).toBe(genuine.at);expect(merged.wallet).toBe(current.wallet);
  expect(merged.history).toEqual([...next.history!,genuine]);
  expect(mergeAccountLedgerObservation(merged,next)).toBe(merged);
+});
+
+it('checks durable source freshness before reusing a complete display cache',async()=>{
+ const s=setup(),old=proof(1),newer=proof(2,'600');
+ const cached=(await s.ledger.retain(old,'bound-user')).observation;
+ expect(cached.historyBasis?.retainedStateSha256).toMatch(/^[a-f0-9]{64}$/);
+ expect(await s.ledger.restore(cached)).toBeNull();
+ await s.ledger.retain(newer,'bound-user');
+ const changed=await s.ledger.restore(cached);expect(changed?.proof).toBe(newer);expect(changed?.observation.wallet.reserveUsdCents).toBe('600');
+});
+
+it('cannot replace an aggregate wallet with a cash-only statement that keeps artifact and lawful value separate',async()=>{
+ const value=proof(1) as VerifiedAccountProof;
+ Object.assign(value.statement,{components:{artifactIntrinsicPhiMicro:'8000000',lawfulValues:[]}});
+ const cash=await accountLedgerObservation(value,'bound-user','2026-10-18T12:00:00Z');
+ const aggregate={...cash,walletScope:undefined,wallet:{...cash.wallet,totalUsdCents:'9000',settlementUsdCents:'8000',balancePhiMicro:'13000000'}};
+ expect(cash.walletScope).toBe('native-cash-only');expect(canAdoptAccountLedgerObservation(aggregate,cash)).toBe(false);expect(canAdoptAccountLedgerObservation(null,cash)).toBe(false);
 });

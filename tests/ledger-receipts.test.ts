@@ -27,3 +27,25 @@ it('preserves original receipt/source links through offline public cache and rec
  expect(restored.sourceUrl).toBe(original);expect(readReceiptLink(receiptLink(restored)!).sourceUrl).toBe(original);
  }
 });
+
+it('gives a public proof a shareable receipt without claiming it was independently verified',()=>{
+ const proof=parsePublicNetworkPage('proofs',{ok:true,transport:{publicOriginals:[{id:'profile:artist:proof-1',receizId:'proof-1',title:'Sealed work',valueUsd:42.25,pulse:'14692714',canonicalHref:'/artist/verified/proof-1'}]}}).records[0];
+ const link=receiptLink(proof);
+ expect(link).not.toBeNull();
+ const receipt=readReceiptLink(link!);
+ expect(receipt.title).toBe('Sealed work');
+ expect(receipt).not.toHaveProperty('verified');
+ expect((proof as unknown as {valueOperands?:{proofValueUsdCents:string}}).valueOperands?.proofValueUsdCents).toBe('4225');
+});
+
+it('retains a private card snapshot separately from consideration and excludes unrelated payloads',()=>{
+ const record=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'card-transfer',kind:'sports_card_transfer',pulse:14692714,kaiUpulse:'14692714000000',amountUsdCents:'98765',amountPhiMicro:'5000000',usdPerPhiMicrocents:'19753000',collectibleId:'card-1',claimHash:'a'.repeat(64),considerationUsdCents:'12500',valueReceipt:{settledUsdCents:'0',phiUsdCents:'98765',fundingSource:'sovereign',fundingRule:'sports_card_transfer_card_value_snapshot',certificateSharesMicro:null},privateKey:'secret',metadata:{accessToken:'secret'}}]}).records[0];
+ const operands=(record as unknown as {valueOperands?:Record<string,unknown>}).valueOperands;
+ expect(operands).toMatchObject({amountPhiMicro:'5000000',usdPerPhiMicrocents:'19753000',collectibleId:'card-1',claimHash:'a'.repeat(64),considerationUsdCents:'12500',cardValueUsdCents:'98765',fundingRule:'sports_card_transfer_card_value_snapshot'});
+ expect(JSON.stringify(operands)).not.toContain('secret');
+});
+it('keeps the canonical source verifier carried by the real wallet proof bundle',()=>{
+ const source='https://receiz.com/v/20261017_1646/92DD0339C992B40E/14692714?p=c1%3Aabc';
+ const record=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'t',kind:'chat_transfer',proofBundle:{verifierUrl:source,capsuleHash:'a'.repeat(64),bundleHash:'b'.repeat(64)}}]}).records[0];
+ expect(readReceiptLink(receiptLink(record)!).sourceUrl).toBe(source);
+});
