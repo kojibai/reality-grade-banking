@@ -110,4 +110,15 @@ describe('v129 value explainer arithmetic and source boundary', () => {
     const file = new File(['{"sigilMetadata":{"pulse":1000000}}'], 'unsealed.json', { type: 'application/json' });
     await expect(inspectHeldProof({ file, evaluationKaiUPulse: '14003988000001', additionalCoordinates: '', portableHistory: false })).rejects.toThrow('Proof rejected:');
   });
+  it('values an actual verified original at the captured upload coordinate with a reproducible dollar basis',async()=>{
+    const file=new File([readFileSync(new URL('./fixtures/public-essay-record.png',import.meta.url))],'public-original.png',{type:'image/png'});
+    const result=await inspectHeldProof({file,evaluationKaiUPulse:'14710100000123',additionalCoordinates:'',portableHistory:false,deterministicUsd:true});
+    expect(result.projection.status).toBe('available');if(result.projection.status!=='available')return;
+    expect(result.projection.valuationKaiUPulse).toBe('14710100000123');expect(result.projection.displayUsdCents).toMatch(/^\d+$/);
+    expect(result.projection.priceBasisDigest).toMatch(/^[a-f0-9]{64}$/);expect(result.replayVerification?.status).toBe('verified-replay');
+    const basis=result.projection.inputs.usdBasis as {usdPerPhiMicrocents:string;priceBasis:{purpose:string;valuationKaiUPulse:string}};
+    expect(basis.priceBasis).toMatchObject({purpose:'deterministic-intrinsic-display',valuationKaiUPulse:'14710100000123'});
+    expect(result.projection.displayUsdCents).toBe(quoteDisplayUsd(result.projection.proofValuePhiMicro,basis.usdPerPhiMicrocents));
+    expect(result.projection.writesPerformed).toBe(0);
+  });
 });

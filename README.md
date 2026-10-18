@@ -58,6 +58,8 @@ See [private artifact and Note source closures](docs/private-artifact-and-note-s
 
 Account charts preserve accepted movements and [recompute historical dollar valuations](docs/historical-account-valuation-v129.md) from the first sealed activity in a complete admitted account history using the pinned v129 pricing law. Computed chart samples remain distinct from recorded quotes and financial authority. The public [valuation guide](https://bankeiz.com/learn/how-value-works/) includes the pinned formula, interactive SDK calculator, original-proof reader and offline replay verification.
 
+The guide's original-proof reader captures Kai when a file is selected, verifies it locally, and displays its deterministic USD and Phi value with local-time presentation. The source digest, exact coordinate, valuation policy and dollar basis remain bound in the downloadable v129 replay. Unsupported or invalid originals do not receive a fabricated value. Its verifier runtime is included in the installed offline shell.
+
 These boundaries are intentional release disclosures. A build, downloaded image or deployment is not a financial qualification. The note artwork samples are **unissued**. See [native note release gates](docs/offline-notes-release.md), [Settlement Note contract](docs/settlement-note-contract.md) and [receiver qualification](institution/qualification.md) before enabling financial capabilities.
 
 ## Run locally

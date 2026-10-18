@@ -5,6 +5,11 @@ import { resolve } from 'node:path';
 import { valueExplainerContent, valueExplainerPage } from './value-explainer-template.mjs';
 
 const version = text => createHash('sha256').update(text).digest('hex').slice(0, 12);
+const verifierRuntime=new URL('../node_modules/snarkjs/build/snarkjs.min.js',import.meta.url);
+export async function writeProofVerifierRuntime(directory='dist'){
+  await mkdir(resolve(directory),{recursive:true});
+  await writeFile(resolve(directory,'snarkjs.min.js'),await readFile(verifierRuntime));
+}
 export async function buildValueExplainerAssets() {
   const outdir = resolve('value-explainer-output');
   const built = await build({ entryPoints: [resolve('src/value-explainer/main.ts')], outdir, entryNames: 'value-explainer-main-[hash]', chunkNames: 'value-explainer-chunk-[hash]', bundle: true, splitting: true, write: false, minify: true, format: 'esm', target: 'es2022', platform: 'browser', legalComments: 'none' });
@@ -21,6 +26,7 @@ export async function buildValueExplainerAssets() {
 export async function writeValueExplainerAssets(directory = 'dist') {
   const assets = await buildValueExplainerAssets();
   await mkdir(resolve(directory, 'learn'), { recursive: true });
+  await writeProofVerifierRuntime(directory);
   await writeFile(resolve(directory, 'learn/value-explainer.js'), assets.js);
   await writeFile(resolve(directory, 'learn/value-explainer.css'), assets.css);
   await Promise.all(assets.modules.map(file => writeFile(resolve(directory, 'learn', file.filename), file.bytes)));
@@ -33,6 +39,9 @@ export function valueExplainerDevPlugin() {
     name: 'bankeiz-value-explainer',
     configureServer(server) {
       server.middlewares.use(async (request, response, next) => {
+        if(request.url==='/snarkjs.min.js'){
+          try{response.statusCode=200;response.setHeader('content-type','text/javascript');response.end(await readFile(verifierRuntime));}catch(error){next(error);}return;
+        }
         if (request.url?.split('?')[0].replace(/\/$/, '') !== '/learn/how-value-works') return next();
         try {
           const html = `<!doctype html><html lang="en" class="learn-surface"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${valueExplainerPage.title} | Bankeiz</title><meta name="description" content="${valueExplainerPage.description}"><link rel="stylesheet" href="/learn/learn.css"><link rel="stylesheet" href="/src/value-explainer/value-explainer.css"><script src="/learn/learn.js" defer></script><script type="module" src="/src/value-explainer/main.ts"></script></head><body data-bank-surface="learn"><div id="public-learn-root">${valueExplainerContent()}</div></body></html>`;

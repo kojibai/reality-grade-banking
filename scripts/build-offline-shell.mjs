@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const fixedResources = [
+  '/snarkjs.min.js',
   '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png',
   '/zk/document-seal.wasm', '/zk/document-seal.zkey', '/zk/kai-sigil.wasm', '/zk/kai-sigil.zkey',
   '/native/offline-notes.v129.mjs', '/native/receiver-verifier.v129.mjs',

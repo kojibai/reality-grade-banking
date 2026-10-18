@@ -1,5 +1,6 @@
 import { SIGIL_VALUATION_POLICY, type SigilCalculationTerm, type ReceizProofValueProjectionV129 } from '@receiz/sdk/valuation';
 import {receizKaiNow} from '@receiz/sdk';
+import {walletPointTime} from '../receiz/wallet-series';
 import {
   calculateIllustration, DEMO_SCENARIO, MAX_CASHFLOWS, formatPhiMicro, formatUsdCents,
   illustrationRecord, sampleIllustration, stableStringify, type ValueScenario,
@@ -33,14 +34,15 @@ function chartMarkup(samples: ReturnType<typeof sampleIllustration>['samples'], 
 function binding(label: string, value: unknown) { return `<div><dt>${escape(label)}</dt><dd>${escape(value ?? 'Not carried')}</dd></div>`; }
 
 function projectionMarkup(projection: ReceizProofValueProjectionV129): string {
-  return `<h3>Proof-bound result</h3><p class="value-result-kind">Present value at pulse ${escape(BigInt(projection.valuationKaiUPulse)/1000000n)}</p><output class="value-result-amount">${formatPhiMicro(projection.proofValuePhiMicro)} <span>Φ</span></output><p>The SDK verified the original and independently replayed the selected coordinates. Writes performed: ${projection.writesPerformed}.</p><dl class="value-binding-list">${[
+  const at=walletPointTime(projection.valuationKaiUPulse),date=new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'medium'}).format(new Date(at));
+  return `<div class="value-proof-value"><span class="value-verified-label"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2 17 5v5c0 4-7 8-7 8S3 14 3 10V5l7-3Z"/><path d="m6.5 10 2.5 2.5 4.5-5"/></svg>Verified original</span><p class="value-result-kind">Present value</p><output class="value-result-amount" data-value-proof-usd>${projection.displayUsdCents===null?'Dollar value unavailable':formatUsdCents(projection.displayUsdCents)}</output><p class="value-proof-phi" data-value-proof-phi>${formatPhiMicro(projection.proofValuePhiMicro)} Φ</p><time data-value-proof-time datetime="${escape(at)}">${escape(date)}</time><p class="value-proof-coordinate">Pulse ${escape(projection.valuationKaiPulse)} <span>·</span> ${escape(projection.valuationKaiUPulse)} ☤uKAI</p></div><p class="value-form-note">Calculated from the verified original at this captured pulse. The dollar amount is a deterministic valuation, not a completed sale or a cash redemption.</p><details class="value-detail"><summary>Proof and valuation details</summary><div class="value-detail-body"><dl class="value-binding-list">${[
     binding('Current proof digest', projection.proofDigest), binding('Original proof digest', projection.originProofDigest),
     binding('Admitted history head', projection.historyHead), binding('Original Kai pulse', projection.originKaiPulse),
     binding('Original Kai µPulse', projection.originKaiUPulse), binding('Evaluation Kai µPulse', projection.valuationKaiUPulse),
     binding('Policy', `${projection.algorithm} · ${projection.policyChecksum}`), binding('Projection digest', projection.projectionDigest),
     binding('Market reference (Phi micro-units)', projection.marketReferenceValuePhiMicro),
     binding('Last completed sale (Phi micro-units)', projection.lastExecutedPricePhiMicro),
-  ].join('')}</dl><button type="button" class="value-outline-button" data-value-download-replay>Download public replay</button><details class="value-detail"><summary>Complete proof-bound trace</summary><div class="value-detail-body">${traceMarkup(projection.calculation)}</div></details><details class="value-detail"><summary>Admitted inputs and transaction boundaries</summary><div class="value-detail-body"><pre>${escape(JSON.stringify({ inputs: projection.inputs, transactions: projection.transactions }, null, 2))}</pre></div></details>`;
+  ].join('')}</dl></div></details><button type="button" class="value-outline-button" data-value-download-replay>Download public replay</button><details class="value-detail"><summary>Complete proof-bound trace</summary><div class="value-detail-body">${traceMarkup(projection.calculation)}</div></details><details class="value-detail"><summary>Admitted inputs and transaction boundaries</summary><div class="value-detail-body"><pre>${escape(JSON.stringify({ inputs: projection.inputs, transactions: projection.transactions }, null, 2))}</pre></div></details>`;
 }
 
 export function mountValueExplainer(root: HTMLElement) {
@@ -175,30 +177,32 @@ export function mountValueExplainer(root: HTMLElement) {
     const button = proofForm.querySelector<HTMLButtonElement>('button[type=submit]');
     if (button) button.disabled = false;
   });
-  proofForm.addEventListener('submit', async event => {
-    event.preventDefault();
-    const coordinate=receizKaiNow();proofEvaluation.value=String(coordinate.uPulse);
+  const runProof=async(coordinate=receizKaiNow())=>{
+    proofEvaluation.value=String(coordinate.uPulse);
     const generation = ++proofGeneration;
-    const data = new FormData(proofForm), file = data.get('proofFile');
+    const data = new FormData(proofForm), file = proofForm.querySelector<HTMLInputElement>('#value-proof-file')!.files?.[0];
     const submit = proofForm.querySelector<HTMLButtonElement>('button[type=submit]')!;
     proofResult.hidden = true; proofResult.replaceChildren();
     if (!(file instanceof File) || !file.size) { proofStatus.textContent = 'Choose the complete public original.'; return; }
+    const filename=proofForm.querySelector('[data-value-proof-file-name]');if(filename)filename.textContent=file.name;
     submit.disabled = true; proofStatus.textContent = 'Verifying the original, then recomputing its replay…';
     try {
       const { inspectHeldProof } = await import('./proof');
-      const result = await inspectHeldProof({ file, evaluationKaiUPulse: String(data.get('evaluationKaiUPulse')), additionalCoordinates: String(data.get('additionalCoordinates')), portableHistory: data.get('portableHistory') === 'on' });
+      const result = await inspectHeldProof({ file, evaluationKaiUPulse: String(coordinate.uPulse), additionalCoordinates: String(data.get('additionalCoordinates')), portableHistory: data.get('portableHistory') === 'on',deterministicUsd:true });
       if (generation !== proofGeneration || !root.isConnected) return;
       if (result.projection.status === 'unavailable') {
         proofStatus.textContent = `${result.projection.code} — the original did not supply the public valuation inputs required by this contract.`;
         return;
       }
-      proofStatus.textContent = `Verified replay · ${result.chart!.samples.length} explicit coordinate${result.chart!.samples.length === 1 ? '' : 's'} · writes performed: 0`;
+      proofStatus.textContent = 'Original verified. Value calculated on this device.';
       proofResult.innerHTML = projectionMarkup(result.projection);
       proofResult.hidden = false;
       proofResult.querySelector('[data-value-download-replay]')!.addEventListener('click', () => downloadJson(result.replay, `bankeiz-public-value-replay-${result.replay!.replayDigest.slice(0, 12)}.json`));
     } catch (cause) { if (generation === proofGeneration && root.isConnected) proofStatus.textContent = message(cause); }
     finally { if (generation === proofGeneration) submit.disabled = false; }
-  });
+  };
+  proofForm.addEventListener('submit',event=>{event.preventDefault();void runProof();});
+  proofForm.querySelector('#value-proof-file')!.addEventListener('change',()=>{const captured=receizKaiNow();void runProof(captured);});
   const replayFile = find<HTMLInputElement>('[data-value-replay-file]');
   let replayGeneration = 0;
   replayFile.addEventListener('change', async () => {
