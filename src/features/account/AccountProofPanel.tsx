@@ -11,6 +11,7 @@ export function AccountProofPanel({ identity }: { identity: OpenIdentity }) {
   const [approved, setApproved] = useState(false), [live, setLive] = useState(false), [sharing, setSharing] = useState<AccountProofSharingStatus | null>(null), [link, setLink] = useState('');
   const [image, setImage] = useState('');
   const generation = useRef(0), running = useRef(false), imageUrl = useRef('');
+  const sourceInput=useRef<HTMLInputElement>(null);
   useEffect(() => { generation.current++; running.current = false; setProof(null); setBusy(false); setError(''); setNotice(''); setApproved(false); setLive(false); setSharing(null); setLink(''); setImage(''); return () => { generation.current++; if (imageUrl.current) URL.revokeObjectURL(imageUrl.current); imageUrl.current = ''; }; }, [identity]);
   const review = async () => {
     if (running.current) return;
@@ -38,7 +39,7 @@ export function AccountProofPanel({ identity }: { identity: OpenIdentity }) {
       if (imageUrl.current) URL.revokeObjectURL(imageUrl.current); imageUrl.current = url; setImage(url);
       const link = document.createElement('a'); link.href = url; link.download = file.filename; link.click();
       setNotice('Account proof image saved. You can also save the original image below. Anyone with the image or public link can read the disclosed balances, holdings and transaction history.');
-    } catch { if (ticket === generation.current) setError('Public sharing or image delivery could not be confirmed. The link may already be public. Check public sharing before trying again; this did not authorize a payment.'); }
+    } catch (cause) { if (ticket === generation.current) setError(cause instanceof Error&&/LOCAL_CUSTODY_SOURCE_REQUIRED/.test(cause.message)?accountProofError(cause):'Public sharing or image delivery could not be confirmed. The link may already be public. Check public sharing before trying again; this did not authorize a payment.'); }
     finally { if (ticket === generation.current) { running.current = false; setBusy(false); } }
   };
   const manageSharing = async (disable = false) => {
@@ -47,6 +48,16 @@ export function AccountProofPanel({ identity }: { identity: OpenIdentity }) {
     catch { if (ticket === generation.current) setError('Public sharing status could not be confirmed. Existing public copies remain readable; check again before assuming live updates are off.'); }
     finally { if (ticket === generation.current) { running.current = false; setBusy(false); } }
   };
+  const retainSource=async(file:File)=>{
+    if(running.current)return;
+    const ticket=generation.current;running.current=true;setBusy(true);setError('');setNotice('');
+    try{
+      if(!identity.retainAccountArtifactSource)throw Error('ACCOUNT_PROOF_SOURCE_UNAVAILABLE');
+      await identity.retainAccountArtifactSource(file);
+      if(ticket===generation.current){setProof(null);setApproved(false);setNotice('Original source retained privately. Review the account proof to verify the complete account source. Nothing was published.');}
+    }catch(cause){if(ticket===generation.current)setError(cause instanceof Error&&/CAPACITY/.test(cause.message)?'Choose an original owner archive up to 3 MB. Larger archives need to be retained through the source host.':'The original archive could not be matched to this account’s accepted source. Nothing was published.');}
+    finally{if(ticket===generation.current){running.current=false;setBusy(false);}}
+  };
   return <section className="account-proof-share" aria-label="Shareable account proof">
     <h3>Share an account proof</h3><p className="body-copy small-copy">Let someone verify your identity, balances, holdings and transaction history without access to your account.</p>
     <button className="secondary-button" disabled={busy} onClick={() => void review()}>{busy ? 'Verifying account source…' : 'Review account proof'}</button>
@@ -54,6 +65,7 @@ export function AccountProofPanel({ identity }: { identity: OpenIdentity }) {
     {link && <a className="account-proof-published-link" href={link} target="_blank" rel="noreferrer">{link}</a>}
     {image && <img className="issued-account-proof-image" src={image} alt="Original account proof image with its verification QR code and exact embedded source" />}
     <details className="account-proof-sharing-controls"><summary>Public sharing</summary><button className="text-button" disabled={busy} onClick={() => void manageSharing()}>Check public sharing</button>{sharing && <><p className="body-copy small-copy">Live updates {(sharing.liveUpdates || sharing.otherLiveUpdates) ? 'on' : 'off'}. Previously shared snapshots and downloaded copies remain readable.</p>{(sharing.liveUpdates || sharing.otherLiveUpdates) && <button className="secondary-button" disabled={busy} onClick={() => void manageSharing(true)}>Turn off live updates</button>}</>}</details>
+    {identity.retainAccountArtifactSource&&<details className="account-proof-sharing-controls"><summary>Private source files</summary><p className="body-copy small-copy">If your account contains private originals, choose its original owner archive for complete verification. The archive stays private. Publishing an account proof requires your separate approval.</p><input ref={sourceInput} hidden type="file" accept=".zip,application/zip" onChange={event=>{const file=event.target.files?.[0];event.target.value='';if(file)void retainSource(file);}}/><button className="text-button" disabled={busy} onClick={()=>sourceInput.current?.click()}>Choose original archive</button></details>}
     {error && <p className="body-copy small-copy" role="status">{error}</p>}{notice && <p className="body-copy small-copy" role="status">{notice}</p>}
     <a className="account-proof-inspect-link" href="/verify/">Inspect a shared proof<ArrowUpRight size={13} /></a>
   </section>;

@@ -87,11 +87,15 @@ check composition and real untrusted-source refusal. They do not execute live
 financial transactions or qualify a processor or hardware authenticator.
 
 This wiring does not invent native Settlement ingress, accepted ownership,
-funded offers or physical custody. The account-proof producer currently admits
-complete native wallet-only scope; an account with unsupported profile,
-artifact, lawful-value or other history must supply its complete source closure
-before it can export a full-account proof. Such a scope is unavailable, never
-silently represented as zero. Non-payment asset actions keep their separate
+funded offers or physical custody. The current v4 account-proof producer admits
+complete native cash, asset, offer and transaction history, admitted lawful
+sources, the accepted private owner archive and native Note funding/redemption
+closures. Unsupported imported artifact genesis, entitlement policy and fresh
+current-device Note inventory require their actual source admission; see
+[source closure scope](private-artifact-and-note-source-closures-v129.md).
+Missing scope is unavailable, never silently represented as zero. Outstanding
+origin Note funding is separate from spendable cash and current possession.
+Non-payment asset actions keep their separate
 financial qualification boundary. Production operation also requires pushing
 both commits, deploying the host with its existing admitted sources/signers and
 verifying the deployed device-authorized flow.

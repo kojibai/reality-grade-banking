@@ -1,12 +1,12 @@
 # Public account proof: source and disclosure contract
 
-Bankeiz uses SDK, MCP and AI skills **129.0.0**. This integration needs no financial command, SQL migration, new verifier root or package-version change. Receiz/Crystal source production remains in its owning task; this Bankeiz commit does not modify that branch.
+Bankeiz uses SDK, MCP and AI skills **129.0.0**. This integration adds no financial command, SQL migration, verifier root or package-version change. The native account producer independently reopens its accepted source frontier; private retention and public disclosure remain separate operations. Crystal deployment and protected custody qualification remain with their owning task.
 
 ## Required source
 
 Expose a dedicated **public native account statement** derived from one accepted account/journal snapshot. Identity binding, Reserve cents, Settlement micro-Phi, full accepted transaction history and account head must refer to that same snapshot. A wallet response, cache, user-supplied amount or browser-signed summary is insufficient.
 
-Native v2 statements use the existing pinned financial-root signature in addition to canonical Record → Seal verification. `ACCOUNT_PROOF_WRITERS` is the separate legacy v1 writer allowlist; it stays empty and does not block requesting a v2 source. A source response never selects its own trusted root. See [native payment and account-proof wiring](native-payment-api.md) for trusted source selection and current coverage.
+Native v2–v4 statements use the existing pinned financial-root signature in addition to canonical Record → Seal verification. `ACCOUNT_PROOF_WRITERS` is the separate legacy v1 writer allowlist; it stays empty and does not block a native source. A source response never selects its own trusted root. See [native payment and account-proof wiring](native-payment-api.md) for trusted source selection and current coverage.
 
 This is **writer-attested account evidence at an accepted head**. It is not a new spendable balance, payment capability, independent replay of every underlying operation, legal identity verification, deposit guarantee or proof that no later activity exists. The pinned writer must already be authoritative for admitted account state; any user's otherwise valid native seal is insufficient.
 
@@ -27,7 +27,16 @@ Use existing `receiz:wallet.read`, `receiz:settlement.read`, `receiz:reserve.rea
 
 The transport is not authority. Bankeiz checks exact fields, encoding, size and digest bindings; opens the complete native source under the installed v129 roots; requires the qualified writer; and only then inspects its verified payload. Limit the complete wire to **24 MiB**, including base64, and **100,000 transactions**. Return explicit unavailable/capacity errors instead of truncation. Reading performs no account write, financial action or public disclosure; prefer a retained source for that head.
 
-### Exact verified payload
+### Current v4 and legacy payload
+
+Current production uses `bankeiz.public-account-statement.v4`. Its complete
+frontier binds native cash, asset/offer history, lawful inventory, the selected
+private owner archive and native Note funding/redemption sources. Public
+components remain separate from spendable cash. The exact closed parser is
+`src/receiz/account-proof-statement.ts`; [source closure scope](private-artifact-and-note-source-closures-v129.md)
+documents private retention, historic replay and the current-device custody
+boundary. The v1 shape below is retained for compatibility; it is not the
+current v4 production contract.
 
 ```ts
 {
@@ -105,9 +114,9 @@ Receiz's `app/lib/wallet/bankNotes/accountProofSharing.ts` composes these disclo
 
 The four HTTP routes above are implemented through `accountProofHttp.server.ts` and `accountProofApi.server.ts`. Private requests reuse the existing v129 proof-authority bearer checks, including admitted owner, key, application and scopes. Anonymous reads do not load private authentication. Bodies are bounded to 64 KiB for sharing commands; all account-proof responses are non-cacheable. No request can select a user, writer or runtime. The Bank client recovers a lost publish/off response by reading the accepted status; it does not automatically submit a replacement command. Publication success still requires independently opening the anonymous original.
 
-Trusted native startup now selects the existing account-proof producer and the shared durable disclosure writer when the same absolute account/wallet source directory and registered application are configured. Explicit trusted runtime installation remains supported. No HTTP caller can install a runtime or choose a source directory. The current native producer supports complete wallet-only scope and refuses unsupported profile/artifact/lawful-value history. Missing scope is not an empty portfolio.
+Trusted native startup selects the v4 account-proof producer and shared durable disclosure writer when the same absolute account/wallet source directory and registered application are configured. Explicit trusted runtime installation remains supported; a direct factory installation must opt into `includeSourceClosures: true` for v4. No HTTP caller can install a runtime or choose a source directory. Missing or unsupported source scope is not an empty portfolio.
 
-The source tests now cover real native account/key and financial histories, exact public v2 source production, persistent-process sharing recovery, live updates and revocation with ephemeral test roots. This is local implementation evidence, not deployed financial or physical-device qualification. The v1 writer allowlist remains empty; native v2 always requires its pinned financial-domain signature.
+Source tests cover real native account/key and financial histories, exact public v4 production, private archive admission, Note funding/redemption lineage, cold historical replay, persistent-process sharing recovery, live updates and revocation with ephemeral test roots. Retained v2/v3 snapshots keep their original replay rules. This is local implementation evidence, not deployed financial or physical-device qualification. The v1 writer allowlist remains empty; native statements always require the pinned financial-domain signature.
 
 Each digest URL retains its first publication's consent epoch. An old static link cannot become live, and a revoked link cannot restart live updates through reusing its artifact. New consent needs a freshly sealed public artifact, even when the underlying wallet head is unchanged. The source producer must support that refresh without a wallet write. Exact accepted request retries remain idempotent; an unchanged live-worker source is a read-only retry within its current epoch.
 

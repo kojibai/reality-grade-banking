@@ -16,7 +16,7 @@ export interface AccountProofComponents {
   artifactIntrinsicPhiMicro:string; offlineLockedPhiMicro:string; offlineLockedUsdCents:string;
 }
 export interface AccountStatement {
-  schema: 'bankeiz.public-account-statement.v1' | 'bankeiz.public-account-statement.v2' | 'bankeiz.public-account-statement.v3'; applicationId: string;
+  schema: 'bankeiz.public-account-statement.v1' | 'bankeiz.public-account-statement.v2' | 'bankeiz.public-account-statement.v3' | 'bankeiz.public-account-statement.v4'; applicationId: string;
   domain?: 'receiz.bank.native-account-statement.root-signature.v2'; issuerRootKid?: string; rootSignature?: Readonly<{kid:string;alg:'Ed25519';sig:string}>;
   account: { receizId: string; keyId: string; alg: 'Ed25519' | 'P-256'; publicKeyRawB64u: string };
   checkpoint: { accountHead: string; identityBindingDigest: string; genesisHead: string; historyHead: string;
@@ -38,10 +38,10 @@ function freeze<T>(v: T): T { if (v && typeof v === 'object') { Object.values(v)
 /** Shape/reconciliation inspection only. Calling this does NOT verify a source,
  * admit identity, establish completeness, or create an exportable handle. */
 export function inspectAccountStatement(input: unknown, applicationId: string): AccountStatement {
-  const complete=!!input&&typeof input==='object'&&'schema' in input&&input.schema==='bankeiz.public-account-statement.v3';
+  const complete=!!input&&typeof input==='object'&&'schema' in input&&['bankeiz.public-account-statement.v3','bankeiz.public-account-statement.v4'].includes(String(input.schema));
   const native=complete||!!input&&typeof input==='object'&&'schema' in input&&input.schema==='bankeiz.public-account-statement.v2';
   const v = record(input, ['schema', 'applicationId', 'account', 'checkpoint', 'transactions',...(native?['domain','issuerRootKid','rootSignature']:[]),...(complete?['sourceFrontier','components']:[])]);
-  if (!['bankeiz.public-account-statement.v1','bankeiz.public-account-statement.v2','bankeiz.public-account-statement.v3'].includes(String(v.schema)) || v.applicationId !== applicationId) fail('APPLICATION_MISMATCH');
+  if (!['bankeiz.public-account-statement.v1','bankeiz.public-account-statement.v2','bankeiz.public-account-statement.v3','bankeiz.public-account-statement.v4'].includes(String(v.schema)) || v.applicationId !== applicationId) fail('APPLICATION_MISMATCH');
   if(native){
     const signature=record(v.rootSignature,['kid','alg','sig']);
     if(v.domain!=='receiz.bank.native-account-statement.root-signature.v2'||!text(v.issuerRootKid,256)||signature.kid!==v.issuerRootKid||signature.alg!=='Ed25519'||typeof signature.sig!=='string'||!/^[A-Za-z0-9_-]{86}$/u.test(signature.sig))fail('NATIVE_STATEMENT_UNVERIFIED');
@@ -60,6 +60,7 @@ export function inspectAccountStatement(input: unknown, applicationId: string): 
     for(const row of rows(f.assetHeads)){const h=record(row,['assetId','sourceSha256']);if(!text(h.assetId,256)||!digest(h.sourceSha256)||h.assetId<=prior)fail('FRONTIER_INVALID');prior=h.assetId;heads.set(h.assetId,h.sourceSha256);}
     const p=record(v.components,['lawfulValues','assets','assetOffers','artifactIntrinsicPhiMicro','offlineLockedPhiMicro','offlineLockedUsdCents']);
     if(![p.artifactIntrinsicPhiMicro,p.offlineLockedPhiMicro,p.offlineLockedUsdCents].every(unsigned))fail('COMPONENTS_INVALID');
+    if(v.schema==='bankeiz.public-account-statement.v4'&&((BigInt(p.artifactIntrinsicPhiMicro as string)>0n&&f.artifactSourceHead===null)||((BigInt(p.offlineLockedPhiMicro as string)>0n||BigInt(p.offlineLockedUsdCents as string)>0n)&&f.offlineSourceHead===null)))fail('SOURCE_CLOSURE_REQUIRED');
     const unique=(values:unknown,key:string,fields:readonly string[],check:(row:Record<string,unknown>)=>boolean)=>{let prior='';for(const value of rows(values)){const row=record(value,fields);if(!text(row[key],256)||row[key]<=prior||!check(row))fail('COMPONENTS_INVALID');prior=row[key] as string;}};
     unique(p.lawfulValues,'membershipId',['membershipId','admissionDigest','valueHeadDigest','settlementPhiMicro'],r=>digest(r.admissionDigest)&&(r.valueHeadDigest===null||digest(r.valueHeadDigest))&&unsigned(r.settlementPhiMicro));
     unique(p.assets,'assetId',['assetId','name','symbol','description','linkedProofDigest','supplyMicro','quantityMicro','backingRail','backingPhiMicro','backingUsdCents','status','issuanceSourceSha256','headSourceSha256'],r=>

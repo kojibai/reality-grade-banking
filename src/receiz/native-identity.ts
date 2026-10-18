@@ -34,6 +34,7 @@ import { readNoteAccountObservation } from './note-account-observation';
 export interface OpenIdentity {
   operations?: () => Promise<import('./bank-operations').BankOperations>;
   accountProof?: () => Promise<import('./account-proof').VerifiedAccountProof>;
+  retainAccountArtifactSource?: (file:File) => Promise<string>;
   accountProofSharing?: () => Promise<import('./account-proof-sharing').AccountProofSharing>;
   proofLibrary?: () => Promise<import('./proof-library').ProofLibrary>;
   executionRecovery?: () => BankExecutionRecovery;
@@ -597,15 +598,20 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       return await navigator.locks.request(`receiz-bank-execution:${binding.artifactSha256}`, { signal: lifetime.signal }, operation);
     },
   })).catch(error => { operationsPromise = undefined; throw error; });
+  const assertPublicAccountSource=()=>{if(hasLocalWalletHead())throw Error('ACCOUNT_PROOF_LOCAL_CUSTODY_SOURCE_REQUIRED');};
   async function accountProof() {
+    assertPublicAccountSource();
     const module = await import('./account-proof');
     const assertOpen=()=>{if(lifetime.signal.aborted)throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED');};
     const before=knownWallet,revision=walletRevision;
     const proof=await module.readAccountProof({owner:binding,assertOpen,request:async path=>{
+      assertPublicAccountSource();
       const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);assertOpen();
+      assertPublicAccountSource();
       return current.request(path,{method:'GET'});
     }});
-    if(['bankeiz.public-account-statement.v2','bankeiz.public-account-statement.v3'].includes(proof.statement.schema)&&accountUid){
+    assertPublicAccountSource();
+    if(['bankeiz.public-account-statement.v2','bankeiz.public-account-statement.v3','bankeiz.public-account-statement.v4'].includes(proof.statement.schema)&&accountUid){
       try{
         const retained=await localLedger.retain(proof,accountUid);assertOpen();
         if(retained.proof.sourceDigest===proof.sourceDigest&&walletRevision===revision&&knownWallet===before&&canAdoptAccountLedgerObservation(before,retained.observation)){
@@ -625,19 +631,29 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
         // or change the independently verified original returned to its reader.
       }
     }
-    return proof;
+    assertPublicAccountSource();return proof;
+  }
+  async function retainAccountArtifactSource(file:File) {
+    const {retainAccountArtifactSource:retain}=await import('./account-proof-sources');
+    return retain({file,assertOpen:()=>{if(lifetime.signal.aborted)throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED');},request:async(path,body)=>{
+      const current=await connectClient([...BANK_READ_SCOPES,'receiz:domains.write'],'Allow the original artifact archive I choose to be retained privately for account-proof verification. This does not publish the archive, transfer value, or export my signing key.');
+      if(lifetime.signal.aborted)throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED');return current.request(path,{method:'POST',body});
+    }});
   }
   async function accountProofSharing() {
     const { createAccountProofSharing } = await import('./account-proof-sharing');
     const make = (applicationId: string, previous?: import('./account-proof-sharing').AccountProofSharing): import('./account-proof-sharing').AccountProofSharing => createAccountProofSharing({ applicationId, previous, keyId: binding.keyId, receizId: binding.artifactOwnerReceizId, assertOpen: () => { if (lifetime.signal.aborted) throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED'); },
       signConsent: async challengeB64Url => { await prepareTransport(); return unsigned.identity.signLoginProof({ keyFile: transportKeyFile, passphrase: transportPhrase, challengeB64Url }); },
       request: async (path, method, body) => {
+        if(method==='POST'&&body?.action==='publish')assertPublicAccountSource();
         const current = method === 'GET' ? await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT, applicationId) : await connectClient([...BANK_READ_SCOPES, 'receiz:domains.write'], 'Allow Bankeiz to apply the public account-proof sharing choice I explicitly review: publish my verified balances and complete transaction statement, optionally keep future proofs publicly updated, or turn off live updates. This does not authorize a payment or export my signing key.', applicationId);
+        if(method==='POST'&&body?.action==='publish')assertPublicAccountSource();
         return current.request(path, { method, ...(body ? { body } : {}) });
       } });
-    return make(BANK_APPLICATION_ID, make(BANK_PREVIOUS_NATIVE_APPLICATION_ID));
+    const api=make(BANK_APPLICATION_ID, make(BANK_PREVIOUS_NATIVE_APPLICATION_ID));
+    return {...api,async publish(...args:Parameters<typeof api.publish>){assertPublicAccountSource();const result=await api.publish(...args);if(hasLocalWalletHead())throw Error('ACCOUNT_PROOF_LOCAL_CUSTODY_PUBLICATION_UNCONFIRMED');return result;}};
   }
-  return { operations, accountProof, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

@@ -43,7 +43,7 @@ export async function verifyAccountProof(file: File, expected?: Pick<ReceizIdent
   if (!writer) fail('WRITER_NOT_PINNED');
   let payload: unknown; try { payload = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(opened.verifiedPayload.bytes)); } catch { fail(); }
   const statement = inspectAccountStatement(payload);
-  if(['bankeiz.public-account-statement.v2','bankeiz.public-account-statement.v3'].includes(statement.schema)){
+  if(['bankeiz.public-account-statement.v2','bankeiz.public-account-statement.v3','bankeiz.public-account-statement.v4'].includes(statement.schema)){
     const {verifyBankNativeAccountStatementSignature}=await import('./account-proof-signature');
     if(writer!==statement.account.receizId || !await verifyBankNativeAccountStatementSignature(statement,statement.applicationId))fail('NATIVE_STATEMENT_UNVERIFIED');
   }else if(!ACCOUNT_PROOF_WRITERS.includes(writer))fail('WRITER_NOT_PINNED');

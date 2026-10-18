@@ -54,6 +54,7 @@ See the [current function boundaries](docs/current-function-boundaries.md) and [
 | Institution receiving | Public verification, integration contracts and local checks; each institution needs its own authorized native integration and live assessment |
 
 See [native asset and full account-source qualification](docs/native-assets-and-account-proofs-v129.md) for implemented effects, tested source closures and remaining activation requirements.
+See [private artifact and Note source closures](docs/private-artifact-and-note-source-closures-v129.md) for exact private-original admission, outstanding Note funding, historical replay and current custody scope.
 
 These boundaries are intentional release disclosures. A build, downloaded image or deployment is not a financial qualification. The note artwork samples are **unissued**. See [native note release gates](docs/offline-notes-release.md), [Settlement Note contract](docs/settlement-note-contract.md) and [receiver qualification](institution/qualification.md) before enabling financial capabilities.
 
@@ -82,7 +83,7 @@ An open Bank tab continues using its own build while an update waits. Close all 
 
 ## Matching native source
 
-The public [account-proof reader](https://bankeiz.com/verify/) inspects original proof images/files without login. Its share interface preserves the exact source snapshot and requires explicit consent for public and future-history disclosure. The native v2 statement producer and existing-root signature reader are implemented; production wallet coverage, public disclosure and deployed financial qualification remain separate gates. The [Crystal handoff](docs/crystal-public-account-proof-contract.md) specifies the exact source, public distribution and revocation contract; private Identity Seal and recovery backups are never public proof exports.
+The public [account-proof reader](https://bankeiz.com/verify/) inspects original proof images/files without login. Its share interface preserves the exact source snapshot and requires explicit consent for public and future-history disclosure. The native v4 statement binds the verified source frontier and keeps cash, holdings, intrinsic value and outstanding Note funding separate. Existing v2/v3 images remain verifiable. The [Crystal handoff](docs/crystal-public-account-proof-contract.md) specifies source distribution and revocation; private Identity Seals, owner archives and recovery backups are never public proof exports. Deployed protected custody and the documented source scope remain required.
 
 The included [native source package](native/README.md) lets developers rebuild the actual note/verifier modules, inspect the public circuits and reproduce the published SDK JavaScript. A normal build links its exact source download from `/legal/`; `/source/index.json` records its SHA-256 and inventory. The source extraction excludes the broader Receiz backend, operator secrets and customer data. See the [public disclosure boundary](native/DISCLOSURE.md). These are source/reproduction checks, not an institution certification.
 

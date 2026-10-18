@@ -1,5 +1,6 @@
 export function accountProofError(cause: unknown): string {
   const code = cause instanceof Error ? cause.message : '';
+  if (/LOCAL_CUSTODY_SOURCE_REQUIRED/u.test(code)) return 'Your complete public proof needs this device’s latest Note account source. Your balance and Notes remain available; an older shared source cannot replace them.';
   if (/WRITER_NOT_PINNED/u.test(code)) return 'This source’s writer has not been qualified in this Bankeiz build. Its account claims have not been verified.';
   if (/PUBLIC_SOURCE_UNAVAILABLE/u.test(code)) return 'The public source could not be retrieved. Choose the original proof image to verify its carried snapshot on this device.';
   if (/SOURCE_UNAVAILABLE/u.test(code)) return 'A verified public account source is not available yet. Your private backup remains separate.';

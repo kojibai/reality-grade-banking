@@ -69,12 +69,14 @@ admitted empty artifact membership does not invent asset value. A selected
 retained lawful inventory is reopened through its original custody/value chain,
 including its actual provenance, before it contributes a disclosed component.
 
-Missing current private-owner archives, nonempty/imported artifact frontiers,
-creation entitlements or outstanding offline custody cannot be normalized to
-zero. Those accounts require their complete source closures before a full proof
-can be issued. An Identity Seal, public showcase projection or activity list
-alone is not that closure. This is enforced by the reader and writer, not a
-caller-controlled completeness flag.
+The [v4 source closure](private-artifact-and-note-source-closures-v129.md)
+additionally reopens complete private owner archives at the accepted account
+head and original native Note funding/redemption history. Missing archives,
+unselected/imported artifact frontiers and effective creation-entitlement
+policy remain required sources. Outstanding origin Note funding is separate
+from spendable cash and from a claim of current device possession. An Identity
+Seal, public showcase projection or activity list alone cannot replace these
+sources. Existing v2/v3 snapshot rules remain unchanged.
 
 ## Qualification and activation
 

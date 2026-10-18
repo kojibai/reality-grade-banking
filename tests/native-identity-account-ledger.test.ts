@@ -13,7 +13,7 @@ vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({
  readReceizIdentityPublicBinding:async()=>({keyId:'fixture-key',artifactSha256:'a'.repeat(64),artifactOwnerReceizId:'owner.receiz.id'}),
  readReceizIdentityArtifact:async()=>({owner:{uid:'owner',username:'owner'},issuedAt:'2026-10-13T00:00:00Z',keyId:'fixture-key',crypto:{}}),projectReceizIdentityAccount:async()=>({authority:'identity-only'}),
  receizKaiNow:()=>({pulse:100,uPulse:'100000000'}),sha256ReceizBytes:async()=> 'a'.repeat(64),createReceizProofAuthorityChallenge:()=>({challenge:{},challengeB64Url:'fixture'}),
- createReceizClient:({accessToken}:{accessToken?:string}={})=>accessToken?{auth:{grantedScopes:async()=>[...BANK_READ_SCOPES]},connect:{wallet:p.wallet},request:p.request}:{identity:{continueReceizId:p.continueId,signLoginProof:async()=>({}),exchangeProofAuthority:async()=>({applicationId:BANK_APPLICATION_ID,keyId:'fixture-key',artifactDigest:'a'.repeat(64),grantedScopes:[...BANK_READ_SCOPES],accessToken:'fixture-only',expiresAtKai:200})}},
+ createReceizClient:({accessToken,applicationId=BANK_APPLICATION_ID}:{accessToken?:string;applicationId?:string}={})=>accessToken?{auth:{grantedScopes:async()=>[...BANK_READ_SCOPES]},connect:{wallet:p.wallet},request:p.request}:{identity:{continueReceizId:p.continueId,signLoginProof:async()=>({}),exchangeProofAuthority:async()=>({applicationId,keyId:'fixture-key',artifactDigest:'a'.repeat(64),grantedScopes:[...BANK_READ_SCOPES],accessToken:'fixture-only',expiresAtKai:200})}},
 })}));
 const observation=(reserve='600',kai='100000002'):WalletObservation=>({observedAt:'2026-10-18T12:00:00Z',wallet:{userId:'bound-user',totalUsdCents:reserve,reserveUsdCents:reserve,settlementUsdCents:'0',balancePhiMicro:'3000000',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:'100',kaiUpulse:kai}});
 const proof={sourceDigest:'b'.repeat(64),statement:{schema:'bankeiz.public-account-statement.v2'}};
@@ -37,10 +37,29 @@ it('keeps a later wallet response when an earlier account-source read finishes a
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
  try{const pending=identity.accountProof!();await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));await identity.readWallet();finish(proof);await pending;expect(identity.knownWallet()?.wallet.reserveUsdCents).toBe('800');expect(p.retain).toHaveBeenCalledTimes(1);}finally{identity.dispose();}
 });
-it('retains the original without overwriting a committed local note successor',async()=>{
+it('does not export an older remote source as complete while a local Note successor is authoritative',async()=>{
  p.known={...observation('400','100000005'),source:'local-note-head',localHeadDigest:'c'.repeat(64)};
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
- try{await identity.accountProof!();expect(p.retain).toHaveBeenCalledTimes(1);expect(identity.knownWallet()?.wallet.reserveUsdCents).toBe('400');expect(p.save).not.toHaveBeenCalled();}finally{identity.dispose();}
+ try{await expect(identity.accountProof!()).rejects.toThrow('ACCOUNT_PROOF_LOCAL_CUSTODY_SOURCE_REQUIRED');expect(p.proof).not.toHaveBeenCalled();expect(p.request).not.toHaveBeenCalled();expect(p.retain).not.toHaveBeenCalled();expect(identity.knownWallet()?.wallet.reserveUsdCents).toBe('400');expect(p.save).not.toHaveBeenCalled();
+  const sharing=await identity.accountProofSharing!();await expect(sharing.publish(proof as never,{approved:true,liveUpdates:true})).rejects.toThrow('ACCOUNT_PROOF_LOCAL_CUSTODY_SOURCE_REQUIRED');expect(p.request).not.toHaveBeenCalled();
+  p.request.mockResolvedValue({schema:'bankeiz.account-proof-sharing.v1',sharingHead:'a'.repeat(64),liveUpdates:false,latestSourceDigest:null});
+  await expect(sharing.status()).resolves.toMatchObject({liveUpdates:false});await expect(sharing.disable()).resolves.toMatchObject({liveUpdates:false});expect(p.request).toHaveBeenCalled();
+ }finally{identity.dispose();}
+});
+it.each(['proof','retention'])('refuses complete export if a local successor becomes authoritative during %s',async(stage)=>{
+ const held=observation('600','100000002');p.known=held;
+ let finish!:(value:unknown)=>void;
+ if(stage==='proof')p.proof.mockImplementationOnce(async({request})=>{await request('/account-source');return new Promise(resolve=>{finish=resolve;});});
+ else p.retain.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  const pending=identity.accountProof!();await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));
+  // Consumer sequencing only: simulate the already-verified local adoption.
+  // Actual local-credit admission is covered by the native Note crypto tests.
+  held.source='local-note-head';held.localHeadDigest='c'.repeat(64);
+  finish(stage==='proof'?proof:{proof,observation:observation()});
+  await expect(pending).rejects.toThrow('ACCOUNT_PROOF_LOCAL_CUSTODY_SOURCE_REQUIRED');expect(identity.knownWallet()?.source).toBe('local-note-head');expect(p.save).not.toHaveBeenCalled();
+ }finally{identity.dispose();}
 });
 it('does not hold activity rendering open for an optional full account-source refresh',async()=>{
  p.request.mockImplementation(async(path:string)=>path.startsWith('/api/wallet/ledger')?{ok:true,accountUserId:'bound-user',events:[],nextCursor:null}:{});p.proof.mockImplementation(()=>new Promise(()=>{}));
