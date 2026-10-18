@@ -83,3 +83,26 @@ build and source archive hashes. Source-head disclosure approval, real hardware
 custody and live financial capability qualification remain separate decisions.
 See [current function boundaries](current-function-boundaries.md). A software
 release does not imply every financial selector has been qualified or enabled.
+
+## Existing Crystal host connection
+
+Receiz now has a URL-selected Ledger bridge using its existing Crystal URL and
+server-only transport key. The existing native admitted source reader and
+OS-locked publication store run on the durable source host. Bankeiz's API path,
+reader, upload review, explicit consent and Memory Crystal artwork are unchanged.
+
+The current Receiz main has the byte client but not the Crystal service launcher.
+The scoped mounting patch is prepared on Receiz main at
+`docs/integrations/crystal-public-ledger-host.patch`; it was checked and exercised
+against a temporary copy of the actual existing Crystal service. Applying it to
+the source service remains part of that service's integration/deployment, not an
+edit to the user's ongoing branch. Live verification requires that mount, the
+actual Crystal URL/key configuration on Receiz and the exact reviewed disclosure
+head on the durable host. No empty ledger is substituted for absent custody.
+
+Public original writes use Crystal’s existing public package byte/inode reservations, temporary upload custody, streaming install and accounting; existing accepted source reads remain unchanged.
+
+Focused tests use actual v129 canonical sources through a real HTTP listener.
+Authentication, exact originals, repeated consent-bound publication, restart,
+source unavailability, fixed-origin forwarding and response capacity passed.
+A software pass does not claim that production source activation is complete.
