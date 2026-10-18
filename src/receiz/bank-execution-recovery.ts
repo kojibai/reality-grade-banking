@@ -12,7 +12,7 @@ export interface BankExecutionStatus {
 }
 export interface BankExecutionRecovery {
   status(): Promise<BankExecutionStatus | null>;
-  resolve(approved?: boolean): Promise<BankExecutionResult | import('./native-payment').NativePaymentResult | null>;
+  resolve(approved?: boolean): Promise<BankExecutionResult | import('./native-payment').NativePaymentResult | import('./native-asset').NativeAssetResult | null>;
   exportRecovery(): Promise<{ bytes: Uint8Array; filename: string }>;
 }
 

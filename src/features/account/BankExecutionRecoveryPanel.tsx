@@ -6,7 +6,7 @@ import { BANK_RECOVERY_CONSENT } from '../../receiz/config';
 
 export function BankExecutionRecoveryPanel({ identity, onRefresh = () => {} }: { identity: OpenIdentity; onRefresh?: () => void }) {
   const [status, setStatus] = useState<BankExecutionStatus | null>(null);
-  const [outcome, setOutcome] = useState<BankExecutionResult | import('../../receiz/native-payment').NativePaymentResult | null>(null);
+  const [outcome, setOutcome] = useState<BankExecutionResult | import('../../receiz/native-payment').NativePaymentResult | import('../../receiz/native-asset').NativeAssetResult | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const alive = useRef(false), submitting = useRef(false);
   useEffect(() => {

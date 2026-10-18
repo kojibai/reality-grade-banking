@@ -22,7 +22,7 @@ export interface BankOperationTerms {
   expiresAtKaiUPulse: number;
 }
 export interface BankOperationReview { request: Readonly<BankOperationRequest>; terms: Readonly<BankOperationTerms>; confirmationDigest: string; }
-export type BankOperationResult = (BankExecutionResult | import('./native-payment').NativePaymentResult) & { retentionWarning?: string };
+export type BankOperationResult = (BankExecutionResult | import('./native-payment').NativePaymentResult | import('./native-asset').NativeAssetResult) & { retentionWarning?: string };
 export interface BankOperations {
   prepare(input: BankOperationInput): Promise<BankOperationReview>;
   execute(review: BankOperationReview, confirmationDigest: string): Promise<BankOperationResult>;
@@ -82,6 +82,7 @@ function termsFor(value: unknown, request: BankOperationRequest): Readonly<BankO
 export function createBankOperations(input: {
   ownerReceizId: string; assertOpen(): void; store: BankExecutionStore;
   payments?: BankOperations;
+  assets?: BankOperations;
   context(rails: readonly BankRail[]): Promise<{ client: ReceizClient; session: ReceizAuthoritySessionV124 }>;
   lock<T>(operation: () => Promise<T>): Promise<T>;
   sources?(operation: BankOperationInput): Promise<readonly import('@receiz/sdk').ReceizPortableSealedArtifactV124[]>;
@@ -90,10 +91,12 @@ export function createBankOperations(input: {
   const custody = new WeakMap<BankOperationReview, { runtime: ReturnType<typeof createBankExecution>; review: Awaited<ReturnType<ReturnType<typeof createBankExecution>['inspect']>>; session: ReceizAuthoritySessionV124 }>();
   let preparing = false;
   const nativeReviews = new WeakSet<BankOperationReview>();
+  const nativeAssetReviews = new WeakSet<BankOperationReview>();
   return {
     async prepare(value) {
       input.assertOpen();
       if(value.kind === 'send-value' && input.payments){const pending=await input.store.load();input.assertOpen();if(pending&&['prepared','unknown'].includes(pending.state))throw Error('BANK_EXECUTION_PENDING');const review=await input.payments.prepare(inputRequest(value));nativeReviews.add(review);held.add(review);return review;}
+      if(value.kind !== 'send-value' && input.assets){const pending=await input.store.load();input.assertOpen();if(pending&&['prepared','unknown'].includes(pending.state))throw Error('BANK_EXECUTION_PENDING');const review=await input.assets.prepare(inputRequest(value));nativeAssetReviews.add(review);held.add(review);return review;}
       assertBankOperationQualified(); if (preparing) throw Error('BANK_OPERATION_IN_PROGRESS'); preparing = true;
       try {
         const normalized = inputRequest(value), pending = await input.store.load(); input.assertOpen();
@@ -127,6 +130,7 @@ export function createBankOperations(input: {
     },
     execute: (review, confirmationDigest) => {
       if(nativeReviews.has(review)&&input.payments){return input.payments.execute(review,confirmationDigest).then(result=>{nativeReviews.delete(review);held.delete(review);return result;});}
+      if(nativeAssetReviews.has(review)&&input.assets){return input.assets.execute(review,confirmationDigest).then(result=>{nativeAssetReviews.delete(review);held.delete(review);return result;});}
       return input.lock(async () => {
       input.assertOpen(); assertBankOperationQualified(); const current = custody.get(review);
       if (!current || confirmationDigest !== review.confirmationDigest) throw Error('BANK_EXECUTION_EXACT_CONFIRMATION_REQUIRED');
@@ -142,7 +146,7 @@ export function createBankOperations(input: {
       }
       return result;
     });},
-    discard(review) { if(nativeReviews.has(review))input.payments?.discard(review);nativeReviews.delete(review);custody.delete(review); held.delete(review); },
+    discard(review) { if(nativeAssetReviews.has(review)&&input.assets){input.assets.discard(review);nativeAssetReviews.delete(review);held.delete(review);return;} if(nativeReviews.has(review))input.payments?.discard(review);nativeReviews.delete(review);custody.delete(review); held.delete(review); },
   };
 }
 export function bankOperationError(error: unknown): string {

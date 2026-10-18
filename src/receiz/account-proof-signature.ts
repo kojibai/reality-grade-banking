@@ -1,4 +1,5 @@
 import {canonicalizeReceizV122} from "@receiz/sdk";
+import {digestReceizCanonicalV122} from "@receiz/sdk";
 import {receizBase64UrlEncode,deriveReceizIdentityKeyIdFromPublicKeyRawB64u,verifyReceizIdentityPublicKeyProjectionSignature} from "@receiz/sdk";
 import {receizCurrentPinnedSignatureV4Roots} from "../../native/receiz/packages/receiz-sdk/src/verifier/roots";
 import type {ReceizSignatureV4RootPublicKey} from "../../native/receiz/packages/receiz-sdk/src/verifier/signatureV4";
@@ -11,7 +12,8 @@ export const BANK_NATIVE_ACCOUNT_STATEMENT_DOMAIN="receiz.bank.native-account-st
 export async function verifyBankNativeAccountStatementSignature(input:unknown,applicationId:string,roots:ReadonlyMap<string,ReceizSignatureV4RootPublicKey>=receizCurrentPinnedSignatureV4Roots()):Promise<AccountStatement|null>{
  try{
   const statement=inspectAccountStatement(input,applicationId);
-  if(statement.schema!=="bankeiz.public-account-statement.v2"||statement.domain!==BANK_NATIVE_ACCOUNT_STATEMENT_DOMAIN||!statement.rootSignature||!statement.issuerRootKid)return null;
+  if(!["bankeiz.public-account-statement.v2","bankeiz.public-account-statement.v3"].includes(statement.schema)||statement.domain!==BANK_NATIVE_ACCOUNT_STATEMENT_DOMAIN||!statement.rootSignature||!statement.issuerRootKid)return null;
+  if(statement.schema==="bankeiz.public-account-statement.v3"&&await digestReceizCanonicalV122(statement.sourceFrontier)!==statement.checkpoint.accountHead)return null;
   const {rootSignature,...payload}=statement,root=roots.get(statement.issuerRootKid),pulse=BigInt(statement.checkpoint.kaiUPulse)/1_000_000n;
   if(!root||root.kid!==statement.issuerRootKid||root.alg!=="Ed25519"||rootSignature.kid!==root.kid
     ||root.status!=="active"&&root.status!=="retired"||root.activeFromPulse&&pulse<BigInt(root.activeFromPulse)

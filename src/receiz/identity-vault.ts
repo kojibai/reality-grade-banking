@@ -15,7 +15,7 @@ async function noteRemovalGuard(saved: SavedIdentity) {
   const db = await database();
   const rows: {key:string;row:PrivateBankOperation|undefined}[]=[];
   try {
-    for (const family of ['offline-notes','prepared-notes','native-payments']) {
+    for (const family of ['offline-notes','prepared-notes','native-payments','native-assets']) {
       const key=`${family}|${BANK_STORAGE_APPLICATION_ID}|${digest}`;
       const row=await new Promise<PrivateBankOperation|undefined>((resolve,reject)=>{const read=db.transaction('operations').objectStore('operations').get(key);read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error);});
       rows.push({key,row});
@@ -24,11 +24,23 @@ async function noteRemovalGuard(saved: SavedIdentity) {
       const state=JSON.parse(new TextDecoder().decode(clear));
       // This retention guard grants no financial authority. A reserved receiving
       // slot may already be addressed by an incoming note outside this tab.
-      const held=family==='native-payments' ? state.schema!=='bank.native-payments.v1'||!state.current||!['committed','zero-write'].includes(state.current.state) : family==='offline-notes'
+      const native=family==='native-payments'||family==='native-assets';
+      const held=native ? !state||state.schema!==`bank.${family}.v1`||!Array.isArray(state.history)||state.history.length>1000||!state.current||[...state.history,state.current].some(checkpoint=>!checkpoint||!['committed','zero-write'].includes(checkpoint.state)) : family==='offline-notes'
         ? state.schema!=='receiz.bank.offline-notes-device.v1'||state.create||Object.keys(state.receivers??{}).length||Object.values(state.deposits??{}).some(v=>!(v as {creditRef?:string}).creditRef)||Object.entries(state.notes??{}).some(([id,v])=>!(v as {transferComplete?:boolean}).transferComplete&&!state.deposits?.[id]?.creditRef)
         : state.schema!=='receiz.bank.prepared-notes-device.v1'||state.create||Object.values(state.slots??{}).some(v=>(v as {status:string}).status==='reserved')||Object.values(state.components??{}).some(v=>!(v as {exhausted?:boolean}).exhausted)||Object.values(state.journal?.deposits??{}).some(v=>(v as {phase:string}).phase!=='complete')||Object.entries(state.notes??{}).some(([id,v])=>!(v as {transferComplete?:boolean}).transferComplete&&state.journal?.deposits?.[id]?.phase!=='complete');
-      if(held&&family==='native-payments')throw new Error('Keep this device until the retained transaction outcome is resolved. An Identity Seal backup does not include its private execution recovery.');
+      if(held&&native)throw new Error('Keep this device until the retained transaction outcome is resolved. An Identity Seal backup does not include its private execution recovery.');
       if(held)throw new Error('Keep this device while Offline Notes, prepared value or receiving requests are held or pending. Deposit or transfer your notes before removing this ID. An Identity Seal backup does not restore device note custody.');
+      if(family==='native-assets'){
+        // A status flag cannot turn an unconfirmed intent into disposable
+        // custody. Reopen its exact terminal evidence before allowing removal.
+        const {verifyNativeAssetSource}=await import('./native-asset');
+        const {inspectNativeAssetReview}=await import('./native-asset-protocol');
+        for(const checkpoint of [...state.history,state.current]){
+          const p=checkpoint.prepared,review=inspectNativeAssetReview({schema:p?.schema,request:p?.request,keyId:p?.keyId,planDigest:p?.planDigest,terms:p?.terms});
+          const {packet}=await verifyNativeAssetSource(checkpoint.source,review);
+          if(packet.status!==checkpoint.state)throw Error('BANK_ASSET_CHECKPOINT_INVALID');
+        }
+      }
     }
   } finally {db.close();}
   return rows;
@@ -487,7 +499,7 @@ function openProofFrame(bytes: Uint8Array): PortableProof {
   const size = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(0);
   if (size > 1024 || size + 4 >= bytes.length) throw Error('PROOF_ARCHIVE_INVALID');
   const meta = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.slice(4, 4 + size)));
-  if (!meta || Object.keys(meta).sort().join('|') !== 'filename|kind' || !['execution-recovery', 'note-image', 'note-deposit','payment-receipt'].includes(meta.kind)
+  if (!meta || Object.keys(meta).sort().join('|') !== 'filename|kind' || !['execution-recovery', 'note-image', 'note-deposit','payment-receipt','asset-receipt'].includes(meta.kind)
     || typeof meta.filename !== 'string' || !meta.filename || meta.filename.length > 240 || /[\x00-\x1f\x7f/\\]/u.test(meta.filename)) throw Error('PROOF_ARCHIVE_INVALID');
   return { kind: meta.kind, filename: meta.filename, bytes: bytes.slice(4 + size) };
 }
@@ -513,6 +525,19 @@ export async function loadExportableRecoveries(binding: { artifactSha256: string
   }
   const payments=await loadNativePaymentState(binding) as import('./native-payment').NativePaymentState|null;
   if(payments){if(payments.schema!=='bank.native-payments.v1'||!Array.isArray(payments.history)||payments.history.length>1000)throw Error('BANK_PAYMENT_CHECKPOINT_INVALID');for(const c of [...payments.history,payments.current]){if(c.state==='unknown')continue;if(!c.source)throw Error('BANK_PAYMENT_CHECKPOINT_INVALID');result.push({kind:'payment-receipt',filename:`payment-${c.prepared.planDigest}.receiz-payment.json`,bytes:new TextEncoder().encode(JSON.stringify(c.source))});}}
+  const assets=await loadNativeAssetState(binding) as import('./native-asset').NativeAssetState|null;
+  if(assets){
+    if(assets.schema!=='bank.native-assets.v1'||!Array.isArray(assets.history)||assets.history.length>1000||!assets.current)throw Error('BANK_ASSET_CHECKPOINT_INVALID');
+    const {verifyNativeAssetSource}=await import('./native-asset'),{inspectNativeAssetReview}=await import('./native-asset-protocol');
+    for(const checkpoint of [...assets.history,assets.current]){
+      if(!checkpoint||!['unknown','committed','zero-write'].includes(checkpoint.state))throw Error('BANK_ASSET_CHECKPOINT_INVALID');
+      if(checkpoint.state==='unknown')continue;
+      const p=checkpoint.prepared,review=inspectNativeAssetReview({schema:p?.schema,request:p?.request,keyId:p?.keyId,planDigest:p?.planDigest,terms:p?.terms});
+      const {packet}=await verifyNativeAssetSource(checkpoint.source,review);
+      if(packet.status!==checkpoint.state)throw Error('BANK_ASSET_CHECKPOINT_INVALID');
+      result.push({kind:'asset-receipt',filename:`asset-${review.planDigest}.receiz-asset.json`,bytes:new TextEncoder().encode(JSON.stringify(packet))});
+    }
+  }
   return result;
 }
 type ProofStoredRow = PrivateSource | PrivateBankOperation;
@@ -546,7 +571,7 @@ export async function retainProofBatch(binding: { artifactSha256: string }, orig
   for (const source of sources) {
     total += source.bytes.length;
     if (!source.bytes.length || source.bytes.length > 32 * 1024 * 1024 || total > 64 * 1024 * 1024
-      || !['owned-source', 'execution-recovery', 'note-image', 'note-deposit','payment-receipt'].includes(source.kind)
+      || !['owned-source', 'execution-recovery', 'note-image', 'note-deposit','payment-receipt','asset-receipt'].includes(source.kind)
       || !source.filename || source.filename.length > 240 || /[\x00-\x1f\x7f/\\]/u.test(source.filename)) throw Error('PROOF_SOURCE_INVALID');
     const digest = await proofDigest(source.bytes), prior = seen.get(digest);
     if (prior && prior !== source.kind) throw Error('PROOF_SOURCE_KIND_CONFLICT');
@@ -613,3 +638,5 @@ export async function retainProofBatch(binding: { artifactSha256: string }, orig
 
 export const loadNativePaymentState=(binding:{artifactSha256:string})=>loadNoteState(binding,'native-payments');
 export const saveNativePaymentState=(binding:{artifactSha256:string},value:import('./native-payment').NativePaymentState,expected:unknown)=>saveNoteState(binding,'native-payments',value,expected);
+export const loadNativeAssetState=(binding:{artifactSha256:string})=>loadNoteState(binding,'native-assets');
+export const saveNativeAssetState=(binding:{artifactSha256:string},value:import('./native-asset').NativeAssetState,expected:unknown)=>saveNoteState(binding,'native-assets',value,expected);

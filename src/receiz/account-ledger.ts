@@ -39,7 +39,7 @@ export function mergeAccountLedgerObservation(current: WalletObservation | null,
 /** The existing native account statement verifies every signed movement from
  * genesis and reconciles both rails. Display rows never supply this input. */
 export async function accountLedgerObservation(proof: VerifiedAccountProof, accountUid: string, observedAt: string): Promise<WalletObservation> {
-  if (!isVerifiedAccountProof(proof) || proof.statement.schema !== 'bankeiz.public-account-statement.v2' || !/^[A-Za-z0-9_.:-]{1,128}$/.test(accountUid) || !Number.isFinite(Date.parse(observedAt))) throw Error('ACCOUNT_LEDGER_SOURCE_REQUIRED');
+  if (!isVerifiedAccountProof(proof) || !['bankeiz.public-account-statement.v2','bankeiz.public-account-statement.v3'].includes(proof.statement.schema) || !/^[A-Za-z0-9_.:-]{1,128}$/.test(accountUid) || !Number.isFinite(Date.parse(observedAt))) throw Error('ACCOUNT_LEDGER_SOURCE_REQUIRED');
   const c = proof.statement.checkpoint, sdk = await loadReceiz();
   // SharedWallet coordinates describe its last transaction, not the later
   // checkpoint issuance time. Keep those comparable across both read paths.

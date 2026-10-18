@@ -3,13 +3,26 @@ export interface AccountProofTransaction {
   sequence: number; transactionId: string; eventDigest: string; previousEventDigest: string; kaiUPulse: string;
   kind: string; description: string; reserveDeltaUsdCents: string; settlementDeltaPhiMicro: string; balanceDeltaPhiMicro?: string;
 }
+export interface AccountSourceFrontier {
+  schema: 'receiz.bank.account-source-frontier.v1'; authorizationHead: string; walletHead: string;
+  lawfulInventoryHead: string; accountHistoryHead: string; assetHistoryDigest: string;
+  assetHeads: readonly {assetId:string;sourceSha256:string}[]; artifactSourceHead: string|null; offlineSourceHead: string|null;
+}
+export interface AccountProofComponents {
+  lawfulValues: readonly {membershipId:string;admissionDigest:string;valueHeadDigest:string|null;settlementPhiMicro:string}[];
+  assets: readonly {assetId:string;name:string;symbol:string;description:string;linkedProofDigest:null;supplyMicro:string;quantityMicro:string;
+    backingRail:'reserve'|'settlement';backingPhiMicro:string;backingUsdCents:string;status:'active'|'redeemed';issuanceSourceSha256:string;headSourceSha256:string}[];
+  assetOffers: readonly {offerId:string;assetId:string;side:'ask'|'bid';remainingQuantityMicro:string;lockedPhiMicro:string;lockedUsdCents:string;headSourceSha256:string}[];
+  artifactIntrinsicPhiMicro:string; offlineLockedPhiMicro:string; offlineLockedUsdCents:string;
+}
 export interface AccountStatement {
-  schema: 'bankeiz.public-account-statement.v1' | 'bankeiz.public-account-statement.v2'; applicationId: string;
+  schema: 'bankeiz.public-account-statement.v1' | 'bankeiz.public-account-statement.v2' | 'bankeiz.public-account-statement.v3'; applicationId: string;
   domain?: 'receiz.bank.native-account-statement.root-signature.v2'; issuerRootKid?: string; rootSignature?: Readonly<{kid:string;alg:'Ed25519';sig:string}>;
   account: { receizId: string; keyId: string; alg: 'Ed25519' | 'P-256'; publicKeyRawB64u: string };
   checkpoint: { accountHead: string; identityBindingDigest: string; genesisHead: string; historyHead: string;
     transactionCount: number; kaiUPulse: string; reserveUsdCents: string; settlementPhiMicro: string; balancePhiMicro?: string; usdPerPhiMicrocents?: string; historyDigest: string };
   transactions: readonly AccountProofTransaction[];
+  sourceFrontier?: AccountSourceFrontier; components?: AccountProofComponents;
 }
 const digest = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{64}$/u.test(v);
 const unsigned = (v: unknown): v is string => typeof v === 'string' && /^(0|[1-9]\d{0,39})$/u.test(v);
@@ -25,9 +38,10 @@ function freeze<T>(v: T): T { if (v && typeof v === 'object') { Object.values(v)
 /** Shape/reconciliation inspection only. Calling this does NOT verify a source,
  * admit identity, establish completeness, or create an exportable handle. */
 export function inspectAccountStatement(input: unknown, applicationId: string): AccountStatement {
-  const native=!!input&&typeof input==='object'&&'schema' in input&&input.schema==='bankeiz.public-account-statement.v2';
-  const v = record(input, ['schema', 'applicationId', 'account', 'checkpoint', 'transactions',...(native?['domain','issuerRootKid','rootSignature']:[])]);
-  if (!['bankeiz.public-account-statement.v1','bankeiz.public-account-statement.v2'].includes(String(v.schema)) || v.applicationId !== applicationId) fail('APPLICATION_MISMATCH');
+  const complete=!!input&&typeof input==='object'&&'schema' in input&&input.schema==='bankeiz.public-account-statement.v3';
+  const native=complete||!!input&&typeof input==='object'&&'schema' in input&&input.schema==='bankeiz.public-account-statement.v2';
+  const v = record(input, ['schema', 'applicationId', 'account', 'checkpoint', 'transactions',...(native?['domain','issuerRootKid','rootSignature']:[]),...(complete?['sourceFrontier','components']:[])]);
+  if (!['bankeiz.public-account-statement.v1','bankeiz.public-account-statement.v2','bankeiz.public-account-statement.v3'].includes(String(v.schema)) || v.applicationId !== applicationId) fail('APPLICATION_MISMATCH');
   if(native){
     const signature=record(v.rootSignature,['kid','alg','sig']);
     if(v.domain!=='receiz.bank.native-account-statement.root-signature.v2'||!text(v.issuerRootKid,256)||signature.kid!==v.issuerRootKid||signature.alg!=='Ed25519'||typeof signature.sig!=='string'||!/^[A-Za-z0-9_-]{86}$/u.test(signature.sig))fail('NATIVE_STATEMENT_UNVERIFIED');
@@ -37,6 +51,24 @@ export function inspectAccountStatement(input: unknown, applicationId: string): 
   const c = record(v.checkpoint, ['accountHead', 'identityBindingDigest', 'genesisHead', 'historyHead', 'transactionCount', 'kaiUPulse', 'reserveUsdCents', 'settlementPhiMicro', 'historyDigest', ...(native?['balancePhiMicro','usdPerPhiMicrocents']:[])]);
   if (![c.accountHead, c.identityBindingDigest, c.genesisHead, c.historyHead, c.historyDigest].every(digest) || !unsigned(c.kaiUPulse) || c.kaiUPulse.length > 30 || !unsigned(c.reserveUsdCents) || !unsigned(c.settlementPhiMicro)) fail('CHECKPOINT_INVALID');
   if(native&&(!unsigned(c.balancePhiMicro)||!unsigned(c.usdPerPhiMicrocents)||BigInt(c.usdPerPhiMicrocents)===0n))fail('CHECKPOINT_INVALID');
+  if(complete){
+    const f=record(v.sourceFrontier,['schema','authorizationHead','walletHead','lawfulInventoryHead','accountHistoryHead','assetHistoryDigest','assetHeads','artifactSourceHead','offlineSourceHead']);
+    if(f.schema!=='receiz.bank.account-source-frontier.v1'||![f.authorizationHead,f.walletHead,f.lawfulInventoryHead,f.accountHistoryHead,f.assetHistoryDigest].every(digest)
+      ||![f.artifactSourceHead,f.offlineSourceHead].every(h=>h===null||digest(h))||f.accountHistoryHead!==c.historyHead)fail('FRONTIER_INVALID');
+    const rows=(value:unknown)=>{if(!Array.isArray(value)||value.length>100_000)fail('COMPONENTS_INVALID');return value;};
+    const heads=new Map<string,string>();let prior='';
+    for(const row of rows(f.assetHeads)){const h=record(row,['assetId','sourceSha256']);if(!text(h.assetId,256)||!digest(h.sourceSha256)||h.assetId<=prior)fail('FRONTIER_INVALID');prior=h.assetId;heads.set(h.assetId,h.sourceSha256);}
+    const p=record(v.components,['lawfulValues','assets','assetOffers','artifactIntrinsicPhiMicro','offlineLockedPhiMicro','offlineLockedUsdCents']);
+    if(![p.artifactIntrinsicPhiMicro,p.offlineLockedPhiMicro,p.offlineLockedUsdCents].every(unsigned))fail('COMPONENTS_INVALID');
+    const unique=(values:unknown,key:string,fields:readonly string[],check:(row:Record<string,unknown>)=>boolean)=>{let prior='';for(const value of rows(values)){const row=record(value,fields);if(!text(row[key],256)||row[key]<=prior||!check(row))fail('COMPONENTS_INVALID');prior=row[key] as string;}};
+    unique(p.lawfulValues,'membershipId',['membershipId','admissionDigest','valueHeadDigest','settlementPhiMicro'],r=>digest(r.admissionDigest)&&(r.valueHeadDigest===null||digest(r.valueHeadDigest))&&unsigned(r.settlementPhiMicro));
+    unique(p.assets,'assetId',['assetId','name','symbol','description','linkedProofDigest','supplyMicro','quantityMicro','backingRail','backingPhiMicro','backingUsdCents','status','issuanceSourceSha256','headSourceSha256'],r=>
+      text(r.name,80)&&text(r.symbol,16)&&typeof r.description==='string'&&r.description.length<=2000&&!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/u.test(r.description)&&r.linkedProofDigest===null
+      &&[r.supplyMicro,r.quantityMicro,r.backingPhiMicro,r.backingUsdCents].every(unsigned)&&(BigInt(r.supplyMicro as string)>0n||r.status==='redeemed'&&r.quantityMicro==='0'&&r.backingPhiMicro==='0'&&r.backingUsdCents==='0')&&BigInt(r.quantityMicro as string)<=BigInt(r.supplyMicro as string)
+      &&['reserve','settlement'].includes(String(r.backingRail))&&['active','redeemed'].includes(String(r.status))&&digest(r.issuanceSourceSha256)&&digest(r.headSourceSha256)
+      &&heads.get(r.assetId as string)===r.headSourceSha256);
+    unique(p.assetOffers,'offerId',['offerId','assetId','side','remainingQuantityMicro','lockedPhiMicro','lockedUsdCents','headSourceSha256'],r=>text(r.assetId,256)&&heads.has(r.assetId as string)&&['ask','bid'].includes(String(r.side))&&[r.remainingQuantityMicro,r.lockedPhiMicro,r.lockedUsdCents].every(unsigned)&&digest(r.headSourceSha256));
+  }
   if (!Array.isArray(v.transactions) || v.transactions.length > 100_000 || c.transactionCount !== v.transactions.length) fail('HISTORY_INCOMPLETE');
   let previous = c.genesisHead, time = 0n, reserve = 0n, settlement = 0n, gross = 0n;
   const ids = new Set<string>(), digests = new Set<string>();

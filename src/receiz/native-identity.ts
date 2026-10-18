@@ -1,4 +1,4 @@
-import { loadNativePaymentState, saveNativePaymentState, loadOfflineNoteState, saveOfflineNoteState, loadPreparedNoteState, savePreparedNoteState, saveOfflineNoteBlob, loadOfflineNoteBlob } from './identity-vault';
+import { loadNativePaymentState, saveNativePaymentState, loadNativeAssetState, saveNativeAssetState, loadOfflineNoteState, saveOfflineNoteState, loadPreparedNoteState, savePreparedNoteState, saveOfflineNoteBlob, loadOfflineNoteBlob } from './identity-vault';
 import { createBankNoteAttestationFetch } from './note-attestation-transport';
 import { loadBankNoteRuntime, bankNoteArtwork, type BankOfflineNotes, type BankNoteRuntime } from './offline-notes';
 import type { ReceizClient, ReceizIdentityPublicBinding, ReceizKeyFile, ReceizIdentityAccountProjection } from '@receiz/sdk';
@@ -349,22 +349,53 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     if (['credited', 'expired', 'unpaid'].includes(status.status)) await saveCardOperation(binding, null, false, operation.operationId);
     return status;
   }
+  async function projectOwnedSource(exact:Uint8Array,filename:string){
+    const opened=await unsigned.artifacts.verifyAndOpen(new File([new Uint8Array(exact)],filename));
+    let payload:unknown;try{payload=JSON.parse(new TextDecoder().decode(opened.verifiedPayload.bytes));}catch{/* Ordinary non-JSON original. */}
+    if((payload as {schema?:unknown})?.schema==='receiz.bank.native-asset-holding.v1')return (await import('./native-asset-holding')).openNativeAssetHolding(exact,filename,binding).then(v=>v.deposit);
+    return projectHeldDeposit(opened,exact,filename,binding.artifactOwnerReceizId);
+  }
   async function holdProof(file: File) {
     if (lifetime.signal.aborted) throw new Error('Open your identity before depositing a proof.');
     if (!file.size || file.size > 32 * 1024 * 1024) throw new Error('Choose an original proof up to 32 MB.');
-    const exact = new Uint8Array(await file.arrayBuffer());
-    const opened = await unsigned.artifacts.verifyAndOpen(new File([exact], file.name, { type: file.type }));
-    const deposit = projectHeldDeposit(opened, exact, file.name, binding.artifactOwnerReceizId);
+    const exact = new Uint8Array(await file.arrayBuffer()),deposit=await projectOwnedSource(exact,file.name);
     if (lifetime.signal.aborted) throw new Error('The identity was closed before deposit.');
     await saveDepositSource(binding, exact, file.name, deposit.digest); return deposit;
   }
+  let nativeHoldingsReadAt=0,nativeHoldingsRefresh:Promise<void>|null=null,nativeHoldingsDirty=false;
+  async function refreshNativeHoldings(){
+    const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);if(lifetime.signal.aborted)return;
+    const wire=await current.request(`/api/connect/bank/assets/portfolio?applicationId=${BANK_APPLICATION_ID}`,{method:'POST',body:{}}) as {schema?:unknown;sources?:unknown};
+    if(!wire||Object.keys(wire).sort().join('|')!=='schema|sources'||wire.schema!=='receiz.bank.native-asset-portfolio.v1'||!Array.isArray(wire.sources)||wire.sources.length>1000)throw Error('BANK_ASSET_PORTFOLIO_INVALID');
+    const verified:HeldDeposit[]=[];let bytesTotal=0;
+    const {openNativeAssetHolding}=await import('./native-asset-holding');
+    for(const value of wire.sources){const p=value as {filename:string;mimeType:string;artifactSha256:string;exactBytesB64u:string};
+      if(!p||Object.keys(p).sort().join('|')!=='artifactSha256|exactBytesB64u|filename|mimeType'||p.filename!=='native-asset-holding.receizbundle'||p.mimeType!=='application/vnd.receiz.bundle+json'||typeof p.exactBytesB64u!=='string'||p.exactBytesB64u.length>32*1024*1024)throw Error('BANK_ASSET_PORTFOLIO_INVALID');
+      const exact=sdk.receizBase64UrlDecode(p.exactBytesB64u);bytesTotal+=exact.length;if(bytesTotal>32*1024*1024)throw Error('BANK_ASSET_PORTFOLIO_CAPACITY');
+      const held=await openNativeAssetHolding(exact,p.filename,binding);if(held.deposit.digest!==p.artifactSha256)throw Error('BANK_ASSET_PORTFOLIO_INVALID');verified.push(held.deposit);
+    }
+    if(lifetime.signal.aborted)return;
+    const prior=await loadDepositSources(binding),known=new Set(await Promise.all(prior.map(s=>sdk.sha256ReceizBytes(s.bytes))));let changed=false;
+    for(const source of verified){if(lifetime.signal.aborted)return;if(!known.has(source.digest)){await saveDepositSource(binding,source.bytes,source.filename,source.digest);changed=true;}}
+    if(changed&&!lifetime.signal.aborted)dispatchEvent(new Event('bankeiz:asset-sources'));
+  }
+  function scheduleNativeHoldingsRefresh(force=false){
+    if(lifetime.signal.aborted)return;
+    if(force){nativeHoldingsReadAt=0;nativeHoldingsDirty=true;}
+    if(nativeHoldingsRefresh||!nativeHoldingsDirty&&Date.now()-nativeHoldingsReadAt<=15000)return;
+    nativeHoldingsDirty=false;nativeHoldingsReadAt=Date.now();
+    nativeHoldingsRefresh=refreshNativeHoldings().catch(()=>{}).finally(()=>{nativeHoldingsRefresh=null;if(nativeHoldingsDirty)scheduleNativeHoldingsRefresh();});
+  }
   async function listDeposits() {
+    // Reopen held originals immediately. Current source delivery enriches the
+    // same view asynchronously; a network refusal cannot erase local custody.
+    scheduleNativeHoldingsRefresh();
     const sources = await loadDepositSources(binding), result: HeldDeposit[] = [];
     for (const source of sources) {
       if (source.role === 'account-coordination' || source.role === 'account-genesis') continue;
-      try { const opened = await unsigned.artifacts.verifyAndOpen(new File([new Uint8Array(source.bytes)], source.filename)); result.push(projectHeldDeposit(opened, source.bytes, source.filename, binding.artifactOwnerReceizId)); } catch { /* Only actual reopened proof sources appear. */ }
+      try {result.push(await projectOwnedSource(source.bytes,source.filename));} catch { /* Only actual reopened proof sources appear. */ }
     }
-    return result;
+    return (await import('./native-asset-holding')).selectNativeAssetHoldings(result);
   }
   async function startAssetIntake(input: AssetIntake, attachment?: File) {
     if (lifetime.signal.aborted) throw new Error('Open your identity before depositing an asset.');
@@ -407,17 +438,58 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       return navigator.locks.request(`receiz-bank-execution:${binding.artifactSha256}`, { signal: lifetime.signal }, operation);
     },
   });
+  function hasPendingNative(value: unknown, family: 'payments' | 'assets'): boolean {
+    if (value === null || value === undefined) return false;
+    const state = value as { schema?: unknown; current?: { state?: unknown }; history?: { state?: unknown }[] };
+    if (state.schema !== `bank.native-${family}.v1` || !state.current || !Array.isArray(state.history) || state.history.length > 1000
+      || [...state.history, state.current].some(checkpoint => !checkpoint || !['prepared', 'unknown', 'committed', 'zero-write'].includes(String(checkpoint.state)))) throw Error('BANK_EXECUTION_CHECKPOINT_INVALID');
+    return [...state.history, state.current].some(checkpoint => checkpoint.state === 'prepared' || checkpoint.state === 'unknown');
+  }
+  async function assertNoOtherPending() {
+    noteOpen();
+    const legacy = await deviceBankExecutionStore(binding).load();
+    if (legacy && ['prepared', 'unknown'].includes(legacy.state)) throw Error('BANK_EXECUTION_PENDING');
+    const [payments, assets] = await Promise.all([loadNativePaymentState(binding), loadNativeAssetState(binding)]);
+    noteOpen();
+    if (hasPendingNative(payments, 'payments') || hasPendingNative(assets, 'assets')) throw Error('BANK_EXECUTION_PENDING');
+  }
   let nativePaymentsPromise: Promise<ReturnType<typeof import('./native-payment').createNativePayments>> | undefined;
   const nativePayments = () => nativePaymentsPromise ??= import('./native-payment').then(({createNativePayments})=>createNativePayments({
     ownerReceizId:binding.artifactOwnerReceizId,keyId:binding.keyId,
-    assertNoOtherPending:async()=>{const retained=await deviceBankExecutionStore(binding).load();if(retained&&['prepared','unknown'].includes(retained.state))throw Error('BANK_EXECUTION_PENDING');},
+    assertNoOtherPending,
     assertOpen:()=>{if(lifetime.signal.aborted)throw Error('BANK_EXECUTION_IDENTITY_CLOSED');},
     store:{read:()=>loadNativePaymentState(binding),write:(value,expected)=>saveNativePaymentState(binding,value,expected)},
     sign:async challengeB64Url=>{await prepareTransport();return unsigned.identity.signLoginProof({keyFile:transportKeyFile,passphrase:transportPhrase,challengeB64Url});},
     request:async(path,body,readOnly)=>{const applicationId=readOnly?new URL(path,'https://receiz.com').searchParams.get('applicationId'):BANK_APPLICATION_ID;if(!isBankNativeApplicationId(applicationId))throw Error('BANK_PAYMENT_APPLICATION_MISMATCH');const connected=await connectClient(readOnly?BANK_RECOVERY_SCOPES:BANK_NATIVE_SCOPES,readOnly?BANK_RECOVERY_CONSENT:BANK_NATIVE_CONSENT,applicationId);if(lifetime.signal.aborted)throw Error('BANK_EXECUTION_IDENTITY_CLOSED');return connected.request(path,{method:'POST',body});},
     lock:async operation=>{if(!navigator.locks)throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');return navigator.locks.request(`receiz-bank-execution:${binding.artifactSha256}`,{signal:lifetime.signal},operation);},
   })).catch(error=>{nativePaymentsPromise=undefined;throw error;});
-  const selectedRecovery=async()=>{const legacy=await legacyExecutionRecovery.status();if(legacy&&['prepared','unknown'].includes(legacy.state))return legacyExecutionRecovery;const payments=(await nativePayments()).recovery;return await payments.status()?payments:legacyExecutionRecovery;};
+  let nativeAssetsPromise: Promise<ReturnType<typeof import('./native-asset').createNativeAssets>> | undefined;
+  const nativeAssets = () => nativeAssetsPromise ??= import('./native-asset').then(({createNativeAssets})=>createNativeAssets({
+    onCommitted:()=>scheduleNativeHoldingsRefresh(true),
+    ownerReceizId:binding.artifactOwnerReceizId,keyId:binding.keyId,
+    assertNoOtherPending,
+    assertOpen:()=>{if(lifetime.signal.aborted)throw Error('BANK_EXECUTION_IDENTITY_CLOSED');},
+    store:{read:()=>loadNativeAssetState(binding),write:(value,expected)=>saveNativeAssetState(binding,value,expected)},
+    sign:async challengeB64Url=>{await prepareTransport();noteOpen();return unsigned.identity.signLoginProof({keyFile:transportKeyFile,passphrase:transportPhrase,challengeB64Url});},
+    request:async(path,body,readOnly)=>{const applicationId=readOnly?new URL(path,'https://receiz.com').searchParams.get('applicationId'):BANK_APPLICATION_ID;if(!isBankNativeApplicationId(applicationId))throw Error('BANK_ASSET_APPLICATION_MISMATCH');const connected=await connectClient(readOnly?[...BANK_READ_SCOPES,...BANK_RECOVERY_SCOPES]:BANK_NATIVE_SCOPES,readOnly?BANK_RECOVERY_CONSENT:BANK_NATIVE_CONSENT,applicationId);noteOpen();return connected.request(path,{method:'POST',body});},
+    lock:async operation=>{if(!navigator.locks)throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');return navigator.locks.request(`receiz-bank-execution:${binding.artifactSha256}`,{signal:lifetime.signal},operation);},
+  })).catch(error=>{nativeAssetsPromise=undefined;throw error;});
+  const selectedRecovery=async()=>{
+    noteOpen();
+    const [legacy,payments,assets]=await Promise.all([deviceBankExecutionStore(binding).load(),loadNativePaymentState(binding),loadNativeAssetState(binding)]);
+    noteOpen();
+    // Pending custody must remain reachable even if a different family's old
+    // terminal receipt is unavailable or cannot be reopened.
+    if(legacy&&['prepared','unknown'].includes(legacy.state))return legacyExecutionRecovery;
+    const pending=(value:unknown)=>['prepared','unknown'].includes(String((value as {current?:{state?:unknown}}|null)?.current?.state));
+    if(pending(payments))return(await nativePayments()).recovery;
+    if(pending(assets))return(await nativeAssets()).recovery;
+    if(hasPendingNative(payments,'payments'))return(await nativePayments()).recovery;
+    if(hasPendingNative(assets,'assets'))return(await nativeAssets()).recovery;
+    if(assets)return(await nativeAssets()).recovery;
+    if(payments)return(await nativePayments()).recovery;
+    return legacyExecutionRecovery;
+  };
   const executionRecovery: ReturnType<typeof createBankExecutionRecovery>={status:async()=> (await selectedRecovery()).status(),resolve:async approved=>(await selectedRecovery()).resolve(approved),exportRecovery:async()=>(await selectedRecovery()).exportRecovery()};
   let proofLibraryPromise: Promise<import('./proof-library').ProofLibrary> | undefined;
   const proofLibrary = () => proofLibraryPromise ??= import('./proof-library').then(({ createProofLibrary }) => createProofLibrary({
@@ -493,10 +565,11 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     saveSource: (exact, filename, digest, role) => saveDepositSource(binding, exact, filename, digest, role),
   });
   const operations = () => operationsPromise ??= import('./bank-operations').then(async ({ createBankOperations }) => createBankOperations({
-    payments:await nativePayments(),
+    payments:await nativePayments(),assets:await nativeAssets(),
     ownerReceizId: binding.artifactOwnerReceizId, store: deviceBankExecutionStore(binding),
     assertOpen: () => { if (lifetime.signal.aborted) throw Error('BANK_EXECUTION_IDENTITY_CLOSED'); },
     context: async rails => {
+      await assertNoOtherPending();
       await restoreCommittedBankSources();
       const report = await nativeReadiness();
       if (report.missingScopes.length) throw Error('BANK_OPERATION_ACCESS_REQUIRED');
@@ -532,7 +605,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);assertOpen();
       return current.request(path,{method:'GET'});
     }});
-    if(proof.statement.schema==='bankeiz.public-account-statement.v2'&&accountUid){
+    if(['bankeiz.public-account-statement.v2','bankeiz.public-account-statement.v3'].includes(proof.statement.schema)&&accountUid){
       try{
         const retained=await localLedger.retain(proof,accountUid);assertOpen();
         if(retained.proof.sourceDigest===proof.sourceDigest&&walletRevision===revision&&knownWallet===before&&canAdoptAccountLedgerObservation(before,retained.observation)){

@@ -1,0 +1,39 @@
+<!doctype html><meta charset="utf-8"><title>Native asset private custody checks</title>
+<h1>Test-only native asset storage</h1><p>Use a separate test origin. Dummy checkpoints qualify encrypted storage and refusal mechanics only. No Receiz ID, account, asset or money is created.</p><button id="run">Run custody checks</button><pre id="output">Ready</pre>
+<script type="module">
+import {saveDeviceIdentity,loadDeviceIdentity,forgetDeviceIdentity,saveNativeAssetState,loadNativeAssetState,retainProofBatch,loadProofArchive,loadExportableRecoveries} from '/src/receiz/identity-vault.ts';
+import {proofDigest} from '/src/receiz/proof-library.ts';
+import {BANK_STORAGE_APPLICATION_ID} from '/src/receiz/config.ts';
+const bytes=text=>new TextEncoder().encode(text),dummyPrefix='test-only-native-asset-storage-';
+// Test-only cleanup of artificial checkpoints; never expose this as a custody API.
+async function removeFixtureCheckpoint(binding){
+ const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('receiz-bank-private-custody',3);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+ try{await new Promise((resolve,reject)=>{const tx=db.transaction('operations','readwrite');tx.objectStore('operations').delete(`native-assets|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}`);tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(tx.error);});}finally{db.close();}
+}
+document.querySelector('#run').onclick=async()=>{
+ const checks=[],failures=[],check=(value,label)=>{if(!value)throw Error(label);},test=async(label,run)=>{try{await run();checks.push(label);}catch(error){failures.push(`${label}: ${error.message}`);}};
+ let binding;
+ try{
+  const previous=await loadDeviceIdentity();
+  if(previous&&!new TextDecoder().decode(previous.bytes).startsWith(dummyPrefix))throw Error('Use an isolated test origin without a real identity.');
+  if(previous){await removeFixtureCheckpoint({artifactSha256:await proofDigest(previous.bytes)});await forgetDeviceIdentity();}
+  const identity=bytes(dummyPrefix+crypto.randomUUID());binding={artifactSha256:await proofDigest(identity)};
+  await saveDeviceIdentity(identity,'dummy.bin','not-a-real-phrase',true);
+  const unknown={schema:'bank.native-assets.v1',current:{state:'unknown',prepared:{planDigest:'a'.repeat(64),request:{requestId:'dummy-only'}},consentProof:{testOnly:true}},history:[]};
+  await saveNativeAssetState(binding,unknown,null);
+  await test('Exact unknown asset intent reopens encrypted',async()=>check(JSON.stringify(await loadNativeAssetState(binding))===JSON.stringify(unknown),'checkpoint changed'));
+  await test('Stale asset writer cannot replace pending custody',async()=>{let refused=false;try{await saveNativeAssetState(binding,{...unknown,history:[unknown.current]},null);}catch{refused=true;}check(refused&&JSON.stringify(await loadNativeAssetState(binding))===JSON.stringify(unknown),'stale write accepted');});
+  await test('Another identity cannot open the native asset family',async()=>{let refused=false;try{await loadNativeAssetState({artifactSha256:'f'.repeat(64)});}catch{refused=true;}check(refused,'foreign identity read accepted');});
+  await test('Asset receipt archive preserves exact encrypted bytes',async()=>{const original=bytes('test-only-no-financial-admission');await retainProofBatch(binding,[{kind:'asset-receipt',filename:'asset.receiz-asset.json',bytes:original}]);const source=(await loadProofArchive(binding)).find(row=>row.kind==='asset-receipt');check(source&&await proofDigest(source.bytes)===await proofDigest(original),'receipt missing or altered');});
+  await test('Unknown intent is never exported as a successful receipt',async()=>check((await loadExportableRecoveries(binding)).length===0,'unknown receipt exported'));
+  const fake={...unknown,current:{...unknown.current,state:'committed',source:{schema:'receiz.bank.native-asset-result.v1',status:'committed',source:{filename:'native-asset.receizbundle',mimeType:'application/vnd.receiz.bundle+json',exactBytesB64u:'e30',artifactSha256:'a'.repeat(64)}}}};
+  await saveNativeAssetState(binding,fake,unknown);
+  await test('A forged terminal checkpoint cannot export a financial receipt',async()=>{let refused=false;try{await loadExportableRecoveries(binding);}catch{refused=true;}check(refused,'unverified terminal receipt accepted');});
+  await saveNativeAssetState(binding,unknown,fake);
+  await test('Unknown asset custody prevents identity removal',async()=>{let refused=false;try{await forgetDeviceIdentity();}catch{refused=true;}check(refused&&(await loadDeviceIdentity())!==null,'pending custody was removed');});
+  await test('Unknown asset custody prevents identity replacement',async()=>{let refused=false;try{await saveDeviceIdentity(bytes(dummyPrefix+'replacement'),'other.bin','fixture',true);}catch{refused=true;}check(refused&&await proofDigest((await loadDeviceIdentity()).bytes)===binding.artifactSha256,'pending custody was replaced');});
+  await removeFixtureCheckpoint(binding);await forgetDeviceIdentity();
+  document.querySelector('#output').textContent=JSON.stringify({passed:failures.length===0,checks,failures},null,2);
+ }catch(error){document.querySelector('#output').textContent=JSON.stringify({passed:false,checks,failures,error:String(error)},null,2);}
+};
+</script>

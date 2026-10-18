@@ -47,11 +47,13 @@ See the [current function boundaries](docs/current-function-boundaries.md) and [
 | Account assets/history | Retained verified sources plus public showcase discovery; private additions depend on host service/admission |
 | Card deposits | Receiz SDK checkout/status composition, embedded inside Bank; a live payment requires customer operation and credit confirmation |
 | Physical assets | Sealed intake and carried delivery instructions; actual custodian acceptance, transferable ownership and fractional sales remain unfinished |
-| Digital Send / exchange | In-bank request/review/recovery composition; production preparation and execution remain gated pending admitted financial effects |
-| Asset creation | Sealed definition/authorship plus funded-creation review; native backing and issuance effects require qualification |
+| Digital Send / native asset exchange | Exact signed reviews, native paired effects and original recovery; real signed liquidity and qualified production custody required |
+| Asset creation | Definition sealing plus native backing lock, conserved supply, verified position delivery and whole-supply redemption; production custody qualification required |
 | Reserve Notes | Funded native creation, receiving request, qualified handoff and Reserve redemption integration; production native-writer/signer/service/hardware qualification remains |
 | Settlement Notes | Matching native signed rail, exact-Phi local valuation and credit primitives implemented; production selector and real-device financial qualification remain |
 | Institution receiving | Public verification, integration contracts and local checks; each institution needs its own authorized native integration and live assessment |
+
+See [native asset and full account-source qualification](docs/native-assets-and-account-proofs-v129.md) for implemented effects, tested source closures and remaining activation requirements.
 
 These boundaries are intentional release disclosures. A build, downloaded image or deployment is not a financial qualification. The note artwork samples are **unissued**. See [native note release gates](docs/offline-notes-release.md), [Settlement Note contract](docs/settlement-note-contract.md) and [receiver qualification](institution/qualification.md) before enabling financial capabilities.
 

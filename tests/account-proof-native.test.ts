@@ -31,3 +31,16 @@ describe('native account statement projection inspection',()=>{
   expect(()=>inspectAccountStatement(unknown)).toThrow(/HISTORY/);
  });
 });
+
+it('v3 preserves cash reconciliation while binding separately held asset and value components to a closed frontier',async()=>{
+ const base=statement(),value={...base,schema:'bankeiz.public-account-statement.v3',sourceFrontier:{schema:'receiz.bank.account-source-frontier.v1',authorizationHead:h('1'),walletHead:h('2'),lawfulInventoryHead:h('3'),accountHistoryHead:base.checkpoint.historyHead,assetHistoryDigest:h('4'),assetHeads:[{assetId:h('5'),sourceSha256:h('6')}],artifactSourceHead:null,offlineSourceHead:null},components:{lawfulValues:[{membershipId:'lawful:one',admissionDigest:h('7'),valueHeadDigest:null,settlementPhiMicro:'900'}],assets:[{assetId:h('5'),name:'Native units',symbol:'UNIT',description:'Current\nsource',linkedProofDigest:null,supplyMicro:'10000000',quantityMicro:'2000000',backingRail:'reserve',backingPhiMicro:'1000000',backingUsdCents:'200',status:'active',issuanceSourceSha256:h('8'),headSourceSha256:h('6')}],assetOffers:[],artifactIntrinsicPhiMicro:'0',offlineLockedPhiMicro:'0',offlineLockedUsdCents:'0'}};
+ expect(inspectAccountStatement(value).checkpoint.balancePhiMicro).toBe('3000000');
+ expect(inspectAccountStatement(value).components?.lawfulValues[0].settlementPhiMicro).toBe('900');
+ const missing=structuredClone(value);delete (missing as Partial<typeof value>).components;expect(()=>inspectAccountStatement(missing)).toThrow(/PRIVATE_OR_UNSUPPORTED/);
+ const detached=structuredClone(value);detached.components.assets[0].headSourceSha256=h('9');expect(()=>inspectAccountStatement(detached)).toThrow(/COMPONENTS/);
+ const inflated=structuredClone(value);inflated.components.assets[0].quantityMicro='10000001';expect(()=>inspectAccountStatement(inflated)).toThrow(/COMPONENTS/);
+ const privateValue={...value,components:{...value.components,identitySeal:'private'}};expect(()=>inspectAccountStatement(privateValue)).toThrow(/PRIVATE_OR_UNSUPPORTED/);
+ const fake=structuredClone(value);fake.checkpoint.balancePhiMicro='3000900';expect(()=>inspectAccountStatement(fake)).toThrow(/BALANCE/);
+ const {verifyBankNativeAccountStatementSignature}=await import('../src/receiz/account-proof-signature');
+ expect(await verifyBankNativeAccountStatementSignature(value,BANK_APPLICATION_ID)).toBeNull();
+});
