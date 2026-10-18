@@ -1,7 +1,7 @@
 import { SIGIL_VALUATION_POLICY, type SigilCalculationTerm, type ReceizProofValueProjectionV129 } from '@receiz/sdk/valuation';
 import {receizKaiNow} from '@receiz/sdk';
 import {
-  calculateIllustration, DEMO_SCENARIO, formatPhiMicro, formatUsdCents,
+  calculateIllustration, DEMO_SCENARIO, MAX_CASHFLOWS, formatPhiMicro, formatUsdCents,
   illustrationRecord, sampleIllustration, stableStringify, type ValueScenario,
 } from './model';
 
@@ -59,6 +59,9 @@ export function mountValueExplainer(root: HTMLElement) {
   const trace = find('[data-value-trace]');
   const rateInput = find<HTMLInputElement>('[data-value-display-rate]');
   const illustrationDownload = find<HTMLButtonElement>('[data-value-download-illustration]');
+  const cashflowList = find('[data-value-cashflows]');
+  const addCashflow = find<HTMLButtonElement>('[data-value-add-cashflow]');
+  const editStatus = find('[data-value-edit-status]');
   const evaluationInput=find<HTMLInputElement>('#value-evaluation');
   const openingCoordinate=receizKaiNow();
   evaluationInput.readOnly=true;evaluationInput.value=String(openingCoordinate.pulse);
@@ -66,9 +69,41 @@ export function mountValueExplainer(root: HTMLElement) {
   let interval = sampleIllustration(scenario);
   let selected = interval.samples.length - 1;
   let dollarGeneration = 0;
+  let calculationPending = false, cashflowId = 0;
+  const invalidateIllustration = () => {
+    calculationPending = true;
+    illustrationDownload.disabled = true;
+    editStatus.textContent = 'Calculate to apply your changes.';
+  };
+  form.addEventListener('input', invalidateIllustration);
+  const updateCashflowRows = () => {
+    const rows = [...cashflowList.querySelectorAll<HTMLElement>('[data-value-cashflow]')];
+    rows.forEach((row, index) => {
+      row.querySelector('[data-value-payment-label]')!.textContent = `Payment ${index + 1}`;
+      row.querySelector('button')!.setAttribute('aria-label', `Remove payment ${index + 1}`);
+    });
+    find('[data-value-cashflow-empty]').hidden = rows.length > 0;
+    addCashflow.disabled = rows.length >= MAX_CASHFLOWS;
+  };
+  addCashflow.addEventListener('click', () => {
+    if (cashflowList.children.length >= MAX_CASHFLOWS) return;
+    const id = ++cashflowId, row = document.createElement('div');
+    row.className = 'value-cashflow-row'; row.dataset.valueCashflow = '';
+    row.innerHTML = `<div class="value-cashflow-heading"><span data-value-payment-label></span><button type="button" data-value-remove-cashflow><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div><div class="value-field"><label for="value-cashflow-amount-${id}">Amount · Φ</label><input id="value-cashflow-amount-${id}" name="cashflowAmount" inputmode="decimal" placeholder="0.00" maxlength="32" required></div><div class="value-field"><label for="value-cashflow-pulse-${id}">Payment pulse</label><input id="value-cashflow-pulse-${id}" name="cashflowPulse" inputmode="numeric" maxlength="16" required aria-describedby="value-cashflow-help"></div>`;
+    row.querySelector<HTMLInputElement>('[name="cashflowPulse"]')!.value = evaluationInput.value;
+    row.querySelector('button')!.addEventListener('click', () => {
+      row.remove(); updateCashflowRows(); invalidateIllustration(); addCashflow.focus();
+    });
+    cashflowList.append(row); updateCashflowRows(); invalidateIllustration();
+    row.querySelector<HTMLInputElement>('input')!.focus();
+  });
   const readScenario = (evaluationPulse:string): ValueScenario => {
     const data = new FormData(form);
-    return { originPulse: String(data.get('originPulse')), evaluationPulse, seriesSize: String(data.get('seriesSize')), quality: String(data.get('quality')) as ValueScenario['quality'], usdPerPhiMicrocents: rateInput.value };
+    const cashflows = [...cashflowList.querySelectorAll('[data-value-cashflow]')].map(row => ({
+      amountPhi: row.querySelector<HTMLInputElement>('[name="cashflowAmount"]')!.value,
+      atPulse: row.querySelector<HTMLInputElement>('[name="cashflowPulse"]')!.value,
+    }));
+    return { originPulse: String(data.get('originPulse')), evaluationPulse, seriesSize: String(data.get('seriesSize')), quality: String(data.get('quality')) as ValueScenario['quality'], usdPerPhiMicrocents: rateInput.value, cashflows };
   };
   const currentScenario = () => ({ ...scenario, evaluationPulse: interval.samples[selected].pulse, usdPerPhiMicrocents: rateInput.value });
   const updateDollarDisplay = async () => {
@@ -103,7 +138,7 @@ export function mountValueExplainer(root: HTMLElement) {
       ['Combined wave', `${inputs.combinedOsc.toFixed(6)} ×`], ['Cashflow present value', `${inputs.pv_phi.toFixed(6)} Φ`],
     ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join('');
     trace.innerHTML = traceMarkup(computation.calculation);
-    illustrationDownload.disabled = false;
+    illustrationDownload.disabled = calculationPending;
     void updateDollarDisplay();
   };
   form.addEventListener('submit', event => {
@@ -114,10 +149,11 @@ export function mountValueExplainer(root: HTMLElement) {
       const candidate = readScenario(evaluationInput.value);
       const next = sampleIllustration(candidate);
       scenario = candidate; interval = next; selected = interval.samples.length - 1;
+      calculationPending = false; editStatus.textContent = '';
       slider.value = String(selected); slider.disabled = false; paint();
     } catch (cause) {
       demoError.textContent = message(cause); demoError.hidden = false;
-      illustrationDownload.disabled = true;
+      invalidateIllustration();
     }
   });
   slider.addEventListener('input', () => { selected = Number(slider.value); paint(); });

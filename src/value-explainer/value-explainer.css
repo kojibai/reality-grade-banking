@@ -75,8 +75,27 @@
 .value-button:hover{background:white}
 .value-page button:focus-visible,.value-page input[type=range]:focus-visible{outline:2px solid var(--cobalt);outline-offset:5px}
 .value-page button:disabled{opacity:.5;cursor:default}
-.value-workbench p{color:#b7cbe3}
+.value-page .value-workbench p{color:#b7cbe3}
 .value-form-note{font-size:11px!important;line-height:1.8!important}
+.value-field-help{grid-column:1/-1;font-size:11px!important;line-height:1.7!important;margin-top:0}
+.value-cashflows{min-width:0;margin:8px 0 0;padding:18px 0 0;border:0;border-top:1px solid #52677d;grid-column:1/-1}
+.value-cashflows legend{padding:0 12px 0 0;font-size:14px;font-weight:500;line-height:1.6}
+.value-cashflows legend span{font-size:11px;font-weight:400;color:#b7cbe3;margin-left:8px}
+.value-cashflow-list{display:grid;gap:16px}
+.value-cashflow-row{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;padding:12px 0 16px;border-bottom:1px solid #52677d;min-width:0}
+.value-cashflow-heading{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#b7cbe3}
+.value-cashflow-heading button{background:transparent;border:0;color:#b7cbe3;padding:8px;cursor:pointer;border-radius:4px;display:grid;place-items:center}
+.value-cashflow-heading button:hover{color:white;background:#293f58}
+.value-cashflow-heading svg{width:17px;height:17px}
+.value-workbench .value-cashflow-row .value-field{display:block}
+.value-workbench .value-cashflow-row label{font-size:11px;margin-bottom:7px}
+.value-workbench .value-cashflow-row input{padding:11px 9px}
+.value-cashflow-empty{font-size:11px!important;line-height:1.7!important;margin:12px 0}
+.value-cashflow-empty[hidden]{display:none}
+.value-add-cashflow{display:inline-flex;align-items:center;gap:8px;margin:12px 0;background:transparent;color:#dce7ff;border:1px solid #607c9b;border-radius:6px;padding:9px 12px;font-family:inherit;font-size:12px;font-weight:500;line-height:1.6;cursor:pointer}
+.value-add-cashflow span{font-size:18px;font-weight:400;line-height:1}
+.value-add-cashflow:hover{background:#293f58}
+.value-edit-status:not(:empty){display:block;color:#dce7ff;margin-top:8px}
 .value-result-kind{font-size:12px!important;line-height:1.6!important}
 .value-result-amount{display:block;font-size:clamp(37px,4.5vw,66px);font-weight:600;letter-spacing:-.055em;line-height:1.2;margin-top:8px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .value-result-amount span{color:#7e9aff;font-weight:550}

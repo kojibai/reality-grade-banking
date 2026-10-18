@@ -17,6 +17,63 @@ function mount() {
   return root;
 }
 
+it('adds, calculates and removes cashflows without confusing them with the edition size',()=>{
+  const root=mount(),form=root.querySelector<HTMLFormElement>('[data-value-demo]')!;
+  const before=root.querySelector('[data-value-chart] path[stroke="#7e9aff"]')!.getAttribute('d');
+  const add=root.querySelector<HTMLButtonElement>('[data-value-add-cashflow]')!;
+  add.click();add.click();
+  const rows=root.querySelectorAll('[data-value-cashflow]');
+  expect(rows).toHaveLength(2);
+  rows.forEach((row,index)=>{
+    row.querySelector<HTMLInputElement>('[name="cashflowAmount"]')!.value=index?'20':'3.5';
+    row.querySelector<HTMLInputElement>('[name="cashflowPulse"]')!.value=String(clock.pulse+(index?17491:0));
+  });
+  form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+  const cashflow=root.querySelector('[data-value-breakdown]')!.lastElementChild!;
+  expect(cashflow.textContent).toContain((3.5+20/(1+17491/17491.270421)).toFixed(6)+' Φ');
+  expect(root.querySelector('[data-value-chart] path[stroke="#7e9aff"]')!.getAttribute('d')).not.toBe(before);
+  expect(root.querySelector('[data-value-trace]')!.textContent).toContain('ip.phi.1.presentValue');
+  expect(root.querySelector<HTMLInputElement>('#value-size')!.value).toBe('1');
+  rows.forEach(row=>row.querySelector<HTMLButtonElement>('[data-value-remove-cashflow]')!.click());
+  form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+  expect(root.querySelectorAll('[data-value-cashflow]')).toHaveLength(0);
+  expect(cashflow.isConnected).toBe(false);
+  expect(root.querySelector('[data-value-breakdown]')!.lastElementChild!.textContent).toContain('0.000000 Φ');
+  expect(root.querySelector('[data-value-demo-error]')!.textContent).toBe('');
+});
+
+it('rejects an invalid entered payment and prevents exporting that result',()=>{
+  const root=mount();
+  root.querySelector<HTMLButtonElement>('[data-value-add-cashflow]')!.click();
+  root.querySelector<HTMLInputElement>('[name="cashflowAmount"]')!.value='-1';
+  root.querySelector<HTMLFormElement>('[data-value-demo]')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+  expect(root.querySelector<HTMLElement>('[data-value-demo-error]')!.hidden).toBe(false);
+  expect(root.querySelector('[data-value-demo-error]')!.textContent).toContain('Cashflow 1 amount');
+  expect(root.querySelector<HTMLButtonElement>('[data-value-download-illustration]')!.disabled).toBe(true);
+  const slider=root.querySelector<HTMLInputElement>('[data-value-sample]')!;
+  slider.value='0';slider.dispatchEvent(new Event('input',{bubbles:true}));
+  expect(root.querySelector<HTMLButtonElement>('[data-value-download-illustration]')!.disabled).toBe(true);
+});
+
+it('downloads the entered cashflows with the same computed result and captured coordinate',async()=>{
+  const root=mount(),form=root.querySelector<HTMLFormElement>('[data-value-demo]')!;
+  root.querySelector<HTMLButtonElement>('[data-value-add-cashflow]')!.click();
+  root.querySelector<HTMLInputElement>('[name="cashflowAmount"]')!.value='12.5';
+  root.querySelector<HTMLInputElement>('[name="cashflowPulse"]')!.value=String(clock.pulse);
+  form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+  let exported:Blob|undefined;
+  vi.spyOn(URL,'createObjectURL').mockImplementation(blob=>{exported=blob as Blob;return 'blob:test';});
+  vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
+  root.querySelector<HTMLButtonElement>('[data-value-download-illustration]')!.click();
+  const record=JSON.parse(await exported!.text());
+  expect(record.scenario.cashflows).toEqual([{atPulse:String(clock.pulse),amountPhi:'12.5'}]);
+  expect(record.evaluationPulse).toBe(clock.pulse);
+  expect(record.unsigned.inputs.pv_phi).toBe(12.5);
+  expect(record.unsigned.valuePhi.toFixed(6)).toBe(root.querySelector('[data-value-amount]')!.textContent!.replaceAll(',','').replace(' Φ',''));
+  expect(record.sdkVersion).toBe('129.0.0');
+  expect(record.writesPerformed).toBe(0);
+});
+
 it('mounts idempotently and computes real samples when the coordinate changes', async () => {
   const root = mount(), form = root.querySelector<HTMLFormElement>('[data-value-demo]')!;
   const before = root.querySelector('[data-value-amount]')!.textContent;

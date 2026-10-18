@@ -10,6 +10,7 @@ import {
 
 export const VALUE_POLICY = Object.freeze({ algorithm: SIGIL_VALUATION_ALGORITHM, checksum: SIGIL_VALUATION_POLICY_CHECKSUM });
 export const MAX_INPUT_BYTES = 64 * 1024 * 1024;
+export const MAX_CASHFLOWS = 64;
 export const DEMO_SCENARIO = Object.freeze({ originPulse: '1000000', evaluationPulse: '1017491', seriesSize: '1', quality: 'med' as const, usdPerPhiMicrocents: '1000000000' });
 
 export type ValueScenario = Readonly<{
@@ -18,6 +19,7 @@ export type ValueScenario = Readonly<{
   seriesSize: string;
   quality: 'low' | 'med' | 'high';
   usdPerPhiMicrocents: string;
+  cashflows?: readonly Readonly<{ atPulse: string; amountPhi: string }>[];
 }>;
 
 export function canonicalInteger(value: string, name: string, positive = false): bigint {
@@ -31,6 +33,14 @@ export function wholePulse(value: string, name: string): number {
   return Number(integer);
 }
 
+function cashflowAmount(value: string, name: string): number {
+  if (value.length > 32 || !/^(0|[1-9][0-9]*)(\.[0-9]{1,6})?$/.test(value)) throw new Error(`${name}: enter a positive Φ amount with up to 6 decimal places.`);
+  const [whole, fraction = ''] = value.split('.');
+  const micro = BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, '0'));
+  if (micro <= 0n || micro > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error(`${name}: outside the calculator’s positive micro-unit range.`);
+  return Number(micro) / 1_000_000;
+}
+
 /** UI illustration only. Editable metadata never acquires proof authority. */
 export function calculateIllustration(scenario: ValueScenario) {
   const origin = wholePulse(scenario.originPulse, 'Origin pulse');
@@ -40,6 +50,15 @@ export function calculateIllustration(scenario: ValueScenario) {
   if (evaluation < origin) throw new Error('Evaluation pulse must be at or after the origin.');
   if (!['low', 'med', 'high'].includes(scenario.quality)) throw new Error('Quality is unsupported.');
   const metadata: SigilMetadataLite = { pulse: origin, kaiPulse: origin, seriesSize: size, quality: scenario.quality };
+  if (scenario.cashflows?.length) {
+    if (scenario.cashflows.length > MAX_CASHFLOWS) throw new Error(`Use at most ${MAX_CASHFLOWS} cashflows.`);
+    metadata.ip = { expectedCashflowPhi: scenario.cashflows.map((cashflow, index) => {
+      const name = `Cashflow ${index + 1}`;
+      const atPulse = wholePulse(cashflow.atPulse, `${name} pulse`);
+      if (atPulse < origin) throw new Error(`${name} pulse must be at or after the origin.`);
+      return { atPulse, amountPhi: cashflowAmount(cashflow.amountPhi, `${name} amount`) };
+    }) };
+  }
   const computation = computeIntrinsicUnsigned(metadata, evaluation);
   const phiMicro = Math.round(computation.unsigned.valuePhi * 1_000_000);
   if (!Number.isSafeInteger(phiMicro) || phiMicro < 0) throw new Error('Valuation result is outside the SDK micro-unit display range.');

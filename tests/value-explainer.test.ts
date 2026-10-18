@@ -1,12 +1,42 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computeIntrinsicUnsigned, SIGIL_VALUATION_POLICY_CHECKSUM, type SigilMetadataLite } from '@receiz/sdk/valuation';
-import { calculateIllustration, canonicalInteger, DEMO_SCENARIO, formatPhiMicro, formatUsdCents, parseEvaluationCoordinates, sampleIllustration } from '../src/value-explainer/model';
+import { calculateIllustration, canonicalInteger, DEMO_SCENARIO, formatPhiMicro, formatUsdCents, illustrationRecord, parseEvaluationCoordinates, sampleIllustration } from '../src/value-explainer/model';
 import { createDisplayBasis, inspectHeldProof, inspectReplayFile, quoteDisplayUsd } from '../src/value-explainer/proof';
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe('v129 value explainer arithmetic and source boundary', () => {
+  it('discounts the entered per-object payments through the installed SDK and retains them in the exported trace',()=>{
+    const cashflows=[{atPulse:'1000000',amountPhi:'3.5'},{atPulse:'1034982',amountPhi:'20'}];
+    const scenario={...DEMO_SCENARIO,evaluationPulse:'1017491',cashflows};
+    const result=calculateIllustration(scenario);
+    const expected=3.5+20/(1+17491/17491.270421);
+    expect(result.metadata.ip?.expectedCashflowPhi).toEqual([{atPulse:1000000,amountPhi:3.5},{atPulse:1034982,amountPhi:20}]);
+    expect(result.unsigned.inputs.pv_phi).toBeCloseTo(expected,12);
+    expect(result.calculation.find(term=>term.id==='ip.phi.1.presentValue')?.operands).toEqual({amount:'20',discount:String(1/(1+17491/17491.270421))});
+    const record=illustrationRecord(scenario);
+    expect(record.scenario.cashflows).toEqual(cashflows);
+    expect(record.authority).toBe('illustrative-metadata-only');
+    expect(record.writesPerformed).toBe(0);
+    const samples=sampleIllustration(scenario);
+    expect(samples.samples[0].valuePhi).toBe(calculateIllustration({...scenario,evaluationPulse:scenario.originPulse}).unsigned.valuePhi);
+    expect(samples.samples.at(-1)!.valuePhi).toBe(result.unsigned.valuePhi);
+    expect(calculateIllustration({...scenario,evaluationPulse:'1034982'}).unsigned.inputs.pv_phi).toBe(23.5);
+    expect(calculateIllustration({...scenario,cashflows:[]}).unsigned.inputs.pv_phi).toBe(0);
+  });
+
+  it('rejects malformed payments before accepting a cashflow illustration',()=>{
+    for(const amountPhi of ['', '-1','0','01','1e3','NaN','Infinity','1.0000001','9007199254.740992']){
+      expect(()=>calculateIllustration({...DEMO_SCENARIO,cashflows:[{atPulse:'1017491',amountPhi}]}),amountPhi).toThrow('Cashflow 1 amount');
+    }
+    for(const atPulse of ['01','1.2','9007199254740992','999999']){
+      expect(()=>calculateIllustration({...DEMO_SCENARIO,cashflows:[{atPulse,amountPhi:'1'}]}),atPulse).toThrow('Cashflow 1');
+    }
+    expect(()=>calculateIllustration({...DEMO_SCENARIO,cashflows:Array.from({length:65},()=>({atPulse:'1017491',amountPhi:'1'}))})).toThrow('64');
+    expect(calculateIllustration({...DEMO_SCENARIO,cashflows:[{atPulse:'1017491',amountPhi:'0.000001'}]}).unsigned.inputs.pv_phi).toBe(.000001);
+  });
+
   it('preserves all published pre-v129 numeric fixtures and their exact serialization', () => {
     const fixture = JSON.parse(readFileSync(new URL('../node_modules/@receiz/sdk/fixtures/sigil-valuation-v129.json', import.meta.url), 'utf8')) as { fixtures: { id: string; meta: SigilMetadataLite; nowPulse: number; unsigned: unknown; stampPayload: string }[] };
     expect(SIGIL_VALUATION_POLICY_CHECKSUM).toBe('b05b2049');

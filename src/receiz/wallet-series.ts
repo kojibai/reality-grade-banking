@@ -1,5 +1,5 @@
 import type { SharedWallet } from './shared-wallet';
-import { chartChange, sampleChartIndices } from '../core/chart-history';
+import { chartChange, chartPeriodPoints, sampleChartIndices, type ChartPeriod } from '../core/chart-history';
 export interface WalletPoint { userId: string; at: string; kaiUPulse: string | null; totalUsdCents: string; reserveUsdCents: string; settlementUsdCents: string; valuation?: 'deterministic-v129'|'legacy-model-v129'; }
 // The exact v129 KKS day lattice; the displayed whole-pulse approximation is 17,491.
 export const KAI_DAY_UPULSES = 17_491_270_421n;
@@ -39,6 +39,11 @@ export function appendWalletPoint(history: readonly WalletPoint[], wallet: Share
   const point = { userId: wallet.userId, at, kaiUPulse, totalUsdCents: wallet.totalUsdCents, reserveUsdCents: wallet.reserveUsdCents, settlementUsdCents: wallet.settlementUsdCents };
   const previous = history.filter(item => item.userId === wallet.userId && Date.parse(item.at) < Date.parse(at));
   return retainWalletPoints([...previous, point]);
+}
+/** One display window for the chart and its movement figures; no synthetic opening balance. */
+export function selectBalanceChartPoints(history: readonly WalletPoint[], wallet: SharedWallet | null, observedAt: string | null, period: ChartPeriod): WalletPoint[] {
+  const full = wallet && observedAt ? appendWalletPoint(history, wallet, observedAt, history.at(-1)?.kaiUPulse ?? null) : history;
+  return chartPeriodPoints(full.filter(point => point.userId === wallet?.userId), period);
 }
 export function settlementDayChange(history: readonly WalletPoint[], nowUPulse: string): { deltaCents: string; percent: number | null; startUPulse: string } | null {
   if (!/^\d{1,30}$/.test(nowUPulse)) return null;

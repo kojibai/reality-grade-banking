@@ -67,17 +67,40 @@ it('fills the plotting width with the available real observations for every sele
     }
   }finally{act(()=>root.unmount());}
 });
-it('labels the partial observed settlement movement as Day with its actual interval in the title',()=>{
+it('labels the selected daily settlement movement as Day with its actual interval in the title',()=>{
   const host=document.createElement('div'),root=createRoot(host);
   const wallet={userId:'account',totalUsdCents:'12000',reserveUsdCents:'0',settlementUsdCents:'12000'} as SharedWallet;
   const history=['10000','12000'].map((cents,index)=>({userId:'account',at:`2026-10-17T12:0${index}:00Z`,kaiUPulse:String(17491270422n+BigInt(index)),totalUsdCents:cents,reserveUsdCents:'0',settlementUsdCents:cents}));
   const noop=()=>{};
   try{
     act(()=>root.render(<LiveAccount wallet={wallet} walletHistory={history} busy={false} error={null} observedAt={history[1].at} onRefresh={noop} onSend={noop} onReceive={noop} onBalance={noop} onAssets={noop} onLedger={noop}/>));
+    act(()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='1D')!.click());
     const change=host.querySelector('.settlement-day-change')!;
     expect(change.textContent).toContain('· Day');
-    expect(change.getAttribute('title')).toContain('current day');
+    expect(change.getAttribute('title')).toContain('available');
     expect(change.getAttribute('title')).toContain(new Date(history[0].at).toLocaleString());
+  }finally{act(()=>root.unmount());}
+});
+it('keeps Settlement movement in the selected chart window, including rail changes and a single observation',()=>{
+  const host=document.createElement('div'),root=createRoot(host),end=Date.UTC(2026,9,18,12),noop=()=>{};
+  const history=[{days:400,cents:'1000'},{days:200,cents:'2000'},{days:60,cents:'3000'},{days:10,cents:'4000'},{days:3,cents:'5000'},{days:2/24,cents:'6000'},{days:0,cents:'10000'}].map(({days,cents})=>({userId:'account',at:new Date(end-days*86400000).toISOString(),kaiUPulse:null,totalUsdCents:String(BigInt(cents)+1000n),reserveUsdCents:'1000',settlementUsdCents:cents}));
+  const wallet={...history.at(-1)} as SharedWallet;
+  const render=(rows=history)=>act(()=>root.render(<LiveAccount wallet={wallet} walletHistory={rows} busy={false} error={null} observedAt={history.at(-1)!.at} onRefresh={noop} onSend={noop} onReceive={noop} onBalance={noop} onAssets={noop} onLedger={noop}/>));
+  try{
+    render();
+    const select=(text:string)=>act(()=>[...host.querySelectorAll('button')].find(button=>button.textContent===text)!.click());
+    for(const [period,percent,amount,label] of [['All','+900.00%','+$90.00','All'],['1D','+66.67%','+$40.00','Day'],['1W','+100.00%','+$50.00','1W'],['1M','+150.00%','+$60.00','1M'],['3M','+233.33%','+$70.00','3M'],['1Y','+400.00%','+$80.00','1Y']]){
+      select(period);
+      for(const rail of ['Total','Reserve','Settlement']){
+        select(rail);const change=host.querySelector('.settlement-day-change')!;
+        expect(change.textContent,`${period} ${rail}`).toContain(percent);
+        expect(change.textContent).toContain(`${amount} · ${label}`);
+        // The Settlement rail and its card use exactly the same endpoints.
+        if(rail==='Settlement')expect(host.querySelector('.chart-period-change')!.textContent).toContain(percent);
+      }
+    }
+    select('1D');render(history.slice(-1));
+    expect(host.querySelector('.settlement-day-change')).toBeNull();
   }finally{act(()=>root.unmount());}
 });
 it('uses the displayed period opening for change and never carries an older out-of-period balance into it',()=>{
@@ -89,6 +112,28 @@ it('uses the displayed period opening for change and never carries an older out-
     act(()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='1D')!.click());
     expect(host.querySelector('.chart-period-change')!.textContent).toContain('20.00%');
     expect(host.querySelector('svg')!.getAttribute('aria-label')).toContain('from 100 to 120');
-    expect(Number(host.querySelector('svg')!.getAttribute('data-range-start'))).toBe(end-86400000);
+    expect(Number(host.querySelector('svg')!.getAttribute('data-range-start'))).toBe(end-2*3600000);
+    expect(host.querySelector('svg path[fill="none"]')!.getAttribute('d')).toMatch(/^M12,/);
+  }finally{act(()=>root.unmount());}
+});
+it('fits each sparse selected window to both plot edges across all balance rails',()=>{
+  const host=document.createElement('div'),root=createRoot(host),end=Date.UTC(2026,9,18,12);
+  const days=[400,200,60,10,3,2/24,1/24,0];
+  const history=days.map((day,index)=>({userId:'account',at:new Date(end-day*86400000).toISOString(),kaiUPulse:null,totalUsdCents:String(20000+index*2000),reserveUsdCents:String(10000+index*1000),settlementUsdCents:String(10000+index*1000)}));
+  const wallet={...history.at(-1)} as SharedWallet;
+  try{
+    act(()=>root.render(<BalanceChart wallet={wallet} history={history} observedAt={new Date(end).toISOString()}/>));
+    const select=(text:string)=>act(()=>[...host.querySelectorAll('button')].find(button=>button.textContent===text)!.click());
+    for(const rail of ['Total','Settlement','Reserve']){
+      select(rail);
+      for(const [period,first] of [['All',0],['1D',5],['1W',4],['1M',3],['3M',2],['1Y',1]] as const){
+        select(period);const svg=host.querySelector('svg')!;
+        expect(Number(svg.getAttribute('data-range-start')),`${rail} ${period}`).toBe(Date.parse(history[first].at));
+        expect(Number(svg.getAttribute('data-range-end'))).toBe(end);
+        expect(svg.querySelector('path[fill="none"]')!.getAttribute('d')).toMatch(/^M12,/);
+        expect(svg.querySelector('circle')!.getAttribute('cx')).toBe('308');
+        expect(svg.getAttribute('aria-label')).toContain(`from ${Number(history[first][rail==='Total'?'totalUsdCents':rail==='Reserve'?'reserveUsdCents':'settlementUsdCents'])/100} to`);
+      }
+    }
   }finally{act(()=>root.unmount());}
 });
