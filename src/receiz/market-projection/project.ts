@@ -1,6 +1,6 @@
 import { computeIntrinsicUnsigned, type SigilMetadataLite } from '@receiz/sdk/valuation';
 import { DEFAULT_ISSUANCE_POLICY, quotePhiForUsd } from '../canonical-market-issuance';
-import type { MarketCapSource, MarketValueRow } from './source';
+import type { MarketCapSource, MarketValueRow,MarketPulseSeed } from './source';
 import type { ChartPeriod } from '../../core/chart-history';
 import { marketPulseTime, marketPeriodPulses } from './coordinates';
 // Canonical public Proof Graph display rules from the v129 Receiz host.
@@ -11,13 +11,17 @@ const roundPhi = (n: number) => Math.round(n * 1e6) / 1e6;
 function hash(input: string) { let h = 2166136261; for (let i = 0; i < input.length; i++) h = Math.imul(h ^ input.charCodeAt(i), 16777619); return h >>> 0; }
 const rateMeta = { ip: { expectedCashflowPhi: [] } } as unknown as SigilMetadataLite;
 function rate(pulse: number, meta = rateMeta, computed?: ReturnType<typeof computeIntrinsicUnsigned>) { const quote = quotePhiForUsd({ meta, nowPulse: pulse, usd: 100, currentStreakDays: 0, lifetimeUsdSoFar: 0, plannedHoldBeats: 0 }, DEFAULT_ISSUANCE_POLICY, computed); if (!Number.isFinite(quote.usdPerPhi) || quote.usdPerPhi <= 0) throw new Error('Public valuation quote is unavailable.'); return quote.usdPerPhi; }
+export function publicSigilQuoteAtPulse(seed:MarketPulseSeed,pulse:number){
+ if(seed.kind!=='sigil'||!Number.isSafeInteger(pulse)||pulse<seed.claimPulse)throw Error('Public object valuation seed is unavailable.');
+ const meta={pulse:seed.claimPulse,kaiPulse:seed.claimPulse,beat:seed.beat,stepIndex:seed.stepIndex,stepsPerBeat:44,quality:'high',creatorVerified:seed.creatorVerified,creatorRep:0,chakraDay:seed.chakraDay??undefined,kaiSignature:seed.kaiSignature??undefined,userPhiKey:seed.userPhiKey??undefined}as SigilMetadataLite;
+ const computed=computeIntrinsicUnsigned(meta,pulse),phi=Math.max(.000001,roundPhi(computed.unsigned.valuePhi));
+ const usdPerPhi=rate(pulse,meta,computed);return {pricePhi:phi,quoteUsdPerPhi:usdPerPhi,priceUsd:Math.round(phi*usdPerPhi*100)/100};
+}
+export function publicSigilUsdAtPulse(seed:MarketPulseSeed,pulse:number):number{return publicSigilQuoteAtPulse(seed,pulse).priceUsd;}
 function marketValue(row: MarketValueRow, pulse: number, usdPerPhi: number): number {
   const item = row.marketItem!; let phi: number;
   if (item.livePulseSeed?.kind === 'sigil') {
-    const seed = item.livePulseSeed, meta = { pulse: seed.claimPulse, kaiPulse: seed.claimPulse, beat: seed.beat, stepIndex: seed.stepIndex, stepsPerBeat: 44, quality: 'high', creatorVerified: seed.creatorVerified, creatorRep: 0, chakraDay: seed.chakraDay ?? undefined, kaiSignature: seed.kaiSignature ?? undefined, userPhiKey: seed.userPhiKey ?? undefined } as SigilMetadataLite;
-    const p = Math.max(seed.claimPulse, pulse);
-    const computed = computeIntrinsicUnsigned(meta, p);
-    phi = Math.max(.000001, roundPhi(computed.unsigned.valuePhi)); usdPerPhi = rate(p, meta, computed);
+    return publicSigilUsdAtPulse(item.livePulseSeed,Math.max(item.livePulseSeed.claimPulse,pulse));
   } else {
     const base = Math.max(.000001, item.pricePhi || item.priceUsd / Math.max(item.quoteUsdPerPhi, 1)), key = item.pricingSourceKey || item.id;
     const wave = Math.sin(pulse * .173 + hash(`${key}:pulse-a`) % 6283 / 1000) * .56 + Math.cos(pulse * .071 + hash(`${key}:pulse-b`) % 6283 / 1000) * .31 + Math.sin(pulse * .287 + hash(`${key}:pulse-c`) % 6283 / 1000) * .13;
@@ -43,8 +47,11 @@ export function marketAssetUsdAtPulse(row:MarketValueRow,pulse:number):number{
 export function marketCapUsdAtPulse(seed: MarketCapSource, pulse: number): number {
   if (!Number.isSafeInteger(pulse) || pulse < seed.firstIssuancePulse) throw new Error('Market projection pulse outside its issuance range.');
   if (pulse === seed.serverPulse) return round(seed.currentUsd);
-  const quote = rate(pulse), previous = rate(Math.max(0, pulse - 1)), quoteMove = Math.abs(quote - previous) / previous;
-  return round(seed.valueRows.reduce((sum, row) => sum + (row.source === 'market-desk-live-asset' ? marketValue(row, pulse, quote) : sportsValue(row, pulse, quoteMove)), 0));
+  return marketRowsUsdAtPulse(seed.valueRows,pulse);
+}
+export function marketRowsUsdAtPulse(rows:MarketValueRow[],pulse:number):number{
+ const quote=rate(pulse),previous=rate(Math.max(0,pulse-1)),quoteMove=Math.abs(quote-previous)/previous;
+ return round(rows.reduce((sum,row)=>sum+(row.source==='market-desk-live-asset'?marketValue(row,pulse,quote):sportsValue(row,pulse,quoteMove)),0));
 }
 export { marketPulseTime, marketPeriodPulses } from './coordinates';
 export function projectMarketPeriod(seed: MarketCapSource, period: ChartPeriod) { return marketPeriodPulses(seed, period).map(pulse => ({ at: new Date(marketPulseTime(pulse)).toISOString(), pulse, usdCents: String(Math.round(marketCapUsdAtPulse(seed, pulse) * 100)) })); }

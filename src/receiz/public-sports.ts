@@ -1,4 +1,5 @@
 import { safeReceizPublicUrl, type PublicMarketCatalog, type PublicMarketItem } from './public-market';
+import {readPublicSportsValueRow} from './market-projection/source';
 function object(value: unknown): Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function cents(value: unknown): string | null { if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return null; const result = Math.round(value * 100); return Number.isSafeInteger(result) ? String(result) : null; }
 function count(value: unknown): number | null { return Number.isSafeInteger(value) && Number(value) >= 0 && Number(value) <= 1e9 ? Number(value) : null; }
@@ -18,9 +19,10 @@ export function mergePublicSports(catalog: PublicMarketCatalog, input: unknown):
     const normalized = id.toLowerCase(), existing = items.get(normalized);
     if (existing?.category === 'sports') continue;
     const item: PublicMarketItem = { id: existing?.id ?? `sports:${normalized}`, assetId: normalized, title: card.athlete, summary: `${card.sport} · ${typeof card.rarity === 'string' ? card.rarity.slice(0, 40) : 'Sports card'}${typeof card.issueLine === 'string' ? ` · ${card.issueLine.slice(0, 100)}` : ''}`, category: 'sports', sourceUrl: safeReceizPublicUrl(card.route), verifyUrl: null, originalUrl: null, originalDigest: null, pulse: null, sealedAt: null, ownerUsername: null, ownerDisplayName: null, ownerProfileUrl: null, priceUsd: unit === null ? null : Number(unit) / 100, changePct: null, chart: [], circulationCount: circulation, pricedCount: priced, capitalizationUsdCents: total, authority: 'projection-only', canTrade: false };
+    item.sportsValuation=readPublicSportsValueRow(card.valuationRow,claim);
     items.set(normalized, item);
   }
-  return { ...catalog, items: [...items.values()], sportsCoverage: complete ? 'complete' : 'partial' };
+  return { ...catalog, items: [...items.values()], sportsCoverage: complete ? 'complete' : 'partial',sportsObservedAt:typeof data.generatedAt==='string'&&Number.isFinite(Date.parse(data.generatedAt))?data.generatedAt:null };
 }
 export async function fetchPublicSports(signal?: AbortSignal): Promise<unknown> {
   const response = await fetch('/api/bank/public-market/sports', { credentials: 'omit', signal });

@@ -2,6 +2,10 @@
 
 This file describes the current implementation. Earlier dated verification reports record historical observations and are not current completion claims.
 
+Public object charts retain their exact public valuation operands at discovery, so opening a newly listed object does not wait for the capitalization feed. Public capitalization combines the current complete collection with claim-bound sports operands, preserves newer captures, and publishes its amount and all six intervals together. Held operands advance at local Kai pulses without API quotes; synchronization supplies changed inventory. These are reproducible display valuations, not account ownership or spending authority.
+
+The October 18 BJ Klock Identity Seal check still receives `account_proof_source_unavailable` from the account-proof source. Its portable snapshot does not carry a complete wallet timeline. Successful login and a current balance therefore do not establish complete historical account charts. Offline Note registration now distinguishes service, credential, counter and attestation failures and exposes only a bounded support code; real iPhone custody qualification remains unverified.
+
 | Function | Bankeiz implementation | Remaining production evidence |
 | --- | --- | --- |
 | Account history and chart | Replays accepted Reserve cents/Phi movements from the first sealed activity and recomputes historical dollar valuations with the pinned v129 pricing law; retained identity-bound history supplies first paint | A complete accepted account statement or reconciled complete same-owner carried history is required. Computed samples are display valuations, not recorded historical quotes or spending authority; [source and behavior](historical-account-valuation-v129.md) |

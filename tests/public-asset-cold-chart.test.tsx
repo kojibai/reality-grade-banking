@@ -11,6 +11,14 @@ const item=parsePublicMarket(marketFile,marketFile.snapshot).items.find(item=>so
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 beforeEach(()=>{vi.resetModules();localStorage.clear();});
 afterEach(()=>{vi.unstubAllGlobals();});
+it('opens a newly published object’s six periods in its first frame without capitalization or quotes',async()=>{
+ const row=source.valueRows.find(row=>row.marketItem?.id===item.id)!,seed={...row.marketItem!.livePulseSeed!,claimPulse:14708297};
+ const object=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:bjklock:d1d5a3f4-5db9-444e-88f5-95443fb70598',receizId:'d1d5a3f4-5db9-444e-88f5-95443fb70598',title:'At 4, Dad taught me money.',pulse:String(seed.claimPulse),valueUsd:2469.03,livePulseSeed:seed}]}}).items[0];
+ const fetch=vi.fn().mockRejectedValue(Error('unrelated sources unavailable'));vi.stubGlobal('fetch',fetch);
+ const {PublicAssetDetail}=await import('../src/features/market/PublicAssetDetail');const host=document.createElement('div'),root=createRoot(host),frames:number[]=[];
+ function Probe(){useLayoutEffect(()=>{frames.push(host.querySelectorAll('.periods button').length);},[]);return <PublicAssetDetail item={object}/>;}
+ try{await act(async()=>root.render(<Probe/>));expect(frames[0]).toBe(6);for(const button of host.querySelectorAll<HTMLButtonElement>('.periods button')){act(()=>button.click());expect(host.querySelector('.asset-chart svg[data-range-start]')).not.toBeNull();}expect(fetch).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
+});
 it('opens period history directly from a showcase object before visiting Market or Ledger',async()=>{
  const fetch=vi.fn(async(path:unknown)=>path==='/receiz-public-capitalization.json'?Response.json(sourceFile):new Response('',{status:503}));vi.stubGlobal('fetch',fetch);
  const {PublicAssetDetail}=await import('../src/features/market/PublicAssetDetail');const host=document.createElement('div'),root=createRoot(host);
@@ -45,7 +53,7 @@ it('keeps a live same-pulse object model when an older shipped response arrives 
  let finish!:(response:Response)=>void;
  vi.stubGlobal('fetch',vi.fn(async(path:unknown)=>path==='/receiz-public-capitalization.json'?new Promise<Response>(resolve=>{finish=resolve;}):Response.json(sourceFile)));
  const {PublicAssetDetail}=await import('../src/features/market/PublicAssetDetail');const host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<PublicAssetDetail item={item}/>));expect(host.querySelectorAll('.periods button')).toHaveLength(6);await act(async()=>finish(Response.json(old)));expect(host.querySelectorAll('.periods button')).toHaveLength(6);}finally{act(()=>root.unmount());}
+ try{await act(async()=>root.render(<PublicAssetDetail item={{...item,livePulseSeed:undefined}}/>));expect(host.querySelectorAll('.periods button')).toHaveLength(6);await act(async()=>finish(Response.json(old)));expect(host.querySelectorAll('.periods button')).toHaveLength(6);}finally{act(()=>root.unmount());}
 });
 it('coalesces discovery, object and overview reads of the same public endpoint',async()=>{
  let finish!:(response:Response)=>void;const fetch=vi.fn(()=>new Promise<Response>(resolve=>{finish=resolve;}));vi.stubGlobal('fetch',fetch);

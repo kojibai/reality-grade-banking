@@ -12,6 +12,7 @@ export function usePublicMarket(active = true) {
   const [sportsStatus, setSportsStatus] = useState<'loading' | 'fresh' | 'retained' | 'missing'>(catalog?.items.some(item => item.category === 'sports') ? 'retained' : 'loading');
   const [error, setError] = useState<string | null>(null);
   const running = useRef<AbortController | null>(null);
+  const sportsRunning=useRef<AbortController|null>(null);
   const generation = useRef(0), sports = useRef<unknown>(null);
   useEffect(() => { try { sports.current = JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1') ?? 'null'); } catch { /* No retained public inventory. */ } }, []);
   const refresh = useCallback(async () => {
@@ -21,51 +22,53 @@ export function usePublicMarket(active = true) {
     void prepareMarketDisplaySource();
     const controller = new AbortController(); running.current = controller; const attempt = ++generation.current;
     setQuoteStatus('loading');
-    const quotesAttempt = fetchPublicQuotes(controller.signal).then(validatePublicQuotes).then(value => ({ value }), () => ({ value: null }));
-    const membershipAttempt = fetchPublicMarket(controller.signal).then(value => ({ value, error: null }), cause => ({ value: null, error: cause instanceof Error ? cause.message : 'The public Market could not be refreshed.' }));
-    const sportsAttempt = fetchPublicSports(controller.signal).catch(() => null);
-    const membership = await membershipAttempt;
-    if (!controller.signal.aborted && attempt === generation.current) {
-      const next = membership.value;
-      setCatalog(current => {
-        if (!next || !next.complete && current) return current;
-        const previous = new Map(current?.items.map(item => [item.id, item]));
-        return mergePublicSports({ ...next, items: next.items.map(item => {
-          const quoted = previous.get(item.id);
-          return quoted?.chart.length ? { ...item, priceUsd: quoted.priceUsd, changePct: quoted.changePct, chart: quoted.chart } : item;
-        }) }, sports.current);
+    const currentAttempt=()=>!controller.signal.aborted&&attempt===generation.current;
+    let latestQuotes:unknown=null;
+    // Independent sources publish independently. A stalled sports response must
+    // never hold a proof object's available quote or history behind it.
+    const quotesAttempt = fetchPublicQuotes(controller.signal).then(validatePublicQuotes).then(value=>{
+      if(!currentAttempt())return;latestQuotes=value;
+      setCatalog(current=>current?mergePublicQuotes(current,value):current);setQuoteStatus('fresh');
+    },()=>{if(currentAttempt()){setQuoteStatus('stale');setError(message=>[message,'Public prices and charts could not be refreshed. Showing cached quotes.'].filter(Boolean).join(' '));}});
+    const membershipAttempt = fetchPublicMarket(controller.signal).then(value=>({value,error:null}),cause=>({value:null,error:cause instanceof Error?cause.message:'The public Market could not be refreshed.'})).then(membership=>{
+      if(!currentAttempt())return;const next=membership.value;
+      setCatalog(current=>{
+        if(!next||!next.complete&&current)return current;
+        const previous=new Map(current?.items.map(item=>[item.id,item]));
+        let updated=mergePublicSports({...next,items:next.items.map(item=>{
+          const quoted=previous.get(item.id);
+          return quoted?.chart.length?{...item,priceUsd:quoted.priceUsd,changePct:quoted.changePct,chart:quoted.chart}:item;
+        })},sports.current);
+        if(latestQuotes)updated=mergePublicQuotes(updated,latestQuotes);
+        return updated;
       });
-      setStatus(next?.complete ? 'live' : 'stale');
-      setError(next?.complete ? null : membership.error ?? 'The public collection is incomplete. Keeping the last complete collection.');
+      setStatus(next?.complete?'live':'stale');
+      setError(next?.complete?null:membership.error??'The public collection is incomplete. Keeping the last complete collection.');
+    });
+    if(!sportsRunning.current){
+      const cards=new AbortController();sportsRunning.current=cards;
+      void fetchPublicSports(cards.signal).catch(()=>null).then(value=>{
+        if(cards.signal.aborted)return;
+        if(value){sports.current=value;setCatalog(current=>current?mergePublicSports(current,value):current);setSportsStatus((value as {fallback?:boolean}).fallback===true?'retained':'fresh');}
+        else setSportsStatus(sports.current?'retained':'missing');
+      }).finally(()=>{if(sportsRunning.current===cards)sportsRunning.current=null;});
     }
-    const sportsData = await sportsAttempt;
-    if (!controller.signal.aborted && attempt === generation.current) {
-      if (sportsData) { sports.current = sportsData; setCatalog(current => current ? mergePublicSports(current, sportsData) : current); setSportsStatus((sportsData as { fallback?: boolean }).fallback === true ? 'retained' : 'fresh'); }
-      else setSportsStatus(sports.current ? 'retained' : 'missing');
-    }
-    const quotes = await quotesAttempt;
-    if (!controller.signal.aborted && attempt === generation.current) {
-      if (quotes.value) {
-        setCatalog(current => current ? mergePublicQuotes(current, quotes.value) : current); setQuoteStatus('fresh');
-      } else {
-        setQuoteStatus('stale'); setError(message => [message, 'Public prices and charts could not be refreshed. Showing cached quotes.'].filter(Boolean).join(' '));
-      }
-    }
+    await Promise.allSettled([membershipAttempt,quotesAttempt]);
     if (running.current === controller) running.current = null;
   }, []);
   useEffect(() => {
     if (!active) return;
     const seed = new AbortController();
     void fetch('/receiz-public-sports.json', { signal: seed.signal, credentials: 'omit' }).then(async response => { if (!response.ok) return; const data = await response.json(); if (seed.signal.aborted || sports.current) return; sports.current = data; setSportsStatus('retained'); setCatalog(current => current ? mergePublicSports(current, data) : current); }).catch(() => {});
-    if (!catalog||catalog.items.some(item=>item.category==='proof'&&item.hasLongForm===undefined)) void fetch('/receiz-public-market.json', { signal: seed.signal, credentials: 'omit' }).then(async response => {
+    void fetch('/receiz-public-market.json', { signal: seed.signal, credentials: 'omit' }).then(async response => {
       if (!response.ok) return; const input = await response.json(); const cached = parsePublicMarket(input, input.snapshot); rememberPublicOriginalLocators(cached);
-      if (seed.signal.aborted) return; setCatalog(current => {if(!current)return mergePublicSports(cached,sports.current);const hints=new Map(cached.items.map(item=>[item.id,item]));return {...current,items:current.items.map(item=>{const hint=hints.get(item.id);return item.hasLongForm===undefined&&hint&&hint.assetId===item.assetId&&hint.originalDigest===item.originalDigest&&hint.verifyUrl===item.verifyUrl?{...item,hasLongForm:hint.hasLongForm,readingUrl:hint.readingUrl}:item;})};});
+      if (seed.signal.aborted) return; setCatalog(current => {if(!current||cached.complete&&Date.parse(cached.observedAt??'')>Date.parse(current.observedAt??''))return mergePublicSports(cached,sports.current);const hints=new Map(cached.items.map(item=>[item.id,item]));return {...current,items:current.items.map(item=>{const hint=hints.get(item.id);if(!hint||hint.assetId!==item.assetId||hint.pulse!==item.pulse||hint.originalDigest!==item.originalDigest||hint.verifyUrl!==item.verifyUrl)return item;return {...item,...(item.hasLongForm===undefined?{hasLongForm:hint.hasLongForm,readingUrl:hint.readingUrl}:{}),...(!item.livePulseSeed&&hint.livePulseSeed?{livePulseSeed:hint.livePulseSeed,valuationBinding:hint.valuationBinding}:{})};})};});
     }).catch(() => {});
     void refresh();
     const interval = setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 60_000);
     const wake = () => { if (document.visibilityState === 'visible') void refresh(); };
     document.addEventListener('visibilitychange', wake); window.addEventListener('online', wake);
-    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); seed.abort(); running.current?.abort(); running.current = null; };
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); seed.abort(); running.current?.abort(); running.current = null;sportsRunning.current?.abort();sportsRunning.current=null; };
   }, [active, refresh]);
   return { catalog, quoteStatus, sportsStatus, status: !catalog && status === 'stale' ? 'error' as const : status, error, refresh };
 }

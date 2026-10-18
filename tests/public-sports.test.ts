@@ -4,6 +4,13 @@ import { parsePublicMarket } from '../src/receiz/public-market';
 import { publicMarketCapitalization } from '../src/receiz/market-capitalization';
 const base = () => parsePublicMarket({ ok: true, transport: { publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: 1 }, publicOriginals: [{ id: 'original', receizId: 'original', title: 'Original', valueUsd: 10 }] } });
 const card = { collectibleId: 'rsc_0123456789abcdef', claimHash: 'a'.repeat(64), athlete: 'Public athlete', sport: 'baseball', rarity: 'Rare', liveValueUsd: 25, totalValueUsd: 50, issuedCount: 2, vaultCount: 2, pricedCount: 2, route: '/game/sports/card/rsc_0123456789abcdef?claimHash=' + 'a'.repeat(64) };
+it('retains the canonical card valuation operands bound to its exact public claim',async()=>{
+ const {publicSportsValueRow}=await import('../src/receiz/market-projection/source');
+ const row=publicSportsValueRow({...card,cardId:'public-card',baseRating:90,proofValueUsd:20,proofTotalValueUsd:40,representativeValueUsd:25,card:{currentScore:2,projectedScore:3}});
+ const catalog=mergePublicSports(base(),{ok:true,schema:'receiz.sports_economy.live_inventory.v1',cards:[{...card,valuationRow:row}]});
+ expect(catalog.items[1].sportsValuation).toMatchObject({source:'sports-economy-card',seed:card.claimHash,baseUsdValue:20,birthUsdValue:20,marketUsdValue:25,proofTotalValueUsd:40,scoreDelta:2});
+ const wrong=mergePublicSports(base(),{ok:true,schema:'receiz.sports_economy.live_inventory.v1',cards:[{...card,valuationRow:{...row,seed:'b'.repeat(64)}}]});expect(wrong.items[1].sportsValuation).toBeUndefined();
+});
 it('adds public sports circulation and its reported aggregate value once per stable collectible', () => {
   const catalog = mergePublicSports(base(), { ok: true, schema: 'receiz.sports_economy.live_inventory.v1', generatedAt: '2026-10-14T12:00:00Z', cards: [card, card] });
   expect(catalog.items).toHaveLength(2);

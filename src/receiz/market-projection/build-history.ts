@@ -2,8 +2,13 @@ import { CHART_PERIODS, type ChartPeriod } from '../../core/chart-history';
 import { marketCapUsdAtPulse, marketPeriodPulses, marketPulseTime } from './project';
 import { marketCapSummary, marketHistoryBasis, retainMarketInterval, type CapitalizationPoint, type MarketHistorySnapshot } from './history';
 import type { MarketCapSource } from './source';
+import type{PublicMarketCatalog}from'../public-market';
+import{currentMarketDisplayModel}from'./catalog-source';
 /** Run at build time or in the worker; never calculate these curves on the UI thread. */
-export async function buildMarketHistory(source: MarketCapSource, previous: MarketHistorySnapshot | null = null, continuing: () => boolean = () => true, yieldSample: () => Promise<void> = async () => {}): Promise<MarketHistorySnapshot | null> {
+export async function buildMarketHistory(source: MarketCapSource, previous: MarketHistorySnapshot | null = null, continuing: () => boolean = () => true, yieldSample: () => Promise<void> = async () => {},current?:{catalog:PublicMarketCatalog|null;pulse:number}): Promise<MarketHistorySnapshot | null> {
+  if(current)source=currentMarketDisplayModel(source,current.catalog,current.pulse);
+  // A saved newer collection must survive while its matching operands load.
+  if(previous&&Date.parse(source.generatedAt)<Date.parse(previous.summary.generatedAt))return null;
   const basisSha256 = await marketHistoryBasis(source);
   if (!continuing()) return null;
   const sameBasis = previous?.basisSha256 === basisSha256 && previous.summary.serverPulse <= source.serverPulse;

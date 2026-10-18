@@ -5,6 +5,13 @@ const original = (i: number, extra = {}) => ({ id: `profile:alice:${i}`, receizI
 const membership = (items: unknown[]) => ({ ok: true, transport: { generatedAt: '2026-10-13T12:00:00Z', publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: items.length, revision: 'r1' }, publicOriginals: items } });
 
 describe('Receiz public Market catalog', () => {
+  it('retains each object’s existing valuation operands without granting financial authority',()=>{
+    const seed={kind:'sigil',claimPulse:12345,beat:2,stepIndex:3,creatorVerified:true,kaiSignature:'alice',userPhiKey:'public-model',unrelated:'omit'};
+    const item=parsePublicMarket(membership([original(1,{livePulseSeed:seed})])).items[0];
+    expect(item).toMatchObject({livePulseSeed:{kind:'sigil',claimPulse:12345,beat:2,stepIndex:3,creatorVerified:true,kaiSignature:'alice',userPhiKey:'public-model'},authority:'projection-only',canTrade:false});
+    expect(item.livePulseSeed).not.toHaveProperty('unrelated');
+    for(const bad of [{...seed,claimPulse:12346},{...seed,beat:36},{...seed,creatorVerified:'true'},{...seed,userPhiKey:'x'.repeat(513)}])expect(parsePublicMarket(membership([original(1,{livePulseSeed:bad})])).items[0].livePulseSeed).toBeUndefined();
+  });
   it('retains only a non-authoritative essay availability hint without importing public essay text',()=>{
     const item=parsePublicMarket(membership([original(1,{profileOriginal:{hasLongForm:true}})])).items[0];
     expect(item.hasLongForm).toBe(true);expect(Object.hasOwn(item,'longForm')).toBe(false);

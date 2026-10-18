@@ -32,6 +32,10 @@
 .balance-proof-notice a svg { flex: 0 0 auto; }
 .demo-notice { color: #919bab; text-align: center; margin-top: 21px; font-size: 11px; line-height: 1.5; }
 .error-message { color: #ad3b4b; background: #fff0f1; border: 1px solid #f5cfd5; padding: 12px; border-radius: 10px; font-size: 13px; margin-top: 17px; line-height: 1.5; }
+.note-registration-details { margin: 8px 0 16px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.note-registration-details summary { cursor: pointer; width: fit-content; padding: 4px 0; }
+.note-registration-details code { display: block; margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; overflow-wrap: anywhere; color: var(--navy); }
+.note-registration-details p { margin: 8px 0 0; }
 .status-icon { width: 64px; height: 64px; border-radius: 20px; background: #e8effc; color: var(--blue); display: grid; place-items: center; margin: 9px 0 24px; }.status-icon.success { background: #e3f3eb; color: var(--green); animation: reveal .3s ease-out; }
 .detail-list { margin: 22px 0; }.detail-list > div { display: flex; gap: 15px; justify-content: space-between; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 13px; align-items: center; }.detail-list > div > span { color: #79869a; }.detail-list strong { text-align: right; font-size: 13px; max-width: 62%; overflow-wrap: anywhere; }.detail-list > p { margin-top: 17px; }
 .note-box { display: flex; align-items: flex-start; gap: 11px; background: #eef3fb; border-radius: 12px; padding: 15px; color: #607895; font-size: 12px; line-height: 1.6; }.note-box svg { flex-shrink: 0; margin-top: 2px; }

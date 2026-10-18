@@ -32,6 +32,18 @@ it('updates known public quotes even when membership is temporarily unavailable'
   network.quotes.mockResolvedValueOnce(quoteInput()).mockResolvedValueOnce(quoteInput(28));
   await observe(async read => { await act(async () => { await read().refresh(); }); expect(read().catalog?.items[0].priceUsd).toBe(28); expect(read().status).toBe('stale'); });
 });
+it('applies available object quotes without waiting for an unrelated card inventory response',async()=>{
+ network.membership.mockResolvedValue(parsePublicMarket(sourceInput()));network.quotes.mockResolvedValue(quoteInput(28));
+ vi.stubGlobal('fetch',vi.fn(async input=>input==='/api/bank/public-market/sports'?new Promise<Response>(()=>{}):new Response('',{status:404})));
+ let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket();return null;}
+ try{await act(async()=>root.render(<Probe/>));expect(state.catalog?.items[0].chart).toEqual([9,28]);expect(state.quoteStatus).toBe('fresh');expect(state.sportsStatus).toBe('loading');}finally{act(()=>root.unmount());}
+});
+it('continues refreshing membership and quotes while an earlier card request is still pending',async()=>{
+ network.membership.mockResolvedValue(parsePublicMarket(sourceInput()));network.quotes.mockResolvedValueOnce(quoteInput(28)).mockResolvedValue(quoteInput(42));
+ vi.stubGlobal('fetch',vi.fn(async input=>input==='/api/bank/public-market/sports'?new Promise<Response>(()=>{}):new Response('',{status:404})));
+ let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket();return null;}
+ try{await act(async()=>root.render(<Probe/>));await act(async()=>state.refresh());expect(state.catalog?.items[0].priceUsd).toBe(42);expect(state.catalog?.items[0].chart).toEqual([9,42]);}finally{act(()=>root.unmount());}
+});
 it('retains previously obtained public charts until refreshed quotes arrive', async () => {
   const input = { ok: true, transport: { publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: 1, revision: 'r1' }, publicOriginals: [{ id: 'a', receizId: 'a', title: 'A', valueUsd: 10 }] } };
   const seed = { ...input, snapshot: { ok: true, data: { schema: 'receiz.market.public-snapshot.v1', liveMarkets: [{ itemId: 'a', visibility: 'public', priceUsd: 10, quoteUsdPerPhi: 1, chart: [{ value: 9 }, { value: 10 }] }] } } };
@@ -59,4 +71,13 @@ it('adds source-bound reading availability to an older retained catalog without 
  vi.stubGlobal('fetch',vi.fn(async input=>input==='/receiz-public-market.json'?Response.json(seed):new Response('',{status:404})));
  let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket();return null;}
  try{await act(async()=>root.render(<Probe/>));expect(state.catalog?.items[0].hasLongForm).toBe(true);expect(state.catalog?.items[0].priceUsd).toBe(10);}finally{act(()=>root.unmount());}
+});
+it('upgrades retained objects with source-bound pricing operands from the new offline collection',async()=>{
+ const row={id:'a',receizId:'a',title:'A',valueUsd:10,pulse:'14700000',profileOriginal:{hasLongForm:true}};
+ const seed={kind:'sigil',claimPulse:14700000,beat:2,stepIndex:3,creatorVerified:true};
+ localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify({ok:true,transport:{publicOriginals:[row]}}));
+ network.membership.mockImplementation(()=>new Promise(()=>{}));network.quotes.mockImplementation(()=>new Promise(()=>{}));
+ vi.stubGlobal('fetch',vi.fn(async input=>input==='/receiz-public-market.json'?Response.json({ok:true,transport:{publicOriginals:[{...row,valueUsd:999,livePulseSeed:seed}]}}):new Response('',{status:503})));
+ let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket();return null;}
+ try{await act(async()=>root.render(<Probe/>));expect(state.catalog?.items[0].livePulseSeed).toEqual(seed);expect(state.catalog?.items[0].priceUsd).toBe(10);}finally{act(()=>root.unmount());}
 });

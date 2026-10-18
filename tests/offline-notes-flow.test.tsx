@@ -6,6 +6,31 @@ import { OfflineNotes } from '../src/features/notes/OfflineNotes';
 import type { OpenIdentity } from '../src/receiz/native-identity';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const click = (host: HTMLElement, label: string) => [...host.querySelectorAll('button')].find(b => b.textContent?.includes(label))!.click();
+test.each([
+ ['OFFLINE_NOTE_PLATFORM_ATTESTATION_ISSUER_UNAVAILABLE', /registration service.*unavailable/i],
+ ['OFFLINE_NOTE_CUSTODY_CEREMONY_CANCELLED', /registration was cancelled/i],
+ ['OFFLINE_NOTE_CUSTODY_BACKUP_CAPABLE', /credential.*sync/i],
+ ['OFFLINE_NOTE_CUSTODY_UNSUPPORTED:OFFLINE_NOTE_CUSTODY_COUNTER_UNAVAILABLE', /state counter/i],
+ ['OFFLINE_NOTE_CUSTODY_ROLLBACK_DETECTED', /keep.*original proof/i],
+ ['RECEIZ_OFFLINE_NOTE_PLATFORM_ATTESTATION_CERTIFICATE_INVALID', /registration proof.*not.*verified/i],
+])('preserves the specific registration failure %s without claiming unsupported hardware',async(code,expected)=>{
+ const create=vi.fn().mockRejectedValue(new Error(code)),refresh=vi.fn();
+ const identity={offlineNotes:async()=>({pending:async()=>null,create})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={refresh}/>));
+  act(()=>click(host,'Review note'));await act(async()=>click(host,'Create funded note'));
+  expect(host.querySelector('[role="alert"]')?.textContent).toMatch(expected);
+  expect(host.textContent).not.toContain('Use a supported device');expect(host.textContent).not.toContain('Your note is ready.');expect(refresh).not.toHaveBeenCalled();
+  const details=host.querySelector<HTMLDetailsElement>('.note-registration-details');expect(details?.open).toBe(false);expect(details?.querySelector('code')?.textContent).toBe(code.split(':').at(-1));
+ }finally{act(()=>root.unmount());}
+});
+test('registration support details never serialize credential or account error payloads',async()=>{
+ const failure=Object.assign(new Error('OFFLINE_NOTE_CUSTODY_ATTESTATION_INVALID\naccess_token=private-fixture-token'),{ticket:'private-fixture-ticket',credential:{rawId:'private-fixture-credential'},accountUserId:'private-fixture-account'});
+ const identity={offlineNotes:async()=>({pending:async()=>null,create:async()=>{throw failure;}})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));act(()=>click(host,'Review note'));await act(async()=>click(host,'Create funded note'));expect(host.querySelector('[role="alert"]')).not.toBeNull();expect(host.textContent).not.toContain('private-fixture');expect(host.querySelector('.note-registration-details')).toBeNull();}finally{act(()=>root.unmount());}
+});
 test('preview and review do not allocate money; explicit create commits the exact amount once', async () => {
   const create = vi.fn(async () => ({ noteId: 'note-fixture', amountUsdCents: '10000', image: new Uint8Array([1, 2]) }));
   const identity = { offlineNotes: async () => ({ pending: async () => null, create }) } as unknown as OpenIdentity;

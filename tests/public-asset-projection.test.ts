@@ -20,8 +20,9 @@ it('advances the current and historical object projection offline from unchanged
  expect(later.ALL.at(-1)?.pulse).toBe(source.serverPulse+17000);expect(later.ALL.at(-1)?.usdCents).not.toBe(earlier.ALL.at(-1)?.usdCents);expect(later.ALL[0]).toEqual(earlier.ALL[0]);expect(later['1D'][0].pulse).toBeGreaterThan(earlier['1D'][0].pulse);
 });
 it('refuses mismatched object identifiers, birth pulses, duplicate candidates and unsupported sources',()=>{
+ const legacy={...item,livePulseSeed:undefined};
  const row=matchPublicAssetRow(item,source)!;
  expect(projectPublicAssetPeriods({...item,assetId:'different'},source,source.serverPulse)).toBeNull();expect(projectPublicAssetPeriods({...item,id:'different'},source,source.serverPulse)).toBeNull();expect(projectPublicAssetPeriods({...item,pulse:String(Number(item.pulse)+1)},source,source.serverPulse)).toBeNull();
- expect(projectPublicAssetPeriods(item,{...source,valueRows:[...source.valueRows,{...row,id:row.id+':duplicate'}]},source.serverPulse)).toBeNull();
- expect(projectPublicAssetPeriods(item,{...source,valueRows:[{...row,marketItem:{...row.marketItem!,livePulseSeed:null}}]},source.serverPulse)).toBeNull();expect(projectPublicAssetPeriods({...item,category:'sports'},source,source.serverPulse)).toBeNull();expect(projectPublicAssetPeriods(item,null,source.serverPulse)).toBeNull();
+ expect(projectPublicAssetPeriods(legacy,{...source,valueRows:[...source.valueRows,{...row,id:row.id+':duplicate'}]},source.serverPulse)).toBeNull();
+ expect(projectPublicAssetPeriods(legacy,{...source,valueRows:[{...row,marketItem:{...row.marketItem!,livePulseSeed:null}}]},source.serverPulse)).toBeNull();expect(projectPublicAssetPeriods({...item,category:'sports'},source,source.serverPulse)).toBeNull();expect(projectPublicAssetPeriods(legacy,null,source.serverPulse)).toBeNull();
 });

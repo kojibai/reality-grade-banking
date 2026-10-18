@@ -1,3 +1,4 @@
+import {publicMarketPulseSeed,type MarketPulseSeed,type MarketValueRow} from './market-projection/source.js';
 /** Public discovery and quotes are display projections; they grant no ownership. */
 export interface PublicMarketItem {
   id: string; assetId: string; title: string; summary: string; category: 'proof' | 'sports'; circulationCount?: number; pricedCount?: number; capitalizationUsdCents?: string | null;
@@ -5,11 +6,14 @@ export interface PublicMarketItem {
   originalDigest: string | null; pulse: string | null; sealedAt: string | null;
   hasLongForm?: boolean;
   readingUrl?: string | null;
+  livePulseSeed?:MarketPulseSeed;
+  sportsValuation?:MarketValueRow;
+  valuationBinding?:{itemId:string;assetId:string};
   ownerUsername: string | null; ownerDisplayName: string | null; ownerProfileUrl: string | null;
   priceUsd: number | null; changePct: number | null; chart: number[];
   authority: 'projection-only'; canTrade: false;
 }
-export interface PublicMarketCatalog { items: PublicMarketItem[]; complete: boolean; revision: string; observedAt: string | null; sourceCount: number; sportsCoverage?: 'complete' | 'partial' | 'missing'; }
+export interface PublicMarketCatalog { items: PublicMarketItem[]; complete: boolean; revision: string; observedAt: string | null; sourceCount: number; sportsCoverage?: 'complete' | 'partial' | 'missing'; sportsObservedAt?:string|null; }
 type RecordValue = Record<string, unknown>;
 function record(input: unknown): RecordValue { return input !== null && typeof input === 'object' && !Array.isArray(input) ? input as RecordValue : {}; }
 function text(input: unknown, max = 4096): string | null { return typeof input === 'string' && input.length > 0 && input.length <= max ? input : null; }
@@ -59,7 +63,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
       sourceUrl: safeReceizPublicUrl(source.canonicalHref, 'source'), verifyUrl,readingUrl,
       originalUrl: materialOriginal ?? safeReceizPublicUrl(media.originalDownloadSrc, 'original'), originalDigest: digest && /^[a-f0-9]{64}$/i.test(digest) ? digest.toLowerCase() : null,
       hasLongForm:typeof profile.hasLongForm==='boolean'?profile.hasLongForm:Object.hasOwn(profile,'longForm')?Boolean(profile.longForm):undefined,
-      pulse: typeof source.pulse === 'string' && /^\d{1,24}$/.test(source.pulse) ? source.pulse : null,
+      pulse: typeof source.pulse === 'string' && /^\d{1,24}$/.test(source.pulse) ? source.pulse : null,livePulseSeed:publicMarketPulseSeed(source.livePulseSeed,source.pulse),valuationBinding:{itemId:id,assetId},
       sealedAt: sealedAt && Number.isFinite(Date.parse(sealedAt)) ? sealedAt : null,
       ownerUsername, ownerDisplayName: text(source.ownerDisplayName, 128), ownerProfileUrl: ownerUsername ? `https://receiz.com/${encodeURIComponent(ownerUsername)}` : null,
       priceUsd: nonnegative(source.valueUsd), changePct: null, chart: [], authority: 'projection-only', canTrade: false });

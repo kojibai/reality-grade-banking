@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
 import { publicMaterialOriginalUrl, safeReceizPublicUrl } from '../src/receiz/public-market.js';
+import {publicMarketPulseSeed,publicSportsValueRow} from '../src/receiz/market-projection/source.js';
 
 const PREFIX = '/api/bank/public-market/';
 const MAX_BYTES = 128 * 1024 * 1024;
@@ -52,13 +53,13 @@ async function loadPublicResponse(target: URL): Promise<CachedResponse> {
         if (input.ok !== true || !Array.isArray(transport?.publicOriginals)) throw new Error('Receiz public collection is unavailable.');
         input.transport = { generatedAt: transport.generatedAt, publicMembership: transport.publicMembership, publicOriginals: transport.publicOriginals.map((item: Record<string, unknown>) => {
           const profile = item.profileOriginal as Record<string, unknown> | undefined, media = profile?.media as Record<string, unknown> | undefined;
-          return { id: item.id, receizId: item.receizId, title: item.title, summary: item.summary, visibility: item.visibility, ownerUsername: item.ownerUsername, ownerDisplayName: item.ownerDisplayName, canonicalHref: item.canonicalHref, verifyHref: item.verifyHref, pulse: item.pulse, createdAt: item.createdAt, valueUsd: item.valueUsd,
+          return { id: item.id, receizId: item.receizId, title: item.title, summary: item.summary, visibility: item.visibility, ownerUsername: item.ownerUsername, ownerDisplayName: item.ownerDisplayName, canonicalHref: item.canonicalHref, verifyHref: item.verifyHref, pulse: item.pulse, createdAt: item.createdAt, valueUsd: item.valueUsd,livePulseSeed:publicMarketPulseSeed(item.livePulseSeed,item.pulse),
             profileOriginal: { hasLongForm:Boolean(profile?.longForm&&typeof (profile.longForm as Record<string,unknown>).text==='string'&&(profile.longForm as Record<string,unknown>).text),readingTzMinutesEast:media?.receiptTzMinutesEast,media: { originalDownloadSrc: media?.originalDownloadSrc, originalDownloadSha256Hex: media?.originalDownloadSha256Hex, material: media?.material ? { sealedArtifactSha256Hex: (media.material as Record<string, unknown>).sealedArtifactSha256Hex, originalArtifactSrc: publicMaterialOriginalUrl((media.material as Record<string, unknown>).proofObjectUrl) } : null } } };
         }) };
       } else if (target.pathname === '/api/game/sports/economy') {
         if (input.ok !== true || input.schema !== 'receiz.sports_economy.live_inventory.v1' || !Array.isArray(input.cards) || input.cards.length > 100000) throw new Error('Public sports inventory is unavailable.');
         const fields = ['collectibleId', 'claimHash', 'athlete', 'sport', 'rarity', 'issueLine', 'liveValueUsd', 'totalValueUsd', 'issuedCount', 'vaultCount', 'pricedCount', 'route'];
-        input.cards = input.cards.map((card: Record<string, unknown>) => Object.fromEntries(fields.map(key => [key, card[key]])));
+        input.cards = input.cards.map((card: Record<string, unknown>) => ({...Object.fromEntries(fields.map(key => [key, card[key]])),valuationRow:publicSportsValueRow(card)}));
         const publicInput = { ok: true, schema: input.schema, generatedAt: input.generatedAt, fallback: input.fallback === true, cards: input.cards };
         for (const key of Object.keys(input)) delete input[key];
         Object.assign(input, publicInput);
