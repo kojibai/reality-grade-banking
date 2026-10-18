@@ -26,8 +26,11 @@ export async function relayPublicLedger(request:Request):Promise<Response>{
    try{body=await readBounded(request.body,MAX_WRITE);}catch{return fail(413);}
   }
   const response=await fetch(target,{method:request.method,credentials:'omit',redirect:'error',headers:request.method==='POST'?{'Content-Type':'application/json',Origin:'https://bankeiz.com'}:{Accept:'application/json, application/vnd.receiz.bundle+json'},body:body?new Uint8Array(body):undefined,signal:AbortSignal.timeout(30_000)});
-  if(Number(response.headers.get('content-length'))>MAX_READ)return fail(413);
-  return new Response(await readBounded(response.body,MAX_READ),{status:response.status,headers:{...headers,'Content-Type':response.headers.get('content-type')??'application/octet-stream'}});
+  if(response.status>=300&&response.status<400){await response.body?.cancel();return fail(503);}
+  const contentType=response.headers.get('content-type')?.split(';')[0];
+  if(!['application/json','application/vnd.receiz.bundle+json','application/octet-stream'].includes(contentType??'')){await response.body?.cancel();return fail(503);}
+  if(Number(response.headers.get('content-length'))>MAX_READ){await response.body?.cancel();return fail(413);}
+  return new Response(await readBounded(response.body,MAX_READ),{status:response.status,headers:{...headers,'Content-Type':contentType!}});
  }catch{return fail(503);}
 }
 export async function publicLedgerProofMiddleware(req:IncomingMessage,res:ServerResponse,next:()=>void){

@@ -50,3 +50,13 @@ it('ignores callbacks captured before switching identities', async () => {
     expect(state.cache?.accountUid).toBe('B'); expect(state.canLoadMore).toBe(true); expect(state.error).toBeNull(); expect(a.readPrivateHistory).toHaveBeenCalledTimes(1);
   } finally { act(() => root.unmount()); }
 });
+it('keeps full source pages from earlier pagination when a refreshed head arrives',async()=>{
+ const before=page('A',['older']);vault.load.mockResolvedValue({schema:'bank.private-history-cache.v1',accountUid:'A',observedAt:'2026-10-14T10:00:00Z',records:before.records,nextCursor:null,pages:[{cursor:'previous-cursor',json:before.sourceJson}]});
+ const incoming=page('A',['newer'],'older');
+ await observe(vi.fn().mockResolvedValue(incoming),async read=>{const pages=read().cache?.pages;expect(pages).toHaveLength(2);expect(pages?.map(p=>p.json)).toContain(before.sourceJson);expect(pages?.map(p=>p.json)).toContain(incoming.sourceJson);});
+});
+it('paints the complete union returned by atomic retention when another tab kept a page',async()=>{
+ const first=page('A',['head']),other=page('A',['other-tab']);
+ vault.save.mockImplementation(async(_binding,next)=>({...next,records:[...next.records,...other.records],pages:[...next.pages,{cursor:'other-cursor',json:other.sourceJson}]}));
+ await observe(vi.fn().mockResolvedValue(first),async read=>{expect(read().cache?.records.map(row=>row.sourceId)).toContain('other-tab');expect(read().cache?.pages).toHaveLength(2);});
+});

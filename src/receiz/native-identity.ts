@@ -6,7 +6,7 @@ import { loadReceiz } from './client';
 import { BANK_APPLICATION_ID, BANK_PREVIOUS_NATIVE_APPLICATION_ID, isBankNativeApplicationId, BANK_CARD_APPLICATION_IDS, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES, BANK_NATIVE_CONSENT, BANK_NATIVE_SCOPES, BANK_RECOVERY_SCOPES, BANK_RECOVERY_CONSENT } from './config';
 import { parseCardCheckout, parseCardDepositStatus, parseDepositDollars, readCardOperation, type CardCheckout, type CardDepositStatus } from './card-deposit';
 import { nativeFetch } from './native-transport';
-import { loadDeviceIdentity, saveDeviceIdentity, loadWalletObservation, saveWalletObservation, loadDepositSources, saveDepositSource, loadCardOperation, loadCardOperations, saveCardOperation, loadBankSessionIntent, saveBankSessionIntent, loadProofArchive, loadExportableRecoveries, retainProofBatch } from './identity-vault';
+import { loadDeviceIdentity, saveDeviceIdentity, saveProtectedIdentityTransport, loadAccountLedgerState, saveAccountLedgerState, loadWalletObservation, saveWalletObservation, loadDepositSources, saveDepositSource, loadCardOperation, loadCardOperations, saveCardOperation, loadBankSessionIntent, saveBankSessionIntent, loadProofArchive, loadExportableRecoveries, retainProofBatch } from './identity-vault';
 import { projectHeldDeposit, validateAssetIntake, type AssetIntake, type HeldDeposit } from './deposit-source';
 import { protectIdentityKeyFile, unprotectIdentityKeyFile } from './identity-protection';
 import type { ProtectedIdentityTransport } from './identity-vault';
@@ -78,6 +78,20 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   // still requires continuation plus a protected same-account wallet read.
   knownWallet ??= readCarriedWalletObservation(localHistory);
   const lifetime = new AbortController();
+  const {createLocalAccountLedger,canAdoptAccountLedgerObservation,mergeAccountLedgerObservation}=await import('./account-ledger');
+  const localLedger=createLocalAccountLedger({owner:binding,read:()=>loadAccountLedgerState(binding),write:(value,expected)=>saveAccountLedgerState(binding,value,expected),assertOpen:()=>{if(lifetime.signal.aborted)throw Error('ACCOUNT_LEDGER_IDENTITY_CLOSED');}});
+  let restoredLedgerUid: string | null = null;
+  try {
+    const restored = await localLedger.restore();
+    if (restored) {
+      if (canAdoptAccountLedgerObservation(knownWallet, restored.observation)) {
+        const observation = mergeAccountLedgerObservation(knownWallet, restored.observation);
+        knownWallet = observation;
+      }
+      if (knownWallet?.wallet.userId === restored.observation.wallet.userId) restoredLedgerUid = restored.observation.wallet.userId;
+    }
+  } catch { /* Missing/corrupt optional history never replaces the verified identity or invents a balance. */ }
+
   const heldFetch: typeof fetch = (input, init) => nativeFetch(input, { ...init, signal: AbortSignal.any([lifetime.signal, AbortSignal.timeout(60_000)]) });
   const unsigned = sdk.createReceizClient({ applicationId: BANK_APPLICATION_ID, baseUrl: 'https://receiz.com', fetchImpl: heldFetch });
   let sealingResources: { wasm: Uint8Array; zkey: Uint8Array } | undefined;
@@ -88,25 +102,41 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     await sealer.enroll(); return sealer;
   }
   let transportKeyFile = keyFile, transportPhrase = phrase, transportBytes = bytes, transportBinding = binding;
-  if (keyFile.crypto.privateKeyPkcs8B64u) {
-    if (!consentApproved) throw new Error('Approve account opening before protecting this ID for Receiz transport.');
-    if (!protectedTransport) {
-      const protectionPhrase = sdk.receizBase64UrlEncode(crypto.getRandomValues(new Uint8Array(32))), protectedKey = await protectIdentityKeyFile(keyFile, protectionPhrase);
-      const sealer = await ownedSealer();
-      const sealed = await sealer.seal({ bytes: new TextEncoder().encode(sdk.serializeReceizIdentityArtifact(protectedKey)), filename: 'protected-identity.receizkey', mimeType: 'application/json' });
-      protectedTransport = { bytes: new Uint8Array(sealed.artifactBytes), phrase: protectionPhrase };
-    }
-    const protectedVerification = await sdk.verifyReceizArtifact(protectedTransport.bytes), protectedAdmission = await sdk.createReceizArtifactAdmissionEngine()(protectedVerification, { profile: 'identity', identityPassphrase: protectedTransport.phrase });
-    if (protectedAdmission.verdict !== 'canonical-identity' || !sdk.isSdkIssuedReceizArtifactAdmission(protectedAdmission)) throw new Error('Your ID could not be protected for account opening.');
-    transportBinding = await sdk.readReceizIdentityPublicBinding(protectedAdmission); transportKeyFile = await sdk.readReceizIdentityArtifact(protectedTransport.bytes);
-    if (transportKeyFile.crypto.privateKeyPkcs8B64u || transportBinding.keyId !== binding.keyId || transportBinding.identityOwnerReceizId !== binding.identityOwnerReceizId || transportKeyFile.crypto.publicKeyRawB64u !== keyFile.crypto.publicKeyRawB64u) throw new Error('Protected custody does not carry the same identity.');
-    transportPhrase = protectedTransport.phrase; transportBytes = protectedTransport.bytes;
+  if (keyFile.crypto.privateKeyPkcs8B64u && !consentApproved) throw new Error('Approve account opening before protecting this ID for Receiz transport.');
+  const suppliedTransport = protectedTransport;
+  let transportReady = !keyFile.crypto.privateKeyPkcs8B64u, transportOpening: Promise<void> | undefined;
+  async function prepareTransport() {
+    if (transportReady) return;
+    if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.');
+    if (transportOpening) return transportOpening;
+    const attempt = (async () => {
+      if (!protectedTransport) {
+        const protectionPhrase = sdk.receizBase64UrlEncode(crypto.getRandomValues(new Uint8Array(32))), protectedKey = await protectIdentityKeyFile(keyFile, protectionPhrase);
+        const sealer = await ownedSealer();
+        const sealed = await sealer.seal({ bytes: new TextEncoder().encode(sdk.serializeReceizIdentityArtifact(protectedKey)), filename: 'protected-identity.receizkey', mimeType: 'application/json' });
+        protectedTransport = { bytes: new Uint8Array(sealed.artifactBytes), phrase: protectionPhrase };
+      }
+      const protectedVerification = await sdk.verifyReceizArtifact(protectedTransport.bytes), protectedAdmission = await sdk.createReceizArtifactAdmissionEngine()(protectedVerification, { profile: 'identity', identityPassphrase: protectedTransport.phrase });
+      if (protectedAdmission.verdict !== 'canonical-identity' || !sdk.isSdkIssuedReceizArtifactAdmission(protectedAdmission)) throw new Error('Your ID could not be protected for account opening.');
+      const nextBinding = await sdk.readReceizIdentityPublicBinding(protectedAdmission), nextKeyFile = await sdk.readReceizIdentityArtifact(protectedTransport.bytes);
+      if (nextKeyFile.crypto.privateKeyPkcs8B64u || nextBinding.keyId !== binding.keyId || nextBinding.identityOwnerReceizId !== binding.identityOwnerReceizId || nextKeyFile.crypto.publicKeyRawB64u !== keyFile.crypto.publicKeyRawB64u) throw new Error('Protected custody does not carry the same identity.');
+      if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.');
+      transportBinding = nextBinding; transportKeyFile = nextKeyFile; transportPhrase = protectedTransport.phrase; transportBytes = protectedTransport.bytes;
+      // This derived encrypted carrier is optional reuse beneath exact original
+      // custody. Saving it may not replace a changed identity or block local entry.
+      if (!suppliedTransport) await saveProtectedIdentityTransport(binding, protectedTransport).catch(() => {});
+      transportReady = true;
+    })();
+    transportOpening = attempt;
+    try { await attempt; } finally { if (transportOpening === attempt) transportOpening = undefined; }
   }
-  let client: ReceizClient | null = null, clientApplicationId: string | null = null, expiresAtKai = 0, accountUid: string | null = null, grantedScopes: readonly string[] = [];
+  let client: ReceizClient | null = null, clientApplicationId: string | null = null, expiresAtKai = 0, accountUid: string | null = restoredLedgerUid, grantedScopes: readonly string[] = [];
   let presentationUsername = keyFile.owner.username;
-  async function connectClient(scopes: readonly string[], statement: string, applicationId: string = BANK_APPLICATION_ID) {
+  async function openClient(scopes: readonly string[], statement: string, applicationId: string = BANK_APPLICATION_ID) {
     if (!consentApproved || lifetime.signal.aborted) throw new Error('Receiz account read consent is required.');
     if (!BANK_CARD_APPLICATION_IDS.some(id => id === applicationId)) throw new Error('Unsupported bank registration.');
+    await prepareTransport();
+    if (lifetime.signal.aborted) throw new Error('Receiz account read consent is required.');
     if (!client || clientApplicationId !== applicationId || sdk.receizKaiNow().pulse >= expiresAtKai || scopes.some(scope => !grantedScopes.includes(scope))) {
       const targetUnsigned = applicationId === BANK_APPLICATION_ID ? unsigned : sdk.createReceizClient({ applicationId, baseUrl: 'https://receiz.com', fetchImpl: heldFetch });
       // Signed transport metadata comes from the genuine admitted identity. It is not a replacement source.
@@ -125,6 +155,30 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     }
     return client;
   }
+  let connectionOpening: { applicationId: string; statement: string; scopes: readonly string[]; promise: Promise<ReceizClient> } | null = null;
+  async function connectClient(scopes: readonly string[], statement: string, applicationId: string = BANK_APPLICATION_ID): Promise<ReceizClient> {
+    if (!consentApproved || lifetime.signal.aborted) throw new Error('Receiz account read consent is required.');
+    const pendingConnection = connectionOpening;
+    if (pendingConnection) {
+      if (pendingConnection.applicationId === applicationId && pendingConnection.statement === statement && scopes.every(scope => pendingConnection.scopes.includes(scope))) {
+        const connected = await pendingConnection.promise;
+        if (lifetime.signal.aborted) throw new Error('Receiz account read consent is required.');
+        return connected;
+      }
+      // A different registration or approved scope must get its own checked
+      // grant after the existing connection completes, never borrow its token.
+      await pendingConnection.promise.catch(() => {});
+      return connectClient(scopes, statement, applicationId);
+    }
+    const attempt = { applicationId, statement, scopes: [...scopes], promise: openClient(scopes, statement, applicationId) };
+    connectionOpening = attempt;
+    try {
+      const connected = await attempt.promise;
+      if (lifetime.signal.aborted) throw new Error('Receiz account read consent is required.');
+      return connected;
+    }
+    finally { if (connectionOpening === attempt) connectionOpening = null; }
+  }
   const hasLocalWalletHead = () => knownWallet?.source === 'local-note-head';
   async function readWallet() {
     if (hasLocalWalletHead() && knownWallet) return knownWallet.wallet;
@@ -132,8 +186,16 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const current = await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT);
     const wallet = parseSharedWallet(await current.connect.wallet(), accountUid!);
     // A read that began before a completed local note result cannot overwrite
-    // that result when its delayed response finally arrives.
-    if ((startedRevision !== walletRevision || hasLocalWalletHead()) && knownWallet) return knownWallet.wallet;
+    // that result when its delayed response finally arrives. A later shared
+    // transaction can supersede a read-only projection only with a strictly
+    // newer carried coordinate. Prepared local custody always wins.
+    const laterSharedCoordinate = knownWallet && wallet.userId === knownWallet.wallet.userId && wallet.kaiUpulse && knownWallet.wallet.kaiUpulse
+      && /^\d{1,30}$/.test(wallet.kaiUpulse) && /^\d{1,30}$/.test(knownWallet.wallet.kaiUpulse)
+      && BigInt(wallet.kaiUpulse) > BigInt(knownWallet.wallet.kaiUpulse);
+    const olderSharedCoordinate = knownWallet && wallet.userId === knownWallet.wallet.userId && wallet.kaiUpulse && knownWallet.wallet.kaiUpulse
+      && /^\d{1,30}$/.test(wallet.kaiUpulse) && /^\d{1,30}$/.test(knownWallet.wallet.kaiUpulse)
+      && BigInt(wallet.kaiUpulse) < BigInt(knownWallet.wallet.kaiUpulse);
+    if ((hasLocalWalletHead() || olderSharedCoordinate || startedRevision !== walletRevision && !laterSharedCoordinate) && knownWallet) return knownWallet.wallet;
     if (!lifetime.signal.aborted) { const observedAt = new Date().toISOString(); const prior = knownWallet?.source === 'account-genesis' ? knownWallet.history?.map(point => ({ ...point, userId: wallet.userId })) ?? [] : knownWallet?.history ?? []; const history = appendWalletPoint(prior, wallet, observedAt, String(sdk.receizKaiNow().uPulse)); knownWallet = { wallet, observedAt, history }; await persistWalletObservation(knownWallet); }
     return startedRevision !== walletRevision && knownWallet ? knownWallet.wallet : wallet;
   }
@@ -141,7 +203,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   let preparedNoteRuntime: import('./offline-notes').BankPreparedNoteRuntime | undefined;
   const noteOpen = () => { if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.'); };
   async function offlineNotes(): Promise<BankOfflineNotes> {
-    noteOpen();
+    noteOpen(); await prepareTransport(); noteOpen();
     accountUid ??= knownWallet?.wallet.userId ?? null;
     if (!accountUid) await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT);
     if (!noteRuntime) {
@@ -242,8 +304,17 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   }
   async function readPrivateHistory(cursor?: string) {
     const path = privateHistoryPath(cursor), current = await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT);
-    return parsePrivateHistoryPage(await current.request(path), accountUid!);
+    const page=parsePrivateHistoryPage(await current.request(path), accountUid!);
+    if(!cursor){
+      const basis=accountUid+':'+(page.records[0]?.id??'empty')+':'+(page.records[0]?.kaiUpulse??'');
+      if(ledgerProofBasis!==basis&&!ledgerProofPending){
+        ledgerProofBasis=basis;
+        ledgerProofPending=accountProof().then(()=>{}).catch(()=>{if(ledgerProofBasis===basis)ledgerProofBasis=null;}).finally(()=>{ledgerProofPending=undefined;});
+      }
+    }
+    return page;
   }
+  let ledgerProofBasis:string|null=null,ledgerProofPending:Promise<void>|undefined;
   async function beginCardDeposit(amount: string, approved: boolean) {
     if (!approved) throw new Error('Approve this card deposit before continuing.');
     const previous = readCardOperation(await loadCardOperation(binding));
@@ -342,7 +413,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     assertNoOtherPending:async()=>{const retained=await deviceBankExecutionStore(binding).load();if(retained&&['prepared','unknown'].includes(retained.state))throw Error('BANK_EXECUTION_PENDING');},
     assertOpen:()=>{if(lifetime.signal.aborted)throw Error('BANK_EXECUTION_IDENTITY_CLOSED');},
     store:{read:()=>loadNativePaymentState(binding),write:(value,expected)=>saveNativePaymentState(binding,value,expected)},
-    sign:challengeB64Url=>unsigned.identity.signLoginProof({keyFile:transportKeyFile,passphrase:transportPhrase,challengeB64Url}),
+    sign:async challengeB64Url=>{await prepareTransport();return unsigned.identity.signLoginProof({keyFile:transportKeyFile,passphrase:transportPhrase,challengeB64Url});},
     request:async(path,body,readOnly)=>{const applicationId=readOnly?new URL(path,'https://receiz.com').searchParams.get('applicationId'):BANK_APPLICATION_ID;if(!isBankNativeApplicationId(applicationId))throw Error('BANK_PAYMENT_APPLICATION_MISMATCH');const connected=await connectClient(readOnly?BANK_RECOVERY_SCOPES:BANK_NATIVE_SCOPES,readOnly?BANK_RECOVERY_CONSENT:BANK_NATIVE_CONSENT,applicationId);if(lifetime.signal.aborted)throw Error('BANK_EXECUTION_IDENTITY_CLOSED');return connected.request(path,{method:'POST',body});},
     lock:async operation=>{if(!navigator.locks)throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');return navigator.locks.request(`receiz-bank-execution:${binding.artifactSha256}`,{signal:lifetime.signal},operation);},
   })).catch(error=>{nativePaymentsPromise=undefined;throw error;});
@@ -456,15 +527,34 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   async function accountProof() {
     const module = await import('./account-proof');
     const assertOpen=()=>{if(lifetime.signal.aborted)throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED');};
-    return module.readAccountProof({owner:binding,assertOpen,request:async path=>{
+    const before=knownWallet,revision=walletRevision;
+    const proof=await module.readAccountProof({owner:binding,assertOpen,request:async path=>{
       const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);assertOpen();
       return current.request(path,{method:'GET'});
     }});
+    if(proof.statement.schema==='bankeiz.public-account-statement.v2'&&accountUid){
+      try{
+        const retained=await localLedger.retain(proof,accountUid);assertOpen();
+        if(retained.proof.sourceDigest===proof.sourceDigest&&walletRevision===revision&&knownWallet===before&&canAdoptAccountLedgerObservation(before,retained.observation)){
+          const observation=mergeAccountLedgerObservation(before,retained.observation);
+          if(observation!==before){
+            knownWallet=observation;walletRevision++;await persistWalletObservation(observation);assertOpen();
+            if(typeof dispatchEvent==='function')dispatchEvent(new Event('bankeiz:account-observation'));
+          }
+        }
+      }catch(cause){
+        ledgerProofBasis=null;
+        if(cause instanceof Error&&/ACCOUNT_PROOF_CONTINUITY_MISMATCH|ACCOUNT_LEDGER_ACCOUNT_MISMATCH|ACCOUNT_LEDGER_OWNER_MISMATCH/.test(cause.message))throw cause;
+        // Failure to retain an optional copy cannot erase an existing balance
+        // or change the independently verified original returned to its reader.
+      }
+    }
+    return proof;
   }
   async function accountProofSharing() {
     const { createAccountProofSharing } = await import('./account-proof-sharing');
     const make = (applicationId: string, previous?: import('./account-proof-sharing').AccountProofSharing): import('./account-proof-sharing').AccountProofSharing => createAccountProofSharing({ applicationId, previous, keyId: binding.keyId, receizId: binding.artifactOwnerReceizId, assertOpen: () => { if (lifetime.signal.aborted) throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED'); },
-      signConsent: challengeB64Url => unsigned.identity.signLoginProof({ keyFile: transportKeyFile, passphrase: transportPhrase, challengeB64Url }),
+      signConsent: async challengeB64Url => { await prepareTransport(); return unsigned.identity.signLoginProof({ keyFile: transportKeyFile, passphrase: transportPhrase, challengeB64Url }); },
       request: async (path, method, body) => {
         const current = method === 'GET' ? await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT, applicationId) : await connectClient([...BANK_READ_SCOPES, 'receiz:domains.write'], 'Allow Bankeiz to apply the public account-proof sharing choice I explicitly review: publish my verified balances and complete transaction statement, optionally keep future proofs publicly updated, or turn off live updates. This does not authorize a payment or export my signing key.', applicationId);
         return current.request(path, { method, ...(body ? { body } : {}) });

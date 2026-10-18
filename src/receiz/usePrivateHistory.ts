@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { OpenIdentity } from './native-identity';
 import { loadPrivateHistoryCache, savePrivateHistoryCache, type PrivateHistoryCache } from './identity-vault';
 import { mergePublicRecords } from './public-network';
-import { privateHistoryFailureCode } from './private-history';
+import { privateHistoryFailureCode, appendPrivateLedgerPage } from './private-history';
 export function usePrivateHistory(identity: OpenIdentity | null, accountUid: string | undefined, active: boolean) {
   const [cache, setCache] = useState<PrivateHistoryCache | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
   const [failureCode, setFailureCode] = useState<string | null>(null);
@@ -34,9 +34,12 @@ export function usePrivateHistory(identity: OpenIdentity | null, accountUid: str
       if (page.accountUid !== accountUid) throw new Error('PRIVATE_HISTORY_ACCOUNT_MISMATCH');
       if (page.nextCursor && (page.nextCursor === cursor || seen.current.has(page.nextCursor))) throw new Error('Repeated private history cursor.');
       const previous = held.current?.accountUid === accountUid ? held.current.records : [];
-      const next: PrivateHistoryCache = { schema: 'bank.private-history-cache.v1', accountUid, observedAt: new Date().toISOString(), records: mergePublicRecords(previous, page.records), nextCursor: page.nextCursor };
+      const next: PrivateHistoryCache = { schema: 'bank.private-history-cache.v1', accountUid, observedAt: new Date().toISOString(), records: mergePublicRecords(previous, page.records), pages: appendPrivateLedgerPage(held.current?.pages,page,cursor??null), nextCursor: page.nextCursor };
       held.current = next; setCache(next);
-      try { await savePrivateHistoryCache(identity.binding, next); } catch { if (ticket === generation.current) setError('Activity loaded. This device could not retain it for offline access.'); }
+      try {
+        const retained = await savePrivateHistoryCache(identity.binding, next);
+        if (ticket === generation.current && retained) { held.current = retained; setCache(retained); }
+      } catch { if (ticket === generation.current) setError('Activity loaded. This device could not retain it for offline access.'); }
     } catch (cause) {
       if (ticket === generation.current) { paused.current = true; setFailureCode(privateHistoryFailureCode(cause)); setError('Your activity could not be loaded. Retained activity stays available. Refresh to try again.'); }
     } finally { if (ticket === generation.current) { pending.current = false; setBusy(false); } }

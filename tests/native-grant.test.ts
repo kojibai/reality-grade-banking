@@ -73,3 +73,29 @@ it('reads the bound shared wallet and disposes its held bearer/signing transport
   expect((await identity.readWallet()).totalUsdCents).toBe('300'); expect(protocol.client.mock.calls.every(([options]) => options.applicationId === BANK_APPLICATION_ID)).toBe(true);
   identity.dispose(); await expect(identity.readWallet()).rejects.toThrow('consent'); expect(protocol.wallet).toHaveBeenCalledTimes(1);
 });
+
+it('shares one read-access connection across simultaneous balance reads',async()=>{
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture-phrase','fixture.receiz',true);
+ try{const wallets=await Promise.all([identity.readWallet(),identity.readWallet()]);expect(wallets.every(wallet=>wallet.totalUsdCents==='300')).toBe(true);expect(protocol.continueId).toHaveBeenCalledTimes(1);expect(protocol.grant).toHaveBeenCalledTimes(1);}
+ finally{identity.dispose();}
+});
+it('shares a pending account-access failure without retrying it for another simultaneous reader',async()=>{
+ protocol.continueId.mockRejectedValue(Error('proof_replay_guard_unavailable'));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture-phrase','fixture.receiz',true);
+ try{const results=await Promise.allSettled([identity.readWallet(),identity.readWallet()]);expect(results.every(result=>result.status==='rejected')).toBe(true);expect(protocol.continueId).toHaveBeenCalledTimes(1);expect(protocol.grant).not.toHaveBeenCalled();}
+ finally{identity.dispose();}
+});
+
+it('does not read a wallet if the identity was closed while its connection was opening',async()=>{
+ let finish!:(value:unknown)=>void;protocol.continueId.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture-phrase','fixture.receiz',true);
+ const read=identity.readWallet();await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));identity.dispose();finish({ok:true,session:{uid:'fixture-owner'}});
+ await expect(read).rejects.toThrow('consent');expect(protocol.wallet).not.toHaveBeenCalled();
+});
+it('does not borrow a pending read grant for an approved native-scope connection',async()=>{
+ protocol.grant.mockImplementation(async({applicationId,scopes}:{applicationId:string;scopes:string[]})=>({applicationId,keyId:'fixture-key',artifactDigest:'a'.repeat(64),grantedScopes:scopes,accessToken:'local-fixture',expiresAtKai:200}));
+ protocol.scopes.mockResolvedValueOnce([...BANK_READ_SCOPES]).mockResolvedValueOnce([...BANK_NATIVE_SCOPES]);
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture-phrase','fixture.receiz',true);
+ try{const results=await Promise.allSettled([identity.readWallet(),identity.nativeReadiness(true)]);expect(results[0].status).toBe('fulfilled');expect(protocol.grant).toHaveBeenCalledTimes(2);expect(protocol.grant.mock.calls.map(([value])=>value.scopes)).toEqual([BANK_READ_SCOPES,BANK_NATIVE_SCOPES]);}
+ finally{identity.dispose();}
+});

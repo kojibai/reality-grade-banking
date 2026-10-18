@@ -8,6 +8,9 @@ export type {AccountStatement,AccountProofTransaction} from './account-proof-sta
 export interface VerifiedAccountProof { readonly statement: AccountStatement; readonly sourceDigest: string; readonly writer: string; }
 const held = new WeakMap<VerifiedAccountProof, Uint8Array>();
 export function isVerifiedAccountProof(value: unknown): value is VerifiedAccountProof { return !!value && typeof value === 'object' && held.has(value as VerifiedAccountProof); }
+/** Exact original custody for local historical restoration. Public export
+ * freshness remains separately enforced by exportAccountProof. */
+export function heldAccountProofBytes(proof:VerifiedAccountProof):Uint8Array {const bytes=held.get(proof);if(!bytes)throw Error('ACCOUNT_PROOF_VERIFIED_SOURCE_REQUIRED');return new Uint8Array(bytes);}
 const digest = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{64}$/u.test(v);
 const text = (v: unknown, limit = 512): v is string => typeof v === 'string' && v.length > 0 && v.length <= limit && !/[\x00-\x1f\x7f]/u.test(v);
 function fail(code = 'INVALID'): never { throw Error(`ACCOUNT_PROOF_${code}`); }

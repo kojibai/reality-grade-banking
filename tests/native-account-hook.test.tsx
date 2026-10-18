@@ -54,21 +54,21 @@ it('paints the exact historical observation before canonical identity opening fi
   custody.fast.mockResolvedValue({ wallet: { userId: 'known-user', totalUsdCents: '321' }, observedAt: '2026-10-13T12:00:00Z' });
   await observe(async read => { expect(read().opening).toBe(true); expect(read().identity).toBeNull(); expect(read().wallet?.totalUsdCents).toBe('321'); await act(async () => { finish(null); }); expect(read().identity).toBeNull(); });
 });
-it('finishes the initial wallet opening before the new settled account becomes visible', async () => {
+it('opens the verified identity immediately while the first remote wallet read is still pending', async () => {
   let finish!: (value: unknown) => void, known: ReturnType<OpenIdentity['knownWallet']> = null;
   const initial = new Promise(resolve => { finish = resolve; });
   const identity = held(async () => { const wallet = await initial; known = { wallet, observedAt: '2026-10-13T12:00:00Z' } as ReturnType<OpenIdentity['knownWallet']>; return wallet; }); identity.knownWallet = () => known;
   custody.create.mockResolvedValue(identity);
-  await observe(async read => { let opening!: Promise<void>; await act(async () => { opening = read().create(true); }); expect(read().identity).toBeNull(); await act(async () => { finish({ userId: 'new-user', totalUsdCents: '0' }); await opening; }); expect(read().identity).toBe(identity); expect(read().wallet?.totalUsdCents).toBe('0'); });
+  await observe(async read => { let opening!: Promise<void>; await act(async () => { opening = read().create(true); }); expect(read().identity).toBe(identity); expect(read().wallet).toBeNull(); expect(read().opening).toBe(false); await opening; await act(async () => { finish({ userId: 'new-user', totalUsdCents: '0' }); }); expect(read().wallet?.totalUsdCents).toBe('0'); });
 });
-it('preserves the initial wallet source failure while a retry is still pending', async () => {
+it('preserves initial wallet failure without automatically repeating the failed account opening', async () => {
   const readWallet = vi.fn().mockRejectedValueOnce(new Error('Initial source unavailable')).mockReturnValueOnce(new Promise(() => {}));
   custody.create.mockResolvedValue(held(readWallet));
   await observe(async read => {
     await act(async () => { await read().create(true); });
     expect(read().wallet).toBeNull();
-    expect(read().error ?? '').toContain('Initial source unavailable');
-    expect(read().busy).toBe(true);
+    expect(read().error ?? '').toContain('balance could not be opened');
+    expect(read().busy).toBe(false); expect(readWallet).toHaveBeenCalledTimes(1);
   });
 });
 it('keeps creation and import/open operations single-flight while the first identity is opening', async () => {
@@ -102,4 +102,15 @@ it('opens a new account from its signed genesis immediately and treats a failed 
     expect(read().error).toBeNull(); expect(read().syncPending).toBe(true);
     expect(identity.knownWallet()?.history).toHaveLength(1); expect(readWallet).toHaveBeenCalledTimes(1);
   });
+});
+
+it('keeps a replay-store outage distinct from a replayed Identity Seal and permits a manual retry',async()=>{
+ const readWallet=vi.fn().mockRejectedValueOnce(new Error('proof_replay_guard_unavailable')).mockResolvedValueOnce({userId:'same-user',totalUsdCents:'100'});
+ custody.create.mockResolvedValue(held(readWallet));
+ await observe(async read=>{
+  await act(async()=>{await read().create(true);});
+  expect(read().identity).not.toBeNull();expect(read().busy).toBe(false);expect(readWallet).toHaveBeenCalledTimes(1);
+  expect(read().error).toContain('Secure account access is temporarily unavailable');expect(read().error).not.toContain('proof_replay');
+  await act(async()=>{await read().refresh();});expect(read().wallet?.totalUsdCents).toBe('100');expect(read().error).toBeNull();
+ });
 });

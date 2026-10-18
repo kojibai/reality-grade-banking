@@ -1,5 +1,7 @@
 import { BANK_APPLICATION_ID, BANK_STORAGE_APPLICATION_ID, isBankNativeApplicationId } from './config';
 import { readWalletObservation } from './wallet-observation';
+import { validatePrivateLedgerPages } from './private-history';
+import { mergePublicRecords } from './public-network';
 import { cardOperationApplicationId } from './card-deposit';
 export interface ProtectedIdentityTransport { bytes: Uint8Array; phrase: string; }
 interface SavedIdentity { schema: 'receiz.bank.device-identity.v1'; bytes: ArrayBuffer; artifactIv?: Uint8Array; filename: string; wrappingKey: CryptoKey; iv: Uint8Array; wrappedPhrase: ArrayBuffer; readConsent: boolean; walletObservation?:{iv:Uint8Array;bytes:ArrayBuffer;binding:{keyId:string;artifactSha256:string};localHeadDigest?:string}; protectedTransport?: { iv: Uint8Array; bytes: ArrayBuffer }; cardOperation?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }; cardArchive?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }[]; bankOperation?: { operationId: string; state: string; key: string; }; bankSession?: { iv: Uint8Array; bytes: ArrayBuffer }; }
@@ -62,6 +64,24 @@ export async function loadDeviceIdentity(): Promise<{ bytes: Uint8Array; filenam
   let protectedTransport: ProtectedIdentityTransport | undefined;
   if (saved.protectedTransport) { const clear = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(saved.protectedTransport.iv), additionalData: new TextEncoder().encode('receiz.bank.protected-identity-transport.v1') }, saved.wrappingKey, saved.protectedTransport.bytes); const transport = JSON.parse(new TextDecoder().decode(clear)); protectedTransport = { bytes: new Uint8Array(transport.bytes), phrase: transport.phrase }; }
   return { bytes: await identityBytes(saved), filename: saved.filename, phrase: new TextDecoder().decode(phrase), readConsent: saved.readConsent === true, protectedTransport };
+}
+/** Retain derived transport under the same original; never install identity
+ * custody or overwrite a newer observation, note intent or account selection. */
+export async function saveProtectedIdentityTransport(binding: { artifactSha256: string }, transport: ProtectedIdentityTransport): Promise<void> {
+  if (!transport.bytes.length || transport.bytes.length > 32 * 1024 * 1024) throw Error('IDENTITY_TRANSPORT_CAPACITY');
+  const saved = await held(); if (!saved) throw Error('IDENTITY_TRANSPORT_IDENTITY_UNAVAILABLE');
+  await sameSavedIdentity(saved, binding);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const bytes = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode('receiz.bank.protected-identity-transport.v1') }, saved.wrappingKey, new TextEncoder().encode(JSON.stringify({ bytes: [...transport.bytes], phrase: transport.phrase })));
+  const db = await database(); try { await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction('identity', 'readwrite'), store = tx.objectStore('identity'), read = store.get('current');
+    read.onsuccess = () => {
+      const current = read.result as SavedIdentity | undefined;
+      if (!current || !equalCipher(current.bytes, saved.bytes) || !equalCipher(current.iv, saved.iv)) { tx.abort(); return; }
+      store.put({ ...current, protectedTransport: { iv, bytes } }, 'current');
+    };
+    tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(Error('IDENTITY_TRANSPORT_IDENTITY_CHANGED'));
+  }); } finally { db.close(); }
 }
 export async function forgetDeviceIdentity() { const saved = await held(); if (!saved) return; const guard = await noteRemovalGuard(saved); await changeHeldIdentity(saved, null, guard); }
 
@@ -301,28 +321,68 @@ export async function saveWalletObservation(binding: { keyId: string; artifactSh
 }
 
 /** Private display history. It never replaces sealed history or supplies execution authority. */
-export interface PrivateHistoryCache { schema: 'bank.private-history-cache.v1'; accountUid: string; observedAt: string; records: import('./public-network').PublicRecord[]; nextCursor: string | null; }
+export interface PrivateHistoryCache { schema: 'bank.private-history-cache.v1'; accountUid: string; observedAt: string; records: import('./public-network').PublicRecord[]; nextCursor: string | null; pages?: {cursor:string|null;json:string}[]; }
 function privateHistoryKey(binding: { artifactSha256: string }, accountUid: string) {
   if (!/^[a-f0-9]{64}$/.test(binding.artifactSha256) || !/^[A-Za-z0-9_.:-]{1,128}$/.test(accountUid)) throw new Error('PRIVATE_HISTORY_BINDING_INVALID');
   return `private-history|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|${accountUid}`;
 }
+function validatePrivateHistoryCache(value: PrivateHistoryCache, accountUid: string) {
+  if (value.schema !== 'bank.private-history-cache.v1' || value.accountUid !== accountUid || !Array.isArray(value.records) || value.records.length > 100000 || !Number.isFinite(Date.parse(value.observedAt)) || value.nextCursor !== null && !/^[A-Za-z0-9_-]{1,2048}$/.test(value.nextCursor)) throw Error('PRIVATE_HISTORY_CACHE_INVALID');
+  if (value.pages) validatePrivateLedgerPages(value.pages, accountUid);
+}
+async function readPrivateHistoryRow(db: IDBDatabase, key: string): Promise<PrivateBankOperation | undefined> {
+  return await new Promise((resolve, reject) => { const request = db.transaction('operations').objectStore('operations').get(key); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+}
+async function decodePrivateHistoryRow(row: PrivateBankOperation, saved: SavedIdentity, key: string, accountUid: string): Promise<PrivateHistoryCache> {
+  if (row.bytes.byteLength > 8 * 1024 * 1024 + 16) throw Error('PRIVATE_HISTORY_CAPACITY_EXCEEDED');
+  const clear = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, row.bytes);
+  const value = JSON.parse(new TextDecoder().decode(clear)) as PrivateHistoryCache;
+  validatePrivateHistoryCache(value, accountUid);
+  return value;
+}
 export async function loadPrivateHistoryCache(binding: { artifactSha256: string }, accountUid: string): Promise<PrivateHistoryCache | null> {
   const saved = await held(); if (!saved) return null; await sameSavedIdentity(saved, binding);
   const key = privateHistoryKey(binding, accountUid), db = await database();
-  let row: PrivateBankOperation | undefined;
-  try { row = await new Promise((resolve, reject) => { const request = db.transaction('operations').objectStore('operations').get(key); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); } finally { db.close(); }
-  if (!row) return null;
-  const clear = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, row.bytes);
-  const value = JSON.parse(new TextDecoder().decode(clear)) as PrivateHistoryCache;
-  if (value.schema !== 'bank.private-history-cache.v1' || value.accountUid !== accountUid || !Array.isArray(value.records) || value.records.length > 100000 || !Number.isFinite(Date.parse(value.observedAt)) || value.nextCursor !== null && !/^[A-Za-z0-9_-]{1,2048}$/.test(value.nextCursor)) throw new Error('PRIVATE_HISTORY_CACHE_INVALID');
-  return value;
+  try { const row = await readPrivateHistoryRow(db, key); return row ? await decodePrivateHistoryRow(row, saved, key, accountUid) : null; }
+  finally { db.close(); }
 }
-export async function savePrivateHistoryCache(binding: { artifactSha256: string }, value: PrivateHistoryCache): Promise<void> {
-  const saved = await held(); if (!saved) throw new Error('PRIVATE_HISTORY_IDENTITY_UNAVAILABLE'); await sameSavedIdentity(saved, binding);
-  const key = privateHistoryKey(binding, value.accountUid), clear = new TextEncoder().encode(JSON.stringify(value));
-  if (value.schema !== 'bank.private-history-cache.v1' || clear.length > 8 * 1024 * 1024 || value.records.length > 100000) throw new Error('PRIVATE_HISTORY_CAPACITY_EXCEEDED');
-  const iv = crypto.getRandomValues(new Uint8Array(12)), bytes = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, clear), db = await database();
-  try { await new Promise<void>((resolve, reject) => { const tx = db.transaction(['identity', 'operations'], 'readwrite'), request = tx.objectStore('identity').get('current'); request.onsuccess = () => { const current = request.result as SavedIdentity | undefined; if (!current || current.bytes.byteLength !== saved.bytes.byteLength || !new Uint8Array(current.bytes).every((byte, i) => byte === new Uint8Array(saved.bytes)[i]) || !new Uint8Array(current.iv).every((byte, i) => byte === new Uint8Array(saved.iv)[i])) { tx.abort(); return; } tx.objectStore('operations').put({ key, iv, bytes }, key); }; tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(new Error('PRIVATE_HISTORY_IDENTITY_CHANGED')); }); } finally { db.close(); }
+export async function savePrivateHistoryCache(binding: { artifactSha256: string }, value: PrivateHistoryCache): Promise<PrivateHistoryCache> {
+  const saved = await held(); if (!saved) throw Error('PRIVATE_HISTORY_IDENTITY_UNAVAILABLE'); await sameSavedIdentity(saved, binding);
+  validatePrivateHistoryCache(value, value.accountUid);
+  const key = privateHistoryKey(binding, value.accountUid), db = await database();
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const prior = await readPrivateHistoryRow(db, key), previous = prior ? await decodePrivateHistoryRow(prior, saved, key, value.accountUid) : null;
+      const pages = [...previous?.pages ?? []], originals = new Set(pages.map(page => page.json));
+      for (const page of value.pages ?? []) if (!originals.has(page.json)) { originals.add(page.json); pages.push(page); }
+      const latest = previous && Date.parse(previous.observedAt) > Date.parse(value.observedAt) ? previous : value;
+      const merged: PrivateHistoryCache = { ...latest, records: mergePublicRecords(previous?.records ?? [], value.records), ...(pages.length ? { pages } : {}) };
+      const clear = new TextEncoder().encode(JSON.stringify(merged));
+      if (clear.length > 8 * 1024 * 1024 || merged.records.length > 100000) throw Error('PRIVATE_HISTORY_CAPACITY_EXCEEDED');
+      const iv = crypto.getRandomValues(new Uint8Array(12)), bytes = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, clear);
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(['identity', 'operations'], 'readwrite'), identities = tx.objectStore('identity'), operations = tx.objectStore('operations'), request = identities.get('current');
+          let conflict = 'PRIVATE_HISTORY_IDENTITY_CHANGED';
+          request.onsuccess = () => {
+            const current = request.result as SavedIdentity | undefined;
+            if (!current || !equalCipher(current.bytes, saved.bytes) || !equalCipher(current.iv, saved.iv)) { tx.abort(); return; }
+            const read = operations.get(key);
+            read.onsuccess = () => {
+              const currentRow = read.result as PrivateBankOperation | undefined;
+              if (!equalCipher(currentRow?.bytes, prior?.bytes) || !equalCipher(currentRow?.iv, prior?.iv)) { conflict = 'PRIVATE_HISTORY_CACHE_CHANGED'; tx.abort(); return; }
+              operations.put({ key, iv, bytes }, key);
+            };
+          };
+          tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(Error(conflict));
+        });
+        return merged;
+      } catch (cause) {
+        if (!(cause instanceof Error) || cause.message !== 'PRIVATE_HISTORY_CACHE_CHANGED') throw cause;
+      }
+    }
+    throw Error('PRIVATE_HISTORY_CACHE_CHANGED');
+  } finally { db.close(); }
 }
 
 /** Encrypted note choreography; all financial sources are reopened by v129. */
@@ -372,6 +432,9 @@ async function saveNoteState(binding: { artifactSha256: string; keyId?: string }
     });
   } finally { db.close(); }
 }
+
+export const loadAccountLedgerState = (binding:{artifactSha256:string}) => loadNoteState(binding,'account-ledger');
+export const saveAccountLedgerState = (binding:{artifactSha256:string},value:unknown,expected:unknown) => saveNoteState(binding,'account-ledger',value,expected);
 
 export const loadOfflineNoteState = (binding:{artifactSha256:string}) => loadNoteState(binding,'offline-notes');
 export const saveOfflineNoteState = (binding:{artifactSha256:string},value:unknown,expected:unknown) => saveNoteState(binding,'offline-notes',value,expected);

@@ -13,3 +13,9 @@ it('omits credentials, redirects and private headers; bounds writes and requires
   expect((await relayPublicLedger(new Request('https://bankeiz.com/api/bank/ledger-proof',{method:'POST',headers:{origin:'https://bankeiz.com','content-type':'application/json','content-length':String(5*1024*1024)},body:'{}'}))).status).toBe(413);
  }finally{fetch.mockRestore();}
 });
+
+it('refuses unexpected HTML and redirect responses without relaying provider headers',async()=>{
+ const fetch=vi.spyOn(globalThis,'fetch').mockResolvedValueOnce(new Response('<html>provider error</html>',{status:404,headers:{'Content-Type':'text/html','Set-Cookie':'private=secret'}})).mockResolvedValueOnce(new Response('moved',{status:302,headers:{'Content-Type':'application/json',Location:'https://other.test'}}));
+ try{for(let i=0;i<2;i++){const response=await relayPublicLedger(new Request('https://bankeiz.com/api/bank/ledger-proof'));expect(response.status).toBe(503);expect(response.headers.get('set-cookie')).toBeNull();expect(response.headers.get('location')).toBeNull();expect(await response.json()).toEqual({error:'PUBLIC_LEDGER_SOURCE_UNAVAILABLE'});}}
+ finally{fetch.mockRestore();}
+});

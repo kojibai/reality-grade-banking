@@ -1,5 +1,5 @@
 <!doctype html><meta charset="utf-8"><title>Isolated bank storage checks</title><h1>Test-only private storage</h1><p>Run on a separate test origin, never your actual bank origin. Uses dummy bytes and observations. Creates no Receiz ID, account, deposit, payment or ownership.</p><button id="run">Run storage checks</button><pre id="output">Ready</pre><script type="module">
-import { saveDeviceIdentity, loadDeviceIdentity, saveWalletObservation, loadWalletObservation, restoreKnownWalletObservation, saveDepositSource, loadDepositSources, saveCardOperation, loadCardOperation, loadCardOperations, savePrivateHistoryCache, loadPrivateHistoryCache, forgetDeviceIdentity } from '/src/receiz/identity-vault.ts';
+import { saveDeviceIdentity, loadDeviceIdentity, saveProtectedIdentityTransport, saveWalletObservation, loadWalletObservation, restoreKnownWalletObservation, saveDepositSource, loadDepositSources, saveCardOperation, loadCardOperation, loadCardOperations, savePrivateHistoryCache, loadPrivateHistoryCache, forgetDeviceIdentity } from '/src/receiz/identity-vault.ts';
 import { parsePrivateHistoryPage } from '/src/receiz/private-history.ts';
 document.querySelector('#run').onclick = async () => {
  const checks=[], assert=(value,label)=>{if(!value)throw Error(label);checks.push(label);};
@@ -13,10 +13,18 @@ document.querySelector('#run').onclick = async () => {
   assert(!row.wrappingKey.extractable&&new TextDecoder().decode(row.bytes)!=='test-only-not-an-identity','Private source is encrypted under non-exportable key');
   const wallet={userId:'fixture-account',totalUsdCents:'321',reserveUsdCents:'100',settlementUsdCents:'221',balancePhiMicro:'321',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:null,kaiUpulse:null};
   await saveWalletObservation(binding,wallet,'2026-10-13T00:00:00Z'); assert((await loadWalletObservation(binding)).wallet.totalUsdCents==='321','Exact read-only observation retained'); assert((await restoreKnownWalletObservation()).wallet.totalUsdCents==='321','Fast paint binds exact source');
+  await saveProtectedIdentityTransport(binding,{bytes:new Uint8Array([5,6,7]),phrase:'fixture-protection-only'});
+  const protectedSaved=await loadDeviceIdentity();assert(protectedSaved.protectedTransport.bytes.join(',')==='5,6,7'&&protectedSaved.protectedTransport.phrase==='fixture-protection-only','Derived protected transport retained encrypted under the same original');
+  assert(new TextDecoder().decode(protectedSaved.bytes)==='test-only-not-an-identity'&&(await loadWalletObservation(binding)).wallet.totalUsdCents==='321','Transport retention preserves exact identity and existing account observation');
   await saveDepositSource(binding,source,'test-only.bin',binding.artifactSha256); assert((await loadDepositSources(binding)).length===1,'Exact private source retained');
   const privatePage=parsePrivateHistoryPage({ok:true,accountUserId:wallet.userId,nextCursor:'fixture-older',events:[{id:'test-only-event',kind:'reserve_credit',createdAt:'2026-10-13T00:00:00Z',amountUsdCents:'100'}]},wallet.userId);
-  await savePrivateHistoryCache(binding,{schema:'bank.private-history-cache.v1',accountUid:wallet.userId,observedAt:'2026-10-13T00:00:00Z',records:privatePage.records,nextCursor:privatePage.nextCursor});
+  await savePrivateHistoryCache(binding,{schema:'bank.private-history-cache.v1',accountUid:wallet.userId,observedAt:'2026-10-13T00:00:00Z',records:privatePage.records,nextCursor:privatePage.nextCursor,pages:[{cursor:null,json:privatePage.sourceJson}]});
   assert((await loadPrivateHistoryCache(binding,wallet.userId)).records[0].sourceId==='test-only-event','Encrypted private history reopens for the bound account');
+  const fullPage=id=>parsePrivateHistoryPage({ok:true,accountUserId:wallet.userId,nextCursor:null,events:[{id,kind:'transfer',createdAt:'2026-10-13T00:00:00Z',direction:'out',amountPhiMicro:'400000',valueReceipt:{schema:'test-only',original:id}}]},wallet.userId);
+  const cacheFor=page=>({schema:'bank.private-history-cache.v1',accountUid:wallet.userId,observedAt:'2026-10-13T01:00:00Z',records:page.records,nextCursor:null,pages:[{cursor:null,json:page.sourceJson}]});
+  await Promise.all([savePrivateHistoryCache(binding,cacheFor(fullPage('page-a'))),savePrivateHistoryCache(binding,cacheFor(fullPage('page-b')))]);
+  const complete=await loadPrivateHistoryCache(binding,wallet.userId);
+  assert(complete.pages.length===3&&complete.pages.map(page=>JSON.parse(page.json)).filter(page=>page.events[0].valueReceipt).every(page=>page.events[0].amountPhiMicro==='400000'&&page.events[0].direction==='out'),'Concurrent history writes preserve complete original pages and financial fields');
   assert(await loadPrivateHistoryCache(binding,'another-fixture-account')===null,'Private history never opens under another account');
   const operation={schema:'receiz.bank.card-operation.v1',stage:'creating',operationId:'fixture-attempt',amountUsdCents:'500'};
   const attempts=await Promise.allSettled([saveCardOperation(binding,operation,true),saveCardOperation(binding,{...operation,operationId:'competing'},true)]); assert(attempts.filter(value=>value.status==='fulfilled').length===1,'Only one concurrent card start retained');
@@ -29,7 +37,8 @@ document.querySelector('#run').onclick = async () => {
   const retained=await loadCardOperations(binding); assert(retained.length===2&&retained.some(value=>value.operationId==='next-attempt'&&value.stage==='ready'),'Known checkout retained encrypted when entering a new amount');
   let unknownRefused=false;try{await saveCardOperation(binding,{...operation,operationId:'unsafe-retry'},true,retained[0].operationId,true);}catch{unknownRefused=true;}assert(unknownRefused,'Unresolved creating attempt cannot be replaced');
   await saveCardOperation(binding,null,false,'next-attempt');assert((await loadCardOperations(binding)).length===1,'Resolving an older checkout preserves the newer attempt');
-  await forgetDeviceIdentity(); await saveWalletObservation(binding,wallet,'2026-10-13T00:00:00Z'); assert(await loadDeviceIdentity()===null,'Late observation cannot resurrect removed custody');
+  await forgetDeviceIdentity();let transportRefused=false;try{await saveProtectedIdentityTransport(binding,{bytes:new Uint8Array([5]),phrase:'fixture'});}catch{transportRefused=true;}assert(transportRefused&&await loadDeviceIdentity()===null,'Late protected transport cannot recreate a removed identity');
+  await saveWalletObservation(binding,wallet,'2026-10-13T00:00:00Z'); assert(await loadDeviceIdentity()===null,'Late observation cannot resurrect removed custody');
   await saveDeviceIdentity(new Uint8Array([9,8,7]),'other-fixture.bin','fixture-phrase',true); let refused=false; try{await saveDepositSource(binding,source,'test-only.bin',binding.artifactSha256);}catch{refused=true;} assert(refused,'Former source refused under replaced identity'); await forgetDeviceIdentity();
   document.querySelector('#output').textContent='PASS\n'+checks.join('\n');
  } catch(error){document.querySelector('#output').textContent='FAIL\n'+error.message;}

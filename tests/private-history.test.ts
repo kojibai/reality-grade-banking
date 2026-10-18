@@ -19,3 +19,7 @@ it('exports only bounded failure diagnostics, never private response payloads or
   expect(privateHistoryFailureCode({ status: 401, payload: { bearer: 'do-not-export' } })).toBe('HTTP_401');
   expect(privateHistoryFailureCode(new Error('private account and arbitrary secret'))).toBe('PRIVATE_HISTORY_READ_UNAVAILABLE');
 });
+it('retains the complete bound Ledger response beneath its display rows',()=>{
+ const original={ok:true,accountUserId:'current',nextCursor:null,events:[{id:'debit:1',kind:'wallet_ledger_entry',direction:'debit',amountPhiMicro:'1250000',amountUsdCents:'250',valueReceipt:{settledUsdCents:'0',phiUsdCents:'250',fundingSource:'sovereign'},proofBundle:{bundleHash:'a'.repeat(64)}}],rollup:{totalPhiCreditMicro:'2000000',totalPhiDebitMicro:'1250000'},accountSource:{head:'b'.repeat(64)}};
+ const page=parsePrivateHistoryPage(original,'current');expect(JSON.parse(page.sourceJson)).toEqual(original);original.events[0].amountPhiMicro='999';expect(JSON.parse(page.sourceJson).events[0].amountPhiMicro).toBe('1250000');
+});
