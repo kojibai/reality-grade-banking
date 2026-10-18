@@ -64,10 +64,14 @@ a complete timeline. Older aggregate wallets can include artifact and lawful
 value beyond native cash movements. Their existing valid balance and genuine
 observations remain accessible and explicitly identify missing history. A
 native cash-only statement cannot replace a different aggregate amount. The
-current v129 legacy export does not carry the full historical artifact/lawful
-ownership and valuation operands; that source is required for a complete
-aggregate historical chart. Login, current holdings and public activity rows
-cannot supply it. This change does not alter identity admission, financial
+legacy export may omit historical artifact/lawful ownership and valuation
+operands; those sources are required for a complete aggregate historical chart.
+A complete admitted carrier with reconciled legacy wallet observations can
+already extend the chart to its first recorded balance under the
+[legacy history reader](legacy-wallet-history.md). This does not require waiting
+for the remaining artifact recovery, and an older complete cache cannot hide
+earlier carried observations. Login, current holdings and public activity rows
+cannot manufacture missing historical holdings. This change does not alter identity admission, financial
 writers, current wallet amounts or package versions.
 
 ## Verification scope

@@ -1,32 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
-import { ExternalLink, FileCheck2, ShieldCheck } from 'lucide-react';
+import { ExternalLink, FileCheck2 } from 'lucide-react';
 import { AssetMark } from '../../components/AssetMark';
 import { ValueChart } from '../../components/ValueChart';
 import { formatPublicPrice, type PublicMarketItem } from '../../receiz/public-market';
-import { verifyPublicOriginalBytes } from '../../receiz/public-original';
+import {ProofMedia} from '../media/ProofMedia';
 
 export function PublicAssetDetail({ item, onTrade }: { item: PublicMarketItem; onTrade?: (mode: 'buy' | 'sell', digest: string) => void }) {
-  const [verification, setVerification] = useState<string | null>(null), [busy, setBusy] = useState(false);
-  const pending = useRef<AbortController | null>(null);
-  const sourceKey = `${item.id}|${item.originalDigest}|${item.originalUrl}`;
-  const currentSource = useRef(sourceKey); currentSource.current = sourceKey;
-  useEffect(() => { setVerification(null); setBusy(false); return () => { pending.current?.abort(); pending.current = null; }; }, [sourceKey]);
-  async function inspect() {
-    if (!item.originalUrl || !item.originalDigest || busy) return;
-    const controller = new AbortController(); pending.current = controller; const expectedSource = sourceKey;
-    const current = () => !controller.signal.aborted && currentSource.current === expectedSource && pending.current === controller;
-    setBusy(true); setVerification(null);
-    try {
-      const url = new URL(item.originalUrl);
-      const response = await fetch(`/api/bank/public-market/original?path=${encodeURIComponent(url.pathname + url.search)}`, { credentials: 'omit', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(90_000)]) });
-      if (!response.ok) throw new Error('The original is not publicly downloadable. Open its public source to inspect its access terms.');
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      await verifyPublicOriginalBytes(bytes, item.originalDigest);
-      if (current()) setVerification('Original verified. The enclosing artifact matches this public source.');
-    } catch (cause) { if (current()) setVerification(cause instanceof Error ? cause.message : 'Original verification is unavailable.'); }
-    finally { if (current()) { setBusy(false); pending.current = null; } }
-  }
   return <><div className="asset-detail-heading"><AssetMark kind="proof" /><div><h1>{item.title}</h1><p>Public source</p></div></div>
+    {item.originalUrl&&item.originalDigest&&<ProofMedia key={item.originalDigest} title={item.title} source={{kind:"public",url:item.originalUrl,digest:item.originalDigest}}/>}
     <div className="asset-price">{formatPublicPrice(item.priceUsd)}<span>public Market value</span></div>
     {item.changePct !== null && <div className={`price-change ${item.changePct >= 0 ? 'positive' : 'negative'}`}>{item.changePct > 0 ? '+' : ''}{item.changePct}%</div>}
     {item.chart.length > 1 && <ValueChart values={item.chart} label="Public Market value in dollars" />}
@@ -34,8 +14,6 @@ export function PublicAssetDetail({ item, onTrade }: { item: PublicMarketItem; o
     <div className="dual-actions"><button className="primary-button" disabled={!onTrade || !item.originalDigest} onClick={() => { if (item.originalDigest) onTrade?.('buy', item.originalDigest); }}>Buy ownership</button><button className="secondary-button" disabled={!onTrade || !item.originalDigest} onClick={() => { if (item.originalDigest) onTrade?.('sell', item.originalDigest); }}>Take cash</button></div>
     <div className="asset-actions">{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={18} />Open public source</a>}{item.verifyUrl && <a href={item.verifyUrl} target="_blank" rel="noreferrer"><FileCheck2 size={18} />Inspect proof</a>}</div>
     <div className="detail-list"><div><span>Owner</span><strong>{item.ownerProfileUrl ? <a href={item.ownerProfileUrl} target="_blank" rel="noreferrer">@{item.ownerUsername}</a> : item.ownerDisplayName ?? 'Not supplied by the public source'}</strong></div><div><span>Object</span><strong className="proof-coordinate">{item.assetId}</strong></div><div><span>Sealed</span><strong>{item.sealedAt ? new Date(item.sealedAt).toLocaleString() : 'Not supplied'}</strong></div>{item.pulse && <div><span>☤KAI</span><strong>{item.pulse}</strong></div>}</div>
-    {item.originalUrl && item.originalDigest && <button className="secondary-button" onClick={() => void inspect()} disabled={busy}><ShieldCheck size={18} />{busy ? 'Verifying original…' : 'Verify original here'}</button>}
-    {verification && <p className="body-copy" role="status">{verification}</p>}
     <p className="body-copy small-copy">Explore public asset values here. Before a trade, its offer, ownership and payment proofs must verify.</p>
   </>;
 }

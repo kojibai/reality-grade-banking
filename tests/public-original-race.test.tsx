@@ -5,7 +5,7 @@ import { expect, it, vi } from 'vitest';
 import { PublicAssetDetail } from '../src/features/market/PublicAssetDetail';
 import { parsePublicMarket } from '../src/receiz/public-market';
 const verify = vi.hoisted(() => vi.fn());
-vi.mock('../src/receiz/public-original', () => ({ verifyPublicOriginalBytes: verify }));
+vi.mock('../src/receiz/proof-media', () => ({ openProofMedia: verify }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 it('discards verification completion after the selected source digest changes', async () => {
   const item = parsePublicMarket({ ok: true, transport: { publicMembership: {}, publicOriginals: [{ id: 'a', receizId: 'a', title: 'A', profileOriginal: { media: { originalDownloadSrc: '/api/profile/originals/download?receizId=a&kind=original', originalDownloadSha256Hex: 'a'.repeat(64) } } }] } }).items[0];
@@ -14,9 +14,9 @@ it('discards verification completion after the selected source digest changes', 
   const host = document.createElement('div'), root = createRoot(host);
   try {
     act(() => root.render(<PublicAssetDetail item={item} />));
-    await act(async () => { [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Verify original here'))!.click(); });
+    await act(async () => { [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Experience the original'))!.click(); });
     act(() => root.render(<PublicAssetDetail item={{ ...item, originalDigest: 'b'.repeat(64) }} />));
-    await act(async () => { finish({ digest: 'a'.repeat(64) }); });
-    expect(host.textContent).not.toContain('Original verified with Receiz v129');
+    await act(async () => { finish({ artifactDigest: 'a'.repeat(64),files:[] }); });
+    expect(host.textContent).not.toContain('Original verified');
   } finally { act(() => root.unmount()); vi.unstubAllGlobals(); }
 });

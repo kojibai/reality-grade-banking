@@ -1,7 +1,8 @@
+import {projectLegacyWalletObservation} from './legacy-wallet-history';
 import type { ReceizIdentityAccountProjection } from '@receiz/sdk';
 import { quoteReceizDisplayUsdV122 } from '@receiz/sdk';
 import { projectHistoricalWallet, type WalletHistoryMovement } from './historical-wallet';
-import { appendWalletPoint, walletPointTime, type WalletPoint } from './wallet-series';
+import { appendWalletPoint, mergeWalletPoints, walletPointTime, type WalletPoint } from './wallet-series';
 import type { WalletObservation } from './wallet-observation';
 
 const record = (value: unknown): Record<string, unknown> => {
@@ -22,7 +23,7 @@ const coordinate = (value: unknown) => {
 /** Read-only history beneath the SDK's complete, admitted same-owner carrier.
  * Reconcile both rails and gross Phi with the carried wallet before drawing.
  * No snapshot alias, missing-rail inference, login grant or spending authority. */
-export function projectCarriedWalletObservation(projection: ReceizIdentityAccountProjection, observation: WalletObservation): WalletObservation | null {
+function projectNativeCarriedWalletObservation(projection: ReceizIdentityAccountProjection, observation: WalletObservation): WalletObservation | null {
   try {
     if (projection.authority !== 'verified-identity-portable-state' || !projection.portableStateVerified || !projection.completeAtSealedHead) return null;
     const state = record(projection.verifiedState), owner = projection.owner.uid;
@@ -68,3 +69,17 @@ export function projectCarriedWalletObservation(projection: ReceizIdentityAccoun
 }
 
 export function projectCarriedWalletHistory(projection:ReceizIdentityAccountProjection,observation:WalletObservation):WalletPoint[]|null{return projectCarriedWalletObservation(projection,observation)?.history??null;}
+
+export function projectCarriedWalletObservation(projection:ReceizIdentityAccountProjection,observation:WalletObservation):WalletObservation|null{return projectNativeCarriedWalletObservation(projection,observation)??projectLegacyWalletObservation(projection,observation);}
+
+/** Enrich only an unchanged same-account financial head. A later quoted
+ * wallet wins; older accepted legacy observations extend its chart only. */
+export function mergeCarriedWalletHistory(current:WalletObservation,carried:WalletObservation,projection:ReceizIdentityAccountProjection):WalletObservation{
+ if(!Number.isFinite(Date.parse(current.observedAt))||!Number.isFinite(Date.parse(carried.observedAt))||current.source==='local-note-head'||Date.parse(current.observedAt)<Date.parse(carried.observedAt))return current;
+ const sameAmounts=(['userId','totalUsdCents','reserveUsdCents','settlementUsdCents','balancePhiMicro','kaiUpulse']as const).every(key=>current.wallet[key]===carried.wallet[key]);
+ const sameHead=(['userId','reserveUsdCents','balancePhiMicro','kaiUpulse']as const).every(key=>current.wallet[key]===carried.wallet[key]);
+ if(!sameAmounts&&!sameHead)return current;
+ const projected=projectCarriedWalletObservation(projection,carried);if(!projected?.history?.length||!sameAmounts&&projected.historyBasis?.kind!=='legacy-wallet-observations')return current;
+ const history=mergeWalletPoints([projected.history,current.history??[]],current.wallet.userId),basis=projected.historyBasis;
+ return {...current,history,historyBasis:basis&&history[0]?.kaiUPulse&&history.at(-1)?.kaiUPulse?{...basis,startKaiUPulse:history[0].kaiUPulse!,endKaiUPulse:history.at(-1)!.kaiUPulse!}:undefined};
+}

@@ -20,7 +20,7 @@ import { createBankNativeSession } from './bank-native-session';
 import { browserBankKaiFactory } from './bank-kai';
 import { validateAssetDefinition, type AssetDefinition } from './asset-definition';
 import { readCarriedWalletObservation } from './wallet-observation';
-import { appendWalletPoint, mergeWalletPoints } from './wallet-series';
+import { appendWalletPoint } from './wallet-series';
 import { parsePrivateHistoryPage, privateHistoryPath, type PrivateHistoryPage } from './private-history';
 import { createBankExecutionRecovery, type BankExecutionRecovery } from './bank-execution-recovery';
 import { deviceBankExecutionStore } from './bank-execution-vault';
@@ -87,17 +87,15 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const carriedWallet = readCarriedWalletObservation(localHistory);
   knownWallet ??= carriedWallet;
   let enrichedCarriedHistory = false;
-  if (knownWallet && carriedWallet && knownWallet.source !== 'local-note-head' && localHistory.completeAtSealedHead && !hasSettledAccountView(knownWallet)) {
-    // Upgrade an older display cache only when the original covers exactly
-    // that same balance/head. Never replace a later or locally spent wallet.
-    const sameAmounts = (['userId','totalUsdCents','reserveUsdCents','settlementUsdCents','balancePhiMicro','kaiUpulse'] as const).every(key => knownWallet!.wallet[key] === carriedWallet.wallet[key]);
-    if (sameAmounts && Date.parse(knownWallet.observedAt) >= Date.parse(carriedWallet.observedAt)) {
-      try {
-        const { projectCarriedWalletObservation } = await import('./carried-wallet-history');
-        const projected = projectCarriedWalletObservation(localHistory, carriedWallet), history = projected?.history;
-        if (history) { knownWallet = { ...knownWallet, history: mergeWalletPoints([history, knownWallet.history ?? []], knownWallet.wallet.userId), historyBasis: projected!.historyBasis }; enrichedCarriedHistory = true; }
-      } catch { /* Optional chart resources cannot prevent valid local identity entry. */ }
-    }
+  const carriedRows=(localHistory.verifiedState as {wallet?:{ledgerEntries?:unknown[]}}|null)?.wallet?.ledgerEntries;
+  const cachedStart=knownWallet?.historyBasis?.startKaiUPulse;
+  const hasEarlierCarriedBalance=!!cachedStart&&Array.isArray(carriedRows)&&carriedRows.some(value=>{const kai=(value as {kai_upulse?:unknown}|null)?.kai_upulse;return (typeof kai==='string'||typeof kai==='number'&&Number.isSafeInteger(kai))&&/^\d{1,30}$/.test(String(kai))&&BigInt(String(kai))<BigInt(cachedStart);});
+  if (knownWallet && carriedWallet && knownWallet.source !== 'local-note-head' && localHistory.completeAtSealedHead && (!hasSettledAccountView(knownWallet)||hasEarlierCarriedBalance)) {
+    try {
+      const {mergeCarriedWalletHistory}=await import('./carried-wallet-history');
+      const enriched=mergeCarriedWalletHistory(knownWallet,carriedWallet,localHistory);
+      if(enriched!==knownWallet){knownWallet=enriched;enrichedCarriedHistory=true;}
+    }catch{/* An optional earlier display source cannot prevent identity entry. */}
   }
   const lifetime = new AbortController();
   if (enrichedCarriedHistory && knownWallet) void persistWalletObservation(knownWallet).catch(() => {});

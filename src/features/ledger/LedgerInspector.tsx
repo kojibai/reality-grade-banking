@@ -8,6 +8,8 @@ import {receiptLink,openLedgerReceipt,localReceiptPath} from '../../receiz/ledge
 import {formatMoney} from '../../core/money';
 import {LedgerValue} from './LedgerValue';
 import {ledgerRelatedRecords,ledgerValuationContext,type indexLedgerRelations} from '../../receiz/ledger-economy';
+import {ProofMedia} from '../media/ProofMedia';
+import {safeReceizPublicUrl} from '../../receiz/public-market';
 import './ledger-inspector.css';
 
 const labels:Record<string,string>={kaiUpulse:'☤µKAI',upulse:'☤µKAI',pulse:'☤KAI',valuePulse:'Value at ☤KAI',amountPhiMicro:'Phi · exact micro-units',usdPerPhiMicrocents:'USD rate · exact microcents / Phi',amountUsdCents:'Recorded amount · cents',considerationUsdCents:'Consideration · cents',cardValueUsdCents:'Card value at transfer · cents',proofValueUsdCents:'Carried value · cents',settledUsdCents:'Reserve component · cents',phiUsdCents:'Settlement component · cents',prevHash:'Previous entry hash',entryHash:'Entry hash',proofBundle:'Proof evidence',proofCapsule:'Proof coordinate',seq:'Sequence',receiz:'Sealed moment',pv:'Intrinsic Phi',live:'Quoted Phi',originalUrl:'Original file',actorUserId:'Actor public identity',subjectUserId:'Subject public identity',sortKaiPulse:'Source valuation ☤KAI',marketAssetChart:'Carried market quote'};
@@ -33,6 +35,7 @@ export function LedgerInspector({record,value,currentValue,valuation,relations,v
   <div className="ledger-inspector-heading"><div><span>{record.source==='proofs'?'Proof object':'Activity record'}</span><h3>{record.title}</h3></div><FileText size={18} strokeWidth={1.3}/></div>
   {record.detail&&record.detail!==record.title&&<p className="ledger-inspector-description">{record.detail}</p>}
   <div className="ledger-inspector-values"><div><span>{value.basis==='unavailable'?'No amount carried':ledgerValueLabel(value)}</span><LedgerValue value={value}/>{value.amountUsdCents!==null&&value.pulse&&<small>Value at ☤KAI {value.pulse}</small>}</div>{value.considerationUsdCents!==null&&<div><span>Consideration</span><strong>{formatMoney(value.considerationUsdCents)}</strong><small>Recorded payment, separate from asset value.</small></div>}{currentValue&&currentValue.amountUsdCents!==null&&<div><span>{currentValue.basis==='intrinsic-model'?'Present value':'Latest source quote'}</span><LedgerValue value={currentValue}/><small>Separate from the value at this event.</small></div>}</div>
+  {original&&record.evidence.artifactDigest&&safeReceizPublicUrl(original,"original")&&<ProofMedia key={record.evidence.artifactDigest} title={record.title} source={{kind:"public",url:original,digest:record.evidence.artifactDigest}}/>}
   {value.gap&&<p className="ledger-inspector-note">{value.gap}</p>}
   <div className="ledger-inspector-grid"><section><h4>The record</h4><LedgerFieldsView fields={{reference:record.sourceId,activity:record.kind,source:record.source,...(record.time?{recordedAt:record.time}:{}),...(record.pulse?{pulse:record.pulse}:{}),...(record.kaiUpulse?{kaiUpulse:record.kaiUpulse}:{}),...(record.actor?{publicIdentity:record.actor}:{}),...(record.sender?{from:record.sender}:{}),...(record.recipient?{to:record.recipient}:{})}}/></section>
   {Object.keys(participants).length>0&&<section><h4>People &amp; ownership</h4><LedgerFieldsView fields={participants}/></section>}
