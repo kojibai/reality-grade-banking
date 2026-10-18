@@ -1,7 +1,13 @@
 // Public registration coordinate. Preserve every byte; this is never a secret or identity authority.
-export const BANK_APPLICATION_ID = 'rc_uV6aT6wZJCQDspB0_SJ1DcEm';
+export const BANK_APPLICATION_ID = 'rc_2d1wcGkAYfmCi5kGT3J89gkl';
+export const BANK_PREVIOUS_NATIVE_APPLICATION_ID = 'rc_uV6aT6wZJCQDspB0_SJ1DcEm';
+export const BANK_NATIVE_APPLICATION_IDS = [BANK_APPLICATION_ID, BANK_PREVIOUS_NATIVE_APPLICATION_ID] as const;
+export const isBankNativeApplicationId = (value: unknown): value is string => BANK_NATIVE_APPLICATION_IDS.some(id => id === value);
+// Durable custody address, not an authorization audience. Retain existing
+// encrypted notes, pending operations, receipts and history through client changes.
+export const BANK_STORAGE_APPLICATION_ID = BANK_PREVIOUS_NATIVE_APPLICATION_ID;
 export const BANK_PREVIOUS_CARD_APPLICATION_ID = 'rc_ELkGAUBINd9Nw4bE5zMqUsgc';
-export const BANK_CARD_APPLICATION_IDS = [BANK_APPLICATION_ID, BANK_PREVIOUS_CARD_APPLICATION_ID] as const;
+export const BANK_CARD_APPLICATION_IDS = [...BANK_NATIVE_APPLICATION_IDS, BANK_PREVIOUS_CARD_APPLICATION_ID] as const;
 export const BANK_OBSERVATION_APPLICATION_IDS = [...BANK_CARD_APPLICATION_IDS, 'rc_QlCRCxBk8zyT4ajGLrIRPIQd'] as const;
 export const BANK_PUBLIC_ORIGIN = 'https://bankeiz.com';
 // Existing QR/NFC requests remain readable; new requests use the public Bankeiz origin.

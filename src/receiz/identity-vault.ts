@@ -1,4 +1,4 @@
-import { BANK_APPLICATION_ID } from './config';
+import { BANK_APPLICATION_ID, BANK_STORAGE_APPLICATION_ID, isBankNativeApplicationId } from './config';
 import { readWalletObservation } from './wallet-observation';
 import { cardOperationApplicationId } from './card-deposit';
 export interface ProtectedIdentityTransport { bytes: Uint8Array; phrase: string; }
@@ -14,7 +14,7 @@ async function noteRemovalGuard(saved: SavedIdentity) {
   const rows: {key:string;row:PrivateBankOperation|undefined}[]=[];
   try {
     for (const family of ['offline-notes','prepared-notes','native-payments']) {
-      const key=`${family}|${BANK_APPLICATION_ID}|${digest}`;
+      const key=`${family}|${BANK_STORAGE_APPLICATION_ID}|${digest}`;
       const row=await new Promise<PrivateBankOperation|undefined>((resolve,reject)=>{const read=db.transaction('operations').objectStore('operations').get(key);read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error);});
       rows.push({key,row});
       if(!row)continue;
@@ -151,7 +151,7 @@ type BankCheckpoint = import('./bank-execution').BankExecutionCheckpoint;
 interface PrivateBankOperation { key: string; iv: Uint8Array; bytes: ArrayBuffer; }
 function bankOperationKey(binding: { artifactSha256: string }, operationId: string): string {
   if (!/^[a-f0-9]{64}$/.test(binding.artifactSha256) || !/^[A-Za-z0-9_.:-]{1,200}$/.test(operationId)) throw new Error('BANK_EXECUTION_CHECKPOINT_INVALID');
-  return `bank-operation|${BANK_APPLICATION_ID}|${binding.artifactSha256}|${operationId}`;
+  return `bank-operation|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|${operationId}`;
 }
 async function sameSavedIdentity(saved: SavedIdentity, binding: { artifactSha256: string }) {
   const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(await identityBytes(saved))))].map(byte => byte.toString(16).padStart(2, '0')).join('');
@@ -160,7 +160,7 @@ async function sameSavedIdentity(saved: SavedIdentity, binding: { artifactSha256
 type BankSessionIntent = import('./bank-native-session').BankSessionIntent;
 function sessionAad(binding: { artifactSha256: string }): Uint8Array<ArrayBuffer> {
   if (!/^[a-f0-9]{64}$/.test(binding.artifactSha256)) throw new Error('BANK_SESSION_IDENTITY_INVALID');
-  return new TextEncoder().encode(`bank-session|${BANK_APPLICATION_ID}|${binding.artifactSha256}`);
+  return new TextEncoder().encode(`bank-session|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}`);
 }
 async function sessionIntent(saved: SavedIdentity, binding: { artifactSha256: string }, cipher = saved.bankSession): Promise<BankSessionIntent | null> {
   if (!cipher) return null;
@@ -171,7 +171,7 @@ async function sessionIntent(saved: SavedIdentity, binding: { artifactSha256: st
 }
 function sessionKey(binding: { artifactSha256: string }, sourceDigest: string) {
   if (!/^[a-f0-9]{64}$/.test(sourceDigest)) throw new Error('BANK_SESSION_SOURCE_INVALID');
-  return `bank-session|${BANK_APPLICATION_ID}|${binding.artifactSha256}|${sourceDigest}`;
+  return `bank-session|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|${sourceDigest}`;
 }
 export async function loadBankSessionIntent(binding: { artifactSha256: string }, sourceDigest?: string): Promise<BankSessionIntent | null> {
   const saved = await held(); if (!saved) throw new Error('BANK_SESSION_IDENTITY_UNAVAILABLE');
@@ -224,11 +224,11 @@ export async function loadBankOperation(binding: { artifactSha256: string }): Pr
   if (!row || row.key !== key) throw new Error('BANK_EXECUTION_EXACT_CHECKPOINT_UNAVAILABLE');
   const clear = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, row.bytes);
   const value = JSON.parse(new TextDecoder().decode(clear)) as BankCheckpoint;
-  if (value.schema !== 'bank.execution-checkpoint.v1' || value.operationId !== saved.bankOperation.operationId || value.state !== saved.bankOperation.state || value.plan.applicationId !== BANK_APPLICATION_ID || value.plan.attemptId !== value.operationId) throw new Error('BANK_EXECUTION_CHECKPOINT_INVALID');
+  if (value.schema !== 'bank.execution-checkpoint.v1' || value.operationId !== saved.bankOperation.operationId || value.state !== saved.bankOperation.state || !isBankNativeApplicationId(value.plan.applicationId) || value.plan.attemptId !== value.operationId) throw new Error('BANK_EXECUTION_CHECKPOINT_INVALID');
   return value;
 }
 export async function saveBankOperation(binding: { artifactSha256: string }, value: BankCheckpoint, mode: 'new' | 'replace'): Promise<void> {
-  if (value.schema !== 'bank.execution-checkpoint.v1' || value.plan.applicationId !== BANK_APPLICATION_ID || value.plan.attemptId !== value.operationId || !['prepared', 'unknown', 'committed', 'zero-write'].includes(value.state)) throw new Error('BANK_EXECUTION_CHECKPOINT_INVALID');
+  if (value.schema !== 'bank.execution-checkpoint.v1' || !isBankNativeApplicationId(value.plan.applicationId) || value.plan.attemptId !== value.operationId || !['prepared', 'unknown', 'committed', 'zero-write'].includes(value.state)) throw new Error('BANK_EXECUTION_CHECKPOINT_INVALID');
   const previous = mode === 'replace' ? await loadBankOperation(binding) : null;
   if (mode === 'replace') {
     if (!previous || previous.operationId !== value.operationId) throw new Error('BANK_EXECUTION_CHECKPOINT_CHANGED');
@@ -304,7 +304,7 @@ export async function saveWalletObservation(binding: { keyId: string; artifactSh
 export interface PrivateHistoryCache { schema: 'bank.private-history-cache.v1'; accountUid: string; observedAt: string; records: import('./public-network').PublicRecord[]; nextCursor: string | null; }
 function privateHistoryKey(binding: { artifactSha256: string }, accountUid: string) {
   if (!/^[a-f0-9]{64}$/.test(binding.artifactSha256) || !/^[A-Za-z0-9_.:-]{1,128}$/.test(accountUid)) throw new Error('PRIVATE_HISTORY_BINDING_INVALID');
-  return `private-history|${BANK_APPLICATION_ID}|${binding.artifactSha256}|${accountUid}`;
+  return `private-history|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|${accountUid}`;
 }
 export async function loadPrivateHistoryCache(binding: { artifactSha256: string }, accountUid: string): Promise<PrivateHistoryCache | null> {
   const saved = await held(); if (!saved) return null; await sameSavedIdentity(saved, binding);
@@ -328,7 +328,7 @@ export async function savePrivateHistoryCache(binding: { artifactSha256: string 
 /** Encrypted note choreography; all financial sources are reopened by v129. */
 async function loadNoteState(binding: { artifactSha256: string }, family: string): Promise<unknown> {
   const saved = await held(); if (!saved) throw new Error('BANK_NOTE_IDENTITY_UNAVAILABLE'); await sameSavedIdentity(saved, binding);
-  const key = `${family}|${BANK_APPLICATION_ID}|${binding.artifactSha256}`, db = await database();
+  const key = `${family}|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}`, db = await database();
   let row: PrivateBankOperation | undefined;
   try { row = await new Promise((resolve, reject) => { const r = db.transaction('operations').objectStore('operations').get(key); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); }); } finally { db.close(); }
   if (!row) return null;
@@ -337,7 +337,7 @@ async function loadNoteState(binding: { artifactSha256: string }, family: string
 }
 async function saveNoteState(binding: { artifactSha256: string; keyId?: string }, family: string, value: unknown, expected: unknown, observation?: import('./wallet-observation').WalletObservation): Promise<void> {
   const saved = await held(); if (!saved) throw new Error('BANK_NOTE_IDENTITY_UNAVAILABLE'); await sameSavedIdentity(saved, binding);
-  const key = `${family}|${BANK_APPLICATION_ID}|${binding.artifactSha256}`, clear = new TextEncoder().encode(JSON.stringify(value));
+  const key = `${family}|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}`, clear = new TextEncoder().encode(JSON.stringify(value));
   if (clear.length > 32 * 1024 * 1024) throw new Error('BANK_NOTE_DEVICE_CAPACITY');
   const db = await database();
   const equal = (a: ArrayBuffer | Uint8Array | undefined, b: ArrayBuffer | Uint8Array | undefined) => !a && !b || !!a && !!b && a.byteLength === b.byteLength && new Uint8Array(a).every((v, index) => v === new Uint8Array(b)[index]);
@@ -383,7 +383,7 @@ export async function saveOfflineNoteBlob(binding: { artifactSha256: string }, i
   const bytes = new Uint8Array(input); if (!bytes.length || bytes.length > 32 * 1024 * 1024) throw new Error('BANK_NOTE_DEVICE_CAPACITY');
   const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(v => v.toString(16).padStart(2, '0')).join('');
   const saved = await held(); if (!saved) throw new Error('BANK_NOTE_IDENTITY_UNAVAILABLE'); await sameSavedIdentity(saved, binding);
-  const key = `offline-note-source|${BANK_APPLICATION_ID}|${binding.artifactSha256}|${digest}`, iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = `offline-note-source|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|${digest}`, iv = crypto.getRandomValues(new Uint8Array(12));
   const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, bytes), db = await database();
   try { await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(['identity', 'operations'], 'readwrite'), read = tx.objectStore('identity').get('current'), sources = tx.objectStore('operations');
@@ -394,7 +394,7 @@ export async function saveOfflineNoteBlob(binding: { artifactSha256: string }, i
 export async function loadOfflineNoteBlob(binding: { artifactSha256: string }, digest: string): Promise<Uint8Array> {
   if (!/^[a-f0-9]{64}$/.test(digest)) throw new Error('BANK_NOTE_SOURCE_REFERENCE_INVALID');
   const saved = await held(); if (!saved) throw new Error('BANK_NOTE_IDENTITY_UNAVAILABLE'); await sameSavedIdentity(saved, binding);
-  const key = `offline-note-source|${BANK_APPLICATION_ID}|${binding.artifactSha256}|${digest}`, db = await database();
+  const key = `offline-note-source|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|${digest}`, db = await database();
   let row: PrivateBankOperation | undefined;
   try { row = await new Promise((resolve, reject) => { const r = db.transaction('operations').objectStore('operations').get(key); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); }); } finally { db.close(); }
   if (!row) throw new Error('BANK_NOTE_EXACT_SOURCE_UNAVAILABLE');
@@ -406,7 +406,7 @@ export async function loadOfflineNoteBlob(binding: { artifactSha256: string }, d
 /** Portable proof evidence is retained separately from live execution/note
  * checkpoints. These bytes never establish balances or device custody. */
 type PortableProof = import('./proof-library').ProofSource;
-const proofArchivePrefix = (binding: { artifactSha256: string }) => `proof-archive|${BANK_APPLICATION_ID}|${binding.artifactSha256}|`;
+const proofArchivePrefix = (binding: { artifactSha256: string }) => `proof-archive|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|`;
 async function retainedOperationRows(prefix: string): Promise<PrivateBankOperation[]> {
   const db = await database();
   try { return await new Promise((resolve, reject) => {
@@ -441,11 +441,11 @@ export async function loadProofArchive(binding: { artifactSha256: string }): Pro
 }
 export async function loadExportableRecoveries(binding: { artifactSha256: string }): Promise<PortableProof[]> {
   const saved = await held(); if (!saved) throw Error('PROOF_IDENTITY_CLOSED'); await sameSavedIdentity(saved, binding);
-  const rows = await retainedOperationRows(`bank-operation|${BANK_APPLICATION_ID}|${binding.artifactSha256}|`), result: PortableProof[] = [];
+  const rows = await retainedOperationRows(`bank-operation|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|`), result: PortableProof[] = [];
   for (const row of rows) {
     const value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(row.key) }, saved.wrappingKey, row.bytes))) as BankCheckpoint;
     if (value.state !== 'committed') continue;
-    if (value.schema !== 'bank.execution-checkpoint.v1' || !value.recovery || value.plan.applicationId !== BANK_APPLICATION_ID || value.operationId !== value.plan.attemptId) throw Error('BANK_EXECUTION_CHECKPOINT_INVALID');
+    if (value.schema !== 'bank.execution-checkpoint.v1' || !value.recovery || !isBankNativeApplicationId(value.plan.applicationId) || value.operationId !== value.plan.attemptId) throw Error('BANK_EXECUTION_CHECKPOINT_INVALID');
     result.push({ kind: 'execution-recovery', filename: `bank-execution-${value.plan.exactPlanDigest}.receiz-recovery.json`, bytes: new TextEncoder().encode(JSON.stringify(value.recovery)) });
   }
   const payments=await loadNativePaymentState(binding) as import('./native-payment').NativePaymentState|null;

@@ -1,7 +1,7 @@
 import type { ReceizClient, ReceizPortableExecutionTransitionRecoveryV124 } from '@receiz/sdk';
 import { createBankExecution, type BankExecutionCheckpoint, type BankExecutionResult, type BankExecutionStore } from './bank-execution';
 import { loadReceiz } from './client';
-import { BANK_APPLICATION_ID } from './config';
+import { isBankNativeApplicationId } from './config';
 
 export interface BankExecutionStatus {
   operationId: string;
@@ -20,18 +20,18 @@ export interface BankExecutionRecovery {
 // SDK's original idempotency coordinate; it never stages or executes a plan.
 export function createBankExecutionRecovery(input: {
   store: BankExecutionStore;
-  connect(): Promise<Pick<ReceizClient, 'execution'>>;
+  connect(applicationId?: string): Promise<Pick<ReceizClient, 'execution'>>;
   assertOpen(): void;
   lock<T>(operation: () => Promise<T>): Promise<T>;
 }): BankExecutionRecovery {
   async function reopen(value: BankExecutionCheckpoint): Promise<ReceizPortableExecutionTransitionRecoveryV124> {
     if (value.state !== 'committed' || !value.recovery) throw new Error('BANK_EXECUTION_COMMITTED_RECOVERY_REQUIRED');
     const sdk = await loadReceiz();
-    await sdk.recoverReceizPortableExecutionTransitionSetV124(value.recovery, { audience: BANK_APPLICATION_ID });
+    await sdk.recoverReceizPortableExecutionTransitionSetV124(value.recovery, { audience: value.plan.applicationId });
     if (sdk.canonicalizeReceizConstitution(value.recovery.transitionSet) !== sdk.canonicalizeReceizConstitution(value.transitionSet)) throw new Error('BANK_EXECUTION_RECOVERY_SOURCE_MISMATCH');
     const plan = await sdk.validateReceizOperationPlanV124(value.plan);
-    const source = await sdk.verifyReceizPortableExecutionTransitionSetV124(value.transitionSet, { audience: BANK_APPLICATION_ID });
-    if (plan.applicationId !== BANK_APPLICATION_ID || value.operationId !== plan.attemptId || sdk.canonicalizeReceizConstitution(source.operationPlan) !== sdk.canonicalizeReceizConstitution(plan)) throw new Error('BANK_EXECUTION_PLAN_SOURCE_MISMATCH');
+    const source = await sdk.verifyReceizPortableExecutionTransitionSetV124(value.transitionSet, { audience: value.plan.applicationId });
+    if (!isBankNativeApplicationId(plan.applicationId) || value.operationId !== plan.attemptId || sdk.canonicalizeReceizConstitution(source.operationPlan) !== sdk.canonicalizeReceizConstitution(plan)) throw new Error('BANK_EXECUTION_PLAN_SOURCE_MISMATCH');
     input.assertOpen(); return value.recovery;
   }
   async function status(): Promise<BankExecutionStatus | null> {
@@ -39,7 +39,7 @@ export function createBankExecutionRecovery(input: {
     const value = await input.store.load();
     input.assertOpen();
     if (!value) return null;
-    if (value.schema !== 'bank.execution-checkpoint.v1' || value.plan.applicationId !== BANK_APPLICATION_ID || value.operationId !== value.plan.attemptId) throw new Error('BANK_EXECUTION_CHECKPOINT_INVALID');
+    if (value.schema !== 'bank.execution-checkpoint.v1' || !isBankNativeApplicationId(value.plan.applicationId) || value.operationId !== value.plan.attemptId) throw new Error('BANK_EXECUTION_CHECKPOINT_INVALID');
     if (value.state === 'committed') await reopen(value);
     return { operationId: value.operationId, operationKind: value.plan.operationKind, planDigest: value.plan.exactPlanDigest, state: value.state, hasRecovery: value.state === 'committed' && !!value.recovery };
   }
@@ -56,7 +56,9 @@ export function createBankExecutionRecovery(input: {
         exportCommittedRecovery: sdk.exportReceizCommittedExecutionRecoveryV124,
         resolveByIdempotencyKey: async (...args: Parameters<ReceizClient['execution']['resolveByIdempotencyKey']>) => {
           if (!approved) throw new Error('BANK_EXECUTION_RECOVERY_CONSENT_REQUIRED');
-          input.assertOpen(); const connected = await input.connect(); input.assertOpen();
+          input.assertOpen(); const applicationId = args[0].applicationId;
+          if (!isBankNativeApplicationId(applicationId)) throw new Error('BANK_EXECUTION_APPLICATION_MISMATCH');
+          const connected = await input.connect(applicationId); input.assertOpen();
           const result = await connected.execution.resolveByIdempotencyKey(...args); input.assertOpen(); return result;
         },
       } };

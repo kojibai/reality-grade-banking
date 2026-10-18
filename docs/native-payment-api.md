@@ -57,7 +57,7 @@ select the existing native stores using:
 
 - `RECEIZ_FUNDED_WALLET_SOURCE_DIRECTORY`
 - `RECEIZ_ACCOUNT_SOURCE_DIRECTORY` (or existing `RECEIZ_SOURCE_DIRECTORY`)
-- `RECEIZ_BANK_APPLICATION_ID` — the registered application ID
+- `RECEIZ_BANK_APPLICATION_ID` — `rc_2d1wcGkAYfmCi5kGT3J89gkl` for the public Bankeiz registration (a public coordinate, not a client secret)
 
 Both directories must be the same absolute durable source directory. Startup
 never initializes empty stores or falls back to another writer. Selection is

@@ -27,7 +27,8 @@
     "http://localhost:4173/auth/receiz/callback",
     "http://localhost:5173/auth/receiz/callback"
   ],
-  "purpose": "Existing Bank client, unchanged scopes and identity authority. Add exact Bankeiz callback and localhost callbacks for the already-allowlisted local note realms; preserve every current callback.",
-  "status": "proposed-origin-update-not-applied",
-  "clientId": "rc_uV6aT6wZJCQDspB0_SJ1DcEm"
+  "purpose": "Historical unexecuted proposal. Do not apply this edit to the old client; Bankeiz now has its own public registration in native-bank-registration.json.",
+  "status": "superseded-by-separate-bankeiz-public-registration",
+  "clientId": "rc_uV6aT6wZJCQDspB0_SJ1DcEm",
+  "replacementClientId": "rc_2d1wcGkAYfmCi5kGT3J89gkl"
 }

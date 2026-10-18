@@ -1,5 +1,5 @@
 import { loadReceiz } from './client';
-import { BANK_APPLICATION_ID } from './config';
+import { BANK_APPLICATION_ID, isBankNativeApplicationId } from './config';
 import { projectHeldDeposit } from './deposit-source';
 import { inspectNoteProof } from './note-proof-portability';
 
@@ -53,11 +53,13 @@ export function createProofLibrary(input: {
       title=receipt.schema==='receiz.bank.native-payment-receipt.v1'?'Payment receipt':'Payment expiry proof';extra={operationId:receipt.review.request.requestId};
     } else if (source.kind === 'execution-recovery') {
       const recovery: unknown = JSON.parse(utf8(source.bytes));
-      await sdk.recoverReceizPortableExecutionTransitionSetV124(recovery, { audience: BANK_APPLICATION_ID });
+      const applicationId = (recovery as import('@receiz/sdk').ReceizPortableExecutionTransitionRecoveryV124)?.transitionSet?.applicationId;
+      if (!isBankNativeApplicationId(applicationId)) throw Error('PROOF_RECOVERY_APPLICATION_MISMATCH');
+      await sdk.recoverReceizPortableExecutionTransitionSetV124(recovery, { audience: applicationId });
       // Read coordinates only after the complete enclosing sources recover.
       const value = recovery as import('@receiz/sdk').ReceizPortableExecutionTransitionRecoveryV124;
       const plan = value.transitionSet.members[0]?.operationPlan;
-      if (!plan || plan.applicationId !== BANK_APPLICATION_ID || !value.members.length) throw Error('PROOF_RECOVERY_APPLICATION_MISMATCH');
+      if (!plan || plan.applicationId !== applicationId || !value.members.length) throw Error('PROOF_RECOVERY_APPLICATION_MISMATCH');
       title = 'Transaction recovery'; extra = { operationId: plan.attemptId, participantCount: value.members.length };
     } else {
       const note = await inspectNoteProof(source, binding.keyId);
@@ -95,7 +97,7 @@ export function createProofLibrary(input: {
     let parsed: unknown; try { parsed = JSON.parse(utf8(bytes)); } catch { /* Native binary originals are verified below. */ }
     let sources: ProofSource[];
     if (object(parsed) && parsed.schema === 'bankeiz.proof-backup.v1') {
-      if (!exact(parsed, ['schema', 'applicationId', 'keyId', 'ownerReceizId', 'sources']) || parsed.applicationId !== BANK_APPLICATION_ID
+      if (!exact(parsed, ['schema', 'applicationId', 'keyId', 'ownerReceizId', 'sources']) || !isBankNativeApplicationId(parsed.applicationId)
         || parsed.keyId !== binding.keyId || parsed.ownerReceizId !== binding.artifactOwnerReceizId) throw Error('PROOF_BACKUP_IDENTITY_MISMATCH');
       if (!Array.isArray(parsed.sources) || parsed.sources.length > MAX_COUNT) throw Error('PROOF_BACKUP_CAPACITY');
       const sdk = await loadReceiz(); sources = []; let total = 0;

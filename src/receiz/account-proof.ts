@@ -1,6 +1,6 @@
 import type { ReceizIdentityPublicBinding, ReceizPortableSealedArtifactV124 } from '@receiz/sdk';
 import { loadReceiz } from './client';
-import { BANK_APPLICATION_ID } from './config';
+import { BANK_APPLICATION_ID, isBankNativeApplicationId } from './config';
 import { ACCOUNT_PROOF_EXPORT_AGE_PULSES, ACCOUNT_PROOF_MAX_BYTES, ACCOUNT_PROOF_WRITERS, ACCOUNT_PROOF_PATH } from './account-proof-policy';
 
 import {inspectAccountStatement as inspectNativeAccountStatement,type AccountStatement} from './account-proof-statement';
@@ -17,7 +17,7 @@ function record(v: unknown, keys: readonly string[]): Record<string, unknown> {
 }
 
 /** Public projection inspection only, beneath original v129 source admission. */
-export function inspectAccountStatement(input:unknown):AccountStatement {return inspectNativeAccountStatement(input,BANK_APPLICATION_ID);}
+export function inspectAccountStatement(input:unknown):AccountStatement {const applicationId=(input as {applicationId?:unknown}|null)?.applicationId;if(!isBankNativeApplicationId(applicationId))fail('APPLICATION_MISMATCH');return inspectNativeAccountStatement(input,applicationId);}
 function parseWire(bytes: Uint8Array) {
   if (!bytes.length || bytes.length > ACCOUNT_PROOF_MAX_BYTES) fail('CAPACITY');
   let value: unknown; try { value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); } catch { fail(); }
@@ -42,7 +42,7 @@ export async function verifyAccountProof(file: File, expected?: Pick<ReceizIdent
   const statement = inspectAccountStatement(payload);
   if(statement.schema==='bankeiz.public-account-statement.v2'){
     const {verifyBankNativeAccountStatementSignature}=await import('./account-proof-signature');
-    if(writer!==statement.account.receizId || !await verifyBankNativeAccountStatementSignature(statement,BANK_APPLICATION_ID))fail('NATIVE_STATEMENT_UNVERIFIED');
+    if(writer!==statement.account.receizId || !await verifyBankNativeAccountStatementSignature(statement,statement.applicationId))fail('NATIVE_STATEMENT_UNVERIFIED');
   }else if(!ACCOUNT_PROOF_WRITERS.includes(writer))fail('WRITER_NOT_PINNED');
   if (await sdk.deriveReceizIdentityKeyIdFromPublicKeyRawB64u(statement.account.publicKeyRawB64u, statement.account.alg) !== statement.account.keyId) fail('IDENTITY_INVALID');
   if (await sdk.digestReceizCanonicalV122(statement.account) !== statement.checkpoint.identityBindingDigest) fail('IDENTITY_BINDING_MISMATCH');

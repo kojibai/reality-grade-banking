@@ -1,6 +1,6 @@
 import type { BankExecutionStore } from './bank-execution';
 import { loadReceiz } from './client';
-import { BANK_APPLICATION_ID } from './config';
+import { isBankNativeApplicationId } from './config';
 
 // Restoring accepted originals is custody bookkeeping, not financial effect
 // qualification. The original recovery remains retained after restoration.
@@ -13,8 +13,9 @@ export function createBankCommittedSourceRestoration(input: {
     input.assertOpen(); const checkpoint = await input.store.load(); input.assertOpen();
     if (checkpoint?.state !== 'committed' || !checkpoint.recovery || checkpoint.sourcesRestored) return;
     if (!checkpoint.accountSubjectId) throw Error('BANK_EXECUTION_ACCOUNT_SOURCE_REQUIRED');
+    if (!isBankNativeApplicationId(checkpoint.plan.applicationId)) throw Error('BANK_EXECUTION_APPLICATION_MISMATCH');
     const sdk = await loadReceiz();
-    const recovered = await sdk.recoverReceizPortableExecutionTransitionSetV124(checkpoint.recovery, { audience: BANK_APPLICATION_ID });
+    const recovered = await sdk.recoverReceizPortableExecutionTransitionSetV124(checkpoint.recovery, { audience: checkpoint.plan.applicationId });
     for (const transition of recovered.transitions) {
       if (transition.artifact.continuity.ownerReceizId !== input.ownerReceizId) continue;
       const transported = await sdk.transportReceizSealedArtifactV124(transition.artifact), exact = sdk.receizBase64UrlDecode(transported.exactBytesB64u);

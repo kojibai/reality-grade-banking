@@ -112,3 +112,12 @@ it('refuses a requested namespace absent from the verified subject', async () =>
   await expect(manager().value.connect(source, [], ['unheld'])).rejects.toThrow('BANK_SESSION_SCOPE_MISMATCH');
   expect(fixture.publish).not.toHaveBeenCalled();
 });
+it('never resubmits an unresolved prior-client session under the new client',async()=>{
+ const {value,custody}=manager();fixture.open.mockRejectedValueOnce(Error('Lost response'));
+ await expect(value.connect(source)).rejects.toThrow();
+ const original=(await custody.load())!;
+ const previous={...original,applicationId:'rc_uV6aT6wZJCQDspB0_SJ1DcEm',challenge:{...original.challenge,audience:'rc_uV6aT6wZJCQDspB0_SJ1DcEm'}} as BankSessionIntent;
+ await custody.save(previous,original);fixture.publish.mockClear();fixture.open.mockClear();fixture.sign.mockClear();
+ await expect(manager(custody).value.connect(source)).rejects.toThrow('BANK_SESSION_PENDING_APPLICATION_CHANGED');
+ expect(await custody.load()).toEqual(previous);expect(fixture.publish).not.toHaveBeenCalled();expect(fixture.open).not.toHaveBeenCalled();expect(fixture.sign).not.toHaveBeenCalled();
+});

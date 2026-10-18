@@ -100,3 +100,8 @@ it('does not report a lost publication as accepted when its exact requested stat
   await expect(api.publish(proof, { approved: true, liveUpdates: true })).rejects.toThrow('response_lost');
   expect(writes).toBe(1);
 });
+it('keeps public continuation within its original registration and consent audience',async()=>{
+ const current=await verifyAccountProof(await file());statement.applicationId='rc_uV6aT6wZJCQDspB0_SJ1DcEm';
+ const previous=await verifyAccountProof(await file());
+ expect(()=>verifyAccountProofContinuation(previous,current)).toThrow('ACCOUNT_PROOF_CONTINUITY_MISMATCH');
+});

@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({ result: null as unknown, resolve: vi.fn(), reo
 vi.mock('../src/receiz/bank-execution', () => ({ createBankExecution: (client: { execution: Record<string, (...args: unknown[]) => unknown> }) => ({ resolve: async () => {
   mocks.resolve();
   if (mocks.result === 'committed') {
-    await client.execution.resolveByIdempotencyKey({ fixture: 'original-coordinate' });
+    await client.execution.resolveByIdempotencyKey({ applicationId: BANK_APPLICATION_ID, fixture: 'original-coordinate' });
     client.execution.exportCommittedRecovery({ fixture: 'sdk-admitted-outcome' });
   }
   return mocks.result;

@@ -1,5 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import type { BankExecutionCheckpoint } from '../src/receiz/bank-execution';
+import { BANK_APPLICATION_ID } from '../src/receiz/config';
 import { createBankCommittedSourceRestoration } from '../src/receiz/bank-committed-sources';
 const fixture = vi.hoisted(() => ({ expired: false }));
 // Custody choreography fixtures only; no financial admission is simulated.
@@ -13,7 +14,7 @@ vi.mock('../src/receiz/client', () => ({ loadReceiz: async () => ({
 }) }));
 function setup() {
   fixture.expired = false;
-  let current = { schema: 'bank.execution-checkpoint.v1', operationId: 'fixture', state: 'committed', accountSubjectId: 'account-subject', recovery: { fixture: true } } as unknown as BankExecutionCheckpoint;
+  let current = { schema: 'bank.execution-checkpoint.v1', operationId: 'fixture', plan: { applicationId: BANK_APPLICATION_ID }, state: 'committed', accountSubjectId: 'account-subject', recovery: { fixture: true } } as unknown as BankExecutionCheckpoint;
   const saveSource = vi.fn(async (_bytes: Uint8Array, _filename: string, _digest: string, _role?: 'account-coordination') => {}), store = { load: async () => structuredClone(current), saveNew: vi.fn(), replace: async (next: BankExecutionCheckpoint) => { current = structuredClone(next); } };
   const restore = createBankCommittedSourceRestoration({ store, ownerReceizId: 'owner', assertOpen() {}, openSubject: async file => ({ subjectId: file.name }), saveSource });
   return { restore, store, saveSource };

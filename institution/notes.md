@@ -31,7 +31,7 @@ The Bank's embedded native runtime is checked in under `public/native/offline-no
 
 ## Production access is receiver-specific
 
-The existing Receiz hosted offline-note composition is specifically authorized for the Bank client `rc_uV6aT6wZJCQDspB0_SJ1DcEm` and `https://bank.receiz.com` (plus the registered localhost 4173/5173 development origins). It is **not a general public custody or redemption API**. Its private calls require the verified account grant, including wallet read and Reserve write, and current qualified custody.
+The Receiz hosted offline-note composition admits the dedicated public Bankeiz client `rc_2d1wcGkAYfmCi5kGT3J89gkl` only at its registered `https://bankeiz.com` origin. The previous Bank client `rc_uV6aT6wZJCQDspB0_SJ1DcEm` keeps its own explicitly allowed, registered realms. It is **not a general public custody or redemption API**. Its private calls require the verified account grant, including wallet read and Reserve write, and current qualified custody.
 
 A new institution must register its own application and receiving realm and obtain an explicitly authorized native composition. It must bind its own recipient accounts, custody, origin, consent, funding/backing policy and exact credit process. Do not impersonate the Bank's ID or weaken origin checks to make a test pass. Public artifact verification is independently usable; private production service permissions are separate.
 

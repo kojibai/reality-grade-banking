@@ -3,7 +3,7 @@ import { createBankNoteAttestationFetch } from './note-attestation-transport';
 import { loadBankNoteRuntime, bankNoteArtwork, type BankOfflineNotes, type BankNoteRuntime } from './offline-notes';
 import type { ReceizClient, ReceizIdentityPublicBinding, ReceizKeyFile, ReceizIdentityAccountProjection } from '@receiz/sdk';
 import { loadReceiz } from './client';
-import { BANK_APPLICATION_ID, BANK_CARD_APPLICATION_IDS, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES, BANK_NATIVE_CONSENT, BANK_NATIVE_SCOPES, BANK_RECOVERY_SCOPES, BANK_RECOVERY_CONSENT } from './config';
+import { BANK_APPLICATION_ID, BANK_PREVIOUS_NATIVE_APPLICATION_ID, isBankNativeApplicationId, BANK_CARD_APPLICATION_IDS, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES, BANK_NATIVE_CONSENT, BANK_NATIVE_SCOPES, BANK_RECOVERY_SCOPES, BANK_RECOVERY_CONSENT } from './config';
 import { parseCardCheckout, parseCardDepositStatus, parseDepositDollars, readCardOperation, type CardCheckout, type CardDepositStatus } from './card-deposit';
 import { nativeFetch } from './native-transport';
 import { loadDeviceIdentity, saveDeviceIdentity, loadWalletObservation, saveWalletObservation, loadDepositSources, saveDepositSource, loadCardOperation, loadCardOperations, saveCardOperation, loadBankSessionIntent, saveBankSessionIntent, loadProofArchive, loadExportableRecoveries, retainProofBatch } from './identity-vault';
@@ -329,7 +329,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   let nativeConnectionBusy = false;
   const legacyExecutionRecovery = createBankExecutionRecovery({
     store: deviceBankExecutionStore(binding),
-    connect: () => connectClient(BANK_RECOVERY_SCOPES, BANK_RECOVERY_CONSENT),
+    connect: applicationId => connectClient(BANK_RECOVERY_SCOPES, BANK_RECOVERY_CONSENT, applicationId),
     assertOpen: () => { if (lifetime.signal.aborted) throw new Error('BANK_EXECUTION_IDENTITY_CLOSED'); },
     lock: async operation => {
       if (!navigator.locks) throw new Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');
@@ -343,7 +343,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     assertOpen:()=>{if(lifetime.signal.aborted)throw Error('BANK_EXECUTION_IDENTITY_CLOSED');},
     store:{read:()=>loadNativePaymentState(binding),write:(value,expected)=>saveNativePaymentState(binding,value,expected)},
     sign:challengeB64Url=>unsigned.identity.signLoginProof({keyFile:transportKeyFile,passphrase:transportPhrase,challengeB64Url}),
-    request:async(path,body,readOnly)=>{const connected=await connectClient(readOnly?BANK_RECOVERY_SCOPES:BANK_NATIVE_SCOPES,readOnly?BANK_RECOVERY_CONSENT:BANK_NATIVE_CONSENT);if(lifetime.signal.aborted)throw Error('BANK_EXECUTION_IDENTITY_CLOSED');return connected.request(path,{method:'POST',body});},
+    request:async(path,body,readOnly)=>{const applicationId=readOnly?new URL(path,'https://receiz.com').searchParams.get('applicationId'):BANK_APPLICATION_ID;if(!isBankNativeApplicationId(applicationId))throw Error('BANK_PAYMENT_APPLICATION_MISMATCH');const connected=await connectClient(readOnly?BANK_RECOVERY_SCOPES:BANK_NATIVE_SCOPES,readOnly?BANK_RECOVERY_CONSENT:BANK_NATIVE_CONSENT,applicationId);if(lifetime.signal.aborted)throw Error('BANK_EXECUTION_IDENTITY_CLOSED');return connected.request(path,{method:'POST',body});},
     lock:async operation=>{if(!navigator.locks)throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');return navigator.locks.request(`receiz-bank-execution:${binding.artifactSha256}`,{signal:lifetime.signal},operation);},
   })).catch(error=>{nativePaymentsPromise=undefined;throw error;});
   const selectedRecovery=async()=>{const legacy=await legacyExecutionRecovery.status();if(legacy&&['prepared','unknown'].includes(legacy.state))return legacyExecutionRecovery;const payments=(await nativePayments()).recovery;return await payments.status()?payments:legacyExecutionRecovery;};
@@ -463,12 +463,13 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   }
   async function accountProofSharing() {
     const { createAccountProofSharing } = await import('./account-proof-sharing');
-    return createAccountProofSharing({ keyId: binding.keyId, receizId: binding.artifactOwnerReceizId, assertOpen: () => { if (lifetime.signal.aborted) throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED'); },
+    const make = (applicationId: string, previous?: import('./account-proof-sharing').AccountProofSharing): import('./account-proof-sharing').AccountProofSharing => createAccountProofSharing({ applicationId, previous, keyId: binding.keyId, receizId: binding.artifactOwnerReceizId, assertOpen: () => { if (lifetime.signal.aborted) throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED'); },
       signConsent: challengeB64Url => unsigned.identity.signLoginProof({ keyFile: transportKeyFile, passphrase: transportPhrase, challengeB64Url }),
       request: async (path, method, body) => {
-        const current = method === 'GET' ? await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT) : await connectClient([...BANK_READ_SCOPES, 'receiz:domains.write'], 'Allow Bankeiz to apply the public account-proof sharing choice I explicitly review: publish my verified balances and complete transaction statement, optionally keep future proofs publicly updated, or turn off live updates. This does not authorize a payment or export my signing key.');
+        const current = method === 'GET' ? await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT, applicationId) : await connectClient([...BANK_READ_SCOPES, 'receiz:domains.write'], 'Allow Bankeiz to apply the public account-proof sharing choice I explicitly review: publish my verified balances and complete transaction statement, optionally keep future proofs publicly updated, or turn off live updates. This does not authorize a payment or export my signing key.', applicationId);
         return current.request(path, { method, ...(body ? { body } : {}) });
       } });
+    return make(BANK_APPLICATION_ID, make(BANK_PREVIOUS_NATIVE_APPLICATION_ID));
   }
   return { operations, accountProof, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody: () => saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport), dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }

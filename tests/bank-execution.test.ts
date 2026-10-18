@@ -32,3 +32,13 @@ it('reopens committed sources before a retained checkpoint can show a success la
   await expect(recovery.status()).rejects.toThrow();
   expect(connect).not.toHaveBeenCalled();
 });
+it('recovers the previous native registration at its original application coordinate without executing',async()=>{
+ const applicationId='rc_uV6aT6wZJCQDspB0_SJ1DcEm',original=await plan(applicationId);
+ const lookup=vi.fn(async(_coordinate:unknown)=>{throw Error('fixture-read-only-stop');}),stage=vi.fn(),execute=vi.fn();
+ const connect=vi.fn(async()=>({execution:{resolveByIdempotencyKey:lookup,stagePrepared:stage,execute}}));
+ const recovery=createBankExecutionRecovery({store:{load:async()=>({schema:'bank.execution-checkpoint.v1',operationId:original.attemptId,plan:original,transitionSet:{} as never,state:'unknown'}),saveNew:vi.fn(),replace:vi.fn()},connect:connect as never,assertOpen(){},lock:async fn=>fn()});
+ expect((await recovery.status())?.state).toBe('unknown');
+ await expect(recovery.resolve(true)).rejects.toThrow('fixture-read-only-stop');
+ expect(connect).toHaveBeenCalledExactlyOnceWith(applicationId);expect(lookup.mock.calls[0][0]).toMatchObject({applicationId,semanticIdempotencyKey:original.semanticIdempotencyKey});expect(stage).not.toHaveBeenCalled();expect(execute).not.toHaveBeenCalled();
+ await expect(createBankExecution({execution:{stagePrepared:stage,execute,exportCommittedRecovery:vi.fn(),resolveByIdempotencyKey:lookup}} as never).inspect(original,{} as never)).rejects.toThrow('BANK_EXECUTION_APPLICATION_MISMATCH');
+});

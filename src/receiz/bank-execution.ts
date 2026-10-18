@@ -1,5 +1,5 @@
 import type { ReceizClient, ReceizOperationPlanV124, ReceizPortableExecutionTransitionSetV124, ReceizPortableExecutionTransitionRecoveryV124, ReceizExecutionOutcomeV124, ReceizZeroWriteFailureV124 } from '@receiz/sdk';
-import { BANK_APPLICATION_ID } from './config';
+import { BANK_APPLICATION_ID, isBankNativeApplicationId } from './config';
 import { loadReceiz } from './client';
 type ZeroWriteReason = ReceizZeroWriteFailureV124['reasonCode'];
 export interface BankExecutionCheckpoint { schema: 'bank.execution-checkpoint.v1'; operationId: string; plan: ReceizOperationPlanV124; transitionSet: ReceizPortableExecutionTransitionSetV124; state: 'prepared' | 'unknown' | 'committed' | 'zero-write'; recovery?: ReceizPortableExecutionTransitionRecoveryV124; zeroWriteReason?: ZeroWriteReason; accountSubjectId?: string; sourcesRestored?: true; }
@@ -17,20 +17,20 @@ export function createBankExecution(client: { execution: Pick<ReceizClient['exec
   }
   async function retainedPlan(checkpoint: BankExecutionCheckpoint) {
     const sdk = await loadReceiz(), plan = await sdk.validateReceizOperationPlanV124(checkpoint.plan);
-    if (plan.applicationId !== BANK_APPLICATION_ID) throw new Error('BANK_EXECUTION_APPLICATION_MISMATCH');
+    if (!isBankNativeApplicationId(plan.applicationId)) throw new Error('BANK_EXECUTION_APPLICATION_MISMATCH');
     if (checkpoint.schema !== 'bank.execution-checkpoint.v1' || checkpoint.operationId !== plan.attemptId) throw new Error('BANK_EXECUTION_CHECKPOINT_INVALID');
     return { sdk, plan };
   }
   async function admit(checkpoint: BankExecutionCheckpoint) {
     const { sdk, plan } = await retainedPlan(checkpoint);
-    const source = await sdk.verifyReceizPortableExecutionTransitionSetV124(checkpoint.transitionSet, { audience: BANK_APPLICATION_ID });
+    const source = await sdk.verifyReceizPortableExecutionTransitionSetV124(checkpoint.transitionSet, { audience: plan.applicationId });
     if (sdk.canonicalizeReceizConstitution(plan) !== sdk.canonicalizeReceizConstitution(source.operationPlan)) throw new Error('BANK_EXECUTION_PLAN_SOURCE_MISMATCH');
     return { sdk, plan, source };
   }
   async function reopenRecovery(checkpoint: BankExecutionCheckpoint, recovery: ReceizPortableExecutionTransitionRecoveryV124) {
-    const { sdk } = await admit(checkpoint);
+    const { sdk, plan } = await admit(checkpoint);
     if (sdk.canonicalizeReceizConstitution(recovery.transitionSet) !== sdk.canonicalizeReceizConstitution(checkpoint.transitionSet)) throw new Error('BANK_EXECUTION_RECOVERY_SOURCE_MISMATCH');
-    return sdk.recoverReceizPortableExecutionTransitionSetV124(recovery, { audience: BANK_APPLICATION_ID });
+    return sdk.recoverReceizPortableExecutionTransitionSetV124(recovery, { audience: plan.applicationId });
   }
   async function terminal(checkpoint: BankExecutionCheckpoint, outcome: ReceizExecutionOutcomeV124): Promise<BankExecutionResult> {
     const { plan } = await retainedPlan(checkpoint);
@@ -53,6 +53,7 @@ export function createBankExecution(client: { execution: Pick<ReceizClient['exec
     return { status: 'unknown', operationId: checkpoint.operationId };
   }
   async function inspect(plan: ReceizOperationPlanV124, transitionSet: ReceizPortableExecutionTransitionSetV124, accountSubjectId?: string): Promise<BankExecutionReview> {
+    if (plan.applicationId !== BANK_APPLICATION_ID) throw new Error('BANK_EXECUTION_APPLICATION_MISMATCH');
     const checkpoint: BankExecutionCheckpoint = structuredClone({ schema: 'bank.execution-checkpoint.v1', operationId: plan.attemptId, plan, transitionSet, state: 'prepared', ...(accountSubjectId ? { accountSubjectId } : {}) });
     const admitted = await admit(checkpoint);
     const review = Object.freeze({ confirmationDigest: admitted.plan.exactPlanDigest, participantCount: admitted.source.members.length, writesPerformed: 0 as const });

@@ -1,0 +1,33 @@
+<!doctype html><meta charset="utf-8"><title>Bankeiz registration continuity checks</title>
+<h1>Isolated registration continuity</h1><p>Dummy encrypted storage only. No identity admission, network grants or financial actions.</p><button id="run">Run checks</button><pre id="output">Ready</pre>
+<script type="module">
+import {saveDeviceIdentity,loadBankOperation,loadBankSessionIntent,loadOfflineNoteState,loadPreparedNoteState,loadNativePaymentState,loadOfflineNoteBlob,loadProofArchive,loadPrivateHistoryCache,forgetDeviceIdentity} from '/src/receiz/identity-vault.ts';
+import {BANK_APPLICATION_ID} from '/src/receiz/config.ts';
+document.querySelector('#run').onclick=async()=>{const checks=[],assert=(v,t)=>{if(!v)throw Error(t);checks.push(t)};let db;
+try{
+assert(BANK_APPLICATION_ID==='rc_2d1wcGkAYfmCi5kGT3J89gkl','New public Bankeiz registration selected');
+const previous='rc_uV6aT6wZJCQDspB0_SJ1DcEm',bytes=new TextEncoder().encode('dummy-registration-fixture'),hash=async b=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',b))].map(v=>v.toString(16).padStart(2,'0')).join(''),digest=await hash(bytes),binding={artifactSha256:digest,keyId:'fixture-key'};
+await saveDeviceIdentity(bytes,'dummy.bin','dummy-not-a-credential',true);
+db=await new Promise((resolve,reject)=>{const r=indexedDB.open('receiz-bank-private-custody',3);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});
+const saved=await new Promise(resolve=>{const r=db.transaction('identity').objectStore('identity').get('current');r.onsuccess=()=>resolve(r.result)});
+const rows=[],cipher=async(key,bytes)=>{const iv=crypto.getRandomValues(new Uint8Array(12));return{key,iv,bytes:await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode(key)},saved.wrappingKey,bytes)}};
+for(const [family,state]of [['offline-notes',{schema:'receiz.bank.offline-notes-device.v1',create:{fixture:'held-original'}}],['prepared-notes',{schema:'receiz.bank.prepared-notes-device.v1',create:{fixture:'held-original'}}],['native-payments',{schema:'bank.native-payments.v1',current:{state:'unknown',fixture:'exact-private-ticket'},history:[]}],['private-history',{schema:'bank.private-history-cache.v1',accountUid:'fixture',records:[],observedAt:'2026-10-17T00:00:00Z',nextCursor:null}]]){
+const key=`${family}|${previous}|${digest}${family==='private-history'?'|fixture':''}`;rows.push(await cipher(key,new TextEncoder().encode(JSON.stringify(state))));}
+const operation={schema:'bank.execution-checkpoint.v1',operationId:'old-exact-attempt',state:'unknown',plan:{applicationId:previous,attemptId:'old-exact-attempt'},transitionSet:{fixture:'exact-original'}};
+const operationKey=`bank-operation|${previous}|${digest}|${operation.operationId}`;rows.push(await cipher(operationKey,new TextEncoder().encode(JSON.stringify(operation))));saved.bankOperation={key:operationKey,operationId:operation.operationId,state:operation.state};
+const session={schema:'bank.native-session-intent.v1',state:'pending',operation:'open',sourceDigest:'a'.repeat(64),challenge:{applicationId:previous,fixture:'exact-original'}};saved.bankSession=await cipher(`bank-session|${previous}|${digest}`,new TextEncoder().encode(JSON.stringify(session)));
+const note=new TextEncoder().encode('dummy-original-not-a-note'),noteDigest=await hash(note);rows.push(await cipher(`offline-note-source|${previous}|${digest}|${noteDigest}`,note));
+const meta=new TextEncoder().encode(JSON.stringify({kind:'note-image',filename:'dummy.png'})),frame=new Uint8Array(4+meta.length+note.length);new DataView(frame.buffer).setUint32(0,meta.length);frame.set(meta,4);frame.set(note,4+meta.length);rows.push(await cipher(`proof-archive|${previous}|${digest}|${noteDigest}`,frame));
+await new Promise((resolve,reject)=>{const tx=db.transaction(['identity','operations'],'readwrite');tx.objectStore('identity').put(saved,'current');for(const row of rows)tx.objectStore('operations').put(row,row.key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close();db=null;
+assert(JSON.stringify(await loadBankOperation(binding))===JSON.stringify(operation),'Pending execution retains original application and exact bytes');
+assert(JSON.stringify(await loadBankSessionIntent(binding))===JSON.stringify(session),'Pending session retains original challenge');
+assert((await loadOfflineNoteState(binding)).create.fixture==='held-original','Offline custody remains held');
+assert((await loadPreparedNoteState(binding)).create.fixture==='held-original','Prepared value remains held');
+assert((await loadNativePaymentState(binding)).current.fixture==='exact-private-ticket','Pending payment ticket remains held');
+assert(new TextDecoder().decode(await loadOfflineNoteBlob(binding,noteDigest))==='dummy-original-not-a-note','Original note bytes remain held');
+assert((await loadProofArchive(binding))[0].bytes.length===note.length,'Archived proof bytes remain held');
+assert((await loadPrivateHistoryCache(binding,'fixture')).accountUid==='fixture','Private history remains held');
+let blocked=false;try{await forgetDeviceIdentity()}catch{blocked=true}assert(blocked,'Pending work still prevents identity removal');
+document.querySelector('#output').textContent='PASS\n'+checks.join('\n');
+}catch(error){document.querySelector('#output').textContent='FAIL\n'+checks.join('\n')+'\n'+error.message;}finally{db?.close();}};
+</script>

@@ -1,4 +1,4 @@
-import { BANK_APPLICATION_ID } from './config.js';
+import { isBankNativeApplicationId } from './config.js';
 
 // The SDK carries its signed application coordinate in the query for these
 // POSTs. This is routing permission only; the upstream SDK still admits the
@@ -27,7 +27,7 @@ export function permittedNativeExecutionRead(url: URL, method: string): boolean 
   const parts = url.pathname.split('/');
   if (parts.slice(0, 5).join('/') !== '/api/sdk/v1/execution') return false;
   if (parts[5] === 'by-idempotency') {
-    return parts.length === 10 && parts[6] === BANK_APPLICATION_ID && parts.slice(7).every(exactCoordinate);
+    return parts.length === 10 && isBankNativeApplicationId(parts[6]) && parts.slice(7).every(exactCoordinate);
   }
-  return parts.length === 7 && parts[5] === BANK_APPLICATION_ID && exactCoordinate(parts[6]);
+  return parts.length === 7 && isBankNativeApplicationId(parts[5]) && exactCoordinate(parts[6]);
 }

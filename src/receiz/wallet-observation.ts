@@ -1,5 +1,5 @@
 import { parseSharedWallet, type SharedWallet } from './shared-wallet';
-import { BANK_APPLICATION_ID, BANK_OBSERVATION_APPLICATION_IDS } from './config';
+import { isBankNativeApplicationId, BANK_OBSERVATION_APPLICATION_IDS } from './config';
 import type { WalletPoint } from './wallet-series';
 export interface WalletObservation { wallet: SharedWallet; observedAt: string; history?: WalletPoint[]; source?: 'account-genesis' | 'local-note-head'; localHeadDigest?: string; }
 export function readWalletObservation(input: unknown, binding: { keyId: string; artifactSha256: string }): WalletObservation | null {
@@ -24,7 +24,7 @@ export function readCarriedWalletObservation(projection: import('@receiz/sdk').R
   if (!state?.account?.userId || state.account.userId !== projection.owner.uid || !state.wallet?.routeSummary || !state.exportedAt || !Number.isFinite(Date.parse(state.exportedAt))) return null;
   try {
     const wallet = parseSharedWallet({ ok: true, wallet: state.wallet.routeSummary }, projection.owner.uid), genesis = state.bankGenesis;
-    const isGenesis = genesis?.schema === 'bank.account-genesis.v1' && genesis.applicationId === BANK_APPLICATION_ID && genesis.keyId === projection.keyId && genesis.userId === projection.owner.uid && typeof genesis.createdAt === 'string' && Number.isFinite(Date.parse(genesis.createdAt)) && Date.parse(genesis.createdAt) <= Date.parse(state.exportedAt) && typeof genesis.kaiUPulse === 'string' && /^\d{1,30}$/.test(genesis.kaiUPulse) && wallet.totalUsdCents === '0' && wallet.balancePhiMicro === '0';
+    const isGenesis = genesis?.schema === 'bank.account-genesis.v1' && isBankNativeApplicationId(genesis.applicationId) && genesis.keyId === projection.keyId && genesis.userId === projection.owner.uid && typeof genesis.createdAt === 'string' && Number.isFinite(Date.parse(genesis.createdAt)) && Date.parse(genesis.createdAt) <= Date.parse(state.exportedAt) && typeof genesis.kaiUPulse === 'string' && /^\d{1,30}$/.test(genesis.kaiUPulse) && wallet.totalUsdCents === '0' && wallet.balancePhiMicro === '0';
     return { wallet, observedAt: state.exportedAt, ...(isGenesis ? { source: 'account-genesis' as const, history: [{ userId: wallet.userId, at: genesis.createdAt!, kaiUPulse: genesis.kaiUPulse!, totalUsdCents: '0', reserveUsdCents: '0', settlementUsdCents: '0' }] } : {}) };
   } catch { return null; }
 }

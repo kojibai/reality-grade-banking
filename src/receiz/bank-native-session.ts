@@ -1,11 +1,12 @@
 import type { ReceizClient, ReceizAuthoritySessionV124, ReceizProofAuthorityChallengeV123 } from '@receiz/sdk';
-import { BANK_APPLICATION_ID } from './config';
+import { BANK_APPLICATION_ID, BANK_PREVIOUS_NATIVE_APPLICATION_ID } from './config';
 import { heldBankSubjectSource, type BankSubjectSource } from './bank-native-source';
 import { loadReceiz } from './client';
 import { BankConnectionError } from './bank-connection-error';
 
 export interface BankSessionIntent {
   schema: 'bank.native-session-intent.v1';
+  applicationId?: string;
   sourceDigest: string;
   actorSubjectId: string;
   identityDigest: string;
@@ -48,9 +49,11 @@ export function createBankNativeSession(input: {
     try {
       const sdk = await loadReceiz();
       const identityDigest = await sdk.sha256ReceizBytes(identityBytes);
-      const sameRequest = (intent: BankSessionIntent) => intent.schema === 'bank.native-session-intent.v1' && intent.sourceDigest === source.artifactDigest && intent.actorSubjectId === source.subjectId && intent.identityDigest === identityDigest && JSON.stringify(intent.rails) === JSON.stringify(rails) && JSON.stringify(intent.namespaces) === JSON.stringify(namespaces);
+      const intentApplicationId = (intent: BankSessionIntent) => intent.applicationId ?? intent.challenge?.audience ?? intent.session?.applicationId ?? BANK_PREVIOUS_NATIVE_APPLICATION_ID;
+      const sameRequest = (intent: BankSessionIntent) => intentApplicationId(intent) === BANK_APPLICATION_ID && intent.schema === 'bank.native-session-intent.v1' && intent.sourceDigest === source.artifactDigest && intent.actorSubjectId === source.subjectId && intent.identityDigest === identityDigest && JSON.stringify(intent.rails) === JSON.stringify(rails) && JSON.stringify(intent.namespaces) === JSON.stringify(namespaces);
       let intent = await input.store.load();
       assertOpen();
+      if (intent?.state === 'pending' && intentApplicationId(intent) !== BANK_APPLICATION_ID) throw new Error('BANK_SESSION_PENDING_APPLICATION_CHANGED');
       if (intent?.state === 'pending' && !sameRequest(intent)) throw new Error('BANK_SESSION_PENDING_SOURCE_CHANGED');
       if (intent?.state === 'active' && sameRequest(intent) && heldSession && heldSession.sessionBindingDigest === intent.session?.sessionBindingDigest && sdk.receizKaiNow().uPulse < heldSession.expiresAtKaiUPulse) return heldSession;
       if (!intent || intent.state !== 'pending') {
@@ -59,7 +62,7 @@ export function createBankNativeSession(input: {
         // an expired predecessor, so start a new open in that terminal case.
         // Already pending requests above retain their exact unknown outcome.
         const previousSession = prior?.state === 'active' && sameRequest(prior) && prior.session && sdk.receizKaiNow().uPulse < prior.session.expiresAtKaiUPulse ? prior.session : undefined;
-        intent = { schema: 'bank.native-session-intent.v1', sourceDigest: source.artifactDigest, actorSubjectId: source.subjectId, identityDigest, operation: previousSession ? 'refresh' : 'open', phase: 'publication-pending', rails: [...rails], namespaces: [...namespaces], state: 'pending', ...(previousSession ? { session: previousSession } : {}) };
+        intent = { schema: 'bank.native-session-intent.v1', applicationId: BANK_APPLICATION_ID, sourceDigest: source.artifactDigest, actorSubjectId: source.subjectId, identityDigest, operation: previousSession ? 'refresh' : 'open', phase: 'publication-pending', rails: [...rails], namespaces: [...namespaces], state: 'pending', ...(previousSession ? { session: previousSession } : {}) };
         // Persist the exact source intent before publication. A session
         // challenge is not created while publication remains unavailable.
         await input.store.save(intent, prior);

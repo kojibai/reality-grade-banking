@@ -52,3 +52,8 @@ describe('actual installed v129 refusal boundary', () => {
     expect(permittedNativePath('/api/connect/account-proof', 'GET')).toBe(false);
   });
 });
+it('keeps historical statement coordinates readable without rewriting or admitting their source',()=>{
+ const previous={...statement(),applicationId:'rc_uV6aT6wZJCQDspB0_SJ1DcEm'};
+ expect(inspectAccountStatement(previous).applicationId).toBe(previous.applicationId);
+ expect(()=>inspectAccountStatement({...previous,applicationId:'foreign'})).toThrow('APPLICATION_MISMATCH');
+});

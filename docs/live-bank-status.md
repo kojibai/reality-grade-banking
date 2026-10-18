@@ -1,5 +1,10 @@
 # Live bank conversion — observed state
 
+## October 17 — separate Bankeiz public registration
+
+The owner-created Bankeiz client is `rc_2d1wcGkAYfmCi5kGT3J89gkl`, public/token-auth-none, with `https://bankeiz.com/auth/receiz/callback`. The Chrome Connect register confirms the registration. Bankeiz requests only its existing native/read/card scopes. No client secret or MCP bearer token is used in the app. The old Bank registration and existing encrypted custody namespace remain intact; previous attempts recover under their original audience. See `bankeiz-origin-activation.md` for deployment/configuration boundaries. Historical checkpoints below retain their original client IDs and are not the current configuration.
+
+
 ## October 17: native payment and account-proof wiring
 
 Send now composes the existing native shared writer with exact device-reviewed consent, canonical financial receipts, encrypted intent retention and read-only recovery. Account-proof private reads and anonymous sharing routes select the native producer at trusted startup; cold live refresh and revocation are tested. See [the current contract and limits](native-payment-api.md). The dated observations below are historical, not a current production qualification. Both repositories still require the user’s push and deployed verification; unsupported source scope remains unavailable.

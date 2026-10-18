@@ -1,6 +1,6 @@
 import type {ReceizIdentityLoginProof} from '@receiz/sdk';
 import {loadReceiz} from './client';
-import {BANK_APPLICATION_ID} from './config';
+import {BANK_APPLICATION_ID,isBankNativeApplicationId} from './config';
 import {inspectNativePaymentReview,nativePaymentChallenge,paymentSame,paymentHex,type NativePaymentPrepared,type NativePaymentReview,type NativePaymentReceipt,type NativePaymentRefusal} from './native-payment-protocol';
 import {verifyNativePaymentReceiptSignature} from './native-payment-signature';
 import type {BankOperationInput,BankOperationReview} from './bank-operations';
@@ -23,20 +23,20 @@ export async function verifyNativePaymentSource(input:unknown,expectedReview?:Na
  if(sdk.canonicalizeReceizV122(payload)!==raw)fail('SOURCE_INVALID');
  const receipt=await verifyNativePaymentReceiptSignature(payload);
  if(!receipt||expectedReview&&!paymentSame(receipt.review,expectedReview)||BigInt(receipt.kaiUPulse)>BigInt(sdk.receizKaiNow().uPulse))fail('FINANCIAL_SOURCE_INVALID');
- const review=receipt.review;if(review.request.applicationId!==BANK_APPLICATION_ID||opened.sealedArtifact.continuity.ownerReceizId!==review.request.actorReceizId)fail('FINANCIAL_SOURCE_INVALID');
+ const review=receipt.review;if(!isBankNativeApplicationId(review.request.applicationId)||opened.sealedArtifact.continuity.ownerReceizId!==review.request.actorReceizId)fail('FINANCIAL_SOURCE_INVALID');
  if(receipt.schema==='receiz.bank.native-payment-receipt.v1'){if(p.status!=='committed'||BigInt(receipt.issuedAtKaiUPulse)>BigInt(sdk.receizKaiNow().uPulse)||BigInt(receipt.kaiUPulse)>=BigInt(review.terms.expiresAtKaiUPulse))fail('FINANCIAL_SOURCE_INVALID');}
  else if(p.status!=='zero-write')fail('FINANCIAL_SOURCE_INVALID');
  return {packet:structuredClone(p),receipt};
 }
 export function createNativePayments(input:{ownerReceizId:string;keyId:string;assertOpen():void;assertNoOtherPending?():Promise<void>;lock<T>(operation:()=>Promise<T>):Promise<T>;store:{read():Promise<unknown>;write(value:NativePaymentState,expected:unknown):Promise<void>};sign(challengeB64Url:string):Promise<ReceizIdentityLoginProof>;request(path:string,body:Record<string,unknown>,readOnly?:boolean):Promise<unknown>}){
- const path=(s:string)=>`/api/connect/bank/payments/${s}?applicationId=${BANK_APPLICATION_ID}`;
+ const path=(s:string,applicationId=BANK_APPLICATION_ID)=>`/api/connect/bank/payments/${s}?applicationId=${applicationId}`;
  const held=new WeakMap<BankOperationReview,NativePaymentPrepared>();
- async function state(){input.assertOpen();const v=await input.store.read() as NativePaymentState|null;input.assertOpen();if(v&&(v.schema!=='bank.native-payments.v1'||!Array.isArray(v.history)||v.history.length>1000||!v.current||!['unknown','committed','zero-write'].includes(v.current.state)))fail('CHECKPOINT_INVALID');if(v){for(const c of [...v.history,v.current]){if(!['unknown','committed','zero-write'].includes(c.state)||c.state!=='unknown'&&c.source?.status!==c.state)fail('CHECKPOINT_INVALID');const r=preparedReview(c.prepared);if(r.request.applicationId!==BANK_APPLICATION_ID||r.keyId!==input.keyId||r.request.actorReceizId!==input.ownerReceizId||c.consentProof?.keyId!==input.keyId||c.consentProof.challengeB64Url!==nativePaymentChallenge(r))fail('CHECKPOINT_INVALID');}}return v;}
+ async function state(){input.assertOpen();const v=await input.store.read() as NativePaymentState|null;input.assertOpen();if(v&&(v.schema!=='bank.native-payments.v1'||!Array.isArray(v.history)||v.history.length>1000||!v.current||!['unknown','committed','zero-write'].includes(v.current.state)))fail('CHECKPOINT_INVALID');if(v){for(const c of [...v.history,v.current]){if(!['unknown','committed','zero-write'].includes(c.state)||c.state!=='unknown'&&c.source?.status!==c.state)fail('CHECKPOINT_INVALID');const r=preparedReview(c.prepared);if(!isBankNativeApplicationId(r.request.applicationId)||r.keyId!==input.keyId||r.request.actorReceizId!==input.ownerReceizId||c.consentProof?.keyId!==input.keyId||c.consentProof.challengeB64Url!==nativePaymentChallenge(r))fail('CHECKPOINT_INVALID');}}return v;}
  const unknown=(c:Checkpoint):NativePaymentResult=>({status:'unknown',operationId:c.prepared.request.requestId});
  async function committed(value:NativePaymentState,raw:unknown):Promise<NativePaymentResult>{const {packet}=await verifyNativePaymentSource(raw,preparedReview(value.current.prepared));input.assertOpen();await input.store.write({...value,current:{...value.current,state:packet.status,source:packet}},value);input.assertOpen();return packet.status==='committed'?{status:'committed',nativePaymentSource:packet}:{status:'zero-write',reasonCode:'EXPIRED'};}
  async function resolve(approved=false):Promise<NativePaymentResult|null>{return input.lock(async()=>{const value=await state();if(!value)return null;
   if(value.current.state!=='unknown'){const {packet}=await verifyNativePaymentSource(value.current.source,preparedReview(value.current.prepared));input.assertOpen();return packet.status==='committed'?{status:'committed',nativePaymentSource:packet}:{status:'zero-write',reasonCode:'EXPIRED'};}
-  if(!approved)fail('RECOVERY_CONSENT_REQUIRED');const c=value.current,p=c.prepared;input.assertOpen();const raw=await input.request(path('recover'),{nonce:p.request.requestId,planDigest:p.planDigest,ticket:p.ticket},true);input.assertOpen();
+  if(!approved)fail('RECOVERY_CONSENT_REQUIRED');const c=value.current,p=c.prepared;input.assertOpen();const raw=await input.request(path('recover',p.request.applicationId),{nonce:p.request.requestId,planDigest:p.planDigest,ticket:p.ticket},true);input.assertOpen();
   if((raw as {status?:unknown})?.status==='unknown')return unknown(c);return committed(value,raw);
  });}
  const recovery:BankExecutionRecovery={status:async()=>{const s=await state();if(!s)return null;if(s.current.state!=='unknown')await verifyNativePaymentSource(s.current.source,preparedReview(s.current.prepared));return{operationId:s.current.prepared.request.requestId,operationKind:'wallet.transfer',planDigest:s.current.prepared.planDigest,state:s.current.state,hasRecovery:s.current.state==='committed'};},resolve,exportRecovery:async()=>{const value=await state();if(!value||value.current.state!=='committed')fail('COMMITTED_RECOVERY_REQUIRED');const {packet}=await verifyNativePaymentSource(value.current.source,preparedReview(value.current.prepared));input.assertOpen();return{bytes:new TextEncoder().encode(JSON.stringify(packet)),filename:`payment-${value.current.prepared.planDigest}.receiz-payment.json`};}};
