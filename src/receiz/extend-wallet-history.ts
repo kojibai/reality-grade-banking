@@ -9,7 +9,7 @@ import {appendWalletPoint,mergeWalletPoints} from './wallet-series';
  * a credit, transaction, or replacement for missing ownership history. */
 export function extendWalletHistory(previous:WalletObservation|null,wallet:SharedWallet,observedAt:string,kaiUPulse:string):WalletObservation{
  const history=appendWalletPoint(previous?.history??[],wallet,observedAt,kaiUPulse);
- const next:WalletObservation={wallet,observedAt,history},basis=previous?.historyBasis;
+ const next:WalletObservation={wallet,observedAt,history,...(previous?.quoteHold?.userId===wallet.userId?{quoteHold:previous.quoteHold}:{})},basis=previous?.historyBasis;
  if(!previous||!hasSettledAccountView(previous)||!basis||!/^\d{1,30}$/.test(kaiUPulse)||BigInt(kaiUPulse)<BigInt(basis.endKaiUPulse)
   ||wallet.userId!==previous.wallet.userId||wallet.kaiUpulse!==previous.wallet.kaiUpulse
   ||basis.balancePhiMicro!==wallet.balancePhiMicro||basis.reserveUsdCents!==wallet.reserveUsdCents||!basis.settlementPhiMicro)return next;
@@ -17,6 +17,7 @@ export function extendWalletHistory(previous:WalletObservation|null,wallet:Share
   const extension=projectHistoricalWallet({userId:wallet.userId,endKaiUPulse:kaiUPulse,transactions:[{kaiUPulse:basis.endKaiUPulse,reserveDeltaUsdCents:basis.reserveUsdCents,settlementDeltaPhiMicro:basis.settlementPhiMicro}]});
   next.history=appendWalletPoint(mergeWalletPoints([previous.history??[],extension],wallet.userId),wallet,observedAt,kaiUPulse);
   next.historyBasis={...basis,endKaiUPulse:kaiUPulse};
+  next.walletScope=previous.walletScope;
  }catch{ /* An unavailable display extension never changes the account read. */ }
  return next;
 }

@@ -1,0 +1,25 @@
+import {loadReceiz} from './client';
+import {safeReceizPublicUrl} from './public-market';
+import {readPublicLedgerBytes} from './public-ledger-transfer';
+export type ProofReading={title:string;text:string;sha256:string;artifactDigest:string};
+const object=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
+export async function verifyProofReadingBytes(bytes:Uint8Array,imageDigest:string,postUrl:string):Promise<ProofReading>{
+ const safe=safeReceizPublicUrl(postUrl,'proof');if(!safe||!bytes.length||bytes.length>16*1024*1024||!/^[a-f0-9]{64}$/i.test(imageDigest))throw Error('This carried text source is not supported.');
+ const {verifyReceizArtifact}=await loadReceiz(),result=await verifyReceizArtifact(bytes);
+ if(result.status!=='verified-artifact')throw Error('The carried text could not be verified. Inspect its proof source for details.');
+ const verification=result.verification,anchor=object(verification.anchor),bundle=object(verification.bundle),coordinate=new URL(safe);
+ if(bundle.verifyPath!==coordinate.pathname||anchor.anchorId!==coordinate.searchParams.get('a')||String(bundle.createdAtMs)!==coordinate.searchParams.get('ms'))throw Error('This reading does not match the selected post.');
+ const file=object(anchor.file);if(typeof file.sealedSha256Hex!=='string'||file.sealedSha256Hex.toLowerCase()!==imageDigest.toLowerCase())throw Error('This reading does not match the selected original.');
+ const longForm=object(object(anchor.claim).longForm),text=longForm.text,title=longForm.title,sha=longForm.sha256Hex;
+ if(typeof text!=='string'||!text.length||text.length>100_000||typeof sha!=='string'||!/^[a-f0-9]{64}$/i.test(sha)||title!==null&&title!==undefined&&(typeof title!=='string'||title.length>160))throw Error('This post does not carry supported full text.');
+ const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text))),actual=[...digest].map(value=>value.toString(16).padStart(2,'0')).join('');
+ if(actual!==sha.toLowerCase())throw Error('The carried text does not match its sealed text digest.');
+ return {title:typeof title==='string'&&title?title:'Complete text',text,sha256:actual,artifactDigest:result.artifactDigest.value};
+}
+export async function readPublicProofReading(postUrl:string,imageDigest:string,signal?:AbortSignal):Promise<ProofReading>{
+ const safe=safeReceizPublicUrl(postUrl,'proof');if(!safe)throw Error('This carried text source is not supported.');signal?.throwIfAborted();
+ const url=new URL(safe),timeout=AbortSignal.timeout(90_000),requestSignal=signal?AbortSignal.any([signal,timeout]):timeout;
+ const response=await fetch(`/api/bank/public-market/record?path=${encodeURIComponent(url.pathname+url.search)}`,{credentials:'omit',redirect:'error',signal:requestSignal});
+ if(!response.ok)throw Error('The carried text could not be opened. You can retry or inspect its source.');
+ const bytes=await readPublicLedgerBytes(response,16*1024*1024);requestSignal.throwIfAborted();const reading=await verifyProofReadingBytes(bytes,imageDigest,safe);requestSignal.throwIfAborted();return reading;
+}

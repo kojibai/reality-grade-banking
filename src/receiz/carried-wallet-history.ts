@@ -64,7 +64,7 @@ function projectNativeCarriedWalletObservation(projection: ReceizIdentityAccount
       movements.push({ kaiUPulse: coordinate(action.kaiUpulse ?? action.kai_upulse), reserveDeltaUsdCents: '0', settlementDeltaPhiMicro: '0' });
     }
     const history = projectHistoricalWallet({ transactions: movements, userId: owner, endKaiUPulse: end });
-    return {...observation,history:appendWalletPoint(history, observation.wallet, walletPointTime(end), end),historyBasis:{schema:'bank.account-history-display.v1',startKaiUPulse:history[0]?.kaiUPulse??end,endKaiUPulse:end,settlementPhiMicro:settlement.toString(),reserveUsdCents:reserve.toString(),balancePhiMicro:gross.toString()}};
+    return {...observation,walletScope:'native-full',history:appendWalletPoint(history, observation.wallet, walletPointTime(end), end),historyBasis:{schema:'bank.account-history-display.v1',startKaiUPulse:history[0]?.kaiUPulse??end,endKaiUPulse:end,settlementPhiMicro:settlement.toString(),reserveUsdCents:reserve.toString(),balancePhiMicro:gross.toString()}};
   } catch { return null; }
 }
 
@@ -81,5 +81,6 @@ export function mergeCarriedWalletHistory(current:WalletObservation,carried:Wall
  if(!sameAmounts&&!sameHead)return current;
  const projected=projectCarriedWalletObservation(projection,carried);if(!projected?.history?.length||!sameAmounts&&projected.historyBasis?.kind!=='legacy-wallet-observations')return current;
  const history=mergeWalletPoints([projected.history,current.history??[]],current.wallet.userId),basis=projected.historyBasis;
- return {...current,history,historyBasis:basis&&history[0]?.kaiUPulse&&history.at(-1)?.kaiUPulse?{...basis,startKaiUPulse:history[0].kaiUPulse!,endKaiUPulse:history.at(-1)!.kaiUPulse!}:undefined};
+ const walletScope=current.walletScope==='native-cash-only'||projected.walletScope==='native-cash-only'?'native-cash-only':projected.walletScope;
+ return {...current,walletScope,history,historyBasis:basis&&history[0]?.kaiUPulse&&history.at(-1)?.kaiUPulse?{...basis,startKaiUPulse:history[0].kaiUPulse!,endKaiUPulse:history.at(-1)!.kaiUPulse!}:undefined};
 }

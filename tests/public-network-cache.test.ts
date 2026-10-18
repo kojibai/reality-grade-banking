@@ -35,7 +35,7 @@ it('ships complete inspectable public records and prices inside the existing bou
 
 function memoryIndexedDb() {
   let held: unknown;
-  vi.stubGlobal('indexedDB', { open: () => {
+  const open=vi.fn(() => {
     const request: Record<string, unknown> = {};
     queueMicrotask(() => { request.result = { close() {}, transaction: () => {
       const tx: Record<string, unknown> = { objectStore: () => ({ get: () => {
@@ -46,7 +46,7 @@ function memoryIndexedDb() {
       return tx;
     } }; (request.onsuccess as () => void)?.(); });
     return request;
-  } });
+  });vi.stubGlobal('indexedDB',{open});return open;
 }
 it('does not resurrect withdrawn graph or showcase entries through cache saves and reloads', async () => {
   memoryIndexedDb();
@@ -59,6 +59,23 @@ it('does not resurrect withdrawn graph or showcase entries through cache saves a
     await savePublicNetworkCache({ records, capturedAt: null, coverage: [{ source, complete: true, observedAt: 100 }] });
     expect((await loadPublicNetworkCache())?.records.filter(row => row.source === source).map(row => row.sourceId)).toEqual(['kept']);
   }
+});
+it('does not rewind retained freshness when an older tab saves its shipped seed date',async()=>{
+ memoryIndexedDb();
+ await savePublicNetworkCache({records:[],capturedAt:'2026-10-18T12:00:00Z',coverage:[]});
+ await savePublicNetworkCache({records:[],capturedAt:'2026-10-02T01:25:40Z',coverage:[]});
+ expect((await loadPublicNetworkCache())?.capturedAt).toBe('2026-10-18T12:00:00Z');
+});
+it('coalesces immediate snapshots and durably retains the newest complete anchor without a component timer',async()=>{
+ const open=memoryIndexedDb(),records=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'old'},{id:'new'}]}).records;
+ const first=savePublicNetworkCache({records:records.slice(0,1),capturedAt:null,coverage:[{source:'actions',complete:false}]});
+ const second=savePublicNetworkCache({records,capturedAt:'2026-10-18T12:00:00Z',coverage:[{source:'actions',complete:true,anchorIds:records.map(row=>row.id),observedAt:200}]});
+ // An older pending snapshot must not downgrade the settled complete anchor.
+ const third=savePublicNetworkCache({records:records.slice(0,1),capturedAt:null,coverage:[{source:'actions',complete:false,observedAt:100}]});
+ expect(second).toBe(first);expect(third).toBe(first);await third;expect(open).toHaveBeenCalledOnce();
+ const restored=await loadPublicNetworkCache();expect(restored?.records).toHaveLength(2);
+ expect(restored?.coverage.find(item=>item.source==='actions')).toEqual({source:'actions',complete:true,anchorIds:records.map(row=>row.id),observedAt:200});
+ expect(restored?.capturedAt).toBe('2026-10-18T12:00:00Z');
 });
 it('requests opaque compressed seed bytes so HTTP content decoding cannot invalidate the offline resource hash',async()=>{
  const {gzipSync}=await import('node:zlib');

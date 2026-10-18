@@ -32,11 +32,14 @@ export function canAdoptAccountLedgerObservation(current: WalletObservation | nu
 export function mergeAccountLedgerObservation(current: WalletObservation | null, next: WalletObservation): WalletObservation {
   const history = mergeWalletPoints([next.history ?? [], current?.history ?? []], next.wallet.userId);
   if (current && current.wallet.userId === next.wallet.userId && (['totalUsdCents', 'reserveUsdCents', 'settlementUsdCents', 'balancePhiMicro'] as const).every(key => current.wallet[key] === next.wallet[key])) {
-    return history.length === (current.history?.length ?? 0) && history.every((point, index) => point === current.history?.[index]) && !!current.historyBasis ? current : { ...current, history, historyBasis: next.historyBasis ?? current.historyBasis };
+    const quoteHold = current.quoteHold ?? next.quoteHold;
+    const walletScope = current.walletScope === 'native-cash-only' || next.walletScope === 'native-cash-only' ? 'native-cash-only' : next.historyBasis ? next.walletScope : current.walletScope;
+    return history.length === (current.history?.length ?? 0) && history.every((point, index) => point === current.history?.[index]) && !!current.historyBasis && current.walletScope === walletScope && current.quoteHold === quoteHold ? current : { ...current, quoteHold, walletScope, history, historyBasis: next.historyBasis ?? current.historyBasis };
   }
   const observedAt = current && Date.parse(current.observedAt) >= Date.parse(next.observedAt)
     ? new Date(Math.max(Date.now(), Date.parse(current.observedAt) + 1)).toISOString() : next.observedAt;
-  return { ...next, observedAt, history: appendWalletPoint(history, next.wallet, observedAt, next.history?.at(-1)?.kaiUPulse ?? next.wallet.kaiUpulse) };
+  const quoteHold = current?.quoteHold?.userId === next.wallet.userId ? current.quoteHold : next.quoteHold;
+  return { ...next, quoteHold, observedAt, history: appendWalletPoint(history, next.wallet, observedAt, next.history?.at(-1)?.kaiUPulse ?? next.wallet.kaiUpulse) };
 }
 
 /** The existing native account statement verifies every signed movement from
@@ -60,7 +63,7 @@ export async function accountLedgerObservation(proof: VerifiedAccountProof, acco
   // exact checkpoint quote and wallet remain unchanged and win at its endpoint.
   const separate = proof.statement.components;
   const excludesAggregate = separate && (BigInt(separate.artifactIntrinsicPhiMicro) > 0n || separate.lawfulValues.some(value=>BigInt(value.settlementPhiMicro)>0n));
-  return { wallet, observedAt, ...(excludesAggregate ? {walletScope:'native-cash-only' as const} : {}), history: appendWalletPoint(history, wallet, walletPointTime(c.kaiUPulse), c.kaiUPulse), historyBasis: { schema: 'bank.account-history-display.v1', startKaiUPulse: history[0]?.kaiUPulse ?? c.kaiUPulse, endKaiUPulse: c.kaiUPulse, settlementPhiMicro: c.settlementPhiMicro, balancePhiMicro: c.balancePhiMicro!, reserveUsdCents: c.reserveUsdCents } };
+  return { wallet, observedAt, walletScope: excludesAggregate ? 'native-cash-only' : 'native-full', history: appendWalletPoint(history, wallet, walletPointTime(c.kaiUPulse), c.kaiUPulse), historyBasis: { schema: 'bank.account-history-display.v1', startKaiUPulse: history[0]?.kaiUPulse ?? c.kaiUPulse, endKaiUPulse: c.kaiUPulse, settlementPhiMicro: c.settlementPhiMicro, balancePhiMicro: c.balancePhiMicro!, reserveUsdCents: c.reserveUsdCents } };
 }
 
 /** Encrypted storage beneath canonical verification. The host account alias is
@@ -107,9 +110,10 @@ export function createLocalAccountLedger(input: { owner: Owner; read(): Promise<
   return {
     async restore(current?: WalletObservation | null) {
       input.assertOpen(); await pending.catch(() => {}); const value = await input.read(); input.assertOpen();
-      // Exact retained bytes are already represented in this identity-bound
-      // display cache. A different durable source must still be reopened.
-      if (value && hasSettledAccountView(current ?? null) && current?.historyBasis?.retainedStateSha256 === await stateDigest(value)) return null;
+      // Exact retained bytes with known coverage are already represented in
+      // this identity-bound display cache. Pre-marker caches must reopen their
+      // source before they can acquire full-native valuation eligibility.
+      if (value && hasSettledAccountView(current ?? null) && (current?.walletScope === 'native-full' || current?.walletScope === 'native-cash-only') && current.historyBasis?.retainedStateSha256 === await stateDigest(value)) return null;
       const opened = await open(value); input.assertOpen(); return opened;
     },
     retain(proof: VerifiedAccountProof, accountUid: string) {

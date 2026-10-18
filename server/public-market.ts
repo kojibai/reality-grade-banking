@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
+import { publicMaterialOriginalUrl, safeReceizPublicUrl } from '../src/receiz/public-market.js';
 
 const PREFIX = '/api/bank/public-market/';
 const MAX_BYTES = 128 * 1024 * 1024;
@@ -9,11 +10,17 @@ export function resolvePublicMarketTarget(requestUrl: string): URL | null {
   if (local.pathname === `${PREFIX}sports` && !local.search) return new URL('https://receiz.com/api/game/sports/economy');
   if (local.pathname === `${PREFIX}capitalization` && !local.search) return new URL('https://receiz.com/api/proof-graph/market-cap');
   if (local.pathname === `${PREFIX}quotes` && !local.search) return new URL('https://receiz.com/api/market/public-snapshot?detail=full');
+  if(local.pathname===`${PREFIX}record`){
+    if([...local.searchParams.keys()].some(key=>key!=='path')||local.searchParams.getAll('path').length!==1)return null;
+    const path=local.searchParams.get('path');if(!path?.startsWith('/v/'))return null;const safe=safeReceizPublicUrl(path,'proof');if(!safe)return null;
+    const proof=new URL(safe),parts=proof.pathname.split('/'),anchor=proof.searchParams.get('a')??'',ms=proof.searchParams.get('ms')??'',tz=proof.searchParams.get('tz');
+    if([...proof.searchParams.keys()].some(key=>!['a','ms','tz'].includes(key))||!/^[a-f0-9]{8}$/i.test(anchor)||!/^\d{10,17}$/.test(ms)||!Number.isSafeInteger(Number(ms))||!/^[a-f0-9]{8}$/i.test(parts[3]??'')||tz!==null&&(!/^-?\d{1,4}$/.test(tz)||Number(tz)<-840||Number(tz)>840))return null;
+    const query=new URLSearchParams({a:anchor,ms,p:parts[4],c:parts[3]});if(tz!==null)query.set('tz',tz);return new URL(`/api/receiz/download?${query}`,'https://receiz.com');
+  }
   if (local.pathname !== `${PREFIX}original` || [...local.searchParams.keys()].some(key => key !== 'path') || local.searchParams.getAll('path').length !== 1) return null;
-  const path = local.searchParams.get('path'); if (!path || !path.startsWith('/api/profile/originals/download?')) return null;
+  const path = local.searchParams.get('path'); if (!path || !path.startsWith('/api/')) return null;
   const target = new URL(path, 'https://receiz.com');
-  if (target.pathname !== '/api/profile/originals/download' || target.hash || [...target.searchParams.keys()].some(key => !['receizId', 'kind'].includes(key)) || target.searchParams.getAll('receizId').length !== 1 || target.searchParams.getAll('kind').length !== 1 || !/^[a-zA-Z0-9_-]{1,128}$/.test(target.searchParams.get('receizId') ?? '') || target.searchParams.get('kind') !== 'original') return null;
-  return target;
+  return safeReceizPublicUrl(target.href, 'original') ? target : null;
 }
 interface CachedResponse { bytes: Uint8Array; type: string; etag: string | null; fetchedAt: number; }
 const cache = new Map<string, CachedResponse>(), pending = new Map<string, Promise<CachedResponse>>();
@@ -27,7 +34,7 @@ async function readBounded(response: Response): Promise<Uint8Array> {
 }
 async function loadPublicResponse(target: URL): Promise<CachedResponse> {
   const key = target.href, previous = cache.get(key);
-  const original = target.pathname === '/api/profile/originals/download';
+  const original = target.pathname === '/api/profile/originals/download' || target.pathname.startsWith('/api/proof-material/packages/')||target.pathname==='/api/receiz/download';
   if (!original && previous && Date.now() - previous.fetchedAt < 60_000) return previous;
   const inflight = pending.get(key); if (inflight) return inflight;
   const attempt = (async () => {
@@ -46,7 +53,7 @@ async function loadPublicResponse(target: URL): Promise<CachedResponse> {
         input.transport = { generatedAt: transport.generatedAt, publicMembership: transport.publicMembership, publicOriginals: transport.publicOriginals.map((item: Record<string, unknown>) => {
           const profile = item.profileOriginal as Record<string, unknown> | undefined, media = profile?.media as Record<string, unknown> | undefined;
           return { id: item.id, receizId: item.receizId, title: item.title, summary: item.summary, visibility: item.visibility, ownerUsername: item.ownerUsername, ownerDisplayName: item.ownerDisplayName, canonicalHref: item.canonicalHref, verifyHref: item.verifyHref, pulse: item.pulse, createdAt: item.createdAt, valueUsd: item.valueUsd,
-            profileOriginal: { media: { originalDownloadSrc: media?.originalDownloadSrc, originalDownloadSha256Hex: media?.originalDownloadSha256Hex, material: media?.material ? { sealedArtifactSha256Hex: (media.material as Record<string, unknown>).sealedArtifactSha256Hex } : null } } };
+            profileOriginal: { hasLongForm:Boolean(profile?.longForm&&typeof (profile.longForm as Record<string,unknown>).text==='string'&&(profile.longForm as Record<string,unknown>).text),readingTzMinutesEast:media?.receiptTzMinutesEast,media: { originalDownloadSrc: media?.originalDownloadSrc, originalDownloadSha256Hex: media?.originalDownloadSha256Hex, material: media?.material ? { sealedArtifactSha256Hex: (media.material as Record<string, unknown>).sealedArtifactSha256Hex, originalArtifactSrc: publicMaterialOriginalUrl((media.material as Record<string, unknown>).proofObjectUrl) } : null } } };
         }) };
       } else if (target.pathname === '/api/game/sports/economy') {
         if (input.ok !== true || input.schema !== 'receiz.sports_economy.live_inventory.v1' || !Array.isArray(input.cards) || input.cards.length > 100000) throw new Error('Public sports inventory is unavailable.');

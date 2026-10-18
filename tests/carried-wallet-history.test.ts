@@ -1,8 +1,8 @@
 import{expect,it}from'vitest';
-import{projectCarriedWalletHistory}from'../src/receiz/carried-wallet-history';
+import{projectCarriedWalletHistory,projectCarriedWalletObservation,mergeCarriedWalletHistory}from'../src/receiz/carried-wallet-history';
 import type{ReceizIdentityAccountProjection}from'@receiz/sdk';
 import type{WalletObservation}from'../src/receiz/wallet-observation';
-import{readCarriedWalletObservation}from'../src/receiz/wallet-observation';
+import{readCarriedWalletObservation,createWalletQuoteHold,isWalletQuoteHeld}from'../src/receiz/wallet-observation';
 import{createReceizIdIdentity,appendReceizIdentityPortableState,projectReceizIdentityAccount}from'@receiz/sdk';
 const fixture=()=>({projection:{authority:'verified-identity-portable-state',portableStateVerified:true,completeAtSealedHead:true,owner:{uid:'owner'},verifiedState:{account:{userId:'owner'},accountStateHead:{kaiUpulse:'10000000'},wallet:{routeSummary:{quote:{usdPerPhiMicrocents:'4092328496'}},ledgerEntries:[{id:'funded',user_id:'owner',direction:'credit',entry_kind:'admin_adjustment',amount_phi_micro:'2000000',amount_usd_cents:'1000',kai_upulse:'2000000',metadata:{}},{id:'received',user_id:'owner',direction:'credit',entry_kind:'chat_transfer',amount_phi_micro:'1000000',amount_usd_cents:'5024',kai_upulse:'3000000',metadata:{rail:'settlement'}}]},ledger:{entries:[{actorUserId:'owner',subjectUserId:null,kaiUpulse:'1000000'}]}}}as unknown as ReceizIdentityAccountProjection,observation:{observedAt:'2026-10-18T12:00:00Z',wallet:{userId:'owner',reserveUsdCents:'1000',settlementUsdCents:'4092',totalUsdCents:'5092',balancePhiMicro:'3000000'}}as WalletObservation});
 it('builds offline history directly from a complete SDK-admitted same-owner Identity Seal',()=>{
@@ -11,6 +11,16 @@ it('builds offline history directly from a complete SDK-admitted same-owner Iden
  expect(history.find(point=>point.kaiUPulse==='2000000')).toMatchObject({reserveUsdCents:'1000',settlementUsdCents:'0'});
  expect(history.find(point=>point.kaiUPulse==='3000000')?.settlementUsdCents).not.toBe('4092');
  expect(history.at(-1)).toMatchObject({totalUsdCents:'5092',reserveUsdCents:'1000',settlementUsdCents:'4092'});
+});
+
+it('marks and carries full native scope only after all carried rails and gross units reconcile',()=>{
+ const f=fixture();
+ const projected=projectCarriedWalletObservation(f.projection,f.observation)!;
+ expect(projected.walletScope).toBe('native-full');
+ expect(mergeCarriedWalletHistory(f.observation,f.observation,f.projection).walletScope).toBe('native-full');
+ expect(mergeCarriedWalletHistory({...f.observation,walletScope:'native-cash-only'},f.observation,f.projection).walletScope).toBe('native-cash-only');
+ f.observation.wallet.balancePhiMicro='1';
+ expect(projectCarriedWalletObservation(f.projection,f.observation)).toBeNull();
 });
 it.each(['incomplete','foreign','rail','balance','duplicate','future','missing-source'])('does not invent a complete timeline for %s',reason=>{
  const f=fixture(),state=f.projection.verifiedState as any;
@@ -77,4 +87,11 @@ it('reopens an SDK-signed synthetic carrier, ignores unsigned alias changes and 
  const rejected=await projectReceizIdentityAccount(changed);
  expect(rejected.portableStateVerified).toBe(false);expect(readCarriedWalletObservation(rejected)).toBeNull();
  expect(projectCarriedWalletHistory(rejected,known)).toBeNull();
+});
+
+it('preserves a saved-note quote hold while old carried history restores native coverage',()=>{
+ const f=fixture();f.observation.wallet={...f.observation.wallet,kaiUpulse:'3000000',pulse:'3'};
+ const current={...f.observation,quoteHold:createWalletQuoteHold(f.observation.wallet)};
+ const restored=mergeCarriedWalletHistory(current,f.observation,f.projection);
+ expect(restored.walletScope).toBe('native-full');expect(restored.historyBasis).toBeDefined();expect(isWalletQuoteHeld(restored)).toBe(true);
 });

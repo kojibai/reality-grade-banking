@@ -51,6 +51,6 @@ export function projectLegacyWalletObservation(projection:ReceizIdentityAccountP
    const all=BigInt(quoteReceizDisplayUsdV122(current.gross.toString(),rate)),reserved=current.reserve<all?current.reserve:all;
    history.push({userId:owner,at:walletPointTime(kai.toString()),kaiUPulse:kai.toString(),totalUsdCents:all.toString(),reserveUsdCents:reserved.toString(),settlementUsdCents:(all-reserved).toString(),valuation:'legacy-model-v129'});
   }
-  return {...observation,history:appendWalletPoint(history,observation.wallet,walletPointTime(end.toString()),end.toString()),historyBasis:{schema:'bank.account-history-display.v1',kind:'legacy-wallet-observations',startKaiUPulse:start.toString(),endKaiUPulse:end.toString(),balancePhiMicro:gross.toString(),reserveUsdCents:displayReserve.toString()}};
+  return {...observation,walletScope:undefined,history:appendWalletPoint(history,observation.wallet,walletPointTime(end.toString()),end.toString()),historyBasis:{schema:'bank.account-history-display.v1',kind:'legacy-wallet-observations',startKaiUPulse:start.toString(),endKaiUPulse:end.toString(),balancePhiMicro:gross.toString(),reserveUsdCents:displayReserve.toString()}};
  }catch{return null;}
 }

@@ -52,3 +52,11 @@ it('retains previously obtained public charts until refreshed quotes arrive', as
     expect(observed?.status).toBe('live');
   } finally { act(() => root.unmount()); }
 });
+it('adds source-bound reading availability to an older retained catalog without replacing its quote',async()=>{
+ const row={id:'a',receizId:'a',title:'A',valueUsd:10,verifyHref:'/v/20261012_1401/0C19C291/14611069?a=cd412215&ms=1791828092396',profileOriginal:{media:{originalDownloadSha256Hex:'a'.repeat(64)}}};
+ const old={ok:true,transport:{publicOriginals:[row]}},seed={ok:true,transport:{publicOriginals:[{...row,valueUsd:999,profileOriginal:{...row.profileOriginal,hasLongForm:true}}]}};
+ localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(old));network.membership.mockImplementation(()=>new Promise(()=>{}));network.quotes.mockImplementation(()=>new Promise(()=>{}));
+ vi.stubGlobal('fetch',vi.fn(async input=>input==='/receiz-public-market.json'?Response.json(seed):new Response('',{status:404})));
+ let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket();return null;}
+ try{await act(async()=>root.render(<Probe/>));expect(state.catalog?.items[0].hasLongForm).toBe(true);expect(state.catalog?.items[0].priceUsd).toBe(10);}finally{act(()=>root.unmount());}
+});

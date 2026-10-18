@@ -7,3 +7,8 @@ it('aggregates the complete public collection once per asset and reports missing
   catalog.items[1].priceUsd = null;
   expect(publicMarketCapitalization(catalog)).toMatchObject({ usdCents: '1234', valued: 1, complete: false });
 });
+it('counts collectible cards within proof objects rather than outside that total', () => {
+  const catalog = parsePublicMarket({ok:true,transport:{publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1},publicOriginals:[{id:'a',receizId:'one',title:'One',valueUsd:12.34}]}});
+  catalog.items.push({...catalog.items[0],id:'card',assetId:'card',category:'sports',circulationCount:4,pricedCount:4,capitalizationUsdCents:'400'});
+  expect(publicMarketCapitalization(catalog)).toMatchObject({proofs:2,listed:2,cardAssets:1,cards:4,count:5,valued:5,usdCents:'1634'});
+});

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchPublicSports, mergePublicSports } from './public-sports';
-import { fetchPublicMarket, fetchPublicQuotes, mergePublicQuotes, parsePublicMarket, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
+import { fetchPublicMarket, fetchPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
 
 export const PUBLIC_MARKET_CACHE_KEY = 'receiz-bank-public-discovery-v2';
-function restorePublicCatalog(): PublicMarketCatalog | null { try { const saved = localStorage.getItem(PUBLIC_MARKET_CACHE_KEY); const input = saved ? JSON.parse(saved) : null; const catalog = input ? parsePublicMarket(input, input.snapshot) : null; if (!catalog) return null; try { return mergePublicSports(catalog, JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1') ?? 'null')); } catch { return catalog; } } catch { return null; } }
+function restorePublicCatalog(): PublicMarketCatalog | null { try { const saved = localStorage.getItem(PUBLIC_MARKET_CACHE_KEY); const input = saved ? JSON.parse(saved) : null; const catalog = input ? parsePublicMarket(input, input.snapshot) : null; if (!catalog) return null; rememberPublicOriginalLocators(catalog); try { return mergePublicSports(catalog, JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1') ?? 'null')); } catch { return catalog; } } catch { return null; } }
 export function usePublicMarket(active = true) {
   const [catalog, setCatalog] = useState<PublicMarketCatalog | null>(restorePublicCatalog);
   const [status, setStatus] = useState<'loading' | 'live' | 'stale' | 'error'>(catalog ? 'stale' : 'loading');
@@ -53,9 +53,9 @@ export function usePublicMarket(active = true) {
     if (!active) return;
     const seed = new AbortController();
     void fetch('/receiz-public-sports.json', { signal: seed.signal, credentials: 'omit' }).then(async response => { if (!response.ok) return; const data = await response.json(); if (seed.signal.aborted || sports.current) return; sports.current = data; setSportsStatus('retained'); setCatalog(current => current ? mergePublicSports(current, data) : current); }).catch(() => {});
-    if (!catalog) void fetch('/receiz-public-market.json', { signal: seed.signal, credentials: 'omit' }).then(async response => {
-      if (!response.ok) return; const input = await response.json(); const cached = parsePublicMarket(input, input.snapshot);
-      if (seed.signal.aborted) return; setCatalog(current => current ?? mergePublicSports(cached, sports.current));
+    if (!catalog||catalog.items.some(item=>item.category==='proof'&&item.hasLongForm===undefined)) void fetch('/receiz-public-market.json', { signal: seed.signal, credentials: 'omit' }).then(async response => {
+      if (!response.ok) return; const input = await response.json(); const cached = parsePublicMarket(input, input.snapshot); rememberPublicOriginalLocators(cached);
+      if (seed.signal.aborted) return; setCatalog(current => {if(!current)return mergePublicSports(cached,sports.current);const hints=new Map(cached.items.map(item=>[item.id,item]));return {...current,items:current.items.map(item=>{const hint=hints.get(item.id);return item.hasLongForm===undefined&&hint&&hint.assetId===item.assetId&&hint.originalDigest===item.originalDigest&&hint.verifyUrl===item.verifyUrl?{...item,hasLongForm:hint.hasLongForm,readingUrl:hint.readingUrl}:item;})};});
     }).catch(() => {});
     void refresh();
     const interval = setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 60_000);

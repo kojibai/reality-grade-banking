@@ -1,0 +1,68 @@
+.account-opening {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  min-height: 142px;
+  margin: 0 0 18px;
+  padding: 12px 18px 12px 10px;
+  overflow: hidden;
+  border: 1px solid #dfe5f1;
+  border-radius: 17px;
+  background: linear-gradient(115deg, #f0f4fd 0%, #f8f9fc 48%, #fcfbf8 100%);
+  box-shadow: 0 1px 0 #fff inset, 0 5px 19px #172b4503;
+}
+.account-opening::before {
+  position: absolute;
+  z-index: -1;
+  inset: -100% -45%;
+  content: '';
+  background: linear-gradient(110deg, transparent 36%, #fff9 48%, transparent 59%);
+  transform: translateX(-28%);
+  pointer-events: none;
+}
+.account-opening-art {
+  position: relative;
+  flex: 0 0 116px;
+  width: 116px;
+  height: 116px;
+  color: var(--blue, #244dcb);
+}
+.account-opening-art::before {
+  position: absolute;
+  inset: 18%;
+  content: '';
+  border-radius: 50%;
+  background: radial-gradient(circle, #ccd9ff66, #e5ecff22 55%, transparent 72%);
+}
+.account-opening-art svg { display: block; width: 100%; height: 100%; }
+.account-opening-geometry, .account-opening-orbit, .account-opening-seal { position: absolute; inset: 0; }
+.account-opening-orbit { transform-origin: center; }
+.account-opening-orbit-inner { transform: rotate(35deg); }
+.account-opening-copy { flex: 1; min-width: 0; }
+.account-opening-status { position: relative; min-width: 0; color: var(--navy, #172b45); }
+.account-opening-label { display: block; margin-bottom: 9px; color: #647894; font-size: 9px; font-weight: 550; line-height: 1.5; letter-spacing: .085em; text-transform: uppercase; }
+.account-opening-status strong { display: block; max-width: 190px; font-size: 15px; font-weight: 550; line-height: 1.45; letter-spacing: -.025em; text-wrap: balance; }
+.account-opening-progress { height: 3px; margin-top: 15px; overflow: hidden; border-radius: 3px; background: #dce3f0; }
+.account-opening-progress > span { display: block; width: 100%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--blue, #244dcb), #708ee3); transform-origin: left center; }
+.account-opening-progress-caption { display: flex; justify-content: space-between; gap: 12px; margin-top: 7px; color: #647894; font-size: 9px; line-height: 1.4; letter-spacing: .02em; }
+.account-opening-progress-caption [data-complete=true] { color: var(--navy, #172b45); }
+@media (prefers-reduced-motion: no-preference) {
+  .account-opening::before { animation: account-opening-light 6s ease-in-out infinite; }
+  .account-opening-orbit-outer { animation: account-opening-orbit 14s linear infinite; }
+  .account-opening-orbit-inner { animation: account-opening-orbit 10s linear infinite reverse; }
+  .account-opening-seal { animation: account-opening-breathe 4s ease-in-out infinite; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .account-opening::before, .account-opening-art * { animation: none !important; }
+}
+@media (max-width: 370px) {
+  .account-opening { gap: 9px; min-height: 126px; padding: 10px 12px 10px 5px; }
+  .account-opening-art { flex-basis: 102px; width: 102px; height: 102px; }
+  .account-opening-label { font-size: 8px; }
+  .account-opening-status strong { font-size: 14px; }
+}
+@keyframes account-opening-orbit { to { transform: rotate(360deg); } }
+@keyframes account-opening-light { 0%, 15% { transform: translateX(-28%); opacity: 0; } 32% { opacity: .8; } 66%, 100% { transform: translateX(28%); opacity: 0; } }
+@keyframes account-opening-breathe { 0%, 100% { opacity: .78; transform: scale(.98); } 50% { opacity: 1; transform: scale(1); } }

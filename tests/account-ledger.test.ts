@@ -1,6 +1,7 @@
 import {beforeEach,expect,it,vi} from 'vitest';
 import {quoteReceizDisplayUsdV122,sha256ReceizBytes} from '@receiz/sdk';
 import {accountLedgerObservation,canAdoptAccountLedgerObservation,mergeAccountLedgerObservation,createLocalAccountLedger} from '../src/receiz/account-ledger';
+import {createWalletQuoteHold,isWalletQuoteHeld} from '../src/receiz/wallet-observation';
 import type {VerifiedAccountProof} from '../src/receiz/account-proof';
 const p=vi.hoisted(()=>({known:new WeakSet<object>(),files:new Map<string,unknown>()}));
 // Retention/projection mechanics only. Canonical proof verification has its own
@@ -117,4 +118,42 @@ it('cannot replace an aggregate wallet with a cash-only statement that keeps art
  const cash=await accountLedgerObservation(value,'bound-user','2026-10-18T12:00:00Z');
  const aggregate={...cash,walletScope:undefined,wallet:{...cash.wallet,totalUsdCents:'9000',settlementUsdCents:'8000',balancePhiMicro:'13000000'}};
  expect(cash.walletScope).toBe('native-cash-only');expect(canAdoptAccountLedgerObservation(aggregate,cash)).toBe(false);expect(canAdoptAccountLedgerObservation(null,cash)).toBe(false);
+});
+
+it('marks a complete native statement positively and preserves cash-only restrictions across same-amount merges',async()=>{
+ const full=await accountLedgerObservation(proof(1),'bound-user','2026-10-18T12:00:00Z');
+ expect(full.walletScope).toBe('native-full');
+ const cash={...full,walletScope:'native-cash-only' as const};
+ expect(mergeAccountLedgerObservation(full,cash).walletScope).toBe('native-cash-only');
+ expect(mergeAccountLedgerObservation(cash,full).walletScope).toBe('native-cash-only');
+ const unmarked={...full,walletScope:undefined};
+ expect(mergeAccountLedgerObservation(unmarked,full).walletScope).toBe('native-full');
+ expect(mergeAccountLedgerObservation(full,unmarked).walletScope).toBeUndefined();
+});
+
+it('reopens unchanged retained bytes before assigning scope to a pre-marker display cache',async()=>{
+ const s=setup(),cached=(await s.ledger.retain(proof(1),'bound-user')).observation;
+ const unmarked={...cached,walletScope:undefined};
+ expect((await s.ledger.restore(unmarked))?.observation.walletScope).toBe('native-full');
+ expect(s.write).toHaveBeenCalledTimes(1);
+});
+
+it('cannot restore quote eligibility for held pre-note units from an old complete source',async()=>{
+ const full=await accountLedgerObservation(proof(1),'bound-user','2026-10-18T12:00:00Z');
+ const blocked={...full,walletScope:undefined,historyBasis:undefined,quoteHold:createWalletQuoteHold(full.wallet)};
+ const restored=mergeAccountLedgerObservation(blocked,full);
+ expect(restored.walletScope).toBe('native-full');expect(restored.historyBasis).toBeDefined();expect(isWalletQuoteHeld(restored)).toBe(true);
+ const changed=await accountLedgerObservation(proof(2,'600'),'bound-user','2026-10-18T12:01:00Z');
+ const reconciled=mergeAccountLedgerObservation(restored,changed);
+ expect(reconciled.wallet.reserveUsdCents).toBe('600');expect(isWalletQuoteHeld(reconciled)).toBe(false);
+ expect(reconciled.quoteHold).toEqual(blocked.quoteHold);
+});
+
+it('keeps a quote hold scoped to its exact UID when a verified placement changes the account alias',async()=>{
+ const previous=await accountLedgerObservation(proof(1),'local-user','2026-10-18T12:00:00Z');
+ previous.quoteHold=createWalletQuoteHold(previous.wallet);
+ const placed=await accountLedgerObservation(proof(2,'600'),'global-user','2026-10-18T12:01:00Z');
+ expect(mergeAccountLedgerObservation(previous,placed).quoteHold).toBeUndefined();
+ const placedHold=createWalletQuoteHold(placed.wallet);
+ expect(mergeAccountLedgerObservation(previous,{...placed,quoteHold:placedHold}).quoteHold).toBe(placedHold);
 });

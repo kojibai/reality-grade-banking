@@ -31,5 +31,5 @@ it('normalizes sports identity casing and merges proof collisions without double
 
 it('counts all issued copies while keeping vault and priced subsets distinct', () => {
  const catalog = mergePublicSports(base(), { ok: true, schema: 'receiz.sports_economy.live_inventory.v1', cards: [{ ...card, issuedCount: 5, vaultCount: 2, pricedCount: 2 }] });
- expect(publicMarketCapitalization(catalog)).toMatchObject({ count: 6, cards: 5, proofs: 1, valued: 3, complete: false });
+ expect(publicMarketCapitalization(catalog)).toMatchObject({ count: 6, cards: 5, proofs: 2, valued: 3, complete: false });
 });

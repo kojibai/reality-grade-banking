@@ -26,7 +26,7 @@ it('publishes identity, balance and original history in one settled frame withou
 });
 it('keeps the account private while complete history is still opening instead of publishing a flat balance preview',async()=>{
  const identity=held();let finish!:(value:WalletObservation)=>void;vi.mocked(identity.prepareAccountView).mockReturnValue(new Promise(resolve=>{finish=resolve;}));custody.restore.mockResolvedValue(identity);
- await observe(async(read,frames)=>{expect(read().identity).toBeNull();expect(read().wallet).toBeNull();expect(read().walletHistory).toEqual([]);expect(read().opening).toBe(true);await act(async()=>{finish(observation());});expect(read().identity).toBe(identity);expect(frames.filter(frame=>frame.identity).every(frame=>frame.walletHistory.length===2)).toBe(true);});
+ await observe(async(read,frames)=>{expect(read().identity).toBeNull();expect(read().wallet).toBeNull();expect(read().walletHistory).toEqual([]);expect(read().opening).toBe(true);expect(read().openingStage).toBe('history');await act(async()=>{finish(observation());});expect(read().identity).toBe(identity);expect(frames.filter(frame=>frame.identity).every(frame=>frame.walletHistory.length===2)).toBe(true);});
 });
 it('waits for settled import preparation and keeps account opening single-flight',async()=>{
  const identity=held();let finish!:(value:WalletObservation)=>void;vi.mocked(identity.prepareAccountView).mockReturnValue(new Promise(resolve=>{finish=resolve;}));custody.importId.mockResolvedValue(identity);
@@ -42,7 +42,7 @@ it('refreshes explicitly while retaining the settled opening history',async()=>{
 });
 it('retains the settled frame if a later update fails',async()=>{
  const identity=held();vi.mocked(identity.readWallet).mockRejectedValue(Error('Source unavailable'));custody.restore.mockResolvedValue(identity);
- await observe(async read=>{await act(async()=>{await read().refresh();});expect(read().wallet?.totalUsdCents).toBe('100');expect(read().error).toContain('could not update');expect(read().syncPending).toBe(true);});
+ await observe(async read=>{await act(async()=>{await read().refresh();});expect(read().wallet?.totalUsdCents).toBe('100');expect(read().error).toContain('balance could not be updated');expect(read().syncPending).toBe(true);});
 });
 it('preserves the current account if device removal is refused by held custody',async()=>{
  const identity=held();custody.restore.mockResolvedValue(identity);custody.forget.mockRejectedValue(Error('Notes remain in custody'));
@@ -54,5 +54,46 @@ it('clears the frame and prevents a pending update from reopening a removed iden
 });
 it('does not publish an opening identity after removal wins the generation',async()=>{
  const identity=held();let finish!:(value:WalletObservation)=>void;vi.mocked(identity.prepareAccountView).mockReturnValue(new Promise(resolve=>{finish=resolve;}));custody.restore.mockResolvedValue(identity);
- await observe(async read=>{await act(async()=>{await read().forget();finish(observation());});expect(read().identity).toBeNull();expect(read().wallet).toBeNull();expect(identity.dispose).toHaveBeenCalled();});
+ await observe(async read=>{await act(async()=>{await read().forget();finish(observation());});expect(read().identity).toBeNull();expect(read().wallet).toBeNull();expect(read().openingStage).toBe('identity');expect(identity.dispose).toHaveBeenCalled();});
+});
+
+it('completes entry checkpoints in the same rendered frame that publishes the account',async()=>{
+ const identity=held();let identify!:(value:OpenIdentity)=>void,prepare!:(value:WalletObservation)=>void;
+ custody.restore.mockReturnValue(new Promise(resolve=>{identify=resolve;}));
+ vi.mocked(identity.prepareAccountView).mockReturnValue(new Promise(resolve=>{prepare=resolve;}));
+ await observe(async(read,frames)=>{
+  expect(read().openingStage).toBe('identity');expect(read().identity).toBeNull();
+  await act(async()=>{identify(identity);});
+  expect(read().openingStage).toBe('history');expect(read().identity).toBeNull();expect(read().wallet).toBeNull();
+  await act(async()=>{prepare(observation());});
+  expect(read().openingStage).toBe('ready');expect(read().identity).toBe(identity);
+  expect(frames.every(frame=>frame.openingStage==='ready'?!!frame.identity&&!!frame.wallet&&frame.walletHistory.length===2&&!frame.opening:frame.identity===null)).toBe(true);
+ });
+});
+
+it('does not complete a failed preparation and resets checkpoints before retrying',async()=>{
+ const first=held(),retry=held();vi.mocked(first.prepareAccountView).mockRejectedValue(Error('SOURCE_UNAVAILABLE'));custody.create.mockResolvedValueOnce(first);
+ let identify!:(value:OpenIdentity)=>void,prepare!:(value:WalletObservation)=>void;
+ custody.create.mockImplementationOnce(()=>new Promise(resolve=>{identify=resolve;}));
+ vi.mocked(retry.prepareAccountView).mockReturnValue(new Promise(resolve=>{prepare=resolve;}));
+ await observe(async(read,frames)=>{
+  await act(async()=>{await read().create(true);});
+  expect(read().identity).toBeNull();expect(read().openingStage).not.toBe('ready');expect(read().error).toBe('SOURCE_UNAVAILABLE');
+  let pending!:Promise<void>;await act(async()=>{pending=read().create(true);});
+  expect(read().openingStage).toBe('identity');expect(read().busy).toBe(true);expect(read().error).toBeNull();
+  await act(async()=>{identify(retry);});expect(read().openingStage).toBe('history');expect(read().identity).toBeNull();
+  await act(async()=>{prepare(observation());await pending;});
+  expect(read().openingStage).toBe('ready');expect(read().identity).toBe(retry);
+  expect(frames.filter(frame=>frame.openingStage==='ready').every(frame=>frame.identity===retry)).toBe(true);
+ });
+});
+
+it('does not advance checkpoints when a removed identity finishes restoring later',async()=>{
+ const identity=held();let identify!:(value:OpenIdentity)=>void;
+ custody.restore.mockReturnValue(new Promise(resolve=>{identify=resolve;}));
+ await observe(async read=>{
+  await act(async()=>{await read().forget();identify(identity);});
+  expect(read().openingStage).toBe('identity');expect(read().identity).toBeNull();
+  expect(identity.prepareAccountView).not.toHaveBeenCalled();expect(identity.dispose).toHaveBeenCalled();
+ });
 });

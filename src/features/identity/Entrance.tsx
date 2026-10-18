@@ -3,7 +3,8 @@ import { Fingerprint, ArrowUpRight, Upload } from 'lucide-react';
 import { inspectIdentityLock } from '../../receiz/identity-lock';
 import { branding } from '../../../branding/profile.mjs';
 import { EntranceConformanceStatus } from './EntranceConformanceStatus';
-export function Entrance({ opening, busy, error, onCreate, onImport }: { opening: boolean; busy: boolean; error: string | null; onCreate: (consent: boolean) => Promise<void>; onImport: (file: File, phrase: string, consent: boolean) => Promise<void> }) {
+import { AccountOpening, type OpeningStage } from './AccountOpening';
+export function Entrance({ opening, openingStage = 'identity', busy, error, onCreate, onImport }: { opening: boolean; openingStage?: OpeningStage; busy: boolean; error: string | null; onCreate: (consent: boolean) => Promise<void>; onImport: (file: File, phrase: string, consent: boolean) => Promise<void> }) {
   const [file, setFile] = useState<File | null>(null), [phrase, setPhrase] = useState('');
   const picker = useRef<HTMLInputElement>(null), inspection = useRef(0);
   const [needsPhrase, setNeedsPhrase] = useState(false), [inspecting, setInspecting] = useState(false), [fileError, setFileError] = useState<string | null>(null);
@@ -20,11 +21,11 @@ export function Entrance({ opening, busy, error, onCreate, onImport }: { opening
     finally { if (ticket === inspection.current) setInspecting(false); }
   };
   return <div className="console identity-entrance"><header className="app-header"><span className="wordmark">{branding.wordmark}<span>{branding.descriptor}</span></span><EntranceConformanceStatus /></header><main className="entrance-content"><span className="entrance-symbol"><Fingerprint size={39} strokeWidth={1.4} /></span><h1>Your value.<br />More possibilities.</h1><p className="page-subtitle">One place for all your value. Wherever you go.</p>
-    {opening ? <p role="status" className="body-copy">Opening your account…</p> : <>
+    {(opening || busy || inspecting) && <AccountOpening stage={openingStage} inspecting={inspecting && !busy && !opening} />}
+    {!opening && <>
       <button className="primary-button" disabled={busy || inspecting} onClick={() => void onCreate(true)}>Enter<ArrowUpRight size={20} /></button>
       <button className="secondary-button" disabled={busy || inspecting} onClick={() => picker.current?.click()}><Upload size={18} />Use existing account</button>
       <input ref={picker} type="file" accept=".png,.pdf,.receiz,.receizkey,.json,application/octet-stream" hidden onChange={event => { const selected = event.target.files?.[0] ?? null; event.target.value = ''; void chooseFile(selected); }} />
-      {file && <form className="identity-import" onSubmit={event => { event.preventDefault(); if (needsPhrase && phrase && !busy && !inspecting && !fileError) void onImport(file, phrase, true); }}><span className="small-copy">{file.name}</span>{needsPhrase && <><label>Unlock phrase<input type="password" autoComplete="off" value={phrase} onChange={event => setPhrase(event.target.value)} placeholder="Unlock your Identity Seal" /></label><button className="primary-button" disabled={busy || inspecting || Boolean(fileError) || !phrase}>Unlock account</button></>}{inspecting && <p className="body-copy" role="status">Opening your ID…</p>}{fileError && <p className="form-error" role="alert">{fileError}</p>}</form>}
-      {busy && <p role="status" className="body-copy">Opening your proof-backed identity…</p>}
+      {file && <form className="identity-import" onSubmit={event => { event.preventDefault(); if (needsPhrase && phrase && !busy && !inspecting && !fileError) void onImport(file, phrase, true); }}><span className="small-copy">{file.name}</span>{needsPhrase && <><label>Unlock phrase<input type="password" autoComplete="off" value={phrase} onChange={event => setPhrase(event.target.value)} placeholder="Unlock your Identity Seal" /></label><button className="primary-button" disabled={busy || inspecting || Boolean(fileError) || !phrase}>Unlock account</button></>}{fileError && <p className="form-error" role="alert">{fileError}</p>}</form>}
     <p className="entrance-consent">By continuing, you authorize <a href="/learn/account-access/">account access</a> and balance viewing. Your <a href="/learn/signing-key/">signing key</a> stays on this device.</p></>}{error && <p role="alert" className="form-error">{error}</p>}<a className="entrance-learn" href="/learn/">Explore Reality-Grade Banking</a></main></div>;
 }

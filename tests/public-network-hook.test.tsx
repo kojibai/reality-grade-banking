@@ -6,10 +6,12 @@ import { usePublicNetwork } from '../src/receiz/usePublicNetwork';
 import { parsePublicNetworkPage, type PublicSource } from '../src/receiz/public-network';
 const network = vi.hoisted(() => ({ read: vi.fn() }));
 const cache = vi.hoisted(() => ({ load: vi.fn(), seed: vi.fn(), save: vi.fn() }));
+const originals = vi.hoisted(() => ({ restore: vi.fn(), sync: vi.fn(), rows: vi.fn() }));
+vi.mock('../src/receiz/public-ledger-continuity',()=>({readHeldPublicLedger:originals.restore,synchronizePublicLedger:originals.sync,publicLedgerDisplayRows:originals.rows}));
 vi.mock('../src/receiz/public-network', async original => ({ ...await original<typeof import('../src/receiz/public-network')>(), readPublicNetworkPage: network.read }));
 vi.mock('../src/receiz/public-network-cache', () => ({ loadPublicNetworkCache: cache.load, loadPublicNetworkSeed: cache.seed, savePublicNetworkCache: cache.save }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-beforeEach(() => { network.read.mockReset(); cache.load.mockReset().mockResolvedValue(null); cache.seed.mockReset().mockResolvedValue(null); cache.save.mockReset().mockResolvedValue(undefined); });
+beforeEach(() => { network.read.mockReset(); cache.load.mockReset().mockResolvedValue(null); cache.seed.mockReset().mockResolvedValue(null); cache.save.mockReset().mockResolvedValue(undefined); originals.restore.mockReset().mockResolvedValue(null);originals.sync.mockReset().mockResolvedValue(null);originals.rows.mockReset().mockImplementation(async(_review,known)=>known); });
 function page(source: PublicSource, ids: string[] = [], cursor: string | null = null) {
   return { source, records: parsePublicNetworkPage('actions', { ok: true, actions: ids.map(id => ({ id, actionKind: 'record', summary: `Record ${id}`, pulse: 100 })), nextCursor: cursor }).records.map(item => ({ ...item, source, id: `${source}:${item.sourceId}` })), nextCursor: cursor, total: null, complete: cursor === null };
 }
@@ -35,6 +37,49 @@ it('fills the gap between an incomplete recent cache and the complete public see
   cache.seed.mockResolvedValue({ records: page('actions', ['older']).records, capturedAt: null, coverage: [{ source: 'actions', complete: true }] });
   network.read.mockImplementation(async (source: PublicSource, cursor?: string) => source === 'actions' ? page(source, cursor ? ['gap', 'older'] : ['head'], cursor ? null : '42') : page(source));
   await observe(async read => { expect(read().records.map(item => item.sourceId)).toEqual(expect.arrayContaining(['head', 'gap', 'older'])); expect(read().sources.actions.complete).toBe(true); });
+});
+
+it('paints the newest cached head before a pending seed and persists additions without an unmount delay',async()=>{
+ let finish!:(value:null)=>void;cache.seed.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
+ cache.load.mockResolvedValue({records:page('actions',['newest']).records,capturedAt:'2026-10-18T12:00:00Z',coverage:[{source:'actions',complete:false}]});
+ network.read.mockRejectedValue(Error('503'));
+ await observe(async read=>{
+  expect(read().records.map(row=>row.sourceId)).toEqual(['newest']);expect(read().bootstrap).toBe(false);
+  expect(cache.save).toHaveBeenCalled();expect(originals.sync).toHaveBeenCalled();
+  await act(async()=>finish(null));
+ });
+ expect(cache.save.mock.calls.at(-1)![0].records[0].sourceId).toBe('newest');
+});
+
+it('restores supported original rows offline and polls the source independently of row discovery',async()=>{
+ originals.restore.mockResolvedValue({artifactSha256:'held'});originals.rows.mockImplementation(async(_review,known)=>[...known,...page('actions',['sealed-head']).records]);
+ network.read.mockRejectedValue(Error('503'));
+ await observe(async read=>{
+  expect(read().records.some(row=>row.sourceId==='sealed-head')).toBe(true);
+  expect(read().sources.wallet.complete).toBe(false);expect(read().sources.actions.complete).toBe(false);
+  await act(async()=>read().refresh());expect(originals.sync).toHaveBeenCalledTimes(2);
+  expect(cache.save.mock.calls.at(-1)![0].records.some((row:{sourceId:string})=>row.sourceId==='sealed-head')).toBe(true);
+ });
+});
+it('starts persisting an accepted live addition and its complete anchor before immediate unmount',async()=>{
+ let ids:string[]=[];network.read.mockImplementation(async(source:PublicSource)=>page(source,source==='actions'?ids:[]));
+ await observe(async read=>{
+  ids=['live-addition'];await act(async()=>read().refresh());
+  const saved=cache.save.mock.calls.at(-1)![0];expect(saved.records.map((row:{sourceId:string})=>row.sourceId)).toEqual(['live-addition']);
+  expect(saved.coverage.find((item:{source:string})=>item.source==='actions')).toMatchObject({complete:true,anchorIds:['actions:live-addition']});
+ });
+ expect(cache.save.mock.calls.at(-1)![0].records[0].sourceId).toBe('live-addition');
+});
+it('rebases a delayed original fill on concurrent public rows',async()=>{
+ let finish!:(value:ReturnType<typeof page>['records'])=>void;originals.restore.mockResolvedValue({artifactSha256:'held'});
+ originals.rows.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;})).mockImplementation(async(_review,known)=>[...known,...page('actions',['sealed']).records]);
+ let addition=false;network.read.mockImplementation(async(source:PublicSource)=>page(source,source==='graph'?['live-graph']:source==='actions'&&addition?['live-action']:[]));
+ await observe(async read=>{
+  expect(read().records.some(row=>row.sourceId==='live-graph')).toBe(true);
+  addition=true;await act(async()=>read().refresh());
+  await act(async()=>finish(page('actions',['sealed']).records));
+  expect(read().records.map(row=>row.sourceId)).toEqual(expect.arrayContaining(['sealed','live-graph','live-action']));
+ });
 });
 
 it('persists the complete anchor separately so interrupted catch-up resumes after reload', async () => {

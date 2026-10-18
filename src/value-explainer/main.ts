@@ -79,8 +79,8 @@ export function mountValueExplainer(root: HTMLElement) {
   const updateCashflowRows = () => {
     const rows = [...cashflowList.querySelectorAll<HTMLElement>('[data-value-cashflow]')];
     rows.forEach((row, index) => {
-      row.querySelector('[data-value-payment-label]')!.textContent = `Payment ${index + 1}`;
-      row.querySelector('button')!.setAttribute('aria-label', `Remove payment ${index + 1}`);
+      row.querySelector('[data-value-payment-label]')!.textContent = `Contribution ${index + 1}`;
+      row.querySelector('button')!.setAttribute('aria-label', `Remove contribution ${index + 1}`);
     });
     find('[data-value-cashflow-empty]').hidden = rows.length > 0;
     addCashflow.disabled = rows.length >= MAX_CASHFLOWS;
@@ -89,8 +89,8 @@ export function mountValueExplainer(root: HTMLElement) {
     if (cashflowList.children.length >= MAX_CASHFLOWS) return;
     const id = ++cashflowId, row = document.createElement('div');
     row.className = 'value-cashflow-row'; row.dataset.valueCashflow = '';
-    row.innerHTML = `<div class="value-cashflow-heading"><span data-value-payment-label></span><button type="button" data-value-remove-cashflow><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div><div class="value-field"><label for="value-cashflow-amount-${id}">Amount · Φ</label><input id="value-cashflow-amount-${id}" name="cashflowAmount" inputmode="decimal" placeholder="0.00" maxlength="32" required></div><div class="value-field"><label for="value-cashflow-pulse-${id}">Payment pulse</label><input id="value-cashflow-pulse-${id}" name="cashflowPulse" inputmode="numeric" maxlength="16" required aria-describedby="value-cashflow-help"></div>`;
-    row.querySelector<HTMLInputElement>('[name="cashflowPulse"]')!.value = evaluationInput.value;
+    row.innerHTML = `<div class="value-cashflow-heading"><span data-value-payment-label></span><button type="button" data-value-remove-cashflow><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div><div class="value-field"><label for="value-cashflow-amount-${id}">Amount · Φ</label><input id="value-cashflow-amount-${id}" name="cashflowAmount" inputmode="decimal" placeholder="0.00" maxlength="32" required></div><div class="value-field"><label for="value-cashflow-pulse-${id}">Effective pulse</label><input id="value-cashflow-pulse-${id}" name="cashflowPulse" inputmode="numeric" maxlength="16" required aria-describedby="value-cashflow-help"></div>`;
+    row.querySelector<HTMLInputElement>('[name="cashflowPulse"]')!.value = find<HTMLInputElement>('#value-origin').value;
     row.querySelector('button')!.addEventListener('click', () => {
       row.remove(); updateCashflowRows(); invalidateIllustration(); addCashflow.focus();
     });

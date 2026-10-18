@@ -3,6 +3,7 @@ import type { ChartPeriod } from '../../core/chart-history';
 import seedHistory from '../../../public/receiz-public-chart-history.json';
 import { parseMarketCapSource, type MarketCapSource } from './source';
 import { marketCapSummary, parseMarketHistory, type MarketCapSummary, type MarketHistorySnapshot } from './history';
+import {publishMarketDisplaySource} from './display-source';
 export type { CapitalizationPoint } from './history';
 const KEY = 'receiz-bank-public-graph-history-v2';
 const shipped = parseMarketHistory(seedHistory);
@@ -23,7 +24,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean) {
         const response = await fetch(path, { credentials: 'omit', signal: controller.signal }); if (!response.ok) throw new Error();
         const value = parseMarketCapSource(await response.json()); if (controller.signal.aborted) return;
         if (value.serverPulse < Math.max(heldHistory.current.summary.serverPulse, acceptedSource.current?.serverPulse ?? 0) || !live && acceptedSource.current) return;
-        acceptedSource.current = value; setFullSource(value); setSource(marketCapSummary(value));
+        acceptedSource.current = value; publishMarketDisplaySource(value); setFullSource(value); setSource(marketCapSummary(value));
         if (live) setStatus('live');
       } catch { if (live && !controller.signal.aborted) setStatus('unavailable'); }
       finally { if (live) pending = false; }

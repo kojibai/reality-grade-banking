@@ -5,6 +5,10 @@ const original = (i: number, extra = {}) => ({ id: `profile:alice:${i}`, receizI
 const membership = (items: unknown[]) => ({ ok: true, transport: { generatedAt: '2026-10-13T12:00:00Z', publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: items.length, revision: 'r1' }, publicOriginals: items } });
 
 describe('Receiz public Market catalog', () => {
+  it('retains only a non-authoritative essay availability hint without importing public essay text',()=>{
+    const item=parsePublicMarket(membership([original(1,{profileOriginal:{hasLongForm:true}})])).items[0];
+    expect(item.hasLongForm).toBe(true);expect(Object.hasOwn(item,'longForm')).toBe(false);
+  });
   it('discovers every item beyond one thousand without creating ownership or trading authority', () => {
     const catalog = parsePublicMarket(membership(Array.from({ length: 1001 }, (_, i) => original(i))));
     expect(catalog.items).toHaveLength(1001);
@@ -37,6 +41,16 @@ describe('Receiz public Market catalog', () => {
     const item = parsePublicMarket(membership([original(1, { canonicalHref: 'javascript:alert(1)', verifyHref: 'https://evil.test/v/proof', profileOriginal: { media: { originalDownloadSrc: '/api/profile/originals/download?receizId=asset-1&kind=original', originalDownloadSha256Hex: digest } } })])).items[0];
     expect(item.sourceUrl).toBeNull(); expect(item.verifyUrl).toBeNull(); expect(item.originalDigest).toBe(digest);
     expect(item.originalUrl).toContain('https://receiz.com/api/profile/originals/download?');
+  });
+  it('selects the exact carried material original ahead of a separate profile download', () => {
+    const material = { proofObjectUrl: '/v/20261018_1200/AB12CD34/14700000#material=rmc2%3A' + 'c'.repeat(64), sealedArtifactSha256Hex: 'd'.repeat(64) };
+    const item = parsePublicMarket(membership([original(1, { profileOriginal: { media: { originalDownloadSrc: '/api/profile/originals/download?receizId=asset-1&kind=original', originalDownloadSha256Hex: 'd'.repeat(64), material } } })])).items[0];
+    expect(item.originalUrl).toBe('https://receiz.com/api/proof-material/packages/' + 'c'.repeat(64) + '/artifact');
+    expect(item.originalDigest).toBe('d'.repeat(64));
+  });
+  it('opens the compact retained material locator for the same enclosing digest', () => {
+    const item = parsePublicMarket(membership([original(1, { profileOriginal: { media: { originalDownloadSrc: '/api/profile/originals/download?receizId=asset-1&kind=original', originalDownloadSha256Hex: 'd'.repeat(64), material: { originalArtifactSrc: '/api/proof-material/packages/' + 'c'.repeat(64) + '/artifact', sealedArtifactSha256Hex: 'd'.repeat(64) } } } })])).items[0];
+    expect(item.originalUrl).toBe('https://receiz.com/api/proof-material/packages/' + 'c'.repeat(64) + '/artifact');
   });
   it('replaces complete discovery on refresh, removing objects that are no longer public', () => {
     const before = parsePublicMarket(membership([original(1), original(2)]));

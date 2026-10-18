@@ -313,13 +313,13 @@ export async function restoreKnownWalletObservation(): Promise<import('./wallet-
     return await loadWalletObservation(binding);
   } catch { return null; }
 }
-export async function saveWalletObservation(binding: { keyId: string; artifactSha256: string }, wallet: import('./shared-wallet').SharedWallet, observedAt: string, history?: import('./wallet-series').WalletPoint[], source?: import('./wallet-observation').WalletObservation['source'], localHeadDigest?: string, historyBasis?: import('./wallet-observation').WalletObservation['historyBasis']): Promise<void> {
+export async function saveWalletObservation(binding: { keyId: string; artifactSha256: string }, wallet: import('./shared-wallet').SharedWallet, observedAt: string, history?: import('./wallet-series').WalletPoint[], source?: import('./wallet-observation').WalletObservation['source'], localHeadDigest?: string, historyBasis?: import('./wallet-observation').WalletObservation['historyBasis'], walletScope?: import('./wallet-observation').WalletObservation['walletScope'], quoteHold?: import('./wallet-observation').WalletQuoteHold): Promise<void> {
   try {
     const saved = await held(); if (!saved) return;
     const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(await identityBytes(saved))))].map(byte => byte.toString(16).padStart(2, '0')).join('');
     if (digest !== binding.artifactSha256) return;
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const value = { schema: 'receiz.bank.private-wallet-observation.v1', authority: 'read-only-observation', applicationId: BANK_APPLICATION_ID, keyId: binding.keyId, artifactSha256: binding.artifactSha256, wallet, observedAt, history, ...(historyBasis ? {historyBasis} : {}), ...(source ? { source } : {}), ...(localHeadDigest ? {localHeadDigest} : {}) };
+    const value = { schema: 'receiz.bank.private-wallet-observation.v1', authority: 'read-only-observation', applicationId: BANK_APPLICATION_ID, keyId: binding.keyId, artifactSha256: binding.artifactSha256, wallet, observedAt, history, ...(quoteHold ? {quoteHold} : {}), ...(walletScope ? {walletScope} : {}), ...(historyBasis ? {historyBasis} : {}), ...(source ? { source } : {}), ...(localHeadDigest ? {localHeadDigest} : {}) };
     const bytes = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(`receiz.bank.wallet|${binding.keyId}|${binding.artifactSha256}`) }, saved.wrappingKey, new TextEncoder().encode(JSON.stringify(value)));
     const db = await database(); try { await new Promise<void>((resolve, reject) => {
       const priorBytes = new Uint8Array(saved.bytes);

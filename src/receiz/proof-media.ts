@@ -1,13 +1,14 @@
 import {openBookArchive} from './proof-media-archive';
 import {loadReceiz} from './client';
-import {safeReceizPublicUrl} from './public-market';
+import {resolvePublicOriginalUrl} from './public-original';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
+import {readPublicProofReading,type ProofReading} from './proof-reading';
 import type {ReceizVerifiedPayload} from '@receiz/sdk';
 
 export type MediaKind='image'|'audio'|'video'|'pdf'|'text'|'book'|'file';
 export type MediaFile={kind:MediaKind;filename:string;mimeType:string;bytes:Uint8Array;payloadDigest:string;memberPath?:string;text?:string;chapters?:{title:string;text:string}[]};
-export type ProofMediaSource={kind:'held';bytes:Uint8Array;filename:string;digest:string;related?:readonly {digest:string;bytes:Uint8Array;filename:string}[]}|{kind:'public';url:string;digest:string};
-export type OpenedProofMedia={artifactDigest:string;files:MediaFile[];linkedArtifactDigest?:string};
+export type ProofMediaSource={kind:'held';bytes:Uint8Array;filename:string;digest:string;related?:readonly {digest:string;bytes:Uint8Array;filename:string}[]}|{kind:'public';url:string;digest:string;postUrl?:string;hasLongForm?:boolean};
+export type OpenedProofMedia={artifactDigest:string;files:MediaFile[];linkedArtifactDigest?:string;readText?:(signal?:AbortSignal)=>Promise<ProofReading>};
 const MAX=16*1024*1024;
 const image=new Set(['image/png','image/jpeg','image/webp','image/gif','image/avif','image/bmp']);
 const decode=(bytes:Uint8Array)=>new TextDecoder('utf-8',{fatal:true}).decode(bytes);
@@ -55,8 +56,9 @@ export async function openProofMedia(source:ProofMediaSource,signal?:AbortSignal
  if(!/^[a-f0-9]{64}$/i.test(source.digest))throw Error('The original digest is unavailable.');
  signal?.throwIfAborted();let bytes:Uint8Array,filename:string;
  if(source.kind==='held'){bytes=new Uint8Array(source.bytes);filename=source.filename;}else{
-  const safe=safeReceizPublicUrl(source.url,'original');if(!safe)throw Error('This original source is not supported.');const url=new URL(safe);
-  const response=await fetch(`/api/bank/public-market/original?path=${encodeURIComponent(url.pathname+url.search)}`,{credentials:'omit',redirect:'error',signal:signal?AbortSignal.any([signal,AbortSignal.timeout(90_000)]):AbortSignal.timeout(90_000)});
+  const timeout=AbortSignal.timeout(90_000),publicSignal=signal?AbortSignal.any([signal,timeout]):timeout;
+  const url=new URL(await resolvePublicOriginalUrl(source.url,source.digest,publicSignal));publicSignal.throwIfAborted();
+  const response=await fetch(`/api/bank/public-market/original?path=${encodeURIComponent(url.pathname+url.search)}`,{credentials:'omit',redirect:'error',signal:publicSignal});
   if(!response.ok)throw Error('The original could not be opened. You can retry or inspect its source.');bytes=await readPublicLedgerBytes(response,MAX);filename='original.receiz';
  }
  if(!bytes.length||bytes.length>MAX)throw Error('This original exceeds the supported reader capacity.');
@@ -68,5 +70,5 @@ export async function openProofMedia(source:ProofMediaSource,signal?:AbortSignal
   const linked=value?.schema==='receiz.bank.asset-definition.v1'?value.definition?.linkedProofDigest:null;
   if(typeof linked==='string'&&/^[a-f0-9]{64}$/.test(linked)&&linked!==source.digest){const held=source.related?.find(item=>item.digest===linked);if(held){const media=await openProofMedia({kind:'held',...held},signal);return {artifactDigest:source.digest,linkedArtifactDigest:linked,files:[...media.files,...files]};}}
  }
- return {artifactDigest:source.digest,files};
+ return {artifactDigest:source.digest,files,...(source.kind==='public'&&source.postUrl?{readText:(signal?:AbortSignal)=>readPublicProofReading(source.postUrl!,source.digest,signal)}:{})};
 }

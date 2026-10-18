@@ -22,6 +22,13 @@ beforeEach(()=>{
  p.known=null;p.projection=null;p.device.mockReset().mockResolvedValue(undefined);p.restore.mockReset().mockResolvedValue(null);p.retain.mockReset().mockResolvedValue({proof,observation:observation()});p.proof.mockReset().mockImplementation(async({request})=>{await request('/account-source');return proof;});
  p.continueId.mockReset().mockResolvedValue({ok:true,session:{uid:'bound-user'}});p.wallet.mockReset().mockResolvedValue({ok:true,wallet:{userId:'bound-user',balanceUsd:'8.00',balancePhiMicro:'4000000',valueStates:{settledBalanceUsdCents:'800',ecosystemBalanceUsdCents:'0'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'100000003'}}});p.save.mockReset().mockResolvedValue(undefined);p.request.mockReset().mockResolvedValue({});
 });
+it('reports unavailable account balance sources when both cold reads fail and preserves both causes',async()=>{
+ const walletCause=Error('WALLET_SOURCE_UNAVAILABLE'),historyCause=Error('ACCOUNT_PROOF_UNAVAILABLE');
+ p.wallet.mockRejectedValue(walletCause);p.proof.mockRejectedValue(historyCause);
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const failure=await identity.prepareAccountView().then(()=>null,cause=>cause);expect(failure.message).toContain('balance source is temporarily unavailable');expect(failure.cause).toBeInstanceOf(AggregateError);expect(failure.cause.errors).toEqual([walletCause,historyCause]);}
+ finally{identity.dispose();}
+});
 it('returns complete carried historical valuations with the admitted identity before optional source or network reads',async()=>{
  p.projection=carriedProjection();
  let finish!:(value:null)=>void;p.restore.mockReturnValue(new Promise(resolve=>{finish=resolve;}));
@@ -46,6 +53,17 @@ it('opens a cached account without waiting for optional full-source verification
  const result=await Promise.race([opening.then(identity=>({identity})),new Promise<{identity:null}>(resolve=>setTimeout(()=>resolve({identity:null}),100))]);
  try{expect(result.identity?.knownWallet()?.wallet.totalUsdCents).toBe('600');}
  finally{finish(null);(result.identity??await opening).dispose();}
+});
+it('returns a complete retained chart without waiting for optional Ledger enrichment',async()=>{
+ p.projection=carriedProjection();let finish!:(value:null)=>void;
+ p.restore.mockReturnValue(new Promise(resolve=>{finish=resolve;}));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try {
+  const result=await Promise.race([identity.prepareAccountView(),new Promise<null>(resolve=>setTimeout(()=>resolve(null),100))]);
+  expect(result?.historyBasis?.startKaiUPulse).toBe('1000000');
+  expect(result?.history!.length).toBeGreaterThan(100);
+  expect(p.continueId).not.toHaveBeenCalled();expect(p.wallet).not.toHaveBeenCalled();
+ } finally {finish(null);identity.dispose();}
 });
 it('returns a received balance before optional encrypted display-cache persistence finishes',async()=>{
  p.known=observation();let finish!:()=>void;p.save.mockReturnValue(new Promise<void>(resolve=>{finish=resolve;}));

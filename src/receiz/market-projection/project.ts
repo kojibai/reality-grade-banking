@@ -35,6 +35,11 @@ function sportsValue(row: MarketValueRow, pulse: number, quoteMove: number): num
   const live = round(base + round(Math.max(.0001, carry)));
   return round(row.proofTotalValueUsd * live / base);
 }
+/** Single-object display math, using the same admitted sigil operands as the graph. */
+export function marketAssetUsdAtPulse(row:MarketValueRow,pulse:number):number{
+ const meta=row.marketItem?.livePulseSeed;if(row.source!=='market-desk-live-asset'||meta?.kind!=='sigil'||!Number.isSafeInteger(pulse)||pulse<meta.claimPulse)throw Error('Public object valuation seed is unavailable.');
+ return marketValue(row,pulse,1);
+}
 export function marketCapUsdAtPulse(seed: MarketCapSource, pulse: number): number {
   if (!Number.isSafeInteger(pulse) || pulse < seed.firstIssuancePulse) throw new Error('Market projection pulse outside its issuance range.');
   if (pulse === seed.serverPulse) return round(seed.currentUsd);

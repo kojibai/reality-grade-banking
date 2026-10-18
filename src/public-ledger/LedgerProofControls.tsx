@@ -5,42 +5,32 @@ import type {PublicLedgerFileReview} from '../receiz/public-ledger-proof';
 const MAX_UPLOAD=24*1024*1024;
 import {readPublicLedgerDiscoveries,isPublicLedgerDiscovery as isDiscovery,type PublicLedgerDiscovery as Discovery} from '../receiz/public-ledger-discovery';
 import {announcePublicLedgerPublication,subscribePublicLedgerSync} from '../receiz/public-ledger-sync';
+import {synchronizePublicLedger} from '../receiz/public-ledger-continuity';
 async function readJson(response:Response,max=1024*1024){return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await readPublicLedgerBytes(response,max)));}
 async function readPublicOriginal(digest:string){
  const response=await fetch('/api/bank/ledger-proof?source='+digest,{credentials:'omit',redirect:'error',signal:AbortSignal.timeout(30_000)});if(!response.ok)throw Error();
  const bytes=await readPublicLedgerBytes(response,16*1024*1024),{inspectPublicLedgerFile}=await import('../receiz/public-ledger-proof');
  const opened=await inspectPublicLedgerFile({bytes,filename:'public-source.receizbundle'});if(opened.artifactSha256!==digest)throw Error('PUBLIC_LEDGER_SOURCE_MISMATCH');return opened;
 }
-/** A refresh can advance retained custody only after canonical verification and
- * the existing full-source continuation check. It never changes a UI review. */
-async function refreshPublicLedger(){
- let response:Response;try{response=await fetch('/api/bank/ledger-proof',{credentials:'omit',redirect:'error',signal:AbortSignal.timeout(30_000)});}catch{return null;}if(!response.ok)return null;
- const {openPublicLedgerSource}=await import('../receiz/public-ledger-proof'),{retainPublicLedgerReview}=await import('../receiz/public-ledger-retention');
- const opened=await openPublicLedgerSource(await readJson(response,24*1024*1024));
- try{return await retainPublicLedgerReview(opened);}catch(error){if(!(error instanceof Error)||error.message!=='PUBLIC_LEDGER_LOCAL_STORAGE_UNAVAILABLE')throw error;return opened;}
-}
 export function LedgerProofControls(){
- const picker=useRef<HTMLInputElement>(null),refreshing=useRef<Promise<PublicLedgerFileReview|null>|null>(null),[review,setReview]=useState<PublicLedgerFileReview|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[consentDigest,setConsentDigest]=useState<string|null>(null),[publicDigest,setPublicDigest]=useState<string|null>(null),[discoveries,setDiscoveries]=useState<Discovery[]>([]),[nextCursor,setNextCursor]=useState<number|null>(null);
+ const picker=useRef<HTMLInputElement>(null),[review,setReview]=useState<PublicLedgerFileReview|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[consentDigest,setConsentDigest]=useState<string|null>(null),[publicDigest,setPublicDigest]=useState<string|null>(null),[discoveries,setDiscoveries]=useState<Discovery[]>([]),[nextCursor,setNextCursor]=useState<number|null>(null);
  const discoveryCount=useRef<number|undefined>(undefined);
  useEffect(()=>{
-  let live=true,pending=false,initialized=false,sourceCursor:number|undefined,requestedSync=0,completedSync=0;const controller=new AbortController();
-  const synchronize=async(forceSource=false)=>{
-   if(forceSource)requestedSync++;
+  let live=true,pending=false,initialized=false;const controller=new AbortController();
+  const synchronize=async()=>{
    if(!live||pending||document.visibilityState==='hidden')return;pending=true;
+   // An Action Ledger extension does not require a newly published discovery.
+   // Start its independent GET even when the discovery index is unavailable.
+   const source=refresh().catch(()=>null);
    try{const previousCount=discoveryCount.current,page=await readPublicLedgerDiscoveries(previousCount,controller.signal);if(!live)return;
     if(page.watchCursor!==null)discoveryCount.current=page.watchCursor;
     if(!initialized){setNextCursor(page.nextCursor);initialized=true;}
     setDiscoveries(previous=>{const rows=new Map([...previous,...page.entries].map(row=>[row.artifactSha256,row]));return [...rows.values()].sort((a,b)=>BigInt(a.kaiPulse)===BigInt(b.kaiPulse)?a.artifactSha256.localeCompare(b.artifactSha256):BigInt(a.kaiPulse)>BigInt(b.kaiPulse)?-1:1);});
-    const target=page.watchCursor,revision=requestedSync;
-    if((target!==null&&target>0&&target!==sourceCursor)||revision!==completedSync){
-     const opened=await refresh();
-     if(opened){sourceCursor=target??sourceCursor;completedSync=revision;}
-    }
    }catch{/* The retained view and local file controls remain available. */}
-   finally{pending=false;}
+   finally{await source;pending=false;}
   };
   void synchronize();const wake=()=>{void synchronize();};
-  const stop=subscribePublicLedgerSync(()=>{void synchronize(true);}),timer=setInterval(wake,60000);
+  const stop=subscribePublicLedgerSync(wake),timer=setInterval(wake,60000);
   document.addEventListener('visibilitychange',wake);window.addEventListener('online',wake);
   if(new URL(location.href).searchParams.has('source'))void openLink();
   return()=>{live=false;controller.abort();stop();clearInterval(timer);document.removeEventListener('visibilitychange',wake);window.removeEventListener('online',wake);};
@@ -49,7 +39,7 @@ export function LedgerProofControls(){
  async function inspect(file:File){setBusy(true);setMessage('');setConsentDigest(null);setPublicDigest(null);try{
   if(file.size>MAX_UPLOAD)throw Error('CAPACITY');const {inspectPublicLedgerFile}=await import('../receiz/public-ledger-proof');setReview(await inspectPublicLedgerFile({bytes:new Uint8Array(await file.arrayBuffer()),filename:file.name}));
  }catch{setReview(null);setMessage('This file could not be admitted. Use an original public proof or a Ledger Crystal with its complete source. Private identity files and spendable notes cannot be published.');}finally{setBusy(false);}}
- function refresh(){if(refreshing.current)return refreshing.current;const pending=refreshPublicLedger();refreshing.current=pending;void pending.finally(()=>{if(refreshing.current===pending)refreshing.current=null;}).catch(()=>{});return pending;}
+ function refresh(){return synchronizePublicLedger();}
  async function download(){setBusy(true);setMessage('');try{
   const {readRetainedPublicLedger}=await import('../receiz/public-ledger-retention');
   let opened=await readRetainedPublicLedger().catch(()=>null);

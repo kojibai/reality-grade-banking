@@ -8,20 +8,23 @@ vi.mock('@receiz/sdk',()=>({receizBase64UrlEncode:()=> 'synthetic-ui-only'}));
 const values=vi.hoisted(()=>({older:{kind:'ledger',artifactSha256:'a'.repeat(64),kaiPulse:'10',snapshot:{records:[],baseline:'native'}},newer:{kind:'ledger',artifactSha256:'b'.repeat(64),kaiPulse:'11',snapshot:{records:[],baseline:'native'}}}));
 vi.mock('../src/receiz/public-ledger-proof',()=>({inspectPublicLedgerFile:vi.fn(async()=>values.older),openPublicLedgerSource:vi.fn(async()=>values.older),heldPublicLedgerFile:()=>({bytes:new Uint8Array([1,2,3]),filename:'original.receiz'})}));
 vi.mock('../src/receiz/public-ledger-retention',()=>({retainPublicLedgerReview:vi.fn(async()=>values.newer),readRetainedPublicLedger:vi.fn(async()=>values.newer)}));
+vi.mock('../src/receiz/public-network-cache',()=>({loadPublicNetworkCache:vi.fn(async()=>null),savePublicNetworkCache:vi.fn(async()=>true)}));
 vi.mock('../src/receiz/public-ledger-crystal-image',()=>({createPublicLedgerCrystal:vi.fn(async()=>({bytes:new Uint8Array([1]),filename:'ledger.png'}))}));
 import {createPublicLedgerCrystal} from '../src/receiz/public-ledger-crystal-image';
 import {inspectPublicLedgerFile,openPublicLedgerSource} from '../src/receiz/public-ledger-proof';
 import {retainPublicLedgerReview,readRetainedPublicLedger} from '../src/receiz/public-ledger-retention';
-afterEach(()=>{vi.restoreAllMocks();vi.mocked(retainPublicLedgerReview).mockReset().mockResolvedValue(values.newer as never);vi.mocked(readRetainedPublicLedger).mockReset().mockResolvedValue(values.newer as never);vi.mocked(inspectPublicLedgerFile).mockReset().mockResolvedValue(values.older as never);vi.mocked(openPublicLedgerSource).mockReset().mockResolvedValue(values.older as never);vi.mocked(createPublicLedgerCrystal).mockClear();});
+import {loadPublicNetworkCache,savePublicNetworkCache} from '../src/receiz/public-network-cache';
+import {synchronizePublicLedger} from '../src/receiz/public-ledger-continuity';
+afterEach(()=>{vi.restoreAllMocks();vi.mocked(retainPublicLedgerReview).mockReset().mockResolvedValue(values.newer as never);vi.mocked(readRetainedPublicLedger).mockReset().mockResolvedValue(values.newer as never);vi.mocked(inspectPublicLedgerFile).mockReset().mockResolvedValue(values.older as never);vi.mocked(openPublicLedgerSource).mockReset().mockResolvedValue(values.older as never);vi.mocked(createPublicLedgerCrystal).mockClear();vi.mocked(loadPublicNetworkCache).mockReset().mockResolvedValue(null);vi.mocked(savePublicNetworkCache).mockReset().mockResolvedValue(true);});
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
-it('observes newly published global originals on reconnect without repeating unchanged source verification or publishing',async()=>{
+it('observes global originals and polls the action source even when discovery count is unchanged, without publishing',async()=>{
  const first={artifactSha256:'c'.repeat(64),kind:'proof',kaiPulse:'12'},second={artifactSha256:'d'.repeat(64),kind:'proof',kaiPulse:'13'};let count=1;
  const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>{const url=new URL(String(input),'https://bankeiz.com');if(url.searchParams.has('discovery')){const cursor=Number(url.searchParams.get('cursor')??0);return Response.json({count,entries:cursor===0?[first]:count===2&&cursor===1?[second]:[],nextCursor:null});}return Response.json({source:'transport-only'});});
  vi.mocked(openPublicLedgerSource).mockClear();
  const host=document.createElement('div'),root=createRoot(host);
  try{await act(async()=>root.render(<LedgerProofControls/>));expect(host.querySelector(`a[href="/ledger/?source=${first.artifactSha256}"]`)).not.toBeNull();count=2;
   await act(async()=>window.dispatchEvent(new Event('online')));expect(host.querySelector(`a[href="/ledger/?source=${second.artifactSha256}"]`)).not.toBeNull();expect(openPublicLedgerSource).toHaveBeenCalledTimes(2);
-  await act(async()=>window.dispatchEvent(new Event('online')));expect(openPublicLedgerSource).toHaveBeenCalledTimes(2);expect(fetch.mock.calls.some(([,init])=>init?.method==='POST')).toBe(false);
+  await act(async()=>window.dispatchEvent(new Event('online')));expect(openPublicLedgerSource).toHaveBeenCalledTimes(3);expect(fetch.mock.calls.some(([,init])=>init?.method==='POST')).toBe(false);
  }finally{act(()=>root.unmount());fetch.mockRestore();}
 });
 it('requires new public consent when keeping an older review restores a newer retained original',async()=>{
@@ -60,8 +63,8 @@ it('downloads the newer retained source when the service returns an older valid 
  finally{act(()=>root.unmount());fetch.mockRestore();}
 });
 it('can save a freshly verified original when optional browser storage is unavailable',async()=>{
- vi.mocked(retainPublicLedgerReview).mockRejectedValueOnce(Error('PUBLIC_LEDGER_LOCAL_STORAGE_UNAVAILABLE'));
- vi.mocked(readRetainedPublicLedger).mockRejectedValueOnce(Error('PUBLIC_LEDGER_LOCAL_STORAGE_UNAVAILABLE'));
+ vi.mocked(retainPublicLedgerReview).mockRejectedValue(Error('PUBLIC_LEDGER_LOCAL_STORAGE_UNAVAILABLE'));
+ vi.mocked(readRetainedPublicLedger).mockRejectedValue(Error('PUBLIC_LEDGER_LOCAL_STORAGE_UNAVAILABLE'));
  const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>String(input).includes('discovery=')?Response.json({entries:[]}):Response.json({}));
  const host=document.createElement('div'),root=createRoot(host);downloadSpies();
  try{await act(async()=>root.render(<LedgerProofControls/>));await act(async()=>button(host,'Memory Crystal').click());expect(createPublicLedgerCrystal).toHaveBeenCalledWith(values.older);}
@@ -101,8 +104,8 @@ it('retains a newly confirmed original when the initial discovery read completes
  finally{act(()=>root.unmount());fetch.mockRestore();}
 });
 it('does not save a conflicting source when retention refuses its continuity',async()=>{
- vi.mocked(readRetainedPublicLedger).mockResolvedValueOnce(null);
- vi.mocked(retainPublicLedgerReview).mockRejectedValueOnce(Error('PUBLIC_LEDGER_HISTORY_CONFLICT'));
+ vi.mocked(readRetainedPublicLedger).mockResolvedValue(null);
+ vi.mocked(retainPublicLedgerReview).mockRejectedValue(Error('PUBLIC_LEDGER_HISTORY_CONFLICT'));
  const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>String(input).includes('discovery=')?Response.json({entries:[]}):Response.json({}));
  const host=document.createElement('div'),root=createRoot(host);downloadSpies();
  try{await act(async()=>root.render(<LedgerProofControls/>));await act(async()=>button(host,'Memory Crystal').click());expect(createPublicLedgerCrystal).not.toHaveBeenCalled();expect(host.textContent).toContain('Your retained history is unchanged');}
@@ -122,7 +125,7 @@ it('saves the reverified retained original before a pending current-source reque
  }finally{act(()=>root.unmount());fetch.mockRestore();}
 });
 it('uses a fast canonical remote source when no original is retained',async()=>{
- vi.mocked(readRetainedPublicLedger).mockResolvedValueOnce(null);vi.mocked(retainPublicLedgerReview).mockResolvedValueOnce(values.older as never);
+ vi.mocked(readRetainedPublicLedger).mockResolvedValue(null);vi.mocked(retainPublicLedgerReview).mockResolvedValue(values.older as never);
  const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>String(input).includes('discovery=')?Response.json({entries:[]}):Response.json({source:'transport-only'}));
  const host=document.createElement('div'),root=createRoot(host);downloadSpies();
  try{
@@ -131,7 +134,7 @@ it('uses a fast canonical remote source when no original is retained',async()=>{
  }finally{act(()=>root.unmount());fetch.mockRestore();}
 });
 it('keeps local controls available when both remote and retained originals are unavailable',async()=>{
- vi.mocked(readRetainedPublicLedger).mockResolvedValueOnce(null);
+ vi.mocked(readRetainedPublicLedger).mockResolvedValue(null);
  const fetch=vi.spyOn(globalThis,'fetch').mockResolvedValue(Response.json({error:'not live'},{status:503}));
  const host=document.createElement('div'),root=createRoot(host);downloadSpies();
  try{
@@ -191,7 +194,25 @@ for(const failure of ['unavailable','verification'] as const)it(`retries ${failu
  const host=document.createElement('div'),root=createRoot(host);
  try{await act(async()=>root.render(<LedgerProofControls/>));expect(reads).toBe(1);
   await act(async()=>window.dispatchEvent(new Event('online')));expect(reads).toBe(2);expect(retainPublicLedgerReview).toHaveBeenCalledOnce();
-  await act(async()=>window.dispatchEvent(new Event('online')));expect(reads).toBe(2);
+  await act(async()=>window.dispatchEvent(new Event('online')));expect(reads).toBe(3);
   expect(fetch.mock.calls.some(([,init])=>init?.method==='POST')).toBe(false);
  }finally{act(()=>root.unmount());fetch.mockRestore();}
+});
+
+it('persists an accepted source after controls unmount and keeps its newest action available with the API down',async()=>{
+ const next={...values.newer,artifactSha256:'d'.repeat(64),snapshot:{...values.newer.snapshot,records:[{id:'accepted-after-unmount',sequence:1,kind:'auth.logout',kaiUpulse:'1000000',entryHash:'e'.repeat(64),previousHash:'f'.repeat(64),amountUsdCents:null}]}};
+ vi.mocked(openPublicLedgerSource).mockResolvedValueOnce(next as never);vi.mocked(retainPublicLedgerReview).mockResolvedValueOnce(next as never);
+ let saved:Awaited<ReturnType<typeof loadPublicNetworkCache>>={records:[],capturedAt:'2026-10-18T12:00:00Z',coverage:[{source:'graph',complete:true,anchorIds:[],observedAt:200}]};
+ vi.mocked(loadPublicNetworkCache).mockImplementation(async()=>saved);vi.mocked(savePublicNetworkCache).mockImplementation(async cache=>{saved=cache;return true;});
+ let finish!:(response:Response)=>void;const pending=new Promise<Response>(resolve=>{finish=resolve;});
+ const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>String(input).includes('discovery=')?Response.json({entries:[]}):pending);
+ const root=createRoot(document.createElement('div'));
+ await act(async()=>root.render(<LedgerProofControls/>));act(()=>root.unmount());
+ try{
+  await act(async()=>finish(Response.json({source:'transport-only'})));
+  await vi.waitFor(()=>expect(saved?.records[0]?.sourceId).toBe('accepted-after-unmount'));
+  expect(saved?.coverage).toEqual([{source:'graph',complete:true,anchorIds:[],observedAt:200}]);
+  vi.mocked(readRetainedPublicLedger).mockResolvedValue(next as never);fetch.mockResolvedValue(Response.json({error:'503'},{status:503}));
+  expect(await synchronizePublicLedger()).toBe(next);expect(saved?.records[0]?.sourceId).toBe('accepted-after-unmount');
+ }finally{fetch.mockRestore();}
 });

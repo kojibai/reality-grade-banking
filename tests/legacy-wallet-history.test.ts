@@ -15,7 +15,13 @@ it('uses the earliest actual legacy balance without moving its beginning to an e
  expect(result.history?.[0].kaiUPulse).toBe(f.rows[0].kai_upulse);expect(result.history!.length).toBeGreaterThan(500);
  expect(result.history?.at(-1)?.totalUsdCents).toBe(f.observation.wallet.totalUsdCents);
  expect(result.historyBasis?.kind).toBe('legacy-wallet-observations');expect(result.historyBasis?.settlementPhiMicro).toBeUndefined();
+ expect(result.walletScope).toBeUndefined();
  expect(result.wallet).toBe(f.observation.wallet);
+});
+
+it('cannot inherit full native scope from an earlier display object',()=>{
+ const f=fixture();f.observation.walletScope='native-full';
+ expect(projectLegacyWalletObservation(f.projection,f.observation)?.walletScope).toBeUndefined();
 });
 it.each(['foreign','incomplete','gap','reserve','gross','duplicate','coordinate','unsafe','order'])('preserves the wallet and refuses unsupported %s history',kind=>{
  const f=fixture();if(kind==='foreign')f.rows[0].user_id='other';if(kind==='incomplete')f.projection.completeAtSealedHead=false;if(kind==='gap')f.rows[1].balance_after_phi_micro='8000000';if(kind==='reserve')f.observation.wallet.reserveUsdCents='999';if(kind==='gross')f.observation.wallet.totalUsdCents='999';if(kind==='duplicate')f.rows[1].id='a';if(kind==='coordinate')f.rows[1].kai_upulse='1';if(kind==='unsafe')(f.rows[0]as any).amount_phi_micro=Number.MAX_SAFE_INTEGER+1;if(kind==='order')f.rows[1].created_at='2025-01-01T00:00:00Z';

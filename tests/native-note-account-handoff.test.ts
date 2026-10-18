@@ -3,10 +3,12 @@ import * as sdk from '@receiz/sdk';
 import { openCanonicalIdentity } from '../src/receiz/native-identity';
 import { BANK_APPLICATION_ID, BANK_NATIVE_SCOPES } from '../src/receiz/config';
 import { parseSharedWallet } from '../src/receiz/shared-wallet';
+import { walletPointTime } from '../src/receiz/wallet-series';
+import { historicalWalletUsdRate } from '../src/receiz/historical-wallet';
 
 // Boundary choreography only. Native funding/hardware are not qualified by
 // this fixture. Portable-state signatures use the unmodified local v129 SDK.
-const fixture = vi.hoisted(() => ({ keyFile: null as unknown, initial: null as unknown, wallet: vi.fn(), create: vi.fn(), save: vi.fn(), pending: vi.fn(), preparedEnabled:false, preparedWrite:null as null|((next:unknown,previous:unknown,proof?:unknown)=>Promise<void>),preparedSave:vi.fn(),receivingRequest:vi.fn(),prepareResources:vi.fn() }));
+const fixture = vi.hoisted(() => ({ keyFile: null as unknown, initial: null as unknown, ledger: null as unknown, kai: null as number | null, clock: null as (() => void) | null, cancel: vi.fn(), transfer: vi.fn(), deposit: vi.fn(), wallet: vi.fn(), create: vi.fn(), save: vi.fn(), pending: vi.fn(), preparedEnabled:false, preparedWrite:null as null|((next:unknown,previous:unknown,proof?:unknown)=>Promise<void>),preparedSave:vi.fn(),receivingRequest:vi.fn(),prepareResources:vi.fn() }));
 vi.mock('../src/receiz/config',async()=>({...await vi.importActual<typeof import('../src/receiz/config')>('../src/receiz/config'),get BANK_PREPARED_NOTE_CREDIT_ENABLED(){return fixture.preparedEnabled;}}));
 vi.mock('../src/receiz/identity-vault', () => ({
   loadWalletObservation: async () => fixture.initial,
@@ -14,13 +16,21 @@ vi.mock('../src/receiz/identity-vault', () => ({
   loadPreparedNoteState:vi.fn(),savePreparedNoteState:fixture.preparedSave,
   loadOfflineNoteState: vi.fn(), saveOfflineNoteState: vi.fn(), saveOfflineNoteBlob: vi.fn(), loadOfflineNoteBlob: vi.fn(),
 }));
+vi.mock('../src/receiz/account-ledger', async original => {
+  const actual = await original<typeof import('../src/receiz/account-ledger')>();
+  return { ...actual, createLocalAccountLedger: (input: Parameters<typeof actual.createLocalAccountLedger>[0]) => {
+    const ledger = actual.createLocalAccountLedger(input);
+    return { ...ledger, restore: async (current?: import('../src/receiz/wallet-observation').WalletObservation | null) => fixture.ledger ?? ledger.restore(current) };
+  } };
+});
 vi.mock('@receiz/sdk/offline', () => ({ createReceizOfflineSealer: () => ({ enroll: async () => {} }), createReceizIndexedDbSealStore: () => ({ load: async () => ({ privateKey: {} }) }) }));
 vi.mock('../src/receiz/offline-notes', () => ({
-  bankNoteArtwork: vi.fn(), loadBankNoteRuntime: async () => ({ createBankNativeNoteSealer: async () => vi.fn(), createBankPreparedBrowserRuntime:(ports:{write:typeof fixture.preparedWrite})=>{fixture.preparedWrite=ports.write;return{receivingRequest:fixture.receivingRequest,prepareResources:fixture.prepareResources,pending:async()=>null,hasPreparedFunding:async()=>true,createNote:async()=>{const result=await fixture.create();await fixture.preparedWrite!({journal:{head:'fixture'}},null,result.successorAccountProof);return result;}};},createBankOfflineNotesRuntime: () => ({ pending: fixture.pending, createNote: fixture.create }) }),
+  bankNoteArtwork: vi.fn(), loadBankNoteRuntime: async () => ({ createBankNativeNoteSealer: async () => vi.fn(), createBankPreparedBrowserRuntime:(ports:{write:typeof fixture.preparedWrite})=>{fixture.preparedWrite=ports.write;return{savedNotes:async()=>[],receivingRequest:fixture.receivingRequest,prepareResources:fixture.prepareResources,pending:async()=>null,hasPreparedFunding:async()=>true,createNote:async()=>{const result=await fixture.create();await fixture.preparedWrite!({journal:{head:'fixture'}},null,result.successorAccountProof);return result;}};},createBankOfflineNotesRuntime: () => ({ pending: fixture.pending, createNote: fixture.create, cancelUnfunded: fixture.cancel, transferNote: fixture.transfer, depositNote: fixture.deposit, receivingRequest: fixture.receivingRequest }) }),
 }));
 vi.mock('../src/receiz/client', async () => {
   const actual = await vi.importActual<typeof import('@receiz/sdk')>('@receiz/sdk');
   return { loadReceiz: async () => ({ ...actual,
+    receizKaiNow: () => { fixture.clock?.(); return fixture.kai === null ? actual.receizKaiNow() : { pulse: Math.floor(fixture.kai / 1_000_000), uPulse: fixture.kai }; },
     verifyReceizArtifact: async () => ({ status: 'verified-artifact' }), createReceizArtifactAdmissionEngine: () => async () => ({ verdict: 'canonical-identity' }), isSdkIssuedReceizArtifactAdmission: () => true,
     readReceizIdentityPublicBinding: async () => ({ keyId: (fixture.keyFile as sdk.ReceizKeyFile).keyId, artifactSha256: 'a'.repeat(64) }),
     readReceizIdentityArtifact: async () => fixture.keyFile,
@@ -33,7 +43,7 @@ vi.mock('../src/receiz/client', async () => {
 });
 function wallet(cents: string) { return { userId: 'connected-account', balanceUsd: `${BigInt(cents) / 100n}.${(BigInt(cents) % 100n).toString().padStart(2, '0')}`, balancePhiMicro: cents, valueStates: { settledBalanceUsdCents: cents, ecosystemBalanceUsdCents: '0' }, sync: {}, rollup: {} }; }
 beforeEach(async () => {
-  fixture.preparedEnabled=false;fixture.preparedSave.mockReset().mockResolvedValue(undefined);fixture.preparedWrite=null;fixture.prepareResources.mockReset().mockResolvedValue(undefined);fixture.receivingRequest.mockReset();
+  fixture.ledger=null;fixture.clock=null;fixture.cancel.mockReset();fixture.transfer.mockReset();fixture.deposit.mockReset();fixture.kai=null;fixture.preparedEnabled=false;fixture.preparedSave.mockReset().mockResolvedValue(undefined);fixture.preparedWrite=null;fixture.prepareResources.mockReset().mockResolvedValue(undefined);fixture.receivingRequest.mockReset();
   vi.restoreAllMocks(); fixture.wallet.mockReset(); fixture.create.mockReset(); fixture.save.mockReset().mockResolvedValue(undefined); fixture.pending.mockReset().mockResolvedValue(null);
   fixture.keyFile = (await sdk.createReceizIdIdentity({ passphrase: 'local-test-passphrase' })).keyFile;
   fixture.initial = { wallet: parseSharedWallet({ ok: true, wallet: wallet('600') }, 'connected-account'), observedAt: '2026-10-17T11:00:00.000Z' };
@@ -90,7 +100,7 @@ it('preserves a newer wallet when an old retained note attempt completes', async
     expect(result.image).toEqual(new Uint8Array([1]));
     expect(result.accountUpdateWarning).toContain('note is saved');
     expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('600');
-    expect(fixture.save).not.toHaveBeenCalled(); expect(fixture.wallet).not.toHaveBeenCalled();
+    expect(fixture.save).toHaveBeenCalledOnce(); expect(identity.knownWallet()?.quoteHold).toBeDefined(); expect(fixture.wallet).not.toHaveBeenCalled();
   } finally { identity.dispose(); vi.unstubAllGlobals(); }
 });
 it('preserves an account observation that changed while issuance was running', async () => {
@@ -101,11 +111,221 @@ it('preserves an account observation that changed while issuance was running', a
     const notes = await identity.offlineNotes!(), creating = notes.create('100');
     await vi.waitFor(() => expect(fixture.create).toHaveBeenCalledOnce());
     fixture.wallet.mockResolvedValue({ ok: true, wallet: wallet('650') });
-    await identity.readWallet(); finish(completed);
+    await identity.readWallet(); const newer = identity.knownWallet(); finish(completed);
     const result = await creating;
     expect(result.accountUpdateWarning).toContain('note is saved');
-    expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('650');
+    expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('650'); expect(identity.knownWallet()).toBe(newer);
     expect(fixture.save).toHaveBeenCalledTimes(1);
+  } finally { identity.dispose(); vi.unstubAllGlobals(); }
+});
+function completeNativeSource() {
+  const source = { ...wallet('600'), sync: { projectionComplete: true }, rollup: { lastEntryKaiPulse: '2', lastEntryKaiUpulse: '2000000' } };
+  fixture.initial = {
+    walletScope: 'native-full', wallet: parseSharedWallet({ ok: true, wallet: source }, 'connected-account'), observedAt: walletPointTime('2000000'),
+    history: [
+      { userId: 'connected-account', at: walletPointTime('1000000'), kaiUPulse: '1000000', totalUsdCents: '0', reserveUsdCents: '0', settlementUsdCents: '0' },
+      { userId: 'connected-account', at: walletPointTime('2000000'), kaiUPulse: '2000000', totalUsdCents: '600', reserveUsdCents: '600', settlementUsdCents: '0' },
+    ],
+    historyBasis: { schema: 'bank.account-history-display.v1', startKaiUPulse: '1000000', endKaiUPulse: '2000000', settlementPhiMicro: '0', balancePhiMicro: '600', reserveUsdCents: '600' },
+  };
+  fixture.wallet.mockResolvedValue({ ok: true, wallet: source }); fixture.kai = 2_000_000;
+}
+function completeSettlementSource() {
+  completeNativeSource();
+  const initial = fixture.initial as import('../src/receiz/wallet-observation').WalletObservation;
+  const raw = { ...wallet('10148'), balancePhiMicro: '3000000', valueStates: { settledBalanceUsdCents: '100', ecosystemBalanceUsdCents: '10048' }, sync: { projectionComplete: true }, rollup: { lastEntryKaiPulse: '2', lastEntryKaiUpulse: '2000000' } };
+  initial.wallet = parseSharedWallet({ ok: true, wallet: raw }, 'connected-account');
+  initial.history![1] = { ...initial.history![1], totalUsdCents: '10148', reserveUsdCents: '100', settlementUsdCents: '10048' };
+  Object.assign(initial.historyBasis!, { settlementPhiMicro: '2000000', balancePhiMicro: '3000000', reserveUsdCents: '100' });
+  const settlement = sdk.quoteReceizDisplayUsdV122('2000000', historicalWalletUsdRate('11000000'));
+  const total = (BigInt(settlement) + 100n).toString();
+  return { ...raw, balanceUsd: `${BigInt(total) / 100n}.${(BigInt(total) % 100n).toString().padStart(2, '0')}`, valueStates: { ...raw.valueStates, ecosystemBalanceUsdCents: settlement } };
+}
+it('adopts a completed successor after a newer protected quote confirms the same locally repriced financial source', async () => {
+  const current = completeSettlementSource();
+  const identity = await openCanonicalIdentity(new Uint8Array([1]), 'local-test-passphrase', 'fixture.receiz', true);
+  try {
+    fixture.kai = 10_000_000;
+    const repriced = await identity.refreshLocalValuation!();
+    expect(repriced?.wallet.settlementUsdCents).not.toBe(current.valueStates.ecosystemBalanceUsdCents);
+    fixture.wallet.mockResolvedValue({ ok: true, wallet: current }); fixture.kai = 11_000_000;
+    const result = await (await identity.offlineNotes!()).create('100');
+    expect(result.accountUpdateWarning).toBeUndefined();
+    expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('500');
+    expect(identity.knownWallet()?.historyBasis).toBeUndefined();
+  } finally { identity.dispose(); vi.unstubAllGlobals(); }
+});
+it.each(['uid', 'gross units', 'reserve', 'head', 'pulse', 'projection', 'portfolio', 'pnl', 'withdrawable', 'unmarked cache', 'cash-only scope', 'legacy basis', 'missing units'] as const)('keeps the display guard when a locally repriced source differs in %s', async mismatch => {
+  const current = completeSettlementSource();
+  const identity = await openCanonicalIdentity(new Uint8Array([1]), 'local-test-passphrase', 'fixture.receiz', true);
+  try {
+    fixture.kai = 10_000_000; await identity.refreshLocalValuation!();
+    const baseline = identity.knownWallet()!;
+    if (mismatch === 'uid') current.userId = 'foreign-account';
+    if (mismatch === 'gross units') current.balancePhiMicro = '3000001';
+    if (mismatch === 'reserve') { current.valueStates.settledBalanceUsdCents = '101'; const cents = BigInt(current.valueStates.ecosystemBalanceUsdCents) + 101n; current.balanceUsd = `${cents / 100n}.${(cents % 100n).toString().padStart(2, '0')}`; }
+    if (mismatch === 'head') current.rollup.lastEntryKaiUpulse = '3000000';
+    if (mismatch === 'pulse') current.rollup.lastEntryKaiPulse = '3';
+    if (mismatch === 'projection') current.sync.projectionComplete = false;
+    if (mismatch === 'portfolio') Object.assign(current.valueStates, { livePortfolioValueUsdCents: '1' });
+    if (mismatch === 'pnl') Object.assign(current.valueStates, { unrealizedPnlUsdCents: '1' });
+    if (mismatch === 'withdrawable') Object.assign(current.valueStates, { withdrawableNowUsdCents: '1' });
+    if (mismatch === 'unmarked cache') delete baseline.walletScope;
+    if (mismatch === 'cash-only scope') baseline.walletScope = 'native-cash-only';
+    if (mismatch === 'legacy basis') baseline.historyBasis!.kind = 'legacy-wallet-observations';
+    if (mismatch === 'missing units') delete baseline.historyBasis!.settlementPhiMicro;
+    fixture.wallet.mockResolvedValue({ ok: true, wallet: current });
+    const creating = (await identity.offlineNotes!()).create('100');
+    if (mismatch === 'uid') await expect(creating).rejects.toThrow('does not belong');
+    else { expect((await creating).accountUpdateWarning).toContain('note is saved'); expect(identity.knownWallet()?.wallet).toEqual(baseline.wallet); expect(identity.knownWallet()?.historyBasis).toBeUndefined(); expect(identity.knownWallet()?.walletScope).toBeUndefined(); }
+  } finally { identity.dispose(); vi.unstubAllGlobals(); }
+});
+it('drops old quote eligibility after a saved note successor cannot be projected without changing held display amounts', async () => {
+  const current = completeSettlementSource();
+  const completed = await fixture.create(); fixture.create.mockResolvedValue({ ...completed, successorAccountProof: { invalid: true } });
+  const identity = await openCanonicalIdentity(new Uint8Array([1]), 'local-test-passphrase', 'fixture.receiz', true);
+  try {
+    fixture.kai = 10_000_000; await identity.refreshLocalValuation!(); const baseline = identity.knownWallet()!;
+    fixture.wallet.mockResolvedValue({ ok: true, wallet: current });
+    const result = await (await identity.offlineNotes!()).create('100');
+    expect(result.image).toEqual(new Uint8Array([1])); expect(result.accountUpdateWarning).toContain('note is saved');
+    expect(identity.knownWallet()?.wallet).toEqual(baseline.wallet);
+    expect(identity.knownWallet()?.historyBasis).toBeUndefined(); expect(identity.knownWallet()?.walletScope).toBeUndefined();
+    fixture.kai = 12_000_000; expect(await identity.refreshLocalValuation!()).toBeNull();
+    expect(fixture.save).toHaveBeenCalledTimes(2);
+    expect(fixture.save.mock.calls.at(-1)?.[6]).toBeUndefined(); expect(fixture.save.mock.calls.at(-1)?.[7]).toBeUndefined();
+  } finally { identity.dispose(); vi.unstubAllGlobals(); }
+});
+it.each(['same financial head', 'newer financial head'] as const)('keeps a delayed %s read while dropping only stale quote eligibility after saved issuance', async head => {
+  const current = completeSettlementSource(), completed = await fixture.create(); fixture.create.mockReset();
+  let finishCreate!: (value: unknown) => void; fixture.create.mockReturnValue(new Promise(resolve => { finishCreate = resolve; }));
+  let finishRead!: (value: unknown) => void; fixture.wallet.mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; })).mockResolvedValue({ ok: true, wallet: current });
+  const identity = await openCanonicalIdentity(new Uint8Array([1]), 'local-test-passphrase', 'fixture.receiz', true);
+  try {
+    fixture.kai = 10_000_000; await identity.refreshLocalValuation!();
+    const notes = await identity.offlineNotes!(), earlier = identity.readWallet();
+    await vi.waitFor(() => expect(fixture.wallet).toHaveBeenCalledOnce());
+    const creating = notes.create('100'); await vi.waitFor(() => expect(fixture.create).toHaveBeenCalledOnce());
+    fixture.kai = 11_000_000;
+    const read = head === 'same financial head' ? current : { ...current, rollup: { lastEntryKaiPulse: '3', lastEntryKaiUpulse: '3000000' } };
+    finishRead({ ok: true, wallet: read }); await earlier; const observed = identity.knownWallet()!;
+    if (head === 'same financial head') expect(observed.walletScope).toBe('native-full');
+    finishCreate(completed); const result = await creating;
+    expect(result.accountUpdateWarning).toContain('note is saved');
+    expect(identity.knownWallet()?.wallet).toEqual(observed.wallet);
+    expect(identity.knownWallet()?.source).toBe(observed.source); expect(identity.knownWallet()?.localHeadDigest).toBe(observed.localHeadDigest);
+    expect(identity.knownWallet()?.historyBasis).toBeUndefined(); expect(identity.knownWallet()?.walletScope).toBeUndefined();
+    if (head === 'newer financial head') expect(identity.knownWallet()).toBe(observed);
+    fixture.kai = 12_000_000; expect(await identity.refreshLocalValuation!()).toBeNull();
+  } finally { identity.dispose(); vi.unstubAllGlobals(); }
+});
+it('keeps saved-note quote invalidation through cache restore and old complete ledger enrichment', async () => {
+  const current = completeSettlementSource(), completed = await fixture.create();
+  fixture.create.mockResolvedValue({ ...completed, successorAccountProof: { invalid: true } });
+  const identity = await openCanonicalIdentity(new Uint8Array([1]), 'local-test-passphrase', 'fixture.receiz', true);
+  let reopened: Awaited<ReturnType<typeof openCanonicalIdentity>> | undefined;
+  try {
+    fixture.kai = 10_000_000; await identity.refreshLocalValuation!(); const oldLedger = structuredClone(identity.knownWallet()!);
+    fixture.wallet.mockResolvedValue({ ok: true, wallet: current });
+    expect((await (await identity.offlineNotes!()).create('100')).accountUpdateWarning).toContain('note is saved');
+    const saved = fixture.save.mock.calls.at(-1)!;
+    expect(saved[8]).toMatchObject({ schema: 'bank.wallet-quote-hold.v1', userId: 'connected-account', balancePhiMicro: '3000000', reserveUsdCents: '100', kaiUpulse: '2000000', pulse: '2' });
+    fixture.initial = { wallet: saved[1], observedAt: saved[2], history: saved[3], source: saved[4], localHeadDigest: saved[5], historyBasis: saved[6], walletScope: saved[7], quoteHold: saved[8] };
+    fixture.ledger = { observation: oldLedger, proof: { sourceDigest: 'old-retained-source' } }; identity.dispose();
+    reopened = await openCanonicalIdentity(new Uint8Array([1]), 'local-test-passphrase', 'fixture.receiz', true);
+    await reopened.prepareAccountView();
+    // The real merge can restore old full coverage, but not quote eligibility.
+    expect(reopened.knownWallet()?.historyBasis).toBeDefined(); expect(reopened.knownWallet()?.walletScope).toBe('native-full');
+    fixture.kai = 12_000_000; const before = reopened.knownWallet();
+    expect(await reopened.refreshLocalValuation!()).toBeNull(); expect(reopened.knownWallet()).toBe(before);
+    fixture.wallet.mockResolvedValue({ ok: true, wallet: { ...current, rollup: { lastEntryKaiPulse: '3', lastEntryKaiUpulse: '3000000' } } });
+    expect((await reopened.readWallet()).kaiUpulse).toBe('3000000');
+  } finally { identity.dispose(); reopened?.dispose(); vi.unstubAllGlobals(); }
+});
+it('suspends a local quote tick until the verified note successor is adopted and remains refreshable', async () => {
+  completeNativeSource();
+  const completed = await fixture.create(); fixture.create.mockReset();
+  let finish!: (value: unknown) => void; fixture.create.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  const identity = await openCanonicalIdentity(new Uint8Array([1]), 'local-test-passphrase', 'fixture.receiz', true);
+  try {
+    const notes = await identity.offlineNotes!(), creating = notes.create('100');
+    await vi.waitFor(() => expect(fixture.create).toHaveBeenCalledOnce());
+    const baseline = identity.knownWallet(); fixture.kai = 10_000_000;
+    expect(await identity.refreshLocalValuation!()).toBeNull();
+    expect(identity.knownWallet()).toBe(baseline);
+    finish(completed);
+    expect((await creating).accountUpdateWarning).toBeUndefined();
+    expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('500');
+    expect(identity.knownWallet()?.source).toBeUndefined();
+    expect(identity.knownWallet()?.historyBasis).toBeUndefined();
+    expect(identity.knownWallet()?.history?.at(-1)?.reserveUsdCents).toBe('500');
+    expect(await identity.refreshLocalValuation!()).toBeNull();
+    expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('500');
+    fixture.wallet.mockResolvedValue({ ok: true, wallet: wallet('650') });
+    expect((await identity.readWallet()).totalUsdCents).toBe('650');
+    expect(fixture.wallet).toHaveBeenCalledTimes(2);
+  } finally { identity.dispose(); vi.unstubAllGlobals(); }
+});
+it('cannot publish a delayed successor or quote after the identity is disposed during issuance', async () => {
+  completeNativeSource(); const completed = await fixture.create(); fixture.create.mockReset();
+  let finish!: (value: unknown) => void; fixture.create.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  const identity = await openCanonicalIdentity(new Uint8Array([1]), 'local-test-passphrase', 'fixture.receiz', true);
+  try {
+    const creating = (await identity.offlineNotes!()).create('100');
+    await vi.waitFor(() => expect(fixture.create).toHaveBeenCalledOnce()); const baseline = identity.knownWallet();
+    fixture.kai = 10_000_000; expect(await identity.refreshLocalValuation!()).toBeNull();
+    identity.dispose(); finish(completed);
+    await expect(creating).rejects.toThrow('identity was closed');
+    expect(identity.knownWallet()).toBe(baseline); expect(await identity.refreshLocalValuation!()).toBeNull(); expect(fixture.save).not.toHaveBeenCalled();
+  } finally { identity.dispose(); vi.unstubAllGlobals(); }
+});
+it('resumes supported quote updates after a native note operation fails', async () => {
+  completeNativeSource(); fixture.create.mockRejectedValue(Error('NATIVE_SOURCE_UNAVAILABLE'));
+  const identity = await openCanonicalIdentity(new Uint8Array([1]), 'local-test-passphrase', 'fixture.receiz', true);
+  try {
+    await expect((await identity.offlineNotes!()).create('100')).rejects.toThrow('NATIVE_SOURCE_UNAVAILABLE');
+    fixture.kai = 10_000_000;
+    const next = await identity.refreshLocalValuation!();
+    expect(next?.historyBasis?.endKaiUPulse).toBe('10000000'); expect(identity.knownWallet()).toBe(next);
+  } finally { identity.dispose(); vi.unstubAllGlobals(); }
+});
+it('discards a quote begun before a native operation even when the operation has already failed', async () => {
+  completeNativeSource(); fixture.cancel.mockImplementation(() => { throw Error('CANCEL_SOURCE_UNAVAILABLE'); });
+  const identity = await openCanonicalIdentity(new Uint8Array([1]), 'local-test-passphrase', 'fixture.receiz', true);
+  try {
+    const notes = await identity.offlineNotes!(), baseline = identity.knownWallet();
+    let cancellation!: Promise<unknown>;
+    fixture.kai = 10_000_000;
+    // Begin and end a failed operation after the quote captured its baseline
+    // but before the async valuation module returns. Its old epoch must fail.
+    fixture.clock = () => { fixture.clock = null; cancellation = notes.cancelUnfunded().catch(cause => cause); };
+    expect(await identity.refreshLocalValuation!()).toBeNull();
+    expect(await cancellation).toMatchObject({ message: 'CANCEL_SOURCE_UNAVAILABLE' });
+    expect(identity.knownWallet()).toBe(baseline);
+    expect((await identity.refreshLocalValuation!())?.historyBasis?.endKaiUPulse).toBe('10000000');
+  } finally { identity.dispose(); vi.unstubAllGlobals(); }
+});
+it.each(['transfer', 'deposit', 'prepared create'] as const)('suspends quote publication through %s and its retained write', async operation => {
+  completeNativeSource(); fixture.preparedEnabled = operation === 'prepared create';
+  const completed = await fixture.create(); fixture.create.mockReset();
+  let finish!: (value: unknown) => void;
+  const pending = new Promise(resolve => { finish = resolve; });
+  if (operation === 'transfer') fixture.transfer.mockReturnValue(pending);
+  else if (operation === 'deposit') fixture.deposit.mockReturnValue(pending);
+  else fixture.create.mockReturnValue(pending);
+  const identity = await openCanonicalIdentity(new Uint8Array([1]), 'local-test-passphrase', 'fixture.receiz', true);
+  try {
+    const notes = await identity.offlineNotes!();
+    const running = operation === 'transfer' ? notes.transfer('fixture-note') : operation === 'deposit' ? notes.deposit(new Uint8Array([1])) : notes.create('100');
+    const called = operation === 'transfer' ? fixture.transfer : operation === 'deposit' ? fixture.deposit : fixture.create;
+    await vi.waitFor(() => expect(called).toHaveBeenCalledOnce());
+    const before = identity.knownWallet(); fixture.kai = 10_000_000;
+    expect(await identity.refreshLocalValuation!()).toBeNull(); expect(identity.knownWallet()).toBe(before);
+    finish(completed); await running;
+    if (operation === 'prepared create') {
+      expect(identity.knownWallet()).toMatchObject({ source: 'local-note-head', wallet: { totalUsdCents: '500' } });
+      expect(await identity.refreshLocalValuation!()).toBeNull();
+    }
   } finally { identity.dispose(); vi.unstubAllGlobals(); }
 });
 it('retains a restored local head through refresh without opening an online wallet', async () => {

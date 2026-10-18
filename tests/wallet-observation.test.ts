@@ -31,3 +31,18 @@ it('retains full display coverage only when every same-owner history point survi
  expect(readWalletObservation({...input,history:[point,{...point,userId:'foreign'}]},binding)?.historyBasis).toBeUndefined();
  expect(readWalletObservation({...input,history:Array.from({length:4097},()=>point)},binding)?.historyBasis).toBeUndefined();
 });
+
+it('decodes explicit native scope without promoting old caches and rejects unknown markers',()=>{
+ const binding={keyId:'key',artifactSha256:'a'.repeat(64)};
+ const input={schema:'receiz.bank.private-wallet-observation.v1',authority:'read-only-observation',applicationId:BANK_APPLICATION_ID,...binding,observedAt:'2026-10-13T20:00:00Z',wallet:{userId:'owner',totalUsdCents:'300',reserveUsdCents:'100',settlementUsdCents:'200',balancePhiMicro:'1000'}};
+ for(const walletScope of ['native-full','native-cash-only'])expect(readWalletObservation({...input,walletScope},binding)?.walletScope).toBe(walletScope);
+ expect(readWalletObservation(input,binding)?.wallet.totalUsdCents).toBe('300');expect(readWalletObservation(input,binding)?.walletScope).toBeUndefined();
+ expect(readWalletObservation({...input,walletScope:'native-guess'},binding)).toBeNull();
+});
+
+it('retains an exact quote-hold tuple and refuses malformed or foreign quote markers',()=>{
+ const binding={keyId:'key',artifactSha256:'a'.repeat(64)},quoteHold={schema:'bank.wallet-quote-hold.v1',userId:'owner',balancePhiMicro:'1000',reserveUsdCents:'100',kaiUpulse:'2000000',pulse:'2'};
+ const input={schema:'receiz.bank.private-wallet-observation.v1',authority:'read-only-observation',applicationId:BANK_APPLICATION_ID,...binding,observedAt:'2026-10-13T20:00:00Z',wallet:{userId:'owner',totalUsdCents:'300',reserveUsdCents:'100',settlementUsdCents:'200',balancePhiMicro:'1000'},quoteHold};
+ expect(readWalletObservation(input,binding)?.quoteHold).toEqual(quoteHold);
+ for(const invalid of [{...quoteHold,schema:'unknown'},{...quoteHold,userId:'foreign'},{...quoteHold,balancePhiMicro:'-1'},{...quoteHold,kaiUpulse:'unknown'},{...quoteHold,extra:true},null])expect(readWalletObservation({...input,quoteHold:invalid},binding)).toBeNull();
+});

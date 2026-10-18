@@ -64,14 +64,15 @@ it.each(['application', 'key', 'artifact', 'scope'])('refuses a foreign or insuf
   const identity = await openCanonicalIdentity(new Uint8Array([1]), 'fixture-phrase', 'fixture.receiz', true);
   await expect(identity.readWallet()).rejects.toThrow('same identity'); expect(protocol.wallet).not.toHaveBeenCalled();
 });
-it('introspects real granted scopes and rejects a revoked read before wallet transport', async () => {
+it('introspects real granted scopes and rejects a revoked read without adopting its prefetched wallet', async () => {
   protocol.scopes.mockResolvedValue([]); const identity = await openCanonicalIdentity(new Uint8Array([1]), 'fixture-phrase', 'fixture.receiz', true);
-  await expect(identity.readWallet()).rejects.toThrow('permission'); expect(protocol.wallet).not.toHaveBeenCalled();
+  try { await expect(identity.readWallet()).rejects.toThrow('permission'); expect(identity.knownWallet()).toBeNull(); expect(protocol.wallet).toHaveBeenCalledTimes(1); }
+  finally { identity.dispose(); }
 });
 it('reads the bound shared wallet and disposes its held bearer/signing transport', async () => {
   const identity = await openCanonicalIdentity(new Uint8Array([1]), 'fixture-phrase', 'fixture.receiz', true);
   expect((await identity.readWallet()).totalUsdCents).toBe('300'); expect(protocol.client.mock.calls.every(([options]) => options.applicationId === BANK_APPLICATION_ID)).toBe(true);
-  identity.dispose(); await expect(identity.readWallet()).rejects.toThrow('consent'); expect(protocol.wallet).toHaveBeenCalledTimes(1);
+  identity.dispose(); await expect(identity.readWallet()).rejects.toThrow('identity was closed'); expect(protocol.wallet).toHaveBeenCalledTimes(1);
 });
 
 it('shares one read-access connection across simultaneous balance reads',async()=>{
@@ -82,15 +83,15 @@ it('shares one read-access connection across simultaneous balance reads',async()
 it('shares a pending account-access failure without retrying it for another simultaneous reader',async()=>{
  protocol.continueId.mockRejectedValue(Error('proof_replay_guard_unavailable'));
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture-phrase','fixture.receiz',true);
- try{const results=await Promise.allSettled([identity.readWallet(),identity.readWallet()]);expect(results.every(result=>result.status==='rejected')).toBe(true);expect(protocol.continueId).toHaveBeenCalledTimes(1);expect(protocol.grant).not.toHaveBeenCalled();}
+ try{const results=await Promise.allSettled([identity.readWallet(),identity.readWallet()]);expect(results.every(result=>result.status==='rejected')).toBe(true);expect(protocol.continueId).toHaveBeenCalledTimes(1);expect(protocol.grant).toHaveBeenCalledTimes(1);expect(identity.knownWallet()).toBeNull();}
  finally{identity.dispose();}
 });
 
-it('does not read a wallet if the identity was closed while its connection was opening',async()=>{
+it('does not adopt a wallet if the identity was closed while its connection was opening',async()=>{
  let finish!:(value:unknown)=>void;protocol.continueId.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture-phrase','fixture.receiz',true);
  const read=identity.readWallet();await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));identity.dispose();finish({ok:true,session:{uid:'fixture-owner'}});
- await expect(read).rejects.toThrow('consent');expect(protocol.wallet).not.toHaveBeenCalled();
+ await expect(read).rejects.toThrow('identity was closed');expect(identity.knownWallet()).toBeNull();
 });
 it('does not borrow a pending read grant for an approved native-scope connection',async()=>{
  protocol.grant.mockImplementation(async({applicationId,scopes}:{applicationId:string;scopes:string[]})=>({applicationId,keyId:'fixture-key',artifactDigest:'a'.repeat(64),grantedScopes:scopes,accessToken:'local-fixture',expiresAtKai:200}));

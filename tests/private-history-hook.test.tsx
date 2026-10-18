@@ -60,3 +60,41 @@ it('paints the complete union returned by atomic retention when another tab kept
  vault.save.mockImplementation(async(_binding,next)=>({...next,records:[...next.records,...other.records],pages:[...next.pages,{cursor:'other-cursor',json:other.sourceJson}]}));
  await observe(vi.fn().mockResolvedValue(first),async read=>{expect(read().cache?.records.map(row=>row.sourceId)).toContain('other-tab');expect(read().cache?.pages).toHaveLength(2);});
 });
+it('never exposes the previous identity cache on the first frame of another identity with the same UID',async()=>{
+ const a={binding:{artifactSha256:'a'.repeat(64)},readPrivateHistory:vi.fn()} as unknown as OpenIdentity;
+ const b={binding:{artifactSha256:'b'.repeat(64)},readPrivateHistory:vi.fn()} as unknown as OpenIdentity;
+ const cached=(id:string)=>({schema:'bank.private-history-cache.v1',accountUid:'A',observedAt:'2026-10-14T10:00:00Z',records:page('A',[id]).records,nextCursor:null});
+ let restoreB!:(value:unknown)=>void;vault.load.mockImplementation(binding=>binding.artifactSha256===a.binding.artifactSha256?Promise.resolve(cached('private-a')):new Promise(resolve=>{restoreB=resolve;}));
+ let state!:ReturnType<typeof usePrivateHistory>;const frames:{id:OpenIdentity;rows:string[]}[]=[];const root=createRoot(document.createElement('div'));
+ function Probe({id}:{id:OpenIdentity}){state=usePrivateHistory(id,'A',false);frames.push({id,rows:state.cache?.records.map(row=>row.sourceId)??[]});return null;}
+ try{
+  await act(async()=>root.render(<Probe id={a}/>));expect(state.cache?.records[0].sourceId).toBe('private-a');
+  await act(async()=>root.render(<Probe id={b}/>));expect(state.cache).toBeNull();
+  await act(async()=>{restoreB(cached('private-b'));});
+  expect(frames.filter(frame=>frame.id===b).every(frame=>!frame.rows.includes('private-a'))).toBe(true);expect(state.cache?.records[0].sourceId).toBe('private-b');expect(vault.load).toHaveBeenCalledTimes(2);
+ }finally{act(()=>root.unmount());}
+});
+it('remounts the same identity from the latest verified retained union without another decrypt',async()=>{
+ const identity={binding:{artifactSha256:'a'.repeat(64)},readPrivateHistory:vi.fn().mockResolvedValue(page('A',['live-head']))} as unknown as OpenIdentity;
+ vault.save.mockImplementation(async(_binding,next)=>({...next,records:[...next.records,...page('A',['other-tab']).records]}));
+ let state!:ReturnType<typeof usePrivateHistory>;let root=createRoot(document.createElement('div'));const frames:string[][]=[];
+ function Probe({active}:{active:boolean}){state=usePrivateHistory(identity,'A',active);frames.push(state.cache?.records.map(row=>row.sourceId)??[]);return null;}
+ try{
+  await act(async()=>root.render(<Probe active/>));expect(state.cache?.records.map(row=>row.sourceId)).toContain('other-tab');
+  act(()=>root.unmount());root=createRoot(document.createElement('div'));frames.length=0;
+  await act(async()=>root.render(<Probe active={false}/>));
+  expect(frames[0]).toEqual(expect.arrayContaining(['live-head','other-tab']));expect(vault.load).toHaveBeenCalledOnce();expect(identity.readPrivateHistory).toHaveBeenCalledOnce();
+ }finally{act(()=>root.unmount());}
+});
+it('ignores a late authenticated read after switching identity instances with the same UID',async()=>{
+ let finish!:(value:ReturnType<typeof page>)=>void;
+ const a={binding:{artifactSha256:'a'.repeat(64)},readPrivateHistory:vi.fn().mockReturnValue(new Promise(resolve=>{finish=resolve;}))} as unknown as OpenIdentity;
+ const b={binding:{artifactSha256:'b'.repeat(64)},readPrivateHistory:vi.fn().mockResolvedValue(page('A',['private-b']))} as unknown as OpenIdentity;
+ let state!:ReturnType<typeof usePrivateHistory>;const root=createRoot(document.createElement('div'));
+ function Probe({id}:{id:OpenIdentity}){state=usePrivateHistory(id,'A',true);return null;}
+ try{
+  await act(async()=>root.render(<Probe id={a}/>));await act(async()=>root.render(<Probe id={b}/>));
+  await act(async()=>{finish(page('A',['too-late-a']));});
+  expect(state.cache?.records.map(row=>row.sourceId)).toEqual(['private-b']);expect(vault.save).toHaveBeenCalledOnce();
+ }finally{act(()=>root.unmount());}
+});

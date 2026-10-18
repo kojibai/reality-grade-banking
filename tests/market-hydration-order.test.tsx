@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { useMarketCapitalization } from '../src/receiz/market-projection/useMarketCapitalization';
 import sourceFile from '../public/receiz-public-capitalization.json';
+import {retainedMarketDisplaySource} from '../src/receiz/market-projection/display-source';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); localStorage.clear(); });
 const response = (pulse: number, add = 0) => ({ ok: true, json: async () => ({ ...sourceFile, marketCapProjection: { ...sourceFile.marketCapProjection, serverPulse: pulse, currentUsd: sourceFile.marketCapProjection.currentUsd + add } }) });
@@ -16,7 +17,7 @@ it('never rolls an accepted newer headline back to an older response while a cha
   try {
     await act(async () => root.render(<Probe />)); expect(state.source.serverPulse).toBe(pulse + 20);
     await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
-    expect(state.source.serverPulse).toBe(pulse + 20); expect(state.historyUpdating).toBe(true);
+    expect(state.source.serverPulse).toBe(pulse + 20); expect(state.historyUpdating).toBe(true);expect(retainedMarketDisplaySource()?.serverPulse).toBe(pulse+20);
   } finally { act(() => root.unmount()); }
 });
 it('keeps a same-pulse revised public source visibly retained until its complete curve arrives', async () => {

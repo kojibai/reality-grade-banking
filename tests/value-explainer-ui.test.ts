@@ -24,6 +24,7 @@ it('adds, calculates and removes cashflows without confusing them with the editi
   add.click();add.click();
   const rows=root.querySelectorAll('[data-value-cashflow]');
   expect(rows).toHaveLength(2);
+  expect(rows[0].querySelector<HTMLInputElement>('[name="cashflowPulse"]')!.value).toBe(root.querySelector<HTMLInputElement>('#value-origin')!.value);
   rows.forEach((row,index)=>{
     row.querySelector<HTMLInputElement>('[name="cashflowAmount"]')!.value=index?'20':'3.5';
     row.querySelector<HTMLInputElement>('[name="cashflowPulse"]')!.value=String(clock.pulse+(index?17491:0));

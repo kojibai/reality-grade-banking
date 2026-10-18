@@ -45,24 +45,40 @@ export async function loadPublicNetworkSeed(signal?: AbortSignal): Promise<Publi
     return parsePublicNetworkCache(JSON.parse(new TextDecoder().decode(bytes)));
   } catch { return null; }
 }
-export async function savePublicNetworkCache(cache: PublicNetworkCache): Promise<void> {
+function mergeCaches(previous:PublicNetworkCache|null,cache:PublicNetworkCache):PublicNetworkCache{
+  const coverage = PUBLIC_SOURCES.map(source => {
+    const incoming = cache.coverage.find(item => item.source === source), prior = previous?.coverage.find(item => item.source === source);
+    return prior && (prior.observedAt ?? 0) > (incoming?.observedAt ?? 0) ? prior : incoming ?? prior ?? { source, complete: false };
+  });
+  const records = previous?.records===cache.records?cache.records:PUBLIC_SOURCES.flatMap(source => {
+    const incoming = cache.coverage.find(item => item.source === source), prior = previous?.coverage.find(item => item.source === source);
+    const oldRows = previous?.records.filter(row => row.source === source) ?? [], newRows = cache.records.filter(row => row.source === source);
+    if (['graph', 'proofs'].includes(source)) {
+      if ((prior?.observedAt ?? 0) > (incoming?.observedAt ?? 0)) return oldRows;
+      if (incoming?.complete) return newRows;
+    }
+    return mergePublicRecords(oldRows, newRows);
+  });
+  const capturedAt=previous?.capturedAt&&(!cache.capturedAt||Date.parse(previous.capturedAt)>Date.parse(cache.capturedAt))?previous.capturedAt:cache.capturedAt;
+  return {...cache,capturedAt,inspectionVersion:Math.max(previous?.inspectionVersion??0,cache.inspectionVersion??0),coverage,records:previous?.records===cache.records?records:mergePublicRecords([],records)};
+}
+async function writePublicNetworkCache(cache: PublicNetworkCache): Promise<boolean> {
   try { const db = await database(); try { await new Promise<void>((resolve, reject) => {
     const tx = db.transaction('public', 'readwrite'), store = tx.objectStore('public'), read = store.get('network');
     read.onsuccess = () => { let previous: PublicNetworkCache | null = null; try { if (read.result) previous = parsePublicNetworkCache(read.result); } catch { /* Reject invalid projection cache. */ }
-      const coverage = PUBLIC_SOURCES.map(source => {
-        const incoming = cache.coverage.find(item => item.source === source), prior = previous?.coverage.find(item => item.source === source);
-        return prior && (prior.observedAt ?? 0) > (incoming?.observedAt ?? 0) ? prior : incoming ?? prior ?? { source, complete: false };
-      });
-      const records = PUBLIC_SOURCES.flatMap(source => {
-        const incoming = cache.coverage.find(item => item.source === source), prior = previous?.coverage.find(item => item.source === source);
-        const oldRows = previous?.records.filter(row => row.source === source) ?? [], newRows = cache.records.filter(row => row.source === source);
-        if (['graph', 'proofs'].includes(source)) {
-          if ((prior?.observedAt ?? 0) > (incoming?.observedAt ?? 0)) return oldRows;
-          if (incoming?.complete) return newRows;
-        }
-        return mergePublicRecords(oldRows, newRows);
-      });
-      store.put({ ...cache, coverage, records: mergePublicRecords([], records), schema: 'receiz.bank.public-ledger-cache.v1', authority: 'public-source-projection' }, 'network'); };
+      store.put({ ...mergeCaches(previous,cache), schema: 'receiz.bank.public-ledger-cache.v1', authority: 'public-source-projection' }, 'network'); };
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
-  }); } finally { db.close(); } } catch { /* Cache is discovery convenience, never financial authority. */ }
+  });return true; } finally { db.close(); } } catch { return false; /* Cache is discovery convenience, never financial authority. */ }
+}
+let queued:PublicNetworkCache|null=null,writing:Promise<boolean>|null=null;
+/** Coalesce the same task's updates immediately, then retain only the newest
+ * pending snapshot during a write. No component cleanup cancels this queue. */
+export function savePublicNetworkCache(cache:PublicNetworkCache):Promise<boolean>{
+  queued=queued?mergeCaches(queued,cache):cache;
+  if(!writing)writing=Promise.resolve().then(async()=>{
+    let saved=true;
+    try{while(queued){const next=queued;queued=null;saved=await writePublicNetworkCache(next)&&saved;}return saved;}
+    finally{writing=null;}
+  });
+  return writing;
 }

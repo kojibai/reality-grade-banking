@@ -3,6 +3,8 @@ export interface PublicMarketItem {
   id: string; assetId: string; title: string; summary: string; category: 'proof' | 'sports'; circulationCount?: number; pricedCount?: number; capitalizationUsdCents?: string | null;
   sourceUrl: string | null; verifyUrl: string | null; originalUrl: string | null;
   originalDigest: string | null; pulse: string | null; sealedAt: string | null;
+  hasLongForm?: boolean;
+  readingUrl?: string | null;
   ownerUsername: string | null; ownerDisplayName: string | null; ownerProfileUrl: string | null;
   priceUsd: number | null; changePct: number | null; chart: number[];
   authority: 'projection-only'; canTrade: false;
@@ -20,7 +22,21 @@ export function safeReceizPublicUrl(input: unknown, kind: 'source' | 'proof' | '
     if (kind === 'source' && /^\/game\/sports\/card\/rsc_[a-f0-9]{16}\/?$/i.test(url.pathname)) return [...url.searchParams.keys()].length === 1 && /^[a-f0-9]{64}$/i.test(url.searchParams.get('claimHash') ?? '') ? url.href : null;
     if (kind === 'source') return !url.search && (/^\/[a-zA-Z0-9_-]{1,64}\/verified\/[a-zA-Z0-9_-]{1,128}\/?$/.test(url.pathname) || /^\/market\/assets\/[a-zA-Z0-9_-]{1,128}\/?$/.test(url.pathname)) ? url.href : null;
     if (kind === 'proof') return /^\/v\/[a-zA-Z0-9_-]{1,64}\/[a-fA-F0-9]{8,64}\/\d{1,24}\/?$/.test(url.pathname) && [...url.searchParams.keys()].every(key => ['a', 'ms', 'c', 'p', 'tz'].includes(key) && url.searchParams.getAll(key).length === 1) ? url.href : null;
+    if (/^\/api\/proof-material\/packages\/[a-f0-9]{64}\/artifact$/i.test(url.pathname)) return !url.search ? url.href : null;
     return url.pathname === '/api/profile/originals/download' && [...url.searchParams.keys()].every(key => ['receizId', 'kind'].includes(key)) && url.searchParams.getAll('receizId').length === 1 && url.searchParams.getAll('kind').length === 1 && /^[a-zA-Z0-9_-]{1,128}$/.test(url.searchParams.get('receizId') ?? '') && url.searchParams.get('kind') === 'original' ? url.href : null;
+  } catch { return null; }
+}
+/** A public material coordinate locates exact sealed bytes; it does not verify them. */
+export function publicMaterialOriginalUrl(input: unknown): string | null {
+  const value = text(input, 8192); if (!value) return null;
+  try {
+    const direct = safeReceizPublicUrl(value, 'original');
+    if (direct && new URL(direct).pathname.startsWith('/api/proof-material/packages/')) return direct;
+    const coordinate = new URL(value, 'https://receiz.com'), fragment = new URLSearchParams(coordinate.hash.slice(1));
+    if ([...fragment.keys()].length !== 1) return null;
+    const token = fragment.get('material') ?? ''; if (!/^rmc[12]:[a-f0-9]{64}$/i.test(token)) return null;
+    coordinate.hash = ''; if (!safeReceizPublicUrl(coordinate.href, 'proof')) return null;
+    return `https://receiz.com/api/proof-material/packages/${token.slice(5).toLowerCase()}/artifact`;
   } catch { return null; }
 }
 export function parsePublicMarket(membership: unknown, snapshot?: unknown): PublicMarketCatalog {
@@ -31,14 +47,18 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
     const source = record(raw), id = text(source.id, 256), assetId = text(source.receizId, 256), title = text(source.title, 4096);
     if (!id || !assetId || !title || ids.has(id) || source.visibility === 'private') continue;
     ids.add(id);
-    const media = record(record(source.profileOriginal).media), material = record(media.material);
+    const profile=record(source.profileOriginal),media = record(profile.media), material = record(media.material);
     const digest = text(media.originalDownloadSha256Hex ?? material.sealedArtifactSha256Hex, 64);
+    const materialOriginal = typeof material.sealedArtifactSha256Hex === 'string' && material.sealedArtifactSha256Hex.toLowerCase() === digest?.toLowerCase() ? publicMaterialOriginalUrl(material.originalArtifactSrc) ?? publicMaterialOriginalUrl(material.proofObjectUrl) : null;
+    const verifyUrl=safeReceizPublicUrl(source.verifyHref,'proof'),readingTz=profile.readingTzMinutesEast??media.receiptTzMinutesEast;
+    let readingUrl=verifyUrl;if(readingUrl&&typeof readingTz==='number'&&Number.isInteger(readingTz)&&readingTz>=-840&&readingTz<=840){const coordinate=new URL(readingUrl);coordinate.searchParams.set('tz',String(readingTz));readingUrl=coordinate.href;}
     const sealedAt = text(source.createdAt, 64);
     const publicUsername = text(source.ownerUsername, 64);
     const ownerUsername = publicUsername && /^[a-zA-Z0-9_-]{1,64}$/.test(publicUsername) ? publicUsername : null;
     items.push({ id, assetId, title, summary: text(source.summary, 8192) ?? '', category: 'proof',
-      sourceUrl: safeReceizPublicUrl(source.canonicalHref, 'source'), verifyUrl: safeReceizPublicUrl(source.verifyHref, 'proof'),
-      originalUrl: safeReceizPublicUrl(media.originalDownloadSrc, 'original'), originalDigest: digest && /^[a-f0-9]{64}$/i.test(digest) ? digest.toLowerCase() : null,
+      sourceUrl: safeReceizPublicUrl(source.canonicalHref, 'source'), verifyUrl,readingUrl,
+      originalUrl: materialOriginal ?? safeReceizPublicUrl(media.originalDownloadSrc, 'original'), originalDigest: digest && /^[a-f0-9]{64}$/i.test(digest) ? digest.toLowerCase() : null,
+      hasLongForm:typeof profile.hasLongForm==='boolean'?profile.hasLongForm:Object.hasOwn(profile,'longForm')?Boolean(profile.longForm):undefined,
       pulse: typeof source.pulse === 'string' && /^\d{1,24}$/.test(source.pulse) ? source.pulse : null,
       sealedAt: sealedAt && Number.isFinite(Date.parse(sealedAt)) ? sealedAt : null,
       ownerUsername, ownerDisplayName: text(source.ownerDisplayName, 128), ownerProfileUrl: ownerUsername ? `https://receiz.com/${encodeURIComponent(ownerUsername)}` : null,
@@ -48,6 +68,18 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
     revision: text(meta.revision, 256) ?? '', observedAt: text(transport.generatedAt, 64), sourceCount: Number.isSafeInteger(meta.itemCount) && Number(meta.itemCount) >= 0 ? Number(meta.itemCount) : items.length };
   return mergePublicQuotes(catalog, snapshot);
 }
+// Locators are public display projections, retained only for the exact artifact
+// digest. They never replace verification of bytes returned by that locator.
+const originalLocators = new Map<string, string>();
+export function rememberPublicOriginalLocators(catalog: PublicMarketCatalog): void {
+  for (const item of [...catalog.items].reverse()) {
+    const url = publicMaterialOriginalUrl(item.originalUrl); if (!url || !item.originalDigest) continue;
+    const key = `${item.assetId}:${item.originalDigest}`;
+    originalLocators.delete(key); originalLocators.set(key, url);
+    if (originalLocators.size > 2048) originalLocators.delete(originalLocators.keys().next().value!);
+  }
+}
+export function retainedPublicOriginalUrl(assetId: string, digest: string): string | null { return originalLocators.get(`${assetId}:${digest.toLowerCase()}`) ?? null; }
 export function mergePublicQuotes(catalog: PublicMarketCatalog, snapshot: unknown): PublicMarketCatalog {
   const envelope = record(snapshot), data = record(envelope.data);
   if (envelope.ok !== true || data.schema !== 'receiz.market.public-snapshot.v1' || !Array.isArray(data.liveMarkets)) return catalog;
@@ -71,7 +103,7 @@ export function validatePublicQuotes(snapshot: unknown): unknown {
 export async function fetchPublicMarket(signal?: AbortSignal): Promise<PublicMarketCatalog> {
   const response = await fetch('/api/bank/public-market/membership', { signal, credentials: 'omit' });
   if (!response.ok) throw new Error('The public Market could not be refreshed.');
-  const input = await response.json(); const catalog = parsePublicMarket(input);
+  const input = await response.json(); const catalog = parsePublicMarket(input); rememberPublicOriginalLocators(catalog);
   if (catalog.complete) try { localStorage.setItem('receiz-bank-public-discovery-v2', JSON.stringify(input)); } catch { /* Storage capacity does not change source availability. */ }
   return catalog;
 }

@@ -1,13 +1,30 @@
 import { parseSharedWallet, type SharedWallet } from './shared-wallet';
 import { isBankNativeApplicationId, BANK_OBSERVATION_APPLICATION_IDS } from './config';
 import type { WalletPoint } from './wallet-series';
-export interface WalletObservation { wallet: SharedWallet; observedAt: string; history?: WalletPoint[]; source?: 'account-genesis' | 'local-note-head'; localHeadDigest?: string; walletScope?: 'native-cash-only'; historyBasis?: { schema: 'bank.account-history-display.v1'; kind?:'legacy-wallet-observations'; startKaiUPulse: string; endKaiUPulse: string; retainedStateSha256?: string; settlementPhiMicro?: string; balancePhiMicro?: string; reserveUsdCents?: string }; }
+type WalletFinancialState = Pick<SharedWallet, 'userId' | 'balancePhiMicro' | 'reserveUsdCents' | 'kaiUpulse' | 'pulse'>;
+/** Display-only tombstone for units a saved note may have spent. A complete
+ * old source cannot resume quotes; a different financial tuple can reconcile. */
+export interface WalletQuoteHold extends WalletFinancialState { schema: 'bank.wallet-quote-hold.v1'; }
+export function sameWalletFinancialState(left: WalletFinancialState, right: WalletFinancialState) {
+  return (['userId', 'balancePhiMicro', 'reserveUsdCents', 'kaiUpulse', 'pulse'] as const).every(field => left[field] === right[field]);
+}
+export function createWalletQuoteHold(wallet: SharedWallet): WalletQuoteHold {
+  return { schema: 'bank.wallet-quote-hold.v1', userId: wallet.userId, balancePhiMicro: wallet.balancePhiMicro, reserveUsdCents: wallet.reserveUsdCents, kaiUpulse: wallet.kaiUpulse, pulse: wallet.pulse };
+}
+export function isWalletQuoteHeld(value: WalletObservation): boolean { return !!value.quoteHold && sameWalletFinancialState(value.quoteHold, value.wallet); }
+export interface WalletObservation { quoteHold?: WalletQuoteHold; wallet: SharedWallet; observedAt: string; history?: WalletPoint[]; source?: 'account-genesis' | 'local-note-head'; localHeadDigest?: string; walletScope?: 'native-full' | 'native-cash-only'; historyBasis?: { schema: 'bank.account-history-display.v1'; kind?:'legacy-wallet-observations'; startKaiUPulse: string; endKaiUPulse: string; retainedStateSha256?: string; settlementPhiMicro?: string; balancePhiMicro?: string; reserveUsdCents?: string }; }
 export function readWalletObservation(input: unknown, binding: { keyId: string; artifactSha256: string }): WalletObservation | null {
   if (!input || typeof input !== 'object') return null;
   const value = input as Record<string, unknown>, wallet = value.wallet as SharedWallet;
   if (value.schema !== 'receiz.bank.private-wallet-observation.v1' || value.authority !== 'read-only-observation' || !BANK_OBSERVATION_APPLICATION_IDS.some(id => id === value.applicationId) || value.keyId !== binding.keyId || value.artifactSha256 !== binding.artifactSha256 || typeof value.observedAt !== 'string' || !Number.isFinite(Date.parse(value.observedAt)) || !wallet || typeof wallet.userId !== 'string' || !wallet.userId || wallet.userId.length > 128) return null;
+  if (value.walletScope !== undefined && value.walletScope !== 'native-full' && value.walletScope !== 'native-cash-only') return null;
   for (const amount of [wallet.totalUsdCents, wallet.reserveUsdCents, wallet.settlementUsdCents, wallet.balancePhiMicro]) if (typeof amount !== 'string' || !/^(0|[1-9]\d{0,39})$/.test(amount)) return null;
   if (BigInt(wallet.totalUsdCents) !== BigInt(wallet.reserveUsdCents) + BigInt(wallet.settlementUsdCents)) return null;
+  const quoteHold = value.quoteHold as WalletQuoteHold | undefined;
+  if (value.quoteHold !== undefined && (!quoteHold || typeof quoteHold !== 'object' || Object.keys(quoteHold).sort().join('|') !== 'balancePhiMicro|kaiUpulse|pulse|reserveUsdCents|schema|userId'
+    || quoteHold.schema !== 'bank.wallet-quote-hold.v1' || quoteHold.userId !== wallet.userId
+    || ![quoteHold.balancePhiMicro, quoteHold.reserveUsdCents].every(amount => typeof amount === 'string' && /^(0|[1-9]\d{0,39})$/.test(amount))
+    || ![quoteHold.kaiUpulse, quoteHold.pulse].every(kai => kai === null || typeof kai === 'string' && /^\d{1,30}$/.test(kai)))) return null;
   const history = Array.isArray(value.history) ? value.history.slice(-4096).filter((point): point is WalletPoint => {
     if (!point || typeof point !== 'object' || point.userId !== wallet.userId || typeof point.at !== 'string' || !Number.isFinite(Date.parse(point.at)) || Date.parse(point.at) > Date.parse(value.observedAt as string)) return false;
     if (point.kaiUPulse !== null && (typeof point.kaiUPulse !== 'string' || !/^\d{1,30}$/.test(point.kaiUPulse))) return false;
@@ -17,7 +34,7 @@ export function readWalletObservation(input: unknown, binding: { keyId: string; 
   }) : [];
   const basis = value.historyBasis as WalletObservation['historyBasis'];
   const historyBasis = basis?.schema === 'bank.account-history-display.v1' && (basis.kind===undefined||basis.kind==='legacy-wallet-observations') && typeof basis.startKaiUPulse === 'string' && /^\d{1,30}$/.test(basis.startKaiUPulse) && typeof basis.endKaiUPulse === 'string' && /^\d{1,30}$/.test(basis.endKaiUPulse) && Array.isArray(value.history) && history.length === value.history.length && (basis.retainedStateSha256 === undefined || /^[a-f0-9]{64}$/.test(basis.retainedStateSha256)) && [basis.settlementPhiMicro,basis.balancePhiMicro,basis.reserveUsdCents].every(value => value === undefined || typeof value === 'string' && /^(0|[1-9]\d{0,39})$/.test(value)) ? basis : undefined;
-  return { wallet, observedAt: value.observedAt, ...(history.length ? { history } : {}), ...(historyBasis ? {historyBasis} : {}), ...(value.source === 'local-note-head' && typeof value.localHeadDigest === 'string' && /^[a-f0-9]{64}$/.test(value.localHeadDigest) ? { source: 'local-note-head' as const, localHeadDigest: value.localHeadDigest } : {}), ...(value.source === 'account-genesis' && wallet.totalUsdCents === '0' && wallet.balancePhiMicro === '0' ? { source: 'account-genesis' as const } : {}) };
+  return { wallet, observedAt: value.observedAt, ...(quoteHold ? {quoteHold} : {}), ...(value.walletScope ? { walletScope: value.walletScope } : {}), ...(history.length ? { history } : {}), ...(historyBasis ? {historyBasis} : {}), ...(value.source === 'local-note-head' && typeof value.localHeadDigest === 'string' && /^[a-f0-9]{64}$/.test(value.localHeadDigest) ? { source: 'local-note-head' as const, localHeadDigest: value.localHeadDigest } : {}), ...(value.source === 'account-genesis' && wallet.totalUsdCents === '0' && wallet.balancePhiMicro === '0' ? { source: 'account-genesis' as const } : {}) };
 }
 
 /** A signer-authenticated snapshot cannot establish a foreign account placement. */

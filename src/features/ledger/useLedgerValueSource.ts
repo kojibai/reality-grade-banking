@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {loadReceiz} from '../../receiz/client';
 import { indexLedgerValues } from '../../receiz/ledger-value';
 import { parseMarketCapSource, type MarketCapSource } from '../../receiz/market-projection/source';
+import {publishMarketDisplaySource} from '../../receiz/market-projection/display-source';
 
 /** One existing public projection for the ledger, with no original-file requests per row. */
 export function useLedgerValueSource(active: boolean) {
@@ -23,7 +24,7 @@ export function useLedgerValueSource(active: boolean) {
         const response = await fetch(path, { credentials: 'omit', signal: controller.signal });
         if (!response.ok) return;
         const next = parseMarketCapSource(await response.json());
-        if (!controller.signal.aborted) setSource(current => current && current.serverPulse > next.serverPulse ? current : next);
+        if (!controller.signal.aborted) {publishMarketDisplaySource(next);setSource(current => current && current.serverPulse > next.serverPulse ? current : next);}
       } catch { /* A missing projection leaves the carried source value visible. */ }
       finally { if (live) pending = false; }
     };
