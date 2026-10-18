@@ -7,6 +7,7 @@ import { learnHome, learnArticle } from './learn-template.mjs';
 import { accountNoticePages } from './account-notice-pages.mjs';
 import { realityGradePage, realityGradeContent } from './reality-grade-page.mjs';
 import { valueExplainerPage, valueExplainerContent } from './value-explainer-template.mjs';
+import { writePublicSdkSchemas } from './build-public-schemas.mjs';
 import { writeValueExplainerAssets } from './value-explainer-assets.mjs';
 const origin = 'https://bankeiz.com';
 const pages = [
@@ -42,6 +43,7 @@ const pages = [
 ];
 const escape = text => String(text).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const { css: publicCss, cssUrl, jsUrl } = await learnAssets();
+await writePublicSdkSchemas('dist');
 const valueAssets = await writeValueExplainerAssets('dist');
 const valueHead = `<link rel="stylesheet" href="${valueAssets.cssUrl}"><script src="${valueAssets.jsUrl}" defer></script>`;
 let bankHtml;
@@ -72,6 +74,6 @@ for (const [path, page] of Object.entries(publicPages)) {
   await mkdir(`dist${path}`, { recursive: true });
   await writeFile(`dist${path}index.html`, `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`);
 }
-const urls = ['/', '/conformance/', '/verify/', '/ledger/', ...pages.map(page => `/learn/${page.slug ? page.slug + '/' : ''}`)];
+const urls = ['/', '/conformance/', '/verify/', '/ledger/', '/schemas/', ...pages.map(page => `/learn/${page.slug ? page.slug + '/' : ''}`)];
 await writeFile('dist/sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(path => `<url><loc>${origin}${path}</loc><lastmod>${path === '/conformance/' ? '2026-10-15' : '2026-10-14'}</lastmod></url>`).join('')}</urlset>`);
 console.log(`Prerendered the existing entrance and ${pages.length} public guides; generated canonical sitemap.`);

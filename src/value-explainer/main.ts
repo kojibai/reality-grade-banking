@@ -1,4 +1,5 @@
 import { SIGIL_VALUATION_POLICY, type SigilCalculationTerm, type ReceizProofValueProjectionV129 } from '@receiz/sdk/valuation';
+import {receizKaiNow} from '@receiz/sdk';
 import {
   calculateIllustration, DEMO_SCENARIO, formatPhiMicro, formatUsdCents,
   illustrationRecord, sampleIllustration, stableStringify, type ValueScenario,
@@ -32,7 +33,7 @@ function chartMarkup(samples: ReturnType<typeof sampleIllustration>['samples'], 
 function binding(label: string, value: unknown) { return `<div><dt>${escape(label)}</dt><dd>${escape(value ?? 'Not carried')}</dd></div>`; }
 
 function projectionMarkup(projection: ReceizProofValueProjectionV129): string {
-  return `<h3>Proof-bound result</h3><output class="value-result-amount">${formatPhiMicro(projection.proofValuePhiMicro)} <span>Φ</span></output><p>The SDK verified the original and independently replayed the selected coordinates. Writes performed: ${projection.writesPerformed}.</p><dl class="value-binding-list">${[
+  return `<h3>Proof-bound result</h3><p class="value-result-kind">Present value at pulse ${escape(BigInt(projection.valuationKaiUPulse)/1000000n)}</p><output class="value-result-amount">${formatPhiMicro(projection.proofValuePhiMicro)} <span>Φ</span></output><p>The SDK verified the original and independently replayed the selected coordinates. Writes performed: ${projection.writesPerformed}.</p><dl class="value-binding-list">${[
     binding('Current proof digest', projection.proofDigest), binding('Original proof digest', projection.originProofDigest),
     binding('Admitted history head', projection.historyHead), binding('Original Kai pulse', projection.originKaiPulse),
     binding('Original Kai µPulse', projection.originKaiUPulse), binding('Evaluation Kai µPulse', projection.valuationKaiUPulse),
@@ -58,13 +59,16 @@ export function mountValueExplainer(root: HTMLElement) {
   const trace = find('[data-value-trace]');
   const rateInput = find<HTMLInputElement>('[data-value-display-rate]');
   const illustrationDownload = find<HTMLButtonElement>('[data-value-download-illustration]');
-  let scenario: ValueScenario = { ...DEMO_SCENARIO };
+  const evaluationInput=find<HTMLInputElement>('#value-evaluation');
+  const openingCoordinate=receizKaiNow();
+  evaluationInput.readOnly=true;evaluationInput.value=String(openingCoordinate.pulse);
+  let scenario: ValueScenario = { ...DEMO_SCENARIO,evaluationPulse:evaluationInput.value };
   let interval = sampleIllustration(scenario);
   let selected = interval.samples.length - 1;
   let dollarGeneration = 0;
-  const readScenario = (): ValueScenario => {
+  const readScenario = (evaluationPulse:string): ValueScenario => {
     const data = new FormData(form);
-    return { originPulse: String(data.get('originPulse')), evaluationPulse: String(data.get('evaluationPulse')), seriesSize: String(data.get('seriesSize')), quality: String(data.get('quality')) as ValueScenario['quality'], usdPerPhiMicrocents: rateInput.value };
+    return { originPulse: String(data.get('originPulse')), evaluationPulse, seriesSize: String(data.get('seriesSize')), quality: String(data.get('quality')) as ValueScenario['quality'], usdPerPhiMicrocents: rateInput.value };
   };
   const currentScenario = () => ({ ...scenario, evaluationPulse: interval.samples[selected].pulse, usdPerPhiMicrocents: rateInput.value });
   const updateDollarDisplay = async () => {
@@ -92,10 +96,11 @@ export function mountValueExplainer(root: HTMLElement) {
     const inputs = computation.unsigned.inputs;
     find('[data-value-amount]').innerHTML = `${formatPhiMicro(computation.proofValuePhiMicro)} <span>Φ</span>`;
     find('[data-value-coordinate]').textContent = `${interval.samples[selected].pulse} pulses`;
+    find('[data-value-result-kind]').textContent=`${selected===interval.samples.length-1?'Present value':'Value'} at pulse ${interval.samples[selected].pulse}`;
     find('[data-value-chart]').innerHTML = chartMarkup(interval.samples, selected);
     find('[data-value-breakdown]').innerHTML = [
       ['Rarity floor', `${inputs.rarityFloor.toFixed(6)} Φ`], ['Premium band', `${inputs.premiumBandBase.toFixed(6)} Φ`],
-      ['Combined wave', `${inputs.combinedOsc.toFixed(6)} ×`], ['Present value', `${inputs.pv_phi.toFixed(6)} Φ`],
+      ['Combined wave', `${inputs.combinedOsc.toFixed(6)} ×`], ['Cashflow present value', `${inputs.pv_phi.toFixed(6)} Φ`],
     ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join('');
     trace.innerHTML = traceMarkup(computation.calculation);
     illustrationDownload.disabled = false;
@@ -105,7 +110,8 @@ export function mountValueExplainer(root: HTMLElement) {
     event.preventDefault();
     demoError.hidden = true; demoError.textContent = '';
     try {
-      const candidate = readScenario();
+      const coordinate=receizKaiNow();evaluationInput.value=String(coordinate.pulse);
+      const candidate = readScenario(evaluationInput.value);
       const next = sampleIllustration(candidate);
       scenario = candidate; interval = next; selected = interval.samples.length - 1;
       slider.value = String(selected); slider.disabled = false; paint();
@@ -123,6 +129,7 @@ export function mountValueExplainer(root: HTMLElement) {
   slider.disabled = false; paint();
 
   const proofForm = find<HTMLFormElement>('[data-value-proof-form]');
+  const proofEvaluation=find<HTMLInputElement>('#value-proof-evaluation');proofEvaluation.readOnly=true;proofEvaluation.value=String(openingCoordinate.uPulse);
   const proofStatus = find('[data-value-proof-status]');
   const proofResult = find('[data-value-proof-result]');
   let proofGeneration = 0;
@@ -134,6 +141,7 @@ export function mountValueExplainer(root: HTMLElement) {
   });
   proofForm.addEventListener('submit', async event => {
     event.preventDefault();
+    const coordinate=receizKaiNow();proofEvaluation.value=String(coordinate.uPulse);
     const generation = ++proofGeneration;
     const data = new FormData(proofForm), file = data.get('proofFile');
     const submit = proofForm.querySelector<HTMLButtonElement>('button[type=submit]')!;

@@ -34,3 +34,11 @@ it('does not invent a valuation coordinate or repeat an unavailable amount',()=>
  const row=parsePublicNetworkPage('proofs',{ok:true,transport:{publicOriginals:[{id:'proof-no-value',receizId:'proof-no-value',title:'Sealed work',pulse:'120'}]}}).records[0];
  const host=mount(receiptLink(row)!);expect(host.querySelector('.receipt-value h1')?.textContent).toBe('Recorded');expect(host.textContent).toContain('Value not supplied');expect(host.textContent).not.toContain('Value at ☤KAI');
 });
+
+it('makes every carried receipt field inspectable while retaining the compact default view',()=>{
+ const row=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'t',kind:'chat_transfer',summary:'Alex paid Sam',pulse:120,amountUsdCents:'100',amountPhiMicro:'500000',entryHash:'a'.repeat(64),sender:{displayName:'Alex'},recipient:{displayName:'Sam'}}]}).records[0];
+ const host=mount(receiptLink(row)!);
+ expect(host.querySelector('details.receipt-inspection')).not.toBeNull();
+ expect(host.querySelector('details.receipt-inspection')?.hasAttribute('open')).toBe(false);
+ expect(host.textContent).toContain('Alex paid Sam');expect(host.textContent).toContain('a'.repeat(64));expect(host.textContent).toContain('500000');
+});

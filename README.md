@@ -12,7 +12,7 @@ The Bankeiz reference application and receiving integration kit: a mobile bankin
 
 One account view brings the rails together. The app keeps Send and Receive central, with Account, Market, Deposit, Assets and Ledger in persistent bottom navigation. The verified proof object is the source of authority for ownership, exact value and carried history. A listing, image, account projection or service response cannot create financial authority.
 
-[Public Ledger](https://bankeiz.com/ledger/) · [Conformance Console](https://bankeiz.com/conformance/) · [Receiving kit](institution/README.md) · [Receiving standard](institution/receiving-standard.md) · [Run locally](#run-locally) · [Release process](docs/release-process.md) · [Licensing](#licensing)
+[Public Ledger](https://bankeiz.com/ledger/) · [Conformance Console](https://bankeiz.com/conformance/) · [SDK schemas](https://bankeiz.com/schemas/) · [Receiving kit](institution/README.md) · [Receiving standard](institution/receiving-standard.md) · [Run locally](#run-locally) · [Release process](docs/release-process.md) · [Licensing](#licensing)
 
 ## Build a receiver
 
@@ -56,7 +56,7 @@ See the [current function boundaries](docs/current-function-boundaries.md) and [
 See [native asset and full account-source qualification](docs/native-assets-and-account-proofs-v129.md) for implemented effects, tested source closures and remaining activation requirements.
 See [private artifact and Note source closures](docs/private-artifact-and-note-source-closures-v129.md) for exact private-original admission, outstanding Note funding, historical replay and current custody scope.
 
-Account charts preserve accepted movements and [recompute historical dollar valuations](docs/historical-account-valuation-v129.md) from the first sealed activity using the pinned v129 pricing law. Computed chart samples remain distinct from recorded quotes and financial authority. The public [valuation guide](https://bankeiz.com/learn/how-value-works/) includes the pinned formula, interactive SDK calculator, original-proof reader and offline replay verification.
+Account charts preserve accepted movements and [recompute historical dollar valuations](docs/historical-account-valuation-v129.md) from the first sealed activity in a complete admitted account history using the pinned v129 pricing law. Computed chart samples remain distinct from recorded quotes and financial authority. The public [valuation guide](https://bankeiz.com/learn/how-value-works/) includes the pinned formula, interactive SDK calculator, original-proof reader and offline replay verification.
 
 These boundaries are intentional release disclosures. A build, downloaded image or deployment is not a financial qualification. The note artwork samples are **unissued**. See [native note release gates](docs/offline-notes-release.md), [Settlement Note contract](docs/settlement-note-contract.md) and [receiver qualification](institution/qualification.md) before enabling financial capabilities.
 
@@ -139,4 +139,8 @@ Existing package, vendored-code and font licenses remain in force. Preserve [thi
 
 The [Public Ledger](https://bankeiz.com/ledger/) presents public activity, original proof inspection, a high-resolution source-carrying Memory Crystal, local retention and consent-bound publication. The [Ledger release guide](docs/public-ledger-release.md) documents exact source scope, native disclosure authorization, API paths, limits and checks. An upload never admits funds or changes ownership. The [Reality-Grade Banking guide](https://bankeiz.com/learn/reality-grade-banking/) explains verification and continuity without changing the Bank interface.
 
+Open any record for its value basis, participants, ownership references, exact coordinates, evidence and receipt. [Technical inspection](docs/public-ledger-inspection.md) exposes supported model inputs, policy, continuity references and downloadable selected-record JSON. The value calculator captures its present pulse when Calculate is pressed; original proof origins and imported historical replays remain unchanged.
+
 Use [current function boundaries](docs/current-function-boundaries.md) for the implemented and production-qualified capability distinction. Generated source downloads include the application, receiver kit, native preferred source, licenses and matching build instructions; no private checkout, deployment credential or signing key is included.
+
+The [public schema reference](docs/public-sdk-schemas.md) publishes the installed SDK schema tree unchanged, with exact digests, downloads and matching MCP/AI Skills workflows. `npm run release:check` rejects mixed application, lockfile, installed package or native source versions. See the [coordinated upgrade gates](docs/release-process.md#coordinated-sdk-mcp-and-ai-skills-release) before the v130 launch.

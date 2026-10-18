@@ -1,10 +1,11 @@
+import { readReceizRelease } from './receiz-release.mjs';
 import assert from 'node:assert/strict';
 import { readFile, lstat, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const manifest = JSON.parse(await readFile('native/manifest.json', 'utf8'));
-assert.equal(manifest.receizVersion, '129.0.0');
+assert.equal(manifest.receizVersion, (await readReceizRelease()).version);
 assert.ok(manifest.files.length > 0);
 const paths = new Set();
 for (const entry of manifest.files) {

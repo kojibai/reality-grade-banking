@@ -107,5 +107,5 @@ export function ledgerValueForRecord(record: PublicRecord, index: LedgerValueInd
   return { amountUsdCents: null, basis: 'unavailable', pulse: eventPulse, considerationUsdCents: null, gap: card ? 'The source carries no card value operands at this transfer coordinate.' : 'The source carries no supported value operands.' };
 }
 export function ledgerValueLabel(value: LedgerValueDisplay): string {
-  return value.basis === 'card-snapshot' ? 'Card value at transfer' : value.basis === 'intrinsic-model' ? 'Intrinsic estimate' : value.basis === 'source-value' ? 'Carried value' : value.basis === 'payment' ? 'Recorded amount' : 'Value unavailable';
+  return value.basis === 'card-snapshot' ? 'Card value at transfer' : value.basis === 'intrinsic-model' ? 'Calculated value' : value.basis === 'source-value' ? 'Carried value' : value.basis === 'payment' ? 'Recorded amount' : 'Value unavailable';
 }

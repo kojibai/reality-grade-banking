@@ -3,8 +3,12 @@ import { afterEach, expect, it, vi } from 'vitest';
 // @ts-expect-error Public-page templates are plain ESM.
 import { valueExplainerContent } from '../scripts/value-explainer-template.mjs';
 import { mountValueExplainer, traceMarkup } from '../src/value-explainer/main';
+import {calculateIllustration,DEMO_SCENARIO,formatUsdCents} from '../src/value-explainer/model';
+import {quoteDisplayUsd} from '../src/value-explainer/proof';
+const clock=vi.hoisted(()=>({pulse:14710100,uPulse:14710100000123n}));
+vi.mock('@receiz/sdk',async importOriginal=>({...await importOriginal<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({...clock})}));
 
-afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); });
+afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks();clock.pulse=14710100;clock.uPulse=14710100000123n; });
 
 function mount() {
   document.body.innerHTML = valueExplainerContent();
@@ -19,9 +23,11 @@ it('mounts idempotently and computes real samples when the coordinate changes', 
   mountValueExplainer(root);
   expect(root.querySelectorAll('.value-trace-list')).toHaveLength(1);
   const input = root.querySelector<HTMLInputElement>('#value-evaluation')!;
-  input.value = '1034982'; form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  clock.pulse=14710120;input.value = '1034982'; form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   expect(root.querySelector('[data-value-amount]')!.textContent).not.toBe(before);
-  expect(root.querySelector('[data-value-coordinate]')!.textContent).toBe('1034982 pulses');
+  expect(root.querySelector('[data-value-coordinate]')!.textContent).toBe('14710120 pulses');
+  expect(input.value).toBe('14710120');expect(input.readOnly).toBe(true);
+  expect(root.querySelector('[data-value-result-kind]')!.textContent).toBe('Present value at pulse 14710120');
   expect(root.querySelector('#value-origin')!.getAttribute('value')).toBe('1000000');
   const slider = root.querySelector<HTMLInputElement>('[data-value-sample]')!;
   slider.value = '0'; slider.dispatchEvent(new Event('input', { bubbles: true }));
@@ -31,7 +37,7 @@ it('mounts idempotently and computes real samples when the coordinate changes', 
 
 it('keeps an invalid new interval visibly rejected and disables its export', () => {
   const root = mount(), form = root.querySelector<HTMLFormElement>('[data-value-demo]')!;
-  root.querySelector<HTMLInputElement>('#value-evaluation')!.value = '999999';
+  root.querySelector<HTMLInputElement>('#value-origin')!.value = '99999999';
   form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   expect(root.querySelector<HTMLElement>('[data-value-demo-error]')!.hidden).toBe(false);
   expect(root.querySelector('[data-value-demo-error]')!.textContent).toContain('at or after');
@@ -40,7 +46,8 @@ it('keeps an invalid new interval visibly rejected and disables its export', () 
 
 it('clears an obsolete dollar result when a new display rate is invalid', async () => {
   const root = mount();
-  await vi.waitFor(() => expect(root.querySelector('[data-value-usd]')!.textContent).toBe('$191.48'));
+  const value=calculateIllustration({...DEMO_SCENARIO,evaluationPulse:String(clock.pulse)});
+  await vi.waitFor(() => expect(root.querySelector('[data-value-usd]')!.textContent).toBe(formatUsdCents(quoteDisplayUsd(value.proofValuePhiMicro,DEMO_SCENARIO.usdPerPhiMicrocents))));
   const rate = root.querySelector<HTMLInputElement>('[data-value-display-rate]')!;
   rate.value = '0'; rate.dispatchEvent(new Event('input', { bubbles: true }));
   await vi.waitFor(() => expect(root.querySelector('[data-value-usd-error]')!.textContent).toContain('positive'));

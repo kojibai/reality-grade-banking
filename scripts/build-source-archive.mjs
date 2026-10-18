@@ -1,9 +1,11 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 import { execFileSync } from 'node:child_process';
+import { readReceizRelease } from './receiz-release.mjs';
 import { sourceFiles, hash } from './source-files.mjs';
 
 execFileSync(process.execPath, ['scripts/check-native-source.mjs'], { stdio: 'inherit' });
+const release = await readReceizRelease();
 const entries = await sourceFiles();
 const files = entries.map(({ path, bytes, sha256, mode }) => ({ path, sha256, bytes: bytes.length, mode }));
 const sourceTreeSha256 = hash(JSON.stringify(files));
@@ -32,5 +34,5 @@ const bytes = gzipSync(Buffer.concat(blocks), { level: 9 });
 const url = `/source/reality-grade-banking-${sourceTreeSha256.slice(0, 20)}.tgz`;
 await mkdir('dist/source', { recursive: true });
 await writeFile(`dist${url}`, bytes);
-await writeFile('dist/source/index.json', JSON.stringify({ schema: inventory.schema, url, sha256: hash(bytes), sourceTreeSha256, bytes: bytes.length, files: files.length, nativeVersion: '129.0.0' }, null, 2) + '\n');
+await writeFile('dist/source/index.json', JSON.stringify({ schema: inventory.schema, url, sha256: hash(bytes), sourceTreeSha256, bytes: bytes.length, files: files.length, nativeVersion: release.version }, null, 2) + '\n');
 console.log(`Published content-addressed source archive: ${files.length} files, ${(bytes.length / 1024 / 1024).toFixed(1)} MiB compressed. Loaded only on download.`);

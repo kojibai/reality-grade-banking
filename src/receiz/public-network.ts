@@ -1,6 +1,7 @@
 import {safeLedgerSourceUrl} from './ledger-receipts';
 import { parsePublicMarket } from './public-market.ts';
 import { ledgerUsdCents, readLedgerValueOperands, type LedgerValueOperands } from './ledger-value';
+import {readLedgerDetails,type LedgerFields} from './ledger-inspection';
 
 export const PUBLIC_SOURCES = ['actions', 'wallet', 'graph', 'proofs'] as const;
 export type PublicSource = typeof PUBLIC_SOURCES[number];
@@ -10,6 +11,7 @@ export interface PublicRecord {
   kaiUpulse: string | null; pulse: string | null; sourceUrl: string | null;
   sender?:string|null; recipient?:string|null; evidence: Record<string, string>; authority: 'public-source-projection' | 'account-source-projection'; origin?: 'identity-carried' | 'private-account';
   valueOperands?: LedgerValueOperands;
+  details?: LedgerFields;
 }
 export interface PublicNetworkPage { source: PublicSource; records: PublicRecord[]; nextCursor: string | null; total: string | null; complete: boolean; }
 function object(input: unknown): Record<string, unknown> { return input !== null && typeof input === 'object' && !Array.isArray(input) ? input as Record<string, unknown> : {}; }
@@ -27,18 +29,18 @@ function row(source: PublicSource, raw: unknown): PublicRecord {
   for (const key of ['bundleHash', 'capsuleHash', 'claimHash', 'artifactDigest']) { const item = text(proof[key], 512); if (item) evidence[key] = item; }
   const pulse = digits(value.eventKaiPulse ?? value.pulse, 24), kaiUpulse = digits(value.kaiUpulse ?? value.kaiUPulse, 30);
   return { id: `${source}:${id}`, sourceId: id, source, kind,
-    title: text(value.summary ?? value.label, 4096) ?? kind.replace(/[._]/g, ' '), detail: text(value.detail ?? value.objectLabel, 2048) ?? '',
+    title: text(value.summary ?? value.label, 4096) ?? kind.replace(/[._]/g, ' '), detail: text(value.detail ?? value.objectLabel, 8192) ?? '',
     time: date(value.occurredAt ?? value.createdAt), actor: alias(value.actorUserId) ?? alias(actor.userId ?? actor.phiKey),
     amountUsdCents: typeof value.amountUsdCents === 'string' ? digits(value.amountUsdCents) : null,
     sender:text(object(value.sender).displayName??object(value.sender).username??object(value.sender).userId,128),recipient:text(object(value.recipient).displayName??object(value.recipient).username??object(value.recipient).userId,128),
     kaiUpulse, pulse, sourceUrl: safeLedgerSourceUrl(value.transactionHref) ?? safeLedgerSourceUrl(value.verifyHref) ?? safeLedgerSourceUrl(value.canonicalHref) ?? safeLedgerSourceUrl(proof.verifierUrl),
-    evidence, valueOperands: readLedgerValueOperands(value), authority: 'public-source-projection' };
+    evidence, valueOperands: readLedgerValueOperands(value), details:readLedgerDetails(value), authority: 'public-source-projection' };
 }
 export function parsePublicNetworkPage(source: PublicSource, input: unknown): PublicNetworkPage {
   const envelope = object(input);
   if (source === 'proofs') {
     const catalog = parsePublicMarket(input);
-    return { source, nextCursor: null, complete: catalog.complete, total: String(catalog.sourceCount), records: catalog.items.map<PublicRecord>(item => ({ id: `proofs:${item.id}`, sourceId: item.id, source, kind: 'proof recorded', title: item.title, detail: 'Public showcase proof', time: item.sealedAt, actor: null, amountUsdCents: null, kaiUpulse: null, pulse: item.pulse, sourceUrl: item.sourceUrl ?? item.verifyUrl, evidence: digestEvidence(item.originalDigest), valueOperands: { assetId: item.assetId, marketItemId: item.id, proofValueUsdCents: ledgerUsdCents(item.priceUsd) }, authority: 'public-source-projection' })) };
+    return { source, nextCursor: null, complete: catalog.complete, total: String(catalog.sourceCount), records: catalog.items.map<PublicRecord>(item => ({ id: `proofs:${item.id}`, sourceId: item.id, source, kind: 'proof recorded', title: item.title, detail: item.summary||'Public showcase proof', time: item.sealedAt, actor: null, sender:null,recipient:null,amountUsdCents: null, kaiUpulse: null, pulse: item.pulse, sourceUrl: item.sourceUrl ?? item.verifyUrl, evidence: digestEvidence(item.originalDigest), valueOperands: { assetId: item.assetId, marketItemId: item.id, proofValueUsdCents: ledgerUsdCents(item.priceUsd) }, details:readLedgerDetails({assetId:item.assetId,marketItemId:item.id,originalUrl:item.originalUrl,owner:{username:item.ownerUsername,displayName:item.ownerDisplayName}}), authority: 'public-source-projection' })) };
   }
   if (envelope.source && envelope.source !== source || envelope.ok !== true && envelope.source !== source) throw new Error('Public source returned an unsupported response.');
   const rows = envelope.rows ?? (source === 'actions' ? envelope.actions ?? envelope.events : source === 'wallet' ? envelope.events : envelope.ledgerRows);

@@ -23,5 +23,5 @@ export function projectPersonalHistory(projection: ReceizIdentityAccountProjecti
   // Prefer that exact current event ID without collapsing other public/source witnesses.
   const representedLedgerIds = new Set(activityRows.filter(row => row.kind === 'wallet_ledger_entry' && typeof row.id === 'string' && row.id.startsWith('wallet_ledger:')).map(row => String(row.id).slice('wallet_ledger:'.length)));
   const legacyRows = walletRows.filter(row => !representedLedgerIds.has(String(row.id)));
-  return { records: mergePublicRecords(parsePublicNetworkPage('actions', { ok: true, actions: actionRows }).records, mergePublicRecords(parsePublicNetworkPage('wallet', { ok: true, events: [...legacyRows, ...transferRows] }).records, parsePublicNetworkPage('wallet', { ok: true, events: activityRows }).records)), available: true, completeAtSealedHead: projection.completeAtSealedHead };
+  return { records: mergePublicRecords(parsePublicNetworkPage('actions', { ok: true, actions: actionRows }).records, mergePublicRecords(parsePublicNetworkPage('wallet', { ok: true, events: [...legacyRows, ...transferRows] }).records, parsePublicNetworkPage('wallet', { ok: true, events: activityRows }).records)).map(record=>({...record,authority:'account-source-projection',origin:'identity-carried'})), available: true, completeAtSealedHead: projection.completeAtSealedHead };
 }

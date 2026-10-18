@@ -1,3 +1,4 @@
+import {RECEIZ_VERSION} from '../receiz/client';
 import {
   computeIntrinsicUnsigned,
   SIGIL_VALUATION_ALGORITHM,
@@ -83,7 +84,7 @@ export function illustrationRecord(scenario: ValueScenario) {
   return {
     schema: 'bankeiz.valuation-illustration.v1',
     authority: 'illustrative-metadata-only',
-    sdkVersion: '129.0.0',
+    sdkVersion: RECEIZ_VERSION,
     policy: SIGIL_VALUATION_POLICY,
     scenario,
     ...computation,

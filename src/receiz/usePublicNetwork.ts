@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PUBLIC_SOURCES, mergePublicRecords, readPublicNetworkPage, type PublicRecord, type PublicSource } from './public-network';
 import { loadPublicNetworkCache, loadPublicNetworkSeed, savePublicNetworkCache } from './public-network-cache';
+import {restorePublicNetworkRows} from './public-network-bootstrap';
+import {subscribePublicLedgerSync} from './public-ledger-sync';
 
 export interface PublicSourceState { status: 'loading' | 'live' | 'stale' | 'error'; cursor: string | null; complete: boolean; busy: boolean; error: string | null; observedAt?: number; }
 type Sources = Record<PublicSource, PublicSourceState>;
@@ -10,6 +12,7 @@ export function usePublicNetwork(active = true) {
   const [sources, setSources] = useState<Sources>(initialSources), sourceState = useRef(sources);
   const [bootstrap, setBootstrap] = useState(true), [capturedAt, setCapturedAt] = useState<string | null>(null);
   const lifetime = useRef<AbortController | null>(null);
+  const inspectionVersion=useRef(0);
   const completeAnchors = useRef<Partial<Record<PublicSource, Set<string>>>>({});
   const historyCursors = useRef<Record<PublicSource, Set<string>>>({ actions: new Set(), wallet: new Set(), graph: new Set(), proofs: new Set() });
   const update = (source: PublicSource, patch: Partial<PublicSourceState>) => { const next = { ...sourceState.current, [source]: { ...sourceState.current[source], ...patch } }; sourceState.current = next; setSources(next); };
@@ -51,11 +54,12 @@ export function usePublicNetwork(active = true) {
     // Restore this public discovery cache before searching live heads for additions.
     void (async () => {
       const cache = rows.current.length ? null : await loadPublicNetworkCache();
-      const needsSeed = !rows.current.length && (!cache || PUBLIC_SOURCES.some(source => !cache.coverage.some(item => item.source === source && item.complete)));
+      const needsSeed = !rows.current.length && (!cache || cache.inspectionVersion!==1||PUBLIC_SOURCES.some(source => !cache.coverage.some(item => item.source === source && item.complete)));
       const seed = needsSeed ? await loadPublicNetworkSeed(controller.signal) : null;
       if (controller.signal.aborted) return;
       if (cache || seed) {
-        rows.current = mergePublicRecords(seed?.records ?? [], mergePublicRecords(cache?.records ?? [], rows.current)); setRecords(rows.current); setCapturedAt(seed?.capturedAt ?? cache?.capturedAt ?? null);
+        inspectionVersion.current=Math.max(cache?.inspectionVersion??0,seed?.inspectionVersion??0);
+        rows.current = mergePublicRecords(restorePublicNetworkRows(cache,seed),rows.current); setRecords(rows.current); setCapturedAt(seed?.capturedAt ?? cache?.capturedAt ?? null);
         for (const source of PUBLIC_SOURCES) {
           const cachedComplete = cache?.coverage.some(item => item.source === source && item.complete);
           const seededComplete = seed?.coverage.some(item => item.source === source && item.complete);
@@ -69,12 +73,12 @@ export function usePublicNetwork(active = true) {
     })();
     const interval = setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 60_000);
     const wake = () => { if (document.visibilityState === 'visible') void refresh(); };
-    document.addEventListener('visibilitychange', wake); window.addEventListener('online', wake);
-    return () => { controller.abort(); if (lifetime.current === controller) lifetime.current = null; clearInterval(interval); document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); for (const source of PUBLIC_SOURCES) sourceState.current[source] = { ...sourceState.current[source], busy: false }; };
+    document.addEventListener('visibilitychange', wake); window.addEventListener('online', wake);const stopSync=subscribePublicLedgerSync(wake);
+    return () => { controller.abort(); if (lifetime.current === controller) lifetime.current = null; clearInterval(interval);stopSync();document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); for (const source of PUBLIC_SOURCES) sourceState.current[source] = { ...sourceState.current[source], busy: false }; };
   }, [active, refresh]);
   useEffect(() => {
     if (bootstrap || !records.length) return;
-    const timer = setTimeout(() => { void savePublicNetworkCache({ records: rows.current, capturedAt, coverage: PUBLIC_SOURCES.map(source => ({ source, complete: sourceState.current[source].complete, anchorIds: completeAnchors.current[source] ? [...completeAnchors.current[source]!] : undefined, observedAt: sourceState.current[source].observedAt })) }); }, 1_000);
+    const timer = setTimeout(() => { void savePublicNetworkCache({ records: rows.current, capturedAt,inspectionVersion:inspectionVersion.current,coverage: PUBLIC_SOURCES.map(source => ({ source, complete: sourceState.current[source].complete, anchorIds: completeAnchors.current[source] ? [...completeAnchors.current[source]!] : undefined, observedAt: sourceState.current[source].observedAt })) }); }, 1_000);
     return () => clearTimeout(timer);
   }, [records, bootstrap, capturedAt]);
   return { records, sources, bootstrap, capturedAt, refresh, loadMore };

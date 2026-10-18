@@ -14,6 +14,16 @@ import {inspectPublicLedgerFile,openPublicLedgerSource} from '../src/receiz/publ
 import {retainPublicLedgerReview,readRetainedPublicLedger} from '../src/receiz/public-ledger-retention';
 afterEach(()=>{vi.restoreAllMocks();vi.mocked(retainPublicLedgerReview).mockReset().mockResolvedValue(values.newer as never);vi.mocked(readRetainedPublicLedger).mockReset().mockResolvedValue(values.newer as never);vi.mocked(inspectPublicLedgerFile).mockReset().mockResolvedValue(values.older as never);vi.mocked(openPublicLedgerSource).mockReset().mockResolvedValue(values.older as never);vi.mocked(createPublicLedgerCrystal).mockClear();});
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+it('observes newly published global originals on reconnect without repeating unchanged source verification or publishing',async()=>{
+ const first={artifactSha256:'c'.repeat(64),kind:'proof',kaiPulse:'12'},second={artifactSha256:'d'.repeat(64),kind:'proof',kaiPulse:'13'};let count=1;
+ const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>{const url=new URL(String(input),'https://bankeiz.com');if(url.searchParams.has('discovery')){const cursor=Number(url.searchParams.get('cursor')??0);return Response.json({count,entries:cursor===0?[first]:count===2&&cursor===1?[second]:[],nextCursor:null});}return Response.json({source:'transport-only'});});
+ vi.mocked(openPublicLedgerSource).mockClear();
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<LedgerProofControls/>));expect(host.querySelector(`a[href="/ledger/?source=${first.artifactSha256}"]`)).not.toBeNull();count=2;
+  await act(async()=>window.dispatchEvent(new Event('online')));expect(host.querySelector(`a[href="/ledger/?source=${second.artifactSha256}"]`)).not.toBeNull();expect(openPublicLedgerSource).toHaveBeenCalledTimes(2);
+  await act(async()=>window.dispatchEvent(new Event('online')));expect(openPublicLedgerSource).toHaveBeenCalledTimes(2);expect(fetch.mock.calls.some(([,init])=>init?.method==='POST')).toBe(false);
+ }finally{act(()=>root.unmount());fetch.mockRestore();}
+});
 it('requires new public consent when keeping an older review restores a newer retained original',async()=>{
  const fetch=vi.spyOn(globalThis,'fetch').mockResolvedValue(Response.json({entries:[]})),host=document.createElement('div'),root=createRoot(host);
  try{
@@ -30,13 +40,13 @@ it('requires new public consent when keeping an older review restores a newer re
 });
 it('can discover originals beyond the first page without knowing their digest',async()=>{
  const entry=(digest:string)=>({artifactSha256:digest.repeat(64),kind:'proof',kaiPulse:'100'});
- const fetch=vi.spyOn(globalThis,'fetch').mockResolvedValueOnce(Response.json({entries:[entry('a')],nextCursor:1,count:2})).mockResolvedValueOnce(Response.json({entries:[entry('b')],nextCursor:null,count:2}));
+ const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>{const url=String(input);return url.includes('discovery=')?Response.json({entries:[entry(url.includes('cursor=')?'b':'a')],nextCursor:url.includes('cursor=')?null:1,count:2}):Response.json({source:'transport-only'});});
  const host=document.createElement('div'),root=createRoot(host);
  try{
   await act(async()=>root.render(<LedgerProofControls/>));
   const more=[...host.querySelectorAll('button')].find(b=>b.textContent==='More published originals');expect(more).toBeDefined();
   await act(async()=>more!.click());expect(host.querySelector(`a[href="/ledger/?source=${'b'.repeat(64)}"]`)).not.toBeNull();
-  expect(String(fetch.mock.calls[1][0])).toContain('cursor=1');expect([...host.querySelectorAll('button')].some(b=>b.textContent==='More published originals')).toBe(false);
+  expect(fetch.mock.calls.some(([input])=>String(input).includes('cursor=1'))).toBe(true);expect([...host.querySelectorAll('button')].some(b=>b.textContent==='More published originals')).toBe(false);
  }finally{act(()=>root.unmount());fetch.mockRestore();}
 });
 
@@ -172,4 +182,16 @@ it('does not substitute a different retained head for an unavailable exact sourc
   await act(async()=>root.render(<LedgerProofControls/>));
   expect(host.querySelector('.ledger-proof-review')).toBeNull();expect(host.textContent).toContain('This public original is unavailable');
  }finally{act(()=>root.unmount());fetch.mockRestore();history.replaceState({},'',previous);}
+});
+
+for(const failure of ['unavailable','verification'] as const)it(`retries ${failure} source sync on reconnect even when discovery count is unchanged`,async()=>{
+ let reads=0;
+ const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>String(input).includes('discovery=')?Response.json({count:1,entries:[{artifactSha256:'c'.repeat(64),kind:'proof',kaiPulse:'12'}],nextCursor:null}):++reads===1&&failure==='unavailable'?Response.json({error:'unavailable'},{status:503}):Response.json({source:'transport-only'}));
+ if(failure==='verification')vi.mocked(openPublicLedgerSource).mockRejectedValueOnce(Error('verification failed'));
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<LedgerProofControls/>));expect(reads).toBe(1);
+  await act(async()=>window.dispatchEvent(new Event('online')));expect(reads).toBe(2);expect(retainPublicLedgerReview).toHaveBeenCalledOnce();
+  await act(async()=>window.dispatchEvent(new Event('online')));expect(reads).toBe(2);
+  expect(fetch.mock.calls.some(([,init])=>init?.method==='POST')).toBe(false);
+ }finally{act(()=>root.unmount());fetch.mockRestore();}
 });

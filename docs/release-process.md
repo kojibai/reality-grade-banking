@@ -12,3 +12,16 @@ Record the Bank commit, exact lockfile, coordinated Receiz package versions, reg
 Retain the prior release and exact pending-intent compatibility. A rollback must preserve possibly committed operations and their original recovery coordinates. Do not discard pending funding/redemption records or generate fresh intents to simplify rollback.
 
 Public Ledger releases must also follow [public-ledger-release.md](public-ledger-release.md). Keep exact-head native disclosure approval separate from explicit user publication and from financial qualification. Never populate the approval setting automatically.
+
+## Coordinated SDK, MCP and AI Skills release
+
+The v130 launch remains a separate release step once its packages and source are available. Prepare and qualify on v129 now; retain its valid originals and pending operation/recovery coordinates.
+
+1. Pin the same exact published version of `@receiz/sdk`, `@receiz/mcp-server` and `@receiz/ai-skills` together; update and review the lockfile. Review the actual package changelogs, schemas, documentation and tool/skill contracts.
+2. Update the matching retained native source distribution and provenance manifest, original source/license notices, generated verifier/note modules and their hashes. Keep previous artifact formats/resources required to reopen existing files. The version-specific native rebuild/resource scripts, receiver profile and financial/account-proof format guards require deliberate compatibility review. Do not change a supported proof's version field to relabel it.
+3. Run `npm run release:check`. It rejects mixed dependency pins, lockfile entries, installed package metadata or native source manifest and retained SDK package versions. The build repeats this check. Schema pages, catalogue, exact-byte schema ZIP, SHA-256 manifest, package instructions and pinned documentation links are regenerated from the validated installed release. No alternate schema or admission rules are added.
+4. Re-run all reference, original-artifact, receiver, offline custody/replay/recovery, Ledger publication/Crystal continuation and account-proof tests against the new packages. Preserve tests for retained v129 originals. Inspect changes in explicit version guards and compiled evidence rather than substituting strings across protocol data.
+5. Build and verify the source archive, proving-resource provenance, licenses, offline resources, conformance output and mobile/desktop flows. Confirm `/schemas/`, every exact schema download, its reference closure, ZIP and manifest against the new installed SDK. Confirm the matching SDK/MCP/AI Skills workflows and account UI version labels. Keep the build's schema inventory/digests as release evidence.
+6. Verify the deployed native source, publication service and qualified financial routes using their real complete sources, then exercise the deployed Bank build. Record any unavailable service or incomplete historical source explicitly. A local test, package-version match or projection does not establish live operational qualification.
+
+Only then publish the official coordinated launch. The v129 readiness work does not claim that unreleased v130 packages or pending source services have been tested.
