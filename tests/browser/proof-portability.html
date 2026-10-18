@@ -23,6 +23,8 @@ document.querySelector('#run').onclick=async()=>{
   let selected;try{IDBObjectStore.prototype.getAll=function(){throw Error('A selected original must not scan all sources');};selected=await loadDepositSources(binding,{requireComplete:true,originalsOnly:true,digests:[originalDigest,originalDigest,'a'.repeat(64)]});}finally{IDBObjectStore.prototype.getAll=getAll;}
   check(selected.length===1&&await proofDigest(selected[0].bytes)===originalDigest,'Selected originals use exact keyed reads, deduplicate and preserve encrypted bytes without scanning');
   let wrongSelection=false;try{await loadDepositSources({artifactSha256:'f'.repeat(64)},{requireComplete:true,digests:[originalDigest]});}catch{wrongSelection=true;}check(wrongSelection,'Selected-source reads refuse another identity');
+  const payment={kind:'payment-receipt',filename:'payment.receiz-payment.json',bytes:bytes('test-only-no-financial-admission')};
+  await retainProofBatch(binding,[payment]);check((await loadProofArchive(binding)).some(row=>row.kind==='payment-receipt'&&new TextDecoder().decode(row.bytes)==='test-only-no-financial-admission'),'Payment receipts retain and reopen through the same encrypted proof archive');
   const repeat=await retainProofBatch(binding,[original,receipt]);check(repeat.added===0&&repeat.alreadyHeld===2,'Duplicate import is immutable and idempotent');
   const plan={applicationId:BANK_APPLICATION_ID,attemptId:'pending-fixture',exactPlanDigest:'b'.repeat(64)};
   await saveBankOperation(binding,{schema:'bank.execution-checkpoint.v1',operationId:plan.attemptId,plan,transitionSet:{},state:'unknown'},'new');

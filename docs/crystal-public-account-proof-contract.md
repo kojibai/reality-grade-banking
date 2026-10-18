@@ -1,4 +1,4 @@
-# Public account proof: exact Crystal handoff
+# Public account proof: source and disclosure contract
 
 Bankeiz uses SDK, MCP and AI skills **129.0.0**. This integration needs no financial command, SQL migration, new verifier root or package-version change. Receiz/Crystal source production remains in its owning task; this Bankeiz commit does not modify that branch.
 
@@ -6,7 +6,7 @@ Bankeiz uses SDK, MCP and AI skills **129.0.0**. This integration needs no finan
 
 Expose a dedicated **public native account statement** derived from one accepted account/journal snapshot. Identity binding, Reserve cents, Settlement micro-Phi, full accepted transaction history and account head must refer to that same snapshot. A wallet response, cache, user-supplied amount or browser-signed summary is insufficient.
 
-Supply the exact native writer's public ownership coordinate and an independently reopened production specimen. `ACCOUNT_PROOF_WRITERS` in `src/receiz/account-proof-policy.ts` is intentionally empty until that writer/projection is qualified. Populate it in a reviewed Bankeiz commit; a source/API response cannot pick its own trusted writer. No secret environment variable is needed.
+Native v2 statements use the existing pinned financial-root signature in addition to canonical Record → Seal verification. `ACCOUNT_PROOF_WRITERS` is the separate legacy v1 writer allowlist; it stays empty and does not block requesting a v2 source. A source response never selects its own trusted root. See [native payment and account-proof wiring](native-payment-api.md) for trusted source selection and current coverage.
 
 This is **writer-attested account evidence at an accepted head**. It is not a new spendable balance, payment capability, independent replay of every underlying operation, legal identity verification, deposit guarantee or proof that no later activity exists. The pinned writer must already be authoritative for admitted account state; any user's otherwise valid native seal is insufficient.
 
@@ -105,13 +105,13 @@ Receiz's `app/lib/wallet/bankNotes/accountProofSharing.ts` composes these disclo
 
 The four HTTP routes above are implemented through `accountProofHttp.server.ts` and `accountProofApi.server.ts`. Private requests reuse the existing v129 proof-authority bearer checks, including admitted owner, key, application and scopes. Anonymous reads do not load private authentication. Bodies are bounded to 64 KiB for sharing commands; all account-proof responses are non-cacheable. No request can select a user, writer or runtime. The Bank client recovers a lost publish/off response by reading the accepted status; it does not automatically submit a replacement command. Publication success still requires independently opening the anonymous original.
 
-Production source selection is unfinished. `accountProofRuntime.server.ts` starts with no runtime and exposes `installBankAccountProofRuntimeForServer` only for trusted native startup. Until the qualified source producer and shared durable writer are composed there, valid private reads and anonymous source reads return structured HTTP 503. An unavailable source never becomes an invented zero account. Route and disclosure tests do not enable the public writer pin or financial execution.
+Trusted native startup now selects the existing account-proof producer and the shared durable disclosure writer when the same absolute account/wallet source directory and registered application are configured. Explicit trusted runtime installation remains supported. No HTTP caller can install a runtime or choose a source directory. The current native producer supports complete wallet-only scope and refuses unsupported profile/artifact/lawful-value history. Missing scope is not an empty portfolio.
 
-The owning native runtime must supply its actual shared durable store, exact source custody, admitted caller/key binding and qualified writer coordinate. It must update `bankWalletAccountAggregate(applicationId,keyId)` in the same native wallet transaction; a separately mirrored head is insufficient. No store is initialized by a missing wallet observation. The real-v129 test seals use ephemeral roots and zero-value disclosure specimens, with an in-memory admission store. They establish signature and coordination behavior, not persistent-process recovery, financial authority or production writer qualification. Keep the Bank writer pin and financial gates closed until the required evidence below is supplied.
+The source tests now cover real native account/key and financial histories, exact public v2 source production, persistent-process sharing recovery, live updates and revocation with ephemeral test roots. This is local implementation evidence, not deployed financial or physical-device qualification. The v1 writer allowlist remains empty; native v2 always requires its pinned financial-domain signature.
 
 Each digest URL retains its first publication's consent epoch. An old static link cannot become live, and a revoked link cannot restart live updates through reusing its artifact. New consent needs a freshly sealed public artifact, even when the underlying wallet head is unchanged. The source producer must support that refresh without a wallet write. Exact accepted request retries remain idempotent; an unchanged live-worker source is a read-only retry within its current epoch.
 
-## Evidence Crystal must deliver before enabling the pin
+## Production evidence to retain
 
 1. A real native specimen independently opened under unmodified v129 roots, with genuine writer/identity binding, same-head balances and equivalence to the complete native journal projection.
 2. Whole-carrier credential-leakage checks. The exact source and PNG must fail identity login/import and authorize no payment.
@@ -119,4 +119,4 @@ Each digest URL retains its first publication's consent epoch. An old static lin
 4. Anonymous snapshot/latest routes, explicit publication consent, CAS/idempotent lost-response recovery, future publication only inside live consent, and revocation across restart/cache/worker races. No funds move.
 5. PNG round-trip through `/verify/`, QR decoding, offline carried-source verification and immutable URL binding. New exports require source age **≤30 Kai pulses**; older valid files remain historical evidence, never latest-head assertions.
 
-Bankeiz tests cover actual installed-v129 forgery refusal and separately labeled simulated positive composition. **Simulations do not qualify a native writer or enable its pin.** Existing v129 Record -> Seal/verifier primitives can carry this statement without a package release. Missing native writer/disclosure capability belongs in the owning Crystal task; Bankeiz must not bypass it.
+Bankeiz tests cover actual installed-v129 forgery refusal and separately labeled composition; host tests reopen genuine native financial source fixtures. Neither substitutes for a deployed production specimen under the existing canonical roots. This contract uses v129 primitives without a package release.

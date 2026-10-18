@@ -1,5 +1,11 @@
 # Live bank conversion — observed state
 
+## October 17: native payment and account-proof wiring
+
+Send now composes the existing native shared writer with exact device-reviewed consent, canonical financial receipts, encrypted intent retention and read-only recovery. Account-proof private reads and anonymous sharing routes select the native producer at trusted startup; cold live refresh and revocation are tested. See [the current contract and limits](native-payment-api.md). The dated observations below are historical, not a current production qualification. Both repositories still require the user’s push and deployed verification; unsupported source scope remains unavailable.
+
+## Earlier observed checkpoints
+
 Native bank preparation now adds SDK custody-source checks, exact fractional/supply proposals, full Kai proof composition and encrypted native execution recovery. The requested live custody, transfers, sales and currency issuance remain unfinished; the existing bank UI is preserved. See [native-bank-domain-verification.md](native-bank-domain-verification.md) for the exact 2026-10-13 evidence and missing operator/backend/permission boundaries.
 
 The approved native public registration is **rc_uV6aT6wZJCQDspB0_SJ1DcEm**, with all 15 approved scopes, unchanged callbacks and no client secret. Its actual native grant/introspection succeeded for the existing bank ID. The one-line host qualification fix is now deployed on production: Vercel deployment `dpl_Dm425DqdLeAEH1nKFhGcmcbVerdz`, main commit `8f304fc5972076868c108778ca2851e3bc7fba58`, is READY and assigned to receiz.com. This empty trigger commit has exactly the same tree as fix commit `2058014de`. The user pushed both commits. The original missed Git deployment trigger remains unexplained.

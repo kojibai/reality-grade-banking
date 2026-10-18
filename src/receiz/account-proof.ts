@@ -1,7 +1,7 @@
 import type { ReceizIdentityPublicBinding, ReceizPortableSealedArtifactV124 } from '@receiz/sdk';
 import { loadReceiz } from './client';
 import { BANK_APPLICATION_ID } from './config';
-import { ACCOUNT_PROOF_EXPORT_AGE_PULSES, ACCOUNT_PROOF_MAX_BYTES, ACCOUNT_PROOF_WRITERS } from './account-proof-policy';
+import { ACCOUNT_PROOF_EXPORT_AGE_PULSES, ACCOUNT_PROOF_MAX_BYTES, ACCOUNT_PROOF_WRITERS, ACCOUNT_PROOF_PATH } from './account-proof-policy';
 
 import {inspectAccountStatement as inspectNativeAccountStatement,type AccountStatement} from './account-proof-statement';
 export type {AccountStatement,AccountProofTransaction} from './account-proof-statement';
@@ -60,3 +60,20 @@ export async function exportAccountProof(proof: VerifiedAccountProof): Promise<{
   return { bytes: new Uint8Array(bytes), filename: `bankeiz-account-proof-${proof.sourceDigest.slice(0, 16)}.json` };
 }
 export const accountProofSourceConfigured = () => ACCOUNT_PROOF_WRITERS.length > 0;
+
+/** Read transport is not financial admission. Native v2 sources authenticate
+ * their financial projection against the existing pinned roots; the separate
+ * legacy v1 writer allowlist must not prevent that source from being fetched. */
+export async function readAccountProof(input: {
+  request(path:string):Promise<unknown>;
+  assertOpen():void;
+  owner:Pick<ReceizIdentityPublicBinding,'keyId'|'artifactOwnerReceizId'>;
+}):Promise<VerifiedAccountProof>{
+  input.assertOpen();
+  const response=await input.request(`${ACCOUNT_PROOF_PATH}?applicationId=${encodeURIComponent(BANK_APPLICATION_ID)}`);
+  input.assertOpen();
+  const bytes=new TextEncoder().encode(JSON.stringify(response));
+  if(bytes.length>ACCOUNT_PROOF_MAX_BYTES)fail('CAPACITY');
+  const proof=await verifyAccountProof(new File([bytes],'account-proof.json'),input.owner);
+  input.assertOpen();return proof;
+}

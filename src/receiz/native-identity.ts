@@ -1,4 +1,4 @@
-import { loadOfflineNoteState, saveOfflineNoteState, loadPreparedNoteState, savePreparedNoteState, saveOfflineNoteBlob, loadOfflineNoteBlob } from './identity-vault';
+import { loadNativePaymentState, saveNativePaymentState, loadOfflineNoteState, saveOfflineNoteState, loadPreparedNoteState, savePreparedNoteState, saveOfflineNoteBlob, loadOfflineNoteBlob } from './identity-vault';
 import { createBankNoteAttestationFetch } from './note-attestation-transport';
 import { loadBankNoteRuntime, bankNoteArtwork, type BankOfflineNotes, type BankNoteRuntime } from './offline-notes';
 import type { ReceizClient, ReceizIdentityPublicBinding, ReceizKeyFile, ReceizIdentityAccountProjection } from '@receiz/sdk';
@@ -327,7 +327,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     return holdProof(new File([new Uint8Array(sealed.artifactBytes)], sealed.filename, { type: sealed.mimeType }));
   }
   let nativeConnectionBusy = false;
-  const executionRecovery = createBankExecutionRecovery({
+  const legacyExecutionRecovery = createBankExecutionRecovery({
     store: deviceBankExecutionStore(binding),
     connect: () => connectClient(BANK_RECOVERY_SCOPES, BANK_RECOVERY_CONSENT),
     assertOpen: () => { if (lifetime.signal.aborted) throw new Error('BANK_EXECUTION_IDENTITY_CLOSED'); },
@@ -336,6 +336,18 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       return navigator.locks.request(`receiz-bank-execution:${binding.artifactSha256}`, { signal: lifetime.signal }, operation);
     },
   });
+  let nativePaymentsPromise: Promise<ReturnType<typeof import('./native-payment').createNativePayments>> | undefined;
+  const nativePayments = () => nativePaymentsPromise ??= import('./native-payment').then(({createNativePayments})=>createNativePayments({
+    ownerReceizId:binding.artifactOwnerReceizId,keyId:binding.keyId,
+    assertNoOtherPending:async()=>{const retained=await deviceBankExecutionStore(binding).load();if(retained&&['prepared','unknown'].includes(retained.state))throw Error('BANK_EXECUTION_PENDING');},
+    assertOpen:()=>{if(lifetime.signal.aborted)throw Error('BANK_EXECUTION_IDENTITY_CLOSED');},
+    store:{read:()=>loadNativePaymentState(binding),write:(value,expected)=>saveNativePaymentState(binding,value,expected)},
+    sign:challengeB64Url=>unsigned.identity.signLoginProof({keyFile:transportKeyFile,passphrase:transportPhrase,challengeB64Url}),
+    request:async(path,body,readOnly)=>{const connected=await connectClient(readOnly?BANK_RECOVERY_SCOPES:BANK_NATIVE_SCOPES,readOnly?BANK_RECOVERY_CONSENT:BANK_NATIVE_CONSENT);if(lifetime.signal.aborted)throw Error('BANK_EXECUTION_IDENTITY_CLOSED');return connected.request(path,{method:'POST',body});},
+    lock:async operation=>{if(!navigator.locks)throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');return navigator.locks.request(`receiz-bank-execution:${binding.artifactSha256}`,{signal:lifetime.signal},operation);},
+  })).catch(error=>{nativePaymentsPromise=undefined;throw error;});
+  const selectedRecovery=async()=>{const legacy=await legacyExecutionRecovery.status();if(legacy&&['prepared','unknown'].includes(legacy.state))return legacyExecutionRecovery;const payments=(await nativePayments()).recovery;return await payments.status()?payments:legacyExecutionRecovery;};
+  const executionRecovery: ReturnType<typeof createBankExecutionRecovery>={status:async()=> (await selectedRecovery()).status(),resolve:async approved=>(await selectedRecovery()).resolve(approved),exportRecovery:async()=>(await selectedRecovery()).exportRecovery()};
   let proofLibraryPromise: Promise<import('./proof-library').ProofLibrary> | undefined;
   const proofLibrary = () => proofLibraryPromise ??= import('./proof-library').then(({ createProofLibrary }) => createProofLibrary({
     binding, assertOpen: () => { if (lifetime.signal.aborted) throw Error('PROOF_IDENTITY_CLOSED'); },
@@ -409,7 +421,8 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     openSubject: file => openBankSubjectSource(file, ownerAdmission),
     saveSource: (exact, filename, digest, role) => saveDepositSource(binding, exact, filename, digest, role),
   });
-  const operations = () => operationsPromise ??= import('./bank-operations').then(({ createBankOperations }) => createBankOperations({
+  const operations = () => operationsPromise ??= import('./bank-operations').then(async ({ createBankOperations }) => createBankOperations({
+    payments:await nativePayments(),
     ownerReceizId: binding.artifactOwnerReceizId, store: deviceBankExecutionStore(binding),
     assertOpen: () => { if (lifetime.signal.aborted) throw Error('BANK_EXECUTION_IDENTITY_CLOSED'); },
     context: async rails => {
@@ -442,15 +455,11 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   })).catch(error => { operationsPromise = undefined; throw error; });
   async function accountProof() {
     const module = await import('./account-proof');
-    if (!module.accountProofSourceConfigured()) throw Error('ACCOUNT_PROOF_SOURCE_UNAVAILABLE');
-    const current = await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT);
-    const { ACCOUNT_PROOF_PATH } = await import('./account-proof-policy');
-    const response = await current.request(`${ACCOUNT_PROOF_PATH}?applicationId=${encodeURIComponent(BANK_APPLICATION_ID)}`, { method: 'GET' });
-    if (lifetime.signal.aborted) throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED');
-    const encoded = new TextEncoder().encode(JSON.stringify(response));
-    const result = await module.verifyAccountProof(new File([encoded], 'account-proof.json'), binding);
-    if (lifetime.signal.aborted) throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED');
-    return result;
+    const assertOpen=()=>{if(lifetime.signal.aborted)throw Error('ACCOUNT_PROOF_IDENTITY_CLOSED');};
+    return module.readAccountProof({owner:binding,assertOpen,request:async path=>{
+      const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);assertOpen();
+      return current.request(path,{method:'GET'});
+    }});
   }
   async function accountProofSharing() {
     const { createAccountProofSharing } = await import('./account-proof-sharing');
