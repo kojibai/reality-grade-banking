@@ -81,17 +81,27 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const lifetime = new AbortController();
   const {createLocalAccountLedger,canAdoptAccountLedgerObservation,mergeAccountLedgerObservation}=await import('./account-ledger');
   const localLedger=createLocalAccountLedger({owner:binding,read:()=>loadAccountLedgerState(binding),write:(value,expected)=>saveAccountLedgerState(binding,value,expected),assertOpen:()=>{if(lifetime.signal.aborted)throw Error('ACCOUNT_LEDGER_IDENTITY_CLOSED');}});
-  let restoredLedgerUid: string | null = null;
-  try {
-    const restored = await localLedger.restore();
-    if (restored) {
+  let accountUid: string | null = null;
+  async function restoreLedger() {
+    try {
+      const restored = await localLedger.restore();
+      if (!restored || lifetime.signal.aborted) return;
       if (canAdoptAccountLedgerObservation(knownWallet, restored.observation)) {
         const observation = mergeAccountLedgerObservation(knownWallet, restored.observation);
-        knownWallet = observation;
+        if (observation !== knownWallet) {
+          const financialChange = !knownWallet || (['totalUsdCents','reserveUsdCents','settlementUsdCents','balancePhiMicro','kaiUpulse'] as const).some(key=>observation.wallet[key]!==knownWallet!.wallet[key]);
+          knownWallet = observation; if (financialChange) walletRevision++;
+          void persistWalletObservation(observation).catch(()=>{});
+          if (typeof dispatchEvent === 'function') dispatchEvent(new Event('bankeiz:account-observation'));
+        }
       }
-      if (knownWallet?.wallet.userId === restored.observation.wallet.userId) restoredLedgerUid = restored.observation.wallet.userId;
-    }
-  } catch { /* Missing/corrupt optional history never replaces the verified identity or invents a balance. */ }
+      if (!accountUid && knownWallet?.wallet.userId === restored.observation.wallet.userId) accountUid = restored.observation.wallet.userId;
+    } catch { /* Optional source enrichment cannot replace the verified identity or invent a balance. */ }
+  }
+  // A retained display observation already supplies the first account frame.
+  // Reopening the full original enriches it without delaying local entry.
+  const restoringLedger = restoreLedger();
+  if (!knownWallet) await restoringLedger;
 
   const heldFetch: typeof fetch = (input, init) => nativeFetch(input, { ...init, signal: AbortSignal.any([lifetime.signal, AbortSignal.timeout(60_000)]) });
   const unsigned = sdk.createReceizClient({ applicationId: BANK_APPLICATION_ID, baseUrl: 'https://receiz.com', fetchImpl: heldFetch });
@@ -131,7 +141,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     transportOpening = attempt;
     try { await attempt; } finally { if (transportOpening === attempt) transportOpening = undefined; }
   }
-  let client: ReceizClient | null = null, clientApplicationId: string | null = null, expiresAtKai = 0, accountUid: string | null = restoredLedgerUid, grantedScopes: readonly string[] = [];
+  let client: ReceizClient | null = null, clientApplicationId: string | null = null, expiresAtKai = 0, grantedScopes: readonly string[] = [];
   let presentationUsername = keyFile.owner.username;
   async function openClient(scopes: readonly string[], statement: string, applicationId: string = BANK_APPLICATION_ID) {
     if (!consentApproved || lifetime.signal.aborted) throw new Error('Receiz account read consent is required.');
@@ -197,7 +207,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       && /^\d{1,30}$/.test(wallet.kaiUpulse) && /^\d{1,30}$/.test(knownWallet.wallet.kaiUpulse)
       && BigInt(wallet.kaiUpulse) < BigInt(knownWallet.wallet.kaiUpulse);
     if ((hasLocalWalletHead() || olderSharedCoordinate || startedRevision !== walletRevision && !laterSharedCoordinate) && knownWallet) return knownWallet.wallet;
-    if (!lifetime.signal.aborted) { const observedAt = new Date().toISOString(); const prior = knownWallet?.source === 'account-genesis' ? knownWallet.history?.map(point => ({ ...point, userId: wallet.userId })) ?? [] : knownWallet?.history ?? []; const history = appendWalletPoint(prior, wallet, observedAt, String(sdk.receizKaiNow().uPulse)); knownWallet = { wallet, observedAt, history }; await persistWalletObservation(knownWallet); }
+    if (!lifetime.signal.aborted) { const observedAt = new Date().toISOString(); const prior = knownWallet?.source === 'account-genesis' ? knownWallet.history?.map(point => ({ ...point, userId: wallet.userId })) ?? [] : knownWallet?.history ?? []; const history = appendWalletPoint(prior, wallet, observedAt, String(sdk.receizKaiNow().uPulse)); knownWallet = { wallet, observedAt, history }; void persistWalletObservation(knownWallet).catch(()=>{}); }
     return startedRevision !== walletRevision && knownWallet ? knownWallet.wallet : wallet;
   }
   let noteRuntime: BankNoteRuntime | undefined;

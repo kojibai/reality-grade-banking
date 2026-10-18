@@ -1,7 +1,7 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bankeiz chart history regression fixture</title></head>
 <body><div class="console"><p style="padding:16px 21px;color:#68778b;font:12px system-ui">Chart regression fixture · synthetic balances · no account or money movement</p>
-<div style="padding:0 21px 16px"><label for="scenario">History fixture </label><select id="scenario"><option value="recent">Two hours of observations</option><option value="long">Four hundred days of observations</option><option value="single">One observation</option></select></div>
+<div style="padding:0 21px 16px"><label for="scenario">History fixture </label><select id="scenario"><option value="recent">Two hours of observations</option><option value="long">Four hundred days of observations</option><option value="sparse">Sparse recent account history</option><option value="single">One observation</option></select></div>
 <main class="main-panel" id="fixture"></main></div><script type="module">
 import React from 'react';
 import {createRoot} from 'react-dom/client';
@@ -11,7 +11,7 @@ const end=Date.UTC(2026,9,17,12),noop=()=>{},root=createRoot(document.querySelec
 const recent=[{hours:2,total:'100000',reserve:'40000'},{hours:1.5,total:'108000',reserve:'40000'},{hours:1,total:'103000',reserve:'30000'},{hours:.5,total:'118000',reserve:'30000'},{hours:0,total:'120000',reserve:'30000'}];
 const long=[{hours:400*24,total:'40000',reserve:'40000'},{hours:300*24,total:'55000',reserve:'40000'},{hours:80*24,total:'70000',reserve:'40000'},{hours:20*24,total:'85000',reserve:'40000'},{hours:6*24,total:'90000',reserve:'40000'},...recent];
 function render(){
- const mode=document.querySelector('#scenario').value,rows=mode==='long'?long:mode==='single'?recent.slice(-1):recent;
+ const mode=document.querySelector('#scenario').value,rows=mode==='long'?long:mode==='single'?recent.slice(-1):mode==='sparse'?[long[0],recent.at(-1)]:recent;
  const history=rows.map(row=>({userId:'chart-fixture',at:new Date(end-row.hours*3600000).toISOString(),kaiUPulse:null,totalUsdCents:row.total,reserveUsdCents:row.reserve,settlementUsdCents:String(BigInt(row.total)-BigInt(row.reserve))}));
  const last=history.at(-1),wallet={...last,balancePhiMicro:'1',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:null,kaiUpulse:null};
  root.render(React.createElement(LiveAccount,{key:mode,wallet,walletHistory:history,busy:false,error:null,observedAt:last.at,onRefresh:noop,onSend:noop,onReceive:noop,onBalance:noop,onAssets:noop,onLedger:noop}));

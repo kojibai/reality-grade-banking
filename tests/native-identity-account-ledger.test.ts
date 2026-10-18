@@ -26,6 +26,34 @@ it('restores a retained verified Ledger before any account continuation or walle
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
  try{expect(identity.knownWallet()?.wallet.reserveUsdCents).toBe('600');expect(p.continueId).not.toHaveBeenCalled();expect(p.wallet).not.toHaveBeenCalled();}finally{identity.dispose();}
 });
+it('opens a cached account without waiting for optional full-source verification',async()=>{
+ p.known=observation(); let finish!:(value:unknown)=>void;
+ p.restore.mockReturnValue(new Promise(resolve=>{finish=resolve;}));
+ const opening=openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ const result=await Promise.race([opening.then(identity=>({identity})),new Promise<{identity:null}>(resolve=>setTimeout(()=>resolve({identity:null}),100))]);
+ try{expect(result.identity?.knownWallet()?.wallet.totalUsdCents).toBe('600');}
+ finally{finish(null);(result.identity??await opening).dispose();}
+});
+it('returns a received balance before optional encrypted display-cache persistence finishes',async()=>{
+ p.known=observation();let finish!:()=>void;p.save.mockReturnValue(new Promise<void>(resolve=>{finish=resolve;}));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ const reading=identity.readWallet();
+ const result=await Promise.race([reading,new Promise<null>(resolve=>setTimeout(()=>resolve(null),100))]);
+ try{expect(result?.totalUsdCents).toBe('800');expect(identity.knownWallet()?.history?.at(-1)?.totalUsdCents).toBe('800');}
+ finally{finish();await reading;identity.dispose();}
+});
+it('adds verified source history after entry without rewinding a later wallet response',async()=>{
+ p.known=observation();let finish!:(value:unknown)=>void;
+ p.restore.mockReturnValue(new Promise(resolve=>{finish=resolve;}));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('600');
+  await identity.readWallet();expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('800');
+  finish({proof,observation:observation('600','100000002')});
+  await new Promise(resolve=>setTimeout(resolve,0));
+  expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('800');
+ }finally{identity.dispose();}
+});
 it('retains the authenticated full source and paints its newer same-account balance',async()=>{
  p.known=observation('1000','100000001');
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);

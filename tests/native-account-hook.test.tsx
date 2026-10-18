@@ -54,6 +54,24 @@ it('paints the exact historical observation before canonical identity opening fi
   custody.fast.mockResolvedValue({ wallet: { userId: 'known-user', totalUsdCents: '321' }, observedAt: '2026-10-13T12:00:00Z' });
   await observe(async read => { expect(read().opening).toBe(true); expect(read().identity).toBeNull(); expect(read().wallet?.totalUsdCents).toBe('321'); await act(async () => { finish(null); }); expect(read().identity).toBeNull(); });
 });
+it('keeps the retained chart beside its balance through the first account paint and background refresh', async () => {
+  let finish!: (value: OpenIdentity) => void;
+  custody.restore.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  const wallet = { userId: 'known-user', totalUsdCents: '321', reserveUsdCents: '21', settlementUsdCents: '300', balancePhiMicro: '1000000', portfolioUsdCents: null, pnlUsdCents: null, withdrawableUsdCents: null, projectionComplete: true, pulse: '100', kaiUpulse: '100000002' };
+  const history = [{ ...wallet, at: '2026-10-18T10:00:00Z', kaiUPulse: '100000000' }, { ...wallet, at: '2026-10-18T12:00:00Z', kaiUPulse: '100000002' }];
+  const known = { wallet, history, observedAt: history[1].at } as NonNullable<ReturnType<OpenIdentity['knownWallet']>>;
+  custody.fast.mockResolvedValue(known);
+  const identity = held(() => new Promise(() => {})); identity.knownWallet = () => known;
+  await observe(async read => {
+    expect(read().wallet?.totalUsdCents).toBe('321'); expect(read().walletHistory).toEqual(history);
+    await act(async () => { finish(identity); });
+    expect(read().identity).toBe(identity); expect(read().walletHistory).toEqual(history);
+    await act(async () => { await read().refresh(); });
+    expect(read().walletHistory).toEqual(history);
+    await act(async () => { await read().forget(); });
+    expect(read().walletHistory).toEqual([]);
+  });
+});
 it('opens the verified identity immediately while the first remote wallet read is still pending', async () => {
   let finish!: (value: unknown) => void, known: ReturnType<OpenIdentity['knownWallet']> = null;
   const initial = new Promise(resolve => { finish = resolve; });

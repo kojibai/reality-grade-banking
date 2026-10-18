@@ -7,6 +7,22 @@ import { LiveAccount } from '../src/features/account/LiveAccount';
 import type { SharedWallet } from '../src/receiz/shared-wallet';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+it('shows a complete current-value line when a selected period contains only one observation',()=>{
+  const host=document.createElement('div'),root=createRoot(host);
+  const history=[{userId:'account',at:'2026-08-01T12:00:00Z',kaiUPulse:null,totalUsdCents:'10000',reserveUsdCents:'0',settlementUsdCents:'10000'},{userId:'account',at:'2026-10-18T12:00:00Z',kaiUPulse:null,totalUsdCents:'12000',reserveUsdCents:'0',settlementUsdCents:'12000'}];
+  const wallet={userId:'account',totalUsdCents:'12000',reserveUsdCents:'0',settlementUsdCents:'12000'} as SharedWallet;
+  try{
+    act(()=>root.render(<BalanceChart wallet={wallet} history={history} observedAt={history[1].at}/>));
+    for(const period of ['1D','1W','1M']){
+      act(()=>[...host.querySelectorAll('button')].find(button=>button.textContent===period)!.click());
+      const svg=host.querySelector('svg')!;
+      expect(svg.querySelector('path[fill="none"]')!.getAttribute('d')).toBe('M12,62 L308,62');
+      expect(svg.getAttribute('aria-label')).toContain('from 120 to 120');
+      expect(host.querySelector('.chart-observation-note')?.textContent).toContain('Earlier account history');
+      expect(host.querySelector('.chart-period-change')).toBeNull();
+    }
+  }finally{act(()=>root.unmount());}
+});
 it('fills the plotting width with the available real observations for every selected period',()=>{
   const host=document.createElement('div'),root=createRoot(host);
   const end=Date.UTC(2026,9,17,12),history=[2,1,0].map((hours,index)=>({userId:'account',at:new Date(end-hours*3600000).toISOString(),kaiUPulse:null,totalUsdCents:String(10000+index*1000),reserveUsdCents:'0',settlementUsdCents:String(10000+index*1000)}));
