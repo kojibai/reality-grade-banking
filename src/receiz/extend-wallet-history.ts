@@ -14,6 +14,11 @@ export function extendWalletHistory(previous:WalletObservation|null,wallet:Share
   ||wallet.userId!==previous.wallet.userId||wallet.kaiUpulse!==previous.wallet.kaiUpulse
   ||basis.balancePhiMicro!==wallet.balancePhiMicro||basis.reserveUsdCents!==wallet.reserveUsdCents||!basis.settlementPhiMicro)return next;
  try{
+  // A normal pulse advance needs only its new endpoint. Keep the held past
+  // exactly as published; the longer-gap path samples only an unseen interval.
+  if(BigInt(kaiUPulse)-BigInt(basis.endKaiUPulse)<=2_000_000n){
+   next.historyBasis={...basis,endKaiUPulse:kaiUPulse};next.walletScope=previous.walletScope;return next;
+  }
   const extension=projectHistoricalWallet({userId:wallet.userId,endKaiUPulse:kaiUPulse,transactions:[{kaiUPulse:basis.endKaiUPulse,reserveDeltaUsdCents:basis.reserveUsdCents,settlementDeltaPhiMicro:basis.settlementPhiMicro}]});
   next.history=appendWalletPoint(mergeWalletPoints([previous.history??[],extension],wallet.userId),wallet,observedAt,kaiUPulse);
   next.historyBasis={...basis,endKaiUPulse:kaiUPulse};

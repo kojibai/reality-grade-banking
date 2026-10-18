@@ -1,4 +1,5 @@
-import {expect,it} from 'vitest';
+import {expect,it,vi} from 'vitest';
+import * as historyModel from '../src/receiz/historical-wallet';
 import {extendWalletHistory} from '../src/receiz/extend-wallet-history';
 import {projectHistoricalWallet,historicalWalletUsdRate} from '../src/receiz/historical-wallet';
 import {quoteReceizDisplayUsdV122} from '@receiz/sdk';
@@ -18,6 +19,14 @@ it('extends the actual admitted holding prefix through a same-head wallet read w
  expect(next.history!.filter(point=>BigInt(point.kaiUPulse!)>BigInt(end)).length).toBeGreaterThan(100);
  expect(next.history!.at(-1)).toMatchObject({kaiUPulse:now,totalUsdCents:wallet.totalUsdCents});
  expect(next.walletScope).toBe('native-full');
+});
+it('retains every old point and appends only the latest point on an ordinary pulse advance',()=>{
+ const prior=source(),nextKai=(BigInt(end)+1000000n).toString(),calculate=vi.spyOn(historyModel,'projectHistoricalWallet');
+ try{
+  const next=extendWalletHistory(prior,prior.wallet,walletPointTime(nextKai),nextKai);
+  expect(calculate).not.toHaveBeenCalled();expect(next.history).toHaveLength(prior.history!.length+1);
+  expect(next.history!.slice(0,-1)).toEqual(prior.history);expect(next.historyBasis?.endKaiUPulse).toBe(nextKai);
+ }finally{calculate.mockRestore();}
 });
 it.each(['head','units','reserve','foreign','uncovered'])('cannot infer missing financial movements for changed %s',kind=>{
  const prior=source(),wallet={...prior.wallet};
