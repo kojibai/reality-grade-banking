@@ -538,7 +538,10 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
         if(retained.proof.sourceDigest===proof.sourceDigest&&walletRevision===revision&&knownWallet===before&&canAdoptAccountLedgerObservation(before,retained.observation)){
           const observation=mergeAccountLedgerObservation(before,retained.observation);
           if(observation!==before){
-            knownWallet=observation;walletRevision++;await persistWalletObservation(observation);assertOpen();
+            // Chart enrichment preserves the wallet and source head. Repaint it
+            // without invalidating a pending honest read at that same head.
+            const headChanged=observation.wallet!==before?.wallet||observation.source!==before?.source||observation.localHeadDigest!==before?.localHeadDigest;
+            knownWallet=observation;if(headChanged)walletRevision++;await persistWalletObservation(observation);assertOpen();
             if(typeof dispatchEvent==='function')dispatchEvent(new Event('bankeiz:account-observation'));
           }
         }

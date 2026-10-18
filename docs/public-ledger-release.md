@@ -106,3 +106,25 @@ Focused tests use actual v129 canonical sources through a real HTTP listener.
 Authentication, exact originals, repeated consent-bound publication, restart,
 source unavailability, fixed-origin forwarding and response capacity passed.
 A software pass does not claim that production source activation is complete.
+
+## Availability and retained originals
+
+A remote source outage does not invalidate an original already verified and held
+locally. Memory Crystal export opens that retained complete source first and
+saves it without waiting for a network timeout. A background request may retain a
+verified continuation for the next export; it cannot replace an open review,
+change publication consent or announce local bytes as publicly published.
+A source link may open a locally retained original only when its digest matches
+that exact link. Failed requests are released so the next explicit use can retry.
+
+The intended Crystal hostname is `https://crystal.receiz.com`. The service was
+not deployed at this verification checkpoint. A current-source 503 remains a
+truthful unavailable response until the source host and secure connection are
+installed; public activity, local file inspection, retention and export of a
+held complete original remain usable. This API is deliberately outside the
+service-worker cache.
+
+The API entry now includes the strict Ledger relay directly. The release check
+executes the emitted Vercel function against exact-original, discovery and
+unavailable responses, including the no-private-header boundary. A successful
+frontend build alone is insufficient evidence that this API route was emitted.

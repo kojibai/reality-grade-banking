@@ -68,7 +68,26 @@ it('does not invalidate an in-flight wallet read when account-source adoption ch
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
  try{const pending=identity.readWallet();await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));await identity.accountProof!();finish({ok:true,wallet:{userId:'bound-user',balanceUsd:'8.00',balancePhiMicro:'4000000',valueStates:{settledBalanceUsdCents:'800',ecosystemBalanceUsdCents:'0'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'100000003'}}});await pending;expect(identity.knownWallet()?.wallet.reserveUsdCents).toBe('800');}finally{identity.dispose();}
 });
-it.each([['100000003','800'],['100000001','600']])('compares a delayed wallet coordinate %s against a newly verified Ledger checkpoint',async(kai,expected)=>{
+it('keeps restored history visible while a pending same-coordinate wallet repricing completes',async()=>{
+ const current=observation(),latest={userId:'bound-user',at:new Date(Date.now()-60_000).toISOString(),kaiUPulse:'100000002',totalUsdCents:'800',reserveUsdCents:'600',settlementUsdCents:'200'};
+ current.observedAt=latest.at;current.wallet={...current.wallet,totalUsdCents:'800',settlementUsdCents:'200'};current.history=[latest];
+ const historical={...latest,at:new Date(Date.now()-3_600_000).toISOString(),kaiUPulse:'100000001',totalUsdCents:'700',settlementUsdCents:'100'};
+ p.known=current;p.retain.mockResolvedValue({proof,observation:{...current,history:[historical,latest]}});
+ let finish!:(value:unknown)=>void;p.wallet.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+ const repaint=vi.fn();vi.stubGlobal('dispatchEvent',repaint);
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  const pending=identity.readWallet();await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));
+  await identity.accountProof!();
+  expect(identity.knownWallet()?.history).toEqual([historical,latest]);expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('800');
+  expect(repaint.mock.calls.some(([event])=>event.type==='bankeiz:account-observation')).toBe(true);
+  finish({ok:true,wallet:{userId:'bound-user',balanceUsd:'9.00',balancePhiMicro:'3000000',valueStates:{settledBalanceUsdCents:'600',ecosystemBalanceUsdCents:'300'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'100000002'}}});
+  expect((await pending).settlementUsdCents).toBe('300');
+  expect(identity.knownWallet()?.wallet).toMatchObject({totalUsdCents:'900',reserveUsdCents:'600',settlementUsdCents:'300',kaiUpulse:'100000002'});
+  expect(identity.knownWallet()?.history).toContainEqual(historical);expect(identity.knownWallet()?.history?.at(-1)?.settlementUsdCents).toBe('300');
+ }finally{identity.dispose();vi.unstubAllGlobals();}
+});
+it.each([['100000003','800'],['100000002','600'],['100000001','600']])('compares a delayed wallet coordinate %s against a newly verified Ledger checkpoint',async(kai,expected)=>{
  p.known=observation('1000','100000001');let finish!:(value:unknown)=>void;p.wallet.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
  try{const pending=identity.readWallet();await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));await identity.accountProof!();finish({ok:true,wallet:{userId:'bound-user',balanceUsd:'8.00',balancePhiMicro:'4000000',valueStates:{settledBalanceUsdCents:'800',ecosystemBalanceUsdCents:'0'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:kai}}});await pending;expect(identity.knownWallet()?.wallet.reserveUsdCents).toBe(expected);}finally{identity.dispose();}

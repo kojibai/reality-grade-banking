@@ -2,21 +2,25 @@ export type ChartPeriod = '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL';
 export const CHART_PERIODS: readonly ChartPeriod[] = ['ALL', '1D', '1W', '1M', '3M', '1Y'];
 const spans: Record<Exclude<ChartPeriod, 'ALL'>, number> = { '1D': 1, '1W': 7, '1M': 31, '3M': 93, '1Y': 366 };
 export interface ChartTimeRange { start: number; end: number; }
-/** Presentation window only. Missing earlier observations remain missing. */
+/** Fit the plot and its labels to real observations in the selected period. */
 export function chartPeriodBounds(points: readonly { at: string }[], period: ChartPeriod): ChartTimeRange | undefined {
-  if (!points.length) return undefined;
-  const end=Date.parse(points.at(-1)!.at),start=period==='ALL'?Date.parse(points[0].at):end-spans[period]*86400000;
+  const selected = chartPeriodPoints(points, period);
+  if (!selected.length) return undefined;
+  const start = Date.parse(selected[0].at), end = Date.parse(selected.at(-1)!.at);
   return Number.isFinite(start)&&Number.isFinite(end)&&end>=start?{start,end}:undefined;
 }
-export function chartDateLabel(at: number, period: ChartPeriod): string {
-  return new Date(at).toLocaleString(undefined, period==='1D'?{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}:{month:'short',day:'numeric',year:'numeric'});
+export function chartDateLabel(at: number, period: ChartPeriod, range?: ChartTimeRange): string {
+  const intraday = period === '1D' || !!range && range.end - range.start < 86_400_000;
+  const options: Intl.DateTimeFormatOptions = intraday ? {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'} : {month:'short',day:'numeric',year:'numeric'};
+  if (range && range.end > range.start && range.end - range.start < 60_000) options.second = '2-digit';
+  return new Date(at).toLocaleString(undefined, options);
 }
 export function chartPeriodPoints<T extends { at: string }>(points: readonly T[], period: ChartPeriod): T[] {
   if (period === 'ALL' || points.length < 2) return [...points];
   const start = Date.parse(points.at(-1)!.at) - spans[period] * 86_400_000;
   const first = points.findIndex(point => Date.parse(point.at) >= start);
   if (first <= 0) return [...points];
-  return points.slice(Date.parse(points[first].at) === start ? first : first - 1);
+  return points.slice(first);
 }
 export function chartChange(from: string, to: string) {
   const opening = BigInt(from), delta = BigInt(to) - opening;

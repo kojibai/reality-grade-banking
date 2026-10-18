@@ -3,7 +3,7 @@ import { heldAccountProofBytes, isVerifiedAccountProof, verifyAccountProof, type
 import { verifyAccountProofContinuation } from './account-proof-public';
 import { loadReceiz } from './client';
 import type { WalletObservation } from './wallet-observation';
-import { appendWalletPoint } from './wallet-series';
+import { appendWalletPoint, mergeWalletPoints, walletPointTime, type WalletPoint } from './wallet-series';
 
 type State = { schema: 'bank.account-ledger.v1'; accountUid: string; observedAt: string; sourceJson: string };
 type Owner = Pick<ReceizIdentityPublicBinding, 'keyId' | 'artifactOwnerReceizId'>;
@@ -27,10 +27,13 @@ export function canAdoptAccountLedgerObservation(current: WalletObservation | nu
  * amounts. A changed checkpoint is a new local observation of its source; its
  * adoption must not trim history that was recorded after the source was kept. */
 export function mergeAccountLedgerObservation(current: WalletObservation | null, next: WalletObservation): WalletObservation {
-  if (current && current.wallet.userId === next.wallet.userId && (['totalUsdCents', 'reserveUsdCents', 'settlementUsdCents', 'balancePhiMicro'] as const).every(key => current.wallet[key] === next.wallet[key])) return current;
+  const history = mergeWalletPoints([next.history ?? [], current?.history ?? []], next.wallet.userId);
+  if (current && current.wallet.userId === next.wallet.userId && (['totalUsdCents', 'reserveUsdCents', 'settlementUsdCents', 'balancePhiMicro'] as const).every(key => current.wallet[key] === next.wallet[key])) {
+    return history.length === (current.history?.length ?? 0) && history.every((point, index) => point === current.history?.[index]) ? current : { ...current, history };
+  }
   const observedAt = current && Date.parse(current.observedAt) >= Date.parse(next.observedAt)
     ? new Date(Math.max(Date.now(), Date.parse(current.observedAt) + 1)).toISOString() : next.observedAt;
-  return { ...next, observedAt, history: appendWalletPoint(current?.history ?? [], next.wallet, observedAt, next.history?.at(-1)?.kaiUPulse ?? next.wallet.kaiUpulse) };
+  return { ...next, observedAt, history: appendWalletPoint(history, next.wallet, observedAt, next.history?.at(-1)?.kaiUPulse ?? next.wallet.kaiUpulse) };
 }
 
 /** The existing native account statement verifies every signed movement from
@@ -49,7 +52,18 @@ export async function accountLedgerObservation(proof: VerifiedAccountProof, acco
     portfolioUsdCents: null, pnlUsdCents: null, withdrawableUsdCents: null, projectionComplete: true,
     pulse: (BigInt(lastEntryKaiUPulse) / 1_000_000n).toString(), kaiUpulse: lastEntryKaiUPulse,
   };
-  return { wallet, observedAt, history: [{ userId: accountUid, at: observedAt, kaiUPulse: c.kaiUPulse, totalUsdCents: wallet.totalUsdCents, reserveUsdCents: wallet.reserveUsdCents, settlementUsdCents: wallet.settlementUsdCents }] };
+  const history: WalletPoint[] = [];
+  let reserve = 0n, settlementPhi = 0n;
+  for (const row of proof.statement.transactions) {
+    reserve += BigInt(row.reserveDeltaUsdCents); settlementPhi += BigInt(row.settlementDeltaPhiMicro);
+    const financial = BigInt(row.reserveDeltaUsdCents) !== 0n || BigInt(row.settlementDeltaPhiMicro) !== 0n || BigInt(row.balanceDeltaPhiMicro ?? '0') !== 0n;
+    // The full statement supplies historical rail movements, but only its
+    // checkpoint supplies a USD quote. Zero native Settlement needs no quote;
+    // never reprice an earlier nonzero holding with the checkpoint's rate or
+    // turn an identity event into an opening dollar balance.
+    if (financial && settlementPhi === 0n) history.push({ userId: accountUid, at: walletPointTime(row.kaiUPulse), kaiUPulse: row.kaiUPulse, totalUsdCents: reserve.toString(), reserveUsdCents: reserve.toString(), settlementUsdCents: '0' });
+  }
+  return { wallet, observedAt, history: appendWalletPoint(history, wallet, walletPointTime(c.kaiUPulse), c.kaiUPulse) };
 }
 
 /** Encrypted storage beneath canonical verification. The host account alias is

@@ -3,6 +3,29 @@ import bankApi from '../api/index';
 import { BANK_APPLICATION_ID } from '../src/receiz/config';
 
 afterEach(() => vi.unstubAllGlobals());
+it('dispatches public Ledger originals, discovery and source refusals from the production entry', async () => {
+  const original = new Uint8Array([0, 255, 128, 10]);
+  const upstream = vi.fn<typeof fetch>()
+    .mockResolvedValueOnce(new Response(original, { headers: { 'Content-Type': 'application/octet-stream' } }))
+    .mockResolvedValueOnce(Response.json({ entries: [], nextCursor: null }))
+    .mockResolvedValueOnce(Response.json({ error: 'PUBLIC_LEDGER_SOURCE_UNAVAILABLE' }, { status: 503 }));
+  vi.stubGlobal('fetch', upstream);
+  const base = 'https://bank.example/api/bank/ledger-proof';
+  const source = await bankApi.fetch(new Request(base + '?source=' + 'a'.repeat(64), { headers: { Cookie: 'private', Authorization: 'Bearer private' } }));
+  expect(source.status).toBe(200); expect(new Uint8Array(await source.arrayBuffer())).toEqual(original);
+  expect((await bankApi.fetch(new Request(base + '?discovery=1&limit=1&cursor=0'))).status).toBe(200);
+  expect((await bankApi.fetch(new Request(base))).status).toBe(503);
+  expect(upstream.mock.calls.map(call => String(call[0]))).toEqual([
+    'https://receiz.com/api/ledger/proof?source=' + 'a'.repeat(64),
+    'https://receiz.com/api/ledger/proof?discovery=1&limit=1&cursor=0',
+    'https://receiz.com/api/ledger/proof',
+  ]);
+  for (const [, init] of upstream.mock.calls) {
+    expect(init?.credentials).toBe('omit');
+    expect(new Headers(init?.headers).has('cookie')).toBe(false);
+    expect(new Headers(init?.headers).has('authorization')).toBe(false);
+  }
+});
 it('distributes only the exact public account-proof route without private headers or cookie propagation', async () => {
   const wire = '{"schema":"public transport fixture"}', upstream = vi.fn<typeof fetch>(async () => new Response(wire)); vi.stubGlobal('fetch', upstream);
   const digest = 'a'.repeat(64), response = await bankApi.fetch(new Request(`https://bank.example/api/bank/account-proof?proof=${digest}`, { headers: { Authorization: 'Bearer private-test-only', Cookie: 'private-test-only' } }));

@@ -1,11 +1,21 @@
 import { expect, it } from 'vitest';
-import { chartChange, chartPeriodPoints, sampleChartIndices } from '../src/core/chart-history';
+import { chartChange, chartDateLabel, chartPeriodBounds, chartPeriodPoints, sampleChartIndices } from '../src/core/chart-history';
 
-it('selects periods by time, retaining the preceding boundary point and the real beginning for All', () => {
+it('selects only real observations inside each period and keeps the real beginning for All', () => {
   const points = [0, 1, 8, 9, 10].map(day => ({ at: new Date(Date.UTC(2026, 0, 1 + day)).toISOString(), value: day }));
   expect(chartPeriodPoints(points, 'ALL')).toEqual(points);
-  expect(chartPeriodPoints(points, '1W').map(point => point.value)).toEqual([1, 8, 9, 10]);
+  expect(chartPeriodPoints(points, '1W').map(point => point.value)).toEqual([8, 9, 10]);
   expect(chartPeriodPoints(points, '1D').map(point => point.value)).toEqual([9, 10]);
+});
+it('fits the domain to the available selected history instead of padding missing days', () => {
+  const points = ['2026-10-17T10:00:00Z', '2026-10-17T11:00:00Z', '2026-10-17T12:00:00Z'].map(at => ({ at }));
+  for (const period of ['1D', '1W', '1M', '3M', '1Y', 'ALL'] as const) {
+    expect(chartPeriodBounds(points, period)).toEqual({ start: Date.parse(points[0].at), end: Date.parse(points[2].at) });
+  }
+});
+it('distinguishes the real endpoints when history covers less than one minute', () => {
+  const range={start:Date.UTC(2026,9,17,12),end:Date.UTC(2026,9,17,12,0,30)};
+  expect(chartDateLabel(range.start,'ALL',range)).not.toBe(chartDateLabel(range.end,'ALL',range));
 });
 it('calculates exact signed change without inventing a percentage from a zero baseline', () => {
   expect(chartChange('10000', '12345')).toEqual({ deltaCents: '2345', percent: 23.45, trend: 'up' });
