@@ -1,10 +1,10 @@
 {
   "schema": "receiz.bank.native-runtime-build.v1",
   "version": "129.0.0",
-  "moduleSha256": "5786df0a17fe96798c1ed7897701acbf8435d44039cb8bd8b7c1eec7b9d56693",
-  "sourceTreeSha256": "5f8ec98178db38ebdee09301e8280c9fb4f54e17d54a24130e3492869daad55f",
+  "moduleSha256": "ce54ade3ca7cd8c5c5b4c9ca02f467da743708a8029ba1eed035f5a463af5e21",
+  "sourceTreeSha256": "8b5328e78f1990b871a22b5753e3c2fc4c3bd5fe4afa27adc8d0c951b12bbb6b",
   "inputs": 294,
-  "bytes": 2283497,
+  "bytes": 2284790,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -218,6 +218,20 @@
       "sha256": "d543ad9ce8da3144286974fb97f9a8d6a86953bca9da30b713708895ef4dfe3e",
       "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
       "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-native-note-denomination-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/preparedBrowser.ts",
+      "baseSha256": "438e391cd6077645ab3bc498d9845e4be19e7c644a38bef8b7e612bd9d37de79",
+      "sha256": "9baa851dd62841574aaa806a811b92b4bbe65732456282408d42b95327d8edb6",
+      "purpose": "Preserve exact remaining original Phi across mixed-rate Reserve denominations and interrupted prepared Note issuance. Derive legacy missing rate metadata from verified original source; keep custody, source verification and exact retained intent. SDK, MCP and AI skill packages remain unchanged."
+    },
+    {
+      "id": "bankeiz-native-note-denomination-v129",
+      "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
+      "baseSha256": "ce9128ccc105dd73e62406d3876085bfe9f1421866e3bc5e1f1bbf94cdbb5b3d",
+      "sha256": "5d2e51c752eee302a4057dad826c48d0d7c155cfbc36c31a5c2f3b1783c654e2",
+      "purpose": "Preserve exact remaining original Phi across mixed-rate Reserve denominations and interrupted prepared Note issuance. Derive legacy missing rate metadata from verified original source; keep custody, source verification and exact retained intent. SDK, MCP and AI skill packages remain unchanged."
     }
   ]
 }

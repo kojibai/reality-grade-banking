@@ -172,7 +172,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/preparedBrowser.ts",
-      "sha256": "438e391cd6077645ab3bc498d9845e4be19e7c644a38bef8b7e612bd9d37de79"
+      "sha256": "9baa851dd62841574aaa806a811b92b4bbe65732456282408d42b95327d8edb6"
     },
     {
       "path": "app/lib/wallet/bankNotes/preparedCashStorage.ts",
@@ -260,7 +260,7 @@
     },
     {
       "path": "app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
-      "sha256": "ce9128ccc105dd73e62406d3876085bfe9f1421866e3bc5e1f1bbf94cdbb5b3d"
+      "sha256": "5d2e51c752eee302a4057dad826c48d0d7c155cfbc36c31a5c2f3b1783c654e2"
     },
     {
       "path": "app/lib/wallet/noteClaimStatusLink.client.ts",
@@ -1406,7 +1406,7 @@
     },
     {
       "path": "app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
-      "sha256": "ce9128ccc105dd73e62406d3876085bfe9f1421866e3bc5e1f1bbf94cdbb5b3d"
+      "sha256": "5d2e51c752eee302a4057dad826c48d0d7c155cfbc36c31a5c2f3b1783c654e2"
     },
     {
       "path": "app/lib/wallet/noteClaimStatusLink.client.ts",
@@ -5196,8 +5196,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/preparedBrowser.ts",
-      "sha256": "438e391cd6077645ab3bc498d9845e4be19e7c644a38bef8b7e612bd9d37de79",
-      "bytes": 32778,
+      "sha256": "9baa851dd62841574aaa806a811b92b4bbe65732456282408d42b95327d8edb6",
+      "bytes": 35096,
       "mode": 420
     },
     {
@@ -5328,8 +5328,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
-      "sha256": "ce9128ccc105dd73e62406d3876085bfe9f1421866e3bc5e1f1bbf94cdbb5b3d",
-      "bytes": 38149,
+      "sha256": "5d2e51c752eee302a4057dad826c48d0d7c155cfbc36c31a5c2f3b1783c654e2",
+      "bytes": 38240,
       "mode": 420
     },
     {
@@ -12026,6 +12026,22 @@
       "sha256": "d543ad9ce8da3144286974fb97f9a8d6a86953bca9da30b713708895ef4dfe3e",
       "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
       "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-native-note-denomination-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/preparedBrowser.ts",
+      "baseSha256": "438e391cd6077645ab3bc498d9845e4be19e7c644a38bef8b7e612bd9d37de79",
+      "sha256": "9baa851dd62841574aaa806a811b92b4bbe65732456282408d42b95327d8edb6",
+      "purpose": "Preserve exact remaining original Phi across mixed-rate Reserve denominations and interrupted prepared Note issuance. Derive legacy missing rate metadata from verified original source; keep custody, source verification and exact retained intent. SDK, MCP and AI skill packages remain unchanged.",
+      "sourceCommit": "bdba7534707572ab38778fd704662eaa5f644dab"
+    },
+    {
+      "id": "bankeiz-native-note-denomination-v129",
+      "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
+      "baseSha256": "ce9128ccc105dd73e62406d3876085bfe9f1421866e3bc5e1f1bbf94cdbb5b3d",
+      "sha256": "5d2e51c752eee302a4057dad826c48d0d7c155cfbc36c31a5c2f3b1783c654e2",
+      "purpose": "Preserve exact remaining original Phi across mixed-rate Reserve denominations and interrupted prepared Note issuance. Derive legacy missing rate metadata from verified original source; keep custody, source verification and exact retained intent. SDK, MCP and AI skill packages remain unchanged.",
+      "sourceCommit": "bdba7534707572ab38778fd704662eaa5f644dab"
     }
   ]
 }

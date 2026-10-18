@@ -93,10 +93,21 @@ before any online credit or signing operation. Preserve those guards until:
    do not establish that boundary.
 5. Supported physical custody devices pass the disconnected application journey.
 
-The current Crystal worktree's Bank note selector still uses the compatibility
-store; the native shared-writer selection is not present there or on Receiz main.
-Do not replace that missing implementation with a second wallet, a mutable
-balance journal, relaxed verification or a claimed successful response.
+The isolated Receiz main implementation now supplies native Note allocation,
+retained funding and credit proofs, unissued cancellation, terminal redemption
+and API selection through the same native writer. It requires matching absolute
+account and funded-wallet source directories and has no database fallback.
+The Reserve acceptance journey covers a verified native funding source from
+simulated paid ingress, qualified handoff, image reopening, local deposit, full offline respend and final online
+descendant redemption. Only that consumed descendant becomes available online;
+the earlier locally credited terminal remains ineligible for online credit.
+The original pool bounds every accepted descendant redemption.
+
+This does not establish complete nonzero Settlement source integration, private
+offline history composition, physical-device qualification, production host
+authentication or the deployed application journey. Do not substitute a second
+wallet, mutable balance journal, relaxed verification or a claimed successful
+response for those remaining qualifications.
 
 ## Verified checkpoint — October 17, 2026
 

@@ -267,7 +267,7 @@ export function createKairosReservePwaCustodyAdapter(input: Readonly<{
         ||state.qualification.qualificationDigest!==funding.qualificationDigest
         ||state.receivingCustody.installationCommitment!==funding.installationCommitment
         ||state.receivingCustody.receivingCustodyCommitmentDigest!==funding.receivingCustodyCommitmentDigest)throw Error("OFFLINE_RESERVE_FUNDING_BINDING_MISMATCH");
-      await input.storage.write(Object.freeze({schema:STATE_SCHEMA,status:"bound",credential:state.credential,qualification:state.qualification,accountPortableStateDigest:funding.predecessorAccountPortableStateDigest,accountProof:structuredClone(proof),reservePhiMicro:funding.fundedReservePhiMicro,reserveUsdCents:funding.amountUsdCents,bankAllocationId:funding.allocationId,fundingArtifactSha256:args.evidence.artifactSha256,fundingBindingDigest:funding.allocationId,fundingPredecessorAccountProof:structuredClone(proof)}));
+      await input.storage.write(Object.freeze({schema:STATE_SCHEMA,status:"bound",credential:state.credential,qualification:state.qualification,accountPortableStateDigest:funding.predecessorAccountPortableStateDigest,accountProof:structuredClone(proof),reservePhiMicro:funding.fundedReservePhiMicro,reserveUsdCents:funding.amountUsdCents,bankAllocationId:funding.allocationId,bankAllocationRail:"reserve",bankAllocationUsdPerPhiMicrocents:funding.usdPerPhiMicrocents,fundingArtifactSha256:args.evidence.artifactSha256,fundingBindingDigest:funding.allocationId,fundingPredecessorAccountProof:structuredClone(proof)}));
     },
 
     /** The qualified custody kernel reserves exact Phi for note issuance. Its

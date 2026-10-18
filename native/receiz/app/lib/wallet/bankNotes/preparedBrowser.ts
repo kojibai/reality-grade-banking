@@ -43,11 +43,32 @@ function decodeNode(node:PrivateNode):unknown {
   }
 }
 const json=(value:unknown)=>new TextEncoder().encode(JSON.stringify(value));
+// Exact source-backed component arithmetic, never a new funding authority.
+// The last denomination consumes its actual remaining Phi; repeating a rounded
+// average quote must not strand a fixed-dollar Reserve claim.
+function preparedNotePhi(cents:string,phi:string,usd:string,rate:string,rail:BankNoteRail){
+ const c=BigInt(cents),p=BigInt(phi),u=BigInt(usd),r=BigInt(rate),D=1000000000000n;
+ if(c<=0n||u<c||p<=0n||r<=0n)throw Error("BANK_NOTE_DENOMINATION_PRECISION");
+ let amount=c===u?p:rail==="reserve"?(p*c+u-1n)/u:(c*D+r/2n)/r;
+ if(c<u){
+  // Intersect the integer-Phi intervals which round to the requested cents
+  // AND the remaining cents. A valid first note must leave issuable backing.
+  const minimum=(value:bigint)=>(value*D-D/2n+r-1n)/r;
+  const maximum=(value:bigint)=>(value*D+D/2n-1n)/r;
+  const low=[1n,minimum(c),p-maximum(u-c)].reduce((a,b)=>a>b?a:b);
+  const high=[p-1n,maximum(c),p-minimum(u-c)].reduce((a,b)=>a<b?a:b);
+  if(low>high)throw Error("BANK_NOTE_DENOMINATION_PRECISION");
+  amount=amount<low?low:amount>high?high:amount;
+ }
+ if(amount<=0n||amount>p||(amount*r+D/2n)/D!==c||c<u&&((p-amount)*r+D/2n)/D!==u-c)throw Error("BANK_NOTE_DENOMINATION_PRECISION");
+ return amount.toString();
+}
+
 type Slot = Readonly<{adapter:KairosNotePwaCustodyAdapter;read():Promise<KairosNotePwaCustodyState|null>}>;
 type Cash=ReturnType<typeof createKairosReservePwaCustodyAdapter>;
 type PreparedSlot={id:string;role:"note"|"receive";status:"preparing"|"ready"|"reserved"|"used";receivingCustody?:BankFundedNoteSource["fundingCustody"];noteId?:string};
 type Component={id:string;slotId:string;rail:BankNoteRail;sourceRef:string;kind:"allocation"|"credit";receivingCustody:BankFundedNoteSource["fundingCustody"];consumptions:BankFundedNoteSource["reserveConsumptions"];lastSourceRef?:string;exhausted?:boolean};
-type Create={componentId:string;slotId:string;predecessorRef:string;artworkRef:string;amountUsdCents:string;rail:BankNoteRail;preparationId:string;noteId:string;noteToken:string;acceptedAtKai:string;exportedAt:string;nonce:string;priorConsumptions:BankFundedNoteSource["reserveConsumptions"];rebases:NonNullable<BankFundedNoteSource["accountRebases"]>};
+type Create={amountPhiMicro?:string;componentId:string;slotId:string;predecessorRef:string;artworkRef:string;amountUsdCents:string;rail:BankNoteRail;preparationId:string;noteId:string;noteToken:string;acceptedAtKai:string;exportedAt:string;nonce:string;priorConsumptions:BankFundedNoteSource["reserveConsumptions"];rebases:NonNullable<BankFundedNoteSource["accountRebases"]>};
 type Saved={sourceRef:string;imageRef:string;slotId:string;transferComplete?:boolean;transfer?:{request:BankFundedNoteSource["fundingCustody"];acceptedAtKai:string;nonce:string;artworkRef?:string}};
 type State={schema:"receiz.bank.prepared-notes-device.v1";keyId:string;uid:string;journal:BankLocalCreditJournalState|null;slots:Record<string,PreparedSlot>;components:Record<string,Component>;create:Create|null;notes:Record<string,Saved>;stages:Record<string,string>;proofs:Record<string,string>};
 export type BankPreparedNotesInput=Readonly<{
@@ -93,16 +114,16 @@ export function createBankPreparedNotesRuntime(input:BankPreparedNotesInput) {
   async function componentHead(component:Component) {
     try {
       const original=await input.restore(component.sourceRef),receiving=await verifyKairosNoteReceivingCustody(component.receivingCustody,verifyOptions);requireKairosNoteAttestedReceivingCustody(receiving);
-      let qualification:Awaited<ReturnType<typeof createReceizOfflineNoteCustodyQualification>>,phi:string,usd:string,head:string,kai:string,artifactSha:string;
+      let qualification:Awaited<ReturnType<typeof createReceizOfflineNoteCustodyQualification>>,phi:string,usd:string,head:string,kai:string,artifactSha:string,rate:string;
       if(component.kind==="allocation"){
         const e=await verifyBankNoteAllocation(original,verifyOptions),f=e.funding;
         if(f.allocationId!==component.id||bankAllocationRail(f)!==component.rail||f.accountUserId!==input.uid||f.receizKeyId!==identity.keyId
           ||f.qualificationDigest!==receiving.qualificationDigest||f.receivingCustodyCommitmentDigest!==receiving.receivingCustodyCommitmentDigest)throw Error("binding");
-        qualification=await createReceizOfflineNoteCustodyQualification(receiving);phi="fundedSettlementPhiMicro" in f?f.fundedSettlementPhiMicro:f.fundedReservePhiMicro;usd=f.amountUsdCents;head=f.predecessorAccountPortableStateDigest;kai=f.fundedAtKai;artifactSha=e.artifactSha256;
+        qualification=await createReceizOfflineNoteCustodyQualification(receiving);phi="fundedSettlementPhiMicro" in f?f.fundedSettlementPhiMicro:f.fundedReservePhiMicro;usd=f.amountUsdCents;head=f.predecessorAccountPortableStateDigest;kai=f.fundedAtKai;artifactSha=e.artifactSha256;rate=f.usdPerPhiMicrocents;
       }else{
         const e=await verifyBankLocalAccountCreditSource(original,verifyOptions),terminal=readBankLocalAccountCredit(e),origin=readBankFundedNoteHead(terminal.note);
         if(e.creditId!==component.id||e.receiverUserId!==input.uid||e.receiverKeyId!==identity.keyId||e.rail!==component.rail||origin.packet.custodyMode!=="qualified-anonymous"||canonical(origin.packet.currentCustody)!==canonical(receiving))throw Error("binding");
-        qualification=e.qualification;phi=e.amountPhiMicro;usd=e.amountUsdCents;head=e.successorAccountPortableStateDigest;kai=e.acceptedAtKai;artifactSha=e.artifactSha256;
+        qualification=e.qualification;phi=e.amountPhiMicro;usd=e.amountUsdCents;head=e.successorAccountPortableStateDigest;kai=e.acceptedAtKai;artifactSha=e.artifactSha256;rate=e.usdPerPhiMicrocents;
       }
       let usedRebases=0;
       if(component.lastSourceRef){
@@ -117,8 +138,8 @@ export function createBankPreparedNotesRuntime(input:BankPreparedNotesInput) {
         if(BigInt(step.acceptedAtKai)<BigInt(kai))throw Error("causal-order");
         qualification=await verifyBankCashAccountRebase(step,{qualification,fundingArtifactSha256:artifactSha,rpId:receiving.platformAttestationCertificate.rpId,origin:receiving.platformAttestationCertificate.origin,accountHead:head,reservePhiMicro:phi,reserveUsdCents:usd});head=step.successorAccountPortableStateDigest;kai=step.acceptedAtKai;
       }
-      if(bound.qualificationDigest!==qualification.qualificationDigest||bound.reservePhiMicro!==phi||bound.reserveUsdCents!==usd||bound.accountPortableStateDigest!==head||bound.bankAllocationId!==component.id||bound.fundingArtifactSha256!==artifactSha)throw Error("binding");
-      return bound;
+      if(bound.qualificationDigest!==qualification.qualificationDigest||bound.reservePhiMicro!==phi||bound.reserveUsdCents!==usd||bound.accountPortableStateDigest!==head||bound.bankAllocationId!==component.id||bound.fundingArtifactSha256!==artifactSha||bound.bankAllocationUsdPerPhiMicrocents!==undefined&&bound.bankAllocationUsdPerPhiMicrocents!==rate)throw Error("binding");
+      return Object.freeze({...bound,bankAllocationUsdPerPhiMicrocents:rate});
     }catch(error){throw Error("BANK_NOTE_COMPONENT_HEAD_MISMATCH",{cause:error});}
   }
   // A committed account transition can outlive an interrupted pointer write.
@@ -185,16 +206,24 @@ export function createBankPreparedNotesRuntime(input:BankPreparedNotesInput) {
         let selected:Component|undefined,bound:Awaited<ReturnType<Cash["inspectBoundHead"]>>=null;
         for(const component of Object.values(state.components)){if(component.rail!==rail)continue;const candidate=await componentHead(component);if(candidate&&BigInt(candidate.reserveUsdCents)>=BigInt(amountUsdCents)){selected=component;bound=candidate;break;}}
         if(!selected||!bound)throw Error("BANK_NOTE_INSUFFICIENT_PREPARED_FUNDS");
+        const amountPhiMicro=preparedNotePhi(amountUsdCents,bound.reservePhiMicro!,bound.reserveUsdCents,bound.bankAllocationUsdPerPhiMicrocents!,rail);
         const slot=Object.values(state.slots).find(s=>s.role==="note"&&s.status==="ready");if(!slot)throw Error("BANK_NOTE_PREPARED_RESOURCE_REQUIRED");
         const now=temporal(String((proof.portableState!.snapshot as {wallet:{routeSummary:{rollup:{lastEntryKaiPulse?:string}}}}).wallet.routeSummary.rollup.lastEntryKaiPulse??"0"));
         const cash=input.cash(selected.slotId);if(bound.accountPortableStateDigest!==head.digest){await cash.rebaseBankAccount({head,acceptedAtKai:now.acceptedAtKai,nonce:crypto.randomUUID()});bound=await cash.inspectBoundHead();}
         const id=crypto.randomUUID(),predecessorRef=await input.retain(json(proof)),artworkRef=await input.retain(await input.artwork(amountUsdCents,id,false,rail));
-        attempt={componentId:selected.id,slotId:slot.id,predecessorRef,artworkRef,amountUsdCents,rail,preparationId:crypto.randomUUID(),noteId:id,noteToken:crypto.randomUUID().replace(/-/g,""),acceptedAtKai:temporal(now.acceptedAtKai).acceptedAtKai,exportedAt:now.exportedAt,nonce:crypto.randomUUID(),priorConsumptions:selected.consumptions,rebases:bound?.bankAccountRebases??[]};const retained=attempt;await mutate(s=>{if(s.create)throw Error("BANK_LOCAL_CREDIT_RECOVERY_REQUIRED");s.create=retained;s.slots[slot.id]!.status="reserved";s.slots[slot.id]!.noteId=id;});state=(await load()).state;
+        attempt={amountPhiMicro,componentId:selected.id,slotId:slot.id,predecessorRef,artworkRef,amountUsdCents,rail,preparationId:crypto.randomUUID(),noteId:id,noteToken:crypto.randomUUID().replace(/-/g,""),acceptedAtKai:temporal(now.acceptedAtKai).acceptedAtKai,exportedAt:now.exportedAt,nonce:crypto.randomUUID(),priorConsumptions:selected.consumptions,rebases:bound?.bankAccountRebases??[]};const retained=attempt;await mutate(s=>{if(s.create)throw Error("BANK_LOCAL_CREDIT_RECOVERY_REQUIRED");s.create=retained;s.slots[slot.id]!.status="reserved";s.slots[slot.id]!.noteId=id;});state=(await load()).state;
       }else if(attempt.amountUsdCents!==amountUsdCents||attempt.rail!==rail)throw Error("BANK_NOTE_RESUME_EXACT_AMOUNT");
       const held=attempt,component=state.components[held.componentId];if(!component)throw Error("BANK_NOTE_COMPLETE_FUNDING_SOURCE_REQUIRED");
       const fundingBytes=await input.restore(component.sourceRef),proof=parseReceizIdentityArtifactText(JSON.stringify(await restoreJson(held.predecessorRef)));
       const rate=component.kind==="allocation"?(await verifyBankNoteAllocation(fundingBytes,verifyOptions)).funding.usdPerPhiMicrocents:(await verifyBankLocalAccountCreditSource(fundingBytes,verifyOptions)).usdPerPhiMicrocents;
-      const amountPhi=(BigInt(amountUsdCents)*1000000000000n+BigInt(rate)/2n)/BigInt(rate),artwork=await input.restore(held.artworkRef);
+      const staged=await stages.read(held.preparationId);
+      const before=staged?null:await componentHead(component);
+      const exactPhi=staged?staged.reserveInput.amountPhiMicro:preparedNotePhi(amountUsdCents,before!.reservePhiMicro!,before!.reserveUsdCents,rate,rail);
+      if(held.amountPhiMicro!==undefined&&held.amountPhiMicro!==exactPhi)throw Error("BANK_NOTE_INTENT_CHANGED");
+      // Preserve older retained stages exactly. Unstarted legacy intents adopt
+      // the source-derived amount before any irreversible custody operation.
+      if(held.amountPhiMicro===undefined)await mutate(s=>{if(s.create?.preparationId!==held.preparationId)throw Error("BANK_NOTE_INTENT_CHANGED");s.create.amountPhiMicro=exactPhi;});
+      const amountPhi=BigInt(exactPhi),artwork=await input.restore(held.artworkRef);
       const build=(noteBytes:Uint8Array,consumptions:BankFundedNoteSource["reserveConsumptions"]):BankFundedNoteSource=>({schema:held.rebases.length?"receiz.bank.funded-note-source.v2":"receiz.bank.funded-note-source.v1",...(held.rebases.length?{accountRebases:held.rebases}:{}),fundingArtifactBytes:fundingBytes,fundingCustody:component.receivingCustody,noteArtifacts:[noteBytes],reserveConsumptions:consumptions});
       const issued=await issueKairosOfflineNoteLocally({preparationId:held.preparationId,accountProof:proof,identityPassphrase:input.passphrase,deviceIdentity:{localUid:input.localUid,keyId:identity.keyId},accountBinding:{accountUserId:input.uid,receizKeyId:identity.keyId},fundingRail:rail,amountPhiMicro:amountPhi,amountUsdCents:BigInt(amountUsdCents),usdPerPhiMicrocents:BigInt(rate),acceptedAtKai:held.acceptedAtKai,transitionNonce:held.nonce,note:{noteId:held.noteId,noteToken:held.noteToken,mintedAt:held.exportedAt,mintClientNonce:held.nonce},noteCustody:input.slot(held.slotId).adapter,reserveCustody:input.cash(component.slotId),stageStore:stages,proofCustody:proofs,admissionStore:input.admission(component.id),admissionRootPublicKeys:input.roots,assertSelectedPredecessor:input.assertOpen,
         preflightTransport:async prepared=>assertBankNoteTransportCapacity(build(prepared.artifactBytes,held.priorConsumptions),artwork)}, {sealDocument:input.sealDocument,rasterizeSvg:()=>input.artwork(amountUsdCents,held.noteId,true,rail)});
