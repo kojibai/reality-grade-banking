@@ -1,14 +1,14 @@
 // @vitest-environment happy-dom
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, expect, it, vi } from 'vitest';
-import { useMarketCapitalization } from '../src/receiz/market-projection/useMarketCapitalization';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import sourceFile from '../public/receiz-public-capitalization.json';
-import {retainedMarketDisplaySource} from '../src/receiz/market-projection/display-source';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+beforeEach(()=>vi.resetModules()); // Each scenario represents a separate document/store lifetime.
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); localStorage.clear(); });
 const response = (pulse: number, add = 0) => ({ ok: true, json: async () => ({ ...sourceFile, marketCapProjection: { ...sourceFile.marketCapProjection, serverPulse: pulse, currentUsd: sourceFile.marketCapProjection.currentUsd + add } }) });
 it('never rolls an accepted newer headline back to an older response while a chart job is pending', async () => {
+  const {useMarketCapitalization}=await import('../src/receiz/market-projection/useMarketCapitalization'),{retainedMarketDisplaySource}=await import('../src/receiz/market-projection/display-source');
   vi.useFakeTimers(); const pulse = sourceFile.marketCapProjection.serverPulse;
   const fetch = vi.fn().mockResolvedValueOnce(response(pulse)).mockResolvedValueOnce(response(pulse + 20)).mockResolvedValueOnce(response(pulse + 10)); vi.stubGlobal('fetch', fetch);
   vi.stubGlobal('Worker', class { onmessage: unknown; postMessage() {} terminate() {} });
@@ -21,6 +21,7 @@ it('never rolls an accepted newer headline back to an older response while a cha
   } finally { act(() => root.unmount()); }
 });
 it('keeps a same-pulse revised public source visibly retained until its complete curve arrives', async () => {
+  const {useMarketCapitalization}=await import('../src/receiz/market-projection/useMarketCapitalization');
   const pulse = sourceFile.marketCapProjection.serverPulse;
   vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response(pulse)).mockResolvedValueOnce(response(pulse, 100)));
   vi.stubGlobal('Worker', class { onmessage: unknown; postMessage() {} terminate() {} });

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchPublicSports, mergePublicSports } from './public-sports';
 import { fetchPublicMarket, fetchPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
+import {prepareMarketDisplaySource} from './market-projection/display-source';
 
 export const PUBLIC_MARKET_CACHE_KEY = 'receiz-bank-public-discovery-v2';
 function restorePublicCatalog(): PublicMarketCatalog | null { try { const saved = localStorage.getItem(PUBLIC_MARKET_CACHE_KEY); const input = saved ? JSON.parse(saved) : null; const catalog = input ? parsePublicMarket(input, input.snapshot) : null; if (!catalog) return null; rememberPublicOriginalLocators(catalog); try { return mergePublicSports(catalog, JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1') ?? 'null')); } catch { return catalog; } } catch { return null; } }
@@ -15,6 +16,9 @@ export function usePublicMarket(active = true) {
   useEffect(() => { try { sports.current = JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1') ?? 'null'); } catch { /* No retained public inventory. */ } }, []);
   const refresh = useCallback(async () => {
     if (running.current) return;
+    // Prepare pricing operands beside discovery, before an object is opened.
+    // The overview and direct-object paths share this same read and cache.
+    void prepareMarketDisplaySource();
     const controller = new AbortController(); running.current = controller; const attempt = ++generation.current;
     setQuoteStatus('loading');
     const quotesAttempt = fetchPublicQuotes(controller.signal).then(validatePublicQuotes).then(value => ({ value }), () => ({ value: null }));

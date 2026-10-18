@@ -804,6 +804,13 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     // their current amounts, but do not imply a complete native cash timeline.
     // Preserve access and genuine observations without inventing that history.
     if (knownWallet) {
+      // A balance-only cache must not bypass the full history source on every
+      // subsequent opening. Reuse its independently verified retained result
+      // before admitting this first frame. Local custody never uses a remote
+      // shared checkpoint as a substitute for its successor.
+      if (!hasLocalWalletHead()) {
+        try { await accountProof(); noteOpen(); } catch { noteOpen(); }
+      }
       if (!knownWallet.history?.length) knownWallet = {...knownWallet, history: appendWalletPoint([], knownWallet.wallet, knownWallet.observedAt, knownWallet.wallet.kaiUpulse)};
       return knownWallet;
     }

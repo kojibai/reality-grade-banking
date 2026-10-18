@@ -11,6 +11,14 @@ A full account source already projected during retention is reused instead of
 running its historical calculator twice. Concurrent wallet reads share a single
 read; an explicit later refresh still obtains a new result.
 
+Follow-up: a formerly balance-only cache no longer skips account-proof reading
+on every reopening. After checking its held carrier and retained original, entry
+requests the independently verified complete account source and adopts its
+eligible chart before revealing the account. Concurrent entry preparation shares
+one attempt. If that source is unavailable, the genuine retained balance and
+observations remain accessible without being labeled complete. A local Note
+successor never requests an older shared source as its replacement.
+
 Account continuation and proof exchange can overlap. After a validated grant,
 the protected wallet read and scope inspection can overlap. An account remains
 unpublished until continuation and scope inspection succeed. The exact client,
@@ -75,8 +83,13 @@ can reconcile normally. Display quotes never authorize funding.
 
 ## Asset chart periods
 
-All, 1D, 1W, 1M, 3M and 1Y reuse the public pricing source already loaded by the
-Market or Ledger reader. The shared source store performs no request. A supported
+All, 1D, 1W, 1M, 3M and 1Y reuse the public pricing source. Discovery prepares
+the existing shipped and live capitalization inputs beside its catalog read;
+a direct object opening can prepare them without first visiting Market or Ledger.
+Pending reads of the same endpoint are coalesced with the Market overview.
+The parsed public display source is retained separately from private account
+storage and restored synchronously after a cold start. Unavailable storage or
+transport does not turn an unknown object into a supported valuation model. A supported
 sigil's full market item ID, asset UUID and claim pulse must resolve uniquely to
 the same row. The contract does not contain an individual artifact digest, so
 this association identifies a public display model, not verified ownership.
@@ -88,6 +101,15 @@ the headline and all ranges without waiting for another source response. Tests
 assert differing ranges and paths, offline advancement and zero added fetches.
 Unknown, ambiguous or unsupported source rows keep their supplied untimed chart;
 the UI does not invent timestamps or period returns for them.
+
+The follow-up browser check uses the real direct-object component rather than
+manually publishing its pricing store from the fixture. All six controls worked
+at 390- and 1280-pixel widths. Switching all periods made zero requests. Reloading
+with the pricing endpoints blocked showed six controls in the first asset DOM
+frame from the retained source. The value label reads “Market Value.” The only
+console error was the test fixture's absent favicon; no runtime error was seen.
+An object's longer ranges legitimately share its complete available history when
+the object is younger than those ranges. The chart never precedes its origin.
 
 ## Original media
 

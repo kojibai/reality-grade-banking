@@ -226,10 +226,20 @@ it('waits for complete retained history before preparing a formerly balance-only
  let settled=false;const preparing=identity.prepareAccountView().then(value=>{settled=true;return value;});
  try{await new Promise(resolve=>setTimeout(resolve,0));expect(settled).toBe(false);finish({proof,observation:completeObservation()});expect((await preparing).history?.[0].kaiUPulse).toBe('0');expect(p.continueId).not.toHaveBeenCalled();}finally{identity.dispose();}
 });
+it('prepares the full account source before admitting a balance-only cache on entry',async()=>{
+ p.known=observation();const complete=completeObservation();p.retain.mockResolvedValue({proof,observation:complete});
+ let finish!:(value:unknown)=>void;p.proof.mockImplementationOnce(async({request})=>{await request('/account-source');return new Promise(resolve=>{finish=resolve;});});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ let settled=false;const preparing=identity.prepareAccountView().then(value=>{settled=true;return value;});
+ try{
+  await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));expect(settled).toBe(false);finish(proof);
+  const first=await preparing;expect(first.history?.[0].kaiUPulse).toBe('0');expect(first.historyBasis?.startKaiUPulse).toBe('0');expect(first.wallet.totalUsdCents).toBe('600');
+ }finally{identity.dispose();}
+});
 it('preserves an older admitted account without inventing a complete cash timeline or requiring a native migration',async()=>{
  p.known=observation();p.proof.mockRejectedValue(Error('HISTORY_SOURCE_UNAVAILABLE'));
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
- try{const first=identity.prepareAccountView(),second=identity.prepareAccountView();expect(first).toBe(second);const opened=await first;expect(opened.wallet.totalUsdCents).toBe('600');expect(opened.historyBasis).toBeUndefined();expect(opened.history).toHaveLength(1);expect(p.proof).not.toHaveBeenCalled();expect(p.wallet).not.toHaveBeenCalled();}finally{identity.dispose();}
+ try{const first=identity.prepareAccountView(),second=identity.prepareAccountView();expect(first).toBe(second);const opened=await first;expect(opened.wallet.totalUsdCents).toBe('600');expect(opened.historyBasis).toBeUndefined();expect(opened.history).toHaveLength(1);expect(p.proof).toHaveBeenCalledTimes(1);expect(p.wallet).not.toHaveBeenCalled();}finally{identity.dispose();}
 });
 
 it('opens a genuine local Note successor without requiring unavailable remote cash history',async()=>{

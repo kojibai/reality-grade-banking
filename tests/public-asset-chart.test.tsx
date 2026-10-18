@@ -10,7 +10,7 @@ const item=parsePublicMarket(input,input.snapshot).items.find(item=>source.value
 afterEach(()=>{vi.unstubAllGlobals();vi.useRealTimers();vi.restoreAllMocks();open.mockReset();});
 it('shares an already-admitted source, switches periods synchronously and advances offline without a request',async()=>{
  vi.useFakeTimers();clock.pulse=source.serverPulse;const fetch=vi.fn();vi.stubGlobal('fetch',fetch);const host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<PublicAssetDetail item={item}/>));expect(host.querySelector('.periods')).toBeNull();await act(async()=>publishMarketDisplaySource(source));
+ try{publishMarketDisplaySource(source);await act(async()=>root.render(<PublicAssetDetail item={item}/>));
   const chart=()=>host.querySelector<SVGElement>('.asset-chart svg')!,range=()=>Number(chart().getAttribute('data-range-start')),path=()=>chart().querySelectorAll('path')[1]?.getAttribute('d');const all=range(),allPath=path();
   const buttons=[...host.querySelectorAll<HTMLButtonElement>('.periods button')];expect(buttons.map(button=>button.textContent)).toEqual(['All','1D','1W','1M','3M','1Y']);expect(open).not.toHaveBeenCalled();
   act(()=>buttons[1].click());const day=range(),dayPath=path();expect(day).toBeGreaterThan(all);expect(dayPath).not.toBe(allPath);act(()=>buttons[2].click());expect(range()).toBeLessThan(day);expect(path()).not.toBe(dayPath);expect(host.textContent).toContain('projected value');
@@ -30,5 +30,5 @@ it('retains an opened original and its verified reading through period and local
 });
 it('keeps an unsupported object’s supplied chart without inventing dates or period returns',()=>{
  const fetch=vi.fn();vi.stubGlobal('fetch',fetch);const host=document.createElement('div'),root=createRoot(host);
- try{act(()=>root.render(<PublicAssetDetail item={{...item,id:'unknown-source',assetId:'unknown-object',chart:[1,2,3]}}/>));expect(host.querySelector('.periods')).toBeNull();expect(host.querySelector('svg[data-range-start]')).toBeNull();expect(host.textContent).not.toContain('projected value');expect(fetch).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
+ try{act(()=>root.render(<PublicAssetDetail item={{...item,id:'unknown-source',assetId:'unknown-object',category:'sports',chart:[1,2,3]}}/>));expect(host.querySelector('.periods')).toBeNull();expect(host.querySelector('svg[data-range-start]')).toBeNull();expect(host.textContent).not.toContain('projected value');expect(fetch).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
 });
