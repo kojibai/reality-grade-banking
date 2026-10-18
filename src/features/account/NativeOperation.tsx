@@ -57,7 +57,7 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
         <div><span>Fee</span><strong>{formatMoney(t.feeUsdCents)}</strong></div>
         {t.debitUsdCents !== '0' && <div><span>Total debit</span><strong>{formatMoney((BigInt(t.debitUsdCents) + BigInt(t.feeUsdCents)).toString())}</strong></div>}
       </div>
-      <details className="transaction-proof-details"><summary>Transaction proof</summary>{t.assetDigest && <p className="proof-coordinate">Asset: {t.assetDigest}</p>}<p className="proof-coordinate">Review: {review.confirmationDigest}</p><p className="small-copy">Terms expire at µ☤KAI {t.expiresAtKaiUPulse}.</p></details>
+      <details className="transaction-proof-details"><summary>Transaction proof</summary>{t.assetDigest && <p className="proof-coordinate">Asset: {t.assetDigest}</p>}<p className="proof-coordinate">Review: {review.confirmationDigest}</p><p className="small-copy">Terms expire at ☤µKAI {t.expiresAtKaiUPulse}.</p></details>
       <label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event => setApproved(event.target.checked)} /><span>I approve this exact transaction and its displayed terms.</span></label>
       <button className="primary-button" disabled={busy || !approved} onClick={() => void execute()}>{busy ? 'Confirming transaction…' : confirmLabel}<ArrowRight size={17} /></button>
       <button className="secondary-button" disabled={busy} onClick={() => { api.current?.discard(review); held.current = null; setReview(null); setApproved(false); }}>Edit details</button>
