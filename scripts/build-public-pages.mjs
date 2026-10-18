@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { learnAssets } from './learn-assets.mjs';
 import { learnHome, learnArticle } from './learn-template.mjs';
 import { accountNoticePages } from './account-notice-pages.mjs';
+import { realityGradePage, realityGradeContent } from './reality-grade-page.mjs';
 const origin = 'https://bankeiz.com';
 const pages = [
   { slug: '', title: 'Proof-native banking', description: 'How Bankeiz connects your identity, proof objects, Reserve and Settlement in one mobile account.', intro: 'Your value. More possibilities.', sections: [
@@ -45,7 +46,7 @@ const server = await createServer({ server: { middlewareMode: true, hmr: false, 
 try {
   const { Entrance } = await server.ssrLoadModule('/src/features/identity/Entrance.tsx');
   const { BANK_READ_CONSENT, BANK_READ_SCOPES } = await server.ssrLoadModule('/src/receiz/config.ts');
-  pages.push(...accountNoticePages(BANK_READ_CONSENT, BANK_READ_SCOPES));
+  pages.push(...accountNoticePages(BANK_READ_CONSENT, BANK_READ_SCOPES), realityGradePage);
   const html = await readFile('dist/index.html', 'utf8');
   const entrance = renderToStaticMarkup(createElement(Entrance, { opening: false, busy: false, error: null, onCreate: async () => {}, onImport: async () => {} }));
   bankHtml = html.replace('<div id="root"></div>', `<div id="root">${entrance}</div><noscript><p style="text-align:center">Enable JavaScript to open your account. You can read the <a href="/learn/">public bank guides</a> without JavaScript.</p></noscript>`);
@@ -53,7 +54,7 @@ try {
 for (const page of pages) {
   const path = `/learn/${page.slug ? page.slug + '/' : ''}`, url = origin + path;
   const structured = { '@context': 'https://schema.org', '@graph': [{ '@type': 'WebPage', '@id': url, url, name: page.title + ' | Bankeiz', description: page.description, isPartOf: { '@id': origin + '/#website' }, inLanguage: 'en', dateModified: '2026-10-15' }, { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Bankeiz', item: origin + '/' }, { '@type': 'ListItem', position: 2, name: page.title, item: url }] }] };
-  const content = page.slug ? learnArticle(page, pages, escape) : learnHome();
+  const content = page === realityGradePage ? realityGradeContent() : page.slug ? learnArticle(page, pages, escape) : learnHome();
   const output = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fbfcfe"><title>${escape(page.title)} | Bankeiz</title><meta name="description" content="${escape(page.description)}"><meta name="robots" content="index,follow,max-image-preview:large"><link rel="canonical" href="${url}"><link rel="icon" href="/icon.svg"><meta property="og:type" content="website"><meta property="og:site_name" content="Bankeiz"><meta property="og:url" content="${url}"><meta property="og:title" content="${escape(page.title)} | Bankeiz"><meta property="og:description" content="${escape(page.description)}"><meta property="og:image" content="${origin}/receiz-bank-learn-share.jpg"><meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1730"><meta property="og:image:height" content="909"><meta property="og:image:alt" content="Bankeiz. Your value. More possibilities."><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escape(page.title)} | Bankeiz"><meta name="twitter:description" content="${escape(page.description)}"><meta name="twitter:image" content="${origin}/receiz-bank-learn-share.jpg"><meta name="twitter:image:alt" content="Bankeiz — Proof-native banking. Your value. More possibilities."><link rel="stylesheet" href="${cssUrl}">${page.slug ? '' : '<link rel="preload" href="/learn/proof-glass.webp" as="image" type="image/webp">'}<script type="application/ld+json">${JSON.stringify(structured).replaceAll('<', '\\u003c')}</script><script src="${jsUrl}" defer></script></head><body>${content}</body></html>`;
   publicPages[path] = { title: page.title + ' | Bankeiz', content, head: output.match(/<head>([\s\S]+)<\/head>/)[1] };
 }
@@ -67,6 +68,6 @@ for (const [path, page] of Object.entries(publicPages)) {
   await mkdir(`dist${path}`, { recursive: true });
   await writeFile(`dist${path}index.html`, `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`);
 }
-const urls = ['/', '/conformance/', '/verify/', ...pages.map(page => `/learn/${page.slug ? page.slug + '/' : ''}`)];
+const urls = ['/', '/conformance/', '/verify/', '/ledger/', ...pages.map(page => `/learn/${page.slug ? page.slug + '/' : ''}`)];
 await writeFile('dist/sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(path => `<url><loc>${origin}${path}</loc><lastmod>${path === '/conformance/' ? '2026-10-15' : '2026-10-14'}</lastmod></url>`).join('')}</urlset>`);
 console.log(`Prerendered the existing entrance and ${pages.length} public guides; generated canonical sitemap.`);

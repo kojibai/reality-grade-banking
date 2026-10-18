@@ -23,12 +23,12 @@ npm run build
 npm run source:verify -- --rebuild
 ```
 
-The final command validates the archive against the exact release sources, extracts it into an empty temporary directory and rebuilds both native modules and all 211 published SDK JavaScript files using only publicly locked npm dependencies. It does not read the original Receiz checkout or access private services. Standalone recipients can extract the archive, run `npm ci` there, and use the same commands.
+The final command validates the archive against the exact release sources, extracts it into an empty temporary directory and builds the full application and rebuilds both native modules and all 211 published SDK JavaScript files using only publicly locked npm dependencies. It does not read the original Receiz checkout or access private services. Standalone recipients can extract the archive, run `npm ci` there, and use the same commands.
 
 | Artifact | Matching source and verified reproduction |
 | --- | --- |
-| `public/native/offline-notes.v129.mjs` | Original browser dependency closure, seven exact runtime package snapshots, pinned esbuild recipe; all 285 original input hashes and exact module bytes |
-| `public/native/receiver-verifier.v129.mjs` and `.map` | Original browser closure and institution entry point; exact module bytes, ordered 219 carried sources and normalized source-map bytes |
+| `public/native/offline-notes.v129.mjs` | Original browser dependency closure, seven exact runtime package snapshots, pinned esbuild recipe; all 288 original input hashes and 295 composed note inputs and exact module bytes |
+| `public/native/receiver-verifier.v129.mjs` and `.map` | Original browser closure and institution entry point; exact module bytes, ordered 225 carried sources and normalized source-map bytes |
 | Published v129 SDK JavaScript | Full matching SDK preferred source, canonical generators/registry projections, TypeScript 5.9.3 and package compaction script; all 211 JavaScript output hashes |
 | SDK sealing core and Kai worker | Canonical unbundled source and exact generated output comparison |
 | Public proof WASM and setup keys | Included circuit/Poseidon source, public Powers of Tau parameters and existing public resources; hash checks plus optional independent circuit verification |

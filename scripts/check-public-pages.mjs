@@ -15,7 +15,7 @@ for (const [slug, section] of [['account-access', 'account-access'], ['signing-k
 }
 assert.ok(html.includes('By continuing, you authorize'));
 assert.ok(!html.includes('By creating or opening your ID, you approve the following:'));
-for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/', 'account-access/', 'signing-key/']) {
+for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/', 'account-access/', 'signing-key/', 'reality-grade-banking/']) {
   const page = await readFile(`dist/learn/${path}index.html`, 'utf8');
   assert.ok(page.includes(`<link rel="canonical" href="https://bankeiz.com/learn/${path}">`));
   assert.ok(page.includes('<h1>')); assert.ok(page.includes('<h2>')); assert.ok(!page.includes('<div id="root"></div>'));
@@ -51,6 +51,28 @@ assert.ok(css.toString().includes('prefers-reduced-motion:reduce'));
 assert.ok(css.toString().includes('animation-play-state:paused'));
 assert.ok(motion.toString().includes('IntersectionObserver'));
 const learn = await readFile('dist/learn/index.html', 'utf8');
+const reality = await readFile('dist/learn/reality-grade-banking/index.html', 'utf8');
+assert.ok(learn.includes('href="/learn/reality-grade-banking/">Reality-Grade Banking</a>'));
+for (const id of ['the-standard', 'continuity', 'notes', 'value', 'receiving', 'open-source']) assert.ok(reality.includes(`id="${id}"`));
+assert.ok(reality.includes('href="https://github.com/kojibai/reality-grade-banking"'));
+assert.ok(reality.includes('href="/conformance/"') && reality.includes('href="/verify/"'));
+assert.ok(reality.includes('href="/ledger/"'), 'Continuity explains and links to the public Ledger');
+assert.ok(learn.includes('href="/ledger/"'), 'Learn links directly to the public Ledger');
+const ledger = await readFile('dist/ledger/index.html', 'utf8');
+assert.ok(ledger.includes('<link rel="canonical" href="https://bankeiz.com/ledger/">'));
+assert.ok(sitemap.includes('https://bankeiz.com/ledger/'));
+const builds = JSON.parse(await readFile('dist/.vite/manifest.json', 'utf8'));
+assert.ok(builds['ledger/index.html']?.isEntry, 'Public Ledger has its own read-only entry');
+const publicEntries = new Set();
+async function checkLedgerEntry(key) {
+  if (publicEntries.has(key)) return;
+  publicEntries.add(key);
+  const entry = builds[key]; assert.ok(entry, 'Every Ledger import is present');
+  const body = await readFile('dist/' + entry.file, 'utf8');
+  assert.ok(!/receiz-bank-canonical-device-signer|\/api\/connect\/wallet\/me|bankeiz:private/.test(body), 'Public Ledger never opens private identity or account routes');
+  for (const dependency of entry.imports ?? []) await checkLedgerEntry(dependency);
+}
+await checkLedgerEntry('ledger/index.html');
 const noteGuide = await readFile('dist/learn/reserve-and-settlement/index.html', 'utf8');
 assert.ok(!learn.includes('src="/learn/reserve-note.webp"'), 'Learn home stays free of note illustrations');
 assert.ok(noteGuide.includes('id="how-notes-work"'));

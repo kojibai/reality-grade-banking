@@ -42,14 +42,19 @@ export function inspectAccountStatement(input: unknown, applicationId: string): 
   const ids = new Set<string>(), digests = new Set<string>();
   for (let index = 0; index < v.transactions.length; index++) {
     const t = record(v.transactions[index], ['sequence', 'transactionId', 'eventDigest', 'previousEventDigest', 'kaiUPulse', 'kind', 'description', 'reserveDeltaUsdCents', 'settlementDeltaPhiMicro', ...(native?['balanceDeltaPhiMicro']:[])]);
-    if (t.sequence !== index + 1 || !text(t.transactionId, 256) || !digest(t.eventDigest) || t.previousEventDigest !== previous || !unsigned(t.kaiUPulse) || t.kaiUPulse.length > 30 || BigInt(t.kaiUPulse) < time || BigInt(t.kaiUPulse) > BigInt(c.kaiUPulse) || ids.has(t.transactionId) || digests.has(t.eventDigest) || t.eventDigest === c.genesisHead || !text(t.kind, 64) || !text(t.description) || !signed(t.reserveDeltaUsdCents) || !signed(t.settlementDeltaPhiMicro)) fail('HISTORY_INVALID');
+    // Identity events may be acquired offline before their later accepted
+    // append. Their exact original coordinate is preserved. They cannot move
+    // funds or lower the high-water coordinate used for financial causality.
+    const identityEvent=native&&["account-signed-out","account-created","account-opened"].includes(String(t.kind))
+      &&t.reserveDeltaUsdCents==="0"&&t.settlementDeltaPhiMicro==="0"&&t.balanceDeltaPhiMicro==="0";
+    if (t.sequence !== index + 1 || !text(t.transactionId, 256) || !digest(t.eventDigest) || t.previousEventDigest !== previous || !unsigned(t.kaiUPulse) || t.kaiUPulse.length > 30 || BigInt(t.kaiUPulse) < time && !identityEvent || BigInt(t.kaiUPulse) > BigInt(c.kaiUPulse) || ids.has(t.transactionId) || digests.has(t.eventDigest) || t.eventDigest === c.genesisHead || !text(t.kind, 64) || !text(t.description) || !signed(t.reserveDeltaUsdCents) || !signed(t.settlementDeltaPhiMicro)) fail('HISTORY_INVALID');
     if(native){
       if(!signed(t.balanceDeltaPhiMicro)||BigInt(t.reserveDeltaUsdCents)!==0n&&t.settlementDeltaPhiMicro!=="0"||BigInt(t.reserveDeltaUsdCents)===0n&&t.settlementDeltaPhiMicro!==t.balanceDeltaPhiMicro)fail('HISTORY_INVALID');
       gross+=BigInt(t.balanceDeltaPhiMicro);if(gross<0n)fail('BALANCE_MISMATCH');
     }
     reserve += BigInt(t.reserveDeltaUsdCents); settlement += BigInt(t.settlementDeltaPhiMicro);
     if (reserve < 0n || settlement < 0n || native && settlement > gross) fail('BALANCE_MISMATCH');
-    ids.add(t.transactionId); digests.add(t.eventDigest); previous = t.eventDigest; time = BigInt(t.kaiUPulse);
+    ids.add(t.transactionId); digests.add(t.eventDigest); previous = t.eventDigest; time = BigInt(t.kaiUPulse)>time?BigInt(t.kaiUPulse):time;
   }
   if(native){
     // Reserve Phi backing is fixed by admitted movements. Repricing it is

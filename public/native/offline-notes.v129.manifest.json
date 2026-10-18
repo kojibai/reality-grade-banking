@@ -1,10 +1,10 @@
 {
   "schema": "receiz.bank.native-runtime-build.v1",
   "version": "129.0.0",
-  "moduleSha256": "ce54ade3ca7cd8c5c5b4c9ca02f467da743708a8029ba1eed035f5a463af5e21",
-  "sourceTreeSha256": "8b5328e78f1990b871a22b5753e3c2fc4c3bd5fe4afa27adc8d0c951b12bbb6b",
-  "inputs": 294,
-  "bytes": 2284790,
+  "moduleSha256": "32aa027e4d86e131f179fadd239fb74d8d6c1f1b6e315f45607fc5f42665c743",
+  "sourceTreeSha256": "2b3523537915c47b2e432b81a195760479c355d9edf81c2e3db7b8c29a8d6c8b",
+  "inputs": 295,
+  "bytes": 2289679,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -224,14 +224,56 @@
       "path": "receiz/app/lib/wallet/bankNotes/preparedBrowser.ts",
       "baseSha256": "438e391cd6077645ab3bc498d9845e4be19e7c644a38bef8b7e612bd9d37de79",
       "sha256": "9baa851dd62841574aaa806a811b92b4bbe65732456282408d42b95327d8edb6",
-      "purpose": "Preserve exact remaining original Phi across mixed-rate Reserve denominations and interrupted prepared Note issuance. Derive legacy missing rate metadata from verified original source; keep custody, source verification and exact retained intent. SDK, MCP and AI skill packages remain unchanged."
+      "purpose": "Preserve exact remaining original Phi across mixed-rate Reserve denominations and interrupted prepared Note issuance. Derive legacy missing rate metadata from verified original source; keep custody, source verification and exact retained intent. SDK, MCP and AI skill packages remain unchanged.",
+      "sourceCommit": "bdba7534707572ab38778fd704662eaa5f644dab"
     },
     {
       "id": "bankeiz-native-note-denomination-v129",
       "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
       "baseSha256": "ce9128ccc105dd73e62406d3876085bfe9f1421866e3bc5e1f1bbf94cdbb5b3d",
       "sha256": "5d2e51c752eee302a4057dad826c48d0d7c155cfbc36c31a5c2f3b1783c654e2",
-      "purpose": "Preserve exact remaining original Phi across mixed-rate Reserve denominations and interrupted prepared Note issuance. Derive legacy missing rate metadata from verified original source; keep custody, source verification and exact retained intent. SDK, MCP and AI skill packages remain unchanged."
+      "purpose": "Preserve exact remaining original Phi across mixed-rate Reserve denominations and interrupted prepared Note issuance. Derive legacy missing rate metadata from verified original source; keep custody, source verification and exact retained intent. SDK, MCP and AI skill packages remain unchanged.",
+      "sourceCommit": "bdba7534707572ab38778fd704662eaa5f644dab"
+    },
+    {
+      "id": "bankeiz-exact-local-value-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/localAccountCredit.ts",
+      "baseSha256": "08bf48093ec3530b5c2cc7f22240382977712d434cec902784118db7422f528b",
+      "sha256": "3f7685a2ac4af2064e27abe8a648056ac44381b704cc28624223fbe5ebd8be3c",
+      "purpose": "Value exact remaining Settlement Phi at the held receiver quote, preserve fixed-dollar Reserve backing and retained v1 intents, and bind each arithmetic version to its signed credit/debit transition. Complete funded source and one-time custody remain authority; published SDK, MCP and AI skill packages stay unchanged.",
+      "sourceCommit": "af90a8c7a567a1e0c0ca4fbe5f3116472e4e9db3"
+    },
+    {
+      "id": "bankeiz-exact-local-value-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/localWalletValuation.ts",
+      "baseSha256": null,
+      "sha256": "36875e421efa47796651dff484268635174a9e60bb93c83cff89f3f9afc7896b",
+      "purpose": "Value exact remaining Settlement Phi at the held receiver quote, preserve fixed-dollar Reserve backing and retained v1 intents, and bind each arithmetic version to its signed credit/debit transition. Complete funded source and one-time custody remain authority; published SDK, MCP and AI skill packages stay unchanged.",
+      "sourceCommit": "af90a8c7a567a1e0c0ca4fbe5f3116472e4e9db3"
+    },
+    {
+      "id": "bankeiz-exact-local-value-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/preparedBrowser.ts",
+      "baseSha256": "9baa851dd62841574aaa806a811b92b4bbe65732456282408d42b95327d8edb6",
+      "sha256": "4228a27af3e606a4bded013f4387db4cbe655d6c21aa413a488662a1366e6342",
+      "purpose": "Value exact remaining Settlement Phi at the held receiver quote, preserve fixed-dollar Reserve backing and retained v1 intents, and bind each arithmetic version to its signed credit/debit transition. Complete funded source and one-time custody remain authority; published SDK, MCP and AI skill packages stay unchanged.",
+      "sourceCommit": "af90a8c7a567a1e0c0ca4fbe5f3116472e4e9db3"
+    },
+    {
+      "id": "bankeiz-exact-local-value-v129",
+      "path": "receiz/app/lib/wallet/kairosOfflineNoteLocalIssuance.ts",
+      "baseSha256": "ab7ab17bf0b43fb8da79d9e62133c9ad7e61945ceb412866db615c6ede8f20fd",
+      "sha256": "c7fd63a9e7fc4a4e9be6cb27c8668be31b76e013af9b0de24488ce1c70230c7a",
+      "purpose": "Value exact remaining Settlement Phi at the held receiver quote, preserve fixed-dollar Reserve backing and retained v1 intents, and bind each arithmetic version to its signed credit/debit transition. Complete funded source and one-time custody remain authority; published SDK, MCP and AI skill packages stay unchanged.",
+      "sourceCommit": "af90a8c7a567a1e0c0ca4fbe5f3116472e4e9db3"
+    },
+    {
+      "id": "bankeiz-exact-local-value-v129",
+      "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
+      "baseSha256": "5d2e51c752eee302a4057dad826c48d0d7c155cfbc36c31a5c2f3b1783c654e2",
+      "sha256": "e5b59538ee6ecd6efc81a7a971eaa928883579609b2100fedd5d84eeb953ce97",
+      "purpose": "Value exact remaining Settlement Phi at the held receiver quote, preserve fixed-dollar Reserve backing and retained v1 intents, and bind each arithmetic version to its signed credit/debit transition. Complete funded source and one-time custody remain authority; published SDK, MCP and AI skill packages stay unchanged.",
+      "sourceCommit": "af90a8c7a567a1e0c0ca4fbe5f3116472e4e9db3"
     }
   ]
 }

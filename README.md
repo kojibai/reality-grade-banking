@@ -12,7 +12,7 @@ The Bankeiz reference application and receiving integration kit: a mobile bankin
 
 One account view brings the rails together. The app keeps Send and Receive central, with Account, Market, Deposit, Assets and Ledger in persistent bottom navigation. The verified proof object is the source of authority for ownership, exact value and carried history. A listing, image, account projection or service response cannot create financial authority.
 
-[Conformance Console](https://bankeiz.com/conformance/) · [Receiving kit](institution/README.md) · [Receiving standard](institution/receiving-standard.md) · [Run locally](#run-locally) · [Release process](docs/release-process.md) · [Licensing](#licensing)
+[Public Ledger](https://bankeiz.com/ledger/) · [Conformance Console](https://bankeiz.com/conformance/) · [Receiving kit](institution/README.md) · [Receiving standard](institution/receiving-standard.md) · [Run locally](#run-locally) · [Release process](docs/release-process.md) · [Licensing](#licensing)
 
 ## Build a receiver
 
@@ -49,8 +49,8 @@ See the [current function boundaries](docs/current-function-boundaries.md) and [
 | Physical assets | Sealed intake and carried delivery instructions; actual custodian acceptance, transferable ownership and fractional sales remain unfinished |
 | Digital Send / exchange | In-bank request/review/recovery composition; production preparation and execution remain gated pending admitted financial effects |
 | Asset creation | Sealed definition/authorship plus funded-creation review; native backing and issuance effects require qualification |
-| Reserve Notes | Funded native creation, receiving request, qualified handoff and Reserve redemption integration; production migration/signer/service/hardware qualification remains |
-| Settlement Notes | Matching artwork; separate signed funding/custody/credit extension remains unfinished |
+| Reserve Notes | Funded native creation, receiving request, qualified handoff and Reserve redemption integration; production native-writer/signer/service/hardware qualification remains |
+| Settlement Notes | Matching native signed rail, exact-Phi local valuation and credit primitives implemented; production selector and real-device financial qualification remain |
 | Institution receiving | Public verification, integration contracts and local checks; each institution needs its own authorized native integration and live assessment |
 
 These boundaries are intentional release disclosures. A build, downloaded image or deployment is not a financial qualification. The note artwork samples are **unissued**. See [native note release gates](docs/offline-notes-release.md), [Settlement Note contract](docs/settlement-note-contract.md) and [receiver qualification](institution/qualification.md) before enabling financial capabilities.
@@ -80,7 +80,7 @@ An open Bank tab continues using its own build while an update waits. Close all 
 
 ## Matching native source
 
-The public [account-proof reader](https://bankeiz.com/verify/) inspects original proof images/files without login. Its share interface preserves the exact source snapshot and requires explicit consent for public and future-history disclosure. Production exports remain disabled until the native public writer is independently qualified and pinned. The [Crystal handoff](docs/crystal-public-account-proof-contract.md) specifies the exact source, public distribution and revocation contract; private Identity Seal and recovery backups are never public proof exports.
+The public [account-proof reader](https://bankeiz.com/verify/) inspects original proof images/files without login. Its share interface preserves the exact source snapshot and requires explicit consent for public and future-history disclosure. The native v2 statement producer and existing-root signature reader are implemented; production wallet coverage, public disclosure and deployed financial qualification remain separate gates. The [Crystal handoff](docs/crystal-public-account-proof-contract.md) specifies the exact source, public distribution and revocation contract; private Identity Seal and recovery backups are never public proof exports.
 
 The included [native source package](native/README.md) lets developers rebuild the actual note/verifier modules, inspect the public circuits and reproduce the published SDK JavaScript. A normal build links its exact source download from `/legal/`; `/source/index.json` records its SHA-256 and inventory. The source extraction excludes the broader Receiz backend, operator secrets and customer data. See the [public disclosure boundary](native/DISCLOSURE.md). These are source/reproduction checks, not an institution certification.
 
@@ -129,3 +129,9 @@ Copyright (C) 2026 **Brian Joseph Klock (BJ Klock)**. Original software and acco
 Existing package, vendored-code and font licenses remain in force. Preserve [third-party notices](THIRD_PARTY_NOTICES.md) and supply applicable complete Corresponding Source for covered binary distributions. [SOURCE.md](SOURCE.md) describes the included matching native/SDK source, preferred cryptographic dependency source and content-addressed source archive published with every build. `npm run source:verify -- --rebuild` verifies that a clean archive extraction reproduces the native modules and published SDK JavaScript without a private checkout. The license change does not alter the native financial runtime or qualify unfinished capabilities.
 
 [Contribution process](CONTRIBUTING.md) · [Governance](GOVERNANCE.md) · [Security reporting](SECURITY.md)
+
+## Public Ledger and release package
+
+The [Public Ledger](https://bankeiz.com/ledger/) presents public activity, original proof inspection, a high-resolution source-carrying Memory Crystal, local retention and consent-bound publication. The [Ledger release guide](docs/public-ledger-release.md) documents exact source scope, native disclosure authorization, API paths, limits and checks. An upload never admits funds or changes ownership. The [Reality-Grade Banking guide](https://bankeiz.com/learn/reality-grade-banking/) explains verification and continuity without changing the Bank interface.
+
+Use [current function boundaries](docs/current-function-boundaries.md) for the implemented and production-qualified capability distinction. Generated source downloads include the application, receiver kit, native preferred source, licenses and matching build instructions; no private checkout, deployment credential or signing key is included.

@@ -31,6 +31,12 @@ describe('statement shape and reconciliation, not canonical verification', () =>
     const negative = statement(); negative.transactions[0].reserveDeltaUsdCents = '-1'; expect(() => inspectAccountStatement(negative)).toThrow('BALANCE_MISMATCH');
     const future = statement(); future.transactions[0].kaiUPulse = '123456790'; expect(() => inspectAccountStatement(future)).toThrow('HISTORY_INVALID');
   });
+  it('keeps the legacy v1 time-order rule for zero-value identity events',()=>{
+    const value=statement();
+    value.transactions.push({...value.transactions[0],sequence:2,transactionId:'opened',eventDigest:hash('a'),previousEventDigest:hash('e'),kaiUPulse:'1',kind:'account-opened',description:'Account opened.',reserveDeltaUsdCents:'0',settlementDeltaPhiMicro:'0'});
+    value.checkpoint.historyHead=hash('a');value.checkpoint.transactionCount=2;
+    expect(()=>inspectAccountStatement(value)).toThrow('HISTORY_INVALID');
+  });
 });
 describe('actual installed v129 refusal boundary', () => {
   it('refuses plain balance JSON and forged sealed bytes without network or login', async () => {

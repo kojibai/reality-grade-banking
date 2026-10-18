@@ -1,3 +1,4 @@
+import {projectBankLocalWalletMovement} from "./localWalletValuation";
 import { canonicalizeReceizConstitution as canonical } from "../../../../packages/receiz-sdk/src/constitution";
 import { digestReceizAuthority } from "../../../../packages/receiz-sdk/src/authorityEncoding";
 import { appendReceizIdentityPortableState, parseReceizIdentityArtifactText, projectReceizIdentityAccount, type ReceizKeyFileV1 } from "../../../../packages/receiz-sdk/src/identity";
@@ -10,7 +11,7 @@ import type { receizeDocumentBytesClient } from "../../documentSeal/receizeDocum
 
 type Options = Readonly<{ roots?: ReadonlyMap<string, ReceizSignatureV4RootPublicKey>; localCreditDepth?: number }>;
 export type BankLocalAccountCreditPreparation = Readonly<{
-  schema: "receiz.bank.local-account-credit-preparation.v1";
+  schema: "receiz.bank.local-account-credit-preparation.v1" | "receiz.bank.local-account-credit-preparation.v2";
   intent: BankLocalAccountCreditIntent;
   predecessorAccountProof: ReceizKeyFileV1;
   successorAccountProof: ReceizKeyFileV1;
@@ -60,25 +61,32 @@ async function creditId(intent: Omit<BankLocalAccountCreditIntent, "localCreditI
 
 /** Private account projection. The public financial source remains the entire
  * verified terminal/funding lineage, never this identity-signed snapshot. */
-function successorSnapshot(snapshotInput: Record<string, unknown>, note: Pick<BankVerifiedFundedNote, "rail" | "amountPhiMicro" | "amountUsdCents">, id: string, acceptedAtKai: string, exportedAt: string) {
+function successorSnapshot(snapshotInput: Record<string, unknown>, note: Pick<BankVerifiedFundedNote, "rail" | "amountPhiMicro" | "amountUsdCents">, id: string, acceptedAtKai: string, exportedAt: string, exact = false) {
   const snapshot = structuredClone(snapshotInput), wallet = object(snapshot.wallet), summary = object(wallet.routeSummary);
   const states = object(summary.valueStates), rollup = object(summary.rollup), quote = object(summary.quote);
   const credited = Array.isArray(wallet.localNoteCreditIds) ? wallet.localNoteCreditIds : [];
   if (credited.some(value => typeof value !== "string") || new Set(credited).size !== credited.length || credited.includes(id)) throw Error("BANK_LOCAL_CREDIT_ALREADY_ADOPTED");
   const amountPhi = uint(note.amountPhiMicro), amountUsd = uint(note.amountUsdCents), rate = uint(quote.usdPerPhiMicrocents);
   if (rate <= 0n || amountPhi <= 0n || amountUsd <= 0n) throw Error("BANK_LOCAL_CREDIT_ACCOUNT_INVALID");
+  const movement = exact ? projectBankLocalWalletMovement(summary,note.rail,note.amountPhiMicro,note.amountUsdCents,"credit") : undefined;
   const reserve = uint(states.settledBalanceUsdCents) + (note.rail === "reserve" ? amountUsd : 0n);
   const settlement = uint(states.ecosystemBalanceUsdCents ?? "0") + (note.rail === "settlement" ? (amountPhi * rate + 500000000000n) / 1000000000000n : 0n);
   const totalPhi = uint(summary.balancePhiMicro) + amountPhi;
   summary.balancePhiMicro = String(totalPhi); summary.balancePhi = phi(totalPhi); summary.balanceUsd = usd(reserve + settlement);
   states.settledBalanceUsdCents = String(reserve); states.settledBalanceUsd = usd(reserve);
   states.ecosystemBalanceUsdCents = String(settlement); states.ecosystemBalanceUsd = usd(settlement);
+  if(movement)Object.assign(summary,movement.summary);
   rollup.totalCreditPhiMicro = String(uint(rollup.totalCreditPhiMicro) + amountPhi);
-  rollup.totalCreditUsdCents = String(uint(rollup.totalCreditUsdCents) + (note.rail === "reserve" ? amountUsd : (amountPhi * rate + 500000000000n) / 1000000000000n));
+  rollup.totalCreditUsdCents = String(uint(rollup.totalCreditUsdCents) + (movement ? uint(movement.displayUsdCents) : (note.rail === "reserve" ? amountUsd : (amountPhi * rate + 500000000000n) / 1000000000000n)));
   const claims = uint(rollup.noteClaimCount) + 1n;
   if (claims > BigInt(Number.MAX_SAFE_INTEGER)) throw Error("BANK_LOCAL_CREDIT_ACCOUNT_INVALID");
   rollup.noteClaimCount = Number(claims); rollup.lastEntryKaiPulse = acceptedAtKai; rollup.lastEntryAt = exportedAt;
   wallet.localNoteCreditIds = [...credited, id];
+  if (exact) {
+    const versions = wallet.localNoteCreditValuationVersions === undefined ? {} : object(wallet.localNoteCreditValuationVersions);
+    if (Object.hasOwn(versions, id)) throw Error("BANK_LOCAL_CREDIT_ALREADY_ADOPTED");
+    wallet.localNoteCreditValuationVersions = { ...versions, [id]: "exact-rail-phi-v1" };
+  }
   return snapshot;
 }
 
@@ -97,8 +105,8 @@ export async function prepareBankLocalAccountCredit(input: Readonly<{
     receiverCashCustodyCommitmentDigest: head.packet.currentCustody.receivingCustodyCommitmentDigest };
   const id = await creditId(basis);
   const successor = await appendReceizIdentityPortableState({ keyFile: before.proof, passphrase: input.passphrase, schema: "receiz.account.state.v3",
-    snapshot: successorSnapshot(before.snapshot, input.note, id, input.acceptedAtKai, input.exportedAt), exportedAt: input.exportedAt });
-  const result = Object.freeze({ schema: "receiz.bank.local-account-credit-preparation.v1" as const, intent: { ...basis, localCreditId: id,
+    snapshot: successorSnapshot(before.snapshot, input.note, id, input.acceptedAtKai, input.exportedAt, true), exportedAt: input.exportedAt });
+  const result = Object.freeze({ schema: "receiz.bank.local-account-credit-preparation.v2" as const, intent: { ...basis, localCreditId: id,
     successorAccountPortableStateDigest: successor.portableState!.proof!.digestSha256Hex }, predecessorAccountProof: before.proof, successorAccountProof: successor });
   await verifyBankLocalCreditAccountSuccessor(result);
   return result;
@@ -106,14 +114,14 @@ export async function prepareBankLocalAccountCredit(input: Readonly<{
 
 export async function verifyBankLocalCreditAccountSuccessor(preparation: BankLocalAccountCreditPreparation): Promise<void> {
   const value = structuredClone(preparation), intent = value.intent;
-  if (value.schema !== "receiz.bank.local-account-credit-preparation.v1" || intent.schema !== "receiz.bank.note-local-credit.v1") throw Error("BANK_LOCAL_CREDIT_ACCOUNT_INVALID");
+  if (!["receiz.bank.local-account-credit-preparation.v1","receiz.bank.local-account-credit-preparation.v2"].includes(value.schema) || intent.schema !== "receiz.bank.note-local-credit.v1") throw Error("BANK_LOCAL_CREDIT_ACCOUNT_INVALID");
   const { localCreditId, successorAccountPortableStateDigest, ...basis } = intent;
   if (await creditId(basis) !== localCreditId) throw Error("BANK_LOCAL_CREDIT_ACCOUNT_BINDING_MISMATCH");
   const before = await account(value.predecessorAccountProof, intent.receiverUserId), after = await account(value.successorAccountProof, intent.receiverUserId);
   if (before.proof.keyId !== intent.receiverKeyId || after.proof.keyId !== before.proof.keyId || before.proof.alg !== after.proof.alg
     || before.proof.owner.uid !== after.proof.owner.uid || before.proof.crypto.publicKeyRawB64u !== after.proof.crypto.publicKeyRawB64u
     || before.digest !== intent.predecessorAccountPortableStateDigest || after.digest !== successorAccountPortableStateDigest
-    || before.digest === after.digest || canonical(after.snapshot) !== canonical(successorSnapshot(before.snapshot, intent, localCreditId, intent.acceptedAtKai, value.successorAccountProof.portableState!.exportedAt))) {
+    || before.digest === after.digest || canonical(after.snapshot) !== canonical(successorSnapshot(before.snapshot, intent, localCreditId, intent.acceptedAtKai, value.successorAccountProof.portableState!.exportedAt, value.schema === "receiz.bank.local-account-credit-preparation.v2"))) {
     throw Error("BANK_LOCAL_CREDIT_ACCOUNT_BINDING_MISMATCH");
   }
 }
@@ -194,6 +202,22 @@ export async function verifyBankLocalDebitAccountSuccessor(input: Readonly<{
   }
   const expected = structuredClone(before.snapshot), summary = object(object(expected.wallet).routeSummary);
   const states = object(summary.valueStates), rollup = object(summary.rollup);
+  const afterWallet = object(after.snapshot.wallet);
+  const versions = afterWallet.localNoteDebitValuationVersions === undefined ? {} : object(afterWallet.localNoteDebitValuationVersions);
+  const version = versions[input.note.noteId];
+  if (version !== undefined && version !== "exact-rail-phi-v1") throw Error("BANK_LOCAL_CREDIT_ACCOUNT_BINDING_MISMATCH");
+  // The current transition, not an inherited account marker, selects arithmetic.
+  // A retained v1 client may preserve newer predecessor fields byte for byte.
+  if(version === "exact-rail-phi-v1"){
+    const wallet = object(expected.wallet);
+    const previousVersions = wallet.localNoteDebitValuationVersions === undefined ? {} : object(wallet.localNoteDebitValuationVersions);
+    if (Object.hasOwn(previousVersions, input.note.noteId)) throw Error("BANK_LOCAL_CREDIT_ACCOUNT_BINDING_MISMATCH");
+    wallet.localNoteDebitValuationVersions = { ...previousVersions, [input.note.noteId]: version };
+    const movement=projectBankLocalWalletMovement(summary,input.note.rail,input.note.amountPhiMicro,input.note.amountUsdCents,"debit");
+    Object.assign(summary,movement.summary);
+    rollup.totalDebitPhiMicro=String(uint(rollup.totalDebitPhiMicro)+uint(input.note.amountPhiMicro));
+    rollup.totalDebitUsdCents=String(uint(rollup.totalDebitUsdCents)+uint(movement.displayUsdCents));
+  }else{
   const valuePhi = uint(input.note.amountPhiMicro), valueUsd = uint(input.note.amountUsdCents);
   const selected = input.note.rail === "settlement" ? "ecosystemBalanceUsdCents" : "settledBalanceUsdCents";
   const beforeTotalPhi = uint(summary.balancePhiMicro), beforeSelected = uint(states[selected]);
@@ -204,6 +228,7 @@ export async function verifyBankLocalDebitAccountSuccessor(input: Readonly<{
   states[input.note.rail === "settlement" ? "ecosystemBalanceUsd" : "settledBalanceUsd"] = usd(beforeSelected - valueUsd);
   rollup.totalDebitPhiMicro = String(uint(rollup.totalDebitPhiMicro) + valuePhi);
   rollup.totalDebitUsdCents = String(uint(rollup.totalDebitUsdCents) + valueUsd);
+  }
   const count = uint(rollup.noteMintCount) + 1n;
   if (count > BigInt(Number.MAX_SAFE_INTEGER)) throw Error("BANK_LOCAL_CREDIT_ACCOUNT_BINDING_MISMATCH");
   rollup.noteMintCount = Number(count); rollup.lastEntryAt = issuance.packet.mintedAt; rollup.lastEntryKaiPulse = receipt.acceptedAtKai;

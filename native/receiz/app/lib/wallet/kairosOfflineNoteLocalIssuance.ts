@@ -1,5 +1,7 @@
 "use client";
 
+import {projectBankLocalWalletMovement} from "./bankNotes/localWalletValuation";
+
 import type { ReceizAdmissionStore } from "../../../packages/receiz-sdk/src/admissionStore";
 import { digestReceizAuthority } from "../../../packages/receiz-sdk/src/authorityEncoding";
 import {
@@ -91,6 +93,7 @@ export type KairosOfflineNoteLocalIssuanceResult = Readonly<{
 export type KairosOfflineNoteIssuanceInput = Readonly<{
   /** Explicit only for Bank Settlement allocations; legacy Reserve stays unchanged. */
   fundingRail?: "reserve" | "settlement";
+  accountValuation?: "exact-rail-phi-v1";
   preparationId: string;
   accountProof: ReceizKeyFileV1;
   identityPassphrase?: string;
@@ -317,7 +320,7 @@ function formatUsdCents(value: bigint): string {
   return `${value / 100n}.${(value % 100n).toString().padStart(2, "0")}`;
 }
 
-function accountReserve(keyFile: ReceizKeyFileV1, accountUserId: string, rail: "reserve" | "settlement" = "reserve") {
+function accountReserve(keyFile: ReceizKeyFileV1, accountUserId: string, rail: "reserve" | "settlement" = "reserve", exact = false) {
   const snapshot = record(keyFile.portableState?.snapshot);
   const account = record(snapshot?.account);
   const wallet = record(snapshot?.wallet);
@@ -341,11 +344,16 @@ function accountReserve(keyFile: ReceizKeyFileV1, accountUserId: string, rail: "
   const totalPhiMicro = canonicalUint(summary.balancePhiMicro, "OFFLINE_RESERVE_EXACT_HEAD_REQUIRED");
   const preservedReserveUsd = canonicalUint(valueStates.settledBalanceUsdCents, "OFFLINE_RESERVE_EXACT_HEAD_REQUIRED");
   const preservedReservePhi = (preservedReserveUsd * 1_000_000_000_000n) / usdPerPhiMicrocents;
-  const reservePhiMicro = rail === "settlement" ? totalPhiMicro - preservedReservePhi : (reserveUsdCents * 1_000_000_000_000n) / usdPerPhiMicrocents;
+  const split = exact && preservedReserveUsd !== 0n ? record(summary!.bankNoteValueProjection) : null;
+  // Exact split is independently checked by projectBankLocalWalletMovement before
+  // custody. Fixed-dollar backing is never repriced to infer Settlement Phi.
+  const reservePhiMicro = exact
+    ? split ? canonicalUint(split[rail === "settlement" ? "settlementPhiMicro" : "reserveBackingPhiMicro"], "OFFLINE_RESERVE_EXACT_HEAD_REQUIRED") : totalPhiMicro
+    : rail === "settlement" ? totalPhiMicro - preservedReservePhi : (reserveUsdCents * 1_000_000_000_000n) / usdPerPhiMicrocents;
   const projectedReserveUsdCents = (
     reservePhiMicro * usdPerPhiMicrocents + 500_000_000_000n
   ) / 1_000_000_000_000n;
-  if (reservePhiMicro < 0n || (rail === "reserve" && projectedReserveUsdCents !== reserveUsdCents)) {
+  if (reservePhiMicro < 0n || (!exact && rail === "reserve" && projectedReserveUsdCents !== reserveUsdCents)) {
     throw new Error("OFFLINE_RESERVE_EXACT_HEAD_REQUIRED");
   }
   return {
@@ -373,6 +381,7 @@ function successorSnapshot(
   const summary = record(wallet.routeSummary)!;
   const rollup = record(summary.rollup)!;
   const valueStates = record(summary.valueStates)!;
+  const exact=input.accountValuation==="exact-rail-phi-v1"?projectBankLocalWalletMovement(summary,input.fundingRail??"reserve",input.amountPhiMicro.toString(),input.amountUsdCents.toString(),"debit"):undefined;
   const totalAfterPhiMicro = source.totalPhiMicro - input.amountPhiMicro;
   const totalAfterUsdCents = source.totalUsdCents - input.amountUsdCents;
   summary.balancePhiMicro = totalAfterPhiMicro.toString();
@@ -385,11 +394,17 @@ function successorSnapshot(
     valueStates.settledBalanceUsdCents = reserveAfterUsdCents.toString();
     valueStates.settledBalanceUsd = formatUsdCents(reserveAfterUsdCents);
   }
+  if(exact){
+    Object.assign(summary,exact.summary);
+    const versions=wallet.localNoteDebitValuationVersions===undefined?{}:record(wallet.localNoteDebitValuationVersions);
+    if(!versions||Object.hasOwn(versions,input.note.noteId))throw Error("BANK_LOCAL_CREDIT_ACCOUNT_BINDING_MISMATCH");
+    wallet.localNoteDebitValuationVersions={...versions,[input.note.noteId]:"exact-rail-phi-v1"};
+  }
   rollup.totalDebitPhiMicro = (
     canonicalUint(rollup.totalDebitPhiMicro, "OFFLINE_RESERVE_EXACT_HEAD_REQUIRED") + input.amountPhiMicro
   ).toString();
   rollup.totalDebitUsdCents = (
-    canonicalUint(rollup.totalDebitUsdCents, "OFFLINE_RESERVE_EXACT_HEAD_REQUIRED") + input.amountUsdCents
+    canonicalUint(rollup.totalDebitUsdCents, "OFFLINE_RESERVE_EXACT_HEAD_REQUIRED") + (exact?BigInt(exact.displayUsdCents):input.amountUsdCents)
   ).toString();
   rollup.noteMintCount = Number(canonicalUint(rollup.noteMintCount, "OFFLINE_RESERVE_EXACT_HEAD_REQUIRED") + 1n);
   rollup.lastEntryAt = input.note.mintedAt;
@@ -500,6 +515,7 @@ export async function issueKairosOfflineNoteLocally(
 ): Promise<KairosOfflineNoteLocalIssuanceResult> {
   input = { ...input, accountProof: parseReceizIdentityArtifactText(JSON.stringify(input.accountProof)) };
   if (input.fundingRail !== undefined && input.fundingRail !== "reserve" && input.fundingRail !== "settlement") throw Error("OFFLINE_NOTE_FUNDING_RAIL_MISMATCH");
+  if(input.accountValuation!==undefined&&input.accountValuation!=="exact-rail-phi-v1")throw Error("BANK_LOCAL_CREDIT_EXACT_RAIL_SOURCE_REQUIRED");
   const localUid = input.deviceIdentity.localUid.trim();
   const accountUserId = input.accountBinding.accountUserId.trim();
   const keyId = input.accountProof.keyId.trim();
@@ -517,6 +533,7 @@ export async function issueKairosOfflineNoteLocally(
   const predecessorDigest = input.accountProof.portableState?.proof?.digestSha256Hex ?? "";
   const intentDigest = await digestReceizAuthority("transition", STAGE_SCHEMA, {
     preparationId: input.preparationId,
+    ...(input.accountValuation?{accountValuation:input.accountValuation}:{}),
     ...(input.fundingRail === "settlement" ? { fundingRail: "settlement" } : {}),
     predecessorDigest,
     accountUserId,
@@ -545,15 +562,16 @@ export async function issueKairosOfflineNoteLocally(
       return resultFromStage(stage);
     }
   } else {
-    const reserve = accountReserve(input.accountProof, accountUserId, input.fundingRail);
     const reserveHead = await input.reserveCustody.inspectBoundHead();
     const component=Boolean(reserveHead?.bankAllocationId);
+    const reserve = accountReserve(input.accountProof, accountUserId, input.fundingRail, component && input.accountValuation==="exact-rail-phi-v1");
     if (input.fundingRail === "settlement" && (reserveHead?.bankAllocationUsdPerPhiMicrocents !== input.usdPerPhiMicrocents.toString()
-      || reserve.usdPerPhiMicrocents !== input.usdPerPhiMicrocents
+      || !input.accountValuation && reserve.usdPerPhiMicrocents !== input.usdPerPhiMicrocents
       || (input.amountPhiMicro * input.usdPerPhiMicrocents + 500000000000n) / 1000000000000n !== input.amountUsdCents)) throw Error("OFFLINE_NOTE_ALLOCATION_QUOTE_MISMATCH");
     if ((reserveHead?.bankAllocationRail ?? "reserve") !== (input.fundingRail ?? "reserve") || input.fundingRail === "settlement" && !component) throw Error("OFFLINE_NOTE_FUNDING_RAIL_MISMATCH");
+    const exact=input.accountValuation==="exact-rail-phi-v1"?projectBankLocalWalletMovement(reserve.summary!,input.fundingRail??"reserve",input.amountPhiMicro.toString(),input.amountUsdCents.toString(),"debit"):undefined;
     if (input.amountPhiMicro <= 0n || input.amountUsdCents <= 0n
-      || reserve.totalPhiMicro < input.amountPhiMicro || !component && reserve.phiMicro < input.amountPhiMicro || reserve.usdCents < input.amountUsdCents
+      || reserve.totalPhiMicro < input.amountPhiMicro || !component && reserve.phiMicro < input.amountPhiMicro || !exact && reserve.usdCents < input.amountUsdCents
 ) {
       throw new Error("OFFLINE_RESERVE_CONSERVATION_REQUIRED");
     }

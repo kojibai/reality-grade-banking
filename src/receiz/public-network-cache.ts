@@ -27,7 +27,7 @@ export async function loadPublicNetworkCache(): Promise<PublicNetworkCache | nul
 }
 export async function loadPublicNetworkSeed(signal?: AbortSignal): Promise<PublicNetworkCache | null> {
   try {
-    const response = await fetch('/receiz-public-ledger.json.gz', { signal, credentials: 'omit' });
+    const response = await fetch('/receiz-public-ledger.json.gz.bin', { signal, credentials: 'omit' });
     if (!response.ok || !response.body || Number(response.headers.get('content-length')) > 8 * 1024 * 1024) return null;
     const decodedByTransport = response.headers.get('content-encoding')?.includes('gzip');
     if (!decodedByTransport && typeof DecompressionStream === 'undefined') return null;

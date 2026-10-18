@@ -173,3 +173,33 @@ ESLint passed; Bank suite: **470 passed**, TypeScript and production build
 passed. v129 MCP: **15 passed**, no network/database calls or writes. The
 final included source and modules reproduce exactly. Mobile/desktop receipts
 and pointer/keyboard focus behavior were inspected in isolated Chrome.
+
+## Exact remaining value and retained-client checkpoint — October 17, 2026
+
+Receiz commit `af90a8c7a567a1e0c0ca4fbe5f3116472e4e9db3` adds receiver-quote
+Settlement respend and exact remaining-rail display valuation. Reserve keeps
+its original dollar claim and actual backing Phi. The private projection keeps
+those components separate, so two smaller withdrawals cannot strand Phi because
+of per-withdrawal cent rounding. Pure native v1 displays may normalize from exact
+aggregate Phi; ambiguous mixed legacy backing requires its complete source split.
+
+Each new signed credit/debit identifies its arithmetic version by that exact
+credit ID or Note ID. Retained v1 preparation, completed-stage and intent bytes
+remain verifiable under their original arithmetic, including when they preserve
+newer predecessor fields. Fresh pure-Settlement spending after v1 recovery is
+also covered. No private display marker creates funding or custody authority.
+
+The complete sequential native suite passed **48/48**, including eight prepared
+browser rail/receiver-quote/denomination journeys, local credit and respend,
+complete native writer funding/redemption, source recovery, live proof refresh
+and public disclosure/revocation. Scoped native source/test TypeScript and ESLint,
+37 entry-freeze checks and the existing primitive/governance checks passed.
+The full repository typecheck was stopped after exhausting available resources;
+it is not a full-typecheck pass. The earlier disk-exhausted test attempt is
+superseded by the complete sequential run.
+
+The public wallet-only producer now includes verified closed identity events,
+preserves each original Kai coordinate and append prefix, and refreshes changed
+quotes or nonfinancial history without a wallet write. This does not expand its
+scope to unsupported profile/artifact/lawful-value or outstanding offline sources.
+The production local-credit and general asset-operation gates remain closed.

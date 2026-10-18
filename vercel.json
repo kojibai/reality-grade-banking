@@ -4,13 +4,34 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
-    "api/index.ts": { "maxDuration": 120 }
+    "api/index.ts": {
+      "maxDuration": 120
+    }
   },
   "rewrites": [
-    { "source": "/receipt/", "destination": "/receipt/index.html" },
-    { "source": "/verify/:digest", "destination": "/verify/index.html" },
-    { "source": "/verify/:digest/", "destination": "/verify/index.html" },
-    { "source": "/api/bank/(.*)", "destination": "/api/index" },
-    { "source": "/auth/receiz/callback", "destination": "/index.html" }
+    {
+      "source": "/receiz-public-ledger.json.gz",
+      "destination": "/receiz-public-ledger.json.gz.bin"
+    },
+    {
+      "source": "/receipt/",
+      "destination": "/receipt/index.html"
+    },
+    {
+      "source": "/verify/:digest",
+      "destination": "/verify/index.html"
+    },
+    {
+      "source": "/verify/:digest/",
+      "destination": "/verify/index.html"
+    },
+    {
+      "source": "/api/bank/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/auth/receiz/callback",
+      "destination": "/index.html"
+    }
   ]
 }

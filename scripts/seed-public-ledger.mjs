@@ -17,5 +17,5 @@ pages.push(parsePublicNetworkPage('proofs', membership));
 const records = mergePublicRecords([], pages.flatMap(page => page.records));
 const bytes = Buffer.from(JSON.stringify({ schema: 'receiz.bank.public-ledger-cache.v1', authority: 'public-source-projection', capturedAt: capture.capturedAt, records, coverage: pages.map(page => ({ source: page.source, complete: true, count: page.records.length })) }));
 const compressed = gzipSync(bytes, { level: 9 });
-await writeFile(new URL('../public/receiz-public-ledger.json.gz', import.meta.url), compressed);
+await writeFile(new URL('../public/receiz-public-ledger.json.gz.bin', import.meta.url), compressed);
 console.log(JSON.stringify({ records: records.length, capturedAt: capture.capturedAt, publicOnly: true, bytes: bytes.length, compressedBytes: compressed.length }));

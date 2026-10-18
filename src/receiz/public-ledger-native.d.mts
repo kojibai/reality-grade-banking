@@ -1,0 +1,1 @@
+export function readPublicOriginal(fileBytes:Uint8Array,filename:string):Promise<{ok:boolean;verification:{integrity:{ok:boolean};bundle?:{kaiPulseEternal?:unknown;nativeRecordSeal?:unknown}};payloadBytes:Uint8Array;payloadMimeType:string}>;

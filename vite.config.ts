@@ -5,11 +5,12 @@ import { resolve } from 'node:path';
 import { publicMarketPlugin } from './server/public-market';
 import { nativeAccountPlugin } from './server/native-account';
 import { publicNetworkPlugin } from './server/public-network';
+import {publicLedgerProofPlugin} from './server/public-ledger-proof';
 import { accountProofPublicPlugin } from './server/account-proof-public';
 
 export default defineConfig({
   test: { include: ['tests/**/*.test.{ts,tsx}'], environmentOptions: { happyDOM: { settings: { disableIframePageLoading: true } } } },
-  plugins: [react(), publicMarketPlugin(), publicNetworkPlugin(), nativeAccountPlugin(), accountProofPublicPlugin(), {
+  plugins: [{name:'bankeiz-opaque-ledger-seed',configureServer(server){server.middlewares.use((req,_res,next)=>{if(req.url==='/receiz-public-ledger.json.gz')req.url='/receiz-public-ledger.json.gz.bin';next();});},configurePreviewServer(server){server.middlewares.use((req,_res,next)=>{if(req.url==='/receiz-public-ledger.json.gz')req.url='/receiz-public-ledger.json.gz.bin';next();});}},react(), publicLedgerProofPlugin(), publicMarketPlugin(), publicNetworkPlugin(), nativeAccountPlugin(), accountProofPublicPlugin(), {
     name: 'receiz-receiver-build-provenance',
     resolveId(id) { if (id === 'virtual:receiz-receiver-build') return '\0receiz-receiver-build'; },
     load(id) {
@@ -19,5 +20,5 @@ export default defineConfig({
     },
   }],
   server: { port: 5173, strictPort: true },
-  build: { manifest: true, rollupOptions: { input: { bank: resolve('index.html'), conformance: resolve('conformance/index.html'), verify: resolve('verify/index.html'), receipt:resolve('receipt/index.html') }, output: { manualChunks(id) { if (id.includes('/vendor/jsqr/')) return 'qr-decoder'; } } }, target: 'es2022', chunkSizeWarningLimit: 1600 },
+  build: { manifest: true, rollupOptions: { input: { bank: resolve('index.html'), conformance: resolve('conformance/index.html'), verify: resolve('verify/index.html'), receipt:resolve('receipt/index.html'), ledger:resolve('ledger/index.html') }, output: { manualChunks(id) { if (id.includes('/vendor/jsqr/')) return 'qr-decoder'; } } }, target: 'es2022', chunkSizeWarningLimit: 1600 },
 });

@@ -41,3 +41,10 @@ it('does not resurrect withdrawn graph or showcase entries through cache saves a
     expect((await loadPublicNetworkCache())?.records.filter(row => row.source === source).map(row => row.sourceId)).toEqual(['kept']);
   }
 });
+it('requests opaque compressed seed bytes so HTTP content decoding cannot invalidate the offline resource hash',async()=>{
+ const {gzipSync}=await import('node:zlib');
+ const records=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'compressed-source',actionKind:'record'}],nextCursor:null}).records;
+ const input={schema:'receiz.bank.public-ledger-cache.v1',authority:'public-source-projection',records,coverage:[{source:'actions',complete:true}],capturedAt:'2026-10-17T12:00:00Z'};
+ const fetch=vi.fn(async(_input:string|URL|Request)=>new Response(new Uint8Array(gzipSync(JSON.stringify(input))),{headers:{'Content-Type':'application/octet-stream'}}));vi.stubGlobal('fetch',fetch);
+ expect((await loadPublicNetworkSeed())?.records).toHaveLength(1);expect(fetch.mock.calls[0][0]).toBe('/receiz-public-ledger.json.gz.bin');
+});

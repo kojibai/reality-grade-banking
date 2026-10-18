@@ -1,0 +1,55 @@
+{
+  "schema": "bankeiz.public-ledger-release-evidence.v1",
+  "environment": {
+    "browser": "system Chrome via Playwright",
+    "browserPlugin": "not available",
+    "desktop": [
+      1440,
+      1000
+    ],
+    "mobile": [
+      393,
+      852
+    ],
+    "productionCode": "local production build",
+    "financialActivity": "none"
+  },
+  "browser": {
+    "passed": true,
+    "checks": [
+      "393px public Ledger, proof tools, no overflow",
+      "Learn navigation preserves header DOM",
+      "Real production mobile/desktop pages have no runtime errors",
+      "The same canonical original opens through the single proof picker without publishing",
+      "Actual canonical synthetic native Ledger creates and reopens full2400x3000 Crystal",
+      "Open, inspect and keep image causes no publication",
+      "Explicit consent sends exact digest and source to isolated publication fixture",
+      "Saved original and complete Crystal reopen with network disabled"
+    ]
+  },
+  "offline": {
+    "ready": true,
+    "cached": 83,
+    "required": 83,
+    "routes": [
+      "/ledger/",
+      "/learn/reality-grade-banking/",
+      "/learn/receiz-id/",
+      "/verify/",
+      "/legal/"
+    ]
+  },
+  "sourcePackage": {
+    "requiredFrontendEntries": [
+      "index.html",
+      "conformance/index.html",
+      "verify/index.html",
+      "receipt/index.html",
+      "ledger/index.html"
+    ],
+    "cleanApplicationBuild": true,
+    "nativeModulesReproduced": true,
+    "publishedSdkOutputsReproduced": 211
+  },
+  "qualificationBoundary": "Canonical positive browser checks use an isolated synthetic issuer. No production roots, user accounts, hardware custody or funds are substituted."
+}

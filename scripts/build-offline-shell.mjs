@@ -12,7 +12,7 @@ const fixedResources = [
   '/notes/banknote-engraving.webp', '/notes/denomination-engraving.png',
   '/notes/reserve-note-masthead.png', '/notes/settlement-note-masthead.png', '/notes/fonts/Cinzel.ttf',
   '/learn/proof-glass.webp', '/learn/reserve-note.webp', '/learn/settlement-note.webp',
-  '/receiz-public-market.json', '/receiz-public-capitalization.json', '/receiz-public-sports.json', '/receiz-public-chart-history.json', '/receiz-public-ledger.json.gz',
+  '/receiz-public-market.json', '/receiz-public-capitalization.json', '/receiz-public-sports.json', '/receiz-public-chart-history.json', '/receiz-public-ledger.json.gz.bin',
 ];
 
 // Run after public/notice generation: their final HTML and embedded navigation
@@ -29,6 +29,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   visit('index.html');
   if (manifest['verify/index.html']) { visit('verify/index.html'); urls.add('/verify/'); }
   if (manifest['receipt/index.html']) {visit('receipt/index.html');urls.add('/receipt/');}
+  if (manifest['ledger/index.html']) {visit('ledger/index.html');urls.add('/ledger/');}
   // Vite emits module-worker files outside the entry's manifest dependency list.
   for (const name of await readdir(resolve(root, 'assets'))) if (/^worker-[\w-]+\.js$/.test(name)) urls.add('/assets/' + name);
   const index = await readFile(resolve(root, 'index.html'), 'utf8');
@@ -37,6 +38,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   const pages = { '/': '/index.html', '/index.html': '/index.html', '/receipt/':'/index.html' };
   if (manifest['verify/index.html']) { pages['/verify/'] = '/verify/'; pages['/verify'] = '/verify/'; }
   if (manifest['receipt/index.html']) pages['/receipt/']='/receipt/';
+  if (manifest['ledger/index.html']) {pages['/ledger/']='/ledger/';pages['/ledger']='/ledger/';}
   for (const path of Object.keys(navigation.pages)) {
     if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && path !== '/legal/') throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     urls.add(path); pages[path] = path; if (path !== '/') pages[path.slice(0, -1)] = path;

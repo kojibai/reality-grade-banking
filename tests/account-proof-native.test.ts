@@ -18,4 +18,16 @@ describe('native account statement projection inspection',()=>{
   const badReserve=statement();badReserve.checkpoint.reserveUsdCents='601';expect(()=>inspectAccountStatement(badReserve)).toThrow(/BALANCE/);
   const privateValue={...statement(),signingKey:'must never be public'};expect(()=>inspectAccountStatement(privateValue)).toThrow(/PRIVATE/);
  });
+ it('preserves an acquired identity coordinate without backdating later financial entries',()=>{
+  const value=statement();
+  value.transactions.splice(1,0,{sequence:2,transactionId:'opened',eventDigest:h('1'),previousEventDigest:h('d'),kaiUPulse:'50',kind:'account-opened',description:'Account opened.',reserveDeltaUsdCents:'0',settlementDeltaPhiMicro:'0',balanceDeltaPhiMicro:'0'});
+  value.transactions[2].sequence=3;value.transactions[2].previousEventDigest=h('1');value.checkpoint.transactionCount=3;
+  expect(inspectAccountStatement(value).transactions[1].kaiUPulse).toBe('50');
+  const backdated=structuredClone(value);backdated.transactions[2].kaiUPulse='75';
+  expect(()=>inspectAccountStatement(backdated)).toThrow(/HISTORY/);
+  const nonzero=structuredClone(value);nonzero.transactions[1].reserveDeltaUsdCents='1';
+  expect(()=>inspectAccountStatement(nonzero)).toThrow(/HISTORY/);
+  const unknown=structuredClone(value);unknown.transactions[1].kind='unknown';
+  expect(()=>inspectAccountStatement(unknown)).toThrow(/HISTORY/);
+ });
 });

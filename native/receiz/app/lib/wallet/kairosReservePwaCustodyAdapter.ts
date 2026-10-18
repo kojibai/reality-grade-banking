@@ -308,7 +308,10 @@ export function createKairosReservePwaCustodyAdapter(input: Readonly<{
     }>): Promise<void> {
       const held = readBankLocalAccountCredit(args.evidence), evidence = args.evidence;
       if (held.intent.schema !== "receiz.bank.note-local-credit.v1") throw Error("BANK_LOCAL_CREDIT_SOURCE_REQUIRED");
-      await verifyBankLocalCreditAccountSuccessor({ schema: "receiz.bank.local-account-credit-preparation.v1", intent: held.intent,
+      const wallet=record(record(args.successorAccountProof.portableState?.snapshot)?.wallet);
+      const version=record(wallet?.localNoteCreditValuationVersions)?.[evidence.creditId];
+      if(version!==undefined&&version!=="exact-rail-phi-v1")throw Error("BANK_LOCAL_CREDIT_ACCOUNT_BINDING_MISMATCH");
+      await verifyBankLocalCreditAccountSuccessor({ schema: version==="exact-rail-phi-v1"?"receiz.bank.local-account-credit-preparation.v2":"receiz.bank.local-account-credit-preparation.v1", intent: held.intent,
         predecessorAccountProof: args.predecessorAccountProof, successorAccountProof: args.successorAccountProof });
       const consumed = structuredClone(args.consumedNoteCustody), head = readBankFundedNoteHead(held.note);
       if (head.packet.custodyMode !== "qualified-anonymous") throw Error("BANK_LOCAL_CREDIT_QUALIFIED_SUCCESSOR_REQUIRED");

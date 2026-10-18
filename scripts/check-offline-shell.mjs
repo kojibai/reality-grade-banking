@@ -13,6 +13,8 @@ assert.ok(!shell.some(url => url.startsWith('/api/') || /source\/|\.map$/.test(u
 for (const url of ['/index.html', '/native/offline-notes.v129.mjs', '/native/receiver-verifier.v129.mjs', '/notes/banknote-engraving.webp', '/notes/denomination-engraving.png', '/notes/fonts/Cinzel.ttf', '/zk/document-seal.wasm', '/zk/document-seal.zkey', '/zk/kai-sigil.wasm', '/zk/kai-sigil.zkey', '/learn/', '/learn/receiz-id/', '/legal/']) assert.ok(shell.includes(url), `Required offline resource missing: ${url}`);
 assert.ok(shell.some(url => url.includes('qr-decoder')), 'The lazy camera decoder must also be available offline.');
 assert.ok(shell.includes('/verify/'), 'The public account-proof reader must be available offline after installation.');
+assert.ok(shell.includes('/ledger/'), 'Public Ledger has a complete retained offline read entry.');
+assert.equal(manifest.pages['/ledger/'], '/ledger/', 'Public Ledger links reopen their own entry offline.');
 for (const entry of manifest.resources) {
   const url = new URL(entry.url, 'https://bankeiz.com');
   assert.equal(url.origin, 'https://bankeiz.com');

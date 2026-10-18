@@ -23,6 +23,7 @@ for (let offset = 0; offset < tar.length && tar[offset];) {
   assert.ok(!entries.has(name), `Duplicate archive file: ${name}`);
   entries.set(name, tar.subarray(offset + 512, offset + 512 + size)); modes.set(name, parseInt(text(header.subarray(100, 108)), 8)); offset += 512 + Math.ceil(size / 512) * 512;
 }
+for (const entry of ['index.html','conformance/index.html','verify/index.html','receipt/index.html','ledger/index.html']) assert.ok(entries.has(entry), `Missing frontend build source: ${entry}`);
 const inventory = JSON.parse(entries.get('SOURCE-ARCHIVE.json').toString('utf8'));
 assert.equal(hash(JSON.stringify(inventory.files)), index.sourceTreeSha256);
 assert.equal(inventory.sourceTreeSha256, index.sourceTreeSha256);
@@ -38,6 +39,7 @@ if (process.argv.includes('--rebuild')) {
     // Reuse only publicly locked npm tools; source reads happen in the archive.
     await symlink(resolve('node_modules'), resolve(directory, 'node_modules'), 'dir');
     for (const args of [['scripts/check-native-source.mjs'], ['scripts/rebuild-native.mjs', '--sdk'], ['scripts/check-native-resources.mjs']]) execFileSync(process.execPath, args, { cwd: directory, stdio: 'inherit' });
-    console.log('A clean archive extraction reproduces both native modules and all 211 SDK JavaScript outputs without the private checkout.');
+    execFileSync('npm', ['run', 'build'], { cwd: directory, stdio: 'inherit' });
+    console.log('A clean archive extraction builds the full application and reproduces both native modules and all 211 SDK JavaScript outputs without the private checkout.');
   } finally { await rm(directory, { recursive: true, force: true }); }
 }
