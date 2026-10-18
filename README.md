@@ -56,6 +56,8 @@ See the [current function boundaries](docs/current-function-boundaries.md) and [
 See [native asset and full account-source qualification](docs/native-assets-and-account-proofs-v129.md) for implemented effects, tested source closures and remaining activation requirements.
 See [private artifact and Note source closures](docs/private-artifact-and-note-source-closures-v129.md) for exact private-original admission, outstanding Note funding, historical replay and current custody scope.
 
+Account charts preserve accepted movements and [recompute historical dollar valuations](docs/historical-account-valuation-v129.md) from the first sealed activity using the pinned v129 pricing law. Computed chart samples remain distinct from recorded quotes and financial authority.
+
 These boundaries are intentional release disclosures. A build, downloaded image or deployment is not a financial qualification. The note artwork samples are **unissued**. See [native note release gates](docs/offline-notes-release.md), [Settlement Note contract](docs/settlement-note-contract.md) and [receiver qualification](institution/qualification.md) before enabling financial capabilities.
 
 ## Run locally

@@ -5,8 +5,32 @@ import { expect, it } from 'vitest';
 import { BalanceChart } from '../src/features/account/BalanceChart';
 import { LiveAccount } from '../src/features/account/LiveAccount';
 import type { SharedWallet } from '../src/receiz/shared-wallet';
+import {projectHistoricalWallet} from '../src/receiz/historical-wallet';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+it('paints a retained deterministic history immediately across all rails and periods from its first sealed activity',()=>{
+  const host=document.createElement('div'),root=createRoot(host);
+  const history=projectHistoricalWallet({transactions:[{kaiUPulse:'8000000000000',reserveDeltaUsdCents:'0',settlementDeltaPhiMicro:'0'},{kaiUPulse:'8000001000000',reserveDeltaUsdCents:'100000',settlementDeltaPhiMicro:'100000000'}],userId:'account',endKaiUPulse:'15000000000000'});
+  const last=history.at(-1)!,wallet:SharedWallet={...last,balancePhiMicro:'100000000',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:'15000000',kaiUpulse:'8000001000000'};
+  try{
+    act(()=>root.render(<BalanceChart wallet={wallet} history={history} observedAt={last.at}/>));
+    const select=(text:string)=>act(()=>[...host.querySelectorAll('button')].find(button=>button.textContent===text)!.click());
+    for(const rail of ['Total','Settlement','Reserve']){
+      select(rail);
+      for(const period of ['All','1D','1W','1M','3M','1Y']){
+        select(period);const svg=host.querySelector('svg')!;
+        expect(svg.getAttribute('aria-description')).toContain('recomputed from accepted holdings');
+        expect(svg.querySelector('path[fill="none"]')!.getAttribute('d')).toMatch(/^M12,/);
+        expect(svg.querySelector('circle')!.getAttribute('cx')).toBe('308');
+        expect(host.querySelector('.chart-observation-note')).toBeNull();
+        if(period==='All')expect(Number(svg.getAttribute('data-range-start'))).toBe(Date.parse(history[0].at));
+      }
+    }
+    const svg=host.querySelector('svg')!;
+    act(()=>svg.dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true})));
+    expect(host.querySelector('.chart-tooltip')!.textContent).toContain('Valuation');
+  }finally{act(()=>root.unmount());}
+});
 it('shows a complete current-value line when a selected period contains only one observation',()=>{
   const host=document.createElement('div'),root=createRoot(host);
   const history=[{userId:'account',at:'2026-08-01T12:00:00Z',kaiUPulse:null,totalUsdCents:'10000',reserveUsdCents:'0',settlementUsdCents:'10000'},{userId:'account',at:'2026-10-18T12:00:00Z',kaiUPulse:null,totalUsdCents:'12000',reserveUsdCents:'0',settlementUsdCents:'12000'}];

@@ -1,5 +1,9 @@
 # Ledger and account-history continuity checkpoint
 
+Later historical-valuation implementation:
+[accepted holdings and deterministic pricing](../historical-account-valuation-v129.md).
+The historical-rate limitation below describes this earlier checkpoint.
+
 This checkpoint preserves the Bankeiz application and v129 SDK, MCP and AI
 Skills contract. Commits are local on main; the operator pushes and deploys.
 

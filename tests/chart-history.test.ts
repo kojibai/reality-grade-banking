@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { chartChange, chartDateLabel, chartPeriodBounds, chartPeriodPoints, sampleChartIndices } from '../src/core/chart-history';
+import {mergeWalletPoints,type WalletPoint} from '../src/receiz/wallet-series';
 
 it('selects only real observations inside each period and keeps the real beginning for All', () => {
   const points = [0, 1, 8, 9, 10].map(day => ({ at: new Date(Date.UTC(2026, 0, 1 + day)).toISOString(), value: day }));
@@ -28,4 +29,11 @@ it('bounds chart geometry while retaining the beginning, latest and sharp extrem
   expect(indices.length).toBeLessThanOrEqual(320);
   expect(indices[0]).toBe(0); expect(indices.at(-1)).toBe(9999);
   expect(indices).toContain(2001); expect(indices).toContain(8001);
+});
+it('keeps an actual observed quote over a model sample at the exact same display coordinate in either merge order',()=>{
+  const observed:WalletPoint={userId:'owner',at:'2026-10-18T12:00:00Z',kaiUPulse:'15000000000000',totalUsdCents:'100',reserveUsdCents:'0',settlementUsdCents:'100'};
+  const model:WalletPoint={...observed,totalUsdCents:'101',settlementUsdCents:'101',valuation:'deterministic-v129'};
+  for(const histories of [[[model],[observed]],[[observed],[model]]])expect(mergeWalletPoints(histories,'owner')).toEqual([observed]);
+  const later={...observed,at:'2026-10-18T12:01:00Z',totalUsdCents:'102',settlementUsdCents:'102'};
+  expect(mergeWalletPoints([[model,observed,later]],'owner')).toEqual([observed,later]);
 });

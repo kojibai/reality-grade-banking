@@ -5373,6 +5373,11 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/utils/phi-issuance.ts",
+      "sha256": "69622c017e955734525e121a7b27bdaa42066932657b145e02be493792de9c74",
+      "mode": 420
+    },
+    {
       "path": "receiz/app/utils/pngChunks.ts",
       "sha256": "7a54e936bee91d58886690cf0a3bad0982da141bb8b8a8482851863531c674bf",
       "bytes": 9465,
@@ -12093,5 +12098,16 @@
       "purpose": "Value exact remaining Settlement Phi at the held receiver quote, preserve fixed-dollar Reserve backing and retained v1 intents, and bind each arithmetic version to its signed credit/debit transition. Complete funded source and one-time custody remain authority; published SDK, MCP and AI skill packages stay unchanged.",
       "sourceCommit": "af90a8c7a567a1e0c0ca4fbe5f3116472e4e9db3"
     }
-  ]
+  ],
+  "historicalValuation": {
+    "schema": "bankeiz.historical-pricing-source.v1",
+    "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52",
+    "sourcePath": "app/utils/phi-issuance.ts",
+    "sourceSha256": "69622c017e955734525e121a7b27bdaa42066932657b145e02be493792de9c74",
+    "sdkVersion": "129.0.0",
+    "intrinsicAlgorithm": "phi/kosmos-vφ-5",
+    "intrinsicPolicyChecksum": "b05b2049",
+    "sampleUsd": 100,
+    "historicalPointsAreRecordedQuotes": false
+  }
 }

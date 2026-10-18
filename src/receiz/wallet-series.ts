@@ -1,6 +1,6 @@
 import type { SharedWallet } from './shared-wallet';
 import { chartChange, sampleChartIndices } from '../core/chart-history';
-export interface WalletPoint { userId: string; at: string; kaiUPulse: string | null; totalUsdCents: string; reserveUsdCents: string; settlementUsdCents: string; }
+export interface WalletPoint { userId: string; at: string; kaiUPulse: string | null; totalUsdCents: string; reserveUsdCents: string; settlementUsdCents: string; valuation?: 'deterministic-v129'; }
 // The exact v129 KKS day lattice; the displayed whole-pulse approximation is 17,491.
 export const KAI_DAY_UPULSES = 17_491_270_421n;
 /** The existing phi-exact UTC display bridge, including fractional pulses.
@@ -23,14 +23,17 @@ function retainWalletPoints(history: readonly WalletPoint[]): WalletPoint[] {
 }
 /** Merge display observations beneath their already-admitted same-account sources. */
 export function mergeWalletPoints(histories: readonly (readonly WalletPoint[])[], userId: string): WalletPoint[] {
-  const points = new Map<string, WalletPoint>();
+  const points = new Map<string, WalletPoint>(), observedCoordinates = new Set<string>();
   for (const history of histories) for (const point of history) {
     if (point.userId !== userId) continue;
     const at = Date.parse(point.at);
     if (!Number.isFinite(at)) continue;
-    points.set([at, point.kaiUPulse, point.totalUsdCents, point.reserveUsdCents, point.settlementUsdCents].join(':'), point);
+    if (!point.valuation) observedCoordinates.add([at, point.kaiUPulse].join(':'));
+    const key = [at, point.kaiUPulse, point.totalUsdCents, point.reserveUsdCents, point.settlementUsdCents].join(':');
+    // A recomputed sample cannot replace a recorded quote, even when equal.
+    if (!point.valuation || points.get(key)?.valuation !== undefined || !points.has(key)) points.set(key, point);
   }
-  return retainWalletPoints([...points.values()].sort((a, b) => Date.parse(a.at) - Date.parse(b.at)));
+  return retainWalletPoints([...points.values()].filter(point => !point.valuation || !observedCoordinates.has([Date.parse(point.at), point.kaiUPulse].join(':'))).sort((a, b) => Date.parse(a.at) - Date.parse(b.at)));
 }
 export function appendWalletPoint(history: readonly WalletPoint[], wallet: SharedWallet, at: string, kaiUPulse: string | null): WalletPoint[] {
   const point = { userId: wallet.userId, at, kaiUPulse, totalUsdCents: wallet.totalUsdCents, reserveUsdCents: wallet.reserveUsdCents, settlementUsdCents: wallet.settlementUsdCents };

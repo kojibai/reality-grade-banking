@@ -1,5 +1,9 @@
 # Account first paint and chart continuity
 
+Later historical-valuation implementation:
+[accepted holdings and deterministic pricing](../historical-account-valuation-v129.md).
+The historical-rate limitation below describes this earlier checkpoint.
+
 The account screen now receives its retained balance, observation time and
 chart history together, both before and after canonical identity admission.
 Previously the early screen omitted history even when the encrypted local

@@ -11,6 +11,7 @@ export function readWalletObservation(input: unknown, binding: { keyId: string; 
   const history = Array.isArray(value.history) ? value.history.slice(-4096).filter((point): point is WalletPoint => {
     if (!point || typeof point !== 'object' || point.userId !== wallet.userId || typeof point.at !== 'string' || !Number.isFinite(Date.parse(point.at)) || Date.parse(point.at) > Date.parse(value.observedAt as string)) return false;
     if (point.kaiUPulse !== null && (typeof point.kaiUPulse !== 'string' || !/^\d{1,30}$/.test(point.kaiUPulse))) return false;
+    if (point.valuation !== undefined && point.valuation !== 'deterministic-v129') return false;
     if (![point.totalUsdCents, point.reserveUsdCents, point.settlementUsdCents].every(amount => typeof amount === 'string' && /^(0|[1-9]\d{0,39})$/.test(amount))) return false;
     return BigInt(point.totalUsdCents) === BigInt(point.reserveUsdCents) + BigInt(point.settlementUsdCents);
   }) : [];

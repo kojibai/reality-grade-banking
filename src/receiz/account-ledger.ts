@@ -4,6 +4,7 @@ import { verifyAccountProofContinuation } from './account-proof-public';
 import { loadReceiz } from './client';
 import type { WalletObservation } from './wallet-observation';
 import { appendWalletPoint, mergeWalletPoints, walletPointTime, type WalletPoint } from './wallet-series';
+import {projectHistoricalWallet} from './historical-wallet';
 
 type State = { schema: 'bank.account-ledger.v1'; accountUid: string; observedAt: string; sourceJson: string };
 type Owner = Pick<ReceizIdentityPublicBinding, 'keyId' | 'artifactOwnerReceizId'>;
@@ -52,17 +53,9 @@ export async function accountLedgerObservation(proof: VerifiedAccountProof, acco
     portfolioUsdCents: null, pnlUsdCents: null, withdrawableUsdCents: null, projectionComplete: true,
     pulse: (BigInt(lastEntryKaiUPulse) / 1_000_000n).toString(), kaiUpulse: lastEntryKaiUPulse,
   };
-  const history: WalletPoint[] = [];
-  let reserve = 0n, settlementPhi = 0n;
-  for (const row of proof.statement.transactions) {
-    reserve += BigInt(row.reserveDeltaUsdCents); settlementPhi += BigInt(row.settlementDeltaPhiMicro);
-    const financial = BigInt(row.reserveDeltaUsdCents) !== 0n || BigInt(row.settlementDeltaPhiMicro) !== 0n || BigInt(row.balanceDeltaPhiMicro ?? '0') !== 0n;
-    // The full statement supplies historical rail movements, but only its
-    // checkpoint supplies a USD quote. Zero native Settlement needs no quote;
-    // never reprice an earlier nonzero holding with the checkpoint's rate or
-    // turn an identity event into an opening dollar balance.
-    if (financial && settlementPhi === 0n) history.push({ userId: accountUid, at: walletPointTime(row.kaiUPulse), kaiUPulse: row.kaiUPulse, totalUsdCents: reserve.toString(), reserveUsdCents: reserve.toString(), settlementUsdCents: '0' });
-  }
+  const history:WalletPoint[]=projectHistoricalWallet({transactions:proof.statement.transactions,userId:accountUid,endKaiUPulse:c.kaiUPulse});
+  // Historical model samples use their own Kai price. The accepted source's
+  // exact checkpoint quote and wallet remain unchanged and win at its endpoint.
   return { wallet, observedAt, history: appendWalletPoint(history, wallet, walletPointTime(c.kaiUPulse), c.kaiUPulse) };
 }
 

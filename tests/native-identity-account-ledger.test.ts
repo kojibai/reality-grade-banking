@@ -1,25 +1,38 @@
 import {beforeEach,expect,it,vi} from 'vitest';
 import {BANK_APPLICATION_ID,BANK_READ_SCOPES} from '../src/receiz/config';
-import {openCanonicalIdentity} from '../src/receiz/native-identity';
+import {openCanonicalIdentity,importNativeIdentity} from '../src/receiz/native-identity';
 import type {WalletObservation} from '../src/receiz/wallet-observation';
 // Integration sequencing only. The independent Chrome test opens real v129
 // native originals with the actual verifier and encrypted IndexedDB store.
-const p=vi.hoisted(()=>({known:null as WalletObservation|null,restore:vi.fn(),retain:vi.fn(),proof:vi.fn(),continueId:vi.fn(),wallet:vi.fn(),save:vi.fn(),request:vi.fn()}));
-vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>p.known,saveWalletObservation:p.save}));
+const p=vi.hoisted(()=>({known:null as WalletObservation|null,projection:null as unknown,device:vi.fn(),restore:vi.fn(),retain:vi.fn(),proof:vi.fn(),continueId:vi.fn(),wallet:vi.fn(),save:vi.fn(),request:vi.fn()}));
+vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>p.known,saveWalletObservation:p.save,saveDeviceIdentity:p.device}));
 vi.mock('../src/receiz/account-ledger',async original=>({...await original<typeof import('../src/receiz/account-ledger')>(),createLocalAccountLedger:()=>({restore:p.restore,retain:p.retain})}));
 vi.mock('../src/receiz/account-proof',async original=>({...await original<typeof import('../src/receiz/account-proof')>(),readAccountProof:p.proof}));
 vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({
  verifyReceizArtifact:async()=>({status:'verified-artifact'}),createReceizArtifactAdmissionEngine:()=>async()=>({verdict:'canonical-identity'}),isSdkIssuedReceizArtifactAdmission:()=>true,
  readReceizIdentityPublicBinding:async()=>({keyId:'fixture-key',artifactSha256:'a'.repeat(64),artifactOwnerReceizId:'owner.receiz.id'}),
- readReceizIdentityArtifact:async()=>({owner:{uid:'owner',username:'owner'},issuedAt:'2026-10-13T00:00:00Z',keyId:'fixture-key',crypto:{}}),projectReceizIdentityAccount:async()=>({authority:'identity-only'}),
+ readReceizIdentityArtifact:async()=>({owner:{uid:'owner',username:'owner'},issuedAt:'2026-10-13T00:00:00Z',keyId:'fixture-key',crypto:{}}),projectReceizIdentityAccount:async()=>p.projection??({authority:'identity-only'}),
  receizKaiNow:()=>({pulse:100,uPulse:'100000000'}),sha256ReceizBytes:async()=> 'a'.repeat(64),createReceizProofAuthorityChallenge:()=>({challenge:{},challengeB64Url:'fixture'}),
  createReceizClient:({accessToken,applicationId=BANK_APPLICATION_ID}:{accessToken?:string;applicationId?:string}={})=>accessToken?{auth:{grantedScopes:async()=>[...BANK_READ_SCOPES]},connect:{wallet:p.wallet},request:p.request}:{identity:{continueReceizId:p.continueId,signLoginProof:async()=>({}),exchangeProofAuthority:async()=>({applicationId,keyId:'fixture-key',artifactDigest:'a'.repeat(64),grantedScopes:[...BANK_READ_SCOPES],accessToken:'fixture-only',expiresAtKai:200})}},
 })}));
 const observation=(reserve='600',kai='100000002'):WalletObservation=>({observedAt:'2026-10-18T12:00:00Z',wallet:{userId:'bound-user',totalUsdCents:reserve,reserveUsdCents:reserve,settlementUsdCents:'0',balancePhiMicro:'3000000',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:'100',kaiUpulse:kai}});
 const proof={sourceDigest:'b'.repeat(64),statement:{schema:'bankeiz.public-account-statement.v2'}};
+const carriedProjection=()=> ({authority:'verified-identity-portable-state',portableStateVerified:true,completeAtSealedHead:true,owner:{uid:'owner'},verifiedState:{account:{userId:'owner'},exportedAt:'2026-10-18T12:00:00Z',accountStateHead:{kaiUpulse:'10000000'},wallet:{routeSummary:{userId:'owner',balanceUsd:'50.92',balancePhiMicro:'3000000',quote:{usdPerPhiMicrocents:'4092328496'},valueStates:{settledBalanceUsdCents:'1000',ecosystemBalanceUsdCents:'4092'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'3000000'}},ledgerEntries:[{id:'funded',user_id:'owner',direction:'credit',entry_kind:'admin_adjustment',amount_phi_micro:'2000000',amount_usd_cents:'1000',kai_upulse:'2000000',metadata:{}},{id:'received',user_id:'owner',direction:'credit',entry_kind:'chat_transfer',amount_phi_micro:'1000000',amount_usd_cents:'5024',kai_upulse:'3000000',metadata:{rail:'settlement'}}]},ledger:{entries:[{actorUserId:'owner',subjectUserId:null,kaiUpulse:'1000000'}]}}});
 beforeEach(()=>{
- p.known=null;p.restore.mockReset().mockResolvedValue(null);p.retain.mockReset().mockResolvedValue({proof,observation:observation()});p.proof.mockReset().mockImplementation(async({request})=>{await request('/account-source');return proof;});
+ p.known=null;p.projection=null;p.device.mockReset().mockResolvedValue(undefined);p.restore.mockReset().mockResolvedValue(null);p.retain.mockReset().mockResolvedValue({proof,observation:observation()});p.proof.mockReset().mockImplementation(async({request})=>{await request('/account-source');return proof;});
  p.continueId.mockReset().mockResolvedValue({ok:true,session:{uid:'bound-user'}});p.wallet.mockReset().mockResolvedValue({ok:true,wallet:{userId:'bound-user',balanceUsd:'8.00',balancePhiMicro:'4000000',valueStates:{settledBalanceUsdCents:'800',ecosystemBalanceUsdCents:'0'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'100000003'}}});p.save.mockReset().mockResolvedValue(undefined);p.request.mockReset().mockResolvedValue({});
+});
+it('returns complete carried historical valuations with the admitted identity before optional source or network reads',async()=>{
+ p.projection=carriedProjection();
+ let finish!:(value:null)=>void;p.restore.mockReturnValue(new Promise(resolve=>{finish=resolve;}));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  const known=identity.knownWallet()!;
+  expect(known.wallet.totalUsdCents).toBe('5092');expect(known.history![0]).toMatchObject({kaiUPulse:'1000000',totalUsdCents:'0'});
+  expect(known.history!.filter(point=>point.valuation==='deterministic-v129').length).toBeGreaterThan(100);
+  expect(known.history!.at(-1)).toMatchObject({kaiUPulse:'10000000',totalUsdCents:'5092'});
+  expect(p.continueId).not.toHaveBeenCalled();expect(p.wallet).not.toHaveBeenCalled();
+ }finally{finish(null);identity.dispose();}
 });
 it('restores a retained verified Ledger before any account continuation or wallet request',async()=>{
  p.restore.mockResolvedValue({proof,observation:observation()});
@@ -143,4 +156,36 @@ it('refuses a normally completed wallet read whose transaction coordinate predat
  p.restore.mockResolvedValue({proof,observation:observation('600','100000200')});p.wallet.mockResolvedValue({ok:true,wallet:{userId:'bound-user',balanceUsd:'10.00',balancePhiMicro:'5000000',valueStates:{settledBalanceUsdCents:'1000',ecosystemBalanceUsdCents:'0'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'100000100'}}});
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
  try{await identity.readWallet();expect(identity.knownWallet()?.wallet.reserveUsdCents).toBe('600');}finally{identity.dispose();}
+});
+
+it('upgrades an older sparse display cache from the matching complete carried source and retains it for next paint',async()=>{
+ p.projection=carriedProjection();
+ p.known={observedAt:'2026-10-18T12:00:00Z',wallet:{userId:'owner',totalUsdCents:'5092',reserveUsdCents:'1000',settlementUsdCents:'4092',balancePhiMicro:'3000000',projectionComplete:true,portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,pulse:'3',kaiUpulse:'3000000'}};
+ const original=p.known.wallet,identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  expect(identity.knownWallet()?.wallet).toBe(original);
+  expect(identity.knownWallet()?.history?.[0]).toMatchObject({kaiUPulse:'1000000',totalUsdCents:'0'});
+  await vi.waitFor(()=>expect(p.save).toHaveBeenCalled());
+  expect(p.save.mock.calls[0][3].some((point:{valuation?:string})=>point.valuation==='deterministic-v129')).toBe(true);
+  expect(p.continueId).not.toHaveBeenCalled();
+ }finally{identity.dispose();}
+});
+it('does not use carried chart enrichment to change a stronger local Note wallet',async()=>{
+ p.projection=carriedProjection();
+ p.known={observedAt:'2026-10-18T12:00:00Z',wallet:{userId:'owner',totalUsdCents:'5092',reserveUsdCents:'1000',settlementUsdCents:'4092',balancePhiMicro:'3000000',projectionComplete:true,portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,pulse:'3',kaiUpulse:'3000000'},source:'local-note-head',localHeadDigest:'c'.repeat(64)};
+ const original=p.known,identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{expect(identity.knownWallet()).toBe(original);expect(p.save).not.toHaveBeenCalled();}finally{identity.dispose();}
+});
+
+it('serializes post-import display retention with a later balance so a late seed cannot overwrite it',async()=>{
+ p.known=observation();let finish!:()=>void;p.save.mockImplementationOnce(()=>new Promise<void>(resolve=>{finish=resolve;}));
+ const identity=await importNativeIdentity(new File([new Uint8Array([1])],'fixture.receiz'),' ',true);
+ try{
+  await vi.waitFor(()=>expect(p.save).toHaveBeenCalledTimes(1));
+  expect((await identity.readWallet()).totalUsdCents).toBe('800');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  expect(p.save).toHaveBeenCalledTimes(1);
+  finish();await vi.waitFor(()=>expect(p.save).toHaveBeenCalledTimes(2));
+  expect(p.save.mock.calls.at(-1)![1].totalUsdCents).toBe('800');
+ }finally{finish();identity.dispose();}
 });

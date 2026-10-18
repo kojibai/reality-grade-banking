@@ -44,6 +44,14 @@ The normal application build publishes an exact, content-addressed source archiv
 
 ## Application composition changes
 
+Historical wallet display also includes the exact v129 `app/utils/phi-issuance.ts`
+source. `manifest.json` records its separate `historicalValuation` provenance and
+hash. The application adapter changes only its valuation imports to use the
+locked SDK; tests enforce that correspondence. See
+[historical account valuation](../docs/historical-account-valuation-v129.md).
+These computed chart points are display data, not financial credit or recorded
+historical quotes. Native Note/receiver and published SDK bytes are unchanged.
+
 The source commit identifies the upstream v129 base. `manifest.json` additionally records application-specific composition patches with their original and modified source hashes. The Bankeiz WebAuthn realm patch changes only the Bank note browser composition: Bankeiz uses `bankeiz.com`, while existing Receiz Bank credentials retain `receiz.com`. It does not modify the pinned SDK package sources, published SDK JavaScript, verification roots or note custody requirements.
 
 After an intentional composition-source edit, update its indexed source/input hashes and run `node scripts/rebuild-native.mjs --refresh-composition --output public/native`. Normal builds continue to require exact reproduction of the committed artifacts.

@@ -68,29 +68,29 @@ it('keeps transaction-head coordinates distinct from later proof issuance coordi
  const observation=await accountLedgerObservation(v,'bound-user',new Date().toISOString());
  expect(observation.wallet.kaiUpulse).toBe('100000002');expect(observation.history?.at(-1)?.kaiUPulse).toBe('100000500');
 });
-it('restores exact financial balances at their sealed coordinates without a fabricated genesis or login point',async()=>{
+it('starts at the actual first sealed activity and restores exact financial movements without a login opening',async()=>{
  const v=proof(2,'600');v.statement.checkpoint.kaiUPulse='3000000';
  const rows=v.statement.transactions as import('../src/receiz/account-proof').AccountProofTransaction[];
  rows[0].kaiUPulse='1000000';rows[1].kaiUPulse='2000000';
  rows.unshift({...rows[0],sequence:0,transactionId:'first-seal',kind:'account-opened',kaiUPulse:'500000',reserveDeltaUsdCents:'0',settlementDeltaPhiMicro:'0',balanceDeltaPhiMicro:'0'});
  const observation=await accountLedgerObservation(v,'bound-user','2026-10-18T12:00:00Z');
- expect(observation.history?.map(point=>[point.kaiUPulse,point.reserveUsdCents,point.settlementUsdCents,point.totalUsdCents])).toEqual([
-  ['1000000','1000','0','1000'],['2000000','600','0','600'],['3000000','600','0','600'],
- ]);
+ expect(observation.history?.[0]).toMatchObject({kaiUPulse:'500000',reserveUsdCents:'0',settlementUsdCents:'0',totalUsdCents:'0'});
+ for(const [kai,reserve]of [['1000000','1000'],['2000000','600'],['3000000','600']])expect(observation.history?.find(point=>point.kaiUPulse===kai)).toMatchObject({reserveUsdCents:reserve,settlementUsdCents:'0',totalUsdCents:reserve});
  // The existing phi-exact UTC presentation bridge: pulse 1 is 5236 ms after its epoch.
- expect(Date.parse(observation.history![0].at)).toBe(1715323547124);
+ expect(Date.parse(observation.history!.find(point=>point.kaiUPulse==='1000000')!.at)).toBe(1715323547124);
  expect(Date.parse(observation.history!.at(-1)!.at)).toBe(1715323557596);
  expect(observation.observedAt).toBe('2026-10-18T12:00:00Z');
 });
-it('does not apply a checkpoint exchange rate to historical nonzero Settlement balances',async()=>{
+it('recomputes historical Settlement at its original coordinate while keeping the exact quoted checkpoint',async()=>{
  const v=proof(3,'1000','2000000','800000000');v.statement.checkpoint.kaiUPulse='4000000';
  const rows=v.statement.transactions as import('../src/receiz/account-proof').AccountProofTransaction[];
  rows[0].kaiUPulse='1000000';rows[1]={...rows[1],kaiUPulse:'2000000',reserveDeltaUsdCents:'0',settlementDeltaPhiMicro:'1000000',balanceDeltaPhiMicro:'1000000'};
  rows[2]={...rows[2],kaiUPulse:'3000000',reserveDeltaUsdCents:'0',settlementDeltaPhiMicro:'1000000',balanceDeltaPhiMicro:'1000000'};
  const observation=await accountLedgerObservation(v,'bound-user','2026-10-18T12:00:00Z');
- expect(observation.history?.map(point=>[point.kaiUPulse,point.reserveUsdCents,point.settlementUsdCents])).toEqual([
-  ['1000000','1000','0'],['4000000','1000','1600'],
- ]);
+ expect(observation.history?.find(point=>point.kaiUPulse==='1000000')).toMatchObject({reserveUsdCents:'1000',settlementUsdCents:'0'});
+ expect(observation.history?.find(point=>point.kaiUPulse==='2000000')).toMatchObject({reserveUsdCents:'1000',settlementUsdCents:'5024',valuation:'deterministic-v129'});
+ expect(observation.history?.at(-1)).toMatchObject({kaiUPulse:'4000000',reserveUsdCents:'1000',settlementUsdCents:'1600'});
+ expect(observation.wallet).toMatchObject({reserveUsdCents:'1000',settlementUsdCents:'1600',totalUsdCents:'2600'});
 });
 it('merges restored financial history even when a later genuine wallet already has the same amounts',async()=>{
  const next=await accountLedgerObservation(proof(2,'600'),'bound-user','2026-10-18T12:00:00Z');
