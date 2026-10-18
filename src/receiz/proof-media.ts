@@ -60,7 +60,7 @@ export async function openProofMedia(source:ProofMediaSource,signal?:AbortSignal
   if(!response.ok)throw Error('The original could not be opened. You can retry or inspect its source.');bytes=await readPublicLedgerBytes(response,MAX);filename='original.receiz';
  }
  if(!bytes.length||bytes.length>MAX)throw Error('This original exceeds the supported reader capacity.');
- const sdk=await loadReceiz(),opened=await sdk.createReceizClient().artifacts.verifyAndOpen(new File([new Uint8Array(bytes)],filename));signal?.throwIfAborted();
+ const sdk=await loadReceiz();let opened;try{opened=await sdk.createReceizClient().artifacts.verifyAndOpen(new File([new Uint8Array(bytes)],filename));}catch{throw Error('This original could not be opened as verified media. Inspect its proof source for details.');}signal?.throwIfAborted();
  if(opened.sealedArtifact.artifactSha256.toLowerCase()!==source.digest.toLowerCase())throw Error('This original does not match the selected proof.');
  const files=await readMediaPayload(opened.verifiedPayload);signal?.throwIfAborted();
  if(source.kind==='held'&&opened.verifiedPayload.mimeType==='application/json'){

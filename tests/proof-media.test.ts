@@ -21,6 +21,10 @@ it('does not follow arbitrary public URLs, and reads bounded public original byt
  await openProofMedia({kind:'public',url:'https://receiz.com/api/profile/originals/download?receizId=proof_123&kind=original',digest:'a'.repeat(64)});
  expect(fetch.mock.calls[0][1]).toMatchObject({credentials:'omit',redirect:'error'});
 });
+it('explains an unsupported or invalid media carrier without exposing internal SDK errors',async()=>{
+ opened.mockRejectedValue(Error('artifact_verification_failed'));
+ await expect(openProofMedia({kind:'held',bytes:new Uint8Array([1]),filename:'legacy-original.receiz',digest:'a'.repeat(64)})).rejects.toThrow('could not be opened as verified media');
+});
 it('keeps markup inert, preserves long document text and never embeds an executable file',async()=>{
  expect(readDocumentText('<h1>A title</h1><p>One &amp; two.</p><script>alert(1)</script><p>End.</p>')).toBe('A title\n\nOne & two.\n\nEnd.');
  const html=await readMediaPayload({...payload,bytes:strToU8('<p>Readable</p><iframe src="https://evil.example"></iframe><img src="https://evil.example/x">'),mimeType:'text/html'});
