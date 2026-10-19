@@ -5,6 +5,7 @@ import { BANK_APPLICATION_ID, BANK_NATIVE_SCOPES } from '../src/receiz/config';
 import { parseSharedWallet } from '../src/receiz/shared-wallet';
 import { walletPointTime } from '../src/receiz/wallet-series';
 import { historicalWalletUsdRate } from '../src/receiz/historical-wallet';
+import {loadOfflineNoteState,loadPreparedNoteState} from '../src/receiz/identity-vault';
 
 // Boundary choreography only. Native funding/hardware are not qualified by
 // this fixture. Portable-state signatures use the unmodified local v129 SDK.
@@ -23,7 +24,8 @@ vi.mock('../src/receiz/account-ledger', async original => {
     return { ...ledger, restore: async (current?: import('../src/receiz/wallet-observation').WalletObservation | null) => fixture.ledger ?? ledger.restore(current) };
   } };
 });
-vi.mock('@receiz/sdk/offline', () => ({ createReceizOfflineSealer: () => ({ enroll: async () => {} }), createReceizIndexedDbSealStore: () => ({ load: async () => ({ privateKey: {} }) }) }));
+vi.mock('@receiz/sdk/offline', () => ({ createReceizOfflineSealer: () => ({ enroll: noteEnrollment }), createReceizIndexedDbSealStore: () => ({ load: async () => ({ privateKey: {} }) }) }));
+const noteEnrollment=vi.hoisted(()=>vi.fn());
 vi.mock('../src/receiz/offline-notes', () => ({
   bankNoteArtwork: vi.fn(), loadBankNoteRuntime: async () => ({ createBankNativeNoteSealer: async () => vi.fn(), createBankPreparedBrowserRuntime:(ports:{write:typeof fixture.preparedWrite})=>{fixture.preparedWrite=ports.write;return{savedNotes:async()=>[],receivingRequest:fixture.receivingRequest,prepareResources:fixture.prepareResources,pending:async()=>null,hasPreparedFunding:async()=>true,createNote:async()=>{const result=await fixture.create();await fixture.preparedWrite!({journal:{head:'fixture'}},null,result.successorAccountProof);return result;}};},createBankOfflineNotesRuntime: () => ({ pending: fixture.pending, createNote: fixture.create, cancelUnfunded: fixture.cancel, transferNote: fixture.transfer, depositNote: fixture.deposit, receivingRequest: fixture.receivingRequest }) }),
 }));
@@ -43,6 +45,8 @@ vi.mock('../src/receiz/client', async () => {
 });
 function wallet(cents: string) { return { userId: 'connected-account', balanceUsd: `${BigInt(cents) / 100n}.${(BigInt(cents) % 100n).toString().padStart(2, '0')}`, balancePhiMicro: cents, valueStates: { settledBalanceUsdCents: cents, ecosystemBalanceUsdCents: '0' }, sync: {}, rollup: {} }; }
 beforeEach(async () => {
+  noteEnrollment.mockReset().mockResolvedValue(undefined);
+  vi.mocked(loadOfflineNoteState).mockReset();vi.mocked(loadPreparedNoteState).mockReset();
   fixture.ledger=null;fixture.clock=null;fixture.cancel.mockReset();fixture.transfer.mockReset();fixture.deposit.mockReset();fixture.kai=null;fixture.preparedEnabled=false;fixture.preparedSave.mockReset().mockResolvedValue(undefined);fixture.preparedWrite=null;fixture.prepareResources.mockReset().mockResolvedValue(undefined);fixture.receivingRequest.mockReset();
   vi.restoreAllMocks(); fixture.wallet.mockReset(); fixture.create.mockReset(); fixture.save.mockReset().mockResolvedValue(undefined); fixture.pending.mockReset().mockResolvedValue(null);
   fixture.keyFile = (await sdk.createReceizIdIdentity({ passphrase: 'local-test-passphrase' })).keyFile;
@@ -53,6 +57,22 @@ beforeEach(async () => {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(new Uint8Array([1]))));
   vi.stubGlobal('navigator', { locks: { request: async (_name: string, _options: unknown, action: () => Promise<unknown>) => action() } });
   vi.stubGlobal('location', { origin: 'https://bankeiz.com' });
+});
+it('opening Notes reads local inventory without signer enrollment or wallet transport',async()=>{
+ noteEnrollment.mockRejectedValue(new DOMException('operation failed','OperationError'));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
+ try{const notes=await identity.offlineNotes!();expect(await notes.savedNotes()).toEqual([]);expect(await notes.pending()).toBeNull();expect(await identity.offlineNotes!()).toBe(notes);expect(noteEnrollment).not.toHaveBeenCalled();expect(fixture.wallet).not.toHaveBeenCalled();expect(fixture.create).not.toHaveBeenCalled();expect(fixture.preparedSave).not.toHaveBeenCalled();}
+ finally{identity.dispose();vi.unstubAllGlobals();}
+});
+it('refuses unreadable financial state before signer setup and never resets it',async()=>{
+ const failure=new DOMException('operation failed','OperationError');vi.mocked(loadOfflineNoteState).mockRejectedValue(failure);
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
+ try{const notes=await identity.offlineNotes!();await expect(notes.savedNotes()).rejects.toBe(failure);await expect(notes.create('100')).rejects.toBe(failure);expect(noteEnrollment).not.toHaveBeenCalled();expect(fixture.create).not.toHaveBeenCalled();expect(fixture.preparedSave).not.toHaveBeenCalled();}finally{identity.dispose();vi.unstubAllGlobals();}
+});
+it('rechecks a prepared attempt retained during signer setup before the locked legacy allocation',async()=>{
+ noteEnrollment.mockImplementationOnce(async()=>{vi.mocked(loadPreparedNoteState).mockResolvedValue({schema:'receiz.bank.prepared-notes-device.v1',keyId:(fixture.keyFile as sdk.ReceizKeyFile).keyId,uid:'connected-account',create:{noteId:'competing',rail:'settlement',amountUsdCents:'200'},notes:{},journal:null,slots:{},components:{},stages:{},proofs:{}});});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
+ try{const notes=await identity.offlineNotes!();await expect(notes.create('100')).rejects.toThrow('BANK_NOTE_PREPARED_RECOVERY_REQUIRED');expect(fixture.create).not.toHaveBeenCalled();expect(fixture.wallet).not.toHaveBeenCalled();expect(await notes.pending()).toMatchObject({noteId:'competing',rail:'settlement',amountUsdCents:'200'});}finally{identity.dispose();vi.unstubAllGlobals();}
 });
 it('hands off the completed successor to the balance/chart without a second wallet request', async () => {
   const identity = await openCanonicalIdentity(new Uint8Array([1]), 'local-test-passphrase', 'fixture.receiz', true);

@@ -4,7 +4,7 @@ import {openCanonicalIdentity} from '../src/receiz/native-identity';
 // Transport/entry sequencing only; canonical admission is covered separately.
 const p=vi.hoisted(()=>({enroll:vi.fn(),seal:vi.fn(),continueId:vi.fn(),grant:vi.fn(),persist:vi.fn(),foreign:false}));
 const original=()=>({owner:{uid:'fixture-owner',username:'fixture'},issuedAt:'2026-10-13T00:00:00Z',keyId:'fixture-key',alg:'Ed25519',crypto:{privateKeyPkcs8B64u:'private-device-only',publicKeyRawB64u:'fixture-public'}});
-vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>null,saveProtectedIdentityTransport:p.persist}));
+vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>null,loadOfflineNoteState:async()=>null,loadPreparedNoteState:async()=>null,saveProtectedIdentityTransport:p.persist}));
 vi.mock('../src/receiz/proof-resource-continuity',()=>({loadBankProofResources:async()=>({wasm:new Uint8Array([1]),zkey:new Uint8Array([1])})}));
 vi.mock('../src/receiz/identity-protection',()=>({protectIdentityKeyFile:async(key:ReturnType<typeof original>)=>({...key,crypto:{...key.crypto,privateKeyPkcs8B64u:null}})}));
 vi.mock('@receiz/sdk/offline',()=>({createReceizIndexedDbSealStore:()=>({}),createReceizOfflineSealer:()=>({enroll:p.enroll,seal:p.seal})}));
@@ -21,6 +21,11 @@ it('opens the already verified local identity without enrolling or reaching a se
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
  try{expect(identity.binding.keyId).toBe('fixture-key');expect(p.enroll).not.toHaveBeenCalled();expect(p.continueId).not.toHaveBeenCalled();await expect(identity.readWallet()).rejects.toThrow('SOURCE_UNAVAILABLE');expect(p.continueId).not.toHaveBeenCalled();expect(p.grant).not.toHaveBeenCalled();}
  finally{identity.dispose();}
+});
+it('opens empty Notes from a clear original without protecting, sealing or connecting the identity',async()=>{
+ p.enroll.mockRejectedValue(new DOMException('operation failed','OperationError'));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const notes=await identity.offlineNotes!();expect(await notes.savedNotes()).toEqual([]);expect(await notes.pending()).toBeNull();expect(p.enroll).not.toHaveBeenCalled();expect(p.seal).not.toHaveBeenCalled();expect(p.continueId).not.toHaveBeenCalled();expect(p.persist).not.toHaveBeenCalled();}finally{identity.dispose();}
 });
 it('still protects, seals and admits the same identity before any account transport',async()=>{
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);

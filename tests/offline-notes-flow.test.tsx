@@ -6,8 +6,24 @@ import { OfflineNotes } from '../src/features/notes/OfflineNotes';
 import type { OpenIdentity } from '../src/receiz/native-identity';
 import { createBankNoteAttestationFetch } from '../src/receiz/note-attestation-transport';
 import { unattestedResponse } from './fixtures/note-registration';
+import {atNoteStage} from '../src/receiz/note-stage';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const click = (host: HTMLElement, label: string) => [...host.querySelectorAll('button')].find(b => b.textContent?.includes(label))!.click();
+test('a failed local inventory read blocks review and shows only its bounded stage and exception name',async()=>{
+ const create=vi.fn(),failure=new DOMException('private-fixture-data','OperationError');
+ const identity={offlineNotes:async()=>({savedNotes:()=>atNoteStage('saved-notes',async()=>{throw failure;}),pending:async()=>null,create})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));
+  expect(host.querySelector<HTMLButtonElement>('.primary-button')!.disabled).toBe(true);
+  act(()=>click(host,'Review note'));expect(create).not.toHaveBeenCalled();expect(host.textContent).toContain('Saved note custody could not be opened');
+  expect(host.querySelector('.note-registration-details')?.textContent).toContain('saved-notes · OperationError');expect(host.textContent).not.toContain('private-fixture');
+ }finally{act(()=>root.unmount());}
+});
+test('review stays unavailable while local pending discovery is in flight',async()=>{
+ let finish!:(value:unknown)=>void;const create=vi.fn(),identity={offlineNotes:async()=>({savedNotes:async()=>[],pending:()=>new Promise(resolve=>{finish=resolve;}),create})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));expect(host.querySelector<HTMLButtonElement>('.primary-button')!.disabled).toBe(true);await act(async()=>finish(null));expect(host.querySelector<HTMLButtonElement>('.primary-button')!.disabled).toBe(false);expect(create).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
+});
 test('shows the actual browser format in failed registration details without exposing or altering its credential', async () => {
  const origin='https://bankeiz.com',challenge='a'.repeat(43),route='/api/wallet/notes/custody/attestation';
  const request=vi.fn().mockResolvedValueOnce({ok:true,origin,rpId:'bankeiz.com',challengeB64u:challenge,ticket:'never-display-ticket'}).mockRejectedValueOnce(new Error('OFFLINE_NOTE_CUSTODY_ATTESTATION_FORMAT_UNSUPPORTED'));

@@ -1,3 +1,4 @@
+import {noteFailureStage} from '../../receiz/note-stage';
 /** Support details contain a bounded public error code only, never ceremony
  * responses, credentials, tickets, account identifiers or exception payloads. */
 export function noteRegistrationCode(cause:unknown):string{
@@ -9,6 +10,11 @@ export function noteRegistrationCode(cause:unknown):string{
 }
 export function noteError(cause:unknown):string{
  const code=cause instanceof Error?cause.message:'';
+ const stage=noteFailureStage(cause);
+ if(stage&&['saved-notes','prepared-notes','note-image'].includes(stage.stage))return 'Saved note custody could not be opened on this device. Keep your original proofs and this device; no new note has been started.';
+ if(stage?.stage==='device-signer')return 'Device signing setup could not complete. Your saved notes and exact pending attempt are preserved.';
+ if(code==='BANK_NOTE_PREPARED_RECOVERY_REQUIRED')return 'A prepared note is still pending on this device. Keep its original proofs; a new note cannot start until that exact attempt is resolved.';
+ if(code==='BANK_NOTE_COMPETING_ATTEMPTS')return 'Two saved note attempts need recovery. Keep this device and the original proofs; no new note has been started.';
  if(/(?:ATTESTATION_ISSUER_UNAVAILABLE|PLATFORM_ATTESTATION_ISSUER_UNAVAILABLE|offline_note_attestation_issuer_unavailable)/.test(code))return 'The device registration service is temporarily unavailable. Try again when connected.';
  if(/CUSTODY_CEREMONY_CANCELLED/.test(code))return 'Device registration was cancelled. Try again when you are ready.';
  if(/CUSTODY_(?:BACKUP_CAPABLE|BACKED_UP|BACKUP_ELIGIBLE|BACKUP_STATE)/.test(code))return 'This credential can sync to other devices. Offline Notes require custody bound to one device.';

@@ -32,6 +32,8 @@ import {BANK_PREPARED_NOTE_CREDIT_ENABLED} from './config';
 import { readNoteAccountObservation } from './note-account-observation';
 import {readCompositeWalletSource,advanceCompositeWalletObservation,mergeCompositeWalletSources,reconcileCompositeWalletObservation,validCursor} from './composite-wallet-source';
 import { hasSettledAccountView } from './account-view';
+import {createLocalNoteInventory} from './note-local-inventory';
+import {atNoteStage} from './note-stage';
 
 export interface OpenIdentity {
   prepareAccountView: () => Promise<import('./wallet-observation').WalletObservation>;
@@ -368,12 +370,37 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   let noteRuntime: BankNoteRuntime | undefined;
   let preparedNoteRuntime: import('./offline-notes').BankPreparedNoteRuntime | undefined;
   const noteOpen = () => { if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.'); };
-  async function offlineNotes(): Promise<BankOfflineNotes> {
-    noteOpen(); await prepareTransport(); noteOpen();
+  let localNotes:BankOfflineNotes|undefined;
+  let localNoteInventory:ReturnType<typeof createLocalNoteInventory>|undefined;
+  async function assertNoteCreateState(){await localNoteInventory!.pending();if(!BANK_PREPARED_NOTE_CREDIT_ENABLED&&await localNoteInventory!.preparedPending())throw Error('BANK_NOTE_PREPARED_RECOVERY_REQUIRED');}
+  async function offlineNotes():Promise<BankOfflineNotes>{
+    noteOpen();if(localNotes)return localNotes;
+    // Inspection opens the complete note image, without constructing signing
+    // custody or modifying either encrypted financial state family.
+    const inspect=async(image:Uint8Array)=>{
+      const module=await loadBankNoteRuntime();noteOpen();
+      const readonly=module.createBankOfflineNotesRuntime({keyId:binding.keyId,uid:accountUid??knownWallet?.wallet.userId??keyFile.owner.uid,localUid:keyFile.owner.uid,origin:location.origin,passphrase:phrase,
+        request:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},fetchImpl:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},sealDocument:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},
+        read:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},write:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},retain:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},restore:(ref:string)=>loadOfflineNoteBlob(binding,ref),assertOpen:noteOpen,artwork:bankNoteArtwork});
+      return readonly.inspectNote(image);
+    };
+    const inventory=createLocalNoteInventory({keyId:binding.keyId,uid:()=>accountUid??knownWallet?.wallet.userId??null,readLegacy:()=>atNoteStage('saved-notes',()=>loadOfflineNoteState(binding)),readPrepared:()=>atNoteStage('prepared-notes',()=>loadPreparedNoteState(binding)),restore:ref=>atNoteStage('note-image',()=>loadOfflineNoteBlob(binding,ref)),inspect,assertOpen:noteOpen});
+    localNoteInventory=inventory;
+    const action=async<T,>(operation:()=>Promise<T>):Promise<T>=>{noteOpen();activeNoteOperations++;noteOperationEpoch++;try{return await operation();}finally{activeNoteOperations--;}};
+    localNotes={savedNotes:inventory.savedNotes,pending:inventory.pending,inspect,
+      prepareResources:count=>action(async()=>(await openNotesExecution()).prepareResources!(count)),
+      create:(amount,rail)=>action(async()=>{await assertNoteCreateState();return(await openNotesExecution()).create(amount,rail);}),
+      cancelUnfunded:()=>action(async()=>{if(await inventory.preparedPending())throw Error('BANK_NOTE_PREPARED_RECOVERY_REQUIRED');return(await openNotesExecution()).cancelUnfunded();}),
+      receivingRequest:()=>action(async()=>(await openNotesExecution()).receivingRequest()),transfer:(id,request)=>action(async()=>(await openNotesExecution()).transfer(id,request)),deposit:image=>action(async()=>(await openNotesExecution()).deposit(image)),
+    };
+    return localNotes;
+  }
+  async function openNotesExecution(): Promise<BankOfflineNotes> {
+    noteOpen(); await atNoteStage('identity-transport',prepareTransport); noteOpen();
     accountUid ??= knownWallet?.wallet.userId ?? null;
     if (!accountUid) await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT);
     if (!noteRuntime) {
-      const module = await loadBankNoteRuntime(); await ownedSealer();
+      const module = await loadBankNoteRuntime(); await atNoteStage('device-signer',ownedSealer);
       const { createReceizIndexedDbSealStore } = await import('@receiz/sdk/offline');
       const enrollment = await createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer').load();
       if (!enrollment || !sealingResources) throw new Error('Your device sealing key is unavailable.');
@@ -417,6 +444,9 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       savedNotes: async () => [...await held.savedNotes(), ...(prepared ? await prepared.savedNotes() : [])],
       pending: async () => await prepared?.pending() ?? held.pending(),
       create: (amount, rail = 'reserve') => lock(async () => {
+        // Recheck after asynchronous setup, while holding the existing device
+        // operation lock. A competing tab may have retained an attempt meanwhile.
+        await assertNoteCreateState();
         if (BANK_PREPARED_NOTE_CREDIT_ENABLED && prepared) {
           const pending=await prepared.pending();
           if(pending||await prepared.hasPreparedFunding(rail)){
