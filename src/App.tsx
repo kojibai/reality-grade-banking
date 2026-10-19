@@ -18,7 +18,7 @@ import { projectAccountShowcase } from './receiz/account-showcase';
 import { LiveAssets } from './features/assets/LiveAssets';
 import { BANK_PUBLIC_ORIGIN } from './receiz/config';
 import { parsePaymentRequest } from './receiz/payment-request';
-import { CardDepositReturn, readCardReturn } from './features/deposit/CardDepositReturn';
+import { CardDepositReturn, readCardReturn, readCardResume } from './features/deposit/CardDepositReturn';
 export default function App() {
  const [receipt,setReceipt]=useState(location.pathname==='/receipt/'?location.href:null);
  const bankMounted=useRef(!receipt);
@@ -33,6 +33,8 @@ function BankApp() {
   const publicMarket = usePublicMarket(onBank);
   const showcase = useMemo(() => projectAccountShowcase(publicMarket.catalog, account.identity?.accountUsername?.() ?? account.identity?.username ?? null), [publicMarket.catalog, account.identity, account.wallet]);
   const [paymentRequest] = useState(() => { try { return location.search ? parsePaymentRequest(`${BANK_PUBLIC_ORIGIN}/${location.search}`) : null; } catch { return null; } });
+  const [cardResumeSessionId,setCardResumeSessionId]=useState(()=>readCardResume(location.search));
+  const consumeCardResume=()=>{setCardResumeSessionId(null);const url=new URL(location.href);url.searchParams.delete('resumeCardSession');history.replaceState(history.state,'',url.pathname+url.search+url.hash);};
   const [sourceRevision, setSourceRevision] = useState(0);
   const [panel, setPanel] = useState<Panel>('account'), [sheet, setSheet] = useState<UIAction | null>(null);
   const privateHistory = usePrivateHistory(account.identity, account.wallet?.userId, onBank && Boolean(account.identity));
@@ -51,6 +53,6 @@ function BankApp() {
     <div hidden={panel !== 'market'}><Market source={publicMarket} active={onBank && panel === 'market'} onAction={open} /></div>
     <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={onBank && panel === 'assets'} revision={sourceRevision} showcase={showcase} showcaseBusy={publicMarket.status === 'loading'} onOpen={open} /></div>
     <div hidden={panel !== 'ledger'}><Ledger active={onBank && panel === 'ledger'} personalHistory={personalHistory} privateHistory={privateHistory} /></div>
-    {sheet && <LiveActions marketItems={publicMarket.catalog?.items} key={sheet.kind} active={onBank} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} onClose={close} onRefresh={() => { setSourceRevision(value => value + 1); void account.refresh(); void privateHistory.refresh(); }} onForget={async () => { await account.forget(); setSheet(null); }} />}
+    {sheet && <LiveActions marketItems={publicMarket.catalog?.items} key={sheet.kind} active={onBank} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} cardResumeSessionId={cardResumeSessionId} onCardResumeConsumed={consumeCardResume} onClose={close} onRefresh={() => { setSourceRevision(value => value + 1); void account.refresh(); void privateHistory.refresh(); }} onForget={async () => { await account.forget(); setSheet(null); }} />}
   </ConsoleShell>;
 }

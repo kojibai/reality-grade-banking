@@ -1,3 +1,4 @@
+import {loadReceivedProofState,saveReceivedProofState} from './identity-vault';
 import {loadMarketTradeState,saveMarketTradeState} from './identity-vault';
 import {BANK_MARKET_READ_SCOPES,BANK_MARKET_TRADE_SCOPES,BANK_MARKET_CONSENT,BANK_MARKET_READ_CONSENT} from './config';
 import {loadWalletSendState,saveWalletSendState,assertWalletSendCustody} from './identity-vault';
@@ -65,6 +66,7 @@ export interface OpenIdentity {
   pendingCardDeposits?: () => Promise<CardCheckout[]>;
   startAssetIntake: (asset: AssetIntake, attachment?: File) => Promise<HeldDeposit>; holdProof: (file: File) => Promise<HeldDeposit>;
   listDeposits: () => Promise<HeldDeposit[]>;
+  receivedProof?:()=>Promise<import('./received-proof').ReceivedProof>;
   createAsset: (definition: AssetDefinition, moment?: AssetMomentDraft) => Promise<HeldDeposit>;
   readPrivateHistory: (cursor?: string) => Promise<PrivateHistoryPage>;
   nativeReadiness: (approveNativeAccess?: boolean) => Promise<BankNativeReadiness>;
@@ -608,8 +610,8 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     if (['credited', 'expired', 'unpaid'].includes(status.status)) await saveCardOperation(binding, null, false, operation.operationId);
     return status;
   }
-  async function projectOwnedSource(exact:Uint8Array,filename:string){
-    const opened=await unsigned.artifacts.verifyAndOpen(new File([new Uint8Array(exact)],filename));
+  async function projectOwnedSource(exact:Uint8Array,filename:string,verified?:import('@receiz/sdk').ReceizOpenedArtifact){
+    const opened=verified??await unsigned.artifacts.verifyAndOpen(new File([new Uint8Array(exact)],filename));
     let payload:unknown;try{payload=JSON.parse(new TextDecoder().decode(opened.verifiedPayload.bytes));}catch{/* Ordinary non-JSON original. */}
     if((payload as {schema?:unknown})?.schema==='receiz.bank.native-asset-holding.v1')return (await import('./native-asset-holding')).openNativeAssetHolding(exact,filename,binding).then(v=>v.deposit);
     return projectHeldDeposit(opened,exact,filename,binding.artifactOwnerReceizId);
@@ -621,6 +623,15 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     if (lifetime.signal.aborted) throw new Error('The identity was closed before deposit.');
     await saveDepositSource(binding, exact, file.name, deposit.digest); return deposit;
   }
+  let receivedProofPromise:Promise<import('./received-proof').ReceivedProof>|undefined;
+  const receivedProof=()=>receivedProofPromise??=import('./received-proof').then(({createReceivedProof})=>createReceivedProof({
+    owner:binding.artifactOwnerReceizId,assertOpen:()=>lifetime.signal.throwIfAborted(),
+    open:file=>unsigned.artifacts.verifyAndOpen(file),
+    claim:async source=>{const current=await connectClient([...BANK_READ_SCOPES,'receiz:record','receiz:seal'],'Receive the exact bearer original I review into this Receiz identity. This appends its native ownership claim and retains the complete proof; it does not authorize a payment or credit cash.');lifetime.signal.throwIfAborted();return current.ownership.claimBearerAsset(source);},
+    retain:async(sources,opened)=>{const owned=sources.find(source=>source.kind==='owned-source');if(!owned)throw Error('PROOF_RECEIVE_SUCCESSOR_REQUIRED');await projectOwnedSource(owned.bytes,owned.filename,opened);lifetime.signal.throwIfAborted();await retainProofBatch(binding,sources);},
+    store:{read:()=>loadReceivedProofState(binding),write:(next,previous)=>saveReceivedProofState(binding,next,previous)},
+    lock:async run=>{if(!navigator.locks)throw Error('PROOF_RECEIVE_DEVICE_LOCK_REQUIRED');return navigator.locks.request(`receiz-bank-received-proof:${binding.artifactSha256}`,{signal:lifetime.signal},run);},
+  })).catch(cause=>{receivedProofPromise=undefined;throw cause;});
   let nativeHoldingsReadAt=0,nativeHoldingsRefresh:Promise<void>|null=null,nativeHoldingsDirty=false;
   async function refreshNativeHoldings(){
     const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);if(lifetime.signal.aborted)return;
@@ -1008,7 +1019,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     // reads. A delayed import save cannot overwrite a newer account frame.
     if (knownWallet) void persistWalletObservation(knownWallet).catch(() => {});
   }
-  return { prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

@@ -64,3 +64,9 @@ it('cannot retain after the identity closes or accept an oversized file', async 
   close(); await expect(api.retain(review)).rejects.toThrow('IDENTITY_CLOSED'); expect(commit).not.toHaveBeenCalled();
   const fresh = fixture(); await expect(fresh.api.inspect({ size: 100 * 1024 * 1024 } as File)).rejects.toThrow('PROOF_BACKUP_CAPACITY');
 });
+it('backs up a received predecessor as evidence without converting it into an owned holding or another claim',async()=>{
+ const commit=vi.fn(),source={kind:'received-original' as const,filename:'predecessor.receiz',bytes:new Uint8Array([4,5,6])};
+ boundary.open.mockImplementation(async(file:File)=>({sealedArtifact:{artifactSha256:await digest(new Uint8Array(await file.arrayBuffer())),continuity:{ownerReceizId:'previous.receiz.id'}},verifiedPayload:{filename:'original.txt'}}));
+ const api=createProofLibrary({binding,assertOpen(){},readOwned:async()=>[],readArchive:async()=>[source],readRecoveries:async()=>[],readNotes:async()=>[],commit});
+ const backup=await api.exportBackup(),review=await api.inspect(new File([new Uint8Array(backup.bytes)],backup.filename));expect(review.items[0]).toMatchObject({kind:'received-original',title:'Received original · original.txt'});await api.retain(review);expect(commit.mock.calls[0][0]).toEqual([source]);
+});

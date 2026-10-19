@@ -3,6 +3,8 @@ import { NATIVE_EXECUTION_POST_PATHS, permittedNativeExecutionRead } from './nat
 
 export const NATIVE_PATHS: Readonly<Record<string, string>> = {
   '/api/signer/v4/receiz/enroll': 'POST',
+  '/api/receiz/ownership/bearer-claim': 'POST',
+  '/api/document-verify': 'POST',
   '/api/auth/receiz-id/continue': 'POST',
   '/api/sdk/v1/identity/proof-authority/exchange': 'POST',
   '/api/sdk/v1/auth/granted-scopes': 'GET',

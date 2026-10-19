@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Building2, Check, ChevronRight, CircleDollarSign, FileCheck2, Package, ShieldCheck, Upload } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { AssetIntake, HeldDeposit } from '../../receiz/deposit-source';
-import type { CardCheckout } from '../../receiz/card-deposit';
+import type { CardCheckout, CardDepositStatus } from '../../receiz/card-deposit';
 import { BANK_CARD_CONSENT } from '../../receiz/config';
 import { AmountInput } from '../../components/AmountInput';
 import { formatMoney } from '../../core/money';
@@ -10,19 +10,32 @@ import { ReceizCardCheckout } from './ReceizCardCheckout';
 import { OfflineNotes } from '../notes/OfflineNotes';
 import { CustodyDelivery } from './CustodyDelivery';
 
-export function LiveDeposit({ identity, onClose, onRefresh }: { identity: OpenIdentity; onClose: () => void; onRefresh: () => void }) {
+const ReceivedOriginal=lazy(()=>import('./ReceivedOriginal').then(module=>({default:module.ReceivedOriginal})));
+
+export function LiveDeposit({ identity, onClose, onRefresh, resumeSessionId, onResumeConsumed }: { resumeSessionId?:string|null;onResumeConsumed?:()=>void;identity: OpenIdentity; onClose: () => void; onRefresh: () => void }) {
   const [kind, setKind] = useState<'choose' | 'asset' | 'dollars' | 'proof' | 'note'>('choose');
   const [asset, setAsset] = useState<AssetIntake>({ title: '', category: 'physical', quantity: '1', estimatedValue: '' });
   const [attachment, setAttachment] = useState<File>(), [amount, setAmount] = useState(''), [method, setMethod] = useState<'card' | 'wire'>('card');
   const [deposit, setDeposit] = useState<HeldDeposit | null>(null), [checkout, setCheckout] = useState<CardCheckout | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [cardStatus, setCardStatus] = useState('');
   const [retainedCheckouts, setRetainedCheckouts] = useState<CardCheckout[]>([]);
+  const returnedSession=useRef(resumeSessionId);
   const generation = useRef(0), pending = useRef(false), terminalCheckouts = useRef(new Set<string>());
   useEffect(() => () => { generation.current++; }, []);
-  useEffect(() => { let alive = true; const read = identity.pendingCardDeposits ? identity.pendingCardDeposits() : identity.pendingCardDeposit ? identity.pendingCardDeposit().then(value => value ? [value] : []) : Promise.resolve([]); void read.then(values => { if (alive) setRetainedCheckouts(current => [...current, ...values.filter(value => !terminalCheckouts.current.has(value.sessionId) && !current.some(item => item.sessionId === value.sessionId))]); }).catch(cause => { if (alive) setError(cause instanceof Error ? cause.message : 'Check your unfinished deposit before trying again.'); }); return () => { alive = false; }; }, [identity]);
-  const run = async (operation: () => Promise<void>) => { if (pending.current) return; pending.current = true; const ticket = generation.current; setBusy(true); setError(''); try { await operation(); } catch (cause) { if (ticket === generation.current) setError(cause instanceof Error ? cause.message : 'This deposit could not be opened.'); } finally { pending.current = false; if (ticket === generation.current) setBusy(false); } };
+  useEffect(() => {let alive=true;generation.current++;pending.current=false;setBusy(false);
+    const read=identity.pendingCardDeposits?identity.pendingCardDeposits():identity.pendingCardDeposit?identity.pendingCardDeposit().then(value=>value?[value]:[]):Promise.resolve([]);
+    void read.then(values=>{if(!alive)return;setRetainedCheckouts(current=>[...current,...values.filter(value=>!terminalCheckouts.current.has(value.sessionId)&&!current.some(item=>item.sessionId===value.sessionId))]);
+      const sessionId=returnedSession.current;if(!sessionId)return;returnedSession.current=null;onResumeConsumed?.();setKind('dollars');const saved=values.find(value=>value.sessionId===sessionId);
+      if(!saved){setError('This checkout is not saved under the open ID. Open the ID that started the deposit to check its result.');return;}
+      setCheckout(saved);setCardStatus('checking');void checkCheckout(saved);
+    }).catch(cause=>{if(alive)setError(cause instanceof Error?cause.message:'Check your unfinished deposit before trying again.');});
+    return()=>{alive=false;generation.current++;};
+  },[identity]);
+  const run = async (operation: () => Promise<void>) => { if (pending.current) return; pending.current = true; const ticket = generation.current; setBusy(true); setError(''); try { await operation(); } catch (cause) { if (ticket === generation.current) setError(cause instanceof Error ? cause.message : 'This deposit could not be opened.'); } finally { if (ticket === generation.current) {pending.current = false;setBusy(false);} } };
   const hold = async (file?: File) => { if (!file) return; const ticket = generation.current; await run(async () => { const value = await identity.holdProof(file); if (ticket === generation.current) { setDeposit(value); onRefresh(); } }); };
-  const checkCard = () => run(async () => { if (!checkout) return; const ticket = generation.current, result = await identity.checkCardDeposit(checkout); if (ticket !== generation.current) return; if (['credited', 'expired', 'unpaid'].includes(result.status)) { terminalCheckouts.current.add(checkout.sessionId); setRetainedCheckouts(values => values.filter(value => value.sessionId !== checkout.sessionId)); } if (result.status === 'credited') { setCardStatus('credited'); onRefresh(); } else setCardStatus(result.status); });
+  const applyCardStatus=(value:CardCheckout,result:CardDepositStatus)=>{if(['credited','expired','unpaid'].includes(result.status)){terminalCheckouts.current.add(value.sessionId);setRetainedCheckouts(values=>values.filter(item=>item.sessionId!==value.sessionId));}setCardStatus(result.status);if(result.status==='credited')onRefresh();};
+  const checkCheckout=(value:CardCheckout)=>run(async()=>{const ticket=generation.current;try{const result=await identity.checkCardDeposit(value);if(ticket===generation.current)applyCardStatus(value,result);}catch(cause){if(ticket===generation.current)setCardStatus('needs-check');throw cause;}});
+  const checkCard=()=>checkout?checkCheckout(checkout):Promise.resolve();
   const saveProof = () => { if (!deposit) return; const url = URL.createObjectURL(new Blob([new Uint8Array(deposit.bytes)])), link = document.createElement('a'); link.href = url; link.download = deposit.filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
   if (kind === 'note') return <OfflineNotes identity={identity} mode="deposit" onBack={() => setKind('choose')} onRefresh={onRefresh} />;
   return <div className="deposit-flow">
@@ -54,9 +67,10 @@ export function LiveDeposit({ identity, onClose, onRefresh }: { identity: OpenId
       {method === 'card' ? <><p className="body-copy small-copy deposit-card-summary">Continue to add this amount to your Reserve by card. Your checkout is saved securely on this device so you can return to it.</p><details className="deposit-consent-details"><summary>Deposit details</summary><p className="body-copy small-copy">{BANK_CARD_CONSENT}</p></details><button className="primary-button" disabled={busy} onClick={() => void run(async () => { const ticket = generation.current, value = await identity.beginCardDeposit(amount, true); if (ticket === generation.current) { setCheckout(value); setRetainedCheckouts(values => [value, ...values.filter(item => item.sessionId !== value.sessionId)]); } })}>{busy ? 'Opening secure checkout…' : 'Continue'}<ArrowRight size={17} /></button></> : <div className="note-box"><Building2 size={18} /><p>Your wire instructions are not available yet. Use a card deposit or check again later.</p></div>}
       {retainedCheckouts.length > 0 && <div className="retained-deposits"><p className="body-copy small-copy">Unfinished card deposits</p>{retainedCheckouts.map(value => <button className="asset-row" key={value.sessionId} disabled={busy} onClick={() => { setCheckout(value); setCardStatus(''); setError(''); }}><span className="row-copy"><strong>{formatMoney(value.amountUsdCents)}</strong><span>Resume secure checkout</span></span><ChevronRight size={18} /></button>)}</div>}
     </>}
-    {kind === 'dollars' && checkout && cardStatus !== 'credited' && <><h1 className="sheet-hero">Add {formatMoney(checkout.amountUsdCents)}.</h1><p className="body-copy">Complete your secure card deposit.</p><ReceizCardCheckout checkout={checkout} onCheck={checkCard} />{cardStatus && <p className="body-copy" role="status">{cardStatus === 'settling' ? 'Payment received. Reserve credit is pending.' : cardStatus === 'expired' ? 'This checkout expired. No deposit was confirmed.' : cardStatus === 'unpaid' ? 'Payment was not completed.' : 'This payment is still open.'}</p>}</>}
+    {kind === 'dollars' && checkout && cardStatus !== 'credited' && <><h1 className="sheet-hero">Add {formatMoney(checkout.amountUsdCents)}.</h1><p className="body-copy">Complete your secure card deposit.</p>{['','open'].includes(cardStatus)?<ReceizCardCheckout checkout={checkout} onCheck={checkCard}/>:<><p className="body-copy" role="status">{cardStatus==='checking'?'Checking your saved deposit…':cardStatus==='needs-check'?'Your saved deposit needs a status check.':''}</p><button className="secondary-button" disabled={busy} onClick={()=>void checkCard()}>Check deposit status</button></>}{['open','settling','expired','unpaid'].includes(cardStatus) && <p className="body-copy" role="status">{cardStatus === 'settling' ? 'Payment received. Reserve credit is pending.' : cardStatus === 'expired' ? 'This checkout expired. No deposit was confirmed.' : cardStatus === 'unpaid' ? 'Payment was not completed.' : 'This payment is still open.'}</p>}</>}
     {kind === 'dollars' && checkout && cardStatus === 'credited' && <><div className="status-icon success"><Check size={34} /></div><h1 className="sheet-hero">Added to your balance.</h1><div className="success-amount">{formatMoney(checkout.amountUsdCents)}</div><p className="body-copy">Your deposit is credited to Reserve.</p><button className="primary-button" onClick={onClose}>Done</button></>}
-    {kind === 'proof' && !deposit && <><h1 className="sheet-hero">Bring your value<br />with you.</h1><p className="body-copy">Open the original proof object. Its integrity and current owner are verified before it is held in your account.</p><label className="file-drop"><Upload size={30} /><strong>{busy ? 'Verifying original proof…' : 'Choose your proof object'}</strong><span>Original PNG, PDF, SVG, JSON or supported file</span><input disabled={busy} type="file" onChange={event => void hold(event.target.files?.[0])} aria-label="Choose original proof object" /></label></>}
+    {kind === 'proof' && identity.receivedProof&&<Suspense fallback={<p className="body-copy" role="status">Opening original verification…</p>}><ReceivedOriginal identity={identity} onRefresh={onRefresh} onClose={onClose}/></Suspense>}
+    {kind === 'proof' && !identity.receivedProof && !deposit && <><h1 className="sheet-hero">Bring your value<br />with you.</h1><p className="body-copy">Open the original proof object. Its integrity and current owner are verified before it is held in your account.</p><label className="file-drop"><Upload size={30} /><strong>{busy ? 'Verifying original proof…' : 'Choose your proof object'}</strong><span>Original PNG, PDF, SVG, JSON or supported file</span><input disabled={busy} type="file" onChange={event => void hold(event.target.files?.[0])} aria-label="Choose original proof object" /></label></>}
     {error && <p className="error-message" role="alert">{error}</p>}
   </div>;
 }

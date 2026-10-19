@@ -89,3 +89,19 @@ it('a delayed initial resume list cannot erase a checkout created while the read
     await act(async () => restore([])); expect(host.textContent).toContain('Resume secure checkout');
   } finally { act(() => root.unmount()); }
 });
+it('a provider return resumes only the exact saved checkout and checks credit without creating another session',async()=>{
+ const checkout={sessionId:'cs_fixture123456',clientSecret:'saved-private-fixture',amountUsdCents:'25000'},begin=vi.fn(),check=vi.fn(async()=>({status:'credited'})),consume=vi.fn(),refresh=vi.fn();
+ const identity={pendingCardDeposits:async()=>[checkout],beginCardDeposit:begin,checkCardDeposit:check}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={refresh} resumeSessionId={checkout.sessionId} onResumeConsumed={consume}/>));
+ expect(check).toHaveBeenCalledExactlyOnceWith(checkout);expect(begin).not.toHaveBeenCalled();expect(consume).toHaveBeenCalledOnce();expect(refresh).toHaveBeenCalledOnce();expect(host.textContent).toContain('Added to your balance.');expect(host.querySelector('iframe')).toBeNull();
+ act(()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='All deposits')!.click());expect(host.textContent).toContain('Choose what you’re depositing.');expect(check).toHaveBeenCalledOnce();
+ }finally{act(()=>root.unmount());}
+});
+it('does not check a foreign or unknown returned checkout, nor replace it with a new charge',async()=>{
+ const begin=vi.fn(),check=vi.fn(),identity={pendingCardDeposits:async()=>[],beginCardDeposit:begin,checkCardDeposit:check}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}} resumeSessionId="cs_unknown123456"/>));expect(host.textContent).toContain('not saved under the open ID');expect(begin).not.toHaveBeenCalled();expect(check).not.toHaveBeenCalled();expect(host.querySelector('iframe')).toBeNull();}finally{act(()=>root.unmount());}
+});
+it('a paid checkout awaiting credit stays recoverable and does not reopen a payment form',async()=>{
+ const checkout={sessionId:'cs_fixture123456',clientSecret:'saved-private-fixture',amountUsdCents:'25000'},refresh=vi.fn(),identity={pendingCardDeposits:async()=>[checkout],checkCardDeposit:async()=>({status:'settling'})}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={refresh} resumeSessionId={checkout.sessionId}/>));expect(host.textContent).toContain('Reserve credit is pending');expect(host.querySelector('iframe')).toBeNull();expect(refresh).not.toHaveBeenCalled();expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Check deposit status')).toBe(true);}finally{act(()=>root.unmount());}
+});

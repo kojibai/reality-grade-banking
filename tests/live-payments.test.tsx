@@ -3,7 +3,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi, afterEach } from 'vitest';
 import { LiveReceive, LiveSend } from '../src/features/account/LivePayments';
-import { readCardReturn } from '../src/features/deposit/CardDepositReturn';
+import { readCardReturn, readCardResume, cardResumeLink } from '../src/features/deposit/CardDepositReturn';
 import type { OpenIdentity } from '../src/receiz/native-identity';
 import { parsePaymentRequest } from '../src/receiz/payment-request';
 import { createWalletSend } from '../src/receiz/wallet-send';
@@ -78,4 +78,11 @@ it('ignores a delayed receiving-name result after switching identities',async()=
   expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('second_confirmed');await act(async()=>finish('first_confirmed'));
   expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('second_confirmed');expect(host.textContent).not.toContain('first_confirmed');
  }finally{act(()=>root.unmount());}
+});
+
+it('carries only the public session reference back to the same account deposit route',()=>{
+ expect(cardResumeLink('cs_test_12345678')).toBe('/?resumeCardSession=cs_test_12345678#account/deposit');
+ expect(readCardResume('?resumeCardSession=cs_test_12345678')).toBe('cs_test_12345678');
+ expect(readCardResume('?resumeCardSession=cs_test_12345678&resumeCardSession=cs_other_12345678')).toBeNull();
+ expect(readCardResume('?resumeCardSession=not-a-session')).toBeNull();
 });

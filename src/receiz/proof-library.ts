@@ -3,7 +3,7 @@ import { BANK_APPLICATION_ID, isBankNativeApplicationId } from './config';
 import { projectHeldDeposit } from './deposit-source';
 import { inspectNoteProof } from './note-proof-portability';
 
-export type ProofKind = 'owned-source' | 'execution-recovery' | 'note-image' | 'note-deposit' | 'payment-receipt' | 'asset-receipt';
+export type ProofKind = 'owned-source' | 'received-original' | 'execution-recovery' | 'note-image' | 'note-deposit' | 'payment-receipt' | 'asset-receipt';
 export interface ProofSource { kind: ProofKind; filename: string; bytes: Uint8Array; }
 export interface ProofSummary { kind: ProofKind; digest: string; filename: string; title: string; size: number; operationId?: string; participantCount?: number; }
 export interface ProofReview { items: readonly ProofSummary[]; totalBytes: number; }
@@ -16,7 +16,7 @@ export interface ProofLibrary {
   exportProof(digest: string): Promise<{ bytes: Uint8Array; filename: string }>;
 }
 const MAX_SOURCE = 32 * 1024 * 1024, MAX_TOTAL = 64 * 1024 * 1024, MAX_WIRE = 90 * 1024 * 1024, MAX_COUNT = 1000;
-const kinds: readonly ProofKind[] = ['owned-source', 'execution-recovery', 'note-image', 'note-deposit', 'payment-receipt', 'asset-receipt'];
+const kinds: readonly ProofKind[] = ['owned-source', 'received-original', 'execution-recovery', 'note-image', 'note-deposit', 'payment-receipt', 'asset-receipt'];
 const filename = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= 240 && !/[\x00-\x1f\x7f/\\]/u.test(value);
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const exact = (v: Record<string, unknown>, fields: string[]) => Object.keys(v).length === fields.length && fields.every(key => Object.hasOwn(v, key));
@@ -52,6 +52,10 @@ export function createProofLibrary(input: {
         const { openNativeAssetHolding } = await import('./native-asset-holding');
         title = (await openNativeAssetHolding(source.bytes, source.filename, binding)).deposit.title;
       } else title = projectHeldDeposit(opened, source.bytes, source.filename, binding.artifactOwnerReceizId).title;
+    } else if(source.kind==='received-original'){
+      const opened=await sdk.createReceizClient().artifacts.verifyAndOpen(new File([new Uint8Array(source.bytes)],source.filename));
+      if(opened.sealedArtifact.artifactSha256!==digest)throw Error('PROOF_SOURCE_DIGEST_MISMATCH');
+      title=`Received original · ${opened.verifiedPayload.filename}`;
     } else if(source.kind==='payment-receipt'){
       const {verifyNativePaymentSource}=await import('./native-payment');const {receipt}=await verifyNativePaymentSource(JSON.parse(utf8(source.bytes)));
       if(receipt.review.keyId!==binding.keyId||receipt.review.request.actorReceizId!==binding.artifactOwnerReceizId)throw Error('PROOF_BACKUP_IDENTITY_MISMATCH');

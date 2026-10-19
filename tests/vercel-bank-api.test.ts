@@ -104,3 +104,13 @@ it('refuses unsupported routes, mutation methods, foreign origins and arbitrary 
   expect((await bankApi.fetch(request('/api/bank/native/api/signer/v4/receiz/enroll', { method: 'POST', headers: { Origin: 'https://evil.example', 'Content-Type': 'application/json' }, body: '{}' }))).status).toBe(403);
   expect(upstream).not.toHaveBeenCalled();
 });
+it('transports only the existing bearer-claim and verifier multipart contracts with exact binary responses',async()=>{
+ const bytes=new Uint8Array([0,255,128,1]),upstream=vi.fn<typeof fetch>(async()=>new Response(bytes,{headers:{'Content-Type':'application/vnd.receiz.bundle+json','Content-Disposition':'attachment; filename="owned.receizbundle"','X-Receiz-Continuity':'native-record-seal','X-Receiz-Owner':'buyer.receiz.id','X-Receiz-Record-Id':'record','X-Receiz-Claim-Id':'claim','X-Receiz-Verify-Path':'/v/moment/code/123','X-Receiz-Signature-Version':'4','Set-Cookie':'do-not-forward'}}));vi.stubGlobal('fetch',upstream);
+ const form=new FormData();form.set('artifact',new File([bytes],'original.receizbundle'));
+ const response=await bankApi.fetch(request('/api/bank/native/api/receiz/ownership/bearer-claim',{method:'POST',headers:{Origin:origin,Authorization:'Bearer synthetic-only'},body:form}));
+ expect(response.status).toBe(200);expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);expect(response.headers.get('x-receiz-owner')).toBe('buyer.receiz.id');expect(response.headers.get('content-disposition')).toContain('owned.receizbundle');expect(response.headers.get('set-cookie')).toBeNull();
+ const sent=upstream.mock.calls[0][1]!;expect(new Headers(sent.headers).get('content-type')).toMatch(/^multipart\/form-data; boundary=/);expect(new Headers(sent.headers).has('cookie')).toBe(false);expect(sent.body).toBeInstanceOf(Uint8Array);
+ const forwarded=new Request('https://receiz.com',{method:'POST',headers:sent.headers,body:sent.body}),parsed=await forwarded.formData();expect(new Uint8Array(await(parsed.get('artifact')as File).arrayBuffer())).toEqual(bytes);
+ for(const path of ['/api/connect/transfers','/api/signer/v4/receiz/enroll'])expect((await bankApi.fetch(request('/api/bank/native'+path,{method:'POST',headers:{Origin:origin,'Content-Type':'multipart/form-data; boundary=fixture'},body:'fixture'}))).status).toBe(415);
+ for(const path of ['/api/receiz/ownership/bearer-claim?owner=other','/api/document-verify?url=https://other.example'])expect((await bankApi.fetch(request('/api/bank/native'+path,{method:'POST',headers:{'Content-Type':'multipart/form-data; boundary=fixture'},body:'fixture'}))).status).toBe(400);
+});
