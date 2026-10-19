@@ -13,7 +13,10 @@ function selectedObject(): string | null { try { return location.hash.startsWith
 function Change({ value }: { value: number | null }) { return value === null ? null : <span className={value >= 0 ? 'positive' : 'negative'}>{value > 0 ? '+' : ''}{value}%</span>; }
 function PublicObjectProvenance({item}:{item:PublicMarketItem}){
  const copies=item.category==='sports'&&(item.circulationCount??1)>1;
- return <span className="market-object-provenance"><span>{copies?'Owners vary by copy':item.ownerUsername?`@${item.ownerUsername}`:item.ownerDisplayName??'Owner not supplied'}</span><span>{copies?'Sealed times vary by copy':item.sealedAt?`Sealed ${new Date(item.sealedAt).toLocaleString()}`:'Sealed time not supplied'}</span></span>;
+ const carried=item.sealedCopies??[],owners=[...new Set(carried.map(copy=>copy.ownerUsername?`@${copy.ownerUsername}`:copy.ownerDisplayName).filter((owner):owner is string=>!!owner))],times=carried.map(copy=>Date.parse(copy.sealedAt)).filter(Number.isFinite),first=times.length?Math.min(...times):null,last=times.length?Math.max(...times):null;
+ const owner=copies&&owners.length?`${owners[0]}${owners.length>1?` +${owners.length-1} ${owners.length===2?'owner':'owners'}`:''}`:copies?'Owners vary by copy':item.ownerUsername?`@${item.ownerUsername}`:item.ownerDisplayName??'Owner not supplied';
+ const sealed=copies&&first!==null?`Sealed ${first===last?new Date(first).toLocaleString():`${new Date(first).toLocaleDateString()}–${new Date(last!).toLocaleDateString()}`}`:copies?'Sealed times vary by copy':item.sealedAt?`Sealed ${new Date(item.sealedAt).toLocaleString()}`:'Sealed time not supplied';
+ return <span className="market-object-provenance"><span>{owner}</span><span>{sealed}</span></span>;
 }
 type MarketProps = { active?: boolean; onAction?: (action: UIAction) => void; source?: ReturnType<typeof usePublicMarket> };
 export function Market(props: MarketProps) { return props.source ? <MarketView {...props} source={props.source} /> : <ConnectedMarket {...props} />; }

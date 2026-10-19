@@ -68,15 +68,18 @@ export function marketAssetUsdAtPulse(row:MarketValueRow,pulse:number):number{
 export function marketCapUsdAtPulse(seed: MarketCapSource, pulse: number): number {
   if (!Number.isSafeInteger(pulse) || pulse < seed.firstIssuancePulse) throw new Error('Market projection pulse outside its issuance range.');
   if (pulse === seed.serverPulse) return round(seed.currentUsd);
-  const dated=marketRowsUsdAtPulse(seed.valueRows,pulse,true),observation=seed.undatedHistory;
+  const unpriced=(seed.unpricedSealedBirths??[]).reduce((sum,copy)=>sum+(pulse<marketPulseAtOrAfterTime(copy.sealedAt)?0:copy.birthUsdValue),0);
+  const dated=marketRowsUsdAtPulse(seed.valueRows,pulse,true)+unpriced,observation=seed.undatedHistory;
   if(!observation||pulse<observation.observationPulse)return dated;
-  const aggregate=pulse<=observation.modelPulse?observation.observationUsd:marketRowsUsdAtPulse(seed.valueRows.filter(row=>!row.marketItem?.livePulseSeed&&!row.sealedCopies?.length),pulse);
+  const aggregateRows=seed.valueRows.filter(row=>!row.marketItem?.livePulseSeed&&!row.sealedCopies?.length);
+  const aggregate=pulse<=observation.modelPulse?observation.observationUsd:marketRowsUsdAtPulse(aggregateRows,pulse)-marketRowsUsdAtPulse(aggregateRows,pulse,true)-unpriced;
   return round(dated+aggregate);
 }
 export function marketRowsUsdAtPulse(rows:MarketValueRow[],pulse:number,historical=false):number{
  const quote=rate(pulse),previous=rate(Math.max(0,pulse-1)),quoteMove=Math.abs(quote-previous)/previous;
  return round(rows.reduce((sum,row)=>{
   if(row.source==='sports-economy-card'&&row.sealedCopies)return sum+row.sealedCopies.reduce((value,copy)=>value+sealedCopyValue(copy,pulse,quoteMove),0);
+  if(historical&&row.source==='sports-economy-card'&&row.sealedBirths)return sum+row.sealedBirths.reduce((value,copy)=>value+(pulse<marketPulseAtOrAfterTime(copy.sealedAt)?0:copy.birthUsdValue),0);
   if(historical){const sealed=row.marketItem?.livePulseSeed?.claimPulse;if(sealed===undefined||pulse<sealed)return sum;}
   return sum+(row.source==='market-desk-live-asset'?marketValue(row,pulse,quote):sportsValue(row,pulse,quoteMove));
  },0));

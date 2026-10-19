@@ -27,24 +27,39 @@ export function currentMarketDisplayModel(source:MarketCapSource,catalog:PublicM
  if(cards.length){
   const sports=new Map(rows.filter(row=>row.source==='sports-economy-card').map(row=>[row.seed,row]));
   const newer=Date.parse(catalog?.sportsObservedAt??'')>=Date.parse(source.generatedAt);
-  for(const item of cards)if(newer||!sports.has(item.sportsValuation!.seed)){
+  const newerBirths=Date.parse(catalog?.sportsSealedBirthsObservedAt??catalog?.sportsObservedAt??'')>=Date.parse(source.generatedAt);
+  for(const item of cards){
    const row=item.sportsValuation!;
+   if(!newer&&sports.has(row.seed)){
+    // Recovered seals have their own capture time. An older price capture
+    // can enrich the exact retained claim without replacing its pricing law.
+    const retained=sports.get(row.seed)!;
+    if(row.sealedBirths?.length&&(newerBirths||!retained.sealedBirths?.length))sports.set(row.seed,{...retained,sealedBirths:row.sealedBirths});
+    continue;
+   }
    // A new representative can carry the same exact copies as an older row.
    // Their claims identify that overlap without guessing from a card title.
-   if(newer)for(const copy of row.sealedCopies??[])sports.delete(copy.claimHash);
+   if(newer)for(const copy of row.sealedCopies??row.sealedBirths??[])sports.delete(copy.claimHash);
    sports.set(row.seed,row);
   }
   rows=[...rows.filter(row=>row.source!=='sports-economy-card'),...sports.values()];
  }
  if(rows.length>10000)throw Error('Public market display coverage exceeds capacity.');
- const undated=rows.filter(row=>!row.marketItem?.livePulseSeed&&!row.sealedCopies?.length);
+ const identity=(copy:{collectibleId:string;claimHash:string})=>`${copy.collectibleId.toLowerCase()}:${copy.claimHash.toLowerCase()}`;
+ const pricedIdentities=new Set(rows.flatMap(row=>(row.sealedCopies??row.sealedBirths??[]).map(identity)));
+ const unpriced=new Map((source.unpricedSealedBirths??[]).map(copy=>[identity(copy),copy]));
+ for(const item of catalog?.items??[])if(item.category==='sports'&&!item.sportsValuation)for(const copy of item.sealedBirths??[])unpriced.set(identity(copy),copy);
+ for(const id of pricedIdentities)unpriced.delete(id);
+ const unpricedSealedBirths=unpriced.size?[...unpriced.values()]:undefined;if(unpriced.size>10000)throw Error('Public sealed birth coverage exceeds capacity.');
+ const aggregateRows=rows.filter(row=>!row.marketItem?.livePulseSeed&&!row.sealedCopies?.length),undated=aggregateRows.filter(row=>!row.sealedBirths?.length);
  let undatedHistory=source.undatedHistory;
- if(!undated.length)undatedHistory=undefined;
- else if(!undatedHistory){
+ if(!aggregateRows.length&&!unpricedSealedBirths?.length)undatedHistory=undefined;
+ else{
   const known=copyObservations?mergeMarketCopyObservations({...source,valueRows:rows},copyObservations).source.valueRows:rows;
-  const dated=known.filter(row=>row.marketItem?.livePulseSeed||row.sealedCopies?.length),remainder=Number((source.currentUsd-marketRowsUsdAtPulse(dated,source.serverPulse,true)).toFixed(4));
-  if(remainder>=0){const observed=Date.parse(catalog?.sportsObservedAt??'');undatedHistory={rows:undated.length,observationPulse:source.serverPulse,observationUsd:remainder,sourceReportedTotalUsd:source.currentUsd,modelPulse:Number.isFinite(observed)&&observed>=Date.parse(source.generatedAt)?Math.max(source.serverPulse,marketPulseAtOrAfterTime(catalog!.sportsObservedAt!)):source.serverPulse};}
+  const originalPulse=source.undatedHistory?.observationPulse??source.serverPulse,reported=source.undatedHistory?.sourceReportedTotalUsd??source.currentUsd;
+  const unpricedBirthValue=(unpricedSealedBirths??[]).reduce((sum,copy)=>sum+(originalPulse<marketPulseAtOrAfterTime(copy.sealedAt)?0:copy.birthUsdValue),0),remainder=Number((reported-marketRowsUsdAtPulse(known,originalPulse,true)-unpricedBirthValue).toFixed(4));
+  const observed=Date.parse(catalog?.sportsObservedAt??'');undatedHistory={rows:aggregateRows.length,undatedRows:undated.length,birthOnlyRows:aggregateRows.length-undated.length,unpricedCopies:unpricedSealedBirths?.length??0,observationPulse:originalPulse,observationUsd:remainder,sourceReportedTotalUsd:reported,modelPulse:Number.isFinite(observed)&&observed>=Date.parse(source.generatedAt)?Math.max(originalPulse,marketPulseAtOrAfterTime(catalog!.sportsObservedAt!)):source.undatedHistory?.modelPulse??originalPulse};
  }
- return {...source,undatedHistory,valueRows:rows,firstIssuancePulse:rows.reduce((first,row)=>Math.min(first,row.marketItem?.livePulseSeed?.claimPulse??first,...(row.sealedCopies??[]).map(copy=>marketPulseAtOrAfterTime(copy.sealedAt))),source.firstIssuancePulse),serverPulse:pulse,currentUsd:marketRowsUsdAtPulse(rows,pulse),marketAssetsPriced:rows.filter(row=>row.source==='market-desk-live-asset').length,sportsCardsPriced:rows.filter(row=>row.source==='sports-economy-card').length,cardsInCirculation:Math.max(source.cardsInCirculation,cards.reduce((sum,item)=>sum+(item.circulationCount??0),0)),
+ return {...source,undatedHistory,unpricedSealedBirths,valueRows:rows,firstIssuancePulse:rows.reduce((first,row)=>Math.min(first,row.marketItem?.livePulseSeed?.claimPulse??first,...(row.sealedCopies??row.sealedBirths??[]).map(copy=>marketPulseAtOrAfterTime(copy.sealedAt))),Math.min(source.firstIssuancePulse,...(unpricedSealedBirths??[]).map(copy=>marketPulseAtOrAfterTime(copy.sealedAt)))),serverPulse:pulse,currentUsd:marketRowsUsdAtPulse(rows,pulse),marketAssetsPriced:rows.filter(row=>row.source==='market-desk-live-asset').length,sportsCardsPriced:rows.filter(row=>row.source==='sports-economy-card').length,cardsInCirculation:Math.max(source.cardsInCirculation,cards.reduce((sum,item)=>sum+(item.circulationCount??0),0)),
   generatedAt:currentCollection?catalog.observedAt!:source.generatedAt};
 }

@@ -4,6 +4,7 @@ import {resolvePublicOriginalUrl} from './public-original';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
 import {readPublicProofReading,type ProofReading} from './proof-reading';
 import type {ReceizVerifiedPayload} from '@receiz/sdk';
+import {retainOpenedProofInspection,trackProofInspection} from './proof-inspection';
 
 export type MediaKind='image'|'audio'|'video'|'pdf'|'text'|'book'|'file';
 export type MediaFile={kind:MediaKind;filename:string;mimeType:string;bytes:Uint8Array;payloadDigest:string;memberPath?:string;text?:string;chapters?:{title:string;text:string}[]};
@@ -52,7 +53,10 @@ export async function readMediaPayload(payload:ReceizVerifiedPayload):Promise<Me
 }
 /** Existing SDK enclosing-artifact open is the only payload entry. Rendering
  * does not admit ownership, custody, transfers or account value. */
-export async function openProofMedia(source:ProofMediaSource,signal?:AbortSignal):Promise<OpenedProofMedia>{
+export function openProofMedia(source:ProofMediaSource,signal?:AbortSignal):Promise<OpenedProofMedia>{
+ return trackProofInspection(source.digest,openOriginalMedia(source,signal));
+}
+async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Promise<OpenedProofMedia>{
  if(!/^[a-f0-9]{64}$/i.test(source.digest))throw Error('The original digest is unavailable.');
  signal?.throwIfAborted();let bytes:Uint8Array,filename:string;
  if(source.kind==='held'){bytes=new Uint8Array(source.bytes);filename=source.filename;}else{
@@ -64,6 +68,7 @@ export async function openProofMedia(source:ProofMediaSource,signal?:AbortSignal
  if(!bytes.length||bytes.length>MAX)throw Error('This original exceeds the supported reader capacity.');
  const sdk=await loadReceiz();let opened;try{opened=await sdk.createReceizClient().artifacts.verifyAndOpen(new File([new Uint8Array(bytes)],filename));}catch{throw Error('This original could not be opened as verified media. Inspect its proof source for details.');}signal?.throwIfAborted();
  if(opened.sealedArtifact.artifactSha256.toLowerCase()!==source.digest.toLowerCase())throw Error('This original does not match the selected proof.');
+ retainOpenedProofInspection(opened,bytes,filename,source.digest);
  const files=await readMediaPayload(opened.verifiedPayload);signal?.throwIfAborted();
  if(source.kind==='held'&&opened.verifiedPayload.mimeType==='application/json'){
   let value;try{value=JSON.parse(decode(opened.verifiedPayload.bytes));}catch{/* Ordinary text remains readable. */}

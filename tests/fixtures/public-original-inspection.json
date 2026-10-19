@@ -1,0 +1,157 @@
+{
+  "schema": "bankeiz.offline-proof-inspection.v1",
+  "sdk": "129.0.0",
+  "artifactSha256": "7396aafeddf8b9d6e54eb40400245a8403ac915b318f1481a7eb2aadf42cb4f8",
+  "artifactBytes": 2217929,
+  "payloadSha256": "9817492a923e1b087186d62c7f372938114c9454a83f8d9f932ae5d08e2d715f",
+  "payloadBytes": 2215179,
+  "payloadFilename": "E801B78C-4CA1-486B-84E9-BE5ED2CB89B2.png",
+  "payloadMimeType": "image/png",
+  "verification": {
+    "ok": true,
+    "kind": "png",
+    "errors": [],
+    "warnings": [],
+    "bundle": {
+      "kind": "receiz.proof_bundle",
+      "payloadVersion": "v2",
+      "createdAtMs": 1792337190049,
+      "ts": "2026-10-18 11:26",
+      "code": "B05EAA2C",
+      "slug": "20261018_1126",
+      "verifyPath": "/v/20261018_1126/B05EAA2C/14708298",
+      "verifyUrl": "https://receiz.com/v/20261018_1126/B05EAA2C/14708298?a=340c7482&ms=1792337190049",
+      "kaiPulseEternal": "14708298",
+      "kaiKlok": "32:07 \u2022 D1/M5 \u2022 Solhara \u2022 Dream Ark",
+      "signerKeyId": "ba6fc195b953",
+      "anchorId": "340c7482",
+      "receizClaimId": "b663f0a3233e92558bd5716e84f2f590",
+      "sigilClaimSeed": "88ddbe29f4075cf63d48225fa3b0210952608110f4567be3a2e4d9000eb9e328",
+      "zkPoseidonHash": "0542b6f8fa11ddf3ba9376ddd92479b8d427deb3b4080c70efac2ce83bccf1ec",
+      "groth16Proof": "g16:eyJ2IjoicmVjZWl6LmcxNi5yZWFsLnYxIiwicHJvb2YiOnsicGlfYSI6WyIxMDgzMTI3MjkyNjI0NDQ5NTQ4MzYzMDczOTI3MjYyMjE3Mjg1MzAxNzkwMTc0MTQ1NTU5OTU5MzIxNzM0MzQxMzA5NzQwOTYzOTE2NCIsIjYwOTQ4MTgxNDc3OTgwNTA3MzkwMTU3ODI5OTA0NzM5MDUwMzIzNjM2ODQwODg1NzkxNTk1MjE0ODE3NTMzMzQxNzk3NzcyMTQ2MzkiLCIxIl0sInBpX2IiOltbIjQxNzQyOTYyOTAxMjk5NzQ0MjUyMDcyOTgxMDAwOTk0OTY3OTU1Mzg4Njc4NTg3NzcyNzM3OTgwMzQ4NDAyMDM5MjE4MzA0ODQ3NjEiLCIzNDg3MDQ1MjQzMjA5NDM4OTkwMTYxMjE5MTc5NzE0MDA5NDE2NDc5ODQ0NzI1MjIzNTM0NzU5NDY1OTY4ODg2NzM5MDE2MjM1ODgzIl0sWyIxOTc5ODQxMTI1MjIzMDk3NTIwNjUxNDI1MjQyNDcwMjk3Mjc4OTc1MjMxNjQxNTE5MzAwMDQ4NDExNDkyNzg5Mzk1NjE0OTU1MDY5IiwiMTYzODg2NDI3MjY2NDY4NDM4NTc2MDA3Mzg4NTI2NjU1Mzc2OTA1NzU3ODA1NDE4MzkyODc0NTE0OTM2NzUwNjU4ODM4NDQ1Njg2MjciXSxbIjEiLCIwIl1dLCJwaV9jIjpbIjMzMDUwMjE3Nzc5MTU3ODA0NzExNTE3MDU1MTc3NzY3MjQ0MjY0ODM5ODU5MDM4Nzg4NDAxMDI5ODMwMzY1OTQ4Mzg0MTg1ODcxNTQiLCIyMTI1MDk4NzM3MzkxMTM1MjY5ODEyMzU0NTM0ODYzNDE4OTc1OTcwMDQ3NzUyNjQ1OTY4MTAwNDUyMzUxOTcwMDI2NzIxNDUzMTUzMCIsIjEiXSwicHJvdG9jb2wiOiJncm90aDE2IiwiY3VydmUiOiJibjEyOCJ9LCJwdWJsaWNTaWduYWxzIjpbIjIzNzk0Mzg5Nzk0MjkwMTc2MTgzMTMzNDYzODA2MzEyMDc2MTM0NDkyNDM1MTgwOTUwMDQ0MTcyNzI5MDM2ODY3OTcxMjYzMzI5MDgiLCIyMzc5NDM4OTc5NDI5MDE3NjE4MzEzMzQ2MzgwNjMxMjA3NjEzNDQ5MjQzNTE4MDk1MDA0NDE3MjcyOTAzNjg2Nzk3MTI2MzMyOTA4Il19",
+      "groth16ProofDigest": "23faa69f1b2478049001cda0faccbcead8443ac75bf34aca58a9103fac6aff5c",
+      "artifactSha256Basis": "9817492a923e1b087186d62c7f372938114c9454a83f8d9f932ae5d08e2d715f",
+      "signatureV4": {
+        "version": 1,
+        "alg": "Ed25519",
+        "cert": {
+          "version": 1,
+          "certType": "receiz.device.v1",
+          "certId": "972d2c3d221abdc3b2c30c5b88b7da22",
+          "issuerKid": "receiz.v4.prod.2026-03-02",
+          "alg": "Ed25519",
+          "subjectPublicKeyRawB64u": "utU-nYfpD9VOg8JG7MehXrV1aFSXwlnef-oz3Ce4ilw",
+          "issuedAtMs": 1791500557199,
+          "expiresAtMs": 281474976710655,
+          "sig": "E-XerH38XoCANoZ7BMK17zJlw9IV95a0JywZSjByRki1-ZkXE_rgxykkMKtcny4RX3Z2fjm-mk_sSIMi9ajcCQ"
+        },
+        "sig": "3Ot_CVYRg4SHqnrU809tIe9lmYaD7Zej87NpD5NMsMtDkXoz53smJZKx6HkSZZmbdT_YSpOB5tkQL4apUXPWCA",
+        "payloadHashSha256": "122b34783532826082332c2dc450706c4bb74dbd7dea80afe3ce6bca7ca9554b",
+        "signedAtMs": 1792337193117
+      },
+      "nativeRecordSeal": {
+        "schema": "receiz.native_record_seal.v1",
+        "ownerReceizId": "bjklock.receiz.id",
+        "recordId": "native:9817492a923e1b087186d62c7f372938114c9454a83f8d9f932ae5d08e2d715f",
+        "payload": {
+          "filename": "E801B78C-4CA1-486B-84E9-BE5ED2CB89B2.png",
+          "mimeType": "image/png",
+          "sha256": "9817492a923e1b087186d62c7f372938114c9454a83f8d9f932ae5d08e2d715f"
+        },
+        "ownershipContinuity": {
+          "schema": "receiz.native_ownership_continuity.v1",
+          "artifactId": "9817492a923e1b087186d62c7f372938114c9454a83f8d9f932ae5d08e2d715f",
+          "namespace": "receiz.native-proof:9817492a923e1b087186d62c7f372938114c9454a83f8d9f932ae5d08e2d715f",
+          "genesisOwnerReceizId": "bjklock.receiz.id",
+          "ownerReceizId": "bjklock.receiz.id",
+          "headReference": "b663f0a3233e92558bd5716e84f2f590",
+          "historyDigestSha256": "8f555ef3ea39a572714f97d2efe5041632f98944722604ccd2bf2072ee963334",
+          "appendCount": 0,
+          "history": [
+            {
+              "schema": "receiz.native_ownership_genesis.v1",
+              "index": 0,
+              "ownerReceizId": "bjklock.receiz.id",
+              "headReference": "b663f0a3233e92558bd5716e84f2f590",
+              "historyDigestSha256": "8f555ef3ea39a572714f97d2efe5041632f98944722604ccd2bf2072ee963334"
+            }
+          ]
+        }
+      }
+    },
+    "anchor": {
+      "version": 1,
+      "parent": {
+        "code": "B05EAA2C",
+        "pulse": "14708298",
+        "viewUrl": "/v/20261018_1126/B05EAA2C/14708298?c=rpb2%3A1VTbbttGEP0Vgw99Eq3d2buAoLAubexUcWMlrizDEPYq0RIvJemLHBjot_TT-iVdyo6BFChgIHnJC8HdOXN25szZvUzqykDSS27jBwsFhAisEKKqlwACnmKUYnmA8QB4RCW94ma77SXrtq2aQb9fe-uzh0Nb5v3bfofHCMslxsD7Q8QmR0cw6mMqkAQlf9ZvCEVWUAk_5c2brw6L1AQGSBz889ffB2Pcn7L936zcrnWtn3Zrr_ODo3oTsUbzYLFiRjHSpT7TdhHOSUCaRGqvgDFpHBOYe0kDBKZQhEjpnPGgAkWC2cCJi6nAgiYGAUaKAUcSYxQo48J4osFTF6tE3ihPQEYKxCgYHmTQGDsXiNGKCO6cU0CFMtJREM4bYiiSsTTkg7ZgvSTG2oC9jRRAgtZcBWxiiowSIISt0ygirbFeO0kp0VYwEwjVVjOpFUYxyXIdAusolMSCKtBRR48NkgJL7jhYEYgARWIP1CrKqJYkSKeCIqA9c0h6cAKz8DzMy5dJEIxFL8EAhsSaCIvNdlrEIFhwljIkELfUGEGdcbFDLZEOnljPjdXCasUYNd1ATtvl6PzibEVnb_8s6k8SqfbYq21-ocdi4a-leF-N2ftpM23Hm3n5wEiTnyze3fO3m9likRv3cXkxq06HrN18-I3q6tP89z9GR0nvMlECHFjiALA2zhITF8gyI6URTkNngWdP3tLDqi7d4d7FiKSoi920n9LiIlRjdX66kie_iqlfz-tzrH-Zze-2hQ9p-UBGnmbbu_11wAwhFg2kVA9kNDJVgguMOGO9ZJLOff2WyHk5OnpfLsRw-g6Lh5PtnTo-V0yjk93dYnY93J1tMpwuNvPJsl7d7zab6bvWFjt6NicLCNd5mm-Wzex4mil9bUcfkqurl2v2n8_npLFrn-tk8KXHQrfZrV_GVVm7ZeP19vAWxzbLu8LXZ3vMsYtwc73ZlnZz-JyWuSeZYtI-_EQz-HY_JZXebUsdOT8nIdv6Quc-8k8kwkMhRykdHeGUSj5MJZ2odDhhkzGMhlIN4bAqVpEgz3L_cVd1WVmuV77_tN2sNTAeN7-5xsdndZp1Vo3Kos2Km6zddQX_j7gv6KV9gT-prOs2i_ex3Wv4HcTr1Goqbbvmv6ohjUYuw_eYz8oXvsma01f44zUeWsd36swHX_tiX_UrXt911rRlvRtnK9-0sy9jlYEx5gPxmijNBAhMgxIOIjdDFHMCQUlFqYD4IFFrHZgASID3ihNCaDeNqvKFG5U3RZsM0MtByeDyFaN91uVprlnh_P2e48fS4PHq8fHqXw"
+      },
+      "anchorId": "340c7482",
+      "anchoredAt": "2026-10-18T15:26:30.049Z"
+    },
+    "package": null,
+    "assetContinuity": {
+      "state": "verified",
+      "carrier": "native_record_seal",
+      "issuerKid": "receiz.v4.prod.2026-03-02",
+      "artifactId": "9817492a923e1b087186d62c7f372938114c9454a83f8d9f932ae5d08e2d715f",
+      "headReference": "b663f0a3233e92558bd5716e84f2f590",
+      "ownerReceizId": "bjklock.receiz.id",
+      "namespace": "receiz.native-proof:9817492a923e1b087186d62c7f372938114c9454a83f8d9f932ae5d08e2d715f",
+      "priorHeadReference": "genesis",
+      "genesisOwnerReceizId": "bjklock.receiz.id",
+      "historyDigestSha256": "8f555ef3ea39a572714f97d2efe5041632f98944722604ccd2bf2072ee963334",
+      "appendCount": 0,
+      "history": [
+        {
+          "schema": "receiz.native_ownership_genesis.v1",
+          "index": 0,
+          "ownerReceizId": "bjklock.receiz.id",
+          "headReference": "b663f0a3233e92558bd5716e84f2f590",
+          "historyDigestSha256": "8f555ef3ea39a572714f97d2efe5041632f98944722604ccd2bf2072ee963334"
+        }
+      ],
+      "historyComplete": true
+    },
+    "integrity": {
+      "ok": true,
+      "errors": []
+    }
+  },
+  "groth16": {
+    "version": "receiz.g16.real.v1",
+    "proof": {
+      "pi_a": [
+        "10831272926244495483630739272622172853017901741455599593217343413097409639164",
+        "6094818147798050739015782990473905032363684088579159521481753334179777214639",
+        "1"
+      ],
+      "pi_b": [
+        [
+          "4174296290129974425207298100099496795538867858777273798034840203921830484761",
+          "3487045243209438990161219179714009416479844725223534759465968886739016235883"
+        ],
+        [
+          "1979841125223097520651425242470297278975231641519300048411492789395614955069",
+          "16388642726646843857600738852665537690575780541839287451493675065883844568627"
+        ],
+        [
+          "1",
+          "0"
+        ]
+      ],
+      "pi_c": [
+        "3305021777915780471151705517776724426483985903878840102983036594838418587154",
+        "21250987373911352698123545348634189759700477526459681004523519700267214531530",
+        "1"
+      ],
+      "protocol": "groth16",
+      "curve": "bn128"
+    },
+    "publicSignals": [
+      "2379438979429017618313346380631207613449243518095004417272903686797126332908",
+      "2379438979429017618313346380631207613449243518095004417272903686797126332908"
+    ]
+  },
+  "scope": "Canonical enclosing artifact and carried continuity only. No live spendability, account balance or execution authorization."
+}

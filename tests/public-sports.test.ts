@@ -77,3 +77,36 @@ it('rejects older qualified sports captures before replacing a newer exact owner
  expect(retained.sportsObservedAt).toBe(fresh.generatedAt);expect(retained.items[1]).toMatchObject({ownerUsername:'new_owner',priceUsd:200});
  const next=mergePublicSports(retained,capture('2026-10-20T12:00:00Z','latest_owner',300));expect(next.items[1]).toMatchObject({ownerUsername:'latest_owner',priceUsd:300});
 });
+it('shows recovered birth-only owner metadata while keeping original pricing time and stronger full values',async()=>{
+ const {publicSportsValueRow}=await import('../src/receiz/market-projection/source'),{retainPublicSportsInput}=await import('../src/receiz/public-sports');
+ const born={collectibleId:card.collectibleId,claimHash:card.claimHash,sealedAt:'2026-10-01T12:00:00Z',birthUsdValue:10,ownerUsername:'fresh_holder',ownerDisplayName:'Fresh Holder'};
+ const one={...card,cardId:'public-card',issuedCount:1,vaultCount:1,pricedCount:1,proofValueUsd:20,proofTotalValueUsd:20,totalValueUsd:25};
+ const capture=(value:unknown,generatedAt='2026-10-18T12:00:00Z')=>({ok:true,schema:'receiz.sports_economy.live_inventory.v1',generatedAt,cards:[value]});
+ const exact={...one,sealedCopies:[{...born,ownerUsername:'old_holder',proofValueUsd:20,currentValueUsd:25}]};
+ const held=capture({...exact,valuationRow:publicSportsValueRow(exact)}),recovered={...one,sealedBirths:[born]},fresh={...capture({...recovered,valuationRow:publicSportsValueRow(recovered)}),sealedBirthsObservedAt:'2026-10-19T12:00:00Z'};
+ const retained=retainPublicSportsInput(held,fresh) as typeof fresh;
+ expect((retained.cards[0] as typeof exact).sealedCopies).toEqual(exact.sealedCopies);
+ const catalog=mergePublicSports(mergePublicSports(base(),held),fresh),item=catalog.items[1];
+ expect(item).toMatchObject({ownerUsername:'fresh_holder',sealedAt:born.sealedAt,priceUsd:25});expect(item.sportsValuation?.sealedCopies?.[0].currentValueUsd).toBe(25);expect(catalog.sportsObservedAt).toBe(held.generatedAt);
+ const weak={...capture({...one,valuationRow:publicSportsValueRow(one)},'2026-10-20T12:00:00Z')};
+ const refreshed=mergePublicSports(catalog,weak);expect(refreshed.items[1].ownerUsername).toBe('fresh_holder');expect(refreshed.items[1].sealedAt).toBe(born.sealedAt);
+ const older={...fresh,sealedBirthsObservedAt:'2026-10-17T12:00:00Z',cards:[{...recovered,sealedBirths:[{...born,ownerUsername:'stale_holder'}],valuationRow:publicSportsValueRow(recovered)}]};
+ expect(mergePublicSports(catalog,older).items[1].ownerUsername).toBe('fresh_holder');
+ const extra={...recovered,collectibleId:'rsc_bbbbbbbbbbbbbbbb',claimHash:'b'.repeat(64),valuationRow:undefined,pricedCount:0,liveValueUsd:null,totalValueUsd:null,sealedBirths:[{...born,collectibleId:'rsc_bbbbbbbbbbbbbbbb',claimHash:'b'.repeat(64),ownerUsername:'unpriced_holder'}]};
+ const olderPricesWithNewMetadata={...fresh,generatedAt:'2026-10-17T12:00:00Z',cards:[...fresh.cards,extra]};
+ const added=mergePublicSports(catalog,olderPricesWithNewMetadata);expect(added.items[1].priceUsd).toBe(25);expect(added.items[2]).toMatchObject({priceUsd:null,ownerUsername:'unpriced_holder'});expect(added.sportsObservedAt).toBe(catalog.sportsObservedAt);
+ expect((retainPublicSportsInput(held,olderPricesWithNewMetadata) as typeof fresh).cards).toHaveLength(2);
+});
+it('retains unpriced verified groups when newer quotes predate their metadata capture',async()=>{
+ const {publicSportsValueRow}=await import('../src/receiz/market-projection/source'),{retainPublicSportsInput}=await import('../src/receiz/public-sports');
+ const priced={...card,cardId:'priced',issuedCount:1,vaultCount:1,pricedCount:1,totalValueUsd:25,proofValueUsd:20,proofTotalValueUsd:20};
+ const born={collectibleId:'rsc_bbbbbbbbbbbbbbbb',claimHash:'b'.repeat(64),sealedAt:'2026-10-01T12:00:00Z',birthUsdValue:10,ownerUsername:'metadata_holder',ownerDisplayName:'Metadata Holder'};
+ const unpriced={...priced,collectibleId:born.collectibleId,claimHash:born.claimHash,cardId:'unpriced',pricedCount:0,liveValueUsd:null,totalValueUsd:null,proofValueUsd:undefined,proofTotalValueUsd:undefined,sealedBirths:[born]};
+ const held={ok:true,schema:'receiz.sports_economy.live_inventory.v1',generatedAt:'2026-10-19T12:00:00Z',sealedBirthsObservedAt:'2026-10-21T12:00:00Z',cards:[{...priced,valuationRow:publicSportsValueRow(priced)},unpriced]};
+ const current={...priced,liveValueUsd:30,totalValueUsd:30,proofValueUsd:25,proofTotalValueUsd:25},incoming={ok:true,schema:held.schema,generatedAt:'2026-10-20T12:00:00Z',cards:[{...current,valuationRow:publicSportsValueRow(current)}]};
+ const raw=retainPublicSportsInput(held,incoming) as typeof held;
+ expect(raw.cards).toHaveLength(2);expect(raw.sealedBirthsObservedAt).toBe(held.sealedBirthsObservedAt);expect(raw.cards[1]).not.toHaveProperty('valuationRow');
+ const before=mergePublicSports(base(),held),after=mergePublicSports(before,incoming);
+ expect(after.items).toHaveLength(3);expect(after.items[1].priceUsd).toBe(30);expect(after.items[2]).toMatchObject({ownerUsername:'metadata_holder',priceUsd:null,sealedAt:born.sealedAt});expect(after.items[2].sportsValuation).toBeUndefined();expect(after.sportsSealedBirthsObservedAt).toBe(held.sealedBirthsObservedAt);
+ const later=mergePublicSports(after,{...incoming,sealedBirthsObservedAt:'2026-10-22T12:00:00Z'});expect(later.items).toHaveLength(2);
+});

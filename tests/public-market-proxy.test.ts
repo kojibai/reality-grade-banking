@@ -61,8 +61,10 @@ it('rejects mutation methods before contacting Receiz', async () => {
 });
 it('carries exact per-copy sealed values and only public owner names through sports discovery',async()=>{
  const copy={collectibleId:'rsc_1123456789abcdef',claimHash:'b'.repeat(64),sealedAt:'2026-10-01T12:00:00Z',birthUsdValue:10,proofValueUsd:20,currentValueUsd:21,ownerUsername:'current_holder',ownerDisplayName:'Current Holder',ownerUserId:'private-account',email:'private-email'};
- vi.stubGlobal('fetch',vi.fn(async()=>Response.json({ok:true,schema:'receiz.sports_economy.live_inventory.v1',cards:[{collectibleId:copy.collectibleId,claimHash:copy.claimHash,cardId:'one',proofValueUsd:20,sealedCopies:[copy]}]})));
+ const sealedBirthsObservedAt='2026-10-19T12:00:00Z',birth={...copy,proofValueUsd:undefined,currentValueUsd:undefined};
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({ok:true,schema:'receiz.sports_economy.live_inventory.v1',sealedBirthsObservedAt,cards:[{collectibleId:copy.collectibleId,claimHash:copy.claimHash,cardId:'one',proofValueUsd:20,sealedCopies:[copy],sealedBirths:[birth]}]})));
  let body='';const res={setHeader:vi.fn(),writeHead:vi.fn(),end:(bytes:Uint8Array)=>{body=new TextDecoder().decode(bytes);}}as unknown as ServerResponse;
  await publicMarketMiddleware({method:'GET',url:'/api/bank/public-market/sports',headers:{}}as IncomingMessage,res,vi.fn());
- const card=JSON.parse(body).cards[0];expect(card.sealedCopies[0]).toMatchObject({sealedAt:copy.sealedAt,birthUsdValue:10,ownerUsername:'current_holder'});expect(card.valuationRow.sealedCopies[0]).not.toHaveProperty('ownerUsername');expect(body).not.toContain('private-');
+ const result=JSON.parse(body),card=result.cards[0];expect(card.sealedCopies[0]).toMatchObject({sealedAt:copy.sealedAt,birthUsdValue:10,ownerUsername:'current_holder'});expect(card.valuationRow.sealedCopies[0]).not.toHaveProperty('ownerUsername');expect(body).not.toContain('private-');
+ expect(result.sealedBirthsObservedAt).toBe(sealedBirthsObservedAt);expect(card.sealedBirths[0]).toMatchObject({sealedAt:copy.sealedAt,birthUsdValue:10,ownerUsername:'current_holder'});expect(card.valuationRow.sealedBirths[0]).toEqual({collectibleId:copy.collectibleId,claimHash:copy.claimHash,sealedAt:copy.sealedAt,birthUsdValue:10});
 });

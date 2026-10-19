@@ -5,12 +5,20 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { CHART_PERIODS, type ChartPeriod } from '../src/core/chart-history';
 import { useMarketCapitalization } from '../src/receiz/market-projection/useMarketCapitalization';
 import sourceFile from'../public/receiz-public-capitalization.json';
+import historyFile from'../public/receiz-public-chart-history.json';
 import{parsePublicMarket}from'../src/receiz/public-market';
 import{parseMarketCapSource}from'../src/receiz/market-projection/source';
 import{buildMarketHistory}from'../src/receiz/market-projection/build-history';
 const clock=vi.hoisted(()=>({pulse:14720000}));vi.mock('@receiz/sdk',async original=>({...await original<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 afterEach(() => { vi.unstubAllGlobals(); localStorage.clear();vi.useRealTimers(); });
+it('discards an older history policy even when its retained endpoint is current',async()=>{
+ const old={...historyFile,historyPolicy:'sealed-values-and-dated-observations-v1',summary:{...historyFile.summary,proofObjectHash:'c'.repeat(64)}};
+ localStorage.setItem('receiz-bank-public-graph-history-v2',JSON.stringify(old));
+ let state!:ReturnType<typeof useMarketCapitalization>;const root=createRoot(document.createElement('div'));
+ function Probe(){state=useMarketCapitalization('ALL',false);return null;}
+ try{await act(async()=>root.render(<Probe/>));expect(state.source.proofObjectHash).toBe(historyFile.summary.proofObjectHash);}finally{act(()=>root.unmount());}
+});
 it('feeds live membership to the chart worker and publishes all periods and their amount together',async()=>{
  vi.useFakeTimers();clock.pulse=14720000;vi.stubGlobal('fetch',vi.fn(async()=>Response.json(sourceFile)));
  const messages:any[]=[];let worker!:WorkerStub;

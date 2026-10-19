@@ -4,14 +4,14 @@ import type { ChartPeriod } from '../../core/chart-history';
 import type{PublicMarketCatalog}from'../public-market';
 import seedHistory from '../../../public/receiz-public-chart-history.json';
 import { type MarketCapSource } from './source';
-import { parseMarketHistory, type MarketHistorySnapshot } from './history';
+import { parseMarketHistory,MARKET_HISTORY_POLICY, type MarketHistorySnapshot } from './history';
 import {readMarketDisplaySource,retainedMarketDisplaySource} from './display-source';
 export type { CapitalizationPoint } from './history';
 const KEY = 'receiz-bank-public-graph-history-v2';
 const shipped = parseMarketHistory(seedHistory);
 const now=()=>{try{return receizKaiNow().pulse;}catch{return 0;}};
 function restore(): MarketHistorySnapshot {
-  try { const cached = parseMarketHistory(JSON.parse(localStorage.getItem(KEY) ?? 'null')); if (cached.historyPolicy==='sealed-values-and-dated-observations-v1'&&cached.summary.serverPulse >= shipped.summary.serverPulse) return cached; } catch { /* Only bounded public display data is retained. */ }
+  try { const cached = parseMarketHistory(JSON.parse(localStorage.getItem(KEY) ?? 'null')); if (cached.historyPolicy===MARKET_HISTORY_POLICY&&cached.summary.serverPulse >= shipped.summary.serverPulse) return cached; } catch { /* Only bounded public display data is retained. */ }
   return shipped;
 }
 type WorkerInput={source:{ok:true;marketCapProjection:MarketCapSource};history:MarketHistorySnapshot;catalog:PublicMarketCatalog|null;pulse:number};

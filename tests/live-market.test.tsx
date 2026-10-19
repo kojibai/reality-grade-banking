@@ -7,6 +7,7 @@ import { createDemoState } from '../src/core/demo';
 import { Market } from '../src/features/market/Market';
 import { PublicAssetDetail } from '../src/features/market/PublicAssetDetail';
 import { parsePublicMarket } from '../src/receiz/public-market';
+import {mergePublicSports} from '../src/receiz/public-sports';
 
 const source = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
 vi.mock('../src/receiz/market-projection/useMarketCapitalization', () => ({ useMarketCapitalization: () => ({ source: null, points: [], status: 'unavailable' }) }));
@@ -67,6 +68,21 @@ it('shows each carried current owner and sealed time directly in the public list
  const {host}=mount(),rows=host.querySelectorAll('.market-rows .asset-row');
  expect(rows[0].textContent).toContain('@current_holder');expect(rows[0].textContent).toContain(new Date(sealedAt).toLocaleString());
  expect(rows[1].textContent).toContain('Owner not supplied');expect(rows[1].textContent).toContain('Sealed time not supplied');
+});
+it('renders recovered birth-only card owners and seal dates without requiring current individual prices',()=>{
+ const collectibleId='rsc_0123456789abcdef',claimHash='a'.repeat(64),sealedAt='2026-10-01T12:00:00Z';
+ const card={collectibleId,claimHash,cardId:'one',athlete:'Recovered card',sport:'baseball',issuedCount:1,vaultCount:1,pricedCount:0,liveValueUsd:null,totalValueUsd:null,sealedBirths:[{collectibleId,claimHash,sealedAt,birthUsdValue:10,ownerUsername:'recovered_holder',ownerDisplayName:'Recovered Holder'}]};
+ source.value={catalog:mergePublicSports(catalog(1),{ok:true,schema:'receiz.sports_economy.live_inventory.v1',generatedAt:'2026-10-18T12:00:00Z',sealedBirthsObservedAt:'2026-10-19T12:00:00Z',cards:[card]}),status:'live',error:null,refresh:vi.fn()};
+ const {host}=mount(),row=[...host.querySelectorAll('.market-rows .asset-row')].find(row=>row.textContent?.includes('Recovered card'))!;
+ expect(row.textContent).toContain('@recovered_holder');expect(row.textContent).toContain(new Date(sealedAt).toLocaleString());expect(row.textContent).toContain('Value unavailable');
+ act(()=>(row as HTMLButtonElement).click());expect(host.querySelector('dialog')?.textContent).toContain('@recovered_holder');
+});
+it('summarizes actual carried edition owners and seal dates in each row',()=>{
+ const collectibleId='rsc_0123456789abcdef',claimHash='a'.repeat(64),first='2026-10-01T12:00:00Z',last='2026-10-02T12:00:00Z',copies=[{collectibleId,claimHash,sealedAt:first,birthUsdValue:10,ownerUsername:'first_holder'},{collectibleId:'rsc_bbbbbbbbbbbbbbbb',claimHash:'b'.repeat(64),sealedAt:last,birthUsdValue:20,ownerUsername:'second_holder'}];
+ source.value={catalog:mergePublicSports(catalog(1),{ok:true,schema:'receiz.sports_economy.live_inventory.v1',cards:[{collectibleId,claimHash,athlete:'Edition',sport:'baseball',issuedCount:2,vaultCount:2,pricedCount:0,liveValueUsd:null,totalValueUsd:null,sealedBirths:copies}]}),status:'live',error:null,refresh:vi.fn()};
+ const {host}=mount(),row=[...host.querySelectorAll('.market-rows .asset-row')].find(row=>row.textContent?.includes('Edition'))!;
+ expect(row.textContent).toContain('@first_holder +1 owner');expect(row.textContent).toContain(new Date(first).toLocaleDateString());expect(row.textContent).toContain(new Date(last).toLocaleDateString());
+ act(()=>(row as HTMLButtonElement).click());expect(host.querySelector('dialog')?.textContent).toContain('@second_holder');
 });
 it('opens exact public card history for its owner and original issue time',async()=>{
  const cardId='rsc_0123456789abcdef',claimHash='a'.repeat(64),held=catalog(1),at='2026-10-01T12:00:00Z';

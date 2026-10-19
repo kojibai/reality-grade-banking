@@ -1,8 +1,20 @@
 import {marketPulseTime} from './coordinates.js';
 export interface MarketValueObservation {at:string;usdValue:number;basis:'sealed-birth'|'source-observation';pulse?:number;}
-export interface MarketSealedCopy {collectibleId:string;claimHash:string;sealedAt:string;birthUsdValue:number;proofValueUsd:number;currentValueUsd:number;valueHistory?:MarketValueObservation[];valuationPulse?:number;valuation?:{baseUsdValue:number;birthUsdValue:number;marketUsdValue:number;scoreDelta:number;seed:string};}
+export interface MarketSealedBirth {collectibleId:string;claimHash:string;sealedAt:string;birthUsdValue:number;}
+export interface MarketSealedCopy extends MarketSealedBirth {proofValueUsd:number;currentValueUsd:number;valueHistory?:MarketValueObservation[];valuationPulse?:number;valuation?:{baseUsdValue:number;birthUsdValue:number;marketUsdValue:number;scoreDelta:number;seed:string};}
 const value=(input:unknown):input is number=>typeof input==='number'&&Number.isFinite(input)&&input>=0&&input<=1e13;
 const firstTime=marketPulseTime(0),lastTime=marketPulseTime(1e10);
+/** Verified issue metadata carries no claim about a later individual price. */
+export function publicSportsSealedBirths(input:unknown):MarketSealedBirth[]|undefined{
+ if(!Array.isArray(input)||!input.length||input.length>10000)return;
+ const births:MarketSealedBirth[]=[],seen=new Set<string>();
+ for(const raw of input){const birth=raw as MarketSealedBirth|null;
+  if(!birth||!/^rsc_[a-f0-9]{16}$/i.test(birth.collectibleId)||!/^[a-f0-9]{64}$/i.test(birth.claimHash)||typeof birth.sealedAt!=='string'||birth.sealedAt.length>64||!Number.isFinite(Date.parse(birth.sealedAt))||Date.parse(birth.sealedAt)<firstTime||Date.parse(birth.sealedAt)>lastTime||!value(birth.birthUsdValue))return;
+  const collectibleId=birth.collectibleId.toLowerCase(),claimHash=birth.claimHash.toLowerCase(),key=`${collectibleId}:${claimHash}`;if(seen.has(key))return;seen.add(key);
+  births.push({collectibleId,claimHash,sealedAt:birth.sealedAt,birthUsdValue:birth.birthUsdValue});
+ }
+ return births;
+}
 /** Curated public copy operands; no owner or account authority enters valuation. */
 export function publicSportsSealedCopies(input:unknown):MarketSealedCopy[]|undefined{
  if(!Array.isArray(input)||input.length<1||input.length>10000)return;

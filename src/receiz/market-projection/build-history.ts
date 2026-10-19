@@ -1,6 +1,6 @@
 import { CHART_PERIODS, type ChartPeriod } from '../../core/chart-history';
 import { marketCapUsdAtPulse, marketPeriodPulses, marketPulseTime } from './project';
-import { marketCapSummary, marketHistoryBasis,marketHistoryMembership,retainMarketInterval, type CapitalizationPoint, type MarketHistorySnapshot } from './history';
+import { marketCapSummary, marketHistoryBasis,marketHistoryMembership,retainMarketInterval,MARKET_HISTORY_POLICY, type CapitalizationPoint, type MarketHistorySnapshot } from './history';
 import type { MarketCapSource } from './source';
 import type{PublicMarketCatalog}from'../public-market';
 import{currentMarketDisplayModel}from'./catalog-source';
@@ -8,8 +8,10 @@ import {marketPulseAtOrAfterTime}from'./sealed-copies';
 import {mergeMarketCopyObservations}from'./copy-observations';
 function significantEventPulses(source:MarketCapSource):{ranked:number[];observed:number[]}{
  const events=new Map<number,number>(),observed=new Set<number>(),add=(pulse:number,value:number)=>events.set(pulse,(events.get(pulse)??0)+Math.abs(value));
+ for(const birth of source.unpricedSealedBirths??[])add(marketPulseAtOrAfterTime(birth.sealedAt),birth.birthUsdValue);
  for(const row of source.valueRows){
   const seed=row.marketItem?.livePulseSeed;if(seed)add(seed.claimPulse,row.birthUsdValue);
+  if(!row.sealedCopies)for(const birth of row.sealedBirths??[])add(marketPulseAtOrAfterTime(birth.sealedAt),birth.birthUsdValue);
   for(const copy of row.sealedCopies??[]){
    add(marketPulseAtOrAfterTime(copy.sealedAt),copy.birthUsdValue);let previous=copy.birthUsdValue;
    for(const observation of copy.valueHistory??[]){const pulse=observation.pulse??(observation.basis==='source-observation'&&copy.valuationPulse!==undefined&&observation===copy.valueHistory?.at(-1)?copy.valuationPulse:marketPulseAtOrAfterTime(observation.at));add(pulse,observation.usdValue-previous);if(observation.basis==='source-observation')observed.add(pulse);previous=observation.usdValue;}
@@ -64,5 +66,5 @@ export async function buildMarketHistory(source: MarketCapSource, previous: Mark
     }
     if (!continuing()) return null;
   }
-  return { schema: 'bank.public-market-history.v1',historyPolicy:'sealed-values-and-dated-observations-v1',basisSha256,membershipSha256,observationPulses:events.observed,copyObservations:mergedCopies.tape,summary: marketCapSummary(source), series };
+  return { schema: 'bank.public-market-history.v1',historyPolicy:MARKET_HISTORY_POLICY,basisSha256,membershipSha256,observationPulses:events.observed,copyObservations:mergedCopies.tape,summary: marketCapSummary(source), series };
 }
