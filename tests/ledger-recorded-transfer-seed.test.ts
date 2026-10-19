@@ -4,6 +4,7 @@ import { expect, it,vi } from 'vitest';
 import { ledgerValueForRecord,indexLedgerValues } from '../src/receiz/ledger-value';
 import { parsePublicNetworkCache } from '../src/receiz/public-network-cache';
 import {parseMarketCapSource} from '../src/receiz/market-projection/source';
+import {ledgerCurrentAssetValue} from '../src/receiz/ledger-economy';
 
 it('ships the exact recorded card values and carried transfer coordinates without substituting consideration', () => {
   const bytes = gunzipSync(readFileSync('public/receiz-public-ledger.json.gz.bin'));
@@ -33,7 +34,8 @@ it('ships the exact recorded card values and carried transfer coordinates withou
     expect(row.pulse).toMatch(/^\d+$/);
     expect(row.time).toBeTruthy();
     if (row.kaiUpulse) expect(row.pulse).toBe(String(BigInt(row.kaiUpulse) / 1_000_000n));
-    expect(ledgerValueForRecord(row)).toMatchObject({ basis: 'unavailable', amountUsdCents: null });
+    expect(ledgerValueForRecord(row).basis).toBe('card-model');
+    expect(ledgerValueForRecord(row).amountUsdCents).not.toBeNull();
   }
 });
 it('recovers existing individual models without fetching or turning group quotes into transfer snapshots',()=>{
@@ -44,8 +46,18 @@ it('recovers existing individual models without fetching or turning group quotes
   const index=indexLedgerValues(source),rows=cache.records.filter(row=>/card[._-]transfer/i.test(row.kind));
   const values=rows.map(row=>ledgerValueForRecord(row,index));
   expect(values.filter(value=>value.basis==='card-snapshot')).toHaveLength(41);
-  expect(values.filter(value=>value.basis==='card-model')).toHaveLength(43);
-  expect(values.filter(value=>value.basis==='unavailable')).toHaveLength(174);
+  expect(values.filter(value=>value.basis==='card-model')).toHaveLength(211);
+  expect(values.filter(value=>value.basis==='unavailable')).toHaveLength(6);
+  const sports=rows.filter(row=>row.kind==='receiz.sports_arena.card_transfer'||row.source==='graph');
+  expect(sports).toHaveLength(252);
+  const pulse=Math.max(source.serverPulse,...sports.map(row=>row.valueOperands?.cardValuation?.valuationPulse??0))+100;
+  for(const row of sports){
+   expect(row.valueOperands?.cardValuation?.claimHash).toBe(row.valueOperands?.claimHash);
+   expect(row.valueOperands?.cardValuation?.collectibleId).toBe(row.valueOperands?.collectibleId);
+   expect(ledgerValueForRecord(row).amountUsdCents).not.toBeNull();
+   expect(ledgerCurrentAssetValue(row,{...index,evaluationPulse:pulse})).toMatchObject({basis:'live-model',pulse:String(pulse)});
+  }
+  expect(rows.filter((_,i)=>values[i].basis==='unavailable').every(row=>row.kind.startsWith('signal_run.'))).toBe(true);
   const record=rows.find(row=>row.sourceId==='9efdfaf3-b2c4-4189-9ecc-9a809cbb9861')!;
   expect(ledgerValueForRecord(record,index)).toMatchObject({basis:'card-model',amountUsdCents:'1366',pulse:'12616144'});
   for(const row of rows)expect(ledgerValueForRecord(row,{...index,evaluationPulse:source.serverPulse+100})).toBe(ledgerValueForRecord(row,index));

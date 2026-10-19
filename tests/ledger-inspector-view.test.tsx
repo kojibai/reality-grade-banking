@@ -33,3 +33,10 @@ it('offers the same lazy media and long-form reader and caption link pills in pu
  expect(host.querySelector('.proof-caption-links a')?.getAttribute('href')).toBe('https://example.com/report');
  expect(host.querySelector('.asset-caption p')?.textContent).not.toContain('https://');expect(fetch).not.toHaveBeenCalled();
 });
+it('distinguishes calculated event value from the locally evaluated current value',()=>{
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'card-transfer',actionKind:'receiz.sports_arena.card_transfer',pulse:120}]}).records[0];
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ act(()=>root!.render(<LedgerInspector record={record} value={{basis:'card-model',amountUsdCents:'1200',pulse:'120',considerationUsdCents:null}} currentValue={{basis:'live-model',amountUsdCents:'3400',pulse:'300',considerationUsdCents:null}}/>));
+ expect(host.textContent).toContain('Calculated transfer value');expect(host.textContent).toContain('$12.00');expect(host.textContent).toContain('Current live value');expect(host.textContent).toContain('$34.00');expect(host.textContent).toContain('Separate from the value at this event.');expect(fetch).not.toHaveBeenCalled();
+});

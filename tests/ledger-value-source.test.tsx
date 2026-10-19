@@ -4,13 +4,14 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { useLedgerValueSource } from '../src/features/ledger/useLedgerValueSource';
-import {retainedMarketDisplaySource} from '../src/receiz/market-projection/display-source';
+import {retainedMarketDisplaySource,publishMarketDisplaySource} from '../src/receiz/market-projection/display-source';
+import type {LedgerValueIndex} from '../src/receiz/ledger-value';
 vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({receizKaiNow:()=>({pulse:14647307})})}));
 const input = JSON.parse(readFileSync('public/receiz-public-capitalization.json', 'utf8'));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: ReturnType<typeof createRoot> | null = null;
 afterEach(() => { if (root) act(() => root!.unmount()); root = null; document.body.replaceChildren(); vi.unstubAllGlobals(); });
-function Probe({ active }: { active: boolean }) { const index = useLedgerValueSource(active); return <output>{index?.evaluationPulse ?? 'No valuation source'}</output>; }
+function Probe({ active }: { active: boolean }) { const index = useLedgerValueSource(active); return <output data-source={index?.source.proofObjectHash}>{index?.evaluationPulse ?? 'No valuation source'}</output>; }
 it('reads only the shared public projection and keeps it when the live source is unavailable', async () => {
   const requests: { path: string; credentials: RequestCredentials | undefined }[] = [];
   vi.stubGlobal('fetch', async (path: string, options: RequestInit) => { requests.push({ path, credentials: options.credentials }); return path === '/receiz-public-capitalization.json' ? Response.json(input) : new Response(null, { status: 503 }); });
@@ -21,4 +22,30 @@ it('reads only the shared public projection and keeps it when the live source is
   expect(host.textContent).toBe('14647307');
   expect(retainedMarketDisplaySource()?.proofObjectHash).toBe(input.marketCapProjection.proofObjectHash);
   expect(requests).toEqual([{ path: '/receiz-public-capitalization.json', credentials: 'omit' }, { path: '/api/bank/public-market/capitalization', credentials: 'omit' }]);
+});
+it('adopts existing Market source enrichment immediately without making another request',async()=>{
+ const fetch=vi.fn(async(path:string)=>path==='/receiz-public-capitalization.json'?Response.json(input):new Response(null,{status:503}));vi.stubGlobal('fetch',fetch);
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ await act(async()=>root!.render(<Probe active/>));const requests=fetch.mock.calls.length;
+ const held=retainedMarketDisplaySource()!;
+ act(()=>publishMarketDisplaySource({...held,proofObjectHash:'e'.repeat(64)}));
+ expect(host.querySelector('output')?.getAttribute('data-source')).toBe('e'.repeat(64));expect(fetch).toHaveBeenCalledTimes(requests);
+});
+it('retains the event index across cloned local-pulse updates but reindexes a changed copy model',async()=>{
+ vi.stubGlobal('fetch',async()=>new Response(null,{status:503}));
+ const frames:LedgerValueIndex[]=[];
+ function Capture(){const index=useLedgerValueSource(true);if(index)frames.push(index);return null;}
+ const held=retainedMarketDisplaySource()!,copy={collectibleId:'rsc_aaaaaaaaaaaaaaaa',claimHash:'a'.repeat(64),sealedAt:new Date('2026-05-10T12:00:00Z').toISOString(),birthUsdValue:10,proofValueUsd:20,currentValueUsd:21,valuationPulse:held.serverPulse,valuation:{baseUsdValue:20,birthUsdValue:10,marketUsdValue:25,scoreDelta:3,seed:'a'.repeat(64)}};
+ const row={...held.valueRows.find(row=>row.source==='sports-economy-card')!,sealedCopies:[copy]};
+ act(()=>publishMarketDisplaySource({...held,valueRows:[row],proofObjectHash:'f'.repeat(64)}));
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ await act(async()=>root!.render(<Capture/>));const first=frames.at(-1)!;
+ act(()=>publishMarketDisplaySource({...structuredClone(first.source),serverPulse:first.source.serverPulse+1}));
+ expect(frames.at(-1)!.source.serverPulse).toBe(first.source.serverPulse+1);
+ expect(frames.at(-1)!.copyValuations).toBe(first.copyValuations);
+ expect(frames.at(-1)!.transferValues).toBe(first.transferValues);
+ expect(frames.at(-1)!.valuationTraces).toBe(first.valuationTraces);
+ const next=structuredClone(frames.at(-1)!.source);next.valueRows[0].sealedCopies![0].valuation!.baseUsdValue=22;next.valueRows[0].sealedCopies![0].proofValueUsd=22;
+ act(()=>publishMarketDisplaySource(next));
+ expect(frames.at(-1)!.copyValuations).not.toBe(first.copyValuations);
 });

@@ -3,6 +3,9 @@ import { DEFAULT_ISSUANCE_POLICY, quotePhiForUsd } from './canonical-market-issu
 import type { MarketCapSource, MarketPulseSeed, MarketValueRow } from './market-projection/source';
 import type { PublicRecord } from './public-network';
 import {prepareSportsCopyHistory,sportsCopyHistoryUsdAtPulse,type SportsCopyHistory} from './market-projection/interpolated-history';
+import {prepareLedgerCardCopyValuation,carriedLedgerCardCopyValuation,ledgerCardCopyUsdAtPulse,type LedgerCardCopyValuation} from './ledger-card-copy';
+import type {LedgerFields} from './ledger-inspection';
+import {marketPulseAtOrAfterTime} from './market-projection/sealed-copies';
 
 /** Display operands only. These neither admit a proof nor establish available funds. */
 export interface LedgerValueOperands {
@@ -10,10 +13,11 @@ export interface LedgerValueOperands {
   amountPhiMicro?: string; usdPerPhiMicrocents?: string; considerationUsdCents?: string;
   cardValueUsdCents?: string; proofValueUsdCents?: string; valuePulse?: string;
   fundingRule?: string; cardValueRule?: string; cardValueRecordedAt?: string; cardValueState?: string; settledUsdCents?: string; phiUsdCents?: string;
+  cardValuation?:LedgerCardCopyValuation['copy'];
 }
 export interface LedgerValueDisplay {
   amountUsdCents: string | null;
-  basis: 'card-snapshot' | 'card-model' | 'intrinsic-model' | 'source-value' | 'payment' | 'unavailable';
+  basis: 'card-snapshot' | 'card-model' | 'intrinsic-model' | 'live-model' | 'source-value' | 'payment' | 'unavailable';
   pulse: string | null;
   considerationUsdCents: string | null;
   comparison?: { pulse: string; amountUsdCents: string; percent: number };
@@ -56,6 +60,7 @@ export function readLedgerValueOperands(input: unknown): LedgerValueOperands {
   }
   if (snapshots.size === 1) result.cardValueUsdCents = [...snapshots][0]; else delete result.cardValueUsdCents;
   if (snapshots.size > 1) result.cardValueState = 'conflicting-recorded-snapshots';
+  const card=carriedLedgerCardCopyValuation(value.cardValuation);if(card)result.cardValuation=card.copy;
   const chart = object(raw.marketAssetChart);
   if (raw.ledgerKind === 'market-asset' && typeof chart.live === 'number' && typeof chart.usdPerPhi === 'number' && chart.live >= 0 && chart.usdPerPhi > 0) {
     const quoted = ledgerUsdCents(chart.live * chart.usdPerPhi), pulse = uint(raw.sortKaiPulse);
@@ -66,7 +71,7 @@ export function readLedgerValueOperands(input: unknown): LedgerValueOperands {
 }
 export function readLedgerValueDisplay(input: unknown): LedgerValueDisplay | null {
   const value = object(input);
-  if (!['card-snapshot', 'card-model', 'intrinsic-model', 'source-value', 'payment', 'unavailable'].includes(String(value.basis))) return null;
+  if (!['card-snapshot', 'card-model', 'intrinsic-model', 'live-model', 'source-value', 'payment', 'unavailable'].includes(String(value.basis))) return null;
   const amount = uint(value.amountUsdCents), pulse = uint(value.pulse), consideration = uint(value.considerationUsdCents);
   if (value.amountUsdCents !== null && amount === undefined || value.pulse !== null && pulse === undefined) return null;
   const result: LedgerValueDisplay = { amountUsdCents: amount ?? null, basis: value.basis as LedgerValueDisplay['basis'], pulse: pulse ?? null, considerationUsdCents: consideration ?? null };
@@ -77,16 +82,46 @@ export function readLedgerValueDisplay(input: unknown): LedgerValueDisplay | nul
   }
   return result;
 }
-export type LedgerValueIndex = { source: MarketCapSource; evaluationPulse?:number; rows: Map<string, MarketValueRow | null>; cardHistory:Map<MarketValueRow,SportsCopyHistory>; transferValues:WeakMap<PublicRecord,LedgerValueDisplay> };
+export type LedgerValueIndex = { source: MarketCapSource; evaluationPulse?:number; rows: Map<string, MarketValueRow | null>; cardHistory:Map<MarketValueRow,SportsCopyHistory>; copyValuations:Map<string,LedgerCardCopyValuation|null>; transferValues:WeakMap<PublicRecord,LedgerValueDisplay>; valuationTraces:WeakMap<PublicRecord,LedgerFields|null> };
 export function indexLedgerValues(source: MarketCapSource): LedgerValueIndex {
-  const rows = new Map<string, MarketValueRow | null>(),cardHistory=new Map<MarketValueRow,SportsCopyHistory>();
+  const rows = new Map<string, MarketValueRow | null>(),cardHistory=new Map<MarketValueRow,SportsCopyHistory>(),copyValuations=new Map<string,LedgerCardCopyValuation|null>();
   for (const row of source.valueRows) {
     for (const key of new Set([row.id,row.seed,row.marketItem?.id,...(row.sealedCopies??row.sealedBirths??[]).flatMap(copy=>[copy.collectibleId,copy.claimHash])].filter((key): key is string => Boolean(key)))) {
       if (!rows.has(key)) rows.set(key, row); else if (rows.get(key) !== row) rows.set(key, null);
     }
     const history=prepareSportsCopyHistory(row);if(history&&history.until<=source.serverPulse)cardHistory.set(row,history);
+    for(const copy of row.sealedCopies??[]){const value=prepareLedgerCardCopyValuation(copy,row,source.serverPulse);if(!value)continue;for(const key of [copy.collectibleId,copy.claimHash])copyValuations.set(key,copyValuations.has(key)?null:value);}
   }
-  return { source, rows,cardHistory,transferValues:new WeakMap() };
+  return { source, rows,cardHistory,copyValuations,transferValues:new WeakMap(),valuationTraces:new WeakMap() };
+}
+const pricingFields=['id','source','seed','baseUsdValue','birthUsdValue','marketUsdValue','proofTotalValueUsd','scoreDelta','quoteUsdPerPhi','historyEvaluationPulse'];
+const groupFields=['sport','cardId','rarity'],modelFields=['baseUsdValue','birthUsdValue','marketUsdValue','proofTotalValueUsd','scoreDelta','seed'];
+const observationFields=['at','usdValue','scope','pricedCopies','vaultCopies','sourceHash','collectibleId','claimHash'];
+const itemFields=['id','source','priceUsd','pricePhi','quoteUsdPerPhi','changePct','pricingSourceKey'],seedFields=['kind','claimPulse','beat','stepIndex','creatorVerified','chakraDay','kaiSignature','userPhiKey'];
+const copyFields=['collectibleId','claimHash','sealedAt','birthUsdValue','proofValueUsd','currentValueUsd','valuationPulse'],quoteFields=['at','usdValue','basis','pulse'];
+function sameFields(a:unknown,b:unknown,keys:readonly string[]){if(a===b)return true;if(!a||!b)return false;const left=a as Record<string,unknown>,right=b as Record<string,unknown>;return keys.every(key=>left[key]===right[key]);}
+function sameList<T>(a:readonly T[]|undefined,b:readonly T[]|undefined,equal:(a:T,b:T)=>boolean):boolean{return a===b||!!a&&!!b&&a.length===b.length&&a.every((value,i)=>equal(value,b[i]));}
+function sameCopies(a:MarketValueRow['sealedCopies'],b:MarketValueRow['sealedCopies']){return sameList(a,b,(left,right)=>sameFields(left,right,copyFields)&&sameFields(left.valuation,right.valuation,modelFields)&&sameList(left.valueHistory,right.valueHistory,(x,y)=>sameFields(x,y,quoteFields)));}
+/** A locally advancing display pulse does not change the original operands.
+ * Keep the event index and memoized receipts across those existing updates. */
+export function sameLedgerValueInputs(before:MarketCapSource,after:MarketCapSource):boolean{
+ if(before.proofObjectHash!==after.proofObjectHash||before.generatedAt!==after.generatedAt||before.valueRows.length!==after.valueRows.length)return false;
+ return before.valueRows.every((row,i)=>{const next=after.valueRows[i];return sameFields(row,next,pricingFields)&&sameCopies(row.sealedCopies,next.sealedCopies)&&sameList(row.sealedBirths,next.sealedBirths,(a,b)=>sameFields(a,b,copyFields))&&sameFields(row.sportsGroup,next.sportsGroup,groupFields)&&sameFields(row.historyObservation,next.historyObservation,observationFields)&&sameFields(row.historyObservation?.model,next.historyObservation?.model,modelFields)&&sameFields(row.historyObservation?.group,next.historyObservation?.group,groupFields)&&sameFields(row.marketItem,next.marketItem,itemFields)&&sameFields(row.marketItem?.livePulseSeed,next.marketItem?.livePulseSeed,seedFields)&&(!row.historyObservation||(marketPulseAtOrAfterTime(row.historyObservation.at)<=before.serverPulse)===(marketPulseAtOrAfterTime(row.historyObservation.at)<=after.serverPulse))&&(row.sealedCopies??[]).every(copy=>copy.valuationPulse===undefined||(copy.valuationPulse<=before.serverPulse)===(copy.valuationPulse<=after.serverPulse));});
+}
+export function ledgerCardCopyValuation(record:PublicRecord,index:LedgerValueIndex|null,current=false):LedgerCardCopyValuation|null{
+ const operands=record.valueOperands;
+ const ids=[operands?.collectibleId,operands?.objectId,record.evidence.objectId].filter((id):id is string=>!!id&&id.startsWith('rsc_'));
+ const claims=[operands?.claimHash,record.evidence.claimHash].filter((hash):hash is string=>!!hash);
+ const carried=carriedLedgerCardCopyValuation(operands?.cardValuation);
+ const bound=(value:LedgerCardCopyValuation)=>(ids.length>0||claims.length>0)&&ids.every(id=>id===value.copy.collectibleId)&&claims.every(hash=>hash===value.copy.claimHash);
+ const held=carried&&bound(carried)?carried:null;
+ if(held&&!current||!index)return held;
+ // A claim hash selects the exact original when several originals share a
+ // collectible ID. Every supplied ID still has to bind to that selection.
+ const candidates=(claims.length?claims:ids).filter(key=>index.copyValuations.has(key)).map(key=>index.copyValuations.get(key));
+ const values=new Set(candidates.filter((value):value is LedgerCardCopyValuation=>!!value));if(candidates.some(value=>value===null)||values.size!==1)return held;
+ const value=[...values][0];if(!bound(value))return held;
+ return held&&(value.copy.valuationPulse<held.copy.valuationPulse||value.copy.birthUsdValue!==held.copy.birthUsdValue||Date.parse(value.copy.sealedAt)!==Date.parse(held.copy.sealedAt))?held:value;
 }
 /** Shared by valuation and its receipt trace, so conflicting identifiers never
  * resolve to one object in the amount and a different object in inspection. */
@@ -129,10 +164,12 @@ function calculateLedgerValue(record: PublicRecord, index: LedgerValueIndex | nu
   const matches=new Set(resolved.filter((row):row is MarketValueRow=>!!row));
   if(resolved.some(row=>row===null)||matches.size>1)return{amountUsdCents:null,basis:'unavailable',pulse:eventPulse,considerationUsdCents:consideration,gap:'The source asset references disagree or are ambiguous.'};
   const row=[...matches][0]??null;
-  if(card&&transfer&&eventPulse&&index){
+  if(card&&transfer&&eventPulse){
     const history=ledgerCardHistory(record,index,row),usd=history?sportsCopyHistoryUsdAtPulse(history,Number(eventPulse)):undefined;
     const cents=usd===undefined?undefined:ledgerUsdCents(usd);
     if(cents!==undefined)return{amountUsdCents:cents,basis:'card-model',pulse:eventPulse,considerationUsdCents:consideration};
+    const copy=ledgerCardCopyValuation(record,index),copyUsd=copy?ledgerCardCopyUsdAtPulse(copy,Number(eventPulse)):undefined,copyCents=copyUsd===undefined?undefined:ledgerUsdCents(copyUsd);
+    if(copyCents!==undefined)return {amountUsdCents:copyCents,basis:'card-model',pulse:eventPulse,considerationUsdCents:consideration};
   }
   const seed = row?.source === 'market-desk-live-asset' ? row.marketItem?.livePulseSeed : null;
   const isProof = record.source === 'proofs' || record.kind === 'market-asset';
@@ -161,5 +198,5 @@ export function ledgerValueForRecord(record:PublicRecord,index:LedgerValueIndex|
   return value;
 }
 export function ledgerValueLabel(value: LedgerValueDisplay): string {
-  return value.basis === 'card-snapshot' ? 'Card value at transfer' : value.basis==='card-model'?'Calculated transfer value':value.basis === 'intrinsic-model' ? 'Calculated value' : value.basis === 'source-value' ? 'Carried value' : value.basis === 'payment' ? 'Recorded amount' : 'Value unavailable';
+  return value.basis === 'card-snapshot' ? 'Card value at transfer' : value.basis==='card-model'?'Calculated transfer value':value.basis==='live-model'?'Current live value':value.basis === 'intrinsic-model' ? 'Calculated value' : value.basis === 'source-value' ? 'Carried value' : value.basis === 'payment' ? 'Recorded amount' : 'Value unavailable';
 }

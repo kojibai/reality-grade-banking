@@ -11,7 +11,7 @@ const finiteUsd=(value:number)=>Number(Math.max(0,value).toFixed(4));
  * sportsCardHistoricalLivePulseChartPoint -> sportsArenaLiveValueMotionAtPulse.
  * This is a deterministic display projection, never another price record.
  */
-function nativeHistoricalValue(curve:Curve,pulse:number,quoteMove:number){
+export function nativeHistoricalValue(curve:Curve,pulse:number,quoteMove:number){
  const progress=Math.max(0,Math.min(1,(Math.trunc(pulse)-Math.trunc(curve.issue))/Math.max(1,Math.trunc(curve.until)-Math.trunc(curve.issue))));
  const birth=finiteUsd(curve.birth||curve.model.baseUsdValue),base=finiteUsd(curve.model.baseUsdValue);
  const baseUsdValue=finiteUsd(birth+(base-birth)*progress);

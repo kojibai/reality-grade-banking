@@ -5,7 +5,7 @@ import './ledger-value.css';
 
 export function LedgerValue({ value, className = '' }: { value: LedgerValueDisplay; className?: string }) {
   const change = value.comparison, direction = change ? change.percent > 0 ? 'up' : change.percent < 0 ? 'down' : 'flat' : null;
-  const label = ledgerValueLabel(value), coordinate = value.pulse ? ` · ☤KAI ${value.pulse}` : '',calculated=value.basis==='intrinsic-model'||value.basis==='card-model';
+  const label = ledgerValueLabel(value), coordinate = value.pulse ? ` · ☤KAI ${value.pulse}` : '',calculated=value.basis==='intrinsic-model'||value.basis==='card-model'||value.basis==='live-model';
   return <span className={`ledger-value ${className}`} title={value.gap ?? `${label}${coordinate}${calculated ? ' · Display model, not a realized sale price.' : ''}`}>
     <strong>{value.amountUsdCents === null ? '—' : formatMoney(value.amountUsdCents)}</strong>
     {value.basis !== 'unavailable' && <small className="ledger-value-basis">{label}</small>}

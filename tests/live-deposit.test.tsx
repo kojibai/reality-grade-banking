@@ -25,9 +25,9 @@ it('starts blank after reopening and resumes a retained checkout only when expli
 it('retains the asset, dollars and proof chooser inside the app without a wallet handoff', () => {
   const host = document.createElement('div'), root = createRoot(host);
   try { act(() => root.render(<LiveDeposit identity={{} as OpenIdentity} onClose={vi.fn()} onRefresh={vi.fn()} />));
-    expect(host.textContent).toContain('Turn what you own'); expect(host.textContent).toContain('A physical asset'); expect(host.textContent).toContain('Dollars'); expect(host.textContent).toContain('A proof object');
+    expect(host.textContent).toContain('Turn what you own'); expect(host.textContent).toContain('An asset'); expect(host.textContent).toContain('Dollars'); expect(host.textContent).toContain('A proof object');
     expect(host.querySelector('a[href*="receiz.com/wallet"]')).toBeNull(); expect(host.textContent).not.toContain('Demo');
-    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('A physical asset'))!.click());
+    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('An asset'))!.click());
     expect(host.textContent).toContain('Keep the asset.'); expect(host.querySelector('input[placeholder="Jordans, a painting, gold…"]')).not.toBeNull();
   } finally { act(() => root.unmount()); }
 });
@@ -43,7 +43,7 @@ it('shows Receiz shipping instructions and the carried reference after saving a 
   const host = document.createElement('div'), root = createRoot(host);
   try {
     act(() => root.render(<LiveDeposit identity={identity} onClose={() => {}} onRefresh={() => {}} />));
-    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('A physical asset'))!.click());
+    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('An asset'))!.click());
     await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Continue'))!.click());
     expect(host.textContent).toContain('1270 Ave of the Americas, 7th Fl');
     expect(host.textContent).toContain('fef806e9-82bd-44a8-9bb4-f6b5afc9aef0');

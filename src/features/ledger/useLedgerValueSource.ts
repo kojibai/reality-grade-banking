@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {loadReceiz} from '../../receiz/client';
-import { indexLedgerValues } from '../../receiz/ledger-value';
-import { type MarketCapSource } from '../../receiz/market-projection/source';
-import {readMarketDisplaySource} from '../../receiz/market-projection/display-source';
+import { indexLedgerValues,sameLedgerValueInputs,type LedgerValueIndex } from '../../receiz/ledger-value';
+import {readMarketDisplaySource,useMarketDisplaySource} from '../../receiz/market-projection/display-source';
 
 /** One existing public projection for the ledger, with no original-file requests per row. */
 export function useLedgerValueSource(active: boolean) {
-  const [source, setSource] = useState<MarketCapSource | null>(null),[pulse,setPulse]=useState<number|null>(null);
+  const source=useMarketDisplaySource(active),[pulse,setPulse]=useState<number|null>(null);
+  const heldIndex=useRef<LedgerValueIndex|null>(null);
   useEffect(()=>{
     if(!active)return;let alive=true,timer:ReturnType<typeof setInterval>|undefined;
     // Re-evaluate immutable public operands locally; no wallet or ownership
@@ -21,8 +21,7 @@ export function useLedgerValueSource(active: boolean) {
       if (pending && live) return;
       if (live) pending = true;
       try {
-        const next = await readMarketDisplaySource(path);
-        if (!controller.signal.aborted) setSource(current => current && current.serverPulse > next.serverPulse ? current : next);
+        if(!controller.signal.aborted)await readMarketDisplaySource(path);
       } catch { /* A missing projection leaves the carried source value visible. */ }
       finally { if (live) pending = false; }
     };
@@ -33,6 +32,6 @@ export function useLedgerValueSource(active: boolean) {
     window.addEventListener('online', refresh);
     return () => { controller.abort(); clearInterval(timer); window.removeEventListener('online', refresh); };
   }, [active]);
-  const index=useMemo(() => source ? indexLedgerValues(source) : null, [source]);
-  return useMemo(()=>index?{...index,evaluationPulse:pulse===null?index.source.serverPulse:Math.max(pulse,index.source.serverPulse)}:null,[index,pulse]);
+  const index=useMemo(()=>{if(!source)return null;if(!heldIndex.current||!sameLedgerValueInputs(heldIndex.current.source,source))heldIndex.current=indexLedgerValues(source);return heldIndex.current;},[source]);
+  return useMemo(()=>index&&source?{...index,source,evaluationPulse:pulse===null?source.serverPulse:Math.max(pulse,source.serverPulse)}:null,[index,pulse,source]);
 }

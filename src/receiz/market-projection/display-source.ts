@@ -29,4 +29,4 @@ export function prepareMarketDisplaySource(refreshMissing=false):Promise<void>{
  const attempt=(async()=>{await Promise.allSettled([...(held?[]:[readMarketDisplaySource('/receiz-public-capitalization.json')]),readMarketDisplaySource('/api/bank/public-market/capitalization')]);})();
  initialRead=attempt;void attempt.finally(()=>{if(initialRead===attempt)initialRead=undefined;});return attempt;
 }
-export function useMarketDisplaySource(){return useSyncExternalStore(subscribe,retainedMarketDisplaySource,()=>null);}
+export function useMarketDisplaySource(active=true){return useSyncExternalStore(subscribe,active?retainedMarketDisplaySource:()=>null,()=>null);}

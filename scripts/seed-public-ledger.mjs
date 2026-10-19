@@ -1,6 +1,7 @@
 import { readFile, writeFile, rename, rm } from 'node:fs/promises';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import { PUBLIC_NETWORK_INSPECTION_VERSION, mergePublicRecords, parsePublicNetworkPage } from '../src/receiz/public-network.ts';
+import {parsePublicNetworkCache} from '../src/receiz/public-network-cache.ts';
 
 const reference = process.argv[2];
 if (!reference) throw new Error('Pass the selected public Mind capture path; private Memory Crystals are not supported.');
@@ -14,7 +15,13 @@ const pages = Object.entries(mapping).map(([group, source]) => {
 });
 const membership = JSON.parse(await readFile(new URL('../public/receiz-public-market.json', import.meta.url), 'utf8'));
 pages.push(parsePublicNetworkPage('proofs', membership));
-const records = mergePublicRecords([], pages.flatMap(page => page.records)).map(row=>({...row,details:{...row.details,sourceObservedAt:row.source==='proofs'?membership.transport.generatedAt:capture.capturedAt}}));
+let priorRecords=[];
+try{priorRecords=parsePublicNetworkCache(JSON.parse(gunzipSync(await readFile(new URL('../public/receiz-public-ledger.json.gz.bin',import.meta.url))))).records;}catch{/* No retained public seed. */}
+const priorById=new Map(priorRecords.map(record=>[record.id,record]));
+const records = mergePublicRecords([], pages.flatMap(page => page.records)).map(row=>{
+ const prior=priorById.get(row.id),record=prior?mergePublicRecords([prior],[row])[0]:row;
+ return {...record,details:{...record.details,sourceObservedAt:record.source==='proofs'?membership.transport.generatedAt:capture.capturedAt}};
+});
 // Repeated public identity context is carried once, preserving every exact
 // field while keeping the first-open payload inside the existing reader limit.
 const contextKeys=new Set(['sourceObservedAt','actorUserId','subjectUserId','actorKaiSignature','subjectKaiSignature','actorCreatedAt','subjectCreatedAt','actorPulse','subjectPulse','actorChakraDay','subjectChakraDay','actor','subject','sender','recipient','owner','creator','fromActor','toActor','previousOwner','newOwner']);
