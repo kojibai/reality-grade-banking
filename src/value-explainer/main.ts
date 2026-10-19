@@ -1,6 +1,7 @@
 import { SIGIL_VALUATION_POLICY, type SigilCalculationTerm, type ReceizProofValueProjectionV129 } from '@receiz/sdk/valuation';
 import {receizKaiNow} from '@receiz/sdk';
 import {walletPointTime} from '../receiz/wallet-series';
+import {mountPhiUsdCalculator} from './phi-usd-ui';
 import {
   calculateIllustration, DEMO_SCENARIO, MAX_CASHFLOWS, formatPhiMicro, formatUsdCents,
   illustrationRecord, sampleIllustration, stableStringify, type ValueScenario,
@@ -40,8 +41,8 @@ function projectionMarkup(projection: ReceizProofValueProjectionV129): string {
     binding('Admitted history head', projection.historyHead), binding('Original Kai pulse', projection.originKaiPulse),
     binding('Original Kai µPulse', projection.originKaiUPulse), binding('Evaluation Kai µPulse', projection.valuationKaiUPulse),
     binding('Policy', `${projection.algorithm} · ${projection.policyChecksum}`), binding('Projection digest', projection.projectionDigest),
-    binding('Market reference (Phi micro-units)', projection.marketReferenceValuePhiMicro),
-    binding('Last completed sale (Phi micro-units)', projection.lastExecutedPricePhiMicro),
+    binding('Market reference (Φ micro-units)', projection.marketReferenceValuePhiMicro),
+    binding('Last completed sale (Φ micro-units)', projection.lastExecutedPricePhiMicro),
   ].join('')}</dl></div></details><button type="button" class="value-outline-button" data-value-download-replay>Download public replay</button><details class="value-detail"><summary>Complete proof-bound trace</summary><div class="value-detail-body">${traceMarkup(projection.calculation)}</div></details><details class="value-detail"><summary>Admitted inputs and transaction boundaries</summary><div class="value-detail-body"><pre>${escape(JSON.stringify({ inputs: projection.inputs, transactions: projection.transactions }, null, 2))}</pre></div></details>`;
 }
 
@@ -54,6 +55,7 @@ export function mountValueExplainer(root: HTMLElement) {
     return element;
   };
   root.querySelectorAll<HTMLButtonElement>('[data-value-enhanced]').forEach(button => button.disabled = false);
+  const phiUsd=mountPhiUsdCalculator(root,downloadJson);
   find('[data-value-policy]').textContent = JSON.stringify(SIGIL_VALUATION_POLICY, null, 2);
   const form = find<HTMLFormElement>('[data-value-demo]');
   const slider = find<HTMLInputElement>('[data-value-sample]');
@@ -124,7 +126,7 @@ export function mountValueExplainer(root: HTMLElement) {
       const cents = quoteDisplayUsd(computation.proofValuePhiMicro, rate);
       if (generation !== dollarGeneration) return;
       output.textContent = formatUsdCents(cents);
-      equation.textContent = `${computation.proofValuePhiMicro} Phi micro-units × ${rate} microcents per Φ → ${cents} USD cents, with half-up rounding.`;
+      equation.textContent = `${computation.proofValuePhiMicro} Φ micro-units × ${rate} microcents per Φ → ${cents} USD cents, with half-up rounding.`;
       digest.textContent = basis.priceBasisDigest;
     } catch (cause) { if (generation === dollarGeneration) error.textContent = message(cause); }
   };
@@ -132,6 +134,7 @@ export function mountValueExplainer(root: HTMLElement) {
     const computation = calculateIllustration(currentScenario());
     const inputs = computation.unsigned.inputs;
     find('[data-value-amount]').innerHTML = `${formatPhiMicro(computation.proofValuePhiMicro)} <span>Φ</span>`;
+    phiUsd.setCalculatedPhi(computation.proofValuePhiMicro);
     find('[data-value-coordinate]').textContent = `${interval.samples[selected].pulse} pulses`;
     find('[data-value-result-kind]').textContent=`${selected===interval.samples.length-1?'Present value':'Value'} at pulse ${interval.samples[selected].pulse}`;
     find('[data-value-chart]').innerHTML = chartMarkup(interval.samples, selected);
@@ -197,6 +200,7 @@ export function mountValueExplainer(root: HTMLElement) {
       proofStatus.textContent = 'Original verified. Value calculated on this device.';
       proofResult.innerHTML = projectionMarkup(result.projection);
       proofResult.hidden = false;
+      phiUsd.setCalculatedPhi(result.projection.proofValuePhiMicro);
       proofResult.querySelector('[data-value-download-replay]')!.addEventListener('click', () => downloadJson(result.replay, `bankeiz-public-value-replay-${result.replay!.replayDigest.slice(0, 12)}.json`));
     } catch (cause) { if (generation === proofGeneration && root.isConnected) proofStatus.textContent = message(cause); }
     finally { if (generation === proofGeneration) submit.disabled = false; }
@@ -217,7 +221,7 @@ export function mountValueExplainer(root: HTMLElement) {
       if (generation !== replayGeneration || !root.isConnected) return;
       if (verification.status === 'invalid-replay') { status.textContent = `Replay rejected: ${verification.code}`; return; }
       status.textContent = `Verified replay · writes performed: ${verification.writesPerformed}`;
-      output.innerHTML = `<dl class="value-binding-list">${binding('Replay digest', verification.replayDigest)}${verification.samples.map((sample, index) => sample.status === 'available' ? binding(`Sample ${index + 1}: ${sample.valuationKaiUPulse} Kai µPulse`, `${sample.proofValuePhiMicro} Phi micro-units · ${sample.projectionDigest}`) : binding(`Sample ${index + 1}`, sample.code)).join('')}</dl>`;
+      output.innerHTML = `<dl class="value-binding-list">${binding('Replay digest', verification.replayDigest)}${verification.samples.map((sample, index) => sample.status === 'available' ? binding(`Sample ${index + 1}: ${sample.valuationKaiUPulse} Kai µPulse`, `${sample.proofValuePhiMicro} Φ micro-units · ${sample.projectionDigest}`) : binding(`Sample ${index + 1}`, sample.code)).join('')}</dl>`;
     } catch (cause) { if (generation === replayGeneration && root.isConnected) status.textContent = message(cause); }
   });
 }

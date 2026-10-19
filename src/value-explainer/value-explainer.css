@@ -8,6 +8,15 @@
 .value-page code{font-size:.86em;overflow-wrap:anywhere}
 .value-page pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.9;color:var(--ink);background:#edf2f9;border:1px solid #dce5f0;border-radius:8px;padding:22px;margin:22px 0}
 .value-section{padding-block:90px}
+.value-converter{margin-top:32px;padding:32px;border:1px solid var(--line);border-radius:16px;background:var(--paper);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px}
+.value-converter form{display:grid;gap:20px;min-width:0}
+.value-converter-result{min-width:0;align-self:center}
+.value-converter-result output{display:block;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.value-converter-result>p{margin:12px 0}
+.value-converter-result button{margin-top:16px}
+.value-phi-usd .value-field-help{margin-top:8px}
+.value-phi-usd pre{max-width:100%;overflow:auto}
+@media(max-width:700px){.value-converter{grid-template-columns:minmax(0,1fr);gap:24px;padding:22px}.value-converter-result{border-top:1px solid var(--line);padding-top:24px}}
 .value-hero{display:grid;grid-template-columns:1.1fr 1fr;gap:2%;align-items:center;position:relative;padding-block:20px 80px;min-height:540px}
 .value-hero-copy{position:relative;z-index:1}
 .value-hero h1{font-size:clamp(57px,6.1vw,94px);font-weight:680;line-height:1.055;letter-spacing:-.06em}

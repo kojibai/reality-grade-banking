@@ -8,7 +8,7 @@ import {quoteDisplayUsd} from '../src/value-explainer/proof';
 const clock=vi.hoisted(()=>({pulse:14710100,uPulse:14710100000123n}));
 vi.mock('@receiz/sdk',async importOriginal=>({...await importOriginal<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({...clock})}));
 
-afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks();clock.pulse=14710100;clock.uPulse=14710100000123n; });
+afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks();vi.useRealTimers();clock.pulse=14710100;clock.uPulse=14710100000123n; });
 
 function mount() {
   document.body.innerHTML = valueExplainerContent();
@@ -16,6 +16,66 @@ function mount() {
   mountValueExplainer(root);
   return root;
 }
+function manualPhi(root:HTMLElement){const source=root.querySelector<HTMLSelectElement>('[data-phi-usd-source]')!;source.value='manual';source.dispatchEvent(new Event('change',{bubbles:true}));}
+
+it('automatically converts the calculated Phi and allows independent entry then relinking',()=>{
+ const root=mount(),amount=root.querySelector<HTMLInputElement>('[data-phi-usd-amount]')!,source=root.querySelector<HTMLSelectElement>('[data-phi-usd-source]')!;
+ const phi=()=>root.querySelector('[data-value-amount]')!.textContent!.replaceAll(',','').replace(' Φ','');
+ expect(amount.value).toBe(phi());expect(amount.readOnly).toBe(true);
+ const form=root.querySelector<HTMLFormElement>('[data-value-demo]')!;
+ root.querySelector<HTMLInputElement>('#value-quality')!.value='high';form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+ expect(amount.value).toBe(phi());
+ manualPhi(root);amount.value='2';amount.dispatchEvent(new Event('input',{bubbles:true}));
+ root.querySelector<HTMLInputElement>('[data-value-sample]')!.value='0';root.querySelector('[data-value-sample]')!.dispatchEvent(new Event('input',{bubbles:true}));
+ expect(amount.value).toBe('2');expect(amount.readOnly).toBe(false);
+ source.value='calculated';source.dispatchEvent(new Event('change',{bubbles:true}));expect(amount.value).toBe(phi());expect(amount.readOnly).toBe(true);
+});
+
+it('updates the standalone Phi conversion from the actual Kai clock while preserving captured proof calculations', () => {
+  vi.useFakeTimers();clock.pulse=14692714;clock.uPulse=14692714000000n;
+  const root=mount(),proofValue=root.querySelector('[data-value-amount]')!.textContent;
+  manualPhi(root);
+  expect(root.querySelector('[data-phi-usd-result]')?.textContent).toBe('$90.79');
+  const amount=root.querySelector<HTMLInputElement>('[data-phi-usd-amount]')!;
+  amount.value='1.234567';amount.dispatchEvent(new Event('input',{bubbles:true}));
+  expect(root.querySelector('[data-phi-usd-result]')!.textContent).toBe('$112.09');
+  clock.pulse=13959986;clock.uPulse=13959986000000n;vi.advanceTimersByTime(1000);
+  expect(root.querySelector('[data-phi-usd-coordinate]')?.getAttribute('readonly')).not.toBeNull();
+  expect(root.querySelector<HTMLInputElement>('[data-phi-usd-coordinate]')!.value).toBe('13959986000000');
+  expect(root.querySelector('[data-phi-usd-rate]')!.textContent).toContain('103.34803184');
+  expect(root.querySelector('[data-value-amount]')!.textContent).toBe(proofValue);
+  root.remove();vi.advanceTimersByTime(1000);expect(vi.getTimerCount()).toBe(0);
+});
+
+it('replays an explicit coordinate and clears invalid results before they can be downloaded', () => {
+  vi.useFakeTimers();const root=mount();
+  manualPhi(root);
+  const live=root.querySelector<HTMLInputElement>('[data-phi-usd-live]')!,coordinate=root.querySelector<HTMLInputElement>('[data-phi-usd-coordinate]')!,amount=root.querySelector<HTMLInputElement>('[data-phi-usd-amount]')!;
+  live.checked=false;live.dispatchEvent(new Event('change',{bubbles:true}));expect(coordinate.readOnly).toBe(false);
+  coordinate.value='14692714000000';coordinate.dispatchEvent(new Event('input',{bubbles:true}));
+  expect(root.querySelector('[data-phi-usd-result]')!.textContent).toBe('$90.79');
+  clock.uPulse=13959986000000n;vi.advanceTimersByTime(1000);expect(coordinate.value).toBe('14692714000000');
+  amount.value='1e3';amount.dispatchEvent(new Event('input',{bubbles:true}));
+  expect(root.querySelector('[data-phi-usd-result]')!.textContent).toBe('—');expect(root.querySelector('[data-phi-usd-trace]')!.textContent).toBe('');
+  expect(root.querySelector<HTMLButtonElement>('[data-phi-usd-download]')!.disabled).toBe(true);
+  expect(root.querySelector('[data-phi-usd-error]')!.textContent).toContain('six decimal places');
+});
+
+it('downloads complete conversion operands, policy and exact cent-rounding arithmetic', async () => {
+  clock.pulse=14692714;clock.uPulse=14692714000000n;const root=mount();let exported:Blob|undefined;
+  manualPhi(root);
+  vi.spyOn(URL,'createObjectURL').mockImplementation(blob=>{exported=blob as Blob;return 'blob:conversion';});vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
+  root.querySelector<HTMLButtonElement>('[data-phi-usd-download]')!.click();const record=JSON.parse(await exported!.text());
+  expect(record).toMatchObject({sdkVersion:'129.0.0',amountPhiMicro:'1000000',valuationKaiUPulse:'14692714000000',usdPerPhiMicrocents:'9079009810',usdCents:'9079',writesPerformed:0});
+  expect(record.trace.product).toBe('9079009810000000');expect(record.issuancePolicy.basePhiPerUsd).toBe(0.1);
+  expect(record.quoteInputs).toMatchObject({usd:100,currentStreakDays:0,lifetimeUsdSoFar:0,plannedHoldBeats:0});
+  expect(record.valuationPolicy.checksum).toBe('b05b2049');
+});
+it('keeps the policy inspector and focus intact across live quote updates', () => {
+  vi.useFakeTimers();const root=mount(),details=root.querySelector<HTMLDetailsElement>('[data-phi-usd-trace] details')!,summary=details.querySelector('summary')!;
+  details.open=true;summary.focus();clock.uPulse+=1000000n;vi.advanceTimersByTime(1000);
+  expect(root.querySelector('[data-phi-usd-trace] details')).toBe(details);expect(details.open).toBe(true);expect(document.activeElement).toBe(summary);
+});
 
 it('adds, calculates and removes cashflows without confusing them with the edition size',()=>{
   const root=mount(),form=root.querySelector<HTMLFormElement>('[data-value-demo]')!;
