@@ -36,6 +36,11 @@ it('uses known thread truth immediately and keeps it through a background refres
  const pending=deferred<ChatPage>(),f=fixture();f.api.messages.mockImplementation(()=>pending.promise);
  try{await f.render();await f.click('Messages');await f.click('Open conversation Sam');expect(f.host.textContent).toContain('An actual fixture message');expect(f.host.textContent).not.toContain('Loading messages');await act(async()=>pending.resolve({...page,messages:[message,{...message,id:'appended',body:'A verified addition'}]}));expect(f.host.textContent).toContain('A verified addition');}finally{f.unmount();}
 });
+it('shows the composer and retained conversations before remote admission finishes, without an opening screen',async()=>{
+ const f=fixture(),pending=deferred<NativeMessaging>();
+ const identity={...f.identity,knownMessagingDisplay:()=>({schema:'bankeiz.messaging-display.v1' as const,accountUid:uid,inbox:[conversation],pages:[page]}),messaging:()=>pending.promise};
+ try{await f.render(true,identity);expect(f.host.querySelector('[aria-label="Ask your Twin…"]')).not.toBeNull();expect(f.host.textContent).not.toContain('Opening your');await f.click('Messages');await f.click('Open conversation Sam');expect(f.host.textContent).toContain('An actual fixture message');expect(f.api.conversations).not.toHaveBeenCalled();await f.input('Message…','Draft before connection');await f.submit();expect(f.api.send).not.toHaveBeenCalled();await act(async()=>pending.resolve(f.api));expect(f.host.querySelector<HTMLInputElement>('[aria-label="Message…"]')?.value).toBe('Draft before connection');expect(f.api.conversations).toHaveBeenCalledTimes(1);}finally{f.unmount();}
+});
 it('retains an uncertain send draft, refreshes to inspect, and never retries automatically',async()=>{
  const f=fixture();f.api.send.mockRejectedValue(new MessagingError('CHAT_SEND_OUTCOME_UNKNOWN',true));
  try{await f.render();await f.click('Messages');await f.click('Open conversation Sam');await f.input('Message…','My draft');await f.submit();expect(f.api.send).toHaveBeenCalledTimes(1);expect(f.host.querySelector<HTMLInputElement>('[aria-label="Message…"]')?.value).toBe('My draft');expect(f.host.textContent).toContain('Check the conversation before sending again.');expect(f.api.messages.mock.calls.length).toBeGreaterThan(1);await f.click('Refresh conversation');expect(f.api.send).toHaveBeenCalledTimes(1);}finally{f.unmount();}
@@ -50,7 +55,7 @@ it('searches after debounce, aborts superseded queries and creates groups using 
 });
 it('loads older history with the held cursor and starts a call only after entering call controls',async()=>{
  const f=fixture();
- try{await f.render();await f.click('Messages');await f.click('Open conversation Sam');await f.click('Load earlier messages');expect(f.api.messages).toHaveBeenCalledWith(threadId,page.nextCursor,expect.any(AbortSignal));expect(f.api.callTransport.heldFetch.mock.calls.every(([,init])=>!init?.method||init.method==='GET')).toBe(true);await f.click('Voice call');expect(f.host.textContent).toContain('Start call');expect(f.api.callTransport.heldFetch).toHaveBeenCalled();}finally{f.unmount();}
+ try{await f.render();await f.click('Messages');await f.click('Open conversation Sam');await f.click('Load earlier messages');expect(f.api.messages).toHaveBeenCalledWith(threadId,page.nextCursor,expect.any(AbortSignal));expect(f.api.callTransport.heldFetch.mock.calls.every(([,init])=>!init?.method||init.method==='GET')).toBe(true);await f.click('Voice call');await vi.waitFor(()=>expect(f.host.textContent).toContain('Start call'));expect(f.api.callTransport.heldFetch).toHaveBeenCalled();}finally{f.unmount();}
 });
 it('never overlaps refreshes, aborts hidden reads and does not poll an inactive panel',async()=>{
  vi.useFakeTimers();const f=fixture(),pending=deferred<ChatConversation[]>();f.api.conversations.mockImplementation(()=>pending.promise);

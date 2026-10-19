@@ -1,8 +1,8 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import {bankTwinContextRecords} from './receiz/twin-bank-context';
 import {mergePublicRecords} from './receiz/public-network';
-import {Sheet} from './components/Sheet';
+import {MessagesPanel} from './features/messages/MessagesPanel';
 import { ConsoleShell } from './components/ConsoleShell';
 import type { Panel } from './components/BottomNav';
 import { Market } from './features/market/Market';
@@ -22,7 +22,6 @@ import { LiveAssets } from './features/assets/LiveAssets';
 import { BANK_PUBLIC_ORIGIN } from './receiz/config';
 import { parsePaymentRequest } from './receiz/payment-request';
 import { CardDepositReturn, readCardReturn, readCardResume } from './features/deposit/CardDepositReturn';
-const MessagesPanel=lazy(()=>import('./features/messages/MessagesPanel').then(module=>({default:module.MessagesPanel})));
 export default function App() {
  const [receipt,setReceipt]=useState(location.pathname==='/receipt/'?location.href:null);
  const bankMounted=useRef(!receipt);
@@ -59,7 +58,7 @@ function BankApp() {
     <div hidden={panel !== 'market'}><Market source={publicMarket} active={onBank && panel === 'market'} onAction={open} /></div>
     <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={onBank && panel === 'assets'} revision={sourceRevision} showcase={showcase} showcaseBusy={publicMarket.status === 'loading'} onOpen={open} /></div>
     <div hidden={panel !== 'ledger'}><Ledger active={onBank && panel === 'ledger'} personalHistory={personalHistory} privateHistory={privateHistory} /></div>
-    {messagesMounted.current&&<Suspense fallback={sheet?.kind==='messages'?<Sheet title="Your Twin" active={onBank} onClose={close}><p className="muted" role="status">Opening your conversations…</p></Sheet>:null}><MessagesPanel identity={account.identity} active={onBank&&sheet?.kind==='messages'} twinContextRecords={twinContextRecords} onClose={close} onPreparePayment={recipient=>open({kind:'send',...(recipient?{recipient}:{})})}/></Suspense>}
+    {messagesMounted.current&&<MessagesPanel identity={account.identity} active={onBank&&sheet?.kind==='messages'} twinContextRecords={twinContextRecords} onClose={close} onPreparePayment={recipient=>open({kind:'send',...(recipient?{recipient}:{})})}/>}
     {sheet && sheet.kind!=='messages' && <LiveActions marketItems={publicMarket.catalog?.items} key={sheet.kind==='send'?'send:'+(sheet.recipient?.userId??'')+':'+(sheet.recipient?.username??''):sheet.kind} active={onBank} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} cardResumeSessionId={cardResumeSessionId} onCardResumeConsumed={consumeCardResume} onClose={close} onRefresh={() => { setSourceRevision(value => value + 1); void account.refresh(); void privateHistory.refresh(); }} onForget={async () => { await account.forget(); setSheet(null); }} />}
   </ConsoleShell>;
 }

@@ -793,3 +793,8 @@ export const saveReceivedProofState=(binding:{artifactSha256:string},value:impor
 // device vault. No bearer, message contents or Note custody is stored here.
 export const loadMessagingConsent=(binding:{artifactSha256:string})=>loadNoteState(binding,'messaging-consent-v1');
 export const saveMessagingConsent=(binding:{artifactSha256:string},value:unknown,expected:unknown)=>saveNoteState(binding,'messaging-consent-v1',value,expected);
+
+// Display-only inbox retention shares the existing encrypted, identity-bound
+// vault and revision checks. It never reads or replaces financial checkpoints.
+export const loadMessagingDisplay=(binding:{artifactSha256:string})=>loadNoteState(binding,'messaging-display-v1');
+export const saveMessagingDisplay=(binding:{artifactSha256:string},value:import('./messaging-retention').MessagingDisplay,expected:unknown)=>saveNoteState(binding,'messaging-display-v1',value,expected);

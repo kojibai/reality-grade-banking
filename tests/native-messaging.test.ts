@@ -1,11 +1,22 @@
 import {describe,it,expect,vi} from 'vitest';
-import {createNativeMessaging,MessagingError} from '../src/receiz/native-messaging';
+import {createNativeMessaging,MessagingError,type ChatConversation,type ChatMessage} from '../src/receiz/native-messaging';
 const conversationId='11111111-1111-4111-8111-111111111111';
 const userId='22222222-2222-4222-8222-222222222222';
-const summary={id:conversationId,kind:'dm',title:'Mira',members:[{kind:'user',userId,username:'mira',displayName:'Mira',avatarUrl:null}],aiAgents:[],defaultAiId:null,unreadCount:1,previewMessage:null,createdAt:'2026-10-19T12:00:00Z',updatedAt:'2026-10-19T12:00:00Z',lastMessageAt:null};
-const message=(id='m1',body='Hello')=>({id,conversationId,senderUserId:userId,senderKind:'user',senderAiId:null,senderDisplay:'Mira',body,createdAt:'2026-10-19T12:00:00Z',receizedAt:'2026-10-19T12:00:00Z',sealedOriginalAvailable:true,receipt:{digest:'a'.repeat(64)}});
+const summary:ChatConversation={id:conversationId,kind:'dm',title:'Mira',members:[{kind:'user',userId,username:'mira',displayName:'Mira',avatarUrl:null}],aiAgents:[],defaultAiId:null,unreadCount:1,previewMessage:null,createdAt:'2026-10-19T12:00:00Z',updatedAt:'2026-10-19T12:00:00Z',lastMessageAt:null};
+const message=(id='m1',body='Hello'):ChatMessage=>({id,conversationId,senderUserId:userId,senderKind:'user',senderAiId:null,senderDisplay:'Mira',body,createdAt:'2026-10-19T12:00:00Z',receizedAt:'2026-10-19T12:00:00Z',sealedOriginalAvailable:true,receipt:{digest:'a'.repeat(64)}});
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json'}});
 describe('existing Receiz messaging composition',()=>{
+ it('paints a retained inbox and opened thread before transport, then updates them through the same reads',async()=>{
+  const request=vi.fn(async()=>json({ok:true,conversations:[{...summary,title:'Updated Mira'}]}));
+  const retained={schema:'bankeiz.messaging-display.v1' as const,accountUid:userId,inbox:[summary],pages:[{conversation:summary,messages:[message()],hasMore:false,nextCursor:null}]};
+  const changed=vi.fn();const api=createNativeMessaging({request,accountUid:userId,retained,onChange:changed});
+  expect(api.knownConversations()[0].title).toBe('Mira');expect(api.knownMessages(conversationId)?.messages[0].body).toBe('Hello');expect(request).not.toHaveBeenCalled();
+  await api.conversations();expect(api.knownConversations()[0].title).toBe('Updated Mira');expect(request).toHaveBeenCalledTimes(1);expect(changed).toHaveBeenCalledTimes(1);
+ });
+ it('never seeds another admitted account from a retained display',()=>{
+  const api=createNativeMessaging({request:vi.fn(),accountUid:userId,retained:{schema:'bankeiz.messaging-display.v1',accountUid:conversationId,inbox:[summary],pages:[]}});
+  expect(api.knownConversations()).toEqual([]);
+ });
  it('uses the existing Receiz directory for full names as well as usernames',async()=>{
   const request=vi.fn(async(_path:string)=>json({ok:true,users:[{kind:'user',userId,username:'mira',displayName:'Mira West',avatarUrl:null}]}));const api=createNativeMessaging({request,accountUid:conversationId});
   expect(await api.search('Mira West')).toHaveLength(1);expect(request.mock.calls[0][0]).toBe('/api/chat/users/search?q=mira%20west');

@@ -1,6 +1,7 @@
 import {isPeopleSearchQuery} from './people-search.js';
 import {BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT} from './config';
-import {loadMessagingConsent,saveMessagingConsent} from './identity-vault';
+import {openMessagingRetention} from './messaging-retention';
+import {loadMessagingConsent,saveMessagingConsent,loadMessagingDisplay,saveMessagingDisplay} from './identity-vault';
 import {permittedNativeChatPath} from './native-chat-paths';
 import {loadReceivedProofState,saveReceivedProofState} from './identity-vault';
 import {loadMarketTradeState,saveMarketTradeState} from './identity-vault';
@@ -61,6 +62,7 @@ export interface OpenIdentity {
   accountProofSharing?: () => Promise<import('./account-proof-sharing').AccountProofSharing>;
   proofLibrary?: () => Promise<import('./proof-library').ProofLibrary>;
   executionRecovery?: () => BankExecutionRecovery;
+  knownMessagingDisplay?: () => import('./messaging-retention').MessagingDisplay|null;
   messaging?: (approved?:boolean) => Promise<import('./native-messaging').NativeMessaging>;
   offlineNotes?: () => Promise<BankOfflineNotes>;
   cancelUnsentNotes?: () => Promise<void>;
@@ -295,11 +297,19 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   // read-only custody still needs its own exact retained messaging approval.
   let messagingApproved=consentApproved&&messagingIncludedAtEntry;
   const exactMessagingConsent=()=>({schema:'bankeiz.messaging-consent.v1',applicationId:BANK_APPLICATION_ID,keyId:binding.keyId,artifactDigest:binding.artifactSha256,scopes:[...BANK_MESSAGING_SCOPES],statement:BANK_MESSAGING_CONSENT});
+  // Start the local-only read during identity preparation, never on icon tap.
+  // The exact retained consent gates private display just as it gates transport.
+  const messagingConsent=Promise.resolve().then(()=>loadMessagingConsent(binding)).catch(()=>null);
+  const messagingRetention=openMessagingRetention({
+    load:async()=>messagingApproved||JSON.stringify(await messagingConsent)===JSON.stringify(exactMessagingConsent())?loadMessagingDisplay(binding):null,
+    save:(value,expected)=>saveMessagingDisplay(binding,value,expected),
+    isOpen:()=>!lifetime.signal.aborted,
+  });
   async function messaging(approved=false){
     if(lifetime.signal.aborted)throw Error('MESSAGING_IDENTITY_CLOSED');
     if(messagingPromise)return messagingPromise;
     const attempt=(async()=>{
-      const previous=await loadMessagingConsent(binding).catch(()=>null);
+      const previous=await messagingConsent;
       const exact=exactMessagingConsent();
       if(approved)messagingApproved=true;
       if(!messagingApproved&&JSON.stringify(previous)!==JSON.stringify(exact))throw Error('MESSAGING_CONSENT_REQUIRED');
@@ -338,7 +348,8 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       // enforces that this handle belongs to the bearer subject on every ask.
       const twin=createNativeTwin({accountUid:uid,username:presentationUsername??'',request,assertOpen});
       const callTransport={heldFetch:request,forController:()=>{const controllerId=crypto.randomUUID();return{heldFetch:(path:string,init?:RequestInit)=>request(path,init,controllerId)};}};
-      const api=Object.assign(createNativeMessaging({request,accountUid:uid,callTransport}),{twin});
+      const retention=await messagingRetention;assertOpen();
+      const api=Object.assign(createNativeMessaging({request,accountUid:uid,callTransport,retained:retention.known(),onChange:source=>retention.capture(source)}),{twin});
       if(approved)await saveMessagingConsent(binding,exact,previous).catch(()=>{});
       assertOpen();return api;
     })();
@@ -1137,7 +1148,9 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     // reads. A delayed import save cannot overwrite a newer account frame.
     if (knownWallet) void persistWalletObservation(knownWallet).catch(() => {});
   }
-  return { messaging, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  const retainedMessaging=await messagingRetention;
+  const knownMessagingDisplay=()=>{const display=retainedMessaging.known(),uid=accountUid??knownWallet?.wallet.userId;return display&&(!uid||display.accountUid===uid)?display:null;};
+  return { messaging, knownMessagingDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');
