@@ -2,6 +2,15 @@ import { expect, it, vi } from 'vitest';
 import { createProofLibrary } from '../src/receiz/proof-library';
 import { BANK_APPLICATION_ID } from '../src/receiz/config';
 const binding = { keyId: 'a'.repeat(64), artifactOwnerReceizId: 'fixture.receiz.id' };
+it('refuses an unverified account source through private import without storage, projection or network',async()=>{
+ const commit=vi.fn(),restoreAccounts=vi.fn(),network=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NETWORK_FORBIDDEN'));
+ try{
+  const api=createProofLibrary({binding,assertOpen(){},readOwned:async()=>[],readArchive:async()=>[],readRecoveries:async()=>[],readNotes:async()=>[],commit,restoreAccounts});
+  const fake={schema:'bankeiz.account-proof.v1',sdkVersion:'129.0.0',source:{schema:'receiz.sealed-artifact-bytes.v124',exactBytesB64u:'e30',filename:'forged.receiz',mimeType:'application/json',artifactSha256:'a'.repeat(64),payloadSha256:'b'.repeat(64)}};
+  await expect(api.inspect(new File([JSON.stringify(fake)],'forged-account.json'))).rejects.toThrow();
+  expect(commit).not.toHaveBeenCalled();expect(restoreAccounts).not.toHaveBeenCalled();expect(network).not.toHaveBeenCalled();
+ }finally{network.mockRestore();}
+});
 it('the actual v129 SDK refuses a forged successful recovery without retaining or fetching anything', async () => {
   const commit = vi.fn(), network = vi.spyOn(globalThis, 'fetch').mockRejectedValue(Error('NETWORK_FORBIDDEN'));
   try {

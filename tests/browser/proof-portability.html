@@ -25,6 +25,10 @@ document.querySelector('#run').onclick=async()=>{
   let wrongSelection=false;try{await loadDepositSources({artifactSha256:'f'.repeat(64)},{requireComplete:true,digests:[originalDigest]});}catch{wrongSelection=true;}check(wrongSelection,'Selected-source reads refuse another identity');
   const payment={kind:'payment-receipt',filename:'payment.receiz-payment.json',bytes:bytes('test-only-no-financial-admission')};
   await retainProofBatch(binding,[payment]);check((await loadProofArchive(binding)).some(row=>row.kind==='payment-receipt'&&new TextDecoder().decode(row.bytes)==='test-only-no-financial-admission'),'Payment receipts retain and reopen through the same encrypted proof archive');
+  const account={kind:'account-source',filename:'account.json',bytes:bytes('test-only-account-source-storage-no-financial-admission')};
+  await retainProofBatch(binding,[account]);const accountHeld=(await loadProofArchive(binding)).find(row=>row.kind==='account-source');
+  check(accountHeld?.filename===account.filename&&await proofDigest(accountHeld.bytes)===await proofDigest(account.bytes),'Exact account originals reopen as encrypted evidence, separate from owned assets');
+  check((await loadDepositSources(binding,{requireComplete:true,originalsOnly:true})).length===1,'Account history evidence never becomes an owned spendable asset');
   const repeat=await retainProofBatch(binding,[original,receipt]);check(repeat.added===0&&repeat.alreadyHeld===2,'Duplicate import is immutable and idempotent');
   const plan={applicationId:BANK_APPLICATION_ID,attemptId:'pending-fixture',exactPlanDigest:'b'.repeat(64)};
   await saveBankOperation(binding,{schema:'bank.execution-checkpoint.v1',operationId:plan.attemptId,plan,transitionSet:{},state:'unknown'},'new');

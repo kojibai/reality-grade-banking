@@ -208,6 +208,18 @@ belongs in these connections.
 
 ## 19 October connection follow-through
 
+Private proof backup/import now includes the exact verified account source held
+in the local account ledger. After explicit import, compatible account history
+is adopted through the existing continuation and observation checks; stronger
+local Note heads and later wallet reads remain authoritative. Evidence retention
+is atomic and independent from optional view restoration. See the
+[portability verification](verification/2026-10-19-account-source-portability.md).
+
+The next funded-media and messaging connections have concrete host contracts:
+[media and messaging investigation](receiz-v129-media-and-messaging-contracts.md).
+They reuse v129 primitives but require actual Receiz domain/route exposure;
+removing UI guards or broadening the Wallet transfer grant is insufficient.
+
 The received-original adapter and saved card-return continuation now compose
 existing v129 operations. See [local connection verification](verification/2026-10-19-received-originals-and-card-return.md). These are code and local-test results, not evidence of a live ownership claim or card payment.
 

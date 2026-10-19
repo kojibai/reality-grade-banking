@@ -809,7 +809,40 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     readOwned: async () => (await loadDepositSources(binding, { requireComplete: true, originalsOnly: true })).map(source => ({ kind: 'owned-source' as const, filename: source.filename, bytes: source.bytes })),
     readArchive: () => loadProofArchive(binding), readRecoveries: () => loadExportableRecoveries(binding),
     readNotes: async () => (await import('./note-proof-portability')).readRetainedNoteProofs({ keyId: binding.keyId, read: () => loadOfflineNoteState(binding), restore: digest => loadOfflineNoteBlob(binding, digest) }),
+    readAccount: async () => {
+      const proof = await localLedger.original(); if (!proof) return [];
+      const { heldAccountProofBytes } = await import('./account-proof');
+      return [{ kind: 'account-source' as const, filename: `bankeiz-account-proof-${proof.sourceDigest.slice(0,16)}.json`, bytes: heldAccountProofBytes(proof) }];
+    },
     commit: sources => retainProofBatch(binding, sources),
+    restoreAccounts: async proofs => {
+      noteOpen();
+      // The authenticated/carried account alias is routing only. An imported
+      // archive never supplies its own alias or replaces a local custody head.
+      const uid = accountUid ?? knownWallet?.wallet.userId;
+      if (!uid || hasLocalWalletHead() || !proofs.length || proofs.some(proof => !['bankeiz.public-account-statement.v2','bankeiz.public-account-statement.v3','bankeiz.public-account-statement.v4'].includes(proof.statement.schema))) return false;
+      let candidate = proofs[0];
+      if (proofs.length > 1) {
+        const { verifyAccountProofContinuation } = await import('./account-proof-public');
+        // Validate the whole imported history family before changing a local
+        // projection. Multiple individually valid branches remain evidence.
+        for (const proof of proofs.slice(1)) {
+          try { verifyAccountProofContinuation(candidate, proof); candidate = proof; }
+          catch { verifyAccountProofContinuation(proof, candidate); }
+        }
+      }
+      const before = knownWallet, revision = walletRevision;
+      const retained = await localLedger.retain(candidate, uid); noteOpen();
+      if (walletRevision !== revision || knownWallet !== before || !canAdoptAccountLedgerObservation(before, retained.observation)) return false;
+      const observation = mergeAccountLedgerObservation(before, retained.observation);
+      if (observation !== before) {
+        const headChanged = observation.wallet !== before?.wallet || observation.source !== before?.source || observation.localHeadDigest !== before?.localHeadDigest;
+        knownWallet = observation; if (headChanged) walletRevision++;
+        void persistWalletObservation(observation).catch(() => {});
+        if (typeof dispatchEvent === 'function') dispatchEvent(new Event('bankeiz:account-observation'));
+      }
+      return true;
+    },
   })).catch(cause => { proofLibraryPromise = undefined; throw cause; });
   const nativeSessions = new WeakMap<ReceizClient, Map<string, ReturnType<typeof createBankNativeSession>>>();
   async function connectNativeContext(approved: boolean, rails: readonly ('reserve' | 'settlement')[] = []) {

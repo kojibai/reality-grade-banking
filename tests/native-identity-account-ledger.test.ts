@@ -4,9 +4,10 @@ import {openCanonicalIdentity,importNativeIdentity} from '../src/receiz/native-i
 import type {WalletObservation} from '../src/receiz/wallet-observation';
 // Integration sequencing only. The independent Chrome test opens real v129
 // native originals with the actual verifier and encrypted IndexedDB store.
-const p=vi.hoisted(()=>({known:null as WalletObservation|null,projection:null as unknown,device:vi.fn(),restore:vi.fn(),retain:vi.fn(),proof:vi.fn(),continueId:vi.fn(),wallet:vi.fn(),save:vi.fn(),request:vi.fn()}));
+const p=vi.hoisted(()=>({known:null as WalletObservation|null,projection:null as unknown,device:vi.fn(),restore:vi.fn(),retain:vi.fn(),original:vi.fn(),proof:vi.fn(),continueId:vi.fn(),wallet:vi.fn(),save:vi.fn(),request:vi.fn(),library:vi.fn()}));
 vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>p.known,saveWalletObservation:p.save,saveDeviceIdentity:p.device}));
-vi.mock('../src/receiz/account-ledger',async original=>({...await original<typeof import('../src/receiz/account-ledger')>(),createLocalAccountLedger:()=>({restore:p.restore,retain:p.retain})}));
+vi.mock('../src/receiz/account-ledger',async original=>({...await original<typeof import('../src/receiz/account-ledger')>(),createLocalAccountLedger:()=>({restore:p.restore,retain:p.retain,original:p.original})}));
+vi.mock('../src/receiz/proof-library',()=>({createProofLibrary:p.library}));
 vi.mock('../src/receiz/account-proof',async original=>({...await original<typeof import('../src/receiz/account-proof')>(),readAccountProof:p.proof}));
 vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({
  verifyReceizArtifact:async()=>({status:'verified-artifact'}),createReceizArtifactAdmissionEngine:()=>async()=>({verdict:'canonical-identity'}),isSdkIssuedReceizArtifactAdmission:()=>true,
@@ -20,7 +21,27 @@ const proof={sourceDigest:'b'.repeat(64),statement:{schema:'bankeiz.public-accou
 const carriedProjection=()=> ({authority:'verified-identity-portable-state',portableStateVerified:true,completeAtSealedHead:true,owner:{uid:'owner'},verifiedState:{account:{userId:'owner'},exportedAt:'2026-10-18T12:00:00Z',accountStateHead:{kaiUpulse:'10000000'},wallet:{routeSummary:{userId:'owner',balanceUsd:'50.92',balancePhiMicro:'3000000',quote:{usdPerPhiMicrocents:'4092328496'},valueStates:{settledBalanceUsdCents:'1000',ecosystemBalanceUsdCents:'4092'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'3000000'}},ledgerEntries:[{id:'funded',user_id:'owner',direction:'credit',entry_kind:'admin_adjustment',amount_phi_micro:'2000000',amount_usd_cents:'1000',kai_upulse:'2000000',metadata:{}},{id:'received',user_id:'owner',direction:'credit',entry_kind:'chat_transfer',amount_phi_micro:'1000000',amount_usd_cents:'5024',kai_upulse:'3000000',metadata:{rail:'settlement'}}]},ledger:{entries:[{actorUserId:'owner',subjectUserId:null,kaiUpulse:'1000000'}]}}});
 beforeEach(()=>{
  p.known=null;p.projection=null;p.device.mockReset().mockResolvedValue(undefined);p.restore.mockReset().mockResolvedValue(null);p.retain.mockReset().mockResolvedValue({proof,observation:observation()});p.proof.mockReset().mockImplementation(async({request})=>{await request('/account-source');return proof;});
+ p.original.mockReset().mockResolvedValue(null);p.library.mockReset().mockImplementation(options=>options);
  p.continueId.mockReset().mockResolvedValue({ok:true,session:{uid:'bound-user'}});p.wallet.mockReset().mockResolvedValue({ok:true,wallet:{userId:'bound-user',balanceUsd:'8.00',balancePhiMicro:'4000000',valueStates:{settledBalanceUsdCents:'800',ecosystemBalanceUsdCents:'0'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'100000003'}}});p.save.mockReset().mockResolvedValue(undefined);p.request.mockReset().mockResolvedValue({});
+});
+it('restores imported verified account history through the existing local ledger without another host read',async()=>{
+ p.known=observation('1000','100000001');const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  const library=await identity.proofLibrary!() as unknown as {restoreAccounts(proofs:unknown[]):Promise<boolean>};
+  expect(await library.restoreAccounts([proof])).toBe(true);
+  expect(identity.knownWallet()?.wallet.reserveUsdCents).toBe('600');expect(p.retain).toHaveBeenCalledExactlyOnceWith(proof,'bound-user');
+  expect(p.continueId).not.toHaveBeenCalled();expect(p.wallet).not.toHaveBeenCalled();expect(p.request).not.toHaveBeenCalled();
+ }finally{identity.dispose();}
+});
+it('retains imported account evidence without adopting it over local Note custody',async()=>{
+ p.known={...observation('400','100000005'),source:'local-note-head',localHeadDigest:'c'.repeat(64)};
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const library=await identity.proofLibrary!() as unknown as {restoreAccounts(proofs:unknown[]):Promise<boolean>};expect(await library.restoreAccounts([proof])).toBe(false);expect(p.retain).not.toHaveBeenCalled();expect(identity.knownWallet()?.source).toBe('local-note-head');expect(p.request).not.toHaveBeenCalled();}finally{identity.dispose();}
+});
+it('preserves a newer wallet that arrives while imported account history is being retained',async()=>{
+ p.known=observation('1000','100000001');let finish!:(value:unknown)=>void;p.retain.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const library=await identity.proofLibrary!() as unknown as {restoreAccounts(proofs:unknown[]):Promise<boolean>};const restoring=library.restoreAccounts([proof]);await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));await identity.readWallet();finish({proof,observation:observation()});expect(await restoring).toBe(false);expect(identity.knownWallet()?.wallet.reserveUsdCents).toBe('800');}finally{identity.dispose();}
 });
 it('reports unavailable account balance sources when both cold reads fail and preserves both causes',async()=>{
  const walletCause=Error('WALLET_SOURCE_UNAVAILABLE'),historyCause=Error('ACCOUNT_PROOF_UNAVAILABLE');

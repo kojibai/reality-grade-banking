@@ -638,7 +638,7 @@ function openProofFrame(bytes: Uint8Array): PortableProof {
   const size = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(0);
   if (size > 1024 || size + 4 >= bytes.length) throw Error('PROOF_ARCHIVE_INVALID');
   const meta = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.slice(4, 4 + size)));
-  if (!meta || Object.keys(meta).sort().join('|') !== 'filename|kind' || !['received-original','execution-recovery', 'note-image', 'note-deposit','payment-receipt','asset-receipt'].includes(meta.kind)
+  if (!meta || Object.keys(meta).sort().join('|') !== 'filename|kind' || !['received-original','account-source','execution-recovery', 'note-image', 'note-deposit','payment-receipt','asset-receipt'].includes(meta.kind)
     || typeof meta.filename !== 'string' || !meta.filename || meta.filename.length > 240 || /[\x00-\x1f\x7f/\\]/u.test(meta.filename)) throw Error('PROOF_ARCHIVE_INVALID');
   return { kind: meta.kind, filename: meta.filename, bytes: bytes.slice(4 + size) };
 }
@@ -710,7 +710,7 @@ export async function retainProofBatch(binding: { artifactSha256: string }, orig
   for (const source of sources) {
     total += source.bytes.length;
     if (!source.bytes.length || source.bytes.length > 32 * 1024 * 1024 || total > 64 * 1024 * 1024
-      || !['owned-source','received-original', 'execution-recovery', 'note-image', 'note-deposit','payment-receipt','asset-receipt'].includes(source.kind)
+      || !['owned-source','received-original','account-source', 'execution-recovery', 'note-image', 'note-deposit','payment-receipt','asset-receipt'].includes(source.kind)
       || !source.filename || source.filename.length > 240 || /[\x00-\x1f\x7f/\\]/u.test(source.filename)) throw Error('PROOF_SOURCE_INVALID');
     const digest = await proofDigest(source.bytes), prior = seen.get(digest);
     if (prior && prior !== source.kind) throw Error('PROOF_SOURCE_KIND_CONFLICT');

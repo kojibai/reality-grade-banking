@@ -44,7 +44,7 @@ export function ProofPortabilityPanel({ identity }: { identity: OpenIdentity }) 
   return <details className="identity-import proof-portability"><summary>Account proofs &amp; receipts</summary>
     <AccountProofPanel identity={identity} />
     <div className="proof-private-heading">Private evidence archive</div>
-    <p className="body-copy small-copy">Keep your originals, asset definitions and verified receipts together. This private archive preserves your evidence; it does not sign you in.</p>
+    <p className="body-copy small-copy">Keep your originals, verified account history, asset definitions and receipts together. This private archive preserves your evidence; it does not sign you in.</p>
     <button className="secondary-button" disabled={busy} onClick={() => void run(async (lib, current) => {
       const backup = await lib.exportBackup(); if (current()) { save(backup); setNotice('Proof backup saved. Keep this private file with your Identity Seal.'); }
     })}><Download size={16} />Save private proof backup</button>
@@ -56,10 +56,11 @@ export function ProofPortabilityPanel({ identity }: { identity: OpenIdentity }) 
     {review && <section className="proof-import-review" aria-label="Verified proof import review">
       <div className="section-heading"><h3><FileCheck2 size={17} />{review.items.length} verified {review.items.length === 1 ? 'proof' : 'proofs'}</h3><span className="muted">{(review.totalBytes / 1024).toLocaleString(undefined, { maximumFractionDigits: 0 })} KB</span></div>
       <ul className="proof-import-items">{review.items.map(item => <li key={item.digest}><strong>{item.title}</strong><span>{item.filename}</span>{item.operationId && <code>{item.operationId}</code>}</li>)}</ul>
-      <p className="body-copy small-copy">Import keeps the exact verified originals on this device. It does not move funds, replace pending transactions or restore note custody.</p>
+      <p className="body-copy small-copy">Import keeps the exact verified originals on this device and restores compatible account history. It does not move funds, replace pending transactions or restore note custody.</p>
       <button className="primary-button" disabled={busy || !review.items.length} onClick={() => void run(async (lib, current) => {
         const result = await lib.retain(review); if (!current()) return;
-        setReview(null); setNotice(`${result.added} ${result.added === 1 ? 'proof imported' : 'proofs imported'}${result.alreadyHeld ? ` · ${result.alreadyHeld} already held` : ''}.`);
+        const history = result.accountHistory === 'restored' ? ' Verified account history restored.' : result.accountHistory === 'retained' ? ' Account originals saved as evidence; the current account view is unchanged.' : '';
+        setReview(null); setNotice(`${result.added} ${result.added === 1 ? 'proof imported' : 'proofs imported'}${result.alreadyHeld ? ` · ${result.alreadyHeld} already held` : ''}.${history}`);
         try { const held = await lib.list(); if (current()) setArchive(held); }
         catch { if (current()) setError('Import saved. The evidence list could not reopen; keep your original backup.'); }
       })}>Import verified proofs</button>

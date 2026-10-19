@@ -72,12 +72,17 @@ export async function accountLedgerObservation(proof: VerifiedAccountProof, acco
 export function createLocalAccountLedger(input: { owner: Owner; read(): Promise<unknown>; write(value: State, expected: unknown): Promise<void>; assertOpen(): void }) {
   let pending: Promise<unknown> = Promise.resolve();
   async function stateDigest(value: unknown) { const sdk = await loadReceiz(); return sdk.sha256ReceizBytes(new TextEncoder().encode(JSON.stringify(value))); }
-  async function open(value: unknown): Promise<LocalAccountLedger | null> {
+  async function openSource(value: unknown) {
     if (value === null || value === undefined) return null;
     const s = value as State;
     if (!s || typeof s !== 'object' || Object.keys(s).sort().join(',') !== 'accountUid,observedAt,schema,sourceJson' || s.schema !== 'bank.account-ledger.v1' || typeof s.sourceJson !== 'string' || typeof s.accountUid !== 'string' || typeof s.observedAt !== 'string') throw Error('ACCOUNT_LEDGER_SOURCE_REQUIRED');
     const proof = await verifyAccountProof(new File([s.sourceJson], 'account-ledger.json', { type: 'application/json' }), input.owner);
     input.assertOpen();
+    return { proof, state: s };
+  }
+  async function open(value: unknown): Promise<LocalAccountLedger | null> {
+    const source = await openSource(value); if (!source) return null;
+    const { proof, state: s } = source;
     const observation = await accountLedgerObservation(proof, s.accountUid, s.observedAt);
     observation.historyBasis!.retainedStateSha256 = await stateDigest(value);
     return { proof, observation };
@@ -108,6 +113,11 @@ export function createLocalAccountLedger(input: { owner: Owner; read(): Promise<
     throw Error('ACCOUNT_LEDGER_RETENTION_CHANGED');
   }
   return {
+    async original(): Promise<VerifiedAccountProof | null> {
+      input.assertOpen(); await pending.catch(() => {});
+      const source = await openSource(await input.read()); input.assertOpen();
+      return source?.proof ?? null;
+    },
     async restore(current?: WalletObservation | null) {
       input.assertOpen(); await pending.catch(() => {}); const value = await input.read(); input.assertOpen();
       // Exact retained bytes with known coverage are already represented in

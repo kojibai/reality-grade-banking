@@ -17,6 +17,12 @@ it('restores both rails and exact original from a complete retained account sour
  const s=setup(),v=proof(1,'1000','1000000','200000000');const saved=await s.ledger.retain(v,'bound-user'),restored=await s.ledger.restore();
  expect(saved.observation.wallet).toMatchObject({reserveUsdCents:'1000',settlementUsdCents:'200',totalUsdCents:'1200',balancePhiMicro:'5000000'});expect(restored?.proof).toBe(v);expect(restored?.observation).toEqual(saved.observation);expect((s.state() as {sourceJson:string}).sourceJson).toBe(v.sourceDigest);
 });
+it('reopens the exact original for backup without reconstructing its chart or consulting transport',async()=>{
+ const s=setup(),v=proof(1);expect(await s.ledger.original()).toBeNull();await s.ledger.retain(v,'bound-user');
+ expect(await s.ledger.original()).toBe(v);expect(s.write).toHaveBeenCalledTimes(1);
+ const state=s.state() as {sourceJson:string};s.set({...state,sourceJson:'unverified'});
+ await expect(s.ledger.original()).rejects.toThrow('OWNER_MISMATCH');
+});
 it('accepts only an extension and makes duplicate or older sources zero-write',async()=>{
  const s=setup(),old=proof(1),newer=proof(2,'600');await s.ledger.retain(old,'bound-user');await s.ledger.retain(newer,'bound-user');expect(s.write).toHaveBeenCalledTimes(2);
  await s.ledger.retain(newer,'bound-user');expect((await s.ledger.retain(old,'bound-user')).proof).toBe(newer);expect(s.write).toHaveBeenCalledTimes(2);expect((await s.ledger.restore())?.observation.wallet.reserveUsdCents).toBe('600');

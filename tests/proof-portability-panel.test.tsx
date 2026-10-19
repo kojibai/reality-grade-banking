@@ -22,3 +22,16 @@ it('verifies a recovery file, previews it, and retains only after explicit appro
     expect(host.textContent).not.toContain('Payment sent');
   } finally { act(() => root.unmount()); }
 });
+it.each(['restored','retained'] as const)('reports imported account history as %s without claiming funds moved',async(accountHistory)=>{
+ const review={items:[{kind:'account-source',digest:'b'.repeat(64),title:'Verified account history',filename:'account.json',size:100}],totalBytes:100};
+ const identity={proofLibrary:async()=>({inspect:async()=>review,retain:async()=>({added:1,alreadyHeld:0,accountHistory}),list:async()=>[]})} as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<ProofPortabilityPanel identity={identity}/>));
+  const picker=host.querySelector('input[type="file"]') as HTMLInputElement;Object.defineProperty(picker,'files',{value:[new File(['original'],'account.json')]});
+  await act(async()=>picker.dispatchEvent(new Event('change',{bubbles:true})));
+  await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Import verified proofs')!.click());
+  expect(host.textContent).toContain(accountHistory==='restored'?'Verified account history restored.':'Account originals saved as evidence; the current account view is unchanged.');
+  expect(host.textContent).not.toContain('Funds restored');
+ }finally{act(()=>root.unmount());}
+});
