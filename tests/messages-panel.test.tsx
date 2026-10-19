@@ -155,3 +155,14 @@ it('shows the Twin question as a bubble as soon as it is submitted',async()=>{
  const f=fixture(),pending=deferred<NativeTwinReply>();f.api.twin.ask.mockImplementation(()=>pending.promise);
  try{await f.render();await f.input('Ask your Twin…','Explain this payment');await f.submit();expect(f.host.querySelector('.bank-twin-pending .bank-message-own')?.textContent).toContain('Explain this payment');expect(f.host.querySelector('[aria-label="Your Twin is responding"]')).not.toBeNull();}finally{f.unmount();}
 });
+
+it('shows only real peer typing activity and releases it on send and navigation without polling',async()=>{
+ const f=fixture(),update=vi.fn(),close=vi.fn();let emit!:(ids:string[])=>void;
+ f.api.typing=vi.fn((_id:string,onPeers:(ids:string[])=>void)=>{emit=onPeers;return{update,close};});
+ try{await f.render();expect(f.api.typing).not.toHaveBeenCalled();await f.click('Messages');await f.click('Open conversation Sam');expect(f.api.typing).toHaveBeenCalledTimes(1);await act(async()=>emit([peer.userId]));expect(f.host.querySelector('[aria-label="Sam is typing"]')).not.toBeNull();await f.input('Message…','A private draft');expect(update).toHaveBeenLastCalledWith(true);await f.submit();expect(update).toHaveBeenLastCalledWith(false);await f.click('Back to messages');expect(close).toHaveBeenCalledTimes(1);expect(f.api.typing).toHaveBeenCalledTimes(1);}finally{f.unmount();}
+});
+
+it('ignores a closed typing subscriber after changing conversations or waking the PWA',async()=>{
+ const f=fixture(),callbacks:Array<(ids:string[])=>void>=[],closed=vi.fn();f.api.typing=vi.fn((_id:string,onPeers:(ids:string[])=>void)=>{callbacks.push(onPeers);return{update:vi.fn(),close:closed};});
+ try{await f.render();await f.click('Messages');await f.click('Open conversation Sam');await act(async()=>window.dispatchEvent(new Event('pagehide')));expect(closed).toHaveBeenCalledTimes(1);await act(async()=>window.dispatchEvent(new Event('pageshow')));expect(f.api.typing).toHaveBeenCalledTimes(2);await act(async()=>callbacks[1]([peer.userId]));await act(async()=>callbacks[0]([]));expect(f.host.querySelector('[aria-label="Sam is typing"]')).not.toBeNull();}finally{f.unmount();}
+});
