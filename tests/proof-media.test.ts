@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
 import {afterEach,expect,it,vi} from 'vitest';
 import {zipSync,strToU8} from 'fflate';
+import {receizBase64UrlEncode} from '@receiz/sdk';
 const opened=vi.hoisted(()=>vi.fn());
 vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({createReceizClient:()=>({artifacts:{verifyAndOpen:opened}})})}));
 import {openProofMedia,readMediaPayload,readDocumentText} from '../src/receiz/proof-media';
+import {prepareAssetMoment} from '../src/receiz/asset-moment';
 afterEach(()=>{opened.mockReset();vi.restoreAllMocks();});
 const bytes=new TextEncoder().encode('An original essay.\n\nEvery paragraph remains available.');
 const payload={bytes,filename:'essay.txt',mimeType:'text/plain',sha256:'b'.repeat(64)};
@@ -13,6 +15,20 @@ it('opens only the exact original before reading its payload, refusing a digest 
  expect(result.files[0]).toMatchObject({kind:'text',filename:'essay.txt',text:new TextDecoder().decode(bytes)});
  expect(result.artifactDigest).toBe('a'.repeat(64));expect(opened).toHaveBeenCalledOnce();
  await expect(openProofMedia({kind:'held',bytes:new Uint8Array([1]),filename:'original.receiz',digest:'c'.repeat(64)})).rejects.toThrow('match');
+});
+it('cold opens moment attachments and long-form text from the single verified source, without separate media fetches',async()=>{
+ const moment=await prepareAssetMoment({files:[new File(['Exact original'],'essay.txt',{type:'text/plain'}),new File([new Uint8Array([137,80,78,71])],'image.png',{type:'image/png'})],title:'Full account',text:'Carried paragraphs.\n\nStill here offline.',metadata:{creator:'Author'}});
+ opened.mockResolvedValue({sealedArtifact:{artifactSha256:'a'.repeat(64)},verifiedPayload:{...payload,filename:'moment.json',mimeType:'application/json',bytes:strToU8(JSON.stringify({schema:'receiz.bank.asset-definition.v1',moment}))}});
+ const fetch=vi.spyOn(globalThis,'fetch');
+ const result=await openProofMedia({kind:'held',bytes:new Uint8Array([1]),filename:'moment.receiz',digest:'a'.repeat(64)});
+ expect(result.files.map(file=>file.kind)).toEqual(['text','image','text']);expect(result.files[0].text).toBe('Exact original');expect(result.files[2].text).toBe('Full account\n\nCarried paragraphs.\n\nStill here offline.');
+ expect(result.files[0].details).toEqual({creator:'Author'});expect(opened).toHaveBeenCalledOnce();expect(fetch).not.toHaveBeenCalled();
+});
+it('cold opens an exact linked original carried inside an asset definition without requiring a separate device record',async()=>{
+ const innerBytes=new Uint8Array([2]),linked='b'.repeat(64),outer=strToU8(JSON.stringify({schema:'receiz.bank.asset-definition.v1',definition:{linkedProofDigest:linked},linkedSource:{digest:linked,filename:'inner.receiz',exactArtifactB64u:receizBase64UrlEncode(innerBytes)}}));
+ opened.mockImplementation(async(file:File)=>new Uint8Array(await file.arrayBuffer())[0]===2?{sealedArtifact:{artifactSha256:linked},verifiedPayload:payload}:{sealedArtifact:{artifactSha256:'a'.repeat(64)},verifiedPayload:{...payload,bytes:outer,mimeType:'application/json'}});
+ const result=await openProofMedia({kind:'held',bytes:new Uint8Array([1]),filename:'outer.receiz',digest:'a'.repeat(64)});
+ expect(result.linkedArtifactDigest).toBe(linked);expect(result.files[0].text).toBe(new TextDecoder().decode(bytes));expect(opened).toHaveBeenCalledTimes(2);
 });
 it('does not follow arbitrary public URLs, and reads bounded public original bytes without credentials',async()=>{
  const fetch=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response(new Uint8Array([1])));

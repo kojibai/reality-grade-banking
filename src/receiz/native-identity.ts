@@ -41,6 +41,7 @@ import {atNoteStage} from './note-stage';
 import {createReceivingUsernamePreparation,publicAccountUsername} from './receiving-username';
 import {atIdentityCreationStage} from './identity-creation-stage';
 import {certificateTimeSafeStore,certificateTimeSafeFetch} from './device-signer-time';
+import type {AssetMomentDraft} from './asset-moment';
 
 export interface OpenIdentity {
   prepareAccountView: () => Promise<import('./wallet-observation').WalletObservation>;
@@ -64,7 +65,7 @@ export interface OpenIdentity {
   pendingCardDeposits?: () => Promise<CardCheckout[]>;
   startAssetIntake: (asset: AssetIntake, attachment?: File) => Promise<HeldDeposit>; holdProof: (file: File) => Promise<HeldDeposit>;
   listDeposits: () => Promise<HeldDeposit[]>;
-  createAsset: (definition: AssetDefinition) => Promise<HeldDeposit>;
+  createAsset: (definition: AssetDefinition, moment?: AssetMomentDraft) => Promise<HeldDeposit>;
   readPrivateHistory: (cursor?: string) => Promise<PrivateHistoryPage>;
   nativeReadiness: (approveNativeAccess?: boolean) => Promise<BankNativeReadiness>;
   connectNativeAccount: (approved: boolean) => Promise<{ subjectId: string; sourceDigest: string; sessionExpiresKaiUPulse: number; readyToTransact: false }>;
@@ -677,13 +678,19 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     try { return summarizeNativeBankReadiness(await current.runtime.qualifyV124({ applicationId: BANK_APPLICATION_ID, operations: BANK_NATIVE_OPERATIONS })); }
     catch (error) { throw new BankConnectionError('native-services', error); }
   }
-  async function createAsset(input: AssetDefinition): Promise<HeldDeposit> {
+  async function createAsset(input: AssetDefinition, draft?: AssetMomentDraft): Promise<HeldDeposit> {
+    lifetime.signal.throwIfAborted();
     const definition = validateAssetDefinition(input);
     const linked = definition.linkedProofDigest ? (await listDeposits()).find(source => source.kind === 'proof' && source.digest === definition.linkedProofDigest) : null;
     if (definition.linkedProofDigest && !linked) throw new Error('The selected original proof is no longer held by this ID.');
-    const payload = { schema: 'receiz.bank.asset-definition.v1', definition, issuerReceizId: binding.artifactOwnerReceizId, createsSpendableValue: false, backingCommitted: false, kai: sdk.receizKaiNow(), linkedSource: linked ? { digest: linked.digest, filename: linked.filename, exactArtifactB64u: sdk.receizBase64UrlEncode(linked.bytes) } : null };
+    const moment=draft?await(await import('./asset-moment')).prepareAssetMoment(draft):null;
+    lifetime.signal.throwIfAborted();
+    const payload = { schema: 'receiz.bank.asset-definition.v1', definition, issuerReceizId: binding.artifactOwnerReceizId, createsSpendableValue: false, backingCommitted: false, kai: sdk.receizKaiNow(), linkedSource: linked ? { digest: linked.digest, filename: linked.filename, exactArtifactB64u: sdk.receizBase64UrlEncode(linked.bytes) } : null,...(moment?{moment}:{}) };
+    const payloadBytes=new TextEncoder().encode(JSON.stringify(payload));
+    if(moment&&payloadBytes.length>10*1024*1024)throw Error('This moment and its linked proof exceed the supported combined capacity. Use smaller originals.');
     const sealer = await ownedSealer();
-    const sealed = await sealer.seal({ bytes: new TextEncoder().encode(JSON.stringify(payload)), filename: `${definition.symbol.toLowerCase()}.receiz-asset.json`, mimeType: 'application/json' });
+    lifetime.signal.throwIfAborted();
+    const sealed = await sealer.seal({ bytes: payloadBytes, filename: `${definition.symbol.toLowerCase()}.receiz-asset.json`, mimeType: 'application/json' });
     return holdProof(new File([new Uint8Array(sealed.artifactBytes)], sealed.filename, { type: sealed.mimeType }));
   }
   let nativeConnectionBusy = false;

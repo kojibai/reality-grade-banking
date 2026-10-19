@@ -5,9 +5,10 @@ import {readPublicLedgerBytes} from './public-ledger-transfer';
 import {readPublicProofReading,type ProofReading} from './proof-reading';
 import type {ReceizVerifiedPayload} from '@receiz/sdk';
 import {retainOpenedProofInspection,trackProofInspection} from './proof-inspection';
+import {readAssetMoment,type MomentMetadata} from './asset-moment';
 
 export type MediaKind='image'|'audio'|'video'|'pdf'|'text'|'book'|'file';
-export type MediaFile={kind:MediaKind;filename:string;mimeType:string;bytes:Uint8Array;payloadDigest:string;memberPath?:string;text?:string;chapters?:{title:string;text:string}[]};
+export type MediaFile={kind:MediaKind;filename:string;mimeType:string;bytes:Uint8Array;payloadDigest:string;memberPath?:string;text?:string;details?:MomentMetadata;chapters?:{title:string;text:string}[]};
 export type ProofMediaSource={kind:'held';bytes:Uint8Array;filename:string;digest:string;related?:readonly {digest:string;bytes:Uint8Array;filename:string}[]}|{kind:'public';url:string;digest:string;postUrl?:string;hasLongForm?:boolean};
 export type OpenedProofMedia={artifactDigest:string;files:MediaFile[];linkedArtifactDigest?:string;readText?:(signal?:AbortSignal)=>Promise<ProofReading>};
 const MAX=16*1024*1024;
@@ -41,15 +42,36 @@ async function readBook(payload:ReceizVerifiedPayload):Promise<MediaFile[]>{
  return [{kind:'book',filename:cleanName(payload.filename),mimeType:'application/epub+zip',bytes:payload.bytes,payloadDigest:payload.sha256,chapters},...illustrations];
 }
 function isSelfContainedMedia(bytes:Uint8Array){const start=String.fromCharCode(...bytes.subarray(0,12));return start.startsWith('ID3')||start.startsWith('OggS')||start.startsWith('fLaC')||start.startsWith('RIFF')&&start.slice(8,12)==='WAVE'||start.slice(4,8)==='ftyp'||bytes[0]===0x1a&&bytes[1]===0x45&&bytes[2]===0xdf&&bytes[3]===0xa3||bytes[0]===255&&(bytes[1]&0xe0)===0xe0;}
-export async function readMediaPayload(payload:ReceizVerifiedPayload):Promise<MediaFile[]>{
+function readMediaJson(payload:ReceizVerifiedPayload){
+ if(!payload.bytes.length||payload.bytes.length>MAX)throw Error('This media exceeds the supported reader capacity.');
+ if(payload.mimeType.split(';')[0].trim().toLowerCase()!=='application/json')return undefined;
+ const text=decode(payload.bytes);try{return {text,value:JSON.parse(text),valid:true};}catch{return {text,value:undefined,valid:false};}
+}
+async function readBasicMediaPayload(payload:ReceizVerifiedPayload,json?:ReturnType<typeof readMediaJson>):Promise<MediaFile[]>{
  if(!payload.bytes.length||payload.bytes.length>MAX)throw Error('This media exceeds the supported reader capacity.');
  const mime=payload.mimeType.split(';')[0].trim().toLowerCase(),file:MediaFile={kind:'file',filename:cleanName(payload.filename),mimeType:mime,bytes:payload.bytes,payloadDigest:payload.sha256};
  if(mime==='application/epub+zip')return readBook(payload);
  if(image.has(mime))file.kind='image';else if(new Set(['audio/mpeg','audio/mp3','audio/mp4','audio/aac','audio/ogg','audio/flac','audio/wav','audio/x-wav','audio/webm']).has(mime)&&isSelfContainedMedia(payload.bytes))file.kind='audio';else if(new Set(['video/mp4','video/webm','video/ogg','video/quicktime']).has(mime)&&isSelfContainedMedia(payload.bytes))file.kind='video';else if(mime==='application/pdf')file.kind='pdf';
  else if(['text/plain','text/markdown','text/html','application/xhtml+xml','application/json'].includes(mime)){
-  file.kind='text';const text=decode(payload.bytes);file.text=['text/html','application/xhtml+xml'].includes(mime)?readDocumentText(text):mime==='application/json'?(()=>{try{return JSON.stringify(JSON.parse(text),null,2);}catch{return text;}})():text;
+  file.kind='text';if(mime==='application/json'){const parsed=json??readMediaJson(payload)!;file.text=parsed.valid?JSON.stringify(parsed.value,null,2):parsed.text;}else{const text=decode(payload.bytes);file.text=['text/html','application/xhtml+xml'].includes(mime)?readDocumentText(text):text;}
  }
  return [file];
+}
+async function readPayload(payload:ReceizVerifiedPayload,json:ReturnType<typeof readMediaJson>):Promise<MediaFile[]>{
+ if(!payload.bytes.length||payload.bytes.length>MAX)throw Error('This media exceeds the supported reader capacity.');
+ if(json){
+  const value=json.value;
+  if(value?.schema==='receiz.bank.asset-definition.v1'&&value.moment!=null){
+   const moment=await readAssetMoment(value.moment),files:MediaFile[]=[];
+   for(const original of moment.files)files.push(...await readBasicMediaPayload(original));
+   if(moment.title||moment.text){const {sha256ReceizBytes}=await import('@receiz/sdk'),bytes=new TextEncoder().encode([moment.title,moment.text].filter(Boolean).join('\n\n'));files.push(...await readBasicMediaPayload({bytes,sha256:await sha256ReceizBytes(bytes),filename:'Long-form text.txt',mimeType:'text/plain'}));}
+   if(files.length){files[0].details=moment.metadata;return files;}
+  }
+ }
+ return readBasicMediaPayload(payload,json);
+}
+export function readMediaPayload(payload:ReceizVerifiedPayload):Promise<MediaFile[]>{
+ return readPayload(payload,readMediaJson(payload));
 }
 /** Existing SDK enclosing-artifact open is the only payload entry. Rendering
  * does not admit ownership, custody, transfers or account value. */
@@ -69,11 +91,15 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
  const sdk=await loadReceiz();let opened;try{opened=await sdk.createReceizClient().artifacts.verifyAndOpen(new File([new Uint8Array(bytes)],filename));}catch{throw Error('This original could not be opened as verified media. Inspect its proof source for details.');}signal?.throwIfAborted();
  if(opened.sealedArtifact.artifactSha256.toLowerCase()!==source.digest.toLowerCase())throw Error('This original does not match the selected proof.');
  retainOpenedProofInspection(opened,bytes,filename,source.digest);
- const files=await readMediaPayload(opened.verifiedPayload);signal?.throwIfAborted();
- if(source.kind==='held'&&opened.verifiedPayload.mimeType==='application/json'){
-  let value;try{value=JSON.parse(decode(opened.verifiedPayload.bytes));}catch{/* Ordinary text remains readable. */}
+ const json=readMediaJson(opened.verifiedPayload),files=await readPayload(opened.verifiedPayload,json);signal?.throwIfAborted();
+ if(source.kind==='held'&&json){
+  const value=json.value;
   const linked=value?.schema==='receiz.bank.asset-definition.v1'?value.definition?.linkedProofDigest:null;
-  if(typeof linked==='string'&&/^[a-f0-9]{64}$/.test(linked)&&linked!==source.digest){const held=source.related?.find(item=>item.digest===linked);if(held){const media=await openProofMedia({kind:'held',...held},signal);return {artifactDigest:source.digest,linkedArtifactDigest:linked,files:[...media.files,...files]};}}
+  if(typeof linked==='string'&&/^[a-f0-9]{64}$/.test(linked)&&linked!==source.digest){
+   let held=source.related?.find(item=>item.digest===linked);const carried=value.linkedSource;
+   if(!held&&carried?.digest===linked&&typeof carried.filename==='string'&&carried.filename.length<=240&&typeof carried.exactArtifactB64u==='string'&&carried.exactArtifactB64u.length<=Math.ceil(MAX*4/3)&&/^[A-Za-z0-9_-]+$/u.test(carried.exactArtifactB64u))held={digest:linked,filename:cleanName(carried.filename),bytes:(await import('@receiz/sdk')).receizBase64UrlDecode(carried.exactArtifactB64u)};
+   if(held){const media=await openProofMedia({kind:'held',...held},signal);return {artifactDigest:source.digest,linkedArtifactDigest:linked,files:[...media.files,...files]};}
+  }
  }
  return {artifactDigest:source.digest,files,...(source.kind==='public'&&source.postUrl?{readText:(signal?:AbortSignal)=>readPublicProofReading(source.postUrl!,source.digest,signal)}:{})};
 }
