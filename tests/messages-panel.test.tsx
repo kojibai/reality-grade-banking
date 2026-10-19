@@ -3,7 +3,7 @@ import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {afterEach,expect,it,vi} from 'vitest';
 import {MessagesPanel} from '../src/features/messages/MessagesPanel';
-import {MessagingError,type ChatConversation,type ChatMessage,type ChatPage,type NativeMessaging} from '../src/receiz/native-messaging';
+import {MessagingError,type ChatConversation,type ChatMessage,type ChatPage,type NativeMessaging,type MessageSendOptions} from '../src/receiz/native-messaging';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 import type {NativeTwinAsk,NativeTwinMemory,NativeTwinReply} from '../src/receiz/native-twin';
 
@@ -19,7 +19,7 @@ function deferred<T>(){let resolve!:(value:T)=>void,reject!:(reason:unknown)=>vo
 function fixture(consented=true){
  let approved=consented;
  const twin={readiness:vi.fn(()=>({status:'configured',availability:'unchecked',requires:['business','usage-credits']})),ask:vi.fn(async(input:NativeTwinAsk):Promise<NativeTwinReply>=>({requestId:input.requestId,message:'A generated answer',authority:'generated-interpretation',source:'upstream',memoryScope:'none',memory:[],sourceReferences:[],sharedContext:[],actionHandoffs:[{kind:'pay',label:'Review proposal',href:'https://receiz.com/review',authority:'proposal-only',admitted:false}]}))};
- const api={accountUid:uid,twin,callTransport:{heldFetch:vi.fn(async(_path:string,_init?:RequestInit)=>Response.json({ok:true,calls:[],activeCall:null}))},knownConversations:()=>[conversation],knownMessages:()=>page,conversations:vi.fn(async(_signal?:AbortSignal)=>[conversation]),messages:vi.fn(async(_id:string,_before?:string,_signal?:AbortSignal)=>page),search:vi.fn(async(_query:string,_signal?:AbortSignal)=>[peer,other]),createConversation:vi.fn(async(_input:{participantUserIds:string[];title?:string})=>threadId),send:vi.fn(async(_id:string,_body:string,_options?:{stream?:boolean;signal?:AbortSignal;onDelta?:(agentId:string,text:string)=>void})=>({...message,id:'sent-1',senderUserId:uid,body:'My draft'}))};
+ const api={accountUid:uid,twin,callTransport:{heldFetch:vi.fn(async(_path:string,_init?:RequestInit)=>Response.json({ok:true,calls:[],activeCall:null}))},knownConversations:()=>[conversation],knownMessages:()=>page,conversations:vi.fn(async(_signal?:AbortSignal)=>[conversation]),messages:vi.fn(async(_id:string,_before?:string,_signal?:AbortSignal)=>page),search:vi.fn(async(_query:string,_signal?:AbortSignal)=>[peer,other]),createConversation:vi.fn(async(_input:{participantUserIds:string[];title?:string})=>threadId),send:vi.fn(async(_id:string,_body:string,_options?:MessageSendOptions)=>({...message,id:'sent-1',senderUserId:uid,body:'My draft'}))};
  const identity={binding:{identityOwnerReceizId:'owner'},messaging:vi.fn(async(approve=false)=>{if(!approved&&!approve)throw Error('MESSAGING_CONSENT_REQUIRED');approved=true;return api;})} as unknown as OpenIdentity;
  const host=document.createElement('div');document.body.appendChild(host);const root=createRoot(host),onClose=vi.fn(),onPreparePayment=vi.fn();
  const render=(active=true,nextIdentity=identity,twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>)=>act(async()=>root.render(<MessagesPanel identity={nextIdentity} active={active} onClose={onClose} onPreparePayment={onPreparePayment} twinContextRecords={twinContextRecords}/>));
@@ -132,4 +132,26 @@ it('presents a structured money transfer once as a compact payment receipt',asyn
  const f=fixture(),payment={...message,body:'Transferred $25.00 to @sam',senderUserId:uid,walletTransfer:{kind:'chat_transfer',senderUserId:uid,recipientUserId:peer.userId,amountUsdCents:'2500',amountPhiMicro:'123456',note:'Lunch',transactionHref:'/transactions/one'}};
  f.api.messages.mockResolvedValue({...page,messages:[payment]});
  try{await f.render();await f.click('Messages');await f.click('Open conversation Sam');expect(f.host.textContent).toContain('Money sent');expect(f.host.textContent).toContain('$25.00');expect(f.host.textContent).toContain('Lunch');expect(f.host.textContent).not.toContain('Transferred $25.00 to @sam');expect(f.host.querySelector('article[aria-label="Recorded money transfer"] details')?.hasAttribute('open')).toBe(false);expect(f.host.querySelector('a[href="https://receiz.com/transactions/one"]')).not.toBeNull();}finally{f.unmount();}
+});
+
+it('paints an outgoing bubble immediately, then replaces it with the exact acknowledgement before the AI stream ends',async()=>{
+ const f=fixture(),pending=deferred<ChatMessage>();let options:Parameters<typeof f.api.send>[2];
+ f.api.send.mockImplementation(async(_id,_body,value)=>{options=value;return pending.promise;});
+ try{await f.render();await f.click('Messages');await f.click('Open conversation Sam');await f.input('Message…','Instant outgoing');await f.submit();expect(f.host.querySelector('.bank-message-pending')?.textContent).toContain('Instant outgoing');expect(f.host.textContent).toContain('Sending');expect(f.host.querySelector<HTMLInputElement>('[aria-label="Message…"]')?.value).toBe('');
+  const sent={...message,id:'real-ack',senderUserId:uid,body:'Instant outgoing'};
+  await act(async()=>options!.onMessage?.(sent));expect(f.host.querySelector('.bank-message-pending')).toBeNull();expect([...f.host.querySelectorAll('.bank-message-own>p')].filter(p=>p.textContent==='Instant outgoing')).toHaveLength(1);
+  await act(async()=>{options!.onAiStart?.({id:'peer-twin',name:'Sam’s Twin'});});expect(f.host.querySelector('[aria-label="Sam’s Twin is responding"]')).not.toBeNull();
+  await act(async()=>options!.onDelta?.('peer-twin','A live reply'));expect(f.host.textContent).toContain('A live reply');
+  await act(async()=>{options!.onMessage?.({...message,id:'real-ai',senderKind:'ai',senderAiId:'peer-twin',body:'A live reply'});options!.onAiDone?.('peer-twin');});
+  expect(f.host.querySelector('[aria-label="Sam’s Twin is responding"]')).toBeNull();expect([...f.host.querySelectorAll('.bank-message-other>p')].filter(p=>p.textContent==='A live reply')).toHaveLength(1);
+  await act(async()=>pending.resolve(sent));expect(f.api.send).toHaveBeenCalledTimes(1);
+ }finally{f.unmount();}
+});
+it('keeps an unacknowledged bubble visibly uncertain without inventing delivery or retrying it',async()=>{
+ const f=fixture();f.api.send.mockRejectedValue(new MessagingError('CHAT_SEND_OUTCOME_UNKNOWN',true));
+ try{await f.render();await f.click('Messages');await f.click('Open conversation Sam');await f.input('Message…','Keep this once');await f.submit();expect(f.host.querySelector('.bank-message-pending')?.textContent).toContain('Delivery not confirmed');expect(f.host.querySelector<HTMLInputElement>('[aria-label="Message…"]')?.value).toBe('Keep this once');await f.click('Refresh conversation');expect(f.api.send).toHaveBeenCalledTimes(1);}finally{f.unmount();}
+});
+it('shows the Twin question as a bubble as soon as it is submitted',async()=>{
+ const f=fixture(),pending=deferred<NativeTwinReply>();f.api.twin.ask.mockImplementation(()=>pending.promise);
+ try{await f.render();await f.input('Ask your Twin…','Explain this payment');await f.submit();expect(f.host.querySelector('.bank-twin-pending .bank-message-own')?.textContent).toContain('Explain this payment');expect(f.host.querySelector('[aria-label="Your Twin is responding"]')).not.toBeNull();}finally{f.unmount();}
 });

@@ -64,3 +64,9 @@ it('admits first history pagination when an acknowledged send arrived before tha
  let finish!:(response:Response)=>void;const request=async(_path:string,init?:RequestInit)=>init?.method==='POST'?json({ok:true,message:message('sent')}):new Promise<Response>(resolve=>{finish=resolve;});
  const api=createNativeMessaging({request,accountUid:userId});const reading=api.messages(conversationId);await api.send(conversationId,'Hello');finish(json({ok:true,conversation:summary,messages:[message('earlier')],hasMore:true,nextCursor:'2026-10-19T12:00:00.000Z'}));const result=await reading;expect(result.hasMore).toBe(true);expect(result.nextCursor).toBe('2026-10-19T12:00:00.000Z');expect(result.messages.map(v=>v.id)).toContain('sent');
 });
+
+it('forwards acknowledged messages and real AI typing lifecycle from the existing SSE stream',async()=>{
+ const events=[{type:'user_message',message:message('sent')},{type:'ai_start',agent:{id:'agent',name:'Mira’s Twin'}},{type:'ai_delta',agentId:'agent',delta:'Hi'},{type:'ai_done',agentId:'agent',message:{...message('reply','Hi'),senderKind:'ai',senderAiId:'agent'}},{type:'done'}];
+ const request=vi.fn(async()=>new Response(events.map(event=>'data: '+JSON.stringify(event)+'\n\n').join(''),{headers:{'content-type':'text/event-stream'}}));const api=createNativeMessaging({request,accountUid:userId});const onMessage=vi.fn(),onAiStart=vi.fn(),onAiDone=vi.fn();await api.send(conversationId,'Hi',{stream:true,onMessage,onAiStart,onAiDone});
+ expect(onMessage.mock.calls.map(([m])=>m.id)).toEqual(['sent','reply']);expect(onAiStart).toHaveBeenCalledWith({id:'agent',name:'Mira’s Twin'});expect(onAiDone).toHaveBeenCalledWith('agent');expect(request).toHaveBeenCalledTimes(1);
+});

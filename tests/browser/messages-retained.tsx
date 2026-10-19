@@ -21,7 +21,17 @@ const request=async(path:string,init?:RequestInit)=>{
  if(path==='/api/chat/conversations')return json({ok:true,conversations});
  if(path.endsWith('/calls'))return json({ok:true,calls:[],activeCall:null});
  const thread=/conversations\/([^/]+)\//.exec(path)?.[1]??threadId;
- if(path.includes('/messages')&&init?.method==='POST'){const message={...rows[0],id:crypto.randomUUID(),conversationId:thread,senderUserId:owner,senderDisplay:'You',body:body.body,createdAt:new Date().toISOString()};rows.push(message);if(path.endsWith('/stream'))return new Response('data: '+JSON.stringify({type:'user_message',message})+'\n\ndata: {"type":"done"}\n\n',{headers:{'content-type':'text/event-stream'}});return json({ok:true,message});}
+ if(path.includes('/messages')&&init?.method==='POST'){const message={...rows[0],id:crypto.randomUUID(),conversationId:thread,senderUserId:owner,senderDisplay:'You',body:body.body,createdAt:new Date().toISOString()};rows.push(message);if(path.endsWith('/stream')){
+  let closed=false;const source=new ReadableStream<Uint8Array>({start(sink){
+   const emit=(value:unknown)=>{if(!closed)sink.enqueue(new TextEncoder().encode('data: '+JSON.stringify(value)+'\n\n'));};
+   const pause=()=>new Promise(resolve=>setTimeout(resolve,500));
+   void (async()=>{await pause();if(closed)return;emit({type:'user_message',message});emit({type:'ai_start',agent:{id:'mira-twin',name:'Mira’s Twin'}});
+    const chunks=['The payment ','and its proof ','stay connected. ','You can inspect ','the full source ','in your ledger.'];let text='';
+    for(const delta of chunks){await pause();if(closed)return;text+=delta;emit({type:'ai_delta',agentId:'mira-twin',delta});}
+    const reply={...rows[0],id:crypto.randomUUID(),senderKind:'ai' as const,senderAiId:'mira-twin',senderDisplay:'Mira’s Twin',body:text,createdAt:new Date().toISOString()};rows.push(reply);emit({type:'ai_done',agentId:'mira-twin',message:reply});emit({type:'done'});closed=true;sink.close();
+   })();
+  },cancel(){closed=true;}});return new Response(source,{headers:{'content-type':'text/event-stream'}});
+ }return json({ok:true,message});}
  if(path.includes('/messages'))return json({ok:true,conversation:conversations.find(c=>c.id===thread),messages:rows.filter(m=>m.conversationId===thread),hasMore:false,nextCursor:null});
  return new Response('{"ok":false,"error":"fixture_call_unavailable"}',{status:503});
 };

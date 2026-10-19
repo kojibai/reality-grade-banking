@@ -185,3 +185,13 @@
 .bank-chat-payment dt{color:#7e8b9d;font-size:9px}
 .bank-chat-payment dd{margin:0;font-size:11px;overflow-wrap:anywhere}
 .bank-chat-payment a{display:inline-flex;align-items:center;gap:4px;color:var(--blue);font-size:11px}
+
+.bank-delivery-status{display:block;text-align:right;font-size:9px;font-weight:450;color:#748299;margin-top:7px;letter-spacing:.05px}
+.bank-message-pending{opacity:.85}
+.bank-message-stream{min-width:62px}
+.bank-typing-dots{display:flex;align-items:center;gap:4px;min-height:19px;padding:3px 1px}
+.bank-typing-dots i{width:5px;height:5px;border-radius:50%;background:#8190a3;animation:bank-message-breathe 1.5s ease-in-out infinite}
+.bank-typing-dots i:nth-child(2){animation-delay:.18s}.bank-typing-dots i:nth-child(3){animation-delay:.36s}
+.bank-stream-cursor{display:inline-block;width:2px;height:1em;margin-left:3px;vertical-align:-1px;background:#8190a3;animation:bank-message-breathe 1.5s ease-in-out infinite}
+@keyframes bank-message-breathe{0%,100%{opacity:.4;transform:translateY(0)}50%{opacity:.95;transform:translateY(-2px)}}
+@media(prefers-reduced-motion:reduce){.bank-typing-dots i,.bank-stream-cursor{animation:none}}
