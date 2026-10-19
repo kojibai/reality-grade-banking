@@ -56,6 +56,10 @@ it('never overlaps refreshes, aborts hidden reads and does not poll an inactive 
  vi.useFakeTimers();const f=fixture(),pending=deferred<ChatConversation[]>();f.api.conversations.mockImplementation(()=>pending.promise);
  try{await f.render();expect(f.api.conversations).toHaveBeenCalledTimes(1);const signal=f.api.conversations.mock.calls[0]?.[0] as AbortSignal;await act(async()=>vi.advanceTimersByTimeAsync(36000));expect(f.api.conversations).toHaveBeenCalledTimes(1);await f.render(false);expect(signal.aborted).toBe(true);await act(async()=>vi.advanceTimersByTimeAsync(36000));expect(f.api.conversations).toHaveBeenCalledTimes(1);await act(async()=>pending.resolve([conversation]));}finally{f.unmount();}
 });
+it('keeps the first inbox request alive when switching from Twin to Messages',async()=>{
+ const f=fixture(),pending=deferred<ChatConversation[]>();f.api.knownConversations=()=>[];f.api.conversations.mockImplementation(()=>pending.promise);
+ try{await f.render();const signal=f.api.conversations.mock.calls[0]?.[0]as AbortSignal;await f.click('Messages');expect(signal.aborted).toBe(false);await act(async()=>pending.resolve([conversation]));expect(f.host.textContent).toContain('Sam');expect(f.api.conversations).toHaveBeenCalledTimes(1);}finally{f.unmount();}
+});
 it('discards results and drafts from an identity replaced while its request is unresolved',async()=>{
  const f=fixture(),pending=deferred<NativeMessaging>();const stale={binding:{identityOwnerReceizId:'old-owner'},messaging:()=>pending.promise} as unknown as OpenIdentity;
  try{await f.render(true,stale);await f.render(true,f.identity);await act(async()=>pending.resolve({...f.api,knownConversations:()=>[{...conversation,title:'Foreign private title'}]}));await f.click('Messages');expect(f.host.textContent).not.toContain('Foreign private title');expect(f.host.textContent).toContain('Sam');}finally{f.unmount();}

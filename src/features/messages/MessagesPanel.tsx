@@ -103,10 +103,19 @@ function MessagesSession({identity,active,onClose,onPreparePayment,twinContextRe
   useEffect(()=>{
     if(!api||!active||!pageVisible)return;
     const pending=controller();
-    const refresh=()=>{void refreshInbox(pending.signal);if(mode==='thread'&&selected){void refreshThread(selected.id,pending.signal);void refreshCalls(selected.id,pending.signal);}};
+    const refresh=()=>{void refreshInbox(pending.signal);};
     refresh();const timer=window.setInterval(refresh,12000);
     return()=>{window.clearInterval(timer);pending.abort();controllers.current.delete(pending);};
-  },[api,active,pageVisible,mode,selected?.id,controller,refreshInbox,refreshThread,refreshCalls]);
+  },[api,active,pageVisible,controller,refreshInbox]);
+  // Navigation must not cancel the inbox already on its way to first paint.
+  // Only the selected conversation and its call status follow thread changes.
+  useEffect(()=>{
+    if(!api||!active||!pageVisible||mode!=='thread'||!selected)return;
+    const pending=controller();
+    const refresh=()=>{void refreshThread(selected.id,pending.signal);void refreshCalls(selected.id,pending.signal);};
+    refresh();const timer=window.setInterval(refresh,12000);
+    return()=>{window.clearInterval(timer);pending.abort();controllers.current.delete(pending);};
+  },[api,active,pageVisible,mode,selected?.id,controller,refreshThread,refreshCalls]);
   useEffect(()=>{
     if(!api||!active||!pageVisible||mode!=='new')return;
     const pending=controller();setPeople([]);
