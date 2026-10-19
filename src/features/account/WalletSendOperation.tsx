@@ -25,7 +25,7 @@ export function WalletSendRecovery({identity,onRefresh=()=>{}}:{identity:OpenIde
  </details>;
 }
 
-export function WalletSendOperation({identity,input,inputKey,onRefresh,children}:{identity?:OpenIdentity;input():{recipient:string;amountUsdCents:string};inputKey:string;onRefresh():void;children:ReactNode}){
+export function WalletSendOperation({identity,input,inputKey,onRefresh,children}:{identity?:OpenIdentity;input():{recipient:string;amountUsdCents:string;note?:string};inputKey:string;onRefresh():void;children:ReactNode}){
  const [review,setReview]=useState<WalletSendReview|null>(null),[outcome,setOutcome]=useState<WalletSendOutcome|null>(null),[approved,setApproved]=useState(false),[busy,setBusy]=useState(false),[ready,setReady]=useState(false),[error,setError]=useState('');
  const [failure,setFailure]=useState<ReturnType<typeof bankOperationFailureDetails>|null>(null),api=useRef<WalletSend|null>(null),held=useRef<WalletSendReview|null>(null),running=useRef(false),generation=useRef(0);
  useEffect(()=>{const ticket=++generation.current;running.current=false;setReady(false);setBusy(false);setReview(null);setOutcome(null);setApproved(false);setError('');setFailure(null);
@@ -58,9 +58,11 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children}
   <div><span>Recipient</span><strong>{review.recipientLabel}</strong></div><div><span>You send</span><strong>{formatMoney(review.amountUsdCents)}</strong></div>
   <div><span>Φ at this quote</span><strong>{formatUnits(review.quote.amountPhiMicro)} Φ</strong></div>
   <div><span>From</span><strong>{BigInt(review.quote.settledUsdCents)>0n?(BigInt(review.quote.ecosystemUsdCents)>0n?'Composite balance':'Reserve'):'Settlement'}</strong></div>
+  {BigInt(review.quote.settledUsdCents)>0n&&BigInt(review.quote.ecosystemUsdCents)>0n&&<><div><span>Reserve</span><strong>{formatMoney(review.quote.settledUsdCents)}</strong></div><div><span>Settlement</span><strong>{formatMoney(review.quote.ecosystemUsdCents)}</strong></div></>}
+  {review.note&&<div><span>Public note</span><strong className="send-public-note">{review.note}</strong></div>}
   <div><span>Fee</span><strong>$0.00</strong></div></div>
   <p className="body-copy small-copy">Reserve is used first; Settlement covers the remainder. The dollar amount is fixed. Wallet computes the Φ amount and funding split from your current account when you send.</p>
-  <label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event=>setApproved(event.target.checked)}/><span>I approve sending {formatMoney(review.amountUsdCents)} to {review.recipientLabel} using this funding rule.</span></label>
+  <label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event=>setApproved(event.target.checked)}/><span>I approve sending {formatMoney(review.amountUsdCents)} to {review.recipientLabel} using this funding rule{review.note?', and publishing the note shown above':''}.</span></label>
   <button className="primary-button" disabled={busy||!approved} onClick={()=>void send()}>{busy?'Sending payment…':'Send payment'}<ArrowRight size={17}/></button>
   <button className="secondary-button" disabled={busy} onClick={()=>{api.current?.discard(review);held.current=null;setReview(null);setApproved(false);}}>Edit details</button>{diagnostics}</section>;
  return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset><div className="note-box"><ShieldCheck size={18}/><p>Review the recipient and amount before approving your payment.</p></div><details className="transaction-proof-details"><summary>Wallet access</summary><p className="small-copy">{BANK_WALLET_SEND_CONSENT}</p></details>

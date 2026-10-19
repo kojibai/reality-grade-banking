@@ -1,14 +1,14 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Wallet Send · synthetic SDK check</title></head><body><div id="fixture"></div><script type="module">
 import{syntheticWalletRecord}from'/tests/fixtures/wallet-send.ts';import React from'react';import{createRoot}from'react-dom/client';import{createReceizClient}from'@receiz/sdk';import{createWalletSend}from'/src/receiz/wallet-send.ts';import{LiveSend}from'/src/features/account/LivePayments.tsx';import{WalletSendRecovery}from'/src/features/account/WalletSendOperation.tsx';import'/src/styles/tokens.css';import'/src/styles/app.css';import'/src/styles/features.css';
-const sender='10000000-0000-4000-8000-000000000001',recipient='10000000-0000-4000-8000-000000000002',conversation='10000000-0000-4000-8000-000000000003',key='bank-synthetic-wallet-send-v1';
+const sender='10000000-0000-4000-8000-000000000001',recipient='10000000-0000-4000-8000-000000000002',conversation='10000000-0000-4000-8000-000000000003',key='bank-synthetic-wallet-send-public-note-v1';
 const read=()=>JSON.parse(localStorage.getItem(key)||'null');let record=JSON.parse(localStorage.getItem(key+'-record')||'null');
 const response=body=>new Response(JSON.stringify(body),{headers:{'Content-Type':'application/json'}});
 const client=createReceizClient({baseUrl:'https://synthetic-wallet.invalid',accessToken:'synthetic-no-account',fetchImpl:async(url,options)=>{
  const target=new URL(String(url));
  if(target.pathname==='/api/chat/users/search')return response({ok:true,users:[{kind:'user',userId:recipient,username:'receiver',displayName:'Receiver'}]});
  if(target.pathname==='/api/chat/conversations')return response({ok:true,conversation:{id:conversation}});
- if(target.pathname==='/api/connect/transfers'&&target.searchParams.has('amountUsd'))return response({ok:true,senderUserId:sender,quote:{amountUsdCents:'1000',amountPhiMicro:'10000000',usdPerPhiMicrocents:'100000000',settledUsdCents:'250',ecosystemUsdCents:'750',fundingRule:'settled_first_then_phi'}});
- if(target.pathname==='/api/connect/transfers'&&options?.method==='POST'){
+ if(target.pathname==='/api/connect/transfers'&&target.searchParams.has('amountUsd'))return response({ok:true,senderUserId:sender,capabilities:{publicTransferNotes:true},quote:{amountUsdCents:'1000',amountPhiMicro:'10000000',usdPerPhiMicrocents:'100000000',settledUsdCents:'250',ecosystemUsdCents:'750',fundingRule:'settled_first_then_phi'}});
+ if(['/api/connect/transfers','/api/connect/transfers/public-note'].includes(target.pathname)&&options?.method==='POST'){
   const body=JSON.parse(String(options.body));if(JSON.stringify(read()?.current.body)!==JSON.stringify(body))throw Error('request was not retained before dispatch');
   record=syntheticWalletRecord(body,sender);localStorage.setItem(key+'-record',JSON.stringify(record));localStorage.setItem(key+'-dispatches',String(Number(localStorage.getItem(key+'-dispatches')||0)+1));throw Error('synthetic response loss after commit');
  }

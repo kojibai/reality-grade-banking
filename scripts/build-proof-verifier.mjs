@@ -1,0 +1,27 @@
+import {build} from 'esbuild';
+import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {resolve,relative} from 'node:path';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+export async function buildProofVerifier(directory='public/proof-verifier/v129'){
+ const root=resolve('.'),out=resolve(directory);await mkdir(out,{recursive:true});
+ const result=await build({entryPoints:['institution/proof-verifier/verifier.entry.ts'],bundle:true,format:'iife',globalName:'ReceizOfflineVerifier',platform:'browser',target:'es2022',minify:true,write:false,metafile:true,sourcemap:'external',sourcesContent:true,external:['node:*'],outfile:resolve(out,'verifier.js'),legalComments:'inline',footer:{js:'globalThis.ReceizOfflineVerifier = ReceizOfflineVerifier;'}});
+ const files={};for(const file of result.outputFiles){const name=file.path.endsWith('.map')?'verifier.js.map':'verifier.js';let bytes=file.contents;if(name.endsWith('.map')){const map=JSON.parse(new TextDecoder().decode(bytes));map.sources=map.sources.map(path=>relative(root,resolve(out,path)));bytes=Buffer.from(JSON.stringify(map));}files[name]=bytes;}
+ for(const name of ['verify.mjs','verify.html','README.txt'])files[name]=await readFile(`institution/proof-verifier/${name}`);
+ // One local HTML file carries the exact runtime inline: opening it requires
+ // neither a module server nor browser access to adjacent file URLs.
+ files['verify.html']=Buffer.from(new TextDecoder().decode(files['verify.html']).replace('<script src="verifier.js"></script>',()=>'<script>'+new TextDecoder().decode(files['verifier.js']).replaceAll('</script','<\\/script')+'</script>'));
+ files['LICENSE.txt']=await readFile('LICENSE');files['NOTICE.txt']=await readFile('NOTICE');files['THIRD_PARTY_NOTICES.md']=await readFile('THIRD_PARTY_NOTICES.md');
+ // Notice text accompanies the bundled dependency code and embedded sources.
+ for(const [name,path]of [['snarkjs-GPL-3.0.txt','public/native/licenses/snarkjs-0.7.6-GPL-3.0.txt'],['ffjavascript-GPL-3.0.txt','public/native/licenses/ffjavascript-0.3.1-GPL-3.0.txt'],['wasmcurves-GPL-3.0.txt','public/native/licenses/wasmcurves-0.2.2-GPL-3.0.txt'],['wasmbuilder-GPL-3.0.txt','public/native/licenses/wasmbuilder-0.0.16-GPL-3.0.txt'],['fflate-MIT.txt','public/native/licenses/fflate-0.8.3-MIT.txt'],['noble-hashes-MIT.txt','public/native/licenses/noble-hashes-2.3.0-MIT.txt'],['hash-wasm-MIT.txt','public/native/licenses/hash-wasm-4.12.0-MIT.txt']])files[name]=await readFile(path);
+ await writeFile(resolve(out,'verifier.js'),files['verifier.js']);
+ await import(pathToFileURL(resolve(out,'verifier.js')).href+'?build='+hash(files['verifier.js']));
+ files['verification-material.json']=Buffer.from(JSON.stringify(globalThis.ReceizOfflineVerifier.materials,null,2));
+ const inputs=await Promise.all(Object.keys(result.metafile.inputs).sort().map(async path=>({path,sha256:hash(await readFile(path))})));
+ files['build.json']=Buffer.from(JSON.stringify({schema:'bankeiz.offline-proof-verifier-build.v1',sdk:'129.0.0',rebuild:'npm ci && node scripts/build-proof-verifier.mjs',inputs,files:Object.fromEntries(Object.entries(files).map(([name,bytes])=>[name,{sha256:hash(bytes),bytes:bytes.length}]))},null,2));
+ for(const [name,bytes]of Object.entries(files))await writeFile(resolve(out,name),bytes);
+ console.log(`Built self-contained read-only proof verifier: ${files['verifier.js'].length} bytes, complete corresponding source map and offline entry points.`);
+ return Object.keys(files);
+}
+if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))await buildProofVerifier(process.argv[2]);

@@ -17,3 +17,9 @@ it('opens existing legacy QR and NFC links while issuing new links at Bankeiz', 
   expect(parsePaymentRequest('https://bankeiz.com/?to=public-receiz-coordinate&amount=12.30')).toEqual({ recipient: 'public-receiz-coordinate', amount: '12.30' });
   expect(() => parsePaymentRequest('https://bankeiz.com.evil.example/?to=somebody')).toThrow();
 });
+it('accepts the public Receiz ID or username carried by a Receive QR',()=>{
+ expect(parsePaymentRequest('klok.receiz.id')).toEqual({recipient:'klok.receiz.id'});
+ expect(parsePaymentRequest('@Klok')).toEqual({recipient:'klok'});
+ expect(()=>parsePaymentRequest('javascript:alert(1)')).toThrow();
+ expect(()=>parsePaymentRequest('evil.example')).toThrow();
+});

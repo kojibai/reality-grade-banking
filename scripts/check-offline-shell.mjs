@@ -9,7 +9,7 @@ const shell = JSON.parse(sw.match(/const SHELL = (\[[\s\S]*?\]);/)[1]);
 assert.deepEqual(shell, manifest.resources.map(entry => entry.url));
 assert.equal(new Set(shell).size, shell.length);
 assert.ok(!/skipWaiting\s*\(|clients\.claim\s*\(|indexedDB|localStorage/.test(sw), 'Updates must preserve existing client lifetime and private storage.');
-assert.ok(!shell.some(url => url.startsWith('/api/') || /source\/|\.map$/.test(url)), 'Never precache private APIs, source downloads or source maps.');
+assert.ok(!shell.some(url => url.startsWith('/api/') || /source\//.test(url) || /\.map$/.test(url)&&url!=='/proof-verifier/v129/verifier.js.map'), 'Never precache private APIs or general source downloads; only the bounded public offline proof verifier has a source map.');
 for (const url of ['/index.html', '/native/offline-notes.v129.mjs', '/native/receiver-verifier.v129.mjs', '/notes/banknote-engraving.webp', '/notes/denomination-engraving.png', '/notes/fonts/Cinzel.ttf', '/zk/document-seal.wasm', '/zk/document-seal.zkey', '/zk/kai-sigil.wasm', '/zk/kai-sigil.zkey', '/learn/', '/learn/receiz-id/', '/legal/']) assert.ok(shell.includes(url), `Required offline resource missing: ${url}`);
 assert.ok(shell.some(url => url.includes('qr-decoder')), 'The lazy camera decoder must also be available offline.');
 assert.ok(shell.includes('/snarkjs.min.js'),'The canonical proof browser verifier must be available at its SDK default URL offline.');
@@ -30,3 +30,5 @@ for (const path of Object.keys(navigation.pages)) assert.equal(manifest.pages[pa
 console.log(`Verified complete offline build ${manifest.version}: ${shell.length} exact public resources, final public routes, lazy decoder and safe waiting updates.`);
 
 assert.equal(manifest.pages['/receipt/'], '/receipt/', 'Receipt links must reopen offline using their retained read-only entry.');
+
+for(const name of Object.keys(JSON.parse(await readFile('dist/proof-verifier/v129/build.json','utf8')).files)) assert.ok(shell.includes('/proof-verifier/v129/'+name),'Offline proof kit incomplete: '+name);

@@ -19,7 +19,11 @@ it('versions complete final pages and fixed-path native resources and includes l
     await writeFile(join(dir, 'index.html'), `<link rel="apple-touch-startup-image" href="/launch/iphone-402-874-3-portrait.png" media="screen"><script id="receiz-navigation" type="application/json">${JSON.stringify({ pages })}</script>`);
     for (const name of ['learn', 'legal']) { await mkdir(join(dir, name)); await writeFile(join(dir, name, 'index.html'), name); }
     const native = '/native/test-runtime.mjs'; await mkdir(join(dir, 'native')); await writeFile(join(dir, native), 'native A');
+    await mkdir(join(dir,'proof-verifier/v129'),{recursive:true});
+    await writeFile(join(dir,'proof-verifier/v129/verifier.js'),'read-only canonical verifier');
+    await writeFile(join(dir,'proof-verifier/v129/verifier.js.map'),'public complete source');
     const first = await buildOfflineShell(dir, { fixed: [native] });
+    expect(first.resources.some((v: { url: string }) => v.url === '/proof-verifier/v129/verifier.js.map')).toBe(true);
     expect(first.resources.some((v: { url: string }) => v.url === '/assets/qr-decoder.js')).toBe(true);
     expect(first.resources.some((v: { url: string }) => v.url === '/launch/iphone-402-874-3-portrait.png')).toBe(true);
     expect(first.resources.some((v: { url: string }) => v.url.includes('conformance'))).toBe(false);

@@ -22,12 +22,18 @@ function identity(raw:unknown):LedgerFields {
 /** Selected public evidence only. Never retain arbitrary metadata or custody payloads. */
 export function readLedgerDetails(raw:unknown):LedgerFields {
  const source=object(raw),result=select(source,['sourceObservedAt','seq','actionScope','chakraDay','objectId','objectLabel','assetId','marketItemId','collectibleId','receizId','claimHash','noteId','sortKaiPulse','sortOrdinal','transactionLinkKind']);
+ if(typeof source.publicNote==='string'&&source.publicNote.length<=280&&source.publicNote.trim())result.publicNote=source.publicNote;
  for(const key of ['actorUserId','subjectUserId'])if(typeof source[key]==='string'&&/^[1-9A-HJ-NP-Za-km-z]{26,36}$/.test(source[key]))result[key]=source[key];
  for(const key of ['actorKaiSignature','subjectKaiSignature','actorCreatedAt','subjectCreatedAt','actorPulse','subjectPulse','actorChakraDay','subjectChakraDay']){const value=primitive(source[key]);if(value!==undefined)result[key]=value;}
  for(const key of ['actor','subject','sender','recipient','fromActor','toActor','owner','previousOwner','newOwner','creator']){
   const value=identity(source[key]);if(Object.keys(value).length)result[key]=value;
  }
- const bundle=object(source.proofBundle),proof=select(bundle,['capsuleHash','bundleHash','claimHash','artifactDigest','verificationVersion','verifiedAtPulse']);
+ const bundle=object(source.proofBundle),proof=select(bundle,['capsuleHash','bundleHash','claimHash','artifactDigest','verificationVersion','verifiedAtPulse','verifier','zkPoseidonHash','groth16ProofDigest']);
+ // These are public proof fields, never arbitrary metadata or custody data.
+ if(typeof bundle.groth16Proof==='string'&&bundle.groth16Proof.length<=65536&&bundle.groth16Proof.startsWith('g16:'))proof.groth16Proof=bundle.groth16Proof;
+ const verifierUrl=typeof bundle.verifierUrl==='string'?bundle.verifierUrl:null;
+ if(verifierUrl&&verifierUrl.length<=8192){try{const url=new URL(verifierUrl);if(url.origin==='https://receiz.com'&&!url.username&&!url.password&&!url.hash&&/^\/[tv]\//.test(url.pathname)&&[...url.searchParams.keys()].every(key=>['a','ms','c','p','tz','r'].includes(key)))proof.verifierUrl=verifierUrl;}catch{/* Unsupported locator. */}}
+ const hints=select(bundle.proofHints,['source','eventId','eventKind','createdAt']);if(Object.keys(hints).length)proof.proofHints=hints;
  const capsule=select(bundle.proofCapsule,['v','upulse','pulse','chakraDay','kaiKlok','kaiSignature','phiKey','verifierSlug']);
  if(Object.keys(capsule).length)proof.proofCapsule=capsule;
  if(Object.keys(proof).length)result.proofBundle=proof;

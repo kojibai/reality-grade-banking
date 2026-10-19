@@ -12,11 +12,11 @@ afterEach(() => vi.unstubAllGlobals());
 it('generates the bank QR and writes only the public request URL to NFC on explicit user action', async () => {
   const write = vi.fn().mockResolvedValue(undefined); vi.stubGlobal('isSecureContext', true); Object.assign(window, { NDEFReader: class { write = write; } });
   const host = document.createElement('div'), root = createRoot(host);
-  try { act(() => root.render(<LiveReceive identity={{ binding: { identityOwnerReceizId: 'receiz_device_fixture', artifactOwnerReceizId: 'test-public-coordinate' },walletReceivingAddress:()=> '10000000-0000-4000-8000-000000000002' } as OpenIdentity} />));
+  try { act(() => root.render(<LiveReceive identity={{ username:'fixture_user', binding: { identityOwnerReceizId: 'receiz_device_fixture', artifactOwnerReceizId: 'test-public-coordinate' },walletReceivingAddress:()=> '10000000-0000-4000-8000-000000000002' } as OpenIdentity} />));
     expect(host.querySelector('svg[aria-label="Your payment QR"]')).not.toBeNull(); expect(write).not.toHaveBeenCalled();
-    expect(host.querySelector('.payment-link')!.textContent).toBe('https://bankeiz.com/?to=10000000-0000-4000-8000-000000000002');
+    expect(host.querySelector('.payment-link')!.textContent).toBe('fixture_user.receiz.id');
     await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Set up NFC tag'))!.click());
-    expect(write.mock.calls[0][0]).toEqual({ records: [{ recordType: 'url', data: 'https://bankeiz.com/?to=10000000-0000-4000-8000-000000000002' }] });
+    expect(write.mock.calls[0][0]).toEqual({ records: [{ recordType: 'url', data: 'https://bankeiz.com/?to=fixture_user.receiz.id' }] });
     expect(host.textContent).toContain('Tag ready.');
   } finally { act(() => root.unmount()); delete (window as unknown as { NDEFReader?: unknown }).NDEFReader; }
 });
@@ -36,13 +36,20 @@ it('routes its generated Receive link through the request parser to the exact Wa
   const recipient='10000000-0000-4000-8000-000000000002',sender='10000000-0000-4000-8000-000000000001';
   const host=document.createElement('div'),root=createRoot(host),transfer=vi.fn();
   try{
-    await act(async()=>root.render(<LiveReceive identity={{walletReceivingAddress:()=>recipient,binding:{artifactOwnerReceizId:'unroutable-proof-owner'}} as OpenIdentity}/>));
+    await act(async()=>root.render(<LiveReceive identity={{username:'fixture_user',walletReceivingAddress:()=>recipient,binding:{artifactOwnerReceizId:'unroutable-proof-owner'}} as OpenIdentity}/>));
     const request=parsePaymentRequest(host.querySelector('.payment-link')!.textContent!);
     const api=createWalletSend({ownerReceizId:'synthetic',assertOpen(){},assertNoOtherPending:async()=>{},lock:async f=>f(),store:{read:async()=>null,write:async()=>{}},connect:async()=>({accountUid:sender,client:{connect:{transfer},request:async(path)=>{
-      expect(path).toBe('/api/connect/transfers?amountUsd=10.00');return{ok:true,senderUserId:sender,quote:{amountUsdCents:'1000',amountPhiMicro:'10000000',usdPerPhiMicrocents:'100000000',settledUsdCents:'250',ecosystemUsdCents:'750',fundingRule:'settled_first_then_phi'}};
+      if(path==='/api/chat/users/search?q=fixture_user')return{ok:true,users:[{kind:'user',username:'fixture_user',userId:recipient}]};expect(path).toBe('/api/connect/transfers?amountUsd=10.00');return{ok:true,senderUserId:sender,quote:{amountUsdCents:'1000',amountPhiMicro:'10000000',usdPerPhiMicrocents:'100000000',settledUsdCents:'250',ecosystemUsdCents:'750',fundingRule:'settled_first_then_phi'}};
     }}})});
     const review=await api.prepare({recipient:request.recipient,amountUsdCents:'1000'});
     expect(review.recipientUserId).toBe(recipient);expect(transfer).not.toHaveBeenCalled();
   }finally{act(()=>root.unmount());}
 });
 it('keeps available account balances out of the Send entry form',async()=>{const host=document.createElement('div'),root=createRoot(host);try{await act(async()=>root.render(<LiveSend wallet={{reserveUsdCents:'123456',settlementUsdCents:'789012'}as never} onClose={()=>{}}/>));expect(host.querySelector('input[aria-label="Amount to send"]')).not.toBeNull();expect(host.textContent).not.toContain('$1,234.56');expect(host.textContent).not.toContain('$7,890.12');expect(host.querySelector('.detail-list')).toBeNull();}finally{act(()=>root.unmount());}});
+it('uses the current public username for the Receive ID, QR and copied address instead of the Wallet UUID',async()=>{
+ const host=document.createElement('div'),root=createRoot(host),copy=vi.fn().mockResolvedValue(undefined);vi.stubGlobal('navigator',{clipboard:{writeText:copy}});
+ try{act(()=>root.render(<LiveReceive identity={{accountUsername:()=> 'Klok',username:'old_name',walletReceivingAddress:()=> '10000000-0000-4000-8000-000000000002'}as OpenIdentity}/>));
+ expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('klok.receiz.id');expect(host.querySelector('.payment-link')?.textContent).toBe('klok.receiz.id');expect(host.textContent).not.toContain('10000000-0000-4000-8000-000000000002');
+ await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Copy Receiz ID')!.click());expect(copy).toHaveBeenCalledWith('klok.receiz.id');
+ }finally{act(()=>root.unmount());}
+});

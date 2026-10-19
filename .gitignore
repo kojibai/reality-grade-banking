@@ -9,3 +9,4 @@ node_modules/
 .DS_Store
 .source-work/
 .playwright-cli/
+/public/proof-verifier/
