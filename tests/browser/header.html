@@ -1,0 +1,4 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bank header · isolated visual check</title></head><body><div id="fixture"></div><script type="module">
+import React from 'react';import{createRoot}from'react-dom/client';import{ConsoleShell}from'/src/components/ConsoleShell.tsx';import'/src/styles/tokens.css';import'/src/styles/app.css';import'/src/styles/features.css';
+const noop=()=>{};createRoot(document.querySelector('#fixture')).render(React.createElement(ConsoleShell,{panel:'ledger',onNavigate:noop,onProfile:noop,onDeposit:noop},React.createElement('h1',{className:'page-title'},'Ledger'),React.createElement('p',{className:'page-subtitle'},'Every movement keeps its story.'),React.createElement('p',{className:'body-copy small-copy'},'Header preview · no account or money connected.')));
+</script></body></html>
