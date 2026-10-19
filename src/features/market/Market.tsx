@@ -15,7 +15,7 @@ export function Market(props: MarketProps) { return props.source ? <MarketView {
 function ConnectedMarket(props: MarketProps) { const source = usePublicMarket(props.active); return <MarketView {...props} source={source} />; }
 function MarketView({ mode='market',active = true, onAction, source }: MarketProps & { source: ReturnType<typeof usePublicMarket> }) {
   const explorer=mode==='explorer',prefix=explorer?'#object/':'#market/public/';
-  const bank = useContext(BankContext); const open = onAction ?? bank?.open ?? (() => {}); const { catalog, historyCatalog, status, quoteStatus, sportsStatus, error, refresh } = source;
+  const bank = useContext(BankContext); const open = onAction ?? bank?.open ?? (() => {}); const { catalog, historyCatalog, status, quoteStatus, error, refresh } = source;
   const [query, setQuery] = useState(''), [filter, setFilter] = useState('All'), [shown, setShown] = useState(50), [selectedId, setSelectedId] = useState(()=>selectedObject(prefix));
   const labels = explorer?['All','Proofs','Cards']:['All', 'Proofs', 'Cards', 'Currencies', 'Physical', 'Stocks'];
   const assets = useMemo(() => (catalog?.items ?? []).filter(asset => (!query || `${asset.title} ${asset.summary} ${asset.assetId}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())) && (filter === 'All' || filter === 'Proofs' && asset.category === 'proof' || filter === 'Cards' && asset.category === 'sports')), [catalog, query, filter]);
@@ -31,7 +31,6 @@ function MarketView({ mode='market',active = true, onAction, source }: MarketPro
   }, [active, assets.length, shown]);
   const localPricing=catalog?.items.some(item=>item.localValuationPulse!==undefined);
   const sourceLabel = !catalog ? status === 'loading' ? 'Connecting to the public Market…' : 'Public Market unavailable' : localPricing ? `Live valuation${status!=='live'?' · retained collection':''}` : status !== 'live' ? 'Public Market · cached collection' : quoteStatus === 'loading' ? 'Public Market · updating quotes' : quoteStatus === 'stale' ? 'Public Market · cached quotes' : 'Live public Market';
-  const coverageLabel=!catalog?'':sportsStatus==='missing'||catalog.sportsCoverage==='missing'?' · source coverage unavailable':catalog.sportsCoverage==='partial'||!catalog.complete?' · partial source coverage':sportsStatus==='retained'?' · retained source coverage':'';
   useEffect(() => { const back = () => setSelectedId(selectedObject(prefix)); addEventListener('popstate', back); return () => removeEventListener('popstate', back); }, [prefix]);
   useEffect(() => { setShown(50); }, [query, filter]);
   const view = (item: PublicMarketItem) => { history.pushState({ ...history.state, panel: 'market', publicObjectId: item.id }, '', `${prefix}${encodeURIComponent(item.id)}`); setSelectedId(item.id); };
@@ -39,7 +38,7 @@ function MarketView({ mode='market',active = true, onAction, source }: MarketPro
   return <section><h1>{explorer?'Explore proof objects':'Market'}</h1><p className="page-subtitle">{explorer?'Sealed moments. Public value. Connected history.':'Put your value to work.'}</p>
     <label className="search-field"><Search size={19} /><input placeholder={explorer?'Search proof objects':'Search assets or currencies'} value={query} onChange={event => setQuery(event.target.value)} aria-label={explorer?'Search proof objects':'Search assets or currencies'} /></label>
     <div className="filters">{labels.map(label => <button key={label} className={filter === label ? 'active' : ''} aria-pressed={filter === label} onClick={() => setFilter(label)}>{label}</button>)}</div>
-    <div className="market-source-status"><span role="status">{sourceLabel}{coverageLabel}</span><button className="icon-button" onClick={() => void refresh()} aria-label="Refresh public Market"><RefreshCw size={15} /></button></div>
+    <div className="market-source-status"><span role="status">{sourceLabel}</span><button className="icon-button" onClick={() => void refresh()} aria-label="Refresh public Market"><RefreshCw size={15} /></button></div>
     {error && <p className="body-copy small-copy market-error" role="status">{localPricing?'Collection refresh is unavailable. Retained pricing inputs continue at the live Kai pulse.':error}{catalog&&!localPricing ? ' Your last public collection remains available.' : ''}</p>}
     <div className="market-layout"><div><MarketOverview catalog={catalog} historyCatalog={historyCatalog} active={active} onExplore={() => document.getElementById('market-explore')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
     {!explorer&&<div className="market-actions"><button className="primary-button navy-button" onClick={() => open({ kind: 'currency' })}><Plus size={19} />Create an asset</button><button className="secondary-button" onClick={() => open({ kind: 'exchange' })}><ArrowLeftRight size={19} />Exchange</button></div>}</div>

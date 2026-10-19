@@ -135,9 +135,9 @@ it('removes objects on full refresh and does not synthesize a chart from a singl
   expect(host.querySelectorAll('.market-rows .asset-row')).toHaveLength(1);
 });
 
-it('discloses partial source coverage independently of fresh public quotes without separate card-market wording', () => {
+it.each(['market','explorer'] as const)('keeps %s healthy when carried valuation records have mixed pricing coverage', mode => {
   source.value = { catalog: { ...catalog(1), sportsCoverage: 'partial' }, sportsStatus: 'fresh', quoteStatus: 'fresh', status: 'live', error: null, refresh: vi.fn() };
-  const {host}=mount();expect(host.textContent).toContain('partial source coverage');expect(host.textContent).not.toContain('card inventory');
+  const {host}=mount(mode);expect(host.querySelector('.market-source-status')?.textContent).toBe('Live public Market');expect(host.querySelector('.market-error')).toBeNull();expect(host.textContent).not.toContain('partial source coverage');expect(host.textContent).not.toContain('card inventory');expect(host.querySelectorAll('.market-rows .asset-row')).toHaveLength(1);
 });
 it('keeps the period caption steady through pulse jobs and gives history the stable source operands',()=>{
  const basis=catalog(1),priced={...basis,items:basis.items.map(item=>({...item,priceUsd:99,localValuationPulse:14720000}))};
