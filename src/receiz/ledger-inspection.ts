@@ -37,6 +37,7 @@ export function readLedgerDetails(raw:unknown):LedgerFields {
  if(Array.isArray(points)&&points.length<=512&&points.every(point=>typeof point==='number'&&Number.isFinite(point)))chart.chart=points;
  if(Object.keys(chart).length)result.marketAssetChart=chart;
  const original=safeReceizPublicUrl(source.originalUrl,'original');if(original)result.originalUrl=original;
+ const reading=safeReceizPublicUrl(source.readingUrl,'proof');if(reading){result.readingUrl=reading;if(typeof source.hasLongForm==='boolean')result.hasLongForm=source.hasLongForm;}
  return result;
 }
 export function readLedgerValuationTrace(raw:unknown):LedgerFields|null {

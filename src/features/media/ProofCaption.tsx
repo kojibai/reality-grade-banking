@@ -1,5 +1,6 @@
 import {ArrowUpRight} from 'lucide-react';
 import {splitProofCaption} from './proof-caption';
+import './proof-caption.css';
 
 export function ProofCaption({caption}:{caption:string}){
  const {text,links}=splitProofCaption(caption);

@@ -44,6 +44,13 @@ it('keeps proof ownership, original download and digest inspectable without inve
  expect(row.details).toMatchObject({owner:{username:'artist',displayName:'Artist'},assetId:'one',originalUrl:'https://receiz.com/api/profile/originals/download?receizId=one&kind=original'});
  expect(row.evidence.artifactDigest).toBe('c'.repeat(64));
 });
+it('retains the exact public reading coordinate through ledger cache and receipt transport',()=>{
+ const post='https://receiz.com/v/20261012_1401/0C19C291/14611069?a=cd412215&ms=1791828092396';
+ const row=parsePublicNetworkPage('proofs',{ok:true,transport:{publicOriginals:[{id:'essay',receizId:'essay',title:'Sealed essay',verifyHref:post,profileOriginal:{hasLongForm:true,readingTzMinutesEast:-240,media:{originalDownloadSrc:'/api/profile/originals/download?receizId=essay&kind=original',originalDownloadSha256Hex:'c'.repeat(64)}}}]}}).records[0];
+ const cached=parsePublicNetworkCache({schema:'receiz.bank.public-ledger-cache.v1',authority:'public-source-projection',records:[row],coverage:[]}).records[0];
+ const receipt=readReceiptLink(receiptLink(cached)!);
+ expect(receipt.details).toMatchObject({readingUrl:post+'&tz=-240',hasLongForm:true});
+});
 
 it('preserves the full supported public description through offline cache and receipt sharing',()=>{
  const summary='A'.repeat(8192);

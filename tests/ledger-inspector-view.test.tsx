@@ -24,3 +24,12 @@ it('keeps missing economic data explicit for actions rather than showing zero or
  expect(host.textContent).toContain('No amount carried');expect(host.textContent).not.toContain('$0.00');expect(host.textContent).not.toContain('Independently verified');
  expect(host.querySelector('a[aria-label="Open full receipt"]')).not.toBeNull();
 });
+it('offers the same lazy media and long-form reader and caption link pills in public ledger details',()=>{
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ const record=parsePublicNetworkPage('proofs',{ok:true,transport:{publicOriginals:[{id:'essay',receizId:'essay',title:'Sealed essay',summary:'Read the report https://example.com/report',verifyHref:'https://receiz.com/v/20261012_1401/0C19C291/14611069?a=cd412215&ms=1791828092396',profileOriginal:{hasLongForm:true,media:{originalDownloadSrc:'/api/profile/originals/download?receizId=essay&kind=original',originalDownloadSha256Hex:'c'.repeat(64)}}}]}}).records[0];
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);act(()=>root!.render(<LedgerInspector record={record} value={ledgerValueForRecord(record)}/>));
+ expect(host.querySelector('button[aria-label="Read full text"]')).not.toBeNull();
+ expect(host.querySelector('.proof-object-cover')?.textContent).toContain('Experience the original');
+ expect(host.querySelector('.proof-caption-links a')?.getAttribute('href')).toBe('https://example.com/report');
+ expect(host.querySelector('.asset-caption p')?.textContent).not.toContain('https://');expect(fetch).not.toHaveBeenCalled();
+});

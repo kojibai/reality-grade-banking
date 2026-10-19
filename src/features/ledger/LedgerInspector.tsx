@@ -9,6 +9,7 @@ import {formatMoney} from '../../core/money';
 import {LedgerValue} from './LedgerValue';
 import {ledgerRelatedRecords,ledgerValuationContext,type indexLedgerRelations} from '../../receiz/ledger-economy';
 import {ProofMedia} from '../media/ProofMedia';
+import {ProofCaption} from '../media/ProofCaption';
 import {safeReceizPublicUrl} from '../../receiz/public-market';
 import './ledger-inspector.css';
 
@@ -26,16 +27,16 @@ export function LedgerInspector({record,value,currentValue,valuation,relations,v
  const [notice,setNotice]=useState(''),[copied,setCopied]=useState(false),[connectionsOpen,setConnectionsOpen]=useState(false),[shownRelated,setShownRelated]=useState(20);
  const document={...ledgerInspectionDocument(record,value),valuation:valuation??null},link=receiptLink(record,value,valuation);
  const related=relations?ledgerRelatedRecords(record,relations):[];
- const details=document.details,original=typeof details.originalUrl==='string'?details.originalUrl:null;
+ const details=document.details,original=typeof details.originalUrl==='string'?details.originalUrl:null,reading=typeof details.readingUrl==='string'?details.readingUrl:null;
  const participants=Object.fromEntries(Object.entries(details).filter(([key])=>['actor','subject','sender','recipient','fromActor','toActor','owner','previousOwner','newOwner','creator','actorUserId','subjectUserId'].includes(key)));
  const context=Object.fromEntries(Object.entries(details).filter(([key])=>!Object.hasOwn(participants,key)&&key!=='originalUrl'));
  const copy=async()=>{try{await navigator.clipboard.writeText(JSON.stringify(document,null,2));setCopied(true);setNotice('Record details copied.');}catch{setNotice('Use Download details to keep this record.');}};
  const download=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(document,null,2)],{type:'application/json'})),a=globalThis.document.createElement('a');a.href=url;a.download=`bankeiz-record-${record.sourceId.replace(/[^a-zA-Z0-9_-]/g,'-').slice(0,80)}.json`;globalThis.document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);setNotice('Record details downloaded.');};
  return <section className="ledger-inspector" aria-label={`Record details: ${record.title}`}>
   <div className="ledger-inspector-heading"><div><span>{record.source==='proofs'?'Proof object':'Activity record'}</span><h3>{record.title}</h3></div><FileText size={18} strokeWidth={1.3}/></div>
-  {record.detail&&record.detail!==record.title&&<p className="ledger-inspector-description">{record.detail}</p>}
+  {record.detail&&record.detail!==record.title&&(record.source==='proofs'?<ProofCaption caption={record.detail}/>:<p className="ledger-inspector-description">{record.detail}</p>)}
   <div className="ledger-inspector-values"><div><span>{value.basis==='unavailable'?'No amount carried':ledgerValueLabel(value)}</span><LedgerValue value={value}/>{value.amountUsdCents!==null&&value.pulse&&<small>Value at ☤KAI {value.pulse}</small>}</div>{value.considerationUsdCents!==null&&<div><span>Consideration</span><strong>{formatMoney(value.considerationUsdCents)}</strong><small>Recorded payment, separate from asset value.</small></div>}{currentValue&&currentValue.amountUsdCents!==null&&<div><span>{currentValue.basis==='intrinsic-model'?'Present value':'Latest source quote'}</span><LedgerValue value={currentValue}/><small>Separate from the value at this event.</small></div>}</div>
-  {original&&record.evidence.artifactDigest&&safeReceizPublicUrl(original,"original")&&<ProofMedia key={record.evidence.artifactDigest} title={record.title} source={{kind:"public",url:original,digest:record.evidence.artifactDigest}}/>}
+  {original&&record.evidence.artifactDigest&&safeReceizPublicUrl(original,"original")&&<ProofMedia key={[record.evidence.artifactDigest,original,reading??''].join(':')} title={record.title} source={{kind:"public",url:original,digest:record.evidence.artifactDigest,...(reading?{postUrl:reading,hasLongForm:details.hasLongForm===true}:{})}}/>}
   {value.gap&&<p className="ledger-inspector-note">{value.gap}</p>}
   <div className="ledger-inspector-grid"><section><h4>The record</h4><LedgerFieldsView fields={{reference:record.sourceId,activity:record.kind,source:record.source,...(record.time?{recordedAt:record.time}:{}),...(record.pulse?{pulse:record.pulse}:{}),...(record.kaiUpulse?{kaiUpulse:record.kaiUpulse}:{}),...(record.actor?{publicIdentity:record.actor}:{}),...(record.sender?{from:record.sender}:{}),...(record.recipient?{to:record.recipient}:{})}}/></section>
   {Object.keys(participants).length>0&&<section><h4>People &amp; ownership</h4><LedgerFieldsView fields={participants}/></section>}
