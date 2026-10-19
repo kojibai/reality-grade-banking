@@ -17,12 +17,12 @@ function restore(): MarketHistorySnapshot {
 }
 type WorkerInput={source:{ok:true;marketCapProjection:MarketCapSource};history:MarketHistorySnapshot;catalog:PublicMarketCatalog|null;pulse:number};
 export function useMarketCapitalization(period: ChartPeriod, active: boolean,catalog:PublicMarketCatalog|null=null) {
-  const [history,setHistory]=useState<MarketHistorySnapshot>(restore),[fullSource,setFullSource]=useState<MarketCapSource|null>(retainedMarketDisplaySource),[pulse,setPulse]=useState(now),[status,setStatus]=useState<'cached'|'live'|'unavailable'>('cached'),[historyUpdating,setHistoryUpdating]=useState(false);
+  const [history,setHistory]=useState<MarketHistorySnapshot>(restore),[fullSource,setFullSource]=useState<MarketCapSource|null>(retainedMarketDisplaySource),[pulse,setPulse]=useState(now),[status,setStatus]=useState<'cached'|'live'|'unavailable'>('cached');
   const heldHistory=useRef(history),worker=useRef<Worker|null>(null),request=useRef(0),acceptedSource=useRef<MarketCapSource|null>(null),busy=useRef(false),queued=useRef<WorkerInput|null>(null),latestInput=useRef<WorkerInput|null>(null),restartWorker=useRef<(()=>void)|null>(null);
   heldHistory.current=history;
   const dispatch=useCallback(()=>{
     if(busy.current||!worker.current||!queued.current)return;
-    const input=queued.current;queued.current=null;busy.current=true;setHistoryUpdating(true);
+    const input=queued.current;queued.current=null;busy.current=true;
     worker.current.postMessage({...input,history:heldHistory.current,id:++request.current});
   },[]);
   useEffect(()=>{
@@ -54,7 +54,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     if (!active || typeof Worker === 'undefined') return;
     const start=()=>{
     worker.current?.terminate();worker.current=null;busy.current=false;++request.current;
-    let instance: Worker; try { instance = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); } catch { setHistoryUpdating(false);return; } worker.current = instance;
+    let instance: Worker; try { instance = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); } catch { return; } worker.current = instance;
     instance.onmessage = event => {
       if(event.data.id!==request.current)return;busy.current=false;
       if(event.data.history)try{
@@ -63,9 +63,9 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
         heldHistory.current=next;setHistory(next);
         try{localStorage.setItem(KEY,JSON.stringify(packMarketHistory(next)));}catch{/* Optional public retention. */}
       }catch{/* Preserve the last complete chart. */}
-      if(queued.current)dispatch();else setHistoryUpdating(false);
+      if(queued.current)dispatch();
     };
-    instance.onerror=instance.onmessageerror=()=>{if(worker.current!==instance)return;instance.terminate();worker.current=null;busy.current=false;setHistoryUpdating(false);};
+    instance.onerror=instance.onmessageerror=()=>{if(worker.current!==instance)return;instance.terminate();worker.current=null;busy.current=false;};
     if(latestInput.current){queued.current={...latestInput.current,pulse:Math.max(latestInput.current.pulse,now())};dispatch();}
     };
     restartWorker.current=start;start();
@@ -79,7 +79,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     return () => { restartWorker.current=null;worker.current?.terminate(); worker.current = null;busy.current=false;queued.current=null;++request.current;document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pageshow',pageshow);window.removeEventListener('focus',focus); };
   }, [dispatch,active]);
   useEffect(() => {
-    if (!fullSource || !active) {latestInput.current=null;queued.current=null;busy.current=false;setHistoryUpdating(false);worker.current?.postMessage({id:++request.current,cancel:true});return;}
+    if (!fullSource || !active) {latestInput.current=null;queued.current=null;busy.current=false;worker.current?.postMessage({id:++request.current,cancel:true});return;}
     // Finish the current complete publication, then process the latest request.
     // A pulse tick cannot starve a larger new-inventory rebuild by cancelling it.
     latestInput.current={source:{ok:true,marketCapProjection:fullSource},history:heldHistory.current,catalog,pulse:Math.max(pulse,fullSource.serverPulse)};queued.current=latestInput.current;
@@ -87,5 +87,5 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     if(!worker.current)restartWorker.current?.();else dispatch();
   }, [fullSource, active,catalog,pulse,dispatch]);
   // Period selection is always a synchronous lookup, with no network or job.
-  return { source:history.summary, points: history.series[period], status, historyUpdating };
+  return { source:history.summary, points: history.series[period], status, get historyUpdating(){return busy.current;} };
 }

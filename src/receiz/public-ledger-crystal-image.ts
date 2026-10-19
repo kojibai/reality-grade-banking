@@ -2,6 +2,7 @@ import {paymentQr,paymentQrPath} from './payment-qr';
 import {heldPublicLedgerFile,inspectPublicLedgerFile,type PublicLedgerFileReview} from './public-ledger-proof';
 import {embedPublicLedgerPng,isPublicLedgerPng,PUBLIC_LEDGER_PNG_MAX_BYTES,PUBLIC_LEDGER_PNG_SOURCE_MAX_BYTES} from './public-ledger-png';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
+import {packLocalLedger,type LocalLedgerInput,type LocalLedgerArchive} from './public-ledger-archive';
 const escape=(v:string)=>v.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'})[c]!);
 export const publicLedgerProofUrl=(digest:string)=>{if(!/^[a-f0-9]{64}$/.test(digest))throw Error('PUBLIC_LEDGER_SOURCE_INVALID');return `https://bankeiz.com/ledger/?source=${digest}`;};
 /** Artwork is presentation only. The complete original source, not the visible
@@ -19,11 +20,11 @@ export function publicLedgerCrystalArtwork(review:PublicLedgerFileReview):string
  <rect x="1690" y="2270" width="500" height="500" rx="16" fill="#fff"/><svg x="1720" y="2300" width="440" height="440" viewBox="0 0 61 61" shape-rendering="crispEdges"><path d="${qr}" fill="#17334c"/></svg>
  <text x="1940" y="2805" text-anchor="middle" font-size="22">bankeiz.com/ledger/</text><text x="180" y="2895" font-size="23">Sealed image · complete signed Ledger original embedded · reopen to verify both</text><text x="180" y="2935" font-size="20">Public history disclosure. No spending authority or account balance claim.</text></g></svg>`;
 }
-async function renderPublicLedgerCrystal(review:PublicLedgerFileReview){
+async function renderArtwork(svg:string){
  const response=await fetch('/art/ledger-memory-crystal-v3.png',{credentials:'omit',redirect:'error',signal:AbortSignal.timeout(30_000)});
  if(!response.ok)throw Error('PUBLIC_LEDGER_IMAGE_UNAVAILABLE');
  const artwork=await readPublicLedgerBytes(response,4*1024*1024);
- const artUrl=URL.createObjectURL(new Blob([new Uint8Array(artwork)],{type:'image/png'})),url=URL.createObjectURL(new Blob([publicLedgerCrystalArtwork(review)],{type:'image/svg+xml'}));
+ const artUrl=URL.createObjectURL(new Blob([new Uint8Array(artwork)],{type:'image/png'})),url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
  try{
   const background=new Image(),image=new Image();background.src=artUrl;image.src=url;await Promise.all([background.decode(),image.decode()]);
   const canvas=document.createElement('canvas');canvas.width=2400;canvas.height=3000;
@@ -31,6 +32,19 @@ async function renderPublicLedgerCrystal(review:PublicLedgerFileReview){
   const png=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(Error('PUBLIC_LEDGER_IMAGE_UNAVAILABLE')),'image/png'));
   if(png.size>PUBLIC_LEDGER_PNG_MAX_BYTES)throw Error('PUBLIC_LEDGER_IMAGE_CAPACITY');return new Uint8Array(await png.arrayBuffer());
  }finally{URL.revokeObjectURL(url);URL.revokeObjectURL(artUrl);}
+}
+async function renderPublicLedgerCrystal(review:PublicLedgerFileReview){return renderArtwork(publicLedgerCrystalArtwork(review));}
+export function localLedgerCrystalArtwork(archive:LocalLedgerArchive){
+ const count=archive.records.length.toLocaleString('en-US'),coverage=archive.coverage.filter(item=>item.complete).length,digest=archive.dataSha256;
+ return `<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="3000" viewBox="0 0 2400 3000"><g font-family="Arial,Helvetica,sans-serif" fill="#17334c">
+ <text x="160" y="185" font-size="72" font-weight="700" letter-spacing="-3">Bankeiz</text><text x="2240" y="172" text-anchor="end" font-size="24" letter-spacing="4">PUBLIC LEDGER</text>
+ <rect x="120" y="2050" width="2160" height="795" rx="28" fill="#fffaf0" fill-opacity=".9" stroke="#b6a68a" stroke-opacity=".45"/>
+ <text x="180" y="2165" font-size="88" letter-spacing="-3">Memory Crystal</text><text x="182" y="2240" font-size="34">${count} public records · locally held history</text>
+ <path d="M182 2310H2218" stroke="#b6a68a" stroke-opacity=".5"/><text x="182" y="2390" font-size="24" letter-spacing="3">THE RECORD, PRESERVED</text>
+ <text x="182" y="2450" font-size="29">Every held record. Carried proof fields. Exact valuation operands.</text><text x="182" y="2500" font-size="27">${coverage} of 4 source collections marked complete at capture.</text>
+ <text x="182" y="2595" font-size="24" letter-spacing="2">EMBEDDED HISTORY SHA-256</text><text x="182" y="2650" font-size="26" font-family="monospace">${escape(digest.slice(0,32))}</text><text x="182" y="2690" font-size="26" font-family="monospace">${escape(digest.slice(32))}</text>
+ <text x="182" y="2770" font-size="25">Open this image in Bankeiz to verify its seal and inspect the history.</text>
+ <text x="180" y="2895" font-size="23">Complete local capture embedded · Signature V4 · Poseidon · Groth16</text><text x="180" y="2935" font-size="20">Public source observations. Original proof objects retain their own authority.</text></g></svg>`;
 }
 type SealInput=Readonly<{bytes:Uint8Array;filename:string;mimeType:string}>;
 type SealOutput=Readonly<{artifactBytes:Uint8Array;filename:string;mimeType?:string}>;
@@ -60,4 +74,16 @@ export async function createPublicLedgerCrystal(review:PublicLedgerFileReview,ru
  if(reopened.imageSeal?.status!=='verified'||reopened.artifactSha256!==review.artifactSha256||reopened.snapshot?.sourceHead!==snapshot.sourceHead||reopened.snapshot.records.length!==snapshot.records.length
   ||!reopenedSource||Object.entries(source).some(([key,value])=>reopenedSource[key as keyof typeof source]!==value))throw Error('PUBLIC_LEDGER_IMAGE_SOURCE_CHANGED');
  return {bytes:bytes.slice(),filename};
+}
+/** Save the data already held by the page. No Ledger read, refresh, publication
+ * or account operation is part of this path. */
+export async function createLocalLedgerCrystal(input:LocalLedgerInput,runtime:Readonly<{render?:(archive:LocalLedgerArchive)=>Promise<Uint8Array>;seal?:(input:SealInput)=>Promise<SealOutput>}>={}){
+ const {archive,carrier}=await packLocalLedger(input),png=await(runtime.render??(value=>renderArtwork(localLedgerCrystalArtwork(value))))(archive);
+ const carried=embedPublicLedgerPng(png,new TextEncoder().encode(JSON.stringify(carrier))),filename=`bankeiz-ledger-${archive.dataSha256.slice(0,16)}.png`;
+ const sealed=await(runtime.seal??sealPublicImage)({bytes:carried,filename,mimeType:'image/png'}),bytes=sealed.artifactBytes.slice();
+ if(!bytes.length||bytes.length>PUBLIC_LEDGER_PNG_MAX_BYTES)throw Error('PUBLIC_LEDGER_IMAGE_CAPACITY');
+ if(sealed.mimeType&&sealed.mimeType!=='image/png')throw Error('PUBLIC_LEDGER_IMAGE_UNVERIFIED');
+ const reopened=await inspectPublicLedgerFile({bytes,filename});
+ if(reopened.kind!=='archive'||reopened.imageSeal?.status!=='verified'||reopened.archive?.dataSha256!==archive.dataSha256||reopened.archive.records.length!==archive.records.length)throw Error('PUBLIC_LEDGER_IMAGE_SOURCE_CHANGED');
+ return {bytes,filename,recordCount:archive.records.length};
 }

@@ -1,3 +1,5 @@
 .market-rows .market-object-provenance{display:flex;flex-direction:column;gap:2px;margin-top:5px;white-space:normal;line-height:1.35}
 .market-rows .market-object-provenance>span{font-size:11px;overflow-wrap:anywhere}
 .market-cap-history-coverage{font-size:11px;color:var(--muted);margin:8px 0 12px;line-height:1.4}
+
+.market-cap-explanation>p+p{margin-top:12px}.market-cap-explanation strong{color:var(--navy,#172e44);font-weight:600}.market-cap-explanation details{margin-top:16px;border-top:1px solid #e3e9f0;padding-top:14px}.market-cap-explanation summary{color:var(--navy,#172e44);font-weight:550;cursor:pointer}.market-cap-explanation details p{margin-top:12px}.market-cap-explanation dl{margin-top:14px}.market-cap-explanation dl>div{display:flex;justify-content:space-between;gap:20px;padding:7px 0}.market-cap-explanation dt{color:#7b8da5}.market-cap-explanation dd{margin:0;text-align:right;color:#334e6a;font-variant-numeric:tabular-nums}

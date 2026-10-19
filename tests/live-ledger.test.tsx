@@ -8,10 +8,11 @@ import { createDemoState } from '../src/core/demo';
 import { parsePublicNetworkPage } from '../src/receiz/public-network';
 import { PublicLedgerApp } from '../src/public-ledger/PublicLedgerApp';
 import type { PersonalHistory } from '../src/receiz/personal-history';
-const network = vi.hoisted(() => ({ state: {} as Record<string, unknown> }));
+import type {PublicLedgerFileReview} from '../src/receiz/public-ledger-proof';
+const network = vi.hoisted(() => ({ state: {} as Record<string, unknown>, controls:{} as Record<string,unknown> }));
 vi.mock('../src/receiz/usePublicNetwork', () => ({ usePublicNetwork: () => network.state }));
 vi.mock('../src/features/ledger/useLedgerValueSource', () => ({ useLedgerValueSource: () => null }));
-vi.mock('../src/public-ledger/LedgerProofControls', () => ({ LedgerProofControls: () => null, LedgerCrystalSave: () => <button>Memory Crystal</button> }));
+vi.mock('../src/public-ledger/LedgerProofControls', () => ({ LedgerProofControls: (props:Record<string,unknown>) => {network.controls=props;return <button>Memory Crystal</button>;} }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const roots: ReturnType<typeof createRoot>[] = [];
 afterEach(() => { for (const root of roots.splice(0)) act(() => root.unmount()); document.body.replaceChildren(); vi.unstubAllGlobals(); });
@@ -21,7 +22,7 @@ function mount(personalHistory?: PersonalHistory) {
 }
 function feed(count = 100) { return { records: parsePublicNetworkPage('actions', { ok: true, actions: Array.from({ length: count }, (_, i) => ({ id: String(i), actionKind: 'record', summary: `Public source ${i}`, pulse: i + 1 })), nextCursor: null }).records, sources: {}, bootstrap: false, refresh: vi.fn(), loadMore: vi.fn(), capturedAt: null }; }
 it('opens the public activity feed without simulated bank receipts', () => {
-  network.state = feed(); const host = mount(); expect(host.textContent).toContain('Public source'); expect(host.textContent).not.toContain('Demo social ledger'); expect(host.textContent).not.toContain('Design archive');
+  network.state = feed(); const host = mount(); expect(host.textContent).toContain('Public source'); expect(host.textContent).not.toContain('Demo social ledger'); expect(host.textContent).not.toContain('Design archive');expect(host.textContent).not.toContain('Memory Crystal');
 });
 it('offers the same compact proof receipt controls on public and personal ledger rows', () => {
  const record=parsePublicNetworkPage('proofs',{ok:true,transport:{publicOriginals:[{id:'profile:artist:proof',receizId:'proof',title:'Sealed proof',valueUsd:42.25}]}}).records[0];
@@ -42,6 +43,18 @@ it('shows proof value and receipt icons on the standalone public ledger', () => 
  expect(host.querySelector('.public-ledger-amount strong')?.textContent).toBe('$42.25');
  expect(host.querySelector('.public-ledger-receipts a')?.getAttribute('href')).toContain('/receipt/#r=');
  expect(host.querySelector('button[aria-label="Copy receipt: Sealed proof"]')).not.toBeNull();
+ expect(host.textContent).toContain('Memory Crystal');
+});
+it('passes all held rows to local save and opens frozen captured prices without refreshing live data',()=>{
+ network.state=feed(100);const host=document.createElement('div'),root=createRoot(host);roots.push(root);
+ act(()=>root.render(<PublicLedgerApp/>));
+ act(()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Proofs')!.click());
+ expect(host.querySelectorAll('.public-ledger-row')).toHaveLength(0);
+ expect((network.controls.ledger as {records:unknown[]}).records).toHaveLength(100);
+ const record=(network.state.records as ReturnType<typeof parsePublicNetworkPage>['records'])[0],review={kind:'archive',format:'crystal',artifactSha256:'a'.repeat(64),filename:'test-only.png',byteLength:1,ownerReceizId:null,kaiPulse:'99',sourceMimeType:'image/png',financialAdmission:false,archive:{records:[record],capturedAt:null,coverage:[],dataSha256:'a'.repeat(64),displayValues:[{id:record.id,value:{amountUsdCents:'12345',basis:'source-value',pulse:record.pulse,considerationUsdCents:null},currentValue:null,valuation:null}]}} as PublicLedgerFileReview;
+ act(()=>(network.controls.onOpenArchive as (review:PublicLedgerFileReview)=>void)(review));
+ expect(host.textContent).toContain('Captured Ledger · 1 sealed records');expect(host.querySelector('.public-ledger-amount strong')?.textContent).toBe('$123.45');
+ expect(host.querySelector<HTMLButtonElement>('button[aria-label="Refresh public activity"]')!.disabled).toBe(true);expect(network.state.refresh).not.toHaveBeenCalled();
 });
 it('keeps an unopened identity personal history separate from the public feed and demo', () => {
   network.state = feed(); const host = mount(); act(() => [...host.querySelectorAll('button')].find(button => button.textContent === 'My history')!.click());

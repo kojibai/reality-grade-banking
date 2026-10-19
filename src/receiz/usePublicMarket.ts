@@ -75,5 +75,5 @@ export function usePublicMarket(active = true) {
   }, [active, refresh]);
   useEffect(()=>{if(!active)return;const update=()=>{if(document.visibilityState==='visible')setPulse(previous=>Math.max(previous,receizKaiNow().pulse));};update();const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);window.addEventListener('pageshow',update);window.addEventListener('focus',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update);window.removeEventListener('pageshow',update);window.removeEventListener('focus',update);};},[active]);
   const pricedCatalog=useMemo(()=>publicCatalogAtPulse(catalog,pricingSource,pulse),[catalog,pricingSource,pulse]);
-  return { catalog:pricedCatalog, quoteStatus, sportsStatus, status: !catalog && status === 'stale' ? 'error' as const : status, error, refresh };
+  return { catalog:pricedCatalog, historyCatalog:catalog, quoteStatus, sportsStatus, status: !catalog && status === 'stale' ? 'error' as const : status, error, refresh };
 }

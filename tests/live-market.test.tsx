@@ -10,11 +10,12 @@ import { parsePublicMarket } from '../src/receiz/public-market';
 import {mergePublicSports} from '../src/receiz/public-sports';
 
 const source = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
-vi.mock('../src/receiz/market-projection/useMarketCapitalization', () => ({ useMarketCapitalization: () => ({ source: null, points: [], status: 'unavailable' }) }));
+const capitalization=vi.hoisted(()=>({value:{source:null,points:[],status:'unavailable',historyUpdating:false} as Record<string,unknown>,catalog:null as unknown}));
+vi.mock('../src/receiz/market-projection/useMarketCapitalization', () => ({ useMarketCapitalization: (_period:unknown,_active:unknown,catalog:unknown) => {capitalization.catalog=catalog;return capitalization.value;} }));
 vi.mock('../src/receiz/usePublicMarket', () => ({ usePublicMarket: () => source.value }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const roots: ReturnType<typeof createRoot>[] = [];
-afterEach(() => { for (const root of roots.splice(0)) act(() => root.unmount()); document.body.replaceChildren(); localStorage.clear(); history.replaceState({}, '', '#market'); vi.unstubAllGlobals(); });
+afterEach(() => { for (const root of roots.splice(0)) act(() => root.unmount());capitalization.value={source:null,points:[],status:'unavailable',historyUpdating:false}; document.body.replaceChildren(); localStorage.clear(); history.replaceState({}, '', '#market'); vi.unstubAllGlobals(); });
 function mount(mode:'market'|'explorer'='market') {
   const host = document.createElement('div'); document.body.append(host); const root = createRoot(host); roots.push(root);
   const commit = vi.fn(), open = vi.fn();
@@ -71,7 +72,7 @@ it('labels retained quote projections as cached instead of live', () => {
 it('keeps local Kai valuation live while reporting an unavailable collection refresh',()=>{
  const held=catalog(1);held.items[0].localValuationPulse=14710100;
  source.value={catalog:held,status:'stale',quoteStatus:'stale',error:'Public prices and charts could not be refreshed.',refresh:vi.fn()};
- const {host}=mount();expect(host.textContent).toContain('Live Kai valuation · retained collection');expect(host.textContent).toContain('Retained pricing inputs continue at the live Kai pulse.');expect(host.textContent).not.toContain('Showing cached quotes');
+ const {host}=mount();expect(host.textContent).toContain('Live valuation · retained collection');expect(host.textContent).toContain('Retained pricing inputs continue at the live Kai pulse.');expect(host.textContent).not.toContain('Showing cached quotes');
 });
 it('shows each carried current owner and sealed time directly in the public list',()=>{
  const held=catalog(2),sealedAt='2026-10-01T12:00:00Z';Object.assign(held.items[0],{ownerUsername:'current_holder',ownerDisplayName:'Current Holder',sealedAt});
@@ -127,16 +128,28 @@ it('removes objects on full refresh and does not synthesize a chart from a singl
   source.value = { catalog: catalog(2), status: 'live', error: null, refresh: vi.fn() };
   const { host, root } = mount();
   expect(host.querySelectorAll('.market-overview .value-chart')).toHaveLength(0);
-  expect(host.textContent).toContain('Global proof economy market cap');
+  expect(host.textContent).toContain('Global Market Cap');
   expect(host.textContent).toContain('Value history will appear here.');
   source.value = { ...source.value, catalog: catalog(1) };
   act(() => root.render(<BankContext.Provider value={{ state: createDemoState(), commit: vi.fn(), open: vi.fn(), close: vi.fn(), navigate: vi.fn(), saveRule: vi.fn(), updateIdentity: vi.fn(), resetDemo: vi.fn() }}><Market /></BankContext.Provider>));
   expect(host.querySelectorAll('.market-rows .asset-row')).toHaveLength(1);
 });
 
-it('discloses partial card inventory independently of fresh public quotes', () => {
+it('discloses partial source coverage independently of fresh public quotes without separate card-market wording', () => {
   source.value = { catalog: { ...catalog(1), sportsCoverage: 'partial' }, sportsStatus: 'fresh', quoteStatus: 'fresh', status: 'live', error: null, refresh: vi.fn() };
-  expect(mount().host.textContent).toContain('card inventory partial');
+  const {host}=mount();expect(host.textContent).toContain('partial source coverage');expect(host.textContent).not.toContain('card inventory');
+});
+it('keeps the period caption steady through pulse jobs and gives history the stable source operands',()=>{
+ const basis=catalog(1),priced={...basis,items:basis.items.map(item=>({...item,priceUsd:99,localValuationPulse:14720000}))};
+ source.value={catalog:priced,historyCatalog:basis,status:'live',sportsStatus:'fresh',error:null,refresh:vi.fn()};
+ capitalization.value={source:{currentUsd:12,marketAssetsPriced:1,cardsInCirculation:0,generatedAt:'2026-10-19T12:00:00Z'},points:[{pulse:1,at:'2026-10-18T12:00:00Z',usdCents:'1000'},{pulse:2,at:'2026-10-19T12:00:00Z',usdCents:'1200'}],status:'live',historyUpdating:false};
+ const {host,root}=mount(),caption=host.querySelector('.chart-period-change span')!.textContent;
+ expect(caption).toBe('Since first issuance · projected value');expect(capitalization.catalog).toBe(basis);expect(host.textContent).toContain('1 assets in circulation · 1 assets listed');
+ capitalization.value={...capitalization.value,historyUpdating:true};
+ act(()=>root.render(<BankContext.Provider value={{state:createDemoState(),commit:vi.fn(),open:vi.fn(),close:vi.fn(),navigate:vi.fn(),saveRule:vi.fn(),updateIdentity:vi.fn(),resetDemo:vi.fn()}}><Market/></BankContext.Provider>));
+ expect(host.querySelector('.chart-period-change span')!.textContent).toBe(caption);expect(host.textContent).not.toContain('retained chart');
+ act(()=>host.querySelector<HTMLButtonElement>('button[aria-label="About market capitalization"]')!.click());
+ expect(host.textContent).toContain('A global economy of verifiable objects.');expect(host.textContent).toContain('Valuation protocol & source accounting');
 });
 it('routes a public Market purchase with the exact Market item ID to the connected Market writer',()=>{
  source.value={catalog:catalog(1),status:'live',error:null,refresh:vi.fn()};const{host,open}=mount();act(()=>(host.querySelector('.market-rows button')as HTMLButtonElement).click());const button=[...host.querySelectorAll('dialog button')].find(b=>b.textContent?.includes('Buy ownership'))as HTMLButtonElement;

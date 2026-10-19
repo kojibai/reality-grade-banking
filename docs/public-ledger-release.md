@@ -2,9 +2,25 @@
 
 Bankeiz.com is the official reference implementation. `/ledger/` combines public
 activity projections and offers original-source inspection, local retention,
-Memory Crystal export and explicit public publication. `/learn/reality-grade-banking/`
+local Memory Crystal export and explicit public publication. `/learn/reality-grade-banking/`
 explains the standard and links to the public repository. The existing Bank
 account, notes, custody and financial selectors are unchanged by these pages.
+
+## Save the locally held Ledger
+
+The public page's **Memory Crystal** button seals every public record already
+held by that Ledger, with its inspection fields, carried proof/valuation data
+and current source coverage. It does not fetch Ledger data or require a Crystal
+host. Search and pagination affect only the view. The SDK seals the image and
+reopens its exact bytes before download. **Open proof** verifies the saved PNG;
+**Open captured Ledger** inspects all its carried history locally.
+
+This is a sealed local capture of public observations. Existing original proof
+objects retain their own authority. It does not become the separately signed
+native Action Ledger disclosure described below, change account state, or
+replace a retained native head. Source publication and native-host activation
+are independent of this local save. See
+[local Crystal verification](verification/2026-10-19-local-ledger-crystal.md).
 
 ## What an original proves
 
@@ -16,7 +32,7 @@ feed families are display projections, not silently included verified financial
 history. Generic uploaded proofs retain only their actually verified source,
 owner and coordinate. Publication does not transfer ownership or credit money.
 
-A Crystal uses Receiz's Ledger PNG carrier `receiz.ledger_proof_bundle`, carrying
+A native-source Crystal uses Receiz's Ledger PNG carrier `receiz.ledger_proof_bundle`, carrying
 the complete canonical original. The 2400 × 3000 image is reopened by the same
 v129 verifier before download. Its QR points to `/ledger/?source=<original SHA-256>`;
 the image remains independently openable without that URL or a network.

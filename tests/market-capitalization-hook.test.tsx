@@ -28,8 +28,8 @@ it('feeds live membership to the chart worker and publishes all periods and thei
  vi.stubGlobal('Worker',WorkerStub);
  const seed={kind:'sigil',claimPulse:14700000,beat:2,stepIndex:3,creatorVerified:true};
  const catalog=parsePublicMarket({ok:true,transport:{generatedAt:'2026-10-18T22:00:00Z',publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1,revision:'new'},publicOriginals:[{id:'new',receizId:'new',title:'New object',pulse:'14700000',livePulseSeed:seed}]}});
- let state!:ReturnType<typeof useMarketCapitalization>;const root=createRoot(document.createElement('div'));
- function Probe({period='ALL'}:{period?:ChartPeriod}){state=useMarketCapitalization(period,true,catalog);return null;}
+ let state!:ReturnType<typeof useMarketCapitalization>,renders=0;const root=createRoot(document.createElement('div'));
+ function Probe({period='ALL'}:{period?:ChartPeriod}){renders++;state=useMarketCapitalization(period,true,catalog);return null;}
  try{await act(async()=>root.render(<Probe/>));const request=[...messages].reverse().find(message=>message.source);expect(request.catalog).toBe(catalog);expect(request.pulse).toBe(clock.pulse);
   const old=state.source;expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(old.currentUsd*100)));
   const sent=messages.length;clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));expect(messages).toHaveLength(sent);
@@ -38,7 +38,7 @@ it('feeds live membership to the chart worker and publishes all periods and thei
   expect(messages.at(-1).history.basisSha256).toBe(history.basisSha256);
   const latest=messages.at(-1),advanced=(await buildMarketHistory(parseMarketCapSource(sourceFile),history,undefined,undefined,{catalog,pulse:clock.pulse}))!;act(()=>worker.onmessage!({data:{id:latest.id,history:advanced}}));
   const count=messages.length;await act(async()=>root.render(<Probe period="1D"/>));expect(messages).toHaveLength(count);expect(state.points.length).toBeGreaterThanOrEqual(64);expect(state.points.length).toBeLessThanOrEqual(96+(history.eventPulses?.length??0));
-  clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));expect(messages.at(-1).pulse).toBe(clock.pulse);
+  const beforePulse=renders;clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));expect(messages.at(-1).pulse).toBe(clock.pulse);expect(renders-beforePulse).toBe(1);
  }finally{act(()=>root.unmount());}
  // This integration check executes the complete public source in the worker
  // stand-in; allow CPU contention with the full cryptographic test suite.

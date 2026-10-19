@@ -51,8 +51,7 @@ export function ledgerCurrentAssetValue(record:PublicRecord,index:LedgerValueInd
  }
  return null;
 }
-function calculateLedgerValuationContext(record:PublicRecord,index:LedgerValueIndex|null):LedgerFields|null {
- const value=ledgerValueForRecord(record,index);
+function calculateLedgerValuationContext(record:PublicRecord,index:LedgerValueIndex|null,value:LedgerValueDisplay):LedgerFields|null {
  if(value.basis==='card-snapshot')return {sdk:RECEIZ_VERSION,calculationKind:'carried-card-snapshot',evaluationPulse:value.pulse!,cardValueUsdCents:value.amountUsdCents!,source:'Selected event value inputs',rounding:'Exact carried cents; no current-price substitution'};
  const row=valueRow(record,index),copy=ledgerCardCopyValuation(record,index);
  const common:LedgerFields=index&&row?{sdk:RECEIZ_VERSION,projectionDigest:index.source.proofObjectHash,projectionObservedAt:index.source.generatedAt,projectionPulse:index.source.serverPulse,valuationRow:row.id,source:row.source}:{sdk:RECEIZ_VERSION,projectionPulse:copy?.copy.valuationPulse??0,source:'Carried native individual-copy display model'};
@@ -67,8 +66,8 @@ function calculateLedgerValuationContext(record:PublicRecord,index:LedgerValueIn
  if(value.basis!=='intrinsic-model'||seed?.kind!=='sigil')return {...common,calculationKind:'source-context',sourceValueUsd:row.marketUsdValue};
  return {...common,evaluationPulse:value.basis==='intrinsic-model'&&value.pulse?value.pulse:String(index.evaluationPulse??index.source.serverPulse),seed:Object.fromEntries(Object.entries(seed).filter(([,v])=>v!==null&&v!==undefined)) as LedgerFields,intrinsicFunction:'@receiz/sdk/valuation.computeIntrinsicUnsigned',quoteFunction:'canonical-market-issuance.quotePhiForUsd',quote:{referenceUsd:100,currentStreakDays:0,lifetimeUsdSoFar:0,plannedHoldBeats:0},policy:JSON.parse(JSON.stringify(DEFAULT_ISSUANCE_POLICY)) as LedgerFields,rounding:'Math.round(valuePhi × usdPerPhi × 100)'};
 }
-export function ledgerValuationContext(record:PublicRecord,index:LedgerValueIndex|null):LedgerFields|null{
+export function ledgerValuationContext(record:PublicRecord,index:LedgerValueIndex|null,value?:LedgerValueDisplay):LedgerFields|null{
  const transfer=/transfer|send|payment_sent|payment_received/i.test(record.kind);
  if(transfer&&index?.valuationTraces.has(record))return index.valuationTraces.get(record)??null;
- const value=calculateLedgerValuationContext(record,index);if(transfer)index?.valuationTraces.set(record,value);return value;
+ const context=calculateLedgerValuationContext(record,index,value??ledgerValueForRecord(record,index));if(transfer)index?.valuationTraces.set(record,context);return context;
 }

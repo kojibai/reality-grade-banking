@@ -13,7 +13,8 @@ vi.mock('../src/receiz/public-ledger-statement',async original=>{
  return {...actual,verifyPublicLedgerStatement:async(value:unknown)=>actual.inspectPublicLedgerStatement(value)};
 });
 import {inspectPublicLedgerFile,heldPublicLedgerFile} from '../src/receiz/public-ledger-proof';
-import {createPublicLedgerCrystal} from '../src/receiz/public-ledger-crystal-image';
+import {createPublicLedgerCrystal,createLocalLedgerCrystal} from '../src/receiz/public-ledger-crystal-image';
+import {parsePublicNetworkPage} from '../src/receiz/public-network';
 import {embedPublicLedgerPng,readPublicLedgerPng} from '../src/receiz/public-ledger-png';
 const encode=(value:unknown)=>new TextEncoder().encode(JSON.stringify(value)),hex=(value:string)=>value.repeat(64);
 const statement={schema:'receiz.public-action-ledger.v1',domain:'receiz.public-action-ledger.root-signature.v1',issuerRootKid:'test-only',ledgerId:hex('a'),scope:'public-action-history',baseline:'native',financialAdmission:false,sourceBaseline:hex('b'),sourceHead:hex('c'),sourceHistory:[hex('b'),hex('c')],kaiUpulse:'123000000',recordsRoot:hex('d'),records:Array.from({length:3},(_,i)=>({id:`event-${i}`,sequence:i+1,kind:'auth.logout',kaiUpulse:String(100000000+i),entryHash:hex(String(i+1)),previousHash:hex('f'),amountUsdCents:null})),rootSignature:{kid:'test-only',alg:'Ed25519',sig:'a'.repeat(86)}};
@@ -35,6 +36,23 @@ beforeEach(()=>{
  });
 });
 async function original(){return inspectPublicLedgerFile({bytes:inner,filename:'public-ledger.receizbundle'});}
+it('seals locally held public data without a source host, then independently cold opens the exact image and all its records',async()=>{
+ const records=parsePublicNetworkPage('actions',{ok:true,actions:Array.from({length:80},(_,i)=>({id:String(i),actionKind:'card.transfer',pulse:100+i})),nextCursor:null}).records;
+ const fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NETWORK_FORBIDDEN'));
+ try{const result=await createLocalLedgerCrystal({records,capturedAt:null,sources:{actions:{complete:false}}},{render:async()=>png(),seal:async input=>syntheticSeal(input.bytes)});
+  native.read.mockClear();const reopened=await inspectPublicLedgerFile({bytes:result.bytes.slice(),filename:result.filename});
+  expect(reopened.kind).toBe('archive');expect(reopened.archive?.records).toEqual(records);expect(reopened.snapshot).toBeUndefined();expect(reopened.financialAdmission).toBe(false);
+  expect(heldPublicLedgerFile(reopened).bytes).toEqual(result.bytes);expect(reopened.archive?.coverage.find(value=>value.source==='actions')?.complete).toBe(false);
+  expect(native.read).toHaveBeenCalledOnce();expect(fetch).not.toHaveBeenCalled();
+ }finally{fetch.mockRestore();}
+});
+it('does not admit an unsigned or modified local archive carrier as a verified Crystal',async()=>{
+ const {packLocalLedger}=await import('../src/receiz/public-ledger-archive'),records=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'1',actionKind:'card.transfer',pulse:123}],nextCursor:null}).records;
+ const {carrier}=await packLocalLedger({records,capturedAt:null,sources:{}}),bytes=embedPublicLedgerPng(png(),encode(carrier));
+ await expect(inspectPublicLedgerFile({bytes,filename:'unsigned.png'})).rejects.toThrow(/UNVERIFIED/);
+ await syntheticSeal(bytes);const modified=embedPublicLedgerPng(png('#abcdef'),encode(carrier));
+ await expect(inspectPublicLedgerFile({bytes:modified,filename:'changed.png'})).rejects.toThrow(/UNVERIFIED/);
+});
 it('seals the complete carried source and cold reopens outer image before every inner record, preserving the inner authority digest',async()=>{
  const review=await original(),source=heldPublicLedgerFile(review).source!;let sealedSource:unknown;
  const result=await createPublicLedgerCrystal(review,{render:async()=>png(),seal:async input=>{sealedSource=JSON.parse(new TextDecoder().decode(readPublicLedgerPng(input.bytes)!));return syntheticSeal(input.bytes);}});

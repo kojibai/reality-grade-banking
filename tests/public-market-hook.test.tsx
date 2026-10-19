@@ -92,8 +92,8 @@ it('advances retained object prices locally while every refresh fails',async()=>
  localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(input));network.membership.mockRejectedValue(Error('offline'));network.quotes.mockRejectedValue(Error('offline'));
  await observe(async read=>{
   const first=read().catalog!.items[0];expect(first.localValuationPulse).toBe(clock.pulse);expect(first.priceUsd).toBe(publicSigilQuoteAtPulse(seed,clock.pulse).priceUsd);expect(read().status).toBe('stale');
-  const reads=network.membership.mock.calls.length;clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));
-  expect(read().catalog!.items[0].localValuationPulse).toBe(clock.pulse);expect(read().catalog!.items[0].priceUsd).toBe(publicSigilQuoteAtPulse(seed,clock.pulse).priceUsd);expect(read().catalog!.items[0].priceUsd).not.toBe(first.priceUsd);expect(network.membership).toHaveBeenCalledTimes(reads);
+  const reads=network.membership.mock.calls.length,basis=read().historyCatalog;clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));
+  expect(read().catalog!.items[0].localValuationPulse).toBe(clock.pulse);expect(read().catalog!.items[0].priceUsd).toBe(publicSigilQuoteAtPulse(seed,clock.pulse).priceUsd);expect(read().catalog!.items[0].priceUsd).not.toBe(first.priceUsd);expect(network.membership).toHaveBeenCalledTimes(reads);expect(read().historyCatalog).toBe(basis);
  });
 });
 const sealedCard=()=>{
