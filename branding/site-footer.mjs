@@ -2,11 +2,12 @@ import {createElement as h} from 'react';
 import {branding} from './profile.mjs';
 const source='https://github.com/kojibai/reality-grade-banking';
 export const footerGroups=[
- {title:'Bank',links:[['Your account','/'],['Explore assets','/explore/'],['Public ledger','/ledger/']]},
- {title:'Understand',links:[['Reality-Grade Banking','/learn/reality-grade-banking/'],['How value works','/learn/how-value-works/'],['Settlement & Reserve','/learn/reserve-and-settlement/'],['Your identity','/learn/receiz-id/']]},
- {title:'Standards & technology',links:[['Account verification','/verify/'],['Conformance','/conformance/'],['SDK reference','/schemas/'],['For institutions',source+'/tree/main/institution']]}
+ {title:'Bank',links:[['Your account','/'],['Explore assets','/explore/'],['Public Ledger','/ledger/']]},
+ {title:'Understand',links:[['Banking explained','/learn/'],['Reality-Grade Banking','/learn/reality-grade-banking/'],['Proof objects & ownership','/learn/proof-objects/'],['How value works','/learn/how-value-works/'],['Settlement & Reserve','/learn/reserve-and-settlement/']]},
+ {title:'Your ID',links:[['Receiz ID & Identity Seals','/learn/receiz-id/'],['Account access & privacy','/learn/account-access/'],['Your signing key','/learn/signing-key/']]},
+ {title:'Standards & technology',links:[['Account verification','/verify/'],['Conformance','/conformance/'],['SDK schemas & reference','/schemas/'],['For institutions',source+'/tree/main/institution']]}
 ];
-export const footerNotices=[['Account access & privacy','/learn/account-access/'],['Your signing key','/learn/signing-key/'],['License & notices','/legal/'],['Open source',source]];
+export const footerNotices=[['License & notices','/legal/'],['Open source',source]];
 /** One static semantic footer shared by built pages and React surfaces. */
 export function siteFooter(){
  return h('footer',{className:'site-footer'},
