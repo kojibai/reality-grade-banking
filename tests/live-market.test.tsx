@@ -149,7 +149,7 @@ it('keeps the period caption steady through pulse jobs and gives history the sta
  act(()=>root.render(<BankContext.Provider value={{state:createDemoState(),commit:vi.fn(),open:vi.fn(),close:vi.fn(),navigate:vi.fn(),saveRule:vi.fn(),updateIdentity:vi.fn(),resetDemo:vi.fn()}}><Market/></BankContext.Provider>));
  expect(host.querySelector('.chart-period-change span')!.textContent).toBe(caption);expect(host.textContent).not.toContain('retained chart');
  act(()=>host.querySelector<HTMLButtonElement>('button[aria-label="About market capitalization"]')!.click());
- expect(host.textContent).toContain('A global economy of verifiable objects.');expect(host.textContent).toContain('Valuation protocol & source accounting');
+ expect(host.textContent).toContain('Global value, grounded in source.');expect(host.textContent).toContain('Valuation protocol & source accounting');expect(host.querySelector('a.market-cap-method-link')?.getAttribute('href')).toBe('/learn/how-value-works/');
 });
 it('routes a public Market purchase with the exact Market item ID to the connected Market writer',()=>{
  source.value={catalog:catalog(1),status:'live',error:null,refresh:vi.fn()};const{host,open}=mount();act(()=>(host.querySelector('.market-rows button')as HTMLButtonElement).click());const button=[...host.querySelectorAll('dialog button')].find(b=>b.textContent?.includes('Buy ownership'))as HTMLButtonElement;

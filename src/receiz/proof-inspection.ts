@@ -1,6 +1,9 @@
+import type {LedgerCausalLineage} from './ledger-causal-source';
+import {ledgerSourceHistoryFromPayload} from './ledger-source-payload';
+import type {LedgerProofHistory} from './ledger-proof-history';
 import type {ReceizOpenedArtifact} from '@receiz/sdk';
 
-export type ProofInspection={schema:string;sdk:string;artifactSha256:string;artifactBytes:number;payloadSha256:string;payloadBytes:number;payloadFilename:string;payloadMimeType:string;verification:Record<string,unknown>;groth16:Record<string,unknown>|null;verificationMaterial?:Record<string,unknown>;scope:string};
+export type ProofInspection={schema:string;sdk:string;artifactSha256:string;artifactBytes:number;payloadSha256:string;payloadBytes:number;payloadFilename:string;payloadMimeType:string;verification:Record<string,unknown>;groth16:Record<string,unknown>|null;verificationMaterial?:Record<string,unknown>;scope:string;proofHistory?:LedgerProofHistory;causalLineage?:LedgerCausalLineage};
 type OriginalInspection={report:ProofInspection;bytes:Uint8Array;filename:string;retained:boolean};
 const originals=new Map<string,OriginalInspection>(),pending=new Map<string,Promise<OriginalInspection|null>>(),listeners=new Set<()=>void>();
 const admitted=new WeakMap<ProofInspection,OriginalInspection>(),MAX=64*1024*1024;
@@ -41,6 +44,7 @@ export function retainOpenedProofInspection(opened:ReceizOpenedArtifact,bytes:Ui
  const verification=opened.verification as unknown as Record<string,unknown>,bundle=verification?.bundle as Record<string,unknown>|undefined;
  if(verification?.ok!==true||(verification.integrity as {ok?:boolean}|undefined)?.ok!==true||!bundle)return null;
  const payload=opened.verifiedPayload;
- const report:ProofInspection={schema:'bankeiz.offline-proof-inspection.v1',sdk:'129.0.0',artifactSha256:digest.toLowerCase(),artifactBytes:bytes.length,payloadSha256:payload.sha256,payloadBytes:payload.bytes.length,payloadFilename:payload.filename,payloadMimeType:payload.mimeType,verification,groth16:carriedGroth16(bundle.groth16Proof),scope:'Canonical enclosing artifact and carried continuity only. No live spendability, account balance or execution authorization.'};
+ const sourceHistory=ledgerSourceHistoryFromPayload(payload.bytes,payload.mimeType);
+ const report:ProofInspection={...sourceHistory,schema:'bankeiz.offline-proof-inspection.v1',sdk:'129.0.0',artifactSha256:digest.toLowerCase(),artifactBytes:bytes.length,payloadSha256:payload.sha256,payloadBytes:payload.bytes.length,payloadFilename:payload.filename,payloadMimeType:payload.mimeType,verification,groth16:carriedGroth16(bundle.groth16Proof),scope:'Canonical enclosing artifact and carried continuity only. No live spendability, account balance or execution authorization.'};
  return retainProofInspection(report,bytes,filename);
 }

@@ -6,6 +6,8 @@ import {safeReceizPublicUrl} from './public-market';
 import {DEFAULT_ISSUANCE_POLICY} from './canonical-market-issuance';
 import {publicSportsHistoryObservation} from './market-projection/sports-observations';
 import {marketPulseAtOrAfterTime} from './market-projection/sealed-copies';
+import {ledgerProofHistoryFields} from './ledger-proof-history';
+import {ledgerCausalLineageFields,ledgerFundingOriginFields} from './ledger-funding-trace';
 import {readLedgerCopyValuation} from './ledger-card-copy';
 
 export type LedgerField = string | number | boolean | LedgerFields | LedgerField[];
@@ -25,6 +27,10 @@ function identity(raw:unknown):LedgerFields {
 /** Selected public evidence only. Never retain arbitrary metadata or custody payloads. */
 export function readLedgerDetails(raw:unknown):LedgerFields {
  const source=object(raw),result=select(source,['sourceObservedAt','seq','actionScope','chakraDay','objectId','objectLabel','assetId','marketItemId','collectibleId','receizId','claimHash','noteId','sortKaiPulse','sortOrdinal','transactionLinkKind']);
+ if(typeof source.proofHistoryArtifactDigest==='string'&&/^[a-f0-9]{64}$/.test(source.proofHistoryArtifactDigest))result.proofHistoryArtifactDigest=source.proofHistoryArtifactDigest;
+ const proofHistory=ledgerProofHistoryFields(source);if(proofHistory)result.proofHistory=proofHistory;
+ const causalLineage=ledgerCausalLineageFields(source);if(causalLineage)result.causalLineage=causalLineage;
+ const fundingOrigin=ledgerFundingOriginFields(source);if(fundingOrigin)result.fundingOrigin=fundingOrigin;
  if(typeof source.publicNote==='string'&&source.publicNote.length<=280&&source.publicNote.trim())result.publicNote=source.publicNote;
  for(const key of ['actorUserId','subjectUserId'])if(typeof source[key]==='string'&&/^[1-9A-HJ-NP-Za-km-z]{26,36}$/.test(source[key]))result[key]=source[key];
  for(const key of ['actorKaiSignature','subjectKaiSignature','actorCreatedAt','subjectCreatedAt','actorPulse','subjectPulse','actorChakraDay','subjectChakraDay']){const value=primitive(source[key]);if(value!==undefined)result[key]=value;}

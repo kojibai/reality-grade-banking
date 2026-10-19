@@ -32,13 +32,14 @@ export function ledgerRelatedRecords(record:PublicRecord,index:RelationIndex){
  return [...related.values()];
 }
 const valueRow=ledgerValueRow;
-export function ledgerCurrentAssetValue(record:PublicRecord,index:LedgerValueIndex|null):LedgerValueDisplay|null {
- if(!index)return null;
- const copy=ledgerCardCopyValuation(record,index,true),pulse=Math.max(index.evaluationPulse??index.source.serverPulse,copy?.copy.valuationPulse??0);
+export function ledgerCurrentAssetValue(record:PublicRecord,index:LedgerValueIndex|null,evaluationPulse?:number):LedgerValueDisplay|null {
+ const copy=ledgerCardCopyValuation(record,index,true),pulse=Math.max(evaluationPulse??index?.evaluationPulse??index?.source.serverPulse??0,copy?.copy.valuationPulse??0);
+ if(!Number.isSafeInteger(pulse)||pulse<0||pulse>1e10)return null;
  if(copy){const usd=ledgerCardCopyUsdAtPulse(copy,pulse),amount=usd===undefined?undefined:ledgerUsdCents(usd);return amount===undefined?null:{basis:'live-model',amountUsdCents:amount,pulse:String(pulse),considerationUsdCents:null};}
+ if(!index)return null;
  const row=valueRow(record,index);if(!row)return null;
  if(row.marketItem?.livePulseSeed?.kind==='sigil'){
-  const value=ledgerValueForRecord({...record,source:'proofs',kind:'market-asset'},index);
+  const value=ledgerValueForRecord({...record,source:'proofs',kind:'market-asset'},evaluationPulse===undefined?index:{...index,evaluationPulse:pulse});
   return value.basis==='intrinsic-model'?{...value,basis:'live-model'}:null;
  }
  if(row.source==='sports-economy-card'){

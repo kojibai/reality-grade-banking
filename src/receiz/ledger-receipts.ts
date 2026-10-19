@@ -1,7 +1,7 @@
 import type {PublicRecord} from './public-network';
 import {safeReceizPublicUrl} from './public-market';
 import {BANK_PUBLIC_ORIGIN} from './config';
-import {ledgerValueForRecord,readLedgerValueDisplay,readLedgerValueOperands,type LedgerValueDisplay,type LedgerValueOperands} from './ledger-value';
+import {ledgerValueForRecord,readLedgerValueDisplay,readLedgerValueOperands,type LedgerValueDisplay,type LedgerValueOperands,type LedgerValueIndex} from './ledger-value';
 import {readLedgerDetails,readLedgerValuationTrace,type LedgerFields} from './ledger-inspection';
 export const ACTIVITY_FILTERS=['all','transactions','transfers','actions','proofs'] as const;
 export type ActivityCategory=typeof ACTIVITY_FILTERS[number];
@@ -43,7 +43,15 @@ export function readReceiptLink(link:string):LedgerReceipt{
  return read(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)));
 }
 export function localReceiptPath(link:string){const url=new URL(link,BANK_PUBLIC_ORIGIN);return url.pathname+url.hash;}
-export function openLedgerReceipt(event:React.MouseEvent<HTMLAnchorElement>,link:string){
+export type LedgerReceiptContext={record:PublicRecord;value:LedgerValueDisplay;valuation?:LedgerFields|null;valueSource?:LedgerValueIndex|null};
+// One selected in-app record, by reference, until its receipt unmounts. No
+// account history is persisted, serialized into URLs, or exposed to new tabs.
+let localContext:{path:string;context:LedgerReceiptContext}|null=null;
+export function readLocalReceiptContext(link:string){return localContext?.path===localReceiptPath(link)?localContext.context:null;}
+export function releaseLocalReceiptContext(context:LedgerReceiptContext|null){if(localContext?.context===context)localContext=null;}
+export function openLedgerReceipt(event:React.MouseEvent<HTMLAnchorElement>,link:string,context?:LedgerReceiptContext){
  if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
- event.preventDefault();const url=new URL(link);history.pushState({bankReceipt:true},'',url.pathname+url.hash);dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));scrollTo(0,0);
+ event.preventDefault();const url=new URL(link);
+ if(context){const core=readReceiptLink(link);if(core.id!==context.record.sourceId||core.source!==context.record.source||core.kind!==context.record.kind||core.authority!==context.record.authority)throw Error('RECEIPT_CONTEXT_MISMATCH');localContext={path:localReceiptPath(link),context};}else localContext=null;
+ history.pushState({bankReceipt:true},'',url.pathname+url.hash);dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));scrollTo(0,0);
 }
