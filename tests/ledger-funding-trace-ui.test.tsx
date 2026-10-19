@@ -19,6 +19,14 @@ it('keeps the actual proof-object origin and its allocated amount visible',()=>{
  const html=renderToStaticMarkup(<LedgerFundingTrace record={card()}/>);
  expect(html).toContain('Funding source');expect(html).toContain('Proof-native value');expect(html).toContain('credit-one');expect(html).toContain('$5.00');expect(html).toContain('Full causal history');
 });
+it('names the rails only when both fund the transaction',()=>{
+ const single=card();single.valueOperands={...single.valueOperands,settledUsdCents:'0',phiUsdCents:'500'};
+ const singleDoc=new DOMParser().parseFromString(renderToStaticMarkup(<LedgerFundingTrace record={single}/>),'text/html');
+ expect(singleDoc.querySelector('.ledger-funding-components')?.textContent).toBe('Funding amount$5.00');
+ const mixed=card();mixed.valueOperands={...mixed.valueOperands,settledUsdCents:'200',phiUsdCents:'300'};
+ const mixedDoc=new DOMParser().parseFromString(renderToStaticMarkup(<LedgerFundingTrace record={mixed}/>),'text/html');
+ expect(mixedDoc.querySelector('.ledger-funding-components')?.textContent).toBe('Reserve$2.00Settlement$3.00');
+});
 it('presents a carried acquisition chain as history without an empty funding-source claim',()=>{
  const record=card(),lineage=record.details!.causalLineage as Record<string,unknown>;
  const partial={...record,details:{...record.details,causalLineage:{...lineage,steps:(lineage.steps as Record<string,unknown>[]).slice(2)} as never}};

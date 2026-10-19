@@ -47,6 +47,19 @@ the remaining carried steps. The receipt's pulse subscription is isolated from
 its static history, and links/JSON exports are memoized against stable operands.
 No provenance display starts IO or executes a transaction.
 
+The public Ledger's source-coverage counter counts the four feeds represented
+in retained records (including a successfully read empty feed). Latest-page
+pagination and refresh completeness remain separate and still control earlier
+history reads. A partial head refresh no longer makes a retained feed disappear
+from this count. The count is not hardcoded: an unavailable feed with no retained
+rows remains uncounted. The header also links to the existing public Explorer.
+At 390 px, all four navigation links fit without horizontal overflow; the live
+Ledger showed 47,318 records and 4/4 represented sources without console errors.
+
+Single-component funding displays one amount; Reserve and Settlement labels
+appear together only for an actual composite payment. Source-event labels and
+the underlying technical evidence remain exact.
+
 Browser verification at 390 × 844 confirmed the $33.52 native transfer fixture,
 locally advancing live value, return percentage and seven carried purchase,
 allocation, ownership and custody moments on the standalone receipt. No console
