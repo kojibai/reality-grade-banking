@@ -16,7 +16,7 @@ export function LiveReceive({ identity, onRefresh = () => {} }: { identity: Open
   const [noteMode, setNoteMode] = useState(false);
   const [amount, setAmount] = useState(''), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false), [tagWritten, setTagWritten] = useState(false), [tagHelp, setTagHelp] = useState(false); const nfc = useRef<AbortController | null>(null);
   useEffect(() => () => nfc.current?.abort(), []);
-  const coordinate = publicReceizId(identity.accountUsername?.()) ?? publicReceizId(identity.username) ?? '';
+  const coordinate = (publicReceizId(identity.accountUsername?.()) ?? publicReceizId(identity.username) ?? '').replace(/\.receiz\.id$/, '');
   const request = useMemo(() => { try { if(!coordinate)throw Error('Open your Wallet connection to obtain your public Receiz ID.');const link = amount?buildPaymentRequest(coordinate,amount):coordinate; return { link,nfcUrl:buildPaymentRequest(coordinate,amount), path: paymentQrPath(paymentQr(link)), error: '' }; } catch (cause) { return { link: '',nfcUrl:'', path: '', error: cause instanceof Error ? cause.message : 'This request could not be created.' }; } }, [coordinate, amount]);
   const copy = async () => { try { await navigator.clipboard.writeText(request.link); setNotice(amount?'Payment request copied.':'Receiz ID copied.'); } catch { setNotice('Select and copy your receiving ID below.'); } };
   const share = async () => { try { if (navigator.share) await navigator.share(amount?{title:'Payment request',url:request.link}:{title:'Receiz ID',text:coordinate}); else await copy(); } catch (cause) { if (!(cause instanceof Error && cause.name === 'AbortError')) setNotice('Sharing is unavailable. Copy your Receiz ID below.'); } };

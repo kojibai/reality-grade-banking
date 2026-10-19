@@ -8,6 +8,7 @@ export interface PublicMarketItem {
   readingUrl?: string | null;
   livePulseSeed?:MarketPulseSeed;
   sportsValuation?:MarketValueRow;
+  sealedCopies?:{collectibleId:string;claimHash:string;sealedAt:string;ownerUsername:string|null;ownerDisplayName:string|null;ownerProfileUrl:string|null}[];
   localValuationPulse?:number;
   valuationBinding?:{itemId:string;assetId:string};
   ownerUsername: string | null; ownerDisplayName: string | null; ownerProfileUrl: string | null;

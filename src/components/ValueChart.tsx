@@ -1,7 +1,7 @@
 import { useId, useMemo, useState, type PointerEvent } from 'react';
 import { CHART_PERIODS, sampleChartIndices, type ChartPeriod, type ChartTimeRange } from '../core/chart-history';
 export type { ChartPeriod } from '../core/chart-history';
-export function ValueChart({ values, times, timeRange, compact = false, color = 'blue', label = 'Account balance', description, onInspect, tooltip }: { values: number[]; times?: number[]; timeRange?: ChartTimeRange; compact?: boolean; color?: 'blue' | 'green' | 'red' | 'navy'; label?: string; description?: string; onInspect?: (value: number) => void; tooltip?: (index: number) => { value: string; label: string } }) {
+export function ValueChart({ values, times, timeRange, compact = false, color = 'blue', interpolation = 'smooth',label = 'Account balance', description, onInspect, tooltip }: { values: number[]; times?: number[]; timeRange?: ChartTimeRange; compact?: boolean; color?: 'blue' | 'green' | 'red' | 'navy'; interpolation?:'smooth'|'step';label?: string; description?: string; onInspect?: (value: number) => void; tooltip?: (index: number) => { value: string; label: string } }) {
   const gradient = useId().replace(/:/g, ''), [active, setActive] = useState<number | null>(null);
   const width = 320, height = compact ? 66 : 124, pad = compact ? 6 : 12;
   const geometry = useMemo(() => {
@@ -17,9 +17,9 @@ export function ValueChart({ values, times, timeRange, compact = false, color = 
     const points = sampleChartIndices(values, compact ? 96 : 320).map(index => ({ index, x: x(index), y: y(index) }));
     // One observation is a current-value reference line, not an invented
     // earlier observation. Its timestamp and inspection remain unchanged.
-    const path = points.length === 1 ? `M${pad},${points[0].y} L${width-pad},${points[0].y}` : points.map((point, i) => i === 0 ? `M${point.x},${point.y}` : `C${(points[i - 1].x + point.x) / 2},${points[i - 1].y} ${(points[i - 1].x + point.x) / 2},${point.y} ${point.x},${point.y}`).join(' ');
+    const path = points.length === 1 ? `M${pad},${points[0].y} L${width-pad},${points[0].y}` : points.map((point, i) => i === 0 ? `M${point.x},${point.y}` : interpolation==='step'?`H${point.x} V${point.y}`:`C${(points[i - 1].x + point.x) / 2},${points[i - 1].y} ${(points[i - 1].x + point.x) / 2},${point.y} ${point.x},${point.y}`).join(' ');
     return { points, path, timed, start, end, x, y };
-  }, [values, times, timeRange, compact, height, pad]);
+  }, [values, times, timeRange, compact, height, pad,interpolation]);
   if (!geometry) return <div className="chart-empty">Value history will appear here.</div>;
   const { points, path } = geometry, last = points.at(-1)!, index = active === null ? null : Math.min(active, values.length - 1);
   const selected = index === null ? null : { x: geometry.x(index), y: geometry.y(index) };

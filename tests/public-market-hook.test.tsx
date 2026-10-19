@@ -5,6 +5,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { usePublicMarket } from '../src/receiz/usePublicMarket';
 import { parsePublicMarket } from '../src/receiz/public-market';
 import {publicSigilQuoteAtPulse} from '../src/receiz/market-projection/project';
+import {publicSportsValueRow} from '../src/receiz/market-projection/source';
+import {fetchPublicSports} from '../src/receiz/public-sports';
 const clock=vi.hoisted(()=>({pulse:14710100}));
 vi.mock('@receiz/sdk',async original=>({...await original<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
 const network = vi.hoisted(() => ({ membership: vi.fn(), quotes: vi.fn() }));
@@ -93,4 +95,41 @@ it('advances retained object prices locally while every refresh fails',async()=>
   const reads=network.membership.mock.calls.length;clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));
   expect(read().catalog!.items[0].localValuationPulse).toBe(clock.pulse);expect(read().catalog!.items[0].priceUsd).toBe(publicSigilQuoteAtPulse(seed,clock.pulse).priceUsd);expect(read().catalog!.items[0].priceUsd).not.toBe(first.priceUsd);expect(network.membership).toHaveBeenCalledTimes(reads);
  });
+});
+const sealedCard=()=>{
+ const collectibleId='rsc_0123456789abcdef',claimHash='a'.repeat(64),sealedAt='2026-10-01T12:00:00Z';
+ const raw={collectibleId,claimHash,cardId:'public-card',athlete:'Athlete',sport:'baseball',issuedCount:1,vaultCount:1,pricedCount:1,liveValueUsd:25,totalValueUsd:25,proofValueUsd:20,proofTotalValueUsd:20,route:`/game/sports/card/${collectibleId}?claimHash=${claimHash}`,sealedCopies:[{collectibleId,claimHash,sealedAt,birthUsdValue:10,proofValueUsd:20,currentValueUsd:25,ownerUsername:'holder',ownerDisplayName:'Holder'}]};
+ return {...raw,valuationRow:publicSportsValueRow(raw)};
+};
+it('does not overwrite retained exact sports metadata with a fallback or matching metadata-poor response',async()=>{
+ const card=sealedCard(),exact={ok:true,schema:'receiz.sports_economy.live_inventory.v1',cards:[card]},weak={...exact,cards:[{...card,sealedCopies:undefined,valuationRow:{...card.valuationRow,sealedCopies:undefined}}]};
+ for(const fallback of [true,false]){
+  localStorage.setItem('receiz-bank-public-sports-v1',JSON.stringify(exact));vi.stubGlobal('fetch',vi.fn(async()=>Response.json({...weak,fallback})));
+  await fetchPublicSports();const held=JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1')!);expect(held.cards[0].valuationRow.sealedCopies[0].sealedAt).toBe(card.sealedCopies[0].sealedAt);
+ }
+});
+it('upgrades an old weak sports cache with matching shipped exact copy metadata during cold hydration',async()=>{
+ const card=sealedCard(),exact={ok:true,schema:'receiz.sports_economy.live_inventory.v1',cards:[card]},weak={...exact,cards:[{...card,sealedCopies:undefined,valuationRow:{...card.valuationRow,sealedCopies:undefined}}]};
+ localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(sourceInput(['a'])));localStorage.setItem('receiz-bank-public-sports-v1',JSON.stringify(weak));
+ network.membership.mockImplementation(()=>new Promise(()=>{}));network.quotes.mockImplementation(()=>new Promise(()=>{}));
+ vi.stubGlobal('fetch',vi.fn(async input=>input==='/receiz-public-sports.json'?Response.json(exact):new Response('',{status:503})));
+ let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket();return null;}
+ try{await act(async()=>root.render(<Probe/>));const item=state.catalog?.items.find(item=>item.category==='sports');expect(item?.sealedAt).toBe(card.sealedCopies[0].sealedAt);expect(item?.ownerUsername).toBe('holder');}finally{act(()=>root.unmount());}
+});
+it('keeps exact sports data through a membership refresh after a fallback response',async()=>{
+ const card=sealedCard(),exact={ok:true,schema:'receiz.sports_economy.live_inventory.v1',cards:[card]},fallback={...exact,fallback:true,cards:[{...card,sealedCopies:undefined,valuationRow:{...card.valuationRow,sealedCopies:undefined}}]};
+ localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(sourceInput(['a'])));localStorage.setItem('receiz-bank-public-sports-v1',JSON.stringify(exact));
+ network.membership.mockResolvedValue(parsePublicMarket(sourceInput(['a'])));network.quotes.mockResolvedValue(quoteInput());
+ vi.stubGlobal('fetch',vi.fn(async input=>input==='/api/bank/public-market/sports'?Response.json(fallback):new Response('',{status:503})));
+ let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket();return null;}
+ try{await act(async()=>root.render(<Probe/>));await act(async()=>state.refresh());const item=state.catalog?.items.find(item=>item.category==='sports');expect(item?.sealedAt).toBe(card.sealedCopies[0].sealedAt);expect(item?.ownerUsername).toBe('holder');expect(state.sportsStatus).toBe('retained');}finally{act(()=>root.unmount());}
+});
+it('keeps newer exact sports capture in cache and reports an older response as retained',async()=>{
+ const card=sealedCard(),freshCard={...card,liveValueUsd:200,totalValueUsd:200,sealedCopies:card.sealedCopies.map(copy=>({...copy,ownerUsername:'new_owner',currentValueUsd:200}))},oldCard={...card,liveValueUsd:100,totalValueUsd:100,sealedCopies:card.sealedCopies.map(copy=>({...copy,ownerUsername:'old_owner',currentValueUsd:100}))};
+ const fresh={ok:true,schema:'receiz.sports_economy.live_inventory.v1',generatedAt:'2026-10-19T12:00:00Z',cards:[{...freshCard,valuationRow:publicSportsValueRow(freshCard)}]},old={ok:true,schema:'receiz.sports_economy.live_inventory.v1',generatedAt:'2026-10-18T12:00:00Z',cards:[{...oldCard,valuationRow:publicSportsValueRow(oldCard)}]};
+ localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(sourceInput(['a'])));localStorage.setItem('receiz-bank-public-sports-v1',JSON.stringify(fresh));
+ network.membership.mockResolvedValue(parsePublicMarket(sourceInput(['a'])));network.quotes.mockResolvedValue(quoteInput());
+ vi.stubGlobal('fetch',vi.fn(async input=>input==='/api/bank/public-market/sports'?Response.json(old):new Response('',{status:503})));
+ let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket();return null;}
+ try{await act(async()=>root.render(<Probe/>));expect(state.catalog?.items.find(item=>item.category==='sports')?.ownerUsername).toBe('new_owner');expect(state.sportsStatus).toBe('retained');const cached=JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1')!);expect(cached.generatedAt).toBe(fresh.generatedAt);expect(cached.cards[0].liveValueUsd).toBe(200);}finally{act(()=>root.unmount());}
 });

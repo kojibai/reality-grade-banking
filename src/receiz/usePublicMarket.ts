@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {receizKaiNow} from '@receiz/sdk';
-import { fetchPublicSports, mergePublicSports } from './public-sports';
+import { fetchPublicSports, mergePublicSports,retainPublicSportsInput } from './public-sports';
 import { fetchPublicMarket, fetchPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
 import {prepareMarketDisplaySource,useMarketDisplaySource} from './market-projection/display-source';
 import {publicCatalogAtPulse} from './market-projection/catalog-prices';
@@ -52,7 +52,7 @@ export function usePublicMarket(active = true) {
       const cards=new AbortController();sportsRunning.current=cards;
       void fetchPublicSports(cards.signal).catch(()=>null).then(value=>{
         if(cards.signal.aborted)return;
-        if(value){sports.current=value;setCatalog(current=>current?mergePublicSports(current,value):current);setSportsStatus((value as {fallback?:boolean}).fallback===true?'retained':'fresh');}
+        if(value){const retained=retainPublicSportsInput(sports.current,value);sports.current=retained;setCatalog(current=>current?mergePublicSports(current,retained):current);setSportsStatus((value as {fallback?:boolean}).fallback===true||retained!==value?'retained':'fresh');}
         else setSportsStatus(sports.current?'retained':'missing');
       }).finally(()=>{if(sportsRunning.current===cards)sportsRunning.current=null;});
     }
@@ -62,7 +62,7 @@ export function usePublicMarket(active = true) {
   useEffect(() => {
     if (!active) return;
     const seed = new AbortController();
-    void fetch('/receiz-public-sports.json', { signal: seed.signal, credentials: 'omit' }).then(async response => { if (!response.ok) return; const data = await response.json(); if (seed.signal.aborted || sports.current) return; sports.current = data; setSportsStatus('retained'); setCatalog(current => current ? mergePublicSports(current, data) : current); }).catch(() => {});
+    void fetch('/receiz-public-sports.json', { signal: seed.signal, credentials: 'omit' }).then(async response => { if (!response.ok) return; const data = await response.json(); if(seed.signal.aborted)return;const next=sports.current?retainPublicSportsInput(data,sports.current):data;if(next===sports.current)return;sports.current=next;setSportsStatus('retained');setCatalog(current=>current?mergePublicSports(current,next):current); }).catch(() => {});
     void fetch('/receiz-public-market.json', { signal: seed.signal, credentials: 'omit' }).then(async response => {
       if (!response.ok) return; const input = await response.json(); const cached = parsePublicMarket(input, input.snapshot); rememberPublicOriginalLocators(cached);
       if (seed.signal.aborted) return; setCatalog(current => {if(!current||cached.complete&&Date.parse(cached.observedAt??'')>Date.parse(current.observedAt??''))return mergePublicSports(cached,sports.current);const hints=new Map(cached.items.map(item=>[item.id,item]));return {...current,items:current.items.map(item=>{const hint=hints.get(item.id);if(!hint||hint.assetId!==item.assetId||hint.pulse!==item.pulse||hint.originalDigest!==item.originalDigest||hint.verifyUrl!==item.verifyUrl)return item;return {...item,...(item.hasLongForm===undefined?{hasLongForm:hint.hasLongForm,readingUrl:hint.readingUrl}:{}),...(!item.livePulseSeed&&hint.livePulseSeed?{livePulseSeed:hint.livePulseSeed,valuationBinding:hint.valuationBinding}:{})};})};});

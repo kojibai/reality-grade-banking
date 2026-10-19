@@ -2,10 +2,12 @@ import type{PublicMarketCatalog}from'../public-market';
 import{publicAssetPulseSeed}from'./asset';
 import{publicSigilQuoteAtPulse,marketRowsUsdAtPulse}from'./project';
 import type{MarketCapSource,MarketValueRow}from'./source';
+import {marketPulseAtOrAfterTime}from'./sealed-copies';
+import {mergeMarketCopyObservations,type MarketCopyObservationTape}from'./copy-observations';
 
 /** The complete public inventory supplies membership; its existing operands
  * supply valuation. Neither this projection nor its digest grants authority. */
-export function currentMarketDisplayModel(source:MarketCapSource,catalog:PublicMarketCatalog|null,pulse:number):MarketCapSource{
+export function currentMarketDisplayModel(source:MarketCapSource,catalog:PublicMarketCatalog|null,pulse:number,copyObservations?:MarketCopyObservationTape):MarketCapSource{
  if(!Number.isSafeInteger(pulse)||pulse<source.serverPulse||pulse>1e10)throw Error('Public market evaluation pulse is invalid.');
  let rows=source.valueRows;
  const currentCollection=catalog?.complete&&Date.parse(catalog.observedAt??'')>=Date.parse(source.generatedAt);
@@ -25,10 +27,24 @@ export function currentMarketDisplayModel(source:MarketCapSource,catalog:PublicM
  if(cards.length){
   const sports=new Map(rows.filter(row=>row.source==='sports-economy-card').map(row=>[row.seed,row]));
   const newer=Date.parse(catalog?.sportsObservedAt??'')>=Date.parse(source.generatedAt);
-  for(const item of cards)if(newer||!sports.has(item.sportsValuation!.seed))sports.set(item.sportsValuation!.seed,item.sportsValuation!);
+  for(const item of cards)if(newer||!sports.has(item.sportsValuation!.seed)){
+   const row=item.sportsValuation!;
+   // A new representative can carry the same exact copies as an older row.
+   // Their claims identify that overlap without guessing from a card title.
+   if(newer)for(const copy of row.sealedCopies??[])sports.delete(copy.claimHash);
+   sports.set(row.seed,row);
+  }
   rows=[...rows.filter(row=>row.source!=='sports-economy-card'),...sports.values()];
  }
  if(rows.length>10000)throw Error('Public market display coverage exceeds capacity.');
- return {...source,valueRows:rows,firstIssuancePulse:rows.reduce((first,row)=>Math.min(first,row.marketItem?.livePulseSeed?.claimPulse??first),source.firstIssuancePulse),serverPulse:pulse,currentUsd:marketRowsUsdAtPulse(rows,pulse),marketAssetsPriced:rows.filter(row=>row.source==='market-desk-live-asset').length,sportsCardsPriced:rows.filter(row=>row.source==='sports-economy-card').length,cardsInCirculation:Math.max(source.cardsInCirculation,cards.reduce((sum,item)=>sum+(item.circulationCount??0),0)),
+ const undated=rows.filter(row=>!row.marketItem?.livePulseSeed&&!row.sealedCopies?.length);
+ let undatedHistory=source.undatedHistory;
+ if(!undated.length)undatedHistory=undefined;
+ else if(!undatedHistory){
+  const known=copyObservations?mergeMarketCopyObservations({...source,valueRows:rows},copyObservations).source.valueRows:rows;
+  const dated=known.filter(row=>row.marketItem?.livePulseSeed||row.sealedCopies?.length),remainder=Number((source.currentUsd-marketRowsUsdAtPulse(dated,source.serverPulse,true)).toFixed(4));
+  if(remainder>=0){const observed=Date.parse(catalog?.sportsObservedAt??'');undatedHistory={rows:undated.length,observationPulse:source.serverPulse,observationUsd:remainder,sourceReportedTotalUsd:source.currentUsd,modelPulse:Number.isFinite(observed)&&observed>=Date.parse(source.generatedAt)?Math.max(source.serverPulse,marketPulseAtOrAfterTime(catalog!.sportsObservedAt!)):source.serverPulse};}
+ }
+ return {...source,undatedHistory,valueRows:rows,firstIssuancePulse:rows.reduce((first,row)=>Math.min(first,row.marketItem?.livePulseSeed?.claimPulse??first,...(row.sealedCopies??[]).map(copy=>marketPulseAtOrAfterTime(copy.sealedAt))),source.firstIssuancePulse),serverPulse:pulse,currentUsd:marketRowsUsdAtPulse(rows,pulse),marketAssetsPriced:rows.filter(row=>row.source==='market-desk-live-asset').length,sportsCardsPriced:rows.filter(row=>row.source==='sports-economy-card').length,cardsInCirculation:Math.max(source.cardsInCirculation,cards.reduce((sum,item)=>sum+(item.circulationCount??0),0)),
   generatedAt:currentCollection?catalog.observedAt!:source.generatedAt};
 }

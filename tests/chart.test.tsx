@@ -29,3 +29,12 @@ it('shows exact touch tooltips and keeps an isolated live balance point centered
     expect(host.innerHTML).not.toContain('NaN'); expect(host.innerHTML).not.toContain('undefined');
   } finally { act(() => root.unmount()); }
 });
+it('holds sparse values until their dated change without drawing an interpolated increase',()=>{
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  act(()=>root.render(<ValueChart values={[10,100]} interpolation="step"/>));
+  const line=host.querySelector('path[fill="none"]')!.getAttribute('d')!;
+  expect(line).toContain('H308 V12');expect(line).not.toContain('C');
+  act(()=>root.render(<ValueChart values={[10,100]}/>));expect(host.querySelector('path[fill="none"]')!.getAttribute('d')).toContain('C');
+ }finally{act(()=>root.unmount());}
+});

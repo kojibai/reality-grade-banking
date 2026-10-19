@@ -37,10 +37,48 @@ it('switches every range and restores the market instantly without a worker or a
   function Probe({ period, active }: { period: ChartPeriod; active: boolean }) { state = useMarketCapitalization(period, active); return null; }
   try {
     await act(async () => root.render(<Probe period="ALL" active={false} />));
-    const initial = state.points; expect(initial).toHaveLength(64); expect(fetch).not.toHaveBeenCalled();
-    for (const period of CHART_PERIODS) { await act(async () => root.render(<Probe period={period} active />)); expect(state.points).toHaveLength(64); }
+    const initial = state.points; expect(initial.length).toBeGreaterThanOrEqual(64);expect(initial.length).toBeLessThanOrEqual(96); expect(fetch).not.toHaveBeenCalled();
+    for (const period of CHART_PERIODS) { await act(async () => root.render(<Probe period={period} active />)); expect(state.points.length).toBeGreaterThanOrEqual(64);expect(state.points.length).toBeLessThanOrEqual(96); }
     await act(async () => root.render(<Probe period="ALL" active={false} />));
     await act(async () => root.render(<Probe period="ALL" active />));
     expect(state.points).toBe(initial); expect(state.status).toBe('unavailable');
   } finally { act(() => root.unmount()); }
+});
+it('restarts a suspended PWA worker and samples the canonical pulse immediately on foreground',async()=>{
+ vi.useFakeTimers();clock.pulse=14720000;vi.stubGlobal('fetch',vi.fn(async()=>Response.json(sourceFile)));
+ const workers:WorkerStub[]=[];
+ class WorkerStub{onmessage:((event:any)=>void)|null=null;messages:any[]=[];terminate=vi.fn();constructor(){workers.push(this);}postMessage(value:any){this.messages.push(value);}}
+ vi.stubGlobal('Worker',WorkerStub);
+ let state!:ReturnType<typeof useMarketCapitalization>;const root=createRoot(document.createElement('div'));
+ function Probe(){state=useMarketCapitalization('ALL',true);return null;}
+ try{
+  await act(async()=>root.render(<Probe/>));const completed=state.source,first=workers[0];expect(first.messages.some(message=>message.source)).toBe(true);
+  // The background process disappears before its in-flight valuation replies.
+  Object.defineProperty(document,'visibilityState',{configurable:true,value:'hidden'});act(()=>document.dispatchEvent(new Event('visibilitychange')));
+  clock.pulse+=100;
+  Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});act(()=>document.dispatchEvent(new Event('visibilitychange')));
+  expect(workers.length).toBeGreaterThan(1);expect(first.terminate).toHaveBeenCalled();
+  expect(workers.at(-1)!.messages.find(message=>message.source)?.pulse).toBe(clock.pulse);expect(state.source).toBe(completed);
+  const resumed=workers.at(-1)!;clock.pulse+=20;act(()=>window.dispatchEvent(new Event('pageshow')));
+  expect(resumed.terminate).toHaveBeenCalled();expect(workers.at(-1)!.messages.find(message=>message.source)?.pulse).toBe(clock.pulse);
+  const reopened=workers.at(-1)!;clock.pulse+=20;act(()=>window.dispatchEvent(new Event('focus')));
+  expect(reopened.terminate).toHaveBeenCalled();expect(workers.at(-1)!.messages.find(message=>message.source)?.pulse).toBe(clock.pulse);
+ }finally{act(()=>root.unmount());Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});}
+});
+it.each(['onerror','onmessageerror'] as const)('recovers a visible failed worker on the next Kai pulse after %s',async(kind)=>{
+ vi.useFakeTimers();clock.pulse=14720000;
+ const original=parseMarketCapSource(sourceFile),row=original.valueRows.find(row=>row.marketItem?.livePulseSeed)!,tiny={...original,generatedAt:'2026-10-19T05:00:00Z',serverPulse:clock.pulse-1,valueRows:[row],marketAssetsPriced:1,sportsCardsPriced:0,cardsInCirculation:0};
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({ok:true,marketCapProjection:tiny})));
+ const workers:WorkerStub[]=[];
+ class WorkerStub{onmessage:((event:any)=>void)|null=null;onerror:((event:any)=>void)|null=null;onmessageerror:((event:any)=>void)|null=null;messages:any[]=[];terminate(){}constructor(){workers.push(this);}postMessage(value:any){this.messages.push(value);}}
+ vi.stubGlobal('Worker',WorkerStub);
+ let state!:ReturnType<typeof useMarketCapitalization>;const root=createRoot(document.createElement('div'));
+ function Probe(){state=useMarketCapitalization('ALL',true);return null;}
+ try{
+  await act(async()=>root.render(<Probe/>));const retained=state.source;act(()=>workers[0][kind]!({}));expect(workers).toHaveLength(1);expect(state.source).toBe(retained);
+  clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));expect(workers).toHaveLength(2);
+  const next=workers.at(-1)!,request=next.messages.find(message=>message.source);expect(request.pulse).toBe(clock.pulse);
+  const history=(await buildMarketHistory(request.source.marketCapProjection,null,undefined,undefined,{catalog:null,pulse:clock.pulse}))!;
+  act(()=>next.onmessage!({data:{id:request.id,history}}));expect(state.source.serverPulse).toBe(clock.pulse);expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(state.source.currentUsd*100)));
+ }finally{act(()=>root.unmount());}
 });

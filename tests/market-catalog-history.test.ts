@@ -12,7 +12,7 @@ it('rebuilds every capitalization period from the complete current collection an
  const result=(await buildMarketHistory(source,null,undefined,undefined,{catalog:collection,pulse:current}))!;
  expect(result.summary.marketAssetsPriced).toBe(2);expect(result.summary.serverPulse).toBe(current);expect(result.summary.generatedAt).toBe(collection.observedAt);
  expect(result.summary.currentUsd).not.toBe(source.currentUsd);
- for(const points of Object.values(result.series)){expect(points).toHaveLength(64);expect(points.at(-1)?.pulse).toBe(current);expect(points.at(-1)?.usdCents).toBe(String(Math.round(result.summary.currentUsd*100)));}
+ for(const points of Object.values(result.series)){expect(points.length).toBeGreaterThanOrEqual(64);expect(points.length).toBeLessThanOrEqual(96);expect(points.at(-1)?.pulse).toBe(current);expect(points.at(-1)?.usdCents).toBe(String(Math.round(result.summary.currentUsd*100)));}
  const {parseMarketHistory}=await import('../src/receiz/market-projection/history');expect(()=>parseMarketHistory(result)).not.toThrow();
 });
 it('keeps the retained inventory when a partial collection cannot establish a replacement',async()=>{
@@ -56,4 +56,27 @@ it('does not regress a newer completed publication while fresher operands are lo
  const older={...source,generatedAt:'2026-10-14T00:00:00Z'};
  const result=await buildMarketHistory(older,latest,undefined,undefined,{catalog:null,pulse:14720001});
  expect(result).toBeNull();
+});
+it('counts a proof only from its carried seal pulse and values its entry at that pulse',async()=>{
+ const {currentMarketDisplayModel}=await import('../src/receiz/market-projection/catalog-source'),{marketCapUsdAtPulse,publicSigilUsdAtPulse}=await import('../src/receiz/market-projection/project');
+ const first=14700000,second=14700100,current=14720000,collection=catalog([original('first',first),original('second',second)]);
+ const model=currentMarketDisplayModel({...source,valueRows:[],marketAssetsPriced:0,firstIssuancePulse:first},collection,current);
+ expect(marketCapUsdAtPulse(model,first)).toBe(publicSigilUsdAtPulse({...seed,claimPulse:first},first));
+ expect(marketCapUsdAtPulse(model,second-1)).toBe(publicSigilUsdAtPulse({...seed,claimPulse:first},second-1));
+ const atSecond=publicSigilUsdAtPulse({...seed,claimPulse:first},second)+publicSigilUsdAtPulse({...seed,claimPulse:second},second);
+ expect(marketCapUsdAtPulse(model,second)).toBeCloseTo(atSecond,4);
+ expect(model.currentUsd).toBeGreaterThan(atSecond);
+});
+it('advances identical retained operands without rolling their publication date backward',async()=>{
+ const first=(await buildMarketHistory({...source,cardsInCirculation:5,generatedAt:'2026-10-18T23:00:00Z'},null,undefined,undefined,{catalog:null,pulse:14720000}))!;
+ const later=await buildMarketHistory({...source,proofObjectHash:'b'.repeat(64),generatedAt:'2026-10-14T00:00:00Z'},first,undefined,undefined,{catalog:null,pulse:14720001});
+ expect(later).not.toBeNull();expect(later?.summary.generatedAt).toBe(first.summary.generatedAt);expect(later?.summary.serverPulse).toBe(14720001);expect(later?.series.ALL.at(-1)?.pulse).toBe(14720001);expect(later?.summary.proofObjectHash).toBe(first.summary.proofObjectHash);expect(later?.summary.cardsInCirculation).toBe(5);
+});
+it('does not count an older sports aggregate again when its exact copy is carried by a new representative',async()=>{
+ const {currentMarketDisplayModel}=await import('../src/receiz/market-projection/catalog-source');
+ const old={id:`card:${'a'.repeat(64)}`,source:'sports-economy-card' as const,seed:'a'.repeat(64),baseUsdValue:10,birthUsdValue:10,marketUsdValue:11,proofTotalValueUsd:10,scoreDelta:0};
+ const next={...old,id:`card:${'b'.repeat(64)}`,seed:'b'.repeat(64),sealedCopies:[{collectibleId:'rsc_0123456789abcdef',claimHash:old.seed,sealedAt:'2026-10-01T12:00:00Z',birthUsdValue:5,proofValueUsd:10,currentValueUsd:11}]};
+ const collection=catalog([],false);collection.sportsObservedAt='2026-10-18T23:00:00Z';collection.items.push({...catalog([original('card')]).items[0],category:'sports',sportsValuation:next,circulationCount:1});
+ const result=currentMarketDisplayModel({...source,valueRows:[old],marketAssetsPriced:0,sportsCardsPriced:1,cardsInCirculation:1},collection,14720000);
+ expect(result.sportsCardsPriced).toBe(1);expect(result.valueRows.map(row=>row.seed)).toEqual([next.seed]);
 });

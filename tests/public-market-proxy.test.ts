@@ -59,3 +59,10 @@ it('rejects mutation methods before contacting Receiz', async () => {
   await publicMarketMiddleware({ method: 'POST', url: '/api/bank/public-market/membership' } as IncomingMessage, res, vi.fn());
   expect(status).toBe(405); expect(fetchSource).not.toHaveBeenCalled();
 });
+it('carries exact per-copy sealed values and only public owner names through sports discovery',async()=>{
+ const copy={collectibleId:'rsc_1123456789abcdef',claimHash:'b'.repeat(64),sealedAt:'2026-10-01T12:00:00Z',birthUsdValue:10,proofValueUsd:20,currentValueUsd:21,ownerUsername:'current_holder',ownerDisplayName:'Current Holder',ownerUserId:'private-account',email:'private-email'};
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({ok:true,schema:'receiz.sports_economy.live_inventory.v1',cards:[{collectibleId:copy.collectibleId,claimHash:copy.claimHash,cardId:'one',proofValueUsd:20,sealedCopies:[copy]}]})));
+ let body='';const res={setHeader:vi.fn(),writeHead:vi.fn(),end:(bytes:Uint8Array)=>{body=new TextDecoder().decode(bytes);}}as unknown as ServerResponse;
+ await publicMarketMiddleware({method:'GET',url:'/api/bank/public-market/sports',headers:{}}as IncomingMessage,res,vi.fn());
+ const card=JSON.parse(body).cards[0];expect(card.sealedCopies[0]).toMatchObject({sealedAt:copy.sealedAt,birthUsdValue:10,ownerUsername:'current_holder'});expect(card.valuationRow.sealedCopies[0]).not.toHaveProperty('ownerUsername');expect(body).not.toContain('private-');
+});

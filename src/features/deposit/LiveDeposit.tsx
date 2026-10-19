@@ -28,7 +28,7 @@ export function LiveDeposit({ identity, onClose, onRefresh }: { identity: OpenId
   return <div className="deposit-flow">
     {kind !== 'choose' && <button className="back-link" disabled={busy} onClick={() => { setKind('choose'); setDeposit(null); setAmount(''); setCheckout(null); setCardStatus(''); setError(''); }}><ArrowLeft size={16} />All deposits</button>}
     {kind === 'choose' && <><h1 className="sheet-hero">Turn what you own<br />into liquidity.</h1><p className="body-copy">Choose what you’re depositing.</p><div className="deposit-options">
-      <button onClick={() => setKind('asset')}><span className="choice-icon blue"><Building2 /></span><span><strong>An asset</strong><small>Jordans, gold, stocks, property.<br />Anything you own.</small></span><ChevronRight size={20} /></button>
+      <button onClick={() => setKind('asset')}><span className="choice-icon blue"><Building2 /></span><span><strong>A physical asset</strong><small>Jordans, gold, stocks, property.<br />Anything you own.</small></span><ChevronRight size={20} /></button>
       <button onClick={() => setKind('dollars')}><span className="choice-icon green"><CircleDollarSign /></span><span><strong>Dollars</strong><small>Add money to your account.</small></span><ChevronRight size={20} /></button>
       <button onClick={() => setKind('proof')}><span className="choice-icon purple"><FileCheck2 /></span><span><strong>A proof object</strong><small>Bring your verified value with you.</small></span><ChevronRight size={20} /></button>
       <button onClick={() => setKind('note')}><span className="choice-icon green"><FileCheck2 /></span><span><strong>An Offline Note</strong><small>Deposit a Reserve or Settlement Note.</small></span><ChevronRight size={20} /></button>

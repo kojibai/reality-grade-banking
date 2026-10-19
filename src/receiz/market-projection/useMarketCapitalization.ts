@@ -11,13 +11,13 @@ const KEY = 'receiz-bank-public-graph-history-v2';
 const shipped = parseMarketHistory(seedHistory);
 const now=()=>{try{return receizKaiNow().pulse;}catch{return 0;}};
 function restore(): MarketHistorySnapshot {
-  try { const cached = parseMarketHistory(JSON.parse(localStorage.getItem(KEY) ?? 'null')); if (cached.summary.serverPulse >= shipped.summary.serverPulse) return cached; } catch { /* Only bounded public display data is retained. */ }
+  try { const cached = parseMarketHistory(JSON.parse(localStorage.getItem(KEY) ?? 'null')); if (cached.historyPolicy==='sealed-values-and-dated-observations-v1'&&cached.summary.serverPulse >= shipped.summary.serverPulse) return cached; } catch { /* Only bounded public display data is retained. */ }
   return shipped;
 }
 type WorkerInput={source:{ok:true;marketCapProjection:MarketCapSource};history:MarketHistorySnapshot;catalog:PublicMarketCatalog|null;pulse:number};
 export function useMarketCapitalization(period: ChartPeriod, active: boolean,catalog:PublicMarketCatalog|null=null) {
   const [history,setHistory]=useState<MarketHistorySnapshot>(restore),[fullSource,setFullSource]=useState<MarketCapSource|null>(retainedMarketDisplaySource),[pulse,setPulse]=useState(now),[status,setStatus]=useState<'cached'|'live'|'unavailable'>('cached'),[historyUpdating,setHistoryUpdating]=useState(false);
-  const heldHistory=useRef(history),worker=useRef<Worker|null>(null),request=useRef(0),acceptedSource=useRef<MarketCapSource|null>(null),busy=useRef(false),queued=useRef<WorkerInput|null>(null);
+  const heldHistory=useRef(history),worker=useRef<Worker|null>(null),request=useRef(0),acceptedSource=useRef<MarketCapSource|null>(null),busy=useRef(false),queued=useRef<WorkerInput|null>(null),latestInput=useRef<WorkerInput|null>(null),restartWorker=useRef<(()=>void)|null>(null);
   heldHistory.current=history;
   const dispatch=useCallback(()=>{
     if(busy.current||!worker.current||!queued.current)return;
@@ -50,8 +50,10 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     return () => { controller.abort(); clearInterval(interval); };
   }, [active]);
   useEffect(() => {
-    if (typeof Worker === 'undefined') return;
-    let instance: Worker; try { instance = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); } catch { return; } worker.current = instance;
+    if (!active || typeof Worker === 'undefined') return;
+    const start=()=>{
+    worker.current?.terminate();worker.current=null;busy.current=false;++request.current;
+    let instance: Worker; try { instance = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); } catch { setHistoryUpdating(false);return; } worker.current = instance;
     instance.onmessage = event => {
       if(event.data.id!==request.current)return;busy.current=false;
       if(event.data.history)try{
@@ -62,13 +64,26 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
       }catch{/* Preserve the last complete chart. */}
       if(queued.current)dispatch();else setHistoryUpdating(false);
     };
-    return () => { instance.terminate(); worker.current = null;busy.current=false;queued.current=null; };
-  }, [dispatch]);
+    instance.onerror=instance.onmessageerror=()=>{if(worker.current!==instance)return;instance.terminate();worker.current=null;busy.current=false;setHistoryUpdating(false);};
+    if(latestInput.current){queued.current={...latestInput.current,pulse:Math.max(latestInput.current.pulse,now())};dispatch();}
+    };
+    restartWorker.current=start;start();
+    let hidden=document.visibilityState!=='visible';
+    // Installed PWAs may resume without a reply from their suspended worker.
+    // Recreate that execution context, retaining the last complete publication.
+    const visibility=()=>{if(document.visibilityState!=='visible'){hidden=true;return;}if(hidden){hidden=false;start();}};
+    const pageshow=()=>{if(document.visibilityState==='visible')start();};
+    const focus=()=>{if(document.visibilityState==='visible'&&(busy.current||!worker.current))start();};
+    document.addEventListener('visibilitychange',visibility);window.addEventListener('pageshow',pageshow);window.addEventListener('focus',focus);
+    return () => { restartWorker.current=null;worker.current?.terminate(); worker.current = null;busy.current=false;queued.current=null;++request.current;document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pageshow',pageshow);window.removeEventListener('focus',focus); };
+  }, [dispatch,active]);
   useEffect(() => {
-    if (!fullSource || !active) {queued.current=null;busy.current=false;setHistoryUpdating(false);worker.current?.postMessage({id:++request.current,cancel:true});return;}
+    if (!fullSource || !active) {latestInput.current=null;queued.current=null;busy.current=false;setHistoryUpdating(false);worker.current?.postMessage({id:++request.current,cancel:true});return;}
     // Finish the current complete publication, then process the latest request.
     // A pulse tick cannot starve a larger new-inventory rebuild by cancelling it.
-    queued.current={source:{ok:true,marketCapProjection:fullSource},history:heldHistory.current,catalog,pulse:Math.max(pulse,fullSource.serverPulse)};dispatch();
+    latestInput.current={source:{ok:true,marketCapProjection:fullSource},history:heldHistory.current,catalog,pulse:Math.max(pulse,fullSource.serverPulse)};queued.current=latestInput.current;
+    // Retry only when a new pulse or source input arrives, never in an error loop.
+    if(!worker.current)restartWorker.current?.();else dispatch();
   }, [fullSource, active,catalog,pulse,dispatch]);
   // Period selection is always a synchronous lookup, with no network or job.
   return { source:history.summary, points: history.series[period], status, historyUpdating };

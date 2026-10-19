@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
 import { publicMaterialOriginalUrl, safeReceizPublicUrl } from '../src/receiz/public-market.js';
 import {publicMarketPulseSeed,publicSportsValueRow} from '../src/receiz/market-projection/source.js';
+import {publicSportsSealedCopies} from '../src/receiz/market-projection/sealed-copies.js';
 
 const PREFIX = '/api/bank/public-market/';
 const MAX_BYTES = 128 * 1024 * 1024;
@@ -68,7 +69,11 @@ async function loadPublicResponse(target: URL): Promise<CachedResponse> {
       } else if (target.pathname === '/api/game/sports/economy') {
         if (input.ok !== true || input.schema !== 'receiz.sports_economy.live_inventory.v1' || !Array.isArray(input.cards) || input.cards.length > 100000) throw new Error('Public sports inventory is unavailable.');
         const fields = ['collectibleId', 'claimHash', 'athlete', 'sport', 'rarity', 'issueLine', 'liveValueUsd', 'totalValueUsd', 'issuedCount', 'vaultCount', 'pricedCount', 'route'];
-        input.cards = input.cards.map((card: Record<string, unknown>) => ({...Object.fromEntries(fields.map(key => [key, card[key]])),valuationRow:publicSportsValueRow(card)}));
+        input.cards = input.cards.map((card: Record<string, unknown>) => {
+          const copies=publicSportsSealedCopies(card.sealedCopies),raw=Array.isArray(card.sealedCopies)?card.sealedCopies:[];
+          const sealedCopies=copies?.map(copy=>{const carried=raw.find(value=>value?.collectibleId?.toLowerCase()===copy.collectibleId&&value?.claimHash?.toLowerCase()===copy.claimHash) as Record<string,unknown>|undefined;return {...copy,ownerUsername:typeof carried?.ownerUsername==='string'&&/^[a-zA-Z0-9_-]{1,64}$/.test(carried.ownerUsername)?carried.ownerUsername:null,ownerDisplayName:typeof carried?.ownerDisplayName==='string'&&carried.ownerDisplayName.length<=128?carried.ownerDisplayName:null};});
+          return {...Object.fromEntries(fields.map(key => [key, card[key]])),...(sealedCopies?{sealedCopies}:{}),valuationRow:publicSportsValueRow(card)};
+        });
         const publicInput = { ok: true, schema: input.schema, generatedAt: input.generatedAt, fallback: input.fallback === true, cards: input.cards };
         for (const key of Object.keys(input)) delete input[key];
         Object.assign(input, publicInput);
@@ -104,7 +109,8 @@ export function curatePublicCapitalization(input: Record<string, unknown>) {
   const fields = ['schema', 'source', 'proofObjectHash', 'generatedAt', 'firstIssuancePulse', 'serverPulse', 'currentUsd', 'cardsInCirculation', 'sportsCardsPriced', 'marketAssetsPriced'];
   return { ok: true, marketCapProjection: { ...Object.fromEntries(fields.map(key => [key, seed[key]])), valueRows: seed.valueRows.map((row: Record<string, unknown>) => {
     const item = row.marketItem as Record<string, unknown> | undefined, meta = item?.livePulseSeed as Record<string, unknown> | undefined;
-    return { ...Object.fromEntries(['id', 'source', 'baseUsdValue', 'birthUsdValue', 'marketUsdValue', 'proofTotalValueUsd', 'scoreDelta', 'seed', 'quoteUsdPerPhi'].map(key => [key, row[key]])), ...(item ? { marketItem: { ...Object.fromEntries(['id', 'source', 'priceUsd', 'pricePhi', 'quoteUsdPerPhi', 'changePct', 'pricingSourceKey'].map(key => [key, item[key]])), ...(meta ? { livePulseSeed: Object.fromEntries(['kind', 'claimPulse', 'beat', 'stepIndex', 'creatorVerified', 'chakraDay', 'kaiSignature', 'userPhiKey'].map(key => [key, meta[key]])) } : {}) } } : {}) };
+    const sealedCopies=publicSportsSealedCopies(row.sealedCopies);
+    return { ...Object.fromEntries(['id', 'source', 'baseUsdValue', 'birthUsdValue', 'marketUsdValue', 'proofTotalValueUsd', 'scoreDelta', 'seed', 'quoteUsdPerPhi'].map(key => [key, row[key]])),...(sealedCopies?{sealedCopies}:{}), ...(item ? { marketItem: { ...Object.fromEntries(['id', 'source', 'priceUsd', 'pricePhi', 'quoteUsdPerPhi', 'changePct', 'pricingSourceKey'].map(key => [key, item[key]])), ...(meta ? { livePulseSeed: Object.fromEntries(['kind', 'claimPulse', 'beat', 'stepIndex', 'creatorVerified', 'chakraDay', 'kaiSignature', 'userPhiKey'].map(key => [key, meta[key]])) } : {}) } } : {}) };
   }) } };
 }
 export function publicMarketPlugin(): Plugin { return { name: 'receiz-public-market', configureServer(server) { server.middlewares.use((req, res, next) => { void publicMarketMiddleware(req, res, next); }); }, configurePreviewServer(server) { server.middlewares.use((req, res, next) => { void publicMarketMiddleware(req, res, next); }); } }; }

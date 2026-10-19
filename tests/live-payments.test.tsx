@@ -14,9 +14,9 @@ it('generates the bank QR and writes only the public request URL to NFC on expli
   const host = document.createElement('div'), root = createRoot(host);
   try { act(() => root.render(<LiveReceive identity={{ username:'fixture_user', binding: { identityOwnerReceizId: 'receiz_device_fixture', artifactOwnerReceizId: 'test-public-coordinate' },walletReceivingAddress:()=> '10000000-0000-4000-8000-000000000002' } as OpenIdentity} />));
     expect(host.querySelector('svg[aria-label="Your payment QR"]')).not.toBeNull(); expect(write).not.toHaveBeenCalled();
-    expect(host.querySelector('.payment-link')!.textContent).toBe('fixture_user.receiz.id');
+    expect(host.querySelector('.payment-link')!.textContent).toBe('fixture_user');
     await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Set up NFC tag'))!.click());
-    expect(write.mock.calls[0][0]).toEqual({ records: [{ recordType: 'url', data: 'https://bankeiz.com/?to=fixture_user.receiz.id' }] });
+    expect(write.mock.calls[0][0]).toEqual({ records: [{ recordType: 'url', data: 'https://bankeiz.com/?to=fixture_user' }] });
     expect(host.textContent).toContain('Tag ready.');
   } finally { act(() => root.unmount()); delete (window as unknown as { NDEFReader?: unknown }).NDEFReader; }
 });
@@ -49,7 +49,7 @@ it('keeps available account balances out of the Send entry form',async()=>{const
 it('uses the current public username for the Receive ID, QR and copied address instead of the Wallet UUID',async()=>{
  const host=document.createElement('div'),root=createRoot(host),copy=vi.fn().mockResolvedValue(undefined);vi.stubGlobal('navigator',{clipboard:{writeText:copy}});
  try{act(()=>root.render(<LiveReceive identity={{accountUsername:()=> 'Klok',username:'old_name',walletReceivingAddress:()=> '10000000-0000-4000-8000-000000000002'}as OpenIdentity}/>));
- expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('klok.receiz.id');expect(host.querySelector('.payment-link')?.textContent).toBe('klok.receiz.id');expect(host.textContent).not.toContain('10000000-0000-4000-8000-000000000002');
- await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Copy Receiz ID')!.click());expect(copy).toHaveBeenCalledWith('klok.receiz.id');
+ expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('klok');expect(host.textContent).not.toContain('.receiz.id');expect(host.querySelector('.payment-link')?.textContent).toBe('klok');expect(host.textContent).not.toContain('10000000-0000-4000-8000-000000000002');
+ await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Copy Receiz ID')!.click());expect(copy).toHaveBeenCalledWith('klok');
  }finally{act(()=>root.unmount());}
 });

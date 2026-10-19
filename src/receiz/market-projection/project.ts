@@ -4,8 +4,9 @@ import {marketProofUsdQuote,marketProofUsdCents} from '../market-phi-usd';
 import type { MarketCapSource, MarketValueRow,MarketPulseSeed } from './source';
 import type { ChartPeriod } from '../../core/chart-history';
 import { marketPulseTime, marketPeriodPulses } from './coordinates';
+import {marketPulseAtOrAfterTime,type MarketSealedCopy} from './sealed-copies';
 // Canonical public Proof Graph display rules from the v129 Receiz host.
-// This projection does not assert historic membership or actual transaction prices.
+// Pricing stays deterministic; historical membership starts at the carried seal.
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 const round = (n: number, places = 4) => Number(n.toFixed(places));
 const roundPhi = (n: number) => Math.round(n * 1e6) / 1e6;
@@ -40,9 +41,22 @@ function sportsUnitValue(row: MarketValueRow, pulse: number, quoteMove: number):
   return round(base + round(Math.max(.0001, carry)));
 }
 function sportsValue(row:MarketValueRow,pulse:number,quoteMove:number){const unit=sportsUnitValue(row,pulse,quoteMove);return unit>0?round(row.proofTotalValueUsd*unit/row.baseUsdValue):0;}
+function sealedCopyValue(copy:MarketSealedCopy,pulse:number,quoteMove:number):number{
+ if(pulse<marketPulseAtOrAfterTime(copy.sealedAt))return 0;
+ const model=copy.valuation,observed=copy.valuationPulse;
+ if(model&&observed!==undefined&&pulse>=observed){
+  if(pulse===observed)return copy.currentValueUsd;
+  // The host rounds each single-card chart quote to cents before summing.
+  return Number(Math.max(0,sportsUnitValue({id:copy.collectibleId,source:'sports-economy-card',...model,proofTotalValueUsd:model.baseUsdValue},pulse,quoteMove)).toFixed(2));
+ }
+ let amount=copy.birthUsdValue;
+ for(const point of copy.valueHistory??[]){if(pulse<(point.pulse??marketPulseAtOrAfterTime(point.at)))break;amount=point.usdValue;}
+ return amount;
+}
 export function publicSportsQuoteAtPulse(row:MarketValueRow,pulse:number,quoteMove?:number){
  if(row.source!=='sports-economy-card'||!Number.isSafeInteger(pulse)||pulse<0)throw Error('Public object valuation seed is unavailable.');
  if(quoteMove===undefined){const current=rate(pulse),prior=rate(Math.max(0,pulse-1));quoteMove=Math.abs(current-prior)/prior;}
+ const copy=row.sealedCopies?.find(copy=>copy.claimHash===row.seed);if(copy)return sealedCopyValue(copy,pulse,quoteMove);
  return sportsUnitValue(row,pulse,quoteMove);
 }
 export function marketQuoteMovementAtPulse(pulse:number){const current=rate(pulse),previous=rate(Math.max(0,pulse-1));return Math.abs(current-previous)/previous;}
@@ -54,11 +68,18 @@ export function marketAssetUsdAtPulse(row:MarketValueRow,pulse:number):number{
 export function marketCapUsdAtPulse(seed: MarketCapSource, pulse: number): number {
   if (!Number.isSafeInteger(pulse) || pulse < seed.firstIssuancePulse) throw new Error('Market projection pulse outside its issuance range.');
   if (pulse === seed.serverPulse) return round(seed.currentUsd);
-  return marketRowsUsdAtPulse(seed.valueRows,pulse);
+  const dated=marketRowsUsdAtPulse(seed.valueRows,pulse,true),observation=seed.undatedHistory;
+  if(!observation||pulse<observation.observationPulse)return dated;
+  const aggregate=pulse<=observation.modelPulse?observation.observationUsd:marketRowsUsdAtPulse(seed.valueRows.filter(row=>!row.marketItem?.livePulseSeed&&!row.sealedCopies?.length),pulse);
+  return round(dated+aggregate);
 }
-export function marketRowsUsdAtPulse(rows:MarketValueRow[],pulse:number):number{
+export function marketRowsUsdAtPulse(rows:MarketValueRow[],pulse:number,historical=false):number{
  const quote=rate(pulse),previous=rate(Math.max(0,pulse-1)),quoteMove=Math.abs(quote-previous)/previous;
- return round(rows.reduce((sum,row)=>sum+(row.source==='market-desk-live-asset'?marketValue(row,pulse,quote):sportsValue(row,pulse,quoteMove)),0));
+ return round(rows.reduce((sum,row)=>{
+  if(row.source==='sports-economy-card'&&row.sealedCopies)return sum+row.sealedCopies.reduce((value,copy)=>value+sealedCopyValue(copy,pulse,quoteMove),0);
+  if(historical){const sealed=row.marketItem?.livePulseSeed?.claimPulse;if(sealed===undefined||pulse<sealed)return sum;}
+  return sum+(row.source==='market-desk-live-asset'?marketValue(row,pulse,quote):sportsValue(row,pulse,quoteMove));
+ },0));
 }
 export { marketPulseTime, marketPeriodPulses } from './coordinates';
 export function projectMarketPeriod(seed: MarketCapSource, period: ChartPeriod) { return marketPeriodPulses(seed, period).map(pulse => ({ at: new Date(marketPulseTime(pulse)).toISOString(), pulse, usdCents: String(Math.round(marketCapUsdAtPulse(seed, pulse) * 100)) })); }

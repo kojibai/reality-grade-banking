@@ -5,6 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { BankContext } from '../src/core/useBank';
 import { createDemoState } from '../src/core/demo';
 import { Market } from '../src/features/market/Market';
+import { PublicAssetDetail } from '../src/features/market/PublicAssetDetail';
 import { parsePublicMarket } from '../src/receiz/public-market';
 
 const source = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
@@ -59,12 +60,28 @@ it('keeps local Kai valuation live while reporting an unavailable collection ref
  source.value={catalog:held,status:'stale',quoteStatus:'stale',error:'Public prices and charts could not be refreshed.',refresh:vi.fn()};
  const {host}=mount();expect(host.textContent).toContain('Live Kai valuation · retained collection');expect(host.textContent).toContain('Retained pricing inputs continue at the live Kai pulse.');expect(host.textContent).not.toContain('Showing cached quotes');
 });
+it('shows each carried current owner and sealed time directly in the public list',()=>{
+ const held=catalog(2),sealedAt='2026-10-01T12:00:00Z';Object.assign(held.items[0],{ownerUsername:'current_holder',ownerDisplayName:'Current Holder',sealedAt});
+ Object.assign(held.items[1],{ownerUsername:null,ownerDisplayName:null,sealedAt:null});
+ source.value={catalog:held,status:'live',error:null,refresh:vi.fn()};
+ const {host}=mount(),rows=host.querySelectorAll('.market-rows .asset-row');
+ expect(rows[0].textContent).toContain('@current_holder');expect(rows[0].textContent).toContain(new Date(sealedAt).toLocaleString());
+ expect(rows[1].textContent).toContain('Owner not supplied');expect(rows[1].textContent).toContain('Sealed time not supplied');
+});
 it('opens exact public card history for its owner and original issue time',async()=>{
  const cardId='rsc_0123456789abcdef',claimHash='a'.repeat(64),held=catalog(1),at='2026-10-01T12:00:00Z';
  Object.assign(held.items[0],{assetId:cardId,category:'sports',ownerUsername:null,ownerDisplayName:null,ownerProfileUrl:null,sealedAt:null,sourceUrl:`https://receiz.com/game/sports/card/${cardId}?claimHash=${claimHash}`});
  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({ok:true,cardId,claimHash,count:1,provenance:[{collectibleId:cardId,claimHash,eventKind:'issue',appendHash:'b'.repeat(64),occurredAt:at,owner:{username:'actual-owner',displayName:'Actual'}}]})));
  source.value={catalog:held,status:'live',error:null,refresh:vi.fn()};const {host}=mount();await act(async()=>{(host.querySelector('.market-rows button')as HTMLButtonElement).click();});
  expect(host.querySelector('dialog')?.textContent).toContain('@actual-owner');expect(host.querySelector('dialog')?.textContent).toContain(new Date(at).toLocaleString());
+});
+it('prefers refreshed carried copy ownership over earlier fetched details at the same source URL',async()=>{
+ const cardId='rsc_0123456789abcdef',claimHash='a'.repeat(64),sealedAt='2026-10-01T12:00:00Z',item={...catalog(1).items[0],assetId:cardId,category:'sports' as const,ownerUsername:null,ownerDisplayName:null,ownerProfileUrl:null,sealedAt:null,sourceUrl:`https://receiz.com/game/sports/card/${cardId}?claimHash=${claimHash}`};
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({ok:true,cardId,claimHash,count:1,provenance:[{collectibleId:cardId,claimHash,eventKind:'issue',appendHash:'b'.repeat(64),occurredAt:sealedAt,owner:{username:'earlier-owner',displayName:'Earlier'}}]})));
+ const host=document.createElement('div'),root=createRoot(host);roots.push(root);document.body.append(host);
+ await act(async()=>root.render(<PublicAssetDetail item={item}/>));expect(host.textContent).toContain('@earlier-owner');
+ const refreshed={...item,ownerUsername:'fresh-holder',ownerDisplayName:'Fresh Holder',ownerProfileUrl:'https://receiz.com/fresh-holder',sealedAt,sealedCopies:[{collectibleId:cardId,claimHash,sealedAt,ownerUsername:'fresh-holder',ownerDisplayName:'Fresh Holder',ownerProfileUrl:'https://receiz.com/fresh-holder'}]};
+ act(()=>root.render(<PublicAssetDetail item={refreshed}/>));expect(host.textContent).toContain('@fresh-holder');expect(host.textContent).not.toContain('@earlier-owner');
 });
 it('loads more public rows automatically before reaching the list end', () => {
   let reveal: ((entries: { isIntersecting: boolean }[]) => void) | undefined;

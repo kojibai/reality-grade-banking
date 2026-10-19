@@ -1,7 +1,8 @@
+import {publicSportsSealedCopies,type MarketSealedCopy} from './sealed-copies.js';
 /** Public Proof Graph display source, never ownership, cash backing or execution authority. */
 export interface MarketPulseSeed { kind: string; claimPulse: number; beat: number; stepIndex: number; creatorVerified: boolean; chakraDay?: string | null; kaiSignature?: string | null; userPhiKey?: string | null; }
-export interface MarketValueRow { id: string; source: 'market-desk-live-asset' | 'sports-economy-card'; baseUsdValue: number; birthUsdValue: number; marketUsdValue: number; proofTotalValueUsd: number; scoreDelta: number; seed: string; quoteUsdPerPhi?: number; marketItem?: { id: string; source: string; priceUsd: number; pricePhi: number; quoteUsdPerPhi: number; changePct: number; pricingSourceKey?: string; livePulseSeed?: MarketPulseSeed | null; }; }
-export interface MarketCapSource { schema: 'receiz.proof_graph.market_cap_projection.v1'; source: string; proofObjectHash: string; generatedAt: string; firstIssuancePulse: number; serverPulse: number; currentUsd: number; cardsInCirculation: number; sportsCardsPriced: number; marketAssetsPriced: number; valueRows: MarketValueRow[]; }
+export interface MarketValueRow { id: string; source: 'market-desk-live-asset' | 'sports-economy-card'; baseUsdValue: number; birthUsdValue: number; marketUsdValue: number; proofTotalValueUsd: number; scoreDelta: number; seed: string; quoteUsdPerPhi?: number; sealedCopies?:MarketSealedCopy[];marketItem?: { id: string; source: string; priceUsd: number; pricePhi: number; quoteUsdPerPhi: number; changePct: number; pricingSourceKey?: string; livePulseSeed?: MarketPulseSeed | null; }; }
+export interface MarketCapSource { schema: 'receiz.proof_graph.market_cap_projection.v1'; source: string; proofObjectHash: string; generatedAt: string; firstIssuancePulse: number; serverPulse: number; currentUsd: number; cardsInCirculation: number; sportsCardsPriced: number; marketAssetsPriced: number; valueRows: MarketValueRow[];undatedHistory?:{rows:number;observationPulse:number;observationUsd:number;sourceReportedTotalUsd:number;modelPulse:number}; }
 /** Existing public valuation operands only; this display input grants no rights. */
 export function publicMarketPulseSeed(input:unknown,pulse:unknown):MarketPulseSeed|undefined{
  const seed=input as MarketPulseSeed|null;
@@ -12,11 +13,19 @@ export function publicMarketPulseSeed(input:unknown,pulse:unknown):MarketPulseSe
 const finite = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= 1e13;
 const count = (v: unknown) => Number.isSafeInteger(v) && Number(v) >= 0;
 const text = (v: unknown) => typeof v === 'string' && v.length > 0 && v.length <= 512;
+/** Retained public display fields are checked before worker or JSX use. */
+export function validUndatedMarketHistory(input:unknown):boolean{
+ if(input===undefined)return true;
+ if(!input||typeof input!=='object'||Array.isArray(input))return false;
+ const value=input as NonNullable<MarketCapSource['undatedHistory']>;
+ return count(value.rows)&&value.rows>0&&value.rows<=10000&&count(value.observationPulse)&&value.observationPulse<=1e10&&count(value.modelPulse)&&value.modelPulse>=value.observationPulse&&value.modelPulse<=1e10&&[value.observationUsd,value.sourceReportedTotalUsd].every(amount=>finite(amount)&&amount>=0);
+}
 /** Curate the existing public sports projection, bound to its carried claim. */
 export function readPublicSportsValueRow(input:unknown,claim:unknown):MarketValueRow|undefined{
  const row=input as MarketValueRow|null;
  if(typeof claim!=='string'||!/[a-f0-9]{64}/i.test(claim)||claim.length!==64||!row||row.source!=='sports-economy-card'||!text(row.id)||!row.id.endsWith(`:${claim}`)||row.seed!==claim||![row.baseUsdValue,row.birthUsdValue,row.marketUsdValue,row.proofTotalValueUsd,row.scoreDelta].every(value=>finite(value)&&value>=0))return;
- return {id:row.id,source:row.source,seed:claim,baseUsdValue:row.baseUsdValue,birthUsdValue:row.birthUsdValue,marketUsdValue:row.marketUsdValue,proofTotalValueUsd:row.proofTotalValueUsd,scoreDelta:row.scoreDelta};
+ const sealedCopies=publicSportsSealedCopies(row.sealedCopies);
+ return {id:row.id,source:row.source,seed:claim,baseUsdValue:row.baseUsdValue,birthUsdValue:row.birthUsdValue,marketUsdValue:row.marketUsdValue,proofTotalValueUsd:row.proofTotalValueUsd,scoreDelta:row.scoreDelta,...(sealedCopies?{sealedCopies}:{})};
 }
 export function publicSportsValueRow(input:unknown):MarketValueRow|undefined{
  const card=input as Record<string,unknown>|null;
@@ -24,15 +33,17 @@ export function publicSportsValueRow(input:unknown):MarketValueRow|undefined{
  const positive=(value:unknown)=>finite(value)?Math.max(0,value as number):0;
  const proof=positive(card.proofValueUsd),priced=Math.max(1,Math.trunc(positive(card.pricedCount)||positive(card.vaultCount)||1));
  const score=card.card as Record<string,unknown>|null;
- return readPublicSportsValueRow({id:`${card.cardId}:${card.claimHash}`,source:'sports-economy-card',seed:card.claimHash,baseUsdValue:proof,birthUsdValue:proof,marketUsdValue:Math.max(proof,positive(card.liveValueUsd),positive(card.representativeValueUsd)),proofTotalValueUsd:Math.round((positive(card.proofTotalValueUsd)||proof*priced)*1e4)/1e4,scoreDelta:positive(score?.currentScore)||positive(score?.projectedScore)||positive(card.baseRating)/10},card.claimHash);
+ return readPublicSportsValueRow({id:`${card.cardId}:${card.claimHash}`,source:'sports-economy-card',seed:card.claimHash,baseUsdValue:proof,birthUsdValue:proof,marketUsdValue:Math.max(proof,positive(card.liveValueUsd),positive(card.representativeValueUsd)),proofTotalValueUsd:Math.round((positive(card.proofTotalValueUsd)||proof*priced)*1e4)/1e4,scoreDelta:positive(score?.currentScore)||positive(score?.projectedScore)||positive(card.baseRating)/10,sealedCopies:card.sealedCopies},card.claimHash);
 }
 export function parseMarketCapSource(input: unknown): MarketCapSource {
   const envelope = input as { ok?: unknown; marketCapProjection?: MarketCapSource } | null, seed = envelope?.marketCapProjection;
   if (envelope?.ok !== true || !seed || seed.schema !== 'receiz.proof_graph.market_cap_projection.v1' || seed.source !== 'market-desk-live-assets.sum + single-card-current-live-value-proof.sum' || !/^[a-f0-9]{64}$/.test(seed.proofObjectHash) || !Number.isFinite(Date.parse(seed.generatedAt)) || !count(seed.firstIssuancePulse) || !count(seed.serverPulse) || seed.firstIssuancePulse > seed.serverPulse || seed.serverPulse > 1e10 || !finite(seed.currentUsd) || seed.currentUsd < 0 || !count(seed.cardsInCirculation) || !count(seed.sportsCardsPriced) || !count(seed.marketAssetsPriced) || seed.sportsCardsPriced > seed.cardsInCirculation || !Array.isArray(seed.valueRows) || seed.valueRows.length > 10000 || seed.valueRows.length !== seed.sportsCardsPriced + seed.marketAssetsPriced) throw new Error('Public capitalization source is incomplete.');
+  if(!validUndatedMarketHistory(seed.undatedHistory)||seed.undatedHistory&&seed.undatedHistory.observationPulse>seed.serverPulse)throw new Error('Public capitalization observation is invalid.');
   const ids = new Set<string>(); let market = 0, sports = 0;
   for (const row of seed.valueRows) {
     if (!text(row.id) || ids.has(row.id) || !text(row.seed) || ![row.baseUsdValue, row.birthUsdValue, row.marketUsdValue, row.proofTotalValueUsd, row.scoreDelta].every(finite) || [row.baseUsdValue, row.birthUsdValue, row.marketUsdValue, row.proofTotalValueUsd].some(v => v < 0)) throw new Error('Public capitalization row is invalid.');
     ids.add(row.id);
+    if(row.sealedCopies!==undefined&&!publicSportsSealedCopies(row.sealedCopies))throw new Error('Public capitalization seal metadata is invalid.');
     if (row.source === 'market-desk-live-asset') {
       market++; const item = row.marketItem;
       if (!item || !text(item.id) || !text(item.source) || ![item.priceUsd, item.pricePhi, item.quoteUsdPerPhi, item.changePct].every(finite) || item.priceUsd < 0 || item.pricePhi < 0 || item.quoteUsdPerPhi <= 0) throw new Error('Public market valuation basis is unavailable.');

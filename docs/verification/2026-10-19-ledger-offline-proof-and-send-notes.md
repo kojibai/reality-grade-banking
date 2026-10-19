@@ -33,7 +33,7 @@ material in the evidence ZIP. No proof is invented, resealed or upgraded from a
 hash reference. Private signing material is neither needed nor exported.
 
 Receive prefers the current username, then the original public username, and
-shows `username.receiz.id` instead of the Wallet UUID. Copy/share and no-amount QR
+shows only the public `username` instead of the Wallet UUID or `.receiz.id` suffix. Copy/share and no-amount QR
 carry that ID. The scanner accepts bare usernames and Receiz IDs; old bank URL
 requests remain compatible. Amount requests and NFC use the bank payment URL.
 Safari's manual NFC help exposes that URL separately and handles incomplete
