@@ -53,8 +53,8 @@ const publicPages = {};
 const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' });
 try {
   const { AccountOpening } = await server.ssrLoadModule('/src/features/identity/AccountOpening.tsx');
-  const { BANK_READ_CONSENT, BANK_READ_SCOPES } = await server.ssrLoadModule('/src/receiz/config.ts');
-  pages.push(...accountNoticePages(BANK_READ_CONSENT, BANK_READ_SCOPES), realityGradePage, valueExplainerPage);
+  const { BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_MESSAGING_CONSENT, BANK_MESSAGING_SCOPES } = await server.ssrLoadModule('/src/receiz/config.ts');
+  pages.push(...accountNoticePages(BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_MESSAGING_CONSENT, BANK_MESSAGING_SCOPES), realityGradePage, valueExplainerPage);
   const html = await readFile('dist/index.html', 'utf8');
   const launchImages = await buildLaunchImages('dist', AccountOpening);
   bankHtml = openingShellHtml(html, AccountOpening).replace('</head>', launchImages + '</head>');

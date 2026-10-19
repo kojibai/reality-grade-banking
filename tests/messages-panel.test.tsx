@@ -21,16 +21,16 @@ function fixture(consented=true){
  const twin={readiness:vi.fn(()=>({status:'configured',availability:'unchecked',requires:['business','usage-credits']})),ask:vi.fn(async(input:NativeTwinAsk):Promise<NativeTwinReply>=>({requestId:input.requestId,message:'A generated answer',authority:'generated-interpretation',source:'upstream',memoryScope:'none',memory:[],sourceReferences:[],sharedContext:[],actionHandoffs:[{kind:'pay',label:'Review proposal',href:'https://receiz.com/review',authority:'proposal-only',admitted:false}]}))};
  const api={accountUid:uid,twin,callTransport:{heldFetch:vi.fn(async(_path:string,_init?:RequestInit)=>Response.json({ok:true,calls:[],activeCall:null}))},knownConversations:()=>[conversation],knownMessages:()=>page,conversations:vi.fn(async(_signal?:AbortSignal)=>[conversation]),messages:vi.fn(async(_id:string,_before?:string,_signal?:AbortSignal)=>page),search:vi.fn(async(_query:string,_signal?:AbortSignal)=>[peer,other]),createConversation:vi.fn(async(_input:{participantUserIds:string[];title?:string})=>threadId),send:vi.fn(async(_id:string,_body:string,_options?:{stream?:boolean;signal?:AbortSignal;onDelta?:(agentId:string,text:string)=>void})=>({...message,id:'sent-1',senderUserId:uid,body:'My draft'}))};
  const identity={binding:{identityOwnerReceizId:'owner'},messaging:vi.fn(async(approve=false)=>{if(!approved&&!approve)throw Error('MESSAGING_CONSENT_REQUIRED');approved=true;return api;})} as unknown as OpenIdentity;
- const host=document.createElement('div');document.body.appendChild(host);const root=createRoot(host),onClose=vi.fn();
- const render=(active=true,nextIdentity=identity,twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>)=>act(async()=>root.render(<MessagesPanel identity={nextIdentity} active={active} onClose={onClose} twinContextRecords={twinContextRecords}/>));
+ const host=document.createElement('div');document.body.appendChild(host);const root=createRoot(host),onClose=vi.fn(),onPreparePayment=vi.fn();
+ const render=(active=true,nextIdentity=identity,twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>)=>act(async()=>root.render(<MessagesPanel identity={nextIdentity} active={active} onClose={onClose} onPreparePayment={onPreparePayment} twinContextRecords={twinContextRecords}/>));
  const click=async(label:string)=>{const button=[...host.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===label||b.textContent===label);expect(button,'button '+label).toBeTruthy();await act(async()=>button!.click());};
  const input=async(label:string,value:string)=>{const field=host.querySelector<HTMLInputElement>('[aria-label="'+label+'"]')!;expect(field,'input '+label).toBeTruthy();await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(field,value);field.dispatchEvent(new Event('input',{bubbles:true}));});};
  const submit=()=>act(async()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
- return{api:api as typeof api&NativeMessaging,identity,host,render,click,input,submit,onClose,unmount(){act(()=>root.unmount());host.remove();}};
+ return{api:api as typeof api&NativeMessaging,identity,host,render,click,input,submit,onClose,onPreparePayment,unmount(){act(()=>root.unmount());host.remove();}};
 }
 it('requires one explicit permission before private reads, then opens Twin without sending anything',async()=>{
  const outbound=vi.fn(()=>{throw Error('No outbound tests');});vi.stubGlobal('fetch',outbound);const f=fixture(false);
- try{await f.render();expect(f.host.textContent).toContain('Use your existing Receiz messages, groups, calls and Twin through this ID. Nothing sent until you send.');expect(f.api.conversations).not.toHaveBeenCalled();expect(f.api.twin.ask).not.toHaveBeenCalled();await f.click('Continue');expect(f.identity.messaging).toHaveBeenLastCalledWith(true);expect(f.host.textContent).toContain('Your bank,');expect(f.api.twin.ask).not.toHaveBeenCalled();expect(outbound).not.toHaveBeenCalled();}finally{f.unmount();}
+ try{await f.render();expect(f.host.textContent).toContain('Use your existing Receiz messages, groups, calls and Twin through this ID. Nothing sent until you send.');expect(f.api.conversations).not.toHaveBeenCalled();expect(f.api.twin.ask).not.toHaveBeenCalled();await f.click('Enable messages');expect(f.identity.messaging).toHaveBeenLastCalledWith(true);expect(f.host.textContent).toContain('Your bank,');expect(f.api.twin.ask).not.toHaveBeenCalled();expect(outbound).not.toHaveBeenCalled();}finally{f.unmount();}
 });
 it('uses known thread truth immediately and keeps it through a background refresh',async()=>{
  const pending=deferred<ChatPage>(),f=fixture();f.api.messages.mockImplementation(()=>pending.promise);
@@ -46,7 +46,7 @@ it('clears a draft only when the message was acknowledged, including a lost AI r
 });
 it('searches after debounce, aborts superseded queries and creates groups using stable user IDs',async()=>{
  vi.useFakeTimers();const f=fixture();
- try{await f.render();await f.click('Messages');await f.click('New conversation');await f.input('Find a person by username','sam');await act(async()=>vi.advanceTimersByTimeAsync(300));const signal=f.api.search.mock.calls[0]?.[1] as AbortSignal;await f.click('Select Sam');await f.input('Find a person by username','alex');expect(signal.aborted).toBe(true);await act(async()=>vi.advanceTimersByTimeAsync(300));await f.click('Select Alex');await f.input('Group name','Studio');await f.click('Start conversation');expect(f.api.createConversation).toHaveBeenCalledWith({participantUserIds:[peer.userId,other.userId],title:'Studio'});}finally{f.unmount();}
+ try{await f.render();await f.click('Messages');await f.click('New conversation');await f.input('Find a person by name or username','sam');await act(async()=>vi.advanceTimersByTimeAsync(300));const signal=f.api.search.mock.calls[0]?.[1] as AbortSignal;await f.click('Select Sam');await f.input('Find a person by name or username','alex');expect(signal.aborted).toBe(true);await act(async()=>vi.advanceTimersByTimeAsync(300));await f.click('Select Alex');await f.input('Group name','Studio');await f.click('Start conversation');expect(f.api.createConversation).toHaveBeenCalledWith({participantUserIds:[peer.userId,other.userId],title:'Studio'});}finally{f.unmount();}
 });
 it('loads older history with the held cursor and starts a call only after entering call controls',async()=>{
  const f=fixture();
@@ -110,4 +110,17 @@ it('uses the host stream for ordinary DMs and appends incremental AI chunks exac
  const f=fixture(),pending=deferred<ChatMessage>();
  f.api.send.mockImplementation(async(_id,_body,options)=>{options?.onDelta?.('peer-owner-twin','H');options?.onDelta?.('peer-owner-twin','e');return pending.promise;});
  try{await f.render();await f.click('Messages');await f.click('Open conversation Sam');await f.input('Message…','My draft');await f.submit();expect(f.api.send.mock.calls[0]?.[2]?.stream).toBe(true);expect([...f.host.querySelectorAll('.bank-message-other>p')].some(element=>element.textContent==='He')).toBe(true);expect(f.host.textContent).not.toContain('HHe');await act(async()=>pending.resolve({...message,id:'acknowledged-dm',senderUserId:uid,body:'My draft'}));}finally{f.unmount();}
+});
+
+it('opens the existing payment review for the selected person without sending a message or executing money',async()=>{
+ const f=fixture();try{await f.render();await f.click('Messages');await f.click('Open conversation Sam');await f.click('Send money');expect(f.onPreparePayment).toHaveBeenCalledWith({userId:peer.userId,username:peer.username});expect(f.api.send).not.toHaveBeenCalled();expect(f.api.twin.ask).not.toHaveBeenCalled();}finally{f.unmount();}
+});
+it('keeps optional transaction context behind an ordinary closed Add context action',async()=>{
+ const f=fixture();try{await f.render(true,f.identity,[{id:'one',title:'Money transfer · $1.00 · Oct 19',text:'Chosen excerpt'}]);const details=f.host.querySelector<HTMLDetailsElement>('.bank-twin-context')!;expect(details.open).toBe(false);expect(details.querySelector('summary')?.textContent).toBe('Add context');}finally{f.unmount();}
+});
+
+it('presents a structured money transfer once as a compact payment receipt',async()=>{
+ const f=fixture(),payment={...message,body:'Transferred $25.00 to @sam',senderUserId:uid,walletTransfer:{kind:'chat_transfer',senderUserId:uid,recipientUserId:peer.userId,amountUsdCents:'2500',amountPhiMicro:'123456',note:'Lunch',transactionHref:'/transactions/one'}};
+ f.api.messages.mockResolvedValue({...page,messages:[payment]});
+ try{await f.render();await f.click('Messages');await f.click('Open conversation Sam');expect(f.host.textContent).toContain('Money sent');expect(f.host.textContent).toContain('$25.00');expect(f.host.textContent).toContain('Lunch');expect(f.host.textContent).not.toContain('Transferred $25.00 to @sam');expect(f.host.querySelector('article[aria-label="Recorded money transfer"] details')?.hasAttribute('open')).toBe(false);expect(f.host.querySelector('a[href="https://receiz.com/transactions/one"]')).not.toBeNull();}finally{f.unmount();}
 });

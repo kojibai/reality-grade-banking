@@ -1,16 +1,17 @@
 // Public product notices. The exact account-read statement is supplied by the
 // same configuration used to sign consent; these pages confer no permissions.
-export function accountNoticePages(readConsent, readScopes) {
+export function accountNoticePages(readConsent, readScopes, messagingConsent = '', messagingScopes = []) {
   return [
     {
       slug: 'account-access',
       kind: 'account-notice',
-      updated: 'October 15, 2026',
+      updated: 'October 19, 2026',
       title: 'Account access & privacy',
       description: 'What Bankeiz can read when you open your account, what is shared for access, and which actions require your separate approval.',
       intro: 'Clear access. Defined permissions.',
       sections: [
-        ['Account access', 'By choosing Enter or opening your Identity Seal, you allow Bankeiz to identify your account and read your Reserve and Settlement balances and available account history. Enter creates a new identity; Use existing account inspects and opens the original you provide. A seal that requires an unlock phrase waits for that phrase. This account-read permission does not authorize transfers, purchases or sales. You can read these notices without creating an account or submitting an Identity Seal.'],
+        ['Account access', 'By choosing Enter or opening your Identity Seal, you allow Bankeiz to identify your account, read your Reserve and Settlement balances and available account history, and open your existing Receiz messaging and Twin through the same identity. Enter creates a new identity; Use existing account inspects and opens the original you provide. A seal that requires an unlock phrase waits for that phrase. Account access does not authorize transfers, purchases or sales. You can read these notices without creating an account or submitting an Identity Seal.'],
+        ['Messages, Twin and calls', 'Initial account access includes reading your existing Receiz conversations, sending messages you choose, creating direct and group conversations, joining calls, and talking to your existing owner Twin. These features use your open Identity Seal without another sign-in. Messages, questions and selected record excerpts go to Receiz when you choose to send them. Twin questions use the existing entitlement and usage-credit rules, and questions and replies may remain in its existing memory. Camera and microphone still require device permission and an explicit call action. This access does not authorize payments or automatic replies. Devices with only an older balance-read approval need the messaging upgrade once; its exact approval is then retained encrypted for reopening.'],
         ['Identity and consent shared for access', 'To open your account, Receiz receives a protected, encrypted Identity Seal, public identity details and signed consent. These identify the account, the Bankeiz application and the permissions requested. Public details can include an identity identifier, public key, username and display name carried by the identity. The protected seal contains encrypted signing material; its usable private signing key and unlock phrase stay on this device. Sending the protected seal is part of account opening, not public publication.'],
         ['The account transport', 'Private account requests pass through the Bankeiz account gateway to Receiz. The gateway handles the protected request and the account response needed to serve the bank; device-held signing does not mean the gateway cannot receive account data. This transport omits browser cookies, forwards the scoped authorization when required and marks private responses no-store. That cache instruction does not define an infrastructure provider’s log-retention policy. Connecting to a website also exposes ordinary request metadata to the infrastructure handling the connection.'],
         ['What is stored on your device', 'The browser retains encrypted identity custody and its protected transport copy for returning access. It can also retain balance observations, chart points, available private-history records, original deposited proofs and unfinished operation references. Private custody uses browser-held AES-GCM encryption. Public market data and the last public conformance result are separate display records. Keeping a display record does not grant account access, prove ownership or replace an original source.'],
@@ -21,7 +22,11 @@ export function accountNoticePages(readConsent, readScopes) {
         ['Backups and removal', 'In your account profile, Back up my Identity Seal saves the original needed to open your identity again. Remove ID from this device removes the current saved identity and stops its open account requests; it does not close the underlying account, erase public proofs or revoke copies of your Identity Seal held elsewhere. The app checks for held Offline Notes and pending receiving requests before permitting removal. Save originals and resolve those operations before clearing site data, because an identity backup alone does not restore device-specific note custody.'],
         ['Scope of this notice', 'This notice describes account access in the Bankeiz reference implementation. Local removal is not an account-erasure or remote key-revocation service, and it does not promise deletion from independently operated infrastructure. A separately hosted or modified implementation can have different operators and data handling; consult its own notice. These explanations describe the implemented product flow and do not make a broader guarantee about every service, payment destination or external institution.'],
         ['Exact read permissions', `Account opening requests these scoped permissions: ${readScopes.join(', ')}. They cover account reads, including available wallet history and the Reserve and Settlement views. Additional card or native-action permissions are separate from this initial read grant.`],
-        ['Full account-read statement', readConsent]
+        ['Full account-read statement', readConsent],
+        ...(messagingConsent ? [
+          ['Exact messaging permissions', `Messaging opens on demand with these scoped permissions: ${messagingScopes.join(', ')}. Registration permits the application to request access; the device still signs the same-identity consent before receiving a scoped grant.`],
+          ['Full messaging access statement', messagingConsent]
+        ] : [])
       ]
     },
     {

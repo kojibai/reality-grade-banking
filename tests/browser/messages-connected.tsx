@@ -1,10 +1,12 @@
 import {useState} from 'react';import {createRoot} from 'react-dom/client';
+import {Sheet} from '../../src/components/Sheet';import {LiveSend} from '../../src/features/account/LivePayments';
 import {MessagesPanel} from '../../src/features/messages/MessagesPanel';import {ConsoleShell} from '../../src/components/ConsoleShell';
 import {createNativeMessaging,type ChatConversation,type ChatMessage} from '../../src/receiz/native-messaging';import {createNativeTwin} from '../../src/receiz/native-twin';import type {OpenIdentity} from '../../src/receiz/native-identity';
 import '../../src/styles/tokens.css';import '../../src/styles/app.css';import '../../src/styles/features.css';
 const owner='11111111-1111-4111-8111-111111111111',peer='22222222-2222-4222-8222-222222222222',threadId='33333333-3333-4333-8333-333333333333';let approved=false;
 const person={kind:'user' as const,userId:peer,username:'mira',displayName:'Mira',avatarUrl:null};
 const rows:ChatMessage[]=[{id:'44444444-4444-4444-8444-444444444444',conversationId:threadId,senderUserId:peer,senderKind:'user',senderAiId:null,senderDisplay:'Mira',body:'The original stays connected to its history.',createdAt:'2026-10-19T16:15:00Z',receizedAt:'2026-10-19T16:15:00Z',receipt:{},sealedOriginalAvailable:false}];
+rows.push({...rows[0],id:'66666666-6666-4666-8666-666666666666',senderUserId:owner,senderDisplay:'You',body:'Transferred $25.00 to @mira',walletTransfer:{kind:'chat_transfer',transferId:'fixture-payment',senderUserId:owner,recipientUserId:peer,amountUsdCents:'2500',amountPhiMicro:'123456',note:'Lunch',transactionHref:'/transactions/fixture-payment'}});
 const conversations:ChatConversation[]=[{id:threadId,kind:'dm',title:'Mira',members:[person],aiAgents:[],defaultAiId:null,unreadCount:1,previewMessage:rows[0],createdAt:rows[0].createdAt,updatedAt:rows[0].createdAt,lastMessageAt:rows[0].createdAt}];
 const json=(value:unknown)=>Response.json(value);
 // Controlled HTTP-contract fixture. Production adapters and components are real;
@@ -22,6 +24,6 @@ const request=async(path:string,init?:RequestInit)=>{
  return new Response('{"ok":false,"error":"fixture_call_unavailable"}',{status:503});
 };
 const api=Object.assign(createNativeMessaging({request,accountUid:owner}),{twin:createNativeTwin({request,accountUid:owner,username:'fixture_owner',assertOpen(){}})});
-const identity={messaging:async(approval=false)=>{if(!approved&&!approval)throw Error('MESSAGING_CONSENT_REQUIRED');approved=true;return api;}} as unknown as OpenIdentity;
-function Fixture(){const[open,setOpen]=useState(true);return<ConsoleShell panel="account" onNavigate={()=>{}} onDeposit={()=>{}} onProfile={()=>{}} onMessages={()=>setOpen(true)}><p style={{fontSize:12,color:'#7d8b9d'}}>Integration fixture · synthetic data · no real messages or calls</p><h1>Your conversations</h1><MessagesPanel identity={identity} active={open} onClose={()=>setOpen(false)} twinContextRecords={[{id:'fixture-record',title:'Recorded payment · $25.00',text:'Synthetic Bank display excerpt: a recorded $25.00 payment.'}]}/></ConsoleShell>;}
+const identity={walletSend:async()=>({status:async()=>null,prepare:async()=>{throw Error('Controlled preview: no payment executed.');}}),messaging:async(approval=false)=>{if(!approved&&!approval)throw Error('MESSAGING_CONSENT_REQUIRED');approved=true;return api;}} as unknown as OpenIdentity;
+function Fixture(){const[open,setOpen]=useState(true),[payment,setPayment]=useState<{recipient?:{userId:string;username:string}}|null>(null);return<ConsoleShell panel="account" onNavigate={()=>{}} onDeposit={()=>{}} onProfile={()=>{}} onMessages={()=>setOpen(true)}><p style={{fontSize:12,color:'#7d8b9d'}}>Integration fixture · synthetic data · no real messages or calls</p><h1>Your conversations</h1><MessagesPanel identity={identity} active={open&&!payment} onPreparePayment={recipient=>setPayment({recipient})} onClose={()=>setOpen(false)} twinContextRecords={[{id:'fixture-record',title:'Recorded payment · $25.00',text:'Synthetic Bank display excerpt: a recorded $25.00 payment.'}]}/>{payment&&<Sheet title="Send" onClose={()=>setPayment(null)}><LiveSend identity={identity} wallet={null} initialRecipient={payment.recipient} onClose={()=>setPayment(null)}/></Sheet>}</ConsoleShell>;}
 createRoot(document.getElementById('root')!).render(<Fixture/>);

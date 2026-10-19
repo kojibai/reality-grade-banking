@@ -82,6 +82,7 @@
 .bank-message-composer button{background:var(--blue);color:#fff;border-radius:10px;width:32px;min-width:32px;height:32px;display:grid;place-items:center;padding:0}
 
 .bank-message-composer button:disabled{opacity:.32}
+.bank-message-composer .bank-message-payment{background:#f0f3f7;color:var(--navy);width:40px;min-width:40px;height:36px}
 
 .bank-messaging-caption{font-size:10px;line-height:1.5;text-align:center;color:#8793a3;padding:8px 18px 13px}
 
@@ -141,7 +142,7 @@
 
 .bank-twin-context{padding:9px 19px;font-size:11px;color:#687b92;max-height:160px;overflow:auto;border-top:1px solid var(--line)}
 
-.bank-twin-context summary{cursor:pointer;line-height:1.5}
+.bank-twin-context summary{cursor:pointer;line-height:1.5;display:flex;align-items:center;gap:6px}
 
 .bank-twin-context p{font-size:10px;line-height:1.5;margin:10px 0}
 
@@ -168,3 +169,19 @@
 
 
 .bank-twin-memory{display:flex;flex-direction:column;gap:16px;width:100%}.bank-twin-memory>.bank-message-date{font-size:10px;align-self:center;color:#8793a3}.bank-twin-recovery{padding:9px 18px;color:#8793a3;font-size:11px;line-height:1.5}.bank-twin-recovery button{font-size:11px;color:var(--blue);padding:8px 10px 0 0}
+
+.bank-recent-caption{display:block;font-size:11px;color:#8793a3;padding:6px 0}
+.bank-chat-payment{display:flex;gap:10px;min-width:170px;white-space:normal;color:var(--navy)}
+.bank-chat-payment-mark{display:grid;place-items:center;align-self:flex-start;width:29px;height:29px;border-radius:50%;background:#ffffff80;color:#526783}
+.bank-chat-payment>div{min-width:0;flex:1;display:grid;gap:4px}
+.bank-chat-payment-kind{font-size:10px;color:#687b92}
+.bank-chat-payment strong{font-size:26px;line-height:1.25;letter-spacing:-.7px;font-weight:620}
+.bank-chat-payment-peer{font-size:11px;color:#687b92}
+.bank-chat-payment .bank-chat-payment-note{font-size:12px;line-height:1.5;margin:7px 0 2px}
+.bank-chat-payment details{border-top:1px solid #172b4512;margin-top:9px;padding-top:7px;font-size:10px}
+.bank-chat-payment summary{cursor:pointer;color:#526783}
+.bank-chat-payment dl{display:grid;gap:8px;margin:12px 0}
+.bank-chat-payment dl>div{display:grid;gap:2px}
+.bank-chat-payment dt{color:#7e8b9d;font-size:9px}
+.bank-chat-payment dd{margin:0;font-size:11px;overflow-wrap:anywhere}
+.bank-chat-payment a{display:inline-flex;align-items:center;gap:4px;color:var(--blue);font-size:11px}

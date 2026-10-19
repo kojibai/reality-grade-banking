@@ -25,7 +25,7 @@ export function LiveActions({ action, identity, wallet, onClose, onForget, onRef
   else if (action.kind === 'exchange') body = <LiveExchange identity={identity} items={marketItems} onRefresh={onRefresh} />;
   else if (action.kind === 'receive') body = <LiveReceive identity={identity} onRefresh={onRefresh} />;
   else if (action.kind === 'deposit') body = <LiveDeposit identity={identity} onClose={onClose} onRefresh={onRefresh} resumeSessionId={cardResumeSessionId} onResumeConsumed={onCardResumeConsumed} />;
-  else if (action.kind === 'send') body = <LiveSend identity={identity} onRefresh={onRefresh} wallet={wallet} initialRequest={paymentRequest} onClose={onClose} />;
+  else if (action.kind === 'send') body = <LiveSend identity={identity} onRefresh={onRefresh} wallet={wallet} initialRequest={action.recipient?null:paymentRequest} initialRecipient={action.recipient} onClose={onClose} />;
   else if (action.kind === 'pending' || action.kind === 'asset' || action.kind === 'proof') body = <LiveAssetDetail identity={identity} onRefresh={onRefresh} digest={action.kind === 'pending' ? action.depositId : action.assetId} />;
   else if (action.kind === 'bridge') body = <LiveOwnership identity={identity} mode="send" initialDigest={action.assetId} onRefresh={onRefresh} />;
   else body = <div className="empty-state"><h3>Automatic transfers are not available yet.</h3><p>You can review and approve each transfer from Send.</p></div>;

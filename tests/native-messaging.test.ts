@@ -6,6 +6,10 @@ const summary={id:conversationId,kind:'dm',title:'Mira',members:[{kind:'user',us
 const message=(id='m1',body='Hello')=>({id,conversationId,senderUserId:userId,senderKind:'user',senderAiId:null,senderDisplay:'Mira',body,createdAt:'2026-10-19T12:00:00Z',receizedAt:'2026-10-19T12:00:00Z',sealedOriginalAvailable:true,receipt:{digest:'a'.repeat(64)}});
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json'}});
 describe('existing Receiz messaging composition',()=>{
+ it('uses the existing Receiz directory for full names as well as usernames',async()=>{
+  const request=vi.fn(async(_path:string)=>json({ok:true,users:[{kind:'user',userId,username:'mira',displayName:'Mira West',avatarUrl:null}]}));const api=createNativeMessaging({request,accountUid:conversationId});
+  expect(await api.search('Mira West')).toHaveLength(1);expect(request.mock.calls[0][0]).toBe('/api/chat/users/search?q=mira%20west');
+ });
  it('loads existing conversations once for simultaneous readers and retains them for reopen',async()=>{
   const request=vi.fn(async()=>json({ok:true,conversations:[summary]}));const api=createNativeMessaging({request,accountUid:userId});
   const [first,second]=await Promise.all([api.conversations(),api.conversations()]);expect(first).toEqual(second);expect(first[0].title).toBe('Mira');expect(api.knownConversations()).toEqual(first);expect(request).toHaveBeenCalledTimes(1);

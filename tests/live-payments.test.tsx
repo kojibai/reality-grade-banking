@@ -10,6 +10,20 @@ import { createWalletSend } from '../src/receiz/wallet-send';
 import {paymentQr,paymentQrPath} from '../src/receiz/payment-qr';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 afterEach(() => vi.unstubAllGlobals());
+it('shows a chat username while reviewing payment against that selected stable account',async()=>{
+ const target={userId:'22222222-2222-4222-8222-222222222222',username:'mira'},prepare=vi.fn().mockRejectedValue(Error('Stop at preparation')),execute=vi.fn();
+ const identity={walletSend:async()=>({status:async()=>null,prepare,execute,discard:vi.fn()})} as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<LiveSend identity={identity} wallet={null} initialRecipient={target} onClose={()=>{}}/>));
+  const recipient=host.querySelector<HTMLInputElement>('input[placeholder="Receiz ID or public username"]')!;
+  expect(recipient.value).toBe('mira');expect(host.textContent).not.toContain(target.userId);
+  const amount=host.querySelector<HTMLInputElement>('input[aria-label="Amount to send"]')!;
+  await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(amount,'1');amount.dispatchEvent(new Event('input',{bubbles:true}));});
+  await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Review payment'))!.click());
+  expect(prepare).toHaveBeenCalledWith({recipient:target.userId,amountUsdCents:'100',note:''});expect(execute).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
 it('generates the bank QR and writes only the public request URL to NFC on explicit user action', async () => {
   const write = vi.fn().mockResolvedValue(undefined); vi.stubGlobal('isSecureContext', true); Object.assign(window, { NDEFReader: class { write = write; } });
   const host = document.createElement('div'), root = createRoot(host);

@@ -1,3 +1,4 @@
+import {isPeopleSearchQuery} from './people-search.js';
 import {BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT} from './config';
 import {loadMessagingConsent,saveMessagingConsent} from './identity-vault';
 import {permittedNativeChatPath} from './native-chat-paths';
@@ -79,7 +80,7 @@ export interface OpenIdentity {
   dispose: () => void; backup: () => { bytes: Uint8Array; filename: string; phrase: string };
 }
 // Exact private material is retained only inside this closure and encrypted device custody.
-export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, filename: string, consentApproved = false, protectedTransport?: ProtectedIdentityTransport): Promise<OpenIdentity> {
+export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, filename: string, consentApproved = false, protectedTransport?: ProtectedIdentityTransport, messagingIncludedAtEntry = false): Promise<OpenIdentity> {
   if (!bytes.length || bytes.length > 32 * 1024 * 1024) throw new Error('Identity Seal exceeds the supported device capacity.');
   const sdk = await loadReceiz(); const verification = await sdk.verifyReceizArtifact(bytes);
   if (verification.status !== 'verified-artifact') throw new Error('Import your complete, encrypted Receiz Identity Seal. This file is not a verified identity proof.');
@@ -290,13 +291,16 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     finally { if (connectionOpening === attempt) connectionOpening = null; }
   }
   let messagingPromise:Promise<import('./native-messaging').NativeMessaging>|undefined;
-  let messagingApproved=false;
+  // Fresh account entry discloses messaging in the same approval. Legacy
+  // read-only custody still needs its own exact retained messaging approval.
+  let messagingApproved=consentApproved&&messagingIncludedAtEntry;
+  const exactMessagingConsent=()=>({schema:'bankeiz.messaging-consent.v1',applicationId:BANK_APPLICATION_ID,keyId:binding.keyId,artifactDigest:binding.artifactSha256,scopes:[...BANK_MESSAGING_SCOPES],statement:BANK_MESSAGING_CONSENT});
   async function messaging(approved=false){
     if(lifetime.signal.aborted)throw Error('MESSAGING_IDENTITY_CLOSED');
     if(messagingPromise)return messagingPromise;
     const attempt=(async()=>{
       const previous=await loadMessagingConsent(binding).catch(()=>null);
-      const exact={schema:'bankeiz.messaging-consent.v1',applicationId:BANK_APPLICATION_ID,keyId:binding.keyId,artifactDigest:binding.artifactSha256,scopes:[...BANK_MESSAGING_SCOPES],statement:BANK_MESSAGING_CONSENT};
+      const exact=exactMessagingConsent();
       if(approved)messagingApproved=true;
       if(!messagingApproved&&JSON.stringify(previous)!==JSON.stringify(exact))throw Error('MESSAGING_CONSENT_REQUIRED');
       const current=await connectClient(BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT);
@@ -314,7 +318,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
         if(verb==='DELETE'&&callMembershipCleanup.has(path)&&callMembershipAttempts.get(path)!==controllerId)throw Error('CALL_MEMBERSHIP_SUPERSEDED');
         if(lifetime.signal.aborted&&verb==='DELETE'&&init?.signal===null&&callMembershipCleanup.has(path)&&Date.now()<=callCleanupUntil)return callMembershipCleanup.get(path)!();
         assertOpen();const url=new URL(path,'https://receiz.com');
-        const search=url.pathname==='/api/chat/users/search'&&verb==='GET'&&[...url.searchParams.keys()].join(',')==='q'&&/^[a-z0-9_]{3,24}$/.test(url.searchParams.get('q')??'');
+        const search=url.pathname==='/api/chat/users/search'&&verb==='GET'&&[...url.searchParams.keys()].join(',')==='q'&&isPeopleSearchQuery(url.searchParams.get('q'));
         const twin=url.pathname===`/api/developers/twin/${presentationUsername}/message`&&verb==='POST'&&!url.search;
         if(!path.startsWith('/api/')||url.origin!=='https://receiz.com'||url.hash||!permittedNativeChatPath(url,verb)&&!search&&!twin)throw Error('MESSAGING_PATH_DENIED');
         const connected=sdk.receizKaiNow().pulse<messagingExpires?messagingClient:await connectClient(BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT),owner=clientAccounts.get(connected);
@@ -1123,6 +1127,12 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   };
   async function persistDeviceCustody() {
     await saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport);
+    if(consentApproved&&messagingIncludedAtEntry){
+      // Reuse the existing encrypted, identity-bound consent record. This
+      // performs no chat request, credential exchange or eager inbox read.
+      const previous=await loadMessagingConsent(binding).catch(()=>null),exact=exactMessagingConsent();
+      if(JSON.stringify(previous)!==JSON.stringify(exact))await saveMessagingConsent(binding,exact,previous).catch(()=>{});
+    }
     // Seed display retention through the same revision-checked queue as later
     // reads. A delayed import save cannot overwrite a newer account frame.
     if (knownWallet) void persistWalletObservation(knownWallet).catch(() => {});
@@ -1150,7 +1160,7 @@ export async function createNativeIdentity(consentApproved: boolean): Promise<Op
   const portableKey = await unprotectIdentityKeyFile(initializedKey, protectionSecret);
   const owned = createReceizOfflineSealer({ ownerIdentityAdmission: admission, store: signerStore, resources, fetch: certificateTimeSafeFetch(nativeFetch) });
   const sealed = await atIdentityCreationStage('portable-identity',()=>owned.seal({ bytes: new TextEncoder().encode(sdk.serializeReceizIdentityArtifact(portableKey)), filename: 'identity.receizkey', mimeType: 'application/json' }));
-  const identity = await openCanonicalIdentity(sealed.artifactBytes, '', sealed.filename, true, { bytes: new Uint8Array(protectedSeal.artifactBytes), phrase: protectionSecret });
+  const identity = await openCanonicalIdentity(sealed.artifactBytes, '', sealed.filename, true, { bytes: new Uint8Array(protectedSeal.artifactBytes), phrase: protectionSecret }, true);
   if (identity.needsPhrase || identity.binding.keyId !== protectedBinding.keyId || identity.binding.artifactOwnerReceizId !== protectedBinding.artifactOwnerReceizId) { identity.dispose(); throw new Error('The self-contained Identity Seal did not preserve its original identity.'); }
   const genesis = identity.knownWallet();
   if (!genesis || genesis.source !== 'account-genesis') { identity.dispose(); throw new Error('The signed account genesis could not be opened.'); }
@@ -1160,7 +1170,7 @@ export async function createNativeIdentity(consentApproved: boolean): Promise<Op
 export async function importNativeIdentity(file: File, phrase: string, consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before importing your ID.');
   if (file.size > 32 * 1024 * 1024) throw new Error('Identity Seal exceeds the supported device capacity.');
-  const bytes = new Uint8Array(await file.arrayBuffer()), identity = await openCanonicalIdentity(bytes, phrase, file.name, true);
+  const bytes = new Uint8Array(await file.arrayBuffer()), identity = await openCanonicalIdentity(bytes, phrase, file.name, true, undefined, true);
   await identity.persistDeviceCustody(); return identity;
 }
 export async function restoreNativeIdentity(): Promise<OpenIdentity | null> { const saved = await loadDeviceIdentity(); return saved && saved.readConsent ? openCanonicalIdentity(saved.bytes, saved.phrase, saved.filename, true, saved.protectedTransport) : null; }

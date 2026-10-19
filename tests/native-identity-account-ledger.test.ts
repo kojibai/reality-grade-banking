@@ -317,6 +317,20 @@ it('requires exact messaging approval before expanding the account grant and kee
  try{await expect(identity.messaging!()).rejects.toThrow('MESSAGING_CONSENT_REQUIRED');expect(p.continueId).not.toHaveBeenCalled();p.scopes=[...BANK_MESSAGING_SCOPES];const api=await identity.messaging!(true);expect(api.accountUid).toBe('bound-user');expect('accessToken' in api).toBe(false);await api.conversations();expect(new Headers(upstream.mock.calls[0][1]?.headers).get('authorization')).toBe('Bearer fixture-only');expect(p.saveMessaging).toHaveBeenCalledTimes(1);await expect(api.callTransport.heldFetch('/api/connect/wallet/me')).rejects.toThrow('MESSAGING_PATH_DENIED');identity.dispose();await expect(api.conversations()).rejects.toThrow();}
  finally{identity.dispose();upstream.mockRestore();}
 });
+it('includes messaging in a fresh account approval without a second consent or eager chat request',async()=>{
+ const identity=await importNativeIdentity(new File([new Uint8Array([1])],'fixture.receiz'),'',true);
+ try{
+  expect(p.saveMessaging).toHaveBeenCalledTimes(1);
+  expect(p.continueId).not.toHaveBeenCalled();
+  expect(p.saveMessaging.mock.calls[0][1]).toMatchObject({applicationId:BANK_APPLICATION_ID,keyId:'fixture-key',scopes:[...BANK_MESSAGING_SCOPES]});
+  p.scopes=[...BANK_MESSAGING_SCOPES];
+  await expect(identity.messaging!()).resolves.toHaveProperty('accountUid','bound-user');
+  expect(p.saveMessaging).toHaveBeenCalledTimes(1);
+  p.messagingConsent=p.saveMessaging.mock.calls[0][1];identity.dispose();
+  const restored=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+  try{await expect(restored.messaging!()).resolves.toHaveProperty('accountUid','bound-user');}finally{restored.dispose();}
+ }finally{identity.dispose();}
+});
 it('binds retained messaging approval to the exact identity, registration, scopes and statement',async()=>{
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);p.scopes=[...BANK_MESSAGING_SCOPES];await identity.messaging!(true);p.messagingConsent=p.saveMessaging.mock.calls[0][1];identity.dispose();
  const reopened=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);try{await expect(reopened.messaging!()).resolves.toHaveProperty('accountUid','bound-user');}finally{reopened.dispose();}
