@@ -79,11 +79,14 @@ it('bounds final sealed bytes and source expansion before a Crystal can be retur
  expect(()=>embedPublicLedgerPng(png(),new Uint8Array(20*1024*1024+1))).toThrow(/CAPACITY/);
 });
 it('uses only canonical public-device document sealing, reusing enrollment and resources without account identity custody',async()=>{
- const review=await original(),store={load:async()=>null,save:async()=>{}},resources={wasm:new Uint8Array([1]),zkey:new Uint8Array([2])};
+ const review=await original(),store={load:vi.fn(async()=>null),save:vi.fn(async()=>{})},resources={wasm:new Uint8Array([1]),zkey:new Uint8Array([2])};
  const ready=vi.fn(async()=>false),enroll=vi.fn(async()=>{}),seal=vi.fn(async(input:{bytes:Uint8Array})=>syntheticSeal(input.bytes));
  offline.store.mockReturnValue(store);offline.resources.mockResolvedValue(resources);offline.create.mockReturnValue({ready,enroll,seal});
  await createPublicLedgerCrystal(review,{render:async()=>png()});await createPublicLedgerCrystal(review,{render:async()=>png()});
  expect(offline.store).toHaveBeenCalledWith('bankeiz-public-ledger-device-signer');expect(offline.create).toHaveBeenCalledOnce();
- expect(offline.create.mock.calls[0][0]).toEqual({store,resources,fetch:expect.any(Function)});expect(enroll).toHaveBeenCalledOnce();expect(seal).toHaveBeenCalledTimes(2);
+ const config=offline.create.mock.calls[0][0];expect(config).toEqual({store:{load:expect.any(Function),save:expect.any(Function)},resources,fetch:expect.any(Function)});
+ expect(await config.store.load()).toBeNull();expect(store.load).toHaveBeenCalledOnce();
+ const publicCustody={sentinel:'unchanged public signer custody'};await config.store.save(publicCustody);expect(store.save).toHaveBeenCalledExactlyOnceWith(publicCustody);
+ expect(enroll).toHaveBeenCalledOnce();expect(seal).toHaveBeenCalledTimes(2);
  expect(Object.keys(seal.mock.calls[0][0]).sort()).toEqual(['bytes','filename','mimeType']);
 });

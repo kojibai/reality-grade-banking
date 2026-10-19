@@ -40,8 +40,8 @@ async function sealPublicImage(input:SealInput):Promise<SealOutput>{
  // Public document custody is independent of every account and Identity Seal.
  // Only public proving resources and the canonical device enrollment are used.
  publicSealer??=(async()=>{
-  const [{createReceizOfflineSealer,createReceizIndexedDbSealStore},{loadBankProofResources},{nativeFetch}]=await Promise.all([import('@receiz/sdk/offline'),import('./proof-resource-continuity'),import('./native-transport')]);
-  const resources=await loadBankProofResources(fetch),sealer=createReceizOfflineSealer({store:createReceizIndexedDbSealStore('bankeiz-public-ledger-device-signer'),resources,fetch:nativeFetch});
+  const [{createReceizOfflineSealer,createReceizIndexedDbSealStore},{loadBankProofResources},{nativeFetch},{certificateTimeSafeStore,certificateTimeSafeFetch}]=await Promise.all([import('@receiz/sdk/offline'),import('./proof-resource-continuity'),import('./native-transport'),import('./device-signer-time')]);
+  const resources=await loadBankProofResources(fetch),sealer=createReceizOfflineSealer({store:certificateTimeSafeStore(createReceizIndexedDbSealStore('bankeiz-public-ledger-device-signer')),resources,fetch:certificateTimeSafeFetch(nativeFetch)});
   if(!await sealer.ready())await sealer.enroll();return sealer;
  })().catch(error=>{publicSealer=undefined;throw error;});
  return(await publicSealer).seal(input);
