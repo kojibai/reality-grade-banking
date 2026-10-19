@@ -1,7 +1,17 @@
 import { buildKaiKlockResponseFromPulseSync, epochMsFromPulse } from '../../native/receiz/app/utils/kai_pulse';
 
 export interface KaiSunriseLocation { latitude: number; longitude: number }
-export interface KaiSunriseReference { reference: 'local' | 'greenwich'; anchorIso: string; unavailable?: boolean }
+export interface KaiSunriseReference { reference: 'local-time' | 'local' | 'greenwich'; anchorIso: string; unavailable?: boolean }
+
+/** Civil midnight in the device timezone, including that date's DST offset.
+ * This is an automatic local-time reference, never a claim about sunrise. */
+export function projectKaiLocalTimeReference(pulse: number): KaiSunriseReference {
+  const instant = new Date(Number(epochMsFromPulse(BigInt(pulse))));
+  const midnight = new Date(instant.getFullYear(), instant.getMonth(), instant.getDate());
+  return Number.isFinite(midnight.getTime())
+    ? { reference: 'local-time', anchorIso: midnight.toISOString() }
+    : projectKaiSunrise(pulse);
+}
 
 // Pure astronomical projection carried from native/receiz/app/utils/kai_pulse.ts
 // (sunriseJulianForDate and its helpers), also present in the canonical /klok SDK.

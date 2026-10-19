@@ -1,8 +1,31 @@
-import { expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { buildKaiKlockResponseFromPulseSync, epochMsFromPulse, microPulsesSinceGenesis } from '../native/receiz/app/utils/kai_pulse';
-import { projectKaiSunrise } from '../src/components/kai-klok-sunrise';
+import { projectKaiLocalTimeReference, projectKaiSunrise } from '../src/components/kai-klok-sunrise';
 import { projectCanonicalKaiFace } from '../src/components/kai-klok-face';
 const pulseFromUTC = (iso: string) => Number(microPulsesSinceGenesis(new Date(iso)) / 1_000_000n);
+afterEach(() => vi.unstubAllEnvs());
+
+it('anchors automatic Local to device civil midnight without claiming a location sunrise', () => {
+  vi.stubEnv('TZ', 'America/New_York');
+  expect(projectKaiLocalTimeReference(pulseFromUTC('2026-10-19T15:00:00Z'))).toEqual({ reference: 'local-time', anchorIso: '2026-10-19T04:00:00.000Z' });
+  vi.stubEnv('TZ', 'Asia/Kolkata');
+  expect(projectKaiLocalTimeReference(pulseFromUTC('2026-10-19T01:00:00Z'))).toEqual({ reference: 'local-time', anchorIso: '2026-10-18T18:30:00.000Z' });
+});
+
+it('uses the offset at local midnight across daylight-saving changes', () => {
+  vi.stubEnv('TZ', 'America/New_York');
+  expect(projectKaiLocalTimeReference(pulseFromUTC('2026-03-08T15:00:00Z')).anchorIso).toBe('2026-03-08T05:00:00.000Z');
+  expect(projectKaiLocalTimeReference(pulseFromUTC('2026-11-01T15:00:00Z')).anchorIso).toBe('2026-11-01T04:00:00.000Z');
+});
+
+it('changes only the reference hand when moving from Local time to location sunrise', () => {
+  vi.stubEnv('TZ', 'America/New_York');
+  const pulse = pulseFromUTC('2026-10-19T15:00:00Z');
+  const local = projectCanonicalKaiFace(pulse, projectKaiLocalTimeReference(pulse).anchorIso);
+  const solar = projectCanonicalKaiFace(pulse, projectKaiSunrise(pulse, { latitude: 40.7128, longitude: -74.006 }).anchorIso);
+  expect(local.rotationOverride).not.toBe(solar.rotationOverride);
+  for (const key of ['kaiPulseEternal', 'eternalBeatIndex', 'eternalStepIndex', 'dayLabel', 'monthLabel', 'monthDay', 'harmonicDayPercent'] as const) expect(local[key]).toBe(solar[key]);
+});
 
 it('retains the native Greenwich anchor until a location is chosen', () => {
   const pulse = 14_717_707;

@@ -19,8 +19,8 @@ export function kaiBoundary(previous: number, next: number): KaiBoundary {
 }
 
 /**
- * A controlled view of the one native Kai coordinate. The ☀ hand projects the
- * same coordinate relative to the native Greenwich sunrise anchor. It neither
+ * A controlled view of the one native Kai coordinate. The reference hand projects
+ * the same coordinate relative to its selected civil/sunrise anchor. It neither
  * samples another clock nor changes the eternal coordinate or its ordering.
  */
 export function projectCanonicalKaiFace(pulse: number, solarAnchorIso?: string): KaiKlockProps & { canonical: NonNullable<KaiKlockProps['canonical']>; solarNeedleColor: string } {

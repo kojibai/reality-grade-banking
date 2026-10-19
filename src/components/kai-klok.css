@@ -105,10 +105,10 @@
 @keyframes kai-boundary-breathe { 0% { opacity: 0; transform: scale(1); } 28% { opacity: var(--kai-accent-peak); transform: scale(var(--kai-breathe-scale)); } 100% { opacity: 0; transform: scale(1); } }
 .kai-moment-context h3 { margin-top: 8px; font-family: Georgia, 'Times New Roman', serif; font-size: 26px; font-weight: 500; letter-spacing: -.5px; }
 .kai-moment-context h3 > span { display: block; margin-top: 5px; color: #6e7b8b; font-family: Inter, ui-sans-serif, sans-serif; font-size: 12px; font-weight: 450; letter-spacing: 0; }
-.kai-moment-identity { display: grid; grid-template-columns: 5px 1fr 5px 1fr; align-items: center; gap: 8px; margin-top: 17px; font-size: 10px; line-height: 1.5; color: #4c5e75; }
-.kai-moment-identity > span:nth-child(odd) { width: 5px; height: 26px; border-radius: 4px; box-shadow: inset 0 0 0 1px #172b4510; }
+.kai-moment-identity { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 7px; margin-top: 17px; font-size: 10px; line-height: 1.5; color: #4c5e75; }
+.kai-moment-identity > div { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border: 1px solid #e0e5e8; border-radius: 7px; background: #f5f5f1; min-width: 0; }
+.kai-moment-identity > div > i { flex-shrink: 0; width: 4px; height: 26px; border-radius: 4px; box-shadow: inset 0 0 0 1px #172b4510; }
 .kai-moment-identity small { display: block; color: #7d8794; font-size: 8px; }
-.kai-week { margin-top: 12px; color: #7d8794; font-size: 9px; }
 .kai-units { margin: 16px 0 0; padding-top: 4px; border-top: 1px solid #e4e7ec; }
 .kai-units > div { display: flex; align-items: baseline; justify-content: space-between; padding-top: 9px; }
 .kai-units dt { color: #7b8795; font-size: 8px; font-weight: 600; letter-spacing: .1em; }
@@ -142,7 +142,8 @@
 .kai-source-reference a:hover { color: #344b66; text-decoration-color: currentColor; }
 .kai-source-reference a > span { padding-left: 3px; font-size: 9px; }
 .kai-color-key { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 9px; margin-top: 11px; }
-.kai-color-key > span { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #52657b; }
+.kai-color-key > span { display: flex; align-items: center; gap: 8px; padding: 7px; border: 1px solid transparent; border-radius: 7px; font-size: 10px; color: #52657b; }
+.kai-color-key > span[aria-current] { border-color: #e0e5e8; background: #f5f5f1; }
 .kai-color-key i { flex-shrink: 0; width: 7px; height: 18px; border-radius: 3px; box-shadow: inset 0 0 0 1px #172b4510; }
 .kai-color-key small { display: block; margin-top: 3px; color: #8993a0; font-size: 9px; }
 .kai-popover-footer { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 22px; color: #8a94a1; font-size: 9px; }

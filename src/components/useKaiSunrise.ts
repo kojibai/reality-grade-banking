@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { projectKaiSunrise, type KaiSunriseLocation } from './kai-klok-sunrise';
+import { projectKaiLocalTimeReference, projectKaiSunrise, type KaiSunriseLocation } from './kai-klok-sunrise';
 
 type Status = 'unconfigured' | 'pending' | 'ready' | 'denied' | 'unavailable';
 
 /** Location is optional, session-only, and affects the solar reference alone. */
 export function useKaiSunrise(pulse: number) {
-  const [preference, setPreference] = useState<'local' | 'greenwich'>('local');
+  const [preference, setPreference] = useState<'local' | 'sunrise' | 'greenwich'>('local');
   const [location, setLocation] = useState<KaiSunriseLocation>();
   const [status, setStatus] = useState<Status>('unconfigured');
   const mounted = useRef(true), requested = useRef(false), generation = useRef(0), preferenceRef = useRef(preference);
@@ -30,12 +30,20 @@ export function useKaiSunrise(pulse: number) {
     // prompts; prompt/unsupported states wait for the explicit button.
     const permissionGeneration = generation.current;
     if (navigator.permissions?.query) void navigator.permissions.query({ name: 'geolocation' }).then(permission => {
-      if (mounted.current && generation.current === permissionGeneration && !requested.current && preferenceRef.current === 'local' && permission.state === 'granted') request();
+      if (mounted.current && generation.current === permissionGeneration && !requested.current && preferenceRef.current === 'local' && permission.state === 'granted') {
+        preferenceRef.current = 'sunrise'; setPreference('sunrise'); request();
+      }
     }).catch(() => {});
     return () => { mounted.current = false; generation.current++; };
   }, [request]);
-  const effective = projectKaiSunrise(pulse, preference === 'local' ? location : undefined);
-  const clear = () => { generation.current++; requested.current = true; setLocation(undefined); setStatus('unconfigured'); };
-  const selectPreference = (next: typeof preference) => { preferenceRef.current = next; setPreference(next); };
+  const solar = preference === 'sunrise' && location ? projectKaiSunrise(pulse, location) : undefined;
+  const effective = preference === 'greenwich' ? projectKaiSunrise(pulse)
+    : solar?.reference === 'local' ? solar
+    : { ...projectKaiLocalTimeReference(pulse), ...(solar?.unavailable ? { unavailable: true } : {}) };
+  const clear = () => { generation.current++; requested.current = true; preferenceRef.current = 'local'; setPreference('local'); setLocation(undefined); setStatus('unconfigured'); };
+  const selectPreference = (next: typeof preference) => {
+    requested.current = true; preferenceRef.current = next; setPreference(next);
+    if (next === 'sunrise' && !location && status !== 'pending') request();
+  };
   return { ...effective, preference, setPreference: selectPreference, status, request, clear, hasLocation: !!location };
 }
