@@ -1,5 +1,5 @@
 import {afterEach,expect,it,vi} from 'vitest';
-import {loadOfflineNoteState,loadPreparedNoteState} from '../src/receiz/identity-vault';
+import {loadOfflineNoteState,loadPreparedNoteState,assertWalletSendCustody,loadWalletObservation} from '../src/receiz/identity-vault';
 import {atNoteStage,noteFailureStage} from '../src/receiz/note-stage';
 import {BANK_STORAGE_APPLICATION_ID} from '../src/receiz/config';
 
@@ -31,4 +31,14 @@ it.each(['offline-notes','prepared-notes'])('preserves unreadable %s checkpoint 
  const cause=await atNoteStage('saved-notes',()=>read(f.binding)).catch(error=>error);
  expect(cause).toMatchObject({name:'OperationError'});expect(noteFailureStage(cause)).toEqual({stage:family==='offline-notes'?'offline-note-checkpoint':'prepared-note-checkpoint',errorName:'OperationError'});
  expect(f.row.bytes).toEqual(original);expect(f.writes).not.toHaveBeenCalled();expect(JSON.stringify(noteFailureStage(cause))).not.toContain(f.binding.artifactSha256);
+});
+
+it('a missing optional display observation does not invent local Note custody',async()=>{
+ const f=await fixture();await expect(assertWalletSendCustody({...f.binding,keyId:'fixture-key'})).resolves.toBeUndefined();expect(f.writes).not.toHaveBeenCalled();
+});
+it.each([true,false])('strict Send custody rejects an unreadable saved observation, including durable marker=%s, without changing display restoration',async marked=>{
+ const f=await fixture(),binding={...f.binding,keyId:'fixture-key'};
+ Object.assign(f.saved,{walletObservation:{iv:crypto.getRandomValues(new Uint8Array(12)),bytes:new Uint8Array(16).buffer,binding,...(marked?{localHeadDigest:'a'.repeat(64)}:{})}});
+ expect(await loadWalletObservation(binding)).toBeNull();
+ await expect(assertWalletSendCustody(binding)).rejects.toThrow(marked?'BANK_WALLET_LOCAL_HEAD_REQUIRED':'operation');expect(f.writes).not.toHaveBeenCalled();
 });

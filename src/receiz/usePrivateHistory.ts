@@ -63,6 +63,7 @@ export function usePrivateHistory(identity: OpenIdentity | null, accountUid: str
     document.addEventListener('visibilitychange', wake);
     return () => { alive = false; clearInterval(timer); for (const event of events) removeEventListener(event, wake); document.removeEventListener('visibilitychange', wake); };
   }, [active, identity, accountUid, read]);
+  useEffect(()=>{const changed=(event:Event)=>{const detail=(event as CustomEvent).detail;if(identity&&detail?.identityDigest===identity.binding.artifactSha256&&detail?.accountUid===accountUid)void refresh();};addEventListener('bankeiz:wallet-send-recorded',changed);return()=>removeEventListener('bankeiz:wallet-send-recorded',changed);},[identity,accountUid,refresh]);
   const cache = frame?.identity === identity && frame.accountUid === accountUid ? frame.value : peekPrivateHistory(identity, accountUid);
   const current = scope.current.identity === identity && scope.current.accountUid === accountUid;
   return { cache, busy: current && busy, error: current ? error : null, failureCode: current ? failureCode : null, canLoadMore: Boolean(cache?.nextCursor && (current ? !paused.current : true)), refresh, loadMore };

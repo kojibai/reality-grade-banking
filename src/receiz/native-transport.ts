@@ -7,6 +7,8 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
   '/api/sdk/v1/identity/proof-authority/exchange': 'POST',
   '/api/sdk/v1/auth/granted-scopes': 'GET',
   '/api/connect/wallet/me': 'GET',
+  '/api/connect/transfers': 'POST',
+  '/api/chat/conversations': 'POST',
   '/api/connect/payments/checkout': 'POST',
   '/api/connect/payments/session': 'GET',
   '/api/sdk/v1/runtime/qualify': 'POST',
@@ -19,6 +21,8 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
 export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
   if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return false;
+  if (url.pathname === '/api/chat/users/search') return method.toUpperCase()==='GET' && [...url.searchParams.keys()].length===1 && url.searchParams.getAll('q').length===1 && /^[a-z0-9_]{3,24}$/.test(url.searchParams.get('q')??'');
+  if (url.pathname === '/api/connect/transfers' && method.toUpperCase()==='GET') return [...url.searchParams.keys()].length===1 && (url.searchParams.has('clientNonce') ? /^[A-Za-z0-9._:-]{8,120}$/.test(url.searchParams.get('clientNonce')??'') : /^\d{1,18}\.\d{2}$/.test(url.searchParams.get('amountUsd')??''));
   if (/^\/api\/connect\/bank\/(?:payments\/(?:prepare|execute|recover)|assets\/(?:prepare|execute|recover|portfolio))$/.test(url.pathname)) return method.toUpperCase() === 'POST' && [...url.searchParams.keys()].length === 1 && url.searchParams.getAll('applicationId').length === 1 && (url.pathname.endsWith('/recover') ? isBankNativeApplicationId(url.searchParams.get('applicationId')) : url.searchParams.get('applicationId') === BANK_APPLICATION_ID);
   if (url.pathname === '/api/connect/bank/prepare') return method.toUpperCase() === 'POST' && [...url.searchParams.keys()].length === 1 && url.searchParams.get('applicationId') === BANK_APPLICATION_ID;
   if (url.pathname === '/api/connect/account-proof') return method.toUpperCase() === 'GET' && [...url.searchParams.keys()].length === 1 && url.searchParams.get('applicationId') === BANK_APPLICATION_ID;

@@ -8,7 +8,7 @@ import { paymentQr, paymentQrPath } from '../../receiz/payment-qr';
 import { formatMoney } from '../../core/money';
 import { verifyPaymentTag, type BankNfcConstructor } from '../../receiz/payment-nfc';
 import { OfflineNotes } from '../notes/OfflineNotes';
-import { NativeOperation } from './NativeOperation';
+import { WalletSendOperation } from './WalletSendOperation';
 import { LiveOwnership } from '../assets/LiveOwnership';
 import { bankOperationDollars } from '../../receiz/bank-operations';
 import { PaymentScanner } from './PaymentScanner';
@@ -17,8 +17,9 @@ export function LiveReceive({ identity, onRefresh = () => {} }: { identity: Open
   const [noteMode, setNoteMode] = useState(false);
   const [amount, setAmount] = useState(''), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false), [tagWritten, setTagWritten] = useState(false), [tagHelp, setTagHelp] = useState(false); const nfc = useRef<AbortController | null>(null);
   useEffect(() => () => nfc.current?.abort(), []);
-  const coordinate = identity.binding.artifactOwnerReceizId;
-  const request = useMemo(() => { try { const link = buildPaymentRequest(coordinate, amount); return { link, path: paymentQrPath(paymentQr(link)), error: '' }; } catch (cause) { return { link: '', path: '', error: cause instanceof Error ? cause.message : 'This request could not be created.' }; } }, [coordinate, amount]);
+  const candidate = identity.walletReceivingAddress?.() ?? identity.knownWallet?.()?.wallet.userId ?? identity.accountUsername?.() ?? identity.username ?? '';
+  const coordinate = /^(?:[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}|[a-z0-9_]{3,24})$/i.test(candidate) ? candidate : '';
+  const request = useMemo(() => { try { if(!coordinate)throw Error('Open your Wallet connection to obtain this account’s receiving address.');const link = buildPaymentRequest(coordinate, amount); return { link, path: paymentQrPath(paymentQr(link)), error: '' }; } catch (cause) { return { link: '', path: '', error: cause instanceof Error ? cause.message : 'This request could not be created.' }; } }, [coordinate, amount]);
   const copy = async () => { try { await navigator.clipboard.writeText(request.link); setNotice('Payment link copied.'); } catch { setNotice('Select and copy the payment link below.'); } };
   const share = async () => { try { if (navigator.share) await navigator.share({ title: 'Bankeiz payment', url: request.link }); else await copy(); } catch (cause) { if (!(cause instanceof Error && cause.name === 'AbortError')) setNotice('Sharing is unavailable. Copy the payment link below.'); } };
   const writeTag = async () => { const Reader = (window as unknown as { NDEFReader?: BankNfcConstructor }).NDEFReader; if (!Reader || !isSecureContext) { setTagHelp(true); setNotice('This browser cannot write NFC tags. Copy your payment link into an NFC tag writer as a URL record, or open this bank in Chrome on an NFC-enabled Android phone.'); return; } if (busy) return; setBusy(true); nfc.current?.abort(); const controller = new AbortController(); nfc.current = controller; setNotice('Hold a writable NFC tag near your phone.'); try { await new Reader().write({ records: [{ recordType: 'url', data: request.link }] }, { signal: controller.signal }); if (!controller.signal.aborted) { setTagWritten(true); setNotice('Tag ready. A tap opens your bank payment request.'); } } catch (cause) { if (!controller.signal.aborted) setNotice(cause instanceof Error && cause.name === 'NotAllowedError' ? 'Allow NFC access to program this tag.' : 'The tag could not be written. Try a writable tag or use your QR code.'); } finally { if (!controller.signal.aborted) setBusy(false); } };
@@ -30,15 +31,15 @@ export function LiveReceive({ identity, onRefresh = () => {} }: { identity: Open
 
 export function LiveSend({ identity, onRefresh = () => {}, wallet, initialRequest, onClose: _onClose }: { identity?: OpenIdentity; onRefresh?: () => void; wallet: SharedWallet | null; initialRequest?: PaymentRequest | null; onClose: () => void }) {
   const [noteMode, setNoteMode] = useState(false);
-  const [recipient, setRecipient] = useState(initialRequest?.recipient ?? ''), [amount, setAmount] = useState(initialRequest?.amount ?? ''), [rail, setRail] = useState<'settlement' | 'reserve'>('settlement'), [mode, setMode] = useState<'value' | 'asset'>('value');
+  const [recipient, setRecipient] = useState(initialRequest?.recipient ?? ''), [amount, setAmount] = useState(initialRequest?.amount ?? ''), [mode, setMode] = useState<'value' | 'asset'>('value');
   if (noteMode && identity) return <OfflineNotes identity={identity} mode="create" onBack={() => setNoteMode(false)} onRefresh={onRefresh} />;
   const choices = <>{identity && <button className="text-button note-action" onClick={() => setNoteMode(true)}>Create note</button>}<div className="segmented"><button className={mode === 'value' ? 'active' : ''} onClick={() => setMode('value')}>Send value</button><button className={mode === 'asset' ? 'active' : ''} onClick={() => setMode('asset')}>Send ownership</button></div></>;
   if (mode === 'asset' && identity) return <>{choices}<LiveOwnership identity={identity} onRefresh={onRefresh} /></>;
-  return <>{choices}<NativeOperation identity={identity} inputKey={JSON.stringify([recipient, amount, rail])} input={() => ({ kind: 'send-value', rail, amountUsdCents: bankOperationDollars(amount), recipient })} title="Payment" confirmLabel="Send payment" onRefresh={onRefresh}>
+  return <>{choices}<WalletSendOperation identity={identity} inputKey={JSON.stringify([recipient, amount])} input={() => ({ amountUsdCents: bankOperationDollars(amount), recipient })} onRefresh={onRefresh}>
     <h1 className="sheet-hero">Move value.<br />Keep what makes it yours.</h1>
     <AmountInput label="Amount to send" value={amount} onChange={setAmount} dollars />
-    <label className="form-field"><span>Use value from</span><select value={rail} onChange={event => setRail(event.target.value as typeof rail)}><option value="settlement">Settlement · {wallet ? formatMoney(wallet.settlementUsdCents) : '—'}</option><option value="reserve">Reserve · {wallet ? formatMoney(wallet.reserveUsdCents) : '—'}</option></select></label>
+    <div className="detail-list"><div><span>Reserve</span><strong>{wallet ? formatMoney(wallet.reserveUsdCents) : '—'}</strong></div><div><span>Settlement</span><strong>{wallet ? formatMoney(wallet.settlementUsdCents) : '—'}</strong></div></div>
     <label className="form-field"><span>Recipient</span><input value={recipient} onChange={event => setRecipient(event.target.value)} placeholder="Receiz ID or public username" maxLength={160} /></label>
     <PaymentScanner onRequest={request => { setRecipient(request.recipient); setAmount(request.amount ?? ''); }} />
-  </NativeOperation></>;
+  </WalletSendOperation></>;
 }

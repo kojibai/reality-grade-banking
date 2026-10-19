@@ -44,6 +44,13 @@ it('queues a committed-action head refresh behind an older in-flight request',as
  await act(async()=>finish(page('earlier-head')));
  expect(id.readPrivateHistory).toHaveBeenCalledTimes(3);expect(view.read().cache?.records.map(row=>row.sourceId)).toContain('committed-send');expect(view.read().cache?.records.map(row=>row.sourceId)).toContain('retained');
 });
+it('syncs a recorded Send into an inactive Ledger and refuses events from another identity or account',async()=>{
+ const id=identity();await mount(id,false);expect(id.readPrivateHistory).not.toHaveBeenCalled();
+ for(const detail of [{identityDigest:'b'.repeat(64),accountUid:'A'},{identityDigest:'a'.repeat(64),accountUid:'B'}])await act(async()=>window.dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail})));
+ expect(id.readPrivateHistory).not.toHaveBeenCalled();
+ await act(async()=>window.dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:'a'.repeat(64),accountUid:'A'}})));
+ expect(id.readPrivateHistory).toHaveBeenCalledTimes(1);
+});
 it('polls every 60 seconds only on the active visible bank and wakes when its surface returns', async () => {
   vi.useFakeTimers(); const id = identity(), view = await mount(id);
   await act(async () => { await vi.advanceTimersByTimeAsync(60_000); }); expect(id.readPrivateHistory).toHaveBeenCalledTimes(2);

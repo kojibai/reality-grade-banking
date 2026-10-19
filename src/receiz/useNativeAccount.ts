@@ -93,11 +93,13 @@ export function useNativeAccount(custody = nativeCustody) {
     const timer = setInterval(wake, 60_000);
     const localTimer = setInterval(() => { if (foreground()) void refreshLocal(); }, 1_000);
     const repaint = () => { const known = held.current?.knownWallet?.(); if (known) { hasObservation.current=true; setWallet(known.wallet); setObservedAt(known.observedAt); setWalletHistory(known.history ?? []); setHistoryComplete(hasSettledAccountView(known)); setError(null); setSyncPending(false); } };
+    const paymentRecorded=(event:Event)=>{const current=held.current,detail=(event as CustomEvent).detail;if(current&&detail?.identityDigest===current.binding.artifactSha256)void refresh();};
+    addEventListener('bankeiz:wallet-send-recorded',paymentRecorded);
     addEventListener('bankeiz:account-observation', repaint);
     const wakeEvents = ['online', 'focus', 'pageshow', 'popstate', 'receiz-bank:surface'] as const;
     for (const event of wakeEvents) addEventListener(event, wake);
     document.addEventListener('visibilitychange', wake);
-    return () => { alive = false; entering.current?.dispose(); held.current?.dispose(); held.current = null; generation.current++; clearInterval(timer); clearInterval(localTimer); removeEventListener('bankeiz:account-observation', repaint); for (const event of wakeEvents) removeEventListener(event, wake); document.removeEventListener('visibilitychange', wake); };
+    return () => { alive = false; entering.current?.dispose(); held.current?.dispose(); held.current = null; generation.current++; clearInterval(timer); clearInterval(localTimer);removeEventListener('bankeiz:wallet-send-recorded',paymentRecorded); removeEventListener('bankeiz:account-observation', repaint); for (const event of wakeEvents) removeEventListener(event, wake); document.removeEventListener('visibilitychange', wake); };
   }, [accept, refresh, refreshLocal, custody]);
   const open = async (operation: () => Promise<OpenIdentity>) => {
     if (openingOperation.current) return;

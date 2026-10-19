@@ -33,3 +33,6 @@ export const BANK_READ_CONSENT = 'Allow Bankeiz to open my account using my proo
 // Browser composition is implemented and qualified separately from the shared
 // native writer, changed-rate and physical-device production release gates.
 export const BANK_PREPARED_NOTE_CREDIT_ENABLED = false;
+
+export const BANK_WALLET_SEND_SCOPES = [...BANK_READ_SCOPES, 'receiz:wallet.transfer'] as const;
+export const BANK_WALLET_SEND_CONSENT = 'Allow Bankeiz to resolve my receiving account, review my Wallet quote, and submit only the payment I explicitly approve. Receiz receives my protected Identity Seal and signed consent for wallet read and transfer access. Wallet uses Reserve first, then Settlement. Each payment needs my separate final approval.';

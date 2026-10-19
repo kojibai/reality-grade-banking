@@ -15,7 +15,7 @@ function observation(cents = '100'): WalletObservation {
 }
 function held() {
   let known = observation();
-  const identity = { dispose: vi.fn(), knownWallet: () => known, prepareAccountView: vi.fn(async () => known), readWallet: vi.fn(async () => known.wallet), setKnown: (value: WalletObservation) => { known = value; } };
+  const identity = { binding:{artifactSha256:'a'.repeat(64)},dispose: vi.fn(), knownWallet: () => known, prepareAccountView: vi.fn(async () => known), readWallet: vi.fn(async () => known.wallet), setKnown: (value: WalletObservation) => { known = value; } };
   return identity as unknown as OpenIdentity & { setKnown(value: WalletObservation): void };
 }
 async function mount(identity: OpenIdentity) {
@@ -69,6 +69,13 @@ it('queues a fresh post-transaction read behind a pre-transaction refresh and sk
  await act(async()=>read().refresh());
  await act(async()=>{finish(observation('999').wallet);});
  expect(identity.readWallet).toHaveBeenCalledTimes(2);expect(read().wallet?.totalUsdCents).toBe('75');expect(frames.some(frame=>frame.wallet?.totalUsdCents==='999')).toBe(false);
+});
+it('refreshes for an identity-held recorded Send event even with no Send sheet mounted',async()=>{
+ const identity=held();await mount(identity);
+ await act(async()=>window.dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:'b'.repeat(64),accountUid:'owner'}})));
+ expect(identity.readWallet).not.toHaveBeenCalled();
+ await act(async()=>window.dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:'a'.repeat(64),accountUid:'owner'}})));
+ expect(identity.readWallet).toHaveBeenCalledTimes(1);
 });
 
 it('does not refresh hidden documents or non-bank routes and refreshes when the bank returns', async () => {

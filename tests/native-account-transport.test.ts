@@ -4,9 +4,9 @@ import { nativeFetch } from '../src/receiz/native-transport';
 import { createReceizClient } from '@receiz/sdk';
 import { BANK_APPLICATION_ID } from '../src/receiz/config';
 afterEach(() => vi.unstubAllGlobals());
-it('allows only named identity, shared-read and card contracts, with no arbitrary destination or transfer', () => {
+it('allows only named identity, shared-read and card contracts, with no arbitrary destination or unlisted transfer', () => {
   expect(nativeRequestPath('/api/bank/native/api/connect/wallet/me', 'GET')).toBe('/api/connect/wallet/me');
-  for (const path of ['/api/bank/native/api/connect/transfers', '/api/bank/nativehttps://other.example', '/api/bank/native/api/connect/wallet/me?user=foreign']) expect(nativeRequestPath(path, 'POST')).toBeNull();
+  for (const path of [ '/api/bank/nativehttps://other.example', '/api/bank/native/api/connect/wallet/me?user=foreign']) expect(nativeRequestPath(path, 'POST')).toBeNull();
   expect(nativeRequestPath('/api/bank/native/api/connect/wallet/me', 'POST')).toBeNull();
   expect(nativeRequestPath('/api/bank/native/api/connect/payments/checkout', 'POST')).toBe('/api/connect/payments/checkout');
   expect(nativeRequestPath('/api/bank/native/api/connect/payments/session?sessionId=cs_test_12345678', 'GET')).toBe('/api/connect/payments/session?sessionId=cs_test_12345678');
@@ -19,6 +19,21 @@ it('sends the exact SDK request only to the same-origin bank transport without c
   expect(request.mock.calls[0][0]).toBe('/api/bank/native/api/connect/wallet/me');
   expect(request.mock.calls[0][1]).toMatchObject({ credentials: 'omit', redirect: 'error' });
   expect(() => nativeFetch('https://foreign.example/api/connect/wallet/me')).toThrow();
+});
+it('carries SDK Wallet Send and only its bounded quote, recipient and original-nonce reads',async()=>{
+  for(const path of ['/api/connect/transfers','/api/chat/conversations']){
+    expect(nativeRequestPath(`/api/bank/native${path}`,'POST')).toBe(path);
+    expect(nativeRequestPath(`/api/bank/native${path}?accountId=other`,'POST')).toBeNull();
+  }
+  for(const path of ['/api/connect/transfers?amountUsd=10.00','/api/connect/transfers?clientNonce=retained_nonce','/api/chat/users/search?q=receiver'])expect(nativeRequestPath(`/api/bank/native${path}`,'GET')).toBe(path);
+  for(const query of ['?clientNonce=retained_nonce&userId=foreign','?clientNonce=retained_nonce&clientNonce=another_nonce','?amountUsd=1.00&recipient=foreign','?url=https://foreign.example'])expect(nativeRequestPath(`/api/bank/native/api/connect/transfers${query}`,'GET')).toBeNull();
+  expect(nativeRequestPath('/api/bank/native/api/chat/conversations/foreign/messages','POST')).toBeNull();
+  const request=vi.fn<typeof fetch>(async()=>new Response('{}',{headers:{'Content-Type':'application/json'}}));vi.stubGlobal('fetch',request);
+  const client=createReceizClient({applicationId:BANK_APPLICATION_ID,accessToken:'synthetic-wallet-grant',fetchImpl:nativeFetch});
+  await client.connect.transfer({recipientUserId:'recipient',conversationId:'conversation',unit:'usd',amountUsd:'10.00',clientNonce:'retained_nonce'});
+  expect(request.mock.calls[0][0]).toBe('/api/bank/native/api/connect/transfers');
+  expect(JSON.parse(String(request.mock.calls[0][1]?.body))).toMatchObject({amountUsd:'10.00',clientNonce:'retained_nonce'});
+  expect(request.mock.calls[0][1]).toMatchObject({credentials:'omit',redirect:'error'});
 });
 it('carries the real SDK qualification application coordinate without opening arbitrary native queries', async () => {
   const target = `/api/sdk/v1/runtime/qualify?applicationId=${BANK_APPLICATION_ID}`;

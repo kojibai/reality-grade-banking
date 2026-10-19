@@ -16,7 +16,7 @@ async function noteRemovalGuard(saved: SavedIdentity) {
   const db = await database();
   const rows: {key:string;row:PrivateBankOperation|undefined}[]=[];
   try {
-    for (const family of ['offline-notes','prepared-notes','native-payments','native-assets']) {
+    for (const family of ['offline-notes','prepared-notes','native-payments','native-assets','wallet-sends']) {
       const key=`${family}|${BANK_STORAGE_APPLICATION_ID}|${digest}`;
       const row=await new Promise<PrivateBankOperation|undefined>((resolve,reject)=>{const read=db.transaction('operations').objectStore('operations').get(key);read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error);});
       rows.push({key,row});
@@ -26,10 +26,11 @@ async function noteRemovalGuard(saved: SavedIdentity) {
       // This retention guard grants no financial authority. A reserved receiving
       // slot may already be addressed by an incoming note outside this tab.
       const native=family==='native-payments'||family==='native-assets';
-      const held=native ? !state||state.schema!==`bank.${family}.v1`||!Array.isArray(state.history)||state.history.length>1000||!state.current||[...state.history,state.current].some(checkpoint=>!checkpoint||!['committed','zero-write'].includes(checkpoint.state)) : family==='offline-notes'
+      const wallet=family==='wallet-sends';
+      const held=wallet ? !state||state.schema!=='bank.wallet-sends.v1'||state.authority!=='wallet-observation'||!Array.isArray(state.history)||state.history.length>1000||!state.current||[...state.history,state.current].some(checkpoint=>!checkpoint||!['recorded','not-sent'].includes(checkpoint.status)) : native ? !state||state.schema!==`bank.${family}.v1`||!Array.isArray(state.history)||state.history.length>1000||!state.current||[...state.history,state.current].some(checkpoint=>!checkpoint||!['committed','zero-write'].includes(checkpoint.state)) : family==='offline-notes'
         ? state.schema!=='receiz.bank.offline-notes-device.v1'||state.create||Object.keys(state.receivers??{}).length||Object.values(state.deposits??{}).some(v=>!(v as {creditRef?:string}).creditRef)||Object.entries(state.notes??{}).some(([id,v])=>!(v as {transferComplete?:boolean}).transferComplete&&!state.deposits?.[id]?.creditRef)
         : state.schema!=='receiz.bank.prepared-notes-device.v1'||state.create||Object.values(state.slots??{}).some(v=>(v as {status:string}).status==='reserved')||Object.values(state.components??{}).some(v=>!(v as {exhausted?:boolean}).exhausted)||Object.values(state.journal?.deposits??{}).some(v=>(v as {phase:string}).phase!=='complete')||Object.entries(state.notes??{}).some(([id,v])=>!(v as {transferComplete?:boolean}).transferComplete&&state.journal?.deposits?.[id]?.phase!=='complete');
-      if(held&&native)throw new Error('Keep this device until the retained transaction outcome is resolved. An Identity Seal backup does not include its private execution recovery.');
+      if(held&&(native||wallet))throw new Error('Keep this device until the retained transaction outcome is resolved. An Identity Seal backup does not include its private execution recovery.');
       if(held)throw new Error('Keep this device while Offline Notes, prepared value or receiving requests are held or pending. Deposit or transfer your notes before removing this ID. An Identity Seal backup does not restore device note custody.');
       if(family==='native-assets'){
         // A status flag cannot turn an unconfirmed intent into disposable
@@ -304,6 +305,18 @@ export async function loadWalletObservation(binding: { keyId: string; artifactSh
     const clear = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(saved.walletObservation.iv), additionalData: new TextEncoder().encode(`receiz.bank.wallet|${binding.keyId}|${binding.artifactSha256}`) }, saved.wrappingKey, saved.walletObservation.bytes);
     return readWalletObservation(JSON.parse(new TextDecoder().decode(clear)), binding);
   } catch { return null; }
+}
+// Execution must not use the tolerant first-paint cache reader: an unreadable
+// observation can still carry a durable local Note successor in another tab.
+export async function assertWalletSendCustody(binding:{keyId:string;artifactSha256:string}):Promise<void>{
+  const saved=await held();if(!saved)throw Error('BANK_WALLET_PRIVATE_CUSTODY_UNAVAILABLE');
+  await sameSavedIdentity(saved,binding);
+  const row=saved.walletObservation;if(!row)return;
+  if(row.localHeadDigest!==undefined)throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');
+  const clear=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(row.iv),additionalData:new TextEncoder().encode(`receiz.bank.wallet|${binding.keyId}|${binding.artifactSha256}`)},saved.wrappingKey,row.bytes);
+  const observation=readWalletObservation(JSON.parse(new TextDecoder().decode(clear)),binding);
+  if(!observation)throw Error('BANK_WALLET_PRIVATE_CUSTODY_UNAVAILABLE');
+  if(observation.source==='local-note-head'||observation.localHeadDigest)throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');
 }
 export async function restoreKnownWalletObservation(): Promise<import('./wallet-observation').WalletObservation | null> {
   try {
@@ -764,3 +777,6 @@ export const loadNativePaymentState=(binding:{artifactSha256:string})=>loadNoteS
 export const saveNativePaymentState=(binding:{artifactSha256:string},value:import('./native-payment').NativePaymentState,expected:unknown)=>saveNoteState(binding,'native-payments',value,expected);
 export const loadNativeAssetState=(binding:{artifactSha256:string})=>loadNoteState(binding,'native-assets');
 export const saveNativeAssetState=(binding:{artifactSha256:string},value:import('./native-asset').NativeAssetState,expected:unknown)=>saveNoteState(binding,'native-assets',value,expected);
+
+export const loadWalletSendState=(binding:{artifactSha256:string})=>loadNoteState(binding,'wallet-sends');
+export const saveWalletSendState=(binding:{artifactSha256:string},value:import('./wallet-send').WalletSendState,expected:unknown)=>saveNoteState(binding,'wallet-sends',value,expected);

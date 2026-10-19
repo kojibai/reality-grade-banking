@@ -7,10 +7,11 @@ import type {BankOperationInput} from '../src/receiz/bank-operations';
 
 // Real asset/payment choreography; only identity admission, encrypted storage
 // and authenticated transport are isolated protocol fixtures here.
-const p=vi.hoisted(()=>({generic:null as unknown,payment:null as unknown,asset:null as unknown,request:vi.fn(),qualify:vi.fn(),locks:vi.fn()}));
+const p=vi.hoisted(()=>({generic:null as unknown,payment:null as unknown,asset:null as unknown,wallet:null as unknown,note:null as unknown,storedHead:null as unknown,request:vi.fn(),qualify:vi.fn(),locks:vi.fn()}));
 vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),
- loadWalletObservation:async()=>null,loadAccountLedgerState:async()=>null,loadBankOperation:async()=>p.generic,
- loadNativePaymentState:async()=>p.payment,loadNativeAssetState:async()=>p.asset,
+ loadOfflineNoteState:async()=>p.note,loadPreparedNoteState:async()=>null,
+ loadWalletObservation:async()=>p.storedHead,assertWalletSendCustody:async()=>{if((p.storedHead as {source?:string}|null)?.source==='local-note-head')throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},loadAccountLedgerState:async()=>null,loadBankOperation:async()=>p.generic,
+ loadNativePaymentState:async()=>p.payment,loadNativeAssetState:async()=>p.asset,loadWalletSendState:async()=>p.wallet,
  saveNativePaymentState:async(_binding:unknown,value:unknown,expected:unknown)=>{expect(p.payment).toEqual(expected);p.payment=structuredClone(value);},
  saveNativeAssetState:async(_binding:unknown,value:unknown,expected:unknown)=>{expect(p.asset).toEqual(expected);p.asset=structuredClone(value);},
 }));
@@ -37,9 +38,9 @@ function unknown(kind:'assets'|'payments'){
  return{schema:kind==='assets'?'bank.native-assets.v1':'bank.native-payments.v1',current:{prepared:value,consentProof:{schema:'receiz.identity.login_proof.v1',keyId:'a'.repeat(64),alg:'Ed25519',challengeB64Url:value.challengeB64Url,signatureB64Url:'fixture'},state:'unknown'},history:[]};
 }
 beforeEach(()=>{
- p.generic=null;p.payment=null;p.asset=null;p.qualify.mockReset().mockRejectedValue(Error('GENERIC_RUNTIME_MUST_NOT_BE_USED'));
- let lock=Promise.resolve<unknown>(undefined);
- p.locks.mockReset().mockImplementation((_name:string,_options:unknown,operation:()=>Promise<unknown>)=>{const result=lock.catch(()=>{}).then(operation);lock=result;return result;});
+ p.generic=null;p.payment=null;p.asset=null;p.wallet=null;p.note=null;p.storedHead=null;p.qualify.mockReset().mockRejectedValue(Error('GENERIC_RUNTIME_MUST_NOT_BE_USED'));
+ const locks=new Map<string,Promise<unknown>>();
+ p.locks.mockReset().mockImplementation((name:string,_options:unknown,operation:()=>Promise<unknown>)=>{const result=(locks.get(name)??Promise.resolve()).catch(()=>{}).then(operation);locks.set(name,result);return result;});
  vi.stubGlobal('navigator',{locks:{request:p.locks}});
  p.request.mockReset().mockImplementation(async(path:string,options:{body:Record<string,unknown>})=>{
   const body=options.body;
@@ -69,8 +70,8 @@ it('retains an approved asset intent before submission and resolves its exact no
   expect(p.locks.mock.calls.every(([name])=>name==='receiz-bank-execution:'+'b'.repeat(64))).toBe(true);expect(p.qualify).not.toHaveBeenCalled();
  }finally{identity.dispose();}
 });
-it.each(['asset','payment','generic'] as const)('blocks new operations while the %s family has unresolved custody',async family=>{
- if(family==='asset')p.asset=unknown('assets');else if(family==='payment')p.payment=unknown('payments');else p.generic={state:'prepared'};
+it.each(['asset','payment','generic','wallet'] as const)('blocks new operations while the %s family has unresolved custody',async family=>{
+ if(family==='asset')p.asset=unknown('assets');else if(family==='payment')p.payment=unknown('payments');else if(family==='wallet')p.wallet={schema:'bank.wallet-sends.v1',authority:'wallet-observation',current:{status:'unknown'},history:[]};else p.generic={state:'prepared'};
  const identity=await open();try{const api=await identity.operations!();await expect(api.prepare(family==='asset'?send:fund)).rejects.toThrow('BANK_EXECUTION_PENDING');expect(p.request).not.toHaveBeenCalled();}finally{identity.dispose();}
 });
 it('rechecks other families after preparation and refuses submission if another intent became unknown',async()=>{
@@ -97,4 +98,13 @@ it.each(['key','owner'] as const)('refuses a pending asset checkpoint for a diff
 });
 it('does not submit or sign an asset review after its identity closes',async()=>{
  const identity=await open(),api=await identity.operations!(),review=await api.prepare(fund);identity.dispose();await expect(api.execute(review,review.confirmationDigest)).rejects.toThrow('CLOSED');expect(p.asset).toBeNull();expect(p.request.mock.calls.every(([path])=>!path.includes('/execute?'))).toBe(true);
+});
+
+it('refuses a new Wallet Send while a Note is preparing before its local account head exists',async()=>{
+ p.note={schema:'receiz.bank.offline-notes-device.v1',keyId:'a'.repeat(64),uid:'fixture-user',create:{phase:'preparing',intent:{noteId:'held-note'},rail:'reserve',amountUsdCents:'100'},notes:{},deposits:{}};
+ const identity=await open();try{await expect((await identity.walletSend!()).prepare({recipient:'receiver',amountUsdCents:'100'})).rejects.toThrow('BANK_EXECUTION_PENDING');expect(p.request).not.toHaveBeenCalled();}finally{identity.dispose();}
+});
+
+it('reopens durable Note custody before Wallet review when a different tab changed the saved local head',async()=>{
+ const identity=await open();try{expect(identity.knownWallet()).toBeNull();p.storedHead={source:'local-note-head'};await expect((await identity.walletSend!()).prepare({recipient:'receiver',amountUsdCents:'100'})).rejects.toThrow('BANK_WALLET_LOCAL_HEAD_REQUIRED');expect(p.request).not.toHaveBeenCalled();}finally{identity.dispose();}
 });
