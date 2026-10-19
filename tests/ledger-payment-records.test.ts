@@ -7,7 +7,7 @@ it('keeps the two exact records of one payment together without modifying or dup
  const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
  try{const value=movement(),action=execution(),original=JSON.stringify([action,value]);
  const groups=groupLedgerPaymentRecords([action,value]);expect(groups).toEqual([{record:value,executionRecords:[action]}]);
- expect(ledgerRecordTitle(value)).toBe('Value transfer');expect(ledgerRecordTitle(action)).toBe('Delegated wallet transfer');
+ expect(ledgerRecordTitle(value)).toBe('Money transfer');expect(ledgerRecordTitle(action)).toBe('Delegated wallet transfer');
  expect(JSON.stringify([action,value])).toBe(original);expect(fetch).not.toHaveBeenCalled();
  }finally{vi.unstubAllGlobals();}
 });

@@ -6,7 +6,7 @@ export function ledgerPaymentRole(record:PublicRecord):'movement'|'execution'|nu
 }
 export function ledgerRecordTitle(record:PublicRecord){
  const role=ledgerPaymentRole(record);
- return role==='movement'?'Value transfer':role==='execution'?'Delegated wallet transfer':record.title;
+ return role==='movement'?'Money transfer':role==='execution'?'Delegated wallet transfer':record.title;
 }
 const references=new WeakMap<PublicRecord,string|null>();
 /** Exact native FK only. A retained public Wallet witness may carry its

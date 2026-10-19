@@ -83,7 +83,7 @@ it('presents one payment with its exact delegated execution beneath it in both L
   const host=publicPage?document.createElement('div'):mount();
   if(publicPage){const root=createRoot(host);roots.push(root);act(()=>root.render(<PublicLedgerApp/>));}
   expect(host.querySelectorAll(publicPage?'.public-ledger-row':'.ledger-event')).toHaveLength(1);
-  expect(host.textContent).toContain('Value transfer');expect(host.textContent).not.toContain('Delegated wallet transfer');
+  expect(host.textContent).toContain('Money transfer');expect(host.textContent).not.toContain('Delegated wallet transfer');
   expect(host.querySelectorAll('.ledger-value strong')).toHaveLength(1);expect(host.querySelector('.ledger-payment-execution')).toBeNull();
   await act(async()=>host.querySelector<HTMLButtonElement>(publicPage?'.public-ledger-event':'.asset-row')!.click());
   expect(host.textContent).toContain('Delegated wallet transfer');expect(host.textContent).toContain('Same payment · execution record');

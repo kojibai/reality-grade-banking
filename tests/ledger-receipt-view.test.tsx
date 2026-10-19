@@ -66,6 +66,6 @@ it('keeps the linked execution inside the one payment receipt from already loade
  const execution=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'execution',actionKind:'wallet.transfer.connect',transferId:'same-payment',amountUsdCents:'100'}]}).records[0];
  const link=receiptLink(record)!;
  openLedgerReceipt({button:0,preventDefault(){}} as never,link,{record,value:ledgerValueForRecord(record),relations:indexLedgerRelations([record,execution])});
- const host=mount(link);expect(host.querySelector('.receipt-value p')?.textContent).toBe('Value transfer');
+ const host=mount(link);expect(host.querySelector('.receipt-value p')?.textContent).toBe('Money transfer');
  expect(host.querySelector('.ledger-payment-execution summary')?.textContent).toContain('Same payment · execution record');expect(host.querySelector('.ledger-payment-execution .ledger-inspector')).toBeNull();
 });
