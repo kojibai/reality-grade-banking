@@ -57,12 +57,12 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children}
  if(review)return <section className="native-operation-review"><h1 className="sheet-hero">Review payment.</h1><div className="detail-list">
   <div><span>Recipient</span><strong>{review.recipientLabel}</strong></div><div><span>You send</span><strong>{formatMoney(review.amountUsdCents)}</strong></div>
   <div><span>Φ at this quote</span><strong>{formatUnits(review.quote.amountPhiMicro)} Φ</strong></div>
-  <div><span>From Reserve at review</span><strong>{formatMoney(review.quote.settledUsdCents)}</strong></div><div><span>From Settlement at review</span><strong>{formatMoney(review.quote.ecosystemUsdCents)}</strong></div>
+  <div><span>From</span><strong>{BigInt(review.quote.settledUsdCents)>0n?(BigInt(review.quote.ecosystemUsdCents)>0n?'Composite balance':'Reserve'):'Settlement'}</strong></div>
   <div><span>Fee</span><strong>$0.00</strong></div></div>
   <p className="body-copy small-copy">Reserve is used first; Settlement covers the remainder. The dollar amount is fixed. Wallet computes the Φ amount and funding split from your current account when you send.</p>
   <label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event=>setApproved(event.target.checked)}/><span>I approve sending {formatMoney(review.amountUsdCents)} to {review.recipientLabel} using this funding rule.</span></label>
   <button className="primary-button" disabled={busy||!approved} onClick={()=>void send()}>{busy?'Sending payment…':'Send payment'}<ArrowRight size={17}/></button>
   <button className="secondary-button" disabled={busy} onClick={()=>{api.current?.discard(review);held.current=null;setReview(null);setApproved(false);}}>Edit details</button>{diagnostics}</section>;
- return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset><div className="note-box"><ShieldCheck size={18}/><p>Reserve first, then Settlement. Review the recipient and amount before approving your payment.</p></div><details className="transaction-proof-details"><summary>Wallet access</summary><p className="small-copy">{BANK_WALLET_SEND_CONSENT}</p></details>
+ return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset><div className="note-box"><ShieldCheck size={18}/><p>Review the recipient and amount before approving your payment.</p></div><details className="transaction-proof-details"><summary>Wallet access</summary><p className="small-copy">{BANK_WALLET_SEND_CONSENT}</p></details>
   <button className="primary-button" disabled={busy||!ready} onClick={()=>void prepare()}>{busy?'Checking payment…':'Review payment'}<ArrowRight size={17}/></button>{diagnostics}</>;
 }

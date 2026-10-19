@@ -10,7 +10,7 @@
 .trust-line { display: flex; align-items: center; gap: 9px; color: #6f8198; font-size: 12px; margin-top: 34px; line-height: 1.5; }
 .form-field { display: block; margin-top: 19px; }
 .form-field > span { color: #5b6e86; font-size: 12px; font-weight: 550; display: block; margin-bottom: 8px; }
-.form-field input, .form-field select, .form-field textarea { width: 100%; border: 1px solid #dde2eb; border-radius: 10px; padding: 13px 12px; background: #fff; color: var(--navy); font-size: 14px; min-height: 46px; }
+.form-field input, .form-field select, .form-field textarea { width: 100%; border: 1px solid #dde2eb; border-radius: 10px; padding: 13px 12px; background: #fff; color: var(--navy); font-size: 16px; min-height: 46px; }
 .form-columns { display: grid; grid-template-columns: .7fr 1fr; gap: 12px; }
 .amount-input { display: flex; align-items: center; gap: 3px; border: 1px solid #dde2eb; background: white; border-radius: 10px; padding: 0 12px; }
 .amount-input input { border: 0; background: none; padding-left: 0; padding-right: 0; min-width: 0; }
@@ -46,7 +46,7 @@
 .inspection-box { background: #f1f3f7; border-radius: 12px; padding: 17px; font-size: 13px; line-height: 1.6; }.inspection-box.valid { background: #eaf6ef; }.inspection-box p { margin: 9px 0; }.inspection-box code { display: block; overflow-wrap: anywhere; font-size: 11px; }
 .page-subtitle { color: #7c8ba0; font-size: 14px; margin: 10px 0 24px; line-height: 1.5; }
 .search-field { display: flex; gap: 12px; align-items: center; min-height: 46px; padding: 0 14px; border: 1px solid #dfe3eb; border-radius: 12px; background: #fff; color: #60728d; }
-.search-field input { border: 0; background: transparent; width: 100%; font-size: 12px; color: var(--navy); outline: none; }
+.search-field input { border: 0; background: transparent; width: 100%; font-size: 16px; color: var(--navy); outline: none; }
 .filters { display: flex; gap: 7px; overflow-x: auto; padding: 2px 0 5px; margin: 18px 0 21px; scrollbar-width: none; }
 .filters button { border: 1px solid #e0e4ec; border-radius: 22px; padding: 10px 13px; color: #667690; font-size: 12px; white-space: nowrap; }
 .filters button.active { background: var(--blue); color: white; border-color: var(--blue); }
@@ -77,7 +77,7 @@
 .asset-source-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 22px; }.asset-source-links a { flex: 1 1 auto; justify-content: center; min-height: 42px; gap: 7px; padding: 10px 12px; border: 1px solid #e1e7ef; border-radius: 999px; background: #f6f8fb; color: #516889; font-size: 12px; white-space: nowrap; text-decoration: none; transition: background .15s ease, border-color .15s ease; }.asset-source-links a:hover { background: #eef2f7; border-color: #ccd7e5; }.asset-source-links a:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }.asset-source-links svg { flex-shrink: 0; }
 .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; background: #e9edf4; border-radius: 10px; padding: 5px; margin: 23px 0 4px; }.segmented button { border-radius: 7px; font-size: 12px; padding: 10px 6px; color: #728299; }.segmented button.active { background: #fff; color: var(--navy); box-shadow: 0 2px 6px #192f4f08; }
 .assets-summary { background: #eef2f9; border-radius: 14px; padding: 21px; display: flex; align-items: center; gap: 16px; margin-bottom: 27px; color: #637b9e; }.assets-summary span { font-size: 12px; }.assets-summary strong { display: block; margin-top: 6px; font-size: 27px; font-weight: 650; letter-spacing: -.6px; color: var(--navy); }
-@media(min-width: 720px) { .page-subtitle { font-size: 16px; }.search-field { max-width: 600px; height: 53px; }.search-field input { font-size: 14px; }.filters button { font-size: 13px; padding: 10px 20px; }.market-layout { display: grid; grid-template-columns: 1.1fr 1fr; gap: 55px; }.market-layout .section-heading { margin-top: 4px; }.featured-asset { padding-top: 20px; min-height: 190px; }.featured-asset h2 { font-size: 21px; }.featured-asset strong { font-size: 37px; }.market-actions { margin-top: 35px; }.market-rows .asset-row { min-height: 86px; }.price-stack { font-size: 15px; }.assets-summary { max-width: 440px; } }
+@media(min-width: 720px) { .page-subtitle { font-size: 16px; }.search-field { max-width: 600px; height: 53px; }.search-field input { font-size: 16px; }.filters button { font-size: 13px; padding: 10px 20px; }.market-layout { display: grid; grid-template-columns: 1.1fr 1fr; gap: 55px; }.market-layout .section-heading { margin-top: 4px; }.featured-asset { padding-top: 20px; min-height: 190px; }.featured-asset h2 { font-size: 21px; }.featured-asset strong { font-size: 37px; }.market-actions { margin-top: 35px; }.market-rows .asset-row { min-height: 86px; }.price-stack { font-size: 15px; }.assets-summary { max-width: 440px; } }
 .receiving-card { background: #eef3fb; border-radius: 16px; display: flex; align-items: center; flex-direction: column; gap: 19px; padding: 35px 15px; margin-top: 25px; color: #486690; }.receiving-card span { font-size: 12px; }.receiving-card strong { font-size: 20px; color: var(--navy); letter-spacing: .4px; user-select: all; }.note-box + .demo-notice, .receiving-card + button + .note-box { margin-top: 20px; }.navy-text { color: var(--navy); }
 .consent-option { display: flex; align-items: flex-start; gap: 10px; margin-top: 23px; font-size: 13px; line-height: 1.5; }.consent-option input { margin-top: 3px; accent-color: var(--blue); width: 18px; height: 18px; }
 .settings-link { display: flex; align-items: center; gap: 8px; color: var(--blue); font-size: 12px; text-decoration: none; margin-top: 16px; }.text-button { display: block; color: #8a95a7; font-size: 12px; margin: 23px auto 0; padding: 8px; }
@@ -215,7 +215,7 @@
 @keyframes entrance-conformance-spin { to { transform: rotate(360deg); } }
 
 .note-rail-choice { position: relative; display: inline-flex; align-items: center; color: var(--navy); }
-.note-rail-choice select { appearance: none; border: 0; border-radius: 7px; background: transparent; color: inherit; font: inherit; font-weight: 650; text-align: right; padding: 9px 24px 9px 12px; min-height: 40px; cursor: pointer; }
+.note-rail-choice select { appearance: none; border: 0; border-radius: 7px; background: transparent; color: inherit; font: inherit; font-size: 16px; font-weight: 650; text-align: right; padding: 9px 24px 9px 12px; min-height: 40px; cursor: pointer; }
 .note-rail-choice svg { position: absolute; right: 2px; pointer-events: none; }
 .note-rail-choice select:disabled { opacity: 0.65; cursor: default; }
 .note-rail-choice select:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }

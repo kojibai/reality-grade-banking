@@ -45,3 +45,4 @@ it('routes its generated Receive link through the request parser to the exact Wa
     expect(review.recipientUserId).toBe(recipient);expect(transfer).not.toHaveBeenCalled();
   }finally{act(()=>root.unmount());}
 });
+it('keeps available account balances out of the Send entry form',async()=>{const host=document.createElement('div'),root=createRoot(host);try{await act(async()=>root.render(<LiveSend wallet={{reserveUsdCents:'123456',settlementUsdCents:'789012'}as never} onClose={()=>{}}/>));expect(host.querySelector('input[aria-label="Amount to send"]')).not.toBeNull();expect(host.textContent).not.toContain('$1,234.56');expect(host.textContent).not.toContain('$7,890.12');expect(host.querySelector('.detail-list')).toBeNull();}finally{act(()=>root.unmount());}});

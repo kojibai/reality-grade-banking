@@ -52,6 +52,7 @@ export interface OpenIdentity {
   proofLibrary?: () => Promise<import('./proof-library').ProofLibrary>;
   executionRecovery?: () => BankExecutionRecovery;
   offlineNotes?: () => Promise<BankOfflineNotes>;
+  cancelUnsentNotes?: () => Promise<void>;
   binding: ReceizIdentityPublicBinding; needsPhrase: boolean; knownWallet: () => import('./wallet-observation').WalletObservation | null;
   username: string | null; accountUsername?: () => string | null; localHistory: ReceizIdentityAccountProjection; readWallet: () => Promise<ReturnType<typeof parseSharedWallet>>;
   beginCardDeposit: (amount: string, approved: boolean) => Promise<CardCheckout>; checkCardDeposit: (checkout: CardCheckout) => Promise<CardDepositStatus>;
@@ -409,6 +410,25 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     };
     return localNotes;
   }
+  // Called only under execution → Notes locks. The pinned runtime owns the
+  // cancellation: preparing is local; funding requires its durable host
+  // tombstone. Issuing, prepared custody and unreadable state are never cleared.
+  async function cancelUnsentNotesLocked():Promise<void>{
+    const pending=await(await offlineNotes()).pending();
+    if(!pending?.canCancel)return;
+    noteOpen();activeNoteOperations++;noteOperationEpoch++;
+    try{
+      const state=await loadOfflineNoteState(binding) as {create?:{phase?:string}}|null;
+      if(state?.create?.phase!=='preparing')await atNoteStage('identity-transport',prepareTransport);
+      const module=await loadBankNoteRuntime();noteOpen();
+      const forbidden=async()=>{throw Error('BANK_NOTE_CANCELLATION_ONLY');};
+      const cancellation=module.createBankOfflineNotesRuntime({keyId:binding.keyId,uid:accountUid??knownWallet?.wallet.userId??keyFile.owner.uid,localUid:keyFile.owner.uid,origin:location.origin,passphrase:transportPhrase,
+        request:async(path:string,options:{method:'GET'|'POST';body?:Record<string,unknown>})=>{noteOpen();const current=await connectClient(BANK_NATIVE_SCOPES,BANK_NATIVE_CONSENT);const result=await current.request(path,options);noteOpen();return result;},
+        fetchImpl:forbidden,sealDocument:forbidden,retain:forbidden,restore:(ref:string)=>loadOfflineNoteBlob(binding,ref),read:()=>loadOfflineNoteState(binding),write:(next:unknown,previous:unknown)=>saveOfflineNoteState(binding,next,previous),assertOpen:noteOpen,artwork:bankNoteArtwork});
+      await cancellation.cancelUnfunded();noteOpen();
+    }finally{activeNoteOperations--;}
+  }
+  const cancelUnsentNotes=async():Promise<void>=>{await withAccountExecutionLock(async()=>{await navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},cancelUnsentNotesLocked);});};
   async function openNotesExecution(): Promise<BankOfflineNotes> {
     noteOpen(); await atNoteStage('identity-transport',prepareTransport); noteOpen();
     accountUid ??= knownWallet?.wallet.userId ?? null;
@@ -426,7 +446,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       const module = await loadBankNoteRuntime();
       if (typeof module.createBankPreparedBrowserRuntime === 'function') preparedNoteRuntime = module.createBankPreparedBrowserRuntime({
         keyId:binding.keyId,uid:accountUid!,localUid:keyFile.owner.uid,identity:transportKeyFile,passphrase:transportPhrase,origin:location.origin,
-        fetchImpl:createBankNoteAttestationFetch({origin:location.origin,request:async(path,options)=>{noteOpen();const current=await connectClient(BANK_NATIVE_SCOPES,BANK_NATIVE_CONSENT);return current.request(path,options);},signal:lifetime.signal}),
+        fetchImpl:createBankNoteAttestationFetch({origin:location.origin,request:async(path:string,options:{method:'GET'|'POST';body?:Record<string,unknown>})=>{noteOpen();const current=await connectClient(BANK_NATIVE_SCOPES,BANK_NATIVE_CONSENT);return current.request(path,options);},signal:lifetime.signal}),
         sealDocument:await module.createBankNativeNoteSealer({enrollment:await (await import('@receiz/sdk/offline')).createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer').load(),resources:sealingResources}),
         read:()=>loadPreparedNoteState(binding),retain:(source:Uint8Array)=>saveOfflineNoteBlob(binding,source),restore:(ref:string)=>loadOfflineNoteBlob(binding,ref),assertOpen:noteOpen,artwork:bankNoteArtwork,
         write:async(next:unknown,previous:unknown,proof?:unknown)=>{
@@ -702,7 +722,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       try{if(response&&knownWallet?.walletScope!=='native-full'&&!hasLocalWalletHead()&&(!knownWallet||!isWalletQuoteHeld(knownWallet)))await adoptConnectedWalletResponse(response,uid,walletRevision);}
       finally{if(!lifetime.signal.aborted){walletRevision++;dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:binding.artifactSha256,accountUid:uid}}));}}
     },
-    assertNoOtherPending:async()=>{if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');await assertNoOtherPending();if(await(await offlineNotes()).pending())throw Error('BANK_EXECUTION_PENDING');await assertWalletSendCustody(binding);if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},
+    assertNoOtherPending:async()=>{if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');await cancelUnsentNotesLocked();await assertNoOtherPending();if(await(await offlineNotes()).pending())throw Error('BANK_NOTE_ATTEMPT_PENDING');await assertWalletSendCustody(binding);if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},
     store:{read:()=>loadWalletSendState(binding),write:(next,previous)=>saveWalletSendState(binding,next,previous)},
     connect:async readOnly=>{const connected=await connectClient(readOnly?BANK_READ_SCOPES:BANK_WALLET_SEND_SCOPES,readOnly?BANK_READ_CONSENT:BANK_WALLET_SEND_CONSENT);noteOpen();const account=clientAccounts.get(connected);if(!account)throw Error('BANK_WALLET_IDENTITY_CHANGED');return{client:connected,accountUid:account.accountUid};},
     lock:async operation=>withAccountExecutionLock(async()=>await navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},operation)),
@@ -711,7 +731,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const marketTrade=()=>marketTradePromise??=import('./market-trade').then(({createMarketTrade})=>createMarketTrade({
     ownerReceizId:binding.artifactOwnerReceizId,assertOpen:noteOpen,
     onRecorded:async uid=>{if(!lifetime.signal.aborted){walletRevision++;dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:binding.artifactSha256,accountUid:uid}}));}},
-    assertNoOtherPending:async()=>{if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');await assertNoOtherPending();if(await(await offlineNotes()).pending())throw Error('BANK_EXECUTION_PENDING');await assertWalletSendCustody(binding);if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},
+    assertNoOtherPending:async()=>{if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');await assertNoOtherPending();if(await(await offlineNotes()).pending())throw Error('BANK_NOTE_ATTEMPT_PENDING');await assertWalletSendCustody(binding);if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},
     store:{read:()=>loadMarketTradeState(binding),write:(next,previous)=>saveMarketTradeState(binding,next,previous)},
     connect:async readOnly=>{const connected=await connectClient(readOnly?BANK_MARKET_READ_SCOPES:BANK_MARKET_TRADE_SCOPES,readOnly?BANK_MARKET_READ_CONSENT:BANK_MARKET_CONSENT);noteOpen();const account=clientAccounts.get(connected);if(!account)throw Error('BANK_MARKET_IDENTITY_CHANGED');return{client:connected,accountUid:account.accountUid};},
     lock:async operation=>withAccountExecutionLock(async()=>await navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},operation)),
@@ -970,7 +990,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     // reads. A delayed import save cannot overwrite a newer account frame.
     if (knownWallet) void persistWalletObservation(knownWallet).catch(() => {});
   }
-  return { prepareAccountView, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { prepareAccountView, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

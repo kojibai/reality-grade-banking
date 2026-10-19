@@ -97,3 +97,12 @@ it('does not advance checkpoints when a removed identity finishes restoring late
   expect(identity.prepareAccountView).not.toHaveBeenCalled();expect(identity.dispose).toHaveBeenCalled();
  });
 });
+
+it('cancels unsent notes before the existing device-removal guard',async()=>{
+ const identity=held(),order:string[]=[];identity.cancelUnsentNotes=vi.fn(async()=>{order.push('cancel');});custody.restore.mockResolvedValue(identity);custody.forget.mockImplementation(async()=>{order.push('guarded-forget');});
+ await observe(async read=>{await act(async()=>{await read().forget();});expect(order).toEqual(['cancel','guarded-forget']);expect(read().identity).toBeNull();});
+});
+it('keeps the identity and custody when unsent-note cancellation cannot be confirmed',async()=>{
+ const identity=held();identity.cancelUnsentNotes=vi.fn().mockRejectedValue(Error('BANK_NOTE_FUNDING_PENDING'));custody.restore.mockResolvedValue(identity);
+ await observe(async read=>{await act(async()=>{await expect(read().forget()).rejects.toThrow('BANK_NOTE_FUNDING_PENDING');});expect(custody.forget).not.toHaveBeenCalled();expect(identity.dispose).not.toHaveBeenCalled();expect(read().identity).toBe(identity);});
+});

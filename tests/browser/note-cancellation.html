@@ -1,0 +1,18 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Note cancellation · isolated canonical check</title></head><body><main><h1>Canonical unissued Note cancellation</h1><p>Synthetic memory only. No identity, credentials, accounts, or money connected.</p><button id="run">Check shipped cancellation runtime</button><pre id="result">Ready.</pre></main><script type="module">
+const check=(value,message)=>{if(!value)throw Error(message);};
+document.querySelector('#run').onclick=async()=>{try{
+ const {createBankOfflineNotesRuntime}=await import(/* @vite-ignore */ new URL('/native/offline-notes.v129.mjs',location.origin).href);
+ const results=[];
+ for(const phase of ['preparing','funding','issuing']){
+  let writes=0,requests=0,seals=0,retains=0;
+  let state={schema:'receiz.bank.offline-notes-device.v1',keyId:'synthetic-key',uid:'synthetic-user',create:{phase,amountUsdCents:'100',rail:'reserve',accountProofRef:'synthetic-proof',authorization:{authorizationDigest:'a'.repeat(64)},intent:{noteId:'synthetic-note'}},notes:{untouched:{sourceRef:'retained-source'}},deposits:{},receivers:{}};
+  const original=structuredClone(state),forbidden=async()=>{throw Error('Unexpected device operation');};
+  const runtime=createBankOfflineNotesRuntime({keyId:'synthetic-key',uid:'synthetic-user',localUid:'synthetic-local',origin:'https://bankeiz.com',passphrase:'synthetic-no-secret',fetchImpl:forbidden,assertOpen(){},read:async()=>structuredClone(state),write:async(next,prior)=>{check(JSON.stringify(state)===JSON.stringify(prior),'Compare-and-set failed');writes++;state=structuredClone(next);},request:async()=>{requests++;throw Error('No host connected');},restore:async()=>{throw Error('Exact funding original unavailable');},sealDocument:async()=>{seals++;throw Error('No signer connected');},retain:async()=>{retains++;throw Error('No source creation permitted');}});
+  let failed=false;try{await runtime.cancelUnfunded();}catch{failed=true;}
+  if(phase==='preparing'){check(!failed&&state.create===null&&writes===1,'Unissued preparation was not cancelled');check(JSON.stringify({...state,create:original.create})===JSON.stringify(original),'Unrelated custody changed');}
+  else check(failed&&writes===0&&JSON.stringify(state)===JSON.stringify(original),'Unconfirmed or funded attempt was changed');
+  check(requests===0&&seals===0&&retains===0,'Cancellation opened a signer or submitted a request');results.push(`PASS ${phase}: ${phase==='preparing'?'cancelled locally; unrelated custody unchanged':'preserved exactly; no confirmed cancellation'}`);
+ }
+ document.querySelector('#result').textContent=results.join('\n')+'\nPASS shipped v129 runtime; no enrollment, financial request, signature, or new proof.';
+ }catch(error){document.querySelector('#result').textContent='FAIL '+error.name+' '+error.message;}};
+</script></body></html>

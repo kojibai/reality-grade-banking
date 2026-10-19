@@ -123,7 +123,25 @@ The exact original Error and public failure code are preserved. This diagnostic
 does not classify support, issue certificates or bypass the canonical verifier.
 
 Synthetic `none` fixtures test byte-preserving transport and presentation only.
-The earlier iPhone screenshots contain no actual format, flags or counter. A
-new, user-operated attempt after deployment is still required to establish
-those values on that device. No real iPhone registration or financial operation
-was performed by the agent.
+The earlier screenshots contained no format, flags or counter. On 2026-10-19,
+the user supplied an actual iPhone Safari registration-details screenshot:
+`OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED`, format `none`, registration
+counter `0`, user verified `Yes`, backup eligible `Yes`, backed up `Yes`. Safari
+identified the connected device as iOS 26.5.2. The screenshot is evidence of the
+browser's diagnostic report, not independent attestation verification.
+
+That response cannot satisfy the existing requirement for trusted device-bound
+attestation and a non-backup credential with the required exact counter
+progression. Registration counter zero alone does not prove what later
+assertions would report; the absent attestation and positive backup flags
+already prevent qualification. Re-encoding the original response cannot add
+missing evidence. The verifier and production enrollment gate remain strict.
+No native app, substitute issuer, reset or browser-storage counter was added.
+
+The older installed PWA's `offline-note-checkpoint · OperationError` is a
+separate unresolved record-decryption issue. Safari's new registration attempt
+does not decrypt, repair or reset that PWA container. A read-only AES-GCM probe
+was locally tested, but the remote PWA inspector did not complete even its
+context evaluation, so no actual phone keys, checkpoint bytes or decrypted
+payload were captured. No real iPhone registration or financial operation was
+performed by the agent.

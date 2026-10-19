@@ -100,9 +100,9 @@ it('does not submit or sign an asset review after its identity closes',async()=>
  const identity=await open(),api=await identity.operations!(),review=await api.prepare(fund);identity.dispose();await expect(api.execute(review,review.confirmationDigest)).rejects.toThrow('CLOSED');expect(p.asset).toBeNull();expect(p.request.mock.calls.every(([path])=>!path.includes('/execute?'))).toBe(true);
 });
 
-it('refuses a new Wallet Send while a Note is preparing before its local account head exists',async()=>{
- p.note={schema:'receiz.bank.offline-notes-device.v1',keyId:'a'.repeat(64),uid:'fixture-user',create:{phase:'preparing',intent:{noteId:'held-note'},rail:'reserve',amountUsdCents:'100'},notes:{},deposits:{}};
- const identity=await open();try{await expect((await identity.walletSend!()).prepare({recipient:'receiver',amountUsdCents:'100'})).rejects.toThrow('BANK_EXECUTION_PENDING');expect(p.request).not.toHaveBeenCalled();}finally{identity.dispose();}
+it('refuses a new Wallet Send while a funded Note is awaiting issuance before its local account head exists',async()=>{
+ p.note={schema:'receiz.bank.offline-notes-device.v1',keyId:'a'.repeat(64),uid:'fixture-user',create:{phase:'issuing',intent:{noteId:'held-note'},rail:'reserve',amountUsdCents:'100'},notes:{},deposits:{}};
+ const identity=await open();try{await expect((await identity.walletSend!()).prepare({recipient:'receiver',amountUsdCents:'100'})).rejects.toThrow('BANK_NOTE_ATTEMPT_PENDING');expect(p.request).not.toHaveBeenCalled();}finally{identity.dispose();}
 });
 
 it('reopens durable Note custody before Wallet review when a different tab changed the saved local head',async()=>{
