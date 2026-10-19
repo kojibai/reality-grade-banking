@@ -60,3 +60,12 @@ it('keeps the in-app account source chain on its receipt without serializing pri
   act(()=>root!.unmount());root=null;expect(readLocalReceiptContext(link)).toBeNull();
  }finally{vi.unstubAllGlobals();}
 });
+it('keeps the linked execution inside the one payment receipt from already loaded context',async()=>{
+ const {openLedgerReceipt}=await import('../src/receiz/ledger-receipts'),{indexLedgerRelations}=await import('../src/receiz/ledger-economy'),{ledgerValueForRecord}=await import('../src/receiz/ledger-value');
+ const record=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'movement',kind:'chat_transfer',transferId:'same-payment',amountUsdCents:'100'}]}).records[0];
+ const execution=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'execution',actionKind:'wallet.transfer.connect',transferId:'same-payment',amountUsdCents:'100'}]}).records[0];
+ const link=receiptLink(record)!;
+ openLedgerReceipt({button:0,preventDefault(){}} as never,link,{record,value:ledgerValueForRecord(record),relations:indexLedgerRelations([record,execution])});
+ const host=mount(link);expect(host.querySelector('.receipt-value p')?.textContent).toBe('Value transfer');
+ expect(host.querySelector('.ledger-payment-execution summary')?.textContent).toContain('Same payment · execution record');expect(host.querySelector('.ledger-payment-execution .ledger-inspector')).toBeNull();
+});

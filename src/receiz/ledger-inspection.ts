@@ -11,6 +11,7 @@ import {ledgerCausalLineageFields,ledgerFundingOriginFields} from './ledger-fund
 import {readLedgerCopyValuation} from './ledger-card-copy';
 import {readWalletFundingAttribution,readWalletFundingLinks} from './ledger-wallet-fifo';
 import {readWalletFundingHistory} from './ledger-funding-history';
+import {readWalletProofCohorts} from './ledger-wallet-cohorts';
 
 export type LedgerField = string | number | boolean | LedgerFields | LedgerField[];
 export interface LedgerFields { [key:string]:LedgerField; }
@@ -36,6 +37,7 @@ export function readLedgerDetails(raw:unknown):LedgerFields {
  const attribution=readWalletFundingAttribution(source.fundingAttribution);if(attribution)result.fundingAttribution=attribution as unknown as LedgerFields;
  const history=readWalletFundingHistory(source.fundingHistory,attribution);if(history)result.fundingHistory=history as unknown as LedgerFields[];
  const links=readWalletFundingLinks(source.fundingLinks);if(links)result.fundingLinks=links as unknown as LedgerFields[];
+ const cohorts=readWalletProofCohorts(source.fundingCohorts);if(cohorts)result.fundingCohorts=cohorts as unknown as LedgerFields[];
  if(typeof source.publicNote==='string'&&source.publicNote.length<=280&&source.publicNote.trim())result.publicNote=source.publicNote;
  for(const key of ['actorUserId','subjectUserId'])if(typeof source[key]==='string'&&/^[1-9A-HJ-NP-Za-km-z]{26,36}$/.test(source[key]))result[key]=source[key];
  for(const key of ['actorKaiSignature','subjectKaiSignature','actorCreatedAt','subjectCreatedAt','actorPulse','subjectPulse','actorChakraDay','subjectChakraDay']){const value=primitive(source[key]);if(value!==undefined)result[key]=value;}

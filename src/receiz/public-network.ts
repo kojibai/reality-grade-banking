@@ -5,7 +5,7 @@ import {readLedgerDetails,type LedgerFields} from './ledger-inspection';
 import {mergeLedgerCausalProjection} from './ledger-causal-source';
 
 export const PUBLIC_SOURCES = ['actions', 'wallet', 'graph', 'proofs'] as const;
-export const PUBLIC_NETWORK_INSPECTION_VERSION = 3;
+export const PUBLIC_NETWORK_INSPECTION_VERSION = 4;
 export type PublicSource = typeof PUBLIC_SOURCES[number];
 export interface PublicRecord {
   id: string; sourceId: string; source: PublicSource; kind: string; title: string;
@@ -29,6 +29,7 @@ function row(source: PublicSource, raw: unknown): PublicRecord {
   const evidence: Record<string, string> = {};
   for (const key of ['entryHash', 'prevHash', 'transferId', 'objectId', 'proofHead']) { const item = text(value[key], 512); if (item) evidence[key] = item; }
   for (const key of ['bundleHash', 'capsuleHash', 'claimHash', 'artifactDigest']) { const item = text(proof[key], 512); if (item) evidence[key] = item; }
+  if(kind==='wallet.transfer.connect'&&!evidence.transferId){const transferId=text(object(value.payload).transferId,512);if(transferId)evidence.transferId=transferId;}
   const pulse = digits(value.eventKaiPulse ?? value.pulse, 24), kaiUpulse = digits(value.kaiUpulse ?? value.kaiUPulse, 30);
   return { id: `${source}:${id}`, sourceId: id, source, kind,
     title: text(value.summary ?? value.label, 4096) ?? kind.replace(/[._]/g, ' '), detail: text(value.detail ?? value.objectLabel, 8192) ?? '',

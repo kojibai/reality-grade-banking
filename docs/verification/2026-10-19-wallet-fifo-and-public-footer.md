@@ -23,7 +23,7 @@
   Private context never enters a shareable receipt URL. Complete SDK-admitted
   same-account wallet rows can also calculate attribution locally.
 - Preserve enriched context across thin refreshes under the same wallet
-  witness or causal proof head. Inspection version 3 upgrades older device
+  witness or causal proof head. Inspection version 4 upgrades older device
   caches through the existing seed reader, without clearing custody.
 
 ## Attribution calculation
@@ -56,23 +56,42 @@ The earlier exact native card-source capture SHA-256:
 `327b81ccc39d816dd5fc3298d4ab2543fab01e935c2d923555445b205e169870`.
 Those operator input files stay outside the repository.
 
-## Historical boundary still under investigation
+## Historical proof cohorts
 
-Some ancestry ends at an existing `profile_rollup_seed` credit. That original
-records an aggregate and a scanned-original count, but does not enumerate the
-original cohort's proof IDs. Today's original index differs: the largest seed
-records 174 scanned originals, while 172 corresponding public creator originals
-remain indexed before that coordinate (187 including private originals). Other cohorts also differ. Current
-holdings or equal aggregate amounts cannot establish those historical links.
+The original v1 profile backfill counted both owned public originals and exact
+received originals. Replaying that original rule recovered all ten recorded
+cohorts: 208 member references, including the largest 174-original cohort.
+Received references join on slug, uppercase code, pulse and anchor. Owned
+originals take precedence when both sources reference the same original.
+Creation and first-received times must precede the original computation.
+Current ownership alone is not used to infer historical membership.
 
-The exact original cohort/source closure still needs to be recovered before
-claiming every historical payment has a complete object-by-object genesis
-chain. One mixed transfer has a recorded Reserve/Settlement split but no carried
+The one-time replay is display reconstruction, labelled `reconstructed-membership`.
+It does not manufacture a historical allocation proof or a dollar slice for each
+member: v1 also used then-current authorship, follower and engagement inputs that
+were not individually frozen in the aggregate credit. FIFO remains at the source
+credit level. Each member links to its exact original public verifier. Fourteen
+legacy two-segment original locators carry no pulse; they keep their recorded
+creation date without deriving an invented pulse from upload time.
+
+The existing compressed Ledger seed retains only the three cohorts referenced
+by these transactions (192 member references), shared across 49 records
+through `detailContexts`. Members render only when expanded, in batches of 30.
+Per-row receipt URLs omit this large optional context; same-document receipts and
+local Ledger archives keep the full record. This adds no runtime source request,
+no balance mutation, and no new valuation or verification pass.
+
+Replay input SHA-256:
+`862d983fc4aed3cd1099ac7e71eb03babe96bb9e4c86c81d9386838766d36d6e`.
+
+One mixed transfer has a recorded Reserve/Settlement split but no carried
 Settlement-native credit basis in the captured rows. Its exact 31/69-cent split is
 retained without borrowing Reserve origins to manufacture Settlement attribution.
-Calculated credit attribution covers 87 captured transfers; universal per-object
-genesis recovery is not complete. No v130 capability gap has been
-established, and no antirollback, authority or custody check was weakened.
+Calculated credit attribution covers 87 captured transfers. Historical membership
+is recovered for all ten aggregate seeds, while per-member historical amounts
+and universal cryptographic genesis closure are not newly asserted. No v130
+capability gap has been established, and no antirollback, authority or custody
+check was weakened.
 
 ## Public Ledger and footer
 
@@ -88,6 +107,28 @@ Understand, and Standards & technology, followed by privacy and source notices.
 Older footer styles were removed. Minifying the existing public navigation
 script keeps combined compressed Learn CSS/JS below the existing 12,000-byte
 budget; no budget or verification assertion was relaxed.
+
+## One payment, two source records
+
+Receiz's delegated transfer route appends `wallet.transfer.connect` after the
+Wallet transfer succeeds. The action records execution; `chat_transfer` records
+the movement. These are distinct originals for the same payment, not evidence
+of two debits.
+
+Ledger presents the movement as **Value transfer**, with **Delegated wallet
+transfer** nested beneath as **Same payment · execution record**. The execution
+amount appears only inside inspection, labelled **Referenced transfer amount**.
+Both the public and account views, and the same-document receipt, use this
+presentation. The archive still retains every original row, raw kind, amount,
+coordinate and proof field. Counts of payment activity use the grouped view;
+source-record counts retain both originals.
+
+Pairing requires the exact transfer foreign key, the same projection authority,
+and agreeing dollar amounts and native Phi where both are carried. A public
+Wallet alias can reuse its already-bound native transfer FK. Ambiguous movement
+references or contradictory amounts stay separate. Times, names, matching amounts
+alone and adjacent list positions cannot establish a link. The existing source
+index supplies connected inspection; no per-payment fetch is introduced.
 
 ## Verification
 
@@ -107,3 +148,22 @@ production build and mobile browser evidence are recorded with the commit.
 - Browser: actual October 19 $1 payment displays the named originating proof,
   the same calculated funding context on its receipt, and no mobile overflow
   at 390 pixels. The shared footer was checked at the same width.
+
+### Follow-up validation
+
+- Mobile footer hotfix committed separately as `46ae8a4`. The scoper rejects
+  selectorless rules instead of promoting them to `html.learn-surface`. The
+  440-pixel Learn preview retains a 440-pixel scroll width, block root layout,
+  and no root-wide text decoration; existing nonempty layout rules are unchanged.
+- Full follow-up suite: 246 files / 1,441 tests pass. Two subsequently added
+  native-alias and linked-receipt regressions also pass (11 tests across their
+  two focused files). TypeScript and the production build pass, including all
+  existing offline-shell, public metadata, licensing and source archive checks.
+- Independent read-only review rechecked the cohort cutoff on both binding
+  paths and the payment presentation; no blocking findings remained.
+- Compared all 45,666 records against the preceding commit: no changed original
+  identity, money operand, coordinate, evidence or pre-existing source detail.
+- Browser: a clearly labelled synthetic linked-payment fixture at 390 pixels
+  has no horizontal overflow, displays one primary amount and keeps the exact
+  execution record lazy and independently inspectable. No payment was executed
+  during this check.

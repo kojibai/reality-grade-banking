@@ -57,3 +57,8 @@ it('carries calculated FIFO to the exact linked transfer without conflating the 
  expect(ledgerFundingTrace({...record,evidence:{transferId:'unrelated'}}).basis).not.toBe('calculated-fifo');
  expect(projectPersonalHistory({...projection(state),completeAtSealedHead:false}).records.every(r=>!r.details?.fundingAttribution)).toBe(true);
 });
+it('retains the exact delegated-action foreign key from the carried payload for paired payment inspection',async()=>{
+ const {groupLedgerPaymentRecords}=await import('../src/receiz/ledger-payment-records');
+ const history=projectPersonalHistory(projection({account:{userId:'owner'},ledger:{entries:[{id:'action',actionKind:'wallet.transfer.connect',payload:{summary:'Delegated wallet transfer',transferId:'one',amountUsdCents:'100',conversationId:'private-chat'}}]},wallet:{activityEvents:[{id:'movement',kind:'chat_transfer',transferId:'one',amountUsdCents:'100'}]}}));
+ expect(history.records).toHaveLength(2);expect(groupLedgerPaymentRecords(history.records)).toHaveLength(1);expect(JSON.stringify(history.records)).not.toContain('private-chat');
+});

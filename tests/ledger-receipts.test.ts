@@ -49,3 +49,9 @@ it('keeps the canonical source verifier carried by the real wallet proof bundle'
  const record=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'t',kind:'chat_transfer',proofBundle:{verifierUrl:source,capsuleHash:'a'.repeat(64),bundleHash:'b'.repeat(64)}}]}).records[0];
  expect(readReceiptLink(receiptLink(record)!).sourceUrl).toBe(source);
 });
+it('keeps shared cohort context off per-row receipt URLs without dropping the original record context',()=>{
+ const record=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'send',kind:'chat_transfer',amountUsdCents:'100',fundingCohorts:[{rule:'receiz-profile-rollup-v1-owned-and-received',basis:'reconstructed-membership',creditSourceId:'credit',computedAt:'2026-05-01T00:00:00Z',amountPhiMicro:'1000',members:[{objectId:'original',title:'Original',createdAt:'2026-04-01T00:00:00Z',verifyUrl:'https://receiz.com/v/moment/original',basis:'owned'}]}]}]}).records[0];
+ const cohorts=record.details!.fundingCohorts,receipt=readReceiptLink(receiptLink(record)!);
+ expect(receipt.contextOmitted).toBe(true);expect(receipt.details).not.toHaveProperty('fundingCohorts');expect(record.details!.fundingCohorts).toBe(cohorts);
+ expect(receipt.amountUsdCents).toBe('100');
+});

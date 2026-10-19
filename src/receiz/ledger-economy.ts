@@ -1,3 +1,4 @@
+import {ledgerPaymentReference} from './ledger-payment-records';
 import {RECEIZ_VERSION} from './client';
 import type {PublicRecord} from './public-network';
 import {ledgerUsdCents,ledgerValueForRecord,ledgerValueRow,ledgerProofValueSeed,ledgerCardHistory,ledgerCardCopyValuation,type LedgerValueIndex,type LedgerValueDisplay} from './ledger-value';
@@ -19,6 +20,7 @@ export function indexLedgerRelations(records:readonly PublicRecord[]):RelationIn
  for(const record of records){
   for(const key of references(record))put(`object:${key}`,record);
   if(record.evidence.transferId)put(`transfer:${record.evidence.transferId}`,record);
+  const payment=ledgerPaymentReference(record);if(payment&&payment!==record.evidence.transferId)put(`transfer:${payment}`,record);
   if(record.evidence.entryHash)put(`entry:${record.evidence.entryHash}`,record);
   if(record.evidence.prevHash)put(`previous:${record.evidence.prevHash}`,record);
  }
@@ -30,6 +32,7 @@ export function ledgerRelatedRecords(record:PublicRecord,index:RelationIndex){
  if(record.evidence.prevHash)add(`entry:${record.evidence.prevHash}`,'Previous entry');
  if(record.evidence.entryHash)add(`previous:${record.evidence.entryHash}`,'Following entry');
  if(record.evidence.transferId)add(`transfer:${record.evidence.transferId}`,'Same transfer reference');
+ const payment=ledgerPaymentReference(record);if(payment&&payment!==record.evidence.transferId)add(`transfer:${payment}`,'Same transfer reference');
  for(const key of references(record))add(`object:${key}`,'Same object reference');
  return [...related.values()];
 }

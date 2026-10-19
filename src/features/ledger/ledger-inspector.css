@@ -12,3 +12,18 @@
 .ledger-asset-chart .value-chart svg path[stroke]{vector-effect:non-scaling-stroke}
 .ledger-funding-rail{margin-top:20px}.ledger-funding-rail>h4{display:flex;justify-content:space-between;gap:16px;color:#52677f;font-size:11px;font-weight:550}.ledger-funding-rail>h4 span{font-variant-numeric:tabular-nums;color:#172b45}
 .ledger-funding-object{margin:10px 0;min-width:0}.ledger-funding-object a{display:flex;align-items:flex-start;gap:7px;border-left:2px solid #dce5f2;padding-left:10px;color:#355e92;text-decoration:none;font-size:11px;line-height:1.65}.ledger-funding-object a:hover{text-decoration:underline;text-underline-offset:3px}.ledger-funding-object svg{flex-shrink:0;margin-top:3px}.ledger-funding-object span,.ledger-funding-object code{overflow-wrap:anywhere}.ledger-funding-object small{display:block;font-size:9px;line-height:1.7;color:#6d8198}
+.ledger-funding-basis{margin:12px 0;border-left:1px solid #dce4e9;padding-left:12px}.ledger-funding-basis>summary{display:flex;justify-content:space-between;gap:12px;color:#344b66;font-size:11px;font-weight:550;cursor:pointer}.ledger-funding-basis>p{margin:8px 0;color:#708095;font-size:10px;line-height:1.65}.ledger-funding-basis>ol{list-style:none;margin:10px 0;padding:0}.ledger-funding-basis>ol>li{display:block;border:0;margin:0;padding:10px 0;border-top:1px solid #e8edf1}.ledger-funding-basis a{display:block;color:#344b66;font-size:11px;line-height:1.5;text-decoration-color:#c5d0da;text-underline-offset:3px;overflow-wrap:anywhere}.ledger-funding-basis small,.ledger-funding-basis code{display:block;margin-top:4px;color:#708095;font-size:9px;overflow-wrap:anywhere}
+
+/* A transfer's execution evidence stays subordinate to its one value movement. */
+.ledger-payment-executions{margin:0 18px 14px 54px;min-width:0;border-top:1px solid var(--line,#e4e8ef)}
+.ledger-payment-execution{min-width:0;padding-top:10px}
+.ledger-payment-execution>summary{display:flex;justify-content:space-between;align-items:center;gap:12px;list-style:none;cursor:pointer;color:var(--ink,#172d46)}
+.ledger-payment-execution>summary::-webkit-details-marker{display:none}
+.ledger-payment-execution>summary span{display:grid;gap:3px;min-width:0}
+.ledger-payment-execution>summary strong{font-size:12px;font-weight:550;line-height:1.4;overflow-wrap:anywhere}
+.ledger-payment-execution>summary small{font-size:11px;line-height:1.4;color:var(--muted,#6c7e94)}
+.ledger-payment-execution>summary>svg{flex-shrink:0;transition:transform .18s ease}
+.ledger-payment-execution[open]>summary>svg{transform:rotate(180deg)}
+.ledger-payment-explanation{font-size:12px;line-height:1.65;color:var(--muted,#6c7e94);margin:14px 0}
+@media(max-width:420px){.ledger-payment-executions{margin-left:18px;margin-right:14px}}
+@media(prefers-reduced-motion:reduce){.ledger-payment-execution>summary>svg{transition:none}}

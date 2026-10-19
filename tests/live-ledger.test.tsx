@@ -75,3 +75,19 @@ it('filters public transfers and offers only compact receipt open and copy contr
  const icons=host.querySelector('.ledger-receipt-actions')!;expect(icons.querySelector('a')?.getAttribute('href')).toContain('https://bankeiz.com/receipt/#r=');
  await act(async()=>icons.querySelector('button')!.click());expect(copy).toHaveBeenCalledOnce();expect(copy.mock.calls[0][0]).toContain('/receipt/#r=');
 });
+it('presents one payment with its exact delegated execution beneath it in both Ledger views',async()=>{
+ const wallet=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'transfer',kind:'chat_transfer',transferId:'same-payment',amountUsdCents:'100'}]}).records;
+ const actions=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'action',actionKind:'wallet.transfer.connect',transferId:'same-payment',amountUsdCents:'100',entryHash:'a'.repeat(64)}]}).records;
+ const originals=[...actions,...wallet],fetch=vi.fn();vi.stubGlobal('fetch',fetch);network.state={...feed(0),records:originals};
+ for(const publicPage of [false,true]){
+  const host=publicPage?document.createElement('div'):mount();
+  if(publicPage){const root=createRoot(host);roots.push(root);act(()=>root.render(<PublicLedgerApp/>));}
+  expect(host.querySelectorAll(publicPage?'.public-ledger-row':'.ledger-event')).toHaveLength(1);
+  expect(host.textContent).toContain('Value transfer');expect(host.textContent).toContain('Delegated wallet transfer');expect(host.textContent).toContain('Same payment · execution record');
+  expect(host.querySelectorAll('.ledger-value strong')).toHaveLength(1);expect(host.querySelector('.ledger-payment-execution .ledger-inspector')).toBeNull();
+  await act(async()=>{const details=host.querySelector('.ledger-payment-execution') as HTMLDetailsElement;details.open=true;details.dispatchEvent(new Event('toggle'));});
+  expect(host.querySelector('.ledger-payment-execution .ledger-inspector')?.textContent).toContain('Referenced transfer amount');
+  expect(host.querySelector('.ledger-payment-explanation')?.textContent).toContain('same payment');
+ }
+ expect(network.state.records).toBe(originals);expect(fetch).not.toHaveBeenCalled();
+});

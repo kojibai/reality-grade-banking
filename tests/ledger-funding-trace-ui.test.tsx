@@ -21,6 +21,27 @@ it('keeps the actual proof-object origin and its allocated amount visible',()=>{
  const html=renderToStaticMarkup(<LedgerFundingTrace record={card()}/>);
  expect(html).toContain('Funding source');expect(html).toContain('Proof-native value');expect(html).toContain('credit-one');expect(html).toContain('$5.00');expect(html).toContain('Full causal history');
 });
+it('binds a native credit cohort to its own pulse and opens members lazily without IO',async()=>{
+ Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+ const record=card(),lineage=record.details!.causalLineage as Record<string,unknown>;
+ (lineage.steps as Record<string,unknown>[])[1].occurredAt='2026-05-02T00:00:00Z';
+ const cohort={rule:'receiz-profile-rollup-v1-owned-and-received',basis:'reconstructed-membership',creditSourceId:'credit-one',computedAt:'2026-05-01T00:00:00Z',amountPhiMicro:'1000',members:[{objectId:'origin',title:'Exact originating original',pulse:'111',createdAt:'2026-04-01T00:00:00Z',verifyUrl:'https://receiz.com/v/moment/origin/111',basis:'owned'}]};
+ record.details={...record.details,fundingCohorts:[cohort]};
+ expect(renderToStaticMarkup(<LedgerFundingTrace record={record}/>)).not.toContain('Underlying proof objects');
+ const linked={...record,details:{...record.details,fundingLinks:[{sourceId:'credit-one',source:'profile_rollup_seed',creditPhiMicro:'1000',amountUsdCents:'500',offsetUsdCents:'0',creditAmountUsdCents:'500',occurredAt:'2026-05-02T00:00:00Z'}]}};
+ expect(renderToStaticMarkup(<LedgerFundingTrace record={linked}/>)).not.toContain('Underlying proof objects');
+ cohort.members[0]={...cohort.members[0],pulse:'100',verifyUrl:'https://receiz.com/v/moment/origin/100'};
+ const valid={...record,details:{...record.details,fundingCohorts:[{...cohort,members:[...cohort.members]}]}};
+ const html=renderToStaticMarkup(<LedgerFundingTrace record={valid}/>);
+ expect(html).toContain('Underlying proof objects');expect(html).not.toContain('Exact originating original');
+ const host=document.createElement('div'),root=createRoot(host),fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ try{
+  await act(async()=>root.render(<LedgerFundingTrace record={valid}/>));
+  await act(async()=>{const details=host.querySelector('.ledger-funding-basis') as HTMLDetailsElement;details.open=true;details.dispatchEvent(new Event('toggle'));});
+  expect(host.querySelector('.ledger-funding-basis a')?.getAttribute('href')).toBe('https://receiz.com/v/moment/origin/100');
+  expect(host.textContent).toContain('Exact originating original');expect(fetch).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());vi.unstubAllGlobals();}
+});
 it('names the rails only when both fund the transaction',()=>{
  const single=card();single.valueOperands={...single.valueOperands,settledUsdCents:'0',phiUsdCents:'500'};
  const singleDoc=new DOMParser().parseFromString(renderToStaticMarkup(<LedgerFundingTrace record={single}/>),'text/html');

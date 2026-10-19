@@ -1,3 +1,4 @@
+import {ledgerRecordTitle,ledgerPaymentRole} from '../../receiz/ledger-payment-records';
 import {RECEIZ_VERSION} from '../../receiz/client';
 import {useMemo,useState,useSyncExternalStore} from 'react';
 import {ArrowUpRight,Check,Copy,Download,FileText,Link2} from 'lucide-react';
@@ -31,6 +32,7 @@ export function LedgerFieldsView({fields}:{fields:LedgerFields}){
 }
 
 export function LedgerInspector({record,value,currentValue,valuation,relations,valueSource=null,inApp=false,receiptMode=false}:{record:PublicRecord;value:LedgerValueDisplay;currentValue?:LedgerValueDisplay|null;valuation?:LedgerFields|null;relations?:ReturnType<typeof indexLedgerRelations>;valueSource?:LedgerValueIndex|null;inApp?:boolean;receiptMode?:boolean}){
+ const title=ledgerRecordTitle(record),paymentRole=ledgerPaymentRole(record);
  const [notice,setNotice]=useState(''),[copied,setCopied]=useState(false),[connectionsOpen,setConnectionsOpen]=useState(false),[shownRelated,setShownRelated]=useState(20);
  const originalInspection=useSyncExternalStore(subscribeProofInspections,()=>retainedProofInspection(record.evidence.artifactDigest),()=>null);
  const receiptRecord=useMemo(()=>originalInspection&&(originalInspection.report.proofHistory||originalInspection.report.causalLineage)?{...record,details:{...record.details,...(originalInspection.report.proofHistory?{proofHistory:originalInspection.report.proofHistory as unknown as LedgerFields,proofHistoryArtifactDigest:originalInspection.report.artifactSha256}:{}),...(originalInspection.report.causalLineage?{causalLineage:originalInspection.report.causalLineage as unknown as LedgerFields}:{})}}:record,[record,originalInspection]);
@@ -42,10 +44,10 @@ export function LedgerInspector({record,value,currentValue,valuation,relations,v
  const context=Object.fromEntries(Object.entries(details).filter(([key])=>!Object.hasOwn(participants,key)&&key!=='originalUrl'&&key!=='proofBundle'&&key!=='publicNote'&&key!=='causalLineage'));
  const copy=async()=>{try{await navigator.clipboard.writeText(exactJson);setCopied(true);setNotice('Record details copied.');}catch{setNotice('Use Download details to keep this record.');}};
  const download=()=>{const url=URL.createObjectURL(new Blob([exactJson],{type:'application/json'})),a=globalThis.document.createElement('a');a.href=url;a.download=`bankeiz-record-${record.sourceId.replace(/[^a-zA-Z0-9_-]/g,'-').slice(0,80)}.json`;globalThis.document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);setNotice('Record details downloaded.');};
- return <section className="ledger-inspector" aria-label={`Record details: ${record.title}`}>
-  <div className="ledger-inspector-heading"><div><span>{record.source==='proofs'?'Proof object':'Activity record'}</span><h3>{record.title}</h3></div><FileText size={18} strokeWidth={1.3}/></div>
+ return <section className="ledger-inspector" aria-label={`Record details: ${title}`}>
+  <div className="ledger-inspector-heading"><div><span>{record.source==='proofs'?'Proof object':'Activity record'}</span><h3>{title}</h3></div><FileText size={18} strokeWidth={1.3}/></div>
   {record.detail&&record.detail!==record.title&&(record.source==='proofs'?<ProofCaption caption={record.detail}/>:<p className="ledger-inspector-description">{record.detail}</p>)}
-  <div className="ledger-inspector-values"><div><span>{value.basis==='unavailable'?'No amount carried':ledgerValueLabel(value)}</span><LedgerValue value={value}/>{value.amountUsdCents!==null&&value.pulse&&<small>Value at ☤KAI {value.pulse}</small>}</div>{value.considerationUsdCents!==null&&<div><span>Consideration</span><strong>{formatMoney(value.considerationUsdCents)}</strong><small>Recorded payment, separate from asset value.</small></div>}{currentValue&&currentValue.amountUsdCents!==null&&<div><span>{currentValue.basis==='intrinsic-model'||currentValue.basis==='live-model'?'Current live value':'Latest source quote'}</span><LedgerValue value={currentValue}/><small>Separate from the value at this event.</small></div>}<LedgerValueChange value={value} currentValue={currentValue}/></div>
+  <div className="ledger-inspector-values"><div><span>{paymentRole==='execution'?'Referenced transfer amount':value.basis==='unavailable'?'No amount carried':ledgerValueLabel(value)}</span><LedgerValue value={value}/>{value.amountUsdCents!==null&&value.pulse&&<small>Value at ☤KAI {value.pulse}</small>}</div>{value.considerationUsdCents!==null&&<div><span>Consideration</span><strong>{formatMoney(value.considerationUsdCents)}</strong><small>Recorded payment, separate from asset value.</small></div>}{currentValue&&currentValue.amountUsdCents!==null&&<div><span>{currentValue.basis==='intrinsic-model'||currentValue.basis==='live-model'?'Current live value':'Latest source quote'}</span><LedgerValue value={currentValue}/><small>Separate from the value at this event.</small></div>}<LedgerValueChange value={value} currentValue={currentValue}/></div>
   <LedgerAssetChart record={record} valueSource={valueSource}/>
   {!receiptMode&&<LedgerFundingTrace record={record} relations={relations}/>}
   {typeof details.publicNote==='string'&&<section className="ledger-public-note"><h4>Payment note</h4><p>{details.publicNote}</p></section>}
