@@ -171,6 +171,7 @@
 .market-cap-explanation { padding: 13px; border-radius: 12px; background: #ffffffa8; color: var(--muted); font-size: 12px; line-height: 1.6; }
 #market-explore { scroll-margin-top: 20px; }
 .entrance-learn { display: inline-block; color: var(--muted); font-size: 11px; margin: 13px 0 0; text-decoration: underline; text-underline-offset: 3px; }
+.entrance-public-links{display:flex;flex-wrap:wrap;gap:0 18px}
 .value-chart.red { color: var(--red, #be4b52); }
 .value-chart svg:focus-visible { outline: 1px solid currentColor; outline-offset: 6px; border-radius: 4px; }
 .periods { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }

@@ -84,6 +84,6 @@ for (const [path, page] of Object.entries(publicPages)) {
   await mkdir(`dist${path}`, { recursive: true });
   await writeFile(`dist${path}index.html`, `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`);
 }
-const urls = ['/', '/conformance/', '/verify/', '/ledger/', '/schemas/', ...pages.map(page => `/learn/${page.slug ? page.slug + '/' : ''}`)];
+const urls = ['/', '/conformance/', '/verify/', '/ledger/', '/explore/', '/schemas/', ...pages.map(page => `/learn/${page.slug ? page.slug + '/' : ''}`)];
 await writeFile('dist/sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(path => `<url><loc>${origin}${path}</loc><lastmod>${path === '/conformance/' ? '2026-10-15' : '2026-10-14'}</lastmod></url>`).join('')}</urlset>`);
 console.log(`Prerendered the existing entrance and ${pages.length} public guides; generated canonical sitemap.`);

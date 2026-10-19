@@ -16,6 +16,8 @@ assert.ok(shell.includes('/snarkjs.min.js'),'The canonical proof browser verifie
 assert.ok(shell.includes('/verify/'), 'The public account-proof reader must be available offline after installation.');
 assert.ok(shell.includes('/ledger/'), 'Public Ledger has a complete retained offline read entry.');
 assert.equal(manifest.pages['/ledger/'], '/ledger/', 'Public Ledger links reopen their own entry offline.');
+assert.ok(shell.includes('/explore/'),'Public explorer has a retained read-only entry.');
+for(const path of ['/explore','/explore/','/explorer','/explorer/'])assert.equal(manifest.pages[path],'/explore/','Explorer aliases reopen the same public entry offline.');
 for (const entry of manifest.resources) {
   const url = new URL(entry.url, 'https://bankeiz.com');
   assert.equal(url.origin, 'https://bankeiz.com');

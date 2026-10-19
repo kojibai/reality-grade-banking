@@ -9,6 +9,8 @@
     }
   },
   "rewrites": [
+    {"source":"/explorer","destination":"/explore/index.html"},
+    {"source":"/explorer/","destination":"/explore/index.html"},
     {
       "source": "/receiz-public-ledger.json.gz",
       "destination": "/receiz-public-ledger.json.gz.bin"

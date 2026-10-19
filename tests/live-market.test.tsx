@@ -15,14 +15,26 @@ vi.mock('../src/receiz/usePublicMarket', () => ({ usePublicMarket: () => source.
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const roots: ReturnType<typeof createRoot>[] = [];
 afterEach(() => { for (const root of roots.splice(0)) act(() => root.unmount()); document.body.replaceChildren(); localStorage.clear(); history.replaceState({}, '', '#market'); vi.unstubAllGlobals(); });
-function mount() {
+function mount(mode:'market'|'explorer'='market') {
   const host = document.createElement('div'); document.body.append(host); const root = createRoot(host); roots.push(root);
   const commit = vi.fn(), open = vi.fn();
   const state = createDemoState();
-  act(() => root.render(<BankContext.Provider value={{ state, commit, open, close: vi.fn(), navigate: vi.fn(), saveRule: vi.fn(), updateIdentity: vi.fn(), resetDemo: vi.fn() }}><Market /></BankContext.Provider>));
+  act(() => root.render(<BankContext.Provider value={{ state, commit, open, close: vi.fn(), navigate: vi.fn(), saveRule: vi.fn(), updateIdentity: vi.fn(), resetDemo: vi.fn() }}><Market mode={mode} /></BankContext.Provider>));
   return { host, root, commit, open };
 }
 function catalog(count = 1001) { return parsePublicMarket({ ok: true, transport: { generatedAt: '2026-10-13T12:00:00Z', publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: count, revision: 'r1' }, publicOriginals: Array.from({ length: count }, (_, i) => ({ id: `public-${i}`, receizId: `asset-${i}`, title: `Public object ${i}`, valueUsd: 5, ownerUsername: 'alice', canonicalHref: `/alice/verified/asset-${i}` })) } }); }
+it('opens the same public collection and proof details in the explorer without offering private financial actions',()=>{
+ source.value={catalog:catalog(1),status:'live',error:null,refresh:vi.fn()};
+ const {host,open}=mount('explorer');
+ expect(host.querySelector('h1')?.textContent).toBe('Explore proof objects');
+ expect(host.textContent).not.toContain('Create an asset');
+ expect(host.textContent).not.toContain('Exchange');
+ act(()=>(host.querySelector('.market-rows button')as HTMLButtonElement).click());
+ expect(location.hash).toBe('#object/public-0');
+ expect(host.querySelector('dialog')?.textContent).toContain('@alice');
+ expect(host.querySelector('dialog')?.textContent).not.toContain('Buy ownership');
+ expect(open).not.toHaveBeenCalled();
+});
 it('searches the whole public catalog beyond one thousand while rendering a bounded initial list', () => {
   source.value = { catalog: catalog(), status: 'live', error: null, refresh: vi.fn() };
   const { host } = mount();

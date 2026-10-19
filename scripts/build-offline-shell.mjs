@@ -35,6 +35,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   if (manifest['verify/index.html']) { visit('verify/index.html'); urls.add('/verify/'); }
   if (manifest['receipt/index.html']) {visit('receipt/index.html');urls.add('/receipt/');}
   if (manifest['ledger/index.html']) {visit('ledger/index.html');urls.add('/ledger/');}
+  if (manifest['explore/index.html']) {visit('explore/index.html');urls.add('/explore/');}
   // Vite emits module-worker files outside the entry's manifest dependency list.
   for (const name of await readdir(resolve(root, 'assets'))) if (/^worker-[\w-]+\.js$/.test(name)) urls.add('/assets/' + name);
   // The public calculator is emitted separately from Vite's app manifest.
@@ -50,6 +51,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   if (manifest['verify/index.html']) { pages['/verify/'] = '/verify/'; pages['/verify'] = '/verify/'; }
   if (manifest['receipt/index.html']) pages['/receipt/']='/receipt/';
   if (manifest['ledger/index.html']) {pages['/ledger/']='/ledger/';pages['/ledger']='/ledger/';}
+  if (manifest['explore/index.html'])for(const path of ['/explore','/explore/','/explorer','/explorer/'])pages[path]='/explore/';
   for (const path of Object.keys(navigation.pages)) {
     if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && path !== '/legal/') throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     urls.add(path); pages[path] = path; if (path !== '/') pages[path.slice(0, -1)] = path;

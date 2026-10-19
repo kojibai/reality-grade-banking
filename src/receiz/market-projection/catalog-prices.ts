@@ -9,9 +9,10 @@ export function publicCatalogAtPulse(catalog:PublicMarketCatalog|null,source:Mar
  let quoteMove:number|undefined;
  return {...catalog,items:catalog.items.map(item=>{
   try{
+   const priced=(priceUsd:number)=>({...item,priceUsd,changePct:item.priceUsd!==null&&item.priceUsd>0?Number(((priceUsd/item.priceUsd-1)*100).toFixed(2)):null,localValuationPulse:pulse});
    const seed=publicAssetPulseSeed(item,source);
-   if(seed&&pulse>=seed.claimPulse)return {...item,priceUsd:publicSigilQuoteAtPulse(seed,pulse).priceUsd,localValuationPulse:pulse};
-   if(item.category==='sports'&&item.sportsValuation){quoteMove??=marketQuoteMovementAtPulse(pulse);return {...item,priceUsd:Math.round(publicSportsQuoteAtPulse(item.sportsValuation,pulse,quoteMove)*100)/100,localValuationPulse:pulse};}
+   if(seed&&pulse>=seed.claimPulse)return priced(publicSigilQuoteAtPulse(seed,pulse).priceUsd);
+   if(item.category==='sports'&&item.sportsValuation){quoteMove??=marketQuoteMovementAtPulse(pulse);return priced(Math.round(publicSportsQuoteAtPulse(item.sportsValuation,pulse,quoteMove)*100)/100);}
   }catch{/* Keep the observed price when this source lacks supported operands. */}
   return item;
  })};
