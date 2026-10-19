@@ -27,7 +27,13 @@ its percentage and direction do not modify a receipt or constitute spendable fun
   credits, matching amounts, actor IDs or a newly invented FIFO policy to an
   earlier send. Extending that coverage requires the native transaction's
   carried funding-source closure; this patch does not claim it exists in a thin
-  wallet feed.
+  wallet feed. The display now omits an empty funding section instead of
+  presenting the balance split as a funding origin or saying funds have no
+  source. Already-carried history remains visible, and a subsequently opened,
+  digest-bound original fills the same view through its existing subscription.
+  Acquisition-only history is labelled causal history. Coverage boundaries
+  remain in the exported inspection data; hiding an empty section does not
+  establish a complete allocation.
 - In-app receipts retain selected private context by reference for the current
   navigation only. Copied receipt URLs continue to omit private details. Public
   context beyond the existing URL-size limit is explicitly marked omitted;
