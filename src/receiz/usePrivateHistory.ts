@@ -7,17 +7,18 @@ import { peekPrivateHistory, preloadPrivateHistory, updatePrivateHistory } from 
 export function usePrivateHistory(identity: OpenIdentity | null, accountUid: string | undefined, active: boolean) {
   const [frame, setCache] = useState<{ identity: OpenIdentity; accountUid: string; value: PrivateHistoryCache } | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
   const [failureCode, setFailureCode] = useState<string | null>(null);
+  const refreshQueued=useRef(false);
   const held = useRef<PrivateHistoryCache | null>(null), generation = useRef(0), pending = useRef(false), paused = useRef(false), seen = useRef(new Set<string>()), restoring = useRef(Promise.resolve()), scope = useRef({ identity, accountUid });
   useEffect(() => {
     const ticket = ++generation.current; scope.current = { identity, accountUid };
     const retained = peekPrivateHistory(identity, accountUid);
-    held.current = retained; pending.current = false; paused.current = false; seen.current.clear(); setCache(identity && accountUid && retained ? { identity, accountUid, value: retained } : null); setBusy(false); setError(null); setFailureCode(null);
+    held.current = retained; pending.current = false;refreshQueued.current=false; paused.current = false; seen.current.clear(); setCache(identity && accountUid && retained ? { identity, accountUid, value: retained } : null); setBusy(false); setError(null); setFailureCode(null);
     restoring.current = identity && accountUid ? preloadPrivateHistory(identity, accountUid).then(value => {
       if (ticket === generation.current && value?.accountUid === accountUid) { held.current = value; setCache({ identity, accountUid, value }); }
     }).catch(() => {}) : Promise.resolve();
     return () => { generation.current++; };
   }, [identity, accountUid]);
-  const read = useCallback(async (older = false, canStart?: () => boolean) => {
+  const read = useCallback(async (older = false, canStart?: () => boolean):Promise<void> => {
     if (scope.current.identity !== identity || scope.current.accountUid !== accountUid) return;
     if (!identity?.readPrivateHistory || !accountUid || pending.current || older && paused.current) return;
     const ticket = generation.current; pending.current = true; setBusy(true);
@@ -44,9 +45,9 @@ export function usePrivateHistory(identity: OpenIdentity | null, accountUid: str
       } catch { if (ticket === generation.current) setError('Activity loaded. This device could not retain it for offline access.'); }
     } catch (cause) {
       if (ticket === generation.current) { paused.current = true; setFailureCode(privateHistoryFailureCode(cause)); setError('Your activity could not be loaded. Retained activity stays available. Refresh to try again.'); }
-    } finally { if (ticket === generation.current) { pending.current = false; setBusy(false); } }
+    } finally { if (ticket === generation.current) { pending.current = false; setBusy(false);if(refreshQueued.current){refreshQueued.current=false;void read();} } }
   }, [identity, accountUid]);
-  const refresh = useCallback(() => read(), [read]), loadMore = useCallback(() => read(true), [read]);
+  const refresh = useCallback(() => {if(scope.current.identity!==identity||scope.current.accountUid!==accountUid)return Promise.resolve();if(pending.current){refreshQueued.current=true;return Promise.resolve();}return read();}, [identity,accountUid,read]), loadMore = useCallback(() => read(true), [read]);
   useEffect(() => {
     let alive = true, queued = false;
     const foreground = () => alive && active && Boolean(identity && accountUid) && document.visibilityState === 'visible' && location.pathname === '/';

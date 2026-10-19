@@ -37,6 +37,13 @@ it('coalesces wake bursts and overlapping pending reads into one head request', 
   expect(id.readPrivateHistory).toHaveBeenCalledTimes(2); expect(view.read().cache?.records.map(row => row.sourceId)).toContain('retained');
   await act(async () => { finish(page('external-activity')); }); expect(view.read().cache?.records.map(row => row.sourceId)).toContain('external-activity');
 });
+it('queues a committed-action head refresh behind an older in-flight request',async()=>{
+ const id=identity(),view=await mount(id);let finish!:(value:ReturnType<typeof page>)=>void;
+ vi.mocked(id.readPrivateHistory).mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;})).mockResolvedValueOnce(page('committed-send'));
+ await act(async()=>wake('focus'));await act(async()=>view.read().refresh());
+ await act(async()=>finish(page('earlier-head')));
+ expect(id.readPrivateHistory).toHaveBeenCalledTimes(3);expect(view.read().cache?.records.map(row=>row.sourceId)).toContain('committed-send');expect(view.read().cache?.records.map(row=>row.sourceId)).toContain('retained');
+});
 it('polls every 60 seconds only on the active visible bank and wakes when its surface returns', async () => {
   vi.useFakeTimers(); const id = identity(), view = await mount(id);
   await act(async () => { await vi.advanceTimersByTimeAsync(60_000); }); expect(id.readPrivateHistory).toHaveBeenCalledTimes(2);

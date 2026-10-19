@@ -61,6 +61,15 @@ it('coalesces a foreground event burst and BFCache pageshow into one pending net
   expect(read().busy).toBe(false);
   await act(async () => { finish(observation().wallet); });
 });
+it('queues a fresh post-transaction read behind a pre-transaction refresh and skips its stale frame',async()=>{
+ const identity=held();let finish!:(value:WalletObservation['wallet'])=>void;
+ vi.mocked(identity.readWallet).mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;})).mockImplementationOnce(async()=>{identity.setKnown(observation('75'));return identity.knownWallet()!.wallet;});
+ const {read,frames}=await mount(identity);await act(async()=>wake('focus'));
+ expect(identity.readWallet).toHaveBeenCalledTimes(1);
+ await act(async()=>read().refresh());
+ await act(async()=>{finish(observation('999').wallet);});
+ expect(identity.readWallet).toHaveBeenCalledTimes(2);expect(read().wallet?.totalUsdCents).toBe('75');expect(frames.some(frame=>frame.wallet?.totalUsdCents==='999')).toBe(false);
+});
 
 it('does not refresh hidden documents or non-bank routes and refreshes when the bank returns', async () => {
   const identity = held(); await mount(identity);

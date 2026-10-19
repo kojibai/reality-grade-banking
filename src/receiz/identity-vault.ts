@@ -3,6 +3,7 @@ import { readWalletObservation } from './wallet-observation';
 import { validatePrivateLedgerPages } from './private-history';
 import { mergePublicRecords } from './public-network';
 import { cardOperationApplicationId } from './card-deposit';
+import {atNoteStage} from './note-stage';
 export interface ProtectedIdentityTransport { bytes: Uint8Array; phrase: string; }
 interface SavedIdentity { schema: 'receiz.bank.device-identity.v1'; bytes: ArrayBuffer; artifactIv?: Uint8Array; filename: string; wrappingKey: CryptoKey; iv: Uint8Array; wrappedPhrase: ArrayBuffer; readConsent: boolean; privateHistoryScopeId?: string; walletObservation?:{iv:Uint8Array;bytes:ArrayBuffer;binding:{keyId:string;artifactSha256:string};localHeadDigest?:string}; protectedTransport?: { iv: Uint8Array; bytes: ArrayBuffer }; cardOperation?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }; cardArchive?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }[]; bankOperation?: { operationId: string; state: string; key: string; }; bankSession?: { iv: Uint8Array; bytes: ArrayBuffer }; }
 async function identityBytes(saved: SavedIdentity): Promise<Uint8Array> { return saved.artifactIv ? new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(saved.artifactIv), additionalData: new TextEncoder().encode('receiz.bank.private-identity-source.v1') }, saved.wrappingKey, saved.bytes)) : new Uint8Array(saved.bytes); }
@@ -510,13 +511,25 @@ export async function savePrivateHistoryCache(binding: { artifactSha256: string 
 
 /** Encrypted note choreography; all financial sources are reopened by v129. */
 async function loadNoteState(binding: { artifactSha256: string }, family: string): Promise<unknown> {
-  const saved = await held(); if (!saved) throw new Error('BANK_NOTE_IDENTITY_UNAVAILABLE'); await sameSavedIdentity(saved, binding);
   const key = `${family}|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}`, db = await database();
-  let row: PrivateBankOperation | undefined;
-  try { row = await new Promise((resolve, reject) => { const r = db.transaction('operations').objectStore('operations').get(key); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); }); } finally { db.close(); }
+  let saved:SavedIdentity|undefined,row:PrivateBankOperation|undefined;
+  // Identity and checkpoint must come from one storage snapshot. Crypto stays
+  // outside the transaction; this read never changes or replaces financial state.
+  try { await new Promise<void>((resolve,reject)=>{
+    const tx=db.transaction(['identity','operations']),identity=tx.objectStore('identity').get('current'),checkpoint=tx.objectStore('operations').get(key);
+    identity.onsuccess=()=>{saved=identity.result;};checkpoint.onsuccess=()=>{row=checkpoint.result;};
+    tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error??Error('BANK_NOTE_STORAGE_UNAVAILABLE'));
+  }); } finally { db.close(); }
+  if(!saved)throw Error('BANK_NOTE_IDENTITY_UNAVAILABLE');
+  const identity=saved;
+  await atNoteStage('saved-note-identity',()=>sameSavedIdentity(identity,binding));
   if (!row) return null;
-  const bytes = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, row.bytes);
-  return JSON.parse(new TextDecoder().decode(bytes));
+  const checkpoint=row,open=async()=>{
+    if(checkpoint.key!==key||new Uint8Array(checkpoint.iv).byteLength!==12||checkpoint.bytes.byteLength<16||checkpoint.bytes.byteLength>32*1024*1024+16)throw Error('BANK_NOTE_PRIVATE_SOURCE_INVALID');
+    const bytes=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(checkpoint.iv),additionalData:new TextEncoder().encode(key)},identity.wrappingKey,checkpoint.bytes);
+    return JSON.parse(new TextDecoder().decode(bytes));
+  };
+  return family==='offline-notes'?atNoteStage('offline-note-checkpoint',open):family==='prepared-notes'?atNoteStage('prepared-note-checkpoint',open):open();
 }
 async function saveNoteState(binding: { artifactSha256: string; keyId?: string }, family: string, value: unknown, expected: unknown, observation?: import('./wallet-observation').WalletObservation): Promise<void> {
   const saved = await held(); if (!saved) throw new Error('BANK_NOTE_IDENTITY_UNAVAILABLE'); await sameSavedIdentity(saved, binding);

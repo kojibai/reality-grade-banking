@@ -24,9 +24,20 @@ generation-isolated or reset.
 Review is unavailable until saved/pending discovery completes. Failures can show
 only the bounded stage and exception name; original private messages, keys,
 credentials and account fields do not enter those details. This distinguishes
-local state decryption, original restoration, transport and signer setup. The
-actual iPhone exception site and the reported later Face ID appearance remain
-unconfirmed; no device capability is inferred from a generic OperationError.
+local state decryption, original restoration, transport and signer setup.
+
+The iPhone reports `saved-notes · OperationError` before Review/Face ID. That
+outer stage includes both identity-source binding and checkpoint decryption;
+the exact failing ciphertext remains unconfirmed. Inner stages now distinguish
+`saved-note-identity`, `offline-note-checkpoint`, and `prepared-note-checkpoint`.
+Identity and checkpoint are read from one readonly IndexedDB transaction before
+crypto. No device capability is inferred from OperationError.
+
+A legacy attempt can be persisted in `preparing` before device qualification.
+The pending-removal guard does not establish registration or funding. The phone
+record has not been cleared or recovered. An isolated real-IndexedDB/AES-GCM
+browser check passes coherent reads, corruption diagnosis, unchanged ciphertext,
+exact attempt restoration and pending-removal refusal, using synthetic bytes.
 
 Verification: 1,055 tests in 199 files and the full production build pass.
 Regressions cover clear-original opening without enrollment/sealing/connection,

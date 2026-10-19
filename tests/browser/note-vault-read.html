@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"><title>Local Note read · isolated synthetic checks</title><button id="run">Run isolated Note storage checks</button><pre id="result">No account, credential or money connected. Use only a disposable test origin.</pre><script type="module">
+import{saveDeviceIdentity,saveOfflineNoteState,loadOfflineNoteState,forgetDeviceIdentity}from'/src/receiz/identity-vault.ts';import{noteFailureStage}from'/src/receiz/note-stage.ts';import{BANK_STORAGE_APPLICATION_ID}from'/src/receiz/config.ts';
+const check=(value,message)=>{if(!value)throw Error(message);};
+document.querySelector('#run').onclick=async()=>{try{
+ await new Promise((resolve,reject)=>{const request=indexedDB.deleteDatabase('receiz-bank-private-custody');request.onsuccess=resolve;request.onerror=()=>reject(request.error);});
+ const source=new TextEncoder().encode('isolated synthetic storage fixture; not an Identity Seal'),artifactSha256=[...new Uint8Array(await crypto.subtle.digest('SHA-256',source))].map(v=>v.toString(16).padStart(2,'0')).join(''),binding={artifactSha256};
+ await saveDeviceIdentity(source,'synthetic.txt','',true);const state={schema:'receiz.bank.offline-notes-device.v1',create:{phase:'preparing'},notes:{},receivers:{},deposits:{}};await saveOfflineNoteState(binding,state,null);check(JSON.stringify(await loadOfflineNoteState(binding))===JSON.stringify(state),'coherent read failed');
+ const db=await new Promise((resolve,reject)=>{const request=indexedDB.open('receiz-bank-private-custody',3);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);}),key=`offline-notes|${BANK_STORAGE_APPLICATION_ID}|${artifactSha256}`;
+ const get=()=>new Promise((resolve,reject)=>{const request=db.transaction('operations').objectStore('operations').get(key);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+ const put=row=>new Promise((resolve,reject)=>{const tx=db.transaction('operations','readwrite');tx.objectStore('operations').put(row,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+ const original=await get(),changed=new Uint8Array(original.bytes.slice(0));changed[0]^=1;await put({...original,bytes:changed.buffer});
+ let failure;try{await loadOfflineNoteState(binding);}catch(cause){failure=cause;}check(noteFailureStage(failure)?.stage==='offline-note-checkpoint'&&failure.name==='OperationError','checkpoint stage missing');check(new Uint8Array((await get()).bytes).every((value,i)=>value===changed[i]),'unreadable ciphertext replaced');
+ await put(original);db.close();check((await loadOfflineNoteState(binding)).create.phase==='preparing','exact attempt was not retained');let refused=false;try{await forgetDeviceIdentity();}catch{refused=true;}check(refused,'pending attempt removal was allowed');
+ document.querySelector('#result').textContent='PASS · real IndexedDB coherent read · exact pending state survives restart · corrupt checkpoint identified without writes · original restored · removal guard preserved. Synthetic storage only; no enrollment or funds.';
+ }catch(error){document.querySelector('#result').textContent='FAIL · '+error.name+' · '+error.message;}};
+</script>

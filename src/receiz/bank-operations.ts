@@ -56,6 +56,9 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
   if ('recipient' in input) {
     if (typeof input.recipient !== 'string' || !/^[A-Za-z0-9_.@-]{1,160}$/u.test(input.recipient.trim())) throw Error('Enter a Receiz ID or public username.');
     input.recipient = input.recipient.trim();
+    // Receiz profile names are case-insensitive. Opaque receiving coordinates
+    // keep every byte; do not rewrite punctuation into a different username.
+    if(/^@?[a-z0-9_]{3,24}(?:\.receiz\.id)?$/iu.test(input.recipient))input.recipient=input.recipient.toLowerCase();
   }
   if (input.kind === 'sell-share' && !['bank', 'market'].includes(input.buyer)) fail();
   if (input.kind === 'fund-asset') input.definition = validateAssetDefinition(input.definition);
@@ -149,8 +152,23 @@ export function createBankOperations(input: {
     discard(review) { if(nativeAssetReviews.has(review)&&input.assets){input.assets.discard(review);nativeAssetReviews.delete(review);held.delete(review);return;} if(nativeReviews.has(review))input.payments?.discard(review);nativeReviews.delete(review);custody.delete(review); held.delete(review); },
   };
 }
+const publicOperationCodes=new Set(['native_payment_unavailable','native_bank_unavailable','native_bank_protected_custody_unqualified','payment_access_denied','access_denied','insufficient_scope','BANK_PAYMENT_RECIPIENT_UNAVAILABLE','BANK_NATIVE_WALLET_INSUFFICIENT_SETTLEMENT','BANK_NATIVE_WALLET_INSUFFICIENT_RESERVE','BANK_NATIVE_WALLET_DENOMINATION_PRECISION','BANK_PAYMENT_REVIEW_INVALID','BANK_PAYMENT_SOURCE_INVALID','BANK_PAYMENT_FINANCIAL_SOURCE_INVALID','BANK_PAYMENT_CHECKPOINT_INVALID','BANK_PAYMENT_CONSENT_INVALID','BANK_PAYMENT_ACCESS_DENIED','BANK_PAYMENT_EXPIRED','BANK_PAYMENT_INTENT_CONFLICT','BANK_OPERATION_EXPIRED','BANK_OPERATION_SOURCE_MISMATCH','BANK_EXECUTION_PENDING','BANK_OPERATION_ACCESS_REQUIRED','BANK_OPERATION_FINANCIAL_ADAPTER_UNQUALIFIED','BANK_OPERATION_RUNTIME_UNAVAILABLE']);
+/** Bounded diagnostics only; private HTTP payloads and exception text stay out. */
+export function bankOperationFailureDetails(error:unknown){
+ const value=error as {status?:unknown;message?:unknown;name?:unknown}|null;
+ const status=typeof value?.status==='number'&&Number.isInteger(value.status)&&value.status>=400&&value.status<=599?value.status:null;
+ const code=typeof value?.message==='string'&&publicOperationCodes.has(value.message)?value.message:status?`HTTP_${status}`:value?.name==='OperationError'?'BROWSER_OPERATION_ERROR':'BANK_OPERATION_UNAVAILABLE';
+ return {code,status};
+}
 export function bankOperationError(error: unknown): string {
   const code = error instanceof Error ? error.message : '';
+  if(code==='BANK_NATIVE_WALLET_INSUFFICIENT_SETTLEMENT')return 'Choose an amount within your available Settlement.';
+  if(code==='BANK_NATIVE_WALLET_INSUFFICIENT_RESERVE')return 'Choose an amount within your available Reserve.';
+  if(code==='BANK_PAYMENT_RECIPIENT_UNAVAILABLE')return 'This recipient could not be resolved from its account source. Check the Receiz ID or username.';
+  if(code==='payment_access_denied'||code==='access_denied'||code==='insufficient_scope')return 'Approve the required account access in Bank connection, then review your transaction again. Each payment still needs your separate approval.';
+  if(['native_payment_unavailable','native_bank_unavailable','native_bank_protected_custody_unqualified'].includes(code))return 'The payment service could not prepare verified terms. Your exact account sources remain held. Keep the failure details when reporting this issue.';
+  if(code==='BANK_NATIVE_WALLET_DENOMINATION_PRECISION')return 'This amount cannot be represented exactly by the selected account’s value units. Choose a different amount and review again.';
+  if(code==='BANK_PAYMENT_REVIEW_INVALID'||code==='BANK_PAYMENT_SOURCE_INVALID'||code==='BANK_PAYMENT_FINANCIAL_SOURCE_INVALID')return 'The payment proof could not be verified. Nothing has been submitted from this review.';
   if (code === 'BANK_OPERATION_FINANCIAL_ADAPTER_UNQUALIFIED') return 'This transaction is not available yet. Your balance and held proofs are unchanged.';
   if (code === 'BANK_OPERATION_ACCESS_REQUIRED') return 'Approve the required account access in Bank connection, then review your transaction again. Each payment still needs your separate approval.';
   if (code === 'BANK_OPERATION_CURRENT_SOURCE_REQUIRED') return 'This original needs its current transferable proof before it can move. Your original remains held on this device.';

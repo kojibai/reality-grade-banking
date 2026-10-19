@@ -17,6 +17,7 @@ export function useNativeAccount(custody = nativeCustody) {
   const [openingStage, setOpeningStage] = useState<'identity' | 'history' | 'ready'>('identity');
   const [opening, setOpening] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [observedAt, setObservedAt] = useState<string | null>(null);
   const [syncPending, setSyncPending] = useState(false);
+  const refreshQueued=useRef(false);
   const held = useRef<OpenIdentity | null>(null), generation = useRef(0), pending = useRef(false), openingOperation = useRef(false), hasObservation = useRef(false);
   const publishObservation = useCallback((known: WalletObservation) => {
     hasObservation.current = true; setWallet(known.wallet); setObservedAt(known.observedAt); setWalletHistory(known.history ?? []); setHistoryComplete(hasSettledAccountView(known));
@@ -34,7 +35,7 @@ export function useNativeAccount(custody = nativeCustody) {
     void attempt.finally(() => { if (localValuation.current?.promise === attempt) localValuation.current = null; }).catch(() => {});
     return attempt;
   }, [publishObservation]);
-  const refresh = useCallback(async (background = false) => {
+  const refresh = useCallback(async (background = false):Promise<void> => {
     const current = held.current, ticket = generation.current;
     if (!current) return;
     // A native action may have retained a newer account successor while an
@@ -42,10 +43,16 @@ export function useNativeAccount(custody = nativeCustody) {
     const known = current.knownWallet?.();
     if (known) publishObservation(known);
     if (background) await refreshLocal();
-    if (ticket !== generation.current || held.current !== current || pending.current) return;
+    if (ticket !== generation.current || held.current !== current) return;
+    if(pending.current){if(!background){refreshQueued.current=true;setBusy(true);}return;}
     pending.current = true; if (!background) setBusy(true);
-    try { const value = await current.readWallet(); if (ticket === generation.current) { const observed = current.knownWallet?.(); hasObservation.current = true; setWallet(value); setObservedAt(observed?.observedAt ?? new Date().toISOString()); setWalletHistory(observed?.history ?? []); setHistoryComplete(hasSettledAccountView(observed ?? null)); setError(null); setSyncPending(false); } }
-    catch (cause) { if (ticket === generation.current) { setSyncPending(true); if (current.knownWallet?.()?.source !== 'account-genesis') setError(walletReadMessage(cause, hasObservation.current)); } }
+    try {
+      do{
+        refreshQueued.current=false;
+        try{const value=await current.readWallet();if(ticket===generation.current&&!refreshQueued.current){const observed=current.knownWallet?.();hasObservation.current=true;setWallet(value);setObservedAt(observed?.observedAt??new Date().toISOString());setWalletHistory(observed?.history??[]);setHistoryComplete(hasSettledAccountView(observed??null));setError(null);setSyncPending(false);}}
+        catch(cause){if(ticket===generation.current&&!refreshQueued.current){setSyncPending(true);if(current.knownWallet?.()?.source!=='account-genesis')setError(walletReadMessage(cause,hasObservation.current));}}
+      }while(ticket===generation.current&&held.current===current&&refreshQueued.current);
+    }
     finally { if (ticket === generation.current) { pending.current = false; setBusy(false); } }
   }, [publishObservation, refreshLocal]);
   const entering = useRef<OpenIdentity | null>(null);
@@ -62,7 +69,7 @@ export function useNativeAccount(custody = nativeCustody) {
       // account placement cannot supply another final account's history.
       await preloadPrivateHistory(next, known.wallet.userId);
       if (ticket !== generation.current) { next.dispose(); return; }
-      held.current?.dispose(); held.current = next; pending.current = false;
+      held.current?.dispose(); held.current = next; pending.current = false;refreshQueued.current=false;
       // One React commit: no admitted account shell with an absent chart.
       hasObservation.current = true; setWallet(known.wallet); setObservedAt(known.observedAt); setWalletHistory(known.history ?? []); setHistoryComplete(hasSettledAccountView(known));
       setError(null); setSyncPending(false); setOpeningStage('ready'); setIdentity(next); setOpening(false); setBusy(false);
