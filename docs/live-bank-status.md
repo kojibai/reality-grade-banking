@@ -1,5 +1,13 @@
 # Live bank conversion — observed state
 
+**Current snapshot, 19 October 2026:** use the
+[v129 Bankeiz connection audit](receiz-v129-bankeiz-connection-audit.md) for the
+remaining work. Ordinary Wallet Send succeeded in the user's live check and
+Send/Receive are treated as working. Public Ledger local Memory Crystal save/open
+is completed without a Crystal service. The dated entries below preserve earlier
+observations; their old “Send disabled” and “private additions not connected”
+statements are historical, not the current implementation inventory.
+
 ## October 17 — separate Bankeiz public registration
 
 The owner-created Bankeiz client is `rc_2d1wcGkAYfmCi5kGT3J89gkl`, public/token-auth-none, with `https://bankeiz.com/auth/receiz/callback`. The Chrome Connect register confirms the registration. Bankeiz requests only its existing native/read/card scopes. No client secret or MCP bearer token is used in the app. The old Bank registration and existing encrypted custody namespace remain intact; previous attempts recover under their original audience. See `bankeiz-origin-activation.md` for deployment/configuration boundaries. Historical checkpoints below retain their original client IDs and are not the current configuration.
