@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
-import { publicMaterialOriginalUrl, safeReceizPublicUrl } from '../src/receiz/public-market.js';
+import { publicMaterialOriginalUrl,publicMediaKind, safeReceizPublicUrl } from '../src/receiz/public-market.js';
 import {publicMarketPulseSeed,publicSportsValueRow} from '../src/receiz/market-projection/source.js';
 import {publicSportsSealedCopies,publicSportsSealedBirths} from '../src/receiz/market-projection/sealed-copies.js';
 import {boundSportsHistoryObservation,publicSportsGroupIdentity,publicSportsHistorySnapshot} from '../src/receiz/market-projection/sports-observations.js';
@@ -65,7 +65,7 @@ async function loadPublicResponse(target: URL): Promise<CachedResponse> {
         input.transport = { generatedAt: transport.generatedAt, publicMembership: transport.publicMembership, publicOriginals: transport.publicOriginals.map((item: Record<string, unknown>) => {
           const profile = item.profileOriginal as Record<string, unknown> | undefined, media = profile?.media as Record<string, unknown> | undefined;
           return { id: item.id, receizId: item.receizId, title: item.title, summary: item.summary, visibility: item.visibility, ownerUsername: item.ownerUsername, ownerDisplayName: item.ownerDisplayName, canonicalHref: item.canonicalHref, verifyHref: item.verifyHref, pulse: item.pulse, createdAt: item.createdAt, valueUsd: item.valueUsd,livePulseSeed:publicMarketPulseSeed(item.livePulseSeed,item.pulse),
-            profileOriginal: { hasLongForm:Boolean(profile?.longForm&&typeof (profile.longForm as Record<string,unknown>).text==='string'&&(profile.longForm as Record<string,unknown>).text),readingTzMinutesEast:media?.receiptTzMinutesEast,media: { originalDownloadSrc: media?.originalDownloadSrc, originalDownloadSha256Hex: media?.originalDownloadSha256Hex, material: media?.material ? { sealedArtifactSha256Hex: (media.material as Record<string, unknown>).sealedArtifactSha256Hex, originalArtifactSrc: publicMaterialOriginalUrl((media.material as Record<string, unknown>).proofObjectUrl) } : null } } };
+            profileOriginal: { mediaKind:publicMediaKind(profile?.media===null?null:media?.kind),hasLongForm:Boolean(profile?.longForm&&typeof (profile.longForm as Record<string,unknown>).text==='string'&&(profile.longForm as Record<string,unknown>).text),readingTzMinutesEast:media?.receiptTzMinutesEast,media: { originalDownloadSrc: media?.originalDownloadSrc, originalDownloadSha256Hex: media?.originalDownloadSha256Hex, material: media?.material ? { sealedArtifactSha256Hex: (media.material as Record<string, unknown>).sealedArtifactSha256Hex, originalArtifactSrc: publicMaterialOriginalUrl((media.material as Record<string, unknown>).proofObjectUrl) } : null } } };
         }) };
       } else if (target.pathname === '/api/game/sports/economy') {
         if (input.ok !== true || input.schema !== 'receiz.sports_economy.live_inventory.v1' || !Array.isArray(input.cards) || input.cards.length > 100000) throw new Error('Public sports inventory is unavailable.');

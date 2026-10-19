@@ -24,6 +24,16 @@ function mount(mode:'market'|'explorer'='market') {
   return { host, root, commit, open };
 }
 function catalog(count = 1001) { return parsePublicMarket({ ok: true, transport: { generatedAt: '2026-10-13T12:00:00Z', publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: count, revision: 'r1' }, publicOriginals: Array.from({ length: count }, (_, i) => ({ id: `public-${i}`, receizId: `asset-${i}`, title: `Public object ${i}`, valueUsd: 5, ownerUsername: 'alice', canonicalHref: `/alice/verified/asset-${i}` })) } }); }
+it.each(['market','explorer']as const)('populates %s content filters from the original media metadata and places cards in Collectibles',mode=>{
+ const kinds=['audio','epub','image','video','pdf',null,null];
+ const held=parsePublicMarket({ok:true,transport:{publicOriginals:kinds.map((kind,i)=>({id:'typed-'+i,receizId:'typed-'+i,title:'Typed object '+i,profileOriginal:{media:kind?{kind}:null,hasLongForm:i===5}}))}});
+ held.items.push({...held.items[0],id:'collectible',assetId:'rsc_0123456789abcdef',title:'Collectible one',category:'sports'});
+ source.value={catalog:held,status:'live',error:null,refresh:vi.fn()};const {host}=mount(mode);
+ const filters=[...host.querySelectorAll<HTMLButtonElement>('.filters button')];
+ expect(filters.map(button=>button.textContent)).not.toContain('Proofs');expect(filters.map(button=>button.textContent)).not.toContain('Cards');
+ const expected:{[label:string]:string}={Music:'Typed object 0',Books:'Typed object 1',Images:'Typed object 2',Videos:'Typed object 3',Documents:'Typed object 4',Essays:'Typed object 5',Moments:'Typed object 6',Collectibles:'Collectible one'};
+ for(const [label,title]of Object.entries(expected)){const button=filters.find(button=>button.textContent===label);expect(button,label+' filter').toBeTruthy();act(()=>button!.click());expect(host.querySelectorAll('.market-rows .asset-row')).toHaveLength(1);expect(host.querySelector('.market-rows')?.textContent).toContain(title);}
+});
 it('scrolls the selected explorer collection instead of the retained hidden bank collection',()=>{
  source.value={catalog:catalog(1),status:'live',error:null,refresh:vi.fn()};
  const bank=mount(),explorer=mount('explorer');bank.host.hidden=true;

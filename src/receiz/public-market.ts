@@ -7,6 +7,7 @@ export interface PublicMarketItem {
   sourceUrl: string | null; verifyUrl: string | null; originalUrl: string | null;
   originalDigest: string | null; pulse: string | null; sealedAt: string | null;
   hasLongForm?: boolean;
+  mediaKind?:PublicMediaKind;
   readingUrl?: string | null;
   livePulseSeed?:MarketPulseSeed;
   sportsValuation?:MarketValueRow;
@@ -20,6 +21,11 @@ export interface PublicMarketItem {
 }
 export interface PublicMarketCatalog { items: PublicMarketItem[]; complete: boolean; revision: string; observedAt: string | null; sourceCount: number; sportsCoverage?: 'complete' | 'partial' | 'missing'; sportsObservedAt?:string|null;sportsSealedBirthsObservedAt?:string|null;sportsHistorySnapshot?:SportsHistorySnapshot; }
 type RecordValue = Record<string, unknown>;
+export type PublicMediaKind='image'|'video'|'audio'|'pdf'|'epub'|'file'|'moment';
+const mediaKinds=new Set(['image','video','audio','pdf','epub','file','moment']);
+export function publicMediaKind(value:unknown):PublicMediaKind|undefined {
+  return value===null?'moment':typeof value==='string'&&mediaKinds.has(value)?value as PublicMediaKind:undefined;
+}
 function record(input: unknown): RecordValue { return input !== null && typeof input === 'object' && !Array.isArray(input) ? input as RecordValue : {}; }
 function text(input: unknown, max = 4096): string | null { return typeof input === 'string' && input.length > 0 && input.length <= max ? input : null; }
 function nonnegative(input: unknown): number | null { return typeof input === 'number' && Number.isFinite(input) && input >= 0 && input <= 1e18 ? input : null; }
@@ -68,6 +74,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
       sourceUrl: safeReceizPublicUrl(source.canonicalHref, 'source'), verifyUrl,readingUrl,
       originalUrl: materialOriginal ?? safeReceizPublicUrl(media.originalDownloadSrc, 'original'), originalDigest: digest && /^[a-f0-9]{64}$/i.test(digest) ? digest.toLowerCase() : null,
       hasLongForm:typeof profile.hasLongForm==='boolean'?profile.hasLongForm:Object.hasOwn(profile,'longForm')?Boolean(profile.longForm):undefined,
+      mediaKind:publicMediaKind(profile.mediaKind??media.kind??(profile.media===null?null:undefined)),
       pulse: typeof source.pulse === 'string' && /^\d{1,24}$/.test(source.pulse) ? source.pulse : null,livePulseSeed:publicMarketPulseSeed(source.livePulseSeed,source.pulse),valuationBinding:{itemId:id,assetId},
       sealedAt: sealedAt && Number.isFinite(Date.parse(sealedAt)) ? sealedAt : null,
       ownerUsername, ownerDisplayName: text(source.ownerDisplayName, 128), ownerProfileUrl: ownerUsername ? `https://receiz.com/${encodeURIComponent(ownerUsername)}` : null,

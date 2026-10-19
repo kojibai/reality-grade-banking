@@ -7,6 +7,7 @@ import { type PublicMarketItem } from '../../receiz/public-market';
 import {PublicObjectRow} from './PublicObjectRow';
 import { MarketOverview } from './MarketOverview';
 import { PublicAssetDetail } from './PublicAssetDetail';
+import {MARKET_CONTENT_FILTERS,matchesMarketContent,type MarketContentFilter} from '../../receiz/market-categories';
 import './market.css';
 
 function selectedObject(prefix:string): string | null { try { return location.hash.startsWith(prefix) ? decodeURIComponent(location.hash.slice(prefix.length)) : null; } catch { return null; } }
@@ -16,9 +17,9 @@ function ConnectedMarket(props: MarketProps) { const source = usePublicMarket(pr
 function MarketView({ mode='market',active = true, onAction, source }: MarketProps & { source: ReturnType<typeof usePublicMarket> }) {
   const explorer=mode==='explorer',prefix=explorer?'#object/':'#market/public/';
   const bank = useContext(BankContext); const open = onAction ?? bank?.open ?? (() => {}); const { catalog, historyCatalog, status, quoteStatus, error, refresh } = source;
-  const [query, setQuery] = useState(''), [filter, setFilter] = useState('All'), [shown, setShown] = useState(50), [selectedId, setSelectedId] = useState(()=>selectedObject(prefix));
-  const labels = explorer?['All','Proofs','Cards']:['All', 'Proofs', 'Cards', 'Currencies', 'Physical', 'Stocks'];
-  const assets = useMemo(() => (catalog?.items ?? []).filter(asset => (!query || `${asset.title} ${asset.summary} ${asset.assetId}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())) && (filter === 'All' || filter === 'Proofs' && asset.category === 'proof' || filter === 'Cards' && asset.category === 'sports')), [catalog, query, filter]);
+  const [query, setQuery] = useState(''), [filter, setFilter] = useState<MarketContentFilter>('All'), [shown, setShown] = useState(50), [selectedId, setSelectedId] = useState(()=>selectedObject(prefix));
+  const normalizedQuery=query.trim().toLocaleLowerCase();
+  const assets = useMemo(() => (catalog?.items ?? []).filter(asset => matchesMarketContent(asset,filter)&&(!normalizedQuery || `${asset.title} ${asset.summary} ${asset.assetId}`.toLocaleLowerCase().includes(normalizedQuery))), [catalog, normalizedQuery, filter]);
   const selected = catalog?.items.find(item => item.id === selectedId);
   const loadMore = useRef<HTMLDivElement | null>(null), collection = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -37,7 +38,7 @@ function MarketView({ mode='market',active = true, onAction, source }: MarketPro
   const close = () => { if (history.state?.publicObjectId) history.back(); else { history.replaceState({ panel: 'market', sheet: null }, '', explorer?location.pathname+location.search:'#market'); setSelectedId(null); } };
   return <section><h1>{explorer?'Explore proof objects':'Market'}</h1><p className="page-subtitle">{explorer?'Sealed moments. Public value. Connected history.':'Put your value to work.'}</p>
     <label className="search-field"><Search size={19} /><input placeholder={explorer?'Search proof objects':'Search assets or currencies'} value={query} onChange={event => setQuery(event.target.value)} aria-label={explorer?'Search proof objects':'Search assets or currencies'} /></label>
-    <div className="filters">{labels.map(label => <button key={label} className={filter === label ? 'active' : ''} aria-pressed={filter === label} onClick={() => setFilter(label)}>{label}</button>)}</div>
+    <div className="filters" role="group" aria-label="Asset categories">{MARKET_CONTENT_FILTERS.map(label => <button key={label} className={filter === label ? 'active' : ''} aria-pressed={filter === label} onClick={() => setFilter(label)}>{label}</button>)}</div>
     <div className="market-source-status"><span role="status">{sourceLabel}</span><button className="icon-button" onClick={() => void refresh()} aria-label="Refresh public Market"><RefreshCw size={15} /></button></div>
     {error && <p className="body-copy small-copy market-error" role="status">{localPricing?'Collection refresh is unavailable. Retained pricing inputs continue at the live Kai pulse.':error}{catalog&&!localPricing ? ' Your last public collection remains available.' : ''}</p>}
     <div className="market-layout"><div><MarketOverview catalog={catalog} historyCatalog={historyCatalog} active={active} onExplore={() => collection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />

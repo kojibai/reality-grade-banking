@@ -32,7 +32,7 @@ it('resolves only a bounded public post coordinate to its read-only Moment carri
 it('reads only public GET data and never forwards cookies or bearer authority', async () => {
   const coordinate='/v/20261018_1200/AB12CD34/14700000#material=rmc1%3A'+'c'.repeat(64);
   const livePulseSeed={kind:'sigil',claimPulse:14700000,beat:2,stepIndex:3,creatorVerified:true,kaiSignature:'alice',userPhiKey:'public-object-model'};
-  const fetchSource = vi.fn(async () => new Response(JSON.stringify({ ok: true, transport: { generatedAt: 'now', publicMembership: {}, wallet: { private: true }, publicOriginals: [{ id: 'a', receizId: 'a', title: 'A', pulse:'14700000',livePulseSeed:{...livePulseSeed,unrelated:'omit-this-field'}, profileOriginal: { longForm: { text: 'Full work' }, media: { originalDownloadSrc: '/api/profile/originals/download?receizId=a&kind=original',material:{sealedArtifactSha256Hex:'d'.repeat(64),proofObjectUrl:coordinate} } } }] } }), { headers: { 'Content-Type': 'application/json' } }));
+  const fetchSource = vi.fn(async () => new Response(JSON.stringify({ ok: true, transport: { generatedAt: 'now', publicMembership: {}, wallet: { private: true }, publicOriginals: [{ id: 'a', receizId: 'a', title: 'A', pulse:'14700000',livePulseSeed:{...livePulseSeed,unrelated:'omit-this-field'}, profileOriginal: { longForm: { text: 'Full work' }, media: { kind:'audio',originalDownloadSrc: '/api/profile/originals/download?receizId=a&kind=original',material:{sealedArtifactSha256Hex:'d'.repeat(64),proofObjectUrl:coordinate} } } }] } }), { headers: { 'Content-Type': 'application/json' } }));
   vi.stubGlobal('fetch', fetchSource);
   let body = '', status = 0;
   const res = { setHeader: vi.fn(), writeHead: (code: number) => { status = code; }, end: (bytes: Uint8Array) => { body = new TextDecoder().decode(bytes); } } as unknown as ServerResponse;
@@ -43,6 +43,7 @@ it('reads only public GET data and never forwards cookies or bearer authority', 
   expect(JSON.stringify(options[1])).not.toContain('secret'); expect(body).not.toContain('Full work'); expect(body).not.toContain('wallet');
   expect(JSON.parse(body).transport.publicOriginals[0].profileOriginal.media.material).toEqual({sealedArtifactSha256Hex:'d'.repeat(64),originalArtifactSrc:'https://receiz.com/api/proof-material/packages/'+'c'.repeat(64)+'/artifact'});
   expect(JSON.parse(body).transport.publicOriginals[0].livePulseSeed).toEqual(livePulseSeed);
+  expect(JSON.parse(body).transport.publicOriginals[0].profileOriginal.mediaKind).toBe('audio');
   expect(body).not.toContain('omit-this-field');
 });
 it.each(['original','record'])('relays complete %s carrier bytes without interpreting them as discovery JSON',async(kind)=>{
