@@ -118,7 +118,7 @@ it('removes the opening surface as soon as entry returns to the landing state', 
   expect(button('Enter').disabled).toBe(false);
 });
 
-it('uses a separate full-screen surface only for explicit opening and keeps device resume free of the opening animation', () => {
+it('keeps the entrance artwork visible during cold restore and removes it immediately when restoration finishes', () => {
   render({ busy: true, openingStage: 'history' });
   expect(host.querySelector('.account-opening-screen')).not.toBeNull();
   expect(host.querySelector('.identity-entrance')?.hasAttribute('hidden')).toBe(true);
@@ -126,9 +126,11 @@ it('uses a separate full-screen surface only for explicit opening and keeps devi
   expect(host.querySelector('.account-opening-brand, .account-opening-footnote')).toBeNull();
   expect(host.querySelector('.account-opening-status')?.classList.contains('sr-only')).toBe(true);
   render({ opening: true, openingStage: 'history' });
-  expect(host.querySelector('.account-opening')).toBeNull();
-  expect(host.querySelector('[role=progressbar]')).toBeNull();
+  expect(host.querySelector('.account-opening-screen[data-entry=resume] svg')).not.toBeNull();
+  expect(host.querySelector('[role=status]')?.textContent).toContain('Restoring your saved account');
+  expect(host.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow')).toBe('1');
   expect(host.querySelector('.identity-entrance')?.hasAttribute('hidden')).toBe(true);
   render();
+  expect(host.querySelector('.account-opening-screen')).toBeNull();
   expect(host.querySelector('.identity-entrance')?.hasAttribute('hidden')).toBe(false);
 });

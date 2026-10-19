@@ -23,7 +23,9 @@ for (const entry of manifest.resources) {
   assert.equal(bytes.length, entry.bytes, entry.url);
   assert.equal(createHash('sha256').update(bytes).digest('hex'), entry.sha256, entry.url);
 }
-const navigation = JSON.parse((await readFile('dist/index.html', 'utf8')).match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)[1]);
+const index = await readFile('dist/index.html', 'utf8');
+for (const match of index.matchAll(/<link rel="apple-touch-startup-image" href="([^"]+)"/g)) assert.ok(shell.includes(match[1]), `Missing offline launch image ${match[1]}`);
+const navigation = JSON.parse(index.match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)[1]);
 for (const path of Object.keys(navigation.pages)) assert.equal(manifest.pages[path], path, `Missing offline public route ${path}`);
 console.log(`Verified complete offline build ${manifest.version}: ${shell.length} exact public resources, final public routes, lazy decoder and safe waiting updates.`);
 

@@ -1,7 +1,7 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { openingShellHtml } from './opening-shell.mjs';
+import { buildLaunchImages } from './build-launch-images.mjs';
 import { learnAssets } from './learn-assets.mjs';
 import { learnHome, learnArticle } from './learn-template.mjs';
 import { accountNoticePages } from './account-notice-pages.mjs';
@@ -50,12 +50,12 @@ let bankHtml;
 const publicPages = {};
 const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' });
 try {
-  const { Entrance } = await server.ssrLoadModule('/src/features/identity/Entrance.tsx');
+  const { AccountOpening } = await server.ssrLoadModule('/src/features/identity/AccountOpening.tsx');
   const { BANK_READ_CONSENT, BANK_READ_SCOPES } = await server.ssrLoadModule('/src/receiz/config.ts');
   pages.push(...accountNoticePages(BANK_READ_CONSENT, BANK_READ_SCOPES), realityGradePage, valueExplainerPage);
   const html = await readFile('dist/index.html', 'utf8');
-  const entrance = renderToStaticMarkup(createElement(Entrance, { opening: false, busy: false, error: null, onCreate: async () => {}, onImport: async () => {} }));
-  bankHtml = html.replace('<div id="root"></div>', `<div id="root">${entrance}</div><noscript><p style="text-align:center">Enable JavaScript to open your account. You can read the <a href="/learn/">public bank guides</a> without JavaScript.</p></noscript>`);
+  const launchImages = await buildLaunchImages('dist', AccountOpening);
+  bankHtml = openingShellHtml(html, AccountOpening).replace('</head>', launchImages + '</head>');
 } finally { await server.close(); }
 for (const page of pages) {
   const path = `/learn/${page.slug ? page.slug + '/' : ''}`, url = origin + path;
@@ -69,7 +69,17 @@ const bankStyles = [...bankHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^"]
 const bankHead = bankHtml.match(/<head>([\s\S]+)<\/head>/)[1];
 const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify({ pages: publicPages, bank: { head: bankHead, entry: bankEntry, styles: bankStyles } }).replaceAll('<', '\\u003c')}</script>`;
 await writeFile('dist/learn/learn.css', publicCss);
-await writeFile('dist/index.html', bankHtml.replace('</head>', `<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>', `${bundle}</body>`));
+let entryHtml = bankHtml.replace('</head>', `<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>', `${bundle}</body>`);
+// The initial entrance must paint even while a deployment's CSS URLs are slow.
+// Embed the exact emitted styles, so the settled account also has its styles
+// before React can publish it. Navigation still retains the original CSS URLs.
+for (const match of [...entryHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g)]) {
+  const resource = new URL(match[1], origin);
+  if (resource.origin !== origin || !/^\/(?:assets|learn)\/[\w.-]+\.css$/.test(resource.pathname)) throw Error('ENTRY_STYLESHEET_INVALID');
+  const css = await readFile('dist' + resource.pathname, 'utf8');
+  entryHtml = entryHtml.replace(match[0], `<style data-bank-stylesheet="${escape(match[1])}">${css}</style>`);
+}
+await writeFile('dist/index.html', entryHtml);
 for (const [path, page] of Object.entries(publicPages)) {
   await mkdir(`dist${path}`, { recursive: true });
   await writeFile(`dist${path}index.html`, `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`);

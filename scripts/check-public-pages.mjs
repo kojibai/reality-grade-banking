@@ -1,8 +1,20 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
+import { phoneLaunchTargets } from './build-launch-images.mjs';
 const html = await readFile('dist/index.html', 'utf8'), image = await readFile('dist/receiz-bank-share.png');
-assert.match(html, /<h1[^>]*>Your value\./);
+assert.match(html, /<div id="root"><div class="account-opening account-opening-screen"[^>]*data-entry="resume"/);
+assert.match(html, /id="bankeiz-opening-critical"/);
+assert.ok(html.includes('<svg class="account-opening-geometry"'), 'The first document carries its entrance artwork.');
+assert.ok(html.includes('<noscript>') && html.includes('Enable JavaScript to open your account.'));
+assert.ok(!/<link rel="stylesheet"/.test(html), 'The entrance must not wait on render-blocking stylesheet requests.');
+for (const target of phoneLaunchTargets()) {
+  assert.ok(html.includes(`href="${target.url}" media="${target.media}"`), 'iOS has an exact launch image media query.');
+  const png = await readFile('dist' + target.url);
+  const [width,height] = target.orientation === 'portrait' ? [target.width,target.height] : [target.height,target.width];
+  assert.equal(png.readUInt32BE(16), width * target.scale);
+  assert.equal(png.readUInt32BE(20), height * target.scale);
+}
 assert.match(html, /property="og:image" content="https:\/\/bankeiz\.com\/receiz-bank-share\.png"/);
 assert.match(html, /name="twitter:card" content="summary_large_image"/);
 assert.match(html, /rel="canonical" href="https:\/\/bankeiz\.com\/"/);
@@ -10,11 +22,8 @@ assert.equal(image.readUInt32BE(16), 1730); assert.equal(image.readUInt32BE(20),
 const sitemap = await readFile('dist/sitemap.xml', 'utf8');
 for (const [slug, section] of [['account-access', 'account-access'], ['signing-key', 'device-held-signing']]) {
   const notice = await readFile(`dist/learn/${slug}/index.html`, 'utf8');
-  assert.ok(html.includes(`href="/learn/${slug}/"`), `Entrance must link to the ${slug} explanation`);
   assert.ok(notice.includes(`id="${section}"`), `The ${slug} link must resolve to its exact section`);
 }
-assert.ok(html.includes('By continuing, you authorize'));
-assert.ok(!html.includes('By creating or opening your ID, you approve the following:'));
 for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/', 'account-access/', 'signing-key/', 'reality-grade-banking/']) {
   const page = await readFile(`dist/learn/${path}index.html`, 'utf8');
   assert.ok(page.includes(`<link rel="canonical" href="https://bankeiz.com/learn/${path}">`));
@@ -87,4 +96,4 @@ for (const rail of ['reserve', 'settlement']) {
   assert.ok(!note.includes(Buffer.from('receiz.bank.note')), 'Learn specimens must not contain issued proof payloads');
 }
 assert.ok(!learn.includes('still being connected'));
-console.log('Share image, static metadata, prerendered entrance, canonical public guides and account notices, structured data, sitemap, robots and QR lazy loading verified.');
+console.log('Share image, static metadata, inline entrance, iPhone launch artwork, canonical public guides and account notices, structured data, sitemap, robots and QR lazy loading verified.');

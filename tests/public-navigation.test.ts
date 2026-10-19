@@ -4,16 +4,18 @@ import { expect, it, vi } from 'vitest';
 const source = '// All public guides' + readFileSync('public/learn/learn.js', 'utf8').split('// All public guides')[1];
 it('switches guides and returns to the same mounted bank DOM without a document reload', async () => {
   document.body.innerHTML = '<div id="root"><input value="retained input"><a href="/learn/">Learn</a></div>';
+  const entryStyle = document.createElement('style'); entryStyle.dataset.bankStylesheet = '/assets/bank.css'; entryStyle.textContent = '.console{color:navy}'; document.head.append(entryStyle);
   const root = document.getElementById('root'), input = root!.querySelector('input'), originalDocument = document;
   const data = document.createElement('script'); data.id = 'receiz-navigation'; data.type = 'application/json';
   const header = '<a class="skip-link" href="#main">Skip to content</a><header class="learn-header"><a class="learn-brand" href="/learn/">Bankeiz</a><a href="/learn/#guides">Guides</a></header>';
   const sharedHead = '<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="/icon.svg">';
-  data.textContent = JSON.stringify({ pages: { '/learn/': { content: header + '<main id="main"><h1>Learn</h1></main><a href="/learn/guide/">Guide</a><a href="/legal/">Legal notices</a><a href="/">Enter bank</a>', head: sharedHead + '<title>Learn title</title><link rel="canonical" href="https://bank.receiz.com/learn/">' }, '/learn/guide/': { content: header + '<main id="main"><h1 id="guide-heading">Guide</h1></main><a href="/learn/">All guides</a>', head: sharedHead + '<title>Guide title</title>' }, '/legal/': { content: header + '<main id="main"><h1>Legal notices</h1><a href="/learn/">All guides</a></main>', head: sharedHead + '<title>Legal title</title><meta name="robots" content="noindex,follow">' } }, bank: { head: '<title>Bank title</title><meta name="viewport" content="width=device-width,viewport-fit=cover"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icon-192.png">', styles: [], entry: '/unused.js' } }); document.body.append(data);
+  data.textContent = JSON.stringify({ pages: { '/learn/': { content: header + '<main id="main"><h1>Learn</h1></main><a href="/learn/guide/">Guide</a><a href="/legal/">Legal notices</a><a href="/">Enter bank</a>', head: sharedHead + '<title>Learn title</title><link rel="canonical" href="https://bank.receiz.com/learn/">' }, '/learn/guide/': { content: header + '<main id="main"><h1 id="guide-heading">Guide</h1></main><a href="/learn/">All guides</a>', head: sharedHead + '<title>Guide title</title>' }, '/legal/': { content: header + '<main id="main"><h1>Legal notices</h1><a href="/learn/">All guides</a></main>', head: sharedHead + '<title>Legal title</title><meta name="robots" content="noindex,follow">' } }, bank: { head: '<title>Bank title</title><meta name="viewport" content="width=device-width,viewport-fit=cover"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icon-192.png">', styles: ['/assets/bank.css'], entry: '/unused.js' } }); document.body.append(data);
   history.replaceState({}, '', '/#market'); const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
   // Execute only the production public router; private runtime import is never reached in this warm-account test.
   new Function('window', 'document', 'location', 'history', 'scrollTo', 'Event', 'URL', source)(window, document, location, history, scroll, Event, URL);
   root!.querySelector('a')!.click();
   expect(location.pathname).toBe('/learn/'); expect(document.title).toBe('Learn title'); expect(root!.hidden).toBe(true);
+  expect(entryStyle.media).toBe('not all');
   const mountedHeader = document.querySelector('.learn-header'), brand = document.querySelector('.learn-brand'), viewport = document.querySelector('meta[name="viewport"]'), icon = document.querySelector('link[rel="icon"]');
   mountedHeader!.classList.add('scrolled');
   const headChanges: MutationRecord[] = [];
@@ -39,6 +41,8 @@ it('switches guides and returns to the same mounted bank DOM without a document 
   expect(document.querySelector('meta[name="robots"]')).toBeNull();
   document.querySelector<HTMLAnchorElement>('#public-learn-root a[href="/"]')!.click();
   expect(location.hash).toBe('#market'); expect(root!.hidden).toBe(false); expect(document.title).toBe('Bank title'); expect(document.querySelector('link[rel="manifest"]')).not.toBeNull(); expect(document.querySelector('meta[name="viewport"]')?.getAttribute('content')).toContain('viewport-fit=cover'); expect(root!.querySelector('input')).toBe(input); expect(input!.value).toBe('retained input');
+  expect(entryStyle.media).toBe('all');
+  expect(document.querySelector('link[href="/assets/bank.css"]')).toBeNull();
   input!.focus();
   root!.querySelector('a')!.click();
   expect(location.pathname).toBe('/learn/'); expect(document.activeElement).toBe(document.querySelector('main')); expect(document.querySelector('.learn-header')).toBe(mountedHeader);

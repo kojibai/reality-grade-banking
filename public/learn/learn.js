@@ -108,6 +108,8 @@
   };
   const styles = on => {
     for (const url of bank.styles) {
+      const embedded = [...document.head.querySelectorAll('style[data-bank-stylesheet]')].find(item => item.dataset.bankStylesheet === url);
+      if (embedded) { embedded.media = on ? 'all' : 'not all'; continue; }
       let link = [...document.head.querySelectorAll('link[rel="stylesheet"]')].find(item => item.getAttribute('href') === url);
       if (!link && on) { link = document.createElement('link'); link.rel = 'stylesheet'; link.href = url; document.head.append(link); }
       if (link) link.disabled = !on;

@@ -70,3 +70,43 @@ credentials. A fresh real-device attempt after deployment can distinguish
 still requires actual compatible device evidence and disconnected create →
 send → deposit → credit → spend tests. No such real-device financial test was
 performed by the agent, and production financial selection is unchanged.
+
+## Safari/PWA evidence review
+
+The browser path already sends the original `attestationObject`,
+`clientDataJSON`, credential public-key material, transports, attachment and
+client extension results through the exact Bankeiz challenge ticket. Verified
+assertions then bind the custody key and RP to the exact previous head,
+receiver, value and successor. Adding another copy of these bindings cannot
+create a missing irreversible device state.
+
+| Browser evidence | What it establishes | Remaining boundary |
+| --- | --- | --- |
+| WebAuthn challenge, RP hash, origin, signature and user-verification flag | The enrolled key approved the bound operation in the expected realm | Does not itself establish non-exportability or retirement of the previous state |
+| Vendor attestation and signed backup flags | Provenance and credential backup properties, when trusted and actually supplied | `none` is not vendor attestation; single-device support must be verified |
+| Signature counter | The assertion's authenticator sequence, if implemented | v129 requires both qualification assertions and each consumption to advance by exactly one; missing, repeated or advanced counts still fail |
+| PRF extension, if supported and requested | A credential-bound derivation useful for encryption | Re-evaluating the same input can reproduce the output; it does not prove one-time consumption |
+| `largeBlob`, if supported and requested | Opaque data stored with a credential | The interface permits rewriting; a successful write is not a verified compare-and-consume or rollback-proof retirement receipt |
+| IndexedDB, OPFS, persistent-storage requests and Web Locks | Local retention and coordination between cooperating app contexts | Browser-controlled state does not supply an independent attested rollback anchor |
+| PWA installation and feature-capability advertisements | Application presentation and advertised API support | Neither qualifies a financial custody profile |
+
+Sources: [WebAuthn Level 3](https://www.w3.org/TR/webauthn-3/), sections 6.1.1,
+6.1.3, 10.1.4 and 10.1.5; [Safari 18 PRF support](https://webkit.org/blog/15865/webkit-features-in-safari-18-0/).
+The PRF/largeBlob conclusions are protocol analysis of those interfaces, not
+a claim that extensions were captured from this user's iPhone. No device
+counter, backup flags or current attestation format can be recovered from the
+earlier screenshot alone.
+
+Apple's [managed passkey attestation configuration](https://support.apple.com/guide/deployment/depd218e61b5/web)
+requires device-management enrollment and an attestation identity. It is not a
+consumer Safari preference, and its availability alone does not establish the
+single-device and exact-counter requirements. An external authenticator would
+also require a deliberately supported attachment path and real qualification;
+the current adapter selects platform credentials. Neither route is silently
+enabled or represented as qualified here.
+
+The current review establishes no additional consumer Safari/PWA evidence that
+can safely replace the missing v129 custody evidence. Registration must remain
+unqualified until an actual browser-accessible device path passes the existing
+checks. No native app, new custody certificate, counter relaxation, delayed
+double-spend acceptance, or online-only substitute is introduced by this work.

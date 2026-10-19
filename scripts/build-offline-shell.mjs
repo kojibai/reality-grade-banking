@@ -37,6 +37,9 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   // Retain every lazy module so its verifier/replay also opens offline.
   for (const name of await readdir(resolve(root, 'learn'))) if (/^value-explainer-(?:main|chunk)-[A-Za-z0-9]+\.js$/.test(name)) urls.add('/learn/' + name);
   const index = await readFile(resolve(root, 'index.html'), 'utf8');
+  // Retain the exact launch artwork referenced by this document for cold PWA
+  // opens after installation. These are public assets, never custody evidence.
+  for (const match of index.matchAll(/<link rel="apple-touch-startup-image" href="(\/launch\/[\w-]+\.png)"/g)) urls.add(match[1]);
   const navigation = JSON.parse(index.match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)?.[1] ?? 'null');
   if (!navigation?.pages) throw Error('OFFLINE_FINAL_NAVIGATION_REQUIRED');
   const pages = { '/': '/index.html', '/index.html': '/index.html', '/receipt/':'/index.html' };

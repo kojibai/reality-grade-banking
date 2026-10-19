@@ -14,11 +14,14 @@ it('versions complete final pages and fixed-path native resources and includes l
     await mkdir(join(dir, 'verify')); await writeFile(join(dir, 'verify/index.html'), 'public verifier'); await writeFile(join(dir, 'assets/verify.js'), 'verify');
     await writeFile(join(dir, 'assets/bank.js'), 'bank'); await writeFile(join(dir, 'assets/qr-decoder.js'), 'qr'); await writeFile(join(dir, 'assets/conformance.js'), 'console');
     const pages = { '/learn/': { content: 'Learn' }, '/legal/': { content: 'Legal' } };
-    await writeFile(join(dir, 'index.html'), `<script id="receiz-navigation" type="application/json">${JSON.stringify({ pages })}</script>`);
+    await mkdir(join(dir, 'launch'));
+    await writeFile(join(dir, 'launch/iphone-402-874-3-portrait.png'), 'launch artwork');
+    await writeFile(join(dir, 'index.html'), `<link rel="apple-touch-startup-image" href="/launch/iphone-402-874-3-portrait.png" media="screen"><script id="receiz-navigation" type="application/json">${JSON.stringify({ pages })}</script>`);
     for (const name of ['learn', 'legal']) { await mkdir(join(dir, name)); await writeFile(join(dir, name, 'index.html'), name); }
     const native = '/native/test-runtime.mjs'; await mkdir(join(dir, 'native')); await writeFile(join(dir, native), 'native A');
     const first = await buildOfflineShell(dir, { fixed: [native] });
     expect(first.resources.some((v: { url: string }) => v.url === '/assets/qr-decoder.js')).toBe(true);
+    expect(first.resources.some((v: { url: string }) => v.url === '/launch/iphone-402-874-3-portrait.png')).toBe(true);
     expect(first.resources.some((v: { url: string }) => v.url.includes('conformance'))).toBe(false);
     expect(first.pages).toMatchObject({ '/learn/': '/learn/', '/legal/': '/legal/' });
     expect(first.pages).toMatchObject({ '/verify/': '/verify/', '/verify': '/verify/' });

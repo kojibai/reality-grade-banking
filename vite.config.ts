@@ -8,10 +8,15 @@ import { publicNetworkPlugin } from './server/public-network';
 import {publicLedgerProofPlugin} from './server/public-ledger-proof';
 import {valueExplainerDevPlugin} from './scripts/value-explainer-assets.mjs';
 import { accountProofPublicPlugin } from './server/account-proof-public';
+import { openingShellHtml } from './scripts/opening-shell.mjs';
 
 export default defineConfig({
   test: { include: ['tests/**/*.test.{ts,tsx}'], environmentOptions: { happyDOM: { settings: { disableIframePageLoading: true } } } },
-  plugins: [{name:'bankeiz-opaque-ledger-seed',configureServer(server){server.middlewares.use((req,_res,next)=>{if(req.url==='/receiz-public-ledger.json.gz')req.url='/receiz-public-ledger.json.gz.bin';next();});},configurePreviewServer(server){server.middlewares.use((req,_res,next)=>{if(req.url==='/receiz-public-ledger.json.gz')req.url='/receiz-public-ledger.json.gz.bin';next();});}},react(), valueExplainerDevPlugin(), publicLedgerProofPlugin(), publicMarketPlugin(), publicNetworkPlugin(), nativeAccountPlugin(), accountProofPublicPlugin(), {
+  plugins: [{name:'bankeiz-opening-shell', async transformIndexHtml(html, context) {
+    if (!context.server || !['/', '/index.html'].includes(context.path)) return html;
+    const { AccountOpening } = await context.server.ssrLoadModule('/src/features/identity/AccountOpening.tsx');
+    return openingShellHtml(html, AccountOpening);
+  }}, {name:'bankeiz-opaque-ledger-seed',configureServer(server){server.middlewares.use((req,_res,next)=>{if(req.url==='/receiz-public-ledger.json.gz')req.url='/receiz-public-ledger.json.gz.bin';next();});},configurePreviewServer(server){server.middlewares.use((req,_res,next)=>{if(req.url==='/receiz-public-ledger.json.gz')req.url='/receiz-public-ledger.json.gz.bin';next();});}},react(), valueExplainerDevPlugin(), publicLedgerProofPlugin(), publicMarketPlugin(), publicNetworkPlugin(), nativeAccountPlugin(), accountProofPublicPlugin(), {
     name: 'receiz-receiver-build-provenance',
     resolveId(id) { if (id === 'virtual:receiz-receiver-build') return '\0receiz-receiver-build'; },
     load(id) {
