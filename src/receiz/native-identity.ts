@@ -40,6 +40,7 @@ import {createLocalNoteInventory} from './note-local-inventory';
 import {atNoteStage} from './note-stage';
 import {createReceivingUsernamePreparation,publicAccountUsername} from './receiving-username';
 import {atIdentityCreationStage} from './identity-creation-stage';
+import {certificateTimeSafeStore,certificateTimeSafeFetch} from './device-signer-time';
 
 export interface OpenIdentity {
   prepareAccountView: () => Promise<import('./wallet-observation').WalletObservation>;
@@ -146,7 +147,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   async function ownedSealer() {
     sealingResources ??= await loadBankProofResources(fetch, undefined, lifetime.signal);
     const { createReceizOfflineSealer, createReceizIndexedDbSealStore } = await import('@receiz/sdk/offline');
-    const sealer = createReceizOfflineSealer({ ownerIdentityAdmission: admission, store: createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer'), resources: sealingResources, fetch: heldFetch });
+    const sealer = createReceizOfflineSealer({ ownerIdentityAdmission: admission, store: certificateTimeSafeStore(createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer')), resources: sealingResources, fetch: certificateTimeSafeFetch(heldFetch) });
     await sealer.enroll(); return sealer;
   }
   let transportKeyFile = keyFile, transportPhrase = phrase, transportBytes = bytes, transportBinding = binding;
@@ -1007,7 +1008,8 @@ export async function createNativeIdentity(consentApproved: boolean): Promise<Op
   const sdk = await loadReceiz();
   const resources = await atIdentityCreationStage('proof-resources',()=>loadBankProofResources(fetch));
   const { createReceizOfflineSealer, createReceizIndexedDbSealStore } = await import('@receiz/sdk/offline');
-  const sealer = createReceizOfflineSealer({ store: createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer'), resources, fetch: nativeFetch });
+  const signerStore=certificateTimeSafeStore(createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer'));
+  const sealer = createReceizOfflineSealer({ store: signerStore, resources, fetch: certificateTimeSafeFetch(nativeFetch) });
   await atIdentityCreationStage('device-signer',()=>sealer.enroll());
   // v129's onboarding sealer requires protected bootstrap custody. This secret
   // stays internal; the actual user-held download is sealed with the same key
@@ -1020,7 +1022,7 @@ export async function createNativeIdentity(consentApproved: boolean): Promise<Op
   const protectedKey = await sdk.readReceizIdentityArtifact(protectedSeal.artifactBytes);
   const initializedKey = await atIdentityCreationStage('account-genesis',()=>initializeFreshBankAccount(protectedKey, protectionSecret));
   const portableKey = await unprotectIdentityKeyFile(initializedKey, protectionSecret);
-  const owned = createReceizOfflineSealer({ ownerIdentityAdmission: admission, store: createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer'), resources, fetch: nativeFetch });
+  const owned = createReceizOfflineSealer({ ownerIdentityAdmission: admission, store: signerStore, resources, fetch: certificateTimeSafeFetch(nativeFetch) });
   const sealed = await atIdentityCreationStage('portable-identity',()=>owned.seal({ bytes: new TextEncoder().encode(sdk.serializeReceizIdentityArtifact(portableKey)), filename: 'identity.receizkey', mimeType: 'application/json' }));
   const identity = await openCanonicalIdentity(sealed.artifactBytes, '', sealed.filename, true, { bytes: new Uint8Array(protectedSeal.artifactBytes), phrase: protectionSecret });
   if (identity.needsPhrase || identity.binding.keyId !== protectedBinding.keyId || identity.binding.artifactOwnerReceizId !== protectedBinding.artifactOwnerReceizId) { identity.dispose(); throw new Error('The self-contained Identity Seal did not preserve its original identity.'); }
