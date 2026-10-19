@@ -55,7 +55,7 @@ it('reports completed entry checkpoints without presenting time or byte percenta
   expect(host.querySelector('[role=status]')?.textContent).not.toContain('Preparing your identity');
   expect(host.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow')).toBe('1');
   expect(host.querySelector('[role=progressbar]')?.getAttribute('aria-valuetext')).toContain('Identity preparation finished');
-  expect(host.querySelector('.account-opening-progress-caption')?.textContent).toBe('IdentityAccount');
+  expect(host.querySelector('.account-opening-progress')?.getAttribute('aria-valuenow')).toBe('1');
 });
 
 it('marks both checkpoints complete only when the supplied account stage is ready', () => {
@@ -122,7 +122,9 @@ it('uses a separate full-screen surface only for explicit opening and keeps devi
   render({ busy: true, openingStage: 'history' });
   expect(host.querySelector('.account-opening-screen')).not.toBeNull();
   expect(host.querySelector('.identity-entrance')?.hasAttribute('hidden')).toBe(true);
-  expect(host.querySelector('.account-opening-screen .wordmark')?.textContent).toContain('Bankeiz');
+  expect(host.querySelector('.account-opening-portal')).not.toBeNull();
+  expect(host.querySelector('.account-opening-brand, .account-opening-footnote')).toBeNull();
+  expect(host.querySelector('.account-opening-status')?.classList.contains('sr-only')).toBe(true);
   render({ opening: true, openingStage: 'history' });
   expect(host.querySelector('.account-opening')).toBeNull();
   expect(host.querySelector('[role=progressbar]')).toBeNull();
