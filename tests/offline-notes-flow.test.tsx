@@ -4,8 +4,25 @@ import { createRoot } from 'react-dom/client';
 import { expect, test, vi } from 'vitest';
 import { OfflineNotes } from '../src/features/notes/OfflineNotes';
 import type { OpenIdentity } from '../src/receiz/native-identity';
+import { createBankNoteAttestationFetch } from '../src/receiz/note-attestation-transport';
+import { unattestedResponse } from './fixtures/note-registration';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const click = (host: HTMLElement, label: string) => [...host.querySelectorAll('button')].find(b => b.textContent?.includes(label))!.click();
+test('shows the actual browser format in failed registration details without exposing or altering its credential', async () => {
+ const origin='https://bankeiz.com',challenge='a'.repeat(43),route='/api/wallet/notes/custody/attestation';
+ const request=vi.fn().mockResolvedValueOnce({ok:true,origin,rpId:'bankeiz.com',challengeB64u:challenge,ticket:'never-display-ticket'}).mockRejectedValueOnce(new Error('OFFLINE_NOTE_CUSTODY_ATTESTATION_FORMAT_UNSUPPORTED'));
+ const transport=createBankNoteAttestationFetch({origin,request}),refresh=vi.fn();
+ const identity={offlineNotes:async()=>({pending:async()=>null,create:async()=>{await transport(route);return transport(route,{method:'POST',body:JSON.stringify({challengeB64u:challenge,response:unattestedResponse()})});}})} as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try {
+  await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={refresh}/>));
+  act(()=>click(host,'Review note'));await act(async()=>click(host,'Create funded note'));
+  const details=host.querySelector<HTMLDetailsElement>('.note-registration-details');
+  expect(details?.textContent).toContain('Attestation formatnone');expect(details?.textContent).toContain('Registration counter0');
+  expect(details?.textContent).toContain('Backup eligibleYes');expect(details?.textContent).toContain('registration not qualified');expect(details?.open).toBe(false);
+  expect(host.textContent).not.toContain('never-display');expect(host.textContent).not.toContain('Your note is ready.');expect(refresh).not.toHaveBeenCalled();
+ } finally {act(()=>root.unmount());}
+});
 test.each([
  ['OFFLINE_NOTE_PLATFORM_ATTESTATION_ISSUER_UNAVAILABLE', /registration service.*unavailable/i],
  ['OFFLINE_NOTE_CUSTODY_CEREMONY_CANCELLED', /registration was cancelled/i],

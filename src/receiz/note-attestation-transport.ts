@@ -1,4 +1,5 @@
 import { bankNoteRpId } from './config';
+import { rememberNoteRegistrationEvidence } from './note-registration-evidence';
 type JsonRequest = (path: string, options: { method: 'GET' | 'POST'; body?: Record<string, unknown> }) => Promise<unknown>;
 const CEREMONY = '/api/wallet/notes/custody/attestation';
 const object = (value: unknown): Record<string, unknown> | null => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -30,7 +31,10 @@ export function createBankNoteAttestationFetch(input: { origin: string; request:
     const challenge = typeof body?.challengeB64u === 'string' ? body.challengeB64u : '';
     const held = tickets.get(challenge);
     if (!held || !object(body?.response) || Object.keys(body!).some(key => !['challengeB64u', 'response'].includes(key))) throw new Error('BANK_NOTE_CHALLENGE_RESPONSE_INVALID');
-    const result = await input.request(target, { method: 'POST', body: { challengeB64u: challenge, response: body!.response, ticket: held.value } }); assertOpen();
+    let result: unknown;
+    try { result = await input.request(target, { method: 'POST', body: { challengeB64u: challenge, response: body!.response, ticket: held.value } }); }
+    catch (cause) { assertOpen(); rememberNoteRegistrationEvidence(cause, body!.response); throw cause; }
+    assertOpen();
     tickets.delete(challenge);
     return Response.json(result, { headers: { 'Cache-Control': 'no-store' } });
   };

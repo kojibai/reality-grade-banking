@@ -46,6 +46,33 @@ remove a just-confirmed original. Transfer bounds apply before full allocation.
 
 ## Primitive preserved
 
+### Private activity retention follow-up
+
+Real IndexedDB tests reproduced a wrapping-key collision after removing and
+reimporting the exact same Identity Seal: old display-history ciphertext remained
+at the same artifact/account key, but the reimport held a new encryption key.
+History now has a stable scope for each private-key generation. Existing valid
+legacy history reopens and migrates with its original key. An unreadable legacy
+record remains intact and cannot prevent newly authenticated activity from being
+retained under the new key. Current scoped corruption still refuses; it cannot
+become an empty success or fall back to an older source. Concurrent same-Seal
+imports preserve the current scope inside the identity replacement transaction.
+
+Complete response originals and derived display rows are now separate encrypted,
+content-addressed objects under that scope. Individual objects remain bounded;
+the combined history is no longer restricted to one 8 MiB blob. Display chunks
+are bounded by encoded bytes and record count. Index and object writes commit
+atomically after the existing identity and previous-index checks. Concurrent
+writers preserve the union. A suspended reader retries a changed root when its
+obsolete display chunks have been reclaimed; missing current objects still fail.
+Only obsolete derived display chunks are reclaimed, preserving every original.
+
+The browser fixture covers full originals above 8 MiB combined, 256 unusually
+wide valid records, legacy migration, reimport, active corruption, concurrent
+writes and suspended reads. These reproduce application defects; they do not
+establish which exception occurred on the user's iPhone. No Note custody,
+funding, antirollback guard, SDK version or native runtime was changed.
+
 The original identity and its verified carried state remain identity authority.
 Known local observations paint before transport, without becoming funding or
 spending authority. Public/private display activity remains a projection; it is

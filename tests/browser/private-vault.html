@@ -1,6 +1,7 @@
 <!doctype html><meta charset="utf-8"><title>Isolated bank storage checks</title><h1>Test-only private storage</h1><p>Run on a separate test origin, never your actual bank origin. Uses dummy bytes and observations. Creates no Receiz ID, account, deposit, payment or ownership.</p><button id="run">Run storage checks</button><pre id="output">Ready</pre><script type="module">
 import { saveDeviceIdentity, loadDeviceIdentity, saveProtectedIdentityTransport, saveWalletObservation, loadWalletObservation, restoreKnownWalletObservation, saveDepositSource, loadDepositSources, saveCardOperation, loadCardOperation, loadCardOperations, savePrivateHistoryCache, loadPrivateHistoryCache, forgetDeviceIdentity } from '/src/receiz/identity-vault.ts';
 import { parsePrivateHistoryPage } from '/src/receiz/private-history.ts';
+import { BANK_STORAGE_APPLICATION_ID } from '/src/receiz/config.ts';
 document.querySelector('#run').onclick = async () => {
  const checks=[], assert=(value,label)=>{if(!value)throw Error(label);checks.push(label);};
  try {
@@ -11,20 +12,44 @@ document.querySelector('#run').onclick = async () => {
   const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('receiz-bank-private-custody',3);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
   const row=await new Promise(resolve=>{const r=db.transaction('identity').objectStore('identity').get('current');r.onsuccess=()=>resolve(r.result);}); db.close();
   assert(!row.wrappingKey.extractable&&new TextDecoder().decode(row.bytes)!=='test-only-not-an-identity','Private source is encrypted under non-exportable key');
-  const wallet={userId:'fixture-account',totalUsdCents:'321',reserveUsdCents:'100',settlementUsdCents:'221',balancePhiMicro:'321',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:null,kaiUpulse:null};
+  const wallet={userId:'fixture-account-'+crypto.randomUUID(),totalUsdCents:'321',reserveUsdCents:'100',settlementUsdCents:'221',balancePhiMicro:'321',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:null,kaiUpulse:null};
   await saveWalletObservation(binding,wallet,'2026-10-13T00:00:00Z'); assert((await loadWalletObservation(binding)).wallet.totalUsdCents==='321','Exact read-only observation retained'); assert((await restoreKnownWalletObservation()).wallet.totalUsdCents==='321','Fast paint binds exact source');
   await saveProtectedIdentityTransport(binding,{bytes:new Uint8Array([5,6,7]),phrase:'fixture-protection-only'});
   const protectedSaved=await loadDeviceIdentity();assert(protectedSaved.protectedTransport.bytes.join(',')==='5,6,7'&&protectedSaved.protectedTransport.phrase==='fixture-protection-only','Derived protected transport retained encrypted under the same original');
   assert(new TextDecoder().decode(protectedSaved.bytes)==='test-only-not-an-identity'&&(await loadWalletObservation(binding)).wallet.totalUsdCents==='321','Transport retention preserves exact identity and existing account observation');
   await saveDepositSource(binding,source,'test-only.bin',binding.artifactSha256); assert((await loadDepositSources(binding)).length===1,'Exact private source retained');
   const privatePage=parsePrivateHistoryPage({ok:true,accountUserId:wallet.userId,nextCursor:'fixture-older',events:[{id:'test-only-event',kind:'reserve_credit',createdAt:'2026-10-13T00:00:00Z',amountUsdCents:'100'}]},wallet.userId);
-  await savePrivateHistoryCache(binding,{schema:'bank.private-history-cache.v1',accountUid:wallet.userId,observedAt:'2026-10-13T00:00:00Z',records:privatePage.records,nextCursor:privatePage.nextCursor,pages:[{cursor:null,json:privatePage.sourceJson}]});
+  const firstCache={schema:'bank.private-history-cache.v1',accountUid:wallet.userId,observedAt:'2026-10-13T00:00:00Z',records:privatePage.records,nextCursor:privatePage.nextCursor,pages:[{cursor:null,json:privatePage.sourceJson}]};
+  const openDb=()=>new Promise((resolve,reject)=>{const r=indexedDB.open('receiz-bank-private-custody',3);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+  const legacyKey=`private-history|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|${wallet.userId}`,legacyIv=crypto.getRandomValues(new Uint8Array(12)),legacyBytes=await crypto.subtle.encrypt({name:'AES-GCM',iv:legacyIv,additionalData:new TextEncoder().encode(legacyKey)},row.wrappingKey,new TextEncoder().encode(JSON.stringify(firstCache)));
+  const legacyDb=await openDb();await new Promise((resolve,reject)=>{const tx=legacyDb.transaction('operations','readwrite');tx.objectStore('operations').put({key:legacyKey,iv:legacyIv,bytes:legacyBytes},legacyKey);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});legacyDb.close();
+  assert((await loadPrivateHistoryCache(binding,wallet.userId)).pages[0].json===privatePage.sourceJson,'Legacy complete history reopens under its original encryption key');
+  await savePrivateHistoryCache(binding,firstCache);
   assert((await loadPrivateHistoryCache(binding,wallet.userId)).records[0].sourceId==='test-only-event','Encrypted private history reopens for the bound account');
   const fullPage=id=>parsePrivateHistoryPage({ok:true,accountUserId:wallet.userId,nextCursor:null,events:[{id,kind:'transfer',createdAt:'2026-10-13T00:00:00Z',direction:'out',amountPhiMicro:'400000',valueReceipt:{schema:'test-only',original:id}}]},wallet.userId);
   const cacheFor=page=>({schema:'bank.private-history-cache.v1',accountUid:wallet.userId,observedAt:'2026-10-13T01:00:00Z',records:page.records,nextCursor:null,pages:[{cursor:null,json:page.sourceJson}]});
   await Promise.all([savePrivateHistoryCache(binding,cacheFor(fullPage('page-a'))),savePrivateHistoryCache(binding,cacheFor(fullPage('page-b')))]);
   const complete=await loadPrivateHistoryCache(binding,wallet.userId);
   assert(complete.pages.length===3&&complete.pages.map(page=>JSON.parse(page.json)).filter(page=>page.events[0].valueReceipt).every(page=>page.events[0].amountPhiMicro==='400000'&&page.events[0].direction==='out'),'Concurrent history writes preserve complete original pages and financial fields');
+  const largePage=id=>parsePrivateHistoryPage({ok:true,accountUserId:wallet.userId,nextCursor:null,events:[{id,kind:'transfer',createdAt:'2026-10-13T00:00:00Z',amountPhiMicro:'9007199254740993',proofObject:{fixture:'complete retained original',payload:'x'.repeat(4*1024*1024)}}]},wallet.userId);
+  const largeA=largePage('large-page-a'),largeB=largePage('large-page-b');
+  await savePrivateHistoryCache(binding,cacheFor(largeA));await savePrivateHistoryCache(binding,cacheFor(largeB));
+  const reopenedLarge=await loadPrivateHistoryCache(binding,wallet.userId);
+  assert(reopenedLarge.pages.some(page=>page.json===largeA.sourceJson)&&reopenedLarge.pages.some(page=>page.json===largeB.sourceJson),'Complete originals larger than one cache blob reopen without dropping bytes');
+  const integrityDb=await openDb(),current=await new Promise(resolve=>{const r=integrityDb.transaction('identity').objectStore('identity').get('current');r.onsuccess=()=>resolve(r.result);}),currentKey=legacyKey+'|'+current.privateHistoryScopeId;
+  const indexRow=await new Promise(resolve=>{const r=integrityDb.transaction('operations').objectStore('operations').get(currentKey);r.onsuccess=()=>resolve(r.result);});
+  const changed=new Uint8Array(indexRow.bytes.slice(0));changed[0]^=1;
+  await new Promise((resolve,reject)=>{const tx=integrityDb.transaction('operations','readwrite');tx.objectStore('operations').put({...indexRow,bytes:changed.buffer},currentKey);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+  let corruptRefused=false;try{await loadPrivateHistoryCache(binding,wallet.userId);}catch{corruptRefused=true;}assert(corruptRefused,'Current-key corruption cannot fall back to an older cache or become empty success');
+  await new Promise((resolve,reject)=>{const tx=integrityDb.transaction('operations','readwrite');tx.objectStore('operations').put(indexRow,currentKey);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});integrityDb.close();
+  const decrypt=crypto.subtle.decrypt;let releaseRead,markPaused,paused=false;const readGate=new Promise(resolve=>releaseRead=resolve),readerPaused=new Promise(resolve=>markPaused=resolve);
+  crypto.subtle.decrypt=function(algorithm,...args){const result=decrypt.call(this,algorithm,...args);if(!paused&&new TextDecoder().decode(algorithm.additionalData)==currentKey){paused=true;markPaused();return result.then(async clear=>{await readGate;return clear;});}return result;};
+  try{const reading=loadPrivateHistoryCache(binding,wallet.userId);await readerPaused;await savePrivateHistoryCache(binding,cacheFor(fullPage('racing-snapshot')));releaseRead();const raced=await reading;assert(raced.records.some(record=>record.sourceId==='racing-snapshot'),'A suspended reader follows the current snapshot when another tab replaces display chunks');}finally{releaseRead();crypto.subtle.decrypt=decrypt;}
+  const wideFields=['sourceObservedAt','seq','actionScope','chakraDay','objectId','objectLabel','assetId','marketItemId','collectibleId','receizId','claimHash','noteId','sortKaiPulse','sortOrdinal','transactionLinkKind','actorKaiSignature','subjectKaiSignature','actorCreatedAt','subjectCreatedAt','actorPulse','subjectPulse','actorChakraDay','subjectChakraDay'];
+  const wideMeta=Object.fromEntries(wideFields.map(key=>[key,'x'.repeat(4096)])),widePages=Array.from({length:4},(_,i)=>parsePrivateHistoryPage({ok:true,accountUserId:wallet.userId,nextCursor:null,events:Array.from({length:64},(_,j)=>({...wideMeta,id:`wide-${i}-${j}`,kind:'transfer',createdAt:'2026-10-13T00:00:00Z'}))},wallet.userId));
+  for(const page of widePages)await savePrivateHistoryCache(binding,cacheFor(page));
+  const reopenedWide=await loadPrivateHistoryCache(binding,wallet.userId);
+  assert(widePages.every(page=>reopenedWide.pages.some(original=>original.json===page.sourceJson))&&reopenedWide.records.filter(record=>record.sourceId.startsWith('wide-')).length===256,'Byte-bounded display chunks preserve all wide records and their complete originals');
   assert(await loadPrivateHistoryCache(binding,'another-fixture-account')===null,'Private history never opens under another account');
   const operation={schema:'receiz.bank.card-operation.v1',stage:'creating',operationId:'fixture-attempt',amountUsdCents:'500'};
   const attempts=await Promise.allSettled([saveCardOperation(binding,operation,true),saveCardOperation(binding,{...operation,operationId:'competing'},true)]); assert(attempts.filter(value=>value.status==='fulfilled').length===1,'Only one concurrent card start retained');
@@ -40,7 +65,13 @@ document.querySelector('#run').onclick = async () => {
   await forgetDeviceIdentity();let transportRefused=false;try{await saveProtectedIdentityTransport(binding,{bytes:new Uint8Array([5]),phrase:'fixture'});}catch{transportRefused=true;}assert(transportRefused&&await loadDeviceIdentity()===null,'Late protected transport cannot recreate a removed identity');
   await saveWalletObservation(binding,wallet,'2026-10-13T00:00:00Z'); assert(await loadDeviceIdentity()===null,'Late observation cannot resurrect removed custody');
   await saveDeviceIdentity(new Uint8Array([9,8,7]),'other-fixture.bin','fixture-phrase',true); let refused=false; try{await saveDepositSource(binding,source,'test-only.bin',binding.artifactSha256);}catch{refused=true;} assert(refused,'Former source refused under replaced identity'); await forgetDeviceIdentity();
+  await saveDeviceIdentity(source,'test-only.bin','not-an-authentication-phrase',true);
+  const encrypt=crypto.subtle.encrypt;let releaseSave,markSavePaused,savePaused=false;const saveGate=new Promise(resolve=>releaseSave=resolve),savingPaused=new Promise(resolve=>markSavePaused=resolve);
+  crypto.subtle.encrypt=function(algorithm,...args){const result=encrypt.call(this,algorithm,...args);if(!savePaused&&new TextDecoder().decode(algorithm.additionalData)==='receiz.bank.device-identity.v1'){savePaused=true;markSavePaused();return result.then(async bytes=>{await saveGate;return bytes;});}return result;};
+  try{const resaving=saveDeviceIdentity(source,'test-only.bin','not-an-authentication-phrase',true);await savingPaused;assert(await loadPrivateHistoryCache(binding,wallet.userId)===null,'Reimport never presents history encrypted under the removed key');await savePrivateHistoryCache(binding,cacheFor(fullPage('after-reimport')));releaseSave();await resaving;}finally{releaseSave();crypto.subtle.encrypt=encrypt;}
+  assert((await loadPrivateHistoryCache(binding,wallet.userId)).records[0].sourceId==='after-reimport','Reimport of the same Identity Seal can retain fresh activity');
+  await forgetDeviceIdentity();
   document.querySelector('#output').textContent='PASS\n'+checks.join('\n');
- } catch(error){document.querySelector('#output').textContent='FAIL\n'+error.message;}
+ } catch(error){document.querySelector('#output').textContent='FAIL\n'+error.name+': '+error.message+'\n'+checks.join('\n');}
 };
 </script>

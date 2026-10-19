@@ -4,7 +4,7 @@ import { validatePrivateLedgerPages } from './private-history';
 import { mergePublicRecords } from './public-network';
 import { cardOperationApplicationId } from './card-deposit';
 export interface ProtectedIdentityTransport { bytes: Uint8Array; phrase: string; }
-interface SavedIdentity { schema: 'receiz.bank.device-identity.v1'; bytes: ArrayBuffer; artifactIv?: Uint8Array; filename: string; wrappingKey: CryptoKey; iv: Uint8Array; wrappedPhrase: ArrayBuffer; readConsent: boolean; walletObservation?:{iv:Uint8Array;bytes:ArrayBuffer;binding:{keyId:string;artifactSha256:string};localHeadDigest?:string}; protectedTransport?: { iv: Uint8Array; bytes: ArrayBuffer }; cardOperation?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }; cardArchive?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }[]; bankOperation?: { operationId: string; state: string; key: string; }; bankSession?: { iv: Uint8Array; bytes: ArrayBuffer }; }
+interface SavedIdentity { schema: 'receiz.bank.device-identity.v1'; bytes: ArrayBuffer; artifactIv?: Uint8Array; filename: string; wrappingKey: CryptoKey; iv: Uint8Array; wrappedPhrase: ArrayBuffer; readConsent: boolean; privateHistoryScopeId?: string; walletObservation?:{iv:Uint8Array;bytes:ArrayBuffer;binding:{keyId:string;artifactSha256:string};localHeadDigest?:string}; protectedTransport?: { iv: Uint8Array; bytes: ArrayBuffer }; cardOperation?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }; cardArchive?: { operationId: string; applicationId?: string; iv: Uint8Array; bytes: ArrayBuffer }[]; bankOperation?: { operationId: string; state: string; key: string; }; bankSession?: { iv: Uint8Array; bytes: ArrayBuffer }; }
 async function identityBytes(saved: SavedIdentity): Promise<Uint8Array> { return saved.artifactIv ? new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(saved.artifactIv), additionalData: new TextEncoder().encode('receiz.bank.private-identity-source.v1') }, saved.wrappingKey, saved.bytes)) : new Uint8Array(saved.bytes); }
 async function database(): Promise<IDBDatabase> { return new Promise((resolve, reject) => { const request = indexedDB.open('receiz-bank-private-custody', 3); request.onupgradeneeded = () => { if (!request.result.objectStoreNames.contains('identity')) request.result.createObjectStore('identity'); if (!request.result.objectStoreNames.contains('sources')) request.result.createObjectStore('sources'); if (!request.result.objectStoreNames.contains('operations')) request.result.createObjectStore('operations'); }; request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); }
 async function held(): Promise<SavedIdentity | null> { const db = await database(); try { return await new Promise((resolve, reject) => { const request = db.transaction('identity').objectStore('identity').get('current'); request.onsuccess = () => resolve(request.result ?? null); request.onerror = () => reject(request.error); }); } finally { db.close(); } }
@@ -45,16 +45,16 @@ async function noteRemovalGuard(saved: SavedIdentity) {
   } finally {db.close();}
   return rows;
 }
-async function changeHeldIdentity(previous: SavedIdentity | null, next: SavedIdentity | null, guard?: Awaited<ReturnType<typeof noteRemovalGuard>>) {
+async function changeHeldIdentity(previous: SavedIdentity | null, next: SavedIdentity | null, guard?: Awaited<ReturnType<typeof noteRemovalGuard>>, preserveHistoryScope = false) {
   const db = await database(); try { await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(['identity', 'operations'], 'readwrite'), identities = tx.objectStore('identity'), read = identities.get('current');
-    const apply = () => { if (next) identities.put(next, 'current'); else identities.delete('current'); };
+    const apply = (current?: SavedIdentity) => { if (next) identities.put({ ...next, ...(preserveHistoryScope && current?.privateHistoryScopeId ? { privateHistoryScopeId: current.privateHistoryScopeId } : {}) }, 'current'); else identities.delete('current'); };
     read.onsuccess = () => {
       const current = read.result as SavedIdentity | undefined;
       if (!equalCipher(current?.bytes, previous?.bytes) || !equalCipher(current?.iv, previous?.iv) || JSON.stringify(current?.bankOperation) !== JSON.stringify(previous?.bankOperation)) { tx.abort(); return; }
-      if (!guard) { apply(); return; }
+      if (!guard) { apply(current); return; }
       let remaining=guard.length;
-      for(const item of guard){const check=tx.objectStore('operations').get(item.key);check.onsuccess=()=>{const row=check.result as PrivateBankOperation|undefined;if(!equalCipher(row?.bytes,item.row?.bytes)||!equalCipher(row?.iv,item.row?.iv)){tx.abort();return;}if(--remaining===0)apply();};}
+      for(const item of guard){const check=tx.objectStore('operations').get(item.key);check.onsuccess=()=>{const row=check.result as PrivateBankOperation|undefined;if(!equalCipher(row?.bytes,item.row?.bytes)||!equalCipher(row?.iv,item.row?.iv)){tx.abort();return;}if(--remaining===0)apply(current);};}
     };
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(new Error('Device identity or note custody changed. Reopen this action and try again.'));
   }); } finally { db.close(); }
@@ -67,7 +67,7 @@ export async function saveDeviceIdentity(bytes: Uint8Array, filename: string, ph
   const artifactIv = crypto.getRandomValues(new Uint8Array(12)), encryptedSource = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: artifactIv, additionalData: new TextEncoder().encode('receiz.bank.private-identity-source.v1') }, wrappingKey, new Uint8Array(bytes));
   const value: SavedIdentity = { ...(same ? previous : {}), schema: 'receiz.bank.device-identity.v1', bytes: encryptedSource, artifactIv, filename, wrappingKey, iv, wrappedPhrase, readConsent };
   if (protectedTransport) { const transportIv = crypto.getRandomValues(new Uint8Array(12)); value.protectedTransport = { iv: transportIv, bytes: await crypto.subtle.encrypt({ name: 'AES-GCM', iv: transportIv, additionalData: new TextEncoder().encode('receiz.bank.protected-identity-transport.v1') }, wrappingKey, new TextEncoder().encode(JSON.stringify({ bytes: [...protectedTransport.bytes], phrase: protectedTransport.phrase }))) }; }
-  await changeHeldIdentity(previous, value, guard);
+  await changeHeldIdentity(previous, value, guard, same);
 }
 export async function loadDeviceIdentity(): Promise<{ bytes: Uint8Array; filename: string; phrase: string; readConsent: boolean; protectedTransport?: ProtectedIdentityTransport } | null> {
   const saved = await held(); if (!saved) return null;
@@ -345,33 +345,140 @@ function validatePrivateHistoryCache(value: PrivateHistoryCache, accountUid: str
 async function readPrivateHistoryRow(db: IDBDatabase, key: string): Promise<PrivateBankOperation | undefined> {
   return await new Promise((resolve, reject) => { const request = db.transaction('operations').objectStore('operations').get(key); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
 }
-async function decodePrivateHistoryRow(row: PrivateBankOperation, saved: SavedIdentity, key: string, accountUid: string): Promise<PrivateHistoryCache> {
+// Scope display history to this generation of the private encryption key. A
+// reimport after removal has a new key, even for the exact same Identity Seal.
+// Financial checkpoints deliberately retain their existing keys and guards.
+async function privateHistoryScope(db: IDBDatabase, saved: SavedIdentity): Promise<string> {
+  const valid = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9-]{36}$/.test(value);
+  if (saved.privateHistoryScopeId !== undefined) {
+    if (!valid(saved.privateHistoryScopeId)) throw Error('PRIVATE_HISTORY_CACHE_INVALID');
+    return saved.privateHistoryScopeId;
+  }
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('identity', 'readwrite'), store = tx.objectStore('identity'), read = store.get('current');
+    let scope = '';
+    read.onsuccess = () => {
+      const current = read.result as SavedIdentity | undefined;
+      if (!current || !equalCipher(current.bytes, saved.bytes) || !equalCipher(current.iv, saved.iv)) { tx.abort(); return; }
+      if (current.privateHistoryScopeId !== undefined && !valid(current.privateHistoryScopeId)) { tx.abort(); return; }
+      scope = current.privateHistoryScopeId ?? crypto.randomUUID();
+      if (!current.privateHistoryScopeId) store.put({ ...current, privateHistoryScopeId: scope }, 'current');
+    };
+    tx.oncomplete = () => resolve(scope);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(Error('PRIVATE_HISTORY_IDENTITY_CHANGED'));
+  });
+}
+async function privateHistoryClear(row: PrivateBankOperation, saved: SavedIdentity, key: string): Promise<Uint8Array<ArrayBuffer>> {
   if (row.bytes.byteLength > 8 * 1024 * 1024 + 16) throw Error('PRIVATE_HISTORY_CAPACITY_EXCEEDED');
-  const clear = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, row.bytes);
-  const value = JSON.parse(new TextDecoder().decode(clear)) as PrivateHistoryCache;
+  return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, row.bytes));
+}
+const historyDigest = async (bytes: Uint8Array<ArrayBuffer>) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(byte => byte.toString(16).padStart(2, '0')).join('');
+async function encodePrivateHistoryRow(saved: SavedIdentity, key: string, clear: Uint8Array<ArrayBuffer>): Promise<PrivateBankOperation> {
+  if (clear.length > 8 * 1024 * 1024) throw Error('PRIVATE_HISTORY_CAPACITY_EXCEEDED');
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  return { key, iv, bytes: await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, clear) };
+}
+async function decodePrivateHistoryRow(db: IDBDatabase, row: PrivateBankOperation, saved: SavedIdentity, key: string, accountUid: string): Promise<PrivateHistoryCache> {
+  const value = JSON.parse(new TextDecoder().decode(await privateHistoryClear(row, saved, key)));
+  if (value?.schema === 'bank.private-history-index.v2') {
+    if (value.accountUid !== accountUid || !Array.isArray(value.recordChunks) || value.recordChunks.length > 100000 || !Array.isArray(value.pages) || value.pages.length > 100000) throw Error('PRIVATE_HISTORY_CACHE_INVALID');
+    const read = async (kind: string, digest: unknown) => {
+      if (typeof digest !== 'string' || !/^[a-f0-9]{64}$/.test(digest)) throw Error('PRIVATE_HISTORY_CACHE_INVALID');
+      const objectKey = `${key}|${kind}|${digest}`, object = await readPrivateHistoryRow(db, objectKey);
+      if (!object) throw Error('PRIVATE_HISTORY_OBJECT_MISSING');
+      const clear = await privateHistoryClear(object, saved, objectKey);
+      if (await historyDigest(clear) !== digest) throw Error('PRIVATE_HISTORY_CACHE_INVALID');
+      return new TextDecoder().decode(clear);
+    };
+    const records: PrivateHistoryCache['records'] = [], pages: NonNullable<PrivateHistoryCache['pages']> = [];
+    for (const digest of value.recordChunks) {
+      const chunk = JSON.parse(await read('records', digest));
+      if (!Array.isArray(chunk) || chunk.length > 256 || records.length + chunk.length > 100000) throw Error('PRIVATE_HISTORY_CACHE_INVALID');
+      records.push(...chunk);
+    }
+    for (const page of value.pages) {
+      if (!page || page.cursor !== null && (typeof page.cursor !== 'string' || !/^[A-Za-z0-9_-]{1,2048}$/.test(page.cursor))) throw Error('PRIVATE_HISTORY_CACHE_INVALID');
+      pages.push({ cursor: page.cursor, json: await read('page', page.sha256) });
+    }
+    const restored: PrivateHistoryCache = { schema: 'bank.private-history-cache.v1', accountUid, observedAt: value.observedAt, nextCursor: value.nextCursor, records, pages };
+    validatePrivateHistoryCache(restored, accountUid);
+    return restored;
+  }
   validatePrivateHistoryCache(value, accountUid);
   return value;
 }
+async function preparePrivateHistoryRows(saved: SavedIdentity, key: string, value: PrivateHistoryCache) {
+  const objects: PrivateBankOperation[] = [];
+  const retain = async (kind: string, text: string) => {
+    const clear = new TextEncoder().encode(text), digest = await historyDigest(clear);
+    objects.push(await encodePrivateHistoryRow(saved, `${key}|${kind}|${digest}`, clear));
+    return digest;
+  };
+  const recordChunks: string[] = [], pages: {cursor:string|null;sha256:string}[] = [];
+  let chunk: string[] = [], chunkBytes = 2;
+  const flush = async () => { if (chunk.length) recordChunks.push(await retain('records', '[' + chunk.join(',') + ']')); chunk = []; chunkBytes = 2; };
+  for (const record of value.records) {
+    const json = JSON.stringify(record), bytes = new TextEncoder().encode(json).length;
+    if (chunk.length && (chunk.length === 256 || chunkBytes + bytes + 1 > 1024 * 1024)) await flush();
+    chunk.push(json); chunkBytes += bytes + 1;
+  }
+  await flush();
+  for (const page of value.pages ?? []) pages.push({ cursor: page.cursor, sha256: await retain('page', page.json) });
+  const index = { schema: 'bank.private-history-index.v2', accountUid: value.accountUid, observedAt: value.observedAt, nextCursor: value.nextCursor, recordChunks, pages };
+  return { root: await encodePrivateHistoryRow(saved, key, new TextEncoder().encode(JSON.stringify(index))), objects };
+}
+async function readPrivateHistorySnapshot(db: IDBDatabase, saved: SavedIdentity, key: string, accountUid: string) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const row = await readPrivateHistoryRow(db, key);
+    if (!row) return { row, value: null };
+    try { return { row, value: await decodePrivateHistoryRow(db, row, saved, key, accountUid) }; }
+    catch (cause) {
+      if (!(cause instanceof Error) || cause.message !== 'PRIVATE_HISTORY_OBJECT_MISSING') throw cause;
+      const current = await readPrivateHistoryRow(db, key);
+      // A writer can reclaim an old display chunk while this reader is
+      // suspended. Retry only a changed root; missing current objects fail.
+      if (equalCipher(current?.bytes, row.bytes) && equalCipher(current?.iv, row.iv)) throw cause;
+    }
+  }
+  throw Error('PRIVATE_HISTORY_CACHE_CHANGED');
+}
+async function legacyPrivateHistory(db: IDBDatabase, saved: SavedIdentity, key: string, accountUid: string) {
+  const row = await readPrivateHistoryRow(db, key);
+  if (!row) return null;
+  try { return await decodePrivateHistoryRow(db, row, saved, key, accountUid); }
+  catch (cause) {
+    // An old wrapping key was erased on removal. Keep its opaque record intact;
+    // it cannot block fresh authenticated activity under the current key.
+    if (cause instanceof DOMException && cause.name === 'OperationError') return null;
+    throw cause;
+  }
+}
 export async function loadPrivateHistoryCache(binding: { artifactSha256: string }, accountUid: string): Promise<PrivateHistoryCache | null> {
   const saved = await held(); if (!saved) return null; await sameSavedIdentity(saved, binding);
-  const key = privateHistoryKey(binding, accountUid), db = await database();
-  try { const row = await readPrivateHistoryRow(db, key); return row ? await decodePrivateHistoryRow(row, saved, key, accountUid) : null; }
+  const legacyKey = privateHistoryKey(binding, accountUid), db = await database();
+  try { const key = `${legacyKey}|${await privateHistoryScope(db, saved)}`, snapshot = await readPrivateHistorySnapshot(db, saved, key, accountUid); return snapshot.row ? snapshot.value : await legacyPrivateHistory(db, saved, legacyKey, accountUid); }
   finally { db.close(); }
 }
 export async function savePrivateHistoryCache(binding: { artifactSha256: string }, value: PrivateHistoryCache): Promise<PrivateHistoryCache> {
   const saved = await held(); if (!saved) throw Error('PRIVATE_HISTORY_IDENTITY_UNAVAILABLE'); await sameSavedIdentity(saved, binding);
   validatePrivateHistoryCache(value, value.accountUid);
-  const key = privateHistoryKey(binding, value.accountUid), db = await database();
+  const legacyKey = privateHistoryKey(binding, value.accountUid), db = await database();
   try {
+    const key = `${legacyKey}|${await privateHistoryScope(db, saved)}`;
     for (let attempt = 0; attempt < 3; attempt++) {
-      const prior = await readPrivateHistoryRow(db, key), previous = prior ? await decodePrivateHistoryRow(prior, saved, key, value.accountUid) : null;
+      const snapshot = await readPrivateHistorySnapshot(db, saved, key, value.accountUid), prior = snapshot.row;
+      const previous = prior ? snapshot.value : await legacyPrivateHistory(db, saved, legacyKey, value.accountUid);
       const pages = [...previous?.pages ?? []], originals = new Set(pages.map(page => page.json));
       for (const page of value.pages ?? []) if (!originals.has(page.json)) { originals.add(page.json); pages.push(page); }
       const latest = previous && Date.parse(previous.observedAt) > Date.parse(value.observedAt) ? previous : value;
       const merged: PrivateHistoryCache = { ...latest, records: mergePublicRecords(previous?.records ?? [], value.records), ...(pages.length ? { pages } : {}) };
-      const clear = new TextEncoder().encode(JSON.stringify(merged));
-      if (clear.length > 8 * 1024 * 1024 || merged.records.length > 100000) throw Error('PRIVATE_HISTORY_CAPACITY_EXCEEDED');
-      const iv = crypto.getRandomValues(new Uint8Array(12)), bytes = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, clear);
+      validatePrivateHistoryCache(merged, value.accountUid);
+      const prepared = await preparePrivateHistoryRows(saved, key, merged);
+      const priorIndex = prior ? JSON.parse(new TextDecoder().decode(await privateHistoryClear(prior, saved, key))) : null;
+      const retainedObjects = new Set(prepared.objects.map(object => object.key));
+      const obsoleteRows: string[] = priorIndex?.schema === 'bank.private-history-index.v2'
+        ? priorIndex.recordChunks.map((digest: string) => `${key}|records|${digest}`).filter((objectKey: string) => !retainedObjects.has(objectKey)) : [];
       try {
         await new Promise<void>((resolve, reject) => {
           const tx = db.transaction(['identity', 'operations'], 'readwrite'), identities = tx.objectStore('identity'), operations = tx.objectStore('operations'), request = identities.get('current');
@@ -383,7 +490,11 @@ export async function savePrivateHistoryCache(binding: { artifactSha256: string 
             read.onsuccess = () => {
               const currentRow = read.result as PrivateBankOperation | undefined;
               if (!equalCipher(currentRow?.bytes, prior?.bytes) || !equalCipher(currentRow?.iv, prior?.iv)) { conflict = 'PRIVATE_HISTORY_CACHE_CHANGED'; tx.abort(); return; }
-              operations.put({ key, iv, bytes }, key);
+              // Only obsolete display chunks are reclaimed. Complete source
+              // pages and all financial checkpoints stay retained.
+              for (const objectKey of obsoleteRows) operations.delete(objectKey);
+              for (const object of prepared.objects) operations.put(object, object.key);
+              operations.put(prepared.root, key);
             };
           };
           tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(Error(conflict));

@@ -110,3 +110,20 @@ can safely replace the missing v129 custody evidence. Registration must remain
 unqualified until an actual browser-accessible device path passes the existing
 checks. No native app, new custody certificate, counter relaxation, delayed
 double-spend acceptance, or online-only substitute is introduced by this work.
+
+## Actual browser-format diagnostics
+
+Failed delegated registrations now retain a bounded, in-memory diagnostic from
+the original browser response: its CBOR `fmt`, unsigned registration counter,
+user-verification flag, backup eligibility and backup state. Registration details
+explicitly label this browser report as unqualified. The original attestation
+object, client data, challenge ticket, credential ID, extensions and delegated
+request are unchanged; none of those private fields enter the displayed report.
+The exact original Error and public failure code are preserved. This diagnostic
+does not classify support, issue certificates or bypass the canonical verifier.
+
+Synthetic `none` fixtures test byte-preserving transport and presentation only.
+The earlier iPhone screenshots contain no actual format, flags or counter. A
+new, user-operated attempt after deployment is still required to establish
+those values on that device. No real iPhone registration or financial operation
+was performed by the agent.

@@ -1,6 +1,8 @@
 import { expect, it, vi } from 'vitest';
 import { createBankNoteAttestationFetch } from '../src/receiz/note-attestation-transport';
 import { permittedNativePath } from '../src/receiz/native-transport';
+import { noteRegistrationEvidence } from '../src/receiz/note-registration-evidence';
+import { unattestedResponse } from './fixtures/note-registration';
 const origin = 'https://bank.receiz.com';
 const route = '/api/wallet/notes/custody/attestation';
 const nonce = 'a'.repeat(43), otherNonce = 'b'.repeat(43);
@@ -55,4 +57,15 @@ it('preserves the exact missing-attestation failure from Receiz without retrying
  const transport=createBankNoteAttestationFetch({origin,request});await transport(route);
  await expect(transport(route,{method:'POST',body:JSON.stringify({challengeB64u:nonce,response:{id:'fixture'}})})).rejects.toBe(failure);
  expect(request).toHaveBeenCalledTimes(2);expect(failure.message).not.toContain('private-fixture-ticket');
+});
+it('keeps the exact registration response and failure while attaching only bounded browser diagnostics', async () => {
+ const failure = new Error('OFFLINE_NOTE_CUSTODY_ATTESTATION_FORMAT_UNSUPPORTED'), response = unattestedResponse();
+ const request = vi.fn().mockResolvedValueOnce({ok:true,origin,rpId:'receiz.com',challengeB64u:nonce,ticket:'private-fixture-ticket'}).mockRejectedValueOnce(failure);
+ const transport = createBankNoteAttestationFetch({origin,request}); await transport(route);
+ await expect(transport(route,{method:'POST',body:JSON.stringify({challengeB64u:nonce,response})})).rejects.toBe(failure);
+ expect(request.mock.calls[1][1].body.response).toEqual(response);
+ expect(failure.message).toBe('OFFLINE_NOTE_CUSTODY_ATTESTATION_FORMAT_UNSUPPORTED');
+ expect(noteRegistrationEvidence(failure)).toEqual({format:'none',counter:'0',userVerified:true,backupEligible:true,backedUp:true});
+ expect(JSON.stringify(noteRegistrationEvidence(failure))).not.toMatch(/credential|client-data|extension|ticket/);
+ expect(noteRegistrationEvidence(new Error(failure.message))).toBeNull();
 });

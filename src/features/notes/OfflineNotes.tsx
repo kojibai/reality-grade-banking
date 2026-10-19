@@ -7,6 +7,7 @@ import { formatMoney, formatUnits } from '../../core/money';
 import { OfflineNotePreview } from './OfflineNotePreview';
 import { shareNoteImage } from './save-note-image';
 import {noteError,noteRegistrationCode} from './note-error';
+import {noteRegistrationEvidence,type NoteRegistrationEvidence} from '../../receiz/note-registration-evidence';
 function download(bytes: Uint8Array, filename: string, type: string) {
   const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type })), link = document.createElement('a');
   link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 3000);
@@ -26,10 +27,11 @@ function exactPhi(value?: string): string {
 export function OfflineNotes({ identity, mode, onBack, onRefresh }: { identity: OpenIdentity; mode: 'create' | 'deposit'; onBack: () => void; onRefresh: () => void }) {
   const [rail, setRail] = useState<BankNoteRail>('reserve');
   const [amount, setAmount] = useState('100'), [review, setReview] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState(''),[registrationCode,setRegistrationCode]=useState('');
+  const [registrationEvidence,setRegistrationEvidence]=useState<NoteRegistrationEvidence|null>(null);
   const [saved, setSaved] = useState<BankNoteImage[]>([]);
   const [pending, setPending] = useState<{ amountUsdCents: string; noteId: string; rail?: BankNoteRail; canCancel?: boolean } | null>(null), [created, setCreated] = useState<BankNoteImage | null>(null), [inspection, setInspection] = useState<BankNoteInspection | null>(null), [deposited, setDeposited] = useState<BankNoteDeposit | null>(null), [image, setImage] = useState<Uint8Array | null>(null), [imageUrl, setImageUrl] = useState(''), [notice, setNotice] = useState('');
   const alive = useRef(true), running = useRef(false), api = useRef<BankOfflineNotes | null>(null);
-  const report=(cause:unknown)=>{setError(noteError(cause));setRegistrationCode(noteRegistrationCode(cause));};
+  const report=(cause:unknown)=>{setError(noteError(cause));setRegistrationCode(noteRegistrationCode(cause));setRegistrationEvidence(noteRegistrationEvidence(cause));};
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const notes = async () => api.current ??= await identity.offlineNotes!();
   useEffect(() => { if (!identity.offlineNotes || mode !== 'create') return; let current = true; void notes().then(async n => { if (n.savedNotes) { const items = await n.savedNotes(); if (current) setSaved(items); } return n.pending(); }).then(value => { if (current && value) { setPending(value); setRail(value.rail ?? 'reserve'); setAmount(`${BigInt(value.amountUsdCents) / 100n}.${(BigInt(value.amountUsdCents) % 100n).toString().padStart(2, '0')}`); setReview(true); } }).catch(cause => { if (current) report(cause); }); return () => { current = false; }; }, [identity, mode]);
@@ -65,7 +67,7 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh }: { identity: 
       <button className="secondary-button" disabled={busy} onClick={() => void prepareReceive()}><Download size={17} />Create receiving request</button><p className="body-copy small-copy">Receiving from another person? Send them this device’s receiving request first. A note must be held by this device before it can be deposited.</p>
     </>}
     {deposited && <><div className="status-icon success"><Check size={32} /></div><h1 className="sheet-hero">Added to {deposited.rail === 'settlement' ? 'Settlement' : 'Reserve'}.</h1><div className="success-amount">{deposited.rail === 'settlement' ? `${exactPhi(deposited.amountPhiMicro)} Φ` : formatMoney(deposited.amountUsdCents)}</div><p className="body-copy">Your note is redeemed. Its {deposited.rail === 'settlement' ? 'Settlement' : 'Reserve'} credit carries the complete verified proof.</p><button className="secondary-button" onClick={() => download(deposited.proofBytes, `receiz-note-deposit-${deposited.noteId}.receiz.json`, 'application/json')}>Save deposit proof</button><button className="primary-button" onClick={onBack}>Done</button></>}
-    {notice && <p className="body-copy" role="status">{notice}</p>}{error && <><p className="error-message" role="alert">{error}</p>{registrationCode&&<details className="note-registration-details"><summary>Registration details</summary><code>{registrationCode}</code><p>Share this code when requesting support. It contains no credentials or account data.</p></details>}</>}
+    {notice && <p className="body-copy" role="status">{notice}</p>}{error && <><p className="error-message" role="alert">{error}</p>{registrationCode&&<details className="note-registration-details"><summary>Registration details</summary><code>{registrationCode}</code>{registrationEvidence&&<><p>Browser response · registration not qualified</p><dl className="detail-list"><div><dt>Attestation format</dt><dd>{registrationEvidence.format}</dd></div><div><dt>Registration counter</dt><dd>{registrationEvidence.counter}</dd></div><div><dt>User verified</dt><dd>{registrationEvidence.userVerified?'Yes':'No'}</dd></div><div><dt>Backup eligible</dt><dd>{registrationEvidence.backupEligible?'Yes':'No'}</dd></div><div><dt>Backed up</dt><dd>{registrationEvidence.backedUp?'Yes':'No'}</dd></div></dl></>}<p>Share these details when requesting support. They contain no credentials or account data.</p></details>}</>}
     <p className="trust-line"><ShieldCheck size={17} />Proof and custody stay connected.</p>
   </div>;
 }
