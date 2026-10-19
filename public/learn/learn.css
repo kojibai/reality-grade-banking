@@ -34,3 +34,4 @@
 @keyframes reality-stream-mobile{from{transform:translateY(-8px)}to{transform:translateY(30px)}}
 @media(prefers-reduced-motion:reduce){.reality-page *, .reality-page *:before, .reality-page *:after{animation:none!important;transition:none!important}.reality-orbit img,.reality-note-art img{will-change:auto}}
 .motion-ready .reality-page .motion-region:not(.in-view) *,.motion-ready .reality-page .motion-region:not(.in-view) *:after,.document-hidden .reality-page *,.document-hidden .reality-page *:after{animation-play-state:paused!important}
+.public-navigation-instant .reveal{opacity:1!important;transform:none!important;transition:none!important}

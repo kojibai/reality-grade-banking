@@ -5,17 +5,21 @@ const source = '// All public guides' + readFileSync('public/learn/learn.js', 'u
 it('switches guides and returns to the same mounted bank DOM without a document reload', async () => {
   document.body.innerHTML = '<div id="root"><input value="retained input"><a href="/learn/">Learn</a></div>';
   const entryStyle = document.createElement('style'); entryStyle.dataset.bankStylesheet = '/assets/bank.css'; entryStyle.textContent = '.console{color:navy}'; document.head.append(entryStyle);
+  const critical=document.createElement('style');critical.id='bankeiz-opening-critical';critical.textContent='html,body{background:#FCFBF8}';document.head.append(critical);
   const root = document.getElementById('root'), input = root!.querySelector('input'), originalDocument = document;
   const data = document.createElement('script'); data.id = 'receiz-navigation'; data.type = 'application/json';
   const header = '<a class="skip-link" href="#main">Skip to content</a><header class="learn-header"><a class="learn-brand" href="/learn/">Bankeiz</a><a href="/learn/#guides">Guides</a></header>';
   const sharedHead = '<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="/icon.svg">';
   data.textContent = JSON.stringify({ pages: { '/learn/': { content: header + '<main id="main"><h1>Learn</h1></main><a href="/learn/guide/">Guide</a><a href="/legal/">Legal notices</a><a href="/">Enter bank</a>', head: sharedHead + '<title>Learn title</title><link rel="canonical" href="https://bank.receiz.com/learn/">' }, '/learn/guide/': { content: header + '<main id="main"><h1 id="guide-heading">Guide</h1></main><a href="/learn/">All guides</a>', head: sharedHead + '<title>Guide title</title>' }, '/legal/': { content: header + '<main id="main"><h1>Legal notices</h1><a href="/learn/">All guides</a></main>', head: sharedHead + '<title>Legal title</title><meta name="robots" content="noindex,follow">' } }, bank: { head: '<title>Bank title</title><meta name="viewport" content="width=device-width,viewport-fit=cover"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icon-192.png">', styles: ['/assets/bank.css'], entry: '/unused.js' } }); document.body.append(data);
+  const referenceHead=sharedHead+'<title>Schema reference</title><style data-public-page-style="schemas">.schema-heading{color:navy}</style>';
+  const withReference=JSON.parse(data.textContent!);withReference.pages['/schemas/']={head:referenceHead,content:'<header class="schema-header">Reference</header><main><h1 class="schema-heading">Schemas</h1></main><a href="/learn/">Guides</a>'};data.textContent=JSON.stringify(withReference);
   history.replaceState({}, '', '/#market'); const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
   // Execute only the production public router; private runtime import is never reached in this warm-account test.
   new Function('window', 'document', 'location', 'history', 'scrollTo', 'Event', 'URL', source)(window, document, location, history, scroll, Event, URL);
   root!.querySelector('a')!.click();
   expect(location.pathname).toBe('/learn/'); expect(document.title).toBe('Learn title'); expect(root!.hidden).toBe(true);
   expect(entryStyle.media).toBe('not all');
+  expect(critical.media).toBe('not all');
   const mountedHeader = document.querySelector('.learn-header'), brand = document.querySelector('.learn-brand'), viewport = document.querySelector('meta[name="viewport"]'), icon = document.querySelector('link[rel="icon"]');
   mountedHeader!.classList.add('scrolled');
   const headChanges: MutationRecord[] = [];
@@ -42,10 +46,16 @@ it('switches guides and returns to the same mounted bank DOM without a document 
   document.querySelector<HTMLAnchorElement>('#public-learn-root a[href="/"]')!.click();
   expect(location.hash).toBe('#market'); expect(root!.hidden).toBe(false); expect(document.title).toBe('Bank title'); expect(document.querySelector('link[rel="manifest"]')).not.toBeNull(); expect(document.querySelector('meta[name="viewport"]')?.getAttribute('content')).toContain('viewport-fit=cover'); expect(root!.querySelector('input')).toBe(input); expect(input!.value).toBe('retained input');
   expect(entryStyle.media).toBe('all');
+  expect(critical.media).toBe('all');
   expect(document.querySelector('link[href="/assets/bank.css"]')).toBeNull();
   input!.focus();
   root!.querySelector('a')!.click();
   expect(location.pathname).toBe('/learn/'); expect(document.activeElement).toBe(document.querySelector('main')); expect(document.querySelector('.learn-header')).toBe(mountedHeader);
+  // The static reference page has its own typography. Its styles must be
+  // present only while that preloaded page is active, without a document load.
+  const referenceLink=document.createElement('a');referenceLink.href='/schemas/';document.getElementById('public-learn-root')!.append(referenceLink);referenceLink.click();
+  expect(location.pathname).toBe('/schemas/');expect(document.title).toBe('Schema reference');expect(document.querySelector('style[data-public-page-style="schemas"]')).not.toBeNull();expect(root!.querySelector('input')).toBe(input);expect(document).toBe(originalDocument);
+  document.querySelector<HTMLAnchorElement>('#public-learn-root a[href="/learn/"]')!.click();expect(location.pathname).toBe('/learn/');expect(document.querySelector('style[data-public-page-style]')).toBeNull();
   let intercepted = true; const suppressTestNavigation = (event: MouseEvent) => { intercepted = event.defaultPrevented; event.preventDefault(); }; window.addEventListener('click', suppressTestNavigation);
   const external = document.createElement('a'); external.href = 'https://receiz.com/wallet';
   document.body.append(external); const modified = new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true }); external.dispatchEvent(modified); expect(intercepted).toBe(false);

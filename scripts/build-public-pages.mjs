@@ -9,7 +9,7 @@ import { realityGradePage, realityGradeContent } from './reality-grade-page.mjs'
 import { valueExplainerPage, valueExplainerContent } from './value-explainer-template.mjs';
 import { writePublicSdkSchemas } from './build-public-schemas.mjs';
 import { writeValueExplainerAssets } from './value-explainer-assets.mjs';
-import {publicPages as metadataPages,publicPage,applyPublicMetadata} from './public-page-metadata.mjs';
+import {publicPages as metadataPages,publicPage,applyPublicMetadata,publicEntryFallback} from './public-page-metadata.mjs';
 import socialImages from '../public/social/manifest.json' with {type:'json'};
 const origin = 'https://bankeiz.com';
 const pages = [
@@ -68,9 +68,37 @@ for (const page of pages) {
   publicPages[path] = { title: metadata.title, content, head: document.match(/<head>([\s\S]+)<\/head>/)[1] };
 }
 const bankEntry = bankHtml.match(/<script type="module"[^>]*src="([^"]+)"/)[1];
+// The reference catalog is public build output too. Carry its exact markup and
+// page-only styles with the guides, instead of fetching another document.
+const schemasHtml = await readFile('dist/schemas/index.html','utf8');
+const schemasCss = await readFile('dist/schemas/schemas.css','utf8');
+const schemasHead = schemasHtml.match(/<head>([\s\S]+?)<\/head>/)[1].replace('<link rel="stylesheet" href="/schemas/schemas.css">','');
+publicPages['/schemas/'] = {
+  title: publicPage('/schemas/').title,
+  head: `${schemasHead}<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}<style data-public-page-style="schemas">${schemasCss}</style>`,
+  content: schemasHtml.match(/<body[^>]*>([\s\S]+?)<\/body>/)[1],
+};
+// Each public workspace keeps its own runtime and React root. Carry its
+// existing readable first paint and exact emitted CSS with every public entry;
+// route changes need neither a replacement document nor a stylesheet round trip.
+const runtimeDocuments = new Map();
+for (const runtime of ['ledger','explore','verify','conformance','receipt']) {
+  const path = `/${runtime}/`, html = await readFile(`dist${path}index.html`, 'utf8');
+  const head = html.match(/<head>([\s\S]+?)<\/head>/)[1];
+  const cssLinks = [...head.matchAll(/<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g)];
+  const css = (await Promise.all(cssLinks.map(async match => {
+    if (!/^\/assets\/[\w.-]+\.css$/.test(match[1])) throw Error('PUBLIC_STYLESHEET_INVALID');
+    return readFile('dist'+match[1], 'utf8');
+  }))).join('\n');
+  const pageHead = head.replace(/<link rel="(?:stylesheet|modulepreload)"[^>]*>/g,'').replace(/<script type="module"[^>]*>[\s\S]*?<\/script>/g,'') + `<style data-public-page-style="${runtime}">${css}</style>`;
+  publicPages[path] = { runtime, title: publicPage(path)?.title??'Transaction receipt · Bankeiz', content: publicEntryFallback(path)||'<main><h1>Transaction receipt</h1></main>', head: pageHead, entry: head.match(/<script type="module"[^>]*src="([^"]+)"/)[1] };
+  runtimeDocuments.set(path, html.replace(/<head>[\s\S]+?<\/head>/,`<head>${pageHead}${head.match(/<script type="module"[^>]*>[\s\S]*?<\/script>/)[0]}</head>`).replace('<div id="root">',`<div id="public-${runtime}-root" data-public-runtime="${runtime}">`));
+}
 const bankStyles = [...bankHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^"]+)"/g)].map(match => match[1]);
+const bankCss = Object.fromEntries(await Promise.all(bankStyles.map(async url => [url,await readFile('dist'+url,'utf8')])));
+const bankContent = bankHtml.match(/<div id="root">([\s\S]*?)<\/div><noscript>/)[1];
 const bankHead = bankHtml.match(/<head>([\s\S]+)<\/head>/)[1];
-const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify({ pages: publicPages, bank: { head: bankHead, entry: bankEntry, styles: bankStyles } }).replaceAll('<', '\\u003c')}</script>`;
+const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify({ pages: publicPages, bank: { head: bankHead, entry: bankEntry, styles: bankStyles,css:bankCss,content:bankContent } }).replaceAll('<', '\\u003c')}</script>`;
 await writeFile('dist/learn/learn.css', publicCss);
 await writeFile('dist/learn/learn.js', publicJs);
 let entryHtml = bankHtml.replace('</head>', `<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>', `${bundle}</body>`);
@@ -86,7 +114,8 @@ for (const match of [...entryHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^
 await writeFile('dist/index.html', entryHtml);
 for (const [path, page] of Object.entries(publicPages)) {
   await mkdir(`dist${path}`, { recursive: true });
-  await writeFile(`dist${path}index.html`, `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`);
+  const runtimeHtml = runtimeDocuments.get(path);
+  await writeFile(`dist${path}index.html`, runtimeHtml ? runtimeHtml.replace('<body>',`<body data-bank-surface="${page.runtime}">`).replace('</head>',`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>',`${bundle}</body>`) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`);
 }
 const urls = metadataPages.filter(page=>!page.noindex).map(page=>page.path);
 // Omit lastmod rather than claiming that a build or a live pulse rewrote every

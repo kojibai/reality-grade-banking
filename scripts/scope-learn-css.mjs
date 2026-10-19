@@ -9,7 +9,7 @@ export function scopeLearnCss(css) {
     rule.selectors = rule.selectors.map(selector => {
       if (selector === ':root' || selector === 'html') return 'html.learn-surface';
       if (selector === 'body') return 'body[data-bank-surface="learn"]';
-      if (/^\.(motion-ready|document-hidden)(?=[\s.:])/.test(selector)) return `html.learn-surface${selector}`;
+      if (/^\.(motion-ready|document-hidden|public-navigation-instant)(?=[\s.:])/.test(selector)) return `html.learn-surface${selector}`;
       return `html.learn-surface ${selector}`;
     });
   });

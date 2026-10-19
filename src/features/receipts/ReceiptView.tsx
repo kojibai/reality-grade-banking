@@ -13,13 +13,13 @@ import {ledgerCurrentAssetValue} from '../../receiz/ledger-economy';
 import {LedgerValueChange} from '../ledger/LedgerValueChange';
 import {LedgerFundingTrace} from '../ledger/LedgerFundingTrace';
 import './receipt.css';
-function ReceiptLiveValue({record,value,valueSource}:{record:PublicRecord;value:LedgerValueDisplay;valueSource:LedgerValueIndex|null}){
- const {pulse}=useKaiKlok(Boolean(valueSource||record.valueOperands?.cardValuation));
+function ReceiptLiveValue({active,record,value,valueSource}:{active:boolean;record:PublicRecord;value:LedgerValueDisplay;valueSource:LedgerValueIndex|null}){
+ const {pulse}=useKaiKlok(active&&Boolean(valueSource||record.valueOperands?.cardValuation));
  const currentValue=useMemo(()=>ledgerCurrentAssetValue(record,valueSource,pulse),[record,valueSource,pulse]);
  if(!currentValue)return null;
  return <div className="receipt-live-value"><div><span>Current live value</span><strong>{formatMoney(currentValue.amountUsdCents!)}</strong><small>☤KAI {BigInt(currentValue.pulse!).toLocaleString('en-US')}</small></div><LedgerValueChange value={value} currentValue={currentValue}/></div>;
 }
-export function ReceiptView({onBack}:{onBack():void}){
+export function ReceiptView({onBack,active=true}:{onBack():void;active?:boolean}){
  const [localContext]=useState(()=>readLocalReceiptContext(location.href));
  useEffect(()=>()=>releaseLocalReceiptContext(localContext),[localContext]);
  const [receipt,setReceipt]=useState<LedgerReceipt|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[inspectionOpen,setInspectionOpen]=useState(false);
@@ -37,7 +37,7 @@ export function ReceiptView({onBack}:{onBack():void}){
  <article className="transaction-receipt" aria-label={label}><div className="receipt-topline"><span>{label}</span><span><FileText size={14}/>Source record</span></div>
  <div className="receipt-value"><span className="receipt-symbol"><ArrowUpRight size={25} strokeWidth={1.25}/></span><p>{ledgerPaymentRole(record!)==='movement'?ledgerRecordTitle(record!):ledgerPaymentRole(record!)==='execution'?'Referenced transfer amount':value.basis==='unavailable'?'Value not supplied':ledgerValueLabel(value)}</p><h1 style={{fontSize:`clamp(18px, min(10.5vw, ${Math.min(64,700/amount.length)}px), 64px)`}}>{amount}</h1>{receipt.time&&<time>{new Date(receipt.time).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}</time>}</div>
  <dl className="receipt-facts">{receipt.sender&&<div><dt>From</dt><dd title={receipt.sender}>{receipt.sender}</dd></div>}{receipt.recipient&&<div><dt>To</dt><dd title={receipt.recipient}>{receipt.recipient}</dd></div>}{value.considerationUsdCents!==null&&<div><dt>Consideration</dt><dd>{formatMoney(value.considerationUsdCents)}</dd></div>}<div><dt>Reference</dt><dd className="receipt-mono" title={receipt.id}>{receipt.id}</dd></div><div><dt>Event ☤KAI</dt><dd className="receipt-mono">{receipt.pulse??'Not carried by source'}</dd></div>{receipt.kaiUpulse&&<div><dt>Event ☤µKAI</dt><dd className="receipt-mono">{receipt.kaiUpulse}</dd></div>}{value.amountUsdCents!==null&&value.pulse&&value.pulse!==receipt.pulse&&value.basis!=='payment'&&<div><dt>Value at ☤KAI</dt><dd className="receipt-mono">{value.pulse}</dd></div>}</dl>
- <ReceiptLiveValue record={record!} value={value} valueSource={localContext?.valueSource??null}/>
+ <ReceiptLiveValue active={active} record={record!} value={value} valueSource={localContext?.valueSource??null}/>
  <LedgerExecutionRecords records={executionRecords} valueSource={localContext?.valueSource??null} relations={localContext?.relations??new Map()}/>
  <div className="receipt-provenance"><LedgerFundingTrace record={record!} relations={localContext?.relations}/></div>
  <footer className="receipt-source"><Link2 size={17} strokeWidth={1.5}/><div><strong>The record stays connected.</strong><p>{receipt.sourceUrl?'Inspect the original source and its supported claims.':'This link carries the selected ledger entry.'}</p></div>{receipt.sourceUrl&&<a href={receipt.sourceUrl} target="_blank" rel="noreferrer" aria-label="Inspect original receipt" title="Inspect original receipt"><ArrowUpRight size={18}/></a>}</footer>

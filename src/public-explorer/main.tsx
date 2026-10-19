@@ -4,4 +4,6 @@ import {PublicExplorer} from './PublicExplorer';
 import '../styles/tokens.css';
 import '../styles/app.css';
 import '../styles/features.css';
-createRoot(document.getElementById('root')!).render(<StrictMode><PublicExplorer/></StrictMode>);
+import {publicRuntimeRoot,usePublicRuntimeActive} from '../core/public-runtime';
+function PublicExplorerRoot(){return <PublicExplorer active={usePublicRuntimeActive('explore')}/>;}
+createRoot(publicRuntimeRoot('explore'),{identifierPrefix:'public-explore-'}).render(<StrictMode><PublicExplorerRoot/></StrictMode>);

@@ -9,7 +9,9 @@ import { accountProofError } from '../receiz/account-proof-errors';
 
 /** Local-only verification. This component has no identity, permission,
  * admission-write, account-import, or financial command entry point. */
-export function AccountProofReader() {
+export function AccountProofReader({routeDigest}:{routeDigest?:string|null}={}) {
+  const [initialDigest]=useState(()=>accountProofRoute(location.pathname));
+  const digest=routeDigest===undefined?initialDigest:routeDigest;
   const [proof, setProof] = useState<VerifiedAccountProof | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [snapshot, setSnapshot] = useState<VerifiedAccountProof | null>(null), [newest, setNewest] = useState<VerifiedAccountProof | null>(null);
   const request = useRef(0);
@@ -17,7 +19,8 @@ export function AccountProofReader() {
   const latestVerified = useRef<VerifiedAccountProof | null>(null);
   const [updateNotice, setUpdateNotice] = useState('');
   useEffect(() => {
-    const digest = accountProofRoute(location.pathname);
+    controller.current?.abort();original.current=null;latestVerified.current=null;
+    setProof(null);setSnapshot(null);setNewest(null);setError('');setUpdateNotice('');setBusy(false);
     if (digest) {
       const ticket = ++request.current, abort = new AbortController(); controller.current = abort; setBusy(true);
       void readPublicAccountProof(digest, false, abort.signal).then(async value => {
@@ -27,7 +30,7 @@ export function AccountProofReader() {
       }).catch(cause => { if (ticket === request.current) setError(accountProofError(cause)); }).finally(() => { if (ticket === request.current) setBusy(false); });
     }
     return () => { request.current++; controller.current?.abort(); };
-  }, []);
+  }, [digest]);
   const inspect = async (file: File) => {
     controller.current?.abort(); original.current = null; latestVerified.current = null;
     const ticket = ++request.current; setBusy(true); setError(''); setProof(null); setSnapshot(null); setNewest(null); setUpdateNotice('');

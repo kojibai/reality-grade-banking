@@ -44,14 +44,29 @@ for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/
 // navigation does not depend on fetching a replacement document.
 const navigationPattern = /<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/;
 const navigation = JSON.parse(html.match(navigationPattern)[1]);
+assert.ok(navigation.bank.content.includes('class="account-opening-geometry"'),'Cold Bank navigation carries its actual opening artwork');
+for(const url of navigation.bank.styles)assert.equal(navigation.bank.css[url],await readFile('dist'+url,'utf8'),'Cold Bank navigation carries the exact emitted CSS');
 assert.ok(navigation.pages['/legal/'], 'Legal notices must use the retained public header too');
+assert.ok(navigation.pages['/schemas/'], 'The complete schema reference must be carried for document-free public navigation');
 const sharedHeader = navigation.pages['/learn/'].content.match(/<header class="learn-header">[\s\S]*?<\/header>/)[0];
 for (const [path, entry] of Object.entries(navigation.pages)) {
   const output = await readFile(`dist${path}index.html`, 'utf8');
   assert.deepEqual(JSON.parse(output.match(navigationPattern)[1]), navigation, `Public navigation differs at ${path}`);
-  assert.equal(entry.content.match(/<header class="learn-header">[\s\S]*?<\/header>/)[0], sharedHeader, `Shared header links differ at ${path}`);
-  assert.ok(output.includes('id="public-learn-root"'));
+  if (path === '/schemas/') {
+    assert.ok(entry.content.includes('class="schema-header"'),'Reference retains its own existing header');
+    assert.ok(entry.head.includes('<style data-public-page-style="schemas">'),'Reference styles travel with the carried page');
+    assert.ok(!entry.head.includes('href="/schemas/schemas.css"'),'No new stylesheet request is required on reference navigation');
+  } else if(entry.runtime) {
+    assert.ok(['explore','ledger','verify','conformance','receipt'].includes(entry.runtime));
+    assert.ok(output.includes(`id="public-${entry.runtime}-root" data-public-runtime="${entry.runtime}"`));
+    assert.ok(entry.head.includes(`<style data-public-page-style="${entry.runtime}">`),'Workspace styles are carried for immediate first paint');
+    assert.ok(!entry.head.includes('<script type="module"'),'Carried metadata does not execute an unselected workspace');
+    assert.ok(!entry.head.includes('rel="stylesheet"'),'A workspace transition does not wait for CSS');
+    assert.ok(output.includes(`src="${entry.entry}"`),'Direct entry still executes its own module');
+  } else assert.equal(entry.content.match(/<header class="learn-header">[\s\S]*?<\/header>/)[0], sharedHeader, `Shared header links differ at ${path}`);
+  assert.ok(output.includes(entry.runtime?`id="public-${entry.runtime}-root"`:'id="public-learn-root"'));
 }
+for(const route of ['/ledger/','/explore/','/verify/','/conformance/'])assert.ok(navigation.pages[route]?.runtime,'All public workspaces share retained navigation');
 const robots = await readFile('dist/robots.txt', 'utf8'); assert.match(robots, /Disallow: \/api\//); assert.ok(!sitemap.includes('#'));
 const sw = await readFile('dist/sw.js', 'utf8'); assert.ok(sw.includes('qr-decoder'), 'The decoder stays lazily executed but is cached for offline scanning.');
 const uniqueImages=new Set(),uniqueTitles=new Set(),uniqueDescriptions=new Set();

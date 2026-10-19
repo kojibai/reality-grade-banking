@@ -24,6 +24,22 @@ function mount(mode:'market'|'explorer'='market') {
   return { host, root, commit, open };
 }
 function catalog(count = 1001) { return parsePublicMarket({ ok: true, transport: { generatedAt: '2026-10-13T12:00:00Z', publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: count, revision: 'r1' }, publicOriginals: Array.from({ length: count }, (_, i) => ({ id: `public-${i}`, receizId: `asset-${i}`, title: `Public object ${i}`, valueUsd: 5, ownerUsername: 'alice', canonicalHref: `/alice/verified/asset-${i}` })) } }); }
+it('scrolls the selected explorer collection instead of the retained hidden bank collection',()=>{
+ source.value={catalog:catalog(1),status:'live',error:null,refresh:vi.fn()};
+ const bank=mount(),explorer=mount('explorer');bank.host.hidden=true;
+ const hiddenScroll=vi.spyOn(bank.host.querySelector('#market-explore')!,'scrollIntoView').mockImplementation(()=>{});
+ const visibleScroll=vi.spyOn(explorer.host.querySelector('#market-explore')!,'scrollIntoView').mockImplementation(()=>{});
+ act(()=>(explorer.host.querySelector('.market-view-assets')as HTMLButtonElement).click());
+ expect(visibleScroll).toHaveBeenCalledOnce();expect(hiddenScroll).not.toHaveBeenCalled();
+});
+it('retains an explored object through other public routes and restores its route on return',()=>{
+ history.replaceState(null,'','/explore/');source.value={catalog:catalog(1),status:'live',error:null,refresh:vi.fn()};
+ const {host}=mount('explorer');act(()=>(host.querySelector('.market-rows button')as HTMLButtonElement).click());
+ expect(host.querySelector('dialog')).not.toBeNull();
+ act(()=>{history.pushState(null,'','/learn/');dispatchEvent(new PopStateEvent('popstate'));});
+ act(()=>{history.pushState(null,'','/explore/#object/public-0');dispatchEvent(new Event('receiz-bank:surface'));});
+ expect(host.querySelector('dialog')).not.toBeNull();
+});
 it('opens the same public collection and proof details in the explorer without offering private financial actions',()=>{
  source.value={catalog:catalog(1),status:'live',error:null,refresh:vi.fn()};
  const {host,open}=mount('explorer');
@@ -150,6 +166,18 @@ it('keeps the period caption steady through pulse jobs and gives history the sta
  expect(host.querySelector('.chart-period-change span')!.textContent).toBe(caption);expect(host.textContent).not.toContain('retained chart');
  act(()=>host.querySelector<HTMLButtonElement>('button[aria-label="About market capitalization"]')!.click());
  expect(host.textContent).toContain('Global value, grounded in source.');expect(host.textContent).toContain('Valuation protocol & source accounting');expect(host.querySelector('a.market-cap-method-link')?.getAttribute('href')).toBe('/learn/how-value-works/');
+});
+it('keeps a historical pricing date in source accounting instead of the Market overview',()=>{
+ const at='2026-06-23T20:01:03.454Z';
+ source.value={catalog:catalog(1),status:'live',error:null,refresh:vi.fn()};
+ capitalization.value={source:{currentUsd:12,marketAssetsPriced:1,cardsInCirculation:0,generatedAt:'2026-10-19T12:00:00Z',sportsHistorySnapshot:{at,singleCopyGroups:1197,aggregateGroups:745}},points:[],status:'live',historyUpdating:false};
+ const {host}=mount(),overview=host.querySelector('.market-overview')!;
+ expect(overview.textContent).not.toContain('Sealed entries · pricing record');
+ expect(overview.textContent).not.toContain(new Date(at).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}));
+ act(()=>host.querySelector<HTMLButtonElement>('button[aria-label="About market capitalization"]')!.click());
+ const details=overview.querySelector('details')!,record=[...details.querySelectorAll('dl>div')].find(row=>row.querySelector('dt')?.textContent==='Valuation record');
+ expect(record?.querySelector('dd')?.textContent).toBe(new Date(at).toLocaleString());
+ expect(details.textContent).toContain('Individual object bases1,197');expect(details.textContent).toContain('Aggregate valuation groups745');
 });
 it('routes a public Market purchase with the exact Market item ID to the connected Market writer',()=>{
  source.value={catalog:catalog(1),status:'live',error:null,refresh:vi.fn()};const{host,open}=mount();act(()=>(host.querySelector('.market-rows button')as HTMLButtonElement).click());const button=[...host.querySelectorAll('dialog button')].find(b=>b.textContent?.includes('Buy ownership'))as HTMLButtonElement;

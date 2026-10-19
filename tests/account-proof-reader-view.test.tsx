@@ -33,3 +33,16 @@ it('shows exact per-rail movements and native transaction identifiers before dis
     expect(host.textContent).toContain('exact-transaction-id'); expect(host.textContent).toContain('Transaction 1');
   } finally { act(() => root.unmount()); }
 });
+it('verifies the selected shared source when retained navigation changes its digest',async()=>{
+ fixtures.original=proof('500');fixtures.latest=proof('500');
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<AccountProofReader routeDigest={'a'.repeat(64)}/>));
+  expect(host.textContent).toContain('$5.00');
+  fixtures.original=proof('1000');fixtures.latest=proof('1000');
+  await act(async()=>root.render(<AccountProofReader routeDigest={'b'.repeat(64)}/>));
+  expect(host.querySelector('.account-proof-facts')?.textContent).toContain('$10.00');expect(host.querySelector('.account-proof-facts')?.textContent).not.toContain('$5.00');
+  await act(async()=>root.render(<AccountProofReader routeDigest={null}/>));
+  expect(host.textContent).not.toContain('$10.00');expect(host.querySelector('input')).not.toBeNull();
+ }finally{act(()=>root.unmount());}
+});

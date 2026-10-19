@@ -22,9 +22,9 @@ import { CardDepositReturn, readCardReturn, readCardResume } from './features/de
 export default function App() {
  const [receipt,setReceipt]=useState(location.pathname==='/receipt/'?location.href:null);
  const bankMounted=useRef(!receipt);
- useEffect(()=>{const changed=()=>{setReceipt(location.pathname==='/receipt/'?location.href:null);if(location.pathname==='/')bankMounted.current=true;};addEventListener('popstate',changed);addEventListener('bankeiz:receipt',changed);return()=>{removeEventListener('popstate',changed);removeEventListener('bankeiz:receipt',changed);};},[]);
+ useEffect(()=>{const changed=()=>{setReceipt(location.pathname==='/receipt/'&&!document.getElementById('root')?.hidden?location.href:null);if(location.pathname==='/')bankMounted.current=true;};addEventListener('popstate',changed);addEventListener('bankeiz:receipt',changed);addEventListener('receiz-bank:surface',changed);return()=>{removeEventListener('popstate',changed);removeEventListener('bankeiz:receipt',changed);removeEventListener('receiz-bank:surface',changed);};},[]);
  const session=readCardReturn(location.search);
- return <>{(bankMounted.current||!receipt)&&<div hidden={!!receipt} inert={!!receipt}>{session?<CardDepositReturn sessionId={session}/>:<BankApp/>}</div>}{receipt&&<ReceiptView key={receipt} onBack={()=>{if(history.state?.bankReceipt)history.back();else{history.replaceState(null,'','/#ledger');dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));}}}/>}</>;
+ return <>{(bankMounted.current||!receipt)&&<div hidden={!!receipt} inert={!!receipt}>{session?<CardDepositReturn sessionId={session}/>:<BankApp/>}</div>}{receipt&&document.body.dataset.bankSurface!=='receipt'&&<ReceiptView key={receipt} onBack={()=>{if(history.state?.bankReceipt)history.back();else{history.replaceState(null,'','/#ledger');dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));}}}/>}</>;
 }
 function BankApp() {
   const [onBank, setOnBank] = useState(location.pathname === '/');
