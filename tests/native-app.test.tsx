@@ -29,7 +29,8 @@ it('keeps the entrance until the canonical identity and complete supported accou
     expect(host.querySelector('.balance-amount')).toBeNull();
     expect(host.querySelector('.value-chart svg')).toBeNull();
     expect(host.querySelector('.chart-period-change')).toBeNull();
-    expect(host.textContent).toContain('Opening your account');
-    expect(host.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow')).toBe('1');
+    expect(host.querySelector('.account-opening')).toBeNull();
+    expect(host.querySelector('[role=progressbar]')).toBeNull();
+    expect(host.querySelector('.identity-entrance')?.hasAttribute('hidden')).toBe(true);
   }finally{act(()=>root.unmount());Object.assign(account.state,previous);}
 });

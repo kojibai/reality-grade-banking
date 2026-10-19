@@ -259,3 +259,13 @@ it('checks a newer retained source even beside a formerly settled display cache'
  p.known=completeObservation();const next=completeObservation();next.wallet={...next.wallet,totalUsdCents:'400',reserveUsdCents:'400',kaiUpulse:'100000005'};next.history![next.history!.length-1]={...next.history!.at(-1)!,kaiUPulse:'100000005',totalUsdCents:'400',reserveUsdCents:'400'};next.historyBasis!.endKaiUPulse='100000005';p.restore.mockResolvedValue({proof,observation:next});
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);try{expect((await identity.prepareAccountView()).wallet.totalUsdCents).toBe('400');expect(p.wallet).not.toHaveBeenCalled();}finally{identity.dispose();}
 });
+
+it('opens legacy composite chart operands before requesting an unrelated public account proof',async()=>{
+ const {projectCompositeWalletAt}=await import('../src/receiz/composite-wallet-history');
+ const source={schema:'receiz.wallet.chart-source.v129' as const,authority:'authenticated-display-source' as const,userId:'bound-user',throughKaiUPulse:'100000000',objects:[{id:'proof',seed:{kind:'sigil',claimPulse:1,beat:0,stepIndex:0,creatorVerified:true},intervals:[{fromKaiUPulse:'1000000',toKaiUPulse:null}]}],movements:[],lawfulValues:[]};
+ const point=projectCompositeWalletAt(source,source.throughKaiUPulse);
+ p.known=observation();p.proof.mockRejectedValue(Error('PUBLIC_PROOF_UNAVAILABLE'));
+ p.request.mockImplementation(async path=>path.startsWith('/api/connect/wallet/me?history=1')?{ok:true,wallet:{userId:'bound-user',balanceUsd:(Number(point.totalUsdCents)/100).toFixed(2),balancePhiMicro:point.balancePhiMicro,valueStates:{settledBalanceUsdCents:point.reserveUsdCents,ecosystemBalanceUsdCents:point.settlementUsdCents},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:null},chartSource:source}}:{});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const first=await identity.prepareAccountView();expect(first.historyBasis?.kind).toBe('portfolio-model-v129');expect(first.history?.[0].kaiUPulse).toBe('1000000');expect(first.history!.length).toBeGreaterThan(90);expect(p.proof).not.toHaveBeenCalled();expect(p.save.mock.calls.at(-1)?.[9]).toMatchObject(source);}finally{identity.dispose();}
+});

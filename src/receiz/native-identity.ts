@@ -30,6 +30,7 @@ import {loadBankProofResources} from './proof-resource-continuity';
 import {readLocalAccountCheckpoint} from './local-account-checkpoint';
 import {BANK_PREPARED_NOTE_CREDIT_ENABLED} from './config';
 import { readNoteAccountObservation } from './note-account-observation';
+import {readCompositeWalletSource,advanceCompositeWalletObservation,mergeCompositeWalletSources,reconcileCompositeWalletObservation,validCursor} from './composite-wallet-source';
 import { hasSettledAccountView } from './account-view';
 
 export interface OpenIdentity {
@@ -79,7 +80,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   function persistWalletObservation(observation: NonNullable<typeof knownWallet>) {
     const write = walletPersistence.catch(() => {}).then(async () => {
       if (lifetime.signal.aborted || knownWallet !== observation) return;
-      await saveWalletObservation(binding, observation.wallet, observation.observedAt, observation.history, observation.source, observation.localHeadDigest, observation.historyBasis, observation.walletScope, observation.quoteHold);
+      await saveWalletObservation(binding, observation.wallet, observation.observedAt, observation.history, observation.source, observation.localHeadDigest, observation.historyBasis, observation.walletScope, observation.quoteHold, observation.chartSource);
     });
     walletPersistence = write;
     return write;
@@ -208,7 +209,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       });
       // A requested wallet read enforces its own bearer scope on the server.
       // Keep its result private until the independent scope check succeeds.
-      const walletResponse = walletRead ? protectedClient.connect.wallet() : undefined;
+      const walletResponse = walletRead ? (knownWallet || typeof protectedClient.request !== 'function' ? protectedClient.connect.wallet() : protectedClient.request('/api/connect/wallet/me?history=1', {method:'GET'}).then<unknown>(response => response && typeof response === 'object' && 'wallet' in response ? response : protectedClient.connect.wallet())) : undefined;
       // The HTTP read can reject before the slower scope check completes.
       if (walletResponse) void walletResponse.catch(() => {});
       const [granted, session] = await Promise.all([checkingScopes, continuing]);
@@ -245,6 +246,39 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     }
     finally { if (connectionOpening === attempt) connectionOpening = null; }
   }
+  function protectedChartFrame(){return knownWallet?.source==='local-note-head'||knownWallet?.walletScope==='native-full'||!!knownWallet&&isWalletQuoteHeld(knownWallet);}
+  async function adoptChartResponse(response:unknown, expectedUserId:string) {
+    if(protectedChartFrame())return null;
+    const raw=(response as {wallet?:{chartSource?:import('./composite-wallet-history').CompositeWalletSource}}|null)?.wallet?.chartSource;
+    if(!raw||raw.userId!==expectedUserId)return null;
+    let source;
+    try{if(raw.transport?.after){
+      if(!knownWallet?.chartSource||raw.transport.after!==knownWallet.chartSource.transport?.cursor)return null;
+      source=readCompositeWalletSource(mergeCompositeWalletSources(knownWallet.chartSource,raw),expectedUserId);
+    }else source=readCompositeWalletSource(raw,expectedUserId);}catch{return null;}
+    if(!source)return null;
+    source={...source,transport:{after:source.transport?.after??null,cursor:source.transport?.cursor??null,capturedKaiUPulse:source.transport?.capturedKaiUPulse??source.throughKaiUPulse}};
+    const {prepareCompositeWallet}=await import('./prepare-composite-wallet');
+    const wallet=parseSharedWallet(response,expectedUserId), retained=knownWallet?.historyBasis?.kind==='portfolio-model-v129'?knownWallet:undefined;
+    const {projectCompositeWalletAt}=await import('./composite-wallet-history');
+    const originalPoint=projectCompositeWalletAt(source,source.throughKaiUPulse);
+    if(!(['totalUsdCents','settlementUsdCents','reserveUsdCents','balancePhiMicro']as const).every(field=>originalPoint[field]===wallet[field]))return null;
+    const now=String(sdk.receizKaiNow().uPulse);
+    if(/^\d{1,30}$/.test(now)&&BigInt(now)>BigInt(source.throughKaiUPulse)){source={...source,throughKaiUPulse:now};const point=projectCompositeWalletAt(source,now);Object.assign(wallet,{totalUsdCents:point.totalUsdCents,settlementUsdCents:point.settlementUsdCents,reserveUsdCents:point.reserveUsdCents,balancePhiMicro:point.balancePhiMicro});}
+    const observation=await prepareCompositeWallet({wallet,observedAt:new Date().toISOString()},source,lifetime.signal,retained);noteOpen();
+    if(protectedChartFrame())return null;
+    return observation ? advanceCompositeWalletObservation(observation,String(sdk.receizKaiNow().uPulse)) ?? observation : null;
+  }
+  async function prepareCompositeChart() {
+    if(protectedChartFrame())return null;
+    const startedRevision=walletRevision,current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT),bound=clientAccounts.get(current);
+    if(!bound||bound.applicationId!==BANK_APPLICATION_ID)return null;
+    const cursor=knownWallet?.chartSource?.transport?.cursor,after=validCursor(cursor)?`&after=${encodeURIComponent(cursor)}`:'';
+    const response=await current.request(`/api/connect/wallet/me?history=1${after}`,{method:'GET'});noteOpen();
+    if(walletRevision!==startedRevision||hasLocalWalletHead())return null;
+    const observation=await adoptChartResponse(response,bound.accountUid);if(!observation||walletRevision!==startedRevision||protectedChartFrame())return null;
+    knownWallet=observation;void persistWalletObservation(observation).catch(()=>{});return observation;
+  }
   const hasLocalWalletHead = () => knownWallet?.source === 'local-note-head';
   let walletReading: Promise<ReturnType<typeof parseSharedWallet>> | undefined;
   function readWallet(): Promise<ReturnType<typeof parseSharedWallet>> {
@@ -279,13 +313,25 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     if ((hasLocalWalletHead() || olderSharedCoordinate || startedRevision !== walletRevision && !laterSharedCoordinate) && knownWallet) return knownWallet.wallet;
     if (!lifetime.signal.aborted) {
       const previous = knownWallet?.source === 'account-genesis' ? {...knownWallet, history: knownWallet.history?.map(point=>({...point,userId:wallet.userId}))} : knownWallet;
-      knownWallet = extendWalletHistory(previous, wallet, new Date().toISOString(), String(sdk.receizKaiNow().uPulse));
+      const chart=await adoptChartResponse(response,wallet.userId);noteOpen();
+      const projectedPulse=(response as {wallet?:{sync?:{profileProjectionKaiPulse?:unknown}}}).wallet?.sync?.profileProjectionKaiPulse;
+      const retained=previous&&typeof projectedPulse==='number'&&Number.isSafeInteger(projectedPulse)&&projectedPulse>=0?reconcileCompositeWalletObservation(previous,wallet,String(BigInt(projectedPulse)*1000000n)):null;
+      if(hasLocalWalletHead()||protectedChartFrame()&&knownWallet!==previous||startedRevision!==walletRevision&& !laterSharedCoordinate)return knownWallet!.wallet;
+      knownWallet = chart ?? retained ?? {...extendWalletHistory(previous, wallet, new Date().toISOString(), String(sdk.receizKaiNow().uPulse)),...(previous?.chartSource?{chartSource:previous.chartSource}:{})};
+      if(previous?.chartSource&&!chart&&!retained)void prepareCompositeChart().catch(()=>{});
       void persistWalletObservation(knownWallet).catch(()=>{});
     }
-    return startedRevision !== walletRevision && knownWallet ? knownWallet.wallet : wallet;
+    return knownWallet?.chartSource||startedRevision!==walletRevision?knownWallet?.wallet??wallet:wallet;
   }
   async function refreshLocalValuation() {
     const before = knownWallet, basis = before?.historyBasis, startedNoteEpoch = noteOperationEpoch;
+    if(before?.chartSource&&basis?.kind==='portfolio-model-v129'&&!activeNoteOperations&&!lifetime.signal.aborted){
+      const kai=String(sdk.receizKaiNow().uPulse);
+      if(BigInt(kai)/1000000n<=BigInt(basis.endKaiUPulse)/1000000n)return null;
+      const next=advanceCompositeWalletObservation(before,kai);
+      if(next&&knownWallet===before&&startedNoteEpoch===noteOperationEpoch){knownWallet=next;void persistWalletObservation(next).catch(()=>{});return next;}
+      return null;
+    }
     if (lifetime.signal.aborted || activeNoteOperations || !before || isWalletQuoteHeld(before) || !basis || basis.kind !== undefined || before.walletScope !== 'native-full' || before.wallet.projectionComplete !== true
       || basis.balancePhiMicro !== before.wallet.balancePhiMicro || basis.reserveUsdCents !== before.wallet.reserveUsdCents
       || typeof basis.settlementPhiMicro !== 'string' || !/^\d{1,30}$/.test(basis.endKaiUPulse)) return null;
@@ -809,12 +855,15 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       // before admitting this first frame. Local custody never uses a remote
       // shared checkpoint as a substitute for its successor.
       if (!hasLocalWalletHead()) {
+        try { const chart=await prepareCompositeChart();if(chart)return chart; } catch {noteOpen();}
         try { await accountProof(); noteOpen(); } catch { noteOpen(); }
       }
       if (!knownWallet.history?.length) knownWallet = {...knownWallet, history: appendWalletPoint([], knownWallet.wallet, knownWallet.observedAt, knownWallet.wallet.kaiUpulse)};
       return knownWallet;
     }
-    const [walletResult, proofResult] = await Promise.allSettled([readWallet(), accountProof()]); noteOpen();
+    const walletResult = await readWallet().then(value=>({status:'fulfilled' as const,value}),reason=>({status:'rejected' as const,reason}));noteOpen();
+    if(knownWallet&&hasSettledAccountView(knownWallet))return knownWallet;
+    const proofResult = await accountProof().then(value=>({status:'fulfilled' as const,value}),reason=>({status:'rejected' as const,reason}));noteOpen();
     // accountProof already retained and projected its source. Reuse that frame
     // instead of running the same historical valuation pass a second time.
     if (knownWallet && hasSettledAccountView(knownWallet)) return knownWallet;

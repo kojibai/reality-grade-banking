@@ -37,6 +37,7 @@ export function permittedNativePath(path: string, method: string): boolean {
   if (/^\/api\/sdk\/v1\/subjects\/receiz%3Asubject%3A[a-f0-9]{64}\/state$/.test(url.pathname)) return method.toUpperCase() === 'GET' && !url.search;
   if (NATIVE_PATHS[url.pathname] !== method.toUpperCase()) return false;
   if (url.pathname === '/api/sdk/v1/runtime/qualify' || url.pathname === '/api/sdk/v1/sources/publish' || url.pathname.startsWith('/api/sdk/v1/runtime/authority-sessions/')) return [...url.searchParams.keys()].length === 1 && url.searchParams.get('applicationId') === BANK_APPLICATION_ID;
+  if (url.pathname === '/api/connect/wallet/me' && url.search) return url.searchParams.get('history') === '1' && [...url.searchParams.keys()].every(key => ['history','after'].includes(key) && url.searchParams.getAll(key).length===1) && (!url.searchParams.has('after') || /^\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|\+00:00)$/.test(url.searchParams.get('after')!) && url.searchParams.get('after')!.length<=40);
   if (!url.search) return url.pathname !== '/api/connect/payments/session';
   return url.pathname === '/api/connect/payments/session' && [...url.searchParams.keys()].length === 1 && /^cs_[a-zA-Z0-9_]{8,200}$/.test(url.searchParams.get('sessionId') ?? '');
 }

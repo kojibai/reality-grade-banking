@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "node scripts/build-icons.mjs && node scripts/receiz-release.mjs && tsc -b && vite build && node scripts/build-public-pages.mjs && node scripts/build-source-archive.mjs && node scripts/build-license-notices.mjs && node scripts/build-offline-shell.mjs && node scripts/check-offline-shell.mjs && node scripts/check-conformance-build.mjs && node scripts/check-licensing.mjs && node scripts/check-source-archive.mjs",
+    "build": "node scripts/build-icons.mjs && node scripts/receiz-release.mjs && node scripts/build-chart-valuation.mjs --check && tsc -b && vite build && node scripts/build-public-pages.mjs && node scripts/build-source-archive.mjs && node scripts/build-license-notices.mjs && node scripts/build-offline-shell.mjs && node scripts/check-offline-shell.mjs && node scripts/check-conformance-build.mjs && node scripts/check-licensing.mjs && node scripts/check-source-archive.mjs",
     "icons:build": "node scripts/build-icons.mjs",
     "icons:check": "node scripts/build-icons.mjs --check",
     "preview": "vite preview --host 127.0.0.1",

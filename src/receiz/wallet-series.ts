@@ -1,6 +1,6 @@
 import type { SharedWallet } from './shared-wallet';
 import { chartChange, chartPeriodPoints, sampleChartIndices, type ChartPeriod } from '../core/chart-history';
-export interface WalletPoint { userId: string; at: string; kaiUPulse: string | null; totalUsdCents: string; reserveUsdCents: string; settlementUsdCents: string; valuation?: 'deterministic-v129'|'legacy-model-v129'; }
+export interface WalletPoint { userId: string; at: string; kaiUPulse: string | null; totalUsdCents: string; reserveUsdCents: string; settlementUsdCents: string; valuation?: 'deterministic-v129'|'legacy-model-v129'|'portfolio-model-v129'; }
 // The exact v129 KKS day lattice; the displayed whole-pulse approximation is 17,491.
 export const KAI_DAY_UPULSES = 17_491_270_421n;
 /** The existing phi-exact UTC display bridge, including fractional pulses.

@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { branding } from '../../../branding/profile.mjs';
 import './account-opening.css';
 
 export type OpeningStage = 'identity' | 'history' | 'ready';
@@ -14,7 +15,9 @@ export function AccountOpening({ stage = 'identity', inspecting = false }: { sta
     : stage === 'history' ? '1 of 2 checkpoints complete. Identity preparation finished; preparing your account view.'
     : '0 of 2 checkpoints complete. Preparing and verifying your identity.';
 
-  return <div className="account-opening" data-phase={phase}>
+  return <div className="account-opening account-opening-screen" data-phase={phase} aria-busy={stage !== 'ready'}>
+    <header className="account-opening-brand"><span className="wordmark">{branding.wordmark}<span>{branding.descriptor}</span></span><span className="account-opening-private">Secure on this device</span></header>
+    <div className="account-opening-center">
     <div className="account-opening-art" aria-hidden="true">
       <svg className="account-opening-geometry" viewBox="0 0 144 144" fill="none" aria-hidden="true" focusable="false">
         <circle cx="72" cy="72" r="63" stroke="currentColor" strokeOpacity=".14" />
@@ -56,5 +59,7 @@ export function AccountOpening({ stage = 'identity', inspecting = false }: { sta
       </div>
       <span className="account-opening-progress-caption" aria-hidden="true"><span data-complete={completed >= 1}>Identity</span><span data-complete={completed >= 2}>Account</span></span>
     </div>
+    </div>
+    <p className="account-opening-footnote">Your identity stays with you.</p>
   </div>;
 }

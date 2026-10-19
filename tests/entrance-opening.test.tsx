@@ -34,7 +34,7 @@ function button(label: string) {
 }
 
 it('reports completed entry checkpoints without presenting time or byte percentages', () => {
-  render({ opening: true });
+  render({ opening: true, busy: true });
   const status = host.querySelector('[role=status]')!;
   expect(status.getAttribute('aria-live')).toBe('polite');
   expect(status.getAttribute('aria-atomic')).toBe('true');
@@ -49,7 +49,7 @@ it('reports completed entry checkpoints without presenting time or byte percenta
   expect(progress.getAttribute('aria-valuetext')).toContain('Preparing and verifying your identity');
   expect(status.textContent).not.toMatch(/\d+%|verified|complete|ready to use/i);
 
-  render({ opening: true, openingStage: 'history' });
+  render({ opening: true, busy: true, openingStage: 'history' });
   expect(host.querySelectorAll('[role=status]')).toHaveLength(1);
   expect(host.querySelector('[role=status]')?.textContent).toContain('Loading your account history');
   expect(host.querySelector('[role=status]')?.textContent).not.toContain('Preparing your identity');
@@ -59,7 +59,7 @@ it('reports completed entry checkpoints without presenting time or byte percenta
 });
 
 it('marks both checkpoints complete only when the supplied account stage is ready', () => {
-  render({ opening: true, openingStage: 'ready' });
+  render({ opening: true, busy: true, openingStage: 'ready' });
   expect(host.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow')).toBe('2');
   expect(host.querySelector('[role=progressbar]')?.getAttribute('aria-valuetext')).toContain('Your account view is ready');
   render();
@@ -108,7 +108,7 @@ it('describes file inspection truthfully and switches directly to the legacy phr
 });
 
 it('removes the opening surface as soon as entry returns to the landing state', () => {
-  render({ opening: true, openingStage: 'history' });
+  render({ opening: true, busy: true, openingStage: 'history' });
   expect(host.querySelector('.account-opening')).not.toBeNull();
   render();
   expect(host.querySelector('.account-opening')).toBeNull();
@@ -116,4 +116,17 @@ it('removes the opening surface as soon as entry returns to the landing state', 
   expect(host.querySelector('.page-subtitle')?.textContent).toBe('One place for all your value. Wherever you go.');
   expect(host.querySelector('.entrance-conformance-trigger')).not.toBeNull();
   expect(button('Enter').disabled).toBe(false);
+});
+
+it('uses a separate full-screen surface only for explicit opening and keeps device resume free of the opening animation', () => {
+  render({ busy: true, openingStage: 'history' });
+  expect(host.querySelector('.account-opening-screen')).not.toBeNull();
+  expect(host.querySelector('.identity-entrance')?.hasAttribute('hidden')).toBe(true);
+  expect(host.querySelector('.account-opening-screen .wordmark')?.textContent).toContain('Bankeiz');
+  render({ opening: true, openingStage: 'history' });
+  expect(host.querySelector('.account-opening')).toBeNull();
+  expect(host.querySelector('[role=progressbar]')).toBeNull();
+  expect(host.querySelector('.identity-entrance')?.hasAttribute('hidden')).toBe(true);
+  render();
+  expect(host.querySelector('.identity-entrance')?.hasAttribute('hidden')).toBe(false);
 });
