@@ -148,13 +148,52 @@ the existing native source/domain or artifact transport cannot express it.
 
 1. Preserve working Send/Receive and their exact recovery. Keep the already
    completed Market/PWA/Ledger/receipt work.
-2. Resolve the real Note checkpoint diagnostic and compatible device path.
-3. Qualify prepared offline issue → handoff → deposit → credit → spend, restart
-   and reconnect, with unchanged antirollback and one accepted economic effect.
-4. Deliver the complete payment/account source closure into the existing views.
-5. Finish media-bound backed issuance and the selected asset's acquisition/use
+2. Deliver the complete payment/account source closure into the existing views.
+   This remains first in the user's current implementation order. Removing the
+   empty funding panel is complete; universal funding-origin display is not.
+3. Finish media-bound backed issuance and the selected asset's acquisition/use
    lifecycle through Receiz; then qualify card-funded continuation and any
    deliberately selected business/institutional extensions.
+4. Finish the shared institutional footer across the public copy pages.
+5. Resolve the real Note checkpoint diagnostic and compatible device path.
+6. Qualify prepared offline issue → handoff → deposit → credit → spend, restart
+   and reconnect, with unchanged antirollback and one accepted economic effect.
+
+### Read-only funding-source investigation
+
+On 19 October, the user authorized a one-time Supabase investigation and source
+backfill preparation. No database rows or original proof objects were changed.
+The current Receiz database contains 88 Wallet transfers and all 88 corresponding
+message originals. Neither transfer metadata nor the originals' `walletTransfer`
+contains `fundingSources`, `fundingBasis` or `causalLineage`. The exact subject
+source, subject append, profile source projection, domain checkpoint source and
+domain replay source tables each currently contain zero rows. This describes
+those particular storage tables, not the existence of proof objects in other
+file or device custody.
+
+The actual card implementation is
+`app/lib/game/sportsArenaCardCausalOwnershipProof.ts`: it records its native
+`pack_slot_fifo_remainder_v1` or `single_card_settlement_v1` attribution, original
+credit/source identifiers and the predecessor causal append. Its supporting
+reader is `sportsArenaCardCausalOwnershipProof.server.ts`. That per-card
+attribution must not silently become an asserted allocation rule for an older
+Wallet transfer whose retained execution only promises `settled_first_then_phi`.
+
+`app/lib/wallet/server.ts` already evaluates Settlement from the source-derived
+artifact base plus lawful-action value and the recorded ledger delta. This is
+the implementation to reuse. `app/lib/wallet/chartSource.ts` explicitly exports
+`current-object-valuation-and-recorded-movements`; it starts the currently held
+objects at their seal coordinates. Those chart operands are suitable for their
+documented calculated portfolio view, not independent evidence of every past
+owner/visibility interval or historical funding allocation.
+
+The next source connection must locate the existing historical enclosing
+originals and accepted predecessor/source frontier, preserve the unchanged
+transfer original, and carry the derivation into its receipt. An exact origin
+attribution cannot be manufactured from today's inventory, a neighboring credit,
+or the valuation equation alone. Generic v129 exact-artifact transport exists;
+this investigation has not established an SDK version gap or a completed
+historical backfill. It also does not label any funds as having no source.
 
 Every completed journey needs its genuine source, accepted result, retained
 original, updated same account and recovery from lost responses. Rendering a
