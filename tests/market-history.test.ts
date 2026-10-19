@@ -18,7 +18,7 @@ it('ships all six complete genuine public intervals before any network read or w
   expect(shipped.basisSha256).toBe(await marketHistoryBasis(current));
   expect(shipped.summary.marketAssetsPriced).toBe(current.marketAssetsPriced);
   for (const period of CHART_PERIODS) {
-    expect(shipped.series[period].length).toBeGreaterThanOrEqual(64);expect(shipped.series[period].length).toBeLessThanOrEqual(96);
+    expect(shipped.series[period].length).toBeGreaterThanOrEqual(64);expect(shipped.series[period].length).toBeLessThanOrEqual(96+(shipped.eventPulses?.length??0));
     expect(shipped.series[period][0].pulse).toBe(marketPeriodPulses(current, period)[0]);
     expect(shipped.series[period].at(-1)?.usdCents).toBe(String(Math.round(shipped.summary.currentUsd*100)));
   }
@@ -40,7 +40,7 @@ it('rebuilds all ranges when a public asset valuation basis changes', async () =
   calculate.mockClear(); const source = structuredClone(seed); source.valueRows[0].scoreDelta += 1;
   const rebuilt = (await buildMarketHistory(source, retained))!;
   expect(rebuilt.basisSha256).not.toBe(retained.basisSha256); expect(calculate.mock.calls.length).toBeGreaterThan(100);
-  for (const period of CHART_PERIODS) {expect(rebuilt.series[period].length).toBeGreaterThanOrEqual(64);expect(rebuilt.series[period].length).toBeLessThanOrEqual(96);}
+  for (const period of CHART_PERIODS) {expect(rebuilt.series[period].length).toBeGreaterThanOrEqual(64);expect(rebuilt.series[period].length).toBeLessThanOrEqual(96+(rebuilt.eventPulses?.length??0));}
 });
 it('rejects stale endpoints, missing ranges, wrong pulse labels and malformed retained values', () => {
   const corrupted = structuredClone(shipped); corrupted.series['1D'][0].at = '2026-01-01T00:00:00Z';
@@ -58,4 +58,10 @@ it('rejects malformed retained observation coordinates and undated aggregate fie
     expect(()=>parseMarketHistory({...shipped,summary:{...shipped.summary,undatedHistory}})).toThrow();
     expect(()=>parseMarketCapSource({ok:true,marketCapProjection:{...seed,undatedHistory}})).toThrow();
   }
+});
+it('refuses a retained chart that omits a declared seal or carries invalid event coordinates',()=>{
+ const event=shipped.eventPulses!.find(pulse=>pulse>shipped.summary.firstIssuancePulse&&pulse<shipped.summary.serverPulse)!;
+ const missing=structuredClone(shipped);missing.series.ALL=missing.series.ALL.filter(point=>point.pulse!==event);
+ expect(()=>parseMarketHistory(missing)).toThrow('sealed event is missing');
+ for(const eventPulses of [undefined,{},[-1],[event,event],[shipped.summary.serverPulse+1]])expect(()=>parseMarketHistory({...shipped,eventPulses})).toThrow();
 });

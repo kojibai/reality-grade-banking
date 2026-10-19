@@ -12,7 +12,7 @@ it('rebuilds every capitalization period from the complete current collection an
  const result=(await buildMarketHistory(source,null,undefined,undefined,{catalog:collection,pulse:current}))!;
  expect(result.summary.marketAssetsPriced).toBe(2);expect(result.summary.serverPulse).toBe(current);expect(result.summary.generatedAt).toBe(collection.observedAt);
  expect(result.summary.currentUsd).not.toBe(source.currentUsd);
- for(const points of Object.values(result.series)){expect(points.length).toBeGreaterThanOrEqual(64);expect(points.length).toBeLessThanOrEqual(96);expect(points.at(-1)?.pulse).toBe(current);expect(points.at(-1)?.usdCents).toBe(String(Math.round(result.summary.currentUsd*100)));}
+ for(const points of Object.values(result.series)){expect(points.length).toBeGreaterThanOrEqual(64);expect(points.length).toBeLessThanOrEqual(96+(result.eventPulses?.length??0));expect(points.at(-1)?.pulse).toBe(current);expect(points.at(-1)?.usdCents).toBe(String(Math.round(result.summary.currentUsd*100)));}
  const {parseMarketHistory}=await import('../src/receiz/market-projection/history');expect(()=>parseMarketHistory(result)).not.toThrow();
 });
 it('keeps the retained inventory when a partial collection cannot establish a replacement',async()=>{

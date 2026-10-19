@@ -14,7 +14,8 @@ export function ValueChart({ values, times, timeRange, compact = false, color = 
     const timed=Boolean(validTimes&&start!==undefined&&end!==undefined&&end>start);
     const x = (index: number) => !timed&&values.length===1 ? width/2 : pad+(timed?Math.max(0,Math.min(1,(times![index]-start!)/(end!-start!))):index/(values.length-1))*(width-pad*2);
     const y = (index: number) => max === min ? height / 2 : height - pad - (values[index] - min) / span * (height - pad * 2);
-    const points = sampleChartIndices(values, compact ? 96 : 320).map(index => ({ index, x: x(index), y: y(index) }));
+    const indices=interpolation==='step'?values.map((_,index)=>index):sampleChartIndices(values, compact ? 96 : 320);
+    const points = indices.map(index => ({ index, x: x(index), y: y(index) }));
     // One observation is a current-value reference line, not an invented
     // earlier observation. Its timestamp and inspection remain unchanged.
     const path = points.length === 1 ? `M${pad},${points[0].y} L${width-pad},${points[0].y}` : points.map((point, i) => i === 0 ? `M${point.x},${point.y}` : interpolation==='step'?`H${point.x} V${point.y}`:`C${(points[i - 1].x + point.x) / 2},${points[i - 1].y} ${(points[i - 1].x + point.x) / 2},${point.y} ${point.x},${point.y}`).join(' ');

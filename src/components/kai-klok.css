@@ -106,6 +106,7 @@
 .kai-moment-identity small { display: block; color: #7d8794; font-size: 8px; }
 .kai-units { margin: 16px 0 0; padding-top: 4px; border-top: 1px solid #e4e7ec; }
 .kai-units > div { display: flex; align-items: baseline; justify-content: space-between; padding-top: 9px; }
+.kai-unit-cycle { font-size: .88em; font-weight: 400; opacity: .8; }
 .kai-units dt { color: #7b8795; font-size: 8px; font-weight: 600; letter-spacing: .1em; }
 .kai-units dd { margin: 0; color: #344b66; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .kai-units dd > span { display: inline-block; margin-left: 7px; min-width: 109px; color: #7b8795; font-size: 9px; font-weight: 450; }

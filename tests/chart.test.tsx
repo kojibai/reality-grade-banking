@@ -38,3 +38,12 @@ it('holds sparse values until their dated change without drawing an interpolated
   act(()=>root.render(<ValueChart values={[10,100]}/>));expect(host.querySelector('path[fill="none"]')!.getAttribute('d')).toContain('C');
  }finally{act(()=>root.unmount());}
 });
+it('renders every temporal step instead of moving omitted transitions to a later sample',()=>{
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  const values=Array.from({length:500},(_,i)=>i+1);
+  act(()=>root.render(<ValueChart values={values} times={values.map(value=>value*1000)} interpolation="step"/>));
+  const line=host.querySelector('path[fill="none"]')!.getAttribute('d')!;
+  expect((line.match(/H/g)??[]).length).toBe(values.length-1);
+ }finally{act(()=>root.unmount());}
+});

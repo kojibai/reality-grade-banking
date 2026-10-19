@@ -33,7 +33,7 @@ function marketValue(row: MarketValueRow, pulse: number, usdPerPhi: number): num
   }
   return Math.round(phi * usdPerPhi * 100) / 100;
 }
-function sportsUnitValue(row: MarketValueRow, pulse: number, quoteMove: number): number {
+export function sportsUnitValue(row: MarketValueRow, pulse: number, quoteMove: number): number {
   const base = row.baseUsdValue; if (base <= 0 || row.proofTotalValueUsd <= 0) return 0;
   const signal = (hash(`card:${row.seed}`) % 1e6) / 1e6;
   const wave = (Math.sin((pulse + signal * 987) * .19) + 1) / 2, drift = (Math.sin((pulse + signal * 421) * .047) + 1) / 2, trend = (Math.sin((pulse + signal * 193) * .083) + 1) / 2;

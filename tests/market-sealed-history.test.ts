@@ -126,3 +126,19 @@ it('retains exact seal and dated observation coordinates among bounded chart sam
  const history=(await buildMarketHistory(shifted))!;
  expect(history.series.ALL.find(point=>point.pulse===123)?.usdCents).toBe('1000');expect(history.series.ALL.find(point=>point.pulse===217)?.usdCents).toBe('3000');expect(history.series.ALL.find(point=>point.pulse===300)?.usdCents).toBe('30000');expect(history.series.ALL.length).toBeLessThanOrEqual(96);
 });
+it('keeps every seal boundary when a collection exceeds the old event and point limits, including refreshes',async()=>{
+ const copies=Array.from({length:180},(_,i)=>({collectibleId:`rsc_${i.toString(16).padStart(16,'0')}`,claimHash:i.toString(16).padStart(64,'0'),sealedAt:at(101+i*97),birthUsdValue:i+1,proofValueUsd:i+1,currentValueUsd:i+1}));
+ const input={...source,serverPulse:20000,currentUsd:copies.reduce((sum,copy)=>sum+copy.birthUsdValue,0),cardsInCirculation:copies.length,valueRows:[{...row,sealedCopies:copies}]};
+ const history=(await buildMarketHistory(input))!;
+ for(const points of Object.values(history.series)){
+  const plotted=new Map(points.map(point=>[point.pulse,point.usdCents]));
+  for(let i=0;i<copies.length;i++){
+   const pulse=101+i*97;if(pulse<points[0].pulse)continue;
+   expect(plotted.get(pulse),`seal ${i} at ${pulse}`).toBe(String((i+1)*(i+2)/2*100));
+  }
+ }
+ const advanced=(await buildMarketHistory({...input,serverPulse:20001},history))!;
+ expect(()=>parseMarketHistory(advanced)).not.toThrow();
+ const plotted=new Set(advanced.series.ALL.map(point=>point.pulse));
+ for(let i=0;i<copies.length;i++)expect(plotted.has(101+i*97)).toBe(true);
+});

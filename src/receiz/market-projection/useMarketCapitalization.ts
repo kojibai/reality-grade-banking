@@ -2,6 +2,7 @@ import { useCallback,useEffect, useRef, useState } from 'react';
 import{receizKaiNow}from'@receiz/sdk';
 import type { ChartPeriod } from '../../core/chart-history';
 import type{PublicMarketCatalog}from'../public-market';
+import {packMarketHistory} from './history-wire';
 import seedHistory from '../../../public/receiz-public-chart-history.json';
 import { type MarketCapSource } from './source';
 import { parseMarketHistory,MARKET_HISTORY_POLICY, type MarketHistorySnapshot } from './history';
@@ -60,7 +61,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
         const next=parseMarketHistory(event.data.history);
         // Amount, inventory and every interval are one completed publication.
         heldHistory.current=next;setHistory(next);
-        try{localStorage.setItem(KEY,JSON.stringify(next));}catch{/* Optional public retention. */}
+        try{localStorage.setItem(KEY,JSON.stringify(packMarketHistory(next)));}catch{/* Optional public retention. */}
       }catch{/* Preserve the last complete chart. */}
       if(queued.current)dispatch();else setHistoryUpdating(false);
     };
