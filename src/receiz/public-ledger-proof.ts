@@ -2,12 +2,21 @@ import {receizBase64UrlDecode,receizBase64UrlEncode,sha256ReceizBytes} from '@re
 import {readPublicOriginal} from './public-ledger-native.mjs';
 import {receizCurrentPinnedSignatureV4Roots} from '../../native/receiz/packages/receiz-sdk/src/verifier/roots';
 import {PUBLIC_LEDGER_MAX_BYTES,verifyPublicLedgerStatement,type PublicLedgerSnapshot,type PublicLedgerSource} from './public-ledger-statement';
-import {isPublicLedgerPng,readPublicLedgerPng} from './public-ledger-png';
-export type PublicLedgerFileReview=Readonly<{kind:'ledger'|'proof';format:'original'|'crystal';artifactSha256:string;filename:string;byteLength:number;ownerReceizId:string|null;kaiPulse:string;sourceMimeType:string;financialAdmission:false;snapshot?:PublicLedgerSnapshot}>;
+import {isPublicLedgerPng,readPublicLedgerPng,hasPublicLedgerPngProof,PUBLIC_LEDGER_PNG_MAX_BYTES} from './public-ledger-png';
+export type PublicLedgerImageSeal=Readonly<{status:'verified';version:'v3';artifactSha256:string}|{status:'legacy-unsealed-carrier';version:'v2';artifactSha256:string}>;
+// artifactSha256 always identifies the inner authoritative original. Image
+// realization has its own digest and never replaces publication/continuity keys.
+export type PublicLedgerFileReview=Readonly<{kind:'ledger'|'proof';format:'original'|'crystal';artifactSha256:string;filename:string;byteLength:number;ownerReceizId:string|null;kaiPulse:string;sourceMimeType:string;financialAdmission:false;snapshot?:PublicLedgerSnapshot;imageSeal?:PublicLedgerImageSeal}>;
 type Held=Readonly<{bytes:Uint8Array;filename:string;mimeType:string;source?:PublicLedgerSource}>;
 const held=new WeakMap<PublicLedgerFileReview,Held>();
 export function heldPublicLedgerFile(review:PublicLedgerFileReview):Held{const source=held.get(review);if(!source)throw Error('PUBLIC_LEDGER_FILE_CUSTODY_REQUIRED');return{...source,bytes:source.bytes.slice()};}
 const object=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
+function imageCarrier(bytes:Uint8Array){
+ const embedded=readPublicLedgerPng(bytes);if(!embedded)return null;
+ const v:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(embedded));
+ if(!object(v)||Object.keys(v).sort().join(',')!=='kind,source,version'||v.kind!=='receiz.ledger_proof_bundle'||!['v2','v3'].includes(String(v.version))||!object(v.source))throw Error('PUBLIC_LEDGER_FILE_SCOPE_UNSUPPORTED');
+ return {version:v.version as 'v2'|'v3',source:v.source as unknown as PublicLedgerSource};
+}
 function privateSource(payload:unknown,depth=0):boolean{
  if(depth>64)throw Error('PUBLIC_LEDGER_FILE_CAPACITY');
  if(!payload||typeof payload!=='object')return false;
@@ -28,13 +37,21 @@ async function payloadJson(bytes:Uint8Array,mime:string):Promise<unknown>{
 /** Fixed v129 canonical roots, exact original bytes, then supported domain read.
  * An image, digest, URL or transported verdict cannot substitute for this read. */
 export async function inspectPublicLedgerFile(input:Readonly<{bytes:Uint8Array;filename:string}>):Promise<PublicLedgerFileReview>{
- if(!input.bytes.length||input.bytes.length>24*1024*1024)throw Error('PUBLIC_LEDGER_FILE_CAPACITY');
- let bytes:Uint8Array=input.bytes.slice(),filename=input.filename,format:'original'|'crystal'='original',wire:PublicLedgerSource|undefined;
+ if(!input.bytes.length||input.bytes.length>PUBLIC_LEDGER_PNG_MAX_BYTES)throw Error('PUBLIC_LEDGER_FILE_CAPACITY');
+ let bytes:Uint8Array=input.bytes.slice(),filename=input.filename,format:'original'|'crystal'='original',wire:PublicLedgerSource|undefined,imageSeal:PublicLedgerImageSeal|undefined;
  if(isPublicLedgerPng(bytes)){
-  const embedded=readPublicLedgerPng(bytes);
-  if(embedded){const v:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(embedded));
-   if(!object(v)||Object.keys(v).sort().join(',')!=='kind,source,version'||v.kind!=='receiz.ledger_proof_bundle'||v.version!=='v2'||!object(v.source))throw Error('PUBLIC_LEDGER_FILE_SCOPE_UNSUPPORTED');
-   wire=v.source as unknown as PublicLedgerSource;format='crystal';
+  // The untrusted version only selects the reader. For v3, no inner source is
+  // decoded or admitted before the exact enclosing PNG passes canonical read.
+  let carrier=imageCarrier(bytes);
+  if(carrier){
+   if(carrier.version==='v3'||hasPublicLedgerPngProof(bytes)){
+    const outer=await readPublicOriginal(bytes,filename);
+    if(!outer.ok||!outer.verification.integrity.ok||outer.payloadMimeType!=='image/png'||!isPublicLedgerPng(outer.payloadBytes))throw Error('PUBLIC_LEDGER_IMAGE_UNVERIFIED');
+    carrier=imageCarrier(outer.payloadBytes);
+    if(!carrier||carrier.version!=='v3')throw Error('PUBLIC_LEDGER_IMAGE_UNVERIFIED');
+    imageSeal=Object.freeze({status:'verified',version:'v3',artifactSha256:await sha256ReceizBytes(bytes)});
+   }else imageSeal=Object.freeze({status:'legacy-unsealed-carrier',version:'v2',artifactSha256:await sha256ReceizBytes(bytes)});
+   wire=carrier.source;format='crystal';
   }
  }
  if(wire){
@@ -52,7 +69,7 @@ export async function inspectPublicLedgerFile(input:Readonly<{bytes:Uint8Array;f
  if(object(parsed)&&parsed.schema==='receiz.public-action-ledger.v1'){
   const snapshot=await verifyPublicLedgerStatement(parsed,roots);
   if(!snapshot||String(opened.verification.bundle?.kaiPulseEternal)!==(BigInt(snapshot.kaiUpulse)/1_000_000n).toString())throw Error('PUBLIC_LEDGER_SOURCE_UNVERIFIED');
-  const review=Object.freeze({kind:'ledger' as const,format,artifactSha256,filename,byteLength:bytes.length,ownerReceizId:null,kaiPulse:(BigInt(snapshot.kaiUpulse)/1_000_000n).toString(),sourceMimeType:opened.payloadMimeType,financialAdmission:false as const,snapshot});
+  const review=Object.freeze({kind:'ledger' as const,format,artifactSha256,filename,byteLength:bytes.length,ownerReceizId:null,kaiPulse:(BigInt(snapshot.kaiUpulse)/1_000_000n).toString(),sourceMimeType:opened.payloadMimeType,financialAdmission:false as const,snapshot,...imageSeal?{imageSeal}:{}});
   const source=Object.freeze({schema:'receiz.sealed-artifact-bytes.v124' as const,exactBytesB64u:receizBase64UrlEncode(bytes),filename,mimeType:'application/vnd.receiz.bundle+json',artifactSha256,payloadSha256});held.set(review,{bytes,filename,mimeType:source.mimeType,source});return review;
  }
  if(wire)throw Error('PUBLIC_LEDGER_FILE_SCOPE_UNSUPPORTED');

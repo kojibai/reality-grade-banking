@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/kojibai/kai-klok",
+  "commit": "2ee07d83f1623bf497486fd29eac4e51cee5a55c",
+  "source": "src/components/KaiKlock.tsx",
+  "sourceSha256": "78b329b58532214d3e4e7fb334f4f8cbe301afa7cf26553d88e95a47835ae31b",
+  "stylesheet": "src/components/KaiKlock.css",
+  "stylesheetSha256": "8f5b904beebdf7a9734d314df2275f04234d429ed71eba62a04b3ba7b028c4e9",
+  "renderSha256": "d97a20dad6f55471d23f61192f07a67695c20520d11f7876bf16cb1970ac5410",
+  "renderSha256Scope": "Original upstream render body before the authorized Bankeiz presentation refinements",
+  "integration": "The source-carried 36-beat coordinate model, two-hand rotation and solar color interpolation algorithm are retained. Native KKS state supplies the full beat:step:pulse coordinate, independent hand step labels, percentIntoStep fills and continuous day-progress sweep. Authorized Bankeiz refinements enlarge and rebalance the dial on matte navy, add neutral material depth, inherit the original Bankeiz Inter/sans typography, and relocate supplemental readouts and consistent ark captions below. Responsive proportions were informed by the canonical iOS KaiDialView.swift; no iOS timing math is used.",
+  "currentArkPaletteSource": "Receiz app/components/SigilModal.tsx ARK_COLORS, extracted by Receiz Mind dashboard/build.ts",
+  "currentDayPaletteSource": "Receiz app/components/SigilExplorer/chakra.ts CHAKRA_COLORS, mapped by native weekdays",
+  "currentMonthPaletteSource": "Receiz Mind dashboard/kai-projection.js KAI_PROJECTION_MONTH_COLORS",
+  "authorizedSurfacePalette": "The user explicitly authorized deeper muted tones for all presentation colors. BANK_KAI_PALETTE maps ark/day/month/week categories to coordinated light/dark Bankeiz tones; the original category names, indices and canonical hex metadata remain separately preserved in kai-klok.ts. Beat markers retain their original hue positions with reduced saturation. The original solar interpolation algorithm operates on the mapped ark tones. BANK_KAI_SURFACE_COLORS supplies smoky teal/seafoam hardware and readout accents. These are presentation mappings, not claims of unchanged canonical display hex values.",
+  "pulseMotion": "The orb makes one bounded linear compositor revolution per native eternal pulse. The same held KaiTimeSource is resampled after animation creation; native μpulse phase and the native subdivision period seed both orb and a <=0.15% material-only inhale/exhale. Each native boundary/open/foreground resume reseeds them; hidden/reduced-motion state cancels them. Browser frame scheduling limits visual simultaneity; no second clock, RAF loop, physiological claim, or accumulated CSS period is introduced.",
+  "solarCalculationSource": "native/receiz/app/utils/kai_pulse.ts sunriseJulianForDate; also canonical /klok SDK. The existing parameterized astronomical calculation is reused locally, with explicit polar non-event rejection."
+}

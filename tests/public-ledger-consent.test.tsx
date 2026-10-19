@@ -3,12 +3,12 @@
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {it,expect,vi,afterEach} from 'vitest';
-import {LedgerProofControls} from '../src/public-ledger/LedgerProofControls';
+import {LedgerCrystalSave,LedgerProofControls} from '../src/public-ledger/LedgerProofControls';
 vi.mock('@receiz/sdk',()=>({receizBase64UrlEncode:()=> 'synthetic-ui-only'}));
 const values=vi.hoisted(()=>({older:{kind:'ledger',artifactSha256:'a'.repeat(64),kaiPulse:'10',snapshot:{records:[],baseline:'native'}},newer:{kind:'ledger',artifactSha256:'b'.repeat(64),kaiPulse:'11',snapshot:{records:[],baseline:'native'}}}));
 vi.mock('../src/receiz/public-ledger-proof',()=>({inspectPublicLedgerFile:vi.fn(async()=>values.older),openPublicLedgerSource:vi.fn(async()=>values.older),heldPublicLedgerFile:()=>({bytes:new Uint8Array([1,2,3]),filename:'original.receiz'})}));
 vi.mock('../src/receiz/public-ledger-retention',()=>({retainPublicLedgerReview:vi.fn(async()=>values.newer),readRetainedPublicLedger:vi.fn(async()=>values.newer)}));
-vi.mock('../src/receiz/public-network-cache',()=>({loadPublicNetworkCache:vi.fn(async()=>null),savePublicNetworkCache:vi.fn(async()=>true)}));
+vi.mock('../src/receiz/public-network-cache',()=>{const save=vi.fn(async(_cache:unknown)=>true);return {loadPublicNetworkCache:vi.fn(async()=>null),savePublicNetworkCache:save,savePublicLedgerDisplayCache:(_review:unknown,cache:unknown)=>save(cache)};});
 vi.mock('../src/receiz/public-ledger-crystal-image',()=>({createPublicLedgerCrystal:vi.fn(async()=>({bytes:new Uint8Array([1]),filename:'ledger.png'}))}));
 import {createPublicLedgerCrystal} from '../src/receiz/public-ledger-crystal-image';
 import {inspectPublicLedgerFile,openPublicLedgerSource} from '../src/receiz/public-ledger-proof';
@@ -54,8 +54,25 @@ it('can discover originals beyond the first page without knowing their digest',a
 });
 
 async function openReview(host:HTMLElement){const input=host.querySelector('input[type=file]')!;Object.defineProperty(input,'files',{configurable:true,value:[new File(['test-only'],'test.receiz')]});await act(async()=>input.dispatchEvent(new Event('change',{bubbles:true})));}
+it.each(['verified','legacy-unsealed-carrier'] as const)('distinguishes %s image authenticity from the independently verified Ledger source',async status=>{
+ const imageSeal={status,version:status==='verified'?'v3':'v2',artifactSha256:'d'.repeat(64)};
+ vi.mocked(inspectPublicLedgerFile).mockResolvedValueOnce({...values.older,format:'crystal',imageSeal} as never);
+ const fetch=vi.spyOn(globalThis,'fetch').mockResolvedValue(Response.json({entries:[]})),host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<LedgerProofControls/>));await openReview(host);
+  const review=host.querySelector('.ledger-proof-review')!;expect(review.textContent).toContain('Ledger source SHA-256');expect(review.textContent).toContain(values.older.artifactSha256);expect(review.textContent).toContain(imageSeal.artifactSha256);
+  expect(review.textContent).toContain(status==='verified'?'Image seal verified':'Legacy v2 carrier · image is unsealed');
+  expect(review.textContent).toContain('Ledger source verified');expect(review.textContent).not.toContain(status==='verified'?'image is unsealed':'Image seal verified');
+ }finally{act(()=>root.unmount());fetch.mockRestore();}
+});
 function button(host:HTMLElement,text:string){return [...host.querySelectorAll('button')].find(b=>b.textContent?.includes(text))!;}
 function downloadSpies(){vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:synthetic-test');vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});}
+it('offers the same whole-source save inside Ledger without starting mount discovery or polling',async()=>{
+ const fetch=vi.spyOn(globalThis,'fetch').mockResolvedValue(Response.json({error:'not live'},{status:503})),host=document.createElement('div'),root=createRoot(host);downloadSpies();
+ try{expect(LedgerCrystalSave).toBeTypeOf('function');await act(async()=>root.render(<LedgerCrystalSave/>));expect(fetch).not.toHaveBeenCalled();
+  await act(async()=>button(host,'Memory Crystal').click());expect(createPublicLedgerCrystal).toHaveBeenCalledWith(values.newer);expect(host.textContent).toContain('Memory Crystal saved');
+  expect(fetch.mock.calls.every(([url,init])=>!String(url).includes('discovery')&&init?.method!=='POST')).toBe(true);
+ }finally{act(()=>root.unmount());fetch.mockRestore();}
+});
 it('downloads the newer retained source when the service returns an older valid prefix',async()=>{
  const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>String(input).includes('discovery=')?Response.json({entries:[]}):Response.json({}));
  const host=document.createElement('div'),root=createRoot(host);downloadSpies();

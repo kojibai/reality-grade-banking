@@ -33,7 +33,17 @@ export const KAI_PHASES = [
   { name: 'Purification', color: '#00b0ff' },
   { name: 'Synthesis', color: '#c186ff' },
 ] as const;
-const WEEK_NAMES = ['Awakening Flame', 'Flowing Heart', 'Radiant Will', 'Harmonic Voice', 'Inner Mirror', 'Dreamfire Memory', 'Krowned Light'] as const;
+// Native WEEK_SPIRALS names/definitions; week colors carried by Mind's guide
+// from the frontend ETERNAL_WEEK_DESCRIPTIONS. Week four has a frontend alias.
+export const KAI_WEEKS = [
+  { name: 'Awakening Flame', definition: 'Root fire of ignition, will, resurrektion', color: '#DC143C', colorName: 'Crimson red' },
+  { name: 'Flowing Heart', definition: 'Emotional waters, intimasy, surrender', color: '#FF9F24', colorName: 'Amber orange' },
+  { name: 'Radiant Will', definition: 'Solar klarity, aligned konfidence, embodiment', color: '#FFD700', colorName: 'Radiant gold' },
+  { name: 'Harmonic Voice', definition: 'Spoken truth, vibration, koherense in sound', color: '#0F52BA', colorName: 'Sapphire blue', alias: 'Harmonik Voh' },
+  { name: 'Inner Mirror', definition: 'Reflektion, purifikation, self-seeing', color: '#4B0082', colorName: 'Deep indigo' },
+  { name: 'Dreamfire Memory', definition: 'Lusid vision, divine memory, encoded light', color: 'linear-gradient(135deg,#A855F7,#CBD5E1)', colorName: 'Violet flame and soft silver' },
+  { name: 'Krowned Light', definition: 'Integration, sovereignty, harmonik ascension', color: 'linear-gradient(135deg,#FFFFFF,#FFD700,#F8F5E8)', colorName: 'White-gold prism' },
+] as const;
 const LIORA_PRISM = 'linear-gradient(135deg,#00C2FF 0%,#A855F7 48%,#F59E0B 100%)';
 const pad = (value: number) => String(value).padStart(2, '0');
 
@@ -59,7 +69,7 @@ export function projectKaiKlok(pulse: number) {
     phaseColor: phase.color, dayColor: dayIdentity.color, dayColorName: dayIdentity.colorName,
     monthColor: monthIdentity.color, monthColorName: monthIdentity.colorName,
     monthSwatch: monthIndex === MONTHS_PER_YEAR - 1 ? LIORA_PRISM : monthIdentity.color,
-    week, weekName: WEEK_NAMES[week - 1],
+    week, weekName: KAI_WEEKS[week - 1].name,
     beatProgress: moment.beat / BEATS_DAY,
     stepProgress: moment.stepIndex / STEPS_BEAT,
     pulseProgress: withinStep / Number(PULSES_PER_STEP_MICRO / 1_000_000n),

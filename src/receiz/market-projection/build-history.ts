@@ -1,21 +1,30 @@
 import { CHART_PERIODS, type ChartPeriod } from '../../core/chart-history';
-import { marketCapUsdAtPulse, marketPeriodPulses, marketPulseTime } from './project';
+import { marketCapUsdAtPulse, marketPeriodPulses, marketPulseTime,prepareMarketProjection } from './project';
 import { marketCapSummary, marketHistoryBasis,marketHistoryMembership,retainMarketInterval,MARKET_HISTORY_POLICY, type CapitalizationPoint, type MarketHistorySnapshot } from './history';
 import type { MarketCapSource } from './source';
 import type{PublicMarketCatalog}from'../public-market';
 import{currentMarketDisplayModel}from'./catalog-source';
 import {marketPulseAtOrAfterTime}from'./sealed-copies';
 import {mergeMarketCopyObservations}from'./copy-observations';
+import {sameSportsPricingOperands}from'./sports-observations';
 function significantEventPulses(source:MarketCapSource):{ranked:number[];observed:number[]}{
  const events=new Map<number,number>(),observed=new Set<number>(),add=(pulse:number,value:number)=>events.set(pulse,(events.get(pulse)??0)+Math.abs(value));
  for(const birth of source.unpricedSealedBirths??[])add(marketPulseAtOrAfterTime(birth.sealedAt),birth.birthUsdValue);
  for(const row of source.valueRows){
+  if(row.historyObservation){const captured=marketPulseAtOrAfterTime(row.historyObservation.at);add(captured,row.historyObservation.usdValue);observed.add(captured);}
+  if(row.historyObservation?.model&&row.historyEvaluationPulse!==undefined&&!sameSportsPricingOperands(row,row.historyObservation.model)){add(row.historyEvaluationPulse,row.proofTotalValueUsd);observed.add(row.historyEvaluationPulse);}
   const seed=row.marketItem?.livePulseSeed;if(seed)add(seed.claimPulse,row.birthUsdValue);
   if(!row.sealedCopies)for(const birth of row.sealedBirths??[])add(marketPulseAtOrAfterTime(birth.sealedAt),birth.birthUsdValue);
   for(const copy of row.sealedCopies??[]){
    add(marketPulseAtOrAfterTime(copy.sealedAt),copy.birthUsdValue);let previous=copy.birthUsdValue;
    for(const observation of copy.valueHistory??[]){const pulse=observation.pulse??(observation.basis==='source-observation'&&copy.valuationPulse!==undefined&&observation===copy.valueHistory?.at(-1)?copy.valuationPulse:marketPulseAtOrAfterTime(observation.at));add(pulse,observation.usdValue-previous);if(observation.basis==='source-observation')observed.add(pulse);previous=observation.usdValue;}
   }
+ }
+ // A dated pricing capture also declares its coverage. Preserve that boundary
+ // without presenting a model evaluation as a new performance observation.
+ if(source.sportsHistorySnapshot&&source.sportsHistoryEvaluationPulse!==undefined){
+  const captured=Date.parse(source.sportsHistorySnapshot.at),copies=[...(source.unpricedSealedBirths??[]),...source.valueRows.flatMap(row=>row.historyObservation?(row.sealedBirths??[]):[])];
+  add(source.sportsHistoryEvaluationPulse,copies.reduce((value,copy)=>value+(Date.parse(copy.sealedAt)>captured?copy.birthUsdValue:0),0));
  }
  if(source.undatedHistory){add(source.undatedHistory.observationPulse,source.undatedHistory.observationUsd);observed.add(source.undatedHistory.observationPulse);add(source.undatedHistory.modelPulse,source.undatedHistory.observationUsd);observed.add(source.undatedHistory.modelPulse);}
  return {ranked:[...events].sort((a,b)=>b[1]-a[1]||a[0]-b[0]).map(([pulse])=>pulse),observed:[...observed].sort((a,b)=>a-b)};
@@ -35,7 +44,7 @@ export async function buildMarketHistory(source: MarketCapSource, previous: Mark
     source={...source,...previous.summary,serverPulse:source.serverPulse,currentUsd:source.currentUsd};
   }
   if (sameBasis && previous.summary.serverPulse === source.serverPulse && previous.summary.currentUsd === source.currentUsd) return { ...previous, summary: marketCapSummary(source) };
-  const memo = new Map<number, CapitalizationPoint>(), series = {} as Record<ChartPeriod, CapitalizationPoint[]>;
+  const context=prepareMarketProjection(source),memo = new Map<number, CapitalizationPoint>(), series = {} as Record<ChartPeriod, CapitalizationPoint[]>;
   const events=sameBasis?{ranked:[],observed:previous.observationPulses??[]}:significantEventPulses(source);
   const knownObservations=new Set(previous?.observationPulses??[]),newObservations=new Set(events.observed.filter(pulse=>!knownObservations.has(pulse)));
   const sameMembership=matchingMembership&&(previous.summary.serverPulse<source.serverPulse||newObservations.size>0);
@@ -45,7 +54,7 @@ export async function buildMarketHistory(source: MarketCapSource, previous: Mark
   const point = async (pulse: number) => {
     if (!memo.has(pulse)) {
       const held=sameMembership&&!sameBasis&&pulse<replaceFrom&&pulse<=previous.summary.serverPulse?Object.values(previous.series).flat().filter(point=>point.pulse<=pulse).sort((a,b)=>b.pulse-a.pulse)[0]:undefined;
-      memo.set(pulse, { at: new Date(marketPulseTime(pulse)).toISOString(), pulse, usdCents:held?.usdCents??String(Math.round(marketCapUsdAtPulse(source, pulse) * 100)) });
+      memo.set(pulse, { at: new Date(marketPulseTime(pulse)).toISOString(), pulse, usdCents:held?.usdCents??String(Math.round(marketCapUsdAtPulse(source, pulse,context) * 100)) });
       await yieldSample();
     }
     return memo.get(pulse)!;

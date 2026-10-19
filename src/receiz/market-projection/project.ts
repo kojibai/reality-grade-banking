@@ -2,9 +2,10 @@ import type {SigilMetadataLite} from '@receiz/sdk/valuation';
 import {computeIntrinsicUnsigned as unsignedAtPulse} from '../generated/chart-valuation.mjs';
 import {marketProofUsdQuote,marketProofUsdCents} from '../market-phi-usd';
 import type { MarketCapSource, MarketValueRow,MarketPulseSeed } from './source';
+import {boundSportsHistoryObservation,type SportsHistoryObservation} from './sports-observations';
 import type { ChartPeriod } from '../../core/chart-history';
 import { marketPulseTime, marketPeriodPulses } from './coordinates';
-import {marketPulseAtOrAfterTime,type MarketSealedCopy} from './sealed-copies';
+import {marketPulseAtOrAfterTime,type MarketSealedBirth,type MarketSealedCopy} from './sealed-copies';
 // Canonical public Proof Graph display rules from the v129 Receiz host.
 // Pricing stays deterministic; historical membership starts at the carried seal.
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
@@ -53,6 +54,32 @@ function sealedCopyValue(copy:MarketSealedCopy,pulse:number,quoteMove:number):nu
  for(const point of copy.valueHistory??[]){if(pulse<(point.pulse??marketPulseAtOrAfterTime(point.at)))break;amount=point.usdValue;}
  return amount;
 }
+interface PreparedSportsRow {observation?:SportsHistoryObservation;observed?:number;model?:MarketValueRow;laterBirths:{pulse:number;usdValue:number}[];}
+interface MarketProjectionContext {rows:ReadonlyMap<MarketValueRow,PreparedSportsRow>;birthPulses:ReadonlyMap<MarketSealedBirth,number>;}
+function prepareSportsRow(row:MarketValueRow):PreparedSportsRow{
+ const observation=boundSportsHistoryObservation(row.historyObservation,row);if(!observation)return {laterBirths:[]};
+ const at=Date.parse(observation.at);
+ return {observation,observed:marketPulseAtOrAfterTime(observation.at),model:observation.model?{...row,...observation.model}:undefined,laterBirths:(row.sealedCopies??row.sealedBirths??[]).filter(copy=>Date.parse(copy.sealedAt)>at).map(copy=>({pulse:marketPulseAtOrAfterTime(copy.sealedAt),usdValue:copy.birthUsdValue}))};
+}
+/** One immutable worker input is checked once for a complete history build.
+ * This context is never retained across inputs, including reused object refs. */
+export function prepareMarketProjection(source:MarketCapSource):MarketProjectionContext{
+ const rows=new Map<MarketValueRow,PreparedSportsRow>(),birthPulses=new Map<MarketSealedBirth,number>();
+ for(const row of source.valueRows){if(row.source==='sports-economy-card')rows.set(row,prepareSportsRow(row));for(const copy of row.sealedCopies??row.sealedBirths??[])birthPulses.set(copy,marketPulseAtOrAfterTime(copy.sealedAt));}
+ for(const copy of source.unpricedSealedBirths??[])birthPulses.set(copy,marketPulseAtOrAfterTime(copy.sealedAt));
+ return {rows,birthPulses};
+}
+function observedSportsValue(row:MarketValueRow,pulse:number,quoteMove:number,context?:MarketProjectionContext):number|undefined{
+ const prepared=context?.rows.get(row)??prepareSportsRow(row),observation=prepared.observation;if(!observation)return;
+ const observed=prepared.observed!;
+ // A complete dated copy model supersedes aggregate snapshot coverage.
+ const full=row.sealedCopies,complete=full?.length&&full.every(copy=>copy.valuationPulse!==undefined&&copy.valuationPulse<=pulse||copy.valueHistory?.some(point=>point.basis==='source-observation'&&(point.pulse??marketPulseAtOrAfterTime(point.at))<=pulse));
+ if(complete)return full!.reduce((sum,copy)=>sum+sealedCopyValue(copy,pulse,quoteMove),0);
+ if(pulse<observed)return;
+ if(row.historyEvaluationPulse!==undefined&&pulse>=row.historyEvaluationPulse)return sportsValue(row,pulse,quoteMove);
+ const extra=pulse<(row.historyEvaluationPulse??Infinity)?prepared.laterBirths.reduce((sum,copy)=>sum+(copy.pulse<=pulse?copy.usdValue:0),0):0;
+ return (pulse===observed||!prepared.model?observation.usdValue:sportsValue(prepared.model,pulse,quoteMove))+extra;
+}
 export function publicSportsQuoteAtPulse(row:MarketValueRow,pulse:number,quoteMove?:number){
  if(row.source!=='sports-economy-card'||!Number.isSafeInteger(pulse)||pulse<0)throw Error('Public object valuation seed is unavailable.');
  if(quoteMove===undefined){const current=rate(pulse),prior=rate(Math.max(0,pulse-1));quoteMove=Math.abs(current-prior)/prior;}
@@ -65,21 +92,24 @@ export function marketAssetUsdAtPulse(row:MarketValueRow,pulse:number):number{
  const meta=row.marketItem?.livePulseSeed;if(row.source!=='market-desk-live-asset'||meta?.kind!=='sigil'||!Number.isSafeInteger(pulse)||pulse<meta.claimPulse)throw Error('Public object valuation seed is unavailable.');
  return marketValue(row,pulse,1);
 }
-export function marketCapUsdAtPulse(seed: MarketCapSource, pulse: number): number {
+export function marketCapUsdAtPulse(seed: MarketCapSource, pulse: number,context?:MarketProjectionContext): number {
   if (!Number.isSafeInteger(pulse) || pulse < seed.firstIssuancePulse) throw new Error('Market projection pulse outside its issuance range.');
   if (pulse === seed.serverPulse) return round(seed.currentUsd);
-  const unpriced=(seed.unpricedSealedBirths??[]).reduce((sum,copy)=>sum+(pulse<marketPulseAtOrAfterTime(copy.sealedAt)?0:copy.birthUsdValue),0);
-  const dated=marketRowsUsdAtPulse(seed.valueRows,pulse,true)+unpriced,observation=seed.undatedHistory;
+  const snapshot=seed.sportsHistorySnapshot,captured=snapshot&&marketPulseAtOrAfterTime(snapshot.at);
+  const unpriced=(seed.unpricedSealedBirths??[]).reduce((sum,copy)=>sum+(pulse<(context?.birthPulses.get(copy)??marketPulseAtOrAfterTime(copy.sealedAt))||snapshot&&pulse>=captured!&&(Date.parse(copy.sealedAt)<=Date.parse(snapshot.at)||pulse>=(seed.sportsHistoryEvaluationPulse??Infinity))?0:copy.birthUsdValue),0);
+  const dated=marketRowsUsdAtPulse(seed.valueRows,pulse,true,context)+unpriced,observation=seed.undatedHistory;
+  if(snapshot)return round(dated);
   if(!observation||pulse<observation.observationPulse)return dated;
   const aggregateRows=seed.valueRows.filter(row=>!row.marketItem?.livePulseSeed&&!row.sealedCopies?.length);
-  const aggregate=pulse<=observation.modelPulse?observation.observationUsd:marketRowsUsdAtPulse(aggregateRows,pulse)-marketRowsUsdAtPulse(aggregateRows,pulse,true)-unpriced;
+  const aggregate=pulse<=observation.modelPulse?observation.observationUsd:marketRowsUsdAtPulse(aggregateRows,pulse,false,context)-marketRowsUsdAtPulse(aggregateRows,pulse,true,context)-unpriced;
   return round(dated+aggregate);
 }
-export function marketRowsUsdAtPulse(rows:MarketValueRow[],pulse:number,historical=false):number{
+export function marketRowsUsdAtPulse(rows:MarketValueRow[],pulse:number,historical=false,context?:MarketProjectionContext):number{
  const quote=rate(pulse),previous=rate(Math.max(0,pulse-1)),quoteMove=Math.abs(quote-previous)/previous;
  return round(rows.reduce((sum,row)=>{
+  if(historical&&row.source==='sports-economy-card'){const observed=observedSportsValue(row,pulse,quoteMove,context);if(observed!==undefined)return sum+observed;}
   if(row.source==='sports-economy-card'&&row.sealedCopies)return sum+row.sealedCopies.reduce((value,copy)=>value+sealedCopyValue(copy,pulse,quoteMove),0);
-  if(historical&&row.source==='sports-economy-card'&&row.sealedBirths)return sum+row.sealedBirths.reduce((value,copy)=>value+(pulse<marketPulseAtOrAfterTime(copy.sealedAt)?0:copy.birthUsdValue),0);
+  if(historical&&row.source==='sports-economy-card'&&row.sealedBirths)return sum+row.sealedBirths.reduce((value,copy)=>value+(pulse<(context?.birthPulses.get(copy)??marketPulseAtOrAfterTime(copy.sealedAt))?0:copy.birthUsdValue),0);
   if(historical){const sealed=row.marketItem?.livePulseSeed?.claimPulse;if(sealed===undefined||pulse<sealed)return sum;}
   return sum+(row.source==='market-desk-live-asset'?marketValue(row,pulse,quote):sportsValue(row,pulse,quoteMove));
  },0));

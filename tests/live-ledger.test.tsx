@@ -11,7 +11,7 @@ import type { PersonalHistory } from '../src/receiz/personal-history';
 const network = vi.hoisted(() => ({ state: {} as Record<string, unknown> }));
 vi.mock('../src/receiz/usePublicNetwork', () => ({ usePublicNetwork: () => network.state }));
 vi.mock('../src/features/ledger/useLedgerValueSource', () => ({ useLedgerValueSource: () => null }));
-vi.mock('../src/public-ledger/LedgerProofControls', () => ({ LedgerProofControls: () => null }));
+vi.mock('../src/public-ledger/LedgerProofControls', () => ({ LedgerProofControls: () => null, LedgerCrystalSave: () => <button>Memory Crystal</button> }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const roots: ReturnType<typeof createRoot>[] = [];
 afterEach(() => { for (const root of roots.splice(0)) act(() => root.unmount()); document.body.replaceChildren(); vi.unstubAllGlobals(); });

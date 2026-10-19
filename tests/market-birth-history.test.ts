@@ -4,7 +4,7 @@ import type {MarketCapSource,MarketValueRow} from '../src/receiz/market-projecti
 import {parseMarketCapSource,publicSportsValueRow} from '../src/receiz/market-projection/source';
 import {currentMarketDisplayModel} from '../src/receiz/market-projection/catalog-source';
 import {buildMarketHistory} from '../src/receiz/market-projection/build-history';
-import {marketHistoryBasis,parseMarketHistory} from '../src/receiz/market-projection/history';
+import {marketHistoryBasis,parseMarketHistory,MARKET_HISTORY_POLICY} from '../src/receiz/market-projection/history';
 import {parsePublicMarket} from '../src/receiz/public-market';
 import {mergePublicSports} from '../src/receiz/public-sports';
 const at=(pulse:number)=>new Date(marketPulseTime(pulse)).toISOString();
@@ -34,7 +34,7 @@ it('uses exact sealed births for history without substituting birth values for c
  expect(marketCapUsdAtPulse(model,300)).toBe(120);expect(model.currentUsd).toBe(marketRowsUsdAtPulse(source.valueRows,400));
  const history=(await buildMarketHistory(enriched,null,undefined,undefined,{catalog:null,pulse:400}))!;
  expect(history.series.ALL.find(point=>point.pulse===100)?.usdCents).toBe('1000');expect(history.series.ALL.find(point=>point.pulse===300)?.usdCents).toBe('12000');
- expect(history.historyPolicy).toBe('sealed-births-and-dated-observations-v2');expect(await marketHistoryBasis(enriched)).not.toBe(await marketHistoryBasis(source));
+ expect(history.historyPolicy).toBe(MARKET_HISTORY_POLICY);expect(await marketHistoryBasis(enriched)).not.toBe(await marketHistoryBasis(source));
 });
 it.each([300,15])('counts mixed full, birth-only and unknown rows once with a signed aggregate adjustment at $%s',total=>{
  const full={...row,id:`full:${'b'.repeat(64)}`,seed:'b'.repeat(64),sealedCopies:[{...birth,collectibleId:'rsc_bbbbbbbbbbbbbbbb',claimHash:'b'.repeat(64),birthUsdValue:20,proofValueUsd:100,currentValueUsd:100,valueHistory:[{at:at(100),usdValue:20,basis:'sealed-birth' as const},{at:at(300),usdValue:100,basis:'source-observation' as const}]}]},unknown={...row,id:`unknown:${'c'.repeat(64)}`,seed:'c'.repeat(64)};

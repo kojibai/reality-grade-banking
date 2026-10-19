@@ -1,5 +1,5 @@
 import {useSyncExternalStore} from 'react';
-import {parseMarketCapSource,type MarketCapSource} from './source';
+import {parseMarketCapSource,retainMarketSourceHistory,type MarketCapSource} from './source';
 let source:MarketCapSource|null=null;
 let sourceKind:'live'|'shipped'='shipped';
 const KEY='receiz-bank-public-object-value-source-v1';
@@ -8,7 +8,7 @@ const reads=new Map<string,Promise<MarketCapSource>>();
 const listeners=new Set<()=>void>();
 /** Retain public pricing operands only. This display model grants no rights. */
 export function publishMarketDisplaySource(next:MarketCapSource,kind:'live'|'shipped'='live'):void{
- if(source&&(next.serverPulse<source.serverPulse||next.serverPulse===source.serverPulse&&kind==='shipped'&&sourceKind==='live')||next===source)return;source=next;sourceKind=kind;
+ if(source&&(next.serverPulse<source.serverPulse||next.serverPulse===source.serverPulse&&kind==='shipped'&&sourceKind==='live')||next===source)return;next=retainMarketSourceHistory(next,source);source=next;sourceKind=kind;
  try{localStorage.setItem(KEY,JSON.stringify({ok:true,marketCapProjection:next,displaySourceKind:kind}));}catch{/* Optional display retention. */}
  for(const listener of listeners)listener();
 }

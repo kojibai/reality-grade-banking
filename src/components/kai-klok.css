@@ -1,15 +1,20 @@
 .kai-klok { position: relative; z-index: 25; min-width: 0; margin-left: auto; margin-right: auto; }
-.kai-header-button { display: flex; flex-direction: column; justify-content: center; gap: 5px; width: 240px; max-width: 100%; min-height: 44px; padding: 7px 12px; color: #e8edf3; background: #172b45; border: 1px solid #243a55; border-radius: 9px; box-shadow: inset 0 1px 0 #ffffff0b, 0 2px 5px #172b4508; text-align: left; }
-.kai-header-button:hover, .kai-header-button[aria-expanded=true] { background: #20364f; }
+.kai-header-button { position: relative; isolation: isolate; display: grid; grid-template-columns: max-content max-content; justify-content: center; gap: 5px 10px; width: 240px; max-width: 100%; min-height: 44px; padding: 7px 12px; color: var(--navy); background: transparent; border: 1px solid transparent; border-radius: 9px; box-shadow: none; text-align: left; }
+.kai-header-button:hover, .kai-header-button[aria-expanded=true] { background: transparent; box-shadow: none; }
 .kai-header-coordinate, .kai-header-meta { display: flex; justify-content: space-between; align-items: center; gap: 14px; width: 100%; white-space: nowrap; }
-.kai-header-coordinate > strong { color: var(--kai-phase); font-size: 16px; line-height: 1; font-weight: 650; letter-spacing: .07em; font-variant-numeric: tabular-nums; }
+.kai-header-coordinate { display: contents; }
+.kai-header-coordinate > strong { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
+.kai-header-button .kai-date { grid-column: 2; grid-row: 1; justify-self: end; }
+.kai-header-meta { grid-column: 2; grid-row: 2; align-self: center; }
+.kai-header-coordinate > strong { color: color-mix(in srgb, var(--kai-phase) 80%, #172b45); font-size: 17px; line-height: 1; font-weight: 650; letter-spacing: .07em; font-variant-numeric: tabular-nums; -webkit-text-stroke: .25px #172b456b; paint-order: stroke fill; }
 .kai-date { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .kai-date i { color: #6e8095; font-style: normal; font-weight: 400; }
-.kai-date-day { color: var(--kai-day); }
-.kai-date-month { color: #dce6f3; text-decoration: underline; text-decoration-color: var(--kai-month); text-decoration-thickness: 2px; text-underline-offset: 3px; }
-.kai-header-meta { color: #b9c6d4; font-size: 9px; font-weight: 550; font-variant-numeric: tabular-nums; letter-spacing: .1em; line-height: 1; }
-.kai-header-meta > span:first-child { display: inline-flex; align-items: center; gap: 5px; font-size: 8px; letter-spacing: .11em; }
-.kai-living-dot { display: inline-block; flex-shrink: 0; width: 4px; height: 4px; border-radius: 50%; background: var(--kai-phase); box-shadow: 0 0 0 3px color-mix(in srgb, var(--kai-phase) 10%, transparent); animation: kai-breathe .85s ease-out; }
+.kai-header-button .kai-date i { color: #526277; }
+.kai-header-button .kai-date-day { color: color-mix(in srgb, var(--kai-day) 80%, #172b45); -webkit-text-stroke: .2px #172b456b; paint-order: stroke fill; }
+.kai-header-button .kai-date-month { color: color-mix(in srgb, var(--kai-month) 80%, #172b45); -webkit-text-stroke: .2px #172b456b; paint-order: stroke fill; }
+.kai-header-meta { justify-content: flex-end; color: #344b66; font-size: 9px; font-weight: 550; font-variant-numeric: tabular-nums; letter-spacing: .1em; line-height: 1; }
+.kai-header-meta > .kai-header-pulse { display: inline-flex; align-items: center; gap: 7px; font-size: inherit; letter-spacing: inherit; }
+.kai-living-dot { display: inline-block; flex-shrink: 0; width: 3px; height: 3px; border-radius: 50%; background: var(--kai-phase); box-shadow: 0 0 0 2px color-mix(in srgb, var(--kai-phase) 7%, transparent); }
 .kai-popover { position: absolute; top: calc(100% + 14px); left: 50%; transform: translateX(-50%); width: min(640px, calc(100vw - 32px)); max-height: calc(100dvh - 110px); overflow: auto; overscroll-behavior: contain; padding: 26px; border: 1px solid #dce0e6; border-radius: 18px; background: #fcfbf8; color: var(--navy); box-shadow: 0 22px 75px #172b452d, 0 2px 8px #172b4509; text-align: left; animation: kai-arrive .16s ease-out; }
 .kai-popover-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .kai-eyebrow { display: block; color: #7b8795; font-size: 9px; line-height: 1.2; letter-spacing: .15em; font-weight: 650; }
@@ -17,22 +22,87 @@
 .kai-close { display: grid; place-items: center; width: 30px; height: 30px; flex-shrink: 0; padding: 0; border: 1px solid #e3e5e9; border-radius: 50%; color: #617087; background: #f5f5f2; }
 .kai-close:hover { background: #e9edf1; }
 .kai-introduction { margin-top: 14px; color: #647183; font-size: 12px; line-height: 1.65; max-width: 535px; }
-.kai-moment-layout { display: grid; grid-template-columns: 1.05fr 1fr; gap: 26px; align-items: center; margin: 22px 0 18px; }
-.kai-face { position: relative; aspect-ratio: 1; width: 100%; max-width: 285px; overflow: hidden; border: 1px solid #304158; border-radius: 50%; background: radial-gradient(ellipse at 50% 40%, #233950, #112338 76%); box-shadow: 0 7px 20px #172b4512, inset 0 0 0 5px #ffffff03; color: #eaf0f7; }
-.kai-face-rings { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); fill: none; }
-.kai-ring-track { stroke: #ffffff20; stroke-width: 3; }
-.kai-ring-inner { stroke: #ffffff15; stroke-width: 2; }
-.kai-ring-core { stroke: #ffffff14; stroke-width: 1.3; }
-.kai-ring-progress { stroke: var(--kai-phase); stroke-width: 3; opacity: .9; stroke-linecap: round; }
-.kai-ring-step { stroke: var(--kai-day); stroke-width: 2; opacity: .6; }
-.kai-ring-pulse { stroke: var(--kai-month); stroke-width: 1.3; opacity: .7; }
-.kai-face-readout { position: absolute; top: 34%; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.kai-face-caption { color: #91a3b8; font-size: 8px; font-weight: 600; letter-spacing: .14em; }
-.kai-face-time { color: var(--kai-phase); font-size: clamp(26px, 4.2vw, 34px); font-weight: 550; font-variant-numeric: tabular-nums; letter-spacing: .045em; line-height: 1.05; }
-.kai-face .kai-date { font-size: 12px; gap: 9px; }
-.kai-face-phase { display: inline-flex; align-items: center; gap: 6px; margin-top: 1px; color: #afbed0; font-size: 9px; letter-spacing: .025em; }
-.kai-face-pulse { position: absolute; bottom: 14%; left: 0; right: 0; text-align: center; font-size: 9px; font-weight: 500; letter-spacing: .06em; color: #91a3b8; }
-.kai-face-pulse strong { margin-left: 4px; color: #dce5f0; font-size: 12px; font-weight: 550; font-variant-numeric: tabular-nums; }
+.kai-moment-layout { display: grid; grid-template-columns: 1.2fr .9fr; gap: 22px; align-items: center; margin: 22px 0 18px; }
+.kai-face-presentation { min-width: 0; width: 100%; padding: 13px; border: 1px solid #293b51; border-radius: 19px; background: #142337; box-shadow: 0 6px 18px #172b4510; }
+.kai-canonical-face { position: relative; width: 100%; aspect-ratio: 1; margin: 0 auto; --etherik-glow-a: transparent; --etherik-glow-b: transparent; }
+.kai-klok .kai-canonical-face .kai-klock-shell { max-width: none; background: radial-gradient(ellipse at 50% 35%, #1d3046, #122236 72%, #0e1c2d); backdrop-filter: none; border: 1px solid #34485f; box-shadow: inset 0 2px 4px #ffffff0a, inset 0 -3px 5px #00000026, 0 3px 7px #07121e38; animation: none; filter: none; will-change: auto; }
+.kai-klok .kai-canonical-face .kai-klock-shell::before { display: none; }
+.kai-klok .kai-canonical-face .rim-ring { stroke-width: .3px; filter: none; }
+.kai-klok .kai-canonical-face .day-progress-track { fill: none; stroke: #34455b; stroke-width: 2.4px; }
+.kai-klok .kai-canonical-face .day-progress { stroke: var(--kai-phase); stroke-width: 2.4px; filter: none; animation: none; opacity: 1; transition: stroke-dashoffset .55s ease-out, stroke .4s ease-out; }
+.kai-klok[data-kai-boundary=beat] .kai-canonical-face .day-progress { transition: stroke .4s ease-out; }
+.kai-klok .kai-canonical-face .orb-spin { animation: none; transform: none; }
+.kai-klok .kai-canonical-face .kai-svg text { font-family: inherit; font-variant-numeric: tabular-nums; filter: none !important; text-shadow: none; stroke: #142337; stroke-width: .15px; paint-order: stroke fill; }
+.kai-klok .kai-canonical-face .beat-number { font-size: 5.2px; font-weight: 650; text-shadow: none; stroke: #dce7f0a6; stroke-width: .18px; }
+.kai-klok .kai-canonical-face .inner-halo { filter: drop-shadow(0 0 .18px #172b45); opacity: 1; }
+.kai-klok .kai-canonical-face .center-surface { stroke: #3a5067; stroke-width: .3px; filter: drop-shadow(0 .5px .8px #06101d80); }
+.kai-klok .kai-canonical-face .needle { stroke: #172b4555; stroke-width: .15px; filter: none; }
+.kai-klok .kai-canonical-face .solar-hand-fill { stroke: #172b4555; stroke-width: .1px; transition: height .55s cubic-bezier(.22,.61,.36,1), y .55s cubic-bezier(.22,.61,.36,1); }
+.kai-klok .kai-canonical-face .micro-orb { stroke: #172b4555; stroke-width: .15px; filter: none; animation: none; }
+.kai-klok .kai-canonical-face .center-pulse, .kai-klok .kai-canonical-face .eternal-pulse, .kai-klok .kai-canonical-face .center-sub { stroke: #142337 !important; stroke-width: .15px !important; filter: none !important; text-shadow: none; }
+.kai-klok .kai-canonical-face .center-pulse { font-size: 12.8px; font-weight: 600; letter-spacing: -.3px; font-variant-numeric: tabular-nums; }
+.kai-klok .kai-canonical-face .center-coordinate-label { fill: #a5b4c5; stroke: none; font-size: 3.5px; font-weight: 550; letter-spacing: .13px; }
+.kai-klok .kai-canonical-face .center-sub { font-size: 4.7px; font-weight: 550; }
+.kai-klok .kai-canonical-face .center-day, .kai-klok .kai-canonical-face .day-of-month[class*=" day-"] { fill: var(--kai-day); }
+.kai-klok .kai-canonical-face .center-month, .kai-klok .kai-canonical-face .day-of-month[class*=" month-"] { fill: var(--kai-month); }
+.kai-klok .kai-canonical-face .center-day, .kai-klok .kai-canonical-face .center-month { font-size: 9.5px; font-weight: 550; }
+.kai-klok .kai-canonical-face .center-calendar-numbers { font-size: 4.6px; font-weight: 550; }
+.kai-klok .kai-canonical-face .center-day-number { fill: var(--kai-day); }
+.kai-klok .kai-canonical-face .center-month-number { fill: var(--kai-month); }
+.kai-klok .kai-canonical-face .center-date-divider { fill: #94a6b9; }
+.kai-klok .kai-canonical-face .day-of-month { font-size: 5px; }
+.kai-klok .kai-canonical-face .arc-label { fill: var(--arc); text-shadow: none; font-size: 4.5px; }
+.kai-klok .kai-canonical-face .arc-ignition { --arc: #BD8783; }
+.kai-klok .kai-canonical-face .arc-integration { --arc: #C5A081; }
+.kai-klok .kai-canonical-face .arc-harmonization { --arc: #C9B683; }
+.kai-klok .kai-canonical-face .arc-reflektion { --arc: #91B09E; }
+.kai-klok .kai-canonical-face .arc-purifikation { --arc: #8BAABA; }
+.kai-klok .kai-canonical-face .arc-dream { --arc: #AFA2C2; }
+.kai-klok .kai-canonical-face .eternal-hand-group { mix-blend-mode: normal; }
+.kai-klok .kai-canonical-face .eternal-hand { filter: drop-shadow(0 0 .3px #172b45) !important; mix-blend-mode: normal !important; }
+.kai-klok .kai-canonical-face .eternal-hand-fill { filter: drop-shadow(0 0 .2px #172b45) !important; mix-blend-mode: normal !important; }
+.kai-klok .kai-canonical-face .eternal-hand-tip { stroke: #172b4580; stroke-width: .2px; filter: none !important; mix-blend-mode: normal !important; }
+.kai-klok .kai-canonical-face .eternal-hand-label-digit, .kai-klok .kai-canonical-face .solar-hand-label-wrap text { stroke: #142337 !important; stroke-width: .6px !important; filter: none !important; }
+.kai-klok .kai-canonical-face .eternal-hand-label-digit, .kai-klok .kai-canonical-face .solar-hand-label-digit { font-size: 5.5px; }
+.kai-klok .kai-canonical-face text[fill="#00faff"] { stroke: #172b4580 !important; stroke-width: .2px !important; font-size: 5.5px; font-weight: 600; }
+.kai-klok .kai-canonical-face .step-percent { filter: none !important; }
+.kai-klok .kai-canonical-face .pulse-flash { animation: none; }
+.kai-klok .kai-canonical-face .center-sub, .kai-klok .kai-canonical-face .eternal-pulse, .kai-klok .kai-canonical-face .step-percent, .kai-klok .kai-canonical-face .day-of-month, .kai-klok .kai-canonical-face .arc-label, .kai-klok .kai-canonical-face text[fill="#00faff"] { display: none; }
+.kai-face-key { display: flex; justify-content: center; gap: 15px; margin-top: 13px; color: #b6c2d0; font-size: 8px; }
+.kai-face-key > span { display: flex; align-items: center; gap: 5px; }
+.kai-face-key i { width: 3px; height: 11px; border-radius: 1px; box-shadow: 0 0 0 .5px #172b4560; }
+.kai-face-key .kai-eternal-key { width: 3px; border: 1px solid #bff7ff; background: transparent; }
+.kai-face-readouts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px 8px; margin: 13px 0 0; padding: 10px 0 0; border-top: 1px solid #344358; text-align: center; font-variant-numeric: tabular-nums; }
+.kai-face-readouts dt { color: #a5b4c5; font-size: 8px; letter-spacing: .04em; }
+.kai-face-readouts dt small { display: block; margin-top: 3px; font-size: 7px; letter-spacing: 0; }
+.kai-face-readouts dd { margin: 5px 0 0; font-size: 14px; font-weight: 550; }
+.kai-face-readouts .kai-face-global { grid-column: 1 / -1; display: flex; justify-content: center; align-items: baseline; gap: 9px; }
+.kai-face-global dd { margin: 0; letter-spacing: .07em; }
+.kai-face-arcs { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 10px; margin-top: 13px; padding-top: 11px; border-top: 1px solid #344358; }
+.kai-face-arcs > span { display: flex; align-items: center; gap: 6px; color: #aebccc; font-size: 9px; }
+.kai-face-arcs > span[aria-current] { color: #edf2f7; font-weight: 650; }
+.kai-face-arcs i { width: 5px; height: 11px; flex-shrink: 0; border-radius: 2px; box-shadow: inset 0 0 0 1px #172b4533; }
+.kai-exact-formula, .kai-formula-approx { display: block; }
+.kai-exact-formula { margin: 5px 0 2px; color: #344b66; font-variant-numeric: tabular-nums; }
+.kai-formula-approx { margin-bottom: 6px; color: #8993a0; font-size: 10px; }
+.kai-week-legend { display: grid; gap: 7px; padding: 0; margin: 12px 0 18px; list-style: none; }
+.kai-week-legend > li { display: flex; gap: 10px; padding: 9px 10px; border: 1px solid transparent; border-radius: 7px; }
+.kai-week-legend > li[aria-current] { border-color: #e0e5e8; background: #f5f5f1; }
+.kai-week-legend > li > i { flex-shrink: 0; width: 7px; min-height: 35px; border-radius: 3px; box-shadow: inset 0 0 0 1px #172b4514; }
+.kai-week-legend strong { display: block; color: #52657b; font-size: 10px; font-weight: 600; }
+.kai-week-alias, .kai-week-range { color: #8793a1; font-size: 9px; font-weight: 400; }
+.kai-week-range { display: block; margin-top: 3px; }
+.kai-week-legend p { margin-top: 4px; font-size: 10px; }
+.kai-klok { --kai-accent-peak: 0; --kai-breathe-scale: 1; --kai-breathe-duration: 800ms; }
+.kai-klok[data-kai-boundary=pulse] { --kai-accent-peak: .035; --kai-breathe-scale: 1.002; }
+.kai-klok[data-kai-boundary=step] { --kai-accent-peak: .055; --kai-breathe-scale: 1.004; --kai-breathe-duration: 900ms; }
+.kai-klok[data-kai-boundary=beat] { --kai-accent-peak: .08; --kai-breathe-scale: 1.006; --kai-breathe-duration: 1000ms; }
+.kai-header-accent { position: absolute; z-index: -1; inset: 0; border-bottom: 1px solid var(--kai-phase); pointer-events: none; background: transparent; opacity: 0; animation: kai-boundary-breathe var(--kai-breathe-duration) ease-out; }
+.kai-face-accent { position: absolute; inset: -1px; border: 1px solid var(--kai-phase); border-radius: 50%; opacity: 0; pointer-events: none; animation: kai-boundary-breathe var(--kai-breathe-duration) ease-out; }
+.kai-cadence-breath { position: absolute; inset: 0; border: 1px solid #bac9d3; border-radius: 50%; opacity: 0; transform: scale(1); pointer-events: none; }
+.kai-klok[data-kai-boundary=none] .kai-header-accent, .kai-klok[data-kai-boundary=none] .kai-face-accent { animation: none; }
+.kai-klok[data-kai-visible=false] *, .kai-klok[data-kai-visible=false] *::before, .kai-klok[data-kai-visible=false] *::after { animation-play-state: paused !important; }
+@keyframes kai-boundary-breathe { 0% { opacity: 0; transform: scale(1); } 28% { opacity: var(--kai-accent-peak); transform: scale(var(--kai-breathe-scale)); } 100% { opacity: 0; transform: scale(1); } }
 .kai-moment-context h3 { margin-top: 8px; font-family: Georgia, 'Times New Roman', serif; font-size: 26px; font-weight: 500; letter-spacing: -.5px; }
 .kai-moment-context h3 > span { display: block; margin-top: 5px; color: #6e7b8b; font-family: Inter, ui-sans-serif, sans-serif; font-size: 12px; font-weight: 450; letter-spacing: 0; }
 .kai-moment-identity { display: grid; grid-template-columns: 5px 1fr 5px 1fr; align-items: center; gap: 8px; margin-top: 17px; font-size: 10px; line-height: 1.5; color: #4c5e75; }
@@ -44,6 +114,17 @@
 .kai-units dt { color: #7b8795; font-size: 8px; font-weight: 600; letter-spacing: .1em; }
 .kai-units dd { margin: 0; color: #344b66; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .kai-units dd > span { display: inline-block; margin-left: 7px; min-width: 109px; color: #7b8795; font-size: 9px; font-weight: 450; }
+.kai-sunrise-controls { margin: 17px 0; padding: 12px 0; border-top: 1px solid #e4e7ec; }
+.kai-sunrise-choice { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #6e7b8b; font-size: 10px; }
+.kai-sunrise-choice [role=group] { display: flex; gap: 4px; }
+.kai-sunrise-choice button { padding: 5px 9px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #7d8794; font-size: 10px; }
+.kai-sunrise-choice button[aria-pressed=true] { border-color: #dce0e6; background: #f4f4f0; color: #344b66; }
+.kai-sunrise-status { margin-top: 9px; color: #52657b; font-size: 10px; line-height: 1.5; }
+.kai-sunrise-actions { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.kai-use-sunrise, .kai-clear-sunrise { padding: 0; border: 0; background: transparent; color: #52657b; font-size: 10px; text-decoration: underline; text-decoration-color: #c6cdd5; text-underline-offset: 3px; }
+.kai-use-sunrise:disabled { opacity: .5; cursor: wait; }
+.kai-clear-sunrise { color: #8793a1; font-size: 9px; }
+.kai-sunrise-privacy { margin-top: 8px; color: #8993a0; font-size: 9px; line-height: 1.5; }
 .kai-local-time { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px 15px; padding: 12px 0; border-top: 1px solid #e4e7ec; border-bottom: 1px solid #e4e7ec; color: #7d8794; font-size: 10px; line-height: 1.5; }
 .kai-local-time time { color: #52657b; font-variant-numeric: tabular-nums; }
 .kai-explanation { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin: 16px 0; }
@@ -68,8 +149,8 @@
 .kai-popover-footer .kai-living-dot { width: 3px; height: 3px; background: #718b83; box-shadow: none; animation: none; }
 @keyframes kai-breathe { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--kai-phase) 25%, transparent); } to { box-shadow: 0 0 0 5px transparent; } }
 @keyframes kai-arrive { from { opacity: 0; translate: 0 -3px; } to { opacity: 1; translate: 0 0; } }
-@media (min-width: 720px) { .kai-header-button { width: 266px; padding: 9px 14px; min-height: 49px; } .kai-header-coordinate > strong { font-size: 18px; } .kai-header-meta { font-size: 10px; } .kai-date { font-size: 12px; } }
-@media (max-width: 719px) { .app-header { gap: 12px; } .kai-header-button { width: 220px; padding: 7px 10px; } .kai-header-coordinate { gap: 10px; } .kai-header-coordinate > strong { font-size: 14px; } .kai-date { gap: 4px; font-size: 10px; } .kai-popover { position: fixed; top: 73px; left: 16px; right: 16px; width: auto; max-height: calc(100dvh - 95px); transform: none; padding: 22px; } }
-@media (max-width: 480px) { .kai-moment-layout { grid-template-columns: 1fr; gap: 22px; margin-top: 18px; } .kai-face { width: 238px; margin: 0 auto; } .kai-face-time { font-size: 30px; } .kai-moment-context { padding: 0 4px; } .kai-moment-context h3 { display: flex; align-items: baseline; justify-content: space-between; font-size: 24px; } .kai-moment-context h3 > span { margin: 0; } .kai-moment-identity { margin-top: 13px; } .kai-units { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .kai-units > div { display: block; } .kai-units dd { margin-top: 5px; } .kai-units dd > span { display: block; min-width: 0; margin: 4px 0 0; font-size: 8px; } .kai-explanation { gap: 16px; } .kai-color-key { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 360px) { .app-header { gap: 8px; } .kai-header-button { width: 198px; padding-left: 9px; padding-right: 9px; } .kai-header-coordinate { gap: 8px; } .kai-header-coordinate > strong { font-size: 13px; letter-spacing: .045em; } .kai-date { font-size: 9px; gap: 3px; } .kai-popover { left: 10px; right: 10px; padding: 19px; } .kai-face { width: 220px; } .kai-face-time { font-size: 28px; } .kai-face-readout { gap: 8px; } }
+@media (min-width: 720px) { .kai-header-button { width: 266px; padding: 9px 14px; min-height: 49px; } .kai-header-coordinate > strong { font-size: 19px; } .kai-header-meta { font-size: 10px; } .kai-date { font-size: 12px; } }
+@media (max-width: 719px) { .app-header { gap: 12px; } .kai-header-button { width: 220px; padding: 7px 10px; } .kai-header-button { column-gap: 8px; } .kai-header-coordinate > strong { font-size: 15px; } .kai-date { gap: 4px; font-size: 10px; } .kai-popover { position: fixed; top: 73px; left: 16px; right: 16px; width: auto; max-height: calc(100dvh - 95px); transform: none; padding: 22px; } }
+@media (max-width: 480px) { .kai-moment-layout { grid-template-columns: 1fr; gap: 22px; margin-top: 18px; } .kai-face-presentation { width: 314px; max-width: 100%; margin: 0 auto; padding: 12px; } .kai-moment-context { padding: 0 4px; } .kai-moment-context h3 { display: flex; align-items: baseline; justify-content: space-between; font-size: 24px; } .kai-moment-context h3 > span { margin: 0; } .kai-moment-identity { margin-top: 13px; } .kai-units { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .kai-units > div { display: block; } .kai-units dd { margin-top: 5px; } .kai-units dd > span { display: block; min-width: 0; margin: 4px 0 0; font-size: 8px; } .kai-explanation { gap: 16px; } .kai-color-key { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 360px) { .app-header { gap: 8px; } .kai-header-button { width: 198px; padding-left: 9px; padding-right: 9px; } .kai-header-button { column-gap: 8px; } .kai-header-coordinate > strong { font-size: 14px; letter-spacing: .045em; } .kai-date { font-size: 9px; gap: 3px; } .kai-popover { left: 10px; right: 10px; padding: 19px; } .kai-face-presentation { width: 260px; padding: 9px; } }
 @media (prefers-reduced-motion: reduce) { .kai-klok *, .kai-klok *::before, .kai-klok *::after { animation: none !important; transition: none !important; } }
