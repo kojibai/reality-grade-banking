@@ -4,11 +4,14 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { usePublicMarket } from '../src/receiz/usePublicMarket';
 import { parsePublicMarket } from '../src/receiz/public-market';
+import {publicSigilQuoteAtPulse} from '../src/receiz/market-projection/project';
+const clock=vi.hoisted(()=>({pulse:14710100}));
+vi.mock('@receiz/sdk',async original=>({...await original<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
 const network = vi.hoisted(() => ({ membership: vi.fn(), quotes: vi.fn() }));
 vi.mock('../src/receiz/public-market', async original => ({ ...await original<typeof import('../src/receiz/public-market')>(), fetchPublicMarket: network.membership, fetchPublicQuotes: network.quotes }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 beforeEach(() => { network.membership.mockReset(); network.quotes.mockReset(); });
-afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
+afterEach(() => { vi.unstubAllGlobals(); localStorage.clear();vi.useRealTimers();clock.pulse=14710100; });
 const sourceInput = (items = ['a', 'b'], complete = true) => ({ ok: true, transport: { publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: complete ? 'canonical-complete' : 'partial', isComplete: complete, itemCount: items.length, revision: 'r1' }, publicOriginals: items.map(id => ({ id, receizId: id, title: id, valueUsd: 10 })) } });
 const quoteInput = (priceUsd = 10) => ({ ok: true, data: { schema: 'receiz.market.public-snapshot.v1', generatedAt: '2026-10-13T12:00:00Z', liveMarkets: [{ itemId: 'a', visibility: 'public', priceUsd, quoteUsdPerPhi: 1, chart: [{ value: 9 }, { value: priceUsd }] }] } });
 async function observe(run: (read: () => ReturnType<typeof usePublicMarket>) => Promise<void>) {
@@ -79,5 +82,15 @@ it('upgrades retained objects with source-bound pricing operands from the new of
  network.membership.mockImplementation(()=>new Promise(()=>{}));network.quotes.mockImplementation(()=>new Promise(()=>{}));
  vi.stubGlobal('fetch',vi.fn(async input=>input==='/receiz-public-market.json'?Response.json({ok:true,transport:{publicOriginals:[{...row,valueUsd:999,livePulseSeed:seed}]}}):new Response('',{status:503})));
  let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket();return null;}
- try{await act(async()=>root.render(<Probe/>));expect(state.catalog?.items[0].livePulseSeed).toEqual(seed);expect(state.catalog?.items[0].priceUsd).toBe(10);}finally{act(()=>root.unmount());}
+ try{await act(async()=>root.render(<Probe/>));expect(state.catalog?.items[0].livePulseSeed).toEqual(seed);expect(state.catalog?.items[0].priceUsd).toBe(publicSigilQuoteAtPulse(seed,clock.pulse).priceUsd);}finally{act(()=>root.unmount());}
+});
+it('advances retained object prices locally while every refresh fails',async()=>{
+ vi.useFakeTimers();const seed={kind:'sigil',claimPulse:1000000,beat:12,stepIndex:3,creatorVerified:true},input=sourceInput(['a']);
+ Object.assign(input.transport.publicOriginals[0],{pulse:'1000000',livePulseSeed:seed});
+ localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(input));network.membership.mockRejectedValue(Error('offline'));network.quotes.mockRejectedValue(Error('offline'));
+ await observe(async read=>{
+  const first=read().catalog!.items[0];expect(first.localValuationPulse).toBe(clock.pulse);expect(first.priceUsd).toBe(publicSigilQuoteAtPulse(seed,clock.pulse).priceUsd);expect(read().status).toBe('stale');
+  const reads=network.membership.mock.calls.length;clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));
+  expect(read().catalog!.items[0].localValuationPulse).toBe(clock.pulse);expect(read().catalog!.items[0].priceUsd).toBe(publicSigilQuoteAtPulse(seed,clock.pulse).priceUsd);expect(read().catalog!.items[0].priceUsd).not.toBe(first.priceUsd);expect(network.membership).toHaveBeenCalledTimes(reads);
+ });
 });

@@ -11,6 +11,11 @@ export function resolvePublicMarketTarget(requestUrl: string): URL | null {
   if (local.pathname === `${PREFIX}sports` && !local.search) return new URL('https://receiz.com/api/game/sports/economy');
   if (local.pathname === `${PREFIX}capitalization` && !local.search) return new URL('https://receiz.com/api/proof-graph/market-cap');
   if (local.pathname === `${PREFIX}quotes` && !local.search) return new URL('https://receiz.com/api/market/public-snapshot?detail=full');
+  if(local.pathname===`${PREFIX}provenance`){
+    const id=local.searchParams.get('collectibleId'),claim=local.searchParams.get('claimHash');
+    if([...local.searchParams.keys()].some(key=>!['collectibleId','claimHash'].includes(key))||local.searchParams.getAll('collectibleId').length!==1||local.searchParams.getAll('claimHash').length!==1||!id||!/^rsc_[a-f0-9]{16}$/i.test(id)||!claim||!/^[a-f0-9]{64}$/i.test(claim))return null;
+    return new URL(`/api/game/sports/baseball/cards/${id.toLowerCase()}/provenance?claimHash=${claim.toLowerCase()}`,'https://receiz.com');
+  }
   if(local.pathname===`${PREFIX}record`){
     if([...local.searchParams.keys()].some(key=>key!=='path')||local.searchParams.getAll('path').length!==1)return null;
     const path=local.searchParams.get('path');if(!path?.startsWith('/v/'))return null;const safe=safeReceizPublicUrl(path,'proof');if(!safe)return null;
@@ -48,7 +53,11 @@ async function loadPublicResponse(target: URL): Promise<CachedResponse> {
       if (!type.includes('application/json')) throw new Error('Receiz public source returned an unsupported response.');
       const input = JSON.parse(new TextDecoder().decode(bytes));
       // Drop full works and unrelated private/session fields from discovery transport.
-      if (target.pathname.endsWith('public-membership')) {
+      if(target.pathname.endsWith('/provenance')){
+        if(input.ok!==true||!Array.isArray(input.provenance)||input.provenance.length>200)throw Error('Public card history is unavailable.');
+        const projected={ok:true,cardId:input.cardId,claimHash:input.claimHash,count:input.count,provenance:input.provenance.map((row:Record<string,unknown>)=>{const owner=row.owner as Record<string,unknown>|null;return {eventKind:row.eventKind,collectibleId:row.collectibleId,claimHash:row.claimHash,appendHash:row.appendHash,occurredAt:row.occurredAt,owner:owner?{username:owner.username,displayName:owner.displayName}:null};})};
+        for(const key of Object.keys(input))delete input[key];Object.assign(input,projected);
+      } else if (target.pathname.endsWith('public-membership')) {
         const transport = input.transport;
         if (input.ok !== true || !Array.isArray(transport?.publicOriginals)) throw new Error('Receiz public collection is unavailable.');
         input.transport = { generatedAt: transport.generatedAt, publicMembership: transport.publicMembership, publicOriginals: transport.publicOriginals.map((item: Record<string, unknown>) => {

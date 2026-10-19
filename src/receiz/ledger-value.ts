@@ -40,6 +40,14 @@ export function readLedgerValueOperands(input: unknown): LedgerValueOperands {
   for (const key of ['transferValueUsdCents', 'settledCardValueUsdCents'] as const) {
     const field = uint(value[key]); if (field !== undefined) { result.cardValueUsdCents = field; break; }
   }
+  // Older carried transfer payloads name their snapshot in dollars. Preserve
+  // only explicit card/transfer fields; an ask, bid or current quote is not a
+  // historical transaction valuation.
+  if(result.cardValueUsdCents===undefined)for(const key of ['transferValueUsd','cardValueUsd','settledCardValueUsd']){
+    const raw=value[key],decimal=typeof raw==='number'||typeof raw==='string'?String(raw).trim().replace(/[$,]/g,''):'';
+    if(!/^\d+(?:\.\d{1,6})?$/.test(decimal))continue;
+    const field=ledgerUsdCents(Number(decimal));if(field!==undefined){result.cardValueUsdCents=field;break;}
+  }
   const chart = object(raw.marketAssetChart);
   if (raw.ledgerKind === 'market-asset' && typeof chart.live === 'number' && typeof chart.usdPerPhi === 'number' && chart.live >= 0 && chart.usdPerPhi > 0) {
     const quoted = ledgerUsdCents(chart.live * chart.usdPerPhi), pulse = uint(raw.sortKaiPulse);

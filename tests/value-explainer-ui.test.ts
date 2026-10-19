@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { valueExplainerContent } from '../scripts/value-explainer-template.mjs';
 import { mountValueExplainer, traceMarkup } from '../src/value-explainer/main';
 import {calculateIllustration,DEMO_SCENARIO,formatUsdCents} from '../src/value-explainer/model';
-import {quoteDisplayUsd} from '../src/value-explainer/proof';
+import {calculatePhiUsd} from '../src/value-explainer/phi-usd';
 const clock=vi.hoisted(()=>({pulse:14710100,uPulse:14710100000123n}));
 vi.mock('@receiz/sdk',async importOriginal=>({...await importOriginal<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({...clock})}));
 
@@ -16,6 +16,8 @@ function mount() {
   mountValueExplainer(root);
   return root;
 }
+const metadata=()=>calculateIllustration({...DEMO_SCENARIO,evaluationPulse:String(clock.pulse)}).metadata;
+const converted=(amount:string,kai=String(clock.uPulse))=>calculatePhiUsd(amount,kai,metadata());
 function manualPhi(root:HTMLElement){const source=root.querySelector<HTMLSelectElement>('[data-phi-usd-source]')!;source.value='manual';source.dispatchEvent(new Event('change',{bubbles:true}));}
 
 it('automatically converts the calculated Phi and allows independent entry then relinking',()=>{
@@ -35,30 +37,24 @@ it('updates the standalone Phi conversion from the actual Kai clock while preser
   vi.useFakeTimers();clock.pulse=14692714;clock.uPulse=14692714000000n;
   const root=mount(),proofValue=root.querySelector('[data-value-amount]')!.textContent;
   manualPhi(root);
-  expect(root.querySelector('[data-phi-usd-result]')?.textContent).toBe('$90.79');
+  expect(root.querySelector('[data-phi-usd-result]')?.textContent).toBe(formatUsdCents(converted('1').usdCents));
   const amount=root.querySelector<HTMLInputElement>('[data-phi-usd-amount]')!;
   amount.value='1.234567';amount.dispatchEvent(new Event('input',{bubbles:true}));
-  expect(root.querySelector('[data-phi-usd-result]')!.textContent).toBe('$112.09');
+  expect(root.querySelector('[data-phi-usd-result]')!.textContent).toBe(formatUsdCents(converted('1.234567').usdCents));
   clock.pulse=13959986;clock.uPulse=13959986000000n;vi.advanceTimersByTime(1000);
   expect(root.querySelector('[data-phi-usd-coordinate]')?.getAttribute('readonly')).not.toBeNull();
   expect(root.querySelector<HTMLInputElement>('[data-phi-usd-coordinate]')!.value).toBe('13959986000000');
-  expect(root.querySelector('[data-phi-usd-rate]')!.textContent).toContain('103.34803184');
+  expect(root.querySelector('[data-phi-usd-rate]')!.textContent).toBe(`$${converted('1.234567').quote.usdPerPhi} per Φ`);
   expect(root.querySelector('[data-value-amount]')!.textContent).toBe(proofValue);
   root.remove();vi.advanceTimersByTime(1000);expect(vi.getTimerCount()).toBe(0);
 });
 
-it('replays an explicit coordinate and clears invalid results before they can be downloaded', () => {
-  vi.useFakeTimers();const root=mount();
-  manualPhi(root);
-  const live=root.querySelector<HTMLInputElement>('[data-phi-usd-live]')!,coordinate=root.querySelector<HTMLInputElement>('[data-phi-usd-coordinate]')!,amount=root.querySelector<HTMLInputElement>('[data-phi-usd-amount]')!;
-  live.checked=false;live.dispatchEvent(new Event('change',{bubbles:true}));expect(coordinate.readOnly).toBe(false);
-  coordinate.value='14692714000000';coordinate.dispatchEvent(new Event('input',{bubbles:true}));
-  expect(root.querySelector('[data-phi-usd-result]')!.textContent).toBe('$90.79');
-  clock.uPulse=13959986000000n;vi.advanceTimersByTime(1000);expect(coordinate.value).toBe('14692714000000');
-  amount.value='1e3';amount.dispatchEvent(new Event('input',{bubbles:true}));
-  expect(root.querySelector('[data-phi-usd-result]')!.textContent).toBe('—');expect(root.querySelector('[data-phi-usd-trace]')!.textContent).toBe('');
-  expect(root.querySelector<HTMLButtonElement>('[data-phi-usd-download]')!.disabled).toBe(true);
-  expect(root.querySelector('[data-phi-usd-error]')!.textContent).toContain('six decimal places');
+it('uses only the live coordinate, exposes no editable exchange rate and clears invalid amounts',()=>{
+ vi.useFakeTimers();const root=mount();manualPhi(root);
+ const coordinate=root.querySelector<HTMLInputElement>('[data-phi-usd-coordinate]')!,amount=root.querySelector<HTMLInputElement>('[data-phi-usd-amount]')!;
+ expect(coordinate.readOnly).toBe(true);expect(root.querySelector('[data-phi-usd-live]')).toBeNull();expect(root.querySelector('[data-value-display-rate]')).toBeNull();
+ coordinate.value='0';clock.uPulse+=1000000n;vi.advanceTimersByTime(1000);expect(coordinate.value).toBe(String(clock.uPulse));
+ amount.value='1e3';amount.dispatchEvent(new Event('input',{bubbles:true}));expect(root.querySelector('[data-phi-usd-result]')!.textContent).toBe('—');expect(root.querySelector('[data-phi-usd-trace]')!.textContent).toBe('');expect(root.querySelector<HTMLButtonElement>('[data-phi-usd-download]')!.disabled).toBe(true);expect(root.querySelector('[data-phi-usd-error]')!.textContent).toContain('six decimal places');
 });
 
 it('downloads complete conversion operands, policy and exact cent-rounding arithmetic', async () => {
@@ -66,8 +62,8 @@ it('downloads complete conversion operands, policy and exact cent-rounding arith
   manualPhi(root);
   vi.spyOn(URL,'createObjectURL').mockImplementation(blob=>{exported=blob as Blob;return 'blob:conversion';});vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
   root.querySelector<HTMLButtonElement>('[data-phi-usd-download]')!.click();const record=JSON.parse(await exported!.text());
-  expect(record).toMatchObject({sdkVersion:'129.0.0',amountPhiMicro:'1000000',valuationKaiUPulse:'14692714000000',usdPerPhiMicrocents:'9079009810',usdCents:'9079',writesPerformed:0});
-  expect(record.trace.product).toBe('9079009810000000');expect(record.issuancePolicy.basePhiPerUsd).toBe(0.1);
+  expect(record).toMatchObject({sdkVersion:'129.0.0',amountPhiMicro:'1000000',valuationKaiUPulse:'14692714000000',usdCents:converted('1').usdCents,writesPerformed:0});
+  expect(record.trace.roundedCents).toBe(Number(converted('1').usdCents));expect(record.conversion.algorithm).toBe('receiz.market-proof-usd.v129');expect(record.issuancePolicy.basePhiPerUsd).toBe(0.1);
   expect(record.quoteInputs).toMatchObject({usd:100,currentStreakDays:0,lifetimeUsdSoFar:0,plannedHoldBeats:0});
   expect(record.valuationPolicy.checksum).toBe('b05b2049');
 });
@@ -162,15 +158,8 @@ it('keeps an invalid new interval visibly rejected and disables its export', () 
   expect(root.querySelector<HTMLButtonElement>('[data-value-download-illustration]')!.disabled).toBe(true);
 });
 
-it('clears an obsolete dollar result when a new display rate is invalid', async () => {
-  const root = mount();
-  const value=calculateIllustration({...DEMO_SCENARIO,evaluationPulse:String(clock.pulse)});
-  await vi.waitFor(() => expect(root.querySelector('[data-value-usd]')!.textContent).toBe(formatUsdCents(quoteDisplayUsd(value.proofValuePhiMicro,DEMO_SCENARIO.usdPerPhiMicrocents))));
-  const rate = root.querySelector<HTMLInputElement>('[data-value-display-rate]')!;
-  rate.value = '0'; rate.dispatchEvent(new Event('input', { bubbles: true }));
-  await vi.waitFor(() => expect(root.querySelector('[data-value-usd-error]')!.textContent).toContain('positive'));
-  expect(root.querySelector('[data-value-usd]')!.textContent).toBe('—');
-  expect(root.querySelector('[data-value-basis-digest]')!.textContent).toBe('—');
+it('places the live conversion directly underneath the Phi calculator and removes the educational rate form',()=>{
+ const root=mount(),section=root.querySelector('#phi-to-usd')!;expect(section.previousElementSibling?.id).toBe('calculation');expect(root.querySelector('#dollar-display')).toBeNull();expect(root.textContent).not.toContain('educational selection');
 });
 
 it('renders complete trace text without treating metadata as HTML', () => {
@@ -181,9 +170,7 @@ it('renders complete trace text without treating metadata as HTML', () => {
   expect(document.body.textContent).toContain('<b>1</b>');
 });
 
-it('keeps intrinsic sample inspection usable when only the educational dollar rate is invalid',async()=>{
- const root=mount(),rate=root.querySelector<HTMLInputElement>('[data-value-display-rate]')!;rate.value='0';rate.dispatchEvent(new Event('input',{bubbles:true}));
- const slider=root.querySelector<HTMLInputElement>('[data-value-sample]')!;slider.value='0';expect(()=>slider.dispatchEvent(new Event('input',{bubbles:true}))).not.toThrow();
- expect(root.querySelector('[data-value-coordinate]')!.textContent).toBe('1000000 pulses');
- await vi.waitFor(()=>expect(root.querySelector('[data-value-usd]')!.textContent).toBe('—'));
+it('continues the live rate after hidden-page suspension without changing the captured Phi calculation',()=>{
+ vi.useFakeTimers();const visibility=vi.spyOn(document,'visibilityState','get'),root=mount(),coordinate=root.querySelector<HTMLInputElement>('[data-phi-usd-coordinate]')!,captured=root.querySelector('[data-value-amount]')!.textContent,old=coordinate.value;
+ visibility.mockReturnValue('hidden');clock.uPulse+=10000000n;vi.advanceTimersByTime(1000);expect(coordinate.value).toBe(old);visibility.mockReturnValue('visible');vi.advanceTimersByTime(1000);expect(coordinate.value).toBe(String(clock.uPulse));expect(root.querySelector('[data-value-amount]')!.textContent).toBe(captured);
 });

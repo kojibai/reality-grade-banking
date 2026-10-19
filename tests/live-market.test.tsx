@@ -54,6 +54,18 @@ it('labels retained quote projections as cached instead of live', () => {
   expect(host.textContent).toContain('cached quotes');
   expect(host.textContent).not.toContain('Live public Market');
 });
+it('keeps local Kai valuation live while reporting an unavailable collection refresh',()=>{
+ const held=catalog(1);held.items[0].localValuationPulse=14710100;
+ source.value={catalog:held,status:'stale',quoteStatus:'stale',error:'Public prices and charts could not be refreshed.',refresh:vi.fn()};
+ const {host}=mount();expect(host.textContent).toContain('Live Kai valuation · retained collection');expect(host.textContent).toContain('Retained pricing inputs continue at the live Kai pulse.');expect(host.textContent).not.toContain('Showing cached quotes');
+});
+it('opens exact public card history for its owner and original issue time',async()=>{
+ const cardId='rsc_0123456789abcdef',claimHash='a'.repeat(64),held=catalog(1),at='2026-10-01T12:00:00Z';
+ Object.assign(held.items[0],{assetId:cardId,category:'sports',ownerUsername:null,ownerDisplayName:null,ownerProfileUrl:null,sealedAt:null,sourceUrl:`https://receiz.com/game/sports/card/${cardId}?claimHash=${claimHash}`});
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({ok:true,cardId,claimHash,count:1,provenance:[{collectibleId:cardId,claimHash,eventKind:'issue',appendHash:'b'.repeat(64),occurredAt:at,owner:{username:'actual-owner',displayName:'Actual'}}]})));
+ source.value={catalog:held,status:'live',error:null,refresh:vi.fn()};const {host}=mount();await act(async()=>{(host.querySelector('.market-rows button')as HTMLButtonElement).click();});
+ expect(host.querySelector('dialog')?.textContent).toContain('@actual-owner');expect(host.querySelector('dialog')?.textContent).toContain(new Date(at).toLocaleString());
+});
 it('loads more public rows automatically before reaching the list end', () => {
   let reveal: ((entries: { isIntersecting: boolean }[]) => void) | undefined;
   let margin = '';
@@ -70,7 +82,7 @@ it('removes objects on full refresh and does not synthesize a chart from a singl
   source.value = { catalog: catalog(2), status: 'live', error: null, refresh: vi.fn() };
   const { host, root } = mount();
   expect(host.querySelectorAll('.market-overview .value-chart')).toHaveLength(0);
-  expect(host.textContent).toContain('Total market capitalization');
+  expect(host.textContent).toContain('Global proof economy market cap');
   expect(host.textContent).toContain('Value history will appear here.');
   source.value = { ...source.value, catalog: catalog(1) };
   act(() => root.render(<BankContext.Provider value={{ state: createDemoState(), commit: vi.fn(), open: vi.fn(), close: vi.fn(), navigate: vi.fn(), saveRule: vi.fn(), updateIdentity: vi.fn(), resetDemo: vi.fn() }}><Market /></BankContext.Provider>));

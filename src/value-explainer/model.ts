@@ -11,14 +11,13 @@ import {
 export const VALUE_POLICY = Object.freeze({ algorithm: SIGIL_VALUATION_ALGORITHM, checksum: SIGIL_VALUATION_POLICY_CHECKSUM });
 export const MAX_INPUT_BYTES = 64 * 1024 * 1024;
 export const MAX_CASHFLOWS = 64;
-export const DEMO_SCENARIO = Object.freeze({ originPulse: '1000000', evaluationPulse: '1017491', seriesSize: '1', quality: 'med' as const, usdPerPhiMicrocents: '1000000000' });
+export const DEMO_SCENARIO = Object.freeze({ originPulse: '1000000', evaluationPulse: '1017491', seriesSize: '1', quality: 'med' as const });
 
 export type ValueScenario = Readonly<{
   originPulse: string;
   evaluationPulse: string;
   seriesSize: string;
   quality: 'low' | 'med' | 'high';
-  usdPerPhiMicrocents: string;
   cashflows?: readonly Readonly<{ atPulse: string; amountPhi: string }>[];
 }>;
 

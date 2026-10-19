@@ -1,0 +1,7 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Public Market · local pulse verification</title></head><body><div id="fixture"></div><script type="module">
+import React from'react';import{createRoot}from'react-dom/client';import{ConsoleShell}from'/src/components/ConsoleShell.tsx';import{Market}from'/src/features/market/Market.tsx';import'/src/styles/tokens.css';import'/src/styles/app.css';import'/src/styles/features.css';
+// Exercise actual shipped public operands, local Kai pricing and the real chart
+// worker while collection refreshes fail. No identity or private account ports.
+const originalFetch=window.fetch.bind(window);window.fetch=(input,init)=>String(input).startsWith('/api/bank/public-market/')?Promise.resolve(new Response('',{status:503})):originalFetch(input,init);
+const noop=()=>{};createRoot(document.querySelector('#fixture')).render(React.createElement(ConsoleShell,{panel:'market',onNavigate:noop,onProfile:noop,onDeposit:noop},React.createElement(Market)));
+</script></body></html>

@@ -1,4 +1,4 @@
-import { SIGIL_VALUATION_POLICY, type SigilCalculationTerm, type ReceizProofValueProjectionV129 } from '@receiz/sdk/valuation';
+import { SIGIL_VALUATION_POLICY, type SigilCalculationTerm, type SigilMetadataLite, type ReceizProofValueProjectionV129 } from '@receiz/sdk/valuation';
 import {receizKaiNow} from '@receiz/sdk';
 import {walletPointTime} from '../receiz/wallet-series';
 import {mountPhiUsdCalculator} from './phi-usd-ui';
@@ -61,7 +61,6 @@ export function mountValueExplainer(root: HTMLElement) {
   const slider = find<HTMLInputElement>('[data-value-sample]');
   const demoError = find('[data-value-demo-error]');
   const trace = find('[data-value-trace]');
-  const rateInput = find<HTMLInputElement>('[data-value-display-rate]');
   const illustrationDownload = find<HTMLButtonElement>('[data-value-download-illustration]');
   const cashflowList = find('[data-value-cashflows]');
   const addCashflow = find<HTMLButtonElement>('[data-value-add-cashflow]');
@@ -72,7 +71,6 @@ export function mountValueExplainer(root: HTMLElement) {
   let scenario: ValueScenario = { ...DEMO_SCENARIO,evaluationPulse:evaluationInput.value };
   let interval = sampleIllustration(scenario);
   let selected = interval.samples.length - 1;
-  let dollarGeneration = 0;
   let calculationPending = false, cashflowId = 0;
   const invalidateIllustration = () => {
     calculationPending = true;
@@ -107,34 +105,14 @@ export function mountValueExplainer(root: HTMLElement) {
       amountPhi: row.querySelector<HTMLInputElement>('[name="cashflowAmount"]')!.value,
       atPulse: row.querySelector<HTMLInputElement>('[name="cashflowPulse"]')!.value,
     }));
-    return { originPulse: String(data.get('originPulse')), evaluationPulse, seriesSize: String(data.get('seriesSize')), quality: String(data.get('quality')) as ValueScenario['quality'], usdPerPhiMicrocents: rateInput.value, cashflows };
+    return { originPulse: String(data.get('originPulse')), evaluationPulse, seriesSize: String(data.get('seriesSize')), quality: String(data.get('quality')) as ValueScenario['quality'], cashflows };
   };
-  const currentScenario = () => ({ ...scenario, evaluationPulse: interval.samples[selected].pulse, usdPerPhiMicrocents: rateInput.value });
-  const updateDollarDisplay = async () => {
-    const generation = ++dollarGeneration;
-    const error = find('[data-value-usd-error]');
-    const output = find('[data-value-usd]');
-    const equation = find('[data-value-usd-equation]');
-    const digest = find('[data-value-basis-digest]');
-    // Clear previous success immediately so a failed new rate cannot retain it.
-    output.textContent = '—'; equation.textContent = ''; digest.textContent = '—'; error.textContent = '';
-    try {
-      const { createDisplayBasis, quoteDisplayUsd } = await import('./proof');
-      const computation = calculateIllustration(currentScenario());
-      const rate = rateInput.value;
-      const basis = await createDisplayBasis(rate);
-      const cents = quoteDisplayUsd(computation.proofValuePhiMicro, rate);
-      if (generation !== dollarGeneration) return;
-      output.textContent = formatUsdCents(cents);
-      equation.textContent = `${computation.proofValuePhiMicro} Φ micro-units × ${rate} microcents per Φ → ${cents} USD cents, with half-up rounding.`;
-      digest.textContent = basis.priceBasisDigest;
-    } catch (cause) { if (generation === dollarGeneration) error.textContent = message(cause); }
-  };
+  const currentScenario = () => ({ ...scenario, evaluationPulse: interval.samples[selected].pulse });
   const paint = () => {
     const computation = calculateIllustration(currentScenario());
     const inputs = computation.unsigned.inputs;
     find('[data-value-amount]').innerHTML = `${formatPhiMicro(computation.proofValuePhiMicro)} <span>Φ</span>`;
-    phiUsd.setCalculatedPhi(computation.proofValuePhiMicro);
+    phiUsd.setCalculatedPhi(computation.proofValuePhiMicro,computation.metadata);
     find('[data-value-coordinate]').textContent = `${interval.samples[selected].pulse} pulses`;
     find('[data-value-result-kind]').textContent=`${selected===interval.samples.length-1?'Present value':'Value'} at pulse ${interval.samples[selected].pulse}`;
     find('[data-value-chart]').innerHTML = chartMarkup(interval.samples, selected);
@@ -144,7 +122,6 @@ export function mountValueExplainer(root: HTMLElement) {
     ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join('');
     trace.innerHTML = traceMarkup(computation.calculation);
     illustrationDownload.disabled = calculationPending;
-    void updateDollarDisplay();
   };
   form.addEventListener('submit', event => {
     event.preventDefault();
@@ -162,7 +139,6 @@ export function mountValueExplainer(root: HTMLElement) {
     }
   });
   slider.addEventListener('input', () => { selected = Number(slider.value); paint(); });
-  rateInput.addEventListener('input', () => void updateDollarDisplay());
   illustrationDownload.addEventListener('click', () => {
     try { downloadJson(illustrationRecord(currentScenario()), 'bankeiz-illustrative-calculation.json'); }
     catch (cause) { demoError.textContent = message(cause); demoError.hidden = false; }
@@ -200,7 +176,7 @@ export function mountValueExplainer(root: HTMLElement) {
       proofStatus.textContent = 'Original verified. Value calculated on this device.';
       proofResult.innerHTML = projectionMarkup(result.projection);
       proofResult.hidden = false;
-      phiUsd.setCalculatedPhi(result.projection.proofValuePhiMicro);
+      phiUsd.setCalculatedPhi(result.projection.proofValuePhiMicro,result.projection.inputs.metadata as SigilMetadataLite);
       proofResult.querySelector('[data-value-download-replay]')!.addEventListener('click', () => downloadJson(result.replay, `bankeiz-public-value-replay-${result.replay!.replayDigest.slice(0, 12)}.json`));
     } catch (cause) { if (generation === proofGeneration && root.isConnected) proofStatus.textContent = message(cause); }
     finally { if (generation === proofGeneration) submit.disabled = false; }

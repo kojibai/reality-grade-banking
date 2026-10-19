@@ -13,7 +13,10 @@ self.onmessage = async (event: MessageEvent<{ id: number; source?: unknown; hist
     if (!event.data.source) return;
     const source = parseMarketCapSource(event.data.source);
     const next = await buildMarketHistory(source, retained, () => latest === id, () => new Promise(resolve => setTimeout(resolve, 0)),event.data.pulse===undefined?undefined:{catalog:event.data.catalog??null,pulse:event.data.pulse});
-    if (!next || latest !== id) return;
+    if (latest !== id) return;
+    // A newer retained capture is a completed job too. Without an ack the UI
+    // keeps its queue busy forever and never dispatches newly arrived operands.
+    if (!next) { self.postMessage({id,retained:true}); return; }
     retained = next; self.postMessage({ id, history: next });
   } catch { if (latest === id) self.postMessage({ id, error: 'Projected market history is unavailable.' }); }
 };

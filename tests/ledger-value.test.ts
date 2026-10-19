@@ -16,6 +16,10 @@ it('shows the exact carried card snapshot with separate consideration and refuse
   expect(ledgerValueForRecord(rows.find(row => row.sourceId === 'card')!)).toEqual({ basis: 'card-snapshot', amountUsdCents: '98765', pulse: '120', considerationUsdCents: '100' });
   expect(ledgerValueForRecord(rows.find(row => row.sourceId === 'legacy')!)).toMatchObject({ basis: 'unavailable', amountUsdCents: null });
 });
+it.each(['cardValueUsd','transferValueUsd','settledCardValueUsd'])('retains the explicitly recorded legacy %s snapshot at the transaction pulse',field=>{
+ const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'legacy-card-value',actionKind:'receiz.sports_arena.card_transfer',pulse:120,payload:{[field]:'1234.567',amountUsdCents:'100'}}]}).records[0];
+ expect(ledgerValueForRecord(record)).toMatchObject({basis:'card-snapshot',amountUsdCents:'123457',pulse:'120'});
+});
 it('preserves a carried action card snapshot through the admitted personal history projection', () => {
   const projection = { authority: 'verified-identity-portable-state', portableStateVerified: true, owner: { uid: 'owner' }, verifiedState: { account: { userId: 'owner' }, wallet: { chatTransfers: [{ id: 'carried', sender_user_id: 'owner', recipient_user_id: 'friend', kai_pulse: '120', amount_usd_cents: '100', transferValueUsdCents: '9900' }] } } };
   const row = projectPersonalHistory(projection as never, 'owner').records[0];

@@ -1,5 +1,6 @@
-import { computeIntrinsicUnsigned, type SigilMetadataLite } from '@receiz/sdk/valuation';
-import { DEFAULT_ISSUANCE_POLICY, quotePhiForUsd } from '../canonical-market-issuance';
+import type {SigilMetadataLite} from '@receiz/sdk/valuation';
+import {computeIntrinsicUnsigned as unsignedAtPulse} from '../generated/chart-valuation.mjs';
+import {marketProofUsdQuote,marketProofUsdCents} from '../market-phi-usd';
 import type { MarketCapSource, MarketValueRow,MarketPulseSeed } from './source';
 import type { ChartPeriod } from '../../core/chart-history';
 import { marketPulseTime, marketPeriodPulses } from './coordinates';
@@ -10,12 +11,12 @@ const round = (n: number, places = 4) => Number(n.toFixed(places));
 const roundPhi = (n: number) => Math.round(n * 1e6) / 1e6;
 function hash(input: string) { let h = 2166136261; for (let i = 0; i < input.length; i++) h = Math.imul(h ^ input.charCodeAt(i), 16777619); return h >>> 0; }
 const rateMeta = { ip: { expectedCashflowPhi: [] } } as unknown as SigilMetadataLite;
-function rate(pulse: number, meta = rateMeta, computed?: ReturnType<typeof computeIntrinsicUnsigned>) { const quote = quotePhiForUsd({ meta, nowPulse: pulse, usd: 100, currentStreakDays: 0, lifetimeUsdSoFar: 0, plannedHoldBeats: 0 }, DEFAULT_ISSUANCE_POLICY, computed); if (!Number.isFinite(quote.usdPerPhi) || quote.usdPerPhi <= 0) throw new Error('Public valuation quote is unavailable.'); return quote.usdPerPhi; }
+function rate(pulse: number, meta = rateMeta, computed={unsigned:unsignedAtPulse(meta,pulse)}) { return marketProofUsdQuote(meta,pulse,computed).quote.usdPerPhi; }
 export function publicSigilQuoteAtPulse(seed:MarketPulseSeed,pulse:number){
  if(seed.kind!=='sigil'||!Number.isSafeInteger(pulse)||pulse<seed.claimPulse)throw Error('Public object valuation seed is unavailable.');
  const meta={pulse:seed.claimPulse,kaiPulse:seed.claimPulse,beat:seed.beat,stepIndex:seed.stepIndex,stepsPerBeat:44,quality:'high',creatorVerified:seed.creatorVerified,creatorRep:0,chakraDay:seed.chakraDay??undefined,kaiSignature:seed.kaiSignature??undefined,userPhiKey:seed.userPhiKey??undefined}as SigilMetadataLite;
- const computed=computeIntrinsicUnsigned(meta,pulse),phi=Math.max(.000001,roundPhi(computed.unsigned.valuePhi));
- const usdPerPhi=rate(pulse,meta,computed);return {pricePhi:phi,quoteUsdPerPhi:usdPerPhi,priceUsd:Math.round(phi*usdPerPhi*100)/100};
+ const computed={unsigned:unsignedAtPulse(meta,pulse)},phi=Math.max(.000001,roundPhi(computed.unsigned.valuePhi));
+ const usdPerPhi=rate(pulse,meta,computed);return {pricePhi:phi,quoteUsdPerPhi:usdPerPhi,priceUsd:marketProofUsdCents(phi,usdPerPhi)/100};
 }
 export function publicSigilUsdAtPulse(seed:MarketPulseSeed,pulse:number):number{return publicSigilQuoteAtPulse(seed,pulse).priceUsd;}
 function marketValue(row: MarketValueRow, pulse: number, usdPerPhi: number): number {
@@ -30,15 +31,21 @@ function marketValue(row: MarketValueRow, pulse: number, usdPerPhi: number): num
   }
   return Math.round(phi * usdPerPhi * 100) / 100;
 }
-function sportsValue(row: MarketValueRow, pulse: number, quoteMove: number): number {
+function sportsUnitValue(row: MarketValueRow, pulse: number, quoteMove: number): number {
   const base = row.baseUsdValue; if (base <= 0 || row.proofTotalValueUsd <= 0) return 0;
   const signal = (hash(`card:${row.seed}`) % 1e6) / 1e6;
   const wave = (Math.sin((pulse + signal * 987) * .19) + 1) / 2, drift = (Math.sin((pulse + signal * 421) * .047) + 1) / 2, trend = (Math.sin((pulse + signal * 193) * .083) + 1) / 2;
   const pressure = round(base * clamp((row.marketUsdValue - base) / base, 0, .18) * .22);
   const carry = base * (.001 + quoteMove * .008 + wave * .0038 + drift * .0014 + trend * .0011 + clamp(Math.max(0, row.scoreDelta) * .0012, 0, .018) + clamp(Math.max(0, base - row.birthUsdValue) / base, 0, .12) * .028) + pressure;
-  const live = round(base + round(Math.max(.0001, carry)));
-  return round(row.proofTotalValueUsd * live / base);
+  return round(base + round(Math.max(.0001, carry)));
 }
+function sportsValue(row:MarketValueRow,pulse:number,quoteMove:number){const unit=sportsUnitValue(row,pulse,quoteMove);return unit>0?round(row.proofTotalValueUsd*unit/row.baseUsdValue):0;}
+export function publicSportsQuoteAtPulse(row:MarketValueRow,pulse:number,quoteMove?:number){
+ if(row.source!=='sports-economy-card'||!Number.isSafeInteger(pulse)||pulse<0)throw Error('Public object valuation seed is unavailable.');
+ if(quoteMove===undefined){const current=rate(pulse),prior=rate(Math.max(0,pulse-1));quoteMove=Math.abs(current-prior)/prior;}
+ return sportsUnitValue(row,pulse,quoteMove);
+}
+export function marketQuoteMovementAtPulse(pulse:number){const current=rate(pulse),previous=rate(Math.max(0,pulse-1));return Math.abs(current-previous)/previous;}
 /** Single-object display math, using the same admitted sigil operands as the graph. */
 export function marketAssetUsdAtPulse(row:MarketValueRow,pulse:number):number{
  const meta=row.marketItem?.livePulseSeed;if(row.source!=='market-desk-live-asset'||meta?.kind!=='sigil'||!Number.isSafeInteger(pulse)||pulse<meta.claimPulse)throw Error('Public object valuation seed is unavailable.');

@@ -7,6 +7,9 @@ it('allows only fixed public Receiz contracts with bounded query arguments', () 
   expect(resolvePublicMarketTarget('/api/bank/public-market/quotes')?.href).toBe('https://receiz.com/api/market/public-snapshot?detail=full');
   expect(resolvePublicMarketTarget('/api/bank/public-market/membership?url=https://evil.test')).toBeNull();
   expect(resolvePublicMarketTarget('/api/bank/public-market/secret')).toBeNull();
+  const provenance='/api/bank/public-market/provenance?collectibleId=rsc_0123456789abcdef&claimHash='+'a'.repeat(64);
+  expect(resolvePublicMarketTarget(provenance)?.href).toBe('https://receiz.com/api/game/sports/baseball/cards/rsc_0123456789abcdef/provenance?claimHash='+'a'.repeat(64));
+  for(const value of [provenance+'&url=https://evil.test',provenance+'&claimHash='+'b'.repeat(64),provenance.replace('rsc_0123456789abcdef','invalid')])expect(resolvePublicMarketTarget(value)).toBeNull();
   expect(resolvePublicMarketTarget('/api/bank/public-market/original?path=https%3A%2F%2Fevil.test')).toBeNull();
   expect(resolvePublicMarketTarget('/api/bank/public-market/original?path=%2Fapi%2Fconnect%2Fwallet%2Fme')).toBeNull();
   const path = '/api/profile/originals/download?receizId=a1&kind=original';
@@ -14,6 +17,12 @@ it('allows only fixed public Receiz contracts with bounded query arguments', () 
   const materialPath = '/api/proof-material/packages/' + 'c'.repeat(64) + '/artifact';
   expect(resolvePublicMarketTarget(`/api/bank/public-market/original?path=${encodeURIComponent(materialPath)}`)?.href).toBe('https://receiz.com' + materialPath);
   for (const bad of [materialPath + '?download=1', materialPath + '/extra', materialPath.replace('/artifact', '/manifest'), '/api/proof-material/packages/not-a-digest/artifact']) expect(resolvePublicMarketTarget(`/api/bank/public-market/original?path=${encodeURIComponent(bad)}`)).toBeNull();
+});
+it('curates only exact public card history metadata without forwarding private authority',async()=>{
+ const cardId='rsc_0123456789abcdef',claimHash='a'.repeat(64),fetchSource=vi.fn<typeof fetch>(async()=>Response.json({ok:true,cardId,claimHash,count:1,privateSession:'do-not-copy',provenance:[{collectibleId:cardId,claimHash,eventKind:'issue',appendHash:'b'.repeat(64),occurredAt:'2026-10-01T12:00:00Z',owner:{username:'public',displayName:'Public',userId:'do-not-copy',email:'do-not-copy'},append:{secret:'do-not-copy'}}]}));
+ vi.stubGlobal('fetch',fetchSource);let status=0,body='';const response={setHeader:vi.fn(),writeHead:(value:number)=>{status=value;},end:(value:Uint8Array)=>{body=new TextDecoder().decode(value);}}as unknown as ServerResponse;
+ await publicMarketMiddleware({method:'GET',url:`/api/bank/public-market/provenance?collectibleId=${cardId}&claimHash=${claimHash}`,headers:{authorization:'Bearer do-not-copy'}}as IncomingMessage,response,vi.fn());
+ expect(status).toBe(200);expect(JSON.parse(body).provenance[0].owner).toEqual({username:'public',displayName:'Public'});expect(body).not.toContain('do-not-copy');expect(fetchSource.mock.calls[0]?.[1]).toMatchObject({credentials:'omit',redirect:'error'});
 });
 it('resolves only a bounded public post coordinate to its read-only Moment carrier',()=>{
  const path='/v/20261012_1401/0C19C291/14611069?a=cd412215&ms=1791828092396',route='/api/bank/public-market/record?path=';

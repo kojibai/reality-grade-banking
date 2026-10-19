@@ -29,3 +29,11 @@ it('a failed rebuild reports failure without sending an empty or partial curve',
   await host.onmessage({ data: { id: 6, source: { marketCapProjection: {} } } });
   expect(host.postMessage.mock.calls).toEqual([[{ id: 6, error: 'Projected market history is unavailable.' }]]);
 });
+it('acknowledges a retained newer snapshot so the queue can accept fresh operands',async()=>{
+ build.mockResolvedValueOnce(null);
+ await host.onmessage({data:{id:7,source:{marketCapProjection:{serverPulse:100}},history:{marker:'newer-retained'}}});
+ expect(host.postMessage.mock.calls).toEqual([[{id:7,retained:true}]]);
+ build.mockResolvedValueOnce({marker:'fresh'});
+ await host.onmessage({data:{id:8,source:{marketCapProjection:{serverPulse:300}}}});
+ expect(host.postMessage.mock.calls.at(-1)).toEqual([{id:8,history:{marker:'fresh'}}]);
+});
