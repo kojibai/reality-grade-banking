@@ -15,6 +15,7 @@ export function noteError(cause:unknown):string{
  if(/CUSTODY_COUNTER_UNAVAILABLE/.test(code))return 'This credential does not provide the state counter required for secure offline transfers.';
  if(/CUSTODY_ROLLBACK_DETECTED/.test(code))return 'This note’s stored custody no longer matches its secure device state. Keep the original proof and recovery data.';
  if(/CUSTODY_(?:WEBAUTHN_UNAVAILABLE|PLATFORM_AUTHENTICATOR_UNAVAILABLE|CEREMONY_NOT_STARTED)/.test(code))return 'Secure device registration could not start. Open Bankeiz directly in a current browser and try again.';
+ if(/CUSTODY_ATTESTATION_NOT_PROVIDED/.test(code))return 'This browser did not provide device custody evidence. Offline Notes cannot register this credential.';
  if(/CUSTODY_ATTESTATION_FORMAT_UNSUPPORTED/.test(code))return 'This browser returned a credential format that Offline Notes cannot verify.';
  if(/CUSTODY_ATTESTATION_CHAIN_REQUIRED/.test(code))return 'This browser did not supply the device attestation required for Offline Notes.';
  if(/OFFLINE_NOTE_CUSTODY_UNSUPPORTED|ATTESTATION|ROLLBACK_CONFORMANCE|CUSTODY_(?:PROFILE_NOT_REGISTERED|ASSERTION_INVALID)/.test(code))return 'The device registration proof could not be verified. Keep this device and any original proof.';

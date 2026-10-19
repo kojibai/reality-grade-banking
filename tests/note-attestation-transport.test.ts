@@ -50,3 +50,9 @@ it('binds Bankeiz ceremonies to its own RP and rejects cross-domain certificates
   expect(await (await transport(route)).json()).toMatchObject({ origin: bankeizOrigin, rpId: 'bankeiz.com' });
   await expect(transport(route)).rejects.toThrow('CHALLENGE');
 });
+it('preserves the exact missing-attestation failure from Receiz without retrying or substituting a certificate',async()=>{
+ const failure=new Error('OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED'),request=vi.fn().mockResolvedValueOnce({ok:true,origin,rpId:'receiz.com',challengeB64u:nonce,ticket:'private-fixture-ticket'}).mockRejectedValueOnce(failure);
+ const transport=createBankNoteAttestationFetch({origin,request});await transport(route);
+ await expect(transport(route,{method:'POST',body:JSON.stringify({challengeB64u:nonce,response:{id:'fixture'}})})).rejects.toBe(failure);
+ expect(request).toHaveBeenCalledTimes(2);expect(failure.message).not.toContain('private-fixture-ticket');
+});

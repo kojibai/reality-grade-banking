@@ -9,6 +9,7 @@ const click = (host: HTMLElement, label: string) => [...host.querySelectorAll('b
 test.each([
  ['OFFLINE_NOTE_PLATFORM_ATTESTATION_ISSUER_UNAVAILABLE', /registration service.*unavailable/i],
  ['OFFLINE_NOTE_CUSTODY_CEREMONY_CANCELLED', /registration was cancelled/i],
+ ['OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED', /browser did not provide.*device.*evidence/i],
  ['OFFLINE_NOTE_CUSTODY_BACKUP_CAPABLE', /credential.*sync/i],
  ['OFFLINE_NOTE_CUSTODY_UNSUPPORTED:OFFLINE_NOTE_CUSTODY_COUNTER_UNAVAILABLE', /state counter/i],
  ['OFFLINE_NOTE_CUSTODY_ROLLBACK_DETECTED', /keep.*original proof/i],
