@@ -38,11 +38,13 @@ import {readCompositeWalletSource,advanceCompositeWalletObservation,mergeComposi
 import { hasSettledAccountView } from './account-view';
 import {createLocalNoteInventory} from './note-local-inventory';
 import {atNoteStage} from './note-stage';
+import {createReceivingUsernamePreparation,publicAccountUsername} from './receiving-username';
 
 export interface OpenIdentity {
   prepareAccountView: () => Promise<import('./wallet-observation').WalletObservation>;
   refreshLocalValuation?: () => Promise<import('./wallet-observation').WalletObservation | null>;
   walletReceivingAddress?: () => string | null;
+  prepareReceivingUsername?: () => Promise<string>;
   marketTrade?: () => Promise<import('./market-trade').MarketTrade>;
   walletSend?: () => Promise<import('./wallet-send').WalletSend>;
   operations?: () => Promise<import('./bank-operations').BankOperations>;
@@ -179,6 +181,13 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const clientAccounts = new WeakMap<ReceizClient, { applicationId: string; accountUid: string }>();
   type WalletReadRequest = { prefetched?: { client: ReceizClient; applicationId: string; accountUid: string; response: Promise<unknown> } };
   let presentationUsername = keyFile.owner.username;
+  let confirmedUsername:string|null=null;
+  async function continueAccountPresentation(targetUnsigned=unsigned){
+    const continued=await targetUnsigned.identity.continueReceizId({schema:'receiz.device.identity.v1',createdAt:keyFile.issuedAt,updatedAt:keyFile.issuedAt,localUid:keyFile.owner.uid,username:keyFile.owner.username??keyFile.keyId,displayName:keyFile.owner.displayName??keyFile.owner.username??'Receiz account',deviceName:null,keyFile:transportKeyFile},{passphrase:transportPhrase});
+    const session=continued.session as {uid?:unknown;username?:unknown}|undefined;
+    if(continued.ok!==true||typeof session?.uid!=='string')throw Error('Your Receiz account could not be opened. Your local Identity Seal remains available.');
+    return {uid:session.uid,username:session.username,profileProjectionPending:continued.profileProjectionPending===true};
+  }
   async function openClient(scopes: readonly string[], statement: string, applicationId: string = BANK_APPLICATION_ID, walletRead?: WalletReadRequest) {
     if (!consentApproved || lifetime.signal.aborted) throw new Error('Receiz account read consent is required.');
     if (!BANK_CARD_APPLICATION_IDS.some(id => id === applicationId)) throw new Error('Unsupported bank registration.');
@@ -187,11 +196,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     if (!client || clientApplicationId !== applicationId || sdk.receizKaiNow().pulse >= expiresAtKai || scopes.some(scope => !grantedScopes.includes(scope))) {
       const targetUnsigned = applicationId === BANK_APPLICATION_ID ? unsigned : sdk.createReceizClient({ applicationId, baseUrl: 'https://receiz.com', fetchImpl: heldFetch });
       // Signed transport metadata comes from the genuine admitted identity. It is not a replacement source.
-      const continuing = targetUnsigned.identity.continueReceizId({ schema: 'receiz.device.identity.v1', createdAt: keyFile.issuedAt, updatedAt: keyFile.issuedAt, localUid: keyFile.owner.uid, username: keyFile.owner.username ?? keyFile.keyId, displayName: keyFile.owner.displayName ?? keyFile.owner.username ?? 'Receiz account', deviceName: null, keyFile: transportKeyFile }, { passphrase: transportPhrase }).then(continued => {
-        const session = continued.session as { uid?: unknown; username?: unknown } | undefined;
-        if (continued.ok !== true || typeof session?.uid !== 'string') throw new Error('Your Receiz account could not be opened. Your local Identity Seal remains available.');
-        return { uid: session.uid, username: session.username };
-      });
+      const continuing = continueAccountPresentation(targetUnsigned);
       // Existing key bindings can grant access while continuation is in flight.
       // Either operation can fail first; neither result alone opens the account.
       void continuing.catch(() => {});
@@ -228,7 +233,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       clientAccounts.set(protectedClient, { applicationId, accountUid: session.uid });
       if (walletRead && walletResponse) walletRead.prefetched = { client: protectedClient, applicationId, accountUid: session.uid, response: walletResponse };
       // The confirmed account's profile name is display metadata, never proof ownership.
-      if (typeof session.username === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(session.username)) presentationUsername = session.username;
+      const username=publicAccountUsername(session.username);if(username)presentationUsername=confirmedUsername=username;
     }
     return client;
   }
@@ -256,6 +261,10 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     }
     finally { if (connectionOpening === attempt) connectionOpening = null; }
   }
+  const prepareReceivingUsername=createReceivingUsernamePreparation({signal:lifetime.signal,confirmed:()=>confirmedUsername,
+    connect:async()=>{const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT),bound=clientAccounts.get(current);if(!bound||bound.applicationId!==BANK_APPLICATION_ID)throw Error('RECEIVING_USERNAME_IDENTITY_CHANGED');return bound.accountUid;},
+    read:()=>continueAccountPresentation(),publish:(username,uid)=>{if(accountUid!==uid||lifetime.signal.aborted)throw Error('RECEIVING_USERNAME_IDENTITY_CHANGED');presentationUsername=confirmedUsername=username;},
+  });
   function protectedChartFrame(){return knownWallet?.source==='local-note-head'||knownWallet?.walletScope==='native-full'||!!knownWallet&&isWalletQuoteHeld(knownWallet);}
   async function adoptChartResponse(response:unknown, expectedUserId:string) {
     if(protectedChartFrame())return null;
@@ -990,7 +999,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     // reads. A delayed import save cannot overwrite a newer account frame.
     if (knownWallet) void persistWalletObservation(knownWallet).catch(() => {});
   }
-  return { prepareAccountView, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

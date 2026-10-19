@@ -8,7 +8,7 @@ export interface LedgerValueOperands {
   assetId?: string; marketItemId?: string; objectId?: string; collectibleId?: string; claimHash?: string;
   amountPhiMicro?: string; usdPerPhiMicrocents?: string; considerationUsdCents?: string;
   cardValueUsdCents?: string; proofValueUsdCents?: string; valuePulse?: string;
-  fundingRule?: string; settledUsdCents?: string; phiUsdCents?: string;
+  fundingRule?: string; cardValueRule?: string; cardValueRecordedAt?: string; cardValueState?: string; settledUsdCents?: string; phiUsdCents?: string;
 }
 export interface LedgerValueDisplay {
   amountUsdCents: string | null;
@@ -24,11 +24,17 @@ const uint = (value: unknown): string | undefined => typeof value === 'string' &
 export function ledgerUsdCents(value: unknown): string | undefined {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && Number.isSafeInteger(Math.round(value * 100)) ? String(Math.round(value * 100)) : undefined;
 }
+function recordedDollarCents(value: unknown): string | undefined {
+  const decimal = typeof value === 'number' || typeof value === 'string' ? String(value).trim().replace(/[$,]/g, '') : '';
+  if (!/^\d{1,28}(?:\.\d{1,6})?$/.test(decimal)) return;
+  const [whole, fraction = ''] = decimal.split('.');
+  return (BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0').slice(0, 2)) + (Number(fraction[2] ?? 0) >= 5 ? 1n : 0n)).toString();
+}
 /** Preserve the source's supported fields, never copy arbitrary metadata into a receipt. */
 export function readLedgerValueOperands(input: unknown): LedgerValueOperands {
   const raw = object(input), payload = object(raw.payload), metadata = object(raw.metadata), receipt = object(raw.valueReceipt);
   const value = { ...metadata, ...payload, ...raw }, result: LedgerValueOperands = {};
-  for (const key of ['assetId', 'marketItemId', 'objectId', 'collectibleId', 'claimHash', 'fundingRule'] as const) {
+  for (const key of ['assetId', 'marketItemId', 'objectId', 'collectibleId', 'claimHash', 'fundingRule', 'cardValueRule', 'cardValueRecordedAt', 'cardValueState'] as const) {
     const field = text(value[key] ?? receipt[key]); if (field !== undefined) result[key] = field;
   }
   for (const key of ['amountPhiMicro', 'usdPerPhiMicrocents', 'considerationUsdCents', 'cardValueUsdCents', 'proofValueUsdCents', 'valuePulse', 'settledUsdCents', 'phiUsdCents'] as const) {
@@ -36,18 +42,19 @@ export function readLedgerValueOperands(input: unknown): LedgerValueOperands {
   }
   // The private v129 ledger explicitly names this amount as the transferred card snapshot.
   // Its legacy missing-value fallback is zero, so zero alone cannot support a card valuation.
-  if (!result.cardValueUsdCents && /^(sports|signal)_card_transfer_card_value_snapshot$/.test(result.fundingRule ?? '') && result.phiUsdCents && BigInt(result.phiUsdCents) > 0n) result.cardValueUsdCents = result.phiUsdCents;
-  for (const key of ['transferValueUsdCents', 'settledCardValueUsdCents'] as const) {
-    const field = uint(value[key]); if (field !== undefined) { result.cardValueUsdCents = field; break; }
+  const snapshots = new Set<string>();
+  if (/^(sports|signal)_card_transfer_card_value_snapshot$/.test(result.fundingRule ?? '') && result.phiUsdCents && BigInt(result.phiUsdCents) > 0n) snapshots.add(result.phiUsdCents);
+  for (const source of [value, receipt]) for (const key of ['cardValueUsdCents', 'transferValueUsdCents', 'settledCardValueUsdCents'] as const) {
+    const field = uint(source[key]); if (field !== undefined) snapshots.add(field);
   }
   // Older carried transfer payloads name their snapshot in dollars. Preserve
   // only explicit card/transfer fields; an ask, bid or current quote is not a
   // historical transaction valuation.
-  if(result.cardValueUsdCents===undefined)for(const key of ['transferValueUsd','cardValueUsd','settledCardValueUsd']){
-    const raw=value[key],decimal=typeof raw==='number'||typeof raw==='string'?String(raw).trim().replace(/[$,]/g,''):'';
-    if(!/^\d+(?:\.\d{1,6})?$/.test(decimal))continue;
-    const field=ledgerUsdCents(Number(decimal));if(field!==undefined){result.cardValueUsdCents=field;break;}
+  for (const source of [value, receipt]) for (const key of ['transferValueUsd', 'cardValueUsd', 'settledCardValueUsd']) {
+    const field = recordedDollarCents(source[key]); if (field !== undefined) snapshots.add(field);
   }
+  if (snapshots.size === 1) result.cardValueUsdCents = [...snapshots][0]; else delete result.cardValueUsdCents;
+  if (snapshots.size > 1) result.cardValueState = 'conflicting-recorded-snapshots';
   const chart = object(raw.marketAssetChart);
   if (raw.ledgerKind === 'market-asset' && typeof chart.live === 'number' && typeof chart.usdPerPhi === 'number' && chart.live >= 0 && chart.usdPerPhi > 0) {
     const quoted = ledgerUsdCents(chart.live * chart.usdPerPhi), pulse = uint(raw.sortKaiPulse);
@@ -87,13 +94,14 @@ function valueAtPulse(seed: MarketPulseSeed, pulse: number): string | null {
 }
 export function ledgerValueForRecord(record: PublicRecord, index: LedgerValueIndex | null = null): LedgerValueDisplay {
   const operands = readLedgerValueOperands(record.valueOperands), transfer = /transfer|send|payment_sent|payment_received/i.test(record.kind);
-  const card = /card[_-]transfer|proof[_-]transfer|\.card_transfer/i.test(record.kind);
+  const card = /(?:card|proof|original)[._-]transfer/i.test(record.kind);
   const eventPulse = record.pulse ?? (record.kaiUpulse ? String(BigInt(record.kaiUpulse) / 1_000_000n) : null);
+  if (operands.cardValueState === 'conflicting-recorded-snapshots') return { amountUsdCents: null, basis: 'unavailable', pulse: eventPulse, considerationUsdCents: null, gap: 'The source carries conflicting card value snapshots.' };
   if (transfer && record.pulse && record.kaiUpulse && BigInt(record.pulse) !== BigInt(record.kaiUpulse) / 1_000_000n) return { amountUsdCents: null, basis: 'unavailable', pulse: null, considerationUsdCents: null, gap: 'The source pulse and micro-pulse disagree.' };
   const snapshotAmountIsCard = /_card_value_snapshot$/.test(operands.fundingRule ?? '');
   const consideration = operands.considerationUsdCents ?? (snapshotAmountIsCard ? null : record.amountUsdCents);
   if (transfer && operands.cardValueUsdCents !== undefined && eventPulse && (!operands.valuePulse || operands.valuePulse === eventPulse)) return { amountUsdCents: operands.cardValueUsdCents, basis: 'card-snapshot', pulse: eventPulse, considerationUsdCents: consideration };
-  const keys = [operands.marketItemId, operands.assetId, operands.objectId, record.evidence.objectId, record.source === 'proofs' ? record.sourceId : record.sourceId.startsWith('market-asset-') ? record.sourceId.slice('market-asset-'.length) : undefined];
+  const keys = [operands.marketItemId, operands.assetId, operands.objectId, operands.collectibleId, operands.claimHash, record.evidence.objectId, record.evidence.claimHash, record.source === 'proofs' ? record.sourceId : record.sourceId.startsWith('market-asset-') ? record.sourceId.slice('market-asset-'.length) : undefined];
   const resolved=index?keys.filter((key):key is string=>!!key&&index.rows.has(key)).map(key=>index.rows.get(key)):[];
   const matches=new Set(resolved.filter((row):row is MarketValueRow=>!!row));
   if(resolved.some(row=>row===null)||matches.size>1)return{amountUsdCents:null,basis:'unavailable',pulse:eventPulse,considerationUsdCents:consideration,gap:'The source asset references disagree or are ambiguous.'};
@@ -111,8 +119,9 @@ export function ledgerValueForRecord(record: PublicRecord, index: LedgerValueInd
     }
   }
   if (isProof && operands.proofValueUsdCents !== undefined) return { amountUsdCents: operands.proofValueUsdCents, basis: 'source-value', pulse: operands.valuePulse ?? null, considerationUsdCents: null };
-  if (consideration !== null) return { amountUsdCents: consideration, basis: 'payment', pulse: eventPulse, considerationUsdCents: null, ...(card ? { gap: 'The source carries no card value operands at this transfer coordinate.' } : {}) };
-  return { amountUsdCents: null, basis: 'unavailable', pulse: eventPulse, considerationUsdCents: null, gap: card ? 'The source carries no card value operands at this transfer coordinate.' : 'The source carries no supported value operands.' };
+  if (card) return { amountUsdCents: null, basis: 'unavailable', pulse: eventPulse, considerationUsdCents: consideration, gap: 'The source carries no object value operands at this transfer coordinate.' };
+  if (consideration !== null) return { amountUsdCents: consideration, basis: 'payment', pulse: eventPulse, considerationUsdCents: null };
+  return { amountUsdCents: null, basis: 'unavailable', pulse: eventPulse, considerationUsdCents: null, gap: 'The source carries no supported value operands.' };
 }
 export function ledgerValueLabel(value: LedgerValueDisplay): string {
   return value.basis === 'card-snapshot' ? 'Card value at transfer' : value.basis === 'intrinsic-model' ? 'Calculated value' : value.basis === 'source-value' ? 'Carried value' : value.basis === 'payment' ? 'Recorded amount' : 'Value unavailable';

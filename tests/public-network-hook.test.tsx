@@ -106,3 +106,33 @@ it('persists the complete anchor separately so interrupted catch-up resumes afte
     });
   } finally { vi.useRealTimers(); }
 });
+it('enriches a complete v1 cache once and retains the snapshot when the old feed repeats that entry',async()=>{
+ const raw={id:'restored-card',actionKind:'card_transfer',entryHash:'a'.repeat(64),pulse:120,claimHash:'b'.repeat(64)};
+ const thin=parsePublicNetworkPage('actions',{ok:true,actions:[raw]}),enriched=parsePublicNetworkPage('actions',{ok:true,actions:[{...raw,cardValueUsdCents:'9900'}]});
+ const coverage=(['actions','wallet','graph','proofs'] as const).map(source=>({source,complete:true,anchorIds:source==='actions'?thin.records.map(row=>row.id):[]}));
+ cache.load.mockResolvedValue({records:thin.records,capturedAt:null,inspectionVersion:1,coverage});
+ cache.seed.mockResolvedValue({records:enriched.records,capturedAt:null,inspectionVersion:2,coverage});
+ network.read.mockImplementation(async(source:PublicSource)=>source==='actions'?thin:page(source));
+ await observe(async read=>{
+  expect(read().records.find(row=>row.sourceId==='restored-card')?.valueOperands?.cardValueUsdCents).toBe('9900');
+  expect(cache.seed).toHaveBeenCalledOnce();
+  await act(async()=>read().refresh());
+  expect(read().records.find(row=>row.sourceId==='restored-card')?.valueOperands?.cardValueUsdCents).toBe('9900');
+  expect(cache.save.mock.calls.at(-1)![0].inspectionVersion).toBe(2);
+ });
+ const saved=structuredClone(cache.save.mock.calls.at(-1)![0]);cache.load.mockResolvedValue(saved);cache.seed.mockClear();
+ await observe(async read=>{expect(read().records.find(row=>row.sourceId==='restored-card')?.valueOperands?.cardValueUsdCents).toBe('9900');expect(cache.seed).not.toHaveBeenCalled();});
+});
+it('retains bound transfer evidence during complete graph replacement without reviving withdrawn rows',async()=>{
+ const id=`sports-card-transfer-rsc_${'1'.repeat(16)}-${'b'.repeat(64)}:${'c'.repeat(24)}`;
+ const raw={id,ledgerKind:'card-transfer',eventKaiPulse:120,claimHash:'b'.repeat(64),collectibleId:`rsc_${'1'.repeat(16)}`};
+ const thin=parsePublicNetworkPage('graph',{ok:true,ledgerRows:[raw]}),enriched=parsePublicNetworkPage('graph',{ok:true,ledgerRows:[{...raw,cardValueUsdCents:'9900'}]});
+ cache.load.mockResolvedValue({records:[...enriched.records,...page('graph',['withdrawn']).records],capturedAt:null,inspectionVersion:2,coverage:(['actions','wallet','graph','proofs'] as const).map(source=>({source,complete:true}))});
+ network.read.mockImplementation(async(source:PublicSource)=>source==='graph'?thin:page(source));
+ await observe(async read=>{
+  expect(read().records.find(row=>row.sourceId===id)?.valueOperands?.cardValueUsdCents).toBe('9900');
+  expect(read().records.some(row=>row.sourceId==='withdrawn')).toBe(false);
+  await act(async()=>read().refresh());
+  expect(read().records.find(row=>row.sourceId===id)?.valueOperands?.cardValueUsdCents).toBe('9900');
+ });
+});

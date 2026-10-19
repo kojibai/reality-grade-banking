@@ -3,7 +3,7 @@
 import {beforeEach,expect,it,vi} from 'vitest';
 import {parsePublicNetworkPage} from '../src/receiz/public-network';
 const f=vi.hoisted(()=>({held:null as unknown,open:vi.fn(),retain:vi.fn(),load:vi.fn(),save:vi.fn(),custody:new WeakMap<object,unknown>()}));
-vi.mock('../src/receiz/public-network-cache',()=>({loadPublicNetworkCache:f.load,savePublicNetworkCache:f.save}));
+vi.mock('../src/receiz/public-network-cache',()=>({loadPublicNetworkCache:f.load,savePublicNetworkCache:f.save,savePublicLedgerDisplayCache:(_review:unknown,cache:unknown)=>f.save(cache)}));
 vi.mock('../src/receiz/public-ledger-proof',()=>({openPublicLedgerSource:f.open,heldPublicLedgerFile:(review:object)=>{if(!f.custody.has(review))throw Error('CUSTODY_REQUIRED');return f.custody.get(review);}}));
 vi.mock('../src/receiz/public-ledger-retention',()=>({readRetainedPublicLedger:async()=>f.held,retainPublicLedgerReview:f.retain}));
 import {synchronizePublicLedger,publicLedgerDisplayRows} from '../src/receiz/public-ledger-continuity';
@@ -50,6 +50,13 @@ it('persists a source accepted without a mounted consumer before returning, then
  expect(cache).toMatchObject({records:[{id:'actions:action',amountUsdCents:'12'}],capturedAt:'2026-10-18T12:00:00Z',coverage:[{source:'graph',complete:true,anchorIds:[],observedAt:200}]});
  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({error:'503'},{status:503})));expect(await synchronizePublicLedger()).toBe(next.value);
  expect(cache).toMatchObject({records:[{id:'actions:action'}]});
+});
+it('lets a held canonical transfer replace conflicting weaker discovery fields',async()=>{
+ const held=review();held.value.snapshot.records[0].kind='card_transfer';
+ const wrong=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'action',actionKind:'card_transfer',entryHash:'0'.repeat(64),amountUsdCents:'500',pulse:999,cardValueUsdCents:'9900',summary:'Wrong cached transfer'}]}).records;
+ const records=await publicLedgerDisplayRows(held.value as never,wrong);
+ expect(records).toHaveLength(1);expect(records[0]).toMatchObject({kind:'card_transfer',title:'card transfer',amountUsdCents:'12',pulse:'1',kaiUpulse:'1000000',evidence:{entryHash:'e'.repeat(64)}});
+ expect(records[0].valueOperands).toBeUndefined();
 });
 it('reports display durability failure after retaining the actual original and never substitutes rows for it',async()=>{
  const next=review('new');f.open.mockResolvedValue(next.value);f.save.mockResolvedValue(false);vi.stubGlobal('fetch',vi.fn(async()=>Response.json(next.source)));

@@ -27,3 +27,47 @@ it('rejects malformed required row IDs rather than accepting an empty complete s
   expect(() => parsePublicNetworkPage('actions', { ok: true, actions: [{ id: 'valid' }, null] })).toThrow();
   expect(parsePublicNetworkPage('graph', { ok: true, ledgerRows: [] }).complete).toBe(true);
 });
+it('retains the exact historical snapshot when an older feed repeats the same immutable entry without value fields',()=>{
+ const raw={id:'card-event',actionKind:'receiz.sports_arena.card_transfer',entryHash:'a'.repeat(64),pulse:12000000,kaiUpulse:'12000000000000'};
+ const known=parsePublicNetworkPage('actions',{ok:true,actions:[{...raw,claimHash:'b'.repeat(64),collectibleId:'rsc_1234567890abcdef',transferId:'transfer-01',cardValueUsdCents:'9900',cardValueRule:'recorded-at-transfer'}]}).records;
+ const thin=parsePublicNetworkPage('actions',{ok:true,actions:[raw]}).records;
+ expect(mergePublicRecords(known,thin)[0].valueOperands).toMatchObject({claimHash:'b'.repeat(64),collectibleId:'rsc_1234567890abcdef',cardValueUsdCents:'9900',cardValueRule:'recorded-at-transfer'});
+ expect(mergePublicRecords(known,thin)[0].evidence.transferId).toBe('transfer-01');
+});
+it('does not combine an unbound same-ID row with retained transaction evidence',()=>{
+ const known=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'unbound',actionKind:'card_transfer',pulse:120,cardValueUsdCents:'9900'}]}).records;
+ const thin=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'unbound',actionKind:'card_transfer',pulse:120}]}).records;
+ expect(mergePublicRecords(known,thin)[0].valueOperands?.cardValueUsdCents).toBeUndefined();
+});
+it.each([{cardValueUsdCents:'9901'},{claimHash:'c'.repeat(64)},{pulse:121},{pulse:null,kaiUpulse:'121000000'},{transferValueUsdCents:'9901'}])('surfaces conflicting immutable transfer evidence instead of overwriting or combining it: %j',conflict=>{
+ const raw={id:'conflict',actionKind:'card_transfer',entryHash:'a'.repeat(64),pulse:120,claimHash:'b'.repeat(64),cardValueUsdCents:'9900'};
+ const known=parsePublicNetworkPage('actions',{ok:true,actions:[raw]}).records;
+ const incoming=parsePublicNetworkPage('actions',{ok:true,actions:[{...raw,...conflict}]}).records;
+ expect(()=>mergePublicRecords(known,incoming)).toThrow(/conflict/i);
+});
+it.each([
+ [{amountUsdCents:'100'}, {amountUsdCents:'500'}],
+ [{considerationUsdCents:'100'}, {amountUsdCents:'500'}],
+ [{amountUsdCents:'100'}, {considerationUsdCents:'500'}],
+])('refuses changed payment consideration beneath the same immutable card transfer', (before, after) => {
+ const raw={id:'same-transfer',actionKind:'card_transfer',entryHash:'a'.repeat(64),pulse:120};
+ const known=parsePublicNetworkPage('actions',{ok:true,actions:[{...raw,cardValueUsdCents:'9900',...before}]}).records;
+ const thin=parsePublicNetworkPage('actions',{ok:true,actions:[{...raw,...after}]}).records;
+ expect(()=>mergePublicRecords(known,thin)).toThrow(/conflict/i);
+});
+it('retains consideration omitted by a thin feed and keeps wallet snapshot amounts separate',()=>{
+ const raw={id:'same-transfer',actionKind:'card_transfer',entryHash:'a'.repeat(64),pulse:120};
+ const known=parsePublicNetworkPage('actions',{ok:true,actions:[{...raw,amountUsdCents:'100',cardValueUsdCents:'9900'}]}).records;
+ const thin=parsePublicNetworkPage('actions',{ok:true,actions:[raw]}).records;
+ expect(mergePublicRecords(known,thin)[0].amountUsdCents).toBe('100');
+ const wallet=parsePublicNetworkPage('wallet',{ok:true,events:[{...raw,kind:'card_transfer',amountUsdCents:'9900',considerationUsdCents:'100',valueReceipt:{phiUsdCents:'9900',fundingRule:'sports_card_transfer_card_value_snapshot'}}]}).records;
+ const walletThin=parsePublicNetworkPage('wallet',{ok:true,events:[{...raw,kind:'card_transfer',amountUsdCents:'9900'}]}).records;
+ expect(mergePublicRecords(wallet,walletThin)[0].valueOperands).toMatchObject({cardValueUsdCents:'9900',considerationUsdCents:'100'});
+});
+it('does not let a generic thin row replace a bound transfer kind',()=>{
+ const known=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'bound-kind',actionKind:'card_transfer',entryHash:'a'.repeat(64),pulse:120,amountUsdCents:'100'}]}).records;
+ const thin=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'bound-kind'}]}).records;
+ expect(mergePublicRecords(known,thin)[0]).toBe(known[0]);
+ const conflicting=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'bound-kind',entryHash:'b'.repeat(64)}]}).records;
+ expect(()=>mergePublicRecords(known,conflicting)).toThrow(/conflict/i);
+});

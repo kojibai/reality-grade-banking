@@ -220,6 +220,19 @@ it('settles a ready retained view after checking for a stronger retained source 
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
  try{const known=await identity.prepareAccountView();expect(known).toBe(p.known);expect(known.history?.[0].kaiUPulse).toBe('0');expect(p.continueId).not.toHaveBeenCalled();expect(p.wallet).not.toHaveBeenCalled();expect(p.restore).toHaveBeenCalledWith(p.known);}finally{identity.dispose();}
 });
+it('prepares the canonical collision-assigned public username for a locally ready new account without changing its signed owner or wallet',async()=>{
+ p.known=completeObservation();p.known.source='account-genesis';p.restore.mockResolvedValue(null);
+ p.continueId.mockResolvedValueOnce({ok:true,profileProjectionPending:true,session:{uid:'bound-user',username:null}}).mockResolvedValue({ok:true,profileProjectionPending:false,session:{uid:'bound-user',username:'assigned_collision_2'}});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  await identity.prepareAccountView();expect(p.continueId).not.toHaveBeenCalled();
+  expect(identity.prepareReceivingUsername).toBeTypeOf('function');
+  const [first,second]=await Promise.all([identity.prepareReceivingUsername!(),identity.prepareReceivingUsername!()]);
+  expect(first).toBe('assigned_collision_2');expect(second).toBe(first);expect(identity.accountUsername?.()).toBe(first);
+  expect(identity.username).toBe('owner');expect(identity.binding.artifactOwnerReceizId).toBe('owner.receiz.id');expect(p.wallet).not.toHaveBeenCalled();
+  expect(p.continueId).toHaveBeenCalledTimes(2);await identity.prepareReceivingUsername!();expect(p.continueId).toHaveBeenCalledTimes(2);
+ }finally{identity.dispose();}
+});
 it('waits for complete retained history before preparing a formerly balance-only account view',async()=>{
  p.known=observation();let finish!:(value:unknown)=>void;p.restore.mockReturnValue(new Promise(resolve=>{finish=resolve;}));
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);

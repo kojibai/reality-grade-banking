@@ -8,8 +8,15 @@ import { indexLedgerValues } from '../src/receiz/ledger-value';
 
 it('does not relabel a public transfer payment as the card value or invent a missing value', () => {
   const rows = parsePublicNetworkPage('actions', { ok: true, actions: [{ id: 'paid', actionKind: 'receiz.sports_arena.card_transfer', pulse: 120, amountUsdCents: '2500' }, { id: 'missing', actionKind: 'receiz.sports_arena.card_transfer', pulse: 121 }] }).records;
-  expect(ledgerValueForRecord(rows.find(row => row.sourceId === 'paid')!)).toMatchObject({ basis: 'payment', amountUsdCents: '2500' });
+  expect(ledgerValueForRecord(rows.find(row => row.sourceId === 'paid')!)).toMatchObject({ basis: 'unavailable', amountUsdCents: null, considerationUsdCents: '2500' });
   expect(ledgerValueForRecord(rows.find(row => row.sourceId === 'missing')!)).toMatchObject({ basis: 'unavailable', amountUsdCents: null });
+});
+it.each(['0','2500'])('keeps %s cents of consideration separate from an unavailable transferred object value',consideration=>{
+ const rows=parsePublicNetworkPage('actions',{ok:true,actions:['sports_card_transfer','proof.transfer','original-transfer'].map((actionKind,index)=>({id:`object-${index}`,actionKind,pulse:120,amountUsdCents:consideration}))}).records;
+ const graph=parsePublicNetworkPage('graph',{ok:true,ledgerRows:[{id:'graph-card-transfer',ledgerKind:'card-transfer',eventKaiPulse:120,considerationUsdCents:consideration}]}).records[0];
+ for(const row of [...rows,graph])expect(ledgerValueForRecord(row)).toMatchObject({basis:'unavailable',amountUsdCents:null,considerationUsdCents:consideration,gap:expect.stringContaining('transfer coordinate')});
+ const payment=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'ordinary-payment',actionKind:'wallet.transfer',pulse:120,amountUsdCents:consideration}]}).records[0];
+ expect(ledgerValueForRecord(payment)).toEqual({basis:'payment',amountUsdCents:consideration,pulse:'120',considerationUsdCents:null});
 });
 it('shows the exact carried card snapshot with separate consideration and refuses legacy zero fallback', () => {
   const rows = parsePublicNetworkPage('wallet', { ok: true, events: [{ id: 'card', kind: 'sports_card_transfer', pulse: 120, amountUsdCents: '98765', considerationUsdCents: '100', valueReceipt: { phiUsdCents: '98765', fundingRule: 'sports_card_transfer_card_value_snapshot' } }, { id: 'legacy', kind: 'sports_card_transfer', pulse: 121, amountUsdCents: '0', valueReceipt: { phiUsdCents: '0', fundingRule: 'sports_card_transfer_card_value_snapshot' } }] }).records;
@@ -66,4 +73,24 @@ it('refuses contradictory recognized proof identifiers rather than valuing the f
  expect(ledgerValueForRecord(record,index)).toMatchObject({basis:'unavailable',amountUsdCents:null});
  const ambiguous={...index,rows:new Map(index.rows)};ambiguous.rows.set(first.marketItem!.id,null);
  expect(ledgerValueForRecord(record,ambiguous)).toMatchObject({basis:'unavailable',amountUsdCents:null});
+});
+it('resolves the carried claim identifier at the transfer coordinate without replacing it with a current quote',()=>{
+ const source=parseMarketCapSource(JSON.parse(readFileSync(new URL('../public/receiz-public-capitalization.json',import.meta.url),'utf8'))),index=indexLedgerValues(source),asset=source.valueRows[0];
+ const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'claim-bound-transfer',actionKind:'proof_transfer',pulse:12000000,claimHash:asset.seed,considerationUsdCents:'100'}]}).records[0];
+ expect(ledgerValueForRecord(record,index)).toEqual({basis:'intrinsic-model',amountUsdCents:'1160227',pulse:'12000000',considerationUsdCents:'100'});
+});
+it('rejects conflicting recognized claim and asset identifiers at a transfer',()=>{
+ const source=parseMarketCapSource(JSON.parse(readFileSync(new URL('../public/receiz-public-capitalization.json',import.meta.url),'utf8'))),index=indexLedgerValues(source);
+ const first=source.valueRows[0],other=source.valueRows.find(row=>row.source==='market-desk-live-asset'&&row.seed!==first.seed)!;
+ const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'claim-conflict',actionKind:'proof_transfer',pulse:12000000,assetId:first.seed,claimHash:other.seed}]}).records[0];
+ expect(ledgerValueForRecord(record,index)).toMatchObject({basis:'unavailable',amountUsdCents:null});
+});
+it('preserves exact legacy decimal cents through public parsing instead of rounding through a floating quote',()=>{
+ const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'large-snapshot',actionKind:'receiz.sports_arena.card_transfer',pulse:12000000,cardValueUsd:'900719925474099.99',cardValueRule:'sports_arena_card_claim_usd_value_at_transfer_v1'}]}).records[0];
+ expect(ledgerValueForRecord(record)).toMatchObject({basis:'card-snapshot',amountUsdCents:'90071992547409999'});
+ expect(record.valueOperands?.cardValueRule).toBe('sports_arena_card_claim_usd_value_at_transfer_v1');
+});
+it('refuses contradictory explicit transfer snapshots instead of selecting whichever alias was parsed last',()=>{
+ const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'conflicting-snapshots',actionKind:'sports_card_transfer',pulse:12000000,cardValueUsdCents:'123',transferValueUsdCents:'124'}]}).records[0];
+ expect(ledgerValueForRecord(record)).toMatchObject({basis:'unavailable',amountUsdCents:null});
 });

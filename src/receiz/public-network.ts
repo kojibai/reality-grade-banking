@@ -4,6 +4,7 @@ import { ledgerUsdCents, readLedgerValueOperands, type LedgerValueOperands } fro
 import {readLedgerDetails,type LedgerFields} from './ledger-inspection';
 
 export const PUBLIC_SOURCES = ['actions', 'wallet', 'graph', 'proofs'] as const;
+export const PUBLIC_NETWORK_INSPECTION_VERSION = 2;
 export type PublicSource = typeof PUBLIC_SOURCES[number];
 export interface PublicRecord {
   id: string; sourceId: string; source: PublicSource; kind: string; title: string;
@@ -52,12 +53,42 @@ export function parsePublicNetworkPage(source: PublicSource, input: unknown): Pu
     total: digits(rollup.count ?? rollup.totalLedgerEntries, 20), complete: nextCursor === null };
 }
 export function mergePublicRecords(known: readonly PublicRecord[], incoming: readonly PublicRecord[]): PublicRecord[] {
-  const records = new Map(known.map(item => [item.id, item])); for (const item of incoming) records.set(item.id, item);
+  const records = new Map(known.map(item => [item.id, item])); for (const item of incoming) records.set(item.id, mergeTransferEvidence(records.get(item.id), item));
   return [...records.values()].sort((left, right) => {
     const a = left.kaiUpulse ? BigInt(left.kaiUpulse) : left.pulse ? BigInt(left.pulse) * 1_000_000n : null;
     const b = right.kaiUpulse ? BigInt(right.kaiUpulse) : right.pulse ? BigInt(right.pulse) * 1_000_000n : null;
     return a !== null && b !== null && a !== b ? a > b ? -1 : 1 : a !== null && b === null ? -1 : a === null && b !== null ? 1 : 0;
   });
+}
+/** Append supported fields only beneath the same immutable transaction source.
+ * A repeated thin projection cannot erase its already carried event snapshot. */
+function mergeTransferEvidence(known: PublicRecord | undefined, incoming: PublicRecord): PublicRecord {
+  const originalTransfer=known&&known.source===incoming.source&&known.sourceId===incoming.sourceId&&/transfer|send|payment_sent|payment_received/i.test(known.kind);
+  const bound=(record:PublicRecord)=>['entryHash','artifactDigest','proofHead'].some(key=>/^[a-f0-9]{64}$/i.test(record.evidence[key]??''));
+  if(originalTransfer&&known.kind!==incoming.kind&&bound(known)){
+    if(incoming.kind==='public record'&&!bound(incoming))return known;
+    throw Error('Public transaction evidence conflicts with its retained original.');
+  }
+  if (!known || known.source !== incoming.source || known.sourceId !== incoming.sourceId || known.kind !== incoming.kind || !/transfer|send|payment_sent|payment_received/i.test(known.kind)) return incoming;
+  const before = readLedgerValueOperands(known.valueOperands), after = readLedgerValueOperands(incoming.valueOperands);
+  const conflict = (left: unknown, right: unknown) => left !== undefined && left !== null && right !== undefined && right !== null && left !== right;
+  const eventPulse = (record: PublicRecord) => record.pulse ?? (record.kaiUpulse ? String(BigInt(record.kaiUpulse) / 1_000_000n) : null);
+  const evidenceKeys = ['entryHash', 'artifactDigest', 'proofHead', 'transferId', 'objectId', 'claimHash'];
+  const operandKeys = ['assetId', 'marketItemId', 'objectId', 'collectibleId', 'claimHash', 'cardValueUsdCents', 'valuePulse', 'considerationUsdCents', 'fundingRule', 'cardValueRule'] as const;
+  // In the native card-snapshot wallet wire, amount is the card value. In
+  // ordinary action/payment wires it is the consideration. Retain that
+  // distinction when a thin projection omits its original classification.
+  const snapshotAmountIsCard = [before.fundingRule, after.fundingRule].some(rule => /^(sports|signal)_card_transfer_card_value_snapshot$/.test(rule ?? ''));
+  const consideration = (record: PublicRecord, operands: LedgerValueOperands) => operands.considerationUsdCents ?? (snapshotAmountIsCard ? null : record.amountUsdCents);
+  if (evidenceKeys.some(key => conflict(known.evidence[key], incoming.evidence[key])) || operandKeys.some(key => conflict(before[key], after[key]))
+    || conflict(known.amountUsdCents, incoming.amountUsdCents) || conflict(consideration(known, before), consideration(incoming, after))
+    || conflict(eventPulse(known), eventPulse(incoming)) || conflict(known.kaiUpulse, incoming.kaiUpulse) || before.cardValueState === 'conflicting-recorded-snapshots' || after.cardValueState === 'conflicting-recorded-snapshots') throw Error('Public transaction evidence conflicts with its retained original.');
+  const sharedProof = ['entryHash', 'artifactDigest', 'proofHead'].some(key => /^[a-f0-9]{64}$/i.test(known.evidence[key] ?? '') && known.evidence[key] === incoming.evidence[key]);
+  const sharedTransfer = known.evidence.transferId && known.evidence.transferId === incoming.evidence.transferId && before.collectibleId && before.collectibleId === after.collectibleId && before.claimHash && before.claimHash === after.claimHash;
+  const sourceIdentity = known.source === 'graph' && /^sports-card-transfer-rsc_[a-f0-9]{16}-[a-f0-9]{64}:[a-f0-9]{24}$/i.test(known.sourceId);
+  if (!sharedProof && !sharedTransfer && !sourceIdentity) return incoming;
+  return { ...incoming, amountUsdCents: incoming.amountUsdCents ?? known.amountUsdCents, pulse: incoming.pulse ?? known.pulse, kaiUpulse: incoming.kaiUpulse ?? known.kaiUpulse, time: incoming.time ?? known.time,
+    evidence: { ...known.evidence, ...incoming.evidence }, valueOperands: readLedgerValueOperands({ ...before, ...after }), details: readLedgerDetails({ ...known.details, ...incoming.details }) };
 }
 export async function readPublicNetworkPage(source: PublicSource, cursor?: string, signal?: AbortSignal): Promise<PublicNetworkPage> {
   const query = new URLSearchParams({ source }); if (cursor) query.set('cursor', cursor);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PUBLIC_SOURCES, mergePublicRecords, readPublicNetworkPage, type PublicRecord, type PublicSource } from './public-network';
+import { PUBLIC_SOURCES, PUBLIC_NETWORK_INSPECTION_VERSION, mergePublicRecords, readPublicNetworkPage, type PublicRecord, type PublicSource } from './public-network';
 import { loadPublicNetworkCache, loadPublicNetworkSeed, savePublicNetworkCache } from './public-network-cache';
 import {restorePublicNetworkRows} from './public-network-bootstrap';
 import {subscribePublicLedgerSync} from './public-ledger-sync';
@@ -23,7 +23,8 @@ export function usePublicNetwork(active = true) {
   const historyCursors = useRef<Record<PublicSource, Set<string>>>({ actions: new Set(), wallet: new Set(), graph: new Set(), proofs: new Set() });
   const update = (source: PublicSource, patch: Partial<PublicSourceState>) => { const next = { ...sourceState.current, [source]: { ...sourceState.current[source], ...patch } }; sourceState.current = next; setSources(next); };
   const append = (source: PublicSource, incoming: PublicRecord[], replace = false) => {
-    const next = mergePublicRecords(replace ? rows.current.filter(row => row.source !== source) : rows.current, incoming); rows.current = next; setRecords(next);
+    const incomingIds = new Set(incoming.map(row => row.id));
+    const next = mergePublicRecords(replace ? rows.current.filter(row => row.source !== source || incomingIds.has(row.id)) : rows.current, incoming); rows.current = next; setRecords(next);
   };
   const readSource = useCallback(async (source: PublicSource, phase: 'head' | 'older') => {
     const controller = lifetime.current, before = sourceState.current[source];
@@ -80,7 +81,7 @@ export function usePublicNetwork(active = true) {
     void (async () => {
       const cache = rows.current.length ? null : await loadPublicNetworkCache();
       if (controller.signal.aborted) return;
-      const needsSeed = !rows.current.length && (!cache || cache.inspectionVersion!==1||PUBLIC_SOURCES.some(source => !cache.coverage.some(item => item.source === source && item.complete)));
+      const needsSeed = Math.max(inspectionVersion.current, cache?.inspectionVersion ?? 0) < PUBLIC_NETWORK_INSPECTION_VERSION || !rows.current.length && (!cache || PUBLIC_SOURCES.some(source => !cache.coverage.some(item => item.source === source && item.complete)));
       const restore=(held:PublicNetworkCache|null,seed:PublicNetworkCache|null)=>{
         inspectionVersion.current=Math.max(inspectionVersion.current,held?.inspectionVersion??0,seed?.inspectionVersion??0);
         rows.current = mergePublicRecords(restorePublicNetworkRows(held,seed),rows.current); setRecords(rows.current);capture(held?.capturedAt??null);capture(seed?.capturedAt??null);

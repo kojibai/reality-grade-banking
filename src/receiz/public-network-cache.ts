@@ -1,7 +1,8 @@
-import { PUBLIC_SOURCES, mergePublicRecords, type PublicRecord, type PublicSource } from './public-network';
+import { PUBLIC_SOURCES, PUBLIC_NETWORK_INSPECTION_VERSION, mergePublicRecords, type PublicRecord, type PublicSource } from './public-network';
 import {safeLedgerSourceUrl} from './ledger-receipts';
 import {readLedgerDetails} from './ledger-inspection';
 import {readLedgerValueOperands} from './ledger-value';
+import type {PublicLedgerFileReview} from './public-ledger-proof';
 
 export interface PublicNetworkCache { records: PublicRecord[]; capturedAt: string | null;inspectionVersion?:number;coverage: { source: PublicSource; complete: boolean; anchorIds?: string[]; observedAt?: number }[]; }
 export function parsePublicNetworkCache(input: unknown): PublicNetworkCache {
@@ -19,7 +20,7 @@ export function parsePublicNetworkCache(input: unknown): PublicNetworkCache {
     if(detailsRef!==undefined&&(!Number.isInteger(detailsRef)||Number(detailsRef)<0||!contexts?.[Number(detailsRef)]))throw Error('Public cache contains an invalid context reference.');
     return { ...record, actor, time: row.time && Number.isFinite(Date.parse(row.time)) ? row.time : null,kaiUpulse:row.kaiUpulse??null,pulse:row.pulse??null,amountUsdCents:row.amountUsdCents??null,evidence, sourceUrl: safeLedgerSourceUrl(row.sourceUrl),details:readLedgerDetails({...contexts?.[Number(detailsRef)],...row.details}),valueOperands:readLedgerValueOperands(row.valueOperands) };
   });
-  return { records: mergePublicRecords([], records),inspectionVersion:value.inspectionVersion===1?1:0,capturedAt: typeof value.capturedAt === 'string' && Number.isFinite(Date.parse(value.capturedAt)) ? value.capturedAt : null,
+  return { records: mergePublicRecords([], records),inspectionVersion:Number.isInteger(value.inspectionVersion)&&Number(value.inspectionVersion)>=0&&Number(value.inspectionVersion)<=PUBLIC_NETWORK_INSPECTION_VERSION?Number(value.inspectionVersion):0,capturedAt: typeof value.capturedAt === 'string' && Number.isFinite(Date.parse(value.capturedAt)) ? value.capturedAt : null,
     coverage: value.coverage.filter(item => PUBLIC_SOURCES.includes(item.source)).map(item => ({ source: item.source, complete: item.complete === true, observedAt: Number.isSafeInteger(item.observedAt) && item.observedAt! >= 0 ? item.observedAt : undefined, anchorIds: Array.isArray(item.anchorIds) ? item.anchorIds.filter(id => typeof id === 'string' && id.startsWith(`${item.source}:`) && id.length <= 520).slice(0, 100_000) : undefined })) };
 }
 async function database(): Promise<IDBDatabase> { return new Promise((resolve, reject) => {
@@ -62,19 +63,34 @@ function mergeCaches(previous:PublicNetworkCache|null,cache:PublicNetworkCache):
   const capturedAt=previous?.capturedAt&&(!cache.capturedAt||Date.parse(previous.capturedAt)>Date.parse(cache.capturedAt))?previous.capturedAt:cache.capturedAt;
   return {...cache,capturedAt,inspectionVersion:Math.max(previous?.inspectionVersion??0,cache.inspectionVersion??0),coverage,records:previous?.records===cache.records?records:mergePublicRecords([],records)};
 }
-async function writePublicNetworkCache(cache: PublicNetworkCache): Promise<boolean> {
+async function writePublicNetworkCache(cache: PublicNetworkCache, canonicalActionIds?:ReadonlySet<string>): Promise<boolean> {
   try { const db = await database(); try { await new Promise<void>((resolve, reject) => {
     const tx = db.transaction('public', 'readwrite'), store = tx.objectStore('public'), read = store.get('network');
-    read.onsuccess = () => { let previous: PublicNetworkCache | null = null; try { if (read.result) previous = parsePublicNetworkCache(read.result); } catch { /* Reject invalid projection cache. */ }
-      store.put({ ...mergeCaches(previous,cache), schema: 'receiz.bank.public-ledger-cache.v1', authority: 'public-source-projection' }, 'network'); };
+    read.onsuccess = () => { try { let previous: PublicNetworkCache | null = null; try { if (read.result) previous = parsePublicNetworkCache(read.result); } catch { /* Reject invalid projection cache. */ }
+      if(previous&&canonicalActionIds?.size)previous={...previous,records:previous.records.filter(record=>!canonicalActionIds.has(record.id))};
+      store.put({ ...mergeCaches(previous,cache), schema: 'receiz.bank.public-ledger-cache.v1', authority: 'public-source-projection' }, 'network');
+    } catch(error) { try { tx.abort(); } catch { /* It may already be aborted. */ } reject(error); } };
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
   });return true; } finally { db.close(); } } catch { return false; /* Cache is discovery convenience, never financial authority. */ }
+}
+/** The existing held original, rather than a transported display flag, permits
+ * correcting weaker cached duplicates. Peer writes keep their conflict guard. */
+export async function savePublicLedgerDisplayCache(review:PublicLedgerFileReview,cache:PublicNetworkCache):Promise<boolean>{
+ const {heldPublicLedgerFile}=await import('./public-ledger-proof');heldPublicLedgerFile(review);
+ if(!review.snapshot)throw Error('PUBLIC_LEDGER_SOURCE_REQUIRED');
+ const signed=new Map(review.snapshot.records.map(record=>[record.id,record])),canonicalActionIds=new Set<string>();
+ for(const record of cache.records){
+  if(record.source!=='actions')continue;const source=signed.get(record.sourceId);if(!source)continue;
+  if(record.id!==`actions:${source.id}`||record.kind!==source.kind||record.amountUsdCents!==source.amountUsdCents||record.kaiUpulse!==source.kaiUpulse||record.pulse!==(BigInt(source.kaiUpulse)/1_000_000n).toString()||record.evidence.entryHash!==source.entryHash||record.evidence.prevHash!==source.previousHash)throw Error('PUBLIC_LEDGER_DISPLAY_SOURCE_MISMATCH');
+  canonicalActionIds.add(record.id);
+ }
+ return writePublicNetworkCache(cache,canonicalActionIds);
 }
 let queued:PublicNetworkCache|null=null,writing:Promise<boolean>|null=null;
 /** Coalesce the same task's updates immediately, then retain only the newest
  * pending snapshot during a write. No component cleanup cancels this queue. */
 export function savePublicNetworkCache(cache:PublicNetworkCache):Promise<boolean>{
-  queued=queued?mergeCaches(queued,cache):cache;
+  try { queued=queued?mergeCaches(queued,cache):cache; } catch { return Promise.resolve(false); }
   if(!writing)writing=Promise.resolve().then(async()=>{
     let saved=true;
     try{while(queued){const next=queued;queued=null;saved=await writePublicNetworkCache(next)&&saved;}return saved;}

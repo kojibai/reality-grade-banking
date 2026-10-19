@@ -7,6 +7,7 @@ import { readCardReturn } from '../src/features/deposit/CardDepositReturn';
 import type { OpenIdentity } from '../src/receiz/native-identity';
 import { parsePaymentRequest } from '../src/receiz/payment-request';
 import { createWalletSend } from '../src/receiz/wallet-send';
+import {paymentQr,paymentQrPath} from '../src/receiz/payment-qr';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 afterEach(() => vi.unstubAllGlobals());
 it('generates the bank QR and writes only the public request URL to NFC on explicit user action', async () => {
@@ -51,5 +52,30 @@ it('uses the current public username for the Receive ID, QR and copied address i
  try{act(()=>root.render(<LiveReceive identity={{accountUsername:()=> 'Klok',username:'old_name',walletReceivingAddress:()=> '10000000-0000-4000-8000-000000000002'}as OpenIdentity}/>));
  expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('klok');expect(host.textContent).not.toContain('.receiz.id');expect(host.querySelector('.payment-link')?.textContent).toBe('klok');expect(host.textContent).not.toContain('10000000-0000-4000-8000-000000000002');
  await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Copy Receiz ID')!.click());expect(copy).toHaveBeenCalledWith('klok');
+ }finally{act(()=>root.unmount());}
+});
+it('waits for a new account’s confirmed public username and uses the assigned name for QR, copy and share',async()=>{
+ const host=document.createElement('div'),root=createRoot(host),copy=vi.fn().mockResolvedValue(undefined),share=vi.fn().mockResolvedValue(undefined);vi.stubGlobal('navigator',{clipboard:{writeText:copy},share});
+ const write=vi.fn().mockResolvedValue(undefined);vi.stubGlobal('isSecureContext',true);Object.assign(window,{NDEFReader:class{write=write;}});
+ let finish!:(name:string)=>void;const prepare=vi.fn(()=>new Promise<string>(resolve=>{finish=resolve;}));
+ const identity={username:'receiz_123456789012345678',accountUsername:()=>null,prepareReceivingUsername:prepare,walletReceivingAddress:()=> '10000000-0000-4000-8000-000000000002'}as unknown as OpenIdentity;
+ try{
+  await act(async()=>root.render(<LiveReceive identity={identity}/>));expect(prepare).toHaveBeenCalledOnce();expect(host.querySelector('.receiving-coordinate')?.textContent).toContain('Preparing');expect(host.querySelector('svg[aria-label="Your payment QR"]')).toBeNull();
+  await act(async()=>finish('assigned_collision_2'));
+  expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('assigned_collision_2');expect(host.querySelector('.payment-link')?.textContent).toBe('assigned_collision_2');
+  expect(host.querySelector('.payment-qr path')?.getAttribute('d')).toBe(paymentQrPath(paymentQr('assigned_collision_2')));
+  await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Copy Receiz ID')!.click());expect(copy).toHaveBeenCalledWith('assigned_collision_2');
+  await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Share Receiz ID')!.click());expect(share).toHaveBeenCalledWith({title:'Receiz ID',text:'assigned_collision_2'});
+  await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Set up NFC tag')!.click());expect(write.mock.calls[0][0]).toEqual({records:[{recordType:'url',data:'https://bankeiz.com/?to=assigned_collision_2'}]});
+  expect(host.textContent).not.toContain('receiz_123456789012345678');expect(host.textContent).not.toContain('10000000-0000-4000-8000-000000000002');
+ }finally{act(()=>root.unmount());delete(window as unknown as {NDEFReader?:unknown}).NDEFReader;}
+});
+it('ignores a delayed receiving-name result after switching identities',async()=>{
+ const host=document.createElement('div'),root=createRoot(host);let finish!:(name:string)=>void;
+ const first={username:null,prepareReceivingUsername:()=>new Promise<string>(resolve=>{finish=resolve;})}as unknown as OpenIdentity,second={username:null,prepareReceivingUsername:async()=> 'second_confirmed'}as unknown as OpenIdentity;
+ try{
+  await act(async()=>root.render(<LiveReceive identity={first}/>));await act(async()=>root.render(<LiveReceive identity={second}/>));
+  expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('second_confirmed');await act(async()=>finish('first_confirmed'));
+  expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('second_confirmed');expect(host.textContent).not.toContain('first_confirmed');
  }finally{act(()=>root.unmount());}
 });

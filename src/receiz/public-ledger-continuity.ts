@@ -11,13 +11,13 @@ export async function readHeldPublicLedger(){
 }
 async function retainDisplay(review:PublicLedgerFileReview|null){
  if(!review?.snapshot)return review;
- const {loadPublicNetworkCache,savePublicNetworkCache}=await import('./public-network-cache'),cache=await loadPublicNetworkCache();
+ const {loadPublicNetworkCache,savePublicLedgerDisplayCache}=await import('./public-network-cache'),cache=await loadPublicNetworkCache();
  const records=await publicLedgerDisplayRows(review,cache?.records??[]);
  let capturedAt=cache?.capturedAt??null;
  for(const row of records)if(row.time&&Number.isFinite(Date.parse(row.time))&&(!capturedAt||Date.parse(row.time)>Date.parse(capturedAt)))capturedAt=row.time;
  // The original has already been retained independently. A display-cache
  // failure cannot undo that custody or manufacture successful verification.
- if(await savePublicNetworkCache({...cache,records,capturedAt,coverage:cache?.coverage??[]})===false)throw Error('PUBLIC_LEDGER_DISPLAY_CACHE_UNAVAILABLE');
+ if(await savePublicLedgerDisplayCache(review,{...cache,records,capturedAt,coverage:cache?.coverage??[]})===false)throw Error('PUBLIC_LEDGER_DISPLAY_CACHE_UNAVAILABLE');
  return review;
 }
 /** Shared read-only polling. Accepted originals still pass canonical verification
@@ -65,5 +65,8 @@ export async function publicLedgerDisplayRows(review:PublicLedgerFileReview,know
    amountUsdCents:record.amountUsdCents,kaiUpulse:record.kaiUpulse,pulse:(BigInt(record.kaiUpulse)/1_000_000n).toString(),sourceUrl:compatible?.sourceUrl??null,
    evidence:{...compatible?.evidence,entryHash:record.entryHash,prevHash:record.previousHash},authority:'public-source-projection'});
  }
- return mergePublicRecords(known,incoming);
+ // The exact admitted original outranks conflicting discovery rows. Do not
+ // route those weaker duplicates through the peer-evidence conflict policy.
+ const authoritativeIds=new Set(incoming.map(record=>record.id));
+ return mergePublicRecords(known.filter(record=>!authoritativeIds.has(record.id)),incoming);
 }
