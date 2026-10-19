@@ -23,8 +23,11 @@ const origins=new Set(['glyph_economy_value','market_growth_credit','reserve_fun
  * arbitrary metadata, payment provider secrets, conversations or custody. */
 export function ledgerFundingOriginFields(raw:unknown):LedgerFields|undefined {
  const row=object(raw),value={...object(row.metadata),...object(row.payload),...row},result:LedgerFields={};
- for(const key of ['source','direction','entryKind','entry_kind','rail','debit_lane','settledFundingSource','sigilFingerprint','uploadHash','contentHash','claimPulse','sigilPulse','valuationPolicyChecksum'] as const){const v=text(value[key]);if(v)result[key]=v;}
- const retained=object(row.fundingOrigin);for(const key of ['source','direction','entryKind','entry_kind','rail','debit_lane','settledFundingSource','sigilFingerprint','uploadHash','contentHash','claimPulse','sigilPulse','valuationPolicyChecksum'] as const){const v=text(retained[key]);if(v)result[key]=v;}
+ const retained=object(row.fundingOrigin);
+ for(const fields of [value,retained]){
+  for(const key of ['source','direction','entryKind','entry_kind','rail','debit_lane','settledFundingSource','sigilFingerprint','uploadHash','contentHash','valuationPolicyChecksum'] as const){const v=text(fields[key]);if(v)result[key]=v;}
+  for(const key of ['claimPulse','sigilPulse'] as const){const v=uint(fields[key]);if(v!==undefined)result[key]=v;}
+ }
  return Object.keys(result).length?result:undefined;
 }
 const empty=(boundary:LedgerFundingTrace['boundary']='origins-not-carried'):LedgerFundingTrace=>({basis:'wallet-components',boundary,valueOrigins:[],sources:[],steps:[],components:[]});
@@ -49,7 +52,7 @@ export function ledgerFundingTrace(record:PublicRecord):LedgerFundingTrace {
   const steps=ledgerProofHistorySteps(record);
   if(steps?.length)return finish({...result,basis:'proof-object-history',steps,sources:steps.filter(step=>step.kind==='proof_genesis'),boundary:'source-origins',sourceSchema:'receiz.proof-history.v1',proofHash:String(object(record.details?.proofHistory).historyDigest)});
   const origin=object(record.details?.fundingOrigin),source=String(origin.source??'');
-  const glyph=source==='sigil_upload_claim',reserve=['stripe_checkout_wallet_deposit','wallet_deposit','stripe_origin'].includes(source);
+  const glyph=source==='sigil_upload_claim',reserve=['stripe_checkout_wallet_deposit','stripe_checkout_connect_payment','stripe_checkout_profile_original_download','wallet_deposit','stripe_origin'].includes(source);
   if((glyph||reserve)&&origin.direction!=='debit'){
    const step:LedgerCausalStep={id:record.id,kind:glyph?'glyph_economy_value':'reserve_funding',label:glyph?'Proof-native value credit':'Reserve funding event',detail:glyph?'Value derived from the source proof at its carried claim coordinate.':'Reserve value entered through this recorded funding event.',source,sourceId:record.sourceId,...(record.time?{occurredAt:record.time}:{}),...(record.pulse?{kaiPulse:record.pulse}:{}),...(record.amountUsdCents!==null?{amountUsdCents:record.amountUsdCents}:{}),...(operands.amountPhiMicro?{amountPhiMicro:operands.amountPhiMicro}:{})};
    if(hash(origin.contentHash??origin.uploadHash))step.contentHash=String(origin.contentHash??origin.uploadHash);if(uint(origin.claimPulse))step.claimPulse=String(origin.claimPulse);

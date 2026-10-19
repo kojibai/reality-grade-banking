@@ -35,6 +35,10 @@ it('shows originating native proof credit evidence without inventing a transfer 
  const r=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'claim',kind:'claim',pulse:120,amountUsdCents:'2500',amountPhiMicro:'500000',metadata:{source:'sigil_upload_claim',direction:'credit',contentHash:'d'.repeat(64),claimPulse:'120',sigilPulse:'100',clientSecret:'DO-NOT-CARRY'}}]}).records[0];
  const trace=ledgerFundingTrace(r);expect(trace.sources).toMatchObject([{kind:'glyph_economy_value',contentHash:'d'.repeat(64),claimPulse:'120',kaiPulse:'120'}]);expect(trace.steps.map(s=>s.kaiPulse)).toEqual(['100','120']);expect(JSON.stringify(r)).not.toContain('DO-NOT-CARRY');
 });
+it.each(['stripe_checkout_connect_payment','stripe_checkout_profile_original_download'])('retains the existing %s Reserve ingress as its originating event',source=>{
+ const r=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'funding',kind:'reserve_credit',pulse:120,amountUsdCents:'2500',metadata:{source,direction:'credit'}}]}).records[0];
+ expect(ledgerFundingTrace(r)).toMatchObject({boundary:'source-origins',sources:[{kind:'reserve_funding',source,amountUsdCents:'2500'}]});
+});
 it('extracts the full native causal proof appends with their allocation rule and predecessor hashes',()=>{
  const first='d'.repeat(64),second='e'.repeat(64);
  const raw={collectibleId:wire.collectibleId,claimHash:claim,causalOwnershipProofs:[{schema:wire.causalLineage.sourceSchema,hash:first,collectibleId:wire.collectibleId,claimHash:claim,fundingSource:'mixed',acquisitionKind:'pack_purchase',anchors:{previousCausalProofHash:null},cardAllocation:{rule:'pack_slot_fifo_remainder_v1'},steps:steps.slice(0,4).map(s=>({...s,id:s.id.split(':')[1]}))},{schema:wire.causalLineage.sourceSchema,hash:second,collectibleId:wire.collectibleId,claimHash:claim,fundingSource:'transfer',acquisitionKind:'transfer',anchors:{previousCausalProofHash:first},cardAllocation:{rule:'non_monetary_transfer_v1'},steps:[{...steps[4],id:'transfer'}]}]};
