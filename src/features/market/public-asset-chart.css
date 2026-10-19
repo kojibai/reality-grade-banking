@@ -2,7 +2,7 @@
 .asset-chart .value-chart svg{display:block;width:100%;overflow:visible}
 .asset-chart .value-chart.green{color:var(--green,#2e8267)}
 .asset-chart .value-chart.red{color:#ae655b}
-.asset-chart .chart-tooltip{position:absolute;top:0;transform:translate(-50%,-65%);z-index:2;pointer-events:none;padding:9px 12px;border:1px solid #e2e8f0;border-radius:9px;background:#fff;box-shadow:0 4px 20px #172e440a;white-space:nowrap;font-size:11px}
+.asset-chart .chart-tooltip{position:absolute;top:0;transform:translate(-50%,-65%);z-index:2;pointer-events:none;padding:9px 12px;border:1px solid #e2e8f0;border-radius:9px;background:#fff;color:var(--navy,#172B45);box-shadow:0 4px 20px #172e440a;white-space:nowrap;font-size:11px}
 .asset-chart .chart-tooltip strong,.asset-chart .chart-tooltip span{display:block}
 .asset-chart .chart-tooltip span{font-size:9px;color:#7d8b9d;margin-top:4px}
 .asset-chart .periods{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:12px 0}
