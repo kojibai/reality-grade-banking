@@ -102,7 +102,9 @@ describe('public canonical SDK schema distribution', () => {
       expect(links.some(link => link.getAttribute('href')?.startsWith(`https://unpkg.com/@receiz/${name}@129.0.0/`)), name).toBe(true);
     }
     expect(window.document.querySelector('main h1')?.textContent).toBeTruthy();
-    expect(window.document.querySelector('script')).toBeNull();
+    expect(window.document.querySelector('script:not([type="application/ld+json"])')).toBeNull();
+    const structured=JSON.parse(window.document.querySelector('script[type="application/ld+json"]')!.textContent!);
+    expect(structured['@graph'].some((node:{url?:string})=>node.url==='https://bankeiz.com/schemas/')).toBe(true);
     const css = window.document.querySelector('link[rel="stylesheet"]')?.getAttribute('href');
     expect(css).toBe('/schemas/schemas.css');
     expect((await readFile(join(directory, css!), 'utf8')).length).toBeGreaterThan(1000);

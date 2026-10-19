@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
+import {createHash} from 'node:crypto';
 import { phoneLaunchTargets } from './build-launch-images.mjs';
+import {publicPages,publicOrigin,escapeMetadata} from './public-page-metadata.mjs';
+import socialImages from '../public/social/manifest.json' with {type:'json'};
 const html = await readFile('dist/index.html', 'utf8'), image = await readFile('dist/receiz-bank-share.png');
 assert.match(html, /<div id="root"><div class="account-opening account-opening-screen"[^>]*data-entry="resume"/);
 assert.match(html, /id="bankeiz-opening-critical"/);
@@ -28,7 +31,7 @@ for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/
   const page = await readFile(`dist/learn/${path}index.html`, 'utf8');
   assert.ok(page.includes(`<link rel="canonical" href="https://bankeiz.com/learn/${path}">`));
   assert.ok(page.includes('<h1>')); assert.ok(page.includes('<h2>')); assert.ok(!page.includes('<div id="root"></div>'));
-  assert.match(page, /property="og:image" content="https:\/\/bankeiz\.com\/receiz-bank-learn-share\.jpg"/);
+  assert.match(page, /property="og:image" content="https:\/\/bankeiz\.com\/social\/[a-z-]+-[a-f0-9]{16}\.png"/);
   assert.match(page, /name="twitter:image:alt"/);
   assert.match(page, /href="\/learn\/learn.css\?v=[a-f0-9]{12}"/); assert.match(page, /src="\/learn\/learn.js\?v=[a-f0-9]{12}" defer/);
   assert.ok(!/<script type="module"[^>]*src="\/assets\/index-/.test(page), 'Public guides must not execute the private app runtime');
@@ -50,6 +53,25 @@ for (const [path, entry] of Object.entries(navigation.pages)) {
 }
 const robots = await readFile('dist/robots.txt', 'utf8'); assert.match(robots, /Disallow: \/api\//); assert.ok(!sitemap.includes('#'));
 const sw = await readFile('dist/sw.js', 'utf8'); assert.ok(sw.includes('qr-decoder'), 'The decoder stays lazily executed but is cached for offline scanning.');
+const uniqueImages=new Set(),uniqueTitles=new Set(),uniqueDescriptions=new Set();
+for(const page of publicPages){
+ const html=await readFile(`dist${page.path}index.html`,'utf8'),head=html.match(/<head>([\s\S]+?)<\/head>/)[1],image=socialImages.images[page.path],bytes=await readFile('dist'+image.url),url=publicOrigin+page.path;
+ assert.equal((head.match(/<title>/g)??[]).length,1,`Single title: ${page.path}`);assert.ok(head.includes(`<title>${escapeMetadata(page.title)}</title>`));
+ assert.equal((head.match(/rel="canonical"/g)??[]).length,1);assert.ok(head.includes(`rel="canonical" href="${url}"`));
+ assert.ok(head.includes(`name="description" content="${escapeMetadata(page.description)}"`));
+ assert.ok(head.includes(`property="og:url" content="${url}"`));
+ assert.ok(head.includes(`property="og:image" content="${publicOrigin+image.url}"`));assert.ok(head.includes(`name="twitter:image" content="${publicOrigin+image.url}"`));
+ for(const field of ['og:image:width','og:image:height','og:image:alt','twitter:image:alt'])assert.ok(head.includes(field),`${field}: ${page.path}`);
+ assert.equal(bytes.readUInt32BE(16),image.width);assert.equal(bytes.readUInt32BE(20),image.height);assert.equal(createHash('sha256').update(bytes).digest('hex'),image.sha256);assert.equal(bytes.length,image.bytes);
+ if(page.path!=='/'){assert.ok(bytes.length<700_000,'Per-page share image size');assert.ok(!sw.includes(image.url),'Sharing art must never increase the PWA install or opening work');}
+ assert.ok(!uniqueImages.has(image.sha256),`Unique sharing image: ${page.path}`);uniqueImages.add(image.sha256);uniqueTitles.add(page.title);uniqueDescriptions.add(page.description);
+ assert.equal(sitemap.includes(`<loc>${url}</loc>`),!page.noindex,`Only indexable canonical pages belong in sitemap: ${page.path}`);
+ assert.ok(head.includes(page.noindex?'noindex,':'index,follow,max-image-preview:large'));assert.ok(!head.includes('dateModified'), 'No invented modification date');
+ const graphs=[...head.matchAll(/<script type="application\/ld\+json">([^<]+)<\/script>/g)].flatMap(match=>JSON.parse(match[1])['@graph']);
+ assert.ok(graphs.some(node=>node.url===url&&node['@id']===url+'#page'),'Page-specific structured data');assert.ok(graphs.some(node=>node['@type']==='BreadcrumbList'));
+ if(['/explore/','/ledger/','/verify/','/conformance/'].includes(page.path))assert.ok(/<h1>[\s\S]+?<\/h1>/.test(html),'Public entry has readable copy before JavaScript');
+}
+assert.equal(uniqueTitles.size,publicPages.length);assert.equal(uniqueDescriptions.size,publicPages.length);assert.ok(!sitemap.includes('<lastmod>'),'A build date must not impersonate a content modification date');
 for (const url of html.matchAll(/(?:href|src)="(\/learn\/learn\.(?:css|js)\?v=[a-f0-9]{12})"/g)) assert.ok(sw.includes(JSON.stringify(url[1])), `Versioned Learn asset must be precached: ${url[1]}`);
 const css = await readFile('dist/learn/learn.css'), motion = await readFile('dist/learn/learn.js');
 assert.ok(gzipSync(css).length + gzipSync(motion).length < 12_000, 'Public presentation runtime budget');
@@ -96,4 +118,4 @@ for (const rail of ['reserve', 'settlement']) {
   assert.ok(!note.includes(Buffer.from('receiz.bank.note')), 'Learn specimens must not contain issued proof payloads');
 }
 assert.ok(!learn.includes('still being connected'));
-console.log('Share image, static metadata, inline entrance, iPhone launch artwork, canonical public guides and account notices, structured data, sitemap, robots and QR lazy loading verified.');
+console.log(`Verified ${publicPages.length} unique social cards and canonical page metadata, structured data, indexable public copy, sitemap, robots, inline entrance, iPhone artwork and public navigation.`);

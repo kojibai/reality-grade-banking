@@ -14,7 +14,7 @@ assert.equal(hash(await readFile('dist/legal/LICENSE.txt')), hash(license));
 for (const name of ['NOTICE', 'LICENSING.md', 'TRADEMARKS.md', 'CONFORMANCE.md', 'SOURCE.md', 'THIRD_PARTY_NOTICES.md']) {
   assert.equal(hash(await readFile(`dist/legal/${name === 'NOTICE' ? 'NOTICE.txt' : name}`)), hash(await readFile(name)), `Published ${name} differs from its source.`);
 }
-for (const [source, published] of [['src/vendor/jsqr/LICENSE', 'dist/legal/vendor/jsqr-Apache-2.0.txt'], ['public/notes/fonts/OFL.txt', 'dist/legal/vendor/Cinzel-OFL.txt']]) {
+for (const [source, published] of [['src/vendor/jsqr/LICENSE', 'dist/legal/vendor/jsqr-Apache-2.0.txt'], ['public/notes/fonts/OFL.txt', 'dist/legal/vendor/Cinzel-OFL.txt'],['scripts/social/fonts/OFL.txt','dist/legal/vendor/Inter-OFL.txt']]) {
   assert.equal(hash(await readFile(published)), hash(await readFile(source)), `Bundled notice differs: ${source}`);
 }
 const metadata = JSON.parse(await readFile('dist/legal/release.json', 'utf8'));

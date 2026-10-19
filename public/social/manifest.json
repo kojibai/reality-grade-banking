@@ -1,0 +1,133 @@
+{
+  "schema": "bankeiz.public-social-images.v1",
+  "images": {
+    "/": {
+      "url": "/receiz-bank-share.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "b5f8ae3ee025416917070069c35824742c50f47481002101a9c94d3ce7da14ab",
+      "bytes": 1593801,
+      "alt": "Bankeiz. Your value. More possibilities. Layered blue and glass forms on warm white."
+    },
+    "/learn/": {
+      "url": "/social/learn-5b82a7c2a79d9013.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "5b82a7c2a79d9013d60e2269a1b43e4b00ab7d9b36396747279f9e659b20d33d",
+      "bytes": 463059,
+      "alt": "Bankeiz. Your value. Connected. The foundations of proof-native banking. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/receiz-id/": {
+      "url": "/social/receiz-id-ba1fb158384351c8.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "ba1fb158384351c82f89cbf5aaf7f85da7492aa4dbc46965bd2c26ea24a700d7",
+      "bytes": 465928,
+      "alt": "Bankeiz. Your identity. In your hands. Receiz ID & Identity Seals. An engraved fingerprint motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/proof-objects/": {
+      "url": "/social/proof-objects-e2a525518595efeb.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "e2a525518595efeb79f23eb3e131f57da66fb7874263ffb5d32da98d51a6df5c",
+      "bytes": 470733,
+      "alt": "Bankeiz. Own the source. Carry the proof. Verifiable assets. Connected ownership. An engraved cube motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/reserve-and-settlement/": {
+      "url": "/social/reserve-settlement-93924117f907af99.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "93924117f907af99d39b75e4cb3d192259cf45321274c8a89e3988e7f6224549",
+      "bytes": 467986,
+      "alt": "Bankeiz. One balance. Connected value. Proof-native value. Proof-backed funds. An engraved rails motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/account-access/": {
+      "url": "/social/account-access-60fa6365d04123ab.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "60fa6365d04123abaf1ae4f0f963d04060e0745d1a912b25d69b4226f9da8101",
+      "bytes": 467228,
+      "alt": "Bankeiz. Your account. Your permission. Clear access. Deliberate authorization. An engraved shield motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/signing-key/": {
+      "url": "/social/signing-key-642fb0e2e3858dda.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "642fb0e2e3858dda5223e28141d16c3808edade1cc0b6d67efd8dc985656d014",
+      "bytes": 465074,
+      "alt": "Bankeiz. Your authority. Held by you. Device-held signing. Protected originals. An engraved key motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/reality-grade-banking/": {
+      "url": "/social/reality-grade-banking-7633d89b829c6b11.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "7633d89b829c6b1109aa11fdf9786da5d0e1b26465f0413fc3b62d68412baff6",
+      "bytes": 462176,
+      "alt": "Bankeiz. Reality-Grade Banking. Value. Ownership. Continuity. An engraved bank motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/how-value-works/": {
+      "url": "/social/how-value-works-0e2ddb082afc907a.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "0e2ddb082afc907ab0d01234e73163927aa9e3accecb4229f7972d97c56a6913",
+      "bytes": 465418,
+      "alt": "Bankeiz. Value. By exact rules. Deterministic valuation. Inspectable math. An engraved valuation motif on layered cobalt, clear glass and navy forms."
+    },
+    "/conformance/": {
+      "url": "/social/conformance-f0ef9b1e89217575.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "f0ef9b1e8921757546b816e0280997b99f5f991d6daf4469689b4f692075ef86",
+      "bytes": 464994,
+      "alt": "Bankeiz. Verification. Without compromise. The proof-continuity standard. An engraved badge motif on layered cobalt, clear glass and navy forms."
+    },
+    "/verify/": {
+      "url": "/social/verify-f371687772758a48.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "f371687772758a48ec6ce272d885c36193299e8a6884f5305ee098a8a91553b1",
+      "bytes": 466910,
+      "alt": "Bankeiz. Open the proof. See the evidence. Original source. Local verification. An engraved scan motif on layered cobalt, clear glass and navy forms."
+    },
+    "/ledger/": {
+      "url": "/social/ledger-c5dd10fef5d75ad6.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "c5dd10fef5d75ad67cb1340fa07a87a9f4c5cd16062709200cce726128d5442c",
+      "bytes": 461052,
+      "alt": "Bankeiz. History. In the open. The public Ledger. Connected to source. An engraved ledger motif on layered cobalt, clear glass and navy forms."
+    },
+    "/explore/": {
+      "url": "/social/explore-ad9236b89fa95e71.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "ad9236b89fa95e718a91420b69d3b14dc62bdfc0069b8273f60ad9f3a880834d",
+      "bytes": 473965,
+      "alt": "Bankeiz. A world of value. Open to explore. Sealed moments. Public value. An engraved globe motif on layered cobalt, clear glass and navy forms."
+    },
+    "/schemas/": {
+      "url": "/social/schemas-d4c84d82d8b403c1.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "d4c84d82d8b403c1f746d26be462bc82b8cd1f713a4043df317bff3a3f5dd46a",
+      "bytes": 468094,
+      "alt": "Bankeiz. The standard. Down to the byte. Original schemas. Open implementation. An engraved code motif on layered cobalt, clear glass and navy forms."
+    },
+    "/legal/": {
+      "url": "/social/legal-0ca695430c0f6646.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "0ca695430c0f66460c34cfbc5e5e65b646f84afd7a3de54a7c21e2618a831651",
+      "bytes": 464160,
+      "alt": "Bankeiz. Open source. Clear foundations. Source. License. Attribution. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/receipt/": {
+      "url": "/social/receipt-b2e5d13f62015004.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "b2e5d13f62015004568bbe323cb5ee7bb5035be37bd94a4c7c1e0a139ae6fb3d",
+      "bytes": 467815,
+      "alt": "Bankeiz. The record. Stays connected. Transaction evidence. Preserved. An engraved receipt motif on layered cobalt, clear glass and navy forms."
+    }
+  }
+}

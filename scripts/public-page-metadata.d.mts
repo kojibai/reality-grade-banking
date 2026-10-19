@@ -1,0 +1,9 @@
+export type PublicPageMetadata={path:string;id:string;title:string;description:string;lines:string[];caption:string;motif:string;noindex?:boolean;robots?:string};
+export type SocialImage={url:string;width:number;height:number;sha256:string;bytes:number;alt:string};
+export const publicOrigin:string;
+export const publicPages:PublicPageMetadata[];
+export function publicPage(path:string):PublicPageMetadata|undefined;
+export function socialMetadata(page:PublicPageMetadata,image:SocialImage):string;
+export function structuredMetadata(page:PublicPageMetadata,image:SocialImage):Record<string,unknown>;
+export function applyPublicMetadata(html:string,page:PublicPageMetadata,image:SocialImage):string;
+export function publicEntryFallback(path:string):string;
