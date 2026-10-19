@@ -40,6 +40,8 @@ it('makes every carried receipt field inspectable while retaining the compact de
  const host=mount(receiptLink(row)!);
  expect(host.querySelector('details.receipt-inspection')).not.toBeNull();
  expect(host.querySelector('details.receipt-inspection')?.hasAttribute('open')).toBe(false);
+ expect(host.querySelector('.ledger-inspector')).toBeNull();
+ act(()=>{const details=host.querySelector<HTMLDetailsElement>('details.receipt-inspection')!;details.open=true;details.dispatchEvent(new Event('toggle'));});
  expect(host.textContent).toContain('Alex paid Sam');expect(host.textContent).toContain('a'.repeat(64));expect(host.textContent).toContain('500000');
 });
 
@@ -52,7 +54,9 @@ it('keeps the in-app account source chain on its receipt without serializing pri
   const link=receiptLink(record)!;expect(link).not.toContain('PRIVATE_LOCAL_CONTEXT');
   openLedgerReceipt({button:0,metaKey:false,ctrlKey:false,shiftKey:false,altKey:false,preventDefault(){}} as never,link,{record,value:{basis:'card-snapshot',amountUsdCents:'9900',pulse:'120',considerationUsdCents:null}});
   const host=document.createElement('div');document.body.append(host);root=createRoot(host);act(()=>root!.render(<StrictMode><ReceiptView onBack={()=>{}}/></StrictMode>));
-  expect(host.querySelector('.receipt-provenance .ledger-funding-full')?.textContent).toContain('2 moments');expect(host.textContent).toContain('PRIVATE_LOCAL_CONTEXT');expect(fetch).not.toHaveBeenCalled();
+  expect(host.querySelector('.receipt-provenance .ledger-funding-full')?.textContent).toContain('2 moments');
+  act(()=>{const details=host.querySelector<HTMLDetailsElement>('details.receipt-inspection')!;details.open=true;details.dispatchEvent(new Event('toggle'));});
+  expect(host.textContent).toContain('PRIVATE_LOCAL_CONTEXT');expect(fetch).not.toHaveBeenCalled();
   act(()=>root!.unmount());root=null;expect(readLocalReceiptContext(link)).toBeNull();
  }finally{vi.unstubAllGlobals();}
 });

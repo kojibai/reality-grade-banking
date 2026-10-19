@@ -1,3 +1,4 @@
+import {SiteFooter} from '../components/SiteFooter';
 import {RECEIZ_VERSION} from '../receiz/client';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Download, LaptopMinimal, FileText, Landmark, LoaderCircle } from 'lucide-react';
@@ -27,5 +28,5 @@ export default function ConformanceApp() {
     <div className="conformance-tabs" role="tablist" aria-label="Conformance workspace">{tabs.map((item, i) => <button key={item.id} role="tab" id={`tab-${item.id}`} aria-selected={tab === item.id} aria-controls={`panel-${item.id}`} tabIndex={tab === item.id ? 0 : -1} onClick={() => select(item.id)} onKeyDown={event => { if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return; event.preventDefault(); const next = tabs[(i + (event.key === 'ArrowRight' ? 1 : 2)) % tabs.length]; select(next.id); document.getElementById(`tab-${next.id}`)?.focus(); }}>{item.label}</button>)}</div>
     <section role="tabpanel" id="panel-reference" aria-labelledby="tab-reference" hidden={tab !== 'reference'}><div className="conformance-summary"><div><LaptopMinimal size={36} strokeWidth={1.5} /><p><span>On-device checks</span><strong className={report && !report.localChecksPassed ? 'failed' : ''}>{busy ? `${results.length} / ${checks.length} complete` : report ? `${passed} / ${checks.length} passed` : 'Not run'}</strong></p></div><div><FileText size={36} strokeWidth={1.5} /><p><span>Protocol</span><strong>v{RECEIZ_VERSION}</strong></p></div><div><Landmark size={36} strokeWidth={1.5} /><p><span>Institution assessment</span><strong>Not assessed</strong></p></div></div><ReferenceChecks results={results} active={active} report={report} busy={busy} /></section>
     <section role="tabpanel" id="panel-inspector" aria-labelledby="tab-inspector" hidden={tab !== 'inspector'}><ProofInspector onState={setInspection} /></section><section role="tabpanel" id="panel-qualification" aria-labelledby="tab-qualification" hidden={tab !== 'qualification'}><QualificationMatrix /></section>
-    </main><footer className="conformance-footer"><span><a className="footer-meaning" href="/learn/reality-grade-banking/">Reality-Grade Banking</a></span><a href="/learn/how-value-works/">Valuation rules</a><a href="/schemas/">SDK schemas</a><a href="/legal/">License & notices</a><span>v{RECEIZ_VERSION}</span></footer></div>;
+    </main><SiteFooter/></div>;
 }

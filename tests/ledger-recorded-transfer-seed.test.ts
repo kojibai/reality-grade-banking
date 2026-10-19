@@ -10,7 +10,7 @@ it('ships the exact recorded card values and carried transfer coordinates withou
   const bytes = gunzipSync(readFileSync('public/receiz-public-ledger.json.gz.bin'));
   expect(bytes.length).toBeLessThanOrEqual(32 * 1024 * 1024);
   const cache = parsePublicNetworkCache(JSON.parse(bytes.toString('utf8')));
-  expect(cache.inspectionVersion).toBe(2);
+  expect(cache.inspectionVersion).toBe(3);
   const transfers = cache.records.filter(row => row.source === 'actions' && row.kind === 'receiz.sports_arena.card_transfer');
   expect(transfers).toHaveLength(193);
   const valued = transfers.filter(row => row.valueOperands?.cardValueUsdCents !== undefined);

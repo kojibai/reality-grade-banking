@@ -43,7 +43,7 @@ export function readReceiptLink(link:string):LedgerReceipt{
  return read(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)));
 }
 export function localReceiptPath(link:string){const url=new URL(link,BANK_PUBLIC_ORIGIN);return url.pathname+url.hash;}
-export type LedgerReceiptContext={record:PublicRecord;value:LedgerValueDisplay;valuation?:LedgerFields|null;valueSource?:LedgerValueIndex|null};
+export type LedgerReceiptContext={record:PublicRecord;value:LedgerValueDisplay;valuation?:LedgerFields|null;valueSource?:LedgerValueIndex|null;relations?:ReturnType<typeof import('./ledger-economy').indexLedgerRelations>};
 // One selected in-app record, by reference, until its receipt unmounts. No
 // account history is persisted, serialized into URLs, or exposed to new tabs.
 let localContext:{path:string;context:LedgerReceiptContext}|null=null;

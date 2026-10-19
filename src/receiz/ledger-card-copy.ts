@@ -21,10 +21,13 @@ export function prepareLedgerCardCopyValuation(raw:unknown,row:MarketValueRow,so
 }
 /** A public transfer projection may carry the already computed native copy
  * operands beside its unchanged event evidence. This is display context only. */
+const carried=new WeakMap<object,LedgerCardCopyValuation|null>();
 export function carriedLedgerCardCopyValuation(raw:unknown):LedgerCardCopyValuation|null{
- const value=readLedgerCopyValuation(raw,1e10);if(!value)return null;
+ if(!raw||typeof raw!=='object')return null;
+ if(carried.has(raw))return carried.get(raw)!;
+ const value=readLedgerCopyValuation(raw,1e10);if(!value){carried.set(raw,null);return null;}
  const model=value.copy.valuation,row:MarketValueRow={id:`${value.copy.collectibleId}:${value.copy.claimHash}`,source:'sports-economy-card',...model,proofTotalValueUsd:model.baseUsdValue};
- return {...value,row};
+ const result={...value,row};carried.set(raw,result);return result;
 }
 export function ledgerCardCopyUsdAtPulse(value:LedgerCardCopyValuation,pulse:number):number|undefined{
  const {copy,issue}=value;if(!Number.isSafeInteger(pulse)||pulse<issue)return;

@@ -4,11 +4,25 @@ import {expect,it} from 'vitest';
 import {parsePublicNetworkCache} from '../src/receiz/public-network-cache';
 import {ledgerFundingTrace} from '../src/receiz/ledger-funding-trace';
 import {enrichLedgerCausalHistory} from '../src/receiz/ledger-causal-enrichment';
+import {readLedgerCausalLineage} from '../src/receiz/ledger-causal-source';
+import {indexLedgerRelations,ledgerRelatedRecords} from '../src/receiz/ledger-economy';
 it('keeps the complete existing public ledger and exposes locally carried native value origins',()=>{
  const cache=parsePublicNetworkCache(JSON.parse(gunzipSync(readFileSync('public/receiz-public-ledger.json.gz.bin')).toString()));
- expect(cache.records).toHaveLength(45663);expect(cache.records.filter(r=>r.details?.causalLineage)).toHaveLength(104);
+ expect(cache.records).toHaveLength(45666);expect(cache.records.filter(r=>r.details?.causalLineage)).toHaveLength(104);
  const cards=cache.records.filter(r=>r.valueOperands?.cardValuation);expect(cards.length).toBeGreaterThan(200);
  for(const r of cards){const trace=ledgerFundingTrace(r);expect(trace.valueOrigins).toHaveLength(1);expect(trace.valueOrigins[0].claimHash).toBe(r.valueOperands!.cardValuation!.claimHash);expect(trace.valueOrigins[0].occurredAt).toBe(r.valueOperands!.cardValuation!.sealedAt);}
+});
+it('retains the native funding source IDs and follows the exact market credit to its existing proof object',()=>{
+ const cache=parsePublicNetworkCache(JSON.parse(gunzipSync(readFileSync('public/receiz-public-ledger.json.gz.bin')).toString()));
+ const steps=cache.records.flatMap(r=>readLedgerCausalLineage(r.details?.causalLineage)?.steps??[]);
+ expect(steps.filter(s=>s.sourceId).length).toBeGreaterThanOrEqual(825);expect(steps.filter(s=>s.sourceHash).length).toBeGreaterThanOrEqual(218);
+ const record=cache.records.find(r=>Array.isArray(r.details?.fundingLinks)&&JSON.stringify(r.details.fundingLinks).includes('60b8bb44-ffa5-43d3-b550-f9736efadba1'))!;
+ expect(ledgerFundingTrace(record).steps).toContainEqual(expect.objectContaining({kind:'post_work_proof',sourceId:'profile:bjklock:80c6d005-4877-444d-a9f9-8e9c4107d947'}));
+ expect(ledgerRelatedRecords(record,indexLedgerRelations(cache.records)).some(({record})=>record.evidence.artifactDigest==='29ac12db2fc9cc85097b3694234af3688e9013582f6a4aa65450a25c5e83d16e')).toBe(true);
+ const attributed=cache.records.filter(r=>r.details?.fundingAttribution);expect(attributed).toHaveLength(87);expect(attributed.every(r=>ledgerFundingTrace(r).basis==='calculated-fifo')).toBe(true);
+ const uncovered=cache.records.filter(r=>r.kind==='chat_transfer'&&!r.details?.fundingAttribution);
+ expect(uncovered.map(record=>record.id)).toEqual(['wallet:transfer:c83ef4e8414ce7ca165bea28']);
+ expect(ledgerFundingTrace(uncovered[0]).components).toEqual([{rail:'reserve',amountUsdCents:'31'},{rail:'settlement',amountUsdCents:'69'}]);
 });
 it('never lets an older label-only capture erase exact native history coordinates already held',()=>{
  const hash='a'.repeat(64),lineage={sourceSchema:'receiz.sports_arena.card_causal_ownership_proof.v1',proofHash:hash,collectibleId:'rsc_1234567890abcdef',claimHash:hash,fundingSource:'free',acquisitionKind:'transfer',steps:[{id:'step',kind:'free_claim',label:'Free claim',detail:'Origin',occurredAt:'2026-05-10T12:00:00Z',sourceId:'exact-native-source',collectibleId:'rsc_1234567890abcdef',claimHash:hash}]};

@@ -3,6 +3,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Fingerprint } from 'lucide-react';
 import { branding } from '../branding/profile.mjs';
+import {siteFooterHtml} from './site-footer.mjs';
 const brandText = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const brandWordmark = `${brandText(branding.wordmark)}<span>${brandText(branding.descriptor)}</span>`;
 const arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg>';
@@ -45,7 +46,7 @@ export function learnHome() {
     ['03','Settlement & Reserve','Native value, connected payment rails, and the standard for receiving institutions.','reserve-and-settlement'],
     ['04','How value is calculated','Inspect the deterministic valuation rules, the Kai pulse and the exact Phi-to-dollar calculation.','how-value-works']
   ].map(([number,title,copy,slug])=>`<a class="guide-row reveal" href="/learn/${slug}/"><span class="guide-number">${number}</span><div><h3>${title}</h3><p>${copy}</p></div>${arrow}</a>`).join('')}</div></section>
-  <section class="learn-finale motion-region"><div class="learn-shell"><div class="reveal"><h2>A familiar place.<br>A new kind of possibility.</h2><a class="learn-button button-paper" href="/">Enter bank ${arrow}</a></div><footer class="learn-footer"><div><a class="learn-brand" href="/learn/">${brandWordmark}</a><p><a href="/learn/reality-grade-banking/">Reality-Grade Banking</a></p></div><nav aria-label="Footer navigation"><a href="#how-it-works">How it works</a><a href="#your-identity">Your identity</a><a href="#guides">Guides</a><a href="/conformance/">Conformance</a><a href="/explore/">Asset explorer</a><a href="/ledger/">Public ledger</a><a href="https://github.com/kojibai/reality-grade-banking/tree/main/institution">For institutions</a><a href="/legal/">License &amp; notices</a></nav></footer></div></section></main>`;
+  <section class="learn-finale motion-region"><div class="learn-shell"><div class="reveal"><h2>A familiar place.<br>A new kind of possibility.</h2><a class="learn-button button-paper" href="/">Enter bank ${arrow}</a></div></div></section></main>${siteFooterHtml()}`;
 }
 
 export const sectionId = heading => heading.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -64,5 +65,5 @@ export function learnArticle(page, pages, escape) {
     </div>
   </main>
   ${notice ? '' : `<section class="article-cta"><div class="learn-shell"><h2>Your value.<br>More possibilities.</h2><a class="learn-button button-cobalt" href="/">Enter bank ${arrow}</a></div></section>`}
-  <footer class="learn-shell article-footer"><a class="learn-brand" href="/learn/">${brandWordmark}</a><p><a href="/learn/reality-grade-banking/">Reality-Grade Banking</a> · ${notice ? 'Account information' : 'Public product guides'}</p></footer>`;
+  ${siteFooterHtml()}`;
 }

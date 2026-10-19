@@ -1,1 +1,1 @@
-export function learnAssets(): Promise<{ css: string; cssUrl: string; jsUrl: string }>;
+export function learnAssets(): Promise<{ css: string; js:string; cssUrl: string; jsUrl: string }>;

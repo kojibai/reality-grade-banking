@@ -42,6 +42,14 @@ export function readLedgerCausalLineage(raw:unknown):LedgerCausalLineage|undefin
 export function ledgerCausalLineageFields(raw:unknown):LedgerFields|undefined {
  const lineage=readLedgerCausalLineage(raw);return lineage?lineage as unknown as LedgerFields:undefined;
 }
+/** A newer/older panel projection of the same native proof head may be thin.
+ * Preserve exact step operands without crossing a changed or conflicting head. */
+export function mergeLedgerCausalProjection(before:unknown,after:unknown):LedgerCausalLineage|undefined{
+ const prior=readLedgerCausalLineage(before),next=readLedgerCausalLineage(after);if(!prior||!next||prior.proofHash!==next.proofHash||prior.claimHash!==next.claimHash||prior.collectibleId!==next.collectibleId||prior.steps.length!==next.steps.length)return next;
+ const keys=['sourceId','sourceHash','contentHash','kaiPulse','claimPulse','amountUsdCents','amountPhiMicro','occurredAt','previousCausalProofHash']as const;
+ if(prior.steps.some((step,index)=>{const now=next.steps[index];return step.id!==now.id||step.kind!==now.kind||keys.some(key=>step[key]!==undefined&&now[key]!==undefined&&step[key]!==now[key]);}))return next;
+ return {...next,steps:next.steps.map((step,index)=>({...prior.steps[index],...step}))};
+}
 /** The full native card asset carries the original causal proof appends, not
  * only its panel projection. Retain every step and declared predecessor. */
 function readNativeCardCausalProofs(row:Record<string,unknown>):LedgerCausalLineage|undefined {

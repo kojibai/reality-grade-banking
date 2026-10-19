@@ -104,7 +104,7 @@ it('renders a continuous native day-progress sweep instead of the source decorat
 it('restores the original compact header placement/dimensions and keeps dark material confined to the face', () => {
   const css = readFileSync(resolve('src/components/kai-klok.css'), 'utf8');
   expect(css).toContain('margin-left: auto; margin-right: auto;');
-  expect(css).toContain('gap: 5px 10px; width: 240px; max-width: 100%; min-height: 44px; padding: 7px 12px;');
+  expect(css).toContain('gap: 3px 10px; width: 240px; max-width: 100%; min-height: 44px; padding: 7px 12px;');
   expect(css).toContain('.kai-header-coordinate, .kai-header-meta { display: flex; justify-content: space-between; align-items: center; gap: 14px;');
   expect(css).toContain('grid-template-columns: max-content max-content; justify-content: center;');
   expect(css).toContain('.kai-header-coordinate { display: contents; }');

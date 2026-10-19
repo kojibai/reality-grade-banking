@@ -6,6 +6,7 @@ import {prepareSportsCopyHistory,sportsCopyHistoryUsdAtPulse,type SportsCopyHist
 import {prepareLedgerCardCopyValuation,carriedLedgerCardCopyValuation,ledgerCardCopyUsdAtPulse,type LedgerCardCopyValuation} from './ledger-card-copy';
 import type {LedgerFields} from './ledger-inspection';
 import {marketPulseAtOrAfterTime} from './market-projection/sealed-copies';
+import {publicMarketPulseSeed} from './market-projection/source';
 
 /** Display operands only. These neither admit a proof nor establish available funds. */
 export interface LedgerValueOperands {
@@ -14,6 +15,7 @@ export interface LedgerValueOperands {
   cardValueUsdCents?: string; proofValueUsdCents?: string; valuePulse?: string;
   fundingRule?: string; cardValueRule?: string; cardValueRecordedAt?: string; cardValueState?: string; settledUsdCents?: string; phiUsdCents?: string;
   cardValuation?:LedgerCardCopyValuation['copy'];
+  proofValuation?:{assetId:string;marketItemId:string;seed:MarketPulseSeed};
 }
 export interface LedgerValueDisplay {
   amountUsdCents: string | null;
@@ -45,6 +47,8 @@ export function readLedgerValueOperands(input: unknown): LedgerValueOperands {
   for (const key of ['amountPhiMicro', 'usdPerPhiMicrocents', 'considerationUsdCents', 'cardValueUsdCents', 'proofValueUsdCents', 'valuePulse', 'settledUsdCents', 'phiUsdCents'] as const) {
     const field = uint(value[key] ?? receipt[key]); if (field !== undefined) result[key] = field;
   }
+  const proof=object(value.proofValuation),assetId=text(proof.assetId),marketItemId=text(proof.marketItemId),rawSeed=object(proof.seed),seed=publicMarketPulseSeed(rawSeed,String(rawSeed.claimPulse));
+  if(assetId&&marketItemId&&seed&&(!result.assetId||result.assetId===assetId)&&(!result.marketItemId||result.marketItemId===marketItemId))result.proofValuation={assetId,marketItemId,seed};
   // The private v129 ledger explicitly names this amount as the transferred card snapshot.
   // Its legacy missing-value fallback is zero, so zero alone cannot support a card valuation.
   const snapshots = new Set<string>();
@@ -132,6 +136,18 @@ export function ledgerValueRow(record:PublicRecord,index:LedgerValueIndex|null):
   const matches=new Set(resolved.filter((row):row is MarketValueRow=>!!row));
   return resolved.some(row=>row===null)||matches.size!==1?null:[...matches][0];
 }
+/** A proof may already carry its Market inputs even when it is not listed in
+ * the capitalization snapshot. Keep their exact object binding; a conflicting
+ * recognized index entry cannot be bypassed by a carried display operand. */
+export function ledgerProofValueSeed(record:PublicRecord,index:LedgerValueIndex|null,row=ledgerValueRow(record,index)):MarketPulseSeed|null{
+ const carried=record.valueOperands?.proofValuation,keys=[record.valueOperands?.assetId,record.valueOperands?.marketItemId,record.valueOperands?.objectId,record.evidence.objectId,record.evidence.claimHash,record.valueOperands?.claimHash,record.source==='proofs'?record.sourceId:undefined];
+ if(!row&&keys.some(key=>key&&index?.rows.has(key)))return null;
+ const live=row?.source==='market-desk-live-asset'?row.marketItem?.livePulseSeed:null;
+ if(!carried)return live??null;
+ if(record.valueOperands?.assetId&&record.valueOperands.assetId!==carried.assetId||record.valueOperands?.marketItemId&&record.valueOperands.marketItemId!==carried.marketItemId||record.evidence.objectId&&record.evidence.objectId!==carried.assetId||record.source==='proofs'&&record.sourceId!==carried.marketItemId)return null;
+ if(live&&(row?.seed!==carried.assetId||row.marketItem?.id!==carried.marketItemId||JSON.stringify(publicMarketPulseSeed(live,String(live.claimPulse)))!==JSON.stringify(carried.seed)))return null;
+ return carried.seed;
+}
 export function ledgerCardHistory(record:PublicRecord,index:LedgerValueIndex|null,row=ledgerValueRow(record,index)):SportsCopyHistory|null{
   const history=row&&index?.cardHistory.get(row);if(!history)return null;
   const operands=record.valueOperands;
@@ -171,15 +187,15 @@ function calculateLedgerValue(record: PublicRecord, index: LedgerValueIndex | nu
     const copy=ledgerCardCopyValuation(record,index),copyUsd=copy?ledgerCardCopyUsdAtPulse(copy,Number(eventPulse)):undefined,copyCents=copyUsd===undefined?undefined:ledgerUsdCents(copyUsd);
     if(copyCents!==undefined)return {amountUsdCents:copyCents,basis:'card-model',pulse:eventPulse,considerationUsdCents:consideration};
   }
-  const seed = row?.source === 'market-desk-live-asset' ? row.marketItem?.livePulseSeed : null;
+  const seed = ledgerProofValueSeed(record,index,row);
   const isProof = record.source === 'proofs' || record.kind === 'market-asset';
   if (seed?.kind === 'sigil' && (transfer || isProof)) {
-    const pulse = transfer ? Number(eventPulse) : index!.evaluationPulse??index!.source.serverPulse;
-    const amountUsdCents = eventPulse !== null || isProof ? valueAtPulse(seed, pulse) : null;
+    const pulse = transfer ? Number(eventPulse) : index?.evaluationPulse??index?.source.serverPulse;
+    const amountUsdCents = pulse!==undefined&&(eventPulse !== null || isProof) ? valueAtPulse(seed, pulse) : null;
     if (amountUsdCents !== null) {
       const result: LedgerValueDisplay = { amountUsdCents, basis: 'intrinsic-model', pulse: String(pulse), considerationUsdCents: transfer ? consideration : null };
-      const previous = !transfer ? valueAtPulse(seed, pulse - 1) : null;
-      if (previous && BigInt(previous) > 0n) result.comparison = { pulse: String(pulse - 1), amountUsdCents: previous, percent: (Number(amountUsdCents) / Number(previous) - 1) * 100 };
+      const previous = !transfer ? valueAtPulse(seed, pulse! - 1) : null;
+      if (previous && BigInt(previous) > 0n) result.comparison = { pulse: String(pulse! - 1), amountUsdCents: previous, percent: (Number(amountUsdCents) / Number(previous) - 1) * 100 };
       return result;
     }
   }

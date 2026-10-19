@@ -7,6 +7,8 @@ import type {ReceizOpenedArtifact} from '@receiz/sdk';
 import {LedgerFundingTrace} from '../src/features/ledger/LedgerFundingTrace';
 import {parsePublicNetworkPage} from '../src/receiz/public-network';
 import {retainOpenedProofInspection} from '../src/receiz/proof-inspection';
+import {calculateWalletFundingAttributions} from '../src/receiz/ledger-wallet-fifo';
+import {indexLedgerRelations} from '../src/receiz/ledger-economy';
 const claim='a'.repeat(64),head='b'.repeat(64),contentHash='c'.repeat(64);
 const payment=()=>parsePublicNetworkPage('wallet',{ok:true,events:[{id:'send',kind:'chat_transfer',pulse:200,amountUsdCents:'500',valueReceipt:{settledUsdCents:'200',phiUsdCents:'300',fundingSource:'mixed',fundingRule:'settled_first_then_phi'}}]}).records[0];
 const card=()=>parsePublicNetworkPage('wallet',{ok:true,events:[{id:'card-transfer',kind:'sports_card_transfer',collectibleId:'rsc_original',claimHash:claim,pulse:200,causalLineage:{empty:false,proofHash:head,sourceSchema:'receiz.sports_arena.card_causal_ownership_proof.v1',fundingSource:'sovereign',acquisitionKind:'purchase',steps:[{id:'proof',kind:'post_work_proof',label:'Source proof',detail:'Sealed original',contentHash,kaiPulse:'100'},{id:'funding',kind:'glyph_economy_value',label:'Proof-native value',detail:'Recorded allocation',sourceId:'credit-one',amountUsdCents:'500',kaiPulse:'110'},{id:'purchase',kind:'pack_purchase',label:'Purchase',detail:'Recorded acquisition',kaiPulse:'120'}]}}]}).records[0];
@@ -44,4 +46,16 @@ it('shows a newly available, canonically opened original through the shared read
   await act(async()=>{retainOpenedProofInspection(opened,new Uint8Array([1]),'original.png',digest);});
   expect(host.textContent).toContain('Proof-native value');expect(host.textContent).toContain('$5.00');expect(fetch).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());vi.unstubAllGlobals();}
+});
+it('shows the exact named object from the loaded index and separates only actual mixed funding',()=>{
+ const source=parsePublicNetworkPage('proofs',{ok:true,transport:{publicOriginals:[{id:'profile:owner:proof',receizId:'proof',title:'The originating proof object',pulse:'100'}]}}).records[0];
+ for(const reserve of ['0','200']){
+  const rows=[{id:'proof-credit',user_id:'owner',direction:'credit',entry_kind:'market_sell',amount_usd_cents:'500',amount_phi_micro:'500',created_at:'2026-05-01T00:00:00Z',kai_upulse:'100000000',metadata:{source:'market_trade',marketItemId:'profile:owner:proof'}},{id:'reserve-credit',user_id:'owner',direction:'credit',entry_kind:'admin_adjustment',amount_usd_cents:'200',amount_phi_micro:'200',created_at:'2026-05-02T00:00:00Z',kai_upulse:'110000000',metadata:{source:'stripe_checkout_wallet_deposit'}},{id:'debit',user_id:'owner',direction:'debit',entry_kind:'payment',amount_usd_cents:'500',amount_phi_micro:'500',created_at:'2026-05-03T00:00:00Z',kai_upulse:'120000000',metadata:{settledUsdCents:reserve}}];
+  const attribution=calculateWalletFundingAttributions(rows,'owner',true).get('debit')!;
+  const record=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'debit',kind:'payment',amountUsdCents:'500',kaiUpulse:'120000000',createdAt:'2026-05-03T00:00:00Z',fundingAttribution:attribution}]}).records[0];
+  const html=renderToStaticMarkup(<LedgerFundingTrace record={record} relations={indexLedgerRelations([record,source])}/>),doc=new DOMParser().parseFromString(html,'text/html');
+  expect(doc.querySelector('.ledger-funding-object a')?.textContent).toContain('The originating proof object');
+  expect(doc.querySelectorAll('.ledger-funding-rail')).toHaveLength(reserve==='0'?0:2);
+  expect(doc.querySelector('.ledger-funding-components')?.textContent).toBe(reserve==='0'?'Funding amount$5.00':undefined);
+ }
 });

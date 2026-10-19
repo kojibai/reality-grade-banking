@@ -44,7 +44,7 @@ const pages = [
   ] }
 ];
 const escape = text => String(text).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-const { css: publicCss, cssUrl, jsUrl } = await learnAssets();
+const { css: publicCss, js:publicJs, cssUrl, jsUrl } = await learnAssets();
 await writePublicSdkSchemas('dist');
 const valueAssets = await writeValueExplainerAssets('dist');
 const valueHead = `<link rel="stylesheet" href="${valueAssets.cssUrl}"><script src="${valueAssets.jsUrl}" defer></script>`;
@@ -72,6 +72,7 @@ const bankStyles = [...bankHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^"]
 const bankHead = bankHtml.match(/<head>([\s\S]+)<\/head>/)[1];
 const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify({ pages: publicPages, bank: { head: bankHead, entry: bankEntry, styles: bankStyles } }).replaceAll('<', '\\u003c')}</script>`;
 await writeFile('dist/learn/learn.css', publicCss);
+await writeFile('dist/learn/learn.js', publicJs);
 let entryHtml = bankHtml.replace('</head>', `<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>', `${bundle}</body>`);
 // The initial entrance must paint even while a deployment's CSS URLs are slow.
 // Embed the exact emitted styles, so the settled account also has its styles

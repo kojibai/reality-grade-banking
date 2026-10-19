@@ -44,7 +44,7 @@ export function valueExplainerDevPlugin() {
         }
         if (request.url?.split('?')[0].replace(/\/$/, '') !== '/learn/how-value-works') return next();
         try {
-          const html = `<!doctype html><html lang="en" class="learn-surface"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${valueExplainerPage.title} | Bankeiz</title><meta name="description" content="${valueExplainerPage.description}"><link rel="stylesheet" href="/learn/learn.css"><link rel="stylesheet" href="/src/value-explainer/value-explainer.css"><script src="/learn/learn.js" defer></script><script type="module" src="/src/value-explainer/main.ts"></script></head><body data-bank-surface="learn"><div id="public-learn-root">${valueExplainerContent()}</div></body></html>`;
+          const html = `<!doctype html><html lang="en" class="learn-surface"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${valueExplainerPage.title} | Bankeiz</title><meta name="description" content="${valueExplainerPage.description}"><link rel="stylesheet" href="/learn/learn.css"><link rel="stylesheet" href="/src/value-explainer/value-explainer.css"><link rel="stylesheet" href="/src/styles/site-footer.css"><script src="/learn/learn.js" defer></script><script type="module" src="/src/value-explainer/main.ts"></script></head><body data-bank-surface="learn"><div id="public-learn-root">${valueExplainerContent()}</div></body></html>`;
           const output = await server.transformIndexHtml(request.url, html);
           response.statusCode = 200; response.setHeader('content-type', 'text/html; charset=utf-8'); response.end(output);
         } catch (error) { next(error); }

@@ -1,4 +1,5 @@
 import { learnHeader } from './learn-template.mjs';
+import {siteFooterHtml} from './site-footer.mjs';
 import { branding } from '../branding/profile.mjs';
 
 const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
@@ -84,6 +85,6 @@ startKai ≤ completionKai ≤ valuationKai</pre><p>A value head requires SDK-he
   <section class="learn-shell value-section value-reproduce" id="reproduce"><div><h2>Same inputs.<br>Same result.</h2><p>An independent verifier must accept the same original and history, then reproduce the same canonical projection digests.</p><a class="underlined-action" href="/conformance/">Understand receiving conformance ${arrow}</a></div><ul><li>Exact original bytes and admitted history head</li><li>Algorithm, policy constants and checksum</li><li>Explicit evaluation and sample coordinates</li><li>Complete declared operands and recorded defaults</li><li>Matching USD rule and digest-bound basis, when used</li><li>Matching SDK version and pinned verifier roots</li></ul><div class="value-reproduce-detail"><p>The replay includes the public source, policy, selected options, coordinates and expected digests. Verification checks the enclosing source before recomputation. Sample order, warm caches, prior calls and local wall time cannot choose a different value at the same coordinate.</p><p>Missing carried origin or payload, unsupported private sources, incomplete sale joins and unavailable precision remain explicit. Canonical JSON, detached metadata or a recomputed checksum cannot supply proof admission. Browser, Node and MCP parity must be tested with the same bytes and replay; fixture parity alone is not an institution’s conformance assessment.</p></div></section>
 
   <section class="value-sources-band"><div class="learn-shell value-section" id="implementation-sources"><h2>Read the implementation.</h2><p>Source references for the calculation and its verification boundaries.</p><ol class="value-source-index">${sources.map(([number, title, copy, path, line]) => `<li><a href="${source(path, line)}" target="_blank" rel="noopener noreferrer"><span>${number}</span><div><h3>${escape(title)}</h3><p>${escape(copy)}</p><code>${escape(path)}:${line}</code></div>${arrow}</a></li>`).join('')}</ol></div></section>
-  <footer class="learn-shell article-footer value-footer"><a class="learn-brand" href="/learn/">${escape(branding.wordmark)}<span>${escape(branding.descriptor)}</span></a><nav aria-label="Value guide links"><a href="/learn/reserve-and-settlement/">Settlement &amp; Reserve</a><a href="/ledger/">Public ledger</a><a href="/conformance/">Conformance</a><a href="/legal/">Source &amp; notices</a></nav></footer>
+  ${siteFooterHtml()}
   </main>`;
 }

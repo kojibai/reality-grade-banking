@@ -45,3 +45,15 @@ it('handles the actual SDK-signed portable local/global placement contract', asy
   expect(projectPersonalHistory(projected, 'global-account').records[0].amountUsdCents).toBe('123');
   expect(() => projectPersonalHistory(projected, 'foreign-account')).toThrow('different');
 });
+it('carries calculated FIFO to the exact linked transfer without conflating the later wallet posting coordinate',()=>{
+ const state={account:{userId:'owner'},wallet:{ledgerEntryCount:3,ledgerEntries:[
+  {id:'proof-credit',user_id:'owner',direction:'credit',entry_kind:'market_sell',amount_usd_cents:'500',created_at:'2026-05-01T00:00:00Z',kai_upulse:'100000000',metadata:{source:'market_trade',marketItemId:'profile:owner:proof'}},
+  {id:'funding',user_id:'owner',direction:'credit',entry_kind:'admin_adjustment',amount_usd_cents:'200',created_at:'2026-05-02T00:00:00Z',kai_upulse:'110000000',metadata:{source:'stripe_checkout_wallet_deposit'}},
+  {id:'debit',user_id:'owner',direction:'debit',entry_kind:'chat_transfer_send',chat_transfer_id:'transfer-one',amount_usd_cents:'500',created_at:'2026-05-03T00:00:00.100Z',kai_upulse:'120010000',metadata:{settledUsdCents:'200',phiUsdCents:'300'}}
+ ],chatTransfers:[{id:'transfer-one',sender_user_id:'owner',recipient_user_id:'recipient',amount_usd_cents:'500',created_at:'2026-05-03T00:00:00Z',kai_pulse:'120',kai_upulse:'120000000'}]}};
+ const history=projectPersonalHistory(projection(state)),record=history.records.find(r=>r.sourceId==='transfer:transfer-one')!,trace=ledgerFundingTrace(record);
+ expect(trace.basis).toBe('calculated-fifo');expect(trace.sources.map(s=>s.sourceId)).toEqual(['funding','proof-credit']);expect(trace.steps[1]).toMatchObject({kind:'post_work_proof',sourceId:'profile:owner:proof'});
+ expect(trace.components).toEqual([{rail:'reserve',amountUsdCents:'200'},{rail:'settlement',amountUsdCents:'300'}]);
+ expect(ledgerFundingTrace({...record,evidence:{transferId:'unrelated'}}).basis).not.toBe('calculated-fifo');
+ expect(projectPersonalHistory({...projection(state),completeAtSealedHead:false}).records.every(r=>!r.details?.fundingAttribution)).toBe(true);
+});

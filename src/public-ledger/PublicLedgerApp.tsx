@@ -1,3 +1,4 @@
+import {SiteFooter} from '../components/SiteFooter';
 import {LedgerProofControls} from './LedgerProofControls';
 import type {PublicLedgerFileReview} from '../receiz/public-ledger-proof';
 import type {LocalLedgerDisplay} from '../receiz/public-ledger-archive';
@@ -6,7 +7,7 @@ import { ArrowUpRight, Check, ChevronDown, Copy, Layers3, Link2, RefreshCw, Sear
 import { branding } from '../../branding/profile.mjs';
 import { usePublicNetwork } from '../receiz/usePublicNetwork';
 import { PUBLIC_SOURCES, type PublicRecord, type PublicSource } from '../receiz/public-network';
-import { ACTIVITY_FILTERS, activityCategory, receiptLink, type ActivityCategory } from '../receiz/ledger-receipts';
+import { ACTIVITY_FILTERS, activityCategory, receiptLink,openLedgerReceipt, type ActivityCategory } from '../receiz/ledger-receipts';
 import { ledgerValueForRecord, type LedgerValueIndex } from '../receiz/ledger-value';
 import { LedgerInspector } from '../features/ledger/LedgerInspector';
 import { LedgerValue } from '../features/ledger/LedgerValue';
@@ -18,16 +19,17 @@ function PublicRow({record,valueSource,relations,capture}:{record:PublicRecord;v
   const [open,setOpen]=useState(false),[copied,setCopied]=useState(false),[copyError,setCopyError]=useState(false);
   const value=useMemo(()=>capture?.value??ledgerValueForRecord(record,valueSource),[record,valueSource,capture]),valuation=capture?capture.valuation:ledgerValuationContext(record,valueSource,value),receipt=useMemo(()=>receiptLink(record,value,valuation),[record,value,valuation]),kind=activityCategory(record);
   async function copy(){try{await navigator.clipboard.writeText(receipt!);setCopied(true);setCopyError(false);}catch{setCopyError(true);}}
+  const currentValue=useMemo(()=>capture?capture.currentValue:/transfer|send/i.test(record.kind)?ledgerCurrentAssetValue(record,valueSource):null,[record,valueSource,capture]);
   const localReceipt=receipt?new URL(receipt).pathname+new URL(receipt).hash:null;
   return <article className={`public-ledger-row ${open?'is-open':''}`}>
-    <div className="public-ledger-row-line"><button className="public-ledger-event" onClick={()=>setOpen(!open)} aria-expanded={open}><span className={`public-ledger-event-icon ${kind}`}><Layers3 size={17} strokeWidth={1.5}/></span><span><strong>{record.title}</strong><small>{record.time?new Date(record.time).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'Time not supplied'}</small></span></button><span className="public-ledger-source">{sourceNames[record.source]}</span><span className="public-ledger-coordinate" title={record.kaiUpulse??record.pulse??undefined}>{record.kaiUpulse?`☤µKAI ${record.kaiUpulse}`:record.pulse?`☤KAI ${record.pulse}`:'—'}</span><LedgerValue className="public-ledger-amount" value={value}/><div className="public-ledger-receipts">{receipt&&<><a href={localReceipt!} aria-label={`Open receipt: ${record.title}`} title="Open receipt"><Link2 size={15}/></a><button onClick={()=>void copy()} aria-label={`Copy receipt: ${record.title}`} title={copied?'Copied':'Copy receipt link'}>{copied?<Check size={15}/>:<Copy size={14}/>}</button></>}<button className="public-ledger-expand" onClick={()=>setOpen(!open)} aria-label={`${open?'Close':'Inspect'} record: ${record.title}`} aria-expanded={open}><ChevronDown size={16}/></button></div></div>
-    {open&&<div className="public-ledger-record-detail"><LedgerInspector record={record} value={value} currentValue={capture?capture.currentValue:/transfer|send/i.test(record.kind)?ledgerCurrentAssetValue(record,valueSource):null} valuation={valuation} relations={relations} valueSource={valueSource}/>{copyError&&<p role="status">Open the receipt to copy its link from the address bar.</p>}</div>}
+    <div className="public-ledger-row-line"><button className="public-ledger-event" onClick={()=>setOpen(!open)} aria-expanded={open}><span className={`public-ledger-event-icon ${kind}`}><Layers3 size={17} strokeWidth={1.5}/></span><span><strong>{record.title}</strong><small>{record.time?new Date(record.time).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'Time not supplied'}</small></span></button><span className="public-ledger-source">{sourceNames[record.source]}</span><span className="public-ledger-coordinate" title={record.kaiUpulse??record.pulse??undefined}>{record.kaiUpulse?`☤µKAI ${record.kaiUpulse}`:record.pulse?`☤KAI ${record.pulse}`:'—'}</span><button className="public-ledger-amount-toggle" onClick={()=>setOpen(!open)} aria-expanded={open} aria-label={`${open?'Close':'Inspect'} value: ${record.title}`}><LedgerValue inlineChange className="public-ledger-amount" value={value} currentValue={currentValue}/><ChevronDown className="public-ledger-chevron" size={14} strokeWidth={1.5}/></button><div className="public-ledger-receipts">{receipt&&<><a href={localReceipt!} onClick={event=>openLedgerReceipt(event,receipt,{record,value,valuation,valueSource,relations})} aria-label={`Open receipt: ${record.title}`} title="Open receipt"><Link2 size={15}/></a><button onClick={()=>void copy()} aria-label={`Copy receipt: ${record.title}`} title={copied?'Copied':'Copy receipt link'}>{copied?<Check size={15}/>:<Copy size={14}/>}</button></>}</div></div>
+    {open&&<div className="public-ledger-record-detail"><LedgerInspector inApp record={record} value={value} currentValue={currentValue} valuation={valuation} relations={relations} valueSource={valueSource}/>{copyError&&<p role="status">Open the receipt to copy its link from the address bar.</p>}</div>}
   </article>;
 }
 
-export function PublicLedgerApp(){
+export function PublicLedgerApp({active=true}:{active?:boolean}){
   const [captured,setCaptured]=useState<PublicLedgerFileReview|null>(null),archive=captured?.archive;
-  const liveValueSource=useLedgerValueSource(!archive),valueSource=archive?null:liveValueSource,liveLedger=usePublicNetwork(!archive);
+  const liveValueSource=useLedgerValueSource(active&&!archive),valueSource=archive?null:liveValueSource,liveLedger=usePublicNetwork(active&&!archive);
   const ledger=useMemo(()=>archive?{...liveLedger,records:archive.records,capturedAt:archive.capturedAt,bootstrap:false,sources:Object.fromEntries(PUBLIC_SOURCES.map(source=>[source,{status:'stale' as const,complete:archive.coverage.find(item=>item.source===source)?.complete===true,busy:false,cursor:null,error:null}]))}:liveLedger,[archive,liveLedger]);
   const [filter,setFilter]=useState<ActivityCategory>('all'),[search,setSearch]=useState(''),[shown,setShown]=useState(60);
   const states=Object.values(ledger.sources),busy=states.some(value=>value.busy),complete=states.length===4&&states.every(value=>value.complete),live=states.length===4&&states.every(value=>value.status==='live');
@@ -48,6 +50,6 @@ export function PublicLedgerApp(){
         <div className="public-ledger-table-heading" aria-hidden="true"><span>Activity</span><span>Source</span><span>Coordinate</span><span>Amount</span><span>Receipt</span></div><div className="public-ledger-records">{records.slice(0,shown).map(record=><PublicRow key={record.id} record={record} valueSource={valueSource} relations={relations} capture={capturedValues.get(record.id)}/>)}{!records.length&&<p className="public-ledger-empty">{ledger.bootstrap?'Opening public history…':search?'No matching public records.':'Public activity is unavailable. Refresh to try again.'}</p>}</div>
         {(shown<records.length||!complete&&!archive)&&<button className="public-ledger-more" disabled={shown>=records.length&&busy} onClick={()=>shown<records.length?setShown(count=>count+60):void ledger.loadMore()}>{shown<records.length?'Show more activity':busy?'Reading sources…':'Read earlier history'}<ChevronDown size={15}/></button>}
       </section><p className="public-ledger-scope">This view brings together public source projections. A listed amount, record or receipt image is not an independently verified balance. Inspect the original proof for its supported claims.</p>
-    </main><footer className="public-ledger-footer"><a href="/learn/reality-grade-banking/">Reality-Grade Banking</a><nav><a href="/learn/reserve-and-settlement/">Value &amp; continuity</a><a href="/verify/">Verify an account</a><a href="/schemas/">SDK schemas</a><a href="/legal/">License &amp; notices</a></nav></footer>
+    </main><SiteFooter/>
   </div>;
 }

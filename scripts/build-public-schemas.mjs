@@ -121,7 +121,7 @@ export async function writePublicSdkSchemas(directory = 'dist') {
   }
   await writeFile(join(output, 'schemas.zip'), archive);
   await writeFile(join(output, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
-  await writeFile(join(directory, 'schemas/schemas.css'), publicSdkSchemasCss);
+  await writeFile(join(directory, 'schemas/schemas.css'), publicSdkSchemasCss+'\n'+await readFile('src/styles/site-footer.css','utf8'));
   await writeFile(join(directory, 'schemas/index.html'), publicSdkSchemasPage(manifest));
   return manifest;
 }

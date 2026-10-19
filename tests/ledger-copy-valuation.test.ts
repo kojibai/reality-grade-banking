@@ -1,3 +1,4 @@
+import {ledgerAssetPeriods} from '../src/receiz/ledger-asset-history';
 import {expect,it,vi} from 'vitest';
 import {indexLedgerValues,ledgerValueForRecord} from '../src/receiz/ledger-value';
 import {ledgerCurrentAssetValue,ledgerValuationContext} from '../src/receiz/ledger-economy';
@@ -88,4 +89,13 @@ it('keeps the carried event model while adopting a later bound native model for 
  expect(ledgerValueForRecord(event,index)).toEqual(previous);
  const current=ledgerCurrentAssetValue(event,index),expected=Math.round(publicSportsQuoteAtPulse({...row,...next.valuation,proofTotalValueUsd:next.valuation.baseUsdValue},300)*100);
  expect(current).toMatchObject({basis:'live-model',amountUsdCents:String(expected),pulse:'300'});
+});
+
+it('uses the individual copy in its Ledger chart and reuses the same result at the same pulse',()=>{
+ const event=record(150,{cardValuation:copy}),index=indexLedgerValues({...source,serverPulse:200,valueRows:[]});
+ const periods=ledgerAssetPeriods(event,index)!;
+ expect(periods.ALL[0]).toMatchObject({pulse:100,usdCents:'1000'});
+ expect(periods.ALL.at(-1)).toMatchObject({pulse:200,usdCents:'10100'});
+ expect(ledgerAssetPeriods(event,index)).toBe(periods);
+ expect(ledgerAssetPeriods(record(150,{cardValuation:copy,claimHash:'f'.repeat(64)}),index)).toBeNull();
 });

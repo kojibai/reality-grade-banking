@@ -2,9 +2,10 @@ import {safeLedgerSourceUrl} from './ledger-receipts';
 import { parsePublicMarket } from './public-market.ts';
 import { ledgerUsdCents, readLedgerValueOperands, type LedgerValueOperands } from './ledger-value';
 import {readLedgerDetails,type LedgerFields} from './ledger-inspection';
+import {mergeLedgerCausalProjection} from './ledger-causal-source';
 
 export const PUBLIC_SOURCES = ['actions', 'wallet', 'graph', 'proofs'] as const;
-export const PUBLIC_NETWORK_INSPECTION_VERSION = 2;
+export const PUBLIC_NETWORK_INSPECTION_VERSION = 3;
 export type PublicSource = typeof PUBLIC_SOURCES[number];
 export interface PublicRecord {
   id: string; sourceId: string; source: PublicSource; kind: string; title: string;
@@ -41,7 +42,7 @@ export function parsePublicNetworkPage(source: PublicSource, input: unknown): Pu
   const envelope = object(input);
   if (source === 'proofs') {
     const catalog = parsePublicMarket(input);
-    return { source, nextCursor: null, complete: catalog.complete, total: String(catalog.sourceCount), records: catalog.items.map<PublicRecord>(item => ({ id: `proofs:${item.id}`, sourceId: item.id, source, kind: 'proof recorded', title: item.title, detail: item.summary||'Public showcase proof', time: item.sealedAt, actor: null, sender:null,recipient:null,amountUsdCents: null, kaiUpulse: null, pulse: item.pulse, sourceUrl: item.sourceUrl ?? item.verifyUrl, evidence: digestEvidence(item.originalDigest), valueOperands: { assetId: item.assetId, marketItemId: item.id, proofValueUsdCents: ledgerUsdCents(item.priceUsd) }, details:readLedgerDetails({assetId:item.assetId,marketItemId:item.id,originalUrl:item.originalUrl,readingUrl:item.readingUrl,hasLongForm:item.hasLongForm,owner:{username:item.ownerUsername,displayName:item.ownerDisplayName}}), authority: 'public-source-projection' })) };
+    return { source, nextCursor: null, complete: catalog.complete, total: String(catalog.sourceCount), records: catalog.items.map<PublicRecord>(item => ({ id: `proofs:${item.id}`, sourceId: item.id, source, kind: 'proof recorded', title: item.title, detail: item.summary||'Public showcase proof', time: item.sealedAt, actor: null, sender:null,recipient:null,amountUsdCents: null, kaiUpulse: null, pulse: item.pulse, sourceUrl: item.sourceUrl ?? item.verifyUrl, evidence: digestEvidence(item.originalDigest), valueOperands: { assetId: item.assetId, marketItemId: item.id, proofValueUsdCents: ledgerUsdCents(item.priceUsd), ...(item.livePulseSeed?{proofValuation:{assetId:item.assetId,marketItemId:item.id,seed:item.livePulseSeed}}:{}) }, details:readLedgerDetails({assetId:item.assetId,marketItemId:item.id,originalUrl:item.originalUrl,readingUrl:item.readingUrl,hasLongForm:item.hasLongForm,owner:{username:item.ownerUsername,displayName:item.ownerDisplayName}}), authority: 'public-source-projection' })) };
   }
   if (envelope.source && envelope.source !== source || envelope.ok !== true && envelope.source !== source) throw new Error('Public source returned an unsupported response.');
   const rows = envelope.rows ?? (source === 'actions' ? envelope.actions ?? envelope.events : source === 'wallet' ? envelope.events : envelope.ledgerRows);
@@ -85,10 +86,11 @@ function mergeTransferEvidence(known: PublicRecord | undefined, incoming: Public
     || conflict(eventPulse(known), eventPulse(incoming)) || conflict(known.kaiUpulse, incoming.kaiUpulse) || before.cardValueState === 'conflicting-recorded-snapshots' || after.cardValueState === 'conflicting-recorded-snapshots') throw Error('Public transaction evidence conflicts with its retained original.');
   const sharedProof = ['entryHash', 'artifactDigest', 'proofHead'].some(key => /^[a-f0-9]{64}$/i.test(known.evidence[key] ?? '') && known.evidence[key] === incoming.evidence[key]);
   const sharedTransfer = known.evidence.transferId && known.evidence.transferId === incoming.evidence.transferId && before.collectibleId && before.collectibleId === after.collectibleId && before.claimHash && before.claimHash === after.claimHash;
+  const sameWalletWitness=known.source==='wallet'&&known.evidence.transferId&&known.evidence.transferId===incoming.evidence.transferId&&/^[a-f0-9]{64}$/i.test(known.evidence.bundleHash??'')&&known.evidence.bundleHash===incoming.evidence.bundleHash&&known.evidence.capsuleHash===incoming.evidence.capsuleHash;
   const sourceIdentity = known.source === 'graph' && /^sports-card-transfer-rsc_[a-f0-9]{16}-[a-f0-9]{64}:[a-f0-9]{24}$/i.test(known.sourceId);
-  if (!sharedProof && !sharedTransfer && !sourceIdentity) return incoming;
+  if (!sharedProof && !sharedTransfer && !sourceIdentity && !sameWalletWitness) return incoming;
   return { ...incoming, amountUsdCents: incoming.amountUsdCents ?? known.amountUsdCents, pulse: incoming.pulse ?? known.pulse, kaiUpulse: incoming.kaiUpulse ?? known.kaiUpulse, time: incoming.time ?? known.time,
-    evidence: { ...known.evidence, ...incoming.evidence }, valueOperands: readLedgerValueOperands({ ...before, ...after }), details: readLedgerDetails({ ...known.details, ...incoming.details }) };
+    evidence: { ...known.evidence, ...incoming.evidence }, valueOperands: readLedgerValueOperands({ ...before, ...after }), details: readLedgerDetails({ ...known.details, ...incoming.details,...(known.details?.causalLineage&&incoming.details?.causalLineage?{causalLineage:mergeLedgerCausalProjection(known.details.causalLineage,incoming.details.causalLineage)}:{}) }) };
 }
 export async function readPublicNetworkPage(source: PublicSource, cursor?: string, signal?: AbortSignal): Promise<PublicNetworkPage> {
   const query = new URLSearchParams({ source }); if (cursor) query.set('cursor', cursor);

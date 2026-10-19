@@ -31,6 +31,7 @@ for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/
   const page = await readFile(`dist/learn/${path}index.html`, 'utf8');
   assert.ok(page.includes(`<link rel="canonical" href="https://bankeiz.com/learn/${path}">`));
   assert.ok(page.includes('<h1>')); assert.ok(page.includes('<h2>')); assert.ok(!page.includes('<div id="root"></div>'));
+  assert.ok(page.includes('class="site-footer"')&&page.includes('aria-label="Standards &amp; technology footer links"')&&page.includes('aria-label="Policies and source"'),'Public guides carry the complete institutional footer without JavaScript');
   assert.match(page, /property="og:image" content="https:\/\/bankeiz\.com\/social\/[a-z-]+-[a-f0-9]{16}\.png"/);
   assert.match(page, /name="twitter:image:alt"/);
   assert.match(page, /href="\/learn\/learn.css\?v=[a-f0-9]{12}"/); assert.match(page, /src="\/learn\/learn.js\?v=[a-f0-9]{12}" defer/);

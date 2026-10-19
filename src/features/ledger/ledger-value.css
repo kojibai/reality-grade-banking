@@ -1,3 +1,6 @@
 .ledger-value{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:3px;min-width:0;font-variant-numeric:tabular-nums}.ledger-value>strong{font:inherit;white-space:nowrap}.ledger-value-basis{font-size:9px;line-height:1.25;letter-spacing:0;font-weight:400;color:#7d8b9d;white-space:nowrap}.ledger-value-change{display:flex;align-items:center;gap:2px;font-size:10px;font-weight:500;line-height:1.15;white-space:nowrap}.ledger-value-change.is-up{color:#2e8267}.ledger-value-change.is-down{color:#ae655b}.ledger-value-change.is-flat{color:#7d8b9d}.ledger-value-period{font-size:9px;font-weight:400;opacity:.8}.ledger-row-main .ledger-value{margin-left:auto}.public-ledger-amount.ledger-value{font-weight:550}
 
 .ledger-value-coordinate{font-size:8px;line-height:1.25;font-weight:400;color:#7d8b9d;white-space:nowrap}
+.ledger-value-inline{flex-flow:row wrap;justify-content:flex-end;align-items:baseline;column-gap:5px;row-gap:3px}
+.ledger-value-inline>.ledger-value-basis,.ledger-value-inline>.ledger-value-coordinate{flex-basis:100%;text-align:right;order:2}
+.ledger-value-inline>.ledger-value-coordinate{order:3}

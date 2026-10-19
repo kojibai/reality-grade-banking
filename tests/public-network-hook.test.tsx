@@ -3,7 +3,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { usePublicNetwork } from '../src/receiz/usePublicNetwork';
-import { parsePublicNetworkPage, type PublicSource } from '../src/receiz/public-network';
+import { parsePublicNetworkPage, PUBLIC_NETWORK_INSPECTION_VERSION, type PublicSource } from '../src/receiz/public-network';
 const network = vi.hoisted(() => ({ read: vi.fn() }));
 const cache = vi.hoisted(() => ({ load: vi.fn(), seed: vi.fn(), save: vi.fn() }));
 const originals = vi.hoisted(() => ({ restore: vi.fn(), sync: vi.fn(), rows: vi.fn() }));
@@ -111,14 +111,14 @@ it('enriches a complete v1 cache once and retains the snapshot when the old feed
  const thin=parsePublicNetworkPage('actions',{ok:true,actions:[raw]}),enriched=parsePublicNetworkPage('actions',{ok:true,actions:[{...raw,cardValueUsdCents:'9900'}]});
  const coverage=(['actions','wallet','graph','proofs'] as const).map(source=>({source,complete:true,anchorIds:source==='actions'?thin.records.map(row=>row.id):[]}));
  cache.load.mockResolvedValue({records:thin.records,capturedAt:null,inspectionVersion:1,coverage});
- cache.seed.mockResolvedValue({records:enriched.records,capturedAt:null,inspectionVersion:2,coverage});
+ cache.seed.mockResolvedValue({records:enriched.records,capturedAt:null,inspectionVersion:PUBLIC_NETWORK_INSPECTION_VERSION,coverage});
  network.read.mockImplementation(async(source:PublicSource)=>source==='actions'?thin:page(source));
  await observe(async read=>{
   expect(read().records.find(row=>row.sourceId==='restored-card')?.valueOperands?.cardValueUsdCents).toBe('9900');
   expect(cache.seed).toHaveBeenCalledOnce();
   await act(async()=>read().refresh());
   expect(read().records.find(row=>row.sourceId==='restored-card')?.valueOperands?.cardValueUsdCents).toBe('9900');
-  expect(cache.save.mock.calls.at(-1)![0].inspectionVersion).toBe(2);
+  expect(cache.save.mock.calls.at(-1)![0].inspectionVersion).toBe(PUBLIC_NETWORK_INSPECTION_VERSION);
  });
  const saved=structuredClone(cache.save.mock.calls.at(-1)![0]);cache.load.mockResolvedValue(saved);cache.seed.mockClear();
  await observe(async read=>{expect(read().records.find(row=>row.sourceId==='restored-card')?.valueOperands?.cardValueUsdCents).toBe('9900');expect(cache.seed).not.toHaveBeenCalled();});
