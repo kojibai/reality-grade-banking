@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import {bankTwinContextRecords} from './receiz/twin-bank-context';
+import {mergePublicRecords} from './receiz/public-network';
+import {Sheet} from './components/Sheet';
 import { ConsoleShell } from './components/ConsoleShell';
 import type { Panel } from './components/BottomNav';
 import { Market } from './features/market/Market';
@@ -19,6 +22,7 @@ import { LiveAssets } from './features/assets/LiveAssets';
 import { BANK_PUBLIC_ORIGIN } from './receiz/config';
 import { parsePaymentRequest } from './receiz/payment-request';
 import { CardDepositReturn, readCardReturn, readCardResume } from './features/deposit/CardDepositReturn';
+const MessagesPanel=lazy(()=>import('./features/messages/MessagesPanel').then(module=>({default:module.MessagesPanel})));
 export default function App() {
  const [receipt,setReceipt]=useState(location.pathname==='/receipt/'?location.href:null);
  const bankMounted=useRef(!receipt);
@@ -38,8 +42,10 @@ function BankApp() {
   const [sourceRevision, setSourceRevision] = useState(0);
   const [panel, setPanel] = useState<Panel>('account'), [sheet, setSheet] = useState<UIAction | null>(null);
   const privateHistory = usePrivateHistory(account.identity, account.wallet?.userId, onBank && Boolean(account.identity));
+  const messagesMounted=useRef(false);if(sheet?.kind==='messages')messagesMounted.current=true;
   const positions = useRef<Partial<Record<Panel, number>>>({});
   const personalHistory = useMemo(() => { if (!account.identity) return null; try { return projectPersonalHistory(account.identity.localHistory, account.wallet?.userId); } catch { return { records: [], available: false, completeAtSealedHead: false }; } }, [account.identity, account.wallet?.userId]);
+  const twinContextRecords=useMemo(()=>{try{return bankTwinContextRecords(mergePublicRecords(personalHistory?.records??[],privateHistory.cache?.records??[]));}catch{return [];}},[personalHistory,privateHistory.cache]);
   const open = (action: UIAction) => { history.pushState({ panel, sheet: action, overlayEntry: true }, '', routeHash(panel, action)); setSheet(action); };
   const close = () => { if (sheetCloseBehavior(history.state) === 'back') history.back(); else { history.replaceState({ panel, sheet: null }, '', routeHash(panel)); setSheet(null); } };
   const navigate = (next: Panel) => { positions.current[panel] = scrollY; history.pushState({ panel: next, sheet: null }, '', routeHash(next)); setPanel(next); setSheet(null); requestAnimationFrame(() => scrollTo(0, positions.current[next] ?? 0)); };
@@ -48,11 +54,12 @@ function BankApp() {
   if (!account.identity) {
     return <Entrance opening={account.opening} openingStage={account.openingStage} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId} />;
   }
-  return <ConsoleShell active={onBank} panel={panel} onNavigate={navigate} onDeposit={() => open({ kind: 'deposit' })} onProfile={() => open({ kind: 'profile' })}>
+  return <ConsoleShell active={onBank} panel={panel} onNavigate={navigate} onDeposit={() => open({ kind: 'deposit' })} onProfile={() => open({ kind: 'profile' })} onMessages={()=>open({kind:'messages'})}>
     <div hidden={panel !== 'account'}><LiveAccount walletHistory={account.walletHistory} historyComplete={account.historyComplete} showcase={showcase} wallet={account.wallet} busy={account.busy} error={account.error} observedAt={account.observedAt} onRefresh={() => void account.refresh()} onSend={() => open({ kind: 'send' })} onReceive={() => open({ kind: 'receive' })} onBalance={() => open({ kind: 'balance' })} onAssets={() => navigate('assets')} onLedger={() => navigate('ledger')} /></div>
     <div hidden={panel !== 'market'}><Market source={publicMarket} active={onBank && panel === 'market'} onAction={open} /></div>
     <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={onBank && panel === 'assets'} revision={sourceRevision} showcase={showcase} showcaseBusy={publicMarket.status === 'loading'} onOpen={open} /></div>
     <div hidden={panel !== 'ledger'}><Ledger active={onBank && panel === 'ledger'} personalHistory={personalHistory} privateHistory={privateHistory} /></div>
-    {sheet && <LiveActions marketItems={publicMarket.catalog?.items} key={sheet.kind} active={onBank} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} cardResumeSessionId={cardResumeSessionId} onCardResumeConsumed={consumeCardResume} onClose={close} onRefresh={() => { setSourceRevision(value => value + 1); void account.refresh(); void privateHistory.refresh(); }} onForget={async () => { await account.forget(); setSheet(null); }} />}
+    {messagesMounted.current&&<Suspense fallback={sheet?.kind==='messages'?<Sheet title="Your Twin" active={onBank} onClose={close}><p className="muted" role="status">Opening your conversations…</p></Sheet>:null}><MessagesPanel identity={account.identity} active={onBank&&sheet?.kind==='messages'} twinContextRecords={twinContextRecords} onClose={close} onPreparePayment={()=>open({kind:'send'})}/></Suspense>}
+    {sheet && sheet.kind!=='messages' && <LiveActions marketItems={publicMarket.catalog?.items} key={sheet.kind} active={onBank} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} cardResumeSessionId={cardResumeSessionId} onCardResumeConsumed={consumeCardResume} onClose={close} onRefresh={() => { setSourceRevision(value => value + 1); void account.refresh(); void privateHistory.refresh(); }} onForget={async () => { await account.forget(); setSheet(null); }} />}
   </ConsoleShell>;
 }

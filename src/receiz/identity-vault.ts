@@ -788,3 +788,8 @@ export const saveMarketTradeState=(binding:{artifactSha256:string},value:import(
 
 export const loadReceivedProofState=(binding:{artifactSha256:string})=>loadNoteState(binding,'received-proof');
 export const saveReceivedProofState=(binding:{artifactSha256:string},value:import('./received-proof').ReceivedProofState,expected:unknown)=>saveNoteState(binding,'received-proof',value,expected);
+
+// A retained exact permission choice, encrypted under this identity's existing
+// device vault. No bearer, message contents or Note custody is stored here.
+export const loadMessagingConsent=(binding:{artifactSha256:string})=>loadNoteState(binding,'messaging-consent-v1');
+export const saveMessagingConsent=(binding:{artifactSha256:string},value:unknown,expected:unknown)=>saveNoteState(binding,'messaging-consent-v1',value,expected);

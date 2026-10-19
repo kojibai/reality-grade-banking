@@ -1,0 +1,111 @@
+export type TwinOwnerContext = Readonly<{
+  schema: 'receiz.owner-twin.context.v1';
+  ownerUid: string;
+  disclosure: 'owner-approved-for-this-request';
+  records: ReadonlyArray<Readonly<{ id: string; title: string; text: string }>>;
+}>;
+export type NativeTwinRequest = (path: string, init?: RequestInit) => Promise<Response>;
+export type NativeTwinAsk = { message: string; requestId: string; quoteExpiresAt: string; threadKey?: string; context?: TwinOwnerContext; signal?: AbortSignal };
+export type NativeTwinSourceReference = { coordinate: string; sourceDigest: string; excerptDigest: string; authority: string };
+export type NativeTwinMemory = { id: string; persistedId?: string; transportId?: string; role: 'user' | 'assistant'; body: string; createdAt: string; scope: 'session' | 'relationship' | 'venture'; channel: 'profile' | 'world' | 'chat' };
+export type NativeTwinReply = {
+  requestId: string;
+  message: string;
+  authority: 'generated-interpretation';
+  source: 'upstream' | 'fallback' | 'local';
+  memoryScope: string;
+  memory: NativeTwinMemory[];
+  sourceReferences: NativeTwinSourceReference[];
+  sharedContext: { id: string; title: string; authority: 'owner-supplied-context' }[];
+  actionHandoffs: { kind: string; label: string; href: string; authority: 'proposal-only'; admitted: false }[];
+};
+export type NativeTwin = ReturnType<typeof createNativeTwin>;
+const record = (value: unknown): Record<string, unknown> | null => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+const bounded = (value: unknown, max: number): value is string => typeof value === 'string' && value.trim().length > 0 && value.length <= max;
+function fail(code: string): never { throw Error(`BANK_TWIN_${code}`); }
+const validUsername = (value: unknown): value is string => typeof value === 'string' && /^[a-z0-9_]{3,24}$/.test(value);
+async function twinJson(response: Response) {
+  if (!response.body) return null;
+  const reader = response.body.getReader(), decoder = new TextDecoder('utf-8', { fatal: true });
+  let size = 0, raw = '';
+  try {
+    for (;;) {
+      const part = await reader.read(); if (part.done) break;
+      size += part.value.byteLength; if (size > 4 * 1024 * 1024) fail('RESPONSE_TOO_LARGE');
+      raw += decoder.decode(part.value, { stream: true });
+    }
+    return record(JSON.parse(raw + decoder.decode()));
+  } catch (cause) {
+    await reader.cancel().catch(() => {});
+    if (cause instanceof Error && cause.message === 'BANK_TWIN_RESPONSE_TOO_LARGE') throw cause;
+    return null;
+  } finally { reader.releaseLock(); }
+}
+
+/** Local prerequisites only. Provider, deployment, entitlement and credits are
+ * checked by Receiz on the explicit metered request, never invented here. */
+export function ownerTwinReadiness(username: string | null | undefined) {
+  return { status: validUsername(username) ? 'configured' as const : 'profile-required' as const, requires: ['receiz:twin.execute', 'business', 'usage-credits'] as const, runtime: 'existing-owner-twin' as const, availability: 'unchecked' as const };
+}
+function ownerContext(value: TwinOwnerContext | undefined, accountUid: string): TwinOwnerContext | undefined {
+  if (value === undefined) return undefined;
+  const input = record(value);
+  if (!input || Object.keys(input).sort().join(',') !== 'disclosure,ownerUid,records,schema' || input.schema !== 'receiz.owner-twin.context.v1' || input.disclosure !== 'owner-approved-for-this-request' || !Array.isArray(input.records) || input.records.length < 1 || input.records.length > 12) fail('CONTEXT_INVALID');
+  if (input.ownerUid !== accountUid) fail('CONTEXT_OWNER_MISMATCH');
+  const ids = new Set<string>(); let total = 0;
+  for (const item of input.records) {
+    const row = record(item);
+    if (!row || Object.keys(row).sort().join(',') !== 'id,text,title' || !bounded(row.id, 160) || !bounded(row.title, 160) || !bounded(row.text, 2400) || ids.has(row.id)) fail('CONTEXT_INVALID');
+    ids.add(row.id); total += row.id.length + row.title.length + row.text.length;
+    if (total > 16000) fail('CONTEXT_INVALID');
+  }
+  return structuredClone(value);
+}
+
+/** Reuses the owner's existing Receiz Twin runtime and metering. It never calls
+ * another AI, reads private Mind, executes proposed actions, or retries a send. */
+export function createNativeTwin(input: { accountUid: string; username: string | null | undefined; request: NativeTwinRequest; assertOpen(): void }) {
+  return Object.freeze({
+    readiness: () => ownerTwinReadiness(input.username),
+    async ask(question: NativeTwinAsk): Promise<NativeTwinReply> {
+      input.assertOpen();
+      if (!input.accountUid || !validUsername(input.username)) fail('PROFILE_REQUIRED');
+      if (!bounded(question.message, 1200) || !bounded(question.requestId, 160) || question.requestId.trim().length < 8 || !Number.isFinite(Date.parse(question.quoteExpiresAt)) || question.threadKey !== undefined && !bounded(question.threadKey, 160)) fail('QUESTION_INVALID');
+      const context = ownerContext(question.context, input.accountUid);
+      const body = { message: question.message, requestId: question.requestId, quoteExpiresAt: question.quoteExpiresAt, ...(question.threadKey === undefined ? {} : { threadKey: question.threadKey }), ...(context ? { ownerContext: context } : {}), allowBrowserVoiceFallback: false };
+      const response = await input.request(`/api/developers/twin/${input.username}/message`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), ...(question.signal ? { signal: question.signal } : {}) });
+      input.assertOpen();
+      const raw = await twinJson(response);
+      if (!response.ok || raw?.ok !== true) throw Error(typeof raw?.error === 'string' ? raw.error : 'BANK_TWIN_REQUEST_FAILED');
+      if (raw.requestId !== question.requestId || record(raw.world)?.username !== input.username) fail('RESPONSE_OWNER_MISMATCH');
+      const reply = record(raw.reply), cognition = record(reply?.cognition), frame = record(cognition?.frame), owner = record(frame?.owner);
+      if (owner && (owner.ownerUserId !== input.accountUid || owner.username !== input.username)) fail('RESPONSE_OWNER_MISMATCH');
+      if (!reply || !bounded(reply.message, 24000) || !['upstream', 'fallback', 'local'].includes(String(reply.source)) || !Array.isArray(reply.actions) || reply.actions.length > 20) fail('RESPONSE_INVALID');
+      if (!Array.isArray(reply.memory) || reply.memory.length > 32) fail('MEMORY_INVALID');
+      const memoryIds = new Set<string>();
+      const memory = reply.memory.map(value => {
+        const row = record(value);
+        if (!row || !bounded(row.id, 256) || memoryIds.has(row.id) || !['user', 'assistant'].includes(String(row.role)) || !bounded(row.body, 24000) || typeof row.createdAt !== 'string' || row.createdAt.length > 40 || !Number.isFinite(Date.parse(row.createdAt)) || !['session', 'relationship', 'venture'].includes(String(row.scope)) || !['profile', 'world', 'chat'].includes(String(row.channel)) || row.persistedId !== undefined && !bounded(row.persistedId, 256) || row.transportId !== undefined && !bounded(row.transportId, 256)) fail('MEMORY_INVALID');
+        memoryIds.add(row.id);
+        return { id: row.id, ...(typeof row.persistedId === 'string' ? { persistedId: row.persistedId } : {}), ...(typeof row.transportId === 'string' ? { transportId: row.transportId } : {}), role: row.role as NativeTwinMemory['role'], body: row.body, createdAt: row.createdAt, scope: row.scope as NativeTwinMemory['scope'], channel: row.channel as NativeTwinMemory['channel'] };
+      });
+      const actionHandoffs = reply.actions.map(value => {
+        const action = record(value); if (!action || !bounded(action.kind, 80) || !bounded(action.label, 240) || !bounded(action.href, 2048)) fail('ACTION_INVALID');
+        let url: URL; try { url = new URL(action.href, 'https://receiz.com'); } catch { fail('ACTION_INVALID'); }
+        if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash || !url.pathname.startsWith('/')) fail('ACTION_INVALID');
+        return { kind: action.kind, label: action.label, href: url.href, authority: 'proposal-only' as const, admitted: false as const };
+      });
+      const sourceReferences: NativeTwinSourceReference[] = [];
+      if (frame) {
+        if (!owner || !Array.isArray(frame.sources) || frame.sources.length > 96 || record(frame.policy)?.consequentialOutput !== 'proposal-only') fail('RESPONSE_INVALID');
+        for (const item of frame.sources) {
+          const source = record(item);
+          if (!source || !bounded(source.coordinate, 4096) || !bounded(source.authority, 80) || typeof source.sourceDigest !== 'string' || !/^[a-f0-9]{64}$/.test(source.sourceDigest) || typeof source.excerptDigest !== 'string' || !/^[a-f0-9]{64}$/.test(source.excerptDigest)) fail('RESPONSE_INVALID');
+          sourceReferences.push({ coordinate: source.coordinate, sourceDigest: source.sourceDigest, excerptDigest: source.excerptDigest, authority: source.authority });
+        }
+      }
+      input.assertOpen();
+      return { requestId: question.requestId, message: reply.message, authority: 'generated-interpretation', source: reply.source as NativeTwinReply['source'], memoryScope: typeof reply.memoryScope === 'string' ? reply.memoryScope : 'none', memory, sourceReferences, sharedContext: context?.records.map(({ id, title }) => ({ id, title, authority: 'owner-supplied-context' as const })) ?? [], actionHandoffs };
+    },
+  });
+}

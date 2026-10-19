@@ -42,3 +42,7 @@ export const BANK_MARKET_TRADE_SCOPES = [...BANK_MARKET_READ_SCOPES,'receiz:twin
 export const BANK_MARKET_CONSENT = 'Allow Bankeiz to read my Market quote and original trade records and submit only the manual trade I explicitly approve. Receiz receives my protected Identity Seal and signed consent for Market read and write access. Every purchase or sale requires separate final approval at the live Market execution price.';
 
 export const BANK_MARKET_READ_CONSENT = 'Allow Bankeiz to read my live Market quote, ownership position and the original result of my saved trade reference. Receiz receives my protected Identity Seal and signed consent for Market and wallet read access. This permission does not authorize a purchase, sale or new execution.';
+
+// Existing Receiz host services; these scopes do not grant financial execution.
+export const BANK_MESSAGING_SCOPES=['receiz:chat.read','receiz:chat.write','receiz:chat.calls','receiz:twin.execute'] as const;
+export const BANK_MESSAGING_CONSENT='Allow Bankeiz to open my existing Receiz conversations, read and send messages, create direct and group conversations, join calls, and talk to my existing owner Twin using this Identity Seal. Messages and selected Twin context are sent to Receiz only when I choose. Camera and microphone require my separate device permission. This does not authorize payments or automatic replies.';

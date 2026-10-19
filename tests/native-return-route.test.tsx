@@ -11,6 +11,7 @@ vi.mock('../src/features/ledger/Ledger', () => ({ Ledger: () => null }));
 // Route/modal tests use a local account fixture. Public discovery has its own
 // tests and must not make localhost requests while exercising navigation.
 vi.mock('../src/receiz/usePublicMarket', () => ({ usePublicMarket: () => ({ catalog: null, status: 'loading', refresh: async () => {} }) }));
+vi.mock('../src/features/messages/MessagesPanel',()=>({MessagesPanel:({active}:{active:boolean})=><section data-messaging-active={String(active)}><input aria-label="Retained message draft" defaultValue=""/></section>}));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 it('resumes the retained bank surface after returning from an in-app receipt',async()=>{
  history.replaceState(null,'','/#market');const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
@@ -76,4 +77,10 @@ it('releases the native modal before focusing and scrolling the public guide des
     // Scroll-lock restoration must finish before the router applies the anchor.
     expect(anchorScroll.mock.invocationCallOrder.at(-1)).toBeGreaterThan(scroll.mock.invocationCallOrder.at(-1)!);
   } finally { act(() => root.unmount()); host.remove(); data.remove(); document.getElementById('public-learn-root')?.remove(); scroll.mockRestore(); anchorScroll.mockRestore(); history.replaceState(null, '', '/'); }
+});
+
+it('retains the opened messaging session and unsent draft through close and browser back',async()=>{
+ history.replaceState(null,'','/#account');const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
+ try{await act(async()=>root.render(<App/>));expect(host.querySelector('[data-messaging-active]')).toBeNull();await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Open your Twin and messages"]')!.click());const input=host.querySelector<HTMLInputElement>('[aria-label="Retained message draft"]')!;expect(input).not.toBeNull();input.value='Keep this unsent question';history.replaceState(null,'','/#account');await act(async()=>dispatchEvent(new PopStateEvent('popstate')));expect(host.querySelector('[data-messaging-active]')?.getAttribute('data-messaging-active')).toBe('false');await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Open your Twin and messages"]')!.click());expect(host.querySelector('[aria-label="Retained message draft"]')).toBe(input);expect(input.value).toBe('Keep this unsent question');}
+ finally{act(()=>root.unmount());host.remove();history.replaceState(null,'','/');}
 });

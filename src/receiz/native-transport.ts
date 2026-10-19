@@ -1,5 +1,6 @@
 import { BANK_APPLICATION_ID, isBankNativeApplicationId, bankNoteRpId } from './config.js';
 import { NATIVE_EXECUTION_POST_PATHS, permittedNativeExecutionRead } from './native-execution-paths.js';
+import { isNativeChatStreamPath, NATIVE_CHAT_STREAM_TIMEOUT_MS, permittedNativeChatPath } from './native-chat-paths.js';
 
 export const NATIVE_PATHS: Readonly<Record<string, string>> = {
   '/api/signer/v4/receiz/enroll': 'POST',
@@ -24,6 +25,8 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
 export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
   if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return false;
+  if (permittedNativeChatPath(url, method)) return true;
+  if (/^\/api\/developers\/twin\/[a-z0-9_]{3,24}\/message$/.test(url.pathname)) return method.toUpperCase()==='POST'&&!url.search;
   if (url.pathname === '/api/connect/market/shares/trade') return method.toUpperCase()==='POST'?!url.search:method.toUpperCase()==='GET'&&[...url.searchParams.keys()].length===1&&url.searchParams.getAll('clientNonce').length===1&&/^[A-Za-z0-9._:-]{8,120}$/.test(url.searchParams.get('clientNonce')??'');
   if (url.pathname === '/api/connect/market/shares/quote') {
     const side=url.searchParams.get('side'),amount=side==='buy'?'amountUsd':'shareQuantity',id=url.searchParams.get('marketItemId');
@@ -53,9 +56,13 @@ export function permittedNativePath(path: string, method: string): boolean {
   if (!url.search) return url.pathname !== '/api/connect/payments/session';
   return url.pathname === '/api/connect/payments/session' && [...url.searchParams.keys()].length === 1 && /^cs_[a-zA-Z0-9_]{8,200}$/.test(url.searchParams.get('sessionId') ?? '');
 }
+export function nativeRequestTimeout(input: RequestInfo | URL): number {
+  const url = new URL(input instanceof Request ? input.url : String(input), 'https://receiz.com');
+  return isNativeChatStreamPath(url.pathname) ? NATIVE_CHAT_STREAM_TIMEOUT_MS : 60_000;
+}
 export const nativeFetch: typeof fetch = (input, init) => {
   const url = new URL(input instanceof Request ? input.url : String(input), 'https://receiz.com');
   const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
   if (!permittedNativePath(url.href, method)) throw new Error('Unsupported Receiz bank transport.');
-  return fetch(`/api/bank/native${url.pathname}${url.search}`, { ...init, credentials: 'omit', redirect: 'error', signal: init?.signal ?? AbortSignal.timeout(60_000) });
+  return fetch(`/api/bank/native${url.pathname}${url.search}`, { ...init, credentials: 'omit', redirect: 'error', signal: init?.signal ?? AbortSignal.timeout(nativeRequestTimeout(input)) });
 };

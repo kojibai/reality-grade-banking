@@ -1,11 +1,11 @@
 import {beforeEach,expect,it,vi} from 'vitest';
-import {BANK_APPLICATION_ID,BANK_READ_SCOPES} from '../src/receiz/config';
+import {BANK_APPLICATION_ID,BANK_READ_SCOPES,BANK_MESSAGING_SCOPES} from '../src/receiz/config';
 import {openCanonicalIdentity,importNativeIdentity} from '../src/receiz/native-identity';
 import type {WalletObservation} from '../src/receiz/wallet-observation';
 // Integration sequencing only. The independent Chrome test opens real v129
 // native originals with the actual verifier and encrypted IndexedDB store.
-const p=vi.hoisted(()=>({known:null as WalletObservation|null,projection:null as unknown,device:vi.fn(),restore:vi.fn(),retain:vi.fn(),original:vi.fn(),proof:vi.fn(),continueId:vi.fn(),wallet:vi.fn(),save:vi.fn(),request:vi.fn(),library:vi.fn()}));
-vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>p.known,saveWalletObservation:p.save,saveDeviceIdentity:p.device}));
+const p=vi.hoisted(()=>({messagingConsent:null as unknown,saveMessaging:vi.fn(),scopes:[] as string[],known:null as WalletObservation|null,projection:null as unknown,device:vi.fn(),restore:vi.fn(),retain:vi.fn(),original:vi.fn(),proof:vi.fn(),continueId:vi.fn(),wallet:vi.fn(),save:vi.fn(),request:vi.fn(),library:vi.fn(),heldFetch:undefined as typeof fetch|undefined}));
+vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>p.known,saveWalletObservation:p.save,saveDeviceIdentity:p.device,loadMessagingConsent:async()=>p.messagingConsent,saveMessagingConsent:p.saveMessaging}));
 vi.mock('../src/receiz/account-ledger',async original=>({...await original<typeof import('../src/receiz/account-ledger')>(),createLocalAccountLedger:()=>({restore:p.restore,retain:p.retain,original:p.original})}));
 vi.mock('../src/receiz/proof-library',()=>({createProofLibrary:p.library}));
 vi.mock('../src/receiz/account-proof',async original=>({...await original<typeof import('../src/receiz/account-proof')>(),readAccountProof:p.proof}));
@@ -14,15 +14,23 @@ vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({
  readReceizIdentityPublicBinding:async()=>({keyId:'fixture-key',artifactSha256:'a'.repeat(64),artifactOwnerReceizId:'owner.receiz.id'}),
  readReceizIdentityArtifact:async()=>({owner:{uid:'owner',username:'owner'},issuedAt:'2026-10-13T00:00:00Z',keyId:'fixture-key',crypto:{}}),projectReceizIdentityAccount:async()=>p.projection??({authority:'identity-only'}),
  receizKaiNow:()=>({pulse:100,uPulse:'100000000'}),sha256ReceizBytes:async()=> 'a'.repeat(64),createReceizProofAuthorityChallenge:()=>({challenge:{},challengeB64Url:'fixture'}),
- createReceizClient:({accessToken,applicationId=BANK_APPLICATION_ID}:{accessToken?:string;applicationId?:string}={})=>accessToken?{auth:{grantedScopes:async()=>[...BANK_READ_SCOPES]},connect:{wallet:p.wallet},request:p.request}:{identity:{continueReceizId:p.continueId,signLoginProof:async()=>({}),exchangeProofAuthority:async()=>({applicationId,keyId:'fixture-key',artifactDigest:'a'.repeat(64),grantedScopes:[...BANK_READ_SCOPES],accessToken:'fixture-only',expiresAtKai:200})}},
+ createReceizClient:({accessToken,applicationId=BANK_APPLICATION_ID,fetchImpl}:{accessToken?:string;applicationId?:string;fetchImpl?:typeof fetch}={})=>{p.heldFetch=fetchImpl;return accessToken?{auth:{grantedScopes:async()=>p.scopes},connect:{wallet:p.wallet},request:p.request}:{identity:{continueReceizId:p.continueId,signLoginProof:async()=>({}),exchangeProofAuthority:async()=>({applicationId,keyId:'fixture-key',artifactDigest:'a'.repeat(64),grantedScopes:p.scopes,accessToken:'fixture-only',expiresAtKai:200})}};},
 })}));
 const observation=(reserve='600',kai='100000002'):WalletObservation=>({observedAt:'2026-10-18T12:00:00Z',wallet:{userId:'bound-user',totalUsdCents:reserve,reserveUsdCents:reserve,settlementUsdCents:'0',balancePhiMicro:'3000000',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:'100',kaiUpulse:kai}});
 const proof={sourceDigest:'b'.repeat(64),statement:{schema:'bankeiz.public-account-statement.v2'}};
 const carriedProjection=()=> ({authority:'verified-identity-portable-state',portableStateVerified:true,completeAtSealedHead:true,owner:{uid:'owner'},verifiedState:{account:{userId:'owner'},exportedAt:'2026-10-18T12:00:00Z',accountStateHead:{kaiUpulse:'10000000'},wallet:{routeSummary:{userId:'owner',balanceUsd:'50.92',balancePhiMicro:'3000000',quote:{usdPerPhiMicrocents:'4092328496'},valueStates:{settledBalanceUsdCents:'1000',ecosystemBalanceUsdCents:'4092'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'3000000'}},ledgerEntries:[{id:'funded',user_id:'owner',direction:'credit',entry_kind:'admin_adjustment',amount_phi_micro:'2000000',amount_usd_cents:'1000',kai_upulse:'2000000',metadata:{}},{id:'received',user_id:'owner',direction:'credit',entry_kind:'chat_transfer',amount_phi_micro:'1000000',amount_usd_cents:'5024',kai_upulse:'3000000',metadata:{rail:'settlement'}}]},ledger:{entries:[{actorUserId:'owner',subjectUserId:null,kaiUpulse:'1000000'}]}}});
 beforeEach(()=>{
- p.known=null;p.projection=null;p.device.mockReset().mockResolvedValue(undefined);p.restore.mockReset().mockResolvedValue(null);p.retain.mockReset().mockResolvedValue({proof,observation:observation()});p.proof.mockReset().mockImplementation(async({request})=>{await request('/account-source');return proof;});
+ p.messagingConsent=null;p.saveMessaging.mockReset().mockResolvedValue(undefined);p.scopes=[...BANK_READ_SCOPES];p.known=null;p.projection=null;p.device.mockReset().mockResolvedValue(undefined);p.restore.mockReset().mockResolvedValue(null);p.retain.mockReset().mockResolvedValue({proof,observation:observation()});p.proof.mockReset().mockImplementation(async({request})=>{await request('/account-source');return proof;});
  p.original.mockReset().mockResolvedValue(null);p.library.mockReset().mockImplementation(options=>options);
  p.continueId.mockReset().mockResolvedValue({ok:true,session:{uid:'bound-user'}});p.wallet.mockReset().mockResolvedValue({ok:true,wallet:{userId:'bound-user',balanceUsd:'8.00',balancePhiMicro:'4000000',valueStates:{settledBalanceUsdCents:'800',ecosystemBalanceUsdCents:'0'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'100000003'}}});p.save.mockReset().mockResolvedValue(undefined);p.request.mockReset().mockResolvedValue({});
+});
+it('keeps the stream deadline and caller cancellation inside the identity lifetime',async()=>{
+ const upstream=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response('{}')),deadlines=vi.spyOn(AbortSignal,'timeout');
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true),caller=new AbortController();
+ try{
+  await p.heldFetch!('https://receiz.com/api/chat/conversations/12345678-1234-4123-8123-123456789abc/messages/stream',{method:'POST',body:'{}',signal:caller.signal});
+  const signal=upstream.mock.calls[0][1]!.signal!;expect(signal.aborted).toBe(false);caller.abort();expect(signal.aborted).toBe(true);expect(deadlines).toHaveBeenLastCalledWith(110_000);
+ }finally{identity.dispose();upstream.mockRestore();deadlines.mockRestore();}
 });
 it('restores imported verified account history through the existing local ledger without another host read',async()=>{
  p.known=observation('1000','100000001');const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
@@ -302,4 +310,27 @@ it('opens legacy composite chart operands before requesting an unrelated public 
  p.request.mockImplementation(async path=>path.startsWith('/api/connect/wallet/me?history=1')?{ok:true,wallet:{userId:'bound-user',balanceUsd:(Number(point.totalUsdCents)/100).toFixed(2),balancePhiMicro:point.balancePhiMicro,valueStates:{settledBalanceUsdCents:point.reserveUsdCents,ecosystemBalanceUsdCents:point.settlementUsdCents},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:null},chartSource:source}}:{});
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
  try{const first=await identity.prepareAccountView();expect(first.historyBasis?.kind).toBe('portfolio-model-v129');expect(first.history?.[0].kaiUPulse).toBe('1000000');expect(first.history!.length).toBeGreaterThan(90);expect(p.proof).not.toHaveBeenCalled();expect(p.save.mock.calls.at(-1)?.[9]).toMatchObject(source);}finally{identity.dispose();}
+});
+
+it('requires exact messaging approval before expanding the account grant and keeps its bearer private',async()=>{
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);const upstream=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response(JSON.stringify({ok:true,conversations:[]})));
+ try{await expect(identity.messaging!()).rejects.toThrow('MESSAGING_CONSENT_REQUIRED');expect(p.continueId).not.toHaveBeenCalled();p.scopes=[...BANK_MESSAGING_SCOPES];const api=await identity.messaging!(true);expect(api.accountUid).toBe('bound-user');expect('accessToken' in api).toBe(false);await api.conversations();expect(new Headers(upstream.mock.calls[0][1]?.headers).get('authorization')).toBe('Bearer fixture-only');expect(p.saveMessaging).toHaveBeenCalledTimes(1);await expect(api.callTransport.heldFetch('/api/connect/wallet/me')).rejects.toThrow('MESSAGING_PATH_DENIED');identity.dispose();await expect(api.conversations()).rejects.toThrow();}
+ finally{identity.dispose();upstream.mockRestore();}
+});
+it('binds retained messaging approval to the exact identity, registration, scopes and statement',async()=>{
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);p.scopes=[...BANK_MESSAGING_SCOPES];await identity.messaging!(true);p.messagingConsent=p.saveMessaging.mock.calls[0][1];identity.dispose();
+ const reopened=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);try{await expect(reopened.messaging!()).resolves.toHaveProperty('accountUid','bound-user');}finally{reopened.dispose();}
+ p.messagingConsent={...p.messagingConsent as object,keyId:'another-key'};const foreign=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);try{await expect(foreign.messaging!()).rejects.toThrow('MESSAGING_CONSENT_REQUIRED');}finally{foreign.dispose();}
+});
+it('leaves only an already attempted call membership after identity disposal without reviving general access',async()=>{
+ p.scopes=[...BANK_MESSAGING_SCOPES];const upstream=vi.spyOn(globalThis,'fetch').mockImplementation(async()=>new Response('{"ok":true}'));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const api=await identity.messaging!(true),path='/api/chat/conversations/11111111-1111-4111-8111-111111111111/calls/33333333-3333-4333-8333-333333333333/participants';await api.callTransport.heldFetch(path,{method:'POST',body:JSON.stringify({action:'join'})});identity.dispose();await vi.waitFor(()=>expect(upstream.mock.calls.some(call=>call[1]?.method==='DELETE')).toBe(true));const cleanup=upstream.mock.calls.find(call=>call[1]?.method==='DELETE')!;expect(cleanup[0]).toBe('/api/bank/native'+path);expect(cleanup[1]?.signal?.aborted).toBe(false);expect(new Headers(cleanup[1]?.headers).get('authorization')).toBe('Bearer fixture-only');await expect(api.callTransport.heldFetch(path.replace('33333333','44444444'),{method:'DELETE',signal:null})).rejects.toThrow('MESSAGING_IDENTITY_CLOSED');await expect(api.callTransport.heldFetch(path,{method:'POST',body:'{"action":"join"}'})).rejects.toThrow('MESSAGING_IDENTITY_CLOSED');await expect(api.callTransport.heldFetch(path,{method:'DELETE',signal:null})).resolves.toHaveProperty('status',200);}
+ finally{identity.dispose();upstream.mockRestore();}
+});
+it('orders departure before another controller joins and refuses superseded controller cleanup',async()=>{
+ p.scopes=[...BANK_MESSAGING_SCOPES];let release!:(response:Response)=>void;let deletes=0;const upstream=vi.spyOn(globalThis,'fetch').mockImplementation(async(_path,init)=>{if(init?.method==='DELETE'&&++deletes===1)return new Promise<Response>(resolve=>{release=resolve;});return new Response('{"ok":true}');});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const api=await identity.messaging!(true),first=api.callTransport.forController!(),second=api.callTransport.forController!(),path='/api/chat/conversations/11111111-1111-4111-8111-111111111111/calls/33333333-3333-4333-8333-333333333333/participants';const join={method:'POST',body:'{"action":"join"}'};await first.heldFetch(path,join);const leaving=first.heldFetch(path,{method:'DELETE',signal:null});await vi.waitFor(()=>expect(release).toBeTypeOf('function'));const joining=second.heldFetch(path,join);await new Promise(resolve=>setTimeout(resolve,0));expect(upstream).toHaveBeenCalledTimes(2);release(new Response('{"ok":true}'));await leaving;await joining;expect(upstream).toHaveBeenCalledTimes(3);await expect(first.heldFetch(path,{method:'DELETE',signal:null})).rejects.toThrow('CALL_MEMBERSHIP_SUPERSEDED');expect(upstream).toHaveBeenCalledTimes(3);}
+ finally{identity.dispose();upstream.mockRestore();}
 });

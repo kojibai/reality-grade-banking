@@ -138,3 +138,11 @@ incremental SSE through both proxies, ambiguous-send recovery, groups/AI,
 join/leave/targeted signals, provider/permission failures and no Supabase runtime.
 Use Receiz's existing chat summary/call quality/topology/source/identity tests.
 No SDK-version gap has been established; scoped host exposure is the next step.
+
+## Implementation update — approved messaging connection
+
+The original investigation above is retained as the audit snapshot. Local implementation now carries existing chat endpoints through one bounded streaming native relay, adds host-only scoped bearer authorization to those same Receiz routes, and composes existing mesh/SFU calls and the owner Twin JSON route. The SDK/MCP/AI Skills versions and frozen SDK scope catalog remain129.0.0.
+
+The personal owner Twin route is `/api/developers/twin/:username/message`, not the generic conversation-agent stream. It enforces existing Business entitlement, usage credits, owner binding and request-id idempotency. Its bounded prior API-lane memory is returned after an ask. It does not read all private Mind/Wallet data. Optional explicitly selected Bank excerpts use the existing engine as owner-supplied context and are not promoted to canonical proof evidence. Questions and generated replies can remain under the existing Twin memory policy.
+
+After the Receiz host commit is deployed, Bank's application owner must preserve the registration's current `allowedScopes` and add `receiz:chat.read`, `receiz:chat.write`, `receiz:chat.calls`, and the existing `receiz:twin.execute` capability if absent. Use the owner-authenticated existing GET/PATCH `/api/oidc/clients/rc_2d1wcGkAYfmCi5kGT3J89gkl`. Registration does not grant any user's account: each device still signs the exact messaging consent through the existing v129 proof-authority exchange. No deployment, registration mutation, real message, call, provider request or live entitlement qualification follows from local fixture tests.

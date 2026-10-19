@@ -1,3 +1,6 @@
+import {BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT} from './config';
+import {loadMessagingConsent,saveMessagingConsent} from './identity-vault';
+import {permittedNativeChatPath} from './native-chat-paths';
 import {loadReceivedProofState,saveReceivedProofState} from './identity-vault';
 import {loadMarketTradeState,saveMarketTradeState} from './identity-vault';
 import {BANK_MARKET_READ_SCOPES,BANK_MARKET_TRADE_SCOPES,BANK_MARKET_CONSENT,BANK_MARKET_READ_CONSENT} from './config';
@@ -10,7 +13,7 @@ import type { ReceizClient, ReceizIdentityPublicBinding, ReceizKeyFile, ReceizId
 import { loadReceiz } from './client';
 import { BANK_APPLICATION_ID, BANK_PREVIOUS_NATIVE_APPLICATION_ID, isBankNativeApplicationId, BANK_CARD_APPLICATION_IDS, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES, BANK_NATIVE_CONSENT, BANK_NATIVE_SCOPES, BANK_RECOVERY_SCOPES, BANK_RECOVERY_CONSENT } from './config';
 import { parseCardCheckout, parseCardDepositStatus, parseDepositDollars, readCardOperation, type CardCheckout, type CardDepositStatus } from './card-deposit';
-import { nativeFetch } from './native-transport';
+import { nativeFetch, nativeRequestTimeout } from './native-transport';
 import { loadDeviceIdentity, saveDeviceIdentity, saveProtectedIdentityTransport, loadAccountLedgerState, saveAccountLedgerState, loadWalletObservation, saveWalletObservation, loadDepositSources, saveDepositSource, loadCardOperation, loadCardOperations, saveCardOperation, loadBankSessionIntent, saveBankSessionIntent, loadProofArchive, loadExportableRecoveries, retainProofBatch } from './identity-vault';
 import { projectHeldDeposit, validateAssetIntake, type AssetIntake, type HeldDeposit } from './deposit-source';
 import { protectIdentityKeyFile, unprotectIdentityKeyFile } from './identity-protection';
@@ -57,6 +60,7 @@ export interface OpenIdentity {
   accountProofSharing?: () => Promise<import('./account-proof-sharing').AccountProofSharing>;
   proofLibrary?: () => Promise<import('./proof-library').ProofLibrary>;
   executionRecovery?: () => BankExecutionRecovery;
+  messaging?: (approved?:boolean) => Promise<import('./native-messaging').NativeMessaging>;
   offlineNotes?: () => Promise<BankOfflineNotes>;
   cancelUnsentNotes?: () => Promise<void>;
   binding: ReceizIdentityPublicBinding; needsPhrase: boolean; knownWallet: () => import('./wallet-observation').WalletObservation | null;
@@ -144,7 +148,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const restoringLedger = restoreLedger();
   if (!knownWallet) await restoringLedger;
 
-  const heldFetch: typeof fetch = (input, init) => nativeFetch(input, { ...init, signal: AbortSignal.any([lifetime.signal, AbortSignal.timeout(60_000)]) });
+  const heldFetch: typeof fetch = (input, init) => nativeFetch(input, { ...init, signal: AbortSignal.any([lifetime.signal, ...(init?.signal ? [init.signal] : []), AbortSignal.timeout(nativeRequestTimeout(input))]) });
   const unsigned = sdk.createReceizClient({ applicationId: BANK_APPLICATION_ID, baseUrl: 'https://receiz.com', fetchImpl: heldFetch });
   let sealingResources: { wasm: Uint8Array; zkey: Uint8Array } | undefined;
   async function ownedSealer() {
@@ -183,6 +187,17 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     try { await attempt; } finally { if (transportOpening === attempt) transportOpening = undefined; }
   }
   let client: ReceizClient | null = null, clientApplicationId: string | null = null, expiresAtKai = 0, grantedScopes: readonly string[] = [];
+  let callCleanupUntil=Infinity;
+  const callMembershipAttempts=new Map<string,string|undefined>(),callMembershipQueue=new Map<string,Promise<unknown>>();
+  function orderCallMembership<T>(path:string,operation:()=>Promise<T>):Promise<T>{
+    const previous=callMembershipQueue.get(path)??Promise.resolve();
+    const next=previous.catch(()=>{}).then(operation);callMembershipQueue.set(path,next);
+    void next.finally(()=>{if(callMembershipQueue.get(path)===next)callMembershipQueue.delete(path);}).catch(()=>{});return next;
+  }
+  const callMembershipCleanup=new Map<string,()=>Promise<Response>>();
+  const clientCallCleanup=new WeakMap<ReceizClient,(path:string)=>Promise<Response>>();
+  const callMembershipPath=/^\/api\/chat\/conversations\/[a-f0-9-]{36}\/calls\/[a-f0-9-]{36}\/participants$/i;
+  const clientFetches = new WeakMap<ReceizClient,(path:string,init?:RequestInit)=>Promise<Response>>();
   const clientAccounts = new WeakMap<ReceizClient, { applicationId: string; accountUid: string }>();
   type WalletReadRequest = { prefetched?: { client: ReceizClient; applicationId: string; accountUid: string; response: Promise<unknown> } };
   let presentationUsername = keyFile.owner.username;
@@ -236,6 +251,14 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.');
       client = protectedClient; clientApplicationId = applicationId; grantedScopes = granted; expiresAtKai = grant.expiresAtKai; accountUid = session.uid;
       clientAccounts.set(protectedClient, { applicationId, accountUid: session.uid });
+      clientCallCleanup.set(protectedClient,path=>{
+        if(!callMembershipPath.test(path)||Date.now()>callCleanupUntil)throw Error('MESSAGING_CLEANUP_CLOSED');
+        return nativeFetch(`https://receiz.com${path}`,{method:'DELETE',headers:{authorization:`Bearer ${grant.accessToken}`},signal:AbortSignal.timeout(20_000),keepalive:true});
+      });
+      clientFetches.set(protectedClient,(path,init)=>{
+        const headers=new Headers(init?.headers);headers.set('authorization',`Bearer ${grant.accessToken}`);
+        return heldFetch(`https://receiz.com${path}`,{...init,headers});
+      });
       if (walletRead && walletResponse) walletRead.prefetched = { client: protectedClient, applicationId, accountUid: session.uid, response: walletResponse };
       // The confirmed account's profile name is display metadata, never proof ownership.
       const username=publicAccountUsername(session.username);if(username)presentationUsername=confirmedUsername=username;
@@ -265,6 +288,58 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       return connected;
     }
     finally { if (connectionOpening === attempt) connectionOpening = null; }
+  }
+  let messagingPromise:Promise<import('./native-messaging').NativeMessaging>|undefined;
+  let messagingApproved=false;
+  async function messaging(approved=false){
+    if(lifetime.signal.aborted)throw Error('MESSAGING_IDENTITY_CLOSED');
+    if(messagingPromise)return messagingPromise;
+    const attempt=(async()=>{
+      const previous=await loadMessagingConsent(binding).catch(()=>null);
+      const exact={schema:'bankeiz.messaging-consent.v1',applicationId:BANK_APPLICATION_ID,keyId:binding.keyId,artifactDigest:binding.artifactSha256,scopes:[...BANK_MESSAGING_SCOPES],statement:BANK_MESSAGING_CONSENT};
+      if(approved)messagingApproved=true;
+      if(!messagingApproved&&JSON.stringify(previous)!==JSON.stringify(exact))throw Error('MESSAGING_CONSENT_REQUIRED');
+      const current=await connectClient(BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT);
+      const bound=clientAccounts.get(current);
+      if(!bound||bound.applicationId!==BANK_APPLICATION_ID)throw Error('MESSAGING_IDENTITY_CHANGED');
+      const uid=bound.accountUid;
+      let messagingClient=current,messagingExpires=expiresAtKai;
+      const assertOpen=()=>{if(lifetime.signal.aborted)throw Error('MESSAGING_IDENTITY_CLOSED');};
+      const request=async(path:string,init?:RequestInit,controllerId?:string)=>{
+        const perform=async()=>{
+        const verb=(init?.method??'GET').toUpperCase();
+        // A closed identity can only finish leaving a membership whose exact
+        // join was already attempted under its admitted grant. Never refresh
+        // credentials or accept a new selector after closure.
+        if(verb==='DELETE'&&callMembershipCleanup.has(path)&&callMembershipAttempts.get(path)!==controllerId)throw Error('CALL_MEMBERSHIP_SUPERSEDED');
+        if(lifetime.signal.aborted&&verb==='DELETE'&&init?.signal===null&&callMembershipCleanup.has(path)&&Date.now()<=callCleanupUntil)return callMembershipCleanup.get(path)!();
+        assertOpen();const url=new URL(path,'https://receiz.com');
+        const search=url.pathname==='/api/chat/users/search'&&verb==='GET'&&[...url.searchParams.keys()].join(',')==='q'&&/^[a-z0-9_]{3,24}$/.test(url.searchParams.get('q')??'');
+        const twin=url.pathname===`/api/developers/twin/${presentationUsername}/message`&&verb==='POST'&&!url.search;
+        if(!path.startsWith('/api/')||url.origin!=='https://receiz.com'||url.hash||!permittedNativeChatPath(url,verb)&&!search&&!twin)throw Error('MESSAGING_PATH_DENIED');
+        const connected=sdk.receizKaiNow().pulse<messagingExpires?messagingClient:await connectClient(BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT),owner=clientAccounts.get(connected);
+        if(connected!==messagingClient){messagingClient=connected;messagingExpires=expiresAtKai;}
+        assertOpen();if(owner?.accountUid!==uid||owner.applicationId!==BANK_APPLICATION_ID)throw Error('MESSAGING_IDENTITY_CHANGED');
+        const send=clientFetches.get(connected);if(!send)throw Error('MESSAGING_TRANSPORT_UNAVAILABLE');
+        if(verb==='POST'&&callMembershipPath.test(path)&&typeof init?.body==='string'){
+          let joining=false;try{joining=JSON.parse(init.body)?.action==='join';}catch{/* Existing host validates malformed input. */}
+          const cleanup=clientCallCleanup.get(connected);if(joining&&cleanup){callMembershipAttempts.set(path,controllerId);callMembershipCleanup.set(path,()=>cleanup(path));}
+        }
+        return send(path,init);
+        };
+        return callMembershipPath.test(path)&&['POST','DELETE'].includes((init?.method??'GET').toUpperCase())?orderCallMembership(path,perform):perform();
+      };
+      const [{createNativeMessaging},{createNativeTwin}]=await Promise.all([import('./native-messaging'),import('./native-twin')]);assertOpen();
+      // Profile display coordinates come from continuation; Receiz independently
+      // enforces that this handle belongs to the bearer subject on every ask.
+      const twin=createNativeTwin({accountUid:uid,username:presentationUsername??'',request,assertOpen});
+      const callTransport={heldFetch:request,forController:()=>{const controllerId=crypto.randomUUID();return{heldFetch:(path:string,init?:RequestInit)=>request(path,init,controllerId)};}};
+      const api=Object.assign(createNativeMessaging({request,accountUid:uid,callTransport}),{twin});
+      if(approved)await saveMessagingConsent(binding,exact,previous).catch(()=>{});
+      assertOpen();return api;
+    })();
+    messagingPromise=attempt;
+    try{return await attempt;}catch(cause){if(messagingPromise===attempt)messagingPromise=undefined;throw cause;}
   }
   const prepareReceivingUsername=createReceivingUsernamePreparation({signal:lifetime.signal,confirmed:()=>confirmedUsername,
     connect:async()=>{const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT),bound=clientAccounts.get(current);if(!bound||bound.applicationId!==BANK_APPLICATION_ID)throw Error('RECEIVING_USERNAME_IDENTITY_CHANGED');return bound.accountUid;},
@@ -1052,7 +1127,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     // reads. A delayed import save cannot overwrite a newer account frame.
     if (knownWallet) void persistWalletObservation(knownWallet).catch(() => {});
   }
-  return { prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { messaging, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

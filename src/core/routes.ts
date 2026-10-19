@@ -18,7 +18,7 @@ export function parseRoute(hash: string): ConsoleRoute {
     if (kind === 'trade' && id && ['buy', 'sell'].includes(mode)) return { panel, sheet: { kind: 'trade', assetId: id, mode: mode as 'buy' | 'sell' } };
     if (kind === 'pending' && id) return { panel, sheet: { kind: 'pending', depositId: id } };
     if (kind === 'send') return { panel, sheet: { kind: 'send', assetId: id } };
-    if (['deposit', 'receive', 'balance', 'growth', 'profile', 'currency', 'exchange', 'rules'].includes(kind)) return { panel, sheet: { kind: kind as 'deposit' | 'receive' | 'balance' | 'growth' | 'profile' | 'currency' | 'exchange' | 'rules' } };
+    if (['deposit', 'receive', 'balance', 'growth', 'profile', 'currency', 'exchange', 'rules', 'messages'].includes(kind)) return { panel, sheet: { kind: kind as 'deposit' | 'receive' | 'balance' | 'growth' | 'profile' | 'currency' | 'exchange' | 'rules' | 'messages' } };
     return { panel, sheet: null };
   } catch { return { panel: 'account', sheet: null }; }
 }

@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Readable } from 'node:stream';
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
-import { nativeAccountMiddleware } from './native-account.js';
+import { relayNativeAccount } from './native-account.js';
 import { publicMarketMiddleware } from './public-market.js';
 import { publicNetworkMiddleware } from './public-network.js';
 import {publicLedgerProofMiddleware} from './public-ledger-proof.js';
@@ -11,6 +11,7 @@ import { accountProofPublicMiddleware } from './account-proof-public.js';
 // adapter changes HTTP interfaces only; it never parses or reseals a proof.
 export async function handleBankApi(request: Request): Promise<Response> {
   const url = new URL(request.url);
+  if (url.pathname.startsWith('/api/bank/native')) return relayNativeAccount(request);
   const stream = request.body ? Readable.fromWeb(request.body as unknown as NodeReadableStream<Uint8Array>) : Readable.from([]);
   const req = Object.assign(stream, { url: `${url.pathname}${url.search}`, method: request.method, headers: { ...Object.fromEntries(request.headers), host: url.host } }) as IncomingMessage;
   const headers = new Headers({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
@@ -21,7 +22,7 @@ export async function handleBankApi(request: Request): Promise<Response> {
     end(bytes?: string | Uint8Array) { output = typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes ?? new Uint8Array(); ended = true; },
   } as unknown as ServerResponse;
   try {
-    for (const middleware of [nativeAccountMiddleware, publicLedgerProofMiddleware, accountProofPublicMiddleware, publicMarketMiddleware, publicNetworkMiddleware]) {
+    for (const middleware of [publicLedgerProofMiddleware, accountProofPublicMiddleware, publicMarketMiddleware, publicNetworkMiddleware]) {
       let next = false;
       await middleware(req, response, () => { next = true; });
       if (ended) {
