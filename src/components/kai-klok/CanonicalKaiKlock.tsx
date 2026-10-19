@@ -1,4 +1,4 @@
-// KaiKlock.tsx — 120-px “Atlantean Lumitech” dial (100% responsive & mobile-safe)
+// Bankeiz eternal Kai dial, adapted from the canonical Kai Klok face.
 import React, { useMemo } from "react";
 import "./CanonicalKaiKlock.css";
 const pulseNumber = new Intl.NumberFormat('en-US');
@@ -9,11 +9,9 @@ export const BANK_KAI_SURFACE_COLORS = {
   rim: '#73949c', coordinate: '#a3c7c0', readout: '#94bcb5',
   eternalReadout: '#afcbc6', eternalStroke: '#9cb9bc',
   eternalFill: '#8fb0b5', eternalDigit: '#d5e5e2',
-  solarDigit: '#c9a181',
 } as const;
 
-// If you have BREATH_SEC elsewhere, it's no longer used to derive day pulses here.
-// We pin to canonical continuous day pulses so Eternal/Solar math stays in perfect lock.
+// Native continuous day length; the controlled projection supplies exact integer state.
 export const HARMONIC_DAY_PULSES = 17491.270421 as const;
 
 /* ─── Arc model (IDs never change) ───────────────────────────── */
@@ -24,16 +22,6 @@ export type ArcName =
   | "Reflektion Ark"
   | "Purifikation Ark"
   | "Dream Ark";
-
-/* HEX neons for hardware/orb/needle */
-const ARC_COLORS: Record<ArcName, string> = {
-  "Ignition Ark":      "#ff1559",
-  "Integration Ark":   "#ff6d00",
-  "Harmonization Ark": "#ffd900",
-  "Reflektion Ark":    "#00ff66",
-  "Purifikation Ark":  "#05e6ff",
-  "Dream Ark":         "#c300ff",
-};
 
 /* UI-friendly captions */
 const ARC_SHORT: Record<ArcName, string> = {
@@ -69,36 +57,7 @@ const ETERNAL_PULSES_PER_STEP = ETERNAL_PULSES_PER_BEAT / ETERNAL_STEPS_PER_BEAT
 /* ─── Helpers ───────────────────────────────────────────────── */
 const rad  = (deg: number) => (deg * Math.PI) / 180;
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, "-");
-function lerpColor(a: string, b: string, t: number): string {
-  const ah = parseInt(a.slice(1),16), bh = parseInt(b.slice(1),16);
-  const ar = ah>>16, ag=(ah>>8)&0xff, ab=ah&0xff;
-  const br = bh>>16, bg=(bh>>8)&0xff, bb=bh&0xff;
-  const rr = Math.round(ar + (br-ar)*t),
-        rg = Math.round(ag + (bg-ag)*t),
-        rb = Math.round(ab + (bb-ab)*t);
-  return `rgb(${rr},${rg},${rb})`;
-}
-/** Source solar-hand interpolation, shared with its visible legend marker. */
-export function kaiNeedleProjection(needleDeg: number, phaseColors?: readonly string[]) {
-  const arcSpan = 360 / ARCS.length;
-  const arcIndex = Math.floor(needleDeg / arcSpan) % ARCS.length;
-  const nextArcIndex = (arcIndex + 1) % ARCS.length;
-  const localDeg = (needleDeg - arcIndex * arcSpan + 360) % 360;
-  const arcFraction = Math.min(1, localDeg / arcSpan);
-  const startColor = phaseColors?.[arcIndex] ?? ARC_COLORS[ARCS[arcIndex]];
-  const endColor = phaseColors?.[nextArcIndex] ?? ARC_COLORS[ARCS[nextArcIndex]];
-  return { arcIndex, startColor, needleColor: lerpColor(startColor, endColor, arcFraction) };
-}
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
-const parseStepFromString = (s?: string): number | undefined => {
-  if (!s) return undefined;
-  const m = s.match(/(\d{2})$/);
-  if (!m) return undefined;
-  const n = parseInt(m[1], 10);
-  if (!Number.isFinite(n)) return undefined;
-  return clamp(n, 0, 43);
-};
-
 /* ─── Props ─────────────────────────────────────────────────── */
 export interface KaiKlockProps {
   /** Controlled native KKS projection. SVG geometry below remains upstream. */
@@ -107,16 +66,12 @@ export interface KaiKlockProps {
     eternalBeatFraction: number;
     eternalStepFraction: number;
     monthIndex: number;
-    solarBeatIndex: number;
-    solarStepFraction: number;
     phaseColors: readonly string[];
     beatColors: readonly string[];
-    solarAnchorIso: string;
     gridMicro: string;
     coordinate: string;
   };
   hue: string;
-  pulse: number;                         // local solar-aligned pulses today (for solar needle/day ring)
   harmonicDayPercent: number;            // day progress 0–100 (for rim progress)
   microCyclePercent: number;             // micro percent (for orb delay)
   dayLabel: string;
@@ -124,18 +79,9 @@ export interface KaiKlockProps {
   monthDay: number;
   kaiPulseEternal: number;               // global eternal pulses (for Eternal hand)
   glowPulse?: boolean;
-  rotationOverride?: number;             // solar needle override (center-of-beat)
   /** Animation rhythm in SECONDS (defaults to φ-exact breath) */
   pulseIntervalSec?: number;
   rimFlash?: boolean;
-
-  solarSpiralStepString?: string;
-  solarSpiralStep?: {
-    percentIntoStep: number;
-    stepIndex: number;       // 0–43
-    stepsPerBeat: number;    // 44
-    beatIndex: number;       // 0–35
-  };
 
   /** Optional external indices (App.tsx live ticker may pass these).
       If omitted, they are derived from kaiPulseEternal. */
@@ -154,7 +100,6 @@ export const BREATH_HZ  = 1 / BREATH_SEC;                   // ≈ 0.19098300562
 /* ─── Component ─────────────────────────────────────────────── */
 const KaiKlock: React.FC<KaiKlockProps> = ({
   hue,
-  pulse,
   kaiPulseEternal,
   harmonicDayPercent,
   microCyclePercent,
@@ -165,28 +110,16 @@ const KaiKlock: React.FC<KaiKlockProps> = ({
   // IMPORTANT: this is SECONDS; default to φ-exact BREATH_SEC
   pulseIntervalSec = BREATH_SEC,
   rimFlash         = false,
-  rotationOverride,
-  solarSpiralStepString,
-  solarSpiralStep,
   eternalBeatIndex,
   eternalStepIndex,
   canonical,
 }) => {
   const cycle = `${pulseIntervalSec}s`;
 
-  /* ────────────────────────────────────────────────────────────
-     NON-BLOCKING FALLBACKS
-     - If solar 'pulse' (or percents) aren’t ready yet, we render
-       immediately using a UTC-safe Eternal baseline derived from
-       kaiPulseEternal. As soon as real solar values arrive, the
-       UI updates seamlessly. The API remains unchanged.
-  ─────────────────────────────────────────────────────────────*/
   const normalizedEternal =
     ((kaiPulseEternal % HARMONIC_DAY_PULSES) + HARMONIC_DAY_PULSES) % HARMONIC_DAY_PULSES;
 
-  const hasSolarPulse = Number.isFinite(pulse);
-  const effectivePulse =
-    hasSolarPulse ? pulse : normalizedEternal; // ← immediate render with baseline
+  const effectivePulse = normalizedEternal;
 
   const derivedDayFraction = effectivePulse / HARMONIC_DAY_PULSES;
   const effectiveHarmonicDayPercent = Number.isFinite(harmonicDayPercent)
@@ -201,16 +134,6 @@ const KaiKlock: React.FC<KaiKlockProps> = ({
   const effectiveMicroCyclePercent = Number.isFinite(microCyclePercent)
     ? microCyclePercent
     : stepFracFallback * 100;
-
-  /* ── Solar (local) needle & rim progress (unchanged visuals) ─ */
-  const dayPulse    = ((effectivePulse % HARMONIC_DAY_PULSES) + HARMONIC_DAY_PULSES) % HARMONIC_DAY_PULSES;
-  const dayFraction = dayPulse / HARMONIC_DAY_PULSES;
-
-  const solarBeatIndex     = canonical?.solarBeatIndex ?? Math.floor(dayFraction * ETERNAL_BEATS_PER_DAY) % ETERNAL_BEATS_PER_DAY;
-  const solarBeatCenterDeg = ((solarBeatIndex + 0.5) / ETERNAL_BEATS_PER_DAY) * 360;
-  const needleDeg          = typeof rotationOverride === "number" ? rotationOverride : solarBeatCenterDeg;
-
-  const { arcIndex, startColor, needleColor } = kaiNeedleProjection(needleDeg, canonical?.phaseColors);
 
   const circumference = 2 * Math.PI * R;
   const dashOff       = circumference * (1 - effectiveHarmonicDayPercent / 100);
@@ -246,7 +169,8 @@ const KaiKlock: React.FC<KaiKlockProps> = ({
   const stepLabel          = etStepIdx.toString().padStart(2, "0");
   const eternalDeg         = ((etBeatIdx + 0.5) / ETERNAL_BEATS_PER_DAY) * 360;
 
-  const beatHue   = `hsl(${(solarBeatIndex / ETERNAL_BEATS_PER_DAY) * 360}, 100%, 50%)`;
+  const beatHue = canonical?.beatColors[etBeatIdx] ?? hue;
+  const arcIndex = Math.floor(etBeatIdx / 6);
 
   /* ── Hand geometry ─────────────────────────────────────────── */
   const ETHERIK_FILL   = BANK_KAI_SURFACE_COLORS.eternalFill;
@@ -274,38 +198,13 @@ const KaiKlock: React.FC<KaiKlockProps> = ({
   const fracIntoStepET   = canonical?.eternalStepFraction ?? Math.max(0, Math.min(1, pulsesIntoStepET / ETERNAL_PULSES_PER_STEP));
   const etPercentIntoStep = fracIntoStepET * 100;
   const NEON_CYAN   = "#00faff" as const;
-  const SOLAR_AMBER = BANK_KAI_SURFACE_COLORS.solarDigit;
-
-  /* ── Solar step for SOLAR hand (clean, lint-safe) ──────────── */
-  // 1) Fallback from effectivePulse (works before geolocation resolves)
-  const pulsesIntoBeatSolar = dayPulse - solarBeatIndex * ETERNAL_PULSES_PER_BEAT;
-  const normalizedSolarPulsesIntoBeat =
-    ((pulsesIntoBeatSolar % ETERNAL_PULSES_PER_BEAT) + ETERNAL_PULSES_PER_BEAT) % ETERNAL_PULSES_PER_BEAT;
-  const fallbackSolarStepIndex =
-    Math.floor(normalizedSolarPulsesIntoBeat / ETERNAL_PULSES_PER_STEP) % ETERNAL_STEPS_PER_BEAT;
-
-  // 2) Resolve priority: explicit prop → string tail → computed fallback
-  const propStep = Number.isFinite(solarSpiralStep?.stepIndex)
-    ? clamp(solarSpiralStep!.stepIndex, 0, 43)
-    : undefined;
-  const strStep = parseStepFromString(solarSpiralStepString);
-  const solarStepIdx = propStep ?? strStep ?? fallbackSolarStepIndex;
-
-  const solarStepLabel = solarStepIdx.toString().padStart(2, "0");
-
-  // Solar hand label geometry (same placement pattern as eternal)
-  const solarLabelY = C - (HALO_R + HALO_STROKE) - handLength * labelYFactor;
-  const solarLabelX = C;
-  const solarHandLength = R - (HALO_R + HALO_STROKE);
-  const solarFillH = solarHandLength * (canonical?.solarStepFraction ?? clamp((solarSpiralStep?.percentIntoStep ?? 0) / 100, 0, 1));
-
   return (
     <div
       className="kai-klock-shell"
       style={
         {
           "--hue": hue,
-          "--arc": startColor, // dynamic solar arc color
+          "--arc": hue, // same native eternal ark as the header and details
           "--cycle": cycle,
           "--core": BANK_KAI_SURFACE_COLORS.rim,
           "--flash": BANK_KAI_SURFACE_COLORS.coordinate,
@@ -354,84 +253,6 @@ const KaiKlock: React.FC<KaiKlockProps> = ({
           <circle cx={C} cy={C - (HALO_R + HALO_STROKE)} r={3.6} className="micro-orb orb-glow" />
         </g>
 
-        {/* Solar needle + solar step label */}
-        <g style={{ transform: `rotate(${needleDeg}deg)`, transformOrigin: `${C}px ${C}px`, transition: `transform 1s ease-out` }}>
-          <rect
-            x={C - 1}
-            y={C - (HALO_R + HALO_STROKE) - solarHandLength}
-            width={2}
-            height={solarHandLength}
-            rx={1}
-            className="needle"
-            style={{ fill: 'transparent', stroke: needleColor, strokeWidth: .55 }}
-          />
-          <rect x={C - 1} y={C - (HALO_R + HALO_STROKE) - solarFillH} width={2} height={solarFillH} rx={1} className="solar-hand-fill" style={{ fill: needleColor }} />
-          {/* Solar step digits on the SOLAR hand (upright, ☀ color + symbol) */}
-          <g
-            className="solar-hand-label-wrap"
-            style={{
-              transform: `rotate(${-needleDeg}deg)`,
-              transformOrigin: `${solarLabelX}px ${solarLabelY}px`,
-            }}
-          >
-            <text
-              x={solarLabelX}
-              y={solarLabelY - 3.6}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={3}
-              fontWeight={900}
-              style={{
-                fill: SOLAR_AMBER,
-                paintOrder: "stroke",
-                stroke: "rgba(0,0,0,0.65)",
-                strokeWidth: 0.8,
-                filter: `drop-shadow(0 0 2px ${SOLAR_AMBER})`,
-              }}
-            >
-              ☀
-            </text>
-            <text
-              x={solarLabelX - 2.2}
-              y={solarLabelY}
-              textAnchor="middle"
-              dominantBaseline="central"
-              className="solar-hand-label-digit"
-              fontSize={4.4}
-              fontWeight={900}
-              style={{
-                fill: SOLAR_AMBER,
-                paintOrder: "stroke",
-                stroke: "rgba(0,0,0,0.65)",
-                strokeWidth: 0.9,
-                letterSpacing: "0.4px",
-                filter: `drop-shadow(0 0 2px ${SOLAR_AMBER}) drop-shadow(0 0 5px ${SOLAR_AMBER})`,
-              }}
-            >
-              {solarStepLabel[0]}
-            </text>
-            <text
-              x={solarLabelX + 2.2}
-              y={solarLabelY}
-              textAnchor="middle"
-              dominantBaseline="central"
-              className="solar-hand-label-digit"
-              fontSize={4.4}
-              fontWeight={900}
-              style={{
-                fill: SOLAR_AMBER,
-                paintOrder: "stroke",
-                stroke: "rgba(0,0,0,0.65)",
-                strokeWidth: 0.9,
-                letterSpacing: "0.4px",
-                filter: `drop-shadow(0 0 2px ${SOLAR_AMBER}) drop-shadow(0 0 5px ${SOLAR_AMBER})`,
-              }}
-            >
-              {solarStepLabel[1]}
-            </text>
-          </g>
-        </g>
-
         {/* Eternal hand */}
         <g
           className="eternal-hand-group"
@@ -458,7 +279,7 @@ const KaiKlock: React.FC<KaiKlockProps> = ({
             }}
           />
 
-          {/* Fill (% into beat) */}
+          {/* Fill through the current native step */}
           <defs>
             <linearGradient id={`eternalFill-${uid}`} x1="0" y1="1" x2="0" y2="0">
               <stop offset="0%"  stopColor={ETHERIK_FILL} stopOpacity={0.15} />
@@ -564,7 +385,7 @@ const KaiKlock: React.FC<KaiKlockProps> = ({
           </g>
         </g>
 
-        {/* TOP SMALL READOUT (was solar beat:step "29:00") → Eternal Pulses Today */}
+        {/* Eternal pulses within the current day */}
         <text
           x={C}
           y={C - 15}
@@ -633,7 +454,7 @@ const KaiKlock: React.FC<KaiKlockProps> = ({
           {monthIndex}
         </text>
 
-        {/* Arc labels + optional solarKairos string under Ignition */}
+        {/* Canonical ark positions, referenced to the same eternal beat */}
         {ARCS.map((name, i) => {
           const ang = rad(i*(360/ARCS.length)-90);
           const x   = C + LABEL_R*Math.cos(ang);
@@ -643,27 +464,7 @@ const KaiKlock: React.FC<KaiKlockProps> = ({
               <text x={x} y={y} className={`arc-label arc-${slug(name.split(" ")[0])} ${i === arcIndex ? "active" : ""}`} textAnchor="middle">
                 {ARC_SHORT[name]}
               </text>
-              {name === "Ignition Ark" && solarSpiralStepString && (
-                <text
-                  x={x}
-                  y={y + 8}
-                  textAnchor="middle"
-                  dominantBaseline="hanging"
-                  fontSize={10}
-                  fill="#00faff"
-                  fontWeight={900}
-                  style={{
-                    filter: `drop-shadow(0 0 2px #00faff) drop-shadow(0 0 4px #00faff) drop-shadow(0 0 8px #00faff)`,
-                    paintOrder: 'stroke',
-                    stroke: '#000',
-                    strokeWidth: 1,
-                    vectorEffect: 'non-scaling-stroke',
-                    letterSpacing: '0.5px',
-                  }}
-                >
-                  {solarSpiralStepString}
-                </text>
-              )}
+
             </React.Fragment>
           );
         })}

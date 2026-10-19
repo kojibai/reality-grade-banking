@@ -55,12 +55,17 @@ it('opens a live, named Kai Klok explanation without requesting any network or a
   expect(panel.textContent).toContain('36 beats'); expect(panel.textContent).toContain('44 steps'); expect(panel.textContent).toContain('11 pulses');
   expect(panel.querySelector('.center-pulse')?.textContent).toBe('15:23:06');
   expect(panel.querySelector('.center-coordinate-label')?.textContent).toBe('BEAT · STEP · PULSE');
-  expect(panel.querySelector('.kai-solar-coordinate')?.previousElementSibling?.textContent).toBe('Localbeat · step');
+  expect(panel.textContent).not.toMatch(/solar (?:time|reference|ark)|sunrise|greenwich|time reference/i);
+  expect(panel.querySelector('.kai-local-time time')?.getAttribute('datetime')).toBe(new Date(Number(epochMsFromPulse(14_717_707n))).toISOString());
   const momentEntries = [...panel.querySelectorAll('.kai-moment-identity > div')].map(entry => entry.textContent);
-  expect(momentEntries.map(text => text?.split(' ')[0])).toEqual(['Day', 'Week', 'Month', 'Ark']);
+  expect(momentEntries.map(text => text?.split(' ')[0])).toEqual(['Phase', 'Day', 'Week', 'Month']);
   expect(panel.querySelector('[aria-label="Kai days"] [aria-current]')?.textContent).toContain('Aquaris');
   expect(panel.querySelector('[aria-label="Kai months"] [aria-current]')?.textContent).toContain('Kaelus');
-  expect(panel.querySelector('[aria-label="Kai arks"] [aria-current]')?.textContent).toContain('Harmonization');
+  expect(panel.querySelector('[aria-label="Kai phases"] [aria-current]')?.textContent).toContain('Harmonization');
+  expect(panel.querySelector('.kai-moment-identity > div')?.textContent).toBe('Phase 3 of 6Harmonization');
+  const headings = [...panel.querySelectorAll('.kai-technical h3')].map(node => node.textContent);
+  expect(headings.indexOf('Operational phases')).toBeLessThan(headings.indexOf('Days'));
+  expect(panel.querySelector('.kai-face-arcs [aria-current]')?.textContent).toBe('Harmonization');
   expect(panel.querySelector('.kai-face-key')?.textContent).not.toContain('Eternal Kai');
   act(() => vi.advanceTimersByTime(5_240));
   expect(trigger.textContent).toContain('14,717,708'); expect(panel.querySelector('[data-kai-eternal-pulse]')?.textContent).toBe('14,717,708');
@@ -74,13 +79,13 @@ it('opens a live, named Kai Klok explanation without requesting any network or a
   expect(document.activeElement).toBe(trigger);
 });
 
-it('feeds the canonical frontend face exact native eternal state and a distinct sunrise projection', () => {
+it('feeds the face only the exact native eternal state', () => {
   const face = projectCanonicalKaiFace(14_717_707);
   expect(face.kaiPulseEternal).toBe(14_717_707);
   expect(face.eternalBeatIndex).toBe(15); expect(face.eternalStepIndex).toBe(23);
   expect(face.canonical.monthIndex).toBe(5);
-  expect(face.canonical.solarBeatIndex).not.toBe(face.eternalBeatIndex);
-  expect(face.solarSpiralStep?.beatIndex).toBe(face.canonical.solarBeatIndex);
+  expect(Object.keys(face).some(key => /solar|anchor|rotationOverride/i.test(key))).toBe(false);
+  expect(Object.keys(face.canonical).some(key => /solar|anchor/i.test(key))).toBe(false);
   expect(face.canonical.eternalStepFraction).toBeGreaterThan(0);
   expect(face.microCyclePercent).toBe(face.canonical.eternalStepFraction * 100);
   const firstM7 = Number((252n * N_DAY_MICRO + 999_999n) / 1_000_000n);
@@ -145,60 +150,15 @@ it('keeps the verified Kai Klok repository reference inside the deeper system di
   expect(host.querySelector('.kai-header-button a')).toBeNull();
 });
 
-it('starts in local time without requesting location and refines to sunrise after permission', () => {
-  let success!: PositionCallback;
-  const locate = vi.fn((callback: PositionCallback) => { success = callback; });
-  vi.stubGlobal('navigator', { geolocation: { getCurrentPosition: locate } });
-  const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
-  const store = vi.spyOn(Storage.prototype, 'setItem');
+it('keeps automatic local Chronos without reading location or permissions', async () => {
+  const locate = vi.fn(), permission = vi.fn().mockResolvedValue({ state: 'granted' });
+  vi.stubGlobal('navigator', { permissions: { query: permission }, geolocation: { getCurrentPosition: locate } });
   const host = mount(); act(() => host.querySelector('button')!.click());
-  expect(locate).not.toHaveBeenCalled();
-  expect(host.querySelector('[aria-pressed="true"]')?.textContent).toBe('Local');
-  expect(host.querySelector('.kai-face-key')?.textContent).toContain('Local time');
-  expect(host.querySelector('.kai-sunrise-status')?.textContent).toContain('Local time reference');
-  const use = host.querySelector<HTMLButtonElement>('[data-sunrise-reference="sunrise"]')!;
-  act(() => use.click()); expect(locate).toHaveBeenCalledTimes(1); expect(use.disabled).toBe(true);
-  expect(host.querySelector('.kai-sunrise-status')?.textContent).toContain('Waiting');
-  const eternal = host.querySelector('[data-kai-eternal-pulse]')?.textContent;
-  act(() => success({ coords: { latitude: 40.7128, longitude: -74.006 } } as GeolocationPosition));
-  expect(host.querySelector('.kai-face-key')?.textContent).toContain('Local sunrise');
-  expect(host.querySelector('.kai-sunrise-status')?.textContent).toContain('Calculated local sunrise');
-  expect(host.querySelector('[data-kai-eternal-pulse]')?.textContent).toBe(eternal);
-  act(() => host.querySelector<HTMLButtonElement>('[data-sunrise-reference="greenwich"]')!.click());
-  expect(host.querySelector('.kai-face-key')?.textContent).toContain('Greenwich sunrise');
-  act(() => host.querySelector<HTMLButtonElement>('[data-sunrise-reference="local"]')!.click());
-  expect(host.querySelector('.kai-face-key')?.textContent).toContain('Local time');
-  act(() => host.querySelector<HTMLButtonElement>('[data-sunrise-reference="sunrise"]')!.click());
-  expect(host.querySelector('.kai-face-key')?.textContent).toContain('Local sunrise');
-  expect(locate).toHaveBeenCalledTimes(1); expect(fetch).not.toHaveBeenCalled(); expect(store).not.toHaveBeenCalled();
-});
-
-it('keeps the local time reference when location is denied or unavailable', () => {
-  let reject!: PositionErrorCallback;
-  vi.stubGlobal('navigator', { geolocation: { getCurrentPosition: (_: PositionCallback, error: PositionErrorCallback) => { reject = error; } } });
-  const host = mount(); act(() => host.querySelector('button')!.click());
-  const request = () => act(() => host.querySelector<HTMLButtonElement>('[data-sunrise-reference="sunrise"]')!.click());
-  request(); act(() => reject({ code: 1 } as GeolocationPositionError));
-  expect(host.querySelector('.kai-sunrise-status')?.textContent).toContain('not allowed');
-  expect(host.querySelector('.kai-face-key')?.textContent).toContain('Local time');
-  request(); act(() => reject({ code: 2 } as GeolocationPositionError));
-  expect(host.querySelector('.kai-sunrise-status')?.textContent).toContain('unavailable');
-});
-
-it('reuses an already-granted location permission without opening an unsolicited prompt', async () => {
-  const locate = vi.fn();
-  vi.stubGlobal('navigator', { permissions: { query: vi.fn().mockResolvedValue({ state: 'granted' }) }, geolocation: { getCurrentPosition: locate } });
-  mount(); await act(async () => {});
-  expect(locate).toHaveBeenCalledTimes(1);
-});
-
-it('does not acquire a location when permission is prompt or denied', async () => {
-  for (const state of ['prompt', 'denied']) {
-    const locate = vi.fn();
-    vi.stubGlobal('navigator', { permissions: { query: vi.fn().mockResolvedValue({ state }) }, geolocation: { getCurrentPosition: locate } });
-    mount(); await act(async () => {});
-    expect(locate).not.toHaveBeenCalled();
-  }
+  await act(async () => {});
+  expect(host.querySelector('.kai-local-time')?.textContent).toContain('Local Chronos');
+  expect(host.querySelector('.kai-local-time time')?.textContent).toBeTruthy();
+  expect(host.querySelector('[aria-label="Time reference"]')).toBeNull();
+  expect(locate).not.toHaveBeenCalled(); expect(permission).not.toHaveBeenCalled();
 });
 
 it('maps every native header ark, day and month to its approved Bankeiz presentation tone', () => {
@@ -217,21 +177,4 @@ it('maps every native header ark, day and month to its approved Bankeiz presenta
     const host = mount();
     expect(host.querySelector<HTMLElement>('.kai-klok')!.style.getPropertyValue('--kai-month')).toBe(BANK_KAI_PALETTE.light.months[i]);
   }
-});
-
-it('drops the previous location after a failed update and ignores callbacks after clearing', () => {
-  const callbacks: { success: PositionCallback; error: PositionErrorCallback }[] = [];
-  vi.stubGlobal('navigator', { geolocation: { getCurrentPosition: (success: PositionCallback, error: PositionErrorCallback) => callbacks.push({ success, error }) } });
-  const host = mount(); act(() => host.querySelector('button')!.click());
-  const request = () => act(() => (host.querySelector<HTMLButtonElement>('.kai-use-sunrise') ?? host.querySelector<HTMLButtonElement>('[data-sunrise-reference="sunrise"]'))!.click());
-  const succeed = (i: number) => act(() => callbacks[i].success({ coords: { latitude: 40.7128, longitude: -74.006 } } as GeolocationPosition));
-  request(); succeed(0); request();
-  act(() => host.querySelector<HTMLButtonElement>('.kai-clear-sunrise')!.click());
-  succeed(1);
-  expect(host.querySelector('.kai-face-key')?.textContent).toContain('Local time');
-  expect(host.querySelector('.kai-clear-sunrise')).toBeNull();
-  request(); succeed(2); request();
-  act(() => callbacks[3].error({ code: 2 } as GeolocationPositionError));
-  expect(host.querySelector('.kai-face-key')?.textContent).toContain('Local time');
-  expect(host.querySelector('.kai-sunrise-status')?.textContent).toContain('unavailable');
 });

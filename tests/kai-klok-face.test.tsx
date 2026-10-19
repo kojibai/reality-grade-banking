@@ -27,7 +27,6 @@ it('uses authoritative day/month/ark identities and the authorized Bankeiz mater
   expect(css).toContain('.kai-header-button .kai-date-day { color: color-mix(in srgb, var(--kai-day) 80%, #172b45);');
   expect(css).toContain('.kai-header-button .kai-date-month { color: color-mix(in srgb, var(--kai-month) 80%, #172b45);');
   const source = readFileSync(resolve('src/components/kai-klok/CanonicalKaiKlock.tsx'), 'utf8');
-  expect(source).toContain('needleColor: lerpColor(startColor, endColor, arcFraction)');
   expect(source).toContain('canonical?.beatColors[i] ?? `hsl(${cf * 360},100%,50%)`');
   expect(BANK_KAI_SURFACE_COLORS).toMatchObject({ coordinate: '#a3c7c0', readout: '#94bcb5', eternalStroke: '#9cb9bc', eternalFill: '#8fb0b5' });
   expect(source).toContain('const ETHERIK_FILL   = BANK_KAI_SURFACE_COLORS.eternalFill');
@@ -45,42 +44,28 @@ it('uses authoritative day/month/ark identities and the authorized Bankeiz mater
   for (const color of face.canonical.beatColors) expect(color).toMatch(/,35%,62%\)$/);
 });
 
-it('fills each hand through its own native step and resets at that step boundary', () => {
+it('fills the single eternal hand through its native step and resets at its boundary', () => {
   const render = (pulse: number) => {
     const props = projectCanonicalKaiFace(pulse);
     const parsed = new DOMParser().parseFromString(renderToStaticMarkup(<CanonicalKaiKlock {...props} />), 'text/html');
     const eternal = Number(parsed.querySelector('.eternal-hand-fill')?.getAttribute('height'));
-    const solar = Number(parsed.querySelector('.solar-hand-fill')?.getAttribute('height'));
     const eternalTrack = Number(parsed.querySelector('.eternal-hand')?.getAttribute('height'));
-    const solarTrack = Number(parsed.querySelector('.needle')?.getAttribute('height'));
-    expect(eternalTrack).toBeGreaterThan(20); expect(solarTrack).toBeGreaterThan(20);
+    expect(eternalTrack).toBeGreaterThan(20);
+    expect(parsed.querySelectorAll('.eternal-hand-group')).toHaveLength(1);
+    expect(parsed.querySelector('.needle, .solar-hand-fill, .solar-hand-label-wrap')).toBeNull();
     expect(eternal).toBeCloseTo(eternalTrack * props.canonical.eternalStepFraction, 10);
-    expect(solar).toBeCloseTo(solarTrack * props.canonical.solarStepFraction, 10);
     expect([...parsed.querySelectorAll('.eternal-hand-label-digit')].map(node => node.textContent).join('')).toBe(String(props.eternalStepIndex).padStart(2, '0'));
-    expect([...parsed.querySelectorAll('.solar-hand-label-digit')].map(node => node.textContent).join('')).toBe(String(props.solarSpiralStep?.stepIndex).padStart(2, '0'));
-    expect(parsed.querySelector('.needle')?.getAttribute('style')).toContain(`stroke:${props.solarNeedleColor}`);
-    expect(parsed.querySelector('.solar-hand-fill')?.getAttribute('style')).toContain(`fill:${props.solarNeedleColor}`);
-    return { eternal: eternal / eternalTrack, solar: solar / solarTrack, props };
+    return { eternal: eternal / eternalTrack, props };
   };
   const start = render(0), middle = render(6), end = render(11), reset = render(12);
   expect(start.eternal).toBe(0);
   expect(middle.eternal).toBeGreaterThan(.48); expect(middle.eternal).toBeLessThan(.6);
   expect(end.eternal).toBeGreaterThan(.95);
   expect(reset.eternal).toBeLessThan(.12);
-  let solarStart = 14_717_708;
-  while (solarStart < 14_717_735 && projectCanonicalKaiFace(solarStart).canonical.solarStepFraction >= projectCanonicalKaiFace(solarStart - 1).canonical.solarStepFraction) solarStart++;
-  expect(solarStart).toBeLessThan(14_717_735);
-  const firstSolar = render(solarStart), midSolar = render(solarStart + 5), endSolar = render(solarStart + 10);
-  expect(firstSolar.solar).toBeLessThan(.095);
-  expect(midSolar.solar).toBeGreaterThan(firstSolar.solar);
-  expect(endSolar.solar).toBeGreaterThan(.89);
-  let nextSolar = solarStart + 11;
-  if (projectCanonicalKaiFace(nextSolar).canonical.solarStepFraction > projectCanonicalKaiFace(nextSolar - 1).canonical.solarStepFraction) nextSolar++;
-  expect(render(nextSolar).solar).toBeLessThan(.095);
-  expect(firstSolar.props.solarSpiralStep?.stepIndex).not.toBe(firstSolar.props.eternalStepIndex);
+
 });
 
-it('renders the complete source face at a controlled native coordinate', () => {
+it('renders the refined eternal face at a controlled native coordinate', () => {
   const props = projectCanonicalKaiFace(14_717_707);
   const parsed = new DOMParser().parseFromString(renderToStaticMarkup(<CanonicalKaiKlock {...props} />), 'text/html');
   expect(parsed.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 120 120');
@@ -96,11 +81,11 @@ it('renders the complete source face at a controlled native coordinate', () => {
   expect(css).toContain('.center-month-number { fill: var(--kai-month); }');
   expect(parsed.querySelector('.eternal-pulse')?.textContent).toBe('14,717,707');
   expect(parsed.querySelector('.center-sub')?.textContent).toBe(new Intl.NumberFormat('en-US').format(props.canonical.eternalDayPulse));
-  expect(parsed.querySelector('.needle')?.getAttribute('width')).toBe('2');
+  expect(parsed.querySelector('.needle')).toBeNull();
   expect(parsed.querySelector('.eternal-hand')?.getAttribute('width')).toBe('1.6');
   expect(parsed.querySelector('.inner-halo')?.getAttribute('r')).toBe('32');
   expect(parsed.querySelectorAll('.arc-label')).toHaveLength(6);
-  expect(parsed.querySelectorAll('.solar-hand-label-digit')).toHaveLength(2);
+  expect(parsed.querySelectorAll('.solar-hand-label-digit')).toHaveLength(0);
   expect(parsed.querySelectorAll('.eternal-hand-label-digit')).toHaveLength(2);
 });
 

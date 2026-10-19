@@ -89,7 +89,6 @@ overflow: visible;
 .kai-canonical-face .rim-ring,
 .kai-canonical-face .day-progress,
 .kai-canonical-face .inner-halo,
-.kai-canonical-face .needle,
 .kai-canonical-face .micro-orb,
 .kai-canonical-face .beat-dot,
 .kai-canonical-face .arc-label,
@@ -163,16 +162,6 @@ stroke-width: 1.15px;
 filter:
   drop-shadow(0 0 6px var(--arc))
   drop-shadow(0 0 18px color-mix(in srgb,var(--arc) 55%,transparent));
-}
-
-/* Needle */
-.kai-canonical-face .needle {
-fill: var(--core);
-transform-box: fill-box;
-filter:
-  drop-shadow(0 0 3px var(--core))
-  drop-shadow(0 0 10px color-mix(in srgb,var(--core) 45%,transparent));
-transition: transform var(--cycle) linear;
 }
 
 /* ─── Micro-orb: spin + breath-glow (now arc-coloured) ─────────── */
@@ -285,55 +274,6 @@ text-shadow:
   animation: none !important;
   transition: none  !important;
 }
-}
-/* ─── Sub-label under “Ignite” ─────────────────────────────────── */
-.kai-canonical-face .solar-Spiral-step {
-  font-family: "Inter", sans-serif;
-  font-size: 6px;             /* matches the <text fontSize={2}> in your JSX */
-  fill: var(--arc);           /* same color as the active arc */
-  opacity: 0.6;               /* subtle */
-  pointer-events: none;       /* so it never intercepts mouse/touch */
-  text-anchor: middle;        /* center-align inside the SVG */
-}
-
-/* if you want a slight drop shadow for legibility: */
-.kai-canonical-face .solar-Spiral-step {
-  /* …other props… */
-  filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.4));
-}
-/* ─── Solar Spiral Step sub‐label beneath “Ignite” ───────────────────────────────── */
-.kai-canonical-face .kai-klock-shell .kai-svg text.solar-Spiral-step {
-  /* bump up from 2px so it’s legible on a 120px dial */
-  font-size: 6px !important;
-  /* use the current arc colour (falls back to white if something goes wrong) */
-  fill: var(--arc, #fff) !important;
-  /* gently let it fade into the neon glow behind */
-  opacity: 0.8 !important;
-  /* center-align in SVG space */
-  text-anchor: middle;
-  /* optional tiny drop shadow to pop off very dark backgrounds */
-  filter: drop-shadow(0 0 1px rgba(0,0,0,0.6));
-  pointer-events: none;
-}
-/* ─── Solar‐Spiral‐Step sub‐label beneath “Ignite” ───────────────────────────────── */
-.kai-canonical-face svg.kai-svg text.solar-Spiral-step {
-  /* make it big enough to read */
-  font-size: 12px !important;
-  /* use the current arc color */
-  fill: var(--arc, #fff) !important;
-  /* fully visible */
-  opacity: 1 !important;
-  /* center‐align on the X axis */
-  text-anchor: middle !important;
-  /* position from the top of the text, not the baseline */
-  dominant-baseline: hanging !important;
-  /* give it a tiny drop‐shadow to pop off the dark dial */
-  filter: drop-shadow(0 0 1px rgba(0,0,0,0.7)) !important;
-  /* ensure it’s not inadvertently hidden */
-  display: inline !important;
-  visibility: visible !important;
-  pointer-events: none;
-  user-select: none;
 }
 @keyframes kai-source-pulse-glow {
   0%, 100% { transform: scale(1); opacity: 1; }

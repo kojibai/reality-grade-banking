@@ -7,7 +7,7 @@ import '../../src/styles/features.css';
 
 // Interface-only fixture. The optional iframe creates a genuine narrow CSS
 // viewport for browser environments whose outer viewport cannot be resized.
-const params = new URLSearchParams(location.search), width = params.get('width'), sunrise = params.get('sunrise'), timing = params.has('timing');
+const params = new URLSearchParams(location.search), width = params.get('width'), timing = params.has('timing');
 
 // Query-gated browser evidence only. This bounded observer never drives Kai
 // state or animation; it measures the actual compositor and DOM over a boundary.
@@ -45,19 +45,11 @@ function TimingProbe() {
 }
 if (width === '320' || width === '390' || width === '720') {
   const frame = document.createElement('iframe');
-  const childParams = new URLSearchParams(); if (sunrise) childParams.set('sunrise', sunrise); if (timing) childParams.set('timing', '1');
+  const childParams = new URLSearchParams(); if (timing) childParams.set('timing', '1');
   frame.title = `${width}px Kai Klok viewport`; frame.src = location.pathname + (childParams.size ? `?${childParams}` : '');
   frame.style.cssText = `display:block;width:${width}px;height:844px;border:0;margin:0 auto;background:#fcfbf8`;
   document.getElementById('root')!.append(frame);
 } else {
-  // Deterministic, interface-only QA. This never opens a real browser location
-  // prompt or reads a user's coordinates. Production has no fixture switch.
-  if (sunrise === 'success' || sunrise === 'denied' || sunrise === 'unavailable') {
-    Object.defineProperty(navigator, 'permissions', { configurable: true, value: { query: async () => ({ state: 'prompt' }) } });
-    Object.defineProperty(navigator, 'geolocation', { configurable: true, value: { getCurrentPosition: (success: PositionCallback, error: PositionErrorCallback) => {
-      setTimeout(() => sunrise === 'success' ? success({ coords: { latitude: 40.7128, longitude: -74.006 } } as GeolocationPosition) : error({ code: sunrise === 'denied' ? 1 : 2 } as GeolocationPositionError), 400);
-    } } });
-  }
   const noop = () => {};
-  createRoot(document.getElementById('root')!).render(<ConsoleShell panel="ledger" onNavigate={noop} onProfile={noop} onDeposit={noop}><h1 className="page-title">Ledger</h1><p className="page-subtitle">Every movement keeps its story.</p><p className="body-copy small-copy">{sunrise ? 'Synthetic sunrise preview · no location permission requested.' : 'Header preview · no account or money connected.'}</p>{timing && <TimingProbe />}</ConsoleShell>);
+  createRoot(document.getElementById('root')!).render(<ConsoleShell panel="ledger" onNavigate={noop} onProfile={noop} onDeposit={noop}><h1 className="page-title">Ledger</h1><p className="page-subtitle">Every movement keeps its story.</p><p className="body-copy small-copy">Header preview · no account or money connected.</p>{timing && <TimingProbe />}</ConsoleShell>);
 }
