@@ -4,6 +4,8 @@ import type {LedgerValueDisplay} from './ledger-value';
 import {readLedgerValueOperands} from './ledger-value';
 import {safeReceizPublicUrl} from './public-market';
 import {DEFAULT_ISSUANCE_POLICY} from './canonical-market-issuance';
+import {publicSportsHistoryObservation} from './market-projection/sports-observations';
+import {marketPulseAtOrAfterTime} from './market-projection/sealed-copies';
 
 export type LedgerField = string | number | boolean | LedgerFields | LedgerField[];
 export interface LedgerFields { [key:string]:LedgerField; }
@@ -49,6 +51,15 @@ export function readLedgerDetails(raw:unknown):LedgerFields {
 export function readLedgerValuationTrace(raw:unknown):LedgerFields|null {
  const source=object(raw),result=select(source,['sdk','calculationKind','cardValueUsdCents','projectionDigest','projectionObservedAt','projectionPulse','valuationRow','source','sourceValueUsd','evaluationPulse','intrinsicFunction','quoteFunction','rounding']);
  if(source.sdk!==RECEIZ_VERSION||!Object.keys(result).length)return null;
+ if(source.calculationKind==='native-card-history-projection'){
+  const observation=publicSportsHistoryObservation(source.observation),sealedAt=source.sealedAt,birth=source.birthUsdValue;
+  if(observation?.scope==='single-copy'&&observation.model&&observation.collectibleId===source.collectibleId&&observation.claimHash===source.claimHash&&typeof sealedAt==='string'&&Number.isFinite(Date.parse(sealedAt))&&Date.parse(sealedAt)<=Date.parse(observation.at)&&typeof birth==='number'&&Number.isFinite(birth)&&birth>=0&&birth<=1e13){
+   try{if(marketPulseAtOrAfterTime(sealedAt)===source.issuePulse&&marketPulseAtOrAfterTime(observation.at)===source.observationPulse){
+    Object.assign(result,select(source,['collectibleId','claimHash','sealedAt','birthUsdValue','issuePulse','observationPulse','valuationFunction','meaning']));
+    result.observation=JSON.parse(JSON.stringify(observation)) as LedgerFields;
+   }}catch{/* Unsupported temporal bounds cannot supply model operands. */}
+  }
+ }
  const seed=select(source.seed,['kind','claimPulse','beat','stepIndex','creatorVerified','chakraDay','kaiSignature','userPhiKey']);if(Object.keys(seed).length)result.seed=seed;
  const quote=select(source.quote,['referenceUsd','currentStreakDays','lifetimeUsdSoFar','plannedHoldBeats']);if(Object.keys(quote).length)result.quote=quote;
  // The display model is version-pinned, so a transported policy must exactly

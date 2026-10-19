@@ -1,8 +1,9 @@
 import {RECEIZ_VERSION} from './client';
 import type {PublicRecord} from './public-network';
-import {ledgerUsdCents,ledgerValueForRecord,type LedgerValueIndex,type LedgerValueDisplay} from './ledger-value';
+import {ledgerUsdCents,ledgerValueForRecord,ledgerValueRow,ledgerCardHistory,type LedgerValueIndex,type LedgerValueDisplay} from './ledger-value';
 import {DEFAULT_ISSUANCE_POLICY} from './canonical-market-issuance';
 import type {LedgerFields} from './ledger-inspection';
+import {publicSportsQuoteAtPulse} from './market-projection/project';
 
 type RelationIndex=Map<string,PublicRecord[]>;
 function references(record:PublicRecord){
@@ -29,12 +30,7 @@ export function ledgerRelatedRecords(record:PublicRecord,index:RelationIndex){
  for(const key of references(record))add(`object:${key}`,'Same object reference');
  return [...related.values()];
 }
-function valueRow(record:PublicRecord,index:LedgerValueIndex|null){
- if(!index)return null;
- const candidates=[...references(record),record.valueOperands?.claimHash,record.evidence.claimHash,record.source==='proofs'?record.sourceId:record.sourceId.startsWith('market-asset-')?record.sourceId.slice('market-asset-'.length):undefined].filter((v):v is string=>!!v&&index.rows.has(v));
- const matches=new Set(candidates.map(key=>index.rows.get(key)));
- return matches.has(null)||matches.size!==1?null:[...matches][0]??null;
-}
+const valueRow=ledgerValueRow;
 export function ledgerCurrentAssetValue(record:PublicRecord,index:LedgerValueIndex|null):LedgerValueDisplay|null {
  const row=valueRow(record,index);if(!row||!index)return null;
  if(row.marketItem?.livePulseSeed?.kind==='sigil'){
@@ -42,8 +38,12 @@ export function ledgerCurrentAssetValue(record:PublicRecord,index:LedgerValueInd
   return value.basis==='intrinsic-model'?value:null;
  }
  if(row.source==='sports-economy-card'){
-  const amount=ledgerUsdCents(row.marketUsdValue);
-  return amount!==undefined?{basis:'source-value',amountUsdCents:amount,pulse:String(index.source.serverPulse),considerationUsdCents:null}:null;
+  const history=ledgerCardHistory(record,index,row);
+  // Only the priced representative's seed supports this individual quote.
+  // Another copy in the same group must not inherit its current price.
+  if(!history||history.copy.claimHash!==row.seed)return null;
+  const pulse=index.evaluationPulse??index.source.serverPulse,amount=ledgerUsdCents(publicSportsQuoteAtPulse(row,pulse));
+  return amount!==undefined?{basis:'source-value',amountUsdCents:amount,pulse:String(pulse),considerationUsdCents:null}:null;
  }
  return null;
 }
@@ -52,6 +52,10 @@ export function ledgerValuationContext(record:PublicRecord,index:LedgerValueInde
  if(value.basis==='card-snapshot')return {sdk:RECEIZ_VERSION,calculationKind:'carried-card-snapshot',evaluationPulse:value.pulse!,cardValueUsdCents:value.amountUsdCents!,source:'Selected event value inputs',rounding:'Exact carried cents; no current-price substitution'};
  const row=valueRow(record,index);if(!row||!index)return null;
  const common={sdk:RECEIZ_VERSION,projectionDigest:index.source.proofObjectHash,projectionObservedAt:index.source.generatedAt,projectionPulse:index.source.serverPulse,valuationRow:row.id,source:row.source};
+ if(value.basis==='card-model'){
+  const history=ledgerCardHistory(record,index,row);if(!history)return null;
+  return {...common,calculationKind:'native-card-history-projection',evaluationPulse:value.pulse!,collectibleId:history.copy.collectibleId,claimHash:history.copy.claimHash,sealedAt:history.copy.sealedAt,birthUsdValue:history.birth,issuePulse:history.issue,observationPulse:history.until,observation:JSON.parse(JSON.stringify(history.observation)) as LedgerFields,valuationFunction:'SportsCardPremiumValueChart.sportsCardHistoricalLivePulseChartPoint → sportsArenaLiveValueMotionAtPulse',rounding:'Math.round(native historical USD × 100)',meaning:'Deterministic source-model projection at the event pulse; not a recorded transaction quote or sale price'};
+ }
  const seed=row.marketItem?.livePulseSeed;
  if(value.basis!=='intrinsic-model'||seed?.kind!=='sigil')return {...common,calculationKind:'source-context',sourceValueUsd:row.marketUsdValue};
  return {...common,evaluationPulse:value.basis==='intrinsic-model'&&value.pulse?value.pulse:String(index.evaluationPulse??index.source.serverPulse),seed:Object.fromEntries(Object.entries(seed).filter(([,v])=>v!==null&&v!==undefined)) as LedgerFields,intrinsicFunction:'@receiz/sdk/valuation.computeIntrinsicUnsigned',quoteFunction:'canonical-market-issuance.quotePhiForUsd',quote:{referenceUsd:100,currentStreakDays:0,lifetimeUsdSoFar:0,plannedHoldBeats:0},policy:JSON.parse(JSON.stringify(DEFAULT_ISSUANCE_POLICY)) as LedgerFields,rounding:'Math.round(valuePhi × usdPerPhi × 100)'};

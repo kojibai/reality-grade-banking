@@ -1,8 +1,10 @@
 import type {MarketCapSource,MarketValueRow} from './source';
 import {boundSportsHistoryObservation,type SportsHistoryObservation} from './sports-observations';
 import {marketPulseAtOrAfterTime} from './sealed-copies';
+import type {MarketSealedBirth} from './sealed-copies';
 import {marketCapUsdAtPulse,marketQuoteMovementAtPulse,prepareMarketProjection,sportsUnitValue} from './project';
 interface Curve {issue:number;until:number;birth:number;model:NonNullable<SportsHistoryObservation['model']>;}
+export interface SportsCopyHistory extends Curve {copy:MarketSealedBirth;observation:SportsHistoryObservation;}
 const finiteUsd=(value:number)=>Number(Math.max(0,value).toFixed(4));
 /** The historical fallback in Receiz SportsCardPremiumValueChart.tsx:
  * sportsCardPulseProgress -> interpolatedSportsCardValue([birth,base]) ->
@@ -16,16 +18,28 @@ function nativeHistoricalValue(curve:Curve,pulse:number,quoteMove:number){
  const row:MarketValueRow={id:'historical-display',source:'sports-economy-card',baseUsdValue,birthUsdValue:curve.birth,marketUsdValue:baseUsdValue+(finiteUsd(curve.model.marketUsdValue)-base)*progress,proofTotalValueUsd:baseUsdValue,scoreDelta:curve.model.scoreDelta*progress,seed:curve.model.seed};
  return finiteUsd(sportsUnitValue(row,pulse,quoteMove));
 }
+/** Only a source-bound individual model supports a per-copy replay. An
+ * aggregate group quote cannot establish any one copy's historical value. */
+export function prepareSportsCopyHistory(row:MarketValueRow):SportsCopyHistory|undefined{
+ if(row.source!=='sports-economy-card')return;
+ const record=boundSportsHistoryObservation(row.historyObservation,row);
+ if(record?.scope!=='single-copy'||!record.model)return;
+ const until=marketPulseAtOrAfterTime(record.at);
+ const copy=(row.sealedCopies??row.sealedBirths??[]).find(copy=>copy.collectibleId===record.collectibleId&&copy.claimHash===record.claimHash);if(!copy)return;
+ if(row.sealedCopies?.some(copy=>copy.valueHistory?.some(point=>point.basis==='source-observation'&&(point.pulse??marketPulseAtOrAfterTime(point.at))<until)))return;
+ const issue=marketPulseAtOrAfterTime(copy.sealedAt);
+ return issue<until?{issue,until,birth:copy.birthUsdValue,model:record.model,copy,observation:record}:undefined;
+}
+export function sportsCopyHistoryUsdAtPulse(history:SportsCopyHistory,pulse:number):number|undefined{
+ if(!Number.isSafeInteger(pulse)||pulse<history.issue||pulse>history.until)return;
+ if(pulse===history.issue)return history.birth;
+ if(pulse===history.until)return history.observation.usdValue;
+ return nativeHistoricalValue(history,pulse,marketQuoteMovementAtPulse(pulse));
+}
 export function prepareMarketChartProjection(source:MarketCapSource){
  const curves:Curve[]=[];
  for(const row of source.valueRows){
-  if(row.source!=='sports-economy-card')continue;
-  const record=boundSportsHistoryObservation(row.historyObservation,row);
-  if(record?.scope!=='single-copy'||!record.model)continue;
-  const until=marketPulseAtOrAfterTime(record.at);if(until>source.serverPulse)continue;
-  const copy=(row.sealedCopies??row.sealedBirths??[]).find(copy=>copy.collectibleId===record.collectibleId&&copy.claimHash===record.claimHash);if(!copy)continue;
-  if(row.sealedCopies?.some(copy=>copy.valueHistory?.some(point=>point.basis==='source-observation'&&(point.pulse??marketPulseAtOrAfterTime(point.at))<until)))continue;
-  const issue=marketPulseAtOrAfterTime(copy.sealedAt);if(issue<until)curves.push({issue,until,birth:copy.birthUsdValue,model:record.model});
+  const history=prepareSportsCopyHistory(row);if(history&&history.until<=source.serverPulse)curves.push(history);
  }
  return {projection:prepareMarketProjection(source),curves};
 }

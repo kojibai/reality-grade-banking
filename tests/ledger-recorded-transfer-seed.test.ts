@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
-import { expect, it } from 'vitest';
-import { ledgerValueForRecord } from '../src/receiz/ledger-value';
+import { expect, it,vi } from 'vitest';
+import { ledgerValueForRecord,indexLedgerValues } from '../src/receiz/ledger-value';
 import { parsePublicNetworkCache } from '../src/receiz/public-network-cache';
+import {parseMarketCapSource} from '../src/receiz/market-projection/source';
 
 it('ships the exact recorded card values and carried transfer coordinates without substituting consideration', () => {
   const bytes = gunzipSync(readFileSync('public/receiz-public-ledger.json.gz.bin'));
@@ -34,4 +35,20 @@ it('ships the exact recorded card values and carried transfer coordinates withou
     if (row.kaiUpulse) expect(row.pulse).toBe(String(BigInt(row.kaiUpulse) / 1_000_000n));
     expect(ledgerValueForRecord(row)).toMatchObject({ basis: 'unavailable', amountUsdCents: null });
   }
+});
+it('recovers existing individual models without fetching or turning group quotes into transfer snapshots',()=>{
+ const cache=parsePublicNetworkCache(JSON.parse(gunzipSync(readFileSync('public/receiz-public-ledger.json.gz.bin')).toString('utf8')));
+ const source=parseMarketCapSource(JSON.parse(readFileSync('public/receiz-public-capitalization.json','utf8')));
+ const network=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('No requests belong in transaction valuation'));
+ try{
+  const index=indexLedgerValues(source),rows=cache.records.filter(row=>/card[._-]transfer/i.test(row.kind));
+  const values=rows.map(row=>ledgerValueForRecord(row,index));
+  expect(values.filter(value=>value.basis==='card-snapshot')).toHaveLength(41);
+  expect(values.filter(value=>value.basis==='card-model')).toHaveLength(43);
+  expect(values.filter(value=>value.basis==='unavailable')).toHaveLength(174);
+  const record=rows.find(row=>row.sourceId==='9efdfaf3-b2c4-4189-9ecc-9a809cbb9861')!;
+  expect(ledgerValueForRecord(record,index)).toMatchObject({basis:'card-model',amountUsdCents:'1366',pulse:'12616144'});
+  for(const row of rows)expect(ledgerValueForRecord(row,{...index,evaluationPulse:source.serverPulse+100})).toBe(ledgerValueForRecord(row,index));
+  expect(network).not.toHaveBeenCalled();
+ }finally{network.mockRestore();}
 });
