@@ -16,7 +16,7 @@ async function noteRemovalGuard(saved: SavedIdentity) {
   const db = await database();
   const rows: {key:string;row:PrivateBankOperation|undefined}[]=[];
   try {
-    for (const family of ['offline-notes','prepared-notes','native-payments','native-assets','wallet-sends']) {
+    for (const family of ['offline-notes','prepared-notes','native-payments','native-assets','wallet-sends','market-trades']) {
       const key=`${family}|${BANK_STORAGE_APPLICATION_ID}|${digest}`;
       const row=await new Promise<PrivateBankOperation|undefined>((resolve,reject)=>{const read=db.transaction('operations').objectStore('operations').get(key);read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error);});
       rows.push({key,row});
@@ -26,8 +26,9 @@ async function noteRemovalGuard(saved: SavedIdentity) {
       // This retention guard grants no financial authority. A reserved receiving
       // slot may already be addressed by an incoming note outside this tab.
       const native=family==='native-payments'||family==='native-assets';
-      const wallet=family==='wallet-sends';
-      const held=wallet ? !state||state.schema!=='bank.wallet-sends.v1'||state.authority!=='wallet-observation'||!Array.isArray(state.history)||state.history.length>1000||!state.current||[...state.history,state.current].some(checkpoint=>!checkpoint||!['recorded','not-sent'].includes(checkpoint.status)) : native ? !state||state.schema!==`bank.${family}.v1`||!Array.isArray(state.history)||state.history.length>1000||!state.current||[...state.history,state.current].some(checkpoint=>!checkpoint||!['committed','zero-write'].includes(checkpoint.state)) : family==='offline-notes'
+      const wallet=family==='wallet-sends'||family==='market-trades';
+      if(family==='market-trades')await(await import('./market-trade')).validateMarketTradeState(state);
+      const held=wallet ? !state||state.schema!==`bank.${family}.v1`||state.authority!==(family==='market-trades'?'market-observation':'wallet-observation')||!Array.isArray(state.history)||state.history.length>1000||!state.current||[...state.history,state.current].some(checkpoint=>!checkpoint||!['recorded','not-sent'].includes(checkpoint.status)) : native ? !state||state.schema!==`bank.${family}.v1`||!Array.isArray(state.history)||state.history.length>1000||!state.current||[...state.history,state.current].some(checkpoint=>!checkpoint||!['committed','zero-write'].includes(checkpoint.state)) : family==='offline-notes'
         ? state.schema!=='receiz.bank.offline-notes-device.v1'||state.create||Object.keys(state.receivers??{}).length||Object.values(state.deposits??{}).some(v=>!(v as {creditRef?:string}).creditRef)||Object.entries(state.notes??{}).some(([id,v])=>!(v as {transferComplete?:boolean}).transferComplete&&!state.deposits?.[id]?.creditRef)
         : state.schema!=='receiz.bank.prepared-notes-device.v1'||state.create||Object.values(state.slots??{}).some(v=>(v as {status:string}).status==='reserved')||Object.values(state.components??{}).some(v=>!(v as {exhausted?:boolean}).exhausted)||Object.values(state.journal?.deposits??{}).some(v=>(v as {phase:string}).phase!=='complete')||Object.entries(state.notes??{}).some(([id,v])=>!(v as {transferComplete?:boolean}).transferComplete&&state.journal?.deposits?.[id]?.phase!=='complete');
       if(held&&(native||wallet))throw new Error('Keep this device until the retained transaction outcome is resolved. An Identity Seal backup does not include its private execution recovery.');
@@ -780,3 +781,6 @@ export const saveNativeAssetState=(binding:{artifactSha256:string},value:import(
 
 export const loadWalletSendState=(binding:{artifactSha256:string})=>loadNoteState(binding,'wallet-sends');
 export const saveWalletSendState=(binding:{artifactSha256:string},value:import('./wallet-send').WalletSendState,expected:unknown)=>saveNoteState(binding,'wallet-sends',value,expected);
+
+export const loadMarketTradeState=(binding:{artifactSha256:string})=>loadNoteState(binding,'market-trades');
+export const saveMarketTradeState=(binding:{artifactSha256:string},value:import('./market-trade').MarketTradeState,expected:unknown)=>saveNoteState(binding,'market-trades',value,expected);

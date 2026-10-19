@@ -93,3 +93,10 @@ it('discloses partial card inventory independently of fresh public quotes', () =
   source.value = { catalog: { ...catalog(1), sportsCoverage: 'partial' }, sportsStatus: 'fresh', quoteStatus: 'fresh', status: 'live', error: null, refresh: vi.fn() };
   expect(mount().host.textContent).toContain('card inventory partial');
 });
+it('routes a public Market purchase with the exact Market item ID to the connected Market writer',()=>{
+ source.value={catalog:catalog(1),status:'live',error:null,refresh:vi.fn()};const{host,open}=mount();act(()=>(host.querySelector('.market-rows button')as HTMLButtonElement).click());const button=[...host.querySelectorAll('dialog button')].find(b=>b.textContent?.includes('Buy ownership'))as HTMLButtonElement;
+ expect(button.disabled).toBe(false);act(()=>button.click());expect(open).toHaveBeenCalledWith({kind:'market-trade',marketItemId:source.value.catalog?(source.value.catalog as ReturnType<typeof catalog>).items[0].id:'',side:'buy'});
+});
+it('does not offer an executable trade for a discovery object without a supported Market listing',()=>{
+ const value=catalog(1);value.items[0]={...value.items[0],id:'sports:rsc_0123456789abcdef',category:'sports',sourceUrl:null};source.value={catalog:value,status:'live',error:null,refresh:vi.fn()};const{host,open}=mount();act(()=>(host.querySelector('.market-rows button')as HTMLButtonElement).click());const button=[...host.querySelectorAll('dialog button')].find(b=>b.textContent?.includes('Buy ownership'))as HTMLButtonElement;expect(button.disabled).toBe(true);expect(open).not.toHaveBeenCalled();
+});

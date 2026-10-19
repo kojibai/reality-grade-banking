@@ -1,3 +1,4 @@
+import {MarketTradeRecovery} from '../market/LiveMarketTrade';
 import { useState } from 'react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { BankNativeReadiness } from '../../receiz/bank-native-readiness';
@@ -28,7 +29,7 @@ export function BankConnection({ identity, onRefresh }: { identity: OpenIdentity
   };
   return <details className="identity-import bank-connection"><summary>Bank connection</summary>
     {identity.binding && <div className="profile-owner-coordinate"><span>Signed ownership identifier</span><code>{identity.binding.identityOwnerReceizId}</code></div>}
-    <BankExecutionRecoveryPanel identity={identity} onRefresh={onRefresh} /><WalletSendRecovery identity={identity} onRefresh={onRefresh} />
+    <BankExecutionRecoveryPanel identity={identity} onRefresh={onRefresh} /><WalletSendRecovery identity={identity} onRefresh={onRefresh} /><MarketTradeRecovery identity={identity} onRefresh={onRefresh}/>
     <p className="body-copy small-copy">Check the account connection used for custody, ownership and currency actions.</p>
     <button className="secondary-button" disabled={busy} onClick={() => void check()}>{busy ? 'Checking connection…' : 'Check connection'}</button>
     {report && <div role="status">

@@ -36,3 +36,9 @@ export const BANK_PREPARED_NOTE_CREDIT_ENABLED = false;
 
 export const BANK_WALLET_SEND_SCOPES = [...BANK_READ_SCOPES, 'receiz:wallet.transfer'] as const;
 export const BANK_WALLET_SEND_CONSENT = 'Allow Bankeiz to resolve my receiving account, review my Wallet quote, and submit only the payment I explicitly approve. Receiz receives my protected Identity Seal and signed consent for wallet read and transfer access. Wallet uses Reserve first, then Settlement. Each payment needs my separate final approval.';
+
+export const BANK_MARKET_READ_SCOPES = [...BANK_READ_SCOPES,'receiz:twin.read'] as const;
+export const BANK_MARKET_TRADE_SCOPES = [...BANK_MARKET_READ_SCOPES,'receiz:twin.write'] as const;
+export const BANK_MARKET_CONSENT = 'Allow Bankeiz to read my Market quote and original trade records and submit only the manual trade I explicitly approve. Receiz receives my protected Identity Seal and signed consent for Market read and write access. Every purchase or sale requires separate final approval at the live Market execution price.';
+
+export const BANK_MARKET_READ_CONSENT = 'Allow Bankeiz to read my live Market quote, ownership position and the original result of my saved trade reference. Receiz receives my protected Identity Seal and signed consent for Market and wallet read access. This permission does not authorize a purchase, sale or new execution.';

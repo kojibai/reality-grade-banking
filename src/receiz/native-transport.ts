@@ -21,6 +21,11 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
 export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
   if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return false;
+  if (url.pathname === '/api/connect/market/shares/trade') return method.toUpperCase()==='POST'?!url.search:method.toUpperCase()==='GET'&&[...url.searchParams.keys()].length===1&&url.searchParams.getAll('clientNonce').length===1&&/^[A-Za-z0-9._:-]{8,120}$/.test(url.searchParams.get('clientNonce')??'');
+  if (url.pathname === '/api/connect/market/shares/quote') {
+    const side=url.searchParams.get('side'),amount=side==='buy'?'amountUsd':'shareQuantity',id=url.searchParams.get('marketItemId');
+    return method.toUpperCase()==='GET'&&['buy','sell'].includes(side??'')&&!!id&&id.length<=512&&!/[\u0000-\u0020\u007f]/.test(id)&&[...url.searchParams.keys()].length===3&&['marketItemId','side',amount].every(key=>url.searchParams.getAll(key).length===1)&&(side==='buy'?/^(0|[1-9]\d{0,15})\.\d{2}$/:/^(0|[1-9]\d{0,11})\.\d{6}$/).test(url.searchParams.get(amount)??'');
+  }
   if (url.pathname === '/api/chat/users/search') return method.toUpperCase()==='GET' && [...url.searchParams.keys()].length===1 && url.searchParams.getAll('q').length===1 && /^[a-z0-9_]{3,24}$/.test(url.searchParams.get('q')??'');
   if (url.pathname === '/api/connect/transfers' && method.toUpperCase()==='GET') return [...url.searchParams.keys()].length===1 && (url.searchParams.has('clientNonce') ? /^[A-Za-z0-9._:-]{8,120}$/.test(url.searchParams.get('clientNonce')??'') : /^\d{1,18}\.\d{2}$/.test(url.searchParams.get('amountUsd')??''));
   if (/^\/api\/connect\/bank\/(?:payments\/(?:prepare|execute|recover)|assets\/(?:prepare|execute|recover|portfolio))$/.test(url.pathname)) return method.toUpperCase() === 'POST' && [...url.searchParams.keys()].length === 1 && url.searchParams.getAll('applicationId').length === 1 && (url.pathname.endsWith('/recover') ? isBankNativeApplicationId(url.searchParams.get('applicationId')) : url.searchParams.get('applicationId') === BANK_APPLICATION_ID);

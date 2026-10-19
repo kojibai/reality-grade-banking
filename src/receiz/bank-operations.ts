@@ -1,5 +1,6 @@
 import type { ReceizClient, ReceizAuthoritySessionV124, ReceizOperationPlanV124, ReceizPortableExecutionTransitionSetV124 } from '@receiz/sdk';
 import { BANK_APPLICATION_ID } from './config';
+import { noteFailureStage } from './note-stage';
 import { loadReceiz } from './client';
 import { createBankExecution, type BankExecutionStore, type BankExecutionResult } from './bank-execution';
 import { validateAssetDefinition, type AssetDefinition } from './asset-definition';
@@ -152,18 +153,22 @@ export function createBankOperations(input: {
     discard(review) { if(nativeAssetReviews.has(review)&&input.assets){input.assets.discard(review);nativeAssetReviews.delete(review);held.delete(review);return;} if(nativeReviews.has(review))input.payments?.discard(review);nativeReviews.delete(review);custody.delete(review); held.delete(review); },
   };
 }
-const publicOperationCodes=new Set(['BANK_WALLET_RECIPIENT_UNAVAILABLE','BANK_WALLET_IDENTITY_CHANGED','BANK_WALLET_SOURCE_INVALID','BANK_WALLET_CHECKPOINT_INVALID','BANK_WALLET_QUOTE_INVALID','BANK_WALLET_LOCAL_HEAD_REQUIRED','native_payment_unavailable','native_bank_unavailable','native_bank_protected_custody_unqualified','payment_access_denied','access_denied','insufficient_scope','BANK_PAYMENT_RECIPIENT_UNAVAILABLE','BANK_NATIVE_WALLET_INSUFFICIENT_SETTLEMENT','BANK_NATIVE_WALLET_INSUFFICIENT_RESERVE','BANK_NATIVE_WALLET_DENOMINATION_PRECISION','BANK_PAYMENT_REVIEW_INVALID','BANK_PAYMENT_SOURCE_INVALID','BANK_PAYMENT_FINANCIAL_SOURCE_INVALID','BANK_PAYMENT_CHECKPOINT_INVALID','BANK_PAYMENT_CONSENT_INVALID','BANK_PAYMENT_ACCESS_DENIED','BANK_PAYMENT_EXPIRED','BANK_PAYMENT_INTENT_CONFLICT','BANK_OPERATION_EXPIRED','BANK_OPERATION_SOURCE_MISMATCH','BANK_EXECUTION_PENDING','BANK_OPERATION_ACCESS_REQUIRED','BANK_OPERATION_FINANCIAL_ADAPTER_UNQUALIFIED','BANK_OPERATION_RUNTIME_UNAVAILABLE']);
+const publicOperationCodes=new Set(['BANK_MARKET_REQUEST_INVALID','BANK_MARKET_QUOTE_INVALID','BANK_MARKET_CHECKPOINT_INVALID','BANK_MARKET_OUTCOME_MISMATCH','BANK_MARKET_ORIGINAL_UNAVAILABLE','BANK_MARKET_IDENTITY_CHANGED','BANK_WALLET_RECIPIENT_UNAVAILABLE','BANK_WALLET_IDENTITY_CHANGED','BANK_WALLET_SOURCE_INVALID','BANK_WALLET_CHECKPOINT_INVALID','BANK_WALLET_QUOTE_INVALID','BANK_WALLET_LOCAL_HEAD_REQUIRED','native_payment_unavailable','native_bank_unavailable','native_bank_protected_custody_unqualified','payment_access_denied','access_denied','insufficient_scope','BANK_PAYMENT_RECIPIENT_UNAVAILABLE','BANK_NATIVE_WALLET_INSUFFICIENT_SETTLEMENT','BANK_NATIVE_WALLET_INSUFFICIENT_RESERVE','BANK_NATIVE_WALLET_DENOMINATION_PRECISION','BANK_PAYMENT_REVIEW_INVALID','BANK_PAYMENT_SOURCE_INVALID','BANK_PAYMENT_FINANCIAL_SOURCE_INVALID','BANK_PAYMENT_CHECKPOINT_INVALID','BANK_PAYMENT_CONSENT_INVALID','BANK_PAYMENT_ACCESS_DENIED','BANK_PAYMENT_EXPIRED','BANK_PAYMENT_INTENT_CONFLICT','BANK_OPERATION_EXPIRED','BANK_OPERATION_SOURCE_MISMATCH','BANK_EXECUTION_PENDING','BANK_OPERATION_ACCESS_REQUIRED','BANK_OPERATION_FINANCIAL_ADAPTER_UNQUALIFIED','BANK_OPERATION_RUNTIME_UNAVAILABLE']);
 /** Bounded diagnostics only; private HTTP payloads and exception text stay out. */
 export function bankOperationFailureDetails(error:unknown){
  const value=error as {status?:unknown;message?:unknown;name?:unknown}|null;
  const status=typeof value?.status==='number'&&Number.isInteger(value.status)&&value.status>=400&&value.status<=599?value.status:null;
  const code=typeof value?.message==='string'&&publicOperationCodes.has(value.message)?value.message:status?`HTTP_${status}`:value?.name==='OperationError'?'BROWSER_OPERATION_ERROR':'BANK_OPERATION_UNAVAILABLE';
- return {code,status};
+ return {code,status,...noteFailureStage(error)};
 }
 export function bankOperationError(error: unknown): string {
   const code = error instanceof Error ? error.message : '';
+  const stage=noteFailureStage(error)?.stage;
+  if(stage&&['saved-notes','prepared-notes','saved-note-identity','offline-note-checkpoint','prepared-note-checkpoint'].includes(stage))return 'Saved Offline Note custody could not be opened. Keep this device and its original proofs; the saved state has not been reset.';
+  if(error instanceof Error&&error.name==='OperationError')return 'A protected browser operation failed. Your account and saved transaction state are preserved. Keep this device and check the failure details.';
   if(code==='BANK_WALLET_RECIPIENT_UNAVAILABLE')return 'The receiving account could not be resolved. Check its public username or account ID.';
-  if(code==='BANK_WALLET_LOCAL_HEAD_REQUIRED')return 'This account has a locally advanced Note or proof head. Keep its original and complete its existing synchronization before using connected Wallet Send.';
+  if(code==='BANK_WALLET_LOCAL_HEAD_REQUIRED')return 'This account has a locally advanced Note or proof head. Keep its original and complete its existing synchronization before using connected payments or Market trades.';
+  if(code.startsWith('BANK_MARKET_'))return 'The Market request or its original result could not be verified. Your saved trade remains on this device. Review the failure details or check its original outcome.';
   if(code.startsWith('BANK_WALLET_'))return 'The Wallet request could not be verified. Your saved payment details remain held on this device.';
   if(code==='BANK_NATIVE_WALLET_INSUFFICIENT_SETTLEMENT')return 'Choose an amount within your available Settlement.';
   if(code==='BANK_NATIVE_WALLET_INSUFFICIENT_RESERVE')return 'Choose an amount within your available Reserve.';

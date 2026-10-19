@@ -1,17 +1,17 @@
 import {beforeEach,afterEach,expect,it,vi} from 'vitest';
 import {openCanonicalIdentity} from '../src/receiz/native-identity';
-import {BANK_APPLICATION_ID,BANK_NATIVE_SCOPES} from '../src/receiz/config';
+import {BANK_APPLICATION_ID,BANK_NATIVE_SCOPES,BANK_MARKET_TRADE_SCOPES} from '../src/receiz/config';
 import {nativeAssetChallenge,type NativeAssetReview} from '../src/receiz/native-asset-protocol';
 import {nativePaymentChallenge,type NativePaymentReview} from '../src/receiz/native-payment-protocol';
 import type {BankOperationInput} from '../src/receiz/bank-operations';
 
 // Real asset/payment choreography; only identity admission, encrypted storage
 // and authenticated transport are isolated protocol fixtures here.
-const p=vi.hoisted(()=>({generic:null as unknown,payment:null as unknown,asset:null as unknown,wallet:null as unknown,note:null as unknown,storedHead:null as unknown,request:vi.fn(),qualify:vi.fn(),locks:vi.fn()}));
+const p=vi.hoisted(()=>({generic:null as unknown,payment:null as unknown,asset:null as unknown,wallet:null as unknown,market:null as unknown,note:null as unknown,storedHead:null as unknown,request:vi.fn(),qualify:vi.fn(),locks:vi.fn()}));
 vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),
  loadOfflineNoteState:async()=>p.note,loadPreparedNoteState:async()=>null,
  loadWalletObservation:async()=>p.storedHead,assertWalletSendCustody:async()=>{if((p.storedHead as {source?:string}|null)?.source==='local-note-head')throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},loadAccountLedgerState:async()=>null,loadBankOperation:async()=>p.generic,
- loadNativePaymentState:async()=>p.payment,loadNativeAssetState:async()=>p.asset,loadWalletSendState:async()=>p.wallet,
+ loadNativePaymentState:async()=>p.payment,loadNativeAssetState:async()=>p.asset,loadWalletSendState:async()=>p.wallet,loadMarketTradeState:async()=>p.market,
  saveNativePaymentState:async(_binding:unknown,value:unknown,expected:unknown)=>{expect(p.payment).toEqual(expected);p.payment=structuredClone(value);},
  saveNativeAssetState:async(_binding:unknown,value:unknown,expected:unknown)=>{expect(p.asset).toEqual(expected);p.asset=structuredClone(value);},
 }));
@@ -20,7 +20,7 @@ vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({...await import('@rec
  readReceizIdentityPublicBinding:async()=>({keyId:'a'.repeat(64),artifactSha256:'b'.repeat(64),artifactOwnerReceizId:'sender.receiz.id'}),
  readReceizIdentityArtifact:async()=>({owner:{uid:'fixture-user',username:'fixture'},issuedAt:'2026-10-18T00:00:00Z',keyId:'a'.repeat(64),crypto:{}}),projectReceizIdentityAccount:async()=>({authority:'identity-only'}),
  receizKaiNow:()=>({pulse:100,uPulse:100000000}),
- createReceizClient:({accessToken}:{accessToken?:string}={})=>accessToken?{auth:{grantedScopes:async()=>[...BANK_NATIVE_SCOPES]},request:p.request,runtime:{qualifyV124:p.qualify}}:{identity:{
+ createReceizClient:({accessToken}:{accessToken?:string}={})=>accessToken?{auth:{grantedScopes:async()=>[...BANK_NATIVE_SCOPES,...BANK_MARKET_TRADE_SCOPES]},request:p.request,runtime:{qualifyV124:p.qualify}}:{identity:{
   continueReceizId:async()=>({ok:true,session:{uid:'fixture-user'}}),
   signLoginProof:async({challengeB64Url}:{challengeB64Url:string})=>({schema:'receiz.identity.login_proof.v1',keyId:'a'.repeat(64),alg:'Ed25519',challengeB64Url,signatureB64Url:'fixture-signature'}),
   exchangeProofAuthority:async({applicationId,scopes}:{applicationId:string;scopes:string[]})=>({applicationId,keyId:'a'.repeat(64),artifactDigest:'b'.repeat(64),grantedScopes:scopes,accessToken:'fixture-only',expiresAtKai:1000}),
@@ -38,7 +38,7 @@ function unknown(kind:'assets'|'payments'){
  return{schema:kind==='assets'?'bank.native-assets.v1':'bank.native-payments.v1',current:{prepared:value,consentProof:{schema:'receiz.identity.login_proof.v1',keyId:'a'.repeat(64),alg:'Ed25519',challengeB64Url:value.challengeB64Url,signatureB64Url:'fixture'},state:'unknown'},history:[]};
 }
 beforeEach(()=>{
- p.generic=null;p.payment=null;p.asset=null;p.wallet=null;p.note=null;p.storedHead=null;p.qualify.mockReset().mockRejectedValue(Error('GENERIC_RUNTIME_MUST_NOT_BE_USED'));
+ p.generic=null;p.payment=null;p.asset=null;p.wallet=null;p.market=null;p.note=null;p.storedHead=null;p.qualify.mockReset().mockRejectedValue(Error('GENERIC_RUNTIME_MUST_NOT_BE_USED'));
  const locks=new Map<string,Promise<unknown>>();
  p.locks.mockReset().mockImplementation((name:string,_options:unknown,operation:()=>Promise<unknown>)=>{const result=(locks.get(name)??Promise.resolve()).catch(()=>{}).then(operation);locks.set(name,result);return result;});
  vi.stubGlobal('navigator',{locks:{request:p.locks}});
@@ -107,4 +107,11 @@ it('refuses a new Wallet Send while a Note is preparing before its local account
 
 it('reopens durable Note custody before Wallet review when a different tab changed the saved local head',async()=>{
  const identity=await open();try{expect(identity.knownWallet()).toBeNull();p.storedHead={source:'local-note-head'};await expect((await identity.walletSend!()).prepare({recipient:'receiver',amountUsdCents:'100'})).rejects.toThrow('BANK_WALLET_LOCAL_HEAD_REQUIRED');expect(p.request).not.toHaveBeenCalled();}finally{identity.dispose();}
+});
+
+it('blocks a new native action while a connected Market request has an unknown result',async()=>{
+ p.market={schema:'bank.market-trades.v1',authority:'market-observation',current:{status:'unknown'},history:[]};const identity=await open();try{await expect((await identity.operations!()).prepare(fund)).rejects.toThrow('BANK_EXECUTION_PENDING');expect(p.request).not.toHaveBeenCalled();}finally{identity.dispose();}
+});
+it('uses the registered Bank application for connected Market read consent',async()=>{
+ const identity=await open();try{await expect((await identity.marketTrade!()).prepare({marketItemId:'asset:one',side:'buy',amountUsdCents:'100'})).rejects.toThrow('BANK_MARKET_IDENTITY_CHANGED');}finally{identity.dispose();}
 });

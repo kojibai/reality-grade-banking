@@ -15,7 +15,7 @@ vi.mock('../src/receiz/identity-vault', () => ({
   loadWalletObservation: async () => fixture.initial,
   saveWalletObservation: fixture.save,
   assertWalletSendCustody:async()=>{},
-  loadBankOperation:async()=>null,loadNativePaymentState:async()=>null,loadNativeAssetState:async()=>null,
+  loadBankOperation:async()=>null,loadNativePaymentState:async()=>null,loadMarketTradeState:async()=>null,loadNativeAssetState:async()=>null,
   loadWalletSendState:vi.fn().mockResolvedValue(null),
   loadPreparedNoteState:vi.fn(),savePreparedNoteState:fixture.preparedSave,
   loadOfflineNoteState: vi.fn(), saveOfflineNoteState: vi.fn(), saveOfflineNoteBlob: vi.fn(), loadOfflineNoteBlob: vi.fn(),

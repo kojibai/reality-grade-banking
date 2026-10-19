@@ -1,3 +1,5 @@
+import {loadMarketTradeState,saveMarketTradeState} from './identity-vault';
+import {BANK_MARKET_READ_SCOPES,BANK_MARKET_TRADE_SCOPES,BANK_MARKET_CONSENT,BANK_MARKET_READ_CONSENT} from './config';
 import {loadWalletSendState,saveWalletSendState,assertWalletSendCustody} from './identity-vault';
 import {BANK_WALLET_SEND_SCOPES,BANK_WALLET_SEND_CONSENT} from './config';
 import { loadNativePaymentState, saveNativePaymentState, loadNativeAssetState, saveNativeAssetState, loadOfflineNoteState, saveOfflineNoteState, loadPreparedNoteState, savePreparedNoteState, saveOfflineNoteBlob, loadOfflineNoteBlob } from './identity-vault';
@@ -41,6 +43,7 @@ export interface OpenIdentity {
   prepareAccountView: () => Promise<import('./wallet-observation').WalletObservation>;
   refreshLocalValuation?: () => Promise<import('./wallet-observation').WalletObservation | null>;
   walletReceivingAddress?: () => string | null;
+  marketTrade?: () => Promise<import('./market-trade').MarketTrade>;
   walletSend?: () => Promise<import('./wallet-send').WalletSend>;
   operations?: () => Promise<import('./bank-operations').BankOperations>;
   accountProof?: () => Promise<import('./account-proof').VerifiedAccountProof>;
@@ -382,7 +385,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const noteOpen = () => { if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.'); };
   let localNotes:BankOfflineNotes|undefined;
   let localNoteInventory:ReturnType<typeof createLocalNoteInventory>|undefined;
-  async function assertNoPendingWalletSend(){noteOpen();if(hasPendingWalletSend(await loadWalletSendState(binding)))throw Error('BANK_EXECUTION_PENDING');noteOpen();}
+  async function assertNoPendingWalletSend(){noteOpen();if(await hasPendingMarketTrade(await loadMarketTradeState(binding)))throw Error('BANK_EXECUTION_PENDING');if(hasPendingWalletSend(await loadWalletSendState(binding)))throw Error('BANK_EXECUTION_PENDING');noteOpen();}
   async function assertNoteCreateState(){if(!await localNoteInventory!.pending())await assertNoOtherPending();if(!BANK_PREPARED_NOTE_CREDIT_ENABLED&&await localNoteInventory!.preparedPending())throw Error('BANK_NOTE_PREPARED_RECOVERY_REQUIRED');}
   async function offlineNotes():Promise<BankOfflineNotes>{
     noteOpen();if(localNotes)return localNotes;
@@ -673,14 +676,20 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     noteOpen();
     const legacy = await deviceBankExecutionStore(binding).load();
     if (legacy && ['prepared', 'unknown'].includes(legacy.state)) throw Error('BANK_EXECUTION_PENDING');
-    const [payments, assets, sends] = await Promise.all([loadNativePaymentState(binding), loadNativeAssetState(binding),loadWalletSendState(binding)]);
+    const [payments, assets, sends, market] = await Promise.all([loadNativePaymentState(binding), loadNativeAssetState(binding),loadWalletSendState(binding),loadMarketTradeState(binding)]);
     noteOpen();
-    if (hasPendingNative(payments, 'payments') || hasPendingNative(assets, 'assets') || hasPendingWalletSend(sends)) throw Error('BANK_EXECUTION_PENDING');
+    if (hasPendingNative(payments, 'payments') || hasPendingNative(assets, 'assets') || hasPendingWalletSend(sends) || await hasPendingMarketTrade(market)) throw Error('BANK_EXECUTION_PENDING');
   }
   function hasPendingWalletSend(raw:unknown):boolean {
     if(raw==null)return false;const s=raw as import('./wallet-send').WalletSendState;
     if(s.schema!=='bank.wallet-sends.v1'||s.authority!=='wallet-observation'||!s.current||!Array.isArray(s.history)||s.history.length>1000||[...s.history,s.current].some(c=>!c||!['unknown','recorded','not-sent'].includes(c.status)))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
     return [...s.history,s.current].some(c=>c.status==='unknown');
+  }
+  async function hasPendingMarketTrade(raw:unknown):Promise<boolean>{
+    if(raw==null)return false;const s=raw as import('./market-trade').MarketTradeState;
+    if(s.schema!=='bank.market-trades.v1'||s.authority!=='market-observation'||!s.current||!Array.isArray(s.history)||s.history.length>1000||[...s.history,s.current].some(c=>!c||!['unknown','recorded','not-sent'].includes(c.status)))throw Error('BANK_MARKET_CHECKPOINT_INVALID');
+    if([...s.history,s.current].some(c=>c.status==='unknown'))return true;
+    await(await import('./market-trade')).validateMarketTradeState(raw,binding.artifactOwnerReceizId);return false;
   }
   async function withAccountExecutionLock<T>(operation:()=>Promise<T>):Promise<T>{
     if(!navigator.locks)throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');
@@ -698,6 +707,15 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     connect:async readOnly=>{const connected=await connectClient(readOnly?BANK_READ_SCOPES:BANK_WALLET_SEND_SCOPES,readOnly?BANK_READ_CONSENT:BANK_WALLET_SEND_CONSENT);noteOpen();const account=clientAccounts.get(connected);if(!account)throw Error('BANK_WALLET_IDENTITY_CHANGED');return{client:connected,accountUid:account.accountUid};},
     lock:async operation=>withAccountExecutionLock(async()=>await navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},operation)),
   })).catch(error=>{walletSendPromise=undefined;throw error;});
+  let marketTradePromise:Promise<import('./market-trade').MarketTrade>|undefined;
+  const marketTrade=()=>marketTradePromise??=import('./market-trade').then(({createMarketTrade})=>createMarketTrade({
+    ownerReceizId:binding.artifactOwnerReceizId,assertOpen:noteOpen,
+    onRecorded:async uid=>{if(!lifetime.signal.aborted){walletRevision++;dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:binding.artifactSha256,accountUid:uid}}));}},
+    assertNoOtherPending:async()=>{if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');await assertNoOtherPending();if(await(await offlineNotes()).pending())throw Error('BANK_EXECUTION_PENDING');await assertWalletSendCustody(binding);if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},
+    store:{read:()=>loadMarketTradeState(binding),write:(next,previous)=>saveMarketTradeState(binding,next,previous)},
+    connect:async readOnly=>{const connected=await connectClient(readOnly?BANK_MARKET_READ_SCOPES:BANK_MARKET_TRADE_SCOPES,readOnly?BANK_MARKET_READ_CONSENT:BANK_MARKET_CONSENT);noteOpen();const account=clientAccounts.get(connected);if(!account)throw Error('BANK_MARKET_IDENTITY_CHANGED');return{client:connected,accountUid:account.accountUid};},
+    lock:async operation=>withAccountExecutionLock(async()=>await navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},operation)),
+  })).catch(error=>{marketTradePromise=undefined;throw error;});
   let nativePaymentsPromise: Promise<ReturnType<typeof import('./native-payment').createNativePayments>> | undefined;
   const nativePayments = () => nativePaymentsPromise ??= import('./native-payment').then(({createNativePayments})=>createNativePayments({
     ownerReceizId:binding.artifactOwnerReceizId,keyId:binding.keyId,
@@ -952,7 +970,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     // reads. A delayed import save cannot overwrite a newer account frame.
     if (knownWallet) void persistWalletObservation(knownWallet).catch(() => {});
   }
-  return { prepareAccountView, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { prepareAccountView, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

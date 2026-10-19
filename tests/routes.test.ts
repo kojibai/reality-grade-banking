@@ -4,3 +4,4 @@ it('restores the exact asset ID from a shareable console reference', () => { con
 it('retains the buy or sell review intent when restoring a console route', () => expect(parseRoute('#market/trade/gold/sell')).toEqual({ panel: 'market', sheet: { kind: 'trade', assetId: 'gold', mode: 'sell' } }));
 it('falls back safely for malformed route encoding', () => expect(parseRoute('#assets/asset/%E0%A4%A')).toEqual({ panel: 'account', sheet: null }));
 it('closes a directly opened sheet inside the console without leaving the document', () => { expect(sheetCloseBehavior({ sheet: { kind: 'profile' } })).toBe('replace'); expect(sheetCloseBehavior({ overlayEntry: true })).toBe('back'); });
+it.each(['buy','sell']as const)('restores a manual Market %s with its exact Market item ID',side=>{const sheet={kind:'market-trade'as const,marketItemId:'asset:proof/one',side};expect(parseRoute(routeHash('market',sheet))).toEqual({panel:'market',sheet});});

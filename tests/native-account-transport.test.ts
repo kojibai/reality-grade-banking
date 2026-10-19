@@ -55,3 +55,13 @@ it('forwards the actual SDK qualification wire instead of refusing its applicati
   expect(request.mock.calls[0][0]).toBe(`/api/bank/native${target}`);
   expect(JSON.parse(request.mock.calls[0][1]!.body as string)).toEqual({ applicationId: BANK_APPLICATION_ID, operations: ['subject-admission'] });
 });
+it('bounds Market quote and exact nonce reads and uses the installed SDK Market create endpoint',async()=>{
+ const quote='/api/connect/market/shares/quote?marketItemId=asset%3Aone&side=buy&amountUsd=10.00';
+ expect(nativeRequestPath(`/api/bank/native${quote}`,'GET')).toBe(quote);
+ for(const suffix of ['&ownerUserId=foreign','&amountUsd=11.00','&url=https://evil.example'])expect(nativeRequestPath(`/api/bank/native${quote}${suffix}`,'GET')).toBeNull();
+ for(const path of ['/api/connect/market/shares/trade?clientNonce=retained_nonce','/api/connect/market/shares/quote?marketItemId=asset%3Aone&side=sell&shareQuantity=1.250000'])expect(nativeRequestPath(`/api/bank/native${path}`,'GET')).toBe(path);
+ expect(nativeRequestPath('/api/bank/native/api/connect/market/shares/trade','GET')).toBeNull();
+ const request=vi.fn<typeof fetch>(async()=>new Response('{}',{headers:{'Content-Type':'application/json'}}));vi.stubGlobal('fetch',request);const client=createReceizClient({applicationId:BANK_APPLICATION_ID,accessToken:'synthetic',fetchImpl:nativeFetch});
+ await client.request('/api/connect/market/shares/trade',{method:'POST',body:{marketItemId:'asset:one',side:'buy',amountUsd:'10.00',clientNonce:'retained_nonce'}});
+ expect(request.mock.calls[0][0]).toBe('/api/bank/native/api/connect/market/shares/trade');
+});

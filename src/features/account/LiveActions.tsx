@@ -1,3 +1,4 @@
+import {LiveMarketTrade} from '../market/LiveMarketTrade';
 import type { UIAction } from '../../core/useBank';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { SharedWallet } from '../../receiz/shared-wallet';
@@ -14,11 +15,12 @@ import { CreateAsset } from '../assets/CreateAsset';
 import { IdentityProfile } from './IdentityProfile';
 import { ArrowUpRight, ShieldCheck } from 'lucide-react';
 export function LiveActions({ action, identity, wallet, onClose, onForget, onRefresh, paymentRequest, active = true, marketItems = [] }: { marketItems?: PublicMarketItem[]; active?: boolean; action: UIAction; identity: OpenIdentity; wallet: SharedWallet | null; onClose: () => void; onForget: () => Promise<void>; onRefresh: () => void; paymentRequest?: PaymentRequest | null }) {
-  const titles: Record<string, string> = { deposit: 'Deposit', send: 'Send', receive: 'Receive', balance: 'Your balance', growth: 'Settlement', profile: 'Your Receiz ID', currency: 'Create an asset', exchange: 'Exchange', rules: 'Money rules' };
+  const titles: Record<string, string> = { 'market-trade':'Market trade',deposit: 'Deposit', send: 'Send', receive: 'Receive', balance: 'Your balance', growth: 'Settlement', profile: 'Your Receiz ID', currency: 'Create an asset', exchange: 'Exchange', rules: 'Money rules' };
   let body;
   if (action.kind === 'balance' || action.kind === 'growth') body = <><h1 className="sheet-hero">Value, settled in proof.</h1><p className="body-copy">Settlement is proof-native value. Reserve holds proof-backed funds.</p><div className="detail-list"><div><span>Settlement</span><strong>{wallet ? formatMoney(wallet.settlementUsdCents) : 'Unavailable'}</strong></div><div><span>Reserve</span><strong>{wallet ? formatMoney(wallet.reserveUsdCents) : 'Unavailable'}</strong></div><div><span>Total</span><strong>{wallet ? formatMoney(wallet.totalUsdCents) : 'Unavailable'}</strong></div>{wallet?.pulse && <div><span>☤KAI</span><strong>{wallet.pulse}</strong></div>}{wallet?.kaiUpulse && <div><span>☤µKAI</span><strong>{wallet.kaiUpulse}</strong></div>}</div><aside className="balance-proof-notice" aria-label="Proof continuity"><span className="balance-proof-mark" aria-hidden="true"><ShieldCheck size={18} strokeWidth={1.7} /></span><div><h2>Proof continuity</h2><p>Your verified proof establishes value, ownership and history. Receiving institutions must demonstrate that they preserve that proof continuity.</p><a href="/learn/how-value-works/">How value is calculated</a><a href="/learn/reserve-and-settlement/#the-receiving-standard">The receiving standard<ArrowUpRight size={14} strokeWidth={1.7} aria-hidden="true" /></a></div></aside></>;
   else if (action.kind === 'profile') body = <IdentityProfile identity={identity} onForget={onForget} onRefresh={onRefresh} />;
   else if (action.kind === 'currency') body = <CreateAsset identity={identity} onRefresh={onRefresh} onClose={onClose} />;
+  else if(action.kind==='market-trade') body=<LiveMarketTrade identity={identity} marketItemId={action.marketItemId} side={action.side} onRefresh={onRefresh}/>;
   else if (action.kind === 'trade') body = <LiveOwnership identity={identity} mode={action.mode} initialDigest={action.assetId} onRefresh={onRefresh} />;
   else if (action.kind === 'exchange') body = <LiveExchange identity={identity} items={marketItems} onRefresh={onRefresh} />;
   else if (action.kind === 'receive') body = <LiveReceive identity={identity} onRefresh={onRefresh} />;

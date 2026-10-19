@@ -9,9 +9,9 @@ import { BankConnection } from './BankConnection';
 
 export function NativeOperation({ identity, input, inputKey, title, confirmLabel, onRefresh, children }: { identity?: OpenIdentity; input(): BankOperationInput; inputKey: string; title: string; confirmLabel: string; onRefresh(): void; children: ReactNode }) {
   const [review, setReview] = useState<BankOperationReview | null>(null), [result, setResult] = useState<BankOperationResult | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
-  const [failure,setFailure]=useState<(ReturnType<typeof bankOperationFailureDetails>&{stage:'Review'|'Submission'})|null>(null);
-  const report=(cause:unknown,stage:'Review'|'Submission')=>{setError(bankOperationError(cause));setFailure({...bankOperationFailureDetails(cause),stage});};
-  const diagnostics=failure&&<details className="transaction-proof-details transaction-failure-details"><summary>Failure details</summary><p>{failure.stage}{failure.status!==null&&` · HTTP ${failure.status}`}</p><code>{failure.code}</code><p className="small-copy">These details contain no credentials or account data.</p></details>;
+  const [failure,setFailure]=useState<(ReturnType<typeof bankOperationFailureDetails>&{phase:'Review'|'Submission'})|null>(null);
+  const report=(cause:unknown,stage:'Review'|'Submission')=>{setError(bankOperationError(cause));setFailure({...bankOperationFailureDetails(cause),phase:stage});};
+  const diagnostics=failure&&<details className="transaction-proof-details transaction-failure-details"><summary>Failure details</summary><p>{failure.phase}{failure.status!==null&&` · HTTP ${failure.status}`}</p><code>{failure.code}</code>{failure.stage&&<p>Stage: {failure.stage} · {failure.errorName}</p>}<p className="small-copy">These details contain no credentials or account data.</p></details>;
   const [approved, setApproved] = useState(false), generation = useRef(0), running = useRef(false), api = useRef<BankOperations | null>(null), held = useRef<BankOperationReview | null>(null);
   useEffect(() => {
     generation.current++; running.current = false; setReview(null); setResult(null); setBusy(false); setApproved(false); setError('');setFailure(null);

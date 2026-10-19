@@ -46,7 +46,7 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children}
   try{const next=await api.current.resolve(true);if(ticket===generation.current){setOutcome(next);if(next?.status==='recorded')onRefresh();}}
   catch(cause){if(ticket===generation.current)report(cause);}finally{if(ticket===generation.current){running.current=false;setBusy(false);}}
  }
- const diagnostics=error&&<><p className="error-message" role="status">{error}</p>{failure&&<details className="transaction-proof-details"><summary>Failure details</summary><code>{failure.code}</code>{failure.status&&<p>HTTP {failure.status}</p>}<p className="small-copy">These details contain no credentials or account data.</p></details>}</>;
+ const diagnostics=error&&<><p className="error-message" role="status">{error}</p>{failure&&<details className="transaction-proof-details"><summary>Failure details</summary><code>{failure.code}</code>{failure.stage&&<p>Stage: {failure.stage} · {failure.errorName}</p>}{failure.status&&<p>HTTP {failure.status}</p>}<p className="small-copy">These details contain no credentials or account data.</p></details>}</>;
  if(outcome)return <section className="native-operation-result" aria-live="polite">
   {outcome.status==='recorded'&&<div className="status-icon success"><Check size={30}/></div>}
   <h1 className="sheet-hero">{outcome.status==='recorded'?'Payment sent.':outcome.status==='not-sent'?'Payment not sent.':'Confirming your payment.'}</h1>

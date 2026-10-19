@@ -20,3 +20,18 @@ it('never echoes unknown messages, payloads, exception names or account identifi
  const error=Object.assign(new Error('private-token'),{name:'private-name',status:409,payload:{error:'private-token'}});
  expect(bankOperationFailureDetails(error)).toEqual({code:'HTTP_409',status:409});expect(bankOperationFailureDetails(new Error('BANK_PAYMENT_PRIVATE_CREDENTIAL_VALUE'))).toEqual({code:'BANK_OPERATION_UNAVAILABLE',status:null});
 });
+it('reports the known Note checkpoint failure as local custody rather than a receiving-service outage',async()=>{
+ const {atNoteStage}=await import('../src/receiz/note-stage');
+ const error=await atNoteStage('offline-note-checkpoint',async()=>{throw new DOMException('private cipher detail','OperationError');}).catch(cause=>cause);
+ expect(bankOperationError(error)).toContain('Saved Offline Note custody');
+ expect(bankOperationError(error)).not.toContain('receiving service');
+ expect(bankOperationFailureDetails(error)).toEqual({code:'BROWSER_OPERATION_ERROR',status:null,stage:'offline-note-checkpoint',errorName:'OperationError'});
+ expect(JSON.stringify(bankOperationFailureDetails(error))).not.toContain('private cipher detail');
+});
+it('does not describe an unclassified browser OperationError as service unavailability',()=>{
+ expect(bankOperationError(new DOMException('private operation','OperationError'))).toContain('browser operation');
+ expect(bankOperationError(new DOMException('private operation','OperationError'))).not.toContain('receiving service');
+});
+it('does not describe a signer or identity-transport failure as an unreadable saved Note checkpoint',async()=>{
+ const {atNoteStage}=await import('../src/receiz/note-stage');for(const stage of ['identity-transport','device-signer']as const){const cause=await atNoteStage(stage,async()=>{throw new DOMException('private','OperationError');}).catch(error=>error);expect(bankOperationError(cause)).toContain('protected browser operation');expect(bankOperationError(cause)).not.toContain('Offline Note custody');expect(bankOperationFailureDetails(cause)).toMatchObject({stage,errorName:'OperationError'});}
+});

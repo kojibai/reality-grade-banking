@@ -20,3 +20,13 @@ it('ignores an old identity outcome after the recovery panel switches identities
   await act(async()=>host.querySelector('button')!.click());expect(newApi.resolve).toHaveBeenCalledTimes(1);
  }finally{act(()=>root.unmount());}
 });
+it('identifies the saved Note checkpoint that blocks Send without showing private error text',async()=>{
+ const {WalletSendOperation}=await import('../src/features/account/WalletSendOperation');
+ const {atNoteStage}=await import('../src/receiz/note-stage');
+ const api={status:async()=>null,prepare:async()=>atNoteStage('offline-note-checkpoint',async()=>{throw new DOMException('private ciphertext detail','OperationError');})};
+ const identity={walletSend:async()=>api} as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<WalletSendOperation identity={identity} input={()=>({recipient:'receiver',amountUsdCents:'100'})} inputKey="test" onRefresh={()=>{}}>Fields</WalletSendOperation>));
+  await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Review payment'))!.click());
+  expect(host.textContent).toContain('offline-note-checkpoint');expect(host.textContent).toContain('Saved Offline Note custody');expect(host.textContent).not.toContain('private ciphertext detail');expect(host.textContent).not.toContain('receiving service');
+ }finally{act(()=>root.unmount());}
+});
