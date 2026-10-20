@@ -34,11 +34,13 @@ export function assetPreviewHtml(html:string,id:string,item:PublicMarketItem|nul
  return html.replace(/<title>[\s\S]*?<\/title>/gi,'').replace(/<meta\b[^>]*(?:name="(?:description|robots|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/gi,'').replace(/<link\b[^>]*rel="canonical"[^>]*>/gi,'').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/gi,'').replace('</head>',()=>tags+'</head>').replace(/(<div id="public-explore-root"[^>]*>)[\s\S]*?(<\/div>\s*<script id="receiz-navigation")/,(_whole,start,end)=>start+initial+end).replace('<script id="receiz-navigation"',()=>seed+'<script id="receiz-navigation"');
 }
 export async function handleAssetPreview(request:Request,dependencies?:Dependencies):Promise<Response>{
- const headers=new Headers({'Cache-Control':'public, max-age=60, s-maxage=300','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin'});
+ const headers=new Headers({'Cache-Control':'public, max-age=60, s-maxage=300','Content-Type':'text/html; charset=utf-8','Content-Disposition':'inline','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin'});
  if(!['GET','HEAD'].includes(request.method)){headers.set('Allow','GET, HEAD');return new Response(null,{status:405,headers});}
  const url=new URL(request.url),image=url.pathname.endsWith('/og.png')||url.searchParams.get('image')==='1';
- const id=url.pathname==='/api/asset'?url.searchParams.get('asset'):assetPageId(url.pathname.replace(/og\.png$/,''));
- if(!id||id.length>256||/[\x00-\x1f\x7f]/.test(id)||url.hash||[...url.searchParams.keys()].some(key=>!['asset','image'].includes(key)||url.searchParams.getAll(key).length!==1)||url.searchParams.has('image')&&url.searchParams.get('image')!=='1')return new Response(null,{status:400,headers});
+ // Production rewrites may preserve a trailing slash on the function path.
+ // The page URL and its image preview must resolve the same opaque source ID.
+ const id=url.pathname.replace(/\/$/,'')==='/api/asset'?url.searchParams.get('asset'):assetPageId(url.pathname.replace(/og\.png$/,''));
+ if(!id||id.length>256||/[\x00-\x1f\x7f]/.test(id)||url.hash||[...url.searchParams.keys()].some(key=>!['asset','image'].includes(key)||url.searchParams.getAll(key).length!==1)||url.searchParams.has('image')&&url.searchParams.get('image')!=='1'){headers.set('Cache-Control','no-store');return new Response('This asset page address could not be read.',{status:400,headers});}
  headers.set('Content-Type',image?'image/png':'text/html; charset=utf-8');
  // HEAD probes neither parse the catalog nor read HTML, load fonts or render PNG.
  if(request.method==='HEAD')return new Response(null,{headers});
