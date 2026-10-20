@@ -6,6 +6,14 @@ const message:ChatMessage={id:'m1',conversationId:id,senderUserId:uid,senderKind
 const conversation:ChatConversation={id,kind:'dm',title:'Mira',members:[],aiAgents:[],defaultAiId:null,unreadCount:1,previewMessage:message,createdAt:message.createdAt,updatedAt:message.createdAt,lastMessageAt:message.createdAt};
 const page:ChatPage={conversation,messages:[message],hasMore:false,nextCursor:null};
 const source={accountUid:uid,inbox:[conversation],pages:[page]};
+it('keeps complete carried seal avatars without losing conversations when image metadata exceeds the display budget',()=>{
+ const seal='data:image/svg+xml;base64,'+btoa('<svg xmlns="http://www.w3.org/2000/svg">'+' '.repeat(4000)+'</svg>');
+ const members=[{kind:'user' as const,userId:uid,username:'mira',displayName:'Mira',avatarUrl:seal}];
+ expect(projectMessagingDisplay({...source,inbox:[{...conversation,members}]}).inbox[0].members[0].avatarUrl).toBe(seal);
+ const crowded={...conversation,members:Array.from({length:50},(_,i)=>({...members[0],userId:'peer-'+i,avatarUrl:'data:image/png;base64,'+'A'.repeat(200000)}))};
+ const display=projectMessagingDisplay({...source,inbox:[crowded],pages:[{...page,conversation:crowded}]});
+ expect(display.inbox[0]?.id).toBe(id);expect(display.pages[0]?.messages[0].body).toBe(message.body);expect(new TextEncoder().encode(JSON.stringify(display)).byteLength).toBeLessThanOrEqual(MESSAGING_DISPLAY_MAX_BYTES);
+});
 it('retains only bounded presentation fields, without originals, receipts, transport or credentials',()=>{
  const injected={...conversation,accessToken:'must not retain'};const display=projectMessagingDisplay({...source,inbox:[injected]});
  expect(display.inbox[0].title).toBe('Mira');expect(display.pages[0].messages[0].body).toBe(message.body);

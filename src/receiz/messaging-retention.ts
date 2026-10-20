@@ -1,4 +1,5 @@
 import type {ChatConversation,ChatMessage,ChatPage,ChatPerson} from './native-messaging';
+import {profileAvatarUrl} from './profile-avatar';
 
 /** Optional display retention, never an artifact, grant, outbox or payment source. */
 export interface MessagingDisplay {
@@ -11,7 +12,7 @@ const size=(value:unknown)=>encoder.encode(JSON.stringify(value)).byteLength;
 const object=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
 const text=(value:unknown,max:number)=>typeof value==='string'?value.slice(0,max):'';
 function person(value:ChatPerson):ChatPerson {
-  return {kind:value.kind,userId:text(value.userId,200),username:text(value.username,100)||null,displayName:text(value.displayName,200)||null,avatarUrl:text(value.avatarUrl,2048)||null,aiAgentId:text(value.aiAgentId,100)||null};
+  return {kind:value.kind,userId:text(value.userId,200),username:text(value.username,100)||null,displayName:text(value.displayName,200)||null,avatarUrl:profileAvatarUrl(value.avatarUrl),aiAgentId:text(value.aiAgentId,100)||null};
 }
 function message(value:ChatMessage,preview=false):ChatMessage {
   const payment=object(value.walletTransfer);
@@ -21,18 +22,20 @@ function message(value:ChatMessage,preview=false):ChatMessage {
 function conversation(value:ChatConversation):ChatConversation {
   return {id:value.id,kind:value.kind,title:text(value.title,1000),members:value.members.slice(0,50).map(person),aiAgents:[],defaultAiId:text(value.defaultAiId,100)||null,unreadCount:value.unreadCount,previewMessage:value.previewMessage?message(value.previewMessage,true):null,createdAt:text(value.createdAt,50),updatedAt:text(value.updatedAt,50),lastMessageAt:text(value.lastMessageAt,50)||null};
 }
+// Image metadata is optional; it must never evict the conversation or messages.
+function withoutAvatars(value:ChatConversation):ChatConversation{return{...value,members:value.members.map(person=>({...person,avatarUrl:null}))};}
 export function projectMessagingDisplay(source:MessagingDisplaySource):MessagingDisplay {
   const display:MessagingDisplay={schema:'bankeiz.messaging-display.v1',accountUid:source.accountUid,inbox:[],pages:[]};
   // Budget the exact UTF-8 JSON bytes once per row. No artifacts, attachments,
   // call state, pending writes or credentials are copied into this projection.
   let remaining=MESSAGING_DISPLAY_MAX_BYTES-size(display)-64;
   for(const row of source.inbox.slice(0,256)){
-    const next=conversation(row),cost=size(next)+1;if(cost>remaining/2)break;
+    let next=conversation(row),cost=size(next)+1;if(cost>remaining/2){next=withoutAvatars(next);cost=size(next)+1;}if(cost>remaining/2)break;
     display.inbox.push(next);remaining-=cost;
   }
   for(const row of source.pages.slice(-12).reverse()){
     const next:ChatPage={conversation:conversation(row.conversation),messages:[],hasMore:row.hasMore,nextCursor:row.nextCursor};
-    const base=size(next)+128;if(base>remaining)continue;remaining-=base;
+    let base=size(next)+128;if(base>remaining){next.conversation=withoutAvatars(next.conversation);base=size(next)+128;}if(base>remaining)continue;remaining-=base;
     // Prefer the newest messages, preserving their original order and IDs.
     for(const entry of row.messages.slice(-100).reverse()){
       const retained=message(entry),cost=size(retained)+1;if(cost>remaining)break;

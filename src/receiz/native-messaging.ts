@@ -1,6 +1,7 @@
 import {createPeerTyping} from './peer-typing';
 import {readMessagingDisplay,type MessagingDisplay,type MessagingDisplaySource} from './messaging-retention';
 import {peopleSearchQuery} from './people-search';
+import {profileAvatarUrl} from './profile-avatar';
 import type {NativeCallIdentity} from './native-calls';
 import type {NativeTwin} from './native-twin';
 /** Existing Receiz chat projections. Transport receipts remain descriptive;
@@ -18,7 +19,7 @@ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 const object=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
 const text=(value:unknown,max=262144)=>typeof value==='string'&&value.length<=max?value:'';
 function id(value:string){if(!uuid.test(value))throw new MessagingError('CHAT_INVALID_CONVERSATION');return value;}
-export function chatPerson(value:unknown):ChatPerson|null {const v=object(value);if(!text(v.userId,200)||!['user','ai'].includes(String(v.kind)))return null;return{kind:v.kind as ChatPerson['kind'],userId:String(v.userId),username:text(v.username,100)||null,displayName:text(v.displayName,200)||null,avatarUrl:text(v.avatarUrl,2048)||null,aiAgentId:text(v.aiAgentId,100)||null};}
+export function chatPerson(value:unknown):ChatPerson|null {const v=object(value);if(!text(v.userId,200)||!['user','ai'].includes(String(v.kind)))return null;return{kind:v.kind as ChatPerson['kind'],userId:String(v.userId),username:text(v.username,100)||null,displayName:text(v.displayName,200)||null,avatarUrl:profileAvatarUrl(v.avatarUrl),aiAgentId:text(v.aiAgentId,100)||null};}
 function message(value:unknown,conversationId:string):ChatMessage {const v=object(value);if(!text(v.id,200)||v.conversationId!==conversationId||!['user','ai'].includes(String(v.senderKind))||typeof v.body!=='string'||v.body.length>262144||!text(v.createdAt,50))throw new MessagingError('CHAT_RESPONSE_INVALID');return {...v} as unknown as ChatMessage;}
 function conversation(value:unknown):ChatConversation {const v=object(value);if(!uuid.test(String(v.id))||!['dm','group'].includes(String(v.kind))||!Array.isArray(v.members))throw new MessagingError('CHAT_RESPONSE_INVALID');return {...v,title:text(v.title,1000)||'Conversation',members:v.members.map(chatPerson).filter((p):p is ChatPerson=>!!p),aiAgents:Array.isArray(v.aiAgents)?v.aiAgents:[],defaultAiId:text(v.defaultAiId,100)||null,unreadCount:Number.isSafeInteger(v.unreadCount)&&Number(v.unreadCount)>0?Number(v.unreadCount):0,previewMessage:v.previewMessage?message(v.previewMessage,String(v.id)):null} as unknown as ChatConversation;}
 async function boundedJson(response:Response){if(!response.body)throw new MessagingError(`HTTP_${response.status}`);const reader=response.body.getReader();let length=0;const decoder=new TextDecoder();let raw='';try{while(true){const part=await reader.read();if(part.done)break;length+=part.value.byteLength;if(length>4*1024*1024)throw new MessagingError('CHAT_RESPONSE_TOO_LARGE');raw+=decoder.decode(part.value,{stream:true});}raw+=decoder.decode();return object(JSON.parse(raw));}catch(cause){await reader.cancel().catch(()=>{});if(cause instanceof MessagingError)throw cause;throw new MessagingError('CHAT_RESPONSE_INVALID');}finally{reader.releaseLock();}}

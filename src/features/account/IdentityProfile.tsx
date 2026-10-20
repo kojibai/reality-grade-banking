@@ -3,6 +3,8 @@ import { ArrowUpRight, FileText } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import { BankConnection } from './BankConnection';
 import { ProofPortabilityPanel } from './ProofPortabilityPanel';
+import {ProfileAvatar} from '../../components/ProfileAvatar';
+import {identityProfileAvatar} from '../../receiz/profile-avatar';
 
 export function IdentityProfile({ identity, onForget, onRefresh }: { identity: OpenIdentity; onForget: () => Promise<void>; onRefresh: () => void }) {
   const [backup, setBackup] = useState(false), [removalError, setRemovalError] = useState('');
@@ -19,6 +21,7 @@ export function IdentityProfile({ identity, onForget, onRefresh }: { identity: O
   };
   return <div className="identity-profile">
     <div className="profile-identity">
+      <ProfileAvatar src={identityProfileAvatar(identity)} name={publicId} fallback="ID" eager/>
       <span className="profile-eyebrow">Receiz ID</span>
       <code className="profile-public-id">{publicId}</code>
       <p>Your verified identity, secured on this device.</p>

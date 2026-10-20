@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import {bankTwinContextRecords} from './receiz/twin-bank-context';
 import {mergePublicRecords} from './receiz/public-network';
 import {MessagesPanel} from './features/messages/MessagesPanel';
+import {identityProfileAvatar} from './receiz/profile-avatar';
 import { ConsoleShell } from './components/ConsoleShell';
 import type { Panel } from './components/BottomNav';
 import { Market } from './features/market/Market';
@@ -33,6 +34,7 @@ function BankApp() {
   const [onBank, setOnBank] = useState(location.pathname === '/');
   useEffect(() => { const change = () => flushSync(() => setOnBank(location.pathname === '/')); addEventListener('receiz-bank:surface', change); addEventListener('popstate',change); return () => { removeEventListener('receiz-bank:surface', change);removeEventListener('popstate',change); }; }, []);
   const account = useNativeAccount();
+  const identityImage=useMemo(()=>account.identity?identityProfileAvatar(account.identity):null,[account.identity]);
   const publicMarket = usePublicMarket(onBank);
   const showcase = useMemo(() => projectAccountShowcase(publicMarket.catalog, account.identity?.accountUsername?.() ?? account.identity?.username ?? null), [publicMarket.catalog, account.identity, account.wallet]);
   const [paymentRequest] = useState(() => { try { return location.search ? parsePaymentRequest(`${BANK_PUBLIC_ORIGIN}/${location.search}`) : null; } catch { return null; } });
@@ -53,7 +55,7 @@ function BankApp() {
   if (!account.identity) {
     return <Entrance opening={account.opening} openingStage={account.openingStage} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId} />;
   }
-  return <ConsoleShell active={onBank} panel={panel} onNavigate={navigate} onDeposit={() => open({ kind: 'deposit' })} onProfile={() => open({ kind: 'profile' })} onMessages={()=>open({kind:'messages'})}>
+  return <ConsoleShell identityImage={identityImage} active={onBank} panel={panel} onNavigate={navigate} onDeposit={() => open({ kind: 'deposit' })} onProfile={() => open({ kind: 'profile' })} onMessages={()=>open({kind:'messages'})}>
     <div hidden={panel !== 'account'}><LiveAccount walletHistory={account.walletHistory} historyComplete={account.historyComplete} showcase={showcase} wallet={account.wallet} busy={account.busy} error={account.error} observedAt={account.observedAt} onRefresh={() => void account.refresh()} onSend={() => open({ kind: 'send' })} onReceive={() => open({ kind: 'receive' })} onBalance={() => open({ kind: 'balance' })} onAssets={() => navigate('assets')} onLedger={() => navigate('ledger')} /></div>
     <div hidden={panel !== 'market'}><Market source={publicMarket} active={onBank && panel === 'market'} onAction={open} /></div>
     <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={onBank && panel === 'assets'} revision={sourceRevision} showcase={showcase} showcaseBusy={publicMarket.status === 'loading'} onOpen={open} /></div>

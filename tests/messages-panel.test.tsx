@@ -28,6 +28,11 @@ function fixture(consented=true){
  const submit=()=>act(async()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
  return{api:api as typeof api&NativeMessaging,identity,host,render,click,input,submit,onClose,onPreparePayment,unmount(){act(()=>root.unmount());host.remove();}};
 }
+it('shows carried participant images in the inbox, conversation and contact choices without another profile lookup',async()=>{
+ const f=fixture(),avatar='https://receiz.com/portrait.png',withImage={...conversation,members:[{...peer,avatarUrl:avatar}]};
+ f.api.conversations.mockResolvedValue([withImage]);f.api.messages.mockResolvedValue({...page,conversation:withImage});
+ try{await f.render();await f.click('Messages');expect(f.host.querySelector('.bank-thread-row img')?.getAttribute('src')).toBe(avatar);await f.click('Open conversation Sam');expect(f.host.querySelector('.bank-message-sender img')?.getAttribute('src')).toBe(avatar);await f.click('Back to messages');await f.click('New conversation');expect(f.host.querySelector('.bank-pick-person img')?.getAttribute('src')).toBe(avatar);expect(f.api.search).not.toHaveBeenCalled();}finally{f.unmount();}
+});
 it('requires one explicit permission before private reads, then opens Twin without sending anything',async()=>{
  const outbound=vi.fn(()=>{throw Error('No outbound tests');});vi.stubGlobal('fetch',outbound);const f=fixture(false);
  try{await f.render();expect(f.host.textContent).toContain('Use your existing Receiz messages, groups, calls and Twin through this ID. Nothing sent until you send.');expect(f.api.conversations).not.toHaveBeenCalled();expect(f.api.twin.ask).not.toHaveBeenCalled();await f.click('Enable messages');expect(f.identity.messaging).toHaveBeenLastCalledWith(true);expect(f.host.textContent).toContain('Your bank,');expect(f.api.twin.ask).not.toHaveBeenCalled();expect(outbound).not.toHaveBeenCalled();}finally{f.unmount();}
