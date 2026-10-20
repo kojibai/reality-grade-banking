@@ -1,11 +1,61 @@
 # iPhone Offline Note registration — v129
 
-## Verified boundary
+## Observed iPhone diagnostic — October 19, 2026
 
-The reported iPhone Safari/PWA error is
+The user supplied a screenshot of the live device-evidence check at 9:17 PM
+America/New_York. The browser chrome identifies Safari Private. These are the
+displayed diagnostic observations, not an exported attestation or independently
+verified raw WebAuthn capture:
+
+| Observation | Displayed result |
+| --- | --- |
+| WebAuthn | Available |
+| Attestation format | `none` |
+| Registration user verification | Yes |
+| Backup eligible / backed up | Yes / Yes |
+| Registration → first assertion counter | `0 → 0` |
+| PRF enabled at registration / result provided | Yes / Yes |
+| largeBlob support | Not reported |
+| Vendor attestation verification | Not assessed |
+| Rollback check | Refused: `OFFLINE_NOTE_CUSTODY_ROLLBACK_CONFORMANCE_FAILED` |
+| Financial actions | 0 |
+
+The displayed sequence reaches the first explicit refusal in
+`runReceizOfflineNoteRollbackConformance`: the first assertion counter must be
+the registration counter plus one. For registration zero, the successful
+qualification sequence would be `0 → 1 → 2`. The unchanged verifier stops at
+`0 → 0` and does not request the second assertion. It checks this condition
+before full assertion verification; this screenshot must not be described as
+independent verification of the assertion's signature.
+
+There are separate requirements for trusted device attestation and an actually
+single-device, non-backed-up credential. The reported `none` format and backup
+flags do not supply them. A software counter, pulse-derived sequence, PRF
+derivation or mutable browser journal cannot be substituted while preserving
+the current v129 contract. PRF returning a result establishes extension output,
+not irreversible retirement of a previous Note head. "Not reported" for
+largeBlob is not a demonstrated lack of support.
+
+**This tested credential remains unqualified.** The screenshot establishes no
+compatible route for full offline custody under the requested constraints.
+Changing only an SDK version cannot manufacture the missing device evidence.
+A future route would need an actually browser-accessible and independently
+verifiable mechanism satisfying the same custody/consumption guarantees.
+No such additional mechanism has been established here.
+
+The screenshot does not establish the installed PWA's assertion sequence or
+the exact iOS version. Earlier PWA screenshots reported the same registration
+format and backup flags. Neither the diagnostic nor this record repairs the
+older saved-checkpoint decryption error, resets custody, creates a financial
+certificate, changes the production gates or enables prepared credit.
+
+## Initial registration report
+
+The initial reported iPhone Safari/PWA error was
 `OFFLINE_NOTE_CUSTODY_ATTESTATION_FORMAT_UNSUPPORTED`, after one Face ID prompt.
-It occurs at registration, before strict-counter qualification. The screenshot
-does not contain the returned format or counter; it cannot establish either.
+It occurred at registration, before strict-counter qualification. That earlier
+screenshot did not contain the returned format or counter. The later diagnostic
+above supplies the reported sequence for its Safari Private test credential.
 
 Apple documents that new Safari platform credentials are passkeys and do not
 provide an attestation statement:
@@ -65,9 +115,9 @@ bounded code; its verifier, certificates and package versions do not change.
 
 **Consumer iPhone Safari/PWA Offline Note registration remains unqualified.**
 This change clarifies the actual boundary; it does not enable unsupported
-credentials. A fresh real-device attempt after deployment can distinguish
-`none` from another unsupported format. End-to-end financial qualification
-still requires actual compatible device evidence and disconnected create →
+credentials. The later device check reports `none` and a refused counter
+sequence. End-to-end financial qualification still requires actual compatible
+device evidence and disconnected create →
 send → deposit → credit → spend tests. No such real-device financial test was
 performed by the agent, and production financial selection is unchanged.
 
@@ -92,10 +142,10 @@ create a missing irreversible device state.
 
 Sources: [WebAuthn Level 3](https://www.w3.org/TR/webauthn-3/), sections 6.1.1,
 6.1.3, 10.1.4 and 10.1.5; [Safari 18 PRF support](https://webkit.org/blog/15865/webkit-features-in-safari-18-0/).
-The PRF/largeBlob conclusions are protocol analysis of those interfaces, not
-a claim that extensions were captured from this user's iPhone. No device
-counter, backup flags or current attestation format can be recovered from the
-earlier screenshot alone.
+The PRF/largeBlob conclusions are protocol analysis of those interfaces. The
+later device diagnostic observations are recorded above; they do not turn an
+extension result into a custody certificate. The earlier screenshots alone did
+not establish an assertion sequence.
 
 Apple's [managed passkey attestation configuration](https://support.apple.com/guide/deployment/depd218e61b5/web)
 requires device-management enrollment and an attestation identity. It is not a
@@ -230,10 +280,11 @@ Cancellation or navigation aborts pending credential requests. A successful
 counter check still reports `custodyQualified: false` and vendor attestation
 as unassessed. It is not a custody certificate or a current inventory proof.
 
-The actual iPhone assertion sequence remains unmeasured until the user runs
-this check on that phone. The existing screenshot already establishes a
-registration refusal for absent attestation and positive backup flags; this
-diagnostic does not override it or repair the older PWA checkpoint.
+The later user-run Safari Private diagnostic reports `0 → 0`, as recorded
+above. The installed PWA's assertion sequence remains separately unmeasured.
+The existing screenshots also establish a registration refusal for absent
+attestation and positive backup flags; the diagnostic does not override that
+refusal or repair the older PWA checkpoint.
 
 Additional reviewed device signals do not fill that boundary:
 
