@@ -1,0 +1,197 @@
+{
+  "warm": {
+    "same": "asset-retained",
+    "title": "At 4, Dad taught me money. At 18, I told him I wanted to end the Fed. At 25, I promised 100 mil\u2026 | Bankeiz",
+    "path": "/asset/profile%3Abjklock%3Ad1d5a3f4-5db9-444e-88f5-95443fb70598/",
+    "h1": "At 4, Dad taught me money. At 18, I told him I wanted to end the Fed. At 25, I promised 100 mil\u2026"
+  },
+  "copied": "http://127.0.0.1:5441/asset/profile%3Abjklock%3Ad1d5a3f4-5db9-444e-88f5-95443fb70598/",
+  "copyStatus": [
+    "Asset link copied",
+    "The original could not be opened. You can retry or inspect its source.Try again"
+  ],
+  "back": {
+    "path": "/explore/",
+    "query": "Dad",
+    "rows": 25
+  },
+  "newDocuments": [],
+  "newInventory": [],
+  "direct": {
+    "status": 200,
+    "seed": true
+  },
+  "og": {
+    "status": 200,
+    "width": 1730,
+    "height": 909
+  },
+  "layouts": [
+    {
+      "path": "/asset/profile%3Abjklock%3Ad1d5a3f4-5db9-444e-88f5-95443fb70598/",
+      "width": 320,
+      "scroll": 320
+    },
+    {
+      "path": "/asset/profile%3Abjklock%3Ad1d5a3f4-5db9-444e-88f5-95443fb70598/",
+      "width": 390,
+      "scroll": 390
+    },
+    {
+      "path": "/asset/profile%3Abjklock%3Ad1d5a3f4-5db9-444e-88f5-95443fb70598/",
+      "width": 430,
+      "scroll": 430
+    },
+    {
+      "path": "/asset/profile%3Abjklock%3Ad1d5a3f4-5db9-444e-88f5-95443fb70598/",
+      "width": 1280,
+      "scroll": 1280
+    }
+  ],
+  "home": {
+    "hasDirectory": 0,
+    "foundations": 4
+  },
+  "directory": {
+    "groups": 5,
+    "same": "guides-retained"
+  },
+  "scenes": [
+    {
+      "route": "/learn/payments/",
+      "stage": "1",
+      "initial": {
+        "state": "running",
+        "offset": "-7.99776px",
+        "transform": "none"
+      },
+      "later": {
+        "state": "running",
+        "offset": "-17.7143px",
+        "transform": "none"
+      },
+      "width": 390,
+      "scroll": 390,
+      "raster": 0,
+      "maxHeight": "none",
+      "overflow": "visible",
+      "artHeight": 256.25,
+      "svgHeight": 256.25,
+      "same": "guides-retained"
+    },
+    {
+      "route": "/learn/notes/",
+      "stage": "1",
+      "initial": {
+        "state": "running",
+        "offset": "-6.86023px",
+        "transform": "none"
+      },
+      "later": {
+        "state": "running",
+        "offset": "-16.5734px",
+        "transform": "none"
+      },
+      "width": 390,
+      "scroll": 390,
+      "raster": 0,
+      "maxHeight": "none",
+      "overflow": "visible",
+      "artHeight": 256.25,
+      "svgHeight": 256.25,
+      "same": "guides-retained"
+    },
+    {
+      "route": "/learn/messages/",
+      "stage": "1",
+      "initial": {
+        "state": "running",
+        "offset": "-6.28718px",
+        "transform": "none"
+      },
+      "later": {
+        "state": "running",
+        "offset": "-16.0017px",
+        "transform": "none"
+      },
+      "width": 390,
+      "scroll": 390,
+      "raster": 0,
+      "maxHeight": "none",
+      "overflow": "visible",
+      "artHeight": 256.25,
+      "svgHeight": 256.25,
+      "same": "guides-retained"
+    },
+    {
+      "route": "/learn/proof-native-economy/",
+      "stage": "1",
+      "initial": {
+        "state": "running",
+        "offset": "0px",
+        "transform": "matrix(0.990063, 0, 0, 0.990063, 0, 0)"
+      },
+      "later": {
+        "state": "running",
+        "offset": "0px",
+        "transform": "matrix(0.990382, 0, 0, 0.990382, 0, 0)"
+      },
+      "width": 390,
+      "scroll": 390,
+      "raster": 0,
+      "maxHeight": "none",
+      "overflow": "visible",
+      "artHeight": 256.25,
+      "svgHeight": 256.25,
+      "same": "guides-retained"
+    },
+    {
+      "route": "/learn/price-history/",
+      "stage": "1",
+      "initial": {
+        "state": "running",
+        "offset": "0px",
+        "transform": "none"
+      },
+      "later": {
+        "state": "running",
+        "offset": "0px",
+        "transform": "none"
+      },
+      "width": 390,
+      "scroll": 390,
+      "raster": 0,
+      "maxHeight": "none",
+      "overflow": "visible",
+      "artHeight": 256.25,
+      "svgHeight": 256.25,
+      "same": "guides-retained"
+    },
+    {
+      "route": "/standards/",
+      "stage": "1",
+      "initial": {
+        "state": "running",
+        "offset": "-6.85371px",
+        "transform": "none"
+      },
+      "later": {
+        "state": "running",
+        "offset": "-16.5703px",
+        "transform": "none"
+      },
+      "width": 390,
+      "scroll": 390,
+      "raster": 0,
+      "maxHeight": "none",
+      "overflow": "visible",
+      "artHeight": 256.25,
+      "svgHeight": 256.25,
+      "same": "guides-retained"
+    }
+  ],
+  "guideDocs": [],
+  "imageRequests": [],
+  "reduced": "none",
+  "errors": []
+}

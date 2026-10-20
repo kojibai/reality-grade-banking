@@ -8,7 +8,7 @@ This is the proposed content and interaction design. It is not a published econo
 
 ## Information architecture
 
-Five primary groups: **Banking, Assets, Markets, History, Standards**. The existing Learn index becomes the readable directory across all five. The proof-native economy and Global Market Cap are major destinations. Existing routes retain canonical continuity; unrelated synonyms do not become separate pages.
+Five primary groups: **Banking, Assets, Markets, History, Standards**. The existing Learn home retains its simple introduction and four foundation links. A separate All guides page at `/learn/guides/` provides the directory across all five. The proof-native economy and Global Market Cap are major destinations. Existing routes retain canonical continuity; unrelated synonyms do not become separate pages.
 
 Every subject begins with a familiar name and answers a distinct question. The method and evidence establish the precision. Avoid unsupported claims of universal superiority, guaranteed adoption, investment return or certification. Do not describe a displayed valuation as executable cash, realized proceeds, a completed trade, deposit backing, liquidity or GDP.
 
@@ -22,7 +22,7 @@ Every subject begins with a familiar name and answers a distinct question. The m
 | `/learn/payment-requests/` — new | How do links, usernames and QR requests work? | Interactive request anatomy; distinguish opening/reviewing a request from authorizing payment. |
 | `/learn/deposits/` — new | How does money or an asset enter the account? | Supported deposit journeys; show when funding, a custody request or an admitted asset actually becomes available. |
 | `/learn/notes/` — new | How do I create, carry, receive and deposit a Note? | All three original engravings, automatic funding example, sender/recipient journey, connected and qualified-local boundaries. |
-| `/learn/messages/` — new | How do conversations, calls and my Twin fit into the account? | Existing Receiz communication features, payment context, Twin entitlement and exact action authorization. |
+| `/learn/messages/` — new | How do conversations, calls and my assistant fit into the account? | Existing Receiz communication features, payment context, assistant access and exact action authorization. |
 | `/learn/receiz-id/` — refine | What is my ID and how do I open my account? | Identity Seal, username, receiving address, same-ID continuity and a clear backup path. |
 
 ### Assets

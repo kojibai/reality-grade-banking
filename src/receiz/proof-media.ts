@@ -11,6 +11,9 @@ export type MediaKind='image'|'audio'|'video'|'pdf'|'text'|'book'|'file';
 export type MediaFile={kind:MediaKind;filename:string;mimeType:string;bytes:Uint8Array;payloadDigest:string;memberPath?:string;text?:string;details?:MomentMetadata;chapters?:{title:string;text:string}[]};
 export type ProofMediaSource={kind:'held';bytes:Uint8Array;filename:string;digest:string;related?:readonly {digest:string;bytes:Uint8Array;filename:string}[]}|{kind:'public';url:string;digest:string;postUrl?:string;hasLongForm?:boolean};
 export type OpenedProofMedia={artifactDigest:string;files:MediaFile[];linkedArtifactDigest?:string;readText?:(signal?:AbortSignal)=>Promise<ProofReading>};
+const publicMedia=new Map<string,OpenedProofMedia>();
+const mediaCacheKey=(source:ProofMediaSource)=>source.kind==='public'?`${source.digest}:${source.url}:${source.postUrl??''}:${source.hasLongForm===true}`:null;
+export function retainedPublicMedia(source:ProofMediaSource){const key=mediaCacheKey(source);return key?publicMedia.get(key)??null:null;}
 const MAX=16*1024*1024;
 const image=new Set(['image/png','image/jpeg','image/webp','image/gif','image/avif','image/bmp']);
 const decode=(bytes:Uint8Array)=>new TextDecoder('utf-8',{fatal:true}).decode(bytes);
@@ -76,7 +79,12 @@ export function readMediaPayload(payload:ReceizVerifiedPayload):Promise<MediaFil
 /** Existing SDK enclosing-artifact open is the only payload entry. Rendering
  * does not admit ownership, custody, transfers or account value. */
 export function openProofMedia(source:ProofMediaSource,signal?:AbortSignal):Promise<OpenedProofMedia>{
- return trackProofInspection(source.digest,openOriginalMedia(source,signal));
+ signal?.throwIfAborted();const cached=retainedPublicMedia(source);if(cached)return Promise.resolve(cached);
+ return trackProofInspection(source.digest,openOriginalMedia(source,signal).then(opened=>{
+  const key=mediaCacheKey(source),size=(media:OpenedProofMedia)=>media.files.reduce((sum,file)=>sum+file.bytes.length+(file.text?.length??0)*2+(file.chapters?.reduce((sum,chapter)=>sum+chapter.text.length*2,0)??0),0),bytes=size(opened),limit=16*1024*1024;
+  // Public originals only. Never publish private held media through this cache.
+  if(key&&bytes<=limit){while(publicMedia.size&&(publicMedia.size>=4||[...publicMedia.values()].reduce((sum,media)=>sum+size(media),0)+bytes>limit))publicMedia.delete(publicMedia.keys().next().value!);publicMedia.set(key,opened);}return opened;
+ }));
 }
 async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Promise<OpenedProofMedia>{
  if(!/^[a-f0-9]{64}$/i.test(source.digest))throw Error('The original digest is unavailable.');

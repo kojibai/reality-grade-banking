@@ -57,7 +57,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     // Conformance remains an on-demand console, outside the bank installation
     // cache. Its retained online navigation does not add verifier work at boot.
     if (path === '/conformance/') continue;
-    const knownGuide=learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
+    const knownGuide=path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
     if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     // Each retained document already carries the complete public catalog.
     // New routes reuse an existing shell instead of installing dozens of

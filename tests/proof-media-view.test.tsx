@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // Presentation fixtures only; canonical proof verification is tested separately.
 import{act}from'react';import{createRoot}from'react-dom/client';import{afterEach,expect,it,vi}from'vitest';
-const open=vi.hoisted(()=>vi.fn());vi.mock('../src/receiz/proof-media',()=>({openProofMedia:open}));
+const open=vi.hoisted(()=>vi.fn());vi.mock('../src/receiz/proof-media',()=>({openProofMedia:open,retainedPublicMedia:()=>null}));
 import{ProofMedia}from'../src/features/media/ProofMedia';
 import{Sheet}from'../src/components/Sheet';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});

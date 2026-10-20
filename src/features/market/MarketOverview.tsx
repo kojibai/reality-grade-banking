@@ -6,9 +6,9 @@ import { chartChange, chartPeriodBounds, chartDateLabel } from '../../core/chart
 import type { PublicMarketCatalog } from '../../receiz/public-market';
 import { publicMarketCapitalization } from '../../receiz/market-capitalization';
 import { useMarketCapitalization } from '../../receiz/market-projection/useMarketCapitalization';
-export function MarketOverview({ catalog, historyCatalog, active = true, onExplore }: { catalog: PublicMarketCatalog | null; historyCatalog?: PublicMarketCatalog | null; active?: boolean; onExplore: () => void }) {
+export function MarketOverview({ catalog, historyCatalog, active = true, sourceActive=active, onExplore }: { catalog: PublicMarketCatalog | null; historyCatalog?: PublicMarketCatalog | null; active?: boolean; sourceActive?:boolean; onExplore: () => void }) {
   const [info, setInfo] = useState(false), [period, setPeriod] = useState<ChartPeriod>('ALL');
-  const { source, points, status } = useMarketCapitalization(period, active,historyCatalog??catalog);
+  const { source, points, status } = useMarketCapitalization(period, active,historyCatalog??catalog,sourceActive);
   const counts = useMemo(() => publicMarketCapitalization(catalog), [catalog]);
   const change = points.length > 1 ? chartChange(points[0].usdCents, points.at(-1)!.usdCents) : null;
   const timeRange=chartPeriodBounds(points,period);

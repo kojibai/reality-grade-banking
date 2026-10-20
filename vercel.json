@@ -10,18 +10,45 @@
     "api/receipt.ts": {
       "maxDuration": 30,
       "includeFiles": "{dist/receipt/index.html,scripts/social/fonts/*.ttf}"
+    },
+    "api/asset.ts": {
+      "maxDuration": 30,
+      "includeFiles": "{dist/explore/index.html,public/receiz-public-market.json,public/receiz-public-sports.json,scripts/social/fonts/*.ttf}"
     }
   },
   "rewrites": [
-    {"source":"/explorer","destination":"/explore/index.html"},
-    {"source":"/explorer/","destination":"/explore/index.html"},
+    {
+      "source": "/asset/:id/og.png",
+      "destination": "/api/asset?asset=:id&image=1"
+    },
+    {
+      "source": "/asset/:id/",
+      "destination": "/api/asset?asset=:id"
+    },
+    {
+      "source": "/asset/:id",
+      "destination": "/api/asset?asset=:id"
+    },
+    {
+      "source": "/explorer",
+      "destination": "/explore/index.html"
+    },
+    {
+      "source": "/explorer/",
+      "destination": "/explore/index.html"
+    },
     {
       "source": "/receiz-public-ledger.json.gz",
       "destination": "/receiz-public-ledger.json.gz.bin"
     },
     {
       "source": "/receipt/",
-      "has": [{"type":"query","key":"r"}],
+      "has": [
+        {
+          "type": "query",
+          "key": "r"
+        }
+      ],
       "destination": "/api/receipt"
     },
     {

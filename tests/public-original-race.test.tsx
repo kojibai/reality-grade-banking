@@ -5,7 +5,7 @@ import { expect, it, vi } from 'vitest';
 import { PublicAssetDetail } from '../src/features/market/PublicAssetDetail';
 import { parsePublicMarket } from '../src/receiz/public-market';
 const verify = vi.hoisted(() => vi.fn());
-vi.mock('../src/receiz/proof-media', () => ({ openProofMedia: verify }));
+vi.mock('../src/receiz/proof-media', () => ({ openProofMedia: verify, retainedPublicMedia:()=>null }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 it('places ownership actions, original media and source links below the valuation chart in order', () => {
   const item = parsePublicMarket({ ok: true, transport: { publicOriginals: [{ id: 'a', receizId: 'a', title: 'A', canonicalHref: '/artist/verified/a', verifyHref: '/v/20261018_1200/AB12CD34/14700000', profileOriginal: { media: { originalDownloadSrc: '/api/profile/originals/download?receizId=a&kind=original', originalDownloadSha256Hex: 'a'.repeat(64) } } }] } }).items[0];

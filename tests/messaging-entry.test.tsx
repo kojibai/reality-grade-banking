@@ -9,6 +9,6 @@ vi.mock('../src/components/KaiKlok',()=>({KaiKlok:()=>null}));
 afterEach(()=>{document.body.innerHTML='';});
 it('opens the one messaging entry from the account header without changing the bottom navigation',async()=>{
  const host=document.createElement('div');document.body.append(host);const root=createRoot(host),onMessages=vi.fn();await act(async()=>root.render(<ConsoleShell panel="account" onNavigate={()=>{}} onDeposit={()=>{}} onProfile={()=>{}} onMessages={onMessages}><p>Account</p></ConsoleShell>));
- const trigger=host.querySelector<HTMLButtonElement>('[aria-label="Open your Twin and messages"]');expect(trigger).not.toBeNull();await act(async()=>trigger!.click());expect(onMessages).toHaveBeenCalledOnce();expect(host.querySelector('nav')?.textContent).not.toContain('Messages');await act(async()=>root.unmount());
+ const trigger=host.querySelector<HTMLButtonElement>('[aria-label="Open your assistant and messages"]');expect(trigger).not.toBeNull();await act(async()=>trigger!.click());expect(onMessages).toHaveBeenCalledOnce();expect(host.querySelector('nav')?.textContent).not.toContain('Messages');await act(async()=>root.unmount());
 });
 it('restores the messaging sheet route with the existing browser back contract',()=>{const action={kind:'messages' as const};expect(routeHash('ledger',action)).toBe('#ledger/messages');expect(parseRoute('#ledger/messages')).toEqual({panel:'ledger',sheet:action});});

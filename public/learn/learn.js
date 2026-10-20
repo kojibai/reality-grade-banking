@@ -73,7 +73,25 @@
   let publicRoot = document.getElementById('public-learn-root'), bankRoot = document.getElementById('root');
   let bankLoaded = Boolean(bankRoot), bankUrl = '/', bankFocus = null;
   const pathname = path => /^\/explorer\/?$/.test(path) ? '/explore/' : path === '/' ? '/' : path.endsWith('/') ? path : path + '/';
-  const pageAt = path => pages[pathname(path)] || (/^\/verify\/[a-f0-9]{64}\/?$/.test(path) ? pages['/verify/'] : undefined);
+  const assetMetadata=new Map(),assetEntries=new Map();
+  const keepAsset=value=>{if(value&&typeof value.id==='string'&&value.id.length<=256&&typeof value.title==='string'){assetMetadata.set(value.id,{...value,description:value.description??value.summary});assetEntries.delete(value.id);if(assetMetadata.size>48){const first=assetMetadata.keys().next().value;assetMetadata.delete(first);assetEntries.delete(first);}}};
+  try{keepAsset(JSON.parse(document.getElementById('public-asset-seed')?.textContent??'null'));}catch{}
+  addEventListener('bankeiz:asset-metadata',event=>{keepAsset(event.detail);if(pathname(location.pathname)==='/asset/'+encodeURIComponent(event.detail?.id)+'/'){const page=assetAt(pathname(location.pathname));if(page)restoreHead(page.head);}});
+  const assetAt=path=>{
+    const match=/^\/asset\/([^/]+)\/?$/.exec(path);if(!match||!pages['/explore/'])return;
+    let id;try{id=decodeURIComponent(match[1]);}catch{return;}if(!id||id.length>256||/[\x00-\x1f\x7f]/.test(id))return;
+    if(assetEntries.has(id))return assetEntries.get(id);
+    const base=pages['/explore/'],meta=assetMetadata.get(id),title=(meta?.title||'Public asset')+' | Bankeiz',description=String(meta?.description||'Inspect this public asset, its media, ownership, valuation and original carried evidence.').slice(0,300),url='https://bankeiz.com/asset/'+encodeURIComponent(id)+'/',image=url+'og.png';
+    const template=document.createElement('template');template.innerHTML=base.head;
+    template.content.querySelector('title').textContent=title;
+    for(const node of template.content.querySelectorAll('meta')){const key=node.getAttribute('property')||node.name;if(['description','og:description','twitter:description'].includes(key))node.content=description;else if(['og:title','twitter:title','og:image:alt','twitter:image:alt'].includes(key))node.content=title;else if(key==='og:url')node.content=url;else if(['og:image','og:image:secure_url','twitter:image'].includes(key))node.content=image;else if(key==='robots')node.content=meta?'index,follow,max-image-preview:large':'noindex,follow';}
+    template.content.querySelector('link[rel="canonical"]').href=url;
+    template.content.querySelectorAll('script[type="application/ld+json"]').forEach(node=>node.remove());
+    const schema=document.createElement('script');schema.type='application/ld+json';schema.textContent=JSON.stringify({'@context':'https://schema.org','@type':'WebPage','@id':url+'#page',url,name:title,description});template.content.append(schema);
+    const preview=document.createElement('main');preview.className='public-entry-placeholder';const heading=document.createElement('h1'),copy=document.createElement('p');heading.textContent=meta?.title||'Asset';copy.textContent=description;preview.append(heading,copy);
+    const entry={...base,title,head:template.innerHTML,content:preview.outerHTML};assetEntries.set(id,entry);return entry;
+  };
+  const pageAt = path => pages[pathname(path)] || assetAt(path) || (/^\/verify\/[a-f0-9]{64}\/?$/.test(path) ? pages['/verify/'] : undefined);
   const publicPath = path => Boolean(pageAt(path));
   // An offline deep link can be served by the retained Learn document. Its
   // canonical identifies the markup actually present, not the requested URL.
@@ -221,6 +239,7 @@
 document.addEventListener('click',event=>{
  const button=event.target.closest?.('[data-learning-step]');if(!button)return;
  const region=button.closest('.learning-visual'),selected=button.dataset.learningStep;
+ region.dataset.learningStage=selected;
  region.querySelectorAll('[data-learning-step]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
  region.querySelectorAll('[data-learning-panel]').forEach(item=>{item.hidden=item.dataset.learningPanel!==selected;});
 });

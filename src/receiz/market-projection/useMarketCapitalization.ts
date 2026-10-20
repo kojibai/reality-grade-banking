@@ -16,7 +16,7 @@ function restore(): MarketHistorySnapshot {
   return shipped;
 }
 type WorkerInput={source:{ok:true;marketCapProjection:MarketCapSource};history:MarketHistorySnapshot;catalog:PublicMarketCatalog|null;pulse:number};
-export function useMarketCapitalization(period: ChartPeriod, active: boolean,catalog:PublicMarketCatalog|null=null) {
+export function useMarketCapitalization(period: ChartPeriod, active: boolean,catalog:PublicMarketCatalog|null=null,sourceActive=active) {
   const [history,setHistory]=useState<MarketHistorySnapshot>(restore),[fullSource,setFullSource]=useState<MarketCapSource|null>(retainedMarketDisplaySource),[pulse,setPulse]=useState(now),[status,setStatus]=useState<'cached'|'live'|'unavailable'>('cached');
   const heldHistory=useRef(history),worker=useRef<Worker|null>(null),request=useRef(0),acceptedSource=useRef<MarketCapSource|null>(null),busy=useRef(false),queued=useRef<WorkerInput|null>(null),latestInput=useRef<WorkerInput|null>(null),restartWorker=useRef<(()=>void)|null>(null);
   heldHistory.current=history;
@@ -32,7 +32,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     return()=>{clearInterval(interval);document.removeEventListener('visibilitychange',update);window.removeEventListener('focus',update);window.removeEventListener('pageshow',update);};
   },[active]);
   useEffect(() => {
-    if (!active) return;
+    if (!sourceActive) return;
     const controller = new AbortController(); let pending = false;
     const read = async (path: string, live: boolean) => {
       if (pending && live) return; if (live) pending = true;
@@ -49,7 +49,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     void read('/receiz-public-capitalization.json', false); void read('/api/bank/public-market/capitalization', true);
     const interval = setInterval(() => { if (document.visibilityState === 'visible') void read('/api/bank/public-market/capitalization', true); }, 60000);
     return () => { controller.abort(); clearInterval(interval); };
-  }, [active]);
+  }, [sourceActive]);
   useEffect(() => {
     if (!active || typeof Worker === 'undefined') return;
     const start=()=>{

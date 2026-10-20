@@ -17,6 +17,14 @@
       "bytes": 463059,
       "alt": "Bankeiz. Your value. Connected. The foundations of proof-native banking. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
+    "/learn/guides/": {
+      "url": "/social/guides-c060eb51185bad09.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "c060eb51185bad0932a90d232e497dd5640b0c71017e026ad947c4612de2efe1",
+      "bytes": 463408,
+      "alt": "Bankeiz. The complete picture. Banking. Assets. Markets. History. Standards. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
     "/learn/receiz-id/": {
       "url": "/social/receiz-id-0464d3db6122b053.png",
       "width": 1730,
@@ -154,12 +162,12 @@
       "alt": "Bankeiz. A clear request. A deliberate payment. A clear destination. A deliberate payment. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/deposits/": {
-      "url": "/social/deposits-c247dcc697345f93.png",
+      "url": "/social/deposits-c6ebf95fbc58851f.png",
       "width": 1730,
       "height": 909,
-      "sha256": "c247dcc697345f93fca84fd7c70ba75aa6064cc59d2301afac64a1e677a29e12",
-      "bytes": 466581,
-      "alt": "Bankeiz. Deposits. The complete picture. Bring value into the account. Keep its source connected. An engraved bank motif on layered cobalt, clear glass and navy forms."
+      "sha256": "c6ebf95fbc58851fa2795ca8b26e724bd9a71dbfdfd98dcd75ec96b09bb760f9",
+      "bytes": 466462,
+      "alt": "Bankeiz. Deposits. The complete picture. Send money. Back what you create. Keep the proof. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/notes/": {
       "url": "/social/notes-60d4f9f9a24d6efc.png",
@@ -170,12 +178,12 @@
       "alt": "Bankeiz. Notes. The complete picture. Your money. Ready to carry. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/messages/": {
-      "url": "/social/messages-c8033f4e01027b8a.png",
+      "url": "/social/messages-6646f03b2a3007c8.png",
       "width": 1730,
       "height": 909,
-      "sha256": "c8033f4e01027b8a3cad9c78b3e35df3d28842c032badadce9532a109f239e15",
-      "bytes": 469575,
-      "alt": "Bankeiz. Messages and your Twin. The complete picture. Your conversations. In the same account. An engraved bank motif on layered cobalt, clear glass and navy forms."
+      "sha256": "6646f03b2a3007c89236ccfb982e5348493c086fc6fd55015b20fd6e4bdf98e8",
+      "bytes": 465915,
+      "alt": "Bankeiz. Messages and your assistant. The complete picture. Your conversations. In the same account. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/creating-an-asset/": {
       "url": "/social/creating-an-asset-447502362481501f.png",
@@ -218,12 +226,12 @@
       "alt": "Bankeiz. Defined rights. Visible backing. Know exactly what the proof establishes. An engraved cube motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/proof-native-economy/": {
-      "url": "/social/proof-native-economy-dff0297462530ab7.png",
+      "url": "/social/proof-native-economy-c9ad6ef7112dbdc6.png",
       "width": 1730,
       "height": 909,
-      "sha256": "dff0297462530ab748f6c1f5e64d74ff489bcce95de5b6a54ddf0a7ae3d56ebd",
-      "bytes": 463956,
-      "alt": "Bankeiz. Value. Connected to source. Value, connected to its source. An engraved globe motif on layered cobalt, clear glass and navy forms."
+      "sha256": "c9ad6ef7112dbdc6931f49434a01e26ec46e5a74b8443ac02dc79ccb0fe10a78",
+      "bytes": 465385,
+      "alt": "Bankeiz. Value. Connected to source. Your money. Your assets. Their proof. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/markets/": {
       "url": "/social/markets-940be1a08cb599d6.png",

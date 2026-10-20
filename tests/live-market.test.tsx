@@ -136,7 +136,7 @@ it('opens exact public card history for its owner and original issue time',async
  expect(host.querySelector('dialog')?.textContent).toContain('@actual-owner');expect(host.querySelector('dialog')?.textContent).toContain(new Date(at).toLocaleString());
 });
 it('prefers refreshed carried copy ownership over earlier fetched details at the same source URL',async()=>{
- const cardId='rsc_0123456789abcdef',claimHash='a'.repeat(64),sealedAt='2026-10-01T12:00:00Z',item={...catalog(1).items[0],assetId:cardId,category:'sports' as const,ownerUsername:null,ownerDisplayName:null,ownerProfileUrl:null,sealedAt:null,sourceUrl:`https://receiz.com/game/sports/card/${cardId}?claimHash=${claimHash}`};
+ const cardId='rsc_0123456789abcdef',claimHash='d'.repeat(64),sealedAt='2026-10-01T12:00:00Z',item={...catalog(1).items[0],assetId:cardId,category:'sports' as const,ownerUsername:null,ownerDisplayName:null,ownerProfileUrl:null,sealedAt:null,sourceUrl:`https://receiz.com/game/sports/card/${cardId}?claimHash=${claimHash}`};
  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({ok:true,cardId,claimHash,count:1,provenance:[{collectibleId:cardId,claimHash,eventKind:'issue',appendHash:'b'.repeat(64),occurredAt:sealedAt,owner:{username:'earlier-owner',displayName:'Earlier'}}]})));
  const host=document.createElement('div'),root=createRoot(host);roots.push(root);document.body.append(host);
  await act(async()=>root.render(<PublicAssetDetail item={item}/>));expect(host.textContent).toContain('@earlier-owner');

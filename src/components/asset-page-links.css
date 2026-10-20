@@ -1,0 +1,2 @@
+.asset-page-links{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin:0 0 18px}.public-asset-top .asset-page-links{margin:0}.asset-page-links>a{display:flex;align-items:center;gap:7px;color:var(--text-secondary);font-size:12px;text-decoration:none;margin-right:auto}.asset-page-links .icon-button{width:35px;height:35px;color:var(--text-secondary)}
+.asset-page-links .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}

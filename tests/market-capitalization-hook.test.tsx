@@ -94,3 +94,8 @@ it.each(['onerror','onmessageerror'] as const)('recovers a visible failed worker
   act(()=>next.onmessage!({data:{id:request.id,history}}));expect(state.source.serverPulse).toBe(clock.pulse);expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(state.source.currentUsd*100)));
  }finally{act(()=>root.unmount());}
 });
+it('keeps the existing capitalization reader through a hidden asset page while pausing chart work',async()=>{
+ vi.stubGlobal('Worker',undefined);const fetch=vi.fn(async()=>Response.json(sourceFile));vi.stubGlobal('fetch',fetch);
+ const root=createRoot(document.createElement('div'));function Probe({active}:{active:boolean}){useMarketCapitalization('ALL',active,null,true);return null;}
+ try{await act(async()=>root.render(<Probe active/>));const count=fetch.mock.calls.length;expect(count).toBe(2);await act(async()=>root.render(<Probe active={false}/>));await act(async()=>root.render(<Probe active/>));expect(fetch).toHaveBeenCalledTimes(count);}finally{act(()=>root.unmount());}
+});

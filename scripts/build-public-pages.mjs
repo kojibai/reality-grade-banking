@@ -3,7 +3,7 @@ import { createServer } from 'vite';
 import { openingShellHtml } from './opening-shell.mjs';
 import { buildLaunchImages } from './build-launch-images.mjs';
 import { learnAssets } from './learn-assets.mjs';
-import { learnHome, learnArticle } from './learn-template.mjs';
+import { learnHome, learnArticle,learningDirectoryPage } from './learn-template.mjs';
 import { accountNoticePages } from './account-notice-pages.mjs';
 import { realityGradePage, realityGradeContent } from './reality-grade-page.mjs';
 import { valueExplainerPage, valueExplainerContent } from './value-explainer-template.mjs';
@@ -14,18 +14,23 @@ import socialImages from '../public/social/manifest.json' with {type:'json'};
 import {noteContinuityGuideSections} from '../src/content/note-continuity.mjs';
 import {learningPages,learningPath,assetCategories} from '../src/content/learning-pages.mjs';
 const origin = 'https://bankeiz.com';
-const pages=[{slug:'',title:'Proof-native banking',description:'Money, assets, markets and proof continuity explained.',intro:'Your value. More possibilities.',sections:[]},...learningPages];
+const pages=[{slug:'',title:'Proof-native banking',description:'Money, assets, markets and proof continuity explained.',intro:'Your value. More possibilities.',sections:[]},{slug:'guides',title:'All guides',description:'The complete guide to your account, assets, markets, history and standards.',sections:[]},...learningPages];
 const escape = text => String(text).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const { css: publicCss, js:publicJs, cssUrl, jsUrl } = await learnAssets();
 await writePublicSdkSchemas('dist');
 const valueAssets = await writeValueExplainerAssets('dist');
+const sceneCss=await readFile('public/learn/scenes.css','utf8');
 const valueHead = `<link rel="stylesheet" href="${valueAssets.cssUrl}"><script src="${valueAssets.jsUrl}" defer></script>`;
 let bankHtml;
+let assetPaths=[];
 const publicPages = {};
 const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' });
 try {
   const { AccountOpening } = await server.ssrLoadModule('/src/features/identity/AccountOpening.tsx');
   const { BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_MESSAGING_CONSENT, BANK_MESSAGING_SCOPES } = await server.ssrLoadModule('/src/receiz/config.ts');
+  const {parsePublicMarket}=await server.ssrLoadModule('/src/receiz/public-market.ts'),{mergePublicSports}=await server.ssrLoadModule('/src/receiz/public-sports.ts');
+  const [market,sports]=await Promise.all(['market','sports'].map(name=>readFile(`public/receiz-public-${name}.json`,'utf8').then(JSON.parse)));
+  assetPaths=mergePublicSports(parsePublicMarket(market,market.snapshot),sports).items.map(item=>`/asset/${encodeURIComponent(item.id)}/`);
   pages.push(...accountNoticePages(BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_MESSAGING_CONSENT, BANK_MESSAGING_SCOPES), realityGradePage, valueExplainerPage);
   const html = await readFile('dist/index.html', 'utf8');
   const launchImages = await buildLaunchImages('dist', AccountOpening);
@@ -34,8 +39,8 @@ try {
 for (const page of pages) {
   const path = page.slug ? learningPath(page) : '/learn/', url = origin + path;
   const structured = { '@context': 'https://schema.org', '@graph': [{ '@type': 'WebPage', '@id': url, url, name: page.title + ' | Bankeiz', description: page.description, isPartOf: { '@id': origin + '/#website' }, inLanguage: 'en', dateModified: '2026-10-15' }, { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Bankeiz', item: origin + '/' }, { '@type': 'ListItem', position: 2, name: page.title, item: url }] }] };
-  const content = page === realityGradePage ? realityGradeContent() : page === valueExplainerPage ? valueExplainerContent() : page.slug ? learnArticle(page, pages, escape) : learnHome();
-  const output = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fbfcfe"><title>${escape(page.title)} | Bankeiz</title><meta name="description" content="${escape(page.description)}"><meta name="robots" content="index,follow,max-image-preview:large"><link rel="canonical" href="${url}"><link rel="icon" href="/icon.svg"><meta property="og:type" content="website"><meta property="og:site_name" content="Bankeiz"><meta property="og:url" content="${url}"><meta property="og:title" content="${escape(page.title)} | Bankeiz"><meta property="og:description" content="${escape(page.description)}"><meta property="og:image" content="${origin}${socialImages.images[path].url}"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1730"><meta property="og:image:height" content="909"><meta property="og:image:alt" content="Bankeiz. Your value. More possibilities."><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escape(page.title)} | Bankeiz"><meta name="twitter:description" content="${escape(page.description)}"><meta name="twitter:image" content="${origin}${socialImages.images[path].url}"><meta name="twitter:image:alt" content="Bankeiz — Proof-native banking. Your value. More possibilities."><link rel="stylesheet" href="${cssUrl}">${valueHead}${page.slug ? '' : '<link rel="preload" href="/learn/proof-glass.webp" as="image" type="image/webp">'}<script type="application/ld+json">${JSON.stringify(structured).replaceAll('<', '\\u003c')}</script><script src="${jsUrl}" defer></script></head><body>${content}</body></html>`;
+  const content = page === realityGradePage ? realityGradeContent() : page === valueExplainerPage ? valueExplainerContent() : page.slug==='guides'?learningDirectoryPage():page.slug ? learnArticle(page, pages, escape) : learnHome();
+  const output = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fbfcfe"><title>${escape(page.title)} | Bankeiz</title><meta name="description" content="${escape(page.description)}"><meta name="robots" content="index,follow,max-image-preview:large"><link rel="canonical" href="${url}"><link rel="icon" href="/icon.svg"><meta property="og:type" content="website"><meta property="og:site_name" content="Bankeiz"><meta property="og:url" content="${url}"><meta property="og:title" content="${escape(page.title)} | Bankeiz"><meta property="og:description" content="${escape(page.description)}"><meta property="og:image" content="${origin}${socialImages.images[path].url}"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1730"><meta property="og:image:height" content="909"><meta property="og:image:alt" content="Bankeiz. Your value. More possibilities."><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escape(page.title)} | Bankeiz"><meta name="twitter:description" content="${escape(page.description)}"><meta name="twitter:image" content="${origin}${socialImages.images[path].url}"><meta name="twitter:image:alt" content="Bankeiz — Proof-native banking. Your value. More possibilities."><link rel="stylesheet" href="${cssUrl}">${valueHead}${page.visual?`<style data-public-page-style="learning-scenes">${sceneCss}</style>`:''}${page.slug ? '' : '<link rel="preload" href="/learn/proof-glass.webp" as="image" type="image/webp">'}<script type="application/ld+json">${JSON.stringify(structured).replaceAll('<', '\\u003c')}</script><script src="${jsUrl}" defer></script></head><body>${content}</body></html>`;
   const metadata=publicPage(path),document=applyPublicMetadata(output,metadata,socialImages.images[path]);
   publicPages[path] = { title: metadata.title, content, head: document.match(/<head>([\s\S]+)<\/head>/)[1] };
 }
@@ -98,7 +103,8 @@ for (const [path, page] of Object.entries(publicPages)) {
   const runtimeHtml = runtimeDocuments.get(path);
   await writeFile(`dist${path}index.html`, runtimeHtml ? runtimeHtml.replace('<body>',`<body data-bank-surface="${page.runtime}">`).replace('</head>',`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>',`${bundle}</body>`) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`);
 }
-const urls = metadataPages.filter(page=>!page.noindex).map(page=>page.path);
+const urls = [...metadataPages.filter(page=>!page.noindex).map(page=>page.path),...assetPaths];
+if(urls.length>50000)throw Error('SITEMAP_PARTITION_REQUIRED');
 // Omit lastmod rather than claiming that a build or a live pulse rewrote every
 // guide. Canonical publication dates can be added when they are source-backed.
 await writeFile('dist/sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(path => `<url><loc>${origin}${path}</loc></url>`).join('')}</urlset>`);

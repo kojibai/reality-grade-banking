@@ -30,78 +30,78 @@ function fixture(consented=true){
 }
 it('opens Messages first and places Twin second when the existing account has no Twin access',async()=>{
  const f=fixture(),identity={...f.identity,knownTwinAccess:()=>false};
- try{await f.render(true,identity);expect([...f.host.querySelectorAll('.bank-messaging-nav>button')].slice(0,2).map(button=>button.textContent)).toEqual(['Messages','Your Twin']);expect(f.host.querySelector('.sheet-header h2')?.textContent).toBe('Messages');expect(f.host.querySelector('[aria-label="Search messages"]')).not.toBeNull();await f.click('Your Twin');expect(f.host.querySelector('[aria-label="Ask your Twin…"]')).not.toBeNull();expect(f.host.textContent).not.toContain('Explore Twin access');}finally{f.unmount();}
+ try{await f.render(true,identity);expect([...f.host.querySelectorAll('.bank-messaging-nav>button')].slice(0,2).map(button=>button.textContent)).toEqual(['Messages','Your assistant']);expect(f.host.querySelector('.sheet-header h2')?.textContent).toBe('Messages');expect(f.host.querySelector('[aria-label="Search messages"]')).not.toBeNull();await f.click('Your assistant');expect(f.host.querySelector('[aria-label="Ask your assistant…"]')).not.toBeNull();expect(f.host.textContent).not.toContain('Explore Twin access');}finally{f.unmount();}
 });
 it('shows the same Twin view for free and paid accounts, offering an upgrade only on send and preserving the draft',async()=>{
  const free=fixture(),paid=fixture(),upgrade=vi.fn();
  const identity={...free.identity,knownTwinAccess:()=>false,upgradeTwin:upgrade};
  try{
-  await free.render(true,identity);await free.click('Your Twin');await paid.render();
+  await free.render(true,identity);await free.click('Your assistant');await paid.render();
   expect(free.host.querySelector('.bank-twin-welcome')?.innerHTML).toBe(paid.host.querySelector('.bank-twin-welcome')?.innerHTML);
   expect(free.host.querySelector('.bank-message-composer')).not.toBeNull();expect(free.host.querySelector('.bank-message-composer')?.innerHTML).toBe(paid.host.querySelector('.bank-message-composer')?.innerHTML);
   expect(free.host.querySelector('.bank-twin-upgrade')).toBeNull();expect(upgrade).not.toHaveBeenCalled();
-  await free.input('Ask your Twin…','Explain my last payment');await free.submit();
+  await free.input('Ask your assistant…','Explain my last payment');await free.submit();
   expect(free.host.querySelector('.bank-twin-access-reply')?.textContent).toContain('Understand payments');
   expect(free.host.querySelector('.bank-message-own')?.textContent).toBe('Explain my last payment');
   expect(free.host.querySelector('.bank-twin-upgrade')).toBeNull();
-  await free.click('Unlock your Twin');await vi.waitFor(()=>expect(free.host.textContent).toContain('Continue to secure payment'));
+  await free.click('Unlock your assistant');await vi.waitFor(()=>expect(free.host.textContent).toContain('Continue to secure payment'));
   expect(free.api.twin.ask).not.toHaveBeenCalled();expect(upgrade).not.toHaveBeenCalled();
   await free.click('Back to conversation');
-  expect(free.host.querySelector<HTMLInputElement>('[aria-label="Ask your Twin…"]')?.value).toBe('Explain my last payment');
+  expect(free.host.querySelector<HTMLInputElement>('[aria-label="Ask your assistant…"]')?.value).toBe('Explain my last payment');
   expect(free.host.querySelector('.bank-twin-upgrade')).toBeNull();
  }finally{free.unmount();paid.unmount();}
 });
 it('returns the preserved draft after verified upgrade without automatically submitting or billing a Twin request',async()=>{
  const f=fixture(),upgrade=vi.fn(async()=>({accountUid:uid,twinAccess:true})),identity={...f.identity,knownTwinAccess:()=>false,upgradeTwin:upgrade};
  try{
-  await f.render(true,identity);await f.click('Your Twin');await f.input('Ask your Twin…','My saved question');await f.submit();await f.click('Unlock your Twin');
+  await f.render(true,identity);await f.click('Your assistant');await f.input('Ask your assistant…','My saved question');await f.submit();await f.click('Unlock your assistant');
   await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));await f.click('Continue to secure payment');
-  expect(f.api.twin.ask).not.toHaveBeenCalled();expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your Twin…"]')?.value).toBe('My saved question');
+  expect(f.api.twin.ask).not.toHaveBeenCalled();expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your assistant…"]')?.value).toBe('My saved question');
   await f.submit();expect(f.api.twin.ask).toHaveBeenCalledOnce();expect(f.api.twin.ask.mock.calls[0]?.[0].message).toBe('My saved question');
  }finally{f.unmount();}
 });
 it('keeps the access reply and upgrade action when returning to Twin or closing and reopening messages',async()=>{
  const f=fixture(),identity={...f.identity,knownTwinAccess:()=>false};
  try{
-  await f.render(true,identity);await f.click('Your Twin');await f.input('Ask your Twin…','Help me understand this');await f.submit();
-  await f.click('Messages');await f.click('Your Twin');await f.render(false,identity);await f.render(true,identity);
+  await f.render(true,identity);await f.click('Your assistant');await f.input('Ask your assistant…','Help me understand this');await f.submit();
+  await f.click('Messages');await f.click('Your assistant');await f.render(false,identity);await f.render(true,identity);
   expect(f.host.querySelector('.bank-message-own')?.textContent).toBe('Help me understand this');expect(f.host.querySelector('.bank-twin-access-reply')).not.toBeNull();
-  await f.click('Unlock your Twin');await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));expect(f.api.twin.ask).not.toHaveBeenCalled();
+  await f.click('Unlock your assistant');await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));expect(f.api.twin.ask).not.toHaveBeenCalled();
  }finally{f.unmount();}
 });
 it('reopens an earlier access reply from existing encrypted display retention without another message or upgrade call',async()=>{
  const f=fixture(),retain=vi.fn(),identity={...f.identity,knownTwinAccess:()=>false,retainTwinAccessQuestions:retain,knownMessagingDisplay:()=>({schema:'bankeiz.messaging-display.v1' as const,accountUid:uid,inbox:[conversation],pages:[page],twinAccessQuestions:[{id:'held-question',question:'My earlier question'}]})};
  try{
-  await f.render(true,identity);await f.click('Your Twin');expect(f.host.querySelector('.bank-message-own')?.textContent).toBe('My earlier question');await f.click('Unlock your Twin');await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));expect(f.api.twin.ask).not.toHaveBeenCalled();
+  await f.render(true,identity);await f.click('Your assistant');expect(f.host.querySelector('.bank-message-own')?.textContent).toBe('My earlier question');await f.click('Unlock your assistant');await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));expect(f.api.twin.ask).not.toHaveBeenCalled();
  }finally{f.unmount();}
 });
 it('allows the local access conversation before a public username is ready',async()=>{
  const f=fixture(),identity={...f.identity,knownTwinAccess:()=>false};f.api.twin.readiness.mockReturnValue({status:'profile-required',availability:'unchecked',requires:['public-username']});
- try{await f.render(true,identity);await f.click('Your Twin');expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your Twin…"]')?.disabled).toBe(false);await f.input('Ask your Twin…','What can you help with?');await f.submit();expect(f.host.querySelector('.bank-twin-access-reply')).not.toBeNull();expect(f.api.twin.ask).not.toHaveBeenCalled();}finally{f.unmount();}
+ try{await f.render(true,identity);await f.click('Your assistant');expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your assistant…"]')?.disabled).toBe(false);await f.input('Ask your assistant…','What can you help with?');await f.submit();expect(f.host.querySelector('.bank-twin-access-reply')).not.toBeNull();expect(f.api.twin.ask).not.toHaveBeenCalled();}finally{f.unmount();}
 });
 it('restores the question from the selected access reply instead of a newer question',async()=>{
  const f=fixture(),identity={...f.identity,knownTwinAccess:()=>false};
  try{
-  await f.render(true,identity);await f.click('Your Twin');for(const text of ['First question','Second question']){await f.input('Ask your Twin…',text);await f.submit();}
+  await f.render(true,identity);await f.click('Your assistant');for(const text of ['First question','Second question']){await f.input('Ask your assistant…',text);await f.submit();}
   await act(async()=>f.host.querySelector<HTMLButtonElement>('.bank-twin-access-reply button')!.click());await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));await f.click('Back to conversation');
-  expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your Twin…"]')?.value).toBe('First question');
+  expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your assistant…"]')?.value).toBe('First question');
  }finally{f.unmount();}
 });
 it('uses verified access that finishes after returning from the upgrade, without another upsell or automatic send',async()=>{
  const f=fixture(),pending=deferred<{accountUid:string;twinAccess:boolean}>();let entitled=false;
  const upgrade=vi.fn(async()=>{const result=await pending.promise;entitled=result.twinAccess;return result;}),identity={...f.identity,knownTwinAccess:()=>entitled,upgradeTwin:upgrade};
  try{
-  await f.render(true,identity);await f.click('Your Twin');await f.input('Ask your Twin…','Keep my question');await f.submit();await f.click('Unlock your Twin');await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));await f.click('Continue to secure payment');await f.click('Back to conversation');
+  await f.render(true,identity);await f.click('Your assistant');await f.input('Ask your assistant…','Keep my question');await f.submit();await f.click('Unlock your assistant');await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));await f.click('Continue to secure payment');await f.click('Back to conversation');
   await act(async()=>pending.resolve({accountUid:uid,twinAccess:true}));expect(f.api.twin.ask).not.toHaveBeenCalled();await f.submit();expect(f.api.twin.ask).toHaveBeenCalledOnce();expect(upgrade).toHaveBeenCalledOnce();
  }finally{f.unmount();}
 });
 it('opens Twin first from held access without waiting for messaging transport',async()=>{
  const f=fixture(),pending=deferred<NativeMessaging>(),identity={...f.identity,messaging:()=>pending.promise};
- try{await f.render(true,identity);expect([...f.host.querySelectorAll('.bank-messaging-nav>button')].slice(0,2).map(button=>button.textContent)).toEqual(['Your Twin','Messages']);expect(f.host.querySelector('.sheet-header h2')?.textContent).toBe('Your Twin');expect(f.host.querySelector('[aria-label="Ask your Twin…"]')).not.toBeNull();}finally{f.unmount();}
+ try{await f.render(true,identity);expect([...f.host.querySelectorAll('.bank-messaging-nav>button')].slice(0,2).map(button=>button.textContent)).toEqual(['Your assistant','Messages']);expect(f.host.querySelector('.sheet-header h2')?.textContent).toBe('Your assistant');expect(f.host.querySelector('[aria-label="Ask your assistant…"]')).not.toBeNull();}finally{f.unmount();}
 });
 it('keeps an explicit Twin selection when an unupgraded account connection finishes',async()=>{
  const f=fixture(),pending=deferred<NativeMessaging>(),identity={...f.identity,knownTwinAccess:()=>false,messaging:()=>pending.promise};
- try{await f.render(true,identity);await f.click('Your Twin');await act(async()=>pending.resolve(f.api));expect(f.host.querySelector('.sheet-header h2')?.textContent).toBe('Your Twin');expect([...f.host.querySelectorAll('.bank-messaging-nav>button')].slice(0,2).map(button=>button.textContent)).toEqual(['Messages','Your Twin']);}finally{f.unmount();}
+ try{await f.render(true,identity);await f.click('Your assistant');await act(async()=>pending.resolve(f.api));expect(f.host.querySelector('.sheet-header h2')?.textContent).toBe('Your assistant');expect([...f.host.querySelectorAll('.bank-messaging-nav>button')].slice(0,2).map(button=>button.textContent)).toEqual(['Messages','Your assistant']);}finally{f.unmount();}
 });
 it('shows carried participant images in the inbox, conversation and contact choices without another profile lookup',async()=>{
  const f=fixture(),avatar='https://receiz.com/portrait.png',withImage={...conversation,members:[{...peer,avatarUrl:avatar}]};
@@ -110,7 +110,7 @@ it('shows carried participant images in the inbox, conversation and contact choi
 });
 it('requires one explicit permission before private reads, then opens Twin without sending anything',async()=>{
  const outbound=vi.fn(()=>{throw Error('No outbound tests');});vi.stubGlobal('fetch',outbound);const f=fixture(false);
- try{await f.render();expect(f.host.textContent).toContain('Use your existing Receiz messages, groups, calls and Twin through this ID. Nothing sent until you send.');expect(f.api.conversations).not.toHaveBeenCalled();expect(f.api.twin.ask).not.toHaveBeenCalled();await f.click('Enable messages');expect(f.identity.messaging).toHaveBeenLastCalledWith(true);expect(f.host.textContent).toContain('Your bank,');expect(f.api.twin.ask).not.toHaveBeenCalled();expect(outbound).not.toHaveBeenCalled();}finally{f.unmount();}
+ try{await f.render();expect(f.host.textContent).toContain('Use your existing Receiz messages, groups, calls and assistant through this ID. Nothing sent until you send.');expect(f.api.conversations).not.toHaveBeenCalled();expect(f.api.twin.ask).not.toHaveBeenCalled();await f.click('Enable messages');expect(f.identity.messaging).toHaveBeenLastCalledWith(true);expect(f.host.textContent).toContain('Your money.');expect(f.api.twin.ask).not.toHaveBeenCalled();expect(outbound).not.toHaveBeenCalled();}finally{f.unmount();}
 });
 it('uses known thread truth immediately and keeps it through a background refresh',async()=>{
  const pending=deferred<ChatPage>(),f=fixture();f.api.messages.mockImplementation(()=>pending.promise);
@@ -119,7 +119,7 @@ it('uses known thread truth immediately and keeps it through a background refres
 it('shows the composer and retained conversations before remote admission finishes, without an opening screen',async()=>{
  const f=fixture(),pending=deferred<NativeMessaging>();
  const identity={...f.identity,knownMessagingDisplay:()=>({schema:'bankeiz.messaging-display.v1' as const,accountUid:uid,inbox:[conversation],pages:[page]}),messaging:()=>pending.promise};
- try{await f.render(true,identity);expect(f.host.querySelector('[aria-label="Ask your Twin…"]')).not.toBeNull();expect(f.host.textContent).not.toContain('Opening your');await f.click('Messages');await f.click('Open conversation Sam');expect(f.host.textContent).toContain('An actual fixture message');expect(f.api.conversations).not.toHaveBeenCalled();await f.input('Message…','Draft before connection');await f.submit();expect(f.api.send).not.toHaveBeenCalled();await act(async()=>pending.resolve(f.api));expect(f.host.querySelector<HTMLInputElement>('[aria-label="Message…"]')?.value).toBe('Draft before connection');expect(f.api.conversations).toHaveBeenCalledTimes(1);}finally{f.unmount();}
+ try{await f.render(true,identity);expect(f.host.querySelector('[aria-label="Ask your assistant…"]')).not.toBeNull();expect(f.host.textContent).not.toContain('Opening your');await f.click('Messages');await f.click('Open conversation Sam');expect(f.host.textContent).toContain('An actual fixture message');expect(f.api.conversations).not.toHaveBeenCalled();await f.input('Message…','Draft before connection');await f.submit();expect(f.api.send).not.toHaveBeenCalled();await act(async()=>pending.resolve(f.api));expect(f.host.querySelector<HTMLInputElement>('[aria-label="Message…"]')?.value).toBe('Draft before connection');expect(f.api.conversations).toHaveBeenCalledTimes(1);}finally{f.unmount();}
 });
 it('retains an uncertain send draft, refreshes to inspect, and never retries automatically',async()=>{
  const f=fixture();f.api.send.mockRejectedValue(new MessagingError('CHAT_SEND_OUTCOME_UNKNOWN',true));
@@ -155,12 +155,12 @@ it('submits the existing Twin only explicitly, discloses metering and leaves act
 });
 it('recovers a failed Twin request only explicitly using its original ID, expiry and selected context',async()=>{
  const f=fixture();f.api.twin.ask.mockRejectedValueOnce(Error('network interrupted'));
- try{await f.render();await f.input('Ask your Twin…','A question');await f.submit();const first=f.api.twin.ask.mock.calls[0]![0];expect(f.host.textContent).toContain('outcome is not confirmed');await f.submit();expect(f.api.twin.ask).toHaveBeenCalledTimes(1);await f.click('Check previous Twin request');const recovered=f.api.twin.ask.mock.calls[1]![0];expect({...recovered,signal:undefined}).toEqual({...first,signal:undefined});expect(f.host.textContent).toContain('A generated answer');}finally{f.unmount();}
+ try{await f.render();await f.input('Ask your assistant…','A question');await f.submit();const first=f.api.twin.ask.mock.calls[0]![0];expect(f.host.textContent).toContain('response is not confirmed');await f.submit();expect(f.api.twin.ask).toHaveBeenCalledTimes(1);await f.click('Check previous assistant request');const recovered=f.api.twin.ask.mock.calls[1]![0];expect({...recovered,signal:undefined}).toEqual({...first,signal:undefined});expect(f.host.textContent).toContain('A generated answer');}finally{f.unmount();}
 });
 it('shares only explicitly selected carried records and displays real returned Twin memory',async()=>{
  const f=fixture(),records=[{id:'one',title:'Held payment',text:'The chosen carried excerpt'},{id:'two',title:'Other record',text:'Do not share this'}];
  f.api.twin.ask.mockImplementationOnce(async(input)=>({requestId:input.requestId,message:'A generated answer',authority:'generated-interpretation',source:'upstream',memoryScope:'relationship',memory:[{id:'older-owner-memory',role:'assistant',body:'Existing owner Twin memory',createdAt:'2026-10-18T00:00:00Z',scope:'relationship',channel:'chat'}],sourceReferences:[],sharedContext:[],actionHandoffs:[]}));
- try{await f.render(true,f.identity,records);const boxes=f.host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');expect([...boxes].every(box=>!box.checked)).toBe(true);await act(async()=>boxes[0]!.click());await f.input('Ask your Twin…','Explain this');await f.submit();expect(f.api.twin.ask.mock.calls[0]?.[0].context).toEqual({schema:'receiz.owner-twin.context.v1',ownerUid:uid,disclosure:'owner-approved-for-this-request',records:[records[0]]});expect(f.host.textContent).toContain('Existing owner Twin memory');expect(f.host.textContent).toContain('may remain');}finally{f.unmount();}
+ try{await f.render(true,f.identity,records);const boxes=f.host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');expect([...boxes].every(box=>!box.checked)).toBe(true);await act(async()=>boxes[0]!.click());await f.input('Ask your assistant…','Explain this');await f.submit();expect(f.api.twin.ask.mock.calls[0]?.[0].context).toEqual({schema:'receiz.owner-twin.context.v1',ownerUid:uid,disclosure:'owner-approved-for-this-request',records:[records[0]]});expect(f.host.textContent).toContain('Existing owner Twin memory');expect(f.host.textContent).toContain('may remain');}finally{f.unmount();}
 });
 it('streams real AI deltas and aborts the pending send when the document is hidden',async()=>{
  const f=fixture(),pending=deferred<ChatMessage>();f.api.messages.mockResolvedValue({...page,conversation:{...conversation,aiAgents:['existing-ai']}});
@@ -183,9 +183,9 @@ it('renders returned current Twin pairs once, matches earlier pairs by carried I
   return {...await original(input),message:second?'Second answer':'Repeated answer',memoryScope:'relationship',memory:[...historical,...(second?[memory('persisted-user','user','Repeated question'),memory('transport-assistant','assistant','Repeated answer')]:firstPair),...(second?[memory('another-user-uuid','user',input.message),memory('another-assistant-uuid','assistant','Second answer')]:[])]};
  });
  try{
-  await f.render();await f.input('Ask your Twin…','Repeated question');await f.submit();
+  await f.render();await f.input('Ask your assistant…','Repeated question');await f.submit();
   expect(count('Repeated question')).toBe(2);expect(count('Repeated answer')).toBe(2);
-  await f.input('Ask your Twin…','Second question');await f.submit();
+  await f.input('Ask your assistant…','Second question');await f.submit();
   expect(count('Repeated question')).toBe(2);expect(count('Repeated answer')).toBe(2);
   expect(count('Second question')).toBe(1);expect(count('Second answer')).toBe(1);
   expect(f.host.querySelectorAll('.bank-twin-proposal')).toHaveLength(2);
@@ -193,7 +193,7 @@ it('renders returned current Twin pairs once, matches earlier pairs by carried I
 });
 it('keeps distinct local Twin exchanges when memory is disabled even if their text repeats',async()=>{
  const f=fixture();
- try{await f.render();for(let i=0;i<2;i++){await f.input('Ask your Twin…','The same question');await f.submit();}expect([...f.host.querySelectorAll('.bank-twin-exchange>.bank-message-own')].filter(element=>element.textContent==='The same question')).toHaveLength(2);expect([...f.host.querySelectorAll('.bank-twin-reply>p')].filter(element=>element.textContent==='A generated answer')).toHaveLength(2);}finally{f.unmount();}
+ try{await f.render();for(let i=0;i<2;i++){await f.input('Ask your assistant…','The same question');await f.submit();}expect([...f.host.querySelectorAll('.bank-twin-exchange>.bank-message-own')].filter(element=>element.textContent==='The same question')).toHaveLength(2);expect([...f.host.querySelectorAll('.bank-twin-reply>p')].filter(element=>element.textContent==='A generated answer')).toHaveLength(2);}finally{f.unmount();}
 });
 it('uses the host stream for ordinary DMs and appends incremental AI chunks exactly once',async()=>{
  const f=fixture(),pending=deferred<ChatMessage>();
@@ -233,7 +233,7 @@ it('keeps an unacknowledged bubble visibly uncertain without inventing delivery 
 });
 it('shows the Twin question as a bubble as soon as it is submitted',async()=>{
  const f=fixture(),pending=deferred<NativeTwinReply>();f.api.twin.ask.mockImplementation(()=>pending.promise);
- try{await f.render();await f.input('Ask your Twin…','Explain this payment');await f.submit();expect(f.host.querySelector('.bank-twin-pending .bank-message-own')?.textContent).toContain('Explain this payment');expect(f.host.querySelector('[aria-label="Your Twin is responding"]')).not.toBeNull();}finally{f.unmount();}
+ try{await f.render();await f.input('Ask your assistant…','Explain this payment');await f.submit();expect(f.host.querySelector('.bank-twin-pending .bank-message-own')?.textContent).toContain('Explain this payment');expect(f.host.querySelector('[aria-label="Your assistant is responding"]')).not.toBeNull();}finally{f.unmount();}
 });
 
 it('shows only real peer typing activity and releases it on send and navigation without polling',async()=>{

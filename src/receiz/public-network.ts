@@ -16,6 +16,10 @@ export interface PublicRecord {
   details?: LedgerFields;
 }
 export interface PublicNetworkPage { source: PublicSource; records: PublicRecord[]; nextCursor: string | null; total: string | null; complete: boolean; }
+/** Same public source projection used by the Ledger and standalone asset. */
+export function publicMarketRecord(item:import('./public-market').PublicMarketItem):PublicRecord{
+ return {id:`proofs:${item.id}`,sourceId:item.id,source:'proofs',kind:'proof recorded',title:item.title,detail:item.summary||'Public showcase proof',time:item.sealedAt,actor:null,sender:null,recipient:null,amountUsdCents:null,kaiUpulse:null,pulse:item.pulse,sourceUrl:item.sourceUrl??item.verifyUrl,evidence:digestEvidence(item.originalDigest),valueOperands:{assetId:item.assetId,marketItemId:item.id,proofValueUsdCents:ledgerUsdCents(item.priceUsd),...(item.livePulseSeed?{proofValuation:{assetId:item.assetId,marketItemId:item.id,seed:item.livePulseSeed}}:{})},details:readLedgerDetails({assetId:item.assetId,marketItemId:item.id,originalUrl:item.originalUrl,readingUrl:item.readingUrl,hasLongForm:item.hasLongForm,owner:{username:item.ownerUsername,displayName:item.ownerDisplayName}}),authority:'public-source-projection'};
+}
 function object(input: unknown): Record<string, unknown> { return input !== null && typeof input === 'object' && !Array.isArray(input) ? input as Record<string, unknown> : {}; }
 function text(input: unknown, max = 2048): string | null { return typeof input === 'string' && input.length > 0 && input.length <= max ? input : null; }
 function digits(input: unknown, max = 25): string | null { const value = typeof input === 'number' && Number.isSafeInteger(input) && input >= 0 ? String(input) : text(input, max); return value && /^(0|[1-9]\d*)$/.test(value) && value.length <= max ? value : null; }
@@ -43,7 +47,7 @@ export function parsePublicNetworkPage(source: PublicSource, input: unknown): Pu
   const envelope = object(input);
   if (source === 'proofs') {
     const catalog = parsePublicMarket(input);
-    return { source, nextCursor: null, complete: catalog.complete, total: String(catalog.sourceCount), records: catalog.items.map<PublicRecord>(item => ({ id: `proofs:${item.id}`, sourceId: item.id, source, kind: 'proof recorded', title: item.title, detail: item.summary||'Public showcase proof', time: item.sealedAt, actor: null, sender:null,recipient:null,amountUsdCents: null, kaiUpulse: null, pulse: item.pulse, sourceUrl: item.sourceUrl ?? item.verifyUrl, evidence: digestEvidence(item.originalDigest), valueOperands: { assetId: item.assetId, marketItemId: item.id, proofValueUsdCents: ledgerUsdCents(item.priceUsd), ...(item.livePulseSeed?{proofValuation:{assetId:item.assetId,marketItemId:item.id,seed:item.livePulseSeed}}:{}) }, details:readLedgerDetails({assetId:item.assetId,marketItemId:item.id,originalUrl:item.originalUrl,readingUrl:item.readingUrl,hasLongForm:item.hasLongForm,owner:{username:item.ownerUsername,displayName:item.ownerDisplayName}}), authority: 'public-source-projection' })) };
+    return { source, nextCursor: null, complete: catalog.complete, total: String(catalog.sourceCount), records: catalog.items.map(publicMarketRecord) };
   }
   if (envelope.source && envelope.source !== source || envelope.ok !== true && envelope.source !== source) throw new Error('Public source returned an unsupported response.');
   const rows = envelope.rows ?? (source === 'actions' ? envelope.actions ?? envelope.events : source === 'wallet' ? envelope.events : envelope.ledgerRows);
