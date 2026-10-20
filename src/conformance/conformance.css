@@ -15,3 +15,25 @@
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 .device-evidence{margin:28px 0 36px;padding:24px;border:1px solid #d9e2ed;border-radius:10px;max-width:820px;min-width:0}.device-evidence h3{font-size:25px;letter-spacing:-.7px;color:#172e47}.device-evidence>p{font-size:14px;line-height:1.65;color:#60758e;margin-top:12px;max-width:680px}.device-evidence-consent{display:flex;align-items:flex-start;gap:12px;margin-top:22px;font-size:14px;line-height:1.6;max-width:660px}.device-evidence-consent input{width:20px;height:20px;flex:0 0 20px;margin-top:1px;accent-color:#254bd8}.device-evidence-actions{display:flex;align-items:center;flex-wrap:wrap;gap:18px;margin-top:18px}.device-evidence-result{margin-top:22px;border-top:1px solid #d9e2ed;padding-top:20px}.device-evidence-result h4{font-size:18px;font-weight:600}.device-evidence-result>p{font-size:14px;line-height:1.6;color:#60758e;margin-top:8px}.device-evidence-result dl{margin:17px 0}.device-evidence-result dl>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;padding:9px 0;border-bottom:1px solid #e7ecf3;font-size:13px;line-height:1.5}.device-evidence-result dt{color:#60758e}.device-evidence-result dd{text-align:right;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;color:#172e47}.device-evidence-result code{display:block;overflow-wrap:anywhere;white-space:normal;font-size:11px;line-height:1.5;color:#60758e}.device-evidence-result p.device-evidence-note{font-size:12px}.device-evidence .conformance-text-link{background:none;border:0;font-size:13px;padding:8px 0}
 @media(max-width:600px){.device-evidence{padding:18px;margin-top:24px}.device-evidence h3{font-size:23px;line-height:1.25}.device-evidence>p,.device-evidence-consent{font-size:13px}.device-evidence-result dl>div{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:10px;font-size:12px}.device-evidence-result>p{font-size:13px}}
+.note-standard{max-width:1040px;margin:36px 0;min-width:0;scroll-margin-top:24px}
+.note-standard-eyebrow{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#60758e;margin-bottom:10px}
+.note-standard h2{font-size:36px;font-weight:650;line-height:1.2;letter-spacing:-1.2px}
+.note-standard header>p{margin-top:10px;color:#526b87;font-size:17px;line-height:1.6}
+.note-standard p{overflow-wrap:anywhere}
+.note-standard-intro{max-width:760px;font-size:14px;line-height:1.75;color:#60758e;margin-top:18px}
+.note-standard-paths{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;margin:26px 0}
+.note-standard-paths article{padding:21px 0;border-top:2px solid #d9e2ed;min-width:0}
+.note-standard h3{font-size:16px;line-height:1.45;font-weight:600;color:#243f64}
+.note-standard-paths p,.note-standard-details p,.note-standard-details dd,.note-standard-availability p{font-size:14px;line-height:1.75;color:#60758e;margin:10px 0 0}
+.note-standard-details{border-top:1px solid #d9e2ed;padding:17px 0}
+.note-standard-details>summary{cursor:pointer;font-size:14px;font-weight:550;color:#34506e;line-height:1.6}
+.note-standard-details>summary>span{display:inline-block;margin-left:12px;font-size:11px;font-weight:400;color:#60758e}
+.note-standard-details dl>div{margin-top:19px;max-width:800px}
+.note-standard-details dt{font-size:14px;font-weight:550;color:#34506e}
+.note-standard-law{display:inline-block;margin-right:10px;font-size:10px;letter-spacing:.03em;font-weight:400;color:#60758e;font-variant-numeric:tabular-nums}
+.note-standard-details dd{margin-top:5px}
+.note-standard-availability{margin:12px 0 23px;padding:20px;background:#f6f8fb;border:1px solid #e0e6ef;border-radius:6px}
+.note-standard-availability p{max-width:800px}
+.note-standard-links{display:flex;flex-wrap:wrap;gap:16px 26px;padding-top:19px;border-top:1px solid #d9e2ed}
+.note-standard-links a{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:#254bd8;max-width:100%;text-decoration:underline;text-underline-offset:4px;overflow-wrap:anywhere}
+@media(max-width:600px){.note-standard{margin:26px 0}.note-standard h2{font-size:29px;letter-spacing:-.9px}.note-standard header>p{font-size:15px}.note-standard-paths{grid-template-columns:minmax(0,1fr);gap:0;margin:22px 0 10px}.note-standard-paths article{padding:18px 0}.note-standard-intro,.note-standard-paths p,.note-standard-details p,.note-standard-details dd,.note-standard-availability p{font-size:13px}.note-standard-availability{padding:16px}}

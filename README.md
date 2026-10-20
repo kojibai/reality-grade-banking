@@ -62,6 +62,15 @@ The guide's original-proof reader captures Kai when a file is selected, verifies
 
 These boundaries are intentional release disclosures. A build, downloaded image or deployment is not a financial qualification. The note artwork samples are **unissued**. See [native note release gates](docs/offline-notes-release.md), [Settlement Note contract](docs/settlement-note-contract.md) and [receiver qualification](institution/qualification.md) before enabling financial capabilities.
 
+The [Note continuity standard](docs/note-continuity-standard.md) specifies one
+Note experience with qualified local consumption or connected consumption,
+the exact offline-receipt boundary, integration responsibilities and safe
+custody migration. The public [Conformance workspace](https://bankeiz.com/conformance/#note-continuity)
+contains the standard and opt-in device diagnostic. Connected Note consumption
+is not yet implemented by the current adapter; it remains a blocker in the
+[Bankeiz 1.0.0 release candidate](docs/releases/1.0.0.md). A future accessory is
+coming soon, with no qualified product or purchase offered in this release.
+
 ## Run locally
 
 Requires Node.js 20.19+ or 22.12+ and npm. CI uses Node 24.

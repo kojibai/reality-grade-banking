@@ -1,5 +1,15 @@
 # Receiz Bank Offline Notes — v129 release handoff
 
+## Product release status — October 20, 2026
+
+The current [Note continuity standard](note-continuity-standard.md) requires
+both qualified local consumption and connected consumption for the Bankeiz
+1.0.0 experience. The latter is not implemented by the current adapter.
+Historical test results below do not qualify that new path or establish a
+public release. Follow the [1.0.0 readiness record](releases/1.0.0.md) alongside
+the existing financial gates below. Existing custody is never reset or
+automatically reclassified by this documentation.
+
 The Bank keeps the existing account, navigation and sheet experience. Create note is in Send; Deposit note is in Receive and Deposit. Creation previews the denomination, requires explicit review, allocates actual funded Reserve and issues the note through qualified native device custody. Deposit consumes the current note and redeems its fixed Phi and original funded dollars into online Reserve. It never treats a copied image, generic seal, HTTP status or observed balance as spend authority.
 
 A recipient first creates a receiving request in Deposit note. The holder imports it, transfers the exact held note, then saves/sends the updated image. The receiving device opens that image and approves Deposit. This preserves v129 qualified custody; possession of a copied PNG is not sufficient. Notes require supported attested hardware. No software-key fallback was added.

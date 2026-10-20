@@ -259,3 +259,11 @@
 .asset-chart .periods{gap:3px;margin:9px 0 5px}.asset-chart .periods button{height:28px;font-size:10px;font-weight:500}.asset-chart .chart-date-range{font-size:9px;padding:3px 2px 12px;gap:12px}.asset-chart .chart-period-change{gap:8px;font-size:12px;margin-top:10px}.asset-chart .chart-period-change strong{font-weight:500}
 .send-note-field{margin:20px 0;color:var(--muted,#8293a9)}.send-note-field>summary{font-size:13px;cursor:pointer;list-style-position:inside}.send-note-field>summary>span{float:right;font-size:11px;opacity:.7}.send-note-field .form-field{margin-top:15px}.send-note-field textarea{resize:vertical;min-height:80px;font:inherit;font-size:16px}.send-note-field small{font-size:11px;line-height:1.6;color:var(--muted,#8293a9)}.send-public-note{white-space:pre-wrap;overflow-wrap:anywhere;max-width:65%;font-weight:500!important}
 .market-cap-explanation .market-cap-method-link{display:inline-flex;align-items:center;gap:8px;color:#355f96;text-decoration:none;font-size:11px;line-height:1.7;margin:5px 0 17px;min-height:32px}.market-cap-explanation .market-cap-method-link:hover{color:#254bd8}.market-cap-method-link:focus-visible{outline:2px solid #254bd8;outline-offset:4px}
+.note-continuity-details{margin-top:24px;padding-top:16px;border-top:1px solid var(--line,#e1e7ef);font-size:13px;line-height:1.65;color:#60758e}
+.note-continuity-details>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;list-style:none;cursor:pointer;font-weight:500;color:var(--ink,#172e44)}
+.note-continuity-details>summary::-webkit-details-marker{display:none}
+.note-continuity-details>summary:focus-visible{outline:3px solid #809df0;outline-offset:3px}
+.note-continuity-details>summary svg{transition:transform .18s ease}
+.note-continuity-details[open]>summary svg{transform:rotate(180deg)}
+.note-continuity-details>p{margin-top:12px}
+.note-continuity-details>a{display:inline-block;max-width:100%;margin-top:12px;color:var(--blue,#254bd8);text-decoration:underline;text-underline-offset:4px;overflow-wrap:anywhere}

@@ -11,6 +11,7 @@ import { writePublicSdkSchemas } from './build-public-schemas.mjs';
 import { writeValueExplainerAssets } from './value-explainer-assets.mjs';
 import {publicPages as metadataPages,publicPage,applyPublicMetadata,publicEntryFallback} from './public-page-metadata.mjs';
 import socialImages from '../public/social/manifest.json' with {type:'json'};
+import {noteContinuityGuideSections} from '../src/content/note-continuity.mjs';
 const origin = 'https://bankeiz.com';
 const pages = [
   { slug: '', title: 'Proof-native banking', description: 'How Bankeiz connects your identity, proof objects, Reserve and Settlement in one mobile account.', intro: 'Your value. More possibilities.', sections: [
@@ -36,6 +37,7 @@ const pages = [
     ['Settlement and destination continuity', 'Settlement is proof-native value, with its authority grounded in verified sources and ownership history. Value sets the standard: a receiving institution must demonstrate that it can verify the source, preserve ownership and history, and maintain proof continuity. Conformance qualifies the receiving destination for this protocol. Each transfer follows your authorization and verification of its current proof and ownership.'],
     ['Reserve', 'Reserve holds proof-backed funds with their ownership and history. A deposit becomes available when its funding proof verifies.'],
     ['How notes work', 'A funded Reserve Note keeps value with its proof in an original image. Save it on your device, transfer its ownership to a recipient, or deposit it back into Reserve. The two note designs identify their value clearly: proof-backed Reserve and proof-native Settlement. Keep the original PNG: a screenshot or converted photo can lose the proof inside it. A picture alone never establishes ownership or credits a balance.'],
+    ...noteContinuityGuideSections,
     ['Your proof stays with you', 'Your Identity Seal and saved originals stay in your hands when a website or service is unavailable. You hold the source, rather than only a link to a page. Offline verification uses the original and the matching verifier on your device; a completed transfer records the change in ownership.'],
     ['The receiving standard', 'Receiving institutions must demonstrate that they can verify the value, preserve ownership and history, and maintain continuity. Until assessed, conformance is not demonstrated. A verified failure of continuity requirements is nonconforming for proof continuity within the assessed receiving capability until corrected and reassessed. Payment availability is checked separately.'],
     ['Leaving proof-native rails', 'A legacy payment route moves funds to a destination that does not preserve proof continuity. Your original transfer receipt remains verifiable; the receiving balance does not carry the same source, ownership and history. Review the destination before you authorize the transfer.'],

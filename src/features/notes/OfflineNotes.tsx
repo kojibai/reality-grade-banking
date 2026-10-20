@@ -9,6 +9,7 @@ import { shareNoteImage } from './save-note-image';
 import {noteError,noteRegistrationCode} from './note-error';
 import {noteFailureStage} from '../../receiz/note-stage';
 import {noteRegistrationEvidence,type NoteRegistrationEvidence} from '../../receiz/note-registration-evidence';
+import {NoteContinuityDetails} from './NoteContinuityDetails';
 function download(bytes: Uint8Array, filename: string, type: string) {
   const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type })), link = document.createElement('a');
   link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 3000);
@@ -105,6 +106,7 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh }: { identity: 
     </>}
     {deposited && <><div className="status-icon success"><Check size={32} /></div><h1 className="sheet-hero">Added to {deposited.rail === 'settlement' ? 'Settlement' : 'Reserve'}.</h1><div className="success-amount">{deposited.rail === 'settlement' ? `${exactPhi(deposited.amountPhiMicro)} Φ` : formatMoney(deposited.amountUsdCents)}</div><p className="body-copy">Your note is redeemed. Its {deposited.rail === 'settlement' ? 'Settlement' : 'Reserve'} credit carries the complete verified proof.</p><button className="secondary-button" onClick={() => download(deposited.proofBytes, `receiz-note-deposit-${deposited.noteId}.receiz.json`, 'application/json')}>Save deposit proof</button><button className="primary-button" onClick={onBack}>Done</button></>}
     {notice && <p className="body-copy" role="status">{notice}</p>}{error && <><p className="error-message" role="alert">{error}</p>{(registrationCode||failureStage)&&<details className="note-registration-details"><summary>{registrationCode?'Registration details':'Note details'}</summary>{registrationCode&&<code>{registrationCode}</code>}{failureStage&&<p>Stage: {failureStage.stage} · {failureStage.errorName}</p>}{registrationEvidence&&<><p>Browser response · registration not qualified</p><dl className="detail-list"><div><dt>Attestation format</dt><dd>{registrationEvidence.format}</dd></div><div><dt>Registration counter</dt><dd>{registrationEvidence.counter}</dd></div><div><dt>User verified</dt><dd>{registrationEvidence.userVerified?'Yes':'No'}</dd></div><div><dt>Backup eligible</dt><dd>{registrationEvidence.backupEligible?'Yes':'No'}</dd></div><div><dt>Backed up</dt><dd>{registrationEvidence.backedUp?'Yes':'No'}</dd></div></dl></>}<p>Share these details when requesting support. They contain no credentials or account data.</p></details>}</>}
+    <NoteContinuityDetails/>
     <p className="trust-line"><ShieldCheck size={17} />Proof and custody stay connected.</p>
   </div>;
 }

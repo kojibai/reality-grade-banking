@@ -1,5 +1,11 @@
 # Release process
 
+The Bankeiz product release target is **1.0.0**, separately from the pinned
+Receiz SDK/MCP/AI Skills versions. The [1.0.0 readiness record](releases/1.0.0.md)
+is the current checklist, including the connected Note consumption dependency.
+Do not tag or describe that target as released while any required capability
+or independent qualification evidence remains absent.
+
 Record the Bank commit, exact lockfile, coordinated Receiz package versions, registry/operation digests and generated module hashes. Read the current capability matrix in the root README and `institution/receiver-profile.json`.
 
 1. Run `npm ci`, `npm test`, `npm run typecheck`, `npm run receiver:check`, and `npm run build` from a clean checkout. Run `npm run vercel:check` when qualifying emitted Vercel build output; it requires that output and is not a substitute for native financial qualification.

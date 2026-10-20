@@ -1,5 +1,14 @@
 # Bank offline-note integration contract — v129
 
+**Updated product requirement, October 20, 2026:** the
+[Note continuity standard](note-continuity-standard.md) adds a connected
+consumption path for devices without qualified local custody. The main Note
+experience stays unchanged. Completed incoming proof may be retained and
+verified offline; the next outgoing transfer requires the appropriate exact-head
+consumption path. The current Bank adapter does not implement that connected
+path. This original qualified-local integration contract remains applicable;
+its attestation, rollback and funding requirements have not been relaxed.
+
 The user requested Create note in Send, Deposit note in Receive/Deposit, a denomination preview before issuance, and complete native note execution. The original instruction to avoid Receiz host code changes remains in force except for previously approved isolated patches. The Bank's existing app registration does not expose the qualified Offline Cash workflow on the Bank origin.
 
 ## Current verified boundary
