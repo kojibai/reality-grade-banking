@@ -62,14 +62,18 @@ The guide's original-proof reader captures Kai when a file is selected, verifies
 
 These boundaries are intentional release disclosures. A build, downloaded image or deployment is not a financial qualification. The note artwork samples are **unissued**. See [native note release gates](docs/offline-notes-release.md), [Settlement Note contract](docs/settlement-note-contract.md) and [receiver qualification](institution/qualification.md) before enabling financial capabilities.
 
-The [Note continuity standard](docs/note-continuity-standard.md) specifies one
-Note experience with qualified local consumption or connected consumption,
-the exact offline-receipt boundary, integration responsibilities and safe
-custody migration. The public [Conformance workspace](https://bankeiz.com/conformance/#note-continuity)
-contains the standard and opt-in device diagnostic. Connected Note consumption
-is not yet implemented by the current adapter; it remains a blocker in the
-[Bankeiz 1.0.0 release candidate](docs/releases/1.0.0.md). Conformance includes
-the exact platform integration request and responsible browser/vendor teams.
+The [Note continuity standard](docs/note-continuity-standard.md) and
+[exact implementation contract](docs/note-account-deposit-v129.md) publish the
+full source, state, custody, reconciliation and qualification boundaries.
+Completed account-destination Notes can be verified and retained offline
+without receiver custody enrollment; account credit reconciles through the
+existing v129 redemption operation before spending. Protected offline creation
+retains its strict requirements. Online creation on nonconforming custody is
+still a missing integration, and physical-device/deployed financial evidence
+remains outstanding. The public [Conformance workspace](https://bankeiz.com/conformance/#note-continuity)
+contains the requirements, implementation responsibilities and opt-in device
+diagnostic. Product 1.0.0 is a [release target](docs/releases/1.0.0.md), not a
+released or universally qualified capability.
 
 ## Run locally
 

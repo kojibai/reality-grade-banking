@@ -18,18 +18,20 @@ npm run receiver:inspect -- /absolute/path/to/original-note.png
 
 `receiver:check` validates pinned packages, bundled source integrity, canonical KaiSigil temporal vectors and refusal of forged note inputs. Its success means these local checks passed. It does **not** authorize a credit, grant production access or assess your institution.
 
-The [Conformance Console](https://bank.receiz.com/conformance/) offers the browser reference checks, original-note inspector, qualification requirements and JSON evidence export. Run locally at `/conformance/` after starting the app. File inspection remains on the device; a reference pass never awards institution conformance. The recorded MCP baseline is identified separately from the checks executed in the browser.
+The [Conformance Console](https://bankeiz.com/conformance/) offers the browser reference checks, original-note inspector, qualification requirements and JSON evidence export. Run locally at `/conformance/` after starting the app. File inspection remains on the device; a reference pass never awards institution conformance. The recorded MCP baseline is identified separately from the checks executed in the browser.
 
-`receiver:inspect` opens the exact original Reserve Note PNG under the native v129 canonical roots. A successful inspection establishes the carried chain only. It does not check whether another device has since transferred or consumed the note, acquire its current custody or redeem it. Artwork without carried proof is refused. This command is read-only and requires no account, signing key, client secret or live payment.
+`receiver:inspect` opens an original held Note PNG or completed account-destination terminal under the native v129 canonical roots. A successful inspection establishes the carried chain only. It does not check whether another device has since transferred or consumed the note, acquire its current custody or redeem it. Artwork without carried proof is refused. This command is read-only and requires no account, signing key, client secret or live payment.
 
 | Lifecycle | Implementation path | Current boundary |
 | --- | --- | --- |
 | Inspect a Reserve Note | [Read-only verifier](receiver-verifier.entry.mjs), original PNG and pinned roots | Implemented; no credit authority |
-| Hold a Reserve Note | [Qualified custody and receiving request](notes.md) | Supported native flow; requires attested hardware and receiver-bound handoff |
+| Hold a qualified Reserve Note | [Qualified custody and receiving request](notes.md) | Supported native flow; requires attested hardware and receiver-bound handoff |
 | Transfer a Reserve Note | Native exact-head custody transition and updated original PNG | Supported native flow; copied artwork is insufficient |
 | Deposit a Reserve Note | Native consumption plus once-only Reserve credit | Bank integration present; live release prerequisites remain |
-| Receive or transfer digital Settlement / Reserve | [SDK edge payment lifecycle](digital-payments.md) | SDK primitives available; generic Bank Send adapter is unfinished |
-| Hold and transact Settlement Notes | [Signed rail extension contract](../docs/settlement-note-contract.md) | Presentation available; native financial extension unfinished |
+| Receive or transfer digital Settlement / Reserve | [SDK edge payment lifecycle](digital-payments.md) | Bank native Wallet Send is implemented; each institution still binds and qualifies its own adapter |
+| Hold and transact Settlement Notes | [Signed rail extension contract](../docs/settlement-note-contract.md) | Native signed rail implemented; live custody/host qualification remains |
+| Receive a completed account Note offline | [Account-destination contract](../docs/note-account-deposit-v129.md) | Recipient-bound terminal verification and retention; connected credit before account spending |
+| Create online without attested custody | [Continuity boundary](../docs/note-continuity-standard.md) | Not implemented; required before universal Note creation can be released |
 | Claim institution conformance | [Requirements and independent evidence](receiving-standard.md) | Receiver-specific assessment required |
 
 ## Integrate the full lifecycle

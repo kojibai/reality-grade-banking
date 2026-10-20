@@ -1,4 +1,12 @@
 import {createBankPreparedCashStorage} from "./preparedCashStorage";
+export {createBankNoteAccountReceivingRequest,verifyBankNoteAccountReceivingRequest} from './accountReceiving';
+export {openBankNoteAccountDeposit,readBankNoteAccountDeposit,exportBankNoteAccountDepositImage,verifyBankNoteAccountDepositCredit,prepareBankNoteAccountDepositSubmission,isBankNoteAccountDeposit} from './accountDeposit';
+export {prepareBankNoteAccountTransfer} from './accountTransfer';
+export {openBankNoteDepositReceipt} from './credit';
+export {packBankNoteBytes,unpackBankNoteBytes} from './compression';
+import {verifyBankNoteAccountReceivingRequest} from './accountReceiving';
+import {prepareBankNoteAccountTransfer} from './accountTransfer';
+import {isBankNoteAccountDeposit,readBankNoteAccountDeposit,exportBankNoteAccountDepositImage} from './accountDeposit';
 import {createBankPreparedNotesRuntime,type BankPreparedNotesInput} from "./preparedBrowser";
 import { createBankFundingResume } from "./fundingResume";
 import { packBankNoteBytes, unpackBankNoteBytes } from "./compression";
@@ -55,6 +63,7 @@ type CreateAttempt = {
         request: unknown;
         acceptedAtKai: string;
         nonce: string;
+        terminalRef?: string;
     };
 };
 type DepositAttempt = {
@@ -114,7 +123,7 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
         async savedNotes() { const state = await load(), result = []; for (const saved of Object.values(state.notes)) {
             if (!saved.imageRef || state.deposits[saved.intent.noteId]?.creditRef)
                 continue;
-            const image = await input.restore(saved.imageRef), note = await openBankNoteImage(image);
+            const image = await input.restore(saved.imageRef), note = isBankNoteAccountDeposit(image)?await readBankNoteAccountDeposit(image):await openBankNoteImage(image);
             result.push({ rail: note.rail, amountPhiMicro: note.amountPhiMicro, noteId: note.noteId, amountUsdCents: note.amountUsdCents, image, transferred: saved.transferComplete === true, transferPending: Boolean(saved.transfer) && saved.transferComplete !== true });
         } return result; },
         async pending() { const state = await load(); return state.create && state.create.phase !== "complete" ? { rail: state.create.rail ?? "reserve", amountUsdCents: state.create.amountUsdCents, noteId: state.create.intent.noteId, canCancel: state.create.phase === "preparing" || state.create.phase === "funding" } : null; },
@@ -231,6 +240,24 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
                 throw Error("BANK_NOTE_ORIGINAL_SOURCE_REQUIRED");
             if (stored.transferComplete && stored.imageRef) return { noteId, image: await input.restore(stored.imageRef) };
             const request = requestBytes ? obj(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(requestBytes))) : obj(stored.transfer?.request);
+            if(request.schema==='receiz.bank.note-account-receiving-request.v1'){
+                const requestSource=new TextEncoder().encode(JSON.stringify(request)),receiver=await verifyBankNoteAccountReceivingRequest(requestSource);
+                if(stored.transfer&&JSON.stringify(stored.transfer.request)!==JSON.stringify(request))throw Error('BANK_NOTE_TRANSFER_PENDING');
+                if(!stored.transfer){const original=await openBankNoteImage(await input.restore(stored.imageRef!)),head=readBankFundedNoteHead(original);
+                    state=await change(state,next=>{next.notes[noteId]!.transfer={request,acceptedAtKai:laterKai(head.packet.acceptedAtKai),nonce:crypto.randomUUID()};});}
+                const intent=state.notes[noteId]!.transfer!;
+                let terminal=intent.terminalRef?await input.restore(intent.terminalRef):null;
+                let image:Uint8Array;
+                if(terminal)image=await exportBankNoteAccountDepositImage(terminal,await input.restore(stored.imageRef!),{receiverUserId:receiver.receiverUserId,receiverKeyId:receiver.receiverKeyId});
+                else{
+                    const transferred=await prepareBankNoteAccountTransfer({image:await input.restore(stored.imageRef!),request:requestSource,acceptedAtKai:intent.acceptedAtKai,nonce:intent.nonce,custody:noteAdapter(`wallet-note:${noteId}`),sealDocument:input.sealDocument,
+                        onSealedSource:async bytes=>{const terminalRef=await input.retain(bytes);state=await change(state,next=>{next.notes[noteId]!.transfer!.terminalRef=terminalRef;});}});
+                    terminal=transferred.terminalSourceBytes;image=transferred.image;
+                }
+                const imageRef=await input.retain(image);
+                state=await change(state,next=>{next.notes[noteId]!.imageRef=imageRef;next.notes[noteId]!.transferComplete=true;});
+                return {noteId,image};
+            }
             if (request.schema !== "receiz.bank.note-receiving-request.v1" || Object.keys(request).sort().join("|") !== "receivingCustody|schema")
                 throw Error("BANK_NOTE_RECEIVING_REQUEST_INVALID");
             const receiver = await verifyKairosNoteReceivingCustody(request.receivingCustody as Parameters<typeof verifyKairosNoteReceivingCustody>[0]);
@@ -253,7 +280,7 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
             state = await change(state, next => { next.notes[noteId] = { ...next.notes[noteId]!, sourceRef,imageRef, transferComplete: true }; });
             return { noteId, image };
         },
-        async inspectNote(image: Uint8Array) { const note = await openBankNoteImage(image); return { rail: note.rail, noteId: note.noteId, amountUsdCents: note.amountUsdCents, amountPhiMicro: note.amountPhiMicro }; },
+        async inspectNote(image: Uint8Array) { const note = isBankNoteAccountDeposit(image)?await readBankNoteAccountDeposit(image):await openBankNoteImage(image); return { rail: note.rail, noteId: note.noteId, amountUsdCents: note.amountUsdCents, amountPhiMicro: note.amountPhiMicro }; },
         async depositNote(image: Uint8Array) {
             let state = await load();
             const note = await openBankNoteImage(image), head = readBankFundedNoteHead(note), packet = head.packet;

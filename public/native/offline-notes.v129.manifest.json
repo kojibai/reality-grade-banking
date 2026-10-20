@@ -1,10 +1,10 @@
 {
   "schema": "receiz.bank.native-runtime-build.v1",
   "version": "129.0.0",
-  "moduleSha256": "32aa027e4d86e131f179fadd239fb74d8d6c1f1b6e315f45607fc5f42665c743",
-  "sourceTreeSha256": "2b3523537915c47b2e432b81a195760479c355d9edf81c2e3db7b8c29a8d6c8b",
-  "inputs": 295,
-  "bytes": 2289679,
+  "moduleSha256": "a97a5d7d85828a659ccae35ae3b9d39ffe47a94735ebb9c46b259709dd0c29e7",
+  "sourceTreeSha256": "e87e505ea58c3a7b92ec3aa527199706ed53d61eff925851ef776e09e5b18234",
+  "inputs": 298,
+  "bytes": 2299210,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -274,6 +274,48 @@
       "sha256": "e5b59538ee6ecd6efc81a7a971eaa928883579609b2100fedd5d84eeb953ce97",
       "purpose": "Value exact remaining Settlement Phi at the held receiver quote, preserve fixed-dollar Reserve backing and retained v1 intents, and bind each arithmetic version to its signed credit/debit transition. Complete funded source and one-time custody remain authority; published SDK, MCP and AI skill packages stay unchanged.",
       "sourceCommit": "af90a8c7a567a1e0c0ca4fbe5f3116472e4e9db3"
+    },
+    {
+      "id": "bankeiz-account-note-receiving-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/accountReceiving.ts",
+      "baseSha256": null,
+      "sha256": "a1f84cdf6039e98aad2609bba622c0765cd6a44c179008864a40c3b88283bd9f",
+      "purpose": "Compose an Identity Seal-signed account receiving destination using existing v129 signature verification. No SDK source, qualification policy, funding or credit authority changes."
+    },
+    {
+      "id": "bankeiz-account-note-receiving-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "b3ff101097e1a820228ef356688d367a5eb03f32d2e08b44769589d60715870f",
+      "sha256": "86911cd9ee1977b7d647575acc36c77f43b36cd5294fb64ad2ef54acbfdc93a0",
+      "purpose": "Compose an Identity Seal-signed account receiving destination using existing v129 signature verification. No SDK source, qualification policy, funding or credit authority changes."
+    },
+    {
+      "id": "bankeiz-account-note-deposit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/accountDeposit.ts",
+      "baseSha256": null,
+      "sha256": "faa250530049147523f1b46743e415a6721cae885dacf3325e5c03c4d27d9733",
+      "purpose": "Transport and verify the existing complete v129 recipient-bound terminal source for local retention and once-only native redemption, without receiver qualification or SDK changes."
+    },
+    {
+      "id": "bankeiz-account-note-deposit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "86911cd9ee1977b7d647575acc36c77f43b36cd5294fb64ad2ef54acbfdc93a0",
+      "sha256": "60630d5107ac0c4f6e7ba27dcca418b928cdae39d7366275441d053d7c07938e",
+      "purpose": "Transport and verify the existing complete v129 recipient-bound terminal source for local retention and once-only native redemption, without receiver qualification or SDK changes."
+    },
+    {
+      "id": "bankeiz-account-note-deposit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/accountTransfer.ts",
+      "baseSha256": null,
+      "sha256": "8fdaa8eec316ebd6b49f32c3066c34bd353aee5d34022ae5b7f1626d4a2eb6b3",
+      "purpose": "Compose the existing sender-owned irreversible terminal into an account receiving source, with full proof retention and the unchanged v129 redemption verifier. No SDK package or trust-policy change."
+    },
+    {
+      "id": "bankeiz-account-note-receipt-capacity-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/credit.ts",
+      "baseSha256": "98241dc9f748d999fe0efae6652878e290d0080f13244837bf18b008a1a659f8",
+      "sha256": "9127449277e3806f5564d976ac5fb9cc734d5e918021ba0b4e26b828008dcff5",
+      "purpose": "Align complete receipt export and archival reader with existing 32 MiB expanded-source custody. This changes transport bounds only; native credit, terminal, funding, identity and consumption verification remain unchanged."
     }
   ]
 }

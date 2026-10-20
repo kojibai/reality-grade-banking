@@ -1,0 +1,18 @@
+{
+  "synthetic": true,
+  "receizCommit": "0a4eca94524b020eab79a1c12f882c66a8834118",
+  "roots": [
+    {
+      "kid": "receiz.v4.test.bank-note",
+      "alg": "Ed25519",
+      "publicKeyRawB64u": "cVIB53TmKvfRufdP3kfYaJ57C4etv--oXULhYWw5Q_c",
+      "status": "active"
+    }
+  ],
+  "receiverUserId": "318a0e40-fe47-4c93-9e72-33e77b9cec54",
+  "receiverKeyId": "3d873e93c89040992aacc227a59f05a357fcec5eb0c76657504137990af38ccc",
+  "noteId": "853ef2d2-b0ed-4658-a44e-e033dfca59f3",
+  "amountPhiMicro": "1000000",
+  "amountUsdCents": "200",
+  "receiverCustodyCreated": false
+}

@@ -119,6 +119,18 @@
       "sha256": "727c1b42e55c3ec2d3613b357255ba92fb683650cd763aac361c3aae81323d27"
     },
     {
+      "path": "app/lib/wallet/bankNotes/accountDeposit.ts",
+      "sha256": "faa250530049147523f1b46743e415a6721cae885dacf3325e5c03c4d27d9733"
+    },
+    {
+      "path": "app/lib/wallet/bankNotes/accountReceiving.ts",
+      "sha256": "a1f84cdf6039e98aad2609bba622c0765cd6a44c179008864a40c3b88283bd9f"
+    },
+    {
+      "path": "app/lib/wallet/bankNotes/accountTransfer.ts",
+      "sha256": "8fdaa8eec316ebd6b49f32c3066c34bd353aee5d34022ae5b7f1626d4a2eb6b3"
+    },
+    {
       "path": "app/lib/wallet/bankNotes/allocation.ts",
       "sha256": "e0a433dbafdd61b314026caccb290495365c489ec2bdf307769ed66aa79f2596"
     },
@@ -128,7 +140,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "b3ff101097e1a820228ef356688d367a5eb03f32d2e08b44769589d60715870f"
+      "sha256": "60630d5107ac0c4f6e7ba27dcca418b928cdae39d7366275441d053d7c07938e"
     },
     {
       "path": "app/lib/wallet/bankNotes/bytePacking.ts",
@@ -148,7 +160,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/credit.ts",
-      "sha256": "98241dc9f748d999fe0efae6652878e290d0080f13244837bf18b008a1a659f8"
+      "sha256": "9127449277e3806f5564d976ac5fb9cc734d5e918021ba0b4e26b828008dcff5"
     },
     {
       "path": "app/lib/wallet/bankNotes/fundedNote.ts",
@@ -1310,7 +1322,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "b3ff101097e1a820228ef356688d367a5eb03f32d2e08b44769589d60715870f"
+      "sha256": "60630d5107ac0c4f6e7ba27dcca418b928cdae39d7366275441d053d7c07938e"
     },
     {
       "path": "app/lib/wallet/bankNotes/bytePacking.ts",
@@ -1326,7 +1338,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/credit.ts",
-      "sha256": "98241dc9f748d999fe0efae6652878e290d0080f13244837bf18b008a1a659f8"
+      "sha256": "9127449277e3806f5564d976ac5fb9cc734d5e918021ba0b4e26b828008dcff5"
     },
     {
       "path": "app/lib/wallet/bankNotes/fundedNote.ts",
@@ -5134,8 +5146,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "b3ff101097e1a820228ef356688d367a5eb03f32d2e08b44769589d60715870f",
-      "bytes": 32667,
+      "sha256": "60630d5107ac0c4f6e7ba27dcca418b928cdae39d7366275441d053d7c07938e",
+      "bytes": 35559,
       "mode": 420
     },
     {
@@ -5164,8 +5176,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/credit.ts",
-      "sha256": "98241dc9f748d999fe0efae6652878e290d0080f13244837bf18b008a1a659f8",
-      "bytes": 9741,
+      "sha256": "9127449277e3806f5564d976ac5fb9cc734d5e918021ba0b4e26b828008dcff5",
+      "bytes": 9835,
       "mode": 420
     },
     {
@@ -10980,6 +10992,23 @@
       "sha256": "41e51b98ffcb7e453a2d4b2568bf0d93f82ccb06a841b4550b97f87ca54b0005",
       "bytes": 1397,
       "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/wallet/bankNotes/accountDeposit.ts",
+      "sha256": "faa250530049147523f1b46743e415a6721cae885dacf3325e5c03c4d27d9733",
+      "mode": 420,
+      "bytes": 8514
+    },
+    {
+      "path": "receiz/app/lib/wallet/bankNotes/accountReceiving.ts",
+      "sha256": "a1f84cdf6039e98aad2609bba622c0765cd6a44c179008864a40c3b88283bd9f",
+      "mode": 420,
+      "bytes": 5837
+    },
+    {
+      "path": "receiz/app/lib/wallet/bankNotes/accountTransfer.ts",
+      "sha256": "8fdaa8eec316ebd6b49f32c3066c34bd353aee5d34022ae5b7f1626d4a2eb6b3",
+      "mode": 420
     }
   ],
   "sdkOutputs": [
@@ -12097,6 +12126,48 @@
       "sha256": "e5b59538ee6ecd6efc81a7a971eaa928883579609b2100fedd5d84eeb953ce97",
       "purpose": "Value exact remaining Settlement Phi at the held receiver quote, preserve fixed-dollar Reserve backing and retained v1 intents, and bind each arithmetic version to its signed credit/debit transition. Complete funded source and one-time custody remain authority; published SDK, MCP and AI skill packages stay unchanged.",
       "sourceCommit": "af90a8c7a567a1e0c0ca4fbe5f3116472e4e9db3"
+    },
+    {
+      "id": "bankeiz-account-note-receiving-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/accountReceiving.ts",
+      "baseSha256": null,
+      "sha256": "a1f84cdf6039e98aad2609bba622c0765cd6a44c179008864a40c3b88283bd9f",
+      "purpose": "Compose an Identity Seal-signed account receiving destination using existing v129 signature verification. No SDK source, qualification policy, funding or credit authority changes."
+    },
+    {
+      "id": "bankeiz-account-note-receiving-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "b3ff101097e1a820228ef356688d367a5eb03f32d2e08b44769589d60715870f",
+      "sha256": "86911cd9ee1977b7d647575acc36c77f43b36cd5294fb64ad2ef54acbfdc93a0",
+      "purpose": "Compose an Identity Seal-signed account receiving destination using existing v129 signature verification. No SDK source, qualification policy, funding or credit authority changes."
+    },
+    {
+      "id": "bankeiz-account-note-deposit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/accountDeposit.ts",
+      "baseSha256": null,
+      "sha256": "faa250530049147523f1b46743e415a6721cae885dacf3325e5c03c4d27d9733",
+      "purpose": "Transport and verify the existing complete v129 recipient-bound terminal source for local retention and once-only native redemption, without receiver qualification or SDK changes."
+    },
+    {
+      "id": "bankeiz-account-note-deposit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "86911cd9ee1977b7d647575acc36c77f43b36cd5294fb64ad2ef54acbfdc93a0",
+      "sha256": "60630d5107ac0c4f6e7ba27dcca418b928cdae39d7366275441d053d7c07938e",
+      "purpose": "Transport and verify the existing complete v129 recipient-bound terminal source for local retention and once-only native redemption, without receiver qualification or SDK changes."
+    },
+    {
+      "id": "bankeiz-account-note-deposit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/accountTransfer.ts",
+      "baseSha256": null,
+      "sha256": "8fdaa8eec316ebd6b49f32c3066c34bd353aee5d34022ae5b7f1626d4a2eb6b3",
+      "purpose": "Compose the existing sender-owned irreversible terminal into an account receiving source, with full proof retention and the unchanged v129 redemption verifier. No SDK package or trust-policy change."
+    },
+    {
+      "id": "bankeiz-account-note-receipt-capacity-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/credit.ts",
+      "baseSha256": "98241dc9f748d999fe0efae6652878e290d0080f13244837bf18b008a1a659f8",
+      "sha256": "9127449277e3806f5564d976ac5fb9cc734d5e918021ba0b4e26b828008dcff5",
+      "purpose": "Align complete receipt export and archival reader with existing 32 MiB expanded-source custody. This changes transport bounds only; native credit, terminal, funding, identity and consumption verification remain unchanged."
     }
   ],
   "historicalValuation": {

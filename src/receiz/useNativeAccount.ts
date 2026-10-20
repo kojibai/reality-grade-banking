@@ -14,6 +14,7 @@ export function useNativeAccount(custody = nativeCustody) {
   const [identity, setIdentity] = useState<OpenIdentity | null>(null), [wallet, setWallet] = useState<SharedWallet | null>(null);
   const [walletHistory, setWalletHistory] = useState<WalletPoint[]>([]);
   const [historyComplete,setHistoryComplete]=useState(false);
+  const [receivedNotes,setReceivedNotes]=useState<readonly import('./offline-notes').BankNoteDepositResult[]>([]);
   const [openingStage, setOpeningStage] = useState<'identity' | 'history' | 'ready'>('identity');
   const [opening, setOpening] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [observedAt, setObservedAt] = useState<string | null>(null);
   const [syncPending, setSyncPending] = useState(false);
@@ -70,6 +71,7 @@ export function useNativeAccount(custody = nativeCustody) {
       await preloadPrivateHistory(next, known.wallet.userId);
       if (ticket !== generation.current) { next.dispose(); return; }
       held.current?.dispose(); held.current = next; pending.current = false;refreshQueued.current=false;
+      setReceivedNotes(next.knownReceivedNotes?.()??[]);
       // One React commit: no admitted account shell with an absent chart.
       hasObservation.current = true; setWallet(known.wallet); setObservedAt(known.observedAt); setWalletHistory(known.history ?? []); setHistoryComplete(hasSettledAccountView(known));
       setError(null); setSyncPending(false); setOpeningStage('ready'); setIdentity(next); setOpening(false); setBusy(false);
@@ -92,7 +94,7 @@ export function useNativeAccount(custody = nativeCustody) {
     };
     const timer = setInterval(wake, 60_000);
     const localTimer = setInterval(() => { if (foreground()) void refreshLocal(); }, 1_000);
-    const repaint = () => { const known = held.current?.knownWallet?.(); if (known) { hasObservation.current=true; setWallet(known.wallet); setObservedAt(known.observedAt); setWalletHistory(known.history ?? []); setHistoryComplete(hasSettledAccountView(known)); setError(null); setSyncPending(false); } };
+    const repaint = () => { const current=held.current,known = current?.knownWallet?.(); if (current) setReceivedNotes(current.knownReceivedNotes?.()??[]); if (known) { hasObservation.current=true; setWallet(known.wallet); setObservedAt(known.observedAt); setWalletHistory(known.history ?? []); setHistoryComplete(hasSettledAccountView(known)); setError(null); setSyncPending(false); } };
     const paymentRecorded=(event:Event)=>{const current=held.current,detail=(event as CustomEvent).detail;if(current&&detail?.identityDigest===current.binding.artifactSha256)void refresh();};
     addEventListener('bankeiz:wallet-send-recorded',paymentRecorded);
     addEventListener('bankeiz:account-observation', repaint);
@@ -114,6 +116,6 @@ export function useNativeAccount(custody = nativeCustody) {
   };
   const create = (consent: boolean) => open(() => custody.createNativeIdentity(consent));
   const importId = (file: File, phrase: string, consent: boolean) => open(() => custody.importNativeIdentity(file, phrase, consent));
-  const forget = async () => { const current=held.current;if(current){await current.cancelUnsentNotes?.();if(held.current!==current)throw Error('Your device identity changed. Reopen this action.');}await custody.forgetDeviceIdentity(); entering.current?.dispose(); held.current?.dispose(); held.current = null; generation.current++; pending.current = false; hasObservation.current = false; setIdentity(null); setWallet(null); setWalletHistory([]); setHistoryComplete(false); setObservedAt(null); setOpeningStage('identity'); setOpening(false); setBusy(false); setSyncPending(false); };
-  return { identity, wallet, walletHistory, historyComplete, opening, openingStage, busy, error, observedAt, syncPending, refresh, create, importId, forget };
+  const forget = async () => { const current=held.current;if(current){await current.cancelUnsentNotes?.();if(held.current!==current)throw Error('Your device identity changed. Reopen this action.');}await custody.forgetDeviceIdentity(); entering.current?.dispose(); held.current?.dispose(); held.current = null; generation.current++; pending.current = false; hasObservation.current = false; setIdentity(null); setWallet(null); setWalletHistory([]); setReceivedNotes([]); setHistoryComplete(false); setObservedAt(null); setOpeningStage('identity'); setOpening(false); setBusy(false); setSyncPending(false); };
+  return { identity, wallet, walletHistory, receivedNotes, historyComplete, opening, openingStage, busy, error, observedAt, syncPending, refresh, create, importId, forget };
 }

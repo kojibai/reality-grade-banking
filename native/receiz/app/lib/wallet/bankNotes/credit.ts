@@ -88,10 +88,11 @@ export async function verifyBankReserveCreditArtifact(bytesInput: Uint8Array, pr
  * terminal/funding sources, never these JSON fields or container hashes. */
 export async function exportBankNoteDepositReceipt(proof:Awaited<ReturnType<typeof verifyBankReserveCreditArtifact>>):Promise<Uint8Array>{
  const source=held.get(proof);if(!source)throw Error("BANK_NOTE_CREDIT_CUSTODY_REQUIRED");
- return new TextEncoder().encode(JSON.stringify({schema:"receiz.bank.note-deposit-receipt.v1",creditArtifactBytes:receizBase64UrlEncode(source.bytes),terminalSourceBytes:await packBankNoteBytes(source.terminalSource),privateCashSnapshot:receizBase64UrlEncode(source.privateSnapshot)}));
+ const bytes=new TextEncoder().encode(JSON.stringify({schema:"receiz.bank.note-deposit-receipt.v1",creditArtifactBytes:receizBase64UrlEncode(source.bytes),terminalSourceBytes:await packBankNoteBytes(source.terminalSource),privateCashSnapshot:receizBase64UrlEncode(source.privateSnapshot)}));
+ if(bytes.length>32*1024*1024)throw Error("BANK_NOTE_TRANSPORT_CAPACITY");return bytes;
 }
 export async function openBankNoteDepositReceipt(bytes:Uint8Array,options:Readonly<{roots?:ReadonlyMap<string,ReceizSignatureV4RootPublicKey>}>= {}){
- if(bytes.length>4*1024*1024)throw Error("BANK_NOTE_TRANSPORT_CAPACITY");const body=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes));
+ if(bytes.length>32*1024*1024)throw Error("BANK_NOTE_TRANSPORT_CAPACITY");const body=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes));
  if(body?.schema!=="receiz.bank.note-deposit-receipt.v1"||Object.keys(body).sort().join("|")!=="creditArtifactBytes|privateCashSnapshot|schema|terminalSourceBytes"||![body.creditArtifactBytes,body.privateCashSnapshot,body.terminalSourceBytes].every(v=>typeof v==="string"))throw Error("BANK_NOTE_CREDIT_SOURCE_REQUIRED");
  return verifyBankReserveCreditArtifact(receizBase64UrlDecode(body.creditArtifactBytes),receizBase64UrlDecode(body.privateCashSnapshot),{...options,terminalSource:await unpackBankNoteBytes(body.terminalSourceBytes)});
 }

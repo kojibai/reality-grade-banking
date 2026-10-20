@@ -11,7 +11,9 @@ export function noteRegistrationCode(cause:unknown):string{
 export function noteError(cause:unknown):string{
  const code=cause instanceof Error?cause.message:'';
  const stage=noteFailureStage(cause);
- if(stage&&['saved-notes','prepared-notes','saved-note-identity','offline-note-checkpoint','prepared-note-checkpoint','note-image'].includes(stage.stage))return 'Saved note custody could not be opened on this device. Keep your original proofs and this device; the saved state has not been reset.';
+ if(code==='BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION')return 'Connect to create this Note.';
+ if(code==='BANK_NOTE_DEPOSIT_RECONCILIATION_REQUIRED')return 'Connect to confirm your received Notes before using this balance.';
+ if(stage&&['saved-notes','prepared-notes','saved-note-identity','offline-note-checkpoint','prepared-note-checkpoint','received-note-checkpoint','note-image'].includes(stage.stage))return 'Saved note custody could not be opened on this device. Keep your original proofs and this device; the saved state has not been reset.';
  if(stage?.stage==='device-signer')return 'Device signing setup could not complete. Your saved notes and exact pending attempt are preserved.';
  if(code==='BANK_NOTE_PREPARED_RECOVERY_REQUIRED')return 'A prepared note is still pending on this device. Keep its original proofs; a new note cannot start until that exact attempt is resolved.';
  if(code==='BANK_NOTE_COMPETING_ATTEMPTS')return 'Two saved note attempts need recovery. Keep this device and the original proofs; no new note has been started.';

@@ -3,10 +3,9 @@ import {ChevronDown} from 'lucide-react';
 /** Static explanation. Opening it performs no custody probe or network work. */
 export function NoteContinuityDetails(){
   return <details className="note-continuity-details">
-    <summary>Using Notes offline<ChevronDown size={15} aria-hidden="true"/></summary>
-    <p>Your original stays with you offline. Each send must be confirmed once. Qualified custody can do that on your device; other custody requires a connection for the next send.</p>
-    <p>Receiving a completed transfer and being ready to send again are separate. An incoming transfer awaiting confirmation stays pending.</p>
-    <p>Connected Note sending is not yet enabled in this integration.</p>
-    <a href="/conformance/#note-continuity">Device support and technical requirements</a>
+    <summary>Offline creation standard<ChevronDown size={15} aria-hidden="true"/></summary>
+    <p>Creating a Note offline requires protected state that cannot authorize the same value twice. This device or browser path does not expose the required conforming custody.</p>
+    <p>You can still receive and retain a completed Note offline. Connect before creating the next Note from your balance.</p>
+    <a href="/conformance/#note-continuity">Requirements and platform integration</a>
   </details>;
 }

@@ -24,3 +24,20 @@ Synthetic custom-root sources may test diagnostic mechanics, but must be visibly
 The Bank host's financial and hardware release gates are in [offline-notes-release.md](../docs/offline-notes-release.md). Qualified actual funding and transition storage, the protected signer context and a user-operated real-device funded round trip remain separate operational prerequisites. A passing build or a code deployment does not complete them.
 
 Settlement Note financial support additionally requires the [native signed-rail extension](../docs/settlement-note-contract.md). Do not generalize Reserve qualification to Settlement. Generic digital transfer integration must supply a qualified actual transition store and source/signing workflow before claiming the SDK example is a production receiver.
+
+## Note continuity implementation assessment
+
+The [Note continuity standard](../docs/note-continuity-standard.md) and
+[account-destination implementation contract](../docs/note-account-deposit-v129.md)
+define the application-specific boundaries in addition to this receiving
+profile. Use the [assessment record template](note-qualification-report.template.json)
+to name the exact source/build/resources, trust policy, device/API path,
+capacity and evidence for each applicable requirement.
+
+The template is an unassessed report, not an SDK schema or certificate. Its
+status fields grant no authority. Replace nulls with inspected evidence;
+identify synthetic tests, non-applicable requirements with justification,
+failed cases and unassessed production operations explicitly. Do not attach
+private keys, tokens, private account openings or unredacted customer proofs
+to a public report. Retain those original sources under appropriate custody
+for authorized independent assessment.

@@ -1,6 +1,8 @@
 import type { ProofSource } from './proof-library';
 import receiverBuild from '../../public/native/receiver-verifier.v129.manifest.json';
 type Receiver = {
+  isBankNoteAccountDeposit(bytes:Uint8Array):boolean;
+  inspectAccountNoteDeposit(bytes:Uint8Array):Promise<{rail:string;receiverKeyId:string}>;
   openReserveNoteImage(bytes: Uint8Array): Promise<unknown>;
   inspectReserveNote(value: unknown): { rail: string; noteId: string };
   inspectNoteDepositReceipt(bytes: Uint8Array): Promise<{ rail: string; noteId: string; receiverKeyId: string }>;
@@ -13,6 +15,11 @@ function receiver() {
 }
 export async function inspectNoteProof(source: ProofSource, keyId: string): Promise<{ title: string }> {
   const native = await receiver();
+  if(native.isBankNoteAccountDeposit(source.bytes)){
+    const received=await native.inspectAccountNoteDeposit(source.bytes);
+    if(source.kind==='note-deposit'&&received.receiverKeyId!==keyId)throw Error('PROOF_RECEIPT_IDENTITY_MISMATCH');
+    return {title:`${received.rail==='settlement'?'Settlement':'Reserve'} Note · ${source.kind==='note-image'?'completed transfer':'received'} proof`};
+  }
   if (source.kind === 'note-image') {
     const note = native.inspectReserveNote(await native.openReserveNoteImage(new Uint8Array(source.bytes)));
     return { title: `${note.rail === 'settlement' ? 'Settlement' : 'Reserve'} Note · carried proof` };

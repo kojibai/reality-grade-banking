@@ -55,3 +55,21 @@ historical quotes. Native Note/receiver and published SDK bytes are unchanged.
 The source commit identifies the upstream v129 base. `manifest.json` additionally records application-specific composition patches with their original and modified source hashes. The Bankeiz WebAuthn realm patch changes only the Bank note browser composition: Bankeiz uses `bankeiz.com`, while existing Receiz Bank credentials retain `receiz.com`. It does not modify the pinned SDK package sources, published SDK JavaScript, verification roots or note custody requirements.
 
 After an intentional composition-source edit, update its indexed source/input hashes and run `node scripts/rebuild-native.mjs --refresh-composition --output public/native`. Normal builds continue to require exact reproduction of the committed artifacts.
+
+
+### Account-destination receipt composition
+
+The indexed `accountReceiving.ts`, `accountTransfer.ts` and `accountDeposit.ts`
+add a signed account destination and a lossless PNG envelope around the existing
+v129 sender-consumed terminal. The recipient reopens that whole terminal
+without a receiver authenticator; the existing native credit verifier admits
+connected redemption. `browser.ts` retains intent and completed terminal bytes
+before packaging. The read-only institutional verifier exposes inspection of
+the same terminal without signing or submitting credit.
+
+These are Bank application composition patches recorded in the manifest,
+not modifications to published SDK sources, roots, qualification or the
+prepared-credit flag. They do not implement online creation on nonconforming
+custody. See the [complete field/operation contract](../docs/note-account-deposit-v129.md)
+and [continuity laws](../docs/note-continuity-standard.md). New synthetic fixtures
+verify this boundary; they do not qualify a physical device or live funding.

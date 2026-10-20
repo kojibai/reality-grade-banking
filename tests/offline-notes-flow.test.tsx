@@ -9,6 +9,22 @@ import { unattestedResponse } from './fixtures/note-registration';
 import {atNoteStage} from '../src/receiz/note-stage';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const click = (host: HTMLElement, label: string) => [...host.querySelectorAll('button')].find(b => b.textContent?.includes(label))!.click();
+test.each(['create','deposit'] as const)('keeps conformance guidance out of the normal %s flow',async mode=>{
+ const identity={offlineNotes:async()=>({savedNotes:async()=>[],pending:async()=>null})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<OfflineNotes identity={identity} mode={mode} onBack={vi.fn()} onRefresh={vi.fn()}/>));expect(host.querySelector('.note-continuity-details')).toBeNull();}finally{act(()=>root.unmount());}
+});
+test('explains the offline-creation standard only after that action requires a connection',async()=>{
+ const identity={offlineNotes:async()=>({pending:async()=>null,create:async()=>{throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');}})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));expect(host.querySelector('.note-continuity-details')).toBeNull();act(()=>click(host,'Review note'));await act(async()=>click(host,'Create funded note'));expect(host.querySelector('[role="alert"]')?.textContent).toBe('Connect to create this Note.');expect(host.querySelector('.note-continuity-details')).not.toBeNull();expect(host.textContent).not.toMatch(/ordinary device|coming soon/i);}finally{act(()=>root.unmount());}
+});
+test('records an offline incoming deposit immediately without describing it as confirmed global credit',async()=>{
+ const value={noteId:'received-fixture',rail:'reserve',amountUsdCents:'200',amountPhiMicro:'1000000'},refresh=vi.fn();
+ const identity={offlineNotes:async()=>({inspect:async()=>value,deposit:async()=>({...value,status:'received',proofBytes:new Uint8Array([1])})})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<OfflineNotes identity={identity} mode="deposit" onBack={vi.fn()} onRefresh={refresh}/>));const upload=host.querySelector('input[type="file"]')as HTMLInputElement;Object.defineProperty(upload,'files',{value:[{size:1,arrayBuffer:async()=>new Uint8Array([1]).buffer}]});await act(async()=>upload.dispatchEvent(new Event('change',{bubbles:true})));await act(async()=>click(host,'Deposit $2.00'));expect(host.textContent).toContain('Your note is received.');expect(host.textContent).toContain('reconcile');expect(host.textContent).not.toContain('Your note is redeemed.');expect(host.querySelector('.note-continuity-details')).toBeNull();expect(refresh).toHaveBeenCalledOnce();}finally{act(()=>root.unmount());}
+});
 test('a failed local inventory read blocks review and shows only its bounded stage and exception name',async()=>{
  const create=vi.fn(),failure=new DOMException('private-fixture-data','OperationError');
  const identity={offlineNotes:async()=>({savedNotes:()=>atNoteStage('saved-notes',async()=>{throw failure;}),pending:async()=>null,create})}as unknown as OpenIdentity;

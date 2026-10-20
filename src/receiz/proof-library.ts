@@ -138,7 +138,7 @@ export function createProofLibrary(input: {
       }
     } else {
       const kind: ProofKind = object(parsed) && parsed.schema === 'bankeiz.account-proof.v1' ? 'account-source' : object(parsed) && parsed.schema === 'receiz.bank.native-asset-result.v1' ? 'asset-receipt' : object(parsed) && parsed.schema === 'receiz.bank.native-payment-result.v1' ? 'payment-receipt' : object(parsed) && parsed.schema === 'receiz.portable-execution-transition-recovery.v124' ? 'execution-recovery'
-        : object(parsed) && parsed.schema === 'receiz.bank.note-deposit-receipt.v1' ? 'note-deposit'
+        : object(parsed) && ['receiz.bank.note-deposit-receipt.v1','receiz.bank.note-redemption-source.v1','receiz.bank.note-redemption-source.v2'].includes(String(parsed.schema)) ? 'note-deposit'
         : bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71 ? 'note-image' : 'owned-source';
       // A PNG may also be an ordinary owned Original; classify via canonical
       // note verification first, then independently verify the owned source.

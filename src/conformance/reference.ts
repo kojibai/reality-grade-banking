@@ -17,8 +17,8 @@ export const checks = [
 export type CheckId = typeof checks[number]['id'];
 export type CheckResult = { id: CheckId; passed: boolean; durationMs: number; evidence: unknown; error?: string };
 export type ReferenceReport = { schema: 'receiz.bank.browser-reference-checks.v1'; receizVersion: string; registryDigest: string; verifierModuleSha256: string; startedAt: string; completedAt: string; checks: CheckResult[]; localChecksPassed: boolean; institutionConformance: 'not-assessed'; creditAuthorized: false; financialActionsPerformed: 0; timestampsAreAuthority: false };
-export interface NoteInspection { schema: string; rail: 'reserve' | 'settlement'; noteId: string; noteArtifactSha256: string; fundingArtifactSha256: string; allocationId: string; amountUsdCents: string; amountPhiMicro: string; receivingCustodyCommitmentDigest: string; carriedChainVerified: true; currentSpendabilityChecked: false; custodyConsumed: false; creditAuthorized: false; }
-interface NativeVerifier { openReserveNoteImage(bytes: Uint8Array): Promise<unknown>; inspectReserveNote(handle: unknown): NoteInspection; exportReserveNoteSource(handle: unknown): unknown; }
+export interface NoteInspection { schema: string; rail: 'reserve' | 'settlement'; noteId: string; noteArtifactSha256?: string; terminalArtifactSha256?:string; receiverUserId?:string; receiverKeyId?:string; redemptionDigest?:string; hostCreditChecked?:false; fundingArtifactSha256?: string; allocationId?: string; amountUsdCents: string; amountPhiMicro: string; receivingCustodyCommitmentDigest?: string; carriedChainVerified: true; currentSpendabilityChecked: false; custodyConsumed: false; creditAuthorized: false; }
+interface NativeVerifier { isBankNoteAccountDeposit(bytes:Uint8Array):boolean; inspectAccountNoteDeposit(bytes:Uint8Array):Promise<NoteInspection>; openReserveNoteImage(bytes: Uint8Array): Promise<unknown>; inspectReserveNote(handle: unknown): NoteInspection; exportReserveNoteSource(handle: unknown): unknown; }
 let nativeLoad: Promise<NativeVerifier> | undefined;
 export function loadNativeVerifier() {
   return nativeLoad ??= (async () => {
@@ -27,13 +27,13 @@ export function loadNativeVerifier() {
     if (!response.ok) throw Error('VERIFIER_RESOURCE_UNAVAILABLE');
     const bytes = new Uint8Array(await response.arrayBuffer());
     const module: NativeVerifier = await importDigestVerifiedModule(bytes, manifest.moduleSha256, verifiedUrl => import(/* @vite-ignore */ verifiedUrl));
-    if (typeof module.openReserveNoteImage !== 'function' || typeof module.inspectReserveNote !== 'function' || typeof module.exportReserveNoteSource !== 'function') throw Error('VERIFIER_INTERFACE_INVALID');
+    if (typeof module.isBankNoteAccountDeposit !== 'function' || typeof module.inspectAccountNoteDeposit !== 'function' || typeof module.openReserveNoteImage !== 'function' || typeof module.inspectReserveNote !== 'function' || typeof module.exportReserveNoteSource !== 'function') throw Error('VERIFIER_INTERFACE_INVALID');
     return module;
   })().catch(error => { nativeLoad = undefined; throw error; });
 }
 export async function inspectOriginalNote(bytes: Uint8Array) {
   const native = await loadNativeVerifier();
-  return native.inspectReserveNote(await native.openReserveNoteImage(bytes));
+  return native.isBankNoteAccountDeposit(bytes)?native.inspectAccountNoteDeposit(bytes):native.inspectReserveNote(await native.openReserveNoteImage(bytes));
 }
 export async function runBrowserChecks(onStart: (id: CheckId) => void, onResult: (result: CheckResult) => void): Promise<ReferenceReport> {
   const startedAt = new Date().toISOString(), results: CheckResult[] = [];

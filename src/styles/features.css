@@ -267,3 +267,7 @@
 .note-continuity-details[open]>summary svg{transform:rotate(180deg)}
 .note-continuity-details>p{margin-top:12px}
 .note-continuity-details>a{display:inline-block;max-width:100%;margin-top:12px;color:var(--blue,#254bd8);text-decoration:underline;text-underline-offset:4px;overflow-wrap:anywhere}
+.received-note-balance{display:flex;align-items:center;gap:12px;width:100%;min-width:0;margin:0 0 20px;padding:12px 0;border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:transparent;color:var(--navy);text-align:left;font:inherit}
+.received-note-balance>span{display:grid;gap:3px;min-width:0;flex:1;font-size:13px}
+.received-note-balance small{color:var(--muted);font-size:11px}
+.received-note-balance strong{white-space:nowrap;font-size:15px;font-variant-numeric:tabular-nums}

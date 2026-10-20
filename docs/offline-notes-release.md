@@ -2,13 +2,21 @@
 
 ## Product release status — October 20, 2026
 
-The current [Note continuity standard](note-continuity-standard.md) requires
-both qualified local consumption and connected consumption for the Bankeiz
-1.0.0 experience. The latter is not implemented by the current adapter.
-Historical test results below do not qualify that new path or establish a
-public release. Follow the [1.0.0 readiness record](releases/1.0.0.md) alongside
-the existing financial gates below. Existing custody is never reset or
-automatically reclassified by this documentation.
+The current [Note continuity standard](note-continuity-standard.md) and
+[account-destination contract](note-account-deposit-v129.md) supersede the
+receiving flow described in the historical handoff below. The recipient can
+verify/retain a completed sender-consumed terminal offline without its own
+custody authenticator, then reconcile the exact source through existing native
+redemption. Local synthetic writer/proof checks establish that composition,
+not production qualification. Online creation without attested custody remains
+a separate missing integration. Product 1.0.0 is held pending that capability
+and real-device/deployed financial evidence. Existing saved custody is never
+reset or reclassified. See [readiness](releases/1.0.0.md).
+
+## Historical qualified-custody handoff
+
+The following records the earlier fully qualified recipient path and its
+then-performed checks; it does not describe the new account receiving request.
 
 The Bank keeps the existing account, navigation and sheet experience. Create note is in Send; Deposit note is in Receive and Deposit. Creation previews the denomination, requires explicit review, allocates actual funded Reserve and issues the note through qualified native device custody. Deposit consumes the current note and redeems its fixed Phi and original funded dollars into online Reserve. It never treats a copied image, generic seal, HTTP status or observed balance as spend authority.
 

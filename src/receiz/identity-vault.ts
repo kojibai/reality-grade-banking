@@ -16,13 +16,19 @@ async function noteRemovalGuard(saved: SavedIdentity) {
   const db = await database();
   const rows: {key:string;row:PrivateBankOperation|undefined}[]=[];
   try {
-    for (const family of ['offline-notes','prepared-notes','native-payments','native-assets','wallet-sends','market-trades','received-proof']) {
+    for (const family of ['offline-notes','prepared-notes','received-note-deposits','native-payments','native-assets','wallet-sends','market-trades','received-proof']) {
       const key=`${family}|${BANK_STORAGE_APPLICATION_ID}|${digest}`;
       const row=await new Promise<PrivateBankOperation|undefined>((resolve,reject)=>{const read=db.transaction('operations').objectStore('operations').get(key);read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error);});
       rows.push({key,row});
       if(!row)continue;
       const clear=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(row.iv),additionalData:new TextEncoder().encode(key)},saved.wrappingKey,row.bytes);
       const state=JSON.parse(new TextDecoder().decode(clear));
+      if(family==='received-note-deposits'){
+        const received=(await import('./note-received-deposits')).readReceivedNoteDepositCheckpoint(state);
+        if(!received)throw Error('BANK_NOTE_PRIVATE_SOURCE_INVALID');
+        if(Object.values(received.entries).some(row=>row.status!=='confirmed'))throw Error('Keep this ID while received Notes await reconciliation. Connect to confirm their exact deposit before removing or replacing this ID. An Identity Seal backup does not include these encrypted originals.');
+        continue;
+      }
       if(family==='received-proof'){const received=await(await import('./received-proof')).readReceivedProofState(state);if(received?.current.status!=='held')throw Error('Finish receiving your saved original before removing this ID. Its exact claim and recovery remain on this device.');continue;}
       // This retention guard grants no financial authority. A reserved receiving
       // slot may already be addressed by an incoming note outside this tab.
@@ -544,7 +550,7 @@ async function loadNoteState(binding: { artifactSha256: string }, family: string
     const bytes=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(checkpoint.iv),additionalData:new TextEncoder().encode(key)},identity.wrappingKey,checkpoint.bytes);
     return JSON.parse(new TextDecoder().decode(bytes));
   };
-  return family==='offline-notes'?atNoteStage('offline-note-checkpoint',open):family==='prepared-notes'?atNoteStage('prepared-note-checkpoint',open):open();
+  return family==='offline-notes'?atNoteStage('offline-note-checkpoint',open):family==='prepared-notes'?atNoteStage('prepared-note-checkpoint',open):family==='received-note-deposits'?atNoteStage('received-note-checkpoint',open):open();
 }
 async function saveNoteState(binding: { artifactSha256: string; keyId?: string }, family: string, value: unknown, expected: unknown, observation?: import('./wallet-observation').WalletObservation): Promise<void> {
   const saved = await held(); if (!saved) throw new Error('BANK_NOTE_IDENTITY_UNAVAILABLE'); await sameSavedIdentity(saved, binding);
@@ -591,6 +597,8 @@ export const loadOfflineNoteState = (binding:{artifactSha256:string}) => loadNot
 export const saveOfflineNoteState = (binding:{artifactSha256:string},value:unknown,expected:unknown) => saveNoteState(binding,'offline-notes',value,expected);
 export const loadPreparedNoteState = (binding:{artifactSha256:string}) => loadNoteState(binding,'prepared-notes');
 export const savePreparedNoteState = (binding:{artifactSha256:string;keyId:string},value:unknown,expected:unknown,observation?:import('./wallet-observation').WalletObservation) => saveNoteState(binding,'prepared-notes',value,expected,observation);
+export const loadReceivedNoteDepositState = (binding:{artifactSha256:string}) => loadNoteState(binding,'received-note-deposits');
+export const saveReceivedNoteDepositState = (binding:{artifactSha256:string},value:unknown,expected:unknown) => saveNoteState(binding,'received-note-deposits',value,expected);
 
 /** Immutable encrypted byte custody; digest references never replace SDK admission. */
 export async function saveOfflineNoteBlob(binding: { artifactSha256: string }, input: Uint8Array): Promise<string> {

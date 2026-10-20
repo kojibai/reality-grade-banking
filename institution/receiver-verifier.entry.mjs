@@ -4,6 +4,7 @@ import { openBankNoteImage } from 'receiz-native-note-image';
 import { readBankFundedNoteHead, readBankFundedNoteSource } from 'receiz-native-note-source';
 import { openBankNoteDepositReceipt, verifyBankReserveCreditArtifact, exportBankNoteDepositReceipt } from 'receiz-native-note-credit';
 import { unpackBankNoteBytes } from 'receiz-native-note-compression';
+import { isBankNoteAccountDeposit, readBankNoteAccountDeposit } from 'receiz-native-note-account-deposit';
 
 /** Verifies complete carried sources under the pinned canonical roots.
  * It does not prove live spendability, consume custody or authorize a credit. */
@@ -34,6 +35,18 @@ export async function inspectNoteDepositReceipt(bytes) {
   const proof = await openBankNoteDepositReceipt(bytes.slice());
   return Object.freeze({ rail: proof.rail, noteId: proof.credit.noteId, receiverKeyId: proof.credit.receiverKeyId });
 }
+/** A completed recipient-bound terminal can be inspected without a receiver
+ * authenticator or connection. This reads source evidence; it neither queries
+ * the host nor represents that account credit has been applied. */
+export async function inspectAccountNoteDeposit(bytes) {
+  const proof = await readBankNoteAccountDeposit(bytes);
+  const {terminalSourceBytes, ...fields} = proof;
+  return Object.freeze({...fields, schema:'bankeiz.account-note-receipt-inspection.v1',
+    carriedChainVerified:true, currentSpendabilityChecked:false,
+    custodyConsumed:false, creditAuthorized:false, hostCreditChecked:false});
+}
+/** Detect only the transport. A positive result is not verification. */
+export {isBankNoteAccountDeposit};
 export async function exportVerifiedNoteDepositReceipt(credit, snapshot, terminal) {
   const proof = await verifyBankReserveCreditArtifact(credit.slice(), snapshot.slice(), { terminalSource: await unpackBankNoteBytes(terminal) });
   return exportBankNoteDepositReceipt(proof);

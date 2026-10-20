@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ArrowUpRight, LoaderCircle, ShieldCheck, X } from 'lucide-react';
 import manifest from 'virtual:receiz-receiver-build';
 import profile from '../../../institution/receiver-profile.json';
-import recorded from '../../../docs/verification/2026-10-17-browser-resources.json';
+import recorded from '../../../docs/verification/2026-10-20-browser-resources.json';
 import type { CheckResult, ReferenceReport } from '../../conformance/reference';
 
 type Phase = 'unverified' | 'checking' | 'passed' | 'refused' | 'error';

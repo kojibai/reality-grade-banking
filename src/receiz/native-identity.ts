@@ -42,7 +42,8 @@ import {BANK_PREPARED_NOTE_CREDIT_ENABLED} from './config';
 import { readNoteAccountObservation } from './note-account-observation';
 import {readCompositeWalletSource,advanceCompositeWalletObservation,mergeCompositeWalletSources,reconcileCompositeWalletObservation,validCursor} from './composite-wallet-source';
 import { hasSettledAccountView } from './account-view';
-import {createLocalNoteInventory} from './note-local-inventory';
+import {createLocalNoteInventory,createLocalNoteDepositQueue} from './note-local-inventory';
+import {loadReceivedNoteDepositState,saveReceivedNoteDepositState} from './identity-vault';
 import {atNoteStage} from './note-stage';
 import {createReceivingUsernamePreparation,publicAccountUsername} from './receiving-username';
 import {atIdentityCreationStage} from './identity-creation-stage';
@@ -65,6 +66,7 @@ export interface OpenIdentity {
   knownMessagingDisplay?: () => import('./messaging-retention').MessagingDisplay|null;
   messaging?: (approved?:boolean) => Promise<import('./native-messaging').NativeMessaging>;
   offlineNotes?: () => Promise<BankOfflineNotes>;
+  knownReceivedNotes?: () => readonly import('./offline-notes').BankNoteDepositResult[];
   cancelUnsentNotes?: () => Promise<void>;
   binding: ReceizIdentityPublicBinding; needsPhrase: boolean; knownWallet: () => import('./wallet-observation').WalletObservation | null;
   username: string | null; accountUsername?: () => string | null; localHistory: ReceizIdentityAccountProjection; readWallet: () => Promise<ReturnType<typeof parseSharedWallet>>;
@@ -490,6 +492,60 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const noteOpen = () => { if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.'); };
   let localNotes:BankOfflineNotes|undefined;
   let localNoteInventory:ReturnType<typeof createLocalNoteInventory>|undefined;
+  let receivedNoteQueue:ReturnType<typeof createLocalNoteDepositQueue>|undefined;
+  let receivedNoteQueueUid:string|undefined;
+  let receivedNoteDisplay:import('./offline-notes').BankNoteDepositResult[]=[];
+  function receivingUid(){return accountUid??knownWallet?.wallet.userId??keyFile.owner.uid;}
+  function localReceivedNotes(){
+    const uid=receivingUid(),context={receiverUserId:uid,receiverKeyId:binding.keyId};
+    if(receivedNoteQueue&&receivedNoteQueueUid===uid)return receivedNoteQueue;
+    // An empty local genesis may become a native account after first binding.
+    // Reopen under that destination; load() still refuses any nonempty foreign
+    // checkpoint. Never rewrite or discard a financial row to rebind it.
+    receivedNoteQueueUid=uid;
+    const assertQueueOpen=()=>{noteOpen();if(receivingUid()!==uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');};
+    receivedNoteQueue=createLocalNoteDepositQueue({uid,keyId:binding.keyId,assertOpen:assertQueueOpen,
+      read:()=>loadReceivedNoteDepositState(binding),write:(next,previous)=>saveReceivedNoteDepositState(binding,next,previous),
+      retain:bytes=>saveOfflineNoteBlob(binding,bytes),restore:ref=>loadOfflineNoteBlob(binding,ref),
+      verify:async bytes=>(await loadBankNoteRuntime()).openBankNoteAccountDeposit(bytes,context),
+      submit:async(bytes,{recoverFirst})=>{
+        assertQueueOpen();
+        const module=await loadBankNoteRuntime(),held=await module.openBankNoteAccountDeposit(bytes,context);
+        const current=await connectClient(BANK_NATIVE_SCOPES,BANK_NATIVE_CONSENT),path=`/api/connect/offline-notes/redemption?origin=${encodeURIComponent(location.origin)}`;
+        assertQueueOpen();
+        const recovered=recoverFirst?await current.request(`${path}&noteId=${encodeURIComponent(held.noteId)}`,{method:'GET'})as {found?:boolean}:{found:false};assertQueueOpen();
+        let response:unknown=recovered;
+        if(recovered.found===false){
+          const body=await module.prepareBankNoteAccountDepositSubmission(held.terminalSourceBytes,context);
+          response=await current.request(path,{method:'POST',body});
+        }
+        const credit=await module.verifyBankNoteAccountDepositCredit(response,bytes,context);noteOpen();return credit;
+      },
+    });return receivedNoteQueue;
+  }
+  async function paintReceivedNotes(){receivedNoteDisplay=await localReceivedNotes().list({pendingOnly:true});noteOpen();if(typeof dispatchEvent==='function')dispatchEvent(new Event('bankeiz:account-observation'));}
+  async function reconcileReceivedNotesLocked(refresh=false){
+    const queue=localReceivedNotes(),before=await queue.list({pendingOnly:true});
+    if(!before.some(note=>note.status==='received'))return;
+    if(typeof navigator!=='undefined'&&navigator.onLine===false)throw Error('BANK_NOTE_DEPOSIT_RECONCILIATION_REQUIRED');
+    // Each exact credit is committed durably before the next submission. A
+    // later failure must not leave a confirmed amount in Received Notes or let
+    // an older in-flight wallet observation replace the execution boundary.
+    try{await queue.reconcile();}
+    finally{noteOpen();walletRevision++;await paintReceivedNotes();}
+    if(refresh)await readAndAdoptWallet();
+  }
+  function synchronizeReceivedNotes(){
+    return withAccountExecutionLock(()=>navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},async()=>{await assertNoOtherPending(false);await reconcileReceivedNotesLocked(true);}));
+  }
+  let receivedNotesStarted=false;
+  function startReceivedNotes(){
+    if(receivedNotesStarted)return;receivedNotesStarted=true;
+    // Optional retention opens after the admitted account frame. Empty queues
+    // load neither the native proof module nor a transport session.
+    void paintReceivedNotes().then(()=>{if(receivedNoteDisplay.some(note=>note.status==='received')&&navigator.onLine!==false)return synchronizeReceivedNotes();}).catch(()=>{});
+    if(typeof addEventListener==='function')addEventListener('online',()=>{if(receivedNoteDisplay.some(note=>note.status==='received'))void synchronizeReceivedNotes().catch(()=>{});},{signal:lifetime.signal});
+  }
   async function assertNoPendingWalletSend(){noteOpen();if(await hasPendingMarketTrade(await loadMarketTradeState(binding)))throw Error('BANK_EXECUTION_PENDING');if(hasPendingWalletSend(await loadWalletSendState(binding)))throw Error('BANK_EXECUTION_PENDING');noteOpen();}
   async function assertNoteCreateState(){if(!await localNoteInventory!.pending())await assertNoOtherPending();if(!BANK_PREPARED_NOTE_CREDIT_ENABLED&&await localNoteInventory!.preparedPending())throw Error('BANK_NOTE_PREPARED_RECOVERY_REQUIRED');}
   async function offlineNotes():Promise<BankOfflineNotes>{
@@ -498,6 +554,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     // custody or modifying either encrypted financial state family.
     const inspect=async(image:Uint8Array)=>{
       const module=await loadBankNoteRuntime();noteOpen();
+      if(module.isBankNoteAccountDeposit(image)){const note=await module.readBankNoteAccountDeposit(image);noteOpen();return {rail:note.rail,noteId:note.noteId,amountPhiMicro:note.amountPhiMicro,amountUsdCents:note.amountUsdCents};}
       const readonly=module.createBankOfflineNotesRuntime({keyId:binding.keyId,uid:accountUid??knownWallet?.wallet.userId??keyFile.owner.uid,localUid:keyFile.owner.uid,origin:location.origin,passphrase:phrase,
         request:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},fetchImpl:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},sealDocument:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},
         read:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},write:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},retain:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},restore:(ref:string)=>loadOfflineNoteBlob(binding,ref),assertOpen:noteOpen,artwork:bankNoteArtwork});
@@ -506,7 +563,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const inventory=createLocalNoteInventory({keyId:binding.keyId,uid:()=>accountUid??knownWallet?.wallet.userId??null,readLegacy:()=>atNoteStage('saved-notes',()=>loadOfflineNoteState(binding)),readPrepared:()=>atNoteStage('prepared-notes',()=>loadPreparedNoteState(binding)),restore:ref=>atNoteStage('note-image',()=>loadOfflineNoteBlob(binding,ref)),inspect,assertOpen:noteOpen});
     localNoteInventory=inventory;
     const action=async<T,>(operation:()=>Promise<T>):Promise<T>=>{noteOpen();activeNoteOperations++;noteOperationEpoch++;try{return await operation();}finally{activeNoteOperations--;}};
-    localNotes={savedNotes:inventory.savedNotes,pending:inventory.pending,inspect,
+    localNotes={savedNotes:inventory.savedNotes,pending:inventory.pending,inspect,receivedNotes:()=>localReceivedNotes().list(),
       prepareResources:count=>action(()=>withAccountExecutionLock(async()=>{await assertNoPendingWalletSend();return(await openNotesExecution()).prepareResources!(count);})),
       create:(amount,rail)=>action(()=>withAccountExecutionLock(async()=>{
         await assertNoteCreateState();
@@ -514,7 +571,22 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
         catch(cause){await cancelRejectedNotePreparation(cause);throw cause;}
       })),
       cancelUnfunded:()=>action(async()=>{if(await inventory.preparedPending())throw Error('BANK_NOTE_PREPARED_RECOVERY_REQUIRED');return(await openNotesExecution()).cancelUnfunded();}),
-      receivingRequest:()=>action(async()=>(await openNotesExecution()).receivingRequest()),transfer:(id,request)=>action(async()=>(await openNotesExecution()).transfer(id,request)),deposit:image=>action(async()=>(await openNotesExecution()).deposit(image)),
+      receivingRequest:()=>action(async()=>{
+        // First native binding is necessary routing discovery, using the same
+        // admitted account access. Known destinations require no request.
+        if(receivingUid().startsWith('receiz_device_'))await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);
+        const module=await loadBankNoteRuntime();noteOpen();return module.createBankNoteAccountReceivingRequest({identity:keyFile,passphrase:phrase,accountUserId:receivingUid()});
+      }),
+      transfer:(id,request)=>action(async()=>(await openNotesExecution()).transfer(id,request)),
+      deposit:image=>action(async()=>{
+        const module=await loadBankNoteRuntime();noteOpen();
+        if(!module.isBankNoteAccountDeposit(image))return(await openNotesExecution()).deposit(image);
+        const result=await withAccountExecutionLock(()=>navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},async()=>{
+          const received=await localReceivedNotes().receive(image);await paintReceivedNotes();return received;
+        }));
+        if(navigator.onLine!==false)void synchronizeReceivedNotes().catch(()=>{});
+        return result;
+      }),
     };
     return localNotes;
   }
@@ -829,13 +901,14 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       || [...state.history, state.current].some(checkpoint => !checkpoint || !['prepared', 'unknown', 'committed', 'zero-write'].includes(String(checkpoint.state)))) throw Error('BANK_EXECUTION_CHECKPOINT_INVALID');
     return [...state.history, state.current].some(checkpoint => checkpoint.state === 'prepared' || checkpoint.state === 'unknown');
   }
-  async function assertNoOtherPending() {
+  async function assertNoOtherPending(reconcileNotes=true) {
     noteOpen();
     const legacy = await deviceBankExecutionStore(binding).load();
     if (legacy && ['prepared', 'unknown'].includes(legacy.state)) throw Error('BANK_EXECUTION_PENDING');
     const [payments, assets, sends, market] = await Promise.all([loadNativePaymentState(binding), loadNativeAssetState(binding),loadWalletSendState(binding),loadMarketTradeState(binding)]);
     noteOpen();
     if (hasPendingNative(payments, 'payments') || hasPendingNative(assets, 'assets') || hasPendingWalletSend(sends) || await hasPendingMarketTrade(market)) throw Error('BANK_EXECUTION_PENDING');
+    if(reconcileNotes)await reconcileReceivedNotesLocked();
   }
   function hasPendingWalletSend(raw:unknown):boolean {
     if(raw==null)return false;const s=raw as import('./wallet-send').WalletSendState;
@@ -916,7 +989,8 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     binding, assertOpen: () => { if (lifetime.signal.aborted) throw Error('PROOF_IDENTITY_CLOSED'); },
     readOwned: async () => (await loadDepositSources(binding, { requireComplete: true, originalsOnly: true })).map(source => ({ kind: 'owned-source' as const, filename: source.filename, bytes: source.bytes })),
     readArchive: () => loadProofArchive(binding), readRecoveries: () => loadExportableRecoveries(binding),
-    readNotes: async () => (await import('./note-proof-portability')).readRetainedNoteProofs({ keyId: binding.keyId, read: () => loadOfflineNoteState(binding), restore: digest => loadOfflineNoteBlob(binding, digest) }),
+    readNotes: async () => [...await(await import('./note-proof-portability')).readRetainedNoteProofs({ keyId: binding.keyId, read: () => loadOfflineNoteState(binding), restore: digest => loadOfflineNoteBlob(binding, digest) }),
+      ...(await localReceivedNotes().list()).map(note=>({kind:'note-deposit' as const,filename:`note-${note.status==='received'?'received':'deposit'}-${note.noteId}.receiz.json`,bytes:note.proofBytes}))],
     readAccount: async () => {
       const proof = await localLedger.original(); if (!proof) return [];
       const { heldAccountProofBytes } = await import('./account-proof');
@@ -1150,7 +1224,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   }
   const prepareAccountView = () => {
     if (preparingView) return preparingView;
-    const attempt = settleAccountView().catch(cause => { if (knownWallet) { if (!knownWallet.history?.length) knownWallet={...knownWallet,history:appendWalletPoint([],knownWallet.wallet,knownWallet.observedAt,knownWallet.wallet.kaiUpulse)}; return knownWallet; } throw new Error('Your account balance source is temporarily unavailable. Your Identity Seal is unchanged. Try again when its source is available.', {cause}); }); preparingView = attempt;
+    const attempt = settleAccountView().catch(cause => { if (knownWallet) { if (!knownWallet.history?.length) knownWallet={...knownWallet,history:appendWalletPoint([],knownWallet.wallet,knownWallet.observedAt,knownWallet.wallet.kaiUpulse)}; return knownWallet; } throw new Error('Your account balance source is temporarily unavailable. Your Identity Seal is unchanged. Try again when its source is available.', {cause}); }).then(view=>{startReceivedNotes();return view;}); preparingView = attempt;
     void attempt.finally(()=>{if(preparingView===attempt)preparingView=undefined;}).catch(()=>{});
     return attempt;
   };
@@ -1168,7 +1242,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   }
   const retainedMessaging=await messagingRetention;
   const knownMessagingDisplay=()=>{const display=retainedMessaging.known(),uid=accountUid??knownWallet?.wallet.userId;return display&&(!uid||display.accountUid===uid)?display:null;};
-  return { messaging, knownMessagingDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { messaging, knownMessagingDisplay, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

@@ -40,6 +40,11 @@ it('directs platform integration requests to the responsible teams without a pro
  expect(host.querySelectorAll('button,input')).toHaveLength(0);
  expect(host.querySelector('a[href="#device-evidence"]')).not.toBeNull();
  expect(host.querySelector('a[href*="note-continuity-standard.md"]')).not.toBeNull();
+ expect(host.textContent).toContain('Received Notes');
+ expect(host.textContent).toContain('private account opening');
+ expect(host.textContent).toContain('synthetic');
+ expect(host.textContent).toContain('not enabled');
+ expect(host.querySelector('a[href*="note-account-deposit-v129.md"]')).not.toBeNull();
  expect(host.querySelectorAll('.note-standard-law')).toHaveLength(14);
  expect(noteContinuity.requirements.map(item=>item.id)).toEqual(Array.from({length:14},(_,i)=>`NOTE-${String(i+1).padStart(2,'0')}`));
  expect(host.querySelectorAll('a[href*="checkout"],a[href*="buy"],a[href*="order"]')).toHaveLength(0);

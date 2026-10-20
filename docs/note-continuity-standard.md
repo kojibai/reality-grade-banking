@@ -1,192 +1,190 @@
 # Note continuity standard
 
-Status: implementation contract for the Bankeiz 1.0.0 release candidate.
-Receiz SDK, MCP and AI Skills: **129.0.0**. Ruleset: **127.0.0**.
-This document specifies required behavior; it does not certify a deployment,
-device, adapter or financial operation.
+**Implementation specification · Receiz 129.0.0 · Ruleset 127.0.0**
+**Release status: development candidate. Financial qualification incomplete.**
 
-## One Note, two consumption paths
+This specification defines the Bankeiz application contract beneath the pinned
+Receiz registry. It does not amend that registry, certify a manufacturer or
+establish a public 1.0.0 release. Conformance is demonstrated by inspectable
+source, exact implementation scope and reproducible evidence.
 
-A Note retains its identity, exact value, funding source, ownership history and
-original sealed bytes. Users create, receive, send and deposit Notes through
-the existing interface. They do not select a custody protocol.
+## User contract
 
-Every outgoing transfer must consume its exact predecessor once. Qualified
-custody performs that operation locally. Other custody requires a connected
-Receiz operation for the exact transfer. Brief connectivity is sufficient only
-if that operation actually completes and its resulting proof verifies; there
-is no fixed one-second promise or connection-only unlock.
+Create a Note. Share the completed original. Receive it through Deposit note.
+The interface selects the supported execution path; users do not choose a
+cryptographic protocol or complete a qualification ceremony to receive.
 
-Receiving and retaining an original offline is separate from making another
-spend. An offline receiver can verify a completed incoming transfer when its
-complete source includes independently verifiable exclusive-consumption
-evidence and binds that receiver. A pending candidate, an unverified image or
-a signature without that evidence does not become a confirmed claim. The
-next transfer from nonqualified custody requires connected consumption.
+A completed Note addressed to an account can be verified and retained offline
+without a recipient custody authenticator. Its value appears as **Received
+Notes**, separately from the available account balance. When connected, the
+existing Receiz redemption operation confirms the account credit once. That
+reconciliation must finish before spending from the account or creating a new
+Note from its balance. Connectivity alone never grants spend authority.
+
+Creating new spend authority offline requires conforming protected custody
+and already prepared funding/resources. The exact predecessor must be retired
+irreversibly. A conforming implementation can continue locally within its
+assessed capacity and trust policy, without periodic server acknowledgement.
+A device/browser path that does not expose those guarantees is nonconforming
+for that capability. Its name, price, operating system and API advertisements
+are not evidence either way.
+
+Explain a connection or conformance requirement when the requested action
+needs it. Do not gate receiving, add a page-load passkey test, or put a device
+qualification decision ahead of the account. An institution can inspect the
+complete technical material here and at
+[/conformance/#note-continuity](https://bankeiz.com/conformance/#note-continuity).
+
+## Implemented composition and remaining boundary
+
+| Capability | Implementation and evidence |
+| --- | --- |
+| Signed account receiving destination | Bank application composition using the existing Identity Seal signature. No receiver custody enrollment. Once the native account destination is known, construction uses no server call. First native binding reuses existing account access. |
+| Sender retirement into that destination | Existing v129 `prepareBankNoteRedemption` and `consumeExactHead`; complete terminal source retained before packaging. Sender still needs qualified custody. |
+| Offline receipt and local deposit retention | Complete v129 terminal/funding verification, exact recipient binding and encrypted local originals. No recipient authenticator or credit request. |
+| Connected credit and recovery | Existing `/api/connect/offline-notes/redemption` GET/POST and full native credit verification. Exact original is recovered/submitted; no replacement intent. |
+| Qualified offline creation / local account continuity | Existing strict primitives; prepared-credit activation remains disabled pending physical-device and host qualification. |
+| Online creation on nonconforming custody | **Missing integration.** Current v129 funding and issuance require attested custody even online. Receiving composition does not remove that requirement. |
+| Universal device support / public 1.0.0 | **Not qualified or released.** See [release gates](releases/1.0.0.md). |
+
+The account receiving/deposit additions are documented application composition,
+not new published SDK methods, a new custody profile or weakened v129 checks.
+They introduce no Bank database, alternative issuer, polling service or roots.
+A copied held-Note image cannot be converted into a completed account receipt
+by the receiver: the current holder must first produce the recipient-bound
+terminal through its qualified consumption path.
+
+The remaining connected-creation capability must atomically allocate account
+value and admit its complete initial Note under a verifier-supported
+consumption profile. Its actual SDK/host schema, trust binding and recovery
+contract must exist before Bankeiz connects it. Disabled legacy
+`connect.mintNote`, legacy token `connect.claimNote`, generic append receipts,
+local locks and UI balances are not substitutes. No current API is invented
+by describing this dependency.
 
 ## Required laws
 
-These identifiers are this application's integration requirements. They are
-not additions to the pinned Receiz registry and cannot supply SDK authority.
+MUST and MUST NOT express application requirements. They do not grant financial
+authority, and passing a subset does not certify an institution.
 
 | ID | Requirement |
 | --- | --- |
-| NOTE-01 | Verify the exact enclosing original with the pinned verifier before admitting its payload, history, identity, funding or custody. Preserve all unknown namespaces and original source bytes. |
-| NOTE-02 | Hold distinct states for retained bytes, verified recipient-bound receipt, confirmed ownership and permission to send. UI labels and cached JSON cannot advance those states. |
-| NOTE-03 | A completed incoming claim binds the actual receiver, Note identity, exact predecessor, whole value, funding closure and consumption evidence. Missing or conflicting evidence remains pending or is refused. |
-| NOTE-04 | Each send consumes one exact current predecessor and admits at most one successor. Repeating the identical accepted operation resolves the same result; changing recipient, value or successor cannot reuse it. |
-| NOTE-05 | Continuous offline sends require an independently qualified local custody implementation that prevents restored, cloned or competing state from authorizing another successor. A platform name or API advertisement does not qualify it. |
-| NOTE-06 | Nonqualified custody must use a connected, atomic Receiz consumption operation for each exact outgoing transfer. A prior successful connection cannot authorize arbitrary later offline sends. |
-| NOTE-07 | Funding allocation, Note issuance, transfer, redemption and account credit must conserve the signed rail and exact amount, with no simultaneous spendable membership in Note and account. Reserve denomination and Settlement Phi remain distinct. |
-| NOTE-08 | KaiSigil-bound Kai micro-pulse and verified predecessor history govern causal order. Chronos, server arrival order and timestamps cannot replace them. Ordering competing candidates does not by itself prove exclusive consumption or reveal a withheld branch. |
-| NOTE-09 | Switching custody paths requires a proof-bound transition that retires the former spend authority. Connected and local custody must never be active spend authorities for the same Note head. Installing hardware or passing a diagnostic cannot migrate a held Note. |
-| NOTE-10 | Persist the original intent, candidate, operation identity and recovery material before entering a consequential operation. A lost response is unknown, not failed. Resolve that same operation before retrying; never restore a consumed predecessor. |
-| NOTE-11 | Deposit consumes the Note and credits the exact receiving account once, atomically. Re-imports, another device, changed filenames and stale copies cannot create a second credit. |
-| NOTE-12 | Qualification applies to an exact implementation, build, trust policy, device/API path, realm and recovery behavior. Reference tests, synthetic providers and browser diagnostics do not award production qualification. |
-| NOTE-13 | First paint uses retained verified local truth. No capability polling, page-load device ceremony or network round trip is introduced merely to display a held Note. Only the requested action enters its required execution path. |
-| NOTE-14 | Report success only after independently reopening the complete accepted successor and its required evidence. A report-only receipt, HTTP success, server row, artifact digest or agent assertion cannot substitute for that source. |
+| NOTE-01 | Verify the exact enclosing original, complete funding graph and required history before admitting value, ownership or consumption. Preserve original bytes and unknown namespaces. |
+| NOTE-02 | Distinguish retained bytes, verified recipient-bound receipt, confirmed account credit and permission to spend. Cached labels cannot advance authority. |
+| NOTE-03 | A completed receipt MUST bind the receiver account and key, Note, exact predecessor, whole amount, rail, funding closure and exclusive-consumption evidence. Refuse absent or conflicting evidence. |
+| NOTE-04 | Consume one exact predecessor into at most one accepted successor. Identical accepted intent resolves the same result; changed recipient, value or source cannot reuse it. |
+| NOTE-05 | Offline creation and onward local consumption MUST use assessed protected custody. Restored, cloned and competing state MUST NOT authorize another successor. |
+| NOTE-06 | A locally received account deposit MUST reconcile its exact terminal through connected Receiz redemption before account spending or new Note creation. A prior connection is not a future offline authorization. |
+| NOTE-07 | Funding, issuance, transfer, redemption and credit MUST conserve the signed rail and exact amounts. Value cannot remain spendable in both account and Note. Reserve USD denomination and Settlement Phi are distinct units. |
+| NOTE-08 | KaiSigil-bound Kai micro-pulse and verified predecessor history govern causal order. Chronos and server arrival timestamps cannot replace them. Sorting candidates does not reveal a withheld branch or establish consumption. |
+| NOTE-09 | Changing custody MUST retire former spend authority through an admitted transition. A diagnostic, installation or browser upgrade cannot migrate a held Note by itself. |
+| NOTE-10 | Retain intent, candidate and recovery coordinates before consequential execution. An interrupted response is unknown. Resolve that same operation; never restore a consumed predecessor. |
+| NOTE-11 | Account redemption MUST apply the exact recipient credit once atomically. Re-import, changed filename, concurrent submission and another device cannot create another credit. |
+| NOTE-12 | Qualification MUST name the build, adapter, trust roots/policy, device/API path, realm and recovery behavior. Synthetic authenticators and browser diagnostics do not certify financial custody. |
+| NOTE-13 | First paint MUST use retained local truth. Do not introduce capability polling, automatic credential ceremonies or a network round trip to display a held Note. Reuse admission only for identical bytes under the same policy. |
+| NOTE-14 | Report completion only after independently reopening the complete accepted source and evidence. HTTP success, a database row, digest or report-only receipt cannot replace it. |
 
-## States and language
+## State and authority
 
-| Internal distinction | User-facing language | What it permits |
+| State | Display | Authority and next operation |
 | --- | --- | --- |
-| Original retained but not admitted | Checking Note / Could not verify | Keep the original; no ownership or credit claim |
-| Incoming candidate lacks final consumption evidence | Pending | Retain and resolve; no confirmed credit or onward spend |
-| Complete incoming transfer admitted to this receiver | Received | Hold and inspect the exact original offline |
-| Received, connected consumption required for next action | Connect to send | Connect and confirm the exact next send; no offline spend unlock |
-| Received, qualified local custody admitted | Ready to send | Execute through the qualified local adapter |
-| Execution entered, outcome unresolved | Confirming | Resolve the original intent; no replacement spend |
-| Accepted successor independently verified | Sent | Retain the completed source and history |
+| Bytes retained, not verified | Checking Note / Could not verify | No ownership, account credit or spending claim. Preserve original. |
+| Incomplete incoming candidate | Pending | Retention only. It cannot enter the completed-receipt queue. |
+| Complete recipient-bound terminal admitted | Received | Offline evidence of the completed handoff to this account destination. Retain locally; account credit remains unconfirmed. |
+| Received source retained in encrypted vault | Received Notes · Reconciles before spending | Locally visible holding, excluded from available wallet credit. May reconcile on connectivity or before an account execution. |
+| Host outcome unknown | Confirming | Recover the exact original; do not issue a replacement or presume zero writes. |
+| Complete native credit independently verified | Deposited | Retain full credit receipt and observe the resulting account source. The queue cannot mint credit. |
+| Qualified held Note with intact current head | Ready to transfer | Existing qualified local consume may create a recipient terminal or qualified successor. |
+| Exact predecessor consumed | Transferred / terminal | Never reactivate that predecessor. Resume saved completion if packaging was interrupted. |
 
-The main interface remains create → receive → send → deposit. Explain a
-connection requirement only when it affects the selected action. Keep device
-and protocol detail under technical information. Do not count an incoming
-pending Note as an available account balance. Do not silently redeem a held
-Note just to make its next send work.
+The terminal's receipt establishes its bound destination; it is not a reusable
+bearer token or the recipient's authority to mint another Note offline. A
+holder may deliver the completed file through any offline byte transport.
+Forwarding that same file does not change its recipient. Re-addressing requires
+a new lawful transition by the actual current spend authority.
 
-## Who integrates what
+## Exact formats, operations and storage
 
-| Integrator | Required contribution |
+[The implementation contract](note-account-deposit-v129.md) specifies the
+receiving request, transport, terminal admission, encrypted queue, exact credit
+recovery, bounds and refusal behavior. The complete preferred sources and
+hash manifests are distributed in [native/](../native/README.md). Public SDK
+schemas and their reference closure are available at
+[/schemas/](https://bankeiz.com/schemas/); application-only envelopes are named
+separately and are not represented as registered SDK schemas.
+
+Use the [read-only receiver](../institution/receiver-verifier.entry.mjs) to
+inspect source evidence. An inspection neither consumes custody nor proves
+current spendability or host credit. Independent verification requires the
+matching verifier, cryptographic resources and trust policy; no contact with
+Bankeiz is required to open a complete supported original.
+
+## Device capability and responsibility
+
+| Integrator | Required contribution and evidence |
 | --- | --- |
-| Device or secure-component manufacturer | Non-exportable custody key, irreversible state retirement, exact head/receiver/value binding and independently verifiable consumption evidence; crash and restoration behavior must be specified. |
-| Operating-system or managed-runtime vendor | A protected operation exposing those guarantees to the application, trustworthy attestation, isolation and recovery that cannot reactivate retired authority. |
-| Browser vendor | A web-accessible bridge preserving the same guarantees, exact origin/RP bindings and user authorization. Writable storage, PRF output and cooperative locks alone do not provide this contract. |
-| Receiz protocol and host maintainers | Admit the exact custody profile, verifier and trust roots; implement atomic connected Note consumption, immutable source continuity, once-only redemption and exact-intent recovery. |
-| Application integrator | Use the supported SDK operations and exact proof admission; keep the local original, present accurate state and request connectivity only for an action that needs it. |
-| Independent assessor / institution | Exercise the actual implementation and both participant roles, publish the assessed scope and verify replay, concurrency, migration and recovery evidence. |
+| Secure-component manufacturer | Non-exportable custody; irreversible retirement of the exact state/head; receipt bound to receiver, whole amount and successor; cloning/restoration/crash tests. |
+| Operating-system or managed-runtime vendor | Protected operation, attestation, isolation, durable recovery and no restoration of retired authority. Document backup and reset behavior. |
+| Browser vendor | Web-accessible bridge preserving the guarantees, exact origin/RP binding and user authorization. PRF, writable storage and cooperative locks alone are insufficient. |
+| Receiz maintainers / host operators | Admit the custody profile and actual roots, preserve full source closure, enforce atomic account allocation and once-only redemption, and recover exact intents across interruption. Supply the missing connected-creation contract without changing qualified local law. |
+| Application integrator | Use supported verifier and execution primitives; retain complete originals before state changes; keep received and available value distinct; reconcile before spend; never turn a diagnostic into authority. |
+| Independent assessor / institution | Exercise actual sender and receiver roles and every applicable rejection/recovery case. Publish exact scope, inputs, build/resource hashes, evidence and exclusions. |
 
-These are possible integration surfaces, not a list of qualified products.
-No company, browser, iPhone model or accessory is certified by this table.
-An engineer can implement an adapter at a surface that actually exposes the
-required primitive; software cannot synthesize a missing protected primitive.
+There is no model-name allowlist or qualified-product endorsement in this
+specification. An implementation may integrate at the device, OS or browser
+boundary if it actually supplies the primitive and passes assessment.
 
-Qualified transfers do not require periodic server acknowledgement merely
-because time passed. Operation remains subject to the implementation's actual
-prepared capacity, supported trust policy and intact custody. If an adapter
-has finite issuance or receiving resources, disclose them and preserve the
-held source on exhaustion. Do not advertise unlimited capacity, perpetual
-power, lossless recovery or an untested lifetime guarantee.
+The existing WebAuthn path requires verified platform attestation, single-device
+non-backed-up credential semantics and the unchanged strict rollback check.
+Its test sequence advances registration `n` to `n+1` and `n+2`, with the
+required signed assertion, origin/RP, challenge and state bindings. A counter
+increment by itself is not complete qualification. A software number, Kai
+pulse, PRF-derived key, IndexedDB record or synchronized passkey cannot replace
+irreversible retirement.
 
-## Device test and platform integration requests
+The opt-in [device check](https://bankeiz.com/conformance/#device-evidence)
+creates a named nonfinancial test credential. Do not run it alongside issued
+Notes where an authenticator's shared counter could disturb custody. It does
+not send derived secrets or account data to a server and never resets Notes.
+The user-reported Safari Private test observed `none`, backup Yes / Yes and
+`0 → 0`; its rollback check refused. This is a scoped observation, not a
+verdict on every iPhone or a financial certificate. See
+[the evidence record](iphone-offline-note-registration-v129.md).
 
-The public [device evidence check](https://bankeiz.com/conformance/#device-evidence)
-is opt-in and nonfinancial. It creates a named test passkey and runs the
-unchanged v129 counter check only against that test credential. The result
-reports observed API behavior, not complete financial qualification. It must
-not run alongside issued Notes where test assertions could disturb custody.
+## Request platform conformance
 
-The reported iPhone test returned attestation `none`, backup flags Yes / Yes
-and counter `0 → 0`; PRF output did not establish irreversible consumption.
-See [the evidence record](iphone-offline-note-registration-v129.md).
+After an offline creation refusal, direct the user to the responsible browser
+and platform security teams. Safari on iPhone/iPad: Apple Safari/WebKit and
+platform security; Chromium browsers: that browser vendor and Chromium Web
+Authentication; Firefox: Mozilla Firefox/Gecko. The browser team must involve
+OS or secure-component vendors where needed. Reporting channels:
+[WebKit](https://webkit.org/reporting-bugs/),
+[Chromium](https://www.chromium.org/for-testers/bug-reporting-guidelines/),
+[Mozilla](https://bugzilla.mozilla.org/).
 
-Conformance directs users to the team that can expose the missing capability:
-Apple's Safari/WebKit and platform security teams for Safari on iPhone/iPad;
-the browser vendor and Chromium Web Authentication maintainers for
-Chromium-based browsers; or Mozilla's Firefox/Gecko team for Firefox. The
-browser team must involve OS or secure-component vendors where necessary.
-Users can include the public standard and their reviewed diagnostic export.
-The application does not send a report or private account evidence for them.
+> Please expose a conforming protected custody operation for Receiz offline
+> Note creation and consumption. It must retire the exact predecessor
+> irreversibly, bind recipient, whole value and successor, and return
+> independently verifiable attestation and consumption evidence. Restored state
+> must not authorize a second successor. Preserve origin/RP binding, user
+> authorization and exact-intent recovery after interruption. Specification and
+> opt-in diagnostic: https://bankeiz.com/conformance/#note-continuity .
 
-Reporting channels: [WebKit](https://webkit.org/reporting-bugs/),
-[Chromium](https://www.chromium.org/for-testers/bug-reporting-guidelines/), and
-[Mozilla](https://bugzilla.mozilla.org/). These are integration requests,
-not a claim that the vendor endorses Receiz or already supports the primitive.
-The Conformance surface contains the exact request and no product teaser.
-Future device products are a separate project. Any later hardware integration
-still needs an admitted adapter, independent qualification and safe Note
-migration; installation alone never changes spend authority.
+Users review and send their own report. No account evidence is automatically
+published or reported, and no vendor endorsement or product teaser is implied.
 
-## Current implementation boundary
+## Qualification and release
 
-The pinned qualified local primitives remain strict. The prepared-credit
-activation flag remains off. The existing device diagnostic remains available.
-The connected path described above is **not implemented by the current
-Bankeiz Note adapter** and is a v1.0.0 release blocker.
+The [test and evidence matrix](note-account-deposit-v129.md#qualification-matrix)
+describes the implementation checks and outstanding physical/production gates.
+Maintain the exact source archive, native and resource hashes, package parity,
+root policy, full result and assessed realm with each report. Invalid proofs
+and refused operations are evidence too; do not hide failures in a pass count.
 
-The v129 HTTP inventory explicitly marks `connect.mintNote` as a disabled
-legacy mint and `connect.claimNote` as a legacy token claim. Neither is the
-new path. The retained `kairosNoteLocalTransition.ts` identity-bound branch
-has a local in-memory head check; it is not shared exclusive consumption.
-Generic SDK append/reconciliation operations provide useful machinery, but
-do not establish an implemented, qualified Note funding/consumption domain.
-
-Required Receiz addition: a current, verifier-admitted connected Note custody
-profile and executable SDK/host operations covering issue, exact-head consume,
-receive, deposit, resolve and custody-path migration. Return complete accepted
-proof objects with the evidence needed by an offline recipient. Use durable
-atomic expected-head acceptance and the existing exact-byte verification,
-actor capability, source conservation and recovery machinery. Keep the
-existing qualified local profile unchanged. Whether this is an additive v129
-host capability or a coordinated package update must be established by the
-actual accepted schema/API; Bankeiz must not invent one or change a version
-field to imply compatibility.
-
-No new financial mode is enabled by publishing these requirements. Release
-evidence must demonstrate both paths before announcing universal Note use.
-
-### Connected capability acceptance contract
-
-The following names describe required operations, not callable v129 methods.
-The actual Receiz schema, package and host must supply and admit them before
-Bankeiz binds a client adapter.
-
-| Operation | Required boundary |
-| --- | --- |
-| Prepare issuance | Verify the exact funded account source, amount, rail, actor, expected account head and initial holder. Preparation creates no spendable Note or debit. |
-| Commit issuance | Exclusively allocate the funding membership and admit the complete initial Note and account successor atomically. Return and reverify the complete sources; do not leave both spendable. |
-| Admit incoming original | Verify the complete carrier, source closure, recipient and consumed predecessor. Retain a completed incoming claim offline; retain an incomplete candidate as pending. This read must not consume, credit or redeem it. |
-| Prepare send | Bind the sender, exact current Note head, whole value, destination receiving proof, verified causal coordinate, domain and operation identity. Planning grants no spend authority. |
-| Consume and send | Reopen staged exact bytes, verify current capability and custody profile, and atomically consume the expected predecessor with one accepted successor. Conflicting candidates cannot receive accepted completion. Return the complete proof needed for offline receipt, not merely a JSON success or a report-only receipt. |
-| Deposit | Consume the exact admitted Note and credit the exact receiving account once in the same conserved operation. Verify both successor sources before projecting credit. |
-| Resolve | Recover the exact operation by its original identity and candidate binding. Return accepted complete sources, definite refusal or an explicitly unknown result. A timeout, absent index row or stale cache cannot authorize a new attempt. |
-| Migrate custody | Bind old and new custody, source head and all relevant domains; retire the old spend authority before activating the new one. Preserve safe exact-intent recovery across partial failure. |
-
-The server coordinates exclusive acceptance beneath the proof contract; its
-database row or arrival timestamp cannot become an alternative value source.
-The admitted connected-consumption profile must specify exactly what an
-offline recipient verifies, its issuer/trust binding and domain guarantees.
-An application-created signature or a generic append receipt cannot invent
-that profile. An offline-created conflicting candidate cannot later rewrite a
-completed consumption simply because it claims an earlier time.
-
-Once these operations exist, runtime selection is per verified current head,
-not user-agent detection. An admitted qualified local head uses local
-consumption; an admitted connected head uses the connected operation. Unknown
-or unsupported custody fails closed while retaining the original. Do not
-silently convert an existing qualified Note after a failed device probe.
-
-## Acceptance evidence
-
-Require complete-original round trips and receiver binding; invalid proof,
-wrong recipient/value/head/rail and missing consumption refusal; concurrent
-competing sends and duplicate deposits; restored sender state; cancellation
-before consumption; crash after consumption; lost response and same-intent
-resolution; account/Note conservation; both directions of custody migration;
-qualified → connected and connected → qualified counterparties; fresh and
-retained users; offline incoming inspection without network; and mobile
-first-paint/interaction checks with no new polling or preload ceremony.
-
-Tests of synthetic hardware must be labelled synthetic. Publish real-device
-and actual-host financial evidence separately, with exact build and source
-hashes, trust policy, namespace preservation, SDK/registry parity and all
-remaining exclusions. See [release readiness](releases/1.0.0.md).
+Run `npm test`, `npm run typecheck`, `npm run native:check`,
+`npm run native:rebuild`, `npm run receiver:check` and `npm run build` from the
+recorded revision. Follow [release procedure](release-process.md) and
+[1.0.0 readiness](releases/1.0.0.md). These commands are necessary engineering
+checks, not substitutes for physical custody and deployed financial assessment.
+No documentation page, successful synthetic transfer or package version can
+waive those gates.

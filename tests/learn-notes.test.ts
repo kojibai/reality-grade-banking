@@ -20,6 +20,7 @@ it('links the offline guidance to the standard and the explicit device diagnosti
   const article=learnArticle(guide,[guide],escape);
   expect(article).toContain('href="/conformance/#note-continuity"');
   expect(article).toContain('href="/conformance/#device-evidence"');
-  expect(article).toContain('not yet enabled');
+  expect(article).toContain('creation without attested custody');
+  expect(article).toContain('release dependencies');
   expect(article).not.toContain('navigator.credentials');
 });

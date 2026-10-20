@@ -1,4 +1,5 @@
 import type {BankNoteImage,BankNoteInspection,BankOfflineNotes} from './offline-notes';
+export {createLocalNoteDepositQueue} from './note-received-deposits';
 
 /** Local presentation only. Financial execution still reopens the original v129
  * runtime and its full sources. No enrollment, signing, writes or empty fallback. */

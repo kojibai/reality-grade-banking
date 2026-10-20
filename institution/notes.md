@@ -1,8 +1,27 @@
 # Accept, hold, transfer and deposit notes
 
-This guide describes the existing native **Reserve Note** flow. A note image is a carrier for complete sealed sources. Its pixels and printed amount do not authorize value. Settlement Note artwork exists, but its distinct signed allocation/credit extension is [not implemented](../docs/settlement-note-contract.md).
+This guide describes the existing native **Reserve Note** flow. A note image is a carrier for complete sealed sources. Its pixels and printed amount do not authorize value. The [Settlement extension](../docs/settlement-note-contract.md) also carries a signed rail and exact Phi. Native implementation and production qualification are distinct.
 
-## Receiver workflow
+## Account-destination receiving
+
+The Bank now defaults to an Identity Seal-signed account receiving request.
+The current qualified sender consumes the Note directly into that exact
+account/key destination, then shares the complete terminal PNG. The recipient
+can verify and retain it offline without its own custody authenticator. It is
+shown as Received Notes; connected native redemption confirms the account
+credit before spending. An image copy cannot change the bound recipient.
+
+The [full contract](../docs/note-account-deposit-v129.md) publishes exact fields,
+source admission, encrypted storage, transport bounds, atomic recovery, test
+scope and outstanding qualification. Online creation on nonconforming custody
+is still missing. Do not replace a sender's consumption evidence with a
+recipient signature or present local receipt as confirmed global credit.
+
+## Qualified whole-Note custody workflow
+
+The following separate path retains qualified receiving custody for onward
+local consumption. The default account receiving request does not create such
+a custody slot. Existing saved qualified requests and sources remain valid.
 
 1. Open the receiver's verified Identity Seal and bind the correct application, account and origin. Qualify the supported hardware custody adapter. A software key is not a substitute for required device attestation.
 2. Create the exact native receiving request on the receiving device. Keep its pending custody state durably under that identity; export only the public request for the holder.
@@ -31,7 +50,7 @@ The Bank's embedded native runtime is checked in under `public/native/offline-no
 
 ## Production access is receiver-specific
 
-The Receiz hosted offline-note composition admits the dedicated public Bankeiz client `rc_2d1wcGkAYfmCi5kGT3J89gkl` only at its registered `https://bankeiz.com` origin. The previous Bank client `rc_uV6aT6wZJCQDspB0_SJ1DcEm` keeps its own explicitly allowed, registered realms. It is **not a general public custody or redemption API**. Its private calls require the verified account grant, including wallet read and Reserve write, and current qualified custody.
+The Receiz hosted offline-note composition admits the dedicated public Bankeiz client `rc_2d1wcGkAYfmCi5kGT3J89gkl` only at its registered `https://bankeiz.com` origin. The previous Bank client `rc_uV6aT6wZJCQDspB0_SJ1DcEm` keeps its own explicitly allowed, registered realms. It is **not a general public custody or redemption API**. Its private calls require the verified account grant, including wallet read and Reserve write, and the exact native source admission. Issuance/qualified transfer require protected custody; account receipt inspection does not.
 
 A new institution must register its own application and receiving realm and obtain an explicitly authorized native composition. It must bind its own recipient accounts, custody, origin, consent, funding/backing policy and exact credit process. Do not impersonate the Bank's ID or weaken origin checks to make a test pass. Public artifact verification is independently usable; private production service permissions are separate.
 
