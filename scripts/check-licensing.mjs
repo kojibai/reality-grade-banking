@@ -33,6 +33,12 @@ for (const [path, value] of production) {
   assert.equal(entry?.version, value.version, `Missing locked dependency: ${path}`);
   assert.equal(entry.declaredLicense, value.license ?? null);
   assert.equal(entry.standaloneNoticeSupplied, entry.notices.length > 0);
+  if (entry.installed === false) {
+    assert.equal(value.optional, true, 'Only an optional platform variant may be absent.');
+    assert.equal(entry.notices.length, 0);
+    await assert.rejects(readFile(`${path}/package.json`), {code:'ENOENT'});
+    continue;
+  }
   for (const notice of entry.notices) {
     const source = await readFile(`${path}/${notice.name}`);
     assert.equal(hash(source), notice.sha256);

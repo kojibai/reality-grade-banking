@@ -10,3 +10,4 @@ node_modules/
 .source-work/
 .playwright-cli/
 /public/proof-verifier/
+/server/receipt-runtime/*.mjs

@@ -9,7 +9,7 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: ReturnType<typeof createRoot> | null = null;
 afterEach(() => { if (root) act(() => root!.unmount()); root = null; document.body.replaceChildren(); history.replaceState(null, '', '/'); });
 function mount(link: string) {
-  const url = new URL(link); history.replaceState(null, '', url.pathname + url.hash);
+  const url = new URL(link); history.replaceState(null, '', url.pathname + url.search + url.hash);
   const host = document.createElement('div'); document.body.append(host); root = createRoot(host);
   act(() => root!.render(<ReceiptView onBack={() => {}}/>)); return host;
 }
@@ -20,6 +20,18 @@ it('presents a proof receipt as a display projection with its carried source val
   expect(host.textContent).toContain('Proof receipt');
   expect(host.textContent).toContain('Source record');
   expect(host.textContent).toContain('not independently verified');
+});
+it('opens the lossless compact packet and offers Share beside Copy with the same carried inspection',async()=>{
+ const {compactReceiptLink}=await import('../src/receiz/receipt-sharing'),{vi}=await import('vitest');
+ const row=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'share',kind:'chat_transfer',amountUsdCents:'12500',entryHash:'b'.repeat(64)}]}).records[0];
+ const host=mount(compactReceiptLink(receiptLink(row)!)),share=vi.fn().mockResolvedValue(undefined);Object.defineProperty(navigator,'share',{value:share,configurable:true});
+ try{
+  expect(host.querySelector('.receipt-value h1')?.textContent).toBe('$125.00');
+  const buttons=host.querySelectorAll('.receipt-header-actions button');expect(buttons).toHaveLength(2);expect(buttons[0].getAttribute('aria-label')).toBe('Copy receipt link');
+  await act(async()=>{(buttons[1] as HTMLButtonElement).click();});expect(share).toHaveBeenCalledOnce();expect(share.mock.calls[0][0].url).toContain('/receipt/?r=');
+  act(()=>{const details=host.querySelector<HTMLDetailsElement>('details.receipt-inspection')!;details.open=true;details.dispatchEvent(new Event('toggle'));});
+  expect(host.textContent).toContain('b'.repeat(64));
+ }finally{delete (navigator as unknown as Record<string,unknown>).share;}
 });
 it('keeps transfer card value separate from consideration on the receipt', () => {
   const row = parsePublicNetworkPage('wallet', { ok: true, events: [{ id: 'card', kind: 'sports_card_transfer', pulse: 120, amountUsdCents: '100', cardValueUsdCents: '9900' }] }).records[0];

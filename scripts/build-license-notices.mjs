@@ -22,7 +22,16 @@ const lock = JSON.parse(await readFile('package-lock.json', 'utf8'));
 const packages = [];
 for (const [path, entry] of Object.entries(lock.packages)) {
   if (!path || entry.dev) continue;
-  const installed = JSON.parse(await readFile(`${path}/package.json`, 'utf8'));
+  let installed;
+  try { installed = JSON.parse(await readFile(`${path}/package.json`, 'utf8')); }
+  catch (error) {
+    // Native renderer packages declare alternatives for every supported OS.
+    // Keep their lockfile entries visible without pretending uninstalled
+    // platform variants or their notice files are part of this build.
+    if (error.code !== 'ENOENT' || !entry.optional) throw error;
+    packages.push({name:path.split('node_modules/').at(-1),path,version:entry.version,declaredLicense:entry.license??null,installed:false,standaloneNoticeSupplied:false,notices:[]});
+    continue;
+  }
   if (installed.version !== entry.version) throw Error(`Installed version differs from lockfile: ${path}`);
   const directory = `${installed.name.replaceAll(/[^a-zA-Z0-9._-]/g, '-')}-${entry.version}-${hash(path).slice(0, 8)}`;
   const notices = [];
@@ -38,7 +47,7 @@ for (const [path, entry] of Object.entries(lock.packages)) {
 }
 await writeFile('dist/legal/dependencies.json', JSON.stringify({
   schema: 'bankeiz.observed-dependency-notices.v1',
-  scope: 'Locked production npm packages and their supplied top-level notice files. Not a complete Corresponding Source archive or legal clearance.',
+  scope: 'Locked production npm packages and installed packages’ supplied top-level notice files. Uninstalled optional platform variants are marked. Not a complete Corresponding Source archive or legal clearance.',
   packages,
 }, null, 2) + '\n');
 
@@ -69,7 +78,7 @@ const links = [
 ];
 const list = links.map(([file, label, copy]) => `<a class="legal-row" href="/legal/${file}"><div><h2>${label}</h2><p>${copy}</p></div><span aria-hidden="true">↗</span></a>`).join('');
 const sourceDownload = `<a class="legal-row" href="${metadata.correspondingSource.url}" download><div><h2>Download this build’s source</h2><p>Application, matching v129 native/SDK source, cryptographic dependency source and build materials · ${(metadata.correspondingSource.bytes / 1024 / 1024).toFixed(1)} MiB</p></div><span aria-hidden="true">↓</span></a>`;
-const dependencies = packages.map(pkg => `<li><strong>${escape(pkg.name)} ${escape(pkg.version)}</strong><span>${escape(pkg.declaredLicense ?? 'License field not supplied')}</span><div>${pkg.notices.length ? pkg.notices.map(notice => `<a href="${escape(notice.url)}">${escape(notice.name)}</a>`).join(' · ') : 'No standalone top-level notice file supplied in this installed package. See third-party notices.'}</div></li>`).join('');
+const dependencies = packages.map(pkg => `<li><strong>${escape(pkg.name)} ${escape(pkg.version)}</strong><span>${escape(pkg.declaredLicense ?? 'License field not supplied')}</span><div>${pkg.installed===false?'Optional platform variant · not installed in this build.':pkg.notices.length ? pkg.notices.map(notice => `<a href="${escape(notice.url)}">${escape(notice.name)}</a>`).join(' · ') : 'No standalone top-level notice file supplied in this installed package. See third-party notices.'}</div></li>`).join('');
 const bundledNotices = ['<a href="/legal/vendor/jsqr-Apache-2.0.txt">jsQR · Apache-2.0</a>', '<a href="/legal/vendor/Cinzel-OFL.txt">Cinzel · SIL Open Font License</a>', '<a href="/legal/vendor/Inter-OFL.txt">Inter · SIL Open Font License</a>', ...(await readdir('public/native/licenses')).filter(name => name.endsWith('.txt')).sort().map(name => `<a href="/native/licenses/${escape(name)}">${escape(name)}</a>`)];
 const { cssUrl, jsUrl } = await learnAssets();
 const legalHtml = `<!doctype html><html lang="en" class="learn-surface"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fbfcfe"><title>License &amp; notices | Bankeiz</title><meta name="description" content="Software license, copyright, source materials and third-party notices for the Bankeiz reference implementation."><meta name="robots" content="noindex,follow"><link rel="icon" href="/icon.svg"><link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script></head><body data-bank-surface="learn">${learnHeader()}<main id="main" class="learn-shell legal-main"><h1>License &amp; notices.</h1><p>Copyright © 2026 Brian Joseph Klock (BJ Klock).</p><p>The original software and documentation in this repository are licensed under <a href="/legal/LICENSE.txt">GNU GPL version 3 only</a>, except where separate existing terms apply. You may use, modify, rebrand and redistribute covered work under its terms. The software comes without warranty to the extent permitted by law; see sections 15–17 of the license.</p><p><a href="https://bankeiz.com/">Bankeiz.com</a> is the designated official reference implementation. Independent implementations may use their own branding. Brand identity and truthful conformance claims are separate from GPL software permissions.</p><div class="legal-list">${sourceDownload}${list}</div><details><summary>Read the complete GNU GPL version 3</summary><pre>${escape(await readFile('LICENSE', 'utf8'))}</pre></details><details><summary>Notices from ${packages.length} locked production dependencies</summary><p>This observed inventory preserves supplied notice files. It does not replace complete source delivery or determine legal compliance.</p><ul>${dependencies}</ul></details><details><summary>Additional bundled code &amp; font notices</summary><ul>${bundledNotices.map(link => `<li>${link}</li>`).join('')}</ul></details><p class="legal-small"><a href="https://github.com/kojibai/reality-grade-banking">Source repository</a> · <a href="/legal/dependencies.json">Dependency inventory</a> · <a href="/legal/release.json">Build metadata</a></p></main>${siteFooterHtml()}</body></html>`;

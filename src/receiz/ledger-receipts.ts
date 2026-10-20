@@ -3,6 +3,7 @@ import {safeReceizPublicUrl} from './public-market';
 import {BANK_PUBLIC_ORIGIN} from './config';
 import {ledgerValueForRecord,readLedgerValueDisplay,readLedgerValueOperands,type LedgerValueDisplay,type LedgerValueOperands,type LedgerValueIndex} from './ledger-value';
 import {readLedgerDetails,readLedgerValuationTrace,type LedgerFields} from './ledger-inspection';
+import {decodeReceiptPacket} from './receipt-packet';
 export const ACTIVITY_FILTERS=['all','transactions','transfers','actions','proofs'] as const;
 export type ActivityCategory=typeof ACTIVITY_FILTERS[number];
 export function activityCategory(record:Pick<PublicRecord,'source'|'kind'|'amountUsdCents'>):Exclude<ActivityCategory,'all'>{
@@ -40,12 +41,17 @@ export function receiptLink(record:PublicRecord,value=ledgerValueForRecord(recor
  return `${BANK_PUBLIC_ORIGIN}/receipt/#r=${btoa(raw).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}`;
 }
 export function readReceiptLink(link:string):LedgerReceipt{
+ const compactUrl=new URL(link,BANK_PUBLIC_ORIGIN);
+ if(compactUrl.search){
+  if(compactUrl.pathname!=='/receipt/'||compactUrl.hash||compactUrl.searchParams.size!==1||!compactUrl.searchParams.has('r'))throw Error('RECEIPT_INVALID');
+  return read(decodeReceiptPacket(compactUrl.searchParams.get('r')!));
+ }
  const url=new URL(link,BANK_PUBLIC_ORIGIN),params=new URLSearchParams(url.hash.slice(1)),encoded=params.get('r');
  if(url.pathname!=='/receipt/'||params.size!==1||!encoded||encoded.length>32000||!/^[A-Za-z0-9_-]+$/.test(encoded))throw Error('RECEIPT_INVALID');
  const bytes=Uint8Array.from(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
  return read(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)));
 }
-export function localReceiptPath(link:string){const url=new URL(link,BANK_PUBLIC_ORIGIN);return url.pathname+url.hash;}
+export function localReceiptPath(link:string){const url=new URL(link,BANK_PUBLIC_ORIGIN);return url.pathname+url.search+url.hash;}
 export type LedgerReceiptContext={record:PublicRecord;value:LedgerValueDisplay;valuation?:LedgerFields|null;valueSource?:LedgerValueIndex|null;relations?:ReturnType<typeof import('./ledger-economy').indexLedgerRelations>};
 // One selected in-app record, by reference, until its receipt unmounts. No
 // account history is persisted, serialized into URLs, or exposed to new tabs.
@@ -54,7 +60,7 @@ export function readLocalReceiptContext(link:string){return localContext?.path==
 export function releaseLocalReceiptContext(context:LedgerReceiptContext|null){if(localContext?.context===context)localContext=null;}
 export function openLedgerReceipt(event:React.MouseEvent<HTMLAnchorElement>,link:string,context?:LedgerReceiptContext){
  if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
- event.preventDefault();const url=new URL(link);
+ event.preventDefault();
  if(context){const core=readReceiptLink(link);if(core.id!==context.record.sourceId||core.source!==context.record.source||core.kind!==context.record.kind||core.authority!==context.record.authority)throw Error('RECEIPT_CONTEXT_MISMATCH');localContext={path:localReceiptPath(link),context};}else localContext=null;
- history.pushState({bankReceipt:true},'',url.pathname+url.hash);dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));scrollTo(0,0);
+ history.pushState({bankReceipt:true},'',localReceiptPath(link));dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));scrollTo(0,0);
 }

@@ -10,10 +10,11 @@ import {valueExplainerDevPlugin} from './scripts/value-explainer-assets.mjs';
 import { accountProofPublicPlugin } from './server/account-proof-public';
 import { openingShellHtml } from './scripts/opening-shell.mjs';
 import {publicMetadataPlugin} from './scripts/public-metadata-plugin.mjs';
+import {receiptPreviewPlugin} from './server/receipt-preview-plugin';
 
 export default defineConfig({
   test: { include: ['tests/**/*.test.{ts,tsx}'], environmentOptions: { happyDOM: { settings: { disableIframePageLoading: true } } } },
-  plugins: [publicMetadataPlugin(),{name:'bankeiz-explorer-alias',configureServer(server){server.middlewares.use((req,_res,next)=>{if(req.url&&/^\/explorer\/?(?:\?|$)/.test(req.url))req.url=req.url.replace(/^\/explorer\/?/,'/explore/');next();});},configurePreviewServer(server){server.middlewares.use((req,_res,next)=>{if(req.url&&/^\/explorer\/?(?:\?|$)/.test(req.url))req.url=req.url.replace(/^\/explorer\/?/,'/explore/');next();});}},{name:'bankeiz-opening-shell', async transformIndexHtml(html, context) {
+  plugins: [receiptPreviewPlugin(),publicMetadataPlugin(),{name:'bankeiz-explorer-alias',configureServer(server){server.middlewares.use((req,_res,next)=>{if(req.url&&/^\/explorer\/?(?:\?|$)/.test(req.url))req.url=req.url.replace(/^\/explorer\/?/,'/explore/');next();});},configurePreviewServer(server){server.middlewares.use((req,_res,next)=>{if(req.url&&/^\/explorer\/?(?:\?|$)/.test(req.url))req.url=req.url.replace(/^\/explorer\/?/,'/explore/');next();});}},{name:'bankeiz-opening-shell', async transformIndexHtml(html, context) {
     if (!context.server || !['/', '/index.html'].includes(context.path)) return html;
     const { AccountOpening } = await context.server.ssrLoadModule('/src/features/identity/AccountOpening.tsx');
     return openingShellHtml(html, AccountOpening);

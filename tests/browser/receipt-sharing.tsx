@@ -1,0 +1,7 @@
+import {createRoot} from 'react-dom/client';
+import {parsePublicNetworkPage} from '../../src/receiz/public-network';
+import {localReceiptPath,receiptLink} from '../../src/receiz/ledger-receipts';
+import {compactReceiptLink} from '../../src/receiz/receipt-sharing';
+const record=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'synthetic-receipt-sharing',kind:'chat_transfer',amountUsdCents:'12500',pulse:'14730930',createdAt:'2026-10-19T20:00:00Z',sender:{displayName:'Alex'},recipient:{displayName:'Sam'},entryHash:'a'.repeat(64),amountPhiMicro:'5000000'}]}).records[0];
+const original=receiptLink(record)!,compact=compactReceiptLink(original),packet=new URL(compact).searchParams.get('r')!;
+createRoot(document.getElementById('root')!).render(<main style={{maxWidth:850,margin:'32px auto',padding:20,fontFamily:'Inter,system-ui',color:'#172b45'}}><p>Synthetic receipt preview · no payment executed</p><h1 style={{fontSize:28,letterSpacing:'-.04em'}}>A receipt, ready to share.</h1><p>{original.length.toLocaleString()} → {compact.length.toLocaleString()} characters. The same receipt data.</p><img style={{width:'100%',borderRadius:14,border:'1px solid #e5e8ed'}} src={'/api/receipt?r='+packet+'&image=1'} alt="Bankeiz receipt preview: $125.00, Money transfer, Alex to Sam"/><p><a href={localReceiptPath(compact)}>Open compact receipt</a> · <a href={localReceiptPath(original)}>Open existing receipt</a></p></main>);

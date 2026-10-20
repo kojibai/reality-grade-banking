@@ -12,3 +12,7 @@
 @media(max-width:1150px){.public-ledger-table-heading,.public-ledger-row-line{grid-template-columns:minmax(0,1fr) 85px 110px 145px 60px}}
 @media(max-width:800px){.public-ledger-table-heading,.public-ledger-row-line{grid-template-columns:minmax(0,1fr) 145px 46px;gap:6px}.public-ledger-amount-toggle{gap:4px;min-height:76px}.public-ledger-chevron{width:12px}.public-ledger-amount .ledger-value-basis{max-width:none}.public-ledger-amount .ledger-value-change{font-size:9px}.public-ledger-record-detail .ledger-asset-chart .value-chart svg{max-height:none}}
 @media(prefers-reduced-motion:reduce){.public-ledger-chevron{transition:none}}
+
+.public-ledger-table-heading,.public-ledger-row-line{grid-template-columns:minmax(0,1fr) 100px 150px 175px 91px}
+@media(max-width:1150px){.public-ledger-table-heading,.public-ledger-row-line{grid-template-columns:minmax(0,1fr) 85px 110px 145px 91px}}
+@media(max-width:800px){.public-ledger-table-heading,.public-ledger-row-line{grid-template-columns:minmax(0,1fr) 97px 80px}.public-ledger-receipts{gap:1px}.public-ledger-receipts>a,.public-ledger-receipts>button{width:25px}}
