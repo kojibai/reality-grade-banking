@@ -52,6 +52,7 @@ import type {AssetMomentDraft} from './asset-moment';
 import {loadConnectedNoteState,saveConnectedNoteState} from './identity-vault';
 import {createConnectedNoteApplication,openConnectedAccountNote,prepareConnectedAccountNoteClaim,submitConnectedAccountNoteClaim,isConnectedNote,readConnectedNote} from './connected-note-application';
 import {BANK_CONNECTED_NOTE_ISSUANCE_ENABLED} from './config';
+import {ownerTwinAccountAccess} from './twin-access';
 
 export interface OpenIdentity {
   prepareAccountView: () => Promise<import('./wallet-observation').WalletObservation>;
@@ -67,6 +68,8 @@ export interface OpenIdentity {
   proofLibrary?: () => Promise<import('./proof-library').ProofLibrary>;
   executionRecovery?: () => BankExecutionRecovery;
   knownMessagingDisplay?: () => import('./messaging-retention').MessagingDisplay|null;
+  knownTwinAccess?: () => boolean|null;
+  upgradeTwin?: (input:import('./twin-upgrade').TwinUpgradeInput) => Promise<import('./twin-upgrade').TwinUpgradeResult>;
   messaging?: (approved?:boolean) => Promise<import('./native-messaging').NativeMessaging>;
   offlineNotes?: () => Promise<BankOfflineNotes>;
   knownReceivedNotes?: () => readonly import('./offline-notes').BankNoteDepositResult[];
@@ -212,11 +215,13 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   type WalletReadRequest = { prefetched?: { client: ReceizClient; applicationId: string; accountUid: string; response: Promise<unknown> } };
   let presentationUsername = keyFile.owner.username;
   let confirmedUsername:string|null=null;
+  let confirmedTwinAccess:boolean|null=null;
+  function knownTwinAccess(){return confirmedTwinAccess??knownMessagingDisplay()?.twinAccess??null;}
   async function continueAccountPresentation(targetUnsigned=unsigned){
     const continued=await targetUnsigned.identity.continueReceizId({schema:'receiz.device.identity.v1',createdAt:keyFile.issuedAt,updatedAt:keyFile.issuedAt,localUid:keyFile.owner.uid,username:keyFile.owner.username??keyFile.keyId,displayName:keyFile.owner.displayName??keyFile.owner.username??'Receiz account',deviceName:null,keyFile:transportKeyFile},{passphrase:transportPhrase});
     const session=continued.session as {uid?:unknown;username?:unknown}|undefined;
     if(continued.ok!==true||typeof session?.uid!=='string')throw Error('Your Receiz account could not be opened. Your local Identity Seal remains available.');
-    return {uid:session.uid,username:session.username,profileProjectionPending:continued.profileProjectionPending===true};
+    return {uid:session.uid,username:session.username,twinAccess:ownerTwinAccountAccess(session),profileProjectionPending:continued.profileProjectionPending===true};
   }
   async function openClient(scopes: readonly string[], statement: string, applicationId: string = BANK_APPLICATION_ID, walletRead?: WalletReadRequest) {
     if (!consentApproved || lifetime.signal.aborted) throw new Error('Receiz account read consent is required.');
@@ -260,6 +265,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       const [granted, session] = await Promise.all([checkingScopes, continuing]);
       if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.');
       client = protectedClient; clientApplicationId = applicationId; grantedScopes = granted; expiresAtKai = grant.expiresAtKai; accountUid = session.uid;
+      if(session.twinAccess!==null)confirmedTwinAccess=session.twinAccess;
       clientAccounts.set(protectedClient, { applicationId, accountUid: session.uid });
       clientCallCleanup.set(protectedClient,path=>{
         if(!callMembershipPath.test(path)||Date.now()>callCleanupUntil)throw Error('MESSAGING_CLEANUP_CLOSED');
@@ -356,12 +362,26 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       const twin=createNativeTwin({accountUid:uid,username:presentationUsername??'',request,assertOpen});
       const callTransport={heldFetch:request,forController:()=>{const controllerId=crypto.randomUUID();return{heldFetch:(path:string,init?:RequestInit)=>request(path,init,controllerId)};}};
       const retention=await messagingRetention;assertOpen();
-      const api=Object.assign(createNativeMessaging({request,accountUid:uid,callTransport,retained:retention.known(),onChange:source=>retention.capture(source)}),{twin});
+      const api=Object.assign(createNativeMessaging({request,accountUid:uid,callTransport,retained:retention.known(),onChange:source=>{const twinAccess=knownTwinAccess();retention.capture({...source,...(twinAccess===null?{}:{twinAccess})});}}),{twin,knownTwinAccess});
       if(approved)await saveMessagingConsent(binding,exact,previous).catch(()=>{});
       assertOpen();return api;
     })();
     messagingPromise=attempt;
     try{return await attempt;}catch(cause){if(messagingPromise===attempt)messagingPromise=undefined;throw cause;}
+  }
+  async function upgradeTwin(input:import('./twin-upgrade').TwinUpgradeInput){
+    if(lifetime.signal.aborted)throw Error('MESSAGING_IDENTITY_CLOSED');
+    await prepareTransport();
+    if(!accountUid)await connectClient(BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT);
+    const uid=accountUid;if(!uid)throw Error('MESSAGING_IDENTITY_CHANGED');
+    const proof=await unsigned.identity.buildReceizIdContinueRequest({schema:'receiz.device.identity.v1',createdAt:keyFile.issuedAt,updatedAt:keyFile.issuedAt,localUid:keyFile.owner.uid,username:keyFile.owner.username??keyFile.keyId,displayName:keyFile.owner.displayName??keyFile.owner.username??'Receiz account',deviceName:null,keyFile:transportKeyFile},{passphrase:transportPhrase});
+    const {requestTwinUpgrade}=await import('./twin-upgrade');
+    const result=await requestTwinUpgrade(uid,proof,input);
+    if(lifetime.signal.aborted||accountUid!==uid)throw Error('MESSAGING_IDENTITY_CHANGED');
+    confirmedTwinAccess=result.twinAccess;
+    const retention=await messagingRetention,held=retention.known();
+    if(held?.accountUid===uid)retention.capture({...held,twinAccess:result.twinAccess});
+    return result;
   }
   const prepareReceivingUsername=createReceivingUsernamePreparation({signal:lifetime.signal,confirmed:()=>confirmedUsername,
     connect:async()=>{const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT),bound=clientAccounts.get(current);if(!bound||bound.applicationId!==BANK_APPLICATION_ID)throw Error('RECEIVING_USERNAME_IDENTITY_CHANGED');return bound.accountUid;},
@@ -1334,7 +1354,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   }
   const retainedMessaging=await messagingRetention;
   const knownMessagingDisplay=()=>{const display=retainedMessaging.known(),uid=accountUid??knownWallet?.wallet.userId;return display&&(!uid||display.accountUid===uid)?display:null;};
-  return { messaging, knownMessagingDisplay, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { messaging, knownMessagingDisplay, knownTwinAccess, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

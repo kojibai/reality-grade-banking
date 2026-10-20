@@ -4,6 +4,18 @@
 .bank-messaging-nav>button.active{color:#172b45;font-weight:650}
 .bank-messaging-nav>button.active:after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#172b45;border-radius:2px}
 .bank-messaging-nav .bank-compose-new{margin-left:auto;color:#52647b;padding:9px 2px}
+.bank-twin-upgrade{flex:1;min-height:0;overflow:auto;padding:34px 22px 24px;animation:bank-upgrade-enter .18s ease-out}
+.bank-twin-upgrade h3{font-size:27px;font-weight:580;line-height:1.2;letter-spacing:-.9px;color:var(--navy)}
+.bank-twin-upgrade>p{font-size:12px;line-height:1.75;color:#758499;margin:16px 0 23px;max-width:36ch}
+.bank-twin-upgrade .bank-upgrade-note{font-size:10px;color:#8995a4;margin-top:24px}
+.bank-upgrade-link{display:flex;align-items:center;gap:10px;font-size:12px;color:#34597f;padding:10px 0;border-bottom:1px solid #dce3ed}
+.bank-upgrade-plan{margin:24px 0;border-block:1px solid #e4e9ef;padding:20px 0}
+.bank-upgrade-plan>strong{display:block;font-size:14px;font-weight:600}
+.bank-upgrade-plan>span{display:block;color:#8390a1;font-size:11px;margin:8px 0 18px}
+.bank-upgrade-plan>p{font-size:10px;line-height:1.7;color:#8390a1;margin-top:15px}
+.bank-twin-upgrade .primary-button,.bank-twin-upgrade .secondary-button{font-size:12px;min-height:45px;margin-top:12px}
+@keyframes bank-upgrade-enter{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.bank-twin-upgrade{animation:none}}
 .bank-conversation-scroll{min-height:0;flex:1;overflow:auto;overscroll-behavior:contain}
 .bank-twin-welcome{padding:46px 25px 24px}
 .bank-twin-mark{color:#526783;width:28px;height:28px;margin-bottom:19px}

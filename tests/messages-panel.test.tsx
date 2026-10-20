@@ -20,7 +20,7 @@ function fixture(consented=true){
  let approved=consented;
  const twin={readiness:vi.fn(()=>({status:'configured',availability:'unchecked',requires:['business','usage-credits']})),ask:vi.fn(async(input:NativeTwinAsk):Promise<NativeTwinReply>=>({requestId:input.requestId,message:'A generated answer',authority:'generated-interpretation',source:'upstream',memoryScope:'none',memory:[],sourceReferences:[],sharedContext:[],actionHandoffs:[{kind:'pay',label:'Review proposal',href:'https://receiz.com/review',authority:'proposal-only',admitted:false}]}))};
  const api={accountUid:uid,twin,callTransport:{heldFetch:vi.fn(async(_path:string,_init?:RequestInit)=>Response.json({ok:true,calls:[],activeCall:null}))},knownConversations:()=>[conversation],knownMessages:()=>page,conversations:vi.fn(async(_signal?:AbortSignal)=>[conversation]),messages:vi.fn(async(_id:string,_before?:string,_signal?:AbortSignal)=>page),search:vi.fn(async(_query:string,_signal?:AbortSignal)=>[peer,other]),createConversation:vi.fn(async(_input:{participantUserIds:string[];title?:string})=>threadId),send:vi.fn(async(_id:string,_body:string,_options?:MessageSendOptions)=>({...message,id:'sent-1',senderUserId:uid,body:'My draft'}))};
- const identity={binding:{identityOwnerReceizId:'owner'},messaging:vi.fn(async(approve=false)=>{if(!approved&&!approve)throw Error('MESSAGING_CONSENT_REQUIRED');approved=true;return api;})} as unknown as OpenIdentity;
+ const identity={binding:{identityOwnerReceizId:'owner'},knownTwinAccess:()=>true,messaging:vi.fn(async(approve=false)=>{if(!approved&&!approve)throw Error('MESSAGING_CONSENT_REQUIRED');approved=true;return api;})} as unknown as OpenIdentity;
  const host=document.createElement('div');document.body.appendChild(host);const root=createRoot(host),onClose=vi.fn(),onPreparePayment=vi.fn();
  const render=(active=true,nextIdentity=identity,twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>)=>act(async()=>root.render(<MessagesPanel identity={nextIdentity} active={active} onClose={onClose} onPreparePayment={onPreparePayment} twinContextRecords={twinContextRecords}/>));
  const click=async(label:string)=>{const button=[...host.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===label||b.textContent===label);expect(button,'button '+label).toBeTruthy();await act(async()=>button!.click());};
@@ -28,6 +28,18 @@ function fixture(consented=true){
  const submit=()=>act(async()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
  return{api:api as typeof api&NativeMessaging,identity,host,render,click,input,submit,onClose,onPreparePayment,unmount(){act(()=>root.unmount());host.remove();}};
 }
+it('opens Messages first and places Twin second when the existing account has no Twin access',async()=>{
+ const f=fixture(),identity={...f.identity,knownTwinAccess:()=>false};
+ try{await f.render(true,identity);expect([...f.host.querySelectorAll('.bank-messaging-nav>button')].slice(0,2).map(button=>button.textContent)).toEqual(['Messages','Your Twin']);expect(f.host.querySelector('.sheet-header h2')?.textContent).toBe('Messages');expect(f.host.querySelector('[aria-label="Search messages"]')).not.toBeNull();await f.click('Your Twin');await vi.waitFor(()=>expect(f.host.textContent).toContain('Explore Twin access'));}finally{f.unmount();}
+});
+it('opens Twin first from held access without waiting for messaging transport',async()=>{
+ const f=fixture(),pending=deferred<NativeMessaging>(),identity={...f.identity,messaging:()=>pending.promise};
+ try{await f.render(true,identity);expect([...f.host.querySelectorAll('.bank-messaging-nav>button')].slice(0,2).map(button=>button.textContent)).toEqual(['Your Twin','Messages']);expect(f.host.querySelector('.sheet-header h2')?.textContent).toBe('Your Twin');expect(f.host.querySelector('[aria-label="Ask your Twin…"]')).not.toBeNull();}finally{f.unmount();}
+});
+it('keeps an explicit Twin selection when an unupgraded account connection finishes',async()=>{
+ const f=fixture(),pending=deferred<NativeMessaging>(),identity={...f.identity,knownTwinAccess:()=>false,messaging:()=>pending.promise};
+ try{await f.render(true,identity);await f.click('Your Twin');await act(async()=>pending.resolve(f.api));expect(f.host.querySelector('.sheet-header h2')?.textContent).toBe('Your Twin');expect([...f.host.querySelectorAll('.bank-messaging-nav>button')].slice(0,2).map(button=>button.textContent)).toEqual(['Messages','Your Twin']);}finally{f.unmount();}
+});
 it('shows carried participant images in the inbox, conversation and contact choices without another profile lookup',async()=>{
  const f=fixture(),avatar='https://receiz.com/portrait.png',withImage={...conversation,members:[{...peer,avatarUrl:avatar}]};
  f.api.conversations.mockResolvedValue([withImage]);f.api.messages.mockResolvedValue({...page,conversation:withImage});

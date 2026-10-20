@@ -16,6 +16,11 @@ vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({
  createReceizClient:({accessToken}:{accessToken?:string}={})=>accessToken?{auth:{grantedScopes:async()=>[...BANK_READ_SCOPES]},connect:{wallet:async()=>({ok:true,wallet:{userId:'fixture-owner',balanceUsd:'3.00',balancePhiMicro:'2',valueStates:{settledBalanceUsdCents:'100',ecosystemBalanceUsdCents:'200'},sync:{},rollup:{}}})}}:{identity:{continueReceizId:p.continueId,signLoginProof:async()=>({}),exchangeProofAuthority:p.grant}},
 })}));
 beforeEach(()=>{p.foreign=false;p.enroll.mockReset().mockResolvedValue(undefined);p.seal.mockReset().mockResolvedValue({artifactBytes:new Uint8Array([2])});p.persist.mockReset().mockResolvedValue(undefined);p.continueId.mockReset().mockResolvedValue({ok:true,session:{uid:'fixture-owner'}});p.grant.mockReset().mockResolvedValue({applicationId:BANK_APPLICATION_ID,keyId:'fixture-key',artifactDigest:'b'.repeat(64),grantedScopes:[...BANK_READ_SCOPES],accessToken:'test-only',expiresAtKai:200});});
+it.each([{plan:'free',entitlementPlan:'free',want:false},{plan:'premium',entitlementPlan:'business',want:true}])('reuses the existing sign-in entitlement for Twin ordering without another account request: $entitlementPlan',async({plan,entitlementPlan,want})=>{
+ p.continueId.mockResolvedValue({ok:true,session:{uid:'fixture-owner',plan,entitlementPlan}});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{await identity.readWallet();expect(identity.knownTwinAccess?.()).toBe(want);expect(p.continueId).toHaveBeenCalledTimes(1);expect(p.grant).toHaveBeenCalledTimes(1);}finally{identity.dispose();}
+});
 it('opens the already verified local identity without enrolling or reaching a server',async()=>{
  p.enroll.mockRejectedValue(Error('SOURCE_UNAVAILABLE'));
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);

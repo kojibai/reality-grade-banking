@@ -5,6 +5,7 @@ import { once } from 'node:events';
 import { permittedNativePath } from '../src/receiz/native-transport.js';
 import { isNativeChatStreamPath, NATIVE_CHAT_STREAM_TIMEOUT_MS } from '../src/receiz/native-chat-paths.js';
 import { probeNativeQualification } from './native-qualification-probe.js';
+import {relayTwinUpgrade} from './twin-upgrade.js';
 const PREFIX = '/api/bank/native'; const LIMIT = 32 * 1024 * 1024;
 export function nativeRequestPath(path: string, method: string): string | null {
   if (!path.startsWith(PREFIX)) return null;
@@ -54,6 +55,7 @@ function completeBody(output: Uint8Array) {
 /** Same bounded, cookie-free transport in development and production. Exact
  * message/call effects and authorization remain in the existing Receiz host. */
 export async function relayNativeAccount(request: Request): Promise<Response> {
+  if(new URL(request.url).pathname===PREFIX+'/twin-upgrade')return relayTwinUpgrade(request);
   const url = new URL(request.url), path = nativeRequestPath(url.pathname + url.search, request.method);
   const base = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
   const fail = (status: number) => Response.json({ok:false,error:'Receiz account transport is temporarily unavailable.'},{status,headers:base});

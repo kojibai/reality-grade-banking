@@ -48,4 +48,4 @@ export function createNativeMessaging({request,accountUid,callTransport,retained
  };
 }
 export type NativeMessages=ReturnType<typeof createNativeMessaging>;
-export type NativeMessaging=NativeMessages & {twin:NativeTwin};
+export type NativeMessaging=NativeMessages & {twin:NativeTwin;knownTwinAccess?:()=>boolean|null};

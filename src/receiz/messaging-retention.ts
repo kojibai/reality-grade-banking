@@ -4,8 +4,9 @@ import {profileAvatarUrl} from './profile-avatar';
 /** Optional display retention, never an artifact, grant, outbox or payment source. */
 export interface MessagingDisplay {
   schema:'bankeiz.messaging-display.v1';accountUid:string;inbox:ChatConversation[];pages:ChatPage[];
+  twinAccess?:boolean;
 }
-export type MessagingDisplaySource=Pick<MessagingDisplay,'accountUid'|'inbox'|'pages'>;
+export type MessagingDisplaySource=Pick<MessagingDisplay,'accountUid'|'inbox'|'pages'|'twinAccess'>;
 export const MESSAGING_DISPLAY_MAX_BYTES=1024*1024;
 const encoder=new TextEncoder();
 const size=(value:unknown)=>encoder.encode(JSON.stringify(value)).byteLength;
@@ -25,7 +26,7 @@ function conversation(value:ChatConversation):ChatConversation {
 // Image metadata is optional; it must never evict the conversation or messages.
 function withoutAvatars(value:ChatConversation):ChatConversation{return{...value,members:value.members.map(person=>({...person,avatarUrl:null}))};}
 export function projectMessagingDisplay(source:MessagingDisplaySource):MessagingDisplay {
-  const display:MessagingDisplay={schema:'bankeiz.messaging-display.v1',accountUid:source.accountUid,inbox:[],pages:[]};
+  const display:MessagingDisplay={schema:'bankeiz.messaging-display.v1',accountUid:source.accountUid,inbox:[],pages:[],...(typeof source.twinAccess==='boolean'?{twinAccess:source.twinAccess}:{})};
   // Budget the exact UTF-8 JSON bytes once per row. No artifacts, attachments,
   // call state, pending writes or credentials are copied into this projection.
   let remaining=MESSAGING_DISPLAY_MAX_BYTES-size(display)-64;

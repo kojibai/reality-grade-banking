@@ -6,6 +6,10 @@ const message:ChatMessage={id:'m1',conversationId:id,senderUserId:uid,senderKind
 const conversation:ChatConversation={id,kind:'dm',title:'Mira',members:[],aiAgents:[],defaultAiId:null,unreadCount:1,previewMessage:message,createdAt:message.createdAt,updatedAt:message.createdAt,lastMessageAt:message.createdAt};
 const page:ChatPage={conversation,messages:[message],hasMore:false,nextCursor:null};
 const source={accountUid:uid,inbox:[conversation],pages:[page]};
+it('retains the account Twin tab preference with the existing encrypted inbox projection',()=>{
+ for(const twinAccess of [true,false]){const display=projectMessagingDisplay({...source,twinAccess});expect(readMessagingDisplay(display,uid)?.twinAccess).toBe(twinAccess);}
+ expect(readMessagingDisplay(projectMessagingDisplay(source),uid)?.twinAccess).toBeUndefined();
+});
 it('keeps complete carried seal avatars without losing conversations when image metadata exceeds the display budget',()=>{
  const seal='data:image/svg+xml;base64,'+btoa('<svg xmlns="http://www.w3.org/2000/svg">'+' '.repeat(4000)+'</svg>');
  const members=[{kind:'user' as const,userId:uid,username:'mira',displayName:'Mira',avatarUrl:seal}];
