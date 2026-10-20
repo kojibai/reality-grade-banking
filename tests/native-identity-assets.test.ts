@@ -9,7 +9,7 @@ import type {BankOperationInput} from '../src/receiz/bank-operations';
 // and authenticated transport are isolated protocol fixtures here.
 const p=vi.hoisted(()=>({generic:null as unknown,payment:null as unknown,asset:null as unknown,wallet:null as unknown,market:null as unknown,note:null as unknown,storedHead:null as unknown,request:vi.fn(),qualify:vi.fn(),locks:vi.fn()}));
 vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),
- loadOfflineNoteState:async()=>p.note,loadPreparedNoteState:async()=>null,
+ loadOfflineNoteState:async()=>p.note,loadPreparedNoteState:async()=>null,loadConnectedNoteState:async()=>null,
  loadWalletObservation:async()=>p.storedHead,assertWalletSendCustody:async()=>{if((p.storedHead as {source?:string}|null)?.source==='local-note-head')throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},loadAccountLedgerState:async()=>null,loadReceivedNoteDepositState:async()=>null,loadBankOperation:async()=>p.generic,
  loadNativePaymentState:async()=>p.payment,loadNativeAssetState:async()=>p.asset,loadWalletSendState:async()=>p.wallet,loadMarketTradeState:async()=>p.market,
  saveNativePaymentState:async(_binding:unknown,value:unknown,expected:unknown)=>{expect(p.payment).toEqual(expected);p.payment=structuredClone(value);},

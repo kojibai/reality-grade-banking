@@ -30,8 +30,8 @@ it('keeps optional guidance closed and starts no network request or device cerem
 it('directs platform integration requests to the responsible teams without a product teaser',()=>{
  const host=document.createElement('div');
  host.innerHTML=renderToStaticMarkup(<NoteContinuityStandard/>);
- expect(host.querySelector('[data-note-execution-status]')?.getAttribute('data-note-execution-status')).toBe('integration-required');
- expect(host.querySelector('[data-note-execution-status]')?.textContent).toContain('not enabled');
+ expect(host.querySelector('[data-note-execution-status]')?.getAttribute('data-note-execution-status')).toBe('qualification-required');
+ expect(host.querySelector('[data-note-execution-status]')?.textContent).toContain('Physical-device and deployed financial qualification remain outstanding');
  expect(host.textContent).not.toMatch(/coming soon|accessory|purchase/i);
  expect(host.textContent).toContain('Apple');
  expect(host.textContent).toContain('Chromium');
@@ -43,7 +43,7 @@ it('directs platform integration requests to the responsible teams without a pro
  expect(host.textContent).toContain('Received Notes');
  expect(host.textContent).toContain('private account opening');
  expect(host.textContent).toContain('synthetic');
- expect(host.textContent).toContain('not enabled');
+ expect(host.textContent).toContain('Physical-device and deployed financial qualification remain outstanding');
  expect(host.querySelector('a[href*="note-account-deposit-v129.md"]')).not.toBeNull();
  expect(host.querySelectorAll('.note-standard-law')).toHaveLength(14);
  expect(noteContinuity.requirements.map(item=>item.id)).toEqual(Array.from({length:14},(_,i)=>`NOTE-${String(i+1).padStart(2,'0')}`));

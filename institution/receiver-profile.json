@@ -14,7 +14,7 @@
     "settlement-note": "native-composition-live-qualification-required",
     "settlement-digital-payment": "bank-native-route-implemented-institution-specific-integration-required",
     "reserve-digital-payment": "bank-native-route-implemented-institution-specific-integration-required",
-    "connected-note-creation-without-attested-custody": "not-implemented"
+    "connected-note-creation-without-attested-custody": "application-composition-locally-verified-live-qualification-required"
   },
   "requiredEvidence": [
     "exact-enclosing-source-verification",

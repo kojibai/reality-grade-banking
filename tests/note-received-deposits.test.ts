@@ -68,3 +68,15 @@ it('never enters native submission when its durable submission marker could not 
  await expect(refused.reconcile()).rejects.toThrow('CHECKPOINT_WRITE_REFUSED');expect(p.submitted).toBe(0);
  expect((await queue.list())[0].status).toBe('received');
 },30000);
+
+it('retains the exact signed claim before submission and reuses it after a lost response',async()=>{
+ const p=ports();let preparations=0,attempts=0;
+ const exact=new TextEncoder().encode('isolated-signed-claim-original');
+ const input={...p.input,prepare:async()=>{preparations++;return exact.slice();},submit:async(bytes:Uint8Array,options:{recoverFirst:boolean;preparedRequestBytes?:Uint8Array})=>{
+   expect(options.preparedRequestBytes).toEqual(exact);attempts++;
+   if(attempts===1)throw Error('LOST_CLAIM_RESPONSE');return native.verifyBankNoteAccountDepositCredit(credit,bytes,context);
+ }};
+ const queue=inventory.createLocalNoteDepositQueue(input);await queue.receive(terminal);
+ await expect(queue.reconcile()).rejects.toThrow('LOST_CLAIM_RESPONSE');
+ await inventory.createLocalNoteDepositQueue(input).reconcile();expect(preparations).toBe(1);expect(attempts).toBe(2);
+},30000);

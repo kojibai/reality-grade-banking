@@ -1,5 +1,5 @@
 import {afterEach,expect,it,vi} from 'vitest';
-import {loadOfflineNoteState,loadPreparedNoteState,loadReceivedNoteDepositState,assertWalletSendCustody,loadWalletObservation,forgetDeviceIdentity,saveDeviceIdentity} from '../src/receiz/identity-vault';
+import {loadOfflineNoteState,loadPreparedNoteState,loadReceivedNoteDepositState,loadConnectedNoteState,loadAssetPublicationState,assertWalletSendCustody,loadWalletObservation,forgetDeviceIdentity,saveDeviceIdentity} from '../src/receiz/identity-vault';
 import {atNoteStage,noteFailureStage} from '../src/receiz/note-stage';
 import {BANK_STORAGE_APPLICATION_ID} from '../src/receiz/config';
 
@@ -19,6 +19,10 @@ async function fixture(family='offline-notes',state:unknown={synthetic:true}){
 afterEach(()=>vi.unstubAllGlobals());
 it.each(['offline-notes','prepared-notes','received-note-deposits'])('opens %s from one coherent read-only identity/checkpoint snapshot',async family=>{
  const f=await fixture(family),read=family==='offline-notes'?loadOfflineNoteState:family==='prepared-notes'?loadPreparedNoteState:loadReceivedNoteDepositState;
+ expect(await read(f.binding)).toEqual(f.state);expect(f.transactions).toEqual(['identity,operations']);expect(f.writes).not.toHaveBeenCalled();
+});
+it.each(['connected-notes','asset-publication'])('opens retained %s without writes or another identity read',async family=>{
+ const f=await fixture(family),read=family==='connected-notes'?loadConnectedNoteState:loadAssetPublicationState;
  expect(await read(f.binding)).toEqual(f.state);expect(f.transactions).toEqual(['identity,operations']);expect(f.writes).not.toHaveBeenCalled();
 });
 it('distinguishes a failed saved identity decrypt from a checkpoint failure without replacing the original exception',async()=>{
@@ -53,4 +57,12 @@ it('preserves unreconciled received Notes when removing or replacing their ident
 it.each([{}, {...receivingState,entries:{incoming:{status:'confirmed'}}}])('refuses malformed received-Note state instead of discarding its wrapping key',async invalid=>{
  const f=await fixture('received-note-deposits',invalid);
  await expect(forgetDeviceIdentity()).rejects.toThrow('BANK_NOTE_PRIVATE_SOURCE_INVALID');expect(f.writes).not.toHaveBeenCalled();
+});
+it('retains the private authority of an issued connected Note when removing the ID',async()=>{
+ const state={schema:'bank.connected-notes.v1',uid:'receiver',keyId:'a'.repeat(64),current:null,notes:{note:{noteId:'note',operationId:'b'.repeat(64),rail:'reserve',amountUsdCents:'200',authorizationRef:'c'.repeat(64),noteIdentityRef:'d'.repeat(64),phase:'issued',sourceRef:'e'.repeat(64),openingRef:'f'.repeat(64),imageRef:'1'.repeat(64)}}};
+ const f=await fixture('connected-notes',state);await expect(forgetDeviceIdentity()).rejects.toThrow('connected Notes');expect(f.writes).not.toHaveBeenCalled();
+});
+it('retains an unknown public asset publication and its exact source when replacing the ID',async()=>{
+ const state={schema:'bank.asset-publication.v1',ownerReceizId:'synthetic.receiz.id',intentDigest:'a'.repeat(64),sourceDigest:'b'.repeat(64),filename:'asset.receiz.json',mimeType:'application/json',status:'pending'};
+ const f=await fixture('asset-publication',state);await expect(forgetDeviceIdentity()).rejects.toThrow('asset publication');expect(f.writes).not.toHaveBeenCalled();
 });

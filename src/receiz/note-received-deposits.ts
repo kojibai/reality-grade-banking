@@ -1,7 +1,7 @@
 import type {BankNoteDeposit,BankNoteDepositResult,BankNoteRail} from './offline-notes';
 
 export interface ReceivedNoteSource {rail:BankNoteRail;noteId:string;amountPhiMicro:string;amountUsdCents:string;receiverUserId:string;receiverKeyId:string;redemptionDigest:string;terminalArtifactSha256:string;terminalSourceBytes:Uint8Array;}
-type Entry={sourceRef:string;redemptionDigest:string;terminalArtifactSha256:string;status:'received'|'confirmed';creditRef?:string;submissionEntered?:boolean};
+type Entry={sourceRef:string;redemptionDigest:string;terminalArtifactSha256:string;status:'received'|'confirmed';creditRef?:string;submissionEntered?:boolean;submissionRef?:string};
 type State={schema:'bank.received-note-deposits.v1';uid:string;keyId:string;entries:Record<string,Entry>};
 const sha=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 /** Checkpoint validation grants no financial authority. Shared with the
@@ -10,14 +10,14 @@ export function readReceivedNoteDepositCheckpoint(value:unknown):State|null{
  if(value===null)return null;
  const state=structuredClone(value) as State;
  if(!state||state.schema!=='bank.received-note-deposits.v1'||typeof state.uid!=='string'||!state.uid||typeof state.keyId!=='string'||!state.keyId||!state.entries||typeof state.entries!=='object'||Array.isArray(state.entries)||Object.keys(state.entries).length>64)throw Error('BANK_NOTE_PRIVATE_SOURCE_INVALID');
- for(const [id,row] of Object.entries(state.entries))if(!id||!row||!sha(row.sourceRef)||!sha(row.redemptionDigest)||!sha(row.terminalArtifactSha256)||!['received','confirmed'].includes(row.status)||row.status==='confirmed'&&!sha(row.creditRef)||row.submissionEntered!==undefined&&typeof row.submissionEntered!=='boolean')throw Error('BANK_NOTE_PRIVATE_SOURCE_INVALID');
+ for(const [id,row] of Object.entries(state.entries))if(!id||!row||!sha(row.sourceRef)||!sha(row.redemptionDigest)||!sha(row.terminalArtifactSha256)||!['received','confirmed'].includes(row.status)||row.status==='confirmed'&&!sha(row.creditRef)||row.submissionRef!==undefined&&!sha(row.submissionRef)||row.submissionEntered!==undefined&&typeof row.submissionEntered!=='boolean')throw Error('BANK_NOTE_PRIVATE_SOURCE_INVALID');
  return state;
 }
 /** An encrypted local receiving queue, never a replacement wallet or consumption
  * authority. The complete v129 terminal is admitted before display. Only the
  * existing native credit verifier at submit() can confirm reconciliation. */
 export function createLocalNoteDepositQueue(input:{uid:string;keyId:string;assertOpen():void;read():Promise<unknown>;write(next:unknown,previous:unknown):Promise<void>;
- retain(bytes:Uint8Array):Promise<string>;restore(ref:string):Promise<Uint8Array>;verify(bytes:Uint8Array):Promise<ReceivedNoteSource>;submit(bytes:Uint8Array,options:{recoverFirst:boolean}):Promise<BankNoteDeposit>}){
+ retain(bytes:Uint8Array):Promise<string>;restore(ref:string):Promise<Uint8Array>;verify(bytes:Uint8Array):Promise<ReceivedNoteSource>;prepare?(bytes:Uint8Array):Promise<Uint8Array>;submit(bytes:Uint8Array,options:{recoverFirst:boolean;preparedRequestBytes?:Uint8Array}):Promise<BankNoteDeposit>}){
  const admissions=new Map<string,Promise<ReceivedNoteSource>>();
  let reconciliation:Promise<void>|undefined;
  async function load(){
@@ -60,14 +60,18 @@ export function createLocalNoteDepositQueue(input:{uid:string;keyId:string;asser
     for(const [id,row]of Object.entries(current.state.entries)){
      if(row.status==='confirmed')continue;
      const held=await original(row.sourceRef),recoverFirst=row.submissionEntered!==false;
+     let submissionRef=row.submissionRef;
+     if(!submissionRef&&input.prepare){submissionRef=await input.retain(await input.prepare(held.terminalSourceBytes.slice()));input.assertOpen();}
      // Persist entry into submission before the consequential request. A fresh
      // original needs one POST; unknown/reopened legacy attempts recover first.
-     if(!recoverFirst){current.state.entries[id]={...row,submissionEntered:true};await input.write(current.state,current.previous);input.assertOpen();current=await load();}
-     const credited=await input.submit(held.terminalSourceBytes.slice(),{recoverFirst});input.assertOpen();
+     if(!recoverFirst||submissionRef!==row.submissionRef){current.state.entries[id]={...row,submissionEntered:true,...(submissionRef?{submissionRef}:{})};await input.write(current.state,current.previous);input.assertOpen();current=await load();}
+     const preparedRequestBytes=submissionRef?await input.restore(submissionRef):undefined;
+     if(preparedRequestBytes&&[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(preparedRequestBytes)))].map(v=>v.toString(16).padStart(2,'0')).join('')!==submissionRef)throw Error('BANK_NOTE_SOURCE_REQUIRED');
+     const credited=await input.submit(held.terminalSourceBytes.slice(),{recoverFirst,...(preparedRequestBytes?{preparedRequestBytes}:{})});input.assertOpen();
      if(credited.noteId!==held.noteId||credited.rail!==held.rail||credited.amountPhiMicro!==held.amountPhiMicro||credited.amountUsdCents!==held.amountUsdCents||!(credited.proofBytes instanceof Uint8Array)||!credited.proofBytes.length)throw Error('BANK_NOTE_DEPOSIT_BINDING_MISMATCH');
      const proofRef=await input.retain(credited.proofBytes),{proofBytes:_,...fields}=credited;
      const creditRef=await input.retain(new TextEncoder().encode(JSON.stringify({...fields,proofRef})));input.assertOpen();
-     current.state.entries[id]={...row,submissionEntered:true,status:'confirmed',creditRef};await input.write(current.state,current.previous);input.assertOpen();current=await load();
+     current.state.entries[id]={...row,...(submissionRef?{submissionRef}:{}),submissionEntered:true,status:'confirmed',creditRef};await input.write(current.state,current.previous);input.assertOpen();current=await load();
     }
    })().finally(()=>{reconciliation=undefined;});
   },

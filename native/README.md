@@ -73,3 +73,13 @@ prepared-credit flag. They do not implement online creation on nonconforming
 custody. See the [complete field/operation contract](../docs/note-account-deposit-v129.md)
 and [continuity laws](../docs/note-continuity-standard.md). New synthetic fixtures
 verify this boundary; they do not qualify a physical device or live funding.
+
+### Public asset original composition
+
+`asset-publication.v129.mjs` lazily composes the existing Receiz imported-source
+reader, exact custody, sealed Showcase placement and complete-source publisher.
+`manifest.json` records its `assetPublicationInputs` and separate composition
+provenance. Its new dependency authoring/runtime trees and notices are retained
+alongside the existing native sources. Rebuilding this module does not replace
+the pinned Note/receiver modules or the published SDK package. See the
+[public asset publication contract](../docs/public-asset-publication-v129.md).

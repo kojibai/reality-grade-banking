@@ -26,6 +26,20 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
 export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
   if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return false;
+  if (url.pathname === '/api/connect/profile/showcase/publication') {
+    const keys=[...url.searchParams.keys()],single=(key:string)=>url.searchParams.getAll(key).length===1;
+    if(!single('applicationId')||url.searchParams.get('applicationId')!==BANK_APPLICATION_ID||keys.some(key=>!['applicationId','username','block','action','cursor'].includes(key)||!single(key)))return false;
+    if(method.toUpperCase()==='POST')return keys.length===1;
+    if(method.toUpperCase()!=='GET'||!single('username')||!/^[a-z0-9_]{3,24}$/.test(url.searchParams.get('username')??''))return false;
+    if(url.searchParams.has('action'))return url.searchParams.get('action')==='inventory'&&!url.searchParams.has('block')&&(!url.searchParams.has('cursor')||(url.searchParams.get('cursor')!.length<=4096&&!/[\u0000-\u001f\u007f]/.test(url.searchParams.get('cursor')!)));
+    return !url.searchParams.has('cursor')&&(!url.searchParams.has('block')||(url.searchParams.get('block')!.length<=8192&&!/[\u0000-\u001f\u007f]/.test(url.searchParams.get('block')!)));
+  }
+  if (url.pathname === '/api/connect/offline-notes/connected') {
+    const keys=[...url.searchParams.keys()],verb=method.toUpperCase();
+    if(!['POST','GET'].includes(verb)||url.searchParams.getAll('origin').length!==1||!bankNoteRpId(url.searchParams.get('origin')??'')||keys.some(key=>!['origin','allocationId','noteId','intent'].includes(key)||url.searchParams.getAll(key).length!==1))return false;
+    if(verb==='POST')return keys.length===1;
+    return keys.length===2&&(url.searchParams.has('intent')?url.searchParams.get('intent')==='quote':url.searchParams.has('allocationId')?/^[a-f0-9]{64}$/.test(url.searchParams.get('allocationId')??''):/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(url.searchParams.get('noteId')??''));
+  }
   if (permittedNativeChatPath(url, method)) return true;
   if (/^\/api\/developers\/twin\/[a-z0-9_]{3,24}\/message$/.test(url.pathname)) return method.toUpperCase()==='POST'&&!url.search;
   if (url.pathname === '/api/connect/market/shares/trade') return method.toUpperCase()==='POST'?!url.search:method.toUpperCase()==='GET'&&[...url.searchParams.keys()].length===1&&url.searchParams.getAll('clientNonce').length===1&&/^[A-Za-z0-9._:-]{8,120}$/.test(url.searchParams.get('clientNonce')??'');

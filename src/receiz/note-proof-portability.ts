@@ -1,6 +1,10 @@
 import type { ProofSource } from './proof-library';
 import receiverBuild from '../../public/native/receiver-verifier.v129.manifest.json';
 type Receiver = {
+  isBankConnectedNoteImage(bytes:Uint8Array):Promise<boolean>;
+  isBankConnectedNoteSource(bytes:Uint8Array):Promise<boolean>;
+  inspectConnectedNote(bytes:Uint8Array):Promise<{rail:string;kind:string;receiverKeyId?:string}>;
+  inspectConnectedNoteReceipt(bytes:Uint8Array):Promise<{rail:string;kind:string;receiverKeyId?:string}>;
   isBankNoteAccountDeposit(bytes:Uint8Array):boolean;
   inspectAccountNoteDeposit(bytes:Uint8Array):Promise<{rail:string;receiverKeyId:string}>;
   openReserveNoteImage(bytes: Uint8Array): Promise<unknown>;
@@ -15,6 +19,11 @@ function receiver() {
 }
 export async function inspectNoteProof(source: ProofSource, keyId: string): Promise<{ title: string }> {
   const native = await receiver();
+  if(await native.isBankConnectedNoteImage(source.bytes)||await native.isBankConnectedNoteSource(source.bytes)){
+    const note=await native.inspectConnectedNote(source.bytes);
+    if(source.kind==='note-deposit'&&note.receiverKeyId!==keyId)throw Error('PROOF_RECEIPT_IDENTITY_MISMATCH');
+    return{title:`${note.rail==='settlement'?'Settlement':'Reserve'} Note · ${note.kind==='handover'?'received proof':'funded original'}`};
+  }
   if(native.isBankNoteAccountDeposit(source.bytes)){
     const received=await native.inspectAccountNoteDeposit(source.bytes);
     if(source.kind==='note-deposit'&&received.receiverKeyId!==keyId)throw Error('PROOF_RECEIPT_IDENTITY_MISMATCH');
@@ -24,7 +33,8 @@ export async function inspectNoteProof(source: ProofSource, keyId: string): Prom
     const note = native.inspectReserveNote(await native.openReserveNoteImage(new Uint8Array(source.bytes)));
     return { title: `${note.rail === 'settlement' ? 'Settlement' : 'Reserve'} Note · carried proof` };
   }
-  const receipt = await native.inspectNoteDepositReceipt(new Uint8Array(source.bytes));
+  const schema=(()=>{try{return JSON.parse(new TextDecoder().decode(source.bytes))?.schema;}catch{return null;}})();
+  const receipt = schema==='receiz.bank.connected-note.receipt.v1'?await native.inspectConnectedNoteReceipt(source.bytes):await native.inspectNoteDepositReceipt(new Uint8Array(source.bytes));
   if (receipt.receiverKeyId !== keyId) throw Error('PROOF_RECEIPT_IDENTITY_MISMATCH');
   return { title: `${receipt.rail === 'settlement' ? 'Settlement' : 'Reserve'} deposit receipt` };
 }

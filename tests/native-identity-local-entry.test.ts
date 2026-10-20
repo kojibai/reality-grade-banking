@@ -4,7 +4,7 @@ import {openCanonicalIdentity} from '../src/receiz/native-identity';
 // Transport/entry sequencing only; canonical admission is covered separately.
 const p=vi.hoisted(()=>({enroll:vi.fn(),seal:vi.fn(),continueId:vi.fn(),grant:vi.fn(),persist:vi.fn(),foreign:false}));
 const original=()=>({owner:{uid:'fixture-owner',username:'fixture'},issuedAt:'2026-10-13T00:00:00Z',keyId:'fixture-key',alg:'Ed25519',crypto:{privateKeyPkcs8B64u:'private-device-only',publicKeyRawB64u:'fixture-public'}});
-vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>null,loadOfflineNoteState:async()=>null,loadPreparedNoteState:async()=>null,saveProtectedIdentityTransport:p.persist}));
+vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>null,loadOfflineNoteState:async()=>null,loadPreparedNoteState:async()=>null,loadConnectedNoteState:async()=>null,saveProtectedIdentityTransport:p.persist}));
 vi.mock('../src/receiz/proof-resource-continuity',()=>({loadBankProofResources:async()=>({wasm:new Uint8Array([1]),zkey:new Uint8Array([1])})}));
 vi.mock('../src/receiz/identity-protection',()=>({protectIdentityKeyFile:async(key:ReturnType<typeof original>)=>({...key,crypto:{...key.crypto,privateKeyPkcs8B64u:null}})}));
 vi.mock('@receiz/sdk/offline',()=>({createReceizIndexedDbSealStore:()=>({}),createReceizOfflineSealer:()=>({enroll:p.enroll,seal:p.seal})}));

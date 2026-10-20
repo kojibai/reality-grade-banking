@@ -1,6 +1,6 @@
 export type BankNoteRail = 'reserve' | 'settlement';
-export interface BankNoteImage { noteId: string; rail?: BankNoteRail; amountPhiMicro?: string; amountUsdCents: string; image: Uint8Array; transferred?: boolean; transferPending?: boolean; accountUpdateWarning?: string; }
-export interface BankNoteInspection { rail?: BankNoteRail; noteId: string; amountUsdCents: string; amountPhiMicro: string; }
+export interface BankNoteImage { noteId: string; rail?: BankNoteRail; amountPhiMicro?: string; amountUsdCents: string; image: Uint8Array; transferred?: boolean; transferPending?: boolean; accountUpdateWarning?: string; consumption?:'connection-required'; }
+export interface BankNoteInspection { rail?: BankNoteRail; noteId: string; amountUsdCents: string; amountPhiMicro: string; consumption?:'connection-required'; }
 export interface BankNoteDeposit { status?:'confirmed'; rail?: BankNoteRail; amountPhiMicro?: string; walletAfterPhiMicro?: string; noteId: string; amountUsdCents: string; proofBytes: Uint8Array; reserveAfterUsdCents: string; }
 export interface BankReceivedNoteDeposit {status:'received';rail:BankNoteRail;noteId:string;amountPhiMicro:string;amountUsdCents:string;proofBytes:Uint8Array;}
 export type BankNoteDepositResult=BankNoteDeposit|BankReceivedNoteDeposit;
@@ -51,7 +51,7 @@ export interface BankPreparedNoteRuntime extends Omit<BankNoteRuntime,'cancelUnf
   depositNote(image:Uint8Array,accountProof:unknown):Promise<BankNoteDeposit & {successorAccountProof:unknown}>;
 }
 export type BankPreparedNoteFactory = (input: Omit<Parameters<BankNoteRuntimeFactory>[0],'request'|'write'> & {identity:unknown;write(next:unknown,previous:unknown,proof?:unknown):Promise<void>})=>BankPreparedNoteRuntime;
-let runtime: Promise<BankNoteAccountModule&{ createBankPreparedBrowserRuntime?:BankPreparedNoteFactory; createBankOfflineNotesRuntime: BankNoteRuntimeFactory; createBankNativeNoteSealer: (input: unknown) => Promise<Parameters<BankNoteRuntimeFactory>[0]['sealDocument']> }> | undefined;
+let runtime: Promise<BankNoteAccountModule&import('./connected-note-application').ConnectedNoteModule&{ createBankPreparedBrowserRuntime?:BankPreparedNoteFactory; createBankOfflineNotesRuntime: BankNoteRuntimeFactory; createBankNativeNoteSealer: (input: unknown) => Promise<Parameters<BankNoteRuntimeFactory>[0]['sealDocument']> }> | undefined;
 export function loadBankNoteRuntime() {
   // Built from the pinned Receiz v129 host primitives. Loaded only when a note
   // action is opened; it never delays account or market first paint.

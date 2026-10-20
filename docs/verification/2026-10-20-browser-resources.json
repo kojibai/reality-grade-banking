@@ -2,9 +2,9 @@
   "schema": "receiz.bank.browser-reference-checks.v1",
   "receizVersion": "129.0.0",
   "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
-  "verifierModuleSha256": "58e4555faa3b8edd4c1d10b440390a6c7b1afe1f2c41dc5426ae2cc8aec855d4",
-  "startedAt": "2026-10-20T16:35:40.373Z",
-  "completedAt": "2026-10-20T16:35:40.605Z",
+  "verifierModuleSha256": "e9b834407f96524ca49d0981adf0e1915135a5e23849196a6b9c4d16b0b3a859",
+  "startedAt": "2026-10-20T17:18:25.762Z",
+  "completedAt": "2026-10-20T17:18:26.056Z",
   "checks": [
     {
       "id": "release",
@@ -13,17 +13,17 @@
         "sdkVersion": "129.0.0",
         "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065"
       },
-      "durationMs": 45
+      "durationMs": 67
     },
     {
       "id": "integrity",
       "passed": true,
       "evidence": {
-        "moduleSha256": "58e4555faa3b8edd4c1d10b440390a6c7b1afe1f2c41dc5426ae2cc8aec855d4",
+        "moduleSha256": "e9b834407f96524ca49d0981adf0e1915135a5e23849196a6b9c4d16b0b3a859",
         "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52",
         "verificationIsFinancialAdmission": false
       },
-      "durationMs": 72
+      "durationMs": 71
     },
     {
       "id": "source",
@@ -33,7 +33,7 @@
         "unsignedPaymentJson": "Invalid PNG: bad signature",
         "sourceRequired": true
       },
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "custody",
@@ -128,7 +128,7 @@
         ],
         "reportIsTemporalAuthority": false
       },
-      "durationMs": 109
+      "durationMs": 146
     },
     {
       "id": "edges",
@@ -155,7 +155,7 @@
         "signingPerformed": false,
         "commitsPerformed": 0
       },
-      "durationMs": 4
+      "durationMs": 6
     }
   ],
   "localChecksPassed": true,

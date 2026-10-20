@@ -3,6 +3,7 @@ import { nativeRequestPath } from '../server/native-account';
 import { nativeFetch } from '../src/receiz/native-transport';
 import { createReceizClient } from '@receiz/sdk';
 import { BANK_APPLICATION_ID } from '../src/receiz/config';
+import {relayNativeAccount} from '../server/native-account';
 afterEach(() => vi.unstubAllGlobals());
 it('allows only named identity, shared-read and card contracts, with no arbitrary destination or unlisted transfer', () => {
   expect(nativeRequestPath('/api/bank/native/api/connect/wallet/me', 'GET')).toBe('/api/connect/wallet/me');
@@ -64,4 +65,22 @@ it('bounds Market quote and exact nonce reads and uses the installed SDK Market 
  const request=vi.fn<typeof fetch>(async()=>new Response('{}',{headers:{'Content-Type':'application/json'}}));vi.stubGlobal('fetch',request);const client=createReceizClient({applicationId:BANK_APPLICATION_ID,accessToken:'synthetic',fetchImpl:nativeFetch});
  await client.request('/api/connect/market/shares/trade',{method:'POST',body:{marketItemId:'asset:one',side:'buy',amountUsd:'10.00',clientNonce:'retained_nonce'}});
  expect(request.mock.calls[0][0]).toBe('/api/bank/native/api/connect/market/shares/trade');
+});
+it('permits only exact connected Note creation and original issue or claim recovery coordinates',()=>{
+ const base='/api/connect/offline-notes/connected?origin=https%3A%2F%2Fbankeiz.com';
+ expect(nativeRequestPath('/api/bank/native'+base,'POST')).toBe(base);
+ for(const query of ['&allocationId='+'a'.repeat(64),'&noteId=22222222-2222-4222-8222-222222222222'])expect(nativeRequestPath('/api/bank/native'+base+query,'GET')).toBe(base+query);
+ for(const query of ['','&allocationId=wrong','&noteId=wrong','&allocationId='+'a'.repeat(64)+'&noteId=22222222-2222-4222-8222-222222222222','&owner=foreign'])expect(nativeRequestPath('/api/bank/native'+base+query,'GET')).toBeNull();
+ expect(nativeRequestPath('/api/bank/native'+base+'&origin=https%3A%2F%2Fbankeiz.com','POST')).toBeNull();
+});
+it('forwards only the signed Showcase publication headers to its explicit connected endpoint',async()=>{
+ const route=`/api/connect/profile/showcase/publication?applicationId=${BANK_APPLICATION_ID}`;
+ const upstream=vi.fn<typeof fetch>(async()=>Response.json({status:'pending'}));vi.stubGlobal('fetch',upstream);
+ const headers={'Content-Type':'application/json',Authorization:'Bearer synthetic',Cookie:'never-forward','x-receiz-owner-id':'owner.receiz.id','x-receiz-profile-username':'owner','x-receiz-local-action-id':'action','x-receiz-local-action-key-id':'a'.repeat(64),'x-receiz-local-action-public-key':'public','x-receiz-local-action-challenge':'challenge','x-receiz-local-action-signature':'signature','x-unlisted-header':'strip'};
+ expect((await relayNativeAccount(new Request('https://bankeiz.com/api/bank/native'+route,{method:'POST',headers,body:'{}'}))).status).toBe(200);
+ const passed=new Headers(upstream.mock.calls[0][1]?.headers);
+ for(const [key,value]of Object.entries(headers))if(key.startsWith('x-receiz'))expect(passed.get(key)).toBe(value);
+ expect(passed.get('cookie')).toBeNull();expect(passed.get('x-unlisted-header')).toBeNull();
+ expect(nativeRequestPath('/api/bank/native'+route+'&username=owner&action=inventory&cursor=next','GET')).not.toBeNull();
+ for(const suffix of ['&url=https://foreign.example','&applicationId=rc_foreign','&username=owner&block=x&action=inventory'])expect(nativeRequestPath('/api/bank/native'+route+suffix,'GET')).toBeNull();
 });

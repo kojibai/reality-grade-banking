@@ -16,13 +16,21 @@ async function noteRemovalGuard(saved: SavedIdentity) {
   const db = await database();
   const rows: {key:string;row:PrivateBankOperation|undefined}[]=[];
   try {
-    for (const family of ['offline-notes','prepared-notes','received-note-deposits','native-payments','native-assets','wallet-sends','market-trades','received-proof']) {
+    for (const family of ['offline-notes','prepared-notes','connected-notes','asset-publication','received-note-deposits','native-payments','native-assets','wallet-sends','market-trades','received-proof']) {
       const key=`${family}|${BANK_STORAGE_APPLICATION_ID}|${digest}`;
       const row=await new Promise<PrivateBankOperation|undefined>((resolve,reject)=>{const read=db.transaction('operations').objectStore('operations').get(key);read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error);});
       rows.push({key,row});
       if(!row)continue;
       const clear=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(row.iv),additionalData:new TextEncoder().encode(key)},saved.wrappingKey,row.bytes);
       const state=JSON.parse(new TextDecoder().decode(clear));
+      if(family==='connected-notes'){
+        if((await import('./connected-note-runtime')).hasHeldConnectedNotes(state))throw Error('Keep this ID while connected Notes or their original issue results are held. Transfer or deposit the Notes before removing this device custody.');
+        continue;
+      }
+      if(family==='asset-publication'){
+        if((await import('./asset-publication')).hasPendingAssetPublication(state))throw Error('Finish the retained asset publication before removing this ID. Its exact original and delivery outcome remain on this device.');
+        continue;
+      }
       if(family==='received-note-deposits'){
         const received=(await import('./note-received-deposits')).readReceivedNoteDepositCheckpoint(state);
         if(!received)throw Error('BANK_NOTE_PRIVATE_SOURCE_INVALID');
@@ -599,6 +607,10 @@ export const loadPreparedNoteState = (binding:{artifactSha256:string}) => loadNo
 export const savePreparedNoteState = (binding:{artifactSha256:string;keyId:string},value:unknown,expected:unknown,observation?:import('./wallet-observation').WalletObservation) => saveNoteState(binding,'prepared-notes',value,expected,observation);
 export const loadReceivedNoteDepositState = (binding:{artifactSha256:string}) => loadNoteState(binding,'received-note-deposits');
 export const saveReceivedNoteDepositState = (binding:{artifactSha256:string},value:unknown,expected:unknown) => saveNoteState(binding,'received-note-deposits',value,expected);
+export const loadConnectedNoteState = (binding:{artifactSha256:string}) => loadNoteState(binding,'connected-notes');
+export const saveConnectedNoteState = (binding:{artifactSha256:string},value:unknown,expected:unknown) => saveNoteState(binding,'connected-notes',value,expected);
+export const loadAssetPublicationState = (binding:{artifactSha256:string}) => loadNoteState(binding,'asset-publication');
+export const saveAssetPublicationState = (binding:{artifactSha256:string},value:unknown,expected:unknown) => saveNoteState(binding,'asset-publication',value,expected);
 
 /** Immutable encrypted byte custody; digest references never replace SDK admission. */
 export async function saveOfflineNoteBlob(binding: { artifactSha256: string }, input: Uint8Array): Promise<string> {

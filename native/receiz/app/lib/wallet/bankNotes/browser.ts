@@ -367,3 +367,8 @@ export function createBankPreparedBrowserRuntime(input:Omit<BankPreparedNotesInp
   const slot=(id:string)=>({adapter:createKairosNoteBrowserPwaCustodyAdapter({slotId:id,rpId,origin:input.origin,fetchImpl:input.fetchImpl}),read:()=>createKairosNoteIndexedDbPwaCustodyStorage(id).read()});
   return createBankPreparedNotesRuntime({...input,slot,createSlot:async id=>slot(id),cash:id=>createKairosReservePwaCustodyAdapter({webAuthn,storage:createBankPreparedCashStorage(input,id)}),admission:id=>createReceizBrowserAdmissionStore({databaseName:"receiz-bank-prepared-admission-v1",namespace:`bank-prepared:${input.keyId}:${input.uid}:${id}`}),clock:()=>({acceptedAtKai:nowKai(),exportedAt:new Date().toISOString()})});
 }
+
+// Connected account custody remains a distinct app profile; qualification is unchanged.
+export * from "./connectedNote";
+export * from "./connectedNoteImage";
+export type {BankNoteAccountReceivingRequest} from "./accountReceiving";

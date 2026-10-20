@@ -66,6 +66,11 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
     const headers: Record<string, string> = { Accept: streamPath?'text/event-stream':artifactPath?'application/vnd.receiz.bundle+json, application/octet-stream':'application/json' };
     let multipart=false;
     const authorization = request.headers.get('authorization'); if (authorization) headers.Authorization = authorization;
+    if(new URL(path,'https://receiz.com').pathname==='/api/connect/profile/showcase/publication'){
+      for(const key of ['x-receiz-owner-id','x-receiz-profile-username','x-receiz-local-action-id','x-receiz-local-action-key-id','x-receiz-local-action-public-key','x-receiz-local-action-challenge','x-receiz-local-action-signature','x-receiz-local-outbox-replay']){
+        const value=request.headers.get(key);if(value){if(value.length>8192)return fail(400);headers[key]=value;}
+      }
+    }
     let body: Buffer | undefined;
     if (['POST','PATCH'].includes(request.method)) {
       const contentType=request.headers.get('content-type');multipart=!!multipartPath&&typeof contentType==='string'&&/^multipart\/form-data;\s*boundary=(?:[A-Za-z0-9'()+_,.\/=:?-]{1,100}|"[A-Za-z0-9'()+_,.\/=:?-]{1,100}")$/i.test(contentType);

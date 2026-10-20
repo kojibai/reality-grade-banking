@@ -8,9 +8,10 @@ receiving flow described in the historical handoff below. The recipient can
 verify/retain a completed sender-consumed terminal offline without its own
 custody authenticator, then reconcile the exact source through existing native
 redemption. Local synthetic writer/proof checks establish that composition,
-not production qualification. Online creation without attested custody remains
-a separate missing integration. Product 1.0.0 is held pending that capability
-and real-device/deployed financial evidence. Existing saved custody is never
+not production qualification. Online creation without attested custody is now implemented through the distinct
+[connected profile](connected-notes-v129.md), including native conservation and
+exact-intent recovery. Product 1.0.0 remains held pending independent review and
+real-device/deployed financial evidence. Existing saved custody is never
 reset or reclassified. See [readiness](releases/1.0.0.md).
 
 ## Historical qualified-custody handoff

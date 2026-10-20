@@ -5,6 +5,20 @@ import { readBankFundedNoteHead, readBankFundedNoteSource } from 'receiz-native-
 import { openBankNoteDepositReceipt, verifyBankReserveCreditArtifact, exportBankNoteDepositReceipt } from 'receiz-native-note-credit';
 import { unpackBankNoteBytes } from 'receiz-native-note-compression';
 import { isBankNoteAccountDeposit, readBankNoteAccountDeposit } from 'receiz-native-note-account-deposit';
+import {verifyBankConnectedNoteReceipt,isBankConnectedNoteSource,readBankConnectedNoteSource} from 'receiz-native-connected-note';
+import {isBankConnectedNoteImage,readBankConnectedNoteImage} from 'receiz-native-connected-note-image';
+export {isBankConnectedNoteImage,isBankConnectedNoteSource};
+export async function inspectConnectedNote(bytes){
+  const proof=await isBankConnectedNoteImage(bytes)?await readBankConnectedNoteImage(bytes):await readBankConnectedNoteSource(bytes);
+  return Object.freeze({schema:'bankeiz.connected-note-inspection.v1',rail:proof.rail,noteId:proof.noteId,amountPhiMicro:proof.amountPhiMicro,amountUsdCents:proof.amountUsdCents,
+    kind:proof.kind,receiverUserId:proof.receiverUserId,receiverKeyId:proof.receiverKeyId,
+    fundingArtifactSha256:proof.fundingArtifactSha256,terminalArtifactSha256:proof.terminalArtifactSha256,
+    carriedChainVerified:true,custodyConsumed:false,creditAuthorized:false,hostCreditChecked:false,exclusiveConsumption:'connection-required'});
+}
+export async function inspectConnectedNoteReceipt(bytes){
+  const proof=await verifyBankConnectedNoteReceipt(bytes);
+  return Object.freeze({kind:proof.kind,rail:proof.kind==='credit'?proof.rail:proof.cancellation.rail,noteId:proof.noteId,receiverKeyId:proof.kind==='credit'?proof.credit.receiverKeyId:undefined});
+}
 
 /** Verifies complete carried sources under the pinned canonical roots.
  * It does not prove live spendability, consume custody or authorize a credit. */

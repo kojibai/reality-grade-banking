@@ -1,8 +1,8 @@
 // Public explanation only. These release facts never qualify a device,
 // authorize a transfer or replace current SDK proof admission.
 export const noteContinuity = Object.freeze({
-  connectedExecutionStatus: 'integration-required',
-  connectedAvailability: 'Account-destination receipt and connected redemption are implemented using existing v129 proofs. A recipient can verify and retain a completed Note offline without custody enrollment; account credit is confirmed on connection. Online creation on nonconforming custody is not enabled: the existing funding path still requires attested custody. Physical-device and deployed financial qualification remain outstanding.',
+  connectedExecutionStatus: 'qualification-required',
+  connectedAvailability: 'Account-destination receipt and connected redemption are implemented using existing v129 proofs. A recipient can verify and retain a completed Note offline without custody enrollment; account credit is confirmed on connection. Connected creation uses the existing native account writer without custody enrollment. Its recipient-bound handover can be received offline; exclusive consumption and account credit are confirmed once on connection. Physical-device and deployed financial qualification remain outstanding.',
   platformRequest: 'Please bring this browser and its device integration into conformance with the Receiz Note continuity standard for offline Note creation and consumption. Expose protected, non-exportable custody with irreversible consumption of the exact predecessor, bound to the recipient, whole value and successor. Provide independently verifiable attestation and consumption evidence; restored state must not authorize a second spend, and interrupted execution must resolve the same original intent. Preserve origin/RP binding and user authorization. The full standard and device diagnostic are at https://bankeiz.com/conformance/#note-continuity .',
   platformContacts: [
     {title:'Safari and iPhone / iPad',team:'Apple’s Safari / WebKit and platform security teams',url:'https://webkit.org/reporting-bugs/',label:'WebKit reporting guidance'},
@@ -11,7 +11,7 @@ export const noteContinuity = Object.freeze({
   ],
   paths: [
     {id:'local',title:'Protected local consumption',body:'Qualified custody retires the previous Note head and binds its successor to the exact recipient and value. That protection permits continuous offline transfers without periodic server confirmation, within the implementation’s prepared capacity and trust policy.'},
-    {id:'connected',title:'Receive offline. Reconcile before spending.',body:'A completed account-destination Note carries the sender’s consumption proof. Its recipient verifies and retains it offline without a custody authenticator. Receiz confirms the account credit once on connection, before an account payment or new Note uses the received balance. The original remains available throughout.'},
+    {id:'connected',title:'Receive offline. Reconcile before spending.',body:'An account-destination Note carries the complete funding source and signed recipient-bound handover. Qualified custody also carries irreversible local consumption evidence; connected-profile handovers remain pending exclusive consumption until reconciliation. Its recipient verifies and retains it offline without a custody authenticator. Receiz confirms the account credit once on connection, before an account payment or new Note uses the received balance. The original remains available throughout.'},
   ],
   requirements: [
     {id:'NOTE-01',title:'Complete original',body:'Verify the exact enclosing original before admitting its payload, history, funding or custody. Preserve the original source and every unknown namespace.'},
@@ -36,7 +36,7 @@ export const noteContinuity = Object.freeze({
   ],
   formats: [
     {title:'Receiving request',body:'A bounded signed destination from the existing Identity Seal. Account UUID, key, carried-state digest and nonce are bound together. The host independently checks native account membership.'},
-    {title:'Completed Note',body:'The unchanged v129 terminal, full funding graph and exclusive-consumption evidence are packed losslessly into the original PNG. Forwarding a copy cannot change its recipient.'},
+    {title:'Completed Note',body:'The complete funding source and signed recipient-bound handover are packed losslessly into the original PNG. A qualified terminal carries local consumption evidence; a connected-profile handover requires native once-only consumption on connection. Forwarding a copy cannot change its recipient.'},
     {title:'Deposit receipt',body:'The complete native credit, original terminal and private account opening remain available for independent verification. An inspection never submits a credit or grants spending authority.'},
   ],
   receivingFields: [
@@ -60,7 +60,7 @@ export const noteContinuity = Object.freeze({
   limits: [
     {title:'16 KiB receiving request',body:'Exact canonical field set and signature verification. Missing, unknown or changed fields are refused.'},
     {title:'8 MiB image · 4 MiB host request',body:'The PNG, native packed wire (6 MiB) and host JSON request have distinct bounds. Oversized submission preserves the original. Artwork cannot replace the carried proof.'},
-    {title:'32 MiB source and credit receipt',body:'Lossless full-source retention and reopening use the expanded-source limit. Proof history and unknown namespaces are never trimmed to fit.'},
+    {title:'Bounded complete sources',body:'Qualified source and receipt reopening allows 32 MiB; connected funding and handover sources allow 16 MiB, with complete receipt openings retained separately. Proof history and unknown namespaces are never trimmed to fit.'},
     {title:'64 retained deposit entries',body:'The current encrypted queue refuses additional entries at capacity and preserves existing originals. Export complete proofs; an Identity Seal alone is not their backup.'},
   ],
   assessment: [
@@ -78,5 +78,5 @@ export const noteContinuity = Object.freeze({
 
 export const noteContinuityGuideSections = [
   ['Using Notes offline', 'Create, receive, send and deposit through one interface. A completed account-destination Note can be verified and saved offline without receiver custody enrollment. Its value is shown as Received Notes; the exact deposit reconciles on connection before an account payment or a new Note uses that balance. Creating new spend authority offline requires conforming protected custody and already prepared resources. A copy cannot change the recipient or create another credit.'],
-  ['Device integration and availability', 'Conformance applies to the exact implementation, build, trust policy and recovery behavior. A device or browser path must demonstrate the standard, rather than rely on its name or advertised features. The opt-in device check is a nonfinancial diagnostic. The Conformance workspace publishes implementation responsibilities, original-proof formats, assessment boundaries and a request for the responsible platform team. Account receipt is implemented; creation without attested custody and live financial qualification remain release dependencies.'],
+  ['Device integration and availability', 'Conformance applies to the exact implementation, build, trust policy and recovery behavior. A device or browser path must demonstrate the standard, rather than rely on its name or advertised features. The opt-in device check is a nonfinancial diagnostic. The Conformance workspace publishes implementation responsibilities, original-proof formats, assessment boundaries and a request for the responsible platform team. Account receipt and connected creation are implemented in the v129 host composition. Physical-device and deployed financial qualification remain release requirements.'],
 ];

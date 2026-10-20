@@ -1,5 +1,10 @@
 # Note continuity preparation — October 20, 2026
 
+This records the earlier receiving-only implementation. The subsequent connected
+creation and public asset publication candidate is documented in
+[connected Notes and public assets](2026-10-20-connected-notes-and-public-assets.md).
+Missing capabilities listed below describe that earlier baseline.
+
 ## Scope
 
 The implemented receiving composition lets a qualified sender consume a whole
@@ -156,7 +161,7 @@ Final local evidence:
   `scripts/testing/` and `tests/fixtures/note-account-deposit/`.
 - The exact production preview at `127.0.0.1:5437` passed **7 / 7** browser
   reference checks with zero financial actions. The original exported report is
-  [retained here](2026-10-20-browser-resources.json); its module SHA-256 is
+  [retained here](2026-10-20-browser-resources-receiving-baseline.json); its module SHA-256 is
   `58e4555faa3b8edd4c1d10b440390a6c7b1afe1f2c41dc5426ae2cc8aec855d4`.
 - At 390 px, closed and expanded technical field/recovery/capacity sections
   preserved document width 390 px, with no relevant console errors/warnings.

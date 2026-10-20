@@ -1,0 +1,379 @@
+{
+  "schema": "bankeiz.native-asset-publication.v129",
+  "receizVersion": "129.0.0",
+  "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
+  "moduleSha256": "a87bb4dc6bdf3a8cf5375b196d3bda09f92d39e24b6909146bf5078c0c0d13fe",
+  "sourceTreeSha256": "5f92d33d7c22a2f2f3336888fc434ec391c96e61a02f348fcba26d3da6fe60c4",
+  "inputs": 487,
+  "bytes": 2898243,
+  "applicationPatches": [
+    {
+      "id": "bankeiz-webauthn-realm",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "a032be240481f092035e10659f749b88a15d9804e4d5ea7b54be8cb5753a3074",
+      "sha256": "f7e1aa1cc197d8ae8c22dae89d39b2600a08c4e1bd1b558bc96a7cf68b341be4",
+      "purpose": "Bind Bankeiz note custody to its own WebAuthn RP while preserving the original Receiz Bank and localhost realms. SDK package sources and published SDK outputs are unchanged.",
+      "upstreamCommit": "67d4461833caffba984bf09b21d30328e0b1a0e5"
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/allocationEvidence.ts",
+      "baseSha256": null,
+      "sha256": "65e930ed994005fe750f637c9450b1f287f4cb2df14b6be2185a5d2b6795e554",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/settlementAllocation.ts",
+      "baseSha256": null,
+      "sha256": "bc6f990897d39267956389c8d5804fae056f1e07bb17a9333f29b394a781a6db",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/settlementCashSnapshot.ts",
+      "baseSha256": null,
+      "sha256": "3abe492ced8be0f628c0304fcf6e6f012cd888246e15cdd32986be2831678a91",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/settlementFundingAuthorization.ts",
+      "baseSha256": null,
+      "sha256": "7259a5e6c5afdc0d4ec26593b6b372482020122db6efa9e964e2e24885b2d7f4",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "f7e1aa1cc197d8ae8c22dae89d39b2600a08c4e1bd1b558bc96a7cf68b341be4",
+      "sha256": "70709aff9c7adeef600605b3d6505786996e8c52cc877b288048318be7bd1a6e",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/fundedNote.ts",
+      "baseSha256": "38b606f81e763ad2fd1458e39a01c9b08e98cb4b9ba975a5ac0c9da5dfd05cb6",
+      "sha256": "65e352631f997a21fa74d5ac7a131d04fda84aaa7982eb5aee86724dcc06488a",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/redemption.ts",
+      "baseSha256": "0a2486129e408c42b047963b570e592c5f3eb03acb2ade62d39ad3c52375a7bd",
+      "sha256": "60a791bdbe2a4412495e8b9185f43b89e105e2fcf1b5d06c1a8061b3b2399e45",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/credit.ts",
+      "baseSha256": "05d6884eff8fab50867ecf87cc51dc79092398cca2f00198288d754fa656ce9d",
+      "sha256": "19abdf97f03b79228d7efe331b088900fd1d4a6aae8af2b9f7f3e529e773db14",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/fundingResume.ts",
+      "baseSha256": "73fcbc4a6370e37fe3797cb790bdab25d4579846ed89123be5c9f2e783cfae57",
+      "sha256": "e92a62a3db84d3e4f3658c44e2c4231bdc13665427963454da24309567463950",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
+      "baseSha256": "51e3557cf9e4e9dd6ed1e2b2202dd67f1e45ae5f7472b8935edcfc86ce704775",
+      "sha256": "1f79a96b0c6e242bf9d511bf0103cbe7763833ce4060c8cb7da524939f861c87",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-settlement-notes-v129",
+      "path": "receiz/app/lib/wallet/kairosOfflineNoteLocalIssuance.ts",
+      "baseSha256": "b7de97e7118d5d2e5c1fe2327470fa928ea9abe426c86c8b450fba0987feec68",
+      "sha256": "82dd3b4562b587ebefd5f14df5456ee5822adb48846b3467dafdf6c10d69ef17",
+      "purpose": "Compose source-derived Settlement rail, exact-Phi qualified issuance, terminal redemption and credit verification. Published SDK package sources and outputs remain unchanged."
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/credit.ts",
+      "baseSha256": "19abdf97f03b79228d7efe331b088900fd1d4a6aae8af2b9f7f3e529e773db14",
+      "sha256": "98241dc9f748d999fe0efae6652878e290d0080f13244837bf18b008a1a659f8",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/fundedNote.ts",
+      "baseSha256": "65e352631f997a21fa74d5ac7a131d04fda84aaa7982eb5aee86724dcc06488a",
+      "sha256": "03caf69ded3a7ff89f0ff064d312ffc76a51a0b2aca4c070e8d3002218d02b0e",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/redemption.ts",
+      "baseSha256": "60a791bdbe2a4412495e8b9185f43b89e105e2fcf1b5d06c1a8061b3b2399e45",
+      "sha256": "ab588b93ce7f4fc5833174e44519173d3ceff28df24038359a3b7d750ddddca3",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/sourceCodec.ts",
+      "baseSha256": "1c7b8c7d40f2129d5acca1417cf69907a0907ab5cc06f7079fab021c6cd5bdea",
+      "sha256": "0329d952ff212de56ba593fb1c848b13aec0325e4e8aba9cd24a5edf4d0b73c6",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
+      "baseSha256": "1f79a96b0c6e242bf9d511bf0103cbe7763833ce4060c8cb7da524939f861c87",
+      "sha256": "ce9128ccc105dd73e62406d3876085bfe9f1421866e3bc5e1f1bbf94cdbb5b3d",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/localAccountCredit.ts",
+      "baseSha256": null,
+      "sha256": "08bf48093ec3530b5c2cc7f22240382977712d434cec902784118db7422f528b",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/localCreditJournal.ts",
+      "baseSha256": null,
+      "sha256": "8ee55452259bc37a843336a344c35cde669237096ab39ab652c7df0929978aa4",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/cashAccountRebase.ts",
+      "baseSha256": null,
+      "sha256": "d51a34e8826de40af5996f013d595f1450c51c49b5823ef438e993e017fce591",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-local-note-credit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/compression.ts",
+      "baseSha256": "2fa449e8eec85559405a4e799efd42b69932d5e0a5664a461cf04bd2972628f2",
+      "sha256": "9100a20f0a3f169045deaa6ac052f59f0544adb71cf0860bfa4153e08e074b20",
+      "purpose": "Verify complete native local-credit funding lineage, exact account successors and strict-counter zero-value cash-head bindings. Qualification engine only; production local credit remains unselected pending shared native writer and device/application qualification. Published SDK, MCP and AI skill packages are unchanged.",
+      "upstreamCommit": "ce455bfe444f88000be183afdae5455f8ff8d94b"
+    },
+    {
+      "id": "bankeiz-prepared-browser-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "70709aff9c7adeef600605b3d6505786996e8c52cc877b288048318be7bd1a6e",
+      "sha256": "b3ff101097e1a820228ef356688d367a5eb03f32d2e08b44769589d60715870f",
+      "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
+      "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-prepared-browser-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/preparedBrowser.ts",
+      "baseSha256": null,
+      "sha256": "438e391cd6077645ab3bc498d9845e4be19e7c644a38bef8b7e612bd9d37de79",
+      "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
+      "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-prepared-browser-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/fundedNote.ts",
+      "baseSha256": "03caf69ded3a7ff89f0ff064d312ffc76a51a0b2aca4c070e8d3002218d02b0e",
+      "sha256": "05f8914ef5384e68736950be9faccfb122832a4ca83b5e889e6ba8cd2cbf5e25",
+      "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
+      "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-prepared-browser-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/localCreditJournal.ts",
+      "baseSha256": "8ee55452259bc37a843336a344c35cde669237096ab39ab652c7df0929978aa4",
+      "sha256": "f8b30144696f60eb745c5589fe71b06d48822d2f0fcfadc5644fef8c9c5c4301",
+      "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
+      "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-prepared-browser-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/noteImage.ts",
+      "baseSha256": "f7bab1c2e9a97c781365fda9f18780fede67e6bc38d572d0cd9adbb9eb9a3ed6",
+      "sha256": "b6c71147847c2b2b7797a737b092add1bade744da1cd39b56ca30ac1110344a0",
+      "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
+      "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-prepared-browser-v129",
+      "path": "receiz/app/lib/wallet/kairosOfflineNoteLocalIssuance.ts",
+      "baseSha256": "82dd3b4562b587ebefd5f14df5456ee5822adb48846b3467dafdf6c10d69ef17",
+      "sha256": "ab7ab17bf0b43fb8da79d9e62133c9ad7e61945ceb412866db615c6ede8f20fd",
+      "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
+      "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-prepared-browser-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/preparedCashStorage.ts",
+      "baseSha256": null,
+      "sha256": "d543ad9ce8da3144286974fb97f9a8d6a86953bca9da30b713708895ef4dfe3e",
+      "purpose": "Compose v129 qualified custody resources and complete prepared/local-credit sources over encrypted application storage, exact restart and verified local account-head adoption. Financial production selector remains disabled pending native shared-writer, changed-rate and physical-device qualification. No SDK, MCP or AI skill package change.",
+      "sourceCommit": "d8bd278a1fa7c1957a81d15ebb83e08e04f63007"
+    },
+    {
+      "id": "bankeiz-native-note-denomination-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/preparedBrowser.ts",
+      "baseSha256": "438e391cd6077645ab3bc498d9845e4be19e7c644a38bef8b7e612bd9d37de79",
+      "sha256": "9baa851dd62841574aaa806a811b92b4bbe65732456282408d42b95327d8edb6",
+      "purpose": "Preserve exact remaining original Phi across mixed-rate Reserve denominations and interrupted prepared Note issuance. Derive legacy missing rate metadata from verified original source; keep custody, source verification and exact retained intent. SDK, MCP and AI skill packages remain unchanged.",
+      "sourceCommit": "bdba7534707572ab38778fd704662eaa5f644dab"
+    },
+    {
+      "id": "bankeiz-native-note-denomination-v129",
+      "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
+      "baseSha256": "ce9128ccc105dd73e62406d3876085bfe9f1421866e3bc5e1f1bbf94cdbb5b3d",
+      "sha256": "5d2e51c752eee302a4057dad826c48d0d7c155cfbc36c31a5c2f3b1783c654e2",
+      "purpose": "Preserve exact remaining original Phi across mixed-rate Reserve denominations and interrupted prepared Note issuance. Derive legacy missing rate metadata from verified original source; keep custody, source verification and exact retained intent. SDK, MCP and AI skill packages remain unchanged.",
+      "sourceCommit": "bdba7534707572ab38778fd704662eaa5f644dab"
+    },
+    {
+      "id": "bankeiz-exact-local-value-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/localAccountCredit.ts",
+      "baseSha256": "08bf48093ec3530b5c2cc7f22240382977712d434cec902784118db7422f528b",
+      "sha256": "3f7685a2ac4af2064e27abe8a648056ac44381b704cc28624223fbe5ebd8be3c",
+      "purpose": "Value exact remaining Settlement Phi at the held receiver quote, preserve fixed-dollar Reserve backing and retained v1 intents, and bind each arithmetic version to its signed credit/debit transition. Complete funded source and one-time custody remain authority; published SDK, MCP and AI skill packages stay unchanged.",
+      "sourceCommit": "af90a8c7a567a1e0c0ca4fbe5f3116472e4e9db3"
+    },
+    {
+      "id": "bankeiz-exact-local-value-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/localWalletValuation.ts",
+      "baseSha256": null,
+      "sha256": "36875e421efa47796651dff484268635174a9e60bb93c83cff89f3f9afc7896b",
+      "purpose": "Value exact remaining Settlement Phi at the held receiver quote, preserve fixed-dollar Reserve backing and retained v1 intents, and bind each arithmetic version to its signed credit/debit transition. Complete funded source and one-time custody remain authority; published SDK, MCP and AI skill packages stay unchanged.",
+      "sourceCommit": "af90a8c7a567a1e0c0ca4fbe5f3116472e4e9db3"
+    },
+    {
+      "id": "bankeiz-exact-local-value-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/preparedBrowser.ts",
+      "baseSha256": "9baa851dd62841574aaa806a811b92b4bbe65732456282408d42b95327d8edb6",
+      "sha256": "4228a27af3e606a4bded013f4387db4cbe655d6c21aa413a488662a1366e6342",
+      "purpose": "Value exact remaining Settlement Phi at the held receiver quote, preserve fixed-dollar Reserve backing and retained v1 intents, and bind each arithmetic version to its signed credit/debit transition. Complete funded source and one-time custody remain authority; published SDK, MCP and AI skill packages stay unchanged.",
+      "sourceCommit": "af90a8c7a567a1e0c0ca4fbe5f3116472e4e9db3"
+    },
+    {
+      "id": "bankeiz-exact-local-value-v129",
+      "path": "receiz/app/lib/wallet/kairosOfflineNoteLocalIssuance.ts",
+      "baseSha256": "ab7ab17bf0b43fb8da79d9e62133c9ad7e61945ceb412866db615c6ede8f20fd",
+      "sha256": "c7fd63a9e7fc4a4e9be6cb27c8668be31b76e013af9b0de24488ce1c70230c7a",
+      "purpose": "Value exact remaining Settlement Phi at the held receiver quote, preserve fixed-dollar Reserve backing and retained v1 intents, and bind each arithmetic version to its signed credit/debit transition. Complete funded source and one-time custody remain authority; published SDK, MCP and AI skill packages stay unchanged.",
+      "sourceCommit": "af90a8c7a567a1e0c0ca4fbe5f3116472e4e9db3"
+    },
+    {
+      "id": "bankeiz-exact-local-value-v129",
+      "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
+      "baseSha256": "5d2e51c752eee302a4057dad826c48d0d7c155cfbc36c31a5c2f3b1783c654e2",
+      "sha256": "e5b59538ee6ecd6efc81a7a971eaa928883579609b2100fedd5d84eeb953ce97",
+      "purpose": "Value exact remaining Settlement Phi at the held receiver quote, preserve fixed-dollar Reserve backing and retained v1 intents, and bind each arithmetic version to its signed credit/debit transition. Complete funded source and one-time custody remain authority; published SDK, MCP and AI skill packages stay unchanged.",
+      "sourceCommit": "af90a8c7a567a1e0c0ca4fbe5f3116472e4e9db3"
+    },
+    {
+      "id": "bankeiz-account-note-receiving-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/accountReceiving.ts",
+      "baseSha256": null,
+      "sha256": "a1f84cdf6039e98aad2609bba622c0765cd6a44c179008864a40c3b88283bd9f",
+      "purpose": "Compose an Identity Seal-signed account receiving destination using existing v129 signature verification. No SDK source, qualification policy, funding or credit authority changes."
+    },
+    {
+      "id": "bankeiz-account-note-receiving-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "b3ff101097e1a820228ef356688d367a5eb03f32d2e08b44769589d60715870f",
+      "sha256": "86911cd9ee1977b7d647575acc36c77f43b36cd5294fb64ad2ef54acbfdc93a0",
+      "purpose": "Compose an Identity Seal-signed account receiving destination using existing v129 signature verification. No SDK source, qualification policy, funding or credit authority changes."
+    },
+    {
+      "id": "bankeiz-account-note-deposit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/accountDeposit.ts",
+      "baseSha256": null,
+      "sha256": "faa250530049147523f1b46743e415a6721cae885dacf3325e5c03c4d27d9733",
+      "purpose": "Transport and verify the existing complete v129 recipient-bound terminal source for local retention and once-only native redemption, without receiver qualification or SDK changes."
+    },
+    {
+      "id": "bankeiz-account-note-deposit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "86911cd9ee1977b7d647575acc36c77f43b36cd5294fb64ad2ef54acbfdc93a0",
+      "sha256": "60630d5107ac0c4f6e7ba27dcca418b928cdae39d7366275441d053d7c07938e",
+      "purpose": "Transport and verify the existing complete v129 recipient-bound terminal source for local retention and once-only native redemption, without receiver qualification or SDK changes."
+    },
+    {
+      "id": "bankeiz-account-note-deposit-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/accountTransfer.ts",
+      "baseSha256": null,
+      "sha256": "8fdaa8eec316ebd6b49f32c3066c34bd353aee5d34022ae5b7f1626d4a2eb6b3",
+      "purpose": "Compose the existing sender-owned irreversible terminal into an account receiving source, with full proof retention and the unchanged v129 redemption verifier. No SDK package or trust-policy change."
+    },
+    {
+      "id": "bankeiz-account-note-receipt-capacity-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/credit.ts",
+      "baseSha256": "98241dc9f748d999fe0efae6652878e290d0080f13244837bf18b008a1a659f8",
+      "sha256": "9127449277e3806f5564d976ac5fb9cc734d5e918021ba0b4e26b828008dcff5",
+      "purpose": "Align complete receipt export and archival reader with existing 32 MiB expanded-source custody. This changes transport bounds only; native credit, terminal, funding, identity and consumption verification remain unchanged."
+    },
+    {
+      "id": "bankeiz-connected-showcase-publication-v129",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": null,
+      "sha256": "9ae000fd20d7ddb7803d35ea037b25ca17ac034d08fbd4d12f885c0673f46461",
+      "purpose": "Compose the existing v129 exact imported source, sealed Showcase placement, causal custody and complete-source block publisher for an explicitly selected public Bank moment. Keeps source verification, complete media/text, current account access and exact-source retries. SDK, MCP and AI skill packages remain unchanged.",
+      "sourceCommit": "0a4eca945",
+      "additionalSourceFiles": 438
+    },
+    {
+      "id": "bankeiz-connected-showcase-custody-v129",
+      "path": "receiz/app/lib/profile/showcase/acceptedPredecessorRecovery.client.ts",
+      "baseSha256": "4cee3331d97593b2263aa294c5035870209bfb68a4723dc4db47dac709861466",
+      "sha256": "4063e6abe5b1c47ae1e98135a699e1587185c0faf72601a27c9ade150253e520",
+      "purpose": "Retain missing exact imported-original predecessor bytes only after canonical Showcase source admission on a newly connected Bank origin. Known custody remains immediate.",
+      "sourceCommit": "0a4eca945"
+    },
+    {
+      "id": "bankeiz-connected-showcase-custody-v129",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "9ae000fd20d7ddb7803d35ea037b25ca17ac034d08fbd4d12f885c0673f46461",
+      "sha256": "6aa04282c76f28ebc8f550501731f3a61a3cede300b67525b92a818a834865dd",
+      "purpose": "Retain missing exact imported-original predecessor bytes only after canonical Showcase source admission on a newly connected Bank origin. Known custody remains immediate.",
+      "sourceCommit": "0a4eca945"
+    },
+    {
+      "id": "bankeiz-connected-account-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/connectedNote.ts",
+      "baseSha256": null,
+      "sha256": "5dc94e9e3274eb5aa72225796430e6087963cd1a50f183a84ee3ddf2c3d28abc",
+      "purpose": "Expose the existing native connected-account Note app profile through lossless source/image reader, separate from qualified device antirollback custody; pinned SDK and qualification rules are unchanged.",
+      "sourceCommit": "0a4eca945"
+    },
+    {
+      "id": "bankeiz-connected-account-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/connectedNoteImage.ts",
+      "baseSha256": null,
+      "sha256": "bbaa49b2fdacde68fe15737b29fe46d9af3442361328192f21ac37e7d53aef4c",
+      "purpose": "Expose the existing native connected-account Note app profile through lossless source/image reader, separate from qualified device antirollback custody; pinned SDK and qualification rules are unchanged.",
+      "sourceCommit": "0a4eca945"
+    },
+    {
+      "id": "bankeiz-connected-account-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "60630d5107ac0c4f6e7ba27dcca418b928cdae39d7366275441d053d7c07938e",
+      "sha256": "0ebf1ca7701ff173736928d9e076ed3b61124a158f513c5a7d7d97853805d854",
+      "purpose": "Append only connected-account source/image exports to the retained Bank native browser composition; preserve existing realm, receipt recovery and denomination patches.",
+      "sourceCommit": "0a4eca945"
+    },
+    {
+      "id": "bankeiz-connected-publication-ancestry-inventory-v129",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "6aa04282c76f28ebc8f550501731f3a61a3cede300b67525b92a818a834865dd",
+      "sha256": "5fa004a2e54b9eb8677cdcf2884be89cf09f2567ad6772fb7783ad7adcddbd6b",
+      "purpose": "Recover imported media from the complete source visible child inventory (ancestry carries sealed carriers only); require admitted custody and repair nested closure metadata before export-only reuse. Real cold runtime regressions verify direct, interrupted nested, completed-spool recovery, v2 successors and retry idempotency.",
+      "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52"
+    }
+  ]
+}

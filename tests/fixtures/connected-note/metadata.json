@@ -1,0 +1,41 @@
+{
+  "schema": "receiz.bank.synthetic-connected-note-fixture.v1",
+  "synthetic": true,
+  "authority": "actual-native-writer-with-ephemeral-test-roots",
+  "issuerRootPublicKeys": [
+    {
+      "kid": "receiz.v4.test.bank-note",
+      "alg": "Ed25519",
+      "publicKeyRawB64u": "ffv3GtzV88qqu550N4estnDrH-HCra856GRupbysufQ",
+      "status": "active"
+    }
+  ],
+  "sender": {
+    "uid": "ef3b57ad-fcd1-4aa1-8568-bcd19a021511",
+    "keyId": "2d2d8adc22c3743c461a29884ce2bef78fab3e9e1975a0c22fae8975398b1e71"
+  },
+  "receiver": {
+    "uid": "ab4b74df-19cc-4a73-b041-470258fe79a2",
+    "keyId": "a15d5ea563edf0a164840d5c8771987bba94010845e3da684d40122ada6a36ca"
+  },
+  "noteId": "8a647547-980c-4c8b-9663-0bf0af6bcc7c",
+  "rail": "reserve",
+  "amountPhiMicro": "1000000",
+  "amountUsdCents": "200",
+  "accountAfter": {
+    "reserveUsdCents": "200",
+    "balancePhiMicro": "1000000"
+  },
+  "sha256": {
+    "note.png": "67ff80eb5efe94667c77a72fdba54be343af3aa2c5081d5b9d1ba25a131160db",
+    "handover.receiz": "a7b2c0bceb32aa85e8ec1fb1a70d989c7342cd2a16c00974faa2bd6742351ea4",
+    "funding.receizbundle": "79b1fff3eb8e7767689a460d383a86709cc2b0d3e1503a65b76d28c3fa1efdcf",
+    "funding-opening.json": "973e78a0a57e4047495ab406e89ac181fa2e84b03a57f97546ec2f40617c465f",
+    "credit.receizbundle": "fb6a2b97edcff686ce52778b858db1df9c7fb2b461cdcbacca2f9bb7893b309d",
+    "credit-opening.json": "2f2a79028c69ea486777f99f3703f7e96e3d453d153654ce5c4096e944b54c8b",
+    "credit.receipt": "7d34aad86bdd725352bcacf0e91534ca24e81f57d95f240430e00559932a4427",
+    "claim.json": "f8a37d701ed2c5765276faaaa6d1a07371cff6680c65900dccd7d3274b2b2fe5",
+    "receiving-request.json": "5a0c03724db622a0263d0ad02858404ab5cc7127bfac789b06c76033d2f915c0"
+  },
+  "privateKeyMaterialIncluded": false
+}

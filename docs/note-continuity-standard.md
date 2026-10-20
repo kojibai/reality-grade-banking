@@ -44,23 +44,31 @@ complete technical material here and at
 | Offline receipt and local deposit retention | Complete v129 terminal/funding verification, exact recipient binding and encrypted local originals. No recipient authenticator or credit request. |
 | Connected credit and recovery | Existing `/api/connect/offline-notes/redemption` GET/POST and full native credit verification. Exact original is recovered/submitted; no replacement intent. |
 | Qualified offline creation / local account continuity | Existing strict primitives; prepared-credit activation remains disabled pending physical-device and host qualification. |
-| Online creation on nonconforming custody | **Missing integration.** Current v129 funding and issuance require attested custody even online. Receiving composition does not remove that requirement. |
+| Online creation on nonconforming custody | Implemented as the distinct `connected-account-v1` profile through the existing native account writer. No attestation ceremony. Signed recipient-bound handover can be retained offline; exclusive consumption and credit occur atomically when connected. Deployed qualification remains required. |
 | Universal device support / public 1.0.0 | **Not qualified or released.** See [release gates](releases/1.0.0.md). |
 
-The account receiving/deposit additions are documented application composition,
-not new published SDK methods, a new custody profile or weakened v129 checks.
+The account receiving/deposit additions and connected issuance are documented
+v129 host/application composition, not new published package methods. The
+connected profile is explicitly distinct from qualified custody; it cannot
+claim irreversible offline consumption or weaken existing v129 checks.
 They introduce no Bank database, alternative issuer, polling service or roots.
 A copied held-Note image cannot be converted into a completed account receipt
 by the receiver: the current holder must first produce the recipient-bound
 terminal through its qualified consumption path.
 
-The remaining connected-creation capability must atomically allocate account
-value and admit its complete initial Note under a verifier-supported
-consumption profile. Its actual SDK/host schema, trust binding and recovery
-contract must exist before Bankeiz connects it. Disabled legacy
-`connect.mintNote`, legacy token `connect.claimNote`, generic append receipts,
-local locks and UI balances are not substitutes. No current API is invented
-by describing this dependency.
+The connected profile atomically allocates account value and returns a complete,
+protected-financial-root-signed funding source. A separate Note signing key stays
+inside encrypted device custody. Its signed handover binds the funding original,
+whole amount and exact recipient request. A nonconforming sender can retain or
+hand over that file offline; its signature does not prove irreversible local
+consumption. The receiver retains the complete handover in Received Notes. The
+native writer confirms one consumption and one account credit on connection,
+before that value can be spent or used to create another Note.
+
+[Connected Note contract](connected-notes-v129.md) specifies the issue, quote,
+handover, claim, cancellation and complete receipt boundaries. Disabled legacy
+`connect.mintNote`, token claims, generic append receipts and browser locks are
+not financial substitutes. Qualified custody remains a separate unchanged path.
 
 ## Required laws
 
@@ -90,7 +98,7 @@ authority, and passing a subset does not certify an institution.
 | --- | --- | --- |
 | Bytes retained, not verified | Checking Note / Could not verify | No ownership, account credit or spending claim. Preserve original. |
 | Incomplete incoming candidate | Pending | Retention only. It cannot enter the completed-receipt queue. |
-| Complete recipient-bound terminal admitted | Received | Offline evidence of the completed handoff to this account destination. Retain locally; account credit remains unconfirmed. |
+| Complete recipient-bound source admitted | Received | Funding and destination verified offline. A qualified terminal carries local consumption; a connected handover awaits exclusive consumption. Retain locally; account credit remains unconfirmed. |
 | Received source retained in encrypted vault | Received Notes · Reconciles before spending | Locally visible holding, excluded from available wallet credit. May reconcile on connectivity or before an account execution. |
 | Host outcome unknown | Confirming | Recover the exact original; do not issue a replacement or presume zero writes. |
 | Complete native credit independently verified | Deposited | Retain full credit receipt and observe the resulting account source. The queue cannot mint credit. |

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile, writeFile, mkdir, mkdtemp, copyFile, symlink, rm, realpath } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, mkdtemp, copyFile, symlink, rm, realpath, lstat } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { resolve, dirname, relative } from 'node:path';
@@ -35,7 +35,10 @@ try {
   }
   // Build tools and declarations come from the public lockfile; runtime modules
   // above come only from the included source package, never a Receiz checkout.
-  for (const name of ['typescript', '@types', 'react', '@receiz/ai-skills']) await link(resolve(bank, 'node_modules', name), resolve(source, 'node_modules', name));
+  for (const name of ['typescript', '@types', 'react', '@receiz/ai-skills']) {
+    const path = resolve(source, 'node_modules', name);
+    if (!await lstat(path).catch(() => null)) await link(resolve(bank, 'node_modules', name), path);
+  }
   const common = { absWorkingDir: source, bundle: true, format: 'esm', platform: 'browser', target: 'es2022', minify: true, treeShaking: true, external: ['node:*'], write: false, metafile: true, legalComments: 'inline' };
   const notes = await build({ ...common, entryPoints: ['app/lib/wallet/bankNotes/browser.ts'], alias: { '@': source }, outfile: resolve(bank, 'public/native/offline-notes.v129.mjs'), banner: { js: '/*! Receiz Bank Offline Notes — composed from Receiz v129 native primitives. Generated; do not edit. */' } });
   const notesBytes = notes.outputFiles[0].contents;
@@ -47,7 +50,21 @@ try {
   else assert.deepEqual(inputList, manifest.notesInputs, 'Native input closure differs.');
   if (refreshComposition) await writeFile(notesManifestPath, JSON.stringify({ ...notesManifest, moduleSha256: hash(notesBytes), sourceTreeSha256: hash(JSON.stringify(inputList)), inputs: inputList.length, bytes: notesBytes.length, applicationPatches: manifest.applicationPatches ?? [] }, null, 2) + '\n');
 
-  const receiver = await build({ ...common, entryPoints: [resolve(bank, 'institution/receiver-verifier.entry.mjs')], alias: { 'receiz-native-note-account-deposit': resolve(source, 'app/lib/wallet/bankNotes/accountDeposit.ts'), 'receiz-native-note-image': resolve(source, 'app/lib/wallet/bankNotes/noteImage.ts'), 'receiz-native-note-source': resolve(source, 'app/lib/wallet/bankNotes/fundedNote.ts'), 'receiz-native-note-credit': resolve(source, 'app/lib/wallet/bankNotes/credit.ts'), 'receiz-native-note-compression': resolve(source, 'app/lib/wallet/bankNotes/compression.ts'), '@': source }, outfile: resolve(bank, 'public/native/receiver-verifier.v129.mjs'), sourcemap: 'external', sourcesContent: true, banner: { js: '/*! Reality-Grade Banking — read-only v129 receiver verifier. No funding, signing, custody consumption or credit authority. Includes GPL-3.0 snarkjs/ffjavascript components: see /native/licenses/README.md and the adjacent complete source map. Distribution licensing review remains required. */' } });
+  const publication = await build({ ...common, entryPoints: ['app/lib/profile/showcase/connectedAssetPublication.client.ts'], alias: { '@': source }, outfile: resolve(bank, 'public/native/asset-publication.v129.mjs'), banner: { js: '/*! Receiz Bank Public Originals — exact v129 Showcase source admission, custody and public projection. Generated; do not edit. */' } });
+  const publicationBytes = publication.outputFiles[0].contents;
+  const publicationManifestPath = resolve(bank, 'public/native/asset-publication.v129.manifest.json');
+  const publicationInputs = await Promise.all(Object.keys(publication.metafile.inputs).sort().map(async path => ({ path: relative(source, resolve(source, path)), sha256: hash(await readFile(resolve(source, path))) })));
+  const publicationManifest = JSON.parse(await readFile(publicationManifestPath, 'utf8').catch(() => '{}'));
+  if (refreshComposition) {
+    manifest.assetPublicationInputs = publicationInputs;
+    await writeFile(resolve(bank, 'native/manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+    await writeFile(publicationManifestPath, JSON.stringify({ ...publicationManifest, schema: 'bankeiz.native-asset-publication.v129', receizVersion: manifest.receizVersion, entry: 'app/lib/profile/showcase/connectedAssetPublication.client.ts', moduleSha256: hash(publicationBytes), sourceTreeSha256: hash(JSON.stringify(publicationInputs)), inputs: publicationInputs.length, bytes: publicationBytes.length, applicationPatches: manifest.applicationPatches ?? [] }, null, 2) + '\n');
+  } else {
+    assert.equal(hash(publicationBytes), publicationManifest.moduleSha256, 'Public Original composition rebuild differs.');
+    assert.deepEqual(publicationInputs, manifest.assetPublicationInputs, 'Public Original input closure differs.');
+  }
+
+  const receiver = await build({ ...common, entryPoints: [resolve(bank, 'institution/receiver-verifier.entry.mjs')], alias: { 'receiz-native-connected-note': resolve(source, 'app/lib/wallet/bankNotes/connectedNote.ts'), 'receiz-native-connected-note-image': resolve(source, 'app/lib/wallet/bankNotes/connectedNoteImage.ts'), 'receiz-native-note-account-deposit': resolve(source, 'app/lib/wallet/bankNotes/accountDeposit.ts'), 'receiz-native-note-image': resolve(source, 'app/lib/wallet/bankNotes/noteImage.ts'), 'receiz-native-note-source': resolve(source, 'app/lib/wallet/bankNotes/fundedNote.ts'), 'receiz-native-note-credit': resolve(source, 'app/lib/wallet/bankNotes/credit.ts'), 'receiz-native-note-compression': resolve(source, 'app/lib/wallet/bankNotes/compression.ts'), '@': source }, outfile: resolve(bank, 'public/native/receiver-verifier.v129.mjs'), sourcemap: 'external', sourcesContent: true, banner: { js: '/*! Reality-Grade Banking — read-only v129 receiver verifier. No funding, signing, custody consumption or credit authority. Includes GPL-3.0 snarkjs/ffjavascript components: see /native/licenses/README.md and the adjacent complete source map. Distribution licensing review remains required. */' } });
   const receiverBytes = receiver.outputFiles.find(file => file.path.endsWith('.mjs')).contents;
   const receiverManifest = JSON.parse(await readFile(resolve(bank, 'public/native/receiver-verifier.v129.manifest.json'), 'utf8'));
   if (!refreshComposition) assert.equal(hash(receiverBytes), receiverManifest.moduleSha256, 'Receiver rebuild differs.');
@@ -83,7 +100,7 @@ try {
   }
   if (process.argv.includes('--output')) {
     const output = resolve(process.argv[process.argv.indexOf('--output') + 1]); await mkdir(output, { recursive: true });
-    await writeFile(resolve(output, 'offline-notes.v129.mjs'), notesBytes); await writeFile(resolve(output, 'receiver-verifier.v129.mjs'), receiverBytes); await writeFile(resolve(output, 'receiver-verifier.v129.mjs.map'), JSON.stringify(map));
+    await writeFile(resolve(output, 'offline-notes.v129.mjs'), notesBytes); await writeFile(resolve(output, 'asset-publication.v129.mjs'), publicationBytes); await writeFile(resolve(output, 'receiver-verifier.v129.mjs'), receiverBytes); await writeFile(resolve(output, 'receiver-verifier.v129.mjs.map'), JSON.stringify(map));
   }
   console.log('Exact native modules, normalized source map, SDK sealing core, Kai worker and canonical generated seams rebuilt from included sources. No Receiz checkout or network used.');
 } catch (error) {
