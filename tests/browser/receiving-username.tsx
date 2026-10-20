@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LiveReceive } from '../../src/features/account/LivePayments';
 import type { OpenIdentity } from '../../src/receiz/native-identity';
+import '../../src/styles/tokens.css';
+import '../../src/styles/app.css';
 import '../../src/styles/features.css';
 
 let resolveUsername: (username: string) => void;

@@ -29,7 +29,7 @@ it('generates the bank QR and writes only the public request URL to NFC on expli
   const host = document.createElement('div'), root = createRoot(host);
   try { act(() => root.render(<LiveReceive identity={{ username:'fixture_user', binding: { identityOwnerReceizId: 'receiz_device_fixture', artifactOwnerReceizId: 'test-public-coordinate' },walletReceivingAddress:()=> '10000000-0000-4000-8000-000000000002' } as OpenIdentity} />));
     expect(host.querySelector('svg[aria-label="Your payment QR"]')).not.toBeNull(); expect(write).not.toHaveBeenCalled();
-    expect(host.querySelector('.payment-link')!.textContent).toBe('fixture_user');
+    expect(host.querySelector<HTMLAnchorElement>('.payment-link')!.href).toBe('https://bankeiz.com/?to=fixture_user');
     await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Set up NFC tag'))!.click());
     expect(write.mock.calls[0][0]).toEqual({ records: [{ recordType: 'url', data: 'https://bankeiz.com/?to=fixture_user' }] });
     expect(host.textContent).toContain('Tag ready.');
@@ -42,6 +42,18 @@ it('a scanned/shared request preloads the in-bank form without auto-executing a 
     expect(host.textContent).toContain('Review payment'); expect(host.querySelector('a[href*="receiz.com/wallet"]')).toBeNull(); expect(host.textContent).not.toContain('Value sent');
   } finally { act(() => root.unmount()); }
 });
+it('shares a clickable username link through the clipboard fallback and preserves the requested amount for Send',async()=>{
+ const host=document.createElement('div'),root=createRoot(host),copy=vi.fn().mockResolvedValue(undefined);vi.stubGlobal('navigator',{clipboard:{writeText:copy}});
+ try{
+  await act(async()=>root.render(<LiveReceive identity={{username:'klok'}as OpenIdentity}/>));
+  const field=host.querySelector<HTMLInputElement>('input[aria-label="Request amount (optional)"]')!;
+  await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(field,'12.30');field.dispatchEvent(new Event('input',{bubbles:true}));});
+  const url=host.querySelector<HTMLAnchorElement>('.payment-link')!.href;expect(url).toBe('https://bankeiz.com/?to=klok&amount=12.30');
+  await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Share payment request')!.click());expect(copy).toHaveBeenLastCalledWith(url);
+  await act(async()=>root.render(<LiveSend wallet={null} initialRequest={parsePaymentRequest(url)} onClose={()=>{}}/>));
+  expect(host.querySelector<HTMLInputElement>('[placeholder="Receiz ID or public username"]')!.value).toBe('klok');expect(host.querySelector<HTMLInputElement>('[aria-label="Amount to send"]')!.value).toBe('12.30');expect(host.textContent).toContain('Review payment');expect(host.textContent).not.toContain('Money sent');
+ }finally{act(()=>root.unmount());}
+});
 it('a provider return is only an exact session signal, never payment proof', () => {
   expect(readCardReturn('?cardReturn=1&session_id=cs_test_12345678')).toBe('cs_test_12345678');
   expect(readCardReturn('?cardReturn=1&session_id=not-a-session')).toBeNull();
@@ -52,7 +64,7 @@ it('routes its generated Receive link through the request parser to the exact Wa
   const host=document.createElement('div'),root=createRoot(host),transfer=vi.fn();
   try{
     await act(async()=>root.render(<LiveReceive identity={{username:'fixture_user',walletReceivingAddress:()=>recipient,binding:{artifactOwnerReceizId:'unroutable-proof-owner'}} as OpenIdentity}/>));
-    const request=parsePaymentRequest(host.querySelector('.payment-link')!.textContent!);
+    const request=parsePaymentRequest(host.querySelector<HTMLAnchorElement>('.payment-link')!.href);
     const api=createWalletSend({ownerReceizId:'synthetic',assertOpen(){},assertNoOtherPending:async()=>{},lock:async f=>f(),store:{read:async()=>null,write:async()=>{}},connect:async()=>({accountUid:sender,client:{connect:{transfer},request:async(path)=>{
       if(path==='/api/chat/users/search?q=fixture_user')return{ok:true,users:[{kind:'user',username:'fixture_user',userId:recipient}]};expect(path).toBe('/api/connect/transfers?amountUsd=10.00');return{ok:true,senderUserId:sender,quote:{amountUsdCents:'1000',amountPhiMicro:'10000000',usdPerPhiMicrocents:'100000000',settledUsdCents:'250',ecosystemUsdCents:'750',fundingRule:'settled_first_then_phi'}};
     }}})});
@@ -64,8 +76,9 @@ it('keeps available account balances out of the Send entry form',async()=>{const
 it('uses the current public username for the Receive ID, QR and copied address instead of the Wallet UUID',async()=>{
  const host=document.createElement('div'),root=createRoot(host),copy=vi.fn().mockResolvedValue(undefined);vi.stubGlobal('navigator',{clipboard:{writeText:copy}});
  try{act(()=>root.render(<LiveReceive identity={{accountUsername:()=> 'Klok',username:'old_name',walletReceivingAddress:()=> '10000000-0000-4000-8000-000000000002'}as OpenIdentity}/>));
- expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('klok');expect(host.textContent).not.toContain('.receiz.id');expect(host.querySelector('.payment-link')?.textContent).toBe('klok');expect(host.textContent).not.toContain('10000000-0000-4000-8000-000000000002');
+ expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('klok');expect(host.textContent).not.toContain('.receiz.id');expect(host.querySelector<HTMLAnchorElement>('.payment-link')?.href).toBe('https://bankeiz.com/?to=klok');expect(host.textContent).not.toContain('10000000-0000-4000-8000-000000000002');
  await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Copy Receiz ID')!.click());expect(copy).toHaveBeenCalledWith('klok');
+ await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Copy payment link"]')!.click());expect(copy).toHaveBeenLastCalledWith('https://bankeiz.com/?to=klok');
  }finally{act(()=>root.unmount());}
 });
 it('waits for a new account’s confirmed public username and uses the assigned name for QR, copy and share',async()=>{
@@ -76,10 +89,10 @@ it('waits for a new account’s confirmed public username and uses the assigned 
  try{
   await act(async()=>root.render(<LiveReceive identity={identity}/>));expect(prepare).toHaveBeenCalledOnce();expect(host.querySelector('.receiving-coordinate')?.textContent).toContain('Preparing');expect(host.querySelector('svg[aria-label="Your payment QR"]')).toBeNull();
   await act(async()=>finish('assigned_collision_2'));
-  expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('assigned_collision_2');expect(host.querySelector('.payment-link')?.textContent).toBe('assigned_collision_2');
-  expect(host.querySelector('.payment-qr path')?.getAttribute('d')).toBe(paymentQrPath(paymentQr('assigned_collision_2')));
+  expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('assigned_collision_2');expect(host.querySelector<HTMLAnchorElement>('.payment-link')?.href).toBe('https://bankeiz.com/?to=assigned_collision_2');
+  expect(host.querySelector('.payment-qr path')?.getAttribute('d')).toBe(paymentQrPath(paymentQr('https://bankeiz.com/?to=assigned_collision_2')));
   await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Copy Receiz ID')!.click());expect(copy).toHaveBeenCalledWith('assigned_collision_2');
-  await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Share Receiz ID')!.click());expect(share).toHaveBeenCalledWith({title:'Receiz ID',text:'assigned_collision_2'});
+  await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Share payment link')!.click());expect(share).toHaveBeenCalledWith({title:'Payment link',url:'https://bankeiz.com/?to=assigned_collision_2'});
   await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Set up NFC tag')!.click());expect(write.mock.calls[0][0]).toEqual({records:[{recordType:'url',data:'https://bankeiz.com/?to=assigned_collision_2'}]});
   expect(host.textContent).not.toContain('receiz_123456789012345678');expect(host.textContent).not.toContain('10000000-0000-4000-8000-000000000002');
  }finally{act(()=>root.unmount());delete(window as unknown as {NDEFReader?:unknown}).NDEFReader;}
