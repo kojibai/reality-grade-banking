@@ -1,5 +1,6 @@
 import type { ReceizIdentityAccountProjection } from '@receiz/sdk';
-import { mergePublicRecords, parsePublicNetworkPage, type PublicRecord } from './public-network';
+import { mergePublicRecords, type PublicRecord } from './public-network';
+import {projectAccountHistoryRecords} from './account-history-direction';
 import {calculateWalletFundingAttributions,walletAttributionFitsRecord} from './ledger-wallet-fifo';
 function object(value: unknown): Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 export interface PersonalHistory { records: PublicRecord[]; completeAtSealedHead: boolean; available: boolean; awaitingAccountBinding?: boolean; }
@@ -34,7 +35,7 @@ export function projectPersonalHistory(projection: ReceizIdentityAccountProjecti
   const representedLedgerIds = new Set(activityRows.filter(row => row.kind === 'wallet_ledger_entry' && typeof row.id === 'string' && row.id.startsWith('wallet_ledger:')).map(row => String(row.id).slice('wallet_ledger:'.length)));
   const legacyRows = walletRows.filter(row => !representedLedgerIds.has(String(row.id)));
   const byTransfer=new Map(Array.isArray(ledgerEntries)?ledgerEntries.flatMap(raw=>{const row=object(raw),attribution=attributions.get(String(row.id));return row.direction==='debit'&&typeof row.chat_transfer_id==='string'&&attribution?[[row.chat_transfer_id,attribution]as const]:[];}):[]);
-  return { records: mergePublicRecords(parsePublicNetworkPage('actions', { ok: true, actions: actionRows }).records, mergePublicRecords(parsePublicNetworkPage('wallet', { ok: true, events: [...legacyRows, ...transferRows] }).records, parsePublicNetworkPage('wallet', { ok: true, events: activityRows }).records)).map(record=>{const attribution=record.source==='wallet'?(attributions.get(record.sourceId.replace(/^wallet_ledger:/,''))??byTransfer.get(record.evidence.transferId??record.sourceId.replace(/^transfer:/,''))):undefined;
+  return { records: mergePublicRecords(projectAccountHistoryRecords('actions',actionRows,String(account.userId)), mergePublicRecords(projectAccountHistoryRecords('wallet',[...legacyRows, ...transferRows],String(account.userId)), projectAccountHistoryRecords('wallet',activityRows,String(account.userId)))).map(record=>{const attribution=record.source==='wallet'?(attributions.get(record.sourceId.replace(/^wallet_ledger:/,''))??byTransfer.get(record.evidence.transferId??record.sourceId.replace(/^transfer:/,''))):undefined;
    const bound=attribution&&walletAttributionFitsRecord(attribution,record,byTransfer.has(record.evidence.transferId??''));
    return {...record,authority:'account-source-projection',origin:'identity-carried',...(bound?{details:{...record.details,fundingAttribution:attribution as unknown as NonNullable<PublicRecord['details']>,...(record.evidence.transferId?{fundingTransferId:record.evidence.transferId}:{})}}:{})};}), available: true, completeAtSealedHead: projection.completeAtSealedHead };
 }

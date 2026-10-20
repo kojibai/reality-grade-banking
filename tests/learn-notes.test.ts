@@ -2,8 +2,17 @@ import { expect, it } from 'vitest';
 // @ts-expect-error Static public-page templates are plain ESM.
 import { learnHome, learnArticle } from '../scripts/learn-template.mjs';
 import {noteContinuityGuideSections} from '../src/content/note-continuity.mjs';
+// @ts-expect-error Static public-page templates are plain ESM.
+import {realityGradeContent} from '../scripts/reality-grade-page.mjs';
 
 const escape = (value: string) => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;');
+it('shows one combined Note specimen on Reality-Grade Banking',()=>{
+ const html=realityGradeContent(),art=html.match(/<div class="reality-note-art reveal">(.*?)<\/figure><\/div>/s)![1];
+ expect(art.match(/<img /g)).toHaveLength(1);
+ expect(art).toContain('/learn/settlement-reserve-note.webp');
+ expect(art).toContain('Proof-backed Native value');
+ expect(art).toContain('Unissued specimen');
+});
 it('keeps the note artwork off the Learn home and within the Settlement and Reserve guide', () => {
   const guide = { slug: 'reserve-and-settlement', title: 'Settlement and Reserve', intro: 'Value, settled in proof.', sections: [['How notes work', 'Keep the original.']] };
   expect(learnHome()).not.toContain('src="/learn/reserve-note.webp"');

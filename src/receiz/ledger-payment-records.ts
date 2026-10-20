@@ -1,12 +1,37 @@
 import type {PublicRecord} from './public-network';
 import {readWalletFundingAttribution,walletAttributionFitsRecord} from './ledger-wallet-fifo';
+const activityTitles:Record<string,string>={
+ market_buy:'Asset Purchase',market_sell:'Asset Sale',
+ sports_pack_purchase:'Pack Purchase',signal_pack_purchase:'Pack Purchase',signal_card_reward_seal:'Collectible Created',
+ prediction_wager:'Prediction Placed',prediction_payout:'Prediction Payout',prediction_refund:'Prediction Refund',
+ note_mint:'Note Created',note_claim:'Note Deposited',
+ chat_transfer_send:'Money Sent',chat_transfer_receive:'Money Received',admin_adjustment:'Balance Adjustment',
+};
+const fundingTitles:Record<string,string>={
+ bank_connected_note_allocate:'Note Created',bank_connected_note_cancel:'Note Refunded',bank_connected_note_redeem:'Note Deposited',
+ stripe_checkout_wallet_deposit:'Money Added',stripe_checkout_connect_payment:'Payment Received',stripe_checkout_profile_original_download:'Download Sale',
+ sports_arena_pack_purchase:'Pack Purchase',signal_run_pack_purchase:'Pack Purchase',signal_run_rewarded_card_seal:'Collectible Created',
+ sigil_upload_claim:'Asset Deposited',profile_rollup_seed:'Opening Balance',
+};
 export function ledgerPaymentRole(record:PublicRecord):'movement'|'execution'|null{
  if(record.kind==='wallet.transfer.connect')return 'execution';
  return record.source==='wallet'&&['chat_transfer','transfer'].includes(record.kind)?'movement':null;
 }
 export function ledgerRecordTitle(record:PublicRecord){
  const role=ledgerPaymentRole(record);
- return role==='movement'?'Money transfer':role==='execution'?'Delegated wallet transfer':record.title;
+ const flow=record.authority==='account-source-projection'?record.accountFlow:undefined;
+ if(role==='movement')return flow==='in'?'Money Received':flow==='out'?'Money Sent':'Money Transfer';
+ if(role==='execution')return 'Delegated Wallet Transfer';
+ if(record.source==='wallet'){
+  const origin=record.details?.fundingOrigin,source=origin&&typeof origin==='object'&&!Array.isArray(origin)?origin.source:undefined;
+  if(typeof source==='string'&&fundingTitles[source])return fundingTitles[source];
+  const kind=record.kind==='wallet_ledger_entry'?record.details?.ledgerEntryKind:record.kind;
+  if(typeof kind==='string'&&activityTitles[kind])return activityTitles[kind];
+  if(record.kind==='reserve_credit')return record.details?.reserveCreditKind==='payment'?'Payment Received':record.details?.reserveCreditKind==='paid_download'?'Download Sale':'Money Added';
+  if(/^(sports|signal)_card_transfer$/.test(record.kind))return flow==='in'?'Collectible Received':flow==='out'?'Collectible Sent':'Collectible Transfer';
+  if(record.kind==='wallet_ledger_entry'||record.kind==='credit'||record.kind==='debit')return 'Balance Update';
+ }
+ return record.title;
 }
 const references=new WeakMap<PublicRecord,string|null>();
 /** Exact native FK only. A retained public Wallet witness may carry its

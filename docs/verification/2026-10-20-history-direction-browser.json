@@ -1,0 +1,143 @@
+{
+  "labels": [
+    "Money Sent",
+    "Money Received"
+  ],
+  "amounts": [
+    "−$1.00",
+    "+$125.00"
+  ],
+  "received": [
+    "Money Received"
+  ],
+  "sent": [
+    "Money Sent"
+  ],
+  "afterFilters": [],
+  "execution": 1,
+  "layouts": [
+    {
+      "width": 320,
+      "scroll": 320,
+      "maxRight": 301
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "maxRight": 371
+    },
+    {
+      "width": 430,
+      "scroll": 430,
+      "maxRight": 391
+    }
+  ],
+  "storage": "PASS\nExact private source reopens\nPrivate source is encrypted under non-exportable key\nExact read-only observation retained\nFast paint binds exact source\nDerived protected transport retained encrypted under the same original\nTransport retention preserves exact identity and existing account observation\nExact private source retained\nLegacy complete history reopens under its original encryption key\nOlder encrypted history derives incoming direction from its retained bound source page without a network read\nEncrypted private history reopens for the bound account\nConcurrent history writes preserve complete original pages and financial fields\nComplete originals larger than one cache blob reopen without dropping bytes\nCurrent-key corruption cannot fall back to an older cache or become empty success\nA suspended reader follows the current snapshot when another tab replaces display chunks\nByte-bounded display chunks preserve all wide records and their complete originals\nPrivate history never opens under another account\nOnly one concurrent card start retained\nUnknown attempt survives reopening\nLate terminal result cannot erase a newer attempt\nOne distinct replacement wins across concurrent tabs\nKnown checkout retained encrypted when entering a new amount\nUnresolved creating attempt cannot be replaced\nResolving an older checkout preserves the newer attempt\nLate protected transport cannot recreate a removed identity\nLate observation cannot resurrect removed custody\nFormer source refused under replaced identity\nReimport never presents history encrypted under the removed key\nReimport of the same Identity Seal can retain fresh activity",
+  "art": [
+    {
+      "src": "/learn/settlement-reserve-note.webp",
+      "loaded": true,
+      "alt": "Unissued $100 Settlement Reserve Note specimen with Proof-backed Native value and denomination in all four corners"
+    }
+  ],
+  "noteLayouts": [
+    {
+      "width": 320,
+      "scroll": 320,
+      "art": {
+        "x": 28,
+        "y": 405.1128845214844,
+        "width": 264,
+        "height": 158.39065551757812,
+        "top": 405.1128845214844,
+        "right": 292,
+        "bottom": 563.5035400390625,
+        "left": 28
+      },
+      "caption": {
+        "x": 28,
+        "y": 587.671875,
+        "width": 264,
+        "height": 30.59375,
+        "top": 587.671875,
+        "right": 292,
+        "bottom": 618.265625,
+        "left": 28
+      }
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "art": {
+        "x": 28,
+        "y": 348.5099792480469,
+        "width": 334,
+        "height": 200.39065551757812,
+        "top": 348.5099792480469,
+        "right": 362,
+        "bottom": 548.900634765625,
+        "left": 28
+      },
+      "caption": {
+        "x": 28,
+        "y": 573.078125,
+        "width": 334,
+        "height": 30.59375,
+        "top": 573.078125,
+        "right": 362,
+        "bottom": 603.671875,
+        "left": 28
+      }
+    },
+    {
+      "width": 430,
+      "scroll": 430,
+      "art": {
+        "x": 28,
+        "y": 321.2287292480469,
+        "width": 374,
+        "height": 224.39065551757812,
+        "top": 321.2287292480469,
+        "right": 402,
+        "bottom": 545.619384765625,
+        "left": 28
+      },
+      "caption": {
+        "x": 28,
+        "y": 569.796875,
+        "width": 374,
+        "height": 30.59375,
+        "top": 569.796875,
+        "right": 402,
+        "bottom": 600.390625,
+        "left": 28
+      }
+    },
+    {
+      "width": 1280,
+      "scroll": 1280,
+      "art": {
+        "x": 661.421875,
+        "y": -1119.8743896484375,
+        "width": 554.5625,
+        "height": 332.734375,
+        "top": -1119.8743896484375,
+        "right": 1215.984375,
+        "bottom": -787.1400146484375,
+        "left": 661.421875
+      },
+      "caption": {
+        "x": 661.421875,
+        "y": -762.953125,
+        "width": 554.5625,
+        "height": 34,
+        "top": -762.953125,
+        "right": 1215.984375,
+        "bottom": -728.953125,
+        "left": 661.421875
+      }
+    }
+  ],
+  "reduced": "none",
+  "errors": []
+}

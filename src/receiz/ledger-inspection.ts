@@ -29,7 +29,7 @@ function identity(raw:unknown):LedgerFields {
 }
 /** Selected public evidence only. Never retain arbitrary metadata or custody payloads. */
 export function readLedgerDetails(raw:unknown):LedgerFields {
- const source=object(raw),result=select(source,['sourceObservedAt','seq','actionScope','chakraDay','objectId','objectLabel','assetId','marketItemId','collectibleId','receizId','claimHash','noteId','sortKaiPulse','sortOrdinal','transactionLinkKind','fundingTransferId']);
+ const source=object(raw),result=select(source,['sourceObservedAt','seq','actionScope','chakraDay','objectId','objectLabel','assetId','marketItemId','collectibleId','receizId','claimHash','noteId','sortKaiPulse','sortOrdinal','transactionLinkKind','fundingTransferId','ledgerEntryKind','reserveCreditKind']);
  if(typeof source.proofHistoryArtifactDigest==='string'&&/^[a-f0-9]{64}$/.test(source.proofHistoryArtifactDigest))result.proofHistoryArtifactDigest=source.proofHistoryArtifactDigest;
  const proofHistory=ledgerProofHistoryFields(source);if(proofHistory)result.proofHistory=proofHistory;
  const causalLineage=ledgerCausalLineageFields(source);if(causalLineage)result.causalLineage=causalLineage;

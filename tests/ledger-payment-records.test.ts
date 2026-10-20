@@ -2,12 +2,12 @@ import {expect,it,vi} from 'vitest';
 import {parsePublicNetworkPage} from '../src/receiz/public-network';
 import {groupLedgerPaymentRecords,ledgerRecordTitle} from '../src/receiz/ledger-payment-records';
 const movement=(id='one',transferId='transfer-one',amount='100')=>parsePublicNetworkPage('wallet',{ok:true,events:[{id,kind:'chat_transfer',transferId,amountUsdCents:amount}]}).records[0];
-const execution=(id='execution',transferId='transfer-one',amount='100')=>parsePublicNetworkPage('actions',{ok:true,actions:[{id,actionKind:'wallet.transfer.connect',summary:'Delegated wallet transfer',transferId,amountUsdCents:amount}]}).records[0];
+const execution=(id='execution',transferId='transfer-one',amount='100')=>parsePublicNetworkPage('actions',{ok:true,actions:[{id,actionKind:'wallet.transfer.connect',summary:'Delegated Wallet Transfer',transferId,amountUsdCents:amount}]}).records[0];
 it('keeps the two exact records of one payment together without modifying or duplicating money',()=>{
  const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
  try{const value=movement(),action=execution(),original=JSON.stringify([action,value]);
  const groups=groupLedgerPaymentRecords([action,value]);expect(groups).toEqual([{record:value,executionRecords:[action]}]);
- expect(ledgerRecordTitle(value)).toBe('Money transfer');expect(ledgerRecordTitle(action)).toBe('Delegated wallet transfer');
+ expect(ledgerRecordTitle(value)).toBe('Money Transfer');expect(ledgerRecordTitle(action)).toBe('Delegated Wallet Transfer');
  expect(JSON.stringify([action,value])).toBe(original);expect(fetch).not.toHaveBeenCalled();
  }finally{vi.unstubAllGlobals();}
 });
@@ -19,7 +19,7 @@ it('never pairs records by amount, time, actor, title, or an ambiguous transfer 
 it('preserves separate payments and all original execution witnesses in their own group',()=>{
  const one=movement(),two=movement('two','transfer-two'),a=execution(),b=execution('retry'),c=execution('second','transfer-two');
  expect(groupLedgerPaymentRecords([c,one,a,two,b])).toEqual([{record:one,executionRecords:[a,b]},{record:two,executionRecords:[c]}]);
- expect(ledgerRecordTitle({...one,kind:'sports_card_transfer',title:'Card transferred'})).toBe('Card transferred');
+ expect(ledgerRecordTitle({...one,kind:'sports_card_transfer',title:'Card transferred'})).toBe('Collectible Transfer');
 });
 it('keeps the exact action transfer reference but excludes unrelated payload fields',()=>{
  const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'action',actionKind:'wallet.transfer.connect',payload:{transferId:'original-transfer',conversationId:'private-conversation',accessToken:'private-token'}}]}).records[0];
@@ -29,4 +29,17 @@ it('uses the original native foreign key already carried beneath a public Wallet
  const value=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'public',kind:'chat_transfer',transferId:'tx:public-alias',createdAt:'2026-05-03T00:00:00Z',amountUsdCents:'100',fundingTransferId:'tx:public-alias',fundingAttribution:{rule:'receiz-card-fifo-cent-intervals',basis:'calculated-attribution',walletDebitId:'debit',transferId:'native-original',amountUsdCents:'100',occurredAt:'2026-05-03T00:00:00.1Z',parts:[{rail:'reserve',amountUsdCents:'100',sources:[{sourceId:'deposit',amountUsdCents:'100',offsetUsdCents:'0',creditAmountUsdCents:'100',occurredAt:'2026-05-01T00:00:00Z'}]}]}}]}).records[0];
  const action=execution('native-action','native-original');expect(groupLedgerPaymentRecords([value,action])).toEqual([{record:value,executionRecords:[action]}]);
  expect(groupLedgerPaymentRecords([{...value,details:{...value.details,fundingTransferId:'wrong-binding'}},action])).toHaveLength(2);
+});
+it('names Wallet activity by its actual recorded purpose rather than its database record type',()=>{
+ const title=(row:Record<string,unknown>)=>ledgerRecordTitle(parsePublicNetworkPage('wallet',{ok:true,events:[{id:'event',kind:'wallet_ledger_entry',...row}]}).records[0]);
+ for(const [kind,label] of Object.entries({market_buy:'Asset Purchase',market_sell:'Asset Sale',sports_pack_purchase:'Pack Purchase',signal_pack_purchase:'Pack Purchase',prediction_wager:'Prediction Placed',prediction_payout:'Prediction Payout',prediction_refund:'Prediction Refund',signal_card_reward_seal:'Collectible Created'}))expect(title({ledgerEntryKind:kind})).toBe(label);
+ expect(title({ledgerEntryKind:'future_kind'})).toBe('Balance Update');
+ expect(title({ledgerEntryKind:'admin_adjustment',metadata:{source:'bank_connected_note_allocate'}})).toBe('Note Created');
+ expect(title({ledgerEntryKind:'note_claim',metadata:{source:'bank_connected_note_cancel'}})).toBe('Note Refunded');
+ expect(title({kind:'note_claim'})).toBe('Note Deposited');
+ expect(title({kind:'note_mint'})).toBe('Note Created');
+ expect(title({kind:'reserve_credit'})).toBe('Money Added');
+ expect(title({kind:'reserve_credit',reserveCreditKind:'payment'})).toBe('Payment Received');
+ const record=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'purchase',kind:'wallet_ledger_entry',ledgerEntryKind:'market_buy'}]}).records[0];
+ expect(record.kind).toBe('wallet_ledger_entry');expect(record.details?.ledgerEntryKind).toBe('market_buy');
 });

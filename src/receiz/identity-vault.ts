@@ -370,7 +370,26 @@ function privateHistoryKey(binding: { artifactSha256: string }, accountUid: stri
 }
 function validatePrivateHistoryCache(value: PrivateHistoryCache, accountUid: string) {
   if (value.schema !== 'bank.private-history-cache.v1' || value.accountUid !== accountUid || !Array.isArray(value.records) || value.records.length > 100000 || !Number.isFinite(Date.parse(value.observedAt)) || value.nextCursor !== null && !/^[A-Za-z0-9_-]{1,2048}$/.test(value.nextCursor)) throw Error('PRIVATE_HISTORY_CACHE_INVALID');
-  if (value.pages) validatePrivateLedgerPages(value.pages, accountUid);
+  if (value.pages) {
+    // Reuse the source-page validation already required on restore. This also
+    // upgrades older retained display rows without another read or parse.
+    const flows=new Map<string,import('./public-network').PublicRecord['accountFlow']>();
+    const flowConflicts=new Set<string>();
+    const purposes=new Map<string,{kind:string;ledgerEntryKind?:string;reserveCreditKind?:string}>();
+    validatePrivateLedgerPages(value.pages, accountUid,page=>{for(const record of page.records){
+      const purpose=purposes.get(record.id)??{kind:record.kind};
+      for(const key of ['ledgerEntryKind','reserveCreditKind'] as const)if(typeof record.details?.[key]==='string')purpose[key]=record.details[key];
+      purposes.set(record.id,purpose);
+      if(record.accountFlowConflict){flowConflicts.add(record.id);flows.set(record.id,undefined);}
+      if(!record.accountFlow)continue;
+      if(!flows.has(record.id))flows.set(record.id,record.accountFlow);
+      else if(flows.get(record.id)!==record.accountFlow){flows.set(record.id,undefined);flowConflicts.add(record.id);}
+    }});
+    value.records=value.records.map(record=>{
+      const purpose=purposes.get(record.id),details=purpose?.kind===record.kind?{...(purpose.ledgerEntryKind?{ledgerEntryKind:purpose.ledgerEntryKind}:{}),...(purpose.reserveCreditKind?{reserveCreditKind:purpose.reserveCreditKind}:{})}:{};
+      return {...record,...(flows.has(record.id)?{accountFlow:flows.get(record.id)}:{}),...(flowConflicts.has(record.id)?{accountFlowConflict:true as const}:{}),...(Object.keys(details).length?{details:{...record.details,...details}}:{})};
+    });
+  }
 }
 async function readPrivateHistoryRow(db: IDBDatabase, key: string): Promise<PrivateBankOperation | undefined> {
   return await new Promise((resolve, reject) => { const request = db.transaction('operations').objectStore('operations').get(key); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });

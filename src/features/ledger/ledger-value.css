@@ -4,3 +4,5 @@
 .ledger-value-inline{flex-flow:row wrap;justify-content:flex-end;align-items:baseline;column-gap:5px;row-gap:3px}
 .ledger-value-inline>.ledger-value-basis,.ledger-value-inline>.ledger-value-coordinate{flex-basis:100%;text-align:right;order:2}
 .ledger-value-inline>.ledger-value-coordinate{order:3}
+
+.ledger-flow-in>strong{color:#238565}

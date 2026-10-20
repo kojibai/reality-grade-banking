@@ -1,4 +1,5 @@
-import { parsePublicNetworkPage, type PublicRecord } from './public-network';
+import { type PublicRecord } from './public-network';
+import {projectAccountHistoryRecords} from './account-history-direction';
 export interface PrivateHistoryPage { accountUid: string; records: PublicRecord[]; nextCursor: string | null; origin: 'private-account'; sourceJson: string; }
 export function privateHistoryPath(cursor?: string): string {
   if (cursor !== undefined && !/^[A-Za-z0-9_-]{1,2048}$/.test(cursor)) throw new Error('PRIVATE_HISTORY_CURSOR_INVALID');
@@ -12,7 +13,7 @@ export function parsePrivateHistoryPage(input: unknown, accountUid: string): Pri
   if (value.ok !== true || !Array.isArray(value.events) || value.events.length > 100) throw new Error('PRIVATE_HISTORY_PAGE_INVALID');
   if (value.nextCursor !== null && (typeof value.nextCursor !== 'string' || !/^[A-Za-z0-9_-]{1,2048}$/.test(value.nextCursor))) throw new Error('PRIVATE_HISTORY_CURSOR_INVALID');
   const sourceJson = JSON.stringify(input); if (new TextEncoder().encode(sourceJson).length > 8 * 1024 * 1024) throw Error('PRIVATE_HISTORY_CAPACITY_EXCEEDED');
-  return { accountUid, sourceJson, records: parsePublicNetworkPage('wallet', value).records.map(record => ({ ...record, authority: 'account-source-projection', origin: 'private-account' })), nextCursor: value.nextCursor, origin: 'private-account' };
+  return { accountUid, sourceJson, records: projectAccountHistoryRecords('wallet',value.events,accountUid).map(record => ({ ...record, origin: 'private-account' })), nextCursor: value.nextCursor, origin: 'private-account' };
 }
 /** Bounded diagnostics only: never expose a private payload, token or account ID. */
 export function privateHistoryFailureCode(cause: unknown): string {
@@ -28,7 +29,7 @@ export function privateHistoryFailureCode(cause: unknown): string {
 export function appendPrivateLedgerPage(previous: readonly {cursor:string|null;json:string}[] | undefined,page:PrivateHistoryPage,cursor:string|null){
  const pages=[...(previous??[])];if(!pages.some(value=>value.json===page.sourceJson))pages.push({cursor,json:page.sourceJson});return pages;
 }
-export function validatePrivateLedgerPages(pages:unknown,accountUid:string):asserts pages is {cursor:string|null;json:string}[]{
+export function validatePrivateLedgerPages(pages:unknown,accountUid:string,onPage?:(page:PrivateHistoryPage)=>void):asserts pages is {cursor:string|null;json:string}[]{
  if(!Array.isArray(pages)||pages.length>100000)throw Error('PRIVATE_HISTORY_CACHE_INVALID');
- for(const page of pages){if(!page||typeof page.json!=='string'||page.cursor!==null&&(typeof page.cursor!=='string'||!/^[A-Za-z0-9_-]{1,2048}$/.test(page.cursor)))throw Error('PRIVATE_HISTORY_CACHE_INVALID');parsePrivateHistoryPage(JSON.parse(page.json),accountUid);}
+ for(const page of pages){if(!page||typeof page.json!=='string'||page.cursor!==null&&(typeof page.cursor!=='string'||!/^[A-Za-z0-9_-]{1,2048}$/.test(page.cursor)))throw Error('PRIVATE_HISTORY_CACHE_INVALID');const parsed=parsePrivateHistoryPage(JSON.parse(page.json),accountUid);onPage?.(parsed);}
 }

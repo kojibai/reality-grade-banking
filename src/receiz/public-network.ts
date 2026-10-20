@@ -14,6 +14,9 @@ export interface PublicRecord {
   sender?:string|null; recipient?:string|null; evidence: Record<string, string>; authority: 'public-source-projection' | 'account-source-projection'; origin?: 'identity-carried' | 'private-account';
   valueOperands?: LedgerValueOperands;
   details?: LedgerFields;
+  /** Account-relative display only; absent from public projections/receipts. */
+  accountFlow?:import('./account-history-direction').AccountHistoryFlow;
+  accountFlowConflict?:true;
 }
 export interface PublicNetworkPage { source: PublicSource; records: PublicRecord[]; nextCursor: string | null; total: string | null; complete: boolean; }
 /** Same public source projection used by the Ledger and standalone asset. */
@@ -59,7 +62,20 @@ export function parsePublicNetworkPage(source: PublicSource, input: unknown): Pu
     total: digits(rollup.count ?? rollup.totalLedgerEntries, 20), complete: nextCursor === null };
 }
 export function mergePublicRecords(known: readonly PublicRecord[], incoming: readonly PublicRecord[]): PublicRecord[] {
-  const records = new Map(known.map(item => [item.id, item])); for (const item of incoming) records.set(item.id, mergeTransferEvidence(records.get(item.id), item));
+  const records = new Map(known.map(item => [item.id, item])); for (const item of incoming) {
+    const previous=records.get(item.id);let merged=mergeTransferEvidence(previous,item);
+    if(previous?.authority==='account-source-projection'&&item.authority===previous.authority&&item.kind===previous.kind&&item.sourceId===previous.sourceId){
+      const conflict=previous.accountFlowConflict||item.accountFlowConflict||previous.accountFlow&&item.accountFlow&&previous.accountFlow!==item.accountFlow;
+      const flow=conflict?undefined:item.accountFlow??previous.accountFlow;
+      if(merged.accountFlow!==flow)merged={...merged,accountFlow:flow};
+      if(conflict)merged={...merged,accountFlowConflict:true};
+      for(const key of ['ledgerEntryKind','reserveCreditKind'] as const){
+        const before=previous.details?.[key],after=item.details?.[key];
+        if(typeof before==='string'&&after===undefined)merged={...merged,details:{...merged.details,[key]:before}};
+      }
+    }
+    records.set(item.id,merged);
+  }
   return [...records.values()].sort((left, right) => {
     const a = left.kaiUpulse ? BigInt(left.kaiUpulse) : left.pulse ? BigInt(left.pulse) * 1_000_000n : null;
     const b = right.kaiUpulse ? BigInt(right.kaiUpulse) : right.pulse ? BigInt(right.pulse) * 1_000_000n : null;
