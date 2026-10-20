@@ -87,7 +87,7 @@ has finite issuance or receiving resources, disclose them and preserve the
 held source on exhaustion. Do not advertise unlimited capacity, perpetual
 power, lossless recovery or an untested lifetime guarantee.
 
-## Device test and future accessory
+## Device test and platform integration requests
 
 The public [device evidence check](https://bankeiz.com/conformance/#device-evidence)
 is opt-in and nonfinancial. It creates a named test passkey and runs the
@@ -99,11 +99,22 @@ The reported iPhone test returned attestation `none`, backup flags Yes / Yes
 and counter `0 → 0`; PRF output did not establish irreversible consumption.
 See [the evidence record](iphone-offline-note-registration-v129.md).
 
-A future Bankeiz accessory is **coming soon**. There is no qualified product,
-price, order flow or supported-device promise in this release. A shipped
-accessory would need an accessible bridge, an admitted adapter, trust policy,
-independent real-device qualification and a safe migration of existing Notes.
-Possession of an accessory alone must not set a device's qualified status.
+Conformance directs users to the team that can expose the missing capability:
+Apple's Safari/WebKit and platform security teams for Safari on iPhone/iPad;
+the browser vendor and Chromium Web Authentication maintainers for
+Chromium-based browsers; or Mozilla's Firefox/Gecko team for Firefox. The
+browser team must involve OS or secure-component vendors where necessary.
+Users can include the public standard and their reviewed diagnostic export.
+The application does not send a report or private account evidence for them.
+
+Reporting channels: [WebKit](https://webkit.org/reporting-bugs/),
+[Chromium](https://www.chromium.org/for-testers/bug-reporting-guidelines/), and
+[Mozilla](https://bugzilla.mozilla.org/). These are integration requests,
+not a claim that the vendor endorses Receiz or already supports the primitive.
+The Conformance surface contains the exact request and no product teaser.
+Future device products are a separate project. Any later hardware integration
+still needs an admitted adapter, independent qualification and safe Note
+migration; installation alone never changes spend authority.
 
 ## Current implementation boundary
 

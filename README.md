@@ -68,8 +68,8 @@ the exact offline-receipt boundary, integration responsibilities and safe
 custody migration. The public [Conformance workspace](https://bankeiz.com/conformance/#note-continuity)
 contains the standard and opt-in device diagnostic. Connected Note consumption
 is not yet implemented by the current adapter; it remains a blocker in the
-[Bankeiz 1.0.0 release candidate](docs/releases/1.0.0.md). A future accessory is
-coming soon, with no qualified product or purchase offered in this release.
+[Bankeiz 1.0.0 release candidate](docs/releases/1.0.0.md). Conformance includes
+the exact platform integration request and responsible browser/vendor teams.
 
 ## Run locally
 

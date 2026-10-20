@@ -3,9 +3,12 @@
 export const noteContinuity = Object.freeze({
   connectedExecutionStatus: 'integration-required',
   connectedAvailability: 'Connected Note consumption is not enabled in the current integration. It must be implemented and independently qualified before a device without qualified local custody can send a Note through that path.',
-  accessoryStatus: 'coming-soon',
-  accessoryTitle: 'Extended device support',
-  accessoryDescription: 'A Bankeiz accessory is planned. Coming soon. Availability, compatible devices and qualification evidence will be published before purchase is offered. Existing Notes will require a verified custody transition; connecting an accessory alone will not change their spend authority.',
+  platformRequest: 'Please bring this browser and its device integration into conformance with the Receiz Note continuity standard for continuous offline sending. Expose protected, non-exportable custody with irreversible consumption of the exact predecessor, bound to the recipient, whole value and successor. Provide independently verifiable attestation and consumption evidence; restored state must not authorize a second spend, and interrupted execution must resolve the same original intent. Preserve origin/RP binding and user authorization. The full standard and device diagnostic are at https://bankeiz.com/conformance/#note-continuity .',
+  platformContacts: [
+    {title:'Safari and iPhone / iPad',team:'Apple’s Safari / WebKit and platform security teams',url:'https://webkit.org/reporting-bugs/',label:'WebKit reporting guidance'},
+    {title:'Chrome and Chromium-based browsers',team:'The browser’s platform security team and Chromium Web Authentication maintainers',url:'https://www.chromium.org/for-testers/bug-reporting-guidelines/',label:'Chromium reporting guidance'},
+    {title:'Firefox',team:'Mozilla’s Firefox / Gecko Web Authentication team',url:'https://bugzilla.mozilla.org/',label:'Mozilla Bugzilla'},
+  ],
   paths: [
     {id:'local',title:'Protected local consumption',body:'Qualified custody retires the previous Note head and binds its successor to the exact recipient and value. That protection permits continuous offline transfers without periodic server confirmation, within the implementation’s prepared capacity and trust policy.'},
     {id:'connected',title:'Connected consumption',body:'A device without qualified local custody can hold and verify a completed incoming Note offline. Its next send requires a connected Receiz operation that consumes the exact previous head once. Connectivity is needed for that transfer, rather than as a permanent device unlock.'},
@@ -36,5 +39,5 @@ export const noteContinuity = Object.freeze({
 
 export const noteContinuityGuideSections = [
   ['Using Notes offline', 'The continuity standard keeps one Note experience: create, receive, send and deposit. A completed incoming transfer can be held and verified offline when its original includes the required recipient and exclusive-consumption evidence. Qualified local custody can confirm the next send offline. Other devices require a connected consumption operation for that exact next transfer. A pending handoff is retained without being counted as spendable value.'],
-  ['Device integration and availability', 'Conformance depends on verified capabilities, rather than a device name. Protection may be exposed through a device, operating system or browser integration, but the actual implementation must pass its full custody assessment. The public device check is a nonfinancial diagnostic, not a qualification certificate. Connected Note consumption is not yet enabled in this integration. A future accessory is coming soon; no purchase or compatible-device promise is offered before qualification.'],
+  ['Device integration and availability', 'Conformance depends on verified capabilities, rather than a device name. Protection may be exposed through a device, operating system or browser integration, but the actual implementation must pass its full custody assessment. The public device check is a nonfinancial diagnostic, not a qualification certificate. If your browser does not expose the required protection, share the integration standard with its browser and platform security teams. The Conformance workspace identifies the responsible teams and provides the request to send. Connected Note consumption is not yet enabled in this integration.'],
 ];

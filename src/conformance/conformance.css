@@ -32,6 +32,8 @@
 .note-standard-details dt{font-size:14px;font-weight:550;color:#34506e}
 .note-standard-law{display:inline-block;margin-right:10px;font-size:10px;letter-spacing:.03em;font-weight:400;color:#60758e;font-variant-numeric:tabular-nums}
 .note-standard-details dd{margin-top:5px}
+.note-standard-details dd a{color:#254bd8;text-decoration:underline;text-underline-offset:3px}
+.note-standard-details blockquote{margin:18px 0 0;padding:15px 18px;border-left:2px solid #bac8db;background:#f6f8fb;font-size:13px;line-height:1.75;color:#34506e;overflow-wrap:anywhere;user-select:text}
 .note-standard-availability{margin:12px 0 23px;padding:20px;background:#f6f8fb;border:1px solid #e0e6ef;border-radius:6px}
 .note-standard-availability p{max-width:800px}
 .note-standard-links{display:flex;flex-wrap:wrap;gap:16px 26px;padding-top:19px;border-top:1px solid #d9e2ed}

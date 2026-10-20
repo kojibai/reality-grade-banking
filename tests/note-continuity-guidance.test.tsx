@@ -27,12 +27,16 @@ it('keeps optional guidance closed and starts no network request or device cerem
  }finally{act(()=>root.unmount());}
 });
 
-it('does not advertise the missing connected adapter or a future accessory as available',()=>{
+it('directs platform integration requests to the responsible teams without a product teaser',()=>{
  const host=document.createElement('div');
  host.innerHTML=renderToStaticMarkup(<NoteContinuityStandard/>);
  expect(host.querySelector('[data-note-execution-status]')?.getAttribute('data-note-execution-status')).toBe('integration-required');
  expect(host.querySelector('[data-note-execution-status]')?.textContent).toContain('not enabled');
- expect(host.querySelector('[data-note-accessory-status]')?.getAttribute('data-note-accessory-status')).toBe('coming-soon');
+ expect(host.textContent).not.toMatch(/coming soon|accessory|purchase/i);
+ expect(host.textContent).toContain('Apple');
+ expect(host.textContent).toContain('Chromium');
+ expect(host.textContent).toContain('Mozilla');
+ expect(host.querySelector('[data-note-integration-request]')?.textContent).toContain('exact predecessor');
  expect(host.querySelectorAll('button,input')).toHaveLength(0);
  expect(host.querySelector('a[href="#device-evidence"]')).not.toBeNull();
  expect(host.querySelector('a[href*="note-continuity-standard.md"]')).not.toBeNull();
