@@ -200,3 +200,64 @@ unchanged timeouts. The 390 × 844 isolated panel check removed Resume after a
 confirmed cancellation, retained Registration details and the unissued preview,
 had no horizontal overflow and reported no browser console errors. Its API
 outcome is synthetic; it does not enroll a credential or move value.
+
+## Isolated device evidence check
+
+`/conformance/#device-evidence` now offers an explicit, nonfinancial check of
+the browser's actual responses. It does not enroll an account, register Note
+custody, request allocation or write a Note checkpoint. Before enabling the
+check, it reads only local qualified-custody database metadata and the number
+of retained slots. Existing slots or unavailable metadata block the check.
+This is an additional local guard, not proof about other applications or
+browser profiles: the user must also confirm that the device holds no issued
+Offline Notes. Some authenticators share a counter across credentials.
+
+On a device with no issued Notes, the user can create the clearly named
+**Bankeiz device evidence test** passkey. The check requests direct platform
+attestation, required user verification, PRF and optional largeBlob support.
+Only that fresh credential is selected for up to two assertions, with required
+user verification and an exact SDK-generated challenge. The unmodified public
+v129 `runReceizOfflineNoteRollbackConformance` verifies signatures, RP/origin,
+backup flags and exact counter progression. Registration counter zero alone
+is not interpreted as an assertion result. No largeBlob write is requested.
+
+The downloadable diagnostic records registration format, browser-reported
+counter sequence, UV/backup flags, extension-support booleans and the bounded
+SDK result. It omits credential IDs, public keys, signatures, raw client data,
+challenges, PRF outputs and blob contents. Nothing is uploaded. A password
+manager may sync the newly created test passkey; the user can remove it later.
+Cancellation or navigation aborts pending credential requests. A successful
+counter check still reports `custodyQualified: false` and vendor attestation
+as unassessed. It is not a custody certificate or a current inventory proof.
+
+The actual iPhone assertion sequence remains unmeasured until the user runs
+this check on that phone. The existing screenshot already establishes a
+registration refusal for absent attestation and positive backup flags; this
+diagnostic does not override it or repair the older PWA checkpoint.
+
+Additional reviewed device signals do not fill that boundary:
+
+- Apple's [Private Access Tokens](https://developer.apple.com/videos/play/wwdc2022/10077/)
+  establish a device-validation result through an online attester and issuer.
+  They do not bind the Note custody key or attest retirement of its previous
+  head. This distinction is protocol analysis, not a captured phone token.
+- The current [WebKit local authenticator implementation](https://raw.githubusercontent.com/WebKit/WebKit/main/Source/WebKit/UIProcess/WebAuthentication/Cocoa/LocalAuthenticator.mm)
+  constructs authenticator data with a constant zero counter. That source is
+  not an assertion capture from this iPhone or proof of which authentication
+  implementation its installed build uses.
+- Native App Attest and managed attestation do not become consumer Safari
+  interfaces through PWA installation. PRF and largeBlob remain derivation
+  and storage interfaces rather than attested irreversible consumption.
+
+Verification: 269 files / 1,628 tests passed, including 13 new diagnostic and
+panel tests. The tests use real P-256 signatures and the actual v129 verifier,
+with only the physical WebAuthn boundary simulated. Zero, skipped and invalid
+assertion counters, backup flags, wrong credentials and altered signatures
+remain refused. A synthetic valid counter sequence passes only its limited
+test. Cancellation, retained-custody blocking and bounded export are covered.
+Both outcomes were also exercised in the full Conformance page with an
+explicitly synthetic browser provider. Its 390-pixel view had no horizontal
+overflow or console errors, and the JSON download contained no private key or
+credential material. The production build and offline/source/license checks
+passed. No real phone credential or financial operation was performed by the
+agent; the prepared credit activation and shared-writer gates remain unchanged.

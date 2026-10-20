@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Device evidence · synthetic provider</title></head><body><div id="fixture"></div><script type="module">
+import React from 'react';import{createRoot}from'react-dom/client';import ConformanceApp from'/src/conformance/ConformanceApp.tsx';import'/src/conformance/conformance.css';
+// Only this disposable fixture replaces the physical WebAuthn provider. The
+// production panel and actual v129 verifier run unchanged. No device passkey,
+// account, Note, server request or persistent key is created by this fixture.
+const encode=bytes=>btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const flags=new URLSearchParams(location.search).has('counter')?5:29,step=flags===5?1:0;
+const keys=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},false,['sign','verify']),spki=await crypto.subtle.exportKey('spki',keys.publicKey),id=new TextEncoder().encode('synthetic-device-evidence'),credentialId=encode(id);
+let counter=0;
+const extensions=()=>({prf:{enabled:true,results:{first:new Uint8Array(32).fill(89).buffer}},largeBlob:{supported:true,blob:null}});
+Object.defineProperty(window,'PublicKeyCredential',{configurable:true,value:{isUserVerifyingPlatformAuthenticatorAvailable:async()=>true,getClientCapabilities:async()=>({'extension:prf':true,'extension:largeBlob':true})}});
+Object.defineProperty(navigator,'credentials',{configurable:true,value:{
+ create:async options=>{const auth=new Uint8Array(37);auth[32]=flags;
+  const cbor=new Uint8Array([0xa3,0x63,0x66,0x6d,0x74,0x64,0x6e,0x6f,0x6e,0x65,0x67,0x61,0x74,0x74,0x53,0x74,0x6d,0x74,0xa0,0x68,0x61,0x75,0x74,0x68,0x44,0x61,0x74,0x61,0x58,0x25,...auth]);
+  const client=new TextEncoder().encode(JSON.stringify({type:'webauthn.create',origin:location.origin,challenge:encode(new Uint8Array(options.publicKey.challenge)),crossOrigin:false}));
+  return{type:'public-key',id:credentialId,rawId:id.buffer,authenticatorAttachment:'platform',response:{attestationObject:cbor.buffer,clientDataJSON:client.buffer,getPublicKey:()=>spki,getPublicKeyAlgorithm:()=>-7,getTransports:()=>['internal']},getClientExtensionResults:extensions};
+ },
+ get:async options=>{counter+=step;const auth=new Uint8Array(37);auth.set(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(location.hostname))));auth[32]=flags;new DataView(auth.buffer).setUint32(33,counter);
+  const client=new TextEncoder().encode(JSON.stringify({type:'webauthn.get',origin:location.origin,challenge:encode(new Uint8Array(options.publicKey.challenge)),crossOrigin:false})),signed=new Uint8Array(69);signed.set(auth);signed.set(new Uint8Array(await crypto.subtle.digest('SHA-256',client)),37);
+  const signature=await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},keys.privateKey,signed);
+  return{type:'public-key',id:credentialId,rawId:id.buffer,authenticatorAttachment:'platform',response:{authenticatorData:auth.buffer,clientDataJSON:client.buffer,signature},getClientExtensionResults:extensions};
+ }
+}});
+history.replaceState(null,'',location.pathname+location.search+'#device-evidence');
+createRoot(document.querySelector('#fixture')).render(React.createElement(React.Fragment,null,React.createElement('p',{style:{padding:'12px 20px',fontSize:13,borderBottom:'1px solid #d9e2ed'}},'Synthetic WebAuthn provider · actual v129 verification · no device credential or funds'),React.createElement(ConformanceApp)));
+</script></body></html>
