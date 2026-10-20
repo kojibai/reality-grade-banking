@@ -620,6 +620,13 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     localNoteInventory=inventory;
     const action=async<T,>(operation:()=>Promise<T>):Promise<T>=>{noteOpen();activeNoteOperations++;noteOperationEpoch++;try{return await operation();}finally{activeNoteOperations--;}};
     localNotes={savedNotes:async()=>[...await inventory.savedNotes(),...(await localConnectedNotes().savedNotes()).map(note=>({...note,consumption:'connection-required' as const}))],pending:notePending,inspect,receivedNotes:()=>localReceivedNotes().list(),
+      review:amount=>action(()=>withAccountExecutionLock(async()=>{
+        await assertNoteCreateState();const pending=await notePending();
+        if(pending){if(pending.amountUsdCents!==amount)throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');return{...pending,rail:pending.rail??'reserve'};}
+        if(navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
+        if(!BANK_CONNECTED_NOTE_ISSUANCE_ENABLED)throw Error('BANK_NOTE_SERVICE_UNAVAILABLE');
+        await connectedContext();return noteLock(()=>localConnectedNotes().review(amount));
+      })),
       prepareResources:count=>action(()=>withAccountExecutionLock(async()=>{await assertNoPendingWalletSend();return(await openNotesExecution()).prepareResources!(count);})),
       create:(amount,rail)=>action(()=>withAccountExecutionLock(async()=>{
         await assertNoteCreateState();
@@ -637,7 +644,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
           return noteLock(async()=>{await assertNoteCreateState();const result=await localConnectedNotes().create(amount,rail);return{...result,consumption:'connection-required' as const};});
         }
         if(!legacy&&navigator.onLine===false&&!BANK_PREPARED_NOTE_CREDIT_ENABLED)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
-        try{return await(await openNotesExecution()).create(amount,rail);}
+        try{return await(await openNotesExecution()).create(amount,rail??legacy?.rail);}
         catch(cause){await cancelRejectedNotePreparation(cause);throw cause;}
       })),
       cancelUnfunded:()=>action(()=>withAccountExecutionLock(async()=>{if(await localConnectedNotes().pending())return noteLock(()=>localConnectedNotes().cancelUnfunded());if(await inventory.preparedPending())throw Error('BANK_NOTE_PREPARED_RECOVERY_REQUIRED');return(await openNotesExecution()).cancelUnfunded();})),

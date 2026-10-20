@@ -1,10 +1,10 @@
 {
   "schema": "receiz.bank.native-runtime-build.v1",
   "version": "129.0.0",
-  "moduleSha256": "1527ad816276e1ed5277e5dbf06f37793398a00755cf26de9de7aa21463853f2",
-  "sourceTreeSha256": "efafe4807c7eedabf0e86a2ec9010bd8c283174c9c76e571dd9e7b1a130dda85",
+  "moduleSha256": "d61ed926bacbff5dd64e0c4ab240376b831263f1360864248517547059ef410e",
+  "sourceTreeSha256": "dd081625c3c94321c7c935470932f1d4e3953bc7e0f7213b9926262f8c0b81f2",
   "inputs": 300,
-  "bytes": 2316957,
+  "bytes": 2318437,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -373,6 +373,14 @@
       "sha256": "5fa004a2e54b9eb8677cdcf2884be89cf09f2567ad6772fb7783ad7adcddbd6b",
       "purpose": "Recover imported media from the complete source visible child inventory (ancestry carries sealed carriers only); require admitted custody and repair nested closure metadata before export-only reuse. Real cold runtime regressions verify direct, interrupted nested, completed-spool recovery, v2 successors and retry idempotency.",
       "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52"
+    },
+    {
+      "id": "bankeiz-composite-connected-notes-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/connectedNote.ts",
+      "baseSha256": "5dc94e9e3274eb5aa72225796430e6087963cd1a50f183a84ee3ddf2c3d28abc",
+      "sha256": "38e14bd4e5f5b9f94c9df05ef6a347aee0f1f81192b43e4c2a455391a4d6a81e",
+      "purpose": "Preserve the complete signed Reserve and Settlement funding split through the existing connected Note source, recipient-bound handover and exact credit. Qualified offline custody checks remain unchanged.",
+      "upstreamCommit": "78e49df11"
     }
   ]
 }

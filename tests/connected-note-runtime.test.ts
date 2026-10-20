@@ -9,7 +9,7 @@ function fixture(){
  const ports={uid:'account',keyId:'a'.repeat(64),assertOpen(){},
   read:async()=>structuredClone(state),write:async(next:unknown,previous:unknown)=>{expect(previous).toEqual(state);state=structuredClone(next);},
   retain:async(value:Uint8Array)=>{const ref=createHash('sha256').update(value).digest('hex');blobs.set(ref,value.slice());return ref;},restore:async(ref:string)=>blobs.get(ref)!.slice(),
-  prepare:async(amountUsdCents:string,rail:'reserve'|'settlement')=>{preparations++;return{noteId:'note',operationId:'b'.repeat(64),rail,amountUsdCents,authorization:{operationId:'b'.repeat(64),noteId:'note',amountUsdCents,rail},noteIdentityBytes:bytes('private-note-key-only-in-encrypted-custody')};},
+  prepare:async(amountUsdCents:string,rail:'reserve'|'settlement'='reserve')=>{preparations++;return{noteId:'note',operationId:'b'.repeat(64),rail,amountUsdCents,authorization:{operationId:'b'.repeat(64),noteId:'note',amountUsdCents,rail},noteIdentityBytes:bytes('private-note-key-only-in-encrypted-custody')};},
   issue:async(authorization:unknown,operationId:string,recoverFirst:boolean)=>{submissions++;requests.push({authorization,operationId,recoverFirst});if(lost)throw Error('RESPONSE_LOST');return{noteId:'note',rail:'reserve' as const,amountUsdCents:'200',amountPhiMicro:'1000000',sourceBytes:source,privateOpeningBytes:bytes('private-opening')};},
   inspect:async()=>({noteId:'note',rail:'reserve' as const,amountUsdCents:'200',amountPhiMicro:'1000000'}),
   handover:async(_source:Uint8Array,request:Uint8Array,key:Uint8Array)=>{expect(new TextDecoder().decode(key)).toContain('private-note-key');return bytes('signed-handover:'+new TextDecoder().decode(request));},

@@ -8,12 +8,12 @@ antirollback requirements of qualified continuous offline sending.
 
 ## One interface, explicit authority boundaries
 
-1. The account holder reviews a denomination and funding rail in Create Note.
-2. One native quote read supplies the exact wallet baseline, deterministic rate
+1. The account holder enters one amount in Create Note. Reserve is used first; Settlement covers only the remainder. No funding selector is presented. A split appears only when both contribute.
+2. One selected-account quote read supplies the exact wallet baseline, deterministic rate
    and Kai pulse. The Identity Seal signs the exact issue intent and a separate
    public Note authority. Its private Note key is retained only in the existing
    encrypted device vault, before submission.
-3. The existing native account writer verifies current account/key membership,
+3. The selected existing account writer verifies current account/key membership,
    the signed quote pulse and deterministic rate, expiry and account baseline.
    Under its existing account/global locks, it reserves the exact value once.
 4. Bank independently opens the complete canonical funding original and the
@@ -28,7 +28,7 @@ antirollback requirements of qualified continuous offline sending.
    receipt and retention, not evidence of irreversible consumption on a
    nonconforming sender.
 7. On connection, the receiver signs one exact claim, retained before POST.
-   The same native writer globally consumes the funded Note and applies credit
+   The same selected writer globally consumes the funded Note and applies credit
    atomically once. Changed recipients, competing claims and replay cannot mint
    another credit. Only the full verified native credit and private opening can
    mark the local queue confirmed. Reconciliation runs before account spending
@@ -46,8 +46,8 @@ Receiz account access and rail scopes. Bank proxies only this bounded route.
 
 | Action | Contract |
 | --- | --- |
-| Quote | GET with `intent=quote`. Returns the native account baseline, `quotePulse`, deterministic rate, `issuedAtMs` and five-minute `expiresAtMs`. No debit. |
-| Issue | POST `{action:"issue", authorization}`. The closed signed `receiz.bank.connected-note.issue.v1` basis includes profile, account UUID, issuer public key, Note authority public key, Note UUID, client nonce, rail, USD denomination, exact Settlement Phi where applicable, rate, quote pulse, expected balances and expiry. Its authority digest is the immutable operation ID. |
+| Quote | GET with `intent=quote`. Returns the selected account baseline, `quotePulse`, deterministic rate, `issuedAtMs` and five-minute `expiresAtMs`. No debit. |
+| Issue | POST `{action:"issue", authorization}`. The closed signed `receiz.bank.connected-note.issue.v1` basis includes profile, account UUID, issuer public key, Note authority public key, Note UUID, client nonce, rail, USD denomination, exact Settlement Phi or mandatory composite funding parts where applicable, rate, quote pulse, expected balances and expiry. Its authority digest is the immutable operation ID. |
 | Recover issue | GET with only `allocationId=<operationId>` in addition to origin. Returns that exact complete funding or cancellation source and private opening, or definite absence. |
 | Cancel | POST `{action:"cancel", authorization:<signed cancellation>}`. The native writer atomically records a permanent tombstone. A lost response, GET miss or local flag cannot abandon an issue. Published funding cannot be cancelled by this path. The returned cancellation is financially signed, sealed and independently verified. |
 | Claim | POST `{action:"claim", claim, source}`. The claim binds the exact full source SHA-256, handover digest, Note and receiver key/account. It is retained before entering submission. |
@@ -102,3 +102,17 @@ registered origins/scopes, current account membership, simultaneous claims,
 Reserve/Settlement conservation, lost replies, cancellation races and physical
 PWA offline receipt/reopen/reconnect. No live funds or public assets are created
 by the synthetic checks. Implementation and deployment are not qualification.
+
+## Automatic funding and continuous proof
+
+A Reserve-only allocation remains a Reserve Note with fixed original USD denomination. A Settlement-only allocation remains a Settlement Note with exact Phi; its printed dollars record value at creation. A composite allocation is a **Settlement Reserve Note**, captioned **Proof-backed Native value**. Its closed signed `fundingParts` contains Reserve USD/Phi and Settlement USD/Phi. Both components are positive and their totals must equal the admitted nominal cents and total Phi. A combined Note does not promise that its variable Settlement component retains a fixed dollar payout.
+
+The split is bound in the issue authorization, financial funding signature, original source, recipient-bound handover, private debit opening, once-only credit and private credit opening. Refunds preserve the original parts. A cancellation before allocation records a zero-refund tombstone, never an invented credit. Display labels confer no monetary authority.
+
+Fresh review reads one quote, without Note-key generation or a retained issue. Confirmation reuses that exact quote; expiration refuses before a new Note key is generated. The consequential issuance request is retained first. Reopening an unknown result uses its original operation and source rather than reselecting or requoting. Receiving and importing retain the original full proof; imported credit metadata must match both funding parts.
+
+## Compatibility host prerequisite
+
+When native funded-account custody is selected, its source remains authoritative and failure cannot fall back to SQL. When that custody is not selected, the existing Wallet compatibility source uses the same connected Note protocol and subordinate atomic Wallet writer. It requires the base `20261015012532_bank_offline_notes_native.sql` and `20261020204430_bank_connected_note_compatibility_wallet.sql` migrations. Missing schema returns the bounded `BANK_NOTE_COMPATIBILITY_SCHEMA_REQUIRED` diagnostic. No runtime creates tables or switches providers. This path does not require a Crystal URL.
+
+Compatibility Wallet backing follows its existing current-quote conversion capped by actual owned Phi; native custody preserves original historical Reserve backing. Neither invents the other's funding history. Each retains its actual accepted amounts through cancellation and credit. The host rollout contract is in Receiz's `docs/integrations/connected-note-compatibility-rollout.md`. The intended Crystal endpoint is `https://memory.receiz.com`; DNS readiness and a configured selected source remain separate deployment facts.

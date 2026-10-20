@@ -5,15 +5,18 @@ export function noteRegistrationCode(cause:unknown):string{
  const value=cause instanceof Error?cause.message:'';
  const code=value.startsWith('OFFLINE_NOTE_CUSTODY_UNSUPPORTED:')?value.slice('OFFLINE_NOTE_CUSTODY_UNSUPPORTED:'.length):value;
  return code.length<=160&&(/^(?:RECEIZ_)?OFFLINE_NOTE_(?:CUSTODY|PLATFORM_ATTESTATION|DEVICE_ATTESTATION)_[A-Z_]+$/.test(code)
-  ||/^BANK_NOTE_(?:CHALLENGE_[A-Z_]+|TRANSPORT_REALM_INVALID)$/.test(code)
+  ||/^BANK_NOTE_(?:CHALLENGE_[A-Z_]+|TRANSPORT_REALM_INVALID|COMPATIBILITY_SCHEMA_REQUIRED)$/.test(code)
   ||['offline_note_attestation_issuer_unavailable','attestation_challenge_invalid','origin_mismatch','rate_limited'].includes(code))?code:'';
 }
 export function noteError(cause:unknown):string{
  const code=cause instanceof Error?cause.message:'';
  const stage=noteFailureStage(cause);
+ if(code==='BANK_NOTE_COMPATIBILITY_SCHEMA_REQUIRED')return 'Note creation is not yet enabled on the account service. Your saved Notes and any pending attempt remain preserved.';
+ if(code==='BANK_NOTE_INSUFFICIENT_FUNDS')return 'Choose an amount within your available balance.';
+ if(stage?.stage==='note-quote'&&/service_unavailable|503|fetch|network/i.test(code))return 'Your account could not be reviewed. Try again when connected.';
  if(code==='BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION')return 'Connect to create this Note.';
  if(code==='BANK_NOTE_CANCELLATION_PENDING')return 'This Note’s cancellation is pending. Use Discard unissued note to recover its exact result.';
- if(/BANK_CONNECTED_NOTE_AUTHORIZATION_EXPIRED|BANK_NOTE_ALLOCATION_QUOTE_MISMATCH/.test(code))return 'This Note’s review has expired. Discard the unissued attempt, then review it again. Your exact result remains recoverable.';
+ if(/BANK_(?:CONNECTED_NOTE|NOTE)_AUTHORIZATION_EXPIRED|BANK_NOTE_ALLOCATION_QUOTE_MISMATCH/.test(code))return 'This Note’s review has expired. Discard the unissued attempt, then review it again. Your exact result remains recoverable.';
  if(code==='BANK_NOTE_DEPOSIT_RECONCILIATION_REQUIRED')return 'Connect to confirm your received Notes before using this balance.';
  if(stage&&['saved-notes','prepared-notes','saved-note-identity','offline-note-checkpoint','prepared-note-checkpoint','received-note-checkpoint','note-image'].includes(stage.stage))return 'Saved note custody could not be opened on this device. Keep your original proofs and this device; the saved state has not been reset.';
  if(stage?.stage==='device-signer')return 'Device signing setup could not complete. Your saved notes and exact pending attempt are preserved.';
@@ -32,8 +35,8 @@ export function noteError(cause:unknown):string{
  if(/INSUFFICIENT_PREPARED_FUNDS/.test(code))return 'This device does not have enough value ready for this note. Choose a lower amount.';
  if(/PREPARED_RESOURCE_REQUIRED|PREPARED_RECEIVER_REQUIRED/.test(code))return 'Reconnect to prepare secure note capacity on this device, then try again.';
  if(/TRANSPORT_CAPACITY/.test(code))return 'This note needs more space for its complete proof. Its current value stays held on this device.';
- if(/INSUFFICIENT_SETTLEMENT/.test(code))return 'Choose an amount within your available Settlement balance.';
- if(/INSUFFICIENT_RESERVE/.test(code))return 'This note needs enough funded Reserve. Add money or choose a lower amount.';
+ if(/INSUFFICIENT_SETTLEMENT/.test(code))return 'Choose an amount within your available balance.';
+ if(/INSUFFICIENT_RESERVE/.test(code))return 'Add money or choose an amount within your available balance.';
  if(/EXACT_HEAD|IRREVERSIBLY_CONSUMED/.test(code))return 'This device does not hold this note’s current custody. Ask the sender to use your receiving request and send the resulting note image.';
  if(/BANK_NOTE_|BANK_CONNECTED_NOTE_|BANK_ALLOCATION_|503|temporarily unavailable|fetch|network/i.test(code))return 'The note service is unavailable or this result is pending. Your exact attempt stays on this device. Reopen this action to resume safely.';
  return code||'This note could not be opened. Keep the original image and try again.';

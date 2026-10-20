@@ -11,7 +11,7 @@ export {isBankConnectedNoteImage,isBankConnectedNoteSource};
 export async function inspectConnectedNote(bytes){
   const proof=await isBankConnectedNoteImage(bytes)?await readBankConnectedNoteImage(bytes):await readBankConnectedNoteSource(bytes);
   return Object.freeze({schema:'bankeiz.connected-note-inspection.v1',rail:proof.rail,noteId:proof.noteId,amountPhiMicro:proof.amountPhiMicro,amountUsdCents:proof.amountUsdCents,
-    kind:proof.kind,receiverUserId:proof.receiverUserId,receiverKeyId:proof.receiverKeyId,
+    ...(proof.fundingParts?{fundingParts:proof.fundingParts}:{}),kind:proof.kind,receiverUserId:proof.receiverUserId,receiverKeyId:proof.receiverKeyId,
     fundingArtifactSha256:proof.fundingArtifactSha256,terminalArtifactSha256:proof.terminalArtifactSha256,
     carriedChainVerified:true,custodyConsumed:false,creditAuthorized:false,hostCreditChecked:false,exclusiveConsumption:'connection-required'});
 }

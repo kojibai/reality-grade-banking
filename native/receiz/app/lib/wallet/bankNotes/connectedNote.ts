@@ -9,6 +9,11 @@ import { sha256Hex } from '../../../utils/sha256';
 import { verifyBankNoteAccountReceivingRequest } from './accountReceiving';
 import { BANK_RESERVE_ALLOCATION_SIGN_CONTEXT, type BankAllocationRootSignature } from './allocation';
 export const BANK_CONNECTED_NOTE_PROFILE = 'connected-account-v1' as const;
+export type BankConnectedNoteRail = 'reserve' | 'settlement' | 'composite';
+export type BankConnectedNoteFundingParts = Readonly<{
+    reserve: Readonly<{ amountUsdCents: string; amountPhiMicro: string }>;
+    settlement: Readonly<{ amountUsdCents: string; amountPhiMicro: string }>;
+}>;
 export type BankConnectedNoteOptions = Readonly<{
     roots?: ReadonlyMap<string, ReceizSignatureV4RootPublicKey>;
 }>;
@@ -25,7 +30,8 @@ export type BankConnectedNoteIssueBasis = Readonly<{
     noteAuthority: BankConnectedNoteKey;
     noteId: string;
     clientNonce: string;
-    rail: 'reserve' | 'settlement';
+    rail: BankConnectedNoteRail;
+    fundingParts?: BankConnectedNoteFundingParts;
     amountUsdCents: string;
     amountPhiMicro: string | null;
     usdPerPhiMicrocents: string;
@@ -53,7 +59,8 @@ export type BankConnectedNoteFunding = Readonly<{
     accountUserId: string;
     issuer: BankConnectedNoteKey;
     noteAuthority: BankConnectedNoteKey;
-    rail: 'reserve' | 'settlement';
+    rail: BankConnectedNoteRail;
+    fundingParts?: BankConnectedNoteFundingParts;
     amountPhiMicro: string;
     amountUsdCents: string;
     usdPerPhiMicrocents: string;
@@ -98,7 +105,8 @@ export type BankConnectedNoteCredit = Readonly<{
     redemptionDigest: string;
     receiverUserId: string;
     receiverKeyId: string;
-    rail: 'reserve' | 'settlement';
+    rail: BankConnectedNoteRail;
+    fundingParts?: BankConnectedNoteFundingParts;
     amountPhiMicro: string;
     amountUsdCents: string;
     acceptedAtKai: string;
@@ -113,7 +121,8 @@ export type BankConnectedNoteCancellationProof = Readonly<{
     noteId: string;
     accountUserId: string;
     issuerKeyId: string;
-    rail: 'reserve' | 'settlement';
+    rail: BankConnectedNoteRail;
+    fundingParts?: BankConnectedNoteFundingParts;
     amountPhiMicro: string;
     amountUsdCents: string;
     cancelledAtKai: string;
@@ -126,7 +135,8 @@ export type BankConnectedNoteOpening = Readonly<{
     noteId: string;
     accountUserId: string;
     keyId: string;
-    rail: 'reserve' | 'settlement';
+    rail: BankConnectedNoteRail;
+    fundingParts?: BankConnectedNoteFundingParts;
     direction: 'debit' | 'credit' | 'cancel';
     amountPhiMicro: string;
     amountUsdCents: string;
@@ -141,6 +151,18 @@ const uuid = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{8}
 const uint = (v: unknown, positive = false): v is string => typeof v === 'string' && /^(0|[1-9][0-9]{0,18})$/u.test(v) && BigInt(v) <= (1n << 63n) - 1n && (!positive || BigInt(v) > 0n);
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const exact = (v: unknown, keys: readonly string[]) => record(v) && Object.keys(v).sort().join('|') === [...keys].sort().join('|');
+/** Complete split carried by signed consent and enclosing financial sources.
+ * Only a cancellation with no admitted debit may carry all-zero refund parts. */
+export function bankConnectedNoteFundingPartsValid(value: unknown, rail: unknown, cents: unknown, phi: unknown, zeroRefund = false): boolean {
+    if (rail !== 'composite') return value === undefined;
+    if (!exact(value, ['reserve', 'settlement'])) return false;
+    const parts = value as BankConnectedNoteFundingParts;
+    if (![parts.reserve, parts.settlement].every(part => exact(part, ['amountUsdCents', 'amountPhiMicro']) && uint(part.amountUsdCents) && uint(part.amountPhiMicro)) || !uint(cents) || !uint(phi)) return false;
+    const values = [parts.reserve.amountUsdCents, parts.reserve.amountPhiMicro, parts.settlement.amountUsdCents, parts.settlement.amountPhiMicro].map(BigInt);
+    if (!values.every(n => n > 0n) && !(zeroRefund && cents === '0' && phi === '0' && values.every(n => n === 0n))) return false;
+    return values[0] + values[2] === BigInt(cents) && values[1] + values[3] === BigInt(phi);
+}
+const splitFields = (v: unknown) => record(v) && v.rail === 'composite' ? ['fundingParts'] : [];
 const keyFields = ['keyId', 'algorithm', 'publicKeyRawB64u'];
 async function checkKey(v: unknown) {
     if (!exact(v, keyFields))
@@ -161,12 +183,12 @@ const issueFields = ['schema', 'profile', 'accountUserId', 'issuer', 'noteAuthor
 export async function verifyBankConnectedNoteIssue(value: unknown, options: Readonly<{
     nowMs?: number;
 }> = {}): Promise<BankConnectedNoteIssue> {
-    if (!exact(value, [...issueFields, 'operationId', 'signatureB64Url']))
+    if (!exact(value, [...issueFields, ...splitFields(value), 'operationId', 'signatureB64Url']))
         fail('AUTHORIZATION_INVALID');
     const v = value as BankConnectedNoteIssue, { operationId, signatureB64Url, ...b } = v;
     await checkKey(b.issuer);
     await checkKey(b.noteAuthority);
-    if (b.schema !== 'receiz.bank.connected-note.issue.v1' || b.profile !== BANK_CONNECTED_NOTE_PROFILE || !uuid(b.accountUserId) || !uuid(b.noteId) || !uuid(b.clientNonce) || !['reserve', 'settlement'].includes(b.rail) || !uint(b.amountUsdCents, true) || BigInt(b.amountUsdCents) > 100000000n || !uint(b.usdPerPhiMicrocents, true) || !uint(b.quotePulse) || b.quotePulse !== String(Math.floor(momentFromUTC(new Date(b.issuedAtMs)).pulse)) || !uint(b.expectedReserveBeforeUsdCents) || !uint(b.expectedWalletBeforePhiMicro) || b.issuer.keyId === b.noteAuthority.keyId || b.rail === 'reserve' && b.amountPhiMicro !== null || b.rail === 'settlement' && !uint(b.amountPhiMicro, true) || !Number.isSafeInteger(b.issuedAtMs) || !Number.isSafeInteger(b.expiresAtMs) || b.expiresAtMs - b.issuedAtMs !== 300000 || b.issuedAtMs <= 0)
+    if (b.schema !== 'receiz.bank.connected-note.issue.v1' || b.profile !== BANK_CONNECTED_NOTE_PROFILE || !uuid(b.accountUserId) || !uuid(b.noteId) || !uuid(b.clientNonce) || !['reserve', 'settlement', 'composite'].includes(b.rail) || !uint(b.amountUsdCents, true) || BigInt(b.amountUsdCents) > 100000000n || !uint(b.usdPerPhiMicrocents, true) || !uint(b.quotePulse) || b.quotePulse !== String(Math.floor(momentFromUTC(new Date(b.issuedAtMs)).pulse)) || !uint(b.expectedReserveBeforeUsdCents) || !uint(b.expectedWalletBeforePhiMicro) || b.issuer.keyId === b.noteAuthority.keyId || b.rail === 'reserve' && b.amountPhiMicro !== null || b.rail !== 'reserve' && !uint(b.amountPhiMicro, true) || !bankConnectedNoteFundingPartsValid(b.fundingParts, b.rail, b.amountUsdCents, b.amountPhiMicro) || !Number.isSafeInteger(b.issuedAtMs) || !Number.isSafeInteger(b.expiresAtMs) || b.expiresAtMs - b.issuedAtMs !== 300000 || b.issuedAtMs <= 0)
         fail('AUTHORIZATION_INVALID');
     if (options.nowMs !== undefined && (options.nowMs < b.issuedAtMs - 30000 || options.nowMs > b.expiresAtMs))
         fail('AUTHORIZATION_EXPIRED');
@@ -180,7 +202,8 @@ export async function createBankConnectedNoteIssue(input: Readonly<{
     passphrase?: string;
     accountUserId: string;
     noteIdentity: ReceizKeyFileV1;
-    rail: 'reserve' | 'settlement';
+    rail: BankConnectedNoteRail;
+    fundingParts?: BankConnectedNoteFundingParts;
     amountUsdCents: string;
     amountPhiMicro?: string;
     usdPerPhiMicrocents: string;
@@ -191,8 +214,9 @@ export async function createBankConnectedNoteIssue(input: Readonly<{
     noteId?: string;
     nowMs?: number;
 }>): Promise<BankConnectedNoteIssue> {
+    if (!bankConnectedNoteFundingPartsValid(input.fundingParts, input.rail, input.amountUsdCents, input.amountPhiMicro) || input.rail !== 'composite' && Object.hasOwn(input, 'fundingParts')) fail('AUTHORIZATION_INVALID');
     const identity = parseReceizIdentityArtifactText(JSON.stringify(input.identity)), note = parseReceizIdentityArtifactText(JSON.stringify(input.noteIdentity)), now = input.nowMs ?? Date.now();
-    const basis: BankConnectedNoteIssueBasis = { schema: 'receiz.bank.connected-note.issue.v1', profile: BANK_CONNECTED_NOTE_PROFILE, accountUserId: input.accountUserId, issuer: publicKey(identity), noteAuthority: publicKey(note), noteId: input.noteId ?? crypto.randomUUID(), clientNonce: input.clientNonce ?? crypto.randomUUID(), rail: input.rail, amountUsdCents: input.amountUsdCents, amountPhiMicro: input.rail === 'settlement' ? input.amountPhiMicro ?? fail('EXACT_PHI_REQUIRED') : null, usdPerPhiMicrocents: input.usdPerPhiMicrocents, quotePulse: input.quotePulse ?? String(Math.floor(momentFromUTC(new Date(now)).pulse)), expectedReserveBeforeUsdCents: input.expectedReserveBeforeUsdCents, expectedWalletBeforePhiMicro: input.expectedWalletBeforePhiMicro, issuedAtMs: now, expiresAtMs: now + 300000 };
+    const basis: BankConnectedNoteIssueBasis = { schema: 'receiz.bank.connected-note.issue.v1', profile: BANK_CONNECTED_NOTE_PROFILE, accountUserId: input.accountUserId, issuer: publicKey(identity), noteAuthority: publicKey(note), noteId: input.noteId ?? crypto.randomUUID(), clientNonce: input.clientNonce ?? crypto.randomUUID(), rail: input.rail, amountUsdCents: input.amountUsdCents, ...(Object.hasOwn(input, 'fundingParts') ? { fundingParts: input.fundingParts } : {}), amountPhiMicro: input.rail !== 'reserve' ? input.amountPhiMicro ?? fail('EXACT_PHI_REQUIRED') : null, usdPerPhiMicrocents: input.usdPerPhiMicrocents, quotePulse: input.quotePulse ?? String(Math.floor(momentFromUTC(new Date(now)).pulse)), expectedReserveBeforeUsdCents: input.expectedReserveBeforeUsdCents, expectedWalletBeforePhiMicro: input.expectedWalletBeforePhiMicro, issuedAtMs: now, expiresAtMs: now + 300000 };
     const operationId = await digestReceizAuthority('identity', basis.schema, basis);
     return verifyBankConnectedNoteIssue({ ...basis, operationId, signatureB64Url: await sign(identity, input.passphrase, basis.schema, operationId) });
 }
@@ -220,11 +244,11 @@ export async function verifyBankConnectedNoteCancellationAuthorization(value: un
 }
 export function bankConnectedNoteFinancialSigningBytes(value: BankConnectedNoteFunding | BankConnectedNoteCredit | BankConnectedNoteCancellationProof) { return new TextEncoder().encode(`${BANK_RESERVE_ALLOCATION_SIGN_CONTEXT}\0${canonical(value)}`); }
 async function financial(value: unknown, signature: unknown, roots: ReadonlyMap<string, ReceizSignatureV4RootPublicKey>) {
-    if (!record(value) || !['receiz.bank.connected-note.funding.v1', 'receiz.bank.connected-note.credit.v1', 'receiz.bank.connected-note.cancellation.v1'].includes(String(value.schema)) || value.profile !== BANK_CONNECTED_NOTE_PROFILE || !uuid(value.noteId) || !hash(value.operationId) || !['reserve', 'settlement'].includes(String(value.rail)) || !uint(value.amountPhiMicro, value.schema !== 'receiz.bank.connected-note.cancellation.v1') || !uint(value.amountUsdCents, value.schema !== 'receiz.bank.connected-note.cancellation.v1') || !hash(value.privateAccountSnapshotSha256))
+    if (!record(value) || !['receiz.bank.connected-note.funding.v1', 'receiz.bank.connected-note.credit.v1', 'receiz.bank.connected-note.cancellation.v1'].includes(String(value.schema)) || value.profile !== BANK_CONNECTED_NOTE_PROFILE || !uuid(value.noteId) || !hash(value.operationId) || !['reserve', 'settlement', 'composite'].includes(String(value.rail)) || !uint(value.amountPhiMicro, value.schema !== 'receiz.bank.connected-note.cancellation.v1') || !uint(value.amountUsdCents, value.schema !== 'receiz.bank.connected-note.cancellation.v1') || !hash(value.privateAccountSnapshotSha256) || !bankConnectedNoteFundingPartsValid(value.fundingParts, value.rail, value.amountUsdCents, value.amountPhiMicro, value.schema === 'receiz.bank.connected-note.cancellation.v1'))
         fail();
     const funding = value.schema === 'receiz.bank.connected-note.funding.v1';
     if (funding) {
-        if (!exact(value, ['schema', 'profile', 'operationId', 'noteId', 'accountUserId', 'issuer', 'noteAuthority', 'rail', 'amountPhiMicro', 'amountUsdCents', 'usdPerPhiMicrocents', 'fundedAtKai', 'debitLedgerId', 'privateAccountSnapshotSha256']) || !uuid(value.accountUserId) || !uuid(value.debitLedgerId) || !uint(value.usdPerPhiMicrocents, true) || !uint(value.fundedAtKai) || ((BigInt(value.amountPhiMicro as string) * BigInt(value.usdPerPhiMicrocents as string) + 500000000000n) / 1000000000000n) !== BigInt(value.amountUsdCents as string))
+        if (!exact(value, ['schema', 'profile', 'operationId', 'noteId', 'accountUserId', 'issuer', 'noteAuthority', 'rail', 'amountPhiMicro', 'amountUsdCents', 'usdPerPhiMicrocents', 'fundedAtKai', 'debitLedgerId', 'privateAccountSnapshotSha256', ...splitFields(value)]) || !uuid(value.accountUserId) || !uuid(value.debitLedgerId) || !uint(value.usdPerPhiMicrocents, true) || !uint(value.fundedAtKai) || ((BigInt(value.rail === 'composite' ? (value.fundingParts as BankConnectedNoteFundingParts).settlement.amountPhiMicro : value.amountPhiMicro as string) * BigInt(value.usdPerPhiMicrocents as string) + 500000000000n) / 1000000000000n) !== BigInt(value.rail === 'composite' ? (value.fundingParts as BankConnectedNoteFundingParts).settlement.amountUsdCents : value.amountUsdCents as string))
             fail();
         await checkKey(value.issuer);
         await checkKey(value.noteAuthority);
@@ -232,10 +256,10 @@ async function financial(value: unknown, signature: unknown, roots: ReadonlyMap<
             fail();
     }
     else if (value.schema === 'receiz.bank.connected-note.cancellation.v1') {
-        if (!exact(value, ['schema', 'profile', 'operationId', 'noteId', 'accountUserId', 'issuerKeyId', 'rail', 'amountPhiMicro', 'amountUsdCents', 'cancelledAtKai', 'cancellationMarkerId', 'privateAccountSnapshotSha256']) || !uuid(value.accountUserId) || !hash(value.issuerKeyId) || !uint(value.cancelledAtKai) || !uuid(value.cancellationMarkerId))
+        if (!exact(value, ['schema', 'profile', 'operationId', 'noteId', 'accountUserId', 'issuerKeyId', 'rail', 'amountPhiMicro', 'amountUsdCents', 'cancelledAtKai', 'cancellationMarkerId', 'privateAccountSnapshotSha256', ...splitFields(value)]) || !uuid(value.accountUserId) || !hash(value.issuerKeyId) || !uint(value.cancelledAtKai) || !uuid(value.cancellationMarkerId))
             fail();
     }
-    else if (!exact(value, ['schema', 'profile', 'noteId', 'operationId', 'redemptionDigest', 'receiverUserId', 'receiverKeyId', 'rail', 'amountPhiMicro', 'amountUsdCents', 'acceptedAtKai', 'creditLedgerId', 'terminalSourceSha256', 'privateAccountSnapshotSha256']) || !uuid(value.receiverUserId) || !hash(value.receiverKeyId) || !hash(value.redemptionDigest) || !hash(value.terminalSourceSha256) || !uuid(value.creditLedgerId) || !uint(value.acceptedAtKai))
+    else if (!exact(value, ['schema', 'profile', 'noteId', 'operationId', 'redemptionDigest', 'receiverUserId', 'receiverKeyId', 'rail', 'amountPhiMicro', 'amountUsdCents', 'acceptedAtKai', 'creditLedgerId', 'terminalSourceSha256', 'privateAccountSnapshotSha256', ...splitFields(value)]) || !uuid(value.receiverUserId) || !hash(value.receiverKeyId) || !hash(value.redemptionDigest) || !hash(value.terminalSourceSha256) || !uuid(value.creditLedgerId) || !uint(value.acceptedAtKai))
         fail();
     if (!exact(signature, ['kid', 'alg', 'sig', 'signedAtMs']))
         fail('FINANCIAL_SIGNATURE_REQUIRED');
@@ -315,7 +339,7 @@ async function readBankConnectedNoteSourceUncached(input: Uint8Array, options: B
             fail('HANDOVER_INVALID');
         await verify(funding.noteAuthority, i.schema, handover.handoverDigest, handover.signatureB64Url);
     }
-    return Object.freeze({ kind: handover ? 'handover' as const : 'funding' as const, noteId: funding.noteId, rail: funding.rail, amountPhiMicro: funding.amountPhiMicro, amountUsdCents: funding.amountUsdCents, ...(handover ? { receiverUserId: handover.intent.receiverUserId, receiverKeyId: handover.intent.receiverKeyId, redemptionDigest: handover.handoverDigest } : {}), terminalArtifactSha256: await sha256Hex(bytes), terminalSourceBytes: bytes, fundingArtifactSha256, fundingSourceBytes: fundingBytes, funding, handover, exclusiveConsumption: 'connection-required' as const });
+    return Object.freeze({ kind: handover ? 'handover' as const : 'funding' as const, noteId: funding.noteId, rail: funding.rail, ...(funding.fundingParts ? { fundingParts: funding.fundingParts } : {}), amountPhiMicro: funding.amountPhiMicro, amountUsdCents: funding.amountUsdCents, ...(handover ? { receiverUserId: handover.intent.receiverUserId, receiverKeyId: handover.intent.receiverKeyId, redemptionDigest: handover.handoverDigest } : {}), terminalArtifactSha256: await sha256Hex(bytes), terminalSourceBytes: bytes, fundingArtifactSha256, fundingSourceBytes: fundingBytes, funding, handover, exclusiveConsumption: 'connection-required' as const });
 }
 export async function createBankConnectedNoteHandover(input: Readonly<{
     fundingSourceBytes: Uint8Array;
@@ -363,10 +387,10 @@ async function opening(bytes: Uint8Array, f: BankConnectedNoteFunding | BankConn
     if (!bytes.length || bytes.length > 16384 || await sha256Hex(bytes) !== f.privateAccountSnapshotSha256)
         fail('ACCOUNT_OPENING_REQUIRED');
     const raw = new TextDecoder('utf-8', { fatal: true }).decode(bytes), v = JSON.parse(raw) as BankConnectedNoteOpening, isFunding = f.schema === 'receiz.bank.connected-note.funding.v1', isCancel = f.schema === 'receiz.bank.connected-note.cancellation.v1';
-    if (raw !== canonical(v) || !exact(v, ['schema', 'operationId', 'noteId', 'accountUserId', 'keyId', 'rail', 'direction', 'amountPhiMicro', 'amountUsdCents', 'reserveBeforeUsdCents', 'reserveAfterUsdCents', 'walletBeforePhiMicro', 'walletAfterPhiMicro']) || v.schema !== 'receiz.bank.connected-note.private-account.v1' || v.operationId !== f.operationId || v.noteId !== f.noteId || v.accountUserId !== (isFunding || isCancel ? f.accountUserId : f.receiverUserId) || v.keyId !== (isFunding ? f.issuer.keyId : isCancel ? f.issuerKeyId : f.receiverKeyId) || v.rail !== f.rail || v.direction !== (isFunding ? 'debit' : isCancel ? 'cancel' : 'credit') || v.amountPhiMicro !== f.amountPhiMicro || v.amountUsdCents !== f.amountUsdCents || ![v.reserveBeforeUsdCents, v.reserveAfterUsdCents, v.walletBeforePhiMicro, v.walletAfterPhiMicro].every(v => uint(v)))
+    if (raw !== canonical(v) || !exact(v, ['schema', 'operationId', 'noteId', 'accountUserId', 'keyId', 'rail', 'direction', 'amountPhiMicro', 'amountUsdCents', 'reserveBeforeUsdCents', 'reserveAfterUsdCents', 'walletBeforePhiMicro', 'walletAfterPhiMicro', ...splitFields(v)]) || v.schema !== 'receiz.bank.connected-note.private-account.v1' || v.operationId !== f.operationId || v.noteId !== f.noteId || v.accountUserId !== (isFunding || isCancel ? f.accountUserId : f.receiverUserId) || v.keyId !== (isFunding ? f.issuer.keyId : isCancel ? f.issuerKeyId : f.receiverKeyId) || v.rail !== f.rail || canonical(v.fundingParts ?? null) !== canonical(f.fundingParts ?? null) || !bankConnectedNoteFundingPartsValid(v.fundingParts, v.rail, v.amountUsdCents, v.amountPhiMicro, isCancel) || v.direction !== (isFunding ? 'debit' : isCancel ? 'cancel' : 'credit') || v.amountPhiMicro !== f.amountPhiMicro || v.amountUsdCents !== f.amountUsdCents || ![v.reserveBeforeUsdCents, v.reserveAfterUsdCents, v.walletBeforePhiMicro, v.walletAfterPhiMicro].every(v => uint(v)))
         fail('ACCOUNT_OPENING_REQUIRED');
     const direction = isFunding ? -1n : 1n;
-    if (BigInt(v.walletAfterPhiMicro) - BigInt(v.walletBeforePhiMicro) !== direction * BigInt(f.amountPhiMicro) || BigInt(v.reserveAfterUsdCents) - BigInt(v.reserveBeforeUsdCents) !== direction * (f.rail === 'reserve' ? BigInt(f.amountUsdCents) : 0n))
+    if (BigInt(v.walletAfterPhiMicro) - BigInt(v.walletBeforePhiMicro) !== direction * BigInt(f.amountPhiMicro) || BigInt(v.reserveAfterUsdCents) - BigInt(v.reserveBeforeUsdCents) !== direction * (f.rail === 'reserve' ? BigInt(f.amountUsdCents) : f.rail === 'composite' ? BigInt(f.fundingParts!.reserve.amountUsdCents) : 0n))
         fail('ACCOUNT_OPENING_REQUIRED');
     return { reserveUsdCents: v.reserveAfterUsdCents, balancePhiMicro: v.walletAfterPhiMicro };
 }
@@ -382,7 +406,7 @@ export async function verifyBankConnectedNoteCredit(source: Uint8Array, privateA
     if (!body.credit || typeof body.terminalSource !== 'string')
         fail();
     const credit = body.credit as BankConnectedNoteCredit, terminal = await readBankConnectedNoteSource(dec(body.terminalSource), options), claim = await verifyBankConnectedNoteClaim(body.claim);
-    if (terminal.kind !== 'handover' || terminal.terminalArtifactSha256 !== credit.terminalSourceSha256 || claim.sourceSha256 !== credit.terminalSourceSha256 || claim.claimDigest !== credit.redemptionDigest || claim.noteId !== credit.noteId || claim.receiverUserId !== credit.receiverUserId || claim.receiver.keyId !== credit.receiverKeyId || terminal.receiverUserId !== credit.receiverUserId || terminal.receiverKeyId !== credit.receiverKeyId || terminal.noteId !== credit.noteId || terminal.funding.operationId !== credit.operationId || terminal.rail !== credit.rail || terminal.amountPhiMicro !== credit.amountPhiMicro || terminal.amountUsdCents !== credit.amountUsdCents || claim.handoverDigest !== terminal.redemptionDigest)
+    if (terminal.kind !== 'handover' || terminal.terminalArtifactSha256 !== credit.terminalSourceSha256 || claim.sourceSha256 !== credit.terminalSourceSha256 || claim.claimDigest !== credit.redemptionDigest || claim.noteId !== credit.noteId || claim.receiverUserId !== credit.receiverUserId || claim.receiver.keyId !== credit.receiverKeyId || terminal.receiverUserId !== credit.receiverUserId || terminal.receiverKeyId !== credit.receiverKeyId || terminal.noteId !== credit.noteId || terminal.funding.operationId !== credit.operationId || terminal.rail !== credit.rail || canonical(terminal.fundingParts ?? null) !== canonical(credit.fundingParts ?? null) || terminal.amountPhiMicro !== credit.amountPhiMicro || terminal.amountUsdCents !== credit.amountUsdCents || claim.handoverDigest !== terminal.redemptionDigest)
         fail();
     return { ...terminal, redemptionDigest: credit.redemptionDigest, credit, accountAfter: await opening(privateAccountOpening, credit), proofBytes: receiptBytes(source, privateAccountOpening) };
 }

@@ -14,6 +14,11 @@ exact-intent recovery. Product 1.0.0 remains held pending independent review and
 real-device/deployed financial evidence. Existing saved custody is never
 reset or reclassified. See [readiness](releases/1.0.0.md).
 
+
+### Current connected funding repair
+
+The October 20 repair adds automatic Reserve-first/Settlement-remainder funding and a Settlement Reserve Note carrying both signed components. No source picker is shown. The inspected compatibility host had neither required Bank Note migration installed and no connected compatibility service composition. The implementation adds that explicit writer connection and bounded missing-schema diagnostics; deployment requires both migrations and authenticated financial qualification. Crystal is not a prerequisite for the compatibility path. See [the connected contract](connected-notes-v129.md). No production database, account balance or qualified custody was changed during local verification.
+
 ## Historical qualified-custody handoff
 
 The following records the earlier fully qualified recipient path and its

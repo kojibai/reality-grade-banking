@@ -1,6 +1,8 @@
 import type {ReceizKeyFile} from '@receiz/sdk';
 import type {BankNoteDeposit,BankNoteInspection,BankNoteRail} from './offline-notes';
 import {createConnectedNoteRuntime,type ConnectedNotePorts} from './connected-note-runtime';
+import {selectNoteFunding} from './note-funding';
+import {atNoteStage} from './note-stage';
 
 type Json=Record<string,any>;
 type Projection=BankNoteInspection&{rail:BankNoteRail;kind:'funding'|'handover';funding:Json;receiverUserId?:string;receiverKeyId?:string;redemptionDigest?:string;terminalArtifactSha256:string;terminalSourceBytes:Uint8Array};
@@ -26,30 +28,40 @@ const path=()=>`/api/connect/offline-notes/connected?origin=${encodeURIComponent
 const fields=(response:unknown,decode:(v:string)=>Uint8Array)=>{const v=obj(response);if(v.ok!==true||typeof v.source!=='string'||typeof v.privateAccountOpening!=='string')throw Error('BANK_NOTE_RESULT_PENDING');return{source:decode(v.source),opening:decode(v.privateAccountOpening),cancelled:v.cancelled===true};};
 /** Browser composition only. All financial source admission, signed authority,
  * conservation and once-only consumption remain in Receiz v129. */
-export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'prepare'|'issue'|'cancel'|'prepareCancellation'|'inspect'|'handover'|'image'>&{
+export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'review'|'prepare'|'issue'|'cancel'|'prepareCancellation'|'inspect'|'handover'|'image'>&{
  module():Promise<ConnectedNoteModule>;context():Promise<Context>;
  sdk:{createReceizIdentityKeyFile(input:{owner:{uid:string}}):Promise<{keyFile:ReceizKeyFile}>;serializeReceizIdentityArtifact(key:ReceizKeyFile):string;parseReceizIdentityArtifactText(text:string):ReceizKeyFile;receizBase64UrlEncode(bytes:Uint8Array):string;receizBase64UrlDecode(text:string):Uint8Array;receizKaiNow():{pulse:number}};
  artwork(amount:string,id:string,compact?:boolean,rail?:BankNoteRail):Promise<Uint8Array>;
 }){
  const decode=input.sdk.receizBase64UrlDecode;
+ let heldReview:{amount:string;requested?:BankNoteRail;quote:Json;funding:ReturnType<typeof selectNoteFunding>}|undefined;
+ async function review(amount:string,requested?:BankNoteRail){
+  if(navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
+  const context=await input.context();input.assertOpen();if(context.uid!==input.uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');
+  const response=obj(await atNoteStage('note-quote',()=>context.request(`${path()}&intent=quote`,{method:'GET'}))),quote=obj(response.quote),rate=quote.usdPerPhiMicrocents;
+  if(response.ok!==true||typeof rate!=='string'||!(/^[1-9]\d{0,18}$/).test(rate)||typeof quote.quotePulse!=='string'||!/^\d{1,18}$/.test(quote.quotePulse)||!Number.isSafeInteger(quote.issuedAtMs)||!Number.isSafeInteger(quote.expiresAtMs)||quote.expiresAtMs-quote.issuedAtMs!==300000)throw Error('BANK_NOTE_QUOTE_INVALID');
+  const funding=selectNoteFunding(amount,quote,requested);input.assertOpen();heldReview={amount,requested,quote,funding};return structuredClone(funding);
+ }
  return createConnectedNoteRuntime({...input,
-  async prepare(amountUsdCents,rail){
+  review,
+  async prepare(amountUsdCents,requested){
    if(navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
+   if(!heldReview||heldReview.amount!==amountUsdCents||requested!==undefined&&heldReview.funding.rail!==requested)await review(amountUsdCents,requested);
+   const {quote,funding}=heldReview!,rail=funding.rail,rate=quote.usdPerPhiMicrocents;
+   if(Date.now()>quote.expiresAtMs)throw Error('BANK_NOTE_ALLOCATION_QUOTE_MISMATCH');
    const module=await input.module(),context=await input.context();input.assertOpen();if(context.uid!==input.uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');
-   const response=obj(await context.request(`${path()}&intent=quote`,{method:'GET'})),quote=obj(response.quote),rate=quote.usdPerPhiMicrocents;
-   if(response.ok!==true||typeof rate!=='string'||!(/^[1-9]\d{0,18}$/).test(rate)||typeof quote.quotePulse!=='string'||!/^\d{1,18}$/.test(quote.quotePulse)||!Number.isSafeInteger(quote.issuedAtMs)||!Number.isSafeInteger(quote.expiresAtMs)||quote.expiresAtMs-quote.issuedAtMs!==300000||!['reserveUsdCents','balancePhiMicro','settlementPhiMicro'].every(k=>typeof quote[k]==='string'&&/^(0|[1-9]\d{0,18})$/.test(quote[k])))throw Error('BANK_NOTE_QUOTE_INVALID');
-   const amountPhiMicro=(BigInt(amountUsdCents)*1000000000000n+BigInt(rate)/2n)/BigInt(rate);
+   if(Date.now()>quote.expiresAtMs)throw Error('BANK_NOTE_ALLOCATION_QUOTE_MISMATCH');
    const noteIdentity=(await input.sdk.createReceizIdentityKeyFile({owner:{uid:crypto.randomUUID()}})).keyFile;
-   const authorization=await module.createBankConnectedNoteIssue({identity:context.identity,passphrase:context.passphrase,accountUserId:input.uid,noteIdentity,rail,amountUsdCents,...(rail==='settlement'?{amountPhiMicro:amountPhiMicro.toString()}:{}),quotePulse:quote.quotePulse,nowMs:quote.issuedAtMs,usdPerPhiMicrocents:rate,expectedReserveBeforeUsdCents:quote.reserveUsdCents,expectedWalletBeforePhiMicro:quote.balancePhiMicro});
+   const authorization=await module.createBankConnectedNoteIssue({identity:context.identity,passphrase:context.passphrase,accountUserId:input.uid,noteIdentity,rail,amountUsdCents,...(rail!=='reserve'?{amountPhiMicro:funding.amountPhiMicro}:{}),...(funding.fundingParts?{fundingParts:funding.fundingParts}:{}),quotePulse:quote.quotePulse,nowMs:quote.issuedAtMs,usdPerPhiMicrocents:rate,expectedReserveBeforeUsdCents:quote.reserveUsdCents,expectedWalletBeforePhiMicro:quote.balancePhiMicro});
    input.assertOpen();return{noteId:authorization.noteId,operationId:authorization.operationId,amountUsdCents,rail,authorization,noteIdentityBytes:new TextEncoder().encode(input.sdk.serializeReceizIdentityArtifact(noteIdentity))};
   },
   async issue(authorization,operationId,recoverFirst,allowSubmit=true){
    const module=await input.module(),context=await input.context(),a=obj(authorization);input.assertOpen();if(context.uid!==input.uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');
    let response:unknown=recoverFirst?await context.request(`${path()}&allocationId=${operationId}`,{method:'GET'}):{found:false};
-   if(obj(response).found===false){if(!allowSubmit)throw Error('BANK_NOTE_CANCELLATION_PENDING');response=await context.request(path(),{method:'POST',body:{action:'issue',authorization}});}
+   if(obj(response).found===false){if(!allowSubmit)throw Error('BANK_NOTE_CANCELLATION_PENDING');response=await atNoteStage('note-issue',()=>context.request(path(),{method:'POST',body:{action:'issue',authorization}}));}
    const wire=fields(response,decode);if(wire.cancelled)throw Error('BANK_NOTE_CANCELLED');
    const proof=await module.verifyBankConnectedNoteFunding(wire.source,wire.opening),f=proof.funding;
-   if(f.operationId!==operationId||f.noteId!==a.noteId||f.accountUserId!==input.uid||f.issuer?.keyId!==input.keyId||f.noteAuthority?.keyId!==a.noteAuthority?.keyId||f.rail!==a.rail||f.amountUsdCents!==a.amountUsdCents||a.rail==='settlement'&&(f.amountPhiMicro!==a.amountPhiMicro||f.usdPerPhiMicrocents!==a.usdPerPhiMicrocents))throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');
+   if(f.operationId!==operationId||f.noteId!==a.noteId||f.accountUserId!==input.uid||f.issuer?.keyId!==input.keyId||f.noteAuthority?.keyId!==a.noteAuthority?.keyId||f.rail!==a.rail||f.amountUsdCents!==a.amountUsdCents||a.rail!=='reserve'&&(f.amountPhiMicro!==a.amountPhiMicro||f.usdPerPhiMicrocents!==a.usdPerPhiMicrocents)||(a.rail==='composite'?['reserve','settlement'].some(rail=>['amountUsdCents','amountPhiMicro'].some(k=>f.fundingParts?.[rail]?.[k]!==a.fundingParts?.[rail]?.[k])):f.fundingParts!==undefined))throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');
    return{...proof,sourceBytes:wire.source,privateOpeningBytes:wire.opening};
   },
   async prepareCancellation(authorization){const module=await input.module(),context=await input.context();if(context.uid!==input.uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');return json(await module.createBankConnectedNoteCancellation({authorization,identity:context.identity,passphrase:context.passphrase}));},
@@ -85,5 +97,5 @@ export async function submitConnectedAccountNoteClaim(input:{module:ConnectedNot
  if(obj(response).found===false)response=await input.context.request(path(),{method:'POST',body});
  const wire=fields(response,input.decode),credit=await input.module.verifyBankConnectedNoteCredit(wire.source,wire.opening);
  if(credit.noteId!==held.noteId||credit.credit.receiverUserId!==input.context.uid||credit.credit.receiverKeyId!==input.context.identity.keyId||credit.credit.terminalSourceSha256!==held.terminalArtifactSha256||credit.credit.redemptionDigest!==body.claim.claimDigest)throw Error('BANK_NOTE_DEPOSIT_BINDING_MISMATCH');
- return{rail:credit.rail,noteId:credit.noteId,amountUsdCents:credit.amountUsdCents,amountPhiMicro:credit.amountPhiMicro,walletAfterPhiMicro:credit.accountAfter.balancePhiMicro,reserveAfterUsdCents:credit.accountAfter.reserveUsdCents,proofBytes:credit.proofBytes};
+ return{rail:credit.rail,noteId:credit.noteId,amountUsdCents:credit.amountUsdCents,amountPhiMicro:credit.amountPhiMicro,...(credit.fundingParts?{fundingParts:credit.fundingParts}:{}),walletAfterPhiMicro:credit.accountAfter.balancePhiMicro,reserveAfterUsdCents:credit.accountAfter.reserveUsdCents,proofBytes:credit.proofBytes};
 }

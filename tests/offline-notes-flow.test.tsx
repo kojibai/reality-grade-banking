@@ -23,7 +23,7 @@ test('records an offline incoming deposit immediately without describing it as c
  const value={noteId:'received-fixture',rail:'reserve',amountUsdCents:'200',amountPhiMicro:'1000000'},refresh=vi.fn();
  const identity={offlineNotes:async()=>({inspect:async()=>value,deposit:async()=>({...value,status:'received',proofBytes:new Uint8Array([1])})})}as unknown as OpenIdentity;
  const host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<OfflineNotes identity={identity} mode="deposit" onBack={vi.fn()} onRefresh={refresh}/>));const upload=host.querySelector('input[type="file"]')as HTMLInputElement;Object.defineProperty(upload,'files',{value:[{size:1,arrayBuffer:async()=>new Uint8Array([1]).buffer}]});await act(async()=>upload.dispatchEvent(new Event('change',{bubbles:true})));await act(async()=>click(host,'Deposit $2.00'));expect(host.textContent).toContain('Your note is received.');expect(host.textContent).toContain('reconcile');expect(host.textContent).not.toContain('Your note is redeemed.');expect(host.querySelector('.note-continuity-details')).toBeNull();expect(refresh).toHaveBeenCalledOnce();}finally{act(()=>root.unmount());}
+ try{await act(async()=>root.render(<OfflineNotes identity={identity} mode="deposit" onBack={vi.fn()} onRefresh={refresh}/>));const upload=host.querySelector('input[type="file"]')as HTMLInputElement;Object.defineProperty(upload,'files',{value:[{size:1,arrayBuffer:async()=>new Uint8Array([1]).buffer}]});await act(async()=>upload.dispatchEvent(new Event('change',{bubbles:true})));await act(async()=>click(host,'Deposit note'));expect(host.textContent).toContain('Your note is received.');expect(host.textContent).toContain('reconcile');expect(host.textContent).not.toContain('Your note is redeemed.');expect(host.querySelector('.note-continuity-details')).toBeNull();expect(refresh).toHaveBeenCalledOnce();}finally{act(()=>root.unmount());}
 });
 test('a failed local inventory read blocks review and shows only its bounded stage and exception name',async()=>{
  const create=vi.fn(),failure=new DOMException('private-fixture-data','OperationError');
@@ -144,16 +144,15 @@ test('an interrupted transfer offers Resume and never claims ownership already m
 });
 test('Settlement note review binds its rail and deposit derives Settlement from verified inspection', async () => {
   const create = vi.fn(async () => ({ noteId: 'settlement-fixture', rail: 'settlement', amountUsdCents: '10000', amountPhiMicro: '50000000', image: new Uint8Array([1]) }));
-  const identity = { offlineNotes: async () => ({ pending: async () => null, create }) } as unknown as OpenIdentity;
+  const identity = { offlineNotes: async () => ({ pending: async () => null, review:async()=>({rail:'settlement',amountUsdCents:'10000',amountPhiMicro:'50000000'}), create }) } as unknown as OpenIdentity;
   const host = document.createElement('div'), root = createRoot(host);
   try {
     await act(async () => root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()} />));
-    const from = host.querySelector('select[aria-label="From account"]') as HTMLSelectElement;
-    expect(from).not.toBeNull();
-    act(() => { from.value = 'settlement'; from.dispatchEvent(new Event('change', { bubbles: true })); }); act(() => click(host, 'Review note'));
-    expect(host.textContent).toContain('exact Phi'); expect(create).not.toHaveBeenCalled();
+    expect(host.querySelector('select')).toBeNull();
+    await act(async () => click(host, 'Review note'));
+    expect(host.textContent).toContain('Settlement'); expect(create).not.toHaveBeenCalled();
     await act(async () => click(host, 'Create funded note'));
-    expect(create).toHaveBeenCalledExactlyOnceWith('10000', 'settlement');
+    expect(create).toHaveBeenCalledExactlyOnceWith('10000');
     expect(host.querySelector('img')?.alt).toContain('Settlement Note');
   } finally { act(() => root.unmount()); }
 });
@@ -164,11 +163,10 @@ test('recovery after a competing creation restores the pending rail and amount b
   const host = document.createElement('div'), root = createRoot(host);
   try {
     await act(async () => root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()} />));
-    const from = host.querySelector('select[aria-label="From account"]') as HTMLSelectElement;
-    act(() => { from.value = 'settlement'; from.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(host.querySelector('select')).toBeNull();
     act(() => click(host, 'Review note'));
     await act(async () => click(host, 'Create funded note'));
-    expect(from.disabled).toBe(true); expect(from.value).toBe('reserve');
+    expect(host.querySelector('select')).toBeNull();
     expect(host.textContent).toContain('$123.45');
     await act(async () => click(host, 'Resume this note'));
     expect(create).toHaveBeenLastCalledWith('12345');
@@ -185,8 +183,9 @@ test('Settlement inspection and deposit preserve exact Phi beyond Number precisi
     Object.defineProperty(upload, 'files', { value: [{ size: 1, arrayBuffer: async () => new Uint8Array([1]).buffer }] });
     await act(async () => upload.dispatchEvent(new Event('change', { bubbles: true })));
     expect(host.textContent).toContain('9,007,199,254.740993 Φ');
-    await act(async () => click(host, 'Deposit exact Phi'));
-    expect(host.querySelector('.success-amount')?.textContent).toBe('9,007,199,254.740993 Φ');
+    await act(async () => click(host, 'Deposit note'));
+    expect(host.querySelector('.success-amount')?.textContent).toBe('$1.00');
+    expect(host.querySelector('.note-value-details')?.textContent).toContain('9,007,199,254.740993 Φ');
   } finally { act(() => root.unmount()); }
 });
 test.each(['noteId', 'rail', 'amountPhiMicro', 'amountUsdCents'])('does not present a different %s as the reviewed deposited note', async field => {
@@ -199,7 +198,7 @@ test.each(['noteId', 'rail', 'amountPhiMicro', 'amountUsdCents'])('does not pres
     const upload = host.querySelector('input[type="file"]') as HTMLInputElement;
     Object.defineProperty(upload, 'files', { configurable: true, value: [{ size: 1, arrayBuffer: async () => new Uint8Array([1]).buffer }] });
     await act(async () => upload.dispatchEvent(new Event('change', { bubbles: true })));
-    await act(async () => click(host, 'Deposit exact Phi'));
+    await act(async () => click(host, 'Deposit note'));
     expect(host.textContent).not.toContain('Added to Settlement.');
     expect(host.querySelector('.success-amount')).toBeNull();
     expect(refresh).not.toHaveBeenCalled();
@@ -215,10 +214,27 @@ test('choosing a new invalid note clears the earlier deposit review', async () =
     const upload = host.querySelector('input[type="file"]') as HTMLInputElement;
     Object.defineProperty(upload, 'files', { configurable: true, value: [{ size: 1, arrayBuffer: async () => new Uint8Array([1]).buffer }] });
     await act(async () => upload.dispatchEvent(new Event('change', { bubbles: true })));
-    expect(host.textContent).toContain('Deposit $1.00');
+    expect(host.textContent).toContain('Deposit note');
     Object.defineProperty(upload, 'files', { value: [{ size: 1, arrayBuffer: async () => new Uint8Array([2]).buffer }] });
     await act(async () => upload.dispatchEvent(new Event('change', { bubbles: true })));
-    expect(host.textContent).not.toContain('Deposit $1.00');
+    expect(host.textContent).not.toContain('Deposit note');
     expect(host.querySelector('[role="alert"]')).not.toBeNull();
   } finally { act(() => root.unmount()); }
+});
+
+test('shows the two funding contributions only for a combined Note without asking the user to select an account',async()=>{
+ const funding={rail:'composite',amountUsdCents:'10000',amountPhiMicro:'100000000',fundingParts:{reserve:{amountUsdCents:'2500',amountPhiMicro:'25000000'},settlement:{amountUsdCents:'7500',amountPhiMicro:'75000000'}}};
+ const create=vi.fn(async()=>({...funding,noteId:'combined',image:new Uint8Array([1])}));
+ const identity={offlineNotes:async()=>({pending:async()=>null,savedNotes:async()=>[],review:async()=>funding,create})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));expect(host.querySelector('select')).toBeNull();await act(async()=>click(host,'Review note'));expect(host.textContent).toContain('$25.00');expect(host.textContent).toContain('$75.00');expect(host.textContent).toContain('Settlement Reserve Note');expect(create).not.toHaveBeenCalled();await act(async()=>click(host,'Create funded note'));expect(create).toHaveBeenCalledExactlyOnceWith('10000');expect(host.querySelector('img')?.alt).toContain('Settlement Reserve Note');}finally{act(()=>root.unmount());}
+});
+
+test('locks the amount throughout a deferred review and confirms only the reviewed amount',async()=>{
+ let finish!:(value:unknown)=>void;const review=vi.fn(()=>new Promise(resolve=>{finish=resolve;})),create=vi.fn(async()=>({noteId:'fixed',rail:'reserve',amountUsdCents:'10000',image:new Uint8Array([1])}));
+ const identity={offlineNotes:async()=>({pending:async()=>null,review,create})}as unknown as OpenIdentity;const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));act(()=>click(host,'Review note'));const input=host.querySelector('input')!;expect(input.disabled).toBe(true);
+ await act(async()=>{input.value='200';input.dispatchEvent(new Event('input',{bubbles:true}));finish({rail:'reserve',amountUsdCents:'10000'});});
+ expect(host.querySelector('.detail-list')?.textContent).toContain('$100.00');await act(async()=>click(host,'Create funded note'));expect(create).toHaveBeenCalledExactlyOnceWith('10000');expect(review).toHaveBeenCalledExactlyOnceWith('10000');
+ }finally{act(()=>root.unmount());}
 });

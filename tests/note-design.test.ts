@@ -43,6 +43,14 @@ describe('Reserve Note denominations', () => {
     expect(settlement.texts.some(text => text.value === 'REDEEMABLE INTO RESERVE')).toBe(false);
   });
 
+  it('retains a third matching design for the signed composite',()=>{
+    const design=reserveNoteDesign('10000','12345678-90ab-4cde-8000-000000000000','composite');
+    expect(design.title).toBe('SETTLEMENT RESERVE NOTE');expect(design.subtitle).toBe('PROOF-BACKED NATIVE VALUE');
+    expect(design.serial).toBe('SR 12345678 90AB4CDE');expect(design.images[0].asset).toBe('/notes/settlement-reserve-note-masthead.png');
+    expect(design.texts.some(text=>text.value==='REDEEMABLE INTO SETTLEMENT + RESERVE')).toBe(true);
+    expect(design.denominations).toEqual(reserveNoteDesign('10000','12345678-90ab-4cde-8000-000000000000').denominations);
+  });
+
   it('fits every denomination inside its assigned print area, including cents and the maximum', () => {
     for (const cents of ['1', '10', '100', '10000', '12345', '99999999', '100000000']) {
       const design = reserveNoteDesign(cents, '12345678-90ab-4cde-8000-000000000000');

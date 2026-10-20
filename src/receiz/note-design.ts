@@ -1,10 +1,13 @@
 /** Carrier presentation only: denominations and pictures never authorize value. */
-export type NoteRail = 'reserve' | 'settlement';
+export type NoteRail = 'reserve' | 'settlement' | 'composite';
+export const noteTitle=(rail:NoteRail='reserve')=>rail==='composite'?'Settlement Reserve Note':rail==='settlement'?'Settlement Note':'Reserve Note';
+export const noteAccountLabel=(rail:NoteRail='reserve')=>rail==='composite'?'Settlement + Reserve':rail==='settlement'?'Settlement':'Reserve';
 export const NOTE_FONT = 'Reserve Note Serif';
 export const NOTE_PAPER = '/notes/banknote-engraving.webp';
 export const NOTE_DIGITS = '/notes/denomination-engraving.png';
 export const NOTE_MASTHEAD = '/notes/reserve-note-masthead.png';
 export const NOTE_SETTLEMENT_MASTHEAD = '/notes/settlement-note-masthead.png';
+export const NOTE_COMPOSITE_MASTHEAD = '/notes/settlement-reserve-note-masthead.png';
 export const NOTE_FONT_URL = '/notes/fonts/Cinzel.ttf';
 type Crop = readonly [number, number, number, number];
 export interface NoteImagePrint { asset: string; crop: Crop; x: number; y: number; width: number; height: number; }
@@ -64,19 +67,19 @@ function printText(value: string, y: number, size: number, tracking: number, max
   return { value, x: 258 - width / 2, y, size: size * scale, tracking: tracking * scale, width, maxWidth };
 }
 export function reserveNoteDesign(cents: string, noteId: string, rail: NoteRail = 'reserve') {
-  if (rail !== 'reserve' && rail !== 'settlement') throw Error('BANK_NOTE_RAIL_INVALID');
-  const denominationValue = noteDenomination(cents), title = rail === 'settlement' ? 'SETTLEMENT NOTE' : 'RESERVE NOTE';
+  if (rail !== 'reserve' && rail !== 'settlement' && rail !== 'composite') throw Error('BANK_NOTE_RAIL_INVALID');
+  const denominationValue = noteDenomination(cents), title = noteTitle(rail).toUpperCase();
   const serialHex = noteId.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().padEnd(16, '0');
-  const serial = `${rail === 'settlement' ? 'SN' : 'RN'} ${serialHex.slice(0, 8)} ${serialHex.slice(8, 16)}`;
+  const serial = `${rail === 'composite' ? 'SR' : rail === 'settlement' ? 'SN' : 'RN'} ${serialHex.slice(0, 8)} ${serialHex.slice(8, 16)}`;
   const denominations = [denomination(denominationValue.display, 87, 164, 342, 121, true), ...[[23, 34], [744, 34], [23, 410], [744, 410]].map(([x, y]) => ({ value: denominationValue.numeric, x, y, width: 43, height: 27, images: [] as NoteImagePrint[] }))];
   const wordLines = denominationValue.words.includes(' AND ') ? denominationValue.words.split(' AND ').map((line, i) => i ? `AND ${line}` : line) : [denominationValue.words];
   const texts = wordLines.map((line, i) => printText(line, wordLines.length === 1 ? 304 : 297 + i * 14, 13.2, 2.7));
-  texts.push(printText('DENOMINATED IN USD', 332, 10.5, 2.2), printText(`REDEEMABLE INTO ${rail.toUpperCase()}`, 346, 7.4, 2.1), printText(serial, 375, 14.2, 1.4), printText('TRANSFER BY VERIFIED CUSTODY', 394, 5.7, 1.6));
+  texts.push(printText(rail!=='reserve'?'VALUE AT CREATION · USD':'DENOMINATED IN USD', 332, 10.5, 2.2), printText(`REDEEMABLE INTO ${rail==='composite'?'SETTLEMENT + RESERVE':rail.toUpperCase()}`, 346, 7.4, 2.1), printText(serial, 375, 14.2, 1.4), printText('TRANSFER BY VERIFIED CUSTODY', 394, 5.7, 1.6));
   for (const corner of denominations.slice(1)) {
     const width = Math.min(43, corner.value.length * 19), size = 36 * Math.min(1, 3 / corner.value.length);
     texts.push({ value: corner.value, x: corner.x + (43 - width) / 2, y: corner.y + 13.5 + size * 0.35, size, tracking: -size / 45, width, maxWidth: 43, corner: true });
   }
-  const masthead = rail === 'settlement' ? NOTE_SETTLEMENT_MASTHEAD : NOTE_MASTHEAD;
-  const images: NoteImagePrint[] = [{ asset: masthead, crop: rail === 'settlement' ? [45, 180, 2034, 386] : [90, 180, 1975, 386], x: 92, y: 88, width: 340, height: 65 }, ...denominations.flatMap(amount => amount.images), { asset: NOTE_MASTHEAD, crop: [224, 420, 1710, 82], x: 139, y: 312, width: 238, height: 10 }, { asset: NOTE_MASTHEAD, crop: [224, 420, 1710, 82], x: 174, y: 381, width: 168, height: 8 }];
-  return { title, subtitle: rail === 'settlement' ? 'PROOF-NATIVE VALUE' : 'PROOF-BACKED VALUE', serial, denomination: denominationValue, denominations, images, texts };
+  const masthead = rail === 'composite' ? NOTE_COMPOSITE_MASTHEAD : rail === 'settlement' ? NOTE_SETTLEMENT_MASTHEAD : NOTE_MASTHEAD;
+  const images: NoteImagePrint[] = [{ asset: masthead, crop: rail === 'composite' ? [38, 180, 2075, 386] : rail === 'settlement' ? [45, 180, 2034, 386] : [90, 180, 1975, 386], x: 92, y: 88, width: 340, height: 65 }, ...denominations.flatMap(amount => amount.images), { asset: NOTE_MASTHEAD, crop: [224, 420, 1710, 82], x: 139, y: 312, width: 238, height: 10 }, { asset: NOTE_MASTHEAD, crop: [224, 420, 1710, 82], x: 174, y: 381, width: 168, height: 8 }];
+  return { title, subtitle: rail === 'composite' ? 'PROOF-BACKED NATIVE VALUE' : rail === 'settlement' ? 'PROOF-NATIVE VALUE' : 'PROOF-BACKED VALUE', serial, denomination: denominationValue, denominations, images, texts };
 }

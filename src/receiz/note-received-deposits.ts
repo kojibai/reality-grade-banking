@@ -1,6 +1,7 @@
-import type {BankNoteDeposit,BankNoteDepositResult,BankNoteRail} from './offline-notes';
+import {sameNoteFundingParts} from './note-funding';
+import type {BankNoteDeposit,BankNoteDepositResult,BankNoteRail,BankNoteFundingParts} from './offline-notes';
 
-export interface ReceivedNoteSource {rail:BankNoteRail;noteId:string;amountPhiMicro:string;amountUsdCents:string;receiverUserId:string;receiverKeyId:string;redemptionDigest:string;terminalArtifactSha256:string;terminalSourceBytes:Uint8Array;}
+export interface ReceivedNoteSource {rail:BankNoteRail;fundingParts?:BankNoteFundingParts;noteId:string;amountPhiMicro:string;amountUsdCents:string;receiverUserId:string;receiverKeyId:string;redemptionDigest:string;terminalArtifactSha256:string;terminalSourceBytes:Uint8Array;}
 type Entry={sourceRef:string;redemptionDigest:string;terminalArtifactSha256:string;status:'received'|'confirmed';creditRef?:string;submissionEntered?:boolean;submissionRef?:string};
 type State={schema:'bank.received-note-deposits.v1';uid:string;keyId:string;entries:Record<string,Entry>};
 const sha=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
@@ -36,9 +37,9 @@ export function createLocalNoteDepositQueue(input:{uid:string;keyId:string;asser
  async function result(id:string,row:Entry):Promise<BankNoteDepositResult>{
   const held=await original(row.sourceRef);
   if(id!==held.noteId||row.redemptionDigest!==held.redemptionDigest||row.terminalArtifactSha256!==held.terminalArtifactSha256)throw Error('BANK_NOTE_DEPOSIT_BINDING_MISMATCH');
-  if(row.status==='received')return {status:'received',rail:held.rail,noteId:held.noteId,amountPhiMicro:held.amountPhiMicro,amountUsdCents:held.amountUsdCents,proofBytes:held.terminalSourceBytes.slice()};
+  if(row.status==='received')return {status:'received',rail:held.rail,noteId:held.noteId,amountPhiMicro:held.amountPhiMicro,amountUsdCents:held.amountUsdCents,...(held.fundingParts?{fundingParts:structuredClone(held.fundingParts)}:{}),proofBytes:held.terminalSourceBytes.slice()};
   const saved=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await input.restore(row.creditRef!))) as Omit<BankNoteDeposit,'proofBytes'>&{proofRef:string};
-  if(saved.noteId!==held.noteId||saved.rail!==held.rail||saved.amountPhiMicro!==held.amountPhiMicro||saved.amountUsdCents!==held.amountUsdCents||!sha(saved.proofRef))throw Error('BANK_NOTE_DEPOSIT_BINDING_MISMATCH');
+  if(saved.noteId!==held.noteId||saved.rail!==held.rail||saved.amountPhiMicro!==held.amountPhiMicro||saved.amountUsdCents!==held.amountUsdCents||!sameNoteFundingParts(saved.fundingParts,held.fundingParts)||!sha(saved.proofRef))throw Error('BANK_NOTE_DEPOSIT_BINDING_MISMATCH');
   const {proofRef,...fields}=saved;return {...fields,status:'confirmed',proofBytes:await input.restore(proofRef)};
  }
  async function list(options:{pendingOnly?:boolean}={}){const {state}=await load();return Promise.all(Object.entries(state.entries).filter(([,row])=>!options.pendingOnly||row.status==='received').map(([id,row])=>result(id,row)));}
@@ -68,7 +69,7 @@ export function createLocalNoteDepositQueue(input:{uid:string;keyId:string;asser
      const preparedRequestBytes=submissionRef?await input.restore(submissionRef):undefined;
      if(preparedRequestBytes&&[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(preparedRequestBytes)))].map(v=>v.toString(16).padStart(2,'0')).join('')!==submissionRef)throw Error('BANK_NOTE_SOURCE_REQUIRED');
      const credited=await input.submit(held.terminalSourceBytes.slice(),{recoverFirst,...(preparedRequestBytes?{preparedRequestBytes}:{})});input.assertOpen();
-     if(credited.noteId!==held.noteId||credited.rail!==held.rail||credited.amountPhiMicro!==held.amountPhiMicro||credited.amountUsdCents!==held.amountUsdCents||!(credited.proofBytes instanceof Uint8Array)||!credited.proofBytes.length)throw Error('BANK_NOTE_DEPOSIT_BINDING_MISMATCH');
+     if(credited.noteId!==held.noteId||credited.rail!==held.rail||credited.amountPhiMicro!==held.amountPhiMicro||credited.amountUsdCents!==held.amountUsdCents||!sameNoteFundingParts(credited.fundingParts,held.fundingParts)||!(credited.proofBytes instanceof Uint8Array)||!credited.proofBytes.length)throw Error('BANK_NOTE_DEPOSIT_BINDING_MISMATCH');
      const proofRef=await input.retain(credited.proofBytes),{proofBytes:_,...fields}=credited;
      const creditRef=await input.retain(new TextEncoder().encode(JSON.stringify({...fields,proofRef})));input.assertOpen();
      current.state.entries[id]={...row,...(submissionRef?{submissionRef}:{}),submissionEntered:true,status:'confirmed',creditRef};await input.write(current.state,current.previous);input.assertOpen();current=await load();

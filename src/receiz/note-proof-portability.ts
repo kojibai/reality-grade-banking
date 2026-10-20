@@ -1,3 +1,4 @@
+import {noteTitle} from './note-design';
 import type { ProofSource } from './proof-library';
 import receiverBuild from '../../public/native/receiver-verifier.v129.manifest.json';
 type Receiver = {
@@ -22,21 +23,21 @@ export async function inspectNoteProof(source: ProofSource, keyId: string): Prom
   if(await native.isBankConnectedNoteImage(source.bytes)||await native.isBankConnectedNoteSource(source.bytes)){
     const note=await native.inspectConnectedNote(source.bytes);
     if(source.kind==='note-deposit'&&note.receiverKeyId!==keyId)throw Error('PROOF_RECEIPT_IDENTITY_MISMATCH');
-    return{title:`${note.rail==='settlement'?'Settlement':'Reserve'} Note · ${note.kind==='handover'?'received proof':'funded original'}`};
+    return{title:`${noteTitle(note.rail)} · ${note.kind==='handover'?'received proof':'funded original'}`};
   }
   if(native.isBankNoteAccountDeposit(source.bytes)){
     const received=await native.inspectAccountNoteDeposit(source.bytes);
     if(source.kind==='note-deposit'&&received.receiverKeyId!==keyId)throw Error('PROOF_RECEIPT_IDENTITY_MISMATCH');
-    return {title:`${received.rail==='settlement'?'Settlement':'Reserve'} Note · ${source.kind==='note-image'?'completed transfer':'received'} proof`};
+    return {title:`${noteTitle(received.rail)} · ${source.kind==='note-image'?'completed transfer':'received'} proof`};
   }
   if (source.kind === 'note-image') {
     const note = native.inspectReserveNote(await native.openReserveNoteImage(new Uint8Array(source.bytes)));
-    return { title: `${note.rail === 'settlement' ? 'Settlement' : 'Reserve'} Note · carried proof` };
+    return { title: `${noteTitle(note.rail)} · carried proof` };
   }
   const schema=(()=>{try{return JSON.parse(new TextDecoder().decode(source.bytes))?.schema;}catch{return null;}})();
   const receipt = schema==='receiz.bank.connected-note.receipt.v1'?await native.inspectConnectedNoteReceipt(source.bytes):await native.inspectNoteDepositReceipt(new Uint8Array(source.bytes));
   if (receipt.receiverKeyId !== keyId) throw Error('PROOF_RECEIPT_IDENTITY_MISMATCH');
-  return { title: `${receipt.rail === 'settlement' ? 'Settlement' : 'Reserve'} deposit receipt` };
+  return { title: `${noteTitle(receipt.rail)} deposit receipt` };
 }
 export async function readRetainedNoteProofs(input: { keyId: string; read(): Promise<unknown>; restore(digest: string): Promise<Uint8Array> }): Promise<ProofSource[]> {
   const state = await input.read() as { schema?: string; keyId?: string; notes?: Record<string, { imageRef?: string }>; deposits?: Record<string, { imageRef?: string; creditRef?: string; terminalRef?: string; privateCash?: string }> } | null;

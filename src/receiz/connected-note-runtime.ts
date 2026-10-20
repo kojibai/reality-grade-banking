@@ -1,4 +1,4 @@
-import type {BankNoteImage,BankNoteInspection,BankNoteRail} from './offline-notes';
+import type {BankNoteImage,BankNoteInspection,BankNoteRail,BankNoteReview} from './offline-notes';
 
 type Transfer={requestRef:string;sourceRef?:string;imageRef?:string};
 type Row={noteId:string;operationId:string;rail:BankNoteRail;amountUsdCents:string;authorizationRef:string;noteIdentityRef:string;phase:'prepared'|'submitted'|'issued'|'cancelled';sourceRef?:string;openingRef?:string;imageRef?:string;transfer?:Transfer;cancellationRef?:string;cancelRequestRef?:string};
@@ -14,7 +14,7 @@ export function readConnectedNoteCheckpoint(value:unknown):State|null{
  const s=structuredClone(value) as State;
  if(!s||s.schema!=='bank.connected-notes.v1'||typeof s.uid!=='string'||!s.uid||typeof s.keyId!=='string'||!s.keyId||!s.notes||typeof s.notes!=='object'||Array.isArray(s.notes)||Object.keys(s.notes).length>128||s.current!==null&&(typeof s.current!=='string'||!s.notes[s.current]))fail();
  for(const [id,row]of Object.entries(s.notes)){
-  if(!row||row.noteId!==id||!id||!hash(row.operationId)||!hash(row.authorizationRef)||!hash(row.noteIdentityRef)||!['reserve','settlement'].includes(row.rail)||!/^\d{1,9}$/.test(row.amountUsdCents)||BigInt(row.amountUsdCents)<=0n||BigInt(row.amountUsdCents)>100000000n||!['prepared','submitted','issued','cancelled'].includes(row.phase))fail();
+  if(!row||row.noteId!==id||!id||!hash(row.operationId)||!hash(row.authorizationRef)||!hash(row.noteIdentityRef)||!['reserve','settlement','composite'].includes(row.rail)||!/^\d{1,9}$/.test(row.amountUsdCents)||BigInt(row.amountUsdCents)<=0n||BigInt(row.amountUsdCents)>100000000n||!['prepared','submitted','issued','cancelled'].includes(row.phase))fail();
   for(const ref of [row.sourceRef,row.openingRef,row.imageRef,row.cancellationRef,row.cancelRequestRef,row.transfer?.requestRef,row.transfer?.sourceRef,row.transfer?.imageRef])if(ref!==undefined&&!hash(ref))fail();
   if(row.phase==='issued'&&(!row.sourceRef||!row.openingRef)||row.phase==='cancelled'&&!row.cancellationRef||row.imageRef&&row.phase!=='issued'||row.transfer&&(!row.sourceRef||!row.transfer.requestRef||row.transfer.imageRef&&!row.transfer.sourceRef))fail();
  }
@@ -27,7 +27,8 @@ export type ConnectedNoteFundingResult=BankNoteInspection&{sourceBytes:Uint8Arra
 export interface ConnectedNotePorts{
  uid:string;keyId:string;assertOpen():void;read():Promise<unknown>;write(next:unknown,previous:unknown):Promise<void>;
  retain(bytes:Uint8Array):Promise<string>;restore(ref:string):Promise<Uint8Array>;
- prepare(amountUsdCents:string,rail:BankNoteRail):Promise<ConnectedNotePreparation>;
+ review?(amountUsdCents:string,rail?:BankNoteRail):Promise<BankNoteReview>;
+ prepare(amountUsdCents:string,rail?:BankNoteRail):Promise<ConnectedNotePreparation>;
  /** The port independently verifies complete native funding and its opening. */
  issue(authorization:unknown,operationId:string,recoverFirst:boolean,allowSubmit?:boolean):Promise<ConnectedNoteFundingResult>;
  /** The returned bytes are a verified native cancellation, not an HTTP flag. */
@@ -45,24 +46,26 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
  async function original(ref:string){const bytes=await input.restore(ref);input.assertOpen();const d=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes)))].map(v=>v.toString(16).padStart(2,'0')).join('');if(d!==ref)fail('SOURCE_REQUIRED');return bytes;}
  async function save(state:State,previous:unknown){await input.write(state,previous);input.assertOpen();return load();}
  const current=(state:State)=>state.current?state.notes[state.current]!:null;
+ async function reviewed(row:Row){const a=parse(await original(row.authorizationRef));if(a.noteId!==row.noteId||a.amountUsdCents!==row.amountUsdCents||a.rail!==row.rail)fail('EXACT_RESUME_REQUIRED');return{noteId:row.noteId,rail:row.rail,amountUsdCents:row.amountUsdCents,...(a.amountPhiMicro?{amountPhiMicro:a.amountPhiMicro}:{}),...(a.fundingParts?{fundingParts:a.fundingParts}:{}),canCancel:row.phase!=='issued'};}
  async function note(row:Row):Promise<BankNoteImage>{
   if(!row.imageRef||!row.sourceRef)return fail('SOURCE_REQUIRED');const inspection=await input.inspect(await original(row.sourceRef));
   if(inspection.noteId!==row.noteId||inspection.amountUsdCents!==row.amountUsdCents||inspection.rail!==row.rail)fail('SOURCE_REQUIRED');
   return{...inspection,image:await original(row.transfer?.imageRef??row.imageRef),transferred:!!row.transfer?.imageRef,transferPending:!!row.transfer&&!row.transfer.imageRef};
  }
  return{
-  async pending(){const row=current((await load()).state);return row&&row.phase!=='cancelled'?{noteId:row.noteId,rail:row.rail,amountUsdCents:row.amountUsdCents,canCancel:row.phase!=='issued'}:null;},
+  async pending(){const row=current((await load()).state);return row&&row.phase!=='cancelled'?reviewed(row):null;},
+  async review(amountUsdCents:string):Promise<BankNoteReview>{const row=current((await load()).state);if(row){if(row.amountUsdCents!==amountUsdCents)fail('EXACT_RESUME_REQUIRED');return reviewed(row);}if(!input.review)fail('REVIEW_REQUIRED');return input.review!(amountUsdCents);},
   async hasNote(id:string){const row=(await load()).state.notes[id];return !!row&&row.phase==='issued';},
   async savedNotes(){const {state}=await load();return Promise.all(Object.values(state.notes).filter(row=>row.phase==='issued'&&!!row.imageRef).map(note));},
-  async create(amountUsdCents:string,rail:BankNoteRail='reserve'):Promise<BankNoteImage>{
+  async create(amountUsdCents:string,rail?:BankNoteRail):Promise<BankNoteImage>{
    let held=await load(),row=current(held.state);
-   if(row&&(row.amountUsdCents!==amountUsdCents||row.rail!==rail))fail('EXACT_RESUME_REQUIRED');
+   if(row&&(row.amountUsdCents!==amountUsdCents||rail!==undefined&&row.rail!==rail))fail('EXACT_RESUME_REQUIRED');
    if(!row){
     if(Object.keys(held.state.notes).length>=128)fail('DEVICE_CAPACITY');
     const prepared=await input.prepare(amountUsdCents,rail);input.assertOpen();
-    if(prepared.amountUsdCents!==amountUsdCents||prepared.rail!==rail||held.state.notes[prepared.noteId]||!hash(prepared.operationId))fail('EXACT_RESUME_REQUIRED');
+    if(prepared.amountUsdCents!==amountUsdCents||rail!==undefined&&prepared.rail!==rail||held.state.notes[prepared.noteId]||!hash(prepared.operationId))fail('EXACT_RESUME_REQUIRED');
     const authorizationRef=await input.retain(json(prepared.authorization)),noteIdentityRef=await input.retain(prepared.noteIdentityBytes);input.assertOpen();
-    row={noteId:prepared.noteId,operationId:prepared.operationId,rail,amountUsdCents,authorizationRef,noteIdentityRef,phase:'prepared'};
+    row={noteId:prepared.noteId,operationId:prepared.operationId,rail:prepared.rail,amountUsdCents,authorizationRef,noteIdentityRef,phase:'prepared'};
     held.state.notes[row.noteId]=row;held.state.current=row.noteId;held=await save(held.state,held.previous);
    }
    if(row.phase==='cancelled')fail('CANCELLED');

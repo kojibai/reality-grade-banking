@@ -49,7 +49,7 @@ See the [current function boundaries](docs/current-function-boundaries.md) and [
 | Physical assets | Sealed intake and carried delivery instructions; actual custodian acceptance, transferable ownership and fractional sales remain unfinished |
 | Digital Send / native asset exchange | Exact signed reviews, native paired effects and original recovery; real signed liquidity and qualified production custody required |
 | Asset creation | Definition sealing plus native backing lock, conserved supply, verified position delivery and whole-supply redemption; production custody qualification required |
-| Reserve Notes | Funded native creation, receiving request, qualified handoff and Reserve redemption integration; production native-writer/signer/service/hardware qualification remains |
+| Notes | Automatic Reserve, Settlement or combined funding; signed recipient-bound handover, offline proof retention and once-only account deposit. Compatibility migrations, deployed financial qualification and protected-device qualification remain release gates. |
 | Settlement Notes | Matching native signed rail, exact-Phi local valuation and credit primitives implemented; production selector and real-device financial qualification remain |
 | Institution receiving | Public verification, integration contracts and local checks; each institution needs its own authorized native integration and live assessment |
 

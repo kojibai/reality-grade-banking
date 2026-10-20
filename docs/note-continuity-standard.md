@@ -44,7 +44,7 @@ complete technical material here and at
 | Offline receipt and local deposit retention | Complete v129 terminal/funding verification, exact recipient binding and encrypted local originals. No recipient authenticator or credit request. |
 | Connected credit and recovery | Existing `/api/connect/offline-notes/redemption` GET/POST and full native credit verification. Exact original is recovered/submitted; no replacement intent. |
 | Qualified offline creation / local account continuity | Existing strict primitives; prepared-credit activation remains disabled pending physical-device and host qualification. |
-| Online creation on nonconforming custody | Implemented as the distinct `connected-account-v1` profile through the existing native account writer. No attestation ceremony. Signed recipient-bound handover can be retained offline; exclusive consumption and credit occur atomically when connected. Deployed qualification remains required. |
+| Online creation on nonconforming custody | Implemented as the distinct `connected-account-v1` profile through the selected existing Receiz account writer. Reserve contributes first and Settlement supplies any remainder. A mixed Note carries both signed funding components through every transition. No attestation ceremony. Signed recipient-bound handover can be retained offline; exclusive consumption and credit occur atomically when connected. Deployed qualification remains required. |
 | Universal device support / public 1.0.0 | **Not qualified or released.** See [release gates](releases/1.0.0.md). |
 
 The account receiving/deposit additions and connected issuance are documented

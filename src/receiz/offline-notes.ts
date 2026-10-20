@@ -1,14 +1,17 @@
-export type BankNoteRail = 'reserve' | 'settlement';
-export interface BankNoteImage { noteId: string; rail?: BankNoteRail; amountPhiMicro?: string; amountUsdCents: string; image: Uint8Array; transferred?: boolean; transferPending?: boolean; accountUpdateWarning?: string; consumption?:'connection-required'; }
-export interface BankNoteInspection { rail?: BankNoteRail; noteId: string; amountUsdCents: string; amountPhiMicro: string; consumption?:'connection-required'; }
-export interface BankNoteDeposit { status?:'confirmed'; rail?: BankNoteRail; amountPhiMicro?: string; walletAfterPhiMicro?: string; noteId: string; amountUsdCents: string; proofBytes: Uint8Array; reserveAfterUsdCents: string; }
-export interface BankReceivedNoteDeposit {status:'received';rail:BankNoteRail;noteId:string;amountPhiMicro:string;amountUsdCents:string;proofBytes:Uint8Array;}
+export type BankNoteRail = 'reserve' | 'settlement' | 'composite';
+export type BankNoteFundingParts={reserve:{amountUsdCents:string;amountPhiMicro:string};settlement:{amountUsdCents:string;amountPhiMicro:string}};
+export type BankNoteReview={rail:BankNoteRail;amountUsdCents:string;amountPhiMicro?:string;fundingParts?:BankNoteFundingParts};
+export interface BankNoteImage extends Omit<BankNoteReview,'rail'> { noteId: string; rail?: BankNoteRail; image: Uint8Array; transferred?: boolean; transferPending?: boolean; accountUpdateWarning?: string; consumption?:'connection-required'; }
+export interface BankNoteInspection extends Omit<BankNoteReview,'rail'> { rail?: BankNoteRail; noteId: string; amountPhiMicro: string; consumption?:'connection-required'; }
+export interface BankNoteDeposit extends Omit<BankNoteReview,'rail'> { status?:'confirmed'; rail?: BankNoteRail; walletAfterPhiMicro?: string; noteId: string; proofBytes: Uint8Array; reserveAfterUsdCents: string; }
+export interface BankReceivedNoteDeposit extends BankNoteReview {status:'received';noteId:string;amountPhiMicro:string;proofBytes:Uint8Array;}
 export type BankNoteDepositResult=BankNoteDeposit|BankReceivedNoteDeposit;
 export interface BankOfflineNotes {
   receivedNotes?():Promise<BankNoteDepositResult[]>;
   prepareResources?(count:{notes:number;receivers:number}):Promise<void>;
+  review?(amount:string):Promise<BankNoteReview>;
   savedNotes(): Promise<BankNoteImage[]>;
-  pending(): Promise<{ noteId: string; rail?: BankNoteRail; amountUsdCents: string; canCancel?: boolean } | null>;
+  pending(): Promise<{ noteId: string; rail?: BankNoteRail; amountUsdCents: string; amountPhiMicro?:string;fundingParts?:BankNoteFundingParts;canCancel?: boolean } | null>;
   cancelUnfunded(): Promise<void>;
   create(amount: string, rail?: BankNoteRail): Promise<BankNoteImage>;
   receivingRequest(): Promise<Uint8Array>;
