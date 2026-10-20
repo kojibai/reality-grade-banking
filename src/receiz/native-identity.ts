@@ -69,6 +69,7 @@ export interface OpenIdentity {
   executionRecovery?: () => BankExecutionRecovery;
   knownMessagingDisplay?: () => import('./messaging-retention').MessagingDisplay|null;
   knownTwinAccess?: () => boolean|null;
+  retainTwinAccessQuestions?: (questions:readonly import('./messaging-retention').TwinAccessQuestion[]) => void;
   upgradeTwin?: (input:import('./twin-upgrade').TwinUpgradeInput) => Promise<import('./twin-upgrade').TwinUpgradeResult>;
   messaging?: (approved?:boolean) => Promise<import('./native-messaging').NativeMessaging>;
   offlineNotes?: () => Promise<BankOfflineNotes>;
@@ -1354,7 +1355,12 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   }
   const retainedMessaging=await messagingRetention;
   const knownMessagingDisplay=()=>{const display=retainedMessaging.known(),uid=accountUid??knownWallet?.wallet.userId;return display&&(!uid||display.accountUid===uid)?display:null;};
-  return { messaging, knownMessagingDisplay, knownTwinAccess, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  const retainTwinAccessQuestions=(questions:readonly import('./messaging-retention').TwinAccessQuestion[])=>{
+    if(lifetime.signal.aborted)return;
+    const uid=accountUid??knownWallet?.wallet.userId;if(!uid)return;
+    retainedMessaging.retainTwinAccessQuestions(uid,questions);
+  };
+  return { messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

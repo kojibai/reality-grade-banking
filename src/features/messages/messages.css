@@ -54,6 +54,11 @@
 .bank-twin-reply{font-size:13px;line-height:1.8;color:#485d77;max-width:97%;padding:3px 0}
 .bank-twin-reply>span{font-size:10px;color:#96a1af;display:block;margin-bottom:9px}
 .bank-twin-reply>button{display:flex;align-items:center;gap:7px;border-bottom:1px solid #dce3ee;color:#34597f;font-size:11px;font-weight:580;padding:1px 0 3px;margin-top:16px}
+.bank-twin-reply.bank-twin-access-reply{white-space:normal}
+.bank-twin-access-reply>button{min-height:44px}
+.bank-twin-access-reply ul{list-style:none;padding:0;margin:16px 0;display:grid;gap:13px}
+.bank-twin-access-reply li{margin:0;padding:0}
+.bank-twin-access-reply strong{font-weight:600;color:var(--navy)}
 .bank-inline-receipt{margin-top:20px;border:1px solid #e4e9ef;border-radius:13px;padding:16px;background:white;display:grid;gap:5px;font-size:11px;line-height:1.6}
 .bank-inline-receipt span{font-size:9px;color:#94a0af}
 .bank-inline-receipt strong{font-size:25px;color:var(--navy);letter-spacing:-.8px;margin-top:4px}

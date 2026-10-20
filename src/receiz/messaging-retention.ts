@@ -2,11 +2,13 @@ import type {ChatConversation,ChatMessage,ChatPage,ChatPerson} from './native-me
 import {profileAvatarUrl} from './profile-avatar';
 
 /** Optional display retention, never an artifact, grant, outbox or payment source. */
+export type TwinAccessQuestion={id:string;question:string};
 export interface MessagingDisplay {
   schema:'bankeiz.messaging-display.v1';accountUid:string;inbox:ChatConversation[];pages:ChatPage[];
   twinAccess?:boolean;
+  twinAccessQuestions?:TwinAccessQuestion[];
 }
-export type MessagingDisplaySource=Pick<MessagingDisplay,'accountUid'|'inbox'|'pages'|'twinAccess'>;
+export type MessagingDisplaySource=Pick<MessagingDisplay,'accountUid'|'inbox'|'pages'|'twinAccess'|'twinAccessQuestions'>;
 export const MESSAGING_DISPLAY_MAX_BYTES=1024*1024;
 const encoder=new TextEncoder();
 const size=(value:unknown)=>encoder.encode(JSON.stringify(value)).byteLength;
@@ -26,7 +28,8 @@ function conversation(value:ChatConversation):ChatConversation {
 // Image metadata is optional; it must never evict the conversation or messages.
 function withoutAvatars(value:ChatConversation):ChatConversation{return{...value,members:value.members.map(person=>({...person,avatarUrl:null}))};}
 export function projectMessagingDisplay(source:MessagingDisplaySource):MessagingDisplay {
-  const display:MessagingDisplay={schema:'bankeiz.messaging-display.v1',accountUid:source.accountUid,inbox:[],pages:[],...(typeof source.twinAccess==='boolean'?{twinAccess:source.twinAccess}:{})};
+  const questions=Array.isArray(source.twinAccessQuestions)?source.twinAccessQuestions.slice(-8).map(value=>{const row=object(value);return{id:text(row.id,200),question:text(row.question,1200)};}).filter(row=>row.id&&row.question):[];
+  const display:MessagingDisplay={schema:'bankeiz.messaging-display.v1',accountUid:source.accountUid,inbox:[],pages:[],...(typeof source.twinAccess==='boolean'?{twinAccess:source.twinAccess}:{}),...(questions.length?{twinAccessQuestions:questions}:{})};
   // Budget the exact UTF-8 JSON bytes once per row. No artifacts, attachments,
   // call state, pending writes or credentials are copied into this projection.
   let remaining=MESSAGING_DISPLAY_MAX_BYTES-size(display)-64;
@@ -65,6 +68,12 @@ export async function openMessagingRetention({load,save,isOpen}:{load:()=>Promis
   let previous:unknown=null,available=true;
   try{previous=await load();}catch{/* A later save still has to pass the vault's exact identity/revision checks. */}
   let known=readMessagingDisplay(previous),serialized=JSON.stringify(known),pending:MessagingDisplaySource|null=null,writing:Promise<void>|null=null;
+  function capture(source:MessagingDisplaySource){
+    if(!isOpen())return;
+    const held=pending??known;
+    pending={...source,...(source.twinAccessQuestions===undefined&&held?.accountUid===source.accountUid?{twinAccessQuestions:held.twinAccessQuestions}:{})};
+    queueMicrotask(()=>{void flush();});
+  }
   async function flush():Promise<void>{
     if(writing)return writing;
     const attempt=(async()=>{
@@ -80,7 +89,11 @@ export async function openMessagingRetention({load,save,isOpen}:{load:()=>Promis
   }
   return {
     known:()=>isOpen()?known:null,
-    capture(source:MessagingDisplaySource){if(!isOpen())return;pending=source;queueMicrotask(()=>{void flush();});},
+    capture,
+    retainTwinAccessQuestions(accountUid:string,questions:readonly TwinAccessQuestion[]){
+      const held=pending??known;if(held&&held.accountUid!==accountUid)return;
+      capture({...held??{accountUid,inbox:[],pages:[]},twinAccessQuestions:questions.slice(-8)});
+    },
     flush,
   };
 }

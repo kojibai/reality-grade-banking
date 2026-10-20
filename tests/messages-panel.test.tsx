@@ -30,7 +30,70 @@ function fixture(consented=true){
 }
 it('opens Messages first and places Twin second when the existing account has no Twin access',async()=>{
  const f=fixture(),identity={...f.identity,knownTwinAccess:()=>false};
- try{await f.render(true,identity);expect([...f.host.querySelectorAll('.bank-messaging-nav>button')].slice(0,2).map(button=>button.textContent)).toEqual(['Messages','Your Twin']);expect(f.host.querySelector('.sheet-header h2')?.textContent).toBe('Messages');expect(f.host.querySelector('[aria-label="Search messages"]')).not.toBeNull();await f.click('Your Twin');await vi.waitFor(()=>expect(f.host.textContent).toContain('Explore Twin access'));}finally{f.unmount();}
+ try{await f.render(true,identity);expect([...f.host.querySelectorAll('.bank-messaging-nav>button')].slice(0,2).map(button=>button.textContent)).toEqual(['Messages','Your Twin']);expect(f.host.querySelector('.sheet-header h2')?.textContent).toBe('Messages');expect(f.host.querySelector('[aria-label="Search messages"]')).not.toBeNull();await f.click('Your Twin');expect(f.host.querySelector('[aria-label="Ask your Twin…"]')).not.toBeNull();expect(f.host.textContent).not.toContain('Explore Twin access');}finally{f.unmount();}
+});
+it('shows the same Twin view for free and paid accounts, offering an upgrade only on send and preserving the draft',async()=>{
+ const free=fixture(),paid=fixture(),upgrade=vi.fn();
+ const identity={...free.identity,knownTwinAccess:()=>false,upgradeTwin:upgrade};
+ try{
+  await free.render(true,identity);await free.click('Your Twin');await paid.render();
+  expect(free.host.querySelector('.bank-twin-welcome')?.innerHTML).toBe(paid.host.querySelector('.bank-twin-welcome')?.innerHTML);
+  expect(free.host.querySelector('.bank-message-composer')).not.toBeNull();expect(free.host.querySelector('.bank-message-composer')?.innerHTML).toBe(paid.host.querySelector('.bank-message-composer')?.innerHTML);
+  expect(free.host.querySelector('.bank-twin-upgrade')).toBeNull();expect(upgrade).not.toHaveBeenCalled();
+  await free.input('Ask your Twin…','Explain my last payment');await free.submit();
+  expect(free.host.querySelector('.bank-twin-access-reply')?.textContent).toContain('Understand payments');
+  expect(free.host.querySelector('.bank-message-own')?.textContent).toBe('Explain my last payment');
+  expect(free.host.querySelector('.bank-twin-upgrade')).toBeNull();
+  await free.click('Unlock your Twin');await vi.waitFor(()=>expect(free.host.textContent).toContain('Continue to secure payment'));
+  expect(free.api.twin.ask).not.toHaveBeenCalled();expect(upgrade).not.toHaveBeenCalled();
+  await free.click('Back to conversation');
+  expect(free.host.querySelector<HTMLInputElement>('[aria-label="Ask your Twin…"]')?.value).toBe('Explain my last payment');
+  expect(free.host.querySelector('.bank-twin-upgrade')).toBeNull();
+ }finally{free.unmount();paid.unmount();}
+});
+it('returns the preserved draft after verified upgrade without automatically submitting or billing a Twin request',async()=>{
+ const f=fixture(),upgrade=vi.fn(async()=>({accountUid:uid,twinAccess:true})),identity={...f.identity,knownTwinAccess:()=>false,upgradeTwin:upgrade};
+ try{
+  await f.render(true,identity);await f.click('Your Twin');await f.input('Ask your Twin…','My saved question');await f.submit();await f.click('Unlock your Twin');
+  await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));await f.click('Continue to secure payment');
+  expect(f.api.twin.ask).not.toHaveBeenCalled();expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your Twin…"]')?.value).toBe('My saved question');
+  await f.submit();expect(f.api.twin.ask).toHaveBeenCalledOnce();expect(f.api.twin.ask.mock.calls[0]?.[0].message).toBe('My saved question');
+ }finally{f.unmount();}
+});
+it('keeps the access reply and upgrade action when returning to Twin or closing and reopening messages',async()=>{
+ const f=fixture(),identity={...f.identity,knownTwinAccess:()=>false};
+ try{
+  await f.render(true,identity);await f.click('Your Twin');await f.input('Ask your Twin…','Help me understand this');await f.submit();
+  await f.click('Messages');await f.click('Your Twin');await f.render(false,identity);await f.render(true,identity);
+  expect(f.host.querySelector('.bank-message-own')?.textContent).toBe('Help me understand this');expect(f.host.querySelector('.bank-twin-access-reply')).not.toBeNull();
+  await f.click('Unlock your Twin');await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));expect(f.api.twin.ask).not.toHaveBeenCalled();
+ }finally{f.unmount();}
+});
+it('reopens an earlier access reply from existing encrypted display retention without another message or upgrade call',async()=>{
+ const f=fixture(),retain=vi.fn(),identity={...f.identity,knownTwinAccess:()=>false,retainTwinAccessQuestions:retain,knownMessagingDisplay:()=>({schema:'bankeiz.messaging-display.v1' as const,accountUid:uid,inbox:[conversation],pages:[page],twinAccessQuestions:[{id:'held-question',question:'My earlier question'}]})};
+ try{
+  await f.render(true,identity);await f.click('Your Twin');expect(f.host.querySelector('.bank-message-own')?.textContent).toBe('My earlier question');await f.click('Unlock your Twin');await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));expect(f.api.twin.ask).not.toHaveBeenCalled();
+ }finally{f.unmount();}
+});
+it('allows the local access conversation before a public username is ready',async()=>{
+ const f=fixture(),identity={...f.identity,knownTwinAccess:()=>false};f.api.twin.readiness.mockReturnValue({status:'profile-required',availability:'unchecked',requires:['public-username']});
+ try{await f.render(true,identity);await f.click('Your Twin');expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your Twin…"]')?.disabled).toBe(false);await f.input('Ask your Twin…','What can you help with?');await f.submit();expect(f.host.querySelector('.bank-twin-access-reply')).not.toBeNull();expect(f.api.twin.ask).not.toHaveBeenCalled();}finally{f.unmount();}
+});
+it('restores the question from the selected access reply instead of a newer question',async()=>{
+ const f=fixture(),identity={...f.identity,knownTwinAccess:()=>false};
+ try{
+  await f.render(true,identity);await f.click('Your Twin');for(const text of ['First question','Second question']){await f.input('Ask your Twin…',text);await f.submit();}
+  await act(async()=>f.host.querySelector<HTMLButtonElement>('.bank-twin-access-reply button')!.click());await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));await f.click('Back to conversation');
+  expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your Twin…"]')?.value).toBe('First question');
+ }finally{f.unmount();}
+});
+it('uses verified access that finishes after returning from the upgrade, without another upsell or automatic send',async()=>{
+ const f=fixture(),pending=deferred<{accountUid:string;twinAccess:boolean}>();let entitled=false;
+ const upgrade=vi.fn(async()=>{const result=await pending.promise;entitled=result.twinAccess;return result;}),identity={...f.identity,knownTwinAccess:()=>entitled,upgradeTwin:upgrade};
+ try{
+  await f.render(true,identity);await f.click('Your Twin');await f.input('Ask your Twin…','Keep my question');await f.submit();await f.click('Unlock your Twin');await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));await f.click('Continue to secure payment');await f.click('Back to conversation');
+  await act(async()=>pending.resolve({accountUid:uid,twinAccess:true}));expect(f.api.twin.ask).not.toHaveBeenCalled();await f.submit();expect(f.api.twin.ask).toHaveBeenCalledOnce();expect(upgrade).toHaveBeenCalledOnce();
+ }finally{f.unmount();}
 });
 it('opens Twin first from held access without waiting for messaging transport',async()=>{
  const f=fixture(),pending=deferred<NativeMessaging>(),identity={...f.identity,messaging:()=>pending.promise};

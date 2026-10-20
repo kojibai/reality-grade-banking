@@ -6,6 +6,21 @@ const message:ChatMessage={id:'m1',conversationId:id,senderUserId:uid,senderKind
 const conversation:ChatConversation={id,kind:'dm',title:'Mira',members:[],aiAgents:[],defaultAiId:null,unreadCount:1,previewMessage:message,createdAt:message.createdAt,updatedAt:message.createdAt,lastMessageAt:message.createdAt};
 const page:ChatPage={conversation,messages:[message],hasMore:false,nextCursor:null};
 const source={accountUid:uid,inbox:[conversation],pages:[page]};
+it('retains bounded local Twin access questions in the existing private display and excludes extra fields',async()=>{
+ const questions=Array.from({length:12},(_,i)=>({id:'q'+i,question:'My chosen question '+i,privateToken:'not display data'}));
+ let saved:unknown=null;
+ const display=projectMessagingDisplay({...source,twinAccessQuestions:questions});
+ expect(display.twinAccessQuestions).toHaveLength(8);expect(display.twinAccessQuestions?.[0]?.id).toBe('q4');expect(JSON.stringify(display)).not.toContain('not display data');
+ const retention=await openMessagingRetention({load:async()=>null,save:async value=>{saved=value;},isOpen:()=>true});retention.capture(display);await retention.flush();
+ const reopened=await openMessagingRetention({load:async()=>saved,save:async()=>{},isOpen:()=>true});expect(reopened.known()?.twinAccessQuestions).toEqual(display.twinAccessQuestions);expect(readMessagingDisplay(saved,'foreign-owner')).toBeNull();
+});
+it('coalesces the local access reply with fresh inbox reads without losing either or copying it across accounts',async()=>{
+ let saved:unknown=null;const retained=await openMessagingRetention({load:async()=>null,save:async value=>{saved=value;},isOpen:()=>true});
+ retained.capture({...source,inbox:[{...conversation,title:'Fresh inbox'}]});retained.retainTwinAccessQuestions(uid,[{id:'access-question',question:'Help with this payment'}]);retained.capture({...source,inbox:[{...conversation,title:'Newest inbox'}]});await retained.flush();
+ expect(retained.known()?.inbox[0]?.title).toBe('Newest inbox');expect(readMessagingDisplay(saved,uid)?.twinAccessQuestions?.[0]?.question).toBe('Help with this payment');
+ retained.retainTwinAccessQuestions('foreign-owner',[{id:'foreign',question:'Foreign question'}]);await retained.flush();expect(JSON.stringify(saved)).not.toContain('Foreign question');
+ retained.capture({...source,accountUid:'different-account'});await retained.flush();expect(retained.known()?.twinAccessQuestions).toBeUndefined();
+});
 it('retains the account Twin tab preference with the existing encrypted inbox projection',()=>{
  for(const twinAccess of [true,false]){const display=projectMessagingDisplay({...source,twinAccess});expect(readMessagingDisplay(display,uid)?.twinAccess).toBe(twinAccess);}
  expect(readMessagingDisplay(projectMessagingDisplay(source),uid)?.twinAccess).toBeUndefined();
