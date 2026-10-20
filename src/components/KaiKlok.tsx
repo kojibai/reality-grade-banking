@@ -45,7 +45,7 @@ function KaiMeaningEntry({ name, range, color, colorName, current, meaning }: { 
     <i style={{ background: color }} aria-hidden="true" />
     <details><summary><div><strong>{name}</strong><span className="kai-meaning-meta">{range} · {colorName}</span><span className="kai-meaning-resonance">{meaning.resonance}</span></div><ChevronDown size={13} aria-hidden="true" /></summary>
       <p className="kai-meaning-body"><span>Symbolic body reference</span>{meaning.body}</p>
-      <p>{meaning.meaning}</p><p className="kai-meaning-application"><strong>In Bankeiz</strong>{meaning.application}</p>
+      <p>{meaning.meaning} {meaning.application}</p>
     </details>
   </li>;
 }
@@ -101,7 +101,7 @@ export function KaiKlok({ active = true }: { active?: boolean }) {
       <details className="kai-technical"><summary>Read the system in detail<span aria-hidden="true">+</span></summary><div>
         <h3>Exact structure</h3><p>Six days form a week. Seven weeks form a 42-day month. Eight months form a 336-day year. These fixed Kai boundaries are independent of civil midnight and Gregorian month lengths.</p>
         <p>KKSv1 uses integer micro-pulses: 1 pulse = 1,000,000 micro-pulses. Each day closes at exactly 17,491.270421 pulses and projects onto the 36 × 44 × 11 display lattice. The final field is the pulse position within that projected step.</p>
-        <h3>Resonance and stewardship</h3><p>KKS gives each color a recurring theme and a symbolic relationship to the body. Bankeiz translates that vocabulary into practices of stewardship: establishing purpose, coordinating commitments, reviewing evidence and preserving continuity. Phase, day, week and month carry these themes at progressively wider scales.</p>
+        <h3>Resonance and stewardship</h3><p>Each color connects a recurring theme with a symbolic relationship to the body. Together, these themes support clear purpose, coordinated commitments, careful review and continuity. Phase, day, week and month express them at progressively wider scales.</p>
         <h3>Operational phases</h3><p>The daily progression moves from readiness through coordination, coherent action, review and clarification to integration. It provides a shared language for the attention a task requires.</p>
         <ol className="kai-meaning-legend" aria-label="Kai phases">{KAI_PHASES.map((phase, i) => <KaiMeaningEntry key={phase.name} name={phase.name} range={`Beats ${String(i * 6).padStart(2, '0')}–${String(i * 6 + 5).padStart(2, '0')}`} color={BANK_KAI_PALETTE.light.phases[i]} colorName={['Red','Orange','Yellow','Green','Blue','Violet'][i]} current={arkIndex === i} meaning={KAI_PHASE_MEANINGS[phase.name]} />)}</ol>
         <h3>Days</h3><p>Six complementary themes connect personal attention with responsible action. Together they frame the relationship between resources, purpose, counterparties and the history a decision leaves behind.</p>

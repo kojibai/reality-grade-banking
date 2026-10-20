@@ -3,7 +3,7 @@ import type { KAI_DAYS, KAI_MONTHS, KAI_PHASES, KAI_WEEKS, KaiKlokMoment } from 
 // Editorial interpretation, not timing, valuation or physiological evidence.
 // Foundations: pinned kai_pulse.ts DAY_TO_CHAKRA / ARC_DESC / MONTHS /
 // WEEK_SPIRALS, and Receiz Mind's kai-guide.js body references and week themes.
-// Bankeiz applications translate that vocabulary into voluntary practices of
+// Interpretations connect that vocabulary with voluntary practices of
 // stewardship, review and coordination; they confer no transaction authority.
 export type KaiMeaning = { resonance: string; body: string; meaning: string; application: string };
 
