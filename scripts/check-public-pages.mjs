@@ -18,7 +18,7 @@ for (const target of phoneLaunchTargets()) {
   assert.equal(png.readUInt32BE(16), width * target.scale);
   assert.equal(png.readUInt32BE(20), height * target.scale);
 }
-assert.match(html, /property="og:image" content="https:\/\/bankeiz\.com\/receiz-bank-share\.png"/);
+assert.ok(html.includes(`property="og:image" content="${publicOrigin+socialImages.images['/'].url}"`));
 assert.match(html, /name="twitter:card" content="summary_large_image"/);
 assert.match(html, /rel="canonical" href="https:\/\/bankeiz\.com\/"/);
 assert.equal(image.readUInt32BE(16), 1730); assert.equal(image.readUInt32BE(20), 909); assert.ok(image.length < 5_000_000);

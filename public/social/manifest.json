@@ -2,11 +2,11 @@
   "schema": "bankeiz.public-social-images.v1",
   "images": {
     "/": {
-      "url": "/receiz-bank-share.png",
+      "url": "/social/home-48ccff77499a2a0f.png",
       "width": 1730,
       "height": 909,
-      "sha256": "b5f8ae3ee025416917070069c35824742c50f47481002101a9c94d3ce7da14ab",
-      "bytes": 1593801,
+      "sha256": "48ccff77499a2a0f5908947da8b1d1509684ff49915facae24333ec6bb2805d2",
+      "bytes": 1645148,
       "alt": "Bankeiz. Your value. More possibilities. Layered blue and glass forms on warm white."
     },
     "/learn/": {

@@ -8,8 +8,8 @@ await mkdir(root,{recursive:true});
 const images={};
 for(const page of publicPages){
  const home=page.path==='/',bytes=home?await readFile(new URL('../public/receiz-bank-share.png',import.meta.url)):new Resvg(shareCardSvg(page),{font:{fontFiles:['Inter-Regular.ttf','Inter-SemiBold.ttf'].map(file=>new URL('./social/fonts/'+file,import.meta.url).pathname),loadSystemFonts:false,defaultFontFamily:'Inter'}}).render().asPng();
- const digest=sha(bytes),filename=`${page.id}-${digest.slice(0,16)}.png`,url=home?'/receiz-bank-share.png':'/social/'+filename;
- if(!home){if(check){if(!(await readFile(new URL(filename,root))).equals(bytes))throw Error('SOCIAL_IMAGE_OUT_OF_DATE:'+page.id);}else await writeFile(new URL(filename,root),bytes);}
+ const digest=sha(bytes),filename=`${page.id}-${digest.slice(0,16)}.png`,url='/social/'+filename;
+ if(check){if(!(await readFile(new URL(filename,root))).equals(bytes))throw Error('SOCIAL_IMAGE_OUT_OF_DATE:'+page.id);}else await writeFile(new URL(filename,root),bytes);
  images[page.path]={url,width:1730,height:909,sha256:digest,bytes:bytes.length,alt:home?'Bankeiz. Your value. More possibilities. Layered blue and glass forms on warm white.':`Bankeiz. ${page.lines.join(' ')} ${page.caption} An engraved ${page.motif} motif on layered cobalt, clear glass and navy forms.`};
 }
 const manifest=JSON.stringify({schema:'bankeiz.public-social-images.v1',images},null,2)+'\n',file=new URL('manifest.json',root);
