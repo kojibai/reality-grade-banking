@@ -13,7 +13,7 @@ export function noteError(cause:unknown):string{
  const stage=noteFailureStage(cause);
  if(code==='BANK_NOTE_COMPATIBILITY_SCHEMA_REQUIRED')return 'Note creation is not yet enabled on the account service. Your saved Notes and any pending attempt remain preserved.';
  if(code==='BANK_NOTE_INSUFFICIENT_FUNDS')return 'Choose an amount within your available balance.';
- if(stage?.stage==='note-quote'&&/service_unavailable|503|fetch|network/i.test(code))return 'Your account could not be reviewed. Try again when connected.';
+ if(stage?.stage==='note-quote'&&/service_unavailable|503|fetch|network/i.test(code))return 'The account service could not complete this Note review. No value was moved by the review. Try again shortly.';
  if(code==='BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION')return 'Connect to create this Note.';
  if(code==='BANK_NOTE_CANCELLATION_PENDING')return 'This Note’s cancellation is pending. Use Discard unissued note to recover its exact result.';
  if(/BANK_(?:CONNECTED_NOTE|NOTE)_AUTHORIZATION_EXPIRED|BANK_NOTE_ALLOCATION_QUOTE_MISMATCH/.test(code))return 'This Note’s review has expired. Discard the unissued attempt, then review it again. Your exact result remains recoverable.';

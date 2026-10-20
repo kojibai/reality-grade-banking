@@ -1,5 +1,6 @@
 // Public presentation metadata only. No account or runtime source is read here.
 import {siteFooterHtml} from './site-footer.mjs';
+import {learningPages,learningPath,assetCategories} from '../src/content/learning-pages.mjs';
 export const publicOrigin = 'https://bankeiz.com';
 export const publicPages = [
   {path:'/',id:'home',title:'Bankeiz — Proof-native banking. Your value, connected.',description:'Open your proof-native account. Hold, send and receive value with Receiz ID, Reserve, Settlement and verifiable proof objects.',lines:['Your value.','More possibilities.'],caption:'Hold. Move. Grow.',motif:'layers'},
@@ -19,6 +20,16 @@ export const publicPages = [
   {path:'/legal/',id:'legal',title:'License, source & notices | Bankeiz',description:'Read the Bankeiz software license, attribution, source archive, build materials and third-party notices for the open reference implementation.',lines:['Open source.','Clear foundations.'],caption:'Source. License. Attribution.',motif:'book',noindex:true},
   {path:'/receipt/',id:'receipt',title:'Transaction receipt | Bankeiz',description:'Inspect the selected transaction record, its carried source evidence, recorded event value and supported ownership history.',lines:['The record.','Stays connected.'],caption:'Transaction evidence. Preserved.',motif:'receipt',noindex:true,robots:'noindex,nofollow'},
 ];
+const motifs={Banking:'bank',Assets:'cube',Markets:'globe',History:'ledger',Standards:'badge'};
+for(const page of learningPages){
+ const record={path:learningPath(page),id:page.slug,title:`${page.title} | Bankeiz`,description:page.description,lines:[page.title.split(' ').slice(0,3).join(' '),page.title.split(' ').slice(3).join(' ')||page.intro.split('. ')[0]+'.'],caption:page.intro,motif:motifs[page.group]};
+ // Human authored short headlines fit the established social-card layout.
+ const headlines={'proof-native-economy':['Value.','Connected to source.'],'global-market-cap':['Global','Market Cap.'],'reserve-and-settlement':['One balance.','Complete continuity.'],'asset-rights-and-backing':['Defined rights.','Visible backing.'],'fractional-ownership':['A defined share.','An inspectable whole.'],'source-of-funds':['Every payment.','Connected to source.'],'time-and-ordering':['A familiar time.','An exact moment.'],'payment-requests':['A clear request.','A deliberate payment.']};
+ record.lines=headlines[page.slug]??[page.title+'.','The complete picture.'];
+ record.size=Math.min(108,Math.floor(950/(Math.max(...record.lines.map(line=>line.length))*.53)));
+ const index=publicPages.findIndex(item=>item.path===record.path);if(index<0)publicPages.push(record);else publicPages[index]=record;
+}
+for(const category of assetCategories)publicPages.push({path:category.path,id:`explore-${category.slug}`,title:`${category.label}: explore public assets | Bankeiz`,description:category.description,lines:[category.label+'.','Open to explore.'],caption:'Original sources. Verifiable ownership.',motif:'globe'});
 export const escapeMetadata = value => String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 export function publicPage(path) {
   const normalized=path.replace(/\?.*$/,'').replace(/index\.html$/,'');
@@ -29,7 +40,8 @@ export function socialMetadata(page,image) {
   return `<title>${esc(page.title)}</title><meta name="description" content="${esc(page.description)}"><meta name="robots" content="${page.robots??(page.noindex?'noindex,follow':'index,follow,max-image-preview:large')}"><link rel="canonical" href="${url}"><meta property="og:type" content="website"><meta property="og:site_name" content="Bankeiz"><meta property="og:locale" content="en_US"><meta property="og:url" content="${url}"><meta property="og:title" content="${esc(page.title)}"><meta property="og:description" content="${esc(page.description)}"><meta property="og:image" content="${src}"><meta property="og:image:secure_url" content="${src}"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="${image.width}"><meta property="og:image:height" content="${image.height}"><meta property="og:image:alt" content="${esc(image.alt)}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(page.title)}"><meta name="twitter:description" content="${esc(page.description)}"><meta name="twitter:image" content="${src}"><meta name="twitter:image:alt" content="${esc(image.alt)}">`;
 }
 export function publicEntryFallback(path) {
-  const copy={
+  const category=assetCategories.find(item=>item.path===path);
+  const copy=category?[category.label,'Original sources. Verifiable ownership.',category.description,'/explore/','Explore all assets']:{
     '/explore/':['Explore proof objects','Sealed moments. Public value. Connected history.','Explore publicly listed assets, their supported live valuations, ownership and original proofs.','/learn/proof-objects/','Understand proof objects'],
     '/ledger/':['History. In the open.','Public activity. Connected sources.','Inspect public transactions and transfers, their recorded value and the evidence carried by their original sources.','/learn/how-value-works/','Inspect the valuation method'],
     '/verify/':['Verify an account proof','Identity. Funds. History.','Open a deliberately shared original account proof to inspect its disclosed identity, value and carried history on your device. Verification requires the local reader; no verification has run yet.','/learn/receiz-id/','Understand Identity Seals'],

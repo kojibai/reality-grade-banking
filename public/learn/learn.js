@@ -75,7 +75,10 @@
   const pathname = path => /^\/explorer\/?$/.test(path) ? '/explore/' : path === '/' ? '/' : path.endsWith('/') ? path : path + '/';
   const pageAt = path => pages[pathname(path)] || (/^\/verify\/[a-f0-9]{64}\/?$/.test(path) ? pages['/verify/'] : undefined);
   const publicPath = path => Boolean(pageAt(path));
-  let renderedPublicPath = publicRoot && publicPath(location.pathname) ? pathname(location.pathname) : null;
+  // An offline deep link can be served by the retained Learn document. Its
+  // canonical identifies the markup actually present, not the requested URL.
+  const initialCanonical=document.querySelector('link[rel="canonical"]')?.href;
+  let renderedPublicPath = publicRoot ? pathname(new URL(initialCanonical||location.href).pathname) : null;
   const runtimeRoots = new Map([...document.querySelectorAll('[data-public-runtime]')].map(root => [root.dataset.publicRuntime, root]));
   const loaded = new Set(runtimeRoots.keys());
   const hide = root => { if (root) { root.hidden = true; root.setAttribute('inert', ''); } };
@@ -199,7 +202,7 @@
   });
   window.addEventListener('popstate', () => void render(true));
   window.addEventListener('bankeiz:receipt', () => {if (pages['/receipt/'] && pathname(location.pathname) === '/receipt/') void render();});
-  if (publicPath(location.pathname)) { styles(false); if (!publicRoot) void render(); }
+  if (publicPath(location.pathname)) { styles(false); if (!publicRoot || renderedPublicPath!==pathname(location.pathname)) void render(); }
   // Pointer/keyboard intent fetches code bytes only; no account module or
   // hidden workspace executes before navigation selects that destination.
   const preload = event => {
@@ -213,3 +216,19 @@
   document.addEventListener('pointerover', preload, { passive: true });
   document.addEventListener('focusin', preload);
 })();
+// Guide enhancements operate only on carried public markup. They never read an
+// identity, fetch account data or execute an illustrative financial action.
+document.addEventListener('click',event=>{
+ const button=event.target.closest?.('[data-learning-step]');if(!button)return;
+ const region=button.closest('.learning-visual'),selected=button.dataset.learningStep;
+ region.querySelectorAll('[data-learning-step]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
+ region.querySelectorAll('[data-learning-panel]').forEach(item=>{item.hidden=item.dataset.learningPanel!==selected;});
+});
+document.addEventListener('input',event=>{
+ if(!event.target.matches?.('[data-example-input]'))return;
+ const region=event.target.closest('[data-learning-funding]'),amount=Number(event.target.value),reserve=Math.min(amount,60),settlement=amount-reserve;
+ region.querySelector('[data-example-amount]').textContent=`$${amount}`;
+ region.querySelector('[data-example-title]').textContent=settlement?'Settlement Reserve Note':'Reserve Note';
+ region.querySelector('[data-example-reserve]').textContent=`$${reserve}`;
+ region.querySelector('[data-example-settlement]').textContent=`$${settlement}`;
+});

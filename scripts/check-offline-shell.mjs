@@ -30,7 +30,7 @@ for (const match of index.matchAll(/<link rel="apple-touch-startup-image" href="
 const navigation = JSON.parse(index.match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)[1]);
 for (const path of Object.keys(navigation.pages)) {
   if(path==='/conformance/') {assert.ok(!shell.includes(path),'The on-demand conformance console stays outside the bank install cache');continue;}
-  assert.equal(manifest.pages[path], path, `Missing offline public route ${path}`);
+  assert.ok(manifest.pages[path]&&shell.includes(manifest.pages[path]), `Missing retained offline public route ${path}`);
 }
 console.log(`Verified complete offline build ${manifest.version}: ${shell.length} exact public resources, final public routes, lazy decoder and safe waiting updates.`);
 

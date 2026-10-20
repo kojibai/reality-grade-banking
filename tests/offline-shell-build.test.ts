@@ -13,11 +13,12 @@ it('versions complete final pages and fixed-path native resources and includes l
     for (const file of ['ledger.js', 'ledger.css', 'ledger-reader.js']) await writeFile(join(dir, 'assets', file), file);
     await mkdir(join(dir, 'verify')); await writeFile(join(dir, 'verify/index.html'), 'public verifier'); await writeFile(join(dir, 'assets/verify.js'), 'verify');
     await writeFile(join(dir, 'assets/bank.js'), 'bank'); await writeFile(join(dir, 'assets/qr-decoder.js'), 'qr'); await writeFile(join(dir, 'assets/conformance.js'), 'console');
-    const pages = { '/learn/': { content: 'Learn' }, '/legal/': { content: 'Legal' } };
+    const pages = { '/learn/': { content: 'Learn' }, '/legal/': { content: 'Legal' },'/learn/notes/':{content:'Notes'},'/standards/':{content:'Standards'},'/market-cap/':{content:'Global Market Cap'},'/explore/music/':{content:'Music'} };
+    for(const path of ['learn/notes','standards','market-cap','explore/music','explore']){await mkdir(join(dir,path),{recursive:true});await writeFile(join(dir,path,'index.html'),path);}
     await mkdir(join(dir, 'launch'));
     await writeFile(join(dir, 'launch/iphone-402-874-3-portrait.png'), 'launch artwork');
     await writeFile(join(dir, 'index.html'), `<link rel="apple-touch-startup-image" href="/launch/iphone-402-874-3-portrait.png" media="screen"><script id="receiz-navigation" type="application/json">${JSON.stringify({ pages })}</script>`);
-    for (const name of ['learn', 'legal']) { await mkdir(join(dir, name)); await writeFile(join(dir, name, 'index.html'), name); }
+    for (const name of ['learn', 'legal']) { await mkdir(join(dir, name),{recursive:true}); await writeFile(join(dir, name, 'index.html'), name); }
     const native = '/native/test-runtime.mjs'; await mkdir(join(dir, 'native')); await writeFile(join(dir, native), 'native A');
     await mkdir(join(dir,'proof-verifier/v129'),{recursive:true});
     await writeFile(join(dir,'proof-verifier/v129/verifier.js'),'read-only canonical verifier');
@@ -28,6 +29,8 @@ it('versions complete final pages and fixed-path native resources and includes l
     expect(first.resources.some((v: { url: string }) => v.url === '/launch/iphone-402-874-3-portrait.png')).toBe(true);
     expect(first.resources.some((v: { url: string }) => v.url.includes('conformance'))).toBe(false);
     expect(first.pages).toMatchObject({ '/learn/': '/learn/', '/legal/': '/legal/' });
+    expect(first.pages).toMatchObject({'/learn/notes/':'/learn/','/standards/':'/learn/','/market-cap/':'/explore/','/explore/music/':'/explore/'});
+    expect(first.resources.some((v:{url:string})=>['/learn/notes/','/standards/','/market-cap/','/explore/music/'].includes(v.url))).toBe(false);
     expect(first.pages).toMatchObject({ '/verify/': '/verify/', '/verify': '/verify/' });
     expect(first.resources.some((v: { url: string }) => v.url === '/assets/verify.js')).toBe(true);
     expect(first.pages).toMatchObject({ '/ledger/': '/ledger/', '/ledger': '/ledger/' });

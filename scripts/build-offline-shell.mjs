@@ -2,6 +2,7 @@ import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {learningPages,learningPath,assetCategories} from '../src/content/learning-pages.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const fixedResources = [
@@ -56,8 +57,14 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     // Conformance remains an on-demand console, outside the bank installation
     // cache. Its retained online navigation does not add verifier work at boot.
     if (path === '/conformance/') continue;
-    if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
-    urls.add(path); pages[path] = path; if (path !== '/') pages[path.slice(0, -1)] = path;
+    const knownGuide=learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
+    if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
+    // Each retained document already carries the complete public catalog.
+    // New routes reuse an existing shell instead of installing dozens of
+    // identical copies of that catalog and all its embedded workspace CSS.
+    const originalGuide=['/learn/receiz-id/','/learn/proof-objects/','/learn/reserve-and-settlement/'].includes(path);
+    const retained=(category||path==='/market-cap/')?'/explore/':knownGuide&&!originalGuide?'/learn/':path;
+    urls.add(retained); pages[path] = retained; if (path !== '/') pages[path.slice(0, -1)] = retained;
   }
   for (const path of ['/index.html', ...Object.keys(navigation.pages)]) {
     const html = await readFile(resolve(root, path.slice(1) + (path.endsWith('/') ? 'index.html' : '')), 'utf8');

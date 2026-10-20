@@ -55,3 +55,10 @@ it.each(['before','during'] as const)('refuses an expired review %s prerequisite
  await expect(f.runtime.create('200')).rejects.toThrow('BANK_NOTE_ALLOCATION_QUOTE_MISMATCH');
  expect(f.createKey).not.toHaveBeenCalled();expect(await f.runtime.pending()).toBeNull();expect(f.request).toHaveBeenCalledOnce();
 });
+
+it('refuses offline review before transport or custody work, without treating connectivity as device qualification',async()=>{
+ const f=fixture();vi.stubGlobal('navigator',{onLine:false});
+ await expect(f.runtime.review('200')).rejects.toThrow('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
+ expect(f.request).not.toHaveBeenCalled();expect(f.createKey).not.toHaveBeenCalled();
+ expect(await f.runtime.pending()).toBeNull();
+});

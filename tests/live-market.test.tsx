@@ -28,11 +28,16 @@ it.each(['market','explorer']as const)('populates %s content filters from the or
  const kinds=['audio','epub','image','video','pdf',null,null];
  const held=parsePublicMarket({ok:true,transport:{publicOriginals:kinds.map((kind,i)=>({id:'typed-'+i,receizId:'typed-'+i,title:'Typed object '+i,profileOriginal:{media:kind?{kind}:null,hasLongForm:i===5}}))}});
  held.items.push({...held.items[0],id:'collectible',assetId:'rsc_0123456789abcdef',title:'Collectible one',category:'sports'});
- source.value={catalog:held,status:'live',error:null,refresh:vi.fn()};const {host}=mount(mode);
- const filters=[...host.querySelectorAll<HTMLButtonElement>('.filters button')];
+ source.value={catalog:held,status:'live',error:null,refresh:vi.fn()};const {host,root}=mount(mode);
+ const filters=[...host.querySelectorAll<HTMLButtonElement|HTMLAnchorElement>('.filters button,.filters a')];
  expect(filters.map(button=>button.textContent)).not.toContain('Proofs');expect(filters.map(button=>button.textContent)).not.toContain('Cards');
  const expected:{[label:string]:string}={Music:'Typed object 0',Books:'Typed object 1',Images:'Typed object 2',Videos:'Typed object 3',Documents:'Typed object 4',Essays:'Typed object 5',Moments:'Typed object 6',Collectibles:'Collectible one'};
- for(const [label,title]of Object.entries(expected)){const button=filters.find(button=>button.textContent===label);expect(button,label+' filter').toBeTruthy();act(()=>button!.click());expect(host.querySelectorAll('.market-rows .asset-row')).toHaveLength(1);expect(host.querySelector('.market-rows')?.textContent).toContain(title);}
+ for(const [label,title]of Object.entries(expected)){
+  const control=filters.find(control=>control.textContent===label);expect(control,label+' filter').toBeTruthy();
+  if(mode==='explorer'){expect(control!.getAttribute('href')).toBe(`/explore/${label.toLowerCase()}/`);act(()=>root.render(<Market mode="explorer" publicCategory={{label,description:'Original sources'}}/>));}
+  else act(()=>control!.click());
+  expect(host.querySelectorAll('.market-rows .asset-row')).toHaveLength(1);expect(host.querySelector('.market-rows')?.textContent).toContain(title);
+ }
 });
 it('scrolls the selected explorer collection instead of the retained hidden bank collection',()=>{
  source.value={catalog:catalog(1),status:'live',error:null,refresh:vi.fn()};
