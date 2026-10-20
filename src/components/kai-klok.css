@@ -81,14 +81,6 @@
 .kai-exact-formula, .kai-formula-approx { display: block; }
 .kai-exact-formula { margin: 5px 0 2px; color: #344b66; font-variant-numeric: tabular-nums; }
 .kai-formula-approx { margin-bottom: 6px; color: #8993a0; font-size: 10px; }
-.kai-week-legend { display: grid; gap: 7px; padding: 0; margin: 12px 0 18px; list-style: none; }
-.kai-week-legend > li { display: flex; gap: 10px; padding: 9px 10px; border: 1px solid transparent; border-radius: 7px; }
-.kai-week-legend > li[aria-current] { border-color: #e0e5e8; background: #f5f5f1; }
-.kai-week-legend > li > i { flex-shrink: 0; width: 7px; min-height: 35px; border-radius: 3px; box-shadow: inset 0 0 0 1px #172b4514; }
-.kai-week-legend strong { display: block; color: #52657b; font-size: 10px; font-weight: 600; }
-.kai-week-alias, .kai-week-range { color: #8793a1; font-size: 9px; font-weight: 400; }
-.kai-week-range { display: block; margin-top: 3px; }
-.kai-week-legend p { margin-top: 4px; font-size: 10px; }
 .kai-klok { --kai-accent-peak: 0; --kai-breathe-scale: 1; --kai-breathe-duration: 800ms; }
 .kai-klok[data-kai-boundary=pulse] { --kai-accent-peak: .035; --kai-breathe-scale: 1.002; }
 .kai-klok[data-kai-boundary=step] { --kai-accent-peak: .055; --kai-breathe-scale: 1.004; --kai-breathe-duration: 900ms; }
@@ -101,6 +93,12 @@
 @keyframes kai-boundary-breathe { 0% { opacity: 0; transform: scale(1); } 28% { opacity: var(--kai-accent-peak); transform: scale(var(--kai-breathe-scale)); } 100% { opacity: 0; transform: scale(1); } }
 .kai-moment-context h3 { margin-top: 8px; font-family: Georgia, 'Times New Roman', serif; font-size: 26px; font-weight: 500; letter-spacing: -.5px; }
 .kai-moment-context h3 > span { display: block; margin-top: 5px; color: #6e7b8b; font-family: Inter, ui-sans-serif, sans-serif; font-size: 12px; font-weight: 450; letter-spacing: 0; }
+.kai-moment-reading { margin-top: 13px; }
+.kai-moment-reading p { color: #52657b; font-size: 11px; line-height: 1.75; text-wrap: pretty; }
+.kai-moment-reading p + p { margin-top: 9px; }
+.kai-moment-reading p > strong { display: block; margin-bottom: 6px; color: #3d526a; font-weight: 600; }
+.kai-moment-reading .kai-moment-body { margin-top: 12px; padding-top: 9px; border-top: 1px solid #e4e7ec; color: #708093; font-size: 10px; }
+.kai-moment-body > span { display: block; margin-bottom: 3px; color: #8793a1; font-size: 8px; }
 .kai-moment-identity { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 7px; margin-top: 17px; font-size: 10px; line-height: 1.5; color: #4c5e75; }
 .kai-moment-identity > div { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border: 1px solid #e0e5e8; border-radius: 7px; background: #f5f5f1; min-width: 0; }
 .kai-moment-identity > div > i { flex-shrink: 0; width: 4px; height: 26px; border-radius: 4px; box-shadow: inset 0 0 0 1px #172b4510; }
@@ -126,17 +124,28 @@
 .kai-source-reference a { color: #718095; font-size: 10px; text-decoration-color: #c6cdd5; text-underline-offset: 3px; }
 .kai-source-reference a:hover { color: #344b66; text-decoration-color: currentColor; }
 .kai-source-reference a > span { padding-left: 3px; font-size: 9px; }
-.kai-color-key { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 9px; margin-top: 11px; }
-.kai-color-key > span { display: flex; align-items: center; gap: 8px; padding: 7px; border: 1px solid transparent; border-radius: 7px; font-size: 10px; color: #52657b; }
-.kai-color-key > span[aria-current] { border-color: #e0e5e8; background: #f5f5f1; }
-.kai-color-key i { flex-shrink: 0; width: 7px; height: 18px; border-radius: 3px; box-shadow: inset 0 0 0 1px #172b4510; }
-.kai-color-key small { display: block; margin-top: 3px; color: #8993a0; font-size: 9px; }
+.kai-meaning-legend { display: grid; gap: 6px; padding: 0; margin: 11px 0 18px; list-style: none; }
+.kai-meaning-legend > li { display: flex; gap: 10px; padding: 10px; border: 1px solid transparent; border-radius: 8px; min-width: 0; }
+.kai-meaning-legend > li[aria-current] { border-color: #e0e5e8; background: #f5f5f1; }
+.kai-meaning-legend > li > i { flex-shrink: 0; width: 5px; min-height: 35px; border-radius: 3px; box-shadow: inset 0 0 0 1px #172b4514; }
+.kai-meaning-legend details { flex: 1; min-width: 0; }
+.kai-meaning-legend summary { align-items: center; gap: 10px; font-size: 11px; }
+.kai-meaning-legend summary > div { min-width: 0; }
+.kai-meaning-legend summary strong { display: block; color: #3d526a; font-size: 11px; font-weight: 600; }
+.kai-meaning-meta { display: block; margin-top: 4px; color: #7d8794; font-size: 9px; line-height: 1.5; font-weight: 400; }
+.kai-meaning-resonance { display: block; margin-top: 5px; color: #52657b; font-size: 10px; line-height: 1.6; font-weight: 450; }
+.kai-meaning-legend summary > svg { flex-shrink: 0; color: #8793a1; transition: transform .15s; }
+.kai-meaning-legend details[open] summary > svg { transform: rotate(180deg); }
+.kai-meaning-legend .kai-meaning-body { margin-top: 13px; padding-top: 10px; border-top: 1px solid #e4e7ec; color: #52657b; }
+.kai-meaning-body > span { display: block; margin-bottom: 4px; color: #8793a1; font-size: 9px; }
+.kai-meaning-legend .kai-meaning-application strong { display: block; margin: 11px 0 3px; color: #3d526a; font-size: 10px; font-weight: 600; }
+.kai-meaning-legend p { max-width: 49ch; }
 .kai-popover-footer { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 22px; color: #8a94a1; font-size: 9px; }
 .kai-popover-footer .kai-living-dot { width: 3px; height: 3px; background: #718b83; box-shadow: none; animation: none; }
 @keyframes kai-breathe { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--kai-phase) 25%, transparent); } to { box-shadow: 0 0 0 5px transparent; } }
 @keyframes kai-arrive { from { opacity: 0; translate: 0 -3px; } to { opacity: 1; translate: 0 0; } }
 @media (min-width: 720px) { .kai-header-button { width: 266px; padding: 9px 14px; min-height: 49px; } .kai-header-coordinate > strong { font-size: 19px; } .kai-header-meta { font-size: 9px; } .kai-header-button .kai-date { font-size: 11px; } }
 @media (max-width: 719px) { .app-header { gap: 12px; } .kai-header-button { width: 220px; padding: 7px 10px; } .kai-header-button { column-gap: 8px; } .kai-header-coordinate > strong { font-size: 15px; } .kai-header-button .kai-date { gap: 4px; font-size: 9.5px; } .kai-popover { position: fixed; top: 73px; left: 16px; right: 16px; width: auto; max-height: calc(100dvh - 95px); transform: none; padding: 22px; } }
-@media (max-width: 480px) { .kai-moment-layout { grid-template-columns: 1fr; gap: 22px; margin-top: 18px; } .kai-face-presentation { width: 314px; max-width: 100%; margin: 0 auto; padding: 12px; } .kai-moment-context { padding: 0 4px; } .kai-moment-context h3 { display: flex; align-items: baseline; justify-content: space-between; font-size: 24px; } .kai-moment-context h3 > span { margin: 0; } .kai-moment-identity { margin-top: 13px; } .kai-units { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .kai-units > div { display: block; } .kai-units dd { margin-top: 5px; } .kai-units dd > span { display: block; min-width: 0; margin: 4px 0 0; font-size: 8px; } .kai-explanation { gap: 16px; } .kai-color-key { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .kai-moment-layout { grid-template-columns: 1fr; gap: 22px; margin-top: 18px; } .kai-face-presentation { width: 314px; max-width: 100%; margin: 0 auto; padding: 12px; } .kai-moment-context { padding: 0 4px; } .kai-moment-context h3 { display: flex; align-items: baseline; justify-content: space-between; font-size: 24px; } .kai-moment-context h3 > span { margin: 0; } .kai-moment-identity { margin-top: 13px; } .kai-units { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .kai-units > div { display: block; } .kai-units dd { margin-top: 5px; } .kai-units dd > span { display: block; min-width: 0; margin: 4px 0 0; font-size: 8px; } .kai-explanation { gap: 16px; } }
 @media (max-width: 360px) { .app-header { gap: 8px; } .kai-header-button { width: 198px; padding-left: 9px; padding-right: 9px; } .kai-header-button { column-gap: 8px; } .kai-header-coordinate > strong { font-size: 14px; letter-spacing: .045em; } .kai-header-button .kai-date { font-size: 9px; gap: 3px; } .kai-popover { left: 10px; right: 10px; padding: 19px; } .kai-face-presentation { width: 260px; padding: 9px; } }
 @media (prefers-reduced-motion: reduce) { .kai-klok *, .kai-klok *::before, .kai-klok *::after { animation: none !important; transition: none !important; } }
