@@ -34,3 +34,7 @@ Deposit and economy explanations lead with practical use and proof of source, ow
 Read-only inspection on 2026-10-20 found Receiz production serving commit `c15d8073e`, which includes connected Note compatibility writer `78e49df11`. The production Wallet database has `wallet_accounts` and `wallet_ledger_entries`, but no public `bank_*` custody tables or connected Note functions. No production database was changed.
 
 The existing Receiz rollout document requires the two reviewed migrations `20261015012532_bank_offline_notes_native.sql` and `20261020204430_bank_connected_note_compatibility_wallet.sql`. They add the subordinate custody schema and service-only connected Wallet operations. Production schema installation and authenticated issue/receive/deposit qualification remain required. Device antirollback rules are unchanged; v1.0.0 is not declared released.
+
+### Subsequent production installation
+
+After the user explicitly approved the production migrations, both Note migrations were installed and their RLS, service-only grants, uniqueness constraints and rejection guards were verified. The earlier missing-schema inspection above is historical. See [production installation and wider migration audit](2026-10-20-production-note-migrations.md) for the recorded versions, exact scope and remaining live browser qualification.
