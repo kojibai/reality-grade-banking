@@ -90,6 +90,18 @@ test('an interrupted creation resumes its retained amount and never offers a dif
     expect(host.textContent).not.toContain('Your note is ready.');
   } finally { act(() => root.unmount()); }
 });
+test('a verified cancellation after registration failure removes the stale Resume action while preserving the registration details',async()=>{
+ const failure=new Error('OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED'),pending=vi.fn().mockResolvedValueOnce({noteId:'unissued',amountUsdCents:'100',canCancel:true}).mockResolvedValue(null);
+ const identity={offlineNotes:async()=>({pending,create:async()=>{throw failure;}})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));expect(host.textContent).toContain('Resume this note');await act(async()=>click(host,'Resume this note'));expect(host.textContent).not.toContain('Resume this note');expect(host.textContent).not.toContain('Discard unissued note');expect(host.querySelector('.note-registration-details')?.textContent).toContain('OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED');expect(host.textContent).not.toContain('Your note is ready.');}finally{act(()=>root.unmount());}
+});
+test('an unreadable pending outcome never removes the retained Resume action',async()=>{
+ const pending=vi.fn().mockResolvedValueOnce({noteId:'retained',amountUsdCents:'100',canCancel:true}).mockRejectedValue(new DOMException('private','OperationError'));
+ const identity={offlineNotes:async()=>({pending,create:async()=>{throw new Error('OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED');}})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));await act(async()=>click(host,'Resume this note'));expect(host.textContent).toContain('Resume this note');expect(host.textContent).not.toContain('private');}finally{act(()=>root.unmount());}
+});
 test('closing during creation cannot refresh or update another screen', async () => {
   let finish!: (v: unknown) => void;
   const create = vi.fn(() => new Promise(resolve => { finish = resolve; })), refresh = vi.fn();

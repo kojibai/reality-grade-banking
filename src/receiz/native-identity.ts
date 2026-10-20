@@ -508,7 +508,11 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const action=async<T,>(operation:()=>Promise<T>):Promise<T>=>{noteOpen();activeNoteOperations++;noteOperationEpoch++;try{return await operation();}finally{activeNoteOperations--;}};
     localNotes={savedNotes:inventory.savedNotes,pending:inventory.pending,inspect,
       prepareResources:count=>action(()=>withAccountExecutionLock(async()=>{await assertNoPendingWalletSend();return(await openNotesExecution()).prepareResources!(count);})),
-      create:(amount,rail)=>action(()=>withAccountExecutionLock(async()=>{await assertNoteCreateState();return(await openNotesExecution()).create(amount,rail);})),
+      create:(amount,rail)=>action(()=>withAccountExecutionLock(async()=>{
+        await assertNoteCreateState();
+        try{return await(await openNotesExecution()).create(amount,rail);}
+        catch(cause){await cancelRejectedNotePreparation(cause);throw cause;}
+      })),
       cancelUnfunded:()=>action(async()=>{if(await inventory.preparedPending())throw Error('BANK_NOTE_PREPARED_RECOVERY_REQUIRED');return(await openNotesExecution()).cancelUnfunded();}),
       receivingRequest:()=>action(async()=>(await openNotesExecution()).receivingRequest()),transfer:(id,request)=>action(async()=>(await openNotesExecution()).transfer(id,request)),deposit:image=>action(async()=>(await openNotesExecution()).deposit(image)),
     };
@@ -531,6 +535,20 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
         fetchImpl:forbidden,sealDocument:forbidden,retain:forbidden,restore:(ref:string)=>loadOfflineNoteBlob(binding,ref),read:()=>loadOfflineNoteState(binding),write:(next:unknown,previous:unknown)=>saveOfflineNoteState(binding,next,previous),assertOpen:noteOpen,artwork:bankNoteArtwork});
       await cancellation.cancelUnfunded();noteOpen();
     }finally{activeNoteOperations--;}
+  }
+  // The execution lock is still held after Create releases its Note lock.
+  // Only a known registration refusal and an independently reopened preparing
+  // phase permit local cancellation. Unknown funding and stronger custody stay
+  // retained; cleanup failure must never replace the original diagnostic.
+  async function cancelRejectedNotePreparation(cause:unknown):Promise<void>{
+    if(!(cause instanceof Error)||!/^(?:OFFLINE_NOTE_CUSTODY_UNSUPPORTED:)?OFFLINE_NOTE_CUSTODY_(?:ATTESTATION_NOT_PROVIDED|ATTESTATION_FORMAT_UNSUPPORTED|ATTESTATION_CHAIN_REQUIRED|BACKUP_CAPABLE|BACKUP_ELIGIBLE|BACKUP_STATE|BACKED_UP|COUNTER_UNAVAILABLE)$/.test(cause.message))return;
+    try{
+      await navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},async()=>{
+        noteOpen();
+        const state=await loadOfflineNoteState(binding) as {create?:{phase?:string}}|null;
+        if(state?.create?.phase==='preparing')await cancelUnsentNotesLocked();
+      });
+    }catch{/* Keep the exact pending source and original registration error. */}
   }
   const cancelUnsentNotes=async():Promise<void>=>{await withAccountExecutionLock(async()=>{await navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},cancelUnsentNotesLocked);});};
   async function openNotesExecution(): Promise<BankOfflineNotes> {

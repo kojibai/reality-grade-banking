@@ -50,7 +50,30 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh }: { identity: 
     return()=>{current=false;};
   }, [identity,mode]);
   useEffect(() => { if (!created) return; const url = URL.createObjectURL(new Blob([new Uint8Array(created.image)], { type: 'image/png' })); setImageUrl(url); return () => URL.revokeObjectURL(url); }, [created]);
-  const run = async (operation: () => Promise<void>) => { if (running.current) return; running.current = true; setBusy(true); setError(''); try { if (!identity.offlineNotes) throw new Error('Offline Notes are unavailable in this build.'); await operation(); } catch (cause) { if (alive.current) { report(cause); if (mode === 'create' && api.current) { const value = await api.current.pending().catch(() => null); if (alive.current && value) { setPending(value); setRail(value.rail ?? 'reserve'); setAmount(`${BigInt(value.amountUsdCents) / 100n}.${(BigInt(value.amountUsdCents) % 100n).toString().padStart(2, '0')}`); setReview(true); } } } } finally { running.current = false; if (alive.current) setBusy(false); } };
+  const run = async (operation: () => Promise<void>) => {
+    if (running.current) return;
+    running.current = true; setBusy(true); setError('');
+    try {
+      if (!identity.offlineNotes) throw new Error('Offline Notes are unavailable in this build.');
+      await operation();
+    } catch (cause) {
+      if (alive.current) {
+        report(cause);
+        if (mode === 'create' && api.current) {
+          try {
+            const value = await api.current.pending();
+            if (alive.current) {
+              setPending(value); setReview(Boolean(value));
+              if (value) {
+                setRail(value.rail ?? 'reserve');
+                setAmount(`${BigInt(value.amountUsdCents) / 100n}.${(BigInt(value.amountUsdCents) % 100n).toString().padStart(2, '0')}`);
+              }
+            }
+          } catch { /* An unreadable outcome never clears retained recovery UI. */ }
+        }
+      }
+    } finally { running.current = false; if (alive.current) setBusy(false); }
+  };
   const inspect = (file?: File) => { if (!file || running.current) return; setImage(null); setInspection(null); setDeposited(null); void run(async () => { if (file.size > 8 * 1024 * 1024) throw new Error('Choose an original note image up to 8 MB.'); const bytes = new Uint8Array(await file.arrayBuffer()), result = await (await notes()).inspect(bytes); if (alive.current) { setImage(bytes); setInspection(result); } }); };
   const depositReviewedNote = () => run(async () => {
     if (!image || !inspection) throw Error('BANK_NOTE_REVIEW_REQUIRED');

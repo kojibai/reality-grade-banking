@@ -425,6 +425,34 @@ it('automatically cancels a failed unissued preparation before Send without enro
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
  try{const cause=await(await identity.walletSend!()).prepare({recipient:'receiver',amountUsdCents:'100'}).catch(error=>error);expect(fixture.cancel).toHaveBeenCalledTimes(1);expect(state.create).toBeNull();expect(cause.message).not.toBe('BANK_NOTE_ATTEMPT_PENDING');expect(noteEnrollment).not.toHaveBeenCalled();expect(fixture.create).not.toHaveBeenCalled();}finally{identity.dispose();vi.unstubAllGlobals();}
 });
+
+it.each(['OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED','OFFLINE_NOTE_CUSTODY_UNSUPPORTED:OFFLINE_NOTE_CUSTODY_BACKUP_ELIGIBLE'])('cancels only the unallocated preparation after a confirmed registration refusal: %s',async code=>{
+ let state:Record<string,unknown>|null=null;
+ const failure=new Error(code),otherCustody={notes:{},deposits:{},receivers:{'existing-request':{held:true}}};
+ vi.mocked(loadOfflineNoteState).mockImplementation(async()=>state);
+ fixture.create.mockImplementation(async()=>{state={schema:'receiz.bank.offline-notes-device.v1',keyId:(fixture.keyFile as sdk.ReceizKeyFile).keyId,uid:'connected-account',create:{phase:'preparing',intent:{noteId:'rejected'},rail:'reserve',amountUsdCents:'100'},...otherCustody};throw failure;});
+ fixture.cancel.mockImplementation(async()=>{state={...state,create:null};});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
+ try{const notes=await identity.offlineNotes!();await expect(notes.create('100')).rejects.toBe(failure);expect(await notes.pending()).toBeNull();expect(await loadOfflineNoteState(identity.binding)).toMatchObject({...otherCustody,create:null});expect(fixture.cancel).toHaveBeenCalledTimes(1);expect(fixture.wallet).toHaveBeenCalledTimes(1);}finally{identity.dispose();vi.unstubAllGlobals();}
+});
+
+it.each(['funding','issuing'])('retains %s after a custody refusal instead of treating it as unallocated',async phase=>{
+ let state:Record<string,unknown>|null=null;const failure=new Error('OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED');
+ vi.mocked(loadOfflineNoteState).mockImplementation(async()=>state);
+ fixture.create.mockImplementation(async()=>{state={schema:'receiz.bank.offline-notes-device.v1',keyId:(fixture.keyFile as sdk.ReceizKeyFile).keyId,uid:'connected-account',create:{phase,intent:{noteId:'retained'},rail:'reserve',amountUsdCents:'100'},notes:{},deposits:{}};throw failure;});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
+ try{const notes=await identity.offlineNotes!();await expect(notes.create('100')).rejects.toBe(failure);expect(await notes.pending()).toMatchObject({noteId:'retained'});expect(fixture.cancel).not.toHaveBeenCalled();}finally{identity.dispose();vi.unstubAllGlobals();}
+});
+
+it.each(['unreadable','cancel-refused','unknown-result'])('preserves the original failure and retained preparation when cleanup is %s',async mode=>{
+ let state:Record<string,unknown>|null=null,readingFailed=false;
+ const failure=new Error(mode==='unknown-result'?'BANK_NOTE_FUNDING_PENDING':'OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED');
+ vi.mocked(loadOfflineNoteState).mockImplementation(async()=>{if(readingFailed)throw new DOMException('unreadable','OperationError');return state;});
+ fixture.create.mockImplementation(async()=>{state={schema:'receiz.bank.offline-notes-device.v1',keyId:(fixture.keyFile as sdk.ReceizKeyFile).keyId,uid:'connected-account',create:{phase:'preparing',intent:{noteId:'retained'},rail:'reserve',amountUsdCents:'100'},notes:{},deposits:{}};readingFailed=mode==='unreadable';throw failure;});
+ fixture.cancel.mockRejectedValue(Error('BANK_NOTE_FUNDING_PENDING'));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
+ try{const notes=await identity.offlineNotes!();await expect(notes.create('100')).rejects.toBe(failure);expect(state).toMatchObject({create:{phase:'preparing',intent:{noteId:'retained'}}});expect(fixture.cancel).toHaveBeenCalledTimes(mode==='cancel-refused'?1:0);}finally{identity.dispose();vi.unstubAllGlobals();}
+});
 it('exposes the same serialized unissued cleanup for device removal without signing or connecting',async()=>{
  let state={schema:'receiz.bank.offline-notes-device.v1',keyId:(fixture.keyFile as sdk.ReceizKeyFile).keyId,uid:'connected-account',create:{phase:'preparing',intent:{noteId:'failed-note'},rail:'reserve',amountUsdCents:'100'},notes:{},deposits:{}} as Record<string,unknown>;
  vi.mocked(loadOfflineNoteState).mockImplementation(async()=>state);fixture.cancel.mockImplementation(async()=>{state={...state,create:null};});noteEnrollment.mockRejectedValue(Error('SIGNER_MUST_NOT_OPEN'));

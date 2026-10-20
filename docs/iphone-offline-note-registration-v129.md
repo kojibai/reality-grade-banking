@@ -145,3 +145,58 @@ was locally tested, but the remote PWA inspector did not complete even its
 context evaluation, so no actual phone keys, checkpoint bytes or decrypted
 payload were captured. No real iPhone registration or financial operation was
 performed by the agent.
+
+## Current PWA attempt — October 19, 2026, 7:55 PM
+
+The user's new screenshot reaches registration and reports the same `none`,
+counter `0`, user-verified, backup-eligible and backed-up response. Its pending
+attempt is readable. This is no longer the saved-checkpoint error for that
+attempt; it does not establish recovery of the older PWA record or container.
+No private device storage was read or reset in this check.
+
+The Bank now cancels a known registration refusal only when the original
+encrypted runtime independently reopens its attempt in `preparing`. It holds
+the existing account execution and Notes locks and calls the existing canonical
+`cancelUnfunded` operation. It adds no cancellation implementation or issuance
+authority. Funding, issuing, prepared and unreadable states remain held. Failed
+cleanup retains the original error and pending source. The UI removes Resume
+only after a successful pending read returns no attempt; a failed read cannot
+clear the recovery controls. The registration evidence remains visible.
+
+The device-only review also checked the shipped `offlineSeal.ts`: its enrolled
+non-extractable Ed25519 WebCrypto key signs native proof objects, but enrollment
+does not attest a hardware monotonic state or retire a previous spend head.
+Reusing this valid signer as irreversible custody would cross that boundary.
+The `ios-secure` schema label is still not an implementation of that operation.
+
+PRF and largeBlob have useful encryption/storage roles, but their documented
+interfaces do not add an attested atomic compare-and-consume operation. This is
+protocol analysis, not a claim to have captured those extensions from the phone.
+See [WebAuthn PRF](https://www.w3.org/TR/webauthn-3/#prf-extension),
+[largeBlob](https://www.w3.org/TR/webauthn-3/#sctn-large-blob-extension) and
+[WebCrypto security considerations](https://www.w3.org/TR/webcrypto/#security-considerations).
+Apple's native [App Attest interface](https://developer.apple.com/documentation/devicecheck/establishing-your-app-s-integrity)
+does not supply a Safari JavaScript adapter. Managed passkey attestation requires
+device enrollment and a configured identity; it does not, by itself, establish
+the counter/irreversible-consumption contract. No native app, external device,
+management enrollment, new issuer or online-only substitute was added.
+
+There is still no qualified consumer iPhone PWA custody path in the current
+implementation. Changing the SDK version or re-encoding this response cannot
+create missing device evidence. The prepared local-credit activation gate and
+the independent shared-writer/reconnect qualification gates remain unchanged.
+
+Current native checks passed: 21 registration/transport/strict-counter tests,
+plus all eight real-v129 prepared create → handoff → deposit → respend journeys
+with networking disabled, changing quotes, interrupted adoption and restart.
+Those eight journeys use ephemeral test roots and synthetic attested hardware.
+They are not physical-device or production financial qualification.
+
+Bank regression checks passed: 267 files / 1,615 tests. The first full run
+overlapped native proving and the build and timed out in
+`market-history.test.ts` and `market-capitalization-hook.test.tsx`; both files
+passed independently, followed by the complete suite with two workers and
+unchanged timeouts. The 390 × 844 isolated panel check removed Resume after a
+confirmed cancellation, retained Registration details and the unissued preview,
+had no horizontal overflow and reported no browser console errors. Its API
+outcome is synthetic; it does not enroll a credential or move value.
