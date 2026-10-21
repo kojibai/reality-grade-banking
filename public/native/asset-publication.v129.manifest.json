@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.0.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "3cb5100cf789ca42b66077e168c271a4246c88002bfb1dfee01e687fedca060d",
-  "sourceTreeSha256": "6aa165df3b4b3c79d4a6706c1dd0745e0ccb4681352b2110b861799203058dc6",
+  "moduleSha256": "5ba8ad14d424fb748650201cca7929382e473f683e0556eadb5fc97d5723ba22",
+  "sourceTreeSha256": "692dd34a62b4aace54d11025a6c5ae4c3fb30136fd100be11fa4a573e860b055",
   "inputs": 490,
-  "bytes": 2911123,
+  "bytes": 2912355,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -462,6 +462,30 @@
       "sha256": "2de6ebfddc4c2b31c222b241c86a2d59b661abc123203e35665c646da46b0757",
       "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
       "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-recoverable-composerPreparation",
+      "path": "receiz/app/lib/profile/composerPreparation.ts",
+      "baseSha256": "a7542b453c85d608a81bb568d6d9650989e1e8e8302e8e60c9aa8cb2ffe8964a",
+      "sha256": "742b6f5b090c260ef85de4481f2f42170cefa81421da07afef50c4dda5c771b7",
+      "purpose": "Split exact resource preparation from canonical sealing and retain the existing asset definition for stable Bank creation retries. Existing Receiz UI and v129 proof/financial authority remain unchanged.",
+      "sourceCommit": "3dfd63ba8"
+    },
+    {
+      "id": "bankeiz-composer-recoverable-composerPreparation.client",
+      "path": "receiz/app/lib/profile/composerPreparation.client.ts",
+      "baseSha256": "35bb86d172baa9fa8aefeae8207491c65e3537291f43276a0ccd2c5a8a13ebce",
+      "sha256": "aa681c14cb1e8b91ce80622d8730dd82e1312f6cb515a5a21354db5045baa819",
+      "purpose": "Split exact resource preparation from canonical sealing and retain the existing asset definition for stable Bank creation retries. Existing Receiz UI and v129 proof/financial authority remain unchanged.",
+      "sourceCommit": "3dfd63ba8"
+    },
+    {
+      "id": "bankeiz-composer-recoverable-connectedAssetPublication.client",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "92d5ba4988ce5fddff37b42cb4bf089ef20c2ae49aabef1fb571493d98c60179",
+      "sha256": "258783460d6695d4dc5e4c599e195f70b1e100656211622576f33e439dcad14c",
+      "purpose": "Split exact resource preparation from canonical sealing and retain the existing asset definition for stable Bank creation retries. Existing Receiz UI and v129 proof/financial authority remain unchanged.",
+      "sourceCommit": "3dfd63ba8"
     }
   ]
 }

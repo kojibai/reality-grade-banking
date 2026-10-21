@@ -1,4 +1,5 @@
 import type { ReceizOpenedArtifact } from '@receiz/sdk';
+import {readComposerAssetContent} from './asset-composer';
 import { validateAssetDefinition } from './asset-definition';
 import { parseAmount } from '../core/money';
 import { readDeliveryInstructions, type DeliveryInstructions } from './custody-delivery';
@@ -19,6 +20,7 @@ export function projectHeldDeposit(opened: ReceizOpenedArtifact, bytes: Uint8Arr
   let intake: AssetIntake | undefined, delivery: DeliveryInstructions | undefined;
   try {
     const payload = JSON.parse(new TextDecoder().decode(opened.verifiedPayload.bytes));
+    if(payload?.schema==='receiz.bank.asset-content.v2'){const content=readComposerAssetContent(payload,owner);definitionTitle=content.title;if(content.definition)assetDefinition=validateAssetDefinition(content.definition);}
     if (payload?.schema === 'receiz.bank.asset-definition.v1') {
       if (payload.createsSpendableValue !== false || payload.backingCommitted !== false || payload.issuerReceizId !== owner) throw new Error('Unsupported asset definition.');
       assetDefinition=validateAssetDefinition(payload.definition);definitionTitle=assetDefinition.name;

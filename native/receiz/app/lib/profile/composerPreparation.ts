@@ -4,10 +4,11 @@ import {parseExactByteBlockReference,type ExactByteBlockReference} from "../tran
 import type {ImportedProofSourceReference} from "./showcase/importedSourceReference";
 export type ComposerMediaKind="moment"|"image"|"audio"|"video"|"epub"|"pdf"|"file";
 export type ComposerFileDraft=Readonly<{id:string;file:File;role:"primary"|"cover"|"attachment";attachmentRole?:"source"|"appendix"|"dataset"|"contract"|"receipt"|"research"|"other";description?:string}>;
-export type ComposerAssetDraft=Readonly<{title:string;description:string;kind:ComposerMediaKind;longForm:string;files:readonly ComposerFileDraft[];music?:ProfileOriginalAudioDistribution;book?:ProfileOriginalEpubMetadata}>;
+export type ComposerAssetDefinition=Readonly<{name:string;symbol:string;units:string;description:string;linkedProofDigest:string|null}>;
+export type ComposerAssetDraft=Readonly<{definition?:ComposerAssetDefinition;title:string;description:string;kind:ComposerMediaKind;longForm:string;files:readonly ComposerFileDraft[];music?:ProfileOriginalAudioDistribution;book?:ProfileOriginalEpubMetadata}>;
 export type ComposerCapacity=Readonly<{maxAttachments:number;maxTotalBytes:number;maxAttachmentBytes:number;maxPrimaryBytes:Readonly<Partial<Record<ComposerMediaKind,number>>>;maxCoverBytes:number;maxTextCharacters:100000}>;
 export type ComposerAssetFile=Readonly<Omit<ComposerFileDraft,"file">&{name:string;mime:string;size:number;sha256:string;bytes:ExactByteBlockReference}>;
-export type ComposerAssetContent=Readonly<{schema:"receiz.bank.asset-content.v2";ownerReceizId:string;title:string;description:string;kind:ComposerMediaKind;longForm:string;files:readonly ComposerAssetFile[];music?:ProfileOriginalAudioDistribution;book?:ProfileOriginalEpubMetadata}>;
+export type ComposerAssetContent=Readonly<{definition?:ComposerAssetDefinition;schema:"receiz.bank.asset-content.v2";ownerReceizId:string;title:string;description:string;kind:ComposerMediaKind;longForm:string;files:readonly ComposerAssetFile[];music?:ProfileOriginalAudioDistribution;book?:ProfileOriginalEpubMetadata}>;
 export type PreparedComposerSource=Readonly<{artifact:File;reference:ImportedProofSourceReference;content:ComposerAssetContent}>;
 const MIB=1024*1024;
 const KINDS=new Set<ComposerMediaKind>(["moment","image","audio","video","epub","pdf","file"]);
@@ -39,10 +40,15 @@ function metadata<T>(input:unknown,fields:readonly string[]):T|undefined{
  }
  return Object.freeze(result) as T;
 }
+function definition(input:unknown):ComposerAssetDefinition|undefined{
+ if(input===undefined)return;
+ const v=record(input);if(Object.keys(v).sort().join("|")!=="description|linkedProofDigest|name|symbol|units"||!text(v.name,80)||!v.name.trim()||!text(v.description,2000,true)||typeof v.symbol!=="string"||! /^[A-Z][A-Z0-9]{1,7}$/.test(v.symbol)||typeof v.units!=="string"||! /^\d{1,18}(?:\.\d{1,6})?$/.test(v.units)||! /[1-9]/.test(v.units)||v.linkedProofDigest!==null&&(typeof v.linkedProofDigest!=="string"||! /^[a-f0-9]{64}$/.test(v.linkedProofDigest)))fail("DEFINITION_INVALID");
+ return Object.freeze({name:v.name.trim(),symbol:v.symbol,units:v.units,description:v.description,linkedProofDigest:v.linkedProofDigest}) as ComposerAssetDefinition;
+}
 function fields(value:ComposerAssetDraft|ComposerAssetContent){
  if(!text(value.title,160)||!value.title.trim()||!text(value.description,2000,true)||!text(value.longForm,100000,true)||!KINDS.has(value.kind))fail(value.longForm?.length>100000?"TEXT_CAPACITY":"DRAFT_INVALID");
  if(value.music!==undefined&&value.kind!=="audio"||value.book!==undefined&&!["epub","pdf"].includes(value.kind))fail("METADATA_KIND_INVALID");
- return {title:value.title.trim(),description:value.description,kind:value.kind,longForm:value.longForm,
+ return {...(value.definition!==undefined?{definition:definition(value.definition)}:{}),title:value.title.trim(),description:value.description,kind:value.kind,longForm:value.longForm,
   ...(value.music!==undefined?{music:metadata<ProfileOriginalAudioDistribution>(value.music,MUSIC_FIELDS)}:{}),...(value.book!==undefined?{book:metadata<ProfileOriginalEpubMetadata>(value.book,BOOK_FIELDS)}:{})};
 }
 function roles(files:readonly {id:string;role:string;mime:string;size:number;attachmentRole?:string;description?:string}[],kind:ComposerMediaKind){
@@ -73,7 +79,7 @@ export function validateComposerAssetDraft(draft:ComposerAssetDraft,capacity:Com
 /** Called only after the enclosing canonical source passed verification. Block
  * addresses locate committed bytes; they never provide ownership/admission. */
 export function readComposerAssetContent(input:unknown,ownerReceizId:string|null):ComposerAssetContent{
- const v=record(input),allowed=["schema","ownerReceizId","title","description","kind","longForm","files","music","book"];
+ const v=record(input),allowed=["schema","ownerReceizId","title","description","kind","longForm","files","music","book","definition"];
  if(v.schema!=="receiz.bank.asset-content.v2"||v.ownerReceizId!==ownerReceizId||!ownerReceizId||Object.keys(v).some(key=>!allowed.includes(key))||!Array.isArray(v.files))fail("CONTENT_INVALID");
  if(v.files.length>202)throw new ImportedProofSourceUnavailableError("COMPOSER_FILE_COUNT_CAPACITY","VERIFICATION_RESOURCE_UNAVAILABLE","verified");
  const content=fields(v as unknown as ComposerAssetContent);

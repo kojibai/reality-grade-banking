@@ -1,6 +1,6 @@
 # Public asset originals on Receiz v129
 
-The explicit **Seal moment publicly** action seals and retains one account-owned
+The explicit **Create asset** action seals and retains one account-owned
 original, then places those exact bytes on the owner's canonical Receiz Showcase.
 Images, audio, video, documents, attachments and complete long form remain inside
 that source. Public projection reads and verifies the enclosing Receiz artifact
@@ -41,3 +41,24 @@ and visible pending/public states. The source manifest and rebuild gate verify
 the shipped browser composition from included source without another checkout or
 network access. Application composition changes do not modify the published SDK,
 MCP or AI skill packages, trusted roots or financial qualification rules.
+
+## Typed composer
+
+Bankeiz keeps the original, cover/poster, ordered attachments and full text as
+separate roles. Music and book metadata use the same Receiz source contract.
+The existing short code and supply remain in the compact canonical manifest;
+media bytes remain in shared exact-byte block custody, rather than base64 JSON.
+Content is prepared once before sealing. The publication controller compares its
+stable intent with the saved source, so recovery reuses that source and placement.
+
+The effective envelope is 64 MiB combined, at most 200 attachments, 64 MiB for
+audio/video/PDF originals, 16 MiB for image/EPUB/other originals and individual
+attachments, 12 MiB for artwork, and 100,000 text characters. These are bounded
+implementation limits, below the larger configured Receiz ceilings. Cold
+canonical resource opening and exact transport boundaries are qualified in the
+source tests; browser form and existing reader checks do not claim arbitrary
+codec support or a hosted maximum-file performance measurement.
+
+Bank's 390px and 1440px form checks cover music/artwork, EPUB/artwork, text-only
+creation and retained pending-delivery retry without remote services. Receiz's
+frontend components, styling and flows remain unchanged.

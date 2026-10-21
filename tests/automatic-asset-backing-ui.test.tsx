@@ -22,7 +22,7 @@ it('creates from an amount alone, shows the signed split in details and retains 
  try{
   await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={vi.fn()} onClose={vi.fn()}/>));await act(()=>button('Create with backing').click());
   expect(host.textContent).not.toContain('Back it with');expect(host.querySelectorAll('select')).toHaveLength(0);expect(calls).toEqual([]);
-  await enter('Moment name','Unit');await enter('Short code','UNIT');await enter('Backing amount','100');
+  await enter('Title','Unit');await enter('Short code','UNIT');await enter('Backing amount','100');
   await act(async()=>{button('Review asset creation').click();await vi.waitFor(()=>expect(preparedReady).not.toBeNull());});expect(host.textContent).toContain('Review asset creation.');expect(requests[0]).toMatchObject({kind:'fund-asset',fundingRule:'reserve-first-then-settlement',amountUsdCents:'10000'});expect(requests[0]).not.toHaveProperty('rail');
   const details=host.querySelector('.transaction-proof-details')!;expect(details.textContent).toContain('Reserve');expect(details.textContent).toContain('$60.00');expect(details.textContent).toContain('Settlement');expect(details.textContent).toContain('$40.00');
   expect(button('Create funded asset').disabled).toBe(true);await act(()=>(host.querySelector('input[type="checkbox"]') as HTMLInputElement).click());await act(async()=>{button('Create funded asset').click();await vi.waitFor(()=>expect(states).toHaveLength(1));});

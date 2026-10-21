@@ -1,5 +1,5 @@
 "use client";
-import {prepareConnectedComposerSource} from "../composerPreparation.client";
+import {prepareConnectedComposerSource,prepareConnectedComposerContent,sealConnectedComposerContent} from "../composerPreparation.client";
 import type {ComposerAssetDraft} from "../composerPreparation";
 import {verifyReceizArtifact,createReceizArtifactAdmissionEngine,readReceizIdentityArtifact} from "../../../../packages/receiz-sdk/src/index";
 import type {receizeDocumentBytesClient} from "@/app/lib/documentSeal/receizeDocumentBytesClient";
@@ -47,7 +47,7 @@ export async function createConnectedAssetPublicationRuntime(input:Readonly<{
   deliveries.set(source.artifactDigest,result);return result;
  };
  const custody=createImportedProofSourceCustody();
- return {prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:admitted.ownerReceizId!,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),async publish(file:File){
+ return {prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:admitted.ownerReceizId!,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:admitted.ownerReceizId!,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),async publish(file:File){
   input.assertCurrent();
   const source=await openImportedProofSource(file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});
   if(source.projection.ownerReceizId!==admitted.ownerReceizId)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH");
