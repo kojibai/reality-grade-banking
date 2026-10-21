@@ -1,9 +1,11 @@
 import {noteContinuityGuideSections} from './note-continuity.mjs';
+import {audiencePages} from './audience-pages.mjs';
 
 // Public explanations only. These records confer no financial authority and
 // contain no account reads, mutable prices or invented qualification results.
 const page=(slug,group,title,description,intro,visual,sections,related,extra={})=>({slug,group,title,description,intro,visual,sections,related,...extra});
 export const learningPages=[
+...audiencePages,
 page('your-account','Banking','Your account','Understand your available balance, saved observations and received Notes in one account.','One balance. A clear view of what you can use.','funding',[
  ['A familiar starting point','Your account brings available money and its history into one place. Send an amount, receive a payment or create a Note without choosing a funding rail. The application selects available Reserve first, then Settlement for the remainder. The transaction proof preserves the exact composition underneath.'],
  ['Available and received','A confirmed account balance and a Note received offline are different states. Received Notes retain the complete original proof on your device. Their deposits reconcile when connected before a payment or a new Note uses that value. The interface identifies received value without counting an unconfirmed deposit twice.'],
@@ -219,8 +221,8 @@ page('security','Standards','Security and authority','Understand identity custod
  ['Recovery without invention','Lost replies leave uncertain outcomes. Retain the exact attempt and recover its existing result. Never infer success from a spinner ending or failure from a timeout. Keep unknown financial state intact until its supported recovery determines the outcome.'],
  ['Assessment scope','Reference checks establish the properties they actually exercise. They do not prove production configuration, device security or every external claim. Publish the exact version and assessed capability. Treat unassessed behavior as unassessed rather than implying certification.']
 ],['/learn/signing-key/','/learn/account-access/','/standards/']),
-page('releases','Standards','Releases and qualification','Inspect the current release candidate, implementation evidence and the remaining production and physical-device qualification gates.','A release is a demonstrated scope.','conformance',[
- ['Current status','The repository identifies the application as version 0.1.0. The work toward v1.0.0 remains a release candidate until its required qualification is complete. This page does not announce a public v1.0.0 release or certify a deployment merely because a build exists.'],
+page('releases','Standards','Releases and qualification','Inspect the 1.0.0 release source, implementation evidence and capability-specific production and device qualification records.','A release is a demonstrated scope.','conformance',[
+ ['Version 1.0.0','The repository and application identify version 1.0.0. Its release commit brings the open banking architecture, Bankeiz reference application, receiving materials and verification evidence together. The operator publishes the matching tag and GitHub release after the required deployed checks. A version label does not certify an unassessed capability.'],
  ['Implemented scope','The reference composition includes account access, payments, public discovery, source-carried history, messages and connected Note creation across automatic Reserve, Settlement and composite funding. Availability depends on the selected host capabilities, configuration and installed persistence schema.'],
  ['Reference evidence','Repository verification records describe the commands, fixtures and exact scope used. Tests cover supported conservation, source bindings, replay refusal and recovery cases. Their synthetic identities and isolated data are not production financial qualification.'],
  ['Required live qualification','Verify the deployed host and application versions, funded Reserve and Settlement creation, mixed funding, interrupted issuance, recipient-bound receipt, once-only credit and recovery. Test the intended iPhone/PWA path. Qualified continuous offline custody additionally needs real protected-device evidence.'],
@@ -247,7 +249,7 @@ page('questions','Standards','Questions and answers','Practical answers about op
 ],['/learn/notes/','/learn/your-account/','/institutions/']),
 ];
 
-export const learningGroups=['Banking','Assets','Markets','History','Standards'];
+export const learningGroups=['For you','Banking','Assets','Markets','History','Standards'];
 export const learningPath=page=>page.path??`/learn/${page.slug}/`;
 export const assetCategories=[
  ['Music','music','Audio works, recordings and music sources. Inspect the authored original, its ownership and the rights actually carried.'],

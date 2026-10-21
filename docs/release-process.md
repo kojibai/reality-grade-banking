@@ -1,8 +1,11 @@
 # Release process
 
-The Bankeiz product release target is **1.0.0**, separately from the pinned
-Receiz SDK/MCP/AI Skills versions. The [1.0.0 readiness record](releases/1.0.0.md)
-is the current checklist, including the connected Note consumption dependency.
+The Bankeiz product release commit identifies **1.0.0**, separately from the pinned
+Receiz SDK/MCP/AI Skills versions. The [full release record](releases/1.0.0.md)
+describes the product and open implementation; the matching
+[qualification record](releases/1.0.0-qualification.md) is the current evidence
+and publication checklist. The [release index](releases/README.md) defines the
+versioned document structure and links the concise project changelog.
 Do not tag or describe that target as released while any required capability
 or independent qualification evidence remains absent.
 
@@ -16,6 +19,31 @@ Record the Bank commit, exact lockfile, coordinated Receiz package versions, reg
 6. Have an authorized operator push/deploy the reviewed commit. Verify the exact deployed build and source hashes. Observe the complete route and independently verified result; a successful deployment or HTTP response alone does not qualify a financial operation.
 
 Retain the prior release and exact pending-intent compatibility. A rollback must preserve possibly committed operations and their original recovery coordinates. Do not discard pending funding/redemption records or generate fresh intents to simplify rollback.
+
+## Versioned publication
+
+1. Prepare the complete versioned notes, concise CHANGELOG entry and matching
+   qualification record using [the release template](releases/TEMPLATE.md).
+   Set package.json and package-lock.json to the approved product version on
+   the release commit. This labels the source, not a qualification outcome.
+   State preparation, qualification and publication separately. Do not assign
+   an invented release date or claim a Git tag exists before it is published.
+2. Finish the exact deployed/device assessment for the advertised scope and
+   record its immutable source, host/build coordinates, applicable evidence and
+   material exclusions. Preserve failed and unassessed results explicitly.
+3. Verify the approved product version and coordinated Receiz dependency pins
+   against the exact source. Do not alter Receiz pins merely to match the
+   product version. Run the final checks and review the complete diff. Any
+   source change after assessment needs a new build and review of its affected
+   scope; preserve the original assessment and immutable runtime coordinates.
+4. Have the authorized operator push and publish the matching version tag and
+   GitHub release. Use the versioned notes as the release body and identify the
+   exact commit. Include or link the matching complete corresponding source,
+   source inventory/digest and applicable licenses/notices for covered builds.
+5. Update the release index, publication state/date and changelog together.
+   Retain previous release records and source distributions. Later factual
+   corrections should be dated and linked rather than silently rewriting an
+   earlier assessment.
 
 Public Ledger releases must also follow [public-ledger-release.md](public-ledger-release.md). Keep exact-head native disclosure approval separate from explicit user publication and from financial qualification. Never populate the approval setting automatically.
 

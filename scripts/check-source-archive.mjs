@@ -23,7 +23,7 @@ for (let offset = 0; offset < tar.length && tar[offset];) {
   assert.ok(!entries.has(name), `Duplicate archive file: ${name}`);
   entries.set(name, tar.subarray(offset + 512, offset + 512 + size)); modes.set(name, parseInt(text(header.subarray(100, 108)), 8)); offset += 512 + Math.ceil(size / 512) * 512;
 }
-for (const entry of ['index.html','conformance/index.html','verify/index.html','receipt/index.html','ledger/index.html']) assert.ok(entries.has(entry), `Missing frontend build source: ${entry}`);
+for (const entry of ['index.html','conformance/index.html','verify/index.html','receipt/index.html','ledger/index.html','README.md','CHANGELOG.md','docs/releases/README.md']) assert.ok(entries.has(entry), `Missing release source: ${entry}`);
 const inventory = JSON.parse(entries.get('SOURCE-ARCHIVE.json').toString('utf8'));
 assert.equal(hash(JSON.stringify(inventory.files)), index.sourceTreeSha256);
 assert.equal(inventory.sourceTreeSha256, index.sourceTreeSha256);

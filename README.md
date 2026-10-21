@@ -1,161 +1,286 @@
 # Reality-Grade Banking
 
-[![Verify reference](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml) [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE) [![Receiz v129](https://img.shields.io/badge/Receiz-129.0.0-2349d8.svg)](package.json) [![Matching native source](https://img.shields.io/badge/Native%20source-reproducible-16836b.svg)](native/README.md)
+**An open banking architecture for the proof-native economy.**
 
-**Your value should carry its proof.**
+[![Verify reference](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml)
+[![GPL-3.0-only](https://img.shields.io/badge/License-GPL--3.0--only-2349d8.svg)](LICENSE)
+[![Receiz v129](https://img.shields.io/badge/Receiz-129.0.0-2349d8.svg)](package.json)
 
-The Bankeiz reference application and receiving integration kit: a mobile banking console built on proof objects, with device-held identity, independently inspectable sources and explicit continuity requirements.
+Reality-Grade Banking is an open banking architecture and receiving standard for money
+and assets that preserve their proof, ownership and history as they move.
+This repository brings the working implementation, published requirements,
+independent verification tools, matching native sources and integration
+materials together in one inspectable foundation.
 
-**Settlement · Proof-native value.** Value derived and transacted through the native proof system.
+**Receiz provides the underlying proof infrastructure. Bankeiz is the live
+branded reference implementation of Reality-Grade Banking.**
+It brings money, assets and their evidence into one account: send and receive
+payments, carry funded Notes, own and exchange supported assets, and follow a
+transaction back to its sources. It is a complete product and a working
+implementation of the shared architecture.
 
-**Reserve · Proof-backed funds.** Funded value represented through verified sources and connected payment rails.
+People can use Bankeiz. Builders and institutions can inspect the implementation,
+reproduce its checks and operate their own authorized integrations under the
+published requirements. The architecture is not limited to one brand or operator.
 
-One account view brings the rails together. The app keeps Send and Receive central, with Account, Market, Deposit, Assets and Ledger in persistent bottom navigation. The verified proof object is the source of authority for ownership, exact value and carried history. A listing, image, account projection or service response cannot create financial authority.
+**The payment moves. Its proof stays connected.**
 
-[Public Ledger](https://bankeiz.com/ledger/) · [Conformance Console](https://bankeiz.com/conformance/) · [SDK schemas](https://bankeiz.com/schemas/) · [Receiving kit](institution/README.md) · [Receiving standard](institution/receiving-standard.md) · [Run locally](#run-locally) · [Release process](docs/release-process.md) · [Licensing](#licensing)
+[Open Bankeiz](https://bankeiz.com/) ·
+[Explore assets](https://bankeiz.com/explore/) ·
+[Public Ledger](https://bankeiz.com/ledger/) ·
+[Understand the economy](https://bankeiz.com/learn/proof-native-economy/) ·
+[Build a receiver](institution/README.md) ·
+[Documentation map](docs/README.md) ·
+[Run locally](#run-locally)
 
-## Build a receiver
+## What this opens up
 
-Start in **[institution/](institution/README.md)** to accept, inspect, hold, transfer and redeem value while preserving verification, ownership and history. It includes:
+| For | The practical result |
+| --- | --- |
+| People and families | One place for money, assets, payments and a history they can inspect. |
+| Businesses | Receive money, pay people and suppliers, and keep the supporting transaction records connected. |
+| Independent professionals | Share a receiving destination and retain a clear payment record alongside the work. |
+| Creators and asset owners | Publish an original, show its supported ownership and history, and use the available ownership actions. |
+| Communities and nonprofits | Connect contributions and subsequent payments to inspectable records and their source basis. |
+| Institutions and public-sector teams | Integrate receiving and verification against explicit contracts, exact sources and reproducible assessments. |
+| Platforms and developers | Build a distinct experience over existing Receiz capabilities instead of inventing another financial writer. |
 
-- A versioned, machine-readable receiving profile and normative evidence requirements.
-- A read-only Reserve Note verifier, complete auditable sources, input hashes and CLI.
-- Canonical KaiSigil temporal tests and refusal vectors for forged note inputs.
-- Native qualified note custody, handoff, original-image transport and redemption guides.
-- A type-checked SDK edge-payment adapter example and exact MCP/AI Skills entry points.
-- Receiver-specific qualification, atomic execution, once-only recovery and operational release checklists.
+A supported transaction carries more than a displayed amount: its participants,
+exact units, source relationships, authorization and result remain inspectable.
+An independent receiver can work from the original evidence rather than relying
+on a screenshot or another application's interpretation.
 
-```sh
-npm ci
-npm run receiver:check
-npm run receiver:inspect -- /absolute/path/to/original-note.png
+## The product
+
+- **One account.** Device-held Receiz ID opens the existing account. Everyday
+  Send and Receive use one amount; funding details stay available underneath.
+- **Payments with history.** Find a recipient, review the amount, approve the
+  payment and retain its receipt. Sent and received activity remain distinct.
+- **Funded Notes.** Create from the available account, save the original and
+  hand it to its addressed recipient. Funding is selected automatically.
+- **Assets with continuity.** Discover public originals, inspect their media
+  and proof back, follow ownership history and use supported Buy ownership or
+  Take cash actions. Each public asset has its own shareable page.
+- **Conversations and assistance.** Existing Receiz messages, groups and calls
+  stay connected to the same ID. Assistant access follows the account's actual
+  entitlement; consequential actions retain their own approval.
+- **An inspectable economy.** Public assets, valuation methods, the Ledger,
+  original receipts and source-of-funds views make the supporting evidence
+  available at the appropriate disclosure boundary.
+- **A retained PWA.** Encrypted private retention, exact pending-operation
+  recovery and retained public navigation preserve continuity across ordinary
+  use. Background synchronization adds new supported information.
+
+These are presentations and compositions of Receiz capabilities. Bankeiz does
+not create a second account balance, identity authority, messaging service or
+financial execution system.
+
+## Open implementation. Independent verification.
+
+The open-source package is part of the product:
+
+| Material | Purpose |
+| --- | --- |
+| [Application source](src/) | Inspect the actual account, Market, Ledger, messaging and Note experience. |
+| [Receiving standard](institution/receiving-standard.md) | Identify the requirements for preserving verification, ownership, value and history. |
+| [Receiver kit](institution/README.md) | Run read-only inspection and build an independently assessed receiving integration. |
+| [Original schemas](https://bankeiz.com/schemas/) | Inspect the pinned Receiz formats and download their exact definitions. |
+| [Matching native source](native/README.md) | Rebuild the included native/verifier modules and inspect their provenance. |
+| [Source distribution](SOURCE.md) | Reproduce the content-addressed source archive shipped with each build. |
+| [Conformance workspace](https://bankeiz.com/conformance/) | Run the supported local checks and inspect the assessment requirements. |
+
+The original application and documentation are **GPL-3.0-only**. Recipients can
+study, modify, deploy and redistribute them under that license. Independent
+operators use their own branding, registered application, permissions and
+qualified execution. The [software license](LICENSE),
+[trademark policy](TRADEMARKS.md) and
+[conformance-claim policy](CONFORMANCE.md) describe separate rights and
+responsibilities.
+
+## One balance. Exact value underneath.
+
+Settlement preserves proof-native value in exact Phi units. Reserve preserves
+proof-backed funds and their admitted denomination. The account presents the
+supported total together; automatic funding uses available Reserve first and
+Settlement for the remainder.
+
+| Funded Note | What the original retains |
+| --- | --- |
+| Reserve Note | Its admitted funded denomination and exact backing. |
+| Settlement Note | Its exact Phi amount; the dollar presentation follows the supported deterministic rate. |
+| Settlement Reserve Note | Both signed funding components and their exact split—Proof-backed Native value. |
+
+The application never asks the user to choose a rail for an ordinary payment or
+Note. Original receipts preserve the composition for anyone who needs the detail.
+
+A valuation, available balance, executed price and backing are distinct facts.
+Charts use their stated source and method. Where pooled funding is explained
+through FIFO, it is **calculated attribution** from the oldest supported
+available source; it does not rewrite the allocation recorded by the original
+transfer.
+
+Read the [valuation method](https://bankeiz.com/learn/how-value-works/),
+[Note contract](docs/connected-notes-v129.md) and
+[source-of-funds guide](https://bankeiz.com/learn/source-of-funds/).
+
+## Notes and connectivity
+
+The user flow is Create, Receive and Deposit. The execution path supplies the
+required authority:
+
+| Situation | Execution boundary |
+| --- | --- |
+| Connected creation | Existing account authorization and once-only connected funding. Offline-custody enrollment is not required. |
+| Offline receipt | Verify and retain the complete, addressed original on the receiving device. Account credit reconciles on connection before it funds another payment or Note. |
+| Continuous offline creation and onward transfer | Requires the qualified protected custody, prepared resources and exact-head irreversible consumption defined by the native contract. |
+
+A copied image does not create additional money. Unknown outcomes retain the
+same signed intent and recover its existing result before another financial
+attempt. A confirmed repeated deposit is identified explicitly.
+
+The [continuity standard](docs/note-continuity-standard.md) defines the complete
+state and evidence model. The [device check](https://bankeiz.com/conformance/#device-evidence)
+measures the actual supplied browser/device evidence; it does not grant
+qualification by label or weaken antirollback.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    ID["Device-held Receiz ID"] --> B["Bankeiz"]
+    B --> R["Receiz v129"]
+    R --> O["Original sources and receipts"]
+    O --> B
+    O --> V["Independent receiving and verification"]
 ```
 
-Inspection verifies carried evidence. It does not acquire custody, prove current spendability, authorize a credit or certify an institution. A receiver must demonstrate the exact capability with admitted sources and qualified execution. Unknown conformance is **not demonstrated**; a verified failed assessment is **nonconforming for its assessed capability** until corrected and reassessed.
+The SDK, MCP server and AI Skills are pinned together at **129.0.0**. The active
+registry bindings and digests are recorded in
+[receiver-profile.json](institution/receiver-profile.json).
 
-Open `/conformance/` locally for the browser workspace: seven real reference checks, original Reserve Note inspection, the receiving requirements and downloadable evidence. It loads independently from the Bank, reads selected PNGs on the device and performs no financial actions. Local reference results and recorded MCP evidence remain separate from institution assessment.
-
-See the [current function boundaries](docs/current-function-boundaries.md) and [native financial adapter contract](docs/bank-prepared-operation-contract.md) for the exact remaining production work. Generic proof-history verification alone does not establish financial effects.
-
-## Current capability boundaries
-
-| Surface | Current state |
+| Boundary | Implementation |
 | --- | --- |
-| Account entrance | Native Identity Seal creation/import, device-held restoration, immediate retained account view |
-| Shared account | Existing Receiz Reserve/Settlement balance read; no parallel invented balance |
-| Public Market and Ledger | Public sealed proof sources, collectibles, browsing, charts, discovery and exact-source inspection |
-| Account assets/history | Retained verified sources plus public showcase discovery; private additions depend on host service/admission |
-| Card deposits | Receiz SDK checkout/status composition, embedded inside Bank; a live payment requires customer operation and credit confirmation |
-| Physical assets | Sealed intake and carried delivery instructions; actual custodian acceptance, transferable ownership and fractional sales remain unfinished |
-| Digital Send / native asset exchange | Exact signed reviews, native paired effects and original recovery; real signed liquidity and qualified production custody required |
-| Asset creation | Definition sealing plus native backing lock, conserved supply, verified position delivery and whole-supply redemption; production custody qualification required |
-| Notes | Automatic Reserve, Settlement or combined funding; signed recipient-bound handover, offline proof retention and once-only account deposit. Compatibility migrations, deployed financial qualification and protected-device qualification remain release gates. |
-| Settlement Notes | Matching native signed rail, exact-Phi local valuation and credit primitives implemented; production selector and real-device financial qualification remain |
-| Institution receiving | Public verification, integration contracts and local checks; each institution needs its own authorized native integration and live assessment |
+| Account and retained navigation | [App](src/App.tsx), [core](src/core/), [components](src/components/) |
+| Identity and account-source admission | [native identity](src/receiz/native-identity.ts), [native source](src/receiz/bank-native-source.ts) |
+| Payments and recovery | [Wallet Send](src/receiz/wallet-send.ts), [payment contract](docs/native-payment-api.md) |
+| Notes and exact source retention | [Note runtime](src/receiz/offline-notes.ts), [connected composition](src/receiz/connected-note-application.ts) |
+| Public assets and discovery | [public explorer](src/public-explorer/), [Market](src/features/market/) |
+| Account and public activity | [Ledger](src/features/ledger/), [public Ledger](src/public-ledger/) |
+| Receiz conversations and calls | [messaging interface](src/features/messages/), [native calls](src/receiz/native-calls.ts) |
+| Fixed-origin host transport | [server](server/), [API entry](api/index.ts), [routing](vercel.json) |
+| Native provenance and distribution | [native sources](native/), [source archive](SOURCE.md) |
+| Independent receiving | [institution kit](institution/), [Conformance](src/conformance/) |
 
-See [native asset and full account-source qualification](docs/native-assets-and-account-proofs-v129.md) for implemented effects, tested source closures and remaining activation requirements.
-See [private artifact and Note source closures](docs/private-artifact-and-note-source-closures-v129.md) for exact private-original admission, outstanding Note funding, historical replay and current custody scope.
-
-Account charts preserve accepted movements and [recompute historical dollar valuations](docs/historical-account-valuation-v129.md) from the first sealed activity in a complete admitted account history using the pinned v129 pricing law. Computed chart samples remain distinct from recorded quotes and financial authority. The public [valuation guide](https://bankeiz.com/learn/how-value-works/) includes the pinned formula, interactive SDK calculator, original-proof reader and offline replay verification.
-
-The guide's original-proof reader captures Kai when a file is selected, verifies it locally, and displays its deterministic USD and Phi value with local-time presentation. The source digest, exact coordinate, valuation policy and dollar basis remain bound in the downloadable v129 replay. Unsupported or invalid originals do not receive a fabricated value. Its verifier runtime is included in the installed offline shell.
-
-These boundaries are intentional release disclosures. A build, downloaded image or deployment is not a financial qualification. The note artwork samples are **unissued**. See [native note release gates](docs/offline-notes-release.md), [Settlement Note contract](docs/settlement-note-contract.md) and [receiver qualification](institution/qualification.md) before enabling financial capabilities.
-
-The [Note continuity standard](docs/note-continuity-standard.md) and
-[exact implementation contract](docs/note-account-deposit-v129.md) publish the
-full source, state, custody, reconciliation and qualification boundaries.
-Completed account-destination Notes can be verified and retained offline
-without receiver custody enrollment; account credit reconciles through the
-existing v129 redemption operation before spending. Protected offline creation
-retains its strict requirements. Online creation on nonconforming custody is
-still a missing integration, and physical-device/deployed financial evidence
-remains outstanding. The public [Conformance workspace](https://bankeiz.com/conformance/#note-continuity)
-contains the requirements, implementation responsibilities and opt-in device
-diagnostic. Product 1.0.0 is a [release target](docs/releases/1.0.0.md), not a
-released or universally qualified capability.
+Original proof and native admission govern ownership, value and execution.
+Databases, APIs, synchronized projections and interface state remain beneath
+that authority. Selected-source refusal cannot silently switch to a weaker
+financial source. Private keys, phrases, account openings and grant bearers
+never belong in public configuration, logs, model context or source exports.
 
 ## Run locally
 
-Requires Node.js 20.19+ or 22.12+ and npm. CI uses Node 24.
+Requires **Node.js 24** and npm, matching the complete CI and native-source
+verification environment.
 
 ```sh
 npm ci
 npm run dev -- --host 127.0.0.1
 ```
 
-Open `http://127.0.0.1:5173`. For the production PWA:
+Open `http://127.0.0.1:5173`.
+
+For the production PWA:
 
 ```sh
-npm test
-npm run typecheck
-npm run receiver:check
 npm run build
 npm run preview -- --host 127.0.0.1 --port 4173 --strictPort
 ```
 
-Open `http://127.0.0.1:4173`. Install through the browser's Install / Add to Home Screen action. A completed background installation retains one complete build: the Bank interface, public guides, native verifier and note runtime, proving resources, note artwork and lazy QR decoder. Resource hashes are checked before caching; offline readiness requires the complete inventory. A first installation requires connectivity. Offline interface availability is separate from qualified financial custody, and financial APIs are never cached or replayed.
+Open `http://127.0.0.1:4173` and use the browser's Install or Add to Home Screen
+action. Initial installation needs connectivity. The complete offline inventory
+is hash-checked before caching. Financial APIs and private account storage are
+excluded from the public service-worker cache.
 
-An open Bank tab continues using its own build while an update waits. Close all Bank tabs and reopen to activate it normally. Updates preserve encrypted identity custody, original proofs, receipts, pending operations and unknown account namespaces; they do not reset account storage or force a reload. Run `node tests/browser/offline-continuity-server.mjs` for the isolated, nonfinancial offline/update browser fixture; its terminal accepts `A`, `B`, `offline` and `online`.
+An open tab retains its build while an update waits. Ordinary activation
+preserves encrypted identity custody, originals, receipts and pending operations;
+it does not clear account data or force a reload.
 
-## Matching native source
-
-The public [account-proof reader](https://bankeiz.com/verify/) inspects original proof images/files without login. Its share interface preserves the exact source snapshot and requires explicit consent for public and future-history disclosure. The native v4 statement binds the verified source frontier and keeps cash, holdings, intrinsic value and outstanding Note funding separate. Existing v2/v3 images remain verifiable. The [Crystal handoff](docs/crystal-public-account-proof-contract.md) specifies source distribution and revocation; private Identity Seals, owner archives and recovery backups are never public proof exports. Deployed protected custody and the documented source scope remain required.
-
-The included [native source package](native/README.md) lets developers rebuild the actual note/verifier modules, inspect the public circuits and reproduce the published SDK JavaScript. A normal build links its exact source download from `/legal/`; `/source/index.json` records its SHA-256 and inventory. The source extraction excludes the broader Receiz backend, operator secrets and customer data. See the [public disclosure boundary](native/DISCLOSURE.md). These are source/reproduction checks, not an institution certification.
+## Verify the implementation
 
 ```sh
+npm run release:check
+npm test
+npm run typecheck
+npm run receiver:check
 npm run native:check
 npm run native:rebuild -- --sdk
 npm run build
 npm run source:verify -- --rebuild
 ```
 
-## Architecture and trust
+The [CI workflow](.github/workflows/verify.yml) runs this verification sequence.
+The production build also checks public metadata, routing, licensing, source
+distribution and the complete offline shell.
 
-The SDK, MCP server and AI Skills are coordinated at **129.0.0**. The active registry ruleset is **127.0.0**. Exact registry and operation-matrix digests are pinned in [receiver-profile.json](institution/receiver-profile.json). Retained SDK names with earlier version suffixes are part of the v129 contract.
+To inspect an original Note without performing a financial action:
 
-| Area | Source |
-| --- | --- |
-| Single-page console and navigation | `src/App.tsx`, `src/components/` |
-| Identity, source admission and protected account reads | `src/receiz/native-identity.ts`, `src/receiz/bank-native-source.ts` |
-| Public Market, Ledger and deterministic projections | `src/receiz/public-*`, `src/receiz/*series*` |
-| Native note lifecycle and exact recovery | `src/receiz/offline-notes.ts`, `src/features/notes/` |
-| Exact native generated runtime and provenance | `public/native/`, `scripts/build-offline-note-runtime.mjs` |
-| Institution receiver and independent inspection | `institution/`, `scripts/build-receiver-verifier.mjs` |
-| Public Conformance Console | `conformance/`, `src/conformance/` |
-| Public Learn pages and instant navigation | `scripts/learn-template.mjs`, `scripts/build-public-pages.mjs`, `public/learn/` |
-| Fixed-origin native transport | `server/`, `api/index.ts`, `vercel.json` |
-| Display-only brand profile | `branding/identity.json`, `branding/README.md` |
+```sh
+npm run receiver:inspect -- /absolute/path/to/original-note.png
+```
 
-Private keys, phrases, grant bearers and device custody never belong in public configuration, logs, model context or Vercel frontend variables. Reopening on another origin requires the original Identity Seal and its phrase only if it has one; device-bound note custody has separate native recovery limits.
+Inspection verifies its supported carried evidence. Custody, current
+spendability and account credit require their corresponding native operations.
 
-Native financial source verification remains stronger than databases, APIs, caches and reports. Exact participant heads, explicit rails, verified KaiSigil/KKS coordinates, canonical admission, qualified custody and independently verified committed receipts govern financial actions. Ambiguous outcomes retain the original intent and resolve before retry. Global synchronization remains subordinate to proof-carried state.
+## Integrate and operate
 
-## Deployment and operations
+Start with [the receiver kit](institution/README.md),
+[the developer guide](https://bankeiz.com/developers/) and
+[the public schema reference](docs/public-sdk-schemas.md). Reuse the supported
+Receiz operation for the action; bind the actual account, recipient, amount,
+source and recovery coordinate throughout.
 
-The designated official reference and public application origin is `https://bankeiz.com`. Payment requests and public metadata use that origin. The separate [host and registration activation checkpoint](docs/bankeiz-origin-activation.md) records which domain permissions are committed and which still require owner-authorized activation. Deploy this repository as Vite: install `npm ci`, build `npm run build`, output `dist`. `vercel.json` binds `/api/bank/*` to the fixed Node transport in `api/index.ts`. No Bank client secret or Receiz root key is required in this frontend.
+Deploy the application with `npm ci`, `npm run build` and output directory
+`dist`. The official application origin is **https://bankeiz.com**.
+[Vercel routing](vercel.json) sends the approved Bank transport to its fixed
+Receiz host. The frontend requires no Receiz root signing key or Bank client
+secret. Another operator must register and authorize its own integration;
+cloning source does not copy the official application's service permissions.
 
-A different operator must use its own registered application, identity, consent and explicitly authorized native receiving composition. Cloning this repo does not grant the Bank's production service permissions. The Bank's existing protected origin/client checks remain intact.
+See the [origin contract](docs/bankeiz-origin-activation.md),
+[operating boundaries](SECURITY.md),
+[release process](docs/release-process.md) and
+[qualification requirements](institution/qualification.md).
 
-Follow the [release process](docs/release-process.md). Qualify the actual funding and transition storage, protected signer context and real-device funded note operations separately. [Earlier launch records](docs/launch-status.md) and [verification records](docs/verification.md) retain historical checkpoints; their dates and reported limitations matter.
+## Release evidence
 
-## Licensing
+This is the **1.0.0 release commit**. The
+[full release notes](docs/releases/1.0.0.md) describe its scope; the
+[qualification record](docs/releases/1.0.0-qualification.md) identifies the
+checks required before the operator publishes the matching tag and GitHub
+release. Versioned source, actual deployment and publication remain distinct
+records.
 
-Copyright (C) 2026 **Brian Joseph Klock (BJ Klock)**. Original software and accompanying documentation are licensed under **[GNU GPL version 3 only](LICENSE)**, with modification, rebranding, deployment and redistribution rights. [LICENSING.md](LICENSING.md) explains the grant and separate terms; [NOTICE](NOTICE) identifies ownership. The former branding-only proposal is superseded.
+[Current capabilities](docs/current-function-boundaries.md) distinguish
+implemented connections from their deployed assessment. Dated
+[verification records](docs/verification/) identify the exact commands, sources,
+builds and tested scope. Synthetic proof/writer checks, browser lifecycle
+checks and real-device financial qualification remain separately identified.
 
-**[Bankeiz.com](https://bankeiz.com/) is the official reference implementation.** Independent implementations may use their own branding and demonstrate the same published receiving requirements. [Trademark rights](TRADEMARKS.md) and [conformance claims](CONFORMANCE.md) are separate from GPL software permissions; a fork is not automatically an official or qualified receiver.
+The reviewed Note migrations are
+[installed and recorded](docs/verification/2026-10-20-production-note-migrations.md).
+Actual deployed funding, receipt delivery, once-only recovery and physical-device
+custody are assessed against the selected host and exact release candidate.
+Displayed specimen Notes are unissued illustrations.
 
-Existing package, vendored-code and font licenses remain in force. Preserve [third-party notices](THIRD_PARTY_NOTICES.md) and supply applicable complete Corresponding Source for covered binary distributions. [SOURCE.md](SOURCE.md) describes the included matching native/SDK source, preferred cryptographic dependency source and content-addressed source archive published with every build. `npm run source:verify -- --rebuild` verifies that a clean archive extraction reproduces the native modules and published SDK JavaScript without a private checkout. The license change does not alter the native financial runtime or qualify unfinished capabilities.
+## Project stewardship
 
-[Contribution process](CONTRIBUTING.md) · [Governance](GOVERNANCE.md) · [Security reporting](SECURITY.md)
+[Contributing](CONTRIBUTING.md) ·
+[Governance](GOVERNANCE.md) ·
+[Security reporting](SECURITY.md) ·
+[Conformance claims](CONFORMANCE.md) ·
+[License and notices](LICENSING.md)
 
-## Public Ledger and release package
-
-The [Public Ledger](https://bankeiz.com/ledger/) presents public activity, original proof inspection, a high-resolution source-carrying Memory Crystal, local retention and consent-bound publication. The [Ledger release guide](docs/public-ledger-release.md) documents exact source scope, native disclosure authorization, API paths, limits and checks. An upload never admits funds or changes ownership. The [Reality-Grade Banking guide](https://bankeiz.com/learn/reality-grade-banking/) explains verification and continuity without changing the Bank interface.
-
-Open any record for its value basis, participants, ownership references, exact coordinates, evidence and receipt. [Technical inspection](docs/public-ledger-inspection.md) exposes supported model inputs, policy, continuity references and downloadable selected-record JSON. The value calculator captures its present pulse when Calculate is pressed; original proof origins and imported historical replays remain unchanged.
-
-Use [current function boundaries](docs/current-function-boundaries.md) for the implemented and production-qualified capability distinction. Generated source downloads include the application, receiver kit, native preferred source, licenses and matching build instructions; no private checkout, deployment credential or signing key is included.
-
-The [public schema reference](docs/public-sdk-schemas.md) publishes the installed SDK schema tree unchanged, with exact digests, downloads and matching MCP/AI Skills workflows. `npm run release:check` rejects mixed application, lockfile, installed package or native source versions. See the [coordinated upgrade gates](docs/release-process.md#coordinated-sdk-mcp-and-ai-skills-release) before the v130 launch.
+Copyright © 2026 **Brian Joseph Klock (BJ Klock)**.
+Bankeiz.com is the official reference implementation. Preserve applicable
+[third-party notices](THIRD_PARTY_NOTICES.md) and the complete corresponding
+source required for covered distributions.

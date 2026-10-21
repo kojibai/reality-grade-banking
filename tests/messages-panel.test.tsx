@@ -21,12 +21,12 @@ function fixture(consented=true){
  const twin={readiness:vi.fn(()=>({status:'configured',availability:'unchecked',requires:['business','usage-credits']})),ask:vi.fn(async(input:NativeTwinAsk):Promise<NativeTwinReply>=>({requestId:input.requestId,message:'A generated answer',authority:'generated-interpretation',source:'upstream',memoryScope:'none',memory:[],sourceReferences:[],sharedContext:[],actionHandoffs:[{kind:'pay',label:'Review proposal',href:'https://receiz.com/review',authority:'proposal-only',admitted:false}]}))};
  const api={accountUid:uid,twin,callTransport:{heldFetch:vi.fn(async(_path:string,_init?:RequestInit)=>Response.json({ok:true,calls:[],activeCall:null}))},knownConversations:()=>[conversation],knownMessages:()=>page,conversations:vi.fn(async(_signal?:AbortSignal)=>[conversation]),messages:vi.fn(async(_id:string,_before?:string,_signal?:AbortSignal)=>page),search:vi.fn(async(_query:string,_signal?:AbortSignal)=>[peer,other]),createConversation:vi.fn(async(_input:{participantUserIds:string[];title?:string})=>threadId),send:vi.fn(async(_id:string,_body:string,_options?:MessageSendOptions)=>({...message,id:'sent-1',senderUserId:uid,body:'My draft'}))};
  const identity={binding:{identityOwnerReceizId:'owner'},knownTwinAccess:()=>true,messaging:vi.fn(async(approve=false)=>{if(!approved&&!approve)throw Error('MESSAGING_CONSENT_REQUIRED');approved=true;return api;})} as unknown as OpenIdentity;
- const host=document.createElement('div');document.body.appendChild(host);const root=createRoot(host),onClose=vi.fn(),onPreparePayment=vi.fn();
- const render=(active=true,nextIdentity=identity,twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>)=>act(async()=>root.render(<MessagesPanel identity={nextIdentity} active={active} onClose={onClose} onPreparePayment={onPreparePayment} twinContextRecords={twinContextRecords}/>));
+ const host=document.createElement('div');document.body.appendChild(host);const root=createRoot(host),onClose=vi.fn(),onOpen=vi.fn(),onPreparePayment=vi.fn();
+ const render=(active=true,nextIdentity=identity,twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>)=>act(async()=>root.render(<MessagesPanel identity={nextIdentity} active={active} onClose={onClose} onOpen={onOpen} onPreparePayment={onPreparePayment} twinContextRecords={twinContextRecords}/>));
  const click=async(label:string)=>{const button=[...host.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===label||b.textContent===label);expect(button,'button '+label).toBeTruthy();await act(async()=>button!.click());};
  const input=async(label:string,value:string)=>{const field=host.querySelector<HTMLInputElement>('[aria-label="'+label+'"]')!;expect(field,'input '+label).toBeTruthy();await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(field,value);field.dispatchEvent(new Event('input',{bubbles:true}));});};
  const submit=()=>act(async()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
- return{api:api as typeof api&NativeMessaging,identity,host,render,click,input,submit,onClose,onPreparePayment,unmount(){act(()=>root.unmount());host.remove();}};
+ return{api:api as typeof api&NativeMessaging,identity,host,render,click,input,submit,onClose,onOpen,onPreparePayment,unmount(){act(()=>root.unmount());host.remove();}};
 }
 it('opens Messages first and places Twin second when the existing account has no Twin access',async()=>{
  const f=fixture(),identity={...f.identity,knownTwinAccess:()=>false};
@@ -245,4 +245,22 @@ it('shows only real peer typing activity and releases it on send and navigation 
 it('ignores a closed typing subscriber after changing conversations or waking the PWA',async()=>{
  const f=fixture(),callbacks:Array<(ids:string[])=>void>=[],closed=vi.fn();f.api.typing=vi.fn((_id:string,onPeers:(ids:string[])=>void)=>{callbacks.push(onPeers);return{update:vi.fn(),close:closed};});
  try{await f.render();await f.click('Messages');await f.click('Open conversation Sam');await act(async()=>window.dispatchEvent(new Event('pagehide')));expect(closed).toHaveBeenCalledTimes(1);await act(async()=>window.dispatchEvent(new Event('pageshow')));expect(f.api.typing).toHaveBeenCalledTimes(2);await act(async()=>callbacks[1]([peer.userId]));await act(async()=>callbacks[0]([]));expect(f.host.querySelector('[aria-label="Sam is typing"]')).not.toBeNull();}finally{f.unmount();}
+});
+
+it('keeps one joined call while Messages closes, another conversation opens, and the floating window restores it',async()=>{
+ const f=fixture(),stop=vi.fn(),track={kind:'audio',id:'held-call-audio',enabled:true,readyState:'live',stop},stream=Object.assign(new MediaStream([track as unknown as MediaStreamTrack]),{getTracks:()=>[track]});
+ const media=vi.fn(async()=>stream);Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:media}});
+ const second={...conversation,id:'66666666-6666-4666-8666-666666666666',title:'Alex',members:[other]};f.api.conversations.mockResolvedValue([conversation,second]);f.api.messages.mockImplementation(async(id)=>({...page,conversation:id===second.id?second:conversation}));
+ const call={id:'55555555-5555-4555-8555-555555555555',conversationId:threadId,mode:'voice',status:'active',topology:'mesh',participants:[{participantKind:'user',userId:uid,leftAt:null,displayName:'You'}],activeParticipantCount:1,viewerPermissions:{canEndCall:true}};
+ f.api.callTransport.heldFetch.mockImplementation(async(path)=>path.endsWith('/ice')?Response.json({ok:true,iceServers:[{urls:'stun:synthetic.invalid'}],source:'fallback'}):path.includes('/signals?')?Response.json({ok:true,signals:[],lastSignalAt:null}):Response.json({ok:true,call,calls:[call],activeCall:call}));
+ const leaves=()=>f.api.callTransport.heldFetch.mock.calls.filter(([,init])=>init?.method==='DELETE');
+ try{
+  await f.render();await f.click('Messages');await f.click('Open conversation Sam');await f.click('Voice call');await vi.waitFor(()=>expect(f.host.querySelector('[aria-label="Join call"]')).not.toBeNull());await f.click('Join call');
+  expect(media).toHaveBeenCalledOnce();const video=f.host.querySelector('video');expect(video).not.toBeNull();
+  await f.render(false);expect(document.querySelector('.bank-call-minimized')).not.toBeNull();expect(document.querySelector('.bank-call video')).toBe(video);expect(stop).not.toHaveBeenCalled();expect(leaves()).toHaveLength(0);
+  await act(async()=>document.querySelector<HTMLButtonElement>('[aria-label="Return to call"]')!.click());expect(f.onOpen).toHaveBeenCalledOnce();await f.render(true);expect(f.host.querySelector('.bank-call video')).toBe(video);
+  await f.click('Return to conversation');await f.click('Back to messages');await f.click('Open conversation Alex');expect(stop).not.toHaveBeenCalled();expect(leaves()).toHaveLength(0);expect(f.host.querySelector('video')).toBe(video);
+  await f.click('Voice call');expect(f.host.querySelector('.bank-call')?.getAttribute('aria-label')).toBe('Call with Sam');expect(f.host.querySelector('video')).toBe(video);expect(media).toHaveBeenCalledOnce();
+  await f.click('Leave call');expect(stop).toHaveBeenCalledOnce();expect(leaves()).toHaveLength(1);
+ }finally{f.unmount();}expect(leaves()).toHaveLength(1);
 });

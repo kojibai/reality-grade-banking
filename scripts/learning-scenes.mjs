@@ -1,3 +1,4 @@
+import {audienceScene} from './audience-scenes.mjs';
 // Public explanatory artwork. Every scene is vector geometry, with no raster
 // background, account data, network work or animation loop in JavaScript.
 const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -46,6 +47,6 @@ export function learningScene(page){
  'glossary':()=>`<g class="scene-float"><path d="M280 102C210 60 140 65 60 92v210c85-26 145-30 220 11 75-41 135-37 220-11V92c-80-27-150-32-220 10Z" fill="${glass}" class="scene-edge"/><path d="M280 102v211" class="scene-line"/>${text(165,145,'Meaning')}${text(390,145,'Evidence')}${bars(90,177,[140,120,135,105,140])}${bars(315,177,[145,100,128,143,114])}</g>${text(280,368,'Familiar words. Precise scope.',true)}`,
  'questions':()=>`${sheet(45,67,230,110,'Your question','Start with what matters.',0)}${route('M275 122C370 122 210 260 300 260')}${sheet(300,212,220,112,'A clear answer','Follow the evidence.',2)}${seal(280,194,27)}${text(130,275,'Ask. Understand. Go deeper.',true)}`,
  };
- const draw=cases[page.slug];if(!draw)throw Error('LEARNING_SCENE_MISSING:'+page.slug);
+ const draw=cases[page.slug]??audienceScene(page,{ink,glass,blue,text,line,route,sheet,seal,person,bars});if(!draw)throw Error('LEARNING_SCENE_MISSING:'+page.slug);
  return `<svg class="learning-scene" data-scene="${escape(page.slug)}" viewBox="0 0 560 410" fill="none" aria-hidden="true"><defs><linearGradient id="${id}-ink" x2="1" y2="1"><stop stop-color="#29445f"/><stop offset="1" stop-color="#12253d"/></linearGradient><linearGradient id="${id}-glass" x2=".4" y2="1"><stop stop-color="#fff" stop-opacity=".94"/><stop offset=".5" stop-color="#e9f0fa" stop-opacity=".56"/><stop offset="1" stop-color="#cbdaf0" stop-opacity=".78"/></linearGradient><linearGradient id="${id}-blue" x2="1" y2="1"><stop stop-color="#5677c4"/><stop offset="1" stop-color="#244bd1"/></linearGradient></defs>${draw()}</svg>`;
 }

@@ -137,6 +137,70 @@
       "bytes": 467815,
       "alt": "Bankeiz. The record. Stays connected. Transaction evidence. Preserved. An engraved receipt motif on layered cobalt, clear glass and navy forms."
     },
+    "/for/people/": {
+      "url": "/social/for-people-379f5043af9d5e2b.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "379f5043af9d5e2b88d04490b90e9efe2a9e86a523ab236a3e1f115067dbe844",
+      "bytes": 474673,
+      "alt": "Bankeiz. Send your share. Keep the receipt. Send your share. See it arrive. Keep the receipt. An engraved fingerprint motif on layered cobalt, clear glass and navy forms."
+    },
+    "/for/businesses/": {
+      "url": "/social/for-businesses-2d3c4b5ce8e73ab0.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "2d3c4b5ce8e73ab0780c005d7d7e7078aa99b00b38dfa5b219963dae719b2915",
+      "bytes": 472067,
+      "alt": "Bankeiz. Take a payment. Keep the record. Take a payment. Pay someone. Keep the record. An engraved bank motif on layered cobalt, clear glass and navy forms."
+    },
+    "/for/independent-work/": {
+      "url": "/social/for-independent-work-fd7214fcd2ad59c2.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "fd7214fcd2ad59c264e23f4f8109d742b54b6770262ed59227d840654910001f",
+      "bytes": 466888,
+      "alt": "Bankeiz. Finish the work. Get paid. Finish the work. Get paid. Keep the context. An engraved receipt motif on layered cobalt, clear glass and navy forms."
+    },
+    "/for/creators/": {
+      "url": "/social/for-creators-e3a7a9d75f9b9131.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "e3a7a9d75f9b9131fe57eed25e45e771a15c681c79218357fd9cf36c71338732",
+      "bytes": 463200,
+      "alt": "Bankeiz. Your work. Its original. Your work. Its original. A clear path to the next owner. An engraved cube motif on layered cobalt, clear glass and navy forms."
+    },
+    "/for/communities/": {
+      "url": "/social/for-communities-d9fd8730c573623f.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "d9fd8730c573623f821fd71cbae8e49ae7bcfe84c09b0a90e6bd2d4f8b130bf5",
+      "bytes": 477718,
+      "alt": "Bankeiz. A shared plan. Clear payments. A shared plan. Clear payments. Records you can show. An engraved globe motif on layered cobalt, clear glass and navy forms."
+    },
+    "/for/institutions/": {
+      "url": "/social/for-institutions-d130ffadfbee1e8e.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "d130ffadfbee1e8eb67de1bfed83610169afe347ec78fea5eb35c146c285e725",
+      "bytes": 474591,
+      "alt": "Bankeiz. Open the receipt. Follow the source. Open the receipt. Follow the source. Resolve the difference. An engraved ledger motif on layered cobalt, clear glass and navy forms."
+    },
+    "/for/public-finance/": {
+      "url": "/social/for-public-finance-6e253625832762ae.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "6e253625832762ae30c39da665ea5f896b3c8b9bd17bab637fb16514b74ca034",
+      "bytes": 475295,
+      "alt": "Bankeiz. Show what was paid. Keep the evidence. Show what was paid. Keep the evidence behind it. An engraved badge motif on layered cobalt, clear glass and navy forms."
+    },
+    "/for/platforms/": {
+      "url": "/social/for-platforms-0319c78fbb770358.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "0319c78fbb770358ed0856565b6eeb2d81bdf69947791f143a1c8e398775259b",
+      "bytes": 469458,
+      "alt": "Bankeiz. Build the experience. Keep the result. Build the experience. Keep each action and its result connected. An engraved code motif on layered cobalt, clear glass and navy forms."
+    },
     "/learn/your-account/": {
       "url": "/social/your-account-8f5d30fa4794e58a.png",
       "width": 1730,

@@ -21,5 +21,34 @@
 .bank-call-media>span{position:absolute;bottom:7px;left:8px;font-size:10px;color:var(--navy);background:#fcfbf8e8;border-radius:5px;padding:3px 6px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bank-call-media-local video{transform:scaleX(-1)}
 .bank-call-media>button{position:absolute;inset:0;margin:auto;height:42px;width:calc(100% - 14px);font-size:11px;background:#fcfbf8ed;border-radius:7px;color:var(--blue)}
+.bank-call-inline-host{flex:1;min-height:0;overflow:auto}
+.bank-call-inline-host[hidden]{display:none}
+.bank-call-inline-host>.bank-call-portal{height:100%}
+.bank-call-dock-bar[hidden]{display:none}
+.bank-call-minimized{--call-safe-left:env(safe-area-inset-left,0px);--call-safe-right:env(safe-area-inset-right,0px);--call-safe-top:env(safe-area-inset-top,0px);--call-safe-bottom:env(safe-area-inset-bottom,0px);position:fixed;z-index:1000;right:max(12px,env(safe-area-inset-right));bottom:max(100px,calc(env(safe-area-inset-bottom) + 18px));width:min(248px,calc(100vw - var(--call-safe-left) - var(--call-safe-right) - 16px));height:auto;min-height:0;max-height:calc(var(--call-viewport-height,100dvh) - var(--call-safe-top) - var(--call-safe-bottom) - 16px);border:1px solid #dce2eb;border-radius:19px;box-shadow:0 12px 48px #15283f36;overflow:hidden;background:var(--bg,#fcfbf8);color:var(--navy,#172a43);isolation:isolate}
+.bank-call-dock-bar{display:flex;flex-shrink:0;align-items:center;gap:3px;padding:7px 8px 5px;border-bottom:1px solid var(--line,#e4e8ee)}
+.bank-call-dock-bar button{display:grid;place-items:center;min-width:36px;height:36px;border-radius:9px;color:#62768e}
+.bank-call-dock-bar .bank-call-drag{flex:1;min-width:0;display:flex;gap:7px;cursor:grab;touch-action:none;user-select:none;text-align:left;padding:0 5px}
+.bank-call-drag:active{cursor:grabbing}
+.bank-call-drag span{font-size:11px;font-weight:550;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.bank-call-minimized .bank-call-back,.bank-call-minimized .bank-call-members,.bank-call-minimized .bank-call-hint,.bank-call-minimized .bank-call-participants,.bank-call-minimized .bank-call-end{display:none}
+.bank-call-minimized .bank-call-main{position:relative;padding:0;overflow:auto;display:flex;gap:0;justify-content:flex-start}
+.bank-call-minimized .bank-call-status{font-size:10px;padding:10px 12px 8px;max-width:100%;overflow-wrap:anywhere}
+.bank-call-minimized .bank-call-main h3{display:none}
+.bank-call-minimized .bank-call-streams{position:relative;display:block;height:126px;margin:0;width:100%;background:#e9edf4}
+.bank-call-minimized .bank-call-media{position:absolute;inset:0;aspect-ratio:auto;border:0;border-radius:0;opacity:0;pointer-events:none}
+.bank-call-minimized .bank-call-media-primary{opacity:1;pointer-events:auto}
+.bank-call-mini-avatar{display:none}
+.bank-call-minimized[data-video="false"] .bank-call-mini-avatar{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;font-size:22px;font-weight:500;letter-spacing:-.6px;background:#e8edf3;color:#617790;margin:5px 0 10px}
+.bank-call-minimized[data-video="false"] .bank-call-streams{position:absolute;inset:0;opacity:0;pointer-events:none;width:1px;height:1px;overflow:hidden}
+.bank-call-minimized .bank-call-media>span{bottom:8px;left:10px}
+.bank-call-minimized .bank-call-controls{gap:12px;margin:11px 0 13px;justify-content:center;width:100%}
+.bank-call-minimized .bank-call-controls button{width:42px;min-width:42px;height:42px;background:#e9edf3}
+.bank-call-minimized .bank-call-controls .bank-call-leave{background:#b44e5d}
+.bank-call-minimized .bank-call-person{width:60px;height:60px;min-height:60px;margin:4px 0 10px;font-size:19px}
+.bank-call-minimized .bank-call-error{margin:7px 10px;font-size:10px;line-height:1.5}
+.bank-call-minimized .bank-call-start{margin:0 0 13px;font-size:11px;padding:10px 20px}
+.bank-call button:focus-visible{outline:2px solid var(--blue,#244dcb);outline-offset:3px}
+@media(max-height:420px){.bank-call-minimized{bottom:8px}.bank-call-minimized .bank-call-streams{height:70px}.bank-call-minimized .bank-call-status{padding:5px 10px}}
 @media(max-width:360px){.bank-call-main{padding:20px 17px}.bank-call-controls{gap:15px}.bank-call-person{margin-top:22px}.bank-call-streams{grid-template-columns:1fr}}
 @media(max-height:600px){.bank-call{min-height:0}.bank-call-main{justify-content:flex-start}.bank-call-person{width:64px;min-height:64px;height:64px;margin:14px 0}.bank-call-hint{margin-top:8px}.bank-call-controls{margin-top:16px}}

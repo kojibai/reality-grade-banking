@@ -222,6 +222,18 @@
     }
     if (page?.runtime) loadRuntime(page, destination);
   };
+  const navigate = target => {
+    remember(); history.pushState({ publicNavigation: { url: target, scroll: 0 } }, '', target); void render();
+  };
+  // Retained call controls can return from a public workspace without a
+  // synthetic link, a second router, or a document navigation.
+  addEventListener('bankeiz:navigate-bank', event => {
+    const request = event.detail;
+    if (!request || typeof request.hash !== 'string' || request.hash.length > 2048 || !/^#(?:account|market|assets|ledger)(?:\/[^\s?#]*)?$/.test(request.hash)) return;
+    if (!publicPath(location.pathname) && location.pathname !== '/') return;
+    request.handled = true;
+    navigate('/' + request.hash);
+  });
   document.addEventListener('click', event => {
     const link = event.target.closest?.('a[href]'); if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.download || link.target && link.target !== '_self') return;
     const url = new URL(link.href, location.href); if (url.origin !== location.origin || url.search || !publicPath(url.pathname) && url.pathname !== '/' || !publicPath(location.pathname) && location.pathname !== '/') return;
@@ -230,8 +242,8 @@
       if (!location.hash) { event.preventDefault(); scrollTo({top:0,behavior:'instant'}); return; }
     }
     if (!publicPath(location.pathname)) bankUrl = location.pathname + location.search + location.hash;
-    const target = url.pathname === '/' && publicPath(location.pathname) && bankLoaded ? bankUrl : url.pathname + url.hash;
-    event.preventDefault(); remember(); history.pushState({ publicNavigation: { url: target, scroll: 0 } }, '', target); void render();
+    const target = url.pathname === '/' && !url.hash && publicPath(location.pathname) && bankLoaded ? bankUrl : url.pathname + url.hash;
+    event.preventDefault(); navigate(target);
   });
   window.addEventListener('popstate', () => void render(true));
   window.addEventListener('bankeiz:receipt', () => {if (pages['/receipt/'] && pathname(location.pathname) === '/receipt/') void render();});

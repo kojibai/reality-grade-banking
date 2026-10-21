@@ -1,49 +1,118 @@
-# Current Bankeiz function boundaries
+# Current Bankeiz capabilities and operating boundaries
 
-This file describes the current implementation. Earlier dated verification reports record historical observations and are not current completion claims.
+Updated for the v1.0.0 release preparation on October 20, 2026. This is the
+current capability map. Older dated verification records retain their original
+observations; they do not override a newer implemented connection or qualify
+a later deployed build.
 
-**19 October connection audit:** [Receiz v129 → Bankeiz](receiz-v129-bankeiz-connection-audit.md)
-is the current journey-level inventory. Ordinary Wallet Send/Receive are working
-and user-confirmed; the separately prepared native payment/asset families below
-are not prerequisites for those existing transactions. Public `/ledger/` now
-saves and reopens a local Memory Crystal from already-held data without a Crystal
-service or another Ledger read. Strict iPhone Note qualification, the affected
-PWA checkpoint decryption and the disabled prepared local-credit selector remain
-separate open items. Historical SDK commerce interfaces are not assumed live.
+Bankeiz is the live product built on Receiz. Its open implementation also
+includes receiving requirements, independent inspection, matching native
+source and integration materials. Product release publication follows the
+[versioned qualification record](releases/1.0.0-qualification.md).
 
-Public object charts retain their exact public valuation operands at discovery, so opening a newly listed object does not wait for the capitalization feed. Public capitalization combines the current complete collection with claim-bound sports operands, preserves newer captures, and publishes its amount and all six intervals together. Held operands advance at local Kai pulses without API quotes; synchronization supplies changed inventory. These are reproducible display valuations, not account ownership or spending authority.
+## Product connections
 
-The October 18 BJ Klock Identity Seal check still receives `account_proof_source_unavailable` from the account-proof source. Its portable snapshot does not carry a complete wallet timeline. Successful login and a current balance therefore do not establish complete historical account charts. Offline Note registration now distinguishes service, credential, counter and attestation failures and exposes only a bounded support code; real iPhone custody qualification remains unverified.
-
-| Function | Bankeiz implementation | Remaining production evidence |
+| Capability | Implemented connection | Assessment boundary |
 | --- | --- | --- |
-| Account history and chart | Replays accepted Reserve cents/Phi movements from the first sealed activity and recomputes historical dollar valuations with the pinned v129 pricing law; retained identity-bound history supplies first paint | A complete accepted account statement or reconciled complete same-owner carried history is required. Computed samples are display valuations, not recorded historical quotes or spending authority; [source and behavior](historical-account-valuation-v129.md) |
-| Ordinary Send/Receive | Existing Receiz Wallet read/quote/transfer, username receiving, exact nonce recovery, optional public Send note and Reserve-first composite funding | User confirmed live Send success and identifies Send/Receive as working. Preserve this path. The separate generic native preparation family is not a blocker for these payments. |
-| Separately prepared native payment effects | Native preparation, signed review, paired debit/credit verification and exact recovery are connected through existing v129 primitives | Qualify the exact deployed financial family and same-source account journey when using this additional path; its local fixture evidence does not supersede working Wallet transactions. |
-| Native asset ownership, fractional trades and exchange | Native exact review, shared-writer funding/quantity effects, signed funded offers, paired fills and original recovery are connected | Install qualified protected Crystal custody and provide actual owned/funded offers. Bank buyback and physical redemption additionally require their actual authority/custody sources; [qualification](native-assets-and-account-proofs-v129.md) |
-| Current Receiz Market share trading | Same Receiz `/market/shares/quote` and `/market/shares/trade` observation/write path, original nonce lookup and encrypted recovery | Connected composition with synthetic lost-response/reload evidence; qualify the selected live purchase/sale separately. This is distinct from the generic native backed-asset/offer family above. |
-| Funded native asset creation | Plain-definition native backing debit/lock, conserved issuance, whole-supply burn/redemption, signed holding delivery and portable receipt composition | Qualified deployed asset family and same-source funding evidence. Media/long-form moment content and linked originals are currently refused on the funded path; their exact original must be bound and admitted by the Receiz asset domain. Local moment sealing remains separate. |
-| Original proof deposit, private backup/import and recovery import | Existing local original-source verification and custody retained | Live host additions are separate; a backup does not restore hardware note custody |
-| Reserve and Settlement Notes | Existing create/deposit interfaces and v129 native runtime integration; completed issuance hands its reverified account successor to the balance/chart, and deposit checks the exact reviewed note | Install the protected native funding/redemption writer on Crystal and qualify real devices. The actual native services pass funding, issue/handoff, image reopen, deposit, single credit and recovery through the host transport. Bankeiz still requests its new allocation and redemption credit online; the prepared fully disconnected credit selector remains disabled pending qualification |
-| Public Ledger and Memory Crystal | Standalone reader, canonical original/PNG verification, local sealing of the entire already-loaded Ledger/display context, captured Ledger reopening and offline evidence kit | Local save/open is completed and does not require a Crystal host. The distinct consent-bound native public-action publication source still needs its own qualified source/host and disclosure; [local evidence](verification/2026-10-19-local-ledger-crystal.md). |
-| Shareable account proof and `/verify/` | Original-source reader, exact PNG/QR, immutable snapshot/latest selector and explicit live-sharing controls; v4 reopens the accepted private owner archive and native Note funding/redemption closure | Install the protected source/disclosure writer on Crystal and provide complete supported account closures. Native cash/asset/offer/history, lawful sources, selected owner archives and outstanding origin Note funding pass actual-source tests. Unsupported imported genesis/entitlements and fresh current-device Note inventory still require their actual source admission; [closure scope](private-artifact-and-note-source-closures-v129.md) |
-| Card deposits | Existing embedded checkout, exact attempt/session recovery and status checks; concise consent with expandable details | Provider settlement and actual accepted Reserve credit; checkout success alone is insufficient |
-| Wire deposits | UI retains the wire option and refuses to invent routing details | Actual account-bound receiving instructions and operator banking configuration; these are not supplied by the SDK package |
-| Physical custody receipts | Native v129 receipt planning/verification composition exists | Admitted operator policy/authority, actual receipt and inspection, lawful custody/title terms and a qualified receiving workflow |
-| Programmable rules | Older demonstration draft only; no live activation or automatic spending is claimed | Explicit source-bound mandate, limits, eligible-growth definition, revocation and qualified execution; this is a separate financial feature |
+| Account and Receiz ID | Existing Identity Seal creation/import, device-held authority, retained account projection and same-ID communication access | Complete history/holdings depend on the exact admitted source scope; a current balance does not invent a missing historical timeline. |
+| Send and Receive | Existing Receiz Wallet recipient/quote/transfer, profile/contact search, receiving links, exact nonce recovery and automatic Reserve-first funding | Existing working path, reported successful by the user. A new deployment is assessed with its original receipts and exact account bindings. |
+| Card deposits | Existing Receiz embedded checkout, exact session retention, return and credit confirmation | Provider payment and accepted Reserve credit are distinct; the final production path needs its actual credited source. |
+| Connected Notes | Existing account authorization, exact native funding/claim, automatic Reserve/Settlement/composite composition, encrypted source/intent retention and exact recovery | No offline-custody enrollment for ordinary connected creation. Required Note migrations are installed; exact deployed financial evidence remains part of release qualification. |
+| Offline Note receipt | Verify and retain a completed addressed original without receiver custody enrollment, then reconcile once through the existing connected credit path | Locally received value is distinct from confirmed spendable account credit. Before another account spend, reconcile the actual credit. |
+| Protected continuous-offline custody | Existing native qualified authority, handover, exact-head consumption and antirollback contract | Genuine protected state, prepared resources and physical-device qualification remain required. Bank's prepared local-credit selector remains disabled pending qualification. |
+| My history | Account-bound retained history, All/Sent/Received views, familiar event names, exact transfer values and confirmed Note receipt projection | Only admitted original debit/credit IDs become financial activity. Pending receiving requests and unconfirmed outcomes do not create credit rows. |
+| Global/private host Ledger | Receiz commit `35891d794` projects modern Reserve, Settlement and composite Note creation/deposit/refund from the selected native or explicit compatibility source | Source correction is committed; deployed delivery is assessed after operator push/deployment. Native refusal cannot fall through to SQL. |
+| Funding detail | Carried source relationships and calculated oldest-available-first FIFO attribution, including multiple proof/funding sources | Calculated pooled attribution is labeled as such. It does not rewrite an individual allocation recorded by the original transfer. |
+| Public Market and Explore | Existing public originals, content categories, retained valuation operands, charts, discovery, source inspection and individual asset pages | Valuation, backing, supply, available liquidity and executed price remain distinct. Missing operands never acquire invented history. |
+| Asset ownership actions | Standalone Buy ownership/Take cash reuse the existing Receiz Market quote/trade/recovery and account/card-return path | Only supported assets/actions are offered. Actual paid credit and live purchase/sale are assessed separately from synthetic browser fixtures. |
+| Public original creation | Seal one exact source and publish it through the owner's canonical Receiz Showcase and existing discovery projection; interrupted delivery resumes the same original | Qualify actual fresh/existing Showcase publication and Market visibility on the deployed build, including media and interrupted delivery. |
+| Asset media and proof back | Same mounted original through object flip/full view, carried live-player manifest material, native audio controls and individual sharing art | Playback is retained within the mounted asset. App-wide persistent music/video is follow-up work. Display artwork never substitutes for the original proof. |
+| Messages, groups and assistant | Existing Receiz conversations, network profile search, contacts, encrypted local inbox retention, real typing/streaming and entitlement-bound assistant/upgrade flow | Reuses Receiz communication and access. No separate Bank identity or messaging service; selected context and financial approvals retain their own boundaries. |
+| Calls | One existing native controller/media lifetime across Messages closure, selected-thread changes and retained public navigation; draggable compact controls and actual SPA restore | Browser/OS/network suspension and process termination are outside the documented in-app lifetime. Synthetic browser checks do not establish a real two-device network call. |
+| Public Ledger and Memory Crystal | Existing source inspection and local export/reopen of the already-held Ledger/display context | Local save requires no extra Ledger fetch or Crystal service. Consent-bound publication/disclosure has its separate native contract. |
+| Account proof and verification | Existing original-source reader, deliberately shared proof, exact snapshot/live selector and native v4 closure support | Complete private owner archives, actual source availability, disclosure authority and physical custody remain specific to the admitted closure; unsupported components are not invented. |
+| Public guides | Retained same-document pages, category/audience explanations, source-backed depth, unique public metadata and responsive shared footer | Pages explain implemented scope; no guide or social preview grants financial authority or certifies an operator. |
 
-The native preparation adapter is **additional to the Crystal wallet writer**. Neither an installed v129 package, a runtime readiness report, compilation, a passed browser test nor a signed summary establishes deployed financial conformance. Bankeiz refuses absent/unverified sources rather than treating a Market price or cached balance as executable funds.
+## Value and source rules
 
-`assertBankOperationQualified` keeps the generic prepared-transition fallback closed. Payments and native assets use their admitted financial effect families and typed receipt verifiers. Generic proof verification cannot replace those effects. See [native asset and account-proof qualification](native-assets-and-account-proofs-v129.md) for the accepted scope and exact production boundaries.
+Reserve retains its admitted funded denomination and backing. Settlement
+retains exact Phi and the supported deterministic dollar presentation. One
+account displays their supported total, and automatic funding preserves each
+component in the original result.
 
-No SDK/MCP/AI Skills version change or SQL migration is needed for the Bankeiz interfaces. No real financial transaction or public disclosure of customer data was performed by these local checks. Keep pending native integrations with the owning Receiz task and independently verify actual deployed results before claiming every function live.
+Historical charts use admitted movements, actual supported origins and the
+pinned pricing method. Computed valuation samples are distinct from dated
+transaction quotes, current spend authority and realized proceeds.
 
-## Disconnected note acceptance
+The selected native source remains stronger than a database, service response,
+cache or interface label. Original values, participants, exact coordinates and
+financial results must bind to the existing admission and execution contracts.
+A selected absence/refusal cannot silently activate another financial writer.
 
-The required result is two independently qualified devices, with networking disabled throughout creation, receiving request/handoff, PNG verification, deposit and the receiving account credit. Funding must already be held in verified device custody; an image, a deterministic valuation or an offline queue cannot supply it. Deposit must irreversibly consume the exact received note once and return a complete source-bound account successor that is usable locally. Reconnection may synchronize this accepted result, but must not be the event that makes the local transaction valid.
+## Connected Notes: current state
 
-The shipped v129 note primitives include local issuance from qualified funded custody, whole-note custody transitions, and exact-source verification. Bankeiz's current `bankNotes/browser.ts` composition still obtains a new allocation over its funding transport and obtains the redemption credit over its redemption transport. Those calls are separate from local file sealing and must not be bypassed or relabeled as an offline credit. A new account signature alone cannot replace that credit source.
+Online creation on devices without qualified offline custody is implemented
+through the distinct connected-account profile. It preserves exact account
+authorization, funding, retained private Note custody and once-only claim.
+The [connected contract](connected-notes-v129.md) and
+[continuity standard](note-continuity-standard.md) define the boundary.
 
-The completed-issuance display handoff does not change this financial boundary. It uses v129's verified segmented state, checks the same identity key and already-connected account, retains a read-only observation, and protects it from older in-flight reads. It does not alter an Identity Seal, create spending authority or publish an account proof.
+The reviewed [production migrations](verification/2026-10-20-production-note-migrations.md)
+were installed after checking actual schema/history. The user subsequently
+reported successful creation and deposit on an iPhone. That report is useful
+product evidence; it is not an independent inspection of private receipts or
+complete qualification of every rail/device/recovery case.
 
-The exact-rail offline valuation engine preserves remaining Settlement Phi and fixed Reserve denomination across changed rates; original v1 arithmetic remains readable. Synthetic canonical/native tests qualify that implementation, not the currently disabled prepared-credit selector or a physical-device deployment. The native v2 account statement preserves acquired identity coordinates and the append order of zero-value identity history; v3 binds complete native asset/offer and admitted lawful components. Current v4 additionally binds the selected private owner archive and outstanding origin Note funding. It does not equate funding with current possession. Bankeiz refuses to export or newly publish an older remote source while it holds a stronger verified local Note account successor; sharing status and revocation remain available.
+Bank's receipt-backed activity projection is committed in d8a9723. The separate
+[Receiz host correction](verification/2026-10-20-note-ledger-host.md) is committed
+in `35891d794` and preserves modern source splits, opaque/tie-safe cursors,
+conditional responses and bounded proof formatting. Real global delivery
+follows deployment of that host correction.
+
+## Separate integration families
+
+The existing working Wallet Send and current Market share-trading path are
+distinct from the additional generic prepared native asset/payment families.
+The latter retain their own source and execution qualification; they are not
+a prerequisite for an ordinary working Wallet transfer.
+
+- **Funded native assets and offers:** exact backing locks, conserved supply,
+  signed positions, paired effects and redemption require the actual qualified
+  selected custody and available offers. Public original sealing is a separate
+  publication action; it does not fabricate cash backing.
+- **Physical assets:** intake/definition and carried delivery instructions do
+  not themselves prove custodian acceptance, title, transferable rights or a
+  completed physical redemption.
+- **Wire deposits:** no routing instructions are invented. Actual
+  account-bound instructions and operator banking configuration are required.
+- **Programmable automatic spending:** no old demonstration rule is promoted
+  into a live mandate. Source-bound limits, revocation and qualified execution
+  remain a separate financial integration.
+- **Consent-bound source publication:** local retention/inspection and public
+  disclosure are separate actions. Neither a local export nor a successful
+  upload grants new credit, ownership or future-history permission.
+
+See [native assets/account proofs](native-assets-and-account-proofs-v129.md),
+[source closures](private-artifact-and-note-source-closures-v129.md) and
+[the complete release process](release-process.md) for those exact contracts.
+
+## Follow-up product work
+
+Preferred display currencies and crypto equivalents, email-address payments,
+expanded merchant/no-code checkout, Note QR claim/status and app-wide persistent
+asset playback remain queued. Existing USD presentation, receiving links and
+mounted media do not imply these additional capabilities have shipped.
+[The implementation queue](implementation/remaining-work.md) records their
+intended scope.
+
+## Evidence discipline
+
+Local source tests, independent review, browser behavior, installed schema,
+deployed host and physical-device financial qualification are separate
+records. Version pins and a successful build do not substitute for actual
+financial outcomes. Preserve originals and exact pending intents throughout
+recovery, upgrade and rollback.
+
+No new root issuer, identity service, financial database, messaging backend,
+native application or weaker antirollback has been introduced by these
+presentation/integration changes.
