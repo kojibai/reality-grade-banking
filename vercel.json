@@ -17,7 +17,7 @@
     },
     "api/profile.ts": {
       "maxDuration": 30,
-      "includeFiles": "dist/explore/index.html"
+      "includeFiles": "{dist/explore/index.html,server/profile-runtime/**}"
     }
   },
   "rewrites": [

@@ -55,3 +55,56 @@ Local headless Chrome was used as the available fallback. Browser runs reported
 no JavaScript page errors. An authenticated production account was not edited;
 new links and image uploads require their documented Receiz rollout before live
 qualification. This record does not claim otherwise.
+
+## Profile and reply refinements · October 21, 2026
+
+The canonical public-route read returned the complete 611-asset collection,
+including 99 music assets. A fresh browser received initial response headers in
+15 ms and its full document in approximately 3 seconds on this local run; the
+upstream read remains real work. With JavaScript disabled, the document already
+contained the actual profile and first 24 asset cards. No second browser profile
+read was needed. Visible banner, portrait and first artwork were complete when
+the interactive first view was inspected. This is not a claim of zero network
+latency or a cold-image guarantee under arbitrary network conditions.
+
+Categories included assets beyond the first visible batch, omitted absent
+Collectibles, and selected Music from the full collection without a new data
+read. The next scroll window expanded from 24 to 48 before its boundary. The
+quiet duration control changed the weighted percentage locally. Both the
+collection-growth and individual-price sheets opened, switched chart periods
+and closed without a source request. The asset sheet places View asset under
+the title and the existing Buy ownership / Take cash handoffs below its chart.
+No purchase, sale or funding operation was executed during qualification.
+
+The collection curve prepares in the existing local projection worker. On a
+611-asset standalone calculation, its first bounded curve took approximately
+861 ms off the UI thread and its next completed-pulse update took 19 ms. The
+opening baseline and each period's final percentage are covered by numerical
+tests. These figures are measurements on this machine, not a device guarantee.
+
+Profile → asset → Back retained the exact same image DOM element. The existing
+profile, both tabs and displayed cards remain mounted. Public Activity now uses
+compact artwork, publication dates, concise event labels and quiet navigation.
+The final mobile 390×844, narrow 320×740 and desktop 1280×900 checks reported no
+overflow or JavaScript page errors. Evidence outside the repository:
+
+- `/tmp/bankeiz-profile-first-document-mobile.png`
+- `/tmp/bankeiz-profile-activity-final-mobile.png`
+- `/tmp/bankeiz-profile-activity-final-desktop.png`
+- `/tmp/bankeiz-profile-price-peek-mobile.png`
+- `/tmp/bankeiz-profile-showcase-growth-mobile.png`
+- `/tmp/bankeiz-profile-final-qa.json`
+
+A synthetic canonical message stream verified incoming human and owner-Twin
+portraits, preparation dots before reply content, final reply continuity and
+unchanged outgoing bubbles. It used the existing adapter and carried member
+image, made no external requests and sent no real messages. Evidence:
+`/tmp/bankeiz-chat-reply-typing-mobile.png` and
+`/tmp/bankeiz-chat-reply-avatar-mobile.png`. Receiz's early `ai_start` change is
+separately committed as `eedb0adb3`; live timing needs that host deployment.
+
+The full Bank suite passed 1,989 tests across 336 files. The production build,
+offline shell, conformance separation, source archive, licensing and public-page
+checks passed. Scoped Receiz runtime tests passed 5/5 and scoped ESLint passed.
+Unrelated Receiz native/Crystal changes were preserved. Download controls,
+canonical verification, Note custody and antirollback were not changed.

@@ -12,3 +12,5 @@ node_modules/
 /public/proof-verifier/
 /server/receipt-runtime/*.mjs
 /server/asset-runtime/*.mjs
+
+/server/profile-runtime/*.mjs

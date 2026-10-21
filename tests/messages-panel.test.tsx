@@ -108,6 +108,23 @@ it('shows carried participant images in the inbox, conversation and contact choi
  f.api.conversations.mockResolvedValue([withImage]);f.api.messages.mockResolvedValue({...page,conversation:withImage});
  try{await f.render();await f.click('Messages');expect(f.host.querySelector('.bank-thread-row img')?.getAttribute('src')).toBe(avatar);await f.click('Open conversation Sam');expect(f.host.querySelector('.bank-message-sender img')?.getAttribute('src')).toBe(avatar);await f.click('Back to messages');await f.click('New conversation');expect(f.host.querySelector('.bank-pick-person img')?.getAttribute('src')).toBe(avatar);expect(f.api.search).not.toHaveBeenCalled();}finally{f.unmount();}
 });
+it('uses the carried member portrait for a world Twin while preparing, streaming and after reply, leaving outgoing bubbles unchanged',async()=>{
+ const f=fixture(),pending=deferred<ChatMessage>(),avatar='https://receiz.com/portrait.png',withImage={...conversation,members:[{...peer,avatarUrl:avatar}]};let options:MessageSendOptions|undefined;
+ f.api.conversations.mockResolvedValue([withImage]);f.api.messages.mockResolvedValue({...page,conversation:withImage});f.api.knownMessages=()=>({...page,conversation:withImage});f.api.send.mockImplementation(async(_id,_body,value)=>{options=value;return pending.promise;});
+ try{
+  await f.render();await f.click('Messages');await f.click('Open conversation Sam');await f.input('Message…','Hello');await f.submit();
+  const agent='world:'+peer.userId;
+  await act(()=>options!.onAiStart?.({id:agent,name:'Sam’s Twin'}));
+  expect(f.host.querySelector('[aria-label="Sam’s Twin is responding"] img')?.getAttribute('src')).toBe(avatar);
+  await act(()=>options!.onDelta?.(agent,'A live answer'));
+  expect([...f.host.querySelectorAll('.bank-message-other')].find(node=>node.textContent?.includes('A live answer'))?.querySelector('img')?.getAttribute('src')).toBe(avatar);
+  await act(()=>{options!.onMessage?.({...message,id:'world-reply',senderKind:'ai',senderAiId:agent,body:'A live answer'});options!.onAiDone?.(agent);});
+  expect(f.host.querySelector('[aria-label="Sam’s Twin is responding"]')).toBeNull();
+  expect([...f.host.querySelectorAll('.bank-message-other')].find(node=>node.textContent?.includes('A live answer'))?.querySelector('img')?.getAttribute('src')).toBe(avatar);
+  expect(f.host.querySelector('.bank-message-own img')).toBeNull();expect(f.api.search).not.toHaveBeenCalled();
+  await act(()=>pending.resolve({...message,id:'own-ack',senderUserId:uid,body:'Hello'}));
+ }finally{f.unmount();}
+});
 it('requires one explicit permission before private reads, then opens Twin without sending anything',async()=>{
  const outbound=vi.fn(()=>{throw Error('No outbound tests');});vi.stubGlobal('fetch',outbound);const f=fixture(false);
  try{await f.render();expect(f.host.textContent).toContain('Use your existing Receiz messages, groups, calls and assistant through this ID. Nothing sent until you send.');expect(f.api.conversations).not.toHaveBeenCalled();expect(f.api.twin.ask).not.toHaveBeenCalled();await f.click('Enable messages');expect(f.identity.messaging).toHaveBeenLastCalledWith(true);expect(f.host.textContent).toContain('Your money.');expect(f.api.twin.ask).not.toHaveBeenCalled();expect(outbound).not.toHaveBeenCalled();}finally{f.unmount();}

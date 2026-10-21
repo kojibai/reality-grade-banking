@@ -2,13 +2,15 @@ import { parseMarketCapSource } from './source';
 import { parseMarketHistory, type MarketHistorySnapshot } from './history';
 import { buildMarketHistory } from './build-history';
 import type{PublicMarketCatalog}from'../public-market';
+import {buildProfileGrowth,type ProfileGrowthHistory,type ProfileGrowthRow} from './profile-growth';
 let latest = 0, retained: MarketHistorySnapshot | null = null;
 // Publish only complete curves. Ordinary same-basis refreshes retain every
 // prior sample and calculate just the moving opening bounds and newest point.
-self.onmessage = async (event: MessageEvent<{ id: number; source?: unknown; history?: unknown; cancel?: boolean;catalog?:PublicMarketCatalog|null;pulse?:number }>) => {
+self.onmessage = async (event: MessageEvent<{ id: number; source?: unknown; history?: unknown; cancel?: boolean;catalog?:PublicMarketCatalog|null;pulse?:number;profileRows?:ProfileGrowthRow[];profileHistory?:ProfileGrowthHistory|null }>) => {
   const { id } = event.data; latest = id;
   if (event.data.cancel) return;
   try {
+    if(event.data.profileRows){let samples=0;const growth=await buildProfileGrowth(event.data.profileRows,event.data.pulse!,event.data.profileHistory??null,()=>latest===id,async()=>{if(++samples%8===0)await new Promise(resolve=>setTimeout(resolve,0));});if(latest===id&&growth)self.postMessage({id,growth});return;}
     if (event.data.history) retained = parseMarketHistory(event.data.history);
     if (!event.data.source) return;
     const source = parseMarketCapSource(event.data.source);

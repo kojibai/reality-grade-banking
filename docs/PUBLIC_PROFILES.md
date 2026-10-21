@@ -20,9 +20,37 @@ consumption conformance.
 Assets support one- and two-column views, categories, search, shareable standalone
 pages and the existing inline media reader. Prices are public display projections;
 percentage movement compares one day, or the period since creation for newer
-assets. Missing pricing or movement stays unavailable. Public Activity lists the
-collection's public assets and their original sealing dates; private transactions,
-balances and messages are not published there.
+assets. The collection's **Total** compares its aggregate current value against
+the same assets' aggregate creation value, weighted by value rather than averaging
+percentages. The quiet period control below the percentage switches between
+All time, 1 day, 1 week, 1 month, 3 months and 1 year. Shorter periods compare the
+same collection with its opening value, or an asset's creation value if newer.
+It appears only for a complete, fully priced collection. Selecting
+an asset's price opens the existing local chart in a compact sheet without a new
+source read. **View asset** sits beneath the title; **Buy ownership** and **Take
+cash** below the chart open the same existing trade host as the standalone page.
+An intent does not execute a purchase, sale or deposit; the existing account and
+transaction review still owns approval. Selecting the showcase percentage opens
+the matching period in the collection's growth history. That curve
+uses the same bound operands and is prepared in the existing local projection
+worker, away from first-paint rendering. Every historical point includes only
+assets created by that pulse and compares their value with their corresponding
+period-opening or creation values; new principal is not counted as growth. Its
+latest point matches the selected weighted percentage. Completed source values
+are retained; visible clock updates calculate only moving bounds and the latest
+point, then rebase retained samples to the new opening value. Neither chart starts a source read or
+another polling clock. Missing pricing or movement stays unavailable.
+
+Categories and search cover the complete admitted collection, including assets
+beyond the initial visible window. Only represented categories appear. Each
+selection has its own presentation window; selecting Music, for example, opens
+all held music matches rather than filtering only the first All window. The first
+24 cards prepare their images eagerly. Scrolling reveals the next held window
+1,400 pixels ahead of its boundary, with a quiet **More assets** fallback. Rows
+already displayed remain mounted; the full collection is not mounted at once.
+Public Activity uses the same bounded expansion with compact artwork, event
+titles and original sealing dates. Private transactions, balances and messages
+are not published there.
 
 Owners have **Edit profile** and **Insights**. Insights shows only Receiz's
 available aggregate asset views, plays, listening time and completion counts.
@@ -46,11 +74,29 @@ only while in flight. A retained tab view is rechecked on later entry; privacy o
 missing-profile refusals remove that view. Profile caching is display retention,
 not an authorization or ownership mechanism.
 
-The initial public response includes its bounded first collection page. Expanding
-the collection uses the existing complete `surface=public-route` profile response,
-checks the captured UID, and replaces the snapshot. Legacy Originals cursors carry
-no UID and are deliberately not merged into a previous owner's collection.
+The first public read uses Receiz's canonical `surface=public-route` response,
+including its complete admitted collection. Static document resources stream
+while that one read runs; already-public Market artwork hints prepare alongside
+it. The exact profile metadata, source seed and settled first view follow in the
+same document. The shared profile components also render that first view on the
+server; a browser does not need to fetch the profile again to build it. Resource
+streaming does not remove the time needed to receive a previously unknown source.
+
+The complete source is retained for local category, search and scroll windows.
+If an upstream source explicitly returns an incomplete collection, expansion
+checks the captured UID and replaces the snapshot. Legacy Originals cursors
+carry no UID and are deliberately not merged into a previous owner's collection.
 Responses are size bounded; incomplete or unavailable sources remain explicit.
+Automatic expansion does not repeatedly retry a failed source boundary. Returning
+from an asset preserves the same mounted profile, images and collection controls;
+up to four profile views remain mounted in the shared runtime.
+
+Incoming messages and typing indicators reuse the conversation member's carried
+portrait. A `world:<owner UID>` Twin uses that member's portrait while preserving
+its assistant sender label. Outgoing bubbles stay unchanged. Receiz's existing
+message stream emits `ai_start` after reply eligibility is established and before
+generation begins, then its existing deltas and completion. This changes only
+display timing; no extra profile read, polling service or reply authority is added.
 
 Editing uses v129 `profile.update` through the existing canonical PATCH endpoint
 and the same device-held identity already owned by the bank. Only changed fields
@@ -91,6 +137,14 @@ Receiz commit `ecf7184a05bd44dd7efb7d7a54eeed46a1cf9ae4` additionally grants
 profile-scoped access to the existing image-upload route and returns its account
 UID. Deploy it before enabling new photo uploads from Bankeiz; it needs no schema
 change.
+
+The named-links migration was applied to the Receiz production database on
+October 21, 2026, recorded as `20261021125800_user_profile_named_links`.
+Post-apply checks confirmed the non-null JSONB column, empty-list default,
+validation constraint, invoker-only validator and existing profile RLS.
+HTTPS named links passed validation; HTTP, embedded credentials and extra fields
+were rejected. The image-upload change needs its application deployment only.
+
 Bankeiz verifies that Receiz returns the supplied links; an older host that ignores
 the field cannot silently report a successful save. This rollout changes no Note,
 antirollback, verification, financial or messaging protocol rules.

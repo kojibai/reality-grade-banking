@@ -1,6 +1,6 @@
 import {parsePublicProfile,profileUsername,type PublicProfile} from '../src/receiz/public-profile.js';
 export class PublicProfileError extends Error {constructor(message:string,public status:number){super(message);}}
-const LIMIT=12*1024*1024;
+const LIMIT=32*1024*1024;
 async function readBody(response:Response){
  if(Number(response.headers.get('content-length'))>LIMIT)throw Error('PROFILE_PAGE_TOO_LARGE');
  const reader=response.body?.getReader();if(!reader)throw Error('PROFILE_UNAVAILABLE');const parts:Uint8Array[]=[];let length=0;
@@ -18,8 +18,10 @@ export function createPublicProfileReader(fetchImpl:typeof fetch=fetch){
    // Legacy Originals cursors carry no immutable account UID. An explicit
    // expansion therefore reads one complete identity-bound snapshot instead
    // of appending rows resolved through a potentially reassigned handle.
-   const suffix=cursor?'?surface=public-route':'';
-   const response=await fetchImpl(`https://receiz.com/api/profile/${username}${suffix}`,{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(25_000),headers:{accept:'application/json'}});
+   // This is the same canonical public route used by Receiz itself. The
+   // generic profile read reconstructs discovery and can stall a cold page.
+   // Read the admitted collection once; the UI windows its already-held rows.
+   const response=await fetchImpl(`https://receiz.com/api/profile/${username}?surface=public-route`,{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(25_000),headers:{accept:'application/json'}});
    if(!response.ok){await response.body?.cancel().catch(()=>{});throw new PublicProfileError(response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE',[403,404].includes(response.status)?response.status:503);}
    const input=await readBody(response);
    try{
