@@ -78,6 +78,14 @@ it('shows public album artwork before opening and keeps controls tied to the ver
   await act(async()=>host.querySelector<HTMLButtonElement>('.proof-object-cover')!.click());expect(host.querySelector('.proof-audio-artwork img')?.getAttribute('src')).toBe(artwork);expect(host.querySelector('audio')?.src).toBe('blob:verified-song');expect(host.querySelector('audio')?.controls).toBe(true);expect(host.querySelector('audio')?.autoplay).toBe(false);
  }finally{act(()=>root.unmount());}
 });
+it('keeps the artwork request mode when a proof-material cover moves from preview to the audio player',async()=>{
+ const artwork='https://receiz.com/api/proof-material/packages/'+'c'.repeat(64)+'/artifact';
+ open.mockResolvedValue({...media,files:[{kind:'audio',filename:'Song.mp3',mimeType:'audio/mpeg',bytes:new Uint8Array([1,2,3]),payloadDigest:'b'.repeat(64)}]});vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:verified-song');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+ const host=document.createElement('div'),root=createRoot(host);
+ try{act(()=>root.render(<ProofMedia source={source} title="Album" artworkUrl={artwork}/>));expect(host.querySelector('img')?.getAttribute('crossorigin')).toBe('anonymous');
+  await act(async()=>host.querySelector<HTMLButtonElement>('.proof-object-cover')!.click());const cover=host.querySelector('.proof-audio-artwork img')!;expect(cover.getAttribute('src')).toBe(artwork);expect(cover.getAttribute('crossorigin')).toBe('anonymous');expect(cover.getAttribute('loading')).toBe('eager');expect(open).toHaveBeenCalledOnce();
+ }finally{act(()=>root.unmount());}
+});
 it('falls back from broken artwork and never embeds an unsafe artwork URL',()=>{
  const host=document.createElement('div'),root=createRoot(host);
  try{act(()=>root.render(<ProofMedia source={source} title="Album" artworkUrl="https://other.example/cover.jpg"/>));expect(host.querySelector('img')).toBeNull();

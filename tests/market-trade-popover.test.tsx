@@ -12,6 +12,13 @@ import type {OpenIdentity} from '../src/receiz/native-identity';
 vi.mock('../src/features/market/MarketOverview',()=>({MarketOverview:()=>null}));
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const catalog=()=>parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:work',receizId:'work',title:'The First Light',valueUsd:12}]}});
+it('keeps asset creation while directing purchases through each asset instead of a separate Exchange picker',async()=>{
+ const source={catalog:catalog(),status:'live',error:null,refresh:vi.fn()} as never,open=vi.fn(),host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<Market source={source} onAction={open}/>));
+  const actions=host.querySelector('.market-actions')!;expect(actions.querySelectorAll('button')).toHaveLength(1);
+  await act(()=>actions.querySelector<HTMLButtonElement>('button')!.click());expect(open).toHaveBeenCalledExactlyOnceWith({kind:'currency'});
+ }finally{act(()=>root.unmount());}
+});
 it.each(['buy','sell']as const)('keeps the Market object and route beneath a %s trade',async side=>{
  history.replaceState({},'','/#market');const source={catalog:catalog(),status:'live',error:null,refresh:vi.fn()} as never,open=vi.fn(),host=document.createElement('div'),root=createRoot(host);document.body.append(host);const request=vi.fn();vi.stubGlobal('fetch',request);
  try{

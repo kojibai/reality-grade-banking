@@ -2431,18 +2431,18 @@ export const publicProfileArtwork:Readonly<Record<string,readonly string[]>>={
  "bjklock": [
   "https://receiz.com/api/proof-material/packages/cdded50ef884cb9202b815155063e4efaf9393057ee2ebc34ace8fdf2b717712/artifact",
   "https://receiz.com/api/proof-material/packages/d1c5afeb743fd851bcafca59d9158415c3be5ac57fd28c30bbea591dc758a6d4/artifact",
+  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2Feecb99a0-9c6a-4e89-813b-f76331ea9c41%2F20261002201803_7c931cf1f6cca542ff68.png",
   "https://receiz.com/api/proof-material/packages/375aecaec9763b52013cc12c888fd27a25a476439ef8ab49cc9049732e079c75/artifact",
   "https://receiz.com/api/proof-material/packages/1692e02028bee3b937ced097db662a037af44b4229ab46dd7bbcb788c45bc733/artifact",
-  "https://receiz.com/api/proof-material/packages/33d51b754294c96221e6cc1aa1fdce46f0e592d9967a0a62e81c2bf31709924d/artifact",
-  "https://receiz.com/api/proof-material/packages/aed3f3d46d2afc3be2eacd585d3cada27044032f6b37d4e2a707a169f12a526c/artifact"
+  "https://receiz.com/api/proof-material/packages/33d51b754294c96221e6cc1aa1fdce46f0e592d9967a0a62e81c2bf31709924d/artifact"
  ],
  "ericpreciadonunez": [
+  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F07803256-d70a-4ea2-8ac7-8e80081a9660%2F20260924164858_e5b9a6e4d077ef55b02c.jpg",
   "https://receiz.com/api/proof-material/packages/0041daf8901a07efccba83cc646c9926e3a2a2b7907db2f813bedb7916c9cce1/artifact",
   "https://receiz.com/api/proof-material/packages/82f99768f4768d4e91eac0f423bc2e7915d2bb2f6467269b9533390acbc9891a/artifact",
   "https://receiz.com/api/receiz/download?a=6a0aacfd&ms=1783779430223&name=receiz_20260711_1017_D01B4ABF_derivative.png&p=13073911&c=D01B4ABF",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F07803256-d70a-4ea2-8ac7-8e80081a9660%2F20260509140109_84c7ea165c45c11d730a.png",
-  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F07803256-d70a-4ea2-8ac7-8e80081a9660%2F20260509135013_fe661d29917635b005fb.png",
-  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F07803256-d70a-4ea2-8ac7-8e80081a9660%2F20260509133928_dcb85623a43f06b74a66.png"
+  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F07803256-d70a-4ea2-8ac7-8e80081a9660%2F20260509135013_fe661d29917635b005fb.png"
  ],
  "receiz_rrbl2gwdab4imnrci": [
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F4f40b93a-fa77-4427-8b6f-910801c8484e%2F20260909122202_7e91781909a6695aa718.png",
@@ -2500,6 +2500,7 @@ export const publicProfileArtwork:Readonly<Record<string,readonly string[]>>={
   "https://receiz.com/api/proof-material/packages/fcfd1de6b79221dd2d0be8a13601f866546f98e5be231c6dcd94884f621c39eb/artifact"
  ],
  "receiz_a1fhxv6ak96k9nr9r": [
+  "https://receiz.com/api/receiz/download?a=a86369bd&ms=1788621362048&name=receiz_20260905_1116_C2B896EF_derivative.png&tz=-240&p=13998637&c=C2B896EF",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F2a19bccb-9467-4c5a-875a-30d954bb2e0e%2F20260905151602_75c50a0bd7b415bda057.png",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F2a19bccb-9467-4c5a-875a-30d954bb2e0e%2F20260905151556_36e3ac0ff6bbbe81f2a0.png"
  ],
@@ -2625,6 +2626,7 @@ export const publicProfileArtwork:Readonly<Record<string,readonly string[]>>={
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F29fc0343-b52f-4795-b5fb-4089ea303214%2F20260826001614_91212230798036c4ca0a.png"
  ],
  "receiz_mxbzkeil5wvisanfx": [
+  "https://receiz.com/api/receiz/download?a=35cb424a&ms=1787693174750&name=receiz_20260825_1726_A148B7C4_derivative.png&tz=-240&p=13821369&c=A148B7C4",
   "https://receiz.com/api/proof-material/packages/1ef28000af16dc9f9f992d3b70f6b3f72086bf3f522d19805ed235e179139071/artifact",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F120e2972-6328-499e-813e-5613466f5bc1%2F20260825212433_85eeca5ac88e2bfdfec1.png",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F120e2972-6328-499e-813e-5613466f5bc1%2F20260825212418_09762d1587a707d5d59f.png",
@@ -2677,12 +2679,13 @@ export const publicProfileArtwork:Readonly<Record<string,readonly string[]>>={
  "receiz_0hl4xleagdtevtwau": [
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F2dd7c90d-cb30-4819-ba76-5ab17acc5796%2F20260825001916_53a144f069446dae3c9a.png",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F2dd7c90d-cb30-4819-ba76-5ab17acc5796%2F20260825001910_f97e51e8697cc5640d49.png",
+  "https://receiz.com/api/profile/originals/media?receizId=47619509-b213-45a7-8199-4cecf763b2d5&slot=videoPoster",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F2dd7c90d-cb30-4819-ba76-5ab17acc5796%2F20260824235259_a772f5e2f4de91be6586.png",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F2dd7c90d-cb30-4819-ba76-5ab17acc5796%2F20260824235253_98b1de8de659f9059702.png",
-  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F2dd7c90d-cb30-4819-ba76-5ab17acc5796%2F20260824235247_22c76993618f8eba5050.png",
-  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F2dd7c90d-cb30-4819-ba76-5ab17acc5796%2F20260824235242_043bf7559fe1e329dffa.png"
+  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F2dd7c90d-cb30-4819-ba76-5ab17acc5796%2F20260824235247_22c76993618f8eba5050.png"
  ],
  "receiz_pw6wjhulfhl93nro0": [
+  "https://receiz.com/api/receiz/download?a=5fb8f617&ms=1787603339532&name=receiz_20260824_1628_E066E11D_derivative.png&tz=-240&p=13804213&c=E066E11D",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F3b636a78-3cfe-4891-8544-c67c972f9f96%2F20260824202849_7a577ecc44d8d8aa4f24.png",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F3b636a78-3cfe-4891-8544-c67c972f9f96%2F20260824202801_fd5c66a68129a8701b6c.png"
  ],
@@ -2697,16 +2700,20 @@ export const publicProfileArtwork:Readonly<Record<string,readonly string[]>>={
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F9a0608b4-dbf0-403f-addf-4094ade8f20a%2F20260824182642_9ce98ec3c8d48db5f632.png"
  ],
  "receiz_fh7lrmdf4y7w10xqo": [
+  "https://receiz.com/api/receiz/download?a=0d18e8fd&ms=1787585578789&name=receiz_20260824_1132_825CDC5D_derivative.png&tz=-240&p=13800820&c=825CDC5D",
+  "https://receiz.com/api/receiz/download?a=dd930da4&ms=1787585029002&name=receiz_20260824_1123_12EF025F_derivative.png&tz=-240&p=13800715&c=12EF025F",
+  "https://receiz.com/api/receiz/download?a=f8d40614&ms=1787584704366&name=receiz_20260824_1118_E202E4F9_derivative.png&tz=-240&p=13800654&c=E202E4F9",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F4372c5ce-c569-4afe-bdd4-aaf2b8e6138d%2F20260824151628_e5bea19a220f44b53785.png",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F4372c5ce-c569-4afe-bdd4-aaf2b8e6138d%2F20260824151601_e5bea19a220f44b53785.png",
-  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F4372c5ce-c569-4afe-bdd4-aaf2b8e6138d%2F20260824151503_e5bea19a220f44b53785.png",
-  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F4372c5ce-c569-4afe-bdd4-aaf2b8e6138d%2F20260824151449_235ca0c7b05e7c562bab.png"
+  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F4372c5ce-c569-4afe-bdd4-aaf2b8e6138d%2F20260824151503_e5bea19a220f44b53785.png"
  ],
  "receiz_7letsyd8s8smyovex": [
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F6e4afac0-f3a7-461e-92c0-078d3e1b5401%2F20260824150309_c8f8ca7105a24e75bd71.png",
+  "https://receiz.com/api/receiz/download?a=b4e09211&ms=1787583714749&name=receiz_20260824_1101_A290FA92_derivative.png&tz=-240&p=13800464&c=A290FA92",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F6e4afac0-f3a7-461e-92c0-078d3e1b5401%2F20260824150142_41d34794c082a41982ec.png"
  ],
  "receiz_gtm1vtiqlnmquvc7v": [
+  "https://receiz.com/api/receiz/download?a=38bbc826&ms=1787583055005&name=receiz_20260824_1050_0BD3084F_derivative.png&tz=-240&p=13800339&c=0BD3084F",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F2be2809e-49ac-4829-984d-b4a6bfe82797%2F20260824144845_42daf7dd266c8b5ac8a3.png",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F2be2809e-49ac-4829-984d-b4a6bfe82797%2F20260824144846_560c2f661fca561b8cf0.png",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F2be2809e-49ac-4829-984d-b4a6bfe82797%2F20260824144733_42daf7dd266c8b5ac8a3.png",
@@ -3074,6 +3081,14 @@ export const publicProfileArtwork:Readonly<Record<string,readonly string[]>>={
  ],
  "receiz_tivibdxoymfyb0n7q": [
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2Fe8acf371-091f-45af-880d-eb3e5aafa7b1%2F20260811054026_0f8677340270ac232439.png"
+ ],
+ "1vunovee": [
+  "https://receiz.com/api/profile/originals/media?receizId=b5a0625e-3d08-4cb0-93e0-4edbd6f2fbfc&slot=videoPoster",
+  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F9c54141f-9054-43eb-ab0b-a07187e78f7e%2F20260615051045_dd59223ad90f368c8cad.png",
+  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F9c54141f-9054-43eb-ab0b-a07187e78f7e%2F20260615050059_239d57228aedfab36df4.png",
+  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F9c54141f-9054-43eb-ab0b-a07187e78f7e%2F20260514200543_b84173ad44c4ead72c88.png",
+  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F9c54141f-9054-43eb-ab0b-a07187e78f7e%2F20260514200546_1c3b12b39dd02c454e49.png",
+  "https://receiz.com/api/profile/originals/media?receizId=7688d8ab-bb58-4528-a62f-fe68c88d262a&slot=videoPoster"
  ],
  "receiz_8fwdcaljbf9syypb2": [
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2Fbfc0a35c-4e26-463c-8198-9cf2fc787b2b%2F20260802193821_c096d49b294cb9953e71.png"
@@ -3461,14 +3476,6 @@ export const publicProfileArtwork:Readonly<Record<string,readonly string[]>>={
  "receiz_imtdsj8rxdnpsjcvf": [
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2Ff43d4908-ec30-492c-91a5-bcab000503e9%2F20260615163900_eb52ffff20377fac49a5.png",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2Ff43d4908-ec30-492c-91a5-bcab000503e9%2F20260615163859_6e5fabb8575d6b0a8e01.png"
- ],
- "1vunovee": [
-  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F9c54141f-9054-43eb-ab0b-a07187e78f7e%2F20260615051045_dd59223ad90f368c8cad.png",
-  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F9c54141f-9054-43eb-ab0b-a07187e78f7e%2F20260615050059_239d57228aedfab36df4.png",
-  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F9c54141f-9054-43eb-ab0b-a07187e78f7e%2F20260514200543_b84173ad44c4ead72c88.png",
-  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F9c54141f-9054-43eb-ab0b-a07187e78f7e%2F20260514200546_1c3b12b39dd02c454e49.png",
-  "https://receiz.com/api/profile/originals/media?receizId=52f281fa-5415-43fe-84dd-6e8ff25a39fc&slot=preview",
-  "https://receiz.com/api/profile/originals/media?receizId=e571aab8-fea7-44f4-a817-cbb5bfd29b3c&slot=preview"
  ],
  "receiz_5xoedzmqq56ycoxik": [
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F97ba6681-d6bb-49a1-9262-2656aefe8534%2F20260615044551_691cbf0aa452e695acb3.png"
@@ -4155,6 +4162,10 @@ export const publicProfileArtwork:Readonly<Record<string,readonly string[]>>={
  ],
  "receiz_elyy0jniclqqvl4fp": [
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F0d8c4e11-095c-4cba-b9fc-ed379004da3e%2F20260423075202_412f76f94be743dc181e.jpeg"
+ ],
+ "uploadsmoke20260405": [
+  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F47d17366-3559-409c-b712-79b75ec27743%2F20260416200341_87c2b9eb794166819ec2.jpg",
+  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F47d17366-3559-409c-b712-79b75ec27743%2F20260406003325_87c2b9eb794166819ec2.jpg"
  ],
  "eric": [
   "https://receiz.com/api/profile/originals/media?receizId=9f113e16-e3fc-4a24-bc32-e0efaf068b5f&slot=preview",

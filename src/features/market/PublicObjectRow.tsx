@@ -7,7 +7,7 @@ import './market.css';
 const percent=new Intl.NumberFormat(undefined,{maximumFractionDigits:2});
 export function PublicObjectArtwork({artworkUrl}:{artworkUrl:PublicMarketItem['artworkUrl']}){
  const [failedArtwork,setFailedArtwork]=useState<string|null>(null),safeArtwork=safeReceizArtworkUrl(artworkUrl),artwork=safeArtwork!==failedArtwork?safeArtwork:null;
- return artwork?<span className="asset-mark market-object-artwork"><img src={artwork} alt="" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailedArtwork(artwork)}/></span>:<AssetMark kind="proof"/>;
+ return artwork?<span className="asset-mark market-object-artwork"><img src={artwork} alt="" decoding="async" referrerPolicy="no-referrer" crossOrigin={artwork.includes('/api/proof-material/packages/')?'anonymous':undefined} onError={()=>setFailedArtwork(artwork)}/></span>:<AssetMark kind="proof"/>;
 }
 function PublicObjectProvenance({item}:{item:PublicMarketItem}){
  const copies=item.category==='sports'&&(item.circulationCount??1)>1;

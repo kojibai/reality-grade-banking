@@ -16,6 +16,12 @@ beforeEach(() => { network.membership.mockReset(); network.quotes.mockReset(); }
 afterEach(() => { vi.unstubAllGlobals(); localStorage.clear();vi.useRealTimers();clock.pulse=14710100; });
 const sourceInput = (items = ['a', 'b'], complete = true) => ({ ok: true, transport: { publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: complete ? 'canonical-complete' : 'partial', isComplete: complete, itemCount: items.length, revision: 'r1' }, publicOriginals: items.map(id => ({ id, receizId: id, title: id, valueUsd: 10 })) } });
 const quoteInput = (priceUsd = 10) => ({ ok: true, data: { schema: 'receiz.market.public-snapshot.v1', generatedAt: '2026-10-13T12:00:00Z', liveMarkets: [{ itemId: 'a', visibility: 'public', priceUsd, quoteUsdPerPhi: 1, chart: [{ value: 9 }, { value: priceUsd }] }] } });
+it('retains carried album artwork across a thinner refresh of the exact same public artifact',async()=>{
+ const row={id:'a',receizId:'a',title:'Album',pulse:'123',profileOriginal:{mediaKind:'audio',artworkUrl:'https://receiz.com/artwork/album.jpg',media:{originalDownloadSha256Hex:'a'.repeat(64)}}};
+ const source={...sourceInput(['a']),transport:{...sourceInput(['a']).transport,publicOriginals:[row]}},thin={...source,transport:{...source.transport,publicOriginals:[{...row,profileOriginal:{...row.profileOriginal,artworkUrl:null}}]}};
+ network.membership.mockResolvedValueOnce(parsePublicMarket(source)).mockResolvedValueOnce(parsePublicMarket(thin)).mockResolvedValueOnce(parsePublicMarket({...thin,transport:{...thin.transport,publicOriginals:[{...row,profileOriginal:{mediaKind:'audio',media:{originalDownloadSha256Hex:'b'.repeat(64)}}}]}}));network.quotes.mockResolvedValue(quoteInput());
+ await observe(async read=>{expect(read().catalog?.items[0].artworkUrl).toBe('https://receiz.com/artwork/album.jpg');await act(async()=>read().refresh());expect(read().catalog?.items[0].artworkUrl).toBe('https://receiz.com/artwork/album.jpg');await act(async()=>read().refresh());expect(read().catalog?.items[0].artworkUrl).toBeNull();});
+});
 async function observe(run: (read: () => ReturnType<typeof usePublicMarket>) => Promise<void>) {
   let state!: ReturnType<typeof usePublicMarket>; const root = createRoot(document.createElement('div'));
   function Probe() { state = usePublicMarket(); return null; }
@@ -71,11 +77,11 @@ it('retains previously obtained public charts until refreshed quotes arrive', as
 });
 it('adds source-bound reading and media categories to an older retained catalog without replacing its quote',async()=>{
  const row={id:'a',receizId:'a',title:'A',valueUsd:10,verifyHref:'/v/20261012_1401/0C19C291/14611069?a=cd412215&ms=1791828092396',profileOriginal:{media:{originalDownloadSha256Hex:'a'.repeat(64)}}};
- const old={ok:true,transport:{publicOriginals:[row]}},seed={ok:true,transport:{publicOriginals:[{...row,valueUsd:999,profileOriginal:{...row.profileOriginal,hasLongForm:true,mediaKind:'audio'}}]}};
+ const old={ok:true,transport:{publicOriginals:[row]}},seed={ok:true,transport:{publicOriginals:[{...row,valueUsd:999,profileOriginal:{...row.profileOriginal,hasLongForm:true,mediaKind:'audio',artworkUrl:'https://receiz.com/artwork/album.jpg'}}]}};
  localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(old));network.membership.mockImplementation(()=>new Promise(()=>{}));network.quotes.mockImplementation(()=>new Promise(()=>{}));
  vi.stubGlobal('fetch',vi.fn(async input=>input==='/receiz-public-market.json'?Response.json(seed):new Response('',{status:404})));
  let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket();return null;}
- try{await act(async()=>root.render(<Probe/>));expect(state.catalog?.items[0].hasLongForm).toBe(true);expect(state.catalog?.items[0].mediaKind).toBe('audio');expect(state.catalog?.items[0].priceUsd).toBe(10);}finally{act(()=>root.unmount());}
+ try{await act(async()=>root.render(<Probe/>));expect(state.catalog?.items[0].hasLongForm).toBe(true);expect(state.catalog?.items[0].mediaKind).toBe('audio');expect(state.catalog?.items[0].artworkUrl).toBe('https://receiz.com/artwork/album.jpg');expect(state.catalog?.items[0].priceUsd).toBe(10);}finally{act(()=>root.unmount());}
 });
 it('upgrades retained objects with source-bound pricing operands from the new offline collection',async()=>{
  const row={id:'a',receizId:'a',title:'A',valueUsd:10,pulse:'14700000',profileOriginal:{hasLongForm:true}};

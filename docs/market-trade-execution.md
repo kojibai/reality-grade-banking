@@ -35,6 +35,16 @@ to the retained review and transaction record. A quantity sale retains the
 exact reviewed number of units. Final proceeds and quantities use the original
 Market writer's execution rules.
 
+Purchase forms offer $100, $250, $500 and $1,000 shortcuts. Sales offer 10%,
+25%, 50%, 75% and All when the open account already carries a holding for the
+exact Market item. These controls only fill the existing amount field; they
+make no portfolio or quote request and never submit a trade. A percentage
+selects ownership units with integer microshare arithmetic, rounding down
+fractional microshares. All selects the complete exact holding. Custom dollar
+and ownership quantities remain available, and every trade keeps its existing
+review and explicit approval. Purchases and sales start from the asset rather
+than a separate Exchange picker.
+
 Connected dollar sales require the matching Receiz adapter update. An older
 host explicitly refuses that unsupported request; Bankeiz does not silently
 substitute another quantity, retry execution or weaken ownership checks.

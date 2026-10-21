@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {receizKaiNow} from '@receiz/sdk';
 import { fetchPublicSports, mergePublicSports,retainPublicSportsInput } from './public-sports';
-import { fetchPublicMarket, fetchPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
+import { fetchPublicMarket, fetchPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, retainPublicArtwork, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
 import {prepareMarketDisplaySource,useMarketDisplaySource} from './market-projection/display-source';
 import {publicCatalogAtPulse} from './market-projection/catalog-prices';
 
@@ -40,7 +40,8 @@ export function usePublicMarket(active = true, displayActive = active) {
         const previous=new Map(current?.items.map(item=>[item.id,item]));
         let updated=mergePublicSports({...next,items:next.items.map(item=>{
           const quoted=previous.get(item.id);
-          return quoted?.chart.length?{...item,priceUsd:quoted.priceUsd,changePct:quoted.changePct,chart:quoted.chart}:item;
+          const presented=retainPublicArtwork(item,quoted);
+          return quoted?.chart.length?{...presented,priceUsd:quoted.priceUsd,changePct:quoted.changePct,chart:quoted.chart}:presented;
         })},sports.current);
         if(latestQuotes)updated=mergePublicQuotes(updated,latestQuotes);
         return updated;
@@ -65,7 +66,17 @@ export function usePublicMarket(active = true, displayActive = active) {
     void fetch('/receiz-public-sports.json', { signal: seed.signal, credentials: 'omit' }).then(async response => { if (!response.ok) return; const data = await response.json(); if(seed.signal.aborted)return;const next=sports.current?retainPublicSportsInput(data,sports.current):data;if(next===sports.current)return;sports.current=next;setSportsStatus('retained');setCatalog(current=>current?mergePublicSports(current,next):current); }).catch(() => {});
     void fetch('/receiz-public-market.json', { signal: seed.signal, credentials: 'omit' }).then(async response => {
       if (!response.ok) return; const input = await response.json(); const cached = parsePublicMarket(input, input.snapshot); rememberPublicOriginalLocators(cached);
-      if (seed.signal.aborted) return; setCatalog(current => {if(!current||cached.complete&&Date.parse(cached.observedAt??'')>Date.parse(current.observedAt??''))return mergePublicSports(cached,sports.current);const hints=new Map(cached.items.map(item=>[item.id,item]));return {...current,items:current.items.map(item=>{const hint=hints.get(item.id);if(!hint||hint.assetId!==item.assetId||hint.pulse!==item.pulse||hint.originalDigest!==item.originalDigest||hint.verifyUrl!==item.verifyUrl)return item;return {...item,...(item.hasLongForm===undefined?{hasLongForm:hint.hasLongForm,readingUrl:hint.readingUrl}:{}),...(item.mediaKind===undefined&&hint.mediaKind!==undefined?{mediaKind:hint.mediaKind}:{}),...(!item.livePulseSeed&&hint.livePulseSeed?{livePulseSeed:hint.livePulseSeed,valuationBinding:hint.valuationBinding}:{})};})};});
+      if (seed.signal.aborted) return;
+      setCatalog(current => {
+        if(!current||cached.complete&&Date.parse(cached.observedAt??'')>Date.parse(current.observedAt??''))return mergePublicSports(cached,sports.current);
+        const hints=new Map(cached.items.map(item=>[item.id,item]));
+        return {...current,items:current.items.map(item=>{
+          const hint=hints.get(item.id);
+          if(!hint||hint.assetId!==item.assetId||hint.pulse!==item.pulse||hint.originalDigest!==item.originalDigest||hint.verifyUrl!==item.verifyUrl)return item;
+          const presented=item.mediaKind===undefined&&hint.mediaKind!==undefined?{...item,mediaKind:hint.mediaKind}:item;
+          return {...retainPublicArtwork(presented,hint),...(item.hasLongForm===undefined?{hasLongForm:hint.hasLongForm,readingUrl:hint.readingUrl}:{}),...(!item.livePulseSeed&&hint.livePulseSeed?{livePulseSeed:hint.livePulseSeed,valuationBinding:hint.valuationBinding}:{})};
+        })};
+      });
     }).catch(() => {});
     void refresh();
     const interval = setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 60_000);

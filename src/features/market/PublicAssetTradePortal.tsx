@@ -7,6 +7,7 @@ import {connectPublicAssetTrade, readPublicAssetTrade, subscribePublicAssetTrade
 import type {useNativeAccount} from '../../receiz/useNativeAccount';
 import {publicPurchaseBudget, retainPublicPurchase} from '../../receiz/public-purchase-checkpoint';
 import {AmountInput} from '../../components/AmountInput';
+import {BuyAmountPresets} from './TradeAmountPresets';
 import {approveFundedPurchase,confirmPurchaseFunding,type FundedPurchaseApproval} from '../../receiz/funded-purchase';
 export type PublicTradeAccount = Pick<ReturnType<typeof useNativeAccount>, 'identity' | 'wallet' | 'opening' | 'openingStage' | 'busy' | 'error' | 'create' | 'importId' | 'refresh'>;
 
@@ -30,6 +31,7 @@ function PublicAssetTradeFlow({request, account}: {request: PublicAssetTradeRequ
   if(!account.identity&&request.side==='buy'&&!account.error)return <div className="public-purchase-opening">
     <h1 className="sheet-hero">Buy ownership.</h1>
     <AmountInput label="Purchase amount" value={budget} onChange={setBudget} dollars/>
+    <BuyAmountPresets value={budget} onChange={setBudget}/>
     <p className="body-copy small-copy" role="status">Preparing your payment…</p>
     <p className="body-copy small-copy">Your device-held account opens here. You review the amount before any payment. <a href="/learn/account-access/">Account access</a></p>
   </div>;

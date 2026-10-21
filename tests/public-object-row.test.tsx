@@ -61,3 +61,10 @@ it('shows carried artwork in the popover heading when no original locator is sup
  const image=host.querySelector('.asset-detail-heading img');expect(image?.getAttribute('src')).toBe('https://receiz.com/artwork/image.png');expect(fetcher).not.toHaveBeenCalled();
  act(()=>image!.dispatchEvent(new Event('error')));expect(host.querySelector('.asset-detail-heading img')).toBeNull();expect(host.querySelector('.asset-detail-heading .asset-mark svg')).not.toBeNull();
 });
+it.each(['image','audio'])('opens already-carried %s artwork without lazy deferral and with the same request mode as the Market row',kind=>{
+ const fetcher=vi.spyOn(globalThis,'fetch'),value=item(kind,{[kind==='image'?'src':'audioCoverSrc']:'/api/proof-material/packages/'+'c'.repeat(64)+'/artifact'}),host=mount(value),rowImage=host.querySelector('img')!;
+ expect(rowImage.getAttribute('crossorigin')).toBe('anonymous');
+ act(()=>root!.render(<PublicAssetDetail item={value}/>));
+ const cover=host.querySelector<HTMLImageElement>('.proof-media img')!;
+ expect(cover.src).toBe(rowImage.src);expect(cover.getAttribute('crossorigin')).toBe('anonymous');expect(cover.loading).not.toBe('lazy');expect(fetcher).not.toHaveBeenCalled();
+});

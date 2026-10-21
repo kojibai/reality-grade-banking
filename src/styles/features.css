@@ -18,6 +18,11 @@
 .amount-prefix { font-size: 22px; color: #79879a; }.amount-suffix { font-size: 12px; color: #87909D; }
 .quick-amounts { display: flex; gap: 8px; margin-top: 14px; }
 .quick-amounts button { background: #eef1f6; border-radius: 7px; padding: 9px; flex: 1; font-size: 12px; }
+.trade-amount-presets { gap: 6px; }
+.trade-amount-presets button { min-width: 0; min-height: 44px; padding: 10px 6px; font-variant-numeric: tabular-nums; transition: background .15s, color .15s; }
+.trade-amount-presets button[aria-pressed="true"] { color: var(--blue); background: #e8efff; }
+.trade-amount-presets button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.trade-amount-presets button:disabled { opacity: .45; cursor: default; }
 .upload-choice { display: flex; align-items: center; gap: 9px; margin: 20px 0 13px; font-size: 12px; color: var(--blue); border: 1px dashed #b8c7df; padding: 15px; border-radius: 10px; cursor: pointer; }
 .upload-choice input { display: none; }
 .small-copy { font-size: 12px; }

@@ -64,6 +64,13 @@ export function publicMediaArtworkUrl(input:unknown,retainedArtwork?:unknown):st
   const imageOriginal=kind==='image'&&typeof digest==='string'&&/^[a-f0-9]{64}$/i.test(digest)&&digest.toLowerCase()===String(material.sealedArtifactSha256Hex).toLowerCase()&&(!media.originalDownloadMime||/^image\/(?:png|jpeg|webp|gif|avif|bmp)$/i.test(String(media.originalDownloadMime)))?publicMaterialOriginalUrl(material.originalArtifactSrc)??publicMaterialOriginalUrl(material.proofObjectUrl):null;
   for(const candidate of [primary,imageOriginal,retainedArtwork,media.derivativeDownloadSrc,media.receiptDownloadSrc]){const url=safeReceizArtworkUrl(candidate);if(url)return url;}return null;
 }
+/** Keep available display artwork when an equivalent source projection is
+ * thinner. Never carry an image across an artifact or publication change. */
+export function retainPublicArtwork(item:PublicMarketItem,previous?:PublicMarketItem):PublicMarketItem{
+ if(item.artworkUrl||!previous||!item.originalDigest||item.id!==previous.id||item.assetId!==previous.assetId||item.originalDigest!==previous.originalDigest||item.pulse!==previous.pulse||item.verifyUrl!==previous.verifyUrl||item.mediaKind!==previous.mediaKind)return item;
+ const artworkUrl=safeReceizArtworkUrl(previous.artworkUrl);
+ return artworkUrl?{...item,artworkUrl}:item;
+}
 /** A legacy public image remains viewable independently of the separate
  * sealed-download endpoint. This does not verify its original or grant it. */
 export function publicAssetImagePreviewUrl(item:PublicMarketItem):string|null{
