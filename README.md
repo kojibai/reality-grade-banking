@@ -253,12 +253,12 @@ See the [origin contract](docs/bankeiz-origin-activation.md),
 
 ## Release evidence
 
-This is the **1.0.0 release commit**. The
-[full release notes](docs/releases/1.0.0.md) describe its scope; the
-[qualification record](docs/releases/1.0.0-qualification.md) identifies the
-checks required before the operator publishes the matching tag and GitHub
-release. Versioned source, actual deployment and publication remain distinct
-records.
+**[Version 1.0.0 is published](https://github.com/kojibai/reality-grade-banking/releases/tag/v1.0.0)**,
+released October 20, 2026 from commit `2231301`.
+The [full release notes](docs/releases/1.0.0.md) describe its scope; the
+[qualification record](docs/releases/1.0.0-qualification.md) preserves the
+source, verification and capability-specific assessment evidence. Versioned
+source, actual deployment and publication remain distinct records.
 
 [Current capabilities](docs/current-function-boundaries.md) distinguish
 implemented connections from their deployed assessment. Dated

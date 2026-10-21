@@ -4,11 +4,11 @@ Reality-Grade Banking repository releases include the Bankeiz reference
 application. Its product versions are independent of Receiz protocol/package versions.
 Full release records and qualification evidence live in [docs/releases](docs/releases/README.md).
 
-## 1.0.0
+## 1.0.0 — October 20, 2026
 
 The first major repository release includes the Bankeiz reference application,
-version 1.0.0. The operator publishes the matching tag and GitHub release after
-the exact deployed checks. See the [full 1.0.0 notes](docs/releases/1.0.0.md) and
+version 1.0.0. The [published release](https://github.com/kojibai/reality-grade-banking/releases/tag/v1.0.0)
+and tag identify commit `2231301`. See the [full 1.0.0 notes](docs/releases/1.0.0.md) and
 [qualification record](docs/releases/1.0.0-qualification.md).
 
 ### Product
