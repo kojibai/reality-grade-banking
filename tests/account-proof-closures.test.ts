@@ -7,6 +7,12 @@ function source(){return {schema:'bankeiz.public-account-statement.v4',applicati
  sourceFrontier:{schema:'receiz.bank.account-source-frontier.v1',authorizationHead:h('a'),walletHead:h('b'),lawfulInventoryHead:h('c'),accountHistoryHead:h('c'),assetHistoryDigest:h('d'),assetHeads:[],artifactSourceHead:h('e'),offlineSourceHead:h('f')},
  components:{lawfulValues:[],assets:[],assetOffers:[],artifactIntrinsicPhiMicro:'900',offlineLockedPhiMicro:'400',offlineLockedUsdCents:'10'}};}
 describe('account source closures',()=>{
+ it('carries exact mixed asset backing without changing historical proof encodings',()=>{
+  const v=source(),assetId=h('a'),head=h('b'),backingComponents=[{rail:'reserve',amountUsdCents:'6000',amountPhiMicro:'3000000'},{rail:'settlement',amountUsdCents:'4000',amountPhiMicro:'2000000'}];
+  Object.assign(v.sourceFrontier,{assetHeads:[{assetId,sourceSha256:head}]});Object.assign(v.components,{assets:[{assetId,name:'Unit',symbol:'UNIT',description:'',linkedProofDigest:null,supplyMicro:'100',quantityMicro:'100',backingRail:'composite',backingPhiMicro:'5000000',backingUsdCents:'10000',backingComponents,status:'active',issuanceSourceSha256:h('c'),headSourceSha256:head}]});
+  expect(JSON.stringify(inspectAccountStatement(v,'rc_test'))).toBe(JSON.stringify(v));
+  const invalid=structuredClone(v);Object.assign(invalid.components.assets[0],{backingComponents:[]});expect(()=>inspectAccountStatement(invalid,'rc_test')).toThrow();
+ });
  it('keeps original-source value and outstanding Note funding separate from cash',()=>{
   const proof=inspectAccountStatement(source(),'rc_test');expect(proof.schema).toBe('bankeiz.public-account-statement.v4');
   expect(proof.checkpoint.balancePhiMicro).toBe('0');expect(proof.components!.offlineLockedPhiMicro).toBe('400');

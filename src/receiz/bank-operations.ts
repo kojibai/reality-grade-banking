@@ -9,6 +9,7 @@ import { parseAmount } from '../core/money';
 
 export type BankRail = 'reserve' | 'settlement';
 export type BankOperationInput =
+  | { kind: 'fund-asset'; definition: AssetDefinition; fundingRule: 'reserve-first-then-settlement'; amountUsdCents: string }
   | { kind: 'send-value'; rail: BankRail; amountUsdCents: string; recipient: string }
   | { kind: 'exchange'; rail: BankRail; amountUsdCents: string; assetDigest: string }
   | { kind: 'send-ownership'; assetDigest: string; quantityMicro: string; recipient: string }
@@ -20,7 +21,7 @@ export type BankOperationRequest = BankOperationInput & { schema: 'bankeiz.opera
 export interface BankOperationTerms {
   debitUsdCents: string; debitPhiMicro: string; creditUsdCents: string; creditPhiMicro: string;
   feeUsdCents: string; quantityMicro: string; assetDigest: string | null; recipient: string | null;
-  expiresAtKaiUPulse: number;
+  expiresAtKaiUPulse: number; fundingComponents?: readonly import('./native-asset-backing').NativeAssetFundingComponent[];
 }
 export interface BankOperationReview { request: Readonly<BankOperationRequest>; terms: Readonly<BankOperationTerms>; confirmationDigest: string; }
 export type BankOperationResult = (BankExecutionResult | import('./native-payment').NativePaymentResult | import('./native-asset').NativeAssetResult) & { retentionWarning?: string };
