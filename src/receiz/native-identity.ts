@@ -87,6 +87,7 @@ export interface OpenIdentity {
   pendingAssetPublication?: () => Promise<HeldDeposit | null>;
   retryAssetPublication?: () => Promise<HeldDeposit>;
   readPrivateHistory: (cursor?: string) => Promise<PrivateHistoryPage>;
+  readNoteHistory?: () => Promise<import('./public-network').PublicRecord[]>;
   nativeReadiness: (approveNativeAccess?: boolean) => Promise<BankNativeReadiness>;
   connectNativeAccount: (approved: boolean) => Promise<{ subjectId: string; sourceDigest: string; sessionExpiresKaiUPulse: number; readyToTransact: false }>;
   persistDeviceCustody: () => Promise<void>;
@@ -522,6 +523,20 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   let receivedNoteQueueUid:string|undefined;
   let receivedNoteDisplay:import('./offline-notes').BankNoteDepositResult[]=[];
   let connectedNotes:ReturnType<typeof createConnectedNoteApplication>|undefined,connectedNotesUid:string|undefined;
+  let noteHistory:ReturnType<typeof import('./note-history').createNoteHistoryReader>|undefined,noteHistoryUid:string|undefined;
+  async function noteHistoryReader(){
+    noteOpen();const uid=receivingUid();
+    if(!noteHistory||noteHistoryUid!==uid){
+      const {createNoteHistoryReader}=await import('./note-history');noteOpen();
+      if(receivingUid()!==uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');
+      // A live receipt and the initial history view can share this lazy import.
+      // Recheck after it resolves so both keep the same admitted-source reuse.
+      if(!noteHistory||noteHistoryUid!==uid){noteHistoryUid=uid;noteHistory=createNoteHistoryReader({accountUid:uid,keyId:binding.keyId,readConnected:()=>loadConnectedNoteState(binding),readReceived:()=>loadReceivedNoteDepositState(binding),restore:ref=>loadOfflineNoteBlob(binding,ref),module:loadBankNoteRuntime});}
+    }
+    return noteHistory;
+  }
+  async function readNoteHistory(){const records=await(await noteHistoryReader()).read();noteOpen();return records;}
+  function noteHistoryRecorded(){if(typeof dispatchEvent==='function')dispatchEvent(new CustomEvent('bankeiz:note-history-recorded',{detail:{identityDigest:binding.artifactSha256,accountUid:receivingUid()}}));}
   async function connectedContext(){
     await prepareTransport();const current=await connectClient(BANK_NATIVE_SCOPES,BANK_NATIVE_CONSENT);noteOpen();
     return{uid:receivingUid(),identity:transportKeyFile,passphrase:transportPhrase,request:(path:string,options:{method:'GET'|'POST';body?:Record<string,unknown>})=>current.request(path,options),wallet:()=>current.connect.wallet()};
@@ -532,7 +547,8 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     connectedNotes=createConnectedNoteApplication({uid,keyId:binding.keyId,assertOpen:()=>{noteOpen();if(receivingUid()!==uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');},
       read:()=>loadConnectedNoteState(binding),write:(next,previous)=>saveConnectedNoteState(binding,next,previous),retain:bytes=>saveOfflineNoteBlob(binding,bytes),restore:ref=>loadOfflineNoteBlob(binding,ref),
       module:loadBankNoteRuntime,context:connectedContext,sdk,artwork:bankNoteArtwork,
-      onIssued:()=>{walletRevision++;if(knownWallet){knownWallet={...knownWallet,historyBasis:undefined,walletScope:undefined,quoteHold:createWalletQuoteHold(knownWallet.wallet)};void persistWalletObservation(knownWallet).catch(()=>{});}},
+      onFundingVerified:(source,opening,proof)=>{void noteHistoryReader().then(reader=>reader.rememberFunding(source,opening,proof)).catch(()=>{});},
+      onIssued:()=>{walletRevision++;if(knownWallet){knownWallet={...knownWallet,historyBasis:undefined,walletScope:undefined,quoteHold:createWalletQuoteHold(knownWallet.wallet)};void persistWalletObservation(knownWallet).catch(()=>{});}noteHistoryRecorded();},
     });return connectedNotes;
   }
   function receivingUid(){return accountUid??knownWallet?.wallet.userId??keyFile.owner.uid;}
@@ -558,7 +574,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
         const module=await loadBankNoteRuntime();
         if(await isConnectedNote(module,bytes)){
           if(!preparedRequestBytes)throw Error('BANK_NOTE_SOURCE_REQUIRED');
-          const credited=await submitConnectedAccountNoteClaim({module,bytes,prepared:preparedRequestBytes,recoverFirst,context:await connectedContext(),decode:sdk.receizBase64UrlDecode});assertQueueOpen();return credited;
+          const credited=await submitConnectedAccountNoteClaim({module,bytes,prepared:preparedRequestBytes,recoverFirst,context:await connectedContext(),decode:sdk.receizBase64UrlDecode,onCreditVerified:(source,proof)=>{void noteHistoryReader().then(reader=>reader.rememberCredit(source,proof)).catch(()=>{});}});assertQueueOpen();return credited;
         }
         const held=await module.openBankNoteAccountDeposit(bytes,context);
         const current=await connectClient(BANK_NATIVE_SCOPES,BANK_NATIVE_CONSENT),path=`/api/connect/offline-notes/redemption?origin=${encodeURIComponent(location.origin)}`;
@@ -582,7 +598,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     // later failure must not leave a confirmed amount in Received Notes or let
     // an older in-flight wallet observation replace the execution boundary.
     try{await queue.reconcile();}
-    finally{noteOpen();walletRevision++;await paintReceivedNotes();}
+    finally{noteOpen();walletRevision++;await paintReceivedNotes();noteHistoryRecorded();}
     if(refresh)await readAndAdoptWallet();
   }
   function synchronizeReceivedNotes(){
@@ -662,12 +678,15 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
           let original=image;
           if(await isConnectedNote(module,image)){
             const held=await readConnectedNote(module,image);
+            if(await localReceivedNotes().confirmed(held.noteId))throw Error('BANK_NOTE_ALREADY_DEPOSITED');
             if(held.kind==='funding'&&await localConnectedNotes().hasNote(held.noteId)){
               const request=await module.createBankNoteAccountReceivingRequest({identity:keyFile,passphrase:phrase,accountUserId:receivingUid()});
               original=(await localConnectedNotes().transfer(held.noteId,request)).image;
             }
           }
-          const received=await localReceivedNotes().receive(original);await paintReceivedNotes();return received;
+          const received=await localReceivedNotes().receive(original);
+          if(received.status==='confirmed')throw Error('BANK_NOTE_ALREADY_DEPOSITED');
+          await paintReceivedNotes();return received;
         }));
         if(navigator.onLine!==false)void synchronizeReceivedNotes().catch(()=>{});
         return result;
@@ -1367,7 +1386,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const uid=accountUid??knownWallet?.wallet.userId;if(!uid)return;
     retainedMessaging.retainTwinAccessQuestions(uid,questions);
   };
-  return { messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

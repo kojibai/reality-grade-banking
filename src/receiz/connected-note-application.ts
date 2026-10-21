@@ -32,6 +32,7 @@ export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'re
  module():Promise<ConnectedNoteModule>;context():Promise<Context>;
  sdk:{createReceizIdentityKeyFile(input:{owner:{uid:string}}):Promise<{keyFile:ReceizKeyFile}>;serializeReceizIdentityArtifact(key:ReceizKeyFile):string;parseReceizIdentityArtifactText(text:string):ReceizKeyFile;receizBase64UrlEncode(bytes:Uint8Array):string;receizBase64UrlDecode(text:string):Uint8Array;receizKaiNow():{pulse:number}};
  artwork(amount:string,id:string,compact?:boolean,rail?:BankNoteRail):Promise<Uint8Array>;
+ onFundingVerified?(source:Uint8Array,opening:Uint8Array,proof:{funding:Json}):void;
 }){
  const decode=input.sdk.receizBase64UrlDecode;
  let heldReview:{amount:string;requested?:BankNoteRail;quote:Json;funding:ReturnType<typeof selectNoteFunding>}|undefined;
@@ -62,6 +63,7 @@ export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'re
    const wire=fields(response,decode);if(wire.cancelled)throw Error('BANK_NOTE_CANCELLED');
    const proof=await module.verifyBankConnectedNoteFunding(wire.source,wire.opening),f=proof.funding;
    if(f.operationId!==operationId||f.noteId!==a.noteId||f.accountUserId!==input.uid||f.issuer?.keyId!==input.keyId||f.noteAuthority?.keyId!==a.noteAuthority?.keyId||f.rail!==a.rail||f.amountUsdCents!==a.amountUsdCents||a.rail!=='reserve'&&(f.amountPhiMicro!==a.amountPhiMicro||f.usdPerPhiMicrocents!==a.usdPerPhiMicrocents)||(a.rail==='composite'?['reserve','settlement'].some(rail=>['amountUsdCents','amountPhiMicro'].some(k=>f.fundingParts?.[rail]?.[k]!==a.fundingParts?.[rail]?.[k])):f.fundingParts!==undefined))throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');
+   input.onFundingVerified?.(wire.source,wire.opening,proof);
    return{...proof,sourceBytes:wire.source,privateOpeningBytes:wire.opening};
   },
   async prepareCancellation(authorization){const module=await input.module(),context=await input.context();if(context.uid!==input.uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');return json(await module.createBankConnectedNoteCancellation({authorization,identity:context.identity,passphrase:context.passphrase}));},
@@ -90,12 +92,13 @@ export async function prepareConnectedAccountNoteClaim(input:{module:ConnectedNo
  const claim=await input.module.createBankConnectedNoteClaim({sourceBytes:held.terminalSourceBytes,identity:input.context.identity,passphrase:input.context.passphrase,accountUserId:input.context.uid});
  const body=json({action:'claim',claim,source:input.encode(held.terminalSourceBytes)});if(body.length>4*1024*1024)throw Error('BANK_NOTE_TRANSPORT_CAPACITY');return body;
 }
-export async function submitConnectedAccountNoteClaim(input:{module:ConnectedNoteModule;bytes:Uint8Array;prepared:Uint8Array;recoverFirst:boolean;context:Context;decode(text:string):Uint8Array}):Promise<BankNoteDeposit>{
+export async function submitConnectedAccountNoteClaim(input:{module:ConnectedNoteModule;bytes:Uint8Array;prepared:Uint8Array;recoverFirst:boolean;context:Context;decode(text:string):Uint8Array;onCreditVerified?(source:Uint8Array,proof:{credit:Json;rail:BankNoteRail}):void}):Promise<BankNoteDeposit>{
  const held=await openConnectedAccountNote(input.module,input.bytes,{receiverUserId:input.context.uid,receiverKeyId:input.context.identity.keyId}),body=parse(input.prepared);
  if(body.action!=='claim'||body.claim?.sourceSha256!==held.terminalArtifactSha256||body.claim?.noteId!==held.noteId||body.claim?.receiverUserId!==input.context.uid||body.claim?.receiver?.keyId!==input.context.identity.keyId)throw Error('BANK_NOTE_DEPOSIT_BINDING_MISMATCH');
  let response:unknown=input.recoverFirst?await input.context.request(`${path()}&noteId=${held.noteId}`,{method:'GET'}):{found:false};
  if(obj(response).found===false)response=await input.context.request(path(),{method:'POST',body});
  const wire=fields(response,input.decode),credit=await input.module.verifyBankConnectedNoteCredit(wire.source,wire.opening);
  if(credit.noteId!==held.noteId||credit.credit.receiverUserId!==input.context.uid||credit.credit.receiverKeyId!==input.context.identity.keyId||credit.credit.terminalSourceSha256!==held.terminalArtifactSha256||credit.credit.redemptionDigest!==body.claim.claimDigest)throw Error('BANK_NOTE_DEPOSIT_BINDING_MISMATCH');
+ input.onCreditVerified?.(credit.proofBytes,credit);
  return{rail:credit.rail,noteId:credit.noteId,amountUsdCents:credit.amountUsdCents,amountPhiMicro:credit.amountPhiMicro,...(credit.fundingParts?{fundingParts:credit.fundingParts}:{}),walletAfterPhiMicro:credit.accountAfter.balancePhiMicro,reserveAfterUsdCents:credit.accountAfter.reserveUsdCents,proofBytes:credit.proofBytes};
 }

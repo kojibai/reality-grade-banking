@@ -1,0 +1,20 @@
+.asset-object{position:relative;min-width:0;margin:22px 0;color:#172b45;isolation:isolate}
+.asset-object-stage{perspective:1500px;padding:6px 3px 10px;min-width:0}
+.asset-object-float{min-width:0;animation:asset-object-drift 9s ease-in-out infinite;animation-play-state:paused;transform-style:preserve-3d}
+.asset-object[data-motion=running] .asset-object-float{animation-play-state:running}
+.asset-object-pose{min-width:0;transform:rotateX(var(--asset-tilt-y,0deg)) rotateY(var(--asset-tilt-x,0deg));transition:transform .35s ease-out;transform-style:preserve-3d}
+.asset-object-turn{display:grid;min-width:0;transform-style:preserve-3d;transition:transform .55s cubic-bezier(.2,.7,.25,1)}
+.asset-object[data-showing=back] .asset-object-turn{transform:rotateY(180deg)}
+.asset-object-side{grid-area:1/1;min-width:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transition:visibility 0s;transform:translateZ(1px)}
+.asset-object-side.is-inactive{visibility:hidden;pointer-events:none;transition-delay:.25s}
+.asset-object-back{transform:rotateY(180deg) translateZ(1px);border:1px solid #dfe5ed;border-radius:13px;padding:22px;background:linear-gradient(130deg,#fcfbf8,#f6f8fb);box-shadow:2px 3px 0 #e4e7ed,4px 5px 0 #f8f9fb,5px 6px 0 #d5dce6,0 20px 28px -23px #172b4570}
+.asset-object-front>.proof-media{margin:0}
+.asset-object-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:3px 3px 0}
+.asset-object-toolbar>span{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#8b97a5}
+.asset-object-flip{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-width:74px;min-height:38px;padding:6px 12px;border:1px solid #dfe5ed;border-radius:30px;background:#fcfdfed9;color:#63758b;font-size:10px;cursor:pointer;box-shadow:0 2px 5px #172b4504;transition:background .2s,color .2s}
+.asset-object-flip:hover{background:#edf2f9;color:#244d80}
+.asset-object-flip:focus-visible{outline:2px solid #557bcc;outline-offset:4px}
+.asset-object:focus-within .asset-object-float,.asset-object-stage:hover .asset-object-float{animation-play-state:paused}
+@keyframes asset-object-drift{0%,100%{transform:translateY(0) rotateX(.35deg) rotateY(-.6deg)}50%{transform:translateY(-3px) rotateX(-.35deg) rotateY(.6deg)}}
+@media(max-width:480px){.asset-object-stage{padding-inline:1px}.asset-object-back{padding:18px 16px}}
+@media(prefers-reduced-motion:reduce){.asset-object-float{animation:none}.asset-object-pose{transform:none;transition:none}.asset-object-turn,.asset-object-side,.asset-object-flip{transition:none}.asset-object-side.is-inactive{transition-delay:0s}}

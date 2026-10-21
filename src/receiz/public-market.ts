@@ -1,6 +1,7 @@
 import {publicMarketPulseSeed,type MarketPulseSeed,type MarketValueRow} from './market-projection/source.js';
 import type {MarketSealedBirth} from './market-projection/sealed-copies.js';
 import type {SportsHistorySnapshot} from './market-projection/sports-observations.js';
+import {readPublicAssetManifestSource,type PublicAssetManifestRow,type PublicAssetManifestSource} from './public-asset-manifest.js';
 /** Public discovery and quotes are display projections; they grant no ownership. */
 export interface PublicMarketItem {
   id: string; assetId: string; title: string; summary: string; category: 'proof' | 'sports'; circulationCount?: number; pricedCount?: number; capitalizationUsdCents?: string | null;
@@ -8,6 +9,9 @@ export interface PublicMarketItem {
   originalDigest: string | null; pulse: string | null; sealedAt: string | null;
   hasLongForm?: boolean;
   mediaKind?:PublicMediaKind;
+  artworkUrl?:string|null;
+  proofManifest?:PublicAssetManifestRow[];
+  proofManifestSource?:PublicAssetManifestSource;
   readingUrl?: string | null;
   livePulseSeed?:MarketPulseSeed;
   sportsValuation?:MarketValueRow;
@@ -29,6 +33,27 @@ export function publicMediaKind(value:unknown):PublicMediaKind|undefined {
 function record(input: unknown): RecordValue { return input !== null && typeof input === 'object' && !Array.isArray(input) ? input as RecordValue : {}; }
 function text(input: unknown, max = 4096): string | null { return typeof input === 'string' && input.length > 0 && input.length <= max ? input : null; }
 function nonnegative(input: unknown): number | null { return typeof input === 'number' && Number.isFinite(input) && input >= 0 && input <= 1e18 ? input : null; }
+/** Display artwork only. This never identifies or verifies an original artifact. */
+export function safeReceizArtworkUrl(input:unknown):string|null {
+  const value=text(input,8192);if(!value||/[\x00-\x20\x7f\\]/.test(value))return null;
+  try {
+    const url=new URL(value,'https://receiz.com');
+    if(url.origin!=='https://receiz.com'||url.username||url.password||url.hash)return null;
+    const params=url.searchParams,only=(keys:string[])=>[...params.keys()].every(key=>keys.includes(key)&&params.getAll(key).length===1),image=(path:string)=>/\.(?:avif|gif|jpe?g|png|webp|svg)$/i.test(path),pathSafe=(path:string)=>path.length<=2048&&/^[a-zA-Z0-9_./-]+$/.test(path)&&path.split('/').every(part=>part&&part!=='.'&&part!=='..');
+    if(url.pathname==='/api/profile/originals/media')return only(['receizId','slot','width'])&&/^[a-zA-Z0-9_-]{1,128}$/.test(params.get('receizId')??'')&&/^(?:preview|audioCover|videoPoster|epubCover|imageVariant|audioCoverVariant|videoPosterVariant|epubCoverVariant)$/.test(params.get('slot')??'')&&(!params.has('width')||/^\d{2,4}$/.test(params.get('width')!)&&Number(params.get('width'))<=4096)?url.href:null;
+    const publicBuckets=['receiz-profile-originals','receiz-profile-media'];
+    if(url.pathname==='/api/storage/object')return only(['bucket','path'])&&publicBuckets.includes(params.get('bucket')??'')&&pathSafe(params.get('path')??'')&&image(params.get('path')??'')?url.href:null;
+    const storage=/^\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/.exec(url.pathname);
+    if(storage)return !url.search&&publicBuckets.includes(storage[1])&&pathSafe(storage[2])&&image(storage[2])?url.href:null;
+    if(url.pathname==='/api/receiz/download')return only(['a','ms','p','c','tz','name','ts'])&&/^[a-f0-9]{8,64}$/i.test(params.get('a')??'')&&/^\d{10,17}$/.test(params.get('ms')??'')&&Number.isSafeInteger(Number(params.get('ms')))&&/^\d{1,24}$/.test(params.get('p')??'')&&/^[a-f0-9]{8,64}$/i.test(params.get('c')??'')&&/^[a-zA-Z0-9_.-]{1,200}\.png$/.test(params.get('name')??'')&&(!params.has('tz')||/^-?\d{1,4}$/.test(params.get('tz')!)&&Math.abs(Number(params.get('tz')))<=840)&&(!params.has('ts')||/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(params.get('ts')!))?url.href:null;
+    return !url.search&&!url.pathname.startsWith('/api/')&&!url.pathname.startsWith('/storage/')&&pathSafe(url.pathname.slice(1))&&image(url.pathname)?url.href:null;
+  }catch{return null;}
+}
+/** Use the same cover priorities carried by Receiz's live player. */
+export function publicMediaArtworkUrl(input:unknown):string|null {
+  const media=record(input),kind=publicMediaKind(media.kind),primary=kind==='audio'?media.audioCoverSrc:kind==='video'?media.videoPosterSrc:kind==='epub'?media.epubCoverSrc:kind==='image'?media.src:null;
+  for(const candidate of [primary,media.derivativeDownloadSrc,media.receiptDownloadSrc]){const url=safeReceizArtworkUrl(candidate);if(url)return url;}return null;
+}
 export function safeReceizPublicUrl(input: unknown, kind: 'source' | 'proof' | 'original' = 'source'): string | null {
   const value = text(input, 8192); if (!value) return null;
   try {
@@ -75,6 +100,8 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
       originalUrl: materialOriginal ?? safeReceizPublicUrl(media.originalDownloadSrc, 'original'), originalDigest: digest && /^[a-f0-9]{64}$/i.test(digest) ? digest.toLowerCase() : null,
       hasLongForm:typeof profile.hasLongForm==='boolean'?profile.hasLongForm:Object.hasOwn(profile,'longForm')?Boolean(profile.longForm):undefined,
       mediaKind:publicMediaKind(profile.mediaKind??media.kind??(profile.media===null?null:undefined)),
+      artworkUrl:safeReceizArtworkUrl(profile.artworkUrl)??publicMediaArtworkUrl(media),
+      proofManifestSource:readPublicAssetManifestSource(profile),
       pulse: typeof source.pulse === 'string' && /^\d{1,24}$/.test(source.pulse) ? source.pulse : null,livePulseSeed:publicMarketPulseSeed(source.livePulseSeed,source.pulse),valuationBinding:{itemId:id,assetId},
       sealedAt: sealedAt && Number.isFinite(Date.parse(sealedAt)) ? sealedAt : null,
       ownerUsername, ownerDisplayName: text(source.ownerDisplayName, 128), ownerProfileUrl: ownerUsername ? `https://receiz.com/${encodeURIComponent(ownerUsername)}` : null,

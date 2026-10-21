@@ -1,0 +1,9 @@
+.public-asset-trade-title{margin:0 0 18px;overflow-wrap:anywhere}
+.public-purchase-resume{margin-top:24px;padding:18px;border:1px solid var(--line);border-radius:14px;background:var(--surface,#fff)}
+.public-asset-trade-slot .identity-entrance{min-height:0;margin:0;padding:0;box-shadow:none;border-radius:0}
+.public-asset-trade-slot .identity-entrance .app-header{height:auto;padding:0 0 18px}
+.public-asset-trade-slot .entrance-content{padding:15px 0 0}
+.public-asset-trade-slot .entrance-content h1{font-size:38px}
+.public-asset-trade-slot .entrance-symbol{margin-bottom:17px}
+.public-asset-trade-slot .account-opening-screen{min-height:440px;height:auto;position:relative;padding:20px 0}
+.public-asset-trade-slot .account-opening-portal{min-height:210px;height:210px}

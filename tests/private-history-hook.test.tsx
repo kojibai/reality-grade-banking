@@ -10,6 +10,42 @@ vi.mock('../src/receiz/identity-vault', () => ({ loadPrivateHistoryCache: vault.
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const page = (uid: string, ids: string[], nextCursor: string | null = null) => parsePrivateHistoryPage({ ok: true, accountUserId: uid, nextCursor, events: ids.map(id => ({ id, kind: 'reserve_credit', createdAt: '2026-10-14T12:00:00Z', amountUsdCents: '100' })) }, uid);
 beforeEach(() => { vault.load.mockReset().mockResolvedValue(null); vault.save.mockReset().mockResolvedValue(undefined); });
+it('adds confirmed local Note receipts immediately and on a scoped action without requesting account history',async()=>{
+ const records=page('A',['native-note-credit']).records;
+ let local=records;
+ const readPrivateHistory=vi.fn(),readNoteHistory=vi.fn(async()=>local);
+ const identity={binding:{artifactSha256:'e'.repeat(64)},readPrivateHistory,readNoteHistory} as unknown as OpenIdentity;
+ let state!:ReturnType<typeof usePrivateHistory>;
+ const root=createRoot(document.createElement('div'));
+ function Read(){state=usePrivateHistory(identity,'A',false);return null;}
+ try{
+  await act(async()=>root.render(<Read/>));
+  expect(state.cache?.records.map(record=>record.sourceId)).toEqual(['native-note-credit']);
+  local=page('A',['native-note-credit','native-note-debit']).records;
+  await act(async()=>dispatchEvent(new CustomEvent('bankeiz:note-history-recorded',{detail:{identityDigest:'e'.repeat(64),accountUid:'A'}})));
+  expect(state.cache?.records.map(record=>record.sourceId)).toEqual(['native-note-credit','native-note-debit']);
+  expect(readPrivateHistory).not.toHaveBeenCalled();
+  expect(vault.save).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
+it('keeps a confirmed Note admitted while an earlier remote history snapshot finishes retention',async()=>{
+ let local:ReturnType<typeof page>['records']=[],finish!:(value:unknown)=>void,state!:ReturnType<typeof usePrivateHistory>;
+ const identity={binding:{artifactSha256:'f'.repeat(64)},readPrivateHistory:vi.fn(async()=>page('A',['remote'])),readNoteHistory:async()=>local} as unknown as OpenIdentity;
+ vault.save.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
+ const root=createRoot(document.createElement('div'));
+ function Read(){state=usePrivateHistory(identity,'A',false);return null;}
+ try{
+  await act(async()=>root.render(<Read/>));
+  let reading!:Promise<void>;
+  await act(async()=>{reading=state.refresh();});
+  local=page('A',['confirmed-note']).records;
+  await act(async()=>dispatchEvent(new CustomEvent('bankeiz:note-history-recorded',{detail:{identityDigest:'f'.repeat(64),accountUid:'A'}})));
+  expect(state.cache?.records.map(record=>record.sourceId)).toContain('confirmed-note');
+  const earlier=vault.save.mock.calls[0][1];
+  await act(async()=>{finish(earlier);await reading;});
+  expect(state.cache?.records.map(record=>record.sourceId)).toEqual(['remote','confirmed-note']);
+ }finally{act(()=>root.unmount());}
+});
 async function observe(readPrivateHistory: ReturnType<typeof vi.fn>, run: (read: () => ReturnType<typeof usePrivateHistory>) => Promise<void>) {
   const identity = { binding: { artifactSha256: 'a'.repeat(64) }, readPrivateHistory } as unknown as OpenIdentity;
   let state!: ReturnType<typeof usePrivateHistory>; const root = createRoot(document.createElement('div'));

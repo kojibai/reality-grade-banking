@@ -8,7 +8,8 @@ import {usePublicMarket} from '../receiz/usePublicMarket';
 import {assetPageId,assetPageSeed} from '../receiz/public-asset-page';
 import {PublicAssetPage} from './PublicAssetPage';
 import './explorer.css';
-/** A separate public entry: never opens device identity or private account custody. */
+/** Public browsing stays separate. An explicit trade opens the existing bank
+ * account owner in place; rendering public assets never opens custody. */
 export function PublicExplorer({active=true}:{active?:boolean}){
  const [path,setPath]=useState(()=>location.pathname);
  useEffect(()=>{const change=()=>setPath(location.pathname);addEventListener('popstate',change);addEventListener('receiz-bank:surface',change);return()=>{removeEventListener('popstate',change);removeEventListener('receiz-bank:surface',change);};},[]);

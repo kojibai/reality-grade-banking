@@ -8,6 +8,26 @@ Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const source={kind:'held' as const,digest:'a'.repeat(64),filename:'source.receiz',bytes:new Uint8Array([1])};
 const media={artifactDigest:source.digest,files:[{kind:'text',filename:'Essay.html',mimeType:'text/html',bytes:new TextEncoder().encode('<p>Bound text</p>'),payloadDigest:'b'.repeat(64),text:'Bound text'}]};
 afterEach(()=>{open.mockReset();vi.restoreAllMocks();});
+it('shows public album artwork before opening and keeps controls tied to the verified original audio',async()=>{
+ const artwork='https://receiz.com/api/profile/originals/media?receizId=song&slot=audioCover';
+ open.mockResolvedValue({...media,files:[{kind:'audio',filename:'Song.mp3',mimeType:'audio/mpeg',bytes:new Uint8Array([1,2,3]),payloadDigest:'b'.repeat(64)}]});vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:verified-song');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+ const host=document.createElement('div'),root=createRoot(host);
+ try{act(()=>root.render(<ProofMedia source={source} title="Album" artworkUrl={artwork}/>));expect(host.querySelector('img')?.src).toBe(artwork);expect(open).not.toHaveBeenCalled();expect(host.textContent).not.toContain('Original verified');
+  await act(async()=>host.querySelector<HTMLButtonElement>('.proof-object-cover')!.click());expect(host.querySelector('.proof-audio-artwork img')?.getAttribute('src')).toBe(artwork);expect(host.querySelector('audio')?.src).toBe('blob:verified-song');expect(host.querySelector('audio')?.controls).toBe(true);expect(host.querySelector('audio')?.autoplay).toBe(false);
+ }finally{act(()=>root.unmount());}
+});
+it('falls back from broken artwork and never embeds an unsafe artwork URL',()=>{
+ const host=document.createElement('div'),root=createRoot(host);
+ try{act(()=>root.render(<ProofMedia source={source} title="Album" artworkUrl="https://other.example/cover.jpg"/>));expect(host.querySelector('img')).toBeNull();
+  act(()=>root.render(<ProofMedia source={source} title="Album" artworkUrl="https://receiz.com/artwork/cover.jpg"/>));expect(host.querySelector('img')).not.toBeNull();act(()=>host.querySelector('img')!.dispatchEvent(new Event('error')));expect(host.querySelector('img')).toBeNull();expect(host.textContent).toContain('Experience the original');
+ }finally{act(()=>root.unmount());}
+});
+it('retains the verified audio position and artwork when moving into full view',async()=>{
+ const artwork='https://receiz.com/artwork/cover.jpg';open.mockResolvedValue({...media,files:[{kind:'audio',filename:'Song.mp3',mimeType:'audio/mpeg',bytes:new Uint8Array([1,2,3]),payloadDigest:'b'.repeat(64)}]});vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:verified-song');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});vi.spyOn(HTMLDialogElement.prototype,'showModal').mockImplementation(function(this:HTMLDialogElement){this.open=true;});vi.spyOn(HTMLDialogElement.prototype,'close').mockImplementation(function(this:HTMLDialogElement){this.open=false;});vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+ const host=document.createElement('div'),root=createRoot(host);
+ try{act(()=>root.render(<ProofMedia source={source} title="Album" artworkUrl={artwork}/>));await act(async()=>host.querySelector<HTMLButtonElement>('.proof-object-cover')!.click());const inline=host.querySelector('audio')!;inline.currentTime=42;act(()=>inline.dispatchEvent(new Event('timeupdate')));act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Open full media view"]')!.click());const expanded=host.querySelector<HTMLAudioElement>('audio')!;expect(expanded).toBe(inline);Object.defineProperty(expanded,'duration',{configurable:true,value:180});act(()=>expanded.dispatchEvent(new Event('loadedmetadata')));expect(expanded.currentTime).toBe(42);expect(host.querySelectorAll('audio')).toHaveLength(1);expect(host.querySelector('dialog .proof-audio-artwork img')?.getAttribute('src')).toBe(artwork);
+ }finally{act(()=>root.unmount());}
+});
 it('retains every paragraph without amplifying text into unbounded DOM nodes',async()=>{
  const text='A\n\n'.repeat(5000)+'The end.';open.mockResolvedValue({...media,files:[{...media.files[0],text}]});vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:test-only');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
  const host=document.createElement('div'),root=createRoot(host);

@@ -45,6 +45,7 @@ export function createLocalNoteDepositQueue(input:{uid:string;keyId:string;asser
  async function list(options:{pendingOnly?:boolean}={}){const {state}=await load();return Promise.all(Object.entries(state.entries).filter(([,row])=>!options.pendingOnly||row.status==='received').map(([id,row])=>result(id,row)));}
  return {
   list,
+  async confirmed(noteId:string){const {state}=await load(),row=state.entries[noteId];return row?.status==='confirmed'?result(noteId,row):null;},
   async receive(bytes:Uint8Array):Promise<BankNoteDepositResult>{
    const held=await input.verify(bytes.slice());input.assertOpen();
    if(held.receiverUserId!==input.uid||held.receiverKeyId!==input.keyId)throw Error('BANK_NOTE_IDENTITY_BINDING_REQUIRED');

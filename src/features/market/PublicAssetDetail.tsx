@@ -8,6 +8,9 @@ import {ProofMedia} from '../media/ProofMedia';
 import {ProofCaption} from '../media/ProofCaption';
 import {fetchPublicCardDetails,type PublicCardDetails} from '../../receiz/public-card-details';
 import {AssetPageLinks} from '../../components/AssetPageLinks';
+import {AssetObject} from '../media/AssetObject';
+import {AssetProofBack} from '../media/AssetProofBack';
+import {marketContentLabel} from '../../receiz/market-categories';
 
 export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=false }: { item: PublicMarketItem; onTrade?: (mode: 'buy' | 'sell', digest: string) => void;readOnly?:boolean;standalone?:boolean }) {
   const [publicDetails,setPublicDetails]=useState<{source:string;details:PublicCardDetails}|null>(null);
@@ -17,15 +20,16 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
   const multipleCopies=item.category==='sports'&&(item.circulationCount??1)>1;
   const periods=usePublicAssetPeriods(item);
   const current=periods?.ALL.at(-1),price=current?Number(current.usdCents)/100:item.priceUsd;
-  const media=item.originalUrl&&item.originalDigest?<ProofMedia autoOpen={standalone} key={[item.originalDigest,item.originalUrl,item.readingUrl??item.verifyUrl].join(':')} title={item.title} source={{kind:"public",url:item.originalUrl,digest:item.originalDigest,...(item.verifyUrl?{postUrl:item.readingUrl??item.verifyUrl,hasLongForm:item.hasLongForm}:{})}}/>:null;
+  const media=item.originalUrl&&item.originalDigest?<ProofMedia artworkUrl={item.artworkUrl} autoOpen={standalone} key={[item.originalDigest,item.originalUrl,item.readingUrl??item.verifyUrl].join(':')} title={item.title} source={{kind:"public",url:item.originalUrl,digest:item.originalDigest,...(item.verifyUrl?{postUrl:item.readingUrl??item.verifyUrl,hasLongForm:item.hasLongForm}:{})}}/>:null;
+  const object=<AssetObject key={item.id} label={item.title} front={media??<div className="public-collectible-face"><span>{marketContentLabel(item)}</span><h2>{item.title}</h2><p>{item.summary}</p><code>{item.assetId}</code><small>Public source presentation</small></div>} renderBack={()=> <AssetProofBack item={item}/>}/>;
   return <><div className="asset-detail-heading"><AssetMark kind="proof" /><div><h1>{item.title}</h1><p>{standalone?'Source. Ownership. Continuity.':'Public source'}</p></div></div>
     {!standalone&&<AssetPageLinks item={item}/>}
-    {standalone&&<div className="public-asset-media">{media??<div className="public-collectible-face"><span>Sealed collectible</span><h2>{item.title}</h2><p>{item.summary}</p><code>{item.assetId}</code><small>Public source presentation</small></div>}</div>}
+    {standalone&&<div className="public-asset-media">{object}</div>}
     <div className="asset-price">{formatPublicPrice(price)}<span>Market Value</span></div>
     {!periods&&item.changePct !== null && <div className={`price-change ${item.changePct >= 0 ? 'positive' : 'negative'}`}>{item.changePct > 0 ? '+' : ''}{item.changePct}%</div>}
     <PublicAssetChart periods={periods} fallback={item.chart}/>
     {!readOnly&&<div className="dual-actions"><button className="primary-button" disabled={!canReviewTrade} onClick={() => { onTrade?.('buy', item.id); }}>Buy ownership</button><button className="secondary-button" disabled={!canReviewTrade} onClick={() => { onTrade?.('sell', item.id); }}>Take cash</button></div>}
-    {!standalone&&media}
+    {!standalone&&object}
     <div className="asset-actions asset-source-links">{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={15} strokeWidth={1.5} />Open public source</a>}{item.verifyUrl && <a href={item.verifyUrl} target="_blank" rel="noreferrer"><FileCheck2 size={15} strokeWidth={1.5} />Inspect proof</a>}</div>
     {item.summary&&<ProofCaption caption={item.summary}/>}
     <div className="detail-list"><div><span>Owner</span><strong>{multipleCopies ? 'Varies by copy · open public source' : details.ownerProfileUrl ? <a href={details.ownerProfileUrl} target="_blank" rel="noreferrer">@{details.ownerUsername}</a> : details.ownerDisplayName ?? 'Not supplied by the public source'}</strong></div><div><span>Object</span><strong className="proof-coordinate">{item.assetId}</strong></div><div><span>Sealed</span><strong>{multipleCopies ? 'Varies by copy' : details.sealedAt ? new Date(details.sealedAt).toLocaleString() : 'Not supplied'}</strong></div>{item.pulse && <div><span>☤KAI</span><strong>{item.pulse}</strong></div>}</div>

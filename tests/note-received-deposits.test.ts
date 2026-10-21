@@ -37,6 +37,8 @@ it('keeps the original pending after a lost response and confirms only after the
  p.fail(false);await queue.reconcile();expect((await queue.list())[0].status).toBe('confirmed');
  expect(p.attempts).toEqual([false,true]);
  const count=p.submitted;await queue.reconcile();expect(p.submitted).toBe(count);
+ expect((await queue.confirmed(metadata.noteId))?.status).toBe('confirmed');
+ expect(await queue.confirmed('not-this-note')).toBeNull();expect(p.submitted).toBe(count);
  const repeated=await queue.receive(terminal);expect(repeated.status).toBe('confirmed');expect((await queue.list())).toHaveLength(1);
 },30000);
 

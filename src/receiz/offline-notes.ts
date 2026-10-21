@@ -54,7 +54,7 @@ export interface BankPreparedNoteRuntime extends Omit<BankNoteRuntime,'cancelUnf
   depositNote(image:Uint8Array,accountProof:unknown):Promise<BankNoteDeposit & {successorAccountProof:unknown}>;
 }
 export type BankPreparedNoteFactory = (input: Omit<Parameters<BankNoteRuntimeFactory>[0],'request'|'write'> & {identity:unknown;write(next:unknown,previous:unknown,proof?:unknown):Promise<void>})=>BankPreparedNoteRuntime;
-let runtime: Promise<BankNoteAccountModule&import('./connected-note-application').ConnectedNoteModule&{ createBankPreparedBrowserRuntime?:BankPreparedNoteFactory; createBankOfflineNotesRuntime: BankNoteRuntimeFactory; createBankNativeNoteSealer: (input: unknown) => Promise<Parameters<BankNoteRuntimeFactory>[0]['sealDocument']> }> | undefined;
+let runtime: Promise<BankNoteAccountModule&import('./connected-note-application').ConnectedNoteModule&import('./note-history').NoteHistoryModule&{ createBankPreparedBrowserRuntime?:BankPreparedNoteFactory; createBankOfflineNotesRuntime: BankNoteRuntimeFactory; createBankNativeNoteSealer: (input: unknown) => Promise<Parameters<BankNoteRuntimeFactory>[0]['sealDocument']> }> | undefined;
 export function loadBankNoteRuntime() {
   // Built from the pinned Receiz v129 host primitives. Loaded only when a note
   // action is opened; it never delays account or market first paint.

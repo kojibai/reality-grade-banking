@@ -34,6 +34,13 @@ export function readLedgerDetails(raw:unknown):LedgerFields {
  const proofHistory=ledgerProofHistoryFields(source);if(proofHistory)result.proofHistory=proofHistory;
  const causalLineage=ledgerCausalLineageFields(source);if(causalLineage)result.causalLineage=causalLineage;
  const fundingOrigin=ledgerFundingOriginFields(source);if(fundingOrigin)result.fundingOrigin=fundingOrigin;
+ const noteReceipt=select(source.noteReceipt,['schema','sourceDigest','issuerKeyId','receiverKeyId','noteId','operationId','rail','amountPhiMicro','amountUsdCents','usdPerPhiMicrocents','fundedAtKai','acceptedAtKai','debitLedgerId','creditLedgerId','redemptionDigest','terminalSourceSha256','privateAccountSnapshotSha256']);
+ if(Object.keys(noteReceipt).length){
+  const parts=object(object(source.noteReceipt).fundingParts),fundingParts:LedgerFields={};
+  for(const rail of ['reserve','settlement']){const part=select(parts[rail],['amountUsdCents','amountPhiMicro']);if(Object.keys(part).length)fundingParts[rail]=part;}
+  if(Object.keys(fundingParts).length)noteReceipt.fundingParts=fundingParts;
+  result.noteReceipt=noteReceipt;
+ }
  const attribution=readWalletFundingAttribution(source.fundingAttribution);if(attribution)result.fundingAttribution=attribution as unknown as LedgerFields;
  const history=readWalletFundingHistory(source.fundingHistory,attribution);if(history)result.fundingHistory=history as unknown as LedgerFields[];
  const links=readWalletFundingLinks(source.fundingLinks);if(links)result.fundingLinks=links as unknown as LedgerFields[];

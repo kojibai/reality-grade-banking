@@ -18,6 +18,26 @@ export function usePrivateHistory(identity: OpenIdentity | null, accountUid: str
     }).catch(() => {}) : Promise.resolve();
     return () => { generation.current++; };
   }, [identity, accountUid]);
+  useEffect(()=>{
+    if(!identity?.readNoteHistory||!accountUid)return;
+    let alive=true,revision=0;
+    const readLocal=async()=>{
+      const attempt=++revision,ticket=generation.current;
+      try{
+        await restoring.current;
+        const records=await identity.readNoteHistory!();
+        if(!alive||attempt!==revision||ticket!==generation.current||!records.length)return;
+        const previous=held.current;
+        const value:PrivateHistoryCache={schema:'bank.private-history-cache.v1',accountUid,observedAt:previous?.observedAt??new Date().toISOString(),records:mergePublicRecords(previous?.records??[],records),nextCursor:previous?.nextCursor??null,...(previous?.pages?{pages:previous.pages}:{})};
+        // Original receipts are already durable in Note custody. Painting their
+        // admitted projection needs neither another vault write nor a request.
+        updatePrivateHistory(identity,accountUid,value);held.current=value;setCache({identity,accountUid,value});
+      }catch{/* Keep ordinary retained history visible if a receipt cannot reopen. */}
+    };
+    const changed=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.identityDigest===identity.binding.artifactSha256&&detail?.accountUid===accountUid)void readLocal();};
+    void readLocal();addEventListener('bankeiz:note-history-recorded',changed);
+    return()=>{alive=false;removeEventListener('bankeiz:note-history-recorded',changed);};
+  },[identity,accountUid]);
   const read = useCallback(async (older = false, canStart?: () => boolean):Promise<void> => {
     if (scope.current.identity !== identity || scope.current.accountUid !== accountUid) return;
     if (!identity?.readPrivateHistory || !accountUid || pending.current || older && paused.current) return;
@@ -41,7 +61,12 @@ export function usePrivateHistory(identity: OpenIdentity | null, accountUid: str
       updatePrivateHistory(identity, accountUid, next); held.current = next; setCache({ identity, accountUid, value: next });
       try {
         const retained = await savePrivateHistoryCache(identity.binding, next);
-        if (ticket === generation.current && retained && updatePrivateHistory(identity, accountUid, retained)) { held.current = retained; setCache({ identity, accountUid, value: retained }); }
+        if (ticket === generation.current && retained) {
+          // A confirmed local receipt can arrive while this older snapshot is
+          // being encrypted. Its already admitted rows remain in this frame.
+          const latest=held.current,value=latest&&latest!==next?{...retained,records:mergePublicRecords(retained.records,latest.records)}:retained;
+          if(updatePrivateHistory(identity,accountUid,value)){held.current=value;setCache({identity,accountUid,value});}
+        }
       } catch { if (ticket === generation.current) setError('Activity loaded. This device could not retain it for offline access.'); }
     } catch (cause) {
       if (ticket === generation.current) { paused.current = true; setFailureCode(privateHistoryFailureCode(cause)); setError('Your activity could not be loaded. Retained activity stays available. Refresh to try again.'); }

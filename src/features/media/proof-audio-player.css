@@ -1,0 +1,29 @@
+.proof-audio-view.proof-audio-player{gap:23px;padding:30px clamp(16px,4vw,38px) 26px;background:radial-gradient(ellipse at 50% 22%,#fff 5%,#f4f6fa 85%)}
+.proof-audio-player .proof-audio-artwork{width:min(100%,300px);border-radius:5px;flex-shrink:0}
+.proof-audio-player-caption{width:100%;max-width:480px;text-align:center;min-width:0}
+.proof-audio-player-caption>span{display:block;font-size:8px;line-height:1.4;letter-spacing:.16em;text-transform:uppercase;color:#8a98aa;margin-bottom:8px}
+.proof-audio-player-caption h3{margin:0;font-size:17px;line-height:1.35;font-weight:550;letter-spacing:-.035em;overflow-wrap:anywhere;color:#203955}
+.proof-audio-player-controls{width:100%;max-width:480px;min-width:0}
+.proof-audio-seek{display:flex;align-items:center;min-height:25px;cursor:pointer}
+.proof-audio-seek input{--audio-fill:0%;width:100%;min-width:0;height:3px;margin:8px 0;appearance:none;-webkit-appearance:none;border:0;border-radius:5px;background:linear-gradient(to right,#456d9a var(--audio-fill),#d9e1eb var(--audio-fill));cursor:pointer;accent-color:#456d9a}
+.proof-audio-seek input::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:#456d9a;border:2px solid #f8fafc;box-shadow:0 0 0 1px #456d9a25;transition:box-shadow .2s}
+.proof-audio-seek input::-moz-range-thumb{width:7px;height:7px;border-radius:50%;background:#456d9a;border:2px solid #f8fafc;box-shadow:0 0 0 1px #456d9a25}
+.proof-audio-seek input:disabled{opacity:.5;cursor:default}.proof-audio-seek input:disabled::-webkit-slider-thumb{visibility:hidden}.proof-audio-seek input:disabled::-moz-range-thumb{visibility:hidden}
+.proof-audio-timing{display:flex;justify-content:space-between;gap:16px;font-size:9px;font-variant-numeric:tabular-nums;color:#8492a4;line-height:1;margin-top:2px}
+.proof-audio-transport{position:relative;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin-top:15px;min-width:0}
+.proof-audio-player-buttons{grid-column:2;display:flex;align-items:center;justify-content:center;gap:19px}
+.proof-audio-player-buttons>button{position:relative;display:grid;place-items:center;width:36px;height:40px;border:0;border-radius:50%;padding:0;background:transparent;color:#8393a6;cursor:pointer}
+.proof-audio-player-buttons>button>span{position:absolute;top:15px;left:0;width:100%;text-align:center;font-size:6px;line-height:1;font-weight:650;letter-spacing:-.04em;pointer-events:none}
+.proof-audio-player-buttons>button:disabled{opacity:.35;cursor:default}
+.proof-audio-player-buttons>button.proof-audio-play{width:58px;height:58px;border:1px solid #1b365016;background:linear-gradient(145deg,#355676,#1c3855);color:#fff;box-shadow:0 3px 5px #1b365010,0 9px 20px -11px #1c3855a0;transition:transform .16s,box-shadow .16s}
+.proof-audio-play>svg.lucide-play{margin-left:2px}.proof-audio-player-buttons>button.proof-audio-play:hover{box-shadow:0 3px 5px #1b365015,0 10px 24px -10px #1c3855a0}.proof-audio-player-buttons>button.proof-audio-play:active{transform:scale(.96)}
+.proof-audio-volume{display:flex;align-items:center;justify-content:flex-end;justify-self:end;gap:7px;width:90px;min-width:0}
+.proof-audio-volume button{display:grid;place-items:center;width:30px;height:34px;flex-shrink:0;background:transparent;border:0;padding:0;color:#8495a9;cursor:pointer}
+.proof-audio-volume input{width:54px;min-width:0;height:3px;accent-color:#7c93ad;cursor:pointer}
+.proof-audio-player input:focus-visible,.proof-audio-player button:focus-visible{outline:2px solid #6c91bd;outline-offset:5px}
+.proof-audio-playback-message{font-size:11px!important;line-height:1.6;margin:0;color:#74869d}
+.proof-media-dialog .proof-audio-player{min-height:100%;justify-content:center;gap:25px;padding:28px 24px;overflow:auto}
+.proof-media-dialog .proof-audio-player .proof-audio-artwork{width:min(40dvh,400px,100%)}
+.asset-object[data-motion=paused] .proof-audio-disc{animation-play-state:paused}
+@media(max-width:540px),(hover:none) and (pointer:coarse){.proof-audio-volume{display:none}.proof-audio-transport{display:flex;justify-content:center}.proof-audio-view.proof-audio-player{gap:21px;padding:24px 18px}.proof-audio-player-caption h3{font-size:16px}.proof-audio-player-buttons{gap:22px}.proof-media-dialog .proof-audio-player .proof-audio-artwork{width:min(39dvh,400px,100%)}}
+@media(prefers-reduced-motion:reduce){.proof-audio-player-buttons>button.proof-audio-play,.proof-audio-seek input::-webkit-slider-thumb{transition:none}}

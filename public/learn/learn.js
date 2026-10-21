@@ -72,6 +72,7 @@
   const { pages, bank } = JSON.parse(element.textContent);
   let publicRoot = document.getElementById('public-learn-root'), bankRoot = document.getElementById('root');
   let bankLoaded = Boolean(bankRoot), bankUrl = '/', bankFocus = null;
+  let bankLoading = null;
   const pathname = path => /^\/explorer\/?$/.test(path) ? '/explore/' : path === '/' ? '/' : path.endsWith('/') ? path : path + '/';
   const assetMetadata=new Map(),assetEntries=new Map();
   const keepAsset=value=>{if(value&&typeof value.id==='string'&&value.id.length<=256&&typeof value.title==='string'){assetMetadata.set(value.id,{...value,description:value.description??value.summary});assetEntries.delete(value.id);if(assetMetadata.size>48){const first=assetMetadata.keys().next().value;assetMetadata.delete(first);assetEntries.delete(first);}}};
@@ -159,6 +160,20 @@
       if (link) link.disabled = !on;
     }
   };
+  // Both ordinary bank navigation and an explicit public asset action use this
+  // one retained root and import. Loading alone does not select a page or head.
+  const ensureBankRuntime = () => {
+    if (!bankRoot) { bankRoot = document.createElement('div'); bankRoot.id = 'root'; bankRoot.innerHTML = bank.content || ''; hide(bankRoot); document.body.append(bankRoot); }
+    if (bankLoaded) return Promise.resolve();
+    if (!bankLoading) bankLoading = import(bank.entry).then(() => { bankLoaded = true; }).finally(() => { bankLoading = null; });
+    return bankLoading;
+  };
+  addEventListener('bankeiz:request-bank-runtime', event => {
+    const request = event.detail;
+    if (!request || typeof request.resolve !== 'function' || typeof request.reject !== 'function') return;
+    request.handled = true;
+    void ensureBankRuntime().then(request.resolve, request.reject);
+  });
   const render = async (restoring = false) => {
     const path = pathname(location.pathname), page = pageAt(path), learn = Boolean(page && !page.runtime);
     let focusPublic = false, destination;
@@ -189,9 +204,9 @@
       restoreHead(page.head); styles(false);
     } else {
       hide(publicRoot);
-      if (!bankRoot) { bankRoot = document.createElement('div'); bankRoot.id = 'root'; bankRoot.innerHTML = bank.content || ''; document.body.append(bankRoot); }
+      const opening = ensureBankRuntime();
       show(bankRoot); destination = bankRoot; restoreHead(bank.head); styles(true);
-      if (!bankLoaded) { bankLoaded = true; try { await import(bank.entry); } catch { bankLoaded = false; bankRoot.textContent = 'The bank could not open. Please check your connection and try again.'; } }
+      try { await opening; } catch { bankRoot.textContent = 'The bank could not open. Please check your connection and try again.'; }
     }
     // Pause hidden feeds, live clocks and dialogs before destination focus and
     // scroll. Public workspaces retain their exact React state and file input.
