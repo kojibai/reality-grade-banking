@@ -1,4 +1,4 @@
-export interface PublicAssetTradeIntent {itemId: string; side: 'buy' | 'sell'; title: string; initialBudget?: string; resumeSessionId?: string;}
+export interface PublicAssetTradeIntent {itemId: string; side: 'buy' | 'sell'; title: string; initialBudget?: string; resumeSessionId?: string; resumeTradeReview?: boolean;}
 export interface PublicAssetTradeRequest extends PublicAssetTradeIntent {id: number; pathname: string; slot: HTMLElement | null; connected: boolean;}
 let current: PublicAssetTradeRequest | null = null, sequence = 0;
 const listeners = new Set<() => void>();

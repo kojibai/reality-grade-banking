@@ -63,15 +63,19 @@ it('opens the existing sheet on intent, keeping the asset URL and head while run
   } finally {act(() => root.unmount()); host.remove(); removeEventListener('bankeiz:request-bank-runtime', loader);}
 });
 
-it('portals the funded account trade into the public sheet and requires its original review and approval', async () => {
-  const {account, api} = fixture(), host = document.createElement('div'), root = createRoot(host); document.body.append(host);
+it.each([true, false])('takes public buyers directly from amount to existing card checkout, even with an existing balance (%s)', async funded => {
+  const {account, identity, api} = fixture(funded), host = document.createElement('div'), root = createRoot(host); document.body.append(host);
+  const market = vi.spyOn(identity, 'marketTrade').mockRejectedValue(new Error('BANK_MARKET_TERMS_UNAVAILABLE'));
   try {
     await act(async () => root.render(<><PublicAssetTradeHost/><div hidden inert><PublicAssetTradePortal account={account}/></div></>));
     await act(async () => {beginPublicAssetTrade({itemId: 'profile:artist:source', side: 'buy', title: 'An original'});});
     const dialog = host.querySelector('dialog')!; expect(dialog.textContent).toContain('Buy ownership'); expect(dialog.querySelector('input')?.value).toBe('');
-    await enterAmount(dialog, '25'); await act(async () => button(dialog, 'Review trade').click());
-    expect(api.prepare).toHaveBeenCalledExactlyOnceWith({marketItemId: 'profile:artist:source', side: 'buy', amountUsdCents: '2500'});
-    expect(dialog.textContent).toContain('Review purchase'); expect(button(dialog, 'Confirm purchase').disabled).toBe(true); expect(api.execute).not.toHaveBeenCalled();
+    expect(dialog.textContent).not.toContain('Review trade'); expect(dialog.textContent).not.toContain('Add money for this purchase');
+    expect(dialog.textContent).not.toContain('Pay with a Note'); expect(dialog.textContent).not.toContain('Back to purchase');
+    await enterAmount(dialog, '25'); await act(async () => button(dialog, 'Continue to payment').click());
+    expect(identity.beginCardDeposit).toHaveBeenCalledExactlyOnceWith('25', true);
+    expect(dialog.querySelector('iframe')?.title).toBe('Secure card deposit');
+    expect(market).not.toHaveBeenCalled(); expect(api.prepare).not.toHaveBeenCalled(); expect(api.execute).not.toHaveBeenCalled();
   } finally {act(() => root.unmount()); host.remove();}
 });
 
@@ -133,6 +137,20 @@ it('does not turn selecting an old checkout into fresh asset purchase approval',
  }finally{act(()=>root.unmount());}
 });
 
+it('recovers a funded purchase into its native trade check without requesting another card payment',async()=>{
+ const {account,identity,api}=fixture(),host=document.createElement('div'),root=createRoot(host);
+ const intent={itemId:'profile:artist:source',side:'buy' as const,title:'An original'};
+ retainPublicPurchase(intent,checkout,'trade');history.replaceState(null,'',assetPagePath(intent.itemId));
+ api.status.mockResolvedValue({status:'unknown',clientNonce:'funded-original-trade'});
+ try{
+  await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={account}/></>));
+  await act(async()=>button(host,'Continue purchase review').click());
+  const dialog=host.querySelector('dialog')!;
+  expect(dialog.textContent).toContain('Confirming your trade');expect(dialog.textContent).toContain('Check trade outcome');
+  expect(dialog.querySelector('iframe')).toBeNull();expect(identity.beginCardDeposit).not.toHaveBeenCalled();expect(api.prepare).not.toHaveBeenCalled();expect(api.execute).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
+
 it('keeps an earlier unknown trade separate from a newly approved funded purchase',async()=>{
  const {account,api,credit}=fixture(false),host=document.createElement('div'),root=createRoot(host);
  api.status.mockResolvedValue({status:'unknown',clientNonce:'unrelated-earlier-trade'});
@@ -146,19 +164,6 @@ it('keeps an earlier unknown trade separate from a newly approved funded purchas
   await act(async()=>button(dialog,'Check earlier trade').click());
   expect(dialog.textContent).toContain('Continue your purchase');expect(dialog.textContent).not.toContain('Purchase complete');expect(api.execute).not.toHaveBeenCalled();
   await act(async()=>button(dialog,'Continue purchase').click());expect(dialog.textContent).toContain('Purchase complete');expect(api.execute).toHaveBeenCalledOnce();
- }finally{act(()=>root.unmount());}
-});
-
-it('keeps a fresh buyer’s edited budget when returning from original Note deposit',async()=>{
- const {account,identity,api}=fixture(false),host=document.createElement('div'),root=createRoot(host),bytes=new Uint8Array([1]),value={noteId:'owned-note',rail:'settlement',amountUsdCents:'2500',amountPhiMicro:'1000000'};
- identity.offlineNotes=async()=>({inspect:async()=>value,deposit:async()=>({...value,status:'received',proofBytes:bytes})})as never;
- try{
-  await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={account}/></>));
-  await act(async()=>{beginPublicAssetTrade({itemId:'profile:artist:source',side:'buy',title:'An original'});});
-  const dialog=host.querySelector('dialog')!;await enterAmount(dialog,'25');await act(async()=>button(dialog,'Pay with a Note').click());
-  const file=dialog.querySelector<HTMLInputElement>('input[type="file"]')!;Object.defineProperty(file,'files',{value:[{size:1,arrayBuffer:async()=>bytes.buffer}]});
-  await act(async()=>file.dispatchEvent(new Event('change',{bubbles:true})));await act(async()=>button(dialog,'Deposit note').click());await act(async()=>button(dialog,'Done').click());
-  expect(dialog.querySelector<HTMLInputElement>('[aria-label="Dollar budget (USD)"]')?.value).toBe('25');expect(api.execute).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());}
 });
 
