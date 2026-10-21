@@ -1,3 +1,4 @@
+import {safeImportedSourceUrl} from '../src/receiz/imported-source-url.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
 import {publicAssetTitle,publicAuthoredAssetTitle} from '../src/receiz/asset-title.js';
@@ -30,10 +31,10 @@ export function resolvePublicMarketTarget(requestUrl: string): URL | null {
     if([...proof.searchParams.keys()].some(key=>!['a','ms','tz'].includes(key))||!/^[a-f0-9]{8}$/i.test(anchor)||!/^\d{10,17}$/.test(ms)||!Number.isSafeInteger(Number(ms))||!/^[a-f0-9]{8}$/i.test(parts[3]??'')||tz!==null&&(!/^-?\d{1,4}$/.test(tz)||Number(tz)<-840||Number(tz)>840))return null;
     const query=new URLSearchParams({a:anchor,ms,p:parts[4],c:parts[3]});if(tz!==null)query.set('tz',tz);return new URL(`/api/receiz/download?${query}`,'https://receiz.com');
   }
-  if (local.pathname !== `${PREFIX}original` || [...local.searchParams.keys()].some(key => key !== 'path') || local.searchParams.getAll('path').length !== 1) return null;
+  if (![`${PREFIX}original`,`${PREFIX}resource`].includes(local.pathname) || [...local.searchParams.keys()].some(key => key !== 'path') || local.searchParams.getAll('path').length !== 1) return null;
   const path = local.searchParams.get('path'); if (!path || !path.startsWith('/api/')) return null;
   const target = new URL(path, 'https://receiz.com');
-  return safeReceizPublicUrl(target.href, 'original') ? target : null;
+  return (local.pathname===`${PREFIX}resource`?safeImportedSourceUrl(target.href,'media'):safeReceizPublicUrl(target.href,'original')) ? target : null;
 }
 interface CachedResponse { bytes: Uint8Array; type: string; etag: string | null; fetchedAt: number; }
 class OriginalPurchaseRefusal extends Error {}
@@ -48,7 +49,7 @@ async function readBounded(response: Response): Promise<Uint8Array> {
 }
 async function loadPublicResponse(target: URL): Promise<CachedResponse> {
   const key = target.href, previous = cache.get(key);
-  const original = target.pathname === '/api/profile/originals/download' || target.pathname.startsWith('/api/proof-material/packages/')||target.pathname==='/api/receiz/download';
+  const original = target.pathname === '/api/profile/originals/download' || target.pathname.startsWith('/api/proof-material/packages/')||target.pathname==='/api/receiz/download'||target.pathname==='/api/profile/showcase/imported-source';
   if (!original && previous && Date.now() - previous.fetchedAt < 60_000) return previous;
   const inflight = pending.get(key); if (inflight) return inflight;
   const attempt = (async () => {

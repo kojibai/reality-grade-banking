@@ -70,6 +70,7 @@ export function projectImportedSourceOriginal(source: OpenedImportedProofSource,
       sourceProofHead: terminal.verification.assetContinuity?.state === "verified" ? terminal.verification.assetContinuity.headReference : null,
       pbiAppendHeads: p.pbi.history.map(append => append.appendHeadSha256) },
     contextPreset: carried?.contextPreset ?? null, claimHashHex: carried?.claimHashHex ?? null,
+    ...(p.bankAsset?{assetTitle:p.bankAsset.title}:{}),
     claim: p.bankAsset?.description ?? p.claim ?? "",
     ...(p.bankAsset?.text ? {longForm:{title:p.bankAsset.title,text:p.bankAsset.text,sha256Hex:bytesToHex(sha256(new TextEncoder().encode(p.bankAsset.text))),wordCount:p.bankAsset.text.trim().split(/\s+/u).filter(Boolean).length}} : {}),
     ...(p.bankAsset?.files.length ? {attachments:p.bankAsset.files.map((file,index)=>({id:`bank-asset-file:${file.sha256}:${index}`,role:"source" as const,name:file.filename,mime:file.mimeType,size:file.bytes.length,sha256Hex:file.sha256,src:`${importedSourceResourcePath(reference)}&assetFile=${index}`,storage:null,downloadName:file.filename,description:null,createdAt:null}))} : {}),
@@ -101,6 +102,18 @@ export function projectImportedSourceOriginal(source: OpenedImportedProofSource,
       epubCoverSrc: null, epubCoverMime: null, epubCoverName: null, epubCoverImageVariants: null, epubMetadata: null, audioDistribution: null,
     },
   };
+  const composer=p.bankAsset?.composer;
+  if(composer){
+    const resource=(id:string)=>`${importedSourceResourcePath(reference)}&file=${encodeURIComponent(id)}`;
+    original.attachments=composer.files.filter(file=>file.role==="attachment").map(file=>({id:file.id,role:file.attachmentRole??"source",name:file.name,mime:file.mime,size:file.size,sha256Hex:file.sha256,src:resource(file.id),storage:null,downloadName:file.name,description:file.description??null,createdAt:null}));
+    if(composer.kind==="moment")original.media=null;
+    else if(original.media){
+      const cover=composer.files.find(file=>file.role==="cover");
+      original.media={...original.media,...(["audio","video"].includes(composer.kind)?{playbackSrc:importedSourceResourcePath(reference,true),playbackMime:mime}:{}),
+        audioDistribution:composer.music??null,epubMetadata:composer.book??null,
+        ...(cover?{...(composer.kind==="audio"?{audioCoverSrc:resource(cover.id),audioCoverMime:cover.mime,audioCoverName:cover.name}:composer.kind==="video"?{videoPosterSrc:resource(cover.id),videoPosterMime:cover.mime,videoPosterName:cover.name}:{epubCoverSrc:resource(cover.id),epubCoverMime:cover.mime,epubCoverName:cover.name})}:{})};
+    }
+  }
   if (original.originalCreator) Object.freeze(original.originalCreator);
   if (original.media) Object.freeze(original.media);
   if (sourceIdentity) Object.freeze(sourceIdentity);

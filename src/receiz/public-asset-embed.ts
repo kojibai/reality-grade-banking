@@ -1,3 +1,4 @@
+import {safeImportedSourceUrl} from "./imported-source-url.js";
 import type {PublicMarketItem} from './public-market.js';
 
 export type PublicPlayback={url:string;mimeType:string|null};
@@ -25,11 +26,12 @@ export function publicMediaPlayback(input:unknown,exactOriginalUrl?:string|null)
    const url=new URL(candidate,'https://receiz.com');
    if(url.origin!=='https://receiz.com'||url.username||url.password||url.hash)continue;
    const query=url.searchParams;
+   const imported=safeImportedSourceUrl(candidate,"media");
    const native=url.pathname==='/api/profile/originals/media'&&[...query.keys()].length===2&&query.getAll('receizId').length===1&&query.get('receizId')===source.receizId&&query.getAll('slot').length===1&&['preview','playback'].includes(query.get('slot')??'');
    const publicFile=!url.search&&!url.pathname.startsWith('/api/')&&!url.pathname.startsWith('/storage/')&&/^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.(?:mp3|m4a|aac|wav|ogg|opus|mp4|m4v|mov|webm|m3u8)$/i.test(url.pathname)&&!url.pathname.split('/').some(part=>part==='.'||part==='..');
    const storage=url.pathname==='/api/storage/object'&&[...query.keys()].length===2&&query.getAll('bucket').length===1&&['receiz-profile-originals','receiz-profile-media'].includes(query.get('bucket')??'')&&query.getAll('path').length===1&&/^(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.(?:mp3|m4a|aac|wav|ogg|opus|mp4|m4v|mov|webm|m3u8)$/i.test(query.get('path')??'')&&!(query.get('path')??'').split('/').some(part=>part==='.'||part==='..');
    const artifact=artifactAudio?.url===url.href;
-   if(!native&&!publicFile&&!storage&&!artifact)continue;
+   if(!native&&!publicFile&&!storage&&!artifact&&!imported)continue;
    if(artifact)return artifactAudio;
    const mime=held.mimeType??media.playbackMime??source.mediaMime??media.mime;
    const mimeType=typeof mime==='string'&&(new RegExp(`^${kind}/[a-zA-Z0-9.+-]+$`).test(mime)||kind==='video'&&['application/vnd.apple.mpegurl','application/x-mpegURL'].includes(mime))?mime:null;

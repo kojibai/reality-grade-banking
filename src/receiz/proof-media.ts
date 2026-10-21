@@ -6,6 +6,9 @@ import type {ReceizVerifiedPayload} from '@receiz/sdk';
 import {retainProofInspection,trackProofInspection} from './proof-inspection';
 import {loadOfflineProofVerifier} from './ledger-offline-proof';
 import {readAssetMoment,type MomentMetadata} from './asset-moment';
+import {readComposerAssetContent,readComposerCapacity,type ComposerAssetFile} from './asset-composer';
+import {safeImportedSourceUrl} from './imported-source-url';
+import {readExactByteBlocks} from '../../native/receiz/packages/receiz-sdk/src/exactByteBlocks';
 import {ORIGINAL_PNG_MAX_BYTES,originalReadLimit} from './original-capacity';
 
 export type MediaKind='image'|'audio'|'video'|'pdf'|'text'|'book'|'file';
@@ -35,8 +38,8 @@ function readMediaJson(payload:ReceizVerifiedPayload){
  if(!payload.bytes.length||payload.bytes.length>MAX)throw Error('This media exceeds the supported reader capacity.');
  const text=decode(payload.bytes);try{return {text,value:JSON.parse(text),valid:true};}catch{return {text,value:undefined,valid:false};}
 }
-async function readBasicMediaPayload(payload:ReceizVerifiedPayload,json?:ReturnType<typeof readMediaJson>):Promise<MediaFile[]>{
- if(!payload.bytes.length||payload.bytes.length>originalReadLimit(payload.bytes,MAX,payload.mimeType))throw Error('This media exceeds the supported reader capacity.');
+async function readBasicMediaPayload(payload:ReceizVerifiedPayload,json?:ReturnType<typeof readMediaJson>,maximum=MAX):Promise<MediaFile[]>{
+ if(!payload.bytes.length||payload.bytes.length>originalReadLimit(payload.bytes,maximum,payload.mimeType))throw Error('This media exceeds the supported reader capacity.');
  const mime=payload.mimeType.split(';')[0].trim().toLowerCase(),file:MediaFile={kind:'file',filename:cleanName(payload.filename),mimeType:mime,bytes:payload.bytes,payloadDigest:payload.sha256};
  if(mime==='application/epub+zip'||['application/octet-stream','application/zip','application/x-zip-compressed'].includes(mime)&&isEpubArchive(payload.bytes))return (await import('./proof-book')).readBook(payload);
  if((mime==='application/octet-stream'||mime==='application/pdf')&&String.fromCharCode(...payload.bytes.subarray(0,5))==='%PDF-'){file.kind='pdf';file.mimeType='application/pdf';if(!/\.pdf$/i.test(file.filename))file.filename='Document.pdf';}
@@ -46,10 +49,19 @@ async function readBasicMediaPayload(payload:ReceizVerifiedPayload,json?:ReturnT
  }
  return [file];
 }
-async function readPayload(payload:ReceizVerifiedPayload,json:ReturnType<typeof readMediaJson>):Promise<MediaFile[]>{
+export type ComposerMediaContext={ownerReceizId:string;resolveFile(file:ComposerAssetFile):Promise<Uint8Array>};
+async function readPayload(payload:ReceizVerifiedPayload,json:ReturnType<typeof readMediaJson>,composer?:ComposerMediaContext):Promise<MediaFile[]>{
  if(!payload.bytes.length||payload.bytes.length>originalReadLimit(payload.bytes,MAX,payload.mimeType))throw Error('This media exceeds the supported reader capacity.');
  if(json){
   const value=json.value;
+  if(value?.schema==='receiz.bank.asset-content.v2'){
+   if(!composer)throw Error('The original files are not available in this view.');
+   const content=readComposerAssetContent(value,composer.ownerReceizId),files:MediaFile[]=[];
+   const primary=content.files.find(file=>file.role==='primary');
+   if(primary){const bytes=await composer.resolveFile(primary),{sha256ReceizBytes}=await import('@receiz/sdk');if(bytes.length!==primary.size||await sha256ReceizBytes(bytes)!==primary.sha256)throw Error('The original file does not match its sealed source.');files.push(...await readBasicMediaPayload({bytes,filename:primary.name,mimeType:primary.mime,sha256:primary.sha256},undefined,readComposerCapacity().maxPrimaryBytes[content.kind]??MAX));}
+   if(content.longForm){const {sha256ReceizBytes}=await import('@receiz/sdk'),bytes=new TextEncoder().encode(content.title+'\n\n'+content.longForm);files.push(...await readBasicMediaPayload({bytes,sha256:await sha256ReceizBytes(bytes),filename:'Long-form text.txt',mimeType:'text/plain'}));}
+   return files;
+  }
   if(value?.schema==='receiz.bank.asset-definition.v1'&&value.moment!=null){
    const moment=await readAssetMoment(value.moment),files:MediaFile[]=[];
    for(const original of moment.files)files.push(...await readBasicMediaPayload(original));
@@ -59,8 +71,8 @@ async function readPayload(payload:ReceizVerifiedPayload,json:ReturnType<typeof 
  }
  return readBasicMediaPayload(payload,json);
 }
-export function readMediaPayload(payload:ReceizVerifiedPayload):Promise<MediaFile[]>{
- return readPayload(payload,readMediaJson(payload));
+export function readMediaPayload(payload:ReceizVerifiedPayload,composer?:ComposerMediaContext):Promise<MediaFile[]>{
+ return readPayload(payload,readMediaJson(payload),composer);
 }
 /** The unchanged native canonical read is the only payload entry. Rendering
  * does not admit ownership, custody, transfers or account value. */
@@ -91,7 +103,23 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
  let opened;try{opened=await(await loadOfflineProofVerifier()).readArtifact(bytes,filename);}catch{throw Error('This original could not be opened as verified media. Inspect its proof source for details.');}signal?.throwIfAborted();
  if(opened.report.artifactSha256.toLowerCase()!==source.digest.toLowerCase())throw Error('This original does not match the selected proof.');
  retainProofInspection(opened.report,bytes,filename);
- const json=readMediaJson(opened.payload),files=await readPayload(opened.payload,json);signal?.throwIfAborted();
+ const json=readMediaJson(opened.payload);
+ const verification=opened.report.verification as {bundle?:{nativeRecordSeal?:{ownerReceizId?:string}}};
+ const composer:ComposerMediaContext|undefined=json?.value?.schema==='receiz.bank.asset-content.v2'?{
+  ownerReceizId:verification.bundle?.nativeRecordSeal?.ownerReceizId??'',
+  resolveFile:async file=>{
+   signal?.throwIfAborted();
+   if(source.kind==='public'){
+    const safe=safeImportedSourceUrl(source.url,'artifact');if(!safe)throw Error('The original file coordinate is unavailable.');
+    const target=new URL(safe),reference=JSON.parse(target.searchParams.get('reference')!);if(reference.artifactSha256!==source.digest.toLowerCase())throw Error('The original file coordinate does not match its source.');target.searchParams.set('file',file.id);
+    const response=await fetch('/api/bank/public-market/resource?path='+encodeURIComponent(target.pathname+target.search),{credentials:'omit',redirect:'error',signal});if(!response.ok)throw Error('The original file is temporarily unavailable.');return readPublicLedgerBytes(response,file.size);
+   }
+   const runtime=await(await import('./asset-publication-runtime')).loadAssetPublicationRuntime(),parts:Uint8Array[]=[];
+   for await(const bytes of readExactByteBlocks(file.bytes,runtime.resolveComposerBlock,{component:'Bank composer media',maxContentBytes:file.size,maxBlockReads:131072})){signal?.throwIfAborted();parts.push(bytes);}
+   const result=new Uint8Array(file.size);let offset=0;for(const part of parts){result.set(part,offset);offset+=part.length;}return result;
+  }
+ }:undefined;
+ const files=await readPayload(opened.payload,json,composer);signal?.throwIfAborted();
  if(source.kind==='held'&&json){
   const value=json.value;
   const linked=value?.schema==='receiz.bank.asset-definition.v1'?value.definition?.linkedProofDigest:null;

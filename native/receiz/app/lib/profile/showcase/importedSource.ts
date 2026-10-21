@@ -1,3 +1,4 @@
+import {openComposerResources} from "./composerResources";
 import {readBankAssetContent,type BankAssetContent} from "./bankAssetContent";
 import { executeSelectedSource } from "@/app/lib/documentSeal/selectedSourceExecution";
 import { parseReceizTrailer } from "@/app/lib/documentSeal/trailerProof";
@@ -10,7 +11,7 @@ import { admitCanonicalStreamingTrailerVerification, normalizeLegacyKaiLineArtif
 import { pinnedReceizSignatureV4RootPublicKeysForClient } from "@/app/lib/security/receizSignatureV4Pinned";
 import type { ReceizSignatureV4RootPublicKey } from "@/app/lib/security/receizSignatureV4";
 import type { ProfileCard } from "@/app/lib/profile/types";
-import { parseExactByteBlockReference, readExactByteBlocks, writeExactByteBlocks, type ExactByteBlockReference, type ExactByteBlockResolver, type ExactByteBlockWriter } from "@/app/lib/transport/exactByteBlocks";
+import { parseExactByteBlockReference, readExactByteBlocks, writeExactByteBlocks, type ExactByteBlockResolver, type ExactByteBlockWriter } from "@/app/lib/transport/exactByteBlocks";
 import { createImportedSourcePrivacyInspection, rejectImportedSourceRecoveryBlob, rejectImportedSourceRecoveryBytes } from "./importedSourcePrivacy";
 import { validateReceizExactByteVerification } from "../../../../packages/receiz-sdk/src/verifier/canonical";
 import { decodeProfileOriginalRouteProjectionAppend } from "./routeProjectionEncoding";
@@ -18,14 +19,8 @@ import { ImportedProofSourceUnavailableError } from "./importedSourceErrors";
 
 /** Locators and exact-byte commitments only. No owner, creator, Kai or signature
  * projection supplied by a caller may authorize the source described here. */
-export type ImportedProofSourceDescriptor = Readonly<{
-  schema: "receiz.imported-proof-source.v1";
-  artifactSha256: string;
-  byteLength: number;
-  filename: string;
-  mimeType: string;
-}>;
-export type ImportedProofSourceReference = ImportedProofSourceDescriptor & Readonly<{ bytes: ExactByteBlockReference }>;
+export type {ImportedProofSourceDescriptor,ImportedProofSourceReference} from "./importedSourceReference";
+import type {ImportedProofSourceDescriptor,ImportedProofSourceReference} from "./importedSourceReference";
 export type ImportedProofSourceOptions = Readonly<{
   /** Transport supplied by the host; references never confer admission. */
   resolveSourceBlock?: ExactByteBlockResolver;
@@ -75,6 +70,7 @@ export type OpenedImportedProofSource = Readonly<{
   exactArtifact: Blob;
   /** Exact enclosing verified payload before optional media projection. */
   sourcePayload: Blob;
+  composerResources?: Readonly<Record<string,Blob>>;
   payload: Blob;
   verification: ReceizVerifierProjectionResult;
   referencedSources?: readonly OpenedImportedProofSource[];
@@ -256,6 +252,11 @@ async function openImportedProofSourceWithTraversal(
   const continuity = verification.assetContinuity;
   const carriedOriginal = sourceOriginal(verification);
   const bankAsset = await readBankAssetContent(sourcePayload, bundle.nativeRecordSeal?.ownerReceizId ?? null);
+  let composerResources=bankAsset?.composer?await openComposerResources(bankAsset.composer,options.resolveSourceBlock,bytes=>{
+    if((traversal.remainingBytes-=bytes)<0)throw new ImportedProofSourceUnavailableError("IMPORTED_SOURCE_RESOURCE_EXECUTION_BUDGET","VERIFICATION_RESOURCE_UNAVAILABLE","verified");
+  },()=>{if(--traversal.remainingBlockReads<0)throw new ImportedProofSourceUnavailableError("IMPORTED_SOURCE_RESOURCE_READ_BUDGET","VERIFICATION_RESOURCE_UNAVAILABLE","verified");}):undefined;
+  const primary=bankAsset?.composer?.files.find(file=>file.role==="primary");
+  if(primary&&composerResources){payload=composerResources[primary.id];payloadSha256=primary.sha256;payloadFilename=primary.name;payloadMimeType=primary.mime;}
   if(bankAsset?.files[0]) { const file=bankAsset.files[0]; payload=new Blob([file.bytes.slice().buffer as ArrayBuffer],{type:file.mimeType}); payloadSha256=file.sha256; payloadFilename=file.filename; payloadMimeType=file.mimeType; }
   // The accepted portable Original may carry its rendered child bytes. Resolve
   // that payload now, beneath the enclosing source; rendering reuses this held
@@ -326,11 +327,12 @@ async function openImportedProofSourceWithTraversal(
     if (!carriedOriginal || jcsCanonicalize(carriedOriginal) !== jcsCanonicalize(expected)) throw new TypeError("IMPORTED_SOURCE_NESTED_PROJECTION_INVALID");
     projection = Object.freeze({ ...nested.projection, originalCreator: expected.originalCreator ?? null });
     payload = nested.payload;
+    composerResources = nested.composerResources;
     referencedSources = Object.freeze([nested]);
   }
   const result: OpenedImportedProofSource = Object.freeze({
     descriptor: Object.freeze({ schema: "receiz.imported-proof-source.v1", artifactSha256, byteLength: exactArtifact.size, filename, mimeType }),
-    projection, exactArtifact, sourcePayload, payload, verification, ...(referencedSources ? { referencedSources } : {}),
+    projection, exactArtifact, sourcePayload, payload, verification, ...(composerResources?{composerResources}:{}), ...(referencedSources ? { referencedSources } : {}),
     ...(packageAuthority ? { sourceKind: "folder-package" as const, packageAuthority } : { sourceKind: "document" as const }),
   });
   openedSources.add(result);

@@ -3,6 +3,7 @@ import type {BankNoteRuntimeFactory} from './offline-notes';
 import publicationBuild from '../../public/native/asset-publication.v129.manifest.json';
 import {parseExactByteBlockReference,type ExactByteBlockReference} from '../../native/receiz/packages/receiz-sdk/src/exactByteBlocks';
 export interface AssetPublicationRuntimeModule{
+ resolveComposerBlock(reference:ExactByteBlockReference):Promise<Uint8Array>;
  createConnectedAssetPublicationRuntime(input:{identity:Uint8Array;passphrase:string;account:{uid:string;username:string};sealDocument:Parameters<BankNoteRuntimeFactory>[0]['sealDocument'];fetchImpl:typeof fetch;assertCurrent():void}):Promise<{publish(file:File):Promise<AssetPublicationReceipt>}>;
 }
 let runtime:Promise<AssetPublicationRuntimeModule>|undefined;

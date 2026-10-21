@@ -1,3 +1,4 @@
+import {safeImportedSourceUrl} from "./imported-source-url.js";
 import {publicMarketPulseSeed,type MarketPulseSeed,type MarketValueRow} from './market-projection/source.js';
 import type {MarketSealedBirth} from './market-projection/sealed-copies.js';
 import type {SportsHistorySnapshot} from './market-projection/sports-observations.js';
@@ -46,6 +47,7 @@ export function safeReceizArtworkUrl(input:unknown):string|null {
   try {
     const url=new URL(value,'https://receiz.com');
     if(url.origin!=='https://receiz.com'||url.username||url.password||url.hash)return null;
+    const imported=safeImportedSourceUrl(value,"media");if(imported)return imported;
     const params=url.searchParams,only=(keys:string[])=>[...params.keys()].every(key=>keys.includes(key)&&params.getAll(key).length===1),image=(path:string)=>/\.(?:avif|gif|jpe?g|png|webp|svg)$/i.test(path),pathSafe=(path:string)=>path.length<=2048&&/^[a-zA-Z0-9_./-]+$/.test(path)&&path.split('/').every(part=>part&&part!=='.'&&part!=='..');
     if(url.pathname==='/api/profile/originals/media')return only(['receizId','slot','width'])&&/^[a-zA-Z0-9_-]{1,128}$/.test(params.get('receizId')??'')&&/^(?:preview|audioCover|videoPoster|epubCover|imageVariant|audioCoverVariant|videoPosterVariant|epubCoverVariant)$/.test(params.get('slot')??'')&&(!params.has('width')||/^\d{2,4}$/.test(params.get('width')!)&&Number(params.get('width'))<=4096)?url.href:null;
     if(/^\/api\/proof-material\/packages\/[a-f0-9]{64}\/artifact$/.test(url.pathname))return !url.search?url.href:null;
@@ -84,6 +86,7 @@ export function safeReceizPublicUrl(input: unknown, kind: 'source' | 'proof' | '
   try {
     const url = new URL(value, 'https://receiz.com');
     if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return null;
+    if(kind==='original'){const imported=safeImportedSourceUrl(value,'artifact');if(imported)return imported;}
     if (kind === 'source' && /^\/game\/sports\/card\/rsc_[a-f0-9]{16}\/?$/i.test(url.pathname)) return [...url.searchParams.keys()].length === 1 && /^[a-f0-9]{64}$/i.test(url.searchParams.get('claimHash') ?? '') ? url.href : null;
     if (kind === 'source') return !url.search && (/^\/[a-zA-Z0-9_-]{1,64}\/verified\/[a-zA-Z0-9_-]{1,128}\/?$/.test(url.pathname) || /^\/market\/assets\/[a-zA-Z0-9_-]{1,128}\/?$/.test(url.pathname)) ? url.href : null;
     if (kind === 'proof') return /^\/v\/[a-zA-Z0-9_-]{1,64}\/[a-fA-F0-9]{8,64}\/\d{1,24}\/?$/.test(url.pathname) && [...url.searchParams.keys()].every(key => ['a', 'ms', 'c', 'p', 'tz'].includes(key) && url.searchParams.getAll(key).length === 1) ? url.href : null;

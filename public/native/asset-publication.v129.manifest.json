@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.0.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "a87bb4dc6bdf3a8cf5375b196d3bda09f92d39e24b6909146bf5078c0c0d13fe",
-  "sourceTreeSha256": "5f92d33d7c22a2f2f3336888fc434ec391c96e61a02f348fcba26d3da6fe60c4",
-  "inputs": 487,
-  "bytes": 2898243,
+  "moduleSha256": "3cb5100cf789ca42b66077e168c271a4246c88002bfb1dfee01e687fedca060d",
+  "sourceTreeSha256": "6aa165df3b4b3c79d4a6706c1dd0745e0ccb4681352b2110b861799203058dc6",
+  "inputs": 490,
+  "bytes": 2911123,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -382,6 +382,86 @@
       "sha256": "38e14bd4e5f5b9f94c9df05ef6a347aee0f1f81192b43e4c2a455391a4d6a81e",
       "purpose": "Preserve the complete signed Reserve and Settlement funding split through the existing connected Note source, recipient-bound handover and exact credit. Qualified offline custody checks remain unchanged.",
       "upstreamCommit": "78e49df11"
+    },
+    {
+      "id": "bankeiz-composer-media-composerPreparation",
+      "path": "receiz/app/lib/profile/composerPreparation.ts",
+      "baseSha256": "a7542b453c85d608a81bb568d6d9650989e1e8e8302e8e60c9aa8cb2ffe8964a",
+      "sha256": "a7542b453c85d608a81bb568d6d9650989e1e8e8302e8e60c9aa8cb2ffe8964a",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-composerPreparation.client",
+      "path": "receiz/app/lib/profile/composerPreparation.client.ts",
+      "baseSha256": null,
+      "sha256": "35bb86d172baa9fa8aefeae8207491c65e3537291f43276a0ccd2c5a8a13ebce",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-mediaMetadata",
+      "path": "receiz/app/lib/profile/mediaMetadata.ts",
+      "baseSha256": "c49450fea11a677a3d33d001d622a68fe3881d2f2e817738cb47862860d54392",
+      "sha256": "c49450fea11a677a3d33d001d622a68fe3881d2f2e817738cb47862860d54392",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-bankAssetContent",
+      "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
+      "baseSha256": "9518202993382698f6f1f543e884fe5654396b2a74232ba8abcad534642b10b9",
+      "sha256": "92055238b1c04f7fec73d5d3bce9904938c70f6a5c3f1c278d2dd6b8f38e4f03",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-composerResources",
+      "path": "receiz/app/lib/profile/showcase/composerResources.ts",
+      "baseSha256": null,
+      "sha256": "5520faa08e28df1782f746c81c2244099ca664addddf3d3db9c6edec64927ee8",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-connectedAssetPublication.client",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "5fa004a2e54b9eb8677cdcf2884be89cf09f2567ad6772fb7783ad7adcddbd6b",
+      "sha256": "92d5ba4988ce5fddff37b42cb4bf089ef20c2ae49aabef1fb571493d98c60179",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-importedSource",
+      "path": "receiz/app/lib/profile/showcase/importedSource.ts",
+      "baseSha256": "22108d4580d144f185cffda4768ea92123e3311d955fd2df1ab1d3a15b637d4f",
+      "sha256": "a9064f4fe62f360d415f46ba5c76c76702229313092375fce796034545af0fcd",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-importedSourceReference",
+      "path": "receiz/app/lib/profile/showcase/importedSourceReference.ts",
+      "baseSha256": "56667409e648282975149465dee0a7531b617dcec46f435dad2e225bd94d15e7",
+      "sha256": "56667409e648282975149465dee0a7531b617dcec46f435dad2e225bd94d15e7",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-importedSourceCustody.client",
+      "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
+      "baseSha256": "2b9292dee19c54d369c5b007ad8ca3c0172fbd80ad7b1efd057fbea1192b3072",
+      "sha256": "10a57d98c55b258b73fd6a64af54fd63306ca4bce0195b2322d2e6a5dde2c1b2",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-importedSourceProjection",
+      "path": "receiz/app/lib/profile/showcase/importedSourceProjection.ts",
+      "baseSha256": "76f581b4386a619140d7a7362a1ab03b8f054ccfc4a00c47002773d7b577be63",
+      "sha256": "2de6ebfddc4c2b31c222b241c86a2d59b661abc123203e35665c646da46b0757",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
     }
   ]
 }

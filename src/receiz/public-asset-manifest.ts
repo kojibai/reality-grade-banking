@@ -1,3 +1,4 @@
+import {safeImportedSourceUrl} from "./imported-source-url.js";
 /** The live-player manifest, projected from the same public ProfileOriginal.
  * These are source display fields. Rendering them performs no verification. */
 export type PublicAssetManifestRow={label:string;value:string;href?:string;downloadName?:string};
@@ -16,6 +17,7 @@ export function readPublicAssetManifestSource(input:unknown):PublicAssetManifest
 export function publicManifestLink(value:unknown):string|null{
  const raw=text(value,8192);if(!raw||/[\x00-\x20\x7f\\]/.test(raw))return null;
  try{const url=new URL(raw,'https://receiz.com');if(url.origin!=='https://receiz.com'||url.username||url.password||url.hash)return null;
+  const imported=safeImportedSourceUrl(value);if(imported)return imported;
   const only=(keys:string[])=>[...url.searchParams.keys()].every(key=>keys.includes(key)&&url.searchParams.getAll(key).length===1);
   if(['/offline-verifier.html','/zk/verification_key.json'].includes(url.pathname)&&!url.search)return url.href;
   if(/^\/v\/[a-zA-Z0-9_-]{1,64}\/[a-f0-9]{8,64}\/\d{1,24}\/?$/i.test(url.pathname)&&only(['a','ms','c','p','tz']))return url.href;

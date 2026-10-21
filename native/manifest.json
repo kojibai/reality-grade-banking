@@ -12676,8 +12676,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
-      "sha256": "9518202993382698f6f1f543e884fe5654396b2a74232ba8abcad534642b10b9",
-      "bytes": 3325,
+      "sha256": "92055238b1c04f7fec73d5d3bce9904938c70f6a5c3f1c278d2dd6b8f38e4f03",
+      "bytes": 3704,
       "mode": 420
     },
     {
@@ -12748,8 +12748,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "5fa004a2e54b9eb8677cdcf2884be89cf09f2567ad6772fb7783ad7adcddbd6b",
-      "bytes": 8132,
+      "sha256": "92d5ba4988ce5fddff37b42cb4bf089ef20c2ae49aabef1fb571493d98c60179",
+      "bytes": 8790,
       "mode": 420
     },
     {
@@ -12778,14 +12778,14 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSource.ts",
-      "sha256": "22108d4580d144f185cffda4768ea92123e3311d955fd2df1ab1d3a15b637d4f",
-      "bytes": 27846,
+      "sha256": "a9064f4fe62f360d415f46ba5c76c76702229313092375fce796034545af0fcd",
+      "bytes": 28666,
       "mode": 420
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
-      "sha256": "2b9292dee19c54d369c5b007ad8ca3c0172fbd80ad7b1efd057fbea1192b3072",
-      "bytes": 13660,
+      "sha256": "10a57d98c55b258b73fd6a64af54fd63306ca4bce0195b2322d2e6a5dde2c1b2",
+      "bytes": 14958,
       "mode": 420
     },
     {
@@ -12808,8 +12808,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSourceProjection.ts",
-      "sha256": "76f581b4386a619140d7a7362a1ab03b8f054ccfc4a00c47002773d7b577be63",
-      "bytes": 8864,
+      "sha256": "2de6ebfddc4c2b31c222b241c86a2d59b661abc123203e35665c646da46b0757",
+      "bytes": 10144,
       "mode": 420
     },
     {
@@ -14047,6 +14047,36 @@
       "sha256": "ced6f228807a193b8a0ec436304b96ca44492bae8899c3e84c2a88162843dc14",
       "bytes": 212,
       "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/profile/composerPreparation.client.ts",
+      "sha256": "35bb86d172baa9fa8aefeae8207491c65e3537291f43276a0ccd2c5a8a13ebce",
+      "bytes": 3641,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/profile/composerPreparation.ts",
+      "sha256": "a7542b453c85d608a81bb568d6d9650989e1e8e8302e8e60c9aa8cb2ffe8964a",
+      "bytes": 9395,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/profile/mediaMetadata.ts",
+      "sha256": "c49450fea11a677a3d33d001d622a68fe3881d2f2e817738cb47862860d54392",
+      "bytes": 759,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/profile/showcase/composerResources.ts",
+      "sha256": "5520faa08e28df1782f746c81c2244099ca664addddf3d3db9c6edec64927ee8",
+      "bytes": 2153,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/profile/showcase/importedSourceReference.ts",
+      "sha256": "56667409e648282975149465dee0a7531b617dcec46f435dad2e225bd94d15e7",
+      "bytes": 391,
+      "mode": 420
     }
   ],
   "sdkOutputs": [
@@ -15271,6 +15301,86 @@
       "sha256": "38e14bd4e5f5b9f94c9df05ef6a347aee0f1f81192b43e4c2a455391a4d6a81e",
       "purpose": "Preserve the complete signed Reserve and Settlement funding split through the existing connected Note source, recipient-bound handover and exact credit. Qualified offline custody checks remain unchanged.",
       "upstreamCommit": "78e49df11"
+    },
+    {
+      "id": "bankeiz-composer-media-composerPreparation",
+      "path": "receiz/app/lib/profile/composerPreparation.ts",
+      "baseSha256": "a7542b453c85d608a81bb568d6d9650989e1e8e8302e8e60c9aa8cb2ffe8964a",
+      "sha256": "a7542b453c85d608a81bb568d6d9650989e1e8e8302e8e60c9aa8cb2ffe8964a",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-composerPreparation.client",
+      "path": "receiz/app/lib/profile/composerPreparation.client.ts",
+      "baseSha256": null,
+      "sha256": "35bb86d172baa9fa8aefeae8207491c65e3537291f43276a0ccd2c5a8a13ebce",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-mediaMetadata",
+      "path": "receiz/app/lib/profile/mediaMetadata.ts",
+      "baseSha256": "c49450fea11a677a3d33d001d622a68fe3881d2f2e817738cb47862860d54392",
+      "sha256": "c49450fea11a677a3d33d001d622a68fe3881d2f2e817738cb47862860d54392",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-bankAssetContent",
+      "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
+      "baseSha256": "9518202993382698f6f1f543e884fe5654396b2a74232ba8abcad534642b10b9",
+      "sha256": "92055238b1c04f7fec73d5d3bce9904938c70f6a5c3f1c278d2dd6b8f38e4f03",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-composerResources",
+      "path": "receiz/app/lib/profile/showcase/composerResources.ts",
+      "baseSha256": null,
+      "sha256": "5520faa08e28df1782f746c81c2244099ca664addddf3d3db9c6edec64927ee8",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-connectedAssetPublication.client",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "5fa004a2e54b9eb8677cdcf2884be89cf09f2567ad6772fb7783ad7adcddbd6b",
+      "sha256": "92d5ba4988ce5fddff37b42cb4bf089ef20c2ae49aabef1fb571493d98c60179",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-importedSource",
+      "path": "receiz/app/lib/profile/showcase/importedSource.ts",
+      "baseSha256": "22108d4580d144f185cffda4768ea92123e3311d955fd2df1ab1d3a15b637d4f",
+      "sha256": "a9064f4fe62f360d415f46ba5c76c76702229313092375fce796034545af0fcd",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-importedSourceReference",
+      "path": "receiz/app/lib/profile/showcase/importedSourceReference.ts",
+      "baseSha256": "56667409e648282975149465dee0a7531b617dcec46f435dad2e225bd94d15e7",
+      "sha256": "56667409e648282975149465dee0a7531b617dcec46f435dad2e225bd94d15e7",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-importedSourceCustody.client",
+      "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
+      "baseSha256": "2b9292dee19c54d369c5b007ad8ca3c0172fbd80ad7b1efd057fbea1192b3072",
+      "sha256": "10a57d98c55b258b73fd6a64af54fd63306ca4bce0195b2322d2e6a5dde2c1b2",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
+    },
+    {
+      "id": "bankeiz-composer-media-importedSourceProjection",
+      "path": "receiz/app/lib/profile/showcase/importedSourceProjection.ts",
+      "baseSha256": "76f581b4386a619140d7a7362a1ab03b8f054ccfc4a00c47002773d7b577be63",
+      "sha256": "2de6ebfddc4c2b31c222b241c86a2d59b661abc123203e35665c646da46b0757",
+      "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
+      "sourceCommit": "b974758ac"
     }
   ],
   "historicalValuation": {
@@ -15279,7 +15389,7 @@
     "sourcePath": "app/utils/phi-issuance.ts",
     "sourceSha256": "69622c017e955734525e121a7b27bdaa42066932657b145e02be493792de9c74",
     "sdkVersion": "129.0.0",
-    "intrinsicAlgorithm": "phi/kosmos-vφ-5",
+    "intrinsicAlgorithm": "phi/kosmos-v\u03c6-5",
     "intrinsicPolicyChecksum": "b05b2049",
     "sampleUsd": 100,
     "historicalPointsAreRecordedQuotes": false
@@ -15710,6 +15820,14 @@
       "sha256": "ad96d553e616d2db3d5e5afb8b2536d5cd9202394a7486944c1a3724069a02a5"
     },
     {
+      "path": "app/lib/profile/composerPreparation.client.ts",
+      "sha256": "35bb86d172baa9fa8aefeae8207491c65e3537291f43276a0ccd2c5a8a13ebce"
+    },
+    {
+      "path": "app/lib/profile/composerPreparation.ts",
+      "sha256": "a7542b453c85d608a81bb568d6d9650989e1e8e8302e8e60c9aa8cb2ffe8964a"
+    },
+    {
       "path": "app/lib/profile/deterministicFeed.ts",
       "sha256": "73904a2b27ac85b4ce0bffe21b59e29ae380fc5f9233663a3063381114fb7956"
     },
@@ -15831,7 +15949,7 @@
     },
     {
       "path": "app/lib/profile/showcase/bankAssetContent.ts",
-      "sha256": "9518202993382698f6f1f543e884fe5654396b2a74232ba8abcad534642b10b9"
+      "sha256": "92055238b1c04f7fec73d5d3bce9904938c70f6a5c3f1c278d2dd6b8f38e4f03"
     },
     {
       "path": "app/lib/profile/showcase/boundedEdgeVault.ts",
@@ -15878,8 +15996,12 @@
       "sha256": "405abf7db484d280a25279489721635dba76add46a1ccfa232dd7f5c25fe9eae"
     },
     {
+      "path": "app/lib/profile/showcase/composerResources.ts",
+      "sha256": "5520faa08e28df1782f746c81c2244099ca664addddf3d3db9c6edec64927ee8"
+    },
+    {
       "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "5fa004a2e54b9eb8677cdcf2884be89cf09f2567ad6772fb7783ad7adcddbd6b"
+      "sha256": "92d5ba4988ce5fddff37b42cb4bf089ef20c2ae49aabef1fb571493d98c60179"
     },
     {
       "path": "app/lib/profile/showcase/economyRetry.ts",
@@ -15899,11 +16021,11 @@
     },
     {
       "path": "app/lib/profile/showcase/importedSource.ts",
-      "sha256": "22108d4580d144f185cffda4768ea92123e3311d955fd2df1ab1d3a15b637d4f"
+      "sha256": "a9064f4fe62f360d415f46ba5c76c76702229313092375fce796034545af0fcd"
     },
     {
       "path": "app/lib/profile/showcase/importedSourceCustody.client.ts",
-      "sha256": "2b9292dee19c54d369c5b007ad8ca3c0172fbd80ad7b1efd057fbea1192b3072"
+      "sha256": "10a57d98c55b258b73fd6a64af54fd63306ca4bce0195b2322d2e6a5dde2c1b2"
     },
     {
       "path": "app/lib/profile/showcase/importedSourceErrors.ts",
@@ -15919,7 +16041,7 @@
     },
     {
       "path": "app/lib/profile/showcase/importedSourceProjection.ts",
-      "sha256": "76f581b4386a619140d7a7362a1ab03b8f054ccfc4a00c47002773d7b577be63"
+      "sha256": "2de6ebfddc4c2b31c222b241c86a2d59b661abc123203e35665c646da46b0757"
     },
     {
       "path": "app/lib/profile/showcase/legacyMigrationPayload.ts",

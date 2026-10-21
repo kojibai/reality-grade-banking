@@ -1,4 +1,6 @@
 "use client";
+import {prepareConnectedComposerSource} from "../composerPreparation.client";
+import type {ComposerAssetDraft} from "../composerPreparation";
 import {verifyReceizArtifact,createReceizArtifactAdmissionEngine,readReceizIdentityArtifact} from "../../../../packages/receiz-sdk/src/index";
 import type {receizeDocumentBytesClient} from "@/app/lib/documentSeal/receizeDocumentBytesClient";
 import {createProfileShowcaseBoundedEdgeVault} from "./boundedEdgeVault";
@@ -44,9 +46,10 @@ export async function createConnectedAssetPublicationRuntime(input:Readonly<{
    async()=>({actorAdmission:admitted,keyFile,passphrase:input.passphrase}),async()=>"unavailable" as const);
   deliveries.set(source.artifactDigest,result);return result;
  };
- return {async publish(file:File){
+ const custody=createImportedProofSourceCustody();
+ return {prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:admitted.ownerReceizId!,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),async publish(file:File){
   input.assertCurrent();
-  const custody=createImportedProofSourceCustody(),source=await openImportedProofSource(file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});
+  const source=await openImportedProofSource(file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});
   if(source.projection.ownerReceizId!==admitted.ownerReceizId)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH");
   const reference=await custody.hold(source),original=projectImportedSourceOriginal(source,reference);input.assertCurrent();
   await withProfileShowcaseCausalAppendLock(artifactId,async()=>{input.assertCurrent();await recoverAcceptedShowcasePredecessor({username,artifactId,vault,fetchImpl:input.fetchImpl,retainImportedSources:async complete=>{
@@ -54,7 +57,7 @@ export async function createConnectedAssetPublicationRuntime(input:Readonly<{
     for(const child of complete.children){
      const reference=await readImportedSourceTransportReference(child.exactSealedArtifactBytes);if(!reference)continue;
      // Root segments can survive an interrupted nested opening without a complete source record.
-     try{const held=await custody.readHeld(reference);if(held){if(held.referencedSources?.length)await custody.hold(held);await custody.exportBlocks(reference,async()=>{});continue;}}catch(error){if(!(error instanceof Error)||error.message!=="IMPORTED_SOURCE_CUSTODY_SEGMENT_MISSING")throw error;}
+     try{const held=await custody.readHeld(reference);if(held){if(held.referencedSources?.length||held.projection.bankAsset?.composer)await custody.hold(held);await custody.exportBlocks(reference,async()=>{});continue;}}catch(error){if(!(error instanceof Error)||error.message!=="IMPORTED_SOURCE_CUSTODY_SEGMENT_MISSING")throw error;}
      input.assertCurrent();await custody.reopen(reference,async ref=>{
       try{return await custody.resolveBlock(ref);}catch(error){if(!(error instanceof Error)||error.message!=="IMPORTED_SOURCE_CUSTODY_SEGMENT_MISSING")throw error;}
       input.assertCurrent();const response=await input.fetchImpl(`/api/profile/showcase/accepted-source?username=${encodeURIComponent(username)}&block=${encodeURIComponent(JSON.stringify(ref))}`,{cache:"no-store"});if(!response.ok)throw new TypeError("PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING");return new Uint8Array(await response.arrayBuffer());
@@ -73,3 +76,6 @@ export async function createConnectedAssetPublicationRuntime(input:Readonly<{
   const result=await deliver(complete);input.assertCurrent();if(result.status!=="published")deliveries.delete(complete.artifactDigest);return result;
  }};
 }
+
+/** Byte servant for already canonically opened composer manifests. */
+export async function resolveComposerBlock(reference:import("../../transport/exactByteBlocks").ExactByteBlockReference):Promise<Uint8Array>{return createImportedProofSourceCustody().resolveBlock(reference);}

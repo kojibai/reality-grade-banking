@@ -3,7 +3,7 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { completeBlobCustodyTransaction, blobCustodyRequestResult } from "@/app/lib/transport/blobCustodyTransactions.client";
-import { EXACT_BYTE_BLOCK_MAX_BYTES, readExactByteBlocks, writeExactByteBlocks, type ExactByteBlockReference, type ExactByteBlockResolver, type ExactByteBlockWriter } from "@/app/lib/transport/exactByteBlocks";
+import { EXACT_BYTE_BLOCK_MAX_BYTES, parseExactByteBlockReference, readExactByteBlocks, writeExactByteBlocks, type ExactByteBlockReference, type ExactByteBlockResolver, type ExactByteBlockWriter } from "@/app/lib/transport/exactByteBlocks";
 import {
   openImportedProofSource, reopenImportedProofSource, parseImportedProofSourceReference, requireOpenedImportedProofSource, writeImportedProofSourceReference,
   type ImportedProofSourceDescriptor, type ImportedProofSourceReference, type ImportedProofSourceOptions,
@@ -16,6 +16,7 @@ const PREFIX = "IMPORTED_SOURCE_CUSTODY";
 type Segment = Readonly<{ sha256: string; byteLength: number }>;
 type CompleteSource = Readonly<{ key: string; reference: ImportedProofSourceReference; segments: readonly Segment[];
   nested?: readonly ImportedProofSourceReference[];
+  resources?: readonly ExactByteBlockReference[];
   presentation?: Readonly<{ payload: ExactByteBlockReference; payloadSha256: string; payloadMimeType: string; payloadFilename: string }> }>;
 
 function sourceKey(source: ImportedProofSourceDescriptor): string {
@@ -103,6 +104,13 @@ export function createImportedProofSourceCustody() {
   };
   return Object.freeze({
     retain,
+    /** Same bounded exact-byte store used by imported source custody. This does
+     * not admit an Original or mark a source complete. */
+    async writeBlock(reference:ExactByteBlockReference,bytes:Uint8Array){
+      reference=parseExactByteBlockReference(reference);
+      if(bytes.length!==reference.byteLength||bytes.length===0||bytes.length>EXACT_BYTE_BLOCK_MAX_BYTES||bytesToHex(sha256(bytes))!==reference.sha256)throw new TypeError(`${PREFIX}_SEGMENT_INVALID`);
+      await writeRecord("segments",{sha256:reference.sha256,byteLength:reference.byteLength,blob:new Blob([bytes.slice().buffer as ArrayBuffer])});
+    },
     createColdSpool,
     /** Initial selected-source admission already verified the enclosing proof.
      * Complete durable custody before exposing placement; never verify it again. */
@@ -117,11 +125,18 @@ export function createImportedProofSourceCustody() {
         await readSegment(segment);
         if (ref.kind === "bytes") segments.push(segment);
       });
+      const resources:ExactByteBlockReference[]=[];
+      for(const file of source.projection.bankAsset?.composer?.files??[]){
+        const body=source.composerResources?.[file.id];if(!body)throw new Error(`${PREFIX}_RESOURCE_MISSING`);
+        const root=await writeExactByteBlocks(body,this.writeBlock);
+        if(JSON.stringify(root)!==JSON.stringify(file.bytes))throw new TypeError(`${PREFIX}_RESOURCE_BINDING_INVALID`);
+        resources.push(root);
+      }
       const payload = await writeExactByteBlocks(source.payload, async (ref, bytes) => {
         await writeRecord("segments", { sha256: ref.sha256, byteLength: ref.byteLength,
           blob: new Blob([bytes.slice().buffer as ArrayBuffer]) });
       });
-      await writeRecord("sources", { key: sourceKey(reference), reference, segments, nested,
+      await writeRecord("sources", { key: sourceKey(reference), reference, segments, nested, resources,
         presentation: { payload, payloadSha256: source.projection.payloadSha256,
           payloadMimeType: source.projection.payloadMimeType, payloadFilename: source.projection.payloadFilename } } satisfies CompleteSource);
       retain(source);
@@ -181,12 +196,13 @@ export function createImportedProofSourceCustody() {
       seen.add(sourceKey(reference));
       const stored = await readRecord("sources", sourceKey(reference)) as CompleteSource | undefined;
       pending.push(...(stored?.nested ?? []).map(parseImportedProofSourceReference));
-      for await (const _bytes of readExactByteBlocks(reference.bytes, async ref => {
+      for(const root of [reference.bytes,...(stored?.resources??[]).map(parseExactByteBlockReference)])
+      for await (const _bytes of readExactByteBlocks(root, async ref => {
         const blob = await readSegment(ref);
         const bytes = new Uint8Array(await blob.arrayBuffer());
         await write(ref, bytes);
         return bytes;
-      }, { component: "imported source export", maxContentBytes: reference.byteLength, maxBlockReads: 131_072 })) { void _bytes; /* Complete exact closure before the caller publishes its root. */ }
+      }, { component: "imported source export", maxContentBytes: Math.max(reference.byteLength,64*1024*1024), maxBlockReads: 131_072 })) { void _bytes; /* Complete exact closure before the caller publishes its root. */ }
       }
     },
     async reopen(value: ImportedProofSourceReference, resolver: ExactByteBlockResolver, options: ImportedProofSourceOptions = {}) {
