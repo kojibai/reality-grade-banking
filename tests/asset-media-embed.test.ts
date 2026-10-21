@@ -32,6 +32,12 @@ it('preserves explicit prepared playback and legacy raw streams instead of repla
  Object.assign(row.profileOriginal.media,{playbackSrc:`/api/profile/originals/media?receizId=${assetId}&slot=playback`,playbackReadyAt:'2026-10-21T00:00:00Z'});expect(read()).toContain('slot=playback');
  const legacy=source('audio');Object.assign(legacy,{playbackSrc:`/api/profile/originals/media?receizId=${assetId}&slot=preview`});expect(parsePublicMarket({ok:true,transport:{publicOriginals:[legacy]}}).items[0].playback?.url).toContain('slot=preview');
 });
+it('streams an explicitly ungated legacy video from its existing native source without using its sealed download',()=>{
+ const row=source('video'),url='/api/storage/object?bucket=receiz-profile-originals&path=originals%2Fartist%2Fmovie.mp4';Object.assign(row.profileOriginal.media,{src:url,gateAudioPlayback:false,mime:'video/mp4'});
+ const read=(value:unknown)=>parsePublicMarket({ok:true,transport:{publicOriginals:[value]}}).items[0].playback;
+ expect(read(row)).toEqual({url:'https://receiz.com'+url,mimeType:'video/mp4'});
+ for(const patch of [{gateAudioPlayback:true},{gateAudioPlayback:undefined},{src:'https://evil.example/video.mp4'},{src:'/api/profile/originals/download?receizId='+assetId+'&kind=original'}])expect(read({...row,profileOriginal:{media:{...row.profileOriginal.media,...patch}}})).toBeNull();
+});
 
 it.each(['audio','video'])('keeps the asset canonical while advertising the existing Receiz %s player and oEmbed discovery without fetching media',async kind=>{
  const playback=`https://receiz.com/api/profile/originals/media?receizId=${assetId}&slot=playback`,f=deps(item(kind,playback));

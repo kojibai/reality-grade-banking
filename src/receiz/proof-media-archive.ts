@@ -18,6 +18,13 @@ export function inspectBookArchive(bytes:Uint8Array):Map<string,{size:number;com
  if(cursor!==end)return bad();ranges.sort((a,b)=>a.from-b.from);for(let i=1;i<ranges.length;i++)if(ranges[i].from<ranges[i-1].to)return bad();return names;
 }
 
+/** Format recognition only, after canonical payload verification. A generic
+ * ZIP is never promoted to a book merely because its filename looks right. */
+export function isEpubArchive(bytes:Uint8Array):boolean{
+ if(bytes.length<30||bytes[0]!==80||bytes[1]!==75||bytes[2]!==3||bytes[3]!==4)return false;
+ try{const entries=inspectBookArchive(bytes),marker=entries.get('mimetype'),expected='application/epub+zip';return !!marker&&marker.method===0&&marker.size===expected.length&&!!entries.get('META-INF/container.xml')&&Array.from(expected).every((char,index)=>bytes[marker.data+index]===char.charCodeAt(0));}catch{return false;}
+}
+
 export async function openBookArchive(bytes:Uint8Array):Promise<Record<string,Uint8Array>>{
  const entries=inspectBookArchive(bytes),{Inflate}=await import('fflate'),output:Record<string,Uint8Array>=Object.create(null);
  const table=Uint32Array.from({length:256},(_,index)=>{let value=index;for(let i=0;i<8;i++)value=(value>>>1)^(value&1?0xedb88320:0);return value>>>0;});

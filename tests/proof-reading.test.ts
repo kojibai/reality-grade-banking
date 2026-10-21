@@ -1,6 +1,6 @@
 import {readFileSync} from 'node:fs';
-import {expect,it} from 'vitest';
-import {verifyProofReadingBytes} from '../src/receiz/proof-reading';
+import {expect,it,vi} from 'vitest';
+import {readPublicProofReading,retainedPublicReading,verifyProofReadingBytes} from '../src/receiz/proof-reading';
 const bytes=new Uint8Array(readFileSync(new URL('./fixtures/public-essay-record.png',import.meta.url)));
 const image='d4e40d9ececcc01cd5de77dc340081cb386dbcb68a42c5a7040a7ec1edeab8b1';
 const post='https://receiz.com/v/20261012_1401/0C19C291/14611069?a=cd412215&ms=1791828092396';
@@ -9,6 +9,11 @@ it('reads the exact essay carried by a real canonically verified record bound to
  expect(reading.title).toBe('THEY HAVE NO MACHINE. THEY HAVE NO ANSWER.');expect(reading.text.length).toBe(17952);
  expect(reading.sha256).toBe('d0f7264aaff25046560310af2d082d0ea6bf270e74c66be7dcdc800f29a07620');
  expect(reading.artifactDigest).toBe('7dea328ef9accb1322853b868ec0fbd9a46f644cffbd377763eb08af7fe6784e');
+});
+it('retains only the verified public reading so returning to its object does not request it again',async()=>{
+ const fetcher=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response(bytes));try{
+ const reading=await readPublicProofReading(post,image);expect(retainedPublicReading(post,image)).toBe(reading);expect(await readPublicProofReading(post,image)).toBe(reading);expect(fetcher).toHaveBeenCalledOnce();expect(retainedPublicReading(post,'b'.repeat(64))).toBeNull();
+ }finally{fetcher.mockRestore();}
 });
 it('refuses a verified essay record linked to a different image',async()=>{
  await expect(verifyProofReadingBytes(bytes,'b'.repeat(64),post)).rejects.toThrow('selected original');

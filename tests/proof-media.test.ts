@@ -69,9 +69,20 @@ it('reads EPUB spine order and preserves embedded illustrations without remote r
  const files=await readMediaPayload({...payload,bytes:epub,filename:'book.epub',mimeType:'application/epub+zip'});
  expect(files[0].kind).toBe('book');expect(files[0].chapters?.map(c=>c.title)).toEqual(['Second','First']);expect(files[1].kind).toBe('image');
 });
+it('recognizes a verified EPUB by its carried container marker when the canonical payload MIME is generic',async()=>{
+ const epub=zipSync({'mimetype':[strToU8('application/epub+zip'),{level:0}],'META-INF/container.xml':strToU8('<container><rootfiles><rootfile full-path="book/main.opf"/></rootfiles></container>'),'book/main.opf':strToU8('<package><metadata><title>A real book</title></metadata><manifest><item id="one" href="one.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="one"/></spine></package>'),'book/one.xhtml':strToU8('<h1>First chapter</h1><p>Carried book content.</p>')});
+ const files=await readMediaPayload({...payload,bytes:epub,filename:'original.receiz',mimeType:'application/octet-stream'});
+ expect(files[0]).toMatchObject({kind:'book',mimeType:'application/epub+zip'});expect(files[0].chapters?.[0].text).toContain('Carried book content.');
+ const ordinary=zipSync({'other.txt':strToU8('An ordinary ZIP')});expect((await readMediaPayload({...payload,bytes:ordinary,mimeType:'application/octet-stream'}))[0].kind).toBe('file');
+ const falseMarker=zipSync({'mimetype':[strToU8('application/not-epub'),{level:0}],'META-INF/container.xml':strToU8('<container/>')});expect((await readMediaPayload({...payload,bytes:falseMarker,mimeType:'application/octet-stream'}))[0].kind).toBe('file');
+});
 it('refuses a book whose spine points outside its carried source',async()=>{
  const epub=zipSync({'META-INF/container.xml':strToU8('<container><rootfile full-path="book/main.opf"/></container>'),'book/main.opf':strToU8('<package><manifest><item id="a" href="https://evil.example"/></manifest><spine><itemref idref="a"/></spine></package>')});
  await expect(readMediaPayload({...payload,bytes:epub,filename:'book.epub',mimeType:'application/epub+zip'})).rejects.toThrow();
+});
+it('projects book cover, headings and paragraphs without mounting active markup or fetching external resources',async()=>{
+ const epub=zipSync({'META-INF/container.xml':strToU8('<container><rootfile full-path="book/main.opf"/></container>'),'book/main.opf':strToU8('<package><metadata><title>A book</title><creator>A writer</creator></metadata><manifest><item id="a" href="one.xhtml"/><item id="art" href="cover.png" media-type="image/png"/></manifest><spine><itemref idref="a"/></spine></package>'),'book/one.xhtml':strToU8('<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Do not read this</title></head><body><h1>Chapter one</h1><p>Words <em>with emphasis</em>.</p><img src="cover.png" alt="Cover"/><script>Do not execute</script><img src="https://evil.example/image"/><iframe src="https://evil.example"/></body></html>'),'book/cover.png':new Uint8Array([137,80,78,71])}),fetcher=vi.spyOn(globalThis,'fetch');
+ const [book]=await readMediaPayload({...payload,bytes:epub,mimeType:'application/epub+zip'});expect(book.book).toMatchObject({title:'A book',author:'A writer'});expect(book.chapters?.[0].blocks).toEqual([{kind:'heading',text:'Chapter one'},{kind:'paragraph',text:'Words with emphasis.'},{kind:'image',path:'book/cover.png',text:'Cover'}]);expect(book.chapters?.[0].text).not.toContain('Do not');expect(fetcher).not.toHaveBeenCalled();
 });
 it('deduplicates book illustrations and bounds manifest references before rendering',async()=>{
  const book=(count:number)=>zipSync({'META-INF/container.xml':strToU8('<container><rootfile full-path="book/main.opf"/></container>'),'book/main.opf':strToU8('<package><manifest><item id="a" href="one.xhtml"/>'+Array.from({length:count},(_,i)=>`<item id="art${i}" href="art.png" media-type="image/png"/>`).join('')+'</manifest><spine><itemref idref="a"/></spine></package>'),'book/one.xhtml':strToU8('<p>A book.</p>'),'book/art.png':new Uint8Array([137,80,78,71])});

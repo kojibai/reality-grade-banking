@@ -16,7 +16,10 @@ export function publicMediaPlayback(input:unknown,exactOriginalUrl?:string|null)
   &&typeof exactOriginalUrl==='string'&&/^https:\/\/receiz\.com\/api\/proof-material\/packages\/[a-f0-9]{64}\/artifact$/.test(exactOriginalUrl)?{url:exactOriginalUrl,mimeType:mime}:null;
  const unpreparedCoordinate=(value:unknown)=>{try{const url=new URL(String(value),'https://receiz.com'),q=url.searchParams;return url.origin==='https://receiz.com'&&!url.username&&!url.password&&!url.hash&&[...q.keys()].length===2&&q.getAll('receizId').length===1&&q.get('receizId')===source.receizId&&(url.pathname==='/api/profile/originals/media'&&q.getAll('slot').length===1&&q.get('slot')==='playback'||url.pathname==='/api/profile/originals/download'&&q.getAll('kind').length===1&&q.get('kind')==='original');}catch{return false;}};
  const unprepared=artifactAudio&&!held.url&&!media.playbackMime&&!media.playbackReadyAt&&(!media.playbackSrc||unpreparedCoordinate(media.playbackSrc))&&(!source.playbackSrc||unpreparedCoordinate(source.playbackSrc));
- for(const candidate of [held.url,...(unprepared?[artifactAudio.url]:[]),media.playbackSrc,source.playbackSrc]){
+ // Older public videos already carry a native source without a prepared
+ // playback derivative. Stream that same source, never the paid download.
+ const videoSource=kind==='video'&&media.gateAudioPlayback===false?media.src:null;
+ for(const candidate of [held.url,...(unprepared?[artifactAudio.url]:[]),media.playbackSrc,source.playbackSrc,videoSource]){
   if(typeof candidate!=='string'||candidate.length>4096||/[\s\\\x00-\x1f\x7f]/.test(candidate))continue;
   try{
    const url=new URL(candidate,'https://receiz.com');

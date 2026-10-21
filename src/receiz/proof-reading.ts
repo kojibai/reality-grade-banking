@@ -2,6 +2,10 @@ import {loadReceiz} from './client';
 import {safeReceizPublicUrl} from './public-market';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
 export type ProofReading={title:string;text:string;sha256:string;artifactDigest:string};
+const readings=new Map<string,ProofReading>();
+const readingKey=(postUrl:string,imageDigest:string)=>imageDigest.toLowerCase()+':'+postUrl;
+/** Public, verified text only. Reopening a reader does not reread its source. */
+export function retainedPublicReading(postUrl:string,imageDigest:string){return readings.get(readingKey(postUrl,imageDigest))??null;}
 const object=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
 export async function verifyProofReadingBytes(bytes:Uint8Array,imageDigest:string,postUrl:string):Promise<ProofReading>{
  const safe=safeReceizPublicUrl(postUrl,'proof');if(!safe||!bytes.length||bytes.length>16*1024*1024||!/^[a-f0-9]{64}$/i.test(imageDigest))throw Error('This carried text source is not supported.');
@@ -18,8 +22,9 @@ export async function verifyProofReadingBytes(bytes:Uint8Array,imageDigest:strin
 }
 export async function readPublicProofReading(postUrl:string,imageDigest:string,signal?:AbortSignal):Promise<ProofReading>{
  const safe=safeReceizPublicUrl(postUrl,'proof');if(!safe)throw Error('This carried text source is not supported.');signal?.throwIfAborted();
+ const key=readingKey(postUrl,imageDigest),retained=readings.get(key);if(retained){readings.delete(key);readings.set(key,retained);return retained;}
  const url=new URL(safe),timeout=AbortSignal.timeout(90_000),requestSignal=signal?AbortSignal.any([signal,timeout]):timeout;
  const response=await fetch(`/api/bank/public-market/record?path=${encodeURIComponent(url.pathname+url.search)}`,{credentials:'omit',redirect:'error',signal:requestSignal});
  if(!response.ok)throw Error('The carried text could not be opened. You can retry or inspect its source.');
- const bytes=await readPublicLedgerBytes(response,16*1024*1024);requestSignal.throwIfAborted();const reading=await verifyProofReadingBytes(bytes,imageDigest,safe);requestSignal.throwIfAborted();return reading;
+ const bytes=await readPublicLedgerBytes(response,16*1024*1024);requestSignal.throwIfAborted();const reading=await verifyProofReadingBytes(bytes,imageDigest,safe);requestSignal.throwIfAborted();readings.set(key,reading);while(readings.size>24)readings.delete(readings.keys().next().value!);return reading;
 }

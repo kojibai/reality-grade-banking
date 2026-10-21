@@ -32,3 +32,7 @@ it('ignores invalid or oversized title fields and never treats a filename as an 
  expect(publicAssetTitle({title:'Caption',profileOriginal:{media:{kind:'audio',name:'track-003.mp3',audioDistribution:{releaseTitle:'x'.repeat(4097)}}}})).toBe('Caption');
  expect(publicAssetTitle({title:'Caption',profileOriginal:{longForm:{title:{text:'not a title'}}}})).toBe('Caption');
 });
+it('uses the first caption sentence as a fallback headline while preserving the complete caption',()=>{
+ const caption='This happened. The complete caption continues.\nAnd remains here.',source={id:'profile:writer:moment',receizId:'moment',title:caption,summary:caption,profileOriginal:{media:null}};
+ const item=parsePublicMarket({ok:true,transport:{publicOriginals:[source]}}).items[0];expect(item.title).toBe('This happened.');expect(item.summary).toBe(caption);expect(publicAssetTitle({...source,profileOriginal:{assetTitle:'The authored title. In full.'}})).toBe('The authored title. In full.');expect(publicAssetTitle({...source,title:'First line\nSecond line'})).toBe('First line');
+});

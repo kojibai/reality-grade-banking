@@ -7,6 +7,7 @@ import { publicNetworkMiddleware } from './public-network.js';
 import {publicLedgerProofMiddleware} from './public-ledger-proof.js';
 import { accountProofPublicMiddleware } from './account-proof-public.js';
 import {handlePublicProfile} from './public-profile.js';
+import {handlePublicDocument} from './public-document.js';
 
 // One production entry reuses the same bounded transports as Vite. The
 // adapter changes HTTP interfaces only; it never parses or reseals a proof.
@@ -14,6 +15,7 @@ export async function handleBankApi(request: Request): Promise<Response> {
   const url = new URL(request.url);
   if (url.pathname.startsWith('/api/bank/native')) return relayNativeAccount(request);
   if (url.pathname.startsWith('/api/bank/public-profile/')) return handlePublicProfile(request);
+  if (url.pathname==='/api/bank/public-document') return handlePublicDocument(request);
   const stream = request.body ? Readable.fromWeb(request.body as unknown as NodeReadableStream<Uint8Array>) : Readable.from([]);
   const req = Object.assign(stream, { url: `${url.pathname}${url.search}`, method: request.method, headers: { ...Object.fromEntries(request.headers), host: url.host } }) as IncomingMessage;
   const headers = new Headers({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });

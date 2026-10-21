@@ -6,6 +6,7 @@ import {usePublicAssetPeriods} from '../../receiz/market-projection/usePublicAss
 import { formatPublicPrice,publicAssetImagePreviewUrl, type PublicMarketItem } from '../../receiz/public-market';
 import {ProofMedia} from '../media/ProofMedia';
 import {ProofCaption} from '../media/ProofCaption';
+import {MomentCard} from '../media/MomentCard';
 import {fetchPublicCardDetails,type PublicCardDetails} from '../../receiz/public-card-details';
 import {AssetPageLinks} from '../../components/AssetPageLinks';
 import {AssetObject} from '../media/AssetObject';
@@ -23,8 +24,8 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
   const multipleCopies=item.category==='sports'&&(item.circulationCount??1)>1;
   const periods=usePublicAssetPeriods(item);
   const current=periods?.ALL.at(-1),price=current?Number(current.usdCents)/100:item.priceUsd;
-  const media=item.originalUrl&&item.originalDigest?<ProofMedia artworkUrl={item.artworkUrl} publicImageUrl={publicAssetImagePreviewUrl(item)} autoOpen={standalone} key={[item.originalDigest,item.originalUrl,item.readingUrl??item.verifyUrl].join(':')} title={item.title} source={{kind:"public",url:item.originalUrl,digest:item.originalDigest,...(item.verifyUrl?{postUrl:item.readingUrl??item.verifyUrl,hasLongForm:item.hasLongForm}:{})}}/>:null;
-  const object=<AssetObject key={item.id} label={item.title} front={media??<div className="public-collectible-face"><span>{marketContentLabel(item)}</span><h2>{item.title}</h2><p>{item.summary}</p><code>{item.assetId}</code><small>Public source presentation</small></div>} renderBack={()=> <AssetProofBack item={item}/>}/>;
+  const media=item.originalUrl&&item.originalDigest?<ProofMedia publicDocument={item.documentUrl?{url:item.documentUrl,assetId:item.assetId}:null} publicVideo={item.mediaKind==='video'&&item.playback?{...item.playback,assetId:item.assetId}:null} artworkUrl={item.artworkUrl} publicImageUrl={publicAssetImagePreviewUrl(item)} autoOpen={standalone} key={[item.originalDigest,item.originalUrl,item.readingUrl??item.verifyUrl].join(':')} title={item.title} source={{kind:"public",url:item.originalUrl,digest:item.originalDigest,...(item.verifyUrl?{postUrl:item.readingUrl??item.verifyUrl,hasLongForm:item.hasLongForm}:{})}}/>:null;
+  const object=<AssetObject key={item.id} label={item.title} front={media??(item.mediaKind==='moment'?<div className="public-collectible-moment"><MomentCard item={item}/></div>:<div className="public-collectible-face"><span>{marketContentLabel(item)}</span><h2>{item.title}</h2><p>{item.summary}</p><code>{item.assetId}</code><small>Public source presentation</small></div>)} renderBack={()=> <AssetProofBack item={item}/>}/>;
   return <><div className="asset-detail-heading"><AssetMark kind="proof" /><div><h1>{item.title}</h1><p>{standalone?'Source. Ownership. Continuity.':'Public source'}</p></div></div>
     {standalone&&profileUsername(item.ownerUsername)&&<a className="asset-profile-byline" href={profilePagePath(item.ownerUsername!)}><ProfileAvatar src={item.ownerAvatarUrl} name={item.ownerDisplayName??item.ownerUsername!} eager/><span>Owner<span>@{item.ownerUsername}</span></span><ExternalLink size={13}/></a>}
     {!standalone&&<AssetPageLinks item={item}/>}

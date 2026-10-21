@@ -4,6 +4,7 @@ import type {SportsHistorySnapshot} from './market-projection/sports-observation
 import {readPublicAssetManifestSource,type PublicAssetManifestRow,type PublicAssetManifestSource} from './public-asset-manifest.js';
 import {publicAssetTitle} from './asset-title.js';
 import {publicMediaPlayback,type PublicPlayback} from './public-asset-embed.js';
+import {publicDocumentUrl} from './public-document.js';
 /** Public discovery and quotes are display projections; they grant no ownership. */
 export interface PublicMarketItem {
   id: string; assetId: string; title: string; summary: string; category: 'proof' | 'sports'; circulationCount?: number; pricedCount?: number; capitalizationUsdCents?: string | null;
@@ -13,6 +14,7 @@ export interface PublicMarketItem {
   mediaKind?:PublicMediaKind;
   artworkUrl?:string|null;
   playback?:PublicPlayback|null;
+  documentUrl?:string|null;
   proofManifest?:PublicAssetManifestRow[];
   proofManifestSource?:PublicAssetManifestSource;
   readingUrl?: string | null;
@@ -117,6 +119,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
       mediaKind:publicMediaKind(profile.mediaKind??media.kind??(profile.media===null?null:undefined)),
       artworkUrl:publicMediaArtworkUrl({...media,kind:profile.mediaKind??media.kind},profile.artworkUrl),
       playback:publicMediaPlayback(source,materialOriginal),
+      documentUrl:publicDocumentUrl(source,materialOriginal),
       proofManifestSource:readPublicAssetManifestSource(profile),
       pulse: typeof source.pulse === 'string' && /^\d{1,24}$/.test(source.pulse) ? source.pulse : null,livePulseSeed:publicMarketPulseSeed(source.livePulseSeed,source.pulse),valuationBinding:{itemId:id,assetId},
       sealedAt: sealedAt && Number.isFinite(Date.parse(sealedAt)) ? sealedAt : null,

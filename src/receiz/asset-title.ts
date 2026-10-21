@@ -19,5 +19,9 @@ export function publicAssetTitle(input:unknown):string|null{
  // Old retained rows lost their authored title during curation. Correct only
  // the same asset and exact original; never carry a title to changed evidence.
  if(retained&&retained[0]===source.receizId&&typeof digest==='string'&&retained[1]===digest.toLowerCase())return retained[2];
- return title(source.title);
+ const caption=title(source.title);if(!caption)return null;
+ // The caption remains complete in its own surface. Only its headline is
+ // reduced to the first sentence when no authored title was supplied.
+ const line=caption.split(/\r?\n/).find(line=>line.trim())?.trim()??caption,period=line.search(/\.(?=\s|$)/);
+ return period>=0?line.slice(0,period+1):line;
 }
