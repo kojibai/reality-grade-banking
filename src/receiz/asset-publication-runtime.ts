@@ -3,9 +3,10 @@ import type {AssetPublicationReceipt} from './asset-publication';
 import type {BankNoteRuntimeFactory} from './offline-notes';
 import publicationBuild from '../../public/native/asset-publication.v129.manifest.json';
 import {parseExactByteBlockReference,type ExactByteBlockReference} from '../../native/receiz/packages/receiz-sdk/src/exactByteBlocks';
+export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:unknown;sourceReference:unknown;firstPaint:Readonly<{artifactDigest:string}>}>;
 export interface AssetPublicationRuntimeModule{
  resolveComposerBlock(reference:ExactByteBlockReference):Promise<Uint8Array>;
- createConnectedAssetPublicationRuntime(input:{identity:Uint8Array;passphrase:string;account:{uid:string;username:string};sealDocument:Parameters<BankNoteRuntimeFactory>[0]['sealDocument'];fetchImpl:typeof fetch;assertCurrent():void}):Promise<{prepare(draft:AssetComposerDraft):Promise<PreparedComposerSource>;prepareContent(draft:AssetComposerDraft):Promise<ComposerAssetContent>;sealContent(content:ComposerAssetContent):Promise<PreparedComposerSource>;publish(file:File):Promise<AssetPublicationReceipt>}>;
+ createConnectedAssetPublicationRuntime(input:{identity:Uint8Array;passphrase:string;account:{uid:string;username:string};sealDocument:Parameters<BankNoteRuntimeFactory>[0]['sealDocument'];fetchImpl:typeof fetch;assertCurrent():void;onLocalAdmission?(admission:ConnectedAssetLocalAdmission):Promise<void>|void}):Promise<{prepare(draft:AssetComposerDraft):Promise<PreparedComposerSource>;prepareContent(draft:AssetComposerDraft):Promise<ComposerAssetContent>;sealContent(content:ComposerAssetContent):Promise<PreparedComposerSource>;publish(file:File):Promise<AssetPublicationReceipt>}>;
 }
 let runtime:Promise<AssetPublicationRuntimeModule>|undefined;
 export function loadAssetPublicationRuntime():Promise<AssetPublicationRuntimeModule>{
