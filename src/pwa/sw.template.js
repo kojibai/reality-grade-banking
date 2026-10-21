@@ -34,11 +34,64 @@ async function fromBuild(path) {
 self.addEventListener('install', event => { event.waitUntil(install()); });
 self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('receiz-bank-') && key !== CACHE).map(key => caches.delete(key))))); });
 self.addEventListener('message', event => {
+  if (event.data?.type === 'BANK_PUSH_BIND' && event.data.version === 1 && event.source?.url && new URL(event.source.url).origin === self.location.origin) {
+    if (event.data.accountUid !== null && !pushUuid(event.data.accountUid)) return;
+    event.waitUntil((async () => {
+      const store = await caches.open('bankeiz-notification-preferences-v1');
+      await store.put('/notification-account', Response.json({accountUid:event.data.accountUid}));
+      event.ports?.[0]?.postMessage({ready:true});
+    })());
+    return;
+  }
+  if (event.data?.type === 'BANK_PUSH_STATUS' && event.source?.url && new URL(event.source.url).origin === self.location.origin) {
+    event.ports?.[0]?.postMessage({ready:true,version:1}); return;
+  }
   if (event.data?.type !== 'BANK_OFFLINE_STATUS' || event.data.version !== 1 || !event.ports[0] || !event.source?.url || new URL(event.source.url).origin !== self.location.origin) return;
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE), found = await Promise.all(SHELL.map(path => cache.match(path, { ignoreVary: true })));
     const cached = found.filter(Boolean).length;
     event.ports[0].postMessage({ schema: 'bankeiz.offline-status.v1', build: CACHE.slice('receiz-bank-'.length), ready: cached === SHELL.length, required: SHELL.length, cached });
+  })());
+});
+
+// Notification preferences contain only a local account selector, never tokens,
+// message bodies, proof, custody or payment state. Push is a delivery hint; the
+// authenticated conversation/call route remains authoritative when opened.
+const pushUuid = value => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(value);
+async function pushOwner() {
+  try { return (await (await (await caches.open('bankeiz-notification-preferences-v1')).match('/notification-account'))?.json())?.accountUid ?? null; } catch { return null; }
+}
+function pushTarget(value, owner) {
+  if (!value || value.version !== 1 || value.source !== 'receiz.chat' || !['message','call'].includes(value.kind) || !pushUuid(value.conversationId) || !pushUuid(value.recipientUserId) || value.recipientUserId !== owner) return null;
+  const target = {conversationId:value.conversationId,recipientUserId:value.recipientUserId};
+  if (value.kind === 'call' && pushUuid(value.callId) && ['voice','video'].includes(value.mode) && Number.isFinite(value.timestamp) && Date.now()-value.timestamp < 120000 && value.timestamp <= Date.now()+30000) Object.assign(target,{callId:value.callId,mode:value.mode});
+  return target;
+}
+const pushText = (value,limit) => typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,limit) : '';
+self.addEventListener('push', event => {
+  event.waitUntil((async () => {
+    let value; try { value = event.data?.json(); } catch { /* Show a generic visible alert for invalid payloads. */ }
+    const target = pushTarget(value,await pushOwner()), incoming = !!target?.callId;
+    const missed = target && value.kind === 'call' && !incoming;
+    await self.registration.showNotification(target ? missed ? 'Missed call' : pushText(value.title,100) || (incoming ? 'Incoming call' : 'New message') : 'Bankeiz', {
+      body:target ? missed ? 'Open your conversation to call back.' : pushText(value.body,240) || 'Open Bankeiz to view.' : 'Open Bankeiz to view your notifications.',
+      icon:'/icon-192.png',badge:'/icon-192.png',tag:target ? 'bank-'+(incoming ? 'call-'+target.callId : 'message-'+target.conversationId) : 'bank-activity',
+      requireInteraction:incoming,renotify:incoming,
+      actions:incoming ? [{action:'open',title:'View call'},{action:'dismiss',title:'Dismiss'}] : [{action:'open',title:'Open'}],
+      data:target ? {version:1,source:'receiz.chat',kind:incoming?'call':'message',timestamp:Date.now(),...target} : null,
+    });
+  })());
+});
+self.addEventListener('notificationclick', event => {
+  event.notification.close(); if (event.action === 'dismiss') return;
+  event.waitUntil((async () => {
+    const target = pushTarget(event.notification.data,await pushOwner());
+    const params = new URLSearchParams(target ? {bankNotification:'1',conversation:target.conversationId,recipient:target.recipientUserId,...(target.callId?{call:target.callId,mode:target.mode}:{})} : {});
+    const url = new URL('/'+(params.size?'?'+params:'')+'#account/messages',self.location.origin);
+    const windows = await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    const current = windows.find(client => { try { const url=new URL(client.url);return url.origin===self.location.origin && url.pathname==='/'; } catch { return false; } });
+    if (current) { current.postMessage({type:'BANK_NOTIFICATION_OPEN',target});await current.focus();return; }
+    await self.clients.openWindow(url.href);
   })());
 });
 self.addEventListener('fetch', event => {

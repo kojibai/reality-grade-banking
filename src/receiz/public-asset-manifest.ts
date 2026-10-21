@@ -1,7 +1,7 @@
 /** The live-player manifest, projected from the same public ProfileOriginal.
  * These are source display fields. Rendering them performs no verification. */
 export type PublicAssetManifestRow={label:string;value:string;href?:string;downloadName?:string};
-export type PublicAssetManifestSource={code:string|null;pulse:string|null;verifyPath:string|null;claimHashHex:string|null;pbiReceiptHash:string|null;recordCardMediaSha256Hex:string|null;recordMediaSha256Hex:string|null;proof:{circuit:string|null;groth16Id:string|null;poseidon:string|null};media:{sha256Hex:string|null;originalDownloadSha256Hex:string|null}|null;attachments:{id:string|null;name:string|null;src:string|null;downloadName:string|null;sha256Hex:string|null}[]};
+export type PublicAssetManifestSource={mediaKind?:string|null;code:string|null;pulse:string|null;verifyPath:string|null;claimHashHex:string|null;pbiReceiptHash:string|null;recordCardMediaSha256Hex:string|null;recordMediaSha256Hex:string|null;proof:{circuit:string|null;groth16Id:string|null;poseidon:string|null};media:{sha256Hex:string|null;originalDownloadSha256Hex:string|null}|null;attachments:{id:string|null;name:string|null;src:string|null;downloadName:string|null;sha256Hex:string|null}[]};
 const record=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
 const text=(value:unknown,max=4096)=>typeof value==='string'&&value.trim()&&value.length<=max?value.trim():typeof value==='number'&&Number.isSafeInteger(value)?String(value):null;
 const hash=(value:unknown)=>{const raw=text(value,160);return raw&&/^[a-f0-9]{64}$/i.test(raw)?raw.toUpperCase():null;};
@@ -10,7 +10,7 @@ const hash=(value:unknown)=>{const raw=text(value,160);return raw&&/^[a-f0-9]{64
 export function readPublicAssetManifestSource(input:unknown):PublicAssetManifestSource|undefined{
  const source=record(input),proof=record(source.proof),media=record(source.media);
  if(!['code','pulse','verifyPath','claimHashHex','pbiReceiptHash','proof','attachments','recordCardMediaSha256Hex','recordMediaSha256Hex'].some(key=>Object.hasOwn(source,key)))return;
- return {code:text(source.code,80),pulse:text(source.pulse,80),verifyPath:text(source.verifyPath,1000),claimHashHex:hash(source.claimHashHex),pbiReceiptHash:hash(source.pbiReceiptHash),recordCardMediaSha256Hex:hash(source.recordCardMediaSha256Hex),recordMediaSha256Hex:hash(source.recordMediaSha256Hex),proof:{circuit:text(proof.circuit,80),groth16Id:text(proof.groth16Id,160),poseidon:text(proof.poseidon,160)},media:source.media===null?null:{sha256Hex:hash(media.sha256Hex),originalDownloadSha256Hex:hash(media.originalDownloadSha256Hex)},attachments:Array.isArray(source.attachments)?source.attachments.slice(0,200).map(input=>{const row=record(input);return {id:text(row.id,240),name:text(row.name),src:publicManifestLink(row.src),downloadName:text(row.downloadName,240),sha256Hex:hash(row.sha256Hex)};}):[]};
+ return {mediaKind:text(source.mediaKind,40)??text(media.kind,40)??(source.media===null?'moment':null),code:text(source.code,80),pulse:text(source.pulse,80),verifyPath:text(source.verifyPath,1000),claimHashHex:hash(source.claimHashHex),pbiReceiptHash:hash(source.pbiReceiptHash),recordCardMediaSha256Hex:hash(source.recordCardMediaSha256Hex),recordMediaSha256Hex:hash(source.recordMediaSha256Hex),proof:{circuit:text(proof.circuit,80),groth16Id:text(proof.groth16Id,160),poseidon:text(proof.poseidon,160)},media:source.media===null?null:{sha256Hex:hash(media.sha256Hex),originalDownloadSha256Hex:hash(media.originalDownloadSha256Hex)},attachments:Array.isArray(source.attachments)?source.attachments.slice(0,200).map(input=>{const row=record(input);return {id:text(row.id,240),name:text(row.name),src:publicManifestLink(row.src),downloadName:text(row.downloadName,240),sha256Hex:hash(row.sha256Hex)};}):[]};
 }
 /** No arbitrary hosts, script URLs, credentials, or account routes on the back. */
 export function publicManifestLink(value:unknown):string|null{
@@ -39,7 +39,7 @@ export function publicAssetManifest(profileInput:unknown,fallback:{verifyUrl?:st
   {label:'Groth16',value:text(proof.groth16Id,160)??'Unavailable'},
   {label:'Poseidon',value:text(proof.poseidon,160)??'Unavailable'},
   {label:'Claim SHA-256',value:hash(profile.claimHashHex)??'Unavailable'},
-  {label:'Media SHA-256',value:hash(media.sha256Hex)??hash(media.originalDownloadSha256Hex)??(profile.media===null?hash(profile.recordCardMediaSha256Hex):null)??hash(profile.recordMediaSha256Hex)??'Unavailable'},
+  {label:'Media SHA-256',value:hash(media.sha256Hex)??hash(media.originalDownloadSha256Hex)??(profile.media===null||profile.mediaKind==='moment'?hash(profile.recordCardMediaSha256Hex):null)??hash(profile.recordMediaSha256Hex)??'Unavailable'},
  ];
  if(Array.isArray(profile.attachments))for(const [index,input]of profile.attachments.slice(0,200).entries()){
   const attachment=record(input),href=publicManifestLink(attachment.src),name=text(attachment.name)??text(attachment.id)??'Proof attachment',downloadName=text(attachment.downloadName,240)??text(attachment.name,240);

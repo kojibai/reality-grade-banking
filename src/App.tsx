@@ -1,3 +1,5 @@
+import {clearNotificationUrl,notificationFromUrl,notificationTarget,type NotificationTarget} from './pwa/notification-target';
+import {publishAccountAppearance} from './receiz/account-appearance';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 import {bankTwinContextRecords} from './receiz/twin-bank-context';
@@ -41,7 +43,10 @@ function BankApp() {
   const [profileRevision,setProfileRevision]=useState(0);
   useEffect(()=>{const updated=()=>setProfileRevision(value=>value+1);addEventListener('bankeiz:profile-updated',updated);return()=>removeEventListener('bankeiz:profile-updated',updated);},[]);
   const identityImage=useMemo(()=>account.identity?identityProfileAvatar(account.identity):null,[account.identity,profileRevision]);
+  useEffect(()=>{if(account.identity)publishAccountAppearance({avatarUrl:identityImage,name:account.identity.accountUsername?.()??account.identity.username??'ID'});else if(!account.opening&&!account.busy)publishAccountAppearance(null);},[account.identity,identityImage,account.opening,account.busy,profileRevision]);
   const profileAction=useSyncExternalStore(subscribeProfileActions,readProfileAccountAction,()=>null);
+  const [notification,setNotification]=useState<NotificationTarget|null>(()=>notificationFromUrl(location.search));
+  useEffect(()=>{if(!('serviceWorker'in navigator))return;const receive=(event:MessageEvent)=>{if(event.data?.type!=='BANK_NOTIFICATION_OPEN')return;const target=notificationTarget(event.data.target);setNotification(target);history.replaceState({panel:'account',sheet:{kind:'messages'}},'', '/'+location.search+'#account/messages');dispatchEvent(new PopStateEvent('popstate'));};navigator.serviceWorker.addEventListener('message',receive);return()=>navigator.serviceWorker.removeEventListener('message',receive);},[]);
   const [messageRecipient,setMessageRecipient]=useState<{owner:typeof account.identity;id:number;person:{userId:string;username:string;displayName:string;avatarUrl:string|null}}|null>(null);
   const publicMarket = usePublicMarket(onBank);
   const showcase = useMemo(() => projectAccountShowcase(publicMarket.catalog, account.identity?.accountUsername?.() ?? account.identity?.username ?? null), [publicMarket.catalog, account.identity, account.wallet]);
@@ -60,7 +65,7 @@ function BankApp() {
   const close = () => { if (sheetCloseBehavior(history.state) === 'back') history.back(); else { history.replaceState({ panel, sheet: null }, '', routeHash(panel)); setSheet(null); } };
   const navigate = (next: Panel) => { positions.current[panel] = scrollY; history.pushState({ panel: next, sheet: null }, '', routeHash(next)); setPanel(next); setSheet(null); requestAnimationFrame(() => scrollTo(0, positions.current[next] ?? 0)); };
   useEffect(() => { const back = () => { if (location.pathname !== '/') return; const route = parseRoute(location.hash); setPanel(route.panel); setSheet(route.sheet); }; addEventListener('popstate', back); addEventListener('receiz-bank:surface', back); return () => { removeEventListener('popstate', back); removeEventListener('receiz-bank:surface', back); }; }, []);
-  useEffect(() => { if (account.identity && onBank) { const route = paymentRequest ? { panel: 'account' as const, sheet: { kind: 'send' as const } } : parseRoute(location.hash); setPanel(route.panel); setSheet(route.sheet); history.replaceState(route, '', `${location.search}${routeHash(route.panel, route.sheet)}`); } }, [account.identity, paymentRequest, onBank]);
+  useEffect(() => { if (account.identity && onBank) { if(notification)clearNotificationUrl();const route = paymentRequest ? { panel: 'account' as const, sheet: { kind: 'send' as const } } : parseRoute(location.hash); setPanel(route.panel); setSheet(route.sheet); history.replaceState(route, '', `${location.search}${routeHash(route.panel, route.sheet)}`); } }, [account.identity, paymentRequest, onBank]);
   useEffect(()=>{
     if(!onBank||!account.identity||!profileAction)return;
     const {profile,id,kind}=profileAction;
@@ -76,7 +81,7 @@ function BankApp() {
     <div hidden={panel !== 'market'}><Market source={publicMarket} active={onBank && panel === 'market'} onAction={open} /></div>
     <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={onBank && panel === 'assets'} revision={sourceRevision} showcase={showcase} showcaseBusy={publicMarket.status === 'loading'} onOpen={open} /></div>
     <div hidden={panel !== 'ledger'}><Ledger active={onBank && panel === 'ledger'} personalHistory={personalHistory} privateHistory={privateHistory} /></div>
-    {messagesMounted.current&&<MessagesPanel identity={account.identity} initialRecipient={messageRecipient?.owner===account.identity?messageRecipient:null} active={onBank&&sheet?.kind==='messages'} twinContextRecords={twinContextRecords} onOpen={restoreMessages} onClose={close} onPreparePayment={recipient=>open({kind:'send',...(recipient?{recipient}:{})})}/>}
+    {messagesMounted.current&&<MessagesPanel identity={account.identity} initialNotification={notification} initialRecipient={messageRecipient?.owner===account.identity?messageRecipient:null} active={onBank&&sheet?.kind==='messages'} twinContextRecords={twinContextRecords} onOpen={restoreMessages} onClose={close} onPreparePayment={recipient=>open({kind:'send',...(recipient?{recipient}:{})})}/>}
     {sheet && sheet.kind!=='messages' && <LiveActions marketItems={publicMarket.catalog?.items} key={sheet.kind==='send'?'send:'+(sheet.recipient?.userId??'')+':'+(sheet.recipient?.username??''):sheet.kind} active={onBank} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} cardResumeSessionId={cardResumeSessionId} onCardResumeConsumed={consumeCardResume} onClose={close} onRefresh={() => { setSourceRevision(value => value + 1); void account.refresh(); void privateHistory.refresh(); }} onForget={async () => { await account.forget(); setSheet(null); }} />}
   </ConsoleShell></>;
 }

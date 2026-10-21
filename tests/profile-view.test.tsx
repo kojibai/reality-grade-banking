@@ -5,7 +5,7 @@ import {createRoot,type Root} from 'react-dom/client';
 import {ProfileCollection} from '../src/public-explorer/ProfileCollection';
 import {parsePublicProfile} from '../src/receiz/public-profile';
 import {profileFixture} from './fixtures/public-profile';
-vi.mock('../src/features/media/ProofMedia',()=>({ProofMedia:()=> <div data-reader>Existing media reader</div>}));
+vi.mock('../src/features/media/ProofMedia',async importOriginal=>({...await importOriginal<typeof import('../src/features/media/ProofMedia')>(),ProofMedia:()=> <div data-reader>Existing media reader</div>}));
 let root:Root;let element:HTMLDivElement;afterEach(async()=>{if(root)await act(()=>root.unmount());element?.remove();});
 it('changes collection columns without fetching and opens media in place',async()=>{
  element=document.createElement('div');document.body.append(element);root=createRoot(element);const fetcher=vi.spyOn(globalThis,'fetch');
@@ -93,4 +93,15 @@ it('switches weighted showcase percentage periods immediately without a source r
   expect(element.querySelector<HTMLSelectElement>('[aria-label="Showcase growth period"]')?.value).toBe('1D');expect(element.querySelector('.profile-showcase-return')?.textContent).not.toBe(initial);
   await act(()=>element.querySelector<HTMLButtonElement>('[aria-label="Previous growth period"]')!.click());expect(element.querySelector('.profile-showcase-return')?.textContent).toBe(initial);expect(fetcher).not.toHaveBeenCalled();
  }finally{forgetPublicProfile('alexmorgan');fetcher.mockRestore();}
+});
+
+it('opens Moment entries locally and keeps the compact two-column preview free of coordinates',async()=>{
+ const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.userId='moment-view-owner';profile.nextCursor=null;profile.items=[{...profile.items[0],id:'moment-preview',mediaKind:'moment',originalUrl:null,originalDigest:null,summary:'The full moment. Another line.',pulse:'123456',sealedAt:'2026-10-21T00:00:00Z'}];
+ element=document.createElement('div');document.body.append(element);root=createRoot(element);const fetcher=vi.spyOn(globalThis,'fetch');
+ try{await act(()=>root.render(<ProfileCollection profile={profile} items={profile.items} active/>));expect(element.querySelector('.moment-card-owner time')).toBeNull();expect(element.querySelector('.moment-card-coordinates')).toBeNull();await act(()=>element.querySelector<HTMLButtonElement>('.profile-asset-cover')!.click());expect(element.querySelector('.profile-asset.is-experiencing .asset-object')).not.toBeNull();expect(element.querySelector('.moment-card-owner time')).not.toBeNull();expect(fetcher).not.toHaveBeenCalled();}finally{fetcher.mockRestore();}
+});
+
+it('opens a public profile-image object from its existing artwork when no downloadable original is carried',async()=>{
+ const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.userId='profile-artwork-owner';profile.nextCursor=null;profile.items=[{...profile.items[0],id:'profile-image',mediaKind:'image',originalUrl:null,originalDigest:null,artworkUrl:'https://receiz.com/artwork/avatar.png'}];
+ element=document.createElement('div');document.body.append(element);root=createRoot(element);const fetcher=vi.spyOn(globalThis,'fetch');try{await act(()=>root.render(<ProfileCollection profile={profile} items={profile.items} active/>));const button=element.querySelector<HTMLButtonElement>('.profile-asset-cover')!;expect(button.disabled).toBe(false);await act(()=>button.click());expect(element.querySelector('dialog img')?.getAttribute('src')).toBe(profile.items[0].artworkUrl);expect(fetcher).not.toHaveBeenCalled();}finally{fetcher.mockRestore();}
 });

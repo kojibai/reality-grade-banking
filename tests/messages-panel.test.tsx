@@ -19,10 +19,10 @@ function deferred<T>(){let resolve!:(value:T)=>void,reject!:(reason:unknown)=>vo
 function fixture(consented=true){
  let approved=consented;
  const twin={readiness:vi.fn(()=>({status:'configured',availability:'unchecked',requires:['business','usage-credits']})),ask:vi.fn(async(input:NativeTwinAsk):Promise<NativeTwinReply>=>({requestId:input.requestId,message:'A generated answer',authority:'generated-interpretation',source:'upstream',memoryScope:'none',memory:[],sourceReferences:[],sharedContext:[],actionHandoffs:[{kind:'pay',label:'Review proposal',href:'https://receiz.com/review',authority:'proposal-only',admitted:false}]}))};
- const api={accountUid:uid,twin,callTransport:{heldFetch:vi.fn(async(_path:string,_init?:RequestInit)=>Response.json({ok:true,calls:[],activeCall:null}))},knownConversations:()=>[conversation],knownMessages:()=>page,conversations:vi.fn(async(_signal?:AbortSignal)=>[conversation]),messages:vi.fn(async(_id:string,_before?:string,_signal?:AbortSignal)=>page),search:vi.fn(async(_query:string,_signal?:AbortSignal)=>[peer,other]),createConversation:vi.fn(async(_input:{participantUserIds:string[];title?:string})=>threadId),send:vi.fn(async(_id:string,_body:string,_options?:MessageSendOptions)=>({...message,id:'sent-1',senderUserId:uid,body:'My draft'}))};
+ const api={accountUid:uid,twin,callTransport:{heldFetch:vi.fn(async(_path:string,_init?:RequestInit)=>Response.json({ok:true,calls:[],activeCall:null}))},knownConversations:()=>[conversation],knownMessages:():ChatPage|null=>page,conversations:vi.fn(async(_signal?:AbortSignal)=>[conversation]),messages:vi.fn(async(_id:string,_before?:string,_signal?:AbortSignal)=>page),search:vi.fn(async(_query:string,_signal?:AbortSignal)=>[peer,other]),createConversation:vi.fn(async(_input:{participantUserIds:string[];title?:string})=>threadId),send:vi.fn(async(_id:string,_body:string,_options?:MessageSendOptions)=>({...message,id:'sent-1',senderUserId:uid,body:'My draft'}))};
  const identity={binding:{identityOwnerReceizId:'owner'},knownTwinAccess:()=>true,messaging:vi.fn(async(approve=false)=>{if(!approved&&!approve)throw Error('MESSAGING_CONSENT_REQUIRED');approved=true;return api;})} as unknown as OpenIdentity;
  const host=document.createElement('div');document.body.appendChild(host);const root=createRoot(host),onClose=vi.fn(),onOpen=vi.fn(),onPreparePayment=vi.fn();
- const render=(active=true,nextIdentity=identity,twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>,initialRecipient?:{id:number;person:typeof peer})=>act(async()=>root.render(<MessagesPanel identity={nextIdentity} active={active} onClose={onClose} onOpen={onOpen} onPreparePayment={onPreparePayment} twinContextRecords={twinContextRecords} initialRecipient={initialRecipient}/>));
+ const render=(active=true,nextIdentity=identity,twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>,initialRecipient?:{id:number;person:typeof peer},initialNotification?:import('../src/pwa/notification-target').NotificationTarget)=>act(async()=>root.render(<MessagesPanel identity={nextIdentity} active={active} onClose={onClose} onOpen={onOpen} onPreparePayment={onPreparePayment} twinContextRecords={twinContextRecords} initialRecipient={initialRecipient} initialNotification={initialNotification}/>));
  const click=async(label:string)=>{const button=[...host.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===label||b.textContent===label);expect(button,'button '+label).toBeTruthy();await act(async()=>button!.click());};
  const input=async(label:string,value:string)=>{const field=host.querySelector<HTMLInputElement>('[aria-label="'+label+'"]')!;expect(field,'input '+label).toBeTruthy();await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(field,value);field.dispatchEvent(new Event('input',{bubbles:true}));});};
  const submit=()=>act(async()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
@@ -293,4 +293,41 @@ it('links a direct chat header and sender photo/name to the Bankeiz profile usin
 });
 it('opens a compact group people list with local profile links and no member lookup',async()=>{
  const f=fixture(),group={...conversation,kind:'group' as const,title:'Friends',members:[peer,other]};f.api.knownConversations=()=>[group];f.api.conversations.mockResolvedValue([group]);f.api.messages.mockResolvedValue({...page,conversation:group});try{await f.render();await f.click('Messages');await f.click('Open conversation Friends');const before=f.api.conversations.mock.calls.length;await f.click('View group members');expect(f.host.querySelector('[aria-label="Group profiles"] a[href="/sam/"]')).not.toBeNull();expect(f.host.querySelector('[aria-label="Group profiles"] a[href="/alex/"]')).not.toBeNull();expect(f.api.conversations).toHaveBeenCalledTimes(before);expect(f.api.search).not.toHaveBeenCalled();}finally{f.unmount();}
+});
+
+it('opens the exact notification conversation without sending or creating anything',async()=>{const f=fixture();try{await f.render(true,f.identity,undefined,undefined,{recipientUserId:uid,conversationId:threadId});expect(f.host.querySelector('[aria-label="Message…"]')).not.toBeNull();expect(f.host.textContent).toContain('An actual fixture message');expect(f.api.send).not.toHaveBeenCalled();expect(f.api.createConversation).not.toHaveBeenCalled();}finally{f.unmount();}});
+it('does not fetch a foreign notification thread or answer an expired call',async()=>{const f=fixture();try{await f.render(true,f.identity,undefined,undefined,{recipientUserId:peer.userId,conversationId:threadId});expect(f.host.textContent).toContain('belongs to another ID');expect(f.api.messages).not.toHaveBeenCalled();await f.render(true,f.identity,undefined,undefined,{recipientUserId:uid,conversationId:threadId,callId:other.userId,mode:'voice'});expect(f.host.querySelector('[aria-label="Message…"]')).not.toBeNull();expect(f.api.callTransport.heldFetch.mock.calls.every(([,init])=>!init?.method||init.method==='GET')).toBe(true);}finally{f.unmount();}});
+
+
+it('notification lifecycle: retries an interrupted notification after foreground',async()=>{
+ const f=fixture(),pending=deferred<ChatPage>(),target={recipientUserId:uid,conversationId:threadId};
+ f.api.knownMessages=()=>null;
+ f.api.messages.mockImplementationOnce(async(_id,_before,signal)=>{await pending.promise;if(signal?.aborted)throw new DOMException('Aborted','AbortError');return page;});
+ try{await f.render(true,f.identity,undefined,undefined,target);expect(f.api.messages).toHaveBeenCalledTimes(1);
+ Object.defineProperty(document,'visibilityState',{configurable:true,value:'hidden'});await act(async()=>document.dispatchEvent(new Event('visibilitychange')));
+ await act(async()=>pending.resolve(page));Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});await act(async()=>document.dispatchEvent(new Event('visibilitychange')));
+ expect(f.api.messages).toHaveBeenCalledTimes(2);expect(f.host.querySelector('[aria-label="Message…"]')).not.toBeNull();
+ }finally{f.unmount();}
+});
+it('notification lifecycle: keeps the latest manual conversation intent while notification fetch is pending',async()=>{
+ const f=fixture(),pending=deferred<ChatPage>(),target={recipientUserId:uid,conversationId:threadId},second={...conversation,id:'66666666-6666-4666-8666-666666666666',title:'Alex',members:[other]};
+ f.api.knownMessages=()=>null;f.api.conversations.mockResolvedValue([conversation,second]);f.api.messages.mockImplementation(async(id)=>id===threadId?pending.promise:{...page,conversation:second});
+ try{await f.render(true,f.identity,undefined,undefined,target);await f.click('Messages');await f.click('Open conversation Alex');expect(f.host.querySelector('.sheet-header h2')?.textContent).toBe('Alex');
+ await act(async()=>pending.resolve(page));expect(f.host.querySelector('.sheet-header h2')?.textContent).toBe('Alex');
+ }finally{f.unmount();}
+});
+
+it('notification lifecycle: does not replace a call joined while notification lookup is pending',async()=>{
+ const f=fixture(),pending=deferred<Response>(),stop=vi.fn(),track={kind:'audio',id:'held-call-audio',enabled:true,readyState:'live',stop},stream=Object.assign(new MediaStream([track as unknown as MediaStreamTrack]),{getTracks:()=>[track]});
+ Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:vi.fn(async()=>stream)}});
+ const second={...conversation,id:'66666666-6666-4666-8666-666666666666',title:'Alex',members:[other]},call={id:'55555555-5555-4555-8555-555555555555',conversationId:threadId,mode:'voice',status:'active',topology:'mesh',participants:[{participantKind:'user',userId:uid,leftAt:null,displayName:'You'}],activeParticipantCount:1,viewerPermissions:{canEndCall:true}},secondCall={...call,id:'77777777-7777-4777-8777-777777777777',conversationId:second.id};
+ f.api.knownMessages=((id:string)=>id===second.id?{...page,conversation:second}:page) as typeof f.api.knownMessages;f.api.conversations.mockResolvedValue([conversation,second]);
+ f.api.callTransport.heldFetch.mockImplementation(async(path)=>path===('/api/chat/conversations/'+second.id+'/calls')?pending.promise:path.endsWith('/ice')?Response.json({ok:true,iceServers:[{urls:'stun:synthetic.invalid'}],source:'fallback'}):path.includes('/signals?')?Response.json({ok:true,signals:[],lastSignalAt:null}):Response.json({ok:true,call,calls:[call],activeCall:call}));
+ try{
+ await f.render();await f.click('Messages');await f.click('Open conversation Sam');await f.click('Voice call');await vi.waitFor(()=>expect(f.host.querySelector('[aria-label="Join call"]')).not.toBeNull());
+ await f.render(true,f.identity,undefined,undefined,{recipientUserId:uid,conversationId:second.id,callId:secondCall.id,mode:'voice'});
+ await f.click('Join call');expect(stop).not.toHaveBeenCalled();
+ await act(async()=>pending.resolve(Response.json({ok:true,call:secondCall,calls:[secondCall],activeCall:secondCall})));expect(f.host.querySelector('.bank-call')?.getAttribute('aria-label')).toBe('Call with Sam');
+ expect(stop).not.toHaveBeenCalled();
+ }finally{f.unmount();}
 });

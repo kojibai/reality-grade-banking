@@ -10,9 +10,9 @@ export interface AssetObjectProps {
   onSideChange?:(side:'front'|'back')=>void;
 }
 const controls='a,button,input,textarea,select,option,audio,video,iframe,dialog,summary,[role="dialog"],[role="button"],[role="slider"],[contenteditable]:not([contenteditable="false"]),[data-asset-no-swipe]';
-function protectsControl(target:EventTarget|null):boolean {
+function protectsControl(target:EventTarget|null,stage:Element):boolean {
   const control=target instanceof Element?target.closest(controls):null;
-  return Boolean(control&&!control.hasAttribute('data-asset-swipe'));
+  return Boolean(control&&stage.contains(control)&&!control.hasAttribute('data-asset-swipe'));
 }
 
 /** A display surface only. Proof content is mounted on demand by its owner. */
@@ -28,18 +28,18 @@ export function AssetObject({front,renderBack,label='Proof object',className='',
   function show(next:boolean){setBack(next);onSideChange?.(next?'back':'front');}
   function start(event:TouchEvent<HTMLDivElement>){
     gesture.current=null;
-    if(event.touches.length!==1||protectsControl(event.target))return;
+    if(event.touches.length!==1||protectsControl(event.target,event.currentTarget))return;
     const touch=event.touches[0];gesture.current={id:touch.identifier,x:touch.clientX,y:touch.clientY,at:Date.now()};
   }
   function end(event:TouchEvent<HTMLDivElement>){
-    const initial=gesture.current;gesture.current=null;if(!initial||event.touches.length||protectsControl(event.target))return;
+    const initial=gesture.current;gesture.current=null;if(!initial||event.touches.length||protectsControl(event.target,event.currentTarget))return;
     const touch=Array.from(event.changedTouches).find(value=>value.identifier===initial.id);if(!touch)return;
     const dx=touch.clientX-initial.x,dy=touch.clientY-initial.y;
     if(Date.now()-initial.at>1000||Math.abs(dx)<56||Math.abs(dx)<Math.abs(dy)*1.6)return;
     suppressClickUntil.current=Date.now()+400;show(!back);
   }
   function tilt(event:PointerEvent<HTMLDivElement>){
-    if(event.pointerType!=='mouse'||!inView||!pageVisible||protectsControl(event.target)||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
+    if(event.pointerType!=='mouse'||!inView||!pageVisible||protectsControl(event.target,event.currentTarget)||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
     const box=event.currentTarget.getBoundingClientRect();if(!box.width||!box.height)return;
     event.currentTarget.style.setProperty('--asset-tilt-x',`${((event.clientX-box.left)/box.width-.5)*3}deg`);
     event.currentTarget.style.setProperty('--asset-tilt-y',`${(.5-(event.clientY-box.top)/box.height)*3}deg`);

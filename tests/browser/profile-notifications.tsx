@@ -1,0 +1,20 @@
+import {createRoot} from 'react-dom/client';
+import {useState} from 'react';
+import {PublicProfilePage} from '../../src/public-explorer/PublicProfilePage';
+import {NotificationsControl} from '../../src/features/messages/NotificationsControl';
+import {LiveAssets} from '../../src/features/assets/LiveAssets';
+import {PublicAssetDetail} from '../../src/features/market/PublicAssetDetail';
+import {parsePublicProfile,retainPublicProfile} from '../../src/receiz/public-profile';
+import {profileFixture} from '../fixtures/public-profile';
+import type {NativeMessaging} from '../../src/receiz/native-messaging';
+import type {OpenIdentity} from '../../src/receiz/native-identity';
+import '../../src/styles/tokens.css';import '../../src/styles/app.css';import '../../src/styles/features.css';import '../../src/features/messages/messages.css';
+const svg=(text:string,wide=false)=>'data:image/svg+xml;base64,'+btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="${wide?1200:400}" height="400"><defs><linearGradient id="g"><stop stop-color="#15314d"/><stop offset="1" stop-color="#6d8caa"/></linearGradient></defs><path fill="url(#g)" d="M0 0h1200v400H0z"/><text x="50%" y="53%" text-anchor="middle" fill="#fff" font-family="Georgia" font-size="52">${text}</text></svg>`);
+const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.avatarUrl=svg('AM');profile.bannerUrl=svg('Source. Ownership. Continuity.',true);profile.nextCursor=null;
+const item={...profile.items[0],originalUrl:null,originalDigest:null,hasLongForm:false,artworkUrl:svg('An original'),mediaKind:'image' as const};
+profile.items=[item,{...item,id:'profile:alexmorgan:moment',assetId:'moment',title:'A moment worth keeping.',summary:'A moment worth keeping. The complete record stays with you.',mediaKind:'moment',artworkUrl:null,proofManifestSource:{code:'ABCD1234',pulse:'14800000',verifyPath:'/v/20261020_1000/ABCD1234/14800000',claimHashHex:'a'.repeat(64),pbiReceiptHash:null,recordCardMediaSha256Hex:'c'.repeat(64),recordMediaSha256Hex:null,proof:{circuit:'Groth16',groth16Id:'ABCDEF0123456789',poseidon:'b'.repeat(64)},media:null,attachments:[]}}];retainPublicProfile(profile);
+const api={accountUid:'33333333-3333-4333-8333-333333333333',notifications:{enable:async()=>{},disable:async()=>{}}} as unknown as NativeMessaging;
+const identity={listDeposits:async()=>[]} as unknown as OpenIdentity;
+const source={catalog:{items:profile.items,complete:true,sourceCount:2,revision:'fixture',observedAt:null},status:'live',pulse:14800000} as unknown as Parameters<typeof PublicProfilePage>[0]['source'];
+function Fixture(){const [mode,setMode]=useState('profile');return <div className="console"><header className="app-header"><span>Controlled UI fixture</span><nav className="bank-messaging-nav"><NotificationsControl api={api}/></nav></header><p style={{padding:16,fontSize:12,color:'#8290a4'}}>No account writes or real notifications. <button onClick={()=>setMode('showcase')}>Showcase</button> · <button onClick={()=>setMode('profile')}>Profile</button></p><div className="main-panel" onClick={event=>{const link=(event.target as Element).closest<HTMLAnchorElement>('a[href^="/asset/"]');if(link&&mode==='showcase'){event.preventDefault();setMode('asset');}}}><div hidden={mode!=='profile'}><PublicProfilePage username="alexmorgan" source={source} active={mode==='profile'}/></div><div hidden={mode!=='showcase'}><LiveAssets identity={identity} active={mode==='showcase'} revision={0} showcase={profile.items} onOpen={()=>{}}/></div>{mode==='asset'&&<><button onClick={()=>setMode('showcase')}>Back to showcase</button><PublicAssetDetail item={item} standalone readOnly/><div style={{height:900}}>Scroll boundary</div></>}</div></div>;}
+createRoot(document.getElementById('root')!).render(<Fixture/>);

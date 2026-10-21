@@ -45,3 +45,11 @@ it('does not apply pointer tilt when the viewer prefers reduced motion',()=>{
   vi.spyOn(stage,'getBoundingClientRect').mockReturnValue({left:0,top:0,width:100,height:100,right:100,bottom:100,x:0,y:0,toJSON:()=>({})});const event=new Event('pointermove',{bubbles:true});Object.assign(event,{pointerType:'mouse',clientX:90,clientY:90});act(()=>stage.dispatchEvent(event));expect(stage.style.getPropertyValue('--asset-tilt-x')).toBe('');expect(stage.style.getPropertyValue('--asset-tilt-y')).toBe('');
  }finally{act(()=>root.unmount());vi.restoreAllMocks();}
 });
+
+it('allows both sides to swipe inside a Market modal without treating the enclosing dialog as an embedded control',()=>{
+ const host=document.createElement('dialog');document.body.append(host);const root=createRoot(host);
+ try{act(()=>root.render(<AssetObject front={<p className="modal-art">Artwork</p>} renderBack={()=> <p className="modal-proof">Proof</p>}/>));
+  const swipe=(target:Element)=>{for(const [type,x] of [['touchstart',160],['touchend',70]] as const){const event=new Event(type,{bubbles:true});Object.assign(event,{touches:type==='touchstart'?[{identifier:1,clientX:x,clientY:100}]:[],changedTouches:[{identifier:1,clientX:x,clientY:100}]});act(()=>target.dispatchEvent(event));}};
+  swipe(host.querySelector('.modal-art')!);expect(host.querySelector('.asset-object')?.getAttribute('data-showing')).toBe('back');swipe(host.querySelector('.modal-proof')!);expect(host.querySelector('.asset-object')?.getAttribute('data-showing')).toBe('front');
+ }finally{act(()=>root.unmount());host.remove();}
+});

@@ -13,6 +13,7 @@ function page(url: URL, coordinate: 'before' | 'since', min: number, max: number
  * registered bearer scope, principal and conversation/call membership. */
 export function permittedNativeChatPath(url: URL, method: string): boolean {
   const verb = method.toUpperCase(), path = url.pathname;
+  if (path === '/api/chat/notifications/push') return ['GET','POST','DELETE'].includes(verb) && !url.search;
   if (path === '/api/chat/conversations') return ['GET','POST'].includes(verb) && !url.search;
   if (['/api/chat/ai','/api/chat/calls/ice'].includes(path)) return verb === 'GET' && !url.search;
   const match = conversation.exec(path); if (!match) return false;

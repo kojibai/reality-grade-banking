@@ -84,3 +84,13 @@ it('relays peer typing GET events immediately and cancels the exact stream witho
  let sink!:ReadableStreamDefaultController<Uint8Array>;const cancel=vi.fn(),upstream=vi.fn<typeof fetch>(async()=>new Response(new ReadableStream<Uint8Array>({start(c){sink=c;},cancel}),{headers:{'content-type':'text/event-stream','set-cookie':'never-return'}}));vi.stubGlobal('fetch',upstream);
  const response=await bankApi.fetch(request(root+'/typing/stream'));expect(response.headers.get('content-type')).toContain('text/event-stream');expect(response.headers.get('set-cookie')).toBeNull();const reader=response.body!.getReader();sink.enqueue(new TextEncoder().encode('data: {"type":"ready"}\n\n'));expect(new TextDecoder().decode((await reader.read()).value)).toContain('ready');await reader.cancel();await vi.waitFor(()=>expect(cancel).toHaveBeenCalledTimes(1));expect(upstream).toHaveBeenCalledTimes(1);
 });
+
+it('relays notification registration and withdrawal under the same bearer without cookies or arbitrary paths',async()=>{
+ const path='/api/chat/notifications/push';
+ for(const method of ['GET','POST','DELETE'])expect(nativeRequestPath(native(path),method)).toBe(path);
+ expect(nativeRequestPath(native(path+'?owner=another'),'POST')).toBeNull();
+ expect(nativeRequestPath(native(path),'PATCH')).toBeNull();
+ const upstream=vi.fn<typeof fetch>(async()=>Response.json({ok:true}));vi.stubGlobal('fetch',upstream);
+ const body=JSON.stringify({endpoint:'https://push.example/opaque-device-token'});
+ const response=await bankApi.fetch(request(path,'DELETE',body));expect(response.status).toBe(200);expect(upstream.mock.calls[0][1]?.body).toBe(body);expect(new Headers(upstream.mock.calls[0][1]?.headers).has('cookie')).toBe(false);
+});

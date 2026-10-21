@@ -1,4 +1,5 @@
 import {createPeerTyping} from './peer-typing';
+import {createMessageNotifications} from '../pwa/push-registration';
 import {readMessagingDisplay,type MessagingDisplay,type MessagingDisplaySource} from './messaging-retention';
 import {peopleSearchQuery} from './people-search';
 import {profileAvatarUrl} from './profile-avatar';
@@ -32,6 +33,7 @@ export function createNativeMessaging({request,accountUid,callTransport,retained
  const changed=()=>{try{onChange?.({accountUid,inbox,pages:[...pages.values()]});}catch{/* Optional display retention cannot fail a Receiz operation. */}};
  function acceptMessage(conversationId:string,value:unknown){const next=message(value,conversationId);const page=pages.get(conversationId);if(page)pages.set(conversationId,{...page,messages:mergeMessages(page.messages,[next])});else{const known=inbox.find(c=>c.id===conversationId);pages.set(conversationId,{conversation:known??{id:conversationId,kind:'dm',title:'Conversation',members:[],aiAgents:[],defaultAiId:null,unreadCount:0,previewMessage:null,createdAt:next.createdAt,updatedAt:next.createdAt,lastMessageAt:next.createdAt},messages:[next],hasMore:false,nextCursor:null});}inbox=inbox.map(c=>c.id===conversationId?{...c,previewMessage:next,lastMessageAt:next.createdAt,unreadCount:0}:c);changed();return next;}
  return {
+  notifications:createMessageNotifications(request,accountUid),
   typing:(conversationId:string,onPeers:(userIds:string[])=>void)=>createPeerTyping({request,accountUid,conversationId,onPeers}),
   accountUid,callTransport:callTransport??{heldFetch:request},knownConversations:()=>inbox,knownMessages:(conversationId:string)=>pages.get(conversationId)??null,
   conversations(signal?:AbortSignal):Promise<ChatConversation[]>{if(pendingInbox)return pendingInbox;const attempt=(async()=>{const data=await checked(await request('/api/chat/conversations',{signal}));if(!Array.isArray(data.conversations)||data.conversations.length>10000)throw new MessagingError('CHAT_RESPONSE_INVALID');const next=data.conversations.map(conversation);signal?.throwIfAborted();inbox=next;changed();return inbox;})();pendingInbox=attempt;void attempt.finally(()=>{if(pendingInbox===attempt)pendingInbox=undefined;}).catch(()=>{});return attempt;},
@@ -48,4 +50,4 @@ export function createNativeMessaging({request,accountUid,callTransport,retained
  };
 }
 export type NativeMessages=ReturnType<typeof createNativeMessaging>;
-export type NativeMessaging=NativeMessages & {twin:NativeTwin;knownTwinAccess?:()=>boolean|null};
+export type NativeMessaging=Omit<NativeMessages,'notifications'> & {notifications?:NativeMessages['notifications'];twin:NativeTwin;knownTwinAccess?:()=>boolean|null};

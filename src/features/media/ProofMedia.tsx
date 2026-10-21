@@ -82,3 +82,6 @@ export function ProofMedia({title,source,autoOpen=false,artworkUrl,publicImageUr
   {readingOpen&&reading&&readingFile&&<ExpandedMedia title={reading.title} label="Carried text" opener={readingOpener.current} onClose={()=>setReadingOpen(false)}><div className="proof-media-expanded-body"><MediaCanvas file={readingFile} url={readingUrl} expanded position={positions} onPosition={()=>{}} chapter={0} setChapter={()=>{}} font={font} setFont={setFont} onExpand={()=>{}}/></div><footer><span><ShieldCheck size={13}/>Verified carried text</span>{readingUrl&&<a href={readingUrl} download={readingFile.filename}>Save text<Download size={14}/></a>}</footer></ExpandedMedia>}
  </section>;
 }
+
+/** Public image presentation reuses the media viewer; no original verification is implied. */
+export function PublicImageDialog({title,url,onClose}:{title:string;url:string;onClose():void}){return <ExpandedMedia title={title} label="Public image" onClose={onClose}><div className="proof-media-expanded-body"><ProofImageCanvas url={url} label={title} expanded onExpand={()=>{}}/></div></ExpandedMedia>;}

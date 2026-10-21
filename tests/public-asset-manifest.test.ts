@@ -23,3 +23,9 @@ it('keeps arbitrary URLs inert and accepts only scoped public Receiz proof links
  expect(publicManifestLink('/offline-verifier.html')).toBe('https://receiz.com/offline-verifier.html');expect(publicManifestLink('/api/proof-material/packages/'+hash+'/artifact?attachment=appendix')).not.toBeNull();
  const rows=publicAssetManifest({...profile,attachments:[{name:'Unsafe link',src:'javascript:alert(1)'}]});expect(rows.find(row=>row.label==='Attachment 1')?.href).toBeUndefined();
 });
+
+it('uses the carried receipt-card digest for Moments represented by a compact media projection',()=>{
+ const source={mediaKind:'moment',media:{material:null},recordCardMediaSha256Hex:'cd'.repeat(32),recordMediaSha256Hex:'ef'.repeat(32)};
+ const item=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:writer:moment',receizId:'moment',title:'A moment.',profileOriginal:source}]}}).items[0];
+ expect(publicAssetManifest(item.proofManifestSource).find(row=>row.label==='Media SHA-256')?.value).toBe('CD'.repeat(32));
+});
