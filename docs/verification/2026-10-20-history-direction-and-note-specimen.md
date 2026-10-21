@@ -19,3 +19,26 @@ The isolated browser fixture uses synthetic records and no authenticated account
 The combined Note illustration loads as one image, retains its proportions, keeps its caption clear and has no horizontal overflow at 320, 390, 430 and 1280 CSS pixels. Reduced-motion mode disables its motion.
 
 This is UI, retained-display and source-projection verification. No payment or Note was created, sent, redeemed or credited. Live iPhone Note qualification remains separate and awaits the user's device check.
+
+## Public Ledger release title pass
+
+The public page, logged-in Ledger, expanded inspector and connected-record
+links share the same display naming function. Recorded action kinds now show
+plain titles such as Asset Purchase, Asset Sale, Signed In and Collectible
+Transfer. Unknown machine-generated action names use Recorded Activity;
+authored asset names and specific human summaries remain intact.
+
+Reserve, Settlement and composite Note rows all display Note Created, Note
+Deposited or Note Refunded, including the existing native allocation,
+redemption and cancellation subtypes. This is a title change, not a new
+financial projection. It adds no request, polling, source rewrite, amount
+change or account-relative public direction.
+
+`tests/ledger-payment-records.test.ts`,
+`tests/public-ledger-value-ui.test.tsx`,
+`tests/account-history-direction-ui.test.tsx` and
+`tests/account-history-direction.test.ts` passed: **4 files / 16 tests**.
+The rendered public-page check opens the combined Note's existing detail,
+checks all three compositions, preserves the complete input records and
+observes zero fetch calls. Original kinds and summaries stay in the exact
+record and receipt evidence.

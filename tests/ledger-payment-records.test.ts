@@ -43,3 +43,33 @@ it('names Wallet activity by its actual recorded purpose rather than its databas
  const record=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'purchase',kind:'wallet_ledger_entry',ledgerEntryKind:'market_buy'}]}).records[0];
  expect(record.kind).toBe('wallet_ledger_entry');expect(record.details?.ledgerEntryKind).toBe('market_buy');
 });
+it('uses familiar public action names while preserving authored titles and original source fields',()=>{
+ const rows=parsePublicNetworkPage('actions',{ok:true,actions:[
+  {id:'purchase',actionKind:'market.share.buy',summary:'market share buy'},
+  {id:'sale',actionKind:'market.share.sell',summary:'market share sell'},
+  {id:'login',actionKind:'auth.login.receiz_id',summary:'Sign-in via Receiz ID'},
+  {id:'transfer',actionKind:'receiz.sports_arena.card_transfer',summary:'MLB Sports Card current owner transferred'},
+  {id:'unknown',actionKind:'future.action'},
+ ]}).records;
+ const original=JSON.stringify(rows);
+ expect(rows.map(ledgerRecordTitle)).toEqual(['Asset Purchase','Asset Sale','Signed In','Collectible Transfer','Recorded Activity']);
+ expect(JSON.stringify(rows)).toBe(original);
+ const authored={...rows[0],source:'proofs' as const,title:'a quiet moment',kind:'proof recorded'};
+ expect(ledgerRecordTitle(authored)).toBe('a quiet moment');
+ expect(ledgerRecordTitle({...rows[0],kind:'custom.event',title:'A specific recorded event'})).toBe('A specific recorded event');
+});
+it('gives Reserve, Settlement and combined Notes the same clear creation, deposit and refund names',()=>{
+ for(const rail of ['reserve','settlement','composite']){
+  const records=parsePublicNetworkPage('wallet',{ok:true,events:[
+   {id:'created',kind:'note_mint',rail,summary:'note mint'},
+   {id:'deposited',kind:'note_claim',rail,summary:'note claim'},
+   {id:'refunded',kind:'note_claim',rail,metadata:{source:'bank_connected_note_cancel'}},
+   {id:'allocated',kind:'wallet_ledger_entry',ledgerEntryKind:'offline_cash_allocate',rail},
+   {id:'credited',kind:'wallet_ledger_entry',ledgerEntryKind:'offline_note_redeem',rail},
+   {id:'returned',kind:'wallet_ledger_entry',ledgerEntryKind:'offline_cash_cancel',rail},
+  ]}).records;
+  const original=JSON.stringify(records);
+  expect(records.map(ledgerRecordTitle)).toEqual(['Note Created','Note Deposited','Note Refunded','Note Created','Note Deposited','Note Refunded']);
+  expect(JSON.stringify(records)).toBe(original);
+ }
+});

@@ -54,3 +54,25 @@ it('keeps a public proof’s carried Market operands when that object is absent 
  expect(ledgerAssetPeriods(conflicting,values)).toBeNull();
  expect(ledgerValueForRecord(conflicting,values).basis).not.toBe('intrinsic-model');
 });
+it('uses the same plain titles in public rows and expanded details for every Note composition without fetching',async()=>{
+ Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});held.values=null;
+ const wallet=parsePublicNetworkPage('wallet',{ok:true,events:['reserve','settlement','composite'].flatMap(rail=>[
+  {id:rail+'-created',kind:'note_mint',rail,amountUsdCents:'100',summary:'note mint'},
+  {id:rail+'-deposited',kind:'note_claim',rail,amountUsdCents:'100',summary:'note claim'},
+  {id:rail+'-refunded',kind:'note_claim',rail,amountUsdCents:'100',metadata:{source:'bank_connected_note_cancel'}},
+ ])}).records;
+ const actions=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'purchase',actionKind:'market.share.buy',summary:'market share buy'}]}).records;
+ const records=[...wallet,...actions],original=JSON.stringify(records);
+ held.ledger={records,sources:Object.fromEntries(PUBLIC_SOURCES.map(source=>[source,{status:'live',complete:true,busy:false,cursor:null,error:null}])),bootstrap:false,capturedAt:null,refresh:()=>{},loadMore:()=>{}};
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<PublicLedgerApp/>));
+  expect([...host.querySelectorAll('.public-ledger-event strong')].map(node=>node.textContent)).toEqual([
+   ...Array.from({length:3},()=>['Note Created','Note Deposited','Note Refunded']).flat(),'Asset Purchase',
+  ]);
+  const events=host.querySelectorAll<HTMLButtonElement>('.public-ledger-event');
+  await act(async()=>events[6].click());
+  expect(host.querySelector('.ledger-inspector-heading h3')?.textContent).toBe('Note Created');
+  expect(JSON.stringify(records)).toBe(original);expect(fetch).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());vi.unstubAllGlobals();}
+});

@@ -1,6 +1,6 @@
 # Current Bankeiz capabilities and operating boundaries
 
-Updated for the v1.0.0 release preparation on October 20, 2026. This is the
+Updated for the v1.0.0 release commit on October 20, 2026. This is the
 current capability map. Older dated verification records retain their original
 observations; they do not override a newer implemented connection or qualify
 a later deployed build.
