@@ -1,3 +1,4 @@
+.market-object-artwork{overflow:hidden}.market-object-artwork img{display:block;width:100%;height:100%;object-fit:cover}
 .market-rows .market-object-provenance{display:flex;flex-direction:column;gap:2px;margin-top:5px;white-space:normal;line-height:1.35}
 .market-rows .market-object-provenance>span{font-size:11px;overflow-wrap:anywhere}
 .market-cap-history-coverage{font-size:11px;color:var(--muted);margin:8px 0 12px;line-height:1.4}

@@ -1,7 +1,7 @@
 import type {ReceizIdentityAccountProjection} from '@receiz/sdk';
 export interface MarketPosition {id:string;marketItemId:string;assetId:string|null;title:string;summary:string;shareQuantityMicro:string;costBasisUsdCents:string|null;lastPriceUsdCents:string|null;openedAt:string;lastTradeAt:string|null}
 export interface MarketPositionTrade {id:string;marketItemId:string;title:string;side:'buy'|'sell';shareQuantityMicro:string;executionPriceUsdCents:string|null;settlementUsdCents:string|null;feeUsdCents:string|null;realizedPnlUsdCents:string|null;executedAt:string}
-export interface MarketPortfolio {schema:'bankeiz.market-portfolio.v1';authority:'market-observation';accountUid:string;observedAt:string;source:'connected'|'sealed-head';positions:MarketPosition[];trades:MarketPositionTrade[]}
+export interface MarketPortfolio {schema:'bankeiz.market-portfolio.v1';authority:'market-observation';accountUid:string;observedAt:string;source:'connected'|'sealed-head';complete?:false;positions:MarketPosition[];trades:MarketPositionTrade[]}
 const object=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,unknown>:{};
 const text=(v:unknown,max=512)=>typeof v==='string'&&v.length>0&&v.length<=max&&!/[\u0000-\u001f\u007f]/.test(v)?v:null;
 const exact=(v:unknown,signed=false):string|null=>typeof v==='string'&&(signed?/^(0|-?[1-9]\d{0,39})$/:/^(0|[1-9]\d{0,39})$/).test(v)?v:null;
@@ -23,7 +23,24 @@ export function parseMarketPortfolio(input:unknown,accountUid:string):MarketPort
  if((retained?v.accountUid:v.actorUserId)!==accountUid||!accountUid||v.authority!=='market-observation'||!retained&&(v.ok!==true||v.schema!=='receiz.market.portfolio.v1')||!observedAt||!Array.isArray(v.positions)||v.positions.length>10_000||!Array.isArray(v.trades)||v.trades.length>100_000)throw Error('MARKET_PORTFOLIO_ACCOUNT_MISMATCH');
  const positions=v.positions.map(position),trades=v.trades.map(trade);
  if(new Set(positions.map(p=>p.marketItemId)).size!==positions.length||new Set(trades.map(t=>t.id)).size!==trades.length)throw Error('MARKET_PORTFOLIO_DUPLICATE');
- return{schema:'bankeiz.market-portfolio.v1',authority:'market-observation',accountUid,observedAt,source:retained&&v.source==='sealed-head'?'sealed-head':'connected',positions:positions.filter(p=>BigInt(p.shareQuantityMicro)>0n),trades};
+ return{schema:'bankeiz.market-portfolio.v1',authority:'market-observation',accountUid,observedAt,source:retained&&v.source==='sealed-head'?'sealed-head':'connected',...(retained&&v.complete===false?{complete:false as const}:{}),positions:positions.filter(p=>BigInt(p.shareQuantityMicro)>0n),trades};
+}
+// Preserve PostgreSQL sub-millisecond ordering when two trades share a frame.
+const preciseTime=(at:string)=>BigInt(Date.parse(at))*1000000n+BigInt((at.match(/\.(\d{1,9})/)?.[1]??'').padEnd(9,'0').slice(3));
+function recordedPortfolio(previous:MarketPortfolio|null,raw:unknown,uid:string):MarketPortfolio{
+ const r=object(raw),source=object(r.source),p=object(source.position),t=object(source.trade);
+ if(r.ok!==true||r.authority!=='market-observation'||r.actorUserId!==uid||r.found!==true||r.recorded!==true||p.owner_user_id!==uid||t.owner_user_id!==uid||t.market_type!=='asset'||p.id!==t.position_id||p.market_item_id!==t.market_item_id)throw Error('MARKET_PORTFOLIO_ORIGINAL_MISMATCH');
+ const nextPosition=position({id:p.id,marketItemId:p.market_item_id,assetId:p.asset_id,title:p.title,summary:p.summary,shareQuantityMicro:p.share_quantity_micro,costBasisUsdCents:p.cost_basis_usd_cents,lastPriceUsdCents:p.last_price_usd_cents,openedAt:p.opened_at,lastTradeAt:p.last_trade_at});
+ const nextTrade=trade({id:t.id,marketItemId:t.market_item_id,title:t.title,side:t.side,shareQuantityMicro:t.share_quantity_micro,executionPriceUsdCents:t.price_usd_cents,settlementUsdCents:t.settlement_usd_cents,feeUsdCents:t.fee_usd_cents,executedAt:t.created_at});
+ if(previous?.trades.some(row=>row.id===nextTrade.id))return previous;
+ const held=previous?.positions.find(row=>row.marketItemId===nextPosition.marketItemId);
+ const latest=held?.lastTradeAt??previous?.trades.reduce<string|null>((at,row)=>row.marketItemId===nextPosition.marketItemId&&(!at||preciseTime(row.executedAt)>preciseTime(at))?row.executedAt:at,null);
+ const newer=!latest||preciseTime(nextPosition.lastTradeAt??nextTrade.executedAt)>preciseTime(latest);
+ const positions=(previous?.positions??[]).flatMap(row=>row.marketItemId!==nextPosition.marketItemId||!newer?[row]:BigInt(nextPosition.shareQuantityMicro)>0n?[nextPosition]:[]);
+ if(newer&&BigInt(nextPosition.shareQuantityMicro)>0n&&!previous?.positions.some(row=>row.marketItemId===nextPosition.marketItemId))positions.push(nextPosition);
+ const observedAt=[previous?.observedAt,nextPosition.lastTradeAt,nextTrade.executedAt,date(p.updated_at)].filter((v):v is string=>!!v).sort((a,b)=>preciseTime(a)>preciseTime(b)?-1:preciseTime(a)<preciseTime(b)?1:0)[0];
+ const trades=[...(previous?.trades??[])],at=preciseTime(nextTrade.executedAt),index=trades.findIndex(row=>preciseTime(row.executedAt)<=at);trades.splice(index<0?trades.length:index,0,nextTrade);
+ return{schema:'bankeiz.market-portfolio.v1',authority:'market-observation',accountUid:uid,observedAt,source:'connected',...(!previous||previous.complete===false?{complete:false as const}:{}),positions,trades};
 }
 export function readSealedMarketPortfolio(projection:ReceizIdentityAccountProjection,uid:string):MarketPortfolio|null{
  if(!projection.portableStateVerified)return null;
@@ -46,6 +63,10 @@ export function createMarketPortfolio(input:{accountUid:string;initial?:MarketPo
    current=next;observed=Date.now();for(const listener of listeners)listener();saving=saving.catch(()=>{}).then(async()=>{input.assertOpen();await input.save?.(next);}).catch(()=>{});return next;
   });pending=attempt;void attempt.finally(()=>{if(pending===attempt)pending=null;if(dirty){try{input.assertOpen();void refresh(true).catch(()=>{});}catch{/* Closed identity. */}}}).catch(()=>{});return attempt;
  }
- return{known:()=>current,subscribe:(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};},refresh,invalidate(){revision++;dirty=true;if(!pending)void refresh(true).catch(()=>{});}};
+ return{known:()=>current,subscribe:(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};},refresh,
+  /** Display only: the caller has already retained and admitted this original.
+   * Its absolute position updates every open surface before background sync. */
+  adoptRecorded(raw:unknown){input.assertOpen();const next=recordedPortfolio(current,raw,input.accountUid);if(next===current)return;revision++;dirty=true;current=next;for(const listener of listeners)listener();saving=saving.catch(()=>{}).then(async()=>{input.assertOpen();await input.save?.(next);}).catch(()=>{});},
+  invalidate(){revision++;dirty=true;if(!pending)void refresh(true).catch(()=>{});}};
 }
 export type MarketPortfolioClient=ReturnType<typeof createMarketPortfolio>;

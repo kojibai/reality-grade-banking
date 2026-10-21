@@ -16,7 +16,7 @@ it('shows a chat username while reviewing payment against that selected stable a
  const host=document.createElement('div'),root=createRoot(host);
  try{
   await act(async()=>root.render(<LiveSend identity={identity} wallet={null} initialRecipient={target} onClose={()=>{}}/>));
-  const recipient=host.querySelector<HTMLInputElement>('input[placeholder="Receiz ID or public username"]')!;
+  const recipient=host.querySelector<HTMLInputElement>('input[placeholder="Receiz ID"]')!;
   expect(recipient.value).toBe('mira');expect(host.textContent).not.toContain(target.userId);
   const amount=host.querySelector<HTMLInputElement>('input[aria-label="Amount to send"]')!;
   await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(amount,'1');amount.dispatchEvent(new Event('input',{bubbles:true}));});
@@ -38,7 +38,7 @@ it('generates the bank QR and writes only the public request URL to NFC on expli
 it('a scanned/shared request preloads the in-bank form without auto-executing a transfer', () => {
   const host = document.createElement('div'), root = createRoot(host);
   try { act(() => root.render(<LiveSend wallet={null} initialRequest={{ recipient: 'public-coordinate', amount: '12.30' }} onClose={vi.fn()} />));
-    expect((host.querySelector('input[placeholder="Receiz ID or public username"]') as HTMLInputElement).value).toBe('public-coordinate');
+    expect((host.querySelector('input[placeholder="Receiz ID"]') as HTMLInputElement).value).toBe('public-coordinate');
     expect(host.textContent).toContain('Review payment'); expect(host.querySelector('a[href*="receiz.com/wallet"]')).toBeNull(); expect(host.textContent).not.toContain('Value sent');
   } finally { act(() => root.unmount()); }
 });
@@ -51,7 +51,7 @@ it('shares a clickable username link through the clipboard fallback and preserve
   const url=host.querySelector<HTMLAnchorElement>('.payment-link')!.href;expect(url).toBe('https://bankeiz.com/?to=klok&amount=12.30');
   await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Share payment request')!.click());expect(copy).toHaveBeenLastCalledWith(url);
   await act(async()=>root.render(<LiveSend wallet={null} initialRequest={parsePaymentRequest(url)} onClose={()=>{}}/>));
-  expect(host.querySelector<HTMLInputElement>('[placeholder="Receiz ID or public username"]')!.value).toBe('klok');expect(host.querySelector<HTMLInputElement>('[aria-label="Amount to send"]')!.value).toBe('12.30');expect(host.textContent).toContain('Review payment');expect(host.textContent).not.toContain('Money sent');
+  expect(host.querySelector<HTMLInputElement>('[placeholder="Receiz ID"]')!.value).toBe('klok');expect(host.querySelector<HTMLInputElement>('[aria-label="Amount to send"]')!.value).toBe('12.30');expect(host.textContent).toContain('Review payment');expect(host.textContent).not.toContain('Money sent');
  }finally{act(()=>root.unmount());}
 });
 it('a provider return is only an exact session signal, never payment proof', () => {

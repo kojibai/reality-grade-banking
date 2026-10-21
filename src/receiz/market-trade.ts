@@ -38,13 +38,13 @@ export async function validateMarketTradeState(raw:unknown,ownerReceizId?:string
 }
 /** Connected Market observations retain original transaction rows. They are not
  * native receipts and do not establish irreversible Offline Note custody. */
-export function createMarketTrade(input:{ownerReceizId:string;assertOpen():void;assertNoOtherPending():Promise<void>;onRecorded?(accountUid:string):Promise<void>;lock<T>(operation:()=>Promise<T>):Promise<T>;store:{read():Promise<unknown>;write(next:MarketTradeState,previous:unknown):Promise<void>};connect(readOnly?:boolean):Promise<{client:MarketClient;accountUid:string}>}){
+export function createMarketTrade(input:{ownerReceizId:string;assertOpen():void;assertNoOtherPending():Promise<void>;onRecorded?(accountUid:string,original:unknown):Promise<void>;lock<T>(operation:()=>Promise<T>):Promise<T>;store:{read():Promise<unknown>;write(next:MarketTradeState,previous:unknown):Promise<void>};connect(readOnly?:boolean):Promise<{client:MarketClient;accountUid:string}>}){
  const held=new WeakSet<MarketTradeReview>(),digest=async(value:unknown)=>(await loadReceiz()).digestReceizCanonicalV122(value);
  const unsigned=(r:MarketTradeReview)=>Object.fromEntries(Object.entries(r).filter(([k])=>k!=='digest'));
  async function read(){input.assertOpen();const raw=await input.store.read();input.assertOpen();return validateMarketTradeState(raw,input.ownerReceizId);}
 
  const outcome=(c:Checkpoint):MarketTradeOutcome=>c.status==='recorded'?recorded(c.record,c):c.status==='not-sent'?{status:'not-sent',clientNonce:c.body.clientNonce,reason:c.reason!}:{status:'unknown',clientNonce:c.body.clientNonce};
- async function retainRecorded(s:MarketTradeState,raw:unknown,result:MarketTradeOutcome){await input.store.write({...s,current:{...s.current,status:'recorded',record:raw}},s);input.assertOpen();try{await input.onRecorded?.(s.current.review.accountUid);}catch{/* Terminal original retained even when refresh fails. */}return result;}
+ async function retainRecorded(s:MarketTradeState,raw:unknown,result:MarketTradeOutcome){await input.store.write({...s,current:{...s.current,status:'recorded',record:raw}},s);input.assertOpen();try{await input.onRecorded?.(s.current.review.accountUid,raw);}catch{/* Terminal original retained even when refresh fails. */}return result;}
  async function lookup(s:MarketTradeState,context:Awaited<ReturnType<typeof input.connect>>){input.assertOpen();if(context.accountUid!==s.current.review.accountUid)throw Error('BANK_MARKET_IDENTITY_CHANGED');const raw=object(await context.client.request(`/api/connect/market/shares/trade?clientNonce=${encodeURIComponent(s.current.body.clientNonce)}`,{method:'GET'}));input.assertOpen();
   if(raw.ok===true&&raw.authority==='market-observation'&&raw.actorUserId===context.accountUid&&(raw.found===false||raw.recorded===false))return outcome(s.current);
   return retainRecorded(s,raw,recorded(raw,s.current));

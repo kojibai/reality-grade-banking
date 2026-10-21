@@ -67,3 +67,22 @@ retention before completion, dollar and quantity sales, retained popovers,
 complete liquidation, balance/card selection and paid-checkout recovery.
 Browser checks use synthetic accounts and intercept financial requests;
 they do not move money. Live financial qualification is recorded separately.
+
+## Immediate investment presentation
+
+After the original is validated and durably retained, its absolute resulting
+position updates the shared private portfolio before the trade returns to the
+interface. Assets, open investment sheets and standalone asset holdings use
+that same presentation. A complete sale removes the held quantity; retained
+trade history remains available. The inline update makes no portfolio request
+and precedes the existing background account synchronization.
+
+The merge binds the account, item and position, deduplicates recorded trades,
+preserves sub-millisecond trade ordering and rejects a stale in-flight portfolio
+read. If no whole-account portfolio has been opened yet, the confirmed holding
+is presented as a partial update until the existing full read completes.
+
+This uses the returned absolute investment position. It does not manufacture a
+complete cash balance from a trade amount or raw Phi Ledger balance. Complete
+Reserve/Settlement balances and proof continuity retain their existing
+authenticated account-source and antirollback checks.

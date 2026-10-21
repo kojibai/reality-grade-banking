@@ -26,7 +26,7 @@ it.each(['reserve','settlement','composite'] as const)('uses the same original N
   expect(host.textContent).toContain('reconcile');expect(prepare).not.toHaveBeenCalled();expect(execute).not.toHaveBeenCalled();
   await act(async()=>click(host,'Done'));
   expect(host.querySelector<HTMLInputElement>('[aria-label="Amount to send"]')?.value).toBe('12.30');
-  expect(host.querySelector<HTMLInputElement>('[placeholder="Receiz ID or public username"]')?.value).toBe('merchant');
+  expect(host.querySelector<HTMLInputElement>('[placeholder="Receiz ID"]')?.value).toBe('merchant');
   await act(async()=>click(host,'Review payment'));
   expect(prepare).toHaveBeenCalledExactlyOnceWith({recipient:'merchant',amountUsdCents:'1230',note:''});
   expect(execute).not.toHaveBeenCalled();expect(create).not.toHaveBeenCalled();

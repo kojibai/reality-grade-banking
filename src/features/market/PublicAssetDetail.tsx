@@ -1,6 +1,6 @@
 import {useEffect,useState,useSyncExternalStore} from 'react';
 import { ExternalLink, FileCheck2 } from 'lucide-react';
-import { AssetMark } from '../../components/AssetMark';
+import {PublicObjectArtwork} from './PublicObjectRow';
 import {OpenInvestment} from '../assets/OpenInvestment';
 import {PublicAssetChart} from './PublicAssetChart';
 import {usePublicAssetPeriods} from '../../receiz/market-projection/usePublicAssetPeriods';
@@ -30,7 +30,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
   const current=periods?.ALL.at(-1),price=current?Number(current.usdCents)/100:item.priceUsd;
   const media=item.originalUrl&&item.originalDigest?<ProofMedia publicDocument={item.documentUrl?{url:item.documentUrl,assetId:item.assetId}:null} publicVideo={item.mediaKind==='video'&&item.playback?{...item.playback,assetId:item.assetId}:null} artworkUrl={item.artworkUrl} publicImageUrl={publicAssetImagePreviewUrl(item)} autoOpen={standalone} key={[item.originalDigest,item.originalUrl,item.readingUrl??item.verifyUrl].join(':')} title={item.title} source={{kind:"public",url:item.originalUrl,digest:item.originalDigest,...(item.verifyUrl?{postUrl:item.readingUrl??item.verifyUrl,hasLongForm:item.hasLongForm}:{})}}/>:null;
   const object=<AssetObject key={item.id} label={item.title} front={media??(item.mediaKind==='moment'?<div className="public-collectible-moment"><MomentCard item={item}/></div>:<div className="public-collectible-face"><span>{marketContentLabel(item)}</span><h2>{item.title}</h2><p>{item.summary}</p><code>{item.assetId}</code><small>Public source presentation</small></div>)} renderBack={()=> <AssetProofBack item={item}/>}/>;
-  return <><div className="asset-detail-heading"><AssetMark kind="proof" /><div><h1>{item.title}</h1><p>{standalone?'Source. Ownership. Continuity.':'Public source'}</p></div></div>
+  return <><div className="asset-detail-heading"><PublicObjectArtwork artworkUrl={item.artworkUrl}/><div><h1>{item.title}</h1><p>{standalone?'Source. Ownership. Continuity.':'Public source'}</p></div></div>
     {standalone&&owner&&<a className="asset-profile-byline" href={profilePagePath(owner)}><ProfileAvatar src={ownerAvatar} name={item.ownerDisplayName??owner} eager/><span>Owner<span>@{owner}</span></span><ExternalLink size={13}/></a>}
     {!standalone&&<AssetPageLinks item={item}/>}
     {standalone&&<div className="public-asset-media">{object}</div>}
