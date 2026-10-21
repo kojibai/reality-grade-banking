@@ -50,3 +50,59 @@ Market item ID. No new endpoint or asset fetch runs for either change.
 Regression: the UI test first failed with the caption heading, then passed with
 the authored title and encoded standalone-page link. The Ledger trade, title,
 and public Market suites passed 33/33; fetch was asserted unused in the UI test.
+
+### Public trade source correction
+
+The authenticated Wallet history already retained disposed shares and cost
+basis. Historical public Market actions instead carried the RPC's remaining
+position quantity and omitted disposed basis. A read-only production check of
+three exact action/trade bindings confirmed the original trade records remain
+complete: public quantities `0`, `0`, `6292` corresponded to recorded sold
+quantities `43970`, `12786`, `100` micro-shares. The title lookup did not alter
+those records.
+
+The public action API now projects the exact recorded trade beneath the same
+owner, deterministic nonce, asset and side. Monetary coordinates must agree;
+a name, amount or timestamp alone never joins records. Original action hashes
+and payloads are unchanged. Returned fields exclude private owner IDs, wallet
+balances, arbitrary metadata and deterministic keys. PostgreSQL integer and
+JSON cost fields are selected as text to preserve precision. Older actions
+without an exact matching source remain explicitly incomplete.
+
+Historical recovery uses one bounded batch in the existing public request,
+overlapped with the existing identity read. Complete immutable observations are
+retained in a bounded 4,096-entry cache. New actions carry transaction quantity,
+execution price, trade ID and recorded disposed cost from the writer's existing
+read, so they need no recovery lookup. No new browser request, SQL migration,
+financial effect, Receiz frontend change, antirollback change or SDK version
+change is part of this fix.
+
+Bank accepts the source-bound correction over the old public position quantity
+only under the same action evidence, asset and compatible monetary coordinates.
+A later thin response cannot erase it; contradictory exact trade facts remain
+errors. Trade receipts do not display a whole-asset valuation chart. Both the
+logged-in Public tab and standalone Public Ledger render the same shares,
+recorded price/proceeds and realized return; authored titles and View asset
+links remain.
+
+Verification reproduced each defect before correction: API route sale details,
+writer disposed quantity, cached public correction, and whole-asset chart
+selection. The route/writer and existing connected buy/sell/recovery collection
+passed 31 tests. Scoped Receiz ESLint passed. Actual Chrome checks passed at
+390 and 1440 pixels in both public views, including correction of a retained
+old sale, with no horizontal overflow or runtime errors. No live trade, charge,
+publication or database write was executed.
+
+Review corrections also cover historical nonces accepted by the writer and
+240-character truncated action keys. A truncated locator requires exactly one
+matching original; ambiguous matches cannot supply shares or basis. Cache
+inspection version 5 runs a background bounded catch-up for uninspected trade
+IDs beyond an already-held head. First paint retains history, and a completed
+upgrade resumes ordinary head-only polling. The hook regression proves a deep
+sale is corrected once and retained after reopening without another crawl.
+
+The full Bank run passed 366 files / 2,158 tests; the final focused Bank
+collection passed 28 tests, including the additional delayed-seed restoration
+race. Bank TypeScript and production build passed. The final Receiz collection
+passed 33 tests with scoped ESLint. Obsolete chart assertions were aligned with the
+already approved single total-balance chart, with no additional product change.

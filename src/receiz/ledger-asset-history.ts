@@ -1,3 +1,4 @@
+import {ledgerAssetTradeSide} from './ledger-asset-trade';
 import {ledgerCardCopyValuation,ledgerValueRow,ledgerProofValueSeed,type LedgerValueIndex} from './ledger-value';
 import {ledgerCardCopyUsdAtPulse} from './ledger-card-copy';
 import type {PublicRecord} from './public-network';
@@ -11,6 +12,7 @@ const held=new WeakMap<PublicRecord,{basis:object;copy:object|null;pulse:number;
 /** Only already-indexed source operands. No lookup, inventory scan, source
  * verification or additional clock. Event values remain fixed separately. */
 export function ledgerAssetPeriods(record:PublicRecord,index:LedgerValueIndex|null):PublicAssetPeriods|null{
+ if(ledgerAssetTradeSide(record))return null;
  const row=ledgerValueRow(record,index),copy=ledgerCardCopyValuation(record,index,true);
  const seed=ledgerProofValueSeed(record,index,row);
  const pulse=Math.max(index?.evaluationPulse??index?.source.serverPulse??0,copy?.copy.valuationPulse??0);

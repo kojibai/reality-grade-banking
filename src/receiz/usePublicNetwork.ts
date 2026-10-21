@@ -1,3 +1,4 @@
+import {ledgerAssetTradeSide,ledgerAssetTrade} from './ledger-asset-trade';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PUBLIC_SOURCES, PUBLIC_NETWORK_INSPECTION_VERSION, mergePublicRecords, readPublicNetworkPage, type PublicRecord, type PublicSource } from './public-network';
 import { loadPublicNetworkCache, loadPublicNetworkSeed, savePublicNetworkCache } from './public-network-cache';
@@ -17,6 +18,7 @@ export function usePublicNetwork(active = true) {
   const capture = (value:string|null) => { if(value)setCapturedAt(previous=>!previous||Date.parse(value)>Date.parse(previous)?value:previous); };
   const lifetime = useRef<AbortController | null>(null);
   const inspectionVersion=useRef(0);
+  const activeTradeRepair=useRef<{targets:Set<string>;seen:Set<string>}|null>(null);
   const originalProjection=useRef<{digest:string;records:PublicRecord[]}|null>(null);
   const saved=useRef<{records:PublicRecord[];capturedAt:string|null;coverage:string;inspectionVersion:number}|null>(null);
   const completeAnchors = useRef<Partial<Record<PublicSource, Set<string>>>>({});
@@ -30,6 +32,12 @@ export function usePublicNetwork(active = true) {
     const controller = lifetime.current, before = sourceState.current[source];
     if (!controller || controller.signal.aborted || before.busy || phase === 'older' && (before.complete || !before.cursor || before.error)) return;
     const existing = phase === 'head' && completeAnchors.current[source] ? completeAnchors.current[source]! : new Set(rows.current.filter(row => row.source === source).map(row => row.id));
+    // One display migration reaches old cached trades beyond a held head. It
+    // never clears first paint, and subsequent reads keep normal head polling.
+    const upgradeTrades=source==='actions'&&phase==='head'&&inspectionVersion.current<5;
+    const repairTargets=new Set(upgradeTrades?rows.current.filter(row=>row.source==='actions'&&ledgerAssetTradeSide(row)&&!ledgerAssetTrade(row)?.tradeId).map(row=>row.id):[]);
+    const repairCycle=source==='actions'&&phase==='head'?{targets:repairTargets,seen:new Set<string>()}:null;
+    if(repairCycle)activeTradeRepair.current=repairCycle;
     const visited = phase === 'head' ? new Set<string>() : historyCursors.current[source];
     update(source, { busy: true, error: null });
     let cursor = phase === 'older' ? before.cursor! : undefined;
@@ -41,9 +49,11 @@ export function usePublicNetwork(active = true) {
         if (cursor) visited.add(cursor);
         if (page.nextCursor && (page.nextCursor === cursor || visited.has(page.nextCursor))) throw new Error('Public source repeated a cursor.');
         const reachedHeld = page.records.some(row => existing.has(row.id));
+        for(const row of page.records){repairTargets.delete(row.id);repairCycle?.seen.add(row.id);}
         append(source, page.records, phase === 'head' && page.complete && ['graph', 'proofs'].includes(source));
         capture(new Date().toISOString());
-        if (phase === 'head' && existing.size && !reachedHeld && !page.complete && page.nextCursor && ['actions', 'wallet'].includes(source)) { cursor = page.nextCursor; continue; }
+        if (phase === 'head' && (existing.size && !reachedHeld || repairTargets.size>0) && !page.complete && page.nextCursor && ['actions', 'wallet'].includes(source)) { cursor = page.nextCursor; continue; }
+        if(source==='actions'&&phase==='head'&&inspectionVersion.current<5&&(repairTargets.size===0||page.complete))inspectionVersion.current=PUBLIC_NETWORK_INSPECTION_VERSION;
         const complete = page.complete || phase === 'head' && reachedHeld && before.complete;
         update(source, { status: page.complete || source !== 'proofs' ? 'live' : 'stale', complete,
           observedAt: complete ? Date.now() : before.observedAt, cursor: complete ? null : phase === 'head' && existing.size && before.cursor ? before.cursor : page.nextCursor, busy: false,
@@ -53,7 +63,7 @@ export function usePublicNetwork(active = true) {
       }
     } catch (cause) {
       if (!controller.signal.aborted) update(source, { busy: false, status: rows.current.some(row => row.source === source) ? 'stale' : 'error', error: cause instanceof Error ? cause.message : 'Public source unavailable.' });
-    } finally { if (!controller.signal.aborted && sourceState.current[source].busy) update(source, { busy: false }); }
+    } finally { if(repairCycle&&activeTradeRepair.current===repairCycle)activeTradeRepair.current=null; if (!controller.signal.aborted && sourceState.current[source].busy) update(source, { busy: false }); }
   }, []);
   const adoptOriginal = useCallback(async(review:PublicLedgerFileReview|null,controller:AbortController)=>{
     if(!review||controller.signal.aborted||originalProjection.current?.digest===review.artifactSha256&&originalProjection.current.records===rows.current)return;
@@ -84,7 +94,13 @@ export function usePublicNetwork(active = true) {
       const needsSeed = Math.max(inspectionVersion.current, cache?.inspectionVersion ?? 0) < PUBLIC_NETWORK_INSPECTION_VERSION || !rows.current.length && (!cache || PUBLIC_SOURCES.some(source => !cache.coverage.some(item => item.source === source && item.complete)));
       const restore=(held:PublicNetworkCache|null,seed:PublicNetworkCache|null)=>{
         inspectionVersion.current=Math.max(inspectionVersion.current,held?.inspectionVersion??0,seed?.inspectionVersion??0);
-        rows.current = mergePublicRecords(restorePublicNetworkRows(held,seed),rows.current); setRecords(rows.current);capture(held?.capturedAt??null);capture(seed?.capturedAt??null);
+        rows.current = mergePublicRecords(restorePublicNetworkRows(held,seed),rows.current);
+        const oldTradeIds=new Set([held,seed].flatMap(value=>value&&(value.inspectionVersion??0)<5?value.records.filter(row=>row.source==='actions'&&ledgerAssetTradeSide(row)).map(row=>row.id):[]));
+        for(const row of rows.current)if(oldTradeIds.has(row.id)&&!ledgerAssetTrade(row)?.tradeId){
+          inspectionVersion.current=Math.min(inspectionVersion.current,4);
+          if(activeTradeRepair.current&&!activeTradeRepair.current.seen.has(row.id))activeTradeRepair.current.targets.add(row.id);
+        }
+        setRecords(rows.current);capture(held?.capturedAt??null);capture(seed?.capturedAt??null);
         for (const source of PUBLIC_SOURCES) {
           const cachedComplete = held?.coverage.some(item => item.source === source && item.complete);
           const seededComplete = seed?.coverage.some(item => item.source === source && item.complete);

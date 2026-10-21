@@ -51,3 +51,16 @@ it('retains compatible known trade facts through a thin projection and refuses c
  const rootAmount=page({amountUsdCents:'9000',assetTrade:{side:'sell',title:'An original',realizedCostBasisUsdCents:'10000'}});
  expect(()=>mergePublicRecords(rootAmount,page({assetTrade:{side:'sell',settlementUsdCents:'8000'}}))).toThrow(/conflict/i);
 });
+
+it('replaces legacy public position quantities with source-bound transaction facts and retains them across refresh',()=>{
+ const page=(assetTrade:object)=>parsePublicNetworkPage('actions',{ok:true,actions:[{id:'legacy-sale',actionKind:'market.share.sell',entryHash:'a'.repeat(64),assetTrade}]}).records;
+ const old={side:'sell',title:'A caption',marketItemId:'profile:artist:work',shareQuantityMicro:'0',notionalUsdCents:'12500',settlementUsdCents:'12500',feeUsdCents:'0'};
+ const exact={...old,tradeId:'3fb381c0-e10c-4f81-8af6-4bd83d135f86',shareQuantityMicro:'2500000',priceUsdCents:'5000',realizedCostBasisUsdCents:'10000'};
+ const corrected=mergePublicRecords(page(old),page(exact));
+ expect(ledgerAssetTrade(corrected[0])).toMatchObject({tradeId:exact.tradeId,shareQuantityMicro:'2500000'});
+ expect(ledgerTradeReturn(ledgerAssetTrade(corrected[0])!)).toMatchObject({amountUsdCents:'2500',percent:'+25.00%'});
+ expect(ledgerAssetTrade(mergePublicRecords(corrected,page(old))[0])).toEqual(ledgerAssetTrade(corrected[0]));
+ expect(()=>mergePublicRecords(corrected,page({...exact,shareQuantityMicro:'3000000'}))).toThrow(/conflict/i);
+ expect(()=>mergePublicRecords(corrected,page({...exact,settlementUsdCents:'13000'}))).toThrow(/conflict/i);
+ expect(()=>mergePublicRecords(corrected,page({...exact,marketItemId:'profile:other:work'}))).toThrow(/conflict/i);
+});

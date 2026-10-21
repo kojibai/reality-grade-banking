@@ -1,3 +1,4 @@
+import {ledgerAssetTradeSide} from './ledger-asset-trade';
 import {mergePublicRecords} from './public-network';
 import type {PublicNetworkCache} from './public-network-cache';
 import {readLedgerDetails} from './ledger-inspection';
@@ -10,7 +11,7 @@ export function restorePublicNetworkRows(cache:PublicNetworkCache|null,seed:Publ
  const enriched=(cache?.records??[]).map(row=>{
   const prior=seedById.get(row.id);if(!prior)return row;
   if(['entryHash','artifactDigest','proofHead'].some(key=>row.evidence[key]&&prior.evidence[key]&&row.evidence[key]!==prior.evidence[key]))return row;
-  if(/transfer|send|payment_sent|payment_received/i.test(row.kind))return mergePublicRecords([prior],[row])[0];
+  if(ledgerAssetTradeSide(row)||/transfer|send|payment_sent|payment_received/i.test(row.kind))return mergePublicRecords([prior],[row])[0];
   return {...row,details:readLedgerDetails({...prior.details,...row.details}),valueOperands:readLedgerValueOperands({...prior.valueOperands,...row.valueOperands})};
  });
  return mergePublicRecords(allowedSeed,enriched);

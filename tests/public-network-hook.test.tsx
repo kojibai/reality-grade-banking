@@ -136,3 +136,34 @@ it('retains bound transfer evidence during complete graph replacement without re
   expect(read().records.find(row=>row.sourceId===id)?.valueOperands?.cardValueUsdCents).toBe('9900');
  });
 });
+
+it('upgrades an older cached sale beyond the held head once, without clearing visible history',async()=>{
+ const raw={id:'old-sale',actionKind:'market.share.sell',entryHash:'a'.repeat(64),assetTrade:{side:'sell',marketItemId:'profile:artist:work',title:'Old caption',shareQuantityMicro:'0',settlementUsdCents:'12500',feeUsdCents:'0'}};
+ const thin=parsePublicNetworkPage('actions',{ok:true,actions:[raw]}),exact=parsePublicNetworkPage('actions',{ok:true,actions:[{...raw,assetTrade:{...raw.assetTrade,tradeId:'3fb381c0-e10c-4f81-8af6-4bd83d135f86',shareQuantityMicro:'2500000',priceUsdCents:'5000',realizedCostBasisUsdCents:'10000'}}]});
+ const head=page('actions',['new-head'],'older-page'),records=[...head.records,...thin.records],coverage=(['actions','wallet','graph','proofs'] as const).map(source=>({source,complete:true,anchorIds:source==='actions'?records.map(row=>row.id):[]}));
+ cache.load.mockResolvedValue({records,capturedAt:null,inspectionVersion:4,coverage});
+ network.read.mockImplementation(async(source:PublicSource,cursor?:string)=>source==='actions'?cursor?exact:head:page(source));
+ await observe(async read=>{
+  expect(read().records.map(row=>row.sourceId)).toEqual(expect.arrayContaining(['new-head','old-sale']));
+  expect(read().records.find(row=>row.sourceId==='old-sale')?.details?.assetTrade).toMatchObject({shareQuantityMicro:'2500000',realizedCostBasisUsdCents:'10000'});
+  expect(read().sources.actions.complete).toBe(true);
+ });
+ const saved=structuredClone(cache.save.mock.calls.at(-1)![0]);cache.load.mockResolvedValue(saved);network.read.mockClear();cache.seed.mockClear();
+ await observe(async read=>{expect(read().records.find(row=>row.sourceId==='old-sale')?.details?.assetTrade).toMatchObject({shareQuantityMicro:'2500000'});expect(network.read.mock.calls.some(([source,cursor])=>source==='actions'&&cursor)).toBe(false);expect(cache.seed).not.toHaveBeenCalled();});
+});
+it('includes old trade rows restored by a delayed seed while the live head is still pending',async()=>{
+ let releaseSeed!:(value:unknown)=>void,releaseHead!:(value:ReturnType<typeof page>)=>void;
+ const seedPending=new Promise(resolve=>{releaseSeed=resolve;}),headPending=new Promise<ReturnType<typeof page>>(resolve=>{releaseHead=resolve;});
+ const raw={id:'delayed-sale',actionKind:'market.share.sell',entryHash:'a'.repeat(64),assetTrade:{side:'sell',marketItemId:'profile:artist:work',shareQuantityMicro:'0',settlementUsdCents:'12500'}};
+ const old=parsePublicNetworkPage('actions',{ok:true,actions:[raw]}),exact=parsePublicNetworkPage('actions',{ok:true,actions:[{...raw,assetTrade:{...raw.assetTrade,tradeId:'3fb381c0-e10c-4f81-8af6-4bd83d135f86',shareQuantityMicro:'2500000',realizedCostBasisUsdCents:'10000'}}]});
+ const head=page('actions',['new-head'],'older-page'),coverage=(['actions','wallet','graph','proofs'] as const).map(source=>({source,complete:true,anchorIds:source==='actions'?head.records.map(row=>row.id):[]}));
+ cache.load.mockResolvedValue({records:head.records,capturedAt:null,inspectionVersion:4,coverage});cache.seed.mockReturnValue(seedPending);
+ network.read.mockImplementation(async(source:PublicSource,cursor?:string)=>source==='actions'?cursor?exact:headPending:page(source));
+ await observe(async read=>{
+  await act(async()=>releaseSeed({records:old.records,capturedAt:null,inspectionVersion:4,coverage}));
+  expect(read().records.some(row=>row.sourceId==='delayed-sale')).toBe(true);
+  await act(async()=>releaseHead(head));
+  expect(read().records.find(row=>row.sourceId==='delayed-sale')?.details?.assetTrade).toMatchObject({shareQuantityMicro:'2500000',realizedCostBasisUsdCents:'10000'});
+  expect(cache.save.mock.calls.at(-1)![0].inspectionVersion).toBe(PUBLIC_NETWORK_INSPECTION_VERSION);
+ });
+});

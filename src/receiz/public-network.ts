@@ -6,7 +6,7 @@ import {mergeLedgerCausalProjection} from './ledger-causal-source';
 import {retainLedgerAssetTrade} from './ledger-asset-trade';
 
 export const PUBLIC_SOURCES = ['actions', 'wallet', 'graph', 'proofs'] as const;
-export const PUBLIC_NETWORK_INSPECTION_VERSION = 4;
+export const PUBLIC_NETWORK_INSPECTION_VERSION = 5;
 export type PublicSource = typeof PUBLIC_SOURCES[number];
 export interface PublicRecord {
   id: string; sourceId: string; source: PublicSource; kind: string; title: string;

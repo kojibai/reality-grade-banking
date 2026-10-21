@@ -2,7 +2,7 @@ import {retainedAuthoredAssetTitle,publicAuthoredAssetTitle} from './asset-title
 import type {PublicRecord} from './public-network';
 
 export interface LedgerAssetTrade {
- side:'buy'|'sell';title?:string;marketItemId?:string;shareQuantityMicro?:string;priceUsdCents?:string;
+ side:'buy'|'sell';tradeId?:string;title?:string;marketItemId?:string;shareQuantityMicro?:string;priceUsdCents?:string;
  notionalUsdCents?:string;settlementUsdCents?:string;feeUsdCents?:string;realizedCostBasisUsdCents?:string;
 }
 const object=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
@@ -14,6 +14,7 @@ export function ledgerAssetTradeSide(record:Pick<PublicRecord,'kind'> & {details
 export function readLedgerAssetTrade(input:unknown):LedgerAssetTrade|null{
  const value=object(input);if(value.side!=='buy'&&value.side!=='sell')return null;
  const result:LedgerAssetTrade={side:value.side};
+ if(typeof value.tradeId==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value.tradeId))result.tradeId=value.tradeId;
  for(const key of ['title','marketItemId'] as const){const text=value[key];if(typeof text==='string'&&text.trim()&&text.length<=(key==='title'?4096:512)&&!/[\x00-\x1f\x7f]/.test(text))result[key]=text;}
  const authored=publicAuthoredAssetTitle(value);if(authored)result.title=authored;
  for(const key of ['shareQuantityMicro','priceUsdCents','notionalUsdCents','settlementUsdCents','feeUsdCents','realizedCostBasisUsdCents'] as const){const raw=value[key],text=typeof raw==='number'&&Number.isSafeInteger(raw)&&raw>=0?String(raw):raw;if(typeof text==='string'&&/^(0|[1-9]\d{0,39})$/.test(text))result[key]=text;}
@@ -48,6 +49,12 @@ export function retainLedgerAssetTrade(known:PublicRecord|undefined,incoming:Pub
  const conflict=(a:unknown,b:unknown)=>a!==undefined&&a!==null&&b!==undefined&&b!==null&&a!==b;
  if(proofKeys.some(key=>conflict(known.evidence[key],incoming.evidence[key]))||['amountUsdCents','pulse','kaiUpulse'].some(key=>conflict(known[key as keyof PublicRecord],incoming[key as keyof PublicRecord])))fail();
  const after=readLedgerAssetTrade(incoming.details?.assetTrade),side=ledgerAssetTradeSide(incoming);
- if(side!==null&&side!==before.side||after&&Object.entries(before).some(([key,value])=>conflict(value,after[key as keyof LedgerAssetTrade]))||conflict(before.settlementUsdCents,incoming.amountUsdCents)||conflict(after?.settlementUsdCents,known.amountUsdCents)||conflict(known.details?.ledgerEntryKind,incoming.details?.ledgerEntryKind))fail();
- return {...incoming,amountUsdCents:incoming.amountUsdCents??known.amountUsdCents,pulse:incoming.pulse??known.pulse,kaiUpulse:incoming.kaiUpulse??known.kaiUpulse,time:incoming.time??known.time,evidence:{...known.evidence,...incoming.evidence},details:{...known.details,...incoming.details,assetTrade:{...before,...after}}};
+ // Older public action payloads described the remaining position, not this
+ // transaction. A source-bound trade ID identifies the corrected read-only
+ // projection. Keep event/asset/amount checks; never overwrite original proof.
+ const correction=known.source==='actions'&&shared&&before.marketItemId&&before.marketItemId===after?.marketItemId&&Boolean(before.tradeId)!==Boolean(after?.tradeId);
+ const corrected=correction?(after?.tradeId?after:before):null;
+ const legacyPositionField=(key:string)=>correction&&['shareQuantityMicro','title'].includes(key);
+ if(side!==null&&side!==before.side||after&&Object.entries(before).some(([key,value])=>!legacyPositionField(key)&&conflict(value,after[key as keyof LedgerAssetTrade]))||conflict(before.settlementUsdCents,incoming.amountUsdCents)||conflict(after?.settlementUsdCents,known.amountUsdCents)||conflict(known.details?.ledgerEntryKind,incoming.details?.ledgerEntryKind))fail();
+ return {...incoming,amountUsdCents:incoming.amountUsdCents??known.amountUsdCents,pulse:incoming.pulse??known.pulse,kaiUpulse:incoming.kaiUpulse??known.kaiUpulse,time:incoming.time??known.time,evidence:{...known.evidence,...incoming.evidence},details:{...known.details,...incoming.details,assetTrade:corrected?{...before,...after,...corrected}:{...before,...after}}};
 }

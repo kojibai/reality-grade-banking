@@ -3,6 +3,7 @@ import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {expect,it,vi} from 'vitest';
 import {PublicLedgerApp} from '../src/public-ledger/PublicLedgerApp';
+import {Ledger} from '../src/features/ledger/Ledger';
 import {LedgerInspector} from '../src/features/ledger/LedgerInspector';
 import {parsePublicNetworkPage,PUBLIC_SOURCES} from '../src/receiz/public-network';
 import {ledgerValueForRecord} from '../src/receiz/ledger-value';
@@ -51,5 +52,22 @@ it('uses the authored asset title and offers a subtle standalone-page link in ex
   expect(details.querySelector('h4')?.textContent).toBe('An Authored Work');
   expect(details.querySelector('a[aria-label="View asset"]')?.getAttribute('href')).toBe('/asset/profile%3Aartist%3Awork/');
   expect(details.querySelector('a svg')).not.toBeNull();expect(fetch).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());vi.unstubAllGlobals();}
+});
+
+it('both public Ledger views show the same recorded sale quantity and realized gain under the authored title',async()=>{
+ const {publicAssetTitle}=await import('../src/receiz/asset-title');
+ const id='profile:artist:public-sale';publicAssetTitle({id,profileOriginal:{assetTitle:'The Public Original'}});
+ held.records=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'public-sale',actionKind:'market.share.sell',assetTrade:{side:'sell',tradeId:'3fb381c0-e10c-4f81-8af6-4bd83d135f86',marketItemId:id,title:'The old caption',shareQuantityMicro:'2500000',priceUsdCents:'5000',settlementUsdCents:'12500',feeUsdCents:'0',realizedCostBasisUsdCents:'10000'}}]}).records;
+ const host=document.createElement('div'),root=createRoot(host),fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ try{
+  for(const view of [<PublicLedgerApp active={false}/>,<Ledger active={false}/>]){
+   act(()=>root.render(view));
+   expect(host.textContent).toContain('The Public Original');expect(host.textContent).toContain('2.5 shares');expect(host.textContent).toContain('+$25.00');expect(host.textContent).toContain('+25.00%');
+   const open=host.querySelector<HTMLButtonElement>('.public-ledger-event,.ledger-row-main .asset-row')!;act(()=>open.click());
+   expect(host.querySelector('.ledger-trade-details')?.textContent).toContain('Cost basis of shares sold');expect(host.querySelector('.ledger-trade-details')?.textContent).toContain('$100.00');
+   expect(host.textContent).not.toContain('Cost basis not carried');expect(host.querySelector('.ledger-asset-chart')).toBeNull();
+  }
+  expect(fetch).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());vi.unstubAllGlobals();}
 });

@@ -76,3 +76,10 @@ it('uses the same plain titles in public rows and expanded details for every Not
   expect(JSON.stringify(records)).toBe(original);expect(fetch).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());vi.unstubAllGlobals();}
 });
+
+it('keeps share trade receipts separate from the full underlying asset value chart',()=>{
+ const source=parseMarketCapSource(JSON.parse(readFileSync('public/receiz-public-capitalization.json','utf8'))),values=indexLedgerValues(source),asset=source.valueRows[0];
+ const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'sale',actionKind:'market.share.sell',marketItemId:asset.marketItem!.id,assetId:asset.seed,assetTrade:{side:'sell',marketItemId:asset.marketItem!.id,shareQuantityMicro:'100',settlementUsdCents:'79',realizedCostBasisUsdCents:'78'}}]}).records[0];
+ expect(ledgerAssetPeriods(record,values)).toBeNull();
+ expect(ledgerValueForRecord(record,values)).toMatchObject({basis:'payment',amountUsdCents:'79'});
+});
