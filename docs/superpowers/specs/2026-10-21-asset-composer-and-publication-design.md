@@ -1,6 +1,6 @@
 # Asset composer and public delivery
 
-**Status: Proposed addition to the approved automatic-backing work. Not implemented.**
+**Status: Design and three implementation plans approved by the user on 21 October 2026. Inline implementation on main authorized; not implemented yet.**
 
 ## Outcome
 
@@ -9,6 +9,11 @@ visual language, using Receiz's existing composer/source machinery. A song,
 book, image, video, document or text-only object should have the appropriate
 fields and presentation. The creator chooses the work and its content; source
 construction, exact-byte custody and profile/Market delivery happen underneath.
+
+Receiz's frontend, composer UI, styling and user flows remain unchanged. New form
+controls and presentation belong to Bankeiz only. Receiz changes are additive
+SDK, source, transport and publication contracts beneath those existing surfaces;
+do not refactor its profile components as part of this work.
 
 ## What is missing today
 
