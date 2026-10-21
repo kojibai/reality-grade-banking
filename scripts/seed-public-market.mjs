@@ -15,6 +15,7 @@ const quotes = { ...snapshot, data: { schema: snapshot.data.schema, liveMarkets:
 const source = { ...membership, snapshot: quotes };
 const bytes = JSON.stringify(source);
 await writeFile(new URL('../public/receiz-public-market.json', import.meta.url), bytes);
+await (await import('./build-asset-title-index.mjs')).writeAssetTitleIndex();
 console.log(JSON.stringify({ source: 'https://receiz.com/api/market/public-membership', count: catalog.items.length, observedAt: catalog.observedAt, bytes: Buffer.byteLength(bytes), authority: 'projection-only' }));
 
 await writeFile(new URL('../public/receiz-public-sports.json', import.meta.url), JSON.stringify(sports));

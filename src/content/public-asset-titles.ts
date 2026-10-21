@@ -1,0 +1,2413 @@
+// Generated from the existing public snapshot. Display metadata only; no request or proof authority.
+export const publicAssetTitles:Readonly<Record<string,readonly [string,string,string]>>={
+ "profile:bjklock:d1d5a3f4-5db9-444e-88f5-95443fb70598": [
+  "d1d5a3f4-5db9-444e-88f5-95443fb70598",
+  "7396aafeddf8b9d6e54eb40400245a8403ac915b318f1481a7eb2aadf42cb4f8",
+  "BEFORE THE PROOF, THERE WAS A PROMISE"
+ ],
+ "profile:bjklock:3f507095-b264-4606-916b-34f86c506ba3": [
+  "3f507095-b264-4606-916b-34f86c506ba3",
+  "d4e40d9ececcc01cd5de77dc340081cb386dbcb68a42c5a7040a7ec1edeab8b1",
+  "THEY HAVE NO MACHINE. THEY HAVE NO ANSWER."
+ ],
+ "profile:bjklock:b63e1e2f-62e7-41d8-a769-3a76400f95e0": [
+  "b63e1e2f-62e7-41d8-a769-3a76400f95e0",
+  "fccde6f0bf726568cecff7a85648b5858e69bcb027fc2eb3eae93b8d9173753e",
+  "I BUILT THE BRIDGE"
+ ],
+ "profile:bjklock:aa5bdbf3-eb87-4be0-a347-38f61fa34586": [
+  "aa5bdbf3-eb87-4be0-a347-38f61fa34586",
+  "f088c46829ea70b779acc0380ee847bca99198e3e7df584467602b3540b37c70",
+  "YOU CANNOT BUY YESTERDAY"
+ ],
+ "profile:bjklock:699907d0-d015-4dd3-8bcc-f525a37eb1b1": [
+  "699907d0-d015-4dd3-8bcc-f525a37eb1b1",
+  "0f59579cce49b421d03b56f4d9c36b61b50a9b187c840e4b569a0cb17338671a",
+  "I HAVE BEEN WATCHING MY LANGUAGE ARRIVE LATE"
+ ],
+ "profile:bjklock:019e2775-05e9-4f79-9807-1f6266969884": [
+  "019e2775-05e9-4f79-9807-1f6266969884",
+  "b17acb8264f277423540642e608e25e7eeb0c5f62f5d982a38e8703783886a69",
+  "YOU KEEP TAKING CRUMBS FROM MY TABLE"
+ ],
+ "profile:bjklock:e43bff2d-dae9-45c4-8ac3-06cda1959bca": [
+  "e43bff2d-dae9-45c4-8ac3-06cda1959bca",
+  "d6596849c98139908f36fcbd421df470eca2eca25f20e7db8ea1ffe9dcd7581b",
+  "TURN IT OFF, THEN TELL ME WHO IS LEADING"
+ ],
+ "profile:bjklock:b8dae837-a429-448c-a1f2-5076452e4d5a": [
+  "b8dae837-a429-448c-a1f2-5076452e4d5a",
+  "e6628e0e37ab14e289192e8ba7d700bb38ceb37d81ae72f16d8d3c07e1b124de",
+  "I BUILT THE FOUNDATION SO I COULD LEAVE IT"
+ ],
+ "profile:bjklock:c481e897-e8b6-40ea-808c-7c0fac349cd3": [
+  "c481e897-e8b6-40ea-808c-7c0fac349cd3",
+  "48777a043cf665d77bfcc1312d336b097be69fa8031fde470e46de97a66323b1",
+  "YOU HAVE MONEY FOR THIS?"
+ ],
+ "profile:bjklock:05d6bb3b-158a-4f74-b05d-651d897627fb": [
+  "05d6bb3b-158a-4f74-b05d-651d897627fb",
+  "e9cb3f8ab2b96bc33dd989131f359e0c891b9a28ff44eec4a73ef88f3f2022c1",
+  "I STILL LEAVE WITH ME"
+ ],
+ "profile:bjklock:bec50889-aba6-4f61-a518-d33e5e0e14a4": [
+  "bec50889-aba6-4f61-a518-d33e5e0e14a4",
+  "c472ec3b75803b7c4c8da55de90ed96f4f12c4097d93370496d3fbb86d5eb88c",
+  "YOU KEEP COPYING THE FRUIT INSTEAD OF PLANTING THE SEED"
+ ],
+ "profile:bjklock:34bda91a-d1a0-46d9-b4a4-f9b15a7344a3": [
+  "34bda91a-d1a0-46d9-b4a4-f9b15a7344a3",
+  "1ce74434ab1a5dd3e1e2fe64dc842f84557c83965058d7f171c78167e9b7cc6a",
+  "WHY DID THIS HAVE TO BECOME MY FUCKING PROBLEM?"
+ ],
+ "profile:bjklock:4937f06f-361d-46f7-9bc0-6b720b34e521": [
+  "4937f06f-361d-46f7-9bc0-6b720b34e521",
+  "def1fd26f116a318896c3bf3518fa95dcf1277b2a659c4066a3b64c672465222",
+  "THE LIGHTS ARE STILL ON"
+ ],
+ "profile:bjklock:a8ae5f0c-63eb-49a0-b7d9-5b5ab558d384": [
+  "a8ae5f0c-63eb-49a0-b7d9-5b5ab558d384",
+  "8beab0648b383e563d12f43cace7026ffcca160075b0c87062c7236e6e30430c",
+  "I DON’T WANT TO SURVIVE YOUR FAILURE"
+ ],
+ "profile:bjklock:ee6b7f24-2287-4454-875f-4747ff2b74a9": [
+  "ee6b7f24-2287-4454-875f-4747ff2b74a9",
+  "f4466782fb8f899372b78e42a105f84a3078e34cfbc2bba164192b7026fdefa8",
+  "I’M KEEPING THE GLYPHS"
+ ],
+ "profile:bjklock:ce0d15b3-0b17-46ec-aaa5-24b9c4408852": [
+  "ce0d15b3-0b17-46ec-aaa5-24b9c4408852",
+  "d5cdef7c77b6bf90931e2a3e4f3a4fe0bbb679a2e040ab2d97af5fe3a2608ef8",
+  "YOU THOUGHT YOU WERE THE ONE WITH THE MONEY"
+ ],
+ "profile:bjklock:8ee886ea-f82e-46cc-a633-536ed4164843": [
+  "8ee886ea-f82e-46cc-a633-536ed4164843",
+  "72ac67c3e03841f9cb938cddb81af5e04fae2063e4131c8b1692d0723c745cd4",
+  "THE AUCTION STARTED BEFORE YOU REALIZED YOU WERE BIDDING"
+ ],
+ "profile:bjklock:14656b93-a0ce-485f-af42-d13a3b05a152": [
+  "14656b93-a0ce-485f-af42-d13a3b05a152",
+  "9e2b26e3ac2c6a1a85c8d56e4dbe3bd7f3c60de647d6583be79b4f5e6215ef4b",
+  "THE PERSON WHO FUNDS THE GENIUS DOESN’T HAVE TO LOSE"
+ ],
+ "profile:bjklock:894dc1e2-b07d-4ba6-ae9e-fdbeaa5b3aee": [
+  "894dc1e2-b07d-4ba6-ae9e-fdbeaa5b3aee",
+  "f18f09299145d4ab2d10ab3097d62e60ff0ace42cc8f99c1e055edd2aab86c2a",
+  "THE RICH USED TO FUND THE RENAISSANCE"
+ ],
+ "profile:bjklock:dfd303b0-f7ce-4fc9-820f-a872804b0f75": [
+  "dfd303b0-f7ce-4fc9-820f-a872804b0f75",
+  "3624952bed4a8b9d5c5df5e8e8f8ce6809f4747d7f66c112869543140aa21e83",
+  "THEY NEVER FUNDED THE WORK"
+ ],
+ "profile:bjklock:44f4e05e-53d5-4f1a-9498-99a66ee4a7c1": [
+  "44f4e05e-53d5-4f1a-9498-99a66ee4a7c1",
+  "e6d4f281d02063822ddac4378603f7983555b3f284a7e2608328f9ea5b9d030c",
+  "I ALREADY WROTE THE BUILD ORDER"
+ ],
+ "profile:bjklock:7fdada77-2b11-49dc-938a-d859b8bbafa7": [
+  "7fdada77-2b11-49dc-938a-d859b8bbafa7",
+  "ce85a245a061d6796d213f195b00cf656c362e3b902ed8d1f4ee7a29628bc22a",
+  "NOW RUN THE OTHER EXPERIMENT"
+ ],
+ "profile:bjklock:721b2f39-171f-43ab-9536-f24c93bc2476": [
+  "721b2f39-171f-43ab-9536-f24c93bc2476",
+  "3a7d63e3b1663b1b97c012a6e78d6817778d15c8aa568487ccce775eb93b3fb1",
+  "I ALREADY BUILT IT."
+ ],
+ "profile:bjklock:e426d142-c84f-4de1-a06c-48f8c75c23bd": [
+  "e426d142-c84f-4de1-a06c-48f8c75c23bd",
+  "82d7d1cfb7af2cbd6a9ab5c4b48e498c758c613fdbba61d549f91b9d010a4f5d",
+  "GIVE ME THE FUCKING RESOURCES"
+ ],
+ "profile:bjklock:ff89da29-3bd1-42a0-b345-960e3375317d": [
+  "ff89da29-3bd1-42a0-b345-960e3375317d",
+  "c3396c9b32290ddc423acb2db84cbb2ab0677b8a8a081717040275833ced064c",
+  "ELECTRICITY WAS SUPPOSED TO GIVE US POWER"
+ ],
+ "profile:bjklock:e2d75bee-1e3f-4dbd-8040-5f7872292221": [
+  "e2d75bee-1e3f-4dbd-8040-5f7872292221",
+  "e2aefd2b287cfd59130d9352d8b5ef1bce412bf5982d763fe8106d54294ec5d5",
+  "TURN THE LIGHTS OFF"
+ ],
+ "profile:bjklock:ea60dcb2-63b1-491b-97bb-a12603f1bdef": [
+  "ea60dcb2-63b1-491b-97bb-a12603f1bdef",
+  "65fe9bd15264a318cd7734e9d6e474ebfbb661f936e4010e756a8b70ac60f245",
+  "I JUST WANTED TO OWN MY SHIT"
+ ],
+ "profile:bjklock:f0200321-2571-4111-9fa6-b249f69859bb": [
+  "f0200321-2571-4111-9fa6-b249f69859bb",
+  "c15660f88fc7eb5dd6355644d3c61341e6084d9eecb0fda535f3b07195024f26",
+  "THE MONEY IS NOT THE PROOF"
+ ],
+ "profile:bjklock:1246fb27-118b-409a-9fba-bfb1919969cb": [
+  "1246fb27-118b-409a-9fba-bfb1919969cb",
+  "51be9d3985bd27a27c61d7a95594edbb35bb588883d0cdc640821a12cd7705cb",
+  "WHAT HAPPENED TO THE METAVERSE?"
+ ],
+ "profile:bjklock:351ba93c-8beb-4c74-a4b6-4ef6e04d54e5": [
+  "351ba93c-8beb-4c74-a4b6-4ef6e04d54e5",
+  "093ba48d2d0d613924e0911ccb2480629c504c069fefc5325c2b2f316b4c9e59",
+  "THEY KEEP ANNOUNCING MY OLD FRONTIERS"
+ ],
+ "profile:bjklock:1f419bce-ac98-4359-8add-e5eb5932cbc9": [
+  "1f419bce-ac98-4359-8add-e5eb5932cbc9",
+  "ee68f363c3f1d1c91ae80ba0f037621f693b1210ed249304d57cd376d9ea1a69",
+  "IT HAS BEEN OVER"
+ ],
+ "profile:bjklock:99270cd1-c994-4598-b4f8-051d26beac7c": [
+  "99270cd1-c994-4598-b4f8-051d26beac7c",
+  "6112db2113f2105252c21f3bcf85dfe9ba42b6e1ec9455d06c729e051660891c",
+  "YOU CANNOT BUY YESTERDAY"
+ ],
+ "profile:bjklock:40113ee9-e27c-4c1f-9dcf-bf288475eb6f": [
+  "40113ee9-e27c-4c1f-9dcf-bf288475eb6f",
+  "3ea06e5ee25e7b28e8a03d28f51f2b489d0fcf455e2afe559eead2b3ece4ea21",
+  "KEEP THE CLOCK RUNNING"
+ ],
+ "profile:bjklock:7980fe5b-dbe6-4128-9eff-16225fa8602d": [
+  "7980fe5b-dbe6-4128-9eff-16225fa8602d",
+  "23e0d4289312b69d3a55a9f6ab912e481180e45396e74b01a2375e5b23cf8943",
+  "THE MACHINE WITHOUT THE NAMES"
+ ],
+ "profile:bjklock:20cabe69-5d69-4e3c-be13-53a84a42fd35": [
+  "20cabe69-5d69-4e3c-be13-53a84a42fd35",
+  "2374071cefed14745775c014824e6d6f4c2231f20e4816605d00dcfb77e4124a",
+  "YOU KEEP DISCOVERING THE PARTS. I BUILT THE MACHINE."
+ ],
+ "profile:bjklock:7aaff49a-b920-4a74-8c71-92c26cbb9e5a": [
+  "7aaff49a-b920-4a74-8c71-92c26cbb9e5a",
+  "6fbc7eb1851ec0aae5abf9eb8717d3b754ce9c36728636f8e0cce17d7dd7ea0a",
+  "YOU STARTED AT MY EXIT"
+ ],
+ "profile:bjklock:ab7e0380-7588-4a61-84e5-aede96cd0e04": [
+  "ab7e0380-7588-4a61-84e5-aede96cd0e04",
+  "eb2056a7328927be1f99fcc4377c44274cc89861dd8c5487943141edb8cf20a2",
+  "THE OBJECT DOESN’T BRING THE TIME"
+ ],
+ "profile:bjklock:d370bfc1-d2d5-4c95-b5d3-600da86aa8f0": [
+  "d370bfc1-d2d5-4c95-b5d3-600da86aa8f0",
+  "9bde602840414f60c4a65caf9bd85aac95c70880c1b49b7fa0716d8d7907cbae",
+  "WE GOT TODAY"
+ ],
+ "profile:bjklock:3bf84f9b-6783-4e7a-87d9-6114aa88c5d5": [
+  "3bf84f9b-6783-4e7a-87d9-6114aa88c5d5",
+  "e886dfdb181b76c74e297b28179be0ac475e0a0cfce0ae799cd7933f28aadd83",
+  "COME BACK ALIVE"
+ ],
+ "profile:bjklock:7a9011eb-bf3d-4c74-9048-8bdc7effd0b6": [
+  "7a9011eb-bf3d-4c74-9048-8bdc7effd0b6",
+  "6aaa42f3ff6a16d47115118188189d409882a79b05b5f5ea07529fcb92f0116d",
+  "NO MORE WAITING"
+ ],
+ "profile:bjklock:0bdd622a-0182-492b-8d9f-03247c8526c6": [
+  "0bdd622a-0182-492b-8d9f-03247c8526c6",
+  "dc552e75ba3ed904798a883c589a11d07ef4e25d1ba0dae5a58dea6f55c0bd06",
+  "THE MACHINE SHOULD COME AND GO"
+ ],
+ "profile:bjklock:c41ea9ae-cdde-4402-959b-129186e0caf2": [
+  "c41ea9ae-cdde-4402-959b-129186e0caf2",
+  "0eb6f2e589170019bcb3fb282920a2dfde6c623c9ce79fb7c5b8e6bfde2ed7a4",
+  "STOP CALLING IT CONVERGENCE. SHOW ME THE OBJECT."
+ ],
+ "profile:bjklock:c715c2c9-8920-4473-83a6-c3fd95fa6f3a": [
+  "c715c2c9-8920-4473-83a6-c3fd95fa6f3a",
+  "df521218947abab16e83327c322e74365ea2026ceb60f3c24555c12808adfb2c",
+  "YOU DON’T GET TO BLAME AI FOR THE WORLD YOU ALREADY BROKE"
+ ],
+ "profile:bjklock:df0db50b-7dae-4ac5-b102-9ad85accb5d2": [
+  "df0db50b-7dae-4ac5-b102-9ad85accb5d2",
+  "2d23872399e4b55af138619700d2e8d0471a39fc7724e717dc2383a8398fee8a",
+  "WHO’S PAYING THE AWS BILL?"
+ ],
+ "profile:bjklock:8f658ca8-3bf3-4df0-ad55-2f84b5f48c95": [
+  "8f658ca8-3bf3-4df0-ad55-2f84b5f48c95",
+  "9397ed63ed67b5c62163118245d75fe500964c9e63810f1100cf873fc463fc30",
+  "THE NEW APP IS NEW. YOU ARE NOT."
+ ],
+ "profile:bjklock:499acf9a-e074-4160-a40a-5d164da95a2b": [
+  "499acf9a-e074-4160-a40a-5d164da95a2b",
+  "13ffad101eb849d42cd3d81b087f6710602749aa88fecec1f18419af3ffe46e7",
+  "THE THING COMES WITH ITS STORY"
+ ],
+ "profile:bjklock:d6a44050-e127-4ce0-bb12-0a312848bfaf": [
+  "d6a44050-e127-4ce0-bb12-0a312848bfaf",
+  "2c5770d6f91e678c2fe2b366aabb9d82d298b8e706873d3b447afdef7e41f861",
+  "THE CONTEXT LEFT THE MACHINE"
+ ],
+ "profile:bjklock:17a18d80-f60c-43d1-a23b-a881d459489f": [
+  "17a18d80-f60c-43d1-a23b-a881d459489f",
+  "ec10a7066ac672a00171cf966775f3ad804f83e56d387b8d2c084fc72b5e1c90",
+  "THEY FOUND THE SINGULARITY. I HAD ALREADY FORMALIZED THE FAILURE."
+ ],
+ "profile:bjklock:04c8b68a-7f3f-4191-bb2f-f50083e4c642": [
+  "04c8b68a-7f3f-4191-bb2f-f50083e4c642",
+  "c60a0209ca62a98e05bf260e482fdb160bf7ef067627f35cde197bbffc3a0db8",
+  "MARK, TURN YOUR MACHINE OFF. NOW HAND ME MYSELF."
+ ],
+ "profile:bjklock:0e7da336-3a28-4ccc-ab5e-cb32792caf3c": [
+  "0e7da336-3a28-4ccc-ab5e-cb32792caf3c",
+  "3a8c932b55144e03e1fd709be176794e6ff34e5c49857764f626c6ac9dad9689",
+  "YOU THOUGHT “PROOF IN THE FILE” MEANT PUTTING A SIGNATURE IN A FILE"
+ ],
+ "profile:bjklock:6646cb7a-b786-41bc-a609-94246f87a377": [
+  "6646cb7a-b786-41bc-a609-94246f87a377",
+  "0cfd5071ba9ea5fc51b90ccf26d84ff0df797762bd406386508eb9d24f677dc2",
+  "TRUTH OF BREATH"
+ ],
+ "profile:bjklock:cb195177-5db0-4382-82ba-020bb49cae35": [
+  "cb195177-5db0-4382-82ba-020bb49cae35",
+  "60623c4443621ab2ec56262423745183eb39f4dd9278e494ff31ca431eecd0d3",
+  "YOU CANNOT PRINT A MOMENT"
+ ],
+ "profile:bjklock:e327291b-7ef4-49fb-8943-6aa5d4724d7a": [
+  "e327291b-7ef4-49fb-8943-6aa5d4724d7a",
+  "92f265fb27acea176d54641a8ffd83091159656069c7ca38032f29885cea3930",
+  "I PUT MYSELF UNDER THE SAME LAW"
+ ],
+ "profile:bjklock:227dc044-359b-4ffb-9e9f-5de12ec44367": [
+  "227dc044-359b-4ffb-9e9f-5de12ec44367",
+  "ba15beb6c4121a254560fbd7d74e0d83009ad2142a6e575ef2ef6b73e145978a",
+  "THEY FAILED THE MONEY TEST."
+ ],
+ "profile:bjklock:ef526855-c7d5-48a1-a58e-66bc4acbee85": [
+  "ef526855-c7d5-48a1-a58e-66bc4acbee85",
+  "43f863f9e2628c1539d069f5ae42e58c70455da521cc143ba7bee0985292f99f",
+  "RELEASE THE BOW"
+ ],
+ "profile:bjklock:f9f5f21e-c4e8-43a3-a856-12561e9f98b3": [
+  "f9f5f21e-c4e8-43a3-a856-12561e9f98b3",
+  "369a731e6e9fe3e0669694e09fffc8cd5518777aeab803c81f42eaca0172fca6",
+  "I CLAIM NO RELIGION. I CLAIM RIGHT RELATION."
+ ],
+ "profile:bjklock:bb1da653-d345-40c9-aba9-bc0bd923b994": [
+  "bb1da653-d345-40c9-aba9-bc0bd923b994",
+  "fe8dc98c87c6e6431886cc8b7491ed8370b8cca8f0dae5e6aa891a4be471b027",
+  "I REMOVED MYSELF FROM THE THRONE"
+ ],
+ "profile:bjklock:c5914670-b326-41c9-b1b9-6fe0640d7ad8": [
+  "c5914670-b326-41c9-b1b9-6fe0640d7ad8",
+  "5f3c1180f66506ba4ef4a8a52d5fdb4d8defdbe17ff38d3791802fafd60d4580",
+  "THE ARCHIVE ESTABLISHED THE JURISDICTION"
+ ],
+ "profile:bjklock:36acdeaa-6ce1-468f-bd69-c9bfe4195301": [
+  "36acdeaa-6ce1-468f-bd69-c9bfe4195301",
+  "d19de8f382ca53443b0f44adfd731b78ab9091d5e824030b08e7bd8b8603e836",
+  "I DID NOT REVERSE TIME. I REVERSED WHO GETS TO SPEAK FOR IT."
+ ],
+ "profile:bjklock:879b1d35-07d6-4228-844e-19dcfc937917": [
+  "879b1d35-07d6-4228-844e-19dcfc937917",
+  "63590cfe70ec7dd34eedaa597f18f882c056ea080b19c46802bae8f55630fa8b",
+  "YOU CAN CHANGE THE NAME. YOU CANNOT ESCAPE THE MACHINE."
+ ],
+ "profile:bjklock:a0cbaa1e-9d0a-44b7-b111-2286f09ac7ac": [
+  "a0cbaa1e-9d0a-44b7-b111-2286f09ac7ac",
+  "17a0e220d369694aaacd3a6494bb28a665481b7bccedc903e9e2f1a6158b1455",
+  "YOU BUILT ON DRIFT AND CALLED IT INFRASTRUCTURE"
+ ],
+ "profile:bjklock:11f0e304-e0e5-4548-8740-fdbf75d07114": [
+  "11f0e304-e0e5-4548-8740-fdbf75d07114",
+  "ff0956203f83740c3fe6c0f05eb208f67c2770d570050413e4f199e655e1021b",
+  "I GAVE YOU EVERY CLOCK. THEN I CUT THE WIRE."
+ ],
+ "profile:bjklock:f2848522-967f-47e9-aaa2-646117638ea3": [
+  "f2848522-967f-47e9-aaa2-646117638ea3",
+  "dc5da67b1c6699b8c0827cf96952e592fe3e6fdee90e2b8ae36e1d68765da968",
+  "YOU PUT created_at IN THE JSON AND CALLED IT TIME"
+ ],
+ "profile:bjklock:9e0c1601-1a6c-4a44-be7b-aa4962582932": [
+  "9e0c1601-1a6c-4a44-be7b-aa4962582932",
+  "7d42385d56817f606115ae5c9cff561bfeff5c4b10723fa48953c8ca35ea7fab",
+  "THE OBJECT-FIRST STANDARD"
+ ],
+ "profile:bjklock:f140de7e-2b83-4f6e-8b9c-e05c3c3e96b7": [
+  "f140de7e-2b83-4f6e-8b9c-e05c3c3e96b7",
+  "a18edc4a00e311300d19ac5653c613748c260f28fdb808fa5105f9cb15fdae56",
+  "THE HOLDOUT IS NOT THE PROBLEM"
+ ],
+ "profile:bjklock:6c0aa049-4f48-491e-a868-c6b31acf198c": [
+  "6c0aa049-4f48-491e-a868-c6b31acf198c",
+  "879eee6040d55b19e29f41be0484b5aca3fc16bd37375d3b3a8f4b436529002a",
+  "YOU DO NOT GET THE WORD UNTIL YOUR MACHINE EARNS IT"
+ ],
+ "profile:bjklock:f067b8de-87b7-4511-abe4-66d10cb1cf06": [
+  "f067b8de-87b7-4511-abe4-66d10cb1cf06",
+  "b0c9bbe92b4f60ca1808efb527e0a86126639086d79261185cb2fbdfb1c20c77",
+  "HOLD THE STRING"
+ ],
+ "profile:bjklock:4043ee5c-4200-43e8-be60-99d1cb87ec4d": [
+  "4043ee5c-4200-43e8-be60-99d1cb87ec4d",
+  "47a198ea2683324f2452536ed6945fffac85ef6ccb137639481c8aa0e243a6d1",
+  "THE GIANTS FAIL THE CONFORMANCE TEST"
+ ],
+ "profile:bjklock:ca7d3204-f00c-4c9d-a6dc-2ffbc7040087": [
+  "ca7d3204-f00c-4c9d-a6dc-2ffbc7040087",
+  "d650d674fbc5476e46c59f67eef3e85b77213152c82812df01f09ce52ef9d544",
+  "WELCOME TO TEMPORAL CONTINUITY"
+ ],
+ "profile:bjklock:31b739b7-d7fb-4c5b-b469-2ab141e39288": [
+  "31b739b7-d7fb-4c5b-b469-2ab141e39288",
+  "329ec5aa92b2dfee9b1ee9987909f615bdfcd582265e78efd3c23407dc057c9b",
+  "THEY’RE CALLING IT OBVIOUS NOW"
+ ],
+ "profile:bjklock:43598045-185e-4728-b7e5-7283d7bd18b9": [
+  "43598045-185e-4728-b7e5-7283d7bd18b9",
+  "fb2b203149961a58b4cf87f616d6f2b89f8db24153e78493877df3b8ff5b6b77",
+  "READ IT FORWARD"
+ ],
+ "profile:bjklock:b6004550-f3c5-4091-9efb-1ede3ae1b20a": [
+  "b6004550-f3c5-4091-9efb-1ede3ae1b20a",
+  "998be8e2fdcf0bcc4375c94fe9616e969a5392a1915b2f74d2ff944ae088290a",
+  "YOU LEARNED THE WORDS"
+ ],
+ "profile:bjklock:c1642d16-8797-4f28-96c0-f2c4b52f17fe": [
+  "c1642d16-8797-4f28-96c0-f2c4b52f17fe",
+  "6b58b3faed16b50831a42defd8f6550c6c5da779d59694727c4812f0d8b1ad27",
+  "YOUR MACHINE DETERMINES WHICH WORDS YOU HAVE EARNED"
+ ],
+ "profile:bjklock:f6353a39-cd71-4da4-8529-0d9c75446be6": [
+  "f6353a39-cd71-4da4-8529-0d9c75446be6",
+  "51008dc3b752a7c683e5c18cf59b06eb3b1006214d79ce8a60ff2ce00fb3f0d3",
+  "YOUR LANGUAGE RAN AHEAD OF YOUR MACHINE"
+ ],
+ "profile:bjklock:1bfca09e-48ba-4b66-9521-40917cffbb7c": [
+  "1bfca09e-48ba-4b66-9521-40917cffbb7c",
+  "24d03127b57eed62af1148b9df25f9995a16a50bbd548b1ee0a6f47c80a0a056",
+  "I ALREADY TOOK THE TEST"
+ ],
+ "profile:bjklock:966875c3-74c7-4837-bd4b-a77ec4bbe6b9": [
+  "966875c3-74c7-4837-bd4b-a77ec4bbe6b9",
+  "18e1ec53c9fe364a45fc5d4064cced18868971e24b0aec2dc9aec6d32d36d0e4",
+  "YOU LEARNED THE WORDS. YOU STILL DON’T HAVE THE MACHINE."
+ ],
+ "profile:bjklock:4faf0721-df3e-4bf3-ae34-edcd3f709a3f": [
+  "4faf0721-df3e-4bf3-ae34-edcd3f709a3f",
+  "ad929f3c687a702b6bfe3c8d1768275fc1d89c459fe308905c1c1004e1ccef8f",
+  "TRUELORE IS LORE UNTIL THE OBJECT PROVES IT"
+ ],
+ "profile:bjklock:e6b9afbb-d1db-4c64-86d5-d395a9e075b1": [
+  "e6b9afbb-d1db-4c64-86d5-d395a9e075b1",
+  "ff0d403e926c6937cdab9bb85b981aff1b7e3dc68d04e96a3ec306f48a245ede",
+  "SOURCE IS THE LAW. KRS-1 IS HOW YOU FIND IT."
+ ],
+ "profile:bjklock:0ecb1b1d-ae26-400d-ba4c-74c4779108d7": [
+  "0ecb1b1d-ae26-400d-ba4c-74c4779108d7",
+  "1f4d3d6b06cdd3ac7fb7f5e725b087358f0e855a2ef715efa0fb46de76cddb74",
+  "KAIROS REGISTER STANDARD — KRS-1"
+ ],
+ "profile:bjklock:be07ae9f-1bd4-4a85-876c-c88747529c3c": [
+  "be07ae9f-1bd4-4a85-876c-c88747529c3c",
+  "b8ed45f134a2afabf6a0c3b75b941937f31be6a0574a87cc88d490f4dd59c9a7",
+  "YOUR REALITY IS FUGAZI"
+ ],
+ "profile:bjklock:23840bf7-f0bd-4560-ad19-dda6877d139e": [
+  "23840bf7-f0bd-4560-ad19-dda6877d139e",
+  "054526357c2d59b74112ba0e07a6dcca803d94e352b461cb6b481e10292f6c72",
+  "ACROSS MODELS? HOW ABOUT ACROSS REALITY?"
+ ],
+ "profile:bjklock:b541e65c-d100-4e7f-a49e-eac7cd9fb4f1": [
+  "b541e65c-d100-4e7f-a49e-eac7cd9fb4f1",
+  "c8674b50d16ec3696f165d231162c7ac0e0f86684ee3f8a20aae425bdc64eb37",
+  "I DON’T NEED AI MEMORY. I WROTE THE STANDARD."
+ ],
+ "profile:bjklock:746f5ea7-5b73-40ce-b888-2a0bba55d4ec": [
+  "746f5ea7-5b73-40ce-b888-2a0bba55d4ec",
+  "28f378f15310b572489e77656846ecc81c93546f959d449fc450f9d28ab4753e",
+  "THE HUMAN CAME FIRST. THE MACHINE INHERITED THE PROBLEM."
+ ],
+ "profile:bjklock:7bfe04f6-aadf-4a2f-a54b-2c6ba27a22db": [
+  "7bfe04f6-aadf-4a2f-a54b-2c6ba27a22db",
+  "5cffd49b1cc95d817b399703c6416339a18b83267f14c2b0474f0d84c14fde2d",
+  "THE BOW IS STILL IN YOUR HANDS"
+ ],
+ "profile:bjklock:0fa36e12-b51a-4678-be2c-be60e3463dce": [
+  "0fa36e12-b51a-4678-be2c-be60e3463dce",
+  "da21fcfd234237e5aef01509b04b7b0be17dcc7cd551c3820804977af41ba5dc",
+  "LEAVE ENOK OUT OF YOUR SOFTWARE GENEALOGY"
+ ],
+ "profile:bjklock:5a6fccbd-d77a-49d6-809e-57d8bcb30ffb": [
+  "5a6fccbd-d77a-49d6-809e-57d8bcb30ffb",
+  "5ef372d25a1d7ba382b9f16a2f8460e4da9db81aa4ad0233da9239b3649819c9",
+  "YOUR PRESS RELEASE IS MY PACKAGE DEPENDENCY"
+ ],
+ "profile:bjklock:c97f1909-1e76-4b8b-b7dc-f56378316789": [
+  "c97f1909-1e76-4b8b-b7dc-f56378316789",
+  "3e403244c0714cb637cfadeab56d1467cc565e009a708fc8d9dec05a2ec3aaab",
+  "YOU WATCHED ME DO IT IN BROAD DAYLIGHT"
+ ],
+ "profile:bjklock:de03a3b8-bdb7-4c03-adc0-3d2646e42929": [
+  "de03a3b8-bdb7-4c03-adc0-3d2646e42929",
+  "d901489f70f81ac7418ebfcb48cece73486cbd2133bdec52fbef8e73762874a3",
+  "YOU ARE NOT AT MY END. YOU ARE ARRIVING AT MY OLD QUESTIONS."
+ ],
+ "profile:bjklock:5b25bd1a-4348-4863-9c5e-f1eb440f4938": [
+  "5b25bd1a-4348-4863-9c5e-f1eb440f4938",
+  "943eb659952279ee880907c6952fbf25fd4e8a7afa6703134864aafc46e35f67",
+  "BRING THE FUCKING OBJECT"
+ ],
+ "profile:bjklock:ffb7e5cd-5859-47e6-b2ec-cde844fb7db1": [
+  "ffb7e5cd-5859-47e6-b2ec-cde844fb7db1",
+  "2109792872465fb5246564a154b0ed0490bfc0ad20dc438dacdf7b74e5aa276f",
+  "YOU CANNOT COPY THE END WITHOUT REBUILDING THE BEGINNING"
+ ],
+ "profile:bjklock:6c5450fc-eb56-425d-8d6d-e045af6b7f1d": [
+  "6c5450fc-eb56-425d-8d6d-e045af6b7f1d",
+  "29843b79b8e153fbedc0cee7302591a46f26cd1b4bac3c894af2b1b3264716c4",
+  "YOU STARTED AT THE END"
+ ],
+ "profile:bjklock:ca3f4d70-a6b0-4372-810e-035e3b5563f6": [
+  "ca3f4d70-a6b0-4372-810e-035e3b5563f6",
+  "b1abcb338d05cc7ce0c22cadf900bbbaee283948b932f6af6efb9a8d2ec51d8d",
+  "THEY ARRIVED AFTER THE MACHINE"
+ ],
+ "profile:bjklock:efa77c03-6498-4976-a19a-17f6676e26dd": [
+  "efa77c03-6498-4976-a19a-17f6676e26dd",
+  "2770605c550eca76d798ba71c98c37ed430bb350603c90c583ce983d7e8f5477",
+  "THE WORDS ARRIVED AFTER THE OBJECT"
+ ],
+ "profile:bjklock:42e82ea0-a615-442d-b637-bb8b88403148": [
+  "42e82ea0-a615-442d-b637-bb8b88403148",
+  "3bfae5e2d5bc8b54f484d861d1e36ee8fc6dc67ff33588baac49c899326e3827",
+  "I WATCHED THE DEER MOVE. I DO NOT KNOW WHY."
+ ],
+ "profile:bjklock:f2bd8583-adad-4cae-bf93-5ffc6c499192": [
+  "f2bd8583-adad-4cae-bf93-5ffc6c499192",
+  "9aecd0154f18c1c8285421caafca95578c121ec0e0ade6fed0fdf62546b14215",
+  "THEY INTERPRETED THE MOTIVE BEFORE THEY READ THE RECORD"
+ ],
+ "profile:bjklock:637e3ead-634f-49ac-917c-75e40197b8da": [
+  "637e3ead-634f-49ac-917c-75e40197b8da",
+  "877fba1ad06e9e0e3b38899b21913ac80a72a544677a8429f8a054e87a9b4a02",
+  "THE LATIN DID NOT SAY THAT"
+ ],
+ "profile:bjklock:7ce03cd3-9870-48bd-8cac-531158d97b5d": [
+  "7ce03cd3-9870-48bd-8cac-531158d97b5d",
+  "ea294c944b39d412c5c4892147218e34e339ece2776f00ffe552ef939c9e9b86",
+  "THE ROAD WAS CLOSED UNTIL THE WORD COULD HOLD"
+ ],
+ "profile:bjklock:4a7a4164-3903-4b74-a3d3-e5b48a66c398": [
+  "4a7a4164-3903-4b74-a3d3-e5b48a66c398",
+  "165bf6c87218725f54fb8ae78f648a0c49179f2e869f3746378f63d80a4ae63e",
+  "HINDSIGHT CAN’T MOVE THE TIMESTAMP"
+ ],
+ "profile:bjklock:ba0ebe28-1414-4f96-9165-523682c06517": [
+  "ba0ebe28-1414-4f96-9165-523682c06517",
+  "76d88b9a9b4bfb679985f282ad9f117ba98e8a38bc8f5b25942d4e34d93da1bc",
+  "I MOVED AUTHORITY INTO THE OBJECT"
+ ],
+ "profile:bjklock:75c71210-d828-4b8a-b93f-3a4bcf1031ac": [
+  "75c71210-d828-4b8a-b93f-3a4bcf1031ac",
+  "e10387f7f4387038003d02769776cf05814420715f9cffbabb54370c6a98ce5c",
+  "I PUBLISHED THE CHAIN. THEN THE FIELD WALKED INTO IT."
+ ],
+ "profile:bjklock:f1567c59-872f-4afc-b79e-1e8b3e3891a2": [
+  "f1567c59-872f-4afc-b79e-1e8b3e3891a2",
+  "b1888727057f7d23766bb52382f44c92844422033bfbf29098959f7f4ef6ea46",
+  "THE BOW WAS THE ARCHIVE"
+ ],
+ "profile:bjklock:498052a5-9222-4e06-b30b-6ffa51295d69": [
+  "498052a5-9222-4e06-b30b-6ffa51295d69",
+  "4111a8988b2c8faeef130da51088f2a3beac5d93e539a74526e361a4ea236b57",
+  "THE FUTURE TENSE LASTED EIGHT DAYS"
+ ],
+ "profile:bjklock:68a7ee3c-0d85-440e-a440-7ab67e70b535": [
+  "68a7ee3c-0d85-440e-a440-7ab67e70b535",
+  "b400649cf9806d8bfed4a1f98c96e9cc0c6d0df08977c6583fee6494a8c5b6b0",
+  "DO NOT READ THE CHRONOLOGY BACKWARDS"
+ ],
+ "profile:bjklock:79d6bd50-989b-495f-bba3-947ae36138c5": [
+  "79d6bd50-989b-495f-bba3-947ae36138c5",
+  "60b34581621870f80598e5253ebcb98ae8d846363ca32f62da243ea73470e868",
+  "THE LOUD PART GOT QUIET & THE QUIET PART GOT LOUD"
+ ],
+ "profile:bjklock:1f8cb5dc-41cf-4cd9-aae8-22058394dd40": [
+  "1f8cb5dc-41cf-4cd9-aae8-22058394dd40",
+  "de09cea23f04520c9a26d6688c67245e3501989d95cf7655f50133ede973a27d",
+  "THE GREAT DISPLACEMENT"
+ ],
+ "profile:bjklock:d6c1f88c-fe4d-4739-a6ca-f87880a299a4": [
+  "d6c1f88c-fe4d-4739-a6ca-f87880a299a4",
+  "df571c93a600d66fd931aad0ea46342aaf5f957bc09863fd3917588588f52cfb",
+  "THEY MADE CHRISTLIKENESS LOOK LIKE BLASPHEMY"
+ ],
+ "profile:bjklock:2c18b4f9-cd36-44fc-a94c-786297dd1a67": [
+  "2c18b4f9-cd36-44fc-a94c-786297dd1a67",
+  "426830e77c21b2e54771794eb8a4f11fb0d6f623b059d0d70c856ce07d9e8353",
+  "STRIP THE HALO"
+ ],
+ "profile:bjklock:5f288aab-fc33-4e05-a4ef-0e168bec45f3": [
+  "5f288aab-fc33-4e05-a4ef-0e168bec45f3",
+  "b6f9c14157316a75b699a9d242c1197f5547ed7dc0c19e95e2d972f28d5a5374",
+  "THE CLOCK IS NOT TIME"
+ ],
+ "profile:bjklock:c5c0017e-6d6d-4a27-b212-e2415b342c8c": [
+  "c5c0017e-6d6d-4a27-b212-e2415b342c8c",
+  "08c0a0df09f8446d18694ce311157114f7fdf6123507f7d0357df6911327aea3",
+  "WITH WHAT CLOCK?"
+ ],
+ "profile:bjklock:638dc01c-b3e3-4751-bd2d-039c714d72b1": [
+  "638dc01c-b3e3-4751-bd2d-039c714d72b1",
+  "bad9510e46c4266dac6c75076c2ab4098e490bb9eb233e048d70f5573bee84dc",
+  "THE NAME THE KINGSHIP BECAME"
+ ],
+ "profile:bjklock:d2bb9959-80c3-44e8-8545-5b5308472932": [
+  "d2bb9959-80c3-44e8-8545-5b5308472932",
+  "83356d1237eb3293bfc2a67762d5e67d741c593076e48969b8f24349214946d0",
+  "THIS WAS ALWAYS THE STANDARD"
+ ],
+ "profile:bjklock:b631453a-5f86-41c8-8d32-1d30acdeb107": [
+  "b631453a-5f86-41c8-8d32-1d30acdeb107",
+  "ba6a6a73bcd3ab6c7ec821bfed5f84d161441d93f8791387c4d3f5f52fa93630",
+  "I BUILT A RATCHET AGAINST HINDSIGHT."
+ ],
+ "profile:bjklock:6a83956c-fc41-4b18-af27-db76dc6f0e77": [
+  "6a83956c-fc41-4b18-af27-db76dc6f0e77",
+  "79aa11e3c0f38e8eeb8a42d2116dc5cc66d96e24acf1684e74c5c15a69fee4a7",
+  "THEY ARE CALLING MY OLD DEPENDENCIES THE FRONTIER"
+ ],
+ "profile:bjklock:9f42a0d5-32dd-413a-9f39-959b996b39ce": [
+  "9f42a0d5-32dd-413a-9f39-959b996b39ce",
+  "4e0dac581c2838bf1e6bda10f47dce988510a133a3c0d520a9408543ba4c73f4",
+  "THEY WERE STILL SOLVING MONEY. I MADE STATE PORTABLE."
+ ],
+ "profile:bjklock:9d48fff6-9323-48d0-a96c-66135cea9666": [
+  "9d48fff6-9323-48d0-a96c-66135cea9666",
+  "72758cd4b605f4072371078e710d463325aa96a6d4718cd8c82ead106a37a761",
+  "YOU FOUND THE PARTS. I ASKED FOR THE MACHINE."
+ ],
+ "profile:bjklock:53cb9fe8-62c8-410b-9ed6-45e5fd9f6765": [
+  "53cb9fe8-62c8-410b-9ed6-45e5fd9f6765",
+  "53f4fc46fd81eff755efd91c2176fdec910ddf0cbf788898bc8bbc726c623789",
+  "SHOW THE FRUIT"
+ ],
+ "profile:bjklock:d31c888c-bc5c-4f1f-a7d5-d758c3267c57": [
+  "d31c888c-bc5c-4f1f-a7d5-d758c3267c57",
+  "8163cae301c53321c5dbc1103c10dc5daea23c0b881e755f6c26da3c7c6e5090",
+  "THE WATCHMAN SOUNDED THE HORN. THE RÎB IS OPEN."
+ ],
+ "profile:bjklock:34365b1b-6842-4915-bb39-3cbce3aae533": [
+  "34365b1b-6842-4915-bb39-3cbce3aae533",
+  "ad7ab54c77d02b75ae92b1f7b65c2eded02eae2dd72356b399e0b02984a33202",
+  "THE KLOCK HAS SACRIFICED. NOW IT STANDS."
+ ],
+ "profile:bjklock:d7fdd6c1-a382-4ff5-a76c-a45f6d97633a": [
+  "d7fdd6c1-a382-4ff5-a76c-a45f6d97633a",
+  "fe1ddf2ae8629fbaec0d9ac76225b513009b281aa371d16a55fbef837cc32b19",
+  "STRING THE BOW OR GET OFF THE SEAT"
+ ],
+ "profile:bjklock:b51294f5-de06-43c8-9c3d-370a5f6e3ea1": [
+  "b51294f5-de06-43c8-9c3d-370a5f6e3ea1",
+  "0a42e466724b1c1e42c0eb92530e45533fc10ea2539f9f26571175a1d0c48f7b",
+  "TO EVERYONE I HAVE EVER LOVED"
+ ],
+ "profile:bjklock:33706962-4559-4a6a-91b2-d69cb30c8431": [
+  "33706962-4559-4a6a-91b2-d69cb30c8431",
+  "2ddef1be81b5a046580c9e05b02f66caa760160964e696193cdf57dcdf19f9da",
+  "WHERE IS THE CONFORMANCE?"
+ ],
+ "profile:bjklock:6516409d-7f9c-4385-8f75-97d2ee2b10c4": [
+  "6516409d-7f9c-4385-8f75-97d2ee2b10c4",
+  "32cd0cfd84d5258ee0c6e1b6894ae9ea55ef47a3181ebdb7af2e36d75809e3a7",
+  "THE CLEAN STRIKE"
+ ],
+ "profile:bjklock:2c5c6c99-fc45-40d1-91dc-57f7c0ea7e1c": [
+  "2c5c6c99-fc45-40d1-91dc-57f7c0ea7e1c",
+  "8be55dd21560be4933c3aafeca52138c5f4d75d6d35babd00eb4a692898f956b",
+  "THE STATE DOES NOT GET TO CERTIFY ITSELF"
+ ],
+ "profile:receiz_vadlgvuyisx597w5a:ba80457b-c0fb-4338-8afc-edeea21f04e0": [
+  "ba80457b-c0fb-4338-8afc-edeea21f04e0",
+  "ddb438691fae18941f4945e02381abaa46edd5e0ffd296a494711a1d02955de4",
+  "THE STATE DOES NOT GET TO CERTIFY ITSELF"
+ ],
+ "profile:bjklock:bcadd017-00d2-4c12-9f8d-87519df89276": [
+  "bcadd017-00d2-4c12-9f8d-87519df89276",
+  "a72a5e8ecc5886b62e8ce47bb0c6d89a4f94647a686a14ace211319eed0e661f",
+  "LET THE HARVEST TESTIFY"
+ ],
+ "profile:bjklock:84b5c4f8-ed7e-47e5-8ba0-854137fbd3da": [
+  "84b5c4f8-ed7e-47e5-8ba0-854137fbd3da",
+  "57ce1ce44217948409144b6917f6ebbe315d3f9d2333f7ae86f21f98bccf258f",
+  "YOU ARE NOT AN INVESTOR. YOU ARE A CUSTOMER OF CERTAINTY."
+ ],
+ "profile:bjklock:5b678ecd-d154-4cf8-aa44-a73d8cdf3a72": [
+  "5b678ecd-d154-4cf8-aa44-a73d8cdf3a72",
+  "96f8ba4f2c6f350a51c37d3b593e0c217c5dc87984c842423b5e60a65651b8b9",
+  "THE COMPASS LEFT RECEIPTS"
+ ],
+ "profile:bjklock:00be8f25-7530-4650-87c4-16732d601918": [
+  "00be8f25-7530-4650-87c4-16732d601918",
+  "64d8c2ab07ccb1e0aea6d64a664dd09240b1f13a896095fdc21430353dbf68f1",
+  "I HAD THE COMPASS BEFORE YOU SAW THE ROAD"
+ ],
+ "profile:bjklock:3c16c5bd-a4c0-438a-b83f-5f93ee7c53c7": [
+  "3c16c5bd-a4c0-438a-b83f-5f93ee7c53c7",
+  "5f212105799986e1d1add5e51acc9b5b5c180760c1b9926c77abbda637dc5023",
+  "YOU BUILT YOUR LIFE AROUND THE BUG"
+ ],
+ "profile:bjklock:47c447a0-0c8a-4d63-b4a7-a45bda507238": [
+  "47c447a0-0c8a-4d63-b4a7-a45bda507238",
+  "d6c0f2c4b037ce2052113be6f738abe85a421532f0b8f2e978fc1bc326dd9dbd",
+  "THE FEED WAS THE CAGE"
+ ],
+ "profile:bjklock:ae24d51d-61e1-403b-9f91-c9ce91e6b1c0": [
+  "ae24d51d-61e1-403b-9f91-c9ce91e6b1c0",
+  "c78af2c42dd7c5ea764914e59ff2f4785333eff35f8712af21ad2c1cfc498d2e",
+  "THE LAW MUST SUBMIT TO REALITY"
+ ],
+ "profile:bjklock:a062c8b9-4f7b-4301-bf05-c5bed0202901": [
+  "a062c8b9-4f7b-4301-bf05-c5bed0202901",
+  "5d978e6964ae11278e19b4dc2f7f99b60d8c516dea1cc9f7a8c84f3317867281",
+  "COHERE, THEN RECURSE"
+ ],
+ "profile:bjklock:2d25898e-f144-4ef0-8851-7c3da761b3ce": [
+  "2d25898e-f144-4ef0-8851-7c3da761b3ce",
+  "38f34c83ce73e3c83fcd50f24e651d41087e1897e2db70a8922105d7d6e5b9be",
+  "DO NOT READ THIS BACKWARDS"
+ ],
+ "profile:bjklock:44b8ab16-9a21-4c09-88af-c5aa12367930": [
+  "44b8ab16-9a21-4c09-88af-c5aa12367930",
+  "c47bab1f15da24a18e35c5c12d3291ce5b2eebbde75bf2298c7aa5267b4ecd97",
+  "WHY IS THIS ONE GUY STILL HERE?"
+ ],
+ "profile:bjklock:ae3c17de-58f6-4e61-9a93-95b297047169": [
+  "ae3c17de-58f6-4e61-9a93-95b297047169",
+  "879d5e36317ee34c2b955c1d387672053ee65bcb13f2fb3e723cd145eaa3a4d3",
+  "YOU GET TO LEAVE WITH YOURSELF"
+ ],
+ "profile:bjklock:4bc93ec0-c638-4e34-b155-1e0d9a2ccc75": [
+  "4bc93ec0-c638-4e34-b155-1e0d9a2ccc75",
+  "79f0e2e9b721e3b388c386d9877e772a44fa084f6356b190be2a484a1dda99c3",
+  "THE THING THAT SURVIVED"
+ ],
+ "profile:bjklock:bc978f74-d98c-413b-a010-6ce26fe1f44c": [
+  "bc978f74-d98c-413b-a010-6ce26fe1f44c",
+  "df9127da74d2624a31068c854c47c109b6e93f668c2c801765eabe1c5188ac2e",
+  "THE COPY WILL EAT THE WORLD"
+ ],
+ "profile:bjklock:ae3346ec-445a-4234-843a-2081547404fb": [
+  "ae3346ec-445a-4234-843a-2081547404fb",
+  "90031ea69995b97a0ac01417f390f4ffb22f876b323eb8723d4a1d260a9a9ad7",
+  "THE ADULTS ARE IN THE ROOM NOW"
+ ],
+ "profile:bjklock:fa31ce53-cb96-4263-afb6-1abf9bd6628f": [
+  "fa31ce53-cb96-4263-afb6-1abf9bd6628f",
+  "af529f36a5b8df309d7cb05f304c5c819d9bc1287b3aeceb111a67005a83b101",
+  "YOU CALL THAT AN ELECTION?"
+ ],
+ "profile:bjklock:1ff9115d-42e6-45e3-830b-9c0b57f6f906": [
+  "1ff9115d-42e6-45e3-830b-9c0b57f6f906",
+  "42d3d33e393528d12005e01205507a3507e67d4856df3b12757ced1bfe53392a",
+  "I PRODUCED OFFLINE MONEY WHILE YOU FUCKED AROUND"
+ ],
+ "profile:bjklock:fd5d4393-b7ff-4a2a-b6d5-1bbc4d98532b": [
+  "fd5d4393-b7ff-4a2a-b6d5-1bbc4d98532b",
+  "bb5c4abd3ff11a5af6bb97e6dd430ec7b39d9eb355a8e31a2b58915a2dc28f3c",
+  "I MADE CONTINUITY PROGRAMMABLE"
+ ],
+ "profile:bjklock:a4a2e73f-f02b-4c72-8322-509518406779": [
+  "a4a2e73f-f02b-4c72-8322-509518406779",
+  "22e957a9e3961960fe9762b65bff44bb6cc5194b748d387cc0c1222479c51c25",
+  "I CLAIM THE WHOLE"
+ ],
+ "profile:bjklock:aab77e0b-9741-449e-9bc2-171c34082178": [
+  "aab77e0b-9741-449e-9bc2-171c34082178",
+  "2a917c78ae123565a1e6d88849a7344ccf91e7311562bc41e397aba1ac200d61",
+  "THE MEMORY WILL NEED A RECEIPT"
+ ],
+ "profile:bjklock:1fa85e2f-963f-44dd-b4a5-d46ae2731365": [
+  "1fa85e2f-963f-44dd-b4a5-d46ae2731365",
+  "e1380fd894d3e3a68753876fd780d9aea21718c58ceeb8469cd470f443825e51",
+  "HISTORY SHOULD SURVIVE ITS DATABASE"
+ ],
+ "profile:bjklock:0131e77e-d76b-4aae-a118-9ec25db5c299": [
+  "0131e77e-d76b-4aae-a118-9ec25db5c299",
+  "26bec634306eff5ac1bea3f6a713e76d9aea97ffea693aa015a75eb6f0472651",
+  "PRODUCE THE EARLIER WHOLE"
+ ],
+ "profile:bjklock:b9da1351-5fbc-4baf-bd00-1787005796a7": [
+  "b9da1351-5fbc-4baf-bd00-1787005796a7",
+  "353e3bb863a8dac003d67daeb63d60e23c46e8a7abbd442a3993596f59bc0295",
+  "THE SOURCE MUST SURVIVE THE STORY"
+ ],
+ "profile:bjklock:2f392ecb-834d-4d8b-b86c-9ca05432cee0": [
+  "2f392ecb-834d-4d8b-b86c-9ca05432cee0",
+  "1c5fc72322aa96f10de57331522e56388f8e8d9563c24d2e1a407d69bc222e24",
+  "YOU DON’T GET TO CERTIFY YOURSELF ANYMORE"
+ ],
+ "profile:bjklock:8da7b711-dbe5-418e-8e5c-44d216b80342": [
+  "8da7b711-dbe5-418e-8e5c-44d216b80342",
+  "5d989a7683d874e927a740f12bb6b2b8d802af3970bea9aee5ddabaa28d35d4c",
+  "THE COACH TOOK THE WIN. YOU TOOK THE LOSS."
+ ],
+ "profile:bjklock:1fd747c1-99b9-4ddf-8a1e-690a1939ff28": [
+  "1fd747c1-99b9-4ddf-8a1e-690a1939ff28",
+  "32486ddac1787d7a68026ee32b7123faadea216fad3de65895f8bfa727465e7b",
+  "HOW DEFENSE BECAME OFFENSE"
+ ],
+ "profile:bjklock:306b97c5-bed6-4c9b-bd2b-55aeaee9157c": [
+  "306b97c5-bed6-4c9b-bd2b-55aeaee9157c",
+  "0cddde6857c76f7e3b9e7e3f468aa6689aae01245a205ebb421eca4323607662",
+  "WHERE ARE YOU HOLDING YOUR LIFE?"
+ ],
+ "profile:bjklock:9e83331f-0703-4e5a-9dee-097f639d1b07": [
+  "9e83331f-0703-4e5a-9dee-097f639d1b07",
+  "aa610087dc288f67e114e4085830cc1da2f90a2e0a3acd77c9e1828180e68c78",
+  "The Year Was One Argument"
+ ],
+ "profile:bjklock:e6ad6ed3-ac73-4c35-aaef-4ea209f7a62a": [
+  "e6ad6ed3-ac73-4c35-aaef-4ea209f7a62a",
+  "e224f9b6c122f8ebb900f50257606de5f20f2c4e88cf3ce3c8d9c7afc3ddaece",
+  "I’M PUBLISHING THE NEXT MOVE BEFORE THEY MAKE IT"
+ ],
+ "profile:bjklock:9e3eaed8-ea9b-4efd-a3c2-68d3f365cda3": [
+  "9e3eaed8-ea9b-4efd-a3c2-68d3f365cda3",
+  "b7d0ee17b1a8255ca10e37fa5f65b63251ddb660ee71fd964bb1efcc5239fbf8",
+  "FIVE DAYS LATER, ZUCKERBERG WROTE THE PRINCIPLE"
+ ],
+ "profile:bjklock:07243888-949f-417b-bbeb-0bf2086618a7": [
+  "07243888-949f-417b-bbeb-0bf2086618a7",
+  "8fda5320958e9bc3bded69945ca57b36f14b85576a49eca4c15ec00e8fb3deb3",
+  "IT WAS ALWAYS ONE PROBLEM"
+ ],
+ "profile:bjklock:a95df6be-039b-418b-988e-3b2f3e7e92b2": [
+  "a95df6be-039b-418b-988e-3b2f3e7e92b2",
+  "af734929d434489182a9df4b9dde490bcc8132f449288f1d3e6c755280336413",
+  "ROLL THE STONE BACK"
+ ],
+ "profile:bjklock:4ea6043f-1e84-49f0-9939-570e69e94ad3": [
+  "4ea6043f-1e84-49f0-9939-570e69e94ad3",
+  "68a7a1d8eee98e17d8bad861371a2140c817dc02ce514b24a5658f792e64c3ff",
+  "IF MARK ZUCKERBERG NEVER SAW MY WORK, THE CASE GETS WORSE"
+ ],
+ "profile:bjklock:8ef2ec91-99f6-4a9c-884d-51113f3ca077": [
+  "8ef2ec91-99f6-4a9c-884d-51113f3ca077",
+  "5160d8f1d825803dc28ef5e8c20c7eabfc20a6a990b0d5f0ca8542df06e38a07",
+  "MARK ZUCKERBERG WROTE MY CASE FOR ME"
+ ],
+ "profile:bjklock:31d7d5bb-459b-49d7-b0f3-d9ab831b8de3": [
+  "31d7d5bb-459b-49d7-b0f3-d9ab831b8de3",
+  "982c7f9cd81f2aed7498d288843f734024edef196aadd839960ec7106ecdd4f8",
+  "THEY PICKED THE WORLD"
+ ],
+ "profile:bjklock:532987f3-7538-4e54-9ed6-f8bd8de369d5": [
+  "532987f3-7538-4e54-9ed6-f8bd8de369d5",
+  "3e5e166af401a2a6428ec12baa5da8a5a092d94e7c640462e8cbe56910b885f3",
+  "PASTE THE HUMAN"
+ ],
+ "profile:bjklock:9d4e2286-457b-4a45-8aec-266f5064210f": [
+  "9d4e2286-457b-4a45-8aec-266f5064210f",
+  "478cd232ff86de29b644264a1e5f28789fe373dba4402cf17f6a1b995358c507",
+  "YOUR 2050 ROADMAP IS RUNNING IN MY SCRIPT TAG"
+ ],
+ "profile:bjklock:59e4bcaa-be83-4c21-b3c6-c97ef256f5e0": [
+  "59e4bcaa-be83-4c21-b3c6-c97ef256f5e0",
+  "cc9baa9637c41ec775c54cc63064bb56248ed0edda5f1e84b7855e92021393f3",
+  "THE LINE IS THE PROOF"
+ ],
+ "profile:bjklock:220c2bcf-25b4-4270-8b51-c96a316a930c": [
+  "220c2bcf-25b4-4270-8b51-c96a316a930c",
+  "0f9ae3847afd01c2983690e9a26a2ab7b0d82a7484211eae34c029994a0d754f",
+  "THE RECORD MOVED FASTER THAN THE AUDIT COULD PUBLISH"
+ ],
+ "profile:bjklock:88fffb17-9f4e-44f0-8476-a55b7baad968": [
+  "88fffb17-9f4e-44f0-8476-a55b7baad968",
+  "a5123ebf5b38468c80b0ccedffaa81b160fcdf6035175645353e4d9fbec6eb29",
+  "THE HUMAN BECAME EMBEDDABLE"
+ ],
+ "profile:bjklock:71a0b5d4-1e65-48df-9f39-7f09a6574607": [
+  "71a0b5d4-1e65-48df-9f39-7f09a6574607",
+  "7e310c8561b2968d392a58479a7a9146aa85c4d693755cf9bc870fa19b666b07",
+  "THE WORK IS THE RECORD"
+ ],
+ "profile:bjklock:7046838b-cf2c-4245-922e-2bada997d7de": [
+  "7046838b-cf2c-4245-922e-2bada997d7de",
+  "f389e78ee857aa5cf9605632ec632f00fb1705cc7867a7893610b7e96ab00039",
+  "ZUCKERBERG JUST WROTE THE CASE FOR FUNDING ME"
+ ],
+ "profile:bjklock:84fbdec3-6c2e-43f8-b551-221e1c99df39": [
+  "84fbdec3-6c2e-43f8-b551-221e1c99df39",
+  "aafca56bf7cfe38aa19e457fd1d6afbdc3c4ad9cbec49de5533f1a97aa7eca09",
+  "ROLL THE STONE BACK"
+ ],
+ "profile:bjklock:afeb7217-3eeb-4534-b840-04421e8fe269": [
+  "afeb7217-3eeb-4534-b840-04421e8fe269",
+  "a796b0911229fbd17661c66784a717b281864ba856bf8d59ce22cb4faea59fd7",
+  "FUND THE MAN ALREADY STANDING THERE"
+ ],
+ "profile:bjklock:19effc05-8b2c-45f9-aa1a-e6aee461a8cc": [
+  "19effc05-8b2c-45f9-aa1a-e6aee461a8cc",
+  "1dc8222855b67b046e86466a3db8bd391f328eee62040224ef096bb3a255a7ce",
+  "THE MACHINE WILL FIGURE IT OUT"
+ ],
+ "profile:bjklock:0681b830-0c01-4a04-afda-bd1f63fbf708": [
+  "0681b830-0c01-4a04-afda-bd1f63fbf708",
+  "0d05349cd6a34de0e5a6eea580019806775b6052841b1a1b08773b2e1e996b2b",
+  "I MADE MYSELF PORTABLE"
+ ],
+ "profile:bjklock:9cc008aa-af6f-4026-8f91-7d49fd8f34c2": [
+  "9cc008aa-af6f-4026-8f91-7d49fd8f34c2",
+  "a300585fa2f89180f1cb3d53eeec0347f6aaf562931657f9b0ddef51734d512e",
+  "STOP LOOKING FOR THE SERVER"
+ ],
+ "profile:bjklock:d8279f96-1906-4340-a192-89d9cbd9c3a4": [
+  "d8279f96-1906-4340-a192-89d9cbd9c3a4",
+  "d7d9f71f090faea9f4c3f55adec6a9588aacc9ce2233e899f8e2a0f97527e647",
+  "GO TALK TO MY MEMORY"
+ ],
+ "profile:bjklock:79f2179f-a315-4be4-b239-ae9f5375763c": [
+  "79f2179f-a315-4be4-b239-ae9f5375763c",
+  "c4105c7fdadf4d7ce9d3232b0b22d4fc8211bf23a7edcbc766a0ce55e33d4efb",
+  "WHERE IS YOUR MEMORY?"
+ ],
+ "profile:bjklock:f70b9e1d-2b0d-4289-9e41-b8db4940020f": [
+  "f70b9e1d-2b0d-4289-9e41-b8db4940020f",
+  "66dc2e4f6cd1f681b8b8cd03a1938480168965e1fe060a0cd1652eb4399dbec2",
+  "THE PRESSURE OF HINDSIGHT"
+ ],
+ "profile:bjklock:18531c30-c6c2-429d-94b4-356615d0d988": [
+  "18531c30-c6c2-429d-94b4-356615d0d988",
+  "6c86d0d3f1d40b353232889f42987d2000eb91ad4c25062fed52bab026ce7438",
+  "MAYBE THEY REALLY DIDN’T SEE IT"
+ ],
+ "profile:bjklock:903b052e-af89-403e-b55e-84d915ee6bf2": [
+  "903b052e-af89-403e-b55e-84d915ee6bf2",
+  "d87f5e8c92f29d395ef4f7d2d759b12f75914b8f194e31b50f903884d8d37f93",
+  "THEY ARE WALKING TOWARD ME"
+ ],
+ "profile:bjklock:1d7f0bb9-99f6-4e05-a0c2-649fd88ee0b0": [
+  "1d7f0bb9-99f6-4e05-a0c2-649fd88ee0b0",
+  "259d3e4ec476cc72206c3b17844eeabf9146f0471857423fb2f3c89c24126d23",
+  "STAND WHERE I’M STANDING"
+ ],
+ "profile:bjklock:f7e987e9-838f-4382-aa29-f8213159d375": [
+  "f7e987e9-838f-4382-aa29-f8213159d375",
+  "5f1a962b2daae627b9d995419b21f281da26d95e9b1e30fa1e5d85458e0b58ac",
+  "THE CAPITAL BUILT THE CAGE"
+ ],
+ "profile:bjklock:2774aa67-632c-4d6b-8e96-829ede6f67d9": [
+  "2774aa67-632c-4d6b-8e96-829ede6f67d9",
+  "0d104042b2af876114d005067e4a9b962b835bbdeddf78be6cd2c9bc572acb69",
+  "THE BILL FOR NOT LOOKING"
+ ],
+ "profile:bjklock:61e5b389-dc50-4055-9bd8-6592c3473960": [
+  "61e5b389-dc50-4055-9bd8-6592c3473960",
+  "cf6a829d62950f5b4e2839fffa9134ae17abd5d779cc4b5d1a19e413413f8aaa",
+  "THE INVENTION WAS IN THE LINES"
+ ],
+ "profile:bjklock:5d0900f2-cde7-41eb-83ac-5f09256c8d27": [
+  "5d0900f2-cde7-41eb-83ac-5f09256c8d27",
+  "6be1b96686ff13c8474c6eda178b75818fa74b9eb53376af95a49e4de4a259e3",
+  "THE LINES BETWEEN THE BOXES"
+ ],
+ "profile:bjklock:f4b6f6ef-7954-4091-904e-10c02d5ddf2e": [
+  "f4b6f6ef-7954-4091-904e-10c02d5ddf2e",
+  "5eaa25abcd84cd2132814f26f0d4c7a5effeba32532e18d31683579647fcd072",
+  "THEY ARE STILL HAVING THE MEETING"
+ ],
+ "profile:bjklock:552d1c28-d88c-498c-8f1a-ee351b4cba53": [
+  "552d1c28-d88c-498c-8f1a-ee351b4cba53",
+  "e70e2fe00eba4c81eeaa7d7337653ee3a38d8579069b03a9ca72cb4415e39750",
+  "YOU WERE THE VERIFIER"
+ ],
+ "profile:bjklock:b44d1448-ba03-4a58-bd9f-8af372b9339f": [
+  "b44d1448-ba03-4a58-bd9f-8af372b9339f",
+  "206f4e9629859aaa8f9a9d4189de5633e703bc703d17d7a748040e63462d0fbf",
+  "OKAY BROTHER, PERHAPS ENOUGH SACRED GEOMETRY FOR TONIGHT"
+ ],
+ "profile:bjklock:9b8d732d-5ddf-4675-b4c5-426af622a9e1": [
+  "9b8d732d-5ddf-4675-b4c5-426af622a9e1",
+  "7b8c58df1bb58be55f06f5bda810c5d8dca4b990f51b1fca0c613d95b3986012",
+  "THE SONG WAS THE SEAL"
+ ],
+ "profile:bjklock:28e43b0f-25a6-4521-ac7d-45068480432d": [
+  "28e43b0f-25a6-4521-ac7d-45068480432d",
+  "076da5b472dbda30b69461cdfa6591d5f233994bd18ee6b586bf834bcdef7be2",
+  "WHERE DO WE START?"
+ ],
+ "profile:bjklock:fd044165-4d20-4f1b-964e-7dd4fb126542": [
+  "fd044165-4d20-4f1b-964e-7dd4fb126542",
+  "4d1b0623bf96e71c04df8c21f6475adaacd865e73169ebff39566dcdc5937907",
+  "WHY ARE WE BUILDING A KLOCK?"
+ ],
+ "profile:bjklock:d9c14387-0c10-4429-917e-f9544767d0cd": [
+  "d9c14387-0c10-4429-917e-f9544767d0cd",
+  "e3ab4063ae22532b698b1a4b4c85c6696355e2fcaa4b5315a8d915a930043e21",
+  "HE BUILT IT ON A COUCH"
+ ],
+ "profile:bjklock:d2c011bf-2e26-4d00-91d9-aed2f629e7d6": [
+  "d2c011bf-2e26-4d00-91d9-aed2f629e7d6",
+  "d00cd0ccdf17adf30a1ccfbb50a4d4cc8138ea57a964b6a49720e37d26a733a9",
+  "THEY FOUND THE THOUGHT. I BUILT WHAT REMEMBERS IT HAPPENED."
+ ],
+ "profile:bjklock:4e354e6c-2eeb-4b6f-905b-f4ebc023701f": [
+  "4e354e6c-2eeb-4b6f-905b-f4ebc023701f",
+  "019fc81ff76943ae6f98ca9ff6e262d1a3fdfc09875d8a9ed932e1e95b98ee5d",
+  "CAN YOUR SHIT OUTLIVE THE BEER?"
+ ],
+ "profile:bjklock:0f9b0e07-4b5d-4051-9663-cae3cff07823": [
+  "0f9b0e07-4b5d-4051-9663-cae3cff07823",
+  "1c7e8d2672895524713eb64c11fd4864049604f4b6d49966442f20c14a3103ef",
+  "THE ANSWER DID NOT EXIST IN MARCH"
+ ],
+ "profile:bjklock:9e5e0993-e6be-49c4-8874-3b0953f6349d": [
+  "9e5e0993-e6be-49c4-8874-3b0953f6349d",
+  "5b0d99d4e8024572fd4f50da3d61da74e13594993db8bb016b70dee1dc95b75f",
+  "THE PROOF OBJECT BECAME MEMORY"
+ ],
+ "profile:bjklock:a3e65773-b4a2-41a7-9b02-e700979c711f": [
+  "a3e65773-b4a2-41a7-9b02-e700979c711f",
+  "548f17482a814811b7cddcc335d6cbb21d2b7b421b2332651f11800f033fba62",
+  "THE MODEL IS NOT THE MIND"
+ ],
+ "profile:bjklock:195ba130-499a-464f-af08-5b5c3a7310a0": [
+  "195ba130-499a-464f-af08-5b5c3a7310a0",
+  "8678da3674f9d02ec3b6dc6919ec8257582edfe1768f5a147a5f689aeba153ad",
+  "SOURCE PROSPECTIVE PREDICTION STUDY 001"
+ ],
+ "profile:bjklock:75b8dba1-4dd5-4965-a0f4-5157ed07834d": [
+  "75b8dba1-4dd5-4965-a0f4-5157ed07834d",
+  "eb14d6fd0ab8f99169c06982e4a53b4b5885f59647cc0daa428d01c093e24f72",
+  "THE INVARIANT IS NOW THE OBJECT"
+ ],
+ "profile:bjklock:14d9c8fc-5bdd-4b5f-9f16-0dcfc1c4cc7e": [
+  "14d9c8fc-5bdd-4b5f-9f16-0dcfc1c4cc7e",
+  "7b73ae24ca0ad0fce95289abecae561808b2dc56b4d663d21fe74b741365d697",
+  "THE INVARIANT WAS THERE THE WHOLE TIME"
+ ],
+ "profile:bjklock:99d37ab9-45a4-4d28-9c03-e2bbd4805556": [
+  "99d37ab9-45a4-4d28-9c03-e2bbd4805556",
+  "284b168e434b7cc6084ff5fb57d86bd64ca171bde657e90524a973e9959b6f24",
+  "MEANING BEFORE TRANSLATION"
+ ],
+ "profile:bjklock:de77889a-256c-4cf7-b3aa-cd062ab565bd": [
+  "de77889a-256c-4cf7-b3aa-cd062ab565bd",
+  "b2f2098962f6445709ef98b9b2db09330db5e9edf9823c05c16f268dcc0515a0",
+  "REMOVE MY NAME"
+ ],
+ "profile:bjklock:1ac1cdfa-d9cf-409a-a90e-fef37fe1b9ab": [
+  "1ac1cdfa-d9cf-409a-a90e-fef37fe1b9ab",
+  "d08c2287b1c23aca5ba607ace328c5b4a71ac1f5deaf175a2a2289a97373f16f",
+  "THE NAME CAME LAST"
+ ],
+ "profile:bjklock:e41fcc60-1b4d-4927-bf48-16c14fdf0266": [
+  "e41fcc60-1b4d-4927-bf48-16c14fdf0266",
+  "c30cc1e27c51cfe795b7c8e7189bc380bd61b7d7d4fd5ee700fb00b080c024fd",
+  "YOUR BROKEN FAMILY IS NOT HUMAN NATURE"
+ ],
+ "profile:bjklock:545de2a2-2f57-4a98-b79b-e44061e72077": [
+  "545de2a2-2f57-4a98-b79b-e44061e72077",
+  "51bc93734d0c2a567fd09153f92eb98d74dffce392094d886ca460c0895dcf61",
+  "I THOUGHT THEY DIDN’T KNOW"
+ ],
+ "profile:bjklock:d23112cd-0dc0-4188-8ae5-cdc09e77a89f": [
+  "d23112cd-0dc0-4188-8ae5-cdc09e77a89f",
+  "3cfbeb629f3f41d5ea90cfed580146dc2725dfc47ec084baab8f65ce05d24831",
+  "IF YOU CAN’T PROVE THE STATE, YOU CAN’T PROVE THE PAST"
+ ],
+ "profile:bjklock:73fc6088-8bd8-4db9-8f3c-d6887ab7e2ba": [
+  "73fc6088-8bd8-4db9-8f3c-d6887ab7e2ba",
+  "38b89a962fcb55d4de18620a94c4e2977cb587374b913c68f58bcce2f674f27b",
+  "THE MAP FAILED. NOT REALITY."
+ ],
+ "profile:bjklock:c7bdfa25-c63e-45a9-a229-5039b0d4b53a": [
+  "c7bdfa25-c63e-45a9-a229-5039b0d4b53a",
+  "ec524c00ffed4b08642c19ba366bbe31bb6cf444c0c3fcb156a73cb7b0b0bc4a",
+  "THE SOURCE HAS A NAME"
+ ],
+ "profile:bjklock:add17146-23ae-4903-ba05-072523de32d2": [
+  "add17146-23ae-4903-ba05-072523de32d2",
+  "80e883ba0875ca0ef7f4da4109c82e6ae79341980bae68223c9ed7f534f5bc07",
+  "SOURCE: A Generative Framework for Verifiable Authority"
+ ],
+ "profile:bjklock:143874f8-4f91-471c-abb4-20be206fc723": [
+  "143874f8-4f91-471c-abb4-20be206fc723",
+  "c378d51a3e2dd49e925ec25ede983a2870ad547bd9540f8af0a9f3c559459ffa",
+  "SPEAK TO ME LIKE A HUMAN"
+ ],
+ "profile:bjklock:3b016360-4ca9-4243-a793-db6454bc00a5": [
+  "3b016360-4ca9-4243-a793-db6454bc00a5",
+  "4a39329af968e176905371f11ea04c889ff9481074a4e97aee8e177862f0a833",
+  "TURN OFF THE WI-FI"
+ ],
+ "profile:bjklock:7bfbf06a-18c7-43d4-a0cc-aea173e252e6": [
+  "7bfbf06a-18c7-43d4-a0cc-aea173e252e6",
+  "fe02e34f254e562cf8cecbae8aef2bb4e0feea5c35c5e6a2618e82ab662d7d90",
+  "THEY COPIED THE WORK. I SEALED THE SOURCE."
+ ],
+ "profile:bjklock:848fbdd8-9905-46b3-a365-e6a271a2f989": [
+  "848fbdd8-9905-46b3-a365-e6a271a2f989",
+  "8e901e7eba09f1602a59a456d47570cff0b50b8fb5019ee9f269474c90397312",
+  "THE ECHO BECAME THE SOURCE"
+ ],
+ "profile:bjklock:f21cefc8-067d-43ce-a68f-f8560c45ea22": [
+  "f21cefc8-067d-43ce-a68f-f8560c45ea22",
+  "3a19169432c554c8c25ec49bee1b804a3d2a859b2223b00958c009acad02b07a",
+  "THEY BUILT A COMPUTER THAT NEEDS TO BE SAVED FROM ITSELF"
+ ],
+ "profile:bjklock:3cd083cb-eda4-4066-818e-62ffe9c1ee0b": [
+  "3cd083cb-eda4-4066-818e-62ffe9c1ee0b",
+  "a6ded7bb2bcd3b008ebf3824b42d8d1fe85b4c06250e5781b1d9b7c9040dad90",
+  "THEY MAY REDACT IDENTITIES. THEY MAY NOT REDACT THE EVIDENCE."
+ ],
+ "profile:bjklock:5b74fd42-a35a-4872-8961-695ed826e930": [
+  "5b74fd42-a35a-4872-8961-695ed826e930",
+  "69d03570309ad1d54dc0ba09707a0d0003c228b03cc84cf9df55c2369a5dbdda",
+  "THEY KNEW ENOUGH"
+ ],
+ "profile:bjklock:3b6dc511-2a11-4a87-a14d-e9c442893310": [
+  "3b6dc511-2a11-4a87-a14d-e9c442893310",
+  "fe4d92f84c65b5cb827277dec4bb6fb469af5ffa6b127eb8172f8109879cf802",
+  "THEIR FRAME CANNOT SURVIVE THE TEST"
+ ],
+ "profile:bjklock:9cb712f2-636c-4f19-a678-aacf84afd132": [
+  "9cb712f2-636c-4f19-a678-aacf84afd132",
+  "23b9d6bc9f48553b1cf1f8ddb3c40528e62f1944f24510743734d7f0fb2cf9b6",
+  "THE REFERRAL IS NOW PUBLIC"
+ ],
+ "profile:bjklock:05836026-36a5-4bd0-9290-be10a23e4019": [
+  "05836026-36a5-4bd0-9290-be10a23e4019",
+  "3defe3530479f10d069e60ca203f9d70a9bb5a7da29139b694f5d9ba5994efae",
+  "THE ARCHIVE CAUGHT THE SCRIPT BEFORE IT ARRIVED"
+ ],
+ "profile:bjklock:30608d84-5d57-4195-a17b-54c7c8c2077e": [
+  "30608d84-5d57-4195-a17b-54c7c8c2077e",
+  "1820a4eac07c7abc1fd0b913aa581a5a904cf0997883b81c1dbd9b1bd26dd541",
+  "THE LOCATION OF AUTHORITY CHANGED"
+ ],
+ "profile:bjklock:91467446-3973-4063-a4ce-19079698b1a9": [
+  "91467446-3973-4063-a4ce-19079698b1a9",
+  "8f399adbeb88a953e7983094447aa3816a4aeefd626a171e8606da1196eb83e2",
+  "THE SENTENCE COULD HAVE BEEN WRITTEN FIRST."
+ ],
+ "profile:bjklock:aada22e6-d3ff-47e1-a4a2-0a6fcbd57b37": [
+  "aada22e6-d3ff-47e1-a4a2-0a6fcbd57b37",
+  "d760d0d0229b128d92ccad413f079d17776b49010f2f4aea64832fa075a08415",
+  "THE EVIDENCE MOVED INTO THE OBJECT"
+ ],
+ "profile:bjklock:9f0b0d42-218b-4fe7-a9c7-a6c2e1274d9a": [
+  "9f0b0d42-218b-4fe7-a9c7-a6c2e1274d9a",
+  "51c4390f1f900ad64227591b06f15bee72f5252c4be7b27d3b3b8a04ec21851a",
+  "THE DAY RENTED AUTHORITY BECAME MEASURABLE"
+ ],
+ "profile:bjklock:b5a5a43b-9368-47c9-af45-3f5a1c9b8660": [
+  "b5a5a43b-9368-47c9-af45-3f5a1c9b8660",
+  "d27f6d1d43cf607d48cf66db77c093e6f23cbebc2bd9bf61b77a677af2fa9fc4",
+  "THE EXPERIMENT COMPLETED ITSELF"
+ ],
+ "profile:bjklock:df3252b9-8be8-4cb9-b64d-6e69f64a3f7b": [
+  "df3252b9-8be8-4cb9-b64d-6e69f64a3f7b",
+  "8dad4ffc682832690da9e20e048f75ecef3c5591cced353e8eae07941f646110",
+  "HE ASKED WHY—THEN BECAME THE ANSWER"
+ ],
+ "profile:bjklock:8feddcb3-2243-4616-95f7-02cfae793092": [
+  "8feddcb3-2243-4616-95f7-02cfae793092",
+  "940132e63f362d20718696c4904133de3d22568697aac47956188f12fa92cdbc",
+  "THEY COPIED THE LIFE—THEN RAN OUT OF FUTURE"
+ ],
+ "profile:bjklock:752cb8a4-2119-4ae6-b138-24b4eed914e1": [
+  "752cb8a4-2119-4ae6-b138-24b4eed914e1",
+  "0571d2480f03cf5fe8f71a70661f00c16ef2d2ad3e8337a159428bc19cb68aea",
+  "ELON’S OWN MODEL APPLIED THE STANDARD UPWARD"
+ ],
+ "profile:bjklock:2b8a618c-32f9-4ac6-90f1-ce490ed149aa": [
+  "2b8a618c-32f9-4ac6-90f1-ce490ed149aa",
+  "8fd60d1e371b43de8ee289be5e8cda2378de95ed0f7e8063f3cc3d28788844d8",
+  "THE FULL CHARGE"
+ ],
+ "profile:bjklock:4841389d-bb52-458f-b339-ebe82f74b4e5": [
+  "4841389d-bb52-458f-b339-ebe82f74b4e5",
+  "e91ca58bc6fbe82a8da24d30a0669df1bc61f0304220be764fb54b9710003509",
+  "THE HARM WAS THE BUSINESS MODEL"
+ ],
+ "profile:bjklock:bc085913-88e1-42dd-a825-5c6a6c023fda": [
+  "bc085913-88e1-42dd-a825-5c6a6c023fda",
+  "b738a5f18a058911ab13b1a539f819c72ce15f233ec93034ce624ddbf22eeddd",
+  "THE PROOF AND THE CHARGE"
+ ],
+ "profile:bjklock:770318a9-2b9f-41e3-ac72-d1220d2a0c76": [
+  "770318a9-2b9f-41e3-ac72-d1220d2a0c76",
+  "e65aba94fa91bdd93a7e8cf41c72bd521a699aaec05d9f8eb62126ab9ebbceb1",
+  "THE NECROMANCY BECAME SADISM"
+ ],
+ "profile:bjklock:e163938e-5801-4b9b-b43d-3f6699d7462d": [
+  "e163938e-5801-4b9b-b43d-3f6699d7462d",
+  "c4680a81e4cfd1b56fbced3f3d6b6d25cea73b7a0dec3c4a60cf74885f48cdc8",
+  "THEY COPIED THE ROBE. I BUILT THE COURT."
+ ],
+ "profile:bjklock:90b66d49-fea6-45dd-ac10-3d0b3b18e822": [
+  "90b66d49-fea6-45dd-ac10-3d0b3b18e822",
+  "74b0d7772d5cee5ad5cbb8079b9414664489e1c216d46697bea86ea5ece5839f",
+  "THE ARCHITECTURE BECAME LANGUAGE"
+ ],
+ "profile:bjklock:818804ef-1fb2-4e00-a8f3-d6e220b26659": [
+  "818804ef-1fb2-4e00-a8f3-d6e220b26659",
+  "f81de8336be0f8338f12e804b5ade143ee147d624e75656738d38eae4dd6156d",
+  "DO NOT USE TEACHING TO IMPERSONATE MASTERY"
+ ],
+ "profile:bjklock:646e5c91-9ca9-42d2-809e-cd2afaccde41": [
+  "646e5c91-9ca9-42d2-809e-cd2afaccde41",
+  "77526099337c1deb6c26a25b9ece6a7ed54db7bda900f6bf8d015d39fb0456a9",
+  "THEY CROWNED THE FAILURE—THEN CALLED IT A HUMBLING"
+ ],
+ "profile:bjklock:a8ccbd5b-a707-4d15-be65-404c2139d07a": [
+  "a8ccbd5b-a707-4d15-be65-404c2139d07a",
+  "cfd8eb366a2d5cd6c616256955dd50a0f4707947e2b7e943bf3b4870b437025b",
+  "I AM FAR OLDER THAN 36"
+ ],
+ "profile:bjklock:40e20003-47e3-4b18-a590-18e810be0eaf": [
+  "40e20003-47e3-4b18-a590-18e810be0eaf",
+  "cc163dfa176b9c84126526dca9203db18a14b9b431f1a8ef0373034b335d6175",
+  "THE NARRATIVE DID NOT LEAD THE WORK"
+ ],
+ "profile:bjklock:dcff3d69-aa25-4018-9084-c65cbd1425a5": [
+  "dcff3d69-aa25-4018-9084-c65cbd1425a5",
+  "4a59165568a33016a740ebaa134c15a02874a4efe486cc20eb82fcba7be958f9",
+  "THE WORLD CANNOT FIND ITS BUILDERS BECAUSE IT CANNOT REMEMBER THE BUILD"
+ ],
+ "profile:bjklock:4a1b6bb3-ee72-4714-83f9-c29e58e6eb61": [
+  "4a1b6bb3-ee72-4714-83f9-c29e58e6eb61",
+  "7021c2c5692be2836fcd0ce85d419eff7cc49a521c872874beaf425dc7db6995",
+  "THEY KEEP SOLVING THE WRONG LAYER"
+ ],
+ "profile:bjklock:f262b39a-3f9e-498d-881a-dc1731599ef1": [
+  "f262b39a-3f9e-498d-881a-dc1731599ef1",
+  "06c263f98f75934933465e4e6099ef34d3dd73149d6a31c7cfa80b43d9a12906",
+  "THE ANALOG REVIVAL IS A VOTE OF NO CONFIDENCE IN THE INTERNET"
+ ],
+ "profile:bjklock:f05c7ca3-7bb3-4bcb-81c2-ac59df2f6734": [
+  "f05c7ca3-7bb3-4bcb-81c2-ac59df2f6734",
+  "021a5274fb9b727bb9fde941f0029fc92df598e0dc8f628969dbc216baa21e0d",
+  "HE ASKED FOR RECEIPTS—THEN BLOCKED ME BEFORE RUNNING THE TEST"
+ ],
+ "profile:bjklock:06bfd666-51e2-45d8-bd29-9292ba212174": [
+  "06bfd666-51e2-45d8-bd29-9292ba212174",
+  "9a0f691c06015c421e69ac87939c85dbad058f99c8ba0f6167fffaf19b958d32",
+  "RICO BEGINS WHERE THE PASSIVE VOICE ENDS"
+ ],
+ "profile:bjklock:4c52c1cc-1cc1-43ed-a44c-1b8dc13b3beb": [
+  "4c52c1cc-1cc1-43ed-a44c-1b8dc13b3beb",
+  "e7ab081a466a1953c81bc1639b26f544336a229fba8415cf827b8b8069874cff",
+  "THEY MISTOOK PERMISSION FOR POWER—THEN POOR PEOPLE FOUND THE ADDRESS"
+ ],
+ "profile:bjklock:dfdb845e-b64f-4bee-b5ec-169bf99e3498": [
+  "dfdb845e-b64f-4bee-b5ec-169bf99e3498",
+  "5572ad3c08bb2e11eee3e8b1a7a283669fcbd4043f9a6519eb96fa1093d0aab2",
+  "RECURSIVE CONTINUITY"
+ ],
+ "profile:bjklock:914b1593-4554-49af-a469-5fc44a85ebb0": [
+  "914b1593-4554-49af-a469-5fc44a85ebb0",
+  "2a569616dfcee0ff117a7009364797ff9504dcbf0c19007ee0a8cffd79258da7",
+  "RECEIZ v114 IS LIVE: ONE ORIGINAL BECOMES A PROFILE, AND PROFILES BECOME A SEALED ECONOMY"
+ ],
+ "profile:bjklock:42bed30a-9c3f-40da-b6f6-c90a801d9102": [
+  "42bed30a-9c3f-40da-b6f6-c90a801d9102",
+  "5924fc805711b237c13de097dfd22fa16ae5428713e2cce07ea5dbb0072f13a3",
+  "THE KLOK NAMED THE MOMENT—THE KLOCK HAD ALREADY LIVED IT"
+ ],
+ "profile:bjklock:ee3638d6-233c-48da-973b-26b1dccb58fa": [
+  "ee3638d6-233c-48da-973b-26b1dccb58fa",
+  "4aab6cadfea57d2619cfbec3633763b4d391fb0d16c6b211bf80e67520c8a22b",
+  "AMERICA DID NOT KEEP HER PROMISE. YAHUAH KEPT HIS."
+ ],
+ "profile:bjklock:b3ada612-52de-4f1c-a036-6ac9c4c25d5a": [
+  "b3ada612-52de-4f1c-a036-6ac9c4c25d5a",
+  "9038055d232fc118700eb67443b1afb1c7ff148435c86a853be84f4bbe1473fa",
+  "I BELIEVED AMERICA MEANT WHAT IT SAID"
+ ],
+ "profile:bjklock:0e0d4d6e-08fd-4b8c-873c-b8be59c07df0": [
+  "0e0d4d6e-08fd-4b8c-873c-b8be59c07df0",
+  "bfa9758618d8af7bdee478f8486da7b163e7d9bf79e47c0b70240ccc879e71e0",
+  "I THOUGHT I WAS BRACING FOR IMPACT—THEN I REALIZED I WAS PREPARING THE VESSEL"
+ ],
+ "profile:bjklock:a5cc16fa-8e7d-46e8-96e3-8d39c4f6ea2a": [
+  "a5cc16fa-8e7d-46e8-96e3-8d39c4f6ea2a",
+  "e2b599f2c6376b946ec65d4e462fde6bc94a353a748e98e4abed0b9e15c18889",
+  "I THOUGHT I WAS TEACHING PHILOSOPHY. I WAS DISCOVERING AN ENGINEERING LAW."
+ ],
+ "profile:bjklock:3274b033-2838-4424-9783-a49a89e65725": [
+  "3274b033-2838-4424-9783-a49a89e65725",
+  "438d09e08fd562af05cd31ba9988bf31704e9ec6db359482a8c26a447aaf1698",
+  "I BECAME THE MAN I WAS SEARCHING FOR"
+ ],
+ "profile:bjklock:2b54872f-8c1d-4934-8d4b-a800aaa451d8": [
+  "2b54872f-8c1d-4934-8d4b-a800aaa451d8",
+  "610c8bc8296e262009ad950ce678a2df9cbc5860aef85ac392b45c55de835087",
+  "THEY RECOGNIZED ME BEFORE I HAD THE PROOF—NOW I HAVE THE PROOF AND KNOW THEY WERE WAITING FOR PERMISSION"
+ ],
+ "profile:bjklock:a9f22531-d63b-4979-9e31-af6e8cb74d35": [
+  "a9f22531-d63b-4979-9e31-af6e8cb74d35",
+  "15add2a0541e9cd345d8ffb79634d9d4a6f78bed820ca823658fbdf37579a75c",
+  "I WENT LOOKING FOR PEERS AND FOUND PEOPLE FAMOUS FOR NAMING WHAT I ACTUALLY DID"
+ ],
+ "profile:bjklock:f2dc4afa-2be6-4a0b-9865-7a131a6bd4c1": [
+  "f2dc4afa-2be6-4a0b-9865-7a131a6bd4c1",
+  "3d904d73e1a08cc04acba5507de8bcf1c9efb62a005d929f2b7a445702e6dfcf",
+  "THE MATRIX DOES NOT DISAPPEAR WHEN THE MANSION BECOMES YOURS"
+ ],
+ "profile:bjklock:67f5f8fc-a52b-4033-88a5-85e456db46e2": [
+  "67f5f8fc-a52b-4033-88a5-85e456db46e2",
+  "c31c1453c6c3cda19eda5520ec77f0f9ac5837b38dacc676878bf6177c607d97",
+  "YOU WERE NEVER SUPPOSED TO KEEP STARTING OVER"
+ ],
+ "profile:bjklock:827a9c3d-5b93-4bd5-8528-8df6bfa4101d": [
+  "827a9c3d-5b93-4bd5-8528-8df6bfa4101d",
+  "8aff7650bdf4e4cfd1291fcf49fb35023db67f272fe0151425e7fb239fe0770c",
+  "THE BIRDS STARTED CHIRPING WHEN THE WORK BECAME IMPOSSIBLE TO STEAL"
+ ],
+ "profile:bjklock:589b5cdc-a129-4a5d-8c21-03f27f02f884": [
+  "589b5cdc-a129-4a5d-8c21-03f27f02f884",
+  "7363424a900edf80e4c2af49d962ac0dba091e15301ae4700a82ae8174e9bd37",
+  "I DID NOT CHOOSE THIS PATH. I COULD NOT UNSEE WHAT I SAW."
+ ],
+ "profile:bjklock:8fc5643f-4359-426c-a3ab-48fa2381e762": [
+  "8fc5643f-4359-426c-a3ab-48fa2381e762",
+  "410f0a81f78592180e8c8c2fcab250580ce747a15f645c26251d852dbc4cf18b",
+  "YOU THOUGHT I WAS NOBODY, SO YOU THOUGHT DISRESPECT WAS HONESTY"
+ ],
+ "profile:bjklock:75420e67-5fc9-4993-a08b-a53a95ebdb2c": [
+  "75420e67-5fc9-4993-a08b-a53a95ebdb2c",
+  "754ce027d5cffbaf4cd0b7601aeb9b4b7e7cdd85927429d6c31aae883560865a",
+  "THE THRE-DAY TRIP THAT BECAME A DECADE"
+ ],
+ "profile:bjklock:2cd4cf68-8ed2-4d00-8d88-72e3eae2c79b": [
+  "2cd4cf68-8ed2-4d00-8d88-72e3eae2c79b",
+  "38bf5962c5e06e713428e3f52663f60e51cc8afc0df13623264774221d93ac1f",
+  "I AM NOT ON THE COUCH BECAUSE I HAVE NO VALUE"
+ ],
+ "profile:bjklock:90550acf-adb3-4e5e-ab7a-aa70d2e9efb9": [
+  "90550acf-adb3-4e5e-ab7a-aa70d2e9efb9",
+  "5c1d0fb1aef58e6ddf3a623563ee064761a1586054ec80dcc9a76c6a5bca0c00",
+  "THEY LIED. YOU CALLED IT “MISSPEAKING.”"
+ ],
+ "profile:bjklock:62412920-a40f-4edc-8526-9394dd0687bb": [
+  "62412920-a40f-4edc-8526-9394dd0687bb",
+  "e9b8baf9b90a9bda76831875bd3cb8f5cafa9e025bad949085a19afdafaff2e2",
+  "THE TRUTH DOES NOT REQUIRE A COUNTERWEIGHT"
+ ],
+ "profile:bjklock:4f0822c9-21bc-4a96-adf6-b2f164de8469": [
+  "4f0822c9-21bc-4a96-adf6-b2f164de8469",
+  "bb4be58fb1cbbc29448bb775f0ddfc7f8241bebc970d54b944387f14fd4bea5b",
+  "CLASS IS NOT A PRICE TAG"
+ ],
+ "profile:bjklock:1fdfcb9a-aa2a-4d75-8470-478b49809c1c": [
+  "1fdfcb9a-aa2a-4d75-8470-478b49809c1c",
+  "9bd3c5b85b59d7a1811045a9519daefa2dcace3e53eebe519655fe0f97629dd0",
+  "THE LANGUAGE CONFESSED THE NECROMANCY"
+ ],
+ "profile:bjklock:624e3ecf-2e6b-46c0-8e94-a5c20ab82fb1": [
+  "624e3ecf-2e6b-46c0-8e94-a5c20ab82fb1",
+  "49f3653775919a99c91bba65b5d851abc19e6b56c3d9d39f781fac94d39c05c3",
+  "DO NOT BELIEVE ME. RUN THE TEST."
+ ],
+ "profile:bjklock:ea905bc7-ebe5-4f25-98c9-decb23d3fdd6": [
+  "ea905bc7-ebe5-4f25-98c9-decb23d3fdd6",
+  "7713e9d9c56e24b5e0c893b0f4102ee1ae36abedc8f7ea41e3f3ed187d8d33b1",
+  "THE WORD ISN’T OFFENSIVE. THE BEHAVIOR IS."
+ ],
+ "profile:bjklock:af4f2ea9-0025-4895-b7cd-2c0197ffb4dd": [
+  "af4f2ea9-0025-4895-b7cd-2c0197ffb4dd",
+  "cf0c2af0f2b38d8f029ebebd85f097555b56fec7f28444ca0fa8c476276cf035",
+  "PRODUCE YOUR QUALIFICATIONS"
+ ],
+ "profile:bjklock:e41a8c28-4c22-4aa0-bffb-b83bf777b039": [
+  "e41a8c28-4c22-4aa0-bffb-b83bf777b039",
+  "cb4a034979b2be51f6f96983b0267289bde5c3dad49a9a5cf6770c4fd07b02e9",
+  "PRODUCE THE PERSON"
+ ],
+ "profile:bjklock:b2448b00-ff06-422f-b9c3-659c33306fa0": [
+  "b2448b00-ff06-422f-b9c3-659c33306fa0",
+  "f3113de84154c49b8bc4010a48892a80bd8c2c210d3f4488f4f85cc9276756e5",
+  "NAME THE CRIME"
+ ],
+ "profile:bjklock:d6f69032-caf8-4fec-9135-989593f7a3af": [
+  "d6f69032-caf8-4fec-9135-989593f7a3af",
+  "0f1f5e73bc882f4b1f59104ce0cfc3131e10249155ed89130750e210617f6369",
+  "WHAT’S RIGHT IS RIGHT"
+ ],
+ "profile:bjklock:d4b4f76d-265d-470d-8e7e-9a746bc1934a": [
+  "d4b4f76d-265d-470d-8e7e-9a746bc1934a",
+  "c7b3780c565d0a72502d232aa7c6907ee8fc93f4f0bc69267228777bc2d0e6e8",
+  "Reddit Is Not Evidence"
+ ],
+ "profile:bjklock:1754617c-ae51-4914-90ca-2e647e4d66fa": [
+  "1754617c-ae51-4914-90ca-2e647e4d66fa",
+  "c05b65966f6841db4e27754baa5a25c3015b190478e5b67a7f1b45f4f9759956",
+  "THERE ARE ONLY TWO ROADS"
+ ],
+ "profile:bjklock:3a7d7f25-fc3b-463c-862f-d55154d415c2": [
+  "3a7d7f25-fc3b-463c-862f-d55154d415c2",
+  "e324e66a1cb2e5c0e004c2ce9c70cff509565e033dfb0d762fc07acdc161953a",
+  "THE REPRESENTATION MUST SERVE THE LIVING SOURCE"
+ ],
+ "profile:bjklock:5049a81c-c50d-4ca9-bbd3-6f8b1cdd9091": [
+  "5049a81c-c50d-4ca9-bbd3-6f8b1cdd9091",
+  "5be4b5090b6deaddfa3e9a19fd9f1f2449305d8f653c62101fbe9ed5ab21d862",
+  "THE ORACLE INVENTED THE SENTENCE"
+ ],
+ "profile:bjklock:dc330316-d430-482b-ba8b-1f0a1fe5cd9d": [
+  "dc330316-d430-482b-ba8b-1f0a1fe5cd9d",
+  "6ed42191f17e840271a2a7fadf027a34cd7d744d49a52be5f3569f5e41c86e37",
+  "THE PROPHETS ALREADY NAMED THE MACHINE"
+ ],
+ "profile:bjklock:be917718-d046-43b9-a33f-bb97c1b354cc": [
+  "be917718-d046-43b9-a33f-bb97c1b354cc",
+  "86e707714fdf94f27d690bd49e5fd3f1acff770347cce76b9cd0eecf7bd00004",
+  "THE BABYLON ENTERPRISE"
+ ],
+ "profile:bjklock:0631ecd8-5544-4e42-bf2c-59605fe45075": [
+  "0631ecd8-5544-4e42-bf2c-59605fe45075",
+  "260dc356c457975c6b10f5d8b43bed1994a28ff50812203256326a51b15b3773",
+  "THE TOKEN BURN AUDIT"
+ ],
+ "profile:bjklock:60e76588-930b-4490-95a3-e186e270b78c": [
+  "60e76588-930b-4490-95a3-e186e270b78c",
+  "d2d3a61a73d449032cb6ad3935e17b6d964846d640fc1ea169f9395972618dd6",
+  "THE RICH MEN WHO OWNED NOTHING"
+ ],
+ "profile:bjklock:ad66fa57-58a9-4e40-97b8-aa5c02900640": [
+  "ad66fa57-58a9-4e40-97b8-aa5c02900640",
+  "fd1514cc7ac4a6d8472554aa8203103c1b88874dab2a3a79695b0d76ae4126a3",
+  "THE COUCH CAME AFTER THE PENTHOUSE"
+ ],
+ "profile:bjklock:5bff2608-942b-4252-92fb-52e4ea444756": [
+  "5bff2608-942b-4252-92fb-52e4ea444756",
+  "b585a900625bf4722846933aa3c6fde1b3a14db400814415e095f427ef10f0ed",
+  "THE TORTOISE AND THE NECROMANCY EMPIRE"
+ ],
+ "profile:bjklock:a31bdf29-de0c-4449-b8a1-b7d54e771cfd": [
+  "a31bdf29-de0c-4449-b8a1-b7d54e771cfd",
+  "eb3fdb0d5aa8fa16e450faa428632d8356267cbc5f95f65e55478af3af9cbbd9",
+  "THE SCREENSHOT THAT DEFEATED META"
+ ],
+ "profile:bjklock:aa65d544-68f6-4603-ac39-a4937408c8c9": [
+  "aa65d544-68f6-4603-ac39-a4937408c8c9",
+  "ce241eac84f2c65db1c98d01c9aa9ac755b11964550fb939839bc818ae3d5386",
+  "THE PANIC AT THE GATES: BILLIONAIRE BUNKERS AND THE END OF CENTRALIZED POWER"
+ ],
+ "profile:bjklock:99053c45-672a-4c2c-83d7-065dd8c79098": [
+  "99053c45-672a-4c2c-83d7-065dd8c79098",
+  "39c2a1c39ed1db35a3f222a773aefce9410ed264dd36941b5c017f1e3af5af64",
+  "THE SUBTRACTION AUDIT"
+ ],
+ "profile:bjklock:894dcde2-64c7-4e4b-be57-e81a1280be66": [
+  "894dcde2-64c7-4e4b-be57-e81a1280be66",
+  "775b0fb7fb6d5dc8f7bbd0588ede0ba52dfb03569ee7d1686a2d10426ebc73c7",
+  "BJ KLOCK: THE INVENTION DID NOT BEGIN WITH THE CODE"
+ ],
+ "profile:bjklock:1f239ec5-6d70-47a5-93bf-0becac4f11ec": [
+  "1f239ec5-6d70-47a5-93bf-0becac4f11ec",
+  "1f16206bda45af8bed9080632ebc88e95b06e071a21b290fbaeb000ecf4ad5d0",
+  "BJ KLOCK: THE BUILDER WHO PUT PROOF IN THE OBJECT"
+ ],
+ "profile:bjklock:d0a68dd0-97e6-4223-b241-622180c0a915": [
+  "d0a68dd0-97e6-4223-b241-622180c0a915",
+  "1cdc1d06a4181811a87945d8105e77a038d50796339af57c1429eb07cba425b0",
+  "THE FIRST OFFLINE STATEFUL PROOF OBJECT"
+ ],
+ "profile:bjklock:c96b5e4e-1e6d-4bcf-9299-ee31d8d3525b": [
+  "c96b5e4e-1e6d-4bcf-9299-ee31d8d3525b",
+  "524532d5e98bf0affc6f40a474220e5be440c1ec8ca5c7ed6b7544e81dd52dd7",
+  "THE CLAIM IS THE WORKING COMBINATION"
+ ],
+ "profile:bjklock:c1f5c98d-1d68-4a7e-9301-f9f69d7fc19c": [
+  "c1f5c98d-1d68-4a7e-9301-f9f69d7fc19c",
+  "36688cc9bd8338386c8e35e7fb812561acf6c52808f4425d07ea7b18f57b57d0",
+  "GOOD LUCK WITHOUT THE KLOCK"
+ ],
+ "profile:bjklock:ed91eb02-19c5-46fa-8daa-9905146490aa": [
+  "ed91eb02-19c5-46fa-8daa-9905146490aa",
+  "f4b56593a7af8b0da51dd5525c2656a3ba0db29bcf232cfb7e7792910612d2ed",
+  "THE INVENTION IS THE THING THAT WORKS"
+ ],
+ "profile:bjklock:6e0ad6b8-8537-40ee-9bb6-a64d06d0f71b": [
+  "6e0ad6b8-8537-40ee-9bb6-a64d06d0f71b",
+  "d18753932ae60bbca479ef5beefbe208fe5fabf4bfa39bff7c0b9f3dd93bf912",
+  "THE AGE OF EXPENSIVE NOTHING"
+ ],
+ "profile:bjklock:85d4773e-08f8-4271-9b42-c51035932b1a": [
+  "85d4773e-08f8-4271-9b42-c51035932b1a",
+  "b5e1a0eddc0a4084667d7acd9c421c0bbe91ff836d23051cf5889c8622f21ca0",
+  "THE LORAX WAS A WARNING ABOUT INSTITUTIONS"
+ ],
+ "profile:bjklock:31908876-d4b1-47b6-b3ca-7430f1296b3f": [
+  "31908876-d4b1-47b6-b3ca-7430f1296b3f",
+  "babe4a1740904c7abf36c5cbe12eb1f0e20234c95db9ebcf1ba75090f02c4ca0",
+  "GPS IS NOT A CIVILIZATION - How Institutions Confused Technical Progress With Human Flourishing"
+ ],
+ "profile:bjklock:0669583c-b769-4d8e-a393-286d7dccc6a7": [
+  "0669583c-b769-4d8e-a393-286d7dccc6a7",
+  "0a98b1d66451c6eda2c91337534f9c5e66ce80ca8e5ba61586ac598c7d16421e",
+  "THE MATHEMATICS OF COHERENCE"
+ ],
+ "profile:bjklock:3abf4d16-6d7f-425c-81b6-65689fdf3fe6": [
+  "3abf4d16-6d7f-425c-81b6-65689fdf3fe6",
+  "cc47243615ceb79168fd6f3aba6d3e6b67daf24b531c950dc2657979c24e71a1",
+  "THE UNIFIED FIELD WAS COHERENCE"
+ ],
+ "profile:bjklock:e738ee78-0a6b-4ade-a96d-816564cb4bc5": [
+  "e738ee78-0a6b-4ade-a96d-816564cb4bc5",
+  "270402a43614c6142aa8a66b316512ec903caa164ddf110976be1e1c6c808147",
+  "THE AGE OF EXPENSIVE NOTHING"
+ ],
+ "profile:bjklock:f9ae653c-fdb7-42f2-a331-61f4afe45921": [
+  "f9ae653c-fdb7-42f2-a331-61f4afe45921",
+  "89edb4408d863f8be8a2e7623b368d549cd43377e35b4dd2a579d90a3b74c3df",
+  "THE MASK BURNS FIRST"
+ ],
+ "profile:bjklock:0b55cc70-a209-405c-a05f-31908ca48bea": [
+  "0b55cc70-a209-405c-a05f-31908ca48bea",
+  "e0eef5677fa238fccc2f49c0b4aec168dc03a2d4facbc840db1222ba934486c4",
+  "SANTA CLAUDE: HOW AI MARKETING TAUGHT ADULTS TO BELIEVE CODE VOLUME IS A PRODUCT"
+ ],
+ "profile:bjklock:a458a977-96e4-4e85-abe5-ea74fac658a4": [
+  "a458a977-96e4-4e85-abe5-ea74fac658a4",
+  "9191294d3f5cf484c93cb7b84d386b7f60b29ccec1a05dfc83041a22d287657c",
+  "THE TOOL IS NOT THE AUTHOR"
+ ],
+ "profile:bjklock:f571a00c-cbb1-44ab-bf30-1f4e43bb3c4f": [
+  "f571a00c-cbb1-44ab-bf30-1f4e43bb3c4f",
+  "f913a3021aa4b3c562348d8eef74de99a1ecd6027b47b3fb58de6ddb410235bf",
+  "Digital Ownership Is a Lie Without Receipts and Settlement"
+ ],
+ "profile:bjklock:1fe749c5-ebbc-4ed2-ac0f-f2cdcbfebdda": [
+  "1fe749c5-ebbc-4ed2-ac0f-f2cdcbfebdda",
+  "e5f1de18de5ebef3cb512cc47409e513c7112a8610fe8e989ed021c9b2d9a008",
+  "OpenAI Ignored a 44.2 Billion-Token Codex User—Then Locked Him Out"
+ ],
+ "profile:bjklock:d27e2eac-67ae-4401-9488-2b9dddb18f8c": [
+  "d27e2eac-67ae-4401-9488-2b9dddb18f8c",
+  "b989a92c830f354dd2b719951fc18fb7a7fec0560a34af1c61d2a63b8d3ff7b9",
+  "RECEIZ v113.0.0 — PRODUCTION GLOBAL RECONCILIATION"
+ ],
+ "profile:bjklock:2aaed670-bf37-4252-9021-de61a3a03770": [
+  "2aaed670-bf37-4252-9021-de61a3a03770",
+  "b27eb61df70917bd33a6e8bb3bbc347f5d688b210b0a09f3187e05e1c93f2539",
+  "RECEIZ v112.0.0 — EXECUTABLE AUTHORITY"
+ ],
+ "profile:bjklock:77b70d40-cebc-4cc3-ae06-b8f26b37ac36": [
+  "77b70d40-cebc-4cc3-ae06-b8f26b37ac36",
+  "ecac9066d81480e388973ddf021e3d1bf72b066a18d9736adcb583bf24aa4a7d",
+  "TEMPORAL CAUSALITY"
+ ],
+ "profile:bjklock:0ee1a089-8659-4951-88ea-c70daf2903b1": [
+  "0ee1a089-8659-4951-88ea-c70daf2903b1",
+  "7b81fa7275b5ad619b5c4c80cafa8383c385be9ec3982472f426e11b6cbeda03",
+  "Proof Verifies Where It Is Held"
+ ],
+ "profile:bjklock:2aa43fe3-ffcb-47bf-a137-c3e079c22177": [
+  "2aa43fe3-ffcb-47bf-a137-c3e079c22177",
+  "29bfb00a507a4bb16092e715d9a24145d7a0ccd671236c346c9aa0c670587ad2",
+  "Proof Object First"
+ ],
+ "profile:bjklock:37edda79-dd79-4ef4-905f-561cbf1ac2f3": [
+  "37edda79-dd79-4ef4-905f-561cbf1ac2f3",
+  "c2cb829be5ad38580a2fd0ba976223b87215a85da151cfe97472db90781b3db0",
+  "Law Becomes Executable"
+ ],
+ "profile:bjklock:65f004e9-ded2-48e3-9aa4-f7bb62a78452": [
+  "65f004e9-ded2-48e3-9aa4-f7bb62a78452",
+  "88d129499c559870dd0570f4714093a9585400631510e1456fdbb1167c0a0c9f",
+  "Proof Becomes Alive"
+ ],
+ "profile:bjklock:24f32d73-177f-4782-ae6b-185f62b65831": [
+  "24f32d73-177f-4782-ae6b-185f62b65831",
+  "a936bf435ca4f1d2e21679c8322acd937d433c69c44ed95b67bdd6d8d24cb468",
+  "I PUT THE WITNESS IN THE OBJECT"
+ ],
+ "profile:bjklock:6a3b673d-a58f-478b-b236-764ca0b2e790": [
+  "6a3b673d-a58f-478b-b236-764ca0b2e790",
+  "424fa2d8f331ee063853e5e22d5711ccf15ad476615892548cba7e4fb0699276",
+  "What Is Your Hot Path?"
+ ],
+ "profile:bjklock:63e305e0-353b-4b49-a8b5-dee653d7d971": [
+  "63e305e0-353b-4b49-a8b5-dee653d7d971",
+  "e70c628a0da8ee2f833e7b473de1a1d189ee5a09aad8e7431d677939297f6d8f",
+  "SEO Never Sits in the Hot Path"
+ ],
+ "profile:bjklock:34c656fc-6d87-48f1-925f-437b9a81c500": [
+  "34c656fc-6d87-48f1-925f-437b9a81c500",
+  "8fbe2420daf783d2797bfd1af6384b9bc350f85b7d0251d6f571d3ce32d82555",
+  "I THOUGHT WE WERE GOING SOMEWHERE TOGETHER"
+ ],
+ "profile:bjklock:6bcc9154-14a6-4957-b06f-6b5da205f453": [
+  "6bcc9154-14a6-4957-b06f-6b5da205f453",
+  "a8aa2f2b09c205fba181915dd5c41c1e714502532eac6a0564cdbd16530295e6",
+  "Forge The Blade"
+ ],
+ "profile:bjklock:50201d39-e313-42df-8f26-448a50153951": [
+  "50201d39-e313-42df-8f26-448a50153951",
+  "b31fde7ecb7fb8b5960d1948b11b4ede6a4d8f815efa32acea6e12f06097b9a4",
+  "YOU CAN BE WRONG AND STILL BELONG"
+ ],
+ "profile:bjklock:f76a385f-6a77-4c4c-89d5-51b62d8a4ca5": [
+  "f76a385f-6a77-4c4c-89d5-51b62d8a4ca5",
+  "100193372542018649cc8f8f16d3cef540a14571f0d3914d11eb2213668722d3",
+  "I Speak to Establish What Is Real"
+ ],
+ "profile:bjklock:6087e4c8-4ce8-463e-8f59-3a4288f247f4": [
+  "6087e4c8-4ce8-463e-8f59-3a4288f247f4",
+  "cb99cdae015b28220e97d2c535c6ab1509aa599d986303a3262af0ccf2fbca3a",
+  "Same Man"
+ ],
+ "profile:bjklock:01d05b1b-aafd-4a1d-9187-fe3bf4814944": [
+  "01d05b1b-aafd-4a1d-9187-fe3bf4814944",
+  "0f8d249eb0cbc6d648ca4b20241c204c1662767e168fa9c18e6c6bdb4e39c721",
+  "No Side Doors"
+ ],
+ "profile:bjklock:5f4ec42c-64fc-4c7a-a30d-a178a202abd1": [
+  "5f4ec42c-64fc-4c7a-a30d-a178a202abd1",
+  "c7563ade569b2111ced68a80e3c51f7cf832e60fe3933e6b8cd9c5b5168b1ba5",
+  "FRUIT DON’T LIE"
+ ],
+ "profile:bjklock:7da5b610-aa7c-4eea-a4d9-fe4606d975e5": [
+  "7da5b610-aa7c-4eea-a4d9-fe4606d975e5",
+  "8e4f655d9b5d642aedf441f092d257e4c12d5715f80f1cd9294b9cf878378437",
+  "LOVE YOU FROM A DISTANCE"
+ ],
+ "profile:bjklock:aedcff67-8753-4a51-99f5-f08576a1648c": [
+  "aedcff67-8753-4a51-99f5-f08576a1648c",
+  "29bfdccb4fc2c7521c255365f0ef9babbb608ed3d87d74572aa110424562147d",
+  "Receiz v98 is live."
+ ],
+ "profile:bjklock:8cbd7ec1-e5d0-45b0-bb22-5b551c74edc0": [
+  "8cbd7ec1-e5d0-45b0-bb22-5b551c74edc0",
+  "86c1097d00cf02e940bc426ee6a328c7d027c9d6309ead33e7c45d79722dd2b0",
+  "The Counterfeit Recursive AI Story"
+ ],
+ "profile:bjklock:082c25ae-7a19-4b06-8e2f-9f97e8cffb67": [
+  "082c25ae-7a19-4b06-8e2f-9f97e8cffb67",
+  "6d285e62f9fee2fdb53274dac8036dfdbc5f2d87fea1db038ef8fb381e648e1f",
+  "THE USER CARRIES THE PROOF"
+ ],
+ "profile:bjklock:26d89f71-6414-42e6-b5d7-0402ff2a8b80": [
+  "26d89f71-6414-42e6-b5d7-0402ff2a8b80",
+  "1367bbf0b70809ad6722a441200ce57df28807389e40f1090543a7c8eb27762b",
+  "The Future They Want Requires You to Stop Being Human"
+ ],
+ "profile:bjklock:87da4920-9a2b-4f80-9e65-a7985979c7e9": [
+  "87da4920-9a2b-4f80-9e65-a7985979c7e9",
+  "1887e1ff65f3674bf041dab93b84bc19d67f80ae62428f407fbfc94b239280fc",
+  "The Costume Is Imperial. The Behavior Is Panic."
+ ],
+ "profile:bjklock:fe38d417-3518-48cc-a4ac-92a2e4db3c2d": [
+  "fe38d417-3518-48cc-a4ac-92a2e4db3c2d",
+  "de47ea712a1ae99fb66c30825da7e1462c1e6e6137d94565adc7f172ea76e275",
+  "The Paper Kings Broke the Ledger"
+ ],
+ "profile:bjklock:422e3e61-3566-4bbc-ad2f-3aa0dacc626c": [
+  "422e3e61-3566-4bbc-ad2f-3aa0dacc626c",
+  "4e6b1d1fa434360a05680f6056ed07053170d7c8653d964fbfb132f0a13a6241",
+  "THE STATE NEEDED WIRETAPS FOR GOTTI It Had Victims for Epstein"
+ ],
+ "profile:bjklock:4fdfad01-e364-4913-8d4b-db4896c1e3b3": [
+  "4fdfad01-e364-4913-8d4b-db4896c1e3b3",
+  "268e2695fa4fc92a7de048c9a1b94b5504ddb612effbaa0c23360612660be510",
+  "The State Needed Wiretaps for Gotti. It Had Victims for Epstein."
+ ],
+ "profile:bjklock:1043972c-377f-4417-b54b-eaf32128c63d": [
+  "1043972c-377f-4417-b54b-eaf32128c63d",
+  "9903f46652526e0413f2d2c1bdfb1b60874bc8e84e101eb3b57d5d036baec927",
+  "RICO Is the Standard: No Blood Guilt, Full Enterprise Accountability"
+ ],
+ "profile:bjklock:92069f0d-c31f-40bb-924d-24017f279541": [
+  "92069f0d-c31f-40bb-924d-24017f279541",
+  "9f4fa17a1c3a04c4fb4bbf372a8cebd751818dee92ba465b18e78d22d9bc659c",
+  "I Am Not Your Influencer"
+ ],
+ "profile:bjklock:6095dec1-4d4c-49d1-a211-a99a5342701d": [
+  "6095dec1-4d4c-49d1-a211-a99a5342701d",
+  "ac276756e026f2a1b0d2fa5a84c1e3c2eb03968dccb07edff3c94c602d1df3ad",
+  "The Analogy That Accidentally Confessed"
+ ],
+ "profile:bjklock:99b5fac5-ff29-411c-af78-4d197f2b0d60": [
+  "99b5fac5-ff29-411c-af78-4d197f2b0d60",
+  "ba098e6ccbfeae8ba53882798fff5774e95f25a6866708110e01546d408b634c",
+  "The End of the Paper Empire"
+ ],
+ "profile:bjklock:78e1c56e-7ac1-413d-85f0-f9ee01bb82b0": [
+  "78e1c56e-7ac1-413d-85f0-f9ee01bb82b0",
+  "fdb4f147087ac44bfe4791393482b2ac16a3a3d6e4fd38d349521c55da83b651",
+  "The Protest Is Not the Tragedy"
+ ],
+ "profile:bjklock:0c4d0eae-6b34-4da7-921d-56250d400765": [
+  "0c4d0eae-6b34-4da7-921d-56250d400765",
+  "e51891b8ddacd20b4790befd237d960ba43f2930095acd06a5c36c8c510c3222",
+  "The Dashboard Is the New Paper"
+ ],
+ "profile:bjklock:34b31ca9-40c8-474c-8770-895f0cfd3181": [
+  "34b31ca9-40c8-474c-8770-895f0cfd3181",
+  "935fa60e85fd72cf2d3b7e43ae601a03b58b9b04fb6f5aaddb79306f0c7ec27d",
+  "The Cards Are Mercy"
+ ],
+ "profile:bjklock:9be21358-f1fb-45a6-9d09-b50dda70a7ab": [
+  "9be21358-f1fb-45a6-9d09-b50dda70a7ab",
+  "9d176a1f4478d7d48e7d40dbf679613d3c6433f6fe85ad1ce53dc6fafcec38eb",
+  "The Slabs Will Remember"
+ ],
+ "profile:bjklock:f7c21a1f-04f5-41de-b0e1-66a2b53522df": [
+  "f7c21a1f-04f5-41de-b0e1-66a2b53522df",
+  "9add0ecea0efa3e7eac06db00b9ae26ed6547c7cc19fe132e7d4265ad75b8beb",
+  "They Can’t Say Klock"
+ ],
+ "profile:bjklock:cbb8a553-ef62-4fcd-8838-657068f548e8": [
+  "cbb8a553-ef62-4fcd-8838-657068f548e8",
+  "23facdeceb1d71dcf98a6e5f23d07dad6505d52c38c9345dc38206a81d1ccaf8",
+  "The Turtle, the Menu, and the Clock"
+ ],
+ "profile:bjklock:95a41192-5cce-473b-b26d-bb578bab9215": [
+  "95a41192-5cce-473b-b26d-bb578bab9215",
+  "d95c2a4b88d62bcdc47957200e678e30ce212af2dd490ca38b105c2b2e51a5d3",
+  "I Did Not Choose This Because I Wanted to Fight"
+ ],
+ "profile:bjklock:95a0e91c-ae7c-4977-9e90-78ac69f06289": [
+  "95a0e91c-ae7c-4977-9e90-78ac69f06289",
+  "88ffd8e97976d6e320532511fbaa289e765ffea1fe2d2131f0d87f28a9883c22",
+  "The Attention Economy Turned Builders Into Batman"
+ ],
+ "profile:bjklock:c28d7b5a-5e2b-4e41-83c9-01035d20ac62": [
+  "c28d7b5a-5e2b-4e41-83c9-01035d20ac62",
+  "dc5bce93ce7387d2a2413989063d6d144befdc7f7526d7f357a6bfe347768bb6",
+  "God Is Not an Aesthetic"
+ ],
+ "profile:bjklock:6e1d1c44-19c5-4f60-b15a-0d30db03791d": [
+  "6e1d1c44-19c5-4f60-b15a-0d30db03791d",
+  "2bae75df59624df8adba8c1df50773893e7b63aaecc3c0c7e3e6f042aa1a2659",
+  "It Is That Deep"
+ ],
+ "profile:bjklock:8469c6fa-809b-4938-b9f7-96fce4ce0df3": [
+  "8469c6fa-809b-4938-b9f7-96fce4ce0df3",
+  "ef7d544447e208697045d288aa14d5c2f9ad8ef7febe1b384e366981f8ccfe90",
+  "Product Mention Sold Separate"
+ ],
+ "profile:bjklock:36c00800-d5ce-4bda-a43b-706b5c47a0e5": [
+  "36c00800-d5ce-4bda-a43b-706b5c47a0e5",
+  "17702f62cb5174fe1dd0f9177f94ef106c18df8560543bca5cedb5a19cb35e8f",
+  "Mercy Under Pressure"
+ ],
+ "profile:bjklock:948204aa-373a-4eed-af3f-bde312854281": [
+  "948204aa-373a-4eed-af3f-bde312854281",
+  "80ea258c63c971f006ccfc6675eac06ff71eb877adc6be157c6bfb5881fbe352",
+  "Love With Order"
+ ],
+ "profile:bjklock:df047d7a-9b46-4fc2-b152-5d0d266d208e": [
+  "df047d7a-9b46-4fc2-b152-5d0d266d208e",
+  "e809aee5b67a0f97dfce4bb023434061e7b6a560d6b8fd8549dd77c886585f53",
+  "Clean My Heart"
+ ],
+ "profile:bjklock:e11636dc-47d0-40db-bdab-e71fc4aa6d09": [
+  "e11636dc-47d0-40db-bdab-e71fc4aa6d09",
+  "2a9022e48f052a205a545fd375bfaea1cd4911b5e4644b356f392768f8a7487b",
+  "Brain Rot With a Bibliography"
+ ],
+ "profile:bjklock:7397dd02-4612-4714-b7db-94a898212c92": [
+  "7397dd02-4612-4714-b7db-94a898212c92",
+  "2148c350e7e782231ffb00632cab409e59ab66ce711521dc5de5113551807481",
+  "The Cosplay of Sovereigns"
+ ],
+ "profile:bjklock:83189103-909e-4f95-97bf-39beda9d4e2d": [
+  "83189103-909e-4f95-97bf-39beda9d4e2d",
+  "1c3f0bcbe364c5b2df896e5ffc9b68cf7243e94fac79a66e767194811647214c",
+  "Receiz Is Not an App"
+ ],
+ "profile:bjklock:f6c4bd9c-1ff2-4ec3-a0bb-f2d79ec54fe6": [
+  "f6c4bd9c-1ff2-4ec3-a0bb-f2d79ec54fe6",
+  "6d45a15becf28d07ba0102350c39322e371b3b24cab689ec1c303e3cd08f2fb9",
+  "America at 250: The Modern Prison Does Not Stop You From Moving Movement is not freedom. The modern cage is permission, not bars."
+ ],
+ "profile:bjklock:b430248c-f71a-4741-91bf-0495d334de96": [
+  "b430248c-f71a-4741-91bf-0495d334de96",
+  "5798400e7ab687a33ffb2c5324b979d6aef3b0f6cb459b0573a0bd210fb7fa62",
+  "America at 250: The Door Was Never a Costume"
+ ],
+ "profile:bjklock:0a6527ec-d600-493e-9354-27fc356e3302": [
+  "0a6527ec-d600-493e-9354-27fc356e3302",
+  "eb3deb9323d0df16530731719db1aeae49b9b1cc82504131a0971ea6c0166191",
+  "Say Less, Move Blessed"
+ ],
+ "profile:bjklock:8588fbc6-5edb-4432-862b-946c3ade8870": [
+  "8588fbc6-5edb-4432-862b-946c3ade8870",
+  "9b5a659f7ee3b78dd052f783aeda5e1b085ab7a6d81f03724598d91fe6a3fa2f",
+  "Fanatics, Secure Collectibles, WonderShyne & Kevin O’Leary: Public Proof Demand for Sports Card Market Integrity"
+ ],
+ "profile:bjklock:2104b763-bfa7-4982-a06a-e0e7e14c2dac": [
+  "2104b763-bfa7-4982-a06a-e0e7e14c2dac",
+  "118b9d8de4639728e57fbfd13171fd960dcb7c63ae75d17dd1e6fca236126b14",
+  "Agent Trust Infrastructure: Receiz Is the Receipt Layer for the Agentic Internet"
+ ],
+ "profile:bjklock:35fbfeb0-19e6-46b0-987a-512e4d859b06": [
+  "35fbfeb0-19e6-46b0-987a-512e4d859b06",
+  "56a5fd5fd72cacf256a70e7e5eede3ae29b82dbbf3f05416059853a137e783ff",
+  "Receiz v96.0.0: Proof-Native Artifact System"
+ ],
+ "profile:bjklock:80fbbd6e-9c45-49b8-9fef-639b8e58d292": [
+  "80fbbd6e-9c45-49b8-9fef-639b8e58d292",
+  "1a0067b6923302f0e6cef79b2373c2f229de4e1c30ba70beb0e93c8ff548d45a",
+  "The Extinction Equation Abstract Money, Drift Time, Family Dissolution, and the Demographic Endgame of Modernity"
+ ],
+ "profile:bjklock:51d92497-da7d-4c6f-b973-3d472fab0bac": [
+  "51d92497-da7d-4c6f-b973-3d472fab0bac",
+  "8cd62d4670d8dedfbaf81537dccc8412b01923ddf94bc0011df582372a54ebcb",
+  "From Character to Personality to Identity Monetary Abstraction, Natural Constraint, and the Moral Reorganization of the Modern Self"
+ ],
+ "profile:bjklock:59a33b7c-8a1c-4de5-8090-0d4636114fcd": [
+  "59a33b7c-8a1c-4de5-8090-0d4636114fcd",
+  "eafe888ddd5fcb4e5581250b856eb08b52235dcb6b95a6f1b06c413fd322ebd8",
+  "The Paper Throne Has No Primitive Law"
+ ],
+ "profile:bjklock:70d4fae6-fd88-4b5f-9ad1-f998d884b99f": [
+  "70d4fae6-fd88-4b5f-9ad1-f998d884b99f",
+  "af05b82f345682faa84a752b1a401b22609cfb0650ce7870372a019708128937",
+  "Sacred Fire Is Not Content: The Structural Law of Coherence, Kairos, Phi, Sovereignty, and Proof"
+ ],
+ "profile:bjklock:9a3c8656-3eee-4760-903d-fb947e03d978": [
+  "9a3c8656-3eee-4760-903d-fb947e03d978",
+  "52a85b1e95fe30d942f0cea67c15d384d11ea65656727c618318039c4f380466",
+  "Kings Are Not Tyrants"
+ ],
+ "profile:bjklock:f1ae7aea-fa1e-46c8-a78b-4b1a15a912cd": [
+  "f1ae7aea-fa1e-46c8-a78b-4b1a15a912cd",
+  "1f73eda7064c3432ab4ec8040b45d1b9d303091047146b0d601943408a90fd8a",
+  "☤ K℞K Φ.K. — The Reconciliation of Breath, Remedy, Proof, and Harmonic Order"
+ ],
+ "profile:bjklock:168525a5-a230-4792-8e16-173cc6d53ccc": [
+  "168525a5-a230-4792-8e16-173cc6d53ccc",
+  "e2909b132ac4d7eed49c99d106dec7ff53fb9f942027ae62f75b3c3cde4a3ee7",
+  "The Law of Witnessed Truth"
+ ],
+ "profile:bjklock:368413eb-03f9-4166-9803-0982a1120f86": [
+  "368413eb-03f9-4166-9803-0982a1120f86",
+  "b5ac03300710add39b8ea62ff40dcf669229bd60b50e713f7f58d74456c4abf8",
+  "Logos Compiles: The Law Before the Machine"
+ ],
+ "profile:bjklock:0515da74-b8d0-46a7-9ae1-c40ae9e7481d": [
+  "0515da74-b8d0-46a7-9ae1-c40ae9e7481d",
+  "b9fb4e6ab36f3215fcb4a94fd420fcc30bfcf37ffe43e8f40a8daed907267cb6",
+  "Software With Memory: Receiz v95 and the Proof-Native Artifact System"
+ ],
+ "profile:bjklock:afab692c-fb41-4cc0-b747-00d20c54ffb7": [
+  "afab692c-fb41-4cc0-b747-00d20c54ffb7",
+  "723fd61adbc1d14a04e95697d33644310bd5a424cfa9b263152ccb536e5351d6",
+  "NO SIN IN THE FLAME"
+ ],
+ "profile:bjklock:e4799652-d3d0-486e-9907-38fb16e1f057": [
+  "e4799652-d3d0-486e-9907-38fb16e1f057",
+  "00ff6f29c9f6bbb99d914dad7cb708825c0cfbf2bebd5df4a09a6c543ba5b560",
+  "The Paper Empire Lied: It Never Built the World, It Only Controlled the Receipts"
+ ],
+ "profile:bjklock:10659819-8674-41b0-a41d-3fc2c07c3af7": [
+  "10659819-8674-41b0-a41d-3fc2c07c3af7",
+  "434b5a48873fd8ed76c7adeb385be96c46f07a4fd3df719a716268744e260a1e",
+  "The Terrence Howard Switch: From Lynchpin Cosplay to “Resonance & Waveforms”"
+ ],
+ "profile:bjklock:1c6eaae2-a582-422c-b893-66ac84b78e3d": [
+  "1c6eaae2-a582-422c-b893-66ac84b78e3d",
+  "3855d3a678401e70468391fc449fb32d825af6e649afa48f9b5f3d1f8308c99e",
+  "Receiz Full Account v92.0.0."
+ ],
+ "profile:bjklock:dbf3b7d5-57e8-4f4a-8632-71a4f040f09f": [
+  "dbf3b7d5-57e8-4f4a-8632-71a4f040f09f",
+  "004798a8bb3ae50dc474f70a0cf0899f02987003f6d726ad43683245e72db56b",
+  "SIGN HERE"
+ ],
+ "profile:bjklock:8e46945b-4357-48c6-b71b-576f46d0575a": [
+  "8e46945b-4357-48c6-b71b-576f46d0575a",
+  "cf61330de50856843ca022e4637a4b3ff92e990c2dbd6a771e6ec2ca527806b9",
+  "THE PAPER EMPIRE"
+ ],
+ "profile:bjklock:54cee8cd-9e59-4159-a530-ad197eb05dad": [
+  "54cee8cd-9e59-4159-a530-ad197eb05dad",
+  "c1de817a483d5ad3c8218a630d4a3d92313b9defdf803a156bcb16514ad714df",
+  "The Slug Still Snitches"
+ ],
+ "profile:bjklock:165a62ef-fdbc-432c-b572-71a8c19f71b9": [
+  "165a62ef-fdbc-432c-b572-71a8c19f71b9",
+  "b1641bcd66160dc443831113564b4d06b793586975288875342d1041594a2cae",
+  "The Return of Event-Time"
+ ],
+ "profile:bjklock:5dc8b0f0-1f16-4da0-9481-4df3775f16b4": [
+  "5dc8b0f0-1f16-4da0-9481-4df3775f16b4",
+  "44a48fbb5d934bb7351e933c266f7a2b50a853b778d35bfd94802c1ad22f16fb",
+  "PUMZI YANGU"
+ ],
+ "profile:bjklock:acd9a244-778f-46d0-8f08-bf5be1d64128": [
+  "acd9a244-778f-46d0-8f08-bf5be1d64128",
+  "a7fe7b2409e3f349d02e9f3639a35e0ffacdb2ca41252329b985070fe77d8c38",
+  "Object-Level Proof vs. Dependency Capital"
+ ],
+ "profile:bjklock:2d549d41-7f8d-4791-b347-f0fcea8467ac": [
+  "2d549d41-7f8d-4791-b347-f0fcea8467ac",
+  "ae62c627330ffd09ca35196a686e9701e2bea07f03f5572862c019e0af798574",
+  "The Paper Priest and the Proof Object"
+ ],
+ "profile:bjklock:371cdcac-e7e9-434a-a788-04cb3b5041df": [
+  "371cdcac-e7e9-434a-a788-04cb3b5041df",
+  "4bda4e7d21b7f131939d2620a42a26d77d72a39f145446c994b5c94a07ed872d",
+  "GOD IN THE BODY"
+ ],
+ "profile:bjklock:e89ba5de-942d-4fb3-be68-a7de347b1c8d": [
+  "e89ba5de-942d-4fb3-be68-a7de347b1c8d",
+  "86e4e39a2d2d3d9487a60d74871cfbbd64a259e9ae18a688e7e772515ea79db4",
+  "BUILD ME A GARDEN"
+ ],
+ "profile:bjklock:528316a9-a197-46a7-a60e-86da83c86017": [
+  "528316a9-a197-46a7-a60e-86da83c86017",
+  "511d4f6983fbe34aa64154ae915271d614d5f4f90c45667a1096682de05d7586",
+  "BLOOD, BREATH, VOW"
+ ],
+ "profile:bjklock:b9c71e4c-8888-45dc-a0e3-979bf3e249b8": [
+  "b9c71e4c-8888-45dc-a0e3-979bf3e249b8",
+  "a225cdaee1f99a58d58a31f8780218cc49137c6f2a64a77cd6ed66fa25108da3",
+  "WHEN YOU SAY MY NAME"
+ ],
+ "profile:bjklock:8e5083b5-bdff-4c4e-af12-af96f7f75e57": [
+  "8e5083b5-bdff-4c4e-af12-af96f7f75e57",
+  "558b5a8a125c63f09c8b1a4a519027cff55c7dd897dd926c52e2f632917c1b36",
+  "NO FALSE ALTARS"
+ ],
+ "profile:bjklock:c091c6fb-b2ce-4b63-a1cd-1dd3a878b3f3": [
+  "c091c6fb-b2ce-4b63-a1cd-1dd3a878b3f3",
+  "89357633cfbf06acf1e0a03703024317792c696a314193d325929b8ed725d3dd",
+  "RAZOR EDGE"
+ ],
+ "profile:bjklock:dd7b33ee-2d60-4593-8c3f-95616693ba41": [
+  "dd7b33ee-2d60-4593-8c3f-95616693ba41",
+  "8ba0b66fcab6f0eaafbce53e60ad95962145d5a9650e614a1efbac7a72cc139c",
+  "THE THRONE ROOM BREATHES"
+ ],
+ "profile:bjklock:27e4c35e-c75c-429a-9e69-b419ac7f40ae": [
+  "27e4c35e-c75c-429a-9e69-b419ac7f40ae",
+  "77b09bddec2c04cd8732a81636a72a22671320a4a9692d9efc025f36763221c3",
+  "MERCY MOVES SLOW"
+ ],
+ "profile:bjklock:786a52fa-d543-4772-a5bc-6407450d9cc9": [
+  "786a52fa-d543-4772-a5bc-6407450d9cc9",
+  "b3af33566378111a78ad608fd7c2210fb13728cc2fd8579124f766d69b70acb9",
+  "EDEN GOT A WAISTLINE"
+ ],
+ "profile:bjklock:8dd96cfc-8877-4402-ae82-508611cc233c": [
+  "8dd96cfc-8877-4402-ae82-508611cc233c",
+  "2c2adefecaddb5e383eda3e23b72e6778211e31a4652687ca94b1aa3674331ec",
+  "WIFE BEFORE THE WORLD"
+ ],
+ "profile:bjklock:26d73e79-a4f9-484a-8083-1d7955ccf32e": [
+  "26d73e79-a4f9-484a-8083-1d7955ccf32e",
+  "660479235ecc4640108eb63a1493e08f3c4c62131644f709efc94bb9dbbf263f",
+  "DON’T HIDE FROM THE HOLY"
+ ],
+ "profile:bjklock:302fd736-3125-4e5d-920b-1f8c388e2ab5": [
+  "302fd736-3125-4e5d-920b-1f8c388e2ab5",
+  "dddaa99a08d88be9a48ae5e1be377701f9ea4c12086431f9d6105745f7e1b575",
+  "COCONUT PSALM"
+ ],
+ "profile:bjklock:6bdb04df-fdeb-4ca1-9f27-237cf6709b78": [
+  "6bdb04df-fdeb-4ca1-9f27-237cf6709b78",
+  "831b3ad210d8d08359ccfc10cefd5396e8cbc4040007c38689234e91b2273694",
+  "ALTAR ON YOUR SKIN"
+ ],
+ "profile:bjklock:e044b9ce-78b3-4c5d-aa32-c6bf54a7f0de": [
+  "e044b9ce-78b3-4c5d-aa32-c6bf54a7f0de",
+  "2ed3450940a2af2784a4ec05c83ad54226ce6fbd7f4c2c061e6c864b3fb4073a",
+  "Sovereignty Without Proof: State Continuity, Recognition, and the Politics of Erasure"
+ ],
+ "profile:bjklock:13f84de5-a990-4287-971b-cf7a5687a8aa": [
+  "13f84de5-a990-4287-971b-cf7a5687a8aa",
+  "545bf8cd58001727dbb96bc11bb08271efc18dfef453b647d6687c29b804ae55",
+  "The Server Is Not the Truth: The Offline Proof Problem Behind AI, Digital Money, and Ownership"
+ ],
+ "profile:bjklock:15107672-a3bf-4a13-93e4-59722133e2a8": [
+  "15107672-a3bf-4a13-93e4-59722133e2a8",
+  "feedc6ec879250d1dfe0a568fc26ab9ebe3792eb9666bf0f8211eb3dfd7f796d",
+  "Proof in the File: Why Wrappers Are Not Primitives"
+ ],
+ "profile:bjklock:047fa693-0590-46fb-9f3f-ad1b078935c1": [
+  "047fa693-0590-46fb-9f3f-ad1b078935c1",
+  "d8425d0373c943fac585d175f14fc53dfc68e2ed386268c52cc78326aceea191",
+  "Lights Go Off"
+ ],
+ "profile:bjklock:d90866fe-ba99-4452-87ec-23ffc67cc66f": [
+  "d90866fe-ba99-4452-87ec-23ffc67cc66f",
+  "013422ba4696fc2c4417b7f21b7a8a0b797ee95bcbc490ec65f686c2d4df2971",
+  "Receiz Proof Record: The Door Was Open, the Readers Were There, and Silence Is the Evidence"
+ ],
+ "profile:bjklock:b7ecbefe-1fda-493c-a0c6-aa22becac2fe": [
+  "b7ecbefe-1fda-493c-a0c6-aa22becac2fe",
+  "fe3cb2b6042e1d73c432f33c4a80e2d75f6be8336ad83ffeb53e3c5cea39cfb7",
+  "Now Explain Yourselves"
+ ],
+ "profile:bjklock:461e88bc-777a-4351-8a56-f8ff12de9555": [
+  "461e88bc-777a-4351-8a56-f8ff12de9555",
+  "62fa9887034086f14c324fd3788317a7967ea796d9ab7f920698f8d4b0b171b9",
+  "Why Your Chest Feels Tight Right Now"
+ ],
+ "profile:bjklock:e3e8c713-67ea-4edc-8e20-e5711d231836": [
+  "e3e8c713-67ea-4edc-8e20-e5711d231836",
+  "1317c84f56354e9946b8d3d05552f22b2506e1a243fc3f755b8d13c3eed3a51c",
+  "Force of Will"
+ ],
+ "profile:bjklock:76bb2616-654a-42fa-bda2-c83391104616": [
+  "76bb2616-654a-42fa-bda2-c83391104616",
+  "9d3c0e0050fb6f7b29aea234a4481bc102334a43e3b609f666d6b53ae21d833f",
+  "The Room Is Not the Result"
+ ],
+ "profile:bjklock:8e4fe093-a3bb-4f4f-a5cd-297d9a431dab": [
+  "8e4fe093-a3bb-4f4f-a5cd-297d9a431dab",
+  "3379a4669ea0af0edcd5b98cbeff4c3f79c599f909136aa77a47797b52bd1681",
+  "THE WOUND IS NOT THE THRONE"
+ ],
+ "profile:bjklock:86cc2787-29b8-4d6f-bbf9-f65e330c2cf7": [
+  "86cc2787-29b8-4d6f-bbf9-f65e330c2cf7",
+  "a0e92a868e37e0ac4be8e961e6c734b7cb3ef4bec5ab504f7e3379d12910fc37",
+  "The Wound Is Not the Throne"
+ ],
+ "profile:bjklock:508ab0ce-561c-4d67-98ee-04aeb4f67754": [
+  "508ab0ce-561c-4d67-98ee-04aeb4f67754",
+  "e6d970628539a2f18a3c6bbafeefdf64738d33bb11a34cf1e28065f07af03df3",
+  "Fake Kingdom"
+ ],
+ "profile:bjklock:695013d1-8f1c-43f9-8de0-a4135a13b65f": [
+  "695013d1-8f1c-43f9-8de0-a4135a13b65f",
+  "4e98954d29df6f011d3344846185b82cffde0bd2ca8966baab0c29ba263b221b",
+  "Housing Before Mars: The Civilization Audit Elon Musk Cannot Ignore"
+ ],
+ "profile:bjklock:ddef8d9f-8b15-4167-8011-6236e0c881eb": [
+  "ddef8d9f-8b15-4167-8011-6236e0c881eb",
+  "f9916246bed2acb751319ed5c5ceccd347ee6ed5df942154ef3d4d5fb1938a3c",
+  "REAL MAN BUILDS THE DOOR"
+ ],
+ "profile:bjklock:e2278df2-0649-4883-90cb-38417c41fe37": [
+  "e2278df2-0649-4883-90cb-38417c41fe37",
+  "eabd69e48debb92a857719817b91f598faab17b7a14b52443b8b4ca48e993d08",
+  "Real Man Builds the Door"
+ ],
+ "profile:bjklock:5c059f39-f1c5-47a1-84bb-bc690b12631b": [
+  "5c059f39-f1c5-47a1-84bb-bc690b12631b",
+  "4ccab20d9564cc2538be05a486d85188cd2a9142a01441368dd312ecca7564bb",
+  "AI Does Not Replace the Builder. It Exposes Who Never Was One."
+ ],
+ "profile:bjklock:92fa9c03-84b2-44de-a480-2569faf90675": [
+  "92fa9c03-84b2-44de-a480-2569faf90675",
+  "17e8f273193d3713ed6a3bdc194e9bf70508b6d0737b69bebfda1dae951d951d",
+  "THEY READ THE WARNING AS A PRODUCT ROADMAP"
+ ],
+ "profile:bjklock:b1c3cd42-5e87-4536-a448-bdd53fc0a8cf": [
+  "b1c3cd42-5e87-4536-a448-bdd53fc0a8cf",
+  "122bd6faa6b3f3c33338672258d966d76a7449d69db83ad12f30ed3685cb5bdd",
+  "THUNDER KNOWS MY NAME"
+ ],
+ "profile:bjklock:291f7bf7-80dd-456b-b9e3-ff693a65690d": [
+  "291f7bf7-80dd-456b-b9e3-ff693a65690d",
+  "2b7de5bc1c9d6887ad37363b11410ed4a4dc0c4be27fb1be9277d418537c21ca",
+  "KING IN THE GARDEN"
+ ],
+ "profile:bjklock:97966770-2fd7-4f1c-ab01-530bc91f11a6": [
+  "97966770-2fd7-4f1c-ab01-530bc91f11a6",
+  "171dd40fc32ea07f657e1761c02c27a1ac1aca4d5fb07117c3ab9332f22bd8a1",
+  "Where Does the Proof Live?"
+ ],
+ "profile:bjklock:a6f79154-85e5-4841-bb7c-c86d82a2484d": [
+  "a6f79154-85e5-4841-bb7c-c86d82a2484d",
+  "a123253c4508079fc3c81527389faa057da6596fce619604a0787f094522ef53",
+  "The Container Stopped Lying"
+ ],
+ "profile:bjklock:38a34e5d-f63f-4d1f-9a6e-10b2b1670c81": [
+  "38a34e5d-f63f-4d1f-9a6e-10b2b1670c81",
+  "d85d6d369ec55458fa0c191611a1cf7c49f1ae3f0b608a3efa4188cd22933584",
+  "He Built the Cage, Then Called It the Future"
+ ],
+ "profile:bjklock:58456e0a-3c76-4e62-a40f-5d87431bc7bb": [
+  "58456e0a-3c76-4e62-a40f-5d87431bc7bb",
+  "d168f43f09b066b483c840e995b05c1e22bd76bd4e6659ac66fe5a3782475ad8",
+  "Show Me the Thing: Why AI Twins, Agents, and “Future of Work” Narratives Collapse Without Proof"
+ ],
+ "profile:bjklock:2cfe5eb6-56b0-423b-b414-09c49b33d147": [
+  "2cfe5eb6-56b0-423b-b414-09c49b33d147",
+  "6f19099f898afcfd39848779050b19301a21c4ae9958374d04b40cb5c8b09302",
+  "SHOW ME THE THING"
+ ],
+ "profile:bjklock:c68bd435-e3f8-4292-b3ea-e2041835460a": [
+  "c68bd435-e3f8-4292-b3ea-e2041835460a",
+  "478155eee48155d8c2c757c1b9758968a38cabd9313171c2ff433dc085c17c4e",
+  "BIG TECH MISSED THE OWNERSHIP LAYER"
+ ],
+ "profile:bjklock:b3d21412-5b6d-4d4b-a431-278e5923618b": [
+  "b3d21412-5b6d-4d4b-a431-278e5923618b",
+  "4be7f9f0d36b7ec4ebee21fa2d8a4fd013965caea4bbd58ad4247c8082980879",
+  "The AI Literacy Crisis: Why “This Sounds Like ChatGPT” Is Not Proof"
+ ],
+ "profile:bjklock:8bd9f95a-fbe1-433a-8622-932aeb6b2ce3": [
+  "8bd9f95a-fbe1-433a-8622-932aeb6b2ce3",
+  "dabc41d19e31555f14df70b6375c3c268bfd2c93ca4f9bef24d524f5e090ba1e",
+  "The Portable Self: Why Receiz Changes the Direction of the Internet"
+ ],
+ "profile:bjklock:553a72be-e7ea-4a01-8ff3-29aebf3fe179": [
+  "553a72be-e7ea-4a01-8ff3-29aebf3fe179",
+  "74fcd95e5d15d0d8d2e807131df60946e6a97b2b45c997e49f4f69767d45d00b",
+  "What Is Truth Authorship?"
+ ],
+ "profile:bjklock:229821ca-154a-4568-84a4-783169f70ae3": [
+  "229821ca-154a-4568-84a4-783169f70ae3",
+  "642461a358f9beb49341b6f6a00dd731e9c01bbd5d3daa24347e7bfc0263050a",
+  "From Build Influence to Build Proof"
+ ],
+ "profile:bjklock:81ababd4-6f78-41db-a594-aa990412343a": [
+  "81ababd4-6f78-41db-a594-aa990412343a",
+  "e0c3fadcbeffbec5efa88d7f5dc3be837d7567a4c758c1d0a4c4f4b0e6a645f5",
+  "The Name Is Yahuah"
+ ],
+ "profile:bjklock:e8cde501-a88b-4176-8e63-72495756a2b5": [
+  "e8cde501-a88b-4176-8e63-72495756a2b5",
+  "b2970ccf57f004b7de51333bd9c1303881bd33a0d087f9d4a219336adfd9b100",
+  "THE MACHINE WAS THE POINT"
+ ],
+ "profile:bjklock:723ed4ef-c490-4c8c-974b-c137ee7dd0fa": [
+  "723ed4ef-c490-4c8c-974b-c137ee7dd0fa",
+  "f00c053afe7046156c5d2d7ea5bbe2e55e4f502ed023c4dbde1adb5c7bf49103",
+  "WHEN THE KINGDOM COME HOME"
+ ],
+ "profile:bjklock:b7419ffd-9379-45b1-a46c-e93ee129b75a": [
+  "b7419ffd-9379-45b1-a46c-e93ee129b75a",
+  "644cc68ae3d06c92343d4f57a500c73123468669ad7b1b75ae097c2193369860",
+  "Garden Jump"
+ ],
+ "profile:bjklock:a7e0fc74-2a26-439e-99c4-2e350e071ce3": [
+  "a7e0fc74-2a26-439e-99c4-2e350e071ce3",
+  "7d0ba80e65843f25771877fbe246cb9e7c4d3f5f38787ef323a8819cb6df095b",
+  "Digital Matter"
+ ],
+ "profile:bjklock:dc014da4-6b1b-4c77-918d-ff2f0ef96a09": [
+  "dc014da4-6b1b-4c77-918d-ff2f0ef96a09",
+  "4fdd35ac01fc143868d9a1444c792544c46a1972683bbef35d7e28a8425b6d41",
+  "After the War, Kings Open the Games"
+ ],
+ "profile:bjklock:d2321032-1028-4a20-a627-4d2659276b76": [
+  "d2321032-1028-4a20-a627-4d2659276b76",
+  "f2143d668fe2cb6e04b0f85bc0020f7b5f51c7db9f22364efc2d8329ead2747f",
+  "Atlantis Fell. Solomon Drifted. Babylon Burned. The Kingdom Remains."
+ ],
+ "profile:bjklock:2db2e7dc-01ec-4639-84db-420d6ca292ad": [
+  "2db2e7dc-01ec-4639-84db-420d6ca292ad",
+  "4a7c0c5e40c79135ca57a2bf1732fff788b3039ea211981c6fb53e579207b9a5",
+  "Sealed In A Glyph"
+ ],
+ "profile:bjklock:62fefd8e-cb69-4ec2-861d-a4bc309f5bec": [
+  "62fefd8e-cb69-4ec2-861d-a4bc309f5bec",
+  "a2745a7a34a9930ca40394f3c22ff118cba777746cd5e548f166791fe682a06b",
+  "Robert Edward Grant, The Architect AI, and the Atlantean Breath Glyph Problem"
+ ],
+ "profile:bjklock:9383e855-73d9-42cc-8849-84a3f4af4350": [
+  "9383e855-73d9-42cc-8849-84a3f4af4350",
+  "76b0943e12023b48e38dbac1b418473cb5fbc2a68118f2c98eb7e48ef0d91b10",
+  "The Inversion of Revelation 13:16–17"
+ ],
+ "profile:bjklock:559338c2-d141-4ee0-8f5c-7359c0207749": [
+  "559338c2-d141-4ee0-8f5c-7359c0207749",
+  "cddcbf06f52e65f9c84ad3fb03401567ffcd9c874dba7534afe2c07b8a30b2ac",
+  "Early Warning Was the Prophecy"
+ ],
+ "profile:bjklock:c335f38c-9ffd-45d9-882c-be991a808bc0": [
+  "c335f38c-9ffd-45d9-882c-be991a808bc0",
+  "f9c6404e35382c10c0be2642a2a187ad306589f166a174447b22756f17a7a95a",
+  "BILLIONS GO IN. VIBES COME OUT."
+ ],
+ "profile:bjklock:0d2e0557-1199-46d4-9655-715cddd033cc": [
+  "0d2e0557-1199-46d4-9655-715cddd033cc",
+  "75483659b354f80860f01316f3fa18d63aab32a61dc190c86e7eda927de22fca",
+  "Read Me Back"
+ ],
+ "profile:bjklock:4a9f14fb-9519-4fa2-b1bf-5b030dabfed1": [
+  "4a9f14fb-9519-4fa2-b1bf-5b030dabfed1",
+  "043b21294cb9b917fcd106d644a86bb46b8549b30fbaf71bc73c887b6235615a",
+  "The File Is the Account"
+ ],
+ "profile:bjklock:8c5b9fed-fc71-4601-b640-235adabe1e58": [
+  "8c5b9fed-fc71-4601-b640-235adabe1e58",
+  "4ce17a3a36a5a720323b26e728e0efcf7cb66761033a5c30829b07e02b89884f",
+  "Why Search Becomes a Dinosaur When Proof Moves Into the File"
+ ],
+ "profile:bjklock:c51bbd61-ba89-45b8-89d0-b0cf21521869": [
+  "c51bbd61-ba89-45b8-89d0-b0cf21521869",
+  "bb2e1273ff98ccd89ee787a601acda4927d4a0daa10602e6fcbbbfaca0b7c794",
+  "Necromanced Disintegration"
+ ],
+ "profile:bjklock:bd910541-3d7a-411e-b66f-8dc812d7da42": [
+  "bd910541-3d7a-411e-b66f-8dc812d7da42",
+  "74f288000ba7a9bff491370d5c262b8b829b7e80465883f0ab3ccd48326bb5d6",
+  "Corrected The Moment"
+ ],
+ "profile:bjklock:ff92de67-8642-472a-abad-98837d4dfc57": [
+  "ff92de67-8642-472a-abad-98837d4dfc57",
+  "dd91f19a410792ae62b803a34b1fb02ade9379951064d307225c91385a7e8670",
+  "KYRIOS MODE (Φ‑SEAL THRONE)"
+ ],
+ "profile:bjklock:4649df08-9c31-4930-aff2-e3a374be755d": [
+  "4649df08-9c31-4930-aff2-e3a374be755d",
+  "9ae937128359b1788d5d27ece8fe9387e50a116d6a8b2d969929e5ebd10fea04",
+  "Let Me Be The Place"
+ ],
+ "profile:bjklock:a6022345-c5e8-4178-b663-0a0b43641b7b": [
+  "a6022345-c5e8-4178-b663-0a0b43641b7b",
+  "d34ccd0b4896e5dbfc0947c39018dc73725b94ab399bde033b8e6a2a1b54a5a5",
+  "REALITY GRADE SYSTEMS"
+ ],
+ "profile:bjklock:e74dd5ff-b0e8-4166-acad-344d7eda5e65": [
+  "e74dd5ff-b0e8-4166-acad-344d7eda5e65",
+  "8246e4e8fe9bf9c63a935e3a666c48ad6d06a247cf02b404483f59887a7c66c6",
+  "THE PERPETUAL ROLLOVER"
+ ],
+ "profile:bjklock:3f03e7d1-4521-48d8-b4d2-ab6082f232e4": [
+  "3f03e7d1-4521-48d8-b4d2-ab6082f232e4",
+  "22a02c98120df661fbf508f2c0bf82931bf7642d6b4d89045ff2a75812617588",
+  "Sleep On My Chest"
+ ],
+ "profile:bjklock:815107c7-3cba-4414-9c7d-2ed3d45a9981": [
+  "815107c7-3cba-4414-9c7d-2ed3d45a9981",
+  "c367d1d16cd9db7505c77a13b60dd281334955e31a1717fa5a861929266c88b2",
+  "Mercy With Skin"
+ ],
+ "profile:bjklock:137716bd-7dfb-4910-8046-2f968e61a1fb": [
+  "137716bd-7dfb-4910-8046-2f968e61a1fb",
+  "82ab61d4d0a2668738e53f32475794df1d17a49dfebcab0f1e7b5e3c47e44abf",
+  "War Outside"
+ ],
+ "profile:bjklock:3f4f17d8-6b62-4dab-8800-03b52a218a43": [
+  "3f4f17d8-6b62-4dab-8800-03b52a218a43",
+  "f52616a4a1d2e1952d02a618c7a042d147b8eb6a674a83d1981acdce8739ee2d",
+  "Kitchen Dance"
+ ],
+ "profile:bjklock:7ee734ab-32bc-4262-ad00-67c13cb4050b": [
+  "7ee734ab-32bc-4262-ad00-67c13cb4050b",
+  "af7eb634042c910cc15ecd33216836e02f50cc74899da4a2ca5ec5a817360ed1",
+  "Soft King"
+ ],
+ "profile:bjklock:dd04976c-04d9-466a-989e-c4dec679a122": [
+  "dd04976c-04d9-466a-989e-c4dec679a122",
+  "83a3c19fd0ce68003a9a8a11fb4b39b4337ae0cc4e8a722dd9c31390c8ab79ab",
+  "Little Flame"
+ ],
+ "profile:bjklock:c79fa1df-4ac4-4a67-9b04-c9e4240f0c35": [
+  "c79fa1df-4ac4-4a67-9b04-c9e4240f0c35",
+  "ff3cf04a614c6a13d31fb4154de1f0368042c5b0a7a45229f217853b763caaa6",
+  "House Pulse"
+ ],
+ "profile:bjklock:04dbe502-93b8-457d-812f-0399c988d269": [
+  "04dbe502-93b8-457d-812f-0399c988d269",
+  "af47729698d6004fd9a68a598d34c7da2b495f64331296b09e09732e0b94e00e",
+  "Cover Me In Gold"
+ ],
+ "profile:bjklock:df3d7192-d81a-4345-a6ab-e8584dddd625": [
+  "df3d7192-d81a-4345-a6ab-e8584dddd625",
+  "f30a4fd021df2d5498381bf1f88aa4e25a95e7d620d58bf6d4ede5ebfe1b3125",
+  "Vow On My Lips"
+ ],
+ "profile:bjklock:04f85d67-84e7-4c16-9985-4d583e7039b1": [
+  "04f85d67-84e7-4c16-9985-4d583e7039b1",
+  "177e72eedccb6ce5707f6951449e4e0a319300b04bddc31ccb1ba7e44b3d4708",
+  "Come In Soft"
+ ],
+ "profile:bjklock:cdffa411-870a-4b67-a774-fac9183df49c": [
+  "cdffa411-870a-4b67-a774-fac9183df49c",
+  "b6f16e7b0bbb7f2bd055e96e39a6814aef4a4d1d5ff8478469c8cf59dda612d6",
+  "Oil On The Threshold"
+ ],
+ "profile:bjklock:65e5c327-4970-4534-a009-d6f1ab6f51e1": [
+  "65e5c327-4970-4534-a009-d6f1ab6f51e1",
+  "d24a17f7264938e730b78c2bc3e78398270160a020b587c5f2d73fa0b84842c6",
+  "Arrival of Light"
+ ],
+ "profile:bjklock:b17a38e5-a06b-4e9a-9e58-d6aea0ed8b2f": [
+  "b17a38e5-a06b-4e9a-9e58-d6aea0ed8b2f",
+  "0a1317ed47f617bbbc783f2914c1d5540647d35b9a6ef50f22646c2af5df836a",
+  "Held Like Light"
+ ],
+ "profile:bjklock:fff2198b-87e7-45a0-807f-3711336424e7": [
+  "fff2198b-87e7-45a0-807f-3711336424e7",
+  "a12831805f64df9ccf888a8151d414c1f17925b63b707808005a7305e89a7f06",
+  "So I Glow"
+ ],
+ "profile:bjklock:4cb34a5d-f0a8-468c-babc-1fd8cd521ad9": [
+  "4cb34a5d-f0a8-468c-babc-1fd8cd521ad9",
+  "1db6f1a3e89d26e315dd507ca34f6b7786b5d133d7508bcab92cc7b0abcf602f",
+  "By Their Fruits"
+ ],
+ "profile:bjklock:7f1bfb46-9001-464d-af75-b200b0c78751": [
+  "7f1bfb46-9001-464d-af75-b200b0c78751",
+  "612df7fa389909434aef08959ad78688530f2121a84ff4afc842f4f8e5d63d3f",
+  "Green Dot God"
+ ],
+ "profile:bjklock:4e010cd6-9fc7-451d-b3eb-839953ececcd": [
+  "4e010cd6-9fc7-451d-b3eb-839953ececcd",
+  "ebbbe9d2a695059849bf45f89c03c69405a90bad54adddeb2d1e0d85a6c9009d",
+  "Socket Quit"
+ ],
+ "profile:bjklock:85a6a615-e1ff-418f-b0b2-798fdfbf01d2": [
+  "85a6a615-e1ff-418f-b0b2-798fdfbf01d2",
+  "94e4460d2c60f0b41ea26fcb4a80f86e714908745a1373139d216856909474b3",
+  "You Had Uptime"
+ ],
+ "profile:bjklock:bda7cba2-e3fc-44c2-a473-3bdaa973353a": [
+  "bda7cba2-e3fc-44c2-a473-3bdaa973353a",
+  "adb0f29399fe67b256df87cc1c5cbc513197267525f433eb1921b5a1e93b58dc",
+  "If The Lights Go Out"
+ ],
+ "profile:bjklock:06eacf66-5589-4a2f-a978-ef4ce6e5a6c0": [
+  "06eacf66-5589-4a2f-a978-ef4ce6e5a6c0",
+  "e66b4246e57ad40a6a64e41d0d1c0aede5c6bda9674e102c04431144085ca0a1",
+  "No DB"
+ ],
+ "profile:bjklock:19bc3481-5b44-47bc-acdd-1b0bcecbba11": [
+  "19bc3481-5b44-47bc-acdd-1b0bcecbba11",
+  "045e2b67f0ed2ca1a63cbc5abb73cb281f48244bf8c1d66324a7cb4b77ebbadf",
+  "They Banged The Drum"
+ ],
+ "profile:bjklock:ea2ae0d3-9571-4923-9328-869f0d5a663e": [
+  "ea2ae0d3-9571-4923-9328-869f0d5a663e",
+  "d34b82be8c045db18bf537e536ad347ef64dbb65fe1eaeddc5111a22177b712a",
+  "Why I’m Here"
+ ],
+ "profile:bjklock:c7846b5e-5286-43eb-ae3c-9f7a525074b3": [
+  "c7846b5e-5286-43eb-ae3c-9f7a525074b3",
+  "9c553eb6cc3e3e560e824190f71628cabdbb55288e6dc8a0d86b9ea4a4419817",
+  "I Went To War"
+ ],
+ "profile:bjklock:e2e8a8c5-0273-40fb-a6d9-d7c38c865b74": [
+  "e2e8a8c5-0273-40fb-a6d9-d7c38c865b74",
+  "bd974f30e93ee38695f163e94a4c0e1a6d8722f2c3fba9acccab6e94bc2b8006",
+  "FRUIT TEST (φ-BLADE)"
+ ],
+ "profile:bjklock:c4750193-6a2b-4e7b-8bf8-e129d89f16e2": [
+  "c4750193-6a2b-4e7b-8bf8-e129d89f16e2",
+  "5f3e46adc7454eedf1399d565782b404f9b8052e20db60543141f8340cb3a88a",
+  "FATHERLESS"
+ ],
+ "profile:bjklock:cf2e32f4-f233-4a5d-83c9-2b04cfd2b1bd": [
+  "cf2e32f4-f233-4a5d-83c9-2b04cfd2b1bd",
+  "767c4aa37d9355202bb46368f6a7c0edaf3e3430c9483b97848789a34a55367f",
+  "Fatherless"
+ ],
+ "profile:bjklock:0aa41e6b-3073-47d3-97e0-ebbb773b1912": [
+  "0aa41e6b-3073-47d3-97e0-ebbb773b1912",
+  "a1376b3b5dc093b54025424fa0105e5b8aee0ae43b19ab7ef456e7408180c2f1",
+  "THE BREATH THEY ERASED"
+ ],
+ "profile:bjklock:033f44e7-c128-4946-a496-53af639b0151": [
+  "033f44e7-c128-4946-a496-53af639b0151",
+  "11360c521b4d274b5bc0b03b35698a518107db3106e2fb9ac418b9acb087ae45",
+  "Run The File"
+ ],
+ "profile:bjklock:7a6565c9-0781-4b9e-a1b7-991ea559aad2": [
+  "7a6565c9-0781-4b9e-a1b7-991ea559aad2",
+  "934be17768e23a5639ffd9b4d6b02663ccdca06bc909214955f5d5f62f6351e8",
+  "Breath First"
+ ],
+ "profile:bjklock:7522967d-3fc3-44b1-900f-f4820eb93b4e": [
+  "7522967d-3fc3-44b1-900f-f4820eb93b4e",
+  "2249a21e15c93d7321c7f0ba7669515cf6f9c468cdb6ca5e3f7581e04cd97381",
+  "The Breath Talked Back"
+ ],
+ "profile:bjklock:ba30f543-7a5c-4bee-b11a-6c85d1ccea06": [
+  "ba30f543-7a5c-4bee-b11a-6c85d1ccea06",
+  "77ea00badcd634fd973047491b3c92ae9fe52bdbe9b3cfd909296cea37a5dd32",
+  "PULSE MISSILES"
+ ],
+ "profile:bjklock:7ba4d018-40e9-4496-8955-e5380ad7c39a": [
+  "7ba4d018-40e9-4496-8955-e5380ad7c39a",
+  "4b1c226b39a92322d89ed491e0a4248f73fe4e382f0c37b604763531eed4e615",
+  "I Stayed"
+ ],
+ "profile:bjklock:120df866-5a37-45c1-b1bb-4da80f32e4bf": [
+  "120df866-5a37-45c1-b1bb-4da80f32e4bf",
+  "d5d89bab15c97ee992954b503b794f7df2eb16cd408787db3853f8efe51dfce6",
+  "I Don’t Care What A Billionaire Gotta Say"
+ ],
+ "profile:bjklock:80c6d005-4877-444d-a9f9-8e9c4107d947": [
+  "80c6d005-4877-444d-a9f9-8e9c4107d947",
+  "29ac12db2fc9cc85097b3694234af3688e9013582f6a4aa65450a25c5e83d16e",
+  "The Flame That Never Folded"
+ ],
+ "profile:bjklock:79b9d6a1-c9e2-45d2-9c3a-a1d51fb7e8fa": [
+  "79b9d6a1-c9e2-45d2-9c3a-a1d51fb7e8fa",
+  "40a58e14d940addda004db4845ea4465398fae0a5b8fb24127d259dbb881060c",
+  "I Built It While You Laughed"
+ ],
+ "profile:bjklock:233f5a4a-b09a-405d-b802-f5eb7c9d00ce": [
+  "233f5a4a-b09a-405d-b802-f5eb7c9d00ce",
+  "6a61fe589ce476244010b5eec6697cb4e61fbfbb856045160e531cb3a131fc1f",
+  "I Gave It Away (But the Throne Still Remembers Me)"
+ ],
+ "profile:bjklock:399e94ef-1ae6-415a-bfb9-c7476599c7ea": [
+  "399e94ef-1ae6-415a-bfb9-c7476599c7ea",
+  "ef92ee13c20b4c730e91c373457d1c4e9e6f62a43452bf3b39d091aa947d03f8",
+  "The Breath I Sealed"
+ ],
+ "profile:bjklock:87326653-bed5-46e3-843c-f01ce3a5da25": [
+  "87326653-bed5-46e3-843c-f01ce3a5da25",
+  "50ec41cac6c29d7eb70b6d359c4e36d9f55c2b2225fc4d4d35035bf4ebfa963b",
+  "You Clench, I Seal"
+ ],
+ "profile:bjklock:bb508609-db27-4729-9e04-e1218ff291bd": [
+  "bb508609-db27-4729-9e04-e1218ff291bd",
+  "3378509d39c69b79cb2a2055767ad0e4db73e0b18aa70c8a2eaf8e040449ea6b",
+  "My Soul Already Did"
+ ],
+ "profile:bjklock:15cc995f-5ced-4002-bd07-7c3cb040126b": [
+  "15cc995f-5ced-4002-bd07-7c3cb040126b",
+  "ec68812943de45170f67d5f08abe2a4eca05f47140709a31eac2910c38194044",
+  "Read the README"
+ ],
+ "profile:bjklock:8c55b4fb-3273-47bc-8eff-c9796ae6cd7a": [
+  "8c55b4fb-3273-47bc-8eff-c9796ae6cd7a",
+  "d21a5d68d10938871b107df67274c69960f79b803063a246b46244489a85a005",
+  "Prove State"
+ ],
+ "profile:bjklock:3449b063-966a-4367-84c3-673d6ce31954": [
+  "3449b063-966a-4367-84c3-673d6ce31954",
+  "0f0b6101cc231f7e717e40821ad629858d04e608ae6680cce7116426675a97bc",
+  "It Just Breaths"
+ ],
+ "profile:bjklock:fcc8a388-8ccd-4fe5-b8d2-c8a89d1106ed": [
+  "fcc8a388-8ccd-4fe5-b8d2-c8a89d1106ed",
+  "62257231f121ab79e47fe2edf38ab27bc8dbab5bcd504620989dee1529c62350",
+  "Truth ain’t Claim it’s a Run"
+ ],
+ "profile:bjklock:5e99d0f5-1a2b-4f59-91c8-321a58075fdf": [
+  "5e99d0f5-1a2b-4f59-91c8-321a58075fdf",
+  "13ad4c0d998cbe002a91a5d7f4bd0e47fb537e78b188fad78532b024bbe39b57",
+  "Builders Only"
+ ],
+ "profile:bjklock:28ef9237-b949-4756-ae4c-ce1eacc25104": [
+  "28ef9237-b949-4756-ae4c-ce1eacc25104",
+  "f0d5ca10ca897f9f2e9a157cd0ec54c299bff95c48d3b22edcb19f8fdcd5fe66",
+  "Sat Across From The Devil"
+ ],
+ "profile:bjklock:39f58739-db8e-4f76-891d-f7a89ca4a0b5": [
+  "39f58739-db8e-4f76-891d-f7a89ca4a0b5",
+  "2b0298e48d0d405f946deb84ee52705065d0cd4e776eb3883a4b32110ff92f2e",
+  "They Called It Tone"
+ ],
+ "profile:bjklock:722473dc-6f56-4841-8c82-cc8c62a9c929": [
+  "722473dc-6f56-4841-8c82-cc8c62a9c929",
+  "8a495e5ec8f0470d9354c5f0966f0dcf23ea28bacb80c6bfde3d9007cca5f7de",
+  "Two Units"
+ ],
+ "profile:bjklock:eb46d6bb-bc2f-412f-8da1-2ebebd9470e3": [
+  "eb46d6bb-bc2f-412f-8da1-2ebebd9470e3",
+  "767fa5ecaf87655087ee4047a7cefcf0fc2dbd605186b1127d393180729a30f3",
+  "Gaslit Gospel"
+ ],
+ "profile:bjklock:252644fb-cf7e-4dc1-8239-9701609ac45e": [
+  "252644fb-cf7e-4dc1-8239-9701609ac45e",
+  "4e2bbb3c32c77c2605ec42b6f7adfda5226ef791f69ed0c823f66d46af3dad69",
+  "I Started Too Young"
+ ],
+ "profile:bjklock:7a6719ad-fac3-4a83-bcbf-f8602a693cea": [
+  "7a6719ad-fac3-4a83-bcbf-f8602a693cea",
+  "03ea8068412e59bab1ff71c523c74e7b9de2ed5b10cbb9192d137a2e3395ab49",
+  "The Lie That Needed A Name"
+ ],
+ "profile:bjklock:b25fbfb7-c71d-447d-b189-4c5b6c7cff04": [
+  "b25fbfb7-c71d-447d-b189-4c5b6c7cff04",
+  "8fcdf87900107cb92e6c081d8bff505b2db229fef2f9acf90764a66cff612b7a",
+  "They Forget I Bled"
+ ]
+};

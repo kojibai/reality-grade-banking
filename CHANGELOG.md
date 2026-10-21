@@ -6,12 +6,19 @@ Full release records and qualification evidence live in [docs/releases](docs/rel
 
 ## Unreleased
 
+- Shared music and video asset URLs advertise a lightweight embed over existing Receiz streams,
+  supported public streams and JSON oEmbed discovery. Normal clicks still open
+  the standalone asset page; receiving platforms choose inline playback.
+- Source-bound authored titles correct older cached captions synchronously and
+  appear on asset sharing images and the initial standalone HTML. Explore omits
+  its redundant top menu link.
 - Receive generates shareable payment buttons and existing Receiz checkout code
   without loading a widget or creating a session. A new Get paid guide and typed
   developer example cover setup, trusted order confirmation and recovery.
-- Payment options and purchase funding reuse the native Note deposit for
-  Reserve, Settlement and combined Notes, preserving the destination and amount
-  before ordinary payment/trade review. Confirmed credit remains required.
+- Payment-link funding reuses the native Note deposit for Reserve, Settlement
+  and combined Notes, preserving the destination and amount before payment review.
+  Public asset Buy goes directly from amount to card checkout; confirmed credit
+  continues its approved purchase once, with separate original-attempt recovery.
 - Standalone artwork is discovered in the first HTML response and prioritized
   independently of playback. Other artwork stays lazy; proof checks are unchanged.
 - Market, Explore, asset pages and asset Ledger entries prefer the existing
@@ -21,7 +28,7 @@ Full release records and qualification evidence live in [docs/releases](docs/rel
   Returning to Explore restores its retained category, search and scroll position.
 - Standalone Buy opens a new buyer's device-held account in place after existing
   account restoration, retains the entered amount and continues through the
-  existing balance/card flow. The buyer approves the asset and dollar budget
+  existing card checkout. The buyer approves the asset and dollar budget
   before card payment; matching confirmed credit continues that purchase once.
   Old checkout hints cannot supply fresh purchase approval.
 - Consistent source-link controls across public asset evidence and market-cap

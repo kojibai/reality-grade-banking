@@ -18,6 +18,22 @@
   },
   "rewrites": [
     {
+      "source": "/oembed",
+      "destination": "/api/asset?oembed=1"
+    },
+    {
+      "source": "/oembed/",
+      "destination": "/api/asset?oembed=1"
+    },
+    {
+      "source": "/asset/:asset/player/",
+      "destination": "/api/asset?asset=:asset&player=1"
+    },
+    {
+      "source": "/asset/:asset/player",
+      "destination": "/api/asset?asset=:asset&player=1"
+    },
+    {
       "source": "/asset/:asset/og.png",
       "destination": "/api/asset?asset=:asset&image=1"
     },

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "node scripts/build-icons.mjs && node scripts/build-social-images.mjs --check && node scripts/receiz-release.mjs && node scripts/build-receipt-preview.mjs && node scripts/build-asset-preview.mjs && node scripts/build-chart-valuation.mjs --check && tsc -b && node scripts/build-proof-verifier.mjs && vite build && node scripts/build-public-pages.mjs && node scripts/build-source-archive.mjs && node scripts/build-license-notices.mjs && node scripts/build-offline-shell.mjs && node scripts/check-offline-shell.mjs && node scripts/check-conformance-build.mjs && node scripts/check-licensing.mjs && node scripts/check-source-archive.mjs && node scripts/check-public-pages.mjs",
+    "build": "node scripts/build-icons.mjs && node scripts/build-asset-title-index.mjs --check && node scripts/build-social-images.mjs --check && node scripts/receiz-release.mjs && node scripts/build-receipt-preview.mjs && node scripts/build-asset-preview.mjs && node scripts/build-chart-valuation.mjs --check && tsc -b && node scripts/build-proof-verifier.mjs && vite build && node scripts/build-public-pages.mjs && node scripts/build-source-archive.mjs && node scripts/build-license-notices.mjs && node scripts/build-offline-shell.mjs && node scripts/check-offline-shell.mjs && node scripts/check-conformance-build.mjs && node scripts/check-licensing.mjs && node scripts/check-source-archive.mjs && node scripts/check-public-pages.mjs",
     "icons:build": "node scripts/build-icons.mjs",
     "icons:check": "node scripts/build-icons.mjs --check",
     "social:build": "node scripts/build-social-images.mjs",

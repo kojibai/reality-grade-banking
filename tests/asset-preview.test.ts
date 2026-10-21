@@ -24,6 +24,12 @@ it('serves an asset-specific original, canonical and complete public seed withou
  expect(body).toContain('id="public-asset-seed"');expect(body).toContain('og.png');expect(body).toContain('projection-only');expect(f.image).not.toHaveBeenCalled();
  const seed=JSON.parse(body.match(/id="public-asset-seed" type="application\/json">([^<]+)<\/script>/)![1]);expect(seed.id).toBe(item.id);expect(seed.canTrade).toBe(false);
 });
+it('replaces the real built Explore shell before its noscript block while retaining first-paint styles',async()=>{
+ const f=deps();f.page.mockResolvedValue(html.replace('<main>Explore fallback</main>','<main><style>.public-entry-placeholder{padding:24px}</style><h1>Explore fallback</h1></main>').replace('</div><script','</div><noscript>Enable JavaScript for live interaction.</noscript><script'));
+ const body=await(await handleAssetPreview(new Request('https://bankeiz.com'+assetPagePath(item.id)),f)).text();
+ expect(body).not.toContain('Explore fallback');expect(body).toContain('<h1>A moment $&amp; &lt;script&gt;one&lt;/script&gt;</h1>');
+ expect(body).toContain('.public-entry-placeholder{padding:24px}');expect(body).toContain('<noscript>Enable JavaScript for live interaction.</noscript>');
+});
 it('opens the canonical page through the trailing-slash function path used by production rewrites',async()=>{
  const f=deps(),response=await handleAssetPreview(new Request('https://bankeiz.com/api/asset/?asset='+encodeURIComponent(item.id)),f);
  expect(response.status).toBe(200);expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');

@@ -82,10 +82,17 @@
     const match=/^\/asset\/([^/]+)\/?$/.exec(path);if(!match||!pages['/explore/'])return;
     let id;try{id=decodeURIComponent(match[1]);}catch{return;}if(!id||id.length>256||/[\x00-\x1f\x7f]/.test(id))return;
     if(assetEntries.has(id))return assetEntries.get(id);
-    const base=pages['/explore/'],meta=assetMetadata.get(id),title=(meta?.title||'Public asset')+' | Bankeiz',description=String(meta?.description||'Inspect this public asset, its media, ownership, valuation and original carried evidence.').slice(0,300),url='https://bankeiz.com/asset/'+encodeURIComponent(id)+'/',image=url+'og.png';
+    const base=pages['/explore/'],meta=assetMetadata.get(id),title=(meta?.title||'Public asset')+' | Bankeiz',description=String(meta?.description||'Inspect this asset, its media, ownership, valuation and original evidence.').slice(0,300),url='https://bankeiz.com/asset/'+encodeURIComponent(id)+'/',image=url+'og.png';
     const template=document.createElement('template');template.innerHTML=base.head;
     template.content.querySelector('title').textContent=title;
     for(const node of template.content.querySelectorAll('meta')){const key=node.getAttribute('property')||node.name;if(['description','og:description','twitter:description'].includes(key))node.content=description;else if(['og:title','twitter:title','og:image:alt','twitter:image:alt'].includes(key))node.content=title;else if(key==='og:url')node.content=url;else if(['og:image','og:image:secure_url','twitter:image'].includes(key))node.content=image;else if(key==='robots')node.content=meta?'index,follow,max-image-preview:large':'noindex,follow';}
+    if(meta?.media){
+      for(const key in meta.media){
+        const attribute=key[0]==='o'?'property':'name',node=template.content.querySelector(`meta[${attribute}="${key}"]`)||document.createElement('meta');
+        node.setAttribute(attribute,key);node.content=meta.media[key];template.content.append(node);
+      }
+      template.content.append(Object.assign(document.createElement('link'),{rel:'alternate',type:'application/json+oembed',href:meta.oembed}));
+    }
     template.content.querySelector('link[rel="canonical"]').href=url;
     template.content.querySelectorAll('script[type="application/ld+json"]').forEach(node=>node.remove());
     const schema=document.createElement('script');schema.type='application/ld+json';schema.textContent=JSON.stringify({'@context':'https://schema.org','@type':'WebPage','@id':url+'#page',url,name:title,description});template.content.append(schema);
@@ -133,7 +140,7 @@
   };
   const restoreHead = head => {
     const template = document.createElement('template'); template.innerHTML = head;
-    const selector = 'title,meta[name="viewport"],meta[name="description"],meta[name="theme-color"],meta[name="robots"],meta[name="referrer"],meta[name^="apple-"],meta[property^="og:"],meta[name^="twitter:"],link[rel="canonical"],link[rel="manifest"],link[rel="icon"],link[rel="apple-touch-icon"],script[type="application/ld+json"],style[data-public-page-style]';
+    const selector = 'title,meta[name="viewport"],meta[name="description"],meta[name="theme-color"],meta[name="robots"],meta[name="referrer"],meta[name^="apple-"],meta[property^="og:"],meta[name^="twitter:"],link[rel="canonical"],link[rel="alternate"],link[rel="manifest"],link[rel="icon"],link[rel="apple-touch-icon"],script[type="application/ld+json"],style[data-public-page-style]';
     // Keep shared viewport, icons and other unchanged metadata attached. Replacing
     // the viewport on each guide can relayout mobile browser chrome.
     const key = node => node.tagName + ':' + (node.getAttribute('name') || node.getAttribute('property') || node.getAttribute('rel') || node.getAttribute('type') || '');

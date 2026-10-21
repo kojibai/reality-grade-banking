@@ -3,6 +3,7 @@ import type {MarketSealedBirth} from './market-projection/sealed-copies.js';
 import type {SportsHistorySnapshot} from './market-projection/sports-observations.js';
 import {readPublicAssetManifestSource,type PublicAssetManifestRow,type PublicAssetManifestSource} from './public-asset-manifest.js';
 import {publicAssetTitle} from './asset-title.js';
+import {publicMediaPlayback,type PublicPlayback} from './public-asset-embed.js';
 /** Public discovery and quotes are display projections; they grant no ownership. */
 export interface PublicMarketItem {
   id: string; assetId: string; title: string; summary: string; category: 'proof' | 'sports'; circulationCount?: number; pricedCount?: number; capitalizationUsdCents?: string | null;
@@ -11,6 +12,7 @@ export interface PublicMarketItem {
   hasLongForm?: boolean;
   mediaKind?:PublicMediaKind;
   artworkUrl?:string|null;
+  playback?:PublicPlayback|null;
   proofManifest?:PublicAssetManifestRow[];
   proofManifestSource?:PublicAssetManifestSource;
   readingUrl?: string | null;
@@ -102,6 +104,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
       hasLongForm:typeof profile.hasLongForm==='boolean'?profile.hasLongForm:Object.hasOwn(profile,'longForm')?Boolean(profile.longForm):undefined,
       mediaKind:publicMediaKind(profile.mediaKind??media.kind??(profile.media===null?null:undefined)),
       artworkUrl:safeReceizArtworkUrl(profile.artworkUrl)??publicMediaArtworkUrl(media),
+      playback:publicMediaPlayback(source),
       proofManifestSource:readPublicAssetManifestSource(profile),
       pulse: typeof source.pulse === 'string' && /^\d{1,24}$/.test(source.pulse) ? source.pulse : null,livePulseSeed:publicMarketPulseSeed(source.livePulseSeed,source.pulse),valuationBinding:{itemId:id,assetId},
       sealedAt: sealedAt && Number.isFinite(Date.parse(sealedAt)) ? sealedAt : null,

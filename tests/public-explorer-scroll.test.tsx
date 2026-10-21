@@ -27,6 +27,7 @@ it('starts an asset at the top after its retained React view commits, then resto
  const root=createRoot(document.getElementById('public-explore-root')!);
  try{
   await act(async()=>root.render(<PublicExplorer/>));
+  expect(document.querySelector('.public-market-nav a[href="/explore/"]')).toBeNull();
   new Function('// All public guides'+readFileSync('public/learn/learn.js','utf8').split('// All public guides')[1])();
   const search=document.querySelector<HTMLInputElement>('[aria-label="Retained search"]')!;search.value='A saved search';
   position=1340;paints.length=0;
