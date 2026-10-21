@@ -12,6 +12,7 @@ import {readLedgerCopyValuation} from './ledger-card-copy';
 import {readWalletFundingAttribution,readWalletFundingLinks} from './ledger-wallet-fifo';
 import {readWalletFundingHistory} from './ledger-funding-history';
 import {readWalletProofCohorts} from './ledger-wallet-cohorts';
+import {readLedgerAssetTrade,ledgerAssetTradeSide} from './ledger-asset-trade';
 
 export type LedgerField = string | number | boolean | LedgerFields | LedgerField[];
 export interface LedgerFields { [key:string]:LedgerField; }
@@ -30,6 +31,9 @@ function identity(raw:unknown):LedgerFields {
 /** Selected public evidence only. Never retain arbitrary metadata or custody payloads. */
 export function readLedgerDetails(raw:unknown):LedgerFields {
  const source=object(raw),result=select(source,['sourceObservedAt','seq','actionScope','chakraDay','objectId','objectLabel','assetId','marketItemId','collectibleId','receizId','claimHash','noteId','sortKaiPulse','sortOrdinal','transactionLinkKind','fundingTransferId','ledgerEntryKind','reserveCreditKind']);
+ const tradeSide=ledgerAssetTradeSide({kind:String(source.actionKind??source.kind??''),details:result}),metadata=object(source.metadata);
+ const assetTrade=readLedgerAssetTrade(source.assetTrade??(/^market\.share\.(buy|sell)$/.test(String(source.actionKind??source.kind))?source.payload:tradeSide?{...metadata,side:metadata.side??tradeSide}:null));
+ if(assetTrade)result.assetTrade=assetTrade as unknown as LedgerFields;
  if(typeof source.proofHistoryArtifactDigest==='string'&&/^[a-f0-9]{64}$/.test(source.proofHistoryArtifactDigest))result.proofHistoryArtifactDigest=source.proofHistoryArtifactDigest;
  const proofHistory=ledgerProofHistoryFields(source);if(proofHistory)result.proofHistory=proofHistory;
  const causalLineage=ledgerCausalLineageFields(source);if(causalLineage)result.causalLineage=causalLineage;

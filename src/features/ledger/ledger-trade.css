@@ -1,0 +1,14 @@
+.ledger-trade-summary{display:block;color:#70839d;font-size:12px;line-height:1.55;margin-top:4px;overflow-wrap:anywhere}
+.ledger-trade-return{display:block;font-size:11px;line-height:1.55;font-variant-numeric:tabular-nums;white-space:normal}
+.ledger-trade-return.is-up{color:#17866d}.ledger-trade-return.is-down{color:#cf4b61}.ledger-trade-return.is-flat{color:#70839d}
+.ledger-trade-return-label{font-size:.88em}
+.ledger-trade-details{margin:22px 0;padding:20px 22px;border:1px solid #e1e7ef;border-radius:16px;background:#f7f9fc}
+.ledger-trade-details h4{font-size:15px;line-height:1.5;margin:0 0 15px;overflow-wrap:anywhere}
+.ledger-trade-details dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 26px}
+.ledger-trade-details dt{font-size:11px;color:#70839d;line-height:1.5}.ledger-trade-details dd{font-size:15px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;margin:4px 0 0}
+.ledger-trade-details dd .ledger-trade-return{font-size:14px}.ledger-trade-details p{color:#70839d;font-size:12px;line-height:1.6;margin:14px 0 0}
+.ledger-inspector .ledger-trade-details dl>div{display:block;min-width:0;padding:0}
+.ledger-inspector .ledger-trade-details dd{font-family:inherit;font-size:15px;line-height:1.5;color:#172e44;margin:4px 0 0}
+.ledger-inspector .ledger-trade-details h4{font-size:14px;line-height:1.5;letter-spacing:0;text-transform:none;color:#172e44;margin:0 0 15px}
+.public-ledger-event .ledger-trade-summary{font-size:11px}
+@media(max-width:600px){.ledger-trade-details{padding:17px}.ledger-trade-details dl{gap:15px 18px}.ledger-trade-details dd{font-size:14px}.ledger-trade-summary{font-size:11px}.public-ledger-event .ledger-trade-summary{font-size:10px}}

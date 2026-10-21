@@ -3,6 +3,7 @@ import { parsePublicMarket } from './public-market.ts';
 import { ledgerUsdCents, readLedgerValueOperands, type LedgerValueOperands } from './ledger-value';
 import {readLedgerDetails,type LedgerFields} from './ledger-inspection';
 import {mergeLedgerCausalProjection} from './ledger-causal-source';
+import {retainLedgerAssetTrade} from './ledger-asset-trade';
 
 export const PUBLIC_SOURCES = ['actions', 'wallet', 'graph', 'proofs'] as const;
 export const PUBLIC_NETWORK_INSPECTION_VERSION = 4;
@@ -63,7 +64,7 @@ export function parsePublicNetworkPage(source: PublicSource, input: unknown): Pu
 }
 export function mergePublicRecords(known: readonly PublicRecord[], incoming: readonly PublicRecord[]): PublicRecord[] {
   const records = new Map(known.map(item => [item.id, item])); for (const item of incoming) {
-    const previous=records.get(item.id);let merged=mergeTransferEvidence(previous,item);
+    const previous=records.get(item.id);let merged=retainLedgerAssetTrade(previous,mergeTransferEvidence(previous,item));
     if(previous?.authority==='account-source-projection'&&item.authority===previous.authority&&item.kind===previous.kind&&item.sourceId===previous.sourceId){
       const conflict=previous.accountFlowConflict||item.accountFlowConflict||previous.accountFlow&&item.accountFlow&&previous.accountFlow!==item.accountFlow;
       const flow=conflict?undefined:item.accountFlow??previous.accountFlow;

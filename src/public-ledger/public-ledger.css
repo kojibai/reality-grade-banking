@@ -16,3 +16,5 @@
 .public-ledger-table-heading,.public-ledger-row-line{grid-template-columns:minmax(0,1fr) 100px 150px 175px 91px}
 @media(max-width:1150px){.public-ledger-table-heading,.public-ledger-row-line{grid-template-columns:minmax(0,1fr) 85px 110px 145px 91px}}
 @media(max-width:800px){.public-ledger-table-heading,.public-ledger-row-line{grid-template-columns:minmax(0,1fr) 97px 80px}.public-ledger-receipts{gap:1px}.public-ledger-receipts>a,.public-ledger-receipts>button{width:25px}}
+
+.public-ledger-brand{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;flex:0 0 42px}.public-ledger-brand svg{width:36px;height:36px;display:block}

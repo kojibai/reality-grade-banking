@@ -1,5 +1,6 @@
 import { computeIntrinsicUnsigned, type SigilMetadataLite } from '@receiz/sdk/valuation';
 import { DEFAULT_ISSUANCE_POLICY, quotePhiForUsd } from './canonical-market-issuance';
+import {ledgerAssetTrade} from './ledger-asset-trade';
 import type { MarketCapSource, MarketPulseSeed, MarketValueRow } from './market-projection/source';
 import type { PublicRecord } from './public-network';
 import {prepareSportsCopyHistory,sportsCopyHistoryUsdAtPulse,type SportsCopyHistory} from './market-projection/interpolated-history';
@@ -169,6 +170,8 @@ function calculateLedgerValue(record: PublicRecord, index: LedgerValueIndex | nu
   const operands = readLedgerValueOperands(record.valueOperands), transfer = /transfer|send|payment_sent|payment_received/i.test(record.kind);
   const card = /(?:card|proof|original)[._-]transfer/i.test(record.kind);
   const eventPulse = record.pulse ?? (record.kaiUpulse ? String(BigInt(record.kaiUpulse) / 1_000_000n) : null);
+  const trade=ledgerAssetTrade(record);
+  if(trade?.settlementUsdCents!==undefined)return {amountUsdCents:trade.settlementUsdCents,basis:'payment',pulse:eventPulse,considerationUsdCents:null};
   if (operands.cardValueState === 'conflicting-recorded-snapshots') return { amountUsdCents: null, basis: 'unavailable', pulse: eventPulse, considerationUsdCents: null, gap: 'The source carries conflicting card value snapshots.' };
   if (transfer && record.pulse && record.kaiUpulse && BigInt(record.pulse) !== BigInt(record.kaiUpulse) / 1_000_000n) return { amountUsdCents: null, basis: 'unavailable', pulse: null, considerationUsdCents: null, gap: 'The source pulse and micro-pulse disagree.' };
   const snapshotAmountIsCard = /_card_value_snapshot$/.test(operands.fundingRule ?? '');

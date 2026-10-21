@@ -20,6 +20,8 @@ import {retainedProofInspection,subscribeProofInspections} from '../../receiz/pr
 import {ledgerInspectedProvenance} from '../../receiz/ledger-inspected-provenance';
 import {ledgerFundingTrace} from '../../receiz/ledger-funding-trace';
 import './ledger-inspector.css';
+import {ledgerAssetTrade} from '../../receiz/ledger-asset-trade';
+import {LedgerTradeDetails} from './LedgerTradeDetails';
 
 const labels:Record<string,string>={kaiUpulse:'☤µKAI',upulse:'☤µKAI',pulse:'☤KAI',valuePulse:'Value at ☤KAI',amountPhiMicro:'Phi · exact micro-units',usdPerPhiMicrocents:'USD rate · exact microcents / Phi',amountUsdCents:'Recorded amount · cents',considerationUsdCents:'Consideration · cents',cardValueUsdCents:'Card value at transfer · cents',proofValueUsdCents:'Carried value · cents',settledUsdCents:'Reserve component · cents',phiUsdCents:'Settlement component · cents',prevHash:'Previous entry hash',entryHash:'Entry hash',proofBundle:'Proof evidence',proofCapsule:'Proof coordinate',seq:'Sequence',receiz:'Sealed moment',pv:'Intrinsic Phi',live:'Quoted Phi',originalUrl:'Original file',actorUserId:'Actor public identity',subjectUserId:'Subject public identity',sortKaiPulse:'Source valuation ☤KAI',marketAssetChart:'Carried market quote'};
 export function ledgerFieldLabel(key:string){return labels[key]??key.replace(/([a-z\d])([A-Z])/g,'$1 $2').replace(/[_-]/g,' ').replace(/^./,c=>c.toUpperCase());}
@@ -49,6 +51,7 @@ export function LedgerInspector({record,value,currentValue,valuation,relations,v
   {record.detail&&record.detail!==record.title&&(record.source==='proofs'?<ProofCaption caption={record.detail}/>:<p className="ledger-inspector-description">{record.detail}</p>)}
   <div className="ledger-inspector-values"><div><span>{paymentRole==='execution'?'Referenced transfer amount':value.basis==='unavailable'?'No amount carried':ledgerValueLabel(value)}</span><LedgerValue value={value}/>{value.amountUsdCents!==null&&value.pulse&&<small>Value at ☤KAI {value.pulse}</small>}</div>{value.considerationUsdCents!==null&&<div><span>Consideration</span><strong>{formatMoney(value.considerationUsdCents)}</strong><small>Recorded payment, separate from asset value.</small></div>}{currentValue&&currentValue.amountUsdCents!==null&&<div><span>{currentValue.basis==='intrinsic-model'||currentValue.basis==='live-model'?'Current live value':'Latest source quote'}</span><LedgerValue value={currentValue}/><small>Separate from the value at this event.</small></div>}<LedgerValueChange value={value} currentValue={currentValue}/></div>
   <LedgerAssetChart record={record} valueSource={valueSource}/>
+  <LedgerTradeDetails trade={ledgerAssetTrade(record)}/>
   {!receiptMode&&<LedgerFundingTrace record={record} relations={relations}/>}
   {typeof details.publicNote==='string'&&<section className="ledger-public-note"><h4>Payment note</h4><p>{details.publicNote}</p></section>}
   {original&&record.evidence.artifactDigest&&safeReceizPublicUrl(original,"original")&&<ProofMedia key={[record.evidence.artifactDigest,original,reading??''].join(':')} title={record.title} source={{kind:"public",url:original,digest:record.evidence.artifactDigest,...(reading?{postUrl:reading,hasLongForm:details.hasLongForm===true}:{})}}/>}
