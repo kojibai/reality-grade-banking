@@ -1,5 +1,6 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Search, ArrowLeftRight, RefreshCw } from 'lucide-react';
+import {flushSync} from 'react-dom';
 import { BankContext, type UIAction } from '../../core/useBank';
 import { Sheet } from '../../components/Sheet';
 import { usePublicMarket } from '../../receiz/usePublicMarket';
@@ -33,7 +34,9 @@ function MarketView({ mode='market',active = true, sourceActive=active, onAction
   }, [active, assets.length, shown]);
   const localPricing=catalog?.items.some(item=>item.localValuationPulse!==undefined);
   const sourceLabel = !catalog ? status === 'loading' ? 'Connecting to the public Market…' : 'Public Market unavailable' : localPricing ? `Live valuation${status!=='live'?' · retained collection':''}` : status !== 'live' ? 'Public Market · cached collection' : quoteStatus === 'loading' ? 'Public Market · updating quotes' : quoteStatus === 'stale' ? 'Public Market · cached quotes' : 'Live public Market';
-  useEffect(() => { const back = () => {if(explorer ? /^\/(?:explor(?:e|er)(?:\/[a-z]+)?|market-cap)\/?$/.test(location.pathname) : location.pathname==='/')setSelectedId(selectedObject(prefix));}; addEventListener('popstate', back);addEventListener('receiz-bank:surface',back); return () => {removeEventListener('popstate', back);removeEventListener('receiz-bank:surface',back);}; }, [prefix,explorer]);
+  // Finish closing a retained asset sheet before the public router restores
+  // the feed scroll; its document unlock must not overwrite that position.
+  useEffect(() => { const back = () => {if(explorer ? /^\/(?:explor(?:e|er)(?:\/[a-z]+)?|market-cap)\/?$/.test(location.pathname) : location.pathname==='/')flushSync(()=>setSelectedId(selectedObject(prefix)));}; addEventListener('popstate', back);addEventListener('receiz-bank:surface',back); return () => {removeEventListener('popstate', back);removeEventListener('receiz-bank:surface',back);}; }, [prefix,explorer]);
   useEffect(() => { setShown(50); }, [query, filter]);
   const view = (item: PublicMarketItem) => { history.pushState({ ...history.state, panel: 'market', publicObjectId: item.id }, '', `${prefix}${encodeURIComponent(item.id)}`); setSelectedId(item.id); };
   const close = () => { if (history.state?.publicObjectId) history.back(); else { history.replaceState({ panel: 'market', sheet: null }, '', explorer?location.pathname+location.search:'#market'); setSelectedId(null); } };
