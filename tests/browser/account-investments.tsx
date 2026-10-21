@@ -1,0 +1,10 @@
+import {createRoot} from 'react-dom/client';
+import {BalanceChart} from '../../src/features/account/BalanceChart';
+import {AccountInvestmentValue} from '../../src/features/account/AccountInvestmentValue';
+import {parseMarketPortfolio} from '../../src/receiz/market-portfolio';
+import {portfolioFixture,portfolioUid} from '../fixtures/market-portfolio';
+import '../../src/styles/tokens.css';
+import '../../src/styles/app.css';
+import '../../src/styles/features.css';
+const portfolio=parseMarketPortfolio(portfolioFixture(),portfolioUid);
+createRoot(document.getElementById('root')!).render(<main style={{maxWidth:550,margin:'24px auto',padding:20}}><div style={{color:'var(--navy)',fontSize:40,fontWeight:700}}><span style={{fontSize:15,fontWeight:400,color:'var(--muted)',display:'block'}}>Balance</span>$1,500.00</div><BalanceChart wallet={null} observedAt={null} history={[{userId:'fixture-owner',kaiUPulse:'1',at:'2026-10-20T10:00:00Z',totalUsdCents:'120000',settlementUsdCents:'90000',reserveUsdCents:'30000'},{userId:'fixture-owner',kaiUPulse:'2',at:'2026-10-21T10:00:00Z',totalUsdCents:'150000',settlementUsdCents:'110000',reserveUsdCents:'40000'}]}/><AccountInvestmentValue portfolio={portfolio} items={[]} ready onOpen={()=>{document.body.dataset.opened='investments';}}/><AccountInvestmentValue portfolio={null} items={[]} ready onOpen={()=>{}}/><AccountInvestmentValue portfolio={{...portfolio,positions:portfolio.positions.map(p=>({...p,lastPriceUsdCents:'100'}))}} items={[]} ready onOpen={()=>{}}/></main>);
