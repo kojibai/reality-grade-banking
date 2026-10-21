@@ -5,6 +5,7 @@ import {readPublicAssetManifestSource,type PublicAssetManifestRow,type PublicAss
 import {publicAssetTitle} from './asset-title.js';
 import {publicMediaPlayback,type PublicPlayback} from './public-asset-embed.js';
 import {publicDocumentUrl} from './public-document.js';
+import {profileAvatarUrl} from './profile-avatar.js';
 /** Public discovery and quotes are display projections; they grant no ownership. */
 export interface PublicMarketItem {
   id: string; assetId: string; title: string; summary: string; category: 'proof' | 'sports'; circulationCount?: number; pricedCount?: number; capitalizationUsdCents?: string | null;
@@ -124,6 +125,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
       pulse: typeof source.pulse === 'string' && /^\d{1,24}$/.test(source.pulse) ? source.pulse : null,livePulseSeed:publicMarketPulseSeed(source.livePulseSeed,source.pulse),valuationBinding:{itemId:id,assetId},
       sealedAt: sealedAt && Number.isFinite(Date.parse(sealedAt)) ? sealedAt : null,
       ownerUsername, ownerDisplayName: text(source.ownerDisplayName, 128), ownerProfileUrl: ownerUsername ? `https://receiz.com/${encodeURIComponent(ownerUsername)}` : null,
+      ...(source.ownerAvatarUrl!==undefined?{ownerAvatarUrl:profileAvatarUrl(source.ownerAvatarUrl)}:{}),
       priceUsd: nonnegative(source.valueUsd), changePct: null, chart: [], authority: 'projection-only', canTrade: false });
   }
   const catalog: PublicMarketCatalog = { items, complete: meta.version === 1 && meta.scope === 'whole-market-visible-showcase' && meta.source === 'canonical-complete' && meta.isComplete === true && meta.itemCount === items.length,

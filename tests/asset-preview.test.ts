@@ -5,6 +5,11 @@ import {parsePublicMarket} from '../src/receiz/public-market';
 const item=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:source',receizId:'source',title:'A moment $& <script>one</script>',summary:'The complete original.',ownerUsername:'artist',profileOriginal:{media:{kind:'image'}}}]}}).items[0];
 const html='<html><head><title>Explore</title><meta name="description" content="Explore"><link rel="canonical" href="https://bankeiz.com/explore/"></head><body><div id="public-explore-root" data-public-runtime="explore"><main>Explore fallback</main></div><script id="receiz-navigation" type="application/json">{"pages":{}}</script></body></html>';
 const deps=()=>({page:vi.fn(async()=>html),item:vi.fn(async()=>item),image:vi.fn(async()=>new Uint8Array([1,2]))});
+it('starts the carried owner portrait in cold HTML without waiting for JavaScript or another profile read',async()=>{
+ const f=deps();f.item.mockResolvedValue({...item,ownerAvatarUrl:'https://receiz.com/artwork/artist.png'});
+ const body=await(await handleAssetPreview(new Request('https://bankeiz.com'+assetPagePath(item.id)),f)).text();
+ expect(body).toContain('<link rel="preload" as="image" href="https://receiz.com/artwork/artist.png"');expect(f.item).toHaveBeenCalledOnce();
+});
 it('starts the actual public image with matching anonymous CORS for preview and canonical verification',async()=>{
  const artwork='https://receiz.com/api/proof-material/packages/'+'a'.repeat(64)+'/artifact',f=deps();f.item.mockResolvedValue({...item,artworkUrl:artwork});
  const body=await(await handleAssetPreview(new Request('https://bankeiz.com'+assetPagePath(item.id)),f)).text();

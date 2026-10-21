@@ -5,6 +5,13 @@ const original = (i: number, extra = {}) => ({ id: `profile:alice:${i}`, receizI
 const membership = (items: unknown[]) => ({ ok: true, transport: { generatedAt: '2026-10-13T12:00:00Z', publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: items.length, revision: 'r1' }, publicOriginals: items } });
 
 describe('Receiz public Market catalog', () => {
+  it('carries the public owner portrait through discovery and rejects unsafe portrait URLs',()=>{
+    const portrait='https://receiz.com/artwork/alice.png';
+    const read=(extra:Record<string,unknown>)=>parsePublicMarket(membership([original(1,{ownerUsername:'alice',...extra})])).items[0];
+    expect(read({ownerAvatarUrl:portrait}).ownerAvatarUrl).toBe(portrait);
+    expect(read({}).ownerAvatarUrl).toBeUndefined();
+    for(const ownerAvatarUrl of [null,'javascript:alert(1)','//private.example/avatar.png'])expect(read({ownerAvatarUrl}).ownerAvatarUrl).toBeNull();
+  });
   it('shows the carried public image before a receipt, including compact retained discovery',()=>{
     const artifact='https://receiz.com/api/proof-material/packages/'+'c'.repeat(64)+'/artifact',digest='d'.repeat(64),receipt='/api/receiz/download?a=abcd1234&ms=1791892800000&p=14610000&c=AB12CD34&name=record.png';
     const media={kind:'image',src:artifact,originalDownloadMime:'image/png',originalDownloadSha256Hex:digest,material:{originalArtifactSrc:artifact,sealedArtifactSha256Hex:digest},receiptDownloadSrc:receipt};

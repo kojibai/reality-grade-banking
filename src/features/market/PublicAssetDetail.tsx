@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useState,useSyncExternalStore} from 'react';
 import { ExternalLink, FileCheck2 } from 'lucide-react';
 import { AssetMark } from '../../components/AssetMark';
 import {PublicAssetChart} from './PublicAssetChart';
@@ -12,11 +12,14 @@ import {AssetPageLinks} from '../../components/AssetPageLinks';
 import {AssetObject} from '../media/AssetObject';
 import {AssetProofBack} from '../media/AssetProofBack';
 import {marketContentLabel} from '../../receiz/market-categories';
-import {profilePagePath,profileUsername} from '../../receiz/public-profile';
+import {preparePublicProfile,profilePagePath,profileUsername,retainedPublicProfile,subscribePublicProfiles} from '../../receiz/public-profile';
 import {AccountProfileLink} from '../../components/AccountProfileLink';
 import {ProfileAvatar} from '../../components/ProfileAvatar';
 
 export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=false }: { item: PublicMarketItem; onTrade?: (mode: 'buy' | 'sell', digest: string) => void;readOnly?:boolean;standalone?:boolean }) {
+  const owner=profileUsername(item.ownerUsername),profile=useSyncExternalStore(subscribePublicProfiles,()=>owner?retainedPublicProfile(owner):null,()=>null);
+  useEffect(()=>{if(standalone&&owner)void preparePublicProfile(owner).catch(()=>{});},[standalone,owner]);
+  const ownerAvatar=item.ownerAvatarUrl===undefined?profile?.avatarUrl:item.ownerAvatarUrl;
   const [publicDetails,setPublicDetails]=useState<{source:string;details:PublicCardDetails}|null>(null);
   useEffect(()=>{if(item.category!=='sports'||!item.sourceUrl||item.sealedCopies?.length)return;const controller=new AbortController();void fetchPublicCardDetails(item,controller.signal).then(details=>{if(!controller.signal.aborted)setPublicDetails({source:item.sourceUrl!,details});}).catch(()=>{});return()=>controller.abort();},[item.category,item.assetId,item.sourceUrl,item.sealedCopies]);
   const canReviewTrade=!!onTrade&&!item.id.startsWith('sports:');
@@ -27,7 +30,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
   const media=item.originalUrl&&item.originalDigest?<ProofMedia publicDocument={item.documentUrl?{url:item.documentUrl,assetId:item.assetId}:null} publicVideo={item.mediaKind==='video'&&item.playback?{...item.playback,assetId:item.assetId}:null} artworkUrl={item.artworkUrl} publicImageUrl={publicAssetImagePreviewUrl(item)} autoOpen={standalone} key={[item.originalDigest,item.originalUrl,item.readingUrl??item.verifyUrl].join(':')} title={item.title} source={{kind:"public",url:item.originalUrl,digest:item.originalDigest,...(item.verifyUrl?{postUrl:item.readingUrl??item.verifyUrl,hasLongForm:item.hasLongForm}:{})}}/>:null;
   const object=<AssetObject key={item.id} label={item.title} front={media??(item.mediaKind==='moment'?<div className="public-collectible-moment"><MomentCard item={item}/></div>:<div className="public-collectible-face"><span>{marketContentLabel(item)}</span><h2>{item.title}</h2><p>{item.summary}</p><code>{item.assetId}</code><small>Public source presentation</small></div>)} renderBack={()=> <AssetProofBack item={item}/>}/>;
   return <><div className="asset-detail-heading"><AssetMark kind="proof" /><div><h1>{item.title}</h1><p>{standalone?'Source. Ownership. Continuity.':'Public source'}</p></div></div>
-    {standalone&&profileUsername(item.ownerUsername)&&<a className="asset-profile-byline" href={profilePagePath(item.ownerUsername!)}><ProfileAvatar src={item.ownerAvatarUrl} name={item.ownerDisplayName??item.ownerUsername!} eager/><span>Owner<span>@{item.ownerUsername}</span></span><ExternalLink size={13}/></a>}
+    {standalone&&owner&&<a className="asset-profile-byline" href={profilePagePath(owner)}><ProfileAvatar src={ownerAvatar} name={item.ownerDisplayName??owner} eager/><span>Owner<span>@{owner}</span></span><ExternalLink size={13}/></a>}
     {!standalone&&<AssetPageLinks item={item}/>}
     {standalone&&<div className="public-asset-media">{object}</div>}
     <div className="asset-price">{formatPublicPrice(price)}<span>Market Value</span></div>
