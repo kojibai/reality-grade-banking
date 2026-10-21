@@ -2,8 +2,8 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { BANK_APPLICATION_ID, BANK_READ_SCOPES, BANK_CARD_SCOPES, BANK_NATIVE_SCOPES } from '../src/receiz/config';
 import { openCanonicalIdentity } from '../src/receiz/native-identity';
 // Protocol-mechanics fixtures only. They are not canonical SDK admission/live-user evidence.
-const protocol = vi.hoisted(() => ({ grant: vi.fn(), scopes: vi.fn(), wallet: vi.fn(), continueId: vi.fn(), client: vi.fn(), qualify: vi.fn(), pendingCard: null as unknown, checkoutSession: vi.fn() }));
-vi.mock('../src/receiz/identity-vault', async importOriginal => ({ ...await importOriginal<typeof import('../src/receiz/identity-vault')>(), loadCardOperation: async () => protocol.pendingCard, loadCardOperations: async () => protocol.pendingCard ? [protocol.pendingCard] : [] }));
+const protocol = vi.hoisted(() => ({ grant: vi.fn(), scopes: vi.fn(), wallet: vi.fn(), continueId: vi.fn(), client: vi.fn(), qualify: vi.fn(), pendingCard: null as unknown, pendingSend: null as any, saveCard:vi.fn(), checkoutSession: vi.fn() }));
+vi.mock('../src/receiz/identity-vault', async importOriginal => ({ ...await importOriginal<typeof import('../src/receiz/identity-vault')>(), loadCardOperation: async () => protocol.pendingCard, loadCardOperations: async () => protocol.pendingCard ? [protocol.pendingCard] : [],loadWalletSendState:async()=>protocol.pendingSend,saveCardOperation:protocol.saveCard }));
 vi.mock('../src/receiz/client', () => ({ loadReceiz: async () => ({
   verifyReceizArtifact: async () => ({ status: 'verified-artifact' }), createReceizArtifactAdmissionEngine: () => async () => ({ verdict: 'canonical-identity' }), isSdkIssuedReceizArtifactAdmission: () => true,
   readReceizIdentityPublicBinding: async () => ({ keyId: 'fixture-key', artifactSha256: 'a'.repeat(64) }),
@@ -16,7 +16,7 @@ beforeEach(() => {
   protocol.grant.mockReset().mockResolvedValue({ applicationId: BANK_APPLICATION_ID, keyId: 'fixture-key', artifactDigest: 'a'.repeat(64), grantedScopes: [...BANK_READ_SCOPES], accessToken: 'local-fixture', expiresAtKai: 200 });
   protocol.scopes.mockReset().mockResolvedValue([...BANK_READ_SCOPES]); protocol.wallet.mockReset().mockResolvedValue({ ok: true, wallet: { userId: 'fixture-owner', balanceUsd: '3.00', balancePhiMicro: '2', valueStates: { settledBalanceUsdCents: '100', ecosystemBalanceUsdCents: '200' }, sync: {}, rollup: {} } });
   protocol.qualify.mockReset().mockRejectedValue(new Error('Native scope missing'));
-  protocol.pendingCard = null; protocol.checkoutSession.mockReset();
+  protocol.pendingCard = null; protocol.pendingSend=null;protocol.saveCard.mockReset(); protocol.checkoutSession.mockReset();
   protocol.client.mockReset().mockImplementation((options: { accessToken?: string }) => options.accessToken ? { auth: { grantedScopes: protocol.scopes }, connect: { wallet: protocol.wallet, checkoutSession: protocol.checkoutSession }, runtime: { qualifyV124: protocol.qualify } } : { identity: { continueReceizId: protocol.continueId, signLoginProof: async () => ({}), exchangeProofAuthority: protocol.grant } });
 });
 it('checks the original card registration and then reads the upgraded account under its current registration', async () => {
@@ -99,4 +99,13 @@ it('does not borrow a pending read grant for an approved native-scope connection
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture-phrase','fixture.receiz',true);
  try{const results=await Promise.allSettled([identity.readWallet(),identity.nativeReadiness(true)]);expect(results[0].status).toBe('fulfilled');expect(protocol.grant).toHaveBeenCalledTimes(2);expect(protocol.grant.mock.calls.map(([value])=>value.scopes)).toEqual([BANK_READ_SCOPES,BANK_NATIVE_SCOPES]);}
  finally{identity.dispose();}
+});
+it('keeps a credited Send checkout when its wallet ready-write was interrupted before retaining the session ID',async()=>{
+ const nonce='10000000-0000-4000-8000-000000000001',checkout={sessionId:'cs_test_lost_ready123',clientSecret:'synthetic-only',amountUsdCents:'1000'};
+ protocol.pendingCard={schema:'receiz.bank.card-operation.v1',applicationId:BANK_APPLICATION_ID,stage:'ready',operationId:nonce,amountUsdCents:'1000',checkout};
+ protocol.pendingSend={schema:'bank.wallet-sends.v1',authority:'wallet-observation',history:[],current:{status:'funding',body:{clientNonce:nonce},review:{amountUsdCents:'1000'},funding:{stage:'creating',amountUsdCents:'1000'}}};
+ protocol.grant.mockImplementation(async({applicationId,scopes}:{applicationId:string;scopes:string[]})=>({applicationId,keyId:'fixture-key',artifactDigest:'a'.repeat(64),grantedScopes:scopes,accessToken:'local-fixture',expiresAtKai:200}));protocol.scopes.mockResolvedValue([...BANK_CARD_SCOPES]);
+ protocol.checkoutSession.mockResolvedValue({ok:true,session:{sessionId:checkout.sessionId,currency:'usd',amountUsdCents:'1000',isPaid:true,state:'paid'},settlement:{userId:'fixture-owner',amountUsdCents:'1000',amountPhiMicro:'10'}});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture-phrase','fixture.receiz',true);
+ try{expect((await identity.checkCardDeposit(checkout)).status).toBe('credited');expect(protocol.saveCard).not.toHaveBeenCalled();}finally{identity.dispose();}
 });

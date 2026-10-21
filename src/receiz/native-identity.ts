@@ -898,13 +898,19 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     return page;
   }
   let ledgerProofBasis:string|null=null,ledgerProofPending:Promise<void>|undefined;
-  async function beginCardDeposit(amount: string, approved: boolean) {
+  async function beginCardDeposit(amount: string, approved: boolean, paymentReference?:string) {
     if (!approved) throw new Error('Approve this card deposit before continuing.');
+    const exact = parseDepositDollars(amount);
+    if(paymentReference){
+      if(!/^[a-f0-9-]{36}$/i.test(paymentReference))throw Error('BANK_WALLET_FUNDING_REFERENCE_INVALID');
+      const retained=(await loadCardOperations(binding)).map(readCardOperation).find(value=>value?.operationId===paymentReference);
+      if(retained){if(retained.amountUsdCents!==exact.amountUsdCents||retained.applicationId!==BANK_APPLICATION_ID)throw Error('BANK_WALLET_FUNDING_MISMATCH');if(retained.stage==='ready')return retained.checkout!;throw Error('Your saved checkout is still being confirmed. Keep this device and check again.');}
+    }
     const previous = readCardOperation(await loadCardOperation(binding));
     if (previous?.stage === 'creating') throw new Error(`Your previous checkout’s result is unknown. Keep its reference and resolve it before starting another: ${previous.operationId}`);
-    const exact = parseDepositDollars(amount), current = await connectClient(BANK_CARD_SCOPES, BANK_CARD_CONSENT);
-    const returnUrl = `${location.origin}/?cardReturn=1&session_id={CHECKOUT_SESSION_ID}`;
-    const operation = { schema: 'receiz.bank.card-operation.v1', applicationId: BANK_APPLICATION_ID, stage: 'creating', operationId: crypto.randomUUID(), amountUsdCents: exact.amountUsdCents };
+    const current = await connectClient(BANK_CARD_SCOPES, BANK_CARD_CONSENT);
+    const returnUrl = `${location.origin}/?cardReturn=1${paymentReference?'&sendReturn=1':''}&session_id={CHECKOUT_SESSION_ID}`;
+    const operation = { schema: 'receiz.bank.card-operation.v1', applicationId: BANK_APPLICATION_ID, stage: 'creating', operationId: paymentReference??crypto.randomUUID(), amountUsdCents: exact.amountUsdCents };
     await saveCardOperation(binding, operation, true, previous?.operationId, Boolean(previous));
     // A known checkout is retained for explicit resumption; a new reviewed amount
     // is a distinct user intent. A timeout or malformed reply retains this attempt. Never create another
@@ -924,12 +930,18 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     // known checkout sessions that remain safe to inspect or explicitly resume.
     return operations.filter(value => value.stage === 'ready').map(value => value.checkout!);
   }
-  async function checkCardDeposit(checkout: CardCheckout) {
+  async function checkCardDeposit(checkout: CardCheckout, beforeCredit?:()=>Promise<void>) {
     const operation = (await loadCardOperations(binding)).map(readCardOperation).find(value => value?.checkout?.sessionId === checkout.sessionId && value.checkout.amountUsdCents === checkout.amountUsdCents);
     if (!operation?.checkout) throw new Error('Open your actual unfinished deposit before checking it.');
     const current = await connectClient(BANK_CARD_SCOPES, BANK_CARD_CONSENT, operation.applicationId);
     const status = parseCardDepositStatus(await current.connect.checkoutSession({ sessionId: checkout.sessionId }), checkout.sessionId, checkout.amountUsdCents, accountUid!);
-    if (['credited', 'expired', 'unpaid'].includes(status.status)) await saveCardOperation(binding, null, false, operation.operationId);
+    if(status.status==='credited'&&beforeCredit)await beforeCredit();
+    // A generic deposit-return screen cannot discard the paid session before
+    // the saved Send approval has retained its credit and continued payment.
+    const send=['credited','expired','unpaid'].includes(status.status)?await loadWalletSendState(binding) as import('./wallet-send').WalletSendState|null:null;
+    const matchingSend=send?.current.status==='funding'&&send.current.review.amountUsdCents===checkout.amountUsdCents&&(send.current.funding?.checkout?.sessionId===checkout.sessionId||send.current.body.clientNonce===operation.operationId);
+    const retainedForSend=matchingSend&&(!beforeCredit||send.current.funding?.stage!=='credited');
+    if (['credited', 'expired', 'unpaid'].includes(status.status)&&!retainedForSend) await saveCardOperation(binding, null, false, operation.operationId);
     return status;
   }
   async function projectOwnedSource(exact:Uint8Array,filename:string,verified?:import('@receiz/sdk').ReceizOpenedArtifact){
@@ -1076,19 +1088,19 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       || [...state.history, state.current].some(checkpoint => !checkpoint || !['prepared', 'unknown', 'committed', 'zero-write'].includes(String(checkpoint.state)))) throw Error('BANK_EXECUTION_CHECKPOINT_INVALID');
     return [...state.history, state.current].some(checkpoint => checkpoint.state === 'prepared' || checkpoint.state === 'unknown');
   }
-  async function assertNoOtherPending(reconcileNotes=true) {
+  async function assertNoOtherPending(reconcileNotes=true,continuingFundingNonce?:string) {
     noteOpen();
     const legacy = await deviceBankExecutionStore(binding).load();
     if (legacy && ['prepared', 'unknown'].includes(legacy.state)) throw Error('BANK_EXECUTION_PENDING');
     const [payments, assets, sends, market] = await Promise.all([loadNativePaymentState(binding), loadNativeAssetState(binding),loadWalletSendState(binding),loadMarketTradeState(binding)]);
     noteOpen();
-    if (hasPendingNative(payments, 'payments') || hasPendingNative(assets, 'assets') || hasPendingWalletSend(sends) || await hasPendingMarketTrade(market)) throw Error('BANK_EXECUTION_PENDING');
+    if (hasPendingNative(payments, 'payments') || hasPendingNative(assets, 'assets') || hasPendingWalletSend(sends,continuingFundingNonce) || await hasPendingMarketTrade(market)) throw Error('BANK_EXECUTION_PENDING');
     if(reconcileNotes)await reconcileReceivedNotesLocked();
   }
-  function hasPendingWalletSend(raw:unknown):boolean {
+  function hasPendingWalletSend(raw:unknown,continuingFundingNonce?:string):boolean {
     if(raw==null)return false;const s=raw as import('./wallet-send').WalletSendState;
-    if(s.schema!=='bank.wallet-sends.v1'||s.authority!=='wallet-observation'||!s.current||!Array.isArray(s.history)||s.history.length>1000||[...s.history,s.current].some(c=>!c||!['unknown','recorded','not-sent'].includes(c.status)))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
-    return [...s.history,s.current].some(c=>c.status==='unknown');
+    if(s.schema!=='bank.wallet-sends.v1'||s.authority!=='wallet-observation'||!s.current||!Array.isArray(s.history)||s.history.length>1000||[...s.history,s.current].some(c=>!c||!['unknown','recorded','not-sent','funding'].includes(c.status)))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
+    return [...s.history,s.current].some(c=>c.status==='unknown'||c.status==='funding'&&!(c===s.current&&continuingFundingNonce&&c.body?.clientNonce===continuingFundingNonce));
   }
   async function hasPendingMarketTrade(raw:unknown):Promise<boolean>{
     if(raw==null)return false;const s=raw as import('./market-trade').MarketTradeState;
@@ -1107,10 +1119,11 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       try{if(response&&knownWallet?.walletScope!=='native-full'&&!hasLocalWalletHead()&&(!knownWallet||!isWalletQuoteHeld(knownWallet)))await adoptConnectedWalletResponse(response,uid,walletRevision);}
       finally{if(!lifetime.signal.aborted){walletRevision++;dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:binding.artifactSha256,accountUid:uid}}));}}
     },
-    assertNoOtherPending:async()=>{if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');await cancelUnsentNotesLocked();await assertNoOtherPending();if(await(await offlineNotes()).pending())throw Error('BANK_NOTE_ATTEMPT_PENDING');await assertWalletSendCustody(binding);if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},
+    assertNoOtherPending:async continuingFundingNonce=>{if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');await cancelUnsentNotesLocked();await assertNoOtherPending(true,continuingFundingNonce);if(await(await offlineNotes()).pending())throw Error('BANK_NOTE_ATTEMPT_PENDING');await assertWalletSendCustody(binding);if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},
     store:{read:()=>loadWalletSendState(binding),write:(next,previous)=>saveWalletSendState(binding,next,previous)},
     connect:async readOnly=>{const connected=await connectClient(readOnly?BANK_READ_SCOPES:BANK_WALLET_SEND_SCOPES,readOnly?BANK_READ_CONSENT:BANK_WALLET_SEND_CONSENT);noteOpen();const account=clientAccounts.get(connected);if(!account)throw Error('BANK_WALLET_IDENTITY_CHANGED');return{client:connected,accountUid:account.accountUid};},
     lock:async operation=>withAccountExecutionLock(async()=>await navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},operation)),
+    funding:{begin:(amount,referenceId)=>beginCardDeposit(amount,true,referenceId),check:(checkout,beforeCredit)=>checkCardDeposit(checkout,beforeCredit)},
   })).catch(error=>{walletSendPromise=undefined;throw error;});
   let portfolioPromise:Promise<MarketPortfolioClient>|undefined,portfolioView:MarketPortfolio|null=null,portfolioSeedUid:string|null=null,portfolioStored:unknown=savedPortfolio;
   const knownMarketPortfolio=()=>{

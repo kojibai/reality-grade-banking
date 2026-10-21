@@ -6,6 +6,7 @@ import {bankOperationError,bankOperationFailureDetails} from '../../receiz/bank-
 import {BANK_WALLET_SEND_CONSENT} from '../../receiz/config';
 import {identityRecordCopy} from '../../content/identity-record-copy.mjs';
 import {formatMoney,formatUnits} from '../../core/money';
+import {ReceizCardCheckout} from '../deposit/ReceizCardCheckout';
 
 export function WalletSendRecovery({identity,onRefresh=()=>{}}:{identity:OpenIdentity;onRefresh?:()=>void}){
  const [outcome,setOutcome]=useState<WalletSendOutcome|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),generation=useRef(0),running=useRef(false);
@@ -18,6 +19,7 @@ export function WalletSendRecovery({identity,onRefresh=()=>{}}:{identity:OpenIde
   finally{if(ticket===generation.current){running.current=false;setBusy(false);}}
  }
  if(!outcome&&!error)return null;
+ if(outcome?.status==='funding')return <details className="identity-import"><summary>Pending payment</summary><p className="body-copy small-copy">Complete your card payment to send {formatMoney(outcome.amountUsdCents)} to {outcome.recipientLabel}.</p><a className="secondary-button" href="/#account/send">Resume payment</a></details>;
  return <details className="identity-import"><summary>Wallet payment record</summary>
   {outcome&&<><p className="body-copy small-copy" role="status">{outcome.status==='recorded'?'Wallet recorded this payment. Its complete response and original transaction record are saved on this device.':outcome.status==='not-sent'?'Wallet refused this request before a payment was submitted.':'The payment result is not confirmed. Check the saved reference before another payment.'}</p><code className="proof-coordinate">{outcome.clientNonce}</code>
   {outcome.status==='unknown'&&<><p className="body-copy small-copy">This reads your original payment reference. It does not submit or repeat the payment.</p><button className="secondary-button" disabled={busy} onClick={()=>void act('read')}>{busy?'Checking…':'Check payment outcome'}</button></>}
@@ -31,7 +33,7 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children}
  const [failure,setFailure]=useState<ReturnType<typeof bankOperationFailureDetails>|null>(null),api=useRef<WalletSend|null>(null),held=useRef<WalletSendReview|null>(null),running=useRef(false),generation=useRef(0);
  useEffect(()=>{const ticket=++generation.current;running.current=false;setReady(false);setBusy(false);setReview(null);setOutcome(null);setApproved(false);setError('');setFailure(null);
   if(!identity?.walletSend){setReady(true);return;}
-  void identity.walletSend().then(async next=>{const pending=await next.status();if(ticket===generation.current){api.current=next;setOutcome(pending?.status==='unknown'?pending:null);setReady(true);}}).catch(()=>{if(ticket===generation.current){setError('Saved payment details could not be opened. Keep this device and try again.');}});
+  void identity.walletSend().then(async next=>{let pending=await next.status();if(ticket!==generation.current)return;api.current=next;const resumingFunding=pending?.status==='funding';if(resumingFunding){setOutcome(pending);setBusy(true);try{pending=await next.resumeFunding();}finally{if(ticket===generation.current)setBusy(false);}}if(ticket===generation.current){setOutcome(resumingFunding?pending:pending?.status==='unknown'?pending:null);setReady(true);if(resumingFunding&&pending?.status==='recorded')onRefresh();}}).catch(()=>{if(ticket===generation.current){setReady(true);setError('Saved payment details could not be opened. Keep this device and try again.');}});
   return()=>{generation.current++;if(held.current)api.current?.discard(held.current);held.current=null;api.current=null;};
  },[identity,inputKey]);
  const report=(cause:unknown)=>{setError(bankOperationError(cause));setFailure(bankOperationFailureDetails(cause));};
@@ -44,10 +46,14 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children}
   catch(cause){if(ticket===generation.current)report(cause);}finally{if(ticket===generation.current){running.current=false;setBusy(false);}}
  }
  async function check(){if(running.current||!api.current)return;const ticket=generation.current;running.current=true;setBusy(true);setError('');
-  try{const next=await api.current.resolve(true);if(ticket===generation.current){setOutcome(next);if(next?.status==='recorded')onRefresh();}}
+  try{const next=outcome?.status==='funding'?await api.current.resumeFunding():await api.current.resolve(true);if(ticket===generation.current){setOutcome(next);if(next?.status==='recorded')onRefresh();}}
   catch(cause){if(ticket===generation.current)report(cause);}finally{if(ticket===generation.current){running.current=false;setBusy(false);}}
  }
  const diagnostics=error&&<><p className="error-message" role="status">{error}</p>{failure&&<details className="transaction-proof-details"><summary>Failure details</summary><code>{failure.code}</code>{failure.stage&&<p>Stage: {failure.stage} · {failure.errorName}</p>}{failure.status&&<p>HTTP {failure.status}</p>}<p className="small-copy">These details contain no credentials or account data.</p></details>}</>;
+ if(outcome?.status==='funding')return <section className="native-operation-result" aria-live="polite"><h1 className="sheet-hero">Pay {formatMoney(outcome.amountUsdCents)}.</h1><p className="body-copy">Complete your card payment to send {formatMoney(outcome.amountUsdCents)} to {outcome.recipientLabel}.</p>
+  {outcome.checkout?<ReceizCardCheckout checkout={outcome.checkout} purpose="payment" onCheck={check}/>:<><p className="body-copy small-copy">Your approved payment is saved. Resume the same checkout to continue.</p><button className="primary-button" disabled={busy} onClick={()=>void check()}>{busy?'Opening secure checkout…':'Resume secure checkout'}</button></>}
+  {busy&&<p className="body-copy small-copy" role="status">Confirming your payment…</p>}
+  <button className="text-button" disabled={busy} onClick={()=>{if(running.current||!api.current)return;const ticket=generation.current;running.current=true;setBusy(true);void api.current.cancelFunding().then(()=>api.current!.status()).then(next=>{if(ticket===generation.current)setOutcome(next);}).catch(cause=>{if(ticket===generation.current)report(cause);}).finally(()=>{if(ticket===generation.current){running.current=false;setBusy(false);}});}}>Cancel payment</button>{diagnostics}</section>;
  if(outcome)return <section className="native-operation-result" aria-live="polite">
   {outcome.status==='recorded'&&<div className="status-icon success"><Check size={30}/></div>}
   <h1 className="sheet-hero">{outcome.status==='recorded'?'Payment sent.':outcome.status==='not-sent'?'Payment not sent.':'Confirming your payment.'}</h1>
@@ -63,7 +69,7 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children}
   {review.note&&<div><span>Public note</span><strong className="send-public-note">{review.note}</strong></div>}
   <div><span>Fee</span><strong>$0.00</strong></div></div>
   <p className="body-copy small-copy">Reserve is used first; Settlement covers the remainder. The dollar amount is fixed. Wallet computes the Φ amount and funding split from your current account when you send.</p>
-  <label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event=>setApproved(event.target.checked)}/><span>I approve sending {formatMoney(review.amountUsdCents)} to {review.recipientLabel} using this funding rule{review.note?', and publishing the note shown above':''}.</span></label>
+  <label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event=>setApproved(event.target.checked)}/><span>I approve sending {formatMoney(review.amountUsdCents)} to {review.recipientLabel} using my balance, or a card payment for this amount if needed{review.note?', and publishing the note shown above':''}.</span></label>
   <button className="primary-button" disabled={busy||!approved} onClick={()=>void send()}>{busy?'Sending payment…':'Send payment'}<ArrowRight size={17}/></button>
   <button className="secondary-button" disabled={busy} onClick={()=>{api.current?.discard(review);held.current=null;setReview(null);setApproved(false);}}>Edit details</button>{diagnostics}</section>;
  return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset><div className="note-box"><ShieldCheck size={18}/><p>Review the recipient and amount before approving your payment.</p></div><details className="transaction-proof-details"><summary>Wallet access</summary><p className="small-copy">{identityRecordCopy(BANK_WALLET_SEND_CONSENT)}</p></details>

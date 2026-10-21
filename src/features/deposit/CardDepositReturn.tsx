@@ -8,11 +8,12 @@ export function readCardResume(search:string):string|null{
  const query=new URLSearchParams(search),session=query.get('resumeCardSession');
  return query.getAll('resumeCardSession').length===1&&/^cs_[a-zA-Z0-9_]{8,200}$/.test(session??'')?session:null;
 }
-export const cardResumeLink=(sessionId:string)=>publicPurchaseReturnLink(sessionId)??`/?resumeCardSession=${encodeURIComponent(sessionId)}#account/deposit`;
+export const cardResumeLink=(sessionId:string,payment=false)=>publicPurchaseReturnLink(sessionId)??`/?resumeCardSession=${encodeURIComponent(sessionId)}#account/${payment?'send':'deposit'}`;
 // Provider return is only a signal to check Receiz. It opens no identity and
 // cannot assert payment or settlement.
 export function CardDepositReturn({ sessionId }: { sessionId: string }) {
   const assetReturn = publicPurchaseReturnLink(sessionId);
+  const paymentReturn = new URLSearchParams(location.search).get('sendReturn')==='1';
   useEffect(() => { if (window.parent !== window) window.parent.postMessage({ source: 'receiz-bank-card-return', type: 'checkout-returned', sessionId }, location.origin); }, [sessionId]);
-  return <main className="entrance-content"><h1>Returning to your deposit.</h1><p className="body-copy">Your payment and Reserve credit will be checked when you return.</p><a className="primary-button" href={cardResumeLink(sessionId)} target="_top">{assetReturn?'Return to this asset':'Return to my account'}</a></main>;
+  return <main className="entrance-content"><h1>Returning to your {paymentReturn?'payment':'deposit'}.</h1><p className="body-copy">{paymentReturn?'Your saved payment continues after your card credit is confirmed.':'Your payment and Reserve credit will be checked when you return.'}</p><a className="primary-button" href={cardResumeLink(sessionId,paymentReturn)} target="_top">{assetReturn?'Return to this asset':paymentReturn?'Return to my payment':'Return to my account'}</a></main>;
 }

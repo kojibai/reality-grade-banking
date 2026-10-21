@@ -167,7 +167,7 @@ registry bindings and digests are recorded in
 | --- | --- |
 | Account and retained navigation | [App](src/App.tsx), [core](src/core/), [components](src/components/) |
 | Identity and account-source admission | [native identity](src/receiz/native-identity.ts), [native source](src/receiz/bank-native-source.ts) |
-| Payments and recovery | [Wallet Send](src/receiz/wallet-send.ts), [payment contract](docs/native-payment-api.md) |
+| Payments and recovery | [Wallet Send](src/receiz/wallet-send.ts), [card-funded Send](docs/card-funded-send.md), [payment contract](docs/native-payment-api.md) |
 | Notes and exact source retention | [Note runtime](src/receiz/offline-notes.ts), [connected composition](src/receiz/connected-note-application.ts) |
 | Public assets and discovery | [public explorer](src/public-explorer/), [Market](src/features/market/) |
 | Account and public activity | [Ledger](src/features/ledger/), [public Ledger](src/public-ledger/) |
