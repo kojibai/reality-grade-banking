@@ -56,6 +56,9 @@ on a screenshot or another application's interpretation.
   Send and Receive use one amount; funding details stay available underneath.
 - **Payments with history.** Find a recipient, review the amount, approve the
   payment and retain its receipt. Sent and received activity remain distinct.
+- **Get paid where you work.** Share a receiving link, copy a website button or
+  use the existing Receiz checkout. The [payment integration reference](institution/accept-payments.md)
+  covers setup, current Notes, custom SDK checkout and confirmed order results.
 - **Funded Notes.** Create from the available account, save the original and
   hand it to its addressed recipient. Funding is selected automatically.
 - **Assets with continuity.** Discover public originals, inspect their media

@@ -1,0 +1,14 @@
+.payment-tools{margin:22px 0;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.payment-tools>summary{display:flex;justify-content:space-between;align-items:center;gap:14px;cursor:pointer;list-style:none;min-height:30px;font-size:13px;color:#506781}
+.payment-tools>summary::-webkit-details-marker{display:none}.payment-tools>summary>span{display:flex;align-items:center;gap:10px}.payment-tools>summary>svg{transition:transform .18s ease}.payment-tools[open]>summary>svg{transform:rotate(180deg)}
+.payment-tools-content{padding-top:12px;min-width:0}.payment-tools .segmented{margin-top:18px}.payment-tools .segmented button{min-height:38px}
+.payment-tools-caption,.payment-tools-methods p{font-size:12px;line-height:1.7;color:#718197;margin:14px 0;overflow-wrap:anywhere}
+.payment-button-preview{display:flex;justify-content:center;align-items:center;padding:24px 12px;border-radius:14px;background:#eff3f8;margin:18px 0}
+.payment-button-preview a{display:inline-flex;align-items:center;gap:16px;min-height:44px;padding:0 24px;border-radius:12px;background:var(--navy);color:white;font-size:14px;font-weight:550;text-decoration:none}
+.payment-tools-code{display:block;min-width:0;margin:18px 0 10px}.payment-tools-code>span{display:flex;gap:8px;align-items:center;font-size:11px;color:#718197;margin-bottom:9px}
+.payment-tools-code textarea{display:block;box-sizing:border-box;width:100%;min-width:0;resize:vertical;border:1px solid #dce3ed;border-radius:11px;padding:13px;background:#fff;color:#506781;font:11px/1.7 ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere;white-space:pre-wrap;min-height:112px}
+.payment-tools-content>.secondary-button{min-height:44px;font-size:13px}.payment-tools-link{display:flex;align-items:center;gap:10px;min-width:0}.payment-tools-link a{min-width:0;overflow-wrap:anywhere;display:flex;align-items:center;gap:8px;font-size:12px;color:#506781;text-decoration:none;min-height:44px;flex:1}.payment-tools-link button{width:44px;height:44px;color:#718197;flex-shrink:0}.payment-tools-link svg,.payment-tools-guide svg{flex-shrink:0}
+.payment-tools-methods{margin:18px 0;color:#718197;font-size:12px}.payment-tools-methods summary{cursor:pointer;padding:7px 0}.payment-tools-guide{display:inline-flex;align-items:center;gap:9px;min-height:44px;font-size:12px;color:var(--navy);text-decoration:none}
+.payment-tools :is(a,button,summary,textarea):focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.payment-tools>summary>svg{transition:none}}
+.payment-funding-options{margin:18px 0;color:#718197;font-size:12px}.payment-funding-options>summary{cursor:pointer;padding:8px 0}.payment-funding-options .secondary-button{font-size:12px;min-height:44px}.payment-funding-options .dual-actions{margin:12px 0}

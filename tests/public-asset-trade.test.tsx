@@ -6,15 +6,16 @@ import {PublicAssetTradeHost} from '../src/public-explorer/PublicAssetTradeHost'
 import {PublicAssetTradePortal, type PublicTradeAccount} from '../src/features/market/PublicAssetTradePortal';
 import {beginPublicAssetTrade, closePublicAssetTrade} from '../src/receiz/public-asset-trade';
 import type {OpenIdentity} from '../src/receiz/native-identity';
+import type {MarketTradeOutcome} from '../src/receiz/market-trade';
 import {retainPublicPurchase} from '../src/receiz/public-purchase-checkpoint';
 import {assetPagePath} from '../src/receiz/public-asset-page';
 Object.assign(globalThis, {IS_REACT_ACT_ENVIRONMENT: true});
 
 const checkout = {sessionId: 'cs_fixture123456', clientSecret: 'synthetic-only', amountUsdCents: '2500'};
-const review = {digest: 'digest', title: 'An original', body: {side: 'buy', amountUsd: '25.00'}, observation: {preview: {shareQuantityMicro: '1250000', settlementUsdCents: '2500'}}};
+const review = {digest: 'digest', title: 'An original', body: {marketItemId:'profile:artist:source',side: 'buy', amountUsd: '25.00'}, observation: {preview: {shareQuantityMicro: '1250000', settlementUsdCents: '2500'}}};
 function fixture(funded = true) {
   let status = 'settling';
-  const api = {status: async () => null, prepare: vi.fn(async () => review), execute: vi.fn(), discard: vi.fn()};
+  const api = {status: vi.fn<()=>Promise<null|{status:'unknown';clientNonce:string}>>(async () => null),resolve:vi.fn(), prepare: vi.fn(async () => review), execute: vi.fn<()=>Promise<MarketTradeOutcome>>(async()=>({status:'recorded',side:'buy',clientNonce:'native-nonce',tradeId:'native-trade',shareQuantityMicro:'1250000',settlementUsdCents:'2500'})), discard: vi.fn()};
   const identity = {marketTrade: async () => api, pendingCardDeposits: async () => [], beginCardDeposit: vi.fn(async () => checkout), checkCardDeposit: vi.fn(async () => ({status}))} as unknown as OpenIdentity;
   const account = {identity, wallet: {totalUsdCents: funded ? '10000' : '0'}, opening: false, openingStage: 'ready', busy: false, error: null, create: vi.fn(), importId: vi.fn(), refresh: vi.fn(async () => {})} as unknown as PublicTradeAccount;
   return {account, identity, api, credit: () => {status = 'credited';}};
@@ -34,7 +35,7 @@ it('opens a new buyer account in place while accepting the purchase amount, then
   await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={account}/></>));
   expect(dialog.querySelector('input')?.value).toBe('25');expect(account.create).toHaveBeenCalledTimes(1);
   expect(location.pathname).toBe('/asset/public-source/');expect(identity.beginCardDeposit).not.toHaveBeenCalled();expect(api.execute).not.toHaveBeenCalled();
-  await act(async()=>button(dialog,'Continue').click());expect(identity.beginCardDeposit).toHaveBeenCalledExactlyOnceWith('25',true);
+  await act(async()=>button(dialog,'Continue to payment').click());expect(identity.beginCardDeposit).toHaveBeenCalledExactlyOnceWith('25',true);
  }finally{act(()=>root.unmount());}
 });
 it('finishes existing device-account restoration before considering automatic buyer account creation',async()=>{
@@ -74,17 +75,18 @@ it('portals the funded account trade into the public sheet and requires its orig
   } finally {act(() => root.unmount()); host.remove();}
 });
 
-it('funds a chosen fraction budget and returns to trade only after account-bound credit, without executing', async () => {
+it('continues the approved purchase automatically once account-bound card credit is confirmed', async () => {
   const {account, identity, api, credit} = fixture(false), host = document.createElement('div'), root = createRoot(host);
   try {
     await act(async () => root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={account}/></>));
     await act(async () => {beginPublicAssetTrade({itemId: 'profile:artist:source', side: 'buy', title: 'An original'});});
-    const dialog = host.querySelector('dialog')!; expect(dialog.textContent).toContain('Add to your balance'); expect(dialog.querySelector('input')?.value).toBe(''); expect(dialog.textContent).not.toContain('Wire');
-    await enterAmount(dialog, '25'); await act(async () => button(dialog, 'Continue').click());
+    const dialog = host.querySelector('dialog')!; expect(dialog.textContent).toContain('Buy ownership'); expect(dialog.querySelector('input')?.value).toBe(''); expect(dialog.textContent).not.toContain('Wire');
+    await enterAmount(dialog, '25'); await act(async () => button(dialog, 'Continue to payment').click());
     expect(identity.beginCardDeposit).toHaveBeenCalledExactlyOnceWith('25', true); expect(dialog.querySelector('iframe')?.title).toBe('Secure card deposit');
     await act(async () => button(dialog, 'Check deposit status').click()); expect(dialog.textContent).toContain('Reserve credit is pending'); expect(api.prepare).not.toHaveBeenCalled();
     credit(); await act(async () => button(dialog, 'Check deposit status').click());
-    expect(dialog.textContent).toContain('Buy ownership'); expect(dialog.querySelector('input')?.value).toBe('25.00'); expect(api.prepare).not.toHaveBeenCalled(); expect(api.execute).not.toHaveBeenCalled();
+    expect(dialog.textContent).toContain('Purchase complete');expect(api.prepare).toHaveBeenCalledExactlyOnceWith({marketItemId:'profile:artist:source',side:'buy',amountUsdCents:'2500'});expect(api.execute).toHaveBeenCalledExactlyOnceWith(review,review.digest);expect(dialog.textContent).not.toContain('Confirm purchase');
+    await act(async()=>button(dialog,'Review another trade').click());expect(dialog.textContent).toContain('Review trade');expect(dialog.textContent).not.toContain('Completing your purchase');expect(api.execute).toHaveBeenCalledOnce();
   } finally {act(() => root.unmount()); host.remove();}
 });
 
@@ -115,4 +117,64 @@ it('explicitly resumes the exact native checkout after a return without starting
     credit(); await act(async () => button(dialog, 'Check deposit status').click());
     expect(dialog.querySelector('input')?.value).toBe('25.00'); expect(api.prepare).not.toHaveBeenCalled(); expect(api.execute).not.toHaveBeenCalled(); expect(identity.beginCardDeposit).not.toHaveBeenCalled();
   } finally {act(() => root.unmount());}
+});
+
+it('does not turn selecting an old checkout into fresh asset purchase approval',async()=>{
+ const {account,identity,api,credit}=fixture(false),host=document.createElement('div'),root=createRoot(host);
+ identity.pendingCardDeposits=async()=>[checkout];
+ try{
+  await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={account}/></>));
+  await act(async()=>{beginPublicAssetTrade({itemId:'profile:artist:source',side:'buy',title:'An original'});});
+  const dialog=host.querySelector('dialog')!;
+  await act(async()=>button(dialog,'Resume secure checkout').click());
+  credit();await act(async()=>button(dialog,'Check deposit status').click());
+  expect(api.prepare).not.toHaveBeenCalled();expect(api.execute).not.toHaveBeenCalled();
+  expect(dialog.textContent).toContain('Review trade');expect(identity.beginCardDeposit).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
+
+it('keeps an earlier unknown trade separate from a newly approved funded purchase',async()=>{
+ const {account,api,credit}=fixture(false),host=document.createElement('div'),root=createRoot(host);
+ api.status.mockResolvedValue({status:'unknown',clientNonce:'unrelated-earlier-trade'});
+ api.resolve.mockResolvedValue({status:'recorded',clientNonce:'unrelated-earlier-trade',side:'sell',settlementUsdCents:'9999',shareQuantityMicro:'1'});
+ try{
+  await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={account}/></>));
+  await act(async()=>{beginPublicAssetTrade({itemId:'profile:artist:source',side:'buy',title:'An original'});});
+  const dialog=host.querySelector('dialog')!;await enterAmount(dialog,'25');await act(async()=>button(dialog,'Continue to payment').click());
+  credit();await act(async()=>button(dialog,'Check deposit status').click());
+  expect(dialog.textContent).toContain('Check an earlier trade');expect(api.execute).not.toHaveBeenCalled();
+  await act(async()=>button(dialog,'Check earlier trade').click());
+  expect(dialog.textContent).toContain('Continue your purchase');expect(dialog.textContent).not.toContain('Purchase complete');expect(api.execute).not.toHaveBeenCalled();
+  await act(async()=>button(dialog,'Continue purchase').click());expect(dialog.textContent).toContain('Purchase complete');expect(api.execute).toHaveBeenCalledOnce();
+ }finally{act(()=>root.unmount());}
+});
+
+it('keeps a fresh buyer’s edited budget when returning from original Note deposit',async()=>{
+ const {account,identity,api}=fixture(false),host=document.createElement('div'),root=createRoot(host),bytes=new Uint8Array([1]),value={noteId:'owned-note',rail:'settlement',amountUsdCents:'2500',amountPhiMicro:'1000000'};
+ identity.offlineNotes=async()=>({inspect:async()=>value,deposit:async()=>({...value,status:'received',proofBytes:bytes})})as never;
+ try{
+  await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={account}/></>));
+  await act(async()=>{beginPublicAssetTrade({itemId:'profile:artist:source',side:'buy',title:'An original'});});
+  const dialog=host.querySelector('dialog')!;await enterAmount(dialog,'25');await act(async()=>button(dialog,'Pay with a Note').click());
+  const file=dialog.querySelector<HTMLInputElement>('input[type="file"]')!;Object.defineProperty(file,'files',{value:[{size:1,arrayBuffer:async()=>bytes.buffer}]});
+  await act(async()=>file.dispatchEvent(new Event('change',{bubbles:true})));await act(async()=>button(dialog,'Deposit note').click());await act(async()=>button(dialog,'Done').click());
+  expect(dialog.querySelector<HTMLInputElement>('[aria-label="Dollar budget (USD)"]')?.value).toBe('25');expect(api.execute).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
+
+it('keeps the approved purchase reference when another tab advances the current trade during recovery',async()=>{
+ const {account,api,credit}=fixture(false),host=document.createElement('div'),root=createRoot(host);
+ api.execute.mockResolvedValue({status:'unknown',clientNonce:'approved-purchase-nonce'});
+ api.resolve.mockResolvedValueOnce({status:'recorded',clientNonce:'different-trade-nonce',side:'sell',settlementUsdCents:'9999',shareQuantityMicro:'1'}).mockResolvedValueOnce({status:'recorded',clientNonce:'approved-purchase-nonce',side:'buy',settlementUsdCents:'2500',shareQuantityMicro:'1250000'});
+ try{
+  await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={account}/></>));
+  await act(async()=>{beginPublicAssetTrade({itemId:'profile:artist:source',side:'buy',title:'An original'});});
+  const dialog=host.querySelector('dialog')!;await enterAmount(dialog,'25');await act(async()=>button(dialog,'Continue to payment').click());
+  credit();await act(async()=>button(dialog,'Check deposit status').click());
+  expect(dialog.textContent).toContain('Confirming your trade');
+  await act(async()=>button(dialog,'Check trade outcome').click());
+  expect(dialog.textContent).toContain('Confirming your trade');expect(dialog.textContent).not.toContain('Purchase complete');expect(dialog.textContent).toContain('BANK_MARKET_OUTCOME_MISMATCH');
+  await act(async()=>button(dialog,'Check trade outcome').click());
+  expect(dialog.textContent).toContain('Purchase complete');expect(dialog.textContent).toContain('$25.00');expect(api.execute).toHaveBeenCalledOnce();
+ }finally{act(()=>root.unmount());}
 });

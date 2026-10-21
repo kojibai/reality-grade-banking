@@ -18,7 +18,7 @@ it('keeps one native account owner while its existing entrance moves into the pu
   try {
     await act(async () => {bankRoot.render(<App/>); publicRoot.render(<PublicAssetTradeHost/>);});
     expect(fixture.mounts).toBe(1); expect(bank.querySelector('.identity-entrance')).not.toBeNull();
-    await act(async () => {beginPublicAssetTrade({itemId: 'profile:artist:source', side: 'buy', title: 'An original'});});
+    await act(async () => {beginPublicAssetTrade({itemId: 'profile:artist:source', side: 'sell', title: 'An original'});});
     expect(publicHost.querySelector('dialog .identity-entrance')).not.toBeNull(); expect(bank.querySelector('.identity-entrance')).toBeNull(); expect(fixture.mounts).toBe(1);
     await act(async () => closePublicAssetTrade()); expect(bank.querySelector('.identity-entrance')).not.toBeNull(); expect(fixture.mounts).toBe(1);
     history.replaceState(null, '', '/'); await act(async () => dispatchEvent(new Event('receiz-bank:surface'))); expect(fixture.mounts).toBe(1);

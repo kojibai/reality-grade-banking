@@ -2,6 +2,7 @@ import {publicMarketPulseSeed,type MarketPulseSeed,type MarketValueRow} from './
 import type {MarketSealedBirth} from './market-projection/sealed-copies.js';
 import type {SportsHistorySnapshot} from './market-projection/sports-observations.js';
 import {readPublicAssetManifestSource,type PublicAssetManifestRow,type PublicAssetManifestSource} from './public-asset-manifest.js';
+import {publicAssetTitle} from './asset-title.js';
 /** Public discovery and quotes are display projections; they grant no ownership. */
 export interface PublicMarketItem {
   id: string; assetId: string; title: string; summary: string; category: 'proof' | 'sports'; circulationCount?: number; pricedCount?: number; capitalizationUsdCents?: string | null;
@@ -84,7 +85,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
   if (envelope.ok !== true || !Array.isArray(transport.publicOriginals) || transport.publicOriginals.length > 100_000) throw new Error('Receiz public collection is unavailable.');
   const items: PublicMarketItem[] = [], ids = new Set<string>();
   for (const raw of transport.publicOriginals) {
-    const source = record(raw), id = text(source.id, 256), assetId = text(source.receizId, 256), title = text(source.title, 4096);
+    const source = record(raw), id = text(source.id, 256), assetId = text(source.receizId, 256), title = publicAssetTitle(source);
     if (!id || !assetId || !title || ids.has(id) || source.visibility === 'private') continue;
     ids.add(id);
     const profile=record(source.profileOriginal),media = record(profile.media), material = record(media.material);

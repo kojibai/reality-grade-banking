@@ -12,7 +12,21 @@ const fresh = new URL(location.href).searchParams.has('new');
 let creditChecks = 0, preparations = 0, submissions = 0, accounts = 0;
 const update = () => dispatchEvent(new Event('synthetic:public-trade'));
 const checkout = {sessionId: 'cs_synthetic123456', clientSecret: 'synthetic-only-no-provider', amountUsdCents: '2500'};
-const identity = {pendingCardDeposits: async () => sessionStorage.getItem('synthetic-public-checkout') ? [checkout] : [], beginCardDeposit: async () => {sessionStorage.setItem('synthetic-public-checkout', 'saved'); return checkout;}, checkCardDeposit: async () => {const status = ++creditChecks > 1 ? 'credited' : 'settling'; if (status === 'credited') sessionStorage.removeItem('synthetic-public-checkout'); return {status};}, marketTrade: async () => ({status: async () => null, prepare: async (body: {side: string; amountUsdCents?: string; shareQuantityMicro?: string}) => {preparations++; update(); return {digest: 'synthetic-review', title: 'The Shape of Tomorrow', body: {side: body.side, amountUsd: '25.00', shareQuantity: '1.000000'}, observation: {preview: {shareQuantityMicro: body.side === 'sell' ? body.shareQuantityMicro : '1250000', settlementUsdCents: '2500'}}};}, execute: async () => {submissions++; update(); throw Error('Synthetic fixture does not execute trades.');}, discard: () => {}})} as unknown as OpenIdentity;
+const identity = {
+  pendingCardDeposits: async () => sessionStorage.getItem('synthetic-public-checkout') ? [checkout] : [],
+  beginCardDeposit: async () => {sessionStorage.setItem('synthetic-public-checkout', 'saved'); return checkout;},
+  checkCardDeposit: async () => {const status = ++creditChecks > 1 ? 'credited' : 'settling'; if (status === 'credited') sessionStorage.removeItem('synthetic-public-checkout'); return {status};},
+  marketTrade: async () => ({
+    status: async () => null,
+    prepare: async (body: {marketItemId:string;side: string; amountUsdCents?: string; shareQuantityMicro?: string}) => {
+      preparations++; update();
+      return {digest: 'synthetic-review', title: 'The Shape of Tomorrow', body: {marketItemId:body.marketItemId,side: body.side, amountUsd: '25.00', shareQuantity: '1.000000'}, observation: {preview: {shareQuantityMicro: body.side === 'sell' ? body.shareQuantityMicro : '1250000', settlementUsdCents: '2500'}}};
+    },
+    // Synthetic outcomes exercise presentation without an account or host.
+    execute: async () => {submissions++; update(); return {status:'recorded',side:'buy',clientNonce:'synthetic-nonce',tradeId:'synthetic-trade',shareQuantityMicro:'1250000',settlementUsdCents:'2500'};},
+    discard: () => {},
+  }),
+} as unknown as OpenIdentity;
 function AccountOwner() {
   const [open, setOpen] = useState(!fresh);
   const account = {identity: open ? identity : null, wallet: {totalUsdCents: fresh ? '0' : '10000'}, opening: false, openingStage: 'ready', busy: false, error: null, create: async () => {accounts++; update(); setOpen(true);}, importId: async () => {accounts++; update(); setOpen(true);}, refresh: async () => {}} as unknown as PublicTradeAccount;

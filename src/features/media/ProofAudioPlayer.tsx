@@ -27,11 +27,11 @@ export function useProofAudio({file,url,positions}:{file?:MediaFile;url:string;p
  return{element,state,seek,toggle,mute,volume,skip:(seconds:number)=>{if(ref.current)seek(timeOf(ref.current)+seconds);}};
 }
 type Playback=ReturnType<typeof useProofAudio>;
-export function ProofAudioPlayer({title,file,url,artworkUrl,onArtworkError,playback}:{title:string;file:MediaFile;url:string;artworkUrl:string|null;onArtworkError:()=>void;playback:Playback}){
+export function ProofAudioPlayer({title,file,url,artworkUrl,onArtworkError,playback,prioritizeArtwork=false}:{title:string;file:MediaFile;url:string;artworkUrl:string|null;onArtworkError:()=>void;playback:Playback;prioritizeArtwork?:boolean}){
  const {state,seek,toggle,mute,volume,skip}=playback,seekable=state.duration>0,fill=seekable?Math.min(100,state.time/state.duration*100):0;
  if(state.error)return <div className="proof-media-fallback proof-audio-error"><Music2 size={36} strokeWidth={1}/><p>This device cannot play this audio.</p><a href={url} download={file.filename}>Save audio<Download size={15}/></a></div>;
  return <div className={`proof-audio-view proof-audio-player ${!state.paused?'is-playing':''}`}>
-  {artworkUrl?<div className="proof-audio-artwork"><img src={artworkUrl} alt={`${title} artwork`} loading="lazy" decoding="async" referrerPolicy="no-referrer" draggable={false} onError={onArtworkError}/></div>:<div className="proof-audio-disc" aria-hidden="true"><span><Music2 size={24} strokeWidth={1}/></span></div>}
+  {artworkUrl?<div className="proof-audio-artwork"><img src={artworkUrl} alt={`${title} artwork`} loading={prioritizeArtwork?'eager':'lazy'} fetchPriority={prioritizeArtwork?'high':'auto'} decoding="async" referrerPolicy="no-referrer" draggable={false} onError={onArtworkError}/></div>:<div className="proof-audio-disc" aria-hidden="true"><span><Music2 size={24} strokeWidth={1}/></span></div>}
   <div className="proof-audio-player-caption"><span>{state.waiting&&!state.paused?'Buffering':state.paused?'Original audio':'Now playing'}</span><h3>{title}</h3></div>
   <div className="proof-audio-player-controls">
    <label className="proof-audio-seek"><input type="range" aria-label="Seek audio" min="0" max={state.duration||0} step="0.1" value={seekable?Math.min(state.time,state.duration):0} disabled={!seekable} aria-valuetext={`${clock(state.time)} of ${seekable?clock(state.duration):'duration unavailable'}`} style={{'--audio-fill':`${fill}%`} as CSSProperties} onChange={event=>seek(Number(event.target.value))}/></label>

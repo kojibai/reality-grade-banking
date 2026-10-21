@@ -8,6 +8,10 @@ This is a reference implementation and integration contract, not a blanket insti
 
 ## Start here
 
+For a payment link, website button or merchant checkout, start with
+[Accept payments](accept-payments.md). The lifecycle below covers deeper
+receiving and execution integrations.
+
 ```sh
 git clone https://github.com/kojibai/reality-grade-banking.git
 cd reality-grade-banking
@@ -31,7 +35,7 @@ The [Conformance Console](https://bankeiz.com/conformance/) offers the browser r
 | Receive or transfer digital Settlement / Reserve | [SDK edge payment lifecycle](digital-payments.md) | Bank native Wallet Send is implemented; each institution still binds and qualifies its own adapter |
 | Hold and transact Settlement Notes | [Signed rail extension contract](../docs/settlement-note-contract.md) | Native signed rail implemented; live custody/host qualification remains |
 | Receive a completed account Note offline | [Account-destination contract](../docs/note-account-deposit-v129.md) | Recipient-bound terminal verification and retention; connected credit before account spending |
-| Create online without attested custody | [Continuity boundary](../docs/note-continuity-standard.md) | Not implemented; required before universal Note creation can be released |
+| Create online without attested custody | [Continuity boundary](../docs/note-continuity-standard.md) | Connected profile implemented; requires its configured host and schema; does not qualify protected offline custody |
 | Claim institution conformance | [Requirements and independent evidence](receiving-standard.md) | Receiver-specific assessment required |
 
 ## Integrate the full lifecycle

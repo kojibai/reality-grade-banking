@@ -44,6 +44,7 @@ for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/
 // navigation does not depend on fetching a replacement document.
 const navigationPattern = /<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/;
 const navigation = JSON.parse(html.match(navigationPattern)[1]);
+assert.ok(navigation.pages['/explore/'].head.includes('.ledger-proof-details')&&navigation.pages['/explore/'].head.includes('.ledger-proof-actions'),'Retained public asset navigation carries evidence styles before the lazy reader opens');
 assert.ok(navigation.bank.content.includes('class="account-opening-geometry"'),'Cold Bank navigation carries its actual opening artwork');
 for(const url of navigation.bank.styles)assert.equal(navigation.bank.css[url],await readFile('dist'+url,'utf8'),'Cold Bank navigation carries the exact emitted CSS');
 assert.ok(navigation.pages['/legal/'], 'Legal notices must use the retained public header too');

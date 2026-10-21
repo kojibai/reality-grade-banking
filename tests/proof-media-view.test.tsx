@@ -8,6 +8,21 @@ Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const source={kind:'held' as const,digest:'a'.repeat(64),filename:'source.receiz',bytes:new Uint8Array([1])};
 const media={artifactDigest:source.digest,files:[{kind:'text',filename:'Essay.html',mimeType:'text/html',bytes:new TextEncoder().encode('<p>Bound text</p>'),payloadDigest:'b'.repeat(64),text:'Bound text'}]};
 afterEach(()=>{open.mockReset();vi.restoreAllMocks();});
+it('starts a standalone cover eagerly while original verification remains pending, without marking the cover verified',async()=>{
+ const artwork='https://receiz.com/api/profile/originals/media?receizId=song&slot=audioCover';
+ let finish!:(value:unknown)=>void;open.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
+ vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:verified-song');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+ const play=vi.spyOn(HTMLMediaElement.prototype,'play').mockResolvedValue(undefined);
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<ProofMedia source={source} title="Album" artworkUrl={artwork} autoOpen/>));
+  expect(host.querySelector('img')?.getAttribute('loading')).toBe('eager');expect(host.querySelector('img')?.getAttribute('fetchpriority')).toBe('high');
+  expect(host.querySelector('img')?.src).toBe(artwork);expect(host.textContent).not.toContain('Original verified');expect(open).toHaveBeenCalledOnce();
+  await act(async()=>finish({...media,files:[{kind:'audio',filename:'Song.mp3',mimeType:'audio/mpeg',bytes:new Uint8Array([1]),payloadDigest:'b'.repeat(64)}]}));
+  expect(host.querySelector('.proof-audio-artwork img')?.getAttribute('src')).toBe(artwork);
+  expect(host.querySelector('.proof-audio-artwork img')?.getAttribute('loading')).toBe('eager');
+  expect(host.querySelector('[aria-label="Play audio"]')).not.toBeNull();expect(play).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
 it('shows public album artwork before opening and keeps controls tied to the verified original audio',async()=>{
  const artwork='https://receiz.com/api/profile/originals/media?receizId=song&slot=audioCover';
  open.mockResolvedValue({...media,files:[{kind:'audio',filename:'Song.mp3',mimeType:'audio/mpeg',bytes:new Uint8Array([1,2,3]),payloadDigest:'b'.repeat(64)}]});vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:verified-song');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});

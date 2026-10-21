@@ -115,8 +115,22 @@
       status.append(retry); root.append(status);
     });
   };
-  const snapshot = () => ({ url: location.pathname + location.search + location.hash, scroll: scrollY });
-  const remember = () => history.replaceState({ ...history.state, publicNavigation: snapshot() }, '');
+  const positions = new Map();
+  // This router restores retained views after their destination DOM commits.
+  // Disable native history restoration so it cannot race the same transition.
+  history.scrollRestoration = 'manual';
+  const currentScroll = () => document.body.style.position==='fixed' ? Math.max(0,-parseFloat(document.body.style.top)||0) : scrollY;
+  const snapshot = () => ({ url: location.pathname + location.search + location.hash, scroll: currentScroll() });
+  let displayedUrl=snapshot().url;
+  const rememberPosition = (url,scroll) => {
+    const source=new URL(url,location.origin),key=source.pathname+source.search;
+    for(const value of new Set([url,...(pageAt(source.pathname)?.runtime==='explore'&&!/^\/asset\//.test(source.pathname)?[key]:[])])){positions.delete(value);positions.set(value,scroll);}
+    while(positions.size>96)positions.delete(positions.keys().next().value);
+  };
+  const remember = () => {
+    const current=snapshot();rememberPosition(current.url,current.scroll);
+    history.replaceState({ ...history.state, publicNavigation: current }, '');
+  };
   const restoreHead = head => {
     const template = document.createElement('template'); template.innerHTML = head;
     const selector = 'title,meta[name="viewport"],meta[name="description"],meta[name="theme-color"],meta[name="robots"],meta[name="referrer"],meta[name^="apple-"],meta[property^="og:"],meta[name^="twitter:"],link[rel="canonical"],link[rel="manifest"],link[rel="icon"],link[rel="apple-touch-icon"],script[type="application/ld+json"],style[data-public-page-style]';
@@ -213,17 +227,20 @@
     window.dispatchEvent(new Event('receiz-bank:surface'));
     if (focusPublic) { const main = destination.querySelector('main'); if (main) { main.tabIndex = -1; main.focus({ preventScroll: true }); } }
     if (!page) requestAnimationFrame(() => { if (document.body.dataset.bankSurface !== 'bank') return; const target = bankFocus?.isConnected ? bankFocus : bankRoot.querySelector('h1,main'); if (target) { if (!bankFocus) target.tabIndex = -1; target.focus({ preventScroll: true }); } });
-    if (restoring && history.state?.publicNavigation?.url === snapshot().url) scrollTo(0, history.state.publicNavigation.scroll);
+    const url=snapshot().url;
+    if (restoring && (positions.has(url)||history.state?.publicNavigation?.url === url)) scrollTo({top:positions.get(url)??history.state.publicNavigation.scroll,behavior:'instant'});
     else {
       let id; try { id = decodeURIComponent(location.hash.slice(1)); } catch { id = ''; }
       const target = page && id ? destination.querySelector('[id="' + CSS.escape(id) + '"]') : null;
       if (target) { target.classList.add('visible'); target.querySelectorAll('.reveal').forEach(node => node.classList.add('visible')); target.scrollIntoView({ behavior: 'instant' }); }
       else scrollTo({ top: 0, behavior: 'instant' });
     }
+    displayedUrl=url;
     if (page?.runtime) loadRuntime(page, destination);
   };
   const navigate = target => {
-    remember(); history.pushState({ publicNavigation: { url: target, scroll: 0 } }, '', target); void render();
+    const returning = /^\/asset\//.test(location.pathname) && pageAt(target)?.runtime === 'explore' && !/^\/asset\//.test(target);
+    remember(); history.pushState({ publicNavigation: { url: target, scroll: returning ? positions.get(target) ?? 0 : 0 } }, '', target); void render(returning);
   };
   // Retained call controls can return from a public workspace without a
   // synthetic link, a second router, or a document navigation.
@@ -245,7 +262,9 @@
     const target = url.pathname === '/' && !url.hash && publicPath(location.pathname) && bankLoaded ? bankUrl : url.pathname + url.hash;
     event.preventDefault(); navigate(target);
   });
-  window.addEventListener('popstate', () => void render(true));
+  // popstate already exposes the destination URL. Save the view being left
+  // under its retained URL before switching, so Forward also restores it.
+  window.addEventListener('popstate', () => {rememberPosition(displayedUrl,currentScroll());void render(true);});
   window.addEventListener('bankeiz:receipt', () => {if (pages['/receipt/'] && pathname(location.pathname) === '/receipt/') void render();});
   if (publicPath(location.pathname)) { styles(false); if (!publicRoot || renderedPublicPath!==pathname(location.pathname)) void render(); }
   // Pointer/keyboard intent fetches code bytes only; no account module or

@@ -6,9 +6,24 @@ Full release records and qualification evidence live in [docs/releases](docs/rel
 
 ## Unreleased
 
+- Receive generates shareable payment buttons and existing Receiz checkout code
+  without loading a widget or creating a session. A new Get paid guide and typed
+  developer example cover setup, trusted order confirmation and recovery.
+- Payment options and purchase funding reuse the native Note deposit for
+  Reserve, Settlement and combined Notes, preserving the destination and amount
+  before ordinary payment/trade review. Confirmed credit remains required.
+- Standalone artwork is discovered in the first HTML response and prioritized
+  independently of playback. Other artwork stays lazy; proof checks are unchanged.
+- Market, Explore, asset pages and asset Ledger entries prefer the existing
+  authored song, book, essay or object title, with caption fallback. Evidence
+  panel CSS stays with the retained public surface across navigation.
+- Asset navigation starts at the top after the destination view commits.
+  Returning to Explore restores its retained category, search and scroll position.
 - Standalone Buy opens a new buyer's device-held account in place after existing
   account restoration, retains the entered amount and continues through the
-  existing balance/card flow. Payment and trade approvals remain explicit.
+  existing balance/card flow. The buyer approves the asset and dollar budget
+  before card payment; matching confirmed credit continues that purchase once.
+  Old checkout hints cannot supply fresh purchase approval.
 - Consistent source-link controls across public asset evidence and market-cap
   explanations, including mobile touch targets.
 - Public asset URLs handle Vercel rewrite captures consistently with the public

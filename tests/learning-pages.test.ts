@@ -35,3 +35,18 @@ it('keeps public guide interactions free of account transport and financial exec
  expect(js).toContain('data-learning-step');expect(js).toContain('data-example-input');
  expect(js).not.toMatch(/fetch\(|navigator\.credentials|\.request\(/);
 });
+
+it('publishes a payment setup guide with an implementation reference and the current Note boundary',()=>{
+ const page=learningPages.find(page=>page.slug==='get-paid')!;
+ const html=learnArticle(page,learningPages,(s:string)=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;'));
+ expect(html).toContain('data-scene="get-paid"');
+ expect(html).toContain('institution/accept-payments.md');
+ expect(html).toContain('legacy Wallet Note');
+ expect(html).toContain('does not inherit the optional amount');
+ expect(html).not.toContain('<iframe');
+ const developers=learningPages.find(page=>page.slug==='developers')!;
+ const developerHtml=learnArticle(developers,learningPages,(s:string)=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;'));
+ expect(developerHtml).toContain('institution/examples/merchant-checkout.ts');
+ expect(developerHtml).toContain('Accept a payment');
+ expect(developerHtml).toContain('Go beyond checkout');
+});

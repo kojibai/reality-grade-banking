@@ -28,7 +28,7 @@ function exactPhi(value?: string): string {
   const [whole, fraction] = formatUnits(value).split('.');
   return `${new Intl.NumberFormat('en-US').format(BigInt(whole))}${fraction ? `.${fraction}` : ''}`;
 }
-export function OfflineNotes({ identity, mode, onBack, onRefresh }: { identity: OpenIdentity; mode: 'create' | 'deposit'; onBack: () => void; onRefresh: () => void }) {
+export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel }: { identity: OpenIdentity; mode: 'create' | 'deposit'; onBack: () => void; onRefresh: () => void; backLabel?:string }) {
   const [rail, setRail] = useState<BankNoteRail>(()=>identity.knownWallet?.()?.wallet.reserveUsdCents==='0'?'settlement':'reserve');
   const [funding,setFunding]=useState<BankNoteReview|null>(null);
   const [amount, setAmount] = useState('100'), [review, setReview] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState(''),[registrationCode,setRegistrationCode]=useState('');
@@ -106,7 +106,7 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh }: { identity: 
     if (alive.current) { setDeposited(result); onRefresh(); }
   });
   const prepareReceive = () => run(async () => { const request = await (await notes()).receivingRequest(); if (alive.current) { download(request, 'receiz-bank-note-receiving-request.json', 'application/json'); setNotice('Send this receiving request to the note’s holder. They will send you a Note addressed to your ID.'); } });
-  return <div className="offline-notes-flow"><button className="back-link" disabled={busy} onClick={onBack}><ArrowLeft size={16} />{mode === 'create' ? 'All send options' : 'All receive options'}</button>
+  return <div className="offline-notes-flow"><button className="back-link" disabled={busy} onClick={onBack}><ArrowLeft size={16} />{backLabel??(mode === 'create' ? 'All send options' : 'All receive options')}</button>
     {mode === 'create' && !created && <><h1 className="sheet-hero">{pending ? 'Resume your note.' : review ? 'Your value. In your hands.' : 'Create a note.'}</h1><p className="body-copy">Your value, in your hands. Ready to move—even offline.</p>
       {!review && <AmountInput label="Note amount" value={amount} onChange={value=>{if(!running.current)setAmount(value);}} disabled={busy} dollars />}
       <OfflineNotePreview amount={review&&funding?`${BigInt(funding.amountUsdCents)/100n}.${(BigInt(funding.amountUsdCents)%100n).toString().padStart(2,'0')}`:amount} rail={rail} />

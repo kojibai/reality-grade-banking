@@ -5,6 +5,17 @@ import {parsePublicMarket} from '../src/receiz/public-market';
 const item=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:source',receizId:'source',title:'A moment $& <script>one</script>',summary:'The complete original.',ownerUsername:'artist',profileOriginal:{media:{kind:'image'}}}]}}).items[0];
 const html='<html><head><title>Explore</title><meta name="description" content="Explore"><link rel="canonical" href="https://bankeiz.com/explore/"></head><body><div id="public-explore-root" data-public-runtime="explore"><main>Explore fallback</main></div><script id="receiz-navigation" type="application/json">{"pages":{}}</script></body></html>';
 const deps=()=>({page:vi.fn(async()=>html),item:vi.fn(async()=>item),image:vi.fn(async()=>new Uint8Array([1,2]))});
+it('exposes the one selected safe cover in cold HTML and lets the browser start it before JavaScript without fetching it on the server',async()=>{
+ const f=deps(),artwork='https://receiz.com/api/profile/originals/media?receizId=song&slot=audioCover';
+ f.item.mockResolvedValue({...item,artworkUrl:artwork});
+ const response=await handleAssetPreview(new Request('https://bankeiz.com'+assetPagePath(item.id)),f),body=await response.text();
+ expect(body).toContain('<link rel="preload" as="image" href="'+artwork.replaceAll('&','&amp;')+'"');
+ expect(body).toContain('fetchpriority="high"');expect(body).toContain('loading="eager"');expect(body).toContain('artwork</');
+ expect(f.item).toHaveBeenCalledOnce();expect(f.page).toHaveBeenCalledOnce();expect(f.image).not.toHaveBeenCalled();
+ f.item.mockResolvedValue({...item,artworkUrl:'https://untrusted.example/cover.png'});
+ const unsafe=await(await handleAssetPreview(new Request('https://bankeiz.com'+assetPagePath(item.id)),f)).text();
+ expect(unsafe).not.toContain('<link rel="preload" as="image"');expect(unsafe).not.toContain('<figure');
+});
 it('serves an asset-specific original, canonical and complete public seed without account or upstream work',async()=>{
  const f=deps(),response=await handleAssetPreview(new Request('https://bankeiz.com'+assetPagePath(item.id)),f),body=await response.text();
  expect(response.status).toBe(200);expect(body).toContain('A moment $&amp; &lt;script&gt;one&lt;/script&gt;');expect(body).not.toContain('Explore fallback');
