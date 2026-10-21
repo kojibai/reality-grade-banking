@@ -35,21 +35,21 @@ export const noteContinuity = Object.freeze({
     {title:'Deposited',body:'The native credit and private account opening verify against the exact terminal. The account can use its confirmed value through its supported execution path.'},
   ],
   formats: [
-    {title:'Receiving request',body:'A bounded signed destination from the existing Identity Seal. Account UUID, key, carried-state digest and nonce are bound together. The host independently checks native account membership.'},
+    {title:'Receiving request',body:'A bounded signed destination from the existing Identity Record. Account UUID, key, carried-state digest and nonce are bound together. The host independently checks native account membership.'},
     {title:'Completed Note',body:'The complete funding source and signed recipient-bound handover are packed losslessly into the original PNG. A qualified terminal carries local consumption evidence; a connected-profile handover requires native once-only consumption on connection. Forwarding a copy cannot change its recipient.'},
     {title:'Deposit receipt',body:'The complete native credit, original terminal and private account opening remain available for independent verification. An inspection never submits a credit or grants spending authority.'},
   ],
   receivingFields: [
     {title:'schema',body:'receiz.bank.note-account-receiving-request.v1 — application destination envelope, not a custody profile.'},
     {title:'receiverUserId',body:'The native account UUID, signed as destination intent. An existing account state must match; a fresh SDK device identity uses the already known native account destination.'},
-    {title:'receiverKeyId',body:'The exact Identity Seal key identifier, as 64 lowercase hexadecimal characters.'},
+    {title:'receiverKeyId',body:'The exact Identity Record key identifier, as 64 lowercase hexadecimal characters.'},
     {title:'receiverAlgorithm',body:'Ed25519 or P-256, using the existing identity signature verifier.'},
     {title:'receiverPublicKeyRawB64u',body:'The public key, encoded as unpadded base64url. No private key or recovery material is exported.'},
     {title:'receiverUsername',body:'Display metadata, or null. A handle alone does not authorize native credit.'},
     {title:'identityPortableStateDigest',body:'The digest of the carried signed identity state. The host independently verifies the actual account/key binding at credit.'},
     {title:'nonce',body:'A fresh UUID identifying this receiving request.'},
     {title:'requestDigest',body:'The existing identity authority digest over the exact canonical basis fields and schema domain.'},
-    {title:'signatureB64Url',body:'The Identity Seal signature over the base64url UTF-8 schema:requestDigest challenge.'},
+    {title:'signatureB64Url',body:'The Identity Record signature over the base64url UTF-8 schema:requestDigest challenge.'},
   ],
   reconciliation: [
     {title:'Reopen the exact original',body:'Admit its complete terminal, funding closure, receiver account and key through v129. Retained checkpoint labels grant no financial authority.'},
@@ -61,7 +61,7 @@ export const noteContinuity = Object.freeze({
     {title:'16 KiB receiving request',body:'Exact canonical field set and signature verification. Missing, unknown or changed fields are refused.'},
     {title:'8 MiB image · 4 MiB host request',body:'The PNG, native packed wire (6 MiB) and host JSON request have distinct bounds. Oversized submission preserves the original. Artwork cannot replace the carried proof.'},
     {title:'Bounded complete sources',body:'Qualified source and receipt reopening allows 32 MiB; connected funding and handover sources allow 16 MiB, with complete receipt openings retained separately. Proof history and unknown namespaces are never trimmed to fit.'},
-    {title:'64 retained deposit entries',body:'The current encrypted queue refuses additional entries at capacity and preserves existing originals. Export complete proofs; an Identity Seal alone is not their backup.'},
+    {title:'64 retained deposit entries',body:'The current encrypted queue refuses additional entries at capacity and preserves existing originals. Export complete proofs; an Identity Record alone is not their backup.'},
   ],
   assessment: [
     {title:'Source and recovery checks',body:'Local tests reopen complete synthetic originals, refuse altered proofs and wrong recipients, preserve offline receipt across reopen, and retain exact intent after a lost response.'},

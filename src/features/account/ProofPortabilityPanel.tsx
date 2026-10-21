@@ -46,13 +46,13 @@ export function ProofPortabilityPanel({ identity }: { identity: OpenIdentity }) 
     <div className="proof-private-heading">Private evidence archive</div>
     <p className="body-copy small-copy">Keep your originals, verified account history, asset definitions and receipts together. This private archive preserves your evidence; it does not sign you in.</p>
     <button className="secondary-button" disabled={busy} onClick={() => void run(async (lib, current) => {
-      const backup = await lib.exportBackup(); if (current()) { save(backup); setNotice('Proof backup saved. Keep this private file with your Identity Seal.'); }
+      const backup = await lib.exportBackup(); if (current()) { save(backup); setNotice('Proof backup saved. Keep this private file with your Identity Record.'); }
     })}><Download size={16} />Save private proof backup</button>
     <label className={`secondary-button proof-import-choice${busy ? ' disabled' : ''}`}><Upload size={16} />Import backup or proof<input type="file" aria-label="Proof backup or recovery file" disabled={busy} accept=".json,.receiz,.receizbundle,.png,.svg,.zip,.jpg,.jpeg,.webp,.pdf" onChange={event => {
       const file = event.target.files?.[0]; event.target.value = ''; if (!file) return; setReview(null);
       void run(async (lib, current) => { const value = await lib.inspect(file); if (current()) setReview(value); });
     }} /></label>
-    <p className="body-copy small-copy">The backup contains private proof data. Save it somewhere secure. Your Identity Seal is backed up separately; signing keys, unlock phrases, pending payments and hardware-bound note custody are not included.</p>
+    <p className="body-copy small-copy">The backup contains private proof data. Save it somewhere secure. Your Identity Record is backed up separately; signing keys, unlock phrases, pending payments and hardware-bound note custody are not included.</p>
     {review && <section className="proof-import-review" aria-label="Verified proof import review">
       <div className="section-heading"><h3><FileCheck2 size={17} />{review.items.length} verified {review.items.length === 1 ? 'proof' : 'proofs'}</h3><span className="muted">{(review.totalBytes / 1024).toLocaleString(undefined, { maximumFractionDigits: 0 })} KB</span></div>
       <ul className="proof-import-items">{review.items.map(item => <li key={item.digest}><strong>{item.title}</strong><span>{item.filename}</span>{item.operationId && <code>{item.operationId}</code>}</li>)}</ul>

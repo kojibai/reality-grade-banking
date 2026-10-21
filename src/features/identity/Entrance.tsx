@@ -18,7 +18,7 @@ export function Entrance({ opening, openingStage = 'identity', busy, error, onCr
       if (ticket !== inspection.current) return;
       setNeedsPhrase(lock.needsPhrase);
       if (!lock.needsPhrase) await onImport(next, '', true);
-    } catch { if (ticket === inspection.current) setFileError('This file could not be read as a Receiz ID. Choose your original Identity Seal.'); }
+    } catch { if (ticket === inspection.current) setFileError('This file could not be read as a Receiz ID. Choose your original Identity Record.'); }
     finally { if (ticket === inspection.current) setInspecting(false); }
   };
   const explicitOpening = busy || inspecting;
@@ -27,6 +27,6 @@ export function Entrance({ opening, openingStage = 'identity', busy, error, onCr
       <button className="primary-button" disabled={busy || inspecting} onClick={() => void onCreate(true)}>Enter<ArrowUpRight size={20} /></button>
       <button className="secondary-button" disabled={busy || inspecting} onClick={() => picker.current?.click()}><Upload size={18} />Use existing account</button>
       <input ref={picker} type="file" accept=".png,.pdf,.receiz,.receizkey,.json,application/octet-stream" hidden onChange={event => { const selected = event.target.files?.[0] ?? null; event.target.value = ''; void chooseFile(selected); }} />
-      {file && <form className="identity-import" onSubmit={event => { event.preventDefault(); if (needsPhrase && phrase && !busy && !inspecting && !fileError) void onImport(file, phrase, true); }}><span className="small-copy">{file.name}</span>{needsPhrase && <><label>Unlock phrase<input type="password" autoComplete="off" value={phrase} onChange={event => setPhrase(event.target.value)} placeholder="Unlock your Identity Seal" /></label><button className="primary-button" disabled={busy || inspecting || Boolean(fileError) || !phrase}>Unlock account</button></>}{fileError && <p className="form-error" role="alert">{fileError}</p>}</form>}
+      {file && <form className="identity-import" onSubmit={event => { event.preventDefault(); if (needsPhrase && phrase && !busy && !inspecting && !fileError) void onImport(file, phrase, true); }}><span className="small-copy">{file.name}</span>{needsPhrase && <><label>Unlock phrase<input type="password" autoComplete="off" value={phrase} onChange={event => setPhrase(event.target.value)} placeholder="Unlock your Identity Record" /></label><button className="primary-button" disabled={busy || inspecting || Boolean(fileError) || !phrase}>Unlock account</button></>}{fileError && <p className="form-error" role="alert">{fileError}</p>}</form>}
     <p className="entrance-consent">By continuing, you authorize <a href="/learn/account-access/">account access</a>, including balance viewing, your Twin, messages and calls. Your <a href="/learn/signing-key/">signing key</a> stays on this device.</p></>}{error && <p role="alert" className="form-error">{error}</p>}<a className="entrance-learn" href="/learn/">Explore Reality-Grade Banking</a></main></div>{explicitOpening ? <AccountOpening stage={openingStage} inspecting={inspecting && !busy}/> : opening && <AccountOpening stage={openingStage} resuming/>}</>;
 }

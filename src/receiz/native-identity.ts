@@ -103,11 +103,11 @@ export interface OpenIdentity {
 }
 // Exact private material is retained only inside this closure and encrypted device custody.
 export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, filename: string, consentApproved = false, protectedTransport?: ProtectedIdentityTransport, messagingIncludedAtEntry = false): Promise<OpenIdentity> {
-  if (!bytes.length || bytes.length > 32 * 1024 * 1024) throw new Error('Identity Seal exceeds the supported device capacity.');
+  if (!bytes.length || bytes.length > 32 * 1024 * 1024) throw new Error('Identity Record exceeds the supported device capacity.');
   const sdk = await loadReceiz(); const verification = await sdk.verifyReceizArtifact(bytes);
-  if (verification.status !== 'verified-artifact') throw new Error('Import your complete, encrypted Receiz Identity Seal. This file is not a verified identity proof.');
+  if (verification.status !== 'verified-artifact') throw new Error('Import your complete Receiz Identity Record. This file is not a verified identity proof.');
   const admission = await sdk.createReceizArtifactAdmissionEngine()(verification, { profile: 'identity', identityPassphrase: phrase });
-  if (admission.verdict !== 'canonical-identity' || !sdk.isSdkIssuedReceizArtifactAdmission(admission)) throw new Error('This Identity Seal could not be opened with that recovery phrase.');
+  if (admission.verdict !== 'canonical-identity' || !sdk.isSdkIssuedReceizArtifactAdmission(admission)) throw new Error('This Identity Record could not be opened with that recovery phrase.');
   const ownerAdmission = admission;
   const binding = await sdk.readReceizIdentityPublicBinding(admission);
   const keyFile: ReceizKeyFile = await sdk.readReceizIdentityArtifact(bytes);
@@ -231,7 +231,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   async function continueAccountPresentation(targetUnsigned=unsigned){
     const continued=await targetUnsigned.identity.continueReceizId({schema:'receiz.device.identity.v1',createdAt:keyFile.issuedAt,updatedAt:keyFile.issuedAt,localUid:keyFile.owner.uid,username:keyFile.owner.username??keyFile.keyId,displayName:keyFile.owner.displayName??keyFile.owner.username??'Receiz account',deviceName:null,keyFile:transportKeyFile},{passphrase:transportPhrase});
     const session=continued.session as {uid?:unknown;username?:unknown}|undefined;
-    if(continued.ok!==true||typeof session?.uid!=='string')throw Error('Your Receiz account could not be opened. Your local Identity Seal remains available.');
+    if(continued.ok!==true||typeof session?.uid!=='string')throw Error('Your Receiz account could not be opened. Your local Identity Record remains available.');
     return {uid:session.uid,username:session.username,twinAccess:ownerTwinAccountAccess(session),profileProjectionPending:continued.profileProjectionPending===true};
   }
   async function openClient(scopes: readonly string[], statement: string, applicationId: string = BANK_APPLICATION_ID, walletRead?: WalletReadRequest) {
@@ -1409,12 +1409,12 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       knownWallet = mergeAccountLedgerObservation(knownWallet, observation);
       void persistWalletObservation(knownWallet).catch(()=>{});
     }
-    if (!knownWallet || !hasSettledAccountView(knownWallet)) throw Error('Your complete account history could not be opened. Your Identity Seal is unchanged. Try again when its source is available.');
+    if (!knownWallet || !hasSettledAccountView(knownWallet)) throw Error('Your complete account history could not be opened. Your Identity Record is unchanged. Try again when its source is available.');
     return knownWallet;
   }
   const prepareAccountView = () => {
     if (preparingView) return preparingView;
-    const attempt = settleAccountView().catch(cause => { if (knownWallet) { if (!knownWallet.history?.length) knownWallet={...knownWallet,history:appendWalletPoint([],knownWallet.wallet,knownWallet.observedAt,knownWallet.wallet.kaiUpulse)}; return knownWallet; } throw new Error('Your account balance source is temporarily unavailable. Your Identity Seal is unchanged. Try again when its source is available.', {cause}); }).then(view=>{startReceivedNotes();return view;}); preparingView = attempt;
+    const attempt = settleAccountView().catch(cause => { if (knownWallet) { if (!knownWallet.history?.length) knownWallet={...knownWallet,history:appendWalletPoint([],knownWallet.wallet,knownWallet.observedAt,knownWallet.wallet.kaiUpulse)}; return knownWallet; } throw new Error('Your account balance source is temporarily unavailable. Your Identity Record is unchanged. Try again when its source is available.', {cause}); }).then(view=>{startReceivedNotes();return view;}); preparingView = attempt;
     void attempt.finally(()=>{if(preparingView===attempt)preparingView=undefined;}).catch(()=>{});
     return attempt;
   };
@@ -1459,9 +1459,12 @@ export async function createNativeIdentity(consentApproved: boolean): Promise<Op
   const initializedKey = await atIdentityCreationStage('account-genesis',()=>initializeFreshBankAccount(protectedKey, protectionSecret));
   const portableKey = await unprotectIdentityKeyFile(initializedKey, protectionSecret);
   const owned = createReceizOfflineSealer({ ownerIdentityAdmission: admission, store: signerStore, resources, fetch: certificateTimeSafeFetch(nativeFetch) });
-  const sealed = await atIdentityCreationStage('portable-identity',()=>owned.seal({ bytes: new TextEncoder().encode(sdk.serializeReceizIdentityArtifact(portableKey)), filename: 'identity.receizkey', mimeType: 'application/json' }));
+  const sealed = await atIdentityCreationStage('portable-identity',async()=>{
+    const { createNewIdentityImageSource } = await import('./identity-image');
+    return owned.seal(await createNewIdentityImageSource(portableKey, protectedKey));
+  });
   const identity = await openCanonicalIdentity(sealed.artifactBytes, '', sealed.filename, true, { bytes: new Uint8Array(protectedSeal.artifactBytes), phrase: protectionSecret }, true);
-  if (identity.needsPhrase || identity.binding.keyId !== protectedBinding.keyId || identity.binding.artifactOwnerReceizId !== protectedBinding.artifactOwnerReceizId) { identity.dispose(); throw new Error('The self-contained Identity Seal did not preserve its original identity.'); }
+  if (identity.needsPhrase || identity.binding.keyId !== protectedBinding.keyId || identity.binding.artifactOwnerReceizId !== protectedBinding.artifactOwnerReceizId) { identity.dispose(); throw new Error('The self-contained Identity Record did not preserve its original identity.'); }
   const genesis = identity.knownWallet();
   if (!genesis || genesis.source !== 'account-genesis') { identity.dispose(); throw new Error('The signed account genesis could not be opened.'); }
   await atIdentityCreationStage('device-custody',()=>identity.persistDeviceCustody());
@@ -1469,7 +1472,7 @@ export async function createNativeIdentity(consentApproved: boolean): Promise<Op
 }
 export async function importNativeIdentity(file: File, phrase: string, consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before importing your ID.');
-  if (file.size > 32 * 1024 * 1024) throw new Error('Identity Seal exceeds the supported device capacity.');
+  if (file.size > 32 * 1024 * 1024) throw new Error('Identity Record exceeds the supported device capacity.');
   const bytes = new Uint8Array(await file.arrayBuffer()), identity = await openCanonicalIdentity(bytes, phrase, file.name, true, undefined, true);
   await identity.persistDeviceCustody(); return identity;
 }

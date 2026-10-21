@@ -16,7 +16,7 @@ export const audiencePages=[
       ['Know what came in and went out','Open My history and choose All, Sent or Received to find a payment. Its receipt brings the amount, people and time together. When someone asks about a particular expense, you can open the original record and see the confirmed result.'],
       ['Carry a Note when you need one','Create a funded Note while connected and keep its original file. Its addressed recipient can verify and save it offline. Deposit confirms on connection before that amount becomes available for another account payment or Note.'],
       ['Use one account','Enter one payment amount. Available Reserve is used first, with Settlement supplying the remainder. Open the details to see the original composition: Reserve backing and the exact Phi in the Settlement component. The everyday payment stays simple, with its sources close at hand.'],
-      ['Keep the records that matter','Save your original Identity Seal privately and keep important Notes and receipts intact. Share a payment receipt when someone needs the details. Keeping the original evidence gives you a record you can reopen with a matching reader.'],
+      ['Keep the records that matter','Save your original Identity Record privately and keep important Notes and receipts intact. Share a payment receipt when someone needs the details. Keeping the original evidence gives you a record you can reopen with a matching reader.'],
     ],
     ['/learn/payments/','/learn/payment-requests/','/learn/notes/'],
   ),

@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {readFile,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {resolve} from 'node:path';
+import {build,version} from 'esbuild';
+const root=process.cwd(),native=JSON.parse(await readFile('native/manifest.json','utf8')),hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+assert.equal(version,native.esbuildVersion);
+const result=await build({stdin:{contents:`export {buildProfileIdentityArtworkSvgSet as artwork} from '@/app/lib/profile/identityArtwork';export {accountIdentityCreationFromPortableSource as creation} from '@/app/lib/profile/profileIdentityCreationCoordinate';export {readReceizAccountStateHead as head} from '@/app/lib/auth/receizAccountStateHead';export {insertPngTextChunks as insertText} from '@/app/utils/pngChunks';`,resolveDir:root,sourcefile:'identity-artwork-entry.mjs'},alias:{'@':resolve('native/receiz'),'fflate':resolve('native/npm/fflate@0.8.3')},bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,treeShaking:true,write:false,metafile:true,legalComments:'inline',banner:{js:'/*! Receiz Identity Record artwork — built from the included unmodified v129 source. Local presentation only; no account, network, custody or signing actions. */'}});
+const inputs=[];for(const name of Object.keys(result.metafile.inputs).filter(name=>name!=='identity-artwork-entry.mjs').sort()){const path=name.replace(/^native\//,''),expected=native.files.find(entry=>entry.path===path);assert.ok(expected,`Unpinned identity artwork source: ${name}`);const sha256=hash(await readFile(name));assert.equal(sha256,expected.sha256);inputs.push({path,sha256});}
+const bytes=result.outputFiles[0].contents,manifest={schema:'bankeiz.native-identity-artwork.v129',receizVersion:native.receizVersion,sourceCommit:native.sourceCommit,moduleSha256:hash(bytes),bytes:bytes.length,inputs},path='public/native/identity-artwork.v129.mjs',meta='public/native/identity-artwork.v129.manifest.json',text=JSON.stringify(manifest,null,2)+'\n';
+if(process.argv.includes('--check')){assert.equal(hash(await readFile(path)),manifest.moduleSha256);assert.equal(await readFile(meta,'utf8'),text);}else{await writeFile(path,bytes);await writeFile(meta,text);}
+console.log(`Verified canonical Receiz Identity artwork: ${inputs.length} pinned source inputs, ${bytes.length} bytes; loaded only during new account creation.`);

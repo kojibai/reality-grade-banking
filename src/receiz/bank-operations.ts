@@ -183,7 +183,7 @@ export function bankOperationError(error: unknown): string {
   if (code === 'BANK_OPERATION_FINANCIAL_ADAPTER_UNQUALIFIED') return 'This transaction is not available yet. Your balance and held proofs are unchanged.';
   if (code === 'BANK_OPERATION_ACCESS_REQUIRED') return 'Approve the required account access in Bank connection, then review your transaction again. Each payment still needs your separate approval.';
   if (code === 'BANK_OPERATION_CURRENT_SOURCE_REQUIRED') return 'This original needs its current transferable proof before it can move. Your original remains held on this device.';
-  if (code === 'BANK_OPERATION_IDENTITY_SOURCE_FORBIDDEN') return 'Choose an asset proof. An Identity Seal is private login material and cannot be supplied as an asset.';
+  if (code === 'BANK_OPERATION_IDENTITY_SOURCE_FORBIDDEN') return 'Choose an asset proof. An Identity Record is private login material and cannot be supplied as an asset.';
   if (code === 'BANK_NOTE_ATTEMPT_PENDING') return 'An earlier Note attempt is saved. Open Send → Create note to resume it, or choose Discard unissued note if offered. Keep this device and its original proofs.';
   if (code === 'BANK_EXECUTION_PENDING') return 'An earlier transaction is awaiting a confirmed result. Open Bank connection in your ID to check its outcome.';
   if (code === 'BANK_OPERATION_EXPIRED') return 'These terms have expired. Review a fresh quote before continuing.';

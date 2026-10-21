@@ -7,8 +7,8 @@ import type { WalletPoint } from './wallet-series';
 import type { WalletObservation } from './wallet-observation';
 import { preloadPrivateHistory } from './private-history-restore';
 function walletReadMessage(cause: unknown, refreshing = false): string {
-  if (cause instanceof Error && cause.message === 'proof_replay_guard_unavailable') return 'Secure account access is temporarily unavailable. Your Identity Seal is unchanged. Refresh your balance to try again.';
-  return refreshing ? 'Your balance could not be updated. Your Identity Seal stays on this device. Try again when the source is available.' : 'Your balance could not be opened. Your Identity Seal stays on this device. Refresh your balance to try again.';
+  if (cause instanceof Error && cause.message === 'proof_replay_guard_unavailable') return 'Secure account access is temporarily unavailable. Your Identity Record is unchanged. Refresh your balance to try again.';
+  return refreshing ? 'Your balance could not be updated. Your Identity Record stays on this device. Try again when the source is available.' : 'Your balance could not be opened. Your Identity Record stays on this device. Refresh your balance to try again.';
 }
 const nativeCustody = { createNativeIdentity, importNativeIdentity, restoreNativeIdentity, forgetDeviceIdentity };
 export function useNativeAccount(custody = nativeCustody) {
@@ -85,7 +85,7 @@ export function useNativeAccount(custody = nativeCustody) {
     void custody.restoreNativeIdentity().then(async next => {
       if (!alive) { next?.dispose(); return; }
       if (next) await accept(next, ticket); else setOpening(false);
-    }).catch(cause => { if (alive) { setOpening(false); setError(cause instanceof Error ? cause.message : 'Your account could not be opened. Your Identity Seal is unchanged.'); } });
+    }).catch(cause => { if (alive) { setOpening(false); setError(cause instanceof Error ? cause.message : 'Your account could not be opened. Your Identity Record is unchanged.'); } });
     const foreground = () => alive && document.visibilityState === 'visible' && location.pathname === '/' && Boolean(held.current);
     let wakeQueued = false;
     const wake = () => {

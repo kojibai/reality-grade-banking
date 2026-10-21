@@ -11,7 +11,7 @@ async function database(): Promise<IDBDatabase> { return new Promise((resolve, r
 async function held(): Promise<SavedIdentity | null> { const db = await database(); try { return await new Promise((resolve, reject) => { const request = db.transaction('identity').objectStore('identity').get('current'); request.onsuccess = () => resolve(request.result ?? null); request.onerror = () => reject(request.error); }); } finally { db.close(); } }
 const equalCipher = (a: ArrayBuffer | Uint8Array | undefined, b: ArrayBuffer | Uint8Array | undefined) => !a && !b || !!a && !!b && a.byteLength === b.byteLength && new Uint8Array(a).every((v, index) => v === new Uint8Array(b)[index]);
 async function noteRemovalGuard(saved: SavedIdentity) {
-  if (saved.bankOperation && ['prepared', 'unknown'].includes(saved.bankOperation.state)) throw new Error('Keep this device until the retained transaction outcome is resolved. An Identity Seal backup does not include its private execution recovery.');
+  if (saved.bankOperation && ['prepared', 'unknown'].includes(saved.bankOperation.state)) throw new Error('Keep this device until the retained transaction outcome is resolved. An Identity Record backup does not include its private execution recovery.');
   const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(await identityBytes(saved))))].map(v => v.toString(16).padStart(2, '0')).join('');
   const db = await database();
   const rows: {key:string;row:PrivateBankOperation|undefined}[]=[];
@@ -34,7 +34,7 @@ async function noteRemovalGuard(saved: SavedIdentity) {
       if(family==='received-note-deposits'){
         const received=(await import('./note-received-deposits')).readReceivedNoteDepositCheckpoint(state);
         if(!received)throw Error('BANK_NOTE_PRIVATE_SOURCE_INVALID');
-        if(Object.values(received.entries).some(row=>row.status!=='confirmed'))throw Error('Keep this ID while received Notes await reconciliation. Connect to confirm their exact deposit before removing or replacing this ID. An Identity Seal backup does not include these encrypted originals.');
+        if(Object.values(received.entries).some(row=>row.status!=='confirmed'))throw Error('Keep this ID while received Notes await reconciliation. Connect to confirm their exact deposit before removing or replacing this ID. An Identity Record backup does not include these encrypted originals.');
         continue;
       }
       if(family==='received-proof'){const received=await(await import('./received-proof')).readReceivedProofState(state);if(received?.current.status!=='held')throw Error('Finish receiving your saved original before removing this ID. Its exact claim and recovery remain on this device.');continue;}
@@ -46,8 +46,8 @@ async function noteRemovalGuard(saved: SavedIdentity) {
       const held=wallet ? !state||state.schema!==`bank.${family}.v1`||state.authority!==(family==='market-trades'?'market-observation':'wallet-observation')||!Array.isArray(state.history)||state.history.length>1000||!state.current||[...state.history,state.current].some(checkpoint=>!checkpoint||!['recorded','not-sent'].includes(checkpoint.status)) : native ? !state||state.schema!==`bank.${family}.v1`||!Array.isArray(state.history)||state.history.length>1000||!state.current||[...state.history,state.current].some(checkpoint=>!checkpoint||!['committed','zero-write'].includes(checkpoint.state)) : family==='offline-notes'
         ? state.schema!=='receiz.bank.offline-notes-device.v1'||state.create||Object.keys(state.receivers??{}).length||Object.values(state.deposits??{}).some(v=>!(v as {creditRef?:string}).creditRef)||Object.entries(state.notes??{}).some(([id,v])=>!(v as {transferComplete?:boolean}).transferComplete&&!state.deposits?.[id]?.creditRef)
         : state.schema!=='receiz.bank.prepared-notes-device.v1'||state.create||Object.values(state.slots??{}).some(v=>(v as {status:string}).status==='reserved')||Object.values(state.components??{}).some(v=>!(v as {exhausted?:boolean}).exhausted)||Object.values(state.journal?.deposits??{}).some(v=>(v as {phase:string}).phase!=='complete')||Object.entries(state.notes??{}).some(([id,v])=>!(v as {transferComplete?:boolean}).transferComplete&&state.journal?.deposits?.[id]?.phase!=='complete');
-      if(held&&(native||wallet))throw new Error('Keep this device until the retained transaction outcome is resolved. An Identity Seal backup does not include its private execution recovery.');
-      if(held)throw new Error('Keep this device while Offline Notes, prepared value or receiving requests are held or pending. Deposit or transfer your notes before removing this ID. An Identity Seal backup does not restore device note custody.');
+      if(held&&(native||wallet))throw new Error('Keep this device until the retained transaction outcome is resolved. An Identity Record backup does not include its private execution recovery.');
+      if(held)throw new Error('Keep this device while Offline Notes, prepared value or receiving requests are held or pending. Deposit or transfer your notes before removing this ID. An Identity Record backup does not restore device note custody.');
       if(family==='native-assets'){
         // A status flag cannot turn an unconfirmed intent into disposable
         // custody. Reopen its exact terminal evidence before allowing removal.
@@ -89,7 +89,7 @@ export async function saveDeviceIdentity(bytes: Uint8Array, filename: string, ph
 }
 export async function loadDeviceIdentity(): Promise<{ bytes: Uint8Array; filename: string; phrase: string; readConsent: boolean; protectedTransport?: ProtectedIdentityTransport } | null> {
   const saved = await held(); if (!saved) return null;
-  if (saved.schema !== 'receiz.bank.device-identity.v1' || saved.wrappingKey.extractable || !saved.bytes || saved.bytes.byteLength > 32 * 1024 * 1024 + 16) throw new Error('The saved device identity could not be opened. Import your Identity Seal again.');
+  if (saved.schema !== 'receiz.bank.device-identity.v1' || saved.wrappingKey.extractable || !saved.bytes || saved.bytes.byteLength > 32 * 1024 * 1024 + 16) throw new Error('The saved device identity could not be opened. Import your Identity Record again.');
   const phrase = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(saved.iv), additionalData: new TextEncoder().encode(saved.schema) }, saved.wrappingKey, saved.wrappedPhrase);
   let protectedTransport: ProtectedIdentityTransport | undefined;
   if (saved.protectedTransport) { const clear = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(saved.protectedTransport.iv), additionalData: new TextEncoder().encode('receiz.bank.protected-identity-transport.v1') }, saved.wrappingKey, saved.protectedTransport.bytes); const transport = JSON.parse(new TextDecoder().decode(clear)); protectedTransport = { bytes: new Uint8Array(transport.bytes), phrase: transport.phrase }; }

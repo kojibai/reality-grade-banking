@@ -1,0 +1,37 @@
+{
+  "schema": "bankeiz.native-identity-artwork.v129",
+  "receizVersion": "129.0.0",
+  "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52",
+  "moduleSha256": "f63c83ef998136f53f8c120c48f26a06ccef3b5c1cad04b91b7abc3fe3923829",
+  "bytes": 62448,
+  "inputs": [
+    {
+      "path": "npm/fflate@0.8.3/esm/browser.js",
+      "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1"
+    },
+    {
+      "path": "receiz/app/components/KaiSigil/constants.ts",
+      "sha256": "49a5c16ef9b0da5dc1bda670d0da5d4512ce5131b4184a0ad4551f7a15bf242c"
+    },
+    {
+      "path": "receiz/app/lib/auth/receizAccountStateHead.ts",
+      "sha256": "e6b5bf6e319e2301238cc4ae818c100f6c7e7a0eb1d90a4380baa3e27d11821b"
+    },
+    {
+      "path": "receiz/app/lib/profile/identityArtwork.ts",
+      "sha256": "5b4c019484cb73506e0a6f8c7f3b8b49ab0e4eebd7c8c22404e79db262c4e01d"
+    },
+    {
+      "path": "receiz/app/lib/profile/profileIdentityCreationCoordinate.ts",
+      "sha256": "8e00ca17b1d2e045931e91577935362b416d080939c1bfea3f1f40b85e789618"
+    },
+    {
+      "path": "receiz/app/utils/kai_pulse.ts",
+      "sha256": "c1d9a1ff780681946935389d94ada11df3245e96782dca1183e2675b0ef14954"
+    },
+    {
+      "path": "receiz/app/utils/pngChunks.ts",
+      "sha256": "7a54e936bee91d58886690cf0a3bad0982da141bb8b8a8482851863531c674bf"
+    }
+  ]
+}

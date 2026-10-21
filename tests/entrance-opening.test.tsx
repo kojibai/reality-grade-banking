@@ -90,10 +90,10 @@ it('describes file inspection truthfully and switches directly to the legacy phr
   act(() => input.dispatchEvent(new Event('change', { bubbles: true })));
 
   expect(host.querySelectorAll('[role=status]')).toHaveLength(1);
-  expect(host.querySelector('.account-opening [role=status]')?.textContent).toContain('Reading your Identity Seal');
+  expect(host.querySelector('.account-opening [role=status]')?.textContent).toContain('Reading your Identity Record');
   expect(host.querySelector('[role=status]')?.textContent).not.toMatch(/verified|complete|account history/i);
   expect(host.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow')).toBe('0');
-  expect(host.querySelector('[role=progressbar]')?.getAttribute('aria-valuetext')).toContain('Reading the Identity Seal');
+  expect(host.querySelector('[role=progressbar]')?.getAttribute('aria-valuetext')).toContain('Reading the Identity Record');
   expect(button('Enter').disabled).toBe(true);
   expect(button('Use existing account').disabled).toBe(true);
   act(() => button('Enter').click());

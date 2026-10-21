@@ -11,6 +11,7 @@ const fixedResources = [
   '/zk/document-seal.wasm', '/zk/document-seal.zkey', '/zk/kai-sigil.wasm', '/zk/kai-sigil.zkey',
   '/native/offline-notes.v129.mjs', '/native/receiver-verifier.v129.mjs',
   '/native/offline-notes.v129.manifest.json', '/native/receiver-verifier.v129.manifest.json',
+  '/native/identity-artwork.v129.mjs', '/native/identity-artwork.v129.manifest.json',
   '/notes/banknote-engraving.webp', '/notes/denomination-engraving.png',
   '/notes/reserve-note-masthead.png', '/notes/settlement-note-masthead.png', '/notes/settlement-reserve-note-masthead.png', '/notes/fonts/Cinzel.ttf',
   '/learn/proof-glass.webp', '/learn/reserve-note.webp', '/learn/settlement-note.webp',

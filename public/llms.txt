@@ -6,7 +6,7 @@ Canonical home: https://bankeiz.com/
 
 ## Public guides
 - [Proof-native banking](https://bankeiz.com/learn/): Account model, available features and the distinction between proof evidence and operation authority.
-- [Receiz ID and Identity Seals](https://bankeiz.com/learn/receiz-id/): Device-held identity, backup and importing an existing account.
+- [Receiz ID and Identity Records](https://bankeiz.com/learn/receiz-id/): Device-held identity, backup and importing an existing account.
 - [Proof objects and asset ownership](https://bankeiz.com/learn/proof-objects/): Sealed sources, public showcase discovery and custody-backed ownership.
 - [Reserve and Settlement](https://bankeiz.com/learn/reserve-and-settlement/): Shared balances, valuation and destination proof continuity.
 - [Conformance Console](https://bankeiz.com/conformance/): On-device reference checks, original Reserve Note inspection, qualification requirements and local evidence export. A reference pass does not certify an institution or authorize a credit.

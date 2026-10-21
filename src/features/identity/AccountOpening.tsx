@@ -7,10 +7,10 @@ export type OpeningStage = 'identity' | 'history' | 'ready';
  * signer, request or minimum duration. Resume uses an immediately visible frame. */
 export function AccountOpening({ stage = 'identity', inspecting = false, resuming = false }: { stage?: OpeningStage; inspecting?: boolean; resuming?: boolean }) {
   const id = useId(), phase = inspecting ? 'inspection' : stage;
-  const detail = inspecting ? 'Reading your Identity Seal' : stage === 'ready' ? 'Your account view is ready' : stage === 'history' ? 'Loading your account history' : 'Preparing your identity';
+  const detail = inspecting ? 'Reading your Identity Record' : stage === 'ready' ? 'Your account view is ready' : stage === 'history' ? 'Loading your account history' : 'Preparing your identity';
   const completed = inspecting ? 0 : stage === 'ready' ? 2 : stage === 'history' ? 1 : 0;
   const progressText = inspecting
-    ? '0 of 2 checkpoints complete. Reading the Identity Seal; identity preparation has not finished.'
+    ? '0 of 2 checkpoints complete. Reading the Identity Record; identity preparation has not finished.'
     : stage === 'ready' ? '2 of 2 checkpoints complete. Your account view is ready.'
     : stage === 'history' ? '1 of 2 checkpoints complete. Identity preparation finished; preparing your account view.'
     : '0 of 2 checkpoints complete. Preparing and verifying your identity.';

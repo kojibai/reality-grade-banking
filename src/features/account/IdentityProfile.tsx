@@ -30,9 +30,9 @@ export function IdentityProfile({ identity, onForget, onRefresh }: { identity: O
     </div>
     {identity.profile&&<QuickProfileEditor identity={identity} username={publicId}/>}
     {profileUsername(publicId)&&<a className="identity-public-profile-link" href={profilePagePath(publicId)}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></a>}
-    <button className="primary-button" onClick={backupId}>Back up my Identity Seal</button>
+    <button className="primary-button" onClick={backupId}>Back up my Identity Record</button>
     {backup && <div className="identity-import profile-backup">
-      <p className="body-copy small-copy">{identity.needsPhrase ? 'Save this recovery phrase separately from your downloaded Identity Seal. It unlocks your signing key on another device.' : 'Your Identity Seal opens without an unlock phrase.'}</p>
+      <p className="body-copy small-copy">{identity.needsPhrase ? 'Save this recovery phrase separately from your downloaded Identity Record. It unlocks your signing key on another device.' : 'Your Identity Record opens without an unlock phrase.'}</p>
       {identity.needsPhrase && <input type="password" readOnly value={identity.backup().phrase} aria-label="Private recovery phrase" />}
       <button className="text-button" onClick={() => setBackup(false)}>{identity.needsPhrase ? 'Hide recovery phrase' : 'Hide backup details'}</button>
     </div>}
@@ -41,8 +41,8 @@ export function IdentityProfile({ identity, onForget, onRefresh }: { identity: O
     <section className="profile-device" aria-label="Device custody">
       <button className="secondary-button profile-remove" onClick={() => void remove()}>Remove ID from this device</button>
       <div className="profile-custody-note">
-        <p>Removing this ID does not close your account. Save your Identity Seal{identity.needsPhrase ? ', recovery phrase' : ''} and original deposited proofs first.</p>
-        <p>Offline Notes and pending receiving requests keep this device in custody. An Identity Seal backup alone does not restore hardware custody. Any unfinished card checkout stays on this device.</p>
+        <p>Removing this ID does not close your account. Save your Identity Record{identity.needsPhrase ? ', recovery phrase' : ''} and original deposited proofs first.</p>
+        <p>Offline Notes and pending receiving requests keep this device in custody. An Identity Record backup alone does not restore hardware custody. Any unfinished card checkout stays on this device.</p>
       </div>
       {removalError && <p className="error-message" role="alert">{removalError}</p>}
     </section>

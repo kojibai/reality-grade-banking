@@ -4,6 +4,7 @@ import type {OpenIdentity} from '../../receiz/native-identity';
 import type {WalletSend,WalletSendOutcome,WalletSendReview} from '../../receiz/wallet-send';
 import {bankOperationError,bankOperationFailureDetails} from '../../receiz/bank-operations';
 import {BANK_WALLET_SEND_CONSENT} from '../../receiz/config';
+import {identityRecordCopy} from '../../content/identity-record-copy.mjs';
 import {formatMoney,formatUnits} from '../../core/money';
 
 export function WalletSendRecovery({identity,onRefresh=()=>{}}:{identity:OpenIdentity;onRefresh?:()=>void}){
@@ -65,6 +66,6 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children}
   <label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event=>setApproved(event.target.checked)}/><span>I approve sending {formatMoney(review.amountUsdCents)} to {review.recipientLabel} using this funding rule{review.note?', and publishing the note shown above':''}.</span></label>
   <button className="primary-button" disabled={busy||!approved} onClick={()=>void send()}>{busy?'Sending payment…':'Send payment'}<ArrowRight size={17}/></button>
   <button className="secondary-button" disabled={busy} onClick={()=>{api.current?.discard(review);held.current=null;setReview(null);setApproved(false);}}>Edit details</button>{diagnostics}</section>;
- return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset><div className="note-box"><ShieldCheck size={18}/><p>Review the recipient and amount before approving your payment.</p></div><details className="transaction-proof-details"><summary>Wallet access</summary><p className="small-copy">{BANK_WALLET_SEND_CONSENT}</p></details>
+ return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset><div className="note-box"><ShieldCheck size={18}/><p>Review the recipient and amount before approving your payment.</p></div><details className="transaction-proof-details"><summary>Wallet access</summary><p className="small-copy">{identityRecordCopy(BANK_WALLET_SEND_CONSENT)}</p></details>
   <button className="primary-button" disabled={busy||!ready} onClick={()=>void prepare()}>{busy?'Checking payment…':'Review payment'}<ArrowRight size={17}/></button>{diagnostics}</>;
 }

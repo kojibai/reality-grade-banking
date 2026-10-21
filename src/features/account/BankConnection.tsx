@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { BankNativeReadiness } from '../../receiz/bank-native-readiness';
 import { BANK_NATIVE_CONSENT } from '../../receiz/config';
+import {identityRecordCopy} from '../../content/identity-record-copy.mjs';
 import { BankConnectionError } from '../../receiz/bank-connection-error';
 import {WalletSendRecovery} from './WalletSendOperation';
 import { BankExecutionRecoveryPanel } from './BankExecutionRecoveryPanel';
@@ -37,7 +38,7 @@ export function BankConnection({ identity, onRefresh }: { identity: OpenIdentity
       <p className="body-copy small-copy">Custody, ownership and currency actions require their verified sources and an enabled bank execution route.</p>
       {report.missingScopes.length > 0 && <details><summary>Permission details</summary><ul>{report.missingScopes.map(scope => <li key={scope}><code>{scope}</code></li>)}</ul></details>}
       {report.unavailableOperations.length > 0 && <details><summary>Connection details</summary><ul>{report.unavailableOperations.map(item => <li key={item.operation}>{item.operation}{item.reason ? `: ${item.reason}` : ''}</li>)}</ul></details>}
-      {report.status === 'permissions-needed' && <><p className="body-copy small-copy">Connect this ID for ownership, sales and currencies. Every financial action still has its own review.</p><details><summary>Read bank access</summary><p className="body-copy small-copy">{BANK_NATIVE_CONSENT}</p></details><label className="consent-option"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} /><span>I allow the listed Bankeiz access for this ID.</span></label><button className="primary-button" disabled={busy || !consent} onClick={() => void check(true)}>Approve bank access</button></>}
+      {report.status === 'permissions-needed' && <><p className="body-copy small-copy">Connect this ID for ownership, sales and currencies. Every financial action still has its own review.</p><details><summary>Read bank access</summary><p className="body-copy small-copy">{identityRecordCopy(BANK_NATIVE_CONSENT)}</p></details><label className="consent-option"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} /><span>I allow the listed Bankeiz access for this ID.</span></label><button className="primary-button" disabled={busy || !consent} onClick={() => void check(true)}>Approve bank access</button></>}
       {report.missingScopes.length === 0 && <details><summary>Account proof</summary><p className="body-copy small-copy">Connect a private account proof to this ID. Receiz holds its complete source for this bank’s connection. Custody and trading use their admitted asset and funding proofs.</p>{proofConnected && <p role="status" className="body-copy">Account proof connected</p>}<label className="consent-option"><input type="checkbox" checked={proofConsent} onChange={event => setProofConsent(event.target.checked)} /><span>I approve the private account proof and listed bank access.</span></label><button className="secondary-button" disabled={busy || !proofConsent} onClick={() => void connectProof()}>Connect account proof</button></details>}
     </div>}
     {error && <p className="error-message" role="status">{error}</p>}
