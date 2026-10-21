@@ -823,6 +823,8 @@ export const loadWalletSendState=(binding:{artifactSha256:string})=>loadNoteStat
 export const saveWalletSendState=(binding:{artifactSha256:string},value:import('./wallet-send').WalletSendState,expected:unknown)=>saveNoteState(binding,'wallet-sends',value,expected);
 
 export const loadMarketTradeState=(binding:{artifactSha256:string})=>loadNoteState(binding,'market-trades');
+export const loadMarketPortfolioState=(binding:{artifactSha256:string})=>loadNoteState(binding,'market-portfolio');
+export const saveMarketPortfolioState=(binding:{artifactSha256:string},value:import('./market-portfolio').MarketPortfolio,expected:unknown)=>saveNoteState(binding,'market-portfolio',value,expected);
 export const saveMarketTradeState=(binding:{artifactSha256:string},value:import('./market-trade').MarketTradeState,expected:unknown)=>saveNoteState(binding,'market-trades',value,expected);
 
 export const loadReceivedProofState=(binding:{artifactSha256:string})=>loadNoteState(binding,'received-proof');

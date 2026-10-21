@@ -1,12 +1,14 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ReceizHttpError } from '@receiz/sdk';
 import { BANK_APPLICATION_ID, BANK_READ_SCOPES } from '../src/receiz/config';
+import {portfolioFixture} from './fixtures/market-portfolio';
+import {parseSharedWallet} from '../src/receiz/shared-wallet';
 import { openCanonicalIdentity } from '../src/receiz/native-identity';
 
 // Real connection, parsing and adoption choreography; isolate admission,
 // encrypted persistence and authenticated HTTP at their external boundaries.
-const p = vi.hoisted(() => ({ pulse: 100, scopes: vi.fn(), wallet: vi.fn(), continuation: vi.fn(), grant: vi.fn(), challenge: vi.fn(), request: vi.fn(), save: vi.fn() }));
-vi.mock('../src/receiz/identity-vault', async original => ({ ...await original<typeof import('../src/receiz/identity-vault')>(), loadWalletObservation: async () => null, loadAccountLedgerState: async () => null, saveWalletObservation: p.save }));
+const p = vi.hoisted(() => ({ retainedPortfolio:null as unknown,cachedWallet:null as unknown,portfolioSave:vi.fn(), pulse: 100, scopes: vi.fn(), wallet: vi.fn(), continuation: vi.fn(), grant: vi.fn(), challenge: vi.fn(), request: vi.fn(), save: vi.fn() }));
+vi.mock('../src/receiz/identity-vault', async original => ({ ...await original<typeof import('../src/receiz/identity-vault')>(), loadWalletObservation: async () => p.cachedWallet, loadMarketPortfolioState:async()=>p.retainedPortfolio,saveMarketPortfolioState:p.portfolioSave, loadAccountLedgerState: async () => null, saveWalletObservation: p.save }));
 vi.mock('../src/receiz/client', () => ({ loadReceiz: async () => ({
   ReceizHttpError,
   verifyReceizArtifact: async () => ({ status: 'verified-artifact' }),
@@ -33,7 +35,7 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 beforeEach(() => {
-  p.pulse = 100;
+  p.pulse = 100;p.retainedPortfolio=null;p.cachedWallet=null;p.portfolioSave.mockReset().mockResolvedValue(undefined);
   p.scopes.mockReset().mockResolvedValue([...BANK_READ_SCOPES]);
   p.wallet.mockReset().mockResolvedValue(wallet());
   p.continuation.mockReset().mockResolvedValue({ ok: true, session: { uid: 'bound-user' }, wallet: wallet('foreign-user').wallet });
@@ -264,4 +266,13 @@ it('does not start protected reads when the identity closes during overlapping g
   expect(p.wallet).not.toHaveBeenCalled();
   expect(p.scopes).not.toHaveBeenCalled();
   expect(identity.knownWallet()).toBeNull();
+});
+
+it('binds the first portfolio read to the continued account instead of a local identity UID',async()=>{
+ const raw={...portfolioFixture(),actorUserId:'bound-user'};p.request.mockResolvedValue(raw);const identity=await open();
+ try{const api=await identity.marketPortfolio!();await api.refresh();expect(api.known()?.accountUid).toBe('bound-user');expect(api.known()?.positions).toHaveLength(2);expect(p.request).toHaveBeenCalledWith('/api/connect/market/portfolio',{method:'GET'});}finally{identity.dispose();}
+});
+it('has encrypted same-account holdings available at first identity paint without a connected read',async()=>{
+ const raw={...portfolioFixture(),actorUserId:'bound-user'};p.retainedPortfolio={...raw,schema:'bankeiz.market-portfolio.v1',accountUid:'bound-user',source:'connected'};p.cachedWallet={wallet:parseSharedWallet(wallet(),'bound-user'),observedAt:'2026-10-21T12:00:00Z',source:'shared-wallet',history:[]};
+ const identity=await open();try{expect(identity.knownMarketPortfolio?.()?.positions).toHaveLength(2);expect(p.continuation).not.toHaveBeenCalled();expect(p.request).not.toHaveBeenCalled();}finally{identity.dispose();}
 });

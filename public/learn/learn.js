@@ -134,7 +134,8 @@
   let displayedUrl=snapshot().url;
   const rememberPosition = (url,scroll) => {
     const source=new URL(url,location.origin),key=source.pathname+source.search;
-    for(const value of new Set([url,...(pageAt(source.pathname)?.runtime==='explore'&&!/^\/asset\//.test(source.pathname)?[key]:[])])){positions.delete(value);positions.set(value,scroll);}
+    const bankPanel=source.pathname==='/'&&/^#(account|market|assets|ledger)(?:\/|$)/.exec(source.hash)?.[1];
+    for(const value of new Set([url,...(bankPanel?['/#'+bankPanel]:[]),...(pageAt(source.pathname)?.runtime==='explore'&&!/^\/asset\//.test(source.pathname)?[key]:[])])){positions.delete(value);positions.set(value,scroll);}
     while(positions.size>96)positions.delete(positions.keys().next().value);
   };
   const remember = () => {
@@ -249,8 +250,11 @@
     if (page?.runtime) loadRuntime(page, destination);
   };
   const navigate = target => {
-    const returning = /^\/asset\//.test(location.pathname) && pageAt(target)?.runtime === 'explore' && !/^\/asset\//.test(target);
-    remember(); history.pushState({ publicNavigation: { url: target, scroll: returning ? positions.get(target) ?? 0 : 0 } }, '', target); void render(returning);
+    const leavingAsset=/^\/asset\//.test(location.pathname),enteringAsset=/^\/asset\//.test(target);
+    const returning = leavingAsset && (pageAt(target)?.runtime === 'explore' && !enteringAsset || /^\/#(?:account|market|assets|ledger)$/.test(target));
+    const panel=location.pathname==='/'&&/^#(account|market|assets|ledger)(?:\/|$)/.exec(location.hash)?.[1];
+    const assetReturnPath=enteringAsset?(leavingAsset?history.state?.assetReturnPath:panel?'/#'+panel:location.pathname):undefined;
+    remember(); history.pushState({ ...(assetReturnPath?{assetReturnPath}:{}),publicNavigation: { url: target, scroll: returning ? positions.get(target) ?? 0 : 0 } }, '', target); void render(returning);
   };
   addEventListener('bankeiz:navigate-public',event=>{const path=event.detail?.path;if(typeof path==='string'&&path.length<100&&profileName(path)){navigate(path);}});
   // Retained call controls can return from a public workspace without a

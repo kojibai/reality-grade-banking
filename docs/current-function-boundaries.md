@@ -25,6 +25,7 @@ source and integration materials. Product release publication follows the
 | Funding detail | Carried source relationships and calculated oldest-available-first FIFO attribution, including multiple proof/funding sources | Calculated pooled attribution is labeled as such. It does not rewrite an individual allocation recorded by the original transfer. |
 | Public Market and Explore | Existing public originals, content categories, retained valuation operands, charts, discovery, source inspection and individual asset pages | Valuation, backing, supply, available liquidity and executed price remain distinct. Missing operands never acquire invented history. |
 | Asset ownership actions | Standalone Buy ownership/Take cash reuse the existing Receiz Market quote/trade/recovery and account/card-return path | Only supported assets/actions are offered. Actual paid credit and live purchase/sale are assessed separately from synthetic browser fixtures. |
+| Investments | Assets displays account-wide Receiz Market share positions before proof objects and Showcase, with exact shares, current value, cost basis, unrealized return, recorded trades and the existing Buy ownership / Take cash review | Connected holdings require Receiz commit `24755a9a7` (`GET /api/connect/market/portfolio`, existing `receiz:wallet.read`). No migration or SDK version change. This private observation is display data, not a balance, ownership admission or trade authority. |
 | Public original creation | Seal one exact source and publish it through the owner's canonical Receiz Showcase and existing discovery projection; interrupted delivery resumes the same original | Qualify actual fresh/existing Showcase publication and Market visibility on the deployed build, including media and interrupted delivery. |
 | Asset media and proof back | Same mounted original through object flip/full view, carried live-player manifest material, native audio controls and individual sharing art | Playback is retained within the mounted asset. App-wide persistent music/video is follow-up work. Display artwork never substitutes for the original proof. |
 | Messages, groups and assistant | Existing Receiz conversations, network profile search, contacts, encrypted local inbox retention, real typing/streaming and entitlement-bound assistant/upgrade flow | Reuses Receiz communication and access. No separate Bank identity or messaging service; selected context and financial approvals retain their own boundaries. |
@@ -116,3 +117,39 @@ recovery, upgrade and rollback.
 No new root issuer, identity service, financial database, messaging backend,
 native application or weaker antirollback has been introduced by these
 presentation/integration changes.
+
+## Investment presentation
+
+The connected portfolio reads all active asset positions and account trade
+records, including purchases made directly through Receiz. Both loaders use
+stable ID cursors and exact integer text fields; an unreadable page refuses the
+refresh rather than presenting a successful partial portfolio. The host bounds
+one complete observation to 10,000 positions and 100,000 trades.
+
+Bankeiz reuses the open identity's verified carried Market snapshot or encrypted
+same-identity retention for initial holdings. One shared read refreshes the
+account in the background; focus/online reads are coalesced for 60 seconds and a
+confirmed Market trade invalidates that observation. There is no per-holding
+polling, second wallet read, or added price request. Closing the identity clears
+the private public-page presentation. Private fallback metadata is never placed
+in public asset retention or shared links.
+
+Current value marks exact owned shares against the retained public price, or
+uses the last recorded Market price where no public price is available. Cost
+basis is the remaining recorded acquisition basis. Unrealized return compares
+those values; missing basis stays unavailable. Cash and Showcase valuations do
+not become purchased holdings or get added again to the account balance.
+
+A local worker builds historical **value**, using recorded quantities only when
+net purchases and sales reconcile to the current position and the public asset
+carries bound pricing operands. Purchases and sales change that curve, so it is
+not labelled investment performance. Unsupported history remains a current
+observation. Completed samples are reused on pulse updates. The current-holdings
+chart excludes exited positions; the account's separate Trade history retains
+those recorded trades.
+
+Standalone asset pages append Your investment and Your trades only from an
+already open private portfolio. No public order book or public trade tape is
+invented. Existing Market quote, approval, execution and recovery rules remain
+unchanged. Deploy the Receiz read endpoint before qualifying the Bankeiz UI;
+synthetic tests and browser fixtures do not establish a live purchase or sale.

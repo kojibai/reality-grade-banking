@@ -1,0 +1,6 @@
+export const portfolioUid='10000000-0000-4000-8000-000000000001';
+export function portfolioFixture(){return{ok:true,schema:'receiz.market.portfolio.v1',authority:'market-observation',actorUserId:portfolioUid,observedAt:'2026-10-21T12:00:00Z',positions:[
+ {id:'position-one',marketItemId:'profile:artist:work',marketType:'asset',title:'The First Light',summary:'An original work.',assetId:'work',shareQuantityMicro:'2500000',costBasisUsdCents:'2000',lastPriceUsdCents:'1000',openedAt:'2026-10-19T10:00:00Z',lastTradeAt:'2026-10-19T10:00:00Z'},
+ {id:'position-two',marketItemId:'profile:artist:other',marketType:'asset',title:'Second Light',summary:'',assetId:'other',shareQuantityMicro:'1000000',costBasisUsdCents:'600',lastPriceUsdCents:'500',openedAt:'2026-10-20T10:00:00Z',lastTradeAt:'2026-10-20T10:00:00Z'}],trades:[
+ {id:'buy-one',marketItemId:'profile:artist:work',title:'The First Light',side:'buy',shareQuantityMicro:'2500000',executionPriceUsdCents:'800',settlementUsdCents:'2000',executedAt:'2026-10-19T10:00:00Z'},
+ {id:'buy-two',marketItemId:'profile:artist:other',title:'Second Light',side:'buy',shareQuantityMicro:'1000000',executionPriceUsdCents:'600',settlementUsdCents:'600',executedAt:'2026-10-20T10:00:00Z'}]};}

@@ -63,7 +63,9 @@ on a screenshot or another application's interpretation.
   hand it to its addressed recipient. Funding is selected automatically.
 - **Assets with continuity.** Discover public originals, inspect their media
   and proof back, follow ownership history and use supported Buy ownership or
-  Take cash actions. Each public asset has its own shareable page.
+  Take cash actions. Each public asset has its own shareable page. Assets also
+  brings together existing Receiz share holdings, current value, cost basis,
+  unrealized return and trade history through one account-bound read.
 - **Conversations and assistance.** Existing Receiz messages, groups and calls
   stay connected to the same ID. Assistant access follows the account's actual
   entitlement; consequential actions retain their own approval.

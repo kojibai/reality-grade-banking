@@ -1,6 +1,7 @@
 import {useEffect,useState,useSyncExternalStore} from 'react';
 import { ExternalLink, FileCheck2 } from 'lucide-react';
 import { AssetMark } from '../../components/AssetMark';
+import {OpenInvestment} from '../assets/OpenInvestment';
 import {PublicAssetChart} from './PublicAssetChart';
 import {usePublicAssetPeriods} from '../../receiz/market-projection/usePublicAssetPeriods';
 import { formatPublicPrice,publicAssetImagePreviewUrl, type PublicMarketItem } from '../../receiz/public-market';
@@ -35,7 +36,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
     {standalone&&<div className="public-asset-media">{object}</div>}
     <div className="asset-price">{formatPublicPrice(price)}<span>Market Value</span></div>
     {!periods&&item.changePct !== null && <div className={`price-change ${item.changePct >= 0 ? 'positive' : 'negative'}`}>{item.changePct > 0 ? '+' : ''}{item.changePct}%</div>}
-    <PublicAssetChart periods={periods} fallback={item.chart}/>
+    <PublicAssetChart periods={periods} fallback={item.chart}/><OpenInvestment item={item}/>
     {!readOnly&&<div className="dual-actions"><button className="primary-button" disabled={!canReviewTrade} onClick={() => { onTrade?.('buy', item.id); }}>Buy ownership</button><button className="secondary-button" disabled={!canReviewTrade} onClick={() => { onTrade?.('sell', item.id); }}>Take cash</button></div>}
     {!standalone&&object}
     <div className="asset-actions asset-source-links">{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={15} strokeWidth={1.5} />Open public source</a>}{item.verifyUrl && <a href={item.verifyUrl} target="_blank" rel="noreferrer"><FileCheck2 size={15} strokeWidth={1.5} />Inspect proof</a>}</div>
