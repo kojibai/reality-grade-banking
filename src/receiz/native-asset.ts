@@ -10,6 +10,7 @@ export type NativeAssetResult={status:'committed';nativeAssetSource:NativeAssetP
 type Checkpoint={prepared:NativeAssetPrepared;consentProof:ReceizIdentityLoginProof;state:'unknown'|'committed'|'zero-write';source?:NativeAssetPacket};
 export type NativeAssetState={schema:'bank.native-assets.v1';current:Checkpoint;history:Checkpoint[]};
 function fail(code:string):never {throw Error(`BANK_ASSET_${code}`);}
+function immutableReview<T>(value:T):T{if(value&&typeof value==='object'){for(const item of Object.values(value))immutableReview(item);Object.freeze(value);}return value;}
 function preparedReview(p:NativeAssetPrepared){return inspectNativeAssetReview({schema:p.schema,request:p.request,keyId:p.keyId,planDigest:p.planDigest,terms:p.terms});}
 /** Canonical v129 proof plus the native financial-domain signature. An API
  * status, document seal or caller-declared balance is never an asset result. */
@@ -48,7 +49,7 @@ export function createNativeAssets(input:{ownerReceizId:string;keyId:string;onCo
    if(!p||Object.keys(p).sort().join('|')!=='challengeB64Url|keyId|planDigest|request|schema|terms|ticket'||typeof p.ticket!=='string'||!p.ticket||p.ticket.length>65536)fail('REVIEW_INVALID');
    const r=preparedReview(p);if(!assetSame(r.request,request)||r.keyId!==input.keyId||p.challengeB64Url!==nativeAssetChallenge(r))fail('REVIEW_INVALID');
    const sdk=await loadReceiz();if(sdk.receizKaiNow().uPulse>=r.terms.expiresAtKaiUPulse)throw Error('BANK_OPERATION_EXPIRED');
-   const review=Object.freeze({request:Object.freeze(structuredClone(request)),terms:Object.freeze(r.terms),confirmationDigest:await sdk.digestReceizCanonicalV122(r)});held.set(review,structuredClone(p));return review;
+   const review=immutableReview({request:structuredClone(request),terms:r.terms,confirmationDigest:await sdk.digestReceizCanonicalV122(r)});held.set(review,structuredClone(p));return review;
   });},
   async execute(review:BankOperationReview,confirmationDigest:string):Promise<NativeAssetResult>{return input.lock(async()=>{
    input.assertOpen();await input.assertNoOtherPending?.();input.assertOpen();const p=held.get(review);if(!p||confirmationDigest!==review.confirmationDigest)throw Error('BANK_EXECUTION_EXACT_CONFIRMATION_REQUIRED');

@@ -1,6 +1,18 @@
 import {expect,it,vi} from 'vitest';
 import * as payments from '../src/receiz/native-asset';
 import {BANK_APPLICATION_ID} from '../src/receiz/config';
+it('keeps the displayed automatic split immutable before identity signing',async()=>{
+ let signs=0;
+ const api=payments.createNativeAssets({ownerReceizId:'owner.receiz.id',keyId:'a'.repeat(64),assertOpen(){},lock:async run=>run(),store:{read:async()=>null,write:async()=>{}},sign:async()=>{signs++;throw Error('NO_SIGN');},request:async(_path,request)=>{
+  const review={schema:'receiz.bank.native-asset-review.v1',request,keyId:'a'.repeat(64),planDigest:'b'.repeat(64),terms:{debitUsdCents:'10000',debitPhiMicro:'5000000',creditUsdCents:'0',creditPhiMicro:'0',feeUsdCents:'0',quantityMicro:'1000000',assetDigest:null,recipient:null,expiresAtKaiUPulse:9000000000000000,fundingComponents:[{rail:'reserve',amountUsdCents:'6000',amountPhiMicro:'3000000'},{rail:'settlement',amountUsdCents:'4000',amountPhiMicro:'2000000'}]}};
+  const {nativeAssetChallenge}=await import('../src/receiz/native-asset-protocol');return {...review,ticket:'fixture',challengeB64Url:nativeAssetChallenge(review as never)};
+ }});
+ const review=await api.prepare({kind:'fund-asset',fundingRule:'reserve-first-then-settlement',amountUsdCents:'10000',definition:{name:'Units',symbol:'UNIT',units:'1',description:'',linkedProofDigest:null}});
+ expect(()=>Object.assign(review.terms.fundingComponents![0],{amountUsdCents:'1'})).toThrow(TypeError);
+ expect(()=>Array.prototype.pop.call(review.terms.fundingComponents)).toThrow(TypeError);
+ expect(()=>Object.assign((review.request as {definition:object}).definition,{units:'2'})).toThrow(TypeError);
+ expect(review.terms.fundingComponents![0].amountUsdCents).toBe('6000');expect(signs).toBe(0);
+});
 it('retains the exact approved intent before submission and uses only read-only recovery after response loss',async()=>{
  const factory=Reflect.get(payments,'createNativeAssets');expect(typeof factory).toBe('function');
  let state:unknown=null;const sequence:string[]=[];const calls:string[]=[];

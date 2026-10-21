@@ -7,6 +7,11 @@ package alone does not activate a hosted financial writer.
 
 ## Accepted asset effects
 
+[Automatic asset backing](automatic-asset-backing.md) accepts one amount and
+allocates Reserve first, then Settlement, within one native asset transition.
+Signed components preserve the exact original backing through holdings, account
+proofs and whole-supply redemption. Historical single-rail encodings stay intact.
+
 `/api/connect/bank/assets/{prepare,execute,recover,portfolio}` uses the existing
 same-origin transport and current account/key scopes. Preparation does not debit
 funds. It returns bounded, exact terms and an encrypted intent. Final approval

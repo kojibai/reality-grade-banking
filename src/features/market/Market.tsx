@@ -9,6 +9,8 @@ import {PublicObjectRow} from './PublicObjectRow';
 import { MarketOverview } from './MarketOverview';
 import { PublicAssetDetail } from './PublicAssetDetail';
 import {MARKET_CONTENT_FILTERS,matchesMarketContent,type MarketContentFilter} from '../../receiz/market-categories';
+import {beginPublicAssetTrade} from '../../receiz/public-asset-trade';
+import {PublicAssetTradeHost} from '../../public-explorer/PublicAssetTradeHost';
 import './market.css';
 
 function selectedObject(prefix:string): string | null { try { return location.hash.startsWith(prefix) ? decodeURIComponent(location.hash.slice(prefix.length)) : null; } catch { return null; } }
@@ -49,6 +51,7 @@ function MarketView({ mode='market',active = true, sourceActive=active, onAction
     <div className={overviewOnly||publicCategory?'market-layout market-single':'market-layout'}><div>{!publicCategory&&<MarketOverview catalog={catalog} historyCatalog={historyCatalog} active={active} sourceActive={sourceActive} onExplore={() => overviewOnly?document.querySelector<HTMLAnchorElement>('[data-cap-explore]')?.click():collection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />}
     {!explorer&&<div className="market-actions"><button className="primary-button navy-button" onClick={() => open({ kind: 'currency' })}><Plus size={19} />Create an asset</button></div>}</div>
     {!overviewOnly&&<section id="market-explore" ref={collection}><div className="section-heading"><h2>{explorer?'Public collection':'Explore'}</h2><span className="muted result-count">{assets.length.toLocaleString()} assets</span></div><div className="market-rows">{assets.slice(0, shown).map(asset => <PublicObjectRow key={asset.id} item={asset} onOpen={()=>view(asset)}/>)}{!assets.length && <div className="empty-state">{catalog ? 'No matching public assets. Try another search.' : status === 'loading' ? 'Loading public proof objects…' : 'The public collection is temporarily unavailable.'}</div>}</div><div ref={loadMore} className="public-market-sentinel" aria-hidden="true" />{assets.length > shown && typeof IntersectionObserver === 'undefined' && <button className="text-button public-market-more" onClick={() => setShown(count => count + 50)}>Show more assets</button>}</section>}</div>
-    {active && selectedId && <Sheet title="Public asset" onClose={close}>{selected ? <PublicAssetDetail key={selected.id} item={selected} readOnly={explorer} onTrade={explorer?undefined:(mode, assetId) => open({ kind: 'market-trade', marketItemId:assetId, side:mode })} /> : <p className="body-copy">{catalog ? 'This object is no longer in the public collection.' : 'Loading the public source…'}</p>}</Sheet>}
+    {active && selectedId && <Sheet title="Public asset" onClose={close}>{selected ? <PublicAssetDetail key={selected.id} item={selected} onTrade={(side, marketItemId) => {if(explorer)beginPublicAssetTrade({itemId:marketItemId,side,title:selected.title});else open({kind:'market-trade',marketItemId,side});}} /> : <p className="body-copy">{catalog ? 'This object is no longer in the public collection.' : 'Loading the public source…'}</p>}</Sheet>}
+    {active&&explorer&&<PublicAssetTradeHost/>}
   </section>;
 }

@@ -1,3 +1,4 @@
+import {inspectNativeAssetFundingComponents} from './native-asset-backing';
 import type { ReceizClient, ReceizAuthoritySessionV124, ReceizOperationPlanV124, ReceizPortableExecutionTransitionSetV124 } from '@receiz/sdk';
 import { BANK_APPLICATION_ID } from './config';
 import { noteFailureStage } from './note-stage';
@@ -47,10 +48,11 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
   const fields: Record<BankOperationInput['kind'], string[]> = {
     'send-value': ['rail', 'amountUsdCents', 'recipient'], exchange: ['rail', 'amountUsdCents', 'assetDigest'],
     'send-ownership': ['assetDigest', 'quantityMicro', 'recipient'], 'sell-share': ['assetDigest', 'quantityMicro', 'rail', 'buyer'],
-    'buy-shares': ['assetDigest', 'quantityMicro', 'rail'], 'redeem-asset': ['assetDigest'], 'fund-asset': ['definition', 'rail', 'amountUsdCents'],
+    'buy-shares': ['assetDigest', 'quantityMicro', 'rail'], 'redeem-asset': ['assetDigest'], 'fund-asset': ['definition', Object.hasOwn(r,'fundingRule')?'fundingRule':'rail', 'amountUsdCents'],
   };
   if (typeof r.kind !== 'string' || !Object.hasOwn(fields, r.kind)) fail();
   closed(input, ['kind', ...fields[input.kind]]);
+  if ('fundingRule' in input && input.fundingRule!=='reserve-first-then-settlement') fail();
   if ('rail' in input && !['reserve', 'settlement'].includes(input.rail)) fail();
   if ('amountUsdCents' in input) exact(input.amountUsdCents, true);
   if ('quantityMicro' in input) exact(input.quantityMicro, true);
@@ -67,7 +69,7 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
   return input;
 }
 function termsFor(value: unknown, request: BankOperationRequest): Readonly<BankOperationTerms> {
-  const t = closed(value, ['debitUsdCents', 'debitPhiMicro', 'creditUsdCents', 'creditPhiMicro', 'feeUsdCents', 'quantityMicro', 'assetDigest', 'recipient', 'expiresAtKaiUPulse']);
+  const t = closed(value, ['debitUsdCents', 'debitPhiMicro', 'creditUsdCents', 'creditPhiMicro', 'feeUsdCents', 'quantityMicro', 'assetDigest', 'recipient', 'expiresAtKaiUPulse',...('fundingRule'in request?['fundingComponents']:[])]);
   for (const name of ['debitUsdCents', 'debitPhiMicro', 'creditUsdCents', 'creditPhiMicro', 'feeUsdCents', 'quantityMicro']) exact(t[name]);
   if (!Number.isSafeInteger(t.expiresAtKaiUPulse) || Number(t.expiresAtKaiUPulse) <= 0) fail();
   if (t.assetDigest !== null) digest(t.assetDigest);
@@ -80,6 +82,7 @@ function termsFor(value: unknown, request: BankOperationRequest): Readonly<BankO
   if (['exchange', 'buy-shares'].includes(request.kind) && (t.quantityMicro === '0' || t.debitUsdCents === '0')) fail();
   if (request.kind === 'sell-share' && t.creditUsdCents === '0') fail();
   if (request.kind === 'fund-asset' && (t.debitUsdCents !== request.amountUsdCents || t.quantityMicro !== parseAmount(request.definition.units))) fail();
+  if('fundingRule'in request)inspectNativeAssetFundingComponents(t.fundingComponents,{amountUsdCents:t.debitUsdCents as string,amountPhiMicro:t.debitPhiMicro as string});
   return Object.freeze({ ...t }) as unknown as Readonly<BankOperationTerms>;
 }
 // The endpoint transports complete native prepared sources. Its status flags,
@@ -102,6 +105,7 @@ export function createBankOperations(input: {
       input.assertOpen();
       if(value.kind === 'send-value' && input.payments){const pending=await input.store.load();input.assertOpen();if(pending&&['prepared','unknown'].includes(pending.state))throw Error('BANK_EXECUTION_PENDING');const review=await input.payments.prepare(inputRequest(value));nativeReviews.add(review);held.add(review);return review;}
       if(value.kind !== 'send-value' && input.assets){const pending=await input.store.load();input.assertOpen();if(pending&&['prepared','unknown'].includes(pending.state))throw Error('BANK_EXECUTION_PENDING');const review=await input.assets.prepare(inputRequest(value));nativeAssetReviews.add(review);held.add(review);return review;}
+      if('fundingRule'in value)throw Error('BANK_ASSET_AUTOMATIC_RUNTIME_REQUIRED');
       assertBankOperationQualified(); if (preparing) throw Error('BANK_OPERATION_IN_PROGRESS'); preparing = true;
       try {
         const normalized = inputRequest(value), pending = await input.store.load(); input.assertOpen();

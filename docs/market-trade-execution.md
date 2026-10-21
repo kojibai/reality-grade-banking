@@ -5,6 +5,11 @@ connected Receiz Market trade path. The asset or investment chart stays open
 underneath its trade sheet. Closing the trade returns to that same object;
 selling a complete holding does not discard the open chart.
 
+Public Explore popovers expose the same Buy ownership / Take cash actions through
+the existing public trade host. The object and browsing position remain open
+underneath the payment sheet. Sale percentages appear only for owned shares.
+Backed issuance uses the separate [automatic native asset contract](automatic-asset-backing.md).
+
 ## Account balance and card payment
 
 A standalone buyer with an account balance opens the ordinary Market purchase

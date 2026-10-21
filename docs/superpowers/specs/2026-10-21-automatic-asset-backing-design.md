@@ -1,6 +1,6 @@
 # Automatic asset backing
 
-**Status: Approved by the user on 2026-10-21. Implementation has not started.**
+**Status: Approved and implemented locally on 2026-10-21. See [qualification and delivery limits](../../verification/2026-10-21-automatic-asset-backing.md).**
 
 ## Intended behavior and existing constraint
 

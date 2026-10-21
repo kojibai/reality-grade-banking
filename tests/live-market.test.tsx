@@ -55,7 +55,7 @@ it('retains an explored object through other public routes and restores its rout
  act(()=>{history.pushState(null,'','/explore/#object/public-0');dispatchEvent(new Event('receiz-bank:surface'));});
  expect(host.querySelector('dialog')).not.toBeNull();
 });
-it('opens the same public collection and proof details in the explorer without offering private financial actions',()=>{
+it('opens the same public collection and proof details in the explorer with trade review actions',()=>{
  source.value={catalog:catalog(1),status:'live',error:null,refresh:vi.fn()};
  const {host,open}=mount('explorer');
  expect(host.querySelector('h1')?.textContent).toBe('Explore proof objects');
@@ -64,7 +64,8 @@ it('opens the same public collection and proof details in the explorer without o
  act(()=>(host.querySelector('.market-rows button')as HTMLButtonElement).click());
  expect(location.hash).toBe('#object/public-0');
  expect(host.querySelector('dialog')?.textContent).toContain('@alice');
- expect(host.querySelector('dialog')?.textContent).not.toContain('Buy ownership');
+ expect(host.querySelector('dialog')?.textContent).toContain('Buy ownership');
+ expect(host.querySelector('dialog')?.textContent).toContain('Take cash');
  expect(open).not.toHaveBeenCalled();
 });
 it('searches the whole public catalog beyond one thousand while rendering a bounded initial list', () => {

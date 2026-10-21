@@ -83,7 +83,13 @@ export function inspectAccountStatement(input: unknown, applicationId: string): 
       &&t.reserveDeltaUsdCents==="0"&&t.settlementDeltaPhiMicro==="0"&&t.balanceDeltaPhiMicro==="0";
     if (t.sequence !== index + 1 || !text(t.transactionId, 256) || !digest(t.eventDigest) || t.previousEventDigest !== previous || !unsigned(t.kaiUPulse) || t.kaiUPulse.length > 30 || BigInt(t.kaiUPulse) < time && !identityEvent || BigInt(t.kaiUPulse) > BigInt(c.kaiUPulse) || ids.has(t.transactionId) || digests.has(t.eventDigest) || t.eventDigest === c.genesisHead || !text(t.kind, 64) || !text(t.description) || !signed(t.reserveDeltaUsdCents) || !signed(t.settlementDeltaPhiMicro)) fail('HISTORY_INVALID');
     if(native){
-      if(!signed(t.balanceDeltaPhiMicro)||BigInt(t.reserveDeltaUsdCents)!==0n&&t.settlementDeltaPhiMicro!=="0"||BigInt(t.reserveDeltaUsdCents)===0n&&t.settlementDeltaPhiMicro!==t.balanceDeltaPhiMicro)fail('HISTORY_INVALID');
+      if(!signed(t.balanceDeltaPhiMicro))fail('HISTORY_INVALID');
+      const r=BigInt(t.reserveDeltaUsdCents),s=BigInt(t.settlementDeltaPhiMicro),g=BigInt(t.balanceDeltaPhiMicro),abs=(n:bigint)=>n<0n?-n:n;
+      if(r!==0n&&s!==0n){
+        // A complete native Note may carry both admitted rails in one atomic
+        // movement. Its signed source retains the exact original backing.
+        if(!complete||!["note-funded","note-funding-cancelled","note-deposited","asset-fund-asset","asset-redeem-asset"].includes(String(t.kind))||(r<0n)!==(s<0n)||(r<0n)!==(g<0n)||abs(s)>=abs(g)||(["note-funded","asset-fund-asset"].includes(String(t.kind)))!==(g<0n))fail('HISTORY_INVALID');
+      }else if(r===0n&&t.settlementDeltaPhiMicro!==t.balanceDeltaPhiMicro)fail('HISTORY_INVALID');
       gross+=BigInt(t.balanceDeltaPhiMicro);if(gross<0n)fail('BALANCE_MISMATCH');
     }
     reserve += BigInt(t.reserveDeltaUsdCents); settlement += BigInt(t.settlementDeltaPhiMicro);
