@@ -30,7 +30,7 @@ it('distinguishes retained original custody from confirmed public delivery and r
   await act(async()=>click(host,'Seal moment'));
   expect(host.textContent).toContain('Public delivery is pending');expect(host.textContent).not.toContain('Your moment is public.');
   await act(async()=>click(host,'Retry public delivery'));expect(createAsset.mock.calls[1]).toEqual(createAsset.mock.calls[0]);
-  expect(host.textContent).toContain('Your moment is public.');expect(host.querySelector('a')?.href).toBe('https://receiz.com/owner');
+  expect(host.textContent).toContain('Your moment is public.');expect(host.querySelector('a')?.getAttribute('href')).toBe('/owner/');expect(host.querySelector('a')?.hasAttribute('target')).toBe(false);
  }finally{act(()=>root.unmount());}
 });
 it('reopens pending source custody after refresh and resumes it without a new form submission',async()=>{

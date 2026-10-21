@@ -7,7 +7,7 @@ import {publicCatalogAtPulse} from './market-projection/catalog-prices';
 
 export const PUBLIC_MARKET_CACHE_KEY = 'receiz-bank-public-discovery-v2';
 function restorePublicCatalog(): PublicMarketCatalog | null { try { const saved = localStorage.getItem(PUBLIC_MARKET_CACHE_KEY); const input = saved ? JSON.parse(saved) : null; const catalog = input ? parsePublicMarket(input, input.snapshot) : null; if (!catalog) return null; rememberPublicOriginalLocators(catalog); try { return mergePublicSports(catalog, JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1') ?? 'null')); } catch { return catalog; } } catch { return null; } }
-export function usePublicMarket(active = true) {
+export function usePublicMarket(active = true, displayActive = active) {
   const pricingSource=useMarketDisplaySource(),[pulse,setPulse]=useState(()=>receizKaiNow().pulse);
   const [catalog, setCatalog] = useState<PublicMarketCatalog | null>(restorePublicCatalog);
   const [status, setStatus] = useState<'loading' | 'live' | 'stale' | 'error'>(catalog ? 'stale' : 'loading');
@@ -73,7 +73,7 @@ export function usePublicMarket(active = true) {
     document.addEventListener('visibilitychange', wake); window.addEventListener('online', wake);
     return () => { clearInterval(interval); document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); seed.abort(); running.current?.abort(); running.current = null;sportsRunning.current?.abort();sportsRunning.current=null; };
   }, [active, refresh]);
-  useEffect(()=>{if(!active)return;const update=()=>{if(document.visibilityState==='visible')setPulse(previous=>Math.max(previous,receizKaiNow().pulse));};update();const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);window.addEventListener('pageshow',update);window.addEventListener('focus',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update);window.removeEventListener('pageshow',update);window.removeEventListener('focus',update);};},[active]);
-  const pricedCatalog=useMemo(()=>publicCatalogAtPulse(catalog,pricingSource,pulse),[catalog,pricingSource,pulse]);
-  return { catalog:pricedCatalog, historyCatalog:catalog, quoteStatus, sportsStatus, status: !catalog && status === 'stale' ? 'error' as const : status, error, refresh };
+  useEffect(()=>{if(!displayActive)return;const update=()=>{if(document.visibilityState==='visible')setPulse(previous=>Math.max(previous,receizKaiNow().pulse));};update();const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);window.addEventListener('pageshow',update);window.addEventListener('focus',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update);window.removeEventListener('pageshow',update);window.removeEventListener('focus',update);};},[displayActive]);
+  const pricedCatalog=useMemo(()=>active?publicCatalogAtPulse(catalog,pricingSource,pulse):catalog,[catalog,pricingSource,pulse,active]);
+  return { catalog:pricedCatalog, historyCatalog:catalog, pulse, quoteStatus, sportsStatus, status: !catalog && status === 'stale' ? 'error' as const : status, error, refresh };
 }

@@ -56,6 +56,8 @@ import {BANK_CONNECTED_NOTE_ISSUANCE_ENABLED} from './config';
 import {ownerTwinAccountAccess} from './twin-access';
 
 export interface OpenIdentity {
+  profile?:()=>Promise<import('./profile-edit').ProfileEditor>;
+  knownProfile?:()=>import('./profile-edit').OwnerProfilePresentation|null;
   prepareAccountView: () => Promise<import('./wallet-observation').WalletObservation>;
   refreshLocalValuation?: () => Promise<import('./wallet-observation').WalletObservation | null>;
   walletReceivingAddress?: () => string | null;
@@ -391,6 +393,25 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     read:()=>continueAccountPresentation(),publish:(username,uid)=>{if(accountUid!==uid||lifetime.signal.aborted)throw Error('RECEIVING_USERNAME_IDENTITY_CHANGED');presentationUsername=confirmedUsername=username;},
   });
   function protectedChartFrame(){return knownWallet?.source==='local-note-head'||knownWallet?.walletScope==='native-full'||!!knownWallet&&isWalletQuoteHeld(knownWallet);}
+  let profileEditor:import('./profile-edit').ProfileEditor|undefined,profilePresentation:import('./profile-edit').OwnerProfilePresentation|null=null;
+  async function profile(){
+    if(profileEditor)return profileEditor;
+    const statement='Update the profile of my existing Receiz account with the details I choose. This changes public presentation and does not authorize a payment.';
+    const connect=()=>connectClient([...BANK_READ_SCOPES,'profile'],statement);
+    const current=await connect(),uid=clientAccounts.get(current)?.accountUid;
+    if(!uid||lifetime.signal.aborted)throw Error('PROFILE_ACCOUNT_CLOSED');
+    const {createProfileEditor,readProfileImageUpdate,ownerProfilePresentation}=await import('./profile-edit');
+    return profileEditor=createProfileEditor({accountUid:uid,current:()=>!lifetime.signal.aborted&&accountUid===uid,
+      update:async input=>{const next=await connect();if(clientAccounts.get(next)?.accountUid!==uid)throw Error('PROFILE_ACCOUNT_MISMATCH');return next.profile.update(input);},availability:async username=>{const next=await connect();if(clientAccounts.get(next)?.accountUid!==uid)throw Error('PROFILE_ACCOUNT_MISMATCH');return next.identity.checkUsernameAvailability(username);},
+      uploadImage:async(file,kind)=>{const next=await connect();if(clientAccounts.get(next)?.accountUid!==uid)throw Error('PROFILE_ACCOUNT_MISMATCH');const request=clientFetches.get(next);if(!request)throw Error('PROFILE_ACCOUNT_CLOSED');const body=new FormData();body.set('kind',kind);body.set('file',file);const response=await request('/api/profile/me/media',{method:'POST',body,signal:lifetime.signal}),value=await response.json();if(!response.ok||value?.ok!==true)throw Error('PROFILE_IMAGE_UNAVAILABLE');return readProfileImageUpdate(value,uid,kind);},
+      publish:result=>{
+        profilePresentation=ownerProfilePresentation(result);
+        const view=result.profile as {profile?:{username?:unknown;isPrivate?:boolean}};
+        const username=publicAccountUsername(view.profile?.username);if(username)presentationUsername=confirmedUsername=username;
+        dispatchEvent(new Event('bankeiz:profile-updated'));
+        void import('./public-profile').then(module=>{if(lifetime.signal.aborted||accountUid!==uid)return;try{if(view.profile?.isPrivate){module.forgetPublicProfilesForAccount(uid);module.forgetPublicProfile(username!);dispatchEvent(new Event('bankeiz:profile-updated'));return;}const next=module.parsePublicProfile({ok:true,profile:result.profile},username!);module.retainPublicProfile(next);dispatchEvent(new Event('bankeiz:profile-updated'));}catch{/* Private profile fields are never retained in public presentation. */}});
+      }});
+  }
   async function adoptChartResponse(response:unknown, expectedUserId:string) {
     if(protectedChartFrame())return null;
     const raw=(response as {wallet?:{chartSource?:import('./composite-wallet-history').CompositeWalletSource}}|null)?.wallet?.chartSource;
@@ -1396,7 +1417,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const uid=accountUid??knownWallet?.wallet.userId;if(!uid)return;
     retainedMessaging.retainTwinAccessQuestions(uid,questions);
   };
-  return { messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

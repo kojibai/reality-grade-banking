@@ -1,36 +1,57 @@
-# Design QA — note renderer and value framing
+# Public profiles design qualification
 
-Date: 2026-10-15. Scope of the original record below: the approved engraved note design, matching Reserve/Settlement presentation, unchanged paper and subtle Account/Learn wording. The subsequent Conformance Console and Bankeiz rebrand have their own completed record linked below.
+final result: passed
 
-**final result: passed**
+## Target and evidence
 
-## Evidence
+Selected reference: centered identity header and both collection layouts in
+`exec-e990def9-4e20-465e-aa3e-515207c2b084.png`, plus the approved compact identity
+popover. Production uses actual Receiz profile media and content; the fictional
+Alex Morgan/ocean assets in the design were not substituted for a real identity.
 
-- Approved reference: Codex generated image `exec-375f694e-f7de-4831-8b54-2404b6c129d8.png`.
-- Actual production-renderer PNGs: `note-artwork/reserve-note-10000-UNISSUED.png` and `note-artwork/settlement-note-10000-UNISSUED.png` in the task visualization directory. Both were opened with `view_image`, fully decoded and visually inspected.
-- Browser reference/current board and focused typography: `note-artwork/reference-versus-final-renderer.png`; original comparison `reference-versus-renderer.png`. Browser rasterization of the final board was soft at its capture scale; the actual exported PNGs were separately inspected at high resolution.
-- Mobile Learn receiving-standard screenshot: `note-artwork/learn-receiving-standard-mobile.png`; browser verified 390-pixel viewport and no horizontal overflow. Public guide navigation and exact destination anchors were exercised.
-- Real browser imported the native v129 runtime and read-only verifier; forged handles/unsigned inputs were refused. No identity, account, custody or financial operation was created by these fixtures.
+Rendered public profile: `http://127.0.0.1:5449/bjklock/`, mobile390×844 and
+desktop1280×900, device scale1. Mobile controls use the controlled fixture at
+`http://127.0.0.1:5448/tests/browser/profile-controls.html` with no account writes.
 
-The visualization root is `/Users/bjklock/.codex/visualizations/2026/10/13/01a1333c-52b2-7582-8fd1-aaaabe6476f9`.
+Comparison evidence is kept outside the repository:
 
-## Fidelity ledger
+- `/tmp/bankeiz-profile-design-comparison.png` — normalized source and rendered mobile region.
+- `/tmp/bankeiz-profile-mobile.png` — actual profile header/socials.
+- `/tmp/bankeiz-profile-desktop.png` — responsive actual profile.
+- `/tmp/bankeiz-profile-identity-mobile.png` — PBI evidence.
+- `/tmp/bankeiz-profile-inline-mobile.png` — inline existing image viewer.
+- `/tmp/bankeiz-profile-id-mobile.png` — compact username availability/editor.
+- `/tmp/bankeiz-profile-social-links-mobile.png` — additional named links.
 
-| Point | Final treatment |
-| --- | --- |
-| Paper and security engraving | Exact original paper asset retained; SHA-256 `52a7eceb2979e482956bac5844d43a4ba7bea2bda5d83f6d87a0c5fc136ad03a` unchanged |
-| Title and hierarchy | User-requested RESERVE NOTE / SETTLEMENT NOTE replaces reference branding, with matching engraved serif mastheads |
-| Value distinction | User-requested PROOF-BACKED VALUE / PROOF-NATIVE VALUE respectively; removed the earlier carried-value wording |
-| Denomination | Engraved central numeric value, exact words and all four corner values share canonical presentation cents; long amounts remain bounded |
-| Small print and serial | Rail-specific redemption line and RN/SN presentation prefix; full native identity/source remains in the proof, never replaced by printed text |
-| Geometry and export | Same 5:3 proportions; 3240 × 1944 pixels, 600-DPI pHYs; compact native preview remains 360 × 216 |
-| Mobile usability | Responsive shared preview, original PNG native share/download with exact bytes preserved; cancellation does not trigger another download |
-| Account/Learn framing | Native Settlement / backed Reserve; receiving standard and continuity tradeoff accurately scoped; existing layout, navigation and financial callbacks preserved |
+## Comparison
 
-Intentional deviations from the original generated reference are exactly the requested titles/subtitles, dynamic amounts, typed rail, readable outlined corner values and source-derived serial presentation. The original reference did not define a real issued source. Every saved sample here is unissued artwork and is refused by the financial verifier.
+The existing Bankeiz typography, ivory/navy tokens, logo-only header, centered
+portrait, cover, blue authorship check, quiet identity controls, primary actions
+and one/two-column collection hierarchy match the selected direction. Actual
+social icons and the approved Receiz ID/More links controls add one quiet row.
+Category/search controls follow the existing Market vocabulary. Asset prices and
+movement use real existing source inputs, rather than the reference's illustrative
+numbers. The desktop retains the existing product's console frame.
 
-No live Settlement Note financial support or institution qualification is claimed by visual QA. Those separate native integration and real-device release gates remain in the linked contracts.
+No P0/P1/P2 visual mismatches remain. Mobile header spacing was compacted to bring collection artwork into the first screen; group avatar flex sizing was corrected and recaptured at32×32. The controlled editor uses a stable mock identity matching the actual account owner lifecycle. The source's example cover, portrait, title,
+asset artwork and prices intentionally differ from the actual account. The
+reference contains no owner editor, so that state follows the existing ID sheet
+and mobile input/button system instead of inventing a separate treatment.
 
-## Conformance Console and Bankeiz
+## Interaction evidence
 
-**final result: passed** for the public precision console and requested presentation-only rebrand. The accepted concept and current browser screenshots were visually compared, desktop/mobile states were exercised, actual reference checks passed 7/7, and unissued artwork was refused. The [full verification and fidelity ledger](docs/verification/2026-10-15-conformance-console.md) records evidence, intentional differences, independent review and remaining financial/domain/license boundaries. Bankeiz retains the existing application palette, typography, flows and Reality-Grade Banking line. Native note artwork is unchanged.
+The real public browser check passed page identity/nonblank rendering, no framework
+overlay, mobile overflow, both collection views, PBI popover, inline existing image
+reader, and profile→asset→Back. Column and identity changes made no new data reads.
+The controlled mobile check passed compact editor expansion, availability feedback,
+acknowledged username save and the extra-links popover. Chat/profile handoffs,
+group profile links (also exercised in the mobile browser), same-account edit/upload validation and retained tab state
+are covered by targeted component/transport tests.
+
+The final production build and1975 tests across333 files passed.
+
+The in-app CUA browser returned `Local browser use is disabled in Work settings`.
+Local headless Chrome was used as the available fallback. Browser runs reported
+no JavaScript page errors. An authenticated production account was not edited;
+new links and image uploads require their documented Receiz rollout before live
+qualification. This record does not claim otherwise.

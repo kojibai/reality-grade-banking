@@ -23,6 +23,7 @@ export interface PublicMarketItem {
   localValuationPulse?:number;
   valuationBinding?:{itemId:string;assetId:string};
   ownerUsername: string | null; ownerDisplayName: string | null; ownerProfileUrl: string | null;
+  ownerAvatarUrl?:string|null;
   priceUsd: number | null; changePct: number | null; chart: number[];
   authority: 'projection-only'; canTrade: false;
 }

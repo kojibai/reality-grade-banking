@@ -133,3 +133,6 @@ it('keeps newer exact sports capture in cache and reports an older response as r
  let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket();return null;}
  try{await act(async()=>root.render(<Probe/>));expect(state.catalog?.items.find(item=>item.category==='sports')?.ownerUsername).toBe('new_owner');expect(state.sportsStatus).toBe('retained');const cached=JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1')!);expect(cached.generatedAt).toBe(fresh.generatedAt);expect(cached.cards[0].liveValueUsd).toBe(200);}finally{act(()=>root.unmount());}
 });
+it('can advance a profile display clock without starting global Market discovery or polling',async()=>{
+ const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket(false,true);return null;}try{await act(async()=>root.render(<Probe/>));expect(Number.isSafeInteger(state.pulse)).toBe(true);expect(fetcher).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
+});

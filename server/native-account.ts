@@ -64,7 +64,7 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
   const abort = new AbortController(), streamPath = isNativeChatStreamPath(new URL(path,'https://receiz.com').pathname);
   const signal = AbortSignal.any([request.signal,abort.signal,AbortSignal.timeout(streamPath?NATIVE_CHAT_STREAM_TIMEOUT_MS:60_000)]);
   try {
-    const artifactPath=path==='/api/receiz/ownership/bearer-claim',multipartPath=artifactPath||path==='/api/document-verify';
+    const artifactPath=path==='/api/receiz/ownership/bearer-claim',multipartPath=artifactPath||path==='/api/document-verify'||path==='/api/profile/me/media';
     const headers: Record<string, string> = { Accept: streamPath?'text/event-stream':artifactPath?'application/vnd.receiz.bundle+json, application/octet-stream':'application/json' };
     let multipart=false;
     const authorization = request.headers.get('authorization'); if (authorization) headers.Authorization = authorization;

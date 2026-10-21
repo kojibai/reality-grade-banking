@@ -10,6 +10,7 @@ export function profileAvatarUrl(value:unknown):string|null {
  try{const url=new URL(raw,raw.startsWith('/')?'https://receiz.com':undefined);return url.protocol==='https:'&&!url.username&&!url.password?url.href:null;}catch{return null;}
 }
 export function identityProfileAvatar(identity:OpenIdentity):string|null {
+ const current=identity.knownProfile?.();if(current)return profileAvatarUrl(current.avatarUrl);
  const held=identity.knownMessagingDisplay?.();
  if(held)for(const conversation of held.inbox){const own=conversation.members.find(person=>person.kind==='user'&&person.userId===held.accountUid),avatar=profileAvatarUrl(own?.avatarUrl);if(avatar)return avatar;}
  if(identity.localHistory?.portableStateVerified!==true)return null;

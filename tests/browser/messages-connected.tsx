@@ -10,6 +10,7 @@ const person={kind:'user' as const,userId:peer,username:'mira',displayName:'Mira
 const rows:ChatMessage[]=[{id:'44444444-4444-4444-8444-444444444444',conversationId:threadId,senderUserId:peer,senderKind:'user',senderAiId:null,senderDisplay:'Mira',body:'The original stays connected to its history.',createdAt:'2026-10-19T16:15:00Z',receizedAt:'2026-10-19T16:15:00Z',receipt:{},sealedOriginalAvailable:false}];
 rows.push({...rows[0],id:'66666666-6666-4666-8666-666666666666',senderUserId:owner,senderDisplay:'You',body:'Transferred $25.00 to @mira',walletTransfer:{kind:'chat_transfer',transferId:'fixture-payment',senderUserId:owner,recipientUserId:peer,amountUsdCents:'2500',amountPhiMicro:'123456',note:'Lunch',transactionHref:'/transactions/fixture-payment'}});
 const conversations:ChatConversation[]=[{id:threadId,kind:'dm',title:'Mira',members:[person],aiAgents:[],defaultAiId:null,unreadCount:1,previewMessage:rows[0],createdAt:rows[0].createdAt,updatedAt:rows[0].createdAt,lastMessageAt:rows[0].createdAt}];
+conversations.push({...conversations[0],id:'77777777-7777-4777-8777-777777777777',kind:'group',title:'Studio',members:[person,{...person,userId:'55555555-5555-4555-8555-555555555555',username:'alex',displayName:'Alex'}],previewMessage:null});
 const json=(value:unknown)=>Response.json(value);
 // Controlled HTTP-contract fixture. Production adapters and components are real;
 // all data below is synthetic and there is no external network or private account.

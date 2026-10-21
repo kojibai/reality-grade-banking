@@ -26,6 +26,9 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
 export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
   if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return false;
+  if(url.pathname==='/api/receiz/identity/profile')return method.toUpperCase()==='PATCH'&&!url.search;
+  if(url.pathname==='/api/profile/me/media')return method.toUpperCase()==='POST'&&!url.search;
+  if(url.pathname==='/api/profile/username/availability')return method.toUpperCase()==='GET'&&[...url.searchParams.keys()].length===1&&url.searchParams.getAll('username').length===1&&/^[a-z0-9_]{3,24}$/.test(url.searchParams.get('username')??'');
   if (url.pathname === '/api/connect/profile/showcase/publication') {
     const keys=[...url.searchParams.keys()],single=(key:string)=>url.searchParams.getAll(key).length===1;
     if(!single('applicationId')||url.searchParams.get('applicationId')!==BANK_APPLICATION_ID||keys.some(key=>!['applicationId','username','block','action','cursor'].includes(key)||!single(key)))return false;

@@ -75,18 +75,19 @@
   let bankLoading = null;
   const pathname = path => /^\/explorer\/?$/.test(path) ? '/explore/' : path === '/' ? '/' : path.endsWith('/') ? path : path + '/';
   const assetMetadata=new Map(),assetEntries=new Map();
+  const profileNames=new Set(['api','asset','assets','auth','conformance','explore','explorer','learn','legal','ledger','market','market-cap','native','offline','receipt','source','verify','u']);
+  const profileName=path=>{const match=/^\/(?:u\/)?([a-z0-9_]{3,24})\/?$/.exec(path);return match&&(path.startsWith('/u/')||!profileNames.has(match[1]))?match[1]:null;};
   const keepAsset=value=>{if(value&&typeof value.id==='string'&&value.id.length<=256&&typeof value.title==='string'){assetMetadata.set(value.id,{...value,description:value.description??value.summary});assetEntries.delete(value.id);if(assetMetadata.size>48){const first=assetMetadata.keys().next().value;assetMetadata.delete(first);assetEntries.delete(first);}}};
   try{keepAsset(JSON.parse(document.getElementById('public-asset-seed')?.textContent??'null'));}catch{}
-  addEventListener('bankeiz:asset-metadata',event=>{keepAsset(event.detail);if(pathname(location.pathname)==='/asset/'+encodeURIComponent(event.detail?.id)+'/'){const page=assetAt(pathname(location.pathname));if(page)restoreHead(page.head);}});
   const assetAt=path=>{
-    const match=/^\/asset\/([^/]+)\/?$/.exec(path);if(!match||!pages['/explore/'])return;
-    let id;try{id=decodeURIComponent(match[1]);}catch{return;}if(!id||id.length>256||/[\x00-\x1f\x7f]/.test(id))return;
+    const name=profileName(path),match=/^\/asset\/([^/]+)\/?$/.exec(path),base=pages['/explore/'];if(!base||!name&&!match)return;
+    let id;try{id=name?'@'+name:decodeURIComponent(match[1]);}catch{return;}if(!id||id.length>256||/[\x00-\x1f\x7f]/.test(id))return;
     if(assetEntries.has(id))return assetEntries.get(id);
-    const base=pages['/explore/'],meta=assetMetadata.get(id),title=(meta?.title||'Public asset')+' | Bankeiz',description=String(meta?.description||'Inspect this asset, its media, ownership, valuation and original evidence.').slice(0,300),url='https://bankeiz.com/asset/'+encodeURIComponent(id)+'/',image=url+'og.png';
+    const meta=assetMetadata.get(id),title=(meta?.title||(name?'@'+name:'Public asset'))+' | Bankeiz',description=String(meta?.description||(name?'Public assets. Original work. Connected history.':'Inspect this asset, its media, ownership, valuation and original evidence.')).slice(0,300),url='https://bankeiz.com'+(name?path:'/asset/'+encodeURIComponent(id)+'/'),image=name?meta?.image:url+'og.png';
     const template=document.createElement('template');template.innerHTML=base.head;
     template.content.querySelector('title').textContent=title;
-    for(const node of template.content.querySelectorAll('meta')){const key=node.getAttribute('property')||node.name;if(['description','og:description','twitter:description'].includes(key))node.content=description;else if(['og:title','twitter:title','og:image:alt','twitter:image:alt'].includes(key))node.content=title;else if(key==='og:url')node.content=url;else if(['og:image','og:image:secure_url','twitter:image'].includes(key))node.content=image;else if(key==='robots')node.content=meta?'index,follow,max-image-preview:large':'noindex,follow';}
-    if(meta?.media){
+    for(const node of template.content.querySelectorAll('meta')){const key=node.getAttribute('property')||node.name;if(['description','og:description','twitter:description'].includes(key))node.content=description;else if(['og:title','twitter:title','og:image:alt','twitter:image:alt'].includes(key))node.content=title;else if(key==='og:url')node.content=url;else if(key==='og:type'&&name)node.content='profile';else if(['og:image','og:image:secure_url','twitter:image'].includes(key)&&image)node.content=image;else if(key==='robots')node.content=meta?'index,follow,max-image-preview:large':'noindex,follow';}
+    if(!name&&meta?.media){
       for(const key in meta.media){
         const attribute=key[0]==='o'?'property':'name',node=template.content.querySelector(`meta[${attribute}="${key}"]`)||document.createElement('meta');
         node.setAttribute(attribute,key);node.content=meta.media[key];template.content.append(node);
@@ -95,11 +96,13 @@
     }
     template.content.querySelector('link[rel="canonical"]').href=url;
     template.content.querySelectorAll('script[type="application/ld+json"]').forEach(node=>node.remove());
-    const schema=document.createElement('script');schema.type='application/ld+json';schema.textContent=JSON.stringify({'@context':'https://schema.org','@type':'WebPage','@id':url+'#page',url,name:title,description});template.content.append(schema);
-    const preview=document.createElement('main');preview.className='public-entry-placeholder';const heading=document.createElement('h1'),copy=document.createElement('p');heading.textContent=meta?.title||'Asset';copy.textContent=description;preview.append(heading,copy);
-    const entry={...base,title,head:template.innerHTML,content:preview.outerHTML};assetEntries.set(id,entry);return entry;
+    const schema=document.createElement('script');schema.type='application/ld+json';schema.textContent=JSON.stringify({'@context':'https://schema.org','@type':name?'ProfilePage':'WebPage','@id':url+'#page',url,name:title,description});template.content.append(schema);
+    const preview=document.createElement('main');preview.className='public-entry-placeholder';const heading=document.createElement('h1'),copy=document.createElement('p');heading.textContent=meta?.title||(name?'Profile':'Asset');copy.textContent=description;preview.append(heading,copy);
+    const entry={...base,title,head:template.innerHTML,content:preview.outerHTML};assetEntries.set(id,entry);if(assetEntries.size>48)assetEntries.delete(assetEntries.keys().next().value);return entry;
   };
-  const pageAt = path => pages[pathname(path)] || assetAt(path) || (/^\/verify\/[a-f0-9]{64}\/?$/.test(path) ? pages['/verify/'] : undefined);
+  addEventListener('bankeiz:asset-metadata',event=>{keepAsset(event.detail);if(pathname(location.pathname)==='/asset/'+encodeURIComponent(event.detail?.id)+'/'){const page=assetAt(pathname(location.pathname));if(page)restoreHead(page.head);}});
+  addEventListener('bankeiz:profile-metadata',event=>{const value=event.detail;if(!value||!profileName('/u/'+value.username+'/'))return;keepAsset({...value,id:'@'+value.username});if(profileName(pathname(location.pathname))===value.username){const page=assetAt(pathname(location.pathname));if(page)restoreHead(page.head);}});
+  const pageAt = path => pages[pathname(path)] || assetAt(pathname(path)) || (/^\/verify\/[a-f0-9]{64}\/?$/.test(path) ? pages['/verify/'] : undefined);
   const publicPath = path => Boolean(pageAt(path));
   // An offline deep link can be served by the retained Learn document. Its
   // canonical identifies the markup actually present, not the requested URL.
@@ -249,6 +252,7 @@
     const returning = /^\/asset\//.test(location.pathname) && pageAt(target)?.runtime === 'explore' && !/^\/asset\//.test(target);
     remember(); history.pushState({ publicNavigation: { url: target, scroll: returning ? positions.get(target) ?? 0 : 0 } }, '', target); void render(returning);
   };
+  addEventListener('bankeiz:navigate-public',event=>{const path=event.detail?.path;if(typeof path==='string'&&path.length<100&&profileName(path)){navigate(path);}});
   // Retained call controls can return from a public workspace without a
   // synthetic link, a second router, or a document navigation.
   addEventListener('bankeiz:navigate-bank', event => {

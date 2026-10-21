@@ -1,9 +1,10 @@
 import {conversationPeople,peopleSearchQuery,peopleSuggestions} from '../../receiz/people-search';
+import {AccountProfileLink} from '../../components/AccountProfileLink';
 import {ProfileAvatar} from '../../components/ProfileAvatar';
 import type {PeerTypingController} from '../../receiz/peer-typing';
 import {PaymentMessage} from './PaymentMessage';
 import {lazy,Suspense,useCallback,useEffect,useMemo,useRef,useState,type FormEvent} from 'react';
-import {ArrowUp,ArrowUpRight,Check,ChevronLeft,DollarSign,Paperclip,Phone,Search,SquarePen,Video} from 'lucide-react';
+import {ArrowUp,ArrowUpRight,Check,ChevronLeft,DollarSign,Paperclip,Phone,Search,SquarePen,Users,Video} from 'lucide-react';
 import {BankMark} from '../../components/BankMark';
 import {Sheet} from '../../components/Sheet';
 import {CallPortal} from './CallPortal';
@@ -17,6 +18,7 @@ import './messages.css';
 export interface MessagesPanelProps {
   identity:OpenIdentity;active:boolean;onClose():void;onOpen?():void;onPreparePayment?:(recipient?:{userId:string;username:string})=>void;
   twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>;
+  initialRecipient?:{id:number;person:{userId:string;username:string;displayName:string;avatarUrl:string|null}}|null;
 }
 type Mode='twin'|'inbox'|'thread'|'new'|'call';
 type TwinExchange={id:string;question:string;reply:NativeTwinReply;memoryIds:string[]};
@@ -29,6 +31,12 @@ function TwinAccessReply({onUpgrade}:{onUpgrade():void}){
 function ConversationAvatar({row,owner}:{row:ChatConversation;owner:string}){
  const peers=row.members.filter(person=>person.kind==='user'&&person.userId!==owner).slice(0,2);
  return <span className={'bank-conversation-avatar'+(row.kind==='group'&&peers.length>1?' group':'')} aria-hidden="true">{peers.length?peers.slice(0,row.kind==='group'?2:1).map(person=><ProfileAvatar key={person.userId} src={person.avatarUrl} name={personName(person)}/>):<ProfileAvatar name={row.title}/>}</span>;
+}
+function ChatProfiles({thread,owner,active}:{thread:ChatConversation;owner:string;active:boolean}){
+ const [open,setOpen]=useState(false),region=useRef<HTMLDivElement>(null),people=thread.members.filter(person=>person.kind==='user'),peer=thread.kind==='dm'?people.find(person=>person.userId!==owner):null;
+ useEffect(()=>{if(!active)setOpen(false);},[active]);
+ useEffect(()=>{if(!open)return;const outside=(event:PointerEvent)=>{if(!region.current?.contains(event.target as Node))setOpen(false);},key=(event:KeyboardEvent)=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();setOpen(false);}};document.addEventListener('pointerdown',outside);document.addEventListener('keydown',key,true);return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',key,true);};},[open]);
+ return peer?<AccountProfileLink username={peer.username} className="bank-chat-profile" label={'View '+personName(peer)+' profile'}><ProfileAvatar src={peer.avatarUrl} name={personName(peer)}/><span>{personName(peer)}</span></AccountProfileLink>:<div className="bank-chat-members" ref={region}><button type="button" aria-label="View group members" aria-expanded={open} onClick={()=>setOpen(value=>!value)}><Users size={16}/><span>{people.length} people</span></button>{open&&<div className="bank-chat-member-list" role="region" aria-label="Group profiles">{people.map(person=><AccountProfileLink key={person.userId} username={person.username} className="bank-chat-member" label={'View '+personName(person)+' profile'}><ProfileAvatar src={person.avatarUrl} name={personName(person)}/><span><strong>{personName(person)}</strong>{person.username&&<small>@{person.username}</small>}</span><ArrowUpRight size={13}/></AccountProfileLink>)}</div>}</div>;
 }
 function personName(person:ChatPerson){return person.displayName||person.username||'Receiz account';}
 function errorText(cause:unknown){const code=cause instanceof Error?cause.message:'Request failed';return code==='insufficient_scope'?'Receiz has not granted this permission. Close and reopen messages to review access.':code;}
@@ -50,7 +58,7 @@ export function MessagesPanel(props:MessagesPanelProps){
   if(owner.identity!==props.identity)setOwner({identity:props.identity,revision:owner.revision+1});
   return <MessagesSession key={owner.revision} {...props}/>;
 }
-function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinContextRecords=[]}:MessagesPanelProps){
+function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinContextRecords=[],initialRecipient}:MessagesPanelProps){
   const [retained]=useState(()=>identity.knownMessagingDisplay?.()??null);
   const [api,setApi]=useState<NativeMessaging|null>(null),[consent,setConsent]=useState<'checking'|'needed'|'ready'|'error'>('checking');
   const [twinFirst,setTwinFirst]=useState(()=>identity.knownTwinAccess?.()===true),viewChosen=useRef(false);
@@ -167,11 +175,11 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
   const pick=(conversation:ChatConversation)=>{viewChosen.current=true;selection.current=conversation.id;setSelected(conversation);setPage(api?.knownMessages(conversation.id)??retained?.pages.find(row=>row.conversation.id===conversation.id)??null);setActiveCall(null);setMode('thread');setNotice('');setDeltas({});setTypingNames({});};
   const refreshNow=()=>{if(!api||!selected)return;const pending=controller();void Promise.all([refreshThread(selected.id,pending.signal),refreshInbox(pending.signal)]).finally(()=>controllers.current.delete(pending));};
   const loadOlder=async()=>{if(!page?.nextCursor||!selected||olderBusy)return;const pending=controller();setOlderBusy(true);await refreshThread(selected.id,pending.signal,page.nextCursor);controllers.current.delete(pending);if(alive.current)setOlderBusy(false);};
-  const createConversation=async()=>{
-    if(!api||!picked.length||sending.current||!live())return;
+  const createConversation=async(participants=picked)=>{
+    if(!api||!participants.length||sending.current||!live())return;
     sending.current=true;setBusy(true);setNotice('');
     try{
-      const id=await api.createConversation({participantUserIds:picked.map(person=>person.userId),...(picked.length>1&&groupName.trim()?{title:groupName.trim()}: {})});
+      const id=await api.createConversation({participantUserIds:participants.map(person=>person.userId),...(participants.length>1&&groupName.trim()?{title:groupName.trim()}: {})});
       if(!live())return;
       // Creation acknowledges only the ID. Do not fabricate a conversation row.
       const pending=controller();await refreshInbox(pending.signal);if(!live())return;
@@ -184,6 +192,18 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
     }catch(cause){if(live())setNotice(cause instanceof MessagingError&&cause.ambiguous?'Conversation outcome is unknown. Check Messages before trying again.':errorText(cause));}
     finally{sending.current=false;if(alive.current)setBusy(false);}
   };
+  const recipientAttempt=useRef<number|null>(null);
+  useEffect(()=>{
+    if(!initialRecipient||!api||!active||!pageVisible||sending.current||recipientAttempt.current===initialRecipient.id)return;
+    recipientAttempt.current=initialRecipient.id;viewChosen.current=true;
+    const person:ChatPerson={kind:'user',...initialRecipient.person};
+    if(person.userId===api.accountUid){setMode('inbox');return;}
+    const known=api.knownConversations().find(row=>row.kind==='dm'&&row.members.some(member=>member.kind==='user'&&member.userId===person.userId));
+    if(known){pick(known);return;}
+    setPicked([person]);setMode('new');void createConversation([person]);
+    // One explicit profile Message intent uses the existing conversation path.
+    // A failed/ambiguous creation is never automatically repeated on reopen.
+  },[initialRecipient?.id,api,active,pageVisible,busy]);
   const acceptTwin=(question:Omit<NativeTwinAsk,'signal'>,reply:NativeTwinReply)=>{
     const exchange: TwinExchange={id:question.requestId,question:question.message,reply,memoryIds:currentTwinMemoryIds(question.message,reply)};
     setExchanges(rows=>rows.some(row=>row.id===question.requestId)?rows.map(row=>row.id===question.requestId?exchange:row):[...rows,exchange]);
@@ -276,7 +296,7 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
         {!peopleSearchQuery(query)&&suggestedPeople.length>0&&<span className="bank-recent-caption">Recent contacts</span>}{suggestedPeople.map(person=><button className="bank-pick-person" type="button" aria-label={'Select '+personName(person)} key={person.userId} onClick={()=>setPicked(rows=>rows.some(row=>row.userId===person.userId)?rows.filter(row=>row.userId!==person.userId):[...rows,person])}><ProfileAvatar src={person.avatarUrl} name={personName(person)}/><span><strong>{personName(person)}</strong><small>@{person.username}</small></span><span className={'bank-person-check'+(picked.some(row=>row.userId===person.userId)?' selected':'')}>{picked.some(row=>row.userId===person.userId)&&<Check size={15}/>}</span></button>)}
         <p className="bank-new-hint" role="status">{searching?'Finding matching profiles…':!peopleSearchQuery(query)?'Search a name or username. Choose one person, or add more for a group.':!suggestedPeople.length?'No matching profiles found.':'Choose one person, or add more for a group.'}</p><button className="primary-button" type="button" disabled={!api||!picked.length||busy} onClick={()=>void createConversation()}>{busy?'Opening conversation…':'Start conversation'}<ArrowUpRight size={17}/></button>
       </div>}
-      {mode==='thread'&&selected&&<><div className="bank-thread-toolbar"><button type="button" onClick={()=>setMode('inbox')} aria-label="Back to messages"><ChevronLeft size={18}/>Messages</button><span>{thread?.members.map(personName).join(', ')}</span><button type="button" aria-label="Voice call" disabled={!api} onClick={()=>openCall(false)}><Phone size={18}/></button><button type="button" aria-label="Video call" disabled={!api} onClick={()=>openCall(true)}><Video size={19}/></button></div>{activeCall&&<button type="button" className="bank-active-call" onClick={()=>openCall(activeCall.mode==='video')}>Call in progress · Open to join<Phone size={14}/></button>}<div className="bank-conversation-scroll bank-thread-messages" ref={scrollArea} onScroll={trackScroll}>{page?.hasMore&&<button type="button" className="bank-load-earlier" disabled={!api||olderBusy} onClick={()=>void loadOlder()}>{olderBusy?'Opening earlier messages…':'Load earlier messages'}</button>}{page?.messages.map(message=><div key={message.id} className={message.senderUserId===accountUid?'bank-message-own':'bank-message-other'}>{message.senderUserId!==accountUid&&<span className="bank-message-sender"><ProfileAvatar src={memberById.get(message.senderUserId)?.avatarUrl} name={message.senderDisplay||'Participant'}/>{message.senderDisplay||message.senderAiId||'Participant'}</span>}<PaymentMessage message={message} accountUid={accountUid} members={thread?.members??[]}/><time dateTime={message.createdAt}>{timeLabel(message.createdAt)}</time></div>)}{selected&&pendingMessages[selected.id]&&<div className="bank-message-own bank-message-pending"><p>{pendingMessages[selected.id].body}</p><small className="bank-delivery-status">{pendingMessages[selected.id].status==='sending'?'Sending':pendingMessages[selected.id].status==='refused'?'Not sent':'Delivery not confirmed'}</small></div>}{!!peerNames.length&&<TypingBubble name={peerLabel} text="" activity="typing"/>}{Object.entries(deltas).map(([id,text])=><TypingBubble key={id} name={typingNames[id]||'Assistant'} text={text}/>)}</div><MessageComposer draft={draft} setDraft={setDraft} submit={submit} placeholder="Message…" onSendMoney={onPreparePayment?preparePayment:undefined} busy={busy} connected={!!api} onBlur={()=>peerTyping.current?.update(false)} maxLength={16384}/><p className="bank-messaging-caption">Messages stay in your existing Receiz conversation.</p></>}
+      {mode==='thread'&&selected&&<><div className="bank-thread-toolbar"><button type="button" onClick={()=>setMode('inbox')} aria-label="Back to messages"><ChevronLeft size={18}/>Messages</button>{thread&&<ChatProfiles key={thread.id} thread={thread} owner={accountUid} active={active}/>}<button type="button" aria-label="Voice call" disabled={!api} onClick={()=>openCall(false)}><Phone size={18}/></button><button type="button" aria-label="Video call" disabled={!api} onClick={()=>openCall(true)}><Video size={19}/></button></div>{activeCall&&<button type="button" className="bank-active-call" onClick={()=>openCall(activeCall.mode==='video')}>Call in progress · Open to join<Phone size={14}/></button>}<div className="bank-conversation-scroll bank-thread-messages" ref={scrollArea} onScroll={trackScroll}>{page?.hasMore&&<button type="button" className="bank-load-earlier" disabled={!api||olderBusy} onClick={()=>void loadOlder()}>{olderBusy?'Opening earlier messages…':'Load earlier messages'}</button>}{page?.messages.map(message=><div key={message.id} className={message.senderUserId===accountUid?'bank-message-own':'bank-message-other'}>{message.senderUserId!==accountUid&&<AccountProfileLink username={memberById.get(message.senderUserId)?.kind==='user'?memberById.get(message.senderUserId)?.username:null} className="bank-message-sender" label={'View '+(message.senderDisplay||'participant')+' profile'}><ProfileAvatar src={memberById.get(message.senderUserId)?.avatarUrl} name={message.senderDisplay||'Participant'}/>{message.senderDisplay||message.senderAiId||'Participant'}</AccountProfileLink>}<PaymentMessage message={message} accountUid={accountUid} members={thread?.members??[]}/><time dateTime={message.createdAt}>{timeLabel(message.createdAt)}</time></div>)}{selected&&pendingMessages[selected.id]&&<div className="bank-message-own bank-message-pending"><p>{pendingMessages[selected.id].body}</p><small className="bank-delivery-status">{pendingMessages[selected.id].status==='sending'?'Sending':pendingMessages[selected.id].status==='refused'?'Not sent':'Delivery not confirmed'}</small></div>}{!!peerNames.length&&<TypingBubble name={peerLabel} text="" activity="typing"/>}{Object.entries(deltas).map(([id,text])=><TypingBubble key={id} name={typingNames[id]||'Assistant'} text={text}/>)}</div><MessageComposer draft={draft} setDraft={setDraft} submit={submit} placeholder="Message…" onSendMoney={onPreparePayment?preparePayment:undefined} busy={busy} connected={!!api} onBlur={()=>peerTyping.current?.update(false)} maxLength={16384}/><p className="bank-messaging-caption">Messages stay in your existing Receiz conversation.</p></>}
       <div ref={callHost} className="bank-call-inline-host" hidden={mode!=='call'}/>
       {(readError||notice)&&<div className="bank-messaging-feedback"><p className="bank-messaging-error" role="alert">{notice||readError}</p>{!api?<button type="button" onClick={()=>void connect(false)}>Reconnect</button>:mode==='thread'&&<button type="button" onClick={refreshNow}>Refresh conversation</button>}</div>}
     </>}

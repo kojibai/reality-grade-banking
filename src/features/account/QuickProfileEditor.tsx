@@ -1,0 +1,19 @@
+import {useEffect,useRef,useState} from 'react';
+import {Check,ChevronDown,ImagePlus} from 'lucide-react';
+import type {OpenIdentity} from '../../receiz/native-identity';
+import {ProfileAvatar} from '../../components/ProfileAvatar';
+import {identityProfileAvatar} from '../../receiz/profile-avatar';
+import {prepareProfileImage} from '../../receiz/profile-image';
+/** The compact editor shares the same SDK owner and confirmed presentation
+ * as the full profile. Opening it performs no profile read or write. */
+export function QuickProfileEditor({identity,username}:{identity:OpenIdentity;username:string}){
+ const [expanded,setExpanded]=useState(false),[name,setName]=useState(username),[status,setStatus]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState(false),file=useRef<HTMLInputElement>(null),owner=useRef(identity);owner.current=identity;
+ useEffect(()=>{setName(username);},[username]);
+ useEffect(()=>{
+  if(!expanded||name===username){setStatus('');return;}if(!/^[a-z0-9_]{3,24}$/.test(name)){setStatus('3–24 lowercase letters, numbers or underscores.');return;}
+  let alive=true;setStatus('Checking availability…');const timer=setTimeout(()=>{void identity.profile?.().then(api=>api.availability(name)).then(value=>{if(alive)setStatus(value.available||value.isCurrent?'Available':'That username is taken.');}).catch(()=>{if(alive)setStatus('Availability will be checked when you save.');});},350);return()=>{alive=false;clearTimeout(timer);};
+ },[expanded,name,username,identity]);
+ async function save(){if(!identity.profile||busy||name===username)return;const current=identity;setBusy(true);setError('');try{await(await identity.profile()).update({username:name});if(owner.current===current){setSaved(true);setExpanded(false);}}catch{if(owner.current===current)setError('That username could not be saved. Please try another.');}finally{if(owner.current===current)setBusy(false);}}
+ async function photo(chosen?:File){if(!chosen||busy||!identity.profile)return;const current=identity;setBusy(true);setError('');try{const prepared=await prepareProfileImage(chosen,'avatar'),api=await identity.profile();if(!api.uploadImage)throw Error();await api.uploadImage(prepared,'avatar');if(owner.current===current)setSaved(true);}catch{if(owner.current===current)setError('Your photo could not be updated. Please try again.');}finally{if(owner.current===current)setBusy(false);if(file.current)file.current.value='';}}
+ return <section className="quick-profile-editor"><button type="button" className="quick-profile-toggle" aria-expanded={expanded} onClick={()=>{setExpanded(value=>!value);setSaved(false);}}><span>Edit photo or username</span><ChevronDown size={14}/></button>{expanded&&<div className="quick-profile-fields"><button type="button" className="quick-profile-photo" disabled={busy} onClick={()=>file.current?.click()}><ProfileAvatar src={identityProfileAvatar(identity)} name={username}/><span><ImagePlus size={15}/>Change photo</span></button><input ref={file} hidden type="file" accept="image/*" aria-label="Choose profile photo" onChange={event=>void photo(event.target.files?.[0])}/><label>Username<span className="quick-username-input"><span>@</span><input aria-label="Profile username" value={name} autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={24} disabled={busy} onChange={event=>{setName(event.target.value.toLowerCase().replace(/[^a-z0-9_]/g,''));setSaved(false);}}/></span></label><small className={status==='Available'?'is-available':''} role="status">{status}</small><button type="button" className="secondary-button" disabled={busy||name===username||!/^\w{3,24}$/.test(name)||status==='That username is taken.'} onClick={()=>void save()}>{busy?'Saving…':'Save username'}</button></div>}{saved&&<p className="quick-profile-saved" role="status"><Check size={13}/>Updated</p>}{error&&<p className="error-message" role="alert">{error}</p>}</section>;
+}

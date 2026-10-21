@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { ArrowUpRight, FileText } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
+import {QuickProfileEditor} from './QuickProfileEditor';
 import { BankConnection } from './BankConnection';
 import { ProofPortabilityPanel } from './ProofPortabilityPanel';
 import {ProfileAvatar} from '../../components/ProfileAvatar';
 import {identityProfileAvatar} from '../../receiz/profile-avatar';
+import {profilePagePath,profileUsername} from '../../receiz/public-profile';
 
 export function IdentityProfile({ identity, onForget, onRefresh }: { identity: OpenIdentity; onForget: () => Promise<void>; onRefresh: () => void }) {
   const [backup, setBackup] = useState(false), [removalError, setRemovalError] = useState('');
@@ -26,6 +28,8 @@ export function IdentityProfile({ identity, onForget, onRefresh }: { identity: O
       <code className="profile-public-id">{publicId}</code>
       <p>Your verified identity, secured on this device.</p>
     </div>
+    {identity.profile&&<QuickProfileEditor identity={identity} username={publicId}/>}
+    {profileUsername(publicId)&&<a className="identity-public-profile-link" href={profilePagePath(publicId)}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></a>}
     <button className="primary-button" onClick={backupId}>Back up my Identity Seal</button>
     {backup && <div className="identity-import profile-backup">
       <p className="body-copy small-copy">{identity.needsPhrase ? 'Save this recovery phrase separately from your downloaded Identity Seal. It unlocks your signing key on another device.' : 'Your Identity Seal opens without an unlock phrase.'}</p>

@@ -14,6 +14,10 @@
     "api/asset.ts": {
       "maxDuration": 30,
       "includeFiles": "{dist/explore/index.html,public/receiz-public-market.json,public/receiz-public-sports.json,scripts/social/fonts/*.ttf}"
+    },
+    "api/profile.ts": {
+      "maxDuration": 30,
+      "includeFiles": "dist/explore/index.html"
     }
   },
   "rewrites": [
@@ -86,6 +90,22 @@
     {
       "source": "/auth/receiz/callback",
       "destination": "/index.html"
+    },
+    {
+      "source": "/u/:username([a-z0-9_]{3,24})/",
+      "destination": "/api/profile?username=:username"
+    },
+    {
+      "source": "/u/:username([a-z0-9_]{3,24})",
+      "destination": "/api/profile?username=:username"
+    },
+    {
+      "source": "/:username([a-z0-9_]{3,24})/",
+      "destination": "/api/profile?username=:username"
+    },
+    {
+      "source": "/:username([a-z0-9_]{3,24})",
+      "destination": "/api/profile?username=:username"
     }
   ]
 }

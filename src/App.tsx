@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 import {bankTwinContextRecords} from './receiz/twin-bank-context';
 import {mergePublicRecords} from './receiz/public-network';
@@ -25,6 +25,8 @@ import { BANK_PUBLIC_ORIGIN } from './receiz/config';
 import { parsePaymentRequest } from './receiz/payment-request';
 import { CardDepositReturn, readCardReturn, readCardResume } from './features/deposit/CardDepositReturn';
 import {PublicAssetTradePortal} from './features/market/PublicAssetTradePortal';
+import {PublicProfilePortal} from './features/account/PublicProfilePortal';
+import {consumeProfileAccountAction,readProfileAccountAction,subscribeProfileActions} from './receiz/profile-actions';
 export default function App() {
  const [receipt,setReceipt]=useState(location.pathname==='/receipt/'?location.href:null);
  const bankMounted=useRef(!receipt);
@@ -36,7 +38,11 @@ function BankApp() {
   const [onBank, setOnBank] = useState(location.pathname === '/');
   useEffect(() => { const change = () => flushSync(() => setOnBank(location.pathname === '/')); addEventListener('receiz-bank:surface', change); addEventListener('popstate',change); return () => { removeEventListener('receiz-bank:surface', change);removeEventListener('popstate',change); }; }, []);
   const account = useNativeAccount();
-  const identityImage=useMemo(()=>account.identity?identityProfileAvatar(account.identity):null,[account.identity]);
+  const [profileRevision,setProfileRevision]=useState(0);
+  useEffect(()=>{const updated=()=>setProfileRevision(value=>value+1);addEventListener('bankeiz:profile-updated',updated);return()=>removeEventListener('bankeiz:profile-updated',updated);},[]);
+  const identityImage=useMemo(()=>account.identity?identityProfileAvatar(account.identity):null,[account.identity,profileRevision]);
+  const profileAction=useSyncExternalStore(subscribeProfileActions,readProfileAccountAction,()=>null);
+  const [messageRecipient,setMessageRecipient]=useState<{owner:typeof account.identity;id:number;person:{userId:string;username:string;displayName:string;avatarUrl:string|null}}|null>(null);
   const publicMarket = usePublicMarket(onBank);
   const showcase = useMemo(() => projectAccountShowcase(publicMarket.catalog, account.identity?.accountUsername?.() ?? account.identity?.username ?? null), [publicMarket.catalog, account.identity, account.wallet]);
   const [paymentRequest] = useState(() => { try { return location.search ? parsePaymentRequest(`${BANK_PUBLIC_ORIGIN}/${location.search}`) : null; } catch { return null; } });
@@ -55,15 +61,22 @@ function BankApp() {
   const navigate = (next: Panel) => { positions.current[panel] = scrollY; history.pushState({ panel: next, sheet: null }, '', routeHash(next)); setPanel(next); setSheet(null); requestAnimationFrame(() => scrollTo(0, positions.current[next] ?? 0)); };
   useEffect(() => { const back = () => { if (location.pathname !== '/') return; const route = parseRoute(location.hash); setPanel(route.panel); setSheet(route.sheet); }; addEventListener('popstate', back); addEventListener('receiz-bank:surface', back); return () => { removeEventListener('popstate', back); removeEventListener('receiz-bank:surface', back); }; }, []);
   useEffect(() => { if (account.identity && onBank) { const route = paymentRequest ? { panel: 'account' as const, sheet: { kind: 'send' as const } } : parseRoute(location.hash); setPanel(route.panel); setSheet(route.sheet); history.replaceState(route, '', `${location.search}${routeHash(route.panel, route.sheet)}`); } }, [account.identity, paymentRequest, onBank]);
+  useEffect(()=>{
+    if(!onBank||!account.identity||!profileAction)return;
+    const {profile,id,kind}=profileAction;
+    const action:UIAction=kind==='send'?{kind:'send',recipient:{userId:profile.userId,username:profile.username}}:{kind:'messages'};
+    if(kind==='messages')setMessageRecipient({owner:account.identity,id,person:{userId:profile.userId,username:profile.username,displayName:profile.displayName,avatarUrl:profile.avatarUrl}});
+    setPanel('account');setSheet(action);history.replaceState({panel:'account',sheet:action},'',routeHash('account',action));consumeProfileAccountAction(id);
+  },[onBank,account.identity,profileAction]);
   if (!account.identity) {
-    return <><PublicAssetTradePortal account={account} fallback={<Entrance opening={account.opening} openingStage={account.openingStage} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId}/>}/></>;
+    return <><PublicProfilePortal identity={null} userId={null}/><PublicAssetTradePortal account={account} fallback={<Entrance opening={account.opening} openingStage={account.openingStage} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId}/>}/></>;
   }
-  return <><PublicAssetTradePortal account={account}/><ConsoleShell identityImage={identityImage} active={onBank} panel={panel} onNavigate={navigate} onDeposit={() => open({ kind: 'deposit' })} onProfile={() => open({ kind: 'profile' })} onMessages={()=>open({kind:'messages'})}>
+  return <><PublicProfilePortal identity={account.identity} userId={account.wallet?.userId??account.identity.walletReceivingAddress?.()??null}/><PublicAssetTradePortal account={account}/><ConsoleShell identityImage={identityImage} active={onBank} panel={panel} onNavigate={navigate} onDeposit={() => open({ kind: 'deposit' })} onProfile={() => open({ kind: 'profile' })} onMessages={()=>open({kind:'messages'})}>
     <div hidden={panel !== 'account'}><LiveAccount receivedNotes={account.receivedNotes} walletHistory={account.walletHistory} historyComplete={account.historyComplete} showcase={showcase} wallet={account.wallet} busy={account.busy} error={account.error} observedAt={account.observedAt} onRefresh={() => void account.refresh()} onSend={() => open({ kind: 'send' })} onReceive={() => open({ kind: 'receive' })} onBalance={() => open({ kind: 'balance' })} onAssets={() => navigate('assets')} onLedger={() => navigate('ledger')} /></div>
     <div hidden={panel !== 'market'}><Market source={publicMarket} active={onBank && panel === 'market'} onAction={open} /></div>
     <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={onBank && panel === 'assets'} revision={sourceRevision} showcase={showcase} showcaseBusy={publicMarket.status === 'loading'} onOpen={open} /></div>
     <div hidden={panel !== 'ledger'}><Ledger active={onBank && panel === 'ledger'} personalHistory={personalHistory} privateHistory={privateHistory} /></div>
-    {messagesMounted.current&&<MessagesPanel identity={account.identity} active={onBank&&sheet?.kind==='messages'} twinContextRecords={twinContextRecords} onOpen={restoreMessages} onClose={close} onPreparePayment={recipient=>open({kind:'send',...(recipient?{recipient}:{})})}/>}
+    {messagesMounted.current&&<MessagesPanel identity={account.identity} initialRecipient={messageRecipient?.owner===account.identity?messageRecipient:null} active={onBank&&sheet?.kind==='messages'} twinContextRecords={twinContextRecords} onOpen={restoreMessages} onClose={close} onPreparePayment={recipient=>open({kind:'send',...(recipient?{recipient}:{})})}/>}
     {sheet && sheet.kind!=='messages' && <LiveActions marketItems={publicMarket.catalog?.items} key={sheet.kind==='send'?'send:'+(sheet.recipient?.userId??'')+':'+(sheet.recipient?.username??''):sheet.kind} active={onBank} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} cardResumeSessionId={cardResumeSessionId} onCardResumeConsumed={consumeCardResume} onClose={close} onRefresh={() => { setSourceRevision(value => value + 1); void account.refresh(); void privateHistory.refresh(); }} onForget={async () => { await account.forget(); setSheet(null); }} />}
   </ConsoleShell></>;
 }

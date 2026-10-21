@@ -37,6 +37,7 @@ operating contracts, independent receiving tools and release evidence.
 
 ## Public sources and history
 
+- [Public profiles, editing and named links](PUBLIC_PROFILES.md)
 - [Public asset publication](public-asset-publication-v129.md)
 - [Public Ledger source contract](public-ledger-source-contract.md)
 - [Ledger inspection](public-ledger-inspection.md)

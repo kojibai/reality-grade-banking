@@ -30,3 +30,7 @@ it('keeps a readable fallback after an image fails and clears the failed source 
   act(()=>root.render(<ProfileAvatar src={seal} name="Noah"/>));expect(host.querySelector('img')?.getAttribute('src')).toBe(seal);
  }finally{act(()=>root.unmount());}
 });
+
+it('respects a confirmed removed portrait instead of reviving older messaging or sealed artwork',async()=>{
+ const {identityProfileAvatar}=await helpers();const identity={knownProfile:()=>({avatarUrl:null}),localHistory:{portableStateVerified:true,verifiedState:{profile:{avatarUrl:'https://receiz.com/old.png'}}}} as unknown as OpenIdentity;expect(identityProfileAvatar(identity)).toBeNull();
+});
