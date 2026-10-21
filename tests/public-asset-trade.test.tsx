@@ -23,6 +23,31 @@ const button = (host: HTMLElement, text: string) => [...host.querySelectorAll('b
 const enterAmount = async (host: HTMLElement, amount: string) => act(async () => {const input = host.querySelector('input')!; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, amount); input.dispatchEvent(new Event('input', {bubbles: true}));});
 afterEach(() => {act(() => closePublicAssetTrade()); sessionStorage.clear(); history.replaceState(null, '', '/');});
 
+it('opens a new buyer account in place while accepting the purchase amount, then continues to card funding without an entry screen',async()=>{
+ const {account,identity,api}=fixture(false),host=document.createElement('div'),root=createRoot(host);history.replaceState(null,'','/asset/public-source/');
+ try{
+  await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={{...account,identity:null}}/></>));
+  await act(async()=>{beginPublicAssetTrade({itemId:'profile:artist:source',side:'buy',title:'An original'});});
+  const dialog=host.querySelector('dialog')!;
+  expect(account.create).toHaveBeenCalledExactlyOnceWith(true);expect(dialog.querySelector('.identity-entrance')).toBeNull();
+  await enterAmount(dialog,'25');
+  await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={account}/></>));
+  expect(dialog.querySelector('input')?.value).toBe('25');expect(account.create).toHaveBeenCalledTimes(1);
+  expect(location.pathname).toBe('/asset/public-source/');expect(identity.beginCardDeposit).not.toHaveBeenCalled();expect(api.execute).not.toHaveBeenCalled();
+  await act(async()=>button(dialog,'Continue').click());expect(identity.beginCardDeposit).toHaveBeenCalledExactlyOnceWith('25',true);
+ }finally{act(()=>root.unmount());}
+});
+it('finishes existing device-account restoration before considering automatic buyer account creation',async()=>{
+ const {account}=fixture(),host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={{...account,identity:null,opening:true}}/></>));
+  await act(async()=>{beginPublicAssetTrade({itemId:'profile:artist:source',side:'buy',title:'An original'});});
+  expect(account.create).not.toHaveBeenCalled();
+  await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={account}/></>));
+  expect(account.create).not.toHaveBeenCalled();expect(host.querySelector('dialog')?.textContent).toContain('Buy ownership');
+ }finally{act(()=>root.unmount());}
+});
+
 it('opens the existing sheet on intent, keeping the asset URL and head while runtime loads', async () => {
   history.replaceState(null, '', '/asset/source/'); document.title = 'An original | Bankeiz';
   const loader = vi.fn((event: Event) => {const detail = (event as CustomEvent).detail; detail.handled = true;});

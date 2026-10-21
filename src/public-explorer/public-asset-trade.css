@@ -1,4 +1,5 @@
 .public-asset-trade-title{margin:0 0 18px;overflow-wrap:anywhere}
+.public-purchase-opening .sheet-hero{margin-bottom:26px}.public-purchase-opening [role=status]{margin:16px 0 10px}.public-purchase-opening p:last-child{font-size:11px;line-height:1.65;color:var(--muted,#87909d)}.public-purchase-opening a{color:#526b8a;text-decoration-color:#b8c8dc;text-underline-offset:3px}
 .public-purchase-resume{margin-top:24px;padding:18px;border:1px solid var(--line);border-radius:14px;background:var(--surface,#fff)}
 .public-asset-trade-slot .identity-entrance{min-height:0;margin:0;padding:0;box-shadow:none;border-radius:0}
 .public-asset-trade-slot .identity-entrance .app-header{height:auto;padding:0 0 18px}
