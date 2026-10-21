@@ -12748,8 +12748,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "258783460d6695d4dc5e4c599e195f70b1e100656211622576f33e439dcad14c",
-      "bytes": 9231,
+      "sha256": "a20cd2a465cefdc1141a63304eb8acbe323104d36aaabc4be81df82581b04e32",
+      "bytes": 9978,
       "mode": 420
     },
     {
@@ -15405,6 +15405,14 @@
       "sha256": "258783460d6695d4dc5e4c599e195f70b1e100656211622576f33e439dcad14c",
       "purpose": "Split exact resource preparation from canonical sealing and retain the existing asset definition for stable Bank creation retries. Existing Receiz UI and v129 proof/financial authority remain unchanged.",
       "sourceCommit": "3dfd63ba8"
+    },
+    {
+      "id": "bank-connected-asset-local-admission",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "258783460d6695d4dc5e4c599e195f70b1e100656211622576f33e439dcad14c",
+      "sha256": "a20cd2a465cefdc1141a63304eb8acbe323104d36aaabc4be81df82581b04e32",
+      "purpose": "Forward the canonical verified local admission to retained Bank profile and Market views.",
+      "sourceCommit": "b579ae34d"
     }
   ],
   "historicalValuation": {
@@ -15413,7 +15421,7 @@
     "sourcePath": "app/utils/phi-issuance.ts",
     "sourceSha256": "69622c017e955734525e121a7b27bdaa42066932657b145e02be493792de9c74",
     "sdkVersion": "129.0.0",
-    "intrinsicAlgorithm": "phi/kosmos-vφ-5",
+    "intrinsicAlgorithm": "phi/kosmos-v\u03c6-5",
     "intrinsicPolicyChecksum": "b05b2049",
     "sampleUsd": 100,
     "historicalPointsAreRecordedQuotes": false
@@ -16025,7 +16033,7 @@
     },
     {
       "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "258783460d6695d4dc5e4c599e195f70b1e100656211622576f33e439dcad14c"
+      "sha256": "a20cd2a465cefdc1141a63304eb8acbe323104d36aaabc4be81df82581b04e32"
     },
     {
       "path": "app/lib/profile/showcase/economyRetry.ts",

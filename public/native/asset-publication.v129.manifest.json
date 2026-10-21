@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.0.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "5ba8ad14d424fb748650201cca7929382e473f683e0556eadb5fc97d5723ba22",
-  "sourceTreeSha256": "692dd34a62b4aace54d11025a6c5ae4c3fb30136fd100be11fa4a573e860b055",
+  "moduleSha256": "70b228ba833897a591dca77ab33b9fbada4bdeb8905de411f50e3d83f97d0d04",
+  "sourceTreeSha256": "8b58a4a8ef54c069684585c470dbc8bef7a39f9667a05a43dc7244053ee34ffc",
   "inputs": 490,
-  "bytes": 2912355,
+  "bytes": 2912612,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -486,6 +486,14 @@
       "sha256": "258783460d6695d4dc5e4c599e195f70b1e100656211622576f33e439dcad14c",
       "purpose": "Split exact resource preparation from canonical sealing and retain the existing asset definition for stable Bank creation retries. Existing Receiz UI and v129 proof/financial authority remain unchanged.",
       "sourceCommit": "3dfd63ba8"
+    },
+    {
+      "id": "bank-connected-asset-local-admission",
+      "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "258783460d6695d4dc5e4c599e195f70b1e100656211622576f33e439dcad14c",
+      "sha256": "a20cd2a465cefdc1141a63304eb8acbe323104d36aaabc4be81df82581b04e32",
+      "purpose": "Forward the canonical verified local admission to retained Bank profile and Market views.",
+      "sourceCommit": "b579ae34d"
     }
   ]
 }

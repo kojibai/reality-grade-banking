@@ -15,7 +15,7 @@ const PREFIX = '/api/bank/public-market/';
 const MAX_BYTES = 128 * 1024 * 1024;
 export function resolvePublicMarketTarget(requestUrl: string): URL | null {
   const local = new URL(requestUrl, 'http://localhost');
-  if (local.pathname === `${PREFIX}membership` && !local.search) return new URL('https://receiz.com/api/market/public-membership');
+  if (local.pathname === `${PREFIX}membership` && (!local.search||local.searchParams.size===1&&local.searchParams.getAll('afterPublication').length===1&&/^[a-f0-9]{64}$/.test(local.searchParams.get('afterPublication')??''))) return new URL('https://receiz.com/api/market/public-membership');
   if (local.pathname === `${PREFIX}sports` && !local.search) return new URL('https://receiz.com/api/game/sports/economy');
   if (local.pathname === `${PREFIX}capitalization` && !local.search) return new URL('https://receiz.com/api/proof-graph/market-cap');
   if (local.pathname === `${PREFIX}quotes` && !local.search) return new URL('https://receiz.com/api/market/public-snapshot?detail=full');
@@ -38,6 +38,7 @@ export function resolvePublicMarketTarget(requestUrl: string): URL | null {
 }
 interface CachedResponse { bytes: Uint8Array; type: string; etag: string | null; fetchedAt: number; }
 class OriginalPurchaseRefusal extends Error {}
+const epochs=new Map<string,number>();
 const cache = new Map<string, CachedResponse>(), pending = new Map<string, Promise<CachedResponse>>();
 async function readBounded(response: Response): Promise<Uint8Array> {
   if (Number(response.headers.get('content-length')) > MAX_BYTES) throw new Error('Public source exceeds supported size.');
@@ -47,14 +48,15 @@ async function readBounded(response: Response): Promise<Uint8Array> {
   catch (error) { await reader.cancel().catch(() => {}); throw error; }
   const bytes = new Uint8Array(length); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; } return bytes;
 }
-async function loadPublicResponse(target: URL): Promise<CachedResponse> {
-  const key = target.href, previous = cache.get(key);
+async function loadPublicResponse(target: URL,afterPublication?:string): Promise<CachedResponse> {
+  const key = target.href, previous = cache.get(key),pendingKey=afterPublication?key+":after:"+afterPublication:key;
   const original = target.pathname === '/api/profile/originals/download' || target.pathname.startsWith('/api/proof-material/packages/')||target.pathname==='/api/receiz/download'||target.pathname==='/api/profile/showcase/imported-source';
-  if (!original && previous && Date.now() - previous.fetchedAt < 60_000) return previous;
-  const inflight = pending.get(key); if (inflight) return inflight;
+  if (!afterPublication && !original && previous && Date.now() - previous.fetchedAt < 60_000) return previous;
+  const inflight = pending.get(pendingKey); if (inflight) return inflight;
+  const epoch=(epochs.get(key)??0)+1;epochs.set(key,epoch);
   const attempt = (async () => {
-    const response = await fetch(target, { signal: AbortSignal.timeout(90_000), credentials: 'omit', redirect: 'error', headers: previous?.etag ? { 'If-None-Match': previous.etag } : {} });
-    if (response.status === 304 && previous) { const current = { ...previous, fetchedAt: Date.now() }; cache.set(key, current); return current; }
+    const response = await fetch(target, { signal: AbortSignal.timeout(90_000), credentials: 'omit', redirect: 'error', ...(afterPublication?{cache:'no-store' as const}:{}),headers: !afterPublication&&previous?.etag ? { 'If-None-Match': previous.etag } : {} });
+    if (response.status === 304 && previous) { const current = { ...previous, fetchedAt: Date.now() }; if(epochs.get(key)===epoch)cache.set(key, current); return current; }
     if(response.status===402&&target.pathname==='/api/profile/originals/download'){await response.body?.cancel().catch(()=>{});throw new OriginalPurchaseRefusal();}
     if (!response.ok) throw new Error(`Receiz public source returned ${response.status}.`);
     let bytes = await readBounded(response);
@@ -100,16 +102,16 @@ async function loadPublicResponse(target: URL): Promise<CachedResponse> {
       bytes = new TextEncoder().encode(JSON.stringify(input));
     }
     const current = { bytes, type, etag: response.headers.get('etag'), fetchedAt: Date.now() };
-    if (!original) cache.set(key, current); return current;
-  })().finally(() => pending.delete(key));
-  pending.set(key, attempt); return attempt;
+    if (!original) if(epochs.get(key)===epoch)cache.set(key, current); return current;
+  })().finally(() => pending.delete(pendingKey));
+  pending.set(pendingKey, attempt); return attempt;
 }
 export async function publicMarketMiddleware(request: IncomingMessage, response: ServerResponse, next: () => void): Promise<void> {
   if (!request.url?.startsWith(PREFIX)) { next(); return; }
   response.setHeader('X-Content-Type-Options', 'nosniff'); response.setHeader('Cache-Control', 'no-store');
   if (request.method !== 'GET') { response.writeHead(405, { Allow: 'GET' }); response.end(); return; }
   const target = resolvePublicMarketTarget(request.url); if (!target) { response.writeHead(400); response.end(); return; }
-  try { const result = await loadPublicResponse(target); response.setHeader('Content-Type', result.type); response.writeHead(200); response.end(result.bytes); }
+  try { const result = await loadPublicResponse(target,new URL(request.url,'http://localhost').searchParams.get('afterPublication')??undefined); response.setHeader('Content-Type', result.type); response.writeHead(200); response.end(result.bytes); }
   catch (cause) { const purchase=cause instanceof OriginalPurchaseRefusal;response.writeHead(purchase?402:503, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ ok: false, error: purchase?'original_purchase_required':'Receiz public source is temporarily unavailable.' })); }
 }
 /** Build-time public discovery seed. Report-only projection, never a held account. */

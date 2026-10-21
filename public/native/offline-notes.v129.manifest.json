@@ -485,6 +485,14 @@
       "sha256": "258783460d6695d4dc5e4c599e195f70b1e100656211622576f33e439dcad14c",
       "purpose": "Split exact resource preparation from canonical sealing and retain the existing asset definition for stable Bank creation retries. Existing Receiz UI and v129 proof/financial authority remain unchanged.",
       "sourceCommit": "3dfd63ba8"
+    },
+    {
+      "id": "bank-connected-asset-local-admission",
+      "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "258783460d6695d4dc5e4c599e195f70b1e100656211622576f33e439dcad14c",
+      "sha256": "a20cd2a465cefdc1141a63304eb8acbe323104d36aaabc4be81df82581b04e32",
+      "purpose": "Forward the canonical verified local admission to retained Bank profile and Market views.",
+      "sourceCommit": "b579ae34d"
     }
   ]
 }

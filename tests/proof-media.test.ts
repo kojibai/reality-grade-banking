@@ -109,3 +109,12 @@ it('refuses deflated data whose actual produced size exceeds its declared size',
  for(let at=0;at<epub.length-46;at++)if(view.getUint32(at,true)===0x02014b50){view.setUint32(at+24,64,true);const local=view.getUint32(at+42,true);view.setUint32(local+22,64,true);break;}
  await expect(readMediaPayload({...payload,bytes:epub,filename:'book.epub',mimeType:'application/epub+zip'})).rejects.toThrow('decoded size');
 });
+
+it('reuses a retained authored source through the unchanged canonical reader without a public download',async()=>{
+ const adoption=await import('../src/receiz/asset-publication-adoption');
+ const file=new File([new Uint8Array([1])],'authored.receiz');
+ adoption.retainAssetPublicationSource('d'.repeat(64),file);
+ opened.mockResolvedValueOnce({sealedArtifact:{artifactSha256:'d'.repeat(64)},verifiedPayload:{bytes:new TextEncoder().encode('Read locally'),filename:'essay.txt',mimeType:'text/plain',sha256:'e'.repeat(64)}});
+ const remote=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('No download expected'));
+ try{const result=await openProofMedia({kind:'public',url:'https://receiz.com/api/proof-material/packages/'+'d'.repeat(64)+'/artifact',digest:'d'.repeat(64)});expect(result.files[0].text).toBe('Read locally');expect(remote).not.toHaveBeenCalled();}finally{adoption.forgetAssetPublicationAdmissions();remote.mockRestore();}
+});

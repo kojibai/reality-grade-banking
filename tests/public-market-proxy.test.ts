@@ -84,3 +84,11 @@ it('carries exact per-copy sealed values and only public owner names through spo
  const result=JSON.parse(body),card=result.cards[0];expect(card.sealedCopies[0]).toMatchObject({sealedAt:copy.sealedAt,birthUsdValue:10,ownerUsername:'current_holder'});expect(card.valuationRow.sealedCopies[0]).not.toHaveProperty('ownerUsername');expect(body).not.toContain('private-');
  expect(result.sealedBirthsObservedAt).toBe(sealedBirthsObservedAt);expect(card.sealedBirths[0]).toMatchObject({sealedAt:copy.sealedAt,birthUsdValue:10,ownerUsername:'current_holder'});expect(card.valuationRow.sealedBirths[0]).toEqual({collectibleId:copy.collectibleId,claimHash:copy.claimHash,sealedAt:copy.sealedAt,birthUsdValue:10});
 });
+it('uses a bounded publication hint to bypass a stale membership response without forwarding the hint upstream',async()=>{
+ const digest='9'.repeat(64),url='/api/bank/public-market/membership?afterPublication='+digest;
+ expect(resolvePublicMarketTarget(url)?.href).toBe('https://receiz.com/api/market/public-membership');
+ for(const bad of [url+'&afterPublication='+digest,url+'&url=https://evil.test',url.replace(digest,'not-a-digest')])expect(resolvePublicMarketTarget(bad)).toBeNull();
+ const fetcher=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({ok:true,transport:{publicMembership:{},publicOriginals:[]}})).mockResolvedValue(Response.json({ok:true,transport:{publicMembership:{},publicOriginals:[{id:'publication-new',receizId:'publication-new',title:'A new work'}]}}));vi.stubGlobal('fetch',fetcher);
+ const request=async(path:string)=>{let body='';await publicMarketMiddleware({method:'GET',url:path,headers:{}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:(bytes:Uint8Array)=>{body=new TextDecoder().decode(bytes);}}as unknown as ServerResponse,vi.fn());return JSON.parse(body);};
+ await request('/api/bank/public-market/membership?afterPublication='+'8'.repeat(64));await request('/api/bank/public-market/membership');const fresh=await request(url);expect(fresh.transport.publicOriginals[0].id).toBe('publication-new');expect(fetcher.mock.calls.at(-1)?.[0].toString()).toBe('https://receiz.com/api/market/public-membership');expect(fetcher.mock.calls.at(-1)?.[1]).toMatchObject({cache:'no-store'});
+});

@@ -1034,16 +1034,17 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     lifetime.signal.throwIfAborted();
     let intent:unknown=definition?{definition,linkedSource:linked?{digest:linked.digest,filename:linked.filename,exactArtifactB64u:sdk.receizBase64UrlEncode(linked.bytes)}:null,...(moment?{moment}:{})}:undefined;
     const {createAssetPublication}=await import('./asset-publication'),{loadAssetPublicationState,saveAssetPublicationState}=await import('./identity-vault');
+    const adoption=await import('./asset-publication-adoption');let publicationDigest:string|undefined;
     let attemptSealer:ReturnType<typeof ownedSealer>|undefined;
     const openAttemptSealer=()=>attemptSealer??=ownedSealer();
     let publicationRuntime:Promise<Awaited<ReturnType<import('./asset-publication-runtime').AssetPublicationRuntimeModule['createConnectedAssetPublicationRuntime']>>>|undefined;
     const openPublicationRuntime=()=>publicationRuntime??=(async()=>{
       const username=await prepareReceivingUsername(),connected=await connectClient([...BANK_READ_SCOPES,'profile','receiz:record','receiz:seal'],'Seal the original I choose and publish its exact verified source, media and full text on my public profile and in Market. This does not authorize a payment or asset funding.'),account=clientAccounts.get(connected),request=clientFetches.get(connected);
       if(!account||!request||account.applicationId!==BANK_APPLICATION_ID)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');
-      const assertCurrent=()=>{lifetime.signal.throwIfAborted();if(clientAccounts.get(connected)?.accountUid!==account.accountUid)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');};
+      const assertCurrent=()=>{lifetime.signal.throwIfAborted();if(clientAccounts.get(connected)?.accountUid!==account.accountUid||presentationUsername&&presentationUsername!==username)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');};
       const {loadAssetPublicationRuntime,createAssetPublicationFetch}=await import('./asset-publication-runtime');
       const native=await loadBankNoteRuntime(),sealDocument=await native.createBankNativeNoteSealer({enrollment:await(await openAttemptSealer()).enroll(),resources:sealingResources!});
-      return(await loadAssetPublicationRuntime()).createConnectedAssetPublicationRuntime({identity:new Uint8Array(bytes),passphrase:phrase,account:{uid:account.accountUid,username},sealDocument,assertCurrent,fetchImpl:createAssetPublicationFetch({applicationId:BANK_APPLICATION_ID,username,assertCurrent,request:async(path,init)=>{const held=await loadDeviceIdentity();if(!held||await sdk.sha256ReceizBytes(held.bytes)!==binding.artifactSha256)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');return request(path,init);}})});
+      return(await loadAssetPublicationRuntime()).createConnectedAssetPublicationRuntime({identity:new Uint8Array(bytes),passphrase:phrase,account:{uid:account.accountUid,username},sealDocument,assertCurrent,onLocalAdmission:admission=>{assertCurrent();adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:account.accountUid,isCurrent:()=>!lifetime.signal.aborted&&clientAccounts.get(connected)?.accountUid===account.accountUid&&(!presentationUsername||presentationUsername===username),artwork:composed?.files.find(file=>file.role==='cover')?.file??(composed?.kind==='image'?composed.files.find(file=>file.role==='primary')?.file:undefined)});},fetchImpl:createAssetPublicationFetch({applicationId:BANK_APPLICATION_ID,username,assertCurrent,request:async(path,init)=>{const held=await loadDeviceIdentity();if(!held||await sdk.sha256ReceizBytes(held.bytes)!==binding.artifactSha256)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');return request(path,init);}})});
     })();
     if(composed){if(!definition||definition.linkedProofDigest)throw Error('BANK_ASSET_COMPOSER_DEFINITION_INVALID');const {validateComposerAssetDraft,readComposerCapacity}=await import('./asset-composer');const selected=validateComposerAssetDraft({...composed,title:definition.name,description:definition.description,definition},readComposerCapacity());intent={composer:await(await openPublicationRuntime()).prepareContent(selected)};}
     const publication=createAssetPublication({ownerReceizId:binding.artifactOwnerReceizId,assertOpen:()=>lifetime.signal.throwIfAborted(),
@@ -1051,7 +1052,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       read:()=>loadAssetPublicationState(binding),write:(next,previous)=>saveAssetPublicationState(binding,next,previous),
       readIntent:async file=>{
         const exact=new Uint8Array(await file.arrayBuffer()),opened=await unsigned.artifacts.verifyAndOpen(file);
-        projectHeldDeposit(opened,exact,file.name,binding.artifactOwnerReceizId);
+        projectHeldDeposit(opened,exact,file.name,binding.artifactOwnerReceizId);publicationDigest=opened.sealedArtifact.artifactSha256;adoption.retainAssetPublicationSource(publicationDigest,file);
         const carried=JSON.parse(new TextDecoder().decode(opened.verifiedPayload.bytes));
         if(carried?.schema==='receiz.bank.asset-content.v2')return{composer:(await import('./asset-composer')).readComposerAssetContent(carried,binding.artifactOwnerReceizId)};
         if(carried?.schema!=='receiz.bank.asset-definition.v1')throw Error('BANK_ASSET_PUBLICATION_SOURCE_INVALID');
@@ -1067,9 +1068,9 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
         const sealed=await sealer.seal({bytes:payloadBytes,filename:`${definition.symbol.toLowerCase()}.receiz-asset.json`,mimeType:'application/json'});
         return new File([new Uint8Array(sealed.artifactBytes)],sealed.filename,{type:sealed.mimeType});
       },
-      retain:async file=>(await holdProof(file)).digest,
+      retain:async file=>{const held=await holdProof(file);publicationDigest=held.digest;adoption.retainAssetPublicationSource(held.digest,file);return held.digest;},
       restore:async(digest,filename,mimeType)=>{for(const source of await loadDepositSources(binding)){if(await sdk.sha256ReceizBytes(source.bytes)===digest)return new File([new Uint8Array(source.bytes)],filename,{type:mimeType});}throw Error('BANK_ASSET_PUBLICATION_SOURCE_UNAVAILABLE');},
-      publish:async file=>(await openPublicationRuntime()).publish(file),
+      publish:async file=>{const receipt=await(await openPublicationRuntime()).publish(file);lifetime.signal.throwIfAborted();if(!publicationDigest)throw Error('BANK_ASSET_PUBLICATION_SOURCE_UNAVAILABLE');adoption.acknowledgeAssetPublication(publicationDigest,receipt);if(receipt.status==='published')void adoption.refreshAssetPublicationCatalog(publicationDigest);return receipt;},
     });
     const result=localOnly?await publication.pending():input?await publication.create(intent):await publication.resume();
     if(!result)throw Error('BANK_ASSET_PUBLICATION_NONE');

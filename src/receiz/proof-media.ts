@@ -1,3 +1,4 @@
+import {retainedAssetPublicationSource} from './asset-publication-adoption';
 import {isEpubArchive} from './proof-media-archive';
 import {resolvePublicOriginalUrl,PublicOriginalPurchaseRequired} from './public-original';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
@@ -86,8 +87,8 @@ export function openProofMedia(source:ProofMediaSource,signal?:AbortSignal):Prom
 }
 async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Promise<OpenedProofMedia>{
  if(!/^[a-f0-9]{64}$/i.test(source.digest))throw Error('The original digest is unavailable.');
- signal?.throwIfAborted();let bytes:Uint8Array,filename:string;
- if(source.kind==='held'){if(source.bytes.length>originalReadLimit(source.bytes,MAX))throw Error('This original exceeds the supported reader capacity.');bytes=new Uint8Array(source.bytes);filename=source.filename;}else{
+ signal?.throwIfAborted();let bytes:Uint8Array,filename:string;const retained=source.kind==='public'?retainedAssetPublicationSource(source.digest):null;
+ if(source.kind==='held'){if(source.bytes.length>originalReadLimit(source.bytes,MAX))throw Error('This original exceeds the supported reader capacity.');bytes=new Uint8Array(source.bytes);filename=source.filename;}else if(retained){bytes=new Uint8Array(await retained.arrayBuffer());filename=retained.name;}else{
   const timeout=AbortSignal.timeout(90_000),publicSignal=signal?AbortSignal.any([signal,timeout]):timeout;
   const url=new URL(await resolvePublicOriginalUrl(source.url,source.digest,publicSignal));publicSignal.throwIfAborted();
   // Immutable public material already supports anonymous CORS. Use its exact
@@ -109,7 +110,7 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
   ownerReceizId:verification.bundle?.nativeRecordSeal?.ownerReceizId??'',
   resolveFile:async file=>{
    signal?.throwIfAborted();
-   if(source.kind==='public'){
+   if(source.kind==='public'&&!retained){
     const safe=safeImportedSourceUrl(source.url,'artifact');if(!safe)throw Error('The original file coordinate is unavailable.');
     const target=new URL(safe),reference=JSON.parse(target.searchParams.get('reference')!);if(reference.artifactSha256!==source.digest.toLowerCase())throw Error('The original file coordinate does not match its source.');target.searchParams.set('file',file.id);
     const response=await fetch('/api/bank/public-market/resource?path='+encodeURIComponent(target.pathname+target.search),{credentials:'omit',redirect:'error',signal});if(!response.ok)throw Error('The original file is temporarily unavailable.');return readPublicLedgerBytes(response,file.size);

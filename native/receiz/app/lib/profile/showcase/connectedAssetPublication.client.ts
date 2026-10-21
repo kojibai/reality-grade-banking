@@ -14,14 +14,15 @@ import {recoverAcceptedShowcasePredecessor} from "./acceptedPredecessorRecovery.
 import {readRecoveredAccountShowcaseScope} from "./recoveredAccountScope.client";
 import {loadCompleteLegacyProfileShowcase} from "./composerLegacyMigration";
 import {publishProfileShowcasePublicProjection,type ProfileShowcasePublicProjectionPublicationResult} from "./publicProjectionPublication";
-import type {ProfileShowcaseCompletePublicSource} from "./boundedEdgeVault";
+import type {ProfileShowcaseCompletePublicSource,ProfileShowcaseBoundedFirstPaint} from "./boundedEdgeVault";
 import type {ProfileShowcaseArtifactId} from "./types";
 import {retainImportedProfileOriginalMaterial} from "../materialProjection.client";
+export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:import("../types").ProfileOriginal;sourceReference:import("./importedSourceReference").ImportedProofSourceReference;firstPaint:ProfileShowcaseBoundedFirstPaint}>;
 /** Composition of the canonical Receiz uploader's exact source admission,
  * placement, causal append, custody and public projection. No parallel store. */
 export async function createConnectedAssetPublicationRuntime(input:Readonly<{
  identity:Uint8Array;passphrase:string;account:Readonly<{uid:string;username:string}>;
- sealDocument:typeof receizeDocumentBytesClient;fetchImpl:typeof fetch;assertCurrent():void;
+ sealDocument:typeof receizeDocumentBytesClient;fetchImpl:typeof fetch;assertCurrent():void;onLocalAdmission?(admission:ConnectedAssetLocalAdmission):Promise<void>|void;
 }>){
  input.assertCurrent();
  const admitted=await createReceizArtifactAdmissionEngine()(await verifyReceizArtifact(input.identity),{profile:"identity",identityPassphrase:input.passphrase});
@@ -64,14 +65,15 @@ export async function createConnectedAssetPublicationRuntime(input:Readonly<{
      });input.assertCurrent();
     }
    }});input.assertCurrent();});
+  const localAdmission=async(firstPaint:ProfileShowcaseBoundedFirstPaint)=>{input.assertCurrent();retainImportedProfileOriginalMaterial(original,username,source);await input.onLocalAdmission?.(Object.freeze({username,original,sourceReference:reference,firstPaint}));input.assertCurrent();};
   const existing=await vault.resolveOriginalChildCustody(artifactId,original.id);
   if(!existing){
    const placement=await sealAndAdmitImportedSourcePlacement({source,reference,ownerReceizId:owner,immutableVersion:profileShowcaseLiveKaiUpulse(),seal:childSealer});input.assertCurrent();
    await publishComposerBoundedShowcaseIfAuthorized({importedPlacement:placement,renderedSealedArtifact:source.exactArtifact,username,
     actorId:admitted.actor.actorId,actorAdmission:admitted,showcaseArtifactId:artifactId,keyFile,passphrase:input.passphrase,routeProjection:placement.original,boundedVault:vault,sealDocument,childSealer,
     loadCompleteLegacyShowcase:()=>loadCompleteLegacyProfileShowcase({username,fetchPage:async cursor=>{input.assertCurrent();const response=await input.fetchImpl(`/api/profile/${username}/originals?source=inventory${cursor?`&cursor=${encodeURIComponent(cursor)}`:""}`);if(!response.ok)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_INVENTORY_PENDING");const body=await response.json();if(body.ok!==true||!Array.isArray(body.originals))throw new TypeError("PROFILE_SHOWCASE_CONNECTED_INVENTORY_PENDING");return{originals:body.originals,hasMore:body.page?.hasMore===true,nextCursor:body.page?.nextCursor??null};}}),
-    publishPublicProjection:deliver,onLocalAdmission:()=>{input.assertCurrent();retainImportedProfileOriginalMaterial(original,username,source);}});
-  }
+    publishPublicProjection:deliver,onLocalAdmission:localAdmission});
+  }else{const firstPaint=await vault.readFirstPaint(artifactId);if(!firstPaint)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_LOCAL_ADMISSION_REQUIRED");await localAdmission(firstPaint);}
   input.assertCurrent();const complete=await vault.exportCompleteSource(artifactId);if(!complete)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_COMPLETE_SOURCE_REQUIRED");
   const result=await deliver(complete);input.assertCurrent();if(result.status!=="published")deliveries.delete(complete.artifactDigest);return result;
  }};

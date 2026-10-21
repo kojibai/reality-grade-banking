@@ -1,3 +1,4 @@
+import {mergeAdmittedProfileAssets,forgetAssetPublicationAdmissions} from './asset-publication-adoption.js';
 import {parsePublicMarket,type PublicMarketItem} from './public-market.js';
 import {profileAvatarUrl} from './profile-avatar.js';
 
@@ -51,8 +52,8 @@ export function parsePublicProfile(input:unknown,expectedUsername:string):Public
 const held=new Map<string,PublicProfile>(),observed=new Map<string,number>();
 const listeners=new Set<()=>void>();
 export const subscribePublicProfiles=(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};};
-export function retainPublicProfile(profile:PublicProfile){for(const [name,previous]of held)if(name!==profile.username&&previous.userId===profile.userId)forgetPublicProfile(name);held.delete(profile.username);held.set(profile.username,profile);observed.set(profile.username,Date.now());if(held.size>24)forgetPublicProfile(held.keys().next().value!);if(typeof dispatchEvent==='function')dispatchEvent(new CustomEvent('bankeiz:profile-metadata',{detail:{username:profile.username,title:profile.displayName,description:profile.bio,image:profile.bannerUrl??profile.avatarUrl}}));for(const listener of listeners)listener();}
-export function forgetPublicProfile(username:string){held.delete(username);observed.delete(username);if(typeof document!=='undefined'){const seed=document.getElementById('public-profile-seed');try{if(JSON.parse(seed?.textContent??'null')?.username===username)seed?.remove();}catch{/* Invalid seeds are never adopted. */}}for(const listener of listeners)listener();}
+export function retainPublicProfile(input:PublicProfile){const profile=mergeAdmittedProfileAssets(input);for(const [name,previous]of held)if(name!==profile.username&&previous.userId===profile.userId)forgetPublicProfile(name);held.delete(profile.username);held.set(profile.username,profile);observed.set(profile.username,Date.now());if(held.size>24)forgetPublicProfile(held.keys().next().value!);if(typeof dispatchEvent==='function')dispatchEvent(new CustomEvent('bankeiz:profile-metadata',{detail:{username:profile.username,title:profile.displayName,description:profile.bio,image:profile.bannerUrl??profile.avatarUrl}}));for(const listener of listeners)listener();return profile;}
+export function forgetPublicProfile(username:string){forgetAssetPublicationAdmissions(username);held.delete(username);observed.delete(username);if(typeof document!=='undefined'){const seed=document.getElementById('public-profile-seed');try{if(JSON.parse(seed?.textContent??'null')?.username===username)seed?.remove();}catch{/* Invalid seeds are never adopted. */}}for(const listener of listeners)listener();}
 export function forgetPublicProfilesForAccount(uid:string){for(const [name,profile]of held)if(profile.userId===uid)forgetPublicProfile(name);}
 export const publicProfileNeedsRefresh=(username:string)=>Date.now()-(observed.get(username)??0)>15_000;
 export function publicProfilePageError(username:string):string{
@@ -70,7 +71,7 @@ export function fetchPublicProfile(username:string,cursor?:string,priority:Reque
  const attempt=(async()=>{const response=await fetch(`/api/bank/public-profile/${username}${cursor?'?cursor='+encodeURIComponent(cursor):''}`,{credentials:'omit',redirect:'error',cache:'no-store',priority,signal:AbortSignal.timeout(30_000)});
   if(!response.ok){if(response.status===403||response.status===404||response.status===409)forgetPublicProfile(username);throw Error(response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':response.status===409?'PROFILE_CHANGED':'PROFILE_UNAVAILABLE');}
   const value=await response.json() as PublicProfile;if(value.schema!=='bankeiz.public-profile.v1'||value.username!==username||typeof value.userId!=='string'||!Array.isArray(value.items)||value.items.length>10_000)throw Error('PROFILE_RESPONSE_INVALID');
-  if(!cursor)retainPublicProfile(value);return value;
+  if(!cursor)return retainPublicProfile(value);return mergeAdmittedProfileAssets(value);
  })();reads.set(key,attempt);void attempt.finally(()=>{if(reads.get(key)===attempt)reads.delete(key);}).catch(()=>{});return attempt;
 }
 /** Only the selected owner is prepared. This shares the eventual profile read;

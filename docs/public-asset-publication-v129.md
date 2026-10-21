@@ -62,3 +62,9 @@ codec support or a hosted maximum-file performance measurement.
 Bank's 390px and 1440px form checks cover music/artwork, EPUB/artwork, text-only
 creation and retained pending-delivery retry without remote services. Receiz's
 frontend components, styling and flows remain unchanged.
+
+### Immediate appearance and retained navigation
+
+The canonical local admission returns the exact Original, imported source reference and bounded first paint. Bankeiz adopts that handoff into the current owner’s retained profile and shared Market view before delivery completes. It does not mint a second listing or assert anonymous availability while delivery is pending. Stale background responses merge by stable source identity; accepted discovery retires the overlay. A bounded source digest freshness hint bypasses only the existing membership transport cache after publication. Ordinary page reads are unchanged.
+
+Selected artwork and the compact authored source are reused locally, within bounded memory limits. Exact durable source and resource custody remains in the canonical encrypted store. Opening the source still runs the unchanged offline canonical reader; the local handoff confers no ownership or financial authority.

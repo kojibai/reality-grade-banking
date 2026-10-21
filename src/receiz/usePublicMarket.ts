@@ -1,15 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState,type SetStateAction } from 'react';
 import {receizKaiNow} from '@receiz/sdk';
 import { fetchPublicSports, mergePublicSports,retainPublicSportsInput } from './public-sports';
 import { fetchPublicMarket, fetchPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, retainPublicArtwork, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
 import {prepareMarketDisplaySource,useMarketDisplaySource} from './market-projection/display-source';
 import {publicCatalogAtPulse} from './market-projection/catalog-prices';
 
+import {mergeAdmittedPublicAssets,subscribeAssetPublicationAdmissions} from './asset-publication-adoption';
+function adoptCatalog(catalog:PublicMarketCatalog|null){const next=mergeAdmittedPublicAssets(catalog??{items:[],complete:false,revision:'local-admission',observedAt:null,sourceCount:0});return catalog||next.items.length?next:null;}
 export const PUBLIC_MARKET_CACHE_KEY = 'receiz-bank-public-discovery-v2';
 function restorePublicCatalog(): PublicMarketCatalog | null { try { const saved = localStorage.getItem(PUBLIC_MARKET_CACHE_KEY); const input = saved ? JSON.parse(saved) : null; const catalog = input ? parsePublicMarket(input, input.snapshot) : null; if (!catalog) return null; rememberPublicOriginalLocators(catalog); try { return mergePublicSports(catalog, JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1') ?? 'null')); } catch { return catalog; } } catch { return null; } }
 export function usePublicMarket(active = true, displayActive = active) {
   const pricingSource=useMarketDisplaySource(),[pulse,setPulse]=useState(()=>receizKaiNow().pulse);
-  const [catalog, setCatalog] = useState<PublicMarketCatalog | null>(restorePublicCatalog);
+  const [catalog, updateCatalog] = useState<PublicMarketCatalog | null>(()=>adoptCatalog(restorePublicCatalog()));
+  const setCatalog=useCallback((next:SetStateAction<PublicMarketCatalog|null>)=>updateCatalog(previous=>adoptCatalog(typeof next==='function'?next(previous):next)),[]);
   const [status, setStatus] = useState<'loading' | 'live' | 'stale' | 'error'>(catalog ? 'stale' : 'loading');
   const [quoteStatus, setQuoteStatus] = useState<'loading' | 'fresh' | 'stale'>('stale');
   const [sportsStatus, setSportsStatus] = useState<'loading' | 'fresh' | 'retained' | 'missing'>(catalog?.items.some(item => item.category === 'sports') ? 'retained' : 'loading');
@@ -17,6 +20,10 @@ export function usePublicMarket(active = true, displayActive = active) {
   const running = useRef<AbortController | null>(null);
   const sportsRunning=useRef<AbortController|null>(null);
   const generation = useRef(0), sports = useRef<unknown>(null);
+  useEffect(()=>subscribeAssetPublicationAdmissions(accepted=>{setCatalog(current=>{
+    if(!accepted)return current;const previous=new Map(current?.items.map(item=>[item.id,item]));
+    return mergePublicSports({...accepted,items:accepted.items.map(item=>{const prior=previous.get(item.id),next=retainPublicArtwork(item,prior);return prior?.chart.length?{...next,priceUsd:prior.priceUsd,changePct:prior.changePct,chart:prior.chart}:next;})},sports.current);
+  });}),[setCatalog]);
   useEffect(() => { try { sports.current = JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1') ?? 'null'); } catch { /* No retained public inventory. */ } }, []);
   const refresh = useCallback(async () => {
     if (running.current) return;
