@@ -14,6 +14,11 @@ function PublicAssetTradeFlow({request, account}: {request: PublicAssetTradeRequ
   const [step, setStep] = useState<'fund' | 'trade' | null>(request.resumeTradeReview ? 'trade' : null), [budget, setBudget] = useState(request.initialBudget ?? '');
   const requestedAccount=useRef(false),purchaseApproval=useRef<FundedPurchaseApproval|null>(null);
   const [approvedPurchase,setApprovedPurchase]=useState<FundedPurchaseApproval|undefined>();
+  // A retained checkout keeps its recovery path. Otherwise the already-loaded
+  // balance only selects the initial view; Market still authorizes the trade.
+  // Missing balance data is not evidence that an account needs card funding.
+  const startWithCard=request.side==='buy'&&(Boolean(request.resumeSessionId)||account.wallet?.totalUsdCents==='0');
+  useLayoutEffect(()=>{if(account.identity&&step===null)setStep(startWithCard?'fund':'trade');},[account.identity,step,startWithCard]);
   useLayoutEffect(() => connectPublicAssetTrade(request.id), [request.id]);
   useEffect(()=>{
     // Buy is the entry intent. Finish restoring existing custody first; an
@@ -29,15 +34,13 @@ function PublicAssetTradeFlow({request, account}: {request: PublicAssetTradeRequ
     <p className="body-copy small-copy">Your device-held account opens here. You review the amount before any payment. <a href="/learn/account-access/">Account access</a></p>
   </div>;
   if (!account.identity) return <Entrance opening={account.opening} openingStage={account.openingStage} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId}/>;
-  // Public Buy always starts with the existing amount → card checkout flow.
-  // Only its confirmed credit transitions to native Market execution.
-  const funding = request.side === 'buy' && step !== 'trade';
+  const funding = request.side === 'buy' && (step==='fund'||step===null&&startWithCard);
   const refresh = () => {void account.refresh();};
   if (funding) return <LiveDeposit identity={account.identity} onRefresh={refresh} onClose={() => setStep('trade')} resumeSessionId={request.resumeSessionId} funding={{initialAmount: budget,purchase:{itemId:request.itemId,title:request.title}, onBack: amount => {setBudget(amount);setStep('trade');}, onCheckout: checkout => {purchaseApproval.current=null;retainPublicPurchase(request, checkout, 'deposit');},onPurchaseApproved:checkout=>{purchaseApproval.current=approveFundedPurchase(account.identity!,request.itemId,checkout);}, onCredited: checkout => {
     if(purchaseApproval.current){confirmPurchaseFunding(purchaseApproval.current,account.identity!,checkout);setApprovedPurchase(purchaseApproval.current);}
     retainPublicPurchase(request, checkout, 'trade'); setBudget(publicPurchaseBudget(checkout)); setStep('trade');
   }}}/>;
-  return <LiveMarketTrade identity={account.identity} marketItemId={request.itemId} side={request.side} onRefresh={refresh} initialBudget={budget} approvedPurchase={approvedPurchase} onFundingRequested={request.side === 'buy' ? amount => {purchaseApproval.current=null;setApprovedPurchase(undefined);setBudget(amount); setStep('fund');} : undefined}/>;
+  return <LiveMarketTrade identity={account.identity} marketItemId={request.itemId} side={request.side} onRefresh={refresh} initialBudget={budget} approvedPurchase={approvedPurchase} onInsufficientFunds={request.side === 'buy' ? amount => {purchaseApproval.current=null;setApprovedPurchase(undefined);setBudget(amount); setStep('fund');} : undefined}/>;
 }
 
 /** Mounted once by BankApp, underneath its sole useNativeAccount owner. */

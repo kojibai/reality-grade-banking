@@ -63,8 +63,8 @@ it('opens the existing sheet on intent, keeping the asset URL and head while run
   } finally {act(() => root.unmount()); host.remove(); removeEventListener('bankeiz:request-bank-runtime', loader);}
 });
 
-it.each([true, false])('takes public buyers directly from amount to existing card checkout, even with an existing balance (%s)', async funded => {
-  const {account, identity, api} = fixture(funded), host = document.createElement('div'), root = createRoot(host); document.body.append(host);
+it('takes a buyer without account funds directly from amount to the existing card checkout', async () => {
+  const {account, identity, api} = fixture(false), host = document.createElement('div'), root = createRoot(host); document.body.append(host);
   const market = vi.spyOn(identity, 'marketTrade').mockRejectedValue(new Error('BANK_MARKET_TERMS_UNAVAILABLE'));
   try {
     await act(async () => root.render(<><PublicAssetTradeHost/><div hidden inert><PublicAssetTradePortal account={account}/></div></>));
@@ -77,6 +77,44 @@ it.each([true, false])('takes public buyers directly from amount to existing car
     expect(dialog.querySelector('iframe')?.title).toBe('Secure card deposit');
     expect(market).not.toHaveBeenCalled(); expect(api.prepare).not.toHaveBeenCalled(); expect(api.execute).not.toHaveBeenCalled();
   } finally {act(() => root.unmount()); host.remove();}
+});
+
+it.each(['buy','sell'] as const)('uses the existing account Market flow for a standalone %s without creating card checkout',async side=>{
+ const {account,identity,api}=fixture(),host=document.createElement('div'),root=createRoot(host);document.body.append(host);
+ try{
+  await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={account}/></>));
+  await act(async()=>{beginPublicAssetTrade({itemId:'profile:artist:source',side,title:'An original'});});
+  const dialog=host.querySelector('dialog')!;expect(dialog.textContent).toContain('Review trade');expect(dialog.querySelector('iframe')).toBeNull();expect(dialog.textContent).not.toContain('Add money for this purchase');
+  expect(identity.beginCardDeposit).not.toHaveBeenCalled();expect(api.prepare).not.toHaveBeenCalled();
+  await enterAmount(dialog,'25');await act(async()=>button(dialog,'Review trade').click());
+  expect(api.prepare).toHaveBeenCalledExactlyOnceWith({marketItemId:'profile:artist:source',side,amountUsdCents:'2500'});
+  expect(identity.beginCardDeposit).not.toHaveBeenCalled();expect(api.execute).not.toHaveBeenCalled();
+  await act(async()=>dialog.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());await act(async()=>button(dialog,side==='buy'?'Confirm purchase':'Confirm sale').click());
+  expect(api.execute).toHaveBeenCalledExactlyOnceWith(review,review.digest);expect(identity.beginCardDeposit).not.toHaveBeenCalled();
+  await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={{...account,wallet:{...account.wallet!,totalUsdCents:'0'}}}/></>));
+  expect(host.querySelector('dialog')).toBe(dialog);expect(dialog.textContent).toContain('Trade recorded');expect(dialog.querySelector('iframe')).toBeNull();expect(identity.beginCardDeposit).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());host.remove();}
+});
+
+it('offers card funding only for an explicit insufficient-balance quote, retaining the entered purchase amount',async()=>{
+ const {account,identity,api}=fixture(),host=document.createElement('div'),root=createRoot(host);
+ api.prepare.mockRejectedValue(Object.assign(Error('wallet_insufficient_balance'),{status:409,payload:{error:'wallet_insufficient_balance'}}));
+ try{
+  await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={account}/></>));await act(async()=>{beginPublicAssetTrade({itemId:'profile:artist:source',side:'buy',title:'An original'});});
+  const dialog=host.querySelector('dialog')!;await enterAmount(dialog,'25');await act(async()=>button(dialog,'Review trade').click());
+  expect(dialog.textContent).toContain('Continue to payment');expect(dialog.querySelector('input')?.value).toBe('25');expect(api.prepare).toHaveBeenCalledOnce();expect(api.execute).not.toHaveBeenCalled();expect(identity.beginCardDeposit).not.toHaveBeenCalled();
+  await act(async()=>button(dialog,'Continue to payment').click());expect(identity.beginCardDeposit).toHaveBeenCalledExactlyOnceWith('25',true);
+ }finally{act(()=>root.unmount());}
+});
+
+it('does not treat an unavailable quote or an unknown balance as permission to open card funding',async()=>{
+ const {account,identity,api}=fixture(),host=document.createElement('div'),root=createRoot(host);
+ api.prepare.mockRejectedValue(Object.assign(Error('quote unavailable'),{status:503,payload:{error:'market_position_lookup_failed'}}));
+ try{
+  await act(async()=>root.render(<><PublicAssetTradeHost/><PublicAssetTradePortal account={{...account,wallet:null}}/></>));await act(async()=>{beginPublicAssetTrade({itemId:'profile:artist:source',side:'buy',title:'An original'});});
+  const dialog=host.querySelector('dialog')!;expect(dialog.textContent).toContain('Review trade');await enterAmount(dialog,'25');await act(async()=>button(dialog,'Review trade').click());
+  expect(dialog.textContent).toContain('HTTP 503');expect(dialog.textContent).not.toContain('Continue to payment');expect(dialog.querySelector('iframe')).toBeNull();expect(api.prepare).toHaveBeenCalledOnce();expect(identity.beginCardDeposit).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
 });
 
 it('continues the approved purchase automatically once account-bound card credit is confirmed', async () => {

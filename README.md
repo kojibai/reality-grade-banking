@@ -169,7 +169,7 @@ registry bindings and digests are recorded in
 | Identity and account-source admission | [native identity](src/receiz/native-identity.ts), [native source](src/receiz/bank-native-source.ts) |
 | Payments and recovery | [Wallet Send](src/receiz/wallet-send.ts), [card-funded Send](docs/card-funded-send.md), [payment contract](docs/native-payment-api.md) |
 | Notes and exact source retention | [Note runtime](src/receiz/offline-notes.ts), [connected composition](src/receiz/connected-note-application.ts) |
-| Public assets and discovery | [public explorer](src/public-explorer/), [Market](src/features/market/) |
+| Public assets and discovery | [public explorer](src/public-explorer/), [Market](src/features/market/), [purchase and sale execution](docs/market-trade-execution.md) |
 | Account and public activity | [Ledger](src/features/ledger/), [public Ledger](src/public-ledger/) |
 | Receiz conversations and calls | [messaging interface](src/features/messages/), [native calls](src/receiz/native-calls.ts) |
 | Fixed-origin host transport | [server](server/), [API entry](api/index.ts), [routing](vercel.json) |
