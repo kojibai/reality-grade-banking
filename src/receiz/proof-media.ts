@@ -1,5 +1,5 @@
 import {openBookArchive} from './proof-media-archive';
-import {resolvePublicOriginalUrl} from './public-original';
+import {resolvePublicOriginalUrl,PublicOriginalPurchaseRequired} from './public-original';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
 import {readPublicProofReading,type ProofReading} from './proof-reading';
 import type {ReceizVerifiedPayload} from '@receiz/sdk';
@@ -96,6 +96,7 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
   // image/cache coordinate rather than downloading a second proxy copy.
   const direct=/^\/api\/proof-material\/packages\/[a-f0-9]{64}\/artifact$/.test(url.pathname)&&!url.search;
   const response=await fetch(direct?url.href:`/api/bank/public-market/original?path=${encodeURIComponent(url.pathname+url.search)}`,{credentials:'omit',redirect:'error',signal:publicSignal});
+  if(response.status===402)throw new PublicOriginalPurchaseRequired();
   if(!response.ok)throw Error('The original could not be opened. You can retry or inspect its source.');bytes=await readPublicLedgerBytes(response,MAX);filename='original.receiz';
  }
  if(!bytes.length||bytes.length>MAX)throw Error('This original exceeds the supported reader capacity.');

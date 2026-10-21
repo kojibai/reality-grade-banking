@@ -7,6 +7,11 @@ vi.mock('../src/receiz/ledger-offline-proof',()=>({loadOfflineProofVerifier:asyn
 import {openProofMedia,readMediaPayload,readDocumentText} from '../src/receiz/proof-media';
 import {prepareAssetMoment} from '../src/receiz/asset-moment';
 afterEach(()=>{opened.mockReset();vi.restoreAllMocks();});
+it('distinguishes a separately sold sealed download from a failed proof verification',async()=>{
+ const fetch=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response('{"error":"payment_required"}',{status:402}));
+ await expect(openProofMedia({kind:'public',url:'https://receiz.com/api/proof-material/packages/'+'f'.repeat(64)+'/artifact',digest:'f'.repeat(64)})).rejects.toThrow('separate download');
+ expect(opened).not.toHaveBeenCalled();expect(fetch).toHaveBeenCalledOnce();
+});
 const bytes=new TextEncoder().encode('An original essay.\n\nEvery paragraph remains available.');
 const payload={bytes,filename:'essay.txt',mimeType:'text/plain',sha256:'b'.repeat(64)};
 it('opens only the exact original before reading its payload, refusing a digest mismatch',async()=>{

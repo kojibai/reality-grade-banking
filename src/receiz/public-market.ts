@@ -60,6 +60,14 @@ export function publicMediaArtworkUrl(input:unknown,retainedArtwork?:unknown):st
   const imageOriginal=kind==='image'&&typeof digest==='string'&&/^[a-f0-9]{64}$/i.test(digest)&&digest.toLowerCase()===String(material.sealedArtifactSha256Hex).toLowerCase()&&(!media.originalDownloadMime||/^image\/(?:png|jpeg|webp|gif|avif|bmp)$/i.test(String(media.originalDownloadMime)))?publicMaterialOriginalUrl(material.originalArtifactSrc)??publicMaterialOriginalUrl(material.proofObjectUrl):null;
   for(const candidate of [primary,imageOriginal,retainedArtwork,media.derivativeDownloadSrc,media.receiptDownloadSrc]){const url=safeReceizArtworkUrl(candidate);if(url)return url;}return null;
 }
+/** A legacy public image remains viewable independently of the separate
+ * sealed-download endpoint. This does not verify its original or grant it. */
+export function publicAssetImagePreviewUrl(item:PublicMarketItem):string|null{
+  if(item.mediaKind!=='image'||!item.originalUrl)return null;
+  const original=safeReceizPublicUrl(item.originalUrl,'original'),image=safeReceizArtworkUrl(item.artworkUrl);
+  if(!original||!image||new URL(original).pathname!=='/api/profile/originals/download'||new URL(image).pathname==='/api/receiz/download')return null;
+  return image;
+}
 export function safeReceizPublicUrl(input: unknown, kind: 'source' | 'proof' | 'original' = 'source'): string | null {
   const value = text(input, 8192); if (!value) return null;
   try {

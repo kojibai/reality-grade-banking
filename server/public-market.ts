@@ -33,6 +33,7 @@ export function resolvePublicMarketTarget(requestUrl: string): URL | null {
   return safeReceizPublicUrl(target.href, 'original') ? target : null;
 }
 interface CachedResponse { bytes: Uint8Array; type: string; etag: string | null; fetchedAt: number; }
+class OriginalPurchaseRefusal extends Error {}
 const cache = new Map<string, CachedResponse>(), pending = new Map<string, Promise<CachedResponse>>();
 async function readBounded(response: Response): Promise<Uint8Array> {
   if (Number(response.headers.get('content-length')) > MAX_BYTES) throw new Error('Public source exceeds supported size.');
@@ -50,6 +51,7 @@ async function loadPublicResponse(target: URL): Promise<CachedResponse> {
   const attempt = (async () => {
     const response = await fetch(target, { signal: AbortSignal.timeout(90_000), credentials: 'omit', redirect: 'error', headers: previous?.etag ? { 'If-None-Match': previous.etag } : {} });
     if (response.status === 304 && previous) { const current = { ...previous, fetchedAt: Date.now() }; cache.set(key, current); return current; }
+    if(response.status===402&&target.pathname==='/api/profile/originals/download'){await response.body?.cancel().catch(()=>{});throw new OriginalPurchaseRefusal();}
     if (!response.ok) throw new Error(`Receiz public source returned ${response.status}.`);
     let bytes = await readBounded(response);
     const type = response.headers.get('content-type') ?? 'application/octet-stream';
@@ -104,7 +106,7 @@ export async function publicMarketMiddleware(request: IncomingMessage, response:
   if (request.method !== 'GET') { response.writeHead(405, { Allow: 'GET' }); response.end(); return; }
   const target = resolvePublicMarketTarget(request.url); if (!target) { response.writeHead(400); response.end(); return; }
   try { const result = await loadPublicResponse(target); response.setHeader('Content-Type', result.type); response.writeHead(200); response.end(result.bytes); }
-  catch { response.writeHead(503, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ ok: false, error: 'Receiz public source is temporarily unavailable.' })); }
+  catch (cause) { const purchase=cause instanceof OriginalPurchaseRefusal;response.writeHead(purchase?402:503, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ ok: false, error: purchase?'original_purchase_required':'Receiz public source is temporarily unavailable.' })); }
 }
 /** Build-time public discovery seed. Report-only projection, never a held account. */
 export async function readReceizPublicMarketSource(kind: 'membership' | 'quotes' | 'sports' | 'capitalization'): Promise<unknown> {

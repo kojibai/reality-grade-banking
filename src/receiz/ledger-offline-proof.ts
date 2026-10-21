@@ -2,7 +2,7 @@ import type {PublicRecord} from './public-network';
 import {ledgerInspectionDocument} from './ledger-inspection';
 import {ledgerValueForRecord} from './ledger-value';
 import {safeReceizPublicUrl} from './public-market';
-import {resolvePublicOriginalUrl} from './public-original';
+import {resolvePublicOriginalUrl,PublicOriginalPurchaseRequired} from './public-original';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
 import {zipSync} from 'fflate';
 import {admittedProofInspection,retainProofInspection,reuseProofInspection,trackProofInspection,type ProofInspection} from './proof-inspection';
@@ -33,7 +33,7 @@ async function inspectOriginal(record:PublicRecord,signal?:AbortSignal){
  const verifier=await loadOfflineProofVerifier();signal?.throwIfAborted();
  let bytes=await cached(digest),filename='original.receiz';
  if(bytes&&await verifier.sha256Hex(bytes)!==digest.toLowerCase())bytes=null;
- if(!bytes){const url=new URL(await resolvePublicOriginalUrl(original,digest,signal));const response=await fetch(`/api/bank/public-market/original?path=${encodeURIComponent(url.pathname+url.search)}`,{credentials:'omit',redirect:'error',signal:signal?AbortSignal.any([signal,AbortSignal.timeout(90000)]):AbortSignal.timeout(90000)});if(!response.ok)throw Error('ORIGINAL_READ_UNAVAILABLE');bytes=await readPublicLedgerBytes(response,MAX);}
+ if(!bytes){const url=new URL(await resolvePublicOriginalUrl(original,digest,signal));const response=await fetch(`/api/bank/public-market/original?path=${encodeURIComponent(url.pathname+url.search)}`,{credentials:'omit',redirect:'error',signal:signal?AbortSignal.any([signal,AbortSignal.timeout(90000)]):AbortSignal.timeout(90000)});if(response.status===402)throw new PublicOriginalPurchaseRequired();if(!response.ok)throw Error('ORIGINAL_READ_UNAVAILABLE');bytes=await readPublicLedgerBytes(response,MAX);}
  if(await verifier.sha256Hex(bytes)!==digest.toLowerCase())throw Error('SELECTED_RECORD_DIGEST_MISMATCH');
  const report=await verifier.inspectArtifact(bytes,filename);signal?.throwIfAborted();
  if(report.artifactSha256!==digest.toLowerCase())throw Error('SELECTED_RECORD_DIGEST_MISMATCH');

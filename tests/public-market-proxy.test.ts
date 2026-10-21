@@ -2,6 +2,17 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { publicMarketMiddleware, resolvePublicMarketTarget } from '../server/public-market';
 afterEach(() => vi.unstubAllGlobals());
+it('preserves an Original download purchase refusal without forwarding upstream fields, credentials or caching it as a source',async()=>{
+ const fetchSource=vi.fn<typeof fetch>(async()=>Response.json({ok:false,error:'payment_required',privateField:'do-not-copy'},{status:402}));vi.stubGlobal('fetch',fetchSource);
+ const path='/api/profile/originals/download?receizId=creator-paid-image&kind=original',url='/api/bank/public-market/original?path='+encodeURIComponent(path);
+ for(let attempt=0;attempt<2;attempt++){
+  let status=0,body='';const response={setHeader:vi.fn(),writeHead:(value:number)=>{status=value;},end:(value:string)=>{body=value;}}as unknown as ServerResponse;
+  await publicMarketMiddleware({method:'GET',url,headers:{cookie:'do-not-copy',authorization:'Bearer do-not-copy'}}as IncomingMessage,response,vi.fn());
+  expect(status).toBe(402);expect(JSON.parse(body)).toEqual({ok:false,error:'original_purchase_required'});expect(body).not.toContain('do-not-copy');
+ }
+ expect(fetchSource).toHaveBeenCalledTimes(2);expect(fetchSource.mock.calls[0]?.[1]).toMatchObject({credentials:'omit',redirect:'error'});
+ let status=0;await publicMarketMiddleware({method:'GET',url:'/api/bank/public-market/quotes',headers:{}}as IncomingMessage,{setHeader:vi.fn(),writeHead:(code:number)=>{status=code;},end:vi.fn()}as unknown as ServerResponse,vi.fn());expect(status).toBe(503);
+});
 it('allows only fixed public Receiz contracts with bounded query arguments', () => {
   expect(resolvePublicMarketTarget('/api/bank/public-market/membership')?.href).toBe('https://receiz.com/api/market/public-membership');
   expect(resolvePublicMarketTarget('/api/bank/public-market/quotes')?.href).toBe('https://receiz.com/api/market/public-snapshot?detail=full');

@@ -1,17 +1,34 @@
 # Original media view
 
 Proof objects, deposited assets and Ledger inspection share the same restrained
-media surface. Opening is deliberate. The existing SDK `artifacts.verifyAndOpen`
-opens the complete original, and its artifact digest must match the selected
+media surface. Opening is deliberate. The unchanged, included v129 canonical
+read verifier opens the complete original, and its artifact digest must match the selected
 source before any payload is presented. No media preview grants ownership,
 financial value, admission, or permission to publish.
 
-Held originals open locally. Public originals use the existing bounded original
-relay, with its fixed public URL contract, omitted credentials, cancellation and
+Held originals open locally. Public material opens at its exact immutable public
+CORS URL; other public originals use the existing bounded original relay.
+Both preserve fixed public URL contracts, omitted credentials, cancellation and
 16 MiB canonical reader boundary. A held asset definition can resolve its exact
 `linkedProofDigest` against the same identity's held originals; that referenced
 original is independently reopened. A URL or arbitrary attachment metadata never
 substitutes for carried media. No account/source API or SDK schema changes.
+
+Older image listings can separate a public image from a separately sold sealed
+Original download. When discovery already carries that public image, Market and
+the standalone page display, enlarge and zoom it directly. This path neither
+starts the download-sale endpoint nor reads another listing or runs a verifier.
+It is labeled **Public image** and does not publish a verified-original report,
+payload digest or free sealed-original download. Self-contained public material
+continues through canonical verification as before. Receipt artwork is not
+substituted for a public image in this path.
+
+The public full-text control reads its existing canonical receipt on demand and
+requires the selected post coordinate, bound original digest and text hash to
+verify. Reading does not require purchasing a separate image download. A source
+HTTP 402 during an explicitly requested sealed-original inspection is described
+as a separate creator download, rather than invalid proof or an unavailable
+service. It never triggers a purchase automatically.
 
 Images have a full view with zoom and native touch scrolling. Audio and video
 use native controls, without autoplay or external playlists; expansion preserves

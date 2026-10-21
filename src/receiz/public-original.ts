@@ -2,6 +2,10 @@ import { loadReceiz } from './client';
 import { parsePublicMarket, rememberPublicOriginalLocators, retainedPublicOriginalUrl, safeReceizPublicUrl } from './public-market';
 import { readPublicLedgerBytes } from './public-ledger-transfer';
 
+export class PublicOriginalPurchaseRequired extends Error{
+  constructor(){super('The creator offers this sealed Original as a separate download. Its public media and proof links remain available.');this.name='PublicOriginalPurchaseRequired';}
+}
+
 /** Older public caches retain the download-sale URL. Resolve its current exact
  * public artifact before opening; a locator never replaces SDK verification. */
 let shippedOriginalsRead = false;

@@ -1,13 +1,28 @@
 // @vitest-environment happy-dom
 // Presentation fixtures only; canonical proof verification is tested separately.
 import{act}from'react';import{createRoot}from'react-dom/client';import{afterEach,expect,it,vi}from'vitest';
-const open=vi.hoisted(()=>vi.fn());vi.mock('../src/receiz/proof-media',()=>({openProofMedia:open,retainedPublicMedia:()=>null}));
+const {open,readPublic}=vi.hoisted(()=>({open:vi.fn(),readPublic:vi.fn()}));vi.mock('../src/receiz/proof-media',()=>({openProofMedia:open,retainedPublicMedia:()=>null}));
+vi.mock('../src/receiz/proof-reading',()=>({readPublicProofReading:readPublic}));
 import{ProofMedia}from'../src/features/media/ProofMedia';
 import{Sheet}from'../src/components/Sheet';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const source={kind:'held' as const,digest:'a'.repeat(64),filename:'source.receiz',bytes:new Uint8Array([1])};
 const media={artifactDigest:source.digest,files:[{kind:'text',filename:'Essay.html',mimeType:'text/html',bytes:new TextEncoder().encode('<p>Bound text</p>'),payloadDigest:'b'.repeat(64),text:'Bound text'}]};
-afterEach(()=>{open.mockReset();vi.restoreAllMocks();});
+afterEach(()=>{open.mockReset();readPublic.mockReset();vi.restoreAllMocks();});
+it('opens and zooms a legacy public image and reads its public carried text without trying the sealed-download sale',async()=>{
+ const preview='https://receiz.com/artwork/public-original.png',publicSource={kind:'public' as const,url:'https://receiz.com/api/profile/originals/download?receizId=old-image&kind=original',digest:'d'.repeat(64),postUrl:'https://receiz.com/v/20260811_2153/35D1E00F/13593419?a=c237f28b&ms=1786499609033',hasLongForm:true};
+ readPublic.mockRejectedValueOnce(Error('This public text could not be opened yet.')).mockResolvedValue({title:'Carried public text',text:'The exact verified public text.',sha256:'e'.repeat(64),artifactDigest:'f'.repeat(64)});
+ vi.spyOn(HTMLDialogElement.prototype,'showModal').mockImplementation(function(this:HTMLDialogElement){this.open=true;});vi.spyOn(HTMLDialogElement.prototype,'close').mockImplementation(function(this:HTMLDialogElement){this.open=false;});vi.spyOn(window,'scrollTo').mockImplementation(()=>{});vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:verified-text');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<ProofMedia source={publicSource} title="Legacy image" artworkUrl={preview} publicImageUrl={preview} autoOpen/>));
+  expect(host.querySelector('.proof-image-open img')?.getAttribute('src')).toBe(preview);expect(host.textContent).not.toContain('Original verified');expect(host.querySelector('.proof-object-cover')).toBeNull();expect(open).not.toHaveBeenCalled();
+  act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Open full image"]')!.click());expect(host.querySelector('dialog[open] img')?.getAttribute('src')).toBe(preview);
+  act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Zoom in"]')!.click());expect(host.querySelector('dialog[open] img')?.getAttribute('style')).toContain('150%');expect(host.querySelector('dialog a[download]')).toBeNull();
+  act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Close media"]')!.click());await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Read full text"]')!.click());
+  expect(host.querySelector('.proof-media-error')?.textContent).toContain('public text could not be opened');await act(async()=>host.querySelector<HTMLButtonElement>('.proof-media-error button')!.click());
+  expect(host.querySelector('dialog .proof-reading-text')?.textContent).toBe('The exact verified public text.');expect(readPublic).toHaveBeenLastCalledWith(publicSource.postUrl,publicSource.digest,expect.any(AbortSignal));expect(readPublic).toHaveBeenCalledTimes(2);expect(open).not.toHaveBeenCalled();expect(host.querySelector('.proof-media-error')).toBeNull();
+ }finally{act(()=>root.unmount());}
+});
 it('shows the existing public image immediately, then opens the verified image without a receipt request',async()=>{
  const artwork='https://receiz.com/api/proof-material/packages/'+'c'.repeat(64)+'/artifact';
  let finish!:(value:unknown)=>void;open.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));

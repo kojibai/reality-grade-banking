@@ -6,6 +6,10 @@ Full release records and qualification evidence live in [docs/releases](docs/rel
 
 ## Unreleased
 
+- Legacy public images open and zoom from already-carried public media without
+  requesting a separate creator-sold sealed download. Public carried text keeps
+  its existing independent verification; protected-original inspection explains
+  HTTP 402 separately from a proof-verification failure.
 - Public image assets show their actual carried image before receipt fallbacks.
   Older media uses the existing v129 canonical read contract, with exact digest
   verification and shared proof inspection. Public audio embeds reuse an

@@ -1,7 +1,16 @@
 import {expect,it} from 'vitest';
-import {parsePublicMarket,publicMediaArtworkUrl,safeReceizArtworkUrl} from '../src/receiz/public-market';
+import {parsePublicMarket,publicMediaArtworkUrl,safeReceizArtworkUrl,publicAssetImagePreviewUrl} from '../src/receiz/public-market';
 
 const cover='/api/profile/originals/media?receizId=song-1&slot=audioCover';
+it('opens a legacy public image independently of its separate sealed-download sale, keeping self-contained originals on canonical verification',()=>{
+ const media={kind:'image',src:'/artwork/public-image.png',originalDownloadSrc:'/api/profile/originals/download?receizId=image-1&kind=original',originalDownloadSha256Hex:'a'.repeat(64)};
+ const item=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'image',receizId:'image-1',title:'Image',profileOriginal:{media}}]}}).items[0];
+ expect(publicAssetImagePreviewUrl(item)).toBe('https://receiz.com/artwork/public-image.png');
+ expect(publicAssetImagePreviewUrl({...item,mediaKind:'audio'})).toBeNull();
+ expect(publicAssetImagePreviewUrl({...item,artworkUrl:'https://outside.example/image.png'})).toBeNull();
+ expect(publicAssetImagePreviewUrl({...item,artworkUrl:'https://receiz.com/api/receiz/download?a=abcd1234&ms=1791828092396&name=record.png&p=14611069&c=AB12CD34'})).toBeNull();
+ expect(publicAssetImagePreviewUrl({...item,originalUrl:'https://receiz.com/api/proof-material/packages/'+'b'.repeat(64)+'/artifact'})).toBeNull();
+});
 it('selects album, poster and book artwork before receipt fallbacks without changing the original locator',()=>{
  for(const [kind,field] of [['audio','audioCoverSrc'],['video','videoPosterSrc'],['epub','epubCoverSrc']]){
   const media={kind,[field]:cover,derivativeDownloadSrc:'/api/profile/originals/download?receizId=song-1&kind=original'};

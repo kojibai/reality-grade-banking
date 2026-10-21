@@ -3,7 +3,7 @@ import { ExternalLink, FileCheck2 } from 'lucide-react';
 import { AssetMark } from '../../components/AssetMark';
 import {PublicAssetChart} from './PublicAssetChart';
 import {usePublicAssetPeriods} from '../../receiz/market-projection/usePublicAssetPeriods';
-import { formatPublicPrice, type PublicMarketItem } from '../../receiz/public-market';
+import { formatPublicPrice,publicAssetImagePreviewUrl, type PublicMarketItem } from '../../receiz/public-market';
 import {ProofMedia} from '../media/ProofMedia';
 import {ProofCaption} from '../media/ProofCaption';
 import {fetchPublicCardDetails,type PublicCardDetails} from '../../receiz/public-card-details';
@@ -20,7 +20,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
   const multipleCopies=item.category==='sports'&&(item.circulationCount??1)>1;
   const periods=usePublicAssetPeriods(item);
   const current=periods?.ALL.at(-1),price=current?Number(current.usdCents)/100:item.priceUsd;
-  const media=item.originalUrl&&item.originalDigest?<ProofMedia artworkUrl={item.artworkUrl} autoOpen={standalone} key={[item.originalDigest,item.originalUrl,item.readingUrl??item.verifyUrl].join(':')} title={item.title} source={{kind:"public",url:item.originalUrl,digest:item.originalDigest,...(item.verifyUrl?{postUrl:item.readingUrl??item.verifyUrl,hasLongForm:item.hasLongForm}:{})}}/>:null;
+  const media=item.originalUrl&&item.originalDigest?<ProofMedia artworkUrl={item.artworkUrl} publicImageUrl={publicAssetImagePreviewUrl(item)} autoOpen={standalone} key={[item.originalDigest,item.originalUrl,item.readingUrl??item.verifyUrl].join(':')} title={item.title} source={{kind:"public",url:item.originalUrl,digest:item.originalDigest,...(item.verifyUrl?{postUrl:item.readingUrl??item.verifyUrl,hasLongForm:item.hasLongForm}:{})}}/>:null;
   const object=<AssetObject key={item.id} label={item.title} front={media??<div className="public-collectible-face"><span>{marketContentLabel(item)}</span><h2>{item.title}</h2><p>{item.summary}</p><code>{item.assetId}</code><small>Public source presentation</small></div>} renderBack={()=> <AssetProofBack item={item}/>}/>;
   return <><div className="asset-detail-heading"><AssetMark kind="proof" /><div><h1>{item.title}</h1><p>{standalone?'Source. Ownership. Continuity.':'Public source'}</p></div></div>
     {!standalone&&<AssetPageLinks item={item}/>}
