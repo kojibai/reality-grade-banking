@@ -9,8 +9,8 @@ Full release records and qualification evidence live in [docs/releases](docs/rel
 - Standalone Buy opens a new buyer's device-held account in place after existing
   account restoration, retains the entered amount and continues through the
   existing balance/card flow. Payment and trade approvals remain explicit.
-- Clearer entry copy and consistent source-link controls across public asset
-  evidence and market-cap explanations, including mobile touch targets.
+- Consistent source-link controls across public asset evidence and market-cap
+  explanations, including mobile touch targets.
 - Public asset URLs handle Vercel rewrite captures consistently with the public
   page endpoint, including the matching sharing-image route.
 - Note PNG exports use the existing Receiz v129 document seal around their
