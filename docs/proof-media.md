@@ -9,7 +9,15 @@ financial value, admission, or permission to publish.
 Held originals open locally. Public material opens at its exact immutable public
 CORS URL; other public originals use the existing bounded original relay.
 Both preserve fixed public URL contracts, omitted credentials, cancellation and
-16 MiB canonical reader boundary. A held asset definition can resolve its exact
+16 MiB media reading budget. PNG originals have a separate 32 MiB budget,
+matching Bank's existing per-source custody capacity. Streamed bytes must have
+the PNG signature; the canonically verified payload must also be PNG. The
+canonical verifier, pinned roots, non-PNG, JSON and archive limits are unchanged.
+Large PNGs are omitted from the existing 16 MiB media cache. Proof inspection
+and its downloaded HTML/Node tools use the same PNG budget while retaining
+their existing 24 MiB boundary for other original formats. These are local
+resource limits, not protocol validity or financial-admission rules.
+A held asset definition can resolve its exact
 `linkedProofDigest` against the same identity's held originals; that referenced
 original is independently reopened. A URL or arbitrary attachment metadata never
 substitutes for carried media. No account/source API or SDK schema changes.

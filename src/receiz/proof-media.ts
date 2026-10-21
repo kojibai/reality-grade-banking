@@ -6,6 +6,7 @@ import type {ReceizVerifiedPayload} from '@receiz/sdk';
 import {retainProofInspection,trackProofInspection} from './proof-inspection';
 import {loadOfflineProofVerifier} from './ledger-offline-proof';
 import {readAssetMoment,type MomentMetadata} from './asset-moment';
+import {ORIGINAL_PNG_MAX_BYTES,originalReadLimit} from './original-capacity';
 
 export type MediaKind='image'|'audio'|'video'|'pdf'|'text'|'book'|'file';
 export type BookBlock={kind:'paragraph'|'heading'|'quote'|'image';text:string;path?:string};
@@ -30,12 +31,12 @@ export function readDocumentText(html:string){
 }
 function isSelfContainedMedia(bytes:Uint8Array){const start=String.fromCharCode(...bytes.subarray(0,12));return start.startsWith('ID3')||start.startsWith('OggS')||start.startsWith('fLaC')||start.startsWith('RIFF')&&start.slice(8,12)==='WAVE'||start.slice(4,8)==='ftyp'||bytes[0]===0x1a&&bytes[1]===0x45&&bytes[2]===0xdf&&bytes[3]===0xa3||bytes[0]===255&&(bytes[1]&0xe0)===0xe0;}
 function readMediaJson(payload:ReceizVerifiedPayload){
- if(!payload.bytes.length||payload.bytes.length>MAX)throw Error('This media exceeds the supported reader capacity.');
  if(payload.mimeType.split(';')[0].trim().toLowerCase()!=='application/json')return undefined;
+ if(!payload.bytes.length||payload.bytes.length>MAX)throw Error('This media exceeds the supported reader capacity.');
  const text=decode(payload.bytes);try{return {text,value:JSON.parse(text),valid:true};}catch{return {text,value:undefined,valid:false};}
 }
 async function readBasicMediaPayload(payload:ReceizVerifiedPayload,json?:ReturnType<typeof readMediaJson>):Promise<MediaFile[]>{
- if(!payload.bytes.length||payload.bytes.length>MAX)throw Error('This media exceeds the supported reader capacity.');
+ if(!payload.bytes.length||payload.bytes.length>originalReadLimit(payload.bytes,MAX,payload.mimeType))throw Error('This media exceeds the supported reader capacity.');
  const mime=payload.mimeType.split(';')[0].trim().toLowerCase(),file:MediaFile={kind:'file',filename:cleanName(payload.filename),mimeType:mime,bytes:payload.bytes,payloadDigest:payload.sha256};
  if(mime==='application/epub+zip'||['application/octet-stream','application/zip','application/x-zip-compressed'].includes(mime)&&isEpubArchive(payload.bytes))return (await import('./proof-book')).readBook(payload);
  if((mime==='application/octet-stream'||mime==='application/pdf')&&String.fromCharCode(...payload.bytes.subarray(0,5))==='%PDF-'){file.kind='pdf';file.mimeType='application/pdf';if(!/\.pdf$/i.test(file.filename))file.filename='Document.pdf';}
@@ -46,7 +47,7 @@ async function readBasicMediaPayload(payload:ReceizVerifiedPayload,json?:ReturnT
  return [file];
 }
 async function readPayload(payload:ReceizVerifiedPayload,json:ReturnType<typeof readMediaJson>):Promise<MediaFile[]>{
- if(!payload.bytes.length||payload.bytes.length>MAX)throw Error('This media exceeds the supported reader capacity.');
+ if(!payload.bytes.length||payload.bytes.length>originalReadLimit(payload.bytes,MAX,payload.mimeType))throw Error('This media exceeds the supported reader capacity.');
  if(json){
   const value=json.value;
   if(value?.schema==='receiz.bank.asset-definition.v1'&&value.moment!=null){
@@ -74,7 +75,7 @@ export function openProofMedia(source:ProofMediaSource,signal?:AbortSignal):Prom
 async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Promise<OpenedProofMedia>{
  if(!/^[a-f0-9]{64}$/i.test(source.digest))throw Error('The original digest is unavailable.');
  signal?.throwIfAborted();let bytes:Uint8Array,filename:string;
- if(source.kind==='held'){bytes=new Uint8Array(source.bytes);filename=source.filename;}else{
+ if(source.kind==='held'){if(source.bytes.length>originalReadLimit(source.bytes,MAX))throw Error('This original exceeds the supported reader capacity.');bytes=new Uint8Array(source.bytes);filename=source.filename;}else{
   const timeout=AbortSignal.timeout(90_000),publicSignal=signal?AbortSignal.any([signal,timeout]):timeout;
   const url=new URL(await resolvePublicOriginalUrl(source.url,source.digest,publicSignal));publicSignal.throwIfAborted();
   // Immutable public material already supports anonymous CORS. Use its exact
@@ -82,9 +83,9 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
   const direct=/^\/api\/proof-material\/packages\/[a-f0-9]{64}\/artifact$/.test(url.pathname)&&!url.search;
   const response=await fetch(direct?url.href:`/api/bank/public-market/original?path=${encodeURIComponent(url.pathname+url.search)}`,{credentials:'omit',redirect:'error',signal:publicSignal});
   if(response.status===402)throw new PublicOriginalPurchaseRequired();
-  if(!response.ok)throw Error('The original could not be opened. You can retry or inspect its source.');bytes=await readPublicLedgerBytes(response,MAX);filename='original.receiz';
+  if(!response.ok)throw Error('The original could not be opened. You can retry or inspect its source.');bytes=await readPublicLedgerBytes(response,MAX,ORIGINAL_PNG_MAX_BYTES);filename='original.receiz';
  }
- if(!bytes.length||bytes.length>MAX)throw Error('This original exceeds the supported reader capacity.');
+ if(!bytes.length||bytes.length>originalReadLimit(bytes,MAX))throw Error('This original exceeds the supported reader capacity.');
  // Rendering needs the canonical read contract, including older carriers.
  // Append/admission custody is separate and is never relaxed by this reader.
  let opened;try{opened=await(await loadOfflineProofVerifier()).readArtifact(bytes,filename);}catch{throw Error('This original could not be opened as verified media. Inspect its proof source for details.');}signal?.throwIfAborted();

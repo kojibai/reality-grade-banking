@@ -4,13 +4,14 @@ import {ledgerValueForRecord} from './ledger-value';
 import {safeReceizPublicUrl} from './public-market';
 import {resolvePublicOriginalUrl,PublicOriginalPurchaseRequired} from './public-original';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
+import {ORIGINAL_PNG_MAX_BYTES} from './original-capacity';
 import {zipSync} from 'fflate';
 import {admittedProofInspection,retainProofInspection,reuseProofInspection,trackProofInspection,type ProofInspection} from './proof-inspection';
 import {offlineProofVerifierDigest} from './offline-proof-build';
 import type {ReceizVerifiedPayload} from '@receiz/sdk';
 
 export type OfflineProofReport=ProofInspection;
-export type OfflineProofVerifier={materials:Record<string,unknown>;readArtifact(bytes:Uint8Array,filename?:string):Promise<{report:OfflineProofReport;payload:ReceizVerifiedPayload}>;inspectArtifact(bytes:Uint8Array,filename?:string):Promise<OfflineProofReport>;inspectWalletCapsule(bundle:unknown):Promise<Record<string,unknown>>;sha256Hex(bytes:Uint8Array|string):Promise<string>};
+export type OfflineProofVerifier={materials:Record<string,unknown>;pngOriginalMaxBytes:number;originalReadCapacity(prefix:Uint8Array):number;readArtifact(bytes:Uint8Array,filename?:string):Promise<{report:OfflineProofReport;payload:ReceizVerifiedPayload}>;inspectArtifact(bytes:Uint8Array,filename?:string):Promise<OfflineProofReport>;inspectWalletCapsule(bundle:unknown):Promise<Record<string,unknown>>;sha256Hex(bytes:Uint8Array|string):Promise<string>};
 declare global{var ReceizOfflineVerifier:OfflineProofVerifier;}
 const BASE='/proof-verifier/v129/',MAX=24*1024*1024;
 let runtime:Promise<OfflineProofVerifier>|undefined;
@@ -33,7 +34,7 @@ async function inspectOriginal(record:PublicRecord,signal?:AbortSignal){
  const verifier=await loadOfflineProofVerifier();signal?.throwIfAborted();
  let bytes=await cached(digest),filename='original.receiz';
  if(bytes&&await verifier.sha256Hex(bytes)!==digest.toLowerCase())bytes=null;
- if(!bytes){const url=new URL(await resolvePublicOriginalUrl(original,digest,signal));const response=await fetch(`/api/bank/public-market/original?path=${encodeURIComponent(url.pathname+url.search)}`,{credentials:'omit',redirect:'error',signal:signal?AbortSignal.any([signal,AbortSignal.timeout(90000)]):AbortSignal.timeout(90000)});if(response.status===402)throw new PublicOriginalPurchaseRequired();if(!response.ok)throw Error('ORIGINAL_READ_UNAVAILABLE');bytes=await readPublicLedgerBytes(response,MAX);}
+ if(!bytes){const url=new URL(await resolvePublicOriginalUrl(original,digest,signal));const response=await fetch(`/api/bank/public-market/original?path=${encodeURIComponent(url.pathname+url.search)}`,{credentials:'omit',redirect:'error',signal:signal?AbortSignal.any([signal,AbortSignal.timeout(90000)]):AbortSignal.timeout(90000)});if(response.status===402)throw new PublicOriginalPurchaseRequired();if(!response.ok)throw Error('ORIGINAL_READ_UNAVAILABLE');bytes=await readPublicLedgerBytes(response,MAX,ORIGINAL_PNG_MAX_BYTES);}
  if(await verifier.sha256Hex(bytes)!==digest.toLowerCase())throw Error('SELECTED_RECORD_DIGEST_MISMATCH');
  const report=await verifier.inspectArtifact(bytes,filename);signal?.throwIfAborted();
  if(report.artifactSha256!==digest.toLowerCase())throw Error('SELECTED_RECORD_DIGEST_MISMATCH');

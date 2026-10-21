@@ -1,5 +1,6 @@
 // Read-only composition of the unchanged, included v129 canonical verifier.
 import {ledgerSourceHistoryFromPayload} from '../../src/receiz/ledger-source-payload';
+import {isOriginalPng,ORIGINAL_PNG_MAX_BYTES,originalReadLimit} from '../../src/receiz/original-capacity';
 import {readVerifiedReceizDocumentBytesCanonical} from '../../native/receiz/packages/receiz-sdk/src/verifier/canonical';
 import {receizCurrentPinnedSignatureV4Roots} from '../../native/receiz/packages/receiz-sdk/src/verifier/roots';
 import documentKey from '../../native/receiz/packages/receiz-sdk/src/verifier/documentSealVerificationKey';
@@ -8,12 +9,15 @@ import {recognizeReceizGroth16Structure} from '../../native/receiz/packages/rece
 import {jcsCanonicalize,sha256Hex} from '../../native/receiz/packages/receiz-sdk/src/verifier/crypto';
 
 export const materials={sdk:'129.0.0',documentSealVerificationKey:documentKey,kaiSigilVerificationKey:kaiKey,signatureV4Roots:[...receizCurrentPinnedSignatureV4Roots().values()]};
+export const pngOriginalMaxBytes=ORIGINAL_PNG_MAX_BYTES;
+export const originalReadCapacity=(prefix:Uint8Array)=>originalReadLimit(prefix,24*1024*1024);
 /** Exact bytes and fixed roots. No caller-selected key, signer or network API. */
 export async function readArtifact(bytes:Uint8Array,filename='original.receiz'){
- if(!(bytes instanceof Uint8Array)||!bytes.length||bytes.length>24*1024*1024)throw Error('PROOF_INSPECTION_CAPACITY');
+ if(!(bytes instanceof Uint8Array)||!bytes.length||bytes.length>originalReadCapacity(bytes))throw Error('PROOF_INSPECTION_CAPACITY');
  const exact=bytes.slice(),artifactSha256=await sha256Hex(exact);
  const opened=await readVerifiedReceizDocumentBytesCanonical({fileBytes:exact,filename,signatureV4RootPublicKeys:receizCurrentPinnedSignatureV4Roots()});
  if(!opened.ok||!opened.verification.integrity.ok)throw Error('ORIGINAL_CANONICAL_VERIFICATION_FAILED');
+ if(exact.length>24*1024*1024&&(opened.payloadMimeType!=='image/png'||!isOriginalPng(opened.payloadBytes)||opened.payloadBytes.length>ORIGINAL_PNG_MAX_BYTES))throw Error('PROOF_INSPECTION_CAPACITY');
  const bundle=opened.verification.bundle,groth16=recognizeReceizGroth16Structure(bundle?.groth16Proof);
  const sourceHistory=ledgerSourceHistoryFromPayload(opened.payloadBytes,opened.payloadMimeType);
  const payloadSha256=await sha256Hex(opened.payloadBytes);

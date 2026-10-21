@@ -19,6 +19,14 @@ it('refuses unsigned or changed bytes without consulting any service',async()=>{
  await expect(verifier.readArtifact(new TextEncoder().encode('{"verified":true}'))).rejects.toThrow(/CANONICAL_VERIFICATION_FAILED/);expect(fetch).not.toHaveBeenCalled();
  }finally{fetch.mockRestore();}
 });
+it('keeps the existing non-PNG capacity and requires canonical verification for a larger PNG',async()=>{
+ const bytes=new Uint8Array(25*1024*1024);
+ await expect(verifier.readArtifact(bytes)).rejects.toThrow('PROOF_INSPECTION_CAPACITY');
+ bytes.set([137,80,78,71,13,10,26,10]);
+ await expect(verifier.readArtifact(bytes)).rejects.toThrow('ORIGINAL_CANONICAL_VERIFICATION_FAILED');
+ const oversized=new Uint8Array(32*1024*1024+1);oversized.set([137,80,78,71,13,10,26,10]);
+ await expect(verifier.readArtifact(oversized)).rejects.toThrow('PROOF_INSPECTION_CAPACITY');
+});
 it('distinguishes JCS/SHA256 hash consistency from signed-original verification and refuses changed evidence',async()=>{
  const capsule={v:'KPV-1',upulse:'120000001',pulse:120,chakraDay:'Solar',kaiKlok:'00:00:01',kaiSignature:'a'.repeat(64),phiKey:'public',verifierSlug:'120-a'};
  const canonical=(v:unknown):string=>v&&typeof v==='object'?Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical((v as Record<string,unknown>)[k])).join(',')+'}':JSON.stringify(v);

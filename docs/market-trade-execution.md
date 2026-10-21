@@ -80,6 +80,13 @@ they do not move money. Live financial qualification is recorded separately.
 
 ## Immediate investment presentation
 
+Account's Your assets summary uses the same loaded portfolio and public pricing
+as Assets. It shows the three most recent purchases that remain held, with
+owned shares, current holding value and unrealized percentage return against
+the remaining cost basis. A recent sale does not rank as a new purchase.
+Public Showcase follows the investments and is the default when no holdings
+remain. Summary rendering adds no account or Market request.
+
 After the original is validated and durably retained, its absolute resulting
 position updates the shared private portfolio before the trade returns to the
 interface. Assets, open investment sheets and standalone asset holdings use

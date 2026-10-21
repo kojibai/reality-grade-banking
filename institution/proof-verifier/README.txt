@@ -56,3 +56,11 @@ Zero-knowledge private witnesses and signing keys are not required for verificat
 Rebuild instructions and exact input hashes are in build.json. The complete
 application source is also published under /source/ in the originating build.
 Once downloaded, all required verification runtime and public keys are here.
+
+LOCAL READING CAPACITY
+The Bank inspection wrapper and both local entry points accept exact PNG
+originals up to 32 MiB, selected from the PNG signature and confirmed by the
+canonical PNG payload. Other original formats retain their 24 MiB wrapper
+limit. These are application reading budgets, not protocol validity rules.
+Archive, expansion, signature and continuity checks remain unchanged. A file
+within a reading budget still has to pass the complete canonical verifier.

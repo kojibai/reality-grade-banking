@@ -1,11 +1,13 @@
-import {readFile,stat} from 'node:fs/promises';
+import {open,readFile,stat} from 'node:fs/promises';
 await import('./verifier.js');
 const verifier=globalThis.ReceizOfflineVerifier;
 // Prevent accidental server dependency during offline verification.
 globalThis.fetch=()=>{throw Error('NETWORK_DISABLED');};
 const [path='record.json',expected]=process.argv.slice(2);
 try{
- const size=(await stat(path)).size;if(size<=0||size>24*1024*1024)throw Error('PROOF_INSPECTION_CAPACITY');
+ const size=(await stat(path)).size;if(size<=0||size>verifier.pngOriginalMaxBytes)throw Error('PROOF_INSPECTION_CAPACITY');
+ const file=await open(path,'r'),prefix=new Uint8Array(8);try{await file.read(prefix,0,8,0);}finally{await file.close();}
+ if(size>verifier.originalReadCapacity(prefix))throw Error('PROOF_INSPECTION_CAPACITY');
  const bytes=new Uint8Array(await readFile(path));if(bytes.length!==size)throw Error('LOCAL_FILE_CHANGED');
  if(path.endsWith('.json')&&!expected){
   const record=JSON.parse(new TextDecoder().decode(bytes));
