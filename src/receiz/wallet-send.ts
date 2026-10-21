@@ -1,4 +1,5 @@
 import {loadReceiz} from './client';
+import {parseSharedWallet} from './shared-wallet';
 import {parseCardCheckout,type CardCheckout,type CardDepositStatus} from './card-deposit';
 
 type Json=Record<string,any>;
@@ -6,8 +7,8 @@ type WalletClient={request(path:string,options:{method:'GET'|'POST';body?:Record
 export type WalletTransferBody={conversationId:string;recipientUserId:string;unit:'usd';amountUsd:string;clientNonce:string;note?:string;noteVisibility?:'public'};
 export type WalletSendQuote={amountUsdCents:string;amountPhiMicro:string;usdPerPhiMicrocents:string;settledUsdCents:string;ecosystemUsdCents:string;fundingRule:'settled_first_then_phi'};
 export type WalletSendReview=Readonly<{schema:'bank.wallet-send-review.v1';ownerReceizId:string;accountUid:string;recipientUserId:string;recipientLabel:string;amountUsdCents:string;clientNonce:string;note?:string;quote:Readonly<WalletSendQuote>;digest:string}>;
-type Funding={stage:'creating'|'ready'|'credited';amountUsdCents:string;checkout?:CardCheckout;refusal:{status:'not-submitted';clientNonce:string;error:'wallet_insufficient_funds'}};
-export type WalletSendOutcome={status:'unknown';clientNonce:string}|{status:'recorded';clientNonce:string;transferId:string}|{status:'not-sent';clientNonce:string;reason:string}|{status:'funding';clientNonce:string;stage:Funding['stage'];amountUsdCents:string;recipientLabel:string;checkout?:CardCheckout};
+type Funding={stage:'reviewing'|'creating'|'ready'|'credited';amountUsdCents:string;shortfallUsdCents?:string;checkout?:CardCheckout;refusal:{status:'not-submitted';clientNonce:string;error:'wallet_insufficient_funds'}};
+export type WalletSendOutcome={status:'unknown';clientNonce:string}|{status:'recorded';clientNonce:string;transferId:string}|{status:'not-sent';clientNonce:string;reason:string}|{status:'funding';clientNonce:string;stage:Funding['stage'];amountUsdCents:string;cardAmountUsdCents?:string;shortfallUsdCents?:string;recipientLabel:string;checkout?:CardCheckout};
 type Checkpoint={review:WalletSendReview;body:WalletTransferBody;status:WalletSendOutcome['status'];record?:unknown;reason?:string;funding?:Funding};
 export type WalletSendState={schema:'bank.wallet-sends.v1';authority:'wallet-observation';current:Checkpoint;history:Checkpoint[]};
 const uuid=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(v);
@@ -42,25 +43,53 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
    if(r.schema!=='bank.wallet-send-review.v1'||r.ownerReceizId!==input.ownerReceizId||!uuid(r.accountUid)||!uuid(r.recipientUserId)||r.accountUid===r.recipientUserId||!uuid(r.clientNonce)||!integer(r.amountUsdCents,true)||r.digest!==await digest(withoutDigest(r))||!uuid(b.conversationId)||b.clientNonce!==r.clientNonce||b.recipientUserId!==r.recipientUserId||b.unit!=='usd'||b.amountUsd!==dollars(r.amountUsdCents)||Object.keys(b).sort().join('|')!==(r.note===undefined?'amountUsd|clientNonce|conversationId|recipientUserId|unit':'amountUsd|clientNonce|conversationId|note|noteVisibility|recipientUserId|unit')||normalizeNote(r.note)!==r.note||b.note!==r.note||(r.note!==undefined&&b.noteVisibility!=='public')||!['unknown','recorded','not-sent','funding'].includes(c.status))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
    quote(r.quote,r.amountUsdCents);if(c.status==='recorded')recorded(c.record,c as Checkpoint);if(c.status==='not-sent'&&!['wallet_insufficient_funds','wallet_funding_changed','invalid_token','insufficient_scope','access_denied','public_note_unavailable','card_unpaid','card_expired','card_cancelled'].includes(c.reason))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
    if(c.status==='funding'&&!c.funding)throw Error('BANK_WALLET_FUNDING_INVALID');
-   if(c.funding){const f=object(c.funding),refusal=object(f.refusal);if(!['creating','ready','credited'].includes(f.stage)||f.amountUsdCents!==r.amountUsdCents||BigInt(r.amountUsdCents)<50n||BigInt(r.amountUsdCents)>10000000n||refusal.status!=='not-submitted'||refusal.clientNonce!==r.clientNonce||refusal.error!=='wallet_insufficient_funds')throw Error('BANK_WALLET_FUNDING_INVALID');if(f.stage!=='creating')parseCardCheckout({ok:true,checkout:{...object(f.checkout),mode:'embedded',currency:'usd'}},r.amountUsdCents);if(['unknown','recorded'].includes(c.status)&&f.stage!=='credited')throw Error('BANK_WALLET_FUNDING_INVALID');}
+   if(c.funding){const f=object(c.funding),refusal=object(f.refusal);
+    if(!['reviewing','creating','ready','credited'].includes(f.stage)||!integer(f.amountUsdCents,true)||refusal.status!=='not-submitted'||refusal.clientNonce!==r.clientNonce||refusal.error!=='wallet_insufficient_funds')throw Error('BANK_WALLET_FUNDING_INVALID');
+    if(f.stage==='reviewing'){if(f.amountUsdCents!==r.amountUsdCents||f.shortfallUsdCents!==undefined||f.checkout!==undefined)throw Error('BANK_WALLET_FUNDING_INVALID');}
+    else{if(BigInt(f.amountUsdCents)<50n||BigInt(f.amountUsdCents)>10000000n)throw Error('BANK_WALLET_FUNDING_INVALID');
+     // Older pending checkouts retain their already-approved full amount.
+     if(f.shortfallUsdCents===undefined){if(f.amountUsdCents!==r.amountUsdCents)throw Error('BANK_WALLET_FUNDING_INVALID');}
+     else if(!integer(f.shortfallUsdCents,true)||BigInt(f.shortfallUsdCents)>BigInt(r.amountUsdCents)||BigInt(f.amountUsdCents)!==(BigInt(f.shortfallUsdCents)<50n?50n:BigInt(f.shortfallUsdCents)))throw Error('BANK_WALLET_FUNDING_INVALID');
+     if(f.stage!=='creating')parseCardCheckout({ok:true,checkout:{...object(f.checkout),mode:'embedded',currency:'usd'}},f.amountUsdCents);
+    }if(['unknown','recorded'].includes(c.status)&&f.stage!=='credited')throw Error('BANK_WALLET_FUNDING_INVALID');
+   }
   }return s as WalletSendState;
  }
- const outcome=(c:Checkpoint):WalletSendOutcome=>c.status==='recorded'?recorded(c.record,c):c.status==='not-sent'?{status:'not-sent',clientNonce:c.body.clientNonce,reason:c.reason!}:c.status==='funding'?{status:'funding',clientNonce:c.body.clientNonce,stage:c.funding!.stage,amountUsdCents:c.review.amountUsdCents,recipientLabel:c.review.recipientLabel,...(c.funding!.checkout?{checkout:{...c.funding!.checkout}}:{})}:{status:'unknown',clientNonce:c.body.clientNonce};
+ const outcome=(c:Checkpoint):WalletSendOutcome=>c.status==='recorded'?recorded(c.record,c):c.status==='not-sent'?{status:'not-sent',clientNonce:c.body.clientNonce,reason:c.reason!}:c.status==='funding'?{status:'funding',clientNonce:c.body.clientNonce,stage:c.funding!.stage,amountUsdCents:c.review.amountUsdCents,...(c.funding!.stage==='reviewing'?{}:{cardAmountUsdCents:c.funding!.amountUsdCents,shortfallUsdCents:c.funding!.shortfallUsdCents??c.funding!.amountUsdCents}),recipientLabel:c.review.recipientLabel,...(c.funding!.checkout?{checkout:{...c.funding!.checkout}}:{})}:{status:'unknown',clientNonce:c.body.clientNonce};
  async function lookup(s:WalletSendState,context:Awaited<ReturnType<typeof input.connect>>,response?:unknown):Promise<WalletSendOutcome>{
   input.assertOpen();if(context.accountUid!==s.current.review.accountUid)throw Error('BANK_WALLET_IDENTITY_CHANGED');
   const raw=await context.client.request(`/api/connect/transfers?clientNonce=${encodeURIComponent(s.current.body.clientNonce)}`,{method:'GET'});input.assertOpen();
   if(object(raw).ok===true&&object(raw).found===false)return{status:'unknown',clientNonce:s.current.body.clientNonce};
   const result=recorded(raw,s.current);await input.store.write({...s,current:{...s.current,status:'recorded',record:raw}},s);input.assertOpen();try{await input.onRecorded?.(response,s.current.review.accountUid);}catch{/* The recorded payment remains terminal when its display refresh is unavailable. */}return result;
  }
- async function openFunding(s:WalletSendState):Promise<WalletSendOutcome>{
+ async function openFunding(s:WalletSendState,context:Awaited<ReturnType<typeof input.connect>>):Promise<WalletSendOutcome>{
+  if(s.current.funding!.stage==='reviewing'){
+   // Only an explicit zero-write refusal reaches this read. The requested
+   // quote is not the available balance; never infer a shortfall from it.
+   let available:string;
+   try{const raw=await context.client.request('/api/connect/wallet/me',{method:'GET'});input.assertOpen();
+    const wallet=parseSharedWallet(raw,s.current.review.accountUid),source=object(object(raw).wallet),sync=object(source.sync);
+    // No profile entitlement means account-only is the complete spendable
+    // amount. Otherwise an incomplete projection may omit held Settlement.
+    const accountOnly=source.creationSigilEntitlementEnabled===false&&sync.source==='account_only'&&sync.lawfulActionProjectionAvailable===true;
+    if(sync.lawfulActionProjectionAvailable===false||!wallet.projectionComplete&&!accountOnly)return outcome(s.current);
+    available=wallet.totalUsdCents;
+   }
+   catch{input.assertOpen();return outcome(s.current);}
+   const missing=BigInt(s.current.review.amountUsdCents)-BigInt(available);
+   if(missing<=0n){const next:WalletSendState={...s,current:{...s.current,status:'unknown',funding:undefined}};await input.store.write(next,s);input.assertOpen();return submit(next,context,false);}
+   if(missing>10000000n){const next:WalletSendState={...s,current:{...s.current,status:'not-sent',reason:'wallet_insufficient_funds',funding:undefined}};await input.store.write(next,s);return outcome(next.current);}
+   const next:WalletSendState={...s,current:{...s.current,funding:{...s.current.funding!,stage:'creating',shortfallUsdCents:missing.toString(),amountUsdCents:(missing<50n?50n:missing).toString()}}};
+   await input.store.write(next,s);input.assertOpen();s=next;
+  }
   // The saved approval retains the recipient, public note and original nonce.
   // Its reference locates the retained native checkout after interruption.
   try{
-   const checkout=parseCardCheckout({ok:true,checkout:{...await input.funding!.begin(dollars(s.current.review.amountUsdCents),s.current.body.clientNonce),mode:'embedded',currency:'usd'}},s.current.review.amountUsdCents);input.assertOpen();
+   const checkout=parseCardCheckout({ok:true,checkout:{...await input.funding!.begin(dollars(s.current.funding!.amountUsdCents),s.current.body.clientNonce),mode:'embedded',currency:'usd'}},s.current.funding!.amountUsdCents);input.assertOpen();
    const next:WalletSendState={...s,current:{...s.current,funding:{...s.current.funding!,stage:'ready',checkout}}};await input.store.write(next,s);return outcome(next.current);
   }catch{input.assertOpen();return outcome(s.current);}
  }
- async function submit(s:WalletSendState,context:Awaited<ReturnType<typeof input.connect>>):Promise<WalletSendOutcome>{
+ async function submit(s:WalletSendState,context:Awaited<ReturnType<typeof input.connect>>,allowFunding=true):Promise<WalletSendOutcome>{
   const {body,review}=s.current;let acknowledgement:unknown;
   try{acknowledgement=review.note?await context.client.request('/api/connect/transfers/public-note',{method:'POST',body}):await context.client.connect.transfer(body);}catch(error){
    input.assertOpen();const e=error as {status?:number;payload?:Json},p=e.payload;
@@ -68,9 +97,9 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
    const denied=[401,403].includes(e.status??0)&&['invalid_token','insufficient_scope','access_denied'].includes(p?.error);
    const unavailable=!!review.note&&[404,405].includes(e.status??0);
    if(refused||denied||unavailable){
-    if(refused&&p!.error==='wallet_insufficient_funds'&&input.funding&&!s.current.funding&&BigInt(review.amountUsdCents)>=50n&&BigInt(review.amountUsdCents)<=10000000n){
-     const next:WalletSendState={...s,current:{...s.current,status:'funding',funding:{stage:'creating',amountUsdCents:review.amountUsdCents,refusal:{status:'not-submitted',clientNonce:body.clientNonce,error:'wallet_insufficient_funds'}}}};
-     await input.store.write(next,s);input.assertOpen();return openFunding(next);
+    if(refused&&p!.error==='wallet_insufficient_funds'&&input.funding&&!s.current.funding&&allowFunding){
+     const next:WalletSendState={...s,current:{...s.current,status:'funding',funding:{stage:'reviewing',amountUsdCents:review.amountUsdCents,refusal:{status:'not-submitted',clientNonce:body.clientNonce,error:'wallet_insufficient_funds'}}}};
+     await input.store.write(next,s);input.assertOpen();return openFunding(next,context);
     }
     try{const reason=unavailable?'public_note_unavailable':String(p!.error);await input.store.write({...s,current:{...s.current,status:'not-sent',reason}},s);return{status:'not-sent',clientNonce:body.clientNonce,reason};}catch{/* Preserve unknown if the explicit refusal cannot be retained. */}
    }
@@ -108,7 +137,7 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
    let s=await read();if(!s)return null;if(s.current.status!=='funding')return outcome(s.current);if(!input.funding)throw Error('BANK_WALLET_FUNDING_UNAVAILABLE');
    await input.assertNoOtherPending(s.current.body.clientNonce);
    const context=await input.connect();input.assertOpen();if(context.accountUid!==s.current.review.accountUid)throw Error('BANK_WALLET_IDENTITY_CHANGED');
-   if(s.current.funding!.stage==='creating')return openFunding(s);
+   if(['reviewing','creating'].includes(s.current.funding!.stage))return openFunding(s,context);
    if(s.current.funding!.stage==='ready'){
     let credited=false;
     const status=await input.funding.check(s.current.funding!.checkout!,async()=>{

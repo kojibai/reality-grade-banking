@@ -46,3 +46,37 @@ it('replaces an insufficient-funds result with the existing secure checkout and 
  await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Check payment status'))!.click());expect(host.textContent).toContain('Payment sent.');expect(api.execute).toHaveBeenCalledTimes(1);expect(api.prepare).toHaveBeenCalledTimes(1);expect(refresh).toHaveBeenCalledTimes(1);
  }finally{act(()=>root.unmount());}
 });
+it('returns from card checkout to the prepared Send with one visible back action and no repeated send',async()=>{
+ const {WalletSendOperation}=await import('../src/features/account/WalletSendOperation');
+ const review={digest:'review',recipientLabel:'@receiver',amountUsdCents:'1000',quote:{amountPhiMicro:'10000000',settledUsdCents:'0',ecosystemUsdCents:'1000'}},checkout={sessionId:'cs_test_back_send12345',clientSecret:'synthetic-only',amountUsdCents:'1000'};
+ let pending:unknown=null;
+ const api={status:vi.fn(async()=>pending),prepare:vi.fn(async()=>review),execute:vi.fn(async()=>pending={status:'funding',clientNonce:'nonce',stage:'ready',recipientLabel:'@receiver',amountUsdCents:'1000',checkout}),cancelFunding:vi.fn(async()=>{pending={status:'not-sent',clientNonce:'nonce',reason:'card_cancelled'};}),resumeFunding:vi.fn(),discard:vi.fn()};
+ const host=document.createElement('div'),root=createRoot(host),refresh=vi.fn();
+ try{
+  await act(async()=>root.render(<WalletSendOperation identity={{walletSend:async()=>api}as unknown as OpenIdentity} input={()=>({recipient:'receiver',amountUsdCents:'1000'})} inputKey="back-to-send" onRefresh={refresh}><label>Recipient<input aria-label="Recipient" value="receiver" readOnly/></label><label>Amount<input aria-label="Amount" value="10.00" readOnly/></label></WalletSendOperation>));
+  await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Review payment'))!.click());await act(async()=>host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Send payment'))!.click());
+  const back=[...host.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent==='Back to send');expect(back).toBeDefined();
+  const checkoutFrame=host.querySelector('iframe')!;expect(Boolean(back!.compareDocumentPosition(checkoutFrame)&Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+  expect(host.textContent).not.toContain('Cancel payment');await act(async()=>back!.click());
+  expect(api.cancelFunding).toHaveBeenCalledOnce();expect(host.querySelector('iframe')).toBeNull();expect(host.querySelector<HTMLInputElement>('input[aria-label="Recipient"]')?.value).toBe('receiver');expect(host.querySelector<HTMLInputElement>('input[aria-label="Amount"]')?.value).toBe('10.00');expect(host.textContent).not.toContain('Payment not sent.');expect(host.textContent).toContain('Review payment');
+  expect(api.execute).toHaveBeenCalledOnce();expect(api.resumeFunding).not.toHaveBeenCalled();expect(refresh).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
+
+it.each([
+ {card:'700',shortfall:'700',headline:'Pay $7.00.',balance:'$3.00',remainder:null},
+ {card:'50',shortfall:'25',headline:'Pay $0.50.',balance:'$9.75',remainder:'$0.25 stays in your balance'},
+])('shows the card amount separately from the full Send ($card card)',async({card,shortfall,headline,balance,remainder})=>{
+ const {WalletSendOperation}=await import('../src/features/account/WalletSendOperation');
+ const pending={status:'funding',clientNonce:'nonce',stage:'ready',recipientLabel:'@receiver',amountUsdCents:'1000',cardAmountUsdCents:card,shortfallUsdCents:shortfall,checkout:{sessionId:'cs_test_delta_ui1234',clientSecret:'synthetic-only',amountUsdCents:card}};
+ const api={status:async()=>pending,resumeFunding:async()=>pending,discard:vi.fn()},host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<WalletSendOperation identity={{walletSend:async()=>api}as unknown as OpenIdentity} input={()=>({recipient:'receiver',amountUsdCents:'1000'})} inputKey="delta-card" onRefresh={()=>{}}>Fields</WalletSendOperation>));
+  expect(host.querySelector('h1')?.textContent).toBe(headline);expect(host.textContent).toContain(balance);expect(host.textContent).toContain('send $10.00 to @receiver');
+  const frame=host.querySelector('iframe')!;expect(new URL(frame.src).hash).toContain(`amount_usd_cents=${card}`);if(remainder)expect(host.textContent).toContain(remainder);else expect(host.textContent).not.toContain('card minimum');
+ }finally{act(()=>root.unmount());}
+});
+it('does not present the full Send amount as a card charge while the shortfall is unresolved',async()=>{
+ const {WalletSendOperation}=await import('../src/features/account/WalletSendOperation');
+ const pending={status:'funding',clientNonce:'nonce',stage:'reviewing',recipientLabel:'@receiver',amountUsdCents:'1000'},api={status:async()=>pending,resumeFunding:async()=>pending,discard:vi.fn()},host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<WalletSendOperation identity={{walletSend:async()=>api}as unknown as OpenIdentity} input={()=>({recipient:'receiver',amountUsdCents:'1000'})} inputKey="unresolved-card" onRefresh={()=>{}}>Fields</WalletSendOperation>));expect(host.querySelector('h1')?.textContent).not.toContain('Pay $10.00');expect(host.querySelector('iframe')).toBeNull();expect(host.textContent).toContain('Back to send');}finally{act(()=>root.unmount());}
+});

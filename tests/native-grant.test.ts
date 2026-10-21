@@ -109,3 +109,13 @@ it('keeps a credited Send checkout when its wallet ready-write was interrupted b
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture-phrase','fixture.receiz',true);
  try{expect((await identity.checkCardDeposit(checkout)).status).toBe('credited');expect(protocol.saveCard).not.toHaveBeenCalled();}finally{identity.dispose();}
 });
+
+it('keeps a credited shortfall checkout until the saved full Send retains credit',async()=>{
+ const nonce='10000000-0000-4000-8000-000000000001',checkout={sessionId:'cs_test_shortfall123',clientSecret:'synthetic-only',amountUsdCents:'700'};
+ protocol.pendingCard={schema:'receiz.bank.card-operation.v1',applicationId:BANK_APPLICATION_ID,stage:'ready',operationId:nonce,amountUsdCents:'700',checkout};
+ protocol.pendingSend={schema:'bank.wallet-sends.v1',authority:'wallet-observation',history:[],current:{status:'funding',body:{clientNonce:nonce},review:{amountUsdCents:'1000'},funding:{stage:'creating',amountUsdCents:'700',shortfallUsdCents:'700'}}};
+ protocol.grant.mockImplementation(async({applicationId,scopes}:{applicationId:string;scopes:string[]})=>({applicationId,keyId:'fixture-key',artifactDigest:'a'.repeat(64),grantedScopes:scopes,accessToken:'local-fixture',expiresAtKai:200}));protocol.scopes.mockResolvedValue([...BANK_CARD_SCOPES]);
+ protocol.checkoutSession.mockResolvedValue({ok:true,session:{sessionId:checkout.sessionId,currency:'usd',amountUsdCents:'700',isPaid:true,state:'paid'},settlement:{userId:'fixture-owner',amountUsdCents:'700',amountPhiMicro:'7'}});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture-phrase','fixture.receiz',true);
+ try{expect((await identity.checkCardDeposit(checkout)).status).toBe('credited');expect(protocol.saveCard).not.toHaveBeenCalled();}finally{identity.dispose();}
+});

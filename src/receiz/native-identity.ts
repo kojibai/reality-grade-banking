@@ -939,7 +939,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     // A generic deposit-return screen cannot discard the paid session before
     // the saved Send approval has retained its credit and continued payment.
     const send=['credited','expired','unpaid'].includes(status.status)?await loadWalletSendState(binding) as import('./wallet-send').WalletSendState|null:null;
-    const matchingSend=send?.current.status==='funding'&&send.current.review.amountUsdCents===checkout.amountUsdCents&&(send.current.funding?.checkout?.sessionId===checkout.sessionId||send.current.body.clientNonce===operation.operationId);
+    const matchingSend=send?.current.status==='funding'&&send.current.funding?.amountUsdCents===checkout.amountUsdCents&&(send.current.funding?.checkout?.sessionId===checkout.sessionId||send.current.body.clientNonce===operation.operationId);
     const retainedForSend=matchingSend&&(!beforeCredit||send.current.funding?.stage!=='credited');
     if (['credited', 'expired', 'unpaid'].includes(status.status)&&!retainedForSend) await saveCardOperation(binding, null, false, operation.operationId);
     return status;

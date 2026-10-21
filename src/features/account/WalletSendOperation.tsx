@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState,type ReactNode} from 'react';
-import {ArrowRight,Check,ShieldCheck} from 'lucide-react';
+import {ArrowLeft,ArrowRight,Check,ShieldCheck} from 'lucide-react';
 import type {OpenIdentity} from '../../receiz/native-identity';
 import type {WalletSend,WalletSendOutcome,WalletSendReview} from '../../receiz/wallet-send';
 import {bankOperationError,bankOperationFailureDetails} from '../../receiz/bank-operations';
@@ -49,11 +49,24 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children}
   try{const next=outcome?.status==='funding'?await api.current.resumeFunding():await api.current.resolve(true);if(ticket===generation.current){setOutcome(next);if(next?.status==='recorded')onRefresh();}}
   catch(cause){if(ticket===generation.current)report(cause);}finally{if(ticket===generation.current){running.current=false;setBusy(false);}}
  }
+ async function backToSend(){
+  if(running.current||!api.current)return;const currentApi=api.current,ticket=generation.current;running.current=true;setBusy(true);setError('');setFailure(null);
+  try{await currentApi.cancelFunding();if(ticket!==generation.current)return;const next=await currentApi.status();if(ticket!==generation.current)return;
+   setOutcome(next?.status==='not-sent'&&next.reason==='card_cancelled'?null:next);setReview(null);setApproved(false);
+   if(next?.status==='recorded')onRefresh();
+  }catch(cause){if(ticket===generation.current)report(cause);}finally{if(ticket===generation.current){running.current=false;setBusy(false);}}
+ }
  const diagnostics=error&&<><p className="error-message" role="status">{error}</p>{failure&&<details className="transaction-proof-details"><summary>Failure details</summary><code>{failure.code}</code>{failure.stage&&<p>Stage: {failure.stage} · {failure.errorName}</p>}{failure.status&&<p>HTTP {failure.status}</p>}<p className="small-copy">These details contain no credentials or account data.</p></details>}</>;
- if(outcome?.status==='funding')return <section className="native-operation-result" aria-live="polite"><h1 className="sheet-hero">Pay {formatMoney(outcome.amountUsdCents)}.</h1><p className="body-copy">Complete your card payment to send {formatMoney(outcome.amountUsdCents)} to {outcome.recipientLabel}.</p>
-  {outcome.checkout?<ReceizCardCheckout checkout={outcome.checkout} purpose="payment" onCheck={check}/>:<><p className="body-copy small-copy">Your approved payment is saved. Resume the same checkout to continue.</p><button className="primary-button" disabled={busy} onClick={()=>void check()}>{busy?'Opening secure checkout…':'Resume secure checkout'}</button></>}
-  {busy&&<p className="body-copy small-copy" role="status">Confirming your payment…</p>}
-  <button className="text-button" disabled={busy} onClick={()=>{if(running.current||!api.current)return;const ticket=generation.current;running.current=true;setBusy(true);void api.current.cancelFunding().then(()=>api.current!.status()).then(next=>{if(ticket===generation.current)setOutcome(next);}).catch(cause=>{if(ticket===generation.current)report(cause);}).finally(()=>{if(ticket===generation.current){running.current=false;setBusy(false);}});}}>Cancel payment</button>{diagnostics}</section>;
+ if(outcome?.status==='funding'){
+  const cardAmount=outcome.cardAmountUsdCents??outcome.checkout?.amountUsdCents,shortfall=outcome.shortfallUsdCents??cardAmount;
+  const fromBalance=shortfall?(BigInt(outcome.amountUsdCents)-BigInt(shortfall)).toString():null;
+  const remainder=cardAmount&&shortfall?(BigInt(cardAmount)-BigInt(shortfall)).toString():'0';
+  return <section className="native-operation-result" aria-live="polite"><button type="button" className="text-button" disabled={busy} onClick={()=>void backToSend()}><ArrowLeft size={15}/>Back to send</button><h1 className="sheet-hero">{cardAmount?`Pay ${formatMoney(cardAmount)}.`:'Complete your payment.'}</h1><p className="body-copy">{fromBalance&&BigInt(fromBalance)>0n?`Your ${formatMoney(fromBalance)} balance and this card payment send ${formatMoney(outcome.amountUsdCents)} to ${outcome.recipientLabel}.`:`Complete your card payment to send ${formatMoney(outcome.amountUsdCents)} to ${outcome.recipientLabel}.`}</p>
+   {BigInt(remainder)>0n&&<p className="body-copy small-copy">{formatMoney(cardAmount!)} card minimum. {formatMoney(remainder)} stays in your balance.</p>}
+   {outcome.checkout?<ReceizCardCheckout checkout={outcome.checkout} purpose="payment" onCheck={check}/>:<><p className="body-copy small-copy">{outcome.stage==='reviewing'?'Your send is saved. Check your balance to continue with the amount needed.':'Your approved payment is saved. Resume the same checkout to continue.'}</p><button className="primary-button" disabled={busy} onClick={()=>void check()}>{busy?'Opening secure checkout…':'Resume secure checkout'}</button></>}
+   {busy&&<p className="body-copy small-copy" role="status">Confirming your payment…</p>}
+   {diagnostics}</section>;
+ }
  if(outcome)return <section className="native-operation-result" aria-live="polite">
   {outcome.status==='recorded'&&<div className="status-icon success"><Check size={30}/></div>}
   <h1 className="sheet-hero">{outcome.status==='recorded'?'Payment sent.':outcome.status==='not-sent'?'Payment not sent.':'Confirming your payment.'}</h1>
@@ -69,7 +82,7 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children}
   {review.note&&<div><span>Public note</span><strong className="send-public-note">{review.note}</strong></div>}
   <div><span>Fee</span><strong>$0.00</strong></div></div>
   <p className="body-copy small-copy">Reserve is used first; Settlement covers the remainder. The dollar amount is fixed. Wallet computes the Φ amount and funding split from your current account when you send.</p>
-  <label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event=>setApproved(event.target.checked)}/><span>I approve sending {formatMoney(review.amountUsdCents)} to {review.recipientLabel} using my balance, or a card payment for this amount if needed{review.note?', and publishing the note shown above':''}.</span></label>
+  <label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event=>setApproved(event.target.checked)}/><span>I approve sending {formatMoney(review.amountUsdCents)} to {review.recipientLabel} using my balance and a card payment for any amount needed{review.note?', and publishing the note shown above':''}.</span></label>
   <button className="primary-button" disabled={busy||!approved} onClick={()=>void send()}>{busy?'Sending payment…':'Send payment'}<ArrowRight size={17}/></button>
   <button className="secondary-button" disabled={busy} onClick={()=>{api.current?.discard(review);held.current=null;setReview(null);setApproved(false);}}>Edit details</button>{diagnostics}</section>;
  return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset><div className="note-box"><ShieldCheck size={18}/><p>Review the recipient and amount before approving your payment.</p></div><details className="transaction-proof-details"><summary>Wallet access</summary><p className="small-copy">{identityRecordCopy(BANK_WALLET_SEND_CONSENT)}</p></details>
