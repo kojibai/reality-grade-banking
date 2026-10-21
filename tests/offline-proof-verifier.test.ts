@@ -16,6 +16,7 @@ it('ships complete corresponding sources, pinned suite keys, public trust roots 
 it('refuses unsigned or changed bytes without consulting any service',async()=>{
  const fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NETWORK_FORBIDDEN'));try{
  await expect(verifier.inspectArtifact(new TextEncoder().encode('{"verified":true,"groth16":"real"}'))).rejects.toThrow(/CANONICAL_VERIFICATION_FAILED/);expect(fetch).not.toHaveBeenCalled();
+ await expect(verifier.readArtifact(new TextEncoder().encode('{"verified":true}'))).rejects.toThrow(/CANONICAL_VERIFICATION_FAILED/);expect(fetch).not.toHaveBeenCalled();
  }finally{fetch.mockRestore();}
 });
 it('distinguishes JCS/SHA256 hash consistency from signed-original verification and refuses changed evidence',async()=>{

@@ -1,10 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { parsePublicMarket } from '../src/receiz/public-market';
+import { parsePublicMarket,publicMediaArtworkUrl,safeReceizArtworkUrl } from '../src/receiz/public-market';
 
 const original = (i: number, extra = {}) => ({ id: `profile:alice:${i}`, receizId: `asset-${i}`, title: `Public object ${i}`, summary: 'Public source', canonicalHref: `/alice/verified/asset-${i}`, verifyHref: '/v/proof', valueUsd: 12.34, pulse: '12345', ...extra });
 const membership = (items: unknown[]) => ({ ok: true, transport: { generatedAt: '2026-10-13T12:00:00Z', publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: items.length, revision: 'r1' }, publicOriginals: items } });
 
 describe('Receiz public Market catalog', () => {
+  it('shows the carried public image before a receipt, including compact retained discovery',()=>{
+    const artifact='https://receiz.com/api/proof-material/packages/'+'c'.repeat(64)+'/artifact',digest='d'.repeat(64),receipt='/api/receiz/download?a=abcd1234&ms=1791892800000&p=14610000&c=AB12CD34&name=record.png';
+    const media={kind:'image',src:artifact,originalDownloadMime:'image/png',originalDownloadSha256Hex:digest,material:{originalArtifactSrc:artifact,sealedArtifactSha256Hex:digest},receiptDownloadSrc:receipt};
+    expect(publicMediaArtworkUrl(media)).toBe(artifact);
+    const compact={...media,src:undefined,kind:undefined};
+    const item=parsePublicMarket(membership([original(1,{profileOriginal:{mediaKind:'image',artworkUrl:receipt,media:compact}})])).items[0];
+    expect(item.artworkUrl).toBe(artifact);expect(item.originalUrl).toBe(artifact);expect(item.canTrade).toBe(false);
+    for(const url of [artifact+'?token=secret',artifact+'#payload',artifact.replace('receiz.com','private.example'),artifact.replace('c'.repeat(64),'abc')])expect(safeReceizArtworkUrl(url)).toBeNull();
+    expect(publicMediaArtworkUrl({...media,src:undefined,originalDownloadSha256Hex:'a'.repeat(64)})).not.toBe(artifact);
+    expect(publicMediaArtworkUrl({...media,kind:'audio',src:undefined,originalDownloadMime:'audio/mpeg'})).not.toBe(artifact);
+  });
   it('retains each object’s existing valuation operands without granting financial authority',()=>{
     const seed={kind:'sigil',claimPulse:12345,beat:2,stepIndex:3,creatorVerified:true,kaiSignature:'alice',userPhiKey:'public-model',unrelated:'omit'};
     const item=parsePublicMarket(membership([original(1,{livePulseSeed:seed})])).items[0];

@@ -1,10 +1,10 @@
 import {openBookArchive} from './proof-media-archive';
-import {loadReceiz} from './client';
 import {resolvePublicOriginalUrl} from './public-original';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
 import {readPublicProofReading,type ProofReading} from './proof-reading';
 import type {ReceizVerifiedPayload} from '@receiz/sdk';
-import {retainOpenedProofInspection,trackProofInspection} from './proof-inspection';
+import {retainProofInspection,trackProofInspection} from './proof-inspection';
+import {loadOfflineProofVerifier} from './ledger-offline-proof';
 import {readAssetMoment,type MomentMetadata} from './asset-moment';
 
 export type MediaKind='image'|'audio'|'video'|'pdf'|'text'|'book'|'file';
@@ -76,7 +76,7 @@ async function readPayload(payload:ReceizVerifiedPayload,json:ReturnType<typeof 
 export function readMediaPayload(payload:ReceizVerifiedPayload):Promise<MediaFile[]>{
  return readPayload(payload,readMediaJson(payload));
 }
-/** Existing SDK enclosing-artifact open is the only payload entry. Rendering
+/** The unchanged native canonical read is the only payload entry. Rendering
  * does not admit ownership, custody, transfers or account value. */
 export function openProofMedia(source:ProofMediaSource,signal?:AbortSignal):Promise<OpenedProofMedia>{
  signal?.throwIfAborted();const cached=retainedPublicMedia(source);if(cached)return Promise.resolve(cached);
@@ -92,14 +92,19 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
  if(source.kind==='held'){bytes=new Uint8Array(source.bytes);filename=source.filename;}else{
   const timeout=AbortSignal.timeout(90_000),publicSignal=signal?AbortSignal.any([signal,timeout]):timeout;
   const url=new URL(await resolvePublicOriginalUrl(source.url,source.digest,publicSignal));publicSignal.throwIfAborted();
-  const response=await fetch(`/api/bank/public-market/original?path=${encodeURIComponent(url.pathname+url.search)}`,{credentials:'omit',redirect:'error',signal:publicSignal});
+  // Immutable public material already supports anonymous CORS. Use its exact
+  // image/cache coordinate rather than downloading a second proxy copy.
+  const direct=/^\/api\/proof-material\/packages\/[a-f0-9]{64}\/artifact$/.test(url.pathname)&&!url.search;
+  const response=await fetch(direct?url.href:`/api/bank/public-market/original?path=${encodeURIComponent(url.pathname+url.search)}`,{credentials:'omit',redirect:'error',signal:publicSignal});
   if(!response.ok)throw Error('The original could not be opened. You can retry or inspect its source.');bytes=await readPublicLedgerBytes(response,MAX);filename='original.receiz';
  }
  if(!bytes.length||bytes.length>MAX)throw Error('This original exceeds the supported reader capacity.');
- const sdk=await loadReceiz();let opened;try{opened=await sdk.createReceizClient().artifacts.verifyAndOpen(new File([new Uint8Array(bytes)],filename));}catch{throw Error('This original could not be opened as verified media. Inspect its proof source for details.');}signal?.throwIfAborted();
- if(opened.sealedArtifact.artifactSha256.toLowerCase()!==source.digest.toLowerCase())throw Error('This original does not match the selected proof.');
- retainOpenedProofInspection(opened,bytes,filename,source.digest);
- const json=readMediaJson(opened.verifiedPayload),files=await readPayload(opened.verifiedPayload,json);signal?.throwIfAborted();
+ // Rendering needs the canonical read contract, including older carriers.
+ // Append/admission custody is separate and is never relaxed by this reader.
+ let opened;try{opened=await(await loadOfflineProofVerifier()).readArtifact(bytes,filename);}catch{throw Error('This original could not be opened as verified media. Inspect its proof source for details.');}signal?.throwIfAborted();
+ if(opened.report.artifactSha256.toLowerCase()!==source.digest.toLowerCase())throw Error('This original does not match the selected proof.');
+ retainProofInspection(opened.report,bytes,filename);
+ const json=readMediaJson(opened.payload),files=await readPayload(opened.payload,json);signal?.throwIfAborted();
  if(source.kind==='held'&&json){
   const value=json.value;
   const linked=value?.schema==='receiz.bank.asset-definition.v1'?value.definition?.linkedProofDigest:null;

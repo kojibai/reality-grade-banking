@@ -3,7 +3,7 @@ import {afterEach,expect,it,vi} from 'vitest';
 import {zipSync,strToU8} from 'fflate';
 import {receizBase64UrlEncode} from '@receiz/sdk';
 const opened=vi.hoisted(()=>vi.fn());
-vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({createReceizClient:()=>({artifacts:{verifyAndOpen:opened}})})}));
+vi.mock('../src/receiz/ledger-offline-proof',()=>({loadOfflineProofVerifier:async()=>({readArtifact:async(bytes:Uint8Array,filename:string)=>{const value=await opened(new File([new Uint8Array(bytes)],filename));return {report:{schema:'bankeiz.offline-proof-inspection.v1',sdk:'129.0.0',artifactSha256:value.sealedArtifact.artifactSha256,payloadSha256:value.verifiedPayload.sha256},payload:value.verifiedPayload};}})}));
 import {openProofMedia,readMediaPayload,readDocumentText} from '../src/receiz/proof-media';
 import {prepareAssetMoment} from '../src/receiz/asset-moment';
 afterEach(()=>{opened.mockReset();vi.restoreAllMocks();});
@@ -35,18 +35,19 @@ it('does not follow arbitrary public URLs, and reads bounded public original byt
  await expect(openProofMedia({kind:'public',url:'https://evil.example/test',digest:'a'.repeat(64)})).rejects.toThrow();expect(fetch).not.toHaveBeenCalled();
  opened.mockResolvedValue({sealedArtifact:{artifactSha256:'a'.repeat(64)},verifiedPayload:payload});
  await openProofMedia({kind:'public',url:`https://receiz.com/api/proof-material/packages/${'b'.repeat(64)}/artifact`,digest:'a'.repeat(64)});
- expect(fetch.mock.calls[0][1]).toMatchObject({credentials:'omit',redirect:'error'});
+ expect(fetch.mock.calls[0][0]).toBe(`https://receiz.com/api/proof-material/packages/${'b'.repeat(64)}/artifact`);
+ expect(fetch.mock.calls[0][1]).toMatchObject({credentials:'omit',redirect:'error'});expect(fetch).toHaveBeenCalledOnce();
 });
 it('reopens a cached public coordinate through its exact carried artifact instead of the separate download sale',async()=>{
  const path='/api/proof-material/packages/'+ 'c'.repeat(64)+'/artifact',artifact=new Uint8Array([1,2,3]);
  const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>{
   if(input==='/api/bank/public-market/membership')return Response.json({ok:true,transport:{publicMembership:{},publicOriginals:[{id:'profile:artist:proof_123',receizId:'proof_123',title:'Essay',profileOriginal:{media:{originalDownloadSrc:'/api/profile/originals/download?receizId=proof_123&kind=original',originalDownloadSha256Hex:'a'.repeat(64),material:{proofObjectUrl:'/v/20261018_1200/AB12CD34/14700000#material=rmc1%3A'+'c'.repeat(64),sealedArtifactSha256Hex:'a'.repeat(64)}}}}]}});
-  return String(input)===`/api/bank/public-market/original?path=${encodeURIComponent(path)}`?new Response(artifact):new Response('payment_required',{status:402});
+  return String(input)===`https://receiz.com${path}`?new Response(artifact):new Response('payment_required',{status:402});
  });
  opened.mockImplementation(async(file:File)=>{expect(new Uint8Array(await file.arrayBuffer())).toEqual(artifact);return {sealedArtifact:{artifactSha256:'a'.repeat(64)},verifiedPayload:payload};});
  const result=await openProofMedia({kind:'public',url:'https://receiz.com/api/profile/originals/download?receizId=proof_123&kind=original',digest:'a'.repeat(64)});
  expect(result.files[0]).toMatchObject({kind:'text',text:new TextDecoder().decode(bytes)});
- expect(fetch.mock.calls.map(call=>call[0])).toEqual(['/receiz-public-market.json','/api/bank/public-market/membership',`/api/bank/public-market/original?path=${encodeURIComponent(path)}`]);
+ expect(fetch.mock.calls.map(call=>call[0])).toEqual(['/receiz-public-market.json','/api/bank/public-market/membership',`https://receiz.com${path}`]);
 });
 it('explains an unsupported or invalid media carrier without exposing internal SDK errors',async()=>{
  opened.mockRejectedValue(Error('artifact_verification_failed'));

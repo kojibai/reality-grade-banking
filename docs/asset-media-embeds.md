@@ -20,6 +20,13 @@ download is never relabeled as playable audio/video. Gated audio is not given a
 direct stream descriptor. The existing Receiz host checks current source policy
 when either its player or media endpoint opens.
 
+When no separate playback was prepared, an explicitly ungated audio listing
+can use its already-public self-contained audio Original. Its MIME type and
+enclosing digest must match the carried material descriptor and exact public
+package URL. Prepared playback and older public storage/preview streams retain
+their existing addresses. Bankeiz does not probe alternative URLs or substitute
+the protected Original-download purchase endpoint.
+
 Metadata is in the first HTML response, without executing JavaScript. Navigating
 to a retained asset updates the same metadata in the current document and removes
 it when leaving. The existing asset-specific sharing image remains the fallback.
@@ -59,7 +66,22 @@ snapshot carries source-bound titles and supported playback locators. Titles
 for older cached rows are corrected synchronously only when asset identity and
 original digest match; no additional title request is made. Neither metadata nor oEmbed downloads media, runs the proof verifier,
 renders a PNG or opens an account. HEAD performs no listing lookup. The regular
-application still uses its existing verification and playback path.
+application reads media through the included, unchanged v129 canonical read
+verifier, with its pinned roots and an exact selected-artifact SHA-256 match.
+This read-only operation supports older carriers already accepted by the
+canonical verifier. It does not relax append/admission, custody, financial
+verification or antirollback rules.
+
+Image listings prefer their existing public image or digest-bound image material
+before a receipt fallback. Cold HTML and the mounted viewer use that same image
+address; public material previews use anonymous CORS. Verification reads the
+same immutable public URL, allowing browser cache reuse instead of a second
+proxy download. A visible preview is not labeled verified until canonical
+verification succeeds. No extra artwork/title discovery request is introduced.
+
+The read-only verifier import carries its generated exact build hash. The PWA
+can reuse the matching installed resource without fetching or storing another
+copy; a different hash or additional query cannot select that cached build.
 
 An embed is public media presentation. It does not establish ownership, grant
 downloads of protected originals, authorize a purchase or prove spendability.
@@ -72,8 +94,13 @@ Local tests cover canonical URLs, first-response metadata, retained navigation,
 source restrictions, iframe headers and mobile controls using synthetic media.
 They do not certify delivery by a third-party messaging app.
 
-On October 21, 2026, the sampled public audio playback role returned HTTP 404;
-its sealed Original download returned HTTP 402. Bankeiz does not substitute that
-protected download or bypass its policy. The source host must deliver the admitted
-playback role before this track can qualify for public inline playback. A deployed
-Messages device check remains required after that delivery succeeds.
+On October 21, 2026, the sampled unprepared playback alias returned HTTP 404 and
+its protected Original download returned HTTP 402. The same listing already
+carried an explicitly public self-contained MP3 material URL. That public URL
+returned HTTP 206 in real-browser playback, including start and seek; no host
+change or protected-download fallback was needed. The reported older image and
+a newer image both passed canonical verification and displayed their actual
+image with no receipt request. Browser tracing measured one image-body transfer
+per sampled page, with the verification read reusing the response. See the
+[qualification record](verification/2026-10-21-public-asset-media.md). A deployed
+Messages device check remains required for iMessage's own inline presentation.

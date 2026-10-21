@@ -4,7 +4,7 @@ import {createRoot} from 'react-dom/client';
 import {afterEach,expect,it,vi} from 'vitest';
 import inspection from './fixtures/public-original-inspection.json';
 const boundary=vi.hoisted(()=>({open:vi.fn()}));
-vi.mock('../src/receiz/client',()=>({RECEIZ_VERSION:'129.0.0',loadReceiz:async()=>({createReceizClient:()=>({artifacts:{verifyAndOpen:boundary.open}})})}));
+vi.mock('../src/receiz/ledger-offline-proof',async original=>({...await original<typeof import('../src/receiz/ledger-offline-proof')>(),loadOfflineProofVerifier:async()=>({readArtifact:boundary.open})}));
 import {LedgerInspector} from '../src/features/ledger/LedgerInspector';
 import {ledgerValueForRecord} from '../src/receiz/ledger-value';
 import {downloadLedgerEvidence} from '../src/receiz/ledger-offline-proof';
@@ -23,7 +23,7 @@ it('shares an in-flight media open and its actual carried proof with inspection 
  await act(async()=>{(host.querySelector('.proof-object-cover')as HTMLButtonElement).click();});
  expect(boundary.open).toHaveBeenCalledOnce();
  await act(async()=>{[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Inspect full original'))!.click();});
- await act(async()=>{finish({sealedArtifact:{artifactSha256:inspection.artifactSha256},verification:inspection.verification,verifiedPayload:{bytes:new TextEncoder().encode('Already verified media'),filename:'original.txt',mimeType:'text/plain',sha256:inspection.payloadSha256}});});
+ await act(async()=>{finish({report:inspection,payload:{bytes:new TextEncoder().encode('Already verified media'),filename:'original.txt',mimeType:'text/plain',sha256:inspection.payloadSha256}});});
  expect(host.textContent).toContain('0542b6f8fa11ddf3ba9376ddd92479b8d427deb3b4080c70efac2ce83bccf1ec');
  expect(host.textContent).toContain('2379438979429017618313346380631207613449243518095004417272903686797126332908');
  expect(host.textContent).toContain('23faa69f1b2478049001cda0faccbcead8443ac75bf34aca58a9103fac6aff5c');

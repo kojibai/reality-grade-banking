@@ -6,14 +6,16 @@ import {resolvePublicOriginalUrl} from './public-original';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
 import {zipSync} from 'fflate';
 import {admittedProofInspection,retainProofInspection,reuseProofInspection,trackProofInspection,type ProofInspection} from './proof-inspection';
+import {offlineProofVerifierDigest} from './offline-proof-build';
+import type {ReceizVerifiedPayload} from '@receiz/sdk';
 
 export type OfflineProofReport=ProofInspection;
-export type OfflineProofVerifier={materials:Record<string,unknown>;inspectArtifact(bytes:Uint8Array,filename?:string):Promise<OfflineProofReport>;inspectWalletCapsule(bundle:unknown):Promise<Record<string,unknown>>;sha256Hex(bytes:Uint8Array|string):Promise<string>};
+export type OfflineProofVerifier={materials:Record<string,unknown>;readArtifact(bytes:Uint8Array,filename?:string):Promise<{report:OfflineProofReport;payload:ReceizVerifiedPayload}>;inspectArtifact(bytes:Uint8Array,filename?:string):Promise<OfflineProofReport>;inspectWalletCapsule(bundle:unknown):Promise<Record<string,unknown>>;sha256Hex(bytes:Uint8Array|string):Promise<string>};
 declare global{var ReceizOfflineVerifier:OfflineProofVerifier;}
 const BASE='/proof-verifier/v129/',MAX=24*1024*1024;
 let runtime:Promise<OfflineProofVerifier>|undefined;
 const inspections=new Map<string,Promise<{report:OfflineProofReport;retained:boolean}>>();
-export function loadOfflineProofVerifier(){return runtime??=import(/* @vite-ignore */ new URL(BASE+'verifier.js',location.origin).href).then(()=>globalThis.ReceizOfflineVerifier).catch(error=>{runtime=undefined;throw error;});}
+export function loadOfflineProofVerifier(){return runtime??=import(/* @vite-ignore */ new URL(BASE+'verifier.js?build='+offlineProofVerifierDigest,location.origin).href).then(()=>globalThis.ReceizOfflineVerifier).catch(error=>{runtime=undefined;throw error;});}
 function database(){return new Promise<IDBDatabase>((resolve,reject)=>{try{const r=indexedDB.open('bankeiz.public-proof-inspection.v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('originals');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);}catch(error){reject(error);}});}
 async function cached(digest:string):Promise<Uint8Array|null>{let db:IDBDatabase|undefined;try{db=await database();return await new Promise((resolve,reject)=>{const r=db!.transaction('originals').objectStore('originals').get(digest);r.onsuccess=()=>resolve(r.result instanceof Uint8Array?r.result:null);r.onerror=()=>reject(r.error);});}catch{return null;}finally{db?.close();}}
 async function retain(digest:string,bytes:Uint8Array){let db:IDBDatabase|undefined;try{db=await database();await new Promise<void>((resolve,reject)=>{const tx=db!.transaction('originals','readwrite'),store=tx.objectStore('originals'),r=store.getAll();r.onsuccess=()=>{const all=r.result as Uint8Array[];if(all.reduce((n,b)=>n+b.length,0)+bytes.length>64*1024*1024){tx.abort();return;}store.put(bytes,digest);};tx.oncomplete=()=>resolve();tx.onerror=tx.onabort=()=>reject(tx.error);});return true;}catch{return false;}finally{db?.close();}}

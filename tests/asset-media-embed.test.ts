@@ -10,6 +10,29 @@ const html='<html><head><title>Explore</title></head><body><div id="public-explo
 const deps=(value=item())=>({item:vi.fn(async()=>value),page:vi.fn(async()=>html),image:vi.fn(async()=>new Uint8Array())});
 const canonical='https://bankeiz.com'+assetPagePath(id);
 
+it('uses an explicitly public self-contained audio Original when no separate playback was prepared, without changing its asset URL',async()=>{
+ const row=source('audio',`/api/profile/originals/media?receizId=${assetId}&slot=playback`),artifact='https://receiz.com/api/proof-material/packages/'+ 'a'.repeat(64)+'/artifact',digest='b'.repeat(64);
+ Object.assign(row.profileOriginal.media,{gateAudioPlayback:false,playbackMime:null,originalDownloadMime:'audio/mpeg',originalDownloadSha256Hex:digest,material:{sealedArtifactSha256Hex:digest,proofObjectUrl:artifact}});
+ Object.assign(row,{playbackSrc:`/api/profile/originals/download?receizId=${assetId}&kind=original`});
+ const read=()=>parsePublicMarket({ok:true,transport:{publicOriginals:[row]}}).items[0];
+ expect(read().playback).toEqual({url:artifact,mimeType:'audio/mpeg'});
+ const response=await handleAssetPreview(new Request(canonical),deps(read())),body=await response.text();
+ expect(body).toContain(`property="og:audio" content="${artifact}"`);expect(body).toContain(`<link rel="canonical" href="${canonical}">`);expect(response.headers.get('location')).toBeNull();
+ for(const invalid of [{gateAudioPlayback:true},{originalDownloadMime:'image/png'},{originalDownloadSha256Hex:'c'.repeat(64)}]){
+  const changed={...row,profileOriginal:{media:{...row.profileOriginal.media,...invalid}}};
+  expect(parsePublicMarket({ok:true,transport:{publicOriginals:[changed]}}).items[0].playback?.url).not.toBe(artifact);
+ }
+});
+
+it('preserves explicit prepared playback and legacy raw streams instead of replacing them with a material artifact',()=>{
+ const artifact='https://receiz.com/api/proof-material/packages/'+'a'.repeat(64)+'/artifact',digest='b'.repeat(64),custom='https://receiz.com/music/prepared.mp3';
+ const row=source('audio',custom);Object.assign(row.profileOriginal.media,{gateAudioPlayback:false,playbackMime:null,originalDownloadMime:'audio/mpeg',originalDownloadSha256Hex:digest,material:{sealedArtifactSha256Hex:digest,proofObjectUrl:artifact}});
+ const read=()=>parsePublicMarket({ok:true,transport:{publicOriginals:[row]}}).items[0].playback?.url;
+ expect(read()).toBe(custom);
+ Object.assign(row.profileOriginal.media,{playbackSrc:`/api/profile/originals/media?receizId=${assetId}&slot=playback`,playbackReadyAt:'2026-10-21T00:00:00Z'});expect(read()).toContain('slot=playback');
+ const legacy=source('audio');Object.assign(legacy,{playbackSrc:`/api/profile/originals/media?receizId=${assetId}&slot=preview`});expect(parsePublicMarket({ok:true,transport:{publicOriginals:[legacy]}}).items[0].playback?.url).toContain('slot=preview');
+});
+
 it.each(['audio','video'])('keeps the asset canonical while advertising the existing Receiz %s player and oEmbed discovery without fetching media',async kind=>{
  const playback=`https://receiz.com/api/profile/originals/media?receizId=${assetId}&slot=playback`,f=deps(item(kind,playback));
  const response=await handleAssetPreview(new Request(canonical),f),body=await response.text();

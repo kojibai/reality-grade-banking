@@ -6,6 +6,11 @@ Full release records and qualification evidence live in [docs/releases](docs/rel
 
 ## Unreleased
 
+- Public image assets show their actual carried image before receipt fallbacks.
+  Older media uses the existing v129 canonical read contract, with exact digest
+  verification and shared proof inspection. Public audio embeds reuse an
+  explicitly ungated self-contained stream when separate playback is unprepared.
+  No extra discovery, protected-download fallback or Receiz change is required.
 - Shared music and video asset URLs advertise a lightweight embed over existing Receiz streams,
   supported public streams and JSON oEmbed discovery. Normal clicks still open
   the standalone asset page; receiving platforms choose inline playback.

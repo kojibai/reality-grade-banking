@@ -5,6 +5,11 @@ import {parsePublicMarket} from '../src/receiz/public-market';
 const item=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:source',receizId:'source',title:'A moment $& <script>one</script>',summary:'The complete original.',ownerUsername:'artist',profileOriginal:{media:{kind:'image'}}}]}}).items[0];
 const html='<html><head><title>Explore</title><meta name="description" content="Explore"><link rel="canonical" href="https://bankeiz.com/explore/"></head><body><div id="public-explore-root" data-public-runtime="explore"><main>Explore fallback</main></div><script id="receiz-navigation" type="application/json">{"pages":{}}</script></body></html>';
 const deps=()=>({page:vi.fn(async()=>html),item:vi.fn(async()=>item),image:vi.fn(async()=>new Uint8Array([1,2]))});
+it('starts the actual public image with matching anonymous CORS for preview and canonical verification',async()=>{
+ const artwork='https://receiz.com/api/proof-material/packages/'+'a'.repeat(64)+'/artifact',f=deps();f.item.mockResolvedValue({...item,artworkUrl:artwork});
+ const body=await(await handleAssetPreview(new Request('https://bankeiz.com'+assetPagePath(item.id)),f)).text();
+ expect(body).toMatch(/<link rel="preload" as="image"[^>]+crossorigin="anonymous"/);expect(body).toMatch(/<img[^>]+crossorigin="anonymous"/);expect(body).not.toContain('/api/receiz/download');
+});
 it('exposes the one selected safe cover in cold HTML and lets the browser start it before JavaScript without fetching it on the server',async()=>{
  const f=deps(),artwork='https://receiz.com/api/profile/originals/media?receizId=song&slot=audioCover';
  f.item.mockResolvedValue({...item,artworkUrl:artwork});

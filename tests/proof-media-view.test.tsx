@@ -8,6 +8,17 @@ Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const source={kind:'held' as const,digest:'a'.repeat(64),filename:'source.receiz',bytes:new Uint8Array([1])};
 const media={artifactDigest:source.digest,files:[{kind:'text',filename:'Essay.html',mimeType:'text/html',bytes:new TextEncoder().encode('<p>Bound text</p>'),payloadDigest:'b'.repeat(64),text:'Bound text'}]};
 afterEach(()=>{open.mockReset();vi.restoreAllMocks();});
+it('shows the existing public image immediately, then opens the verified image without a receipt request',async()=>{
+ const artwork='https://receiz.com/api/proof-material/packages/'+'c'.repeat(64)+'/artifact';
+ let finish!:(value:unknown)=>void;open.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
+ vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:verified-image');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<ProofMedia source={source} title="An image" artworkUrl={artwork} autoOpen/>));
+  expect(host.querySelector('img')?.getAttribute('src')).toBe(artwork);expect(host.querySelector('img')?.crossOrigin).toBe('anonymous');expect(host.querySelector('img')?.getAttribute('loading')).toBe('eager');expect(host.textContent).not.toContain('Original verified');
+  await act(async()=>finish({...media,files:[{kind:'image',filename:'Original.png',mimeType:'image/png',bytes:new Uint8Array([1]),payloadDigest:'b'.repeat(64)}]}));
+  expect(host.querySelector('.proof-image-open img')?.getAttribute('src')).toBe('blob:verified-image');expect(host.textContent).toContain('Original verified');expect(open).toHaveBeenCalledOnce();expect(host.innerHTML).not.toContain('/api/receiz/download');
+ }finally{act(()=>root.unmount());}
+});
 it('starts a standalone cover eagerly while original verification remains pending, without marking the cover verified',async()=>{
  const artwork='https://receiz.com/api/profile/originals/media?receizId=song&slot=audioCover';
  let finish!:(value:unknown)=>void;open.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));

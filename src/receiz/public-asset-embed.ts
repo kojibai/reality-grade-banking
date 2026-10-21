@@ -4,11 +4,19 @@ export type PublicPlayback={url:string;mimeType:string|null};
 const record=(value:unknown):Record<string,unknown>=>value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
 /** Public presentation locators only. The existing Receiz host enforces its
  * current source policy; these fields never admit or verify media bytes. */
-export function publicMediaPlayback(input:unknown):PublicPlayback|null{
- const source=record(input),profile=record(source.profileOriginal),media=record(profile.media),held=record(profile.playback);
+export function publicMediaPlayback(input:unknown,exactOriginalUrl?:string|null):PublicPlayback|null{
+ const source=record(input),profile=record(source.profileOriginal),media=record(profile.media),held=record(profile.playback),material=record(media.material);
  const kind=profile.mediaKind??media.kind;
  if(!['audio','video'].includes(String(kind))||media.gateAudioPlayback===true)return null;
- for(const candidate of [held.url,media.playbackSrc,source.playbackSrc]){
+ // The same public self-contained MP3 used by the verified viewer can play
+ // directly. A paid download URL, PNG carrier or unbound artifact cannot.
+ const digest=media.originalDownloadSha256Hex,mime=media.originalDownloadMime;
+ const artifactAudio=kind==='audio'&&media.gateAudioPlayback===false&&typeof mime==='string'&&/^audio\/[a-zA-Z0-9.+-]+$/.test(mime)
+  &&typeof digest==='string'&&/^[a-f0-9]{64}$/i.test(digest)&&digest===material.sealedArtifactSha256Hex
+  &&typeof exactOriginalUrl==='string'&&/^https:\/\/receiz\.com\/api\/proof-material\/packages\/[a-f0-9]{64}\/artifact$/.test(exactOriginalUrl)?{url:exactOriginalUrl,mimeType:mime}:null;
+ const unpreparedCoordinate=(value:unknown)=>{try{const url=new URL(String(value),'https://receiz.com'),q=url.searchParams;return url.origin==='https://receiz.com'&&!url.username&&!url.password&&!url.hash&&[...q.keys()].length===2&&q.getAll('receizId').length===1&&q.get('receizId')===source.receizId&&(url.pathname==='/api/profile/originals/media'&&q.getAll('slot').length===1&&q.get('slot')==='playback'||url.pathname==='/api/profile/originals/download'&&q.getAll('kind').length===1&&q.get('kind')==='original');}catch{return false;}};
+ const unprepared=artifactAudio&&!held.url&&!media.playbackMime&&!media.playbackReadyAt&&(!media.playbackSrc||unpreparedCoordinate(media.playbackSrc))&&(!source.playbackSrc||unpreparedCoordinate(source.playbackSrc));
+ for(const candidate of [held.url,...(unprepared?[artifactAudio.url]:[]),media.playbackSrc,source.playbackSrc]){
   if(typeof candidate!=='string'||candidate.length>4096||/[\s\\\x00-\x1f\x7f]/.test(candidate))continue;
   try{
    const url=new URL(candidate,'https://receiz.com');
@@ -17,7 +25,9 @@ export function publicMediaPlayback(input:unknown):PublicPlayback|null{
    const native=url.pathname==='/api/profile/originals/media'&&[...query.keys()].length===2&&query.getAll('receizId').length===1&&query.get('receizId')===source.receizId&&query.getAll('slot').length===1&&['preview','playback'].includes(query.get('slot')??'');
    const publicFile=!url.search&&!url.pathname.startsWith('/api/')&&!url.pathname.startsWith('/storage/')&&/^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.(?:mp3|m4a|aac|wav|ogg|opus|mp4|m4v|mov|webm|m3u8)$/i.test(url.pathname)&&!url.pathname.split('/').some(part=>part==='.'||part==='..');
    const storage=url.pathname==='/api/storage/object'&&[...query.keys()].length===2&&query.getAll('bucket').length===1&&['receiz-profile-originals','receiz-profile-media'].includes(query.get('bucket')??'')&&query.getAll('path').length===1&&/^(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.(?:mp3|m4a|aac|wav|ogg|opus|mp4|m4v|mov|webm|m3u8)$/i.test(query.get('path')??'')&&!(query.get('path')??'').split('/').some(part=>part==='.'||part==='..');
-   if(!native&&!publicFile&&!storage)continue;
+   const artifact=artifactAudio?.url===url.href;
+   if(!native&&!publicFile&&!storage&&!artifact)continue;
+   if(artifact)return artifactAudio;
    const mime=held.mimeType??media.playbackMime??source.mediaMime??media.mime;
    const mimeType=typeof mime==='string'&&(new RegExp(`^${kind}/[a-zA-Z0-9.+-]+$`).test(mime)||kind==='video'&&['application/vnd.apple.mpegurl','application/x-mpegURL'].includes(mime))?mime:null;
    return {url:url.href,mimeType};
@@ -32,7 +42,7 @@ export function publicAssetEmbed(item:PublicMarketItem|null){
  try{
   const source=new URL(item.sourceUrl),match=/^\/([a-zA-Z0-9_-]{1,64})\/verified\/([a-zA-Z0-9_-]{1,128})\/?$/.exec(source.pathname);
   if(source.origin!=='https://receiz.com'||source.username||source.password||source.search||source.hash||!match||match[2]!==item.assetId)return null;
-  const stream=publicMediaPlayback({receizId:item.assetId,profileOriginal:{mediaKind:item.mediaKind,playback:item.playback}});
+  const stream=publicMediaPlayback({receizId:item.assetId,profileOriginal:{mediaKind:item.mediaKind,playback:item.playback,media:{gateAudioPlayback:item.playback?false:undefined,originalDownloadMime:item.playback?.mimeType,originalDownloadSha256Hex:item.originalDigest,material:{sealedArtifactSha256Hex:item.originalDigest}}}},item.originalUrl);
   if(!stream)return null;
   return {kind:item.mediaKind as 'audio'|'video',playerUrl:`https://bankeiz.com/asset/${encodeURIComponent(item.id)}/player/`,width:1280,height:item.mediaKind==='audio'?376:720,stream};
  }catch{return null;}

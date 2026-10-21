@@ -44,6 +44,7 @@ export function safeReceizArtworkUrl(input:unknown):string|null {
     if(url.origin!=='https://receiz.com'||url.username||url.password||url.hash)return null;
     const params=url.searchParams,only=(keys:string[])=>[...params.keys()].every(key=>keys.includes(key)&&params.getAll(key).length===1),image=(path:string)=>/\.(?:avif|gif|jpe?g|png|webp|svg)$/i.test(path),pathSafe=(path:string)=>path.length<=2048&&/^[a-zA-Z0-9_./-]+$/.test(path)&&path.split('/').every(part=>part&&part!=='.'&&part!=='..');
     if(url.pathname==='/api/profile/originals/media')return only(['receizId','slot','width'])&&/^[a-zA-Z0-9_-]{1,128}$/.test(params.get('receizId')??'')&&/^(?:preview|audioCover|videoPoster|epubCover|imageVariant|audioCoverVariant|videoPosterVariant|epubCoverVariant)$/.test(params.get('slot')??'')&&(!params.has('width')||/^\d{2,4}$/.test(params.get('width')!)&&Number(params.get('width'))<=4096)?url.href:null;
+    if(/^\/api\/proof-material\/packages\/[a-f0-9]{64}\/artifact$/.test(url.pathname))return !url.search?url.href:null;
     const publicBuckets=['receiz-profile-originals','receiz-profile-media'];
     if(url.pathname==='/api/storage/object')return only(['bucket','path'])&&publicBuckets.includes(params.get('bucket')??'')&&pathSafe(params.get('path')??'')&&image(params.get('path')??'')?url.href:null;
     const storage=/^\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/.exec(url.pathname);
@@ -53,9 +54,11 @@ export function safeReceizArtworkUrl(input:unknown):string|null {
   }catch{return null;}
 }
 /** Use the same cover priorities carried by Receiz's live player. */
-export function publicMediaArtworkUrl(input:unknown):string|null {
-  const media=record(input),kind=publicMediaKind(media.kind),primary=kind==='audio'?media.audioCoverSrc:kind==='video'?media.videoPosterSrc:kind==='epub'?media.epubCoverSrc:kind==='image'?media.src:null;
-  for(const candidate of [primary,media.derivativeDownloadSrc,media.receiptDownloadSrc]){const url=safeReceizArtworkUrl(candidate);if(url)return url;}return null;
+export function publicMediaArtworkUrl(input:unknown,retainedArtwork?:unknown):string|null {
+  const media=record(input),kind=publicMediaKind(media.kind),material=record(media.material),digest=media.originalDownloadSha256Hex;
+  const primary=kind==='audio'?media.audioCoverSrc:kind==='video'?media.videoPosterSrc:kind==='epub'?media.epubCoverSrc:kind==='image'?media.src:null;
+  const imageOriginal=kind==='image'&&typeof digest==='string'&&/^[a-f0-9]{64}$/i.test(digest)&&digest.toLowerCase()===String(material.sealedArtifactSha256Hex).toLowerCase()&&(!media.originalDownloadMime||/^image\/(?:png|jpeg|webp|gif|avif|bmp)$/i.test(String(media.originalDownloadMime)))?publicMaterialOriginalUrl(material.originalArtifactSrc)??publicMaterialOriginalUrl(material.proofObjectUrl):null;
+  for(const candidate of [primary,imageOriginal,retainedArtwork,media.derivativeDownloadSrc,media.receiptDownloadSrc]){const url=safeReceizArtworkUrl(candidate);if(url)return url;}return null;
 }
 export function safeReceizPublicUrl(input: unknown, kind: 'source' | 'proof' | 'original' = 'source'): string | null {
   const value = text(input, 8192); if (!value) return null;
@@ -103,8 +106,8 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
       originalUrl: materialOriginal ?? safeReceizPublicUrl(media.originalDownloadSrc, 'original'), originalDigest: digest && /^[a-f0-9]{64}$/i.test(digest) ? digest.toLowerCase() : null,
       hasLongForm:typeof profile.hasLongForm==='boolean'?profile.hasLongForm:Object.hasOwn(profile,'longForm')?Boolean(profile.longForm):undefined,
       mediaKind:publicMediaKind(profile.mediaKind??media.kind??(profile.media===null?null:undefined)),
-      artworkUrl:safeReceizArtworkUrl(profile.artworkUrl)??publicMediaArtworkUrl(media),
-      playback:publicMediaPlayback(source),
+      artworkUrl:publicMediaArtworkUrl({...media,kind:profile.mediaKind??media.kind},profile.artworkUrl),
+      playback:publicMediaPlayback(source,materialOriginal),
       proofManifestSource:readPublicAssetManifestSource(profile),
       pulse: typeof source.pulse === 'string' && /^\d{1,24}$/.test(source.pulse) ? source.pulse : null,livePulseSeed:publicMarketPulseSeed(source.livePulseSeed,source.pulse),valuationBinding:{itemId:id,assetId},
       sealedAt: sealedAt && Number.isFinite(Date.parse(sealedAt)) ? sealedAt : null,
