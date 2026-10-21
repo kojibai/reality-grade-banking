@@ -4,6 +4,15 @@ Reality-Grade Banking repository releases include the Bankeiz reference
 application. Its product versions are independent of Receiz protocol/package versions.
 Full release records and qualification evidence live in [docs/releases](docs/releases/README.md).
 
+## Unreleased
+
+- Public asset URLs handle Vercel rewrite captures consistently with the public
+  page endpoint, including the matching sharing-image route.
+- Note PNG exports use the existing Receiz v129 document seal around their
+  complete native financial source. Canonical offline image verification and
+  native deposit remain separate checks; issuance, consumption and credit rules
+  are unchanged. Interrupted image production resumes the same funded Note.
+
 ## 1.0.0 — October 20, 2026
 
 The first major repository release includes the Bankeiz reference application,

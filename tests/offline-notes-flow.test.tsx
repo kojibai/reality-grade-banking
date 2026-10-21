@@ -9,6 +9,20 @@ import { unattestedResponse } from './fixtures/note-registration';
 import {atNoteStage} from '../src/receiz/note-stage';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const click = (host: HTMLElement, label: string) => [...host.querySelectorAll('button')].find(b => b.textContent?.includes(label))!.click();
+test('saving an older Note exports its sealed image without creating or depositing another Note',async()=>{
+ const note={noteId:'saved-note',rail:'reserve',amountUsdCents:'200',image:new Uint8Array([1,2])},sealed=new Uint8Array([3,4]),create=vi.fn(),deposit=vi.fn(),exportImage=vi.fn().mockResolvedValue(sealed);
+ const identity={offlineNotes:async()=>({savedNotes:async()=>[note],pending:async()=>null,create,deposit,exportImage})}as unknown as OpenIdentity;
+ const blobs:Blob[]=[],url=vi.spyOn(URL,'createObjectURL').mockImplementation(value=>{blobs.push(value as Blob);return'blob:note-fixture';}),anchor=vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));
+  expect(exportImage).not.toHaveBeenCalled();
+  await act(async()=>host.querySelector<HTMLButtonElement>('.asset-row')!.click());expect(exportImage).not.toHaveBeenCalled();
+  await act(async()=>click(host,'Save note image'));
+  expect(exportImage).toHaveBeenCalledExactlyOnceWith(note.image,note.noteId);expect([...new Uint8Array(await blobs.at(-1)!.arrayBuffer())]).toEqual([3,4]);
+  expect(create).not.toHaveBeenCalled();expect(deposit).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());url.mockRestore();anchor.mockRestore();}
+});
 test.each(['create','deposit'] as const)('keeps conformance guidance out of the normal %s flow',async mode=>{
  const identity={offlineNotes:async()=>({savedNotes:async()=>[],pending:async()=>null})}as unknown as OpenIdentity;
  const host=document.createElement('div'),root=createRoot(host);

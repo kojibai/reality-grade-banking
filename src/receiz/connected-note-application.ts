@@ -32,6 +32,7 @@ export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'re
  module():Promise<ConnectedNoteModule>;context():Promise<Context>;
  sdk:{createReceizIdentityKeyFile(input:{owner:{uid:string}}):Promise<{keyFile:ReceizKeyFile}>;serializeReceizIdentityArtifact(key:ReceizKeyFile):string;parseReceizIdentityArtifactText(text:string):ReceizKeyFile;receizBase64UrlEncode(bytes:Uint8Array):string;receizBase64UrlDecode(text:string):Uint8Array;receizKaiNow():{pulse:number}};
  artwork(amount:string,id:string,compact?:boolean,rail?:BankNoteRail):Promise<Uint8Array>;
+ sealImage(image:Uint8Array,noteId:string):Promise<Uint8Array>;
  onFundingVerified?(source:Uint8Array,opening:Uint8Array,proof:{funding:Json}):void;
 }){
  const decode=input.sdk.receizBase64UrlDecode;
@@ -75,7 +76,17 @@ export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'re
   },
   inspect:async source=>(await input.module()).readBankConnectedNoteSource(source),
   async handover(source,receivingRequestBytes,noteIdentityBytes){const module=await input.module();return module.createBankConnectedNoteHandover({fundingSourceBytes:source,receivingRequestBytes,noteIdentity:input.sdk.parseReceizIdentityArtifactText(new TextDecoder('utf-8',{fatal:true}).decode(noteIdentityBytes)),kai:String(input.sdk.receizKaiNow().pulse)});},
-  async image(source,note){return(await input.module()).exportBankConnectedNoteImage(source,await input.artwork(note.amountUsdCents,note.noteId,false,note.rail));},
+  async image(source,note){
+   const module=await input.module(),image=await module.exportBankConnectedNoteImage(source,await input.artwork(note.amountUsdCents,note.noteId,false,note.rail));
+   // The native envelope proves the financial source. Its PNG also needs the
+   // existing canonical document seal, binding the artwork and that envelope.
+   // Runtime retains this result before completing creation or handover, so a
+   // failed local seal resumes the same funded source rather than issuing again.
+   const sealed=await input.sealImage(image,note.noteId);input.assertOpen();
+   const reopened=await module.readBankConnectedNoteImage(sealed);
+   if(reopened.noteId!==note.noteId||reopened.terminalSourceBytes.length!==source.length||reopened.terminalSourceBytes.some((v,i)=>v!==source[i]))throw Error('BANK_NOTE_IMAGE_SOURCE_CHANGED');
+   return sealed;
+  },
  });
 }
 export async function openConnectedAccountNote(module:ConnectedNoteModule,bytes:Uint8Array,context:{receiverUserId:string;receiverKeyId:string}){

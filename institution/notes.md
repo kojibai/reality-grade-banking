@@ -58,6 +58,16 @@ Existing native Bank host routes cover custody attestation, funding allocation/r
 
 ## Transport and image requirements
 
+Bankeiz exports the complete native Note image through the existing Receiz v129
+device document sealer. The outer PNG proof binds the artwork and its carried
+Note envelope to the unchanged canonical offline verifier. The inner signed
+financial source separately governs funding, recipient binding and deposit;
+verifying the image alone does not prove current spendability or apply credit.
+The completed connected image is retained in its original creation/handover
+checkpoint, so a failed image seal resumes without another debit. Older saved
+images can be sealed locally through Save note image or Download original PNG;
+this preserves their financial source and does not reissue their value.
+
 Maximum original PNG: **8 MiB**. Maximum packed API wire: **4 MiB**. Maximum expanded clear proof transport: **32 MiB**. Preserve the existing bounded lossless packing and decompression rules. An image share or photo editor may strip proof chunks; deposit the original exported PNG, not a screenshot or recompressed copy.
 
 The full engraving is 3240 × 1944 pixels at 600 DPI metadata, with a compact preview embedded separately in the native payload. The renderer does not sign, allocate, credit or change the note denomination. First-use artwork asset availability is separate from qualified offline financial operation.

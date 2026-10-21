@@ -12,6 +12,7 @@ export function noteError(cause:unknown):string{
  const payload=(cause as {payload?:{error?:unknown}}|null)?.payload?.error;
  const code=typeof payload==='string'&&payload.length<=160&&/^(?:BANK_[A-Z_]+|wallet_note_[a-z_]+)$/.test(payload)?payload:cause instanceof Error?cause.message:'';
  const stage=noteFailureStage(cause);
+ if(stage?.stage==='note-image-export')return 'The Note image could not be completed. Your original proof is preserved. Reopen the Note to try again.';
  if(code==='BANK_NOTE_ALREADY_DEPOSITED'||code==='wallet_note_already_claimed')return 'This Note has already been deposited.';
  if(code==='BANK_NOTE_COMPATIBILITY_SCHEMA_REQUIRED')return 'Note creation is not yet enabled on the account service. Your saved Notes and any pending attempt remain preserved.';
  if(code==='BANK_NOTE_INSUFFICIENT_FUNDS')return 'Choose an amount within your available balance.';

@@ -51,6 +51,7 @@ import {certificateTimeSafeStore,certificateTimeSafeFetch} from './device-signer
 import type {AssetMomentDraft} from './asset-moment';
 import {loadConnectedNoteState,saveConnectedNoteState} from './identity-vault';
 import {createConnectedNoteApplication,openConnectedAccountNote,prepareConnectedAccountNoteClaim,submitConnectedAccountNoteClaim,isConnectedNote,readConnectedNote} from './connected-note-application';
+import {createNoteImageExporter} from './note-image-seal';
 import {BANK_CONNECTED_NOTE_ISSUANCE_ENABLED} from './config';
 import {ownerTwinAccountAccess} from './twin-access';
 
@@ -523,6 +524,15 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   let receivedNoteQueueUid:string|undefined;
   let receivedNoteDisplay:import('./offline-notes').BankNoteDepositResult[]=[];
   let connectedNotes:ReturnType<typeof createConnectedNoteApplication>|undefined,connectedNotesUid:string|undefined;
+  let noteFileSealer:ReturnType<typeof ownedSealer>|undefined;
+  const noteImages=createNoteImageExporter({assertOpen:noteOpen,
+    inspect:async image=>(await offlineNotes()).inspect(image),
+    verify:async image=>(await sdk.verifyReceizArtifact(new File([new Uint8Array(image)],'note.png',{type:'image/png'}))).status==='verified-artifact',
+    seal:async input=>{
+      noteFileSealer??=ownedSealer().catch(error=>{noteFileSealer=undefined;throw error;});
+      const sealed=await(await noteFileSealer).seal(input);noteOpen();return sealed;
+    },
+  });
   let noteHistory:ReturnType<typeof import('./note-history').createNoteHistoryReader>|undefined,noteHistoryUid:string|undefined;
   async function noteHistoryReader(){
     noteOpen();const uid=receivingUid();
@@ -546,7 +556,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     connectedNotesUid=uid;
     connectedNotes=createConnectedNoteApplication({uid,keyId:binding.keyId,assertOpen:()=>{noteOpen();if(receivingUid()!==uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');},
       read:()=>loadConnectedNoteState(binding),write:(next,previous)=>saveConnectedNoteState(binding,next,previous),retain:bytes=>saveOfflineNoteBlob(binding,bytes),restore:ref=>loadOfflineNoteBlob(binding,ref),
-      module:loadBankNoteRuntime,context:connectedContext,sdk,artwork:bankNoteArtwork,
+      module:loadBankNoteRuntime,context:connectedContext,sdk,artwork:bankNoteArtwork,sealImage:noteImages.exportImage,
       onFundingVerified:(source,opening,proof)=>{void noteHistoryReader().then(reader=>reader.rememberFunding(source,opening,proof)).catch(()=>{});},
       onIssued:()=>{walletRevision++;if(knownWallet){knownWallet={...knownWallet,historyBasis:undefined,walletScope:undefined,quoteHold:createWalletQuoteHold(knownWallet.wallet)};void persistWalletObservation(knownWallet).catch(()=>{});}noteHistoryRecorded();},
     });return connectedNotes;
@@ -635,7 +645,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const inventory=createLocalNoteInventory({keyId:binding.keyId,uid:()=>accountUid??knownWallet?.wallet.userId??null,readLegacy:()=>atNoteStage('saved-notes',()=>loadOfflineNoteState(binding)),readPrepared:()=>atNoteStage('prepared-notes',()=>loadPreparedNoteState(binding)),restore:ref=>atNoteStage('note-image',()=>loadOfflineNoteBlob(binding,ref)),inspect,assertOpen:noteOpen});
     localNoteInventory=inventory;
     const action=async<T,>(operation:()=>Promise<T>):Promise<T>=>{noteOpen();activeNoteOperations++;noteOperationEpoch++;try{return await operation();}finally{activeNoteOperations--;}};
-    localNotes={savedNotes:async()=>[...await inventory.savedNotes(),...(await localConnectedNotes().savedNotes()).map(note=>({...note,consumption:'connection-required' as const}))],pending:notePending,inspect,receivedNotes:()=>localReceivedNotes().list(),
+    localNotes={exportImage:noteImages.exportImage,savedNotes:async()=>[...await inventory.savedNotes(),...(await localConnectedNotes().savedNotes()).map(note=>({...note,consumption:'connection-required' as const}))],pending:notePending,inspect,receivedNotes:()=>localReceivedNotes().list(),
       review:amount=>action(()=>withAccountExecutionLock(async()=>{
         await assertNoteCreateState();const pending=await notePending();
         if(pending){if(pending.amountUsdCents!==amount)throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');return{...pending,rail:pending.rail??'reserve'};}
