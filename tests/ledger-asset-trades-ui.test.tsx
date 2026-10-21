@@ -40,3 +40,16 @@ it('labels a sale loss as realized and does not claim a return for missing purch
   expect(host.querySelector('.ledger-trade-return')).toBeNull();
  }finally{act(()=>root.unmount());}
 });
+it('uses the authored asset title and offers a subtle standalone-page link in expanded trade details without fetching',async()=>{
+ const {publicAssetTitle}=await import('../src/receiz/asset-title');
+ const id='profile:artist:work';publicAssetTitle({id,receizId:'work',title:'This is the caption, not the name.',profileOriginal:{assetTitle:'An Authored Work'}});
+ const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'title-test',actionKind:'market.share.buy',assetTrade:{side:'buy',marketItemId:id,title:'This is the caption, not the name.',shareQuantityMicro:'1000000',settlementUsdCents:'10000'}}]}).records[0];
+ const host=document.createElement('div'),root=createRoot(host),fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ try{
+  act(()=>root.render(<LedgerInspector record={record} value={ledgerValueForRecord(record)}/>));
+  const details=host.querySelector('.ledger-trade-details')!;
+  expect(details.querySelector('h4')?.textContent).toBe('An Authored Work');
+  expect(details.querySelector('a[aria-label="View asset"]')?.getAttribute('href')).toBe('/asset/profile%3Aartist%3Awork/');
+  expect(details.querySelector('a svg')).not.toBeNull();expect(fetch).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());vi.unstubAllGlobals();}
+});

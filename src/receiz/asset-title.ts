@@ -1,4 +1,8 @@
 import {publicAssetTitles} from '../content/public-asset-titles.js';
+const authoredTitles=new Map<string,string>();
+/** Display names only, reused from already-read public asset metadata. Stable
+ * asset IDs select names; this never joins proof or monetary authority. */
+export function retainedAuthoredAssetTitle(id:string|undefined):string|null{return id?authoredTitles.get(id)??publicAssetTitles[id]?.[2]??null:null;}
 const record=(value:unknown):Record<string,unknown>=>value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
 const title=(value:unknown)=>typeof value==='string'&&value.length<=4096&&value.trim()?value.trim():null;
 /** Display metadata only. Titles never replace original source or authority.
@@ -13,7 +17,8 @@ export function publicAuthoredAssetTitle(input:unknown):string|null{
  return null;
 }
 export function publicAssetTitle(input:unknown):string|null{
- const authored=publicAuthoredAssetTitle(input);if(authored)return authored;
+ const authored=publicAuthoredAssetTitle(input);
+ if(authored){const id=record(input).id;if(typeof id==='string'&&id.length<=512){authoredTitles.delete(id);authoredTitles.set(id,authored);if(authoredTitles.size>4096)authoredTitles.delete(authoredTitles.keys().next().value!);}return authored;}
  const source=record(input),media=record(record(source.profileOriginal).media),digest=media.originalDownloadSha256Hex??record(media.material).sealedArtifactSha256Hex;
  const retained=typeof source.id==='string'?publicAssetTitles[source.id]:undefined;
  // Old retained rows lost their authored title during curation. Correct only

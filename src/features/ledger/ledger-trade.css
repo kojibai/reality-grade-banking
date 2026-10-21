@@ -12,3 +12,5 @@
 .ledger-inspector .ledger-trade-details h4{font-size:14px;line-height:1.5;letter-spacing:0;text-transform:none;color:#172e44;margin:0 0 15px}
 .public-ledger-event .ledger-trade-summary{font-size:11px}
 @media(max-width:600px){.ledger-trade-details{padding:17px}.ledger-trade-details dl{gap:15px 18px}.ledger-trade-details dd{font-size:14px}.ledger-trade-summary{font-size:11px}.public-ledger-event .ledger-trade-summary{font-size:10px}}
+
+.ledger-trade-asset-link{display:inline-flex;align-items:center;gap:.4rem;min-height:2.5rem;margin:0 0 .6rem;color:var(--muted,#657b95);font-size:.8rem;font-weight:550;text-decoration:none}.ledger-trade-asset-link:hover{color:var(--accent,#2851d4)}.ledger-trade-asset-link:focus-visible{outline:2px solid var(--accent,#2851d4);outline-offset:3px;border-radius:6px}

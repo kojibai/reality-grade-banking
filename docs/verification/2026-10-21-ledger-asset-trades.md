@@ -38,3 +38,15 @@ Evidence is local code/fixture qualification. It does not attest hosted response
 deployment or recompute the upstream financial cost-basis writer. Historical
 public action records without cost basis remain explicitly without a realized
 return; current market quotes never fill that gap.
+
+### Authored titles and asset navigation
+
+Ledger trade details and summaries prefer the authored name already present in
+public asset metadata or the shipped title index, falling back to the recorded
+trade label. This display lookup does not change or merge recorded trade facts.
+Expanded trade details include a compact View asset link using the recorded
+Market item ID. No new endpoint or asset fetch runs for either change.
+
+Regression: the UI test first failed with the caption heading, then passed with
+the authored title and encoded standalone-page link. The Ledger trade, title,
+and public Market suites passed 33/33; fetch was asserted unused in the UI test.

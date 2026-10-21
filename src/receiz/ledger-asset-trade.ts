@@ -1,3 +1,4 @@
+import {retainedAuthoredAssetTitle,publicAuthoredAssetTitle} from './asset-title';
 import type {PublicRecord} from './public-network';
 
 export interface LedgerAssetTrade {
@@ -14,6 +15,7 @@ export function readLedgerAssetTrade(input:unknown):LedgerAssetTrade|null{
  const value=object(input);if(value.side!=='buy'&&value.side!=='sell')return null;
  const result:LedgerAssetTrade={side:value.side};
  for(const key of ['title','marketItemId'] as const){const text=value[key];if(typeof text==='string'&&text.trim()&&text.length<=(key==='title'?4096:512)&&!/[\x00-\x1f\x7f]/.test(text))result[key]=text;}
+ const authored=publicAuthoredAssetTitle(value);if(authored)result.title=authored;
  for(const key of ['shareQuantityMicro','priceUsdCents','notionalUsdCents','settlementUsdCents','feeUsdCents','realizedCostBasisUsdCents'] as const){const raw=value[key],text=typeof raw==='number'&&Number.isSafeInteger(raw)&&raw>=0?String(raw):raw;if(typeof text==='string'&&/^(0|[1-9]\d{0,39})$/.test(text))result[key]=text;}
  return result;
 }
@@ -22,6 +24,7 @@ export function ledgerAssetTrade(record:PublicRecord):LedgerAssetTrade|null{
  if(!side||!trade||trade.side!==side||record.amountUsdCents!==null&&trade.settlementUsdCents!==undefined&&record.amountUsdCents!==trade.settlementUsdCents)return null;
  return trade;
 }
+export function ledgerTradeAssetTitle(trade:LedgerAssetTrade):string|undefined{return retainedAuthoredAssetTitle(trade.marketItemId)??trade.title;}
 export function ledgerTradeReturn(trade:LedgerAssetTrade):{amountUsdCents:string;percent:string|null;direction:'up'|'down'|'flat'}|null{
  if(trade.side!=='sell'||trade.settlementUsdCents===undefined||trade.realizedCostBasisUsdCents===undefined)return null;
  const cost=BigInt(trade.realizedCostBasisUsdCents),delta=BigInt(trade.settlementUsdCents)-cost,absolute=delta<0n?-delta:delta;
@@ -31,7 +34,7 @@ export function ledgerTradeReturn(trade:LedgerAssetTrade):{amountUsdCents:string
 export function ledgerTradeSummary(record:PublicRecord):string|null{
  const trade=ledgerAssetTrade(record);if(!trade)return null;
  const shares=trade.shareQuantityMicro===undefined?null:(BigInt(trade.shareQuantityMicro)/1000000n).toLocaleString('en-US')+((BigInt(trade.shareQuantityMicro)%1000000n)===0n?'':'.'+String(BigInt(trade.shareQuantityMicro)%1000000n).padStart(6,'0').replace(/0+$/,''));
- return [trade.title,shares===null?null:`${shares} ${trade.shareQuantityMicro==='1000000'?'share':'shares'}`].filter(Boolean).join(' · ')||null;
+ return [ledgerTradeAssetTitle(trade),shares===null?null:`${shares} ${trade.shareQuantityMicro==='1000000'?'share':'shares'}`].filter(Boolean).join(' · ')||null;
 }
 /** Immutable event facts survive a compatible thin refresh. Public joins need
  * a shared proof coordinate; private joins stay within the admitted account read. */

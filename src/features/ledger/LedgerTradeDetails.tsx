@@ -1,5 +1,7 @@
+import {ArrowUpRight} from 'lucide-react';
+import {assetPagePath} from '../../receiz/public-asset-page';
 import {formatMoney,formatUnits} from '../../core/money';
-import {ledgerTradeReturn,type LedgerAssetTrade} from '../../receiz/ledger-asset-trade';
+import {ledgerTradeReturn,ledgerTradeAssetTitle,type LedgerAssetTrade} from '../../receiz/ledger-asset-trade';
 import './ledger-trade.css';
 
 export function LedgerTradeReturn({trade}:{trade:LedgerAssetTrade}){
@@ -7,10 +9,11 @@ export function LedgerTradeReturn({trade}:{trade:LedgerAssetTrade}){
  return <small className={`ledger-trade-return is-${result.direction}`} title="Realized return after fees, compared with the recorded cost basis of the shares sold."><span>{BigInt(result.amountUsdCents)>0n?'+':''}{formatMoney(result.amountUsdCents)}</span>{result.percent!==null&&<span> ({result.percent})</span>}<span className="ledger-trade-return-label"> realized</span></small>;
 }
 export function LedgerTradeDetails({trade}:{trade:LedgerAssetTrade|null}){
- if(!trade)return null;const result=ledgerTradeReturn(trade),quantity=BigInt(trade.shareQuantityMicro??'0');
+ if(!trade)return null;const title=ledgerTradeAssetTitle(trade),assetLink=trade.marketItemId&&/^[a-zA-Z0-9:_-]{1,256}$/.test(trade.marketItemId)?assetPagePath(trade.marketItemId):null;const result=ledgerTradeReturn(trade),quantity=BigInt(trade.shareQuantityMicro??'0');
  const price=trade.priceUsdCents??(trade.notionalUsdCents!==undefined&&quantity>0n?String((BigInt(trade.notionalUsdCents)*1000000n+quantity/2n)/quantity):undefined);
  return <section className="ledger-trade-details" aria-label={trade.side==='buy'?'Asset purchase details':'Asset sale details'}>
-  {trade.title&&<h4>{trade.title}</h4>}
+  {title&&<h4>{title}</h4>}
+  {assetLink&&<a className="ledger-trade-asset-link" href={assetLink} aria-label="View asset">View asset<ArrowUpRight size={13} strokeWidth={1.6}/></a>}
   <dl>
    {trade.shareQuantityMicro!==undefined&&<div><dt>Shares {trade.side==='buy'?'purchased':'sold'}</dt><dd>{formatUnits(trade.shareQuantityMicro)}</dd></div>}
    {price!==undefined&&<div><dt>{trade.priceUsdCents!==undefined?'Price per share':'Average price per share'}</dt><dd>{formatMoney(price)}</dd></div>}
