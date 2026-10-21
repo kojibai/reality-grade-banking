@@ -18,16 +18,16 @@
   },
   "rewrites": [
     {
-      "source": "/asset/:id/og.png",
-      "destination": "/api/asset?asset=:id&image=1"
+      "source": "/asset/:asset/og.png",
+      "destination": "/api/asset?asset=:asset&image=1"
     },
     {
-      "source": "/asset/:id/",
-      "destination": "/api/asset?asset=:id"
+      "source": "/asset/:asset/",
+      "destination": "/api/asset?asset=:asset"
     },
     {
-      "source": "/asset/:id",
-      "destination": "/api/asset?asset=:id"
+      "source": "/asset/:asset",
+      "destination": "/api/asset?asset=:asset"
     },
     {
       "source": "/explorer",

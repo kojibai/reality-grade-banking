@@ -40,7 +40,10 @@ export async function handleAssetPreview(request:Request,dependencies?:Dependenc
  // Production rewrites may preserve a trailing slash on the function path.
  // The page URL and its image preview must resolve the same opaque source ID.
  const id=url.pathname.replace(/\/$/,'')==='/api/asset'?url.searchParams.get('asset'):assetPageId(url.pathname.replace(/og\.png$/,''));
- if(!id||id.length>256||/[\x00-\x1f\x7f]/.test(id)||url.hash||[...url.searchParams.keys()].some(key=>!['asset','image'].includes(key)||url.searchParams.getAll(key).length!==1)||url.searchParams.has('image')&&url.searchParams.get('image')!=='1'){headers.set('Cache-Control','no-store');return new Response('This asset page address could not be read.',{status:400,headers});}
+ // A platform rewrite can retain its named capture alongside the destination
+ // query. Both names may describe this public source, never different sources.
+ const conflictingId=['asset','id'].some(key=>url.searchParams.has(key)&&url.searchParams.get(key)!==id);
+ if(!id||id.length>256||/[\x00-\x1f\x7f]/.test(id)||url.hash||conflictingId||[...url.searchParams.keys()].some(key=>!['asset','id','image'].includes(key)||url.searchParams.getAll(key).length!==1)||url.searchParams.has('image')&&url.searchParams.get('image')!=='1'){headers.set('Cache-Control','no-store');return new Response('This asset page address could not be read.',{status:400,headers});}
  headers.set('Content-Type',image?'image/png':'text/html; charset=utf-8');
  // HEAD probes neither parse the catalog nor read HTML, load fonts or render PNG.
  if(request.method==='HEAD')return new Response(null,{headers});

@@ -21,6 +21,13 @@ it('opens the canonical page through the trailing-slash function path used by pr
  const preview=await handleAssetPreview(new Request('https://bankeiz.com/api/asset/?asset='+encodeURIComponent(item.id)+'&image=1'),f);
  expect(preview.status).toBe(200);expect(preview.headers.get('content-type')).toBe('image/png');
 });
+it.each(['/api/asset/?asset=ID&id=ID','/asset/ID/?asset=ID&id=ID'])('opens a public asset with matching rewrite captures: %s',async template=>{
+ const f=deps(),url='https://bankeiz.com'+template.replaceAll('ID',encodeURIComponent(item.id));
+ const response=await handleAssetPreview(new Request(url),f);
+ expect(response.status).toBe(200);expect(await response.text()).toContain('id="public-asset-seed"');expect(f.item).toHaveBeenCalledExactlyOnceWith(item.id);
+ const conflict=await handleAssetPreview(new Request(url.replace('&id='+encodeURIComponent(item.id),'&id=another-source')),f);
+ expect(conflict.status).toBe(400);
+});
 it.each(['','og.png'])('handles HEAD %s without source reads, font loading or image rendering',async suffix=>{
  const f=deps(),response=await handleAssetPreview(new Request('https://bankeiz.com'+assetPagePath(item.id)+suffix,{method:'HEAD'}),f);
  expect(response.status).toBe(200);expect(await response.text()).toBe('');expect(f.page).not.toHaveBeenCalled();expect(f.item).not.toHaveBeenCalled();expect(f.image).not.toHaveBeenCalled();
