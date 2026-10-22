@@ -13,6 +13,14 @@ it('keeps the displayed automatic split immutable before identity signing',async
  expect(()=>Object.assign((review.request as {definition:object}).definition,{units:'2'})).toThrow(TypeError);
  expect(review.terms.fundingComponents![0].amountUsdCents).toBe('6000');expect(signs).toBe(0);
 });
+it('distinguishes never-submitted signing failure from an uncertain submitted nonce under its execution lock',async()=>{
+ let state:unknown=null,locked=false,cancelSign=true;const calls:string[]=[];
+ const api=payments.createNativeAssets({ownerReceizId:'owner.receiz.id',keyId:'a'.repeat(64),assertOpen(){},lock:async run=>{expect(locked).toBe(false);locked=true;try{return await run();}finally{locked=false;}},store:{read:async()=>{expect(locked).toBe(true);return state;},write:async value=>{state=structuredClone(value);}},sign:async challengeB64Url=>{if(cancelSign)throw Error('SIGN_CANCELED');return{schema:'receiz.identity.login_proof.v1',keyId:'a'.repeat(64),alg:'Ed25519',challengeB64Url,signatureB64Url:'test-only'};},request:async(path,request)=>{calls.push(path);if(!path.includes('/prepare?'))return{status:'unknown'};const review={schema:'receiz.bank.native-asset-review.v1',request,keyId:'a'.repeat(64),planDigest:'b'.repeat(64),terms:{debitUsdCents:'100',debitPhiMicro:'500000',creditUsdCents:'0',creditPhiMicro:'0',feeUsdCents:'0',quantityMicro:'1000000',assetDigest:null,recipient:null,expiresAtKaiUPulse:9000000000000000}};const {nativeAssetChallenge}=await import('../src/receiz/native-asset-protocol');return{...review,ticket:'fixture',challengeB64Url:nativeAssetChallenge(review as never)};}});
+ const review=await api.prepare({kind:'fund-asset',rail:'reserve',amountUsdCents:'100',definition:{name:'A unit',symbol:'UNIT',units:'1',description:'',linkedProofDigest:null}});
+ await expect(api.execute(review,review.confirmationDigest)).rejects.toThrow('SIGN_CANCELED');expect(state).toBeNull();
+ expect(await api.recoverOperation(review.request.requestId)).toEqual({status:'not-started'});expect(calls).toHaveLength(1);
+ cancelSign=false;expect(await api.execute(review,review.confirmationDigest)).toMatchObject({status:'unknown'});expect(await api.recoverOperation(review.request.requestId)).toMatchObject({status:'unknown'});expect(calls.at(-1)).toContain('/recover?');
+});
 it('retains the exact approved intent before submission and uses only read-only recovery after response loss',async()=>{
  const factory=Reflect.get(payments,'createNativeAssets');expect(typeof factory).toBe('function');
  let state:unknown=null;const sequence:string[]=[];const calls:string[]=[];

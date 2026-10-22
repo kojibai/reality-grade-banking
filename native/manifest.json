@@ -14092,8 +14092,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/nativeAsset.ts",
-      "sha256": "56522c3fc6dc98d33b96908c0c497acb1658610bbf78a6bdfa30f5ccd39be8a4",
-      "bytes": 12960,
+      "sha256": "2b09bee73258933d5a73136dc17f80b7bb2284da63a993b250011720c4dfad5e",
+      "bytes": 13160,
       "mode": 420
     },
     {
@@ -15545,6 +15545,14 @@
       "sha256": "b33d20b28a679df1b1135c779c1dcbc1a3827ebc32095db225b667fc0d9c3f36",
       "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
       "sourceCommit": "ec6c438e9"
+    },
+    {
+      "id": "bank-public-native-asset-selector",
+      "path": "receiz/app/lib/wallet/bankNotes/nativeAsset.ts",
+      "baseSha256": "56522c3fc6dc98d33b96908c0c497acb1658610bbf78a6bdfa30f5ccd39be8a4",
+      "sha256": "2b09bee73258933d5a73136dc17f80b7bb2284da63a993b250011720c4dfad5e",
+      "purpose": "Resolve the stable native asset trade selector into an exact current-head review during the existing preparation read. Legacy exact-head selectors and execution checks remain unchanged.",
+      "sourceCommit": "dd5995e7f"
     }
   ],
   "historicalValuation": {
@@ -15553,7 +15561,7 @@
     "sourcePath": "app/utils/phi-issuance.ts",
     "sourceSha256": "69622c017e955734525e121a7b27bdaa42066932657b145e02be493792de9c74",
     "sdkVersion": "129.0.0",
-    "intrinsicAlgorithm": "phi/kosmos-v\u03c6-5",
+    "intrinsicAlgorithm": "phi/kosmos-vφ-5",
     "intrinsicPolicyChecksum": "b05b2049",
     "sampleUsd": 100,
     "historicalPointsAreRecordedQuotes": false
@@ -16449,7 +16457,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/nativeAsset.ts",
-      "sha256": "56522c3fc6dc98d33b96908c0c497acb1658610bbf78a6bdfa30f5ccd39be8a4"
+      "sha256": "2b09bee73258933d5a73136dc17f80b7bb2284da63a993b250011720c4dfad5e"
     },
     {
       "path": "app/lib/wallet/bankNotes/nativeAssetBacking.ts",

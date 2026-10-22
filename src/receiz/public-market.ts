@@ -1,5 +1,5 @@
 import {publicNativeAssetBinding,type PublicNativeAssetBinding} from './native-asset-public-binding.js';
-import {assetPublicationFreshnessHint} from './asset-publication-adoption.js';
+import {assetPublicationFreshnessHint,acceptDiscoveredPublicAssets} from './asset-publication-adoption.js';
 import {safeImportedSourceUrl} from "./imported-source-url.js";
 import {publicMarketPulseSeed,type MarketPulseSeed,type MarketValueRow} from './market-projection/source.js';
 import type {MarketSealedBirth} from './market-projection/sealed-copies.js';
@@ -181,7 +181,7 @@ export function validatePublicQuotes(snapshot: unknown): unknown {
 export async function fetchPublicMarket(signal?: AbortSignal,afterPublication=assetPublicationFreshnessHint()): Promise<PublicMarketCatalog> {
   const response = await fetch('/api/bank/public-market/membership'+(afterPublication?'?afterPublication='+afterPublication:''), { signal, credentials: 'omit' });
   if (!response.ok) throw new Error('The public Market could not be refreshed.');
-  const input = await response.json(); const catalog = parsePublicMarket(input); rememberPublicOriginalLocators(catalog);
+  const input = await response.json(); const catalog = parsePublicMarket(input); rememberPublicOriginalLocators(catalog);acceptDiscoveredPublicAssets(catalog);
   if (catalog.complete) try { localStorage.setItem('receiz-bank-public-discovery-v2', JSON.stringify(input)); } catch { /* Storage capacity does not change source availability. */ }
   return catalog;
 }

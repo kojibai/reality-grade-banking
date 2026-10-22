@@ -1,4 +1,4 @@
-import {mergeAdmittedProfileAssets,forgetAssetPublicationAdmissions} from './asset-publication-adoption.js';
+import {mergeAdmittedProfileAssets,forgetAssetPublicationAdmissions,acceptDiscoveredProfileAssets} from './asset-publication-adoption.js';
 import {parsePublicMarket,type PublicMarketItem} from './public-market.js';
 import {profileAvatarUrl} from './profile-avatar.js';
 
@@ -71,7 +71,7 @@ export function fetchPublicProfile(username:string,cursor?:string,priority:Reque
  const attempt=(async()=>{const response=await fetch(`/api/bank/public-profile/${username}${cursor?'?cursor='+encodeURIComponent(cursor):''}`,{credentials:'omit',redirect:'error',cache:'no-store',priority,signal:AbortSignal.timeout(30_000)});
   if(!response.ok){if(response.status===403||response.status===404||response.status===409)forgetPublicProfile(username);throw Error(response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':response.status===409?'PROFILE_CHANGED':'PROFILE_UNAVAILABLE');}
   const value=await response.json() as PublicProfile;if(value.schema!=='bankeiz.public-profile.v1'||value.username!==username||typeof value.userId!=='string'||!Array.isArray(value.items)||value.items.length>10_000)throw Error('PROFILE_RESPONSE_INVALID');
-  if(!cursor)return retainPublicProfile(value);return mergeAdmittedProfileAssets(value);
+  acceptDiscoveredProfileAssets(value);if(!cursor)return retainPublicProfile(value);return mergeAdmittedProfileAssets(value);
  })();reads.set(key,attempt);void attempt.finally(()=>{if(reads.get(key)===attempt)reads.delete(key);}).catch(()=>{});return attempt;
 }
 /** Only the selected owner is prepared. This shares the eventual profile read;

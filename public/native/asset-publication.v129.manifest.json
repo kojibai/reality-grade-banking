@@ -3,7 +3,7 @@
   "receizVersion": "129.0.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
   "moduleSha256": "dc7dbeee50432a64ceb16748123e8af55f66c4540b3ac22f7c53f5229a7ca0cb",
-  "sourceTreeSha256": "07fd34a6757e4484249c6473fece8b38576d45da8619f2e497e0e87c6c65a7b3",
+  "sourceTreeSha256": "31a5dd970cd828198e58bae34a93faba9741c04385d6aed492a521e2af3dced6",
   "inputs": 496,
   "bytes": 2922329,
   "applicationPatches": [
@@ -590,6 +590,14 @@
       "sha256": "b33d20b28a679df1b1135c779c1dcbc1a3827ebc32095db225b667fc0d9c3f36",
       "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
       "sourceCommit": "ec6c438e9"
+    },
+    {
+      "id": "bank-public-native-asset-selector",
+      "path": "receiz/app/lib/wallet/bankNotes/nativeAsset.ts",
+      "baseSha256": "56522c3fc6dc98d33b96908c0c497acb1658610bbf78a6bdfa30f5ccd39be8a4",
+      "sha256": "2b09bee73258933d5a73136dc17f80b7bb2284da63a993b250011720c4dfad5e",
+      "purpose": "Resolve the stable native asset trade selector into an exact current-head review during the existing preparation read. Legacy exact-head selectors and execution checks remain unchanged.",
+      "sourceCommit": "dd5995e7f"
     }
   ]
 }

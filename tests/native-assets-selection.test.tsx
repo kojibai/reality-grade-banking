@@ -3,6 +3,7 @@ import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {beforeEach,expect,it,vi} from 'vitest';
 import {LiveAssetDetail} from '../src/features/assets/LiveAssets';
+import {LiveOwnership} from '../src/features/assets/LiveOwnership';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 import type {HeldDeposit} from '../src/receiz/deposit-source';
 import type {BankOperationInput} from '../src/receiz/bank-operations';
@@ -12,6 +13,10 @@ vi.mock('../src/features/account/NativeOperation',()=>({NativeOperation:(props:{
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const held=(digest:string,head:string,quantity='6000000'):HeldDeposit=>({digest:digest.repeat(64),executionDigest:head.repeat(64),filename:'position.receizbundle',title:'Native units',kind:'proof',status:'held-proof',bytes:new Uint8Array([1]),pulse:'100',nativeAsset:{assetId:'c'.repeat(64),quantityMicro:quantity,lockedQuantityMicro:'0',supplyMicro:'10000000',symbol:'UNIT',backingRail:'reserve',backingUsdCents:'100',backingPhiMicro:'1000000',status:'active',sourceKaiUPulse:'100000000',issuedAtKaiUPulse:'100000000'}});
 beforeEach(()=>{p.input=undefined;p.inputKey='';});
+it('uses the stable native ID for public trades so preparation can bind the current accepted head',async()=>{
+ const host=document.createElement('div'),root=createRoot(host),identity={listDeposits:async()=>[]} as unknown as OpenIdentity;
+ try{for(const mode of ['buy','sell'] as const){await act(async()=>root.render(<LiveOwnership identity={identity} mode={mode} nativeAssetId={'c'.repeat(64)} initialDigest={'d'.repeat(64)} onRefresh={()=>{}}/>));expect(p.input!()).toMatchObject({kind:mode==='buy'?'buy-shares':'sell-share',assetId:'c'.repeat(64)});expect(p.input!()).not.toHaveProperty('assetDigest');}}finally{await act(()=>root.unmount());}
+});
 async function renderDetail(run:(host:HTMLDivElement,set:(source:HeldDeposit)=>Promise<void>)=>Promise<void>){
  let source=held('a','d');const host=document.createElement('div'),root=createRoot(host),identity={binding:{artifactOwnerReceizId:'sender.receiz.id'},listDeposits:async()=>[source]} as unknown as OpenIdentity;
  try{await act(async()=>root.render(<LiveAssetDetail identity={identity} digest={source.nativeAsset!.assetId}/>));await run(host,async next=>{source=next;await act(async()=>{dispatchEvent(new Event('bankeiz:asset-sources'));});});}finally{await act(async()=>root.unmount());}

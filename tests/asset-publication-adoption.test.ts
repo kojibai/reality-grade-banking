@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import {afterEach,expect,it,vi} from 'vitest';
-import {parsePublicMarket} from '../src/receiz/public-market';
+import {parsePublicMarket,mergePublicQuotes} from '../src/receiz/public-market';
 import {retainPublicProfile,retainedPublicProfile,forgetPublicProfile,type PublicProfile} from '../src/receiz/public-profile';
 import * as adoption from '../src/receiz/asset-publication-adoption';
 const reference={schema:'receiz.imported-proof-source.v1',artifactSha256:'a'.repeat(64),byteLength:2,filename:'asset.receizbundle',mimeType:'application/vnd.receiz.bundle+json',bytes:{kind:'bytes',sha256:'b'.repeat(64),byteLength:2,contentByteLength:2,height:0}};
@@ -10,6 +10,13 @@ const admission={username:'artist',original,sourceReference:reference,firstPaint
 const owner={identityDigest:'d'.repeat(64),accountUid:'owner'};
 const profile:PublicProfile={schema:'bankeiz.public-profile.v1',userId:'owner',username:'artist',displayName:'An artist',bio:null,location:null,websiteUrl:null,avatarUrl:null,bannerUrl:null,socialLinks:[],links:[],authorshipVerified:false,pbiReceiptHash:null,createdAt:null,stats:{originals:0,views:null,plays:null,seconds:null,completion:null},items:[],nextCursor:null};
 afterEach(()=>{adoption.forgetAssetPublicationAdmissions();forgetPublicProfile('artist');vi.restoreAllMocks();});
+it('keeps local membership through quote clones until actual discovery acknowledges it',()=>{
+ adoption.retainAssetPublicationAdmission(admission,owner);adoption.acknowledgeAssetPublication(reference.artifactSha256,{status:'published',artifactDigest:'f'.repeat(64),operationCount:1,visibleChildCount:1});
+ const empty=parsePublicMarket({ok:true,transport:{publicOriginals:[]}}),first=adoption.mergeAdmittedPublicAssets(empty);
+ const quoted=mergePublicQuotes(first,{ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[{itemId:first.items[0].id,visibility:'public',currentPriceUsd:12,history:[]}]}});
+ expect(adoption.mergeAdmittedPublicAssets(quoted).items).toHaveLength(1);
+ expect(adoption.mergeAdmittedPublicAssets(empty).items).toHaveLength(1);expect(adoption.assetPublicationFreshnessHint()).toBe(reference.artifactSha256);
+});
 it('immediately adds one exact admitted source to the owner profile and Market and survives stale reads',()=>{
  retainPublicProfile(profile);const notify=vi.fn(),unsubscribe=adoption.subscribeAssetPublicationAdmissions(notify);
  try{adoption.retainAssetPublicationAdmission(admission,owner);expect(notify).toHaveBeenCalledOnce();expect(retainedPublicProfile('artist')?.items[0]).toMatchObject({id:'profile:artist:imported-new',title:'A complete work',mediaKind:'image',originalDigest:'a'.repeat(64)});
@@ -23,7 +30,7 @@ it('keeps pending delivery distinct from public acknowledgment and never creates
  expect(()=>adoption.acknowledgeAssetPublication('e'.repeat(64),{status:'published',artifactDigest:'f'.repeat(64),operationCount:1,visibleChildCount:1})).toThrow();
  adoption.acknowledgeAssetPublication('a'.repeat(64),{status:'published',artifactDigest:'f'.repeat(64),operationCount:1,visibleChildCount:1});expect(adoption.assetPublicationFreshnessHint()).toBe('a'.repeat(64));
  const accepted=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:imported-new',receizId:'imported-new',title:'A complete work',ownerUsername:'artist',profileOriginal:{media:original.media}}]}});
- expect(adoption.mergeAdmittedPublicAssets(accepted).items).toHaveLength(1);expect(adoption.assetPublicationFreshnessHint()).toBeUndefined();
+ adoption.acceptDiscoveredPublicAssets(accepted);expect(adoption.mergeAdmittedPublicAssets(accepted).items).toHaveLength(1);expect(adoption.assetPublicationFreshnessHint()).toBeUndefined();
 });
 it('rejects mismatched source data and ignores a late callback from a closed or renamed account',()=>{
  expect(()=>adoption.retainAssetPublicationAdmission({...admission,sourceReference:{...reference,artifactSha256:'e'.repeat(64)}},owner)).toThrow();

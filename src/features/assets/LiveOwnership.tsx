@@ -15,8 +15,8 @@ export function LiveOwnership({ identity, mode = 'send', initialDigest = '', nat
     if (mode === 'redeem') return { kind: 'redeem-asset', assetDigest:selectedDigest };
     const quantityMicro = parseAmount(quantity);
     if (mode === 'send') return { kind: 'send-ownership', assetDigest:selectedDigest, quantityMicro, recipient };
-    if (mode === 'sell') return { kind: 'sell-share', assetDigest:selectedDigest, quantityMicro, rail, buyer };
-    return { kind: 'buy-shares', assetDigest:selectedDigest, quantityMicro, rail };
+    if (mode === 'sell') return { kind: 'sell-share', ...(nativeAssetId?{assetId:nativeAssetId}:{assetDigest:selectedDigest}), quantityMicro, rail, buyer };
+    return { kind: 'buy-shares', ...(nativeAssetId?{assetId:nativeAssetId}:{assetDigest:selectedDigest}), quantityMicro, rail };
   };
   return <NativeOperation identity={identity} input={input} inputKey={JSON.stringify([mode, assetDigest, sources.find(source=>source.digest===assetDigest||source.nativeAsset?.assetId===(nativeAssetId??assetDigest))?.executionDigest, quantity, recipient, rail, buyer])} title={title} confirmLabel={{ send: 'Send ownership', sell: 'Confirm sale', buy: 'Confirm purchase', redeem: 'Confirm redemption' }[mode]} onRefresh={onRefresh}>
     <h1 className="sheet-hero">{{ send: 'Move ownership.', sell: 'Unlock what you need.', buy: 'Make it yours.', redeem: 'Redeem your asset.' }[mode]}</h1>

@@ -73,6 +73,13 @@ response leaves the same attempt unknown. Read-only recovery resolves its
 original nonce and plan digest; it does not issue another asset. The existing
 native pending writer finishes or reopens its original accepted statement.
 
+If approval or signing stops before submission, the native adapter checks that
+nonce under its existing execution lock. An absent submission checkpoint reports
+`not-started`, a local choreography fact; it does not report a financial
+zero-write certificate. Any existing uncertain checkpoint retains the original
+read-only recovery path. Before submission, Edit details invalidates the old
+review and permits preparing a revised authored source.
+
 Historical requests, receipts, position certificates and public account statements
 remain readable without inserting fields into their signed bytes. New components
 are retained only when present in their verified source. The existing native
@@ -106,6 +113,12 @@ native asset ID; generic profile-share issuance rejects that binding. Ownership,
 offers and whole-supply redemption use the existing native paths. A displayed
 valuation never creates liquidity: a sale requires a matching funded offer.
 
+Public native Buy and Take cash use a closed `assetId` selector. The existing
+preparation read resolves its current accepted source and funded offer, and the
+signed review retains that exact source head and plan. Historical `assetDigest`
+selectors still require their selected head to be current; execution keeps its
+existing quote, head, ownership and offer checks.
+
 The encrypted creation journal advances through `source-held`, `funding-pending`,
 `funded`, `publication-pending` and `published`. Recovery resolves the original
 operation nonce before packaging or delivery. A lost response cannot authorize a
@@ -137,3 +150,6 @@ Deploy the compatible Receiz contract/runtime before enabling the Bank caller.
 The SDK pin remains v129. Bank refuses automatic issuance if its native asset
 runtime is absent; it never falls back to two transactions or a silent rail choice.
 Local tests are not a live financial, deployment or physical-custody qualification.
+
+The [composer qualification record](asset-composer-qualification.md) records
+the complete implementation decisions, review fixes and deployment boundary.

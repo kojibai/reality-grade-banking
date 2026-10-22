@@ -1087,7 +1087,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       read:()=>vault.loadBackedAssetPublicationState(binding),write:(next,previous)=>vault.saveBackedAssetPublicationState(binding,next,previous),
       runtime:openAssetPublicationRuntime,operations,retain:holdProof,
       restore:async(digest,filename,mimeType)=>{for(const source of await loadDepositSources(binding))if(await sdk.sha256ReceizBytes(source.bytes)===digest)return new File([new Uint8Array(source.bytes)],filename,{type:mimeType});throw Error('BANK_BACKED_PUBLICATION_SOURCE_UNAVAILABLE');},
-      recoverFunding:async nonce=>{const raw=await loadNativeAssetState(binding) as import('./native-asset').NativeAssetState|null;const row=raw&&[raw.current,...raw.history].find(v=>v.prepared.request.requestId===nonce);if(!row)return null;if(row.state==='unknown'){if(row!==raw!.current)throw Error('BANK_BACKED_PUBLICATION_RECOVERY_REQUIRED');return(await nativeAssets()).recovery.resolve(true);}return row.state==='zero-write'?{status:'zero-write',reasonCode:'EXPIRED'}:{status:'committed',nativeAssetSource:row.source!};},
+      recoverFunding:async nonce=>(await nativeAssets()).recoverOperation(nonce),
       publicProjection:async assetId=>{const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);noteOpen();return current.request(`/api/connect/bank/assets/public-projection?applicationId=${BANK_APPLICATION_ID}`,{method:'POST',body:{assetId}});},
     });
   }).catch(error=>{backedPublicationPromise=undefined;throw error;});

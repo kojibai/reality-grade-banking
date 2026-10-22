@@ -15,8 +15,8 @@ export type BankOperationInput =
   | { kind: 'send-value'; rail: BankRail; amountUsdCents: string; recipient: string }
   | { kind: 'exchange'; rail: BankRail; amountUsdCents: string; assetDigest: string }
   | { kind: 'send-ownership'; assetDigest: string; quantityMicro: string; recipient: string }
-  | { kind: 'sell-share'; assetDigest: string; quantityMicro: string; rail: BankRail; buyer: 'bank' | 'market' }
-  | { kind: 'buy-shares'; assetDigest: string; quantityMicro: string; rail: BankRail }
+  | ({assetDigest:string}|{assetId:string}) & { kind: 'sell-share'; quantityMicro: string; rail: BankRail; buyer: 'bank' | 'market' }
+  | ({assetDigest:string}|{assetId:string}) & { kind: 'buy-shares'; quantityMicro: string; rail: BankRail }
   | { kind: 'redeem-asset'; assetDigest: string }
   | { kind: 'fund-asset'; definition: AssetDefinition; rail: BankRail; amountUsdCents: string; authoredSource?: ImportedProofSourceReference };
 export type BankOperationRequest = BankOperationInput & { schema: 'bankeiz.operation-request.v1'; applicationId: string; requestId: string; actorReceizId: string };
@@ -48,8 +48,8 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
   const input = structuredClone(value), r = record(input);
   const fields: Record<BankOperationInput['kind'], string[]> = {
     'send-value': ['rail', 'amountUsdCents', 'recipient'], exchange: ['rail', 'amountUsdCents', 'assetDigest'],
-    'send-ownership': ['assetDigest', 'quantityMicro', 'recipient'], 'sell-share': ['assetDigest', 'quantityMicro', 'rail', 'buyer'],
-    'buy-shares': ['assetDigest', 'quantityMicro', 'rail'], 'redeem-asset': ['assetDigest'], 'fund-asset': ['definition', Object.hasOwn(r,'fundingRule')?'fundingRule':'rail', 'amountUsdCents',...(Object.hasOwn(r,'authoredSource')?['authoredSource']:[])],
+    'send-ownership': ['assetDigest', 'quantityMicro', 'recipient'], 'sell-share': [Object.hasOwn(r,'assetId')?'assetId':'assetDigest', 'quantityMicro', 'rail', 'buyer'],
+    'buy-shares': [Object.hasOwn(r,'assetId')?'assetId':'assetDigest', 'quantityMicro', 'rail'], 'redeem-asset': ['assetDigest'], 'fund-asset': ['definition', Object.hasOwn(r,'fundingRule')?'fundingRule':'rail', 'amountUsdCents',...(Object.hasOwn(r,'authoredSource')?['authoredSource']:[])],
   };
   if (typeof r.kind !== 'string' || !Object.hasOwn(fields, r.kind)) fail();
   closed(input, ['kind', ...fields[input.kind]]);
@@ -58,6 +58,7 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
   if ('amountUsdCents' in input) exact(input.amountUsdCents, true);
   if ('quantityMicro' in input) exact(input.quantityMicro, true);
   if ('assetDigest' in input) digest(input.assetDigest);
+  if ('assetId' in input) digest(input.assetId);
   if ('recipient' in input) {
     if (typeof input.recipient !== 'string' || !/^[A-Za-z0-9_.@-]{1,160}$/u.test(input.recipient.trim())) throw Error('Enter a Receiz ID or public username.');
     input.recipient = input.recipient.trim();
@@ -75,7 +76,7 @@ function termsFor(value: unknown, request: BankOperationRequest): Readonly<BankO
   if (!Number.isSafeInteger(t.expiresAtKaiUPulse) || Number(t.expiresAtKaiUPulse) <= 0) fail();
   if (t.assetDigest !== null) digest(t.assetDigest);
   if (t.recipient !== null && (typeof t.recipient !== 'string' || !/^[A-Za-z0-9_.@-]{1,160}$/u.test(t.recipient))) fail();
-  if ('assetDigest' in request && t.assetDigest !== request.assetDigest || 'recipient' in request && t.recipient !== request.recipient || 'quantityMicro' in request && t.quantityMicro !== request.quantityMicro) fail();
+  if ('assetId' in request && (typeof t.assetDigest!=='string'||! /^[a-f0-9]{64}$/.test(t.assetDigest)) || 'assetDigest' in request && t.assetDigest !== request.assetDigest || 'recipient' in request && t.recipient !== request.recipient || 'quantityMicro' in request && t.quantityMicro !== request.quantityMicro) fail();
   if (request.kind === 'exchange' && BigInt(t.debitUsdCents as string) + BigInt(t.feeUsdCents as string) > BigInt(request.amountUsdCents)) fail();
   if (request.kind === 'send-value' && t.debitUsdCents !== request.amountUsdCents) fail();
   if (['send-ownership', 'redeem-asset', 'sell-share'].includes(request.kind) && (t.debitUsdCents !== '0' || t.debitPhiMicro !== '0')) fail();

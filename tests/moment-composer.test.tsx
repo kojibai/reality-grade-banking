@@ -6,6 +6,12 @@ import {CreateAsset} from '../src/features/assets/CreateAsset';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 afterEach(()=>vi.restoreAllMocks());
+it('shows the published asset returned by funding recovery instead of reopening a blank composer',async()=>{
+ const deposit={bytes:new Uint8Array([1]),filename:'work.receiz',title:'Recovered work',digest:'a'.repeat(64),kind:'proof',status:'held-proof',pulse:'1',publication:{status:'published'}};let published=false;
+ const backed={pending:async()=>({state:{stage:published?'published':'funding-pending'},deposit:null}),resume:vi.fn(async()=>{published=true;return deposit;})};
+ const identity={backedAssetPublication:async()=>backed,accountUsername:()=> 'artist'} as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));expect(host.textContent).toContain('Confirming your asset.');await act(async()=>click(host,'Continue creation'));expect(host.textContent).toContain('Your asset is public.');expect(host.querySelector('a')?.getAttribute('href')).toBe('/artist/');expect(backed.resume).toHaveBeenCalledOnce();}finally{act(()=>root.unmount());}
+});
 async function title(host:HTMLElement){const input=host.querySelector<HTMLInputElement>('input[aria-label="Title"]')!;await act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'Moment');input.dispatchEvent(new Event('input',{bubbles:true}));});}
 const click=(host:HTMLElement,text:string)=>[...host.querySelectorAll('button')].find(button=>button.textContent?.includes(text))!.click();
 async function select(host:HTMLElement,file:File){const input=host.querySelector('input[aria-label="Choose original"]')!;Object.defineProperty(input,'files',{configurable:true,value:[file]});await act(async()=>input.dispatchEvent(new Event('change',{bubbles:true})));}
