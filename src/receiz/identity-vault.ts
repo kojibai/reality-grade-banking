@@ -16,13 +16,18 @@ async function noteRemovalGuard(saved: SavedIdentity) {
   const db = await database();
   const rows: {key:string;row:PrivateBankOperation|undefined}[]=[];
   try {
-    for (const family of ['offline-notes','prepared-notes','connected-notes','asset-publication','backed-asset-publication','received-note-deposits','native-payments','native-assets','wallet-sends','market-trades','received-proof']) {
+    for (const family of ['hosted-checkouts','offline-notes','prepared-notes','connected-notes','asset-publication','backed-asset-publication','received-note-deposits','native-payments','native-assets','wallet-sends','market-trades','received-proof']) {
       const key=`${family}|${BANK_STORAGE_APPLICATION_ID}|${digest}`;
       const row=await new Promise<PrivateBankOperation|undefined>((resolve,reject)=>{const read=db.transaction('operations').objectStore('operations').get(key);read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error);});
       rows.push({key,row});
       if(!row)continue;
       const clear=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(row.iv),additionalData:new TextEncoder().encode(key)},saved.wrappingKey,row.bytes);
       const state=JSON.parse(new TextDecoder().decode(clear));
+      if(family==='hosted-checkouts'){
+        const {readHostedCheckoutState,hasPendingHostedCheckout}=await import('./checkout-state'),checkout=await readHostedCheckoutState(state,digest);
+        if(!checkout||hasPendingHostedCheckout(checkout))throw Error('Keep this identity while its checkout is pending. Reopen the original payment to check its result.');
+        continue;
+      }
       if(family==='connected-notes'){
         if((await import('./connected-note-runtime')).hasHeldConnectedNotes(state))throw Error('Keep this ID while connected Notes or their original issue results are held. Transfer or deposit the Notes before removing this device custody.');
         continue;
@@ -822,6 +827,10 @@ export const loadNativeAssetState=(binding:{artifactSha256:string})=>loadNoteSta
 export const saveNativeAssetState=(binding:{artifactSha256:string},value:import('./native-asset').NativeAssetState,expected:unknown)=>saveNoteState(binding,'native-assets',value,expected);
 
 export const loadWalletSendState=(binding:{artifactSha256:string})=>loadNoteState(binding,'wallet-sends');
+export const loadHostedCheckoutState=(binding:{artifactSha256:string})=>loadNoteState(binding,'hosted-checkouts');
+export async function saveHostedCheckoutState(binding:{artifactSha256:string},next:import('./checkout-state').HostedCheckoutState,expected:unknown){
+ await(await import('./checkout-state')).readHostedCheckoutState(next,binding.artifactSha256);await saveNoteState(binding,'hosted-checkouts',next,expected);
+}
 export const saveWalletSendState=(binding:{artifactSha256:string},value:import('./wallet-send').WalletSendState,expected:unknown)=>saveNoteState(binding,'wallet-sends',value,expected);
 
 export const loadMarketTradeState=(binding:{artifactSha256:string})=>loadNoteState(binding,'market-trades');
