@@ -1,4 +1,4 @@
-import {afterEach,expect,it,vi} from 'vitest';
+import {afterEach,describe,expect,it,vi} from 'vitest';
 import {Resvg} from '@resvg/resvg-js';
 import sharp from 'sharp';
 import {renderAssetImage} from '../server/asset-preview-render';
@@ -9,6 +9,9 @@ const song=(name:string)=>({...base,artworkUrl:`https://receiz.com/artwork/${nam
 const red=()=>new Resvg('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#f43f5e"/></svg>').render().asPng();
 const response=()=>new Response(new Uint8Array(red()),{headers:{'content-type':'image/png'}});
 const pixels=(bytes:Uint8Array)=>new Resvg(`<svg xmlns="http://www.w3.org/2000/svg" width="1730" height="909"><image width="1730" height="909" href="data:image/png;base64,${Buffer.from(bytes).toString('base64')}"/></svg>`).render().pixels;
+// These integration cases rasterize several full-size PNGs. Allow for native
+// CPU work on shared CI runners; artwork download deadlines stay unchanged.
+describe('share-card cover rendering',{timeout:15_000},()=>{
 afterEach(()=>{vi.unstubAllGlobals();vi.useRealTimers();});
 
 it('renders the actual song cover on the front face while keeping the title/value side unchanged',async()=>{
@@ -65,4 +68,5 @@ it('bounds a stalled cover request and keeps the working generic card available'
  vi.useFakeTimers();const fetcher=vi.fn((_input:unknown,init?:RequestInit)=>new Promise<Response>((_resolve,reject)=>init?.signal?.addEventListener('abort',()=>reject(init.signal!.reason))));vi.stubGlobal('fetch',fetcher);
  const render=renderAssetImage(song('stalled-cover'));await vi.advanceTimersByTimeAsync(3500);
  expect(Buffer.from(await render).subarray(0,8)).toEqual(Buffer.from([137,80,78,71,13,10,26,10]));expect(fetcher).toHaveBeenCalledOnce();
+});
 });
