@@ -2,7 +2,7 @@
 
 Date: October 22, 2026
 
-Status: written design for review; implementation has not started.
+Status: approved October 22, 2026; implementation plan under review.
 
 ## Intended outcome
 
