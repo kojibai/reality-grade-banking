@@ -28,9 +28,9 @@ it('checks native connection on request without reporting the bank’s transacti
   const identity = { nativeReadiness: async () => ({ status: 'permissions-needed', missingScopes: ['receiz:reserve.write'], unavailableOperations: [], readyToTransact: false }) } as unknown as OpenIdentity;
   try {
     act(() => root.render(<BankConnection identity={identity} />));
-    expect(host.textContent).not.toContain('Native permissions needed');
+    expect(host.textContent).not.toContain('Account authorization required');
     await act(async () => host.querySelector('button')!.click());
-    expect(host.textContent).toContain('Native permissions needed');
+    expect(host.textContent).toContain('Account authorization required');
     expect(host.textContent).toContain('receiz:reserve.write');
     expect(host.textContent).not.toContain('Ready to transact');
     expect(host.querySelector('a[href*="receiz.com/wallet"]')).toBeNull();
@@ -49,7 +49,7 @@ it('requests native access only after the person explicitly approves the display
     act(() => consent.click());
     await act(async () => approve!.click());
     expect(check.mock.calls[0]).toEqual([]); expect(check.mock.calls[1]).toEqual([true]);
-    expect(host.textContent).toContain('Bank execution sources required');
+    expect(host.textContent).toContain('Connection capabilities available');
     expect(host.textContent).not.toContain('Ready to transact');
   } finally { act(() => root.unmount()); }
 });

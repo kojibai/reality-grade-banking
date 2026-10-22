@@ -7,15 +7,15 @@
   "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
   "operationMatrixDigest": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1",
   "verifierModuleSha256": "47fee9e101ed3c6fbb0d00f303ba2a0b28787401e394046ca8d23c37018beb2a",
-  "suiteSourceSha256": "11e5c2469efa2dee8d9ffa0b1385711eba84499181e901834f9d6a9f6775c3d9",
-  "startedAt": "2026-10-22T22:59:02.788Z",
-  "completedAt": "2026-10-22T22:59:03.047Z",
+  "suiteSourceSha256": "aae51301103d27de97f0583b1bbe4df013b8147b025d3584462cd2b0ed1d2118",
+  "startedAt": "2026-10-22T23:05:45.966Z",
+  "completedAt": "2026-10-22T23:05:46.201Z",
   "checks": [
     {
       "id": "money",
       "passed": true,
       "evidence": null,
-      "durationMs": 49
+      "durationMs": 43
     },
     {
       "id": "ownership",
@@ -51,13 +51,13 @@
       "id": "integrity",
       "passed": true,
       "evidence": null,
-      "durationMs": 51
+      "durationMs": 47
     },
     {
       "id": "source",
       "passed": true,
       "evidence": null,
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "custody",
@@ -75,13 +75,13 @@
       "id": "temporal",
       "passed": true,
       "evidence": null,
-      "durationMs": 126
+      "durationMs": 113
     },
     {
       "id": "edges",
       "passed": true,
       "evidence": null,
-      "durationMs": 5
+      "durationMs": 4
     }
   ],
   "localChecksPassed": true,

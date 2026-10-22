@@ -29,8 +29,8 @@ export function DeviceEvidence({onEvidence}:{onEvidence:(value:DeviceCustodyEvid
   {readiness==='unavailable'&&<p role="status">Local custody could not be checked. The diagnostic remains unavailable; no credential or assertion has been requested.</p>}
   <p role="status">{stage}</p>
   {report&&<div className="device-evidence-result">
-   <h4>Custody not qualified</h4>
-   <p>{report.rollbackConformance.status==='passed'?'The SDK counter check passed. Vendor attestation and financial custody remain unassessed.':report.rollbackConformance.status==='refused'?'Rollback check refused. The original v129 requirements remain in force.':'The rollback check did not run.'}</p>
+   <h4>Device verification record</h4>
+   <p>{report.rollbackConformance.status==='passed'?'Counter validation passed for this credential. Custody qualification additionally requires verified vendor attestation and the applicable financial-source evidence.':report.rollbackConformance.status==='refused'?'Rollback check refused. The original v129 requirements remain in force.':'The rollback check did not run.'}</p>
    <dl>
     <div><dt>Protocol</dt><dd>Receiz v129</dd></div>
     <div><dt>WebAuthn available</dt><dd>{yes(report.webAuthnAvailable)}</dd></div>
