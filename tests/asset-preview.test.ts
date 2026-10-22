@@ -55,6 +55,24 @@ it.each(['/api/asset/?asset=ID&id=ID','/asset/ID/?asset=ID&id=ID'])('opens a pub
  const conflict=await handleAssetPreview(new Request(url.replace('&id='+encodeURIComponent(item.id),'&id=another-source')),f);
  expect(conflict.status).toBe(400);
 });
+it.each(['fbclid=instagram-click','igsh=instagram-share','igshid=instagram-share','utm_source=ig&utm_medium=social&utm_campaign=shared-asset','fbclid=click&igsh=share&utm_source=instagram','gclid=search-click&msclkid=search-click','utm_source=first&utm_source=second'])('opens the same cold asset document when a shared link carries harmless tracking: %s',async tracking=>{
+ const f=deps(),path=assetPagePath(item.id),canonical=await(await handleAssetPreview(new Request('https://bankeiz.com'+path),f)).text();
+ f.item.mockClear();f.page.mockClear();
+ const response=await handleAssetPreview(new Request('https://bankeiz.com'+path+'?'+tracking,{headers:{'User-Agent':'Instagram','Referer':'https://l.instagram.com/'}}),f);
+ expect(response.status).toBe(200);expect(response.headers.get('location')).toBeNull();expect(await response.text()).toBe(canonical);
+ expect(f.item).toHaveBeenCalledExactlyOnceWith(item.id);expect(f.page).toHaveBeenCalledOnce();expect(f.image).not.toHaveBeenCalled();
+});
+it('ignores tracking on a rewritten asset URL without accepting conflicting selectors or extra controls',async()=>{
+ const f=deps(),path='https://bankeiz.com/api/asset/?'+new URLSearchParams({asset:item.id,id:item.id,fbclid:'click',igsh:'share',utm_source:'instagram'});
+ expect((await handleAssetPreview(new Request(path),f)).status).toBe(200);
+ f.item.mockClear();f.page.mockClear();
+ for(const suffix of ['&asset=other','&id=other','&image=2','&player=2','&url=https://foreign.invalid','&accountUid=foreign'])expect((await handleAssetPreview(new Request(path+suffix),f)).status).toBe(400);
+ expect(f.item).not.toHaveBeenCalled();expect(f.page).not.toHaveBeenCalled();
+});
+it('answers tracked HEAD probes without reading the asset or document',async()=>{
+ const f=deps(),response=await handleAssetPreview(new Request('https://bankeiz.com'+assetPagePath(item.id)+'?fbclid=click&igsh=share',{method:'HEAD'}),f);
+ expect(response.status).toBe(200);expect(await response.text()).toBe('');expect(f.item).not.toHaveBeenCalled();expect(f.page).not.toHaveBeenCalled();expect(f.image).not.toHaveBeenCalled();
+});
 it.each(['','og.png'])('handles HEAD %s without source reads, font loading or image rendering',async suffix=>{
  const f=deps(),response=await handleAssetPreview(new Request('https://bankeiz.com'+assetPagePath(item.id)+suffix,{method:'HEAD'}),f);
  expect(response.status).toBe(200);expect(await response.text()).toBe('');expect(f.page).not.toHaveBeenCalled();expect(f.item).not.toHaveBeenCalled();expect(f.image).not.toHaveBeenCalled();

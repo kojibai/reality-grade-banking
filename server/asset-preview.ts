@@ -10,6 +10,9 @@ import {assetEmbedPlayer} from './asset-embed-player';
 import {profileAvatarUrl} from '../src/receiz/profile-avatar';
 type Dependencies={page():Promise<string>;item(id:string):Promise<PublicMarketItem|null>;image(item:PublicMarketItem):Promise<Uint8Array>};
 const escape=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
+// Shared-link attribution is inert: never select a source, alter the document,
+// or forward these values to a reader. Keep functional query arguments strict.
+const shareTrackingKey=/^(?:utm_[a-z0-9_]{1,64}|fbclid|igsh|igshid|mibextid|gclid|dclid|gbraid|wbraid|msclkid|ttclid|twclid|li_fat_id|srsltid|mc_cid|mc_eid)$/;
 let catalog:Promise<Map<string,PublicMarketItem>>|undefined;
 export async function assetPreviewItem(id:string){
  catalog??=(async()=>{const {readFile}=await import('node:fs/promises'),[market,sports]=await Promise.all(['market','sports'].map(name=>readFile(`public/receiz-public-${name}.json`,'utf8').then(JSON.parse))),base=parsePublicMarket(market,market.snapshot);return new Map(mergePublicSports(base,sports).items.map(item=>[item.id,item]));})().catch(error=>{catalog=undefined;throw error;});
@@ -53,7 +56,7 @@ export async function handleAssetPreview(request:Request,dependencies?:Dependenc
  // A platform rewrite can retain its named capture alongside the destination
  // query. Both names may describe this public source, never different sources.
  const conflictingId=['asset','id'].some(key=>url.searchParams.has(key)&&url.searchParams.get(key)!==id);
- if(!id||id.length>256||/[\x00-\x1f\x7f]/.test(id)||url.hash||conflictingId||image&&player||[...url.searchParams.keys()].some(key=>!['asset','id','image','player'].includes(key)||url.searchParams.getAll(key).length!==1)||url.searchParams.has('image')&&url.searchParams.get('image')!=='1'||url.searchParams.has('player')&&url.searchParams.get('player')!=='1'){headers.set('Cache-Control','no-store');return new Response('This asset page address could not be read.',{status:400,headers});}
+ if(!id||id.length>256||/[\x00-\x1f\x7f]/.test(id)||url.hash||conflictingId||image&&player||[...url.searchParams.keys()].some(key=>!shareTrackingKey.test(key)&&(!['asset','id','image','player'].includes(key)||url.searchParams.getAll(key).length!==1))||url.searchParams.has('image')&&url.searchParams.get('image')!=='1'||url.searchParams.has('player')&&url.searchParams.get('player')!=='1'){headers.set('Cache-Control','no-store');return new Response('This asset page address could not be read.',{status:400,headers});}
  headers.set('Content-Type',image?'image/png':'text/html; charset=utf-8');
  if(player){headers.set('X-Robots-Tag','noindex, nofollow');headers.set('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; img-src https://receiz.com; media-src https://receiz.com; frame-ancestors *; base-uri 'none'; form-action 'none'");}
  // HEAD probes neither parse the catalog nor read HTML, load fonts or render PNG.
