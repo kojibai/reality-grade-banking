@@ -15,7 +15,7 @@ it('copies real installation code on demand without opening checkout, loading a 
   expect(host.querySelector('details')?.open).toBe(false);
   expect(host.querySelector('iframe,script')).toBeNull();expect(network).not.toHaveBeenCalled();
   await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Copy payment button code"]')!.click());
-  expect(copy).toHaveBeenLastCalledWith(expect.stringContaining('to=klok&amp;amount=12.30'));
+  expect(copy).toHaveBeenLastCalledWith(expect.stringContaining('/pay/klok/?amount=12.30'));
   expect(host.querySelector('[aria-label="Payment button code copied"]')).not.toBeNull();
   await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Embedded checkout')!.click());
   await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Copy checkout code"]')!.click());
@@ -34,6 +34,6 @@ it('never exposes installation code until a receiving ID is available and resets
   await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Copy payment button code"]')!.click());
   await act(async()=>root.render(<PaymentTools username="second_user" amount=""/>));
   expect(host.querySelector('[aria-label="Payment button code copied"]')).toBeNull();
-  expect(host.querySelector<HTMLTextAreaElement>('textarea')?.value).toContain('to=second_user');
+  expect(host.querySelector<HTMLTextAreaElement>('textarea')?.value).toContain('/pay/second_user/');
  }finally{act(()=>root.unmount());}
 });

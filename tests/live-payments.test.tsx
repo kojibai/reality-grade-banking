@@ -113,3 +113,16 @@ it('carries only the public session reference back to the same account deposit r
  expect(readCardResume('?resumeCardSession=cs_test_12345678&resumeCardSession=cs_other_12345678')).toBeNull();
  expect(readCardResume('?resumeCardSession=not-a-session')).toBeNull();
 });
+it('uses the same selected hosted URL for copy, share, QR and NFC while preserving Send links',async()=>{
+ const copy=vi.fn().mockResolvedValue(undefined),share=vi.fn().mockResolvedValue(undefined),write=vi.fn().mockResolvedValue(undefined);vi.stubGlobal('navigator',{clipboard:{writeText:copy},share});vi.stubGlobal('isSecureContext',true);Object.assign(window,{NDEFReader:class{write=write;}});
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<LiveReceive identity={{username:'merchant'}as OpenIdentity}/>));const field=host.querySelector<HTMLInputElement>('[aria-label="Request amount (optional)"]')!;
+ await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(field,'12.30');field.dispatchEvent(new Event('input',{bubbles:true}));});
+ await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Checkout link')!.click());const url='https://bankeiz.com/pay/merchant/?amount=12.30';
+ expect(host.querySelector<HTMLAnchorElement>('.payment-link')!.href).toBe(url);expect(host.querySelector('svg[aria-label="Your payment QR"] path')!.getAttribute('d')).toBe(paymentQrPath(paymentQr(url)));
+ await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Copy payment link"]')!.click());expect(copy).toHaveBeenLastCalledWith(url);
+ await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Share payment request')!.click());expect(share).toHaveBeenLastCalledWith({title:'Payment request',url});
+ await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Set up NFC tag')!.click());expect(write.mock.calls[0][0].records[0].data).toBe(url);
+ await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Send link')!.click());expect(host.querySelector<HTMLAnchorElement>('.payment-link')!.href).toBe('https://bankeiz.com/?to=merchant&amount=12.30');
+ }finally{await act(async()=>root.unmount());delete (window as unknown as {NDEFReader?:unknown}).NDEFReader;}
+});

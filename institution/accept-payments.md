@@ -1,8 +1,8 @@
 # Accept payments
 
-One receiving account. A shareable link, a website button and the existing
-Receiz checkout. Bankeiz supplies the customer experience; Receiz retains
-identity, custody, payment execution and confirmed credit.
+One receiving account. A hosted checkout for links, website buttons and in-person
+QR codes. Bankeiz supplies the customer experience using Receiz identity,
+Notes, payment execution and confirmed credit.
 
 Start with [Receive in Bankeiz](https://bankeiz.com/#account/receive) or the
 [public setup guide](https://bankeiz.com/learn/get-paid/).
@@ -11,18 +11,28 @@ Start with [Receive in Bankeiz](https://bankeiz.com/#account/receive) or the
 
 | Where you get paid | What to use | What happens |
 | --- | --- | --- |
-| Messages, invoices, email signatures, profiles | Copy your Bankeiz payment link from Receive | Opens an addressed account payment with an optional amount |
-| A website that accepts a URL | Attach the link to its own button | The same Bankeiz payment flow |
-| A custom HTML block | Copy Payment button in Receive | A styled link with the confirmed username and optional amount |
-| A site that permits custom scripts | Copy Embedded checkout in Receive | Existing Receiz card checkout within the site; the customer enters the amount |
-| A custom application or order system | Pinned SDK checkout plus server-side result confirmation | Retains the exact session and checks recipient, amount and confirmed credit before fulfillment |
+| Messages, invoices, email signatures, profiles | Choose **Checkout link** in Receive | A dedicated page to pay you by card, Balance or Note, with an optional amount |
+| A website that accepts a URL | Attach the checkout link to its own button | The same hosted payment, without a script |
+| A custom HTML block | Copy **Payment button** in Receive | A styled link to the hosted checkout |
+| A counter, table or printed sign | Display the checkout QR from Receive | Scanning opens the same payment page on the customer's phone |
+| Someone already using Bankeiz | Choose **Send link** in Receive | Opens the existing addressed Send flow |
+| A site that permits custom scripts | Copy **Embedded checkout** in Receive | The separate existing Receiz card widget; the customer enters the amount |
+| A custom application or order system | Pinned SDK checkout plus trusted result confirmation | Retains the exact session and checks recipient, amount and confirmed credit before fulfillment |
 
-Bankeiz payment links offer the existing balance, card-funding and **Pay with a
-Note** options. Reserve, Settlement and Settlement Reserve Notes all use that
-same option. The payer deposits a valid Note they own; confirmed credit then
-funds the ordinary account payment. Exact source continuity remains available
-through the Note deposit and the subsequent payment. Deposit is not a second
-payment to the merchant.
+The hosted checkout is `https://bankeiz.com/pay/yourname/`. An optional
+`?amount=12.30` prefills the requested amount. Opening it restores the customer's
+existing device identity, or creates one on an empty supported device. There is
+no signup step. Saving the **Identity Record** is optional and lets them reopen
+that account on another device. A saved identity that cannot be restored produces
+an import/retry screen rather than a replacement account.
+
+Customers choose Card, Balance or Note, review the recipient and exact amount,
+and approve. Balance uses the ordinary payment rules; an observed shortfall is
+shown with its card contribution. Notes may be Reserve, Settlement or Settlement
+Reserve. Their original ownership and receiving rules apply; confirmed credit
+funds the approved payment automatically. A changed shortfall requires another
+review. Surplus Note value and any card minimum remainder stay in the customer's
+account. No amount change or link preview submits a payment.
 
 The separate Receiz widget currently accepts cards and legacy Wallet Note
 tokens. Its token upload is **not** the native Bankeiz Note admission interface.
@@ -32,7 +42,7 @@ the carrier, relabel a Note or call a legacy claim method to bypass custody.
 ## No code
 
 1. Open **Receive** under the account that should receive payment.
-2. Share its payment link, optionally with an amount.
+2. Choose Checkout link, optionally enter an amount, and share the link or QR.
 3. For a website, open **Accept payments anywhere** and copy the button or
    existing checkout code. Paste into the website's HTML/custom-code block.
 4. Test the installed link as a customer and check the destination before a
@@ -41,12 +51,12 @@ the carrier, relabel a Note or call a legacy claim method to bypass custody.
 Link-only tools need only the URL. A button needs an HTML block. The checkout
 widget needs scripts to be allowed by the site and its Content Security Policy;
 a platform that strips scripts cannot run it. Use a normal payment link there.
-No secret, private Identity Seal, access token or signing key belongs in a page.
+No secret, private Identity Record, access token or signing key belongs in a page.
 
-These are the existing transports, shown with a placeholder username:
+These public installation examples use a placeholder username:
 
 ```html
-<a href="https://bankeiz.com/?to=yourname&amp;amount=12.30"
+<a href="https://bankeiz.com/pay/yourname/?amount=12.30"
    target="_blank" rel="noopener noreferrer">Pay @yourname</a>
 ```
 
@@ -60,6 +70,20 @@ The optional Bankeiz request amount is not automatically passed to it. Use the
 SDK for an order whose amount must come from your trusted application. A
 customer-editable link or public HTML is not an authoritative invoice amount.
 Receiz's merchant checkout requires a public profile.
+
+## At the counter and in your order system
+
+Show the checkout QR from Receive, with or without an amount. An NFC tag can
+carry the same public URL on supported devices. It opens a phone payment page;
+it is not a card terminal or card-present acceptance API.
+
+Confirm incoming payment in the merchant's own account/Ledger before handing
+over goods. A customer's receipt screenshot is not merchant confirmation.
+Public amounts are editable requests, not immutable invoices or order authority.
+Match the recorded recipient, exact amount and payment reference to your order,
+and fulfill that order once. The hosted link does not add an order webhook,
+invoice API or automated fulfillment contract. Use the typed SDK integration
+below when your application needs a trusted order-bound card session.
 
 ## Custom card checkout
 
@@ -135,10 +159,13 @@ amount. It rejects substituted sessions, missing credit and mismatched amounts.
 
 ## Notes and account payments
 
-The Bankeiz payment button opens the existing account payment route. Its
-**Payment options** adds card funding or deposits a current Note without
-changing the merchant or requested amount. No Note rail selector is needed.
-The ordinary payment is separately reviewed and explicitly approved.
+The Bankeiz button opens hosted checkout. The payer chooses a Note and approves
+its deposit and the recipient payment together. A received Note remains pending
+until its exact credit is confirmed; receipt is never treated as spending
+permission. A completion signal checks the retained original and continues the
+approved payment. **Back** preserves pending credit and payment recovery; it does
+not claim to cancel an already submitted operation. An unresolved payment offers
+**Check payment status** without creating another payment.
 
 The native v129 Note reader verifies the original, its rail, current addressed
 destination, exact funded units and composition. The existing received-Note
@@ -159,6 +186,7 @@ turn a public username or client ID into permission to transfer funds.
 
 | Capability | Existing Receiz surface | Integration requirement |
 | --- | --- | --- |
+| Hosted payment requests | Bankeiz `/pay/<username>/` with optional `amount` | Editable public request; payer approves recipient and amount |
 | Shareable account requests | Bankeiz `?to=` with optional `amount` | Discovery only; payer reviews and signs |
 | Card checkout | `payments.embeddedCheckout` | Public merchant, supported amount, retained original session |
 | Confirm card credit | Existing embed checkout session-status route | Match the trusted order, receiver, exact amount and credit |
