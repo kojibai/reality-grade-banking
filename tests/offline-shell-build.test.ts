@@ -8,7 +8,8 @@ it('versions complete final pages and fixed-path native resources and includes l
   const dir = await mkdtemp(join(tmpdir(), 'bankeiz-offline-build-'));
   try {
     await mkdir(join(dir, '.vite')); await mkdir(join(dir, 'assets'));
-    await writeFile(join(dir, '.vite/manifest.json'), JSON.stringify({ 'index.html': { file: 'assets/bank.js', dynamicImports: ['qr'] }, qr: { file: 'assets/qr-decoder.js' }, 'verify/index.html': { file: 'assets/verify.js' }, 'ledger/index.html': { file: 'assets/ledger.js', css: ['assets/ledger.css'], imports: ['ledger-reader'] }, 'ledger-reader': { file: 'assets/ledger-reader.js' }, 'conformance/index.html': { file: 'assets/conformance.js' } }));
+    await writeFile(join(dir, '.vite/manifest.json'), JSON.stringify({ 'pay/index.html':{file:'assets/checkout.js',css:['assets/checkout.css']}, 'index.html': { file: 'assets/bank.js', dynamicImports: ['qr'] }, qr: { file: 'assets/qr-decoder.js' }, 'verify/index.html': { file: 'assets/verify.js' }, 'ledger/index.html': { file: 'assets/ledger.js', css: ['assets/ledger.css'], imports: ['ledger-reader'] }, 'ledger-reader': { file: 'assets/ledger-reader.js' }, 'conformance/index.html': { file: 'assets/conformance.js' } }));
+    await mkdir(join(dir,'pay'));await writeFile(join(dir,'pay/index.html'),'static checkout shell');await writeFile(join(dir,'assets/checkout.js'),'checkout');await writeFile(join(dir,'assets/checkout.css'),'checkout css');
     await mkdir(join(dir, 'ledger')); await writeFile(join(dir, 'ledger/index.html'), 'public ledger');
     for (const file of ['ledger.js', 'ledger.css', 'ledger-reader.js']) await writeFile(join(dir, 'assets', file), file);
     await mkdir(join(dir, 'verify')); await writeFile(join(dir, 'verify/index.html'), 'public verifier'); await writeFile(join(dir, 'assets/verify.js'), 'verify');
@@ -28,6 +29,8 @@ it('versions complete final pages and fixed-path native resources and includes l
     expect(first.resources.some((v: { url: string }) => v.url === '/assets/qr-decoder.js')).toBe(true);
     expect(first.resources.some((v: { url: string }) => v.url === '/launch/iphone-402-874-3-portrait.png')).toBe(true);
     expect(first.resources.some((v: { url: string }) => v.url.includes('conformance'))).toBe(false);
+    for(const url of ['/pay/index.html','/assets/checkout.js','/assets/checkout.css'])expect(first.resources.some((v:{url:string})=>v.url===url),url).toBe(true);
+    expect(first.pages['/pay/index.html']).toBe('/pay/index.html');
     expect(first.pages).toMatchObject({ '/learn/': '/learn/', '/legal/': '/legal/' });
     expect(first.pages).toMatchObject({'/learn/notes/':'/learn/','/standards/':'/learn/','/market-cap/':'/explore/','/explore/music/':'/explore/'});
     expect(first.resources.some((v:{url:string})=>['/learn/notes/','/standards/','/market-cap/','/explore/music/'].includes(v.url))).toBe(false);

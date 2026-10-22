@@ -136,3 +136,16 @@ for (const rail of ['reserve', 'settlement']) {
 }
 assert.ok(!learn.includes('still being connected'));
 console.log(`Verified ${publicPages.length} unique social cards and canonical page metadata, structured data, indexable public copy, sitemap, robots, inline entrance, iPhone artwork and public navigation.`);
+
+const checkout=await readFile('dist/pay/index.html','utf8');
+assert.ok(builds['pay/index.html']?.isEntry,'Hosted checkout has a separate entry');
+assert.ok(checkout.includes('data-checkout-root')&&checkout.includes('<noscript>')&&!checkout.includes('receiz-navigation'),'Checkout has its own readable shell without the public catalog');
+const checkoutImports=new Set();
+async function checkCheckoutEntry(key){
+ if(checkoutImports.has(key))return;checkoutImports.add(key);const entry=builds[key];assert.ok(entry);
+ const body=await readFile('dist/'+entry.file,'utf8');
+ assert.ok(!/receiz-public-market\.json|bankeiz:private|\/api\/chat\/conversations|bankeiz-chart-worker/.test(body),'Checkout static entry does not start dashboard, messaging or market work');
+ for(const dep of entry.imports??[])await checkCheckoutEntry(dep);
+}
+await checkCheckoutEntry('pay/index.html');
+console.log('Verified dedicated hosted checkout entry and static import boundary.');

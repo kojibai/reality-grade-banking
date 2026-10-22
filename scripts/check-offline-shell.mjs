@@ -37,3 +37,6 @@ console.log(`Verified complete offline build ${manifest.version}: ${shell.length
 assert.equal(manifest.pages['/receipt/'], '/receipt/', 'Receipt links must reopen offline using their retained read-only entry.');
 
 for(const name of Object.keys(JSON.parse(await readFile('dist/proof-verifier/v129/build.json','utf8')).files)) assert.ok(shell.includes('/proof-verifier/v129/'+name),'Offline proof kit incomplete: '+name);
+
+assert.ok(shell.includes('/pay/index.html'),'The static checkout document participates in exact build caching, without request parameters or payment responses.');
+assert.equal(manifest.pages['/pay/index.html'],'/pay/index.html');

@@ -92,6 +92,14 @@
       "destination": "/index.html"
     },
     {
+      "source": "/pay",
+      "destination": "/pay/index.html"
+    },
+    {
+      "source": "/pay/",
+      "destination": "/pay/index.html"
+    },
+    {
       "source": "/pay/:username/",
       "destination": "/pay/index.html"
     },
