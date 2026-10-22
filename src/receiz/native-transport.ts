@@ -12,6 +12,7 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
   '/api/sdk/v1/auth/granted-scopes': 'GET',
   '/api/connect/wallet/me': 'GET',
   '/api/connect/market/portfolio': 'GET',
+  '/api/connect/market/shares/trade/cancel': 'POST',
   '/api/connect/transfers': 'POST',
   '/api/connect/transfers/public-note': 'POST',
   '/api/chat/conversations': 'POST',

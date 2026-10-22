@@ -163,3 +163,17 @@ No account checkpoint has been cleared, no trade has been replayed and no funds
 were moved during qualification. Existing unknown attempts can use the new
 explicit cancellation control after deployment; read-only absence remains
 unknown until a valid original or atomic closure is retained.
+
+### Production transport recovery qualification
+
+The initial recovery UI/SDK fixtures did not traverse Bankeiz's restricted
+native transport. The cancellation endpoint was missing from that shared
+allowlist, so it could be blocked before reaching Receiz even after both apps
+were deployed. The exact no-query POST is now admitted by the same policy used
+by the browser and server proxy. Other methods, owner selectors and destination
+queries stay refused. This requires a Bankeiz deployment and no further SQL.
+
+The regression exercises `createMarketTrade` → installed SDK → `nativeFetch` →
+`relayNativeAccount` → a synthetic upstream. It reproduces an uncertain original,
+closes that same nonce, reopens the retained terminal result and permits a new
+review with exactly one trade submission. No real account or funds are used.
