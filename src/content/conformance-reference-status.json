@@ -7,15 +7,15 @@
   "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
   "operationMatrixDigest": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1",
   "verifierModuleSha256": "47fee9e101ed3c6fbb0d00f303ba2a0b28787401e394046ca8d23c37018beb2a",
-  "suiteSourceSha256": "41b930c2545aee6a3b0243671c70b9196237746ad6f936cdfe6723502223b110",
-  "startedAt": "2026-10-22T22:53:58.024Z",
-  "completedAt": "2026-10-22T22:53:58.274Z",
+  "suiteSourceSha256": "7d780b9d64911a338508296fe81476ff38b21b9c05dedde0cde8f4cb73bf5e51",
+  "startedAt": "2026-10-22T22:57:28.753Z",
+  "completedAt": "2026-10-22T22:57:29.010Z",
   "checks": [
     {
       "id": "money",
       "passed": true,
       "evidence": null,
-      "durationMs": 51
+      "durationMs": 48
     },
     {
       "id": "ownership",
@@ -75,7 +75,7 @@
       "id": "temporal",
       "passed": true,
       "evidence": null,
-      "durationMs": 113
+      "durationMs": 123
     },
     {
       "id": "edges",
