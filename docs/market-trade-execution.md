@@ -149,7 +149,17 @@ page errors. They do not move money. The initial unrestricted full Bank test
 run hit a five-second Market-history timeout under concurrency; that unchanged
 file passed independently and the full suite passed with four workers.
 
-Deployment requires both migrations and the Bankeiz/Receiz code updates. The
-initial SQL migration was applied with explicit production approval. The
-integer-quotient follow-up and application deployments are tracked separately.
-No account checkpoint has been cleared and no replacement trade submitted.
+Both SQL migrations were applied to Receiz production with explicit approval:
+`20261022035629_market_trade_exact_arithmetic_and_recovery.sql` and
+`20261022040247_market_trade_integer_quotient_exactness.sql`. Installed-function
+inspection confirms `div()` in both writers, with no decimal `trunc()` quotient
+remaining; the near-integer edge returns exactly `999999999999999999`.
+The closure table has RLS, and anonymous/authenticated roles cannot execute its
+service function. The advisor's no-policy notice is intentional for this
+service-only table; no public access policy is added.
+
+The application code still requires the Bankeiz and Receiz pushes/deployments.
+No account checkpoint has been cleared, no trade has been replayed and no funds
+were moved during qualification. Existing unknown attempts can use the new
+explicit cancellation control after deployment; read-only absence remains
+unknown until a valid original or atomic closure is retained.
