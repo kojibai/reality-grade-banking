@@ -1,0 +1,8 @@
+import {useRef} from 'react';
+import {Upload,Check,FileCheck2} from 'lucide-react';
+import type {CheckoutNoteEntry} from '../receiz/checkout-state';
+import {formatMoney} from '../core/money';
+export function CheckoutNotes({notes,busy,onChoose}:{notes:readonly CheckoutNoteEntry[];busy:boolean;onChoose(file:File):void}){
+ const picker=useRef<HTMLInputElement>(null);
+ return <section className="checkout-notes" aria-label="Pay with a Note"><button className="checkout-note-upload" type="button" disabled={busy} onClick={()=>picker.current?.click()}><Upload size={23}/><strong>{notes.length?'Add another Note':'Choose your Note'}</strong><span>Reserve, Settlement or Settlement Reserve</span></button><input ref={picker} type="file" accept="image/png,.png,application/json,.json,.receiz,.receizbundle" hidden aria-label="Choose Note file" onChange={event=>{const file=event.target.files?.[0];event.target.value='';if(file)onChoose(file);}}/>{notes.length>0&&<ul>{notes.map(note=><li key={note.sourceDigest}>{note.status==='confirmed'?<Check size={17}/>:<FileCheck2 size={17}/>}<div><strong>{note.rail==='composite'?'Settlement Reserve':note.rail==='settlement'?'Settlement':'Reserve'} Note</strong><span>{note.status==='confirmed'?'Deposit confirmed':note.status==='received'||note.status==='depositing'?'Confirming credit…':'Original opened · ownership rules apply'}</span></div><strong>{formatMoney(note.inspection.amountUsdCents)}</strong></li>)}</ul>}<p className="checkout-caption">Use the original Note and the identity that owns it. Confirmed value funds this payment; any remainder stays in your balance.</p></section>;
+}

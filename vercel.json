@@ -92,6 +92,14 @@
       "destination": "/index.html"
     },
     {
+      "source": "/pay/:username/",
+      "destination": "/pay/index.html"
+    },
+    {
+      "source": "/pay/:username",
+      "destination": "/pay/index.html"
+    },
+    {
       "source": "/u/:username([a-z0-9_]{3,24})/",
       "destination": "/api/profile?username=:username"
     },

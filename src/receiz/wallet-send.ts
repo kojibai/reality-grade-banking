@@ -173,7 +173,7 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
   async retainedResult(clientNonce:string){if(!uuid(clientNonce))throw Error('BANK_WALLET_NONCE_INVALID');const s=await read(),c=s&&[s.current,...s.history].find(c=>c.body.clientNonce===clientNonce);if(!c)return null;
    const result=outcome(c);let receipt:WalletSendReceipt|null=null;
    if(result.status==='recorded'){const source=object(c.record),at=source.transfer?.createdAt??source.source?.transfer?.created_at;receipt={transferId:result.transferId,clientNonce,senderUserId:c.review.accountUid,recipientUserId:c.review.recipientUserId,amountUsdCents:c.review.amountUsdCents,recordedAt:typeof at==='string'&&Number.isFinite(Date.parse(at))?at:null};}
-   return{outcome:result,receipt};},
+   return{outcome:result,receipt,fundingSessionId:c.funding?.checkout?.sessionId};},
   discard(review:WalletSendReview){held.delete(review);},
  });
 }

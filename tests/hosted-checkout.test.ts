@@ -38,3 +38,15 @@ it('serializes duplicate approvals from independent controller consumers',async(
  const f=hostedFixture(),one=f.newController();await one.ready;const r=await one.prepare({recipient:'merchant',amountUsdCents:'1000',method:'balance'});const two=f.newController();await two.ready;
  await Promise.all([one.approve(r.digest),two.approve(r.digest)]);expect(f.transfer).toHaveBeenCalledTimes(1);expect(two.snapshot().phase).toBe('paid');
 });
+it('invalidates an unapproved Note review when another Note is selected',async()=>{
+ const f=hostedFixture(0),c=f.newController();await c.ready;await c.inspectNote({} as File);const first=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'note'});
+ const extra={...c.snapshot().notes[0],sourceDigest:'d'.repeat(64),sourceRef:'d'.repeat(64),noteId:'10000000-0000-4000-8000-000000000009',inspection:{...c.snapshot().notes[0].inspection,noteId:'10000000-0000-4000-8000-000000000009'}};f.deps.notes.inspect.mockResolvedValueOnce(extra);await c.inspectNote({}as File);
+ expect(c.snapshot().approval!.noteSourceDigests).toHaveLength(2);expect(c.snapshot().approval!.digest).not.toBe(first.digest);await expect(c.approve(first.digest)).rejects.toThrow();expect(f.deposit).not.toHaveBeenCalled();
+});
+it('matches card returns to the exact retained session and preserves historical receipts',async()=>{
+ const f=hostedFixture(0),c=f.newController();await c.ready;const a=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});await c.approve(a.digest);
+ expect(await c.inspectReturn(a.checkoutId,'cs_test_wrongoriginal')).toEqual({matched:false,receipt:null});
+ expect(await c.inspectReturn(a.checkoutId,'cs_test_hostedoriginal')).toEqual({matched:true,receipt:null});
+ f.creditCard();await c.check();await c.back();
+ const result=await c.inspectReturn(a.checkoutId,'cs_test_hostedoriginal');expect(result.matched).toBe(true);expect(result.receipt?.checkoutId).toBe(a.checkoutId);expect(c.snapshot().phase).toBe('editing');expect(f.transfer).toHaveBeenCalledTimes(1);
+});

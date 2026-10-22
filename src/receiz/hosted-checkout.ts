@@ -14,8 +14,8 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
  async function save(row:CheckoutSnapshot,history=stored?.history??[]){
   assert();const next:HostedCheckoutState={schema:'bank.hosted-checkouts.v1',identityDigest:input.identityDigest,revision:(stored?.revision??-1)+1,current:row,history};await readHostedCheckoutState(next,input.identityDigest);assert();await input.store.write(next,stored);assert();stored=next;publish(row);
  }
- async function admittedReceipt(outcome:WalletSendOutcome):Promise<CheckoutReceipt>{
-  const a=view.approval;if(!a||outcome.status!=='recorded'||outcome.clientNonce!==a.clientNonce)throw Error('CHECKOUT_RESULT_MISMATCH');
+ async function admittedReceipt(outcome:WalletSendOutcome,row:CheckoutSnapshot=view):Promise<CheckoutReceipt>{
+  const a=row.approval;if(!a||outcome.status!=='recorded'||outcome.clientNonce!==a.clientNonce)throw Error('CHECKOUT_RESULT_MISMATCH');
   const result=await(await input.walletSend()).retainedResult(a.clientNonce);assert();const r=result?.receipt;
   if(!r||result.outcome.status!=='recorded'||r.transferId!==outcome.transferId||r.senderUserId!==a.accountUid||r.recipientUserId!==a.recipient.userId||r.amountUsdCents!==a.amountUsdCents||r.clientNonce!==a.clientNonce)throw Error('CHECKOUT_RESULT_MISMATCH');
   return{...r,checkoutId:a.checkoutId,recipient:a.recipient,method:a.method};
@@ -88,10 +88,17 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
    if(view.walletOutcome&&view.walletOutcome.status!=='not-sent'||view.notes.some(n=>['depositing','received','attention-required'].includes(n.status)))throw Error('CHECKOUT_PAYMENT_PENDING');
    const entry=await input.notes.inspect(file);assert();if(view.notes.some(n=>n.noteId===entry.noteId))throw Error('This Note is already selected.');
    const notes=[...view.notes,entry];let a=view.approval;
-   if(view.approvalHistory.length&&a){if(a.method!=='note')throw Error('CHECKOUT_PAYMENT_PENDING');const {digest:_,...body}=a;a=await sign({...body,noteSourceDigests:notes.map(n=>n.sourceDigest),cardAmountUsdCents:'0'});}
+   if(a){if(a.method!=='note')throw Error('CHECKOUT_PAYMENT_PENDING');const {digest:_,...body}=a;a=await sign({...body,noteSourceDigests:notes.map(n=>n.sourceDigest),cardAmountUsdCents:'0'});}
    await save({...view,phase:a?'reviewed':'editing',notes,approval:a,error:null});return entry;
   });},
   approve,approveShortfall:approve,
+  inspectReturn(checkoutId:string,sessionId:string){return run(async()=>{
+   const row=[view,...(stored?.history??[])].find(candidate=>candidate.approval?.checkoutId===checkoutId);
+   if(!row?.approval)return{matched:false,receipt:null};
+   const retained=await(await input.walletSend()).retainedResult(row.approval.clientNonce);assert();
+   if(retained?.fundingSessionId!==sessionId)return{matched:false,receipt:null};
+   return{matched:true,receipt:retained.outcome.status==='recorded'?await admittedReceipt(retained.outcome,row):null};
+  });},
   check(){return run(async()=>{await continuePayment(true);});},
   back(){return run(async()=>{
    if(view.approvalHistory.length&&!['paid','not-sent'].includes(view.phase))return;
