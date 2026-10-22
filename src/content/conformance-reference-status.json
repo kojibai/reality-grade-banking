@@ -1,0 +1,97 @@
+{
+  "schema": "receiz.bank.entrance-reference-status.v2",
+  "suiteId": "receiz.bank.institution-browser-reference.2026-10-22.v2",
+  "profileVersion": "1.0.0",
+  "ruleset": "127.0.0",
+  "receizVersion": "129.0.0",
+  "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
+  "operationMatrixDigest": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1",
+  "verifierModuleSha256": "47fee9e101ed3c6fbb0d00f303ba2a0b28787401e394046ca8d23c37018beb2a",
+  "suiteSourceSha256": "a27bd241e329fb6ba6775b7b878fa8d1bda67d6a589d9a7731ad7acb0a1ab125",
+  "startedAt": "2026-10-22T22:04:26.065Z",
+  "completedAt": "2026-10-22T22:04:26.323Z",
+  "checks": [
+    {
+      "id": "money",
+      "passed": true,
+      "evidence": null,
+      "durationMs": 53
+    },
+    {
+      "id": "ownership",
+      "passed": true,
+      "evidence": null,
+      "durationMs": 28
+    },
+    {
+      "id": "atomic",
+      "passed": true,
+      "evidence": null,
+      "durationMs": 3
+    },
+    {
+      "id": "recovery",
+      "passed": true,
+      "evidence": null,
+      "durationMs": 1
+    },
+    {
+      "id": "assets",
+      "passed": true,
+      "evidence": null,
+      "durationMs": 1
+    },
+    {
+      "id": "release",
+      "passed": true,
+      "evidence": null,
+      "durationMs": 0
+    },
+    {
+      "id": "integrity",
+      "passed": true,
+      "evidence": null,
+      "durationMs": 49
+    },
+    {
+      "id": "source",
+      "passed": true,
+      "evidence": null,
+      "durationMs": 2
+    },
+    {
+      "id": "custody",
+      "passed": true,
+      "evidence": null,
+      "durationMs": 0
+    },
+    {
+      "id": "transport",
+      "passed": true,
+      "evidence": null,
+      "durationMs": 0
+    },
+    {
+      "id": "temporal",
+      "passed": true,
+      "evidence": null,
+      "durationMs": 118
+    },
+    {
+      "id": "edges",
+      "passed": true,
+      "evidence": null,
+      "durationMs": 5
+    }
+  ],
+  "localChecksPassed": true,
+  "institutionConformance": "not-assessed",
+  "creditAuthorized": false,
+  "financialActionsPerformed": 0,
+  "timestampsAreAuthority": false,
+  "scope": "nonfinancial-browser-reference",
+  "referenceEnvironment": {
+    "origin": "http://127.0.0.1:5456",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36"
+  }
+}

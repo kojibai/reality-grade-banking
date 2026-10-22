@@ -1,0 +1,9 @@
+{
+  "recorded": true,
+  "url": "/conformance/bankeiz-public-conformance.png",
+  "artifactSha256": "42639bee60e2650d4f58901ab9e66456ed2421a88330621c88d26e4e1889d75f",
+  "evidenceSha256": "379297e32c719aa0ba71131d0541f72efa1ea72cf2f80ed0a712de2289897b56",
+  "holderReceizId": "bjklock.receiz.id",
+  "implementationBuildSha256": "bb2b3a95c6f8737c207142474e74a1e9118efb84226ecff44edd9885bf700c89",
+  "cases": 33
+}

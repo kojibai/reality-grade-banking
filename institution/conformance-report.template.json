@@ -1,0 +1,22 @@
+{
+  "schema": "receiz.bank.external-assessment.v1",
+  "implementation": {
+    "name": "REPLACE with your implementation",
+    "buildSha256": "REPLACE with SHA-256 of your executable or reproducible build manifest",
+    "sourceRevision": "REPLACE with immutable source revision",
+    "environment": "REPLACE with exact isolated realm, OS/runtime and device path",
+    "adapter": "REPLACE with actual durable writer/custody adapter and version"
+  },
+  "profile": {
+    "profileVersion": "1.0.0",
+    "receizVersion": "129.0.0",
+    "ruleset": "127.0.0",
+    "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
+    "operationMatrixDigest": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1"
+  },
+  "scope": { "capabilities": ["notes"], "rails": ["reserve"] },
+  "sources": [],
+  "cases": [],
+  "institutionConformance": "not-demonstrated",
+  "reportIsAuthority": false
+}

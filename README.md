@@ -99,7 +99,8 @@ The open-source package is part of the product:
 | [Original schemas](https://bankeiz.com/schemas/) | Inspect the pinned Receiz formats and download their exact definitions. |
 | [Matching native source](native/README.md) | Rebuild the included native/verifier modules and inspect their provenance. |
 | [Source distribution](SOURCE.md) | Reproduce the content-addressed source archive shipped with each build. |
-| [Conformance workspace](https://bankeiz.com/conformance/) | Run the supported local checks and inspect the assessment requirements. |
+| [Conformance workspace](https://bankeiz.com/conformance/) | Inspect every receiving control, run the public contract tests, reopen original evidence and audit the reference implementation's recorded tests. |
+| [Independent assessment guide](docs/conformance/integration-and-assessment.md) | Implement a language-neutral adapter, run it locally, inspect precise findings and repeat the published assessment without Bankeiz permission or services. |
 
 The original application and documentation are **GPL-3.0-only**. Recipients can
 study, modify, deploy and redistribute them under that license. Independent
@@ -108,6 +109,15 @@ qualified execution. The [software license](LICENSE),
 [trademark policy](TRADEMARKS.md) and
 [conformance-claim policy](CONFORMANCE.md) describe separate rights and
 responsibilities.
+
+The [coverage registry](src/conformance/coverage.json) maps the receiving
+requirements and Note continuity laws to normative contracts, implementation
+files, test procedures and required evidence. The active contract runner derives
+expected results independently of the selected adapter and reports exact
+request/response bindings. Bankeiz's recorded engineering results identify the
+tested source hashes and individual assertions. Financial sources, deployed
+execution and protected custody retain their own applicable evidence
+requirements; a contract-test pass does not establish those facts by itself.
 
 ## One balance. Exact value underneath.
 

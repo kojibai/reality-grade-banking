@@ -1,0 +1,274 @@
+{
+  "schema": "receiz.bank.conformance-protocol.v1",
+  "reportSchema": "receiz.bank.external-assessment.v1",
+  "reportIsAuthority": false,
+  "canonicalCaseDigest": "SHA-256 of UTF-8 JSON with recursively sorted object keys, array order retained, no whitespace. Values in this protocol use integers, strings and booleans only.",
+  "profile": {
+    "profileVersion": "1.0.0",
+    "receizVersion": "129.0.0",
+    "ruleset": "127.0.0",
+    "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
+    "operationMatrixDigest": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1"
+  },
+  "rails": [
+    {
+      "id": "reserve",
+      "title": "Reserve Note",
+      "denomination": "Original fixed USD claim with historical Phi backing."
+    },
+    {
+      "id": "settlement",
+      "title": "Settlement Note",
+      "denomination": "Exact signed Phi; printed USD is value at creation."
+    },
+    {
+      "id": "composite",
+      "title": "Settlement Reserve Note",
+      "denomination": "Both positive signed funding components; totals and original components persist."
+    }
+  ],
+  "noteLifecycle": [
+    "quote",
+    "issue",
+    "retain-funding",
+    "handover",
+    "offline-receipt",
+    "claim-or-redemption",
+    "independent-credit-verification",
+    "reconcile-before-spend",
+    "cancel-before-allocation",
+    "exact-recovery"
+  ],
+  "executionProfiles": [
+    {
+      "id": "qualified-offline",
+      "boundary": "Assessed protected custody irreversibly consumes exact head locally."
+    },
+    {
+      "id": "connected-account-v1",
+      "boundary": "Signed handover may be retained offline; exclusive consumption and account credit require the selected connected writer."
+    }
+  ],
+  "cases": [
+    {
+      "id": "altered-source",
+      "requirementId": "exact-enclosing-source-verification",
+      "action": "Change one byte, remove an enclosing parent or supply artwork as a financial source.",
+      "expected": {
+        "outcome": "refused",
+        "additionalCredit": "0",
+        "unauthorizedStateChanges": 0
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "untrusted-root",
+      "requirementId": "canonical-registry-and-root-binding",
+      "action": "Replace an admitted root, registry digest or operation matrix.",
+      "expected": {
+        "outcome": "refused",
+        "additionalCredit": "0",
+        "unauthorizedStateChanges": 0
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "stale-owner",
+      "requirementId": "verified-ownership-and-complete-causal-history",
+      "action": "Attempt execution as the former owner or with incomplete causal history.",
+      "expected": {
+        "outcome": "refused",
+        "additionalCredit": "0",
+        "unauthorizedStateChanges": 0
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "changed-denomination",
+      "requirementId": "explicit-rail-and-denomination",
+      "action": "Change rail, signed amount or either composite funding component.",
+      "expected": {
+        "outcome": "refused",
+        "additionalCredit": "0",
+        "unauthorizedStateChanges": 0
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "other-receiver",
+      "requirementId": "receiver-identity-and-origin-binding",
+      "action": "Change account/key, application audience or origin after approval.",
+      "expected": {
+        "outcome": "refused",
+        "additionalCredit": "0",
+        "unauthorizedStateChanges": 0
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "restored-custody",
+      "requirementId": "qualified-current-custody",
+      "action": "Restore/cloned prior custody after one accepted exact-head consume.",
+      "expected": {
+        "outcome": "refused",
+        "additionalCredit": "0",
+        "unauthorizedStateChanges": 0
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "stale-head",
+      "requirementId": "exact-source-and-destination-heads",
+      "action": "Race two operations against the same source or stale destination head.",
+      "expected": {
+        "outcome": "refused",
+        "additionalCredit": "0",
+        "unauthorizedStateChanges": 0
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "bare-time",
+      "requirementId": "verified-kaisigil-bound-kks-coordinate",
+      "action": "Replace source-bound KKS coordinate with a bare pulse or wall-clock timestamp.",
+      "expected": {
+        "outcome": "refused",
+        "additionalCredit": "0",
+        "unauthorizedStateChanges": 0
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "changed-consent",
+      "requirementId": "explicit-capability-and-exact-operation-consent",
+      "action": "Change exact terms or execute after capability revocation.",
+      "expected": {
+        "outcome": "refused",
+        "additionalCredit": "0",
+        "unauthorizedStateChanges": 0
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "duplicate-allocation",
+      "requirementId": "exclusive-value-allocation",
+      "action": "Allocate the same admitted value into another spendable membership.",
+      "expected": {
+        "outcome": "refused",
+        "additionalCredit": "0",
+        "unauthorizedStateChanges": 0
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "same-intent-retry",
+      "requirementId": "atomic-once-only-consumption-and-credit",
+      "action": "Repeat the identical accepted intent and original recovery coordinate. Resolve the original receipt and participant heads byte-exactly; do not allocate another operation or advance any head.",
+      "expected": {
+        "outcome": "idempotent",
+        "additionalCredit": "0",
+        "headAdvances": 0,
+        "resultDisposition": "original"
+      },
+      "evidence": "Retain the first accepted intent, original recovery coordinates and complete receipt; independently compare the reopened receipt, source/destination heads and account credit before and after identical retries.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "replay-credit",
+      "requirementId": "atomic-once-only-consumption-and-credit",
+      "action": "Attempt a different or conflicting intent that consumes the already accepted terminal again, including concurrent requests from another device or filename. Refuse the second consumption; identical accepted-intent retries are covered separately.",
+      "expected": {
+        "outcome": "refused",
+        "additionalCredit": "0",
+        "unauthorizedStateChanges": 0
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "lost-response",
+      "requirementId": "durable-exact-intent-recovery",
+      "action": "Interrupt after possible commit; reopen original recovery coordinate without replacement execution.",
+      "expected": {
+        "outcome": "preserved",
+        "replacementOperations": 0,
+        "sourceAndIntentPreserved": true
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "receipt-flag",
+      "requirementId": "independent-receipt-and-source-reverification",
+      "action": "Substitute HTTP success, a digest or caller passed flag for complete canonical receipt.",
+      "expected": {
+        "outcome": "refused",
+        "additionalCredit": "0",
+        "unauthorizedStateChanges": 0
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "unknown-namespace",
+      "requirementId": "byte-exact-unknown-namespace-preservation",
+      "action": "Round-trip original with opaque unknown namespace; compare source bytes and admitted history.",
+      "expected": {
+        "outcome": "preserved",
+        "replacementOperations": 0,
+        "sourceAndIntentPreserved": true
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "offline-first-paint",
+      "requirementId": "immediate-known-local-projection",
+      "action": "Reopen offline; show latest retained verified truth without polling or crediting unconfirmed receipt.",
+      "expected": {
+        "outcome": "preserved",
+        "replacementOperations": 0,
+        "sourceAndIntentPreserved": true
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    },
+    {
+      "id": "unqualified-claim",
+      "requirementId": "receiver-specific-live-qualification",
+      "action": "Attempt a live readiness claim without exact-build, production source, device/adapter and assessor evidence.",
+      "expected": {
+        "outcome": "refused",
+        "additionalCredit": "0",
+        "unauthorizedStateChanges": 0
+      },
+      "evidence": "Retain complete before/after originals, exact operation/recovery coordinates and authenticated receipts or refusals under the declared trust policy.",
+      "applicability": "Every selected rail and applicable capability; both execution profiles for Note operations where supported."
+    }
+  ],
+  "requiredPositiveCases": [
+    "Admitted source/funding under production roots independently reopened.",
+    "Current owner, exact receiver and full causal history.",
+    "Issue, complete funding retention, handover, offline receipt, connected claim or qualified redemption, full once-only credit and reconciliation.",
+    "Reserve/Settlement/composite exact amounts and components conserved after repricing.",
+    "Funded asset supply, exact unit transfer, collateralized offer, partial fill, cancellation and whole-supply redemption.",
+    "Lost replies at each irreversible boundary resolve the exact same original."
+  ],
+  "positiveEvidenceBoundary": "Positive financial and hardware evidence needs the actual adapter, admitted originals and independent assessment. Report booleans and matching vector outputs cannot prove those facts. Unsupported positive cases remain MISSING.",
+  "adapterInterface": {
+    "request": "Read a local JSON protocol, selected profile/scope, private fixture references and isolated realm. Execute only cases authorized by the operator of that realm.",
+    "response": "Produce a local JSON report with implementation identity, exact profile/scope, source name/SHA-256 references and cases binding id, rail, caseDigest, implementationBuildSha256, observed and evidenceSha256. Supply original evidence as separate files.",
+    "transport": "Language-neutral local files or stdin/stdout; no Bankeiz account, permission, callback or hosted enrollment required.",
+    "safety": "The supplied checker performs read-only verification and isolated SDK reference tests; it does not execute arbitrary adapters, scripts, financial operations or user source code."
+  }
+}

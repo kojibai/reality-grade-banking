@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
-import { readFileSync } from 'node:fs';
+import {createHash} from 'node:crypto';
+import { readFileSync,readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { publicMarketPlugin } from './server/public-market';
 import { nativeAccountPlugin } from './server/native-account';
@@ -28,6 +29,17 @@ export default defineConfig({
       if (id !== '\0receiz-receiver-build') return;
       const { version, moduleSha256, sourceCommit } = JSON.parse(readFileSync(new URL('./public/native/receiver-verifier.v129.manifest.json', import.meta.url), 'utf8'));
       return `export default ${JSON.stringify({ version, moduleSha256, sourceCommit })};`;
+    },
+  }, {
+    name:'receiz-conformance-suite-identity',
+    resolveId(id){if(id==='virtual:receiz-conformance-suite-build')return '\0receiz-conformance-suite-build';},
+    load(id){
+      if(id!=='\0receiz-conformance-suite-build')return;
+      const paths=['src/receiz/note-funding.ts','src/receiz/native-asset-backing.ts','institution/receiver-profile.json','institution/conformance-protocol.json','institution/receiving-standard.md','docs/note-continuity-standard.md','docs/connected-notes-v129.md'];
+      for(const dir of ['src/conformance/','docs/conformance/'])for(const entry of readdirSync(new URL(dir,import.meta.url),{withFileTypes:true}))if(entry.isFile()&&(dir.startsWith('src')?/\.(?:ts|tsx|css|json)$/:/\.md$/).test(entry.name))paths.push(dir+entry.name);
+      const sha=(source:Buffer|string)=>createHash('sha256').update(source).digest('hex');
+      const inputs=paths.sort().map(path=>{const url=new URL(path,import.meta.url);this.addWatchFile(url.pathname);return {path,sha256:sha(readFileSync(url))};});
+      return `export default ${JSON.stringify({method:'sha256-path-content-v1',sourceTreeSha256:sha(JSON.stringify(inputs)),inputCount:inputs.length})};`;
     },
   }],
   server: { port: 5173, strictPort: true },

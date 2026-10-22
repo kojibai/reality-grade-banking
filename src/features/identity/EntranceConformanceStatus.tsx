@@ -2,20 +2,26 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ArrowUpRight, LoaderCircle, ShieldCheck, X } from 'lucide-react';
 import manifest from 'virtual:receiz-receiver-build';
 import profile from '../../../institution/receiver-profile.json';
-import recorded from '../../../docs/verification/2026-10-20-composite-browser-resources.json';
-import type { CheckResult, ReferenceReport } from '../../conformance/reference';
+import recorded from '../../content/conformance-reference-status.json';
+import {INSTITUTION_BROWSER_SUITE_ID,INSTITUTION_BROWSER_CHECK_IDS} from '../../conformance/check-ids';
+import type { InstitutionCheckResult as CheckResult, EntranceReferenceReport as ReferenceReport } from '../../conformance/reference';
 
 type Phase = 'unverified' | 'checking' | 'passed' | 'refused' | 'error';
 type Snapshot = { phase: Phase; total: number | null; results: CheckResult[]; report: ReferenceReport | null; error: string | null; origin: 'recorded' | 'device' | 'session' };
 const initialSnapshot: Snapshot = { phase: 'unverified', total: null, results: [], report: null, error: null, origin: 'recorded' };
-const checkIds = ['release', 'integrity', 'source', 'custody', 'transport', 'temporal', 'edges'] as const;
-const storageKey = 'bankeiz.reference-status.v1';
-const build = `${profile.receizVersion}:${profile.registryDigest}:${manifest.moduleSha256}:${checkIds.join(',')}`;
+const checkIds:readonly string[]=INSTITUTION_BROWSER_CHECK_IDS;
+const storageKey = 'bankeiz.reference-status.v2';
+const build = `${INSTITUTION_BROWSER_SUITE_ID}:${profile.profileVersion}:${profile.ruleset}:${profile.receizVersion}:${profile.registryDigest}:${profile.operationMatrixDigest}:${manifest.moduleSha256}:${checkIds.join(',')}`;
 
 function isPinnedReport(value: unknown): value is ReferenceReport {
   if (!value || typeof value !== 'object') return false;
   const report = value as ReferenceReport;
-  return report.schema === 'receiz.bank.browser-reference-checks.v1'
+  return report.schema === 'receiz.bank.entrance-reference-status.v2'
+    && report.suiteId===INSTITUTION_BROWSER_SUITE_ID
+    && report.profileVersion===profile.profileVersion && report.ruleset===profile.ruleset
+    && report.operationMatrixDigest===profile.operationMatrixDigest
+    && typeof report.suiteSourceSha256==='string' && /^[a-f0-9]{64}$/.test(report.suiteSourceSha256)
+    && report.scope==='nonfinancial-browser-reference'
     && manifest.version === profile.receizVersion
     && report.receizVersion === profile.receizVersion
     && report.registryDigest === profile.registryDigest
@@ -32,7 +38,7 @@ function isPinnedReport(value: unknown): value is ReferenceReport {
 
 function completedSnapshot(report: ReferenceReport, origin: Snapshot['origin']): Snapshot {
   const pinned = isPinnedReport(report), passed = pinned && report.localChecksPassed;
-  return { phase: passed ? 'passed' : 'refused', total: checkIds.length, results: pinned ? report.checks : [], report: pinned ? report : null, origin, error: pinned ? null : 'The result does not match the complete pinned verifier checks.' };
+  return { phase: passed ? 'passed' : 'refused', total: checkIds.length, results: pinned ? report.checks : [], report: pinned ? report : null, origin, error: pinned ? null : 'The result does not match the complete pinned twelve-check reference suite.' };
 }
 
 function readLastResult(): Snapshot {
@@ -73,9 +79,9 @@ export function EntranceConformanceStatus() {
       // The SDK and verifier enter the graph only after idle scheduling or an explicit click.
       const reference = await import('../../conformance/reference');
       if (!alive.current) return;
-      setProgress(current => ({ ...current, total: reference.checks.length }));
-      const report = await reference.runBrowserChecks(
-        checkId => { if (alive.current) setProgress(current => ({ ...current, activeName: reference.checks.find(check => check.id === checkId)?.name ?? null })); },
+      setProgress(current => ({ ...current, total: reference.institutionChecks.length }));
+      const report = await reference.runEntranceReferenceChecks(
+        checkId => { if (alive.current) setProgress(current => ({ ...current, activeName: reference.institutionChecks.find(check => check.id === checkId)?.name ?? null })); },
         result => { if (alive.current) setProgress(current => ({ ...current, results: [...current.results, result] })); },
       );
       if (!alive.current) return;
@@ -121,7 +127,7 @@ export function EntranceConformanceStatus() {
 
   const { phase, total, results, error } = snapshot;
   const passed = results.filter(result => result.passed).length;
-  const label = phase === 'passed' ? 'Browser checks passed' : phase === 'checking' ? 'Checking this build' : phase === 'refused' ? 'Did not qualify' : phase === 'error' ? 'Checks unavailable' : 'Not checked';
+  const label = phase === 'passed' ? 'Browser checks passed' : phase === 'checking' ? 'Checking this build' : phase === 'refused' ? 'Reference checks did not pass' : phase === 'error' ? 'Checks unavailable' : 'Not checked';
   const dismiss = () => {
     if (popup.current?.contains(document.activeElement)) trigger.current?.focus({ preventScroll: true });
     setOpen(false);
@@ -135,10 +141,10 @@ export function EntranceConformanceStatus() {
       {refreshing && <p className="entrance-conformance-detail"><LoaderCircle size={12} aria-hidden="true" />{progress.total === null ? 'Refreshing checks…' : `${progress.results.length} of ${progress.total} complete`}{progress.activeName && ` · ${progress.activeName}`}</p>}
       {phase === 'refused' && <p className="entrance-conformance-error">{error ?? results.find(result => !result.passed)?.error ?? 'The browser reference checks did not all pass.'}</p>}
       {phase === 'error' && <p className="entrance-conformance-error">{error}</p>}
-      <dl className="entrance-conformance-scope"><div><dt>Browser reference</dt><dd>Receiz v{profile.receizVersion.split('.')[0]}</dd></div></dl>
-      <p className="entrance-conformance-boundary">No private data accessed. No funds moved.</p>
+      <dl className="entrance-conformance-scope"><div><dt>RGB browser reference</dt><dd>{checkIds.length} checks · Receiz v{profile.receizVersion.split('.')[0]}</dd></div><div><dt>Institution assessment</dt><dd>Not assessed</dd></div></dl>
+      <p className="entrance-conformance-boundary">No private data accessed. No funds moved. Browser reference evidence; live qualification is separate.</p>
       {phase === 'passed' && <p className="entrance-conformance-build" title={`Verifier SHA-256: ${manifest.moduleSha256}`}>{snapshot.origin === 'recorded' ? 'Recorded reference result' : snapshot.origin === 'device' ? 'Last result on this device' : 'Checked this session'} · Verifier {manifest.moduleSha256.slice(0, 10)}</p>}
-      <div className="entrance-conformance-footer"><a href="/conformance/">Open conformance console<ArrowUpRight size={13} aria-hidden="true" /></a>{!refreshing && <button type="button" onClick={() => void runChecks()}>{phase === 'error' || phase === 'refused' ? 'Try again' : 'Recheck'}</button>}</div>
+      <div className="entrance-conformance-footer"><a href="/conformance/#reference">Open conformance console<ArrowUpRight size={13} aria-hidden="true" /></a>{!refreshing && <button type="button" onClick={() => void runChecks()}>{phase === 'error' || phase === 'refused' ? 'Try again' : 'Recheck'}</button>}</div>
     </div>}
   </div>;
 }

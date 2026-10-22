@@ -17,6 +17,7 @@ await mkdir('dist/legal/vendor', { recursive: true });
 await copyFile('src/vendor/jsqr/LICENSE', 'dist/legal/vendor/jsqr-Apache-2.0.txt');
 await copyFile('public/notes/fonts/OFL.txt', 'dist/legal/vendor/Cinzel-OFL.txt');
 await copyFile('scripts/social/fonts/OFL.txt', 'dist/legal/vendor/Inter-OFL.txt');
+await copyFile('public/conformance/fonts/OFL.txt', 'dist/legal/vendor/NotoSerif-OFL.txt');
 
 const lock = JSON.parse(await readFile('package-lock.json', 'utf8'));
 const packages = [];

@@ -16,6 +16,16 @@ No automatic certification or endorsement program exists here. An accurate indep
 
 The Conformance Console shows the reference build's actual on-device checks and identifies recorded v129 MCP evidence separately. Its original-proof inspector verifies supported carried sources; it does not establish current spendability, acquire custody or authorize credit. Neither its matrix nor a passing reference run automatically assesses the visitor's institution or certifies Bankeiz.
 
+The public [coverage registry](src/conformance/coverage.json) maps every receiving
+requirement and Note continuity law to its normative contract, implementation,
+tests and evidence. The [independent assessment guide](docs/conformance/integration-and-assessment.md)
+provides the executable adapter contract, exact result bindings and correction
+path. The [complete assessment procedure](docs/conformance/independent-assessment-procedure.md)
+also covers controls requiring actual operating-environment or physical evidence.
+Any institution can apply that procedure and publish a supported scoped result
+without project permission. The automated evidence review identifies its
+verification limits; it does not turn an uploaded declaration into qualification.
+
 - **Conformance not demonstrated:** a complete applicable assessment is unavailable.
 - **Conforming for the assessed capability:** independently verified evidence demonstrates every applicable requirement within the stated scope.
 - **Nonconforming for proof continuity:** a verified assessment demonstrates failure of applicable proof-continuity requirements. Identify the failed capability, rail and evidence. Explain: “This receiving institution does not meet the proof-continuity requirements.” Remediation requires a fresh applicable assessment.

@@ -31,3 +31,17 @@ The installed production dependency graph also declares GPL terms for `@iden3/bi
 Supply complete corresponding source and required build/installation materials for covered object-code distributions. The matching native input source, SDK source, preferred cryptographic dependency sources and build materials are supplied in [native/](native/README.md) and included in the build’s content-addressed source download as described in [SOURCE.md](SOURCE.md). A source map, package metadata, an upstream URL or copied license text alone does not establish the complete required delivery.
 
 The unmodified root GPL text is obtained from the [SPDX license-list-data GPL-3.0-only text](https://github.com/spdx/license-list-data/blob/main/text/GPL-3.0-only.txt). Its SHA-256 is pinned by the license checker. Bundled upstream notice texts are preserved as distributed by their packages. Keep their attributions; do not replace existing MIT/GPL/font permissions with project-branding rules.
+
+## Conformance credential rendering
+
+The conformance console uses the unmodified `@resvg/resvg-wasm` 2.6.2 renderer
+under MPL-2.0. Its pinned public `renderer.wasm` is copied from that package.
+Corresponding upstream source: https://github.com/thx/resvg-js/tree/v2.6.2.
+This renderer is loaded only when issuing or independently verifying a PNG
+credential, outside the bank's initial rendering and installation cache.
+
+Credential typography uses Noto Serif Regular and Inter Regular under the SIL
+Open Font License. Their original license texts are retained beside the font
+files in `public/conformance/fonts/`. Noto Serif source:
+https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf/NotoSerif.
+The renderer verifies the exact shipped renderer/font hashes before use.

@@ -1,0 +1,1497 @@
+{
+  "schema": "receiz.bank.conformance-coverage.v1",
+  "profileVersion": "1.0.0",
+  "receizVersion": "129.0.0",
+  "ruleset": "127.0.0",
+  "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
+  "operationMatrixDigest": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1",
+  "reportIsAuthority": false,
+  "requirements": [
+    {
+      "id": "exact-enclosing-source-verification",
+      "title": "Complete original source",
+      "obligation": "Verify the complete enclosing artifact, funding closure and causal history before deriving authority.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/offline-notes.ts",
+        "src/receiz/connected-note-runtime.ts"
+      ],
+      "tests": [
+        "tests/note-proof-portability.test.ts",
+        "tests/connected-note-runtime.test.ts"
+      ],
+      "localChecks": [
+        "source",
+        "assets"
+      ],
+      "requiredEvidence": [
+        "Open an admitted original under production roots; mutate bytes, remove parents and re-open complete closure."
+      ],
+      "remediation": "Open an admitted original under production roots; mutate bytes, remove parents and re-open complete closure.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [
+          "source",
+          "assets"
+        ],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Open a genuine admitted original and every enclosing funding/history parent independently in both endpoint processes.",
+        "negative": "Change one byte; omit a parent; substitute artwork, JSON flags, an unsupported schema or an oversized carrier.",
+        "concurrencyAndInterruption": "Interrupt storage/import/export between each retained block; reopen the identical original after restart.",
+        "acceptanceCriteria": "Both independent readers derive the same admitted closure and source digest; every mutation refuses before authority or credit.",
+        "evidenceToRetain": [
+          "Open an admitted original under production roots; mutate bytes, remove parents and re-open complete closure."
+        ],
+        "retest": "Open an admitted original under production roots; mutate bytes, remove parents and re-open complete closure."
+      }
+    },
+    {
+      "id": "canonical-registry-and-root-binding",
+      "title": "Canonical trust",
+      "obligation": "Pin the SDK release, registry, ruleset, operation matrix and admitted roots.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/client.ts",
+        "institution/receiver-verifier.entry.mjs"
+      ],
+      "tests": [
+        "tests/conformance-boundaries.test.ts",
+        "tests/conformance-audit.test.ts"
+      ],
+      "localChecks": [
+        "release",
+        "integrity"
+      ],
+      "requiredEvidence": [
+        "Reproduce exact resources and independently assess the deployed signer/root policy; custom-root fixtures cannot qualify production."
+      ],
+      "remediation": "Reproduce exact resources and independently assess the deployed signer/root policy; custom-root fixtures cannot qualify production.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [
+          "release",
+          "integrity"
+        ],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Reproduce the exact build, canonical roots, registry, ruleset and operation matrix from the declared distribution.",
+        "negative": "Replace a root, registry, verifier module or resource; run diagnostic custom roots against the production boundary.",
+        "concurrencyAndInterruption": "Interrupt resource loading and retry with mixed old/new resources.",
+        "acceptanceCriteria": "Actual executable/resource hashes and trust policy match the declared profile; altered or mixed trust material refuses; diagnostic roots never produce production authority.",
+        "evidenceToRetain": [
+          "Reproduce exact resources and independently assess the deployed signer/root policy; custom-root fixtures cannot qualify production."
+        ],
+        "retest": "Reproduce exact resources and independently assess the deployed signer/root policy; custom-root fixtures cannot qualify production."
+      }
+    },
+    {
+      "id": "verified-ownership-and-complete-causal-history",
+      "title": "Ownership and causal history",
+      "obligation": "Derive current ownership from admitted state and complete causal history.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/bank-native-source.ts",
+        "src/receiz/native-asset-holding.ts"
+      ],
+      "tests": [
+        "tests/native-asset-holding.test.ts",
+        "tests/ledger-proof-history.test.ts"
+      ],
+      "localChecks": [
+        "ownership"
+      ],
+      "requiredEvidence": [
+        "Reopen actual ownership transitions; reject stale heads, former-owner execution, missing history and conflicting branches."
+      ],
+      "remediation": "Reopen actual ownership transitions; reject stale heads, former-owner execution, missing history and conflicting branches.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [
+          "ownership"
+        ],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Transfer an actually owned source and independently reopen its complete causal ownership chain.",
+        "negative": "Use a former owner, stale ownership head, omitted predecessor or a conflicting branch.",
+        "concurrencyAndInterruption": "Race competing ownership transitions and replay delayed old heads after restart.",
+        "acceptanceCriteria": "Only current admitted ownership authorizes execution; complete causal history survives; competing/old ownership cannot create another lawful successor.",
+        "evidenceToRetain": [
+          "Reopen actual ownership transitions; reject stale heads, former-owner execution, missing history and conflicting branches."
+        ],
+        "retest": "Reopen actual ownership transitions; reject stale heads, former-owner execution, missing history and conflicting branches."
+      }
+    },
+    {
+      "id": "explicit-rail-and-denomination",
+      "title": "Rail and denomination",
+      "obligation": "Conserve Reserve USD claims, Settlement Phi and every signed component of a combined Note.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/note-funding.ts",
+        "src/receiz/native-asset-backing.ts"
+      ],
+      "tests": [
+        "tests/connected-note-runtime.test.ts",
+        "tests/native-asset-backing.test.ts",
+        "tests/money.test.ts"
+      ],
+      "localChecks": [
+        "money",
+        "edges"
+      ],
+      "requiredEvidence": [
+        "Qualify Reserve, Settlement and composite independently with admitted sources, repricing, component mutation and exact debit/credit deltas."
+      ],
+      "remediation": "Qualify Reserve, Settlement and composite independently with admitted sources, repricing, component mutation and exact debit/credit deltas.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [
+          "money",
+          "edges"
+        ],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Run Reserve-only, Settlement-only and combined Note/asset funding, transfer, credit and applicable redemption using admitted sources.",
+        "negative": "Change denomination, exact Phi, signed rail, component order or any part/totals; exercise precision and overflow limits.",
+        "concurrencyAndInterruption": "Race an old quote against repricing; recover an interrupted mixed allocation/refund.",
+        "acceptanceCriteria": "Reserve returns its original fixed-dollar claim/backing, Settlement its exact Phi, composite parts reconcile throughout; repricing never duplicates or invents value.",
+        "evidenceToRetain": [
+          "Qualify Reserve, Settlement and composite independently with admitted sources, repricing, component mutation and exact debit/credit deltas."
+        ],
+        "retest": "Qualify Reserve, Settlement and composite independently with admitted sources, repricing, component mutation and exact debit/credit deltas."
+      }
+    },
+    {
+      "id": "receiver-identity-and-origin-binding",
+      "title": "Receiver and origin",
+      "obligation": "Bind application audience, account, key, origin and current receiver head.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/connected-note-runtime.ts",
+        "src/receiz/bank-native-session.ts"
+      ],
+      "tests": [
+        "tests/note-account-receiving.test.ts",
+        "tests/connected-note-runtime.test.ts"
+      ],
+      "localChecks": [
+        "edges"
+      ],
+      "requiredEvidence": [
+        "Use actual sender and receiver identities; refuse another account, key, audience, origin and stale receiver head."
+      ],
+      "remediation": "Use actual sender and receiver identities; refuse another account, key, audience, origin and stale receiver head.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [
+          "edges"
+        ],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Use real sender/receiver keys, registered origin/application audience, receiving account and current destination head.",
+        "negative": "Substitute account/key/audience/origin/request after review; forward the same completed file to another receiver.",
+        "concurrencyAndInterruption": "Rotate/revoke membership or change destination head concurrently with consent and execution.",
+        "acceptanceCriteria": "The complete accepted receipt binds the exact intended receiver and current admissible authority; all substitutions refuse without misdirected credit.",
+        "evidenceToRetain": [
+          "Use actual sender and receiver identities; refuse another account, key, audience, origin and stale receiver head."
+        ],
+        "retest": "Use actual sender and receiver identities; refuse another account, key, audience, origin and stale receiver head."
+      }
+    },
+    {
+      "id": "qualified-current-custody",
+      "title": "Current qualified custody",
+      "obligation": "Retain admitted non-exportable custody and required attestation; copying source bytes grants no spend authority.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/offline-notes.ts",
+        "src/conformance/device-evidence.ts"
+      ],
+      "tests": [
+        "tests/native-note-account-handoff.test.ts",
+        "tests/note-attestation-transport.test.ts"
+      ],
+      "localChecks": [
+        "custody"
+      ],
+      "requiredEvidence": [
+        "Exercise actual protected exact-head retirement, clone/backup/restore, signed assertions and crash boundaries on each supported device path."
+      ],
+      "remediation": "Exercise actual protected exact-head retirement, clone/backup/restore, signed assertions and crash boundaries on each supported device path.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [
+          "custody"
+        ],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Enroll and admit the actual non-exportable custody path; consume one exact prepared head into one bound successor.",
+        "negative": "Copy source/handle; restore or clone prior state; test backup-eligible credentials, missing/decreased/repeated/unexpected state and invalid attestation.",
+        "concurrencyAndInterruption": "Crash before/after exact-head retirement and before packaging; restore a pre-send device image; concurrently approve competing successors.",
+        "acceptanceCriteria": "Retired spend authority cannot reactivate; independently verifiable attestation/consumption binds predecessor, receiver, whole value and successor. A counter increment alone is insufficient.",
+        "evidenceToRetain": [
+          "Exercise actual protected exact-head retirement, clone/backup/restore, signed assertions and crash boundaries on each supported device path."
+        ],
+        "retest": "Exercise actual protected exact-head retirement, clone/backup/restore, signed assertions and crash boundaries on each supported device path."
+      }
+    },
+    {
+      "id": "exact-source-and-destination-heads",
+      "title": "Exact participant heads",
+      "obligation": "Verify source and destination predecessor heads before atomic commit.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/bank-execution.ts",
+        "src/receiz/bank-native-source.ts"
+      ],
+      "tests": [
+        "tests/bank-domain.test.ts",
+        "tests/bank-execution-recovery.test.ts"
+      ],
+      "localChecks": [
+        "money",
+        "atomic",
+        "edges"
+      ],
+      "requiredEvidence": [
+        "Run actual concurrent native executions against stale source and destination heads; inspect complete accepted transitions or authenticated refusal."
+      ],
+      "remediation": "Run actual concurrent native executions against stale source and destination heads; inspect complete accepted transitions or authenticated refusal.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [
+          "money",
+          "atomic",
+          "edges"
+        ],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Commit a complete operation against independently verified exact source and destination heads.",
+        "negative": "Change either head, participant set or claimed transition after consent.",
+        "concurrencyAndInterruption": "Race two genuine operations and inject crash between participant writes on the actual durable adapter.",
+        "acceptanceCriteria": "Every accepted participant transition uses the exact reviewed predecessor; all commit or none; stale/conflicting transitions cannot report success.",
+        "evidenceToRetain": [
+          "Run actual concurrent native executions against stale source and destination heads; inspect complete accepted transitions or authenticated refusal."
+        ],
+        "retest": "Run actual concurrent native executions against stale source and destination heads; inspect complete accepted transitions or authenticated refusal."
+      }
+    },
+    {
+      "id": "verified-kaisigil-bound-kks-coordinate",
+      "title": "Verified causal coordinate",
+      "obligation": "Preserve KaiSigil-bound KKS coordinates and causal order; wall-clock labels are descriptive.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/bank-kai.ts",
+        "src/receiz/note-history.ts"
+      ],
+      "tests": [
+        "tests/note-history.test.ts",
+        "tests/ledger-proof-history.test.ts"
+      ],
+      "localChecks": [
+        "temporal"
+      ],
+      "requiredEvidence": [
+        "Verify real source-bound KKS coordinates and predecessor order under pinned resources; reject bare timestamp or pulse substitutions."
+      ],
+      "remediation": "Verify real source-bound KKS coordinates and predecessor order under pinned resources; reject bare timestamp or pulse substitutions.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [
+          "temporal"
+        ],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Verify the actual operation\u2019s carried KaiSigil/KKS proof and predecessor; retain the exact micro-pulse.",
+        "negative": "Mutate lattice, BLAKE3/Poseidon commitment, Groth16 signals/proof, predecessor, future bound; substitute bare pulse, local date or Chronos.",
+        "concurrencyAndInterruption": "Deliver valid operations out of order, replay an old coordinate and reopen the accepted causal chain.",
+        "acceptanceCriteria": "Pinned intrinsic proof verifies; predecessor binding and strict causal progression hold; wall-clock timestamps remain descriptive. No withheld branch is inferred from sorting.",
+        "evidenceToRetain": [
+          "Verify real source-bound KKS coordinates and predecessor order under pinned resources; reject bare timestamp or pulse substitutions."
+        ],
+        "retest": "Verify real source-bound KKS coordinates and predecessor order under pinned resources; reject bare timestamp or pulse substitutions."
+      }
+    },
+    {
+      "id": "explicit-capability-and-exact-operation-consent",
+      "title": "Exact consent and capability",
+      "obligation": "Authorize the exact operation through current participants and scoped capability. Protect private custody and authorization material.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/bank-execution.ts",
+        "src/receiz/bank-native-session.ts",
+        "src/receiz/identity-vault.ts"
+      ],
+      "tests": [
+        "tests/bank-domain.test.ts",
+        "tests/bank-execution-recovery.test.ts"
+      ],
+      "localChecks": [
+        "ownership",
+        "recovery"
+      ],
+      "requiredEvidence": [
+        "Qualify real signatures, revocation, expiry and changed terms; audit logs/caches/model access for private keys, tokens, attestation and execution handles."
+      ],
+      "remediation": "Qualify real signatures, revocation, expiry and changed terms; audit logs/caches/model access for private keys, tokens, attestation and execution handles.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [
+          "ownership",
+          "recovery"
+        ],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Review and approve the exact operation under current participant capability and correctly scoped identity.",
+        "negative": "Change value/recipient/heads after review; use expired/revoked/foreign capability or serialized handles.",
+        "concurrencyAndInterruption": "Revoke during pending execution; interrupt signing/retention; inspect actual public caches, logs, telemetry and model exposure.",
+        "acceptanceCriteria": "Accepted operation and consent match exactly; refusal has no unauthorized effect; identity secrets, tokens, attestation and execution custody remain protected.",
+        "evidenceToRetain": [
+          "Qualify real signatures, revocation, expiry and changed terms; audit logs/caches/model access for private keys, tokens, attestation and execution handles."
+        ],
+        "retest": "Qualify real signatures, revocation, expiry and changed terms; audit logs/caches/model access for private keys, tokens, attestation and execution handles."
+      }
+    },
+    {
+      "id": "exclusive-value-allocation",
+      "title": "Exclusive funding and backing",
+      "obligation": "Exclude allocated value from all other spendable memberships; public prices cannot create backing.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/connected-note-runtime.ts",
+        "src/receiz/native-asset-backing.ts"
+      ],
+      "tests": [
+        "tests/connected-note-runtime.test.ts",
+        "tests/native-asset-backing.test.ts"
+      ],
+      "localChecks": [
+        "money",
+        "assets"
+      ],
+      "requiredEvidence": [
+        "Use admitted account funding and actual native writer to show one allocation, no duplicate online/Note/asset availability and conserved original backing."
+      ],
+      "remediation": "Use admitted account funding and actual native writer to show one allocation, no duplicate online/Note/asset availability and conserved original backing.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [
+          "money",
+          "assets"
+        ],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Allocate actual admitted value to a Note or asset and independently inspect account, Note, backing and inventory memberships.",
+        "negative": "Attempt duplicate allocation from cached balances, public listings, intrinsic quotes, missing backing or another membership.",
+        "concurrencyAndInterruption": "Race Note issuance, asset funding and account spending against the same original source; recover lost allocation replies.",
+        "acceptanceCriteria": "One admitted allocation excludes every competing spendable membership; backing remains tied to its source; no simultaneous online and Note/asset availability.",
+        "evidenceToRetain": [
+          "Use admitted account funding and actual native writer to show one allocation, no duplicate online/Note/asset availability and conserved original backing."
+        ],
+        "retest": "Use admitted account funding and actual native writer to show one allocation, no duplicate online/Note/asset availability and conserved original backing."
+      }
+    },
+    {
+      "id": "atomic-once-only-consumption-and-credit",
+      "title": "Atomic consumption and credit",
+      "obligation": "Consume the exact predecessor and apply the exact recipient credit once, or no accepted success.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/connected-note-runtime.ts",
+        "src/receiz/note-received-deposits.ts"
+      ],
+      "tests": [
+        "tests/connected-note-runtime.test.ts",
+        "tests/native-note-deposit-recovery.test.ts"
+      ],
+      "localChecks": [
+        "atomic"
+      ],
+      "requiredEvidence": [
+        "Exercise real concurrent, repeated and cross-device claims with one accepted credit; inspect durable participant and global state after interruption."
+      ],
+      "remediation": "Exercise real concurrent, repeated and cross-device claims with one accepted credit; inspect durable participant and global state after interruption.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [
+          "atomic"
+        ],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Consume a genuine terminal and verify the complete native recipient credit/private opening and participant states.",
+        "negative": "Replay by changed filename, device, recipient or handover; submit forged metadata/HTTP success without canonical credit.",
+        "concurrencyAndInterruption": "Submit identical and competing claims concurrently, interrupt each irreversible commit boundary, then recover.",
+        "acceptanceCriteria": "One exact predecessor yields one accepted successor and exact recipient credit. Identical retries resolve the same result; partial consume/credit never appears successful.",
+        "evidenceToRetain": [
+          "Exercise real concurrent, repeated and cross-device claims with one accepted credit; inspect durable participant and global state after interruption."
+        ],
+        "retest": "Exercise real concurrent, repeated and cross-device claims with one accepted credit; inspect durable participant and global state after interruption."
+      }
+    },
+    {
+      "id": "durable-exact-intent-recovery",
+      "title": "Durable exact recovery",
+      "obligation": "Retain exact reviewed intent and coordinates before consequential execution. Resolve ambiguity before retry/replacement.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/bank-execution-recovery.ts",
+        "src/receiz/native-note-deposit.ts"
+      ],
+      "tests": [
+        "tests/bank-execution-recovery.test.ts",
+        "tests/native-note-deposit-recovery.test.ts"
+      ],
+      "localChecks": [
+        "recovery",
+        "atomic"
+      ],
+      "requiredEvidence": [
+        "Inject lost responses/crashes at every irreversible boundary on the actual durable adapter. Reopen the same accepted original without staging a replacement."
+      ],
+      "remediation": "Inject lost responses/crashes at every irreversible boundary on the actual durable adapter. Reopen the same accepted original without staging a replacement.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [
+          "recovery",
+          "atomic"
+        ],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Retain exact reviewed intent, candidates and original recovery coordinates before the first consequential request.",
+        "negative": "Lose a reply; supply a foreign refusal/recovery, expired write capability or changed operation/recipient/amount.",
+        "concurrencyAndInterruption": "Crash before retention, staging, submit, commit, reply and packaging; reopen after process/device restart.",
+        "acceptanceCriteria": "Unknown outcomes resolve the same semantic operation before retry/replacement; complete committed recovery reverifies; authenticated zero-write refusal stays bound; no duplicate execution.",
+        "evidenceToRetain": [
+          "Inject lost responses/crashes at every irreversible boundary on the actual durable adapter. Reopen the same accepted original without staging a replacement."
+        ],
+        "retest": "Inject lost responses/crashes at every irreversible boundary on the actual durable adapter. Reopen the same accepted original without staging a replacement."
+      }
+    },
+    {
+      "id": "independent-receipt-and-source-reverification",
+      "title": "Independent complete receipt",
+      "obligation": "Independently reopen complete committed source, receipt and exact participant transitions before showing success.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/bank-committed-sources.ts",
+        "src/receiz/connected-note-runtime.ts"
+      ],
+      "tests": [
+        "tests/connected-note-runtime.test.ts",
+        "tests/account-proof-native.test.ts"
+      ],
+      "localChecks": [
+        "assets",
+        "recovery"
+      ],
+      "requiredEvidence": [
+        "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient."
+      ],
+      "remediation": "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [
+          "assets",
+          "recovery"
+        ],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Independently reopen the full committed source/receipt, source/destination transitions and required private opening.",
+        "negative": "Substitute an image label, status boolean, digest, database row, HTTP result, wrong opening or incomplete archive.",
+        "concurrencyAndInterruption": "Lose receipt delivery after commit, interrupt archive packaging and reopen from a separate process.",
+        "acceptanceCriteria": "Success is reported only after complete canonical verification under the declared policy, with exact accepted heads/amounts; recovery retains complete independent receipt evidence.",
+        "evidenceToRetain": [
+          "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient."
+        ],
+        "retest": "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient."
+      }
+    },
+    {
+      "id": "byte-exact-unknown-namespace-preservation",
+      "title": "Byte-exact preservation",
+      "obligation": "Preserve original bytes, unknown namespaces, causal history and recovery through import/export/synchronization.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/note-proof-portability.ts",
+        "src/receiz/identity-vault.ts"
+      ],
+      "tests": [
+        "tests/note-proof-portability.test.ts",
+        "tests/connected-note-source-queue.test.ts"
+      ],
+      "localChecks": [
+        "ownership",
+        "recovery"
+      ],
+      "requiredEvidence": [
+        "Round-trip actual originals across process/device and transport; compare exact hashes, unknown namespaces and canonical reopened heads."
+      ],
+      "remediation": "Round-trip actual originals across process/device and transport; compare exact hashes, unknown namespaces and canonical reopened heads.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [
+          "ownership",
+          "recovery"
+        ],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Round-trip original source, complete history and an opaque unknown namespace through every supported store/import/export/sync path.",
+        "negative": "Reencode/truncate the image, drop unknown fields/namespaces or transport only a property bag.",
+        "concurrencyAndInterruption": "Interrupt sync and deliver duplicate/out-of-order revisions across separate processes/devices.",
+        "acceptanceCriteria": "Original complete source hashes and unknown namespace bytes survive; canonical reopened history/heads agree. Reopening does not reuse serialized authority handles.",
+        "evidenceToRetain": [
+          "Round-trip actual originals across process/device and transport; compare exact hashes, unknown namespaces and canonical reopened heads."
+        ],
+        "retest": "Round-trip actual originals across process/device and transport; compare exact hashes, unknown namespaces and canonical reopened heads."
+      }
+    },
+    {
+      "id": "immediate-known-local-projection",
+      "title": "Known local truth",
+      "obligation": "Paint retained verified state immediately; label freshness accurately and reconcile received value before spending.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/note-local-inventory.ts",
+        "src/receiz/note-received-deposits.ts"
+      ],
+      "tests": [
+        "tests/note-local-inventory.test.ts",
+        "tests/account-received-notes.test.tsx"
+      ],
+      "localChecks": [],
+      "requiredEvidence": [
+        "Exercise cold/offline first paint, outages, delayed reads and reconnect on actual browser/device. Retention must not create credit or attest successful refresh."
+      ],
+      "remediation": "Exercise cold/offline first paint, outages, delayed reads and reconnect on actual browser/device. Retention must not create credit or attest successful refresh.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Cold-open the actual supported device offline with retained verified local holdings and received-but-unconfirmed Notes.",
+        "negative": "Delay/fail refresh, present stale remote data, reconnect with unconfirmed credit and attempt spending/new Note creation.",
+        "concurrencyAndInterruption": "Restart during refresh/reconciliation; race old/new reads and identity changes.",
+        "acceptanceCriteria": "Latest known verified local truth paints without an initial network/ceremony; freshness is accurate; no stale overwrite or unconfirmed credit becomes spend authority; reconciliation precedes execution.",
+        "evidenceToRetain": [
+          "Exercise cold/offline first paint, outages, delayed reads and reconnect on actual browser/device. Retention must not create credit or attest successful refresh."
+        ],
+        "retest": "Exercise cold/offline first paint, outages, delayed reads and reconnect on actual browser/device. Retention must not create credit or attest successful refresh."
+      }
+    },
+    {
+      "id": "receiver-specific-live-qualification",
+      "title": "Receiver-specific live assessment",
+      "obligation": "Name the exact implementation, capability, rail, source/build, environment, adapter and hardware; publish failures and limits.",
+      "normative": [
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "institution/receiver-profile.json",
+        "src/conformance/assessment.ts"
+      ],
+      "tests": [
+        "tests/conformance-assessment.test.ts"
+      ],
+      "localChecks": [],
+      "requiredEvidence": [
+        "Independent assessment of every applicable invariant with admitted real sources, actual production writer and qualified hardware. Reference checks do not satisfy this gate."
+      ],
+      "remediation": "Independent assessment of every applicable invariant with admitted real sources, actual production writer and qualified hardware. Reference checks do not satisfy this gate.",
+      "verificationAvailability": {
+        "automation": "partial",
+        "referenceEvidence": [],
+        "productionAssessment": "independent-evidence-required",
+        "missingProofResult": "FAIL",
+        "machineLimit": "A local report or original chain alone cannot establish the complete deployed invariant. See docs/conformance/verification-availability.md."
+      },
+      "assessmentProcedure": {
+        "positive": "Reproduce the named implementation/build, capabilities, all selected rails, roots, adapter, realm and hardware with an independent reviewer.",
+        "negative": "Omit evidence, copy another build\u2019s report or generalize one rail/device/route to untested capabilities.",
+        "concurrencyAndInterruption": "Reassess after any material source, trust, adapter/environment or hardware change; reproduce failed cases after remediation.",
+        "acceptanceCriteria": "Every applicable control has accepted inspectable evidence and a named reviewer decision. Failures, missing/expired evidence, exclusions and non-applicability rationale remain explicit; no badge or project permission substitutes for proof.",
+        "evidenceToRetain": [
+          "Independent assessment of every applicable invariant with admitted real sources, actual production writer and qualified hardware. Reference checks do not satisfy this gate."
+        ],
+        "retest": "Independent assessment of every applicable invariant with admitted real sources, actual production writer and qualified hardware. Reference checks do not satisfy this gate."
+      }
+    }
+  ],
+  "noteLaws": [
+    {
+      "id": "NOTE-01",
+      "title": "Original and funding closure",
+      "obligation": "Original and funding closure",
+      "normative": [
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/offline-notes.ts",
+        "src/receiz/connected-note-runtime.ts",
+        "src/receiz/note-proof-portability.ts",
+        "src/receiz/identity-vault.ts"
+      ],
+      "tests": [
+        "tests/note-proof-portability.test.ts",
+        "tests/connected-note-runtime.test.ts",
+        "tests/connected-note-source-queue.test.ts"
+      ],
+      "localChecks": [
+        "source",
+        "assets",
+        "ownership",
+        "recovery"
+      ],
+      "requirementIds": [
+        "exact-enclosing-source-verification",
+        "byte-exact-unknown-namespace-preservation"
+      ],
+      "requiredEvidence": [
+        "Open an admitted original under production roots; mutate bytes, remove parents and re-open complete closure.",
+        "Round-trip actual originals across process/device and transport; compare exact hashes, unknown namespaces and canonical reopened heads."
+      ],
+      "remediation": "Retest this law using the linked original sources and every applicable rail and execution profile."
+    },
+    {
+      "id": "NOTE-02",
+      "title": "Receipt is distinct from credit",
+      "obligation": "Receipt is distinct from credit",
+      "normative": [
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/note-local-inventory.ts",
+        "src/receiz/note-received-deposits.ts",
+        "src/receiz/connected-note-runtime.ts"
+      ],
+      "tests": [
+        "tests/note-local-inventory.test.ts",
+        "tests/account-received-notes.test.tsx",
+        "tests/connected-note-runtime.test.ts",
+        "tests/native-note-deposit-recovery.test.ts"
+      ],
+      "localChecks": [
+        "atomic"
+      ],
+      "requirementIds": [
+        "immediate-known-local-projection",
+        "atomic-once-only-consumption-and-credit"
+      ],
+      "requiredEvidence": [
+        "Exercise cold/offline first paint, outages, delayed reads and reconnect on actual browser/device. Retention must not create credit or attest successful refresh.",
+        "Exercise real concurrent, repeated and cross-device claims with one accepted credit; inspect durable participant and global state after interruption."
+      ],
+      "remediation": "Retest this law using the linked original sources and every applicable rail and execution profile."
+    },
+    {
+      "id": "NOTE-03",
+      "title": "Receiver-bound complete terminal",
+      "obligation": "Receiver-bound complete terminal",
+      "normative": [
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/connected-note-runtime.ts",
+        "src/receiz/bank-native-session.ts",
+        "src/receiz/bank-execution.ts",
+        "src/receiz/bank-native-source.ts",
+        "src/receiz/bank-committed-sources.ts"
+      ],
+      "tests": [
+        "tests/note-account-receiving.test.ts",
+        "tests/connected-note-runtime.test.ts",
+        "tests/bank-domain.test.ts",
+        "tests/bank-execution-recovery.test.ts",
+        "tests/account-proof-native.test.ts"
+      ],
+      "localChecks": [
+        "edges",
+        "money",
+        "atomic",
+        "assets",
+        "recovery"
+      ],
+      "requirementIds": [
+        "receiver-identity-and-origin-binding",
+        "exact-source-and-destination-heads",
+        "independent-receipt-and-source-reverification"
+      ],
+      "requiredEvidence": [
+        "Use actual sender and receiver identities; refuse another account, key, audience, origin and stale receiver head.",
+        "Run actual concurrent native executions against stale source and destination heads; inspect complete accepted transitions or authenticated refusal.",
+        "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient."
+      ],
+      "remediation": "Retest this law using the linked original sources and every applicable rail and execution profile."
+    },
+    {
+      "id": "NOTE-04",
+      "title": "One predecessor, one successor",
+      "obligation": "One predecessor, one successor",
+      "normative": [
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/bank-execution.ts",
+        "src/receiz/bank-native-source.ts",
+        "src/receiz/connected-note-runtime.ts",
+        "src/receiz/note-received-deposits.ts"
+      ],
+      "tests": [
+        "tests/bank-domain.test.ts",
+        "tests/bank-execution-recovery.test.ts",
+        "tests/connected-note-runtime.test.ts",
+        "tests/native-note-deposit-recovery.test.ts"
+      ],
+      "localChecks": [
+        "money",
+        "atomic",
+        "edges"
+      ],
+      "requirementIds": [
+        "exact-source-and-destination-heads",
+        "atomic-once-only-consumption-and-credit"
+      ],
+      "requiredEvidence": [
+        "Run actual concurrent native executions against stale source and destination heads; inspect complete accepted transitions or authenticated refusal.",
+        "Exercise real concurrent, repeated and cross-device claims with one accepted credit; inspect durable participant and global state after interruption."
+      ],
+      "remediation": "Retest this law using the linked original sources and every applicable rail and execution profile."
+    },
+    {
+      "id": "NOTE-05",
+      "title": "Assessed protected offline custody",
+      "obligation": "Assessed protected offline custody",
+      "normative": [
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/offline-notes.ts",
+        "src/conformance/device-evidence.ts"
+      ],
+      "tests": [
+        "tests/native-note-account-handoff.test.ts",
+        "tests/note-attestation-transport.test.ts"
+      ],
+      "localChecks": [
+        "custody"
+      ],
+      "requirementIds": [
+        "qualified-current-custody"
+      ],
+      "requiredEvidence": [
+        "Exercise actual protected exact-head retirement, clone/backup/restore, signed assertions and crash boundaries on each supported device path."
+      ],
+      "remediation": "Retest this law using the linked original sources and every applicable rail and execution profile."
+    },
+    {
+      "id": "NOTE-06",
+      "title": "Reconcile before spending",
+      "obligation": "Reconcile before spending",
+      "normative": [
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/connected-note-runtime.ts",
+        "src/receiz/note-received-deposits.ts",
+        "src/receiz/note-local-inventory.ts"
+      ],
+      "tests": [
+        "tests/connected-note-runtime.test.ts",
+        "tests/native-note-deposit-recovery.test.ts",
+        "tests/note-local-inventory.test.ts",
+        "tests/account-received-notes.test.tsx"
+      ],
+      "localChecks": [
+        "atomic"
+      ],
+      "requirementIds": [
+        "atomic-once-only-consumption-and-credit",
+        "immediate-known-local-projection"
+      ],
+      "requiredEvidence": [
+        "Exercise real concurrent, repeated and cross-device claims with one accepted credit; inspect durable participant and global state after interruption.",
+        "Exercise cold/offline first paint, outages, delayed reads and reconnect on actual browser/device. Retention must not create credit or attest successful refresh."
+      ],
+      "remediation": "Retest this law using the linked original sources and every applicable rail and execution profile."
+    },
+    {
+      "id": "NOTE-07",
+      "title": "Conserve every rail and amount",
+      "obligation": "Conserve every rail and amount",
+      "normative": [
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/note-funding.ts",
+        "src/receiz/native-asset-backing.ts",
+        "src/receiz/connected-note-runtime.ts"
+      ],
+      "tests": [
+        "tests/connected-note-runtime.test.ts",
+        "tests/native-asset-backing.test.ts",
+        "tests/money.test.ts"
+      ],
+      "localChecks": [
+        "money",
+        "edges",
+        "assets"
+      ],
+      "requirementIds": [
+        "explicit-rail-and-denomination",
+        "exclusive-value-allocation"
+      ],
+      "requiredEvidence": [
+        "Qualify Reserve, Settlement and composite independently with admitted sources, repricing, component mutation and exact debit/credit deltas.",
+        "Use admitted account funding and actual native writer to show one allocation, no duplicate online/Note/asset availability and conserved original backing."
+      ],
+      "remediation": "Retest this law using the linked original sources and every applicable rail and execution profile."
+    },
+    {
+      "id": "NOTE-08",
+      "title": "Verified Kai causal order",
+      "obligation": "Verified Kai causal order",
+      "normative": [
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/bank-kai.ts",
+        "src/receiz/note-history.ts"
+      ],
+      "tests": [
+        "tests/note-history.test.ts",
+        "tests/ledger-proof-history.test.ts"
+      ],
+      "localChecks": [
+        "temporal"
+      ],
+      "requirementIds": [
+        "verified-kaisigil-bound-kks-coordinate"
+      ],
+      "requiredEvidence": [
+        "Verify real source-bound KKS coordinates and predecessor order under pinned resources; reject bare timestamp or pulse substitutions."
+      ],
+      "remediation": "Retest this law using the linked original sources and every applicable rail and execution profile."
+    },
+    {
+      "id": "NOTE-09",
+      "title": "Retire former custody",
+      "obligation": "Retire former custody",
+      "normative": [
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/offline-notes.ts",
+        "src/conformance/device-evidence.ts",
+        "src/receiz/bank-native-source.ts",
+        "src/receiz/native-asset-holding.ts"
+      ],
+      "tests": [
+        "tests/native-note-account-handoff.test.ts",
+        "tests/note-attestation-transport.test.ts",
+        "tests/native-asset-holding.test.ts",
+        "tests/ledger-proof-history.test.ts"
+      ],
+      "localChecks": [
+        "custody",
+        "ownership"
+      ],
+      "requirementIds": [
+        "qualified-current-custody",
+        "verified-ownership-and-complete-causal-history"
+      ],
+      "requiredEvidence": [
+        "Exercise actual protected exact-head retirement, clone/backup/restore, signed assertions and crash boundaries on each supported device path.",
+        "Reopen actual ownership transitions; reject stale heads, former-owner execution, missing history and conflicting branches."
+      ],
+      "remediation": "Retest this law using the linked original sources and every applicable rail and execution profile."
+    },
+    {
+      "id": "NOTE-10",
+      "title": "Retain before execution and recover exactly",
+      "obligation": "Retain before execution and recover exactly",
+      "normative": [
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/bank-execution-recovery.ts",
+        "src/receiz/native-note-deposit.ts"
+      ],
+      "tests": [
+        "tests/bank-execution-recovery.test.ts",
+        "tests/native-note-deposit-recovery.test.ts"
+      ],
+      "localChecks": [
+        "recovery",
+        "atomic"
+      ],
+      "requirementIds": [
+        "durable-exact-intent-recovery"
+      ],
+      "requiredEvidence": [
+        "Inject lost responses/crashes at every irreversible boundary on the actual durable adapter. Reopen the same accepted original without staging a replacement."
+      ],
+      "remediation": "Retest this law using the linked original sources and every applicable rail and execution profile."
+    },
+    {
+      "id": "NOTE-11",
+      "title": "Credit once across re-import and concurrency",
+      "obligation": "Credit once across re-import and concurrency",
+      "normative": [
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/connected-note-runtime.ts",
+        "src/receiz/note-received-deposits.ts"
+      ],
+      "tests": [
+        "tests/connected-note-runtime.test.ts",
+        "tests/native-note-deposit-recovery.test.ts"
+      ],
+      "localChecks": [
+        "atomic"
+      ],
+      "requirementIds": [
+        "atomic-once-only-consumption-and-credit"
+      ],
+      "requiredEvidence": [
+        "Exercise real concurrent, repeated and cross-device claims with one accepted credit; inspect durable participant and global state after interruption."
+      ],
+      "remediation": "Retest this law using the linked original sources and every applicable rail and execution profile."
+    },
+    {
+      "id": "NOTE-12",
+      "title": "Publish exact qualification scope",
+      "obligation": "Publish exact qualification scope",
+      "normative": [
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "institution/receiver-profile.json",
+        "src/conformance/assessment.ts"
+      ],
+      "tests": [
+        "tests/conformance-assessment.test.ts"
+      ],
+      "localChecks": [],
+      "requirementIds": [
+        "receiver-specific-live-qualification"
+      ],
+      "requiredEvidence": [
+        "Independent assessment of every applicable invariant with admitted real sources, actual production writer and qualified hardware. Reference checks do not satisfy this gate."
+      ],
+      "remediation": "Retest this law using the linked original sources and every applicable rail and execution profile."
+    },
+    {
+      "id": "NOTE-13",
+      "title": "Immediate local truth without ceremonies",
+      "obligation": "Immediate local truth without ceremonies",
+      "normative": [
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/note-local-inventory.ts",
+        "src/receiz/note-received-deposits.ts"
+      ],
+      "tests": [
+        "tests/note-local-inventory.test.ts",
+        "tests/account-received-notes.test.tsx"
+      ],
+      "localChecks": [],
+      "requirementIds": [
+        "immediate-known-local-projection"
+      ],
+      "requiredEvidence": [
+        "Exercise cold/offline first paint, outages, delayed reads and reconnect on actual browser/device. Retention must not create credit or attest successful refresh."
+      ],
+      "remediation": "Retest this law using the linked original sources and every applicable rail and execution profile."
+    },
+    {
+      "id": "NOTE-14",
+      "title": "Reopen complete source before completion",
+      "obligation": "Reopen complete source before completion",
+      "normative": [
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/bank-committed-sources.ts",
+        "src/receiz/connected-note-runtime.ts"
+      ],
+      "tests": [
+        "tests/connected-note-runtime.test.ts",
+        "tests/account-proof-native.test.ts"
+      ],
+      "localChecks": [
+        "assets",
+        "recovery"
+      ],
+      "requirementIds": [
+        "independent-receipt-and-source-reverification"
+      ],
+      "requiredEvidence": [
+        "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient."
+      ],
+      "remediation": "Retest this law using the linked original sources and every applicable rail and execution profile."
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "notes",
+      "title": "Note creation, transfer, receipt and redemption",
+      "obligation": "Reserve, Settlement and Settlement Reserve Notes preserve funding, identity and history from issue through once-only account credit.",
+      "normative": [
+        "docs/connected-notes-v129.md",
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/connected-note-runtime.ts",
+        "src/receiz/offline-notes.ts",
+        "src/receiz/note-received-deposits.ts"
+      ],
+      "tests": [
+        "tests/connected-note-runtime.test.ts",
+        "tests/native-note-account-handoff.test.ts",
+        "tests/native-note-deposit-recovery.test.ts"
+      ],
+      "requirementIds": [
+        "exact-enclosing-source-verification",
+        "canonical-registry-and-root-binding",
+        "verified-ownership-and-complete-causal-history",
+        "explicit-rail-and-denomination",
+        "receiver-identity-and-origin-binding",
+        "qualified-current-custody",
+        "exact-source-and-destination-heads",
+        "verified-kaisigil-bound-kks-coordinate",
+        "explicit-capability-and-exact-operation-consent",
+        "exclusive-value-allocation",
+        "atomic-once-only-consumption-and-credit",
+        "durable-exact-intent-recovery",
+        "independent-receipt-and-source-reverification",
+        "byte-exact-unknown-namespace-preservation",
+        "immediate-known-local-projection",
+        "receiver-specific-live-qualification"
+      ],
+      "localChecks": [
+        "source",
+        "assets",
+        "release",
+        "integrity",
+        "ownership",
+        "money",
+        "edges",
+        "custody",
+        "atomic",
+        "temporal",
+        "recovery"
+      ],
+      "requiredEvidence": [
+        "Open an admitted original under production roots; mutate bytes, remove parents and re-open complete closure.",
+        "Reproduce exact resources and independently assess the deployed signer/root policy; custom-root fixtures cannot qualify production.",
+        "Reopen actual ownership transitions; reject stale heads, former-owner execution, missing history and conflicting branches.",
+        "Qualify Reserve, Settlement and composite independently with admitted sources, repricing, component mutation and exact debit/credit deltas.",
+        "Use actual sender and receiver identities; refuse another account, key, audience, origin and stale receiver head.",
+        "Exercise actual protected exact-head retirement, clone/backup/restore, signed assertions and crash boundaries on each supported device path.",
+        "Run actual concurrent native executions against stale source and destination heads; inspect complete accepted transitions or authenticated refusal.",
+        "Verify real source-bound KKS coordinates and predecessor order under pinned resources; reject bare timestamp or pulse substitutions.",
+        "Qualify real signatures, revocation, expiry and changed terms; audit logs/caches/model access for private keys, tokens, attestation and execution handles.",
+        "Use admitted account funding and actual native writer to show one allocation, no duplicate online/Note/asset availability and conserved original backing.",
+        "Exercise real concurrent, repeated and cross-device claims with one accepted credit; inspect durable participant and global state after interruption.",
+        "Inject lost responses/crashes at every irreversible boundary on the actual durable adapter. Reopen the same accepted original without staging a replacement.",
+        "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient.",
+        "Round-trip actual originals across process/device and transport; compare exact hashes, unknown namespaces and canonical reopened heads.",
+        "Exercise cold/offline first paint, outages, delayed reads and reconnect on actual browser/device. Retention must not create credit or attest successful refresh.",
+        "Independent assessment of every applicable invariant with admitted real sources, actual production writer and qualified hardware. Reference checks do not satisfy this gate."
+      ],
+      "remediation": "Implement the linked contract and qualify each selected operation against original admitted sources, actual adapter and environment."
+    },
+    {
+      "id": "value",
+      "title": "Value, denomination and backing",
+      "obligation": "Admitted value is distinct from display valuation. Preserve fixed Reserve denomination, exact Settlement Phi and both composite components.",
+      "normative": [
+        "docs/automatic-asset-backing.md",
+        "docs/connected-notes-v129.md"
+      ],
+      "implementation": [
+        "src/receiz/native-asset-backing.ts",
+        "src/receiz/note-funding.ts"
+      ],
+      "tests": [
+        "tests/money.test.ts",
+        "tests/native-asset-backing.test.ts"
+      ],
+      "requirementIds": [
+        "exact-enclosing-source-verification",
+        "explicit-rail-and-denomination",
+        "verified-kaisigil-bound-kks-coordinate",
+        "exclusive-value-allocation",
+        "independent-receipt-and-source-reverification"
+      ],
+      "localChecks": [
+        "source",
+        "assets",
+        "money",
+        "edges",
+        "temporal",
+        "recovery"
+      ],
+      "requiredEvidence": [
+        "Open an admitted original under production roots; mutate bytes, remove parents and re-open complete closure.",
+        "Qualify Reserve, Settlement and composite independently with admitted sources, repricing, component mutation and exact debit/credit deltas.",
+        "Verify real source-bound KKS coordinates and predecessor order under pinned resources; reject bare timestamp or pulse substitutions.",
+        "Use admitted account funding and actual native writer to show one allocation, no duplicate online/Note/asset availability and conserved original backing.",
+        "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient."
+      ],
+      "remediation": "Implement the linked contract and qualify each selected operation against original admitted sources, actual adapter and environment."
+    },
+    {
+      "id": "ownership",
+      "title": "Identity, ownership and consent",
+      "obligation": "Current ownership, exact receiver, origin and approved intent remain bound to every lawful transition.",
+      "normative": [
+        "docs/note-continuity-standard.md",
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/bank-execution.ts",
+        "src/receiz/bank-native-session.ts"
+      ],
+      "tests": [
+        "tests/bank-domain.test.ts",
+        "tests/note-account-receiving.test.ts"
+      ],
+      "requirementIds": [
+        "verified-ownership-and-complete-causal-history",
+        "receiver-identity-and-origin-binding",
+        "qualified-current-custody",
+        "exact-source-and-destination-heads",
+        "explicit-capability-and-exact-operation-consent"
+      ],
+      "localChecks": [
+        "ownership",
+        "edges",
+        "custody",
+        "money",
+        "atomic",
+        "recovery"
+      ],
+      "requiredEvidence": [
+        "Reopen actual ownership transitions; reject stale heads, former-owner execution, missing history and conflicting branches.",
+        "Use actual sender and receiver identities; refuse another account, key, audience, origin and stale receiver head.",
+        "Exercise actual protected exact-head retirement, clone/backup/restore, signed assertions and crash boundaries on each supported device path.",
+        "Run actual concurrent native executions against stale source and destination heads; inspect complete accepted transitions or authenticated refusal.",
+        "Qualify real signatures, revocation, expiry and changed terms; audit logs/caches/model access for private keys, tokens, attestation and execution handles."
+      ],
+      "remediation": "Implement the linked contract and qualify each selected operation against original admitted sources, actual adapter and environment."
+    },
+    {
+      "id": "assets",
+      "title": "Assets, shares and offers",
+      "obligation": "Conserve funded supply and exact unit ownership; collateralize offers, settle partial fills atomically and redeem whole supply against original backing. Physical title requires separate admitted evidence.",
+      "normative": [
+        "docs/native-assets-and-account-proofs-v129.md",
+        "docs/automatic-asset-backing.md"
+      ],
+      "implementation": [
+        "src/receiz/native-asset.ts",
+        "src/receiz/native-asset-holding.ts",
+        "src/receiz/native-asset-public.ts"
+      ],
+      "tests": [
+        "tests/native-asset.test.ts",
+        "tests/native-asset-holding.test.ts",
+        "tests/native-asset-public.test.ts",
+        "tests/native-asset-backing.test.ts"
+      ],
+      "requirementIds": [
+        "exact-enclosing-source-verification",
+        "verified-ownership-and-complete-causal-history",
+        "explicit-rail-and-denomination",
+        "exact-source-and-destination-heads",
+        "explicit-capability-and-exact-operation-consent",
+        "exclusive-value-allocation",
+        "atomic-once-only-consumption-and-credit",
+        "durable-exact-intent-recovery",
+        "independent-receipt-and-source-reverification",
+        "byte-exact-unknown-namespace-preservation",
+        "receiver-specific-live-qualification"
+      ],
+      "localChecks": [
+        "source",
+        "assets",
+        "ownership",
+        "money",
+        "edges",
+        "atomic",
+        "recovery"
+      ],
+      "requiredEvidence": [
+        "Open an admitted original under production roots; mutate bytes, remove parents and re-open complete closure.",
+        "Reopen actual ownership transitions; reject stale heads, former-owner execution, missing history and conflicting branches.",
+        "Qualify Reserve, Settlement and composite independently with admitted sources, repricing, component mutation and exact debit/credit deltas.",
+        "Run actual concurrent native executions against stale source and destination heads; inspect complete accepted transitions or authenticated refusal.",
+        "Qualify real signatures, revocation, expiry and changed terms; audit logs/caches/model access for private keys, tokens, attestation and execution handles.",
+        "Use admitted account funding and actual native writer to show one allocation, no duplicate online/Note/asset availability and conserved original backing.",
+        "Exercise real concurrent, repeated and cross-device claims with one accepted credit; inspect durable participant and global state after interruption.",
+        "Inject lost responses/crashes at every irreversible boundary on the actual durable adapter. Reopen the same accepted original without staging a replacement.",
+        "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient.",
+        "Round-trip actual originals across process/device and transport; compare exact hashes, unknown namespaces and canonical reopened heads.",
+        "Independent assessment of every applicable invariant with admitted real sources, actual production writer and qualified hardware. Reference checks do not satisfy this gate."
+      ],
+      "remediation": "Implement the linked contract and qualify each selected operation against original admitted sources, actual adapter and environment."
+    },
+    {
+      "id": "recovery",
+      "title": "Atomic execution and recovery",
+      "obligation": "Exact heads, durable intent, once-only consumption and independent receipts survive retries, concurrency and interruption.",
+      "normative": [
+        "docs/bank-execution-recovery-contract.md",
+        "institution/receiving-standard.md#required-invariants"
+      ],
+      "implementation": [
+        "src/receiz/bank-execution-recovery.ts",
+        "src/receiz/bank-committed-sources.ts"
+      ],
+      "tests": [
+        "tests/bank-execution-recovery.test.ts",
+        "tests/native-note-deposit-recovery.test.ts"
+      ],
+      "requirementIds": [
+        "exact-source-and-destination-heads",
+        "explicit-capability-and-exact-operation-consent",
+        "atomic-once-only-consumption-and-credit",
+        "durable-exact-intent-recovery",
+        "independent-receipt-and-source-reverification"
+      ],
+      "localChecks": [
+        "money",
+        "atomic",
+        "edges",
+        "ownership",
+        "recovery",
+        "assets"
+      ],
+      "requiredEvidence": [
+        "Run actual concurrent native executions against stale source and destination heads; inspect complete accepted transitions or authenticated refusal.",
+        "Qualify real signatures, revocation, expiry and changed terms; audit logs/caches/model access for private keys, tokens, attestation and execution handles.",
+        "Exercise real concurrent, repeated and cross-device claims with one accepted credit; inspect durable participant and global state after interruption.",
+        "Inject lost responses/crashes at every irreversible boundary on the actual durable adapter. Reopen the same accepted original without staging a replacement.",
+        "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient."
+      ],
+      "remediation": "Implement the linked contract and qualify each selected operation against original admitted sources, actual adapter and environment."
+    },
+    {
+      "id": "history",
+      "title": "Source, history and independent replay",
+      "obligation": "Keep complete originals, unknown namespaces and verified causal coordinates through every transport and reopening.",
+      "normative": [
+        "institution/holding-and-recovery.md",
+        "docs/note-continuity-standard.md#required-laws"
+      ],
+      "implementation": [
+        "src/receiz/note-proof-portability.ts",
+        "src/receiz/ledger-proof-history.ts"
+      ],
+      "tests": [
+        "tests/note-proof-portability.test.ts",
+        "tests/ledger-proof-history.test.ts"
+      ],
+      "requirementIds": [
+        "exact-enclosing-source-verification",
+        "canonical-registry-and-root-binding",
+        "verified-ownership-and-complete-causal-history",
+        "verified-kaisigil-bound-kks-coordinate",
+        "independent-receipt-and-source-reverification",
+        "byte-exact-unknown-namespace-preservation"
+      ],
+      "localChecks": [
+        "source",
+        "assets",
+        "release",
+        "integrity",
+        "ownership",
+        "temporal",
+        "recovery"
+      ],
+      "requiredEvidence": [
+        "Open an admitted original under production roots; mutate bytes, remove parents and re-open complete closure.",
+        "Reproduce exact resources and independently assess the deployed signer/root policy; custom-root fixtures cannot qualify production.",
+        "Reopen actual ownership transitions; reject stale heads, former-owner execution, missing history and conflicting branches.",
+        "Verify real source-bound KKS coordinates and predecessor order under pinned resources; reject bare timestamp or pulse substitutions.",
+        "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient.",
+        "Round-trip actual originals across process/device and transport; compare exact hashes, unknown namespaces and canonical reopened heads."
+      ],
+      "remediation": "Implement the linked contract and qualify each selected operation against original admitted sources, actual adapter and environment."
+    },
+    {
+      "id": "application",
+      "title": "Financial application integrity",
+      "obligation": "Separate retained, received, confirmed and spendable states. Preserve local first paint, freshness, protected custody and scope of execution.",
+      "normative": [
+        "docs/note-continuity-standard.md",
+        "docs/native-assets-and-account-proofs-v129.md"
+      ],
+      "implementation": [
+        "src/receiz/identity-vault.ts",
+        "src/receiz/note-received-deposits.ts",
+        "src/receiz/account-proof-sources.ts"
+      ],
+      "tests": [
+        "tests/account-received-notes.test.tsx",
+        "tests/account-proof-closures.test.ts",
+        "tests/note-local-inventory.test.ts"
+      ],
+      "requirementIds": [
+        "explicit-capability-and-exact-operation-consent",
+        "durable-exact-intent-recovery",
+        "independent-receipt-and-source-reverification",
+        "immediate-known-local-projection",
+        "receiver-specific-live-qualification"
+      ],
+      "localChecks": [
+        "ownership",
+        "recovery",
+        "atomic",
+        "assets"
+      ],
+      "requiredEvidence": [
+        "Qualify real signatures, revocation, expiry and changed terms; audit logs/caches/model access for private keys, tokens, attestation and execution handles.",
+        "Inject lost responses/crashes at every irreversible boundary on the actual durable adapter. Reopen the same accepted original without staging a replacement.",
+        "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient.",
+        "Exercise cold/offline first paint, outages, delayed reads and reconnect on actual browser/device. Retention must not create credit or attest successful refresh.",
+        "Independent assessment of every applicable invariant with admitted real sources, actual production writer and qualified hardware. Reference checks do not satisfy this gate."
+      ],
+      "remediation": "Implement the linked contract and qualify each selected operation against original admitted sources, actual adapter and environment."
+    }
+  ],
+  "rails": [
+    {
+      "id": "reserve",
+      "title": "Reserve Note",
+      "denomination": "Original fixed USD claim with historical Phi backing."
+    },
+    {
+      "id": "settlement",
+      "title": "Settlement Note",
+      "denomination": "Exact signed Phi; printed USD is value at creation."
+    },
+    {
+      "id": "composite",
+      "title": "Settlement Reserve Note",
+      "denomination": "Both positive signed funding components; totals and original components persist."
+    }
+  ],
+  "noteLifecycle": [
+    "quote",
+    "issue",
+    "retain-funding",
+    "handover",
+    "offline-receipt",
+    "claim-or-redemption",
+    "independent-credit-verification",
+    "reconcile-before-spend",
+    "cancel-before-allocation",
+    "exact-recovery"
+  ],
+  "executionProfiles": [
+    {
+      "id": "qualified-offline",
+      "boundary": "Assessed protected custody irreversibly consumes exact head locally."
+    },
+    {
+      "id": "connected-account-v1",
+      "boundary": "Signed handover may be retained offline; exclusive consumption and account credit require the selected connected writer."
+    }
+  ],
+  "limitations": [
+    "Local vectors are nonfinancial reference evidence, not production qualification.",
+    "SDK emulator ownership tests are not financial Note, asset supply or hardware tests.",
+    "The current connected financial integration depends on the selected Receiz host writer and admitted production sources. An independent implementation must supply compatible authority, durable transitions, trust policy and evidence.",
+    "The standard and compatible implementations require no Bankeiz assistance, permission or paid badge; applicable licenses and trust admission remain explicit."
+  ],
+  "assessmentAutomation": "partial-machine-verification; production receiver assessment requires independent evidence",
+  "publicToolkit": {
+    "sdk": "@receiz/sdk@129.0.0",
+    "mcp": "@receiz/mcp-server@129.0.0",
+    "aiSkills": "@receiz/ai-skills@129.0.0",
+    "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
+    "operationMatrixDigest": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1",
+    "schemas": "/schemas/",
+    "auditableSource": "/source/index.json"
+  }
+}

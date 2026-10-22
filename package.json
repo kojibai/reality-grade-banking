@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "node scripts/build-pdf-resources.mjs && node scripts/build-icons.mjs && node scripts/build-identity-artwork.mjs --check && node scripts/build-asset-title-index.mjs --check && node scripts/build-social-images.mjs --check && node scripts/receiz-release.mjs && node scripts/build-receipt-preview.mjs && node scripts/build-asset-preview.mjs && node scripts/build-profile-preview.mjs && node scripts/build-chart-valuation.mjs --check && tsc -b && node scripts/build-proof-verifier.mjs && vite build && node scripts/build-public-pages.mjs && node scripts/build-source-archive.mjs && node scripts/build-license-notices.mjs && node scripts/build-offline-shell.mjs && node scripts/check-offline-shell.mjs && node scripts/check-conformance-build.mjs && node scripts/check-licensing.mjs && node scripts/check-source-archive.mjs && node scripts/check-public-pages.mjs",
+    "build": "node scripts/build-pdf-resources.mjs && node scripts/build-icons.mjs && node scripts/build-identity-artwork.mjs --check && node scripts/build-asset-title-index.mjs --check && node scripts/build-social-images.mjs --check && node scripts/receiz-release.mjs && node scripts/build-receipt-preview.mjs && node scripts/build-asset-preview.mjs && node scripts/build-profile-preview.mjs && node scripts/build-chart-valuation.mjs --check && node scripts/conformance-certificate.mjs --check && tsc -b && node scripts/build-proof-verifier.mjs && vite build && node scripts/build-public-pages.mjs && node scripts/build-source-archive.mjs && node scripts/build-license-notices.mjs && node scripts/build-offline-shell.mjs && node scripts/check-offline-shell.mjs && node scripts/check-conformance-build.mjs && node scripts/check-licensing.mjs && node scripts/check-source-archive.mjs && node scripts/check-public-pages.mjs",
     "icons:build": "node scripts/build-icons.mjs",
     "icons:check": "node scripts/build-icons.mjs --check",
     "social:build": "node scripts/build-social-images.mjs",
@@ -22,6 +22,10 @@
     "receiver:inspect": "node institution/inspect-note.mjs",
     "receiver:build": "node scripts/build-receiver-verifier.mjs",
     "conformance:check": "node scripts/check-conformance-build.mjs",
+    "conformance:reference": "node scripts/conformance-reference.mjs",
+    "conformance:contracts": "node scripts/conformance-contract.mjs",
+    "conformance:assess": "node scripts/conformance-assess.mjs",
+    "conformance:baseline": "node scripts/conformance-baseline.mjs",
     "license:check": "node scripts/check-licensing.mjs",
     "native:check": "node scripts/check-native-source.mjs && node scripts/check-native-resources.mjs && node scripts/build-identity-artwork.mjs --check",
     "native:rebuild": "node scripts/rebuild-native.mjs",
@@ -34,6 +38,7 @@
     "@receiz/mcp-server": "129.0.0",
     "@receiz/sdk": "129.0.0",
     "@resvg/resvg-js": "^2.6.2",
+    "@resvg/resvg-wasm": "2.6.2",
     "fflate": "0.8.3",
     "lucide-react": "^0.468.0",
     "pdfjs-dist": "6.4.299",
@@ -46,11 +51,11 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "esbuild": "0.28.2",
     "happy-dom": "21.0.1",
     "typescript": "5.9.3",
     "vite": "^7.0.0",
-    "vitest": "5.0.4",
-    "esbuild": "0.28.2"
+    "vitest": "5.0.4"
   },
   "overrides": {
     "underscore": "1.13.8"

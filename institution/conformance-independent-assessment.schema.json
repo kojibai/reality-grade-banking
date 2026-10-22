@@ -1,0 +1,606 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Independent Reality-Grade Banking assessment record (application evidence format, not a canonical SDK schema)",
+  "$comment": "Schema validity and reviewer acceptance are record structure, not machine proof. Apply published evidence acceptance criteria independently.",
+  "type": "object",
+  "required": [
+    "schema",
+    "recordIsMachineProof",
+    "profile",
+    "implementation",
+    "scope",
+    "assessor",
+    "evidence",
+    "controls",
+    "conclusion"
+  ],
+  "properties": {
+    "schema": {
+      "const": "receiz.bank.independent-assessment.v1"
+    },
+    "recordIsMachineProof": {
+      "const": false
+    },
+    "controls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exact-enclosing-source-verification",
+        "canonical-registry-and-root-binding",
+        "verified-ownership-and-complete-causal-history",
+        "explicit-rail-and-denomination",
+        "receiver-identity-and-origin-binding",
+        "qualified-current-custody",
+        "exact-source-and-destination-heads",
+        "verified-kaisigil-bound-kks-coordinate",
+        "explicit-capability-and-exact-operation-consent",
+        "exclusive-value-allocation",
+        "atomic-once-only-consumption-and-credit",
+        "durable-exact-intent-recovery",
+        "independent-receipt-and-source-reverification",
+        "byte-exact-unknown-namespace-preservation",
+        "immediate-known-local-projection",
+        "receiver-specific-live-qualification"
+      ],
+      "properties": {
+        "exact-enclosing-source-verification": {
+          "$ref": "#/$defs/control"
+        },
+        "canonical-registry-and-root-binding": {
+          "$ref": "#/$defs/control"
+        },
+        "verified-ownership-and-complete-causal-history": {
+          "$ref": "#/$defs/control"
+        },
+        "explicit-rail-and-denomination": {
+          "$ref": "#/$defs/control"
+        },
+        "receiver-identity-and-origin-binding": {
+          "$ref": "#/$defs/control"
+        },
+        "qualified-current-custody": {
+          "$ref": "#/$defs/control"
+        },
+        "exact-source-and-destination-heads": {
+          "$ref": "#/$defs/control"
+        },
+        "verified-kaisigil-bound-kks-coordinate": {
+          "$ref": "#/$defs/control"
+        },
+        "explicit-capability-and-exact-operation-consent": {
+          "$ref": "#/$defs/control"
+        },
+        "exclusive-value-allocation": {
+          "$ref": "#/$defs/control"
+        },
+        "atomic-once-only-consumption-and-credit": {
+          "$ref": "#/$defs/control"
+        },
+        "durable-exact-intent-recovery": {
+          "$ref": "#/$defs/control"
+        },
+        "independent-receipt-and-source-reverification": {
+          "$ref": "#/$defs/control"
+        },
+        "byte-exact-unknown-namespace-preservation": {
+          "$ref": "#/$defs/control"
+        },
+        "immediate-known-local-projection": {
+          "$ref": "#/$defs/control"
+        },
+        "receiver-specific-live-qualification": {
+          "$ref": "#/$defs/control"
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "sha256",
+          "kind",
+          "custodian",
+          "accessProcedure"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "custodian": {
+            "type": "string",
+            "minLength": 1
+          },
+          "accessProcedure": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "conclusion": {
+      "type": "object",
+      "required": [
+        "status",
+        "reviewer",
+        "rationale",
+        "limitations",
+        "materialFailures"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "conformance-not-demonstrated",
+            "conforming-for-assessed-capability",
+            "does-not-pass"
+          ]
+        },
+        "reviewer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 0,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "materialFailures": {
+          "type": "array",
+          "minItems": 0,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "conforming-for-assessed-capability"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "reviewer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "materialFailures": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "profile": {
+      "type": "object",
+      "required": [
+        "profileVersion",
+        "receizVersion",
+        "ruleset",
+        "registryDigest",
+        "operationMatrixDigest"
+      ],
+      "properties": {
+        "profileVersion": {
+          "const": "1.0.0"
+        },
+        "receizVersion": {
+          "const": "129.0.0"
+        },
+        "ruleset": {
+          "const": "127.0.0"
+        },
+        "registryDigest": {
+          "const": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065"
+        },
+        "operationMatrixDigest": {
+          "const": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1"
+        }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "required": [
+        "name",
+        "sourceRevision",
+        "buildSha256",
+        "sourceManifestSha256",
+        "environment",
+        "adapter",
+        "realm",
+        "hardware"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceRevision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "buildSha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "sourceManifestSha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "environment": {
+          "type": "string",
+          "minLength": 1
+        },
+        "adapter": {
+          "type": "string",
+          "minLength": 1
+        },
+        "realm": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hardware": {
+          "type": "array",
+          "minItems": 0,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "required": [
+        "capabilities",
+        "rails",
+        "executionProfiles",
+        "operations"
+      ],
+      "properties": {
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "notes",
+              "value",
+              "ownership",
+              "assets",
+              "recovery",
+              "history",
+              "application"
+            ]
+          }
+        },
+        "rails": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "reserve",
+              "settlement",
+              "composite"
+            ]
+          }
+        },
+        "executionProfiles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "qualified-offline",
+              "connected-account-v1"
+            ]
+          }
+        },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "assessor": {
+      "type": "object",
+      "required": [
+        "name",
+        "organization",
+        "independenceAndTrustPolicy",
+        "assessmentDate"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "organization": {
+          "type": "string",
+          "minLength": 1
+        },
+        "independenceAndTrustPolicy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assessmentDate": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "control": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "objective",
+        "applicable",
+        "nonApplicabilityRationale",
+        "procedures",
+        "observations",
+        "evidenceRefs",
+        "reviewerAcceptance",
+        "finding"
+      ],
+      "properties": {
+        "applicable": {
+          "type": "boolean"
+        },
+        "nonApplicabilityRationale": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "procedure",
+              "observed",
+              "evidenceRefs",
+              "implementationBuildSha256"
+            ],
+            "properties": {
+              "procedure": {
+                "enum": [
+                  "positive",
+                  "negative",
+                  "concurrencyAndInterruption",
+                  "rerun"
+                ]
+              },
+              "observed": {},
+              "evidenceRefs": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "implementationBuildSha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reviewerAcceptance": {
+          "type": "object",
+          "required": [
+            "decision",
+            "reviewer",
+            "reviewedAt",
+            "rationale"
+          ],
+          "properties": {
+            "decision": {
+              "enum": [
+                "not-reviewed",
+                "accepted",
+                "rejected",
+                "not-applicable"
+              ]
+            },
+            "reviewer": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reviewedAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rationale": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "objective": {
+          "type": "string",
+          "minLength": 1
+        },
+        "procedures": {
+          "type": "object",
+          "required": [
+            "positive",
+            "negative",
+            "concurrencyAndInterruption",
+            "acceptanceCriteria",
+            "evidenceToRetain",
+            "retest"
+          ],
+          "properties": {
+            "positive": {
+              "type": "string",
+              "minLength": 1
+            },
+            "negative": {
+              "type": "string",
+              "minLength": 1
+            },
+            "concurrencyAndInterruption": {
+              "type": "string",
+              "minLength": 1
+            },
+            "acceptanceCriteria": {
+              "type": "string",
+              "minLength": 1
+            },
+            "evidenceToRetain": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "retest": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "finding": {
+          "type": "object",
+          "required": [
+            "status",
+            "remediation",
+            "rerunEvidenceRefs"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "required-proof-missing",
+                "observed-failure",
+                "accepted",
+                "not-applicable"
+              ]
+            },
+            "remediation": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rerunEvidenceRefs": {
+              "type": "array",
+              "minItems": 0,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "applicable": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "nonApplicabilityRationale": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reviewerAcceptance": {
+                "properties": {
+                  "decision": {
+                    "const": "accepted"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidenceRefs": {
+                "minItems": 1
+              },
+              "observations": {
+                "minItems": 1
+              },
+              "reviewerAcceptance": {
+                "properties": {
+                  "reviewer": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reviewedAt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "rationale": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

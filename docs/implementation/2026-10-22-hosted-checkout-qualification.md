@@ -37,6 +37,12 @@ Note adapters, lost responses, credit/journal interruptions, exact card limits,
 concurrent approvals, receipts and acceptance tools. Subsequent review fixes,
 are recorded below.
 
+The final combined checkout/conformance run is published with every test name
+and exact source/resource hashes in
+[`src/content/conformance-baseline.json`](../../src/content/conformance-baseline.json).
+Its counters and source identity describe that later run separately from the
+initial qualification above.
+
 ## Independent review and recovery corrections
 
 An independent review identified four gaps. Each correction began with a

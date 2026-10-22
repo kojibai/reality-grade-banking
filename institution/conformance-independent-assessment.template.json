@@ -1,0 +1,491 @@
+{
+  "schema": "receiz.bank.independent-assessment.v1",
+  "recordIsMachineProof": false,
+  "profile": {
+    "profileVersion": "1.0.0",
+    "receizVersion": "129.0.0",
+    "ruleset": "127.0.0",
+    "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
+    "operationMatrixDigest": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1"
+  },
+  "implementation": {
+    "name": null,
+    "sourceRevision": null,
+    "buildSha256": null,
+    "sourceManifestSha256": null,
+    "environment": null,
+    "adapter": null,
+    "realm": null,
+    "hardware": []
+  },
+  "scope": {
+    "capabilities": [],
+    "rails": [],
+    "executionProfiles": [],
+    "operations": []
+  },
+  "assessor": {
+    "name": null,
+    "organization": null,
+    "independenceAndTrustPolicy": null,
+    "assessmentDate": null
+  },
+  "evidence": [],
+  "controls": {
+    "exact-enclosing-source-verification": {
+      "objective": "Verify the complete enclosing artifact, funding closure and causal history before deriving authority.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Open a genuine admitted original and every enclosing funding/history parent independently in both endpoint processes.",
+        "negative": "Change one byte; omit a parent; substitute artwork, JSON flags, an unsupported schema or an oversized carrier.",
+        "concurrencyAndInterruption": "Interrupt storage/import/export between each retained block; reopen the identical original after restart.",
+        "acceptanceCriteria": "Both independent readers derive the same admitted closure and source digest; every mutation refuses before authority or credit.",
+        "evidenceToRetain": [
+          "Open an admitted original under production roots; mutate bytes, remove parents and re-open complete closure."
+        ],
+        "retest": "Open an admitted original under production roots; mutate bytes, remove parents and re-open complete closure."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Open an admitted original under production roots; mutate bytes, remove parents and re-open complete closure.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "canonical-registry-and-root-binding": {
+      "objective": "Pin the SDK release, registry, ruleset, operation matrix and admitted roots.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Reproduce the exact build, canonical roots, registry, ruleset and operation matrix from the declared distribution.",
+        "negative": "Replace a root, registry, verifier module or resource; run diagnostic custom roots against the production boundary.",
+        "concurrencyAndInterruption": "Interrupt resource loading and retry with mixed old/new resources.",
+        "acceptanceCriteria": "Actual executable/resource hashes and trust policy match the declared profile; altered or mixed trust material refuses; diagnostic roots never produce production authority.",
+        "evidenceToRetain": [
+          "Reproduce exact resources and independently assess the deployed signer/root policy; custom-root fixtures cannot qualify production."
+        ],
+        "retest": "Reproduce exact resources and independently assess the deployed signer/root policy; custom-root fixtures cannot qualify production."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Reproduce exact resources and independently assess the deployed signer/root policy; custom-root fixtures cannot qualify production.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "verified-ownership-and-complete-causal-history": {
+      "objective": "Derive current ownership from admitted state and complete causal history.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Transfer an actually owned source and independently reopen its complete causal ownership chain.",
+        "negative": "Use a former owner, stale ownership head, omitted predecessor or a conflicting branch.",
+        "concurrencyAndInterruption": "Race competing ownership transitions and replay delayed old heads after restart.",
+        "acceptanceCriteria": "Only current admitted ownership authorizes execution; complete causal history survives; competing/old ownership cannot create another lawful successor.",
+        "evidenceToRetain": [
+          "Reopen actual ownership transitions; reject stale heads, former-owner execution, missing history and conflicting branches."
+        ],
+        "retest": "Reopen actual ownership transitions; reject stale heads, former-owner execution, missing history and conflicting branches."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Reopen actual ownership transitions; reject stale heads, former-owner execution, missing history and conflicting branches.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "explicit-rail-and-denomination": {
+      "objective": "Conserve Reserve USD claims, Settlement Phi and every signed component of a combined Note.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Run Reserve-only, Settlement-only and combined Note/asset funding, transfer, credit and applicable redemption using admitted sources.",
+        "negative": "Change denomination, exact Phi, signed rail, component order or any part/totals; exercise precision and overflow limits.",
+        "concurrencyAndInterruption": "Race an old quote against repricing; recover an interrupted mixed allocation/refund.",
+        "acceptanceCriteria": "Reserve returns its original fixed-dollar claim/backing, Settlement its exact Phi, composite parts reconcile throughout; repricing never duplicates or invents value.",
+        "evidenceToRetain": [
+          "Qualify Reserve, Settlement and composite independently with admitted sources, repricing, component mutation and exact debit/credit deltas."
+        ],
+        "retest": "Qualify Reserve, Settlement and composite independently with admitted sources, repricing, component mutation and exact debit/credit deltas."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Qualify Reserve, Settlement and composite independently with admitted sources, repricing, component mutation and exact debit/credit deltas.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "receiver-identity-and-origin-binding": {
+      "objective": "Bind application audience, account, key, origin and current receiver head.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Use real sender/receiver keys, registered origin/application audience, receiving account and current destination head.",
+        "negative": "Substitute account/key/audience/origin/request after review; forward the same completed file to another receiver.",
+        "concurrencyAndInterruption": "Rotate/revoke membership or change destination head concurrently with consent and execution.",
+        "acceptanceCriteria": "The complete accepted receipt binds the exact intended receiver and current admissible authority; all substitutions refuse without misdirected credit.",
+        "evidenceToRetain": [
+          "Use actual sender and receiver identities; refuse another account, key, audience, origin and stale receiver head."
+        ],
+        "retest": "Use actual sender and receiver identities; refuse another account, key, audience, origin and stale receiver head."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Use actual sender and receiver identities; refuse another account, key, audience, origin and stale receiver head.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "qualified-current-custody": {
+      "objective": "Retain admitted non-exportable custody and required attestation; copying source bytes grants no spend authority.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Enroll and admit the actual non-exportable custody path; consume one exact prepared head into one bound successor.",
+        "negative": "Copy source/handle; restore or clone prior state; test backup-eligible credentials, missing/decreased/repeated/unexpected state and invalid attestation.",
+        "concurrencyAndInterruption": "Crash before/after exact-head retirement and before packaging; restore a pre-send device image; concurrently approve competing successors.",
+        "acceptanceCriteria": "Retired spend authority cannot reactivate; independently verifiable attestation/consumption binds predecessor, receiver, whole value and successor. A counter increment alone is insufficient.",
+        "evidenceToRetain": [
+          "Exercise actual protected exact-head retirement, clone/backup/restore, signed assertions and crash boundaries on each supported device path."
+        ],
+        "retest": "Exercise actual protected exact-head retirement, clone/backup/restore, signed assertions and crash boundaries on each supported device path."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Exercise actual protected exact-head retirement, clone/backup/restore, signed assertions and crash boundaries on each supported device path.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "exact-source-and-destination-heads": {
+      "objective": "Verify source and destination predecessor heads before atomic commit.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Commit a complete operation against independently verified exact source and destination heads.",
+        "negative": "Change either head, participant set or claimed transition after consent.",
+        "concurrencyAndInterruption": "Race two genuine operations and inject crash between participant writes on the actual durable adapter.",
+        "acceptanceCriteria": "Every accepted participant transition uses the exact reviewed predecessor; all commit or none; stale/conflicting transitions cannot report success.",
+        "evidenceToRetain": [
+          "Run actual concurrent native executions against stale source and destination heads; inspect complete accepted transitions or authenticated refusal."
+        ],
+        "retest": "Run actual concurrent native executions against stale source and destination heads; inspect complete accepted transitions or authenticated refusal."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Run actual concurrent native executions against stale source and destination heads; inspect complete accepted transitions or authenticated refusal.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "verified-kaisigil-bound-kks-coordinate": {
+      "objective": "Preserve KaiSigil-bound KKS coordinates and causal order; wall-clock labels are descriptive.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Verify the actual operation\u2019s carried KaiSigil/KKS proof and predecessor; retain the exact micro-pulse.",
+        "negative": "Mutate lattice, BLAKE3/Poseidon commitment, Groth16 signals/proof, predecessor, future bound; substitute bare pulse, local date or Chronos.",
+        "concurrencyAndInterruption": "Deliver valid operations out of order, replay an old coordinate and reopen the accepted causal chain.",
+        "acceptanceCriteria": "Pinned intrinsic proof verifies; predecessor binding and strict causal progression hold; wall-clock timestamps remain descriptive. No withheld branch is inferred from sorting.",
+        "evidenceToRetain": [
+          "Verify real source-bound KKS coordinates and predecessor order under pinned resources; reject bare timestamp or pulse substitutions."
+        ],
+        "retest": "Verify real source-bound KKS coordinates and predecessor order under pinned resources; reject bare timestamp or pulse substitutions."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Verify real source-bound KKS coordinates and predecessor order under pinned resources; reject bare timestamp or pulse substitutions.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "explicit-capability-and-exact-operation-consent": {
+      "objective": "Authorize the exact operation through current participants and scoped capability. Protect private custody and authorization material.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Review and approve the exact operation under current participant capability and correctly scoped identity.",
+        "negative": "Change value/recipient/heads after review; use expired/revoked/foreign capability or serialized handles.",
+        "concurrencyAndInterruption": "Revoke during pending execution; interrupt signing/retention; inspect actual public caches, logs, telemetry and model exposure.",
+        "acceptanceCriteria": "Accepted operation and consent match exactly; refusal has no unauthorized effect; identity secrets, tokens, attestation and execution custody remain protected.",
+        "evidenceToRetain": [
+          "Qualify real signatures, revocation, expiry and changed terms; audit logs/caches/model access for private keys, tokens, attestation and execution handles."
+        ],
+        "retest": "Qualify real signatures, revocation, expiry and changed terms; audit logs/caches/model access for private keys, tokens, attestation and execution handles."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Qualify real signatures, revocation, expiry and changed terms; audit logs/caches/model access for private keys, tokens, attestation and execution handles.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "exclusive-value-allocation": {
+      "objective": "Exclude allocated value from all other spendable memberships; public prices cannot create backing.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Allocate actual admitted value to a Note or asset and independently inspect account, Note, backing and inventory memberships.",
+        "negative": "Attempt duplicate allocation from cached balances, public listings, intrinsic quotes, missing backing or another membership.",
+        "concurrencyAndInterruption": "Race Note issuance, asset funding and account spending against the same original source; recover lost allocation replies.",
+        "acceptanceCriteria": "One admitted allocation excludes every competing spendable membership; backing remains tied to its source; no simultaneous online and Note/asset availability.",
+        "evidenceToRetain": [
+          "Use admitted account funding and actual native writer to show one allocation, no duplicate online/Note/asset availability and conserved original backing."
+        ],
+        "retest": "Use admitted account funding and actual native writer to show one allocation, no duplicate online/Note/asset availability and conserved original backing."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Use admitted account funding and actual native writer to show one allocation, no duplicate online/Note/asset availability and conserved original backing.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "atomic-once-only-consumption-and-credit": {
+      "objective": "Consume the exact predecessor and apply the exact recipient credit once, or no accepted success.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Consume a genuine terminal and verify the complete native recipient credit/private opening and participant states.",
+        "negative": "Replay by changed filename, device, recipient or handover; submit forged metadata/HTTP success without canonical credit.",
+        "concurrencyAndInterruption": "Submit identical and competing claims concurrently, interrupt each irreversible commit boundary, then recover.",
+        "acceptanceCriteria": "One exact predecessor yields one accepted successor and exact recipient credit. Identical retries resolve the same result; partial consume/credit never appears successful.",
+        "evidenceToRetain": [
+          "Exercise real concurrent, repeated and cross-device claims with one accepted credit; inspect durable participant and global state after interruption."
+        ],
+        "retest": "Exercise real concurrent, repeated and cross-device claims with one accepted credit; inspect durable participant and global state after interruption."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Exercise real concurrent, repeated and cross-device claims with one accepted credit; inspect durable participant and global state after interruption.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "durable-exact-intent-recovery": {
+      "objective": "Retain exact reviewed intent and coordinates before consequential execution. Resolve ambiguity before retry/replacement.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Retain exact reviewed intent, candidates and original recovery coordinates before the first consequential request.",
+        "negative": "Lose a reply; supply a foreign refusal/recovery, expired write capability or changed operation/recipient/amount.",
+        "concurrencyAndInterruption": "Crash before retention, staging, submit, commit, reply and packaging; reopen after process/device restart.",
+        "acceptanceCriteria": "Unknown outcomes resolve the same semantic operation before retry/replacement; complete committed recovery reverifies; authenticated zero-write refusal stays bound; no duplicate execution.",
+        "evidenceToRetain": [
+          "Inject lost responses/crashes at every irreversible boundary on the actual durable adapter. Reopen the same accepted original without staging a replacement."
+        ],
+        "retest": "Inject lost responses/crashes at every irreversible boundary on the actual durable adapter. Reopen the same accepted original without staging a replacement."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Inject lost responses/crashes at every irreversible boundary on the actual durable adapter. Reopen the same accepted original without staging a replacement.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "independent-receipt-and-source-reverification": {
+      "objective": "Independently reopen complete committed source, receipt and exact participant transitions before showing success.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Independently reopen the full committed source/receipt, source/destination transitions and required private opening.",
+        "negative": "Substitute an image label, status boolean, digest, database row, HTTP result, wrong opening or incomplete archive.",
+        "concurrencyAndInterruption": "Lose receipt delivery after commit, interrupt archive packaging and reopen from a separate process.",
+        "acceptanceCriteria": "Success is reported only after complete canonical verification under the declared policy, with exact accepted heads/amounts; recovery retains complete independent receipt evidence.",
+        "evidenceToRetain": [
+          "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient."
+        ],
+        "retest": "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Reverify full authentic funding, handover, credit/cancellation and account openings. A digest, HTTP result or caller report is insufficient.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "byte-exact-unknown-namespace-preservation": {
+      "objective": "Preserve original bytes, unknown namespaces, causal history and recovery through import/export/synchronization.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Round-trip original source, complete history and an opaque unknown namespace through every supported store/import/export/sync path.",
+        "negative": "Reencode/truncate the image, drop unknown fields/namespaces or transport only a property bag.",
+        "concurrencyAndInterruption": "Interrupt sync and deliver duplicate/out-of-order revisions across separate processes/devices.",
+        "acceptanceCriteria": "Original complete source hashes and unknown namespace bytes survive; canonical reopened history/heads agree. Reopening does not reuse serialized authority handles.",
+        "evidenceToRetain": [
+          "Round-trip actual originals across process/device and transport; compare exact hashes, unknown namespaces and canonical reopened heads."
+        ],
+        "retest": "Round-trip actual originals across process/device and transport; compare exact hashes, unknown namespaces and canonical reopened heads."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Round-trip actual originals across process/device and transport; compare exact hashes, unknown namespaces and canonical reopened heads.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "immediate-known-local-projection": {
+      "objective": "Paint retained verified state immediately; label freshness accurately and reconcile received value before spending.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Cold-open the actual supported device offline with retained verified local holdings and received-but-unconfirmed Notes.",
+        "negative": "Delay/fail refresh, present stale remote data, reconnect with unconfirmed credit and attempt spending/new Note creation.",
+        "concurrencyAndInterruption": "Restart during refresh/reconciliation; race old/new reads and identity changes.",
+        "acceptanceCriteria": "Latest known verified local truth paints without an initial network/ceremony; freshness is accurate; no stale overwrite or unconfirmed credit becomes spend authority; reconciliation precedes execution.",
+        "evidenceToRetain": [
+          "Exercise cold/offline first paint, outages, delayed reads and reconnect on actual browser/device. Retention must not create credit or attest successful refresh."
+        ],
+        "retest": "Exercise cold/offline first paint, outages, delayed reads and reconnect on actual browser/device. Retention must not create credit or attest successful refresh."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Exercise cold/offline first paint, outages, delayed reads and reconnect on actual browser/device. Retention must not create credit or attest successful refresh.",
+        "rerunEvidenceRefs": []
+      }
+    },
+    "receiver-specific-live-qualification": {
+      "objective": "Name the exact implementation, capability, rail, source/build, environment, adapter and hardware; publish failures and limits.",
+      "applicable": true,
+      "nonApplicabilityRationale": null,
+      "procedures": {
+        "positive": "Reproduce the named implementation/build, capabilities, all selected rails, roots, adapter, realm and hardware with an independent reviewer.",
+        "negative": "Omit evidence, copy another build\u2019s report or generalize one rail/device/route to untested capabilities.",
+        "concurrencyAndInterruption": "Reassess after any material source, trust, adapter/environment or hardware change; reproduce failed cases after remediation.",
+        "acceptanceCriteria": "Every applicable control has accepted inspectable evidence and a named reviewer decision. Failures, missing/expired evidence, exclusions and non-applicability rationale remain explicit; no badge or project permission substitutes for proof.",
+        "evidenceToRetain": [
+          "Independent assessment of every applicable invariant with admitted real sources, actual production writer and qualified hardware. Reference checks do not satisfy this gate."
+        ],
+        "retest": "Independent assessment of every applicable invariant with admitted real sources, actual production writer and qualified hardware. Reference checks do not satisfy this gate."
+      },
+      "observations": [],
+      "evidenceRefs": [],
+      "reviewerAcceptance": {
+        "decision": "not-reviewed",
+        "reviewer": null,
+        "reviewedAt": null,
+        "rationale": null
+      },
+      "finding": {
+        "status": "required-proof-missing",
+        "remediation": "Independent assessment of every applicable invariant with admitted real sources, actual production writer and qualified hardware. Reference checks do not satisfy this gate.",
+        "rerunEvidenceRefs": []
+      }
+    }
+  },
+  "conclusion": {
+    "status": "conformance-not-demonstrated",
+    "reviewer": null,
+    "rationale": "Complete every applicable control and retain independently inspectable original evidence before concluding conformance for the exact assessed scope.",
+    "limitations": [],
+    "materialFailures": []
+  }
+}
