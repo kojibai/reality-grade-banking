@@ -1,5 +1,6 @@
 import {expect,it,vi} from 'vitest';
-import {handleAssetPreview} from '../server/asset-preview';
+import {assetPreviewItem,handleAssetPreview} from '../server/asset-preview';
+import {Window} from 'happy-dom';
 import {assetPagePath,assetPageId} from '../src/receiz/public-asset-page';
 import {parsePublicMarket} from '../src/receiz/public-market';
 const item=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:source',receizId:'source',title:'A moment $& <script>one</script>',summary:'The complete original.',ownerUsername:'artist',profileOriginal:{media:{kind:'image'}}}]}}).items[0];
@@ -8,7 +9,25 @@ const deps=()=>({page:vi.fn(async()=>html),item:vi.fn(async()=>item),image:vi.fn
 it('starts the carried owner portrait in cold HTML without waiting for JavaScript or another profile read',async()=>{
  const f=deps();f.item.mockResolvedValue({...item,ownerAvatarUrl:'https://receiz.com/artwork/artist.png'});
  const body=await(await handleAssetPreview(new Request('https://bankeiz.com'+assetPagePath(item.id)),f)).text();
- expect(body).toContain('<link rel="preload" as="image" href="https://receiz.com/artwork/artist.png"');expect(f.item).toHaveBeenCalledOnce();
+ const document=new Window().document;document.write(body);
+ const owner=document.querySelector('.asset-profile-byline'),portrait=owner?.querySelector('img');
+ expect(owner?.getAttribute('href')).toBe('/artist/');expect(owner?.textContent).toContain('@artist');
+ expect(portrait?.getAttribute('src')).toBe('https://receiz.com/artwork/artist.png');expect(portrait?.getAttribute('loading')).toBe('eager');expect(portrait?.getAttribute('decoding')).toBe('async');expect(portrait?.getAttribute('referrerpolicy')).toBe('no-referrer');
+ expect(document.querySelector('link[rel="preload"][as="image"]')?.getAttribute('href')).toBe(portrait?.getAttribute('src'));
+ expect(document.querySelector('#public-asset-seed')?.textContent).toContain('https://receiz.com/artwork/artist.png');
+ expect(f.item).toHaveBeenCalledOnce();expect(f.page).toHaveBeenCalledOnce();expect(f.image).not.toHaveBeenCalled();
+});
+it.each([null,undefined,'javascript:alert(1)','https://user:password@example.com/avatar.png'])('omits an absent or unsafe cold owner portrait: %s',async ownerAvatarUrl=>{
+ const f=deps();f.item.mockResolvedValue({...item,ownerAvatarUrl});
+ const body=await(await handleAssetPreview(new Request('https://bankeiz.com'+assetPagePath(item.id)),f)).text(),document=new Window().document;document.write(body);
+ expect(document.querySelector('.asset-profile-byline')?.getAttribute('href')).toBe('/artist/');expect(document.querySelector('.asset-profile-byline img')).toBeNull();expect(document.querySelector('link[rel="preload"][as="image"]')).toBeNull();
+});
+it('carries the already-published owner portrait in a shipped asset without any upstream read',async()=>{
+ const read=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('Cold snapshot must not read upstream'));
+ try{
+  const source=await assetPreviewItem('profile:bjklock:b63e1e2f-62e7-41d8-a769-3a76400f95e0');
+  expect(source?.ownerUsername).toBe('bjklock');expect(source?.ownerAvatarUrl).toMatch(/^https:\/\/receiz\.com\/api\/storage\/object\?/);expect(read).not.toHaveBeenCalled();
+ }finally{read.mockRestore();}
 });
 it('starts the actual public image with matching anonymous CORS for preview and canonical verification',async()=>{
  const artwork='https://receiz.com/api/proof-material/packages/'+'a'.repeat(64)+'/artifact',f=deps();f.item.mockResolvedValue({...item,artworkUrl:artwork});
