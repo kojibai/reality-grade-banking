@@ -677,7 +677,16 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const inventory=createLocalNoteInventory({keyId:binding.keyId,uid:()=>accountUid??knownWallet?.wallet.userId??null,readLegacy:()=>atNoteStage('saved-notes',()=>loadOfflineNoteState(binding)),readPrepared:()=>atNoteStage('prepared-notes',()=>loadPreparedNoteState(binding)),restore:ref=>atNoteStage('note-image',()=>loadOfflineNoteBlob(binding,ref)),inspect,assertOpen:noteOpen});
     localNoteInventory=inventory;
     const action=async<T,>(operation:()=>Promise<T>):Promise<T>=>{noteOpen();activeNoteOperations++;noteOperationEpoch++;try{return await operation();}finally{activeNoteOperations--;}};
-    localNotes={exportImage:noteImages.exportImage,savedNotes:async()=>[...await inventory.savedNotes(),...(await localConnectedNotes().savedNotes()).map(note=>({...note,consumption:'connection-required' as const}))],pending:notePending,inspect,receivedNotes:()=>localReceivedNotes().list(),
+    localNotes={exportImage:noteImages.exportImage,savedNotes:async()=>[...await inventory.savedNotes(),...(await localConnectedNotes().savedNotes()).map(note=>({...note,consumption:'connection-required' as const}))],pending:notePending,inspect,receivedNotes:()=>localReceivedNotes().list(),reconcileReceivedNotes:async()=>{await synchronizeReceivedNotes();return localReceivedNotes().list();},
+      recoverDeposit:async image=>{
+        const module=await loadBankNoteRuntime();noteOpen();
+        if(await isConnectedNote(module,image)||module.isBankNoteAccountDeposit(image)){await synchronizeReceivedNotes();const row=await inspect(image);return(await localReceivedNotes().list()).find(value=>value.noteId===row.noteId)??null;}
+        const row=await inspect(image),saved=await loadOfflineNoteState(binding) as {schema?:string;deposits?:Record<string,unknown>}|null;noteOpen();
+        // The existing runtime reopens its original intent and GET recovery.
+        // No saved attempt means Check must not create a new redemption.
+        if(saved?.schema!=='receiz.bank.offline-notes-device.v1'||!saved.deposits?.[row.noteId])return null;
+        return(await openNotesExecution()).deposit(image);
+      },
       review:amount=>action(()=>withAccountExecutionLock(async()=>{
         await assertNoteCreateState();const pending=await notePending();
         if(pending){if(pending.amountUsdCents!==amount)throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');return{...pending,rail:pending.rail??'reserve'};}

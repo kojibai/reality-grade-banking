@@ -9,6 +9,8 @@ export type BankNoteDepositResult=BankNoteDeposit|BankReceivedNoteDeposit;
 export interface BankOfflineNotes {
   exportImage?(image:Uint8Array,noteId:string):Promise<Uint8Array>;
   receivedNotes?():Promise<BankNoteDepositResult[]>;
+  reconcileReceivedNotes?():Promise<BankNoteDepositResult[]>;
+  recoverDeposit?(image:Uint8Array):Promise<BankNoteDepositResult|null>;
   prepareResources?(count:{notes:number;receivers:number}):Promise<void>;
   review?(amount:string):Promise<BankNoteReview>;
   savedNotes(): Promise<BankNoteImage[]>;
