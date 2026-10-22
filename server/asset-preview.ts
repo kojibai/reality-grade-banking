@@ -1,3 +1,4 @@
+import {bankMarkSvg} from '../branding/bank-mark.mjs';
 import type {PublicMarketItem} from '../src/receiz/public-market';
 import {parsePublicMarket,safeReceizArtworkUrl} from '../src/receiz/public-market';
 import {mergePublicSports} from '../src/receiz/public-sports';
@@ -46,7 +47,7 @@ export function assetPreviewHtml(html:string,id:string,item:PublicMarketItem|nul
  // No profile lookup, image proxy or decode wait belongs on this HTML path.
  const ownerByline=owner?`<a class="asset-profile-byline" href="${escape(profilePagePath(owner))}">${portrait?`<span class="profile-avatar" aria-hidden="true"><img src="${escape(portrait)}" alt="" width="30" height="30" loading="eager" decoding="async" referrerpolicy="no-referrer" draggable="false"></span>`:''}<span>Owner<span>@${escape(owner)}</span></span></a>`:'';
  const seed=item?`<script id="public-asset-seed" type="application/json">${JSON.stringify(item).replaceAll('<','\\u003c')}</script>`:'';
- const initial=`<main class="public-entry-placeholder"><nav aria-label="Asset navigation"><a href="/">Bankeiz</a><a href="/explore/">Explore</a><a href="/learn/proof-objects/">About ownership</a></nav><p>${item?escape(marketContentLabel(item)):'Public source'}</p><h1>${escape(item?.title??'Asset')}</h1>${ownerByline}${cover}<p>${escape(description)}</p>${item?.sourceUrl?`<a href="${escape(item.sourceUrl)}">Original public source ↗</a>`:''}</main>`;
+ const initial=`<main class="public-entry-placeholder"><nav aria-label="Asset navigation"><a href="/" aria-label="Bankeiz home">${bankMarkSvg}</a><a href="/explore/">Explore</a><a href="/learn/proof-objects/">About ownership</a></nav><p>${item?escape(marketContentLabel(item)):'Public source'}</p><h1>${escape(item?.title??'Asset')}</h1>${ownerByline}${cover}<p>${escape(description)}</p>${item?.sourceUrl?`<a href="${escape(item.sourceUrl)}">Original public source ↗</a>`:''}</main>`;
  return html.replace(/<title>[\s\S]*?<\/title>/gi,'').replace(/<meta\b[^>]*(?:name="(?:description|robots|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/gi,'').replace(/<link\b[^>]*rel="canonical"[^>]*>/gi,'').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/gi,'').replace('</head>',()=>tags+mediaTags+discovery+coverHint+portraitHint+'</head>').replace(/(<div id="public-explore-root"[^>]*>)(?:<main[^>]*>\s*(<style>[\s\S]*?<\/style>))?[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_whole,start,style,end)=>start+(style??'')+initial+end).replace('<script id="receiz-navigation"',()=>seed+'<script id="receiz-navigation"');
 }
 export async function handleAssetPreview(request:Request,dependencies?:Dependencies):Promise<Response>{

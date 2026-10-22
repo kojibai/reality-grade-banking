@@ -1,3 +1,4 @@
+import {bankMarkSvg} from '../branding/bank-mark.mjs';
 // Public, static learning surfaces. No account state or application runtime is loaded here.
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -7,7 +8,6 @@ import {siteFooterHtml} from './site-footer.mjs';
 import {learningPages,learningGroups,learningPath,assetCategories} from '../src/content/learning-pages.mjs';
 import {learningVisual} from './learning-visuals.mjs';
 const brandText = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-const brandWordmark = `${brandText(branding.wordmark)}<span>${brandText(branding.descriptor)}</span>`;
 const arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg>';
 const down = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16m-6-6 6 6 6-6"/></svg>';
 const fingerprint = renderToStaticMarkup(createElement(Fingerprint, { strokeWidth: 1.1, 'aria-hidden': true }));
@@ -19,7 +19,7 @@ const layers = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 
 export function learnHeader() {
   const base = '/learn/';
-  return `<a class="skip-link" href="#main">Skip to content</a><header class="learn-header"><div class="learn-shell header-inner"><a class="learn-brand" href="/learn/" aria-label="${brandText(branding.applicationName)} Learn">${brandWordmark}</a><nav class="header-nav" aria-label="Learn navigation"><a href="${base}#how-it-works">How it works</a><a href="${base}#your-identity">Your identity</a><a href="${base}#guides">Guides</a></nav><a class="learn-button button-ink header-enter" href="/">Enter bank ${arrow}</a></div><div class="reading-progress" aria-hidden="true"></div></header>`;
+  return `<a class="skip-link" href="#main">Skip to content</a><header class="learn-header"><div class="learn-shell header-inner"><a class="learn-brand" href="/learn/" aria-label="${brandText(branding.applicationName)} Learn">${bankMarkSvg}</a><nav class="header-nav" aria-label="Learn navigation"><a href="${base}#how-it-works">How it works</a><a href="${base}#your-identity">Your identity</a><a href="${base}#guides">Guides</a></nav><a class="learn-button button-ink header-enter" href="/">Enter bank ${arrow}</a></div><div class="reading-progress" aria-hidden="true"></div></header>`;
 }
 
 const flowPaths = [

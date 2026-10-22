@@ -7,15 +7,15 @@
   "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
   "operationMatrixDigest": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1",
   "verifierModuleSha256": "47fee9e101ed3c6fbb0d00f303ba2a0b28787401e394046ca8d23c37018beb2a",
-  "suiteSourceSha256": "aae51301103d27de97f0583b1bbe4df013b8147b025d3584462cd2b0ed1d2118",
-  "startedAt": "2026-10-22T23:05:45.966Z",
-  "completedAt": "2026-10-22T23:05:46.201Z",
+  "suiteSourceSha256": "2a9722767358c91c6b478545ea2beebdbd5414ad73c613af1dcc78e77969c1cc",
+  "startedAt": "2026-10-22T23:13:11.917Z",
+  "completedAt": "2026-10-22T23:13:12.172Z",
   "checks": [
     {
       "id": "money",
       "passed": true,
       "evidence": null,
-      "durationMs": 43
+      "durationMs": 47
     },
     {
       "id": "ownership",
@@ -27,13 +27,13 @@
       "id": "atomic",
       "passed": true,
       "evidence": null,
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "recovery",
       "passed": true,
       "evidence": null,
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "assets",
@@ -51,13 +51,13 @@
       "id": "integrity",
       "passed": true,
       "evidence": null,
-      "durationMs": 47
+      "durationMs": 51
     },
     {
       "id": "source",
       "passed": true,
       "evidence": null,
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "custody",
@@ -75,7 +75,7 @@
       "id": "temporal",
       "passed": true,
       "evidence": null,
-      "durationMs": 113
+      "durationMs": 122
     },
     {
       "id": "edges",

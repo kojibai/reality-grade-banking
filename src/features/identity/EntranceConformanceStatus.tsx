@@ -141,7 +141,7 @@ export function EntranceConformanceStatus() {
       {refreshing && <p className="entrance-conformance-detail"><LoaderCircle size={12} aria-hidden="true" />Verification in progress{progress.total !== null && ` · ${progress.results.length} of ${progress.total} complete`}</p>}
       {phase === 'refused' && <p className="entrance-conformance-error">Verification did not satisfy all checks. Inspect the evidence for the recorded findings.</p>}
       {phase === 'error' && <p className="entrance-conformance-error">A current verification result could not be established. Retry verification or inspect the evidence.</p>}
-      <dl className="entrance-conformance-scope"><div><dt>Standard</dt><dd>Reality-Grade Banking</dd></div><div><dt>Scope</dt><dd>Proof and continuity checks</dd></div>{phase === 'passed' && <div><dt>Evidence</dt><dd>{snapshot.origin === 'recorded' ? 'Recorded verification' : snapshot.origin === 'device' ? 'Last result on this device' : 'Verified this session'}</dd></div>}</dl>
+      <dl className="entrance-conformance-scope"><div><dt>Standard</dt><dd>Reality-grade banking</dd></div><div><dt>Scope</dt><dd>Proof and continuity checks</dd></div>{phase === 'passed' && <div><dt>Evidence</dt><dd>{snapshot.origin === 'recorded' ? 'Recorded verification' : snapshot.origin === 'device' ? 'Last result on this device' : 'Verified this session'}</dd></div>}</dl>
       <div className="entrance-conformance-footer"><a href="/conformance/#reference">View verification evidence<ArrowUpRight size={13} aria-hidden="true" /></a>{!refreshing && <button type="button" onClick={() => void runChecks()}>{phase === 'error' || phase === 'refused' ? 'Retry verification' : 'Verify again'}</button>}</div>
     </div>}
   </div>;
