@@ -1,0 +1,40 @@
+import {expect,it} from 'vitest';
+import {hostedFixture,checkoutRecipient} from './fixtures/hosted-checkout';
+it('records a balance payment once and rejects an unapproved digest',async()=>{
+ const f=hostedFixture(),c=f.newController();await c.ready;const r=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'balance'});
+ await expect(c.approve('wrong')).rejects.toThrow();expect(f.transfer).not.toHaveBeenCalled();
+ await c.approve(r.digest);expect(c.snapshot().phase).toBe('paid');expect(c.snapshot().receipt).toMatchObject({recipientUserId:checkoutRecipient,amountUsdCents:'1000'});await c.approve(r.digest);expect(f.transfer).toHaveBeenCalledTimes(1);
+});
+it('uses full card funding and automatically continues the approved payment on completion',async()=>{
+ const f=hostedFixture(3000),c=f.newController();await c.ready;const r=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});await c.approve(r.digest);expect(c.snapshot().phase).toBe('funding');expect(f.transfer).not.toHaveBeenCalled();expect(f.begin).toHaveBeenCalledTimes(1);
+ f.creditCard();await c.check();expect(c.snapshot().phase).toBe('paid');expect(f.transfer).toHaveBeenCalledTimes(1);expect(f.begin).toHaveBeenCalledTimes(1);
+});
+it('waits for Note confirmation and continues without another deposit or payment approval',async()=>{
+ const f=hostedFixture(0),c=f.newController();await c.ready;await c.inspectNote({}as File);const r=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'note'});await c.approve(r.digest);expect(c.snapshot().phase).toBe('funding');expect(f.deposit).toHaveBeenCalledTimes(1);expect(f.transfer).not.toHaveBeenCalled();
+ await c.check();expect(f.transfer).not.toHaveBeenCalled();f.confirmNote();await c.check();expect(c.snapshot().phase).toBe('paid');expect(f.deposit).toHaveBeenCalledTimes(1);expect(f.transfer).toHaveBeenCalledTimes(1);
+});
+it('recovers a submitted transfer without submitting it again',async()=>{
+ const f=hostedFixture(),c=f.newController();await c.ready;const r=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'balance'});f.loseLookup(true);await c.approve(r.digest);expect(c.snapshot().phase).toBe('confirming');c.dispose();f.loseLookup(false);
+ const reopened=f.newController();await reopened.ready;await reopened.check();expect(reopened.snapshot().phase).toBe('paid');expect(f.transfer).toHaveBeenCalledTimes(1);
+});
+it('recovers confirmed Note credit after a journal interruption without depositing again',async()=>{
+ const f=hostedFixture(0),c=f.newController();await c.ready;await c.inspectNote({}as File);const r=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'note'});await c.approve(r.digest);f.confirmNote();f.interruptNoteSave();await expect(c.check()).rejects.toThrow();c.dispose();
+ const reopened=f.newController();await reopened.ready;await reopened.check();expect(reopened.snapshot().phase).toBe('paid');expect(f.deposit).toHaveBeenCalledTimes(1);expect(f.transfer).toHaveBeenCalledTimes(1);
+});
+it('does not silently increase the approved card contribution after a balance change',async()=>{
+ const f=hostedFixture(),c=f.newController();await c.ready;const r=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'balance'});f.setBalance(0);await c.approve(r.digest);expect(c.snapshot().phase).toBe('not-sent');expect(f.begin).not.toHaveBeenCalled();
+});
+it('does not clear a funded attempt when Back is pressed and stops after an identity change',async()=>{
+ const f=hostedFixture(0),c=f.newController();await c.ready;const r=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});await c.approve(r.digest);await c.back();expect(c.snapshot().phase).toBe('funding');f.changeIdentity();await expect(c.check()).rejects.toThrow();expect(f.transfer).not.toHaveBeenCalled();
+});
+it('keeps a paid receipt in history while opening and paying a new request',async()=>{
+ const f=hostedFixture(),c=f.newController();await c.ready;const one=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'balance'});await c.approve(one.digest);await c.back();expect(c.snapshot().phase).toBe('editing');f.setBalance(1000);
+ const two=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'balance'});expect(two.clientNonce).not.toBe(one.clientNonce);await c.approve(two.digest);expect(c.snapshot().phase).toBe('paid');expect(f.transfer).toHaveBeenCalledTimes(2);expect(f.state?.history).toHaveLength(1);
+});
+it('does not claim a pending result as paid just because a saved receipt field was changed',async()=>{
+ const f=hostedFixture(),c=f.newController();await c.ready;const r=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'balance'});f.loseLookup(true);await c.approve(r.digest);expect(c.snapshot().receipt).toBeNull();expect(c.snapshot().phase).toBe('confirming');
+});
+it('serializes duplicate approvals from independent controller consumers',async()=>{
+ const f=hostedFixture(),one=f.newController();await one.ready;const r=await one.prepare({recipient:'merchant',amountUsdCents:'1000',method:'balance'});const two=f.newController();await two.ready;
+ await Promise.all([one.approve(r.digest),two.approve(r.digest)]);expect(f.transfer).toHaveBeenCalledTimes(1);expect(two.snapshot().phase).toBe('paid');
+});

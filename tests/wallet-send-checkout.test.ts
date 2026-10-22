@@ -32,3 +32,9 @@ it('refuses an empty supplied nonce before any account call',async()=>{
 it.each(['25','10000001'])('rejects a full card amount of %s cents outside the existing range before funding',async amount=>{
  const f=fixture();await expect(createWalletSend(f.options).prepare({recipient,amountUsdCents:amount},{fundingPreference:'card'})).rejects.toThrow();expect(f.begin).not.toHaveBeenCalled();expect(f.transfer).not.toHaveBeenCalled();
 });
+it('does not create a card charge beyond the reviewed shortfall limit',async()=>{
+ const f=fixture(),base=f.request.getMockImplementation()!;f.request.mockImplementation(async path=>path==='/api/connect/wallet/me'?{ok:true,wallet:{userId:sender,balanceUsd:'0.00',balancePhiMicro:'0',valueStates:{settledBalanceUsdCents:'0',ecosystemBalanceUsdCents:'0'},sync:{projectionComplete:true},rollup:{}}}:base(path));
+ f.transfer.mockImplementation(async(body:any)=>{throw Object.assign(Error('wallet_insufficient_funds'),{status:409,payload:{error:'wallet_insufficient_funds',submission:{status:'not-submitted',clientNonce:body.clientNonce}}});});
+ const api=createWalletSend(f.options),r=await api.prepare({recipient,amountUsdCents:'1000'},{cardFundingLimitUsdCents:'0'});
+ expect(await api.execute(r,r.digest)).toMatchObject({status:'not-sent',reason:'wallet_funding_changed'});expect(f.begin).not.toHaveBeenCalled();
+});

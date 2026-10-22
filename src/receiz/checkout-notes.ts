@@ -3,7 +3,7 @@ import {sameNoteFundingParts} from './note-funding';
 import type {OpenIdentity} from './native-identity';
 import type {BankNoteDepositResult,BankNoteInspection} from './offline-notes';
 import type {CheckoutNoteEntry} from './checkout-state';
-export function createCheckoutNotes(input:{identity:OpenIdentity;storeSource(bytes:Uint8Array):Promise<string>;restoreSource(digest:string):Promise<Uint8Array>;assertCurrent():void}){
+export function createCheckoutNotes(input:{identity:Pick<OpenIdentity,'offlineNotes'>;storeSource(bytes:Uint8Array):Promise<string>;restoreSource(digest:string):Promise<Uint8Array>;assertCurrent():void}){
  const inspected=new Map<string,BankNoteInspection>();
  const api=async()=>{input.assertCurrent();if(!input.identity.offlineNotes)throw Error('Note payments are unavailable.');const value=await input.identity.offlineNotes();input.assertCurrent();return value;};
  const same=(a:BankNoteInspection,b:{noteId:string;rail?:string;amountUsdCents:string;amountPhiMicro?:string;fundingParts?:BankNoteInspection['fundingParts']})=>a.noteId===b.noteId&&(a.rail??'reserve')===(b.rail??'reserve')&&a.amountUsdCents===b.amountUsdCents&&a.amountPhiMicro===b.amountPhiMicro&&sameNoteFundingParts(a.fundingParts,b.fundingParts);
@@ -17,7 +17,7 @@ export function createCheckoutNotes(input:{identity:OpenIdentity;storeSource(byt
   input.assertCurrent();if(entry.status==='confirmed')return entry;
   const n=await api(),rows=n.reconcileReceivedNotes?await n.reconcileReceivedNotes():await n.receivedNotes?.()??[];input.assertCurrent();
   const found=rows.find(row=>row.noteId===entry.noteId);if(found)return adopt(entry,found);
-  if(entry.status!=='inspected'&&n.recoverDeposit){const bytes=await input.restoreSource(entry.sourceRef);input.assertCurrent();if(await(await loadReceiz()).sha256ReceizBytes(bytes)!==entry.sourceDigest)throw Error('BANK_NOTE_SOURCE_DIGEST_MISMATCH');const recovered=await n.recoverDeposit(bytes);if(recovered)return adopt(entry,recovered);}
+  if(n.recoverDeposit){const bytes=await input.restoreSource(entry.sourceRef);input.assertCurrent();if(await(await loadReceiz()).sha256ReceizBytes(bytes)!==entry.sourceDigest)throw Error('BANK_NOTE_SOURCE_DIGEST_MISMATCH');const recovered=await n.recoverDeposit(bytes);if(recovered)return adopt(entry,recovered);}
   return entry;
  }
  return{
