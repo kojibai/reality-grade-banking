@@ -1,18 +1,47 @@
 // @vitest-environment happy-dom
 // Presentation fixtures only; canonical proof verification is tested separately.
 import{act}from'react';import{createRoot}from'react-dom/client';import{afterEach,expect,it,vi}from'vitest';
-const {open,readPublic}=vi.hoisted(()=>({open:vi.fn(),readPublic:vi.fn()}));vi.mock('../src/receiz/proof-media',()=>({openProofMedia:open,retainedPublicMedia:()=>null}));
+const {open,readPublic,retained}=vi.hoisted(()=>({open:vi.fn(),readPublic:vi.fn(),retained:vi.fn()}));vi.mock('../src/receiz/proof-media',()=>({openProofMedia:open,retainedPublicMedia:retained}));
 vi.mock('../src/receiz/proof-reading',()=>({readPublicProofReading:readPublic,retainedPublicReading:()=>null}));
 import{ProofMedia}from'../src/features/media/ProofMedia';
 import{Sheet}from'../src/components/Sheet';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const source={kind:'held' as const,digest:'a'.repeat(64),filename:'source.receiz',bytes:new Uint8Array([1])};
 const media={artifactDigest:source.digest,files:[{kind:'text',filename:'Essay.html',mimeType:'text/html',bytes:new TextEncoder().encode('<p>Bound text</p>'),payloadDigest:'b'.repeat(64),text:'Bound text'}]};
-afterEach(()=>{open.mockReset();readPublic.mockReset();vi.restoreAllMocks();});
+afterEach(()=>{open.mockReset();readPublic.mockReset();retained.mockReset();vi.restoreAllMocks();});
 it('mounts native public range video immediately without downloading or verifying the complete movie first',async()=>{
  const publicSource={kind:'public' as const,url:'https://receiz.com/api/profile/originals/download?receizId=video&kind=original',digest:source.digest},stream={assetId:'video',url:'https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2Fartist%2Fmovie.mp4',mimeType:'video/mp4'};
  const host=document.createElement('div'),root=createRoot(host);try{
  await act(()=>root.render(<ProofMedia source={publicSource} title="A movie" publicVideo={stream} autoOpen/>));expect(host.querySelector('video')?.getAttribute('src')).toBe(stream.url);expect(host.querySelector('video')?.getAttribute('preload')).toBe('metadata');expect(host.querySelector('video')?.hasAttribute('playsinline')).toBe(true);expect(host.textContent).toContain('Public playback');expect(host.textContent).not.toContain('Original verified');expect(open).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
+it('keeps one public audio element and its position through full view without reading the separately sold Original',async()=>{
+ const publicSource={kind:'public' as const,url:'https://receiz.com/api/profile/originals/download?receizId=song&kind=original',digest:source.digest},stream={assetId:'song',url:'https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2Fartist%2Fsong.mp3',mimeType:'audio/mpeg'};
+ vi.spyOn(HTMLDialogElement.prototype,'showModal').mockImplementation(function(this:HTMLDialogElement){this.open=true;});vi.spyOn(HTMLDialogElement.prototype,'close').mockImplementation(function(this:HTMLDialogElement){this.open=false;});vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+ const play=vi.spyOn(HTMLMediaElement.prototype,'play').mockResolvedValue(undefined),host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<ProofMedia source={publicSource} title="Public song" publicAudio={stream} autoOpen/>));
+  const audio=host.querySelector('audio')!;expect(audio?.getAttribute('src')).toBe(stream.url);expect(audio.getAttribute('preload')).toBe('metadata');expect(audio.autoplay).toBe(false);expect(play).not.toHaveBeenCalled();
+  act(()=>{Object.defineProperty(audio,'duration',{configurable:true,value:180});audio.currentTime=42;audio.dispatchEvent(new Event('loadedmetadata'));audio.dispatchEvent(new Event('timeupdate'));});
+  act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Open full media view"]')!.click());expect(host.querySelectorAll('audio')).toHaveLength(1);expect(host.querySelector('audio')).toBe(audio);expect(audio.currentTime).toBe(42);expect(host.querySelector('dialog [aria-label="Seek audio"]')?.getAttribute('aria-valuetext')).toBe('0:42 of 3:00');
+  act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Close media"]')!.click());expect(host.querySelector('audio')).toBe(audio);expect(audio.currentTime).toBe(42);expect(host.textContent).toContain('Public playback');expect(host.textContent).not.toContain('Original verified');expect(open).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
+it('reuses an already verified audio Original instead of mounting competing public-stream controls',async()=>{
+ const publicSource={kind:'public' as const,url:'https://receiz.com/api/profile/originals/download?receizId=song&kind=original',digest:source.digest},stream={assetId:'song',url:'https://receiz.com/music/song.mp3',mimeType:'audio/mpeg'};
+ retained.mockReturnValue({...media,files:[{kind:'audio',filename:'Song.mp3',mimeType:'audio/mpeg',bytes:new Uint8Array([1,2,3]),payloadDigest:'b'.repeat(64)}]});vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:verified-song');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+ vi.spyOn(HTMLDialogElement.prototype,'showModal').mockImplementation(function(this:HTMLDialogElement){this.open=true;});vi.spyOn(HTMLDialogElement.prototype,'close').mockImplementation(function(this:HTMLDialogElement){this.open=false;});vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<ProofMedia source={publicSource} title="Public song" publicAudio={stream} autoOpen/>));expect(host.querySelector('audio')?.getAttribute('src')).toBe('blob:verified-song');expect(host.textContent).toContain('Original verified');expect(host.querySelectorAll('[aria-label="Open full media view"]')).toHaveLength(1);
+  act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Open full media view"]')!.click());expect(host.querySelectorAll('dialog')).toHaveLength(1);expect(open).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
+it('retries an audio object’s carried public text independently of its sealed Original',async()=>{
+ const publicSource={kind:'public' as const,url:'https://receiz.com/api/profile/originals/download?receizId=song&kind=original',digest:source.digest,postUrl:'https://receiz.com/v/20260601_0930/CD3A5EA2/12413334?a=ba6517cc&ms=1780320602933',hasLongForm:true},stream={assetId:'song',url:'https://receiz.com/music/song.mp3',mimeType:'audio/mpeg'};
+ readPublic.mockRejectedValueOnce(Error('Public text unavailable.')).mockResolvedValue({title:'Song lyrics',text:'Carried public lyrics.',sha256:'e'.repeat(64),artifactDigest:'f'.repeat(64)});
+ vi.spyOn(HTMLDialogElement.prototype,'showModal').mockImplementation(function(this:HTMLDialogElement){this.open=true;});vi.spyOn(HTMLDialogElement.prototype,'close').mockImplementation(function(this:HTMLDialogElement){this.open=false;});vi.spyOn(window,'scrollTo').mockImplementation(()=>{});vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:public-lyrics');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<ProofMedia source={publicSource} title="Public song" publicAudio={stream}/>));await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Read full text"]')!.click());
+  expect(host.querySelector('.proof-media-error')?.textContent).toContain('Public text unavailable');await act(async()=>host.querySelector<HTMLButtonElement>('.proof-media-error button')!.click());expect(host.querySelector('dialog .proof-reading-text')?.textContent).toBe('Carried public lyrics.');expect(readPublic).toHaveBeenCalledTimes(2);expect(open).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());}
 });
 it('uses the carried asset title when an EPUB metadata title is a placeholder, without renaming its proof',async()=>{
