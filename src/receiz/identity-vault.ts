@@ -78,8 +78,9 @@ async function changeHeldIdentity(previous: SavedIdentity | null, next: SavedIde
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(new Error('Device identity or note custody changed. Reopen this action and try again.'));
   }); } finally { db.close(); }
 }
-export async function saveDeviceIdentity(bytes: Uint8Array, filename: string, phrase: string, readConsent: boolean, protectedTransport?: ProtectedIdentityTransport) {
-  const previous = await held(), same = !!previous && equalCipher(await identityBytes(previous), bytes), guard = previous && !same ? await noteRemovalGuard(previous) : undefined;
+export async function saveDeviceIdentity(bytes: Uint8Array, filename: string, phrase: string, readConsent: boolean, protectedTransport?: ProtectedIdentityTransport, onlyIfEmpty=false) {
+  const previous = await held();if(onlyIfEmpty&&previous)throw Error('BANK_IDENTITY_ALREADY_PRESENT');
+  const same = !!previous && equalCipher(await identityBytes(previous), bytes), guard = previous && !same ? await noteRemovalGuard(previous) : undefined;
   const wrappingKey = same ? previous!.wrappingKey : await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
   const iv = crypto.getRandomValues(new Uint8Array(12)); const aad = new TextEncoder().encode('receiz.bank.device-identity.v1');
   const wrappedPhrase = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: aad }, wrappingKey, new TextEncoder().encode(phrase));

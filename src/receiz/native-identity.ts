@@ -1,4 +1,5 @@
 import {isPeopleSearchQuery} from './people-search.js';
+import {withDeviceIdentityEntry} from './device-identity-entry';
 import {BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT} from './config';
 import {openMessagingRetention} from './messaging-retention';
 import {loadMessagingConsent,saveMessagingConsent,loadMessagingDisplay,saveMessagingDisplay} from './identity-vault';
@@ -101,7 +102,7 @@ export interface OpenIdentity {
   readNoteHistory?: () => Promise<import('./public-network').PublicRecord[]>;
   nativeReadiness: (approveNativeAccess?: boolean) => Promise<BankNativeReadiness>;
   connectNativeAccount: (approved: boolean) => Promise<{ subjectId: string; sourceDigest: string; sessionExpiresKaiUPulse: number; readyToTransact: false }>;
-  persistDeviceCustody: () => Promise<void>;
+  persistDeviceCustody: (onlyIfEmpty?:boolean) => Promise<void>;
   dispose: () => void; backup: () => { bytes: Uint8Array; filename: string; phrase: string };
 }
 // Exact private material is retained only inside this closure and encrypted device custody.
@@ -1451,8 +1452,8 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     void attempt.finally(()=>{if(preparingView===attempt)preparingView=undefined;}).catch(()=>{});
     return attempt;
   };
-  async function persistDeviceCustody() {
-    await saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport);
+  async function persistDeviceCustody(onlyIfEmpty=false) {
+    await saveDeviceIdentity(bytes, filename, phrase, consentApproved, protectedTransport,onlyIfEmpty);
     if(consentApproved&&messagingIncludedAtEntry){
       // Reuse the existing encrypted, identity-bound consent record. This
       // performs no chat request, credential exchange or eager inbox read.
@@ -1472,7 +1473,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   };
   return { profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, backedAssetPublication, createComposedAsset:(definition,draft)=>createAsset(definition,undefined,false,draft), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
-export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
+async function createFreshNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');
   const sdk = await loadReceiz();
   const resources = await atIdentityCreationStage('proof-resources',()=>loadBankProofResources(fetch));
@@ -1500,14 +1501,20 @@ export async function createNativeIdentity(consentApproved: boolean): Promise<Op
   if (identity.needsPhrase || identity.binding.keyId !== protectedBinding.keyId || identity.binding.artifactOwnerReceizId !== protectedBinding.artifactOwnerReceizId) { identity.dispose(); throw new Error('The self-contained Identity Record did not preserve its original identity.'); }
   const genesis = identity.knownWallet();
   if (!genesis || genesis.source !== 'account-genesis') { identity.dispose(); throw new Error('The signed account genesis could not be opened.'); }
-  await atIdentityCreationStage('device-custody',()=>identity.persistDeviceCustody());
+  try{await atIdentityCreationStage('device-custody',()=>identity.persistDeviceCustody(true));}catch(error){identity.dispose();throw error;}
   return identity;
 }
-export async function importNativeIdentity(file: File, phrase: string, consentApproved: boolean): Promise<OpenIdentity> {
+async function importNativeIdentityUnlocked(file: File, phrase: string, consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before importing your ID.');
   if (file.size > 32 * 1024 * 1024) throw new Error('Identity Record exceeds the supported device capacity.');
   const bytes = new Uint8Array(await file.arrayBuffer()), identity = await openCanonicalIdentity(bytes, phrase, file.name, true, undefined, true);
   await identity.persistDeviceCustody(); return identity;
 }
 export async function restoreNativeIdentity(): Promise<OpenIdentity | null> { const saved = await loadDeviceIdentity(); return saved && saved.readConsent ? openCanonicalIdentity(saved.bytes, saved.phrase, saved.filename, true, saved.protectedTransport) : null; }
-export { forgetDeviceIdentity, loadWalletObservation, saveWalletObservation, restoreKnownWalletObservation } from './identity-vault';
+export async function createNativeIdentity(consentApproved:boolean):Promise<OpenIdentity>{
+ if(!consentApproved)throw Error('Approve account read access before creating your ID.');
+ return withDeviceIdentityEntry(async()=>{const saved=await loadDeviceIdentity();if(saved){const restored=await restoreNativeIdentity();if(!restored)throw Error('Your saved identity needs to be reopened.');return restored;}return createFreshNativeIdentity(true);});
+}
+export function importNativeIdentity(file:File,phrase:string,consentApproved:boolean){return withDeviceIdentityEntry(()=>importNativeIdentityUnlocked(file,phrase,consentApproved));}
+export function forgetDeviceIdentity(){return withDeviceIdentityEntry(async()=>{await(await import('./identity-vault')).forgetDeviceIdentity();});}
+export {loadWalletObservation, saveWalletObservation, restoreKnownWalletObservation } from './identity-vault';
