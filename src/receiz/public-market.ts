@@ -1,3 +1,4 @@
+import {publicNativeAssetBinding,type PublicNativeAssetBinding} from './native-asset-public-binding.js';
 import {assetPublicationFreshnessHint} from './asset-publication-adoption.js';
 import {safeImportedSourceUrl} from "./imported-source-url.js";
 import {publicMarketPulseSeed,type MarketPulseSeed,type MarketValueRow} from './market-projection/source.js';
@@ -13,6 +14,7 @@ export interface PublicMarketItem {
   id: string; assetId: string; title: string; summary: string; category: 'proof' | 'sports'; circulationCount?: number; pricedCount?: number; capitalizationUsdCents?: string | null;
   sourceUrl: string | null; verifyUrl: string | null; originalUrl: string | null;
   originalDigest: string | null; pulse: string | null; sealedAt: string | null;
+  nativeAsset?:PublicNativeAssetBinding;
   hasLongForm?: boolean;
   mediaKind?:PublicMediaKind;
   artworkUrl?:string|null;
@@ -127,6 +129,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
     items.push({ id, assetId, title, summary: text(source.summary, 8192) ?? '', category: 'proof',
       sourceUrl: safeReceizPublicUrl(source.canonicalHref, 'source'), verifyUrl,readingUrl,
       originalUrl: materialOriginal ?? safeReceizPublicUrl(media.originalDownloadSrc, 'original'), originalDigest: digest && /^[a-f0-9]{64}$/i.test(digest) ? digest.toLowerCase() : null,
+      ...(publicNativeAssetBinding(profile.nativeAsset)?{nativeAsset:publicNativeAssetBinding(profile.nativeAsset)}:{}),
       hasLongForm:typeof profile.hasLongForm==='boolean'?profile.hasLongForm:Object.hasOwn(profile,'longForm')?Boolean(profile.longForm):undefined,
       mediaKind:publicMediaKind(profile.mediaKind??media.kind??(profile.media===null?null:undefined)),
       artworkUrl:publicMediaArtworkUrl({...media,kind:profile.mediaKind??media.kind},profile.artworkUrl),

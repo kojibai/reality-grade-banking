@@ -68,3 +68,30 @@ frontend components, styling and flows remain unchanged.
 The canonical local admission returns the exact Original, imported source reference and bounded first paint. Bankeiz adopts that handoff into the current owner’s retained profile and shared Market view before delivery completes. It does not mint a second listing or assert anonymous availability while delivery is pending. Stale background responses merge by stable source identity; accepted discovery retires the overlay. A bounded source digest freshness hint bypasses only the existing membership transport cache after publication. Ordinary page reads are unchanged.
 
 Selected artwork and the compact authored source are reused locally, within bounded memory limits. Exact durable source and resource custody remains in the canonical encrypted store. Opening the source still runs the unchanged offline canonical reader; the local handoff confers no ownership or financial authority.
+
+### Optional backing and one financial asset
+
+The Bank composer supports both an unbacked public Original and an Original with
+native backing. The authored source is sealed and staged before financial review;
+staging stores exact blocks without publishing a Showcase member. The native
+writer admits the complete source, its owner and matching definition before it
+plans any debit. Automatic backing uses Reserve first and Settlement remainder.
+
+After acceptance, a public certificate from the existing native asset issuer is
+canonically verified and composed with the unchanged authored content. The public
+package binds that original source and the existing native asset ID. Public
+inspection exposes the asset's definition, supply, backing and source history;
+private execution receipts and account state are never publication material.
+
+The retained workflow recovers funding before continuing public delivery. A
+delivery failure retains one package and one financial asset; Retry public
+delivery cannot fund again. Local admission uses the same immediate profile and
+Market handoff described above. Native-backed listings use the native ownership,
+funded-offer and redemption paths, with their existing liquidity rules.
+
+This extends headless Receiz contracts and the authenticated native asset
+dispatcher; Receiz frontend components and posting flows remain unchanged. Deploy
+the compatible Receiz contract before the Bank caller. SDK/MCP/skill pins stay
+129.0.0, and no SQL migration is required by this contract change. Local fixtures
+qualify source closure and recovery; hosted admitted Settlement funding and live
+publication still require deployment qualification.

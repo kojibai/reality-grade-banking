@@ -1,3 +1,5 @@
+import {retainedPublicAsset} from '../../receiz/public-asset-page';
+import {LiveOwnership} from '../assets/LiveOwnership';
 import {useEffect,useLayoutEffect,useRef,useState,useSyncExternalStore,type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
 import {Entrance} from '../identity/Entrance';
@@ -36,6 +38,7 @@ function PublicAssetTradeFlow({request, account}: {request: PublicAssetTradeRequ
     <p className="body-copy small-copy">Your device-held account opens here. You review the amount before any payment. <a href="/learn/account-access/">Account access</a></p>
   </div>;
   if (!account.identity) return <Entrance opening={account.opening} openingStage={account.openingStage} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId}/>;
+  const native=retainedPublicAsset(request.itemId)?.nativeAsset;if(native)return <LiveOwnership identity={account.identity} mode={request.side} initialDigest={native.headSourceSha256} nativeAssetId={native.id} onRefresh={()=>{void account.refresh();}}/>;
   const funding = request.side === 'buy' && (step==='fund'||step===null&&startWithCard);
   const refresh = () => {void account.refresh();};
   if (funding) return <LiveDeposit identity={account.identity} onRefresh={refresh} onClose={() => setStep('trade')} resumeSessionId={request.resumeSessionId} funding={{initialAmount: budget,purchase:{itemId:request.itemId,title:request.title}, onBack: amount => {setBudget(amount);setStep('trade');}, onCheckout: checkout => {purchaseApproval.current=null;retainPublicPurchase(request, checkout, 'deposit');},onPurchaseApproved:checkout=>{purchaseApproval.current=approveFundedPurchase(account.identity!,request.itemId,checkout);}, onCredited: checkout => {

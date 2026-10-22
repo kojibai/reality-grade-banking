@@ -11,7 +11,7 @@ import { admitCanonicalStreamingTrailerVerification, normalizeLegacyKaiLineArtif
 import { pinnedReceizSignatureV4RootPublicKeysForClient } from "@/app/lib/security/receizSignatureV4Pinned";
 import type { ReceizSignatureV4RootPublicKey } from "@/app/lib/security/receizSignatureV4";
 import type { ProfileCard } from "@/app/lib/profile/types";
-import { parseExactByteBlockReference, readExactByteBlocks, writeExactByteBlocks, type ExactByteBlockResolver, type ExactByteBlockWriter } from "@/app/lib/transport/exactByteBlocks";
+import { readExactByteBlocks, writeExactByteBlocks, type ExactByteBlockResolver, type ExactByteBlockWriter } from "@/app/lib/transport/exactByteBlocks";
 import { createImportedSourcePrivacyInspection, rejectImportedSourceRecoveryBlob, rejectImportedSourceRecoveryBytes } from "./importedSourcePrivacy";
 import { validateReceizExactByteVerification } from "../../../../packages/receiz-sdk/src/verifier/canonical";
 import { decodeProfileOriginalRouteProjectionAppend } from "./routeProjectionEncoding";
@@ -20,7 +20,8 @@ import { ImportedProofSourceUnavailableError } from "./importedSourceErrors";
 /** Locators and exact-byte commitments only. No owner, creator, Kai or signature
  * projection supplied by a caller may authorize the source described here. */
 export type {ImportedProofSourceDescriptor,ImportedProofSourceReference} from "./importedSourceReference";
-import type {ImportedProofSourceDescriptor,ImportedProofSourceReference} from "./importedSourceReference";
+import {parseImportedProofSourceReference,type ImportedProofSourceDescriptor,type ImportedProofSourceReference} from "./importedSourceReference";
+export {parseImportedProofSourceReference} from "./importedSourceReference";
 export type ImportedProofSourceOptions = Readonly<{
   /** Transport supplied by the host; references never confer admission. */
   resolveSourceBlock?: ExactByteBlockResolver;
@@ -251,7 +252,7 @@ async function openImportedProofSourceWithTraversal(
   const bundle = verification.bundle;
   const continuity = verification.assetContinuity;
   const carriedOriginal = sourceOriginal(verification);
-  const bankAsset = await readBankAssetContent(sourcePayload, bundle.nativeRecordSeal?.ownerReceizId ?? null);
+  const bankAsset = await readBankAssetContent(sourcePayload, bundle.nativeRecordSeal?.ownerReceizId ?? null,options.canonicalSignatureV4RootPublicKeys);
   let composerResources=bankAsset?.composer?await openComposerResources(bankAsset.composer,options.resolveSourceBlock,bytes=>{
     if((traversal.remainingBytes-=bytes)<0)throw new ImportedProofSourceUnavailableError("IMPORTED_SOURCE_RESOURCE_EXECUTION_BUDGET","VERIFICATION_RESOURCE_UNAVAILABLE","verified");
   },()=>{if(--traversal.remainingBlockReads<0)throw new ImportedProofSourceUnavailableError("IMPORTED_SOURCE_RESOURCE_READ_BUDGET","VERIFICATION_RESOURCE_UNAVAILABLE","verified");}):undefined;
@@ -313,6 +314,9 @@ async function openImportedProofSourceWithTraversal(
     pbi: Object.freeze({ status: verification.pbiAuthorshipHistory.length ? "carried-unverified" : "absent", history: verification.pbiAuthorshipHistory }),
   });
   let referencedSources: readonly OpenedImportedProofSource[] | undefined;
+  if(bankAsset?.composer?.nativeAsset){const reference=bankAsset.composer.nativeAsset.authoredSource;if(!options.resolveSourceBlock)throw new ImportedProofSourceUnavailableError('BANK_ASSET_AUTHORED_SOURCE_UNAVAILABLE','VERIFICATION_RESOURCE_UNAVAILABLE','verified');const authored=await reopenImportedProofSourceWithTraversal(reference,options.resolveSourceBlock,{...options,coldSpool:options.nestedColdSpool?.(reference)},traversal,true);
+   const original=authored.projection.bankAsset?.composer,current=bankAsset.composer,{nativeAsset:_binding,...content}=current;if(authored.projection.ownerReceizId!==projection.ownerReceizId||!original||(await import("@/app/utils/jcs")).jcsCanonicalize(original)!==(await import("@/app/utils/jcs")).jcsCanonicalize(content))throw new TypeError('BANK_ASSET_AUTHORED_SOURCE_MISMATCH');referencedSources=Object.freeze([authored]);
+  }
   if (continuity?.state === "verified" && continuity.carrier === "portable_asset"
     && continuity.document.payload.mimeType === "application/vnd.receiz.imported-proof-source+json") {
     if (!options.resolveSourceBlock) throw new ImportedProofSourceUnavailableError("IMPORTED_SOURCE_NESTED_CUSTODY_UNAVAILABLE", "VERIFICATION_RESOURCE_UNAVAILABLE", "not-evaluated");
@@ -345,21 +349,6 @@ export async function writeImportedProofSourceReference(
   if (!openedSources.has(source)) throw new TypeError("IMPORTED_SOURCE_CANONICAL_OPEN_REQUIRED");
   const bytes = await writeExactByteBlocks(source.exactArtifact, writeBlock);
   return Object.freeze({ ...source.descriptor, bytes });
-}
-
-export function parseImportedProofSourceReference(input: ImportedProofSourceReference): ImportedProofSourceReference {
-  // Snapshot caller properties before asynchronous IO; subsequent mutation of
-  // either descriptor cannot change this execution's exact commitment.
-  const value = input && { ...input, bytes: input.bytes && { ...input.bytes } };
-  if (!value || Object.keys(value).sort().join(",") !== "artifactSha256,byteLength,bytes,filename,mimeType,schema"
-    || value.schema !== "receiz.imported-proof-source.v1" || !/^[0-9a-f]{64}$/.test(value.artifactSha256)
-    || !Number.isSafeInteger(value.byteLength) || value.byteLength <= 0
-    || typeof value.filename !== "string" || !value.filename || typeof value.mimeType !== "string" || !value.mimeType) {
-    throw new TypeError("IMPORTED_SOURCE_DESCRIPTOR_INVALID");
-  }
-  const descriptor = Object.freeze({ ...value, bytes: parseExactByteBlockReference(value.bytes) });
-  if (descriptor.bytes.contentByteLength !== descriptor.byteLength) throw new TypeError("IMPORTED_SOURCE_EXACT_BINDING_MISMATCH");
-  return descriptor;
 }
 
 /** Checks in-process canonical evidence; serialized objects cannot claim it. */

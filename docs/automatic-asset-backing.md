@@ -81,14 +81,36 @@ this change needs no SQL schema migration.
 
 ## Publication boundary
 
-This funding contract creates a native financial asset and its position proof.
-It preserves the existing plain-definition restriction: `linkedProofDigest` must
-be null. It does not claim that issuance publishes a media-rich Showcase object.
-The existing unbacked authored-original pipeline already uses canonical Showcase
-publication and public discovery. Joining media-rich publication to funded units
-requires an explicit content/source binding and native asset routing, described
-in the separate composer design. Private execution receipts include account
-balances and are not public publication material.
+Backing is optional. **Public original** uses the canonical Showcase publication
+path without moving funds. **Create with backing** uses the same rich Bank
+composer and adds one native financial asset. Receiz's composer UI and ordinary
+posting flow remain unchanged.
+
+Before financial review, the authored source and all referenced resources are
+canonically opened, retained and bound to the current owner. The optional
+`authoredSource` reference is frozen into the signed fund request and its exact
+artifact digest becomes `definition.linkedProofDigest`. The source title,
+description, symbol and supply must match the approved financial definition.
+Legacy requests without an authored source retain a null linked digest.
+
+After acceptance, the existing native asset issuer signs a closed public snapshot
+with the same asset ID, issuance source, current head, definition, supply and
+backing components. Its canonical enclosing seal and financial-root signature
+are verified before publication. The snapshot excludes account identity, private
+position quantity, account balances, key and authorization hashes. It cannot
+authorize a financial transition and cannot be opened as a private holding.
+
+The public package carries the exact authored source and public snapshot. Private
+execution receipts remain private. Profile and Market discovery carry the same
+native asset ID; generic profile-share issuance rejects that binding. Ownership,
+offers and whole-supply redemption use the existing native paths. A displayed
+valuation never creates liquidity: a sale requires a matching funded offer.
+
+The encrypted creation journal advances through `source-held`, `funding-pending`,
+`funded`, `publication-pending` and `published`. Recovery resolves the original
+operation nonce before packaging or delivery. A lost response cannot authorize a
+second debit or another asset. Cancellation is available before funding starts;
+uncertain funding must resolve before another creation can begin.
 
 ## Qualification and delivery
 
@@ -98,6 +120,12 @@ after repricing; closed terms and component tampering; canonical receipts and
 holdings; history projection; real native Reserve-funded execution, duplicate
 submission, interrupted-pending recovery and changed quote/head refusal. These
 tests use explicit fixtures and ephemeral roots.
+
+Genuine canonical-source tests also cover owner and definition mismatch, altered
+or missing blocks, authored native execution and cold recovery, public-snapshot
+privacy/tampering, same-head certificate reuse and canonical public-package
+opening. Isolated browser checks at 390px and 1440px qualify the Bank form and
+pending-delivery retry. They perform no live funding or publication.
 
 Mixed arithmetic and terms tests use explicit detached inputs. They do not
 establish admitted Settlement ingress on a deployed installation. Hosted mixed

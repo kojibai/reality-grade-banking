@@ -1,3 +1,4 @@
+import {publicNativeAssetBinding} from './native-asset-public-binding.js';
 import {safeImportedSourceUrl} from "./imported-source-url.js";
 /** The live-player manifest, projected from the same public ProfileOriginal.
  * These are source display fields. Rendering them performs no verification. */
@@ -43,6 +44,7 @@ export function publicAssetManifest(profileInput:unknown,fallback:{verifyUrl?:st
   {label:'Claim SHA-256',value:hash(profile.claimHashHex)??'Unavailable'},
   {label:'Media SHA-256',value:hash(media.sha256Hex)??hash(media.originalDownloadSha256Hex)??(profile.media===null||profile.mediaKind==='moment'?hash(profile.recordCardMediaSha256Hex):null)??hash(profile.recordMediaSha256Hex)??'Unavailable'},
  ];
+ const native=publicNativeAssetBinding(profile.nativeAsset);if(native)rows.push({label:'Native Asset',value:native.id},{label:'Issuance Source SHA-256',value:native.issuanceSourceSha256},{label:'Current Asset Source SHA-256',value:native.headSourceSha256},{label:'Public Backing Certificate SHA-256',value:native.publicCertificateSha256});
  if(Array.isArray(profile.attachments))for(const [index,input]of profile.attachments.slice(0,200).entries()){
   const attachment=record(input),href=publicManifestLink(attachment.src),name=text(attachment.name)??text(attachment.id)??'Proof attachment',downloadName=text(attachment.downloadName,240)??text(attachment.name,240);
   rows.push({label:`Attachment ${index+1}`,value:name,...(href?{href,...(downloadName?{downloadName}:{})}:{})},{label:`Attachment ${index+1} SHA-256`,value:hash(attachment.sha256Hex)??'Unavailable'});

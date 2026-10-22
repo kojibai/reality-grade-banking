@@ -93,6 +93,7 @@ export interface OpenIdentity {
   listDeposits: () => Promise<HeldDeposit[]>;
   receivedProof?:()=>Promise<import('./received-proof').ReceivedProof>;
   createAsset: (definition: AssetDefinition, moment?: AssetMomentDraft) => Promise<HeldDeposit>;
+  backedAssetPublication:()=>Promise<import('./backed-asset-client').BackedAssetClient>;
   createComposedAsset: (definition:AssetDefinition,draft:AssetComposerDraft)=>Promise<HeldDeposit>;
   pendingAssetPublication?: () => Promise<HeldDeposit | null>;
   retryAssetPublication?: () => Promise<HeldDeposit>;
@@ -1025,6 +1026,15 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     try { return summarizeNativeBankReadiness(await current.runtime.qualifyV124({ applicationId: BANK_APPLICATION_ID, operations: BANK_NATIVE_OPERATIONS })); }
     catch (error) { throw new BankConnectionError('native-services', error); }
   }
+  async function openAssetPublicationRuntime(artwork?:Blob){
+    const adoption=await import('./asset-publication-adoption');
+      const username=await prepareReceivingUsername(),connected=await connectClient([...BANK_READ_SCOPES,'profile','receiz:record','receiz:seal'],'Seal the original I choose and publish its exact verified source, media and full text on my public profile and in Market. This does not authorize a payment or asset funding.'),account=clientAccounts.get(connected),request=clientFetches.get(connected);
+      if(!account||!request||account.applicationId!==BANK_APPLICATION_ID)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');
+      const assertCurrent=()=>{lifetime.signal.throwIfAborted();if(clientAccounts.get(connected)?.accountUid!==account.accountUid||presentationUsername&&presentationUsername!==username)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');};
+      const {loadAssetPublicationRuntime,createAssetPublicationFetch}=await import('./asset-publication-runtime');
+      const native=await loadBankNoteRuntime(),sealer=await ownedSealer(),sealDocument=await native.createBankNativeNoteSealer({enrollment:await sealer.enroll(),resources:sealingResources!});
+      return(await loadAssetPublicationRuntime()).createConnectedAssetPublicationRuntime({identity:new Uint8Array(bytes),passphrase:phrase,account:{uid:account.accountUid,username},sealDocument,assertCurrent,onLocalAdmission:admission=>{assertCurrent();adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:account.accountUid,isCurrent:()=>!lifetime.signal.aborted&&clientAccounts.get(connected)?.accountUid===account.accountUid&&(!presentationUsername||presentationUsername===username),artwork});},fetchImpl:createAssetPublicationFetch({applicationId:BANK_APPLICATION_ID,username,assertCurrent,request:async(path,init)=>{const held=await loadDeviceIdentity();if(!held||await sdk.sha256ReceizBytes(held.bytes)!==binding.artifactSha256)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');return request(path,init);}})});
+  }
   async function createAsset(input: AssetDefinition | null, draft?: AssetMomentDraft, localOnly=false, composed?:AssetComposerDraft): Promise<HeldDeposit> {
     lifetime.signal.throwIfAborted();
     const definition = input ? validateAssetDefinition(input) : null;
@@ -1038,14 +1048,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     let attemptSealer:ReturnType<typeof ownedSealer>|undefined;
     const openAttemptSealer=()=>attemptSealer??=ownedSealer();
     let publicationRuntime:Promise<Awaited<ReturnType<import('./asset-publication-runtime').AssetPublicationRuntimeModule['createConnectedAssetPublicationRuntime']>>>|undefined;
-    const openPublicationRuntime=()=>publicationRuntime??=(async()=>{
-      const username=await prepareReceivingUsername(),connected=await connectClient([...BANK_READ_SCOPES,'profile','receiz:record','receiz:seal'],'Seal the original I choose and publish its exact verified source, media and full text on my public profile and in Market. This does not authorize a payment or asset funding.'),account=clientAccounts.get(connected),request=clientFetches.get(connected);
-      if(!account||!request||account.applicationId!==BANK_APPLICATION_ID)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');
-      const assertCurrent=()=>{lifetime.signal.throwIfAborted();if(clientAccounts.get(connected)?.accountUid!==account.accountUid||presentationUsername&&presentationUsername!==username)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');};
-      const {loadAssetPublicationRuntime,createAssetPublicationFetch}=await import('./asset-publication-runtime');
-      const native=await loadBankNoteRuntime(),sealDocument=await native.createBankNativeNoteSealer({enrollment:await(await openAttemptSealer()).enroll(),resources:sealingResources!});
-      return(await loadAssetPublicationRuntime()).createConnectedAssetPublicationRuntime({identity:new Uint8Array(bytes),passphrase:phrase,account:{uid:account.accountUid,username},sealDocument,assertCurrent,onLocalAdmission:admission=>{assertCurrent();adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:account.accountUid,isCurrent:()=>!lifetime.signal.aborted&&clientAccounts.get(connected)?.accountUid===account.accountUid&&(!presentationUsername||presentationUsername===username),artwork:composed?.files.find(file=>file.role==='cover')?.file??(composed?.kind==='image'?composed.files.find(file=>file.role==='primary')?.file:undefined)});},fetchImpl:createAssetPublicationFetch({applicationId:BANK_APPLICATION_ID,username,assertCurrent,request:async(path,init)=>{const held=await loadDeviceIdentity();if(!held||await sdk.sha256ReceizBytes(held.bytes)!==binding.artifactSha256)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');return request(path,init);}})});
-    })();
+    const openPublicationRuntime=()=>publicationRuntime??=openAssetPublicationRuntime(composed?.files.find(file=>file.role==='cover')?.file??(composed?.kind==='image'?composed.files.find(file=>file.role==='primary')?.file:undefined));
     if(composed){if(!definition||definition.linkedProofDigest)throw Error('BANK_ASSET_COMPOSER_DEFINITION_INVALID');const {validateComposerAssetDraft,readComposerCapacity}=await import('./asset-composer');const selected=validateComposerAssetDraft({...composed,title:definition.name,description:definition.description,definition},readComposerCapacity());intent={composer:await(await openPublicationRuntime()).prepareContent(selected)};}
     const publication=createAssetPublication({ownerReceizId:binding.artifactOwnerReceizId,assertOpen:()=>lifetime.signal.throwIfAborted(),
       lock:async run=>{if(!navigator.locks)throw Error('BANK_ASSET_PUBLICATION_DEVICE_LOCK_REQUIRED');return await navigator.locks.request(`receiz-bank-asset-publication:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await run());},
@@ -1077,6 +1080,17 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const deposit=await projectOwnedSource(new Uint8Array(await result.file.arrayBuffer()),result.file.name);
     return Object.assign(deposit,{publication:result.publication});
   }
+  let backedPublicationPromise:Promise<import('./backed-asset-client').BackedAssetClient>|undefined;
+  const backedAssetPublication=()=>backedPublicationPromise??=import('./backed-asset-client').then(async({createBackedAssetClient})=>{
+    const vault=await import('./identity-vault');return createBackedAssetClient({ownerReceizId:binding.artifactOwnerReceizId,assertOpen:noteOpen,
+      lock:async run=>await navigator.locks.request(`receiz-bank-backed-publication:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await run()),
+      read:()=>vault.loadBackedAssetPublicationState(binding),write:(next,previous)=>vault.saveBackedAssetPublicationState(binding,next,previous),
+      runtime:openAssetPublicationRuntime,operations,retain:holdProof,
+      restore:async(digest,filename,mimeType)=>{for(const source of await loadDepositSources(binding))if(await sdk.sha256ReceizBytes(source.bytes)===digest)return new File([new Uint8Array(source.bytes)],filename,{type:mimeType});throw Error('BANK_BACKED_PUBLICATION_SOURCE_UNAVAILABLE');},
+      recoverFunding:async nonce=>{const raw=await loadNativeAssetState(binding) as import('./native-asset').NativeAssetState|null;const row=raw&&[raw.current,...raw.history].find(v=>v.prepared.request.requestId===nonce);if(!row)return null;if(row.state==='unknown'){if(row!==raw!.current)throw Error('BANK_BACKED_PUBLICATION_RECOVERY_REQUIRED');return(await nativeAssets()).recovery.resolve(true);}return row.state==='zero-write'?{status:'zero-write',reasonCode:'EXPIRED'}:{status:'committed',nativeAssetSource:row.source!};},
+      publicProjection:async assetId=>{const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);noteOpen();return current.request(`/api/connect/bank/assets/public-projection?applicationId=${BANK_APPLICATION_ID}`,{method:'POST',body:{assetId}});},
+    });
+  }).catch(error=>{backedPublicationPromise=undefined;throw error;});
   let nativeConnectionBusy = false;
   const legacyExecutionRecovery = createBankExecutionRecovery({
     store: deviceBankExecutionStore(binding),
@@ -1456,7 +1470,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const uid=accountUid??knownWallet?.wallet.userId;if(!uid)return;
     retainedMessaging.retainTwinAccessQuestions(uid,questions);
   };
-  return { profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, createComposedAsset:(definition,draft)=>createAsset(definition,undefined,false,draft), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, backedAssetPublication, createComposedAsset:(definition,draft)=>createAsset(definition,undefined,false,draft), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 export async function createNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

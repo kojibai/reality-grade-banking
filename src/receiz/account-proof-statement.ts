@@ -11,7 +11,7 @@ export interface AccountSourceFrontier {
 }
 export interface AccountProofComponents {
   lawfulValues: readonly {membershipId:string;admissionDigest:string;valueHeadDigest:string|null;settlementPhiMicro:string}[];
-  assets: readonly {assetId:string;name:string;symbol:string;description:string;linkedProofDigest:null;supplyMicro:string;quantityMicro:string;
+  assets: readonly {assetId:string;name:string;symbol:string;description:string;linkedProofDigest:string|null;supplyMicro:string;quantityMicro:string;
     backingRail:'reserve'|'settlement'|'composite';backingComponents?:readonly NativeAssetFundingComponent[];backingPhiMicro:string;backingUsdCents:string;status:'active'|'redeemed';issuanceSourceSha256:string;headSourceSha256:string}[];
   assetOffers: readonly {offerId:string;assetId:string;side:'ask'|'bid';remainingQuantityMicro:string;lockedPhiMicro:string;lockedUsdCents:string;headSourceSha256:string}[];
   artifactIntrinsicPhiMicro:string; offlineLockedPhiMicro:string; offlineLockedUsdCents:string;
@@ -65,7 +65,7 @@ export function inspectAccountStatement(input: unknown, applicationId: string): 
     const unique=(values:unknown,key:string,fields:readonly string[],check:(row:Record<string,unknown>)=>boolean,optional:readonly string[]=[])=>{let prior='';for(const value of rows(values)){const row=record(value,[...fields,...optional.filter(k=>!!value&&typeof value==='object'&&Object.hasOwn(value,k))]);if(!text(row[key],256)||row[key]<=prior||!check(row))fail('COMPONENTS_INVALID');prior=row[key] as string;}};
     unique(p.lawfulValues,'membershipId',['membershipId','admissionDigest','valueHeadDigest','settlementPhiMicro'],r=>digest(r.admissionDigest)&&(r.valueHeadDigest===null||digest(r.valueHeadDigest))&&unsigned(r.settlementPhiMicro));
     unique(p.assets,'assetId',['assetId','name','symbol','description','linkedProofDigest','supplyMicro','quantityMicro','backingRail','backingPhiMicro','backingUsdCents','status','issuanceSourceSha256','headSourceSha256'],r=>
-      text(r.name,80)&&text(r.symbol,16)&&typeof r.description==='string'&&r.description.length<=2000&&!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/u.test(r.description)&&r.linkedProofDigest===null
+      text(r.name,80)&&text(r.symbol,16)&&typeof r.description==='string'&&r.description.length<=2000&&!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/u.test(r.description)&&(r.linkedProofDigest===null||digest(r.linkedProofDigest))
       &&[r.supplyMicro,r.quantityMicro,r.backingPhiMicro,r.backingUsdCents].every(unsigned)&&(BigInt(r.supplyMicro as string)>0n||r.status==='redeemed'&&r.quantityMicro==='0'&&r.backingPhiMicro==='0'&&r.backingUsdCents==='0')&&BigInt(r.quantityMicro as string)<=BigInt(r.supplyMicro as string)
       &&['reserve','settlement','composite'].includes(String(r.backingRail))&&(inspectNativeAssetBacking(r),true)&&['active','redeemed'].includes(String(r.status))&&digest(r.issuanceSourceSha256)&&digest(r.headSourceSha256)
       &&heads.get(r.assetId as string)===r.headSourceSha256,['backingComponents']);

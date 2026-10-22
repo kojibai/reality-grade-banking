@@ -1,16 +1,22 @@
+import {nativeAssetSupplyMicro} from '../../wallet/bankNotes/nativeAsset';
 import {readComposerAssetContent,type ComposerAssetContent} from "../composerPreparation";
 import {rejectImportedSourceRecoveryBytes} from "./importedSourcePrivacy";
 import {sha256} from "@noble/hashes/sha2.js";
 import {bytesToHex} from "@noble/hashes/utils.js";
-export type BankAssetContent=Readonly<{title:string;description:string;text:string;composer?:ComposerAssetContent;files:readonly Readonly<{filename:string;mimeType:string;sha256:string;bytes:Uint8Array}>[]}>;
+export type BankAssetContent=Readonly<{title:string;description:string;text:string;composer?:ComposerAssetContent;nativeAsset?:Readonly<{id:string;issuanceSourceSha256:string;headSourceSha256:string;publicCertificateSha256:string}>;files:readonly Readonly<{filename:string;mimeType:string;sha256:string;bytes:Uint8Array}>[]}>;
 /** Called only beneath canonical enclosing-source verification. Embedded hashes
  * check extraction; they never admit a source or manufacture ownership. */
-export async function readBankAssetContent(payload:Blob,ownerReceizId:string|null):Promise<BankAssetContent|null>{
+export async function readBankAssetContent(payload:Blob,ownerReceizId:string|null,roots?:ReadonlyMap<string,import("../../../../packages/receiz-sdk/src/verifier/signatureV4").ReceizSignatureV4RootPublicKey>):Promise<BankAssetContent|null>{
  if(payload.type!=="application/json"||payload.size>10*1024*1024)return null;
  let value;try{value=JSON.parse(await payload.text());}catch{return null;}
  if(value?.schema==="receiz.bank.asset-content.v2"){
   const composer=readComposerAssetContent(value,ownerReceizId);
-  return Object.freeze({title:composer.title,description:composer.description,text:composer.longForm,files:Object.freeze([]),composer});
+  let nativeAsset:BankAssetContent['nativeAsset'];
+  if(composer.nativeAsset){const {readNativeAssetPublicArtifact}=await import('../../wallet/bankNotes/nativeAssetPublicArtifact'),binding=composer.nativeAsset,binary=atob(binding.publicCertificateB64u.replace(/-/g,'+').replace(/_/g,'/')),bytes=Uint8Array.from(binary,c=>c.charCodeAt(0)),publicSource=await (async()=>{await rejectImportedSourceRecoveryBytes(bytes);return readNativeAssetPublicArtifact(bytes,roots);})(),a=publicSource.certificate.asset;
+   if(publicSource.artifactSha256!==binding.publicCertificateSha256||a.definition.linkedProofDigest!==binding.authoredSource.artifactSha256||a.definition.name!==composer.title||composer.definition&&(a.definition.symbol!==composer.definition.symbol||a.definition.description!==composer.definition.description||a.definition.supplyMicro!==nativeAssetSupplyMicro(composer.definition.units)))throw new TypeError('BANK_ASSET_NATIVE_BINDING_INVALID');
+   nativeAsset=Object.freeze({id:a.id,issuanceSourceSha256:a.issuanceSourceSha256,headSourceSha256:a.headSourceSha256,publicCertificateSha256:publicSource.artifactSha256});
+  }
+  return Object.freeze({title:composer.title,description:composer.description,text:composer.longForm,files:Object.freeze([]),composer,...(nativeAsset?{nativeAsset}:{})});
  }
  if(value?.schema!=="receiz.bank.asset-definition.v1")return null;
  const fail=():never=>{throw new TypeError("BANK_ASSET_SOURCE_CONTENT_INVALID");};

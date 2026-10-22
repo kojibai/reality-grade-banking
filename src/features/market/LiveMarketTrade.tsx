@@ -1,3 +1,5 @@
+import {retainedPublicAsset} from '../../receiz/public-asset-page';
+import {LiveOwnership} from '../assets/LiveOwnership';
 import {AmountInput} from '../../components/AmountInput';
 import {useEffect,useRef,useState,useSyncExternalStore} from 'react';
 import type {OpenIdentity} from '../../receiz/native-identity';
@@ -21,7 +23,7 @@ export function MarketTradeRecovery({identity,onRefresh=()=>{}}:{identity:OpenId
  }
  if(!outcome&&!error)return null;return <details className="identity-import"><summary>Market trade record</summary>{outcome&&<><p className="body-copy small-copy">{outcome.status==='recorded'?'Market recorded this trade. Its original trade, position and ledger records are retained on this device.':outcome.status==='not-sent'?'Market refused access before this request was submitted. You can review again after approving the required access.':'The trade result is not confirmed. Check its original reference before another transaction.'}</p><code className="proof-coordinate">{outcome.clientNonce}</code>{outcome.status!=='not-sent'&&<button className="secondary-button" disabled={busy} onClick={()=>void act(outcome.status==='recorded'?'save':'read')}>{busy?'Checking…':outcome.status==='recorded'?'Save trade record':'Check trade outcome'}</button>}</>}{error&&<p className="error-message" role="status">{error}</p>}</details>;
 }
-export function LiveMarketTrade({identity,marketItemId,side,onRefresh,initialBudget='',onInsufficientFunds,approvedPurchase}:{identity:OpenIdentity;marketItemId:string;side:'buy'|'sell';onRefresh():void;initialBudget?:string;onInsufficientFunds?:(amount:string)=>void;approvedPurchase?:FundedPurchaseApproval}){
+function GenericMarketTrade({identity,marketItemId,side,onRefresh,initialBudget='',onInsufficientFunds,approvedPurchase}:{identity:OpenIdentity;marketItemId:string;side:'buy'|'sell';onRefresh():void;initialBudget?:string;onInsufficientFunds?:(amount:string)=>void;approvedPurchase?:FundedPurchaseApproval}){
  const [automaticPresentation,setAutomaticPresentation]=useState(Boolean(approvedPurchase)),[approvedAttempt,setApprovedAttempt]=useState(false);
  const [sellUnit,setSellUnit]=useState<'usd'|'shares'>('usd');
  const publishedPortfolio=useSyncExternalStore(subscribeOpenPortfolio,readOpenPortfolio,()=>null);
@@ -65,3 +67,5 @@ export function LiveMarketTrade({identity,marketItemId,side,onRefresh,initialBud
   </fieldset>
   <p className="body-copy small-copy">Review the current Market estimate before approving. Your approval uses the same live execution rules as Receiz.</p><button className="primary-button" disabled={busy||!ready} onClick={()=>void run('prepare')}>{busy?'Checking Market…':'Review trade'}</button>{diagnostics}</>;
 }
+
+export function LiveMarketTrade(props:Parameters<typeof GenericMarketTrade>[0]){const native=retainedPublicAsset(props.marketItemId)?.nativeAsset;return native?<LiveOwnership identity={props.identity} mode={props.side} initialDigest={native.headSourceSha256} nativeAssetId={native.id} onRefresh={props.onRefresh}/>:<GenericMarketTrade {...props}/>;}

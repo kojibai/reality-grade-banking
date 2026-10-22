@@ -7,7 +7,7 @@ import { formatMoney, formatUnits } from '../../core/money';
 import { BankExecutionRecoveryPanel } from './BankExecutionRecoveryPanel';
 import { BankConnection } from './BankConnection';
 
-export function NativeOperation({ identity, input, inputKey, title, confirmLabel, onRefresh, children }: { identity?: OpenIdentity; input(): BankOperationInput; inputKey: string; title: string; confirmLabel: string; onRefresh(): void; children: ReactNode }) {
+export function NativeOperation({ identity, input, inputKey, title, confirmLabel, onRefresh, children, operations, onResult }: { identity?: OpenIdentity; input(): BankOperationInput; inputKey: string; title: string; confirmLabel: string; onRefresh(): void; children: ReactNode; operations?():Promise<BankOperations>; onResult?(result:BankOperationResult):Promise<void>|void }) {
   const [review, setReview] = useState<BankOperationReview | null>(null), [result, setResult] = useState<BankOperationResult | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [failure,setFailure]=useState<(ReturnType<typeof bankOperationFailureDetails>&{phase:'Review'|'Submission'})|null>(null);
   const report=(cause:unknown,stage:'Review'|'Submission')=>{setError(bankOperationError(cause));setFailure({...bankOperationFailureDetails(cause),phase:stage});};
@@ -21,8 +21,8 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
     if (running.current) return; const ticket = generation.current; running.current = true; setBusy(true); setError('');setFailure(null);
     try {
       const request = input();
-      if (!identity?.operations) throw Error('BANK_OPERATION_RUNTIME_UNAVAILABLE');
-      const connected = await identity.operations(); if (ticket !== generation.current) return; api.current = connected;
+      if (!operations&&!identity?.operations) throw Error('BANK_OPERATION_RUNTIME_UNAVAILABLE');
+      const connected = await (operations?operations():identity!.operations!()); if (ticket !== generation.current) return; api.current = connected;
       const next = await connected.prepare(request);
       if (ticket !== generation.current) { connected.discard(next); return; }
       if (!isBankOperationReview(next)) throw Error('BANK_OPERATION_SOURCE_MISMATCH');
@@ -34,7 +34,7 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
     if (!review || !approved || running.current || !api.current) return;
     const ticket = generation.current; running.current = true; setBusy(true); setError('');setFailure(null);
     try {
-      const next = await api.current.execute(review, review.confirmationDigest);
+      const next = await api.current.execute(review, review.confirmationDigest);if(ticket===generation.current)await onResult?.(next);
       if (ticket === generation.current) { setResult(next); setReview(null); held.current = null; if (next.status === 'committed') onRefresh(); }
     } catch (cause) { if (ticket === generation.current) report(cause,'Submission'); }
     finally { if (ticket === generation.current) { running.current = false; setBusy(false); } }
@@ -50,6 +50,7 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
     const t = review.terms, request = review.request, rail = 'rail' in request ? request.rail : null;
     return <section className="native-operation-review"><h1 className="sheet-hero">Review {title.toLowerCase()}.</h1>
       <div className="detail-list">
+        {request.kind==='fund-asset'&&<div><span>Asset</span><strong>{request.definition.name}</strong></div>}
         {rail && <div><span>Account</span><strong>{rail === 'reserve' ? 'Reserve' : 'Settlement'}</strong></div>}
         {t.recipient && <div><span>Recipient</span><strong>{t.recipient}</strong></div>}
         {t.debitUsdCents !== '0' && <div><span>You pay</span><strong>{formatMoney(t.debitUsdCents)}</strong></div>}

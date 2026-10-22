@@ -16,7 +16,7 @@ async function noteRemovalGuard(saved: SavedIdentity) {
   const db = await database();
   const rows: {key:string;row:PrivateBankOperation|undefined}[]=[];
   try {
-    for (const family of ['offline-notes','prepared-notes','connected-notes','asset-publication','received-note-deposits','native-payments','native-assets','wallet-sends','market-trades','received-proof']) {
+    for (const family of ['offline-notes','prepared-notes','connected-notes','asset-publication','backed-asset-publication','received-note-deposits','native-payments','native-assets','wallet-sends','market-trades','received-proof']) {
       const key=`${family}|${BANK_STORAGE_APPLICATION_ID}|${digest}`;
       const row=await new Promise<PrivateBankOperation|undefined>((resolve,reject)=>{const read=db.transaction('operations').objectStore('operations').get(key);read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error);});
       rows.push({key,row});
@@ -27,6 +27,7 @@ async function noteRemovalGuard(saved: SavedIdentity) {
         if((await import('./connected-note-runtime')).hasHeldConnectedNotes(state))throw Error('Keep this ID while connected Notes or their original issue results are held. Transfer or deposit the Notes before removing this device custody.');
         continue;
       }
+      if(family==='backed-asset-publication'){const held=(await import('./backed-asset-publication')).readBackedPublicationState(state);if(held&&held.stage!=='published')throw Error('Finish or cancel the retained backed asset before removing this ID. Its original funding and publication recovery remain on this device.');continue;}
       if(family==='asset-publication'){
         if((await import('./asset-publication')).hasPendingAssetPublication(state))throw Error('Finish the retained asset publication before removing this ID. Its exact original and delivery outcome remain on this device.');
         continue;
@@ -839,3 +840,6 @@ export const saveMessagingConsent=(binding:{artifactSha256:string},value:unknown
 // vault and revision checks. It never reads or replaces financial checkpoints.
 export const loadMessagingDisplay=(binding:{artifactSha256:string})=>loadNoteState(binding,'messaging-display-v1');
 export const saveMessagingDisplay=(binding:{artifactSha256:string},value:import('./messaging-retention').MessagingDisplay,expected:unknown)=>saveNoteState(binding,'messaging-display-v1',value,expected);
+
+export const loadBackedAssetPublicationState=(binding:{artifactSha256:string})=>loadNoteState(binding,'backed-asset-publication');
+export const saveBackedAssetPublicationState=(binding:{artifactSha256:string},value:unknown,expected:unknown)=>saveNoteState(binding,'backed-asset-publication',value,expected);

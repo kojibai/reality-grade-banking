@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.0.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "70b228ba833897a591dca77ab33b9fbada4bdeb8905de411f50e3d83f97d0d04",
-  "sourceTreeSha256": "8b58a4a8ef54c069684585c470dbc8bef7a39f9667a05a43dc7244053ee34ffc",
-  "inputs": 490,
-  "bytes": 2912612,
+  "moduleSha256": "dc7dbeee50432a64ceb16748123e8af55f66c4540b3ac22f7c53f5229a7ca0cb",
+  "sourceTreeSha256": "07fd34a6757e4484249c6473fece8b38576d45da8619f2e497e0e87c6c65a7b3",
+  "inputs": 496,
+  "bytes": 2922329,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -489,11 +489,107 @@
     },
     {
       "id": "bank-connected-asset-local-admission",
-      "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
       "baseSha256": "258783460d6695d4dc5e4c599e195f70b1e100656211622576f33e439dcad14c",
       "sha256": "a20cd2a465cefdc1141a63304eb8acbe323104d36aaabc4be81df82581b04e32",
       "purpose": "Forward the canonical verified local admission to retained Bank profile and Market views.",
       "sourceCommit": "b579ae34d"
+    },
+    {
+      "id": "bank-native-backed-publication",
+      "path": "receiz/app/lib/profile/composerPreparation.ts",
+      "baseSha256": "742b6f5b090c260ef85de4481f2f42170cefa81421da07afef50c4dda5c771b7",
+      "sha256": "d951c43876430383f70f7f2fc3a78d2ebfa5bfc93f38e0152351c43d3f7dc9d7",
+      "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
+      "sourceCommit": "ec6c438e9"
+    },
+    {
+      "id": "bank-native-backed-publication",
+      "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
+      "baseSha256": "92055238b1c04f7fec73d5d3bce9904938c70f6a5c3f1c278d2dd6b8f38e4f03",
+      "sha256": "cf1f65ee7e5fbadf7304bdef3769de30ed7373186a0f04a58c8bf2ed8b2e9324",
+      "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
+      "sourceCommit": "ec6c438e9"
+    },
+    {
+      "id": "bank-native-backed-publication",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "a20cd2a465cefdc1141a63304eb8acbe323104d36aaabc4be81df82581b04e32",
+      "sha256": "dcf2818ad43d0bb2e9ecdf16b966d461dba4dad8386bf4dfc875306fbe0ecbe4",
+      "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
+      "sourceCommit": "ec6c438e9"
+    },
+    {
+      "id": "bank-native-backed-publication",
+      "path": "receiz/app/lib/profile/showcase/importedSource.ts",
+      "baseSha256": "a9064f4fe62f360d415f46ba5c76c76702229313092375fce796034545af0fcd",
+      "sha256": "ca7bc4084356d9360a02e1ad5c21468a6fa34c4cf5d47c38c719f8c46874fbb6",
+      "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
+      "sourceCommit": "ec6c438e9"
+    },
+    {
+      "id": "bank-native-backed-publication",
+      "path": "receiz/app/lib/profile/showcase/importedSourceProjection.ts",
+      "baseSha256": "2de6ebfddc4c2b31c222b241c86a2d59b661abc123203e35665c646da46b0757",
+      "sha256": "e21ed52255f1385b7b5ef250629def5d4d1bbd2b11bbc4ca8260aa5ec7076363",
+      "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
+      "sourceCommit": "ec6c438e9"
+    },
+    {
+      "id": "bank-native-backed-publication",
+      "path": "receiz/app/lib/profile/showcase/importedSourceReference.ts",
+      "baseSha256": "56667409e648282975149465dee0a7531b617dcec46f435dad2e225bd94d15e7",
+      "sha256": "3440ff243287b33cabf35e430566156794b72eb9eac55cea0d9117dda5ef28f1",
+      "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
+      "sourceCommit": "ec6c438e9"
+    },
+    {
+      "id": "bank-native-backed-publication",
+      "path": "receiz/app/lib/profile/showcase/sourceBlockPublication.client.ts",
+      "baseSha256": null,
+      "sha256": "8632e86adc119780fb58b801ef67b696e5d73676d6e26c998944db7a96cf5998",
+      "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
+      "sourceCommit": "ec6c438e9"
+    },
+    {
+      "id": "bank-native-backed-publication",
+      "path": "receiz/app/lib/profile/types.ts",
+      "baseSha256": null,
+      "sha256": "94d3a802b07e33ac4d428e40d27d167b47c259f00d79fc3503eb86c50ddc1fb6",
+      "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
+      "sourceCommit": "ec6c438e9"
+    },
+    {
+      "id": "bank-native-backed-publication",
+      "path": "receiz/app/lib/wallet/bankNotes/nativeAsset.ts",
+      "baseSha256": null,
+      "sha256": "56522c3fc6dc98d33b96908c0c497acb1658610bbf78a6bdfa30f5ccd39be8a4",
+      "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
+      "sourceCommit": "ec6c438e9"
+    },
+    {
+      "id": "bank-native-backed-publication",
+      "path": "receiz/app/lib/wallet/bankNotes/nativeAssetBacking.ts",
+      "baseSha256": null,
+      "sha256": "2072541adec6d020a27b2ccd3892907282c68bf69a1a65b982f0fd633d59c70e",
+      "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
+      "sourceCommit": "ec6c438e9"
+    },
+    {
+      "id": "bank-native-backed-publication",
+      "path": "receiz/app/lib/wallet/bankNotes/nativeAssetHolding.ts",
+      "baseSha256": null,
+      "sha256": "3bc065e6c2bfbd4e68153803e88b3d0e3c59658af1036a1726d87d6512e949ec",
+      "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
+      "sourceCommit": "ec6c438e9"
+    },
+    {
+      "id": "bank-native-backed-publication",
+      "path": "receiz/app/lib/wallet/bankNotes/nativeAssetPublicArtifact.ts",
+      "baseSha256": null,
+      "sha256": "b33d20b28a679df1b1135c779c1dcbc1a3827ebc32095db225b667fc0d9c3f36",
+      "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
+      "sourceCommit": "ec6c438e9"
     }
   ]
 }

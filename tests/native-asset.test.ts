@@ -46,3 +46,11 @@ it('permits the current app portfolio source read through the actual Bank gatewa
  for(const bad of [path+'&accountId=foreign',path.replace(BANK_APPLICATION_ID,'rc_foreign'),path+`&applicationId=${BANK_APPLICATION_ID}`])expect(permittedNativePath(bad,'POST')).toBe(false);
  expect(permittedNativePath(path,'GET')).toBe(false);
 });
+
+it('binds the authored source to the displayed immutable review before signing',async()=>{
+ const reference={schema:'receiz.imported-proof-source.v1',artifactSha256:'c'.repeat(64),byteLength:2,filename:'authored.receizbundle',mimeType:'application/vnd.receiz.bundle+json',bytes:{kind:'bytes',sha256:'d'.repeat(64),byteLength:2,contentByteLength:2,height:0}};
+ const api=payments.createNativeAssets({ownerReceizId:'owner.receiz.id',keyId:'a'.repeat(64),assertOpen(){},lock:async run=>run(),store:{read:async()=>null,write:async()=>{}},sign:async()=>{throw Error('NO_SIGN');},request:async(_path,request)=>{const review={schema:'receiz.bank.native-asset-review.v1',request,keyId:'a'.repeat(64),planDigest:'b'.repeat(64),terms:{debitUsdCents:'100',debitPhiMicro:'500000',creditUsdCents:'0',creditPhiMicro:'0',feeUsdCents:'0',quantityMicro:'1000000',assetDigest:null,recipient:null,expiresAtKaiUPulse:9000000000000000}};const {nativeAssetChallenge}=await import('../src/receiz/native-asset-protocol');return{...review,ticket:'fixture',challengeB64Url:nativeAssetChallenge(review as never)};}});
+ const review=await api.prepare({kind:'fund-asset',rail:'reserve',amountUsdCents:'100',definition:{name:'Authored unit',symbol:'UNIT',units:'1',description:'',linkedProofDigest:reference.artifactSha256},authoredSource:reference} as never);
+ expect(()=>Object.assign((review.request as unknown as {authoredSource:object}).authoredSource,{artifactSha256:'e'.repeat(64)})).toThrow(TypeError);
+ expect(()=>Object.assign((review.request as unknown as {authoredSource:{bytes:object}}).authoredSource.bytes,{sha256:'e'.repeat(64)})).toThrow(TypeError);
+});

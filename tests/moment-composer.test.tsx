@@ -43,13 +43,13 @@ it('reopens pending source custody after refresh and resumes it without a new fo
   await act(async()=>click(host,'Retry public delivery'));expect(retryAssetPublication).toHaveBeenCalledOnce();expect(createAsset).not.toHaveBeenCalled();expect(host.textContent).toContain('Your asset is public.');
  }finally{act(()=>root.unmount());}
 });
-it('does not drop moment originals silently or start financial review when the funded contract cannot carry them',async()=>{
+it('retains the selected original and refuses a generic funding fallback if the backed publisher is unavailable',async()=>{
  const operations=vi.fn(),host=document.createElement('div'),root=createRoot(host),identity={listDeposits:async()=>[],operations} as unknown as OpenIdentity;
  try{
   await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));
   await select(host,new File(['evidence'],'evidence.txt',{type:'text/plain'}));
   act(()=>click(host,'Create with backing'));await act(async()=>click(host,'Review asset creation'));
-  expect(operations).not.toHaveBeenCalled();expect(host.textContent).toContain('Backed issuance currently supports a plain definition');
+  expect(operations).not.toHaveBeenCalled();expect(host.textContent).toContain('Verified transaction terms are unavailable');
   act(()=>click(host,'Public original'));expect(host.textContent).toContain('evidence.txt');
  }finally{act(()=>root.unmount());}
 });

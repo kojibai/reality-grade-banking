@@ -1,3 +1,4 @@
+import {parseImportedProofSourceReference,type ImportedProofSourceReference} from '../../native/receiz/app/lib/profile/showcase/importedSourceReference';
 import {inspectNativeAssetFundingComponents} from './native-asset-backing';
 import type { ReceizClient, ReceizAuthoritySessionV124, ReceizOperationPlanV124, ReceizPortableExecutionTransitionSetV124 } from '@receiz/sdk';
 import { BANK_APPLICATION_ID } from './config';
@@ -10,14 +11,14 @@ import { parseAmount } from '../core/money';
 
 export type BankRail = 'reserve' | 'settlement';
 export type BankOperationInput =
-  | { kind: 'fund-asset'; definition: AssetDefinition; fundingRule: 'reserve-first-then-settlement'; amountUsdCents: string }
+  | { kind: 'fund-asset'; definition: AssetDefinition; fundingRule: 'reserve-first-then-settlement'; amountUsdCents: string; authoredSource?: ImportedProofSourceReference }
   | { kind: 'send-value'; rail: BankRail; amountUsdCents: string; recipient: string }
   | { kind: 'exchange'; rail: BankRail; amountUsdCents: string; assetDigest: string }
   | { kind: 'send-ownership'; assetDigest: string; quantityMicro: string; recipient: string }
   | { kind: 'sell-share'; assetDigest: string; quantityMicro: string; rail: BankRail; buyer: 'bank' | 'market' }
   | { kind: 'buy-shares'; assetDigest: string; quantityMicro: string; rail: BankRail }
   | { kind: 'redeem-asset'; assetDigest: string }
-  | { kind: 'fund-asset'; definition: AssetDefinition; rail: BankRail; amountUsdCents: string };
+  | { kind: 'fund-asset'; definition: AssetDefinition; rail: BankRail; amountUsdCents: string; authoredSource?: ImportedProofSourceReference };
 export type BankOperationRequest = BankOperationInput & { schema: 'bankeiz.operation-request.v1'; applicationId: string; requestId: string; actorReceizId: string };
 export interface BankOperationTerms {
   debitUsdCents: string; debitPhiMicro: string; creditUsdCents: string; creditPhiMicro: string;
@@ -48,7 +49,7 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
   const fields: Record<BankOperationInput['kind'], string[]> = {
     'send-value': ['rail', 'amountUsdCents', 'recipient'], exchange: ['rail', 'amountUsdCents', 'assetDigest'],
     'send-ownership': ['assetDigest', 'quantityMicro', 'recipient'], 'sell-share': ['assetDigest', 'quantityMicro', 'rail', 'buyer'],
-    'buy-shares': ['assetDigest', 'quantityMicro', 'rail'], 'redeem-asset': ['assetDigest'], 'fund-asset': ['definition', Object.hasOwn(r,'fundingRule')?'fundingRule':'rail', 'amountUsdCents'],
+    'buy-shares': ['assetDigest', 'quantityMicro', 'rail'], 'redeem-asset': ['assetDigest'], 'fund-asset': ['definition', Object.hasOwn(r,'fundingRule')?'fundingRule':'rail', 'amountUsdCents',...(Object.hasOwn(r,'authoredSource')?['authoredSource']:[])],
   };
   if (typeof r.kind !== 'string' || !Object.hasOwn(fields, r.kind)) fail();
   closed(input, ['kind', ...fields[input.kind]]);
@@ -65,7 +66,7 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
     if(/^@?[a-z0-9_]{3,24}(?:\.receiz\.id)?$/iu.test(input.recipient))input.recipient=input.recipient.toLowerCase();
   }
   if (input.kind === 'sell-share' && !['bank', 'market'].includes(input.buyer)) fail();
-  if (input.kind === 'fund-asset') input.definition = validateAssetDefinition(input.definition);
+  if(input.kind==='fund-asset'){input.definition=validateAssetDefinition(input.definition);if(input.authoredSource){input.authoredSource=parseImportedProofSourceReference(input.authoredSource);if(input.definition.linkedProofDigest!==input.authoredSource.artifactSha256)fail();}else if(input.definition.linkedProofDigest!==null)fail();}
   return input;
 }
 function termsFor(value: unknown, request: BankOperationRequest): Readonly<BankOperationTerms> {
@@ -168,7 +169,10 @@ export function bankOperationFailureDetails(error:unknown){
 }
 export function bankOperationError(error: unknown): string {
   const code = error instanceof Error ? error.message : '';
-  if(code==='BANK_ASSET_MOMENT_SOURCE_REQUIRED')return 'Backed issuance currently supports a plain definition. Return to Seal a moment to preserve your originals and full text together.';
+  if(code.startsWith('COMPOSER_'))return 'Check your original, cover and attached files, then review again.';
+  if(code==='BANK_ASSET_FUNDED_OFFER_UNAVAILABLE')return 'There is no matching offer for this ownership yet. Your balance and ownership are unchanged.';
+  if(code==='BANK_ASSET_WHOLE_SUPPLY_REQUIRED')return 'Redemption requires all of this asset’s outstanding ownership.';
+  if(code==='BANK_ASSET_MOMENT_SOURCE_REQUIRED')return 'Your original source could not be prepared. Keep your selected files and review again when connected.';
   const stage=noteFailureStage(error)?.stage;
   if(stage&&['saved-notes','prepared-notes','saved-note-identity','offline-note-checkpoint','prepared-note-checkpoint'].includes(stage))return 'Saved Offline Note custody could not be opened. Keep this device and its original proofs; the saved state has not been reset.';
   if(error&&typeof error==='object'&&(error as {name?:unknown}).name==='OperationError')return 'A protected browser operation failed. Your account and saved transaction state are preserved. Keep this device and check the failure details.';
