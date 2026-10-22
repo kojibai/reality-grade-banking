@@ -56,8 +56,9 @@ function ownership(item: PublicMarketItem): {label: string; value: string} {
   return {label: 'Owner', value: owner || 'Owner unavailable'};
 }
 
-/** Metadata-only artwork: no original bytes, quote refresh, or remote media. */
-export function assetShareCardSvg(item: PublicMarketItem): string {
+/** Metadata and an optional prepared cover; no remote locator is embedded. */
+export function assetShareCardSvg(item: PublicMarketItem, cover:string|null=null): string {
+  cover=cover&&cover.length<=2*1024*1024&&/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(cover)?cover:null;
   const title = clean(item.title) || 'Untitled asset', category = marketContentLabel(item);
   const lines = titleLines(title.slice(0, 256));
   const value = item.priceUsd !== null && Number.isFinite(item.priceUsd) && item.priceUsd >= 0
@@ -79,6 +80,7 @@ export function assetShareCardSvg(item: PublicMarketItem): string {
 <linearGradient id="edge" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".26" stop-color="#779ad8"/><stop offset=".48" stop-color="#fcffff"/><stop offset=".72" stop-color="#507bbf"/><stop offset="1" stop-color="#fff"/></linearGradient>
 <linearGradient id="sheen" x2=".9" y2="1"><stop stop-color="#fff" stop-opacity=".40"/><stop offset=".38" stop-color="#fff" stop-opacity=".02"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#8ab2ff" stop-opacity=".22"/></linearGradient>
 <filter id="blur"><feGaussianBlur stdDeviation="24"/></filter><filter id="lift" x="-.3" y="-.3" width="1.7" height="1.8"><feDropShadow dx="12" dy="22" stdDeviation="20" flood-color="#102642" flood-opacity=".22"/></filter>
+${cover?'<clipPath id="album-cover"><rect x="18" y="33" width="384" height="384" rx="43"/></clipPath>':''}
 </defs>
 <rect width="1730" height="909" fill="url(#paper)"/><ellipse cx="1340" cy="650" rx="510" ry="350" fill="url(#halo)"/>
 <rect x="76" y="103" width="105" height="105" rx="23" fill="url(#navy)"/><svg x="92" y="118" width="73" height="73" viewBox="112 112 288 288" fill="#ffffff">${bank}</svg>
@@ -93,8 +95,9 @@ export function assetShareCardSvg(item: PublicMarketItem): string {
 <g transform="matrix(.93 .25 -.11 .95 1254 135)" filter="url(#lift)"><rect x="8" y="5" width="366" height="480" rx="63" fill="#061632" stroke="#5377a5" stroke-width="2"/><rect width="366" height="480" rx="63" fill="url(#navy)" stroke="url(#edge)" stroke-width="3"/><rect x="9" y="9" width="348" height="462" rx="55" fill="none" stroke="#738caf" stroke-opacity=".5" stroke-width="1.5"/><path d="M46 10h258q55 0 55 55v140" fill="none" stroke="#c8dcf9" stroke-opacity=".5" stroke-width="2"/></g>
 <g transform="matrix(.93 .25 -.11 .95 1152 198)" filter="url(#lift)"><rect x="9" y="7" width="395" height="466" rx="62" fill="url(#glass)" stroke="url(#edge)" stroke-width="3"/><rect width="395" height="466" rx="62" fill="url(#glass)" stroke="url(#edge)" stroke-width="4"/><rect x="12" y="12" width="371" height="442" rx="51" fill="none" stroke="white" stroke-opacity=".7" stroke-width="2"/><path d="M26 75q0-49 49-49h175" fill="none" stroke="white" stroke-width="5" opacity=".8"/></g>
 <g transform="matrix(.93 .25 -.11 .95 1058 275)" filter="url(#lift)"><rect x="10" y="7" width="420" height="450" rx="61" fill="#062c9c" stroke="#547fce" stroke-width="2"/><rect width="420" height="450" rx="61" fill="url(#cobalt)" stroke="#163d9b" stroke-width="2"/><rect x="7" y="7" width="406" height="436" rx="56" fill="url(#sheen)" stroke="#accaff" stroke-opacity=".55" stroke-width="2"/><rect x="18" y="18" width="384" height="414" rx="45" fill="none" stroke="#071c68" stroke-opacity=".36" stroke-width="2"/>
-<text x="52" y="82" font-family="Inter" font-size="17" font-weight="400" letter-spacing="3" fill="#dce8ff">PUBLIC ASSET</text><g opacity=".9">${motif}</g>
+${cover?`<image x="18" y="33" width="384" height="384" preserveAspectRatio="xMidYMid meet" clip-path="url(#album-cover)" href="${escape(cover)}"/><rect x="18" y="33" width="384" height="384" rx="43" fill="none" stroke="#ecf4ff" stroke-opacity=".65" stroke-width="2"/>`:`<text x="52" y="82" font-family="Inter" font-size="17" font-weight="400" letter-spacing="3" fill="#dce8ff">PUBLIC ASSET</text><g opacity=".9">${motif}</g>
 <path d="M52 330H367" stroke="#d1e1ff" stroke-opacity=".28"/><text x="52" y="377" font-family="Inter" font-size="31" font-weight="600" letter-spacing="-.9" fill="#fff">Bankeiz</text><text x="52" y="409" font-family="Inter" font-size="20" font-weight="400" fill="#dce8ff">${escape(category)}</text>
+`}
 <path d="M35 67q0-32 33-32h180" fill="none" stroke="#ecf4ff" stroke-width="3" opacity=".55"/><path d="M393 128v233q0 53-53 53H113" fill="none" stroke="#82aaff" stroke-opacity=".32" stroke-width="2"/></g>
 </svg>`;
 }
