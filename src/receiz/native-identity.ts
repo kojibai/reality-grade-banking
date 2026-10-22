@@ -1,5 +1,6 @@
 import {isPeopleSearchQuery} from './people-search.js';
 import {withDeviceIdentityEntry} from './device-identity-entry';
+import {buildCheckoutReturn} from './checkout-request';
 import {BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT} from './config';
 import {openMessagingRetention} from './messaging-retention';
 import {loadMessagingConsent,saveMessagingConsent,loadMessagingDisplay,saveMessagingDisplay} from './identity-vault';
@@ -902,7 +903,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     return page;
   }
   let ledgerProofBasis:string|null=null,ledgerProofPending:Promise<void>|undefined;
-  async function beginCardDeposit(amount: string, approved: boolean, paymentReference?:string) {
+  async function beginCardDeposit(amount: string, approved: boolean, paymentReference?:string, checkoutContext?:import('./wallet-send').CheckoutContext) {
     if (!approved) throw new Error('Approve this card deposit before continuing.');
     const exact = parseDepositDollars(amount);
     if(paymentReference){
@@ -913,7 +914,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const previous = readCardOperation(await loadCardOperation(binding));
     if (previous?.stage === 'creating') throw new Error(`Your previous checkout’s result is unknown. Keep its reference and resolve it before starting another: ${previous.operationId}`);
     const current = await connectClient(BANK_CARD_SCOPES, BANK_CARD_CONSENT);
-    const returnUrl = `${location.origin}/?cardReturn=1${paymentReference?'&sendReturn=1':''}&session_id={CHECKOUT_SESSION_ID}`;
+    const returnUrl = checkoutContext?buildCheckoutReturn(checkoutContext,location.origin):`${location.origin}/?cardReturn=1${paymentReference?'&sendReturn=1':''}&session_id={CHECKOUT_SESSION_ID}`;
     const operation = { schema: 'receiz.bank.card-operation.v1', applicationId: BANK_APPLICATION_ID, stage: 'creating', operationId: paymentReference??crypto.randomUUID(), amountUsdCents: exact.amountUsdCents };
     await saveCardOperation(binding, operation, true, previous?.operationId, Boolean(previous));
     // A known checkout is retained for explicit resumption; a new reviewed amount
@@ -1144,7 +1145,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     store:{read:()=>loadWalletSendState(binding),write:(next,previous)=>saveWalletSendState(binding,next,previous)},
     connect:async readOnly=>{const connected=await connectClient(readOnly?BANK_READ_SCOPES:BANK_WALLET_SEND_SCOPES,readOnly?BANK_READ_CONSENT:BANK_WALLET_SEND_CONSENT);noteOpen();const account=clientAccounts.get(connected);if(!account)throw Error('BANK_WALLET_IDENTITY_CHANGED');return{client:connected,accountUid:account.accountUid};},
     lock:async operation=>withAccountExecutionLock(async()=>await navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},operation)),
-    funding:{begin:(amount,referenceId)=>beginCardDeposit(amount,true,referenceId),check:(checkout,beforeCredit)=>checkCardDeposit(checkout,beforeCredit)},
+    funding:{begin:(amount,referenceId,context)=>beginCardDeposit(amount,true,referenceId,context),check:(checkout,beforeCredit)=>checkCardDeposit(checkout,beforeCredit)},
   })).catch(error=>{walletSendPromise=undefined;throw error;});
   let portfolioPromise:Promise<MarketPortfolioClient>|undefined,portfolioView:MarketPortfolio|null=null,portfolioSeedUid:string|null=null,portfolioStored:unknown=savedPortfolio;
   const knownMarketPortfolio=()=>{
