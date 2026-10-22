@@ -107,7 +107,10 @@ it('paints the recorded pinned pass before scheduling current checks without ope
   expect(popup.id).toBe(trigger().getAttribute('aria-controls'));
   expect(trigger().getAttribute('aria-expanded')).toBe('true');
   expect(popup.textContent).toContain('12 of 12 passed');
-  expect(popup.textContent).toContain('No private data');
+  expect(popup.textContent).toContain('Reality-Grade Banking');
+  expect(popup.textContent).toContain('Verification passed');
+  expect(popup.textContent).not.toContain('Institution assessment');
+  expect(popup.textContent).not.toContain('Verifier '+manifest.moduleSha256.slice(0,10));
   expect(popup.querySelector('a')?.getAttribute('href')).toBe('/conformance/#reference');
 });
 
@@ -122,7 +125,7 @@ it('keeps the last completed result visible through background progress', async 
   await runScheduledChecks();
   expect(trigger().dataset.state).toBe('passed');
   await click(trigger());
-  expect(host.textContent).toContain('Pinned release & registry');
+  expect(host.textContent).toContain('Verification in progress');
   act(() => onResult(completedCheck('release')));
   expect(host.textContent).toContain('1 of 12 complete');
   expect(trigger().dataset.state).toBe('passed');
@@ -156,7 +159,7 @@ it.each([
   await runScheduledChecks();
   expect(trigger().dataset.state).toBe('refused');
   await click(trigger());
-  expect(host.textContent).toContain('Reference checks did not pass');
+  expect(host.textContent).toContain('Verification not satisfied');
 });
 
 it('replaces the last pass on verifier errors and retains the error across fresh entrance mounts', async () => {
@@ -165,16 +168,17 @@ it('replaces the last pass on verifier errors and retains the error across fresh
   await click(trigger());
   let reject!: (error: Error) => void;
   reference.run.mockImplementationOnce(() => new Promise((_, no) => { reject = no; }));
-  await click([...host.querySelectorAll('button')].find(button => button.textContent === 'Recheck')!);
+  await click([...host.querySelectorAll('button')].find(button => button.textContent === 'Verify again')!);
   expect(trigger().dataset.state).toBe('passed');
   await act(async () => reject(Error('VERIFIER_RESOURCE_UNAVAILABLE')));
   expect(trigger().dataset.state).toBe('error');
-  expect(host.textContent).toContain('Checks unavailable');
-  expect(host.textContent).toContain('VERIFIER_RESOURCE_UNAVAILABLE');
+  expect(host.textContent).toContain('Verification unavailable');
+  expect(host.textContent).not.toContain('VERIFIER_RESOURCE_UNAVAILABLE');
+  expect(host.textContent).toContain('A current verification result could not be established.');
   const next = renderEntrance();
   expect(next.trigger().dataset.state).toBe('error');
   expect(next.host.querySelector('[role=dialog]')).toBeNull();
-  await click([...host.querySelectorAll('button')].find(button => button.textContent === 'Try again')!);
+  await click([...host.querySelectorAll('button')].find(button => button.textContent === 'Retry verification')!);
   expect(trigger().dataset.state).toBe('passed');
 });
 
@@ -245,8 +249,8 @@ it('rejects an obsolete seven-check cache even when its cached build envelope ma
  reference.run.mockImplementationOnce(()=>new Promise(()=>{}));
  const next=renderEntrance();await click(next.trigger());
  expect(next.host.textContent).toContain('12 of 12 passed');
- expect(next.host.textContent).toContain('Recorded reference result');
+ expect(next.host.textContent).toContain('Recorded verification');
  expect(next.host.textContent).not.toContain('7 of 7 passed');
- expect(next.host.textContent).toContain('Institution assessment');
- expect(next.host.textContent).toContain('Not assessed');
+ expect(next.host.textContent).not.toContain('Institution assessment');
+ expect(next.host.textContent).toContain('Proof and continuity checks');
 });

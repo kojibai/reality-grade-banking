@@ -125,9 +125,9 @@ export function EntranceConformanceStatus() {
     return () => { document.removeEventListener('pointerdown', outside, true); document.removeEventListener('keydown', escape); };
   }, [open]);
 
-  const { phase, total, results, error } = snapshot;
+  const { phase, total, results } = snapshot;
   const passed = results.filter(result => result.passed).length;
-  const label = phase === 'passed' ? 'Browser checks passed' : phase === 'checking' ? 'Checking this build' : phase === 'refused' ? 'Reference checks did not pass' : phase === 'error' ? 'Checks unavailable' : 'Not checked';
+  const label = phase === 'passed' ? 'Verification passed' : phase === 'checking' ? 'Verification in progress' : phase === 'refused' ? 'Verification not satisfied' : phase === 'error' ? 'Verification unavailable' : 'Verification pending';
   const dismiss = () => {
     if (popup.current?.contains(document.activeElement)) trigger.current?.focus({ preventScroll: true });
     setOpen(false);
@@ -136,15 +136,13 @@ export function EntranceConformanceStatus() {
   return <div className="entrance-conformance" ref={wrapper}>
     <button ref={trigger} type="button" className="entrance-conformance-trigger" data-state={phase} aria-label={`Conformance status: ${label.toLowerCase()}`} aria-haspopup="dialog" aria-expanded={open} aria-controls={popupId} title={label} onClick={() => { setOpen(current => !current); if (!started.current) void runChecks(); }}><ShieldCheck size={19} aria-hidden="true" /></button>
     {open && <div ref={popup} id={popupId} className="entrance-conformance-popover" role="dialog" aria-labelledby={titleId}>
-      <div className="entrance-conformance-heading"><h2 id={titleId}>Conformance</h2><button ref={close} type="button" aria-label="Close conformance status" onClick={dismiss}><X size={15} aria-hidden="true" /></button></div>
-      <div className="entrance-conformance-status" data-state={phase}><span className="entrance-conformance-emblem"><ShieldCheck size={21} strokeWidth={1.6} aria-hidden="true" /></span><p role="status" aria-live="polite" aria-atomic="true"><strong>{label}</strong><span>{total === null ? 'Current build not yet checked' : `${passed} of ${total} passed`}</span></p></div>
-      {refreshing && <p className="entrance-conformance-detail"><LoaderCircle size={12} aria-hidden="true" />{progress.total === null ? 'Refreshing checks…' : `${progress.results.length} of ${progress.total} complete`}{progress.activeName && ` · ${progress.activeName}`}</p>}
-      {phase === 'refused' && <p className="entrance-conformance-error">{error ?? results.find(result => !result.passed)?.error ?? 'The browser reference checks did not all pass.'}</p>}
-      {phase === 'error' && <p className="entrance-conformance-error">{error}</p>}
-      <dl className="entrance-conformance-scope"><div><dt>RGB browser reference</dt><dd>{checkIds.length} checks · Receiz v{profile.receizVersion.split('.')[0]}</dd></div><div><dt>Institution assessment</dt><dd>Not assessed</dd></div></dl>
-      <p className="entrance-conformance-boundary">No private data accessed. No funds moved. Browser reference evidence; live qualification is separate.</p>
-      {phase === 'passed' && <p className="entrance-conformance-build" title={`Verifier SHA-256: ${manifest.moduleSha256}`}>{snapshot.origin === 'recorded' ? 'Recorded reference result' : snapshot.origin === 'device' ? 'Last result on this device' : 'Checked this session'} · Verifier {manifest.moduleSha256.slice(0, 10)}</p>}
-      <div className="entrance-conformance-footer"><a href="/conformance/#reference">Open conformance console<ArrowUpRight size={13} aria-hidden="true" /></a>{!refreshing && <button type="button" onClick={() => void runChecks()}>{phase === 'error' || phase === 'refused' ? 'Try again' : 'Recheck'}</button>}</div>
+      <div className="entrance-conformance-heading"><h2 id={titleId}>Conformance record</h2><button ref={close} type="button" aria-label="Close conformance status" onClick={dismiss}><X size={15} aria-hidden="true" /></button></div>
+      <div className="entrance-conformance-status" data-state={phase}><span className="entrance-conformance-emblem"><ShieldCheck size={21} strokeWidth={1.6} aria-hidden="true" /></span><p role="status" aria-live="polite" aria-atomic="true"><strong>{label}</strong><span>{total === null ? 'Verification pending' : `${passed} of ${total} passed`}</span></p></div>
+      {refreshing && <p className="entrance-conformance-detail"><LoaderCircle size={12} aria-hidden="true" />Verification in progress{progress.total !== null && ` · ${progress.results.length} of ${progress.total} complete`}</p>}
+      {phase === 'refused' && <p className="entrance-conformance-error">Verification did not satisfy all checks. Inspect the evidence for the recorded findings.</p>}
+      {phase === 'error' && <p className="entrance-conformance-error">A current verification result could not be established. Retry verification or inspect the evidence.</p>}
+      <dl className="entrance-conformance-scope"><div><dt>Standard</dt><dd>Reality-Grade Banking</dd></div><div><dt>Scope</dt><dd>Proof and continuity checks</dd></div>{phase === 'passed' && <div><dt>Evidence</dt><dd>{snapshot.origin === 'recorded' ? 'Recorded verification' : snapshot.origin === 'device' ? 'Last result on this device' : 'Verified this session'}</dd></div>}</dl>
+      <div className="entrance-conformance-footer"><a href="/conformance/#reference">View verification evidence<ArrowUpRight size={13} aria-hidden="true" /></a>{!refreshing && <button type="button" onClick={() => void runChecks()}>{phase === 'error' || phase === 'refused' ? 'Retry verification' : 'Verify again'}</button>}</div>
     </div>}
   </div>;
 }
