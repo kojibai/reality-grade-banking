@@ -41,3 +41,7 @@ it('clears a failed quote immediately and retries only after another explicit re
   await act(async()=>button('Review trade').click());expect(api.prepare).toHaveBeenCalledTimes(2);expect(host.textContent).toContain('Review sale');expect(host.textContent).not.toContain('HTTP 503');expect(button('Confirm sale').disabled).toBe(true);expect(api.execute).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());}
 });
+it('lets an unconfirmed trade be closed without submitting another and shows a completed race correctly',async()=>{
+ const nonce='10000000-0000-4000-8000-000000000002',api={status:async()=>({status:'unknown',clientNonce:nonce}),stop:vi.fn(async()=>({status:'not-sent',clientNonce:nonce,reason:'market_trade_canceled'})),resolve:vi.fn(),execute:vi.fn()},host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<LiveMarketTrade identity={{marketTrade:async()=>api} as unknown as OpenIdentity} marketItemId="asset:one" side="buy" onRefresh={()=>{}}/>));const cancel=[...host.querySelectorAll('button')].find(b=>b.textContent==='Cancel unconfirmed trade');expect(cancel).toBeDefined();await act(async()=>cancel!.click());expect(api.stop).toHaveBeenCalledWith(true,nonce);expect(host.textContent).toContain('Trade canceled.');expect(host.textContent).toContain('Review another trade');expect(api.execute).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
+});

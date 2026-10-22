@@ -53,3 +53,34 @@ it('keeps a valid POST outcome unknown when terminal record retention fails, wit
  const f=fixture(),write=f.write.getMockImplementation()!;f.submitTrade.mockImplementation(async(body:any)=>{f.record=syntheticMarketRecord(body,uid);return f.record;});f.write.mockImplementation(async(next:any,previous:any)=>{if(next.current.status==='recorded')throw Error('terminal storage unavailable');return write(next,previous);});
  const api=createMarketTrade(f.options),r=await api.prepare({marketItemId:'asset:one',side:'buy',amountUsdCents:'1000'});f.request.mockClear();expect((await api.execute(r,r.digest)).status).toBe('unknown');expect(f.state.current.status).toBe('unknown');expect(f.request).not.toHaveBeenCalled();expect(f.submitTrade).toHaveBeenCalledOnce();
 });
+
+it('retains a safely closed refusal so a failed trade does not block the next review',async()=>{
+ const f=fixture();f.submitTrade.mockImplementation(async body=>{throw Object.assign(Error('failed'),{status:500,payload:{error:'bigint out of range',outcome:{ok:true,authority:'market-observation',actorUserId:uid,found:false,recorded:false,closed:true,clientNonce:body.clientNonce,reason:'rejected'}}});});
+ const api=createMarketTrade(f.options),r=await api.prepare({marketItemId:'asset:one',side:'buy',amountUsdCents:'10000000'});
+ expect(await api.execute(r,r.digest)).toMatchObject({status:'not-sent',reason:'market_trade_rejected'});
+ expect((await createMarketTrade(f.options).status())?.status).toBe('not-sent');
+ await expect(api.prepare({marketItemId:'asset:two',side:'buy',amountUsdCents:'1000'})).resolves.toBeDefined();
+});
+it('closes only the displayed original nonce and never submits a trade during cancellation',async()=>{
+ const f=fixture();f.submitTrade.mockImplementation(async()=>{throw Error('lost');});const api=createMarketTrade(f.options),r=await api.prepare({marketItemId:'asset:one',side:'buy',amountUsdCents:'1000'});await api.execute(r,r.digest);
+ f.options.connect=async()=>({accountUid:uid,client:{request:async(path:string,options:any)=>{if(path.endsWith('/cancel'))return{ok:true,authority:'market-observation',actorUserId:uid,found:false,recorded:false,closed:true,clientNonce:options.body.clientNonce,reason:'canceled'};return f.request(path);}}});
+ const reopened=createMarketTrade(f.options);
+ await expect(reopened.stop(false,r.body.clientNonce)).rejects.toThrow('CONSENT');
+ await expect(reopened.stop(true,intentId)).rejects.toThrow('MISMATCH');
+ expect(await reopened.stop(true,r.body.clientNonce)).toMatchObject({status:'not-sent',reason:'market_trade_canceled'});
+ expect((await createMarketTrade(f.options).status())?.status).toBe('not-sent');expect(f.submitTrade).toHaveBeenCalledTimes(1);
+});
+it('does not accept an unfenced or foreign closure as a failed trade',async()=>{
+ const f=fixture();f.submitTrade.mockImplementation(async body=>{throw Object.assign(Error('failed'),{status:409,payload:{outcome:{ok:true,authority:'market-observation',actorUserId:intentId,found:false,recorded:false,closed:true,clientNonce:body.clientNonce,reason:'rejected'}}});});
+ const api=createMarketTrade(f.options),r=await api.prepare({marketItemId:'asset:one',side:'buy',amountUsdCents:'1000'});expect((await api.execute(r,r.digest)).status).toBe('unknown');
+});
+it('recovers a closure saved by the service after the original error response was lost',async()=>{
+ const f=fixture();f.submitTrade.mockImplementation(async()=>{throw Error('lost');});const api=createMarketTrade(f.options),r=await api.prepare({marketItemId:'asset:one',side:'buy',amountUsdCents:'1000'});await api.execute(r,r.digest);
+ f.record={ok:true,authority:'market-observation',actorUserId:uid,found:false,recorded:false,closed:true,clientNonce:r.body.clientNonce,reason:'rejected'};
+ expect(await createMarketTrade(f.options).resolve(true)).toMatchObject({status:'not-sent',reason:'market_trade_rejected'});expect(f.submitTrade).toHaveBeenCalledTimes(1);
+});
+it('retains a committed original when completion wins the cancellation race',async()=>{
+ const f=fixture();f.submitTrade.mockImplementation(async()=>{throw Error('lost');});const api=createMarketTrade(f.options),r=await api.prepare({marketItemId:'asset:one',side:'buy',amountUsdCents:'1000'});await api.execute(r,r.digest);
+ f.options.connect=async()=>({accountUid:uid,client:{request:async()=>syntheticMarketRecord(r.body,uid)}});
+ expect(await createMarketTrade(f.options).stop(true,r.body.clientNonce)).toMatchObject({status:'recorded',settlementUsdCents:'1000'});expect(f.submitTrade).toHaveBeenCalledTimes(1);
+});

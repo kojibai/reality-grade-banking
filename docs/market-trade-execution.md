@@ -108,3 +108,48 @@ This uses the returned absolute investment position. It does not manufacture a
 complete cash balance from a trade amount or raw Phi Ledger balance. Complete
 Reserve/Settlement balances and proof continuity retain their existing
 authenticated account-source and antirollback checks.
+
+## Failed and unconfirmed attempts
+
+The exact approved request is encrypted in this device's Market custody before
+submission. A missing response or missing lookup alone remains unknown. It is
+never discarded or resubmitted by recovery.
+
+Receiz migration `20261022035629_market_trade_exact_arithmetic_and_recovery.sql`
+widens intermediate multiplication to exact PostgreSQL numeric arithmetic. Its
+integer-quotient follow-up uses `div()` before checking the existing bigint
+result; decimal `/` followed by `trunc()` can round a near-integer fraction. This fixes the USD-to-PHI
+intermediate overflow reproduced at $100,000 and proportional cost-basis
+multiplication on partial sales. Rounding, final units, balance checks, quote
+rules, funding splits, trade identity and original records remain unchanged.
+
+On an admitted request failure, the connected route closes its original nonce
+under the existing wallet row lock. If the original already committed, it
+returns that trade's original rows. Otherwise a service-only immutable closure
+prevents late delivery from inserting a trade; the same transaction rolls back
+any debit or position changes. The closure is a connected Market observation,
+not a native receipt, asset ownership proof or balance credit.
+
+An unconfirmed attempt also exposes **Cancel unconfirmed trade**. This makes an
+explicit authenticated close request for the displayed nonce, never a new
+trade. The interface shows either the recovered committed original or a closed
+attempt with no money moved, then permits another review. Read-only outcome
+checks remain read-only. An unavailable closure or mismatching owner/reference
+keeps the original pending; no local flag or absence can bypass this boundary.
+Successful trade submissions add no closure request or recovery read.
+
+Qualification: 373 Bank test files / 2,215 tests, production build, 18 focused
+Receiz endpoint/PostgreSQL tests and scoped lint. Local PostgreSQL checks cover
+one cent, the former $92,233.72/$92,233.73 overflow boundary, $100,000, $1 million
+and $100 million, plus near-integer cost-basis quotients at bigint magnitude;
+full/partial sales, committed-versus-canceled races, rollback
+of late debits and service-only permissions. Mobile (390px) and desktop (1440px)
+use the real Bank UI and SDK with a synthetic transport, one submission and no
+page errors. They do not move money. The initial unrestricted full Bank test
+run hit a five-second Market-history timeout under concurrency; that unchanged
+file passed independently and the full suite passed with four workers.
+
+Deployment requires both migrations and the Bankeiz/Receiz code updates. The
+initial SQL migration was applied with explicit production approval. The
+integer-quotient follow-up and application deployments are tracked separately.
+No account checkpoint has been cleared and no replacement trade submitted.
