@@ -1,13 +1,14 @@
 # Release process
 
-The Bankeiz product release commit identifies **1.0.0**, separately from the pinned
-Receiz SDK/MCP/AI Skills versions. The [full release record](releases/1.0.0.md)
-describes the product and open implementation; the matching
-[qualification record](releases/1.0.0-qualification.md) is the current evidence
-and publication checklist. The [release index](releases/README.md) defines the
-versioned document structure and links the concise project changelog.
-Do not tag or describe that target as released while any required capability
-or independent qualification evidence remains absent.
+The current Bankeiz product release preparation identifies **2.0.0**, separately
+from the pinned Receiz SDK/MCP/AI Skills versions. Its
+[full release record](releases/2.0.0.md) describes the product and open
+implementation; the matching [qualification record](releases/2.0.0-qualification.md)
+records evidence and publication steps. The [release index](releases/README.md)
+retains every version and links the concise changelog. Published **1.0.0** remains
+unchanged. Source preparation, deployed capability assessment and GitHub
+publication are recorded separately. A tag identifies source; it does not grant
+an unassessed financial or device capability.
 
 Record the Bank commit, exact lockfile, coordinated Receiz package versions, registry/operation digests and generated module hashes. Read the current capability matrix in the root README and `institution/receiver-profile.json`.
 

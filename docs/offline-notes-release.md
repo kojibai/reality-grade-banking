@@ -1,23 +1,25 @@
 # Receiz Bank Offline Notes — v129 release handoff
 
-## Product release status — October 20, 2026
+## Current release and integration gates
 
-The current [Note continuity standard](note-continuity-standard.md) and
-[account-destination contract](note-account-deposit-v129.md) supersede the
-receiving flow described in the historical handoff below. The recipient can
-verify/retain a completed sender-consumed terminal offline without its own
-custody authenticator, then reconcile the exact source through existing native
-redemption. Local synthetic writer/proof checks establish that composition,
-not production qualification. Online creation without attested custody is now implemented through the distinct
-[connected profile](connected-notes-v129.md), including native conservation and
-exact-intent recovery. Product 1.0.0 remains held pending independent review and
-real-device/deployed financial evidence. Existing saved custody is never
-reset or reclassified. See [readiness](releases/1.0.0.md).
+Version 1.0.0 is published; the current release preparation is
+[2.0.0](releases/2.0.0.md). The
+[Note continuity standard](note-continuity-standard.md),
+[connected-account contract](connected-notes-v129.md) and
+[account-destination contract](note-account-deposit-v129.md) define the present
+integration. The recipient can verify and retain a completed addressed original
+offline, then reconcile through the supported Receiz credit contract. Connected
+creation and qualified continuous-offline creation remain distinct capabilities.
 
+Before advertising a financial/device capability, qualify the actual admitted
+funding, receiver-bound original, once-only credit, duplicate refusal and
+original-intent recovery on the deployed Bankeiz build. Continuous fully offline
+spending additionally needs actual exclusive protected custody and rollback
+resistance. Preserve saved custody and pending references during upgrades.
 
-### Current connected funding repair
-
-The October 20 repair adds automatic Reserve-first/Settlement-remainder funding and a Settlement Reserve Note carrying both signed components. No source picker is shown. The inspected compatibility host had neither required Bank Note migration installed and no connected compatibility service composition. The implementation adds that explicit writer connection and bounded missing-schema diagnostics; deployment requires both migrations and authenticated financial qualification. Crystal is not a prerequisite for the compatibility path. See [the connected contract](connected-notes-v129.md). No production database, account balance or qualified custody was changed during local verification.
+The handoff and tests below are **historical evidence**, not current setup
+instructions or a claim that version 1 remains unpublished. Their fully qualified
+recipient path does not replace the current addressed-account receiving flow.
 
 ## Historical qualified-custody handoff
 
@@ -44,11 +46,8 @@ No hosted changes or real funds were moved during development. A passing build o
 - Real v129 canonical sealing, root-purpose funding signatures, Reserve consumption, qualified note handoff, terminal redemption, protected identity stages, saved PNG round trip and complete credit-receipt reopening.
 - Funding preflight failure causes no debit; wrong user/origin is rejected; a fresh resume signature reaffirms the same original allocation ID.
 - Browser composition recovery rejects changed amounts and foreign accounts, retaining unknown outcomes. It covers two independent allocation components, interrupted transfer resumption, retired-recipient exact-receipt recovery, and safe funding cancellation. Unsupported custody reaches no funding request.
-- Historical PostgreSQL accounting adapter fixtures exercised the then-existing production Reserve running-balance projector and migration with synthetic users only. They tested exact replay, conflicts, capacity, RLS/service-only access, bigint string precision, concurrent once-only allocation/redemption and transaction rollback.
-- Bank tests/typecheck/build and native Receiz focused tests/typecheck/lint, account-entry freeze, API-security, governance and v129 release lock.
+- Bank tests, TypeScript, production build, account-entry, API-security and coordinated v129 release checks.
 - Real browser inspection at 390px verified preview → review → unavailable-service presentation → Back/Deposit note, with no relevant console errors. A separate isolated browser fixture verified encrypted source round trip, atomic concurrent checkpoint writes and foreign-ID rejection, protected ID removal and same-ID wrapping-key continuity. The actual generated native module imports in the browser and renders full-size artwork. A synthetic v129 financial check with the actual Bank engraving passed handoff, PNG reopening and Reserve redemption (1.61 MB image; 0.68 MB terminal wire). No account or money was connected to either UI fixture.
-
-The historical database checks used accounting adapter fixture `bank_offline_note_accounting.sql`, migration `20261015012532_bank_offline_notes_native.sql` and test `bank_offline_notes_native_test.sql`, plus `scripts/test_bank_offline_notes_local_db.mjs` in the Receiz source. They ran against a private disposable PostgreSQL cluster with TCP disabled and socket `/private/tmp/receiz-bank-notes-pg-socket-<test-id>`, port 55477, database `receiz_bank_notes_test`. The fixture rejects every other database name and is for isolated synthetic test databases only. These checks do not establish that a hosted migration was applied.
 
 The lazy runtime is reproduced from the included v129 source with `npm run native:rebuild`, then committed under `public/native`. Its manifest records the exact output and source-tree digests, including the documented Bankeiz WebAuthn realm composition. Vercel builds the committed Bank artifact without needing another checkout. It loads only for note actions and does not delay account or Market first paint.
 
@@ -60,4 +59,7 @@ A fresh whole-change read-only review found no Critical issues and five Importan
 
 The source verification decisions remain: qualify local hardware and preserve native issuance; allocate real Reserve exclusively; treat the allocation as a component of the complete account; redeem only into online Reserve; retain fixed Phi and original funded USD under the existing projector; keep full cash-account openings private; carry the complete proof graph without recursively duplicating every parent; reaffirm the same intent with fresh resume consent; retain exact encrypted source bytes and atomic checkpoints. Any mismatch fails closed and leaves the original source/attempt available. The generated runtime is a Bank deployment artifact; no package exports, versions or dependency releases changed.
 
-Final local checks: Bank 282/282 tests, typecheck, production/public-page build and Vercel routing checks; Receiz 56/56 native/wallet tests and 56/56 frozen identity/seal checks, targeted dependency typecheck and scoped lint; API-security contracts, governance controls and the current v129 release lock; fresh synthetic PostgreSQL accounting, RLS, once-only replay, rollback, cancellation and concurrent races. This is scoped verification, not a claim that the entire Receiz repository passed a full build or that real hardware/payments were qualified. Actual funding and transition-store qualification, the protected signer context and the user-operated live funded device check above remain required.
+Historical local Bank checks passed 282 tests, TypeScript, production/public-page
+build and routing checks. They are scoped implementation evidence, not actual
+hardware or payment qualification. Current validation is recorded in the
+[2.0.0 qualification record](releases/2.0.0-qualification.md).

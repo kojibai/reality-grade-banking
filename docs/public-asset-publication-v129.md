@@ -18,7 +18,8 @@ the complete legacy inventory, including hidden Originals.
 the existing `profile`, `receiz:record` and `receiz:seal` proof grant. It scopes
 delivery to the current account and delegates source admission to the existing
 Showcase writer. Source-bound finalization still verifies the original signed
-route consent. Bank has no publication database or Supabase client.
+route consent. Bankeiz retains and delivers the source through that supported
+Receiz contract.
 
 The v2 publisher sends bounded JSON plans through the connector. Exact content
 blocks travel directly to its signed storage upload URLs in bounded 1 MiB bodies.
@@ -89,9 +90,7 @@ delivery cannot fund again. Local admission uses the same immediate profile and
 Market handoff described above. Native-backed listings use the native ownership,
 funded-offer and redemption paths, with their existing liquidity rules.
 
-This extends headless Receiz contracts and the authenticated native asset
-dispatcher; Receiz frontend components and posting flows remain unchanged. Deploy
-the compatible Receiz contract before the Bank caller. SDK/MCP/skill pins stay
-129.0.0, and no SQL migration is required by this contract change. Local fixtures
-qualify source closure and recovery; hosted admitted Settlement funding and live
-publication still require deployment qualification.
+Bankeiz consumes the supported source, publication and native asset contracts
+through its existing Receiz integration. SDK, MCP and AI Skills remain pinned at
+129.0.0. Local fixtures qualify source closure and recovery; admitted Settlement
+funding and live publication retain their operation-specific qualification.

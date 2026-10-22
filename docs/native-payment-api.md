@@ -50,23 +50,13 @@ Verified payment receipts can be saved through transaction recovery and included
 in the existing proof backup/import; neither contains a signing key or login
 capability. No payment is authorized merely by opening a receipt.
 
-## Trusted host startup
+## Registered integration
 
-Receiz main's `nativePaymentApi.server.ts` and `accountProofStartup.server.ts`
-select the existing native stores using:
-
-- `RECEIZ_FUNDED_WALLET_SOURCE_DIRECTORY`
-- `RECEIZ_ACCOUNT_SOURCE_DIRECTORY` (or existing `RECEIZ_SOURCE_DIRECTORY`)
-- `RECEIZ_BANK_APPLICATION_ID` — `rc_2d1wcGkAYfmCi5kGT3J89gkl` for the public Bankeiz registration (a public coordinate, not a client secret)
-
-Both directories must be the same absolute durable source directory. Startup
-never initializes empty stores or falls back to another writer. Selection is
-latched per worker; a changed configuration fails closed. Pending payment tickets
-use the existing `RECEIZ_SESSION_SECRET` for private choreography, not as a
-financial signature. Rotating it can invalidate an unsubmitted quote; committed
-recovery still works through its original nonce and plan digest. The existing
-financial signing/canonical sealing configuration remains required. These
-adapters add no SQL or external database service.
+Bankeiz uses the registered application and the identity's admitted Receiz
+permissions. The caller cannot select another account, financial source or
+runtime. Preparation, execution and recovery retain their original source
+bindings; unavailable capability remains an explicit refusal. The public
+application ID is a routing coordinate, not a client secret.
 
 The account-proof API uses the authenticated v129 principal on private reads.
 Anonymous live continuation reopens the previously published root-signed
@@ -96,6 +86,5 @@ current-device Note inventory require their actual source admission; see
 Missing scope is unavailable, never silently represented as zero. Outstanding
 origin Note funding is separate from spendable cash and current possession.
 Non-payment asset actions keep their separate
-financial qualification boundary. Production operation also requires pushing
-both commits, deploying the host with its existing admitted sources/signers and
-verifying the deployed device-authorized flow.
+financial qualification boundary. Qualify the exact deployed Bankeiz integration
+and its supported Receiz capabilities through the device-authorized flow.

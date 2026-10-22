@@ -84,7 +84,7 @@ Historical requests, receipts, position certificates and public account statemen
 remain readable without inserting fields into their signed bytes. New components
 are retained only when present in their verified source. The existing native
 file/JSON statement, receipt and certificate storage accepts these variants;
-this change needs no SQL schema migration.
+the integration preserves the supported exact source contract.
 
 ## Publication boundary
 
@@ -146,7 +146,7 @@ funding still requires qualification from that installation's admitted complete
 Settlement source. Neither intrinsic asset value nor a browser projection can
 replace that source.
 
-Deploy the compatible Receiz contract/runtime before enabling the Bank caller.
+Use the supported Receiz asset contract through the registered Bankeiz integration.
 The SDK pin remains v129. Bank refuses automatic issuance if its native asset
 runtime is absent; it never falls back to two transactions or a silent rail choice.
 Local tests are not a live financial, deployment or physical-custody qualification.

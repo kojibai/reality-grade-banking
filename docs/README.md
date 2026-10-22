@@ -33,7 +33,6 @@ operating contracts, independent receiving tools and release evidence.
 - [Account-destination Note deposit](note-account-deposit-v129.md)
 - [Settlement Note contract](settlement-note-contract.md)
 - [Offline Note qualification and retained handoff](offline-notes-release.md)
-- [Installed production migrations](verification/2026-10-20-production-note-migrations.md)
 
 ## Public sources and history
 
@@ -46,8 +45,8 @@ operating contracts, independent receiving tools and release evidence.
 
 ## Integration and assessment
 
-- [Receiz v129 connection audit](receiz-v129-bankeiz-connection-audit.md)
-- [Media and messaging contracts](receiz-v129-media-and-messaging-contracts.md)
+- [Historical v129 integration audit](receiz-v129-bankeiz-connection-audit.md)
+- [Historical v129 media and messaging contract audit](receiz-v129-media-and-messaging-contracts.md)
 - [Institution qualification](../institution/qualification.md)
 - [Machine-readable receiving profile](../institution/receiver-profile.json)
 - [Conformance claims](../CONFORMANCE.md)
@@ -56,6 +55,8 @@ operating contracts, independent receiving tools and release evidence.
 
 ## Product and release evidence
 
+- [Reality-Grade Banking 2.0.0 full notes](releases/2.0.0.md)
+- [2.0.0 qualification and publication record](releases/2.0.0-qualification.md)
 - [Reality-Grade Banking 1.0.0 full notes](releases/1.0.0.md)
 - [1.0.0 qualification record](releases/1.0.0-qualification.md)
 - [Changelog](../CHANGELOG.md)

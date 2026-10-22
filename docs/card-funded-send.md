@@ -6,7 +6,8 @@ existing Wallet transfer path is unchanged.
 
 If Wallet explicitly refuses the original reference with
 `wallet_insufficient_funds` and `submission.status: not-submitted`, Bankeiz
-opens its existing embedded card checkout for the approved dollar amount.
+reads the existing account observation and opens its embedded card checkout for
+the missing dollar amount. For a $10 Send with $3 available, checkout funds $7.
 The customer completes checkout in the same Send view. A verified account
 credit continues the saved payment automatically, using the same recipient,
 amount, conversation, public note and `clientNonce`. A second review or Send
@@ -14,10 +15,18 @@ action is unnecessary.
 
 ## Financial and recovery boundaries
 
-- Card funding covers the full approved amount within the existing checkout
-  limits ($0.50–$100,000). Partial balance plus card shortfall funding is not
-  introduced. Wallet still determines the actual funding split when the
-  transfer executes.
+- Card funding covers the confirmed shortfall within the existing checkout
+  limits ($0.50–$100,000). If the missing amount is below the card minimum, the
+  interface shows the minimum charge and the exact remainder retained in the
+  account. Wallet still determines the actual funding split when the complete
+  approved transfer executes. An unavailable or incoherent account observation
+  cannot be treated as a zero balance.
+- **Back to send** returns to the retained form through the existing local
+  funding cancellation. It does not expire a provider session or reverse a
+  charge already in progress. The outer close remains available.
+- The selected shortfall is saved before checkout creation and remains fixed
+  during recovery. Older retained full-amount checkouts keep their original
+  amount; they are not replaced with a second shortfall checkout.
 - A transport error, an unbound refusal or an unknown transfer outcome cannot
   open another checkout. Recovery reads the original transfer reference;
   it never repeats an uncertain transfer.
@@ -43,10 +52,15 @@ action is unnecessary.
 
 ## Verification
 
-The regression suite covers exact no-submission refusal, full-amount checkout,
+The regression suite covers exact no-submission refusal, shortfall and minimum
+checkout amounts, Back, legacy full-amount checkout recovery,
 open/settling/unpaid/expired outcomes, interrupted creation, reopening, retained
 credit before cleanup, mismatched sessions/amounts, and unknown transfer
 recovery without resubmission. Synthetic browser checks exercise the embedded
 checkout and automatic continuation on mobile and desktop without charges or
 live transfers. Production qualification requires the exact deployed build and
 an approved real checkout/transfer; synthetic results do not establish it.
+
+The [shortfall qualification record](verification/2026-10-21-send-card-shortfall.md)
+records the later delta-funding and Back checks, including $3 plus $7 for one
+$10 Send and a sub-minimum shortfall that leaves the disclosed remainder.

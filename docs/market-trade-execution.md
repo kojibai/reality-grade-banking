@@ -50,9 +50,9 @@ and ownership quantities remain available, and every trade keeps its existing
 review and explicit approval. Purchases and sales start from the asset rather
 than a separate Exchange picker.
 
-Connected dollar sales require the matching Receiz adapter update. An older
-host explicitly refuses that unsupported request; Bankeiz does not silently
-substitute another quantity, retry execution or weaken ownership checks.
+Dollar sales require that supported Receiz capability. An unavailable operation
+remains an explicit refusal; Bankeiz does not substitute another quantity, retry
+execution or weaken ownership checks.
 
 ## Critical path
 
@@ -64,10 +64,6 @@ substitute another quantity, retry execution or weaken ownership checks.
   GET for an original already returned by the POST.
 - Missing, malformed, foreign or lost POST results still use the original
   reference read. An uncertain trade is never submitted again by recovery.
-- On Receiz, independent exact-position and quote reads run concurrently.
-  After finding a trade, its independent position and Ledger reads also run
-  concurrently. Legacy asset-ID fallback during trade context loading skips
-  optional engagement metrics, as the primary lookup already does.
 
 These changes shorten the request path without caching an executable quote,
 streaming unconfirmed success, changing price calculations or bypassing
@@ -115,20 +111,12 @@ The exact approved request is encrypted in this device's Market custody before
 submission. A missing response or missing lookup alone remains unknown. It is
 never discarded or resubmitted by recovery.
 
-Receiz migration `20261022035629_market_trade_exact_arithmetic_and_recovery.sql`
-widens intermediate multiplication to exact PostgreSQL numeric arithmetic. Its
-integer-quotient follow-up uses `div()` before checking the existing bigint
-result; decimal `/` followed by `trunc()` can round a near-integer fraction. This fixes the USD-to-PHI
-intermediate overflow reproduced at $100,000 and proportional cost-basis
-multiplication on partial sales. Rounding, final units, balance checks, quote
-rules, funding splits, trade identity and original records remain unchanged.
-
-On an admitted request failure, the connected route closes its original nonce
-under the existing wallet row lock. If the original already committed, it
-returns that trade's original rows. Otherwise a service-only immutable closure
-prevents late delivery from inserting a trade; the same transaction rolls back
-any debit or position changes. The closure is a connected Market observation,
-not a native receipt, asset ownership proof or balance credit.
+The Receiz execution contract retains exact financial units, original trade
+identity and the outcome of each attempt. Bankeiz never infers success or
+cancellation from an amount, timeout or missing response. If the original has
+committed, recovery returns its original result. A confirmed closure prevents
+that same nonce from executing later. A closure observation is not an ownership
+proof or balance credit.
 
 An unconfirmed attempt also exposes **Cancel unconfirmed trade**. This makes an
 explicit authenticated close request for the displayed nonce, never a new
@@ -138,40 +126,22 @@ checks remain read-only. An unavailable closure or mismatching owner/reference
 keeps the original pending; no local flag or absence can bypass this boundary.
 Successful trade submissions add no closure request or recovery read.
 
-Qualification: 373 Bank test files / 2,215 tests, production build, 18 focused
-Receiz endpoint/PostgreSQL tests and scoped lint. Local PostgreSQL checks cover
-one cent, the former $92,233.72/$92,233.73 overflow boundary, $100,000, $1 million
-and $100 million, plus near-integer cost-basis quotients at bigint magnitude;
-full/partial sales, committed-versus-canceled races, rollback
-of late debits and service-only permissions. Mobile (390px) and desktop (1440px)
-use the real Bank UI and SDK with a synthetic transport, one submission and no
-page errors. They do not move money. The initial unrestricted full Bank test
-run hit a five-second Market-history timeout under concurrency; that unchanged
-file passed independently and the full suite passed with four workers.
+Qualification: 373 Bank test files / 2,215 tests and the production build.
+Mobile (390px) and desktop (1440px) checks use the real Bank UI and SDK with a
+synthetic transport, one submission and no page errors. They do not move money.
+The initial unrestricted full Bank run hit a five-second Market-history timeout
+under concurrency; that unchanged file passed independently and the full suite
+passed with four workers.
 
-Both SQL migrations were applied to Receiz production with explicit approval:
-`20261022035629_market_trade_exact_arithmetic_and_recovery.sql` and
-`20261022040247_market_trade_integer_quotient_exactness.sql`. Installed-function
-inspection confirms `div()` in both writers, with no decimal `trunc()` quotient
-remaining; the near-integer edge returns exactly `999999999999999999`.
-The closure table has RLS, and anonymous/authenticated roles cannot execute its
-service function. The advisor's no-policy notice is intentional for this
-service-only table; no public access policy is added.
-
-The application code still requires the Bankeiz and Receiz pushes/deployments.
-No account checkpoint has been cleared, no trade has been replayed and no funds
-were moved during qualification. Existing unknown attempts can use the new
-explicit cancellation control after deployment; read-only absence remains
-unknown until a valid original or atomic closure is retained.
+No account checkpoint is cleared, no uncertain trade is replayed and no funds
+are moved by qualification. An existing unknown attempt resolves through the
+original result or explicit supported closure before another review.
 
 ### Production transport recovery qualification
 
-The initial recovery UI/SDK fixtures did not traverse Bankeiz's restricted
-native transport. The cancellation endpoint was missing from that shared
-allowlist, so it could be blocked before reaching Receiz even after both apps
-were deployed. The exact no-query POST is now admitted by the same policy used
-by the browser and server proxy. Other methods, owner selectors and destination
-queries stay refused. This requires a Bankeiz deployment and no further SQL.
+Bankeiz's restricted native transport admits the exact supported cancellation
+POST through the same browser/server policy as other Market operations. Other
+methods, owner selectors and destination queries stay refused.
 
 The regression exercises `createMarketTrade` → installed SDK → `nativeFetch` →
 `relayNativeAccount` → a synthetic upstream. It reproduces an uncertain original,

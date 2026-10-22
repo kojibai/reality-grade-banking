@@ -19,28 +19,22 @@ provide native Phone/CallKit ringing, background microphone access, or guarantee
 instant delivery. Messages and calls still work when notification permission is
 declined or the browser does not support push.
 
-## Existing infrastructure and deployment
+## Receiz integration
 
-Deploy the Receiz host changes before deploying Bankeiz:
+Bankeiz consumes the existing Receiz chat notification contract with the current
+identity's `receiz:chat.read` permission. The verified account selects the
+subscription owner. Configuration supplies the existing public Web Push key;
+registration and removal manage that account's exact device subscription.
 
-- `/api/chat/notifications/push` retains cookie access and adds the existing
-  verified `receiz:chat.read` bearer access. A present invalid bearer cannot fall
-  through to a cookie. The verified subject selects the account; request bodies
-  cannot select it. GET returns only existing public configuration; POST registers
-  a subscription; DELETE disables that owner's exact endpoint.
-- The existing `chat_push_subscriptions` table and Web Push VAPID configuration
-  are reused. This change adds no SQL migration or new signing key.
-- Existing chat message and call writers remain responsible for notification
-  delivery. Each pushed envelope includes its recipient account ID. Bankeiz does
-  not poll or send a second notification for the same event.
-- Bankeiz registers under its own origin and existing root service worker. Its
-  native relay allows only the exact push path and GET/POST/DELETE methods;
-  cookies are not forwarded.
+Existing Receiz message and call events supply notification delivery. Each
+envelope identifies its recipient account. Bankeiz does not poll or send a
+second notification for the same event. Its restricted relay permits only the
+supported push operations and does not forward browser cookies.
 
-An older active Bankeiz worker may need the app's existing normal update cycle:
-close all Bankeiz windows and reopen. Registration checks for notification support
-before subscribing. It does not force a waiting worker to take over a live
-financial runtime. No notification work blocks account or public-page first paint.
+An older active Bankeiz worker may need the app's normal update cycle: close all
+Bankeiz windows and reopen. Registration checks notification support before
+subscribing. It does not force a waiting worker to take over a live financial
+runtime. No notification work blocks account or public-page first paint.
 Already-consented registration is restored when Messages opens and concurrent
 restore attempts share one operation.
 
@@ -64,7 +58,7 @@ message, alter proof, or move money.
 
 Automated checks cover registration/refusal/revocation, click targets, account
 isolation, expired calls, unsupported workers, and the existing offline worker.
-A local test is not evidence of live iPhone push delivery. After both deployments,
+A local test is not evidence of live iPhone push delivery. On the deployed Bankeiz build,
 enable notifications on the installed iPhone PWA, background it, receive a real
 message and call from another account, and verify that each phone alert opens the
 correct destination. Also check an ended call, Focus settings, and turning alerts

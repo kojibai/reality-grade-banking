@@ -31,7 +31,7 @@ licensing and reusable integration paths included in this version.]
 
 ## Compatibility and operations
 
-[State package/source compatibility, migrations or host prerequisites,
+[State coordinated dependency/source compatibility, supported integration capabilities,
 configuration changes, retained formats and pending-intent behavior. Explain
 the supported upgrade and recovery path.]
 

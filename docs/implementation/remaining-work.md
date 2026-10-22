@@ -1,95 +1,90 @@
-# Remaining product work
+# Next product scope
 
-Updated October 20, 2026, after Bankeiz commit `d8a9723` and Receiz
-host commit `35891d794`.
-This is an implementation queue, not a live capability or release claim.
+Updated October 22, 2026 for the Reality-Grade Banking 2.0.0 release preparation.
+This is the next design queue, not a statement that these capabilities ship.
+The previously discussed future expansion is now considered for **v3**;
+version numbering alone does not approve its design or promise a delivery date.
 
-The agreed v1 preparation scope is calling continuity, the modern Note Ledger
-correction, the complete README/release record and the audience-specific public
-pages with their supporting repository documentation. The feature expansions
-below are retained for subsequent updates rather than silently added to v1.
+## What the v2 foundation already provides
 
-## Prepared for qualification
+The [2.0.0 release](../releases/2.0.0.md) includes public profiles and synced
+editing, full asset composition and same-source publication, account-wide
+investments, inline confirmed positions, trade/Ledger detail, media and sharing
+improvements, card-funded Send shortfalls, website payment tools and PWA
+notification integration. Existing calling and Note flows remain part of the
+product. Their [qualification record](../releases/2.0.0-qualification.md)
+identifies local evidence and host/device assessment boundaries.
 
-1. Calling now keeps one existing Receiz session and its media alive when
-   Messages is minimized or the user navigates within the application. Compact,
-   draggable controls provide return, microphone, camera and ending the call.
-   Browser or operating-system suspension remains outside application control;
-   do not promise calls survive closing the browser or terminating the PWA.
-2. Modern Reserve, Settlement and composite Note creation, deposit and refund
-   projection is committed on Receiz main as `35891d794`. It preserves native
-   refusal, exact values, original times and once-only financial effects. Bank's
-   local receipt-backed Note history is already committed. Actual host delivery
-   follows operator deployment and qualification.
-3. Eight audience guides, distinct interactive vector scenes and sharing
-   images, grouped footer destinations, the open-architecture README and the
-   versioned release documentation are included in this preparation. Local
-   source and browser checks are recorded in the qualification record; actual
-   deployment and financial/device qualification remain separate.
+The original Get paid request has an implemented first layer: Receive, a
+shareable account request, website button, existing Receiz checkout/widget,
+a no-code guide and a typed merchant confirmation example. The
+[integration reference](../../institution/accept-payments.md) distinguishes
+current native Note funding from the separate widget's legacy token path.
 
-## Follow-up releases
+## Next discussion: one merchant checkout, online and in person
 
-- **Note QR:** integrate a scannable claim/status locator into the engraving at
-  creation. Reuse admitted Note sources and receiver-bound claims. Never expose
-  signing keys, private account openings or a transferable bearer secret in a
-  public status URL. A scan opens the appropriate action; it does not itself
-  establish ownership or credit. Public claimant disclosure requires an
-  explicit supported public identity boundary.
-- **Get paid:** a restrained section in Receive for payment links, a website
-  button, no-code integration and developer examples. Reuse Receiz payments,
-  account money and supported Notes. The source audit and missing host
-  boundaries are recorded in [the integration audit](2026-10-20-get-paid-integration.md).
-  Do not advertise arbitrary-site embedded card checkout or modern merchant
-  Note claims before those exact paths are implemented and qualified.
-- **Send to email:** send to an email address, deliver a claim link and credit
-  the properly established existing or new Receiz ID. Reuse the supported
-  Receiz email/identity/transfer primitives; audit their existing contracts
-  first. Merely typing an email address or landing on a URL is not account
-  authority. Retain the original payment intent and once-only claim/recovery.
-- **Persistent media:** keep the same music/video playback session across
-  in-app navigation. A compact, dismissible player opens artwork, controls,
-  queue and music discovery/search. Start playback through a user action;
-  preserve native media and avoid duplicate players or new polling. The
-  committed premium audio controls currently persist through an asset's
-  proof flip/full view, not after leaving that asset.
-- **Display currency:** one unobtrusive selector in the balance popover for
-  supported fiat currencies and major crypto equivalent units. Apply the
-  preference consistently to projected top-level amounts. Preserve the
-  underlying Phi amounts, exact Reserve backing and original receipt/Note
-  denominations. Showing a BTC equivalent does not create BTC custody or
-  exchange a balance. Use timestamped, sourced rates with appropriate currency
-  precision, shared retention and background refresh; never fetch per value,
-  delay the known balance or silently invent missing/stale rates. Conversion
-  arithmetic is deterministic for a given rate snapshot; exchange-rate
-  discovery is an external input. The inspected v129 SDK exposes no general
-  fiat/crypto display-rate operation, so audit the Receiz host's reusable rate
-  source before selecting an integration. Historical performance must not be
-  relabeled as historical foreign-currency returns without the corresponding
-  historical rates. Currency preference is presentation, not a new financial
-  writer, foreign-currency account or executable exchange quote.
-  Update the relevant international-payment, business-payment, account and
-  developer explanations with the implemented benefit: familiar units over
-  shared settlement, receiving money and paying people from the existing
-  account, and continuous source/receipt history. Show the practical path from
-  a customer payment to a subsequent supplier or employee payment. Keep the
-  main screens concise. Publish capability-specific copy with the actual
-  supported implementation; do not imply external crypto transfers, local-bank
-  payouts, payroll administration or a measured speed improvement from a
-  display preference alone.
+The desired outcome is that a person can pay a specific recipient directly by
+card, supported Note or existing account balance, and a merchant can confirm the
+same order without asking the customer to understand the banking interface.
+The existing Send link remains useful for account-to-account payment requests.
+A dedicated checkout is a distinct proposed entry, not a relabeling of that link.
 
-The sequence after the current fixes can change with user priorities. These
-items have not been implemented merely by being recorded here.
+Design these pieces together, then qualify them in separate stages:
 
-## Qualification and release
+1. **Recipient checkout:** a dedicated Bankeiz payment page, clear recipient and
+   amount, existing-account balance payment, card and current Note paths,
+   first-time customer entry, exact order/session retention and recovery.
+2. **Merchant acceptance:** optional order-fixed prices, trusted order reference,
+   once-only confirmation/fulfillment, receipts, cancellation/expiry, refunds and
+   reconciliation against actually supported host contracts. A success screen
+   or a customer's image is not an accepted order result.
+3. **Physical checkout:** amount-specific QR from a merchant phone/tablet and
+   a matching merchant confirmation screen; optional tap-to-open NFC URL. Plain
+   NFC link opening does not make a card terminal. Native card Tap to Pay and
+   integration with existing POS hardware require their supported processor,
+   platform and terminal contracts.
+4. **Integration:** one link or copyable button for no-code use, the same hosted
+   checkout for websites, and a documented order/session/event lifecycle for
+   custom apps. Inspect the existing Receiz contracts before proposing new
+   services. Do not create another balance, financial writer or identity system.
 
-Qualify the exact deployed build's Note funding/credit/recovery on all supported
-rails, actual assessed device custody, canonical Showcase/Market publication
-and new public purchase/card-return paths. Preserve synthetic versus real
-financial evidence. Complete the existing [v1.0.0 release gates](../releases/1.0.0.md)
-before publishing that release.
+This is a brainstorming brief. The exact guest identity/claim boundary,
+merchant account binding, Note receiver authority, supported confirmation
+mechanism and deployment requirements must be designed before implementation.
+No dedicated merchant checkout or point-of-sale system is added by v2 notes.
 
-After product work, inspect only stale workspaces inactive for more than three
-days and the task's own stale processes for the requested Mac cleanup. Preserve
-private custody, ignored recovery material, other developers' active work and
-recoverable changes. Removing disk files alone does not free running-process
-memory; do not describe it that way.
+## Other retained follow-up work
+
+- **Note QR:** a scannable claim/status locator in the engraving at creation,
+  bound to admitted Note sources and recipient authority. No private openings,
+  signing material or transferable bearer secret in a public status URL. Public
+  claimant disclosure needs its own supported identity/privacy boundary.
+- **Send to email:** verified email claim and existing/new Receiz identity using
+  supported host primitives, exact original intent and once-only claim/recovery.
+  Typing an email or landing on a link alone cannot authorize an existing account.
+- **Persistent asset media:** one user-started music/video session across app
+  navigation, a compact dismissible player, queue/search and retained native
+  media without duplicate players or new polling. Current asset playback persists
+  inside its mounted view, not across leaving it. Call lifetime is separate.
+- **Display currencies:** a restrained balance preference for supported fiat and
+  major crypto equivalents. Use one sourced, timestamped rate observation with
+  shared refresh; preserve exact Phi, Reserve backing and receipt denominations.
+  Displaying BTC is not BTC custody or executable foreign exchange. Historical
+  returns need corresponding historical rates. Inspect an existing reusable
+  Receiz source before selecting a rate integration.
+- **Legacy-bank withdrawals:** select a real payout operator and supported
+  account/settlement contract, then design truthful fees, timing, status,
+  cancellation and recovery. No available provider, fee schedule or executable
+  withdrawal is established by the existing Wire interface. Preserve supported
+  proof/history; do not claim that off-platform payment erases an earlier record.
+- **Further market depth:** recent trades or an order book only from genuine
+  public trade/open-order sources. Holdings, prices and a valuation do not create
+  a public tape, offer or liquidity.
+
+## Release and qualification
+
+Publish the prepared v2 source under its own tag and retain v1. Follow the
+[release process](../release-process.md) for exact build/source distribution,
+host deployment, device checks and operation-specific evidence. Keep unresolved
+financial references and original custody through updates or rollback. A future
+v3 claim must identify its actual implemented and assessed scope.

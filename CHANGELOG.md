@@ -4,50 +4,95 @@ Reality-Grade Banking repository releases include the Bankeiz reference
 application. Its product versions are independent of Receiz protocol/package versions.
 Full release records and qualification evidence live in [docs/releases](docs/releases/README.md).
 
-## Unreleased
+## 2.0.0 — prepared for publication
 
-- Legacy public images open and zoom from already-carried public media without
-  requesting a separate creator-sold sealed download. Public carried text keeps
-  its existing independent verification; protected-original inspection explains
-  HTTP 402 separately from a proof-verification failure.
-- Public image assets show their actual carried image before receipt fallbacks.
-  Older media uses the existing v129 canonical read contract, with exact digest
-  verification and shared proof inspection. Public audio embeds reuse an
-  explicitly ungated self-contained stream when separate playback is unprepared.
-  No extra discovery, protected-download fallback or Receiz change is required.
-- Shared music and video asset URLs advertise a lightweight embed over existing Receiz streams,
-  supported public streams and JSON oEmbed discovery. Normal clicks still open
-  the standalone asset page; receiving platforms choose inline playback.
-- Source-bound authored titles correct older cached captions synchronously and
-  appear on asset sharing images and the initial standalone HTML. Explore omits
-  its redundant top menu link.
-- Receive generates shareable payment buttons and existing Receiz checkout code
-  without loading a widget or creating a session. A new Get paid guide and typed
-  developer example cover setup, trusted order confirmation and recovery.
-- Payment-link funding reuses the native Note deposit for Reserve, Settlement
-  and combined Notes, preserving the destination and amount before payment review.
-  Public asset Buy goes directly from amount to card checkout; confirmed credit
-  continues its approved purchase once, with separate original-attempt recovery.
-- Standalone artwork is discovered in the first HTML response and prioritized
-  independently of playback. Other artwork stays lazy; proof checks are unchanged.
-- Market, Explore, asset pages and asset Ledger entries prefer the existing
-  authored song, book, essay or object title, with caption fallback. Evidence
-  panel CSS stays with the retained public surface across navigation.
-- Asset navigation starts at the top after the destination view commits.
-  Returning to Explore restores its retained category, search and scroll position.
-- Standalone Buy opens a new buyer's device-held account in place after existing
-  account restoration, retains the entered amount and continues through the
-  existing card checkout. The buyer approves the asset and dollar budget
-  before card payment; matching confirmed credit continues that purchase once.
-  Old checkout hints cannot supply fresh purchase approval.
-- Consistent source-link controls across public asset evidence and market-cap
-  explanations, including mobile touch targets.
-- Public asset URLs handle Vercel rewrite captures consistently with the public
-  page endpoint, including the matching sharing-image route.
-- Note PNG exports use the existing Receiz v129 document seal around their
-  complete native financial source. Canonical offline image verification and
-  native deposit remain separate checks; issuance, consumption and credit rules
-  are unchanged. Interrupted image production resumes the same funded Note.
+Version 2 expands public identity, asset creation, investment tracking and
+payment continuity across the open architecture. Product metadata identifies
+2.0.0; Receiz SDK/MCP/AI Skills stay pinned at 129.0.0. The matching tag and
+GitHub release are operator publication steps.
+[Full notes](docs/releases/2.0.0.md) ·
+[Qualification and publication record](docs/releases/2.0.0-qualification.md).
+
+### Identity and profiles
+
+- Public `/username/` profiles with synced Receiz editing, portrait/banner,
+  socials, named links, authorship evidence and owner Insights.
+- One/two-column collections, complete category/search scope, bounded infinite
+  expansion, inline media, local asset-price and weighted collection charts,
+  retained images and return navigation.
+- Profile navigation from assets and conversations; compact ID portrait/username
+  editing. New-account Identity Record downloads use native Receiz PNG artwork;
+  imported records retain their original bytes.
+
+### Assets and investments
+
+- Account-wide holdings before proof objects and Showcase, with exact shares,
+  current value, remaining basis, unrealized return and recorded trades.
+- Account investment total links to Assets; recent holdings lead its asset
+  summary. One total balance chart replaces redundant funding toggles.
+- Adaptive creation with distinct primary media, cover/poster, attachments and
+  full text; qualified 64 MiB combined envelope and up to 200 attachments.
+- Optional automatic Reserve-first/Settlement-remainder backing; the public
+  source binds to the same native financial asset and public certificate.
+- Canonical local admission immediately enters the retained owner profile and
+  Market. Pending public delivery recovers the same source without re-funding.
+
+### Payments and trading
+
+- Receive supplies website buttons, existing Receiz checkout/embed code, a
+  no-code guide and a typed merchant checkout/confirmation example.
+- Reserve, Settlement and combined Notes fund account payment through the same
+  Note option. The separate Receiz widget retains its legacy token path.
+- Insufficient-balance Send funds the exact shortfall by card, preserves the
+  recipient/amount and resumes after confirmed credit. Back restores editing.
+- Public asset amount-to-card checkout continues its approved purchase once.
+  Funded standalone buyers use their account, as Market and Investments do.
+- Buy presets and owned-share sale percentages; dollar-first sales with exact
+  quantity entry. Public Explore exposes the same ownership actions.
+- Trade sheets preserve the underlying object; signed-in Market restores its
+  scroll. Confirmed returned positions paint inline without another portfolio read.
+- One quote per normal review and no unconditional recovery GET after a complete
+  successful trade POST.
+- Original-reference recovery and explicit closure return the committed result
+  or safely close an unconfirmed attempt, preserving exact financial units.
+
+### History, media and sharing
+
+- Public/private Ledger Transactions retain recorded trade amounts, shares,
+  authored asset titles, prices, fees and sale basis/realized return where carried;
+  exact historical source correction and direct asset links preserve those facts.
+- Canonically sealed Note PNGs pass the existing image-verification contract
+  while native funding, deposit and once-only credit remain unchanged.
+- Source-bound authored titles throughout discovery, Ledger and sharing;
+  actual image-first previews, older public media compatibility, separate EPUB
+  and essay readers, PDF/video paths and refined moment presentation.
+- Supported music/video streams, lightweight players and oEmbed discovery;
+  ordinary links continue to open the standalone page. Actual asset covers now
+  appear in sharing images with bounded preparation outside app load/playback.
+- Cold standalone HTML carries title, artwork and owner portrait. React reuses
+  the portrait request without waiting for the profile. Asset links handle
+  matching Vercel captures and inert social tracking consistently.
+- Expanded Ledger value cards show the valuation pulse once on the Value at
+  line, retaining the amount, movement and chart.
+- Completed investment curves survive equivalent refreshes, removing a brief
+  flat fallback. Evidence styles and retained media survive public navigation.
+
+### Conversations and notifications
+
+- Incoming user/assistant replies reuse the existing member portrait; eligible
+  assistant generation signals typing through the existing stream.
+- Opt-in PWA message/call Web Push reuses Receiz's sender, account binding and
+  existing worker; notifications open the proper conversation or active invitation.
+
+### Scope
+
+All new composer UI stays in Bankeiz. Receiz provides the underlying infrastructure through the
+pinned SDK, MCP and AI Skills. Capability-specific deployment and device evidence
+stays explicit. Dedicated
+Bankeiz guest/merchant checkout, point of sale, email payments, display currencies,
+Note claim/status QR, legacy payouts and app-wide persistent asset playback remain
+next-phase work. Publication does not imply unperformed device or live financial
+qualification.
 
 ## 1.0.0 — October 20, 2026
 

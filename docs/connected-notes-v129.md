@@ -78,8 +78,8 @@ it cannot allocate again or silently select another recipient.
 
 The received queue retains each full original and exact signed claim before a
 consequential request. Confirmed receipts survive reopen. Unknown or held
-custody prevents destructive identity removal. No Bank database, additional
-financial service, capability polling or background attestation is introduced.
+custody prevents destructive identity removal. The integration retains the existing financial service and custody contract;
+no capability polling or background attestation is introduced.
 
 The image is bounded at 8 MiB; expanded connected funding/handover sources at
 16 MiB, openings at 16 KiB and host JSON at 4 MiB. Oversized transport is refused
@@ -111,8 +111,11 @@ The split is bound in the issue authorization, financial funding signature, orig
 
 Fresh review reads one quote, without Note-key generation or a retained issue. Confirmation reuses that exact quote; expiration refuses before a new Note key is generated. The consequential issuance request is retained first. Reopening an unknown result uses its original operation and source rather than reselecting or requoting. Receiving and importing retain the original full proof; imported credit metadata must match both funding parts.
 
-## Compatibility host prerequisite
+## Connected-account capability
 
-When native funded-account custody is selected, its source remains authoritative and failure cannot fall back to SQL. When that custody is not selected, the existing Wallet compatibility source uses the same connected Note protocol and subordinate atomic Wallet writer. It requires the base `20261015012532_bank_offline_notes_native.sql` and `20261020204430_bank_connected_note_compatibility_wallet.sql` migrations. Missing schema returns the bounded `BANK_NOTE_COMPATIBILITY_SCHEMA_REQUIRED` diagnostic. No runtime creates tables or switches providers. This path does not require a Crystal URL.
-
-Compatibility Wallet backing follows its existing current-quote conversion capped by actual owned Phi; native custody preserves original historical Reserve backing. Neither invents the other's funding history. Each retains its actual accepted amounts through cancellation and credit. The host rollout contract is in Receiz's `docs/integrations/connected-note-compatibility-rollout.md`. The intended Crystal endpoint is `https://memory.receiz.com`; DNS readiness and a configured selected source remain separate deployment facts.
+Bankeiz uses the selected Receiz connected-account contract. A selected native
+source remains authoritative; its refusal cannot silently switch to another
+source. Unsupported or unavailable connected capability is reported explicitly.
+Each admitted funding path preserves its own exact accepted amounts through
+cancellation and credit. The SDK's original source and receipt determine the
+result, rather than the image's displayed amount or a local status flag.

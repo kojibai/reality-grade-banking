@@ -1,6 +1,6 @@
 # Current Bankeiz capabilities and operating boundaries
 
-Updated for the v1.0.0 release commit on October 20, 2026. This is the
+Updated for the v2.0.0 release preparation on October 22, 2026. This is the
 current capability map. Older dated verification records retain their original
 observations; they do not override a newer implemented connection or qualify
 a later deployed build.
@@ -8,7 +8,7 @@ a later deployed build.
 Bankeiz is the live product built on Receiz. Its open implementation also
 includes receiving requirements, independent inspection, matching native
 source and integration materials. Product release publication follows the
-[versioned qualification record](releases/1.0.0-qualification.md).
+[versioned qualification record](releases/2.0.0-qualification.md).
 
 ## Product connections
 
@@ -16,18 +16,21 @@ source and integration materials. Product release publication follows the
 | --- | --- | --- |
 | Account and Receiz ID | New accounts export Receiz's Identity Record PNG artwork with the complete same-key portable identity embedded before the existing owned seal; imported Seals retain their exact original bytes and filenames | Device-held authority, account projection and communication use the same admitted identity. Complete history/holdings depend on its source scope; a current balance does not invent a missing historical timeline. |
 | Send and Receive | Existing Receiz Wallet recipient/quote/transfer, profile/contact search, receiving links, exact nonce recovery and automatic Reserve-first funding | Existing working path, reported successful by the user. A new deployment is assessed with its original receipts and exact account bindings. |
+| Public profiles | Same Receiz identity, synced editing, named links, identity evidence, inline public collection and Public Activity at `/username/` | Anonymous output is public-only. Private balances, transactions, messages and owner Insights do not become public profile activity. See [profile contract](PUBLIC_PROFILES.md). |
 | Card deposits | Existing Receiz embedded checkout, exact session retention, return and credit confirmation | Provider payment and accepted Reserve credit are distinct; the final production path needs its actual credited source. |
-| Connected Notes | Existing account authorization, exact native funding/claim, automatic Reserve/Settlement/composite composition, encrypted source/intent retention and exact recovery | No offline-custody enrollment for ordinary connected creation. Required Note migrations are installed; exact deployed financial evidence remains part of release qualification. |
+| Card-funded Send | Existing credit-card checkout funds the retained Send shortfall and resumes the original recipient and amount after confirmed credit; Back to send restores editing | Fully funded Sends add no checkout work. Unknown transfer results cannot start another card payment; processor limits and the minimum charge remain explicit. |
+| Connected Notes | Existing account authorization, exact native funding/claim, automatic Reserve/Settlement/composite composition, encrypted source/intent retention and exact recovery | No offline-custody enrollment for ordinary connected creation. Bankeiz uses the supported Receiz Note contract; exact deployed financial evidence remains part of release qualification. |
 | Offline Note receipt | Verify and retain a completed addressed original without receiver custody enrollment, then reconcile once through the existing connected credit path | Locally received value is distinct from confirmed spendable account credit. Before another account spend, reconcile the actual credit. |
 | Protected continuous-offline custody | Existing native qualified authority, handover, exact-head consumption and antirollback contract | Genuine protected state, prepared resources and physical-device qualification remain required. Bank's prepared local-credit selector remains disabled pending qualification. |
 | My history | Account-bound retained history, All/Sent/Received views, familiar event names, exact transfer values and confirmed Note receipt projection | Only admitted original debit/credit IDs become financial activity. Pending receiving requests and unconfirmed outcomes do not create credit rows. |
-| Global/private host Ledger | Receiz commit `35891d794` projects modern Reserve, Settlement and composite Note creation/deposit/refund from the selected native or explicit compatibility source | Source correction is committed; deployed delivery is assessed after operator push/deployment. Native refusal cannot fall through to SQL. |
+| Global/private host Ledger | Supported Receiz activity reads project modern Reserve, Settlement and composite Note creation/deposit/refund from the admitted source | Qualify the actual returned originals and source bindings. A selected native refusal cannot switch to a weaker source. |
 | Funding detail | Carried source relationships and calculated oldest-available-first FIFO attribution, including multiple proof/funding sources | Calculated pooled attribution is labeled as such. It does not rewrite an individual allocation recorded by the original transfer. |
 | Public Market and Explore | Existing public originals, content categories, retained valuation operands, charts, discovery, source inspection and individual asset pages | Valuation, backing, supply, available liquidity and executed price remain distinct. Missing operands never acquire invented history. |
 | Asset ownership actions | Standalone Buy ownership/Take cash reuse the existing Receiz Market quote/trade/recovery and account/card-return path | Only supported assets/actions are offered. Actual paid credit and live purchase/sale are assessed separately from synthetic browser fixtures. |
-| Investments | Assets displays account-wide Receiz Market share positions before proof objects and Showcase, with exact shares, current value, cost basis, unrealized return, recorded trades and the existing Buy ownership / Take cash review | Connected holdings require Receiz commit `24755a9a7` (`GET /api/connect/market/portfolio`, existing `receiz:wallet.read`). No migration or SDK version change. This private observation is display data, not a balance, ownership admission or trade authority. |
-| Public original creation | Seal one exact source and publish it through the owner's canonical Receiz Showcase and existing discovery projection; interrupted delivery resumes the same original | Qualify actual fresh/existing Showcase publication and Market visibility on the deployed build, including media and interrupted delivery. |
+| Investments | Assets displays account-wide Receiz Market share positions before proof objects and Showcase, with exact shares, current value, cost basis, unrealized return, recorded trades and the existing Buy ownership / Take cash review | Connected holdings use the supported portfolio contract and existing `receiz:wallet.read` permission. This private observation is display data, not a balance, ownership admission or trade authority. |
+| Public original creation | Adaptive original/cover/attachment/text composer, optional automatic backing, same-source immediate profile/Market adoption and retained public delivery | [Composer qualification](asset-composer-qualification.md) records effective capacities and headless contract dependencies. Pending delivery is distinguished from anonymous availability; retry does not create or fund another asset. |
 | Asset media and proof back | Same mounted original through object flip/full view, carried live-player manifest material, native audio controls and individual sharing art | Playback is retained within the mounted asset. App-wide persistent music/video is follow-up work. Display artwork never substitutes for the original proof. |
+| PWA notifications | Opt-in message and call alerts through the existing Receiz sender and Bankeiz service worker | No new notification service or polling. Actual installed-device delivery follows permission, browser/OS support and the deployment described in [notifications](pwa-notifications.md). |
 | Messages, groups and assistant | Existing Receiz conversations, network profile search, contacts, encrypted local inbox retention, real typing/streaming and entitlement-bound assistant/upgrade flow | Reuses Receiz communication and access. No separate Bank identity or messaging service; selected context and financial approvals retain their own boundaries. |
 | Calls | One existing native controller/media lifetime across Messages closure, selected-thread changes and retained public navigation; draggable compact controls and actual SPA restore | Browser/OS/network suspension and process termination are outside the documented in-app lifetime. Synthetic browser checks do not establish a real two-device network call. |
 | Public Ledger and Memory Crystal | Existing source inspection and local export/reopen of the already-held Ledger/display context | Local save requires no extra Ledger fetch or Crystal service. Consent-bound publication/disclosure has its separate native contract. |
@@ -45,7 +48,7 @@ Historical charts use admitted movements, actual supported origins and the
 pinned pricing method. Computed valuation samples are distinct from dated
 transaction quotes, current spend authority and realized proceeds.
 
-The selected native source remains stronger than a database, service response,
+The selected native source remains stronger than a service response,
 cache or interface label. Original values, participants, exact coordinates and
 financial results must bind to the existing admission and execution contracts.
 A selected absence/refusal cannot silently activate another financial writer.
@@ -58,17 +61,15 @@ authorization, funding, retained private Note custody and once-only claim.
 The [connected contract](connected-notes-v129.md) and
 [continuity standard](note-continuity-standard.md) define the boundary.
 
-The reviewed [production migrations](verification/2026-10-20-production-note-migrations.md)
-were installed after checking actual schema/history. The user subsequently
+Bankeiz uses the existing connected Note contract through Receiz. The user
 reported successful creation and deposit on an iPhone. That report is useful
-product evidence; it is not an independent inspection of private receipts or
-complete qualification of every rail/device/recovery case.
+product evidence; it does not replace inspection of original receipts or complete
+qualification of every rail/device/recovery case. Note activity is projected from
+confirmed original receipts and the supported Receiz activity response.
 
-Bank's receipt-backed activity projection is committed in d8a9723. The separate
-[Receiz host correction](verification/2026-10-20-note-ledger-host.md) is committed
-in `35891d794` and preserves modern source splits, opaque/tie-safe cursors,
-conditional responses and bounded proof formatting. Real global delivery
-follows deployment of that host correction.
+Receiz supplies the infrastructure through the SDK, MCP and AI Skills. Bankeiz
+composes its supported account, asset, proof and communication capabilities;
+local encrypted custody and retained presentation preserve their own roles.
 
 ## Separate integration families
 
@@ -100,9 +101,9 @@ See [native assets/account proofs](native-assets-and-account-proofs-v129.md),
 ## Follow-up product work
 
 Preferred display currencies and crypto equivalents, email-address payments,
-expanded merchant/no-code checkout, Note QR claim/status and app-wide persistent
+dedicated merchant/guest checkout and point-of-sale sessions, Note QR claim/status and app-wide persistent
 asset playback remain queued. Existing USD presentation, receiving links and
-mounted media do not imply these additional capabilities have shipped.
+website buttons, embedded Receiz checkout and mounted media do not imply these additional capabilities have shipped.
 [The implementation queue](implementation/remaining-work.md) records their
 intended scope.
 
@@ -114,9 +115,9 @@ records. Version pins and a successful build do not substitute for actual
 financial outcomes. Preserve originals and exact pending intents throughout
 recovery, upgrade and rollback.
 
-No new root issuer, identity service, financial database, messaging backend,
-native application or weaker antirollback has been introduced by these
-presentation/integration changes.
+The integration preserves the Receiz identity, financial authority, messaging
+and proof contracts. Native application and custody qualifications remain
+capability-specific.
 
 ## Investment presentation
 
@@ -151,5 +152,6 @@ those recorded trades.
 Standalone asset pages append Your investment and Your trades only from an
 already open private portfolio. No public order book or public trade tape is
 invented. Existing Market quote, approval, execution and recovery rules remain
-unchanged. Deploy the Receiz read endpoint before qualifying the Bankeiz UI;
-synthetic tests and browser fixtures do not establish a live purchase or sale.
+unchanged. Qualify the supported portfolio capability against the deployed
+Bankeiz integration; synthetic tests and browser fixtures do not establish a
+live purchase or sale.

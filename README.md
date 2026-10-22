@@ -4,6 +4,7 @@
 
 [![Verify reference](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml)
 [![GPL-3.0-only](https://img.shields.io/badge/License-GPL--3.0--only-2349d8.svg)](LICENSE)
+[![Version 2.0.0](https://img.shields.io/badge/Release-2.0.0-2349d8.svg)](docs/releases/2.0.0.md)
 [![Receiz v129](https://img.shields.io/badge/Receiz-129.0.0-2349d8.svg)](package.json)
 
 Reality-Grade Banking is an open banking architecture and receiving standard for money
@@ -61,6 +62,12 @@ on a screenshot or another application's interpretation.
   covers setup, current Notes, custom SDK checkout and confirmed order results.
 - **Funded Notes.** Create from the available account, save the original and
   hand it to its addressed recipient. Funding is selected automatically.
+- **Your public identity.** A complete profile at your username, with your
+  existing Receiz portrait, banner, links and public collection. Edit the same
+  identity in either application; open, share and experience its assets in place.
+- **Create and publish.** Compose music, books, images, video, documents and
+  full text with distinct originals, artwork and attachments. Optional backing
+  uses one amount. The same admitted asset appears in your profile and Market.
 - **Assets with continuity.** Discover public originals, inspect their media
   and proof back, follow ownership history and use supported Buy ownership or
   Take cash actions. Each public asset has its own shareable page. Assets also
@@ -177,7 +184,7 @@ registry bindings and digests are recorded in
 | Independent receiving | [institution kit](institution/), [Conformance](src/conformance/) |
 
 Original proof and native admission govern ownership, value and execution.
-Databases, APIs, synchronized projections and interface state remain beneath
+APIs, synchronized projections and interface state remain beneath
 that authority. Selected-source refusal cannot silently switch to a weaker
 financial source. Private keys, phrases, account openings and grant bearers
 never belong in public configuration, logs, model context or source exports.
@@ -258,12 +265,16 @@ See the [origin contract](docs/bankeiz-origin-activation.md),
 
 ## Release evidence
 
-**[Version 1.0.0 is published](https://github.com/kojibai/reality-grade-banking/releases/tag/v1.0.0)**,
-released October 20, 2026 from commit `2231301`.
-The [full release notes](docs/releases/1.0.0.md) describe its scope; the
-[qualification record](docs/releases/1.0.0-qualification.md) preserves the
-source, verification and capability-specific assessment evidence. Versioned
-source, actual deployment and publication remain distinct records.
+**[Version 2.0.0](docs/releases/2.0.0.md)** brings public identity, complete asset
+creation, account-wide investments and a more connected payment and media
+experience to the open architecture. Its [qualification record](docs/releases/2.0.0-qualification.md)
+identifies the verified source scope and publication steps. The release commit
+is prepared for operator push, deployment and the matching `v2.0.0` GitHub release.
+
+[Version 1.0.0](https://github.com/kojibai/reality-grade-banking/releases/tag/v1.0.0)
+remains published from October 20, 2026 at `2231301`. Its
+[release record](docs/releases/1.0.0.md) and
+[qualification record](docs/releases/1.0.0-qualification.md) remain intact.
 
 [Current capabilities](docs/current-function-boundaries.md) distinguish
 implemented connections from their deployed assessment. Dated
@@ -271,11 +282,13 @@ implemented connections from their deployed assessment. Dated
 builds and tested scope. Synthetic proof/writer checks, browser lifecycle
 checks and real-device financial qualification remain separately identified.
 
-The reviewed Note migrations are
-[installed and recorded](docs/verification/2026-10-20-production-note-migrations.md).
+Bankeiz integrates Receiz through its coordinated SDK, MCP and AI Skills.
+The published contracts define identity, proof, value and execution. Bankeiz
+composes those capabilities into the account, asset and payment experience.
+
 Actual deployed funding, receipt delivery, once-only recovery and physical-device
-custody are assessed against the selected host and exact release candidate.
-Displayed specimen Notes are unissued illustrations.
+custody are assessed against the selected Receiz capabilities and exact Bankeiz
+release. Displayed specimen Notes are unissued illustrations.
 
 ## Project stewardship
 

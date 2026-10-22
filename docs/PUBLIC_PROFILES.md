@@ -117,37 +117,20 @@ existing direct conversation, or requests one through the current messaging API.
 Neither action sends money or a message without the ordinary subsequent user
 approval. No second account, inbox, call owner or payment service is created.
 
-## Named-link contract and rollout
+## Named-link integration
 
-Receiz main commit `df5848a50eafe787248f5af4e955aef3945c952c` adds the canonical
-`links` field to the profile contract and SDK input:
+The supported Receiz profile input carries named links separately from the
+website and social fields:
 
 ```ts
 { links: [{ label: 'Studio', url: 'https://example.com/studio' }] }
 ```
 
 Omission preserves existing links; `links: []` clears them. Limits are 20 links,
-80 characters per label, and 2048 characters per HTTPS URL; embedded credentials
-are rejected. The website and five social fields remain separate.
-
-SQL-backed Receiz installations must apply
-`supabase/migrations/20261021120000_user_profile_named_links.sql` before deploying
-that Receiz commit. Selected native signed-history storage needs no SQL migration.
-Receiz commit `ecf7184a05bd44dd7efb7d7a54eeed46a1cf9ae4` additionally grants
-profile-scoped access to the existing image-upload route and returns its account
-UID. Deploy it before enabling new photo uploads from Bankeiz; it needs no schema
-change.
-
-The named-links migration was applied to the Receiz production database on
-October 21, 2026, recorded as `20261021125800_user_profile_named_links`.
-Post-apply checks confirmed the non-null JSONB column, empty-list default,
-validation constraint, invoker-only validator and existing profile RLS.
-HTTPS named links passed validation; HTTP, embedded credentials and extra fields
-were rejected. The image-upload change needs its application deployment only.
-
-Bankeiz verifies that Receiz returns the supplied links; an older host that ignores
-the field cannot silently report a successful save. This rollout changes no Note,
-antirollback, verification, financial or messaging protocol rules.
+80 characters per label and 2048 characters per HTTPS URL; embedded credentials
+are rejected. Bankeiz verifies that the saved profile returns the supplied links
+before displaying a successful edit. Portrait and banner updates use the same
+profile-scoped identity and supported image-upload contract.
 
 Root names reserved for existing routes use `/u/<username>/`. Filesystem routes
 and explicit API, asset and public-page rewrites keep priority. Dynamic HTML has

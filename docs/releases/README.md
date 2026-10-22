@@ -7,6 +7,7 @@ MCP and AI Skills versions it uses.
 
 | Version | State | Receiz | Release record |
 | --- | --- | --- | --- |
+| 2.0.0 | Prepared for operator publication; tag not yet created | 129.0.0 | [Full release notes](2.0.0.md) · [qualification record](2.0.0-qualification.md) |
 | 1.0.0 | [Published October 20, 2026](https://github.com/kojibai/reality-grade-banking/releases/tag/v1.0.0) · `2231301` | 129.0.0 | [Full release notes](1.0.0.md) · [qualification record](1.0.0-qualification.md) |
 
 The live application remains available at [Bankeiz.com](https://bankeiz.com/).

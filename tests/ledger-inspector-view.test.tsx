@@ -39,6 +39,9 @@ it('distinguishes calculated event value from the locally evaluated current valu
  const host=document.createElement('div');document.body.append(host);root=createRoot(host);
  act(()=>root!.render(<LedgerInspector record={record} value={{basis:'card-model',amountUsdCents:'1200',pulse:'120',considerationUsdCents:null}} currentValue={{basis:'live-model',amountUsdCents:'3400',pulse:'300',considerationUsdCents:null}}/>));
  expect(host.textContent).toContain('Calculated transfer value');expect(host.textContent).toContain('$12.00');expect(host.textContent).toContain('Current live value');expect(host.textContent).toContain('$34.00');expect(host.textContent).toContain('Separate from the value at this event.');expect(fetch).not.toHaveBeenCalled();
+ const eventValue=host.querySelector('.ledger-inspector-values>div')!;
+ expect(eventValue.textContent?.match(/☤KAI/g)).toHaveLength(1);expect(eventValue.textContent).toContain('Value at ☤KAI 120');
+ expect(host.querySelectorAll('.ledger-value-coordinate')).toHaveLength(1);expect(host.querySelector('.ledger-value-coordinate')?.textContent).toContain('300');
 });
 it('shows a restrained directional return beside card event and live values without IO',()=>{
  const fetch=vi.fn();vi.stubGlobal('fetch',fetch);const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'card-return',actionKind:'receiz.sports_arena.card_transfer',pulse:120}]}).records[0];

@@ -1,6 +1,9 @@
 # Public account proof: source and disclosure contract
 
-Bankeiz uses SDK, MCP and AI skills **129.0.0**. This integration adds no financial command, SQL migration, verifier root or package-version change. The native account producer independently reopens its accepted source frontier; private retention and public disclosure remain separate operations. Crystal deployment and protected custody qualification remain with their owning task.
+Bankeiz integrates Receiz SDK, MCP and AI Skills **129.0.0**. Private retention
+and explicit public disclosure remain separate operations. The supported
+account-proof capability must supply the complete accepted source and preserve
+its account, consent, continuity and revocation bindings.
 
 ## Required source
 
@@ -108,15 +111,25 @@ Revocation needs **no fresh balance proof**. Atomically advance the sharing head
 
 Return 409 for head conflicts, 413 for capacity, and structured unavailable when production source creation is not qualified. Never return an unsigned successful balance or silently downgrade to a wallet observation.
 
-## Native disclosure coordinator
+## Source-bound disclosure integration
 
-Receiz's `app/lib/wallet/bankNotes/accountProofSharing.ts` composes these disclosure rules with the existing v129 `ReceizAdmissionStore` and exact private source storage. Its publish commit includes the native account coordinate as a read dependency, so account-head changes conflict atomically. Snapshot and live reads reopen the original consent; live reads recheck the consent head after opening the source. Worker publication cannot commit through revocation. This coordinator creates no wallet, funding or public account statement.
+Publishing binds the same accepted account head and explicit disclosure consent.
+If the account or consent head changes, the operation conflicts rather than
+publishing a different source. Snapshot and live reads reopen their original
+consent; a later source cannot escape revocation. These operations do not create
+a wallet or grant funding authority.
 
-The four HTTP routes above are implemented through `accountProofHttp.server.ts` and `accountProofApi.server.ts`. Private requests reuse the existing v129 proof-authority bearer checks, including admitted owner, key, application and scopes. Anonymous reads do not load private authentication. Bodies are bounded to 64 KiB for sharing commands; all account-proof responses are non-cacheable. No request can select a user, writer or runtime. The Bank client recovers a lost publish/off response by reading the accepted status; it does not automatically submit a replacement command. Publication success still requires independently opening the anonymous original.
+Private requests use the identity's existing admitted owner, key, application and
+scopes. Anonymous reads do not carry private authentication. Sharing commands
+are bounded to 64 KiB; account-proof responses are non-cacheable. A request cannot
+select another user, writer or runtime. Bankeiz recovers a lost publish/off reply
+by reading the accepted status rather than submitting a replacement command.
+Publication success requires independently opening the anonymous original.
 
-Trusted native startup selects the v4 account-proof producer and shared durable disclosure writer when the same absolute account/wallet source directory and registered application are configured. Explicit trusted runtime installation remains supported; a direct factory installation must opt into `includeSourceClosures: true` for v4. No HTTP caller can install a runtime or choose a source directory. Missing or unsupported source scope is not an empty portfolio.
-
-Source tests cover real native account/key and financial histories, exact public v4 production, private archive admission, Note funding/redemption lineage, cold historical replay, persistent-process sharing recovery, live updates and revocation with ephemeral test roots. Retained v2/v3 snapshots keep their original replay rules. This is local implementation evidence, not deployed financial or physical-device qualification. The v1 writer allowlist remains empty; native statements always require the pinned financial-domain signature.
+Missing source scope remains unavailable rather than an empty portfolio.
+Retained v2/v3 snapshots preserve their original replay rules. Native statements
+require the pinned financial-domain signature; local fixtures do not establish
+a deployed financial result or physical-device custody.
 
 Each digest URL retains its first publication's consent epoch. An old static link cannot become live, and a revoked link cannot restart live updates through reusing its artifact. New consent needs a freshly sealed public artifact, even when the underlying wallet head is unchanged. The source producer must support that refresh without a wallet write. Exact accepted request retries remain idempotent; an unchanged live-worker source is a read-only retry within its current epoch.
 

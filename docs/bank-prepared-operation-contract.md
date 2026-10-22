@@ -1,8 +1,17 @@
 # Bankeiz asset transactions — native adapter contract
 
-Value payments now use the existing native financial writer through the [native payment API](native-payment-api.md), with distinct verified receipts and read-only recovery. The generic adapter below remains the **native preparation boundary** for asset, ownership, fractional and exchange actions. It is additional to the native wallet/note writer and public account-proof endpoints. Bankeiz composes SDK, MCP and AI skills **129.0.0**; no package release or SQL migration is requested. Implement in the owning Receiz/Crystal task. This Bankeiz change does not change that branch.
+This document retains the generic prepared-operation adapter contract for
+compatibility and inspection. Active value payments use the
+[native payment integration](native-payment-api.md); native asset backing uses
+[its dedicated contract](automatic-asset-backing.md). Bankeiz composes the
+Receiz SDK, MCP and AI Skills **129.0.0**.
 
-The browser interfaces, exact transaction review, encrypted intent retention, canonical `stagePrepared` / `execute`, original-coordinate recovery and same-owner accepted-source retention are wired. **A passing UI/composition test does not qualify native financial execution.** Receiz main inspected at `6877b4fe1d23d2d5b8eb7575fc285aad1a480ec2` has no preparation route below. Never present an unavailable adapter as a successful transaction.
+The interfaces below describe the exact review, retained intent, original-source
+admission and recovery requirements of that adapter. They do not establish that
+the configured Receiz integration offers every generic operation. An unavailable
+capability must refuse; a successful interface test cannot qualify financial
+execution. Preserve the original contract for retained attempts rather than
+substituting it for an active operation with different authority.
 
 ## Endpoint and admission
 

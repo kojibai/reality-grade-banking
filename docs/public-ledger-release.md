@@ -38,20 +38,14 @@ v129 verifier before download. Its QR points to `/ledger/?source=<original SHA-2
 the image remains independently openable without that URL or a network.
 A public link resolves only after its original has actually been published.
 
-## Native host activation
+## Disclosure capability and consent
 
-Deploy the reviewed isolated Receiz main changes with the existing native source
-directory settings. `RECEIZ_FUNDED_WALLET_SOURCE_DIRECTORY` must select the same
-durable directory as `RECEIZ_ACCOUNT_SOURCE_DIRECTORY` / `RECEIZ_SOURCE_DIRECTORY`.
-This code adds no database migration or SDK/MCP/AI Skills version change.
-
-Native history is **not automatically disclosed**. An authorized operator must
-review the closed projection and authorize the exact native source head through
-`RECEIZ_PUBLIC_LEDGER_DISCLOSURE_HEAD`. No value is supplied in this repository.
-An absent setting or an advancing head refuses current export; it never reveals
-new account-derived history on the strength of an earlier decision. Do not set
-this from an unreviewed HTTP response or public feed. Previously explicitly
-published sources remain available under their immutable original digests.
+Native history is **not automatically disclosed**. The supported Receiz disclosure
+capability must supply an authorized exact source head. An absent approval or an
+advancing head refuses current export; an earlier decision cannot authorize new
+account-derived history. A public feed or unreviewed response cannot grant that
+approval. Previously explicitly published sources remain available under their
+immutable original digests.
 
 The bounded `/api/ledger/proof` API provides:
 
@@ -94,34 +88,18 @@ explicitly publish only a synthetic test fixture and inspect its exact original.
 Exercise an installed build offline. Test roots belong only in an isolated test
 bundle; they must never enter the production verifier or publication configuration.
 
-After the operator pushes/deploys both reviewed commits, verify the deployed
-build and source archive hashes. Source-head disclosure approval, real hardware
-custody and live financial capability qualification remain separate decisions.
-See [current function boundaries](current-function-boundaries.md). A software
-release does not imply every financial selector has been qualified or enabled.
+After deploying the reviewed Bankeiz source, verify its build and source archive
+hashes. Exact-head disclosure approval, physical-device custody and financial
+capability qualification remain distinct. See
+[current function boundaries](current-function-boundaries.md).
 
-## Existing Crystal host connection
+## Supported source connection
 
-Receiz now has a URL-selected Ledger bridge using its existing Crystal URL and
-server-only transport key. The existing native admitted source reader and
-OS-locked publication store run on the durable source host. Bankeiz's API path,
-reader, upload review, explicit consent and Memory Crystal artwork are unchanged.
-
-The current Receiz main has the byte client but not the Crystal service launcher.
-The scoped mounting patch is prepared on Receiz main at
-`docs/integrations/crystal-public-ledger-host.patch`; it was checked and exercised
-against a temporary copy of the actual existing Crystal service. Applying it to
-the source service remains part of that service's integration/deployment, not an
-edit to the user's ongoing branch. Live verification requires that mount, the
-actual Crystal URL/key configuration on Receiz and the exact reviewed disclosure
-head on the durable host. No empty ledger is substituted for absent custody.
-
-Public original writes use Crystal’s existing public package byte/inode reservations, temporary upload custody, streaming install and accounting; existing accepted source reads remain unchanged.
-
-Focused tests use actual v129 canonical sources through a real HTTP listener.
-Authentication, exact originals, repeated consent-bound publication, restart,
-source unavailability, fixed-origin forwarding and response capacity passed.
-A software pass does not claim that production source activation is complete.
+The Ledger integration uses the supported Receiz source, inspection and explicit
+publication contracts. Bankeiz retains the exact original, consent and original
+locator throughout. An unavailable source never becomes an empty accepted Ledger.
+Authentication, exact-original binding, repeated consent-bound publication,
+restart, refusal and capacity checks remain part of qualification.
 
 ## Availability and retained originals
 
@@ -133,12 +111,9 @@ change publication consent or announce local bytes as publicly published.
 A source link may open a locally retained original only when its digest matches
 that exact link. Failed requests are released so the next explicit use can retry.
 
-The intended Crystal hostname is `https://crystal.receiz.com`. The service was
-not deployed at this verification checkpoint. A current-source 503 remains a
-truthful unavailable response until the source host and secure connection are
-installed; public activity, local file inspection, retention and export of a
-held complete original remain usable. This API is deliberately outside the
-service-worker cache.
+A current-source failure remains explicitly unavailable; public activity, local
+inspection, retention and export of a held complete original remain usable. This
+API remains outside the service-worker cache.
 
 The API entry now includes the strict Ledger relay directly. The release check
 executes the emitted Vercel function against exact-original, discovery and
