@@ -60,3 +60,23 @@ it('can recover already-published funding after a cancellation is refused withou
  const runtime=createConnectedNoteRuntime(ports);await runtime.create('200').catch(()=>{});await runtime.cancelUnfunded().catch(()=>{});expect(cancelled).toBe(true);f.lost(false);
  expect((await runtime.create('200')).noteId).toBe('note');expect(recoverModes.at(-1)).toEqual({recover:true,allowSubmit:false});
 });
+it('requires the exact retained funding source and private custody before admitting an owned funding Note',async()=>{
+ const f=fixture(),runtime=createConnectedNoteRuntime(f.ports);
+ const source=new TextEncoder().encode('isolated-verified-funding');
+ expect(await runtime.holdsFundingSource('note',source)).toBe(false);
+ await runtime.create('200');
+ expect(await runtime.holdsFundingSource('note',source)).toBe(true);
+ expect(await runtime.holdsFundingSource('note',new TextEncoder().encode('foreign-funding-with-same-note-id'))).toBe(false);
+ expect(await runtime.holdsFundingSource('foreign',source)).toBe(false);
+});
+it('does not approve a stale funding image again once its receiving transfer has been retained',async()=>{
+ const f=fixture(),runtime=createConnectedNoteRuntime(f.ports);await runtime.create('200');
+ await runtime.transfer('note',new TextEncoder().encode('receiver'));
+ expect(await runtime.holdsFundingSource('note',new TextEncoder().encode('isolated-verified-funding'))).toBe(false);
+});
+it('refuses unavailable private Note custody even when the funding image remains retained',async()=>{
+ const f=fixture(),runtime=createConnectedNoteRuntime(f.ports);await runtime.create('200');
+ const identityRef=createHash('sha256').update(new TextEncoder().encode('private-note-key-only-in-encrypted-custody')).digest('hex');
+ const closed=createConnectedNoteRuntime({...f.ports,restore:async ref=>{if(ref===identityRef)throw Error('PRIVATE_CUSTODY_UNAVAILABLE');return f.ports.restore(ref);}});
+ await expect(closed.holdsFundingSource('note',new TextEncoder().encode('isolated-verified-funding'))).rejects.toThrow('PRIVATE_CUSTODY_UNAVAILABLE');
+});

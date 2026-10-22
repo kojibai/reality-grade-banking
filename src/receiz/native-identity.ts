@@ -56,6 +56,7 @@ import type {AssetMomentDraft} from './asset-moment';
 import {loadConnectedNoteState,saveConnectedNoteState} from './identity-vault';
 import {createConnectedNoteApplication,openConnectedAccountNote,prepareConnectedAccountNoteClaim,submitConnectedAccountNoteClaim,isConnectedNote,readConnectedNote} from './connected-note-application';
 import {createNoteImageExporter} from './note-image-seal';
+import {recoverConnectedNoteDeposit,validateNativeNoteDeposit,holdsLegacyNoteReceivingCustody} from './native-note-deposit';
 import {BANK_CONNECTED_NOTE_ISSUANCE_ENABLED} from './config';
 import {ownerTwinAccountAccess} from './twin-access';
 import {publishOpenPortfolio} from './market-portfolio-presentation';
@@ -680,9 +681,33 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     localNoteInventory=inventory;
     const action=async<T,>(operation:()=>Promise<T>):Promise<T>=>{noteOpen();activeNoteOperations++;noteOperationEpoch++;try{return await operation();}finally{activeNoteOperations--;}};
     localNotes={exportImage:noteImages.exportImage,savedNotes:async()=>[...await inventory.savedNotes(),...(await localConnectedNotes().savedNotes()).map(note=>({...note,consumption:'connection-required' as const}))],pending:notePending,inspect,receivedNotes:()=>localReceivedNotes().list(),reconcileReceivedNotes:async()=>{await synchronizeReceivedNotes();return localReceivedNotes().list();},
+      validateDeposit:async image=>{
+        const module=await loadBankNoteRuntime(),uid=receivingUid();noteOpen();
+        await validateNativeNoteDeposit({image,module,context:{receiverUserId:uid,receiverKeyId:binding.keyId},connected:localConnectedNotes(),savedNotes:()=>inventory.savedNotes(),inspectLegacy:inspect,
+          holdsLegacyReceivingCustody:source=>holdsLegacyNoteReceivingCustody({image:source,uid,keyId:binding.keyId,read:()=>loadOfflineNoteState(binding),inspectCommitment:async bytes=>(await import('./note-proof-portability')).inspectLegacyReceivingCommitment(bytes)}),
+          holdsReceivingCustody:async source=>{
+            if(!BANK_PREPARED_NOTE_CREDIT_ENABLED||!module.createBankPreparedBrowserRuntime)return false;
+            const deny=async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');};
+            // This reader neither enrolls nor sends the identity anywhere. A
+            // clear original needs only a protected in-memory parser input.
+            const passphrase=transportKeyFile.crypto.privateKeyPkcs8B64u?sdk.receizBase64UrlEncode(crypto.getRandomValues(new Uint8Array(32))):transportPhrase;
+            const identity=transportKeyFile.crypto.privateKeyPkcs8B64u?await protectIdentityKeyFile(transportKeyFile,passphrase):transportKeyFile;
+            const reader=module.createBankPreparedBrowserRuntime({identity,keyId:binding.keyId,uid,localUid:keyFile.owner.uid,passphrase,origin:location.origin,assertOpen:noteOpen,
+              read:()=>loadPreparedNoteState(binding),restore:(ref:string)=>loadOfflineNoteBlob(binding,ref),write:deny,retain:deny,fetchImpl:deny,sealDocument:deny,artwork:deny});
+            return reader.holdsReceivingCustody(source);
+          },
+        });
+        noteOpen();if(receivingUid()!==uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');
+      },
       recoverDeposit:async image=>{
         const module=await loadBankNoteRuntime();noteOpen();
-        if(await isConnectedNote(module,image)||module.isBankNoteAccountDeposit(image)){await synchronizeReceivedNotes();const row=await inspect(image);return(await localReceivedNotes().list()).find(value=>value.noteId===row.noteId)??null;}
+        if(await isConnectedNote(module,image)||module.isBankNoteAccountDeposit(image)){
+          const connected=await isConnectedNote(module,image),row=connected?await readConnectedNote(module,image):await inspect(image);
+          return withAccountExecutionLock(()=>noteLock(async()=>{
+            await assertNoOtherPending(false);
+            return recoverConnectedNoteDeposit({noteId:row.noteId,funding:connected&&'kind'in row&&row.kind==='funding',connected:localConnectedNotes(),received:localReceivedNotes(),reconcile:()=>reconcileReceivedNotesLocked(true)});
+          }));
+        }
         const row=await inspect(image),saved=await loadOfflineNoteState(binding) as {schema?:string;deposits?:Record<string,unknown>}|null;noteOpen();
         // The existing runtime reopens its original intent and GET recovery.
         // No saved attempt means Check must not create a new redemption.

@@ -4,7 +4,7 @@ import type {SharedWallet} from './shared-wallet';
 import type {WalletSend,WalletSendOutcome,WalletSendReview} from './wallet-send';
 export interface HostedCheckoutDependencies {identityDigest:string;assertCurrent():void;walletSend():Promise<WalletSend>;notes:CheckoutNotes;readWallet():Promise<SharedWallet>;store:CheckoutStateStore;lock<T>(work:()=>Promise<T>):Promise<T>;}
 const centsToDollars=(n:bigint)=>`${n/100n}.${String(n%100n).padStart(2,'0')}`;
-function message(cause:unknown){const code=cause instanceof Error?cause.message:'';if(/ALREADY_DEPOSITED|already_claimed/.test(code))return 'This Note has already been deposited.';if(/IDENTITY|identity|closed/.test(code))return 'Your identity changed. Reopen this checkout.';if(/APPROVAL|CONFIRMATION/.test(code))return 'Review this payment before approving it.';if(/PENDING|pending/.test(code))return 'Your original payment is pending. Check its saved result before starting another.';if(/INSUFFICIENT|funding_changed/.test(code))return 'Your available balance changed. Review the payment again.';if(/RECEIVING_CUSTODY|BINDING|EXACT_HEAD/.test(code))return 'Use the Identity Record that owns this Note, or ask its holder to address it to your identity.';return 'This payment needs attention. Your original request is saved; check its result to continue.';}
+function message(cause:unknown){const code=cause instanceof Error?cause.message:'';if(/ALREADY_DEPOSITED|already_claimed/.test(code))return 'This Note has already been deposited.';if(/NOTE_IDENTITY_BINDING|NOTE_RECEIVING_CUSTODY/.test(code))return 'Use the Identity Record that owns this Note, or ask its holder to address it to your identity.';if(/IDENTITY|identity|closed/.test(code))return 'Your identity changed. Reopen this checkout.';if(/APPROVAL|CONFIRMATION/.test(code))return 'Review this payment before approving it.';if(/PENDING|pending/.test(code))return 'Your original payment is pending. Check its saved result before starting another.';if(/INSUFFICIENT|funding_changed/.test(code))return 'Your available balance changed. Review the payment again.';if(/RECEIVING_CUSTODY|BINDING|EXACT_HEAD/.test(code))return 'Use the Identity Record that owns this Note, or ask its holder to address it to your identity.';return 'This payment needs attention. Your original request is saved; check its result to continue.';}
 export function createHostedCheckout(input:HostedCheckoutDependencies){
  let closed=false,stored:HostedCheckoutState|null=null,view=emptyCheckoutSnapshot(),prepared:WalletSendReview|null=null,preparedApi:WalletSend|null=null;
  const listeners=new Set<()=>void>();
@@ -31,6 +31,13 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
   if(charge>10000000n)throw Error('CHECKOUT_CARD_LIMIT');return{card:charge.toString(),balance:contribution.toString()};
  }
  async function walletProposal(a:{accountUid:string;amountUsdCents:string}){return observedProposal(await input.readWallet(),a.amountUsdCents,a.accountUid);}
+ async function noteProposal(amountUsdCents:string,notes:CheckoutSnapshot['notes'],accountUid?:string){
+  const wallet=await input.readWallet();assert();if(accountUid&&wallet.userId!==accountUid||!wallet.projectionComplete||!checkoutInteger(wallet.totalUsdCents))throw Error('CHECKOUT_BALANCE_UNAVAILABLE');
+  const amount=BigInt(amountUsdCents),noteAmount=notes.filter(n=>n.status!=='confirmed').reduce((sum,n)=>sum+BigInt(n.inspection.amountUsdCents),0n),needed=amount>noteAmount?amount-noteAmount:0n;
+  const fromBalance=BigInt(wallet.totalUsdCents)<needed?BigInt(wallet.totalUsdCents):needed,missing=needed-fromBalance,charge=missing>0n?(missing<50n?50n:missing):0n;
+  if(charge>10000000n)throw Error('CHECKOUT_CARD_LIMIT');
+  return{accountUid:wallet.userId,card:charge.toString(),balance:fromBalance.toString(),noteAmountUsdCents:noteAmount.toString(),noteSurplusUsdCents:(noteAmount>amount?noteAmount-amount:0n).toString()};
+ }
  function walletOptions(a:CheckoutApproval){return{clientNonce:a.clientNonce,...(a.method==='card'?{fundingPreference:'card' as const}:{}),cardFundingLimitUsdCents:a.cardAmountUsdCents,checkoutContext:{checkoutId:a.checkoutId,username:a.recipient.username}};}
  async function adopt(outcome:WalletSendOutcome){
   assert();if(outcome.clientNonce!==view.approval?.clientNonce)throw Error('CHECKOUT_RESULT_MISMATCH');
@@ -52,8 +59,8 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
     }
     if(entry.status!=='confirmed'){await save({...view,phase:'funding'});return;}
    }
-   const funding=await walletProposal(a);if(BigInt(funding.card)>BigInt(a.cardAmountUsdCents)){
-    const {digest:_,...body}=a,next=await sign({...body,cardAmountUsdCents:funding.card,balanceContributionUsdCents:funding.balance});assert();prepared=null;await save({...view,phase:'reviewed',approval:next,error:null});return;
+   const funding=await walletProposal(a),expectedWallet=BigInt(a.balanceContributionUsdCents)+BigInt(a.noteAmountUsdCents??'0');if(funding.card!==a.cardAmountUsdCents||BigInt(funding.balance)!==(expectedWallet>BigInt(a.amountUsdCents)?BigInt(a.amountUsdCents):expectedWallet)){
+    const {digest:_,...body}=a,next=await sign({...body,cardAmountUsdCents:funding.card,balanceContributionUsdCents:funding.balance,noteAmountUsdCents:'0',noteSurplusUsdCents:'0'});assert();prepared=null;await save({...view,phase:'reviewed',approval:next,error:null});return;
    }
   }
   const w=preparedApi===api&&prepared&&prepared.clientNonce===a.clientNonce&&prepared.cardFundingLimitUsdCents===a.cardAmountUsdCents?prepared:await api.prepare({recipient:a.recipient.userId,amountUsdCents:a.amountUsdCents},walletOptions(a));assert();
@@ -62,6 +69,7 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
  }
  const approve=(digest:string)=>run(async()=>{
   if(view.phase==='paid')return;const a=view.approval;if(!a||a.digest!==digest)throw Error('CHECKOUT_EXACT_APPROVAL_REQUIRED');if(view.approvalHistory.some(old=>old.digest===digest))return;
+  if(a.method==='note')for(const digest of a.noteSourceDigests){const entry=view.notes.find(n=>n.sourceDigest===digest);if(!entry)throw Error('CHECKOUT_NOTE_SOURCE_REQUIRED');await input.notes.validate(entry);assert();}
   await save({...view,phase:'funding',approvalHistory:[...view.approvalHistory,a],error:null});await continuePayment();
  });
  return{
@@ -77,9 +85,10 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
    const username=value.recipient.replace(/^@/,'').replace(/\.receiz\.id$/i,'').toLowerCase();if(!/^[a-z0-9_]{3,24}$/.test(username))throw Error('Use a Receiz ID.');
    let funding={card:value.method==='card'?value.amountUsdCents:'0',balance:'0'};
    const balance=value.method==='balance'?await input.readWallet():null;if(balance)funding=observedProposal(balance,value.amountUsdCents);
-   const w=await api.prepare({recipient:continuing?old!.recipient.userId:username,amountUsdCents:value.amountUsdCents},{clientNonce:nonce,...(value.method==='card'?{fundingPreference:'card' as const}:{}),cardFundingLimitUsdCents:funding.card,checkoutContext:{checkoutId:nonce,username}});assert();if(balance&&balance.userId!==w.accountUid)throw Error('CHECKOUT_RESULT_MISMATCH');
+   const noteFunding=value.method==='note'?await noteProposal(value.amountUsdCents,view.notes,old?.accountUid):null;if(noteFunding)funding=noteFunding;
+   const w=await api.prepare({recipient:continuing?old!.recipient.userId:username,amountUsdCents:value.amountUsdCents},{clientNonce:nonce,...(value.method==='card'?{fundingPreference:'card' as const}:{}),cardFundingLimitUsdCents:funding.card,checkoutContext:{checkoutId:nonce,username}});assert();if(balance&&balance.userId!==w.accountUid||noteFunding&&noteFunding.accountUid!==w.accountUid)throw Error('CHECKOUT_RESULT_MISMATCH');
    const recipient=continuing?old!.recipient:{userId:w.recipientUserId,username,displayName:w.recipientLabel.startsWith('@')?w.recipientLabel.slice(1):username,avatarUrl:null};
-   const a=await sign({checkoutId:nonce,clientNonce:nonce,identityDigest:input.identityDigest,accountUid:w.accountUid,recipient,amountUsdCents:value.amountUsdCents,method:value.method,cardAmountUsdCents:funding.card,balanceContributionUsdCents:funding.balance,noteSourceDigests:value.method==='note'?view.notes.map(n=>n.sourceDigest):[]});assert();
+   const a=await sign({checkoutId:nonce,clientNonce:nonce,identityDigest:input.identityDigest,accountUid:w.accountUid,recipient,amountUsdCents:value.amountUsdCents,method:value.method,cardAmountUsdCents:funding.card,balanceContributionUsdCents:funding.balance,...(noteFunding?{noteAmountUsdCents:noteFunding.noteAmountUsdCents,noteSurplusUsdCents:noteFunding.noteSurplusUsdCents}:{}),noteSourceDigests:value.method==='note'?view.notes.map(n=>n.sourceDigest):[]});assert();
    prepared=w;preparedApi=api;
    const history=[...(stored?.history??[])];if(!continuing&&old&&old.checkoutId!==nonce)history.push(view.phase==='paid'||view.phase==='not-sent'?view:{...view,phase:'not-sent'});
    await save({...emptyCheckoutSnapshot(),phase:'reviewed',approval:a,notes:value.method==='note'?view.notes:[],approvalHistory:continuing?view.approvalHistory:[]},history);return a;
@@ -88,7 +97,7 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
    if(view.walletOutcome&&view.walletOutcome.status!=='not-sent'||view.notes.some(n=>['depositing','received','attention-required'].includes(n.status)))throw Error('CHECKOUT_PAYMENT_PENDING');
    const entry=await input.notes.inspect(file);assert();if(view.notes.some(n=>n.noteId===entry.noteId))throw Error('This Note is already selected.');
    const notes=[...view.notes,entry];let a=view.approval;
-   if(a){if(a.method!=='note')throw Error('CHECKOUT_PAYMENT_PENDING');const {digest:_,...body}=a;a=await sign({...body,noteSourceDigests:notes.map(n=>n.sourceDigest),cardAmountUsdCents:'0'});}
+   if(a){if(a.method!=='note')throw Error('CHECKOUT_PAYMENT_PENDING');const {digest:_,...body}=a,funding=await noteProposal(a.amountUsdCents,notes,a.accountUid);a=await sign({...body,noteSourceDigests:notes.map(n=>n.sourceDigest),cardAmountUsdCents:funding.card,balanceContributionUsdCents:funding.balance,noteAmountUsdCents:funding.noteAmountUsdCents,noteSurplusUsdCents:funding.noteSurplusUsdCents});}
    await save({...view,phase:a?'reviewed':'editing',notes,approval:a,error:null});return entry;
   });},
   approve,approveShortfall:approve,
@@ -97,7 +106,7 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
    if(!row?.approval)return{matched:false,receipt:null};
    const retained=await(await input.walletSend()).retainedResult(row.approval.clientNonce);assert();
    if(retained?.fundingSessionId!==sessionId)return{matched:false,receipt:null};
-   return{matched:true,receipt:retained.outcome.status==='recorded'?await admittedReceipt(retained.outcome,row):null};
+   return{matched:true,checkoutId:row.approval.checkoutId,status:retained.outcome.status,receipt:retained.outcome.status==='recorded'?await admittedReceipt(retained.outcome,row):null};
   });},
   check(){return run(async()=>{await continuePayment(true);});},
   back(){return run(async()=>{

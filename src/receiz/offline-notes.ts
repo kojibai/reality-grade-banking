@@ -11,6 +11,8 @@ export interface BankOfflineNotes {
   receivedNotes?():Promise<BankNoteDepositResult[]>;
   reconcileReceivedNotes?():Promise<BankNoteDepositResult[]>;
   recoverDeposit?(image:Uint8Array):Promise<BankNoteDepositResult|null>;
+  /** Read-only admission for this active receiver or locally held funding custody. */
+  validateDeposit?(image:Uint8Array):Promise<void>;
   prepareResources?(count:{notes:number;receivers:number}):Promise<void>;
   review?(amount:string):Promise<BankNoteReview>;
   savedNotes(): Promise<BankNoteImage[]>;

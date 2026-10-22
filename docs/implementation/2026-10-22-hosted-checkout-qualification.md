@@ -21,7 +21,9 @@ existing device identity, Wallet, card and Note adapters. Package version stays
 - Card completion continues the approved payment. Back preserves a submitted
   or funded attempt. Checking uses its retained original, not another payment.
   An old card return can display its original recorded receipt without consuming
-  a newer attempt. A URL or completion message alone cannot establish payment.
+  a newer attempt. An earlier unpaid or expired return also retains its own
+  outcome and cannot substitute the newer payment. A URL or completion message
+  alone cannot establish payment.
 - Receive offers Send and Checkout links. The selected URL feeds sharing, copy,
   QR and NFC. Website buttons and profile Pay open the hosted checkout through
   normal document navigation. Existing Send and separate embedded-card tools
@@ -33,7 +35,30 @@ The full local suite passed **386 files / 2,312 tests**. Focused tests exercise
 URL/return validation, creation and custody races, retained approval, all three
 Note adapters, lost responses, credit/journal interruptions, exact card limits,
 concurrent approvals, receipts and acceptance tools. Subsequent review fixes,
-if any, are recorded separately in the final commit and verification output.
+are recorded below.
+
+## Independent review and recovery corrections
+
+An independent review identified four gaps. Each correction began with a
+failing regression; the combined focused verification then passed **129 tests
+across 9 files**, with type checking passing:
+
+- **Receiving ownership before approval.** A foreign-addressed Note is refused
+  before payment approval is retained, so the user can go Back and select or
+  import the correct identity. The preflight reads canonical source and local
+  receiving custody without enrolling, claiming or sending the Note.
+- **Interrupted handover recovery.** A connected Note's retained receiving
+  request and handover are recovered even if interruption preceded receiving
+  queue persistence. Recovery never allocates another receiver or replaces the
+  original request. Genuine legacy incoming originals use independently opened
+  commitments matched to the active encrypted receiving slot.
+- **Historical unpaid returns.** The matched checkout identity and outcome
+  accompany return inspection. An expired earlier session cannot display or
+  operate on a newer checkout for the same merchant.
+- **Complete funding consent.** Note review binds and displays selected Note
+  value, existing balance contribution, card shortfall, Note surplus and any
+  card-minimum remainder. Changed observed funding requires a new approval and
+  does not repeat confirmed deposits.
 
 Isolated Chrome exercised the real checkout component, controller and Wallet
 validator against synthetic transports. No live card session, Note claim,

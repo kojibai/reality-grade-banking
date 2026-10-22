@@ -8,7 +8,7 @@ function fixture(rail:BankNoteRail){
  const inspection:BankNoteInspection={noteId,rail,amountUsdCents:'1000',amountPhiMicro:'10000000',...(rail==='composite'?{fundingParts:{reserve:{amountUsdCents:'400',amountPhiMicro:'4000000'},settlement:{amountUsdCents:'600',amountPhiMicro:'6000000'}}}:{})};
  let rows:BankNoteDepositResult[]=[];const received={...inspection,rail,status:'received' as const,proofBytes:bytes};const confirmed={...inspection,status:'confirmed' as const,proofBytes:bytes,reserveAfterUsdCents:'1000'};
  const inspect=vi.fn(async()=>inspection),deposit=vi.fn(async()=>{rows=[received];return received;});
- const nativeNotes={inspect,deposit,receivedNotes:async()=>rows,reconcileReceivedNotes:async()=>rows};const identity={offlineNotes:async()=>nativeNotes}as unknown as OpenIdentity;
+ const nativeNotes={validateDeposit:vi.fn(async()=>{}),inspect,deposit,receivedNotes:async()=>rows,reconcileReceivedNotes:async()=>rows};const identity={offlineNotes:async()=>nativeNotes}as unknown as OpenIdentity;
  const sources=new Map<string,Uint8Array>(),storeSource=async(data:Uint8Array)=>{const id=await(await loadReceiz()).sha256ReceizBytes(data);sources.set(id,data);return id;};
  const adapter=createCheckoutNotes({identity,storeSource,restoreSource:async(id:string)=>sources.get(id)!,assertCurrent(){}});
  return{adapter,deposit,inspect,nativeNotes,confirmed,confirm(){rows=[confirmed];},file:new File([bytes],'note.png',{type:'image/png'})};

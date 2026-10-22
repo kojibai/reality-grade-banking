@@ -1,6 +1,10 @@
 import {noteTitle} from './note-design';
 import type { ProofSource } from './proof-library';
 import receiverBuild from '../../public/native/receiver-verifier.v129.manifest.json';
+export type LegacyNoteReceivingVerifier={
+  openReserveNoteImage(bytes:Uint8Array):Promise<unknown>;
+  inspectReserveNote(handle:unknown):{receivingCustodyCommitmentDigest:string};
+};
 type Receiver = {
   isBankConnectedNoteImage(bytes:Uint8Array):Promise<boolean>;
   isBankConnectedNoteSource(bytes:Uint8Array):Promise<boolean>;
@@ -9,7 +13,7 @@ type Receiver = {
   isBankNoteAccountDeposit(bytes:Uint8Array):boolean;
   inspectAccountNoteDeposit(bytes:Uint8Array):Promise<{rail:string;receiverKeyId:string}>;
   openReserveNoteImage(bytes: Uint8Array): Promise<unknown>;
-  inspectReserveNote(value: unknown): { rail: string; noteId: string };
+  inspectReserveNote(value: unknown): { rail: string; noteId: string; receivingCustodyCommitmentDigest:string };
   inspectNoteDepositReceipt(bytes: Uint8Array): Promise<{ rail: string; noteId: string; receiverKeyId: string }>;
   exportVerifiedNoteDepositReceipt(credit: Uint8Array, snapshot: Uint8Array, terminal: string): Promise<Uint8Array>;
 };
@@ -59,4 +63,12 @@ export async function readRetainedNoteProofs(input: { keyId: string; read(): Pro
     result.push({ kind: 'note-deposit', filename: `note-deposit-${id}.receiz.json`, bytes });
   }
   return result;
+}
+
+/** A commitment is exposed only after complete canonical admission. The
+ * default loader shares the existing lazy read-only receiver module. */
+export async function inspectLegacyReceivingCommitment(bytes:Uint8Array,load:()=>Promise<LegacyNoteReceivingVerifier>=receiver):Promise<string>{
+ const native=await load(),note=native.inspectReserveNote(await native.openReserveNoteImage(new Uint8Array(bytes)));
+ if(!/^[a-f0-9]{64}$/.test(note.receivingCustodyCommitmentDigest))throw Error('BANK_NOTE_RECEIVING_CUSTODY_REQUIRED');
+ return note.receivingCustodyCommitmentDigest;
 }

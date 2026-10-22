@@ -46,7 +46,19 @@ it('invalidates an unapproved Note review when another Note is selected',async()
 it('matches card returns to the exact retained session and preserves historical receipts',async()=>{
  const f=hostedFixture(0),c=f.newController();await c.ready;const a=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});await c.approve(a.digest);
  expect(await c.inspectReturn(a.checkoutId,'cs_test_wrongoriginal')).toEqual({matched:false,receipt:null});
- expect(await c.inspectReturn(a.checkoutId,'cs_test_hostedoriginal')).toEqual({matched:true,receipt:null});
+ expect(await c.inspectReturn(a.checkoutId,'cs_test_hostedoriginal')).toMatchObject({matched:true,receipt:null});
  f.creditCard();await c.check();await c.back();
  const result=await c.inspectReturn(a.checkoutId,'cs_test_hostedoriginal');expect(result.matched).toBe(true);expect(result.receipt?.checkoutId).toBe(a.checkoutId);expect(c.snapshot().phase).toBe('editing');expect(f.transfer).toHaveBeenCalledTimes(1);
+});
+it('keeps a definite preflight ownership refusal unsubmitted and allows Back before identity import',async()=>{
+ const f=hostedFixture(0),c=f.newController();await c.ready;await c.inspectNote({}as File);const a=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'note'});f.deps.notes.validate.mockRejectedValueOnce(Error('BANK_NOTE_IDENTITY_BINDING_REQUIRED'));
+ await expect(c.approve(a.digest)).rejects.toThrow('IDENTITY_BINDING_REQUIRED');expect(c.snapshot().approvalHistory).toHaveLength(0);expect(f.deposit).not.toHaveBeenCalled();await c.back();expect(c.snapshot().phase).toBe('editing');
+});
+it('discloses existing balance and Note value before approval, including surplus',async()=>{
+ const f=hostedFixture(800),c=f.newController();await c.ready;f.deps.notes.inspect.mockResolvedValueOnce({...f.deps.note,inspection:{...f.deps.note.inspection,amountUsdCents:'200',amountPhiMicro:'2000000'}});await c.inspectNote({}as File);const a=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'note'});
+ expect(a).toMatchObject({noteAmountUsdCents:'200',balanceContributionUsdCents:'800',cardAmountUsdCents:'0',noteSurplusUsdCents:'0'});
+});
+it('returns the matched historical unpaid outcome rather than substituting the current checkout',async()=>{
+ const f=hostedFixture(0),c=f.newController();await c.ready;const one=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});await c.approve(one.digest);f.expireCard();await c.check();expect(c.snapshot().phase).toBe('not-sent');await c.back();const two=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});
+ const returned=await c.inspectReturn(one.checkoutId,'cs_test_hostedoriginal');expect(returned).toMatchObject({matched:true,checkoutId:one.checkoutId,status:'not-sent'});expect(c.snapshot().approval!.checkoutId).toBe(two.checkoutId);
 });

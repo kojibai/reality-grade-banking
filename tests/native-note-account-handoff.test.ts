@@ -9,10 +9,10 @@ import {loadOfflineNoteState,loadPreparedNoteState,loadWalletSendState,loadRecei
 
 // Boundary choreography only. Native funding/hardware are not qualified by
 // this fixture. Portable-state signatures use the unmodified local v129 SDK.
-const fixture = vi.hoisted(() => ({ keyFile: null as unknown, initial: null as unknown, ledger: null as unknown, kai: null as number | null, clock: null as (() => void) | null, cancel: vi.fn(), transfer: vi.fn(), deposit: vi.fn(), wallet: vi.fn(), create: vi.fn(), save: vi.fn(), pending: vi.fn(), connectedEnabled:false,connectedCreate:vi.fn(),incoming:false,openIncoming:vi.fn(),verifyIncomingCredit:vi.fn(),request:vi.fn(),preparedEnabled:false, preparedWrite:null as null|((next:unknown,previous:unknown,proof?:unknown)=>Promise<void>),preparedSave:vi.fn(),receivingRequest:vi.fn(),prepareResources:vi.fn() }));
+const fixture = vi.hoisted(() => ({ keyFile: null as unknown, initial: null as unknown, ledger: null as unknown, kai: null as number | null, clock: null as (() => void) | null, cancel: vi.fn(), transfer: vi.fn(), deposit: vi.fn(), wallet: vi.fn(), create: vi.fn(), save: vi.fn(), pending: vi.fn(), connectedState:null as unknown,connectedRead:vi.fn(),connectedFormat:false,connectedEnabled:false,connectedCreate:vi.fn(),incoming:false,openIncoming:vi.fn(),verifyIncomingCredit:vi.fn(),request:vi.fn(),preparedEnabled:false, preparedWrite:null as null|((next:unknown,previous:unknown,proof?:unknown)=>Promise<void>),preparedSave:vi.fn(),receivingRequest:vi.fn(),prepareResources:vi.fn() }));
 vi.mock('../src/receiz/config',async()=>({...await vi.importActual<typeof import('../src/receiz/config')>('../src/receiz/config'),get BANK_CONNECTED_NOTE_ISSUANCE_ENABLED(){return fixture.connectedEnabled;},get BANK_PREPARED_NOTE_CREDIT_ENABLED(){return fixture.preparedEnabled;}}));
 vi.mock('../src/receiz/identity-vault', () => ({
-  loadConnectedNoteState:async()=>null,saveConnectedNoteState:vi.fn(),loadReceivedNoteDepositState:vi.fn().mockResolvedValue(null),saveReceivedNoteDepositState:vi.fn(),
+  loadConnectedNoteState:async()=>structuredClone(fixture.connectedState),saveConnectedNoteState:async(_binding:unknown,next:unknown,previous:unknown)=>{expect(previous).toEqual(fixture.connectedState);fixture.connectedState=structuredClone(next);},loadReceivedNoteDepositState:vi.fn().mockResolvedValue(null),saveReceivedNoteDepositState:vi.fn(),
   loadWalletObservation: async () => fixture.initial,
   saveWalletObservation: fixture.save,
   assertWalletSendCustody:async()=>{},
@@ -32,7 +32,7 @@ vi.mock('../src/receiz/connected-note-application',async()=>{const actual=await 
 vi.mock('@receiz/sdk/offline', () => ({ createReceizOfflineSealer: () => ({ enroll: noteEnrollment }), createReceizIndexedDbSealStore: () => ({ load: async () => ({ privateKey: {} }) }) }));
 const noteEnrollment=vi.hoisted(()=>vi.fn());
 vi.mock('../src/receiz/offline-notes', () => ({
-  bankNoteArtwork: vi.fn(), loadBankNoteRuntime: async () => ({ isBankConnectedNoteImage:async()=>false,isBankConnectedNoteSource:async()=>false,isBankNoteAccountDeposit:()=>fixture.incoming,openBankNoteAccountDeposit:fixture.openIncoming,prepareBankNoteAccountDepositSubmission:async(bytes:Uint8Array)=>({terminalArtifactBytes:new TextDecoder().decode(bytes)}),verifyBankNoteAccountDepositCredit:fixture.verifyIncomingCredit,createBankNoteAccountReceivingRequest:fixture.receivingRequest,createBankNativeNoteSealer: async () => vi.fn(), createBankPreparedBrowserRuntime:(ports:{write:typeof fixture.preparedWrite})=>{fixture.preparedWrite=ports.write;return{savedNotes:async()=>[],receivingRequest:fixture.receivingRequest,prepareResources:fixture.prepareResources,pending:async()=>null,hasPreparedFunding:async()=>true,createNote:async()=>{const result=await fixture.create();await fixture.preparedWrite!({journal:{head:'fixture'}},null,result.successorAccountProof);return result;}};},createBankOfflineNotesRuntime: () => ({ pending: fixture.pending, createNote: fixture.create, cancelUnfunded: fixture.cancel, transferNote: fixture.transfer, depositNote: fixture.deposit, receivingRequest: fixture.receivingRequest }) }),
+  bankNoteArtwork: vi.fn(), loadBankNoteRuntime: async () => ({ isBankConnectedNoteImage:async()=>fixture.connectedFormat,isBankConnectedNoteSource:async()=>fixture.connectedFormat,readBankConnectedNoteImage:fixture.connectedRead,readBankConnectedNoteSource:fixture.connectedRead,isBankNoteAccountDeposit:()=>fixture.incoming,openBankNoteAccountDeposit:fixture.openIncoming,prepareBankNoteAccountDepositSubmission:async(bytes:Uint8Array)=>({terminalArtifactBytes:new TextDecoder().decode(bytes)}),verifyBankNoteAccountDepositCredit:fixture.verifyIncomingCredit,createBankNoteAccountReceivingRequest:fixture.receivingRequest,createBankNativeNoteSealer: async () => vi.fn(), createBankPreparedBrowserRuntime:(ports:{write:typeof fixture.preparedWrite})=>{fixture.preparedWrite=ports.write;return{savedNotes:async()=>[],receivingRequest:fixture.receivingRequest,prepareResources:fixture.prepareResources,pending:async()=>null,hasPreparedFunding:async()=>true,createNote:async()=>{const result=await fixture.create();await fixture.preparedWrite!({journal:{head:'fixture'}},null,result.successorAccountProof);return result;}};},createBankOfflineNotesRuntime: () => ({ pending: fixture.pending, createNote: fixture.create, cancelUnfunded: fixture.cancel, transferNote: fixture.transfer, depositNote: fixture.deposit, receivingRequest: fixture.receivingRequest }) }),
 }));
 vi.mock('../src/receiz/client', async () => {
   const actual = await vi.importActual<typeof import('@receiz/sdk')>('@receiz/sdk');
@@ -51,7 +51,7 @@ vi.mock('../src/receiz/client', async () => {
 function wallet(cents: string) { return { userId: 'connected-account', balanceUsd: `${BigInt(cents) / 100n}.${(BigInt(cents) % 100n).toString().padStart(2, '0')}`, balancePhiMicro: cents, valueStates: { settledBalanceUsdCents: cents, ecosystemBalanceUsdCents: '0' }, sync: {}, rollup: {} }; }
 beforeEach(async () => {
   vi.mocked(loadReceivedNoteDepositState).mockReset().mockResolvedValue(null);
-  fixture.connectedEnabled=false;fixture.connectedCreate.mockReset().mockResolvedValue({noteId:'connected-note',rail:'reserve',amountUsdCents:'100',image:new Uint8Array([1])});fixture.incoming=false;fixture.openIncoming.mockReset();fixture.verifyIncomingCredit.mockReset();fixture.request.mockReset();
+  fixture.connectedState=null;fixture.connectedFormat=false;fixture.connectedRead.mockReset();fixture.connectedEnabled=false;fixture.connectedCreate.mockReset().mockResolvedValue({noteId:'connected-note',rail:'reserve',amountUsdCents:'100',image:new Uint8Array([1])});fixture.incoming=false;fixture.openIncoming.mockReset();fixture.verifyIncomingCredit.mockReset();fixture.request.mockReset();
   noteEnrollment.mockReset().mockResolvedValue(undefined);
   vi.mocked(loadWalletSendState).mockReset().mockResolvedValue(null);
   vi.mocked(loadOfflineNoteState).mockReset();vi.mocked(loadPreparedNoteState).mockReset();
@@ -582,4 +582,31 @@ it('preserves a retained registration attempt when its canonical local cancellat
  vi.mocked(loadOfflineNoteState).mockResolvedValue(state);fixture.cancel.mockRejectedValue(Error('BANK_NOTE_FUNDING_PENDING'));
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
  try{await expect((await identity.offlineNotes!()).create('100')).rejects.toThrow('BANK_NOTE_FUNDING_PENDING');expect(await loadOfflineNoteState(identity.binding)).toBe(state);expect(fixture.connectedCreate).not.toHaveBeenCalled();expect(fixture.create).not.toHaveBeenCalled();expect(noteEnrollment).not.toHaveBeenCalled();expect(fixture.wallet).not.toHaveBeenCalled();}finally{identity.dispose();vi.unstubAllGlobals();}
+});
+
+it('recovers a persisted connected self-handover into the native receiving queue after interruption without requesting another receiver',async()=>{
+ const {createConnectedNoteRuntime}=await import('../src/receiz/connected-note-runtime');
+ const keyId=(fixture.keyFile as sdk.ReceizKeyFile).keyId,encode=(value:string)=>new TextEncoder().encode(value),funding=encode('verified connected funding'),handover=encode('verified connected handover'),request=encode('exact retained receiving request');
+ const blobs=new Map<string,Uint8Array>();
+ vi.mocked(saveOfflineNoteBlob).mockImplementation(async(_binding,bytes)=>{const ref=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes)))).map(value=>value.toString(16).padStart(2,'0')).join('');blobs.set(ref,bytes.slice());return ref;});
+ vi.mocked(loadOfflineNoteBlob).mockImplementation(async(_binding,ref)=>blobs.get(ref)!.slice());
+ const source={rail:'reserve' as const,noteId:'recover-connected',amountUsdCents:'200',amountPhiMicro:'1000000'};
+ // Only native admission is an external port here. The connected checkpoint,
+ // receiving queue, native identity routing and their recovery paths are real.
+ fixture.connectedRead.mockImplementation(async(bytes:Uint8Array)=>({...source,kind:new TextDecoder().decode(bytes).includes('handover')?'handover':'funding',funding:{accountUserId:'connected-account',issuer:{keyId}},receiverUserId:'connected-account',receiverKeyId:keyId,redemptionDigest:'c'.repeat(64),terminalArtifactSha256:'d'.repeat(64),terminalSourceBytes:bytes.slice()}));
+ const runtime=createConnectedNoteRuntime({uid:'connected-account',keyId,assertOpen(){},read:async()=>structuredClone(fixture.connectedState),write:async(next,previous)=>{expect(previous).toEqual(fixture.connectedState);fixture.connectedState=structuredClone(next);},retain:bytes=>saveOfflineNoteBlob({keyId}as any,bytes),restore:ref=>loadOfflineNoteBlob({keyId}as any,ref),
+  prepare:async()=>({noteId:source.noteId,operationId:'b'.repeat(64),rail:'reserve',amountUsdCents:'200',authorization:source,noteIdentityBytes:encode('private connected note key')}),issue:async()=>({...source,sourceBytes:funding,privateOpeningBytes:encode('private opening')}),inspect:async()=>source,handover:async()=>handover,image:async bytes=>bytes.slice(),cancel:async()=>encode('cancel'),
+ });
+ await runtime.create('200');await runtime.transfer(source.noteId,request);fixture.connectedFormat=true;
+ let received:unknown=null;
+ vi.mocked(loadReceivedNoteDepositState).mockImplementation(async()=>structuredClone(received));
+ vi.mocked(saveReceivedNoteDepositState).mockImplementation(async(_binding,next,previous)=>{expect(previous).toEqual(received);received=structuredClone(next);});
+ vi.stubGlobal('navigator',{onLine:false,locks:{request:async(_name:string,_options:unknown,run:()=>Promise<unknown>)=>run()}});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
+ try{
+  const notes=await identity.offlineNotes!();
+  await expect(notes.recoverDeposit!(funding)).rejects.toThrow('BANK_NOTE_DEPOSIT_RECONCILIATION_REQUIRED');
+  expect(await notes.receivedNotes!()).toMatchObject([{status:'received',noteId:'recover-connected',proofBytes:handover}]);
+  expect(fixture.receivingRequest).not.toHaveBeenCalled();expect(fixture.deposit).not.toHaveBeenCalled();expect(fixture.request).not.toHaveBeenCalled();expect(noteEnrollment).not.toHaveBeenCalled();
+ }finally{identity.dispose();vi.unstubAllGlobals();}
 });

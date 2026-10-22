@@ -52,10 +52,24 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
   if(inspection.noteId!==row.noteId||inspection.amountUsdCents!==row.amountUsdCents||inspection.rail!==row.rail)fail('SOURCE_REQUIRED');
   return{...inspection,image:await original(row.transfer?.imageRef??row.imageRef),transferred:!!row.transfer?.imageRef,transferPending:!!row.transfer&&!row.transfer.imageRef};
  }
+ async function transfer(id:string,request?:Uint8Array){
+   let held=await load(),row=held.state.notes[id];if(!row||row.phase!=='issued'||!row.sourceRef)fail('SOURCE_REQUIRED');
+   if(row.transfer){if(request){const previous=await original(row.transfer.requestRef);if(previous.length!==request.length||previous.some((v,i)=>v!==request[i]))fail('EXACT_TRANSFER_REQUIRED');}}
+   else{if(!request?.length)return fail('RECEIVING_REQUEST_REQUIRED');const requestRef=await input.retain(request);row={...row,transfer:{requestRef}};held.state.notes[id]=row;held=await save(held.state,held.previous);}
+   if(!row.transfer!.sourceRef){const sourceRef=await input.retain(await input.handover(await original(row.sourceRef!),await original(row.transfer!.requestRef),await original(row.noteIdentityRef)));input.assertOpen();row={...row,transfer:{...row.transfer!,sourceRef}};held.state.notes[id]=row;held=await save(held.state,held.previous);}
+   if(!row.transfer!.imageRef){const source=await original(row.transfer!.sourceRef!),imageRef=await input.retain(await input.image(source,await input.inspect(source)));input.assertOpen();row={...row,transfer:{...row.transfer!,imageRef}};held.state.notes[id]=row;await save(held.state,held.previous);}
+   return{noteId:id,image:await original(row.transfer!.imageRef!)};
+  }
  return{
   async pending(){const row=current((await load()).state);return row&&row.phase!=='cancelled'?reviewed(row):null;},
   async review(amountUsdCents:string):Promise<BankNoteReview>{const row=current((await load()).state);if(row){if(row.amountUsdCents!==amountUsdCents)fail('EXACT_RESUME_REQUIRED');return reviewed(row);}if(!input.review)fail('REVIEW_REQUIRED');return input.review!(amountUsdCents);},
   async hasNote(id:string){const row=(await load()).state.notes[id];return !!row&&row.phase==='issued';},
+  async holdsFundingSource(id:string,source:Uint8Array){
+   const row=(await load()).state.notes[id];
+   if(!row||row.phase!=='issued'||!row.sourceRef||row.transfer)return false;
+   const held=await original(row.sourceRef);await original(row.noteIdentityRef);
+   return held.length===source.length&&held.every((value,index)=>value===source[index]);
+  },
   async savedNotes(){const {state}=await load();return Promise.all(Object.values(state.notes).filter(row=>row.phase==='issued'&&!!row.imageRef).map(note));},
   async create(amountUsdCents:string,rail?:BankNoteRail):Promise<BankNoteImage>{
    let held=await load(),row=current(held.state);
@@ -85,13 +99,10 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
    if(!row.cancelRequestRef&&input.prepareCancellation){const cancelRequestRef=await input.retain(await input.prepareCancellation(authorization));input.assertOpen();row={...row,cancelRequestRef};held.state.notes[row.noteId]=row;held=await save(held.state,held.previous);}
    const proof=await input.cancel(authorization,row.cancelRequestRef?await original(row.cancelRequestRef):undefined);input.assertOpen();const cancellationRef=await input.retain(proof);held.state.notes[row.noteId]={...row,phase:'cancelled',cancellationRef};held.state.current=null;await save(held.state,held.previous);
   },
-  async transfer(id:string,request?:Uint8Array){
-   let held=await load(),row=held.state.notes[id];if(!row||row.phase!=='issued'||!row.sourceRef)fail('SOURCE_REQUIRED');
-   if(row.transfer){if(request){const previous=await original(row.transfer.requestRef);if(previous.length!==request.length||previous.some((v,i)=>v!==request[i]))fail('EXACT_TRANSFER_REQUIRED');}}
-   else{if(!request?.length)return fail('RECEIVING_REQUEST_REQUIRED');const requestRef=await input.retain(request);row={...row,transfer:{requestRef}};held.state.notes[id]=row;held=await save(held.state,held.previous);}
-   if(!row.transfer!.sourceRef){const sourceRef=await input.retain(await input.handover(await original(row.sourceRef!),await original(row.transfer!.requestRef),await original(row.noteIdentityRef)));input.assertOpen();row={...row,transfer:{...row.transfer!,sourceRef}};held.state.notes[id]=row;held=await save(held.state,held.previous);}
-   if(!row.transfer!.imageRef){const source=await original(row.transfer!.sourceRef!),imageRef=await input.retain(await input.image(source,await input.inspect(source)));input.assertOpen();row={...row,transfer:{...row.transfer!,imageRef}};held.state.notes[id]=row;await save(held.state,held.previous);}
-   return{noteId:id,image:await original(row.transfer!.imageRef!)};
+  transfer,
+  async recoverTransfer(id:string){
+   const row=(await load()).state.notes[id];
+   return row?.phase==='issued'&&row.transfer?transfer(id):null;
   },
  };
 }

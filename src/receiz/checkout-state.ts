@@ -4,7 +4,7 @@ import type {WalletSendOutcome,WalletSendReceipt} from './wallet-send';
 export type CheckoutMethod='card'|'balance'|'note';
 export type CheckoutPhase='editing'|'preparing'|'reviewed'|'funding'|'submitting'|'confirming'|'paid'|'not-sent'|'attention-required';
 export interface CheckoutRecipient {readonly userId:string;readonly username:string;readonly displayName:string;readonly avatarUrl:string|null;}
-export interface CheckoutApproval {readonly checkoutId:string;readonly identityDigest:string;readonly accountUid:string;readonly recipient:CheckoutRecipient;readonly amountUsdCents:string;readonly method:CheckoutMethod;readonly clientNonce:string;readonly cardAmountUsdCents:string;readonly balanceContributionUsdCents:string;readonly noteSourceDigests:readonly string[];readonly digest:string;}
+export interface CheckoutApproval {readonly checkoutId:string;readonly identityDigest:string;readonly accountUid:string;readonly recipient:CheckoutRecipient;readonly amountUsdCents:string;readonly method:CheckoutMethod;readonly clientNonce:string;readonly cardAmountUsdCents:string;readonly balanceContributionUsdCents:string;readonly noteAmountUsdCents?:string;readonly noteSurplusUsdCents?:string;readonly noteSourceDigests:readonly string[];readonly digest:string;}
 export interface CheckoutNoteEntry {sourceDigest:string;sourceRef:string;noteId:string;rail:BankNoteRail;inspection:BankNoteInspection;status:'inspected'|'depositing'|'received'|'confirmed'|'attention-required';creditSourceDigest?:string;}
 export interface CheckoutReceipt extends WalletSendReceipt {checkoutId:string;recipient:CheckoutRecipient;method:CheckoutMethod;}
 export interface CheckoutSnapshot {phase:CheckoutPhase;approval:CheckoutApproval|null;approvalHistory:CheckoutApproval[];walletOutcome:WalletSendOutcome|null;notes:CheckoutNoteEntry[];receipt:CheckoutReceipt|null;error:string|null;}
@@ -18,6 +18,7 @@ export const emptyCheckoutSnapshot=():CheckoutSnapshot=>({phase:'editing',approv
 export async function checkoutApprovalDigest(input:Omit<CheckoutApproval,'digest'>){return(await loadReceiz()).digestReceizCanonicalV122(input);}
 async function approval(value:CheckoutApproval,owner:string){
  if(!value||value.identityDigest!==owner||!checkoutUuid(value.checkoutId)||value.clientNonce!==value.checkoutId||!checkoutUuid(value.accountUid)||!value.recipient||!checkoutUuid(value.recipient.userId)||value.recipient.userId===value.accountUid||!/^[a-z0-9_]{3,24}$/.test(value.recipient.username)||typeof value.recipient.displayName!=='string'||value.recipient.displayName.length>160||!['card','balance','note'].includes(value.method)||!checkoutInteger(value.amountUsdCents,true)||!checkoutInteger(value.cardAmountUsdCents)||!checkoutInteger(value.balanceContributionUsdCents)||!Array.isArray(value.noteSourceDigests)||value.noteSourceDigests.some(v=>!checkoutDigest(v))||new Set(value.noteSourceDigests).size!==value.noteSourceDigests.length||!checkoutDigest(value.digest))invalid();
+ if(value.noteAmountUsdCents!==undefined&&!checkoutInteger(value.noteAmountUsdCents)||value.noteSurplusUsdCents!==undefined&&!checkoutInteger(value.noteSurplusUsdCents))invalid();
  const {digest,...body}=value;if(await checkoutApprovalDigest(body)!==digest)invalid();
  if(value.method==='card'&&(value.cardAmountUsdCents!==value.amountUsdCents||value.balanceContributionUsdCents!=='0'))invalid();
 }

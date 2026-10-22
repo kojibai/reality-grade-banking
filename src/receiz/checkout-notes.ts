@@ -20,11 +20,18 @@ export function createCheckoutNotes(input:{identity:Pick<OpenIdentity,'offlineNo
   if(n.recoverDeposit){const bytes=await input.restoreSource(entry.sourceRef);input.assertCurrent();if(await(await loadReceiz()).sha256ReceizBytes(bytes)!==entry.sourceDigest)throw Error('BANK_NOTE_SOURCE_DIGEST_MISMATCH');const recovered=await n.recoverDeposit(bytes);if(recovered)return adopt(entry,recovered);}
   return entry;
  }
- return{
+ async function validate(entry:CheckoutNoteEntry){
+  input.assertCurrent();if(entry.status==='confirmed')return;
+  const bytes=await input.restoreSource(entry.sourceRef);input.assertCurrent();
+  if(await(await loadReceiz()).sha256ReceizBytes(bytes)!==entry.sourceDigest)throw Error('BANK_NOTE_SOURCE_DIGEST_MISMATCH');
+  const n=await api();if(!n.validateDeposit)throw Error('BANK_NOTE_RECEIVING_VALIDATION_REQUIRED');await n.validateDeposit(bytes);input.assertCurrent();
+ }
+ return{validate,
   async inspect(file:File):Promise<CheckoutNoteEntry>{
    input.assertCurrent();if(!file.size||file.size>32*1024*1024)throw Error('This original exceeds the supported Note proof capacity.');
    const bytes=new Uint8Array(await file.arrayBuffer()),n=await api(),inspection=await n.inspect(bytes);input.assertCurrent();
    if((await n.receivedNotes?.()??[]).some(row=>row.noteId===inspection.noteId&&row.status!=='received'))throw Error('BANK_NOTE_ALREADY_DEPOSITED');
+   if(!n.validateDeposit)throw Error('BANK_NOTE_RECEIVING_VALIDATION_REQUIRED');await n.validateDeposit(bytes);input.assertCurrent();
    const digest=await(await loadReceiz()).sha256ReceizBytes(bytes),sourceRef=await input.storeSource(bytes);input.assertCurrent();if(sourceRef!==digest)throw Error('BANK_NOTE_SOURCE_DIGEST_MISMATCH');
    inspected.set(digest,inspection);return{sourceDigest:digest,sourceRef,noteId:inspection.noteId,rail:inspection.rail??'reserve',inspection,status:'inspected'};
   },
