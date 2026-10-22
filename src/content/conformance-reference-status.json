@@ -7,21 +7,21 @@
   "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
   "operationMatrixDigest": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1",
   "verifierModuleSha256": "47fee9e101ed3c6fbb0d00f303ba2a0b28787401e394046ca8d23c37018beb2a",
-  "suiteSourceSha256": "7d780b9d64911a338508296fe81476ff38b21b9c05dedde0cde8f4cb73bf5e51",
-  "startedAt": "2026-10-22T22:57:28.753Z",
-  "completedAt": "2026-10-22T22:57:29.010Z",
+  "suiteSourceSha256": "11e5c2469efa2dee8d9ffa0b1385711eba84499181e901834f9d6a9f6775c3d9",
+  "startedAt": "2026-10-22T22:59:02.788Z",
+  "completedAt": "2026-10-22T22:59:03.047Z",
   "checks": [
     {
       "id": "money",
       "passed": true,
       "evidence": null,
-      "durationMs": 48
+      "durationMs": 49
     },
     {
       "id": "ownership",
       "passed": true,
       "evidence": null,
-      "durationMs": 25
+      "durationMs": 24
     },
     {
       "id": "atomic",
@@ -51,7 +51,7 @@
       "id": "integrity",
       "passed": true,
       "evidence": null,
-      "durationMs": 53
+      "durationMs": 51
     },
     {
       "id": "source",
@@ -75,7 +75,7 @@
       "id": "temporal",
       "passed": true,
       "evidence": null,
-      "durationMs": 123
+      "durationMs": 126
     },
     {
       "id": "edges",
