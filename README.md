@@ -1,10 +1,10 @@
-# Reality-Grade Banking
+# Reality-grade banking
 
 **An open banking architecture for the proof-native economy.**
 
 [![Verify reference](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml)
 [![GPL-3.0-only](https://img.shields.io/badge/License-GPL--3.0--only-2349d8.svg)](LICENSE)
-[![Version 2.0.0](https://img.shields.io/badge/Release-2.0.0-2349d8.svg)](docs/releases/2.0.0.md)
+[![Version 3.0.0](https://img.shields.io/badge/Release-3.0.0-2349d8.svg)](docs/releases/3.0.0.md)
 [![Receiz v129](https://img.shields.io/badge/Receiz-129.0.0-2349d8.svg)](package.json)
 
 Reality-Grade Banking is an open banking architecture and receiving standard for money
@@ -57,9 +57,11 @@ on a screenshot or another application's interpretation.
   Send and Receive use one amount; funding details stay available underneath.
 - **Payments with history.** Find a recipient, review the amount, approve the
   payment and retain its receipt. Sent and received activity remain distinct.
-- **Get paid where you work.** Share a receiving link, copy a website button or
-  use the existing Receiz checkout. The [payment integration reference](institution/accept-payments.md)
-  covers setup, current Notes, custom SDK checkout and confirmed order results.
+- **Get paid where you work.** Share a hosted checkout link, website button or
+  in-person QR. Customers pay by card, Balance or any supported Note type on the
+  same page, without a signup step. Keep Send links for addressed account payments.
+  The [payment integration reference](institution/accept-payments.md) covers setup,
+  exact recovery and trusted custom-order confirmation.
 - **Funded Notes.** Create from the available account, save the original and
   hand it to its addressed recipient. Funding is selected automatically.
 - **Your public identity.** A complete profile at your username, with your
@@ -275,11 +277,17 @@ See the [origin contract](docs/bankeiz-origin-activation.md),
 
 ## Release evidence
 
-**[Version 2.0.0](docs/releases/2.0.0.md)** brings public identity, complete asset
-creation, account-wide investments and a more connected payment and media
-experience to the open architecture. Its [qualification record](docs/releases/2.0.0-qualification.md)
-identifies the verified source scope and publication steps. The release commit
-is prepared for operator push, deployment and the matching `v2.0.0` GitHub release.
+**[Version 3.0.0](docs/releases/3.0.0.md)** brings hosted checkout for links,
+website buttons and in-person QR together with the public conformance workspace,
+independent adapter tests and original evidence credentials. It includes the
+complete profile, composer, investment, payment, media and Ledger foundation.
+The [qualification record](docs/releases/3.0.0-qualification.md) identifies exact
+verification and publication steps. The release commit is prepared for operator
+push and the matching `v3.0.0` publication.
+
+The retained [v2.0.0 source tag](https://github.com/kojibai/reality-grade-banking/tree/v2.0.0)
+identifies `3368876`. Its [full notes](docs/releases/2.0.0.md) and historical
+qualification record remain available.
 
 [Version 1.0.0](https://github.com/kojibai/reality-grade-banking/releases/tag/v1.0.0)
 remains published from October 20, 2026 at `2231301`. Its

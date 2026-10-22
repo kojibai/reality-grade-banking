@@ -4,6 +4,60 @@ Reality-Grade Banking repository releases include the Bankeiz reference
 application. Its product versions are independent of Receiz protocol/package versions.
 Full release records and qualification evidence live in [docs/releases](docs/releases/README.md).
 
+## 3.0.0 — prepared for publication
+
+Version 3 adds hosted payments and independent public conformance to the complete
+account, asset and Note experience. Product metadata identifies 3.0.0; Receiz
+SDK, MCP and AI Skills remain pinned at 129.0.0.
+[Full recap and release notes](docs/releases/3.0.0.md) ·
+[Qualification and publication record](docs/releases/3.0.0-qualification.md).
+
+### Hosted payments
+
+- Dedicated `/pay/username/` checkout for cards, Balance and Reserve, Settlement
+  and Settlement Reserve Notes; the same page serves links, website buttons and
+  in-person QR codes. Optional URL amounts are editable prefills.
+- Device identity restores or opens on landing without signup; optional Identity
+  Record saving preserves portability. Failed restoration never replaces an account.
+- One exact review binds payer, recipient, amount, Note sources and maximum card
+  contribution. Confirmed funding continues the original payment; Back, Resume
+  and original-result recovery preserve uncertain or funded attempts.
+- Historical checkout returns cannot continue another request. Note ownership,
+  interrupted handovers, confirmed credit and ordinary payments retain their rules.
+- Receive distinguishes Send link from Checkout link; profile Pay uses checkout.
+
+### Independent conformance and original credentials
+
+- Public audit map connects 16 receiving requirements and 14 Note continuity
+  laws to specifications, code, tests, remediation and required evidence.
+- Twelve browser verification groups feed the suite and entrance evidence;
+  versioned source binding refuses obsolete cached results.
+- A 33-case language-neutral adapter protocol independently computes expected
+  results, binds requests/responses/builds and supports full offline replay.
+- Fresh engineering records retain individual tests and exact source hashes.
+  Production receiving assessment identifies the operating evidence it requires.
+- Canonical Receiz-sealed PNG credentials carry the complete passing transcript,
+  holder and ownership continuity. The published original is independently verifiable.
+- Institution workspace verifies the public original and control of its matching
+  private Identity Record. Public certificate copies grant no sign-in authority.
+
+### Media and public presentation
+
+- Shared public audio reuses already-carried authorized playback across profile,
+  Market and standalone viewers, preserving paid sealed-Original access.
+- Consistent inline logo headers; neutral “Reality-grade banking” presentation,
+  refined entrance evidence and institutional resource links; original shared footer.
+- Capability, device and qualification statements describe their precise evidence
+  rather than presenting checklist placeholders as failed product assessments.
+
+The complete v2 foundation remains included: profiles, adaptive asset creation,
+same-source publication, Investments, inline confirmed positions, rich Ledger
+trade details, original media, notifications and retained payment recovery.
+Order-bound fulfillment/refunds, native card-present POS, email payments,
+display currencies, Note claim/status QR, legacy payouts and app-wide persistent
+asset playback remain follow-up work. Existing originals and protocol versions
+are not relabeled. Matching tag/release publication is the operator's next step.
+
 ## 2.0.0 — prepared for publication
 
 Version 2 expands public identity, asset creation, investment tracking and

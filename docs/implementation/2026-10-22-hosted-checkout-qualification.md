@@ -4,6 +4,11 @@ Bankeiz's hosted checkout composes the installed Receiz SDK 129.0.0 with the
 existing device identity, Wallet, card and Note adapters. Package version stays
 2.0.0; this document does not publish a release or qualify live settlement.
 
+Release handoff, October 22, 2026: the later
+[3.0.0 qualification record](../releases/3.0.0-qualification.md) identifies the
+release candidate that includes this checkout. The observations below retain
+their original assessment version and scope.
+
 ## Implemented behavior
 
 - `/pay/<username>/` accepts an optional editable USD amount. Invalid requests

@@ -1,12 +1,12 @@
 # Release process
 
-The current Bankeiz product release preparation identifies **2.0.0**, separately
+The current Bankeiz product release preparation identifies **3.0.0**, separately
 from the pinned Receiz SDK/MCP/AI Skills versions. Its
-[full release record](releases/2.0.0.md) describes the product and open
-implementation; the matching [qualification record](releases/2.0.0-qualification.md)
+[full release record](releases/3.0.0.md) describes the product and open
+implementation; the matching [qualification record](releases/3.0.0-qualification.md)
 records evidence and publication steps. The [release index](releases/README.md)
-retains every version and links the concise changelog. Published **1.0.0** remains
-unchanged. Source preparation, deployed capability assessment and GitHub
+retains every version and links the concise changelog. Retained **2.0.0** and
+published **1.0.0** remain unchanged. Source preparation, deployed capability assessment and GitHub
 publication are recorded separately. A tag identifies source; it does not grant
 an unassessed financial or device capability.
 

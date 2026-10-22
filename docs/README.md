@@ -55,6 +55,8 @@ operating contracts, independent receiving tools and release evidence.
 
 ## Product and release evidence
 
+- [Reality-grade banking 3.0.0 full recap](releases/3.0.0.md)
+- [3.0.0 qualification and publication record](releases/3.0.0-qualification.md)
 - [Reality-Grade Banking 2.0.0 full notes](releases/2.0.0.md)
 - [2.0.0 qualification and publication record](releases/2.0.0-qualification.md)
 - [Reality-Grade Banking 1.0.0 full notes](releases/1.0.0.md)

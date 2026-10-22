@@ -3,7 +3,7 @@
 ## Current release and integration gates
 
 Version 1.0.0 is published; the current release preparation is
-[2.0.0](releases/2.0.0.md). The
+[3.0.0](releases/3.0.0.md). The
 [Note continuity standard](note-continuity-standard.md),
 [connected-account contract](connected-notes-v129.md) and
 [account-destination contract](note-account-deposit-v129.md) define the present
@@ -62,4 +62,4 @@ The source verification decisions remain: qualify local hardware and preserve na
 Historical local Bank checks passed 282 tests, TypeScript, production/public-page
 build and routing checks. They are scoped implementation evidence, not actual
 hardware or payment qualification. Current validation is recorded in the
-[2.0.0 qualification record](releases/2.0.0-qualification.md).
+[3.0.0 qualification record](releases/3.0.0-qualification.md).
