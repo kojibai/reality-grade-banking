@@ -108,7 +108,8 @@ it('paints the recorded pinned pass before scheduling current checks without ope
   expect(trigger().getAttribute('aria-expanded')).toBe('true');
   expect(popup.textContent).toContain('12 of 12 passed');
   expect(popup.textContent).toContain('Reality-grade banking');
-  expect(popup.textContent).toContain('Verification passed');
+  expect(popup.textContent).toContain('Conforming');
+  expect(popup.querySelector('a[href="/conformance/#reference"]')?.textContent).toContain('View conformance record');
   expect(popup.textContent).not.toContain('Institution assessment');
   expect(popup.textContent).not.toContain('Verifier '+manifest.moduleSha256.slice(0,10));
   expect(popup.querySelector('a')?.getAttribute('href')).toBe('/conformance/#reference');

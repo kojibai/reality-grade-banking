@@ -127,7 +127,7 @@ export function EntranceConformanceStatus() {
 
   const { phase, total, results } = snapshot;
   const passed = results.filter(result => result.passed).length;
-  const label = phase === 'passed' ? 'Verification passed' : phase === 'checking' ? 'Verification in progress' : phase === 'refused' ? 'Verification not satisfied' : phase === 'error' ? 'Verification unavailable' : 'Verification pending';
+  const label = phase === 'passed' ? 'Conforming' : phase === 'checking' ? 'Verification in progress' : phase === 'refused' ? 'Verification not satisfied' : phase === 'error' ? 'Verification unavailable' : 'Verification pending';
   const dismiss = () => {
     if (popup.current?.contains(document.activeElement)) trigger.current?.focus({ preventScroll: true });
     setOpen(false);
@@ -142,7 +142,7 @@ export function EntranceConformanceStatus() {
       {phase === 'refused' && <p className="entrance-conformance-error">Verification did not satisfy all checks. Inspect the evidence for the recorded findings.</p>}
       {phase === 'error' && <p className="entrance-conformance-error">A current verification result could not be established. Retry verification or inspect the evidence.</p>}
       <dl className="entrance-conformance-scope"><div><dt>Standard</dt><dd>Reality-grade banking</dd></div><div><dt>Scope</dt><dd>Proof and continuity checks</dd></div>{phase === 'passed' && <div><dt>Evidence</dt><dd>{snapshot.origin === 'recorded' ? 'Recorded verification' : snapshot.origin === 'device' ? 'Last result on this device' : 'Verified this session'}</dd></div>}</dl>
-      <div className="entrance-conformance-footer"><a href="/conformance/#reference">View verification evidence<ArrowUpRight size={13} aria-hidden="true" /></a>{!refreshing && <button type="button" onClick={() => void runChecks()}>{phase === 'error' || phase === 'refused' ? 'Retry verification' : 'Verify again'}</button>}</div>
+      <div className="entrance-conformance-footer"><a href="/conformance/#reference">View conformance record<ArrowUpRight size={13} aria-hidden="true" /></a>{!refreshing && <button type="button" onClick={() => void runChecks()}>{phase === 'error' || phase === 'refused' ? 'Retry verification' : 'Verify again'}</button>}</div>
     </div>}
   </div>;
 }
