@@ -8,6 +8,7 @@ import {restorePanelFocus} from '../../core/return-focus';
 import {safeReceizArtworkUrl} from '../../receiz/public-market';
 import {ProofAudioPlayer,useProofAudio} from './ProofAudioPlayer';
 import {ProofStreamingVideo} from './ProofStreamingVideo';
+import {usePassiveMediaPreload} from './usePassiveMediaPreload';
 import {publicDocumentReaderUrl} from '../../receiz/public-document';
 import {publicMediaPlayback,type PublicPlayback} from '../../receiz/public-asset-embed';
 import './proof-media.css';
@@ -17,13 +18,14 @@ const kinds={image:{label:'Image',icon:Image},audio:{label:'Audio',icon:Music2},
 const size=(bytes:number)=>bytes<1024*1024?`${Math.ceil(bytes/1024)} KB`:`${(bytes/1024/1024).toFixed(1)} MB`;
 function MediaCanvas({file,url,expanded,position,onPosition,chapter,setChapter,font,setFont,onExpand,artworkUrl}:{file:MediaFile;url:string;expanded:boolean;position:React.MutableRefObject<Record<string,number>>;onPosition:(key:string,time:number)=>void;chapter:number;setChapter:(n:number)=>void;font:number;setFont:(n:number)=>void;onExpand:()=>void;artworkUrl?:string|null}){
  const [error,setError]=useState(false),mediaKey=file.memberPath??file.filename,paper=useRef<HTMLElement>(null),readingKey='reading:'+file.payloadDigest;
+ const preload=usePassiveMediaPreload();
  useEffect(()=>{setError(false);},[file]);
  useLayoutEffect(()=>{if(paper.current)paper.current.scrollTop=position.current[readingKey]??0;},[readingKey,expanded]);
  const paragraphs=file.kind==='book'?file.chapters?.[chapter]?.text:file.text;
  if(error)return <div className="proof-media-fallback"><FileText size={36} strokeWidth={1}/><p>This device cannot display this file.</p><a href={url} download={file.filename}>Save media to open it<Download size={15}/></a></div>;
  if(file.kind==='image')return <ProofImageCanvas url={url} label={file.filename} expanded={expanded} onExpand={onExpand}/>;
  if(file.kind==='video'){
-  const props={src:url,controls:true,preload:'metadata',onError:()=>setError(true),onTimeUpdate:(event:React.SyntheticEvent<HTMLMediaElement>)=>onPosition(mediaKey,event.currentTarget.currentTime),onLoadedMetadata:(event:React.SyntheticEvent<HTMLMediaElement>)=>{const time=position.current[mediaKey];if(time&&Number.isFinite(event.currentTarget.duration)&&time<event.currentTarget.duration)event.currentTarget.currentTime=time;}};
+  const props={src:url,controls:true,preload,onError:()=>setError(true),onTimeUpdate:(event:React.SyntheticEvent<HTMLMediaElement>)=>onPosition(mediaKey,event.currentTarget.currentTime),onLoadedMetadata:(event:React.SyntheticEvent<HTMLMediaElement>)=>{const time=position.current[mediaKey];if(time&&Number.isFinite(event.currentTarget.duration)&&time<event.currentTarget.duration)event.currentTarget.currentTime=time;}};
   return <div className="proof-video-view"><video {...props} poster={artworkUrl??undefined} playsInline aria-label={file.filename}/></div>;
  }
  if(file.kind==='pdf')return <Suspense fallback={<div className="proof-book-preparing">Opening document…</div>}><ProofPdfReader url={url} title={file.filename}/></Suspense>;

@@ -24,7 +24,7 @@ must improve that presentation without making it wait, disappear or restart.
 - Render the selected artwork, owner portrait and existing controls immediately.
   Do not mount unseen collections or preload unused linked-profile images.
 - Prepare linked profiles after document loading and the initial settled frame.
-- Passive audio metadata must not hold the document's load event open. Keep the
+- Passive media metadata must not hold the document's load event open. Keep the
   same native element and source available to Play immediately; prepare metadata
   after document loading without reloading or replacing that element.
 - Reuse one in-flight read and one media element across inline/full views and
@@ -56,10 +56,10 @@ physical-iPhone or production latency guarantees.
 A follow-up audit found the same coupling in passive public video when the
 player mounts before a slow cover finishes. With a 350ms cover delay and a
 1.2-second video response delay, document load ended at 1.44 seconds, following
-the video response at 1.41 seconds. The remaining path is
-[ProofStreamingVideo.tsx](../src/features/media/ProofStreamingVideo.tsx).
-Its correction must preserve explicit Play/autoplay and the existing native
-controls; the audio commit above does not include that separate correction.
+the video response at 1.41 seconds. Public video and retained original video
+now share the same [passive preparation boundary](../src/features/media/usePassiveMediaPreload.ts)
+as audio. Explicitly requested autoplay retains its immediate preparation;
+native controls, source URLs and the existing element remain intact.
 
 The first-response proof fields and immediate Play/late-metadata behavior are
 covered by [asset-preview.test.ts](../tests/asset-preview.test.ts) and
