@@ -8,6 +8,7 @@ type Context={attribution:WalletFundingAttribution;history?:WalletFundingHistory
 export function enrichWalletFundingContext(records:readonly PublicRecord[],sources:readonly PublicRecord[]):PublicRecord[]{
  const publicOnly=records.every(record=>record.authority==='public-source-projection');
  const byTransfer=new Map<string,Context|null>(),byNote=new Map<string,Context|null>(),own=new Map<PublicRecord,Context>();
+ const sourceCohorts=new Map<string,WalletProofCohort|null>();
  const add=(map:Map<string,Context|null>,key:string|undefined,context:Context)=>{
   if(!key)return;const held=map.get(key);if(held===null)return;
   if(held&&JSON.stringify(held.attribution)!==JSON.stringify(context.attribution)){map.set(key,null);return;}
@@ -15,6 +16,14 @@ export function enrichWalletFundingContext(records:readonly PublicRecord[],sourc
  };
  for(const record of new Set([...sources,...records])){
   if(publicOnly&&record.authority!=='public-source-projection')continue;
+  // A newly attributed debit can spend the same recorded credit as an older
+  // payment. Bind its retained public proof cohort by that exact credit ID and
+  // native units below; the earlier payment is not a new funding authority.
+  for(const cohort of readWalletProofCohorts(record.details?.fundingCohorts)??[]){
+   const before=sourceCohorts.get(cohort.creditSourceId);
+   if(before===null||before===cohort)continue;
+   sourceCohorts.set(cohort.creditSourceId,before&&JSON.stringify(before)!==JSON.stringify(cohort)?null:cohort);
+  }
   const attribution=readWalletFundingAttribution(record.details?.fundingAttribution);
   if(!attribution||!walletAttributionFitsRecord(attribution,record,record.details?.fundingTransferId===record.evidence.transferId))continue;
   const history=readWalletFundingHistory(record.details?.fundingHistory,attribution),cohorts=readWalletProofCohorts(record.details?.fundingCohorts),context={attribution,history,cohorts};
@@ -30,12 +39,16 @@ export function enrichWalletFundingContext(records:readonly PublicRecord[],sourc
   const held=readWalletFundingAttribution(record.details?.fundingAttribution);if(held&&held.walletDebitId!==context.attribution.walletDebitId)return record;
   const linked=linkWalletFundingHistory(context.attribution,transfers,notes),history=linked&&linked.length>=(context.history?.length??0)?linked:context.history;
   const cohorts=new Map<string,WalletProofCohort|null>();
-  const addCohorts=(values:WalletProofCohort[]|undefined)=>{for(const value of values??[]){const before=cohorts.get(value.creditSourceId);if(before===null)continue;cohorts.set(value.creditSourceId,before&&JSON.stringify(before)!==JSON.stringify(value)?null:value);}};
+  const addCohorts=(values:WalletProofCohort[]|undefined)=>{for(const value of values??[]){const before=cohorts.get(value.creditSourceId);if(before===null||before===value)continue;cohorts.set(value.creditSourceId,before&&JSON.stringify(before)!==JSON.stringify(value)?null:value);}};
   addCohorts(context.cohorts);
   for(const entry of history??[]){const parent=entry.parent;addCohorts(parent.transferId?byTransfer.get(parent.transferId)?.cohorts:parent.noteId?byNote.get(parent.noteId)?.cohorts:undefined);}
-  const selected=[...cohorts.values()].filter((value):value is WalletProofCohort=>!!value);
   const fundingSources=[context.attribution,...(history??[]).map(entry=>entry.parent)].flatMap(value=>value.parts.flatMap(part=>part.sources));
-  const boundCohorts=selected.filter(cohort=>fundingSources.some(source=>walletProofCohortForSource([cohort],source)));
-  return {...record,details:{...record.details,fundingAttribution:context.attribution as unknown as NonNullable<PublicRecord['details']>,...(record.evidence.transferId?{fundingTransferId:record.evidence.transferId}:{}),...(history?{fundingHistory:history as unknown as NonNullable<PublicRecord['details']>[]} : {}),...(boundCohorts.length?{fundingCohorts:boundCohorts as unknown as NonNullable<PublicRecord['details']>[]}:{})}};
+  for(const source of fundingSources){const known=sourceCohorts.get(source.sourceId);if(known)addCohorts([known]);}
+  const selected=[...cohorts.values()].filter((value):value is WalletProofCohort=>!!value);
+  const boundCohorts=selected.filter(cohort=>sourceCohorts.get(cohort.creditSourceId)!==null&&fundingSources.some(source=>walletProofCohortForSource([cohort],source)));
+  const details:NonNullable<PublicRecord['details']>={...record.details,fundingAttribution:context.attribution as unknown as NonNullable<PublicRecord['details']>,...(record.evidence.transferId?{fundingTransferId:record.evidence.transferId}:{}),...(history?{fundingHistory:history as unknown as NonNullable<PublicRecord['details']>[]} : {})};
+  if(boundCohorts.length)details.fundingCohorts=boundCohorts as unknown as NonNullable<PublicRecord['details']>[];
+  else delete details.fundingCohorts;
+  return {...record,details};
  });
 }

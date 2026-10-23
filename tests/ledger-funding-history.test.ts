@@ -64,3 +64,23 @@ it('retains directly bound proof cohorts from an identical root even when the pr
  const privateRow={...publicRow,id:'private-root',authority:'account-source-projection' as const,details:{fundingAttribution:attribution as any,fundingTransferId:'transfer'}};
  expect(enrichWalletFundingContext([privateRow],[publicRow])[0].details?.fundingCohorts).toEqual([cohort]);
 });
+it('automatically reuses the exact publicly retained proof cohort for a new debit from the same recorded credit',()=>{
+ const credit=entry('profile-credit','one','credit',2,'100',{source:'profile_rollup_seed'});
+ const prior=entry('prior-debit','one','debit',3,'20',{},'prior-transfer');
+ const next=entry('new-debit','one','debit',4,'30',{},'new-transfer');
+ const index=calculateWalletFundingAttributions([credit,prior,next],'one',true);
+ const cohort={rule:'receiz-profile-rollup-v1-owned-and-received',basis:'reconstructed-membership',creditSourceId:'profile-credit',computedAt:'2026-05-01T00:00:00Z',amountPhiMicro:'100',members:[{objectId:'source-original',title:'Recorded source original',createdAt:'2026-04-01T00:00:00Z',verifyUrl:'https://receiz.com/v/moment/original',basis:'owned'}]};
+ const wire=(id:string,transfer:string,day:number,attribution:unknown,extra={})=>parsePublicNetworkPage('wallet',{ok:true,events:[{id,kind:'chat_transfer',transferId:transfer,createdAt:`2026-05-0${day}T00:00:00Z`,kaiUpulse:String(day*1000000),amountUsdCents:day===3?'20':'30',fundingAttribution:attribution,fundingTransferId:transfer,...extra}]}).records[0];
+ const historical=wire('prior','prior-transfer',3,index.get('prior-debit'),{fundingCohorts:[cohort]});
+ const fresh=wire('new','new-transfer',4,index.get('new-debit'));
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ try{
+  expect(enrichWalletFundingContext([fresh],[historical])[0].details?.fundingCohorts).toEqual([cohort]);
+  expect(enrichWalletFundingContext([fresh],[{...historical,authority:'account-source-projection'}])[0].details).not.toHaveProperty('fundingCohorts');
+  const conflicting={...historical,id:'conflict',details:{...historical.details,fundingCohorts:[{...cohort,members:[{...cohort.members[0],objectId:'different-original'}]}]}};
+  expect(enrichWalletFundingContext([fresh],[historical,conflicting])[0].details).not.toHaveProperty('fundingCohorts');
+  const enriched=enrichWalletFundingContext([fresh],[historical])[0];
+  expect(enrichWalletFundingContext([enriched],[historical,conflicting])[0].details).not.toHaveProperty('fundingCohorts');
+  expect(fetch).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();}
+});
