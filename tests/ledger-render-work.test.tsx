@@ -6,11 +6,13 @@ import {Ledger} from '../src/features/ledger/Ledger';
 import {LedgerFieldsView,LedgerInspector} from '../src/features/ledger/LedgerInspector';
 import {ledgerValueForRecord} from '../src/receiz/ledger-value';
 import {parsePublicNetworkPage} from '../src/receiz/public-network';
-const held=vi.hoisted(()=>({network:{} as Record<string,unknown>,receipt:vi.fn(),title:vi.fn()}));
+const held=vi.hoisted(()=>({network:{} as Record<string,unknown>,receipt:vi.fn(),title:vi.fn(),group:vi.fn(),enrich:vi.fn(),relations:vi.fn(),category:vi.fn()}));
 vi.mock('../src/receiz/usePublicNetwork',()=>({usePublicNetwork:()=>held.network}));
 vi.mock('../src/features/ledger/useLedgerValueSource',()=>({useLedgerValueSource:()=>null}));
-vi.mock('../src/receiz/ledger-payment-records',async original=>{const real=await original<typeof import('../src/receiz/ledger-payment-records')>();return {...real,ledgerRecordTitle:(...args:Parameters<typeof real.ledgerRecordTitle>)=>{held.title();return real.ledgerRecordTitle(...args);}};});
-vi.mock('../src/receiz/ledger-receipts',async original=>{const real=await original<typeof import('../src/receiz/ledger-receipts')>();return {...real,receiptLink:(...args:Parameters<typeof real.receiptLink>)=>{held.receipt();return real.receiptLink(...args);}};});
+vi.mock('../src/receiz/ledger-payment-records',async original=>{const real=await original<typeof import('../src/receiz/ledger-payment-records')>();return {...real,groupLedgerPaymentRecords:(...args:Parameters<typeof real.groupLedgerPaymentRecords>)=>{held.group();return real.groupLedgerPaymentRecords(...args);},ledgerRecordTitle:(...args:Parameters<typeof real.ledgerRecordTitle>)=>{held.title();return real.ledgerRecordTitle(...args);}};});
+vi.mock('../src/receiz/ledger-receipts',async original=>{const real=await original<typeof import('../src/receiz/ledger-receipts')>();return {...real,activityCategory:(...args:Parameters<typeof real.activityCategory>)=>{held.category();return real.activityCategory(...args);},receiptLink:(...args:Parameters<typeof real.receiptLink>)=>{held.receipt();return real.receiptLink(...args);}};});
+vi.mock('../src/receiz/ledger-wallet-enrichment',async original=>{const real=await original<typeof import('../src/receiz/ledger-wallet-enrichment')>();return {...real,enrichWalletFundingContext:(...args:Parameters<typeof real.enrichWalletFundingContext>)=>{held.enrich();return real.enrichWalletFundingContext(...args);}};});
+vi.mock('../src/receiz/ledger-economy',async original=>{const real=await original<typeof import('../src/receiz/ledger-economy')>();return {...real,indexLedgerRelations:(...args:Parameters<typeof real.indexLedgerRelations>)=>{held.relations();return real.indexLedgerRelations(...args);}};});
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 let root:ReturnType<typeof createRoot>;
 afterEach(()=>{if(root)act(()=>root.unmount());document.body.replaceChildren();vi.unstubAllGlobals();});
@@ -24,6 +26,33 @@ it('expands a row without regenerating the other rows’ rich receipts or making
  expect(held.receipt.mock.calls.length).toBeLessThanOrEqual(1);
  expect(held.title.mock.calls.length).toBeLessThanOrEqual(2);
  expect([...host.querySelectorAll('.ledger-receipt-actions a')].map(a=>a.getAttribute('href'))).toEqual(links);expect(fetch).not.toHaveBeenCalled();
+});
+it('keeps prepared payment groups and funding relations when returning to My history',()=>{
+ const shared={transferId:'payment-original',amountUsdCents:'2700'};
+ const records=[...parsePublicNetworkPage('actions',{ok:true,actions:[{...shared,id:'execution',actionKind:'wallet.transfer.connect'}]}).records,
+ ...parsePublicNetworkPage('wallet',{ok:true,events:[{...shared,id:'movement',kind:'chat_transfer'}]}).records];
+ const personalHistory={available:true,completeAtSealedHead:true,records:records.map(record=>({...record,authority:'account-source-projection' as const,accountFlow:'out' as const}))};
+ held.network={records,sources:{},bootstrap:false,refresh:()=>{},loadMore:()=>{}};
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);const host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ act(()=>root.render(<Ledger active={false} personalHistory={personalHistory}/>));
+ const tab=(text:string)=>[...host.querySelectorAll<HTMLButtonElement>('.ledger-tabs button')].find(button=>button.textContent===text)!;
+ act(()=>tab('My history').click());expect(host.querySelectorAll('.asset-row')).toHaveLength(1);
+ expect(host.querySelector('.row-copy strong')?.textContent).toBe('Money Sent');
+ const link=host.querySelector('.ledger-receipt-actions a')?.getAttribute('href');
+ held.group.mockClear();held.enrich.mockClear();held.relations.mockClear();
+ act(()=>tab('Public').click());act(()=>tab('My history').click());
+ expect(held.group).not.toHaveBeenCalled();expect(held.enrich).not.toHaveBeenCalled();expect(held.relations).not.toHaveBeenCalled();
+ expect(host.querySelectorAll('.asset-row')).toHaveLength(1);expect(host.querySelector('.ledger-receipt-actions a')?.getAttribute('href')).toBe(link);expect(fetch).not.toHaveBeenCalled();
+});
+it('uses prepared activity categories instead of scanning all records on each filter click',()=>{
+ const records=parsePublicNetworkPage('actions',{ok:true,actions:Array.from({length:500},(_,i)=>({id:String(i),actionKind:i%2?'record':'chat_transfer',summary:`Recorded action ${i}`,pulse:i+1,amountUsdCents:'100'}))}).records;
+ held.network={records,sources:{},bootstrap:false,refresh:()=>{},loadMore:()=>{}};
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);act(()=>root.render(<Ledger active={false}/>));
+ held.category.mockClear();held.group.mockClear();
+ const filter=(text:string)=>[...host.querySelectorAll<HTMLButtonElement>('.ledger-activity-filters button')].find(button=>button.textContent===text)!;
+ act(()=>filter('Transfers').click());expect(host.querySelectorAll('.asset-row')).toHaveLength(50);
+ act(()=>filter('Actions').click());expect(host.querySelectorAll('.asset-row')).toHaveLength(50);
+ expect(held.group).not.toHaveBeenCalled();expect(held.category).not.toHaveBeenCalled();
 });
 it('keeps every nested field available without rendering closed branches',()=>{
  const host=document.createElement('div');document.body.append(host);root=createRoot(host);

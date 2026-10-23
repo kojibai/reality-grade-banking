@@ -86,8 +86,22 @@ async function runScheduledChecks() {
   });
 }
 async function click(button: HTMLButtonElement) { await act(async () => button.click()); }
+async function verify(host:HTMLElement){
+ if(!host.querySelector('[role=dialog]'))await click(host.querySelector<HTMLButtonElement>('button[aria-controls]')!);
+ await click([...host.querySelectorAll('button')].find(button=>['Verify again','Retry verification'].includes(button.textContent??''))!);
+}
 
-it('paints the recorded pinned pass before scheduling current checks without opening the panel', async () => {
+it.each([false,true])('runs no checks on cold entrance mount or opening its recorded result (restoring: %s)',async opening=>{
+ const host=document.createElement('div'),root=createRoot(host);document.body.append(host);hosts.push(host);roots.push(root);
+ act(()=>root.render(<StrictMode><Entrance opening={opening} busy={false} error={null} onCreate={vi.fn()} onImport={vi.fn()}/></StrictMode>));
+ await runScheduledChecks();expect(reference.run).not.toHaveBeenCalled();
+ const trigger=host.querySelector<HTMLButtonElement>('button[aria-controls]')!;
+ await click(trigger);expect(reference.run).not.toHaveBeenCalled();expect(host.textContent).toContain('12 of 12 passed');
+ await click([...host.querySelectorAll('button')].find(button=>button.textContent==='Verify again')!);
+ expect(reference.run).toHaveBeenCalledOnce();
+});
+
+it('paints the recorded pinned pass without scheduling checks or opening the panel', async () => {
   const { host, trigger } = renderEntrance();
   expect(reference.run).not.toHaveBeenCalled();
   expect(trigger()).not.toBeNull();
@@ -98,7 +112,7 @@ it('paints the recorded pinned pass before scheduling current checks without ope
 
   await runScheduledChecks();
 
-  expect(reference.run).toHaveBeenCalledTimes(1);
+  expect(reference.run).not.toHaveBeenCalled();
   expect(trigger().dataset.state).toBe('passed');
   expect(trigger().getAttribute('aria-expanded')).toBe('false');
   expect(host.querySelector('[role=dialog]')).toBeNull();
@@ -123,9 +137,8 @@ it('keeps the last completed result visible through background progress', async 
     return new Promise(resolve => { finish = resolve; });
   });
   const { host, trigger } = renderEntrance();
-  await runScheduledChecks();
+  await verify(host);
   expect(trigger().dataset.state).toBe('passed');
-  await click(trigger());
   expect(host.textContent).toContain('Verification in progress');
   act(() => onResult(completedCheck('release')));
   expect(host.textContent).toContain('1 of 12 complete');
@@ -157,16 +170,14 @@ it.each([
 ])('refuses green for %s', async (_reason, makeReport) => {
   reference.run.mockResolvedValue(makeReport());
   const { host, trigger } = renderEntrance();
-  await runScheduledChecks();
+  await verify(host);
   expect(trigger().dataset.state).toBe('refused');
-  await click(trigger());
   expect(host.textContent).toContain('Verification not satisfied');
 });
 
 it('replaces the last pass on verifier errors and retains the error across fresh entrance mounts', async () => {
   const { host, trigger } = renderEntrance();
-  await runScheduledChecks();
-  await click(trigger());
+  await verify(host);
   let reject!: (error: Error) => void;
   reference.run.mockImplementationOnce(() => new Promise((_, no) => { reject = no; }));
   await click([...host.querySelectorAll('button')].find(button => button.textContent === 'Verify again')!);
@@ -201,9 +212,10 @@ it('closes on Escape and close-button activation, restoring focus only from insi
   expect(document.activeElement).toBe(outside);
 });
 
-it('schedules one automatic check in StrictMode and cancels work when unmounted before idle', async () => {
+it('runs checks only on explicit request in StrictMode and cancels no hidden startup work', async () => {
   const first = renderEntrance(true);
-  await runScheduledChecks();
+  await runScheduledChecks();expect(reference.run).not.toHaveBeenCalled();
+  await verify(first.host);
   expect(reference.run).toHaveBeenCalledTimes(1);
   expect(first.trigger().dataset.state).toBe('passed');
   const second = renderEntrance(true);
@@ -216,19 +228,20 @@ it('schedules one automatic check in StrictMode and cancels work when unmounted 
 it('paints a saved failure on the next visit and changes it only when a fresh run completes', async () => {
   reference.run.mockResolvedValueOnce(report({ checks: checkIds.map(id => ({ ...completedCheck(id), passed: id !== 'integrity', ...(id === 'integrity' ? { error: 'VERIFIER_BUILD_DIGEST_MISMATCH' } : {}) })), localChecksPassed: false }));
   const first = renderEntrance();
-  await runScheduledChecks();
+  await verify(first.host);
   expect(first.trigger().dataset.state).toBe('refused');
   act(() => first.root.unmount()); roots = roots.filter(root => root !== first.root);
   const next = renderEntrance();
   expect(next.trigger().dataset.state).toBe('refused');
   expect(next.host.querySelector('[role=dialog]')).toBeNull();
-  await runScheduledChecks();
+  await runScheduledChecks();expect(next.trigger().dataset.state).toBe('refused');
+  await verify(next.host);
   expect(next.trigger().dataset.state).toBe('passed');
 });
 
 it('discards a saved result bound to another verifier build', async () => {
   reference.run.mockRejectedValueOnce(Error('VERIFIER_RESOURCE_UNAVAILABLE'));
-  renderEntrance(); await runScheduledChecks();
+  const first=renderEntrance(); await verify(first.host);
   const key = localStorage.key(0)!;
   expect(key).toBeTruthy();
   localStorage.setItem(key, localStorage.getItem(key)!.replace(manifest.moduleSha256, '0'.repeat(64)));
@@ -243,7 +256,7 @@ it('can paint the recorded result when device storage is unavailable', () => {
 });
 
 it('rejects an obsolete seven-check cache even when its cached build envelope matches',async()=>{
- const first=renderEntrance();await runScheduledChecks();expect(first.trigger().dataset.state).toBe('passed');
+ const first=renderEntrance();await verify(first.host);expect(first.trigger().dataset.state).toBe('passed');
  const key=localStorage.key(0)!,saved=JSON.parse(localStorage.getItem(key)!);
  saved.report.checks=saved.report.checks.filter((check:{id:string})=>!['money','ownership','atomic','recovery','assets'].includes(check.id));
  localStorage.setItem(key,JSON.stringify(saved));

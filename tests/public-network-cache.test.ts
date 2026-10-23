@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { loadPublicNetworkCache, loadPublicNetworkSeed, parsePublicNetworkCache, savePublicNetworkCache, savePublicLedgerDisplayCache } from '../src/receiz/public-network-cache';
 import { parsePublicNetworkPage } from '../src/receiz/public-network';
+import {groupLedgerPaymentRecords} from '../src/receiz/ledger-payment-records';
 import {readFileSync} from 'node:fs';
 import {gunzipSync} from 'node:zlib';
 // Admission is mocked only at the existing custody boundary; these fixtures
@@ -52,6 +53,33 @@ function memoryIndexedDb() {
     return request;
   });vi.stubGlobal('indexedDB',{open});return open;
 }
+it('reopens an already matched payment as one row before any live refresh',async()=>{
+ memoryIndexedDb();
+ const transferId='7493d3ac-882e-4bc7-92e4-73d914580a30',publicTransferId='tx:0123456789abcdef01234567';
+ const records=[...parsePublicNetworkPage('actions',{ok:true,actions:[{id:'execution',actionKind:'wallet.transfer.connect',transferId,publicTransferId,amountUsdCents:'2700'}]}).records,
+  ...parsePublicNetworkPage('wallet',{ok:true,events:[{id:'movement',kind:'chat_transfer',transferId:publicTransferId,amountUsdCents:'2700'}]}).records];
+ expect(groupLedgerPaymentRecords(records)).toHaveLength(1);
+ await savePublicNetworkCache({records,capturedAt:null,coverage:[]});
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ const reopened=(await loadPublicNetworkCache())!.records,groups=groupLedgerPaymentRecords(reopened);
+ expect(groups).toHaveLength(1);expect(groups[0].record.sourceId).toBe('movement');
+ expect(groups[0].executionRecords[0].evidence).toMatchObject({transferId,publicTransferId});
+ expect(reopened).toHaveLength(2);expect(fetch).not.toHaveBeenCalled();
+ // Another save/reopen must keep the relationship too.
+ await savePublicNetworkCache({records:reopened,capturedAt:null,coverage:[]});
+ expect(groupLedgerPaymentRecords((await loadPublicNetworkCache())!.records)).toHaveLength(1);
+});
+it('retains only a valid public transfer reference on its matching action family',()=>{
+ const action=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'execution',actionKind:'wallet.transfer.connect',transferId:'native'}]}).records[0];
+ const read=(record:typeof action,alias:unknown)=>parsePublicNetworkCache({schema:'receiz.bank.public-ledger-cache.v1',authority:'public-source-projection',records:[{...record,evidence:{...record.evidence,publicTransferId:alias,accessToken:'never-retain'}}],coverage:[]}).records[0];
+ expect(read(action,'tx:0123456789abcdef01234567').evidence.publicTransferId).toBe('tx:0123456789abcdef01234567');
+ expect(read(action,'tx:invalid').evidence.publicTransferId).toBeUndefined();
+ expect(read(action,['tx:0123456789abcdef01234567']).evidence.publicTransferId).toBeUndefined();
+ expect(read(action,{toString:null}).evidence.publicTransferId).toBeUndefined();
+ expect(read({...action,kind:'other.action'},'tx:0123456789abcdef01234567').evidence.publicTransferId).toBeUndefined();
+ expect(read({...action,source:'wallet',id:'wallet:execution'},'tx:0123456789abcdef01234567').evidence.publicTransferId).toBeUndefined();
+ expect(read(action,'tx:0123456789abcdef01234567').evidence).not.toHaveProperty('accessToken');
+});
 it('does not resurrect withdrawn graph or showcase entries through cache saves and reloads', async () => {
   memoryIndexedDb();
   const raw = parsePublicNetworkPage('graph', { ok: true, ledgerRows: [{ id: 'removed' }, { id: 'kept' }] }).records;

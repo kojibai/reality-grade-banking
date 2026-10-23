@@ -67,16 +67,16 @@ export function EntranceConformanceStatus() {
   const [open, setOpen] = useState(false), [snapshot, setSnapshot] = useState(readLastResult);
   const [refreshing, setRefreshing] = useState(false), [progress, setProgress] = useState<{ total: number | null; activeName: string | null; results: CheckResult[] }>({ total: null, activeName: null, results: [] });
   const wrapper = useRef<HTMLDivElement>(null), trigger = useRef<HTMLButtonElement>(null), popup = useRef<HTMLDivElement>(null), close = useRef<HTMLButtonElement>(null);
-  const alive = useRef(false), started = useRef(false), running = useRef(false);
+  const alive = useRef(false), running = useRef(false);
   const id = useId(), popupId = `${id}-conformance`, titleId = `${id}-conformance-title`;
 
   const runChecks = useCallback(async () => {
     if (running.current || !alive.current) return;
-    started.current = true; running.current = true;
+    running.current = true;
     setRefreshing(true); setProgress({ total: null, activeName: null, results: [] });
     setSnapshot(current => current.phase === 'unverified' ? { ...current, phase: 'checking' } : current);
     try {
-      // The SDK and verifier enter the graph only after idle scheduling or an explicit click.
+      // Conformance work belongs to an explicit verification request only.
       const reference = await import('../../conformance/reference');
       if (!alive.current) return;
       setProgress(current => ({ ...current, total: reference.institutionChecks.length }));
@@ -97,19 +97,8 @@ export function EntranceConformanceStatus() {
 
   useEffect(() => {
     alive.current = true;
-    let idle: number | undefined, timer: ReturnType<typeof setTimeout> | undefined;
-    // Leave the entrance's first paint free of verifier loading and work.
-    const frame = requestAnimationFrame(() => {
-      const begin = () => { if (alive.current && !started.current) void runChecks(); };
-      if (typeof requestIdleCallback === 'function') idle = requestIdleCallback(begin, { timeout: 1500 });
-      else timer = setTimeout(begin, 100);
-    });
-    return () => {
-      alive.current = false; cancelAnimationFrame(frame);
-      if (idle !== undefined) cancelIdleCallback(idle);
-      if (timer !== undefined) clearTimeout(timer);
-    };
-  }, [runChecks]);
+    return () => { alive.current = false; };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -134,7 +123,7 @@ export function EntranceConformanceStatus() {
   };
 
   return <div className="entrance-conformance" ref={wrapper}>
-    <button ref={trigger} type="button" className="entrance-conformance-trigger" data-state={phase} aria-label={`Conformance status: ${label.toLowerCase()}`} aria-haspopup="dialog" aria-expanded={open} aria-controls={popupId} title={label} onClick={() => { setOpen(current => !current); if (!started.current) void runChecks(); }}><ShieldCheck size={19} aria-hidden="true" /></button>
+    <button ref={trigger} type="button" className="entrance-conformance-trigger" data-state={phase} aria-label={`Conformance status: ${label.toLowerCase()}`} aria-haspopup="dialog" aria-expanded={open} aria-controls={popupId} title={label} onClick={() => setOpen(current => !current)}><ShieldCheck size={19} aria-hidden="true" /></button>
     {open && <div ref={popup} id={popupId} className="entrance-conformance-popover" role="dialog" aria-labelledby={titleId}>
       <div className="entrance-conformance-heading"><h2 id={titleId}>Conformance record</h2><button ref={close} type="button" aria-label="Close conformance status" onClick={dismiss}><X size={15} aria-hidden="true" /></button></div>
       <div className="entrance-conformance-status" data-state={phase}><span className="entrance-conformance-emblem"><ShieldCheck size={21} strokeWidth={1.6} aria-hidden="true" /></span><p role="status" aria-live="polite" aria-atomic="true"><strong>{label}</strong><span>{total === null ? 'Verification pending' : `${passed} of ${total} passed`}</span></p></div>

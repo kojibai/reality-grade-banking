@@ -18,6 +18,7 @@ import {enrichWalletFundingContext} from '../../receiz/ledger-wallet-enrichment'
 import type { usePrivateHistory } from '../../receiz/usePrivateHistory';
 
 const sourceLabels = { actions: 'Recorded actions', wallet: 'Wallet movements', graph: 'Proof Graph', proofs: 'Showcase proofs' };
+const noRecords:PublicRecord[]=[];
 const LedgerRow=memo(function LedgerRow({ record, expanded, onExpand, personal = false, valueSource, relations, executionRecords = [] }: { personal?: boolean; executionRecords?:PublicRecord[]; record: PublicRecord; expanded: boolean; onExpand: (id:string) => void; valueSource: LedgerValueIndex | null; relations:ReturnType<typeof indexLedgerRelations> }) {
   const trade=ledgerAssetTrade(record),tradeSummary=ledgerTradeSummary(record),title=ledgerRecordTitle(record),flow=personal&&record.authority==='account-source-projection'?record.accountFlow:undefined;
   const value=useMemo(()=>ledgerValueForRecord(record,valueSource),[record,valueSource]),valuation=useMemo(()=>ledgerValuationContext(record,valueSource,value),[record,valueSource,value]),link=useMemo(()=>receiptLink(record,value,valuation),[record,value,valuation]),[copied,setCopied]=useState(false),[copyError,setCopyError]=useState('');
@@ -35,17 +36,27 @@ export function Ledger({ active = true, personalHistory = null, privateHistory }
   const [historyFilter,setHistoryFilter]=useState<'all'|'out'|'in'>('all');
   const valueSource = useLedgerValueSource(active);
   const [tab, setTab] = useState<'mine' | 'public'>('public'), [expanded, setExpanded] = useState<string | null>(null), [shown, setShown] = useState(50);
+  const [prepareMine,setPrepareMine]=useState(false);
   const toggleExpanded=useCallback((id:string)=>setExpanded(current=>current===id?null:id),[]);
   const { records:sourceRecords, sources, bootstrap, capturedAt, refresh, loadMore } = usePublicNetwork(active && tab === 'public');
   const records=useMemo(()=>enrichWalletFundingContext(sourceRecords,sourceRecords),[sourceRecords]);
   const sentinel = useRef<HTMLDivElement | null>(null), privateSentinel = useRef<HTMLDivElement | null>(null);
-  const mine = useMemo(()=>tab==='mine'?enrichWalletFundingContext(mergePublicRecords(privateHistory?.cache?.records ?? [], personalHistory?.records ?? []),records):[],[tab,privateHistory?.cache?.records,personalHistory?.records,records]);
-  const relations=useMemo(()=>indexLedgerRelations(tab==='mine'?mine:records),[tab,mine,records]);
+  // Prepare private history on its first opening, then retain it across tabs.
+  // A tab switch changes the view, not the already held source relationships.
+  const mine = useMemo(()=>prepareMine?enrichWalletFundingContext(mergePublicRecords(privateHistory?.cache?.records ?? [], personalHistory?.records ?? []),records):noRecords,[prepareMine,privateHistory?.cache?.records,personalHistory?.records,records]);
+  const publicRelations=useMemo(()=>indexLedgerRelations(records),[records]);
+  const mineRelations=useMemo(()=>indexLedgerRelations(mine),[mine]);
+  const relations=tab==='mine'?mineRelations:publicRelations;
   const mineGroups=useMemo(()=>groupLedgerPaymentRecords(mine),[mine]);
   const visibleMine=useMemo(()=>historyFilter==='all'?mineGroups:mineGroups.filter(group=>group.record.accountFlow===historyFilter),[mineGroups,historyFilter]);
   const publicGroups=useMemo(()=>groupLedgerPaymentRecords(records),[records]);
+  const publicCategories=useMemo(()=>{
+    const categories=Object.fromEntries(ACTIVITY_FILTERS.map(category=>[category,category==='all'?publicGroups:[]])) as Record<ActivityCategory,typeof publicGroups>;
+    for(const group of publicGroups)categories[activityCategory(group.record)].push(group);
+    return categories;
+  },[publicGroups]);
   useEffect(() => { if (!active || tab !== 'mine' || !privateSentinel.current || typeof IntersectionObserver === 'undefined') return; let alive = true; const observer = new IntersectionObserver(entries => { if (!alive || !entries.some(entry => entry.isIntersecting)) return; if (shown < visibleMine.length) setShown(count => Math.min(visibleMine.length, count + 50)); else if (!privateHistory?.busy && privateHistory?.canLoadMore) void privateHistory.loadMore(); }, { rootMargin: '600px 0px' }); observer.observe(privateSentinel.current); return () => { alive = false; observer.disconnect(); }; }, [active, tab, shown, visibleMine.length, privateHistory?.busy, privateHistory?.canLoadMore, privateHistory?.loadMore]);
-  const filtered=filter==='all'?publicGroups:publicGroups.filter(group=>activityCategory(group.record)===filter);
+  const filtered=publicCategories[filter];
   const sourceStates = Object.values(sources);
   const busy = sourceStates.some(source => source.busy), live = sourceStates.length === PUBLIC_SOURCES.length && sourceStates.every(source => source.status === 'live');
   const errors = PUBLIC_SOURCES.filter(source => sources[source]?.error);
@@ -57,7 +68,7 @@ export function Ledger({ active = true, personalHistory = null, privateHistory }
     }, { rootMargin: '600px 0px' });
     observer.observe(sentinel.current); return () => { alive = false; observer.disconnect(); };
   }, [active, tab, shown, filtered.length, busy, bootstrap, loadMore]);
-  return <section data-history-error={privateHistory?.failureCode ?? undefined}><h1>Ledger</h1><p className="page-subtitle">Every movement keeps its story.</p><div className="segmented ledger-tabs"><button className={tab === 'mine' ? 'active' : ''} onClick={() => { setTab('mine'); setExpanded(null); }}>My history</button><button className={tab === 'public' ? 'active' : ''} onClick={() => { setTab('public'); setExpanded(null); }}>Public</button></div>
+  return <section data-history-error={privateHistory?.failureCode ?? undefined}><h1>Ledger</h1><p className="page-subtitle">Every movement keeps its story.</p><div className="segmented ledger-tabs"><button className={tab === 'mine' ? 'active' : ''} onClick={() => { setPrepareMine(true); setTab('mine'); setExpanded(null); }}>My history</button><button className={tab === 'public' ? 'active' : ''} onClick={() => { setTab('public'); setExpanded(null); }}>Public</button></div>
     {tab === 'public' ? <><div className="ledger-public-header"><span><ShieldCheck size={16} />{live ? 'Public activity' : bootstrap ? 'Opening public activity…' : 'Public activity · updating sources'}</span><div className="ledger-public-tools"><button onClick={() => void refresh()} disabled={busy || bootstrap}><RefreshCw size={14} />{busy ? 'Updating…' : 'Refresh'}</button></div></div>
       <p className="body-copy small-copy">{records.length.toLocaleString()} source entries{capturedAt && !live ? ` · retained capture ${new Date(capturedAt).toLocaleDateString()}` : ''}</p>
       {errors.length > 0 && <p className="body-copy small-copy" role="status">Some public sources are unavailable: {errors.map(source => sourceLabels[source]).join(', ')}. Retained activity stays visible.</p>}

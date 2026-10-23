@@ -16,6 +16,10 @@ export function parsePublicNetworkCache(input: unknown): PublicNetworkCache {
     const actor = typeof row.actor === 'string' && /^[1-9A-HJ-NP-Za-km-z]{26,36}$/.test(row.actor) ? row.actor : null;
     const evidence: Record<string, string> = {};
     for (const key of ['entryHash', 'prevHash', 'transferId', 'objectId', 'proofHead', 'bundleHash', 'capsuleHash', 'claimHash', 'artifactDigest']) { const item = row.evidence?.[key]; if (typeof item === 'string' && item.length <= 512) evidence[key] = item; }
+    // Keep the already supplied cross-feed reference on reopen. Dropping it
+    // splits one payment into two display rows until the next live read.
+    const publicTransferId=row.evidence?.publicTransferId;
+    if(row.source==='actions'&&row.kind==='wallet.transfer.connect'&&typeof publicTransferId==='string'&&/^tx:[a-f0-9]{24}$/.test(publicTransferId))evidence.publicTransferId=publicTransferId;
     const {detailsRef,...record}=row;
     if(detailsRef!==undefined&&(!Number.isInteger(detailsRef)||Number(detailsRef)<0||!contexts?.[Number(detailsRef)]))throw Error('Public cache contains an invalid context reference.');
     return { ...record, actor, time: row.time && Number.isFinite(Date.parse(row.time)) ? row.time : null,kaiUpulse:row.kaiUpulse??null,pulse:row.pulse??null,amountUsdCents:row.amountUsdCents??null,evidence, sourceUrl: safeLedgerSourceUrl(row.sourceUrl),details:readLedgerDetails({...contexts?.[Number(detailsRef)],...row.details}),valueOperands:readLedgerValueOperands(row.valueOperands) };
