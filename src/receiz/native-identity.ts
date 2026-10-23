@@ -221,8 +221,9 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.');
       transportBinding = nextBinding; transportKeyFile = nextKeyFile; transportPhrase = protectedTransport.phrase; transportBytes = protectedTransport.bytes;
       // This derived encrypted carrier is optional reuse beneath exact original
-      // custody. Saving it may not replace a changed identity or block local entry.
-      if (!suppliedTransport) await saveProtectedIdentityTransport(binding, protectedTransport).catch(() => {});
+      // custody. Its guarded save runs alongside access, without holding login
+      // open or replacing a changed identity, wallet head or pending operation.
+      if (!suppliedTransport) void saveProtectedIdentityTransport(binding, protectedTransport).catch(() => {});
       transportReady = true;
     })();
     transportOpening = attempt;

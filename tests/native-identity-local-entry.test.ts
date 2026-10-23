@@ -37,6 +37,25 @@ it('still protects, seals and admits the same identity before any account transp
  try{const wallets=await Promise.all([identity.readWallet(),identity.readWallet()]);expect(wallets[0].totalUsdCents).toBe('300');expect(p.enroll).toHaveBeenCalledTimes(1);expect(p.continueId).toHaveBeenCalledTimes(1);expect(p.continueId.mock.calls[0][0].keyFile.crypto.privateKeyPkcs8B64u).toBeNull();expect(p.grant.mock.calls[0][0].artifact).toEqual(new Uint8Array([2]));expect(p.persist).toHaveBeenCalledTimes(1);expect(identity.backup().bytes).toEqual(new Uint8Array([1]));}
  finally{identity.dispose();}
 });
+it('opens the same verified account while optional protected-carrier retention is still pending',async()=>{
+ let finish!:()=>void;const retaining=new Promise<void>(resolve=>{finish=resolve;});
+ p.persist.mockReturnValue(retaining);
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  const reading=identity.readWallet();void reading.catch(()=>{});
+  await vi.waitFor(()=>expect(p.grant).toHaveBeenCalledTimes(1));
+  expect((await reading).totalUsdCents).toBe('300');
+  expect(p.persist).toHaveBeenCalledTimes(1);expect(p.enroll).toHaveBeenCalledTimes(1);expect(p.seal).toHaveBeenCalledTimes(1);
+  expect(p.grant.mock.calls[0][0].artifact).toEqual(new Uint8Array([2]));
+  expect(identity.backup().bytes).toEqual(new Uint8Array([1]));
+ }finally{finish();await retaining;identity.dispose();}
+});
+it('keeps verified account access when optional carrier retention fails, without another enrollment or exchange',async()=>{
+ p.persist.mockRejectedValue(Error('OPTIONAL_DEVICE_RETENTION_FAILED'));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{expect((await identity.readWallet()).totalUsdCents).toBe('300');expect((await identity.readWallet()).totalUsdCents).toBe('300');expect(p.enroll).toHaveBeenCalledTimes(1);expect(p.seal).toHaveBeenCalledTimes(1);expect(p.grant).toHaveBeenCalledTimes(1);expect(p.persist).toHaveBeenCalledTimes(1);}
+ finally{identity.dispose();}
+});
 it('refuses a substituted protected identity before continuation or grant exchange',async()=>{
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);p.foreign=true;
  try{await expect(identity.readWallet()).rejects.toThrow('same identity');expect(p.continueId).not.toHaveBeenCalled();expect(p.grant).not.toHaveBeenCalled();expect(p.persist).not.toHaveBeenCalled();}
