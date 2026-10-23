@@ -61,6 +61,20 @@ it('retains a safely closed refusal so a failed trade does not block the next re
  expect((await createMarketTrade(f.options).status())?.status).toBe('not-sent');
  await expect(api.prepare({marketItemId:'asset:two',side:'buy',amountUsdCents:'1000'})).resolves.toBeDefined();
 });
+it('retains the specific bounded refusal with its closed original, including after reopening, without another request',async()=>{
+ const f=fixture();f.submitTrade.mockImplementation(async body=>{throw Object.assign(Error('private service context'),{status:409,payload:{error:'market_quote_exposure_cap',secret:'never retain',outcome:{ok:true,authority:'market-observation',actorUserId:uid,found:false,recorded:false,closed:true,clientNonce:body.clientNonce,reason:'rejected'}}});});
+ const api=createMarketTrade(f.options),review=await api.prepare({marketItemId:'asset:one',side:'buy',amountUsdCents:'1000'});f.request.mockClear();
+ const result=await api.execute(review,review.digest);
+ expect(result).toMatchObject({status:'not-sent',reason:'market_trade_rejected',failure:{code:'market_quote_exposure_cap',status:409}});
+ expect(await createMarketTrade(f.options).status()).toEqual(result);expect(JSON.stringify(f.state)).not.toContain('private service context');expect(JSON.stringify(f.state)).not.toContain('never retain');
+ expect(f.request).not.toHaveBeenCalled();expect(f.submitTrade).toHaveBeenCalledOnce();
+});
+it('keeps the submit reason when the existing recovery read supplies the exact rejected closure',async()=>{
+ const f=fixture();f.submitTrade.mockImplementation(async body=>{f.record={ok:true,authority:'market-observation',actorUserId:uid,found:false,recorded:false,closed:true,clientNonce:body.clientNonce,reason:'rejected'};throw Object.assign(Error('private context'),{status:409,payload:{error:'market_quote_trade_limit'}});});
+ const api=createMarketTrade(f.options),review=await api.prepare({marketItemId:'asset:one',side:'buy',amountUsdCents:'1000'});f.request.mockClear();
+ expect(await api.execute(review,review.digest)).toMatchObject({status:'not-sent',failure:{code:'market_quote_trade_limit',status:409}});
+ expect(f.request).toHaveBeenCalledOnce();expect(f.submitTrade).toHaveBeenCalledOnce();expect((await createMarketTrade(f.options).status())).toHaveProperty('failure.code','market_quote_trade_limit');
+});
 it('closes only the displayed original nonce and never submits a trade during cancellation',async()=>{
  const f=fixture();f.submitTrade.mockImplementation(async()=>{throw Error('lost');});const api=createMarketTrade(f.options),r=await api.prepare({marketItemId:'asset:one',side:'buy',amountUsdCents:'1000'});await api.execute(r,r.digest);
  f.options.connect=async()=>({accountUid:uid,client:{request:async(path:string,options:any)=>{if(path.endsWith('/cancel'))return{ok:true,authority:'market-observation',actorUserId:uid,found:false,recorded:false,closed:true,clientNonce:options.body.clientNonce,reason:'canceled'};return f.request(path);}}});

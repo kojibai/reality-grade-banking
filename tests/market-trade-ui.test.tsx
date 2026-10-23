@@ -32,6 +32,30 @@ it('shows only a bounded upstream Market code and HTTP status when quote lookup 
  const api={status:async()=>null,prepare:async()=>{throw Object.assign(Error('private account payload'),{status:503,payload:{error:'market_position_lookup_failed',token:'secret-token'}});}},host=document.createElement('div'),root=createRoot(host);
  try{await act(async()=>root.render(<LiveMarketTrade identity={{marketTrade:async()=>api} as unknown as OpenIdentity} marketItemId="asset:one" side="sell" onRefresh={()=>{}}/>));await act(async()=>{const input=host.querySelector('input')!;Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'10');input.dispatchEvent(new Event('input',{bubbles:true}));});await act(async()=>[...host.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Review trade')!.click());expect(host.textContent).toContain('market_position_lookup_failed');expect(host.textContent).toContain('HTTP 503');expect(host.textContent).not.toContain('private account payload');expect(host.textContent).not.toContain('secret-token');expect(host.textContent).not.toContain('Checking Market');}finally{act(()=>root.unmount());}
 });
+it('shows a closed refusal reason and its saved diagnostic instead of discarding the service response',async()=>{
+ const nonce='10000000-0000-4000-8000-000000000002';
+ const review={digest:'digest',title:'An asset',body:{side:'buy',amountUsd:'10.00',clientNonce:nonce},observation:{preview:{shareQuantityMicro:'1250000',settlementUsdCents:'1000'}}};
+ const api={status:async()=>null,prepare:async()=>review,execute:async()=>({status:'not-sent',clientNonce:nonce,reason:'market_trade_rejected',failure:{code:'market_quote_exposure_cap',status:409}}),discard:vi.fn()};
+ const host=document.createElement('div'),root=createRoot(host),button=(name:string)=>[...host.querySelectorAll('button')].find(button=>button.textContent===name)!;
+ try{
+  await act(async()=>root.render(<LiveMarketTrade identity={{marketTrade:async()=>api} as unknown as OpenIdentity} marketItemId="asset:one" side="buy" onRefresh={()=>{}}/>));
+  await act(async()=>{const input=host.querySelector('input')!;Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'10');input.dispatchEvent(new Event('input',{bubbles:true}));});
+  await act(async()=>button('Review trade').click());expect(host.textContent).not.toContain('Receiz');
+  await act(async()=>host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());await act(async()=>button('Confirm purchase').click());
+  expect(host.textContent).toContain('current purchase capacity');expect(host.textContent).toContain('market_quote_exposure_cap');expect(host.textContent).toContain('HTTP 409');expect(host.textContent).toContain('No money moved');
+ }finally{act(()=>root.unmount());}
+});
+it('presents a trade-limit refusal as an asset-specific trading condition rather than a service failure',async()=>{
+ const api={status:async()=>null,prepare:vi.fn(async()=>{throw Object.assign(Error('service response'),{status:409,payload:{error:'market_quote_trade_limit'}});})};
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<LiveMarketTrade identity={{marketTrade:async()=>api} as unknown as OpenIdentity} marketItemId="asset:one" side="buy" onRefresh={()=>{}}/>));
+  await act(async()=>{const input=host.querySelector('input')!;Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'1000000');input.dispatchEvent(new Event('input',{bubbles:true}));});
+  await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Review trade')!.click());
+  expect(host.textContent).toContain('Amount exceeds trade limit');expect(host.textContent).toContain('one-third');expect(host.textContent).toContain('this asset');expect(host.textContent).toContain('No trade was submitted');
+  expect(host.querySelector('.error-message')).toBeNull();expect(host.textContent).not.toContain('Verified transaction terms are unavailable');expect(api.prepare).toHaveBeenCalledOnce();
+ }finally{act(()=>root.unmount());}
+});
 it('clears a failed quote immediately and retries only after another explicit review click',async()=>{
  const review={digest:'sale',title:'An original',body:{side:'sell',amountUsd:'10.00'},observation:{preview:{shareQuantityMicro:'1000000',settlementUsdCents:'1000'}}};
  const api={status:async()=>null,prepare:vi.fn().mockRejectedValueOnce(Object.assign(Error('market_position_lookup_failed'),{status:503,payload:{error:'market_position_lookup_failed'}})).mockResolvedValueOnce(review),execute:vi.fn(),discard:vi.fn()},host=document.createElement('div'),root=createRoot(host);

@@ -66,6 +66,16 @@ it('bounds Market quote and exact nonce reads and uses the installed SDK Market 
  await client.request('/api/connect/market/shares/trade',{method:'POST',body:{marketItemId:'asset:one',side:'buy',amountUsd:'10.00',clientNonce:'retained_nonce'}});
  expect(request.mock.calls[0][0]).toBe('/api/bank/native/api/connect/market/shares/trade');
 });
+it('carries dollar sell quotes to the existing Market conversion in one request while refusing ambiguous units',async()=>{
+ const path='/api/connect/market/shares/quote?marketItemId=asset%3Aone&side=sell&amountUsd=100.00';
+ expect(nativeRequestPath('/api/bank/native'+path,'GET')).toBe(path);
+ for(const suffix of ['&shareQuantity=1.000000','&amountUsd=200.00','&ownerUserId=foreign'])expect(nativeRequestPath('/api/bank/native'+path+suffix,'GET')).toBeNull();
+ const request=vi.fn<typeof fetch>(async()=>Response.json({ok:true}));vi.stubGlobal('fetch',request);
+ const client=createReceizClient({applicationId:BANK_APPLICATION_ID,accessToken:'synthetic',fetchImpl:nativeFetch});
+ await client.request(path,{method:'GET'});
+ expect(request).toHaveBeenCalledOnce();expect(request.mock.calls[0][0]).toBe('/api/bank/native'+path);
+ expect(nativeRequestPath('/api/bank/native'+path,'POST')).toBeNull();
+});
 it('permits only exact connected Note creation and original issue or claim recovery coordinates',()=>{
  const base='/api/connect/offline-notes/connected?origin=https%3A%2F%2Fbankeiz.com';
  expect(nativeRequestPath('/api/bank/native'+base,'POST')).toBe(base);

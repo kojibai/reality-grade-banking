@@ -1,11 +1,12 @@
 import {loadReceiz} from './client';
+import {marketFailureDetails,validMarketFailure,type MarketFailure} from './market-failure';
 type Json=Record<string,any>;
 type MarketBody={marketItemId:string;side:'buy'|'sell';amountUsd?:string;shareQuantity?:string;clientNonce:string};
 type MarketClient={request(path:string,options:{method:'GET'|'POST';body?:MarketBody|{clientNonce:string}}):Promise<unknown>};
 export type MarketTradeInput={marketItemId:string;side:'buy'|'sell';amountUsdCents?:string;shareQuantityMicro?:string};
 export type MarketTradeReview=Readonly<{schema:'bank.market-review.v1';ownerReceizId:string;accountUid:string;title:string;body:Readonly<MarketBody>;observation:unknown;digest:string}>;
-export type MarketTradeOutcome={status:'not-sent';clientNonce:string;reason:string}|{status:'unknown';clientNonce:string}|{status:'recorded';clientNonce:string;tradeId:string;side:'buy'|'sell';shareQuantityMicro:string;settlementUsdCents:string};
-type Checkpoint={review:MarketTradeReview;body:MarketBody;status:'unknown'|'recorded'|'not-sent';reason?:string;record?:unknown};
+export type MarketTradeOutcome={status:'not-sent';clientNonce:string;reason:string;failure?:MarketFailure}|{status:'unknown';clientNonce:string}|{status:'recorded';clientNonce:string;tradeId:string;side:'buy'|'sell';shareQuantityMicro:string;settlementUsdCents:string};
+type Checkpoint={review:MarketTradeReview;body:MarketBody;status:'unknown'|'recorded'|'not-sent';reason?:string;record?:unknown;failure?:MarketFailure};
 export type MarketTradeState={schema:'bank.market-trades.v1';authority:'market-observation';current:Checkpoint;history:Checkpoint[]};
 const uuid=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(v);
 const integer=(v:unknown,positive=false):v is string=>typeof v==='string'&&/^(0|[1-9]\d{0,19})$/.test(v)&&(!positive||v!=='0');
@@ -20,7 +21,7 @@ function validateBody(body:unknown):asserts body is MarketBody{
 function closed(raw:unknown,c:Checkpoint):MarketTradeOutcome{
  const r=object(raw);
  if(r.ok!==true||r.authority!=='market-observation'||r.actorUserId!==c.review.accountUid||r.clientNonce!==c.body.clientNonce||r.found!==false||r.recorded!==false||r.closed!==true||!['canceled','rejected'].includes(r.reason))throw Error('BANK_MARKET_OUTCOME_MISMATCH');
- return{status:'not-sent',clientNonce:c.body.clientNonce,reason:r.reason==='canceled'?'market_trade_canceled':'market_trade_rejected'};
+ return{status:'not-sent',clientNonce:c.body.clientNonce,reason:r.reason==='canceled'?'market_trade_canceled':'market_trade_rejected',...(r.reason==='rejected'&&c.failure?{failure:c.failure}:{})};
 }
 function recorded(raw:unknown,c:Checkpoint):MarketTradeOutcome{
  const r=object(raw),source=object(r.source),t=object(source.trade),p=object(source.position),b=c.body;
@@ -37,6 +38,7 @@ export async function validateMarketTradeState(raw:unknown,ownerReceizId?:string
  if(raw==null)return null;const s=object(raw),digest=async(value:unknown)=>(await loadReceiz()).digestReceizCanonicalV122(value);
  if(s.schema!=='bank.market-trades.v1'||s.authority!=='market-observation'||!Array.isArray(s.history)||s.history.length>1000)throw Error('BANK_MARKET_CHECKPOINT_INVALID');
  for(const item of [...s.history,s.current]){const c=object(item),r=object(c.review) as MarketTradeReview;validateBody(c.body);validateBody(r.body);
+  if(c.failure!==undefined&&(!validMarketFailure(c.failure)||c.status!=='not-sent'||c.reason!=='market_trade_rejected'))throw Error('BANK_MARKET_CHECKPOINT_INVALID');
   if(r.schema!=='bank.market-review.v1'||typeof r.ownerReceizId!=='string'||(ownerReceizId!==undefined&&r.ownerReceizId!==ownerReceizId)||!uuid(r.accountUid)||r.digest!==await digest(Object.fromEntries(Object.entries(r).filter(([k])=>k!=='digest')))||await digest(c.body)!==await digest(r.body)||!['unknown','recorded','not-sent'].includes(c.status))throw Error('BANK_MARKET_CHECKPOINT_INVALID');
   if(c.status==='recorded')recorded(c.record,c as Checkpoint);if(c.status==='not-sent'){if(['market_trade_canceled','market_trade_rejected'].includes(c.reason)){const result=closed(c.record,c as Checkpoint);if(result.status!=='not-sent'||result.reason!==c.reason)throw Error('BANK_MARKET_CHECKPOINT_INVALID');}else if(!['invalid_token','insufficient_scope','access_denied'].includes(c.reason))throw Error('BANK_MARKET_CHECKPOINT_INVALID');}
  }return s as MarketTradeState;
@@ -48,11 +50,11 @@ export function createMarketTrade(input:{ownerReceizId:string;assertOpen():void;
  const unsigned=(r:MarketTradeReview)=>Object.fromEntries(Object.entries(r).filter(([k])=>k!=='digest'));
  async function read(){input.assertOpen();const raw=await input.store.read();input.assertOpen();return validateMarketTradeState(raw,input.ownerReceizId);}
 
- const outcome=(c:Checkpoint):MarketTradeOutcome=>c.status==='recorded'?recorded(c.record,c):c.status==='not-sent'?{status:'not-sent',clientNonce:c.body.clientNonce,reason:c.reason!}:{status:'unknown',clientNonce:c.body.clientNonce};
+ const outcome=(c:Checkpoint):MarketTradeOutcome=>c.status==='recorded'?recorded(c.record,c):c.status==='not-sent'?{status:'not-sent',clientNonce:c.body.clientNonce,reason:c.reason!,...(c.failure?{failure:c.failure}:{})}:{status:'unknown',clientNonce:c.body.clientNonce};
  async function retainRecorded(s:MarketTradeState,raw:unknown,result:MarketTradeOutcome){await input.store.write({...s,current:{...s.current,status:'recorded',record:raw}},s);input.assertOpen();try{await input.onRecorded?.(s.current.review.accountUid,raw);}catch{/* Terminal original retained even when refresh fails. */}void Promise.resolve().then(()=>input.afterRecorded?.(s.current.review.accountUid,raw)).catch(()=>{});return result;}
- async function retainClosed(s:MarketTradeState,raw:unknown){const result=closed(raw,s.current);if(result.status!=='not-sent')throw Error('BANK_MARKET_OUTCOME_MISMATCH');await input.store.write({...s,current:{...s.current,status:'not-sent',reason:result.reason,record:raw}},s);input.assertOpen();return result;}
- async function lookup(s:MarketTradeState,context:Awaited<ReturnType<typeof input.connect>>){input.assertOpen();if(context.accountUid!==s.current.review.accountUid)throw Error('BANK_MARKET_IDENTITY_CHANGED');const raw=object(await context.client.request(`/api/connect/market/shares/trade?clientNonce=${encodeURIComponent(s.current.body.clientNonce)}`,{method:'GET'}));input.assertOpen();
-  if(raw.closed===true)return retainClosed(s,raw);
+ async function retainClosed(s:MarketTradeState,raw:unknown,failure?:MarketFailure){const current={...s.current,...(failure?{failure}:{})},result=closed(raw,current);if(result.status!=='not-sent')throw Error('BANK_MARKET_OUTCOME_MISMATCH');await input.store.write({...s,current:{...s.current,status:'not-sent',reason:result.reason,record:raw,...(result.failure?{failure:result.failure}:{})}},s);input.assertOpen();return result;}
+ async function lookup(s:MarketTradeState,context:Awaited<ReturnType<typeof input.connect>>,failure?:MarketFailure){input.assertOpen();if(context.accountUid!==s.current.review.accountUid)throw Error('BANK_MARKET_IDENTITY_CHANGED');const raw=object(await context.client.request(`/api/connect/market/shares/trade?clientNonce=${encodeURIComponent(s.current.body.clientNonce)}`,{method:'GET'}));input.assertOpen();
+  if(raw.closed===true)return retainClosed(s,raw,failure);
   if(raw.ok===true&&raw.authority==='market-observation'&&raw.actorUserId===context.accountUid&&(raw.found===false||raw.recorded===false))return outcome(s.current);
   return retainRecorded(s,raw,recorded(raw,s.current));
  }
@@ -72,15 +74,15 @@ export function createMarketTrade(input:{ownerReceizId:string;assertOpen():void;
   });},
   async execute(review:MarketTradeReview,confirmation:string):Promise<MarketTradeOutcome>{return input.lock(async()=>{input.assertOpen();if(!held.has(review)||confirmation!==review.digest||review.digest!==await digest(unsigned(review)))throw Error('BANK_MARKET_EXACT_CONFIRMATION_REQUIRED');await input.assertNoOtherPending();const previous=await read();if(previous?.current.status==='unknown')throw Error('BANK_EXECUTION_PENDING');
    const context=await input.connect();input.assertOpen();if(context.accountUid!==review.accountUid)throw Error('BANK_MARKET_IDENTITY_CHANGED');const next:MarketTradeState={schema:'bank.market-trades.v1',authority:'market-observation',current:{review,body:{...review.body},status:'unknown'},history:previous?[...previous.history,previous.current]:[]};if(next.history.length>1000)throw Error('BANK_MARKET_CAPACITY');await input.store.write(next,previous);input.assertOpen();held.delete(review);
-   let returned:unknown;
+   let returned:unknown,failure:MarketFailure|undefined;
    try{returned=await context.client.request('/api/connect/market/shares/trade',{method:'POST',body:{...next.current.body}});}catch(cause){
-    input.assertOpen();const e=cause as {status?:number;payload?:Json};if(e.payload?.outcome){returned=e.payload.outcome;try{if(object(returned).closed===true)return await retainClosed(next,returned);}catch{/* A foreign or unretained closure cannot release the checkpoint. */}}if([401,403].includes(e.status??0)&&['invalid_token','insufficient_scope','access_denied'].includes(e.payload?.error)){try{const reason=String(e.payload!.error);await input.store.write({...next,current:{...next.current,status:'not-sent',reason}},next);return{status:'not-sent',clientNonce:next.current.body.clientNonce,reason};}catch{/* Keep unknown when the terminal refusal cannot be retained. */}}
+    input.assertOpen();failure=marketFailureDetails(cause);const e=cause as {status?:number;payload?:Json};if(e.payload?.outcome){returned=e.payload.outcome;try{if(object(returned).closed===true)return await retainClosed(next,returned,marketFailureDetails(cause));}catch{/* A foreign or unretained closure cannot release the checkpoint. */}}if([401,403].includes(e.status??0)&&['invalid_token','insufficient_scope','access_denied'].includes(e.payload?.error)){try{const reason=String(e.payload!.error);await input.store.write({...next,current:{...next.current,status:'not-sent',reason}},next);return{status:'not-sent',clientNonce:next.current.body.clientNonce,reason};}catch{/* Keep unknown when the terminal refusal cannot be retained. */}}
    }input.assertOpen();
    // The normal POST already carries the exact original rows. Admit them with
    // the same binding and durable retention as recovery, without another read.
    let result:MarketTradeOutcome|undefined;try{result=recorded(returned,next.current);}catch{/* Missing or mismatching originals still need the read route. */}
    if(result){try{return await retainRecorded(next,returned,result);}catch{return outcome(next.current);}}
-   try{return await lookup(next,context);}catch{return outcome(next.current);}
+   try{return await lookup(next,context,failure);}catch{return outcome(next.current);}
   });},
   async resolve(approved=false):Promise<MarketTradeOutcome|null>{return input.lock(async()=>{const s=await read();if(!s)return null;if(s.current.status!=='unknown')return outcome(s.current);if(!approved)throw Error('BANK_MARKET_RECOVERY_CONSENT_REQUIRED');return lookup(s,await input.connect(true));});},
   async stop(approved=false,expectedNonce:string):Promise<MarketTradeOutcome|null>{return input.lock(async()=>{
