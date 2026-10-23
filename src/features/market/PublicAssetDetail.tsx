@@ -20,7 +20,16 @@ import {ProfileAvatar} from '../../components/ProfileAvatar';
 
 export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=false }: { item: PublicMarketItem; onTrade?: (mode: 'buy' | 'sell', digest: string) => void;readOnly?:boolean;standalone?:boolean }) {
   const owner=profileUsername(item.ownerUsername),profile=useSyncExternalStore(subscribePublicProfiles,()=>owner?retainedPublicProfile(owner):null,()=>null);
-  useEffect(()=>{if(standalone&&owner)void preparePublicProfile(owner).catch(()=>{});},[standalone,owner]);
+  useEffect(()=>{
+    if(!standalone||!owner)return;
+    let frame=0,idle:number|undefined,timer:ReturnType<typeof setTimeout>|undefined;
+    const prepare=()=>{void preparePublicProfile(owner).catch(()=>{});};
+    // The carried portrait paints immediately. Preparing its linked profile
+    // starts after document loading and a frame, outside asset loading work.
+    const settled=()=>{frame=requestAnimationFrame(()=>{if(typeof window.requestIdleCallback==='function')idle=window.requestIdleCallback(prepare);else timer=setTimeout(prepare,0);});};
+    if(document.readyState==='complete')settled();else window.addEventListener('load',settled,{once:true});
+    return()=>{window.removeEventListener('load',settled);cancelAnimationFrame(frame);if(idle!==undefined)window.cancelIdleCallback(idle);if(timer!==undefined)clearTimeout(timer);};
+  },[standalone,owner]);
   const ownerAvatar=item.ownerAvatarUrl===undefined?profile?.avatarUrl:item.ownerAvatarUrl;
   const [publicDetails,setPublicDetails]=useState<{source:string;details:PublicCardDetails}|null>(null);
   useEffect(()=>{if(item.category!=='sports'||!item.sourceUrl||item.sealedCopies?.length)return;const controller=new AbortController();void fetchPublicCardDetails(item,controller.signal).then(details=>{if(!controller.signal.aborted)setPublicDetails({source:item.sourceUrl!,details});}).catch(()=>{});return()=>controller.abort();},[item.category,item.assetId,item.sourceUrl,item.sealedCopies]);

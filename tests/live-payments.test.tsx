@@ -126,3 +126,20 @@ it('uses the same selected hosted URL for copy, share, QR and NFC while preservi
  await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Send link')!.click());expect(host.querySelector<HTMLAnchorElement>('.payment-link')!.href).toBe('https://bankeiz.com/?to=merchant&amount=12.30');
  }finally{await act(async()=>root.unmount());delete (window as unknown as {NDEFReader?:unknown}).NDEFReader;}
 });
+
+it('confirms receiving-ID copies inside the button, resets after repeat copies, and adds no success text below',async()=>{
+ vi.useFakeTimers();const copy=vi.fn().mockResolvedValue(undefined);vi.stubGlobal('navigator',{clipboard:{writeText:copy}});
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<LiveReceive identity={{username:'klok'}as OpenIdentity}/>));
+  const button=[...host.querySelectorAll('button')].find(b=>b.textContent==='Copy Receiz ID')!;
+  expect(copy).not.toHaveBeenCalled();
+  await act(async()=>button.click());expect(copy).toHaveBeenLastCalledWith('klok');
+  expect(button.querySelector('[data-copied="true"]')).not.toBeNull();expect(host.querySelector('[role="status"]')?.textContent??'').toBe('');
+  await act(async()=>vi.advanceTimersByTime(1200));await act(async()=>button.click());
+  await act(async()=>vi.advanceTimersByTime(1000));expect(button.querySelector('[data-copied="true"]')).not.toBeNull();
+  await act(async()=>vi.advanceTimersByTime(600));expect(button.querySelector('[data-copied="true"]')).toBeNull();expect(button.textContent).toBe('Copy Receiz ID');
+  copy.mockRejectedValueOnce(Error('denied'));await act(async()=>button.click());
+  expect(button.querySelector('[data-copied="true"]')).toBeNull();expect(host.textContent).toContain('Select and copy your receiving ID');
+ }finally{act(()=>root.unmount());vi.useRealTimers();}
+});

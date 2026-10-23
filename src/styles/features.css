@@ -151,12 +151,7 @@
 .receive-payment-link{margin:22px 0 16px;padding-top:15px;border-top:1px solid var(--line);min-width:0}.receive-payment-link>span{display:block;font-size:10px;color:var(--muted);letter-spacing:.02em}.receive-payment-link>div{display:flex;align-items:center;gap:12px;min-width:0}.receive-payment-link .payment-link{display:block;flex:1;min-width:0;margin:9px 0;color:var(--navy);font-size:12px;line-height:1.6;text-decoration:none}.receive-payment-link .icon-button{width:32px;height:32px;flex-shrink:0;color:#748195;background:transparent}.receive-payment-link .payment-link:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
 .payment-camera { width: 100%; border-radius: 12px; margin-top: 15px; }
 .receive-payment-link .receive-link-copy { transition: color 160ms ease; }
-.receive-copy-mark { position: relative; width: 16px; height: 16px; }
-.receive-copy-mark svg { position: absolute; inset: 0; transition: opacity 160ms ease, transform 160ms ease; }
-.receive-copy-check { opacity: 0; transform: translateY(2px) scale(.9); }
 .receive-link-copy[data-copied="true"] { color: var(--green); }
-.receive-link-copy[data-copied="true"] .receive-copy-symbol { opacity: 0; transform: translateY(-2px) scale(.9); }
-.receive-link-copy[data-copied="true"] .receive-copy-check { opacity: 1; transform: none; }
 .payment-camera[hidden] { display: none; }
 .qr-upload { display: flex; gap: 8px; align-items: center; justify-content: center; cursor: pointer; }
 .qr-upload input { display: none; }

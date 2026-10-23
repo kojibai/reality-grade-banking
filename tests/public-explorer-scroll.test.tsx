@@ -51,3 +51,29 @@ it('starts an asset at the top after its retained React view commits, then resto
   expect(request).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());vi.restoreAllMocks();vi.unstubAllGlobals();document.documentElement.className='';}
 });
+
+it('opens a cold asset without mounting an unseen Market, then retains the first visited collection',async()=>{
+ history.replaceState({},'','/asset/profile%3Aartist%3Asong/');
+ const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
+ const navigate=async(path:string)=>act(()=>{history.pushState({},'',path);dispatchEvent(new Event('receiz-bank:surface'));});
+ try{
+  await act(()=>root.render(<PublicExplorer/>));
+  expect(host.querySelector('article h1')?.textContent).toBe('Song title');
+  expect(host.querySelector('[aria-label="Retained search"]')).toBeNull();
+  for(const path of ['/learn/','/ledger/','/']){await navigate(path);expect(host.querySelector('[aria-label="Retained search"]')).toBeNull();}
+  await navigate('/asset/profile%3Aartist%3Asong/');expect(host.querySelector('[aria-label="Retained search"]')).toBeNull();
+  await navigate('/explore/');
+  const search=host.querySelector<HTMLInputElement>('[aria-label="Retained search"]')!;expect(search).not.toBeNull();search.value='A saved search';
+  await navigate('/asset/profile%3Aartist%3Asong/');
+  expect(host.querySelector('[aria-label="Retained search"]')).toBe(search);
+  expect(search.closest('[hidden]')).not.toBeNull();
+  await navigate('/explore/');
+  expect(host.querySelector('[aria-label="Retained search"]')).toBe(search);expect(search.value).toBe('A saved search');expect(search.closest('[hidden]')).toBeNull();
+ }finally{await act(()=>root.unmount());host.remove();}
+});
+
+it.each(['/explorer/','/explorer','/explore','/market-cap','/explore/music'])('opens the existing collection route %s',async path=>{
+ history.replaceState({},'',path);const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
+ try{await act(()=>root.render(<PublicExplorer/>));expect(host.querySelector('[aria-label="Retained search"]')).not.toBeNull();}
+ finally{await act(()=>root.unmount());host.remove();}
+});

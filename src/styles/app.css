@@ -6,6 +6,7 @@
 .demo-label { background: #eef0f3; padding: 7px 11px; border-radius: 22px; font-size: 12px; font-weight: 550; }
 .avatar { width: 35px; height: 35px; border-radius: 50%; background: var(--navy); color: white; font-size: 12px; font-weight: 600; padding: 0; }
 .main-panel { padding: 0 21px 112px; animation: reveal .2s ease-out; }
+html.public-navigation-instant .main-panel { animation: none; }
 .bottom-nav { position: fixed; z-index: 20; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 1160px; height: calc(75px + env(safe-area-inset-bottom)); padding: 0 7px env(safe-area-inset-bottom); background: rgba(255,255,255,.97); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, 1fr); backdrop-filter: blur(16px); }
 .nav-item { color: #7c8798; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; gap: 5px; min-width: 0; padding: 8px 2px; }
 .nav-icon { height: 27px; display: grid; place-items: center; }

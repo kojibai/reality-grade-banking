@@ -1,0 +1,4 @@
+.copy-feedback-mark{display:inline-grid;place-items:center;flex-shrink:0;vertical-align:middle;line-height:0}
+.copy-feedback-mark[data-copied=true]{animation:copy-confirm 160ms ease-out}
+@keyframes copy-confirm{from{opacity:.4;transform:scale(.85)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.copy-feedback-mark[data-copied=true]{animation:none}}

@@ -74,13 +74,8 @@ export function fetchPublicProfile(username:string,cursor?:string,priority:Reque
   acceptDiscoveredProfileAssets(value);if(!cursor)return retainPublicProfile(value);return mergeAdmittedProfileAssets(value);
  })();reads.set(key,attempt);void attempt.finally(()=>{if(reads.get(key)===attempt)reads.delete(key);}).catch(()=>{});return attempt;
 }
-/** Only the selected owner is prepared. This shares the eventual profile read;
- * retained views skip it, and nothing waits for it before painting the asset. */
+/** Reuse the eventual profile read without speculatively downloading its
+ * offscreen banner and covers. The selected asset already carries its images. */
 export async function preparePublicProfile(username:string){
- const current=retainedPublicProfile(username),profile=current&&!publicProfileNeedsRefresh(username)?current:await fetchPublicProfile(username,undefined,'low');
- if(typeof document!=='undefined')for(const [url,cors]of [[profile.avatarUrl,false],[profile.bannerUrl,false],...profile.items.slice(0,4).map(item=>[item.artworkUrl,!!item.artworkUrl?.includes('/api/proof-material/packages/')] as const)] as const){
-  if(!url)continue;const hints=[...document.querySelectorAll<HTMLLinkElement>('link[data-profile-preload]')];if(hints.some(hint=>hint.href===url&&(hint.crossOrigin??'')===(cors?'anonymous':'')))continue;
-  const hint=document.createElement('link');hint.rel='preload';hint.as='image';hint.href=url;hint.referrerPolicy='no-referrer';hint.fetchPriority='low';hint.dataset.profilePreload='';if(cors)hint.crossOrigin='anonymous';document.head.append(hint);if(hints.length>=48)hints[0].remove();
- }
- return profile;
+ const current=retainedPublicProfile(username);return current&&!publicProfileNeedsRefresh(username)?current:fetchPublicProfile(username,undefined,'low');
 }

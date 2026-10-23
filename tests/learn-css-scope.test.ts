@@ -1,5 +1,4 @@
 import { expect, it } from 'vitest';
-// @ts-expect-error Build helper is plain ESM.
 import { scopeLearnCss } from '../scripts/scope-learn-css.mjs';
 it('rejects selectorless footer remnants instead of applying them to the entire Learn surface',()=>{
  expect(()=>scopeLearnCss('.learn-shell{width:100%}{display:flex;text-decoration:underline}')).toThrow('LEARN_CSS_SELECTOR_REQUIRED');
