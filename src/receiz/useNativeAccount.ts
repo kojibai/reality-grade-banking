@@ -64,12 +64,13 @@ export function useNativeAccount(custody = nativeCustody) {
     setOpeningStage('history');
     try {
       const provisionalUid = next.knownWallet?.()?.wallet.userId;
-      if (provisionalUid) void preloadPrivateHistory(next, provisionalUid);
+      const preloading=provisionalUid?preloadPrivateHistory(next,provisionalUid):null;
       const known = await next.prepareAccountView();
       if (ticket !== generation.current) { next.dispose(); return; }
-      // Local retained rows share the first admitted frame. A provisional
-      // account placement cannot supply another final account's history.
-      await preloadPrivateHistory(next, known.wallet.userId);
+      // Reuse the already-started local restore in the first complete frame;
+      // account entry and the Ledger hook must not start separate reads.
+      const retainedRows=preloading&&provisionalUid===known.wallet.userId?preloading:preloadPrivateHistory(next,known.wallet.userId);
+      await retainedRows;
       if (ticket !== generation.current) { next.dispose(); return; }
       held.current?.dispose(); held.current = next; pending.current = false;refreshQueued.current=false;
       setReceivedNotes(next.knownReceivedNotes?.()??[]);

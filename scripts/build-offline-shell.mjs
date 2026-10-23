@@ -25,7 +25,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   const root = resolve(directory), urls = new Set(['/index.html', ...fixed]);
   // This self-contained verifier, corresponding source and local entry points
   // also form the independently downloadable offline evidence kit.
-  for(const name of await readdir(resolve(root,'proof-verifier/v129')))urls.add('/proof-verifier/v129/'+name);
+  for(const name of await readdir(resolve(root,'proof-verifier/v129')))if(!name.endsWith('.map'))urls.add('/proof-verifier/v129/'+name);
   const manifest = JSON.parse(await readFile(resolve(root, '.vite/manifest.json'), 'utf8')), visited = new Set();
   function visit(key) {
     if (visited.has(key)) return; visited.add(key);

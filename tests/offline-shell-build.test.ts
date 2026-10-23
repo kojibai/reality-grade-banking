@@ -24,8 +24,10 @@ it('versions complete final pages and fixed-path native resources and includes l
     await mkdir(join(dir,'proof-verifier/v129'),{recursive:true});
     await writeFile(join(dir,'proof-verifier/v129/verifier.js'),'read-only canonical verifier');
     await writeFile(join(dir,'proof-verifier/v129/verifier.js.map'),'public complete source');
+    await writeFile(join(dir,'proof-verifier/v129/verifier.js.map.bin'),'public complete source');
     const first = await buildOfflineShell(dir, { fixed: [native] });
-    expect(first.resources.some((v: { url: string }) => v.url === '/proof-verifier/v129/verifier.js.map')).toBe(true);
+    expect(first.resources.some((v: { url: string }) => v.url === '/proof-verifier/v129/verifier.js.map')).toBe(false);
+    expect(first.resources.some((v: { url: string }) => v.url === '/proof-verifier/v129/verifier.js.map.bin')).toBe(true);
     expect(first.resources.some((v: { url: string }) => v.url === '/assets/qr-decoder.js')).toBe(true);
     expect(first.resources.some((v: { url: string }) => v.url === '/launch/iphone-402-874-3-portrait.png')).toBe(true);
     expect(first.resources.some((v: { url: string }) => v.url.includes('conformance'))).toBe(false);

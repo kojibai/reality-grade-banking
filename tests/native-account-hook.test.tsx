@@ -5,8 +5,9 @@ import {beforeEach,expect,it,vi} from 'vitest';
 import {useNativeAccount} from '../src/receiz/useNativeAccount';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 import type {WalletObservation} from '../src/receiz/wallet-observation';
-const custody=vi.hoisted(()=>({restore:vi.fn(),create:vi.fn(),importId:vi.fn(),forget:vi.fn()}));
+const custody=vi.hoisted(()=>({restore:vi.fn(),create:vi.fn(),importId:vi.fn(),forget:vi.fn(),history:vi.fn()}));
 vi.mock('../src/receiz/native-identity',()=>({restoreNativeIdentity:custody.restore,createNativeIdentity:custody.create,importNativeIdentity:custody.importId,forgetDeviceIdentity:custody.forget}));
+vi.mock('../src/receiz/private-history-restore',()=>({preloadPrivateHistory:custody.history}));
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const observation=(amount='100'):WalletObservation=>({wallet:{userId:'owner',totalUsdCents:amount,reserveUsdCents:amount,settlementUsdCents:'0',balancePhiMicro:'1000000',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:'10',kaiUpulse:'10000000'},observedAt:'2026-10-18T12:00:00Z',history:[{userId:'owner',at:'2024-05-10T06:45:41.888Z',kaiUPulse:'0',totalUsdCents:'0',reserveUsdCents:'0',settlementUsdCents:'0'},{userId:'owner',at:'2026-10-18T12:00:00Z',kaiUPulse:'10000000',totalUsdCents:amount,reserveUsdCents:amount,settlementUsdCents:'0'}],historyBasis:{schema:'bank.account-history-display.v1',startKaiUPulse:'0',endKaiUPulse:'10000000'}});
 function held(known=observation()){
@@ -14,7 +15,7 @@ function held(known=observation()){
  const identity={binding:{keyId:'fixture'},localHistory:{authority:'identity-only'},dispose:vi.fn(),knownWallet:()=>current,prepareAccountView:vi.fn(async()=>current),readWallet:vi.fn(async()=>current.wallet),setKnown:(value:WalletObservation)=>{current=value;}};
  return identity as unknown as OpenIdentity & {setKnown(value:WalletObservation):void};
 }
-beforeEach(()=>{custody.restore.mockReset().mockResolvedValue(null);custody.create.mockReset();custody.importId.mockReset();custody.forget.mockReset().mockResolvedValue(undefined);});
+beforeEach(()=>{history.replaceState(null,'','/');custody.history.mockReset().mockResolvedValue(null);custody.restore.mockReset().mockResolvedValue(null);custody.create.mockReset();custody.importId.mockReset();custody.forget.mockReset().mockResolvedValue(undefined);});
 async function observe(run:(read:()=>ReturnType<typeof useNativeAccount>,frames:ReturnType<typeof useNativeAccount>[])=>Promise<void>){
  let state!:ReturnType<typeof useNativeAccount>;const frames:typeof state[]=[];const root=createRoot(document.createElement('div'));
  function Probe(){state=useNativeAccount();frames.push({...state});return null;}
@@ -23,6 +24,10 @@ async function observe(run:(read:()=>ReturnType<typeof useNativeAccount>,frames:
 it('publishes identity, balance and original history in one settled frame without an immediate second read',async()=>{
  const identity=held();custody.restore.mockResolvedValue(identity);
  await observe(async(read,frames)=>{expect(read().identity).toBe(identity);expect(read().walletHistory[0].kaiUPulse).toBe('0');expect(read().wallet?.totalUsdCents).toBe('100');expect(read().busy).toBe(false);expect(identity.readWallet).not.toHaveBeenCalled();expect(frames.filter(frame=>frame.identity).every(frame=>frame.wallet&&frame.walletHistory.length===2&&!frame.opening)).toBe(true);});
+});
+it('still restores the retained rows before opening directly into the Ledger',async()=>{
+ history.replaceState(null,'','/#ledger');const identity=held();custody.restore.mockResolvedValue(identity);let finish!:(v:null)=>void;custody.history.mockReturnValue(new Promise(resolve=>{finish=resolve;}));
+ await observe(async read=>{expect(read().identity).toBeNull();await act(async()=>{finish(null);});expect(read().identity).toBe(identity);expect(identity.readWallet).not.toHaveBeenCalled();});
 });
 it('keeps the account private while complete history is still opening instead of publishing a flat balance preview',async()=>{
  const identity=held();let finish!:(value:WalletObservation)=>void;vi.mocked(identity.prepareAccountView).mockReturnValue(new Promise(resolve=>{finish=resolve;}));custody.restore.mockResolvedValue(identity);

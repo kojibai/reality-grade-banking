@@ -11,6 +11,26 @@ const nodes={
 };
 const packet=()=>({ok:true,events:[{id:'transfer:current',kind:'chat_transfer',transferId:'tx:current',amountUsdCents:'27',amountPhiMicro:'100',createdAt:'2026-10-23T01:00:00Z',kaiUpulse:'1000000',pulse:'1'}],fundingContexts:{schema:'receiz.wallet.funding-context.v1',nodes:structuredClone(nodes),roots:{'transfer:tx:current':{kind:'transfer',id:'tx:current'}},coverage:{'transfer:tx:current':{status:'complete',missing:[],continuations:[]}}}});
 describe('retained funding context',()=>{
+ it('retains only the selected original’s ancestors and reuses its parsed closure',()=>{
+  const p=packet();(p.fundingContexts.nodes as Record<string,unknown>)['credit:unrelated']={ref:{kind:'credit',id:'unrelated'},parents:[],source:'wallet_deposit',amountUsdCents:'999'};
+  const selected=readLedgerFundingContext(p.fundingContexts,'tx:current')!;
+  expect(selected.nodes['credit:unrelated']).toBeUndefined();expect(Object.keys(selected.nodes)).toHaveLength(4);
+  expect(readLedgerFundingContext(p.fundingContexts,'tx:current')).toBe(selected);
+  expect(readLedgerFundingContext(selected,'tx:current')).toBe(selected);
+ });
+ it('keeps shared ancestors complete and isolates different roots across serialization',()=>{
+  const p=packet(),all=p.fundingContexts.nodes as Record<string,unknown>;
+  p.fundingContexts.nodes['transfer:tx:current'].parents.push({kind:'credit',id:'shared'});
+  all['credit:shared']={ref:{kind:'credit',id:'shared'},parents:[{kind:'proof-basis',id:'original'}]};
+  all['transfer:tx:other']={ref:{kind:'transfer',id:'tx:other'},parents:[{kind:'credit',id:'private-unrelated'}]};
+  all['credit:private-unrelated']={ref:{kind:'credit',id:'private-unrelated'},parents:[],source:'wallet_deposit'};
+  (p.fundingContexts.roots as Record<string,unknown>)['transfer:tx:other']={kind:'transfer',id:'tx:other'};
+  const selected=readLedgerFundingContext(p.fundingContexts,'tx:current')!;
+  expect(selected.coverage.status).toBe('complete');expect(Object.keys(selected.nodes)).toHaveLength(5);
+  expect(selected.nodes['credit:private-unrelated']).toBeUndefined();expect(selected.nodes['transfer:tx:other']).toBeUndefined();
+  const transported=readLedgerFundingContext(JSON.parse(JSON.stringify(selected)),'tx:current')!;
+  expect(transported).toEqual(selected);expect(transported.coverage.missing).toEqual([]);
+ });
  it('binds to this exact payment and carries the originating proof and absent-page parent without IO',()=>{
   const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
   const [record]=parsePublicNetworkPage('wallet',packet()).records;
@@ -40,6 +60,7 @@ it('projects the exact same source history from an authenticated ledger response
 });
 it('keeps explicit continuation references in compact receipt context instead of a false complete status',async()=>{
  const {compactLedgerFundingContext}=await import('../src/receiz/ledger-funding-context');const context=readLedgerFundingContext(packet().fundingContexts,'tx:current')!;const compact=compactLedgerFundingContext(context,700);expect(compact.coverage.status).toBe('incomplete');expect(compact.coverage.continuations.length).toBeGreaterThan(0);
+ expect(readLedgerFundingContext(JSON.parse(JSON.stringify(compact)))?.coverage).toEqual(compact.coverage);
 });
 
 it('keeps the admitted graph when complete carried originals also support FIFO attribution',async()=>{

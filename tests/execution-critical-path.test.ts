@@ -14,9 +14,16 @@ it.each(['send','buy','sell']as const)('terminal retention precedes display adop
 it.each(['incomplete','lost']as const)('recovers %s responses once without dispatching again',async response=>{
  for(const kind of ['send','buy','sell']as const){const r=await measureExecution(kind,{response});expect(r.outcomeGets).toBe(1);expect(r.financialDispatches).toBe(1);}
 });
-it.runIf(!!process.env.EXECUTION_TIMING_OUTPUT)('records isolated cold/warm adapter measurements',async()=>{
+it('records isolated cold/warm adapter measurements',async()=>{
  const cold=await measureExecution('send',{requestDelayMs:15,displayDelayMs:30});
  const samples=[];for(let i=0;i<12;i++)for(const kind of ['send','buy','sell']as const)samples.push(await measureExecution(kind,{requestDelayMs:15,displayDelayMs:30}));
  const clean=({retained,original,...value}:Awaited<ReturnType<typeof measureExecution>>)=>value;
- writeFileSync(process.env.EXECUTION_TIMING_OUTPUT!,JSON.stringify({syntheticTransport:true,cold:clean(cold),samples:samples.map(clean)},null,2)+'\n');
+ for(const sample of [cold,...samples]){
+  expect(sample.financialDispatches).toBe(1);expect(sample.outcomeGets).toBe(0);
+  expect(sample.retainedBeforeSuccess).toBe(true);expect(sample.publishedBeforeSuccess).toBe(true);
+  expect(sample.retained).toEqual(sample.original);
+  expect(Number.isFinite(sample.completionMs)&&sample.completionMs>=0).toBe(true);
+ }
+ const output=process.env.EXECUTION_TIMING_OUTPUT;
+ if(output)writeFileSync(output,JSON.stringify({syntheticTransport:true,cold:clean(cold),samples:samples.map(clean)},null,2)+'\n');
 },30_000);

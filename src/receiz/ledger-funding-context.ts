@@ -14,6 +14,7 @@ const sources=new Set(['stripe_checkout_wallet_deposit','stripe_checkout_connect
 const reserveSources=new Set(['stripe_checkout_wallet_deposit','stripe_checkout_connect_payment','stripe_checkout_profile_original_download','wallet_deposit','stripe_origin']);
 type Page={nodes:Record<string,FundingNode>;roots:Map<string,FundingRef>;coverage:Record<string,unknown>};
 const pages=new WeakMap<object,Page>();
+const closures=new WeakMap<object,Map<string,LedgerFundingContext>>();
 function page(raw:unknown):Page|undefined{
  const v=object(raw);if(v.schema!=='receiz.wallet.funding-context.v1')return;const held=pages.get(v);if(held)return held;
  if(Object.keys(object(v.nodes)).length>10001)return;
@@ -44,6 +45,7 @@ function page(raw:unknown):Page|undefined{
 export function readLedgerFundingContext(raw:unknown,eventId?:string):LedgerFundingContext|undefined{
  const parsed=page(raw);if(!parsed)return;
  const root=eventId?parsed.roots.get(eventId)??parsed.roots.get('transfer:'+eventId)??parsed.roots.get('debit:'+eventId)??parsed.roots.get('credit:'+eventId)??parsed.roots.get('note:'+eventId):parsed.roots.size===1?[...parsed.roots.values()][0]:undefined;if(!root)return;
+ const held=closures.get(raw as object)?.get(key(root));if(held)return held;
  const missing=new Map<string,FundingRef>(),continuations=new Map<string,FundingRef>(),active=new Set<string>(),done=new Set<string>();
  const stack:{ref:FundingRef;exit:boolean}[]=[{ref:root,exit:false}];
  while(stack.length){const current=stack.pop()!,id=key(current.ref);if(current.exit){active.delete(id);done.add(id);continue;}if(active.has(id)){missing.set(id,current.ref);continue;}if(done.has(id))continue;
@@ -53,7 +55,11 @@ export function readLedgerFundingContext(raw:unknown,eventId?:string):LedgerFund
   active.add(id);stack.push({ref:current.ref,exit:true});for(const parent of node.parents)stack.push({ref:parent,exit:false});
  }
  const carried=object(parsed.coverage[key(root)]??parsed.coverage);for(const value of Array.isArray(carried.continuations)?carried.continuations:[]){const r=ref(value);if(r&&!parsed.nodes[key(r)]){continuations.set(key(r),r);missing.delete(key(r));}}
- return{schema:'receiz.wallet.funding-context.v1',root,nodes:parsed.nodes,coverage:{status:missing.size||continuations.size?'incomplete':'complete',missing:[...missing.values()],continuations:[...continuations.values()]}};
+ const nodes:Record<string,FundingNode>=Object.create(null);for(const id of done)nodes[id]=parsed.nodes[id];
+ const result:LedgerFundingContext={schema:'receiz.wallet.funding-context.v1',root,nodes,coverage:{status:missing.size||continuations.size?'incomplete':'complete',missing:[...missing.values()],continuations:[...continuations.values()]}};
+ const retained=closures.get(raw as object)??new Map<string,LedgerFundingContext>();retained.set(key(root),result);closures.set(raw as object,retained);
+ pages.set(result,{nodes,roots:new Map([[key(root),root]]),coverage:result.coverage});closures.set(result,new Map([[key(root),result]]));
+ return result;
 }
 export function applyLedgerFundingContext(record:PublicRecord,raw:unknown):PublicRecord{
  const context=readLedgerFundingContext(raw,record.evidence.transferId??record.sourceId.replace(/^wallet_ledger:/,''))??(record.evidence.noteId?readLedgerFundingContext(raw,record.evidence.noteId):undefined);if(!context)return record;

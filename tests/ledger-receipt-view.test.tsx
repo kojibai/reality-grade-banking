@@ -64,6 +64,7 @@ it('makes every carried receipt field inspectable while retaining the compact de
  expect(host.querySelector('details.receipt-inspection')?.hasAttribute('open')).toBe(false);
  expect(host.querySelector('.ledger-inspector')).toBeNull();
  act(()=>{const details=host.querySelector<HTMLDetailsElement>('details.receipt-inspection')!;details.open=true;details.dispatchEvent(new Event('toggle'));});
+ act(()=>{const details=host.querySelector<HTMLDetailsElement>('.ledger-exact-json')!;details.open=true;details.dispatchEvent(new Event('toggle'));});
  expect(host.textContent).toContain('Alex paid Sam');expect(host.textContent).toContain('a'.repeat(64));expect(host.textContent).toContain('500000');
 });
 

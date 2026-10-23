@@ -11,6 +11,7 @@ it('ships complete corresponding sources, pinned suite keys, public trust roots 
  const html=readFileSync('public/proof-verifier/v129/verify.html','utf8');expect(html).not.toContain('<script src="verifier.js">');expect((html.match(/<script>/g)??[]).length).toBe(2);expect(html).toContain("'wasm-unsafe-eval'");
  expect(module).not.toMatch(/\b(?:import|require)\s*\(\s*["'](?!node:)/);
  expect(map.sources.length).toBe(map.sourcesContent.length);expect(map.sourcesContent.every((v:unknown)=>typeof v==='string')).toBe(true);
+ expect(readFileSync('public/proof-verifier/v129/verifier.js.map.bin')).toEqual(readFileSync('public/proof-verifier/v129/verifier.js.map'));
  expect(verifier.materials).toMatchObject({sdk:'129.0.0',documentSealVerificationKey:{protocol:'groth16',nPublic:2},kaiSigilVerificationKey:{protocol:'groth16',nPublic:2},signatureV4Roots:expect.arrayContaining([expect.objectContaining({alg:'Ed25519',publicKeyRawB64u:expect.any(String)})])});
 });
 it('refuses unsigned or changed bytes without consulting any service',async()=>{

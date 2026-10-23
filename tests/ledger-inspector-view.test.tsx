@@ -12,6 +12,9 @@ it('opens complete selected details, value operands and original evidence for an
  const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
  const record=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'transfer-1',kind:'proof_transfer',summary:'Proof transferred',pulse:120,kaiUpulse:'120000001',amountUsdCents:'100',cardValueUsdCents:'9900',amountPhiMicro:'3456789',sender:{displayName:'Alex'},recipient:{displayName:'Sam'},entryHash:'a'.repeat(64),prevHash:'b'.repeat(64),proofBundle:{verificationVersion:'wallet-ledger-v1',capsuleHash:'c'.repeat(64)},transactionHref:'https://receiz.com/t/20261017_1646/92DD0339C992B40E/120?p=c1%3Aabc'}]}).records[0];
  const host=document.createElement('div');document.body.append(host);root=createRoot(host);act(()=>root!.render(<LedgerInspector record={record} value={ledgerValueForRecord(record)}/>));
+ // Expand the same nested source fields a reader opens; closed branches do
+ // not need to construct their hidden descendants to make the record usable.
+ for(let depth=0;depth<3;depth++)act(()=>{for(const details of host.querySelectorAll<HTMLDetailsElement>('.ledger-field-object')){details.open=true;details.dispatchEvent(new Event('toggle'));}});
  expect(host.textContent).toContain('Card value at transfer');expect(host.textContent).toContain('$99.00');expect(host.textContent).toContain('Consideration');expect(host.textContent).toContain('$1.00');
  expect(host.textContent).toContain('Alex');expect(host.textContent).toContain('Sam');expect(host.textContent).toContain('3456789');expect(host.textContent).toContain('wallet-ledger-v1');
  expect(host.querySelector('a[aria-label="Open original source"]')?.getAttribute('href')).toContain('receiz.com/t/');

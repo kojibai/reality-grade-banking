@@ -24,6 +24,38 @@ it('updates other public sources when one is unavailable', async () => {
   network.read.mockImplementation(async (source: PublicSource) => { if (source === 'wallet') throw new Error('Unavailable'); return page(source, [source]); });
   await observe(async read => { expect(read().records).toHaveLength(3); expect(read().sources.wallet.status).toBe('error'); expect(read().sources.actions.status).toBe('live'); });
 });
+it('preloads retained public rows before the Ledger is clicked, without a live request or a second cache read',async()=>{
+ const records=page('actions',['retained-head','retained-old']).records;
+ cache.load.mockResolvedValue({records,capturedAt:null,inspectionVersion:PUBLIC_NETWORK_INSPECTION_VERSION,coverage:(['actions','wallet','graph','proofs']as const).map(source=>({source,complete:true}))});
+ network.read.mockReturnValue(new Promise(()=>{}));let state!:ReturnType<typeof usePublicNetwork>;
+ function Probe({active}:{active:boolean}){state=usePublicNetwork(active);return null;}
+ const root=createRoot(document.createElement('div'));
+ try{
+  await act(async()=>root.render(<Probe active={false}/>));
+  expect(state.records.map(row=>row.sourceId)).toEqual(['retained-head','retained-old']);expect(network.read).not.toHaveBeenCalled();expect(cache.seed).not.toHaveBeenCalled();expect(originals.sync).not.toHaveBeenCalled();
+  await act(async()=>root.render(<Probe active/>));
+  expect(state.records.map(row=>row.sourceId)).toEqual(['retained-head','retained-old']);expect(cache.load).toHaveBeenCalledOnce();expect(network.read).toHaveBeenCalledTimes(4);
+ }finally{act(()=>root.unmount());}
+});
+it('reuses completed live heads when a slower retained seed finishes instead of fetching the same data twice',async()=>{
+ let finish!:(value:unknown)=>void;cache.seed.mockReturnValue(new Promise(resolve=>{finish=resolve;}));
+ network.read.mockImplementation(async(source:PublicSource)=>page(source,[source+'-head']));
+ await observe(async read=>{
+  expect(network.read).toHaveBeenCalledTimes(4);
+  await act(async()=>finish({records:page('actions',['older']).records,capturedAt:null,inspectionVersion:PUBLIC_NETWORK_INSPECTION_VERSION,coverage:(['actions','wallet','graph','proofs']as const).map(source=>({source,complete:true}))}));
+  expect(read().records.some(row=>row.sourceId==='older')).toBe(true);
+  expect(network.read).toHaveBeenCalledTimes(4);expect(originals.sync).toHaveBeenCalledTimes(1);
+ });
+});
+it('repairs a newly revealed history gap while unrelated feeds and proof synchronization are pending',async()=>{
+ let finish!:(value:unknown)=>void;cache.seed.mockReturnValue(new Promise(resolve=>{finish=resolve;}));originals.sync.mockReturnValue(new Promise(()=>{}));
+ network.read.mockImplementation(async(source:PublicSource,cursor?:string)=>source==='graph'?new Promise(()=>{}):source==='actions'?page(source,cursor?['gap','older']:['head'],cursor?null:'42'):page(source));
+ await observe(async read=>{
+  await act(async()=>finish({records:page('actions',['older']).records,capturedAt:null,inspectionVersion:PUBLIC_NETWORK_INSPECTION_VERSION,coverage:[{source:'actions',complete:true}]}));
+  expect(network.read.mock.calls.some(([source,cursor])=>source==='actions'&&cursor==='42')).toBe(true);
+  expect(read().records.map(row=>row.sourceId)).toEqual(expect.arrayContaining(['head','gap','older']));expect(read().sources.graph.busy).toBe(true);
+ });
+});
 it('stops repeated source cursors instead of looping forever', async () => {
   network.read.mockImplementation(async (source: PublicSource, cursor?: string) => source === 'actions' ? page(source, cursor ? ['older'] : ['head'], '42') : page(source));
   await observe(async read => { await act(async () => { await read().loadMore(); }); expect(read().sources.actions.error).toContain('cursor'); const calls = network.read.mock.calls.length; await act(async () => { await read().loadMore(); }); expect(network.read.mock.calls.length).toBe(calls); });

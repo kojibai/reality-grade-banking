@@ -18,9 +18,11 @@ export function usePublicNetwork(active = true) {
   const capture = (value:string|null) => { if(value)setCapturedAt(previous=>!previous||Date.parse(value)>Date.parse(previous)?value:previous); };
   const lifetime = useRef<AbortController | null>(null);
   const inspectionVersion=useRef(0);
+  const sourceReads=useRef(new Map<PublicSource,{controller:AbortController;promise:Promise<void>}>());
   const activeTradeRepair=useRef<{targets:Set<string>;seen:Set<string>}|null>(null);
   const originalProjection=useRef<{digest:string;records:PublicRecord[]}|null>(null);
   const saved=useRef<{records:PublicRecord[];capturedAt:string|null;coverage:string;inspectionVersion:number}|null>(null);
+  const retainedCache=useRef<Promise<PublicNetworkCache|null>|null>(null);
   const completeAnchors = useRef<Partial<Record<PublicSource, Set<string>>>>({});
   const historyCursors = useRef<Record<PublicSource, Set<string>>>({ actions: new Set(), wallet: new Set(), graph: new Set(), proofs: new Set() });
   const update = (source: PublicSource, patch: Partial<PublicSourceState>) => { const next = { ...sourceState.current, [source]: { ...sourceState.current[source], ...patch } }; sourceState.current = next; setSources(next); };
@@ -28,7 +30,7 @@ export function usePublicNetwork(active = true) {
     const incomingIds = new Set(incoming.map(row => row.id));
     const next = mergePublicRecords(replace ? rows.current.filter(row => row.source !== source || incomingIds.has(row.id)) : rows.current, incoming); rows.current = next; setRecords(next);
   };
-  const readSource = useCallback(async (source: PublicSource, phase: 'head' | 'older') => {
+  const performSourceRead = useCallback(async (source: PublicSource, phase: 'head' | 'older') => {
     const controller = lifetime.current, before = sourceState.current[source];
     if (!controller || controller.signal.aborted || before.busy || phase === 'older' && (before.complete || !before.cursor || before.error)) return;
     const existing = phase === 'head' && completeAnchors.current[source] ? completeAnchors.current[source]! : new Set(rows.current.filter(row => row.source === source).map(row => row.id));
@@ -65,6 +67,13 @@ export function usePublicNetwork(active = true) {
       if (!controller.signal.aborted) update(source, { busy: false, status: rows.current.some(row => row.source === source) ? 'stale' : 'error', error: cause instanceof Error ? cause.message : 'Public source unavailable.' });
     } finally { if(repairCycle&&activeTradeRepair.current===repairCycle)activeTradeRepair.current=null; if (!controller.signal.aborted && sourceState.current[source].busy) update(source, { busy: false }); }
   }, []);
+  const readSource=useCallback((source:PublicSource,phase:'head'|'older')=>{
+    const controller=lifetime.current;if(!controller||controller.signal.aborted)return Promise.resolve();
+    const held=sourceReads.current.get(source);if(held?.controller===controller&&sourceState.current[source].busy)return held.promise;
+    const promise=performSourceRead(source,phase),entry={controller,promise};sourceReads.current.set(source,entry);
+    void promise.finally(()=>{if(sourceReads.current.get(source)===entry)sourceReads.current.delete(source);}).catch(()=>{});
+    return promise;
+  },[performSourceRead]);
   const adoptOriginal = useCallback(async(review:PublicLedgerFileReview|null,controller:AbortController)=>{
     if(!review||controller.signal.aborted||originalProjection.current?.digest===review.artifactSha256&&originalProjection.current.records===rows.current)return;
     // Projection can yield while the verifier module loads. Rebase on the newest
@@ -86,10 +95,10 @@ export function usePublicNetwork(active = true) {
   }, [readSource,adoptOriginal]);
   const loadMore = useCallback(async () => { await Promise.allSettled(PUBLIC_SOURCES.map(source => readSource(source, 'older'))); }, [readSource]);
   useEffect(() => {
-    if (!active) return; const controller = new AbortController(); lifetime.current = controller;
+    const controller = new AbortController(); lifetime.current = controller;
     // Restore this public discovery cache before searching live heads for additions.
     void (async () => {
-      const cache = rows.current.length ? null : await loadPublicNetworkCache();
+      const cache = rows.current.length ? null : await (retainedCache.current??=loadPublicNetworkCache());
       if (controller.signal.aborted) return;
       const needsSeed = Math.max(inspectionVersion.current, cache?.inspectionVersion ?? 0) < PUBLIC_NETWORK_INSPECTION_VERSION || !rows.current.length && (!cache || PUBLIC_SOURCES.some(source => !cache.coverage.some(item => item.source === source && item.complete)));
       const restore=(held:PublicNetworkCache|null,seed:PublicNetworkCache|null)=>{
@@ -111,17 +120,30 @@ export function usePublicNetwork(active = true) {
         }
       };
       if(cache)restore(cache,null);
-      setBootstrap(false); void refresh();
+      setBootstrap(false); if(!active)return; void refresh();
       void readHeldPublicLedger().then(review=>adoptOriginal(review,controller)).catch(()=>{});
       // Seed enrichment must not delay the newest durable head or source polling.
       const seed=needsSeed?await loadPublicNetworkSeed(controller.signal):null;
       if(controller.signal.aborted||!seed)return;
       const held:PublicNetworkCache={records:rows.current,capturedAt:null,inspectionVersion:inspectionVersion.current,coverage:PUBLIC_SOURCES.map(source=>({source,complete:sourceState.current[source].complete,anchorIds:completeAnchors.current[source]?[...completeAnchors.current[source]!]:undefined,observedAt:sourceState.current[source].observedAt}))};
-      restore(held,seed);void refresh();
+      const gaps=new Set(PUBLIC_SOURCES.filter(source=>!!sourceState.current[source].cursor&&!sourceState.current[source].complete));
+      restore(held,seed);
+      // A delayed seed does not invalidate heads already read during this
+      // opening. Only a newly revealed history gap or legacy trade correction
+      // needs another source pass; do not repeat all four reads and proof sync.
+      for(const source of ['actions','wallet']as const)void(async()=>{
+        await sourceReads.current.get(source)?.promise;
+        if(controller.signal.aborted||lifetime.current!==controller)return;
+        const state=sourceState.current[source];
+        if(state.busy||state.error)return;
+        const historyGap=gaps.has(source)||!!state.cursor&&!state.complete;
+        const tradeRepair=source==='actions'&&inspectionVersion.current<5;
+        if(historyGap||tradeRepair)await readSource(source,'head');
+      })().catch(()=>{});
     })();
-    const interval = setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 60_000);
-    const wake = () => { if (document.visibilityState === 'visible') void refresh(); };
-    document.addEventListener('visibilitychange', wake); window.addEventListener('online', wake);const stopSync=subscribePublicLedgerSync(wake);
+    const interval = active?setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 60_000):undefined;
+    const wake = () => { if (active&&document.visibilityState === 'visible') void refresh(); };
+    document.addEventListener('visibilitychange', wake); window.addEventListener('online', wake);const stopSync=active?subscribePublicLedgerSync(wake):()=>{};
     return () => { controller.abort(); if (lifetime.current === controller) lifetime.current = null; clearInterval(interval);stopSync();document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); for (const source of PUBLIC_SOURCES) sourceState.current[source] = { ...sourceState.current[source], busy: false }; };
   }, [active, refresh,adoptOriginal]);
   useEffect(() => {
