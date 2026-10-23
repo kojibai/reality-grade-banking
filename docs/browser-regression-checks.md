@@ -4,6 +4,8 @@
 
 The checks run in isolated browser contexts with synthetic public display specimens. External services are blocked. They create no account, hold no private identity, submit no payment and grant no financial authority.
 
+Follow the [loading invariants](loading-invariants.md) when changing data projections or resource preparation. The audio load-event ordering and carried proof fields have separate focused regression tests; the browser gate below must not be represented as measuring those timings.
+
 The gate fails when:
 
 - A cold asset downloads images beyond its carried cover and owner portrait, fetches either image twice, or mounts an unvisited collection.

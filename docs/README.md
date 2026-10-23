@@ -64,6 +64,8 @@ operating contracts, independent receiving tools and release evidence.
 - [Changelog](../CHANGELOG.md)
 - [Dated verification records](verification/)
 - [Audience guide design](design/audience-guides.md)
+- [Loading invariants and cold-entry evidence](loading-invariants.md)
+- [Production browser regression checks](browser-regression-checks.md)
 - [Follow-up implementation queue](implementation/remaining-work.md)
 
 The current capability map and versioned release record identify present

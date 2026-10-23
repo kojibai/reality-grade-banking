@@ -6,6 +6,8 @@ For a bug, include the expected behavior, minimal reproduction, exact build/pack
 
 For changes accepted into the official reference, verification, value, custody, admission, execution, recovery, trust roots or conformance requirements require an explicit design and independent review. GPL recipients remain free to modify and redistribute outside this upstream review process. Do not weaken a requirement to resolve a UI or transport failure. Keep presentation work separate from financial authority changes. A display or language refinement must preserve the same operational capability and evidence boundary.
 
+Preserve the [loading invariants](docs/loading-invariants.md): carry available source fields through the initial presentation, reuse retained results, and keep passive preparation outside document loading. Validate cold entry with delayed resources; a warm cache can hide a missing field or loading barrier.
+
 Run `npm test`, `npm run typecheck`, `npm run receiver:check`, and `npm run build`. Add meaningful refusal/recovery tests when changing a financial boundary. Keep all three Receiz packages coordinated and retain source/hash provenance for generated modules. Do not edit generated verifier bundles by hand.
 
 Use synthetic, visibly nonfinancial fixtures. Never run a live financial action to satisfy an automated check. A production release requires the separate user-operated and independently reviewed evidence described in [qualification.md](institution/qualification.md).
