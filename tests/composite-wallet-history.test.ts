@@ -39,3 +39,16 @@ it.each(['duplicate object','overlap','future source','unsafe amount','foreign i
  const source=fixture();if(kind==='duplicate object')source.objects.push({...source.objects[0]});if(kind==='overlap')source.objects[0].intervals.push({fromKaiUPulse:'12000000000000',toKaiUPulse:null});if(kind==='future source')source.movements[0].kaiUPulse='99999999999999';if(kind==='unsafe amount')source.movements[0].phiMicro='12.3';if(kind==='foreign interval')source.objects[0].intervals[0].fromKaiUPulse='1';
  expect(()=>projectCompositeWalletHistory(source)).toThrow();
 });
+
+it('keeps proof-derived Settlement history when recorded spending exceeds ledger credits',()=>{
+ const source=fixture();source.movements=[{id:'paid-from-proof',kaiUPulse:'13000000000000',direction:'debit',phiMicro:'1000000',usdCents:'100',reserveSliceUsdCents:'100',profileSeed:false}];
+ const point=projectCompositeWalletAt(source,end),value=originalValue(Number(BigInt(end)/1000000n));
+ expect(point.totalUsdCents).toBe((value.usd-100n).toString());expect(point.balancePhiMicro).toBe((value.phi-1000000n).toString());expect(point.reserveUsdCents).toBe('0');
+ const history=projectCompositeWalletHistory(source);expect(history[0].kaiUPulse).toBe(first);expect(history.at(-1)).toEqual(point);
+ expect(source.movements[0].phiMicro).toBe('1000000');
+});
+it('restores Reserve from a later funded credit after earlier proof-derived spending',()=>{
+ const source=fixture();source.movements=[{id:'paid-from-proof',kaiUPulse:'12000000000000',direction:'debit',phiMicro:'1000000',usdCents:'100',reserveSliceUsdCents:'100',profileSeed:false},{id:'funded-later',kaiUPulse:'13000000000000',direction:'credit',phiMicro:'2000000',usdCents:'200',reserveSliceUsdCents:'200',profileSeed:false}];
+ expect(projectCompositeWalletAt(source,'12000000000000').reserveUsdCents).toBe('0');
+ const point=projectCompositeWalletAt(source,end);expect(point.reserveUsdCents).toBe('200');expect(point.totalUsdCents).toBe((originalValue(Number(BigInt(end)/1000000n)).usd+100n).toString());
+});

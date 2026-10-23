@@ -10,13 +10,13 @@ import {sampleChartIndices} from '../core/chart-history';
 /** Authenticated legacy read operands, not a public account proof, custody
  * source or execution input. Original source evidence remains authoritative. */
 export interface CompositeWalletSource {
- schema:'receiz.wallet.chart-source.v129';authority:'authenticated-display-source';userId:string;throughKaiUPulse:string;
+ schema:'receiz.wallet.chart-source.v129';composition?:'profile-plus-ledger'|'account-only';authority:'authenticated-display-source';userId:string;throughKaiUPulse:string;
  objects:{id:string;seed:MarketPulseSeed;intervals:{fromKaiUPulse:string;toKaiUPulse:string|null}[]}[];
  movements:{id:string;kaiUPulse:string;direction:'credit'|'debit';phiMicro:string;usdCents:string;reserveSliceUsdCents:string;profileSeed:boolean}[];
  lawfulValues:{id:string;kaiUPulse:string;deltaPhiMicro:string}[];
  transport?:{after:string|null;cursor:string|null;capturedKaiUPulse?:string};
 }
-export interface CompositeWalletPoint extends WalletPoint {balancePhiMicro:string;valuation:'portfolio-model-v129';}
+export interface CompositeWalletPoint extends WalletPoint {balancePhiMicro?:string;valuation:'portfolio-model-v129';}
 const nonnegative=(n:bigint)=>n>0n?n:0n;
 const exact=(v:unknown,signed=false):bigint=>{if(typeof v!=='string'||!(signed?/^(0|-?[1-9]\d{0,39})$/:/^(0|[1-9]\d{0,39})$/).test(v))throw Error('COMPOSITE_HISTORY_AMOUNT_INVALID');return BigInt(v);};
 const kai=(v:unknown):bigint=>{const n=exact(v);if(n>10_000_000_000_000_000n)throw Error('COMPOSITE_HISTORY_COORDINATE_INVALID');return n;};
@@ -25,6 +25,10 @@ type Compiled=ReturnType<typeof compile>;
 export function validateCompositeWalletSource(source:CompositeWalletSource):void{compile(source);}
 function compile(source:CompositeWalletSource){
  if(source?.schema!=='receiz.wallet.chart-source.v129'||source.authority!=='authenticated-display-source'||!identifier(source.userId)||!Array.isArray(source.objects)||source.objects.length>10000||!Array.isArray(source.movements)||source.movements.length>100000||!Array.isArray(source.lawfulValues)||source.lawfulValues.length>100000)throw Error('COMPOSITE_HISTORY_SOURCE_REQUIRED');
+ if(source.composition!==undefined&&!['profile-plus-ledger','account-only'].includes(source.composition))throw Error('COMPOSITE_HISTORY_SOURCE_REQUIRED');
+ // Account-only history is a dollar timeline of recorded movements. Its
+ // current Phi snapshot is separate; these operands do not reconstruct it.
+ if(source.composition==='account-only'&&(source.objects.length||source.lawfulValues.length||source.movements.some(row=>row.profileSeed)))throw Error('COMPOSITE_HISTORY_SOURCE_REQUIRED');
  const end=kai(source.throughKaiUPulse),coordinates=new Set<bigint>([end]),ids=new Set<string>();
  const objects=source.objects.map(object=>{
   const seed=publicMarketPulseSeed(object.seed,String(object.seed?.claimPulse));
@@ -38,7 +42,9 @@ function compile(source:CompositeWalletSource){
  const states=source.movements.map((row,index)=>{if(!identifier(row.id)||ids.has(row.id)||!['credit','debit'].includes(row.direction)||typeof row.profileSeed!=='boolean')throw Error('COMPOSITE_HISTORY_MOVEMENT_INVALID');ids.add(row.id);const at=kai(row.kaiUPulse);if(at>end)throw Error('COMPOSITE_HISTORY_COORDINATE_INVALID');coordinates.add(at);return {row,index,at};}).sort((a,b)=>a.at<b.at?-1:a.at>b.at?1:a.index-b.index).map(({row,at})=>{
   const phi=exact(row.phiMicro),usd=exact(row.usdCents),slice=exact(row.reserveSliceUsdCents),sign=row.direction==='credit'?1n:-1n;
   if(slice>usd||row.profileSeed&&row.direction!=='credit')throw Error('COMPOSITE_HISTORY_MOVEMENT_INVALID');
-  gross+=sign*phi;if(gross<0n)throw Error('COMPOSITE_HISTORY_MOVEMENT_INVALID');creditsPhi+=sign*phi;creditsUsd+=sign*usd;reserve=nonnegative(reserve+sign*slice);
+  // Recorded movements are a delta beneath proof-derived value. A negative
+  // ledger-only delta is valid spending from that source, not an overdraft.
+  gross+=sign*phi;creditsPhi+=sign*phi;creditsUsd+=sign*usd;reserve=nonnegative(reserve+sign*slice);
   if(row.profileSeed){seedPhi=phi;seedUsd=usd;}
   return {at,gross,deltaPhi:creditsPhi-seedPhi,deltaUsd:creditsUsd-seedUsd,reserve};
  });
@@ -60,9 +66,9 @@ function point(model:Compiled,at:bigint):CompositeWalletPoint{
  }
  const state=latest(model.states,at),lawful=latest(model.values,at)?.phi??0n,rate=lawful>0n||(state?.gross??0n)>0n?historicalWalletUsdRate(at.toString()):null;
  const lawfulUsd=lawful?BigInt(quoteReceizDisplayUsdV122(lawful.toString(),rate!)):0n,total=nonnegative(intrinsicUsd+lawfulUsd+(state?.deltaUsd??0n)),phi=nonnegative(intrinsicPhi+lawful+(state?.deltaPhi??0n));
- const grossUsd=state?.gross?BigInt(quoteReceizDisplayUsdV122(state.gross.toString(),rate!)):0n,heldReserve=state?.reserve??0n,reserve=heldReserve<grossUsd?heldReserve:grossUsd;
+ const grossUsd=state&&state.gross>0n?BigInt(quoteReceizDisplayUsdV122(state.gross.toString(),rate!)):0n,heldReserve=state?.reserve??0n,reserve=heldReserve<grossUsd?heldReserve:grossUsd;
  if(reserve>total)throw Error('COMPOSITE_HISTORY_RAILS_INCONSISTENT');
- return {userId:model.source.userId,at:walletPointTime(at.toString()),kaiUPulse:at.toString(),totalUsdCents:total.toString(),reserveUsdCents:reserve.toString(),settlementUsdCents:(total-reserve).toString(),balancePhiMicro:phi.toString(),valuation:'portfolio-model-v129'};
+ return {userId:model.source.userId,at:walletPointTime(at.toString()),kaiUPulse:at.toString(),totalUsdCents:total.toString(),reserveUsdCents:reserve.toString(),settlementUsdCents:(total-reserve).toString(),...(model.source.composition==='account-only'?{}:{balancePhiMicro:phi.toString()}),valuation:'portfolio-model-v129'};
 }
 export function projectCompositeWalletAt(source:CompositeWalletSource,atKaiUPulse:string):CompositeWalletPoint{const model=compile(source),at=kai(atKaiUPulse);if(at>model.end)throw Error('COMPOSITE_HISTORY_COORDINATE_INVALID');return point(model,at);}
 /** Reconcile only display coordinates affected by newly received source rows.

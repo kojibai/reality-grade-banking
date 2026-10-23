@@ -36,8 +36,13 @@ it('refreshes a constant public valuation basis without rebuilding historic samp
   expect(() => parseMarketHistory(updated)).not.toThrow();
 });
 it('rebuilds all ranges when a public asset valuation basis changes', async () => {
-  const retained=(await buildMarketHistory(seed))!;
-  calculate.mockClear(); const source = structuredClone(seed); source.valueRows[0].scoreDelta += 1;
+  // Basis invalidation needs one changed source row. Keep the shipped full
+  // inventory check above; rebuilding it twice here makes this behavior test
+  // depend on runner contention and the live inventory's size.
+  const row=structuredClone(seed.valueRows[0]);
+  const small={...seed,valueRows:[row],marketAssetsPriced:row.source==='market-desk-live-asset'?1:0,sportsCardsPriced:row.source==='sports-economy-card'?1:0,cardsInCirculation:Math.max(1,row.sealedCopies?.length??0),unpricedSealedBirths:undefined,sportsHistorySnapshot:undefined,sportsHistoryEvaluationPulse:undefined,sourceEvaluation:undefined};
+  const retained=(await buildMarketHistory(small))!;
+  calculate.mockClear(); const source = structuredClone(small); source.valueRows[0].scoreDelta += 1;
   const rebuilt = (await buildMarketHistory(source, retained))!;
   expect(rebuilt.basisSha256).not.toBe(retained.basisSha256); expect(calculate.mock.calls.length).toBeGreaterThan(100);
   for (const period of CHART_PERIODS) {expect(rebuilt.series[period].length).toBeGreaterThanOrEqual(64);expect(rebuilt.series[period].length).toBeLessThanOrEqual(96+(rebuilt.eventPulses?.length??0));}

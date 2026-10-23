@@ -4,7 +4,7 @@ import {projectCompositeWalletAt,type CompositeWalletSource} from '../src/receiz
 import {hasSettledAccountView} from '../src/receiz/account-view';
 import type {SharedWallet} from '../src/receiz/shared-wallet';
 const source=():CompositeWalletSource=>({schema:'receiz.wallet.chart-source.v129',authority:'authenticated-display-source',userId:'owner',throughKaiUPulse:'14710000000000',objects:[{id:'a',seed:{kind:'sigil',claimPulse:10825210,beat:2,stepIndex:3,creatorVerified:true},intervals:[{fromKaiUPulse:'10825210000000',toKaiUPulse:null}]}],movements:[],lawfulValues:[]});
-function observation(s=source()){const p=projectCompositeWalletAt(s,s.throughKaiUPulse),wallet:SharedWallet={userId:s.userId,totalUsdCents:p.totalUsdCents,settlementUsdCents:p.settlementUsdCents,reserveUsdCents:p.reserveUsdCents,balancePhiMicro:p.balancePhiMicro,portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:false,pulse:null,kaiUpulse:null};return{wallet,observedAt:p.at};}
+function observation(s=source()){const p=projectCompositeWalletAt(s,s.throughKaiUPulse),wallet:SharedWallet={userId:s.userId,totalUsdCents:p.totalUsdCents,settlementUsdCents:p.settlementUsdCents,reserveUsdCents:p.reserveUsdCents,balancePhiMicro:p.balancePhiMicro??'0',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:false,pulse:null,kaiUpulse:null};return{wallet,observedAt:p.at};}
 it('admits complete calculated periods from authenticated same-account operands before the visible frame',()=>{const s=source(),v=compositeWalletObservation(observation(s),s);expect(hasSettledAccountView(v)).toBe(true);expect(v?.history?.[0].kaiUPulse).toBe('10825210000000');expect(v?.chartSource).toBe(s);expect(v?.historyBasis?.kind).toBe('portfolio-model-v129');});
 it('does not turn a chart source into spending authority or overwrite a local Note successor',()=>{const s=source();expect(compositeWalletObservation({...observation(s),source:'local-note-head',localHeadDigest:'a'.repeat(64)},s)).toBeNull();expect(compositeWalletObservation({...observation(s),wallet:{...observation(s).wallet,userId:'foreign'}},s)).toBeNull();expect(compositeWalletObservation({...observation(s),wallet:{...observation(s).wallet,totalUsdCents:'1'}},s)).toBeNull();});
 it('advances only the new endpoint and retains held historical samples on every ordinary pulse',()=>{const s=source(),v=compositeWalletObservation(observation(s),s)!;const next=advanceCompositeWalletObservation(v,'14710001000000')!;expect(next.history!.slice(0,-1)).toEqual(v.history);expect(next.history!.at(-1)?.kaiUPulse).toBe('14710001000000');expect(next.wallet.totalUsdCents).not.toBe(v.wallet.totalUsdCents);expect(hasSettledAccountView(next)).toBe(true);});
@@ -62,4 +62,25 @@ it('includes every newly learned object entry and exit edge inside a locally adv
  const objects=[2,7].map(n=>({id:String(n),seed:{kind:'sigil' as const,claimPulse:14710000+n,beat:2,stepIndex:3,creatorVerified:true},intervals:[{fromKaiUPulse:String(14710000+n)+'000000',toKaiUPulse:n===7?'14710009000000':null}]}));
  const next={...a,throughKaiUPulse:'14710012000000',objects},value=compositeWalletObservation(observation(next),next,held)!;
  for(const edge of ['14710002000000','14710007000000','14710009000000']){expect(value.history!.some(row=>row.kaiUPulse===edge)).toBe(true);expect(value.history!.some(row=>row.kaiUPulse===(BigInt(edge)-1n).toString())).toBe(true);}
+});
+it('keeps observed account Phi distinct from the account-only dollar history',()=>{
+ const s={...source(),composition:'account-only' as const,objects:[],movements:[{id:'received',kaiUPulse:'11000000000000',direction:'credit' as const,phiMicro:'1000000',usdCents:'1000',reserveSliceUsdCents:'0',profileSeed:false}]};
+ const observed={...observation(s),wallet:{...observation(s).wallet,balancePhiMicro:'42'}};
+ const value=compositeWalletObservation(observed,s);expect(value).not.toBeNull();expect(value!.wallet.balancePhiMicro).toBe('42');expect(value!.historyBasis?.balancePhiMicro).toBe('42');
+ expect(value!.history!.every(row=>!('balancePhiMicro' in row))).toBe(true);
+ const next=advanceCompositeWalletObservation(value!,'14710001000000')!;expect(next.wallet.balancePhiMicro).toBe('42');expect(next.historyBasis?.balancePhiMicro).toBe('42');expect(next.wallet.totalUsdCents).toBe('1000');
+ expect(compositeWalletObservation(observed,{...s,composition:'profile-plus-ledger'})).toBeNull();
+ expect(compositeWalletObservation({...observed,wallet:{...observed.wallet,totalUsdCents:'999',settlementUsdCents:'999'}},s)).toBeNull();
+});
+it('refuses mixed object, lawful value or excluded-seed operands in account-only dollar history',()=>{
+ const s={...source(),composition:'account-only' as const,objects:[]};
+ for(const invalid of [{...s,objects:source().objects},{...s,lawfulValues:[{id:'value',kaiUPulse:'11000000000000',deltaPhiMicro:'1'}]},{...s,movements:[{id:'seed',kaiUPulse:'11000000000000',direction:'credit' as const,phiMicro:'1',usdCents:'1',reserveSliceUsdCents:'0',profileSeed:true}]}])expect(readCompositeWalletSource(invalid,'owner')).toBeNull();
+});
+it('requires a complete source when account composition changes and retains original movement amounts',()=>{
+ const a={...source(),composition:'account-only' as const,objects:[],movements:[{id:'seed',kaiUPulse:'11000000000000',direction:'credit' as const,phiMicro:'1000000',usdCents:'1000',reserveSliceUsdCents:'0',profileSeed:false}],transport:{after:null,cursor:'2026-01-01T00:00:00Z'}};
+ const next={...source(),composition:'profile-plus-ledger' as const,movements:[{...a.movements[0],profileSeed:true}],transport:{after:null,cursor:'2026-01-01T00:00:00Z'}};
+ expect(()=>mergeCompositeWalletSources(a,{...next,movements:[],transport:{...next.transport,after:a.transport.cursor}})).toThrow('COMPOSITION_CHANGED');
+ const merged=mergeCompositeWalletSources(a,next);expect(merged.movements).toEqual(next.movements);expect(merged.objects).toEqual(next.objects);
+ expect(()=>mergeCompositeWalletSources(a,{...next,movements:[{...next.movements[0],usdCents:'2000'}]})).toThrow('MOVEMENT_CHANGED');
+ expect(()=>mergeCompositeWalletSources(a,{...next,movements:[]})).toThrow();
 });

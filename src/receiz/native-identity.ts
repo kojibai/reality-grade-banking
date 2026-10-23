@@ -43,7 +43,7 @@ import {loadBankProofResources} from './proof-resource-continuity';
 import {readLocalAccountCheckpoint} from './local-account-checkpoint';
 import {BANK_PREPARED_NOTE_CREDIT_ENABLED} from './config';
 import { readNoteAccountObservation } from './note-account-observation';
-import {readCompositeWalletSource,advanceCompositeWalletObservation,mergeCompositeWalletSources,reconcileCompositeWalletObservation,validCursor} from './composite-wallet-source';
+import {readCompositeWalletSource,compositeWalletEndpointMatches,advanceCompositeWalletObservation,mergeCompositeWalletSources,reconcileCompositeWalletObservation,validCursor} from './composite-wallet-source';
 import { hasSettledAccountView } from './account-view';
 import {createLocalNoteInventory,createLocalNoteDepositQueue} from './note-local-inventory';
 import {loadReceivedNoteDepositState,saveReceivedNoteDepositState} from './identity-vault';
@@ -125,8 +125,18 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const recovered = admission.recoveredState as unknown as ReceizIdentityAccountProjection | undefined;
   const localHistory = recovered?.schema === 'receiz.sdk.identity_account_projection.v1' && recovered.keyId === keyFile.keyId && recovered.owner?.uid === keyFile.owner.uid
     ? recovered : await sdk.projectReceizIdentityAccount(keyFile);
+  // The admitted carrier selects its recovered account. Device-key ownership
+  // and the account bound to that key are distinct; recency cannot replace the
+  // signed account selection. The host still checks the active binding.
+  const carriedAccountState=localHistory.verifiedState as {schema?:unknown;account?:{userId?:unknown}}|null;
+  const carriedAccountUid=localHistory.schema==='receiz.sdk.identity_account_projection.v1'
+    &&localHistory.keyId===keyFile.keyId&&localHistory.owner?.uid===keyFile.owner.uid
+    &&localHistory.authority==='verified-identity-portable-state'&&localHistory.portableStateVerified
+    &&carriedAccountState?.schema==='receiz.account.state.v3'
+    &&typeof carriedAccountState.account?.userId==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(carriedAccountState.account.userId)
+    ?carriedAccountState.account.userId.toLowerCase():null;
   const [savedWallet,savedPortfolio] = await Promise.all([loadWalletObservation(binding),Promise.resolve().then(()=>loadMarketPortfolioState(binding)).catch(()=>null)]);
-  let knownWallet = savedWallet;
+  let knownWallet = savedWallet&&(!carriedAccountUid||savedWallet.wallet.userId===carriedAccountUid)?savedWallet:null;
   let walletRevision = 0;
   let activeNoteOperations = 0, noteOperationEpoch = 0;
   let walletPersistence = Promise.resolve();
@@ -162,7 +172,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   async function restoreLedger() {
     try {
       const restored = await localLedger.restore(knownWallet);
-      if (!restored || lifetime.signal.aborted) return;
+      if (!restored || lifetime.signal.aborted || carriedAccountUid&&restored.observation.wallet.userId!==carriedAccountUid) return;
       if (canAdoptAccountLedgerObservation(knownWallet, restored.observation)) {
         const observation = mergeAccountLedgerObservation(knownWallet, restored.observation);
         if (observation !== knownWallet) {
@@ -237,7 +247,24 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   let confirmedTwinAccess:boolean|null=null;
   function knownTwinAccess(){return confirmedTwinAccess??knownMessagingDisplay()?.twinAccess??null;}
   async function continueAccountPresentation(targetUnsigned=unsigned){
-    const continued=await targetUnsigned.identity.continueReceizId({schema:'receiz.device.identity.v1',createdAt:keyFile.issuedAt,updatedAt:keyFile.issuedAt,localUid:keyFile.owner.uid,username:keyFile.owner.username??keyFile.keyId,displayName:keyFile.owner.displayName??keyFile.owner.username??'Receiz account',deviceName:null,keyFile:transportKeyFile},{passphrase:transportPhrase});
+    async function switchCarriedAccount(){
+      noteOpen();
+      const challengeB64Url=sdk.receizBase64UrlEncode(new TextEncoder().encode([
+        'RECEIZ_DEVICE_SWITCH_V1',`keyId=${keyFile.keyId}`,`localUid=${keyFile.owner.uid}`,
+        `targetUid=${carriedAccountUid}`,`issuedAtMs=${Date.now()}`,
+        `nonce=${sdk.receizBase64UrlEncode(crypto.getRandomValues(new Uint8Array(16)))}`,
+      ].join('\n')));
+      const signed=await targetUnsigned.identity.signLoginProof({keyFile:transportKeyFile,passphrase:transportPhrase,challengeB64Url});
+      noteOpen();
+      const switched=await targetUnsigned.request('/api/auth/receiz-id/switch',{method:'POST',body:{
+        keyId:keyFile.keyId,alg:keyFile.alg,publicKeyRawB64u:keyFile.crypto.publicKeyRawB64u,
+        localUid:keyFile.owner.uid,targetUid:carriedAccountUid,challengeB64Url,signatureB64Url:signed.signatureB64Url,
+      }}) as {ok?:unknown;session?:{uid?:unknown;username?:unknown};profileProjectionPending?:unknown};
+      if(switched.ok!==true||switched.session?.uid!==carriedAccountUid)throw Error('Your Identity Record did not open the same account. Your saved proof is unchanged.');
+      return switched;
+    }
+    let continued=carriedAccountUid&&carriedAccountUid!==keyFile.owner.uid?await switchCarriedAccount():await targetUnsigned.identity.continueReceizId({schema:'receiz.device.identity.v1',createdAt:keyFile.issuedAt,updatedAt:keyFile.issuedAt,localUid:keyFile.owner.uid,username:keyFile.owner.username??keyFile.keyId,displayName:keyFile.owner.displayName??keyFile.owner.username??'Receiz account',deviceName:null,keyFile:transportKeyFile},{passphrase:transportPhrase});
+    if(carriedAccountUid&&continued.session&&typeof continued.session==='object'&&(continued.session as {uid?:unknown}).uid!==carriedAccountUid)continued=await switchCarriedAccount();
     const session=continued.session as {uid?:unknown;username?:unknown}|undefined;
     if(continued.ok!==true||typeof session?.uid!=='string')throw Error('Your Receiz account could not be opened. Your local Identity Record remains available.');
     return {uid:session.uid,username:session.username,twinAccess:ownerTwinAccountAccess(session),profileProjectionPending:continued.profileProjectionPending===true};
@@ -434,16 +461,16 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     try{if(raw.transport?.after){
       if(!knownWallet?.chartSource||raw.transport.after!==knownWallet.chartSource.transport?.cursor)return null;
       source=readCompositeWalletSource(mergeCompositeWalletSources(knownWallet.chartSource,raw),expectedUserId);
-    }else source=readCompositeWalletSource(raw,expectedUserId);}catch{return null;}
+    }else source=readCompositeWalletSource(knownWallet?.chartSource?mergeCompositeWalletSources(knownWallet.chartSource,raw):raw,expectedUserId);}catch{return null;}
     if(!source)return null;
     source={...source,transport:{after:source.transport?.after??null,cursor:source.transport?.cursor??null,capturedKaiUPulse:source.transport?.capturedKaiUPulse??source.throughKaiUPulse}};
     const {prepareCompositeWallet}=await import('./prepare-composite-wallet');
     const wallet=parseSharedWallet(response,expectedUserId), retained=knownWallet?.historyBasis?.kind==='portfolio-model-v129'?knownWallet:undefined;
     const {projectCompositeWalletAt}=await import('./composite-wallet-history');
     const originalPoint=projectCompositeWalletAt(source,source.throughKaiUPulse);
-    if(!(['totalUsdCents','settlementUsdCents','reserveUsdCents','balancePhiMicro']as const).every(field=>originalPoint[field]===wallet[field]))return null;
+    if(!compositeWalletEndpointMatches(source,wallet,originalPoint))return null;
     const now=String(sdk.receizKaiNow().uPulse);
-    if(/^\d{1,30}$/.test(now)&&BigInt(now)>BigInt(source.throughKaiUPulse)){source={...source,throughKaiUPulse:now};const point=projectCompositeWalletAt(source,now);Object.assign(wallet,{totalUsdCents:point.totalUsdCents,settlementUsdCents:point.settlementUsdCents,reserveUsdCents:point.reserveUsdCents,balancePhiMicro:point.balancePhiMicro});}
+    if(/^\d{1,30}$/.test(now)&&BigInt(now)>BigInt(source.throughKaiUPulse)){source={...source,throughKaiUPulse:now};const point=projectCompositeWalletAt(source,now);Object.assign(wallet,{totalUsdCents:point.totalUsdCents,settlementUsdCents:point.settlementUsdCents,reserveUsdCents:point.reserveUsdCents,balancePhiMicro:point.balancePhiMicro??wallet.balancePhiMicro});}
     const observation=await prepareCompositeWallet({wallet,observedAt:new Date().toISOString()},source,lifetime.signal,retained);noteOpen();
     if(protectedChartFrame())return null;
     return observation ? advanceCompositeWalletObservation(observation,String(sdk.receizKaiNow().uPulse)) ?? observation : null;
@@ -455,7 +482,16 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const startedRevision=walletRevision,current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT),bound=clientAccounts.get(current);
     if(!bound||bound.applicationId!==BANK_APPLICATION_ID)return null;
     const cursor=knownWallet?.chartSource?.transport?.cursor,after=validCursor(cursor)?`&after=${encodeURIComponent(cursor)}`:'';
-    const response=await current.request(`/api/connect/wallet/me?history=1${after}`,{method:'GET'});noteOpen();
+    let response=await current.request(`/api/connect/wallet/me?history=1${after}`,{method:'GET'});noteOpen();
+    if(financialHeadChanged())return knownWallet;
+    if(walletRevision!==startedRevision||hasLocalWalletHead())return null;
+    const returnedSource=(response as {wallet?:{chartSource?:import('./composite-wallet-history').CompositeWalletSource}}|null)?.wallet?.chartSource;
+    if(after&&knownWallet?.chartSource&&returnedSource
+      &&(returnedSource.composition??'profile-plus-ledger')!==(knownWallet.chartSource.composition??'profile-plus-ledger')){
+      // Composition changed, so a suffix cannot reclassify earlier seed rows.
+      // Request the complete source once; ordinary unchanged reads retain it.
+      response=await current.request('/api/connect/wallet/me?history=1',{method:'GET'});noteOpen();
+    }
     if(financialHeadChanged())return knownWallet;
     if(walletRevision!==startedRevision||hasLocalWalletHead())return null;
     const observation=await adoptChartResponse(response,bound.accountUid);
@@ -505,7 +541,9 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       // enriches its presentation; it must not hold a retained payment open.
       const previous = knownWallet?.source === 'account-genesis' ? {...knownWallet, history: knownWallet.history?.map(point=>({...point,userId:wallet.userId}))} : knownWallet;
       const projectedPulse=(response as {wallet?:{sync?:{profileProjectionKaiPulse?:unknown}}}).wallet?.sync?.profileProjectionKaiPulse;
-      const retained=previous&&typeof projectedPulse==='number'&&Number.isSafeInteger(projectedPulse)&&projectedPulse>=0?reconcileCompositeWalletObservation(previous,wallet,String(BigInt(projectedPulse)*1000000n)):null;
+      const retained=previous&&reconcileCompositeWalletObservation(previous,wallet,
+        typeof projectedPulse==='number'&&Number.isSafeInteger(projectedPulse)&&projectedPulse>=0?String(BigInt(projectedPulse)*1000000n)
+        :previous.chartSource?.composition==='account-only'&&sameWalletFinancialState(previous.wallet,wallet)?previous.historyBasis?.endKaiUPulse??'': '');
       const published=retained??{...extendWalletHistory(previous,wallet,new Date().toISOString(),String(sdk.receizKaiNow().uPulse)),...(previous?.chartSource?{chartSource:previous.chartSource}:{})};
       knownWallet=published;void persistWalletObservation(published).catch(()=>{});
       if(typeof dispatchEvent==='function')dispatchEvent(new Event('bankeiz:account-observation'));
@@ -526,7 +564,9 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       if((hasLocalWalletHead()||olderSharedCoordinate()||protectedChartFrame()&&knownWallet!==beforeChart||startedRevision!==walletRevision&&!laterSharedCoordinate())&&knownWallet)return knownWallet.wallet;
       const previous = knownWallet?.source === 'account-genesis' ? {...knownWallet, history: knownWallet.history?.map(point=>({...point,userId:wallet.userId}))} : knownWallet;
       const projectedPulse=(response as {wallet?:{sync?:{profileProjectionKaiPulse?:unknown}}}).wallet?.sync?.profileProjectionKaiPulse;
-      const retained=previous&&typeof projectedPulse==='number'&&Number.isSafeInteger(projectedPulse)&&projectedPulse>=0?reconcileCompositeWalletObservation(previous,wallet,String(BigInt(projectedPulse)*1000000n)):null;
+      const retained=previous&&reconcileCompositeWalletObservation(previous,wallet,
+        typeof projectedPulse==='number'&&Number.isSafeInteger(projectedPulse)&&projectedPulse>=0?String(BigInt(projectedPulse)*1000000n)
+        :previous.chartSource?.composition==='account-only'&&sameWalletFinancialState(previous.wallet,wallet)?previous.historyBasis?.endKaiUPulse??'': '');
       knownWallet = chart ?? retained ?? {...extendWalletHistory(previous, wallet, new Date().toISOString(), String(sdk.receizKaiNow().uPulse)),...(previous?.chartSource?{chartSource:previous.chartSource}:{})};
       if(previous?.chartSource&&!chart&&!retained)void prepareCompositeChart().catch(()=>{});
       void persistWalletObservation(knownWallet).catch(()=>{});
@@ -621,7 +661,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       onIssued:()=>{walletRevision++;if(knownWallet){knownWallet={...knownWallet,historyBasis:undefined,walletScope:undefined,quoteHold:createWalletQuoteHold(knownWallet.wallet)};void persistWalletObservation(knownWallet).catch(()=>{});}noteHistoryRecorded();},
     });return connectedNotes;
   }
-  function receivingUid(){return accountUid??knownWallet?.wallet.userId??keyFile.owner.uid;}
+  function receivingUid(){return accountUid??carriedAccountUid??knownWallet?.wallet.userId??keyFile.owner.uid;}
   function localReceivedNotes(){
     const uid=receivingUid(),context={receiverUserId:uid,receiverKeyId:binding.keyId};
     if(receivedNoteQueue&&receivedNoteQueueUid===uid)return receivedNoteQueue;
@@ -697,7 +737,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       const module=await loadBankNoteRuntime();noteOpen();
       if(await isConnectedNote(module,image)){const note=await readConnectedNote(module,image);noteOpen();return {...note,consumption:'connection-required' as const};}
       if(module.isBankNoteAccountDeposit(image)){const note=await module.readBankNoteAccountDeposit(image);noteOpen();return {rail:note.rail,noteId:note.noteId,amountPhiMicro:note.amountPhiMicro,amountUsdCents:note.amountUsdCents};}
-      const readonly=module.createBankOfflineNotesRuntime({keyId:binding.keyId,uid:accountUid??knownWallet?.wallet.userId??keyFile.owner.uid,localUid:keyFile.owner.uid,origin:location.origin,passphrase:phrase,
+      const readonly=module.createBankOfflineNotesRuntime({keyId:binding.keyId,uid:accountUid??carriedAccountUid??knownWallet?.wallet.userId??keyFile.owner.uid,localUid:keyFile.owner.uid,origin:location.origin,passphrase:phrase,
         request:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},fetchImpl:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},sealDocument:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},
         read:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},write:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},retain:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},restore:(ref:string)=>loadOfflineNoteBlob(binding,ref),assertOpen:noteOpen,artwork:bankNoteArtwork});
       return readonly.inspectNote(image);
@@ -810,7 +850,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       if(state?.create?.phase!=='preparing')await atNoteStage('identity-transport',prepareTransport);
       const module=await loadBankNoteRuntime();noteOpen();
       const forbidden=async()=>{throw Error('BANK_NOTE_CANCELLATION_ONLY');};
-      const cancellation=module.createBankOfflineNotesRuntime({keyId:binding.keyId,uid:accountUid??knownWallet?.wallet.userId??keyFile.owner.uid,localUid:keyFile.owner.uid,origin:location.origin,passphrase:transportPhrase,
+      const cancellation=module.createBankOfflineNotesRuntime({keyId:binding.keyId,uid:accountUid??carriedAccountUid??knownWallet?.wallet.userId??keyFile.owner.uid,localUid:keyFile.owner.uid,origin:location.origin,passphrase:transportPhrase,
         request:async(path:string,options:{method:'GET'|'POST';body?:Record<string,unknown>})=>{noteOpen();const current=await connectClient(BANK_NATIVE_SCOPES,BANK_NATIVE_CONSENT);const result=await current.request(path,options);noteOpen();return result;},
         fetchImpl:forbidden,sealDocument:forbidden,retain:forbidden,restore:(ref:string)=>loadOfflineNoteBlob(binding,ref),read:()=>loadOfflineNoteState(binding),write:(next:unknown,previous:unknown)=>saveOfflineNoteState(binding,next,previous),assertOpen:noteOpen,artwork:bankNoteArtwork});
       await cancellation.cancelUnfunded();noteOpen();
@@ -1216,12 +1256,12 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   }).catch(error=>{hostedCheckoutPromise=undefined;throw error;});
   let portfolioPromise:Promise<MarketPortfolioClient>|undefined,portfolioView:MarketPortfolio|null=null,portfolioSeedUid:string|null=null,portfolioStored:unknown=savedPortfolio;
   const knownMarketPortfolio=()=>{
-    const uid=accountUid??knownWallet?.wallet.userId??keyFile.owner.uid;
+    const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId??keyFile.owner.uid;
     if(uid&&portfolioSeedUid!==uid){portfolioSeedUid=uid;portfolioView=readSealedMarketPortfolio(localHistory,uid);try{const retained=parseMarketPortfolio(portfolioStored,uid);if(!portfolioView||Date.parse(retained.observedAt)>=Date.parse(portfolioView.observedAt))portfolioView=retained;}catch{/* Same-owner encrypted retention only. */}}
     return portfolioView;
   };
   const marketPortfolio=()=>portfolioPromise??=(async()=>{
-    noteOpen();let uid:string|undefined=accountUid??knownWallet?.wallet.userId??keyFile.owner.uid;
+    noteOpen();let uid:string|undefined=accountUid??carriedAccountUid??knownWallet?.wallet.userId??keyFile.owner.uid;
     if(!accountUid&&!knownWallet?.wallet.userId||!uid||uid.startsWith('receiz_device_')){const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);noteOpen();uid=clientAccounts.get(current)?.accountUid;}
     if(!uid||uid.startsWith('receiz_device_'))throw Error('MARKET_PORTFOLIO_ACCOUNT_REQUIRED');
     const ownerUid=uid,initial=knownMarketPortfolio();

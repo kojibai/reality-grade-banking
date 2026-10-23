@@ -101,3 +101,9 @@ it('relays only bounded multipart profile photos through the existing protected 
 it('allows the actor-bound portfolio GET without owner selectors or mutation methods',()=>{
  expect(nativeRequestPath('/api/bank/native/api/connect/market/portfolio','GET')).toBe('/api/connect/market/portfolio');for(const path of ['/api/connect/market/portfolio?userId=foreign','/api/connect/market/portfolio?cursor=untrusted'])expect(nativeRequestPath('/api/bank/native'+path,'GET')).toBeNull();for(const method of ['POST','PUT','DELETE'])expect(nativeRequestPath('/api/bank/native/api/connect/market/portfolio',method)).toBeNull();
 });
+
+it('permits the existing signed account switch without exposing arbitrary account read selectors',()=>{
+ const path='/api/auth/receiz-id/switch';expect(nativeRequestPath('/api/bank/native'+path,'POST')).toBe(path);
+ for(const method of ['GET','PUT','DELETE'])expect(nativeRequestPath('/api/bank/native'+path,method)).toBeNull();
+ expect(nativeRequestPath('/api/bank/native'+path+'?targetUid=foreign','POST')).toBeNull();
+});

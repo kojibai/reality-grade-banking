@@ -22,7 +22,12 @@ it('discards an older history policy even when its retained endpoint is current'
  try{await act(async()=>root.render(<Probe/>));expect(state.source.proofObjectHash).toBe(historyFile.summary.proofObjectHash);}finally{act(()=>root.unmount());}
 });
 it('feeds live membership to the chart worker and publishes all periods and their amount together',async()=>{
- vi.useFakeTimers();clock.pulse=14720000;vi.stubGlobal('fetch',vi.fn(async()=>Response.json(sourceFile)));
+ // This tests worker publication and membership handoff. The complete shipped
+ // inventory is checked separately; one real source row keeps this integration
+ // independent of inventory growth and cryptographic runner contention.
+ const original=parseMarketCapSource(sourceFile),row=original.valueRows[0];
+ const input={ok:true,marketCapProjection:{...original,valueRows:[row],marketAssetsPriced:row.source==='market-desk-live-asset'?1:0,sportsCardsPriced:row.source==='sports-economy-card'?1:0,cardsInCirculation:Math.max(1,row.sealedCopies?.length??0),unpricedSealedBirths:undefined,sportsHistorySnapshot:undefined,sportsHistoryEvaluationPulse:undefined,sourceEvaluation:undefined}};
+ vi.useFakeTimers();clock.pulse=14720000;vi.stubGlobal('fetch',vi.fn(async()=>Response.json(input)));
  const messages:any[]=[];let worker!:WorkerStub;
  class WorkerStub{onmessage:((event:any)=>void)|null=null;constructor(){worker=this;}postMessage(message:any){messages.push(message);}terminate(){}}
  vi.stubGlobal('Worker',WorkerStub);
@@ -33,16 +38,14 @@ it('feeds live membership to the chart worker and publishes all periods and thei
  try{await act(async()=>root.render(<Probe/>));const request=[...messages].reverse().find(message=>message.source);expect(request.catalog).toBe(catalog);expect(request.pulse).toBe(clock.pulse);
   const old=state.source;expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(old.currentUsd*100)));
   const sent=messages.length;clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));expect(messages).toHaveLength(sent);
-  const history=(await buildMarketHistory(parseMarketCapSource(sourceFile),null,undefined,undefined,{catalog,pulse:request.pulse}))!;
+  const history=(await buildMarketHistory(parseMarketCapSource(input),null,undefined,undefined,{catalog,pulse:request.pulse}))!;
   act(()=>worker.onmessage!({data:{id:request.id,history}}));expect(state.source.marketAssetsPriced).toBe(1);expect(state.source.serverPulse).toBe(request.pulse);expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(state.source.currentUsd*100)));
   expect(messages.at(-1).history.basisSha256).toBe(history.basisSha256);
-  const latest=messages.at(-1),advanced=(await buildMarketHistory(parseMarketCapSource(sourceFile),history,undefined,undefined,{catalog,pulse:clock.pulse}))!;act(()=>worker.onmessage!({data:{id:latest.id,history:advanced}}));
+  const latest=messages.at(-1),advanced=(await buildMarketHistory(parseMarketCapSource(input),history,undefined,undefined,{catalog,pulse:clock.pulse}))!;act(()=>worker.onmessage!({data:{id:latest.id,history:advanced}}));
   const count=messages.length;await act(async()=>root.render(<Probe period="1D"/>));expect(messages).toHaveLength(count);expect(state.points.length).toBeGreaterThanOrEqual(64);expect(state.points.length).toBeLessThanOrEqual(96+(history.eventPulses?.length??0));
   const beforePulse=renders;clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));expect(messages.at(-1).pulse).toBe(clock.pulse);expect(renders-beforePulse).toBe(1);
  }finally{act(()=>root.unmount());}
- // This integration check executes the complete public source in the worker
- // stand-in; allow CPU contention with the full cryptographic test suite.
-},15000);
+});
 it('switches every range and restores the market instantly without a worker or a network result', async () => {
   vi.stubGlobal('Worker', undefined); const fetch = vi.fn().mockRejectedValue(new Error('offline')); vi.stubGlobal('fetch', fetch);
   let state!: ReturnType<typeof useMarketCapitalization>; const root = createRoot(document.createElement('div'));
