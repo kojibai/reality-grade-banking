@@ -3,9 +3,25 @@ import {assetPreviewItem,handleAssetPreview} from '../server/asset-preview';
 import {Window} from 'happy-dom';
 import {assetPagePath,assetPageId} from '../src/receiz/public-asset-page';
 import {parsePublicMarket} from '../src/receiz/public-market';
+import {publicAssetManifest} from '../src/receiz/public-asset-manifest';
 const item=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:source',receizId:'source',title:'A moment $& <script>one</script>',summary:'The complete original.',ownerUsername:'artist',profileOriginal:{media:{kind:'image'}}}]}}).items[0];
 const html='<html><head><title>Explore</title><meta name="description" content="Explore"><link rel="canonical" href="https://bankeiz.com/explore/"></head><body><div id="public-explore-root" data-public-runtime="explore"><main>Explore fallback</main></div><script id="receiz-navigation" type="application/json">{"pages":{}}</script></body></html>';
 const deps=()=>({page:vi.fn(async()=>html),item:vi.fn(async()=>item),image:vi.fn(async()=>new Uint8Array([1,2]))});
+it('ships the already-published proof fields on cold entry without a discovery or original read',async()=>{
+ const read=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('Cold proof material must already be carried'));
+ try{
+  const selected=await assetPreviewItem('profile:bjklock:b63e1e2f-62e7-41d8-a769-3a76400f95e0');
+  const manifest=publicAssetManifest(selected!.proofManifestSource,selected!);
+  expect(manifest.find(row=>row.label==='Groth16')?.value).toBe('B37CCA4A98F9FB56');
+  expect(manifest.find(row=>row.label==='Poseidon')?.value).toBe('21bf25369a2469e8ef0ac886d7e5ee670624578b93b025c8c20d84b316328696');
+  expect(manifest.find(row=>row.label==='Claim SHA-256')?.value).toBe('49FFCE5A826171A08CA8291AC6F9C6594D930525702B0662CD5DBEAC890D9C8B');
+  expect(manifest.find(row=>row.label==='PBI Signature')?.value).toBe('97BB33DBD5F49F827DF4E4377F95F3A2B4E1CC624887D2BEC2C66E001F90CAF8');
+  const response=await handleAssetPreview(new Request('https://bankeiz.com'+assetPagePath(selected!.id)),{...deps(),item:async()=>selected});
+  const document=new Window().document;document.write(await response.text());
+  const seed=JSON.parse(document.querySelector('#public-asset-seed')!.textContent!);
+  expect(seed.proofManifestSource.proof.groth16Id).toBe('B37CCA4A98F9FB56');expect(read).not.toHaveBeenCalled();
+ }finally{read.mockRestore();}
+});
 it('starts the carried owner portrait in cold HTML without waiting for JavaScript or another profile read',async()=>{
  const f=deps();f.item.mockResolvedValue({...item,ownerAvatarUrl:'https://receiz.com/artwork/artist.png'});
  const body=await(await handleAssetPreview(new Request('https://bankeiz.com'+assetPagePath(item.id)),f)).text();

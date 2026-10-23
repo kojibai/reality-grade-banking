@@ -13,6 +13,10 @@ function clock(seconds:number){const total=Math.floor(Math.max(0,seconds)),hours
  * without replacing that element, reloading bytes, or restarting playback. */
 export function useProofAudio({file,url,positions}:{file?:Pick<MediaFile,'filename'|'memberPath'>;url:string;positions:MutableRefObject<Record<string,number>>}){
  const ref=useRef<HTMLAudioElement>(null),[state,setState]=useState<AudioState>(initial),mediaKey=file?.memberPath??file?.filename??'';
+ const [settled,setSettled]=useState(()=>typeof document==='undefined'||document.readyState==='complete');
+ // Passive metadata must not hold the document's load event open. The same
+ // native element remains immediately playable from the existing Play button.
+ useEffect(()=>{const loaded=()=>setSettled(true);if(document.readyState==='complete')loaded();else window.addEventListener('load',loaded,{once:true});return()=>window.removeEventListener('load',loaded);},[]);
  function sync(patch:Partial<AudioState>={}){
   const audio=ref.current;if(!audio)return;
   const time=timeOf(audio);if(mediaKey)positions.current[mediaKey]=time;
@@ -23,7 +27,7 @@ export function useProofAudio({file,url,positions}:{file?:Pick<MediaFile,'filena
  function toggle(){const audio=ref.current;if(!audio)return;if(!audio.paused){audio.pause();sync();return;}setState(previous=>({...previous,message:''}));void audio.play().catch(()=>setState(previous=>({...previous,message:'Playback could not start. Try again.'})));}
  function mute(){const audio=ref.current;if(audio){audio.muted=!audio.muted;sync();}}
  function volume(value:number){const audio=ref.current;if(audio&&Number.isFinite(value)){audio.volume=Math.max(0,Math.min(1,value));if(value>0)audio.muted=false;sync();}}
- const element=file&&url?<audio ref={ref} src={url} controls hidden tabIndex={-1} aria-hidden="true" aria-label={file.filename} preload="metadata" onLoadedMetadata={()=>{const audio=ref.current!,position=positions.current[mediaKey];if(position&&position<durationOf(audio))audio.currentTime=position;sync({waiting:false});}} onDurationChange={()=>sync()} onTimeUpdate={()=>sync()} onPlay={()=>sync({message:''})} onPause={()=>sync({waiting:false})} onEnded={()=>sync({waiting:false})} onWaiting={()=>sync({waiting:true})} onPlaying={()=>sync({waiting:false})} onCanPlay={()=>sync({waiting:false})} onVolumeChange={()=>sync()} onError={()=>sync({error:true,waiting:false})}/>:null;
+ const element=file&&url?<audio ref={ref} src={url} controls hidden tabIndex={-1} aria-hidden="true" aria-label={file.filename} preload={settled?'metadata':'none'} onLoadedMetadata={()=>{const audio=ref.current!,position=positions.current[mediaKey];if(position&&position<durationOf(audio))audio.currentTime=position;sync({waiting:false});}} onDurationChange={()=>sync()} onTimeUpdate={()=>sync()} onPlay={()=>sync({message:''})} onPause={()=>sync({waiting:false})} onEnded={()=>sync({waiting:false})} onWaiting={()=>sync({waiting:true})} onPlaying={()=>sync({waiting:false})} onCanPlay={()=>sync({waiting:false})} onVolumeChange={()=>sync()} onError={()=>sync({error:true,waiting:false})}/>:null;
  return{element,state,seek,toggle,mute,volume,skip:(seconds:number)=>{if(ref.current)seek(timeOf(ref.current)+seconds);}};
 }
 type Playback=ReturnType<typeof useProofAudio>;

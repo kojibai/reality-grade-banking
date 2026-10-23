@@ -9,6 +9,19 @@ Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const source={kind:'held' as const,digest:'a'.repeat(64),filename:'source.receiz',bytes:new Uint8Array([1])};
 const media={artifactDigest:source.digest,files:[{kind:'text',filename:'Essay.html',mimeType:'text/html',bytes:new TextEncoder().encode('<p>Bound text</p>'),payloadDigest:'b'.repeat(64),text:'Bound text'}]};
 afterEach(()=>{open.mockReset();readPublic.mockReset();retained.mockReset();vi.restoreAllMocks();});
+it('keeps passive audio metadata out of document loading while Play remains immediate on the same element',async()=>{
+ const ready=vi.spyOn(document,'readyState','get').mockReturnValue('loading');
+ const play=vi.spyOn(HTMLMediaElement.prototype,'play').mockResolvedValue(undefined),reload=vi.spyOn(HTMLMediaElement.prototype,'load').mockImplementation(()=>{});
+ const publicSource={kind:'public' as const,url:'https://receiz.com/api/proof-material/packages/'+'b'.repeat(64)+'/artifact',digest:source.digest},stream={assetId:'song',url:publicSource.url,mimeType:'audio/mpeg'};
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<ProofMedia source={publicSource} title="Cold song" publicAudio={stream} autoOpen/>));
+  const audio=host.querySelector('audio')!;expect(audio.getAttribute('src')).toBe(stream.url);expect(audio.preload).toBe('none');expect(play).not.toHaveBeenCalled();
+  await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Play audio"]')!.click());expect(play).toHaveBeenCalledOnce();expect(play.mock.instances[0]).toBe(audio);
+  audio.currentTime=12;ready.mockReturnValue('complete');act(()=>window.dispatchEvent(new Event('load')));
+  expect(audio.preload).toBe('metadata');expect(host.querySelector('audio')).toBe(audio);expect(audio.currentTime).toBe(12);expect(reload).not.toHaveBeenCalled();expect(play).toHaveBeenCalledOnce();expect(open).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
 it('mounts native public range video immediately without downloading or verifying the complete movie first',async()=>{
  const publicSource={kind:'public' as const,url:'https://receiz.com/api/profile/originals/download?receizId=video&kind=original',digest:source.digest},stream={assetId:'video',url:'https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2Fartist%2Fmovie.mp4',mimeType:'video/mp4'};
  const host=document.createElement('div'),root=createRoot(host);try{
