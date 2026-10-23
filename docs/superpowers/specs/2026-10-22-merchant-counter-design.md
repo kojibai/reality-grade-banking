@@ -2,7 +2,7 @@
 
 Date: October 22, 2026
 
-Status: proposed design for review. Product implementation has not started.
+Status: approved October 22, 2026; implementation plan under review.
 
 ## Outcome
 
@@ -113,7 +113,10 @@ contributions shown as today. No link, scan, page load or merchant action approv
 the customer's payment.
 
 Carry a versioned, opaque reference derived from the exact request digest in the
-existing Wallet public payment note. Do not include product details, customer
+existing Wallet public payment note. Include the existing payment attempt nonce
+alongside that reference so a recipient can request the exact original rather
+than search by amount. Accept only the note recomputed from the retained sale
+and the original's matching nonce. Do not include product details, customer
 information, session credentials or private request state in that reference.
 Explain concisely that the sale reference is recorded with payment. Require the
 existing `publicTransferNotes` capability before fixed-sale approval; do not fall
