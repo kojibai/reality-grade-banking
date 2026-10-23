@@ -82,8 +82,8 @@ export type LedgerPaymentGroup={record:PublicRecord;executionRecords:PublicRecor
  * Contradictory amounts and ambiguous movement references stay separate. */
 export function groupLedgerPaymentRecords(records:readonly PublicRecord[]):LedgerPaymentGroup[]{
  const movements=new Map<string,PublicRecord|null>(),executions=new Map<PublicRecord,PublicRecord[]>(),included=new Set<PublicRecord>();
- for(const record of records){if(ledgerPaymentRole(record)!=='movement')continue;const key=ledgerPaymentReference(record);if(key)movements.set(key,movements.has(key)?null:record);}
- for(const record of records){if(ledgerPaymentRole(record)!=='execution')continue;const key=ledgerPaymentReference(record),movement=key?movements.get(key):undefined;
+ for(const record of records){if(ledgerPaymentRole(record)!=='movement')continue;for(const key of new Set([ledgerPaymentReference(record),record.evidence.transferId].filter((key):key is string=>!!key)))movements.set(key,movements.has(key)?null:record);}
+ for(const record of records){if(ledgerPaymentRole(record)!=='execution')continue;const keys=[ledgerPaymentReference(record),record.evidence.publicTransferId].filter((key):key is string=>!!key),matches=new Set(keys.map(key=>movements.get(key)).filter((row):row is PublicRecord=>!!row)),movement=keys.some(key=>movements.get(key)===null)||matches.size!==1?undefined:[...matches][0];
   if(!movement||movement.authority!==record.authority||movement.amountUsdCents===null||movement.amountUsdCents!==record.amountUsdCents||movement.valueOperands?.amountPhiMicro&&record.valueOperands?.amountPhiMicro&&movement.valueOperands.amountPhiMicro!==record.valueOperands.amountPhiMicro)continue;
   const group=executions.get(movement);if(group)group.push(record);else executions.set(movement,[record]);included.add(record);
  }

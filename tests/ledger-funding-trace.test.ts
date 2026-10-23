@@ -25,8 +25,9 @@ it('rejects cross-copy and conflicting source chronology instead of presenting a
  expect(readLedgerCausalLineage({...wire,causalLineage:{...wire.causalLineage,steps:[{...steps[0],collectibleId:'rsc_ffffffffffffffff',claimHash:claim}]}})).toBeUndefined();
  const r=row();r.kaiUpulse='129999999';expect(ledgerFundingTrace(r).boundary).toBe('coordinate-conflict');
 });
-it('never copies private funding context into a shareable account receipt',()=>{
- const r={...row(),authority:'account-source-projection' as const,origin:'private-account' as const};const receipt=readReceiptLink(receiptLink(r)!);expect(receipt.details).toBeNull();expect(receipt.valueOperands).toEqual({});
+it('carries selected account-record source history through the same curated receipt fields as public history',()=>{
+ const original=row(),r={...original,authority:'account-source-projection' as const,origin:'private-account' as const,details:{...original.details,privateKey:'DO-NOT-SHARE',walletSnapshot:{secret:'DO-NOT-SHARE'}}};
+ const receipt=readReceiptLink(receiptLink(r)!);expect(receipt.details).toEqual(original.details);expect(receipt.valueOperands).toEqual(original.valueOperands);expect(JSON.stringify(receipt)).not.toContain('DO-NOT-SHARE');
 });
 it('does not reuse a parsed causal chain under a different original identity',()=>{
  const lineage={...wire.causalLineage};expect(readLedgerCausalLineage({...wire,causalLineage:lineage})).toBeDefined();expect(readLedgerCausalLineage({...wire,claimHash:'f'.repeat(64),causalLineage:lineage})).toBeUndefined();

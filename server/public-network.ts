@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
 import { readReceizPublicMarketSource } from './public-market.js';
 import type { PublicSource } from '../src/receiz/public-network';
+import {createHash} from 'node:crypto';
 
 const PATH = '/api/bank/public-network';
 export function parsePublicNetworkRequest(requestUrl: string): { source: PublicSource; cursor?: string } | null {
@@ -31,7 +32,17 @@ export async function readSharedPublicSource(source: PublicSource, cursor?: stri
     if (source === 'proofs') return readReceizPublicMarketSource('membership');
     if (source === 'graph') { const response = await publicFetch('https://receiz.com/api/proof-graph/ledger'); if (!response.ok) throw new Error('Public graph unavailable.'); return response.json(); }
     const sdk = await client();
-    return source === 'wallet' ? sdk.wallet.publicLedger({ limit: 256, cursor }) : sdk.wallet.actionLedger({ limit: 256, cursor });
+    if(source==='wallet')return sdk.wallet.publicLedger({limit:256,cursor});
+    const response=await sdk.wallet.actionLedger({limit:256,cursor});
+    // The two public feeds name the same transfer differently. Derive the
+    // Wallet's existing public commitment from the Action's exact foreign key
+    // in this response; no ancestry lookup or additional request is needed.
+    const rows=(response as {actions?:unknown}).actions;
+    if(!Array.isArray(rows))return response;
+    return {...response,actions:rows.map(row=>{
+      if(!row||row.actionKind!=='wallet.transfer.connect'||typeof row.transferId!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(row.transferId))return row;
+      return {...row,publicTransferId:'tx:'+createHash('sha256').update(`wallet_public_ledger:transfer:${row.transferId}`).digest('hex').slice(0,24)};
+    })};
   })().finally(() => pending.delete(key));
   pending.set(key, request); return request;
 }

@@ -41,6 +41,16 @@ it('keeps transfer card value separate from consideration on the receipt', () =>
   expect(host.textContent).toContain('Consideration');
   expect(host.textContent).toContain('$1.00');
 });
+it('carries My history sale details and realized return into a compact shared receipt without a lookup',async()=>{
+ const {compactReceiptLink}=await import('../src/receiz/receipt-sharing'),{vi}=await import('vitest');
+ const row=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'sale',kind:'wallet_ledger_entry',ledgerEntryKind:'market_sell',amountUsdCents:'12500',assetTrade:{side:'sell',title:'The original',marketItemId:'profile:artist:work',shareQuantityMicro:'2500000',priceUsdCents:'5000',settlementUsdCents:'12500',feeUsdCents:'0',realizedCostBasisUsdCents:'10000'}}]}).records[0];
+ const record={...row,authority:'account-source-projection' as const},fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ try{
+  const host=mount(compactReceiptLink(receiptLink(record)!));
+  act(()=>{const details=host.querySelector<HTMLDetailsElement>('details.receipt-inspection')!;details.open=true;details.dispatchEvent(new Event('toggle'));});
+  const trade=host.querySelector('.ledger-trade-details')!;expect(trade.textContent).toContain('The original');expect(trade.textContent).toContain('2.5');expect(trade.textContent).toContain('+$25.00');expect(trade.textContent).toContain('+25.00%');expect(trade.textContent).toContain('Cost basis');expect(fetch).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();}
+});
 
 it('does not invent a valuation coordinate or repeat an unavailable amount',()=>{
  const row=parsePublicNetworkPage('proofs',{ok:true,transport:{publicOriginals:[{id:'proof-no-value',receizId:'proof-no-value',title:'Sealed work',pulse:'120'}]}}).records[0];

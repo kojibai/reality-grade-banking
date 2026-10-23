@@ -35,7 +35,8 @@ export function Ledger({ active = true, personalHistory = null, privateHistory }
   const [historyFilter,setHistoryFilter]=useState<'all'|'out'|'in'>('all');
   const valueSource = useLedgerValueSource(active);
   const [tab, setTab] = useState<'mine' | 'public'>('public'), [expanded, setExpanded] = useState<string | null>(null), [shown, setShown] = useState(50);
-  const { records, sources, bootstrap, capturedAt, refresh, loadMore } = usePublicNetwork(active && tab === 'public');
+  const { records:sourceRecords, sources, bootstrap, capturedAt, refresh, loadMore } = usePublicNetwork(active && tab === 'public');
+  const records=useMemo(()=>enrichWalletFundingContext(sourceRecords,sourceRecords),[sourceRecords]);
   const sentinel = useRef<HTMLDivElement | null>(null), privateSentinel = useRef<HTMLDivElement | null>(null);
   const mine = useMemo(()=>tab==='mine'?enrichWalletFundingContext(mergePublicRecords(privateHistory?.cache?.records ?? [], personalHistory?.records ?? []),records):[],[tab,privateHistory?.cache?.records,personalHistory?.records,records]);
   const relations=useMemo(()=>indexLedgerRelations(tab==='mine'?mine:records),[tab,mine,records]);

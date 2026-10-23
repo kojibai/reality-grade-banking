@@ -21,6 +21,14 @@ it('preserves separate payments and all original execution witnesses in their ow
  expect(groupLedgerPaymentRecords([c,one,a,two,b])).toEqual([{record:one,executionRecords:[a,b]},{record:two,executionRecords:[c]}]);
  expect(ledgerRecordTitle({...one,kind:'sports_card_transfer',title:'Card transferred'})).toBe('Collectible Transfer');
 });
+it('keeps ambiguous public aliases or conflicting money separate even when one reference agrees',()=>{
+ const value=movement('one','tx:'+'a'.repeat(24)),action={...execution('action','native'),evidence:{transferId:'native',publicTransferId:value.evidence.transferId}};
+ expect(groupLedgerPaymentRecords([value,action])).toEqual([{record:value,executionRecords:[action]}]);
+ expect(groupLedgerPaymentRecords([value,movement('duplicate',value.evidence.transferId),action])).toHaveLength(3);
+ expect(groupLedgerPaymentRecords([value,movement('native-other','native'),action])).toHaveLength(3);
+ expect(groupLedgerPaymentRecords([value,{...action,amountUsdCents:'101'}])).toHaveLength(2);
+ expect(groupLedgerPaymentRecords([value,{...action,authority:'account-source-projection'}])).toHaveLength(2);
+});
 it('keeps the exact action transfer reference but excludes unrelated payload fields',()=>{
  const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'action',actionKind:'wallet.transfer.connect',payload:{transferId:'original-transfer',conversationId:'private-conversation',accessToken:'private-token'}}]}).records[0];
  expect(record.evidence.transferId).toBe('original-transfer');expect(JSON.stringify(record)).not.toContain('private-conversation');expect(JSON.stringify(record)).not.toContain('private-token');

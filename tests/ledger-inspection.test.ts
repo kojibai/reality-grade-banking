@@ -29,13 +29,13 @@ it('keeps public inspection available after cache reload and in a shareable rece
  expect(JSON.stringify(receipt)).not.toContain('hidden-');
 });
 
-it('does not add private source context or injected cache fields to shareable receipts',()=>{
+it('shares curated selected-record details from My history while excluding injected private fields',()=>{
  const row=parsePublicNetworkPage('wallet',{ok:true,events:[event]}).records[0];
  const cached=parsePublicNetworkCache({schema:'receiz.bank.public-ledger-cache.v1',authority:'public-source-projection',records:[{...row,details:{...row.details,privateKey:'hidden-key',sender:{displayName:'Sender',clientSecret:'hidden-secret'}}}],coverage:[]}).records[0];
  expect(JSON.stringify(cached.details)).not.toContain('hidden-');
- const receipt=readReceiptLink(receiptLink({...row,authority:'account-source-projection',origin:'private-account'})!);
- expect(receipt.details).toBeNull();
- expect(receipt.valueOperands).toEqual({});expect(receipt.valuation).toBeNull();expect(receipt.authority).toBe('account-source-projection');
+ const receipt=readReceiptLink(receiptLink({...cached,authority:'account-source-projection',origin:'private-account'})!);
+ expect(receipt.details).toEqual(cached.details);expect(JSON.stringify(receipt)).not.toContain('hidden-');
+ expect(receipt.valueOperands).toEqual(row.valueOperands);expect(receipt.valuation).toBeNull();expect(receipt.authority).toBe('account-source-projection');
 });
 
 it('keeps proof ownership, original download and digest inspectable without inventing a transaction',()=>{

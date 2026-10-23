@@ -4,7 +4,7 @@ import {BANK_PUBLIC_ORIGIN} from './config';
 import {ledgerValueForRecord,readLedgerValueDisplay,readLedgerValueOperands,type LedgerValueDisplay,type LedgerValueOperands,type LedgerValueIndex} from './ledger-value';
 import {readLedgerDetails,readLedgerValuationTrace,type LedgerFields} from './ledger-inspection';
 import {decodeReceiptPacket} from './receipt-packet';
-import {ledgerAssetTradeSide} from './ledger-asset-trade';
+import {ledgerAssetTradeSide,ledgerAssetTrade} from './ledger-asset-trade';
 export const ACTIVITY_FILTERS=['all','transactions','transfers','actions','proofs'] as const;
 export type ActivityCategory=typeof ACTIVITY_FILTERS[number];
 export function activityCategory(record:Pick<PublicRecord,'source'|'kind'|'amountUsdCents'>):Exclude<ActivityCategory,'all'>{
@@ -33,10 +33,13 @@ export function receiptLink(record:PublicRecord,value=ledgerValueForRecord(recor
  // Keep the shared source cohort by reference in the in-app receipt/archive.
  // Do not repeatedly serialize hundreds of originals into every row's URL.
  const {fundingCohorts,...details}=record.details??{};
- const receipt=read({schema:'bankeiz.ledger-receipt.v1',id:record.sourceId,source:record.source,authority:record.authority,detail:record.authority==='public-source-projection'?record.detail:'',kind:record.kind,title:record.title,amountUsdCents:record.amountUsdCents,pulse:record.pulse,kaiUpulse:record.kaiUpulse,time:record.time,sender:record.sender,recipient:record.recipient,sourceUrl:record.sourceUrl,evidence:record.evidence,value,details:record.authority==='public-source-projection'?details:null,valueOperands:record.authority==='public-source-projection'?record.valueOperands:undefined,valuation:record.authority==='public-source-projection'?valuation:undefined,contextOmitted:!!fundingCohorts});
+ // Both views share the same curated fields of the selected record. The
+ // reader excludes arbitrary account/chat metadata and custody material.
+ const trade=ledgerAssetTrade(record),tradeDetails=trade?readLedgerDetails({ledgerEntryKind:details.ledgerEntryKind,assetTrade:trade}):null;
+ const receipt=read({schema:'bankeiz.ledger-receipt.v1',id:record.sourceId,source:record.source,authority:record.authority,detail:record.authority==='public-source-projection'?record.detail:'',kind:record.kind,title:record.title,amountUsdCents:record.amountUsdCents,pulse:record.pulse,kaiUpulse:record.kaiUpulse,time:record.time,sender:record.sender,recipient:record.recipient,sourceUrl:record.sourceUrl,evidence:record.evidence,value,details,valueOperands:record.valueOperands,valuation,contextOmitted:!!fundingCohorts});
  let bytes=new TextEncoder().encode(JSON.stringify(receipt));
  // Large optional descriptions and model traces must not remove the receipt.
- if(bytes.length>24000){receipt.detail='';receipt.details=null;receipt.valuation=null;receipt.contextOmitted=true;bytes=new TextEncoder().encode(JSON.stringify(receipt));}
+ if(bytes.length>24000){receipt.detail='';receipt.details=tradeDetails;receipt.valuation=null;receipt.contextOmitted=true;bytes=new TextEncoder().encode(JSON.stringify(receipt));}
  if(bytes.length>24000){receipt.sourceUrl=null;bytes=new TextEncoder().encode(JSON.stringify(receipt));}
  if(bytes.length>24000)return null;
  let raw='';for(const byte of bytes)raw+=String.fromCharCode(byte);

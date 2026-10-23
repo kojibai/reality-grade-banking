@@ -17,6 +17,7 @@ import { LedgerInspector } from '../features/ledger/LedgerInspector';
 import { LedgerValue } from '../features/ledger/LedgerValue';
 import { useLedgerValueSource } from '../features/ledger/useLedgerValueSource';
 import {indexLedgerRelations,ledgerCurrentAssetValue,ledgerValuationContext} from '../receiz/ledger-economy';
+import {enrichWalletFundingContext} from '../receiz/ledger-wallet-enrichment';
 
 const sourceNames:Record<PublicSource,string>={actions:'Actions',wallet:'Transactions',graph:'Proof Graph',proofs:'Proof objects'};
 function PublicRow({record,valueSource,relations,capture,executionRecords=[]}:{executionRecords?:PublicRecord[];record:PublicRecord;valueSource:LedgerValueIndex|null;capture?:LocalLedgerDisplay;relations:ReturnType<typeof indexLedgerRelations>}){
@@ -36,7 +37,8 @@ function PublicRow({record,valueSource,relations,capture,executionRecords=[]}:{e
 export function PublicLedgerApp({active=true}:{active?:boolean}){
   const [captured,setCaptured]=useState<PublicLedgerFileReview|null>(null),archive=captured?.archive;
   const liveValueSource=useLedgerValueSource(active&&!archive),valueSource=archive?null:liveValueSource,liveLedger=usePublicNetwork(active&&!archive);
-  const ledger=useMemo(()=>archive?{...liveLedger,records:archive.records,capturedAt:archive.capturedAt,bootstrap:false,sources:Object.fromEntries(PUBLIC_SOURCES.map(source=>[source,{status:'stale' as const,complete:archive.coverage.find(item=>item.source===source)?.complete===true,busy:false,cursor:null,error:null}]))}:liveLedger,[archive,liveLedger]);
+  const enrichedRecords=useMemo(()=>archive?archive.records:enrichWalletFundingContext(liveLedger.records,liveLedger.records),[archive,liveLedger.records]);
+  const ledger=useMemo(()=>archive?{...liveLedger,records:enrichedRecords,capturedAt:archive.capturedAt,bootstrap:false,sources:Object.fromEntries(PUBLIC_SOURCES.map(source=>[source,{status:'stale' as const,complete:archive.coverage.find(item=>item.source===source)?.complete===true,busy:false,cursor:null,error:null}]))}:{...liveLedger,records:enrichedRecords},[archive,liveLedger,enrichedRecords]);
   const [filter,setFilter]=useState<ActivityCategory>('all'),[search,setSearch]=useState(''),[shown,setShown]=useState(60);
   const states=Object.values(ledger.sources),busy=states.some(value=>value.busy),complete=states.length===4&&states.every(value=>value.complete),live=states.length===4&&states.every(value=>value.status==='live');
   const paymentGroups=useMemo(()=>groupLedgerPaymentRecords(ledger.records),[ledger.records]);

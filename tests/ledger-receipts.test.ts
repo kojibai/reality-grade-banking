@@ -55,3 +55,11 @@ it('keeps shared cohort context off per-row receipt URLs without dropping the or
  expect(receipt.contextOmitted).toBe(true);expect(receipt.details).not.toHaveProperty('fundingCohorts');expect(record.details!.fundingCohorts).toBe(cohorts);
  expect(receipt.amountUsdCents).toBe('100');
 });
+it('shares the selected My history trade facts while excluding unrelated private account context',async()=>{
+ const {compactReceiptLink}=await import('../src/receiz/receipt-sharing');
+ const row=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'sale',kind:'wallet_ledger_entry',ledgerEntryKind:'market_sell',amountUsdCents:'12500',assetTrade:{side:'sell',marketItemId:'profile:artist:work',title:'An original',shareQuantityMicro:'2500000',priceUsdCents:'5000',settlementUsdCents:'12500',feeUsdCents:'0',realizedCostBasisUsdCents:'10000'}}]}).records[0];
+ const record={...row,authority:'account-source-projection' as const,detail:'PRIVATE ACCOUNT CONTEXT',details:{...row.details,conversationId:'private-conversation',fundingHistory:[{private:'private-source'}]}};
+ const link=compactReceiptLink(receiptLink(record)!),receipt=readReceiptLink(link);
+ expect(receipt.details).toEqual({ledgerEntryKind:'market_sell',assetTrade:row.details!.assetTrade});
+ expect(JSON.stringify(receipt)).not.toMatch(/PRIVATE ACCOUNT CONTEXT|private-conversation|private-source/);expect(link.length).toBeLessThan(2000);
+});

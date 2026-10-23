@@ -31,12 +31,36 @@ it('keeps parent ancestry when the selected child has different native funding c
  expect(trace.steps.map(step=>step.sourceId)).toEqual(['profile:one:proof','source-proof','parent-debit','incoming','child-debit']);
  expect(trace.steps.find(step=>step.sourceId==='parent-debit')?.amountUsdCents).toBe('100');
 });
-it('reuses loaded public context for only the same exact private transfer, without leaking it into its shareable URL',()=>{
+it('reuses loaded public context for only the same exact private transfer and carries its selected history in the receipt',()=>{
  const {record}=fixture(),privateRecord={...record,sourceId:'transfer:child-transfer',id:'wallet:transfer:child-transfer',authority:'account-source-projection' as const,origin:'private-account' as const,details:undefined,evidence:{transferId:'child-transfer'}};
- const result=enrichWalletFundingContext([privateRecord],[record])[0];expect(ledgerFundingTrace(result).history).toHaveLength(1);expect(readReceiptLink(receiptLink(result)!).details).toBeNull();
+ const result=enrichWalletFundingContext([privateRecord],[record])[0];expect(ledgerFundingTrace(result).history).toHaveLength(1);expect(readReceiptLink(receiptLink(result)!).details?.fundingHistory).toEqual(result.details?.fundingHistory);
  expect(enrichWalletFundingContext([{...privateRecord,evidence:{transferId:'different'}}],[record])[0].details).toBeUndefined();
 });
 it('preserves carried attribution when an identical public wallet witness refreshes with a thin projection',()=>{
  const {record}=fixture(),thin={...record,details:{}};expect(mergePublicRecords([record],[thin])[0].details?.fundingHistory).toBeDefined();
  const conflicting={...thin,evidence:{...thin.evidence,bundleHash:'c'.repeat(64)}};expect(mergePublicRecords([record],[conflicting])[0].details?.fundingHistory).toBeUndefined();
+});
+it('automatically connects a new send to already loaded parent funding without a seeded history or another read',()=>{
+ const {record,parent,child}=fixture();
+ const fresh={...record,details:{fundingAttribution:child as any,fundingTransferId:record.evidence.transferId}};
+ const prior=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'parent',kind:'chat_transfer',transferId:'parent-transfer',createdAt:parent.occurredAt,kaiUpulse:parent.kaiUpulse,amountUsdCents:parent.amountUsdCents,fundingAttribution:parent,fundingTransferId:'parent-transfer'}]}).records[0];
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ try{
+  const result=enrichWalletFundingContext([fresh,prior],[fresh,prior])[0];
+  expect(ledgerFundingTrace(result).steps.some(step=>step.sourceId==='profile:one:proof')).toBe(true);
+  expect(ledgerFundingTrace(result).history).toHaveLength(1);expect(fetch).not.toHaveBeenCalled();expect(fresh.details).not.toHaveProperty('fundingHistory');
+ }finally{vi.unstubAllGlobals();}
+});
+it('never fills public ancestry from private records or guesses a missing new-send attribution',()=>{
+ const {record,parent}=fixture(),fresh={...record,details:{fundingAttribution:record.details!.fundingAttribution,fundingTransferId:record.evidence.transferId}};
+ const privateParent={...record,id:'private',sourceId:parent.walletDebitId,authority:'account-source-projection' as const,time:parent.occurredAt,kaiUpulse:parent.kaiUpulse!,amountUsdCents:parent.amountUsdCents,evidence:{transferId:parent.transferId!},details:{fundingAttribution:parent as any,fundingTransferId:parent.transferId!}};
+ expect(enrichWalletFundingContext([fresh],[privateParent])[0].details).not.toHaveProperty('fundingHistory');
+ const thin={...record,details:undefined};expect(enrichWalletFundingContext([thin],[record])[0]).toBe(thin);
+});
+it('retains directly bound proof cohorts from an identical root even when the private row already carries attribution',()=>{
+ const attribution=calculateWalletFundingAttributions([entry('profile-credit','one','credit',2,'100',{source:'profile_rollup_seed'}),entry('debit','one','debit',3,'50',{},'transfer')],'one',true).get('debit')!;
+ const cohort={rule:'receiz-profile-rollup-v1-owned-and-received',basis:'reconstructed-membership',creditSourceId:'profile-credit',computedAt:'2026-05-01T00:00:00Z',amountPhiMicro:'100',members:[{objectId:'original',title:'Original',createdAt:'2026-04-01T00:00:00Z',verifyUrl:'https://receiz.com/v/moment/original',basis:'owned'}]};
+ const publicRow=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'public-root',kind:'chat_transfer',transferId:'transfer',createdAt:attribution.occurredAt,amountUsdCents:'50',fundingAttribution:attribution,fundingTransferId:'transfer',fundingCohorts:[cohort]}]}).records[0];
+ const privateRow={...publicRow,id:'private-root',authority:'account-source-projection' as const,details:{fundingAttribution:attribution as any,fundingTransferId:'transfer'}};
+ expect(enrichWalletFundingContext([privateRow],[publicRow])[0].details?.fundingCohorts).toEqual([cohort]);
 });
