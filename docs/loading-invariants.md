@@ -150,3 +150,17 @@ For loading changes, test a fresh browser with discovery and passive resources
 delayed. Check the initial rendered fields, document load, resource timing,
 request counts and actual controls separately. A warm cache or a screenshot of
 an already visible page cannot establish that document loading is settled.
+
+Public profiles follow the same boundary. Eager images in a server-rendered hidden
+tab still generate image preload hints; eagerly preparing every retained grid
+cover also keeps document loading coupled to offscreen media. In the square
+two-column collection, only the first four covers prepare eagerly. Early streamed
+image hints have the same four-cover budget. Other covers and activity thumbnails
+use native lazy loading, with their existing slots and URLs available immediately.
+The natural-height single-column collection keeps its existing eager policy to
+preserve its image geometry. No retained rows, profile fields or history are
+dropped, and scrolling or changing sections requires no additional profile read.
+[profile-view.test.tsx](../tests/profile-view.test.tsx) protects the actual rendered
+preload boundary, feed expansion and column controls;
+[profile-preview.test.ts](../tests/profile-preview.test.ts) protects early streamed
+hints alongside canonical routing, tracking parameters and source-read counts.

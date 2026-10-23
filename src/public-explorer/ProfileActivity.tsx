@@ -21,7 +21,7 @@ export function ProfileActivity({items,hasMore,onMore,busy=false,active=true}:{i
    return <li key={item.id} className={showDate?'profile-activity-group-start':undefined}>
     {showDate&&<h3 className="profile-activity-date">{day}</h3>}
     <a className="profile-activity-entry" href={assetPagePath(item.id)} onClick={()=>retainPublicAsset(item)}>
-     <span className="profile-activity-artwork" aria-hidden="true">{item.artworkUrl?<img src={item.artworkUrl} alt="" loading="eager" decoding="async" referrerPolicy="no-referrer" crossOrigin={item.artworkUrl.includes('/api/proof-material/packages/')?'anonymous':undefined}/>:<Icon size={21} strokeWidth={1.5}/>}</span>
+     <span className="profile-activity-artwork" aria-hidden="true">{item.artworkUrl?<img src={item.artworkUrl} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" crossOrigin={item.artworkUrl.includes('/api/proof-material/packages/')?'anonymous':undefined}/>:<Icon size={21} strokeWidth={1.5}/>}</span>
      <span className="profile-activity-content"><span className="profile-activity-event">Asset sealed{validDate&&<><span aria-hidden="true">·</span><time dateTime={validDate.toISOString()}>{timeFormat.format(validDate)}</time></>}</span><strong>{item.title}</strong><span className="profile-activity-kind">{marketContentLabel(item)}</span></span>
      <span className="profile-activity-open" aria-hidden="true"><ArrowUpRight size={17}/></span>
     </a>

@@ -21,6 +21,13 @@ it('streams static resources immediately while its single public source read run
  const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Profile browser'}}),{profile,page});const reader=response.body!.getReader(),first=await reader.read();expect(new TextDecoder().decode(first.value)).toContain('<head>');expect(new TextDecoder().decode(first.value)).not.toContain('public-profile-seed');expect(profile).toHaveBeenCalledTimes(1);expect(page).toHaveBeenCalledTimes(1);
  resolve(parsePublicProfile(profileFixture(),'alexmorgan'));const second=await reader.read(),body=new TextDecoder().decode(first.value)+new TextDecoder().decode(second.value);expect(body).toContain('Alex Morgan | Bankeiz');expect(body).toContain('public-profile-seed');expect(body).toContain('rel="preload" as="image"');expect(body).not.toContain('<title>Explore');expect((await reader.read()).done).toBe(true);
 });
+it('keeps early profile image preparation within the first visible collection rows',async()=>{
+ let resolve!:(value:ReturnType<typeof parsePublicProfile>)=>void;const held=new Promise<ReturnType<typeof parsePublicProfile>>(done=>{resolve=done;});
+ const response=await handleProfilePreview(new Request('https://bankeiz.com/bjklock/',{headers:{accept:'text/html','user-agent':'Profile browser'}}),{profile:()=>held,page:async()=>html});
+ const reader=response.body!.getReader(),first=new TextDecoder().decode((await reader.read()).value);
+ expect([...first.matchAll(/<link rel="preload" as="image"/g)]).toHaveLength(4);
+ resolve({...parsePublicProfile(profileFixture(),'alexmorgan'),username:'bjklock'});await reader.read();expect((await reader.read()).done).toBe(true);
+});
 it('keeps crawler status and metadata exact instead of streaming a success before a missing profile',async()=>{
  const {PublicProfileError}=await import('../server/public-profile');const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Twitterbot'}}),{profile:async()=>{throw new PublicProfileError('PROFILE_NOT_FOUND',404);},page:async()=>html});expect(response.status).toBe(404);expect(await response.text()).toContain('PROFILE_NOT_FOUND');
 });

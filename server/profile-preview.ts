@@ -41,7 +41,7 @@ export async function handleProfilePreview(request:Request,deps?:Dependencies){
  const prefix=template.slice(0,end),encoder=new TextEncoder();let closed=false;
  // Known public Market media can prepare during the profile read. These hints
  // confer no identity/visibility authority and are never painted as a profile.
- const earlyImages=(publicProfileArtwork[username]??[]).map(safeReceizArtworkUrl).filter((url):url is string=>!!url);
+ const earlyImages=(publicProfileArtwork[username]??[]).slice(0,4).map(safeReceizArtworkUrl).filter((url):url is string=>!!url);
  const earlyHints=earlyImages.map(src=>`<link rel="preload" as="image" href="${escape(src)}" referrerpolicy="no-referrer"${src.includes('/api/proof-material/packages/')?' crossorigin="anonymous"':''}>`).join('');
  return new Response(new ReadableStream<Uint8Array>({start(controller){controller.enqueue(encoder.encode(prefix+earlyHints));void source.then(value=>{if(closed)return;controller.enqueue(encoder.encode(render(value).html.slice(prefix.length)));controller.close();closed=true;}).catch(()=>{if(!closed){closed=true;controller.error(Error('Profile stream interrupted.'));}});},cancel(){closed=true;}}),{headers:{...headers,'X-Accel-Buffering':'no'}});
 }

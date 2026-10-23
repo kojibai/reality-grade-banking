@@ -13,7 +13,7 @@ it('changes collection columns without fetching and opens media in place',async(
  await act(()=>root.render(<ProfileCollection profile={profile} items={profile.items} active/>));
  expect(element.querySelector('.profile-collection-grid')?.getAttribute('data-columns')).toBe('2');
  await act(()=>element.querySelector<HTMLButtonElement>('[aria-label="Single-column view"]')!.click());
- expect(element.querySelector('.profile-collection-grid')?.getAttribute('data-columns')).toBe('1');expect(fetcher).not.toHaveBeenCalled();
+ expect(element.querySelector('.profile-collection-grid')?.getAttribute('data-columns')).toBe('1');expect([...element.querySelectorAll('.profile-asset-cover img')].every(img=>img.getAttribute('loading')==='eager')).toBe(true);expect(fetcher).not.toHaveBeenCalled();
  await act(()=>element.querySelector<HTMLButtonElement>('[aria-label="Experience Authored title"]')!.click());
  expect(element.querySelector('[data-reader]')).not.toBeNull();expect(element.querySelector('a[href^="/asset/"]')).not.toBeNull();fetcher.mockRestore();
 });
@@ -21,17 +21,35 @@ it('restores the selected profile section after opening an asset and returning',
  const {PublicProfilePage}=await import('../src/public-explorer/PublicProfilePage'),{retainPublicProfile}=await import('../src/receiz/public-profile');const profile=parsePublicProfile(profileFixture(),'alexmorgan');retainPublicProfile(profile);const source={catalog:null,status:'loading'} as unknown as import('react').ComponentProps<typeof PublicProfilePage>['source'];element=document.createElement('div');document.body.append(element);root=createRoot(element);
  await act(()=>root.render(<PublicProfilePage username="alexmorgan" source={source} active/>));expect(element.querySelector<HTMLAnchorElement>('.profile-actions a.primary-button')?.href).toBe('https://bankeiz.com/pay/alexmorgan/');expect([...element.querySelectorAll('.profile-actions button')].some(node=>node.textContent==='Message')).toBe(true);await act(()=>[...element.querySelectorAll('button')].find(node=>node.textContent==='Public Activity')!.click());await act(()=>root.render(<div>Standalone asset</div>));await act(()=>root.render(<PublicProfilePage username="alexmorgan" source={source} active/>));expect([...element.querySelectorAll('.profile-tabs button')].find(node=>node.getAttribute('aria-selected')==='true')?.textContent).toBe('Public Activity');
 });
-it('prepares images eagerly and reveals the held collection ahead of scrolling without another data read',async()=>{
+it('prioritizes the first covers and reveals the held collection ahead of scrolling without another data read',async()=>{
  let intersect:(entries:{isIntersecting:boolean}[])=>void=()=>{};const disconnected=vi.fn();
  vi.stubGlobal('IntersectionObserver',class{constructor(callback:typeof intersect){intersect=callback;}observe(){}disconnect(){disconnected();}});
  const fetcher=vi.spyOn(globalThis,'fetch'),profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.userId='feed-window-owner';profile.nextCursor=null;profile.items=Array.from({length:60},(_,i)=>({...profile.items[0],id:'feed-'+i}));
  element=document.createElement('div');document.body.append(element);root=createRoot(element);
  try{
-  await act(()=>root.render(<ProfileCollection profile={profile} items={profile.items} active/>));expect(element.querySelectorAll('.profile-asset')).toHaveLength(24);expect([...element.querySelectorAll('.profile-asset-cover img')].every(img=>img.getAttribute('loading')==='eager')).toBe(true);
+  await act(()=>root.render(<ProfileCollection profile={profile} items={profile.items} active/>));expect(element.querySelectorAll('.profile-asset')).toHaveLength(24);expect([...element.querySelectorAll('.profile-asset-cover img')].map(img=>img.getAttribute('loading'))).toEqual([...Array(4).fill('eager'),...Array(20).fill('lazy')]);
   await act(()=>intersect([{isIntersecting:true}]));expect(element.querySelectorAll('.profile-asset')).toHaveLength(48);expect(fetcher).not.toHaveBeenCalled();
   await act(()=>intersect([{isIntersecting:true}]));expect(element.querySelectorAll('.profile-asset')).toHaveLength(60);expect(element.querySelector('.profile-load-more')).toBeNull();
+  await act(()=>element.querySelector<HTMLButtonElement>('[aria-label="Single-column view"]')!.click());expect([...element.querySelectorAll('.profile-asset-cover img')].every(img=>img.getAttribute('loading')==='eager')).toBe(true);
  }finally{fetcher.mockRestore();vi.unstubAllGlobals();}
 });
+it('limits initial document image preloads to the first collection rows while retaining every held card',async()=>{
+ const {renderToString}=await import('react-dom/server');
+ const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.userId='cold-cover-owner';profile.nextCursor=null;
+ profile.items=Array.from({length:24},(_,i)=>({...profile.items[0],id:'cold-cover-'+i,artworkUrl:'https://receiz.com/artwork/cold-cover-'+i+'.png'}));
+ const document=documentFor(renderToString(<ProfileCollection profile={profile} items={profile.items} active={false}/>));
+ expect(document.querySelectorAll('.profile-asset')).toHaveLength(24);
+ expect([...document.querySelectorAll('link[rel="preload"][as="image"]')].map(link=>link.getAttribute('href'))).toEqual([0,1,2,3].map(i=>'https://receiz.com/artwork/cold-cover-'+i+'.png'));
+ expect([...document.querySelectorAll('.profile-asset-cover img')].slice(4).every(image=>image.getAttribute('loading')==='lazy')).toBe(true);
+});
+it('keeps hidden public activity artwork out of initial document preloads without dropping its history',async()=>{
+ const {renderToString}=await import('react-dom/server'),{ProfileActivity}=await import('../src/public-explorer/ProfileActivity');
+ const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.items=Array.from({length:24},(_,i)=>({...profile.items[0],id:'cold-activity-'+i,artworkUrl:'https://receiz.com/artwork/cold-activity-'+i+'.png'}));
+ const document=documentFor(renderToString(<ProfileActivity items={profile.items} hasMore={false} onMore={()=>{}} active={false}/>));
+ expect(document.querySelectorAll('.profile-activity-list li')).toHaveLength(24);expect(document.querySelectorAll('link[rel="preload"][as="image"]')).toHaveLength(0);
+ expect([...document.querySelectorAll('.profile-activity-artwork img')].every(image=>image.getAttribute('loading')==='lazy')).toBe(true);
+});
+function documentFor(html:string){const container=document.createElement('div');container.innerHTML=html;return container;}
 it('does not loop source reads after automatic expansion fails',async()=>{
  let intersect:(entries:{isIntersecting:boolean}[])=>void=()=>{};vi.stubGlobal('IntersectionObserver',class{constructor(callback:typeof intersect){intersect=callback;}observe(){}disconnect(){}});
  const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.userId='feed-refusal-owner';const onMore=vi.fn();element=document.createElement('div');document.body.append(element);root=createRoot(element);
