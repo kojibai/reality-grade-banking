@@ -44,7 +44,12 @@ export function PublicLedgerApp({active=true}:{active?:boolean}){
   const [filter,setFilter]=useState<ActivityCategory>('all'),[search,setSearch]=useState(''),[shown,setShown]=useState(60);
   const states=Object.values(ledger.sources),busy=states.some(value=>value.busy),complete=states.length===4&&states.every(value=>value.complete),live=states.length===4&&states.every(value=>value.status==='live');
   const paymentGroups=useMemo(()=>groupLedgerPaymentRecords(ledger.records),[ledger.records]);
-  const records=useMemo(()=>{const query=search.trim().toLocaleLowerCase();return paymentGroups.filter(({record,executionRecords})=>(filter==='all'||activityCategory(record)===filter)&&(!query||[record,...executionRecords].some(record=>[ledgerRecordTitle(record),record.title,ledgerTradeSummary(record),record.kind,record.sourceId,record.kaiUpulse,record.pulse,record.sender,record.recipient,record.actor,...Object.values(record.evidence),...Object.values(record.valueOperands??{})].some(value=>typeof value==='string'&&value.toLocaleLowerCase().includes(query)))));},[paymentGroups,filter,search]);
+  const categories=useMemo(()=>{
+    const result=Object.fromEntries(ACTIVITY_FILTERS.map(category=>[category,category==='all'?paymentGroups:[]])) as Record<ActivityCategory,typeof paymentGroups>;
+    for(const group of paymentGroups)result[activityCategory(group.record)].push(group);
+    return result;
+  },[paymentGroups]);
+  const records=useMemo(()=>{const selected=categories[filter],query=search.trim().toLocaleLowerCase();return query?selected.filter(({record,executionRecords})=>[record,...executionRecords].some(record=>[ledgerRecordTitle(record),record.title,ledgerTradeSummary(record),record.kind,record.sourceId,record.kaiUpulse,record.pulse,record.sender,record.recipient,record.actor,...Object.values(record.evidence),...Object.values(record.valueOperands??{})].some(value=>typeof value==='string'&&value.toLocaleLowerCase().includes(query)))):selected;},[categories,filter,search]);
   const relations=useMemo(()=>indexLedgerRelations(ledger.records),[ledger.records]),capturedValues=useMemo(()=>new Map(archive?.displayValues.map(value=>[value.id,value])??[]),[archive]);
   const {transactions,representedSources}=useMemo(()=>{
     const representedSources=new Set<PublicSource>();let transactions=0;

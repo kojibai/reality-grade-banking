@@ -6,11 +6,12 @@ import { readFileSync } from 'node:fs';
 import { useLedgerValueSource } from '../src/features/ledger/useLedgerValueSource';
 import {retainedMarketDisplaySource,publishMarketDisplaySource} from '../src/receiz/market-projection/display-source';
 import type {LedgerValueIndex} from '../src/receiz/ledger-value';
+import {parseMarketCapSource} from '../src/receiz/market-projection/source';
 vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({receizKaiNow:()=>({pulse:14647307})})}));
 const input = JSON.parse(readFileSync('public/receiz-public-capitalization.json', 'utf8'));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: ReturnType<typeof createRoot> | null = null;
-afterEach(() => { if (root) act(() => root!.unmount()); root = null; document.body.replaceChildren(); vi.unstubAllGlobals(); });
+afterEach(() => { if (root) act(() => root!.unmount()); root = null; document.body.replaceChildren(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 function Probe({ active }: { active: boolean }) { const index = useLedgerValueSource(active); return <output data-source={index?.source.proofObjectHash}>{index?.evaluationPulse ?? 'No valuation source'}</output>; }
 it('reads only the shared public projection and keeps it when the live source is unavailable', async () => {
   const requests: { path: string; credentials: RequestCredentials | undefined }[] = [];
@@ -22,6 +23,24 @@ it('reads only the shared public projection and keeps it when the live source is
   expect(host.textContent).toBe('14647307');
   expect(retainedMarketDisplaySource()?.proofObjectHash).toBe(input.marketCapProjection.proofObjectHash);
   expect(requests).toEqual([{ path: '/receiz-public-capitalization.json', credentials: 'omit' }, { path: '/api/bank/public-market/capitalization', credentials: 'omit' }]);
+});
+it('opens from the retained valuation without rereading the shipped file and still adopts live refreshes',async()=>{
+ vi.useFakeTimers();
+ publishMarketDisplaySource(parseMarketCapSource(input),'shipped');
+ const held=retainedMarketDisplaySource()!;
+ let finish!:(response:Response)=>void;
+ const fetch=vi.fn().mockImplementationOnce(()=>new Promise<Response>(resolve=>{finish=resolve;})).mockResolvedValue(new Response(null,{status:503}));vi.stubGlobal('fetch',fetch);
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ await act(async()=>root!.render(<Probe active/>));
+ expect(host.querySelector('output')?.getAttribute('data-source')).toBe(held.proofObjectHash);
+ expect(fetch.mock.calls.map(([path])=>path)).toEqual(['/api/bank/public-market/capitalization']);
+ await act(async()=>finish(Response.json({ok:true,marketCapProjection:{...input.marketCapProjection,proofObjectHash:'d'.repeat(64)}})));
+ expect(host.querySelector('output')?.getAttribute('data-source')).toBe('d'.repeat(64));
+ await act(async()=>vi.advanceTimersByTimeAsync(60000));
+ await act(async()=>root!.render(<Probe active={false}/>));
+ await act(async()=>root!.render(<Probe active/>));
+ expect(fetch.mock.calls.map(([path])=>path)).toEqual(Array(3).fill('/api/bank/public-market/capitalization'));
+ expect(host.querySelector('output')?.getAttribute('data-source')).toBe('d'.repeat(64));
 });
 it('adopts existing Market source enrichment immediately without making another request',async()=>{
  const fetch=vi.fn(async(path:string)=>path==='/receiz-public-capitalization.json'?Response.json(input):new Response(null,{status:503}));vi.stubGlobal('fetch',fetch);

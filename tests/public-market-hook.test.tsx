@@ -102,6 +102,33 @@ it('advances retained object prices locally while every refresh fails',async()=>
   expect(read().catalog!.items[0].localValuationPulse).toBe(clock.pulse);expect(read().catalog!.items[0].priceUsd).toBe(publicSigilQuoteAtPulse(seed,clock.pulse).priceUsd);expect(read().catalog!.items[0].priceUsd).not.toBe(first.priceUsd);expect(network.membership).toHaveBeenCalledTimes(reads);expect(read().historyCatalog).toBe(basis);
  });
 });
+it('keeps standalone pricing current and restores every collection price on return without another read',async()=>{
+ vi.useFakeTimers();
+ const input=sourceInput(['a','b']),seed={kind:'sigil',claimPulse:14000000,beat:0,stepIndex:0,creatorVerified:true};
+ for(const item of input.transport.publicOriginals)Object.assign(item,{pulse:'14000000',livePulseSeed:seed});
+ localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(input));network.membership.mockRejectedValue(Error('offline'));network.quotes.mockRejectedValue(Error('offline'));
+ const fetch=vi.fn(async()=>new Response('',{status:404}));vi.stubGlobal('fetch',fetch);
+ let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));
+ function Probe({selection}:{selection:string|null}){state=usePublicMarket(true,true,selection);return null;}
+ try{
+  await act(async()=>root.render(<Probe selection="a"/>));
+  const basis=state.historyCatalog!,requests=fetch.mock.calls.length,membershipReads=network.membership.mock.calls.length;
+  expect(state.catalog!.items[0].localValuationPulse).toBe(clock.pulse);
+  expect(state.catalog!.items[1]).toBe(basis.items[1]);
+  const first=state.catalog!.items[0].priceUsd;clock.pulse++;
+  await act(async()=>vi.advanceTimersByTimeAsync(1000));
+  expect(state.catalog!.items[0].priceUsd).not.toBe(first);expect(state.catalog!.items[1]).toBe(basis.items[1]);
+  await act(async()=>root.render(<Probe selection="b"/>));
+  expect(state.catalog!.items[0]).toBe(basis.items[0]);expect(state.catalog!.items[1].localValuationPulse).toBe(clock.pulse);
+  await act(async()=>root.render(<Probe selection={null}/>));
+  expect(state.catalog!.items.map(item=>item.localValuationPulse)).toEqual([clock.pulse,clock.pulse]);
+  expect(state.historyCatalog).toBe(basis);expect(fetch).toHaveBeenCalledTimes(requests);expect(network.membership).toHaveBeenCalledTimes(membershipReads);
+  network.membership.mockResolvedValue(parsePublicMarket({...input,transport:{...input.transport,publicOriginals:input.transport.publicOriginals.map(item=>({...item,title:'Updated '+item.id}))}}));network.quotes.mockResolvedValue(quoteInput());
+  await act(async()=>state.refresh());
+  expect(state.catalog!.items.map(item=>item.title)).toEqual(['Updated a','Updated b']);
+  expect(state.catalog!.items.map(item=>item.localValuationPulse)).toEqual([clock.pulse,clock.pulse]);
+ }finally{act(()=>root.unmount());}
+});
 const sealedCard=()=>{
  const collectibleId='rsc_0123456789abcdef',claimHash='a'.repeat(64),sealedAt='2026-10-01T12:00:00Z';
  const raw={collectibleId,claimHash,cardId:'public-card',athlete:'Athlete',sport:'baseball',issuedCount:1,vaultCount:1,pricedCount:1,liveValueUsd:25,totalValueUsd:25,proofValueUsd:20,proofTotalValueUsd:20,route:`/game/sports/card/${collectibleId}?claimHash=${claimHash}`,sealedCopies:[{collectibleId,claimHash,sealedAt,birthUsdValue:10,proofValueUsd:20,currentValueUsd:25,ownerUsername:'holder',ownerDisplayName:'Holder'}]};

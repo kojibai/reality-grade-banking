@@ -3,6 +3,7 @@ import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {afterEach,expect,it,vi} from 'vitest';
 import {Ledger} from '../src/features/ledger/Ledger';
+import {PublicLedgerApp} from '../src/public-ledger/PublicLedgerApp';
 import {LedgerFieldsView,LedgerInspector} from '../src/features/ledger/LedgerInspector';
 import {ledgerValueForRecord} from '../src/receiz/ledger-value';
 import {parsePublicNetworkPage} from '../src/receiz/public-network';
@@ -53,6 +54,20 @@ it('uses prepared activity categories instead of scanning all records on each fi
  act(()=>filter('Transfers').click());expect(host.querySelectorAll('.asset-row')).toHaveLength(50);
  act(()=>filter('Actions').click());expect(host.querySelectorAll('.asset-row')).toHaveLength(50);
  expect(held.group).not.toHaveBeenCalled();expect(held.category).not.toHaveBeenCalled();
+});
+it('uses prepared public Ledger categories without revisiting every retained record on a filter click',()=>{
+ const records=parsePublicNetworkPage('actions',{ok:true,actions:Array.from({length:500},(_,i)=>({id:String(i),actionKind:i%2?'record':'chat_transfer',summary:`Recorded action ${i}`,pulse:i+1,amountUsdCents:'100'}))}).records;
+ held.network={records,sources:{},bootstrap:false,refresh:()=>{},loadMore:()=>{}};
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);const host=document.createElement('div');document.body.append(host);root=createRoot(host);act(()=>root.render(<PublicLedgerApp active={false}/>));
+ held.category.mockClear();held.group.mockClear();held.enrich.mockClear();held.relations.mockClear();
+ const filter=(text:string)=>[...host.querySelectorAll<HTMLButtonElement>('[aria-label="Activity type"] button')].find(button=>button.textContent===text)!;
+ act(()=>filter('Transfers').click());expect(host.querySelectorAll('.public-ledger-row')).toHaveLength(60);
+ expect(host.querySelector('.public-ledger-search span')?.textContent).toBe('250 records');
+ expect(held.category.mock.calls.length).toBeLessThanOrEqual(60);held.category.mockClear();
+ act(()=>filter('Actions').click());expect(host.querySelectorAll('.public-ledger-row')).toHaveLength(60);
+ expect(host.querySelector('.public-ledger-search span')?.textContent).toBe('250 records');
+ expect(held.category.mock.calls.length).toBeLessThanOrEqual(60);
+ expect(held.group).not.toHaveBeenCalled();expect(held.enrich).not.toHaveBeenCalled();expect(held.relations).not.toHaveBeenCalled();expect(fetch).not.toHaveBeenCalled();
 });
 it('keeps every nested field available without rendering closed branches',()=>{
  const host=document.createElement('div');document.body.append(host);root=createRoot(host);

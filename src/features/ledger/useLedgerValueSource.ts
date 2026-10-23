@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {loadReceiz} from '../../receiz/client';
 import { indexLedgerValues,sameLedgerValueInputs,type LedgerValueIndex } from '../../receiz/ledger-value';
-import {readMarketDisplaySource,useMarketDisplaySource} from '../../receiz/market-projection/display-source';
+import {readMarketDisplaySource,retainedMarketDisplaySource,useMarketDisplaySource} from '../../receiz/market-projection/display-source';
 
 /** One existing public projection for the ledger, with no original-file requests per row. */
 export function useLedgerValueSource(active: boolean) {
@@ -25,7 +25,7 @@ export function useLedgerValueSource(active: boolean) {
       } catch { /* A missing projection leaves the carried source value visible. */ }
       finally { if (live) pending = false; }
     };
-    void read('/receiz-public-capitalization.json', false);
+    if(!retainedMarketDisplaySource())void read('/receiz-public-capitalization.json', false);
     void read('/api/bank/public-market/capitalization', true);
     const refresh = () => { if (document.visibilityState === 'visible') void read('/api/bank/public-market/capitalization', true); };
     const timer = setInterval(refresh, 60_000);

@@ -4,10 +4,11 @@ import {publicAssetPulseSeed} from './asset';
 import {publicSigilQuoteAtPulse,publicSportsQuoteAtPulse,marketQuoteMovementAtPulse} from './project';
 /** Revalue retained public operands locally. A failed collection read cannot
  * freeze supported object prices, and an unsupported object gains no model. */
-export function publicCatalogAtPulse(catalog:PublicMarketCatalog|null,source:MarketCapSource|null,pulse:number):PublicMarketCatalog|null{
+export function publicCatalogAtPulse(catalog:PublicMarketCatalog|null,source:MarketCapSource|null,pulse:number,selectedItemId?:string|null):PublicMarketCatalog|null{
  if(!catalog||!Number.isSafeInteger(pulse)||pulse<0)return catalog;
  let quoteMove:number|undefined;
  return {...catalog,items:catalog.items.map(item=>{
+  if(selectedItemId!==undefined&&selectedItemId!==null&&item.id!==selectedItemId)return item;
   try{
    const priced=(priceUsd:number)=>({...item,priceUsd,changePct:item.priceUsd!==null&&item.priceUsd>0?Number(((priceUsd/item.priceUsd-1)*100).toFixed(2)):null,localValuationPulse:pulse});
    const seed=publicAssetPulseSeed(item,source);

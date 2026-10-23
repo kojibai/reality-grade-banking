@@ -9,7 +9,7 @@ import {mergeAdmittedPublicAssets,subscribeAssetPublicationAdmissions} from './a
 function adoptCatalog(catalog:PublicMarketCatalog|null){const next=mergeAdmittedPublicAssets(catalog??{items:[],complete:false,revision:'local-admission',observedAt:null,sourceCount:0});return catalog||next.items.length?next:null;}
 export const PUBLIC_MARKET_CACHE_KEY = 'receiz-bank-public-discovery-v2';
 function restorePublicCatalog(): PublicMarketCatalog | null { try { const saved = localStorage.getItem(PUBLIC_MARKET_CACHE_KEY); const input = saved ? JSON.parse(saved) : null; const catalog = input ? parsePublicMarket(input, input.snapshot) : null; if (!catalog) return null; rememberPublicOriginalLocators(catalog); try { return mergePublicSports(catalog, JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1') ?? 'null')); } catch { return catalog; } } catch { return null; } }
-export function usePublicMarket(active = true, displayActive = active) {
+export function usePublicMarket(active = true, displayActive = active, selectedItemId?:string|null) {
   const pricingSource=useMarketDisplaySource(),[pulse,setPulse]=useState(()=>receizKaiNow().pulse);
   const [catalog, updateCatalog] = useState<PublicMarketCatalog | null>(()=>adoptCatalog(restorePublicCatalog()));
   const setCatalog=useCallback((next:SetStateAction<PublicMarketCatalog|null>)=>updateCatalog(previous=>adoptCatalog(typeof next==='function'?next(previous):next)),[]);
@@ -92,6 +92,6 @@ export function usePublicMarket(active = true, displayActive = active) {
     return () => { clearInterval(interval); document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); seed.abort(); running.current?.abort(); running.current = null;sportsRunning.current?.abort();sportsRunning.current=null; };
   }, [active, refresh]);
   useEffect(()=>{if(!displayActive)return;const update=()=>{if(document.visibilityState==='visible')setPulse(previous=>Math.max(previous,receizKaiNow().pulse));};update();const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);window.addEventListener('pageshow',update);window.addEventListener('focus',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update);window.removeEventListener('pageshow',update);window.removeEventListener('focus',update);};},[displayActive]);
-  const pricedCatalog=useMemo(()=>active?publicCatalogAtPulse(catalog,pricingSource,pulse):catalog,[catalog,pricingSource,pulse,active]);
+  const pricedCatalog=useMemo(()=>active?publicCatalogAtPulse(catalog,pricingSource,pulse,selectedItemId):catalog,[catalog,pricingSource,pulse,active,selectedItemId]);
   return { catalog:pricedCatalog, historyCatalog:catalog, pulse, quoteStatus, sportsStatus, status: !catalog && status === 'stale' ? 'error' as const : status, error, refresh };
 }

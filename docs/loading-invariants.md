@@ -3,6 +3,11 @@
 Available source data belongs in the initial presentation. Background discovery
 must improve that presentation without making it wait, disappear or restart.
 
+These are engineering requirements for every surface, including authenticated
+and public views. They apply from the first source response through retention,
+first paint, interaction, refresh and return navigation. New work must preserve
+them and include regression evidence for any boundary it changes.
+
 ## Preserve available data
 
 - Carry the bounded public fields a surface needs through every projection:
@@ -18,6 +23,30 @@ must improve that presentation without making it wait, disappear or restart.
 - Keep private identity material and complete works out of public discovery.
   Carry the necessary public fields and exact references through the existing
   bounded projection.
+
+## Reuse through the complete interaction
+
+| Boundary | Required behavior |
+| --- | --- |
+| Source to model | Preserve the available permitted fields and their exact source binding. A later request must not repair a field the same response already supplied. |
+| Retention to first paint | Publish the scoped retained frame directly. Restoration and refresh must preserve older history and cannot replace known values with an empty loading frame. |
+| Shared data preparation | Coalesce an in-flight read. Reuse its parsed source and admitted result across consumers. Do not download the shipped fallback again when a usable source is already retained. |
+| Categories and navigation | Prepare grouping, funding relationships and category lists when their inputs change. A category tap selects a prepared list; it does not rebuild the entire Ledger or start discovery. |
+| Record and panel opening | Use the selected held record, existing relationships and digest-bound original inspection. Render requested detail directly; keep closed nested trees, full JSON formatting and unrelated media outside that interaction. |
+| Local display clock | Evaluate only the displayed scope. A standalone asset does not require recalculating every other asset each second. Returning to a collection uses the same retained operands at the current pulse. |
+| New source or refresh | Adopt additions and changed permitted fields without clearing the held presentation. Preserve existing refresh, source admission, conflict checks and completeness rules. |
+
+The reuse key includes the source and identity scope, not merely an asset label,
+amount or claimed digest. Display retention does not establish ownership,
+spending authority or the freshness of financial terms. Required checks for a new
+original or a financial action remain in place. A loading optimization cannot
+change payment rules, pricing, continuity, privacy or recovery.
+
+Before adding a request, parser, verifier, index or render dependency, identify
+which input is missing or changed and why the existing retained result cannot
+serve it. If no input changed, reuse the existing result. If an input did change,
+update only its affected scope. Do not add production conformance checks,
+profilers, delays or timers to enforce this document.
 
 ## Keep passive work outside document loading
 
@@ -67,6 +96,37 @@ covered by [asset-preview.test.ts](../tests/asset-preview.test.ts) and
 The [production browser gate](browser-regression-checks.md) separately protects
 image request counts, deferred profile preparation, retained navigation, controls
 and the installed offline shell.
+
+The Ledger and selected-asset follow-up removes three concrete repetitions:
+
+- Both Ledger surfaces use the retained valuation source without requesting and
+  parsing the 3.4 MiB shipped fallback again. The existing live read and refresh
+  schedule remain. Empty retention still opens the shipped fallback beside the
+  live read.
+- Public Ledger category taps select prepared payment groups, matching the
+  authenticated Ledger. A 500-record regression previously classified all 500
+  records again on each tap; category selection now performs no collection
+  classification. Visible rows still render normally, and search still examines
+  the selected records and their execution witnesses.
+- A standalone asset evaluates only its own local price while retaining the
+  complete catalog and continuing existing discovery. The collection resumes
+  full pricing on return without another read. With the same 4,256-item shipped
+  catalog, a desktop Node arithmetic benchmark measured median 11.606ms for the
+  previous full pass and 0.046ms for the selected pass (50 samples after 10 warmup
+  passes). Selected and full-collection results matched the previous evaluator.
+  These measurements cover arithmetic, not browser paint, phone tap latency or
+  production network time.
+
+[ledger-value-source.test.tsx](../tests/ledger-value-source.test.tsx) checks retained
+first presentation, fallback requests and continued live refresh.
+[ledger-render-work.test.tsx](../tests/ledger-render-work.test.tsx) checks category
+selection, row opening, retained grouping and closed details.
+[ledger-proof-reuse.test.tsx](../tests/ledger-proof-reuse.test.tsx) checks that media
+and inspection share the same read and admitted original, including reopening.
+[public-market-hook.test.tsx](../tests/public-market-hook.test.tsx) checks local
+selected pricing, collection return without another read and source refresh.
+[public-catalog-live-change.test.ts](../tests/public-catalog-live-change.test.ts)
+checks selected evaluation and preservation of the other retained rows.
 
 For loading changes, test a fresh browser with discovery and passive resources
 delayed. Check the initial rendered fields, document load, resource timing,
