@@ -1,3 +1,4 @@
+import {readLedgerFundingContext} from './ledger-funding-context';
 import {RECEIZ_VERSION} from './client';
 import type {PublicRecord} from './public-network';
 import type {LedgerValueDisplay} from './ledger-value';
@@ -45,6 +46,7 @@ export function readLedgerDetails(raw:unknown):LedgerFields {
   if(Object.keys(fundingParts).length)noteReceipt.fundingParts=fundingParts;
   result.noteReceipt=noteReceipt;
  }
+ const context=readLedgerFundingContext(source.fundingContext);if(context)result.fundingContext=context as unknown as LedgerFields;
  const attribution=readWalletFundingAttribution(source.fundingAttribution);if(attribution)result.fundingAttribution=attribution as unknown as LedgerFields;
  const history=readWalletFundingHistory(source.fundingHistory,attribution);if(history)result.fundingHistory=history as unknown as LedgerFields[];
  const links=readWalletFundingLinks(source.fundingLinks);if(links)result.fundingLinks=links as unknown as LedgerFields[];

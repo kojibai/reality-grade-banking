@@ -1,5 +1,6 @@
+import {readLedgerFundingContext} from './ledger-funding-context';
 import type {PublicRecord} from './public-network';
-import {readWalletFundingAttribution,walletAttributionFitsRecord,type WalletFundingAttribution} from './ledger-wallet-fifo';
+import {readWalletFundingAttribution,walletAttributionFitsRecord,walletFundingTimeKey,type WalletFundingAttribution} from './ledger-wallet-fifo';
 import {linkWalletFundingHistory,readWalletFundingHistory,type WalletFundingHistory} from './ledger-funding-history';
 import {readWalletProofCohorts,walletProofCohortForSource,type WalletProofCohort} from './ledger-wallet-cohorts';
 type Context={attribution:WalletFundingAttribution;history?:WalletFundingHistory;cohorts?:WalletProofCohort[]};
@@ -35,6 +36,16 @@ export function enrichWalletFundingContext(records:readonly PublicRecord[],sourc
  return records.map(record=>{
   const carried=own.get(record),matching=carried?.attribution.transferId?byTransfer.get(carried.attribution.transferId):record.authority==='account-source-projection'&&record.evidence.transferId?byTransfer.get(record.evidence.transferId):undefined;
   const context=carried&&matching&&JSON.stringify(carried.attribution)===JSON.stringify(matching.attribution)?{...carried,history:carried.history??matching.history,cohorts:carried.cohorts??matching.cohorts}:carried??matching;
+  const graph=readLedgerFundingContext(record.details?.fundingContext,record.evidence.transferId??record.sourceId.replace(/^wallet_ledger:/,''));
+  if(graph){
+   const seen=new Set<string>(),pending=[graph.root],cohorts:WalletProofCohort[]=[];
+   while(pending.length){const ref=pending.pop()!,key=ref.kind+':'+ref.id;if(seen.has(key))continue;seen.add(key);const node=graph.nodes[key];if(!node)continue;pending.push(...node.parents);
+    const cohort=sourceCohorts.get(ref.id);
+    if(ref.kind==='credit'&&node.source==='profile_rollup_seed'&&cohort&&node.amountPhiMicro===cohort.amountPhiMicro&&node.occurredAt&&walletFundingTimeKey(cohort.computedAt)!<=walletFundingTimeKey(node.occurredAt)!&&cohort.members.every(member=>!member.pulse||node.kaiUpulse&&BigInt(member.pulse)<=BigInt(node.kaiUpulse)/1000000n))cohorts.push(cohort);
+   }
+   const details={...record.details};if(cohorts.length)details.fundingCohorts=cohorts as unknown as NonNullable<PublicRecord['details']>[];else delete details.fundingCohorts;
+   return {...record,details};
+  }
   if(!context||!walletAttributionFitsRecord(context.attribution,record,record.details?.fundingTransferId===record.evidence.transferId||record.authority==='account-source-projection'&&context.attribution.transferId===record.evidence.transferId))return record;
   const held=readWalletFundingAttribution(record.details?.fundingAttribution);if(held&&held.walletDebitId!==context.attribution.walletDebitId)return record;
   const linked=linkWalletFundingHistory(context.attribution,transfers,notes),history=linked&&linked.length>=(context.history?.length??0)?linked:context.history;

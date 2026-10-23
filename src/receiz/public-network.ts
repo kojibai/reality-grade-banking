@@ -1,3 +1,4 @@
+import {applyLedgerFundingContext,retainLedgerFundingContext} from './ledger-funding-context';
 import {safeLedgerSourceUrl} from './ledger-receipts';
 import { parsePublicMarket } from './public-market.ts';
 import { ledgerUsdCents, readLedgerValueOperands, type LedgerValueOperands } from './ledger-value';
@@ -60,7 +61,7 @@ export function parsePublicNetworkPage(source: PublicSource, input: unknown): Pu
   const nextCursor = envelope.nextCursor ?? null;
   if (nextCursor !== null && (typeof nextCursor !== 'string' || !/^[a-zA-Z0-9_-]{1,2048}$/.test(nextCursor))) throw new Error('Public source returned an invalid cursor.');
   const rollup = object(envelope.rollup);
-  return { source, records: mergePublicRecords([], rows.map(raw => row(source, raw))), nextCursor,
+  return { source, records: mergePublicRecords([], rows.map(raw => {const record=row(source,raw);return source==='wallet'?applyLedgerFundingContext(record,envelope.fundingContexts):record;})), nextCursor,
     total: digits(rollup.count ?? rollup.totalLedgerEntries, 20), complete: nextCursor === null };
 }
 export function mergePublicRecords(known: readonly PublicRecord[], incoming: readonly PublicRecord[]): PublicRecord[] {
@@ -76,7 +77,7 @@ export function mergePublicRecords(known: readonly PublicRecord[], incoming: rea
         if(typeof before==='string'&&after===undefined)merged={...merged,details:{...merged.details,[key]:before}};
       }
     }
-    records.set(item.id,merged);
+    records.set(item.id,retainLedgerFundingContext(previous,merged));
   }
   return [...records.values()].sort((left, right) => {
     const a = left.kaiUpulse ? BigInt(left.kaiUpulse) : left.pulse ? BigInt(left.pulse) * 1_000_000n : null;

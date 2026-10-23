@@ -1,3 +1,4 @@
+import {applyLedgerFundingContext} from './ledger-funding-context';
 import type { ReceizIdentityAccountProjection } from '@receiz/sdk';
 import { mergePublicRecords, type PublicRecord } from './public-network';
 import {projectAccountHistoryRecords} from './account-history-direction';
@@ -37,5 +38,6 @@ export function projectPersonalHistory(projection: ReceizIdentityAccountProjecti
   const byTransfer=new Map(Array.isArray(ledgerEntries)?ledgerEntries.flatMap(raw=>{const row=object(raw),attribution=attributions.get(String(row.id));return row.direction==='debit'&&typeof row.chat_transfer_id==='string'&&attribution?[[row.chat_transfer_id,attribution]as const]:[];}):[]);
   return { records: mergePublicRecords(projectAccountHistoryRecords('actions',actionRows,String(account.userId)), mergePublicRecords(projectAccountHistoryRecords('wallet',[...legacyRows, ...transferRows],String(account.userId)), projectAccountHistoryRecords('wallet',activityRows,String(account.userId)))).map(record=>{const attribution=record.source==='wallet'?(attributions.get(record.sourceId.replace(/^wallet_ledger:/,''))??byTransfer.get(record.evidence.transferId??record.sourceId.replace(/^transfer:/,''))):undefined;
    const bound=attribution&&walletAttributionFitsRecord(attribution,record,byTransfer.has(record.evidence.transferId??''));
-   return {...record,authority:'account-source-projection',origin:'identity-carried',...(bound?{details:{...record.details,fundingAttribution:attribution as unknown as NonNullable<PublicRecord['details']>,...(record.evidence.transferId?{fundingTransferId:record.evidence.transferId}:{})}}:{})};}), available: true, completeAtSealedHead: projection.completeAtSealedHead };
+   const enriched=applyLedgerFundingContext(record,wallet.fundingContexts??state.walletFundingContexts);
+   return {...enriched,authority:'account-source-projection',origin:'identity-carried',...(bound?{details:{...enriched.details,fundingAttribution:attribution as unknown as NonNullable<PublicRecord['details']>,...(record.evidence.transferId?{fundingTransferId:record.evidence.transferId}:{})}}:{})};}), available: true, completeAtSealedHead: projection.completeAtSealedHead };
 }

@@ -1,3 +1,4 @@
+import {readLedgerFundingContext,compactLedgerFundingContext} from './ledger-funding-context';
 import type {PublicRecord} from './public-network';
 import {safeReceizPublicUrl} from './public-market';
 import {BANK_PUBLIC_ORIGIN} from './config';
@@ -32,11 +33,13 @@ function read(input:unknown):LedgerReceipt{
 export function receiptLink(record:PublicRecord,value=ledgerValueForRecord(record),valuation?:LedgerFields|null):string|null{
  // Keep the shared source cohort by reference in the in-app receipt/archive.
  // Do not repeatedly serialize hundreds of originals into every row's URL.
- const {fundingCohorts,...details}=record.details??{};
+ const {fundingCohorts,fundingContext,...retainedDetails}=record.details??{};
+ const context=readLedgerFundingContext(fundingContext),compact=context?compactLedgerFundingContext(context):undefined;
+ const details:LedgerFields={...retainedDetails,...(compact?{fundingContext:compact as unknown as LedgerFields}:{})};
  // Both views share the same curated fields of the selected record. The
  // reader excludes arbitrary account/chat metadata and custody material.
  const trade=ledgerAssetTrade(record),tradeDetails=trade?readLedgerDetails({ledgerEntryKind:details.ledgerEntryKind,assetTrade:trade}):null;
- const receipt=read({schema:'bankeiz.ledger-receipt.v1',id:record.sourceId,source:record.source,authority:record.authority,detail:record.authority==='public-source-projection'?record.detail:'',kind:record.kind,title:record.title,amountUsdCents:record.amountUsdCents,pulse:record.pulse,kaiUpulse:record.kaiUpulse,time:record.time,sender:record.sender,recipient:record.recipient,sourceUrl:record.sourceUrl,evidence:record.evidence,value,details,valueOperands:record.valueOperands,valuation,contextOmitted:!!fundingCohorts});
+ const receipt=read({schema:'bankeiz.ledger-receipt.v1',id:record.sourceId,source:record.source,authority:record.authority,detail:record.authority==='public-source-projection'?record.detail:'',kind:record.kind,title:record.title,amountUsdCents:record.amountUsdCents,pulse:record.pulse,kaiUpulse:record.kaiUpulse,time:record.time,sender:record.sender,recipient:record.recipient,sourceUrl:record.sourceUrl,evidence:record.evidence,value,details,valueOperands:record.valueOperands,valuation,contextOmitted:!!fundingCohorts||compact?.coverage.status==='incomplete'});
  let bytes=new TextEncoder().encode(JSON.stringify(receipt));
  // Large optional descriptions and model traces must not remove the receipt.
  if(bytes.length>24000){receipt.detail='';receipt.details=tradeDetails;receipt.valuation=null;receipt.contextOmitted=true;bytes=new TextEncoder().encode(JSON.stringify(receipt));}

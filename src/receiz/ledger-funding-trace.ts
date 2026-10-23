@@ -1,3 +1,4 @@
+import {ledgerFundingContextTrace,type LedgerFundingContext} from './ledger-funding-context';
 import {carriedLedgerCardCopyValuation} from './ledger-card-copy';
 import {ledgerProofHistorySteps} from './ledger-proof-history';
 import type {PublicRecord} from './public-network';
@@ -10,13 +11,14 @@ import {readWalletFundingHistory,type WalletFundingHistory} from './ledger-fundi
 import {readLedgerCausalLineage,type LedgerCausalStep} from './ledger-causal-source';
 export {readLedgerCausalLineage,ledgerCausalLineageFields,type LedgerCausalStep,type LedgerCausalLineage} from './ledger-causal-source';
 export type LedgerFundingTrace = {
- basis:'native-causal-history'|'proof-object-history'|'wallet-components'|'calculated-fifo';
+ basis:'recorded-funding-context'|'native-causal-history'|'proof-object-history'|'wallet-components'|'calculated-fifo';
  boundary:'source-origins'|'origins-not-carried'|'undated-source-history'|'coordinate-conflict';
  valueOrigins:LedgerCausalStep[];sources:LedgerCausalStep[];steps:LedgerCausalStep[];
  components:{rail:'reserve'|'settlement';amountUsdCents:string}[];
  proofHash?:string;sourceSchema?:string;
  attribution?:WalletFundingAttribution;
  history?:WalletFundingHistory;
+ context?:LedgerFundingContext;
 };
 const object=(v:unknown):Record<string,unknown>=>v!==null&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,unknown>:{};
 const text=(v:unknown,max=512):string|undefined=>typeof v==='string'&&v.length>0&&v.length<=max&&!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(v)?v:undefined;
@@ -50,6 +52,7 @@ export function ledgerFundingTrace(record:PublicRecord):LedgerFundingTrace {
  const cached=traces.get(record);if(cached)return cached;
  const finish=(trace:LedgerFundingTrace)=>{traces.set(record,trace);return trace;};
  if(record.pulse&&record.kaiUpulse&&BigInt(record.pulse)!==BigInt(record.kaiUpulse)/1000000n)return finish(empty('coordinate-conflict'));
+ const carried=ledgerFundingContextTrace(record);if(carried)return finish(carried);
  const result=empty(),operands=record.valueOperands??{};
  const attribution=readWalletFundingAttribution(record.details?.fundingAttribution);
  const matches=attribution&&walletAttributionFitsRecord(attribution,record,!!record.evidence.transferId&&record.details?.fundingTransferId===record.evidence.transferId);

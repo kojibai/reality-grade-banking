@@ -84,3 +84,18 @@ it('automatically reuses the exact publicly retained proof cohort for a new debi
   expect(fetch).not.toHaveBeenCalled();
  }finally{vi.unstubAllGlobals();}
 });
+
+it('binds retained historical proof membership through reachable exact credit context without FIFO',()=>{
+ const cohort={rule:'receiz-profile-rollup-v1-owned-and-received',basis:'reconstructed-membership',creditSourceId:'profile-credit',computedAt:'2026-05-01T00:00:00Z',amountPhiMicro:'100',members:[{objectId:'source-original',title:'Recorded source original',createdAt:'2026-04-01T00:00:00Z',verifyUrl:'https://receiz.com/v/moment/original',basis:'owned'}]};
+ const source=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'historical',kind:'chat_transfer',createdAt:'2026-05-03T00:00:00Z',amountUsdCents:'20',fundingCohorts:[cohort]}]}).records[0];
+ const packet=(phi='100',reachable=true)=>({ok:true,events:[{id:'new',transferId:'fresh',kind:'chat_transfer',createdAt:'2026-05-04T00:00:00Z',amountUsdCents:'30'}],fundingContexts:{schema:'receiz.wallet.funding-context.v1',roots:{'transfer:fresh':{kind:'transfer',id:'fresh'}},nodes:{'transfer:fresh':{ref:{kind:'transfer',id:'fresh'},parents:reachable?[{kind:'credit',id:'profile-credit'}]:[],amountUsdCents:'30'},'credit:profile-credit':{ref:{kind:'credit',id:'profile-credit'},parents:[],amountPhiMicro:phi,source:'profile_rollup_seed',occurredAt:'2026-05-02T00:00:00Z',kaiUpulse:'2000000'}},coverage:{}}});
+ const fresh=parsePublicNetworkPage('wallet',packet()).records[0],fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ try{
+  const enriched=enrichWalletFundingContext([fresh],[source])[0];expect(enriched.details?.fundingCohorts).toEqual([cohort]);
+  expect(enrichWalletFundingContext([fresh],[{...source,authority:'account-source-projection'}])[0].details).not.toHaveProperty('fundingCohorts');
+  expect(enrichWalletFundingContext([parsePublicNetworkPage('wallet',packet('99')).records[0]],[source])[0].details).not.toHaveProperty('fundingCohorts');
+  expect(enrichWalletFundingContext([parsePublicNetworkPage('wallet',packet('100',false)).records[0]],[source])[0].details).not.toHaveProperty('fundingCohorts');
+  const conflict={...source,id:'conflict',details:{...source.details,fundingCohorts:[{...cohort,members:[{...cohort.members[0],objectId:'other'}]}]}};
+  expect(enrichWalletFundingContext([enriched],[source,conflict])[0].details).not.toHaveProperty('fundingCohorts');expect(fetch).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();}
+});

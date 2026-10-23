@@ -1,3 +1,4 @@
+import {applyLedgerFundingContext} from './ledger-funding-context';
 import { type PublicRecord } from './public-network';
 import {projectAccountHistoryRecords} from './account-history-direction';
 export interface PrivateHistoryPage { accountUid: string; records: PublicRecord[]; nextCursor: string | null; origin: 'private-account'; sourceJson: string; }
@@ -8,12 +9,12 @@ export function privateHistoryPath(cursor?: string): string {
 // An authenticated private read is display data beneath held sealed history.
 // Neither its balances nor its rows supply ownership or execution authority.
 export function parsePrivateHistoryPage(input: unknown, accountUid: string): PrivateHistoryPage {
-  const value = input as { ok?: unknown; accountUserId?: unknown; events?: unknown; nextCursor?: unknown } | null;
+  const value = input as { ok?: unknown; accountUserId?: unknown; events?: unknown; fundingContexts?:unknown; nextCursor?: unknown } | null;
   if (!accountUid || value?.accountUserId !== accountUid) throw new Error(value?.accountUserId === undefined ? 'PRIVATE_HISTORY_ACCOUNT_MISMATCH_BINDING_MISSING' : 'PRIVATE_HISTORY_ACCOUNT_MISMATCH');
   if (value.ok !== true || !Array.isArray(value.events) || value.events.length > 100) throw new Error('PRIVATE_HISTORY_PAGE_INVALID');
   if (value.nextCursor !== null && (typeof value.nextCursor !== 'string' || !/^[A-Za-z0-9_-]{1,2048}$/.test(value.nextCursor))) throw new Error('PRIVATE_HISTORY_CURSOR_INVALID');
   const sourceJson = JSON.stringify(input); if (new TextEncoder().encode(sourceJson).length > 8 * 1024 * 1024) throw Error('PRIVATE_HISTORY_CAPACITY_EXCEEDED');
-  return { accountUid, sourceJson, records: projectAccountHistoryRecords('wallet',value.events,accountUid).map(record => ({ ...record, origin: 'private-account' })), nextCursor: value.nextCursor, origin: 'private-account' };
+  return { accountUid, sourceJson, records: projectAccountHistoryRecords('wallet',value.events,accountUid).map(record => ({ ...applyLedgerFundingContext(record,value.fundingContexts), origin: 'private-account' as const })), nextCursor: value.nextCursor, origin: 'private-account' };
 }
 /** Bounded diagnostics only: never expose a private payload, token or account ID. */
 export function privateHistoryFailureCode(cause: unknown): string {
