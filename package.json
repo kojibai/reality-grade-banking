@@ -13,6 +13,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
+    "test:browser": "node scripts/check-browser-regressions.mjs",
     "release:check": "node scripts/receiz-release.mjs",
     "vercel:check": "node scripts/check-vercel-build.mjs",
     "market:seed": "node scripts/seed-public-market.mjs",
@@ -53,6 +54,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "esbuild": "0.28.2",
     "happy-dom": "21.0.1",
+    "playwright": "1.62.1",
     "typescript": "5.9.3",
     "vite": "^7.0.0",
     "vitest": "5.0.4"

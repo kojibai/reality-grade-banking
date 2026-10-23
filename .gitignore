@@ -9,6 +9,7 @@ node_modules/
 .DS_Store
 .source-work/
 .playwright-cli/
+test-results/
 /public/proof-verifier/
 /server/receipt-runtime/*.mjs
 /server/asset-runtime/*.mjs
