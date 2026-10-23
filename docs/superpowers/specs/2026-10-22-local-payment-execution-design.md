@@ -2,8 +2,9 @@
 
 Date: October 22, 2026
 
-Status: direction approved; written design awaiting review. No execution changes
-or performance improvements have been implemented or measured yet.
+Status: written design approved October 22, 2026; implementation plan under
+review. No execution changes or performance improvements have been implemented
+or measured yet.
 
 ## Requested outcome
 
@@ -12,6 +13,12 @@ the committed result globally. The user does not wait for global synchronization
 to see a transaction that has already committed locally. Preserve the existing
 amounts, ownership, funding order, fees, explicit approvals and resulting value.
 Preserve the existing global synchronization contract and its replay behavior.
+
+The receiver takes no action: an already open account updates its balance inline
+as soon as the incoming payment source is admitted. No reload, manual refresh,
+new receiving ceremony or additional confirmation step is introduced. Preserve
+the existing message/payment notification path; the user explicitly requested
+no redundant notification system or extra polling.
 
 This takes priority over the merchant Counter. Keep its approved design and
 unfinished implementation plan intact, but do not implement merchant features
