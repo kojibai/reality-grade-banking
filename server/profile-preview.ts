@@ -1,3 +1,4 @@
+import {isShareTrackingKey} from './share-tracking.js';
 import {profilePagePath,profilePageUsername,profileUsername,type PublicProfile} from '../src/receiz/public-profile.js';
 import {readPublicProfile,PublicProfileError} from './public-profile.js';
 import {publicProfileArtwork} from '../src/content/public-asset-titles.js';
@@ -22,7 +23,7 @@ type Dependencies={profile:typeof readPublicProfile;page():Promise<string>;rende
 export async function handleProfilePreview(request:Request,deps?:Dependencies){
  const url=new URL(request.url),username=url.pathname.replace(/\/$/,'')==='/api/profile'?profileUsername(url.searchParams.get('username')):profilePageUsername(url.pathname),headers={'Cache-Control':'no-store, no-transform','Content-Type':'text/html; charset=utf-8','Content-Disposition':'inline','X-Content-Type-Options':'nosniff'};
  if(!['GET','HEAD'].includes(request.method))return new Response(null,{status:405,headers:{...headers,Allow:'GET, HEAD'}});
- if(!username||url.hash||[...url.searchParams.keys()].some(key=>key!=='username'||url.searchParams.getAll(key).length!==1)||url.searchParams.has('username')&&url.searchParams.get('username')!==username)return new Response('Profile not found.',{status:404,headers});
+ if(!username||url.hash||[...url.searchParams.keys()].some(key=>!isShareTrackingKey(key)&&(key!=='username'||url.searchParams.getAll(key).length!==1))||url.searchParams.has('username')&&url.searchParams.get('username')!==username)return new Response('Profile not found.',{status:404,headers});
  if(request.method==='HEAD')return new Response(null,{headers});
  const dependencies=deps??{profile:readPublicProfile,page:async()=>(await import('node:fs/promises')).readFile('dist/explore/index.html','utf8'),render:renderProfileDocument};
  // Start independent reads together. Settle the rejection immediately so a

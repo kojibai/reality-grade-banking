@@ -29,3 +29,40 @@ it('places the actual rendered profile in the first document rather than an entr
  const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/'),{profile:async()=>profile,page:async()=>html,render});
  const body=await response.text();expect(render).toHaveBeenCalledWith(profile);expect(body).toContain('Complete first view');expect(body).not.toContain('Old collection');expect(body).not.toContain('public-entry-placeholder');
 });
+
+it.each(['fbclid=instagram-click','igsh=instagram-share','igshid=instagram-share','utm_source=ig&utm_medium=social&utm_campaign=profile','fbclid=click&igsh=share&utm_source=instagram','utm_source=first&utm_source=second'])('opens the same cold profile when a social link carries inert attribution: %s',async tracking=>{
+ const value=parsePublicProfile(profileFixture(),'alexmorgan'),profile=vi.fn(async()=>value),page=vi.fn(async()=>html),render=vi.fn(async()=>'<article><h1>Alex Morgan</h1></article>'),deps={profile,page,render};
+ const canonical=await(await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/'),deps)).text();profile.mockClear();page.mockClear();render.mockClear();
+ const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/?'+tracking,{headers:{'user-agent':'Instagram','referer':'https://l.instagram.com/'}}),deps);
+ expect(response.status).toBe(200);expect(response.headers.get('location')).toBeNull();expect(await response.text()).toBe(canonical);
+ expect(profile).toHaveBeenCalledExactlyOnceWith('alexmorgan');expect(page).toHaveBeenCalledOnce();expect(render).toHaveBeenCalledExactlyOnceWith(value);
+});
+it.each(['/alexmorgan','/u/alexmorgan/','/api/profile?username=alexmorgan','/api/profile/?username=alexmorgan'])('accepts tracked profile entry through its canonical and production rewrite paths: %s',async path=>{
+ const profile=vi.fn(async()=>parsePublicProfile(profileFixture(),'alexmorgan')),page=vi.fn(async()=>html);
+ const response=await handleProfilePreview(new Request('https://bankeiz.com'+path+(path.includes('?')?'&':'?')+'fbclid=click&igsh=share'),{profile,page});
+ expect(response.status).toBe(200);expect(await response.text()).toContain('href="https://bankeiz.com/alexmorgan/"');expect(profile).toHaveBeenCalledExactlyOnceWith('alexmorgan');expect(page).toHaveBeenCalledOnce();
+});
+it('answers tracked profile HEAD probes without reading or rendering the source',async()=>{
+ const profile=vi.fn(),page=vi.fn(),render=vi.fn();
+ const response=await handleProfilePreview(new Request('https://bankeiz.com/bjklock?fbclid=click&igsh=share',{method:'HEAD'}),{profile,page,render});
+ expect(response.status).toBe(200);expect(response.headers.get('location')).toBeNull();expect(await response.text()).toBe('');expect(profile).not.toHaveBeenCalled();expect(page).not.toHaveBeenCalled();expect(render).not.toHaveBeenCalled();
+});
+it('keeps conflicting selectors and unknown controls invalid even beside attribution',async()=>{
+ const profile=vi.fn(),page=vi.fn();
+ for(const path of ['/alexmorgan?username=another','/alexmorgan?username=alexmorgan&username=alexmorgan','/alexmorgan?url=https://foreign.invalid','/alexmorgan?accountUid=foreign','/alexmorgan?manage=1','/api/profile?username=alexmorgan&username=another','/api/profile?username=alexmorgan&cursor=foreign']){
+  const response=await handleProfilePreview(new Request('https://bankeiz.com'+path+'&fbclid=click&igsh=share'),{profile,page});expect(response.status).toBe(404);
+ }
+ expect(profile).not.toHaveBeenCalled();expect(page).not.toHaveBeenCalled();
+});
+it('streams tracked browser entry immediately with one source read and preserves crawler refusals',async()=>{
+ let resolve!:(value:ReturnType<typeof parsePublicProfile>)=>void;const pending=new Promise<ReturnType<typeof parsePublicProfile>>(done=>{resolve=done;});
+ const profile=vi.fn(()=>pending),page=vi.fn(async()=>html);
+ const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan?fbclid=click&igsh=share',{headers:{accept:'text/html','user-agent':'Instagram'}}),{profile,page});
+ expect(response.status).toBe(200);const reader=response.body!.getReader(),first=await reader.read();expect(new TextDecoder().decode(first.value)).toContain('<head>');expect(profile).toHaveBeenCalledExactlyOnceWith('alexmorgan');
+ resolve(parsePublicProfile(profileFixture(),'alexmorgan'));await reader.read();expect((await reader.read()).done).toBe(true);
+ const {PublicProfileError}=await import('../server/public-profile');
+ for(const status of [403,404]){
+  const refusal=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan?fbclid=click',{headers:{accept:'text/html','user-agent':'facebookexternalhit/1.1'}}),{profile:async()=>{throw new PublicProfileError(status===403?'PROFILE_PRIVATE':'PROFILE_NOT_FOUND',status);},page});
+  expect(refusal.status).toBe(status);expect(await refusal.text()).not.toContain('public-profile-seed');
+ }
+});
