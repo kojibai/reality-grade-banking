@@ -1,4 +1,5 @@
 import {expect,it,vi} from 'vitest';
+import {readFileSync} from 'node:fs';
 import {parsePublicMarket} from '../src/receiz/public-market';
 import {assetPagePath} from '../src/receiz/public-asset-page';
 import {assetPreviewHtml,handleAssetPreview} from '../server/asset-preview';
@@ -9,6 +10,23 @@ const item=(kind='audio',playbackSrc?:string)=>parsePublicMarket({ok:true,transp
 const html='<html><head><title>Explore</title></head><body><div id="public-explore-root"></div><script id="receiz-navigation">{}</script></body></html>';
 const deps=(value=item())=>({item:vi.fn(async()=>value),page:vi.fn(async()=>html),image:vi.fn(async()=>new Uint8Array())});
 const canonical='https://bankeiz.com'+assetPagePath(id);
+
+it('streams an explicitly public self-contained video Original without routing playback through the bounded file reader',async()=>{
+ const artifact='https://receiz.com/api/proof-material/packages/'+'a'.repeat(64)+'/artifact',digest='b'.repeat(64),row=source('video',artifact);
+ Object.assign(row.profileOriginal.media,{gateAudioPlayback:false,playbackMime:null,mime:'video/quicktime',originalDownloadMime:'video/quicktime',originalDownloadSha256Hex:digest,material:{sealedArtifactSha256Hex:digest,proofObjectUrl:artifact}});
+ const read=(value:unknown)=>parsePublicMarket({ok:true,transport:{publicOriginals:[value]}}).items[0];
+ expect(read(row).playback).toEqual({url:artifact,mimeType:'video/quicktime'});
+ const response=await handleAssetPreview(new Request(canonical+'player/'),deps(read(row))),body=await response.text();
+ expect(body).toContain('<video controls playsinline preload="none"');expect(body).toContain(artifact);expect(body).not.toContain('<script');
+ for(const patch of [{gateAudioPlayback:true},{gateAudioPlayback:undefined},{originalDownloadMime:'image/png'},{originalDownloadSha256Hex:'c'.repeat(64)},{playbackSrc:'https://receiz.com/api/proof-material/packages/'+'d'.repeat(64)+'/artifact',material:{sealedArtifactSha256Hex:'c'.repeat(64),proofObjectUrl:artifact}}]){
+  expect(read({...row,profileOriginal:{media:{...row.profileOriginal.media,...patch}}}).playback).toBeNull();
+ }
+});
+it('carries the reported public movie stream in the shipped cold-load source',()=>{
+ const input=JSON.parse(readFileSync('public/receiz-public-market.json','utf8'));
+ const movie=parsePublicMarket(input).items.find(item=>item.assetId==='47619509-b213-45a7-8199-4cecf763b2d5')!;
+ expect(movie.playback).toEqual({url:'https://receiz.com/api/proof-material/packages/e1b2054c8c68feb276ed87d6a757d48cec0b86f989855c96b038f959ea9e7d43/artifact',mimeType:'video/quicktime'});
+});
 
 it('uses an explicitly public self-contained audio Original when no separate playback was prepared, without changing its asset URL',async()=>{
  const row=source('audio',`/api/profile/originals/media?receizId=${assetId}&slot=playback`),artifact='https://receiz.com/api/proof-material/packages/'+ 'a'.repeat(64)+'/artifact',digest='b'.repeat(64);

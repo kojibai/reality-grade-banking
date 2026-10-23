@@ -59,6 +59,10 @@ profilers, delays or timers to enforce this document.
 - Reuse one in-flight read and one media element across inline/full views and
   proof-side flips. Do not add another request, decoder or player for the same
   source.
+- When the source already supplies a permitted public audio/video playback role,
+  mount its native streaming player directly. Never make playback await a complete
+  Original download, proof inspection or a bounded file-reader allocation. Keep
+  the access policy, exact source binding and independent inspection intact.
 - Keep conformance suites and optional evidence inspection outside ordinary
   presentation. A loading optimization must preserve financial rules, required
   source verification, permissions and recovery.
@@ -90,9 +94,23 @@ now share the same [passive preparation boundary](../src/features/media/usePassi
 as audio. Explicitly requested autoplay retains its immediate preparation;
 native controls, source URLs and the existing element remain intact.
 
+A subsequent public movie exposed a separate routing error: its 18,208,230-byte
+QuickTime Original was sent through the 16 MiB complete-file reader because the
+self-contained streaming selector supported sealed audio but omitted video.
+The existing source already returned `video/quicktime` and `206 Partial Content`
+for byte-range requests. The same guarded streaming selection now handles video;
+20 exactly matched public video rows carry their available playback metadata in
+the shipped source. Playback uses the native stream without a complete-file size
+allocation. The file-reader limit and independent Original verification remain
+unchanged. Passive preparation still follows document loading, while native Play
+starts directly. This removes an application download prerequisite; network speed,
+media layout and browser codec support still determine when frames can play.
+
 The first-response proof fields and immediate Play/late-metadata behavior are
 covered by [asset-preview.test.ts](../tests/asset-preview.test.ts) and
 [proof-media-view.test.tsx](../tests/proof-media-view.test.tsx).
+[asset-media-embed.test.ts](../tests/asset-media-embed.test.ts) also checks the
+guarded sealed-video stream, shipped cold-load source and lightweight player.
 The [production browser gate](browser-regression-checks.md) separately protects
 image request counts, deferred profile preparation, retained navigation, controls
 and the installed offline shell.

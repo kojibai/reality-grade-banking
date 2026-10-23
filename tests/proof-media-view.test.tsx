@@ -28,6 +28,17 @@ it('mounts native public range video immediately without downloading or verifyin
  await act(()=>root.render(<ProofMedia source={publicSource} title="A movie" publicVideo={stream} autoOpen/>));expect(host.querySelector('video')?.getAttribute('src')).toBe(stream.url);expect(host.querySelector('video')?.getAttribute('preload')).toBe('metadata');expect(host.querySelector('video')?.hasAttribute('playsinline')).toBe(true);expect(host.textContent).toContain('Public playback');expect(host.textContent).not.toContain('Original verified');expect(open).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());}
 });
+it('mounts a public sealed movie directly even when complete-file reading would exceed capacity',async()=>{
+ const publicSource={kind:'public' as const,url:'https://receiz.com/api/proof-material/packages/'+'b'.repeat(64)+'/artifact',digest:source.digest},stream={assetId:'movie',url:publicSource.url,mimeType:'video/quicktime'};
+ open.mockRejectedValue(Error('PUBLIC_LEDGER_FILE_CAPACITY'));
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(()=>root.render(<ProofMedia source={publicSource} title="Large movie" publicVideo={stream} autoOpen/>));
+  expect(host.querySelector('video')?.getAttribute('src')).toBe(stream.url);
+  expect(host.querySelector('video')?.hasAttribute('controls')).toBe(true);
+  expect(host.textContent).toContain('Public playback');expect(host.textContent).not.toContain('PUBLIC_LEDGER_FILE_CAPACITY');expect(open).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
 it.each([{requested:false,before:'none',after:'metadata'},{requested:true,before:'auto',after:'auto'}])('keeps video preparation outside cold document loading and honors requested playback: $requested',async({requested,before,after})=>{
  const ready=vi.spyOn(document,'readyState','get').mockReturnValue('loading'),reload=vi.spyOn(HTMLMediaElement.prototype,'load').mockImplementation(()=>{});
  const publicSource={kind:'public' as const,url:'https://receiz.com/api/profile/originals/download?receizId=video&kind=original',digest:source.digest},stream={assetId:'video',url:'https://receiz.com/video/clip.mp4',mimeType:'video/mp4'};
