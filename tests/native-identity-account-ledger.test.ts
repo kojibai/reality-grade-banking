@@ -268,6 +268,35 @@ it('waits for complete retained history before preparing a formerly balance-only
  let settled=false;const preparing=identity.prepareAccountView().then(value=>{settled=true;return value;});
  try{await new Promise(resolve=>setTimeout(resolve,0));expect(settled).toBe(false);finish({proof,observation:completeObservation()});expect((await preparing).history?.[0].kaiUPulse).toBe('0');expect(p.continueId).not.toHaveBeenCalled();}finally{identity.dispose();}
 });
+it('resumes the retained balance and full held curve without waiting for a stalled history refresh after its balance head changed',async()=>{
+ const previous=completeObservation();
+ p.known={...previous,wallet:{...previous.wallet,totalUsdCents:'500',reserveUsdCents:'500',kaiUpulse:'100000003'},history:[...previous.history!,{...previous.history!.at(-1)!,kaiUPulse:'100000003',totalUsdCents:'500',reserveUsdCents:'500'}],historyBasis:undefined};
+ const retained=p.known,curve=structuredClone(retained.history);
+ p.request.mockReturnValue(new Promise(()=>{}));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  const opened=await Promise.race([identity.prepareAccountView({resume:true}),new Promise<null>(resolve=>setTimeout(()=>resolve(null),75))]);
+  expect(opened).toBe(retained);expect(opened?.wallet.totalUsdCents).toBe('500');expect(opened?.history).toEqual(curve);
+  expect(opened?.historyBasis).toBeUndefined();expect(p.request).not.toHaveBeenCalled();expect(p.continueId).not.toHaveBeenCalled();
+ }finally{identity.dispose();}
+});
+it.each(['response','worker'] as const)('keeps a newer authenticated wallet when a deferred startup chart %s finishes later',async stage=>{
+ p.known={...completeObservation(),historyBasis:undefined};
+ const source={schema:'receiz.wallet.chart-source.v129' as const,authority:'authenticated-display-source' as const,userId:'bound-user',throughKaiUPulse:'100000002',objects:[],movements:[{id:'credit',kaiUPulse:'100000001',direction:'credit' as const,phiMicro:'0',usdCents:'500',reserveSliceUsdCents:'0',profileSeed:false}],lawfulValues:[]};
+ const response={ok:true,wallet:{userId:'bound-user',balanceUsd:'5.00',balancePhiMicro:'0',valueStates:{settledBalanceUsdCents:'0',ecosystemBalanceUsdCents:'500'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'100000002'},chartSource:source}};
+ let finish!:()=>void;
+ p.request.mockImplementation(path=>path.startsWith('/api/connect/wallet/me?history=1')?stage==='response'?new Promise(resolve=>{finish=()=>resolve(response);}):Promise.resolve(response):Promise.resolve({}));
+ const module=await import('../src/receiz/prepare-composite-wallet'),prepare=module.prepareCompositeWallet;
+ const worker=vi.spyOn(module,'prepareCompositeWallet').mockImplementation(async(...args)=>{if(stage==='worker')await new Promise<void>(resolve=>{finish=resolve;});return prepare(...args);});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  await identity.prepareAccountView({resume:true});const preparing=identity.prepareAccountView();
+  await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));
+  await identity.readWallet();expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('800');
+  finish();await preparing;expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('800');
+  expect(p.proof).not.toHaveBeenCalled();
+ }finally{identity.dispose();worker.mockRestore();}
+});
 it('prepares the full account source before admitting a balance-only cache on entry',async()=>{
  p.known=observation();const complete=completeObservation();p.retain.mockResolvedValue({proof,observation:complete});
  let finish!:(value:unknown)=>void;p.proof.mockImplementationOnce(async({request})=>{await request('/account-source');return new Promise(resolve=>{finish=resolve;});});

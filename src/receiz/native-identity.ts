@@ -67,7 +67,7 @@ export interface OpenIdentity {
   hostedCheckout?:()=>Promise<import('./hosted-checkout').HostedCheckoutController>;
   profile?:()=>Promise<import('./profile-edit').ProfileEditor>;
   knownProfile?:()=>import('./profile-edit').OwnerProfilePresentation|null;
-  prepareAccountView: () => Promise<import('./wallet-observation').WalletObservation>;
+  prepareAccountView: (options?:{resume?:boolean}) => Promise<import('./wallet-observation').WalletObservation>;
   refreshLocalValuation?: () => Promise<import('./wallet-observation').WalletObservation | null>;
   walletReceivingAddress?: () => string | null;
   prepareReceivingUsername?: () => Promise<string>;
@@ -450,12 +450,19 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   }
   async function prepareCompositeChart() {
     if(protectedChartFrame())return null;
+    const walletAtStart=knownWallet?.wallet;
+    const financialHeadChanged=()=>knownWallet?.wallet!==walletAtStart&&(!knownWallet||!walletAtStart||!sameWalletFinancialState(knownWallet.wallet,walletAtStart));
     const startedRevision=walletRevision,current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT),bound=clientAccounts.get(current);
     if(!bound||bound.applicationId!==BANK_APPLICATION_ID)return null;
     const cursor=knownWallet?.chartSource?.transport?.cursor,after=validCursor(cursor)?`&after=${encodeURIComponent(cursor)}`:'';
     const response=await current.request(`/api/connect/wallet/me?history=1${after}`,{method:'GET'});noteOpen();
+    if(financialHeadChanged())return knownWallet;
     if(walletRevision!==startedRevision||hasLocalWalletHead())return null;
-    const observation=await adoptChartResponse(response,bound.accountUid);if(!observation||walletRevision!==startedRevision||protectedChartFrame())return null;
+    const observation=await adoptChartResponse(response,bound.accountUid);
+    // Entry may now finish while this display read/worker is pending. A newer
+    // ordinary wallet refresh is as decisive as a recorded payment revision.
+    if(financialHeadChanged())return knownWallet;
+    if(!observation||walletRevision!==startedRevision||protectedChartFrame())return null;
     knownWallet=observation;void persistWalletObservation(observation).catch(()=>{});return observation;
   }
   const hasLocalWalletHead = () => knownWallet?.source === 'local-note-head';
@@ -1508,7 +1515,14 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     if (!knownWallet || !hasSettledAccountView(knownWallet)) throw Error('Your complete account history could not be opened. Your Identity Record is unchanged. Try again when its source is available.');
     return knownWallet;
   }
-  const prepareAccountView = () => {
+  const prepareAccountView = (options?:{resume?:boolean}) => {
+    // A saved authenticated balance and its held curve remain usable after a
+    // newer balance head invalidates their complete-history marker. Reopening
+    // that display is not a request to wait for another remote reconciliation.
+    // Keep the missing marker explicit; never promote it to financial evidence.
+    if(options?.resume&&knownWallet?.history?.length&&!hasSettledAccountView(knownWallet)){
+      noteOpen();startReceivedNotes();return Promise.resolve(knownWallet);
+    }
     if (preparingView) return preparingView;
     const attempt = settleAccountView().catch(cause => { if (knownWallet) { if (!knownWallet.history?.length) knownWallet={...knownWallet,history:appendWalletPoint([],knownWallet.wallet,knownWallet.observedAt,knownWallet.wallet.kaiUpulse)}; return knownWallet; } throw new Error('Your account balance source is temporarily unavailable. Your Identity Record is unchanged. Try again when its source is available.', {cause}); }).then(view=>{startReceivedNotes();return view;}); preparingView = attempt;
     void attempt.finally(()=>{if(preparingView===attempt)preparingView=undefined;}).catch(()=>{});

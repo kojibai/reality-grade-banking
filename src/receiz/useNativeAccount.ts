@@ -58,14 +58,14 @@ export function useNativeAccount(custody = nativeCustody) {
     finally { if (ticket === generation.current) { pending.current = false; setBusy(false); } }
   }, [publishObservation, refreshLocal]);
   const entering = useRef<OpenIdentity | null>(null);
-  const accept = useCallback(async (next: OpenIdentity, ticket: number) => {
+  const accept = useCallback(async (next: OpenIdentity, ticket: number, resume = false) => {
     if (ticket !== generation.current) { next.dispose(); return; }
     entering.current = next;
     setOpeningStage('history');
     try {
       const provisionalUid = next.knownWallet?.()?.wallet.userId;
       const preloading=provisionalUid?preloadPrivateHistory(next,provisionalUid):null;
-      const known = await next.prepareAccountView();
+      const known = await next.prepareAccountView(resume?{resume:true}:undefined);
       if (ticket !== generation.current) { next.dispose(); return; }
       // Reuse the already-started local restore in the first complete frame;
       // account entry and the Ledger hook must not start separate reads.
@@ -77,15 +77,25 @@ export function useNativeAccount(custody = nativeCustody) {
       // One React commit: no admitted account shell with an absent chart.
       hasObservation.current = true; setWallet(known.wallet); setObservedAt(known.observedAt); setWalletHistory(known.history ?? []); setHistoryComplete(hasSettledAccountView(known));
       setError(null); setSyncPending(false); setOpeningStage('ready'); setIdentity(next); setOpening(false); setBusy(false);
+      if(resume&&!hasSettledAccountView(known)&&known.history?.length){
+        // Same source preparation as before, after the retained account has
+        // opened. A slow source cannot hold the saved account at halfway.
+        setTimeout(()=>{
+          if(ticket!==generation.current||held.current!==next)return;
+          void next.prepareAccountView().then(prepared=>{
+            if(ticket===generation.current&&held.current===next)publishObservation(next.knownWallet?.()??prepared);
+          }).catch(()=>{/* Keep the retained frame when optional history is unavailable. */});
+        },0);
+      }
     } catch (cause) { next.dispose(); throw cause; }
     finally { if (entering.current === next) entering.current = null; }
-  }, []);
+  }, [publishObservation]);
   useEffect(() => {
     let alive = true;
     const ticket = generation.current;
     void custody.restoreNativeIdentity().then(async next => {
       if (!alive) { next?.dispose(); return; }
-      if (next) await accept(next, ticket); else setOpening(false);
+      if (next) await accept(next, ticket, true); else setOpening(false);
     }).catch(cause => { if (alive) { setOpening(false); setError(cause instanceof Error ? cause.message : 'Your account could not be opened. Your Identity Record is unchanged.'); } });
     const foreground = () => alive && document.visibilityState === 'visible' && location.pathname === '/' && Boolean(held.current);
     let wakeQueued = false;

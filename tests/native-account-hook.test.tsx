@@ -25,6 +25,21 @@ it('publishes identity, balance and original history in one settled frame withou
  const identity=held();custody.restore.mockResolvedValue(identity);
  await observe(async(read,frames)=>{expect(read().identity).toBe(identity);expect(read().walletHistory[0].kaiUPulse).toBe('0');expect(read().wallet?.totalUsdCents).toBe('100');expect(read().busy).toBe(false);expect(identity.readWallet).not.toHaveBeenCalled();expect(frames.filter(frame=>frame.identity).every(frame=>frame.wallet&&frame.walletHistory.length===2&&!frame.opening)).toBe(true);});
 });
+it('opens a saved changed-head curve before remote history enrichment and publishes its eventual source once',async()=>{
+ const retained={...observation('500'),historyBasis:undefined},identity=held(retained);
+ let finish!:(value:WalletObservation)=>void;
+ vi.mocked(identity.prepareAccountView).mockImplementation(async options=>options?.resume?retained:new Promise(resolve=>{finish=resolve;}));
+ custody.restore.mockResolvedValue(identity);
+ await observe(async(read,frames)=>{
+  expect(read().identity).toBe(identity);expect(read().openingStage).toBe('ready');expect(read().wallet?.totalUsdCents).toBe('500');
+  expect(read().walletHistory).toEqual(retained.history);expect(read().historyComplete).toBe(false);
+  await act(async()=>{await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));});
+  expect(identity.prepareAccountView).toHaveBeenCalledTimes(2);expect(read().wallet?.totalUsdCents).toBe('500');
+  const complete=observation('500');identity.setKnown(complete);await act(async()=>{finish(complete);});
+  expect(read().historyComplete).toBe(true);expect(read().walletHistory).toEqual(complete.history);
+  expect(frames.filter(frame=>frame.identity).every(frame=>!frame.opening&&frame.walletHistory.length===2)).toBe(true);expect(identity.readWallet).not.toHaveBeenCalled();
+ });
+});
 it('still restores the retained rows before opening directly into the Ledger',async()=>{
  history.replaceState(null,'','/#ledger');const identity=held();custody.restore.mockResolvedValue(identity);let finish!:(v:null)=>void;custody.history.mockReturnValue(new Promise(resolve=>{finish=resolve;}));
  await observe(async read=>{expect(read().identity).toBeNull();await act(async()=>{finish(null);});expect(read().identity).toBe(identity);expect(identity.readWallet).not.toHaveBeenCalled();});
