@@ -2,8 +2,8 @@ import {writeFileSync} from 'node:fs';
 import {expect,it} from 'vitest';
 import {measureExecution} from './fixtures/execution-timing';
 
-it('complete Send currently performs one outcome GET',async()=>{
- const r=await measureExecution('send');expect(r.outcomeGets).toBe(1);expect(r.financialDispatches).toBe(1);expect(r.retained).toEqual(r.original);
+it('complete Send POST needs no outcome GET',async()=>{
+ const r=await measureExecution('send');expect(r.outcomeGets).toBe(0);expect(r.financialDispatches).toBe(1);expect(r.retained).toEqual(r.original);
 });
 it.each(['buy','sell']as const)('complete Market POST needs no outcome GET (%s)',async kind=>{
  const r=await measureExecution(kind);expect(r.outcomeGets).toBe(0);expect(r.financialDispatches).toBe(1);expect(r.retained).toEqual(r.original);

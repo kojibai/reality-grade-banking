@@ -28,13 +28,15 @@ export async function measureExecution(kind:TimingKind,options:TimingOptions={})
   if(path.startsWith('/api/connect/market/shares/quote?'))return transport('review',()=>syntheticMarketQuote(new URLSearchParams(path.split('?')[1]),uid));
   return transport('outcome-read',()=>{outcomeGets++;return original??{ok:true,found:false};});
  };
- const onRecorded=async()=>{expect(state.current.status).toBe('recorded');events.push('published');await stage('optional-display',0,()=>delay(options.displayDelayMs));events.push('display-finished');};
- const deps={ownerReceizId:'synthetic.receiz.id',assertOpen(){},assertNoOtherPending:async()=>{},lock:async<T,>(work:()=>Promise<T>)=>work(),store:{read:async()=>state,write:async(next:any,previous:unknown)=>stage(next.current.status==='recorded'?'terminal-retention':'request-retention',0,async()=>{expect(state).toEqual(previous);state=structuredClone(next);events.push(next.current.status);})},connect:async()=>({accountUid:uid,client:{request,connect:{transfer:dispatch}}}),onRecorded};
+ let displayFinished=Promise.resolve();
+ const onRecorded=async()=>{expect(state.current.status).toBe('recorded');events.push('published');stages.push({stage:'local-publication',durationMs:0,requests:0});};
+ const afterRecorded=async()=>{displayFinished=stage('optional-display',0,()=>delay(options.displayDelayMs));await displayFinished;events.push('display-finished');};
+ const deps={ownerReceizId:'synthetic.receiz.id',assertOpen(){},assertNoOtherPending:async()=>{},lock:async<T,>(work:()=>Promise<T>)=>work(),store:{read:async()=>state,write:async(next:any,previous:unknown)=>stage(next.current.status==='recorded'?'terminal-retention':'request-retention',0,async()=>{expect(state).toEqual(previous);state=structuredClone(next);events.push(next.current.status);})},connect:async()=>({accountUid:uid,client:{request,connect:{transfer:dispatch}}}),onRecorded,afterRecorded};
  const initStart=performance.now(),api=kind==='send'?createWalletSend(deps):createMarketTrade(deps),initializationMs=performance.now()-initStart;
  const reviewStart=performance.now();
  const review=kind==='send'?await (api as ReturnType<typeof createWalletSend>).prepare({recipient:'10000000-0000-4000-8000-000000000002',amountUsdCents:'1000'}):await (api as ReturnType<typeof createMarketTrade>).prepare({marketItemId:'asset:one',side:kind, ...(kind==='buy'?{amountUsdCents:'1000'}:{shareQuantityMicro:'1250000'})});
  const reviewMs=performance.now()-reviewStart,start=performance.now();
  const result=await (api.execute as (r:any,d:string)=>Promise<{status:string}>)(review,review.digest),completionMs=performance.now()-start;
- events.push('success');expect(result.status).toBe('recorded');
+ events.push('success');expect(result.status).toBe('recorded');await displayFinished;
  return{kind,syntheticTransport:true as const,requestDelayMs:options.requestDelayMs??0,displayDelayMs:options.displayDelayMs??0,initializationMs,reviewMs,completionMs,stages,financialDispatches,outcomeGets,retainedBeforeSuccess:events.indexOf('recorded')<events.indexOf('success'),publishedBeforeSuccess:events.indexOf('published')<events.indexOf('success'),retained:state.current.record,original};
 }

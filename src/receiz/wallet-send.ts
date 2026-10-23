@@ -35,7 +35,7 @@ function recorded(raw:unknown,c:Checkpoint){
 }
 /** The installed SDK's connected Wallet operation. These retained HTTP originals
  * are observations, never native financial-root receipts or edge commits. */
-export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;assertNoOtherPending(continuingFundingNonce?:string):Promise<void>;onRecorded?(response:unknown,accountUid:string):Promise<void>;lock<T>(operation:()=>Promise<T>):Promise<T>;store:{read():Promise<unknown>;write(next:WalletSendState,previous:unknown):Promise<void>};connect(readOnly?:boolean):Promise<{client:WalletClient;accountUid:string}>;funding?:{begin(amount:string,referenceId:string,context?:CheckoutContext):Promise<CardCheckout>;check(checkout:CardCheckout,beforeCredit:()=>Promise<void>):Promise<CardDepositStatus>}}){
+export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;assertNoOtherPending(continuingFundingNonce?:string):Promise<void>;onRecorded?(response:unknown,accountUid:string):Promise<void>;afterRecorded?(response:unknown,accountUid:string):Promise<void>;lock<T>(operation:()=>Promise<T>):Promise<T>;store:{read():Promise<unknown>;write(next:WalletSendState,previous:unknown):Promise<void>};connect(readOnly?:boolean):Promise<{client:WalletClient;accountUid:string}>;funding?:{begin(amount:string,referenceId:string,context?:CheckoutContext):Promise<CardCheckout>;check(checkout:CardCheckout,beforeCredit:()=>Promise<void>):Promise<CardDepositStatus>}}){
  const held=new WeakSet<WalletSendReview>();
  const digest=async(value:unknown)=>(await loadReceiz()).digestReceizCanonicalV122(value);
  const withoutDigest=(r:WalletSendReview)=>Object.fromEntries(Object.entries(r).filter(([k])=>k!=='digest'));
@@ -63,11 +63,18 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
   }return s as WalletSendState;
  }
  const outcome=(c:Checkpoint):WalletSendOutcome=>c.status==='recorded'?recorded(c.record,c):c.status==='not-sent'?{status:'not-sent',clientNonce:c.body.clientNonce,reason:c.reason!}:c.status==='funding'?{status:'funding',clientNonce:c.body.clientNonce,stage:c.funding!.stage,amountUsdCents:c.review.amountUsdCents,...(c.funding!.stage==='reviewing'?{}:{cardAmountUsdCents:c.funding!.amountUsdCents,shortfallUsdCents:c.funding!.shortfallUsdCents??c.funding!.amountUsdCents}),recipientLabel:c.review.recipientLabel,...(c.funding!.checkout?{checkout:{...c.funding!.checkout}}:{})}:{status:'unknown',clientNonce:c.body.clientNonce};
+ // onRecorded admits/publishes accepted effects; only afterRecorded is optional.
+ async function retainRecorded(s:WalletSendState,raw:unknown,result:WalletSendOutcome,response?:unknown):Promise<WalletSendOutcome>{
+  await input.store.write({...s,current:{...s.current,status:'recorded',record:raw}},s);input.assertOpen();
+  try{await input.onRecorded?.(response,s.current.review.accountUid);}catch{/* Retained payment remains terminal if presentation is unavailable. */}
+  void Promise.resolve().then(()=>input.afterRecorded?.(response,s.current.review.accountUid)).catch(()=>{});
+  return result;
+ }
  async function lookup(s:WalletSendState,context:Awaited<ReturnType<typeof input.connect>>,response?:unknown):Promise<WalletSendOutcome>{
   input.assertOpen();if(context.accountUid!==s.current.review.accountUid)throw Error('BANK_WALLET_IDENTITY_CHANGED');
   const raw=await context.client.request(`/api/connect/transfers?clientNonce=${encodeURIComponent(s.current.body.clientNonce)}`,{method:'GET'});input.assertOpen();
   if(object(raw).ok===true&&object(raw).found===false)return{status:'unknown',clientNonce:s.current.body.clientNonce};
-  const result=recorded(raw,s.current);await input.store.write({...s,current:{...s.current,status:'recorded',record:raw}},s);input.assertOpen();try{await input.onRecorded?.(response,s.current.review.accountUid);}catch{/* The recorded payment remains terminal when its display refresh is unavailable. */}return result;
+  return retainRecorded(s,raw,recorded(raw,s.current),response);
  }
  async function openFunding(s:WalletSendState,context:Awaited<ReturnType<typeof input.connect>>):Promise<WalletSendOutcome>{
   if(s.current.funding!.stage==='reviewing'){
@@ -114,7 +121,10 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
     try{const reason=unavailable?'public_note_unavailable':String(p!.error);await input.store.write({...s,current:{...s.current,status:'not-sent',reason}},s);return{status:'not-sent',clientNonce:body.clientNonce,reason};}catch{/* Preserve unknown if the explicit refusal cannot be retained. */}
    }
   }
-  input.assertOpen();try{return await lookup(s,context,acknowledgement);}catch{return{status:'unknown',clientNonce:body.clientNonce};}
+  input.assertOpen();
+  let result:WalletSendOutcome|undefined;try{result=recorded(acknowledgement,s.current);}catch{/* Only incomplete/foreign originals need the outcome read. */}
+  if(result){try{return await retainRecorded(s,acknowledgement,result,acknowledgement);}catch{return{status:'unknown',clientNonce:body.clientNonce};}}
+  try{return await lookup(s,context,acknowledgement);}catch{return{status:'unknown',clientNonce:body.clientNonce};}
  }
  return Object.freeze({
   async status(){const s=await read();return s?outcome(s.current):null;},

@@ -62,3 +62,34 @@ it('rejects a note longer than the Wallet limit before sending or saving a check
 it('refuses a public note before submission on an older service',async()=>{const f=fixture(),original=f.request.getMockImplementation()!;f.request.mockImplementation(async(path,options)=>{const raw:any=await original(path,options);if(path.includes('amountUsd='))delete raw.capabilities;return raw;});await expect(createWalletSend(f.options).prepare({recipient:'receiver',amountUsdCents:'1000',note:'public'})).rejects.toThrow('PUBLIC_NOTE_UNAVAILABLE');expect(f.sdkTransfer).not.toHaveBeenCalled();expect(f.state).toBeNull();});
 it('cannot submit a public note through the old private-note endpoint during a service rollback',async()=>{const f=fixture(),api=createWalletSend(f.options),r=await api.prepare({recipient:'receiver',amountUsdCents:'1000',note:'public'}),original=f.request.getMockImplementation()!;f.request.mockImplementation(async(path,options)=>{if(path==='/api/connect/transfers/public-note')throw Object.assign(Error('not found'),{status:404});return original(path,options);});expect(await api.execute(r,r.digest)).toMatchObject({status:'not-sent',reason:'public_note_unavailable'});expect(f.sdkTransfer).not.toHaveBeenCalled();expect((await createWalletSend(f.options).status())?.status).toBe('not-sent');});
 it('allows only the exact protected public-note POST route',async()=>{const{permittedNativePath}=await import('../src/receiz/native-transport');expect(permittedNativePath('/api/connect/transfers/public-note','POST')).toBe(true);for(const path of ['/api/connect/transfers/public-note?user=foreign','https://other.test/api/connect/transfers/public-note','/api/connect/transfers/public-note/other'])expect(permittedNativePath(path,'POST')).toBe(false);expect(permittedNativePath('/api/connect/transfers/public-note','GET')).toBe(false);});
+
+it('admits the exact complete POST original without an outcome read',async()=>{
+ const f=fixture();f.sdkTransfer.mockImplementation(async body=>{f.record=syntheticWalletRecord(body,sender);return f.record;});
+ const api=createWalletSend(f.options),r=await api.prepare({recipient:'receiver',amountUsdCents:'1000'});f.request.mockClear();
+ expect((await api.execute(r,r.digest)).status).toBe('recorded');
+ expect(f.request.mock.calls.filter(([path])=>path.includes('clientNonce='))).toHaveLength(0);expect(f.sdkTransfer).toHaveBeenCalledOnce();expect(f.state.current.record).toEqual(f.record);
+});
+it.each(['source','recipient','amount','nonce','original','receipt','note']as const)('recovers a %s-mismatched POST using exactly one original read',async mutation=>{
+ const f=fixture();f.sdkTransfer.mockImplementation(async body=>{f.record=syntheticWalletRecord(body,sender);const bad=structuredClone(f.record);
+  if(mutation==='source')delete bad.source;if(mutation==='recipient')bad.transfer.recipientUserId=sender;if(mutation==='amount')bad.transfer.amountUsdCents='999';if(mutation==='nonce')bad.transfer.clientNonce=sender;if(mutation==='original')delete bad.source.message.sealed_original;if(mutation==='receipt')bad.source.message.receiz_receipt.digest='d'.repeat(64);if(mutation==='note')bad.source.message.sealed_original.walletTransfer.note='wrong';return bad;
+ });
+ const api=createWalletSend(f.options),r=await api.prepare({recipient:'receiver',amountUsdCents:'1000',...(mutation==='note'?{note:'public note'}:{})});f.request.mockClear();
+ expect((await api.execute(r,r.digest)).status).toBe('recorded');expect(f.request.mock.calls.filter(([path])=>path.includes('clientNonce='))).toHaveLength(1);expect(f.sdkTransfer).toHaveBeenCalledOnce();expect(f.state.current.record).toEqual(f.record);
+});
+it('keeps a complete POST unknown when terminal retention fails, without rereading or resubmitting',async()=>{
+ const f=fixture();f.sdkTransfer.mockImplementation(async body=>{f.record=syntheticWalletRecord(body,sender);return f.record;});const write=f.writes.getMockImplementation()!;
+ f.writes.mockImplementation(async(next,prior)=>{if(next.current.status==='recorded')throw Error('storage unavailable');return write(next,prior);});
+ const api=createWalletSend(f.options),r=await api.prepare({recipient:'receiver',amountUsdCents:'1000'});f.request.mockClear();
+ expect((await api.execute(r,r.digest)).status).toBe('unknown');expect(f.state.current.status).toBe('unknown');expect(f.request.mock.calls.filter(([path])=>path.includes('clientNonce='))).toHaveLength(0);expect(f.sdkTransfer).toHaveBeenCalledOnce();
+});
+it('publishes the admitted Send before completion and leaves optional work outside the result',async()=>{
+ const f=fixture();f.sdkTransfer.mockImplementation(async body=>{f.record=syntheticWalletRecord(body,sender);return f.record;});let finish!:()=>void;const paused=new Promise<void>(resolve=>finish=resolve),events:string[]=[];
+ const onRecorded=vi.fn(async(response,uid)=>{expect(uid).toBe(sender);expect(response).toEqual(f.record);expect(f.state.current.status).toBe('recorded');events.push('published');});
+ const afterRecorded=vi.fn(async()=>{events.push('optional');await paused;throw Error('optional refresh failed');});
+ const api=createWalletSend({...f.options,onRecorded,afterRecorded}),r=await api.prepare({recipient:'receiver',amountUsdCents:'1000'});
+ try{expect((await api.execute(r,r.digest)).status).toBe('recorded');expect(events).toContain('published');expect(afterRecorded).toHaveBeenCalledOnce();expect((await api.status())?.status).toBe('recorded');}finally{finish();}
+});
+it.each(['throw','reject']as const)('optional Send refresh %s cannot change the retained result',async mode=>{
+ const f=fixture();f.sdkTransfer.mockImplementation(async body=>{f.record=syntheticWalletRecord(body,sender);return f.record;});const afterRecorded=vi.fn(()=>{if(mode==='throw')throw Error('optional');return Promise.reject(Error('optional'));});
+ const api=createWalletSend({...f.options,afterRecorded}),r=await api.prepare({recipient:'receiver',amountUsdCents:'1000'});expect((await api.execute(r,r.digest)).status).toBe('recorded');await Promise.resolve();expect((await api.status())?.status).toBe('recorded');expect(afterRecorded).toHaveBeenCalledOnce();
+});

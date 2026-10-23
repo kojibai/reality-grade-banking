@@ -84,3 +84,15 @@ it('retains a committed original when completion wins the cancellation race',asy
  f.options.connect=async()=>({accountUid:uid,client:{request:async()=>syntheticMarketRecord(r.body,uid)}});
  expect(await createMarketTrade(f.options).stop(true,r.body.clientNonce)).toMatchObject({status:'recorded',settlementUsdCents:'1000'});expect(f.submitTrade).toHaveBeenCalledTimes(1);
 });
+
+it.each(['buy','sell']as const)('publishes %s absolute effects before completion without waiting on optional refresh',async side=>{
+ const f=fixture();f.submitTrade.mockImplementation(async(body:any)=>{f.record=syntheticMarketRecord(body,uid);return f.record;});let finish!:()=>void;const paused=new Promise<void>(resolve=>finish=resolve);let published=false;
+ const onRecorded=vi.fn(async(accountUid,original)=>{expect(accountUid).toBe(uid);expect(original).toEqual(f.record);expect(f.state.current.status).toBe('recorded');published=true;});
+ const afterRecorded=vi.fn(async()=>{await paused;throw Error('optional refresh failed');});
+ const api=createMarketTrade({...f.options,onRecorded,afterRecorded}),r=await api.prepare({marketItemId:'asset:one',side,...(side==='buy'?{amountUsdCents:'1000'}:{shareQuantityMicro:'1250000'})});
+ try{expect((await api.execute(r,r.digest)).status).toBe('recorded');expect(published).toBe(true);expect(afterRecorded).toHaveBeenCalledOnce();expect(f.submitTrade).toHaveBeenCalledOnce();}finally{finish();}
+});
+it.each(['throw','reject']as const)('optional Market refresh %s cannot change the retained result',async mode=>{
+ const f=fixture();f.submitTrade.mockImplementation(async(body:any)=>{f.record=syntheticMarketRecord(body,uid);return f.record;});const afterRecorded=vi.fn(()=>{if(mode==='throw')throw Error('optional');return Promise.reject(Error('optional'));});
+ const api=createMarketTrade({...f.options,afterRecorded}),r=await api.prepare({marketItemId:'asset:one',side:'buy',amountUsdCents:'1000'});expect((await api.execute(r,r.digest)).status).toBe('recorded');await Promise.resolve();expect((await api.status())?.status).toBe('recorded');expect(afterRecorded).toHaveBeenCalledOnce();
+});

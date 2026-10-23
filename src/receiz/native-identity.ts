@@ -480,7 +480,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.');
     return adoptConnectedWalletResponse(response,bound?.applicationId === BANK_APPLICATION_ID ? bound.accountUid : '',startedRevision);
   }
-  async function adoptConnectedWalletResponse(response:unknown,expectedUserId:string,startedRevision:number){
+  async function adoptConnectedWalletResponse(response:unknown,expectedUserId:string,startedRevision:number,publishBeforeChart=false){
     noteOpen();const wallet = parseSharedWallet(response,expectedUserId);
     // A read that began before a completed local note result cannot overwrite
     // that result when its delayed response finally arrives. A later shared
@@ -493,6 +493,24 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       && /^\d{1,30}$/.test(wallet.kaiUpulse) && /^\d{1,30}$/.test(knownWallet.wallet.kaiUpulse)
       && BigInt(wallet.kaiUpulse) < BigInt(knownWallet.wallet.kaiUpulse);
     if ((hasLocalWalletHead() || olderSharedCoordinate() || startedRevision !== walletRevision && !laterSharedCoordinate()) && knownWallet) return knownWallet.wallet;
+    if (publishBeforeChart && !lifetime.signal.aborted) {
+      // The authenticated absolute balance is already admitted. A chart worker
+      // enriches its presentation; it must not hold a retained payment open.
+      const previous = knownWallet?.source === 'account-genesis' ? {...knownWallet, history: knownWallet.history?.map(point=>({...point,userId:wallet.userId}))} : knownWallet;
+      const projectedPulse=(response as {wallet?:{sync?:{profileProjectionKaiPulse?:unknown}}}).wallet?.sync?.profileProjectionKaiPulse;
+      const retained=previous&&typeof projectedPulse==='number'&&Number.isSafeInteger(projectedPulse)&&projectedPulse>=0?reconcileCompositeWalletObservation(previous,wallet,String(BigInt(projectedPulse)*1000000n)):null;
+      const published=retained??{...extendWalletHistory(previous,wallet,new Date().toISOString(),String(sdk.receizKaiNow().uPulse)),...(previous?.chartSource?{chartSource:previous.chartSource}:{})};
+      knownWallet=published;void persistWalletObservation(published).catch(()=>{});
+      if(typeof dispatchEvent==='function')dispatchEvent(new Event('bankeiz:account-observation'));
+      setTimeout(()=>{void (async()=>{
+        if(lifetime.signal.aborted||knownWallet!==published||hasLocalWalletHead())return;
+        const chart=await adoptChartResponse(response,wallet.userId);noteOpen();
+        if(knownWallet!==published||hasLocalWalletHead()||protectedChartFrame())return;
+        if(chart){knownWallet=chart;void persistWalletObservation(chart).catch(()=>{});if(typeof dispatchEvent==='function')dispatchEvent(new Event('bankeiz:account-observation'));}
+        else if(previous?.chartSource&&!retained)await prepareCompositeChart();
+      })().catch(()=>{});},0);
+      return published.wallet;
+    }
     if (!lifetime.signal.aborted) {
       const beforeChart = knownWallet;
       const chart=await adoptChartResponse(response,wallet.userId);noteOpen();
@@ -1174,9 +1192,10 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const walletSend=()=>walletSendPromise??=import('./wallet-send').then(({createWalletSend})=>createWalletSend({
     ownerReceizId:binding.artifactOwnerReceizId,assertOpen:noteOpen,
     onRecorded:async(response,uid)=>{
-      try{if(response&&knownWallet?.walletScope!=='native-full'&&!hasLocalWalletHead()&&(!knownWallet||!isWalletQuoteHeld(knownWallet)))await adoptConnectedWalletResponse(response,uid,walletRevision);}
-      finally{if(!lifetime.signal.aborted){walletRevision++;dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:binding.artifactSha256,accountUid:uid}}));}}
+      try{if(response&&knownWallet?.walletScope!=='native-full'&&!hasLocalWalletHead()&&(!knownWallet||!isWalletQuoteHeld(knownWallet)))await adoptConnectedWalletResponse(response,uid,walletRevision,true);}
+      finally{if(!lifetime.signal.aborted)walletRevision++;}
     },
+    afterRecorded:async(_response,uid)=>{if(!lifetime.signal.aborted)dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:binding.artifactSha256,accountUid:uid}}));},
     assertNoOtherPending:async continuingFundingNonce=>{if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');await cancelUnsentNotesLocked();await assertNoOtherPending(true,continuingFundingNonce);if(await(await offlineNotes()).pending())throw Error('BANK_NOTE_ATTEMPT_PENDING');await assertWalletSendCustody(binding);if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},
     store:{read:()=>loadWalletSendState(binding),write:(next,previous)=>saveWalletSendState(binding,next,previous)},
     connect:async readOnly=>{const connected=await connectClient(readOnly?BANK_READ_SCOPES:BANK_WALLET_SEND_SCOPES,readOnly?BANK_READ_CONSENT:BANK_WALLET_SEND_CONSENT);noteOpen();const account=clientAccounts.get(connected);if(!account)throw Error('BANK_WALLET_IDENTITY_CHANGED');return{client:connected,accountUid:account.accountUid};},
@@ -1205,7 +1224,8 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   let marketTradePromise:Promise<import('./market-trade').MarketTrade>|undefined;
   const marketTrade=()=>marketTradePromise??=import('./market-trade').then(({createMarketTrade})=>createMarketTrade({
     ownerReceizId:binding.artifactOwnerReceizId,assertOpen:noteOpen,
-    onRecorded:async(uid,original)=>{if(!lifetime.signal.aborted){walletRevision++;try{const api=await marketPortfolio();noteOpen();try{api.adoptRecorded(original);}finally{api.invalidate();}}catch{/* The retained trade remains final when presentation refresh fails. */}if(!lifetime.signal.aborted)dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:binding.artifactSha256,accountUid:uid}}));}},
+    onRecorded:async(_uid,original)=>{if(!lifetime.signal.aborted){walletRevision++;const api=await marketPortfolio();noteOpen();api.adoptRecorded(original);}},
+    afterRecorded:async(uid)=>{if(!lifetime.signal.aborted){try{const api=await marketPortfolio();noteOpen();api.invalidate();}finally{if(!lifetime.signal.aborted)dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:binding.artifactSha256,accountUid:uid}}));}}},
     assertNoOtherPending:async()=>{if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');await assertNoOtherPending();if(await(await offlineNotes()).pending())throw Error('BANK_NOTE_ATTEMPT_PENDING');await assertWalletSendCustody(binding);if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},
     store:{read:()=>loadMarketTradeState(binding),write:(next,previous)=>saveMarketTradeState(binding,next,previous)},
     connect:async readOnly=>{const connected=await connectClient(readOnly?BANK_MARKET_READ_SCOPES:BANK_MARKET_TRADE_SCOPES,readOnly?BANK_MARKET_READ_CONSENT:BANK_MARKET_CONSENT);noteOpen();const account=clientAccounts.get(connected);if(!account)throw Error('BANK_MARKET_IDENTITY_CHANGED');return{client:connected,accountUid:account.accountUid};},
