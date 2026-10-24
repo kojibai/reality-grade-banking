@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bankeiz.com/vault-verifier/v1/vault-private.schema.json",
+  "title": "Private Vault carrier",
+  "description": "Private authority-bearing transport. Structural validation alone proves no custody, account or holdings. Verify its canonical enclosing original, decrypt when protected, then admit every native source and the distinct child key. Never share this object as public evidence. Aggregate byte bounds, exact hashes, origin/RP binding and semantic financial checks are enforced by the included readers.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "header",
+        "sourceB64u"
+      ],
+      "properties": {
+        "schema": {
+          "const": "bank.vault.image-custody.v1"
+        },
+        "header": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "purpose",
+            "id",
+            "owner"
+          ],
+          "properties": {
+            "purpose": {
+              "const": "vault-private"
+            },
+            "id": {
+              "type": "string",
+              "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[89aAbB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"
+            },
+            "owner": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "keyId",
+                "receizId"
+              ],
+              "properties": {
+                "keyId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "receizId": {
+                  "type": "string",
+                  "pattern": "^[-A-Za-z0-9_.@]{1,180}$"
+                }
+              }
+            }
+          }
+        },
+        "sourceB64u": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "header",
+        "iv",
+        "ciphertext"
+      ],
+      "properties": {
+        "schema": {
+          "const": "bank.vault.encrypted.v1"
+        },
+        "header": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "purpose",
+            "id",
+            "owner",
+            "credential",
+            "prfSalt"
+          ],
+          "properties": {
+            "purpose": {
+              "const": "vault-private"
+            },
+            "id": {
+              "type": "string",
+              "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[89aAbB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"
+            },
+            "owner": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "keyId",
+                "receizId"
+              ],
+              "properties": {
+                "keyId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "receizId": {
+                  "type": "string",
+                  "pattern": "^[-A-Za-z0-9_.@]{1,180}$"
+                }
+              }
+            },
+            "credential": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "publicKeySpki",
+                "rpId",
+                "origin"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]+$"
+                },
+                "publicKeySpki": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]+$"
+                },
+                "rpId": {
+                  "type": "string"
+                },
+                "origin": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            },
+            "prfSalt": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          }
+        },
+        "iv": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "ciphertext": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      }
+    }
+  ]
+}

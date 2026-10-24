@@ -121,4 +121,11 @@
 
 ## Current execution status
 
-The expanded plan is explicitly approved for implementation in Bank and Receiz on main. Design, native capability review, source requirements, visual direction and public-copy draft are prepared. Encryption, WebAuthn, encrypted retention and the Identity Record recovery transport are implemented and tested as a foundation. Recovery still requires the existing canonical identity admission and checks the resulting owner before returning; decryption grants no identity authority. The repeatable `npm run test:vault-browser` gate exercises a synthetic PRF credential and real IndexedDB without financial or external service requests. These modules are not connected to a product control or financial operation. Real-device/provider recovery, native custody, money/assets, independent value recovery and UI integration remain unfinished. No real money movement, device credential enrollment, migration, deployment or custody change has occurred. The Note-only initial approach no longer covers the expanded asset/direct-send/self-contained-original requirements; qualify and implement the expanded native contracts before exposing the experience.
+The expanded implementation is complete in Bank and the corresponding Receiz
+custody contracts. The initial foundation status is superseded by
+[the release verification record](../../verification/2026-10-24-vault-release.md),
+which records exact automated/native/browser checks, the approved production
+migration preservation, and the remaining real-device/provider qualification
+boundaries. Optional PBI and the connected financial scope follow the later
+explicit user decisions. Fully offline Send/Buy/Sell remains a separate contract
+and is not claimed by this Vault release. The user pushes and deploys.

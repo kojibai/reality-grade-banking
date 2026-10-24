@@ -31,6 +31,8 @@ export function permittedNativePath(path: string, method: string): boolean {
   if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return false;
   if(url.pathname==='/api/connect/payments/session'&&method.toUpperCase()==='DELETE')return [...url.searchParams.keys()].length===1&&url.searchParams.getAll('sessionId').length===1&&/^cs_[a-zA-Z0-9_]{8,200}$/.test(url.searchParams.get('sessionId')??'');
   if(url.pathname==='/api/receiz/identity/profile')return method.toUpperCase()==='PATCH'&&!url.search;
+  if(/^\/api\/connect\/vault\/(?:custody|market-shares\/(?:prepare|execute|recover|portfolio|source))$/.test(url.pathname))return method.toUpperCase()==='POST'&&[...url.searchParams.keys()].length===1&&url.searchParams.getAll('applicationId').length===1&&url.searchParams.get('applicationId')===BANK_APPLICATION_ID;
+  if(url.pathname==='/api/connect/vault/public')return method.toUpperCase()==='GET'&&[...url.searchParams.keys()].length===2&&url.searchParams.getAll('vaultId').length===1&&url.searchParams.getAll('proof').length===1&&/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(url.searchParams.get('vaultId')??'')&&/^[a-f0-9]{64}$/.test(url.searchParams.get('proof')??'');
   if(url.pathname==='/api/profile/me/media')return method.toUpperCase()==='POST'&&!url.search;
   if(url.pathname==='/api/profile/username/availability')return method.toUpperCase()==='GET'&&[...url.searchParams.keys()].length===1&&url.searchParams.getAll('username').length===1&&/^[a-z0-9_]{3,24}$/.test(url.searchParams.get('username')??'');
   if (url.pathname === '/api/connect/profile/showcase/publication') {

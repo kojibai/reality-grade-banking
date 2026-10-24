@@ -6,6 +6,7 @@ import { hasSettledAccountView } from './account-view';
 import type { WalletPoint } from './wallet-series';
 import type { WalletObservation } from './wallet-observation';
 import { preloadPrivateHistory } from './private-history-restore';
+import { reservePbiAccountPopup } from './pbi-account-bridge';
 function walletReadMessage(cause: unknown, refreshing = false): string {
   if (cause instanceof Error && cause.message === 'proof_replay_guard_unavailable') return 'Secure account access is temporarily unavailable. Your Identity Record is unchanged. Refresh your balance to try again.';
   return refreshing ? 'Your balance could not be updated. Your Identity Record stays on this device. Try again when the source is available.' : 'Your balance could not be opened. Your Identity Record stays on this device. Refresh your balance to try again.';
@@ -127,6 +128,13 @@ export function useNativeAccount(custody = nativeCustody) {
     finally { openingOperation.current = false; if (!held.current) setBusy(false); }
   };
   const create = (consent: boolean) => open(() => custody.createNativeIdentity(consent));
+  const pbi = () => {
+    if (openingOperation.current) return Promise.resolve();
+    let popup: Window;
+    try { popup = reservePbiAccountPopup(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'PBI could not be opened.'); return Promise.resolve(); }
+    return open(() => import('./pbi-account').then(module => module.openPbiAccount(popup, true))).finally(() => { try { if (!popup.closed) popup.close(); } catch { /* Already closed. */ } });
+  };
   const importId = (file: File, phrase: string, consent: boolean) => open(() => custody.importNativeIdentity(file, phrase, consent));
   const forget = async () => {
     const current=held.current;
@@ -143,5 +151,5 @@ export function useNativeAccount(custody = nativeCustody) {
     entering.current?.dispose();held.current?.dispose();held.current=null;generation.current++;pending.current=false;hasObservation.current=false;
     setIdentity(null);setWallet(null);setWalletHistory([]);setReceivedNotes([]);setHistoryComplete(false);setObservedAt(null);setOpeningStage('identity');setOpening(false);setBusy(false);setSyncPending(false);
   };
-  return { identity, wallet, walletHistory, receivedNotes, historyComplete, opening, openingStage, busy, error, observedAt, syncPending, refresh, create, importId, forget };
+  return { identity, wallet, walletHistory, receivedNotes, historyComplete, opening, openingStage, busy, error, observedAt, syncPending, refresh, create, pbi, importId, forget };
 }

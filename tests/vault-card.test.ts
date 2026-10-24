@@ -1,0 +1,8 @@
+import {expect,it} from 'vitest';
+import {admitVaultCardCheckout,type VaultCardCheckoutRequest} from '../src/receiz/vault/card';
+import {vaultCanonical,vaultDigest} from '../src/receiz/vault/encoding';
+const request:VaultCardCheckoutRequest={schema:'receiz.bank.vault-checkout.v1',vaultId:'e6b6ecac-5600-4000-8000-a368406be6c7',referenceId:'e6b6ecac-5600-4000-8000-a368406be6c8',amountUsdCents:'100',returnUrl:'https://bankeiz.com/?cardReturn=1&session_id={CHECKOUT_SESSION_ID}'};
+async function response(){return{ok:true,checkout:{sessionId:'cs_exact_original123',clientSecret:'private-secret',mode:'embedded',currency:'usd',referenceId:request.referenceId,amountUsdCents:'100'},vaultCheckout:{...request,userId:'owner',clientId:'app',requestSha256:await vaultDigest(new TextEncoder().encode(vaultCanonical(request)))}};}
+it('admits only the exact authenticated owner/application/reference/request checkout result',async()=>{const result=await admitVaultCardCheckout(await response(),request,'owner','app');expect(result).toEqual({sessionId:'cs_exact_original123',clientSecret:'private-secret',amountUsdCents:'100'});});
+for(const key of ['userId','clientId','requestSha256','referenceId','amountUsdCents','returnUrl','vaultId'] as const)it('rejects checkout response with changed '+key,async()=>{const value=await response();value.vaultCheckout[key]='other';await expect(admitVaultCardCheckout(value,request,'owner','app')).rejects.toThrow('BINDING');});
+it('rejects a provider session with a different amount or reference',async()=>{for(const key of ['referenceId','amountUsdCents'] as const){const value=await response();value.checkout[key]='other';await expect(admitVaultCardCheckout(value,request,'owner','app')).rejects.toThrow();}});

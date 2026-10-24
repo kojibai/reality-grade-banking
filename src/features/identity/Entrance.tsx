@@ -5,7 +5,7 @@ import { branding } from '../../../branding/profile.mjs';
 import { BankMark } from '../../components/BankMark';
 import { EntranceConformanceStatus } from './EntranceConformanceStatus';
 import { AccountOpening, type OpeningStage } from './AccountOpening';
-export function Entrance({ opening, openingStage = 'identity', busy, error, onCreate, onImport }: { opening: boolean; openingStage?: OpeningStage; busy: boolean; error: string | null; onCreate: (consent: boolean) => Promise<void>; onImport: (file: File, phrase: string, consent: boolean) => Promise<void> }) {
+export function Entrance({ opening, openingStage = 'identity', busy, error, onCreate, onImport, onPbi }: { opening: boolean; openingStage?: OpeningStage; busy: boolean; error: string | null; onCreate: (consent: boolean) => Promise<void>; onImport: (file: File, phrase: string, consent: boolean) => Promise<void>; onPbi?: () => Promise<void> }) {
   const [file, setFile] = useState<File | null>(null), [phrase, setPhrase] = useState('');
   const picker = useRef<HTMLInputElement>(null), inspection = useRef(0);
   const [needsPhrase, setNeedsPhrase] = useState(false), [inspecting, setInspecting] = useState(false), [fileError, setFileError] = useState<string | null>(null);
@@ -22,7 +22,7 @@ export function Entrance({ opening, openingStage = 'identity', busy, error, onCr
     finally { if (ticket === inspection.current) setInspecting(false); }
   };
   const explicitOpening = busy || inspecting;
-  return <><div className="console identity-entrance" hidden={opening || explicitOpening} inert={opening || explicitOpening}><header className="app-header"><span className="bank-home-mark" role="img" aria-label={branding.applicationName}><BankMark /></span><EntranceConformanceStatus /></header><main className="entrance-content"><span className="entrance-symbol"><Fingerprint size={39} strokeWidth={1.4} /></span><h1>Your value.<br />More possibilities.</h1><p className="page-subtitle">One place for all your value. Wherever you go.</p>
+  return <><div className="console identity-entrance" hidden={opening || explicitOpening} inert={opening || explicitOpening}><header className="app-header"><span className="bank-home-mark" role="img" aria-label={branding.applicationName}><BankMark /></span><EntranceConformanceStatus /></header><main className="entrance-content"><button type="button" className="entrance-symbol" aria-label="Continue with PBI" disabled={busy || inspecting} onClick={() => void onPbi?.()}><Fingerprint size={39} strokeWidth={1.4} /></button><h1>Your value.<br />More possibilities.</h1><p className="page-subtitle">One place for all your value. Wherever you go.</p>
     {!opening && <>
       <button className="primary-button" disabled={busy || inspecting} onClick={() => void onCreate(true)}>Enter<ArrowUpRight size={20} /></button>
       <button className="secondary-button" disabled={busy || inspecting} onClick={() => picker.current?.click()}><Upload size={18} />Use existing account</button>

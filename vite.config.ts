@@ -44,5 +44,5 @@ export default defineConfig({
     },
   }],
   server: { port: 5173, strictPort: true },
-  build: { manifest: true, rollupOptions: { input: { checkout: resolve('pay/index.html'), bank: resolve('index.html'), conformance: resolve('conformance/index.html'), verify: resolve('verify/index.html'), receipt:resolve('receipt/index.html'), ledger:resolve('ledger/index.html'),explore:resolve('explore/index.html') }, output: { manualChunks(id) { if (id.includes('/vendor/jsqr/')) return 'qr-decoder'; } } }, target: 'es2022', chunkSizeWarningLimit: 1600 },
+  build: { manifest: true, rollupOptions: { input: { vault:resolve('vault/index.html'), checkout: resolve('pay/index.html'), bank: resolve('index.html'), conformance: resolve('conformance/index.html'), verify: resolve('verify/index.html'), receipt:resolve('receipt/index.html'), ledger:resolve('ledger/index.html'),explore:resolve('explore/index.html') }, output: { manualChunks(id) { if (id.includes('/vendor/jsqr/')) return 'qr-decoder'; } } }, target: 'es2022', chunkSizeWarningLimit: 1600 },
 });

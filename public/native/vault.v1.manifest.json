@@ -1,0 +1,1170 @@
+{
+  "schema": "bank.vault.native-runtime.v1",
+  "entry": "app/lib/wallet/bankVault/browser.ts",
+  "sourceRevision": "967f26759c2a2c5610c3b04f57436bd673b4e1e1",
+  "esbuildVersion": "0.28.2",
+  "files": [
+    {
+      "path": "app/components/KaiSigil/constants.ts",
+      "sha256": "49a5c16ef9b0da5dc1bda670d0da5d4512ce5131b4184a0ad4551f7a15bf242c",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/auth/activeIdentityCustodyContext.ts",
+      "sha256": "11e0c79cd8ed0be77cd6c7ec0ef23adb985bd9b6ac4bc256dd13ff50a87f9b0b",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/auth/receizAccountStateHead.ts",
+      "sha256": "e6b5bf6e319e2301238cc4ae818c100f6c7e7a0eb1d90a4380baa3e27d11821b",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/auth/receizDeviceIdentityRegister.ts",
+      "sha256": "eaac766fdbc9b25538cb9afebe6665b988d2ae23026029ba884f143d12b3b393",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/auth/receizDeviceIdentitySource.ts",
+      "sha256": "2674f5b30855417f5c86e4699bc595d4bfc2d26ff3af1071aa30d74dd110f4a0",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/auth/receizDeviceIdentitySupport.ts",
+      "sha256": "25a6bf5c73df73298e4fbaaf362fec41424e0735dbd9972dc13cf31ec4d4e39e",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/auth/receizIdentityArtifactCustody.ts",
+      "sha256": "52b3d2d1432985ccf9c6db943da1b0e5b3d16327eee937f86a52d2679eabeaae",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/bundleContainer.ts",
+      "sha256": "c765c47d57d511e827be20f8e45dc5294c56f5416940536a02a4733d651e334e",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/fileFormat.ts",
+      "sha256": "ae45acd96f1a55ed308344d3e5025854c2f2ef6ce80b88686411a6cde82fe58f",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/heicProof.ts",
+      "sha256": "7547ed4c6761430153f961b033b44892d9120c88f9b566a2b89b2fdc38908b9c",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/jpegArtifactBasis.ts",
+      "sha256": "a833bfb0be36e7050a0c4a7cb69eea0b97397a988bbe388fc595a8f0ecad131a",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/jsonProof.ts",
+      "sha256": "8ae57567fb4e2464793fcc3b344bcf2d30936425c5a47eac678acd6b62595ede",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/pdfProof.ts",
+      "sha256": "449563c80b6a0a061287b1f974496d66d020f28becc1f690405b5f8477a89a65",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/proofBearingVLink.ts",
+      "sha256": "62e73fd110b99cb0409541164334820744a98afb75320398408bbdb617d7f86e",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/proofResourceManifest.ts",
+      "sha256": "e3a9d166bba188c916c8e7879ed5a60a4c9b9ce31015f048688932cf7eb7737a",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/realGroth16ProofClient.ts",
+      "sha256": "6b1ad4d1892db76abea3ce6ba558dd910f4b04f9609c9d189dd0cd6fc1abfe8a",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/receizeDocumentBytesClient.ts",
+      "sha256": "6e622d395a5674c3c952b6aafac4a36864be9df35808b0ce31e0dda666e6f3d7",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/receizeDocumentBytesCore.ts",
+      "sha256": "6a580c803ba6b0888c704717149708645b45ebccbecef0a94b95f82fd2502789",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/selectedSourceExecution.ts",
+      "sha256": "b97a010c003c0648ca0304501d02aa82e0c5a141fac65886cb5cc3b233ba82b1",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/svgProof.ts",
+      "sha256": "481d3aa93eb222daf0edb03378e4d2854824ec1b4c1547f21624de86fb008825",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/trailerProof.ts",
+      "sha256": "6047eef22e76a42bfd1ded5e83e3752f582e098094471ac8d7dd2bb559a708fa",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/documentSeal/verifyLink.ts",
+      "sha256": "5bf717eacfbddbeb8c65bbfaa66d2b84ada2e7b2063ca7f06c21bd7c31d4f76e",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/download.ts",
+      "sha256": "3f99d83b05b545fb2b8971553f45bf33498fc06374905d3077033c57229cdffb",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/kai/liveProofKai.ts",
+      "sha256": "57ed258149a5d7905089a2ea0e8a07ef3f66b586ba29d87d76b980309d728f4c",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/market/nativeMarketShare.ts",
+      "sha256": "5edbe9b26b2d0b1f671778bd18be9c33d4c95708441043f3bb1b3c0099a8b06c",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/market/nativeMarketShareCapacity.ts",
+      "sha256": "a9ce920ac64b9db874e1a1a3d2617905862e5c5406af5f5dfe14f9f815d7f62a",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/market/vaultMarketShares.ts",
+      "sha256": "d26e7d7a573d9586c4854803fbb71765a557dec069b4657d41a053573269eb76",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/offlineReceiz.ts",
+      "sha256": "27fe62e141213036c01386f785247e69328cf95f5e5a3b008b72f38926bac2ad",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/composerPreparation.ts",
+      "sha256": "d951c43876430383f70f7f2fc3a78d2ebfa5bfc93f38e0152351c43d3f7dc9d7",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/identityArtwork.ts",
+      "sha256": "5b4c019484cb73506e0a6f8c7f3b8b49ab0e4eebd7c8c22404e79db262c4e01d",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/localProfileNamePreservation.ts",
+      "sha256": "12b3dfc9c61f453b6959ac83b28768b302bc2c453a39f8305ed0e38e4e11cd6d",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/longForm.ts",
+      "sha256": "968a1a79cb406d85ae4df355abf9f74133daa3bc5156d180a46e32bc252f1002",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/originalStorage.ts",
+      "sha256": "26a5780f9b3ee47d68d9be393d66272d34a1c6feeab8c7609ba2dbd888ee3d83",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/profileIdentityCreationCoordinate.ts",
+      "sha256": "8e00ca17b1d2e045931e91577935362b416d080939c1bfea3f1f40b85e789618",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/showcase/bankAssetContent.ts",
+      "sha256": "cf1f65ee7e5fbadf7304bdef3769de30ed7373186a0f04a58c8bf2ed8b2e9324",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/showcase/composerResources.ts",
+      "sha256": "5520faa08e28df1782f746c81c2244099ca664addddf3d3db9c6edec64927ee8",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/showcase/importedSource.ts",
+      "sha256": "ca7bc4084356d9360a02e1ad5c21468a6fa34c4cf5d47c38c719f8c46874fbb6",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/showcase/importedSourceErrors.ts",
+      "sha256": "c39f9b5bd24f0da29dd8e24a09820d98622eb326217cda4f09449b7bed9c6464",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/showcase/importedSourcePrivacy.ts",
+      "sha256": "1c6e64162deae638f13e9d8dc4ed281494ee2de3de5455b403a58b4ea28d79be",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/showcase/importedSourceProjection.ts",
+      "sha256": "e21ed52255f1385b7b5ef250629def5d4d1bbd2b11bbc4ca8260aa5ec7076363",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/showcase/importedSourceReference.ts",
+      "sha256": "3440ff243287b33cabf35e430566156794b72eb9eac55cea0d9117dda5ef28f1",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/showcase/routeProjectionEncoding.ts",
+      "sha256": "40cd600c43533cd1d5ece7038f1d72ccb2db2812a59dd2c979670548454200c1",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/profile/username.ts",
+      "sha256": "786ba62332b309e716e0aae560ac30be9107955523929347f3eeb02593811b51",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/receizArtifactVerifier.ts",
+      "sha256": "e18229ad8edd967bd81ec34e5c363a228c935971c7569ce40315946ffd7d0d95",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/runtime/localTruthStore.ts",
+      "sha256": "dae9ac0e5cd31e00a2f1bc82a8a5a8e237d07febce296e1884fa19e7e9ddd5eb",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/security/cspNonce.ts",
+      "sha256": "5762744e88920dd4ed3d88b1b889285a51a54b4f8089db74236c55dad8a080dd",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/security/receizSignatureV3.ts",
+      "sha256": "df9cddd94dd49c0f0810b5e7fe260b2ef7182ddb1ded0f6a2109116cc19172a3",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/security/receizSignatureV4.ts",
+      "sha256": "a197c23b3ce1420fd0e25208e2260538157df62b9554b434245088c886b1b879",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/security/receizSignatureV4Enrollment.ts",
+      "sha256": "594f9f0a02b24e985f8cebdb48893d611e2d5b1f76f0c92ca80eb65c1144437c",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/security/receizSignatureV4Pinned.ts",
+      "sha256": "7b1a683b9ba79ddad0a48f5791ab671ffdaff2c4f3fdd590774e1e2be64f37f5",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/sign.ts",
+      "sha256": "da1cf30a1b11543e70d8866854f28376ce40f6796ad140d14b535823c6374c5e",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/time.ts",
+      "sha256": "fc8a5dd87f36b4571f6eb9592c468400e81645e6b188f33886e780784c0c7ad2",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/transport/blobCustodyTransactions.client.ts",
+      "sha256": "13c923eca7f52d00dbbc4097eb83915d7b51d82be2b3e0a5a64129d78f443403",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/transport/exactByteBlocks.ts",
+      "sha256": "c9171469d7b0940a45abe34be260b62f60524faa50d4ee5a70f5ab9e000c3d29",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankNotes/nativeAsset.ts",
+      "sha256": "2b09bee73258933d5a73136dc17f80b7bb2284da63a993b250011720c4dfad5e",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankNotes/nativeAssetBacking.ts",
+      "sha256": "2072541adec6d020a27b2ccd3892907282c68bf69a1a65b982f0fd633d59c70e",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankNotes/nativeAssetHolding.ts",
+      "sha256": "3bc065e6c2bfbd4e68153803e88b3d0e3c59658af1036a1726d87d6512e949ec",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankNotes/nativeAssetPublicArtifact.ts",
+      "sha256": "9b448e95853510481395a2a92de24888d573b48db54e0763117a5b3f005f3b15",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankVault/assetCapacity.ts",
+      "sha256": "3047162a38386fc2025abab6ab8b73422d4f41de7df0415ec1742212354eefad",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankVault/assetOriginal.ts",
+      "sha256": "3af14f3ad6aee81c2098875f4fa7c6820949f6cfb6f3dd08de02e509822a8ba2",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankVault/assetSource.ts",
+      "sha256": "d1eec5c167860bcc5f6c43ca942911f9e7b58fcde28f5689941066eb71e3b5b0",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankVault/browser.ts",
+      "sha256": "bb7bb0cca4896f5a930d2c69821b51e57e9455057ac0597bff683b95a3d61d45",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankVault/custody.ts",
+      "sha256": "45d3f4a922b1243c125b7ee740ff46668016166c4e8960d5d769ec808f2ecacf",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankVault/custodyAdmission.ts",
+      "sha256": "e1ec419c06be7395cd611532e2797ddedc33f1588454409c20fc2242a6940951",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankVault/custodyWitness.ts",
+      "sha256": "52e3247abeb9a1bf6f5b1251f710cc098875aa50f1abb778ddce40c86135abb4",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankVault/moneyCapacity.ts",
+      "sha256": "8b4966ea7aeee25eedb2c118d12686c62f013e75fc56785a238bc337d3d162bb",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankVault/moneyPublic.ts",
+      "sha256": "e656513392d529346e6afd3d74d05badd5fdfa1c8989532d34838a6d177299b9",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankVault/nativeWitness.ts",
+      "sha256": "e46f4eb005a42d4ba773d0814a71b5d31c99262bacf195b050f5b327a310c718",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankVault/publicRecord.ts",
+      "sha256": "6b2b99113228452433e16a678fde4940808e208d4c8237e4b6e732ff1d46e2a4",
+      "mode": 420
+    },
+    {
+      "path": "app/utils/dataUrl.ts",
+      "sha256": "145a9ef953b1bd925f765c94daaf2994f997282c17e075b2aa9888e23b392e43",
+      "mode": 420
+    },
+    {
+      "path": "app/utils/jcs.ts",
+      "sha256": "4417d1362ab96e100adb19e29401aa00d5e60e6e30e4943929544b521fbc14ab",
+      "mode": 420
+    },
+    {
+      "path": "app/utils/kai_pulse.ts",
+      "sha256": "c1d9a1ff780681946935389d94ada11df3245e96782dca1183e2675b0ef14954",
+      "mode": 420
+    },
+    {
+      "path": "app/utils/pngChunks.ts",
+      "sha256": "7a54e936bee91d58886690cf0a3bad0982da141bb8b8a8482851863531c674bf",
+      "mode": 420
+    },
+    {
+      "path": "app/utils/receizAnchorBundle.ts",
+      "sha256": "0af410d33a3a75d432947011f8242f4962d13ab43b0115de495604c3792452cc",
+      "mode": 420
+    },
+    {
+      "path": "app/utils/receizIdentityKey.ts",
+      "sha256": "54aa5c38a5b6c750786413247a53ea8c9399911d1e1ebaa76247dfc3af2632ec",
+      "mode": 420
+    },
+    {
+      "path": "app/utils/receizLocalSealAnchor.ts",
+      "sha256": "469c23dffc29f4318c6f788686e50284dac110ec56dfe8de6644dcf69bd514a3",
+      "mode": 420
+    },
+    {
+      "path": "app/utils/receizOwnershipProvenanceBundle.ts",
+      "sha256": "819ecc5199ca84cad96e4d9c805733bf613b0fc8fd9f61cb845f872541cc3a79",
+      "mode": 420
+    },
+    {
+      "path": "app/utils/receizProofBundle.ts",
+      "sha256": "81a6335e7e6df101be556252bd12ce29f55a4a0a1dc62e7b1f61d9da3442bcca",
+      "mode": 420
+    },
+    {
+      "path": "app/utils/sha256.ts",
+      "sha256": "b3e37a059debfe96c0888183bf312701b4f038be4f7bc1b4e063228b6b275a79",
+      "mode": 420
+    },
+    {
+      "path": "app/utils/signerKeyId.ts",
+      "sha256": "e2b9c5fa16b09c314544d1b53da24deb30e319a209c93ab6d15101736e5db92b",
+      "mode": 420
+    },
+    {
+      "path": "app/verify/identityDisplay.ts",
+      "sha256": "54722147f5dcb39cf3e7fa81977725b40cb2f9602a0766f27e4be7cb4fc7023e",
+      "mode": 420
+    },
+    {
+      "path": "app/verify/portableIdentityReader.ts",
+      "sha256": "b58a42cf2e3a10314f37e4c012a751b1ca224e4b040b727d118a7fa094140c59",
+      "mode": 420
+    },
+    {
+      "path": "app/verify/verifyRuntime.ts",
+      "sha256": "e576c952abb42278b70152e34e3b5d342dde43ae9ccf3d543845bbc354d826b7",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/_md.js",
+      "sha256": "60cf3010fda89e3e4d3f0e7ff1ce249e9c467f34b4fd41b6fd6101d9f69be763",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/_u64.js",
+      "sha256": "b09da8c07fe8187c07649494cdb7cd0bcf13df90b506a9473d19e4d5f8c2e102",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/LICENSE",
+      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/package.json",
+      "sha256": "dcd1dbb2aeea98180b497a7bd60c8ac145eb68f98c2397d4294f60aa3d03c824",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/sha2.js",
+      "sha256": "471746bba6ec4c6238ca41358d1d3b40b6ff31cf3363f0b4d550c649c1a8e83b",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/utils.js",
+      "sha256": "6b4397dd40cef490bb70bf59784d2b053dc331755700ae30ff28d30ec5fccb6b",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/dijkstrajs@1.0.3/node_modules/dijkstrajs/dijkstra.js",
+      "sha256": "7f5721e77332370a71314f1536b8c552f4f9dbd99bbc6c5aa10df3253eacfd5c",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/dijkstrajs@1.0.3/node_modules/dijkstrajs/LICENSE.md",
+      "sha256": "c46324e45a005413535a6fb7a97e9eacd3cc6bf30335b7d5c10b8ee3af9e60c2",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/dijkstrajs@1.0.3/node_modules/dijkstrajs/package.json",
+      "sha256": "b523e007019401be68405b83e846ef9da4682026e8be339ee4ee7888e90b865a",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/ffjavascript@0.3.1/node_modules/ffjavascript/build/browser.esm.js",
+      "sha256": "0a383967e6341c194c9ce348476756559cdcf21aea4eac944a023f5e79fac1d8",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/ffjavascript@0.3.1/node_modules/ffjavascript/package.json",
+      "sha256": "a2073c1a961d1c835809b1332c5e38e6233587b20da7b469e1c5dbe76957443b",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
+      "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/LICENSE",
+      "sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/package.json",
+      "sha256": "5922d8150b307bc0e4e441491c779c45379e9913d348848fca8d5cf02db4d134",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm/dist/index.esm.js",
+      "sha256": "2d6333a619d7f64adc313a38732425fc0c6f0baaa36c1419cf05672bcd89340d",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm/LICENSE",
+      "sha256": "c14dea172f72f2714284a0ac2ab1b00b5352a01409d58255a46227ffc541debd",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm/package.json",
+      "sha256": "bdb86309706014e1e3062ce78aa7a2e8b196a44d5a22ceec8978d864e28116f7",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/browser.js",
+      "sha256": "868da79917b05db1f3d4402f4875148fb06ce843cbd74c65429cd6ef960b1638",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/can-promise.js",
+      "sha256": "fd18906803bd4cfe4f23801a7032c5a1e10be31274ba25dc34541932cdd8f253",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/alignment-pattern.js",
+      "sha256": "7e642a801c5c3d114bcceeeb08a3930369ec16fe874bdb617f02efb43aaea9ba",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/alphanumeric-data.js",
+      "sha256": "cf8f81197e02c0db069155a2e82c098d26329019cfd06cc0e4479124636fa1ea",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/bit-buffer.js",
+      "sha256": "c6f982814aa373da6e44183a61f75762c8559909087fff76603885b180bac0ad",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/bit-matrix.js",
+      "sha256": "77e051929fbc9d3b3ba91bd9b190f9a1ab3ccea162d627696ad2c01bf41e51bd",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/byte-data.js",
+      "sha256": "24614cb942165dcc5378117a951cc1d68fbfc2e60043830111ae99283cd9aa94",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/error-correction-code.js",
+      "sha256": "03683cae6cc410b83f8ad0e87fa394df5102b52ca4ce843e507aa9f6acce13e5",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/error-correction-level.js",
+      "sha256": "7f31b2250223cb7549bf3c305cce948ad9b0ee67cb9ee93b6c08352b7fa2b7f6",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/finder-pattern.js",
+      "sha256": "e5808e9b8ed06fd7c3ed201a03f7e7341a5c80f6a8b4cc78c9a94c3ee0ddd6e2",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/format-info.js",
+      "sha256": "889b133cd6a86f4079a3a5d1dfd94c495ca71d4fde4ec88ce9e9a5de358629d0",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/galois-field.js",
+      "sha256": "d487207ce5040b49f95441bedafb6dbc9c010b245a0f0f47b9e3f10f8d9530a6",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/kanji-data.js",
+      "sha256": "2dcd7d5aee492392e0c47976ae718e9783c5b13234487804ed21558fbd4a62de",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/mask-pattern.js",
+      "sha256": "c8cfdab7b8d8276f9c1128ab8e5d930759df7594f03211f72b80c3002af91aa9",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/mode.js",
+      "sha256": "25d3574cf4b0cdbd62363ff2c57eb46da41d21124e6d37eb0e84f979799bd530",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/numeric-data.js",
+      "sha256": "3e506376e4c84b88162024c1d840b5bc3721da3b0d02f18784161adea5e3b2e8",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/polynomial.js",
+      "sha256": "34cb4e4216fc51fe75ac1c4bb00c4f4fc118a51da50c8250aec951062ff3a3c4",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/qrcode.js",
+      "sha256": "216e490908ed95df74992a05d44efa35ea7bc8dcab27b49b446725964704e833",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/reed-solomon-encoder.js",
+      "sha256": "080273fcf5a73c2348330f3edb55f3968c78853e298dc55a074becd7cee3faa2",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/regex.js",
+      "sha256": "974d9358148d11c8e48713ef2da8fc12e597b76f4e6fc6bde00cfe7c8094efa1",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/segments.js",
+      "sha256": "abd08a6ddd778c92e36e2a303d2b4a3b4ad1d9089d2a7605bee8b9d06da7846a",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/utils.js",
+      "sha256": "1b66145cb9afddadf46ea7314b168e0b8369b2ab4938256fe64bd1c465a473bd",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/version-check.js",
+      "sha256": "9cffe3a6f9cbb978022c0d0b1652fb2f3d381b9e48b7e01dfc744ded28736da2",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/version.js",
+      "sha256": "1221665a29e6927d3823912bde8bd711c114c61188d7ce862997a33d47fcfba9",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/renderer/canvas.js",
+      "sha256": "0ce857661e234786295c9b4042cad6dc1f4d7a496c4990f52870d2bc4ab1e6a9",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/renderer/svg-tag.js",
+      "sha256": "2f733e88d0b0155fae4aa4827de0fb9ae73cbbfdfc0cae52dc9d5ed17ae0447d",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/renderer/utils.js",
+      "sha256": "03ffb1b5f7e629bef61a83835107b391efc0b7a71ab9329a950708b20f361b87",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/LICENSE",
+      "sha256": "8df47c6ad9ac2c41eb9b2a72def9908959da0ede8dadd56c7b249c1bdb0c5ce6",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/package.json",
+      "sha256": "cbe26d7282c802f4ab9c1f790c5d8450d2b5c82e8bb5f67e3a5c2641ea347d1d",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/snarkjs@0.7.6/node_modules/snarkjs/build/browser.esm.js",
+      "sha256": "aa06a6c132fd50ed658b558f5273c339fd58a0f51f6f201ad9320aebbcb28c3e",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/snarkjs@0.7.6/node_modules/snarkjs/package.json",
+      "sha256": "c13e8b41f857ec6f78d7476d44eb3132ae19a2a75ddaee893ea7c88610a58ec8",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/artifactAdmission.ts",
+      "sha256": "32f346eac5d3d8cf51dfb0e343302438df435f6f69b869aaaa04e6a323bdd16f",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/artifactAdmissionTypes.ts",
+      "sha256": "0abad70a270d9f0dae9ab7b165ba9dbd16a99cdcceb4e7d6b79613f840e3c000",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/artifactInput.ts",
+      "sha256": "6e9f3dfb9f7728dda7e22cd2f271199ec55bacac34c1b89492ff23cf4f5d0a6a",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/artifacts.ts",
+      "sha256": "8db4e2f6e0a51ef2757f2a91d0483fd8168668694a1d3f68884c3a48ad048f39",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/artifactVerification.ts",
+      "sha256": "710335ab1962b04607691c2191ab4e1c12ceda90aa3751e211b4d77bfa21e9f3",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/authorityEncoding.ts",
+      "sha256": "49e823d915a892fe33f6f8ce2e9eaa5c829319261a8065d66dddf36f9a869156",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/authorityResults.ts",
+      "sha256": "5b2fc446e521aa1b47cf1eae8f9ad8034e4f62cf109ef8d43281005b12afecc1",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/compositeProofKernel.ts",
+      "sha256": "6d2a74f7827d2762c5cac35bbd790ac19237ae87d451d9572a2bdeafe569778b",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/compositeProofTransport.ts",
+      "sha256": "bdb95a4a2aaca2b4afb2ad13e159737783b391e34e1234d821eb7f9ec0e034b4",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/constitution.ts",
+      "sha256": "8061a17a294daad3ae523a8014280b3ede21901fb5fbfa0cec5672e336836845",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/currentRegistry.generated.ts",
+      "sha256": "2c481606e1d0f540b094a53730f62cb2bf2f38f3f58397776b4cd3bc07799522",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/currentRegistryAuthority.ts",
+      "sha256": "cbf1b2e6065aaab0c0157901823cb91a6bad343978696204c98e65d7146fdd16",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/currentRelease.generated.ts",
+      "sha256": "c94b7431ed37dd690c7e254ee3ddcb5235972e1837fd45b703e7f1ef4bb7e66b",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/economyShowcaseTransport.ts",
+      "sha256": "8be5f77d29c99c5d6f50caef3e88ba05385d0d2a81ee86eef71702e1848e2075",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/errors.ts",
+      "sha256": "451bf987a18260604e848eea665a99ff0cc7cbe3641541a182bacc682b09d68f",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/exactByteBlocks.ts",
+      "sha256": "60357abc3dcd884686576d56e381f5fbbb64f3824a5f5167234a27fcc0ac0469",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/exactClone.ts",
+      "sha256": "a12434b93ebb1e8931c527dfa3b7b00160a3456ae979afc6506d9f1ecb1d970c",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/identity.ts",
+      "sha256": "6179cd9ab375bb75ca0b90ce3b08d1318b40c4297910d623e219f95b3c5cd7d0",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/kaiSigilVerificationKey.ts",
+      "sha256": "8ba9e8db429f9ac0cb40c2f1415db756771f4df23a26dfdcd9c16a6277440149",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/nativeCapture.ts",
+      "sha256": "c30178baa9f0fcc282657517a17146aeb41ccbfc98cb305655f1eec10bc38ae9",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/portableAsset.ts",
+      "sha256": "c0d0d6b2be8360bc1a6885905fa4713257f536b8b465d074239d786159efb28c",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/portableAssetReader.ts",
+      "sha256": "bf7aaff438237228b702bc41c31524885cd5a6b458ebb07ba4f4d951f4e4909e",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/portableStateSegments.ts",
+      "sha256": "de4de9367cf65b026363fdf5b3b6d97450036a254acc4266e15be34f55480a19",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/profileShowcasePersistentState.ts",
+      "sha256": "75074f3204be42aade68ea41ac7b49a5a3a94dcc255eab133f17ccb3f1c21808",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/profileShowcaseTransport.ts",
+      "sha256": "21d551e1304886eb11865e45b19d577a11712d29d016b6e42667c0a5f8a37d89",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/proofHistory.ts",
+      "sha256": "da32bb415b0df2f223b8a2b721db0c11907a6bf09139d093fa5daf21955517fe",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/proofObjectAuthorship.ts",
+      "sha256": "1a819a82fcaa7ec92019720f45ed384be009c6c7af8b6df4044ad7763ee8746f",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/registryArtifact.ts",
+      "sha256": "0449908d5965ae32991afccb454b938e8b82f2b63f03c0332ee4bec4f7aa0425",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/registryDiscovery.ts",
+      "sha256": "77cfa718adcb9df747fb58fb34c3b96478dcc218540c7dad49401e68c05c571b",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/releaseIdentity.ts",
+      "sha256": "bb2bd2855e307bd030e257d9181a5a8ae0ca7992436f6640d49d1e6b0d8f0ade",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v114Registry.generated.ts",
+      "sha256": "14fcab75dedba6e9354d583a5fcc74ab66a8e138e00388b1131b379358363c5c",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v115Registry.generated.ts",
+      "sha256": "22be3f24f7a3ad881a434cd15743fbe74adee3fd4d87c18af9f8ca18e7f2e214",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v116Registry.generated.ts",
+      "sha256": "575e04b5443a26c2460295f1dff0a25f4615c0c1339be3a029191580db3feb67",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v117Registry.generated.ts",
+      "sha256": "d03b202dc4dfe06abc8bd56747138d064eb45baeb93a184579b82510c205e355",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v118Registry.generated.ts",
+      "sha256": "ecda71b16d5ebccfe9b9b28fcfc02554af37043e3c5789647289632b29abeccd",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v119Registry.generated.ts",
+      "sha256": "276fafbf01cb00f85fb8aa60cef0424e2e3a1859b58487a1087c4936e36fd6e7",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v120Registry.generated.ts",
+      "sha256": "15c42253a0fdc22e68cdb95de859d0b9d1fc089e854b3d80141303fc6dc419c0",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v121Registry.generated.ts",
+      "sha256": "86e84ed35d8232925ead71f7baa748489a81a6f71d9a87555b7c3be92a90c709",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v122Canonical.ts",
+      "sha256": "df32c716a60e177a167a50aab6925afdb9fb65de39d4c183641b450e9042b523",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v122Registry.generated.ts",
+      "sha256": "ea19280ba05f5aa4b412e4988e42505c886ab2e9020ddbcc316e589e4e619507",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v123Registry.generated.ts",
+      "sha256": "6d6af9bcf0ce4e6de7ac30879850b03f9e2d07c9f55036e837541b585d4ffee6",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v124Kai.ts",
+      "sha256": "952fa95ec08ba30143cf676a27fa5f23b75d815d372fd1ebf75e32b2c768cda7",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v124KaiBridge.generated.ts",
+      "sha256": "ceeef6042e1ddc14e9574858beff4e47759b0402cea5f025a4df1bdef94db5a4",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v124Registry.generated.ts",
+      "sha256": "7d8dd5a79be16664236cd14af51c9d792b63b79127d8e1286cc5aae2b0344413",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v125ConversationClosureRegistry.generated.ts",
+      "sha256": "ccae37f9dbd351adebd389b5ff6dd615aa7a16f8b190a81d0831acabbdf11042",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v125KaiAuthority.ts",
+      "sha256": "2a820acecc9017e04e5655b8150c37e0ca751d379df9e5728f7cdc19b449c531",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v125Registry.generated.ts",
+      "sha256": "d5a9a7dfe774aac3e54193e01952ccb3cf1dbdcec8753994935ec85f3fba0b55",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v126Registry.generated.ts",
+      "sha256": "cf4aa0e7e7dd0fb438d64f6278a74f4e2729b45357fb4e112f9d549115965419",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/v127Registry.generated.ts",
+      "sha256": "ecbe555aa7f81b8b3477ad6ace2a57ac0d5612e5c9f38aef95dc5f0e1b0ea8c8",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/verificationLimits.ts",
+      "sha256": "2c8cc611612b3f901bc971cf3387ce0c91387a0a171a8aafaf1c05e3020dcf4e",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/verifier/canonical.ts",
+      "sha256": "56189ae1e54f3c789e9631f6692905dc1d9cb5ed113bdde6554c372d2d1966d9",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/verifier/canonicalImplementation.js",
+      "sha256": "33e111935173070077238c4a54aa400460de7b4acbfef253d9a973e6d9c6ac08",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/verifier/canonicalSyntax.ts",
+      "sha256": "061065511a79034ce84c10bff5e9f8244370ab2efd896a48334d598614dbdc52",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/verifier/crypto.ts",
+      "sha256": "a6447a1b35c54d94f6e77a1cef2e25e2e9adc01c0c9f7c43602b56e704a8a211",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/verifier/documentSealVerificationKey.ts",
+      "sha256": "830451a25beea82fd885abecb4e2155f190ea3748de899cc4da2a18b7572f70b",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/verifier/groth16.ts",
+      "sha256": "a46dc3a0307df9e08ca1e26b0e0511837ce94f83ee08a38fc35015587de86524",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/verifier/index.ts",
+      "sha256": "22126cbec9ef085b24ac5d2b1410d5d750c307d543688c4e58eaadd67d8887f5",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/verifier/roots.ts",
+      "sha256": "a2cdc6b8bee423641e079ee0ebc118b0289d6277bc3d52cc6369133bcb669a7f",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/verifier/signatureV4.ts",
+      "sha256": "9d384bdf2f62449009fcfbc7fc14d8b04c22d5169e571a95da30a9426886cf83",
+      "mode": 420
+    }
+  ],
+  "links": [
+    {
+      "path": "node_modules/@noble/hashes",
+      "target": "node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes"
+    },
+    {
+      "path": "node_modules/ffjavascript",
+      "target": "node_modules/.pnpm/ffjavascript@0.3.1/node_modules/ffjavascript"
+    },
+    {
+      "path": "node_modules/snarkjs",
+      "target": "node_modules/.pnpm/snarkjs@0.7.6/node_modules/snarkjs"
+    },
+    {
+      "path": "node_modules/hash-wasm",
+      "target": "node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm"
+    },
+    {
+      "path": "node_modules/fflate",
+      "target": "node_modules/.pnpm/fflate@0.8.3/node_modules/fflate"
+    },
+    {
+      "path": "node_modules/qrcode",
+      "target": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode"
+    },
+    {
+      "path": "node_modules/dijkstrajs",
+      "target": "node_modules/.pnpm/dijkstrajs@1.0.3/node_modules/dijkstrajs"
+    }
+  ],
+  "inputs": [
+    "app/components/KaiSigil/constants.ts",
+    "app/lib/auth/activeIdentityCustodyContext.ts",
+    "app/lib/auth/receizAccountStateHead.ts",
+    "app/lib/auth/receizDeviceIdentityRegister.ts",
+    "app/lib/auth/receizDeviceIdentitySource.ts",
+    "app/lib/auth/receizDeviceIdentitySupport.ts",
+    "app/lib/auth/receizIdentityArtifactCustody.ts",
+    "app/lib/documentSeal/bundleContainer.ts",
+    "app/lib/documentSeal/fileFormat.ts",
+    "app/lib/documentSeal/heicProof.ts",
+    "app/lib/documentSeal/jpegArtifactBasis.ts",
+    "app/lib/documentSeal/jsonProof.ts",
+    "app/lib/documentSeal/pdfProof.ts",
+    "app/lib/documentSeal/proofBearingVLink.ts",
+    "app/lib/documentSeal/proofResourceManifest.ts",
+    "app/lib/documentSeal/realGroth16ProofClient.ts",
+    "app/lib/documentSeal/receizeDocumentBytesClient.ts",
+    "app/lib/documentSeal/receizeDocumentBytesCore.ts",
+    "app/lib/documentSeal/selectedSourceExecution.ts",
+    "app/lib/documentSeal/svgProof.ts",
+    "app/lib/documentSeal/trailerProof.ts",
+    "app/lib/documentSeal/verifyLink.ts",
+    "app/lib/download.ts",
+    "app/lib/kai/liveProofKai.ts",
+    "app/lib/market/nativeMarketShare.ts",
+    "app/lib/market/nativeMarketShareCapacity.ts",
+    "app/lib/market/vaultMarketShares.ts",
+    "app/lib/offlineReceiz.ts",
+    "app/lib/profile/composerPreparation.ts",
+    "app/lib/profile/identityArtwork.ts",
+    "app/lib/profile/localProfileNamePreservation.ts",
+    "app/lib/profile/longForm.ts",
+    "app/lib/profile/originalStorage.ts",
+    "app/lib/profile/profileIdentityCreationCoordinate.ts",
+    "app/lib/profile/showcase/bankAssetContent.ts",
+    "app/lib/profile/showcase/composerResources.ts",
+    "app/lib/profile/showcase/importedSource.ts",
+    "app/lib/profile/showcase/importedSourceErrors.ts",
+    "app/lib/profile/showcase/importedSourcePrivacy.ts",
+    "app/lib/profile/showcase/importedSourceProjection.ts",
+    "app/lib/profile/showcase/importedSourceReference.ts",
+    "app/lib/profile/showcase/routeProjectionEncoding.ts",
+    "app/lib/profile/username.ts",
+    "app/lib/receizArtifactVerifier.ts",
+    "app/lib/runtime/localTruthStore.ts",
+    "app/lib/security/cspNonce.ts",
+    "app/lib/security/receizSignatureV3.ts",
+    "app/lib/security/receizSignatureV4.ts",
+    "app/lib/security/receizSignatureV4Enrollment.ts",
+    "app/lib/security/receizSignatureV4Pinned.ts",
+    "app/lib/sign.ts",
+    "app/lib/time.ts",
+    "app/lib/transport/blobCustodyTransactions.client.ts",
+    "app/lib/transport/exactByteBlocks.ts",
+    "app/lib/wallet/bankNotes/nativeAsset.ts",
+    "app/lib/wallet/bankNotes/nativeAssetBacking.ts",
+    "app/lib/wallet/bankNotes/nativeAssetHolding.ts",
+    "app/lib/wallet/bankNotes/nativeAssetPublicArtifact.ts",
+    "app/lib/wallet/bankVault/assetCapacity.ts",
+    "app/lib/wallet/bankVault/assetOriginal.ts",
+    "app/lib/wallet/bankVault/assetSource.ts",
+    "app/lib/wallet/bankVault/browser.ts",
+    "app/lib/wallet/bankVault/custody.ts",
+    "app/lib/wallet/bankVault/custodyAdmission.ts",
+    "app/lib/wallet/bankVault/custodyWitness.ts",
+    "app/lib/wallet/bankVault/moneyCapacity.ts",
+    "app/lib/wallet/bankVault/moneyPublic.ts",
+    "app/lib/wallet/bankVault/nativeWitness.ts",
+    "app/lib/wallet/bankVault/publicRecord.ts",
+    "app/utils/dataUrl.ts",
+    "app/utils/jcs.ts",
+    "app/utils/kai_pulse.ts",
+    "app/utils/pngChunks.ts",
+    "app/utils/receizAnchorBundle.ts",
+    "app/utils/receizIdentityKey.ts",
+    "app/utils/receizLocalSealAnchor.ts",
+    "app/utils/receizOwnershipProvenanceBundle.ts",
+    "app/utils/receizProofBundle.ts",
+    "app/utils/sha256.ts",
+    "app/utils/signerKeyId.ts",
+    "app/verify/identityDisplay.ts",
+    "app/verify/portableIdentityReader.ts",
+    "app/verify/verifyRuntime.ts",
+    "node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/_md.js",
+    "node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/_u64.js",
+    "node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/sha2.js",
+    "node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/utils.js",
+    "node_modules/.pnpm/dijkstrajs@1.0.3/node_modules/dijkstrajs/dijkstra.js",
+    "node_modules/.pnpm/ffjavascript@0.3.1/node_modules/ffjavascript/build/browser.esm.js",
+    "node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
+    "node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm/dist/index.esm.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/browser.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/can-promise.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/alignment-pattern.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/alphanumeric-data.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/bit-buffer.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/bit-matrix.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/byte-data.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/error-correction-code.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/error-correction-level.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/finder-pattern.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/format-info.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/galois-field.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/kanji-data.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/mask-pattern.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/mode.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/numeric-data.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/polynomial.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/qrcode.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/reed-solomon-encoder.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/regex.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/segments.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/utils.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/version-check.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/core/version.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/renderer/canvas.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/renderer/svg-tag.js",
+    "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/lib/renderer/utils.js",
+    "node_modules/.pnpm/snarkjs@0.7.6/node_modules/snarkjs/build/browser.esm.js",
+    "packages/receiz-sdk/src/artifactAdmission.ts",
+    "packages/receiz-sdk/src/artifactAdmissionTypes.ts",
+    "packages/receiz-sdk/src/artifactInput.ts",
+    "packages/receiz-sdk/src/artifactVerification.ts",
+    "packages/receiz-sdk/src/artifacts.ts",
+    "packages/receiz-sdk/src/authorityEncoding.ts",
+    "packages/receiz-sdk/src/authorityResults.ts",
+    "packages/receiz-sdk/src/compositeProofKernel.ts",
+    "packages/receiz-sdk/src/compositeProofTransport.ts",
+    "packages/receiz-sdk/src/constitution.ts",
+    "packages/receiz-sdk/src/currentRegistry.generated.ts",
+    "packages/receiz-sdk/src/currentRegistryAuthority.ts",
+    "packages/receiz-sdk/src/currentRelease.generated.ts",
+    "packages/receiz-sdk/src/economyShowcaseTransport.ts",
+    "packages/receiz-sdk/src/errors.ts",
+    "packages/receiz-sdk/src/exactByteBlocks.ts",
+    "packages/receiz-sdk/src/exactClone.ts",
+    "packages/receiz-sdk/src/identity.ts",
+    "packages/receiz-sdk/src/kaiSigilVerificationKey.ts",
+    "packages/receiz-sdk/src/nativeCapture.ts",
+    "packages/receiz-sdk/src/portableAsset.ts",
+    "packages/receiz-sdk/src/portableAssetReader.ts",
+    "packages/receiz-sdk/src/portableStateSegments.ts",
+    "packages/receiz-sdk/src/profileShowcasePersistentState.ts",
+    "packages/receiz-sdk/src/profileShowcaseTransport.ts",
+    "packages/receiz-sdk/src/proofHistory.ts",
+    "packages/receiz-sdk/src/proofObjectAuthorship.ts",
+    "packages/receiz-sdk/src/registryArtifact.ts",
+    "packages/receiz-sdk/src/registryDiscovery.ts",
+    "packages/receiz-sdk/src/releaseIdentity.ts",
+    "packages/receiz-sdk/src/v114Registry.generated.ts",
+    "packages/receiz-sdk/src/v115Registry.generated.ts",
+    "packages/receiz-sdk/src/v116Registry.generated.ts",
+    "packages/receiz-sdk/src/v117Registry.generated.ts",
+    "packages/receiz-sdk/src/v118Registry.generated.ts",
+    "packages/receiz-sdk/src/v119Registry.generated.ts",
+    "packages/receiz-sdk/src/v120Registry.generated.ts",
+    "packages/receiz-sdk/src/v121Registry.generated.ts",
+    "packages/receiz-sdk/src/v122Canonical.ts",
+    "packages/receiz-sdk/src/v122Registry.generated.ts",
+    "packages/receiz-sdk/src/v123Registry.generated.ts",
+    "packages/receiz-sdk/src/v124Kai.ts",
+    "packages/receiz-sdk/src/v124KaiBridge.generated.ts",
+    "packages/receiz-sdk/src/v124Registry.generated.ts",
+    "packages/receiz-sdk/src/v125ConversationClosureRegistry.generated.ts",
+    "packages/receiz-sdk/src/v125KaiAuthority.ts",
+    "packages/receiz-sdk/src/v125Registry.generated.ts",
+    "packages/receiz-sdk/src/v126Registry.generated.ts",
+    "packages/receiz-sdk/src/v127Registry.generated.ts",
+    "packages/receiz-sdk/src/verificationLimits.ts",
+    "packages/receiz-sdk/src/verifier/canonical.ts",
+    "packages/receiz-sdk/src/verifier/canonicalImplementation.js",
+    "packages/receiz-sdk/src/verifier/canonicalSyntax.ts",
+    "packages/receiz-sdk/src/verifier/crypto.ts",
+    "packages/receiz-sdk/src/verifier/documentSealVerificationKey.ts",
+    "packages/receiz-sdk/src/verifier/groth16.ts",
+    "packages/receiz-sdk/src/verifier/index.ts",
+    "packages/receiz-sdk/src/verifier/roots.ts",
+    "packages/receiz-sdk/src/verifier/signatureV4.ts"
+  ],
+  "moduleSha256": "cd1904c24e517309d4f55611562618feb652609195da72a91e628b1950bd1cb2",
+  "bytes": 1865203
+}

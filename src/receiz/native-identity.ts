@@ -64,6 +64,7 @@ import {createMarketPortfolio,parseMarketPortfolio,readSealedMarketPortfolio,typ
 import {loadMarketPortfolioState,saveMarketPortfolioState} from './identity-vault';
 
 export interface OpenIdentity {
+  vaults?:()=>Promise<import('./vault/manager').VaultManager>;
   hostedCheckout?:()=>Promise<import('./hosted-checkout').HostedCheckoutController>;
   profile?:()=>Promise<import('./profile-edit').ProfileEditor>;
   knownProfile?:()=>import('./profile-edit').OwnerProfilePresentation|null;
@@ -352,6 +353,36 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       return connected;
     }
     finally { if (connectionOpening === attempt) connectionOpening = null; }
+  }
+  let vaultManager:import('./vault/manager').VaultManager|undefined,vaultOpening:Promise<import('./vault/manager').VaultManager>|undefined;
+  function vaults(){
+    if(lifetime.signal.aborted)return Promise.reject(Error('VAULT_CLOSED'));
+    if(vaultManager)return Promise.resolve(vaultManager);
+    return vaultOpening??=import('./vault/manager').then(({createVaultManager})=>{
+      lifetime.signal.throwIfAborted();
+      vaultManager=createVaultManager({ownerKeyId:binding.keyId,signal:lifetime.signal,parent:async()=>{
+        const scopes=[...new Set([...BANK_NATIVE_SCOPES,...BANK_MARKET_TRADE_SCOPES,'receiz:vault.custody'])];
+        const current=await connectClient(scopes,'Allow Bankeiz to create and open the separate Vault custody I choose, read its native sources, and prepare only my reviewed money and in-kind ownership movements. My ordinary account stays open separately. Each card deposit, transfer and ownership movement requires its own exact approval.');
+        lifetime.signal.throwIfAborted();
+        return{userId:receivingUid(),receizId:binding.artifactOwnerReceizId,identity:transportKeyFile,passphrase:transportPhrase,
+          request:(path,options)=>current.request(path,options),
+          beginCard:async(_amount,_referenceId,request,signal)=>{
+            const {admitVaultCardCheckout,readVaultCardCheckoutRequest}=await import('./vault/card');
+            const exact=readVaultCardCheckoutRequest(request),card=await connectClient(BANK_CARD_SCOPES,BANK_CARD_CONSENT);
+            if(exact.referenceId!==_referenceId||parseDepositDollars(_amount).amountUsdCents!==exact.amountUsdCents)throw Error('VAULT_CARD_CONFLICT');
+            const transport=clientFetches.get(card);if(!transport)throw Error('VAULT_CARD_UNAVAILABLE');
+            signal?.throwIfAborted();
+            const response=await transport('/api/connect/payments/checkout',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({vaultCheckout:exact}),signal});
+            signal?.throwIfAborted();if(!response.ok)throw Error('VAULT_CARD_RESULT_UNKNOWN');const result=await response.json();
+            return admitVaultCardCheckout(result,exact,receivingUid(),BANK_APPLICATION_ID);
+          },
+          // The Vault original carries the exact checkout. It can be checked on
+          // a fresh device after the parent is separately opened, without an
+          // ordinary-device checkout cache manufacturing or blocking authority.
+          checkCard:async(checkout,beforeCredit)=>{const card=await connectClient(BANK_CARD_SCOPES,BANK_CARD_CONSENT);const status=parseCardDepositStatus(await card.connect.checkoutSession({sessionId:checkout.sessionId}),checkout.sessionId,checkout.amountUsdCents,receivingUid());if(status.status==='credited')await beforeCredit();return status;},
+        };
+      }});return vaultManager;
+    }).catch(error=>{vaultOpening=undefined;throw error;});
   }
   let messagingPromise:Promise<import('./native-messaging').NativeMessaging>|undefined;
   // Fresh account entry discloses messaging in the same approval. Legacy
@@ -1595,7 +1626,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const uid=accountUid??knownWallet?.wallet.userId;if(!uid)return;
     retainedMessaging.retainTwinAccessQuestions(uid,questions);
   };
-  return { hostedCheckout, profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, backedAssetPublication, createComposedAsset:(definition,draft)=>createAsset(definition,undefined,false,draft), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { checkoutController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { vaults, hostedCheckout, profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, backedAssetPublication, createComposedAsset:(definition,draft)=>createAsset(definition,undefined,false,draft), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { vaultManager?.dispose();checkoutController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 async function createFreshNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

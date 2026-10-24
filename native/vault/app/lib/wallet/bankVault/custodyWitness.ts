@@ -1,0 +1,15 @@
+import {deriveReceizIdentityKeyIdFromPublicKeyRawB64u} from '../../../../packages/receiz-sdk/src/identity';
+import type {ReceizSignatureV4RootPublicKey} from '../../../../packages/receiz-sdk/src/verifier/signatureV4';
+import {custodyExact,custodyHex,deriveVaultCustodyAccountId,vaultCustodyReceivingAddress} from './custody';
+import {openVaultNativeWitness,vaultWitnessInteger,vaultWitnessText,vaultWitnessUuid,type VaultNativeWitnessHeader,type VaultNativeWitnessSource} from './nativeWitness';
+export const VAULT_CUSTODY_WITNESS_DOMAIN='receiz.bank.vault-custody-witness.root-signature.v1';
+export type VaultCustodyWitness=VaultNativeWitnessHeader&Readonly<{schema:'receiz.bank.vault-custody-witness.v1';domain:typeof VAULT_CUSTODY_WITNESS_DOMAIN;vaultId:string;applicationId:string;ownerUserId:string;ownerReceizId:string;accountId:string;keyId:string;alg:'Ed25519'|'P-256';publicKeyRawB64u:string;receivingAddress:string;relationSourceSha256:string;relationInputSha256:string;parentHead:string;childHead:string}>;
+export type VaultCustodyWitnessSource=Readonly<{schema:'receiz.bank.vault-custody-witness-source.v1';source:VaultNativeWitnessSource}>;
+/** Public opening of an admitted native relation. This contains no account
+ * history and proves the recorded relation, not current live key validity. */
+export async function verifyVaultCustodyWitness(input:unknown,options:Readonly<{roots:ReadonlyMap<string,ReceizSignatureV4RootPublicKey>}>){
+ function fail():never{throw Error('VAULT_CUSTODY_WITNESS_INVALID');}if(!custodyExact(input,['schema','source'])||input.schema!=='receiz.bank.vault-custody-witness-source.v1')fail();
+ const opened=await openVaultNativeWitness(input.source,{...options,filename:'vault-custody-witness.receizbundle',domain:VAULT_CUSTODY_WITNESS_DOMAIN}),v=opened.statement;
+ if(!custodyExact(v,['schema','domain','vaultId','applicationId','ownerUserId','ownerReceizId','accountId','keyId','alg','publicKeyRawB64u','receivingAddress','relationSourceSha256','relationInputSha256','parentHead','childHead','issuedAtKaiUPulse','issuerRootKid','rootSignature'])||v.schema!=='receiz.bank.vault-custody-witness.v1'||!vaultWitnessText(v.vaultId,120)||!vaultWitnessText(v.applicationId)||!/^rc_[A-Za-z0-9_-]{1,128}$/u.test(String(v.applicationId))||!vaultWitnessUuid(v.ownerUserId)||!vaultWitnessUuid(v.accountId)||typeof v.ownerReceizId!=='string'||!/^[a-z0-9_]{3,24}\.receiz\.id$/u.test(v.ownerReceizId)||!['keyId','relationSourceSha256','relationInputSha256','parentHead','childHead'].every(k=>custodyHex(v[k]))||!['Ed25519','P-256'].includes(String(v.alg))||typeof v.publicKeyRawB64u!=='string'||!vaultWitnessInteger(v.issuedAtKaiUPulse)||opened.recordOwner!==v.ownerReceizId||v.receivingAddress!==vaultCustodyReceivingAddress(String(v.accountId))||v.accountId!==await deriveVaultCustodyAccountId(String(v.ownerUserId),String(v.vaultId))||await deriveReceizIdentityKeyIdFromPublicKeyRawB64u(v.publicKeyRawB64u,String(v.alg) as 'Ed25519'|'P-256')!==v.keyId)fail();
+ return {source:structuredClone(input) as unknown as VaultCustodyWitnessSource,witness:v as unknown as VaultCustodyWitness};
+}

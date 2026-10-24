@@ -8,3 +8,7 @@ public/native/*.mjs -whitespace
 native/** -text -whitespace
 public/native/** -text
 public/zk/** -text
+
+# Standalone reader preserves bundled template-literal whitespace exactly.
+public/vault-verifier/v1/inspector.js -whitespace
+public/vault-verifier/v1/verify.html -whitespace

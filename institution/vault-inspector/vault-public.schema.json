@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bankeiz.com/vault-verifier/v1/vault-public.schema.json",
+  "title": "Public Vault ownership record",
+  "description": "A dedicated read-only disclosure at a recorded coordinate. No private opening or execution authority. Each source is a complete closed native public witness, admitted by the included custody, money, asset or investment verifier; this structural schema cannot replace that cryptographic and semantic admission. No current-unspentness claim.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "applicationId",
+    "vaultId",
+    "name",
+    "kaiUPulse",
+    "custodyWitness",
+    "holdings",
+    "holderProof"
+  ],
+  "properties": {
+    "schema": {
+      "const": "receiz.bank.vault-public-record.v1"
+    },
+    "applicationId": {
+      "type": "string",
+      "pattern": "^rc_[A-Za-z0-9_-]{1,128}$"
+    },
+    "vaultId": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[89aAbB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "kaiUPulse": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,29}$"
+    },
+    "custodyWitness": {
+      "type": "object",
+      "description": "Exact native signed custody public witness."
+    },
+    "holdings": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "source"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "money",
+              "asset",
+              "investment"
+            ]
+          },
+          "source": {
+            "type": "object",
+            "description": "Complete corresponding native public witness. Closed native source admission is mandatory."
+          }
+        }
+      }
+    },
+    "holderProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "keyId",
+        "alg",
+        "challengeB64Url",
+        "signatureB64Url"
+      ],
+      "properties": {
+        "schema": {
+          "const": "receiz.identity.login_proof.v1"
+        },
+        "keyId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "alg": {
+          "enum": [
+            "Ed25519",
+            "P-256"
+          ]
+        },
+        "challengeB64Url": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "signatureB64Url": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      }
+    }
+  }
+}

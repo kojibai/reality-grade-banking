@@ -1,0 +1,1108 @@
+{
+  "schema": "bank.vault.offline-reader-build.v1",
+  "rebuild": "npm ci && node scripts/build-vault-inspector.mjs",
+  "defines": {
+    "process": "undefined",
+    "import.meta.env": "{}"
+  },
+  "inputs": [
+    {
+      "path": "institution/proof-verifier/verifier.entry.ts",
+      "sha256": "11069ecd2a8b0d8e285e7bf9acc12cc0f766fb9fd54aea39a6ab2057ef42611f"
+    },
+    {
+      "path": "institution/vault-inspector/entry.ts",
+      "sha256": "a94f982f5886d7264c47af378f38c8625afe400420b1a3fdfc5d9f15acf11e1d"
+    },
+    {
+      "path": "native/receiz/app/lib/profile/showcase/importedSourceReference.ts",
+      "sha256": "3440ff243287b33cabf35e430566156794b72eb9eac55cea0d9117dda5ef28f1"
+    },
+    {
+      "path": "native/receiz/app/lib/transport/exactByteBlocks.ts",
+      "sha256": "c9171469d7b0940a45abe34be260b62f60524faa50d4ee5a70f5ab9e000c3d29"
+    },
+    {
+      "path": "native/receiz/app/utils/pngChunks.ts",
+      "sha256": "7a54e936bee91d58886690cf0a3bad0982da141bb8b8a8482851863531c674bf"
+    },
+    {
+      "path": "native/receiz/packages/receiz-sdk/src/exactByteBlocks.ts",
+      "sha256": "60357abc3dcd884686576d56e381f5fbbb64f3824a5f5167234a27fcc0ac0469"
+    },
+    {
+      "path": "native/receiz/packages/receiz-sdk/src/kaiSigilVerificationKey.ts",
+      "sha256": "8ba9e8db429f9ac0cb40c2f1415db756771f4df23a26dfdcd9c16a6277440149"
+    },
+    {
+      "path": "native/receiz/packages/receiz-sdk/src/v122Canonical.ts",
+      "sha256": "df32c716a60e177a167a50aab6925afdb9fb65de39d4c183641b450e9042b523"
+    },
+    {
+      "path": "native/receiz/packages/receiz-sdk/src/verificationLimits.ts",
+      "sha256": "2c8cc611612b3f901bc971cf3387ce0c91387a0a171a8aafaf1c05e3020dcf4e"
+    },
+    {
+      "path": "native/receiz/packages/receiz-sdk/src/verifier/canonical.ts",
+      "sha256": "56189ae1e54f3c789e9631f6692905dc1d9cb5ed113bdde6554c372d2d1966d9"
+    },
+    {
+      "path": "native/receiz/packages/receiz-sdk/src/verifier/canonicalImplementation.js",
+      "sha256": "33e111935173070077238c4a54aa400460de7b4acbfef253d9a973e6d9c6ac08"
+    },
+    {
+      "path": "native/receiz/packages/receiz-sdk/src/verifier/canonicalSyntax.ts",
+      "sha256": "061065511a79034ce84c10bff5e9f8244370ab2efd896a48334d598614dbdc52"
+    },
+    {
+      "path": "native/receiz/packages/receiz-sdk/src/verifier/crypto.ts",
+      "sha256": "a6447a1b35c54d94f6e77a1cef2e25e2e9adc01c0c9f7c43602b56e704a8a211"
+    },
+    {
+      "path": "native/receiz/packages/receiz-sdk/src/verifier/documentSealVerificationKey.ts",
+      "sha256": "830451a25beea82fd885abecb4e2155f190ea3748de899cc4da2a18b7572f70b"
+    },
+    {
+      "path": "native/receiz/packages/receiz-sdk/src/verifier/groth16.ts",
+      "sha256": "a46dc3a0307df9e08ca1e26b0e0511837ce94f83ee08a38fc35015587de86524"
+    },
+    {
+      "path": "native/receiz/packages/receiz-sdk/src/verifier/roots.ts",
+      "sha256": "a2cdc6b8bee423641e079ee0ebc118b0289d6277bc3d52cc6369133bcb669a7f"
+    },
+    {
+      "path": "native/receiz/packages/receiz-sdk/src/verifier/signatureV4.ts",
+      "sha256": "9d384bdf2f62449009fcfbc7fc14d8b04c22d5169e571a95da30a9426886cf83"
+    },
+    {
+      "path": "node_modules/@noble/hashes/_md.js",
+      "sha256": "60cf3010fda89e3e4d3f0e7ff1ce249e9c467f34b4fd41b6fd6101d9f69be763"
+    },
+    {
+      "path": "node_modules/@noble/hashes/_u64.js",
+      "sha256": "b09da8c07fe8187c07649494cdb7cd0bcf13df90b506a9473d19e4d5f8c2e102"
+    },
+    {
+      "path": "node_modules/@noble/hashes/sha2.js",
+      "sha256": "471746bba6ec4c6238ca41358d1d3b40b6ff31cf3363f0b4d550c649c1a8e83b"
+    },
+    {
+      "path": "node_modules/@noble/hashes/utils.js",
+      "sha256": "037ad49adb78168b6b699598fd33f85f7877456b1d28b4d032e2a1a16807947c"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/admissionStore.js",
+      "sha256": "e3396280b5fc1a513e53a06f29ebe31fb7998ada0fe7e0f89a4c9f2b8c7413db"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/admissionStoreValidation.js",
+      "sha256": "1cfc4b0a147eaa892305415915b4ea3faf1748968b66244a107ddb35aa3c0a78"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/appContract.js",
+      "sha256": "2f99c805a8f59a75f415a0551477b5b55560d65aadfe2c9b4588361f01896630"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/artifactAdmission.js",
+      "sha256": "3f8c8ae1bbe90e71cd671e9281bd278a6180daacac404b2334297c8f7d78cfee"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/artifactAdmissionTypes.js",
+      "sha256": "b69a62f6895e8852ba0b5dd9446b784daafb1cd3ecd0d835c929d2997f4c86f9"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/artifactInput.js",
+      "sha256": "60b5eaa00068df37a235bd6b13acb792325ad50d182c64305be550eba9275921"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/artifactRecovery.js",
+      "sha256": "82aef0bd174c109da0d0e67651ea5a1feead237c9a41e0bce916e4c5bba4edb4"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/artifactTransition.js",
+      "sha256": "472de8429d597310cbcc8e3f2a77cbd939b3b23dda792ebaa5ba8e74212f1e85"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/artifactTransitionAtomicRequirements.js",
+      "sha256": "c868f4a5adc0211a0fd6fb21f271ca5e91bd39cec57e6fae748fffcfd5fb549c"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/artifactTransitionCandidateCustody.js",
+      "sha256": "026dea035cd596ddba7edd913502c2ee55cd914b857fc77f2a09115d5475b069"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/artifactTransitionCommitCustody.js",
+      "sha256": "d59fbf1f9164bbf10904acd6f9736db54c04bfad8cc1f2f868dc60f225d5bc02"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/artifactTransitionEquality.js",
+      "sha256": "80bca4ae5d38232676dcdf585daae29352275a04c1221420e4a63e2f17ed69d2"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/artifactVerification.js",
+      "sha256": "62007c0bd380ae3b551d5fc2c4a8202348aefa40e4693964501a437af300a23e"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/artifacts.js",
+      "sha256": "1bc1d62b7871c4e77b9597aaa89195438bb8dedef1fdcf3b9c1c8638e49163b5"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/authorityEncoding.js",
+      "sha256": "ac6189f95be9c87ff801caa58c36fb32d605eb10cdba735ddc87c0c53d684b0f"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/authorityResults.js",
+      "sha256": "674e68f9923536cd437dc3348d68f70735cb0ebe884d75779388007db3abd45d"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/browserAdmissionStore.js",
+      "sha256": "5a2806132427b67fb09b6c8ae2da3c824a89ffcbd3c28d32a226605619df7c92"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/capabilities.js",
+      "sha256": "6665a2748928a2e538921803139c2510a1b5ccf52c258343380b76a46233aa77"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/capabilityAuthority.js",
+      "sha256": "37d398b979bf6acaf592abeca9d2fd3df6cc08b2a6faad9eda0310b11c650f78"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/causalHistory.js",
+      "sha256": "22d9b15f042216d76d41c66d18ac7a973e487e59c4c0a2442b9484e141424060"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/causalReplay.js",
+      "sha256": "55ec696d3545db1decac1509e5ede267f1bf2b2de20336a7c878069d2e3610de"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/commandAdmission.js",
+      "sha256": "a53767d3889ba11fdb7b80cb938cb2e0f66b37c3011351f7664277c24f1f9dab"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/compositeProofKernel.js",
+      "sha256": "0bf0b399b9cfe6e604ecbf0448a04f2bbd020eff2fca4bf906b274809818c828"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/compositeProofTransport.js",
+      "sha256": "d0c190a8f488cc64d1c28d761f4697fdceda1626b09be81a2faa92489342944d"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/constitution.js",
+      "sha256": "39d48591cc3d13f5518b68a0b734e8d388c1a69402e08eb964101071da510705"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/conversationActorSource.js",
+      "sha256": "1112bf42e45cf5167366b401c1cfe2bdd644cbcd5911da240eda3ce4469a5d61"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/conversationDomain.js",
+      "sha256": "4033660dfb49e9bead2d1b5a01d7a949231d1edccf5c86e2f491d3c951b728fb"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/conversationPrivateTransport.js",
+      "sha256": "c68444a0c5f1d73ad6ba5ed080cdf89dc48864ef2127c1fb2887c31c2a1ca051"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/conversationRegistration.js",
+      "sha256": "a32a1c4789321131039ac9646efda373aa0c6480e6e86fbdf491dffa12d4e7f2"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/conversationSourceFamily.js",
+      "sha256": "778474b98db161606b5efdba96fcd589dfd0242f34c753f0fb528fcb10e7e79b"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/currentRegistry.generated.js",
+      "sha256": "2c481606e1d0f540b094a53730f62cb2bf2f38f3f58397776b4cd3bc07799522"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/currentRegistryAuthority.js",
+      "sha256": "dbef86bb768c45f249e7804992690aa3b04d8adf8dc08e90c06f17c62e548062"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/currentRelease.generated.js",
+      "sha256": "b8fdd8ebf76bff9d98d2a6e16daa9d40467dd95b70a3844ef450bb29a33b973f"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/economyShowcaseTransport.js",
+      "sha256": "07835225307387039cebbc4cb929cb4411659df9d7de075fc96d238156e6601a"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/errors.js",
+      "sha256": "8c510f8276618537db76ee98642fb8696a7cae5882bdafed99ea48e8cdbe8c03"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/exactByteBlocks.js",
+      "sha256": "6548eac7063c4ddee958e786e8b7461eef751e330bc46bc360715bcbc6bf4169"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/exactClone.js",
+      "sha256": "446fc4f48e44816c2e0e2e3c800bc5f5b3a13d22d9c10374c1dcd6c8acc0262d"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/globalCoordinationProtocol.js",
+      "sha256": "d71c3fef2b04a6ef5f75eca81b8b771265412ec1dc65ff2cea558b9d3f158081"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/globalCoordinationTypes.js",
+      "sha256": "e388339395a730cab426ac4b08295a381b87ff381674a771bc900e54333ad19b"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/globalEconomyTransport.js",
+      "sha256": "5c97b604a409f40d5184b6485aeea03999323bfdd9086f8d3bad6618dab03881"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/globalReconciliation.js",
+      "sha256": "1151ec7b4fe1a0db4d5d5bb27193dfa7728a042e30fcfd1f91c52345d4aeecc3"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/historicalHandoffCustody.js",
+      "sha256": "af8d486731244357e5dc70cb014c6a1a70ed1fdc49773e88cd7678ea328f488a"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/httpOperationSupport.js",
+      "sha256": "a003efb21419befad2d1e314fc173bf1e0645017373f6c5f6888f7fe0b7e1fb5"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/identity.js",
+      "sha256": "086ff31281138d5329b87ae6ff731e1fddaef6adec15757e81985aaf9055c744"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/index.js",
+      "sha256": "bd74775fd1e7d9e0c4dc64949872568db76deb76149b58b0292c31a16d7540a5"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/kaiSigilVerificationKey.js",
+      "sha256": "df124f76c17cf4029a0ac15a92b41bd8300f54ca91c5259e83620ba11caf2035"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/livingSubjectRuntime.js",
+      "sha256": "92a4f0223e8486c7d72671d1e14692a6bea354b3d22be7d1d12ea0337cc77f9e"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/livingSubjectSchemas.js",
+      "sha256": "68776f76739980029ca0a27f8319b10ebb4d82a50f508ec97fd433d9f77ce66c"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/livingSubjects.js",
+      "sha256": "f6cc600000c27729181103ddc4beaff39998af267e9e382194a56417dd6aa321"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/materialCompositeTransport.js",
+      "sha256": "73f76213846ac407a3bfcc6f8abac2f20bfe1320cba4ee7b78e82a38b11d5141"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/materialProgressiveLedger.js",
+      "sha256": "30415343cadc819d6d8b16d1e12c36420c55cf3fe7f5a09ae3b2e40c3c807b00"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/materialProofUrl.js",
+      "sha256": "e5d9459e81ca735ef5740c7a719fe7836da3e8e7bd7aeb028a4e466b1affba92"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/materialSourceFamily.js",
+      "sha256": "a2dba894ef2313f3daabb5bfb6dc744483905d65044347fdd6e5422dad3b634c"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/namespaceReducer.js",
+      "sha256": "186bb3d3e8ea9942ba26faac4b0b1d9faf11847a24e74e3e51f622d9829e62f7"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/nativeCapture.js",
+      "sha256": "96ce966fa507a8fd03768b042c7589818c555bc06bd5d59170498ec1fa5430ff"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/noteCausalSubtraction.js",
+      "sha256": "7e4aeb19fe8552516b5eeedbe438f68c00fe45553f347ab328faa6f7a61ab5f3"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/offlineNoteAttestedCustody.js",
+      "sha256": "5ed437010671e592338dea0ae4b934d8bc77e1700d3f2792de8e99547285f13b"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/offlineNoteCustodyConformance.js",
+      "sha256": "a74f038e10bdaef47f7c57557b2145de9e75ae21028cef817d5e018e4d4fb727"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/offlineNoteDestination.js",
+      "sha256": "5c8da80da1bea8407994715134bf54530ab848d1e54fa172c2880a1d7addaa4d"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/offlineNoteIrreversibleCustody.js",
+      "sha256": "7ff8e013d64830794c77fbd01244c4587a2471a2a96fd461e71ccf50b5ad639b"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/offlineNotePlatformAttestation.js",
+      "sha256": "cbe3908c69544509f6e92a7b9fd17f64ad152a32f955fc22f1903596835dcdef"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/offlineNoteReceivingSeal.js",
+      "sha256": "9fc43e0c36ecf9493153b40c55f967724a207805e8cf883517850240815c0868"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/offlineNoteRollbackConformance.js",
+      "sha256": "58a1e46c23aea982a23419c1f628ec5783dbb4deb4ad5ef301ecfc59c929c7e2"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/offlineNoteWebAuthnCustody.js",
+      "sha256": "d3d8b46d39a882abfc96d85f8cef5b7dd8595454e24a944789874dedc2fa60a5"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/offlineReserveFundingBinding.js",
+      "sha256": "553b6033c7d2c1ec4fcd9f3d559032e719127030038b744bad9a4e65d90cf5a1"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/offlineReserveWebAuthnCustody.js",
+      "sha256": "30524e39ae5a3f11c9775e5c6ac1978a12e4b3c070a6413a3a11fa792c2181a4"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/pbiLocalAuthorship.js",
+      "sha256": "4145b22ecaa88a537deaf747b8fe4e0bfa47cb1711b10b0d59919b8b1119d1f7"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/pbiLocalVerifier.js",
+      "sha256": "43399939c7ba25062b031b2b6e8e2db418d75ccfe2f350b95afa8fb77b81e51f"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/pbiProofObjectVerification.js",
+      "sha256": "64aa6fe4e7f7ce576766abfe56bcc75b96b3cd45533467eb81f19c5abfffa7de"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/pbiSignedBadge.js",
+      "sha256": "2edbd88beb59d6be9d8651b2884bf4186b85d2711bb884463c45732e1a38e6ae"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/portableAsset.js",
+      "sha256": "ad2843c825b37a7fbf9a4204aa44b29379ffa7dccc5b66fdd1656fa6e75823c3"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/portableAssetReader.js",
+      "sha256": "fbc6477de480def408fe70646d41746fb1889b1c3273e7690e7c008defc7e4a8"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/portableStateSegments.js",
+      "sha256": "ecda4d0d580a2e97f6ce3c6ad8ebee65e66c3fce65a3b9308eaad7afd1f7f3b5"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/profile.js",
+      "sha256": "7efba359da51f2d8806a6ca134d2ccc72326389c360abb49177b22a371f14b30"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/profileShowcasePersistentState.js",
+      "sha256": "d3253a2d543b297efd78c0aafc9c060708036f0c35eda350c50cdf6b4a9640ba"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/profileShowcaseTransport.js",
+      "sha256": "85cd417f3704404a921725896b48a6dd944fd95a591cbd00b49b75bacdf3d60f"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/proofHistory.js",
+      "sha256": "75adff65b893e53fd02b9d108a50788c8b3a37e42792ca2d80ce1a05badeb9fe"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/proofHistoryOwnershipConsentV129.js",
+      "sha256": "b3a8e7e8c9b65d59f0c38d10812dfa588264f92195cfac27d401c75965428cb4"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/proofObjectAuthorship.js",
+      "sha256": "3b42113ab10a7111c2fd18e1eda3bd7968de8d5522dd339e18e2c652cd575740"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/proofValuePolicyV129.js",
+      "sha256": "6a5cb5ae42e8e42c6ce8a44aa667d808e8e9efb59411d37d5f40b3c332000624"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/proofValueReplayV129.js",
+      "sha256": "63677f4ddd7c6aca92fae5758ea96d695c53d1534dd52afdd002f4fb8751ed18"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/proofValueTransactionsV129.js",
+      "sha256": "e26347350f6e3639f9d32883c7669940290ef2d93e34a726973eab9bcf93351a"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/proofValueV129.js",
+      "sha256": "367a749c7f0bb5b37c45a851f73dc42045c5508fa36e9062d795cf91a8358127"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/publicProjection.js",
+      "sha256": "854a1e07e110a531b96c786638b6f0c44ecedc209e02ed4de75128cd1732df99"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/reconciliationCustody.js",
+      "sha256": "ded4c25734d6e9ce0bef839ea2c04aa848a6d00d6530b825703e9f26aa390802"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/registryArtifact.js",
+      "sha256": "cc08413e6372ce4cff0b4c786e0e76a62e084b70770ecdde51887b82f9531f69"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/registryDiscovery.js",
+      "sha256": "c0145282b6a8e5ce92a8ae9169817305a01e7a64659fa10d88865c0fffe6ebe0"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/releaseIdentity.js",
+      "sha256": "4024c39cb33737c7205659102491ae38f9bc8f2ad0bd79d5f82e8865636b3128"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/remoteAdmissionStore.js",
+      "sha256": "763be80befdf66f4a0a58bbbe04dcec20adef259ec22707cc224f50da9daf38a"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/remoteArtifactTransitionStore.js",
+      "sha256": "73d2b86e1222a07cf69fffa3687aa3c35af4c5f4e8766801c45eb223e22aa9bb"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/remoteDomain.js",
+      "sha256": "d31f77b23cbd509d83d27ea99f96b5a55ae0ada7179fff4abfa0cf41c2301b3a"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/sigilValuationCore.js",
+      "sha256": "fa5a54535e27851656138c387d3775f3cb23570d58e416b39d2c8d592db426b4"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/sourceCarriedReplay.js",
+      "sha256": "ea53ae96a94e95a1c097f4f130ce4cbc7a63013abc29db1446f008c6bde9a97a"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/sportsVaultRecursiveTransport.js",
+      "sha256": "299237fd38c380c05fe29f4aaa8744d3a3b4cef73e901a4589c9d44cbea3e2f4"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v114Registry.generated.js",
+      "sha256": "a9b6a27671d15772cb61e45939694aad0955ac286cf5dbc00f42c1ffaeb06611"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v115Registry.generated.js",
+      "sha256": "87bf0cc87e2da6fe6129f422cb4eec0a333096e103b6b44904a8aa7c6802c420"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v116Registry.generated.js",
+      "sha256": "2ed9267a893edb9bd2594502052068fb2ea09601f11c3a6f0cbcdf76ff544f10"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v117Registry.generated.js",
+      "sha256": "a2bf99b6623d3347182c2fa97474df3215e46405146cad2ee84fc076840ae848"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v118Registry.generated.js",
+      "sha256": "23b52dce32ae4d1d73cf7b69fcc068cdb29c2ce270efa7e68b66b43a140dfc3c"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v119Registry.generated.js",
+      "sha256": "66ee76e7ca06a7a835d32f2237707eecb526405adb61cb77fc3fb264f15dd09a"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v120Registry.generated.js",
+      "sha256": "cedc02aae218408e18abefdb05cd35a412712dc1c846858dfd0ec294375457b8"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v121Registry.generated.js",
+      "sha256": "18c6b3699ae623a27c9080bf0f5b6b18f57f3e9803f75a1b2bce123c5fc59c29"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v122Canonical.js",
+      "sha256": "8b03a4fed6a602085d97d0a0fe5151dbdbcb8c58ecb84bd0438f97b501a1ca72"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v122EdgeBundle.js",
+      "sha256": "040e04160e9b99e4a133dd19ad3a53d37bcf8038568e20ba7fe872d3208c8b12"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v122InitialSubject.js",
+      "sha256": "c3af48f227030f83f4281b917bfdd0a368a755f3b21e84fa8e1468b051b9a915"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v122Mandates.js",
+      "sha256": "1968191bdfae6b3ef5a47a8a821c73be6ca6cb089ffcbf15a47460c67ae6c4cb"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v122MultiWorld.js",
+      "sha256": "8d0aed619744aab009e5785fe75b7cb53563f773f73b38ba08c440f7319f06f1"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v122PrivateWorld.js",
+      "sha256": "9b10dd58ee023cb0a86e0cc5e7d838c6cb904c716946bf104afa99f3657074da"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v122Registry.generated.js",
+      "sha256": "12e6d5c15216fda6a0f1e55a192eb01162d134765d1038dc5e5ccdaf4066809f"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v122RemoteSubjects.js",
+      "sha256": "c42470a44a5fbc0d020c00fa4b5759db5e61529682ae1e6b869b5ab1503bcd16"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v122RemoteWorld.js",
+      "sha256": "0585635d93ba9dd53ce8f584f5e2ba4d367c4ad06b60493074bca8c3292857da"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v122SubjectAccess.js",
+      "sha256": "ac51d6044145322152f9cb74b47338adad0a327ae98344e815b23ef86ad1aef8"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v122Subjects.js",
+      "sha256": "770dc6b7a32a3e161cdf9dd903f0e6b0e848c52280fe343fbcf507af5ef0dde7"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v122Transactions.js",
+      "sha256": "a175f281e72d710ce0e97d94ad0e988dd31c10323b4c9643c056bfc768c1cce6"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v122Value.js",
+      "sha256": "88c4566103c5fe9afb4be99cab9275b8f39a175fe46886e12de314ba4d8aeb4a"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v122WorldAccess.js",
+      "sha256": "cfa679c4c8df58d000f35220177f71253a917d22e6ab67cc6e05536d3bcca68f"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v123Namespaces.js",
+      "sha256": "a38fe270a0de9837c6da45e494ea15a75d58dee4cb4a44eb305ceae43c75a6ad"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v123ProofAuthority.js",
+      "sha256": "d2cebc9dc6483b40f4e5d66a18593266d7b0963f806f6fa64e90a9fff724142d"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v123Registry.generated.js",
+      "sha256": "15c17cbc168d4531b37e4debad02384e26406d50590e9da1eb57239ec19776ef"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v123ValueExecution.js",
+      "sha256": "ccdcdeac2b01c685c90d65b319a526dc7e5c715993c59f9a550110e324c4ee2e"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v1241Capabilities.js",
+      "sha256": "0f591eb00d08a3505d8763a88b4bce63212a41f233c6c3d303bf18930f2e9c6f"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124AuthenticatedRuntime.js",
+      "sha256": "a7cf52815c527f6c27bf597b5ff72a488f791d9d418bdfdfb33243ac02b5de1d"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124Contracts.js",
+      "sha256": "beef1c1570981c3691c760860c01ba1cbac35ddc54b857c3f9df70bf429659ad"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124Domains.js",
+      "sha256": "30d7d5e43076e1c8036037b67801bfba7903d34692e861a58ddc21c5594541cc"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124Execution.js",
+      "sha256": "cab10a4e8aff3f027355909e3b93fce73f16c23d84bd37fd47c22250a1aedc63"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124Kai.js",
+      "sha256": "ea4bed2439fe46e2e67f2d25c0bf6d79667a5cfed08b43e57ba5a032083e7bed"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124KaiBridge.generated.js",
+      "sha256": "7410f99d63f7f563b7aa1242aa2b7ec2e6273374bd2a02a5b2a2b524e1bcc337"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124LocatorBoundValue.js",
+      "sha256": "d0db0867f091bd91a72de5b2e1d9640d44e19a2654f242aab1467839148ec210"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124Namespaces.js",
+      "sha256": "24498ee71000b5b383c5effc3aa7f8f86c0cec96ba4ad54f87900f8d68c5f3d8"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124PortableAuthority.js",
+      "sha256": "ea77f5176146e82e463bd52329b8ae76312a089377021fbb78e0d2272f5e117c"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124ProofAuthorityChallenge.js",
+      "sha256": "a10fa58f0b24c2ec95050c415b678c8b2476566ac289737090420edc4f0510e1"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124Recipient.js",
+      "sha256": "212c9696643b4b236f91e40dfcd489d2b536b6e975a0a213bb82fbf1809d1347"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124Registry.generated.js",
+      "sha256": "fd09edff69469452779c9891e6c23b8e72068fc8f4cb435f74109bd399bf1bcb"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124Replay.js",
+      "sha256": "c77d827d1855cb23d3cb80fe58bc9f05b389da1f864825514ce1fba53b921980"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124ReplayProofObject.js",
+      "sha256": "41c6f1bfdbadd08f198a98e73aabde5610a14675c88fca5e2d42b1bb93d5e976"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124Runtime.js",
+      "sha256": "4654ba0293e1cac89817f5567c05ad2ea8e8ccfbd12cc76d3909f9aab6aa6556"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124Sources.js",
+      "sha256": "64f71b4106bfeb1a7821ab9f7e127805f321fba0e2e7a399fb608e5c1a3878cf"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124TransportBinding.js",
+      "sha256": "818e4f31199b3059f7b0843b4d1e65de5e079a7918cfa3b5d68b75e2d2fc8b2d"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v124WorldComposite.js",
+      "sha256": "cb669e7aa01cee014c7f1dbaecd423cc939da6c8461ea0ff2d45b7cf9d373d0f"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125ArtifactBinding.js",
+      "sha256": "d2b26efba09b7b391e74db2d8a035cca35b605ef5fd4f190a1cf95864c274d08"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125Attestation.js",
+      "sha256": "5c650c2802de5f5eb0943aabf24388fea354f6ecba0a8572af4fae82dc03dd8f"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125AttestationAuthority.js",
+      "sha256": "718926c2027f3533769468568ffbbbc8ff432a6364709c99b18afb977bdf11e9"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125AttestationSchemas.js",
+      "sha256": "a02a96d7b6d69a462efdb41bb7eacaf3482c5b74cced10c2c2d81eea9aec4a05"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125AuthorityFlow.js",
+      "sha256": "4c88f480c0f96e7b8f4dcc917ca30d25be7a92aaa679464864bacb6bee116fb7"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125Capabilities.js",
+      "sha256": "57b5eb673e2947847ff70088bbc448cb01300b8a381104dababa3c8fa1bc71b5"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125ConversationClosureRegistry.generated.js",
+      "sha256": "f6add821e8f0a9c5649804b72e8745d510a32a6ad7c679d26374eb95a75538b7"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125Credential.js",
+      "sha256": "aaecf1ed9988e714ddf9a0e05c9219d5e853624a993ba6c851e25b7e067137c2"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125CredentialPresentation.js",
+      "sha256": "0bd0c88c2333e60aa2d6efd99e7b1295a973be3d0f5b32c36ea368ddbe3f4164"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125EdgeValue.js",
+      "sha256": "b1b539b51efd60e6cc570726b2ebaaabfa2265ec208ff040b90a5411cfbb2547"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125ExternalExecution.js",
+      "sha256": "bc9b52c7fb76ee3b39b7017516ec53c6775e19a6623c0bcd324b6403c4b2bc90"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125InitialSource.js",
+      "sha256": "89264d409ea60d17a457f5ace4a7483c0df06d350b7167493e0ac6ee3ce59d58"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125InitialTemporalSource.js",
+      "sha256": "11d2f33aa63954ffe11e2852eb2dc60eb77e1840de5f4c34759724e72fded3bf"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125KaiAuthority.js",
+      "sha256": "f454be89e630363544e0f1010e3ca9d6d248dca66296d3d85a60afbb3b9ed704"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125LawfulAction.js",
+      "sha256": "a5f22188f4473458959709a1d155789cc9f27b9f82df460283450f7ebd273f69"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125LawfulActionClient.js",
+      "sha256": "75d72b903456244087038b7ab275f92faadd818fb44302790d5142eaacf78683"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125LawfulActionSchemas.js",
+      "sha256": "9ed5c307daee2b9f78e3fd9f0745583d2a83eb84001291f1a2ed9c31f59433fc"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125LawfulDelivery.js",
+      "sha256": "452c675946699dc5d372ae2101cb67ecdb563b1bfda960a5701ebc15a089e1c8"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125PbiCeremony.js",
+      "sha256": "0b821b56ba21815080a8be9d0a2dbfa1317f968850d8d244715f8125d1f6d94d"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125PbiSourceVerifier.js",
+      "sha256": "dcfc722f1bc4f5c65a3ef3a0a9dd06a39a613346f09cef4f89f0128bb4a41927"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125Registry.generated.js",
+      "sha256": "4cbfc00b626a100ea19c647d1804c7464ddc3ae70fdacadf0295190325c12fe7"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125SealedLifecycle.js",
+      "sha256": "3fb7e32d9c9cc6252133095d008ddcde01c0abe16613117dd20e870edf2bc7e0"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125SubjectCoordination.js",
+      "sha256": "0fcfd8021841b8159d024837303f9d0b1c0b9bf9487f4989ff2ca3e938996f1e"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125SubjectMessageSource.js",
+      "sha256": "51076d11594f33a275dc68677ac3b7b2008e75543fff49d447c8446ab92b2f52"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125SubjectSource.js",
+      "sha256": "03c6d2a388dcf5f3e8910c320f7db2d6e01cac8f3b554448e0b6682981fd51f8"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125SubjectSourceFamily.js",
+      "sha256": "f437c727af2177923a79e49ae2e598fad00da0fa5aa75693135e787c36b4401f"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125SubjectThreadSource.js",
+      "sha256": "f41abb38ea592463299fd1ec71545d6130a262233e88c6aba54d2966b74748cd"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125TemporalAuthorityConformance.js",
+      "sha256": "c4f9922665701eabcd1dfd4c972d82a051b86eb94f1e638e67d8f195ff348686"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v125TemporalAuthorityConformanceVector.js",
+      "sha256": "b7bcebb29378a06358224d3b45a3b0bda8ae632877f0a4cd85d51fd26824915c"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v126Registry.generated.js",
+      "sha256": "2fe0dd499a09ac7f28da1be118ed4ee8891d1156b0bf8f8d0659ff893602dcc4"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v127Registry.generated.js",
+      "sha256": "6620b141d16e90c4f0fec579e7f7cd83eb0d58802bfdb51220f4c8ea74e6e687"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/v127SubjectRuntimeAdapter.js",
+      "sha256": "a0a871b5f7f704def396ee2fffc7f7e6f71caaac3b50420b8aa46d209f2239a8"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/valuation.js",
+      "sha256": "c570f3d20e274d6bee36ab0d0e4f9c39487e744b1b0bc80af1798d330347694a"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/verificationLimits.js",
+      "sha256": "a0c9e6d542d54d79e3c270fdd8c0283023c6ad5ae0ad47eb5b2d66f2a9743374"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/verifier/canonical.js",
+      "sha256": "a87801927d652cf8974962d7d07834ef2862be4814bf42c223b14397a026fbde"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/verifier/canonicalImplementation.js",
+      "sha256": "63d134898b8030c8ffe61918810d44791f4c52d4b7736cff2eddd7465e79490a"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/verifier/canonicalSyntax.js",
+      "sha256": "e3f59f7f0f3741d71305247f90137ce8aa35dd7e16deac64c4ae5e1b365793cd"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/verifier/crypto.js",
+      "sha256": "5d79dde555a4aaaa45929ffbc1c182c4b556f8af775f3ff4928c61bd8ab9ec16"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/verifier/documentSealVerificationKey.js",
+      "sha256": "2fd00566f3180b3dcc4a532f75bcade3b0b1c30a994124b5175b72975704cdc9"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/verifier/groth16.js",
+      "sha256": "2036aa73c3e9309296e656baa2a1d0c544adaa2bdc769c1b2c968b82162c91d6"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/verifier/index.js",
+      "sha256": "d751d8e186fd57ecb25351698e2b4f757749427cef9275faee5146c03264504c"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/verifier/roots.js",
+      "sha256": "d25b8eaac1f0344a512046d29fd10c027346ee033c89cd7a1c728854e1ddac19"
+    },
+    {
+      "path": "node_modules/@receiz/sdk/dist/verifier/signatureV4.js",
+      "sha256": "c9ecad36aa808d9f2a603b9786cb151d6ef755707bd4f28143b9a2318bbc40f9"
+    },
+    {
+      "path": "node_modules/ffjavascript/build/browser.esm.js",
+      "sha256": "0a383967e6341c194c9ce348476756559cdcf21aea4eac944a023f5e79fac1d8"
+    },
+    {
+      "path": "node_modules/fflate/esm/browser.js",
+      "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1"
+    },
+    {
+      "path": "node_modules/hash-wasm/dist/index.esm.js",
+      "sha256": "2d6333a619d7f64adc313a38732425fc0c6f0baaa36c1419cf05672bcd89340d"
+    },
+    {
+      "path": "node_modules/snarkjs/build/browser.esm.js",
+      "sha256": "aa06a6c132fd50ed658b558f5273c339fd58a0f51f6f201ad9320aebbcb28c3e"
+    },
+    {
+      "path": "package.json",
+      "sha256": "1838a976f5dc39c0f112e53b6f5dd099ebf65a5d8ba391e37b5530436ba7fc3b"
+    },
+    {
+      "path": "public/native/offline-notes.v129.manifest.json",
+      "sha256": "a6fe2b9bbb1d8b9fc3046aee3e184f93069d4c4bb1d933c03dc7320354fa9c6e"
+    },
+    {
+      "path": "public/native/offline-notes.v129.mjs",
+      "sha256": "d61ed926bacbff5dd64e0c4ab240376b831263f1360864248517547059ef410e"
+    },
+    {
+      "path": "public/native/vault.v1.manifest.json",
+      "sha256": "b28052d46381b92de709d3d7821fb23424741a25927642c51ec63fe508439d02"
+    },
+    {
+      "path": "public/native/vault.v1.mjs",
+      "sha256": "cd1904c24e517309d4f55611562618feb652609195da72a91e628b1950bd1cb2"
+    },
+    {
+      "path": "src/receiz/client.ts",
+      "sha256": "7ee753c1af1b4e955020412109f7fec7e5190afb89e6bbd64559247867ae0433"
+    },
+    {
+      "path": "src/receiz/config.ts",
+      "sha256": "878e307e7761890bea38e6b695f168420301d3042b7e7a610565de64c1dfb44f"
+    },
+    {
+      "path": "src/receiz/ledger-causal-source.ts",
+      "sha256": "23414a668d2ba48b52648761a16e81a85175e8fc2f769319eb323faf2c9aff46"
+    },
+    {
+      "path": "src/receiz/ledger-proof-history.ts",
+      "sha256": "50e7d32ff878b8561b9ffc3654e9a40ce193508878c04d75dbb8197b9fdb0754"
+    },
+    {
+      "path": "src/receiz/ledger-source-payload.ts",
+      "sha256": "52fc374852512ae0e0a7b6a80bf3a37994ef550e0e4bdfec57f562c86d61e052"
+    },
+    {
+      "path": "src/receiz/native-asset-backing.ts",
+      "sha256": "2072541adec6d020a27b2ccd3892907282c68bf69a1a65b982f0fd633d59c70e"
+    },
+    {
+      "path": "src/receiz/native-asset-protocol.ts",
+      "sha256": "64087c47862257e916c312451c17ad4ef34f6adc5979aeab7be2de992d4f140e"
+    },
+    {
+      "path": "src/receiz/native-asset-signature.ts",
+      "sha256": "6715ec3c36bd866a1b0edb2fba379a14be579227164f2fc765991d827c6425a3"
+    },
+    {
+      "path": "src/receiz/native-asset.ts",
+      "sha256": "8447cd5e06db635559263314f2d3891dea453d0ab24ae2d6620bf3c0e720c734"
+    },
+    {
+      "path": "src/receiz/native-chat-paths.ts",
+      "sha256": "d05d21c6b43ea198b2cdf9148dd5a8cacd4b8b3344d5892c75c148ca47047f8b"
+    },
+    {
+      "path": "src/receiz/native-execution-paths.ts",
+      "sha256": "3807bdd014f197380e8b1e651f8515571853f31d2cc1ebddd19754f11ba776b6"
+    },
+    {
+      "path": "src/receiz/native-payment-protocol.ts",
+      "sha256": "eddebc2c4baec6e1e2dda601e7aafbd1633cc6c292bc22a441fe652188aaeecc"
+    },
+    {
+      "path": "src/receiz/native-payment-signature.ts",
+      "sha256": "6a1c41c6283c16636ac07480db53077ea06cdd495edac8e330a172d9f71c7172"
+    },
+    {
+      "path": "src/receiz/native-payment.ts",
+      "sha256": "c260d378845489f6dc13493baaf03f6d6a9060eb5f20f1d785cc8df78ef12d29"
+    },
+    {
+      "path": "src/receiz/native-transport.ts",
+      "sha256": "d9b2ae0d9ecea1e892a4157df24f1f8c12e601468718b7e6a61b654727b463ce"
+    },
+    {
+      "path": "src/receiz/note-artwork.ts",
+      "sha256": "209116c7d0c7401fff2c0973266a2a95777a2d3bbde1123eede3418c75ba8374"
+    },
+    {
+      "path": "src/receiz/note-design.ts",
+      "sha256": "faf5c1e40e279a6e17cd931d23d3610b6b631408590b310d8020f722e5aa47d5"
+    },
+    {
+      "path": "src/receiz/note-funding.ts",
+      "sha256": "7f418387b96806298768a43fc23144a390b10bc5c6520a8b666e93db17a5e9e1"
+    },
+    {
+      "path": "src/receiz/note-png.ts",
+      "sha256": "5139f0ff5e4e6560f6852e011c3055b55cee077d9d82fccbef55866d88c4ac21"
+    },
+    {
+      "path": "src/receiz/offline-notes.ts",
+      "sha256": "e73156feed93d8ec54a58c6be693388b66249c62465d060f8aed55612c5568bd"
+    },
+    {
+      "path": "src/receiz/original-capacity.ts",
+      "sha256": "a802a7f368ac12e29fc9e2f5f6033d7d5f3d7baee5c2d4f534c9d3d7487a93c0"
+    },
+    {
+      "path": "src/receiz/payment-qr.ts",
+      "sha256": "e8995f2eece36d438c6353cbf1839f952f476fd8df8c0755bb2b0ab143217800"
+    },
+    {
+      "path": "src/receiz/people-search.ts",
+      "sha256": "2a3855068f28f074bfce3ab5da34083cf86b4e809e28bc03059f9d25789ad3df"
+    },
+    {
+      "path": "src/receiz/vault/admit.ts",
+      "sha256": "5dbd0750ba0a112809e4b2f798600cff207321a4afbcfef489f375f26af8969e"
+    },
+    {
+      "path": "src/receiz/vault/artwork.ts",
+      "sha256": "232d2bcf11fc717a90da62ea580b5943a46401842fd96271cbb090c0a6e37e95"
+    },
+    {
+      "path": "src/receiz/vault/assets.ts",
+      "sha256": "57d2cb2884747c1c2e34051dac7c6dc52b800c10f69f55d2b73d68c7acbf81de"
+    },
+    {
+      "path": "src/receiz/vault/carrier.ts",
+      "sha256": "3a418a44f147ea2d40d55b096899255afb06e0f82ebd38a8931e82aa2729bd27"
+    },
+    {
+      "path": "src/receiz/vault/custody.ts",
+      "sha256": "3ba2c5f70feb96fd0d32bd845da79967876863d91c074beb273374c24a2e33b8"
+    },
+    {
+      "path": "src/receiz/vault/disclose.ts",
+      "sha256": "2620f9f44c1730d856c62816abdb34e04860671819c14a7bf5a31c1cd8b941d1"
+    },
+    {
+      "path": "src/receiz/vault/encoding.ts",
+      "sha256": "2221006640ebd7cc968238dcdda00bf36c5e5d5f3b9055a7425fd52ba7dc9794"
+    },
+    {
+      "path": "src/receiz/vault/encryption.ts",
+      "sha256": "699eebdd92c7041535223668b67b228878a7da5e0953c5c564d74ae657579bfd"
+    },
+    {
+      "path": "src/receiz/vault/export.ts",
+      "sha256": "d21b1470d03058af3edb78b9330e31cc45a9ed59741731b6dc538a62a0c75df0"
+    },
+    {
+      "path": "src/receiz/vault/inspect.ts",
+      "sha256": "c3ee47554f40775e7ccd21c4237d852a3f4d602033d7f274802772a35b68de9f"
+    },
+    {
+      "path": "src/receiz/vault/journal.ts",
+      "sha256": "698737fa737ab4c744d545e3b88c4f58b1dd791431419b04dbcdfad29f33690e"
+    },
+    {
+      "path": "src/receiz/vault/market.ts",
+      "sha256": "19897a37405ca90cfc56aa4856e93a9c5cc10966bbb7dad483fe8d9f33fcbf26"
+    },
+    {
+      "path": "src/receiz/vault/money-public.ts",
+      "sha256": "931dd8dfd5428400d1bc476a2a93e5c36ede95d1224d57cc1120c032d7eb8415"
+    },
+    {
+      "path": "src/receiz/vault/money-source.ts",
+      "sha256": "cc4a380f73d3ca87578496190e7851699ea89b44f063266fab62dfa91c6cfc9a"
+    },
+    {
+      "path": "src/receiz/vault/money.ts",
+      "sha256": "240b176efe588184567499b3243d0870917cd62c97ee8ac6343186846abc44b8"
+    },
+    {
+      "path": "src/receiz/vault/public-record.ts",
+      "sha256": "a7ee5108b64f499016b1fb86addb72436222f1895875e467a1f866d93f3ece9b"
+    },
+    {
+      "path": "src/receiz/vault/runtime.ts",
+      "sha256": "78f1215007d0405615234313a6e2676bb6101855cdb47813e4e5803c036b5849"
+    },
+    {
+      "path": "src/receiz/vault/source.ts",
+      "sha256": "67c386af660166004d29c2b2538eda573c791669fb8625cdc3e0770ff2ed3ef6"
+    }
+  ],
+  "files": {
+    "inspector.js": {
+      "sha256": "8486b3c878dcd6becc9587c1fa4a3d1465dccb88040ee527ea69a165b2f8bcf2",
+      "bytes": 7275012
+    },
+    "inspector.js.map": {
+      "sha256": "0264f08cc4631a5548107e42aa1faafbacedcafc7af92d915a6b584804c876ee",
+      "bytes": 18965994
+    },
+    "verify.mjs": {
+      "sha256": "651f040833c87512c9b336be97c80497747ec9eb503a30dd098bdcac6a48905f",
+      "bytes": 854
+    },
+    "verify.html": {
+      "sha256": "9f18c00583575134b61848cdee386e43b09e92629547f302cbe26f6983e240f6",
+      "bytes": 7278220
+    },
+    "README.txt": {
+      "sha256": "1a17e322029bd496e05b2e9d641c032e2a2daf3ef8fcd60eb977c6d09e7379b7",
+      "bytes": 1801
+    },
+    "vault-private.schema.json": {
+      "sha256": "602bd151a7f113599b683f946e4465116e02882500420f13e6d449081e62655e",
+      "bytes": 4487
+    },
+    "vault-public.schema.json": {
+      "sha256": "4afb54e7866f1ebda030497ccc321afdd79347fe1ac0553c30214713af61eca0",
+      "bytes": 2740
+    },
+    "licenses/README.md": {
+      "sha256": "77dd1c470ece44de36545ddfa713f2669a9b79de4e8b7efdfdf43fd4e4bc114e",
+      "bytes": 753
+    },
+    "licenses/ffjavascript-0.3.1-GPL-3.0.txt": {
+      "sha256": "d95c74a62d14f13ebfbc8c1783c315e2ed2389e80048b264bdeddb8114dee945",
+      "bytes": 35130
+    },
+    "licenses/fflate-0.8.3-MIT.txt": {
+      "sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551",
+      "bytes": 1069
+    },
+    "licenses/hash-wasm-4.12.0-MIT.txt": {
+      "sha256": "c14dea172f72f2714284a0ac2ab1b00b5352a01409d58255a46227ffc541debd",
+      "bytes": 1630
+    },
+    "licenses/jszip-3.10.1-MIT-or-GPL-3.0.txt": {
+      "sha256": "566c953c6090b1218ca6217dd7359d45dde46581968586dc607d59a78af6a9c4",
+      "bytes": 33753
+    },
+    "licenses/noble-curves-2.3.0-MIT.txt": {
+      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
+      "bytes": 1109
+    },
+    "licenses/noble-hashes-2.3.0-MIT.txt": {
+      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
+      "bytes": 1109
+    },
+    "licenses/react-19.2.8-MIT.txt": {
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
+      "bytes": 1088
+    },
+    "licenses/snarkjs-0.7.6-GPL-3.0.txt": {
+      "sha256": "d95c74a62d14f13ebfbc8c1783c315e2ed2389e80048b264bdeddb8114dee945",
+      "bytes": 35130
+    },
+    "licenses/wasmbuilder-0.0.16-GPL-3.0.txt": {
+      "sha256": "589ed823e9a84c56feb95ac58e7cf384626b9cbf4fda2a907bc36e103de1bad2",
+      "bytes": 35141
+    },
+    "licenses/wasmcurves-0.2.2-GPL-3.0.txt": {
+      "sha256": "d95c74a62d14f13ebfbc8c1783c315e2ed2389e80048b264bdeddb8114dee945",
+      "bytes": 35130
+    },
+    "LICENSE": {
+      "sha256": "fb981668c18a279e285fc4d83fba1e836cc84dd4daa73c9697d3cfd2d8aca6e0",
+      "bytes": 34674
+    },
+    "NOTICE": {
+      "sha256": "50d125057abbd523ddabf9f9f7a7fdaa3c7daa48fcff188cb32beadfc031a093",
+      "bytes": 1176
+    },
+    "THIRD_PARTY_NOTICES.md": {
+      "sha256": "a44cd6dab63dc383d1e63c89955bde482a3cedb80fa9c6650a69135eb8ae8dbd",
+      "bytes": 5864
+    }
+  }
+}

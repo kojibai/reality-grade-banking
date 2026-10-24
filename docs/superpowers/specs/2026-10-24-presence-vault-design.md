@@ -2,6 +2,12 @@
 
 ## Scope amendment: deposits, assets, direct sending and independent proof
 
+### Public Vault page and scannable image
+
+The user additionally requires investment holdings themselves in custody and a tasteful QR on the shareable Vault image. The QR is a short public Vault URL that a phone camera or photo-library QR reader can open. That page displays the deliberately disclosed contents, verified owner and exact source evidence. Its public original is downloadable and independently inspectable. A URL, QR, screenshot or public image grants viewing only, never identity recovery or spending authority.
+
+The same page offers the owner an explicit private entry: open the private Vault original and authenticate with its qualified passkey. Protected controls appear only after canonical identity/custody/source admission; public evidence cannot satisfy that entry. The private saved file and public share image remain separate exports, even when they use the same page. Publication requires explicit disclosure consent; an unshared private original must not silently publish holdings. QR artwork must keep a clear quiet zone and sufficient contrast/size, and be verified by an actual decoder from the exported image. A recorded public proof retains its sealed scope and cannot silently claim no later change; live public updates require an explicit source-bound publication continuation.
+
 After approving the initial money-Vault design, the user expanded the required finish:
 
 - Open a Vault and add more money from balance or card.
@@ -152,3 +158,13 @@ Launch money-Vault copy only with passing end-to-end funding, recovery and retur
 ## Builder decisions
 
 Use the existing React/Vite application, lazy-loaded feature code and existing money controls. Implement on Bank main within the user's established workflow and leave pushing to the user. No production payments, passkey enrollment, account rebindings, database migrations or live deployment are part of an automated test run. Start with money Vaults; arbitrary document storage is a separate scope, and public copy must reflect that.
+
+## Approved access amendment — 2026-10-24
+
+The owner's latest direction supersedes the earlier PBI-required and money-only boundaries above. PBI is always optional. The private Vault original may itself be the sole credential. An owner may instead choose PBI protection so both the private original and its authorized passkey are needed. Never silently remove protection from an existing PBI-protected original. Image-only custody is explicitly private bearer custody: possession grants access to that Vault. It must never be described as theft-resistant encryption.
+
+The private Vault original carries isolated Vault authority, complete admitted value sources and exact recovery state. It does not carry the owner's ordinary account Identity Record, signing key or recovery phrase. Opening a Vault does not sign into or grant access to the owner's ordinary account. The original owner is established by the contained native custody relation. Adding value from an ordinary balance/card still requires that account's separate authority. Public share images and QR locators remain view-only and never private-opening inputs.
+
+The public record image has a scannable QR for the exact immutable disclosed record at `/vault/<vault-id>/?proof=<digest>`. The same public page offers private original opening as an explicit action. Public owner and selected value details are derived from admitted public witnesses, not typed-in ownership claims. Saved evidence records its own coordinate; it does not claim to know later consumption on another device.
+
+Optional PBI account entry is separate. Make only the existing fingerprint artwork on the entry page interactive, invoking the existing account PBI ceremony for recovery or native creation. Preserve the icon's appearance, all entry text, layout and the primary Enter action. Add no visible text or extra entry element. Existing multiple passkeys use the device's account chooser. Account recovery must return the source-proven original account, not create a substitute from session metadata. Normal Enter and Identity Record import are unchanged and do no additional PBI work.

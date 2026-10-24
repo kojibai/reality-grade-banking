@@ -1,6 +1,6 @@
 import {clearNotificationUrl,notificationFromUrl,notificationTarget,type NotificationTarget} from './pwa/notification-target';
 import {publishAccountAppearance} from './receiz/account-appearance';
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 import {bankTwinContextRecords} from './receiz/twin-bank-context';
 import {mergePublicRecords} from './receiz/public-network';
@@ -32,12 +32,15 @@ import { CardDepositReturn, readCardReturn, readCardResume } from './features/de
 import {PublicAssetTradePortal} from './features/market/PublicAssetTradePortal';
 import {PublicProfilePortal} from './features/account/PublicProfilePortal';
 import {consumeProfileAccountAction,readProfileAccountAction,subscribeProfileActions} from './receiz/profile-actions';
+import {vaultLocation} from './receiz/vault/location';
+const VaultPage=lazy(()=>import('./features/vault/VaultPage').then(module=>({default:module.VaultPage})));
 export default function App() {
  const [receipt,setReceipt]=useState(location.pathname==='/receipt/'?location.href:null);
- const bankMounted=useRef(!receipt);
- useEffect(()=>{const changed=()=>{setReceipt(location.pathname==='/receipt/'&&!document.getElementById('root')?.hidden?location.href:null);if(location.pathname==='/')bankMounted.current=true;};addEventListener('popstate',changed);addEventListener('bankeiz:receipt',changed);addEventListener('receiz-bank:surface',changed);return()=>{removeEventListener('popstate',changed);removeEventListener('bankeiz:receipt',changed);removeEventListener('receiz-bank:surface',changed);};},[]);
+ const [vault,setVault]=useState(()=>vaultLocation(location.href));
+ const bankMounted=useRef(!receipt&&!vault);
+ useEffect(()=>{const changed=()=>{setReceipt(location.pathname==='/receipt/'&&!document.getElementById('root')?.hidden?location.href:null);setVault(vaultLocation(location.href));if(location.pathname==='/')bankMounted.current=true;};addEventListener('popstate',changed);addEventListener('bankeiz:receipt',changed);addEventListener('receiz-bank:surface',changed);return()=>{removeEventListener('popstate',changed);removeEventListener('bankeiz:receipt',changed);removeEventListener('receiz-bank:surface',changed);};},[]);
  const session=readCardReturn(location.search);
- return <>{(bankMounted.current||!receipt)&&<div hidden={!!receipt} inert={!!receipt}>{session?<CardDepositReturn sessionId={session}/>:<BankApp/>}</div>}{receipt&&document.body.dataset.bankSurface!=='receipt'&&<ReceiptView key={receipt} onBack={()=>{if(history.state?.bankReceipt)history.back();else{history.replaceState(null,'','/#ledger');dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));}}}/>}</>;
+ return <>{(bankMounted.current||!receipt&&!vault)&&<div hidden={!!receipt||!!vault} inert={!!receipt||!!vault}>{session?<CardDepositReturn sessionId={session}/>:<BankApp/>}</div>}{vault&&<Suspense fallback={<main className="vault-loading" role="status">Opening the record…</main>}><VaultPage route={vault}/></Suspense>}{receipt&&document.body.dataset.bankSurface!=='receipt'&&<ReceiptView key={receipt} onBack={()=>{if(history.state?.bankReceipt)history.back();else{history.replaceState(null,'','/#ledger');dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));}}}/>}</>;
 }
 const EMPTY_MARKET_ITEMS:import('./receiz/public-market').PublicMarketItem[]=[];
 function BankApp() {
@@ -81,7 +84,7 @@ function BankApp() {
     setPanel('account');setSheet(action);history.replaceState({panel:'account',sheet:action},'',routeHash('account',action));consumeProfileAccountAction(id);
   },[onBank,account.identity,profileAction]);
   if (!account.identity) {
-    return <><PublicProfilePortal identity={null} userId={null}/><PublicAssetTradePortal account={account} fallback={<Entrance opening={account.opening} openingStage={account.openingStage} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId}/>}/></>;
+    return <><PublicProfilePortal identity={null} userId={null}/><PublicAssetTradePortal account={account} fallback={<Entrance opening={account.opening} openingStage={account.openingStage} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId} onPbi={account.pbi}/>}/></>;
   }
   return <><PublicProfilePortal identity={account.identity} userId={account.wallet?.userId??account.identity.walletReceivingAddress?.()??null}/><PublicAssetTradePortal account={account}/><ConsoleShell identityImage={identityImage} active={onBank} panel={panel} onNavigate={navigate} onDeposit={() => open({ kind: 'deposit' })} onProfile={() => open({ kind: 'profile' })} onMessages={()=>open({kind:'messages'})}>
     <div hidden={panel !== 'account'}><LiveAccount portfolio={investments.data} marketItems={publicMarket.catalog?.items??EMPTY_MARKET_ITEMS} receivedNotes={account.receivedNotes} walletHistory={account.walletHistory} historyComplete={account.historyComplete} showcase={showcase} wallet={account.wallet} busy={account.busy} error={account.error} observedAt={account.observedAt} onRefresh={() => void account.refresh()} onSend={() => open({ kind: 'send' })} onReceive={() => open({ kind: 'receive' })} onBalance={() => open({ kind: 'balance' })} onAssets={() => navigate('assets')} onInvestments={() => { positions.current.assets=0; navigate('assets'); }} onLedger={() => navigate('ledger')} /></div>

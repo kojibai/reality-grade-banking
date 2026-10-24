@@ -1,0 +1,8 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Identity passkey visual fixture</title></head><body><div id="root"></div><script type="module">
+import React from 'react';import{createRoot}from'react-dom/client';
+import{IdentityProfile}from'/src/features/account/IdentityProfile.tsx';
+import'/src/styles/tokens.css';import'/src/styles/app.css';import'/src/styles/features.css';
+const identity={username:'held_account',binding:{keyId:'synthetic-local-key',publicKeyRawB64u:'synthetic-public',identityOwnerReceizId:'synthetic-original-device'},needsPhrase:false};
+window.fixtureIdentity=identity;
+createRoot(document.querySelector('#root')).render(React.createElement('div',{className:'console'},React.createElement('main',{className:'main-panel',style:{maxWidth:430,margin:'auto',paddingTop:36}},React.createElement('h1',{style:{fontSize:22,marginBottom:25}},'Identity'),React.createElement(IdentityProfile,{identity,onForget:async()=>{},onRefresh:()=>{}}))));
+</script></body></html>

@@ -8,6 +8,7 @@ import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const fixedResources = [
+  '/native/vault.v1.mjs', '/native/vault.v1.manifest.json',
   '/snarkjs.min.js',
   '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png',
   '/zk/document-seal.wasm', '/zk/document-seal.zkey', '/zk/kai-sigil.wasm', '/zk/kai-sigil.zkey',
@@ -36,6 +37,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     for (const dependency of [...entry.imports ?? [], ...entry.dynamicImports ?? []]) visit(dependency);
   }
   visit('index.html');
+  if(manifest['vault/index.html']){visit('vault/index.html');urls.add('/vault/index.html');}
   if(manifest['pay/index.html']){visit('pay/index.html');urls.add('/pay/index.html');}
   if (manifest['verify/index.html']) { visit('verify/index.html'); urls.add('/verify/'); }
   if (manifest['receipt/index.html']) {visit('receipt/index.html');urls.add('/receipt/');}
@@ -53,6 +55,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   const navigation = JSON.parse(index.match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)?.[1] ?? 'null');
   if (!navigation?.pages) throw Error('OFFLINE_FINAL_NAVIGATION_REQUIRED');
   const pages = { '/': '/index.html', '/index.html': '/index.html', '/receipt/':'/index.html' };
+  if(manifest['vault/index.html'])pages['/vault/index.html']='/vault/index.html';
   if(manifest['pay/index.html'])pages['/pay/index.html']='/pay/index.html';
   if (manifest['verify/index.html']) { pages['/verify/'] = '/verify/'; pages['/verify'] = '/verify/'; }
   if (manifest['receipt/index.html']) pages['/receipt/']='/receipt/';

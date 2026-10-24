@@ -1,0 +1,48 @@
+import {canonicalizeReceizV122 as canonical} from '../../../../packages/receiz-sdk/src/v122Canonical';
+import {receizBase64UrlDecode} from '../../../../packages/receiz-sdk/src/identity';
+import {sha256Hex} from '../../../utils/sha256';
+/** Vault-only operational ceiling. The bounded native issuer checks its exact
+ * root certificate/origin and closed canonical proof fields before mutation;
+ * it also rejects an unsupported successor instead of truncating a source. */
+export const VAULT_MONEY_PROOF_METADATA_MAX_BYTES=64*1024;
+export type VaultMoneyCapacityKind='issue-owner'|'claim-child'|'transfer'|'change-reserve'|'change-settlement';
+export type VaultMoneyCapacity=Readonly<{schema:'receiz.bank.vault-money-capacity.v1';requestSha256:string;currentNativeHead:string|null;outcomeMaxBytes:number;reservedSourceBytes:number}>;
+const bytes=(v:unknown)=>new TextEncoder().encode(canonical(v)).length,b64=(n:number)=>Math.ceil(n*4/3),h='f'.repeat(64),id='f'.repeat(36),n='9'.repeat(40),kid='\0'.repeat(256),sig='a'.repeat(180),key={keyId:h,algorithm:'P-256',publicKeyRawB64u:'a'.repeat(180)},parts={reserve:{amountUsdCents:n,amountPhiMicro:n},settlement:{amountUsdCents:n,amountPhiMicro:n}};
+export function vaultMoneyEnvelopeMaxBytes(payloadBytes:number){if(!Number.isSafeInteger(payloadBytes)||payloadBytes<0)throw Error('VAULT_MONEY_CAPACITY_INVALID');return b64(payloadBytes)+VAULT_MONEY_PROOF_METADATA_MAX_BYTES+bytes({kind:'receiz.bundle.v1',manifest:{filename:'f'.repeat(128),mime:'application/json',basisSha256:h,createdAt:Number.MAX_SAFE_INTEGER,version:1},originalBase64:'',proofbundle:{}});}
+const block=(length:number)=>b64(length)+bytes({sha256:h,exactBytesB64u:''});
+const opening=bytes({schema:'receiz.bank.connected-note.private-account.v1',operationId:h,noteId:id,accountUserId:id,keyId:h,rail:'composite',fundingParts:parts,direction:'credit',amountPhiMicro:n,amountUsdCents:n,reserveBeforeUsdCents:n,reserveAfterUsdCents:n,walletBeforePhiMicro:n,walletAfterPhiMicro:n});
+const signature={kid,alg:'Ed25519',sig,signedAtMs:Number.MAX_SAFE_INTEGER};
+const funding=bytes({schema:'receiz.bank.connected-note.funding-source.v1',funding:{schema:'receiz.bank.connected-note.funding.v1',profile:'connected-account-v1',operationId:h,noteId:id,accountUserId:id,issuer:key,noteAuthority:key,rail:'composite',fundingParts:parts,amountPhiMicro:n,amountUsdCents:n,usdPerPhiMicrocents:n,fundedAtKai:n,debitLedgerId:id,privateAccountSnapshotSha256:h},fundingSignature:signature});
+const fundingResult=(identity:string)=>bytes({schema:'bank.vault.money-note.v1',fundingSource:'',privateOpening:'',noteIdentity:identity})+b64(vaultMoneyEnvelopeMaxBytes(funding))+b64(opening);
+const issueRequest=(identity:string)=>bytes({schema:'bank.vault.money-issue-request.v1',accountUserId:id,issuerKeyId:h,authorization:{schema:'receiz.bank.connected-note.issue.v1',profile:'connected-account-v1',accountUserId:id,issuer:key,noteAuthority:key,noteId:id,clientNonce:id,rail:'composite',fundingParts:parts,amountUsdCents:n,amountPhiMicro:n,usdPerPhiMicrocents:n,quotePulse:n,expectedReserveBeforeUsdCents:n,expectedWalletBeforePhiMicro:n,issuedAtMs:Number.MAX_SAFE_INTEGER,expiresAtMs:Number.MAX_SAFE_INTEGER,operationId:h,signatureB64Url:sig},noteIdentity:identity});
+const stageOverhead=bytes({id:'r'.repeat(160),kind:'change-settlement',requestRef:h,capacity:{schema:'receiz.bank.vault-money-capacity.v1',requestSha256:h,currentNativeHead:h,outcomeMaxBytes:Number.MAX_SAFE_INTEGER,reservedSourceBytes:Number.MAX_SAFE_INTEGER},phase:'accepted',outcomeRef:h,backupDigest:h});
+function object(v:unknown):Record<string,unknown>&{prepared:{request:unknown};request:string}{if(!v||typeof v!=='object'||Array.isArray(v))throw Error('VAULT_MONEY_CAPACITY_INVALID');return v as Record<string,unknown>&{prepared:{request:unknown};request:string};}
+const decode=(b:Uint8Array)=>object(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(b)));
+/** Exact input bytes are measured; only fixed closed successor fields use their
+ * protocol maximum widths. No allocation proportional to a reserved count is
+ * performed. Every base64 layer and every separately retained private block is
+ * counted, including two future change requests/Notes and the final remainder. */
+export async function vaultMoneySourceReservation(input:Readonly<{kind:VaultMoneyCapacityKind;request:Uint8Array;originals:readonly Uint8Array[];currentNativeHead:string|null}>):Promise<VaultMoneyCapacity>{
+ const r=decode(input.request);let outcomeMaxBytes:number,future=0,remainder=0;
+ if(input.kind==='transfer'){
+  if(r.schema!=='bank.vault.money-transfer-request.v1'||!Array.isArray(r.changeNoteIdentities)||r.changeNoteIdentities.length!==2||r.changeNoteIdentities.some((v:unknown)=>typeof v!=='string'))throw Error('VAULT_MONEY_CAPACITY_INVALID');
+  const review={schema:'receiz.bank.native-payment-review.v1',request:r.prepared.request,keyId:h,planDigest:h,terms:{debitUsdCents:n,debitPhiMicro:n,creditUsdCents:n,creditPhiMicro:n,feeUsdCents:n,quantityMicro:n,assetDigest:null,recipient:'\0'.repeat(160),expiresAtKaiUPulse:Number.MAX_SAFE_INTEGER}};
+  const payment=vaultMoneyEnvelopeMaxBytes(bytes({schema:'receiz.bank.native-payment-receipt.v1',domain:'receiz.bank.native-payment.root-signature.v1',issuerRootKid:kid,review,transactionId:id,kaiUPulse:n,issuedAtKaiUPulse:n,nativeTransferSourceSha256:h,senderAfter:{balancePhiMicro:n,reserveUsdCents:n,reserveBackingPhiMicro:n},rootSignature:signature}));
+  const moneyOpening=bytes({schema:'receiz.bank.vault-money-opening.v1',nativeTransferSourceSha256:h,accountId:id,keyId:h,sourceBeforeHead:h,before:{balancePhiMicro:n,reserveUsdCents:n,reserveBackingPhiMicro:n},after:{balancePhiMicro:n,reserveUsdCents:n,reserveBackingPhiMicro:n}});
+  const moneyPayload=bytes({schema:'receiz.bank.vault-money-transition.v1',domain:'receiz.bank.vault-money-transition.root-signature.v1',issuerRootKid:kid,applicationId:'\0'.repeat(160),vaultId:'\0'.repeat(160),ownerReceizId:'\0'.repeat(160),accountId:id,keyId:h,requestId:'\0'.repeat(160),planDigest:h,nativeTransferSourceSha256:h,sourceBeforeHead:h,destinationAccountId:id,recipient:'\0'.repeat(160),rail:'settlement',amountPhiMicro:n,amountUsdCents:n,valuationUsdPerPhiMicrocents:n,debitLedgerId:id,creditLedgerId:id,acceptedAtKaiUPulse:n,issuedAtKaiUPulse:n,privateAccountSnapshotSha256:h,rootSignature:signature});
+  const source=bytes({schema:'receiz.bank.vault-money-source.v1',source:{filename:'vault-money.receizbundle',mimeType:'application/vnd.receiz.bundle+json',artifactSha256:h,exactBytesB64u:''},privateAccountOpening:''})+b64(vaultMoneyEnvelopeMaxBytes(moneyPayload))+b64(moneyOpening);
+  outcomeMaxBytes=bytes({schema:'bank.vault.money-transfer.v1',payment:{schema:'receiz.bank.native-payment-result.v1',status:'committed',source:{filename:'native-payment.receizbundle',mimeType:'application/vnd.receiz.bundle+json',artifactSha256:h,exactBytesB64u:''}},valueSource:'',requestSha256:h,request:''})+b64(payment)+b64(source)+b64(input.request.length);
+  const notes=r.changeNoteIdentities.map((v:string)=>fundingResult(v));future=r.changeNoteIdentities.reduce((sum:number,v:string,index:number)=>sum+block(issueRequest(v))+block(notes[index])+stageOverhead,0);
+  remainder=bytes({schema:'bank.vault.money-remainder.v1',transfer:'',changes:['','']})+b64(outcomeMaxBytes)+notes.reduce((sum:number,v:number)=>sum+b64(v),0);
+ }else if(input.kind==='claim-child'){
+  if(r.schema!=='bank.vault.money-claim-request.v1'||typeof r.source!=='string'||!r.claim)throw Error('VAULT_MONEY_CAPACITY_INVALID');
+  const payload=bytes({schema:'receiz.bank.connected-note.credit-source.v1',credit:{schema:'receiz.bank.connected-note.credit.v1',profile:'connected-account-v1',noteId:id,operationId:h,redemptionDigest:h,receiverUserId:id,receiverKeyId:h,rail:'composite',fundingParts:parts,amountPhiMicro:n,amountUsdCents:n,acceptedAtKai:n,creditLedgerId:id,terminalSourceSha256:h,privateAccountSnapshotSha256:h},creditSignature:signature,terminalSource:'',claim:r.claim})+r.source.length;
+  outcomeMaxBytes=bytes({schema:'bank.vault.money-credit.v1',source:'',opening:'',requestSha256:h,request:''})+b64(vaultMoneyEnvelopeMaxBytes(payload))+b64(opening)+b64(input.request.length);
+ }else{
+  if(r.schema!=='bank.vault.money-issue-request.v1'||typeof r.noteIdentity!=='string')throw Error('VAULT_MONEY_CAPACITY_INVALID');outcomeMaxBytes=fundingResult(r.noteIdentity);
+  if(input.kind!=='issue-owner'){if(!input.originals.length)throw Error('VAULT_MONEY_CAPACITY_INVALID');const transfer=decode(input.originals[0]),tr=decode(receizBase64UrlDecode(transfer.request)),identities=tr.changeNoteIdentities;if(!Array.isArray(identities)||identities.length!==2)throw Error('VAULT_MONEY_CAPACITY_INVALID');const remaining=input.kind==='change-reserve'?fundingResult(identities[1]):0;if(remaining)future=block(issueRequest(identities[1]))+block(remaining)+stageOverhead;remainder=bytes({schema:'bank.vault.money-remainder.v1',transfer:'',changes:['','']})+b64(input.originals[0].length)+b64(outcomeMaxBytes)+(input.originals[1]?b64(input.originals[1].length):remaining?b64(remaining):0);}
+ }
+ const reservedSourceBytes=block(outcomeMaxBytes)+future+(remainder?block(remainder):0)+stageOverhead+bytes({complete:true,result:'committed',notes:[h,h],nativeRef:h,revision:Number.MAX_SAFE_INTEGER});
+ if(!Number.isSafeInteger(reservedSourceBytes)||reservedSourceBytes<outcomeMaxBytes||input.currentNativeHead!==null&&!/^[a-f0-9]{64}$/u.test(input.currentNativeHead))throw Error('VAULT_MONEY_CAPACITY_INVALID');
+ return{schema:'receiz.bank.vault-money-capacity.v1',requestSha256:await sha256Hex(input.request),currentNativeHead:input.currentNativeHead,outcomeMaxBytes,reservedSourceBytes};
+}
