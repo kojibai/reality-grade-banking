@@ -32,9 +32,10 @@ export function parsePublicProfile(input:unknown,expectedUsername:string):Public
  if(rows.length>10_000)throw Error('PROFILE_PAGE_TOO_LARGE');
  const originals=rows.filter(row=>object(row).showOnProfile===true).map(value=>{
   const row=object(value),market=object(row.marketPreview),media=row.media===null?null:object(row.media),id=text(row.id,128),long=object(row.longForm);
+  if(envelope.representation==='collection-v2'&&typeof row.hasLongForm!=='boolean')throw Error('PROFILE_COLLECTION_READER_METADATA_INVALID');
   return {id:`profile:${username}:${id}`,receizId:id,title:text(row.claim,8192)??text(long.title,500)??'Original',summary:text(row.claim,8192)??'',ownerUsername:username,ownerDisplayName:displayName,
    canonicalHref:`https://receiz.com/${username}/verified/${encodeURIComponent(id??'')}`,verifyHref:row.verifyUrl??row.verifyPath,pulse:row.pulse,createdAt:row.createdAt,valueUsd:market.priceUsd,livePulseSeed:market.livePulseSeed,
-   profileOriginal:{...row,media,hasLongForm:Boolean(long.text),longForm:row.longForm}};
+   profileOriginal:{...row,media,hasLongForm:envelope.representation==='collection-v2'?row.hasLongForm:Boolean(long.text),longForm:row.longForm}};
  });
  const items=parsePublicMarket({ok:true,transport:{publicOriginals:originals}}).items.map(item=>({...item,ownerAvatarUrl:profileAvatarUrl(p.avatarUrl)}));
  const stats=object(view.stats),unavailable=Array.isArray(view.unavailableDecorators)&&view.unavailableDecorators.includes('engagement');

@@ -27,7 +27,7 @@ it('prioritizes the first covers and reveals the held collection ahead of scroll
  const fetcher=vi.spyOn(globalThis,'fetch'),profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.userId='feed-window-owner';profile.nextCursor=null;profile.items=Array.from({length:60},(_,i)=>({...profile.items[0],id:'feed-'+i}));
  element=document.createElement('div');document.body.append(element);root=createRoot(element);
  try{
-  await act(()=>root.render(<ProfileCollection profile={profile} items={profile.items} active/>));expect(element.querySelectorAll('.profile-asset')).toHaveLength(24);expect([...element.querySelectorAll('.profile-asset-cover img')].map(img=>img.getAttribute('loading'))).toEqual([...Array(4).fill('eager'),...Array(20).fill('lazy')]);
+  await act(()=>root.render(<ProfileCollection profile={profile} items={profile.items} active/>));expect(element.querySelectorAll('.profile-asset')).toHaveLength(24);expect([...element.querySelectorAll('.profile-asset-cover img')].map(img=>img.getAttribute('loading'))).toEqual([...Array(2).fill('eager'),...Array(22).fill('lazy')]);
   await act(()=>intersect([{isIntersecting:true}]));expect(element.querySelectorAll('.profile-asset')).toHaveLength(48);expect(fetcher).not.toHaveBeenCalled();
   await act(()=>intersect([{isIntersecting:true}]));expect(element.querySelectorAll('.profile-asset')).toHaveLength(60);expect(element.querySelector('.profile-load-more')).toBeNull();
   await act(()=>element.querySelector<HTMLButtonElement>('[aria-label="Single-column view"]')!.click());expect([...element.querySelectorAll('.profile-asset-cover img')].every(img=>img.getAttribute('loading')==='eager')).toBe(true);
@@ -39,8 +39,8 @@ it('limits initial document image preloads to the first collection rows while re
  profile.items=Array.from({length:24},(_,i)=>({...profile.items[0],id:'cold-cover-'+i,artworkUrl:'https://receiz.com/artwork/cold-cover-'+i+'.png'}));
  const document=documentFor(renderToString(<ProfileCollection profile={profile} items={profile.items} active={false}/>));
  expect(document.querySelectorAll('.profile-asset')).toHaveLength(24);
- expect([...document.querySelectorAll('link[rel="preload"][as="image"]')].map(link=>link.getAttribute('href'))).toEqual([0,1,2,3].map(i=>'https://receiz.com/artwork/cold-cover-'+i+'.png'));
- expect([...document.querySelectorAll('.profile-asset-cover img')].slice(4).every(image=>image.getAttribute('loading')==='lazy')).toBe(true);
+ expect([...document.querySelectorAll('link[rel="preload"][as="image"]')].map(link=>link.getAttribute('href'))).toEqual([0,1].map(i=>'https://receiz.com/artwork/cold-cover-'+i+'.png'));
+ expect([...document.querySelectorAll('.profile-asset-cover img')].slice(2).every(image=>image.getAttribute('loading')==='lazy')).toBe(true);
 });
 it('keeps hidden public activity artwork out of initial document preloads without dropping its history',async()=>{
  const {renderToString}=await import('react-dom/server'),{ProfileActivity}=await import('../src/public-explorer/ProfileActivity');

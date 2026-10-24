@@ -11,7 +11,7 @@ export function profilePreviewHtml(html:string,username:string,profile:PublicPro
  const name=profile?.displayName??'Profile',title=name+' | Bankeiz',description=profile?.bio??`Explore @${username}'s public assets and activity.`,canonical='https://bankeiz.com'+profilePagePath(username);
  const tags=`<title>${escape(title)}</title><meta name="description" content="${escape(description)}"><meta name="robots" content="${profile?'index,follow,max-image-preview:large':'noindex,follow'}"><link rel="canonical" href="${canonical}"><meta property="og:type" content="profile"><meta property="og:title" content="${escape(title)}"><meta property="og:description" content="${escape(description)}"><meta property="og:url" content="${canonical}">${profile?.bannerUrl||profile?.avatarUrl?`<meta property="og:image" content="${escape((profile.bannerUrl??profile.avatarUrl)!)}"><meta name="twitter:image" content="${escape((profile.bannerUrl??profile.avatarUrl)!)}">`:''}<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escape(title)}"><meta name="twitter:description" content="${escape(description)}">`;
  const seed=profile?`<script id="public-profile-seed" type="application/json">${JSON.stringify(profile).replaceAll('<','\\u003c')}</script>`:error?`<script id="public-profile-error" type="application/json">${JSON.stringify({username,code:error,at:Date.now()})}</script>`:'';
- const images=[...new Set([profile?.bannerUrl,profile?.avatarUrl,...(profile?.items.slice(0,4).map(item=>item.artworkUrl)??[])].filter((value):value is string=>!!value))];
+ const images=[...new Set([profile?.bannerUrl,profile?.avatarUrl,...(profile?.items.slice(0,2).map(item=>item.artworkUrl)??[])].filter((value):value is string=>!!value))];
  const hints=images.map((src,index)=>`<link rel="preload" as="image" href="${escape(src)}" referrerpolicy="no-referrer"${src.includes('/api/proof-material/packages/')?' crossorigin="anonymous"':''}${index<2?' fetchpriority="high"':''}>`).join('');
  const navigationSeed=html.includes('<script id="receiz-navigation"');
  const initial=content??`<main class="public-entry-placeholder"><a href="/explore/">Explore</a><h1>${escape(name)}</h1><p>@${username}</p><p>${escape(description)}</p></main>`;
@@ -43,7 +43,7 @@ export async function handleProfilePreview(request:Request,deps?:Dependencies){
  const prefix=template.slice(0,end),encoder=new TextEncoder();let closed=false;
  // Known public Market media can prepare during the profile read. These hints
  // confer no identity/visibility authority and are never painted as a profile.
- const earlyImages=(publicProfileArtwork[username]??[]).slice(0,4).map(safeReceizArtworkUrl).filter((url):url is string=>!!url);
+ const earlyImages=(publicProfileArtwork[username]??[]).slice(0,2).map(safeReceizArtworkUrl).filter((url):url is string=>!!url);
  const earlyHints=earlyImages.map(src=>`<link rel="preload" as="image" href="${escape(src)}" referrerpolicy="no-referrer"${src.includes('/api/proof-material/packages/')?' crossorigin="anonymous"':''}>`).join('');
  return new Response(new ReadableStream<Uint8Array>({start(controller){controller.enqueue(encoder.encode(prefix+earlyHints));void source.then(value=>{if(closed)return;controller.enqueue(encoder.encode(render(value).html.slice(prefix.length)));controller.close();closed=true;}).catch(()=>{if(!closed){closed=true;controller.error(Error('Profile stream interrupted.'));}});},cancel(){closed=true;}}),{headers:{...headers,'X-Accel-Buffering':'no'}});
 }

@@ -25,7 +25,7 @@ it('keeps early profile image preparation within the first visible collection ro
  let resolve!:(value:ReturnType<typeof parsePublicProfile>)=>void;const held=new Promise<ReturnType<typeof parsePublicProfile>>(done=>{resolve=done;});
  const response=await handleProfilePreview(new Request('https://bankeiz.com/bjklock/',{headers:{accept:'text/html','user-agent':'Profile browser'}}),{profile:()=>held,page:async()=>html});
  const reader=response.body!.getReader(),first=new TextDecoder().decode((await reader.read()).value);
- expect([...first.matchAll(/<link rel="preload" as="image"/g)]).toHaveLength(4);
+ expect([...first.matchAll(/<link rel="preload" as="image"/g)]).toHaveLength(2);
  resolve({...parsePublicProfile(profileFixture(),'alexmorgan'),username:'bjklock'});await reader.read();expect((await reader.read()).done).toBe(true);
 });
 it('keeps crawler status and metadata exact instead of streaming a success before a missing profile',async()=>{
