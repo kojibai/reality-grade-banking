@@ -17,6 +17,9 @@ export function usePublicNetwork(active = true) {
   const [bootstrap, setBootstrap] = useState(true), [capturedAt, setCapturedAt] = useState<string | null>(null);
   const capture = (value:string|null) => { if(value)setCapturedAt(previous=>!previous||Date.parse(value)>Date.parse(previous)?value:previous); };
   const lifetime = useRef<AbortController | null>(null);
+  const enabled=useRef(active);enabled.current=active;
+  const activate=useRef<(()=>Promise<void>)|null>(null),lastRefresh=useRef<number|null>(null);
+  const deferredRepairs=useRef(new Set<PublicSource>());
   const inspectionVersion=useRef(0);
   const sourceReads=useRef(new Map<PublicSource,{controller:AbortController;promise:Promise<void>}>());
   const activeTradeRepair=useRef<{targets:Set<string>;seen:Set<string>}|null>(null);
@@ -91,17 +94,16 @@ export function usePublicNetwork(active = true) {
   },[]);
   const refresh = useCallback(async () => {
     const controller=lifetime.current;if(!controller||controller.signal.aborted)return;
+    lastRefresh.current=Date.now();
     await Promise.allSettled([...PUBLIC_SOURCES.map(source => readSource(source, 'head')),synchronizePublicLedger().then(review=>adoptOriginal(review,controller))]);
   }, [readSource,adoptOriginal]);
   const loadMore = useCallback(async () => { await Promise.allSettled(PUBLIC_SOURCES.map(source => readSource(source, 'older'))); }, [readSource]);
   useEffect(() => {
     const controller = new AbortController(); lifetime.current = controller;
-    // Restore this public discovery cache before searching live heads for additions.
-    void (async () => {
-      const cache = rows.current.length ? null : await (retainedCache.current??=loadPublicNetworkCache());
-      if (controller.signal.aborted) return;
-      const needsSeed = Math.max(inspectionVersion.current, cache?.inspectionVersion ?? 0) < PUBLIC_NETWORK_INSPECTION_VERSION || !rows.current.length && (!cache || PUBLIC_SOURCES.some(source => !cache.coverage.some(item => item.source === source && item.complete)));
-      const restore=(held:PublicNetworkCache|null,seed:PublicNetworkCache|null)=>{
+    // A view pause stops new polling, while already accepted reads keep their
+    // mounted lifetime and can settle into the retained source rows.
+    let opened=false;
+    const restore=(held:PublicNetworkCache|null,seed:PublicNetworkCache|null)=>{
         inspectionVersion.current=Math.max(inspectionVersion.current,held?.inspectionVersion??0,seed?.inspectionVersion??0);
         rows.current = mergePublicRecords(restorePublicNetworkRows(held,seed),rows.current);
         const oldTradeIds=new Set([held,seed].flatMap(value=>value&&(value.inspectionVersion??0)<5?value.records.filter(row=>row.source==='actions'&&ledgerAssetTradeSide(row)).map(row=>row.id):[]));
@@ -118,9 +120,22 @@ export function usePublicNetwork(active = true) {
           if (anchor) completeAnchors.current[source] = new Set(anchorCoverage?.anchorIds ?? anchor.records.filter(row => row.source === source).map(row => row.id));
           update(source, { status: sourceState.current[source].status==='live'?'live':'stale', complete: Boolean(anchor), observedAt: anchorCoverage?.observedAt });
         }
-      };
-      if(cache)restore(cache,null);
-      setBootstrap(false); if(!active)return; void refresh();
+    };
+    const restored=(async()=>{
+      const cache=rows.current.length?null:await(retainedCache.current??=loadPublicNetworkCache());
+      if(controller.signal.aborted)return false;
+      const needsSeed=Math.max(inspectionVersion.current,cache?.inspectionVersion??0)<PUBLIC_NETWORK_INSPECTION_VERSION||!rows.current.length&&(!cache||PUBLIC_SOURCES.some(source=>!cache.coverage.some(item=>item.source===source&&item.complete)));
+      if(cache)restore(cache,null);setBootstrap(false);return needsSeed;
+    })();
+    activate.current=async()=>{
+      const needsSeed=await restored;
+      if(controller.signal.aborted||!enabled.current)return;
+      if(opened){
+        if(lastRefresh.current===null||Date.now()-lastRefresh.current>=60_000||PUBLIC_SOURCES.some(source=>sourceState.current[source].error)){deferredRepairs.current.clear();void refresh();}
+        else for(const source of deferredRepairs.current){deferredRepairs.current.delete(source);void readSource(source,'head');}
+        return;
+      }
+      opened=true;void refresh();
       void readHeldPublicLedger().then(review=>adoptOriginal(review,controller)).catch(()=>{});
       // Seed enrichment must not delay the newest durable head or source polling.
       const seed=needsSeed?await loadPublicNetworkSeed(controller.signal):null;
@@ -138,14 +153,19 @@ export function usePublicNetwork(active = true) {
         if(state.busy||state.error)return;
         const historyGap=gaps.has(source)||!!state.cursor&&!state.complete;
         const tradeRepair=source==='actions'&&inspectionVersion.current<5;
-        if(historyGap||tradeRepair)await readSource(source,'head');
+        if(historyGap||tradeRepair){if(enabled.current)await readSource(source,'head');else deferredRepairs.current.add(source);}
       })().catch(()=>{});
-    })();
-    const interval = active?setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 60_000):undefined;
-    const wake = () => { if (active&&document.visibilityState === 'visible') void refresh(); };
-    document.addEventListener('visibilitychange', wake); window.addEventListener('online', wake);const stopSync=active?subscribePublicLedgerSync(wake):()=>{};
-    return () => { controller.abort(); if (lifetime.current === controller) lifetime.current = null; clearInterval(interval);stopSync();document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); for (const source of PUBLIC_SOURCES) sourceState.current[source] = { ...sourceState.current[source], busy: false }; };
-  }, [active, refresh,adoptOriginal]);
+    };
+    return()=>{controller.abort();if(lifetime.current===controller){lifetime.current=null;activate.current=null;}for(const source of PUBLIC_SOURCES)sourceState.current[source]={...sourceState.current[source],busy:false};};
+  }, [refresh,adoptOriginal,readSource]);
+  useEffect(()=>{
+    if(!active)return;
+    void activate.current?.();
+    const interval=setInterval(()=>{if(document.visibilityState==='visible')void refresh();},60_000);
+    const wake=()=>{if(document.visibilityState==='visible')void refresh();};
+    document.addEventListener('visibilitychange',wake);window.addEventListener('online',wake);const stopSync=subscribePublicLedgerSync(wake);
+    return()=>{clearInterval(interval);stopSync();document.removeEventListener('visibilitychange',wake);window.removeEventListener('online',wake);};
+  },[active,refresh]);
   useEffect(() => {
     if (bootstrap || !records.length) return;
     const coverageKey=PUBLIC_SOURCES.map(source=>`${source}:${sourceState.current[source].complete}:${sourceState.current[source].observedAt??''}`).join('|');

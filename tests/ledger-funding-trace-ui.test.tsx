@@ -21,6 +21,11 @@ it('keeps the actual proof-object origin and its allocated amount visible',()=>{
  const html=renderToStaticMarkup(<LedgerFundingTrace record={card()}/>);
  expect(html).toContain('Funding source');expect(html).toContain('Proof-native value');expect(html).toContain('credit-one');expect(html).toContain('$5.00');expect(html).toContain('Full causal history');
 });
+it('shows the carried Note funding original and its exact digest without reopening the source',()=>{
+ const noteId='note:public-note',digest='d'.repeat(64),record=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'note_mint:public-event',kind:'note_mint',noteId,amountUsdCents:'200',amountPhiMicro:'1000000'}],fundingContexts:{schema:'receiz.wallet.funding-context.v1',root:{kind:'note',id:noteId},nodes:{['note:'+noteId]:{ref:{kind:'note',id:noteId},parents:[{kind:'proof-basis',id:'allocation:original'}],amountUsdCents:'200',amountPhiMicro:'1000000'},'proof-basis:allocation:original':{ref:{kind:'proof-basis',id:'allocation:original'},parents:[],originalDigest:digest}}}}).records[0];
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ try{const html=renderToStaticMarkup(<LedgerFundingTrace record={record}/>);expect(html).toContain('Funding source');expect(html).toContain('Funding original');expect(html).toContain(digest);expect(html).toContain('Full funding history');expect(fetch).not.toHaveBeenCalled();}finally{vi.unstubAllGlobals();}
+});
 it('binds a native credit cohort to its own pulse and opens members lazily without IO',async()=>{
  Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
  const record=card(),lineage=record.details!.causalLineage as Record<string,unknown>;

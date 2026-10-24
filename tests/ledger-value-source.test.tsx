@@ -7,7 +7,12 @@ import { useLedgerValueSource } from '../src/features/ledger/useLedgerValueSourc
 import {retainedMarketDisplaySource,publishMarketDisplaySource} from '../src/receiz/market-projection/display-source';
 import type {LedgerValueIndex} from '../src/receiz/ledger-value';
 import {parseMarketCapSource} from '../src/receiz/market-projection/source';
-vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({receizKaiNow:()=>({pulse:14647307})})}));
+import {Ledger} from '../src/features/ledger/Ledger';
+import {parsePublicNetworkPage} from '../src/receiz/public-network';
+import * as receipts from '../src/receiz/ledger-receipts';
+const network=vi.hoisted(()=>({records:[] as ReturnType<typeof parsePublicNetworkPage>['records']}));
+vi.mock('../src/receiz/usePublicNetwork',()=>({usePublicNetwork:()=>({records:network.records,sources:{},bootstrap:false,refresh:()=>{},loadMore:()=>{}})}));
+vi.mock('../src/receiz/client',()=>({RECEIZ_VERSION:'129.0.0',loadReceiz:async()=>({receizKaiNow:()=>({pulse:14647307})})}));
 const input = JSON.parse(readFileSync('public/receiz-public-capitalization.json', 'utf8'));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: ReturnType<typeof createRoot> | null = null;
@@ -67,4 +72,26 @@ it('retains the event index across cloned local-pulse updates but reindexes a ch
  const next=structuredClone(frames.at(-1)!.source);next.valueRows[0].sealedCopies![0].valuation!.baseUsdValue=22;next.valueRows[0].sealedCopies![0].proofValueUsd=22;
  act(()=>publishMarketDisplaySource(next));
  expect(frames.at(-1)!.copyValuations).not.toBe(first.copyValuations);
+});
+it('keeps held row values and receipts when the mounted Ledger is hidden on the way to Account',async()=>{
+ publishMarketDisplaySource(parseMarketCapSource(input),'shipped');
+ vi.stubGlobal('fetch',async()=>new Response(null,{status:503}));
+ network.records=parsePublicNetworkPage('actions',{ok:true,actions:Array.from({length:50},(_,i)=>({id:String(i),actionKind:'record',summary:`Original ${i}`,pulse:i+1}))}).records;
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ await act(async()=>root!.render(<Ledger active/>));
+ const links=[...host.querySelectorAll('.ledger-receipt-actions a')].map(a=>a.getAttribute('href')),receipt=vi.spyOn(receipts,'receiptLink');
+ try{
+  await act(async()=>root!.render(<Ledger active={false}/>));
+  expect(receipt.mock.calls.length).toBe(0);
+  expect([...host.querySelectorAll('.ledger-receipt-actions a')].map(a=>a.getAttribute('href'))).toEqual(links);
+ }finally{receipt.mockRestore();}
+});
+it('holds inactive values and immediately adopts the latest shared source when reopened',async()=>{
+ vi.stubGlobal('fetch',async()=>new Response(null,{status:503}));
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ await act(async()=>root!.render(<Probe active/>));const held=host.querySelector('output')!.getAttribute('data-source');
+ await act(async()=>root!.render(<Probe active={false}/>));
+ const next={...retainedMarketDisplaySource()!,serverPulse:retainedMarketDisplaySource()!.serverPulse+1,proofObjectHash:'c'.repeat(64)};
+ act(()=>publishMarketDisplaySource(next));expect(host.querySelector('output')!.getAttribute('data-source')).toBe(held);
+ await act(async()=>root!.render(<Probe active/>));expect(host.querySelector('output')!.getAttribute('data-source')).toBe('c'.repeat(64));
 });

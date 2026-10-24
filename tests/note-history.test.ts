@@ -15,11 +15,11 @@ function fixture(rail:'reserve'|'settlement'|'composite'){
  const sourceRef=retain({source:'native signed funding'}),openingRef=retain({source:'native private opening'}),proofRef=retain({schema:'receiz.bank.connected-note.receipt.v1',source:'credit',privateAccountOpening:'opening'});
  const fundingParts=rail==='composite'?{reserve:{amountUsdCents:'100',amountPhiMicro:'500000'},settlement:{amountUsdCents:'100',amountPhiMicro:'500000'}}:undefined;
  const funding={noteId,operationId,accountUserId:uid,issuer:{keyId},rail,amountUsdCents:'200',amountPhiMicro:'1000000',fundedAtKai:'100',debitLedgerId:debit,...(fundingParts?{fundingParts}:{})};
- const credited={noteId,receiverUserId:uid,receiverKeyId:keyId,rail,amountUsdCents:'200',amountPhiMicro:'1000000',acceptedAtKai:'101',creditLedgerId:credit,...(fundingParts?{fundingParts}:{})};
+ const credited={noteId,operationId,receiverUserId:uid,receiverKeyId:keyId,rail,amountUsdCents:'200',amountPhiMicro:'1000000',acceptedAtKai:'101',creditLedgerId:credit,...(fundingParts?{fundingParts}:{})};
  const creditRef=retain({noteId,rail,amountUsdCents:'200',amountPhiMicro:'1000000',reserveAfterUsdCents:'400',proofRef,...(fundingParts?{fundingParts}:{})});
  const connected={schema:'bank.connected-notes.v1',uid,keyId,current:null,notes:{[noteId]:{noteId,operationId,rail,amountUsdCents:'200',authorizationRef:'c'.repeat(64),noteIdentityRef:'d'.repeat(64),phase:'issued',sourceRef,openingRef}}};
  const received={schema:'bank.received-note-deposits.v1',uid,keyId,entries:{[noteId]:{sourceRef,redemptionDigest:'e'.repeat(64),terminalArtifactSha256:'f'.repeat(64),status:'confirmed',creditRef}}};
- const module={verifyBankConnectedNoteFunding:async()=>({funding}),verifyBankConnectedNoteReceipt:async()=>({kind:'credit',rail,credit:credited}),openBankNoteDepositReceipt:async()=>{throw Error('WRONG_FORMAT');}};
+ const module={verifyBankConnectedNoteFunding:async()=>({funding}),verifyBankConnectedNoteReceipt:async()=>({kind:'credit',rail,credit:credited,funding}),openBankNoteDepositReceipt:async()=>{throw Error('WRONG_FORMAT');}};
  return{uid,keyId,noteId,debit,credit,connected,received,funding,credited,blobs,input:{accountUid:uid,keyId,readConnected:async()=>structuredClone(connected),readReceived:async()=>structuredClone(received),restore:async(ref:string)=>blobs.get(ref)!.slice(),module:async()=>module}};
 }
 it.each(['reserve','settlement','composite'] as const)('projects confirmed %s Note debit and credit by their exact native ledger IDs without transport',async rail=>{
@@ -30,7 +30,7 @@ it.each(['reserve','settlement','composite'] as const)('projects confirmed %s No
   expect(records.map(row=>row.accountFlow)).toEqual(['in','out']);
   expect(records.map(ledgerRecordTitle)).toEqual(['Note Deposited','Note Created']);
   expect(records[0].time).toBe('2024-05-10T06:54:30.731Z');
-  expect(records[0].details?.noteReceipt).toMatchObject({creditLedgerId:f.credit,acceptedAtKai:'101'});
+  expect(records[0].details?.noteReceipt).toMatchObject({creditLedgerId:f.credit,acceptedAtKai:'101',debitLedgerId:f.debit,fundedAtKai:'100',operationId:f.funding.operationId});
   expect(records.every(row=>row.authority==='account-source-projection'&&row.origin==='private-account')).toBe(true);
   const host=parsePublicNetworkPage('wallet',{ok:true,events:[{id:`wallet_ledger:${f.credit}`,kind:'wallet_ledger_entry',ledgerEntryKind:'note_claim',amountUsdCents:'200',pulse:'101'}]}).records.map(row=>({...row,authority:'account-source-projection' as const}));
   expect(mergePublicRecords(records,host)).toHaveLength(2);
@@ -71,5 +71,6 @@ it('opens actual signed retained funding and credit sources without signing, tra
  const received=await readRetainedNoteHistory({accountUid:metadata.receiver.uid,keyId:metadata.receiver.keyId,readConnected:async()=>null,readReceived:async()=>receiver,restore:async ref=>blobs.get(ref)!,module});
  expect(sent[0].sourceId).toBe('wallet_ledger:d396106c-54e6-4059-b2e2-cad63ad38ac0');expect(sent[0].accountFlow).toBe('out');
  expect(received[0].sourceId).toBe('wallet_ledger:ed452831-35f4-4321-849b-acc9ac590b56');expect(received[0].accountFlow).toBe('in');
+ expect(received[0].details?.noteReceipt).toMatchObject({debitLedgerId:'d396106c-54e6-4059-b2e2-cad63ad38ac0',fundedAtKai:'14742558',operationId,issuerKeyId:metadata.sender.keyId});
  expect(JSON.stringify([...sent,...received])).not.toMatch(/privateAccountOpening|noteIdentityRef|noteAuthority|publicKeyRawB64u/);
 });

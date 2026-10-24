@@ -5,10 +5,11 @@ import {readReceivedNoteDepositCheckpoint} from './note-received-deposits';
 import {marketPulseTime} from './market-projection/coordinates';
 
 type Fields=Record<string,unknown>;
+type CreditProof={kind?:string;credit?:Fields;rail?:string;funding?:Fields};
 export interface NoteHistoryModule{
  verifyBankConnectedNoteFunding(source:Uint8Array,opening:Uint8Array):Promise<{funding:Fields}>;
- verifyBankConnectedNoteReceipt(source:Uint8Array):Promise<{kind:string;credit?:Fields;rail?:string}>;
- openBankNoteDepositReceipt(source:Uint8Array):Promise<{credit:Fields;rail:string}>;
+ verifyBankConnectedNoteReceipt(source:Uint8Array):Promise<CreditProof&{kind:string}>;
+ openBankNoteDepositReceipt(source:Uint8Array):Promise<CreditProof&{credit:Fields;rail:string}>;
 }
 type NoteHistoryInput={accountUid:string;keyId:string;readConnected():Promise<unknown>;readReceived():Promise<unknown>;restore(ref:string):Promise<Uint8Array>;module():Promise<NoteHistoryModule>};
 const object=(value:unknown):Fields=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Fields:{};
@@ -21,14 +22,14 @@ const digest=async(source:Uint8Array)=>[...new Uint8Array(await crypto.subtle.di
  * Live execution can supply its already verified result; cold restore uses the
  * same native verifier once. No cache entry provides execution authority. */
 export function createNoteHistoryReader(input:NoteHistoryInput){
- const funding=new Map<string,Promise<{funding:Fields}>>(),credits=new Map<string,Promise<{kind:string;credit?:Fields;rail?:string}>>();
+ const funding=new Map<string,Promise<{funding:Fields}>>(),credits=new Map<string,Promise<CreditProof&{kind:string}>>();
  let current:{revision:string;records:Promise<PublicRecord[]>}|undefined;
  async function remembered<T>(cache:Map<string,Promise<T>>,key:string,verify:()=>Promise<T>){
   let value=cache.get(key);if(!value){value=verify();cache.set(key,value);void value.catch(()=>{if(cache.get(key)===value)cache.delete(key);});}return value;
  }
  return{
   async rememberFunding(source:Uint8Array,opening:Uint8Array,proof:{funding:Fields}){funding.set(`${await digest(source)}:${await digest(opening)}`,Promise.resolve({funding:structuredClone(proof.funding)}));},
-  async rememberCredit(source:Uint8Array,proof:{rail?:string;credit?:Fields}){credits.set(await digest(source),Promise.resolve({kind:'credit',rail:proof.rail,credit:structuredClone(proof.credit)}));},
+  async rememberCredit(source:Uint8Array,proof:CreditProof){credits.set(await digest(source),Promise.resolve({kind:'credit',rail:proof.rail,credit:structuredClone(proof.credit),funding:structuredClone(proof.funding)}));},
   async read(){
    const connected=await input.readConnected(),received=await input.readReceived();
    const revision=JSON.stringify([connected,received]);
@@ -59,14 +60,14 @@ export async function readRetainedNoteHistory(input:NoteHistoryInput):Promise<Pu
   const source=await input.restore(ref);
   if(await digest(source)!==ref)throw Error('BANK_NOTE_SOURCE_REQUIRED');return source;
  }
- function row(proof:Fields,direction:'debit'|'credit',digest:string,rail:unknown){
+ function row(proof:Fields,direction:'debit'|'credit',digest:string,rail:unknown,parent?:Fields){
   const ledgerId=proof[direction==='debit'?'debitLedgerId':'creditLedgerId'],pulse=proof[direction==='debit'?'fundedAtKai':'acceptedAtKai'];
   if(typeof ledgerId!=='string'||!/^[a-f0-9-]{36}$/i.test(ledgerId)||!uint(pulse)||!uint(proof.amountUsdCents)||!uint(proof.amountPhiMicro)||!['reserve','settlement','composite'].includes(String(rail)))invalid();
   const time=Number.isSafeInteger(Number(pulse))?marketPulseTime(Number(pulse)):NaN;
   rows.push({id:`wallet_ledger:${ledgerId}`,kind:'wallet_ledger_entry',ledgerEntryKind:direction==='debit'?'note_mint':'note_claim',direction,user_id:input.accountUid,pulse,
    ...(Number.isFinite(time)&&Math.abs(time)<=8.64e15?{occurredAt:new Date(time).toISOString()}:{}),
    amountUsdCents:proof.amountUsdCents,amountPhiMicro:proof.amountPhiMicro,noteId:proof.noteId,metadata:{source:direction==='debit'?'bank_connected_note_allocate':'bank_connected_note_redeem',rail},proofBundle:{artifactDigest:digest},
-   noteReceipt:{...proof,rail,sourceDigest:digest,issuerKeyId:object(proof.issuer).keyId}});
+   noteReceipt:{...parent,...proof,rail,sourceDigest:digest,issuerKeyId:object(parent?.issuer??proof.issuer).keyId}});
  }
  for(const saved of created){
   const source=await original(saved.sourceRef!),opening=await original(saved.openingRef!),{funding}=await native.verifyBankConnectedNoteFunding(source,opening);
@@ -81,7 +82,9 @@ export async function readRetainedNoteHistory(input:NoteHistoryInput):Promise<Pu
   if('kind'in admitted&&admitted.kind!=='credit')invalid();
   const credit=admitted.credit;
   if(!credit||credit.receiverUserId!==input.accountUid||credit.receiverKeyId!==input.keyId||credit.noteId!==noteId||credit.amountUsdCents!==stored.amountUsdCents||credit.amountPhiMicro!==stored.amountPhiMicro||admitted.rail!==stored.rail)invalid();
-  row(credit,'credit',stored.proofRef,admitted.rail);
+  const parent=admitted.funding;
+  if(parent&&(parent.noteId!==credit.noteId||parent.operationId!==credit.operationId||parent.rail!==admitted.rail||parent.amountUsdCents!==credit.amountUsdCents||parent.amountPhiMicro!==credit.amountPhiMicro))invalid();
+  row(credit,'credit',stored.proofRef,admitted.rail,parent);
  }
  return mergePublicRecords([],projectAccountHistoryRecords('wallet',rows,input.accountUid).map(record=>({...record,origin:'private-account' as const})));
 }

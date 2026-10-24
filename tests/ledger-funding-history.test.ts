@@ -99,3 +99,42 @@ it('binds retained historical proof membership through reachable exact credit co
   expect(enrichWalletFundingContext([enriched],[source,conflict])[0].details).not.toHaveProperty('fundingCohorts');expect(fetch).not.toHaveBeenCalled();
  }finally{vi.unstubAllGlobals();}
 });
+it('reuses an exact held Note debit attribution for its locally verified creation row',()=>{
+ const noteId='10000000-0000-4000-8000-000000000001',debit=entry('note-debit','one','debit',2,'100');
+ Object.assign(debit,{note_id:noteId});
+ const attribution=calculateWalletFundingAttributions([entry('source-proof','one','credit',1,'100',{source:'market_trade',marketItemId:'profile:one:proof'}),debit],'one',true).get('note-debit')!;
+ const source=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'note-debit',kind:'note_mint',noteId,createdAt:attribution.occurredAt,amountUsdCents:'100',fundingAttribution:attribution}]}).records[0];
+ const local={...source,id:'wallet:wallet_ledger:note-debit',sourceId:'wallet_ledger:note-debit',authority:'account-source-projection' as const,details:{noteId,ledgerEntryKind:'note_mint'}};
+ expect(ledgerFundingTrace(enrichWalletFundingContext([local],[source])[0]).steps.map(step=>step.sourceId)).toContain('profile:one:proof');
+ expect(enrichWalletFundingContext([{...local,sourceId:'wallet_ledger:unrelated'}],[source])[0].details).not.toHaveProperty('fundingAttribution');
+});
+it('connects a verified Note deposit to its exact held creation graph without exposing private history publicly',()=>{
+ const noteId='10000000-0000-4000-8000-000000000001',operationId='a'.repeat(64),objectId='20000000-0000-4000-8000-000000000001';
+ const mint=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'wallet_ledger:sender-debit',kind:'wallet_ledger_entry',ledgerEntryKind:'note_mint',noteId,amountUsdCents:'100',amountPhiMicro:'400',pulse:'1',noteReceipt:{noteId,operationId,debitLedgerId:'sender-debit',fundedAtKai:'1'}}],fundingContexts:{schema:'receiz.wallet.funding-context.v1',root:{kind:'debit',id:'sender-debit'},nodes:{'debit:sender-debit':{ref:{kind:'debit',id:'sender-debit'},amountUsdCents:'100',amountPhiMicro:'400',parents:[{kind:'proof-basis',id:'origin'}]},'proof-basis:origin':{ref:{kind:'proof-basis',id:'origin'},parents:[],objectIds:[objectId]}}}}).records[0];
+ const credit=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'wallet_ledger:receiver-credit',kind:'wallet_ledger_entry',ledgerEntryKind:'note_claim',noteId,amountUsdCents:'100',amountPhiMicro:'400',pulse:'2',noteReceipt:{noteId,operationId,debitLedgerId:'sender-debit',creditLedgerId:'receiver-credit',fundedAtKai:'1',acceptedAtKai:'2'}}]}).records[0];
+ const local={...credit,authority:'account-source-projection' as const},fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ try{
+  const localMint={...mint,authority:'account-source-projection' as const,details:{...mint.details}};delete localMint.details.fundingContext;
+  expect(ledgerFundingTrace(enrichWalletFundingContext([localMint],[mint])[0]).steps.map(step=>step.sourceId)).toEqual([objectId,'sender-debit']);
+  expect(enrichWalletFundingContext([{...localMint,pulse:'3'}],[mint])[0].details).not.toHaveProperty('fundingContext');
+  const enriched=enrichWalletFundingContext([local],[mint])[0],trace=ledgerFundingTrace(enriched);
+  expect(trace.steps.map(step=>step.sourceId)).toEqual([objectId,'sender-debit','receiver-credit']);
+  expect(trace.steps.at(-1)).toMatchObject({label:'This transaction',amountUsdCents:'100'});
+  const receipt=readReceiptLink(receiptLink(enriched)!);expect(ledgerFundingTrace({...enriched,details:receipt.details??undefined}).steps.map(step=>step.sourceId)).toEqual([objectId,'sender-debit','receiver-credit']);
+  const conflict={...local,details:{...local.details,noteReceipt:{...local.details!.noteReceipt as any,operationId:'b'.repeat(64)}}};
+  expect(enrichWalletFundingContext([conflict],[mint])[0].details).not.toHaveProperty('fundingContext');
+  expect(enrichWalletFundingContext([{...local,details:{...local.details,noteReceipt:{...local.details!.noteReceipt as any,debitLedgerId:'unrelated'}}}],[mint])[0].details).not.toHaveProperty('fundingContext');
+  for(const conflicting of [
+   {...local,amountUsdCents:'200'},
+   {...local,valueOperands:{...local.valueOperands,amountPhiMicro:'800'}},
+   {...local,pulse:'3'},
+   {...local,kaiUpulse:'3000000'},
+  ])expect(enrichWalletFundingContext([conflicting],[mint])[0].details).not.toHaveProperty('fundingContext');
+  const unannotatedMint={...mint,pulse:'3',details:{...mint.details}};delete unannotatedMint.details.noteReceipt;
+  expect(enrichWalletFundingContext([local],[unannotatedMint])[0].details).not.toHaveProperty('fundingContext');
+  expect(enrichWalletFundingContext([local],[mint,{...mint,kaiUpulse:'1000000'}])[0].details).toHaveProperty('fundingContext');
+  expect(enrichWalletFundingContext([{...local,kaiUpulse:'2500000'}],[mint])[0].details).toHaveProperty('fundingContext');
+  expect(enrichWalletFundingContext([credit],[{...mint,authority:'account-source-projection'}])[0].details).not.toHaveProperty('fundingContext');
+  expect(fetch).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();}
+});

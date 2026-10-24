@@ -6,7 +6,7 @@ import {readMarketDisplaySource,retainedMarketDisplaySource,useMarketDisplaySour
 /** One existing public projection for the ledger, with no original-file requests per row. */
 export function useLedgerValueSource(active: boolean) {
   const source=useMarketDisplaySource(active),[pulse,setPulse]=useState<number|null>(null);
-  const heldIndex=useRef<LedgerValueIndex|null>(null);
+  const heldIndex=useRef<LedgerValueIndex|null>(null),heldValue=useRef<LedgerValueIndex|null>(null);
   useEffect(()=>{
     if(!active)return;let alive=true,timer:ReturnType<typeof setInterval>|undefined;
     // Re-evaluate immutable public operands locally; no wallet or ownership
@@ -33,5 +33,9 @@ export function useLedgerValueSource(active: boolean) {
     return () => { controller.abort(); clearInterval(timer); window.removeEventListener('online', refresh); };
   }, [active]);
   const index=useMemo(()=>{if(!source)return null;if(!heldIndex.current||!sameLedgerValueInputs(heldIndex.current.source,source))heldIndex.current=indexLedgerValues(source);return heldIndex.current;},[source]);
-  return useMemo(()=>index&&source?{...index,source,evaluationPulse:pulse===null?source.serverPulse:Math.max(pulse,source.serverPulse)}:null,[index,pulse,source]);
+  return useMemo(()=>{
+    if(!active)return heldValue.current;
+    const next=index&&source?{...index,source,evaluationPulse:pulse===null?source.serverPulse:Math.max(pulse,source.serverPulse)}:null;
+    heldValue.current=next;return next;
+  },[active,index,pulse,source]);
 }

@@ -10,6 +10,34 @@ const nodes={
  'proof-basis:original':{ref:{kind:'proof-basis',id:'original'},objectIds:[asset],parents:[]},
 };
 const packet=()=>({ok:true,events:[{id:'transfer:current',kind:'chat_transfer',transferId:'tx:current',amountUsdCents:'27',amountPhiMicro:'100',createdAt:'2026-10-23T01:00:00Z',kaiUpulse:'1000000',pulse:'1'}],fundingContexts:{schema:'receiz.wallet.funding-context.v1',nodes:structuredClone(nodes),roots:{'transfer:tx:current':{kind:'transfer',id:'tx:current'}},coverage:{'transfer:tx:current':{status:'complete',missing:[],continuations:[]}}}});
+it('binds a Note event to its exact already-carried Note root',()=>{
+ const p=packet(),noteId='10000000-0000-4000-8000-000000000001';
+ const raw={ok:true,events:[{id:'wallet_ledger:mint',kind:'wallet_ledger_entry',ledgerEntryKind:'note_mint',noteId,amountUsdCents:'27',amountPhiMicro:'100'}],fundingContexts:{...p.fundingContexts,roots:{['note:'+noteId]:{kind:'note',id:noteId}},nodes:{...p.fundingContexts.nodes,['note:'+noteId]:{ref:{kind:'note',id:noteId},parents:[{kind:'transfer',id:'tx:current'}],amountUsdCents:'27',amountPhiMicro:'100'}}}};
+ const record=parsePublicNetworkPage('wallet',raw).records[0];
+ expect(ledgerFundingTrace(record).steps.map(step=>step.sourceId)).toContain(asset);
+ expect(ledgerFundingTrace(record).context?.root).toEqual({kind:'note',id:noteId});
+ expect(ledgerFundingTrace(parsePublicNetworkPage('wallet',{...raw,events:[{...raw.events[0],noteId:'unrelated'}]}).records[0]).steps).toEqual([]);
+});
+it('preserves the permitted Note alias and its funding graph through a shared receipt',async()=>{
+ const {receiptLink,readReceiptLink}=await import('../src/receiz/ledger-receipts'),note='note:public-alias';
+ const data={ok:true,events:[{id:'public-mint',kind:'note_mint',note_id:note,amountUsdCents:'27',amountPhiMicro:'100'}],fundingContexts:{schema:'receiz.wallet.funding-context.v1',root:{kind:'note',id:note},nodes:{['note:'+note]:{ref:{kind:'note',id:note},parents:[{kind:'proof-basis',id:'origin'}],amountUsdCents:'27',amountPhiMicro:'100'},'proof-basis:origin':{ref:{kind:'proof-basis',id:'origin'},parents:[],objectIds:[asset]}}}};
+ const record=parsePublicNetworkPage('wallet',data).records[0],receipt=readReceiptLink(receiptLink(record)!);
+ expect(receipt.evidence.noteId).toBe(note);
+ expect(ledgerFundingTrace({...record,evidence:receipt.evidence,details:receipt.details??undefined}).steps.map(step=>step.sourceId)).toEqual(ledgerFundingTrace(record).steps.map(step=>step.sourceId));
+});
+it.each(['note_mint','note_claim'])('shows the existing native %s funding original and every held parent without another read',kind=>{
+ const note='note:public-note',event=kind+':public-event',digest='d'.repeat(64),root={kind:kind==='note_mint'?'debit':'credit',id:event};
+ // Exact nativeNoteFundingContextPage response shape: selected event -> Note
+ // -> allocation proof original, already delivered with the wallet response.
+ const data={ok:true,events:[{id:event,kind,noteId:note,amountUsdCents:'200',amountPhiMicro:'1000000',pulse:'100'}],fundingContexts:{schema:'receiz.wallet.funding-context.v1',roots:{[root.kind+':'+event]:root},nodes:{[root.kind+':'+event]:{ref:root,parents:[{kind:'note',id:note}],amountUsdCents:'200',amountPhiMicro:'1000000'},['note:'+note]:{ref:{kind:'note',id:note},parents:[{kind:'proof-basis',id:'allocation:original'}],amountUsdCents:'200',amountPhiMicro:'1000000'},'proof-basis:allocation:original':{ref:{kind:'proof-basis',id:'allocation:original'},parents:[],originalDigest:digest}},coverage:{}}};
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ try{
+  const trace=ledgerFundingTrace(parsePublicNetworkPage('wallet',data).records[0]);
+  expect(trace.sources).toMatchObject([{sourceId:'allocation:original',sourceHash:digest}]);
+  expect(trace.steps.map(step=>step.sourceId)).toEqual(['allocation:original',note,event]);
+  expect(trace.boundary).toBe('source-origins');expect(fetch).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();}
+});
 describe('retained funding context',()=>{
  it('retains only the selected original’s ancestors and reuses its parsed closure',()=>{
   const p=packet();(p.fundingContexts.nodes as Record<string,unknown>)['credit:unrelated']={ref:{kind:'credit',id:'unrelated'},parents:[],source:'wallet_deposit',amountUsdCents:'999'};

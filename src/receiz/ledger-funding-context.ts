@@ -62,7 +62,8 @@ export function readLedgerFundingContext(raw:unknown,eventId?:string):LedgerFund
  return result;
 }
 export function applyLedgerFundingContext(record:PublicRecord,raw:unknown):PublicRecord{
- const context=readLedgerFundingContext(raw,record.evidence.transferId??record.sourceId.replace(/^wallet_ledger:/,''))??(record.evidence.noteId?readLedgerFundingContext(raw,record.evidence.noteId):undefined);if(!context)return record;
+ const noteId=record.evidence.noteId??record.details?.noteId;
+ const context=readLedgerFundingContext(raw,record.evidence.transferId??record.sourceId.replace(/^wallet_ledger:/,''))??(typeof noteId==='string'?readLedgerFundingContext(raw,noteId):undefined);if(!context)return record;
  const root=context.nodes[key(context.root)];if(!root||root.amountUsdCents!==record.amountUsdCents||record.valueOperands?.amountPhiMicro&&root.amountPhiMicro!==record.valueOperands.amountPhiMicro)return record;
  const attribution=root.attribution;
  return{...record,details:{...record.details,fundingContext:context as unknown as LedgerFields,...(attribution?{fundingAttribution:attribution as unknown as LedgerFields,...(record.evidence.transferId?{fundingTransferId:record.evidence.transferId}:{})}:{})}};
@@ -70,7 +71,8 @@ export function applyLedgerFundingContext(record:PublicRecord,raw:unknown):Publi
 /** The graph describes recorded source basis and exact parent references.
  * Ancestor payment amounts are full originals, never this payment's slice. */
 export function ledgerFundingContextTrace(record:PublicRecord):LedgerFundingTrace|undefined{
- const context=readLedgerFundingContext(record.details?.fundingContext,record.evidence.transferId??record.sourceId.replace(/^wallet_ledger:/,''))??(record.evidence.noteId?readLedgerFundingContext(record.details?.fundingContext,record.evidence.noteId):undefined);if(!context)return;
+ const noteId=record.evidence.noteId??record.details?.noteId;
+ const context=readLedgerFundingContext(record.details?.fundingContext,record.evidence.transferId??record.sourceId.replace(/^wallet_ledger:/,''))??(typeof noteId==='string'?readLedgerFundingContext(record.details?.fundingContext,noteId):undefined);if(!context)return;
  const root=context.nodes[key(context.root)];if(!root||root.amountUsdCents!==record.amountUsdCents)return;
  const order:FundingNode[]=[],seen=new Set<string>(),stack:{ref:FundingRef;exit:boolean}[]=[{ref:context.root,exit:false}];
  while(stack.length){const item=stack.pop()!,id=key(item.ref);if(item.exit){const node=context.nodes[id];if(node)order.push(node);continue;}if(seen.has(id))continue;seen.add(id);const node=context.nodes[id];if(!node)continue;stack.push({ref:item.ref,exit:true});for(const parent of node.parents)stack.push({ref:parent,exit:false});}
@@ -78,10 +80,14 @@ export function ledgerFundingContextTrace(record:PublicRecord):LedgerFundingTrac
  const representedDebits=new Set(order.filter(n=>n.ref.kind==='transfer').flatMap(n=>n.parents.map(key)));
  for(const node of order){
   for(const id of node.objectIds??[]){const step:LedgerCausalStep={id:key(node.ref)+':'+id,kind:'post_work_proof',label:'Source proof object',detail:'Original proof referenced by the recorded funding basis.',sourceId:id,...(/^[a-f0-9]{64}$/.test(id)?{contentHash:id}:{})};steps.push(step);origins.push(step);}
+  if(node.ref.kind==='proof-basis'&&node.originalDigest){
+   const step:LedgerCausalStep={id:key(node.ref),kind:'funding_original',label:'Funding original',detail:'Original proof preserved by the carried funding history.',sourceId:node.ref.id,sourceHash:node.originalDigest,...(node.amountUsdCents?{amountUsdCents:node.amountUsdCents}:{}),...(node.amountPhiMicro?{amountPhiMicro:node.amountPhiMicro}:{}),...(node.occurredAt?{occurredAt:node.occurredAt}:{}),...(node.kaiUpulse?{kaiUpulse:node.kaiUpulse,kaiPulse:String(BigInt(node.kaiUpulse)/1000000n)}:{})};
+   steps.push(step);if(!node.parents.length)origins.push(step);
+  }
   if(node.ref.kind==='source-context'||node.ref.kind==='proof-basis')continue;
   if(node.ref.kind==='debit'&&node.parents.length&&representedDebits.has(key(node.ref)))continue;
   const selected=key(node.ref)===key(context.root),payment=node.ref.kind==='transfer'||node.ref.kind==='note';
-  const step:LedgerCausalStep={id:key(node.ref),kind:selected?'wallet_debit':node.ref.kind==='credit'?(node.source==='profile_rollup_seed'?'glyph_economy_value':'wallet_credit'):'transfer',label:selected?'This transaction':payment?'Parent payment':reserveSources.has(node.source??'')?'Funding deposit':'Incoming funding credit',detail:selected?'Recorded payment with its original source references.':payment?'Full amount of the original parent payment; separate from this transaction’s funding slice.':'Recorded source event preserved through the onward payment.',sourceId:node.ref.id,...(node.amountUsdCents?{amountUsdCents:node.amountUsdCents}:{}),...(node.amountPhiMicro?{amountPhiMicro:node.amountPhiMicro}:{}),...(node.occurredAt?{occurredAt:node.occurredAt}:{}),...(node.kaiUpulse?{kaiUpulse:node.kaiUpulse,kaiPulse:String(BigInt(node.kaiUpulse)/1000000n)}:{})};steps.push(step);if(node.ref.kind==='credit'&&(reserveSources.has(node.source??'')||node.source==='profile_rollup_seed'))origins.push(step);
+  const step:LedgerCausalStep={id:key(node.ref),kind:selected?'wallet_debit':node.ref.kind==='credit'?(node.source==='profile_rollup_seed'?'glyph_economy_value':'wallet_credit'):'transfer',label:selected?'This transaction':payment?'Parent payment':reserveSources.has(node.source??'')?'Funding deposit':'Incoming funding credit',detail:selected?'Recorded payment with its original source references.':payment?'Full amount of the original parent payment; separate from this transaction’s funding slice.':'Recorded source event preserved through the onward payment.',sourceId:node.ref.id,...(node.originalDigest?{sourceHash:node.originalDigest}:{}),...(node.amountUsdCents?{amountUsdCents:node.amountUsdCents}:{}),...(node.amountPhiMicro?{amountPhiMicro:node.amountPhiMicro}:{}),...(node.occurredAt?{occurredAt:node.occurredAt}:{}),...(node.kaiUpulse?{kaiUpulse:node.kaiUpulse,kaiPulse:String(BigInt(node.kaiUpulse)/1000000n)}:{})};steps.push(step);if(node.ref.kind==='credit'&&(reserveSources.has(node.source??'')||node.source==='profile_rollup_seed')||!selected&&node.originalDigest&&!node.parents.length)origins.push(step);
  }
  const components:LedgerFundingTrace['components']=[];for(const [field,rail]of [['settledUsdCents','reserve'],['phiUsdCents','settlement']]as const){const amount=record.valueOperands?.[field];if(amount&&BigInt(amount)>0n)components.push({rail,amountUsdCents:amount});}
  return{basis:'recorded-funding-context',boundary:context.coverage.status==='complete'?'source-origins':'origins-not-carried',valueOrigins:[],sources:origins,steps,components,context};

@@ -47,6 +47,41 @@ it('reuses completed live heads when a slower retained seed finishes instead of 
   expect(network.read).toHaveBeenCalledTimes(4);expect(originals.sync).toHaveBeenCalledTimes(1);
  });
 });
+it('keeps live work and settled rows across a quick tab return, pauses polling, and resumes fresh additions',async()=>{
+ vi.useFakeTimers();
+ let finish!:(value:ReturnType<typeof page>)=>void,addition=false,state!:ReturnType<typeof usePublicNetwork>;
+ network.read.mockImplementation((source:PublicSource)=>source==='actions'&&!addition?new Promise(resolve=>{finish=resolve;}):Promise.resolve(page(source,source==='actions'?['fresh-addition','settled']:[])));
+ function Probe({active}:{active:boolean}){state=usePublicNetwork(active);return null;}
+ const root=createRoot(document.createElement('div'));
+ try{
+  await act(async()=>root.render(<Probe active/>));expect(network.read).toHaveBeenCalledTimes(4);
+  await act(async()=>root.render(<Probe active={false}/>));
+  await act(async()=>finish(page('actions',['settled'])));
+  expect(state.records.map(row=>row.sourceId)).toContain('settled');const held=state.records;
+  await act(async()=>root.render(<Probe active/>));
+  expect(network.read).toHaveBeenCalledTimes(4);expect(originals.sync).toHaveBeenCalledOnce();expect(state.records).toBe(held);
+  await act(async()=>root.render(<Probe active={false}/>));
+  await act(async()=>vi.advanceTimersByTimeAsync(120_000));expect(network.read).toHaveBeenCalledTimes(4);
+  addition=true;await act(async()=>root.render(<Probe active/>));
+  expect(network.read).toHaveBeenCalledTimes(8);expect(state.records.map(row=>row.sourceId).sort()).toEqual(['fresh-addition','settled']);
+ }finally{act(()=>root.unmount());vi.useRealTimers();}
+});
+it('finishes a seed-revealed history gap after a pause without rereading unrelated heads',async()=>{
+ let finish!:(value:unknown)=>void,state!:ReturnType<typeof usePublicNetwork>;
+ cache.seed.mockReturnValue(new Promise(resolve=>{finish=resolve;}));
+ network.read.mockImplementation(async(source:PublicSource,cursor?:string)=>source==='actions'?page(source,cursor?['gap','older']:['head'],cursor?null:'42'):page(source));
+ function Probe({active}:{active:boolean}){state=usePublicNetwork(active);return null;}
+ const root=createRoot(document.createElement('div'));
+ try{
+  await act(async()=>root.render(<Probe active/>));expect(network.read).toHaveBeenCalledTimes(4);
+  await act(async()=>root.render(<Probe active={false}/>));
+  await act(async()=>finish({records:page('actions',['older']).records,capturedAt:null,inspectionVersion:PUBLIC_NETWORK_INSPECTION_VERSION,coverage:[{source:'actions',complete:true}]}));
+  expect(network.read).toHaveBeenCalledTimes(4);
+  await act(async()=>root.render(<Probe active/>));
+  expect(state.records.map(row=>row.sourceId)).toEqual(expect.arrayContaining(['head','gap','older']));
+  expect(network.read.mock.calls.filter(([source])=>source!=='actions')).toHaveLength(3);
+ }finally{act(()=>root.unmount());}
+});
 it('repairs a newly revealed history gap while unrelated feeds and proof synchronization are pending',async()=>{
  let finish!:(value:unknown)=>void;cache.seed.mockReturnValue(new Promise(resolve=>{finish=resolve;}));originals.sync.mockReturnValue(new Promise(()=>{}));
  network.read.mockImplementation(async(source:PublicSource,cursor?:string)=>source==='graph'?new Promise(()=>{}):source==='actions'?page(source,cursor?['gap','older']:['head'],cursor?null:'42'):page(source));

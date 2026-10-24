@@ -1,14 +1,26 @@
-import {readLedgerFundingContext} from './ledger-funding-context';
+import {applyLedgerFundingContext,readLedgerFundingContext,type LedgerFundingContext} from './ledger-funding-context';
 import type {PublicRecord} from './public-network';
 import {readWalletFundingAttribution,walletAttributionFitsRecord,walletFundingTimeKey,type WalletFundingAttribution} from './ledger-wallet-fifo';
 import {linkWalletFundingHistory,readWalletFundingHistory,type WalletFundingHistory} from './ledger-funding-history';
 import {readWalletProofCohorts,walletProofCohortForSource,type WalletProofCohort} from './ledger-wallet-cohorts';
 type Context={attribution:WalletFundingAttribution;history?:WalletFundingHistory;cohorts?:WalletProofCohort[]};
+type NoteGraph={graph:LedgerFundingContext;operationId?:string;fundedAtKai?:string;coordinates:{pulse:string|null;kaiUpulse:string|null}[]};
+const object=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
+const noteId=(record:PublicRecord)=>record.evidence.noteId??(typeof record.details?.noteId==='string'?record.details.noteId:undefined);
+function atNotePulse(expected:string,pulse:unknown,kaiUpulse:unknown){
+ const fits=(value:unknown,scale:bigint)=>value===null||value===undefined||typeof value==='string'&&/^\d{1,39}$/.test(value)&&BigInt(value)/scale===BigInt(expected);
+ return fits(pulse,1n)&&fits(kaiUpulse,1000000n);
+}
+function noteFundingAgrees(parent:NoteGraph,record:PublicRecord,receipt:Record<string,unknown>){
+ const root=parent.graph.nodes[parent.graph.root.kind+':'+parent.graph.root.id],funded=receipt.fundedAtKai;
+ return !!root&&typeof funded==='string'&&/^\d{1,39}$/.test(funded)&&root.amountUsdCents===record.amountUsdCents&&(!record.valueOperands?.amountPhiMicro||root.amountPhiMicro===record.valueOperands.amountPhiMicro)&&(!parent.operationId||parent.operationId===receipt.operationId)&&(!parent.fundedAtKai||parent.fundedAtKai===funded)&&parent.coordinates.every(value=>atNotePulse(funded,value.pulse,value.kaiUpulse))&&atNotePulse(funded,undefined,root.kaiUpulse);
+}
 /** Reuse exact funding sources already held by this view. Public views never
  * inherit private context, and incomplete feeds never become FIFO inputs. */
 export function enrichWalletFundingContext(records:readonly PublicRecord[],sources:readonly PublicRecord[]):PublicRecord[]{
  const publicOnly=records.every(record=>record.authority==='public-source-projection');
- const byTransfer=new Map<string,Context|null>(),byNote=new Map<string,Context|null>(),own=new Map<PublicRecord,Context>();
+ const byTransfer=new Map<string,Context|null>(),byNote=new Map<string,Context|null>(),byDebit=new Map<string,Context|null>(),own=new Map<PublicRecord,Context>();
+ const noteGraphs=new Map<string,NoteGraph|null>();
  const sourceCohorts=new Map<string,WalletProofCohort|null>();
  const add=(map:Map<string,Context|null>,key:string|undefined,context:Context)=>{
   if(!key)return;const held=map.get(key);if(held===null)return;
@@ -17,6 +29,12 @@ export function enrichWalletFundingContext(records:readonly PublicRecord[],sourc
  };
  for(const record of new Set([...sources,...records])){
   if(publicOnly&&record.authority!=='public-source-projection')continue;
+  const note=noteId(record),receipt=object(record.details?.noteReceipt),debit=record.sourceId.replace(/^wallet_ledger:/,''),graph=readLedgerFundingContext(record.details?.fundingContext);
+  if(note&&graph&&record.source==='wallet'&&['note_mint','offline_cash_allocate'].includes(String(record.details?.ledgerEntryKind??record.kind))&&(!receipt.debitLedgerId||receipt.debitLedgerId===debit)){
+   const key=note+':'+debit,value:NoteGraph={graph,coordinates:[{pulse:record.pulse,kaiUpulse:record.kaiUpulse}],...(typeof receipt.operationId==='string'?{operationId:receipt.operationId}:{}),...(typeof receipt.fundedAtKai==='string'?{fundedAtKai:receipt.fundedAtKai}:{})},before=noteGraphs.get(key);
+   const conflict=before&&(before.graph!==graph&&JSON.stringify(before.graph)!==JSON.stringify(graph)||before.operationId&&value.operationId&&before.operationId!==value.operationId||before.fundedAtKai&&value.fundedAtKai&&before.fundedAtKai!==value.fundedAtKai);
+   noteGraphs.set(key,before===null||conflict?null:before?{...value,operationId:value.operationId??before.operationId,fundedAtKai:value.fundedAtKai??before.fundedAtKai,coordinates:[...before.coordinates,...value.coordinates]}:value);
+  }
   // A newly attributed debit can spend the same recorded credit as an older
   // payment. Bind its retained public proof cohort by that exact credit ID and
   // native units below; the earlier payment is not a new funding authority.
@@ -28,15 +46,29 @@ export function enrichWalletFundingContext(records:readonly PublicRecord[],sourc
   const attribution=readWalletFundingAttribution(record.details?.fundingAttribution);
   if(!attribution||!walletAttributionFitsRecord(attribution,record,record.details?.fundingTransferId===record.evidence.transferId))continue;
   const history=readWalletFundingHistory(record.details?.fundingHistory,attribution),cohorts=readWalletProofCohorts(record.details?.fundingCohorts),context={attribution,history,cohorts};
-  own.set(record,context);add(byTransfer,attribution.transferId,context);add(byNote,attribution.noteId,context);
+  own.set(record,context);add(byTransfer,attribution.transferId,context);add(byNote,attribution.noteId,context);add(byDebit,attribution.walletDebitId,context);
   for(const entry of history??[]){const parent={attribution:entry.parent,cohorts};add(byTransfer,entry.parent.transferId,parent);add(byNote,entry.parent.noteId,parent);}
  }
  const transfers=new Map([...byTransfer].flatMap(([key,value])=>value?[[key,value.attribution] as const]:[]));
  const notes=new Map([...byNote].flatMap(([key,value])=>value?[[key,value.attribution] as const]:[]));
  return records.map(record=>{
-  const carried=own.get(record),matching=carried?.attribution.transferId?byTransfer.get(carried.attribution.transferId):record.authority==='account-source-projection'&&record.evidence.transferId?byTransfer.get(record.evidence.transferId):undefined;
+  const carried=own.get(record),matching=carried?.attribution.transferId?byTransfer.get(carried.attribution.transferId):record.authority==='account-source-projection'?(record.evidence.transferId?byTransfer.get(record.evidence.transferId):byDebit.get(record.sourceId.replace(/^wallet_ledger:/,''))):undefined;
   const context=carried&&matching&&JSON.stringify(carried.attribution)===JSON.stringify(matching.attribution)?{...carried,history:carried.history??matching.history,cohorts:carried.cohorts??matching.cohorts}:carried??matching;
-  const graph=readLedgerFundingContext(record.details?.fundingContext,record.evidence.transferId??record.sourceId.replace(/^wallet_ledger:/,''));
+  const note=noteId(record),receipt=object(record.details?.noteReceipt),credit=record.sourceId.replace(/^wallet_ledger:/,'');
+  let graph=readLedgerFundingContext(record.details?.fundingContext,record.evidence.transferId??credit)??(note?readLedgerFundingContext(record.details?.fundingContext,note):undefined);
+  if(!graph&&record.authority==='account-source-projection'&&note&&receipt.noteId===note&&receipt.debitLedgerId===credit&&!receipt.creditLedgerId){
+   const parent=noteGraphs.get(note+':'+credit);
+   if(parent&&noteFundingAgrees(parent,record,receipt)&&atNotePulse(receipt.fundedAtKai as string,record.pulse,record.kaiUpulse)){
+    record=applyLedgerFundingContext(record,parent.graph);graph=readLedgerFundingContext(record.details?.fundingContext);
+   }
+  }
+  if(!graph&&record.authority==='account-source-projection'&&note&&receipt.noteId===note&&receipt.creditLedgerId===credit&&typeof receipt.debitLedgerId==='string'&&typeof receipt.operationId==='string'&&/^[a-f0-9]{64}$/.test(receipt.operationId)&&typeof receipt.fundedAtKai==='string'&&/^\d+$/.test(receipt.fundedAtKai)&&typeof receipt.acceptedAtKai==='string'&&/^\d+$/.test(receipt.acceptedAtKai)&&BigInt(receipt.fundedAtKai)<=BigInt(receipt.acceptedAtKai)){
+   const parent=noteGraphs.get(note+':'+receipt.debitLedgerId),root={kind:'credit' as const,id:credit};
+   if(parent&&noteFundingAgrees(parent,record,receipt)&&atNotePulse(receipt.acceptedAtKai,record.pulse,record.kaiUpulse)){
+    record=applyLedgerFundingContext(record,{...parent.graph,root,nodes:{...parent.graph.nodes,['credit:'+credit]:{ref:root,parents:[parent.graph.root],amountUsdCents:record.amountUsdCents,amountPhiMicro:record.valueOperands?.amountPhiMicro,kaiUpulse:record.kaiUpulse??String(BigInt(receipt.acceptedAtKai)*1000000n),...(record.time?{occurredAt:record.time}:{}),source:'note_claim'}}});
+    graph=readLedgerFundingContext(record.details?.fundingContext,credit);
+   }
+  }
   if(graph){
    const seen=new Set<string>(),pending=[graph.root],cohorts:WalletProofCohort[]=[];
    while(pending.length){const ref=pending.pop()!,key=ref.kind+':'+ref.id;if(seen.has(key))continue;seen.add(key);const node=graph.nodes[key];if(!node)continue;pending.push(...node.parents);

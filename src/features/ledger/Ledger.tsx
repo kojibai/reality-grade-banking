@@ -20,9 +20,15 @@ import type { usePrivateHistory } from '../../receiz/usePrivateHistory';
 
 const sourceLabels = { actions: 'Recorded actions', wallet: 'Wallet movements', graph: 'Proof Graph', proofs: 'Showcase proofs' };
 const noRecords:PublicRecord[]=[];
+const rowPresentations=new WeakMap<PublicRecord,{valueSource:LedgerValueIndex|null;value:ReturnType<typeof ledgerValueForRecord>;valuation:ReturnType<typeof ledgerValuationContext>;link:ReturnType<typeof receiptLink>}>();
+function rowPresentation(record:PublicRecord,valueSource:LedgerValueIndex|null){
+  const held=rowPresentations.get(record);if(held?.valueSource===valueSource)return held;
+  const value=ledgerValueForRecord(record,valueSource),valuation=ledgerValuationContext(record,valueSource,value),result={valueSource,value,valuation,link:receiptLink(record,value,valuation)};
+  rowPresentations.set(record,result);return result;
+}
 const LedgerRow=memo(function LedgerRow({ record, expanded, onExpand, personal = false, valueSource, relations, executionRecords = [] }: { personal?: boolean; executionRecords?:PublicRecord[]; record: PublicRecord; expanded: boolean; onExpand: (id:string) => void; valueSource: LedgerValueIndex | null; relations:ReturnType<typeof indexLedgerRelations> }) {
   const trade=ledgerAssetTrade(record),tradeSummary=ledgerTradeSummary(record),title=ledgerRecordTitle(record),flow=personal&&record.authority==='account-source-projection'?record.accountFlow:undefined;
-  const value=useMemo(()=>ledgerValueForRecord(record,valueSource),[record,valueSource]),valuation=useMemo(()=>ledgerValuationContext(record,valueSource,value),[record,valueSource,value]),link=useMemo(()=>receiptLink(record,value,valuation),[record,value,valuation]),[copied,setCopied]=useState(false),[copyError,setCopyError]=useState('');
+  const {value,valuation,link}=useMemo(()=>rowPresentation(record,valueSource),[record,valueSource]),[copied,setCopied]=useState(false),[copyError,setCopyError]=useState('');
   const copiedTimer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
   useEffect(()=>()=>clearTimeout(copiedTimer.current),[]);
   const confirmCopy=()=>{setCopied(true);setCopyError('');clearTimeout(copiedTimer.current);copiedTimer.current=setTimeout(()=>setCopied(false),1800);};

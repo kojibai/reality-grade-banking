@@ -37,6 +37,7 @@ function row(source: PublicSource, raw: unknown): PublicRecord {
   const proof = object(value.proofBundle), actor = object(value.actor ?? value.sender ?? value.fromActor);
   const evidence: Record<string, string> = {};
   for (const key of ['entryHash', 'prevHash', 'transferId', 'objectId', 'proofHead']) { const item = text(value[key], 512); if (item) evidence[key] = item; }
+  const noteId=text(value.noteId??value.note_id,128);if(noteId)evidence.noteId=noteId;
   for (const key of ['bundleHash', 'capsuleHash', 'claimHash', 'artifactDigest']) { const item = text(proof[key], 512); if (item) evidence[key] = item; }
   if(kind==='wallet.transfer.connect'&&!evidence.transferId){const transferId=text(object(value.payload).transferId,512);if(transferId)evidence.transferId=transferId;}
   if(source==='actions'&&kind==='wallet.transfer.connect'&&typeof value.publicTransferId==='string'&&/^tx:[a-f0-9]{24}$/.test(value.publicTransferId))evidence.publicTransferId=value.publicTransferId;

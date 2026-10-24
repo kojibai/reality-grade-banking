@@ -55,6 +55,19 @@ it('uses prepared activity categories instead of scanning all records on each fi
  act(()=>filter('Actions').click());expect(host.querySelectorAll('.asset-row')).toHaveLength(50);
  expect(held.group).not.toHaveBeenCalled();expect(held.category).not.toHaveBeenCalled();
 });
+it('reuses rich receipt preparation when categories and tabs return to the same held rows',()=>{
+ const records=parsePublicNetworkPage('actions',{ok:true,actions:Array.from({length:100},(_,i)=>({id:String(i),actionKind:i%2?'record':'chat_transfer',summary:`Recorded action ${i}`,pulse:i+1,amountUsdCents:'100'}))}).records;
+ held.network={records,sources:{},bootstrap:false,refresh:()=>{},loadMore:()=>{}};
+ const personalHistory={available:true,completeAtSealedHead:true,records:records.map(record=>({...record,authority:'account-source-projection' as const,accountFlow:'out' as const}))};
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);act(()=>root.render(<Ledger active={false} personalHistory={personalHistory}/>));
+ const click=(selector:string,text:string)=>act(()=>[...host.querySelectorAll<HTMLButtonElement>(selector)].find(button=>button.textContent===text)!.click());
+ click('.ledger-activity-filters button','Transfers');const links=[...host.querySelectorAll('.ledger-receipt-actions a')].map(a=>a.getAttribute('href'));
+ click('.ledger-activity-filters button','Actions');held.receipt.mockClear();
+ click('.ledger-activity-filters button','Transfers');
+ expect(held.receipt).not.toHaveBeenCalled();expect([...host.querySelectorAll('.ledger-receipt-actions a')].map(a=>a.getAttribute('href'))).toEqual(links);
+ click('.ledger-tabs button','My history');click('.ledger-tabs button','Public');held.receipt.mockClear();
+ click('.ledger-tabs button','My history');expect(held.receipt).not.toHaveBeenCalled();
+});
 it('uses prepared public Ledger categories without revisiting every retained record on a filter click',()=>{
  const records=parsePublicNetworkPage('actions',{ok:true,actions:Array.from({length:500},(_,i)=>({id:String(i),actionKind:i%2?'record':'chat_transfer',summary:`Recorded action ${i}`,pulse:i+1,amountUsdCents:'100'}))}).records;
  held.network={records,sources:{},bootstrap:false,refresh:()=>{},loadMore:()=>{}};
