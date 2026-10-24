@@ -10,7 +10,7 @@ const uint=(v:unknown):v is string=>typeof v==='string'&&/^(0|[1-9]\d{0,38})$/.t
 const key=(r:FundingRef)=>r.kind+':'+r.id;
 function ref(raw:unknown):FundingRef|undefined{const v=object(raw);if(['credit','debit','transfer','note','proof-basis','source-context'].includes(String(v.kind))&&typeof v.id==='string'&&v.id.length>0&&v.id.length<=512&&/^[a-zA-Z0-9_.:-]+$/.test(v.id))return{kind:v.kind as FundingRef['kind'],id:v.id};}
 const objectId=(v:unknown):v is string=>typeof v==='string'&&(/^(profile:[a-zA-Z0-9_.-]+:)?[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$/.test(v)||/^[a-fA-F0-9]{64}$/.test(v));
-const sources=new Set(['stripe_checkout_wallet_deposit','stripe_checkout_connect_payment','stripe_checkout_profile_original_download','wallet_deposit','stripe_origin','profile_rollup_seed','chat_transfer','note_claim','note_mint','market_buy','market_sell','asset_backing','asset_backing_redemption','market_trade','delegated_wallet_transfer','sigil_upload_claim']);
+const sources=new Set(['stripe_checkout_wallet_deposit','stripe_checkout_connect_payment','stripe_checkout_profile_original_download','wallet_deposit','stripe_origin','profile_rollup_seed','chat_transfer','note_claim','note_mint','market_buy','market_sell','asset_backing','asset_backing_redemption','market_trade','delegated_wallet_transfer','sigil_upload_claim','bank_connected_note_allocate','bank_connected_note_redeem','bank_connected_note_cancel']);
 const reserveSources=new Set(['stripe_checkout_wallet_deposit','stripe_checkout_connect_payment','stripe_checkout_profile_original_download','wallet_deposit','stripe_origin']);
 type Page={nodes:Record<string,FundingNode>;roots:Map<string,FundingRef>;coverage:Record<string,unknown>};
 const pages=new WeakMap<object,Page>();
@@ -93,12 +93,51 @@ export function ledgerFundingContextTrace(record:PublicRecord):LedgerFundingTrac
  return{basis:'recorded-funding-context',boundary:context.coverage.status==='complete'?'source-origins':'origins-not-carried',valueOrigins:[],sources:origins,steps,components,context};
 }
 
+function fundingConflict():never{throw Error('Public funding evidence conflicts with its retained original.');}
+/** These are read-only source projections. Missing fields may be disclosed
+ * later; already recorded amounts, offsets, identities and digests cannot change. */
+function mergeFundingEvidence(before:unknown,after:unknown):unknown{
+ if(before===undefined)return after;if(after===undefined)return before;
+ if(before===after)return before;
+ if(Array.isArray(before)||Array.isArray(after)){
+  if(!Array.isArray(before)||!Array.isArray(after)||before.length!==after.length)return fundingConflict();
+  const merged=before.map((value,i)=>mergeFundingEvidence(value,after[i]));return merged.every((value,i)=>value===before[i])?before:merged;
+ }
+ if(before!==null&&after!==null&&typeof before==='object'&&typeof after==='object'){
+  const a=before as Record<string,unknown>,b=after as Record<string,unknown>,out:Record<string,unknown>={};
+  for(const field of new Set([...Object.keys(a),...Object.keys(b)]))out[field]=mergeFundingEvidence(a[field],b[field]);
+  return Object.keys(out).length===Object.keys(a).length&&Object.keys(out).every(field=>out[field]===a[field])?before:out;
+ }
+ return fundingConflict();
+}
+/** The old connected-Note projection used this exact unresolved credit marker.
+ * Replace only that empty marker with its now-disclosed Note original. */
+function resolvedNoteParent(before:FundingNode,after:FundingNode,nodes:Record<string,FundingNode>):boolean{
+ if(before.ref.kind!=='credit'||before.parents.length!==1||after.parents.length!==1||after.parents[0].kind!=='note'||!after.originalDigest)return false;
+ // Older deployed readers omit these newly introduced source labels. The
+ // exact recorded-credit role, Note edge and original digest are still carried.
+ if(after.source===undefined?after.role!=='recorded-funding':!['bank_connected_note_redeem','bank_connected_note_cancel'].includes(after.source))return false;
+ const parent=before.parents[0];if(parent.kind!=='proof-basis'||parent.id!=='original-credit:'+before.ref.id)return false;
+ const marker=nodes[key(parent)];return !marker||!marker.parents.length&&Object.keys(marker).every(field=>field==='ref'||field==='parents');
+}
+function mergeFundingNode(before:FundingNode,after:FundingNode,knownNodes:Record<string,FundingNode>,nextNodes:Record<string,FundingNode>):FundingNode{
+ if(before===after)return before;
+ const {parents:a,...oldFields}=before,{parents:b,...newFields}=after;
+ const fields=mergeFundingEvidence(oldFields,newFields) as Omit<FundingNode,'parents'>;
+ const aKeys=new Set(a.map(key)),bKeys=new Set(b.map(key));let parents:FundingRef[];
+ if(a.every(r=>bKeys.has(key(r))))parents=b;
+ else if(b.every(r=>aKeys.has(key(r))))parents=a;
+ else if(resolvedNoteParent(before,after,knownNodes)&&resolvedNoteParent(before,after,nextNodes))parents=b;
+ else if(resolvedNoteParent(after,before,knownNodes)&&resolvedNoteParent(after,before,nextNodes))parents=a;
+ else return fundingConflict();
+ return {...fields,parents};
+}
 export function retainLedgerFundingContext(before:PublicRecord|undefined,after:PublicRecord):PublicRecord{
  if(!before||before.authority!==after.authority||before.source!==after.source||before.sourceId!==after.sourceId||before.kind!==after.kind||before.amountUsdCents!==after.amountUsdCents||before.time!==after.time||before.kaiUpulse!==after.kaiUpulse)return after;
  const known=readLedgerFundingContext(before.details?.fundingContext);if(!known)return after;
  const next=readLedgerFundingContext(after.details?.fundingContext);if(!next)return applyLedgerFundingContext(after,known);
  if(key(known.root)!==key(next.root))return after;
- const nodes={...known.nodes};for(const [id,node]of Object.entries(next.nodes)){if(nodes[id]&&JSON.stringify(nodes[id])!==JSON.stringify(node))throw Error('Public funding evidence conflicts with its retained original.');nodes[id]=node;}
+ const nodes={...known.nodes};for(const [id,node]of Object.entries(next.nodes))nodes[id]=nodes[id]?mergeFundingNode(nodes[id],node,known.nodes,next.nodes):node;
  return applyLedgerFundingContext(after,{...next,nodes});
 }
 export function compactLedgerFundingContext(context:LedgerFundingContext,maxBytes=8000):LedgerFundingContext{
