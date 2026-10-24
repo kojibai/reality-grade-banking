@@ -27,3 +27,17 @@
 .ledger-payment-explanation{font-size:12px;line-height:1.65;color:var(--muted,#6c7e94);margin:14px 0}
 @media(max-width:420px){.ledger-payment-executions{margin-left:18px;margin-right:14px}}
 @media(prefers-reduced-motion:reduce){.ledger-payment-execution>summary>svg{transition:none}}
+
+.ledger-funding-trace{padding:0;overflow:hidden}
+.ledger-funding-sources>summary{display:flex;align-items:center;gap:12px;padding:17px 20px;cursor:pointer;list-style:none;color:#3b5674}
+.ledger-funding-sources>summary::-webkit-details-marker{display:none}
+.ledger-funding-sources>summary>span{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:550}
+.ledger-funding-sources>summary>small{margin-left:auto;font-size:9px;color:#8698ae;text-align:right}
+.ledger-funding-sources>summary>svg{flex-shrink:0;color:#8698ae;transition:transform .15s ease}
+.ledger-funding-sources[open]>summary>svg{transform:rotate(180deg)}
+.ledger-funding-sources>summary:focus-visible{outline:2px solid #506ba0;outline-offset:-3px;border-radius:10px}
+.ledger-funding-sources>:not(summary){margin-left:20px;margin-right:20px}
+.ledger-funding-trace>.ledger-funding-full{margin:0;padding:16px 20px;border-top:1px solid #e5ebf1}
+.ledger-funding-trace>.ledger-funding-full:first-child{border-top:0}
+.ledger-funding-trace>.ledger-funding-boundary,.ledger-funding-trace>.ledger-funding-hash{margin:0;padding:12px 20px}
+@media(prefers-reduced-motion:reduce){.ledger-funding-sources>summary>svg{transition:none}}
