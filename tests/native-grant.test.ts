@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { BANK_APPLICATION_ID, BANK_READ_SCOPES, BANK_CARD_SCOPES, BANK_NATIVE_SCOPES } from '../src/receiz/config';
 import { openCanonicalIdentity } from '../src/receiz/native-identity';
 // Protocol-mechanics fixtures only. They are not canonical SDK admission/live-user evidence.
-const protocol = vi.hoisted(() => ({ grant: vi.fn(), scopes: vi.fn(), wallet: vi.fn(), continueId: vi.fn(), client: vi.fn(), qualify: vi.fn(), pendingCard: null as unknown, pendingSend: null as any, saveCard:vi.fn(), checkoutSession: vi.fn() }));
+const protocol = vi.hoisted(() => ({ grant: vi.fn(), scopes: vi.fn(), wallet: vi.fn(), continueId: vi.fn(), client: vi.fn(), qualify: vi.fn(), pendingCard: null as unknown, pendingSend: null as any, saveCard:vi.fn(), request:vi.fn(), checkoutSession: vi.fn() }));
 vi.mock('../src/receiz/identity-vault', async importOriginal => ({ ...await importOriginal<typeof import('../src/receiz/identity-vault')>(), loadCardOperation: async () => protocol.pendingCard, loadCardOperations: async () => protocol.pendingCard ? [protocol.pendingCard] : [],loadWalletSendState:async()=>protocol.pendingSend,saveCardOperation:protocol.saveCard }));
 vi.mock('../src/receiz/client', () => ({ loadReceiz: async () => ({
   verifyReceizArtifact: async () => ({ status: 'verified-artifact' }), createReceizArtifactAdmissionEngine: () => async () => ({ verdict: 'canonical-identity' }), isSdkIssuedReceizArtifactAdmission: () => true,
@@ -16,8 +16,8 @@ beforeEach(() => {
   protocol.grant.mockReset().mockResolvedValue({ applicationId: BANK_APPLICATION_ID, keyId: 'fixture-key', artifactDigest: 'a'.repeat(64), grantedScopes: [...BANK_READ_SCOPES], accessToken: 'local-fixture', expiresAtKai: 200 });
   protocol.scopes.mockReset().mockResolvedValue([...BANK_READ_SCOPES]); protocol.wallet.mockReset().mockResolvedValue({ ok: true, wallet: { userId: 'fixture-owner', balanceUsd: '3.00', balancePhiMicro: '2', valueStates: { settledBalanceUsdCents: '100', ecosystemBalanceUsdCents: '200' }, sync: {}, rollup: {} } });
   protocol.qualify.mockReset().mockRejectedValue(new Error('Native scope missing'));
-  protocol.pendingCard = null; protocol.pendingSend=null;protocol.saveCard.mockReset(); protocol.checkoutSession.mockReset();
-  protocol.client.mockReset().mockImplementation((options: { accessToken?: string }) => options.accessToken ? { auth: { grantedScopes: protocol.scopes }, connect: { wallet: protocol.wallet, checkoutSession: protocol.checkoutSession }, runtime: { qualifyV124: protocol.qualify } } : { identity: { continueReceizId: protocol.continueId, signLoginProof: async () => ({}), exchangeProofAuthority: protocol.grant } });
+  protocol.pendingCard = null; protocol.pendingSend=null;protocol.saveCard.mockReset(); protocol.checkoutSession.mockReset();protocol.request.mockReset().mockImplementation(async(path:string)=>{if(path==='/api/connect/wallet/me'||path==='/api/connect/wallet/me?history=1')return protocol.wallet();throw Error('Unexpected synthetic request: '+path);});
+  protocol.client.mockReset().mockImplementation((options: { accessToken?: string }) => options.accessToken ? {request:protocol.request, auth: { grantedScopes: protocol.scopes }, connect: { wallet: protocol.wallet, checkoutSession: protocol.checkoutSession }, runtime: { qualifyV124: protocol.qualify } } : { identity: { continueReceizId: protocol.continueId, signLoginProof: async () => ({}), exchangeProofAuthority: protocol.grant } });
 });
 it('checks the original card registration and then reads the upgraded account under its current registration', async () => {
   const checkout = { sessionId: 'cs_test_12345678', clientSecret: 'private-fixture', amountUsdCents: '500' };
@@ -118,4 +118,14 @@ it('keeps a credited shortfall checkout until the saved full Send retains credit
  protocol.checkoutSession.mockResolvedValue({ok:true,session:{sessionId:checkout.sessionId,currency:'usd',amountUsdCents:'700',isPaid:true,state:'paid'},settlement:{userId:'fixture-owner',amountUsdCents:'700',amountPhiMicro:'7'}});
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture-phrase','fixture.receiz',true);
  try{expect((await identity.checkCardDeposit(checkout)).status).toBe('credited');expect(protocol.saveCard).not.toHaveBeenCalled();}finally{identity.dispose();}
+});
+
+it.each(['expired','complete_unpaid','paid'])('cancellation uses the original registration and preserves a %s outcome through the native identity adapter',async state=>{
+ const checkout={sessionId:'cs_test_adaptercancel',clientSecret:'synthetic-only',amountUsdCents:'1000'},operationId='adapter-cancel-original';
+ protocol.pendingCard={schema:'receiz.bank.card-operation.v1',stage:'ready',operationId,amountUsdCents:'1000',checkout};
+ if(state!=='expired')protocol.pendingSend={current:{status:'funding',body:{clientNonce:operationId},funding:{stage:'ready',amountUsdCents:'1000',checkout}}};
+ protocol.grant.mockImplementation(async({applicationId,scopes}:{applicationId:string;scopes:string[]})=>({applicationId,keyId:'fixture-key',artifactDigest:'a'.repeat(64),grantedScopes:scopes,accessToken:'local-fixture',expiresAtKai:200}));protocol.scopes.mockResolvedValue([...BANK_CARD_SCOPES]);
+ protocol.request.mockResolvedValue({ok:true,session:{sessionId:checkout.sessionId,currency:'usd',amountUsdCents:'1000',isPaid:state==='paid',state},settlement:state==='paid'?{userId:'fixture-owner',amountUsdCents:'1000',amountPhiMicro:'10'}:null});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture-phrase','fixture.receiz',true);
+ try{expect((await identity.cancelCardDeposit!(checkout)).status).toBe(state==='paid'?'credited':state==='complete_unpaid'?'settling':'expired');expect(protocol.request).toHaveBeenCalledExactlyOnceWith('/api/connect/payments/session?sessionId=cs_test_adaptercancel',{method:'DELETE'});expect(protocol.checkoutSession).not.toHaveBeenCalled();expect(protocol.grant.mock.calls[0][0].applicationId).toBe('rc_ELkGAUBINd9Nw4bE5zMqUsgc');if(state==='expired')expect(protocol.saveCard).toHaveBeenCalledExactlyOnceWith(expect.anything(),null,false,operationId);else expect(protocol.saveCard).not.toHaveBeenCalled();}finally{identity.dispose();}
 });

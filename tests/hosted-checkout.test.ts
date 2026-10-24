@@ -83,3 +83,13 @@ it('returns the matched historical unpaid outcome rather than substituting the c
 it('uses a retained complete POST original even when the recovery read service is unavailable',async()=>{
  const f=hostedFixture(),c=f.newController();await c.ready;const r=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'balance'});f.loseLookup(true);await c.approve(r.digest);expect(c.snapshot().phase).toBe('paid');expect(f.transfer).toHaveBeenCalledOnce();expect(f.request.mock.calls.some(([path])=>path.includes('clientNonce='))).toBe(false);
 });
+it('a delayed cancellation of an earlier checkout cannot clear a newer checkout under the shared lock',async()=>{
+ const f=hostedFixture(0),one=f.newController();await one.ready;const old=await one.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});await one.approve(old.digest);
+ const two=f.newController();await two.ready;await two.back();const next=await two.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});await two.approve(next.digest);
+ expect(await one.back(old.checkoutId)).toBe(false);expect(f.state?.current.approval?.checkoutId).toBe(next.checkoutId);expect(f.state?.current.phase).toBe('funding');expect(f.transfer).not.toHaveBeenCalled();
+});
+it('checking an earlier displayed payment cannot execute the newer checkout adopted from another tab',async()=>{
+ const f=hostedFixture(0),one=f.newController();await one.ready;const old=await one.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});await one.approve(old.digest);
+ const two=f.newController();await two.ready;await two.back();const next=await two.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});await two.approve(next.digest);f.creditCard();
+ await one.check(old.checkoutId);expect(f.transfer).not.toHaveBeenCalled();expect(f.state?.current.approval?.checkoutId).toBe(next.checkoutId);expect(f.state?.current.phase).toBe('funding');await two.check(next.checkoutId);expect(f.transfer).toHaveBeenCalledOnce();
+});

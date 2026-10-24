@@ -108,8 +108,9 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
    if(retained?.fundingSessionId!==sessionId)return{matched:false,receipt:null};
    return{matched:true,username:row.approval.recipient.username,checkoutId:row.approval.checkoutId,status:retained.outcome.status,receipt:retained.outcome.status==='recorded'?await admittedReceipt(retained.outcome,row):null};
   });},
-  check(){return run(async()=>{await continuePayment(true);});},
-  back(){return run(async()=>{
+  check(expectedCheckoutId?:string){return run(async()=>{if(expectedCheckoutId&&view.approval?.checkoutId!==expectedCheckoutId)return;await continuePayment(true);});},
+  back(expectedCheckoutId?:string){return run(async()=>{
+   if(expectedCheckoutId&&view.approval?.checkoutId!==expectedCheckoutId)return false;
    // Back withdraws an unsent payment approval. Card funding is not a
    // submitted transfer; its original deposit remains independently retained.
    // Never discard an uncertain transfer or a Note whose credit is pending.
@@ -120,7 +121,7 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
     if(retained?.outcome.status==='funding'){await api.cancelFunding(nonce);retained=await api.retainedResult(nonce);assert();}
     if(retained){if(retained.outcome.status!=='not-sent'&&retained.outcome.status!=='recorded')return;await adopt(retained.outcome);}
    }
-   if(prepared)preparedApi?.discard(prepared);prepared=null;preparedApi=null;const history=[...(stored?.history??[])];if(view.approval)history.push(view.phase==='paid'||view.phase==='not-sent'?view:{...view,phase:'not-sent'});await save(emptyCheckoutSnapshot(),history);
+   if(prepared)preparedApi?.discard(prepared);prepared=null;preparedApi=null;const history=[...(stored?.history??[])];if(view.approval)history.push(view.phase==='paid'||view.phase==='not-sent'?view:{...view,phase:'not-sent'});await save(emptyCheckoutSnapshot(),history);return true;
   });},
   dispose(){closed=true;listeners.clear();prepared=null;},
  };

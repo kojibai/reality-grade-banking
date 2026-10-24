@@ -17,7 +17,7 @@ import { loadBankNoteRuntime, bankNoteArtwork, type BankOfflineNotes, type BankN
 import type { ReceizClient, ReceizIdentityPublicBinding, ReceizKeyFile, ReceizIdentityAccountProjection } from '@receiz/sdk';
 import { loadReceiz } from './client';
 import { BANK_APPLICATION_ID, BANK_PREVIOUS_NATIVE_APPLICATION_ID, isBankNativeApplicationId, BANK_CARD_APPLICATION_IDS, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES, BANK_NATIVE_CONSENT, BANK_NATIVE_SCOPES, BANK_RECOVERY_SCOPES, BANK_RECOVERY_CONSENT } from './config';
-import { parseCardCheckout, parseCardDepositStatus, parseDepositDollars, readCardOperation, type CardCheckout, type CardDepositStatus } from './card-deposit';
+import { cancelCardCheckout, parseCardCheckout, parseCardDepositStatus, parseDepositDollars, readCardOperation, type CardCheckout, type CardDepositStatus } from './card-deposit';
 import { nativeFetch, nativeRequestTimeout } from './native-transport';
 import { loadDeviceIdentity, saveDeviceIdentity, saveProtectedIdentityTransport, loadAccountLedgerState, saveAccountLedgerState, loadWalletObservation, saveWalletObservation, loadDepositSources, saveDepositSource, loadCardOperation, loadCardOperations, saveCardOperation, loadBankSessionIntent, saveBankSessionIntent, loadProofArchive, loadExportableRecoveries, retainProofBatch } from './identity-vault';
 import { projectHeldDeposit, validateAssetIntake, type AssetIntake, type HeldDeposit } from './deposit-source';
@@ -92,6 +92,7 @@ export interface OpenIdentity {
   binding: ReceizIdentityPublicBinding; needsPhrase: boolean; knownWallet: () => import('./wallet-observation').WalletObservation | null;
   username: string | null; accountUsername?: () => string | null; localHistory: ReceizIdentityAccountProjection; readWallet: () => Promise<ReturnType<typeof parseSharedWallet>>;
   beginCardDeposit: (amount: string, approved: boolean) => Promise<CardCheckout>; checkCardDeposit: (checkout: CardCheckout) => Promise<CardDepositStatus>;
+  cancelCardDeposit?: (checkout:CardCheckout) => Promise<CardDepositStatus>;
   pendingCardDeposit: () => Promise<CardCheckout | null>;
   pendingCardDeposits?: () => Promise<CardCheckout[]>;
   startAssetIntake: (asset: AssetIntake, attachment?: File) => Promise<HeldDeposit>; holdProof: (file: File) => Promise<HeldDeposit>;
@@ -1037,17 +1038,22 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     // known checkout sessions that remain safe to inspect or explicitly resume.
     return operations.filter(value => value.stage === 'ready').map(value => value.checkout!);
   }
-  async function checkCardDeposit(checkout: CardCheckout, beforeCredit?:()=>Promise<void>) {
+  async function checkCardDeposit(checkout: CardCheckout, beforeCredit?:()=>Promise<void>, cancel=false) {
     const operation = (await loadCardOperations(binding)).map(readCardOperation).find(value => value?.checkout?.sessionId === checkout.sessionId && value.checkout.amountUsdCents === checkout.amountUsdCents);
     if (!operation?.checkout) throw new Error('Open your actual unfinished deposit before checking it.');
     const current = await connectClient(BANK_CARD_SCOPES, BANK_CARD_CONSENT, operation.applicationId);
-    const status = parseCardDepositStatus(await current.connect.checkoutSession({ sessionId: checkout.sessionId }), checkout.sessionId, checkout.amountUsdCents, accountUid!);
+    const status = cancel?await cancelCardCheckout(current,checkout,accountUid!):parseCardDepositStatus(await current.connect.checkoutSession({ sessionId: checkout.sessionId }), checkout.sessionId, checkout.amountUsdCents, accountUid!);
     if(status.status==='credited'&&beforeCredit)await beforeCredit();
     // A generic deposit-return screen cannot discard the paid session before
     // the saved Send approval has retained its credit and continued payment.
     const send=['credited','expired','unpaid'].includes(status.status)?await loadWalletSendState(binding) as import('./wallet-send').WalletSendState|null:null;
     const matchingSend=send?.current.status==='funding'&&send.current.funding?.amountUsdCents===checkout.amountUsdCents&&(send.current.funding?.checkout?.sessionId===checkout.sessionId||send.current.body.clientNonce===operation.operationId);
-    const retainedForSend=matchingSend&&(!beforeCredit||send.current.funding?.stage!=='credited');
+    let retainedForSend=matchingSend&&(!beforeCredit||send.current.funding?.stage!=='credited');
+    if(cancel&&matchingSend&&['expired','unpaid'].includes(status.status)){
+      const api=await walletSend();
+      try{await api.cancelFunding(send.current.body.clientNonce);}catch(error){if((await api.retainedResult(send.current.body.clientNonce))?.outcome.status!=='not-sent')throw error;}
+      retainedForSend=false;
+    }
     if (['credited', 'expired', 'unpaid'].includes(status.status)&&!retainedForSend) await saveCardOperation(binding, null, false, operation.operationId);
     return status;
   }
@@ -1588,7 +1594,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const uid=accountUid??knownWallet?.wallet.userId;if(!uid)return;
     retainedMessaging.retainTwinAccessQuestions(uid,questions);
   };
-  return { hostedCheckout, profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, backedAssetPublication, createComposedAsset:(definition,draft)=>createAsset(definition,undefined,false,draft), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { checkoutController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { hostedCheckout, profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, backedAssetPublication, createComposedAsset:(definition,draft)=>createAsset(definition,undefined,false,draft), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { checkoutController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 async function createFreshNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

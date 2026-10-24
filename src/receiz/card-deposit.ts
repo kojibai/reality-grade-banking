@@ -1,6 +1,10 @@
 import { BANK_CARD_APPLICATION_IDS, BANK_PREVIOUS_CARD_APPLICATION_ID } from './config';
 export interface CardCheckout { sessionId: string; clientSecret: string; amountUsdCents: string; }
 export interface CardDepositStatus { status: 'open' | 'settling' | 'credited' | 'expired' | 'unpaid'; amountPhiMicro?: string; }
+export async function cancelCardCheckout(client:{request(path:string,options:{method:'DELETE'}):Promise<unknown>},checkout:CardCheckout,accountUid:string):Promise<CardDepositStatus>{
+  if(!/^cs_[a-zA-Z0-9_]{8,200}$/.test(checkout.sessionId))throw Error('Open your original card checkout.');
+  return parseCardDepositStatus(await client.request(`/api/connect/payments/session?sessionId=${encodeURIComponent(checkout.sessionId)}`,{method:'DELETE'}),checkout.sessionId,checkout.amountUsdCents,accountUid);
+}
 export interface CardOperation { schema: 'receiz.bank.card-operation.v1'; applicationId: string; stage: 'creating' | 'ready'; operationId: string; amountUsdCents: string; checkout?: CardCheckout; }
 export function cardOperationApplicationId(value: unknown): string {
   const applicationId = value ?? BANK_PREVIOUS_CARD_APPLICATION_ID;
@@ -34,7 +38,7 @@ export function parseCardCheckout(input: unknown, expectedCents: string): CardCh
 export function parseCardDepositStatus(input: unknown, expectedSession: string, expectedCents: string, expectedAccount: string): CardDepositStatus {
   const envelope = record(input), session = record(envelope.session);
   if (envelope.ok !== true || session.sessionId !== expectedSession || session.amountUsdCents !== expectedCents || session.currency !== 'usd') throw new Error('Receiz returned a different deposit session.');
-  if (session.isPaid !== true) return { status: session.state === 'expired' ? 'expired' : session.state === 'complete_unpaid' ? 'unpaid' : 'open' };
+  if (session.isPaid !== true) return { status: session.state === 'expired' ? 'expired' : session.state === 'complete_unpaid' ? 'settling' : 'open' };
   if (!envelope.settlement) return { status: 'settling' };
   const settlement = record(envelope.settlement);
   if (settlement.userId !== expectedAccount || settlement.amountUsdCents !== expectedCents) throw new Error('This deposit was not credited to the same account and amount.');
