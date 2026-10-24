@@ -73,7 +73,11 @@ it('filters public transfers and offers compact receipt open, copy and share con
  act(()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Transfers')!.click());
  expect(host.querySelectorAll('.ledger-event')).toHaveLength(1);expect(host.textContent).not.toContain('Reserve deposit');expect(host.textContent).not.toContain('Recorded action');
  const icons=host.querySelector('.ledger-receipt-actions')!;expect(icons.querySelector('a')?.getAttribute('href')).toContain('https://bankeiz.com/receipt/#r=');
- await act(async()=>icons.querySelector('button')!.click());expect(copy).toHaveBeenCalledOnce();expect(copy.mock.calls[0][0]).toContain('/receipt/?r=');expect(icons.querySelector('button[aria-label="Share receipt: Money Transfer"]')).not.toBeNull();
+ const {receiptDigest}=await import('../src/receiz/receipt-snapshot');vi.stubGlobal('fetch',vi.fn(async(_url,init)=>Response.json({ok:true,sha256:await receiptDigest(new TextEncoder().encode(String(init.body)))})));
+ await act(async()=>icons.querySelector('button')!.click());
+ await vi.waitFor(async()=>{await act(async()=>{await new Promise(resolve=>setTimeout(resolve,10));});expect(document.querySelector<HTMLButtonElement>('.receipt-share-panel [aria-label="Copy receipt link"]')?.disabled).toBe(false);});
+ await act(async()=>document.querySelector<HTMLButtonElement>('.receipt-share-panel [aria-label="Copy receipt link"]')!.click());expect(copy).toHaveBeenCalledOnce();expect(copy.mock.calls[0][0]).toMatch(/\/receipt\/[a-f0-9]{64}\/$/);expect(icons.querySelector('button[aria-label="Share receipt: Money Transfer"]')).not.toBeNull();
+ act(()=>document.querySelector<HTMLButtonElement>('.receipt-share-panel [aria-label="Close"]')!.click());
 });
 it('presents one payment with its exact delegated execution beneath it in both Ledger views',async()=>{
  const wallet=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'transfer',kind:'chat_transfer',transferId:'same-payment',amountUsdCents:'100'}]}).records;

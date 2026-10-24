@@ -1,3 +1,4 @@
+import {readReceiptSnapshot,receiptSnapshotDigest,receiptSnapshotUrl} from '../src/receiz/receipt-snapshot';
 import {readReceiptLink,type LedgerReceipt} from '../src/receiz/ledger-receipts';
 import {BANK_PUBLIC_ORIGIN} from '../src/receiz/config';
 import {formatMoney} from '../src/core/money';
@@ -15,9 +16,9 @@ export function receiptPreviewText(receipt:LedgerReceipt){
  const time=receipt.time?new Date(receipt.time).toLocaleString('en-US',{timeZone:'UTC',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})+' UTC':receipt.pulse?`☤KAI ${BigInt(receipt.pulse).toLocaleString('en-US')}`:'Source-carried receipt';
  return {amount,title,parties,time,valueLabel:receipt.value?ledgerValueLabel(receipt.value):'Recorded amount'};
 }
-function receiptHtml(html:string,receipt:LedgerReceipt,canonical:string,packet:string){
+function receiptHtml(html:string,receipt:LedgerReceipt,canonical:string,packet:string,shortDigest?:string){
  const text=receiptPreviewText(receipt),title=`${text.amount} · ${text.title} | Bankeiz`,description=[text.parties,text.time,'Open the receipt for its carried record and technical details.'].filter(Boolean).join(' · ');
- const image=`${BANK_PUBLIC_ORIGIN}/api/receipt?r=${packet}&image=1`;
+ const image=`${BANK_PUBLIC_ORIGIN}/api/receipt?${shortDigest?'s='+shortDigest:'r='+packet}&image=1`;
  const tags=`<title>${escape(title)}</title>
 <meta name="description" content="${escape(description)}">
 <meta name="robots" content="noindex,nofollow">
@@ -42,17 +43,22 @@ function receiptHtml(html:string,receipt:LedgerReceipt,canonical:string,packet:s
   .replace(/<meta\b[^>]*(?:name|property)\s*=\s*["'](?:description|robots|referrer|og:[^"']+|twitter:[^"']+)["'][^>]*>/gi,'')
   .replace(/<link\b[^>]*rel\s*=\s*["']canonical["'][^>]*>/gi,'')
   .replace(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi,'')
-  .replace(/<\/head>/i,tags+'\n</head>');
+  .replace(/<\/head>/i,()=>tags+'\n</head>')
+  .replace(/<\/body>/i,()=>(shortDigest?`<script type="application/json" id="receipt-snapshot" data-digest="${shortDigest}">${JSON.stringify(receipt).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026')}</script>`:'')+'</body>');
 }
 export async function handleReceiptPreview(request:Request,deps?:PreviewDependencies):Promise<Response>{
  const headers=new Headers({'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'});
  if(!['GET','HEAD'].includes(request.method)){headers.set('Allow','GET, HEAD');return new Response(null,{status:405,headers});}
- let receipt:LedgerReceipt,packet:string,image:boolean;
+ let receipt:LedgerReceipt|undefined,packet='',image=false,shortDigest:string|null=null;
  try{
   const url=new URL(request.url);
-  if(!['/receipt/','/api/receipt'].includes(url.pathname)||url.hash||[...url.searchParams.keys()].some(key=>!['r','image'].includes(key)||url.searchParams.getAll(key).length!==1)||url.searchParams.has('image')&&url.searchParams.get('image')!=='1')throw Error();
+  shortDigest=receiptSnapshotDigest(url.origin+url.pathname);
+  if(!['/receipt/','/api/receipt'].includes(url.pathname)&&!shortDigest||url.hash||[...url.searchParams.keys()].some(key=>!['r','s','image'].includes(key)||url.searchParams.getAll(key).length!==1)||url.searchParams.has('image')&&url.searchParams.get('image')!=='1')throw Error();
+  const selected=url.searchParams.get('s');
+  if(selected!==null){if(url.pathname!=='/api/receipt'||shortDigest||url.searchParams.has('r')||!/^[a-f0-9]{64}$/.test(selected))throw Error();shortDigest=selected;}
+  if(shortDigest&&url.searchParams.has('r'))throw Error();
   packet=url.searchParams.get('r')??'';image=url.searchParams.get('image')==='1';
-  receipt=readReceiptLink(`${BANK_PUBLIC_ORIGIN}/receipt/?r=${packet}`);
+  if(!shortDigest)receipt=readReceiptLink(`${BANK_PUBLIC_ORIGIN}/receipt/?r=${packet}`);
  }catch{return new Response(request.method==='HEAD'?null:'Receipt link is incomplete or unsupported.',{status:400,headers});}
  headers.set('Content-Type',image?'image/png':'text/html; charset=utf-8');
  // Metadata probes never read the template, load fonts or render an image.
@@ -62,7 +68,9 @@ export async function handleReceiptPreview(request:Request,deps?:PreviewDependen
    page:async()=>(await import('node:fs/promises')).readFile('dist/receipt/index.html','utf8'),
    image:async(receipt:LedgerReceipt)=>(await import('./receipt-preview-render')).renderReceiptImage(receipt),
   };
+  if(shortDigest){receipt=await readReceiptSnapshot(shortDigest);headers.set('Cache-Control','public, max-age=60, s-maxage=300');}
+  if(!receipt)throw Error('RECEIPT_INVALID');
   if(image){const bytes=await dependencies.image(receipt);headers.set('Cache-Control','public, max-age=31536000, immutable');return new Response(bytes as Uint8Array<ArrayBuffer>,{headers});}
-  return new Response(receiptHtml(await dependencies.page(),receipt,`${BANK_PUBLIC_ORIGIN}/receipt/?r=${packet}`,packet),{headers});
- }catch{return new Response('Receipt preview is temporarily unavailable.',{status:503,headers});}
+  return new Response(receiptHtml(await dependencies.page(),receipt,shortDigest?receiptSnapshotUrl(shortDigest):`${BANK_PUBLIC_ORIGIN}/receipt/?r=${packet}`,packet,shortDigest??undefined),{headers});
+ }catch(error){headers.set('Cache-Control','no-store');return new Response(error instanceof Error&&error.message==='RECEIPT_NOT_FOUND'?'Receipt not found.':'Receipt preview is temporarily unavailable.',{status:error instanceof Error&&error.message==='RECEIPT_NOT_FOUND'?404:503,headers});}
 }

@@ -42,3 +42,15 @@ Verification:
 
 The image and metadata are tested locally. Final iMessage/X rendering depends
 on the deployed route and those clients' link-preview caches.
+
+## Permanent short receipts
+
+An explicit Share/Copy action opens the receipt sharing panel and saves the complete curated display record under its SHA-256. The resulting `/receipt/<sha256>/` URL is93 characters, independent of the carried funding history's length. All supported funding nodes, parent links, source cohorts, trade details and technical evidence remain in the saved record. Funding source and Full funding history stay independently collapsed.
+
+The short link identifies a fixed capture. “View in Ledger” selects the corresponding public record, where later disclosed activity can appear. It does not add future transfers to an old capture. Only permitted public receipt fields are published; arbitrary private account, chat and custody fields are excluded. The hash checks delivery integrity; originals retain financial, ownership and verification authority.
+
+The first cold open reads one saved record server-side and includes its complete initial data. The browser does not repeat that read. Re-sharing an opened short URL uses that same ready URL, including offline, with no publication request. Successful saves are retained locally; repeated concurrent saves coalesce. Ordinary Ledger loading, categories, record opening and account startup perform no receipt publication or storage reads.
+
+The panel exposes native Share and Copy after the short URL is ready, preserving iOS tap activation. Download original remains available even if publication is unavailable or exceeds the bounded display-delivery capacity. Existing query and fragment links remain supported. Public delivery is a dependency for a new recipient's first open; it is not payment or account authority.
+
+Deployment: the existing Receiz public display-snapshot route must be deployed before the Bank UI. It uses the already configured public shared-object transport, isolated from private custody, and requires no database migration. No real financial operation or private publication is part of the test fixture.

@@ -21,7 +21,7 @@ export function safeReceiptSourceUrl(input:unknown):string|null{
 }
 export const safeLedgerSourceUrl=(value:unknown)=>safeReceiptSourceUrl(value)??safeReceizPublicUrl(value,'proof')??safeReceizPublicUrl(value,'source');
 const text=(v:unknown,max=4096)=>typeof v==='string'&&v.length>0&&v.length<=max?v:null;
-function read(input:unknown):LedgerReceipt{
+export function readLedgerReceipt(input:unknown):LedgerReceipt{
  if(!input||typeof input!=='object'||Array.isArray(input))throw Error('RECEIPT_INVALID');
  const v=input as Record<string,unknown>,id=text(v.id,512),kind=text(v.kind,128),title=text(v.title);
  const uint=(value:unknown,max=30)=>typeof value==='string'&&new RegExp(`^(0|[1-9]\\d{0,${max-1}})$`).test(value)?value:null;
@@ -29,6 +29,12 @@ function read(input:unknown):LedgerReceipt{
  const evidence:Record<string,string>={};
  if(v.evidence&&typeof v.evidence==='object')for(const [key,value]of Object.entries(v.evidence)){if(['entryHash','prevHash','transferId','noteId','objectId','proofHead','bundleHash','capsuleHash','claimHash','artifactDigest'].includes(key)&&text(value,512))evidence[key]=value as string;}
  return{schema:'bankeiz.ledger-receipt.v1',id,kind,title,source:['wallet','actions','graph','proofs'].includes(String(v.source))?v.source as PublicRecord['source']:/proof|market.asset/i.test(kind)?'proofs':'wallet',authority:v.authority==='account-source-projection'?'account-source-projection':'public-source-projection',detail:text(v.detail,8192)??'',amountUsdCents:uint(v.amountUsdCents),pulse:uint(v.pulse,24),kaiUpulse:uint(v.kaiUpulse),time:text(v.time,64)&&Number.isFinite(Date.parse(String(v.time)))?String(v.time):null,sender:text(v.sender,128),recipient:text(v.recipient,128),sourceUrl:safeLedgerSourceUrl(v.sourceUrl),evidence,value:readLedgerValueDisplay(v.value),details:v.details?readLedgerDetails(v.details):null,valueOperands:readLedgerValueOperands(v.valueOperands),valuation:readLedgerValuationTrace(v.valuation),contextOmitted:v.contextOmitted===true};
+}
+/** Complete curated display capture. Called only for an explicitly selected
+ * share, never while preparing every Ledger row. Original proofs retain authority. */
+export function completeLedgerReceipt(record:PublicRecord,value=ledgerValueForRecord(record),valuation?:LedgerFields|null):LedgerReceipt{
+ const details=readLedgerDetails(record.details),context=readLedgerFundingContext(details.fundingContext);
+ return readLedgerReceipt({schema:'bankeiz.ledger-receipt.v1',id:record.sourceId,source:record.source,authority:record.authority,detail:record.authority==='public-source-projection'?record.detail:'',kind:record.kind,title:record.title,amountUsdCents:record.amountUsdCents,pulse:record.pulse,kaiUpulse:record.kaiUpulse,time:record.time,sender:record.sender,recipient:record.recipient,sourceUrl:record.sourceUrl,evidence:record.evidence,value,details,valueOperands:record.valueOperands,valuation,contextOmitted:context?.coverage.status==='incomplete'});
 }
 export function receiptLink(record:PublicRecord,value=ledgerValueForRecord(record),valuation?:LedgerFields|null):string|null{
  // Keep the shared source cohort by reference in the in-app receipt/archive.
@@ -39,7 +45,7 @@ export function receiptLink(record:PublicRecord,value=ledgerValueForRecord(recor
  // Both views share the same curated fields of the selected record. The
  // reader excludes arbitrary account/chat metadata and custody material.
  const trade=ledgerAssetTrade(record),tradeDetails=trade?readLedgerDetails({ledgerEntryKind:details.ledgerEntryKind,assetTrade:trade}):null;
- const receipt=read({schema:'bankeiz.ledger-receipt.v1',id:record.sourceId,source:record.source,authority:record.authority,detail:record.authority==='public-source-projection'?record.detail:'',kind:record.kind,title:record.title,amountUsdCents:record.amountUsdCents,pulse:record.pulse,kaiUpulse:record.kaiUpulse,time:record.time,sender:record.sender,recipient:record.recipient,sourceUrl:record.sourceUrl,evidence:record.evidence,value,details,valueOperands:record.valueOperands,valuation,contextOmitted:!!fundingCohorts||compact?.coverage.status==='incomplete'});
+ const receipt=readLedgerReceipt({schema:'bankeiz.ledger-receipt.v1',id:record.sourceId,source:record.source,authority:record.authority,detail:record.authority==='public-source-projection'?record.detail:'',kind:record.kind,title:record.title,amountUsdCents:record.amountUsdCents,pulse:record.pulse,kaiUpulse:record.kaiUpulse,time:record.time,sender:record.sender,recipient:record.recipient,sourceUrl:record.sourceUrl,evidence:record.evidence,value,details,valueOperands:record.valueOperands,valuation,contextOmitted:!!fundingCohorts||compact?.coverage.status==='incomplete'});
  // Notes carry their complete already-held funding graph in a bounded lossless
  // packet. A fragment keeps large evidence out of HTTP request/query limits.
  // Existing ordinary receipt links and their compact transport stay unchanged.
@@ -60,14 +66,14 @@ export function readReceiptLink(link:string):LedgerReceipt{
  const compactUrl=new URL(link,BANK_PUBLIC_ORIGIN);
  if(compactUrl.search){
   if(compactUrl.pathname!=='/receipt/'||compactUrl.hash||compactUrl.searchParams.size!==1||!compactUrl.searchParams.has('r'))throw Error('RECEIPT_INVALID');
-  return read(decodeReceiptPacket(compactUrl.searchParams.get('r')!));
+  return readLedgerReceipt(decodeReceiptPacket(compactUrl.searchParams.get('r')!));
  }
  const url=new URL(link,BANK_PUBLIC_ORIGIN),params=new URLSearchParams(url.hash.slice(1));
- if(url.pathname==='/receipt/'&&params.size===1&&params.has('p'))return read(decodeReceiptPacket(params.get('p')!));
+ if(url.pathname==='/receipt/'&&params.size===1&&params.has('p'))return readLedgerReceipt(decodeReceiptPacket(params.get('p')!));
  const encoded=params.get('r');
  if(url.pathname!=='/receipt/'||params.size!==1||!encoded||encoded.length>32000||!/^[A-Za-z0-9_-]+$/.test(encoded))throw Error('RECEIPT_INVALID');
  const bytes=Uint8Array.from(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
- return read(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)));
+ return readLedgerReceipt(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)));
 }
 export function localReceiptPath(link:string){const url=new URL(link,BANK_PUBLIC_ORIGIN);return url.pathname+url.search+url.hash;}
 export type LedgerReceiptContext={record:PublicRecord;value:LedgerValueDisplay;valuation?:LedgerFields|null;valueSource?:LedgerValueIndex|null;relations?:ReturnType<typeof import('./ledger-economy').indexLedgerRelations>};
@@ -82,3 +88,5 @@ export function openLedgerReceipt(event:React.MouseEvent<HTMLAnchorElement>,link
  if(context){const core=readReceiptLink(link);if(core.id!==context.record.sourceId||core.source!==context.record.source||core.kind!==context.record.kind||core.authority!==context.record.authority)throw Error('RECEIPT_CONTEXT_MISMATCH');localContext={path:localReceiptPath(link),context};}else localContext=null;
  history.pushState({bankReceipt:true},'',localReceiptPath(link));dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));scrollTo(0,0);
 }
+
+export function readPublicLedgerSelection(link:string){try{const url=new URL(link,BANK_PUBLIC_ORIGIN),key=new URLSearchParams(url.hash.slice(1)).get('record');if(url.pathname!=='/ledger/'||!key||key.length>600||!/^(wallet|actions|graph|proofs):.+$/.test(key))return null;return{key,search:key.replace(/^(wallet|actions|graph|proofs):/,'')};}catch{return null;}}

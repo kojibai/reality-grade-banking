@@ -39,7 +39,7 @@ it('changes the selected audience explanation and visual stage without network o
 });
 it('uses a valid For you directory fragment and leaves the four Learn foundations intact',()=>{
  const doc=new DOMParser().parseFromString(learningDirectoryPage(),'text/html');expect(doc.querySelector('a[href="#guides-for-you"]')).not.toBeNull();expect(doc.querySelectorAll('#guides-for-you a')).toHaveLength(8);
- const home=new DOMParser().parseFromString(learnHome(),'text/html');expect(home.querySelector('main .learning-group-links')).toBeNull();expect(home.querySelectorAll('main #guides .guide-row')).toHaveLength(4);
+ const home=new DOMParser().parseFromString(learnHome(),'text/html');expect(home.querySelector('main .learning-group-links')).toBeNull();expect([...home.querySelectorAll('main #guides .guide-row')].slice(0,4).map(link=>link.getAttribute('href'))).toEqual(['/learn/receiz-id/','/learn/proof-objects/','/learn/reserve-and-settlement/','/learn/how-value-works/']);
  const links=[...home.querySelectorAll('footer nav[aria-label="For you footer links"] a')];expect(links.map(link=>link.getAttribute('href'))).toEqual(paths);expect(home.querySelectorAll('footer a[href="/learn/reality-grade-banking/"]')).toHaveLength(1);
 });
 it('defines unique audience sharing artwork through the existing metadata and vector-card pipeline',()=>{

@@ -113,6 +113,14 @@
       "destination": "/receiz-public-ledger.json.gz.bin"
     },
     {
+      "source": "/receipt/:digest([a-f0-9]{64})/",
+      "destination": "/api/receipt?s=:digest"
+    },
+    {
+      "source": "/receipt/:digest([a-f0-9]{64})",
+      "destination": "/api/receipt?s=:digest"
+    },
+    {
       "source": "/receipt/",
       "has": [
         {

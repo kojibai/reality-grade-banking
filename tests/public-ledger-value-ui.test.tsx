@@ -83,3 +83,13 @@ it('keeps share trade receipts separate from the full underlying asset value cha
  expect(ledgerAssetPeriods(record,values)).toBeNull();
  expect(ledgerValueForRecord(record,values)).toMatchObject({basis:'payment',amountUsdCents:'79'});
 });
+it('selects the requested public record when returning to an already mounted Ledger',async()=>{
+ Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});held.values=null;history.replaceState(null,'','/ledger/');
+ const records=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'target-27',kind:'chat_transfer',amountUsdCents:'2700'},{id:'other-100',kind:'chat_transfer',amountUsdCents:'10000'}]}).records;
+ held.ledger={records,sources:Object.fromEntries(PUBLIC_SOURCES.map(source=>[source,{status:'live',complete:true,busy:false,cursor:null,error:null}])),bootstrap:false,capturedAt:null,refresh:()=>{},loadMore:()=>{}};
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);const host=document.createElement('div'),root=createRoot(host);
+ try{act(()=>root.render(<PublicLedgerApp/>));expect(host.querySelectorAll('.public-ledger-row')).toHaveLength(2);
+  act(()=>{history.pushState(null,'','/ledger/#record=wallet%3Atarget-27');dispatchEvent(new Event('receiz-bank:surface'));});
+  expect(host.querySelectorAll('.public-ledger-row')).toHaveLength(1);expect(host.querySelector('.public-ledger-row')?.classList.contains('is-open')).toBe(true);expect(host.querySelector('.ledger-inspector')?.textContent).toContain('target-27');expect(fetch).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());history.replaceState(null,'','/');vi.unstubAllGlobals();}
+});

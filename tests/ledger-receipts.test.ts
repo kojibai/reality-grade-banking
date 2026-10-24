@@ -63,3 +63,8 @@ it('shares the selected My history trade facts while excluding unrelated private
  expect(receipt.details).toEqual({ledgerEntryKind:'market_sell',assetTrade:row.details!.assetTrade});
  expect(JSON.stringify(receipt)).not.toMatch(/PRIVATE ACCOUNT CONTEXT|private-conversation|private-source/);expect(link.length).toBeLessThan(2000);
 });
+it('follows a public Ledger record selection after the retained surface receives navigation',async()=>{
+ const {readPublicLedgerSelection}=await import('../src/receiz/ledger-receipts');
+ expect(readPublicLedgerSelection('https://bankeiz.com/ledger/#record=wallet%3Atransfer-27')).toEqual({key:'wallet:transfer-27',search:'transfer-27'});
+ expect(readPublicLedgerSelection('https://bankeiz.com/ledger/#record=private%3Asecret')).toBeNull();
+});

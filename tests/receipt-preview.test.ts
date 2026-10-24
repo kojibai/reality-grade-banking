@@ -41,3 +41,20 @@ it('does no image rendering or template work for HEAD and refuses malformed pack
  for(const url of [link,link+'&image=1']){const response=await handleReceiptPreview(new Request(url,{method:'HEAD'}),{page,image});expect(response.status).toBe(200);expect(await response.text()).toBe('');}
  expect(page).not.toHaveBeenCalled();expect(image).not.toHaveBeenCalled();expect((await handleReceiptPreview(new Request('https://bankeiz.com/receipt/?r=bad'),{page,image})).status).toBe(400);expect(image).not.toHaveBeenCalled();
 });
+it('opens a short receipt with one digest-bound source read and carries escaped full initial data',async()=>{
+ const {completeLedgerReceipt}=await import('../src/receiz/ledger-receipts'),{receiptDigest}=await import('../src/receiz/receipt-snapshot');
+ const receipt=completeLedgerReceipt(source());receipt.title='</script><script>bad()</script>';
+ const bytes=new TextEncoder().encode(JSON.stringify(receipt)),digest=await receiptDigest(bytes),fetcher=vi.fn(async()=>new Response(bytes));vi.stubGlobal('fetch',fetcher);
+ const {handleReceiptPreview}=await preview();const res=await handleReceiptPreview(new Request('https://bankeiz.com/receipt/'+digest+'/'),{page:async()=>'<html><head></head><body><div id="root"></div></body></html>',image:vi.fn()});
+ expect(res.status).toBe(200);const html=await res.text();expect(html).toContain('id="receipt-snapshot"');expect(html).not.toContain('<script>bad()');expect(html).toContain('data-digest="'+digest+'"');expect(fetcher).toHaveBeenCalledOnce();expect(html).toContain('/api/receipt?s='+digest+'&amp;image=1');
+});
+it('preserves literal replacement metacharacters in a saved receipt seed',async()=>{
+ const {completeLedgerReceipt}=await import('../src/receiz/ledger-receipts'),{receiptDigest}=await import('../src/receiz/receipt-snapshot');
+ const receipt=completeLedgerReceipt(source());receipt.title="Price $$100 $& $` $'";
+ const bytes=new TextEncoder().encode(JSON.stringify(receipt)),digest=await receiptDigest(bytes);vi.stubGlobal('fetch',vi.fn(async()=>new Response(bytes)));
+ const {handleReceiptPreview}=await preview(),res=await handleReceiptPreview(new Request('https://bankeiz.com/receipt/'+digest+'/'),{page:async()=>'<html><head></head><body><div id="root"></div></body></html>',image:vi.fn()});
+ const html=await res.text(),json=html.match(/id="receipt-snapshot"[^>]*>([\s\S]*?)<\/script>/)![1];expect(JSON.parse(json).title).toBe(receipt.title);
+});
+it('rejects an empty snapshot selector mixed into a legacy receipt request',async()=>{
+ const {handleReceiptPreview}=await preview(),{compactReceiptLink}=await import('../src/receiz/receipt-sharing');expect((await handleReceiptPreview(new Request(compactReceiptLink(receiptLink(source())!)+'&s='))).status).toBe(400);
+});

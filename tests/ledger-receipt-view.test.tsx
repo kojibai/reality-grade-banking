@@ -28,10 +28,15 @@ it('opens the lossless compact packet and offers Share beside Copy with the same
  try{
   expect(host.querySelector('.receipt-value h1')?.textContent).toBe('$125.00');
   const buttons=host.querySelectorAll('.receipt-header-actions button');expect(buttons).toHaveLength(2);expect(buttons[0].getAttribute('aria-label')).toBe('Copy receipt link');
-  await act(async()=>{(buttons[1] as HTMLButtonElement).click();});expect(share).toHaveBeenCalledOnce();expect(share.mock.calls[0][0].url).toContain('/receipt/?r=');
+  const {receiptDigest}=await import('../src/receiz/receipt-snapshot');vi.stubGlobal('fetch',vi.fn(async(_url,init)=>Response.json({ok:true,sha256:await receiptDigest(new TextEncoder().encode(String(init.body)))})));
+  await act(async()=>{(buttons[1] as HTMLButtonElement).click();});
+  await vi.waitFor(async()=>{await act(async()=>{await new Promise(resolve=>setTimeout(resolve,10));});expect(document.querySelector<HTMLButtonElement>('.receipt-share-panel [aria-label="Share receipt"]')?.disabled).toBe(false);});
+  expect(share).not.toHaveBeenCalled();
+  act(()=>document.querySelector<HTMLButtonElement>('.receipt-share-panel [aria-label="Share receipt"]')!.click());expect(share).toHaveBeenCalledOnce();expect(share.mock.calls[0][0].url).toMatch(/\/receipt\/[a-f0-9]{64}\/$/);
+  act(()=>document.querySelector<HTMLButtonElement>('.receipt-share-panel [aria-label="Close"]')!.click());
   act(()=>{const details=host.querySelector<HTMLDetailsElement>('details.receipt-inspection')!;details.open=true;details.dispatchEvent(new Event('toggle'));});
   expect(host.textContent).toContain('b'.repeat(64));
- }finally{delete (navigator as unknown as Record<string,unknown>).share;}
+ }finally{delete (navigator as unknown as Record<string,unknown>).share;vi.unstubAllGlobals();}
 });
 it('keeps transfer card value separate from consideration on the receipt', () => {
   const row = parsePublicNetworkPage('wallet', { ok: true, events: [{ id: 'card', kind: 'sports_card_transfer', pulse: 120, amountUsdCents: '100', cardValueUsdCents: '9900' }] }).records[0];
@@ -124,4 +129,11 @@ it('keeps the linked execution inside the one payment receipt from already loade
  openLedgerReceipt({button:0,preventDefault(){}} as never,link,{record,value:ledgerValueForRecord(record),relations:indexLedgerRelations([record,execution])});
  const host=mount(link);expect(host.querySelector('.receipt-value p')?.textContent).toBe('Money Transfer');
  expect(host.querySelector('.ledger-payment-execution summary')?.textContent).toContain('Same payment · execution record');expect(host.querySelector('.ledger-payment-execution .ledger-inspector')).toBeNull();
+});
+it('uses the complete short-route initial data on its first render without a second fetch',async()=>{
+ const {completeLedgerReceipt}=await import('../src/receiz/ledger-receipts');
+ const row=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'seeded-receipt',kind:'chat_transfer',amountUsdCents:'2700'}]}).records[0],receipt=completeLedgerReceipt(row),digest='a'.repeat(64);
+ const seed=document.createElement('script');seed.id='receipt-snapshot';seed.type='application/json';seed.setAttribute('data-digest',digest);seed.textContent=JSON.stringify(receipt);document.head.append(seed);
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ try{const host=mount('https://bankeiz.com/receipt/'+digest+'/');expect(host.querySelector('.receipt-value h1')?.textContent).toBe('$27.00');expect(fetch).not.toHaveBeenCalled();}finally{seed.remove();vi.unstubAllGlobals();}
 });

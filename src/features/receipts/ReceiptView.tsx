@@ -4,10 +4,11 @@ import {LedgerExecutionRecords} from '../ledger/LedgerExecutionRecords';
 import {ledgerPaymentReference,ledgerRecordTitle,ledgerPaymentRole,groupLedgerPaymentRecords} from '../../receiz/ledger-payment-records';
 import {useEffect,useMemo,useState} from 'react';
 import {ArrowLeft,ArrowUpRight,FileText,Link2,Share2} from 'lucide-react';
-import {copyReceiptLink,shareReceiptLink} from '../../receiz/receipt-sharing';
+import {openReceiptShare} from './openReceiptShare';
+import {initialReceiptSnapshot,readReceiptSnapshot,receiptSnapshotDigest} from '../../receiz/receipt-snapshot';
 import type {PublicRecord} from '../../receiz/public-network';
 import type {LedgerValueIndex} from '../../receiz/ledger-value';
-import {readReceiptLink,readLocalReceiptContext,releaseLocalReceiptContext,type LedgerReceipt} from '../../receiz/ledger-receipts';
+import {completeLedgerReceipt,readReceiptLink,readLocalReceiptContext,releaseLocalReceiptContext,type LedgerReceipt} from '../../receiz/ledger-receipts';
 import {formatMoney} from '../../core/money';
 import {ledgerValueLabel,type LedgerValueDisplay} from '../../receiz/ledger-value';
 import {LedgerInspector} from '../ledger/LedgerInspector';
@@ -25,16 +26,16 @@ function ReceiptLiveValue({active,record,value,valueSource}:{active:boolean;reco
 export function ReceiptView({onBack,active=true}:{onBack():void;active?:boolean}){
  const [localContext]=useState(()=>readLocalReceiptContext(location.href));
  useEffect(()=>()=>releaseLocalReceiptContext(localContext),[localContext]);
- const [receipt,setReceipt]=useState<LedgerReceipt|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[inspectionOpen,setInspectionOpen]=useState(false);
- useEffect(()=>{try{setReceipt(readReceiptLink(location.href));setError('');}catch{setError('This receipt link is incomplete or unsupported. Ask the sender for the original link.');}},[]);
+ const [receipt,setReceipt]=useState<LedgerReceipt|null>(()=>{const seed=initialReceiptSnapshot(location.href);if(seed)return seed;try{return readReceiptLink(location.href);}catch{return null;}}),[error,setError]=useState(''),[notice,setNotice]=useState(''),[inspectionOpen,setInspectionOpen]=useState(false);
+ useEffect(()=>{if(receipt)return;let live=true;const digest=receiptSnapshotDigest(location.href);if(digest){readReceiptSnapshot(digest).then(value=>{if(live)setReceipt(value);},()=>{if(live)setError('This receipt is temporarily unavailable. Your saved original is unchanged.');});}else setError('This receipt link is incomplete or unsupported. Ask the sender for the original link.');return()=>{live=false;};},[receipt]);
  const record=useMemo(()=>localContext?.record??(receipt?{id:`${receipt.source}:${receipt.id}`,sourceId:receipt.id,source:receipt.source,kind:receipt.kind,title:receipt.title,detail:receipt.detail,time:receipt.time,actor:null,amountUsdCents:receipt.amountUsdCents,pulse:receipt.pulse,kaiUpulse:receipt.kaiUpulse,sender:receipt.sender,recipient:receipt.recipient,sourceUrl:receipt.sourceUrl,evidence:receipt.evidence,valueOperands:receipt.valueOperands,details:receipt.details??undefined,authority:receipt.authority}:null),[receipt,localContext]);
  const executionRecords=useMemo(()=>{
   const reference=record?ledgerPaymentReference(record):null,related=reference?localContext?.relations?.get(`transfer:${reference}`):undefined;
   return record&&related?groupLedgerPaymentRecords([record,...related.filter(other=>other.id!==record.id)]).find(group=>group.record===record)?.executionRecords??[]:[];
  },[record,localContext]);
- const {copied,confirm,clear}=useCopyFeedback(location.href);
- const copy=async()=>{try{await copyReceiptLink(location.href);confirm();setNotice('');}catch{clear();setNotice('Copy the receipt link from your address bar.');}};
- const share=async()=>{try{const result=await shareReceiptLink(location.href);if(result==='copied'){confirm();setNotice('');}else if(result==='shared')setNotice('Receipt shared.');}catch{setNotice('Sharing is unavailable. Copy the receipt link instead.');}};
+ const {copied,confirm}=useCopyFeedback(location.href);
+ const copy=()=>{if(receipt)openReceiptShare(()=>localContext?completeLedgerReceipt(localContext.record,localContext.value,localContext.valuation):receipt,receiptSnapshotDigest(location.href)?undefined:location.href,()=>{confirm();setNotice('');},receiptSnapshotDigest(location.href)?location.href:undefined);};
+ const share=copy;
  if(error)return <main className="receipt-page"><div className="receipt-error"><FileText size={30}/><h1>Receipt unavailable.</h1><p>{error}</p><button onClick={onBack}>Return to bank<ArrowLeft size={16}/></button></div></main>;
  if(!receipt)return null;
  const proof=/proof|market.asset/i.test(receipt.kind),value:LedgerValueDisplay=localContext?.value??receipt.value??{basis:receipt.amountUsdCents===null?'unavailable':'payment',amountUsdCents:receipt.amountUsdCents,pulse:receipt.pulse,considerationUsdCents:null},amount=value.amountUsdCents===null?'Recorded':formatMoney(value.amountUsdCents),label=proof?'Proof receipt':'Activity receipt';
