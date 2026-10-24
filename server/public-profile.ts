@@ -1,10 +1,11 @@
 import {parsePublicProfile,profileUsername,type PublicProfile} from '../src/receiz/public-profile.js';
+import {profileAvatarUrl} from '../src/receiz/profile-avatar.js';
 export class PublicProfileError extends Error {constructor(message:string,public status:number){super(message);}}
 const LIMIT=32*1024*1024;
-async function readBody(response:Response){
- if(Number(response.headers.get('content-length'))>LIMIT)throw Error('PROFILE_PAGE_TOO_LARGE');
+async function readBody(response:Response,limit=LIMIT){
+ if(Number(response.headers.get('content-length'))>limit)throw Error('PROFILE_PAGE_TOO_LARGE');
  const reader=response.body?.getReader();if(!reader)throw Error('PROFILE_UNAVAILABLE');const parts:Uint8Array[]=[];let length=0;
- try{for(;;){const {done,value}=await reader.read();if(done)break;length+=value.length;if(length>LIMIT)throw Error('PROFILE_PAGE_TOO_LARGE');parts.push(value);}}finally{await reader.cancel().catch(()=>{});}
+ try{for(;;){const {done,value}=await reader.read();if(done)break;length+=value.length;if(length>limit)throw Error('PROFILE_PAGE_TOO_LARGE');parts.push(value);}}finally{await reader.cancel().catch(()=>{});}
  const bytes=new Uint8Array(length);let offset=0;for(const part of parts){bytes.set(part,offset);offset+=part.length;}return JSON.parse(new TextDecoder().decode(bytes));
 }
 /** Coalesces simultaneous reads only. Fresh named reads enforce current
@@ -34,10 +35,23 @@ export function createPublicProfileReader(fetchImpl:typeof fetch=fetch){
  };
 }
 export const readPublicProfile=createPublicProfileReader();
+const portraitReads=new Map<string,Promise<{username:string;avatarUrl:string|null}>>();
+function readPublicPortrait(username:string){
+ const held=portraitReads.get(username);if(held)return held;
+ const attempt=(async()=>{
+  const response=await fetch(`https://receiz.com/api/profile/${username}/viewer`,{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(8000),headers:{accept:'application/json'}});
+  if(!response.ok){await response.body?.cancel().catch(()=>{});throw new PublicProfileError('PROFILE_UNAVAILABLE',[403,404].includes(response.status)?response.status:503);}
+  const value=await readBody(response,512*1024);
+  if(value?.ok!==true||value.profile?.username!==username||value.profile?.isPrivate!==false||value.viewer?.canView!==true)throw new PublicProfileError('PROFILE_UNAVAILABLE',403);
+  return{username,avatarUrl:profileAvatarUrl(value.profile.avatarUrl)};
+ })();portraitReads.set(username,attempt);void attempt.finally(()=>{if(portraitReads.get(username)===attempt)portraitReads.delete(username);}).catch(()=>{});return attempt;
+}
 export async function handlePublicProfile(request:Request){
  const url=new URL(request.url),match=/^\/api\/bank\/public-profile\/([a-z0-9_]{3,24})$/.exec(url.pathname),headers={'Cache-Control':'no-store','Content-Type':'application/json','X-Content-Type-Options':'nosniff'};
  if(request.method!=='GET')return new Response(null,{status:405,headers:{...headers,Allow:'GET'}});
- if(!match||url.hash||[...url.searchParams.keys()].some(key=>key!=='cursor'||url.searchParams.getAll(key).length!==1))return Response.json({error:'PROFILE_REQUEST_INVALID'},{status:400,headers});
+ const portrait=url.searchParams.get('view')==='portrait';
+ if(!match||url.hash||[...url.searchParams.keys()].some(key=>(portrait?key!=='view':key!=='cursor')||url.searchParams.getAll(key).length!==1))return Response.json({error:'PROFILE_REQUEST_INVALID'},{status:400,headers});
+ if(portrait)try{return Response.json(await readPublicPortrait(match[1]),{headers});}catch(cause){return Response.json({error:'PROFILE_UNAVAILABLE'},{status:cause instanceof PublicProfileError?cause.status:503,headers});}
  try{return Response.json(await readPublicProfile(match[1],url.searchParams.get('cursor')??undefined),{headers});}
  catch(cause){return Response.json({error:cause instanceof PublicProfileError?cause.message:'PROFILE_UNAVAILABLE'},{status:cause instanceof PublicProfileError?cause.status:503,headers});}
 }

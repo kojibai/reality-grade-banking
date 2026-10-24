@@ -128,6 +128,20 @@ export function useNativeAccount(custody = nativeCustody) {
   };
   const create = (consent: boolean) => open(() => custody.createNativeIdentity(consent));
   const importId = (file: File, phrase: string, consent: boolean) => open(() => custody.importNativeIdentity(file, phrase, consent));
-  const forget = async () => { const current=held.current;if(current){await current.cancelUnsentNotes?.();if(held.current!==current)throw Error('Your device identity changed. Reopen this action.');}await forgetPushSubscription().catch(()=>{});await custody.forgetDeviceIdentity(); entering.current?.dispose(); held.current?.dispose(); held.current = null; generation.current++; pending.current = false; hasObservation.current = false; setIdentity(null); setWallet(null); setWalletHistory([]); setReceivedNotes([]); setHistoryComplete(false); setObservedAt(null); setOpeningStage('identity'); setOpening(false); setBusy(false); setSyncPending(false); };
+  const forget = async () => {
+    const current=held.current;
+    if(current){
+      // Withdrawing an unsent funding approval is local. An unknown submitted
+      // transfer and any pending Note credit still reach the custody guard.
+      const sends=await current.walletSend?.(),send=await sends?.status();
+      if(send?.status==='funding')await sends!.cancelFunding(send.clientNonce);
+      const checkout=await current.hostedCheckout?.();if(checkout){await checkout.ready;await checkout.back();}
+      await current.cancelUnsentNotes?.();
+      if(held.current!==current)throw Error('Your device identity changed. Reopen this action.');
+    }
+    await forgetPushSubscription().catch(()=>{});await custody.forgetDeviceIdentity();
+    entering.current?.dispose();held.current?.dispose();held.current=null;generation.current++;pending.current=false;hasObservation.current=false;
+    setIdentity(null);setWallet(null);setWalletHistory([]);setReceivedNotes([]);setHistoryComplete(false);setObservedAt(null);setOpeningStage('identity');setOpening(false);setBusy(false);setSyncPending(false);
+  };
   return { identity, wallet, walletHistory, receivedNotes, historyComplete, opening, openingStage, busy, error, observedAt, syncPending, refresh, create, importId, forget };
 }

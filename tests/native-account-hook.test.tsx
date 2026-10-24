@@ -5,6 +5,8 @@ import {beforeEach,expect,it,vi} from 'vitest';
 import {useNativeAccount} from '../src/receiz/useNativeAccount';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 import type {WalletObservation} from '../src/receiz/wallet-observation';
+import {hostedFixture} from './fixtures/hosted-checkout';
+import {hasPendingHostedCheckout} from '../src/receiz/checkout-state';
 const custody=vi.hoisted(()=>({restore:vi.fn(),create:vi.fn(),importId:vi.fn(),forget:vi.fn(),history:vi.fn()}));
 vi.mock('../src/receiz/native-identity',()=>({restoreNativeIdentity:custody.restore,createNativeIdentity:custody.create,importNativeIdentity:custody.importId,forgetDeviceIdentity:custody.forget}));
 vi.mock('../src/receiz/private-history-restore',()=>({preloadPrivateHistory:custody.history}));
@@ -125,4 +127,19 @@ it('cancels unsent notes before the existing device-removal guard',async()=>{
 it('keeps the identity and custody when unsent-note cancellation cannot be confirmed',async()=>{
  const identity=held();identity.cancelUnsentNotes=vi.fn().mockRejectedValue(Error('BANK_NOTE_FUNDING_PENDING'));custody.restore.mockResolvedValue(identity);
  await observe(async read=>{await act(async()=>{await expect(read().forget()).rejects.toThrow('BANK_NOTE_FUNDING_PENDING');});expect(custody.forget).not.toHaveBeenCalled();expect(identity.dispose).not.toHaveBeenCalled();expect(read().identity).toBe(identity);});
+});
+it('releases an abandoned unpaid hosted checkout before logout after navigating back to the account',async()=>{
+ const f=hostedFixture(0),checkout=f.newController();await checkout.ready;const approval=await checkout.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});await checkout.approve(approval.digest);
+ const identity=held();identity.hostedCheckout=async()=>checkout;custody.restore.mockResolvedValue(identity);custody.forget.mockImplementation(async()=>{if(hasPendingHostedCheckout(f.state!))throw Error('checkout pending');});
+ await observe(async read=>{await act(async()=>{await read().forget();});expect(read().identity).toBeNull();expect(hasPendingHostedCheckout(f.state!)).toBe(false);expect(f.transfer).not.toHaveBeenCalled();});
+});
+it('releases an abandoned Send card-funding approval before logout without checking or submitting it',async()=>{
+ const f=hostedFixture(0),wallet=await f.deps.walletSend(),review=await wallet.prepare({recipient:'merchant',amountUsdCents:'1000'},{fundingPreference:'card'});await wallet.execute(review,review.digest);
+ const identity=held();identity.walletSend=async()=>wallet;custody.restore.mockResolvedValue(identity);custody.forget.mockImplementation(async()=>{if((await wallet.status())?.status==='funding')throw Error('payment pending');});const reads=f.request.mock.calls.length;
+ await observe(async read=>{await act(async()=>{await read().forget();});expect(read().identity).toBeNull();expect(await wallet.status()).toMatchObject({status:'not-sent',reason:'card_cancelled'});expect(f.request).toHaveBeenCalledTimes(reads);expect(f.transfer).not.toHaveBeenCalled();});
+});
+it('preserves the ID and exact recovery when logout follows a submitted payment with an unknown result',async()=>{
+ const f=hostedFixture(),checkout=f.newController();await checkout.ready;const approval=await checkout.prepare({recipient:'merchant',amountUsdCents:'1000',method:'balance'});f.loseLookup(true);f.loseResponse(true);await checkout.approve(approval.digest);
+ const identity=held();identity.hostedCheckout=async()=>checkout;identity.walletSend=f.deps.walletSend;custody.restore.mockResolvedValue(identity);custody.forget.mockImplementation(async()=>{if(hasPendingHostedCheckout(f.state!))throw Error('submitted payment pending');});
+ await observe(async read=>{await act(async()=>{await expect(read().forget()).rejects.toThrow('submitted payment pending');});expect(read().identity).toBe(identity);expect(identity.dispose).not.toHaveBeenCalled();expect(checkout.snapshot().phase).toBe('confirming');expect(f.transfer).toHaveBeenCalledOnce();});
 });

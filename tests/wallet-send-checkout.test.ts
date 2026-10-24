@@ -29,6 +29,11 @@ it('binds the checkout return to the reviewed context and cannot silently change
 it('refuses an empty supplied nonce before any account call',async()=>{
  const f=fixture();await expect(createWalletSend(f.options).prepare({recipient,amountUsdCents:'1000'},{clientNonce:''})).rejects.toThrow('NONCE');expect(f.request).not.toHaveBeenCalled();
 });
+it('cancels only the exact unsent funding approval and never revives it after card completion',async()=>{
+ const f=fixture(),api=createWalletSend(f.options),review=await api.prepare({recipient,amountUsdCents:'1000'},{clientNonce:nonce,fundingPreference:'card'});await api.execute(review,review.digest);
+ await expect(api.cancelFunding('10000000-0000-4000-8000-000000000006')).rejects.toThrow('FUNDING_NOT_PENDING');expect((await api.status())?.status).toBe('funding');
+ await api.cancelFunding(nonce);f.credit();expect(await api.resumeFunding()).toMatchObject({status:'not-sent',reason:'card_cancelled'});expect(f.transfer).not.toHaveBeenCalled();expect(f.begin).toHaveBeenCalledOnce();
+});
 it.each(['25','10000001'])('rejects a full card amount of %s cents outside the existing range before funding',async amount=>{
  const f=fixture();await expect(createWalletSend(f.options).prepare({recipient,amountUsdCents:amount},{fundingPreference:'card'})).rejects.toThrow();expect(f.begin).not.toHaveBeenCalled();expect(f.transfer).not.toHaveBeenCalled();
 });

@@ -1,6 +1,18 @@
 import {it,expect,vi} from 'vitest';
 import {createPublicProfileReader} from '../server/public-profile';
 import {profileFixture} from './fixtures/public-profile';
+it('serves the checkout portrait from public metadata without reconstructing the asset collection',async()=>{
+ vi.resetModules();const fetcher=vi.fn(async()=>Response.json({ok:true,profile:{username:'merchant',avatarUrl:'/portrait.png',isPrivate:false},viewer:{canView:true}}));vi.stubGlobal('fetch',fetcher);
+ try{const {handlePublicProfile}=await import('../server/public-profile');const response=await handlePublicProfile(new Request('https://bankeiz.com/api/bank/public-profile/merchant?view=portrait'));expect(response.status).toBe(200);expect(await response.json()).toEqual({username:'merchant',avatarUrl:'https://receiz.com/portrait.png'});expect(fetcher).toHaveBeenCalledExactlyOnceWith('https://receiz.com/api/profile/merchant/viewer',expect.objectContaining({credentials:'omit',redirect:'error'}));}finally{vi.unstubAllGlobals();}
+});
+it.each([
+ {username:'merchant',isPrivate:true,canView:true},
+ {username:'other',isPrivate:false,canView:true},
+ {username:'merchant',isPrivate:false,canView:false},
+])('withholds mismatched or private portrait metadata: %j',async value=>{
+ vi.resetModules();vi.stubGlobal('fetch',vi.fn(async()=>Response.json({ok:true,profile:{username:value.username,avatarUrl:'https://receiz.com/private.png',isPrivate:value.isPrivate},viewer:{canView:value.canView}})));
+ try{const {handlePublicProfile}=await import('../server/public-profile');const response=await handlePublicProfile(new Request('https://bankeiz.com/api/bank/public-profile/merchant?view=portrait'));expect(response.status).toBe(403);expect(await response.text()).not.toContain('private.png');}finally{vi.unstubAllGlobals();}
+});
 it('coalesces cookie-free first-page reads and does not reuse a previous response after the request',async()=>{
  const fetcher=vi.fn(async(_input:RequestInfo|URL)=>Response.json(profileFixture()));const read=createPublicProfileReader(fetcher);
  const [a,b]=await Promise.all([read('alexmorgan'),read('alexmorgan')]);expect(a).toEqual(b);expect(fetcher).toHaveBeenCalledTimes(1);

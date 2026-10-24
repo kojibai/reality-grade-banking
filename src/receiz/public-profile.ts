@@ -1,6 +1,7 @@
 import {mergeAdmittedProfileAssets,forgetAssetPublicationAdmissions,acceptDiscoveredProfileAssets} from './asset-publication-adoption.js';
 import {parsePublicMarket,type PublicMarketItem} from './public-market.js';
 import {profileAvatarUrl} from './profile-avatar.js';
+import {retainRecipientPortrait,forgetRecipientPortrait} from './recipient-portrait.js';
 
 const names=/^[a-z0-9_]{3,24}$/;
 const reserved=new Set(['pay','api','asset','assets','auth','conformance','explore','explorer','learn','legal','ledger','market','market-cap','native','offline','receipt','source','verify','u']);
@@ -53,8 +54,8 @@ export function parsePublicProfile(input:unknown,expectedUsername:string):Public
 const held=new Map<string,PublicProfile>(),observed=new Map<string,number>();
 const listeners=new Set<()=>void>();
 export const subscribePublicProfiles=(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};};
-export function retainPublicProfile(input:PublicProfile){const profile=mergeAdmittedProfileAssets(input);for(const [name,previous]of held)if(name!==profile.username&&previous.userId===profile.userId)forgetPublicProfile(name);held.delete(profile.username);held.set(profile.username,profile);observed.set(profile.username,Date.now());if(held.size>24)forgetPublicProfile(held.keys().next().value!);if(typeof dispatchEvent==='function')dispatchEvent(new CustomEvent('bankeiz:profile-metadata',{detail:{username:profile.username,title:profile.displayName,description:profile.bio,image:profile.bannerUrl??profile.avatarUrl}}));for(const listener of listeners)listener();return profile;}
-export function forgetPublicProfile(username:string){forgetAssetPublicationAdmissions(username);held.delete(username);observed.delete(username);if(typeof document!=='undefined'){const seed=document.getElementById('public-profile-seed');try{if(JSON.parse(seed?.textContent??'null')?.username===username)seed?.remove();}catch{/* Invalid seeds are never adopted. */}}for(const listener of listeners)listener();}
+export function retainPublicProfile(input:PublicProfile){const profile=mergeAdmittedProfileAssets(input);for(const [name,previous]of held)if(name!==profile.username&&previous.userId===profile.userId)forgetPublicProfile(name);held.delete(profile.username);held.set(profile.username,profile);observed.set(profile.username,Date.now());retainRecipientPortrait(profile.username,profile.avatarUrl);if(held.size>24)forgetPublicProfile(held.keys().next().value!);if(typeof dispatchEvent==='function')dispatchEvent(new CustomEvent('bankeiz:profile-metadata',{detail:{username:profile.username,title:profile.displayName,description:profile.bio,image:profile.bannerUrl??profile.avatarUrl}}));for(const listener of listeners)listener();return profile;}
+export function forgetPublicProfile(username:string){forgetRecipientPortrait(username);forgetAssetPublicationAdmissions(username);held.delete(username);observed.delete(username);if(typeof document!=='undefined'){const seed=document.getElementById('public-profile-seed');try{if(JSON.parse(seed?.textContent??'null')?.username===username)seed?.remove();}catch{/* Invalid seeds are never adopted. */}}for(const listener of listeners)listener();}
 export function forgetPublicProfilesForAccount(uid:string){for(const [name,profile]of held)if(profile.userId===uid)forgetPublicProfile(name);}
 export const publicProfileNeedsRefresh=(username:string)=>Date.now()-(observed.get(username)??0)>15_000;
 export function publicProfilePageError(username:string):string{

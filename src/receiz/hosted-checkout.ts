@@ -87,7 +87,7 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
    const balance=value.method==='balance'?await input.readWallet():null;if(balance)funding=observedProposal(balance,value.amountUsdCents);
    const noteFunding=value.method==='note'?await noteProposal(value.amountUsdCents,view.notes,old?.accountUid):null;if(noteFunding)funding=noteFunding;
    const w=await api.prepare({recipient:continuing?old!.recipient.userId:username,amountUsdCents:value.amountUsdCents},{clientNonce:nonce,...(value.method==='card'?{fundingPreference:'card' as const}:{}),cardFundingLimitUsdCents:funding.card,checkoutContext:{checkoutId:nonce,username}});assert();if(balance&&balance.userId!==w.accountUid||noteFunding&&noteFunding.accountUid!==w.accountUid)throw Error('CHECKOUT_RESULT_MISMATCH');
-   const recipient=continuing?old!.recipient:{userId:w.recipientUserId,username,displayName:w.recipientLabel.startsWith('@')?w.recipientLabel.slice(1):username,avatarUrl:null};
+   const recipient=continuing?old!.recipient:{userId:w.recipientUserId,username,displayName:w.recipientLabel.startsWith('@')?w.recipientLabel.slice(1):username,avatarUrl:w.recipientAvatarUrl??null};
    const a=await sign({checkoutId:nonce,clientNonce:nonce,identityDigest:input.identityDigest,accountUid:w.accountUid,recipient,amountUsdCents:value.amountUsdCents,method:value.method,cardAmountUsdCents:funding.card,balanceContributionUsdCents:funding.balance,...(noteFunding?{noteAmountUsdCents:noteFunding.noteAmountUsdCents,noteSurplusUsdCents:noteFunding.noteSurplusUsdCents}:{}),noteSourceDigests:value.method==='note'?view.notes.map(n=>n.sourceDigest):[]});assert();
    prepared=w;preparedApi=api;
    const history=[...(stored?.history??[])];if(!continuing&&old&&old.checkoutId!==nonce)history.push(view.phase==='paid'||view.phase==='not-sent'?view:{...view,phase:'not-sent'});
@@ -106,11 +106,20 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
    if(!row?.approval)return{matched:false,receipt:null};
    const retained=await(await input.walletSend()).retainedResult(row.approval.clientNonce);assert();
    if(retained?.fundingSessionId!==sessionId)return{matched:false,receipt:null};
-   return{matched:true,checkoutId:row.approval.checkoutId,status:retained.outcome.status,receipt:retained.outcome.status==='recorded'?await admittedReceipt(retained.outcome,row):null};
+   return{matched:true,username:row.approval.recipient.username,checkoutId:row.approval.checkoutId,status:retained.outcome.status,receipt:retained.outcome.status==='recorded'?await admittedReceipt(retained.outcome,row):null};
   });},
   check(){return run(async()=>{await continuePayment(true);});},
   back(){return run(async()=>{
-   if(view.approvalHistory.length&&!['paid','not-sent'].includes(view.phase))return;
+   // Back withdraws an unsent payment approval. Card funding is not a
+   // submitted transfer; its original deposit remains independently retained.
+   // Never discard an uncertain transfer or a Note whose credit is pending.
+   if(view.notes.some(note=>['depositing','received','attention-required'].includes(note.status)))return;
+   if(view.approvalHistory.length&&!['paid','not-sent'].includes(view.phase)){
+    const api=await input.walletSend(),nonce=view.approval!.clientNonce;
+    let retained=await api.retainedResult(nonce);assert();
+    if(retained?.outcome.status==='funding'){await api.cancelFunding(nonce);retained=await api.retainedResult(nonce);assert();}
+    if(retained){if(retained.outcome.status!=='not-sent'&&retained.outcome.status!=='recorded')return;await adopt(retained.outcome);}
+   }
    if(prepared)preparedApi?.discard(prepared);prepared=null;preparedApi=null;const history=[...(stored?.history??[])];if(view.approval)history.push(view.phase==='paid'||view.phase==='not-sent'?view:{...view,phase:'not-sent'});await save(emptyCheckoutSnapshot(),history);
   });},
   dispose(){closed=true;listeners.clear();prepared=null;},

@@ -1,16 +1,30 @@
 // @vitest-environment happy-dom
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
-import {expect,it,vi} from 'vitest';
+import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {HostedCheckout} from '../src/checkout/HostedCheckout';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 import {hostedFixture} from './fixtures/hosted-checkout';
+import {parsePublicProfile,retainPublicProfile,forgetPublicProfile} from '../src/receiz/public-profile';
+import {profileFixture} from './fixtures/public-profile';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+beforeEach(()=>{sessionStorage.clear();vi.stubGlobal('fetch',vi.fn(async()=>new Response(null,{status:404})));});
+afterEach(()=>{forgetPublicProfile('alexmorgan');vi.unstubAllGlobals();});
 const settle=async(host:HTMLElement,text:string)=>{for(let i=0;i<40&&!host.textContent?.includes(text);i++)await act(async()=>{await new Promise(resolve=>setTimeout(resolve,5));});expect(host.textContent).toContain(text);};
 const click=(host:HTMLElement,text:string)=>{const button=[...host.querySelectorAll('button')].find(b=>b.textContent?.trim()===text);expect(button,text).toBeTruthy();if(button!.type==='submit'&&button!.form)button!.form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));else button!.click();};
 it('paints the recipient and amount while device entry is pending without financial actions',async()=>{
  const open=vi.fn(()=>new Promise<OpenIdentity>(()=>{})),session={open,import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host);
  try{await act(async()=>root.render(<HostedCheckout request={{username:'merchant',amount:'12.30'}} identitySession={session}/>));expect(host.textContent).toContain('@merchant');expect(host.querySelector<HTMLInputElement>('[aria-label="Payment amount"]')?.value).toBe('12.30');expect(host.textContent).not.toContain('Create account');expect(host.textContent).not.toContain('Enter bank');expect(host.querySelector('iframe')).toBeNull();}finally{await act(async()=>root.unmount());}
+});
+it('paints a retained recipient portrait without another profile request or waiting for device entry',async()=>{
+ const profile=profileFixture();profile.profile.profile.avatarUrl='https://receiz.com/retained-portrait.png';retainPublicProfile(parsePublicProfile(profile,'alexmorgan'));
+ const session={open:()=>new Promise<OpenIdentity>(()=>{}),import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<HostedCheckout request={{username:'alexmorgan',amount:'12.30'}} identitySession={session}/>));expect(host.querySelector<HTMLImageElement>('.checkout-recipient img')?.src).toBe('https://receiz.com/retained-portrait.png');expect(fetch).not.toHaveBeenCalled();expect(host.querySelector<HTMLInputElement>('[aria-label="Payment amount"]')?.value).toBe('12.30');}finally{await act(async()=>root.unmount());}
+});
+it('loads only the small portrait independently while the form is already painted on a fresh link',async()=>{
+ let finish!:(value:Response)=>void;vi.mocked(fetch).mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
+ const session={open:()=>new Promise<OpenIdentity>(()=>{}),import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<HostedCheckout request={{username:'merchant',amount:'12.30'}} identitySession={session}/>));expect(host.textContent).toContain('@merchant');expect(host.querySelector<HTMLInputElement>('[aria-label="Payment amount"]')?.value).toBe('12.30');expect(host.querySelector('iframe')).toBeNull();expect(fetch).toHaveBeenCalledExactlyOnceWith('/api/bank/public-profile/merchant?view=portrait',expect.objectContaining({credentials:'omit'}));await act(async()=>finish(Response.json({username:'merchant',avatarUrl:'https://receiz.com/portrait.png'})));expect(host.querySelector<HTMLImageElement>('.checkout-recipient img')?.src).toBe('https://receiz.com/portrait.png');expect(host.querySelector<HTMLImageElement>('.checkout-recipient img')?.loading).toBe('lazy');}finally{await act(async()=>root.unmount());}
 });
 it('reviews then pays through the real controller and presents a sanitized receipt',async()=>{
  const f=hostedFixture(1000),controller=f.newController();await controller.ready;
@@ -27,10 +41,10 @@ it('does not display or act on another saved checkout when a card-return session
  const identity={hostedCheckout:async()=>controller,backup:()=>({bytes:new Uint8Array([1]),filename:'identity_record.png',phrase:''})}as unknown as OpenIdentity,session={open:async()=>identity,import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host);
  try{await act(async()=>{root.render(<HostedCheckout request={{username:'merchant'}} returnContext={{username:'merchant',checkoutId:a.checkoutId,sessionId:'cs_test_wrongoriginal'}} identitySession={session}/>);});await settle(host,'does not match');expect(host.querySelector('iframe')).toBeNull();expect(f.transfer).not.toHaveBeenCalled();expect(f.begin).toHaveBeenCalledTimes(1);}finally{await act(async()=>root.unmount());}
 });
-it('opens the selected card form only after approval and keeps Back reversible',async()=>{
+it('cancels an unpaid card payment on Back and unlocks account controls',async()=>{
  const f=hostedFixture(0),controller=f.newController();await controller.ready;
  const identity={hostedCheckout:async()=>controller,backup:()=>({bytes:new Uint8Array([1]),filename:'identity_record.png',phrase:''})}as unknown as OpenIdentity,session={open:async()=>identity,import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<HostedCheckout request={{username:'merchant',amount:'10.00'}} identitySession={session}/>));await act(async()=>click(host,'Continue'));await settle(host,'Review payment');expect(host.querySelector('iframe')).toBeNull();await act(async()=>click(host,'Pay $10.00'));await settle(host,'Complete your payment.');await settle(host,'Check payment status');expect(host.querySelector('iframe')?.title).toBe('Secure card payment');await act(async()=>click(host,'Back'));expect(host.querySelector('iframe')).toBeNull();expect(host.textContent).toContain('Resume payment');await act(async()=>click(host,'Resume payment'));expect(f.begin).toHaveBeenCalledTimes(1);expect(f.transfer).not.toHaveBeenCalled();}finally{await act(async()=>root.unmount());}
+ try{await act(async()=>root.render(<HostedCheckout request={{username:'merchant',amount:'10.00'}} identitySession={session}/>));await act(async()=>click(host,'Continue'));await settle(host,'Review payment');expect(host.querySelector('iframe')).toBeNull();await act(async()=>click(host,'Pay $10.00'));await settle(host,'Complete your payment.');await settle(host,'Check payment status');expect(host.querySelector('iframe')?.title).toBe('Secure card payment');await act(async()=>click(host,'Back'));expect(host.querySelector('iframe')).toBeNull();await settle(host,'Continue');expect(host.textContent).not.toContain('Resume payment');expect(host.querySelector<HTMLButtonElement>('.checkout-identity button')?.disabled).toBe(false);await act(async()=>click(host,'Continue'));await settle(host,'Review payment');expect(f.begin).toHaveBeenCalledTimes(1);expect(f.transfer).not.toHaveBeenCalled();}finally{await act(async()=>root.unmount());}
 });
 it('lets a payer add another Note instead of approving a new card shortfall',async()=>{
  const f=hostedFixture(0),controller=f.newController();await controller.ready;await controller.inspectNote({}as File);const a=await controller.prepare({recipient:'merchant',amountUsdCents:'1000',method:'note'});await controller.approve(a.digest);f.confirmNote();f.setBalance(500);await controller.check();expect(controller.snapshot().phase).toBe('reviewed');
@@ -48,4 +62,9 @@ it('shows the earlier unpaid checkout without exposing the newer payment form',a
  const f=hostedFixture(0),controller=f.newController();await controller.ready;const one=await controller.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});await controller.approve(one.digest);f.expireCard();await controller.check();await controller.back();const two=await controller.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});
  const identity={hostedCheckout:async()=>controller,backup:()=>({bytes:new Uint8Array([1]),filename:'identity_record.png',phrase:''})}as unknown as OpenIdentity,session={open:async()=>identity,import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host);
  try{await act(async()=>root.render(<HostedCheckout request={{username:'merchant'}} returnContext={{username:'merchant',checkoutId:one.checkoutId,sessionId:'cs_test_hostedoriginal'}} identitySession={session}/>));await settle(host,'This payment was not sent.');expect(host.querySelector('iframe,form')).toBeNull();expect(controller.snapshot().approval!.checkoutId).toBe(two.checkoutId);}finally{await act(async()=>root.unmount());}
+});
+it('recognizes a cancelled card return from its archived payment after Back cleared the current checkout',async()=>{
+ const f=hostedFixture(0),controller=f.newController();await controller.ready;const original=await controller.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});await controller.approve(original.digest);await controller.back();
+ const identity={hostedCheckout:async()=>controller}as unknown as OpenIdentity,session={open:async()=>identity,import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<HostedCheckout request={{username:'merchant'}} returnContext={{username:'merchant',checkoutId:original.checkoutId,sessionId:'cs_test_hostedoriginal'}} identitySession={session}/>));await settle(host,'This payment was not sent.');expect(host.querySelector('iframe,form')).toBeNull();expect(f.transfer).not.toHaveBeenCalled();}finally{await act(async()=>root.unmount());}
 });
