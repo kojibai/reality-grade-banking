@@ -1,3 +1,5 @@
+import {publicRouteAliases} from '../src/content/public-routes.mjs';
+import {withPageFooter} from './site-footer.mjs';
 import {cooperativePages,cooperativeContent} from './cooperative-page.mjs';
 import {vaultPage,vaultContent,vaultStyles} from './vault-page.mjs';
 import {protectionPage,protectionContent} from './vault-protection-page.mjs';
@@ -48,7 +50,8 @@ try {
 for (const page of pages) {
   const path = page.slug ? learningPath(page) : '/learn/', url = origin + path;
   const structured = { '@context': 'https://schema.org', '@graph': [{ '@type': 'WebPage', '@id': url, url, name: page.title + ' | Bankeiz', description: page.description, isPartOf: { '@id': origin + '/#website' }, inLanguage: 'en', dateModified: '2026-10-15' }, { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Bankeiz', item: origin + '/' }, { '@type': 'ListItem', position: 2, name: page.title, item: url }] }] };
-  const content = page === protectionPage ? protectionContent() : page.cooperativeKind ? cooperativeContent(page) : page === vaultPage ? vaultContent() : page.fit ? fitContent(page.fit) : page === directoryPage ? directoryContent() : page === businessPage ? businessContent() : page === realityGradePage ? realityGradeContent() : page === valueExplainerPage ? valueExplainerContent() : page.slug==='guides'?learningDirectoryPage():page.slug ? learnArticle(page, pages, escape) : learnHome();
+  const pageContent = page === protectionPage ? protectionContent() : page.cooperativeKind ? cooperativeContent(page) : page === vaultPage ? vaultContent() : page.fit ? fitContent(page.fit) : page === directoryPage ? directoryContent() : page === businessPage ? businessContent() : page === realityGradePage ? realityGradeContent() : page === valueExplainerPage ? valueExplainerContent() : page.slug==='guides'?learningDirectoryPage():page.slug ? learnArticle(page, pages, escape) : learnHome();
+  const content=withPageFooter(pageContent,path);
   const output = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fbfcfe"><title>${escape(page.title)} | Bankeiz</title><meta name="description" content="${escape(page.description)}"><meta name="robots" content="index,follow,max-image-preview:large"><link rel="canonical" href="${url}"><link rel="icon" href="/icon.svg"><meta property="og:type" content="website"><meta property="og:site_name" content="Bankeiz"><meta property="og:url" content="${url}"><meta property="og:title" content="${escape(page.title)} | Bankeiz"><meta property="og:description" content="${escape(page.description)}"><meta property="og:image" content="${origin}${socialImages.images[path].url}"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1730"><meta property="og:image:height" content="909"><meta property="og:image:alt" content="Bankeiz. Your value. More possibilities."><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escape(page.title)} | Bankeiz"><meta name="twitter:description" content="${escape(page.description)}"><meta name="twitter:image" content="${origin}${socialImages.images[path].url}"><meta name="twitter:image:alt" content="Bankeiz — Proof-native banking. Your value. More possibilities."><link rel="stylesheet" href="${cssUrl}">${valueHead}${page === protectionPage ? `<style data-public-page-style="vault-protection">${protectionCss}</style>` : ''}${page.cooperativeKind ? `<style data-public-page-style="cooperatives">${cooperativeCss}</style>` : ''}${page === vaultPage ? `<style data-public-page-style="vaults">${vaultStyles}</style>` : ''}${page === businessPage || page === directoryPage || page.fit || !page.slug ? `<style data-public-page-style="business">${businessCss}</style>` : ''}${page.visual?`<style data-public-page-style="learning-scenes">${sceneCss}</style>`:''}${page.slug ? '' : '<link rel="preload" href="/learn/proof-glass.webp" as="image" type="image/webp">'}<script type="application/ld+json">${JSON.stringify(structured).replaceAll('<', '\\u003c')}</script><script src="${jsUrl}" defer></script></head><body>${content}</body></html>`;
   const metadata=publicPage(path),document=applyPublicMetadata(output,metadata,socialImages.images[path]);
   publicPages[path] = { title: metadata.title, content, head: document.match(/<head>([\s\S]+)<\/head>/)[1] };
@@ -62,7 +65,7 @@ const schemasHead = schemasHtml.match(/<head>([\s\S]+?)<\/head>/)[1].replace('<l
 publicPages['/schemas/'] = {
   title: publicPage('/schemas/').title,
   head: `${schemasHead}<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}<style data-public-page-style="schemas">${schemasCss}</style>`,
-  content: schemasHtml.match(/<body[^>]*>([\s\S]+?)<\/body>/)[1],
+  content: withPageFooter(schemasHtml.match(/<body[^>]*>([\s\S]+?)<\/body>/)[1],'/schemas/'),
 };
 // Each public workspace keeps its own runtime and React root. Carry its
 // existing readable first paint and exact emitted CSS with every public entry;
@@ -93,7 +96,7 @@ const bankStyles = [...bankHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^"]
 const bankCss = Object.fromEntries(await Promise.all(bankStyles.map(async url => [url,await readFile('dist'+url,'utf8')])));
 const bankContent = bankHtml.match(/<div id="root">([\s\S]*?)<\/div><noscript>/)[1];
 const bankHead = bankHtml.match(/<head>([\s\S]+)<\/head>/)[1];
-const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify({ pages: publicPages, bank: { head: bankHead, entry: bankEntry, styles: bankStyles,css:bankCss,content:bankContent } }).replaceAll('<', '\\u003c')}</script>`;
+const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify({ pages: publicPages, aliases:publicRouteAliases, bank: { head: bankHead, entry: bankEntry, styles: bankStyles,css:bankCss,content:bankContent } }).replaceAll('<', '\\u003c')}</script>`;
 await writeFile('dist/learn/learn.css', publicCss);
 await writeFile('dist/learn/learn.js', publicJs);
 let entryHtml = bankHtml.replace('</head>', `<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>', `${bundle}</body>`);
@@ -107,7 +110,8 @@ for (const match of [...entryHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^
   entryHtml = entryHtml.replace(match[0], `<style data-bank-stylesheet="${escape(match[1])}">${css}</style>`);
 }
 await writeFile('dist/index.html', entryHtml);
-for (const [path, page] of Object.entries(publicPages)) {
+const documents={...publicPages,...Object.fromEntries(Object.entries(publicRouteAliases).map(([alias,path])=>[alias,publicPages[path]]))};
+for (const [path, page] of Object.entries(documents)) {
   await mkdir(`dist${path}`, { recursive: true });
   const runtimeHtml = runtimeDocuments.get(path);
   await writeFile(`dist${path}index.html`, runtimeHtml ? runtimeHtml.replace('<body>',`<body data-bank-surface="${page.runtime}">`).replace('</head>',`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>',`${bundle}</body>`) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`);

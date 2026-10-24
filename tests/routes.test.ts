@@ -11,3 +11,5 @@ it('preserves the selected chat recipient by stable account ID across a payment 
  expect(parseRoute(routeHash('account',sheet))).toEqual({panel:'account',sheet});
  expect(parseRoute('#account/send/to/not-an-account/mira').sheet).not.toHaveProperty('recipient');
 });
+
+it('preserves the explicit assistant Business entry until the opening request is consumed',()=>{const route=parseRoute('#account/messages/business');expect(route).toEqual({panel:'account',sheet:{kind:'messages',business:true}});expect(routeHash(route.panel,route.sheet)).toBe('#account/messages/business');});

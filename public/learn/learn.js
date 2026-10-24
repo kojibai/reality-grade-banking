@@ -71,14 +71,14 @@
 (() => {
   const element = document.getElementById('receiz-navigation');
   if (!element) return;
-  const { pages, bank } = JSON.parse(element.textContent);
+  const { pages, bank, aliases={} } = JSON.parse(element.textContent);
   let publicRoot = document.getElementById('public-learn-root'), bankRoot = document.getElementById('root');
   let bankLoaded = Boolean(bankRoot), bankUrl = '/', bankFocus = null;
   let bankLoading = null;
-  const pathname = path => /^\/explorer\/?$/.test(path) ? '/explore/' : path === '/' ? '/' : path.endsWith('/') ? path : path + '/';
+  const pathname = path => aliases[path=path.endsWith('/')?path:path+'/']||(path==='/explorer/'?'/explore/':path);
   const assetMetadata=new Map(),assetEntries=new Map();
-  const profileNames=new Set(['cooperatives','business','api','asset','assets','auth','conformance','explore','explorer','learn','legal','ledger','market','market-cap','native','offline','receipt','source','verify','u']);
-  const profileName=path=>{const match=/^\/(?:u\/)?([a-z0-9_]{3,24})\/?$/.exec(path);return match&&(path.startsWith('/u/')||!profileNames.has(match[1]))?match[1]:null;};
+  const profileNames=new Set(['api','asset','assets','auth','market','native','offline','source','u']);
+  const profileName=path=>{const match=/^\/(?:u\/)?([a-z0-9_]{3,24})\/?$/.exec(path);return match&&(path.startsWith('/u/')||!pages[pathname(path)]&&!profileNames.has(match[1]))?match[1]:null;};
   const keepAsset=value=>{if(value&&typeof value.id==='string'&&value.id.length<=256&&typeof value.title==='string'){assetMetadata.set(value.id,{...value,description:value.description??value.summary});assetEntries.delete(value.id);if(assetMetadata.size>48){const first=assetMetadata.keys().next().value;assetMetadata.delete(first);assetEntries.delete(first);}}};
   try{keepAsset(JSON.parse(document.getElementById('public-asset-seed')?.textContent??'null'));}catch{}
   const assetAt=path=>{

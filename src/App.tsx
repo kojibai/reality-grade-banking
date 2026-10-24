@@ -4,6 +4,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalSt
 import { flushSync } from 'react-dom';
 import {bankTwinContextRecords} from './receiz/twin-bank-context';
 import {mergePublicRecords} from './receiz/public-network';
+import {useBusinessEntry} from './features/messages/useBusinessEntry';
 import {MessagesPanel} from './features/messages/MessagesPanel';
 import {identityProfileAvatar} from './receiz/profile-avatar';
 import { ConsoleShell } from './components/ConsoleShell';
@@ -47,6 +48,7 @@ function BankApp() {
   const [onBank, setOnBank] = useState(location.pathname === '/');
   useEffect(() => { const change = () => flushSync(() => setOnBank(location.pathname === '/')); addEventListener('receiz-bank:surface', change); addEventListener('popstate',change); return () => { removeEventListener('receiz-bank:surface', change);removeEventListener('popstate',change); }; }, []);
   const account = useNativeAccount();
+  const businessEntry=useBusinessEntry(account,onBank);
   const [profileRevision,setProfileRevision]=useState(0);
   useEffect(()=>{const updated=()=>setProfileRevision(value=>value+1);addEventListener('bankeiz:profile-updated',updated);return()=>removeEventListener('bankeiz:profile-updated',updated);},[]);
   const identityImage=useMemo(()=>account.identity?identityProfileAvatar(account.identity):null,[account.identity,profileRevision]);
@@ -91,7 +93,7 @@ function BankApp() {
     <div hidden={panel !== 'market'}><Market source={publicMarket} active={onBank && panel === 'market'} onAction={open} /></div>
     <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={onBank && panel === 'assets'} revision={sourceRevision} investments={investments} investmentHistory={investmentHistory} marketItems={publicMarket.catalog?.items??EMPTY_MARKET_ITEMS} historyItems={publicMarket.historyCatalog?.items??EMPTY_MARKET_ITEMS} pulse={publicMarket.pulse} showcase={showcase} showcaseBusy={publicMarket.status === 'loading'} onOpen={open} /></div>
     <div hidden={panel !== 'ledger'}><Ledger active={onBank && panel === 'ledger'} personalHistory={personalHistory} privateHistory={privateHistory} /></div>
-    {messagesMounted.current&&<MessagesPanel identity={account.identity} initialNotification={notification} initialRecipient={messageRecipient?.owner===account.identity?messageRecipient:null} active={onBank&&sheet?.kind==='messages'} twinContextRecords={twinContextRecords} onOpen={restoreMessages} onClose={close} onPreparePayment={recipient=>open({kind:'send',...(recipient?{recipient}:{})})}/>}
+    {messagesMounted.current&&<MessagesPanel initialBusinessRequest={businessEntry.request?.owner===account.identity?businessEntry.request:null} onBusinessConsumed={businessEntry.consume} identity={account.identity} initialNotification={notification} initialRecipient={messageRecipient?.owner===account.identity?messageRecipient:null} active={onBank&&sheet?.kind==='messages'} twinContextRecords={twinContextRecords} onOpen={restoreMessages} onClose={close} onPreparePayment={recipient=>open({kind:'send',...(recipient?{recipient}:{})})}/>}
     {sheet && sheet.kind!=='messages' && <LiveActions onOpenAssistant={()=>{if(location.pathname==='/'&&parseRoute(location.hash).sheet?.kind==='business')open({kind:'messages'});}} marketItems={publicMarket.catalog?.items} key={sheet.kind==='send'?'send:'+(sheet.recipient?.userId??'')+':'+(sheet.recipient?.username??''):sheet.kind} active={onBank} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} cardResumeSessionId={cardResumeSessionId} onCardResumeConsumed={consumeCardResume} onClose={close} onRefresh={() => { setSourceRevision(value => value + 1); void account.refresh(); void privateHistory.refresh(); }} onForget={async () => { await account.forget(); setSheet(null); }} />}
   </ConsoleShell></>;
 }

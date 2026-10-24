@@ -16,17 +16,17 @@ export function directoryContent(){return `${learnHeader()}<main id="main" class
  <div class="fit-list">${fitGroups.map(group=>`<section class="fit-group" data-fit-group><h3>${esc(group.label)}</h3><div>${businessFits.filter(fit=>fit.group===group.id).map(fit=>`<a data-fit data-group="${fit.group}" data-goal="${fit.story}" data-search="${esc([fit.label,fit.headline,fit.description,fit.pain].join(' ').toLowerCase())}" href="${fitPath(fit)}"><span class="fit-label">${esc(fit.label)}</span><h4>${esc(fit.headline)}</h4><p>${esc(fit.benefits[0][1])}</p>${arrow}</a>`).join('')}</div></section>`).join('')}</div>
  <p class="fit-empty" hidden data-fit-empty>No exact match yet. Try a broader word or clear the filters to explore the full directory.</p>
  </section>${businessBanking()}<section class="learn-shell business-close"><h2>Your work may fit<br>more than one page.</h2><p>It is one subscription. Bring the combination that makes sense for you.</p>${businessCheckout()}<p>$149/month · Renews until cancelled.</p></section>
- </main>${businessMobileAction()}${siteFooterHtml()}`;}
+ </main>${businessMobileAction()}${siteFooterHtml('/fit/')}`;}
 export function fitContent(fit){
  const related=businessFits.filter(other=>other.slug!==fit.slug&&other.group===fit.group).slice(0,3);
  return `${learnHeader()}<main id="main" class="business-page fit-page">
- <section class="learn-shell business-hero fit-hero"><div class="business-intro"><a class="fit-back" href="/business/for/">All ways to use Business ${arrow}</a><h1>${esc(fit.headline)}</h1><p>${esc(fit.pain)}</p><a class="business-text-link" href="#your-work">See it in your work ${arrow}</a></div>${businessPriceCard()}</section>
+ <section class="learn-shell business-hero fit-hero"><div class="business-intro"><a class="fit-back" href="/fit/">All ways to use Business ${arrow}</a><h1>${esc(fit.headline)}</h1><p>${esc(fit.pain)}</p><a class="business-text-link" href="#your-work">See it in your work ${arrow}</a></div>${businessPriceCard()}</section>
  <section class="learn-shell fit-visual" aria-label="Business for ${esc(fit.label)}">${businessScene(fit.story,fit.visualLabels,{eager:true})}</section>
  <section id="your-work" class="learn-shell fit-story"><div><h2>Start with a real<br>piece of your work.</h2><p>${esc(fit.scenario)}</p></div><div class="fit-question"><p>One useful place to begin</p><blockquote>“${esc(fit.question)}”</blockquote><span>Bring the context. Work through the answer. Keep the final say.</span></div></section>
  <section class="learn-shell fit-outcomes"><h2>What changes in your day.</h2><div>${fit.benefits.map(([title,copy],index)=>`<article><span>0${index+1}</span><h3>${esc(title)}</h3><p>${esc(copy)}</p></article>`).join('')}</div></section>
  <section class="learn-shell business-workflow"><h2>Your first useful session.</h2><ol>${fit.steps.map((step,index)=>`<li><span aria-hidden="true">0${index+1}</span><p>${esc(step)}</p></li>`).join('')}</ol><p class="business-context-note">Work from the information and permissions you provide. Review generated material and consequential proposals before using their supported actions.</p></section>
  ${businessIncluded()}${businessBanking()}${businessFaq()}
- <section class="learn-shell fit-related"><h2>More of your work?</h2><nav>${related.map(other=>`<a href="${fitPath(other)}">${esc(other.label)} ${arrow}</a>`).join('')}<a href="/business/for/">Explore every fit ${arrow}</a><a href="/business/">The complete offer ${arrow}</a></nav></section>
+ <section class="learn-shell fit-related"><h2>More of your work?</h2><nav>${related.map(other=>`<a href="${fitPath(other)}">${esc(other.label)} ${arrow}</a>`).join('')}<a href="/fit/">Explore every fit ${arrow}</a><a href="/business/">The complete offer ${arrow}</a></nav></section>
  <section class="learn-shell business-close"><h2>Put it to work<br>on something real.</h2>${businessCheckout()}<p>$149/month · Renews until cancelled.<br>Annual option: $1,499/year, renewing until cancelled.</p></section>
- </main>${businessMobileAction()}${siteFooterHtml()}`;
+ </main>${businessMobileAction()}${siteFooterHtml(fitPath(fit))}`;
 }

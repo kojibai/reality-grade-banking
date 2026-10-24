@@ -2,6 +2,7 @@ import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {publicRouteAliases,canonicalPublicPath} from '../src/content/public-routes.mjs';
 import {learningPages,learningPath,assetCategories} from '../src/content/learning-pages.mjs';
 import {cooperativePages} from '../src/content/cooperatives.mjs';
 import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
@@ -65,10 +66,10 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     // Conformance remains an on-demand console, outside the bank installation
     // cache. Its retained online navigation does not add verifier work at boot.
     if (path === '/conformance/') continue;
-    const cooperative=cooperativePages.some(page=>page.path===path);
+    const canonicalPath=canonicalPublicPath(path),cooperative=cooperativePages.some(page=>page.path===canonicalPath);
     if(cooperative){urls.add('/learn/cooperatives.js');urls.add('/learn/cooperative-twin.js');}
-    const knownGuide=path==='/learn/protect-your-value/'||cooperative||path==='/business/'||path===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
-    if(path===directoryPage.path)urls.add('/learn/business-fit.js');
+    const knownGuide=['/protect/','/vaults/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
+    if(canonicalPath===directoryPage.path)urls.add('/learn/business-fit.js');
     if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     // Each retained document already carries the complete public catalog.
     // New routes reuse an existing shell instead of installing dozens of
@@ -76,6 +77,9 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     const originalGuide=['/learn/receiz-id/','/learn/proof-objects/','/learn/reserve-and-settlement/'].includes(path);
     const retained=(category||path==='/market-cap/')?'/explore/':knownGuide&&!originalGuide?'/learn/':path;
     urls.add(retained); pages[path] = retained; if (path !== '/') pages[path.slice(0, -1)] = retained;
+  }
+  for(const [alias,path] of Object.entries(publicRouteAliases)){
+    const retained=pages[path];if(!retained)continue;pages[alias]=retained;pages[alias.slice(0,-1)]=retained;
   }
   for (const path of ['/index.html', ...Object.keys(navigation.pages)]) {
     const html = await readFile(resolve(root, path.slice(1) + (path.endsWith('/') ? 'index.html' : '')), 'utf8');

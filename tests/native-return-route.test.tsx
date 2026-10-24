@@ -11,7 +11,7 @@ vi.mock('../src/features/ledger/Ledger', () => ({ Ledger: () => null }));
 // Route/modal tests use a local account fixture. Public discovery has its own
 // tests and must not make localhost requests while exercising navigation.
 vi.mock('../src/receiz/usePublicMarket', () => ({ usePublicMarket: () => ({ catalog: null, status: 'loading', refresh: async () => {} }) }));
-vi.mock('../src/features/messages/MessagesPanel',()=>({MessagesPanel:({active}:{active:boolean})=><section data-messaging-active={String(active)}><input aria-label="Retained message draft" defaultValue=""/></section>}));
+vi.mock('../src/features/messages/MessagesPanel',()=>({MessagesPanel:({active,initialBusinessRequest}:{active:boolean;initialBusinessRequest?:{id:string}|null})=><section data-messaging-active={String(active)} data-business-entry={initialBusinessRequest?.id??''}><input aria-label="Retained message draft" defaultValue=""/></section>}));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 it('resumes the retained bank surface after returning from an in-app receipt',async()=>{
  history.replaceState(null,'','/#market');const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
@@ -83,4 +83,16 @@ it('retains the opened messaging session and unsent draft through close and brow
  history.replaceState(null,'','/#account');const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
  try{await act(async()=>root.render(<App/>));expect(host.querySelector('[data-messaging-active]')).toBeNull();await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Open your assistant and messages"]')!.click());const input=host.querySelector<HTMLInputElement>('[aria-label="Retained message draft"]')!;expect(input).not.toBeNull();input.value='Keep this unsent question';history.replaceState(null,'','/#account');await act(async()=>dispatchEvent(new PopStateEvent('popstate')));expect(host.querySelector('[data-messaging-active]')?.getAttribute('data-messaging-active')).toBe('false');await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Open your assistant and messages"]')!.click());expect(host.querySelector('[aria-label="Retained message draft"]')).toBe(input);expect(input.value).toBe('Keep this unsent question');}
  finally{act(()=>root.unmount());host.remove();history.replaceState(null,'','/');}
+});
+
+it('composes Get Business with the retained account and opens the assistant request without the standalone upgrade sheet',async()=>{
+ history.replaceState(null,'','/business/');const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
+ try{
+  await act(async()=>root.render(<App/>));
+  history.pushState(null,'','/#account/messages/business');
+  await act(async()=>dispatchEvent(new Event('receiz-bank:surface')));
+  expect(host.querySelector('[data-messaging-active]')?.getAttribute('data-messaging-active')).toBe('true');
+  expect(host.querySelector('[data-business-entry]')?.getAttribute('data-business-entry')).toBeTruthy();
+  expect(host.querySelector('.bank-twin-upgrade')).toBeNull();
+ }finally{act(()=>root.unmount());host.remove();history.replaceState(null,'','/');}
 });

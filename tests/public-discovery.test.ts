@@ -15,23 +15,24 @@ const escape=(s:string)=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replac
 
 it('exposes the solution hubs through the shared footer and keeps each directory exhaustive',()=>{
  const footer=paths(doc(protectionContent()),'.site-footer a');
- for(const path of ['/business/',directoryPage.path,'/cooperatives/','/learn/vaults/',protectionPage.path])expect(footer.has(path),path).toBe(true);
+ expect(footer.has('/business/')).toBe(false);expect(footer.has(protectionPage.path)).toBe(false);
+ for(const path of ['/for/businesses/',directoryPage.path,'/coops/','/vaults/'])expect(footer.has(path),path).toBe(true);
  const directory=doc(learningDirectoryPage()),links=paths(directory,'main a');
- for(const path of [...learningPages.map(learningPath),'/business/',directoryPage.path,'/learn/vaults/',protectionPage.path,...businessFitPages.map(p=>p.path),...cooperativePages.map(p=>p.path)])expect(links.has(path),'Guide directory: '+path).toBe(true);
+ for(const path of [...learningPages.map(learningPath),'/business/',directoryPage.path,'/vaults/',protectionPage.path,...businessFitPages.map(p=>p.path),...cooperativePages.map(p=>p.path)])expect(links.has(path),'Guide directory: '+path).toBe(true);
  const known=new Set(publicPages.map(p=>p.path));for(const path of links)if(path?.startsWith('/')&&!path.includes('#'))expect(known.has(path),path).toBe(true);
 });
 
 it('links readers from relevant existing guides without removing their related destinations',()=>{
  const expected={
-  security:['/learn/protect-your-value/','/learn/vaults/'],
-  'receiz-id':['/learn/vaults/','/learn/protect-your-value/'],
-  'proof-objects':['/learn/vaults/'],ownership:['/learn/vaults/'],
-  'physical-assets':['/cooperatives/'],
-  'proof-native-economy':['/cooperatives/'],
+  security:['/protect/','/vaults/'],
+  'receiz-id':['/vaults/','/protect/'],
+  'proof-objects':['/vaults/'],ownership:['/vaults/'],
+  'physical-assets':['/coops/'],
+  'proof-native-economy':['/coops/'],
   institutions:['/cooperatives/infrastructure/'],
-  messages:['/business/','/business/for/'],
-  'for-businesses':['/business/','/business/for/'],
-  'for-communities':['/cooperatives/']
+  messages:['/business/','/fit/'],
+  'for-businesses':['/business/','/fit/'],
+  'for-communities':['/coops/']
  };
  for(const [slug,extra] of Object.entries(expected)){
   const page=learningPages.find(p=>p.slug===slug)!;expect(page,slug).toBeTruthy();
@@ -41,10 +42,10 @@ it('links readers from relevant existing guides without removing their related d
 });
 
 it('connects the solution story to the guide and existing banking contexts in both directions',()=>{
- expect(paths(doc(learnHome()),'main a').has('/learn/protect-your-value/')).toBe(true);
- expect(paths(doc(learnHome()),'main a').has('/cooperatives/')).toBe(true);
+ expect(paths(doc(learnHome()),'main a').has('/protect/')).toBe(true);
+ expect(paths(doc(learnHome()),'main a').has('/coops/')).toBe(true);
  expect(paths(doc(vaultContent()),'main a').has(protectionPage.path)).toBe(true);
- expect(paths(doc(protectionContent()),'main a').has('/learn/vaults/')).toBe(true);
+ expect(paths(doc(protectionContent()),'main a').has('/vaults/')).toBe(true);
  expect(paths(doc(businessContent()),'main a').has(protectionPage.path)).toBe(true);
  expect(paths(doc(cooperativeContent()),'main a').has(protectionPage.path)).toBe(true);
 });

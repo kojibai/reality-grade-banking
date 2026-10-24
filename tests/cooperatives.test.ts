@@ -8,7 +8,7 @@ import type {PreviewServer} from 'vite';
 
 // A missing sector route, false live status or first-paint username collision must fail.
 it('opens the independent cooperative suite with honest usable first paint and a fixed application route',()=>{
- expect(cooperativePages.map(p=>p.path)).toEqual(['/cooperatives/','/cooperatives/producers/','/cooperatives/manufacturing/','/cooperatives/distribution/','/cooperatives/workers/','/cooperatives/energy/','/cooperatives/housing/','/cooperatives/federations/','/cooperatives/infrastructure/','/cooperatives/connect/']);
+ expect(cooperativePages.map(p=>p.path)).toEqual(['/coops/','/cooperatives/producers/','/cooperatives/manufacturing/','/cooperatives/distribution/','/cooperatives/workers/','/cooperatives/energy/','/cooperatives/housing/','/cooperatives/federations/','/cooperatives/infrastructure/','/cooperatives/connect/']);
  const mains=new Set<string>();
  for(const page of cooperativePages){
   const doc=new DOMParser().parseFromString(cooperativeContent(page),'text/html');
@@ -29,11 +29,11 @@ it('opens the independent cooperative suite with honest usable first paint and a
 });
 
 it('keeps every known cooperative alias public without changing unknown or existing Business paths',()=>{
- expect(profilePageUsername('/cooperatives/')).toBeNull();expect(profilePagePath('cooperatives')).toBe('/u/cooperatives/');
+ expect(profilePageUsername('/coops/')).toBeNull();expect(profilePagePath('cooperatives')).toBe('/u/cooperatives/');
  let middleware!:(req:{url:string},res:unknown,next:()=>void)=>void;
  const configure=publicMetadataPlugin().configurePreviewServer;if(typeof configure!=='function')throw Error('PUBLIC_PREVIEW_REQUIRED');
  configure.call(undefined as never,{middlewares:{use:(fn:typeof middleware)=>{middleware=fn;}}} as unknown as PreviewServer);
- for(const [url,expected] of [['/cooperatives','/cooperatives/index.html'],['/cooperatives/housing?ref=network','/cooperatives/housing/index.html?ref=network'],['/cooperatives/connect/','/cooperatives/connect/index.html'],['/cooperatives/unknown','/cooperatives/unknown'],['/business','/business/index.html']]){
+ for(const [url,expected] of [['/cooperatives','/coops/index.html'],['/cooperatives/housing?ref=network','/cooperatives/housing/index.html?ref=network'],['/cooperatives/connect/','/cooperatives/connect/index.html'],['/cooperatives/unknown','/cooperatives/unknown'],['/business','/business/index.html']]){
   const req={url};middleware(req,null,()=>{});expect(req.url).toBe(expected);
  }
 });

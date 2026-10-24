@@ -27,7 +27,7 @@ export const networkMembers=[
  {id:'housing',label:'Housing cooperative',art:'housing',has:'Established property interests and maintenance demand',needs:'Repairs, materials, energy and contractors',partners:'Manufacturing · Energy · Transport',rights:'Only a legally established property or service interest permitted to transfer',payments:'Contractor invoices, member obligations and insurance',settlement:'A willing contractor can accept through an applicable qualified route',fiat:'Mortgages, taxes and providers requiring fiat'}
 ];
 
-const route=(suffix,title,description,kind)=>({slug:'cooperatives'+(suffix?'-'+suffix:''),path:'/cooperatives/'+(suffix?suffix+'/':''),title,description,intro:description,sections:[],cooperativeKind:kind});
+const route=(suffix,title,description,kind)=>({slug:'cooperatives'+(suffix?'-'+suffix:''),path:suffix?'/cooperatives/'+suffix+'/':'/coops/',title,description,intro:description,sections:[],cooperativeKind:kind});
 export const cooperativePages=[
  route('','Your members have the value. Put it to work.','Connect your cooperative’s goods, services and trading relationships to the proof-native economy through reality-grade banking.','main'),
  ...cooperativeSectors.map(s=>route(s.slug,s.headline,s.description,s.slug)),

@@ -1,7 +1,7 @@
 {
   "schema": "bankeiz.public-social-images.v1",
   "images": {
-    "/learn/protect-your-value/": {
+    "/protect/": {
       "url": "/social/protect-your-value-9e134de2bda2d7ca.png",
       "width": 1730,
       "height": 909,
@@ -9,103 +9,103 @@
       "bytes": 225593,
       "alt": "Prove it’s yours. Keep it yours. A separate passkey, private Vault and public proof illustrate keeping evidence separate from access."
     },
-    "/cooperatives/": {
-      "url": "/social/cooperatives-a2319ca8b7aa286e.png",
+    "/coops/": {
+      "url": "/social/cooperatives-244fa5b63d227677.png",
       "width": 1730,
       "height": 909,
-      "sha256": "a2319ca8b7aa286e52bec7bd22fa93ab10a2fafffe4aeafc05c5af4079f5ad87",
-      "bytes": 268270,
+      "sha256": "244fa5b63d227677b0f497701aedeab29c602c8c2bca3de2df2fb92a1937f894",
+      "bytes": 268709,
       "alt": "Your members have the value. Put it to work. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/producers/": {
-      "url": "/social/cooperatives-producers-c2b501f5cc68e57e.png",
+      "url": "/social/cooperatives-producers-c9afb0d91b53ad12.png",
       "width": 1730,
       "height": 909,
-      "sha256": "c2b501f5cc68e57e427b45ed13c66e6ff8d4313d68d7bd4ade0b771532f03b1d",
-      "bytes": 278158,
+      "sha256": "c9afb0d91b53ad122d0b7744d8e2cc46e541cf0fa7f6f8ef62a3a613ea9ddb52",
+      "bytes": 278506,
       "alt": "The harvest is ready. Your next move should be, too. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/manufacturing/": {
-      "url": "/social/cooperatives-manufacturing-a6b8cb07b106cb89.png",
+      "url": "/social/cooperatives-manufacturing-2d4279c5f03d9eda.png",
       "width": 1730,
       "height": 909,
-      "sha256": "a6b8cb07b106cb8953421d85562eac7d4b3cf1e1f264d664562559832ac891e0",
-      "bytes": 266450,
+      "sha256": "2d4279c5f03d9edab2ab5f53c09cafae320440c144e3aadef01b90ef2170a509",
+      "bytes": 266862,
       "alt": "Finished goods. Waiting cash. Another production run on hold. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/distribution/": {
-      "url": "/social/cooperatives-distribution-6bc86e7a0221d205.png",
+      "url": "/social/cooperatives-distribution-c978857d1229e56e.png",
       "width": 1730,
       "height": 909,
-      "sha256": "6bc86e7a0221d2056bc5570a2b10a0c198b0ade84eeb61e57ec2127644ec8582",
-      "bytes": 240948,
+      "sha256": "c978857d1229e56e111d2d85d2113f44479cb2ff4a7c6cdac2c9fafecf63bcc8",
+      "bytes": 241318,
       "alt": "Your stock moves. Your cash gets stuck in the middle. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/workers/": {
-      "url": "/social/cooperatives-workers-aedf2d2d4ca4ceb2.png",
+      "url": "/social/cooperatives-workers-1a7df7674be97d1b.png",
       "width": 1730,
       "height": 909,
-      "sha256": "aedf2d2d4ca4ceb235eecee08186dab197fa790a60ab3a120f6a538c3209cfb1",
-      "bytes": 266582,
+      "sha256": "1a7df7674be97d1b61fb619fc6a9fd6243f3a6145c42aa79fef70f8c2185c886",
+      "bytes": 266985,
       "alt": "The work is done. The cooperative still needs paying. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/energy/": {
-      "url": "/social/cooperatives-energy-51f1e964c0ef09e9.png",
+      "url": "/social/cooperatives-energy-48ac0a553edc39ae.png",
       "width": 1730,
       "height": 909,
-      "sha256": "51f1e964c0ef09e9c6347546cf8cae2f1f2ac8b63bac2aafd285624cbfaaaa09",
-      "bytes": 262071,
+      "sha256": "48ac0a553edc39ae78310e527c9ec619c8addcbf2b155a2ac334ac47e0da5af7",
+      "bytes": 262467,
       "alt": "You produce the power. Keep its records connected. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/housing/": {
-      "url": "/social/cooperatives-housing-15de06aab0f02c20.png",
+      "url": "/social/cooperatives-housing-a1077b806be405be.png",
       "width": 1730,
       "height": 909,
-      "sha256": "15de06aab0f02c20aee9b859051a3922d56cac3900534b3673e26545c8ec06a4",
-      "bytes": 255474,
+      "sha256": "a1077b806be405be948e74b16591318888885b9d44de325db705165d8d9a9c16",
+      "bytes": 255838,
       "alt": "Keep the homes cared for. Keep the decisions clear. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/federations/": {
-      "url": "/social/cooperatives-federations-7dba5261f9815ecb.png",
+      "url": "/social/cooperatives-federations-c9551d8359389066.png",
       "width": 1730,
       "height": 909,
-      "sha256": "7dba5261f9815ecb165e22dd12bc5fe55780eb686c4fe0945868adba788dc144",
-      "bytes": 267445,
+      "sha256": "c9551d83593890667893ba38e3200e953e6d89078c825100fc288d2457e77db4",
+      "bytes": 267846,
       "alt": "Your members already trade. Give the network continuity. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/infrastructure/": {
-      "url": "/social/cooperatives-infrastructure-7ba1c9357d8b0376.png",
+      "url": "/social/cooperatives-infrastructure-e5f0d1876d0438c1.png",
       "width": 1730,
       "height": 909,
-      "sha256": "7ba1c9357d8b037666135e35954cad295f00172c0d8972e94ba12c86345757f1",
-      "bytes": 275125,
+      "sha256": "e5f0d1876d0438c155efe9ec44b59ea03cdded373568828232aad53cd90fda5e",
+      "bytes": 275517,
       "alt": "See the exchange. Inspect the infrastructure. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/connect/": {
-      "url": "/social/cooperatives-connect-72fcfb67fcd48a20.png",
+      "url": "/social/cooperatives-connect-3b4067c0de332d34.png",
       "width": 1730,
       "height": 909,
-      "sha256": "72fcfb67fcd48a203f5c083d3ec3c208f96ad4c04fb0abc451206ae588c5339d",
-      "bytes": 283701,
+      "sha256": "3b4067c0de332d3488a9d7590dfdeb4eb6c5775015edc144cffcd07259a2c178",
+      "bytes": 284039,
       "alt": "What do your members have that others need? | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
-    "/learn/vaults/": {
-      "url": "/social/vaults-4af9763a5da0eeea.png",
+    "/vaults/": {
+      "url": "/social/vaults-f71028ffd9d02c0e.png",
       "width": 1730,
       "height": 909,
-      "sha256": "4af9763a5da0eeea055b50d4519fc48e4d22c62d4bc142d861fe7f9936beb502",
-      "bytes": 465942,
+      "sha256": "f71028ffd9d02c0e896a0b5309c3efb5df3f9ec9d48ddd1f30f701610c4cb1b1",
+      "bytes": 462806,
       "alt": "Bankeiz. Yours to hold. Yours to unlock. Your money. Your originals. Their proof. An engraved key motif on layered cobalt, clear glass and navy forms."
     },
     "/business/": {
-      "url": "/social/business-ea4f29eb5cb265a1.png",
+      "url": "/social/business-786399b1afb37722.png",
       "width": 1730,
       "height": 909,
-      "sha256": "ea4f29eb5cb265a17b29d3c2149ee1d84dcf35bc505fc2f351774cfdf41d3145",
-      "bytes": 464257,
-      "alt": "Bankeiz. Less explaining. More getting it done. Your money. Your work. $149/month. An engraved bank motif on layered cobalt, clear glass and navy forms."
+      "sha256": "786399b1afb3772226ce8dd1634609b3ba07fee5df0c54c1fd33972ab797cc52",
+      "bytes": 464280,
+      "alt": "Bankeiz. More done. Less on your shoulders. Your assistant. Your creative tools. $149/month. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
-    "/business/for/": {
+    "/fit/": {
       "url": "/social/business-for-7c6b4a011bf147c3.png",
       "width": 1730,
       "height": 909,

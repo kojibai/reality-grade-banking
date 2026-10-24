@@ -25,6 +25,38 @@
   },
   "rewrites": [
     {
+      "source": "/protect",
+      "destination": "/protect/index.html"
+    },
+    {
+      "source": "/protect/",
+      "destination": "/protect/index.html"
+    },
+    {
+      "source": "/vaults",
+      "destination": "/vaults/index.html"
+    },
+    {
+      "source": "/vaults/",
+      "destination": "/vaults/index.html"
+    },
+    {
+      "source": "/fit",
+      "destination": "/fit/index.html"
+    },
+    {
+      "source": "/fit/",
+      "destination": "/fit/index.html"
+    },
+    {
+      "source": "/coops",
+      "destination": "/coops/index.html"
+    },
+    {
+      "source": "/coops/",
+      "destination": "/coops/index.html"
+    },
+    {
       "source": "/cooperatives",
       "destination": "/cooperatives/index.html"
     },

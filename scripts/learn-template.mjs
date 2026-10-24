@@ -11,23 +11,23 @@ import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
 import {cooperativePages} from '../src/content/cooperatives.mjs';
 // Public discovery only. Existing routes and native authorities are unchanged.
 const solutionGuides=[
- {slug:'vaults',path:'/learn/vaults/',group:'Banking',title:'Your Vaults',description:'Hold money and originals separately, add optional passkey protection and share their proof.'},
- {slug:'protect-your-value',path:'/learn/protect-your-value/',group:'Banking',title:'Protect your value',description:'See how separate Vault authority, optional passkey encryption and public proof protect access.'},
+ {slug:'vaults',path:'/vaults/',group:'Banking',title:'Your Vaults',description:'Hold money and originals separately, add optional passkey protection and share their proof.'},
+ {slug:'protect-your-value',path:'/protect/',group:'Banking',title:'Protect your value',description:'See how separate Vault authority, optional passkey encryption and public proof protect access.'},
  {slug:'business',path:'/business/',group:'Banking',title:'Business · $149/month',description:'Work from your context, create what comes next and help clients take the next step.'},
  {...directoryPage,group:'Banking'},
  ...businessFitPages.map(page=>({...page,group:'Business by your work',title:page.fit.label})),
  ...cooperativePages.map(page=>({...page,group:'Cooperatives'}))
 ];
 const relatedSolutions={
- 'security':['/learn/protect-your-value/','/learn/vaults/'],
- 'receiz-id':['/learn/vaults/','/learn/protect-your-value/'],
- 'proof-objects':['/learn/vaults/'],'ownership':['/learn/vaults/'],
- 'physical-assets':['/cooperatives/'],'asset-rights-and-backing':['/cooperatives/infrastructure/'],
- 'proof-native-economy':['/cooperatives/'],'institutions':['/cooperatives/infrastructure/'],
- 'messages':['/business/','/business/for/'],
- 'for-businesses':['/business/','/business/for/'],'for-independent-work':['/business/for/'],
- 'for-creators':['/business/for/'],'for-communities':['/cooperatives/'],
- 'for-institutions':['/cooperatives/infrastructure/'],'for-public-finance':['/cooperatives/']
+ 'security':['/protect/','/vaults/'],
+ 'receiz-id':['/vaults/','/protect/'],
+ 'proof-objects':['/vaults/'],'ownership':['/vaults/'],
+ 'physical-assets':['/coops/'],'asset-rights-and-backing':['/cooperatives/infrastructure/'],
+ 'proof-native-economy':['/coops/'],'institutions':['/cooperatives/infrastructure/'],
+ 'messages':['/business/','/fit/'],
+ 'for-businesses':['/business/','/fit/'],'for-independent-work':['/fit/'],
+ 'for-creators':['/fit/'],'for-communities':['/coops/'],
+ 'for-institutions':['/cooperatives/infrastructure/'],'for-public-finance':['/coops/']
 };
 const brandText = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg>';
@@ -69,12 +69,12 @@ export function learnHome() {
     ['02','Proof objects & ownership','Understand the original source, ownership, and the possibilities of physical custody.','proof-objects'],
     ['03','Settlement & Reserve','Native value, connected payment rails, and the standard for receiving institutions.','reserve-and-settlement'],
     ['04','How value is calculated','Inspect the deterministic valuation rules, the Kai pulse and the exact Phi-to-dollar calculation.','how-value-works'],
-    ['05','Your Vaults','Hold your money and originals separately. Share the proof without sharing access.','vaults'],
-    ['06','Protect your value','See the protection behind separate Vault authority and optional passkey encryption.','protect-your-value'],
-    ['07','The cooperative economy','Put what your members already produce to work through defined rights and connected proof.','/cooperatives/']
+    ['05','Your Vaults','Hold your money and originals separately. Share the proof without sharing access.','/vaults/'],
+    ['06','Protect your value','See the protection behind separate Vault authority and optional passkey encryption.','/protect/'],
+    ['07','The cooperative economy','Put what your members already produce to work through defined rights and connected proof.','/coops/']
   ].map(([number,title,copy,slug])=>`<a class="guide-row reveal" href="${slug.startsWith('/')?slug:'/learn/'+slug+'/'}"><span class="guide-number">${number}</span><div><h3>${title}</h3><p>${copy}</p></div>${arrow}</a>`).join('')}</div></section>
   <section class="learn-shell learn-business-offer"><div><h2>Less explaining.<br>More getting it done.</h2><p>Get help that works from your context. Continue the conversation, create the work and give clients a useful next step.</p></div><div><p>An assistant for your business, in the same account. Core proof, ownership and Settlement stay free.</p><strong>Business · $149/month</strong><small>Your context. Your work. Renews until cancelled.</small><a class="learn-button button-cobalt" href="/business/">See what Business includes ${arrow}</a></div></section>
-  <section class="learn-finale motion-region"><div class="learn-shell"><div class="reveal"><h2>A familiar place.<br>A new kind of possibility.</h2><a class="learn-button button-paper" href="/">Enter bank ${arrow}</a></div></div></section></main>${siteFooterHtml()}`;
+  <section class="learn-finale motion-region"><div class="learn-shell"><div class="reveal"><h2>A familiar place.<br>A new kind of possibility.</h2><a class="learn-button button-paper" href="/">Enter bank ${arrow}</a></div></div></section></main>${siteFooterHtml('/learn/')}`;
 }
 
 export const sectionId = heading => heading.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -103,10 +103,10 @@ export function learnArticle(page, pages, escape) {
     </div>
   </main>
   ${notice ? '' : `<section class="article-cta"><div class="learn-shell"><h2>Your value.<br>More possibilities.</h2><a class="learn-button button-cobalt" href="/">Enter bank ${arrow}</a></div></section>`}
-  ${siteFooterHtml()}`;
+  ${siteFooterHtml(learningPath(page))}`;
 }
 
 export function learningDirectoryPage(){
  const guides=[...learningPages,...solutionGuides];
  const groups=[...learningGroups.slice(0,2),'Business by your work','Cooperatives',...learningGroups.slice(2)];
- return `${learnHeader()}<main id="main"><section class="learn-shell learning-directory"><p class="section-intro">The complete picture.</p><h1>All guides.</h1><p class="directory-intro">Start with what you want to do. Follow the evidence as far as you need.</p><nav class="learning-group-links" aria-label="Guide subjects">${groups.map(group=>`<a href="#guides-${sectionId(group)}">${group}</a>`).join('')}</nav>${groups.map(group=>`<section id="guides-${sectionId(group)}" class="learning-group"><h2>${group}</h2><div>${guides.filter(page=>page.group===group).map(page=>`<a href="${learningPath(page)}"><h3>${brandText(page.title)}</h3><p>${brandText(page.description)}</p>${arrow}</a>`).join('')}</div></section>`).join('')}<div class="learning-category-links"><h2>Explore by content</h2><nav aria-label="Public asset categories">${assetCategories.map(category=>`<a href="${category.path}">${category.label} ${arrow}</a>`).join('')}</nav></div></section></main>${siteFooterHtml()}`;}
+ return `${learnHeader()}<main id="main"><section class="learn-shell learning-directory"><p class="section-intro">The complete picture.</p><h1>All guides.</h1><p class="directory-intro">Start with what you want to do. Follow the evidence as far as you need.</p><nav class="learning-group-links" aria-label="Guide subjects">${groups.map(group=>`<a href="#guides-${sectionId(group)}">${group}</a>`).join('')}</nav>${groups.map(group=>`<section id="guides-${sectionId(group)}" class="learning-group"><h2>${group}</h2><div>${guides.filter(page=>page.group===group).map(page=>`<a href="${learningPath(page)}"><h3>${brandText(page.title)}</h3><p>${brandText(page.description)}</p>${arrow}</a>`).join('')}</div></section>`).join('')}<div class="learning-category-links"><h2>Explore by content</h2><nav aria-label="Public asset categories">${assetCategories.map(category=>`<a href="${category.path}">${category.label} ${arrow}</a>`).join('')}</nav></div></section></main>${siteFooterHtml('/learn/guides/')}`;}

@@ -9,7 +9,7 @@ const bank='<path d="m256 117 123 67v17H133v-17l123-67Zm0 26-75 40h150l-75-40Z" 
 export function shareCardSvg(page){
  if(page.id==='protect-your-value')return protectionShareCard();
  if(page.id?.startsWith('cooperatives'))return cooperativeShareCard(page);
- const business=/^(?:business|cooperatives)/.test(page.id??'');
+ const business=/^(?:business|cooperatives|vaults$)/.test(page.id??'');
  const size=page.size??(Math.max(...page.lines.map(line=>line.length))>17?92:108);
  const icon=page.motif==='rails'?'<text x="124" y="229" font-family="Inter" font-size="115" font-weight="500" fill="white">Φ</text><path d="M238 210h59m-15-15 15 15-15 15" fill="none" stroke="white" stroke-width="5" stroke-linecap="round"/><text x="305" y="226" font-family="Inter" font-size="87" fill="white">$</text>':renderToStaticMarkup(createElement(icons[page.motif]??Layers3,{x:112,y:125,width:196,height:196,color:'#ffffff',strokeWidth:1.05}));
  const accent=page.motif==='globe'?'<circle cx="210" cy="223" r="142" fill="none" stroke="#e2ecff" stroke-opacity=".4" stroke-width="1.5" stroke-dasharray="3 12"/>':page.motif==='valuation'?'<path d="M60 355h300M60 315h300M60 275h300" stroke="#b8d0ff" stroke-opacity=".3"/>':'';

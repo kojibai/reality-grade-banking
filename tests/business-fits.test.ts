@@ -15,8 +15,8 @@ it('covers distinct useful fits with complete public journeys and canonical meta
   expect(fit.benefits).toHaveLength(3);expect(fit.steps).toHaveLength(3);
   const path=`/business/for/${fit.slug}/`,doc=new DOMParser().parseFromString(fitContent(fit),'text/html');
   expect(doc.querySelector('h1')?.textContent).toBe(fit.headline);
-  expect(doc.querySelector('a[data-business-checkout]')?.getAttribute('href')).toBe('/#account/business');
-  expect(doc.querySelector('a[href="/business/for/"]')).not.toBeNull();
+  expect(doc.querySelector('a[data-business-checkout]')?.getAttribute('href')).toBe('/#account/messages/business');
+  expect(doc.querySelector('a[href="/fit/"]')).not.toBeNull();
   expect(doc.querySelector('.business-banking a[href="/learn/get-paid/"]')).not.toBeNull();
   expect(doc.body.textContent).toContain('banking experience');
   expect(doc.querySelectorAll('.business-scene-layer')).toHaveLength(3);

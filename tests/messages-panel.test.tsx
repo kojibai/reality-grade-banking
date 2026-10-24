@@ -22,7 +22,7 @@ function fixture(consented=true){
  const api={accountUid:uid,twin,callTransport:{heldFetch:vi.fn(async(_path:string,_init?:RequestInit)=>Response.json({ok:true,calls:[],activeCall:null}))},knownConversations:()=>[conversation],knownMessages:():ChatPage|null=>page,conversations:vi.fn(async(_signal?:AbortSignal)=>[conversation]),messages:vi.fn(async(_id:string,_before?:string,_signal?:AbortSignal)=>page),search:vi.fn(async(_query:string,_signal?:AbortSignal)=>[peer,other]),createConversation:vi.fn(async(_input:{participantUserIds:string[];title?:string})=>threadId),send:vi.fn(async(_id:string,_body:string,_options?:MessageSendOptions)=>({...message,id:'sent-1',senderUserId:uid,body:'My draft'}))};
  const identity={binding:{identityOwnerReceizId:'owner'},knownTwinAccess:()=>true,messaging:vi.fn(async(approve=false)=>{if(!approved&&!approve)throw Error('MESSAGING_CONSENT_REQUIRED');approved=true;return api;})} as unknown as OpenIdentity;
  const host=document.createElement('div');document.body.appendChild(host);const root=createRoot(host),onClose=vi.fn(),onOpen=vi.fn(),onPreparePayment=vi.fn();
- const render=(active=true,nextIdentity=identity,twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>,initialRecipient?:{id:number;person:typeof peer},initialNotification?:import('../src/pwa/notification-target').NotificationTarget)=>act(async()=>root.render(<MessagesPanel identity={nextIdentity} active={active} onClose={onClose} onOpen={onOpen} onPreparePayment={onPreparePayment} twinContextRecords={twinContextRecords} initialRecipient={initialRecipient} initialNotification={initialNotification}/>));
+ const render=(active=true,nextIdentity=identity,twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>,initialRecipient?:{id:number;person:typeof peer},initialNotification?:import('../src/pwa/notification-target').NotificationTarget,initialBusinessRequest?:{id:string},onBusinessConsumed?: (id:string)=>void)=>act(async()=>root.render(<MessagesPanel identity={nextIdentity} active={active} onClose={onClose} onOpen={onOpen} onPreparePayment={onPreparePayment} twinContextRecords={twinContextRecords} initialRecipient={initialRecipient} initialNotification={initialNotification} initialBusinessRequest={initialBusinessRequest} onBusinessConsumed={onBusinessConsumed}/>));
  const click=async(label:string)=>{const button=[...host.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===label||b.textContent===label);expect(button,'button '+label).toBeTruthy();await act(async()=>button!.click());};
  const input=async(label:string,value:string)=>{const field=host.querySelector<HTMLInputElement>('[aria-label="'+label+'"]')!;expect(field,'input '+label).toBeTruthy();await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(field,value);field.dispatchEvent(new Event('input',{bubbles:true}));});};
  const submit=()=>act(async()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
@@ -41,7 +41,7 @@ it('shows the same Twin view for free and paid accounts, offering an upgrade onl
   expect(free.host.querySelector('.bank-message-composer')).not.toBeNull();expect(free.host.querySelector('.bank-message-composer')?.innerHTML).toBe(paid.host.querySelector('.bank-message-composer')?.innerHTML);
   expect(free.host.querySelector('.bank-twin-upgrade')).toBeNull();expect(upgrade).not.toHaveBeenCalled();
   await free.input('Ask your assistant…','Explain my last payment');await free.submit();
-  expect(free.host.querySelector('.bank-twin-access-reply')?.textContent).toContain('Understand payments');
+  expect(free.host.querySelector('.bank-twin-access-reply')?.textContent).toContain('Know what happened to the money');
   expect(free.host.querySelector('.bank-message-own')?.textContent).toBe('Explain my last payment');
   expect(free.host.querySelector('.bank-twin-upgrade')).toBeNull();
   await free.click('Unlock your assistant');await vi.waitFor(()=>expect(free.host.textContent).toContain('Continue to secure payment'));
@@ -329,5 +329,75 @@ it('notification lifecycle: does not replace a call joined while notification lo
  await f.click('Join call');expect(stop).not.toHaveBeenCalled();
  await act(async()=>pending.resolve(Response.json({ok:true,call:secondCall,calls:[secondCall],activeCall:secondCall})));expect(f.host.querySelector('.bank-call')?.getAttribute('aria-label')).toBe('Call with Sam');
  expect(stop).not.toHaveBeenCalled();
+ }finally{f.unmount();}
+});
+
+
+it('lands Get Business directly in payment review and retains one opening question behind Back',async()=>{
+ const f=fixture(false),consumed=vi.fn(),identity={...f.identity,knownTwinAccess:()=>false};
+ const request={id:'business-intro-fixture'};
+ try{
+  await f.render(true,identity,undefined,undefined,undefined,request,consumed);
+  await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));
+  expect(f.host.querySelector('.sheet-header h2')?.textContent).toBe('Your assistant');
+  expect(f.host.textContent).toContain('$149/month');expect(f.host.textContent).not.toContain('7,500');
+  expect(f.identity.messaging).toHaveBeenCalledWith(true);
+  expect(consumed).toHaveBeenCalledExactlyOnceWith(request.id);expect(f.api.twin.ask).not.toHaveBeenCalled();
+  await f.click('Back to conversation');
+  expect(f.host.querySelector('.bank-message-own')?.textContent).toBe('Show me how Business can help me get more done.');
+  await f.render(false,identity,undefined,undefined,undefined,request,consumed);
+  await f.render(true,identity,undefined,undefined,undefined,request,consumed);
+  expect(f.host.querySelectorAll('.bank-twin-access-reply')).toHaveLength(1);
+ }finally{f.unmount();}
+});
+it('sends the paid Business opening request once without automatically sharing records or retrying an unknown response',async()=>{
+ const f=fixture(),consumed=vi.fn(),request={id:'paid-business-intro'};
+ f.api.twin.ask.mockRejectedValueOnce(Error('connection interrupted'));
+ try{
+  await f.render(true,f.identity,[{id:'private',title:'Private record',text:'Never selected'}],undefined,undefined,request,consumed);
+  expect(f.api.twin.ask).toHaveBeenCalledOnce();expect(f.api.twin.ask.mock.calls[0]?.[0]).not.toHaveProperty('context');
+  const first=f.api.twin.ask.mock.calls[0]![0];
+  await f.render(false,f.identity,undefined,undefined,undefined,request,consumed);
+  await f.render(true,f.identity,undefined,undefined,undefined,request,consumed);
+  expect(f.api.twin.ask).toHaveBeenCalledOnce();
+  await f.click('Check previous assistant request');expect(f.api.twin.ask).toHaveBeenCalledTimes(2);
+  expect(f.api.twin.ask.mock.calls[1]?.[0].requestId).toBe(first.requestId);
+ }finally{f.unmount();}
+});
+
+it('resumes the Business opening after an earlier ordinary message finishes',async()=>{
+ const f=fixture(),pending=deferred<ChatMessage>(),identity={...f.identity,knownTwinAccess:()=>false},request={id:'after-message'};
+ f.api.send.mockImplementation(()=>pending.promise);
+ try{
+  await f.render(true,identity);await f.click('Open conversation Sam');await f.input('Message…','An earlier message');await f.submit();
+  await f.render(true,identity,undefined,undefined,undefined,request);
+  expect(f.host.querySelector('.bank-twin-access-reply')).toBeNull();
+  await act(async()=>pending.resolve({...message,id:'ack-before-business',senderUserId:uid,body:'An earlier message'}));
+  await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));
+  expect(f.api.send).toHaveBeenCalledOnce();expect(f.api.twin.ask).not.toHaveBeenCalled();
+ }finally{f.unmount();}
+});
+it('paints the local Business offer while the existing messaging connection opens in parallel',async()=>{
+ const f=fixture(),pending=deferred<NativeMessaging>(),consumed=vi.fn(),request={id:'before-transport'};
+ const identity={...f.identity,knownTwinAccess:()=>false,messaging:()=>pending.promise};
+ try{
+  await f.render(true,identity,undefined,undefined,undefined,request,consumed);
+  await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));
+  expect(consumed).toHaveBeenCalledExactlyOnceWith(request.id);
+  expect(f.api.twin.ask).not.toHaveBeenCalled();
+  await act(async()=>pending.resolve(f.api));
+  expect(f.host.textContent).toContain('Continue to secure payment');
+  await f.click('Back to conversation');expect(f.host.querySelectorAll('.bank-twin-access-reply')).toHaveLength(1);
+ }finally{f.unmount();}
+});
+
+it('explains the full Business value to a regular unpaid assistant question in customer language',async()=>{
+ const f=fixture(),identity={...f.identity,knownTwinAccess:()=>false};
+ try{
+  await f.render(true,identity);await f.click('Your assistant');await f.input('Ask your assistant…','Help with the work I need to finish');await f.submit();
+  const reply=f.host.querySelector('.bank-twin-access-reply')!;
+  for(const outcome of ['Stop repeating the whole story','Know what happened to the money','Get the next draft off your list','Help clients without stopping your work','one clear front door','Keep the record when it matters','$149/month'])expect(reply.textContent).toContain(outcome);
+  expect(reply.textContent).toContain('same account');expect(reply.textContent).toContain('supported value stay free');
+  expect(f.api.twin.ask).not.toHaveBeenCalled();
  }finally{f.unmount();}
 });

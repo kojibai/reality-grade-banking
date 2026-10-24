@@ -1,3 +1,5 @@
+import {publicRouteAliases} from '../src/content/public-routes.mjs';
+import {siteFooterHtml} from './site-footer.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
@@ -47,11 +49,20 @@ const navigation = JSON.parse(html.match(navigationPattern)[1]);
 assert.ok(navigation.pages['/explore/'].head.includes('.ledger-proof-details')&&navigation.pages['/explore/'].head.includes('.ledger-proof-actions'),'Retained public asset navigation carries evidence styles before the lazy reader opens');
 assert.ok(navigation.bank.content.includes('class="account-opening-geometry"'),'Cold Bank navigation carries its actual opening artwork');
 for(const url of navigation.bank.styles)assert.equal(navigation.bank.css[url],await readFile('dist'+url,'utf8'),'Cold Bank navigation carries the exact emitted CSS');
+assert.deepEqual(navigation.aliases,publicRouteAliases,'Retained navigation carries the public document aliases');
+for(const [alias,path] of Object.entries(publicRouteAliases)){
+ const legacy=await readFile(`dist${alias}index.html`,'utf8'),canonical=await readFile(`dist${path}index.html`,'utf8');
+ assert.equal(legacy,canonical,`Legacy ${alias} must carry the same complete canonical document`);
+ assert.ok(!sitemap.includes(`<loc>${publicOrigin}${alias}</loc>`),'Legacy URLs must not duplicate the canonical sitemap');
+ assert.ok(canonical.includes(siteFooterHtml(path)),'The static footer omits its canonical current destination');
+}
+assert.equal(navigation.pages['/vault/'],undefined,'Marketing Vaults must never claim a proof route');
 assert.ok(navigation.pages['/legal/'], 'Legal notices must use the retained public header too');
 assert.ok(navigation.pages['/schemas/'], 'The complete schema reference must be carried for document-free public navigation');
 const sharedHeader = navigation.pages['/learn/'].content.match(/<header class="learn-header">[\s\S]*?<\/header>/)[0];
 for (const [path, entry] of Object.entries(navigation.pages)) {
   const output = await readFile(`dist${path}index.html`, 'utf8');
+  if(entry.content.includes('class="site-footer"'))assert.ok(entry.content.includes(siteFooterHtml(path)),`Carried footer differs at ${path}`);
   assert.deepEqual(JSON.parse(output.match(navigationPattern)[1]), navigation, `Public navigation differs at ${path}`);
   if (path === '/schemas/') {
     assert.ok(entry.content.includes('class="schema-header"'),'Reference retains its own existing header');

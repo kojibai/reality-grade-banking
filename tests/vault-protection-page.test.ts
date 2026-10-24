@@ -4,10 +4,10 @@ import {protectionPage,protectionContent} from '../scripts/vault-protection-page
 import {publicPage} from '../scripts/public-page-metadata.mjs';
 it('sells the actual protection with the bearer and passkey boundaries visible and no universal theft guarantee',()=>{
  document.body.innerHTML=protectionContent();const text=document.body.textContent??'';
- expect(protectionPage.path).toBe('/learn/protect-your-value/');expect(document.querySelector('h1')?.textContent).toContain('Keep it yours.');
+ expect(protectionPage.path).toBe('/protect/');expect(document.querySelector('h1')?.textContent).toContain('Keep it yours.');
  expect(text).toContain('Without passkey protection');expect(text).toContain('anyone with the private original');expect(text).toContain('original passkey');expect(text).toContain('Public proof grants no access');expect(text).toContain('compromised device');expect(text).toContain('an action you approve');
  expect(text).not.toMatch(/hack.proof|theft.proof|impossible to steal|cannot be stolen/i);
- expect(document.querySelector('.learn-brand svg')).not.toBeNull();expect(document.querySelector('a[href="/#account/profile"]')).not.toBeNull();expect(document.querySelector('a[href="/learn/vaults/"]')).not.toBeNull();expect(document.querySelector('script')).toBeNull();expect(document.querySelector('form')).toBeNull();
+ expect(document.querySelector('.learn-brand svg')).not.toBeNull();expect(document.querySelector('a[href="/#account/profile"]')).not.toBeNull();expect(document.querySelector('a[href="/vaults/"]')).not.toBeNull();expect(document.querySelector('script')).toBeNull();expect(document.querySelector('form')).toBeNull();
  expect(publicPage(protectionPage.path)?.description).toBe(protectionPage.description);
 });
 it('provides real native scenario selection without an assistant, financial control or private runtime',()=>{
