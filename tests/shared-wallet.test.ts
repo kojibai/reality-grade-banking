@@ -11,3 +11,9 @@ it('rejects foreign owners, missing rail data and inconsistent totals instead of
   expect(() => parseSharedWallet({ ok: true, wallet: { userId: 'same-owner', balanceUsd: '0.00' } }, 'same-owner')).toThrow();
   expect(() => parseSharedWallet({ ...input, wallet: { ...input.wallet, balanceUsd: '1.00' } }, 'same-owner')).toThrow();
 });
+it('retains a complete account-only balance without treating an incomplete profile projection as complete',()=>{
+ const flags={source:'account_only',lawfulActionProjectionAvailable:true,projectionComplete:false};
+ const read=(sync:unknown,entitlement:unknown)=>parseSharedWallet({...input,wallet:{...input.wallet,creationSigilEntitlementEnabled:entitlement,sync}},'same-owner');
+ expect(read(flags,false)).toMatchObject({projectionComplete:false,accountOnlyComplete:true});
+ for(const [sync,entitlement]of [[{...flags,source:'profile_plus_ledger_v1'},false],[{...flags,lawfulActionProjectionAvailable:false},false],[flags,true],[flags,undefined]])expect(read(sync,entitlement).accountOnlyComplete).not.toBe(true);
+});

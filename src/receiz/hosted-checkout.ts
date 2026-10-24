@@ -26,13 +26,13 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
  }
  const sign=async(body:Omit<CheckoutApproval,'digest'>):Promise<CheckoutApproval>=>Object.freeze({...body,digest:await checkoutApprovalDigest(body)});
  function observedProposal(wallet:SharedWallet,amountUsdCents:string,accountUid?:string){
-  assert();if(accountUid&&wallet.userId!==accountUid||!wallet.projectionComplete||!checkoutInteger(wallet.totalUsdCents))throw Error('CHECKOUT_BALANCE_UNAVAILABLE');
+  assert();if(accountUid&&wallet.userId!==accountUid||(!wallet.projectionComplete&&wallet.accountOnlyComplete!==true)||!checkoutInteger(wallet.totalUsdCents))throw Error('CHECKOUT_BALANCE_UNAVAILABLE');
   const amount=BigInt(amountUsdCents),available=BigInt(wallet.totalUsdCents),contribution=available<amount?available:amount,missing=amount-contribution,charge=missing>0n?(missing<50n?50n:missing):0n;
   if(charge>10000000n)throw Error('CHECKOUT_CARD_LIMIT');return{card:charge.toString(),balance:contribution.toString()};
  }
  async function walletProposal(a:{accountUid:string;amountUsdCents:string}){return observedProposal(await input.readWallet(),a.amountUsdCents,a.accountUid);}
  async function noteProposal(amountUsdCents:string,notes:CheckoutSnapshot['notes'],accountUid?:string){
-  const wallet=await input.readWallet();assert();if(accountUid&&wallet.userId!==accountUid||!wallet.projectionComplete||!checkoutInteger(wallet.totalUsdCents))throw Error('CHECKOUT_BALANCE_UNAVAILABLE');
+  const wallet=await input.readWallet();assert();if(accountUid&&wallet.userId!==accountUid||(!wallet.projectionComplete&&wallet.accountOnlyComplete!==true)||!checkoutInteger(wallet.totalUsdCents))throw Error('CHECKOUT_BALANCE_UNAVAILABLE');
   const amount=BigInt(amountUsdCents),noteAmount=notes.filter(n=>n.status!=='confirmed').reduce((sum,n)=>sum+BigInt(n.inspection.amountUsdCents),0n),needed=amount>noteAmount?amount-noteAmount:0n;
   const fromBalance=BigInt(wallet.totalUsdCents)<needed?BigInt(wallet.totalUsdCents):needed,missing=needed-fromBalance,charge=missing>0n?(missing<50n?50n:missing):0n;
   if(charge>10000000n)throw Error('CHECKOUT_CARD_LIMIT');

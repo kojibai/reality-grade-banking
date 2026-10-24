@@ -1,5 +1,7 @@
 import {expect,it} from 'vitest';
-import {hostedFixture,checkoutRecipient} from './fixtures/hosted-checkout';
+import {hostedFixture,checkoutRecipient,checkoutSender} from './fixtures/hosted-checkout';
+import {createHostedCheckout} from '../src/receiz/hosted-checkout';
+import {parseSharedWallet} from '../src/receiz/shared-wallet';
 import {hasPendingHostedCheckout} from '../src/receiz/checkout-state';
 it('records a balance payment once and rejects an unapproved digest',async()=>{
  const f=hostedFixture(),c=f.newController();await c.ready;const r=await c.prepare({recipient:'merchant',amountUsdCents:'1000',method:'balance'});
@@ -92,4 +94,14 @@ it('checking an earlier displayed payment cannot execute the newer checkout adop
  const f=hostedFixture(0),one=f.newController();await one.ready;const old=await one.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});await one.approve(old.digest);
  const two=f.newController();await two.ready;await two.back();const next=await two.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card'});await two.approve(next.digest);f.creditCard();
  await one.check(old.checkoutId);expect(f.transfer).not.toHaveBeenCalled();expect(f.state?.current.approval?.checkoutId).toBe(next.checkoutId);expect(f.state?.current.phase).toBe('funding');await two.check(next.checkoutId);expect(f.transfer).toHaveBeenCalledOnce();
+});
+
+it.each(['balance','note']as const)('uses the same complete account-only balance accepted by Send for %s checkout',async method=>{
+ const f=hostedFixture(970),wallet=parseSharedWallet({ok:true,wallet:{userId:checkoutSender,balanceUsd:'9.70',balancePhiMicro:'9700000',valueStates:{settledBalanceUsdCents:'970',ecosystemBalanceUsdCents:'0'},creationSigilEntitlementEnabled:false,sync:{source:'account_only',lawfulActionProjectionAvailable:true,projectionComplete:false},rollup:{}}},checkoutSender),controller=createHostedCheckout({...f.deps,readWallet:async()=>wallet});await controller.ready;
+ if(method==='note'){f.deps.notes.inspect.mockResolvedValueOnce({...f.deps.note,inspection:{...f.deps.note.inspection,amountUsdCents:'20',amountPhiMicro:'200000'}});await controller.inspectNote({}as File);}
+ const approved=await controller.prepare({recipient:'merchant',amountUsdCents:'1000',method});expect(approved).toMatchObject({balanceContributionUsdCents:'970',cardAmountUsdCents:'50'});expect(f.begin).not.toHaveBeenCalled();expect(f.transfer).not.toHaveBeenCalled();
+});
+it('does not guess a funding delta from an incomplete profile-backed balance',async()=>{
+ const f=hostedFixture(970),wallet=await f.deps.readWallet(),controller=createHostedCheckout({...f.deps,readWallet:async()=>({...wallet,projectionComplete:false})});await controller.ready;
+ await expect(controller.prepare({recipient:'merchant',amountUsdCents:'1000',method:'balance'})).rejects.toThrow('BALANCE_UNAVAILABLE');expect(f.begin).not.toHaveBeenCalled();expect(f.transfer).not.toHaveBeenCalled();
 });

@@ -1,7 +1,7 @@
 export interface SharedWallet {
   userId: string; totalUsdCents: string; reserveUsdCents: string; settlementUsdCents: string; balancePhiMicro: string;
   portfolioUsdCents: string | null; pnlUsdCents: string | null; withdrawableUsdCents: string | null;
-  projectionComplete: boolean; pulse: string | null; kaiUpulse: string | null;
+  projectionComplete: boolean; accountOnlyComplete?:true; pulse: string | null; kaiUpulse: string | null;
 }
 function object(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Receiz wallet response is unavailable.'); return value as Record<string, unknown>; }
 function exact(value: unknown): string { if (typeof value !== 'string' || !/^(0|[1-9]\d*)$/.test(value) || value.length > 40) throw new Error('Receiz wallet returned an unsupported amount.'); return value; }
@@ -18,5 +18,5 @@ export function parseSharedWallet(input: unknown, expectedUserId: string): Share
   const sync = object(wallet.sync), rollup = object(wallet.rollup);
   return { userId: expectedUserId, reserveUsdCents, settlementUsdCents, totalUsdCents, balancePhiMicro: exact(wallet.balancePhiMicro),
     portfolioUsdCents: nullable(value.livePortfolioValueUsdCents), pnlUsdCents: nullableSigned(value.unrealizedPnlUsdCents), withdrawableUsdCents: nullable(value.withdrawableNowUsdCents),
-    projectionComplete: sync.projectionComplete === true, pulse: nullable(rollup.lastEntryKaiPulse), kaiUpulse: nullable(rollup.lastEntryKaiUpulse) };
+    projectionComplete: sync.projectionComplete === true, ...(wallet.creationSigilEntitlementEnabled===false&&sync.source==='account_only'&&sync.lawfulActionProjectionAvailable===true?{accountOnlyComplete:true as const}:{}), pulse: nullable(rollup.lastEntryKaiPulse), kaiUpulse: nullable(rollup.lastEntryKaiUpulse) };
 }
