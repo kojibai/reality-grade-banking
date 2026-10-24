@@ -67,7 +67,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     if (path === '/conformance/') continue;
     const cooperative=cooperativePages.some(page=>page.path===path);
     if(cooperative){urls.add('/learn/cooperatives.js');urls.add('/learn/cooperative-twin.js');}
-    const knownGuide=cooperative||path==='/business/'||path===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
+    const knownGuide=path==='/learn/protect-your-value/'||cooperative||path==='/business/'||path===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
     if(path===directoryPage.path)urls.add('/learn/business-fit.js');
     if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     // Each retained document already carries the complete public catalog.

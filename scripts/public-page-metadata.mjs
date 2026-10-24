@@ -4,8 +4,10 @@ import {siteFooterHtml} from './site-footer.mjs';
 import {learningPages,learningPath,assetCategories} from '../src/content/learning-pages.mjs';
 import {cooperativePages,cooperativeSectors} from '../src/content/cooperatives.mjs';
 import {businessFits,directoryPage} from '../src/content/business-fits.mjs';
+import {protectionPage} from './vault-protection-page.mjs';
 export const publicOrigin = 'https://bankeiz.com';
 export const publicPages = [
+  {path:protectionPage.path,id:'protect-your-value',title:protectionPage.title+' | Reality-grade banking',description:protectionPage.description,lines:['Prove it’s yours.','Keep it yours.'],caption:'Share proof without sharing access.',motif:'key'},
   ...cooperativePages.map(page=>{const sector=cooperativeSectors.find(s=>s.slug===page.cooperativeKind);return {path:page.path,id:page.slug,title:page.title+' | Reality-grade banking',description:page.description,lines:sector?[sector.short+'.','Value, put to work.']:page.cooperativeKind==='main'?['Your members.','Have the value.']:page.cooperativeKind==='connect'?['Start with','your next exchange.']:['See the exchange.','Inspect the source.'],caption:'The proof-native economy. Reality-grade banking.',motif:'layers',size:80};}),
   {path:'/learn/vaults/',id:'vaults',title:'Vaults: yours to hold | Bankeiz',description:'A private place for money, originals and investments. Keep their proof, add optional passkey protection and share evidence without giving access.',lines:['Yours to hold.','Yours to unlock.'],caption:'Your money. Your originals. Their proof.',motif:'key'},
   {path:'/business/',id:'business',title:'Less explaining. More getting it done. | Business — $149/month',description:'Keep your money and work in context. Create what comes next and give clients a useful next step. Business is $149/month.',lines:['Less explaining.','More getting it done.'],caption:'Your money. Your work. $149/month.',motif:'bank',size:84},

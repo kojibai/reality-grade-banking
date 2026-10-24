@@ -1,6 +1,14 @@
 {
   "schema": "bankeiz.public-social-images.v1",
   "images": {
+    "/learn/protect-your-value/": {
+      "url": "/social/protect-your-value-528a5ff889560ae9.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "528a5ff889560ae955b52bdc961bb6cc2394807fd89efc7f0102a710861e0e6b",
+      "bytes": 225711,
+      "alt": "Prove it’s yours. Keep it yours. A separate passkey, private Vault and public proof illustrate keeping evidence separate from access."
+    },
     "/cooperatives/": {
       "url": "/social/cooperatives-a2319ca8b7aa286e.png",
       "width": 1730,

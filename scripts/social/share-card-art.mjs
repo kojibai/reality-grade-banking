@@ -3,9 +3,11 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import {Fingerprint,Layers3,Box,ShieldCheck,KeyRound,Landmark,ChartNoAxesCombined,BadgeCheck,ScanLine,NotebookTabs,Globe2,Braces,BookOpen,ReceiptText} from 'lucide-react';
 import {escapeMetadata as esc} from '../public-page-metadata.mjs';
 import {cooperativeShareCard} from './cooperative-share-art.mjs';
+import {protectionShareCard} from './vault-protection-share.mjs';
 const icons={layers:Layers3,fingerprint:Fingerprint,cube:Box,shield:ShieldCheck,key:KeyRound,bank:Landmark,valuation:ChartNoAxesCombined,badge:BadgeCheck,scan:ScanLine,ledger:NotebookTabs,globe:Globe2,code:Braces,book:BookOpen,receipt:ReceiptText};
 const bank='<path d="m256 117 123 67v17H133v-17l123-67Zm0 26-75 40h150l-75-40Z" fill-rule="evenodd"/><rect x="146" y="215" width="28" height="110" rx="2"/><rect x="210" y="215" width="28" height="110" rx="2"/><rect x="274" y="215" width="28" height="110" rx="2"/><rect x="338" y="215" width="28" height="110" rx="2"/><rect x="133" y="337" width="246" height="18" rx="2"/><rect x="119" y="367" width="274" height="18" rx="3"/>';
 export function shareCardSvg(page){
+ if(page.id==='protect-your-value')return protectionShareCard();
  if(page.id?.startsWith('cooperatives'))return cooperativeShareCard(page);
  const business=/^(?:business|cooperatives)/.test(page.id??'');
  const size=page.size??(Math.max(...page.lines.map(line=>line.length))>17?92:108);
