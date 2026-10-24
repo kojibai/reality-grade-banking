@@ -73,3 +73,15 @@ it('streams tracked browser entry immediately with one source read and preserves
   expect(refusal.status).toBe(status);expect(await refusal.text()).not.toContain('public-profile-seed');
  }
 });
+
+it('prepares the real renderer alongside the single source read without delaying early resources',async()=>{
+ let sourceReady!:(value:ReturnType<typeof parsePublicProfile>)=>void,rendererReady!:()=>void;
+ const source=new Promise<ReturnType<typeof parsePublicProfile>>(done=>{sourceReady=done;}),prepared=new Promise<void>(done=>{rendererReady=done;});
+ const prepareRender=vi.fn(()=>prepared),profile=vi.fn(()=>source),render=vi.fn(async()=>'<article>Complete public profile</article>');
+ const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Browser'}}),{profile,page:async()=>html,render,prepareRender});
+ const reader=response.body!.getReader();expect(new TextDecoder().decode((await reader.read()).value)).toContain('<head>');
+ expect(prepareRender).toHaveBeenCalledOnce();expect(profile).toHaveBeenCalledOnce();expect(render).not.toHaveBeenCalled();
+ rendererReady();sourceReady(parsePublicProfile(profileFixture(),'alexmorgan'));
+ expect(new TextDecoder().decode((await reader.read()).value)).toContain('Complete public profile');expect(render).toHaveBeenCalledOnce();
+ expect((await reader.read()).done).toBe(true);
+});

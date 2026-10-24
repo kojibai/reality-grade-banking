@@ -21,7 +21,7 @@ export function createPublicProfileReader(fetchImpl:typeof fetch=fetch){
    // This is the same canonical public route used by Receiz itself. The
    // generic profile read reconstructs discovery and can stall a cold page.
    // Read the admitted collection once; the UI windows its already-held rows.
-   const response=await fetchImpl(`https://receiz.com/api/profile/${username}?surface=public-route`,{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(25_000),headers:{accept:'application/json'}});
+   const response=await fetchImpl(`https://receiz.com/api/profile/${username}?surface=public-route&representation=collection-v1`,{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(25_000),headers:{accept:'application/json'}});
    if(!response.ok){await response.body?.cancel().catch(()=>{});throw new PublicProfileError(response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE',[403,404].includes(response.status)?response.status:503);}
    const input=await readBody(response);
    try{

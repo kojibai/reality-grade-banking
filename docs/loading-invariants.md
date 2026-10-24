@@ -164,3 +164,12 @@ dropped, and scrolling or changing sections requires no additional profile read.
 preload boundary, feed expansion and column controls;
 [profile-preview.test.ts](../tests/profile-preview.test.ts) protects early streamed
 hints alongside canonical routing, tracking parameters and source-read counts.
+
+
+## Complete public profile delivery
+
+A cold public profile uses one complete, current, identity-bound public collection response. The `collection-v1` representation preserves all Originals and their carried proof/media fields; it is not a first-page limit. The existing parser still checks the current username, UID and public visibility. An upstream version that does not support the representation can return its existing full public response in that same request.
+
+Prepare the profile renderer while the source request is in flight. Do not put its module import after the source response. Continue streaming static resources first; the actual profile body and matching complete seed follow in the same document. Do not paint a previous owner's profile, a partial collection or a fabricated profile while awaiting current public data.
+
+Regression coverage: `tests/public-profile-source.test.ts` protects one source read, exact model equality, current privacy/ownership and complete UID-bound expansion. `tests/profile-preview.test.ts` protects concurrent renderer preparation and early resource delivery. Production timing remains dependent on the delivery service and network; controlled replay measurements must be labeled separately from live measurements.

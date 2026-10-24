@@ -4,7 +4,7 @@ import {profileFixture} from './fixtures/public-profile';
 it('coalesces cookie-free first-page reads and does not reuse a previous response after the request',async()=>{
  const fetcher=vi.fn(async(_input:RequestInfo|URL)=>Response.json(profileFixture()));const read=createPublicProfileReader(fetcher);
  const [a,b]=await Promise.all([read('alexmorgan'),read('alexmorgan')]);expect(a).toEqual(b);expect(fetcher).toHaveBeenCalledTimes(1);
- expect(fetcher.mock.calls[0]?.[0]).toBe('https://receiz.com/api/profile/alexmorgan?surface=public-route');
+ expect(fetcher.mock.calls[0]?.[0]).toBe('https://receiz.com/api/profile/alexmorgan?surface=public-route&representation=collection-v1');
  const [,options]=fetcher.mock.calls[0] as unknown as [string,RequestInit];expect(options.credentials).toBe('omit');expect(options.redirect).toBe('error');expect(new Headers(options.headers).has('authorization')).toBe(false);
  await read('alexmorgan');expect(fetcher).toHaveBeenCalledTimes(2);
 });
@@ -15,6 +15,13 @@ it('does not serve retained data when a name becomes private or is reassigned',a
 });
 it('expands through a complete UID-bound snapshot instead of unbound legacy cursor rows',async()=>{
  let attempt=0;const fetcher=vi.fn(async(_input:RequestInfo|URL)=>{const value=profileFixture();if(attempt++>0)value.profile.originalsPage={hasMore:false,nextCursor:''};return Response.json(value);});
- const read=createPublicProfileReader(fetcher),first=await read('alexmorgan');expect(first.nextCursor).toBe('all:account-1');const next=await read('alexmorgan',first.nextCursor!);expect(next.userId).toBe('account-1');expect(next.nextCursor).toBeNull();expect(String(fetcher.mock.calls[1][0])).toContain('?surface=public-route');
+ const read=createPublicProfileReader(fetcher),first=await read('alexmorgan');expect(first.nextCursor).toBe('all:account-1');const next=await read('alexmorgan',first.nextCursor!);expect(next.userId).toBe('account-1');expect(next.nextCursor).toBeNull();expect(String(fetcher.mock.calls[1][0])).toContain('?surface=public-route&representation=collection-v1');
  await expect(read('alexmorgan','all:former-owner')).rejects.toMatchObject({status:409,message:'PROFILE_CHANGED'});
+});
+
+it('keeps the exact full public model when delivery omits duplicate manifests and unused owner panels',async()=>{
+ const full=profileFixture();const readFull=createPublicProfileReader(async()=>Response.json(full));
+ const view=full.profile;const collection={ok:true,profile:{profile:view.profile,viewer:view.viewer,stats:view.stats,originals:view.originals,originalsPage:view.originalsPage}};
+ const readCollection=createPublicProfileReader(async()=>Response.json(collection));
+ expect(await readCollection('alexmorgan')).toEqual(await readFull('alexmorgan'));
 });
