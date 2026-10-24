@@ -47,4 +47,12 @@ describe('private Vault encryption boundary',()=>{
   await expect(encryptVaultBytes(new Uint8Array(),header(),secret)).rejects.toThrow();
   expect(()=>createVaultHeader({purpose:'public-proof' as never,owner,credential,id:'f3ba25bc-3b06-4c9b-b978-a7b805c4e7eb'})).toThrow();
  });
+ it('rejects a JSON array that string-coerces to an allowed purpose',()=>{
+  expect(()=>createVaultHeader({...header(),purpose:['vault-private'] as never})).toThrow();
+ });
+ it('snapshots the original bytes before its first asynchronous encryption step',async()=>{
+  const original=new Uint8Array(bytes),pending=encryptVaultBytes(original,header(),secret);
+  original.fill(0);
+  expect(await decryptVaultBytes(await pending,secret)).toEqual(bytes);
+ });
 });

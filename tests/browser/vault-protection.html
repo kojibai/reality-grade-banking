@@ -1,19 +1,31 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><title>Vault protection qualification fixture</title></head><body><button id="qualify">Qualify test protection</button><output id="result">Not run</output><script type="module">
 import {registerVaultCredential,requestVaultPresence} from '/src/receiz/vault/presence.ts';
 import {createVaultHeader,encryptVaultBytes,decryptVaultBytes,readEncryptedVault} from '/src/receiz/vault/encryption.ts';
+import {createVaultStore} from '/src/receiz/vault/store.ts';
 document.querySelector('#qualify').onclick=async()=>{
  const status=document.querySelector('#result'),signal=new AbortController().signal;
  try{
   status.textContent='Registering synthetic test credential';
   const owner={keyId:'synthetic-qualification-owner',receizId:'fixture.receiz.id'},credential=await registerVaultCredential(owner,signal);
-  const header=createVaultHeader({purpose:'identity-recovery',id:crypto.randomUUID(),owner,credential}),original=new TextEncoder().encode('synthetic original only; no account or value');
+  const header=createVaultHeader({purpose:'vault-private',id:crypto.randomUUID(),owner,credential}),original=new TextEncoder().encode('synthetic original only; no account or value');
   status.textContent='Encrypting fixture';const first=await requestVaultPresence(header,{kind:'prepare-test'},signal);
   const encrypted=await encryptVaultBytes(original,header,first.secret);first.secret.fill(0);
   const portable=readEncryptedVault(JSON.parse(JSON.stringify(encrypted)));
   status.textContent='Reopening fixture';const second=await requestVaultPresence(portable.header,{kind:'reopen-test'},signal);
-  const opened=await decryptVaultBytes(portable,second.secret);second.secret.fill(0);
+  const opened=await decryptVaultBytes(portable,second.secret);
   if(opened.length!==original.length||opened.some((v,i)=>v!==original[i]))throw Error('round-trip failed');
-  opened.fill(0);original.fill(0);window.qualification={passed:true,device:'virtual-test-only',financialActions:0};status.textContent='Passed';
+  const next=await encryptVaultBytes(new TextEncoder().encode('synthetic successor journal'),header,second.secret);second.secret.fill(0);
+  status.textContent='Checking encrypted storage';const databaseName='bank-vault-test-'+crypto.randomUUID(),store=createVaultStore(databaseName);
+  try{
+   const saved=await store.save(owner.keyId,'My reserve',portable,null),loaded=await store.load(owner.keyId,header.id);
+   if(loaded?.summary.digest!==saved.digest)throw Error('original not retained');
+   if((await store.list(owner.keyId)).length!==1||(await store.list('another-owner')).length!==0||await store.load('another-owner',header.id)!==null)throw Error('owner isolation failed');
+   const concurrent=await Promise.allSettled([store.save(owner.keyId,'My reserve',next,saved.digest),store.save(owner.keyId,'My reserve',next,saved.digest)]);
+   if(concurrent.filter(v=>v.status==='fulfilled').length!==1||!concurrent.some(v=>v.status==='rejected'&&v.reason.message==='VAULT_STORAGE_CONFLICT'))throw Error('stale overwrite permitted');
+   const ref=await store.retainBlock(owner.keyId,header.id,portable);
+   if(await store.retainBlock(owner.keyId,header.id,portable)!==ref||(await store.restoreBlock(owner.keyId,header.id,ref)).ciphertext!==portable.ciphertext)throw Error('original source changed');
+  }finally{indexedDB.deleteDatabase(databaseName);}
+  opened.fill(0);original.fill(0);window.qualification={passed:true,device:'virtual-test-only',encryptedStorage:true,concurrentConflictRefused:true,financialActions:0};status.textContent='Passed';
  }catch(error){window.qualification={passed:false,error:error.message,financialActions:0};status.textContent=error.message;}
 };
 </script></body></html>

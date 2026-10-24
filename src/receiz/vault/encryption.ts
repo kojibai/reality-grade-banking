@@ -18,7 +18,7 @@ export function readVaultCredential(input:unknown):VaultCredential{
 }
 export function readVaultHeader(input:unknown):VaultHeader{
  const h=vaultObject(input,['purpose','id','owner','credential','prfSalt']),owner=vaultObject(h.owner,['keyId','receizId']);
- if(!['vault-private','identity-recovery'].includes(String(h.purpose))||typeof h.id!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(h.id)||typeof owner.keyId!=='string'||!owner.keyId.length||owner.keyId.length>160||typeof owner.receizId!=='string'||!/^[-A-Za-z0-9_.@]{1,180}$/.test(owner.receizId)||vaultBytes(h.prfSalt,32).length!==32)throw Error('VAULT_HEADER_INVALID');
+ if(typeof h.purpose!=='string'||!['vault-private','identity-recovery'].includes(h.purpose)||typeof h.id!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(h.id)||typeof owner.keyId!=='string'||!owner.keyId.length||owner.keyId.length>160||typeof owner.receizId!=='string'||!/^[-A-Za-z0-9_.@]{1,180}$/.test(owner.receizId)||vaultBytes(h.prfSalt,32).length!==32)throw Error('VAULT_HEADER_INVALID');
  return{purpose:h.purpose as VaultHeader['purpose'],id:h.id,owner:{keyId:owner.keyId,receizId:owner.receizId},credential:readVaultCredential(h.credential),prfSalt:h.prfSalt as string};
 }
 export function createVaultHeader(input:Omit<VaultHeader,'prfSalt'>):VaultHeader{return readVaultHeader({...input,prfSalt:vaultBase64(crypto.getRandomValues(new Uint8Array(32)))});}
@@ -36,9 +36,11 @@ async function encryptionKey(header:VaultHeader,secret:Uint8Array){
  * admitted from the original contained sources after decryption. */
 export async function encryptVaultBytes(input:Uint8Array,metadata:VaultHeader,prfSecret:Uint8Array):Promise<EncryptedVault>{
  if(!(input instanceof Uint8Array)||!input.length||input.length>MAX)throw Error('VAULT_ORIGINAL_CAPACITY');
- const header=readVaultHeader(metadata),iv=crypto.getRandomValues(new Uint8Array(12)),key=await encryptionKey(header,prfSecret);
- const ciphertext=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:encoder.encode(vaultCanonical(header)),tagLength:128},key,new Uint8Array(input));
- return{schema:'bank.vault.encrypted.v1',header,iv:vaultBase64(iv),ciphertext:vaultBase64(new Uint8Array(ciphertext))};
+ const original=new Uint8Array(input),header=readVaultHeader(metadata),iv=crypto.getRandomValues(new Uint8Array(12));
+ try{
+  const key=await encryptionKey(header,prfSecret),ciphertext=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:encoder.encode(vaultCanonical(header)),tagLength:128},key,original);
+  return{schema:'bank.vault.encrypted.v1',header,iv:vaultBase64(iv),ciphertext:vaultBase64(new Uint8Array(ciphertext))};
+ }finally{original.fill(0);}
 }
 export async function decryptVaultBytes(value:unknown,prfSecret:Uint8Array):Promise<Uint8Array<ArrayBuffer>>{
  const v=readEncryptedVault(value),key=await encryptionKey(v.header,prfSecret);

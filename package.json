@@ -14,6 +14,7 @@
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:browser": "node scripts/check-browser-regressions.mjs",
+    "test:vault-browser": "node scripts/check-vault-browser.mjs",
     "release:check": "node scripts/receiz-release.mjs",
     "vercel:check": "node scripts/check-vercel-build.mjs",
     "market:seed": "node scripts/seed-public-market.mjs",
