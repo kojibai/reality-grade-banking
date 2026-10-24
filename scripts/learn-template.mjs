@@ -7,6 +7,28 @@ import { branding } from '../branding/profile.mjs';
 import {siteFooterHtml} from './site-footer.mjs';
 import {learningPages,learningGroups,learningPath,assetCategories} from '../src/content/learning-pages.mjs';
 import {learningVisual} from './learning-visuals.mjs';
+import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
+import {cooperativePages} from '../src/content/cooperatives.mjs';
+// Public discovery only. Existing routes and native authorities are unchanged.
+const solutionGuides=[
+ {slug:'vaults',path:'/learn/vaults/',group:'Banking',title:'Your Vaults',description:'Hold money and originals separately, add optional passkey protection and share their proof.'},
+ {slug:'protect-your-value',path:'/learn/protect-your-value/',group:'Banking',title:'Protect your value',description:'See how separate Vault authority, optional passkey encryption and public proof protect access.'},
+ {slug:'business',path:'/business/',group:'Banking',title:'Business · $149/month',description:'Work from your context, create what comes next and help clients take the next step.'},
+ {...directoryPage,group:'Banking'},
+ ...businessFitPages.map(page=>({...page,group:'Business by your work',title:page.fit.label})),
+ ...cooperativePages.map(page=>({...page,group:'Cooperatives'}))
+];
+const relatedSolutions={
+ 'security':['/learn/protect-your-value/','/learn/vaults/'],
+ 'receiz-id':['/learn/vaults/','/learn/protect-your-value/'],
+ 'proof-objects':['/learn/vaults/'],'ownership':['/learn/vaults/'],
+ 'physical-assets':['/cooperatives/'],'asset-rights-and-backing':['/cooperatives/infrastructure/'],
+ 'proof-native-economy':['/cooperatives/'],'institutions':['/cooperatives/infrastructure/'],
+ 'messages':['/business/','/business/for/'],
+ 'for-businesses':['/business/','/business/for/'],'for-independent-work':['/business/for/'],
+ 'for-creators':['/business/for/'],'for-communities':['/cooperatives/'],
+ 'for-institutions':['/cooperatives/infrastructure/'],'for-public-finance':['/cooperatives/']
+};
 const brandText = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg>';
 const down = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16m-6-6 6 6 6-6"/></svg>';
@@ -46,8 +68,11 @@ export function learnHome() {
     ['01','Your identity','Open your account and keep your value and history connected. Your signing key stays with you.','receiz-id'],
     ['02','Proof objects & ownership','Understand the original source, ownership, and the possibilities of physical custody.','proof-objects'],
     ['03','Settlement & Reserve','Native value, connected payment rails, and the standard for receiving institutions.','reserve-and-settlement'],
-    ['04','How value is calculated','Inspect the deterministic valuation rules, the Kai pulse and the exact Phi-to-dollar calculation.','how-value-works']
-  ].map(([number,title,copy,slug])=>`<a class="guide-row reveal" href="/learn/${slug}/"><span class="guide-number">${number}</span><div><h3>${title}</h3><p>${copy}</p></div>${arrow}</a>`).join('')}</div></section>
+    ['04','How value is calculated','Inspect the deterministic valuation rules, the Kai pulse and the exact Phi-to-dollar calculation.','how-value-works'],
+    ['05','Your Vaults','Hold your money and originals separately. Share the proof without sharing access.','vaults'],
+    ['06','Protect your value','See the protection behind separate Vault authority and optional passkey encryption.','protect-your-value'],
+    ['07','The cooperative economy','Put what your members already produce to work through defined rights and connected proof.','/cooperatives/']
+  ].map(([number,title,copy,slug])=>`<a class="guide-row reveal" href="${slug.startsWith('/')?slug:'/learn/'+slug+'/'}"><span class="guide-number">${number}</span><div><h3>${title}</h3><p>${copy}</p></div>${arrow}</a>`).join('')}</div></section>
   <section class="learn-shell learn-business-offer"><div><h2>Less explaining.<br>More getting it done.</h2><p>Get help that works from your context. Continue the conversation, create the work and give clients a useful next step.</p></div><div><p>An assistant for your business, in the same account. Core proof, ownership and Settlement stay free.</p><strong>Business · $149/month</strong><small>Your context. Your work. Renews until cancelled.</small><a class="learn-button button-cobalt" href="/business/">See what Business includes ${arrow}</a></div></section>
   <section class="learn-finale motion-region"><div class="learn-shell"><div class="reveal"><h2>A familiar place.<br>A new kind of possibility.</h2><a class="learn-button button-paper" href="/">Enter bank ${arrow}</a></div></div></section></main>${siteFooterHtml()}`;
 }
@@ -58,6 +83,12 @@ export function learnArticle(page, pages, escape) {
   const notice = page.kind === 'account-notice';
   const contents = `<nav aria-label="On this page"><span>On this page</span>${page.sections.map(([heading])=>`<a href="#${sectionId(heading)}">${escape(heading)}</a>`).join('')}</nav>`;
   const related = page.related?.map(path=>({path,title:pages.find(item=>learningPath(item)===path)?.title??({'/explore/':'Explore assets','/conformance/#note-continuity':'The Note continuity standard','/conformance/':'Conformance','/schemas/':'Schemas and reference','/verify/':'Verify a proof','/ledger/':'Public Ledger'}[path]??path)}))??pages.filter(item => item.slug && item.slug !== page.slug && (!notice || item.kind === 'account-notice')).slice(0,3);
+  for(const path of relatedSolutions[page.slug]??[]){
+    if(related.some(item=>(item.path??learningPath(item))===path))continue;
+    const solution=solutionGuides.find(item=>item.path===path);
+    if(!solution)throw Error('PUBLIC_RELATED_SOLUTION_MISSING:'+path);
+    related.push(solution);
+  }
   return `${learnHeader()}<main id="main" class="learn-shell article-main">
     <a class="article-back text-action" href="${notice ? '/' : '/learn/guides/'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6"/></svg>${notice ? 'Back to bank' : 'All guides'}</a>
     <div class="article-heading">${notice ? `<div class="article-notice-meta">Account information · Updated ${escape(page.updated)}</div>` : `<div class="learning-eyebrow">${escape(page.group??'Learn')} · The complete picture</div>`}<h1>${escape(page.title)}</h1><p>${escape(page.intro)}</p></div>
@@ -75,4 +106,7 @@ export function learnArticle(page, pages, escape) {
   ${siteFooterHtml()}`;
 }
 
-export function learningDirectoryPage(){return `${learnHeader()}<main id="main"><section class="learn-shell learning-directory"><p class="section-intro">The complete picture.</p><h1>All guides.</h1><p class="directory-intro">Start with what you want to do. Follow the evidence as far as you need.</p><nav class="learning-group-links" aria-label="Guide subjects">${learningGroups.map(group=>`<a href="#guides-${sectionId(group)}">${group}</a>`).join('')}</nav>${learningGroups.map(group=>`<section id="guides-${sectionId(group)}" class="learning-group"><h2>${group}</h2><div>${learningPages.filter(page=>page.group===group).map(page=>`<a href="${learningPath(page)}"><h3>${brandText(page.title)}</h3><p>${brandText(page.description)}</p>${arrow}</a>`).join('')}</div></section>`).join('')}<div class="learning-category-links"><h2>Explore by content</h2><nav aria-label="Public asset categories">${assetCategories.map(category=>`<a href="${category.path}">${category.label} ${arrow}</a>`).join('')}</nav></div></section></main>${siteFooterHtml()}`;}
+export function learningDirectoryPage(){
+ const guides=[...learningPages,...solutionGuides];
+ const groups=[...learningGroups.slice(0,2),'Business by your work','Cooperatives',...learningGroups.slice(2)];
+ return `${learnHeader()}<main id="main"><section class="learn-shell learning-directory"><p class="section-intro">The complete picture.</p><h1>All guides.</h1><p class="directory-intro">Start with what you want to do. Follow the evidence as far as you need.</p><nav class="learning-group-links" aria-label="Guide subjects">${groups.map(group=>`<a href="#guides-${sectionId(group)}">${group}</a>`).join('')}</nav>${groups.map(group=>`<section id="guides-${sectionId(group)}" class="learning-group"><h2>${group}</h2><div>${guides.filter(page=>page.group===group).map(page=>`<a href="${learningPath(page)}"><h3>${brandText(page.title)}</h3><p>${brandText(page.description)}</p>${arrow}</a>`).join('')}</div></section>`).join('')}<div class="learning-category-links"><h2>Explore by content</h2><nav aria-label="Public asset categories">${assetCategories.map(category=>`<a href="${category.path}">${category.label} ${arrow}</a>`).join('')}</nav></div></section></main>${siteFooterHtml()}`;}

@@ -41,3 +41,15 @@ it('strict financial paths reject extra selectors before access, and an aborted 
 });
 
 it('independently reopens a retained prepared child before native creation without claiming native account admission',async()=>{const f=await fixture(),source=await prepareVaultCustody(f.ports),before=f.counts(),prepared=await admitPreparedVaultCustody(source,{sdk:f.ports.sdk,native:f.ports.native},BANK_APPLICATION_ID);expect(prepared).toMatchObject({phase:'prepared',nativeAccountAdmitted:false,vaultId:id,request:{custody:{accountId:source.custody.accountId,keyId:source.custody.keyId}}});expect(f.counts()).toEqual(before);await expect(admitPreparedVaultCustody({...source,owner:{...source.owner,receizId:'foreign.receiz.id'}},{sdk:f.ports.sdk,native:f.ports.native},BANK_APPLICATION_ID)).rejects.toThrow('MISMATCH');await expect(admitPreparedVaultCustody(source,{sdk:f.ports.sdk,native:f.ports.native},'rc_other')).rejects.toThrow('MISMATCH');const other=await sdk.createReceizIdentityKeyFile({owner:{uid:source.custody.accountId}});await expect(admitPreparedVaultCustody({...source,custody:{...source.custody,keyFileText:sdk.serializeReceizIdentityArtifact(other.keyFile)}},{sdk:f.ports.sdk,native:f.ports.native},BANK_APPLICATION_ID)).rejects.toThrow();});
+
+
+// A hosted record copy must never contain the private original used to sign.
+it('sends only public key material and signatures during Vault creation and opening',async()=>{
+ const f=await fixture(),parent=await f.ports.parent(),packets:Record<string,unknown>[]=[];
+ const ports={...f.ports,parent:async()=>({...parent,async request(path:string,options:{method:'GET'|'POST';body?:Record<string,unknown>}){if(options.body)packets.push(structuredClone(options.body));return parent.request(path,options);}})};
+ const prepared=await prepareVaultCustody(ports),source=await completeVaultCustodyCreation(prepared,ports),child=sdk.parseReceizIdentityArtifactText(source.custody.keyFileText);
+ const authority=await createVaultChildAuthority({source,applicationId:BANK_APPLICATION_ID,assertOpen(){},native:f.ports.native,sdk:f.ports.sdk,fetch:async(_url,init)=>{const body=JSON.parse(String(init?.body));packets.push(body);return Response.json(body.operation==='open'?grant(source,Date.now(),f.native.VAULT_CHILD_SCOPES):{accepted:true});}});
+ try{await authority.request(`/api/connect/vault/custody?applicationId=${BANK_APPLICATION_ID}`,{method:'POST',body:{operation:'custody-witness',submission:{}}});}finally{authority.lock();}
+ const captured=JSON.stringify(packets),secret=child.crypto.privateKeyPkcs8B64u;expect(secret).toBeTruthy();expect(captured).not.toContain(secret!);expect(captured).not.toContain(source.custody.keyFileText);expect(captured).not.toMatch(/privateKey|keyFileText|passphrase|sourceB64u/);
+ const create=packets.find(p=>p.operation==='create')!.submission as VaultNativeCustodySubmission;expect(create.request.custody.publicKeyRawB64u).toBe(child.crypto.publicKeyRawB64u);expect(packets.some(p=>p.operation==='open')).toBe(true);
+});
