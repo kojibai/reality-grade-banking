@@ -4,7 +4,7 @@ import {safeReceizPublicUrl} from './public-market';
 import {BANK_PUBLIC_ORIGIN} from './config';
 import {ledgerValueForRecord,readLedgerValueDisplay,readLedgerValueOperands,type LedgerValueDisplay,type LedgerValueOperands,type LedgerValueIndex} from './ledger-value';
 import {readLedgerDetails,readLedgerValuationTrace,type LedgerFields} from './ledger-inspection';
-import {decodeReceiptPacket} from './receipt-packet';
+import {decodeReceiptPacket,encodeReceiptPacket} from './receipt-packet';
 import {ledgerAssetTradeSide,ledgerAssetTrade} from './ledger-asset-trade';
 export const ACTIVITY_FILTERS=['all','transactions','transfers','actions','proofs'] as const;
 export type ActivityCategory=typeof ACTIVITY_FILTERS[number];
@@ -34,12 +34,20 @@ export function receiptLink(record:PublicRecord,value=ledgerValueForRecord(recor
  // Keep the shared source cohort by reference in the in-app receipt/archive.
  // Do not repeatedly serialize hundreds of originals into every row's URL.
  const {fundingCohorts,fundingContext,...retainedDetails}=record.details??{};
- const context=readLedgerFundingContext(fundingContext),compact=context?compactLedgerFundingContext(context):undefined;
+ const context=readLedgerFundingContext(fundingContext),fullNote=!!context&&/note_(mint|claim|create|deposit)/i.test(record.kind+' '+String(record.details?.ledgerEntryKind??'')),compact=context?(fullNote?context:compactLedgerFundingContext(context)):undefined;
  const details:LedgerFields={...retainedDetails,...(compact?{fundingContext:compact as unknown as LedgerFields}:{})};
  // Both views share the same curated fields of the selected record. The
  // reader excludes arbitrary account/chat metadata and custody material.
  const trade=ledgerAssetTrade(record),tradeDetails=trade?readLedgerDetails({ledgerEntryKind:details.ledgerEntryKind,assetTrade:trade}):null;
  const receipt=read({schema:'bankeiz.ledger-receipt.v1',id:record.sourceId,source:record.source,authority:record.authority,detail:record.authority==='public-source-projection'?record.detail:'',kind:record.kind,title:record.title,amountUsdCents:record.amountUsdCents,pulse:record.pulse,kaiUpulse:record.kaiUpulse,time:record.time,sender:record.sender,recipient:record.recipient,sourceUrl:record.sourceUrl,evidence:record.evidence,value,details,valueOperands:record.valueOperands,valuation,contextOmitted:!!fundingCohorts||compact?.coverage.status==='incomplete'});
+ // Notes carry their complete already-held funding graph in a bounded lossless
+ // packet. A fragment keeps large evidence out of HTTP request/query limits.
+ // Existing ordinary receipt links and their compact transport stay unchanged.
+ if(fullNote){
+  try{return `${BANK_PUBLIC_ORIGIN}/receipt/#p=${encodeReceiptPacket(receipt)}`;}
+  catch(error){if(!(error instanceof Error)||error.message!=='RECEIPT_TOO_LARGE')throw error;}
+  receipt.details=readLedgerDetails({...retainedDetails,fundingContext:compactLedgerFundingContext(context!)});receipt.contextOmitted=true;
+ }
  let bytes=new TextEncoder().encode(JSON.stringify(receipt));
  // Large optional descriptions and model traces must not remove the receipt.
  if(bytes.length>24000){receipt.detail='';receipt.details=tradeDetails;receipt.valuation=null;receipt.contextOmitted=true;bytes=new TextEncoder().encode(JSON.stringify(receipt));}
@@ -54,7 +62,9 @@ export function readReceiptLink(link:string):LedgerReceipt{
   if(compactUrl.pathname!=='/receipt/'||compactUrl.hash||compactUrl.searchParams.size!==1||!compactUrl.searchParams.has('r'))throw Error('RECEIPT_INVALID');
   return read(decodeReceiptPacket(compactUrl.searchParams.get('r')!));
  }
- const url=new URL(link,BANK_PUBLIC_ORIGIN),params=new URLSearchParams(url.hash.slice(1)),encoded=params.get('r');
+ const url=new URL(link,BANK_PUBLIC_ORIGIN),params=new URLSearchParams(url.hash.slice(1));
+ if(url.pathname==='/receipt/'&&params.size===1&&params.has('p'))return read(decodeReceiptPacket(params.get('p')!));
+ const encoded=params.get('r');
  if(url.pathname!=='/receipt/'||params.size!==1||!encoded||encoded.length>32000||!/^[A-Za-z0-9_-]+$/.test(encoded))throw Error('RECEIPT_INVALID');
  const bytes=Uint8Array.from(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
  return read(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)));

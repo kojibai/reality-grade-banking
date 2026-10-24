@@ -6,6 +6,7 @@ export function compactReceiptLink(link:string):string{
  const receipt=readReceiptLink(link),url=new URL(link,BANK_PUBLIC_ORIGIN);
  // Canonical origin also keeps a localhost receipt useful outside this device.
  if(url.searchParams.has('r'))return `${BANK_PUBLIC_ORIGIN}/receipt/${url.search}`;
+ if(new URLSearchParams(url.hash.slice(1)).has('p'))return `${BANK_PUBLIC_ORIGIN}/receipt/${url.hash}`;
  return `${BANK_PUBLIC_ORIGIN}/receipt/?r=${encodeReceiptPacket(receipt)}`;
 }
 export async function copyReceiptLink(link:string):Promise<void>{await navigator.clipboard.writeText(compactReceiptLink(link));}
