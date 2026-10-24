@@ -6,10 +6,11 @@ import type {createLocalNoteDepositQueue} from './note-received-deposits';
 /** Recovery may replay an existing transfer, but never allocates a receiver. */
 export async function recoverConnectedNoteDeposit(input:{noteId:string;funding:boolean;connected:ReturnType<typeof createConnectedNoteRuntime>;received:ReturnType<typeof createLocalNoteDepositQueue>;reconcile():Promise<void>}):Promise<BankNoteDepositResult|null>{
  if(input.funding&&!(await input.received.list()).some(row=>row.noteId===input.noteId)){
-  const transfer=await input.connected.recoverTransfer(input.noteId);
-  if(transfer)await input.received.receive(transfer.image);
+  const self=await input.connected.recoverSelfDeposit(input.noteId);
+  if(self)await input.received.receive(self.sourceBytes);
+  else{const transfer=await input.connected.recoverTransfer(input.noteId);if(transfer)await input.received.receive(transfer.image);}
  }
- await input.reconcile();
+ await input.reconcile();const confirmed=await input.received.confirmed(input.noteId);if(confirmed)await input.connected.confirmSelfDeposit(input.noteId,confirmed.proofBytes);
  return(await input.received.list()).find(row=>row.noteId===input.noteId)??null;
 }
 

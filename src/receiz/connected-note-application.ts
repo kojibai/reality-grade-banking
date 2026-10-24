@@ -1,6 +1,6 @@
 import type {ReceizKeyFile} from '@receiz/sdk';
 import type {BankNoteDeposit,BankNoteInspection,BankNoteRail} from './offline-notes';
-import {createConnectedNoteRuntime,type ConnectedNotePorts} from './connected-note-runtime';
+import {createConnectedNoteRuntime,type ConnectedNotePorts,type SelfDepositCreditBinding} from './connected-note-runtime';
 import {selectNoteFunding} from './note-funding';
 import {atNoteStage} from './note-stage';
 
@@ -17,6 +17,7 @@ export interface ConnectedNoteModule{
  createBankConnectedNoteHandover(input:Json):Promise<Uint8Array>;
  createBankConnectedNoteClaim(input:Json):Promise<Json>;
  verifyBankConnectedNoteFunding(source:Uint8Array,opening:Uint8Array):Promise<Projection&{accountAfter:Json}>;
+ verifyBankConnectedNoteReceipt?(receipt:Uint8Array):Promise<BankNoteInspection&{kind:string;credit?:Json;terminalSourceBytes:Uint8Array;terminalArtifactSha256:string;redemptionDigest?:string}>;
  verifyBankConnectedNoteCredit(source:Uint8Array,opening:Uint8Array):Promise<Projection&{credit:Json;accountAfter:Json;proofBytes:Uint8Array}>;
  verifyBankConnectedNoteCancellation(source:Uint8Array,opening:Uint8Array):Promise<{noteId:string;operationId:string;proofBytes:Uint8Array}>;
 }
@@ -28,7 +29,7 @@ const path=()=>`/api/connect/offline-notes/connected?origin=${encodeURIComponent
 const fields=(response:unknown,decode:(v:string)=>Uint8Array)=>{const v=obj(response);if(v.ok!==true||typeof v.source!=='string'||typeof v.privateAccountOpening!=='string')throw Error('BANK_NOTE_RESULT_PENDING');return{source:decode(v.source),opening:decode(v.privateAccountOpening),cancelled:v.cancelled===true};};
 /** Browser composition only. All financial source admission, signed authority,
  * conservation and once-only consumption remain in Receiz v129. */
-export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'review'|'prepare'|'issue'|'cancel'|'prepareCancellation'|'inspect'|'handover'|'image'>&{
+export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'review'|'prepare'|'issue'|'cancel'|'prepareCancellation'|'inspect'|'handover'|'image'|'verifySelfDeposit'|'verifySelfDepositCredit'>&{
  module():Promise<ConnectedNoteModule>;context():Promise<Context>;
  sdk:{createReceizIdentityKeyFile(input:{owner:{uid:string}}):Promise<{keyFile:ReceizKeyFile}>;serializeReceizIdentityArtifact(key:ReceizKeyFile):string;parseReceizIdentityArtifactText(text:string):ReceizKeyFile;receizBase64UrlEncode(bytes:Uint8Array):string;receizBase64UrlDecode(text:string):Uint8Array;receizKaiNow():{pulse:number}};
  artwork(amount:string,id:string,compact?:boolean,rail?:BankNoteRail):Promise<Uint8Array>;
@@ -76,6 +77,8 @@ export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'re
   },
   inspect:async source=>(await input.module()).readBankConnectedNoteSource(source),
   async handover(source,receivingRequestBytes,noteIdentityBytes){const module=await input.module();return module.createBankConnectedNoteHandover({fundingSourceBytes:source,receivingRequestBytes,noteIdentity:input.sdk.parseReceizIdentityArtifactText(new TextDecoder('utf-8',{fatal:true}).decode(noteIdentityBytes)),kai:String(input.sdk.receizKaiNow().pulse)});},
+  async verifySelfDeposit(source){const held=await(await input.module()).readBankConnectedNoteSource(source);input.assertOpen();if(held.kind!=='handover'||held.receiverUserId!==input.uid||held.receiverKeyId!==input.keyId||!held.redemptionDigest)throw Error('BANK_NOTE_IDENTITY_BINDING_REQUIRED');return{...held,receiverUserId:held.receiverUserId,receiverKeyId:held.receiverKeyId,redemptionDigest:held.redemptionDigest};},
+  verifySelfDepositCredit:async(source,receipt,expected)=>verifyConnectedSelfDepositCredit(await input.module(),source,receipt,expected),
   async image(source,note){
    const module=await input.module(),image=await module.exportBankConnectedNoteImage(source,await input.artwork(note.amountUsdCents,note.noteId,false,note.rail));
    // The native envelope proves the financial source. Its PNG also needs the
@@ -112,4 +115,16 @@ export async function submitConnectedAccountNoteClaim(input:{module:ConnectedNot
  if(credit.noteId!==held.noteId||credit.credit.receiverUserId!==input.context.uid||credit.credit.receiverKeyId!==input.context.identity.keyId||credit.credit.terminalSourceSha256!==held.terminalArtifactSha256||credit.credit.redemptionDigest!==body.claim.claimDigest)throw Error('BANK_NOTE_DEPOSIT_BINDING_MISMATCH');
  input.onCreditVerified?.(credit.proofBytes,credit);
  return{rail:credit.rail,noteId:credit.noteId,amountUsdCents:credit.amountUsdCents,amountPhiMicro:credit.amountPhiMicro,...(credit.fundingParts?{fundingParts:credit.fundingParts}:{}),walletAfterPhiMicro:credit.accountAfter.balancePhiMicro,reserveAfterUsdCents:credit.accountAfter.reserveUsdCents,proofBytes:credit.proofBytes};
+}
+
+/** Native receipt replay, never a local confirmed flag, releases self-deposit
+ * custody. The receiver key, terminal, claim digest, denomination and exact
+ * credited source must all match the retained handover. */
+export async function verifyConnectedSelfDepositCredit(module:ConnectedNoteModule,source:Uint8Array,receipt:Uint8Array,expected:SelfDepositCreditBinding){
+ if(!module.verifyBankConnectedNoteReceipt)throw Error('BANK_NOTE_SELF_DEPOSIT_CREDIT_REQUIRED');const terminal=await module.readBankConnectedNoteSource(source),proof=await module.verifyBankConnectedNoteReceipt(receipt),c=proof.credit;
+ // Native receipt replay links the credit's claim digest to its handover.
+ // These are distinct domains: terminal.redemptionDigest is the handover;
+ // the verified credit/receipt redemptionDigest is its receiver claim digest.
+
+ if(terminal.kind!=='handover'||terminal.receiverUserId!==expected.uid||terminal.receiverKeyId!==expected.keyId||terminal.noteId!==expected.noteId||terminal.rail!==expected.rail||terminal.amountUsdCents!==expected.amountUsdCents||proof.kind!=='credit'||!c||proof.noteId!==terminal.noteId||proof.rail!==terminal.rail||proof.amountPhiMicro!==terminal.amountPhiMicro||proof.amountUsdCents!==terminal.amountUsdCents||c.receiverUserId!==expected.uid||c.receiverKeyId!==expected.keyId||c.noteId!==terminal.noteId||c.terminalSourceSha256!==terminal.terminalArtifactSha256||proof.terminalSourceBytes.length!==source.length||proof.terminalSourceBytes.some((b,i)=>b!==source[i]))throw Error('BANK_NOTE_DEPOSIT_BINDING_MISMATCH');
 }

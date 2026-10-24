@@ -702,15 +702,16 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     });return receivedNoteQueue;
   }
   async function paintReceivedNotes(){receivedNoteDisplay=await localReceivedNotes().list({pendingOnly:true});noteOpen();if(typeof dispatchEvent==='function')dispatchEvent(new Event('bankeiz:account-observation'));}
+  async function finishSelfDeposits(){const connected=localConnectedNotes();for(const id of await connected.pendingSelfDeposits()){const confirmed=await localReceivedNotes().confirmed(id);noteOpen();if(confirmed)await connected.confirmSelfDeposit(id,confirmed.proofBytes);}}
   async function reconcileReceivedNotesLocked(refresh=false){
     const queue=localReceivedNotes(),before=await queue.list({pendingOnly:true});
-    if(!before.some(note=>note.status==='received'))return;
+    if(!before.some(note=>note.status==='received')){await finishSelfDeposits();return;}
     if(typeof navigator!=='undefined'&&navigator.onLine===false)throw Error('BANK_NOTE_DEPOSIT_RECONCILIATION_REQUIRED');
     // Each exact credit is committed durably before the next submission. A
     // later failure must not leave a confirmed amount in Received Notes or let
     // an older in-flight wallet observation replace the execution boundary.
     try{await queue.reconcile();}
-    finally{noteOpen();walletRevision++;await paintReceivedNotes();noteHistoryRecorded();}
+    finally{noteOpen();await finishSelfDeposits();walletRevision++;await paintReceivedNotes();noteHistoryRecorded();}
     if(refresh)await readAndAdoptWallet();
   }
   function synchronizeReceivedNotes(){
@@ -826,7 +827,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
             if(await localReceivedNotes().confirmed(held.noteId))throw Error('BANK_NOTE_ALREADY_DEPOSITED');
             if(held.kind==='funding'&&await localConnectedNotes().hasNote(held.noteId)){
               const request=await module.createBankNoteAccountReceivingRequest({identity:keyFile,passphrase:phrase,accountUserId:receivingUid()});
-              original=(await localConnectedNotes().transfer(held.noteId,request)).image;
+              original=(await localConnectedNotes().prepareSelfDeposit(held.noteId,request)).sourceBytes;
             }
           }
           const received=await localReceivedNotes().receive(original);

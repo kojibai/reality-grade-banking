@@ -1,7 +1,7 @@
 export type BankNoteRail = 'reserve' | 'settlement' | 'composite';
 export type BankNoteFundingParts={reserve:{amountUsdCents:string;amountPhiMicro:string};settlement:{amountUsdCents:string;amountPhiMicro:string}};
 export type BankNoteReview={rail:BankNoteRail;amountUsdCents:string;amountPhiMicro?:string;fundingParts?:BankNoteFundingParts};
-export interface BankNoteImage extends Omit<BankNoteReview,'rail'> { noteId: string; rail?: BankNoteRail; image: Uint8Array; transferred?: boolean; transferPending?: boolean; accountUpdateWarning?: string; consumption?:'connection-required'; }
+export interface BankNoteImage extends Omit<BankNoteReview,'rail'> { noteId: string; rail?: BankNoteRail; image: Uint8Array; transferred?: boolean; transferPending?: boolean; selfDeposit?:'pending'|'confirmed'; accountUpdateWarning?: string; consumption?:'connection-required'; }
 export interface BankNoteInspection extends Omit<BankNoteReview,'rail'> { rail?: BankNoteRail; noteId: string; amountPhiMicro: string; consumption?:'connection-required'; }
 export interface BankNoteDeposit extends Omit<BankNoteReview,'rail'> { status?:'confirmed'; rail?: BankNoteRail; walletAfterPhiMicro?: string; noteId: string; proofBytes: Uint8Array; reserveAfterUsdCents: string; }
 export interface BankReceivedNoteDeposit extends BankNoteReview {status:'received';noteId:string;amountPhiMicro:string;proofBytes:Uint8Array;}

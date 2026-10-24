@@ -47,12 +47,18 @@ export function createLocalNoteDepositQueue(input:{uid:string;keyId:string;asser
   list,
   async confirmed(noteId:string){const {state}=await load(),row=state.entries[noteId];return row?.status==='confirmed'?result(noteId,row):null;},
   async receive(bytes:Uint8Array):Promise<BankNoteDepositResult>{
-   const held=await input.verify(bytes.slice());input.assertOpen();
+   const held=structuredClone(await input.verify(bytes.slice()));input.assertOpen();
    if(held.receiverUserId!==input.uid||held.receiverKeyId!==input.keyId)throw Error('BANK_NOTE_IDENTITY_BINDING_REQUIRED');
    const {state,previous}=await load(),existing=state.entries[held.noteId];
    if(existing){if(existing.redemptionDigest!==held.redemptionDigest||existing.terminalArtifactSha256!==held.terminalArtifactSha256)throw Error('BANK_NOTE_EXACT_DEPOSIT_REQUIRED');return result(held.noteId,existing);}
    if(Object.keys(state.entries).length>=64)throw Error('BANK_NOTE_DEVICE_CAPACITY');
-   const sourceRef=await input.retain(held.terminalSourceBytes);input.assertOpen();
+   const sourceRef=await input.retain(held.terminalSourceBytes.slice());input.assertOpen();
+   // The source was fully admitted above. Check its exact durable retention,
+   // then reuse that same admission rather than verify the whole graph again
+   // merely to construct the received display. A cold queue admits it anew.
+   const retained=await input.restore(sourceRef),digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(retained)))].map(v=>v.toString(16).padStart(2,'0')).join('');
+   if(digest!==sourceRef||retained.length!==held.terminalSourceBytes.length||retained.some((v,i)=>v!==held.terminalSourceBytes[i]))throw Error('BANK_NOTE_SOURCE_REQUIRED');
+   admissions.set(sourceRef,Promise.resolve(held));
    state.entries[held.noteId]={sourceRef,redemptionDigest:held.redemptionDigest,terminalArtifactSha256:held.terminalArtifactSha256,status:'received',submissionEntered:false};
    await input.write(state,previous);input.assertOpen();return result(held.noteId,state.entries[held.noteId]!);
   },

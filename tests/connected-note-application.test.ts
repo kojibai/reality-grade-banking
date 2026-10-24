@@ -70,3 +70,9 @@ it('refuses offline review before transport or custody work, without treating co
  expect(f.request).not.toHaveBeenCalled();expect(f.createKey).not.toHaveBeenCalled();
  expect(await f.runtime.pending()).toBeNull();
 });
+it('the self-deposit producer admits actual handover receiver binding and never invokes PNG/sealing',async()=>{
+ const f=fixture();await f.runtime.create('200');const raw=new Uint8Array([7,8]);
+ (f.module as any).createBankConnectedNoteHandover=vi.fn(async()=>raw);
+ vi.mocked(f.module.readBankConnectedNoteSource).mockResolvedValue({kind:'handover',noteId:'22222222-2222-4222-8222-222222222222',rail:'reserve',amountUsdCents:'200',amountPhiMicro:'1000000',receiverUserId:'11111111-1111-4111-8111-111111111111',receiverKeyId:'a'.repeat(64),redemptionDigest:'c'.repeat(64),terminalArtifactSha256:createHash('sha256').update(raw).digest('hex'),terminalSourceBytes:raw} as any);
+ const result=await f.runtime.prepareSelfDeposit('22222222-2222-4222-8222-222222222222',new Uint8Array([4]));expect(result.sourceBytes).toEqual(raw);expect(f.module.exportBankConnectedNoteImage).toHaveBeenCalledOnce();expect(f.sealImage).toHaveBeenCalledOnce();
+});

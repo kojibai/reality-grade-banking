@@ -29,7 +29,7 @@ async function noteRemovalGuard(saved: SavedIdentity) {
         continue;
       }
       if(family==='connected-notes'){
-        if((await import('./connected-note-runtime')).hasHeldConnectedNotes(state))throw Error('Keep this ID while connected Notes or their original issue results are held. Transfer or deposit the Notes before removing this device custody.');
+        if(await(await import('./connected-note-runtime')).hasHeldConnectedNotes(state,{restore:ref=>loadOfflineNoteBlob({artifactSha256:digest},ref),verifySelfDepositCredit:async(source,receipt,expected)=>(await import('./connected-note-application')).verifyConnectedSelfDepositCredit(await(await import('./offline-notes')).loadBankNoteRuntime(),source,receipt,expected)}))throw Error('Keep this ID while connected Notes or their original issue results are held. Transfer or deposit the Notes before removing this device custody.');
         continue;
       }
       if(family==='backed-asset-publication'){const held=(await import('./backed-asset-publication')).readBackedPublicationState(state);if(held&&held.stage!=='published')throw Error('Finish or cancel the retained backed asset before removing this ID. Its original funding and publication recovery remain on this device.');continue;}

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { ReceiptView } from '../src/features/receipts/ReceiptView';
 import { parsePublicNetworkPage } from '../src/receiz/public-network';
 import { receiptLink } from '../src/receiz/ledger-receipts';
@@ -49,6 +49,39 @@ it('carries My history sale details and realized return into a compact shared re
   const host=mount(compactReceiptLink(receiptLink(record)!));
   act(()=>{const details=host.querySelector<HTMLDetailsElement>('details.receipt-inspection')!;details.open=true;details.dispatchEvent(new Event('toggle'));});
   const trade=host.querySelector('.ledger-trade-details')!;expect(trade.textContent).toContain('The original');expect(trade.textContent).toContain('2.5');expect(trade.textContent).toContain('+$25.00');expect(trade.textContent).toContain('+25.00%');expect(trade.textContent).toContain('Cost basis');expect(fetch).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();}
+});
+
+it.each([
+ ['public','note_mint'],['public','note_claim'],
+ ['private','note_mint'],['private','note_claim'],
+] as const)('carries the %s %s funding history into the standalone receipt without a lookup',async(view,kind)=>{
+ const {parsePrivateHistoryPage}=await import('../src/receiz/private-history');
+ const {compactReceiptLink}=await import('../src/receiz/receipt-sharing');
+ const noteId='10000000-0000-4000-8000-000000000001',objectId='20000000-0000-4000-8000-000000000001',digest='d'.repeat(64);
+ const debit={kind:'debit',id:'creation'},credit={kind:'credit',id:'deposit'},note={kind:'note',id:noteId};
+ // The compatibility response roots both the exact allocation debit and its
+ // Note. Deposits extend that same Note rather than starting new provenance.
+ const fundingContexts={schema:'receiz.wallet.funding-context.v1',roots:{'debit:creation':debit,['note:'+noteId]:note,'credit:deposit':credit},nodes:{
+  'debit:creation':{ref:debit,amountUsdCents:'200',amountPhiMicro:'400',parents:[{kind:'proof-basis',id:'origin'}],source:'bank_connected_note_allocate',originalDigest:digest},
+  ['note:'+noteId]:{ref:note,amountUsdCents:'200',amountPhiMicro:'400',parents:[debit],originalDigest:digest},
+  'credit:deposit':{ref:credit,amountUsdCents:'200',amountPhiMicro:'400',parents:[note],source:'bank_connected_note_redeem',originalDigest:'e'.repeat(64)},
+  'proof-basis:origin':{ref:{kind:'proof-basis',id:'origin'},parents:[],objectIds:[objectId]},
+ }};
+ const id=kind==='note_mint'?'creation':'deposit';
+ const event={id:view==='private'?'wallet_ledger:'+id:id,kind:view==='private'?'wallet_ledger_entry':kind,ledgerEntryKind:kind,noteId,amountUsdCents:'200',amountPhiMicro:'400'};
+ const packet={ok:true,accountUserId:'account',events:[event],fundingContexts,nextCursor:null};
+ const row=view==='private'?parsePrivateHistoryPage(packet,'account').records[0]:parsePublicNetworkPage('wallet',packet).records[0];
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ try{
+  const host=mount(compactReceiptLink(receiptLink(row)!));
+  const provenance=host.querySelector('.receipt-provenance')!;
+  expect(provenance.textContent).toContain('Funding source');
+  act(()=>{const details=provenance.querySelector<HTMLDetailsElement>('details.ledger-funding-full')!;details.open=true;details.dispatchEvent(new Event('toggle'));});
+  expect(provenance.textContent).toContain(objectId);
+  expect(provenance.textContent).toContain(digest);
+  expect(provenance.textContent).toContain('Full funding history');
+  expect(fetch).not.toHaveBeenCalled();
  }finally{vi.unstubAllGlobals();}
 });
 
