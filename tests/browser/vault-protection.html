@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Vault protection qualification fixture</title></head><body><button id="qualify">Qualify test protection</button><output id="result">Not run</output><script type="module">
+import {registerVaultCredential,requestVaultPresence} from '/src/receiz/vault/presence.ts';
+import {createVaultHeader,encryptVaultBytes,decryptVaultBytes,readEncryptedVault} from '/src/receiz/vault/encryption.ts';
+document.querySelector('#qualify').onclick=async()=>{
+ const status=document.querySelector('#result'),signal=new AbortController().signal;
+ try{
+  status.textContent='Registering synthetic test credential';
+  const owner={keyId:'synthetic-qualification-owner',receizId:'fixture.receiz.id'},credential=await registerVaultCredential(owner,signal);
+  const header=createVaultHeader({purpose:'identity-recovery',id:crypto.randomUUID(),owner,credential}),original=new TextEncoder().encode('synthetic original only; no account or value');
+  status.textContent='Encrypting fixture';const first=await requestVaultPresence(header,{kind:'prepare-test'},signal);
+  const encrypted=await encryptVaultBytes(original,header,first.secret);first.secret.fill(0);
+  const portable=readEncryptedVault(JSON.parse(JSON.stringify(encrypted)));
+  status.textContent='Reopening fixture';const second=await requestVaultPresence(portable.header,{kind:'reopen-test'},signal);
+  const opened=await decryptVaultBytes(portable,second.secret);second.secret.fill(0);
+  if(opened.length!==original.length||opened.some((v,i)=>v!==original[i]))throw Error('round-trip failed');
+  opened.fill(0);original.fill(0);window.qualification={passed:true,device:'virtual-test-only',financialActions:0};status.textContent='Passed';
+ }catch(error){window.qualification={passed:false,error:error.message,financialActions:0};status.textContent=error.message;}
+};
+</script></body></html>
