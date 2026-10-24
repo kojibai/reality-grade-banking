@@ -14,8 +14,10 @@ it('versions complete final pages and fixed-path native resources and includes l
     for (const file of ['ledger.js', 'ledger.css', 'ledger-reader.js']) await writeFile(join(dir, 'assets', file), file);
     await mkdir(join(dir, 'verify')); await writeFile(join(dir, 'verify/index.html'), 'public verifier'); await writeFile(join(dir, 'assets/verify.js'), 'verify');
     await writeFile(join(dir, 'assets/bank.js'), 'bank'); await writeFile(join(dir, 'assets/qr-decoder.js'), 'qr'); await writeFile(join(dir, 'assets/conformance.js'), 'console');
-    const pages = { '/learn/': { content: 'Learn' }, '/legal/': { content: 'Legal' },'/learn/notes/':{content:'Notes'},'/standards/':{content:'Standards'},'/market-cap/':{content:'Global Market Cap'},'/explore/music/':{content:'Music'} };
-    for(const path of ['learn/notes','standards','market-cap','explore/music','explore']){await mkdir(join(dir,path),{recursive:true});await writeFile(join(dir,path,'index.html'),path);}
+    const pages = { '/cooperatives/':{content:'Cooperatives'},'/cooperatives/producers/':{content:'Producers'}, '/business/for/':{content:'Fits'},'/business/for/agencies/':{content:'Agency'},'/business/':{content:'Business'}, '/learn/': { content: 'Learn' }, '/legal/': { content: 'Legal' },'/learn/notes/':{content:'Notes'},'/standards/':{content:'Standards'},'/market-cap/':{content:'Global Market Cap'},'/explore/music/':{content:'Music'} };
+    for(const path of ['cooperatives','cooperatives/producers','business','business/for','business/for/agencies','learn/notes','standards','market-cap','explore/music','explore']){await mkdir(join(dir,path),{recursive:true});await writeFile(join(dir,path,'index.html'),path);}
+    await writeFile(join(dir,'learn/business-fit.js'),'public directory enhancement');
+    await writeFile(join(dir,'learn/cooperatives.js'),'cooperative interaction');await writeFile(join(dir,'learn/cooperative-twin.js'),'native twin projection');
     await mkdir(join(dir, 'launch'));
     await writeFile(join(dir, 'launch/iphone-402-874-3-portrait.png'), 'launch artwork');
     await writeFile(join(dir, 'index.html'), `<link rel="apple-touch-startup-image" href="/launch/iphone-402-874-3-portrait.png" media="screen"><script id="receiz-navigation" type="application/json">${JSON.stringify({ pages })}</script>`);
@@ -34,7 +36,11 @@ it('versions complete final pages and fixed-path native resources and includes l
     for(const url of ['/pay/index.html','/assets/checkout.js','/assets/checkout.css'])expect(first.resources.some((v:{url:string})=>v.url===url),url).toBe(true);
     expect(first.pages['/pay/index.html']).toBe('/pay/index.html');
     expect(first.pages).toMatchObject({ '/learn/': '/learn/', '/legal/': '/legal/' });
-    expect(first.pages).toMatchObject({'/learn/notes/':'/learn/','/standards/':'/learn/','/market-cap/':'/explore/','/explore/music/':'/explore/'});
+    expect(first.pages).toMatchObject({'/business/':'/learn/','/business':'/learn/','/learn/notes/':'/learn/','/standards/':'/learn/','/market-cap/':'/explore/','/explore/music/':'/explore/'});
+    expect(first.pages).toMatchObject({'/business/for/':'/learn/','/business/for':'/learn/','/business/for/agencies/':'/learn/','/business/for/agencies':'/learn/'});
+    expect(first.resources.some(resource=>resource.url==='/learn/business-fit.js')).toBe(true);
+    expect(first.pages).toMatchObject({'/cooperatives/':'/learn/','/cooperatives':'/learn/','/cooperatives/producers/':'/learn/','/cooperatives/producers':'/learn/'});
+    for(const url of ['/learn/cooperatives.js','/learn/cooperative-twin.js'])expect(first.resources.some(resource=>resource.url===url),url).toBe(true);
     expect(first.resources.some((v:{url:string})=>['/learn/notes/','/standards/','/market-cap/','/explore/music/'].includes(v.url))).toBe(false);
     expect(first.pages).toMatchObject({ '/verify/': '/verify/', '/verify': '/verify/' });
     expect(first.resources.some((v: { url: string }) => v.url === '/assets/verify.js')).toBe(true);

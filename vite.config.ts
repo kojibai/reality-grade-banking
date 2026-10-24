@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import {cooperativeConversationPlugin} from './server/cooperative-conversation-plugin';
 import {createHash} from 'node:crypto';
 import { readFileSync,readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -18,7 +19,7 @@ import {checkoutPreviewPlugin} from './server/checkout-preview-plugin';
 
 export default defineConfig({
   test: { include: ['tests/**/*.test.{ts,tsx}'], environmentOptions: { happyDOM: { settings: { disableIframePageLoading: true } } } },
-  plugins: [checkoutPreviewPlugin(),profilePreviewPlugin(),assetPreviewPlugin(),receiptPreviewPlugin(),publicMetadataPlugin(),{name:'bankeiz-explorer-alias',configureServer(server){server.middlewares.use((req,_res,next)=>{if(req.url&&/^\/explorer\/?(?:\?|$)/.test(req.url))req.url=req.url.replace(/^\/explorer\/?/,'/explore/');next();});},configurePreviewServer(server){server.middlewares.use((req,_res,next)=>{if(req.url&&/^\/explorer\/?(?:\?|$)/.test(req.url))req.url=req.url.replace(/^\/explorer\/?/,'/explore/');next();});}},{name:'bankeiz-opening-shell', async transformIndexHtml(html, context) {
+  plugins: [cooperativeConversationPlugin(),checkoutPreviewPlugin(),profilePreviewPlugin(),assetPreviewPlugin(),receiptPreviewPlugin(),publicMetadataPlugin(),{name:'bankeiz-explorer-alias',configureServer(server){server.middlewares.use((req,_res,next)=>{if(req.url&&/^\/explorer\/?(?:\?|$)/.test(req.url))req.url=req.url.replace(/^\/explorer\/?/,'/explore/');next();});},configurePreviewServer(server){server.middlewares.use((req,_res,next)=>{if(req.url&&/^\/explorer\/?(?:\?|$)/.test(req.url))req.url=req.url.replace(/^\/explorer\/?/,'/explore/');next();});}},{name:'bankeiz-opening-shell', async transformIndexHtml(html, context) {
     if (!context.server || !['/', '/index.html'].includes(context.path)) return html;
     const { AccountOpening } = await context.server.ssrLoadModule('/src/features/identity/AccountOpening.tsx');
     return openingShellHtml(html, AccountOpening);

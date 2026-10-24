@@ -7,6 +7,9 @@ import App from '../src/App';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 import type {NativeMessaging} from '../src/receiz/native-messaging';
 import {requestBankNavigation} from '../src/core/bank-navigation';
+import {directoryContent,fitContent} from '../scripts/business-fit-pages.mjs';
+import {cooperativeContent} from '../scripts/cooperative-page.mjs';
+import {businessFits} from '../src/content/business-fits.mjs';
 const account=vi.hoisted(()=>({identity:null as unknown as OpenIdentity}));
 vi.mock('../src/receiz/useNativeAccount',()=>({useNativeAccount:()=>({identity:account.identity,wallet:null,refresh:async()=>{},forget:async()=>{}})}));
 vi.mock('../src/receiz/usePublicMarket',()=>({usePublicMarket:()=>({catalog:null,status:'loading'})}));
@@ -32,7 +35,7 @@ it('returns the retained call from actual public paths through the production Ap
  history.replaceState(null,'','/#market/messages');document.head.innerHTML='<title>Bank</title>';
  const host=document.createElement('div');host.id='root';document.body.append(host);const root=createRoot(host),data=document.createElement('script');data.id='receiz-navigation';
  const style=document.createElement('style');style.dataset.bankStylesheet='/fixture-bank.css';style.media='all';document.head.append(style);
- data.textContent=JSON.stringify({pages:{'/asset/example/':{head:'<title>Public asset</title>',content:'<main>Public asset</main>'},'/learn/guide/':{head:'<title>Guide</title><style data-public-page-style="guide">.guide{color:navy}</style>',content:'<main class="guide">Guide</main>'}},bank:{head:'<title>Bank</title>',styles:['/fixture-bank.css'],entry:'/never-import-bank.js'}});document.body.append(data);
+ data.textContent=JSON.stringify({pages:{'/cooperatives/':{head:'<title>Cooperatives</title><style data-public-page-style="cooperatives">.coop{color:navy}</style>',content:cooperativeContent()},'/business/for/':{head:'<title>Fits</title>',content:directoryContent()},'/business/for/agencies/':{head:'<title>Agencies</title>',content:fitContent(businessFits[0])},'/asset/example/':{head:'<title>Public asset</title>',content:'<main>Public asset</main>'},'/learn/guide/':{head:'<title>Guide</title><style data-public-page-style="guide">.guide{color:navy}</style>',content:'<main class="guide">Guide</main>'}},bank:{head:'<title>Bank</title>',styles:['/fixture-bank.css'],entry:'/never-import-bank.js'}});document.body.append(data);
  const load=vi.fn(async()=>{}),scroll=vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
  const click=async(label:string)=>{const button=document.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`);expect(button,label).not.toBeNull();await act(async()=>button!.click());};
  const go=async(href:string)=>{const link=document.createElement('a');link.href=href;document.body.append(link);await act(async()=>link.click());link.remove();};
@@ -41,7 +44,7 @@ it('returns the retained call from actual public paths through the production Ap
   const source='// All public guides'+readFileSync('public/learn/learn.js','utf8').split('// All public guides')[1];new Function('loadModule',source.replaceAll('import(','loadModule('))(load);
   await click('Open conversation Studio');await act(async()=>{await import('../src/features/messages/CallPanel');});await click('Voice call');await click('Join call');
   const video=document.querySelector<HTMLVideoElement>('.bank-call video')!,originalRoot=host,originalDocument=document;expect(video,document.querySelector('.bank-call')?.textContent??'No call').not.toBeNull();expect(video.srcObject).toBe(stream);
-  for(const path of['/asset/example/','/learn/guide/']){
+  for(const path of['/asset/example/','/learn/guide/','/business/for/','/business/for/agencies/','/cooperatives/']){
    await go(path);expect(location.pathname).toBe(path);expect(host.hidden).toBe(true);expect(style.media).toBe('not all');expect(document.querySelector('.bank-call-minimized video')).toBe(video);
    expect(requestBankNavigation('https://example.invalid/#account/messages')).toBe(false);expect(location.pathname).toBe(path);
    await click('Return to call');

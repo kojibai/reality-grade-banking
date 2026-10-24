@@ -21,7 +21,8 @@ describe('public profiles',()=>{
  });
  it('keeps marketing, asset and API routes out of the username namespace',()=>{
   expect(profilePagePath('alexmorgan')).toBe('/alexmorgan/');expect(profilePageUsername('/alexmorgan/')).toBe('alexmorgan');
-  for(const path of ['/learn/','/explore/','/ledger/','/api/','/asset/id/','/bad%2fname/'])expect(profilePageUsername(path)).toBeNull();
+  for(const path of ['/business/','/business','/learn/','/explore/','/ledger/','/api/','/asset/id/','/bad%2fname/'])expect(profilePageUsername(path)).toBeNull();
+  expect(profilePagePath('business')).toBe('/u/business/');expect(profilePageUsername('/u/business/')).toBe('business');
   expect(profilePagePath('explore')).toBe('/u/explore/');expect(profilePageUsername('/u/explore/')).toBe('explore');
  });
  it('reports missing movement honestly and uses the selected existing comparison',()=>{

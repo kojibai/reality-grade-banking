@@ -3,6 +3,8 @@ import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {learningPages,learningPath,assetCategories} from '../src/content/learning-pages.mjs';
+import {cooperativePages} from '../src/content/cooperatives.mjs';
+import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const fixedResources = [
@@ -60,7 +62,10 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     // Conformance remains an on-demand console, outside the bank installation
     // cache. Its retained online navigation does not add verifier work at boot.
     if (path === '/conformance/') continue;
-    const knownGuide=path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
+    const cooperative=cooperativePages.some(page=>page.path===path);
+    if(cooperative){urls.add('/learn/cooperatives.js');urls.add('/learn/cooperative-twin.js');}
+    const knownGuide=cooperative||path==='/business/'||path===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
+    if(path===directoryPage.path)urls.add('/learn/business-fit.js');
     if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     // Each retained document already carries the complete public catalog.
     // New routes reuse an existing shell instead of installing dozens of

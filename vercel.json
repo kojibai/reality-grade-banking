@@ -18,9 +18,52 @@
     "api/profile.ts": {
       "maxDuration": 30,
       "includeFiles": "{dist/explore/index.html,server/profile-runtime/**}"
+    },
+    "api/cooperatives.ts": {
+      "maxDuration": 120
     }
   },
   "rewrites": [
+    {
+      "source": "/cooperatives",
+      "destination": "/cooperatives/index.html"
+    },
+    {
+      "source": "/cooperatives/",
+      "destination": "/cooperatives/index.html"
+    },
+    {
+      "source": "/cooperatives/:page(producers|manufacturing|distribution|workers|energy|housing|federations|infrastructure|connect)",
+      "destination": "/cooperatives/:page/index.html"
+    },
+    {
+      "source": "/cooperatives/:page(producers|manufacturing|distribution|workers|energy|housing|federations|infrastructure|connect)/",
+      "destination": "/cooperatives/:page/index.html"
+    },
+    {
+      "source": "/business",
+      "destination": "/business/index.html"
+    },
+    {
+      "source": "/business/",
+      "destination": "/business/index.html"
+    },
+    {
+      "source": "/business/for",
+      "destination": "/business/for/index.html"
+    },
+    {
+      "source": "/business/for/",
+      "destination": "/business/for/index.html"
+    },
+    {
+      "source": "/business/for/:fit(agencies|consultants|freelancers|designers|creators|musicians|authors|filmmakers|podcasters|coaches|educators|accountants|researchers|founders|service-businesses|real-estate|ecommerce|hospitality|teams|communities|events|nonprofits|project-leaders|product-builders|developers|startups|collectors|professionals|career-builders|knowledge-businesses)",
+      "destination": "/business/for/:fit/index.html"
+    },
+    {
+      "source": "/business/for/:fit(agencies|consultants|freelancers|designers|creators|musicians|authors|filmmakers|podcasters|coaches|educators|accountants|researchers|founders|service-businesses|real-estate|ecommerce|hospitality|teams|communities|events|nonprofits|project-leaders|product-builders|developers|startups|collectors|professionals|career-builders|knowledge-businesses)/",
+      "destination": "/business/for/:fit/index.html"
+    },
     {
       "source": "/oembed",
       "destination": "/api/asset?oembed=1"

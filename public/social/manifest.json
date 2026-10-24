@@ -1,6 +1,342 @@
 {
   "schema": "bankeiz.public-social-images.v1",
   "images": {
+    "/cooperatives/": {
+      "url": "/social/cooperatives-a2319ca8b7aa286e.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "a2319ca8b7aa286e52bec7bd22fa93ab10a2fafffe4aeafc05c5af4079f5ad87",
+      "bytes": 268270,
+      "alt": "Your members have the value. Put it to work. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+    },
+    "/cooperatives/producers/": {
+      "url": "/social/cooperatives-producers-c2b501f5cc68e57e.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "c2b501f5cc68e57e427b45ed13c66e6ff8d4313d68d7bd4ade0b771532f03b1d",
+      "bytes": 278158,
+      "alt": "The harvest is ready. Your next move should be, too. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+    },
+    "/cooperatives/manufacturing/": {
+      "url": "/social/cooperatives-manufacturing-a6b8cb07b106cb89.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "a6b8cb07b106cb8953421d85562eac7d4b3cf1e1f264d664562559832ac891e0",
+      "bytes": 266450,
+      "alt": "Finished goods. Waiting cash. Another production run on hold. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+    },
+    "/cooperatives/distribution/": {
+      "url": "/social/cooperatives-distribution-6bc86e7a0221d205.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "6bc86e7a0221d2056bc5570a2b10a0c198b0ade84eeb61e57ec2127644ec8582",
+      "bytes": 240948,
+      "alt": "Your stock moves. Your cash gets stuck in the middle. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+    },
+    "/cooperatives/workers/": {
+      "url": "/social/cooperatives-workers-aedf2d2d4ca4ceb2.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "aedf2d2d4ca4ceb235eecee08186dab197fa790a60ab3a120f6a538c3209cfb1",
+      "bytes": 266582,
+      "alt": "The work is done. The cooperative still needs paying. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+    },
+    "/cooperatives/energy/": {
+      "url": "/social/cooperatives-energy-51f1e964c0ef09e9.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "51f1e964c0ef09e9c6347546cf8cae2f1f2ac8b63bac2aafd285624cbfaaaa09",
+      "bytes": 262071,
+      "alt": "You produce the power. Keep its records connected. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+    },
+    "/cooperatives/housing/": {
+      "url": "/social/cooperatives-housing-15de06aab0f02c20.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "15de06aab0f02c20aee9b859051a3922d56cac3900534b3673e26545c8ec06a4",
+      "bytes": 255474,
+      "alt": "Keep the homes cared for. Keep the decisions clear. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+    },
+    "/cooperatives/federations/": {
+      "url": "/social/cooperatives-federations-7dba5261f9815ecb.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "7dba5261f9815ecb165e22dd12bc5fe55780eb686c4fe0945868adba788dc144",
+      "bytes": 267445,
+      "alt": "Your members already trade. Give the network continuity. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+    },
+    "/cooperatives/infrastructure/": {
+      "url": "/social/cooperatives-infrastructure-7ba1c9357d8b0376.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "7ba1c9357d8b037666135e35954cad295f00172c0d8972e94ba12c86345757f1",
+      "bytes": 275125,
+      "alt": "See the exchange. Inspect the infrastructure. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+    },
+    "/cooperatives/connect/": {
+      "url": "/social/cooperatives-connect-72fcfb67fcd48a20.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "72fcfb67fcd48a203f5c083d3ec3c208f96ad4c04fb0abc451206ae588c5339d",
+      "bytes": 283701,
+      "alt": "What do your members have that others need? | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+    },
+    "/business/": {
+      "url": "/social/business-ea4f29eb5cb265a1.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "ea4f29eb5cb265a17b29d3c2149ee1d84dcf35bc505fc2f351774cfdf41d3145",
+      "bytes": 464257,
+      "alt": "Bankeiz. Less explaining. More getting it done. Your money. Your work. $149/month. An engraved bank motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/": {
+      "url": "/social/business-for-7c6b4a011bf147c3.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "7c6b4a011bf147c338272148adadb2ec43c9c7fd181b45c89df45f0064d29680",
+      "bytes": 460387,
+      "alt": "Bankeiz. Your work. More possibilities. Find the part that changes your day. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/agencies/": {
+      "url": "/social/business-fit-agencies-61918a789bd81e82.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "61918a789bd81e82470f54cda0c15edca3474d835e99b55266aed683b901753e",
+      "bytes": 459695,
+      "alt": "Bankeiz. Agencies. Put it to work. Your work. Your money. Business — $149/month. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/consultants/": {
+      "url": "/social/business-fit-consultants-10c68761d086a543.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "10c68761d086a54309546c7c023812e83a0d25336cb5d736887ae757f7ad8df0",
+      "bytes": 461053,
+      "alt": "Bankeiz. Consultants. Put it to work. Your work. Your money. Business — $149/month. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/freelancers/": {
+      "url": "/social/business-fit-freelancers-14e192d65d899b84.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "14e192d65d899b84c7955c7ff56a4e70ca016bd54eb8d7c3a74c0195161c5ac7",
+      "bytes": 456383,
+      "alt": "Bankeiz. Freelancers & independent professionals. Put it to work. Your work. Your money. Business — $149/month. An engraved bank motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/designers/": {
+      "url": "/social/business-fit-designers-2bef43c361bf675d.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "2bef43c361bf675d22ae5ca4442c8288eb7ce10cefb9c9e0348342ca58722ff8",
+      "bytes": 464268,
+      "alt": "Bankeiz. Designers & studios. Put it to work. Your work. Your money. Business — $149/month. An engraved cube motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/creators/": {
+      "url": "/social/business-fit-creators-8779ccb83aaeb844.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "8779ccb83aaeb844aa81d937135ff71fb44fc2a56e5763987d22d4127af7c092",
+      "bytes": 460690,
+      "alt": "Bankeiz. Creators & personal brands. Put it to work. Your work. Your money. Business — $149/month. An engraved cube motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/musicians/": {
+      "url": "/social/business-fit-musicians-5e7b8dee1b933813.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "5e7b8dee1b933813ed0569c339eb0131d99c3833c6905c7186c619cdd6cec9dd",
+      "bytes": 463558,
+      "alt": "Bankeiz. Musicians & producers. Put it to work. Your work. Your money. Business — $149/month. An engraved cube motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/authors/": {
+      "url": "/social/business-fit-authors-8d96f1d25cdb68ec.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "8d96f1d25cdb68ecc84ac47e81866a63423d9bf38c5c45e7b0d649e3e2e2ef96",
+      "bytes": 464696,
+      "alt": "Bankeiz. Authors & writers. Put it to work. Your work. Your money. Business — $149/month. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/filmmakers/": {
+      "url": "/social/business-fit-filmmakers-521a69acef488f44.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "521a69acef488f44acb23b98fe6856b4548f04a67a92a76e286df6ef53fd79d9",
+      "bytes": 461776,
+      "alt": "Bankeiz. Filmmakers & video teams. Put it to work. Your work. Your money. Business — $149/month. An engraved cube motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/podcasters/": {
+      "url": "/social/business-fit-podcasters-9d96b78b5af78b0d.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "9d96b78b5af78b0d4d9e0465b2611c93d63b8a2a81a6e71dbbb48f5dc191b5cc",
+      "bytes": 461734,
+      "alt": "Bankeiz. Podcasters & interviewers. Put it to work. Your work. Your money. Business — $149/month. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/coaches/": {
+      "url": "/social/business-fit-coaches-00dd5d7b98cbd430.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "00dd5d7b98cbd4309f806e193f889a9c1aa6b2044ea692e354583d0e78974959",
+      "bytes": 466305,
+      "alt": "Bankeiz. Coaches & mentors. Put it to work. Your work. Your money. Business — $149/month. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/educators/": {
+      "url": "/social/business-fit-educators-94d6b21f9abef0f7.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "94d6b21f9abef0f7e1587aeb0b7b7139a2c45041e748d0fc0e1564c5b1dd3558",
+      "bytes": 459715,
+      "alt": "Bankeiz. Educators & course builders. Put it to work. Your work. Your money. Business — $149/month. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/accountants/": {
+      "url": "/social/business-fit-accountants-ad18a12d034536dd.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "ad18a12d034536ddae264afda39617044c5534251bbd9bd505650dad216d0058",
+      "bytes": 462579,
+      "alt": "Bankeiz. Accountants & bookkeepers. Put it to work. Your work. Your money. Business — $149/month. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/researchers/": {
+      "url": "/social/business-fit-researchers-71d619bb78dc9cfb.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "71d619bb78dc9cfbc3992d891bf42e3a9f4b1adc866391c771661e302def9b9a",
+      "bytes": 462405,
+      "alt": "Bankeiz. Researchers & analysts. Put it to work. Your work. Your money. Business — $149/month. An engraved badge motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/founders/": {
+      "url": "/social/business-fit-founders-32e86310b220a46a.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "32e86310b220a46a69318470323100969d6420bed57a4452e7339ad7ffa912a1",
+      "bytes": 460957,
+      "alt": "Bankeiz. Founders & owner-operators. Put it to work. Your work. Your money. Business — $149/month. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/service-businesses/": {
+      "url": "/social/business-fit-service-businesses-c6da9daf120e6eb2.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "c6da9daf120e6eb2c2e9ce09805304988a5b71609fcd6f824207045fdd22bcbc",
+      "bytes": 464050,
+      "alt": "Bankeiz. Service businesses. Put it to work. Your work. Your money. Business — $149/month. An engraved bank motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/real-estate/": {
+      "url": "/social/business-fit-real-estate-0b8830d316d0955e.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "0b8830d316d0955e8e11737a075ecbe2dc543af7f7be5839e0b12d7d2a70e6e9",
+      "bytes": 462104,
+      "alt": "Bankeiz. Property professionals. Put it to work. Your work. Your money. Business — $149/month. An engraved bank motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/ecommerce/": {
+      "url": "/social/business-fit-ecommerce-70c6f750e9587c12.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "70c6f750e9587c129088bed1061452a55c8b88017b764c7d4f6da13ac82bdf1b",
+      "bytes": 461729,
+      "alt": "Bankeiz. Online shops & ecommerce. Put it to work. Your work. Your money. Business — $149/month. An engraved bank motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/hospitality/": {
+      "url": "/social/business-fit-hospitality-749ca35f47590768.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "749ca35f47590768b4fdfe3d3517ff1e2ad0c79cc1d83eb22d5cc354315d0bec",
+      "bytes": 458611,
+      "alt": "Bankeiz. Hospitality & local experiences. Put it to work. Your work. Your money. Business — $149/month. An engraved bank motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/teams/": {
+      "url": "/social/business-fit-teams-38926598bba2466c.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "38926598bba2466cbc4fcd2de5dcbe4754e05d258d12c5c3fa745e59f1fad101",
+      "bytes": 460337,
+      "alt": "Bankeiz. Small teams. Put it to work. Your work. Your money. Business — $149/month. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/communities/": {
+      "url": "/social/business-fit-communities-6fe8e45009f8409a.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "6fe8e45009f8409a63c36ed357d67f9d405d64b1187e944b9437f0fb2e279895",
+      "bytes": 465028,
+      "alt": "Bankeiz. Community builders. Put it to work. Your work. Your money. Business — $149/month. An engraved bank motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/events/": {
+      "url": "/social/business-fit-events-8e1c3b1b6367b85e.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "8e1c3b1b6367b85eb6e7f84d1ea72a9cf4ab9c674f44cf35096d2bd19d7d0df8",
+      "bytes": 464082,
+      "alt": "Bankeiz. Event organisers. Put it to work. Your work. Your money. Business — $149/month. An engraved bank motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/nonprofits/": {
+      "url": "/social/business-fit-nonprofits-9a628ccb977e5227.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "9a628ccb977e52273a4728b54b2c6ee2beeae0768574a206d1193abc3f694ca3",
+      "bytes": 455891,
+      "alt": "Bankeiz. Nonprofits & mission-led organisations. Put it to work. Your work. Your money. Business — $149/month. An engraved badge motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/project-leaders/": {
+      "url": "/social/business-fit-project-leaders-e451a5bdd45c7619.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "e451a5bdd45c761918d3c9f64e9e5ce2a7ee04cfece1dfa8995f88aa8c9f1440",
+      "bytes": 461402,
+      "alt": "Bankeiz. Project leads & operators. Put it to work. Your work. Your money. Business — $149/month. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/product-builders/": {
+      "url": "/social/business-fit-product-builders-8fa687115927c19d.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "8fa687115927c19d8d1d11f6877329bc9f1b0c18f22495c63dec13ff96e2b811",
+      "bytes": 462079,
+      "alt": "Bankeiz. Product builders. Put it to work. Your work. Your money. Business — $149/month. An engraved code motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/developers/": {
+      "url": "/social/business-fit-developers-bcf78a87613d3062.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "bcf78a87613d3062f68b41b9e05d47dac842f4aaad8e534c815b6971862bfdea",
+      "bytes": 456644,
+      "alt": "Bankeiz. Developers & integration builders. Put it to work. Your work. Your money. Business — $149/month. An engraved code motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/startups/": {
+      "url": "/social/business-fit-startups-447ddf9fdbf0aab1.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "447ddf9fdbf0aab13508996af9ce87245d6a32af1361e13636dc237668826e6d",
+      "bytes": 462214,
+      "alt": "Bankeiz. Startup teams. Put it to work. Your work. Your money. Business — $149/month. An engraved cube motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/collectors/": {
+      "url": "/social/business-fit-collectors-b8473bb0d2d79880.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "b8473bb0d2d798807dedc25a3e86f5c90712d90b46d9397d5034d1b5a7ca5350",
+      "bytes": 458006,
+      "alt": "Bankeiz. Collectors & independent artists. Put it to work. Your work. Your money. Business — $149/month. An engraved badge motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/professionals/": {
+      "url": "/social/business-fit-professionals-08f2736ee4d52cc8.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "08f2736ee4d52cc8b767f75f554bdd1804bb10cd145b2089534c6901a11624fe",
+      "bytes": 465132,
+      "alt": "Bankeiz. Busy professionals. Put it to work. Your work. Your money. Business — $149/month. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/career-builders/": {
+      "url": "/social/business-fit-career-builders-1cabbec007dddd6d.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "1cabbec007dddd6d30c1a16a054b7cfa0023390116833e172288340c1d95ec91",
+      "bytes": 459904,
+      "alt": "Bankeiz. Independent career builders. Put it to work. Your work. Your money. Business — $149/month. An engraved cube motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/for/knowledge-businesses/": {
+      "url": "/social/business-fit-knowledge-businesses-207f9fe14aff232a.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "207f9fe14aff232a11b1e89011a4bfb0a9e8f3d208290e46cf89efd332254c71",
+      "bytes": 460071,
+      "alt": "Bankeiz. Knowledge businesses & publishers. Put it to work. Your work. Your money. Business — $149/month. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
     "/": {
       "url": "/social/home-48ccff77499a2a0f.png",
       "width": 1730,
@@ -234,12 +570,12 @@
       "alt": "Bankeiz. A clear request. A deliberate payment. A clear destination. A deliberate payment. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/deposits/": {
-      "url": "/social/deposits-c6ebf95fbc58851f.png",
+      "url": "/social/deposits-cef9650edfc027b8.png",
       "width": 1730,
       "height": 909,
-      "sha256": "c6ebf95fbc58851fa2795ca8b26e724bd9a71dbfdfd98dcd75ec96b09bb760f9",
-      "bytes": 466462,
-      "alt": "Bankeiz. Deposits. The complete picture. Send money. Back what you create. Keep the proof. An engraved bank motif on layered cobalt, clear glass and navy forms."
+      "sha256": "cef9650edfc027b80dba3074a9dacd96ed894b3c4d24bb9e66753d4aa7f4fb08",
+      "bytes": 461621,
+      "alt": "Bankeiz. Deposits. The complete picture. Bring your money into proof. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/notes/": {
       "url": "/social/notes-60d4f9f9a24d6efc.png",
@@ -298,12 +634,12 @@
       "alt": "Bankeiz. Defined rights. Visible backing. Know exactly what the proof establishes. An engraved cube motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/proof-native-economy/": {
-      "url": "/social/proof-native-economy-c9ad6ef7112dbdc6.png",
+      "url": "/social/proof-native-economy-bb5eed3bdfa236af.png",
       "width": 1730,
       "height": 909,
-      "sha256": "c9ad6ef7112dbdc6931f49434a01e26ec46e5a74b8443ac02dc79ccb0fe10a78",
-      "bytes": 465385,
-      "alt": "Bankeiz. Value. Connected to source. Your money. Your assets. Their proof. An engraved globe motif on layered cobalt, clear glass and navy forms."
+      "sha256": "bb5eed3bdfa236af48e8c66dd2be072b167aad832b32282ce8de7ebbce4066bc",
+      "bytes": 464449,
+      "alt": "Bankeiz. Value. Connected to source. Use the value you already hold. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/markets/": {
       "url": "/social/markets-940be1a08cb599d6.png",

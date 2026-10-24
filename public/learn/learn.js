@@ -38,6 +38,8 @@
   };
   configureMotion();
   window.addEventListener('receiz-learn:page', configureMotion);
+  const fit=()=>{const file=document.querySelector('[data-fit-directory]')?'business-fit':document.querySelector('[data-coop]')?'cooperatives':null;if(file)import('/learn/'+file+'.js').then(module=>module.init()).catch(()=>{});};
+  fit();addEventListener('receiz-learn:page',fit);
   reducedMotion.addEventListener?.('change', configureMotion);
   addEventListener('hashchange', () => {
     // Restrict selectors to a DOM id, including malformed user-supplied hashes.
@@ -75,7 +77,7 @@
   let bankLoading = null;
   const pathname = path => /^\/explorer\/?$/.test(path) ? '/explore/' : path === '/' ? '/' : path.endsWith('/') ? path : path + '/';
   const assetMetadata=new Map(),assetEntries=new Map();
-  const profileNames=new Set(['api','asset','assets','auth','conformance','explore','explorer','learn','legal','ledger','market','market-cap','native','offline','receipt','source','verify','u']);
+  const profileNames=new Set(['cooperatives','business','api','asset','assets','auth','conformance','explore','explorer','learn','legal','ledger','market','market-cap','native','offline','receipt','source','verify','u']);
   const profileName=path=>{const match=/^\/(?:u\/)?([a-z0-9_]{3,24})\/?$/.exec(path);return match&&(path.startsWith('/u/')||!profileNames.has(match[1]))?match[1]:null;};
   const keepAsset=value=>{if(value&&typeof value.id==='string'&&value.id.length<=256&&typeof value.title==='string'){assetMetadata.set(value.id,{...value,description:value.description??value.summary});assetEntries.delete(value.id);if(assetMetadata.size>48){const first=assetMetadata.keys().next().value;assetMetadata.delete(first);assetEntries.delete(first);}}};
   try{keepAsset(JSON.parse(document.getElementById('public-asset-seed')?.textContent??'null'));}catch{}

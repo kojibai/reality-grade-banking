@@ -1,0 +1,8 @@
+const esc=value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+const stories=new Set(['context','create','teach','connect','build','own']);
+// One alpha sprite is reused by three independently animated layers. The browser
+// downloads one asset; the transparent cutouts remain in the page, with no panel.
+export function businessScene(story,labels,{eager=false}={}){
+ if(!stories.has(story)||labels.length!==3)throw Error('BUSINESS_SCENE_REQUIRED');
+ return `<figure class="business-scene business-scene-${story} motion-region" aria-label="Illustration: ${labels.map(esc).join(' → ')}"><div class="business-scene-stage" aria-hidden="true"><svg class="business-scene-flow" viewBox="0 0 1200 400" fill="none" preserveAspectRatio="none"><path class="business-flow-track business-flow-wide" d="M170 225C310 225 360 190 550 190S840 225 1030 225"/><path class="business-flow-pulse business-flow-wide" pathLength="100" d="M170 225C310 225 360 190 550 190S840 225 1030 225"/><path class="business-flow-track business-flow-mobile" d="M330 65C330 120 850 120 850 200S330 270 330 335"/><path class="business-flow-pulse business-flow-mobile" pathLength="100" d="M330 65C330 120 850 120 850 200S330 270 330 335"/></svg>${[0,1,2].map(index=>`<div class="business-scene-layer business-scene-layer-${index}"><img src="/learn/business-art/${story}.webp" width="1728" height="${story==='create'?737:576}" alt="" ${eager?'fetchpriority="high"':'loading="lazy"'} decoding="async" draggable="false"></div>`).join('')}<span class="business-optical-glint"></span></div><figcaption>${labels.map((label,index)=>`<span><small>0${index+1}</small>${esc(label)}</span>`).join('')}</figcaption></figure>`;
+}

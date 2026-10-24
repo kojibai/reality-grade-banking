@@ -1,0 +1,38 @@
+{
+  "generator": "Built-in image_gen",
+  "date": "2026-10-24",
+  "prompt": "Preserve original navy/cobalt/emerald porcelain and optical glass. Actual alpha transparency. No backdrop, floor or connecting threads. Three isolated clusters: original input, optical lens, useful result. Separate gaps, no words or logos. Website animates each layer and draws connection.",
+  "animation": "Three independently moving cutout layers on one 12-second phase, source-to-result thread and glint. Static first frame, offscreen/hidden/reduced motion.",
+  "assets": {
+    "context": {
+      "path": "/learn/business-art/context.webp",
+      "bytes": 169288,
+      "sha256": "937ff895187ae912fb938bb96f0e723f6eb1a9da66271bd07591e85cb65d8017"
+    },
+    "create": {
+      "path": "/learn/business-art/create.webp",
+      "bytes": 175854,
+      "sha256": "40048e58cc2ef4e488b752a68a4aff2608653cf9ecfb9632cb944758398c67e6"
+    },
+    "teach": {
+      "path": "/learn/business-art/teach.webp",
+      "bytes": 130546,
+      "sha256": "168a243df87bf83a388187409765cee474023fa7b1a6bcbe7b1a899d59a67e4d"
+    },
+    "connect": {
+      "path": "/learn/business-art/connect.webp",
+      "bytes": 134064,
+      "sha256": "b074a7d2fa5b4e994a0f1b1cd7b0f34f6437494a9f821ce2f9ed4d393317768a"
+    },
+    "build": {
+      "path": "/learn/business-art/build.webp",
+      "bytes": 108444,
+      "sha256": "8fb9d6be9b5aaa5e6e2a947abf4473d5c19c86fbb0774992481cf23799bc5794"
+    },
+    "own": {
+      "path": "/learn/business-art/own.webp",
+      "bytes": 172954,
+      "sha256": "5b0bea6b0c9cf069caac6a2a736a8aa9590024d4c3479050701b61eb6d85aa62"
+    }
+  }
+}

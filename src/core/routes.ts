@@ -20,7 +20,7 @@ export function parseRoute(hash: string): ConsoleRoute {
     if (kind === 'pending' && id) return { panel, sheet: { kind: 'pending', depositId: id } };
     if(kind==='send'&&id==='to')return {panel,sheet:{kind:'send',...(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(mode??'')&&/^[a-z0-9_]{3,24}$/.test(recipientUsername??'')?{recipient:{userId:mode,username:recipientUsername}}:{})}};
     if (kind === 'send') return { panel, sheet: { kind: 'send', assetId: id } };
-    if (['deposit', 'receive', 'balance', 'growth', 'profile', 'currency', 'exchange', 'rules', 'messages'].includes(kind)) return { panel, sheet: { kind: kind as 'deposit' | 'receive' | 'balance' | 'growth' | 'profile' | 'currency' | 'exchange' | 'rules' | 'messages' } };
+    if (['deposit', 'receive', 'balance', 'growth', 'profile', 'currency', 'exchange', 'rules', 'messages', 'business'].includes(kind)) return { panel, sheet: { kind: kind as 'deposit' | 'receive' | 'balance' | 'growth' | 'profile' | 'currency' | 'exchange' | 'rules' | 'messages' | 'business' } };
     return { panel, sheet: null };
   } catch { return { panel: 'account', sheet: null }; }
 }
