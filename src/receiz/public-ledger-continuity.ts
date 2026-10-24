@@ -5,9 +5,13 @@ import {mergePublicRecords,type PublicRecord} from './public-network';
 import {walletPointTime} from './wallet-series';
 
 let pending:Promise<PublicLedgerFileReview|null>|null=null;
-export async function readHeldPublicLedger(){
- const {readRetainedPublicLedger}=await import('./public-ledger-retention');
- return readRetainedPublicLedger().catch(()=>null);
+let heldRead:Promise<PublicLedgerFileReview|null>|null=null;
+export function readHeldPublicLedger(){
+ if(heldRead)return heldRead;
+ const operation=import('./public-ledger-retention').then(({readRetainedPublicLedger})=>readRetainedPublicLedger()).catch(()=>null);
+ heldRead=operation;
+ void operation.finally(()=>{if(heldRead===operation)heldRead=null;});
+ return operation;
 }
 async function retainDisplay(review:PublicLedgerFileReview|null){
  if(!review?.snapshot)return review;

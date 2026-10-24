@@ -2,17 +2,31 @@
 // its existing boundary. These fixtures are not source qualification evidence.
 import {beforeEach,expect,it,vi} from 'vitest';
 import {parsePublicNetworkPage} from '../src/receiz/public-network';
-const f=vi.hoisted(()=>({held:null as unknown,open:vi.fn(),retain:vi.fn(),load:vi.fn(),save:vi.fn(),custody:new WeakMap<object,unknown>()}));
+const f=vi.hoisted(()=>({held:null as unknown,read:vi.fn(),open:vi.fn(),retain:vi.fn(),load:vi.fn(),save:vi.fn(),custody:new WeakMap<object,unknown>()}));
 vi.mock('../src/receiz/public-network-cache',()=>({loadPublicNetworkCache:f.load,savePublicNetworkCache:f.save,savePublicLedgerDisplayCache:(_review:unknown,cache:unknown)=>f.save(cache)}));
 vi.mock('../src/receiz/public-ledger-proof',()=>({openPublicLedgerSource:f.open,heldPublicLedgerFile:(review:object)=>{if(!f.custody.has(review))throw Error('CUSTODY_REQUIRED');return f.custody.get(review);}}));
-vi.mock('../src/receiz/public-ledger-retention',()=>({readRetainedPublicLedger:async()=>f.held,retainPublicLedgerReview:f.retain}));
-import {synchronizePublicLedger,publicLedgerDisplayRows} from '../src/receiz/public-ledger-continuity';
-beforeEach(()=>{f.held=null;f.open.mockReset();f.retain.mockReset().mockImplementation(async review=>{f.held=review;return review;});f.load.mockReset().mockResolvedValue(null);f.save.mockReset().mockResolvedValue(true);vi.unstubAllGlobals();});
+vi.mock('../src/receiz/public-ledger-retention',()=>({readRetainedPublicLedger:f.read,retainPublicLedgerReview:f.retain}));
+import {readHeldPublicLedger,synchronizePublicLedger,publicLedgerDisplayRows} from '../src/receiz/public-ledger-continuity';
+beforeEach(()=>{f.held=null;f.read.mockReset().mockImplementation(async()=>f.held);f.open.mockReset();f.retain.mockReset().mockImplementation(async review=>{f.held=review;return review;});f.load.mockReset().mockResolvedValue(null);f.save.mockReset().mockResolvedValue(true);vi.unstubAllGlobals();});
 function review(id='old'){
  const source={schema:'receiz.sealed-artifact-bytes.v124',exactBytesB64u:id,filename:id+'.receiz',mimeType:'application/vnd.receiz.bundle+json',artifactSha256:id,payloadSha256:id};
  const value={artifactSha256:id,snapshot:{kaiUpulse:'1000000',records:[{id:'action',sequence:1,kind:'auth.logout',kaiUpulse:'1000000',entryHash:'e'.repeat(64),previousHash:'f'.repeat(64),amountUsdCents:'12'}]}};
  f.custody.set(value,{source});return {value,source};
 }
+it('shares a concurrent retained-original read and reads storage again after it settles',async()=>{
+ const held=review(),next=review('new');let finish!:(value:unknown)=>void;
+ f.read.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+ const first=readHeldPublicLedger(),second=readHeldPublicLedger();
+ await vi.waitFor(()=>expect(f.read).toHaveBeenCalledOnce());
+ finish(held.value);expect(await first).toBe(held.value);expect(await second).toBe(held.value);
+ f.held=next.value;expect(await readHeldPublicLedger()).toBe(next.value);expect(f.read).toHaveBeenCalledTimes(2);
+});
+it('retries a failed retained-original read instead of retaining the failure',async()=>{
+ f.read.mockRejectedValueOnce(Error('storage unavailable'));
+ expect(await readHeldPublicLedger()).toBeNull();
+ const next=review('recovered');f.held=next.value;
+ expect(await readHeldPublicLedger()).toBe(next.value);expect(f.read).toHaveBeenCalledTimes(2);
+});
 it('singleflights current source reads and skips re-verification only for the exact held wire',async()=>{
  const held=review();f.held=held.value;let finish!:(value:Response)=>void;
  const fetch=vi.fn((_input:RequestInfo|URL,_options?:RequestInit)=>new Promise<Response>(resolve=>{finish=resolve;}));vi.stubGlobal('fetch',fetch);

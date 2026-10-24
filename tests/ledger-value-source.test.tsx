@@ -55,6 +55,36 @@ it('adopts existing Market source enrichment immediately without making another 
  act(()=>publishMarketDisplaySource({...held,proofObjectHash:'e'.repeat(64)}));
  expect(host.querySelector('output')?.getAttribute('data-source')).toBe('e'.repeat(64));expect(fetch).toHaveBeenCalledTimes(requests);
 });
+it('keeps a quick retained return on the existing live refresh deadline',async()=>{
+ vi.useFakeTimers();publishMarketDisplaySource(parseMarketCapSource(input),'shipped');
+ const fetch=vi.fn(async()=>Response.json(input));vi.stubGlobal('fetch',fetch);
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ await act(async()=>root!.render(<Probe active/>));
+ const held=host.querySelector('output')!.getAttribute('data-source');expect(fetch).toHaveBeenCalledOnce();
+ await act(async()=>vi.advanceTimersByTimeAsync(20_000));
+ await act(async()=>root!.render(<Probe active={false}/>));
+ await act(async()=>root!.render(<Probe active/>));
+ expect(host.querySelector('output')!.getAttribute('data-source')).toBe(held);expect(fetch).toHaveBeenCalledOnce();
+ await act(async()=>vi.advanceTimersByTimeAsync(39_999));expect(fetch).toHaveBeenCalledOnce();
+ await act(async()=>vi.advanceTimersByTimeAsync(1));expect(fetch).toHaveBeenCalledTimes(2);
+});
+it('refreshes immediately after the existing deadline expires while inactive',async()=>{
+ vi.useFakeTimers();publishMarketDisplaySource(parseMarketCapSource(input),'shipped');
+ const fetch=vi.fn(async()=>Response.json(input));vi.stubGlobal('fetch',fetch);
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ await act(async()=>root!.render(<Probe active/>));expect(fetch).toHaveBeenCalledOnce();
+ await act(async()=>root!.render(<Probe active={false}/>));
+ await act(async()=>vi.advanceTimersByTimeAsync(60_000));expect(fetch).toHaveBeenCalledOnce();
+ await act(async()=>root!.render(<Probe active/>));expect(fetch).toHaveBeenCalledTimes(2);
+});
+it('retries a failed live read on a quick return while keeping held values visible',async()=>{
+ publishMarketDisplaySource(parseMarketCapSource(input),'shipped');
+ const fetch=vi.fn().mockResolvedValueOnce(new Response(null,{status:503})).mockImplementation(async()=>Response.json(input));vi.stubGlobal('fetch',fetch);
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ await act(async()=>root!.render(<Probe active/>));const held=host.querySelector('output')!.getAttribute('data-source');
+ await act(async()=>root!.render(<Probe active={false}/>));await act(async()=>root!.render(<Probe active/>));
+ expect(host.querySelector('output')!.getAttribute('data-source')).toBe(held);expect(fetch).toHaveBeenCalledTimes(2);
+});
 it('retains the event index across cloned local-pulse updates but reindexes a changed copy model',async()=>{
  vi.stubGlobal('fetch',async()=>new Response(null,{status:503}));
  const frames:LedgerValueIndex[]=[];
