@@ -9,7 +9,8 @@ const dayKey=slot=>new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digi
 const dayLabel=slot=>new Intl.DateTimeFormat(undefined,{weekday:'long',month:'long',day:'numeric',timeZone:zone()}).format(new Date(slot.startAt));
 const label=slot=>new Intl.DateTimeFormat(undefined,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:zone(),timeZoneName:'short'}).format(new Date(slot.startAt));
 const hold=payload=>{state.pending=payload;try{if(payload)sessionStorage.setItem(PENDING,JSON.stringify(payload));else sessionStorage.removeItem(PENDING);}catch{}};
-const publish=()=>{for(const view of views){if(!view.root.isConnected){views.delete(view);continue;}view.render();}};
+const publish=(follow=false)=>{for(const view of views){if(!view.root.isConnected){views.delete(view);continue;}view.render(follow);}};
+const publishDelta=row=>{for(const view of views){if(!view.root.isConnected){views.delete(view);continue;}view.renderDelta(row);}};
 function append(role,body,id){if(typeof body!=='string'||!body.trim()||state.messages.some(row=>row.id===id))return;state.messages.push({role,body,id,key:id});}
 function messageNode(row){const item=document.createElement('div');item.className='coop-twin-message '+(row.role==='user'?'coop-twin-own':'coop-twin-reply');const who=document.createElement('span'),body=document.createElement('p');who.textContent=row.role==='user'?'You':'BJ Klock’s AI representative';body.textContent=row.body;item.append(who,body);return item;}
 const friendly=error=>error==='rate_limited'||error==='public_twin_guest_allowance_exhausted'?'This conversation has reached its current reply limit. Your request is retained; try the same request again later.':error==='calendar_booking_slot_unavailable'?'That time is no longer available. Choose another current time.':error==='world_agent_booking_disabled'||error==='world_profile_booking_unavailable'?'Booking is not enabled on the current native path. Keep the conversation here; no appointment has been claimed.':'Receiz has not confirmed the result yet. Your original request is retained.';
@@ -35,7 +36,7 @@ function nativeMemory(memory,payload,reply){
 async function readReply(response,payload){
  if(!response.ok||!response.headers.get('content-type')?.includes('text/event-stream'))return response.json();
  if(!response.body)throw Error('EMPTY_STREAM');
- const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',result=null;
+ const reader=response.body.getReader(),decoder=new TextDecoder(),replyRow=state.messages.find(row=>row.key===payload.clientOperationId);let buffer='',result=null;
  const consume=frame=>{
   const data=frame.split(/\r?\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n');if(!data)return;
   const event=JSON.parse(data);
@@ -43,7 +44,7 @@ async function readReply(response,payload){
   if(['reply_start','reply_delta','reply_preview'].includes(event.type)&&event.messageId!==payload.clientOperationId)throw Error('SOURCE_MISMATCH');
   if(event.type==='reply_delta'){
    if(result||typeof event.delta!=='string')throw Error('INVALID_STREAM');
-   const row=state.messages.find(row=>row.key===payload.clientOperationId);row.body+=event.delta;row.status='streaming';publish();
+   replyRow.body+=event.delta;replyRow.status='streaming';publishDelta(replyRow);
   }else if(event.type==='reply_done'){
    if(result||event.world?.username!=='bjklock'||typeof event.reply?.message!=='string'||event.assistantMessage?.id&&event.assistantMessage.id!==payload.clientOperationId)throw Error('SOURCE_MISMATCH');
    result={...event,ok:true};
@@ -72,7 +73,7 @@ async function send(payload){
   row.body='';row.status='pending';state.active=payload.clientOperationId;
   if(state.draft.trim()===payload.message)state.draft='';state.notice='';
  }else state.notice='Confirming this time with Receiz…';
- publish();
+ publish(payload.action==='message');
  try{
   await continuity();
   const response=await fetch('/api/cooperatives',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json',Accept:payload.action==='message'?'text/event-stream':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(120000)});
@@ -101,8 +102,8 @@ export function mountConversation(root){
  if(!root||mounted.has(root))return;mounted.add(root);
  const composer=root.querySelector('[data-twin-composer]'),draft=composer.elements.message,consent=composer.elements.consent,submit=composer.querySelector('button[type=submit]'),retry=root.querySelector('[data-twin-retry]'),status=root.querySelector('[data-twin-status]'),log=root.querySelector('[data-twin-messages]'),book=root.querySelector('[data-twin-book-form]'),slots=root.querySelector('[data-twin-slots]'),times=root.querySelector('[data-twin-times]'),questionHost=root.querySelector('[data-twin-questions]');
  book.elements.timezone.value=zone();if(state.pending?.action==='book'){for(const name of ['name','email','timezone'])book.elements.namedItem(name).value=state.pending[name]??'';}let renderedSlots='',renderedQuestions='';const nodes=new Map();
- const render=()=>{
-  const following=log.scrollHeight-log.scrollTop-log.clientHeight<80;
+ const render=(follow=false)=>{
+  const following=follow||log.scrollHeight-log.scrollTop-log.clientHeight<80;
   if(state.messages.length){
    log.querySelector('.coop-twin-intro')?.remove();
    const keys=new Set();let cursor=log.firstChild;
@@ -153,7 +154,15 @@ export function mountConversation(root){
   times.disabled=state.busy||Boolean(state.pending?.action==='book')||Boolean(state.booking);
   const stage=state.booking?3:state.slots.length?2:state.messages.length?1:0;root.querySelectorAll('[data-twin-progress]').forEach(node=>{if(Number(node.dataset.twinProgress)===stage)node.setAttribute('aria-current','step');else node.removeAttribute('aria-current');});
  };
- views.add({root,render});render();
+ const renderDelta=row=>{
+  const node=nodes.get(row.key);if(!node||node.parentNode!==log){render();return;}
+  const following=log.scrollHeight-log.scrollTop-log.clientHeight<80;
+  if(node.dataset.twinState!==row.status)node.dataset.twinState=row.status;
+  const body=node.querySelector('p');if(body.textContent!==row.body)body.textContent=row.body;
+  node.querySelector('[data-twin-typing]')?.remove();
+  if(following)log.scrollTop=log.scrollHeight;
+ };
+ views.add({root,render,renderDelta});render();
  root.querySelectorAll('[data-twin-prompt]').forEach(button=>button.addEventListener('click',()=>{state.draft=draft.value=button.dataset.twinPrompt;draft.focus();}));
  consent.addEventListener('change',()=>{state.consent=consent.checked;if(state.consent)void continuity().catch(()=>{});});
  draft.addEventListener('input',()=>{state.draft=draft.value;});
