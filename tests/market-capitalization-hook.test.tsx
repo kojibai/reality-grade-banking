@@ -40,10 +40,28 @@ it('feeds live membership to the chart worker and publishes all periods and thei
   const sent=messages.length;clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));expect(messages).toHaveLength(sent);
   const history=(await buildMarketHistory(parseMarketCapSource(input),null,undefined,undefined,{catalog,pulse:request.pulse}))!;
   act(()=>worker.onmessage!({data:{id:request.id,history}}));expect(state.source.marketAssetsPriced).toBe(1);expect(state.source.serverPulse).toBe(request.pulse);expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(state.source.currentUsd*100)));
-  expect(messages.at(-1).history.basisSha256).toBe(history.basisSha256);
+  // The acknowledged worker already owns these exact inputs and complete
+  // history. A new pulse must not clone that payload onto the UI thread again.
+  expect(messages.at(-1)).toEqual({id:expect.any(Number),marketTick:true,pulse:clock.pulse});
   const latest=messages.at(-1),advanced=(await buildMarketHistory(parseMarketCapSource(input),history,undefined,undefined,{catalog,pulse:clock.pulse}))!;act(()=>worker.onmessage!({data:{id:latest.id,history:advanced}}));
   const count=messages.length;await act(async()=>root.render(<Probe period="1D"/>));expect(messages).toHaveLength(count);expect(state.points.length).toBeGreaterThanOrEqual(64);expect(state.points.length).toBeLessThanOrEqual(96+(history.eventPulses?.length??0));
   const beforePulse=renders;clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));expect(messages.at(-1).pulse).toBe(clock.pulse);expect(renders-beforePulse).toBe(1);
+ }finally{act(()=>root.unmount());}
+});
+it('replaces worker inputs when collection membership changes instead of treating the new collection as a pulse tick',async()=>{
+ vi.useFakeTimers();clock.pulse=14720000;vi.stubGlobal('fetch',vi.fn(async()=>Response.json(sourceFile)));
+ let worker!:WorkerStub;const messages:any[]=[];
+ class WorkerStub{onmessage:((event:any)=>void)|null=null;constructor(){worker=this;}postMessage(message:any){messages.push(message);}terminate(){}}
+ vi.stubGlobal('Worker',WorkerStub);
+ const first=parsePublicMarket({ok:true,transport:{generatedAt:'2026-10-18T22:00:00Z',publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:0,revision:'empty'},publicOriginals:[]}});
+ const next={...first,revision:'replacement'};
+ const root=createRoot(document.createElement('div'));function Probe({catalog}:{catalog:typeof first}){useMarketCapitalization('ALL',true,catalog);return null;}
+ try{
+  await act(async()=>root.render(<Probe catalog={first}/>));let acknowledged=0;while(messages.length>acknowledged){const original=messages.at(-1);acknowledged=messages.length;act(()=>worker.onmessage!({data:{id:original.id,retained:true}}));}
+  clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));expect(messages.at(-1)).toEqual({id:expect.any(Number),marketTick:true,pulse:clock.pulse});
+  const tick=messages.at(-1);await act(async()=>root.render(<Probe catalog={next}/>));expect(messages.at(-1)).toBe(tick);
+  act(()=>worker.onmessage!({data:{id:tick.id,retained:true}}));const replacement=messages.at(-1);expect(replacement.catalog).toBe(next);expect(replacement.source.marketCapProjection).toBeDefined();expect(replacement.history).toBeDefined();
+  act(()=>worker.onmessage!({data:{id:replacement.id,error:'Projected market history is unavailable.'}}));clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));expect(messages.at(-1).source).toBeDefined();
  }finally{act(()=>root.unmount());}
 });
 it('switches every range and restores the market instantly without a worker or a network result', async () => {

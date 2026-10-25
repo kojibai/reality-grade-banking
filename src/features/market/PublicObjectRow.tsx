@@ -5,9 +5,9 @@ import {formatPublicPrice,safeReceizArtworkUrl,type PublicMarketItem} from '../.
 import {marketContentLabel} from '../../receiz/market-categories';
 import './market.css';
 const percent=new Intl.NumberFormat(undefined,{maximumFractionDigits:2});
-export function PublicObjectArtwork({artworkUrl}:{artworkUrl:PublicMarketItem['artworkUrl']}){
+export function PublicObjectArtwork({artworkUrl,eager=true}:{artworkUrl:PublicMarketItem['artworkUrl'];eager?:boolean}){
  const [failedArtwork,setFailedArtwork]=useState<string|null>(null),safeArtwork=safeReceizArtworkUrl(artworkUrl),artwork=safeArtwork!==failedArtwork?safeArtwork:null;
- return artwork?<span className="asset-mark market-object-artwork"><img src={artwork} alt="" decoding="async" referrerPolicy="no-referrer" crossOrigin={artwork.includes('/api/proof-material/packages/')?'anonymous':undefined} onError={()=>setFailedArtwork(artwork)}/></span>:<AssetMark kind="proof"/>;
+ return artwork?<span className="asset-mark market-object-artwork"><img src={artwork} alt="" loading={eager?'eager':'lazy'} decoding="async" referrerPolicy="no-referrer" crossOrigin={artwork.includes('/api/proof-material/packages/')?'anonymous':undefined} onError={()=>setFailedArtwork(artwork)}/></span>:<AssetMark kind="proof"/>;
 }
 function PublicObjectProvenance({item}:{item:PublicMarketItem}){
  const copies=item.category==='sports'&&(item.circulationCount??1)>1;
@@ -18,7 +18,7 @@ function PublicObjectProvenance({item}:{item:PublicMarketItem}){
 }
 /** Shared discovery/showcase row. Pricing and ownership remain the supplied
  * source projection; opening the row never establishes transferable rights. */
-export function PublicObjectRow({item,onOpen}:{item:PublicMarketItem;onOpen:()=>void}){
+export function PublicObjectRow({item,onOpen,eagerArtwork=true}:{item:PublicMarketItem;onOpen:()=>void;eagerArtwork?:boolean}){
  const change=item.changePct;
- return <button className="asset-row" onClick={onOpen}><PublicObjectArtwork artworkUrl={item.artworkUrl}/><span className="row-copy"><strong>{item.title}</strong><span>{marketContentLabel(item)}</span><PublicObjectProvenance item={item}/></span><span className="price-stack"><strong>{formatPublicPrice(item.priceUsd)}</strong>{change!==null&&<span title={item.localValuationPulse!==undefined?'Change compared with the retained source quote':'Source price change'} className={change>=0?'positive':'negative'} style={{display:'inline-flex',alignItems:'center',gap:2}}>{change>0?<ArrowUpRight size={12}/>:change<0?<ArrowDownRight size={12}/>:null}{change>0?'+':''}{percent.format(change)}%</span>}</span></button>;
+ return <button className="asset-row" onClick={onOpen}><PublicObjectArtwork artworkUrl={item.artworkUrl} eager={eagerArtwork}/><span className="row-copy"><strong>{item.title}</strong><span>{marketContentLabel(item)}</span><PublicObjectProvenance item={item}/></span><span className="price-stack"><strong>{formatPublicPrice(item.priceUsd)}</strong>{change!==null&&<span title={item.localValuationPulse!==undefined?'Change compared with the retained source quote':'Source price change'} className={change>=0?'positive':'negative'} style={{display:'inline-flex',alignItems:'center',gap:2}}>{change>0?<ArrowUpRight size={12}/>:change<0?<ArrowDownRight size={12}/>:null}{change>0?'+':''}{percent.format(change)}%</span>}</span></button>;
 }

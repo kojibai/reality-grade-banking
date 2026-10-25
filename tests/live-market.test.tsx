@@ -24,6 +24,13 @@ function mount(mode:'market'|'explorer'='market') {
   return { host, root, commit, open };
 }
 function catalog(count = 1001) { return parsePublicMarket({ ok: true, transport: { generatedAt: '2026-10-13T12:00:00Z', publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: count, revision: 'r1' }, publicOriginals: Array.from({ length: count }, (_, i) => ({ id: `public-${i}`, receizId: `asset-${i}`, title: `Public object ${i}`, valueUsd: 5, ownerUsername: 'alice', canonicalHref: `/alice/verified/asset-${i}` })) } }); }
+it('prioritizes leading artwork without eagerly loading the whole retained list or replacing images on a value update',()=>{
+ const held=catalog(50);held.items=held.items.map((item,index)=>({...item,artworkUrl:`https://receiz.com/artwork/list-${index}.png`}));source.value={catalog:held,status:'live',error:null,refresh:vi.fn()};
+ const host=document.createElement('div'),root=createRoot(host);document.body.append(host);roots.push(root);act(()=>root.render(<Market/>));
+ const images=[...host.querySelectorAll<HTMLImageElement>('.market-rows img')];expect(images).toHaveLength(50);expect(images[0].loading).toBe('eager');expect(images.at(-1)!.loading).toBe('lazy');expect(images.filter(image=>image.loading==='eager').length).toBeLessThan(10);
+ const urls=images.map(image=>image.src);source.value={...source.value,catalog:{...held,items:held.items.map(item=>({...item,priceUsd:7,localValuationPulse:14720001}))}};act(()=>root.render(<Market/>));
+ const updated=[...host.querySelectorAll<HTMLImageElement>('.market-rows img')];expect(updated.every((image,index)=>image===images[index])).toBe(true);expect(updated.map(image=>image.src)).toEqual(urls);expect(host.querySelector('.price-stack')?.textContent).toContain('7.00');
+});
 it.each(['market','explorer']as const)('populates %s content filters from the original media metadata and places cards in Collectibles',mode=>{
  const kinds=['audio','epub','image','video','pdf',null,null];
  const held=parsePublicMarket({ok:true,transport:{publicOriginals:kinds.map((kind,i)=>({id:'typed-'+i,receizId:'typed-'+i,title:'Typed object '+i,profileOriginal:{media:kind?{kind}:null,hasLongForm:i===5}}))}});
