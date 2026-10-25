@@ -14,7 +14,7 @@ const parse=(html:string)=>new DOMParser().parseFromString(html,'text/html');
 it('publishes one canonical identity continuity document while preserving its legacy address',()=>{
  const page=publicPage('/id/');expect(page).toBeDefined();expect(page?.id).toBe('identity-continuity');
  expect(canonicalPublicPath('/learn/identity-continuity/?from=guide')).toBe('/id/');
- expect(publicPage('/learn/identity-continuity/')).toBe(page);expect(publicPages).toHaveLength(115);
+ expect(publicPage('/learn/identity-continuity/')).toBe(page);expect(publicPages).toHaveLength(120);
  const rewrites=JSON.parse(readFileSync('vercel.json','utf8')).rewrites;
  for(const source of ['/id','/id/','/learn/identity-continuity','/learn/identity-continuity/'])expect(rewrites.find((row:{source:string})=>row.source===source)?.destination).toBe('/id/index.html');
 });

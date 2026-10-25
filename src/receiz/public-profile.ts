@@ -4,7 +4,7 @@ import {profileAvatarUrl} from './profile-avatar.js';
 import {retainRecipientPortrait,forgetRecipientPortrait} from './recipient-portrait.js';
 
 const names=/^[a-z0-9_]{3,24}$/;
-const reserved=new Set(['together','cooperate','protect','vaults','fit','coops','cooperatives','business','pay','api','asset','assets','auth','conformance','explore','explorer','learn','legal','ledger','market','market-cap','native','offline','receipt','source','verify','u']);
+const reserved=new Set(['agent','fraud','recover','proof','together','cooperate','protect','vaults','fit','coops','cooperatives','business','pay','api','asset','assets','auth','conformance','explore','explorer','learn','legal','ledger','market','market-cap','native','offline','receipt','source','verify','u']);
 export const profileUsername=(value:unknown):string|null=>typeof value==='string'&&names.test(value)?value:null;
 export function profilePagePath(username:string){if(!profileUsername(username))throw Error('PROFILE_USERNAME_INVALID');return reserved.has(username)?`/u/${username}/`:`/${username}/`;}
 export function profilePageUsername(path:string):string|null{

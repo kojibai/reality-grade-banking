@@ -25,6 +25,46 @@
   },
   "rewrites": [
     {
+      "source": "/agent",
+      "destination": "/agent/index.html"
+    },
+    {
+      "source": "/agent/",
+      "destination": "/agent/index.html"
+    },
+    {
+      "source": "/fraud",
+      "destination": "/fraud/index.html"
+    },
+    {
+      "source": "/fraud/",
+      "destination": "/fraud/index.html"
+    },
+    {
+      "source": "/recover",
+      "destination": "/recover/index.html"
+    },
+    {
+      "source": "/recover/",
+      "destination": "/recover/index.html"
+    },
+    {
+      "source": "/get-paid",
+      "destination": "/get-paid/index.html"
+    },
+    {
+      "source": "/get-paid/",
+      "destination": "/get-paid/index.html"
+    },
+    {
+      "source": "/proof",
+      "destination": "/proof/index.html"
+    },
+    {
+      "source": "/proof/",
+      "destination": "/proof/index.html"
+    },
+    {
       "source": "/id",
       "destination": "/id/index.html"
     },

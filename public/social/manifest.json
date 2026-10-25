@@ -1,6 +1,46 @@
 {
   "schema": "bankeiz.public-social-images.v1",
   "images": {
+    "/agent/": {
+      "url": "/social/solution-agent-9480ff7f2843d424.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "9480ff7f2843d424d38fffce5fb6f42fd3af097c0f7931edf689e343bd231886",
+      "bytes": 394291,
+      "alt": "Your agent. Still with you. Less briefing. Less chasing. More moving forward. Custom glass and blue objects illustrate the source, authority and connected outcome. Illustrative process."
+    },
+    "/fraud/": {
+      "url": "/social/solution-fraud-d9ce9fe4ecd4dafb.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "d9ce9fe4ecd4dafbf784a58a892331cf464f5e99b40f8085c10fc070cab3cb92",
+      "bytes": 283677,
+      "alt": "A familiar name. Isn’t proof. Know who you’re paying. Know what you approved. Keep the result. Custom glass and blue objects illustrate the source, authority and connected outcome. Illustrative process."
+    },
+    "/recover/": {
+      "url": "/social/solution-recover-073a6056c26005b6.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "073a6056c26005b6ee5220023bf556d5858e8ba4fee4ecb1d27d172e2b296787",
+      "bytes": 307880,
+      "alt": "New device. Still you. The session can end. Your identity has a source. Custom glass and blue objects illustrate the source, authority and connected outcome. Illustrative process."
+    },
+    "/get-paid/": {
+      "url": "/social/solution-get-paid-9aeef16afd895af7.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "9aeef16afd895af73703331e201924a2d20147f881963505280ea2d72c92b5dd",
+      "bytes": 328975,
+      "alt": "Get paid. Keep the story. From “where do I send it?” to a result you can inspect. Custom glass and blue objects illustrate the source, authority and connected outcome. Illustrative process."
+    },
+    "/proof/": {
+      "url": "/social/solution-proof-146bdfb13414697d.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "146bdfb13414697d63f0cf1c606f306668bf4a9a6da113260d9e2969db6a7c2b",
+      "bytes": 288207,
+      "alt": "Don’t take their word. Open the proof. Evidence you can carry. A source the next person can inspect. Custom glass and blue objects illustrate the source, authority and connected outcome. Illustrative process."
+    },
     "/id/": {
       "url": "/social/identity-continuity-d33075b370ac1dd8.png",
       "width": 1730,

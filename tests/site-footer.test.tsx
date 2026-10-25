@@ -8,14 +8,14 @@ import {SiteFooter} from '../src/components/SiteFooter';
 import {canonicalPublicPath,publicRouteAliases} from '../src/content/public-routes.mjs';
 const parse=(html:string)=>new DOMParser().parseFromString(html,'text/html');
 
-it('keeps one Businesses explainer, no Business offer or price, and all fifteen asset destinations',()=>{
+it('keeps one Businesses explainer, no Business offer or price, and all sixteen asset destinations',()=>{
  const doc=parse(siteFooterHtml('/protect/')),footer=doc.querySelector('.site-footer')!;
  expect(footer.querySelector('a[href="/business/"]')).toBeNull();
  expect(footer.textContent).not.toContain('$149');
  expect([...footer.querySelectorAll('a')].filter(a=>a.textContent==='Businesses')).toHaveLength(1);
  expect(footer.querySelector('a[href="/for/businesses/"]')?.textContent).toBe('Businesses');
  const assets=footer.querySelector('nav[aria-label="Assets footer links"]')!;
- expect(assets.querySelectorAll('a')).toHaveLength(15);
+ expect(assets.querySelectorAll('a')).toHaveLength(16);expect(assets.querySelector('a[href="/proof/"]')).not.toBeNull();
  for(const href of ['/explore/music/','/explore/images/','/explore/videos/','/explore/books/','/explore/essays/','/explore/moments/','/explore/collectibles/','/explore/documents/'])expect(assets.querySelector(`a[href="${href}"]`)).not.toBeNull();
 });
 
