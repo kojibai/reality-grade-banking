@@ -36,6 +36,25 @@ const origin=`http://127.0.0.1:${server.address().port}`,results=[];
 let browser,passed=false;
 try{
  browser=await chromium.launch({headless:true,...(process.env.BANK_BROWSER_EXECUTABLE?{executablePath:process.env.BANK_BROWSER_EXECUTABLE}:{})});
+ // The full final sprite must remain above the next section at every phone
+ // width. A fixed stage height used to crop the book on /fit/ at 440px.
+ for(const width of [320,390,440,480]){
+  const context=await browser.newContext({viewport:{width,height:956},reducedMotion:'reduce',serviceWorkers:'block'}),page=await context.newPage();
+  try{
+   for(const path of ['/fit/','/business/']){
+    await page.goto(origin+path);
+    await page.locator('.business-scene-layer-2 img').waitFor();
+    const geometry=await page.evaluate(()=>{
+     const stage=document.querySelector('.business-scene-stage').getBoundingClientRect(),image=document.querySelector('.business-scene-layer-2 img').getBoundingClientRect();
+     const heading=document.querySelector('#fit-directory-title,#how-it-works h2').getBoundingClientRect();
+     return {stageBottom:stage.bottom,imageBottom:image.bottom,headingTop:heading.top};
+    });
+    assert.ok(geometry.imageBottom<=geometry.stageBottom+1,`${path} at ${width}px clips the final artwork: ${JSON.stringify(geometry)}`);
+    assert.ok(geometry.headingTop>=geometry.imageBottom+16,`${path} at ${width}px puts the next heading inside the artwork: ${JSON.stringify(geometry)}`);
+    results.push({businessArtworkComplete:true,path,width,...geometry});
+   }
+  }finally{await context.close();}
+ }
  for(const width of [390,1440]){
   const context=await browser.newContext({viewport:{width,height:844},serviceWorkers:'block',permissions:['clipboard-read','clipboard-write']}),page=await context.newPage();
   const images=[],errors=[],documents=[],profiles=[],forbidden=[];
