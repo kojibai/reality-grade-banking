@@ -1,3 +1,5 @@
+import {canonicalPublicPath} from '../src/content/public-routes.mjs';
+import {togetherPages} from '../src/content/together.mjs';
 import {createHash,randomUUID} from 'node:crypto';
 const OWNER='bjklock',ORIGIN='https://receiz.com',MAX=18000;
 const address=v=>typeof v==='string'&&v.length<=254&&/^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/.test(v);
@@ -42,7 +44,7 @@ export async function handleCooperativeConversation(request,{fetch:transport=glo
   const common={visitorKey:who,threadKey:thread,allowBrowserVoiceFallback:false};let payload;
   if(body.action==='message'){
    if(!text(body.message,6500)||!text(body.clientOperationId,160)||body.clientOperationId.length<8||!Number.isFinite(Date.parse(body.quoteExpiresAt)))return fail(400,'MESSAGE_REQUIRED');
-   payload={...common,action:'message',message:body.message,clientOperationId:body.clientOperationId,quoteExpiresAt:body.quoteExpiresAt,clientContext:{pagePath:typeof body.pagePath==='string'&&/^\/cooperatives\//.test(body.pagePath)?body.pagePath.slice(0,200):'/cooperatives/',locale:typeof body.locale==='string'?body.locale.slice(0,32):null,timezone:typeof body.timezone==='string'?body.timezone.slice(0,120):null}};
+   payload={...common,action:'message',message:body.message,clientOperationId:body.clientOperationId,quoteExpiresAt:body.quoteExpiresAt,clientContext:{pagePath:typeof body.pagePath==='string'&&(togetherPages.some(page=>page.path===body.pagePath)||/^\/cooperatives\//.test(body.pagePath)||['/coops/','/cooperate/'].includes(body.pagePath))?canonicalPublicPath(body.pagePath).slice(0,200):'/cooperatives/',locale:typeof body.locale==='string'?body.locale.slice(0,32):null,timezone:typeof body.timezone==='string'?body.timezone.slice(0,120):null}};
   }else{
    if(body.confirmed!==true||!text(body.name,72)||!address(body.email)||!Number.isFinite(Date.parse(body.slotStartAt))||body.notes!==undefined&&(typeof body.notes!=='string'||body.notes.length>900)||body.timezone!==undefined&&(typeof body.timezone!=='string'||body.timezone.length>80))return fail(400,'BOOKING_REVIEW_REQUIRED');
    const questions=body.questions??[];if(!Array.isArray(questions)||questions.length>12||questions.some(q=>!q||!text(q.id,64)||!text(q.label,120)||typeof q.answer!=='string'||q.answer.length>300))return fail(400,'BOOKING_QUESTIONS_REQUIRED');

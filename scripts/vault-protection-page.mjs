@@ -6,7 +6,7 @@ import {authorityStory,identityStory,usableValueStory} from './vault-protection-
 export const protectionPage={slug:'protect-your-value',path:'/protect/',title:'Protect your value. Keep the keys.',description:'Your Vault key lives in your private image. A hosted database leak does not reveal it. Share proof without access and keep supported value ready to use.',intro:'Prove it’s yours. Keep it yours.',sections:[]};
 const arrow='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>';
 const link=(url,label,kind='text-action')=>`<a class="${kind}" href="${url}">${label} ${arrow}</a>`;
-const open=()=>link('/#account/profile','Open your Vaults','learn-button button-cobalt');
+const open=()=>link('/#account/profile/vaults/create','Open your Vaults','learn-button button-cobalt');
 const section=(id,title,intro,body,extra='')=>`<section id="${id}" class="vp-section ${extra}"><div class="learn-shell"><div class="vp-heading"><p class="vp-eyebrow">${id==='the-protection'?'See the difference':'Reality-grade banking'}</p><h2>${title}</h2><p>${intro}</p></div>${body}</div></section>`;
 
 function scenarios(){return `<fieldset class="vp-scenarios"><legend class="vp-sr-only">Explore the Vault protection boundaries</legend>

@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {publicRouteAliases,canonicalPublicPath} from '../src/content/public-routes.mjs';
 import {learningPages,learningPath,assetCategories} from '../src/content/learning-pages.mjs';
+import {togetherPages} from '../src/content/together.mjs';
 import {cooperativePages} from '../src/content/cooperatives.mjs';
 import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
 
@@ -66,7 +67,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     // Conformance remains an on-demand console, outside the bank installation
     // cache. Its retained online navigation does not add verifier work at boot.
     if (path === '/conformance/') continue;
-    const canonicalPath=canonicalPublicPath(path),cooperative=cooperativePages.some(page=>page.path===canonicalPath);
+    const canonicalPath=canonicalPublicPath(path),cooperative=[...cooperativePages,...togetherPages].some(page=>page.path===canonicalPath);
     if(cooperative){urls.add('/learn/cooperatives.js');urls.add('/learn/cooperative-twin.js');}
     const knownGuide=['/protect/','/vaults/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
     if(canonicalPath===directoryPage.path)urls.add('/learn/business-fit.js');

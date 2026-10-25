@@ -1,3 +1,4 @@
+import {togetherPages} from '../src/content/together.mjs';
 import {bankMarkSvg} from '../branding/bank-mark.mjs';
 // Public presentation metadata only. No account or runtime source is read here.
 import {siteFooterHtml} from './site-footer.mjs';
@@ -9,6 +10,7 @@ import {canonicalPublicPath} from '../src/content/public-routes.mjs';
 import {protectionPage} from './vault-protection-page.mjs';
 export const publicOrigin = 'https://bankeiz.com';
 export const publicPages = [
+ ...togetherPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-grade banking',description:page.description,lines:page.lines,caption:'Your source. Your ownership. Our next possibility.',motif:'globe'})),
   {path:protectionPage.path,id:'protect-your-value',title:protectionPage.title+' | Reality-grade banking',description:protectionPage.description,lines:['Prove it’s yours.','Keep it yours.'],caption:'Share proof without sharing access.',motif:'key'},
   ...cooperativePages.map(page=>{const sector=cooperativeSectors.find(s=>s.slug===page.cooperativeKind);return {path:page.path,id:page.slug,title:page.title+' | Reality-grade banking',description:page.description,lines:sector?[sector.short+'.','Value, put to work.']:page.cooperativeKind==='main'?['Your members.','Have the value.']:page.cooperativeKind==='connect'?['Start with','your next exchange.']:['See the exchange.','Inspect the source.'],caption:'The proof-native economy. Reality-grade banking.',motif:'layers',size:80};}),
   {path:'/vaults/',id:'vaults',title:'Vaults: yours to hold | Bankeiz',description:'A private place for money, originals and investments. Keep their proof, add optional passkey protection and share evidence without giving access.',lines:['Yours to hold.','Yours to unlock.'],caption:'Your money. Your originals. Their proof.',motif:'key'},

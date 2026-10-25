@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import {beforeEach,afterEach,expect,it,vi} from 'vitest';
+import {togetherPages,togetherContent} from '../scripts/together-page.mjs';
 import {cooperativeContent,cooperativePages} from '../scripts/cooperative-page.mjs';
 beforeEach(()=>{vi.resetModules();sessionStorage.clear();document.body.innerHTML=cooperativeContent(cooperativePages.find(p=>p.cooperativeKind==='connect'));});
 afterEach(()=>{vi.unstubAllGlobals();document.body.innerHTML='';});
@@ -62,4 +63,12 @@ it('releases an explicitly refused booking while retaining the selected time and
  await mount();fill();(document.querySelector('[data-twin-times]') as HTMLButtonElement).click();await vi.waitFor(()=>expect(document.querySelector('[data-twin-slot]')).not.toBeNull());(document.querySelector('[data-twin-slot]') as HTMLButtonElement).click();
  const book=document.querySelector('[data-twin-book-form]') as HTMLFormElement;(book.elements.namedItem('name') as HTMLInputElement).value='Alex';(book.elements.namedItem('email') as HTMLInputElement).value='alex@example.org';(book.elements.namedItem('confirm') as HTMLInputElement).checked=true;book.dispatchEvent(new Event('submit',{cancelable:true}));
  await vi.waitFor(()=>expect((book.querySelector('button[type=submit]') as HTMLButtonElement).disabled).toBe(false));expect((book.elements.namedItem('email') as HTMLInputElement).value).toBe('alex@example.org');expect((document.querySelector('[data-twin-confirmation]') as HTMLElement).hidden).toBe(true);
+});
+
+it.each(togetherPages)('keeps $path on the same native Twin and confirmed calendar path without a handoff',async page=>{
+ history.replaceState(null,'',page.path);document.body.innerHTML=togetherContent(page);const payloads:Record<string,unknown>[]=[],slot={startAt:'2026-11-02T14:00:00.000Z',endAt:'2026-11-02T14:30:00.000Z'};
+ vi.stubGlobal('fetch',async(_url:string,init:RequestInit)=>{if(!init?.body)return Response.json({ok:true,world:{username:'bjklock'},availability:{slots:[slot],customQuestions:[]}});const payload=JSON.parse(String(init.body));payloads.push(payload);return Response.json(payload.action==='message'?reply:{ok:true,world:{username:'bjklock'},reply:{message:'Native calendar confirmed',bookingConfirmation:{eventId:'together-calendar',startAt:slot.startAt,endAt:slot.endAt,attendeeEmail:'alex@example.org'}}});});
+ await mount();expect(payloads).toHaveLength(0);const form=composer();(form.elements.namedItem('message') as HTMLTextAreaElement).value=page.prompt;(form.elements.namedItem('consent') as HTMLInputElement).checked=true;form.dispatchEvent(new Event('submit',{cancelable:true}));await vi.waitFor(()=>expect(document.querySelector('[data-twin-messages]')?.textContent).toContain(reply.reply.message));expect(payloads[0].pagePath).toBe(page.path);
+ (document.querySelector('[data-twin-times]') as HTMLButtonElement).click();await vi.waitFor(()=>expect(document.querySelector('[data-twin-slot]')).not.toBeNull());(document.querySelector('[data-twin-slot]') as HTMLButtonElement).click();const book=document.querySelector('[data-twin-book-form]') as HTMLFormElement;
+ (book.elements.namedItem('name') as HTMLInputElement).value='Alex';(book.elements.namedItem('email') as HTMLInputElement).value='alex@example.org';(book.elements.namedItem('confirm') as HTMLInputElement).checked=true;book.dispatchEvent(new Event('submit',{cancelable:true}));await vi.waitFor(()=>expect(document.querySelector('[data-twin-confirmation]')?.textContent).toContain('together-calendar'));expect(payloads).toHaveLength(2);expect(payloads[1].notes).toContain('Together · Proof-native economy inquiry from '+page.path);expect(location.pathname).toBe(page.path);history.replaceState(null,'','/');
 });

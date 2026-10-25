@@ -8,6 +8,7 @@ import {siteFooterHtml} from './site-footer.mjs';
 import {learningPages,learningGroups,learningPath,assetCategories} from '../src/content/learning-pages.mjs';
 import {learningVisual} from './learning-visuals.mjs';
 import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
+import {togetherPages} from '../src/content/together.mjs';
 import {cooperativePages} from '../src/content/cooperatives.mjs';
 // Public discovery only. Existing routes and native authorities are unchanged.
 const solutionGuides=[
@@ -16,17 +17,18 @@ const solutionGuides=[
  {slug:'business',path:'/business/',group:'Banking',title:'Business · $149/month',description:'Work from your context, create what comes next and help clients take the next step.'},
  {...directoryPage,group:'Banking'},
  ...businessFitPages.map(page=>({...page,group:'Business by your work',title:page.fit.label})),
- ...cooperativePages.map(page=>({...page,group:'Cooperatives'}))
+ ...cooperativePages.map(page=>({...page,group:'Cooperatives'})),
+ ...togetherPages.map(page=>({...page,group:'Together'}))
 ];
 const relatedSolutions={
  'security':['/protect/','/vaults/'],
  'receiz-id':['/vaults/','/protect/'],
  'proof-objects':['/vaults/'],'ownership':['/vaults/'],
  'physical-assets':['/coops/'],'asset-rights-and-backing':['/cooperatives/infrastructure/'],
- 'proof-native-economy':['/coops/'],'institutions':['/cooperatives/infrastructure/'],
+ 'proof-native-economy':['/coops/','/together/'],'institutions':['/cooperatives/infrastructure/'],
  'messages':['/business/','/fit/'],
  'for-businesses':['/business/','/fit/'],'for-independent-work':['/fit/'],
- 'for-creators':['/fit/'],'for-communities':['/coops/'],
+ 'for-creators':['/fit/','/together/creators/'],'for-communities':['/coops/','/together/communities/'],
  'for-institutions':['/cooperatives/infrastructure/'],'for-public-finance':['/coops/']
 };
 const brandText = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
@@ -108,5 +110,5 @@ export function learnArticle(page, pages, escape) {
 
 export function learningDirectoryPage(){
  const guides=[...learningPages,...solutionGuides];
- const groups=[...learningGroups.slice(0,2),'Business by your work','Cooperatives',...learningGroups.slice(2)];
+ const groups=[...learningGroups.slice(0,2),'Business by your work','Cooperatives','Together',...learningGroups.slice(2)];
  return `${learnHeader()}<main id="main"><section class="learn-shell learning-directory"><p class="section-intro">The complete picture.</p><h1>All guides.</h1><p class="directory-intro">Start with what you want to do. Follow the evidence as far as you need.</p><nav class="learning-group-links" aria-label="Guide subjects">${groups.map(group=>`<a href="#guides-${sectionId(group)}">${group}</a>`).join('')}</nav>${groups.map(group=>`<section id="guides-${sectionId(group)}" class="learning-group"><h2>${group}</h2><div>${guides.filter(page=>page.group===group).map(page=>`<a href="${learningPath(page)}"><h3>${brandText(page.title)}</h3><p>${brandText(page.description)}</p>${arrow}</a>`).join('')}</div></section>`).join('')}<div class="learning-category-links"><h2>Explore by content</h2><nav aria-label="Public asset categories">${assetCategories.map(category=>`<a href="${category.path}">${category.label} ${arrow}</a>`).join('')}</nav></div></section></main>${siteFooterHtml('/learn/guides/')}`;}

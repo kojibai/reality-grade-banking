@@ -4,6 +4,7 @@ export const publicRouteAliases=Object.freeze({
  '/learn/vaults/':'/vaults/',
  '/business/for/':'/fit/',
  '/cooperatives/':'/coops/',
+ '/cooperate/':'/coops/',
 });
 export function canonicalPublicPath(path){
  const clean=path.replace(/[?#].*$/,'').replace(/index\.html$/,''),normalized=clean==='/'?'/':clean.endsWith('/')?clean:clean+'/';

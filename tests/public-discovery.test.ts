@@ -2,6 +2,7 @@
 import {expect,it} from 'vitest';
 import {learningPages,learningPath} from '../src/content/learning-pages.mjs';
 import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
+import {togetherPages} from '../scripts/together-page.mjs';
 import {cooperativePages,cooperativeContent} from '../scripts/cooperative-page.mjs';
 import {businessContent} from '../scripts/business-page.mjs';
 import {vaultContent} from '../scripts/vault-page.mjs';
@@ -18,7 +19,7 @@ it('exposes the solution hubs through the shared footer and keeps each directory
  expect(footer.has('/business/')).toBe(false);expect(footer.has(protectionPage.path)).toBe(false);
  for(const path of ['/for/businesses/',directoryPage.path,'/coops/','/vaults/'])expect(footer.has(path),path).toBe(true);
  const directory=doc(learningDirectoryPage()),links=paths(directory,'main a');
- for(const path of [...learningPages.map(learningPath),'/business/',directoryPage.path,'/vaults/',protectionPage.path,...businessFitPages.map(p=>p.path),...cooperativePages.map(p=>p.path)])expect(links.has(path),'Guide directory: '+path).toBe(true);
+ for(const path of [...learningPages.map(learningPath),'/business/',directoryPage.path,'/vaults/',protectionPage.path,...businessFitPages.map(p=>p.path),...cooperativePages.map(p=>p.path),...togetherPages.map(p=>p.path)])expect(links.has(path),'Guide directory: '+path).toBe(true);
  const known=new Set(publicPages.map(p=>p.path));for(const path of links)if(path?.startsWith('/')&&!path.includes('#'))expect(known.has(path),path).toBe(true);
 });
 

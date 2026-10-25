@@ -13,3 +13,5 @@ it('preserves the selected chat recipient by stable account ID across a payment 
 });
 
 it('preserves the explicit assistant Business entry until the opening request is consumed',()=>{const route=parseRoute('#account/messages/business');expect(route).toEqual({panel:'account',sheet:{kind:'messages',business:true}});expect(routeHash(route.panel,route.sheet)).toBe('#account/messages/business');});
+
+it('roundtrips an explicit nested Create Vault entry without changing ordinary identity',()=>{const sheet={kind:'profile' as const,vaults:'create' as const};expect(routeHash('account',sheet)).toBe('#account/profile/vaults/create');expect(parseRoute(routeHash('account',sheet))).toEqual({panel:'account',sheet});expect(parseRoute('#account/profile')).toEqual({panel:'account',sheet:{kind:'profile'}});expect(parseRoute('#account/profile/vaults/unknown').sheet).toEqual({kind:'profile'});});

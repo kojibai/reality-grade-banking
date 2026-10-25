@@ -5,6 +5,7 @@ import {resolve,extname} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {chromium} from 'playwright';
 import {Resvg} from '@resvg/resvg-js';
+import {togetherPages} from '../src/content/together.mjs';
 import {selected,market,profile} from '../tests/browser/regression-fixtures.mjs';
 
 // Exercise delivered production files with synthetic public responses only.
@@ -36,6 +37,20 @@ const origin=`http://127.0.0.1:${server.address().port}`,results=[];
 let browser,passed=false;
 try{
  browser=await chromium.launch({headless:true,...(process.env.BANK_BROWSER_EXECUTABLE?{executablePath:process.env.BANK_BROWSER_EXECUTABLE}:{})});
+ // A complete Together story and its Twin must fit without lateral scroll.
+ for(const width of [320,390,768,900,1200]){
+  const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce',serviceWorkers:'block'}),page=await context.newPage();
+  try{for(const entry of togetherPages){
+   await page.goto(origin+entry.path);
+   assert.equal(await page.locator('[data-coop-twin]').count(),1,entry.path+' retains its inline Twin');
+   assert.equal(await page.locator('[data-process-step]').count(),4,entry.path+' carries its complete story');
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),entry.path+' must fit at '+width);
+   await page.locator('.together-hero .button-cobalt').click();
+   const bounds=await page.evaluate(()=>({top:document.querySelector('#conversation').getBoundingClientRect().top,header:document.querySelector('.learn-header').getBoundingClientRect().bottom}));
+   assert.ok(bounds.top>=bounds.header-1&&bounds.top<=bounds.header+35,entry.path+' lands directly at the Twin below the header at '+width);
+   results.push({gate:'together-story-and-twin',path:entry.path,width,...bounds});
+  }}finally{await context.close();}
+ }
  // The full final sprite must remain above the next section at every phone
  // width. A fixed stage height used to crop the book on /fit/ at 440px.
  for(const width of [320,390,440,480]){

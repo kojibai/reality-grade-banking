@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowUpRight, ChevronRight, FileText, Fingerprint, LockKeyhole } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import {QuickProfileEditor} from './QuickProfileEditor';
@@ -10,9 +10,13 @@ import {profilePagePath,profileUsername} from '../../receiz/public-profile';
 import {reservePbiAccountPopup} from '../../receiz/pbi-account-bridge';
 const PrivateVaults=lazy(()=>import('../vault/VaultExperience').then(module=>({default:module.VaultExperience})));
 
-export function IdentityProfile({ identity, onForget, onRefresh }: { identity: OpenIdentity; onForget: () => Promise<void>; onRefresh: () => void }) {
+export function IdentityProfile({ identity, onForget, onRefresh, active=true, vaultsEntry, onVaultsEntryConsumed }: { identity: OpenIdentity; onForget: () => Promise<void>; onRefresh: () => void; active?:boolean; vaultsEntry?:'create'; onVaultsEntryConsumed?():void }) {
   const [backup, setBackup] = useState(false), [removalError, setRemovalError] = useState('');
-  const [vaultsOpen,setVaultsOpen]=useState(false);
+  const [vaultsOpen,setVaultsOpen]=useState<{owner:OpenIdentity;mode:'home'|'create'}|null>(null);
+  // Resume the child after the owning Identity modal has rejoined the top layer.
+  const [vaultsActive,setVaultsActive]=useState(false);
+  useLayoutEffect(()=>setVaultsActive(active),[active]);
+  useEffect(()=>{if(active&&vaultsEntry==='create'&&identity.vaults){setVaultsOpen({owner:identity,mode:'create'});onVaultsEntryConsumed?.();}},[active,vaultsEntry,identity,onVaultsEntryConsumed]);
   const [passkeyBusy,setPasskeyBusy]=useState(false),[passkeyConnected,setPasskeyConnected]=useState(false),[passkeyError,setPasskeyError]=useState('');
   const current=useRef<OpenIdentity|null>(identity),passkeyPopup=useRef<Window|null>(null),passkeyPending=useRef(false);
   useEffect(()=>{current.current=identity;setPasskeyConnected(false);return()=>{current.current=null;try{passkeyPopup.current?.close();}catch{/* Closed. */}};},[identity]);
@@ -53,8 +57,8 @@ export function IdentityProfile({ identity, onForget, onRefresh }: { identity: O
     </div>}
     <button type="button" className="identity-passkey" aria-label={passkeyConnected?'Passkey connected':'Connect passkey'} disabled={passkeyBusy||passkeyConnected} onClick={()=>void connectPasskey()}><span className="identity-passkey-icon"><Fingerprint size={23} strokeWidth={1.4} aria-hidden="true"/></span><span>Passkey</span><small>{passkeyBusy?'Connecting…':passkeyConnected?'Connected':'Connect'}</small></button>
     {passkeyError&&<p className="error-message" role="alert">{passkeyError}</p>}
-    {identity.vaults&&<button type="button" className="identity-vault-entry" onClick={()=>setVaultsOpen(true)}><LockKeyhole size={23} strokeWidth={1.3}/><span><strong>Your vaults</strong><small>Your money. Your originals. Their proof.</small></span><ChevronRight size={16}/></button>}
-    {vaultsOpen&&<Suspense fallback={<p className="body-copy small-copy" role="status">Opening your vaults…</p>}><PrivateVaults identity={identity} onRefresh={onRefresh} onClose={()=>setVaultsOpen(false)}/></Suspense>}
+    {identity.vaults&&<button type="button" className="identity-vault-entry" onClick={()=>setVaultsOpen({owner:identity,mode:'home'})}><LockKeyhole size={23} strokeWidth={1.3}/><span><strong>Your vaults</strong><small>Your money. Your originals. Their proof.</small></span><ChevronRight size={16}/></button>}
+    {vaultsOpen?.owner===identity&&<Suspense fallback={<p className="body-copy small-copy" role="status">Opening your vaults…</p>}><PrivateVaults active={active&&vaultsActive} initialMode={vaultsOpen.mode} identity={identity} onRefresh={onRefresh} onClose={()=>setVaultsOpen(null)}/></Suspense>}
     <ProofPortabilityPanel identity={identity} />
     <BankConnection identity={identity} onRefresh={onRefresh} />
     <section className="profile-device" aria-label="Device custody">

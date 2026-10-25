@@ -25,6 +25,70 @@
   },
   "rewrites": [
     {
+      "source": "/cooperate",
+      "destination": "/coops/index.html"
+    },
+    {
+      "source": "/cooperate/",
+      "destination": "/coops/index.html"
+    },
+    {
+      "source": "/together",
+      "destination": "/together/index.html"
+    },
+    {
+      "source": "/together/",
+      "destination": "/together/index.html"
+    },
+    {
+      "source": "/together/creators",
+      "destination": "/together/creators/index.html"
+    },
+    {
+      "source": "/together/creators/",
+      "destination": "/together/creators/index.html"
+    },
+    {
+      "source": "/together/independent-work",
+      "destination": "/together/independent-work/index.html"
+    },
+    {
+      "source": "/together/independent-work/",
+      "destination": "/together/independent-work/index.html"
+    },
+    {
+      "source": "/together/businesses",
+      "destination": "/together/businesses/index.html"
+    },
+    {
+      "source": "/together/businesses/",
+      "destination": "/together/businesses/index.html"
+    },
+    {
+      "source": "/together/communities",
+      "destination": "/together/communities/index.html"
+    },
+    {
+      "source": "/together/communities/",
+      "destination": "/together/communities/index.html"
+    },
+    {
+      "source": "/together/how-it-works",
+      "destination": "/together/how-it-works/index.html"
+    },
+    {
+      "source": "/together/how-it-works/",
+      "destination": "/together/how-it-works/index.html"
+    },
+    {
+      "source": "/together/connect",
+      "destination": "/together/connect/index.html"
+    },
+    {
+      "source": "/together/connect/",
+      "destination": "/together/connect/index.html"
+    },
+    {
       "source": "/protect",
       "destination": "/protect/index.html"
     },

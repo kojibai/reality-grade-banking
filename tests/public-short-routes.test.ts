@@ -9,8 +9,8 @@ import {publicMetadataPlugin} from '../scripts/public-metadata-plugin.mjs';
 import {profilePagePath,profilePageUsername} from '../src/receiz/public-profile';
 import social from '../public/social/manifest.json';
 
-it('gives the four complete marketing documents short canonical, social and structured-data URLs while preserving old URLs',()=>{
- expect(publicRouteAliases).toEqual({'/learn/protect-your-value/':'/protect/','/learn/vaults/':'/vaults/','/business/for/':'/fit/','/cooperatives/':'/coops/'});
+it('gives the complete marketing documents short canonical, social and structured-data URLs while preserving old URLs',()=>{
+ expect(publicRouteAliases).toEqual({'/learn/protect-your-value/':'/protect/','/learn/vaults/':'/vaults/','/business/for/':'/fit/','/cooperatives/':'/coops/','/cooperate/':'/coops/'});
  for(const [old,path] of Object.entries(publicRouteAliases)){
   expect(publicPage(old)).toBe(publicPage(path));expect(publicPage(old+'index.html?ref=old')).toBe(publicPage(path));
   expect(publicPages.some(page=>page.path===old)).toBe(false);
@@ -30,7 +30,7 @@ it('routes direct canonical and legacy documents in preview and deployment witho
  let middleware!:(req:{url:string},res:unknown,next:()=>void)=>void;
  const configure=publicMetadataPlugin().configurePreviewServer;if(typeof configure!=='function')throw Error('PUBLIC_PREVIEW_REQUIRED');configure.call(undefined as never,{middlewares:{use:(fn:typeof middleware)=>{middleware=fn;}}} as unknown as PreviewServer);
  const deployment=JSON.parse(readFileSync('vercel.json','utf8'));
- for(const [old,path] of Object.entries(publicRouteAliases))for(const input of [old,path,path.slice(0,-1)]){
+ for(const [old,path] of Object.entries(publicRouteAliases))for(const input of [old,old.slice(0,-1),path,path.slice(0,-1)]){
   const req={url:input+'?ref=retained'};middleware(req,null,()=>{});expect(req.url).toBe(path+'index.html?ref=retained');
  }
  for(const path of Object.values(publicRouteAliases))for(const input of [path,path.slice(0,-1)])expect(deployment.rewrites.find((r:{source:string})=>r.source===input)?.destination).toBe(path+'index.html');
