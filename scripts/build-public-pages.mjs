@@ -4,6 +4,7 @@ import {identityContinuityPage,identityContinuityContent} from './identity-conti
 import {twinSalesPages,twinPageContent} from './twin-page.mjs';
 import {togetherPages,togetherContent} from './together-page.mjs';
 import {publicRouteAliases} from '../src/content/public-routes.mjs';
+import {compactNavigation} from './compact-navigation.mjs';
 import {withPageFooter} from './site-footer.mjs';
 import {cooperativePages,cooperativeContent} from './cooperative-page.mjs';
 import {vaultPage,vaultContent,vaultStyles} from './vault-page.mjs';
@@ -106,7 +107,7 @@ const bankStyles = [...bankHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^"]
 const bankCss = Object.fromEntries(await Promise.all(bankStyles.map(async url => [url,await readFile('dist'+url,'utf8')])));
 const bankContent = bankHtml.match(/<div id="root">([\s\S]*?)<\/div><noscript>/)[1];
 const bankHead = bankHtml.match(/<head>([\s\S]+)<\/head>/)[1];
-const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify({ pages: publicPages, aliases:publicRouteAliases, bank: { head: bankHead, entry: bankEntry, styles: bankStyles,css:bankCss,content:bankContent } }).replaceAll('<', '\\u003c')}</script>`;
+const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({ pages: publicPages, aliases:publicRouteAliases, bank: { head: bankHead, entry: bankEntry, styles: bankStyles,css:bankCss,content:bankContent } })).replaceAll('<', '\\u003c')}</script>`;
 await writeFile('dist/learn/learn.css', publicCss);
 await writeFile('dist/learn/learn.js', publicJs);
 let entryHtml = bankHtml.replace('</head>', `<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>', `${bundle}</body>`);

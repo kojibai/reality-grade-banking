@@ -71,7 +71,17 @@
 (() => {
   const element = document.getElementById('receiz-navigation');
   if (!element) return;
-  const { pages, bank, aliases={} } = JSON.parse(element.textContent);
+  const { pages, bank, aliases={}, styles:sharedStyleBlocks=[] } = JSON.parse(element.textContent);
+  // Shared CSS is carried once. Expand only the visited page, retaining its
+  // exact head for subsequent visits. Legacy saved documents still use strings.
+  for (const page of [...Object.values(pages), bank]) if (Array.isArray(page.head)) {
+    const parts = page.head;
+    Object.defineProperty(page, 'head', {enumerable:true, configurable:true, get() {
+      const value = parts.map(part => typeof part === 'number' ? sharedStyleBlocks[part] : part).join('');
+      Object.defineProperty(page, 'head', {value, enumerable:true, configurable:true, writable:true});
+      return value;
+    }});
+  }
   let publicRoot = document.getElementById('public-learn-root'), bankRoot = document.getElementById('root');
   let bankLoaded = Boolean(bankRoot), bankUrl = '/', bankFocus = null;
   let bankLoading = null;

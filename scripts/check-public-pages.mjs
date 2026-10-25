@@ -45,7 +45,9 @@ for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/
 // Every public entry carries the same routes, including legal notices, so
 // navigation does not depend on fetching a replacement document.
 const navigationPattern = /<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/;
-const navigation = JSON.parse(html.match(navigationPattern)[1]);
+const carriedNavigation = JSON.parse(html.match(navigationPattern)[1]);
+const navigation = structuredClone(carriedNavigation);
+for(const page of [...Object.values(navigation.pages),navigation.bank])if(Array.isArray(page.head))page.head=page.head.map(part=>typeof part==='number'?navigation.styles[part]:part).join('');
 assert.ok(navigation.pages['/explore/'].head.includes('.ledger-proof-details')&&navigation.pages['/explore/'].head.includes('.ledger-proof-actions'),'Retained public asset navigation carries evidence styles before the lazy reader opens');
 assert.ok(navigation.bank.content.includes('class="account-opening-geometry"'),'Cold Bank navigation carries its actual opening artwork');
 for(const url of navigation.bank.styles)assert.equal(navigation.bank.css[url],await readFile('dist'+url,'utf8'),'Cold Bank navigation carries the exact emitted CSS');
@@ -63,7 +65,7 @@ const sharedHeader = navigation.pages['/learn/'].content.match(/<header class="l
 for (const [path, entry] of Object.entries(navigation.pages)) {
   const output = await readFile(`dist${path}index.html`, 'utf8');
   if(entry.content.includes('class="site-footer"'))assert.ok(entry.content.includes(siteFooterHtml(path)),`Carried footer differs at ${path}`);
-  assert.deepEqual(JSON.parse(output.match(navigationPattern)[1]), navigation, `Public navigation differs at ${path}`);
+  assert.deepEqual(JSON.parse(output.match(navigationPattern)[1]), carriedNavigation, `Public navigation differs at ${path}`);
   if (path === '/schemas/') {
     assert.ok(entry.content.includes('class="schema-header"'),'Reference retains its own existing header');
     assert.ok(entry.head.includes('<style data-public-page-style="schemas">'),'Reference styles travel with the carried page');
