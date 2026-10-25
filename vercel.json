@@ -25,6 +25,22 @@
   },
   "rewrites": [
     {
+      "source": "/your-twin",
+      "destination": "/your-twin/index.html"
+    },
+    {
+      "source": "/your-twin/",
+      "destination": "/your-twin/index.html"
+    },
+    {
+      "source": "/in-action",
+      "destination": "/in-action/index.html"
+    },
+    {
+      "source": "/in-action/",
+      "destination": "/in-action/index.html"
+    },
+    {
       "source": "/cooperate",
       "destination": "/coops/index.html"
     },

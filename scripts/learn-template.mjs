@@ -8,10 +8,12 @@ import {siteFooterHtml} from './site-footer.mjs';
 import {learningPages,learningGroups,learningPath,assetCategories} from '../src/content/learning-pages.mjs';
 import {learningVisual} from './learning-visuals.mjs';
 import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
+import {twinSalesPages} from '../src/content/twin-pages.mjs';
 import {togetherPages} from '../src/content/together.mjs';
 import {cooperativePages} from '../src/content/cooperatives.mjs';
 // Public discovery only. Existing routes and native authorities are unchanged.
 const solutionGuides=[
+ ...twinSalesPages.map(page=>({...page,group:'Banking',title:page.key==='your-twin'?'Your Twin':'See it in action'})),
  {slug:'vaults',path:'/vaults/',group:'Banking',title:'Your Vaults',description:'Hold money and originals separately, add optional passkey protection and share their proof.'},
  {slug:'protect-your-value',path:'/protect/',group:'Banking',title:'Protect your value',description:'See how separate Vault authority, optional passkey encryption and public proof protect access.'},
  {slug:'business',path:'/business/',group:'Banking',title:'Business · $149/month',description:'Work from your context, create what comes next and help clients take the next step.'},
@@ -26,8 +28,8 @@ const relatedSolutions={
  'proof-objects':['/vaults/'],'ownership':['/vaults/'],
  'physical-assets':['/coops/'],'asset-rights-and-backing':['/cooperatives/infrastructure/'],
  'proof-native-economy':['/coops/','/together/'],'institutions':['/cooperatives/infrastructure/'],
- 'messages':['/business/','/fit/'],
- 'for-businesses':['/business/','/fit/'],'for-independent-work':['/fit/'],
+ 'messages':['/business/','/fit/','/your-twin/','/in-action/'],
+ 'for-businesses':['/business/','/fit/','/your-twin/','/in-action/'],'for-independent-work':['/fit/'],
  'for-creators':['/fit/','/together/creators/'],'for-communities':['/coops/','/together/communities/'],
  'for-institutions':['/cooperatives/infrastructure/'],'for-public-finance':['/coops/']
 };

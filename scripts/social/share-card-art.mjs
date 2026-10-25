@@ -1,3 +1,4 @@
+import {twinShareCard} from './twin-share.mjs';
 import {togetherShareCard} from './together-share.mjs';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
@@ -9,6 +10,7 @@ import {businessFitShareCard} from './business-fit-share.mjs';
 const icons={layers:Layers3,fingerprint:Fingerprint,cube:Box,shield:ShieldCheck,key:KeyRound,bank:Landmark,valuation:ChartNoAxesCombined,badge:BadgeCheck,scan:ScanLine,ledger:NotebookTabs,globe:Globe2,code:Braces,book:BookOpen,receipt:ReceiptText};
 const bank='<path d="m256 117 123 67v17H133v-17l123-67Zm0 26-75 40h150l-75-40Z" fill-rule="evenodd"/><rect x="146" y="215" width="28" height="110" rx="2"/><rect x="210" y="215" width="28" height="110" rx="2"/><rect x="274" y="215" width="28" height="110" rx="2"/><rect x="338" y="215" width="28" height="110" rx="2"/><rect x="133" y="337" width="246" height="18" rx="2"/><rect x="119" y="367" width="274" height="18" rx="3"/>';
 export function shareCardSvg(page){
+ if(page.id==='your-twin'||page.id==='in-action')return twinShareCard(page);
  if(page.id==='together'||page.id?.startsWith('together-'))return togetherShareCard(page);
  if(page.id?.startsWith('business-fit-'))return businessFitShareCard(page.id.slice('business-fit-'.length));
  if(page.id==='protect-your-value')return protectionShareCard();

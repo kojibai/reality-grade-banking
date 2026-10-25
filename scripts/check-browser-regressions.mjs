@@ -6,6 +6,7 @@ import {pathToFileURL} from 'node:url';
 import {chromium} from 'playwright';
 import {Resvg} from '@resvg/resvg-js';
 import {togetherPages} from '../src/content/together.mjs';
+import {twinSalesPages} from '../src/content/twin-pages.mjs';
 import {selected,market,profile} from '../tests/browser/regression-fixtures.mjs';
 
 // Exercise delivered production files with synthetic public responses only.
@@ -40,15 +41,27 @@ try{
  // A complete Together story and its Twin must fit without lateral scroll.
  for(const width of [320,390,768,900,1200]){
   const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce',serviceWorkers:'block'}),page=await context.newPage();
-  try{for(const entry of togetherPages){
+  try{for(const entry of [...togetherPages,...twinSalesPages]){
    await page.goto(origin+entry.path);
    assert.equal(await page.locator('[data-coop-twin]').count(),1,entry.path+' retains its inline Twin');
    assert.equal(await page.locator('[data-process-step]').count(),4,entry.path+' carries its complete story');
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),entry.path+' must fit at '+width);
-   await page.locator('.together-hero .button-cobalt').click();
+   const invitation=page.locator(entry.twinSales?'.twin-local-nav a[href="#conversation"]':'.together-hero .button-cobalt');
+   await invitation.click();
    const bounds=await page.evaluate(()=>({top:document.querySelector('#conversation').getBoundingClientRect().top,header:document.querySelector('.learn-header').getBoundingClientRect().bottom}));
    assert.ok(bounds.top>=bounds.header-1&&bounds.top<=bounds.header+35,entry.path+' lands directly at the Twin below the header at '+width);
-   results.push({gate:'together-story-and-twin',path:entry.path,width,...bounds});
+   if(entry.twinSales){
+    assert.ok(await page.locator('[data-business-checkout]').count()>=3,'Every sales page offers the existing Business path');
+    assert.equal(await page.locator('[data-business-checkout]:not([href="/#account/messages/business"])').count(),0,'Get Business must use the existing reviewed payment destination');
+    await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));await invitation.click();
+    const repeat=await page.evaluate(()=>({top:document.querySelector('#conversation').getBoundingClientRect().top,header:document.querySelector('.learn-header').getBoundingClientRect().bottom}));
+    assert.ok(repeat.top>=repeat.header-1&&repeat.top<=repeat.header+35,entry.path+' repeats the conversation jump at '+width);
+    if(entry.key==='in-action'){
+     await page.locator('[data-process-choice="2"]').click();await page.waitForFunction(()=>document.querySelector('[data-process]').dataset.stage==='2');
+     assert.equal(await page.locator('.twin-phase-3').evaluate(node=>getComputedStyle(node).opacity),'1','The confirmed appointment must be visible at its own story step');
+    }
+   }
+   results.push({gate:entry.twinSales?'twin-sales-story-and-payment':'together-story-and-twin',path:entry.path,width,...bounds});
   }}finally{await context.close();}
  }
  // The full final sprite must remain above the next section at every phone

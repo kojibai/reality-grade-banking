@@ -1,6 +1,22 @@
 {
   "schema": "bankeiz.public-social-images.v1",
   "images": {
+    "/your-twin/": {
+      "url": "/social/your-twin-691b7b142a9c37f5.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "691b7b142a9c37f54742095e5a5940c708627af466a875f83ba14feeb6d01d4e",
+      "bytes": 354897,
+      "alt": "Your Twin connects a visitor’s question and answer to the owner’s shared contact details, conversation context and confirmed calendar appointment. Illustrative workflow."
+    },
+    "/in-action/": {
+      "url": "/social/in-action-63a6d3b9eae8e531.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "63a6d3b9eae8e531b5f5afac64fb23e5250f8dfcf681043d2f87f2720b857390",
+      "bytes": 355003,
+      "alt": "Your Twin connects a visitor’s question and answer to the owner’s shared contact details, conversation context and confirmed calendar appointment. Illustrative workflow."
+    },
     "/together/": {
       "url": "/social/together-7d0dd1da1d7fbd09.png",
       "width": 1730,

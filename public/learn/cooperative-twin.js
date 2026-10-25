@@ -98,7 +98,7 @@ export function mountConversation(root){
  });
  book.addEventListener('submit',event=>{
   event.preventDefault();if(state.busy||state.pending||state.booking||!state.selected||!book.reportValidity())return;
-  const fields=book.elements,notes=[(location.pathname.startsWith('/together/')?'Together · Proof-native economy inquiry from ':'Cooperative economy inquiry from ')+location.pathname,'The original conversation remains linked by its native visitor and thread.',fields.notes.value].filter(Boolean).join('\n').slice(0,900);
+  const fields=book.elements,notes=[(location.pathname.startsWith('/together/')?'Together · Proof-native economy inquiry from ':/^\/(?:your-twin|in-action)\/?$/.test(location.pathname)?'Business · Your Twin inquiry from ':'Cooperative economy inquiry from ')+location.pathname,'The original conversation remains linked by its native visitor and thread.',fields.notes.value].filter(Boolean).join('\n').slice(0,900);
   void send({action:'book',consent:true,confirmed:true,slotStartAt:state.selected.startAt,name:fields.name.value.trim(),email:fields.email.value.trim(),timezone:fields.timezone.value.trim(),notes,questions:state.questions.map(q=>({id:q.id,label:q.label,required:q.required===true,answer:fields.namedItem('question-'+q.id)?.value??''}))});
  });
 }
