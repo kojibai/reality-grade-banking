@@ -23,7 +23,7 @@ function fixture(provider:Provider){
 }
 it.each(providers)('%s creates only the two exact native records using its actual API and relative names',async provider=>{
  const f=fixture(provider);expect(f.calls).toEqual([]);const result=await f.adapter.apply(plan);expect(result.status).toBe('applied');expect(result.records.map(row=>row.reference)).toEqual(['1','2']);const writes=f.calls.filter(call=>call.init.method!=='GET');expect(writes).toHaveLength(2);expect(writes.map(call=>JSON.parse(call.init.body!).name)).toEqual(['studio','_verify.studio']);expect(writes.every(call=>call.init.method==='POST'&&call.init.redirect==='error'&&call.init.credentials==='omit')).toBe(true);
- const bodies=writes.map(call=>JSON.parse(call.init.body!));expect(bodies.map(body=>body.value??body.data??body.content)).toEqual([connection.value,verification.value]);expect(JSON.stringify(bodies)).not.toMatch(/apikey|secret|cookie|authorization/i);
+ const bodies=writes.map(call=>JSON.parse(call.init.body!));expect(bodies.map(body=>body.value??body.data??body.content)).toEqual([provider==='godaddy'?'profile.receiz.com.':connection.value,verification.value]);expect(JSON.stringify(bodies)).not.toMatch(/apikey|secret|cookie|authorization/i);
  const origins={godaddy:'https://api.godaddy.com',vercel:'https://api.vercel.com',digitalocean:'https://api.digitalocean.com',dnsimple:'https://api.dnsimple.com',porkbun:'https://api.porkbun.com'};expect(f.calls.every(call=>new URL(call.url).origin===origins[provider])).toBe(true);
  if(provider==='dnsimple')expect(bodies[0].integrated_zones).toEqual(['dnsimple']);
 });
@@ -71,3 +71,5 @@ it('GoDaddy rejects a final-page next link contradicting its declared totals',as
 it('Porkbun rejects an absolute record outside its connected DNS zone',async()=>{
  const f=fixture('porkbun');f.request.mockResolvedValueOnce(Response.json({status:'SUCCESS',cloudflare:'disabled',records:[{id:'x',type:'CNAME',name:'foreign.example.net',content:connection.value}]}));expect((await f.adapter.apply(plan)).status).toBe('manual');expect(f.raw).toEqual([]);
 });
+
+it('GoDaddy supplies unique idempotency keys and absolute CNAME targets required by v3',async()=>{const f=fixture('godaddy');expect((await f.adapter.apply(plan)).status).toBe('applied');const writes=f.calls.filter(call=>call.init.method==='POST');expect(writes.map(call=>JSON.parse(call.init.body!).data)).toEqual(['profile.receiz.com.','exact-native-token']);const keys=writes.map(call=>new Headers(call.init.headers).get('Idempotency-Key'));expect(keys.every(key=>typeof key==='string'&&/^[a-f0-9-]{36}$/.test(key))).toBe(true);expect(new Set(keys).size).toBe(2);});

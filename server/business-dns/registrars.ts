@@ -1,4 +1,4 @@
-import {createDnsProviderConnection,dnsRecordMatches,type DnsExistingRecord} from './engine.js';
+import {createDnsProviderConnection,dnsName,dnsRecordMatches,type DnsExistingRecord} from './engine.js';
 import {absoluteDnsName,dnsArray,dnsIdentifier,dnsJson,dnsObject,dnsResultInvalid,nextDnsUrl,providerRecord,relativeDnsName,type DnsHttpOwner} from './http.js';
 
 // Public official API references and scopes are recorded in the design/handoff.
@@ -21,7 +21,7 @@ export function createGoDaddyDnsConnection(input:DnsHttpOwner){
    if(page===data.totalPages){if(records.length!==expected)dnsResultInvalid();return records;}
    if(items.length===0)dnsResultInvalid();
   }return dnsResultInvalid();
- },async create(record){const result=await dnsJson(input,url,'POST',{type:record.type,name:relativeDnsName(record.name,input.zoneName)||'@',data:record.value,ttl:600}),accepted=providerRecord(result,input.zoneName,{value:'data',id:'recordId',names:'relative'});if(!dnsRecordMatches(accepted,record))dnsResultInvalid();return{reference:accepted.reference};}}});
+ },async create(record){const result=await dnsJson(input,url,'POST',{type:record.type,name:relativeDnsName(record.name,input.zoneName)||'@',data:record.type==='CNAME'?dnsName(record.value)+'.':record.value,ttl:600},{'Idempotency-Key':crypto.randomUUID()}),accepted=providerRecord(result,input.zoneName,{value:'data',id:'recordId',names:'relative'});if(!dnsRecordMatches(accepted,record))dnsResultInvalid();return{reference:accepted.reference};}}});
 }
 export function createVercelDnsConnection(input:DnsHttpOwner){
  const path='/v5/domains/'+encodeURIComponent(input.zoneName)+'/records';

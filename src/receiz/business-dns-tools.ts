@@ -11,8 +11,10 @@ export type BusinessDnsPlan={hostname:string;connectionOptions:BusinessDnsRecord
 export type BusinessDnsProviderResult={status:'applied'|'manual'|'unknown';records:(BusinessDnsRecord&{reference?:string})[];reason?:string};
 /** A trusted host supplies the actual scoped provider connection after native
  * owner consent. These fields are not model arguments or permission grants. */
-export type BusinessDnsConnection={accountUid:string;provider:string;canWrite:boolean;apply(plan:BusinessDnsPlan):Promise<BusinessDnsProviderResult>};
+export type BusinessDnsConnection={accountUid:string;provider:string;canWrite:boolean;reason?:string;apply(plan:BusinessDnsPlan):Promise<BusinessDnsProviderResult>};
 export type BusinessDnsView={status:'manual'|'waiting'|'live'|'attention'|'unknown'|'domain_changed';hostname:string;connectionOptions:BusinessDnsRecord[];verificationRecords:BusinessDnsRecord[];steps:string[];summary:string;warning:string|null;liveUrl:string|null;provider?:string;providerResult?:BusinessDnsProviderResult};
+/** Keep an executed DNS result bound to its original native hostname. */
+export function changedBusinessDomain(original:BusinessDnsView,replacement:string):BusinessDnsView{return{...original,status:'domain_changed',liveUrl:null,summary:`The saved domain changed to ${replacement}. These DNS results belong to ${original.hostname}; no records were changed for the new domain.`};}
 function invalid():never{throw Error('BUSINESS_DNS_NATIVE_RESULT_INVALID');}
 function records(input:unknown,hostname:string,connection:boolean):BusinessDnsRecord[]{
  if(!Array.isArray(input)||input.length>24)invalid();
@@ -46,6 +48,7 @@ export function createBusinessDnsTools(input:{accountUid:string;expectedHostname
   ]};
  }
  return Object.freeze({
+  async inspect(){return read('business_inspect_domain');},
   async instructions(provider?:string){const view=await read('business_inspect_domain');return{...view,status:'manual' as const,...(provider?{provider:provider.slice(0,120)}:{})};},
   async check(){return read('business_check_domain');},
   async configure(mode:'automatic'|'manual'):Promise<BusinessDnsView>{
@@ -56,7 +59,7 @@ export function createBusinessDnsTools(input:{accountUid:string;expectedHostname
    const connection=await input.connection(view.hostname);check();
    if(!connection)return{...view,status:'manual'};
    if(connection.accountUid!==input.accountUid)throw Error('BUSINESS_DNS_OWNER_MISMATCH');
-   if(!connection.canWrite||!view.connectionOptions.length)return{...view,status:'manual',provider:connection.provider};
+   if(!connection.canWrite||!view.connectionOptions.length)return{...view,status:'manual',provider:connection.provider,...(connection.reason?{summary:connection.reason}:{})};
    let result:BusinessDnsProviderResult;
    try{result=await connection.apply({hostname:view.hostname,connectionOptions:structuredClone(view.connectionOptions),verificationRecords:structuredClone(view.verificationRecords)});}
    catch{check();return{...view,status:'unknown',provider:connection.provider,summary:'The provider result is not confirmed. Check the existing records before requesting another change.'};}
@@ -65,7 +68,8 @@ export function createBusinessDnsTools(input:{accountUid:string;expectedHostname
    if(result.status!=='applied')return{...view,status:result.status,provider:connection.provider,providerResult:result};
    let verified:BusinessDnsView;
    try{verified=await read('business_check_domain');}catch{check();return{...view,status:'unknown',provider:connection.provider,providerResult:result,summary:'The provider acknowledged the DNS change. Native domain verification has not confirmed readiness.'};}
-   return{...verified,status:verified.hostname===view.hostname?verified.status:'domain_changed',provider:connection.provider,providerResult:result};
+   if(verified.hostname!==view.hostname)return{...changedBusinessDomain(view,verified.hostname),provider:connection.provider,providerResult:result};
+   return{...verified,provider:connection.provider,providerResult:result,...(result.reason?{warning:[verified.warning,result.reason].filter(Boolean).join(' ')}:{})};
   },
  });
 }

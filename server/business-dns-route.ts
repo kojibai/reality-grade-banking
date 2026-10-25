@@ -1,6 +1,7 @@
 import {relayBusinessSetup} from './business-setup.js';
 import {createBusinessDnsTools} from '../src/receiz/business-dns-tools.js';
 import {businessDnsProviderCatalog,type BusinessDnsProviderId} from './business-dns-providers.js';
+import {createUserDnsBroker} from './business-dns/user-broker.js';
 import {createBusinessDnsBroker,readBusinessDnsBindings} from './business-dns-connect.js';
 const headers={'cache-control':'no-store','x-content-type-options':'nosniff'};
 /** Callback is a delivery hint only. The retained owner operation re-admits
@@ -18,8 +19,15 @@ export async function relayBusinessDns(request:Request):Promise<Response>{
   if(admitted.outcome!=='accepted'||admitted.accountUid!==input.accountUid)return json({error:'BUSINESS_DNS_OWNER_REQUIRED'},403);
   const tools=createBusinessDnsTools({accountUid:admitted.accountUid,assertOpen:()=>request.signal.throwIfAborted(),connection:async()=>null,execute:async()=>admitted}),view=await tools.instructions();
   if(view.hostname!==input.hostname)return json({error:'BUSINESS_DNS_HOSTNAME_CHANGED'},409);
-  const config=readBusinessDnsBindings(process.env.BANKEIZ_DNS_BINDINGS_JSON),sdk=await import('@vercel/connect'),broker=createBusinessDnsBroker({bindings:config,sdk,vercelToken:process.env.VERCEL_TOKEN}),provider=input.provider as BusinessDnsProviderId;
-  const connection=await broker.connection(admitted.accountUid,view.hostname,provider,()=>request.signal.throwIfAborted());
+  const config=readBusinessDnsBindings(process.env.BANKEIZ_DNS_BINDINGS_JSON),sdk=await import('@vercel/connect'),provider=input.provider as BusinessDnsProviderId,broker=config.some(row=>row.accountUid===admitted.accountUid&&row.hostname===view.hostname&&row.provider===provider)?createBusinessDnsBroker({bindings:config,sdk,vercelToken:process.env.VERCEL==='1'?undefined:process.env.VERCEL_TOKEN}):createUserDnsBroker({sdk,vercelToken:process.env.VERCEL==='1'?undefined:process.env.VERCEL_TOKEN});
+  let connection:Awaited<ReturnType<typeof broker.connection>>;
+  try{connection=await broker.connection(admitted.accountUid,view.hostname,provider,()=>request.signal.throwIfAborted());}
+  catch(cause){
+   const code=cause instanceof Error?cause.message:'';
+   if(['BUSINESS_DNS_ZONE_NOT_FOUND','BUSINESS_DNS_ZONE_AMBIGUOUS'].includes(code)){const reason=code==='BUSINESS_DNS_ZONE_AMBIGUOUS'?'More than one DNS zone matches this domain. Connect a credential scoped to the account and zone you want to use.':'This domain is not in the connected DNS account, or its DNS is managed elsewhere. Connect the account that manages its DNS.';return json({accountUid:admitted.accountUid,hostname:view.hostname,status:'manual',reason,result:{status:'manual',records:[],reason}});}
+   if(['BUSINESS_DNS_CONNECTION_CREDENTIAL_INVALID','BUSINESS_DNS_RECONNECT_REQUIRED','DNS_MCP_RECONNECT_REQUIRED'].includes(code))connection=null;else throw cause;
+  }
+  try{ request.signal.throwIfAborted();
   if(input.action==='connect'){
    if(connection?.canWrite)return json({accountUid:admitted.accountUid,hostname:view.hostname,status:'ready'});
    const authorization=await broker.authorize(admitted.accountUid,view.hostname,provider,url.origin+'/api/bank/business/dns-return');
@@ -27,5 +35,6 @@ export async function relayBusinessDns(request:Request):Promise<Response>{
   }
   if(!connection?.canWrite)return json({accountUid:admitted.accountUid,hostname:view.hostname,result:{status:'manual',records:[],reason:'Provider access is not connected. Use the exact native instructions.'}});
   const result=await connection.apply({hostname:view.hostname,connectionOptions:view.connectionOptions,verificationRecords:view.verificationRecords});return json({accountUid:admitted.accountUid,hostname:view.hostname,result});
+  }finally{const close=(connection as {close?:()=>Promise<void>}|null)?.close;if(close)await close();}
  }catch{return json({error:'BUSINESS_DNS_RESULT_UNCONFIRMED'},503);}
 }

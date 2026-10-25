@@ -1,0 +1,4 @@
+import {expect,it} from 'vitest';
+import {dnsProviderConnections} from '../server/business-dns/catalog';
+it('gives every supported provider an actual per-user connection method without customer deployment rows',()=>{expect(dnsProviderConnections.map(row=>row.provider).sort()).toEqual(['azure-dns','cloudflare','digitalocean','dnsimple','godaddy','google-cloud-dns','namecheap','porkbun','route53','vercel'].sort());for(const provider of dnsProviderConnections){expect(provider.subjectType).toBe('user');expect(provider.uid).toMatch(/^(oauth|api-key)\/bankeiz-dns-/);expect(provider.service).toMatch(/^https:\/\//);}});
+it('Namecheap uses the official sign-in resource and only DNS read/write scopes',()=>{expect(dnsProviderConnections.find(row=>row.provider==='namecheap')).toMatchObject({type:'oauth',endpoint:'https://mcp.namecheap.com/mcp',resource:'https://mcp.namecheap.com/',scopes:['openid','offline_access','mcp.namecheap.com.read','mcp.namecheap.com.write']});});

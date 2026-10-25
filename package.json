@@ -37,9 +37,11 @@
     "vault:reader:build": "node scripts/build-vault-inspector.mjs",
     "vault:inspect": "node public/vault-verifier/v1/verify.mjs",
     "docs:build": "node scripts/build-docs.mjs",
-    "docs:preview": "node docs-app/preview.mjs"
+    "docs:preview": "node docs-app/preview.mjs",
+    "dns:provision": "node scripts/provision-business-dns.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-route-53": "3.1156.0",
     "@receiz/ai-skills": "129.0.0",
     "@receiz/mcp-server": "129.0.0",
     "@receiz/sdk": "129.0.0",

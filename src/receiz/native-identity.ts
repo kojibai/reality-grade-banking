@@ -488,7 +488,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
         const selected=provider?names[provider.toLowerCase().trim()]:null;if(!selected)return null;
         const result=await requestHost('/api/bank/business/dns',{provider:selected,hostname,action:'connect'});assertOpen();
         if(result.accountUid!==uid||result.hostname!==hostname)throw Error('BUSINESS_DNS_CONNECTION_UNCONFIRMED');
-        if(result.status==='manual')return null;
+        if(result.status==='manual')return typeof result.reason==='string'&&result.reason.length<=2000?{accountUid:uid,provider:selected,canWrite:false,reason:result.reason,apply:async()=>{throw Error('BUSINESS_DNS_PROVIDER_ACTION_REQUIRED');}}:null;
         if(result.status==='connect'){
           const action=result.action,url=new URL(action?.href);if(!['https://vercel.com','https://connect.vercel.com'].includes(url.origin)||url.username||url.password||url.hash||typeof action.label!=='string')throw Error('BUSINESS_DNS_CONNECTION_UNCONFIRMED');
           const {BusinessDnsConnectionRequired}=await import('./business-dns-tools');throw new BusinessDnsConnectionRequired({label:action.label,href:url.href},hostname);

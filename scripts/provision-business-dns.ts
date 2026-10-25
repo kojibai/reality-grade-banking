@@ -1,0 +1,10 @@
+import {writeFile} from 'node:fs/promises';
+import {dnsProviderConnections} from '../server/business-dns/catalog.js';
+import {provisionDnsConnections} from '../server/business-dns/provision.js';
+const get=(key:string)=>{const index=process.argv.indexOf(key);return index>=0?process.argv[index+1]:undefined;};
+const projectId=get('--project'),teamId=get('--team'),only=get('--provider'),output=get('--output'),token=process.env.VERCEL_TOKEN;
+if(!projectId||!teamId||!token)throw Error('Pass --project and --team with a server-only VERCEL_TOKEN.');
+const providers=dnsProviderConnections.filter(row=>!only||row.provider===only);if(!providers.length)throw Error('Unknown provider.');
+const results=await provisionDnsConnections({projectId,teamId,providers,request:async(url,init)=>{if(new URL(String(url)).origin!=='https://api.vercel.com')throw Error('Vercel management origin mismatch');const headers=new Headers(init?.headers);headers.set('Authorization','Bearer '+token);return fetch(url,{...init,headers});}});
+if(output)await writeFile(output,JSON.stringify(results,null,2)+'\n',{mode:0o600});
+for(const result of results)console.log(JSON.stringify(result));
