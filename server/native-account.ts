@@ -55,6 +55,7 @@ function completeBody(output: Uint8Array) {
 /** Same bounded, cookie-free transport in development and production. Exact
  * message/call effects and authorization remain in the existing Receiz host. */
 export async function relayNativeAccount(request: Request): Promise<Response> {
+  if(new URL(request.url).pathname.startsWith(PREFIX+'/pbi/'))return(await import('./pbi-account-transport.js')).relayPbiAccount(request);
   if(new URL(request.url).pathname===PREFIX+'/twin-upgrade')return relayTwinUpgrade(request);
   const url = new URL(request.url), path = nativeRequestPath(url.pathname + url.search, request.method);
   const base = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};

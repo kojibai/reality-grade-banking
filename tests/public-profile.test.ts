@@ -35,3 +35,11 @@ it('keeps named links separate from social fields and rejects unsafe custom dest
 it('invalidates a retained previous handle when the same account confirms a new username',async()=>{
  const {retainPublicProfile,retainedPublicProfile}=await import('../src/receiz/public-profile');const original=parsePublicProfile(profileFixture(),'alexmorgan');retainPublicProfile(original);expect(retainedPublicProfile('alexmorgan')).toBe(original);retainPublicProfile({...original,username:'alexrenamed'});expect(retainedPublicProfile('alexmorgan')).toBeNull();expect(retainedPublicProfile('alexrenamed')?.userId).toBe(original.userId);
 });
+it('appends confirmed PBI authorship without fetching or replacing held assets and other profiles',async()=>{
+ const {retainPublicProfile,retainedPublicProfile,retainProfilePbiAuthorship}=await import('../src/receiz/public-profile');
+ const profile=parsePublicProfile(profileFixture(),'alexmorgan'),other={...profile,userId:'other-account',username:'otherperson'};
+ retainPublicProfile({...profile,authorshipVerified:false,pbiReceiptHash:null});retainPublicProfile(other);
+ const items=retainedPublicProfile('alexmorgan')!.items;retainProfilePbiAuthorship(profile.userId,'b'.repeat(64));
+ expect(retainedPublicProfile('alexmorgan')).toMatchObject({authorshipVerified:true,pbiReceiptHash:'b'.repeat(64),stats:profile.stats});
+ expect(retainedPublicProfile('alexmorgan')!.items).toBe(items);expect(retainedPublicProfile('otherperson')).toBe(other);
+});

@@ -7,7 +7,6 @@ import { ProofPortabilityPanel } from './ProofPortabilityPanel';
 import {ProfileAvatar} from '../../components/ProfileAvatar';
 import {identityProfileAvatar} from '../../receiz/profile-avatar';
 import {profilePagePath,profileUsername} from '../../receiz/public-profile';
-import {reservePbiAccountPopup} from '../../receiz/pbi-account-bridge';
 const PrivateVaults=lazy(()=>import('../vault/VaultExperience').then(module=>({default:module.VaultExperience})));
 
 export function IdentityProfile({ identity, onForget, onRefresh, active=true, vaultsEntry, onVaultsEntryConsumed }: { identity: OpenIdentity; onForget: () => Promise<void>; onRefresh: () => void; active?:boolean; vaultsEntry?:'create'; onVaultsEntryConsumed?():void }) {
@@ -18,16 +17,15 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
   useLayoutEffect(()=>setVaultsActive(active),[active]);
   useEffect(()=>{if(active&&vaultsEntry==='create'&&identity.vaults){setVaultsOpen({owner:identity,mode:'create'});onVaultsEntryConsumed?.();}},[active,vaultsEntry,identity,onVaultsEntryConsumed]);
   const [passkeyBusy,setPasskeyBusy]=useState(false),[passkeyConnected,setPasskeyConnected]=useState(false),[passkeyError,setPasskeyError]=useState('');
-  const current=useRef<OpenIdentity|null>(identity),passkeyPopup=useRef<Window|null>(null),passkeyPending=useRef(false);
-  useEffect(()=>{current.current=identity;setPasskeyConnected(false);return()=>{current.current=null;try{passkeyPopup.current?.close();}catch{/* Closed. */}};},[identity]);
+  const current=useRef<OpenIdentity|null>(identity),passkeyPending=useRef(false);
+  useEffect(()=>{current.current=identity;setPasskeyConnected(false);return()=>{current.current=null;};},[identity]);
   const connectPasskey=async()=>{
     if(passkeyPending.current||passkeyConnected)return;
-    let popup:Window;try{popup=reservePbiAccountPopup();}catch{setPasskeyError('Your device verification window could not be opened. Try again.');return;}
-    passkeyPopup.current=popup;passkeyPending.current=true;setPasskeyBusy(true);setPasskeyError('');
+    passkeyPending.current=true;setPasskeyBusy(true);setPasskeyError('');
     const assertCurrent=()=>{if(current.current!==identity)throw Error('PBI_ACCOUNT_CLOSED');};
-    try{await(await import('../../receiz/pbi-account-connect')).connectPbiToAccount(identity,popup,assertCurrent);if(current.current===identity)setPasskeyConnected(true);}
+    try{await(await import('../../receiz/pbi-account-connect')).connectPbiToAccount(identity,assertCurrent);if(current.current===identity)setPasskeyConnected(true);}
     catch(cause){if(current.current===identity&&!(cause instanceof Error&&['passkey_cancelled','PBI_ACCOUNT_CLOSED'].includes(cause.message)))setPasskeyError('Your passkey could not be connected. Try again.');}
-    finally{passkeyPending.current=false;if(current.current===identity)setPasskeyBusy(false);try{if(!popup.closed)popup.close();}catch{/* Closed. */}if(passkeyPopup.current===popup)passkeyPopup.current=null;}
+    finally{passkeyPending.current=false;if(current.current===identity)setPasskeyBusy(false);}
   };
   const publicId = identity.accountUsername?.() || identity.username || identity.binding.identityOwnerReceizId;
   const backupId = () => {

@@ -24,3 +24,9 @@ it('accepts a newly connected native credential only for the exact already activ
  expect(await verifyPbiAccountCredentialStatement(statement,expected,roots)).toEqual(statement);
  expect(await verifyPbiAccountCredentialStatement(statement,{...expected,accountUid:'another-account'},roots)).toBeNull();expect(await verifyPbiAccountCredentialStatement(statement,{...expected,credentialId:'older-credential'},roots)).toBeNull();expect(await verifyPbiAccountCredentialStatement({...statement,effect:{...payload.effect,cloneDetectedAt:'2026-10-24T00:01:00Z'}},expected,roots)).toBeNull();
 });
+it.each(['identity.credential.use','identity.credential.counter','identity.credential.pbi-upsert','identity.credential.counter-observation'])('admits a genuine current credential lifecycle original after %s',async operation=>{
+ const {keyFile:root}=await createReceizIdentityKeyFile({owner:{uid:'root'}});
+ const payload={schema:'receiz.account-credential.v1',domain:'receiz.account-credential.root-signature.v1',issuerRootKid:'root',accountId:'account',operation,acceptedInputSha256:'a'.repeat(64),predecessorSourceSha256:'b'.repeat(64),acceptedAtKaiPulse:'100',admissionEvidenceSha256:['a'.repeat(64)],effect:{id:'id',credentialId:'credential',publicKeyPem:'-----BEGIN PUBLIC KEY-----\nsource\n-----END PUBLIC KEY-----',legacyCredentialId:'credential',createdAt:'2026-10-24T00:00:00Z',lastUsedAt:'2026-10-25T00:00:00Z',signCount:2,signCountUpdatedAt:'2026-10-25T00:00:00Z',cloneDetectedAt:null}};
+ const signed=await signReceizIdentityLoginProof({keyFile:root,challengeText:canonicalizeReceizV122(payload)}),statement={...payload,rootSignature:{kid:'root',alg:'Ed25519',sig:signed.signatureB64Url}},roots=new Map([['root',{kid:'root',alg:'Ed25519' as const,status:'active' as const,publicKeyRawB64u:root.crypto.publicKeyRawB64u}]]);
+ expect(await verifyPbiAccountCredentialStatement(statement,{accountUid:'account',credentialId:'credential'},roots)).toEqual(statement);
+});

@@ -20,9 +20,13 @@ it('does no PBI preparation on cold entry, Enter or import',async()=>{
 });
 it('keeps the selected recovered account, original balance and full history in the same settled frame',async()=>{
  const original=identity();p.pbi.mockResolvedValue(original);
- await observe(async read=>{await act(async()=>{await read().pbi();});expect(read().identity).toBe(original);expect(read().wallet?.userId).toBe('original-account');expect(read().wallet?.totalUsdCents).toBe('45123');expect(read().walletHistory).toEqual(observation.history);expect(p.pbi).toHaveBeenCalledWith(p.reserve.mock.results[0].value,true);expect(p.create).not.toHaveBeenCalled();expect(p.importId).not.toHaveBeenCalled();});
+ await observe(async read=>{await act(async()=>{await read().pbi();});expect(read().identity).toBe(original);expect(read().wallet?.userId).toBe('original-account');expect(read().wallet?.totalUsdCents).toBe('45123');expect(read().walletHistory).toEqual(observation.history);expect(p.pbi).toHaveBeenCalledWith(true);expect(p.reserve).not.toHaveBeenCalled();expect(p.create).not.toHaveBeenCalled();expect(p.importId).not.toHaveBeenCalled();});
 });
 it('keeps cancelled PBI on the unchanged entrance without creating or importing an account',async()=>{
  p.pbi.mockRejectedValue(Error('passkey_cancelled'));
- await observe(async read=>{await act(async()=>{await read().pbi();});expect(read().identity).toBeNull();expect(read().busy).toBe(false);expect(read().error).toBe('passkey_cancelled');expect(p.create).not.toHaveBeenCalled();expect(p.importId).not.toHaveBeenCalled();});
+ await observe(async read=>{await act(async()=>{await read().pbi();});expect(read().identity).toBeNull();expect(read().busy).toBe(false);expect(read().error).toBe('Passkey sign-in was cancelled.');expect(p.create).not.toHaveBeenCalled();expect(p.importId).not.toHaveBeenCalled();});
+});
+it('explains unavailable passkey entry without exposing internal transport codes',async()=>{
+ p.pbi.mockRejectedValue(Error('PBI_ACCOUNT_SOURCE_UNAVAILABLE'));
+ await observe(async read=>{await act(async()=>{await read().pbi();});expect(read().error).toBe('Passkey sign-in could not finish. Try again or use your Identity Record.');expect(read().identity).toBeNull();});
 });

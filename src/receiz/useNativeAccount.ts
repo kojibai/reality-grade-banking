@@ -6,7 +6,6 @@ import { hasSettledAccountView } from './account-view';
 import type { WalletPoint } from './wallet-series';
 import type { WalletObservation } from './wallet-observation';
 import { preloadPrivateHistory } from './private-history-restore';
-import { reservePbiAccountPopup } from './pbi-account-bridge';
 function walletReadMessage(cause: unknown, refreshing = false): string {
   if (cause instanceof Error && cause.message === 'proof_replay_guard_unavailable') return 'Secure account access is temporarily unavailable. Your Identity Record is unchanged. Refresh your balance to try again.';
   return refreshing ? 'Your balance could not be updated. Your Identity Record stays on this device. Try again when the source is available.' : 'Your balance could not be opened. Your Identity Record stays on this device. Refresh your balance to try again.';
@@ -128,13 +127,17 @@ export function useNativeAccount(custody = nativeCustody) {
     finally { openingOperation.current = false; if (!held.current) setBusy(false); }
   };
   const create = (consent: boolean) => open(() => custody.createNativeIdentity(consent));
-  const pbi = () => {
-    if (openingOperation.current) return Promise.resolve();
-    let popup: Window;
-    try { popup = reservePbiAccountPopup(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : 'PBI could not be opened.'); return Promise.resolve(); }
-    return open(() => import('./pbi-account').then(module => module.openPbiAccount(popup, true))).finally(() => { try { if (!popup.closed) popup.close(); } catch { /* Already closed. */ } });
-  };
+  const pbi = () => open(async () => {
+    try { return await (await import('./pbi-account')).openPbiAccount(true); }
+    catch (cause) {
+      const code = cause instanceof Error ? cause.message : '';
+      throw Error(code === 'passkey_cancelled' ? 'Passkey sign-in was cancelled.'
+        : ['PBI_BROWSER_UNAVAILABLE','PBI_RELATED_ORIGIN_UNAVAILABLE'].includes(code)
+          ? 'This browser cannot use this passkey here. Use your Identity Record to sign in.'
+          : 'Passkey sign-in could not finish. Try again or use your Identity Record.');
+    }
+  });
+
   const importId = (file: File, phrase: string, consent: boolean) => open(() => custody.importNativeIdentity(file, phrase, consent));
   const forget = async () => {
     const current=held.current;

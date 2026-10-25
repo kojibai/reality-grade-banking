@@ -38,7 +38,7 @@ export async function verifyPbiAccountBindingStatement(input:unknown,expected:Ex
 export async function verifyPbiAccountCredentialStatement(input:unknown,expected:{accountUid:string;credentialId:string},roots:ReadonlyMap<string,ReceizSignatureV4RootPublicKey>=receizCurrentPinnedSignatureV4Roots()):Promise<Record<string,unknown>|null>{
  try{
   if(!record(input)||!exact(input,fields)||input.schema!=='receiz.account-credential.v1'||input.domain!=='receiz.account-credential.root-signature.v1'
-   ||input.operation!=='identity.credential.register'||input.accountId!==expected.accountUid||!digest(input.acceptedInputSha256)||!digest(input.predecessorSourceSha256)
+   ||!['identity.credential.register','identity.credential.pbi-upsert','identity.credential.use','identity.credential.counter','identity.credential.counter-observation'].includes(String(input.operation))||input.accountId!==expected.accountUid||!digest(input.acceptedInputSha256)||!digest(input.predecessorSourceSha256)
    ||typeof input.acceptedAtKaiPulse!=='string'||!/^(0|[1-9][0-9]{0,39})$/.test(input.acceptedAtKaiPulse)||!Array.isArray(input.admissionEvidenceSha256)||input.admissionEvidenceSha256.length>64||!input.admissionEvidenceSha256.every(digest)||!input.admissionEvidenceSha256.includes(input.acceptedInputSha256)
    ||!record(input.effect)||!exact(input.effect,['id','credentialId','publicKeyPem','legacyCredentialId','createdAt','lastUsedAt','signCount','signCountUpdatedAt','cloneDetectedAt'])
    ||input.effect.credentialId!==expected.credentialId||input.effect.cloneDetectedAt!==null||typeof input.effect.publicKeyPem!=='string'||!input.effect.publicKeyPem.includes('BEGIN PUBLIC KEY')
@@ -47,8 +47,8 @@ export async function verifyPbiAccountCredentialStatement(input:unknown,expected
  }catch{return null;}
 }
 
-/** A connected status is projected only from the newly registered canonical
- * credential's original source for the already active account. */
+/** A connected status is projected only from the current canonical
+ * credential lifecycle's original source for the already active account. */
 export async function admitPbiAccountCredential(sourceB64u:string,expected:{accountUid:string;credentialId:string}){
  const sdk=await loadReceiz();if(!/^[A-Za-z0-9_-]+$/.test(sourceB64u)||sourceB64u.length>8*1024*1024)throw Error('PBI_ACCOUNT_SOURCE_REQUIRED');
  const bytes=sdk.receizBase64UrlDecode(sourceB64u);if(sdk.receizBase64UrlEncode(bytes)!==sourceB64u)throw Error('PBI_ACCOUNT_SOURCE_INVALID');
