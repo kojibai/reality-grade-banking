@@ -2,13 +2,14 @@
 import {expect,it} from 'vitest';
 import {businessFits,fitGroups,businessFitPages} from '../src/content/business-fits.mjs';
 import {fitContent,directoryContent} from '../scripts/business-fit-pages.mjs';
+import {businessOffer} from '../src/content/business-offer.mjs';
 import {publicPage} from '../scripts/public-page-metadata.mjs';
 import {readFileSync} from 'node:fs';
 // @ts-expect-error Public enhancement is standalone ESM.
 import {init} from '../public/learn/business-fit.js';
 
 it('covers distinct useful fits with complete public journeys and canonical metadata',()=>{
- expect(businessFits.length).toBeGreaterThanOrEqual(30);
+ expect(businessFits).toHaveLength(30);
  for(const key of ['slug','headline','description','scenario']) expect(new Set(businessFits.map(fit=>fit[key as keyof typeof fit])).size).toBe(businessFits.length);
  for(const fit of businessFits){
   expect(fitGroups.some(group=>group.id===fit.group)).toBe(true);
@@ -54,4 +55,24 @@ it('keeps the entire useful directory readable before filtering, and assets outs
  expect(css).toContain('prefers-reduced-motion');expect(css).toContain('animation-play-state:paused');
  expect(css).toContain('document-hidden');expect(css).toContain('.business-scene:not(.in-view)');
  expect(readFileSync('scripts/learn-assets.mjs','utf8')).not.toContain('business.css');
+});
+
+it('puts three audience-specific results beside every $149 offer and sends every Get Business action to the same bottom-review entry',()=>{
+ const cards=new Set<string>();
+ for(const fit of businessFits){
+  const doc=new DOMParser().parseFromString(fitContent(fit),'text/html');
+  const outcomes=[...doc.querySelectorAll('.business-offer>ul>li')].map(li=>li.textContent);
+  expect(outcomes,fit.slug).toEqual(fit.benefits.map(([outcome])=>outcome));
+  cards.add(outcomes.join('|'));
+  const actions=[...doc.querySelectorAll<HTMLAnchorElement>('a')].filter(a=>a.textContent?.trim().startsWith('Get Business'));
+  expect(actions.length,fit.slug).toBe(3);
+  for(const action of actions){
+   expect(action.hasAttribute('data-business-checkout'),fit.slug).toBe(true);
+   expect(action.getAttribute('href'),fit.slug).toBe(businessOffer.checkoutHref);
+   expect(action.getAttribute('href'),fit.slug).toBe('/#account/messages/business');
+  }
+  expect(doc.querySelector('.fit-close h2')?.textContent,fit.slug).toBe(fit.benefits[0][0]);
+  expect(doc.querySelector('.fit-hero')?.textContent,fit.slug).not.toMatch(/credits|7,500|your frame|production integrations/i);
+ }
+ expect(cards.size).toBe(30);
 });
