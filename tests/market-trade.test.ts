@@ -110,3 +110,9 @@ it.each(['throw','reject']as const)('optional Market refresh %s cannot change th
  const f=fixture();f.submitTrade.mockImplementation(async(body:any)=>{f.record=syntheticMarketRecord(body,uid);return f.record;});const afterRecorded=vi.fn(()=>{if(mode==='throw')throw Error('optional');return Promise.reject(Error('optional'));});
  const api=createMarketTrade({...f.options,afterRecorded}),r=await api.prepare({marketItemId:'asset:one',side:'buy',amountUsdCents:'1000'});expect((await api.execute(r,r.digest)).status).toBe('recorded');await Promise.resolve();expect((await api.status())?.status).toBe('recorded');expect(afterRecorded).toHaveBeenCalledOnce();
 });
+it.each(['buy','sell'] as const)('requests only needed wallet context for %s review',async side=>{
+ const f=fixture(),api=createMarketTrade(f.options);
+ await api.prepare({marketItemId:'asset:one',side,...(side==='buy'?{amountUsdCents:'1000'}:{shareQuantityMicro:'1250000'})});
+ const query=new URL(f.request.mock.calls[0][0],'https://test.invalid').searchParams;
+ expect(query.get('balance')).toBe(side==='sell'?'omit':null);expect(f.submitTrade).not.toHaveBeenCalled();
+});

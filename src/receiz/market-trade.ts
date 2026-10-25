@@ -65,6 +65,7 @@ export function createMarketTrade(input:{ownerReceizId:string;assertOpen():void;
    const dollars=value.side==='buy'||value.amountUsdCents!==undefined;
    const body:MarketBody={marketItemId:value.marketItemId,side:value.side,clientNonce:crypto.randomUUID(),...(dollars?{amountUsd:integer(value.amountUsdCents,true)?units(value.amountUsdCents,100n,2):''}:{shareQuantity:integer(value.shareQuantityMicro,true)?units(value.shareQuantityMicro):''})};validateBody(body);
    const context=await input.connect(true);input.assertOpen();if(!uuid(context.accountUid))throw Error('BANK_MARKET_IDENTITY_CHANGED');const query=new URLSearchParams({marketItemId:body.marketItemId,side:body.side,...(dollars?{amountUsd:body.amountUsd!}:{shareQuantity:body.shareQuantity!})});
+   if(body.side==='sell')query.set('balance','omit');
    let raw:unknown;
    try{raw=await context.client.request(`/api/connect/market/shares/quote?${query}`,{method:'GET'});}catch(cause){const error=cause as {status?:number;payload?:Json};if(body.side==='sell'&&dollars&&error.status===400&&error.payload?.error==='market_invalid_amount')throw Object.assign(Error('BANK_MARKET_DOLLAR_SALE_UNAVAILABLE'),{status:400});throw cause;}
    const observation=object(raw);input.assertOpen();const request=object(observation.request),preview=object(observation.preview);
