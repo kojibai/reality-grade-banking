@@ -2,7 +2,10 @@ import {canonicalPublicPath} from '../src/content/public-routes.mjs';
 import {togetherPages} from '../src/content/together.mjs';
 import {twinSalesPages} from '../src/content/twin-pages.mjs';
 import {createHash,randomUUID} from 'node:crypto';
-const OWNER='bjklock',ORIGIN='https://receiz.com',MAX=18000;
+const OWNER='bjklock',ORIGIN='https://receiz.com',MAX=18000,MAX_NATIVE_EVENT=32*1024*1024;
+// Text delivery projects an accepted native reply. The complete performance
+// stays in native custody; this surface never plays or admits voice/avatar media.
+const textResult=value=>value.reply&&Object.hasOwn(value.reply,'performance')?{...value,reply:{...value.reply,performance:null}}:value;
 const address=v=>typeof v==='string'&&v.length<=254&&/^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/.test(v);
 const text=(v,max)=>typeof v==='string'&&v.trim().length>0&&v.length<=max&&!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(v);
 async function readBody(req){const reader=req.body?.getReader();if(!reader)return '';const chunks=[];let total=0;for(;;){const {value,done}=await reader.read();if(done)break;total+=value.byteLength;if(total>MAX){await reader.cancel();throw Error('TOO_LARGE');}chunks.push(value);}return new TextDecoder().decode(Buffer.concat(chunks));}
@@ -14,20 +17,21 @@ function nativeStream(response,messageId){
  const event=(controller,value)=>controller.enqueue(encoder.encode('data: '+JSON.stringify(value)+'\n\n'));
  const refuse=(controller,error='RECEIZ_RESULT_UNCONFIRMED')=>{if(!failed){failed=true;event(controller,{type:'error',error});}};
  const consume=(controller,frame)=>{
-  if(failed)return;const data=frame.split(/\r?\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n');if(!data)return;
+  if(failed)return;if(frame.length>MAX_NATIVE_EVENT){refuse(controller);return;}const data=frame.split(/\r?\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n');if(!data)return;
   let value;try{value=JSON.parse(data);}catch{refuse(controller);return;}
   if(['reply_start','reply_delta','reply_preview'].includes(value.type)){
    if(accepted||value.messageId!==messageId){refuse(controller,'RECEIZ_SOURCE_MISMATCH');return;}
    if(value.type==='reply_delta'&&typeof value.delta!=='string'){refuse(controller);return;}
+   if(value.type==='reply_preview')return;
   }else if(value.type==='reply_done'){
    if(accepted||value.world?.username!==OWNER||typeof value.reply?.message!=='string'||value.assistantMessage?.id&&value.assistantMessage.id!==messageId){refuse(controller,'RECEIZ_SOURCE_MISMATCH');return;}accepted=true;
   }else if(value.type==='error'){failed=true;}
   else if(value.type==='done'){if(!accepted){refuse(controller);return;}}
   else return;
-  event(controller,value);
+  event(controller,value.type==='reply_done'?textResult(value):value);
  };
  return response.body.pipeThrough(new TransformStream({
-  transform(chunk,controller){buffer+=decoder.decode(chunk,{stream:true});let match;while((match=/\r?\n\r?\n/.exec(buffer))){const frame=buffer.slice(0,match.index);buffer=buffer.slice(match.index+match[0].length);consume(controller,frame);}if(buffer.length>2000000){buffer='';refuse(controller);}},
+  transform(chunk,controller){buffer+=decoder.decode(chunk,{stream:true});let match;while((match=/\r?\n\r?\n/.exec(buffer))){const frame=buffer.slice(0,match.index);buffer=buffer.slice(match.index+match[0].length);consume(controller,frame);}if(buffer.length>MAX_NATIVE_EVENT){buffer='';refuse(controller);}},
   flush(controller){buffer+=decoder.decode();if(buffer.trim())consume(controller,buffer);if(!accepted&&!failed)refuse(controller);}
  }));
 }
@@ -90,6 +94,6 @@ export async function handleCooperativeConversation(request,{fetch:transport=glo
   }
   // Preserve the actual native reply, memory, booking confirmation and source
   // relationships. This relay never fabricates an ownership or calendar result.
-  return result(200,data);
+  return result(200,body.action==='message'?textResult(data):data);
  }catch{return fail(502,'RECEIZ_RESULT_UNCONFIRMED');}
 }
