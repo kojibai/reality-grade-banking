@@ -58,14 +58,17 @@ export function useNativeAccount(custody = nativeCustody) {
     finally { if (ticket === generation.current) { pending.current = false; setBusy(false); } }
   }, [publishObservation, refreshLocal]);
   const entering = useRef<OpenIdentity | null>(null);
-  const accept = useCallback(async (next: OpenIdentity, ticket: number, resume = false) => {
+  const accept = useCallback(async (next: OpenIdentity, ticket: number, resume = false, reusePrepared = false) => {
     if (ticket !== generation.current) { next.dispose(); return; }
     entering.current = next;
     setOpeningStage('history');
     try {
       const provisionalUid = next.knownWallet?.()?.wallet.userId;
       const preloading=provisionalUid?preloadPrivateHistory(next,provisionalUid):null;
-      const known = await next.prepareAccountView(resume?{resume:true}:undefined);
+      // PBI already admitted and prepared this exact account before saving
+      // custody. Reuse its complete frame rather than valuing it a second time.
+      const prepared = reusePrepared ? next.knownWallet?.() ?? null : null;
+      const known = prepared && hasSettledAccountView(prepared) ? prepared : await next.prepareAccountView(resume?{resume:true}:undefined);
       if (ticket !== generation.current) { next.dispose(); return; }
       // Reuse the already-started local restore in the first complete frame;
       // account entry and the Ledger hook must not start separate reads.
@@ -115,20 +118,20 @@ export function useNativeAccount(custody = nativeCustody) {
     document.addEventListener('visibilitychange', wake);
     return () => { alive = false; entering.current?.dispose(); held.current?.dispose(); held.current = null; generation.current++; clearInterval(timer); clearInterval(localTimer);removeEventListener('bankeiz:wallet-send-recorded',paymentRecorded); removeEventListener('bankeiz:account-observation', repaint); for (const event of wakeEvents) removeEventListener(event, wake); document.removeEventListener('visibilitychange', wake); };
   }, [accept, refresh, refreshLocal, custody]);
-  const open = async (operation: () => Promise<OpenIdentity>) => {
+  const open = async (operation: (identityPrepared:()=>void) => Promise<OpenIdentity>, reusePrepared = false) => {
     if (openingOperation.current) return;
     openingOperation.current = true; const ticket = generation.current; setOpeningStage('identity'); setBusy(true); setError(null);
     try {
-      const next = await operation();
+      const next = await operation(()=>{if(ticket===generation.current)setOpeningStage('history');});
       if (ticket !== generation.current) { next.dispose(); return; }
       // Prepare the full visible account before publishing the admitted identity.
-      await accept(next, ticket);
+      await accept(next, ticket, false, reusePrepared);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Your ID could not be opened.'); }
     finally { openingOperation.current = false; if (!held.current) setBusy(false); }
   };
   const create = (consent: boolean) => open(() => custody.createNativeIdentity(consent));
-  const pbi = () => open(async () => {
-    try { return await (await import('./pbi-account')).openPbiAccount(true); }
+  const pbi = () => open(async identityPrepared => {
+    try { return await (await import('./pbi-account')).openPbiAccount(true,identityPrepared); }
     catch (cause) {
       const code = cause instanceof Error ? cause.message : '';
       throw Error(code === 'passkey_cancelled' ? 'Passkey sign-in was cancelled.'
@@ -136,7 +139,7 @@ export function useNativeAccount(custody = nativeCustody) {
           ? 'This browser cannot use this passkey here. Use your Identity Record to sign in.'
           : 'Passkey sign-in could not finish. Try again or use your Identity Record.');
     }
-  });
+  }, true);
 
   const importId = (file: File, phrase: string, consent: boolean) => open(() => custody.importNativeIdentity(file, phrase, consent));
   const forget = async () => {

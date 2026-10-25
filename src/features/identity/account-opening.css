@@ -40,6 +40,7 @@
  .account-opening-arrival span:nth-child(2){animation-delay:2.5s}
  .account-opening-seal-glint{animation:account-glint 5s ease-in-out infinite}
  .account-opening-progress>span{transition:transform .22s ease-out}
+ .account-opening-screen[aria-busy=true] .account-opening-progress::after{content:'';position:absolute;inset:0 auto 0 0;width:40%;border-radius:inherit;background:linear-gradient(90deg,transparent,#244dcb,transparent);animation:account-opening-activity 1.4s ease-in-out infinite}
 }
 @media(prefers-reduced-motion:reduce){.account-opening-screen *{animation:none!important;transition:none!important}.account-opening-arrival span:first-child{opacity:.3;transform:scale(1.8)}}
 .account-opening-screen[data-entry=resume] .account-opening-portal{animation:none}
@@ -53,3 +54,4 @@
 
 @keyframes account-depth{0%,100%{transform:translateY(-2%) rotateX(3deg) rotateY(-5deg)}50%{transform:translateY(-3%) rotateX(-2deg) rotateY(5deg)}}
 @keyframes account-horizon{0%,100%{opacity:.55;transform:translate(-50%,-35%) rotateX(75deg)}50%{opacity:1;transform:translate(-50%,-34%) rotateX(72deg)}}
+@keyframes account-opening-activity{0%,100%{transform:translateX(0)}50%{transform:translateX(150%)}}

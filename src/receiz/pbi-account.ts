@@ -11,13 +11,12 @@ import {unprotectIdentityKeyFile} from './identity-protection';
 /** Explicit PBI entry only. The canonical ceremony proves the recovered
  * account and appends this new device key through the existing native binding.
  * No failed assertion, session JSON or account UID creates a Bank account. */
-export async function openPbiAccount(consentApproved:boolean):Promise<OpenIdentity>{
+export async function openPbiAccount(consentApproved:boolean,onIdentityPrepared?:()=>void):Promise<OpenIdentity>{
  try{
   if(!consentApproved)throw Error('Approve account access before continuing with PBI.');
   return await withDeviceIdentityEntry(async()=>{
    const recovery=recoverPbiAccountInline();void recovery.catch(()=>{});
-   const sdk=await loadReceiz(),resources=await loadBankProofResources(fetch);
-   const {createReceizOfflineSealer,createReceizIndexedDbSealStore}=await import('@receiz/sdk/offline');
+   const [sdk,resources,{createReceizOfflineSealer,createReceizIndexedDbSealStore}]=await Promise.all([loadReceiz(),loadBankProofResources(fetch),import('@receiz/sdk/offline')]);
    const store=certificateTimeSafeStore(createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer'));
    const sealer=createReceizOfflineSealer({store,resources,fetch:certificateTimeSafeFetch(nativeFetch)});
    await sealer.enroll();
@@ -45,6 +44,7 @@ export async function openPbiAccount(consentApproved:boolean):Promise<OpenIdenti
    const identity=await openCanonicalIdentity(sealed.artifactBytes,'',sealed.filename,true,{bytes:new Uint8Array(protectedSeal.artifactBytes),phrase:secret},true);
    try{
     if(identity.binding.keyId!==binding.keyId||identity.binding.artifactOwnerReceizId!==binding.artifactOwnerReceizId)throw Error('PBI_DEVICE_IDENTITY_MISMATCH');
+    onIdentityPrepared?.();
     const view=await identity.prepareAccountView();if(view.wallet.userId!==source.accountUid)throw Error('PBI_ACCOUNT_MISMATCH');
     await identity.persistDeviceCustody(true);return identity;
    }catch(error){identity.dispose();throw error;}
