@@ -429,3 +429,12 @@ it.each([false,true])('preserves an ordinary unsent agent draft when an explicit
   expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your agent…"]')?.value).toBe('My custom unsent question');
  }finally{f.unmount();}
 });
+
+it('streams the actual native answer and executes the returned setup in the same open conversation',async()=>{
+ const f=fixture(),pending=deferred<NativeTwinReply>();let asked:NativeTwinAsk|undefined;
+ const execute=vi.fn(async()=>[{id:'native-result',tool:'business_update_profile',status:'accepted' as const,title:'Profile saved',summary:'Your changes are saved on /owner.'}]),identity={...f.identity,businessSetup:async()=>({execute,selectFiles(){},resume:vi.fn()})} as unknown as OpenIdentity;
+ f.api.twin.ask.mockImplementationOnce(input=>{asked=input;input.onDelta?.('I am preparing');return pending.promise;});
+ try{await f.render(true,identity);await f.input('Ask your agent…','Set my bio to My work');await f.submit();expect(asked?.businessSetup).toBe(true);expect(f.host.textContent).toContain('I am preparing');expect(execute).not.toHaveBeenCalled();await act(async()=>pending.resolve({requestId:asked!.requestId,message:'I will save your bio.',authority:'generated-interpretation',source:'upstream',memoryScope:'relationship',memory:[],sourceReferences:[],sharedContext:[],actionHandoffs:[],businessActions:[{tool:'business_update_profile',args:{patch:{bio:'My work'}}}]}));await act(async()=>{await new Promise(resolve=>setTimeout(resolve,50));});expect(execute).toHaveBeenCalledExactlyOnceWith(asked!.requestId,[{tool:'business_update_profile',args:{patch:{bio:'My work'}}}]);expect(f.host.textContent).toContain('Profile saved');expect(f.host.querySelector('[aria-label="Ask your agent…"]')).not.toBeNull();await f.input('Ask your agent…','What did you save?');await f.submit();expect(f.api.twin.ask.mock.calls[1]?.[0].context?.records[0].text).toContain('Your changes are saved');}finally{f.unmount();}
+});
+
+it('sends the seventh explicitly selected context excerpt rather than silently dropping it',async()=>{const f=fixture(),records=Array.from({length:8},(_,index)=>({id:'chosen-'+index,title:'Chosen '+index,text:'Exact excerpt '+index}));try{await f.render(true,f.identity,records);const boxes=f.host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');await act(async()=>boxes[6].click());await f.input('Ask your agent…','Explain my selection');await f.submit();expect(f.api.twin.ask.mock.calls[0]?.[0].context?.records).toEqual([records[6]]);}finally{f.unmount();}});

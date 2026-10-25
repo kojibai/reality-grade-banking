@@ -1,0 +1,4 @@
+import {expect,it} from 'vitest';
+import {composeTwinOwnerContext} from '../src/receiz/twin-owner-context';
+it('preserves all twelve explicit owner-selected records in order',()=>{const selected=Array.from({length:12},(_,index)=>({id:String(index),title:'Chosen',text:'Exact record '+index}));expect(composeTwinOwnerContext(selected,[{id:'receipt',title:'Result',text:'Optional'}])).toEqual(selected);});
+it('uses only remaining count and actual text budget for whole optional receipts',()=>{const selected=Array.from({length:6},(_,index)=>({id:String(index),title:'Chosen',text:'x'.repeat(2400)})),receipt={id:'receipt',title:'Result',text:'r'.repeat(2000)};expect(composeTwinOwnerContext(selected,[receipt])).toEqual(selected);expect(composeTwinOwnerContext(selected,[{...receipt,text:'Confirmed'}])).toEqual([...selected,{...receipt,text:'Confirmed'}]);});

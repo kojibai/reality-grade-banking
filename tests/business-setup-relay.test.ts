@@ -64,8 +64,10 @@ it.each(['lost','malformed','wrong-request'])('keeps a possible creator write un
 it.each([['usage_insufficient_credits',undefined,'refused'],['owned_twin_action_pending','held','unknown'],['owned_twin_action_released','released','refused'],['provider_internal_error',undefined,'unknown']])('retains actual native refusal/held semantics: %s',async(error,operationStatus,outcome)=>{
  const fetcher=host(()=>Response.json({ok:false,error,operationStatus},{status:503}));const result=await(await relayBusinessSetup(request('business_create_work',{mode:'document',prompt:'A draft'},operation))).json();expect(result.outcome).toBe(outcome);expect(fetcher).toHaveBeenCalledTimes(2);
 });
-it('remains unmounted and absent from shared account entry, transport and visible message surfaces',()=>{
- for(const path of ['server/native-account.ts','server/bank-api.ts','src/receiz/native-identity.ts','src/features/messages/MessagesPanel.tsx'])expect(readFileSync(path,'utf8'),path).not.toMatch(/business-setup|BusinessSetupTools|relayBusinessSetup/);
+it('mounts only fixed owner setup routes and keeps optional execution out of account entry first paint',()=>{
+ const api=readFileSync(new URL('../server/bank-api.ts',import.meta.url),'utf8'),transport=readFileSync(new URL('../server/native-account.ts',import.meta.url),'utf8'),identity=readFileSync(new URL('../src/receiz/native-identity.ts',import.meta.url),'utf8'),messages=readFileSync(new URL('../src/features/messages/MessagesPanel.tsx',import.meta.url),'utf8');
+ expect(api).toContain("url.pathname==='/api/bank/business/setup'");expect(transport).toContain("'/api/bank/business/setup'");expect(identity).toContain("import('./business-chat')");expect(identity).not.toMatch(/^import .*from ['"]\.\/business-chat['"]/m);expect(messages).toContain('identity.businessSetup');
+ for(const path of ['src/features/identity/AccountOpening.tsx','src/receiz/device-identity-entry.ts'])expect(readFileSync(new URL('../'+path,import.meta.url),'utf8')).not.toMatch(/business-setup|business-chat/);
 });
 
 it('supports explicit domain inspection without invoking provider verification',async()=>{

@@ -1,3 +1,4 @@
+import {composeTwinOwnerContext} from '../../receiz/twin-owner-context';
 import {BUSINESS_OPENING_MESSAGE,BUSINESS_FIRST_TASK,type BusinessStart} from './useBusinessEntry';
 import {conversationPeople,peopleSearchQuery,peopleSuggestions} from '../../receiz/people-search';
 import {AccountProfileLink} from '../../components/AccountProfileLink';
@@ -17,6 +18,8 @@ import type {OpenIdentity} from '../../receiz/native-identity';
 import {MessagingError,type ChatConversation,type ChatMessage,type ChatPage,type ChatPerson,type NativeMessaging} from '../../receiz/native-messaging';
 import type {NativeTwinAsk,NativeTwinMemory,NativeTwinReply} from '../../receiz/native-twin';
 const TwinUpgradePanel=lazy(()=>import('./TwinUpgradePanel').then(module=>({default:module.TwinUpgradePanel})));
+const BusinessReceipts=lazy(()=>import('./BusinessReceipts').then(module=>({default:module.BusinessReceipts})));
+import type {BusinessChatReceipt} from '../../receiz/business-chat';
 const CallPanel=lazy(()=>import('./CallPanel').then(module=>({default:module.CallPanel})));
 import './messages.css';
 
@@ -96,6 +99,10 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
   const onCallLiveChange=useCallback((live:boolean)=>{callLiveRef.current=live;setCallLive(live);},[]);
   const chooseView=()=>{viewChosen.current=true;notificationEpoch.current++;notificationWork.current?.abort();notificationCall.current=null;freshNotificationThread.current=null;notificationAttempt.current=initialNotification??null;};
   const [contextIds,setContextIds]=useState<string[]>([]),[proposal,setProposal]=useState<string|null>(null);
+  const [businessReceipts,setBusinessReceipts]=useState<Record<string,BusinessChatReceipt[]>>({}),[businessWorking,setBusinessWorking]=useState(false),[twinStream,setTwinStream]=useState(''),[selectedFileNames,setSelectedFileNames]=useState<string[]>([]);
+  const businessContext=useRef<BusinessChatReceipt[]>([]),connectionCleanup=useRef<(()=>void)|null>(null);
+  const streamTwinDelta=useCallback((text:string)=>{if(alive.current)setTwinStream(current=>current+text);},[]);
+  useEffect(()=>()=>{connectionCleanup.current?.();},[]);
   const [pendingTwin,setPendingTwin]=useState<Omit<NativeTwinAsk,'signal'>|null>(null);
   const [pageVisible,setPageVisible]=useState(()=>document.visibilityState!=='hidden');
   useEffect(()=>{if(!active&&!callLive){setHeldCall(null);setMode(current=>current==='call'?'thread':current);}},[active,callLive]);
@@ -118,7 +125,7 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
   },[active,stop]);
 
   useEffect(()=>{followLatest.current=true;},[mode,selected?.id]);
-  useEffect(()=>{if(followLatest.current&&scrollArea.current)scrollArea.current.scrollTop=scrollArea.current.scrollHeight;},[mode,selected?.id,page?.messages,deltas,pendingMessages,pendingTwin,exchanges,typingPeers,twinAccessQuestions]);
+  useEffect(()=>{if(followLatest.current&&scrollArea.current)scrollArea.current.scrollTop=scrollArea.current.scrollHeight;},[mode,selected?.id,page?.messages,deltas,pendingMessages,pendingTwin,exchanges,typingPeers,twinAccessQuestions,twinStream,businessReceipts,businessWorking]);
   const trackScroll=()=>{const area=scrollArea.current;if(area)followLatest.current=area.scrollHeight-area.scrollTop-area.clientHeight<72;};
 
   const connect=useCallback(async(approve:boolean)=>{
@@ -255,17 +262,37 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
     // One explicit profile Message intent uses the existing conversation path.
     // A failed/ambiguous creation is never automatically repeated on reopen.
   },[initialRecipient?.id,api,active,pageVisible,busy]);
+  const connectBusinessProvider=(requestId:string,href:string)=>{
+    if(!identity.businessSetup||!live())return;
+    const url=new URL(href);if(!['https://vercel.com','https://connect.vercel.com'].includes(url.origin))return;
+    connectionCleanup.current?.();
+    const popup=window.open(url.href,'bankeiz-provider-connect','popup,width=520,height=740');
+    if(!popup){setNotice('Allow the provider connection window, then try Connect again.');return;}
+    let finished=false;setBusinessWorking(true);
+    const resume=async()=>{if(finished)return;finished=true;cleanup();if(!live())return;try{const setup=await identity.businessSetup!(),receipts=await setup.resume(requestId);if(!live())return;businessContext.current=[...businessContext.current.filter(row=>!receipts.some(next=>next.id===row.id)),...receipts].slice(-6);setBusinessReceipts(rows=>({...rows,[requestId]:receipts}));}catch(cause){if(live())setNotice('Provider setup needs checking. '+errorText(cause));}finally{if(live())setBusinessWorking(false);}};
+    const receive=(event:MessageEvent)=>{if(event.origin===location.origin&&event.source===popup&&event.data?.type==='bankeiz:dns-connected')void resume();};
+    const poll=setInterval(()=>{if(popup.closed)void resume();},500),timeout=setTimeout(()=>{if(!finished){finished=true;cleanup();if(live()){setBusinessWorking(false);setNotice('Provider approval is still pending. You can return to Connect when ready.');}}},10*60*1000);
+    function cleanup(){clearInterval(poll);clearTimeout(timeout);window.removeEventListener('message',receive);connectionCleanup.current=null;}
+    connectionCleanup.current=()=>{finished=true;cleanup();};window.addEventListener('message',receive);
+  };
+  const applyBusinessActions=async(reply:NativeTwinReply)=>{
+    if(!identity.businessSetup||!reply.businessActions?.length)return;
+    setBusinessWorking(true);
+    try{const setup=await identity.businessSetup();if(!live())return;const receipts=await setup.execute(reply.requestId,reply.businessActions);if(!live())return;businessContext.current=[...businessContext.current,...receipts].slice(-6);setBusinessReceipts(rows=>({...rows,[reply.requestId]:receipts}));}
+    catch(cause){if(live())setNotice('Setup result needs checking. '+errorText(cause));}
+    finally{if(live())setBusinessWorking(false);}
+  };
   const acceptTwin=(question:Omit<NativeTwinAsk,'signal'>,reply:NativeTwinReply)=>{
     const exchange: TwinExchange={id:question.requestId,question:question.message,reply,memoryIds:currentTwinMemoryIds(question.message,reply)};
     setExchanges(rows=>rows.some(row=>row.id===question.requestId)?rows.map(row=>row.id===question.requestId?exchange:row):[...rows,exchange]);
-    setTwinDraft(current=>current.trim()===question.message?'':current);setContextIds([]);setPendingTwin(null);
+    setTwinDraft(current=>current.trim()===question.message?'':current);setContextIds([]);setPendingTwin(null);setTwinStream('');
   };
   const recoverTwin=async()=>{
     if(!api||!pendingTwin||sending.current||!live())return;
     sending.current=true;setBusy(true);setNotice('');const pending=controller();
     try{
-      const reply=await api.twin.ask({...pendingTwin,signal:pending.signal});
-      if(!pending.signal.aborted&&live())acceptTwin(pendingTwin,reply);
+      setTwinStream('');const reply=await api.twin.ask({...pendingTwin,signal:pending.signal,onDelta:streamTwinDelta});
+      if(!pending.signal.aborted&&live()){acceptTwin(pendingTwin,reply);await applyBusinessActions(reply);}
     }catch(cause){if(!pending.signal.aborted&&live())setNotice('Agent response is not confirmed. '+errorText(cause));}
     finally{controllers.current.delete(pending);sending.current=false;if(alive.current)setBusy(false);}
   };
@@ -286,12 +313,12 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
     const clearOutgoing=()=>{if(!id||!outgoing)return;setPendingMessages(rows=>{if(rows[id]?.id!==outgoing.id)return rows;const next={...rows};delete next[id];return next;});};
     try{
       if(isTwin){
-        const requestId=crypto.randomUUID(),records=openingId?[]:twinContextRecords.slice(0,12).filter(record=>contextIds.includes(record.id));
-        const question:Omit<NativeTwinAsk,'signal'>={message:text,requestId,quoteExpiresAt:new Date(Date.now()+5*60*1000).toISOString(),...(records.length?{context:{schema:'receiz.owner-twin.context.v1' as const,ownerUid:api.accountUid,disclosure:'owner-approved-for-this-request' as const,records:records.map(({id,title,text})=>({id,title,text}))}}:{})};
-        setPendingTwin(question);if(!openingId)setTwinDraft('');
-        const reply=await api.twin.ask({...question,signal:pending.signal});
+        const requestId=crypto.randomUUID(),selectedRecords=openingId?[]:twinContextRecords.slice(0,12).filter(record=>contextIds.includes(record.id)),receipts=businessContext.current.map(receipt=>({id:'setup:'+receipt.id,title:receipt.title,text:JSON.stringify({status:receipt.status,summary:receipt.summary,...(receipt.domain?{hostname:receipt.domain.hostname,warning:receipt.domain.warning}:{}),...(receipt.details?{nativeResultExcerpt:receipt.details.slice(0,1200)}:{})})})),records=composeTwinOwnerContext(selectedRecords,receipts);
+        const question:Omit<NativeTwinAsk,'signal'>={message:text,requestId,quoteExpiresAt:new Date(Date.now()+5*60*1000).toISOString(),...(identity.businessSetup?{businessSetup:true}:{}),...(records.length?{context:{schema:'receiz.owner-twin.context.v1' as const,ownerUid:api.accountUid,disclosure:'owner-approved-for-this-request' as const,records:records.map(({id,title,text})=>({id,title,text}))}}:{})};
+        setTwinStream('');setPendingTwin(question);if(!openingId)setTwinDraft('');
+        const reply=await api.twin.ask({...question,signal:pending.signal,onDelta:streamTwinDelta});
         if(pending.signal.aborted||!live())return;
-        acceptTwin(question,reply);
+        acceptTwin(question,reply);await applyBusinessActions(reply);
       }else if(id){
         const accept=(message:ChatMessage)=>{
           if(message.senderKind==='user'&&message.senderUserId===api.accountUid)acknowledged=true;
@@ -358,9 +385,11 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
   return <div className="bank-messages-host"><Sheet title={title} active={active} onClose={onClose}><section className="bank-messaging" aria-label="Your agent and messages">
     {consent==='needed'?<div className="bank-messaging-consent"><BankMark/><h3>Your conversations,<br/>through your ID.</h3><p>Use your existing Receiz messages, groups, calls and agent through this ID. Nothing sent until you send.</p><button className="primary-button" type="button" onClick={()=>void connect(true)}>Enable messages<ArrowUpRight size={17}/></button></div>:<>
       {(mode==='twin'||mode==='inbox')&&<nav className="bank-messaging-nav" aria-label="Conversation views">{(twinFirst?['twin','inbox'] as const:['inbox','twin'] as const).map(view=><button key={view} className={mode===view?'active':''} type="button" onClick={()=>{chooseView();setUpgradeOpen(false);setMode(view);setNotice('');}}>{view==='twin'?'Your agent':'Messages'}</button>)}<NotificationsControl api={api}/>{mode==='inbox'&&<button className="bank-compose-new" aria-label="New conversation" type="button" onClick={()=>{chooseView();setMode('new');setNotice('');}}><SquarePen size={19}/></button>}</nav>}
-      {mode==='twin'&&(!upgradeOpen||twinFirst?<><div className="bank-conversation-scroll" ref={scrollArea} onScroll={trackScroll}>{!exchanges.length&&!pendingTwin&&!twinAccessQuestions.length?<div className="bank-twin-welcome"><div className="bank-twin-mark"><BankMark/></div>{businessStart?<><h3>{businessStart.title}</h3><p>{businessStart.hint} Keep the background together and work toward a result you can review and use.</p></>:<><h3>Your money.<br/>Your history.<br/>Help with what’s next.</h3><p>Understand a payment, bring a memory into context, or prepare your next move. Continue the conversation with the history you choose to share.</p></>}<div className="bank-twin-suggestions">{['Explain my last payment','Find a memory','Prepare a payment'].map(text=><button key={text} type="button" onClick={()=>setTwinDraft(text)}>{text}<ArrowUpRight size={16}/></button>)}</div></div>:<div className="bank-thread-messages">{!!twinMemory.length&&<section className="bank-twin-memory" aria-label="Earlier conversation"><p className="bank-message-date">Earlier conversation</p>{twinMemory.map(row=><div key={row.persistedId||row.transportId||row.id} className={row.role==='user'?'bank-message-own':'bank-message-other'}><span className="bank-message-sender">{row.role==='user'?'You':'Your agent'} · {row.scope} memory</span><p>{row.body}</p></div>)}</section>}{twinAccessQuestions.map(row=><div className="bank-twin-exchange" key={row.id}><div className="bank-message-own">{row.question}</div><TwinAccessReply business={row.question===BUSINESS_OPENING_MESSAGE} onUpgrade={()=>{setUpgradeQuestion(row.question);setUpgradeOpen(true);}}/></div>)}{exchanges.map(exchange=><div className="bank-twin-exchange" key={exchange.id}><div className="bank-message-own">{exchange.question}</div><div className="bank-twin-reply"><span className="bank-twin-reply-identity">{ownAvatar&&<ProfileAvatar src={ownAvatar} name="Your agent" eager/>}Your agent · Generated interpretation{exchange.reply.source!=='upstream'?' · '+exchange.reply.source:''}</span><p>{exchange.reply.message}</p>{!!exchange.reply.sharedContext.length&&<p className="bank-twin-context-used">Shared for this request: {exchange.reply.sharedContext.map(record=>record.title).join(', ')}</p>}{exchange.reply.actionHandoffs.map((action,index)=><div className="bank-twin-proposal" key={index}><small>Proposal · review before acting</small><button type="button" onClick={()=>setProposal(proposal===action.href?null:action.href)}>{action.label}<ArrowUpRight size={15}/></button>{proposal===action.href&&<div><p>This suggestion has not been executed.</p><a href={action.href} target="_blank" rel="noopener noreferrer">Review in Receiz</a>{onPreparePayment&&['pay','deposit'].includes(action.kind)&&<button type="button" onClick={()=>onPreparePayment?.()}>Prepare a payment in Bank</button>}</div>}</div>)}</div></div>)}</div>}{pendingTwin&&!exchanges.some(row=>row.id===pendingTwin.requestId)&&<div className="bank-thread-messages bank-twin-pending"><div className="bank-message-own"><p>{pendingTwin.message}</p><small className="bank-delivery-status">{busy?'Sending':'Awaiting confirmation'}</small></div>{busy&&<TypingBubble name="Your agent" text="" avatarUrl={ownAvatar}/>}</div>}</div>
+      {mode==='twin'&&(!upgradeOpen||twinFirst?<><div className="bank-conversation-scroll" ref={scrollArea} onScroll={trackScroll}>{!exchanges.length&&!pendingTwin&&!twinAccessQuestions.length?<div className="bank-twin-welcome"><div className="bank-twin-mark"><BankMark/></div>{businessStart?<><h3>{businessStart.title}</h3><p>{businessStart.hint} Keep the background together and work toward a result you can review and use.</p></>:<><h3>Your money.<br/>Your history.<br/>Help with what’s next.</h3><p>Understand a payment, bring a memory into context, or prepare your next move. Continue the conversation with the history you choose to share.</p></>}<div className="bank-twin-suggestions">{['Explain my last payment','Find a memory','Prepare a payment'].map(text=><button key={text} type="button" onClick={()=>setTwinDraft(text)}>{text}<ArrowUpRight size={16}/></button>)}</div></div>:<div className="bank-thread-messages">{!!twinMemory.length&&<section className="bank-twin-memory" aria-label="Earlier conversation"><p className="bank-message-date">Earlier conversation</p>{twinMemory.map(row=><div key={row.persistedId||row.transportId||row.id} className={row.role==='user'?'bank-message-own':'bank-message-other'}><span className="bank-message-sender">{row.role==='user'?'You':'Your agent'} · {row.scope} memory</span><p>{row.body}</p></div>)}</section>}{twinAccessQuestions.map(row=><div className="bank-twin-exchange" key={row.id}><div className="bank-message-own">{row.question}</div><TwinAccessReply business={row.question===BUSINESS_OPENING_MESSAGE} onUpgrade={()=>{setUpgradeQuestion(row.question);setUpgradeOpen(true);}}/></div>)}{exchanges.map(exchange=><div className="bank-twin-exchange" key={exchange.id}><div className="bank-message-own">{exchange.question}</div><div className="bank-twin-reply"><span className="bank-twin-reply-identity">{ownAvatar&&<ProfileAvatar src={ownAvatar} name="Your agent" eager/>}Your agent · Generated interpretation{exchange.reply.source!=='upstream'?' · '+exchange.reply.source:''}</span><p>{exchange.reply.message}</p>{businessReceipts[exchange.id]?.length?<Suspense fallback={null}><BusinessReceipts receipts={businessReceipts[exchange.id]} onConnect={href=>connectBusinessProvider(exchange.id,href)}/></Suspense>:null}{!!exchange.reply.sharedContext.length&&<p className="bank-twin-context-used">Shared for this request: {exchange.reply.sharedContext.map(record=>record.title).join(', ')}</p>}{exchange.reply.actionHandoffs.map((action,index)=><div className="bank-twin-proposal" key={index}><small>Proposal · review before acting</small><button type="button" onClick={()=>setProposal(proposal===action.href?null:action.href)}>{action.label}<ArrowUpRight size={15}/></button>{proposal===action.href&&<div><p>This suggestion has not been executed.</p><a href={action.href} target="_blank" rel="noopener noreferrer">Review in Receiz</a>{onPreparePayment&&['pay','deposit'].includes(action.kind)&&<button type="button" onClick={()=>onPreparePayment?.()}>Prepare a payment in Bank</button>}</div>}</div>)}</div></div>)}</div>}{pendingTwin&&!exchanges.some(row=>row.id===pendingTwin.requestId)&&<div className="bank-thread-messages bank-twin-pending"><div className="bank-message-own"><p>{pendingTwin.message}</p><small className="bank-delivery-status">{busy?'Sending':'Awaiting confirmation'}</small></div>{busy&&<TypingBubble name="Your agent" text={twinStream} avatarUrl={ownAvatar}/>}</div>}</div>
         {!!availableContext.length&&<details className="bank-twin-context"><summary><Paperclip size={13} aria-hidden="true"/>Add context{contextIds.length?' · '+contextIds.length+' selected':''}</summary><p>Only chosen excerpts are shared for this request. The generated reply may remain in your existing conversation memory.</p>{availableContext.map(record=><label key={record.id}><input type="checkbox" checked={contextIds.includes(record.id)} disabled={!contextIds.includes(record.id)&&contextSize+record.id.length+record.title.length+record.text.length>16000} onChange={event=>setContextIds(ids=>event.target.checked?[...ids,record.id]:ids.filter(id=>id!==record.id))}/><span>{record.title}</span></label>)}</details>}
         {twinFirst&&readiness?.status==='profile-required'&&<p className="bank-messaging-notice" role="status">Your agent needs a public username before you can ask it.</p>}
+        {businessWorking&&<p className="bank-messaging-notice" role="status">Working on your setup…</p>}
+        {identity.businessSetup&&twinFirst&&<label className="bank-business-attach"><Paperclip size={14}/><span>{selectedFileNames.length?selectedFileNames.join(', '):'Attach work or an image'}</span><input type="file" multiple disabled={busy} onChange={event=>{const files=Array.from(event.currentTarget.files??[]);void identity.businessSetup!().then(setup=>{if(live()){setup.selectFiles(files);setSelectedFileNames(files.map(file=>file.name));}}).catch(cause=>{if(live())setNotice(errorText(cause));});}}/></label>}
         <MessageComposer draft={draft} setDraft={setDraft} submit={submit} placeholder="Ask your agent…" onSendMoney={onPreparePayment?preparePayment:undefined} busy={busy} connected={!!api} disabled={twinFirst&&readiness?.status==='profile-required'||!!pendingTwin} maxLength={1200}/>
         {pendingTwin&&!busy&&<div className="bank-twin-recovery"><p role="status">The previous agent response is not confirmed.</p><button type="button" onClick={()=>void recoverTwin()}>Check previous agent request</button><button type="button" onClick={()=>{setPendingTwin(null);setNotice('The previous question may have been received. A new question is a separate request.');}}>Write a new question</button></div>}<p className="bank-messaging-caption">Business plan and usage credits required. Questions and replies may remain in your existing conversation memory.</p>
       </>:<Suspense fallback={null}><TwinUpgradePanel identity={identity} initialReview firstTask={upgradeQuestion===BUSINESS_OPENING_MESSAGE?businessStart??undefined:undefined} paymentLandingId={businessReviewLanding} onBack={()=>{setBusinessReviewLanding(undefined);setUpgradeOpen(false);setTwinDraft(current=>current||(upgradeQuestion===BUSINESS_OPENING_MESSAGE?businessStart?.question??BUSINESS_FIRST_TASK.question:upgradeQuestion)||twinAccessQuestions.at(-1)?.question||'');}} onUpgraded={()=>{setTwinFirst(true);setUpgradeOpen(false);setTwinDraft(current=>current||(upgradeQuestion===BUSINESS_OPENING_MESSAGE?businessStart?.question??BUSINESS_FIRST_TASK.question:upgradeQuestion)||twinAccessQuestions.at(-1)?.question||'');setTwinAccessQuestions([]);identity.retainTwinAccessQuestions?.([]);setNotice('Business is active. Add the background you want to use, then send when you are ready.');}}/></Suspense>)}

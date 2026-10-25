@@ -1,4 +1,4 @@
-import {setupRecord,type BusinessSetupResult,type BusinessToolName} from './business-setup';
+import {setupRecord,type BusinessSetupResult,type BusinessToolName} from './business-setup.js';
 
 /** Tool descriptions are not grants. Connection/owner bindings stay private. */
 export const businessDnsTools=Object.freeze([
@@ -25,7 +25,7 @@ function records(input:unknown,hostname:string,connection:boolean):BusinessDnsRe
   return{type:record.type,name:record.name,value:record.value,purpose:record.purpose};
  });
 }
-export function createBusinessDnsTools(input:{accountUid:string;execute(tool:BusinessToolName,args:Record<string,unknown>):Promise<BusinessSetupResult>;connection(hostname:string):Promise<BusinessDnsConnection|null>;assertOpen():void}){
+export function createBusinessDnsTools(input:{accountUid:string;expectedHostname?:string;execute(tool:BusinessToolName,args:Record<string,unknown>):Promise<BusinessSetupResult>;connection(hostname:string):Promise<BusinessDnsConnection|null>;assertOpen():void}){
  const check=()=>input.assertOpen();
  async function read(tool:'business_inspect_domain'|'business_check_domain'):Promise<BusinessDnsView>{
   check();const result=await input.execute(tool,{});check();
@@ -51,6 +51,7 @@ export function createBusinessDnsTools(input:{accountUid:string;execute(tool:Bus
   async configure(mode:'automatic'|'manual'):Promise<BusinessDnsView>{
    check();if(!['automatic','manual'].includes(mode))throw Error('BUSINESS_DNS_INPUT_INVALID');
    const view=await read('business_inspect_domain');
+   if(input.expectedHostname&&view.hostname!==input.expectedHostname)return{...view,status:'domain_changed',summary:'The saved domain changed while approval was open. No records were changed for the pending request.'};
    if(mode==='manual')return{...view,status:'manual'};
    const connection=await input.connection(view.hostname);check();
    if(!connection)return{...view,status:'manual'};
@@ -68,3 +69,5 @@ export function createBusinessDnsTools(input:{accountUid:string;execute(tool:Bus
   },
  });
 }
+
+export class BusinessDnsConnectionRequired extends Error{constructor(readonly action:{label:string;href:string},readonly hostname?:string){super('BUSINESS_DNS_CONNECTION_REQUIRED');}}

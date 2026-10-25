@@ -67,6 +67,7 @@ export interface OpenIdentity {
   vaults?:()=>Promise<import('./vault/manager').VaultManager>;
   hostedCheckout?:()=>Promise<import('./hosted-checkout').HostedCheckoutController>;
   merchantCounter?:()=>Promise<import('./merchant-counter').MerchantCounterController>;
+  businessSetup?:()=>Promise<import('./business-chat').BusinessChat>;
   profile?:()=>Promise<import('./profile-edit').ProfileEditor>;
   knownProfile?:()=>import('./profile-edit').OwnerProfilePresentation|null;
   prepareAccountView: (options?:{resume?:boolean}) => Promise<import('./wallet-observation').WalletObservation>;
@@ -439,7 +440,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       const [{createNativeMessaging},{createNativeTwin}]=await Promise.all([import('./native-messaging'),import('./native-twin')]);assertOpen();
       // Profile display coordinates come from continuation; Receiz independently
       // enforces that this handle belongs to the bearer subject on every ask.
-      const twin=createNativeTwin({accountUid:uid,username:presentationUsername??'',request,assertOpen});
+      const twin=createNativeTwin({accountUid:uid,username:()=>presentationUsername??'',request,assertOpen});
       const callTransport={heldFetch:request,forController:()=>{const controllerId=crypto.randomUUID();return{heldFetch:(path:string,init?:RequestInit)=>request(path,init,controllerId)};}};
       const retention=await messagingRetention;assertOpen();
       const api=Object.assign(createNativeMessaging({request,accountUid:uid,callTransport,retained:retention.known(),onChange:source=>{const twinAccess=knownTwinAccess();retention.capture({...source,...(twinAccess===null?{}:{twinAccess})});}}),{twin,knownTwinAccess});
@@ -462,6 +463,41 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const retention=await messagingRetention,held=retention.known();
     if(held?.accountUid===uid)retention.capture({...held,twinAccess:result.twinAccess});
     return result;
+  }
+  let businessChat:Promise<import('./business-chat').BusinessChat>|undefined;
+  async function businessSetup(){
+    lifetime.signal.throwIfAborted();
+    return businessChat??=(async()=>{
+      const current=await connectClient(BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT),uid=clientAccounts.get(current)?.accountUid;
+      if(!uid||uid!==accountUid)throw Error('BUSINESS_SETUP_IDENTITY_CHANGED');
+      const assertOpen=()=>{lifetime.signal.throwIfAborted();if(accountUid!==uid)throw Error('BUSINESS_SETUP_IDENTITY_CHANGED');};
+      const [{createBusinessChat},{createBusinessSetupTools},{createBusinessProfileTools},{createBusinessDnsTools}]=await Promise.all([import('./business-chat'),import('./business-setup'),import('./business-profile-tools'),import('./business-dns-tools')]);assertOpen();
+      const requestHost=async(path:'/api/bank/business/setup'|'/api/bank/business/dns',details:Record<string,unknown>)=>{
+        assertOpen();await prepareTransport();assertOpen();
+        const continuation=await unsigned.identity.buildReceizIdContinueRequest({schema:'receiz.device.identity.v1',createdAt:keyFile.issuedAt,updatedAt:keyFile.issuedAt,localUid:keyFile.owner.uid,username:keyFile.owner.username??keyFile.keyId,displayName:keyFile.owner.displayName??keyFile.owner.username??'Receiz account',deviceName:null,keyFile:transportKeyFile},{passphrase:transportPhrase});assertOpen();
+        const response=await fetch(path,{method:'POST',credentials:'omit',redirect:'error',headers:{'content-type':'application/json'},signal:lifetime.signal,body:JSON.stringify({...details,accountUid:uid,continuation:typeof continuation==='string'?continuation:JSON.stringify(continuation)})});assertOpen();return await response.json();
+      };
+      const setup=createBusinessSetupTools({accountUid:uid,assertOpen,invoke:call=>requestHost('/api/bank/business/setup',call)});
+      const profiles=createBusinessProfileTools({accountUid:uid,ownerReceizId:binding.artifactOwnerReceizId,assertOpen,profile,verifyOriginal:async file=>unsigned.artifacts.verifyAndOpen(file),publication:()=>openAssetPublicationRuntime(),prepareOriginal:async draft=>{
+        assertOpen();const native=await loadBankNoteRuntime(),sealer=await ownedSealer(),sealDocument=await native.createBankNativeNoteSealer({enrollment:await sealer.enroll(),resources:sealingResources!});assertOpen();
+        const {loadBusinessSealRuntime}=await import('./business-seal-runtime'),{prepareConnectedComposerSource}=await loadBusinessSealRuntime();
+        return prepareConnectedComposerSource({draft,ownerReceizId:binding.artifactOwnerReceizId,sealDocument,assertCurrent:assertOpen});
+      }});
+      const dns=async(provider?:string,expectedHostname?:string)=>createBusinessDnsTools({accountUid:uid,expectedHostname,assertOpen,execute:(tool,args)=>setup.execute(tool,args),connection:async hostname=>{
+        const names:Record<string,string>={cloudflare:'cloudflare',godaddy:'godaddy',vercel:'vercel',digitalocean:'digitalocean',dnsimple:'dnsimple',porkbun:'porkbun',route53:'route53','aws route 53':'route53','google cloud dns':'google-cloud-dns','google-cloud-dns':'google-cloud-dns','azure dns':'azure-dns','azure-dns':'azure-dns',namecheap:'namecheap'};
+        const selected=provider?names[provider.toLowerCase().trim()]:null;if(!selected)return null;
+        const result=await requestHost('/api/bank/business/dns',{provider:selected,hostname,action:'connect'});assertOpen();
+        if(result.accountUid!==uid||result.hostname!==hostname)throw Error('BUSINESS_DNS_CONNECTION_UNCONFIRMED');
+        if(result.status==='manual')return null;
+        if(result.status==='connect'){
+          const action=result.action,url=new URL(action?.href);if(!['https://vercel.com','https://connect.vercel.com'].includes(url.origin)||url.username||url.password||url.hash||typeof action.label!=='string')throw Error('BUSINESS_DNS_CONNECTION_UNCONFIRMED');
+          const {BusinessDnsConnectionRequired}=await import('./business-dns-tools');throw new BusinessDnsConnectionRequired({label:action.label,href:url.href},hostname);
+        }
+        if(result.status!=='ready')throw Error('BUSINESS_DNS_CONNECTION_UNCONFIRMED');
+        return{accountUid:uid,provider:selected,canWrite:true,apply:async plan=>{const response=await requestHost('/api/bank/business/dns',{provider:selected,hostname:plan.hostname,action:'apply'});assertOpen();if(response.accountUid!==uid||response.hostname!==hostname)throw Error('BUSINESS_DNS_CONNECTION_UNCONFIRMED');return response.result;}};
+      }});
+      return createBusinessChat({accountUid:uid,assertOpen,setup:async()=>setup,profile:async()=>profiles,dns,retainOriginal:async file=>{await holdProof(file);assertOpen();}});
+    })().catch(cause=>{businessChat=undefined;throw cause;});
   }
   const prepareReceivingUsername=createReceivingUsernamePreparation({signal:lifetime.signal,confirmed:()=>confirmedUsername,
     connect:async()=>{const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT),bound=clientAccounts.get(current);if(!bound||bound.applicationId!==BANK_APPLICATION_ID)throw Error('RECEIVING_USERNAME_IDENTITY_CHANGED');return bound.accountUid;},
@@ -1633,7 +1669,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const uid=accountUid??knownWallet?.wallet.userId;if(!uid)return;
     retainedMessaging.retainTwinAccessQuestions(uid,questions);
   };
-  return { vaults, hostedCheckout, merchantCounter, profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, backedAssetPublication, createComposedAsset:(definition,draft)=>createAsset(definition,undefined,false,draft), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { vaultManager?.dispose();checkoutController?.dispose();merchantController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { businessSetup,vaults, hostedCheckout, merchantCounter, profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, backedAssetPublication, createComposedAsset:(definition,draft)=>createAsset(definition,undefined,false,draft), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { vaultManager?.dispose();checkoutController?.dispose();merchantController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 async function createFreshNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

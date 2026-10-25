@@ -28,4 +28,4 @@ export function permittedNativeChatPath(url: URL, method: string): boolean {
   if (tail.endsWith('/sfu/session')) return verb === 'GET' && !url.search;
   return (tail === 'calls' ? ['GET','POST'] : ['GET','PATCH']).includes(verb) && !url.search;
 }
-export const isNativeChatStreamPath = (path: string) => stream.test(path);
+export const isNativeChatStreamPath = (path: string) => stream.test(path)||/^\/api\/developers\/twin\/[a-z0-9_]{3,24}\/message$/.test(path);

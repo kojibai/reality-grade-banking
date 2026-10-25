@@ -5,7 +5,7 @@ export type TwinOwnerContext = Readonly<{
   records: ReadonlyArray<Readonly<{ id: string; title: string; text: string }>>;
 }>;
 export type NativeTwinRequest = (path: string, init?: RequestInit) => Promise<Response>;
-export type NativeTwinAsk = { message: string; requestId: string; quoteExpiresAt: string; threadKey?: string; context?: TwinOwnerContext; signal?: AbortSignal };
+export type NativeTwinAsk = { message: string; requestId: string; quoteExpiresAt: string; threadKey?: string; context?: TwinOwnerContext; signal?: AbortSignal; businessSetup?:boolean; onDelta?:(text:string)=>void };
 export type NativeTwinSourceReference = { coordinate: string; sourceDigest: string; excerptDigest: string; authority: string };
 export type NativeTwinMemory = { id: string; persistedId?: string; transportId?: string; role: 'user' | 'assistant'; body: string; createdAt: string; scope: 'session' | 'relationship' | 'venture'; channel: 'profile' | 'world' | 'chat' };
 export type NativeTwinReply = {
@@ -17,6 +17,7 @@ export type NativeTwinReply = {
   memory: NativeTwinMemory[];
   sourceReferences: NativeTwinSourceReference[];
   sharedContext: { id: string; title: string; authority: 'owner-supplied-context' }[];
+  businessActions?:{tool:string;args:Record<string,unknown>}[];
   actionHandoffs: { kind: string; label: string; href: string; authority: 'proposal-only'; admitted: false }[];
 };
 export type NativeTwin = ReturnType<typeof createNativeTwin>;
@@ -24,7 +25,8 @@ const record = (value: unknown): Record<string, unknown> | null => value && type
 const bounded = (value: unknown, max: number): value is string => typeof value === 'string' && value.trim().length > 0 && value.length <= max;
 function fail(code: string): never { throw Error(`BANK_TWIN_${code}`); }
 const validUsername = (value: unknown): value is string => typeof value === 'string' && /^[a-z0-9_]{3,24}$/.test(value);
-async function twinJson(response: Response) {
+async function twinJson(response: Response, onDelta?: (text:string)=>void) {
+  if(response.ok && response.headers.get('content-type')?.includes('text/event-stream'))return twinStream(response,onDelta);
   if (!response.body) return null;
   const reader = response.body.getReader(), decoder = new TextDecoder('utf-8', { fatal: true });
   let size = 0, raw = '';
@@ -40,6 +42,22 @@ async function twinJson(response: Response) {
     if (cause instanceof Error && cause.message === 'BANK_TWIN_RESPONSE_TOO_LARGE') throw cause;
     return null;
   } finally { reader.releaseLock(); }
+}
+
+async function twinStream(response:Response,onDelta?:(text:string)=>void){
+ if(!response.body)fail('STREAM_UNCONFIRMED');
+ const reader=response.body.getReader(),decoder=new TextDecoder('utf-8',{fatal:true});let pending='',size=0,deltaSize=0,result:Record<string,unknown>|null=null;
+ try{
+  for(;;){const part=await reader.read();if(part.done)break;size+=part.value.byteLength;if(size>4*1024*1024)fail('RESPONSE_TOO_LARGE');pending=(pending+decoder.decode(part.value,{stream:true})).replace(/\r\n/g,'\n');
+   let end:number;while((end=pending.indexOf('\n\n'))>=0){const block=pending.slice(0,end);pending=pending.slice(end+2);const event=block.split('\n').find(line=>line.startsWith('event:'))?.slice(6).trim(),raw=block.split('\n').filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n');if(!raw)continue;
+    const data=record(JSON.parse(raw));if(!data)fail('STREAM_INVALID');if(result)fail('STREAM_INVALID');
+    if(event==='delta'){if(typeof data.text!=='string'||(deltaSize+=data.text.length)>24000)fail('STREAM_INVALID');onDelta?.(data.text);}
+    else if(event==='result')result=data;
+    else if(event==='error')throw Error(typeof data.error==='string'?data.error:'BANK_TWIN_STREAM_UNCONFIRMED');
+   }
+  }
+  if(!result||pending.trim()||decoder.decode())fail('STREAM_UNCONFIRMED');return result;
+ }finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
 }
 
 /** Local prerequisites only. Provider, deployment, entitlement and credits are
@@ -64,22 +82,30 @@ function ownerContext(value: TwinOwnerContext | undefined, accountUid: string): 
 
 /** Reuses the owner's existing Receiz Twin runtime and metering. It never calls
  * another AI, reads private Mind, executes proposed actions, or retries a send. */
-export function createNativeTwin(input: { accountUid: string; username: string | null | undefined; request: NativeTwinRequest; assertOpen(): void }) {
+export function createNativeTwin(input: { accountUid: string; username: string | null | undefined | (()=>string|null|undefined); request: NativeTwinRequest; assertOpen(): void }) {
+  const currentUsername=()=>typeof input.username==='function'?input.username():input.username;
   return Object.freeze({
-    readiness: () => ownerTwinReadiness(input.username),
+    readiness: () => ownerTwinReadiness(currentUsername()),
     async ask(question: NativeTwinAsk): Promise<NativeTwinReply> {
       input.assertOpen();
-      if (!input.accountUid || !validUsername(input.username)) fail('PROFILE_REQUIRED');
+      const username=currentUsername();
+      if (!input.accountUid || !validUsername(username)) fail('PROFILE_REQUIRED');
       if (!bounded(question.message, 1200) || !bounded(question.requestId, 160) || question.requestId.trim().length < 8 || !Number.isFinite(Date.parse(question.quoteExpiresAt)) || question.threadKey !== undefined && !bounded(question.threadKey, 160)) fail('QUESTION_INVALID');
       const context = ownerContext(question.context, input.accountUid);
-      const body = { message: question.message, requestId: question.requestId, quoteExpiresAt: question.quoteExpiresAt, ...(question.threadKey === undefined ? {} : { threadKey: question.threadKey }), ...(context ? { ownerContext: context } : {}), allowBrowserVoiceFallback: false };
-      const response = await input.request(`/api/developers/twin/${input.username}/message`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), ...(question.signal ? { signal: question.signal } : {}) });
+      const body = { message: question.message, requestId: question.requestId, quoteExpiresAt: question.quoteExpiresAt, ...(question.threadKey === undefined ? {} : { threadKey: question.threadKey }), ...(context ? { ownerContext: context } : {}), allowBrowserVoiceFallback: false, ...(question.businessSetup?{businessSetup:true}:{}), ...(question.onDelta?{stream:true}:{}) };
+      const response = await input.request(`/api/developers/twin/${username}/message`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), ...(question.signal ? { signal: question.signal } : {}) });
       input.assertOpen();
-      const raw = await twinJson(response);
+      const raw = await twinJson(response,question.onDelta);
       if (!response.ok || raw?.ok !== true) throw Error(typeof raw?.error === 'string' ? raw.error : 'BANK_TWIN_REQUEST_FAILED');
-      if (raw.requestId !== question.requestId || record(raw.world)?.username !== input.username) fail('RESPONSE_OWNER_MISMATCH');
+      if (raw.requestId !== question.requestId || record(raw.world)?.username !== username) fail('RESPONSE_OWNER_MISMATCH');
+      if(question.businessSetup && raw.businessSetupSupported!==true)fail('BUSINESS_UNAVAILABLE');
+      let businessActions:NativeTwinReply['businessActions'];
+      if(raw.businessSetupSupported===true){
+       if(!Array.isArray(raw.businessActions)||raw.businessActions.length>4)fail('BUSINESS_INVALID');
+       businessActions=raw.businessActions.map(value=>{const row=record(value);if(!row||Object.keys(row).sort().join(',')!=='args,tool'||typeof row.tool!=='string'||!/^business_[a-z_]{1,40}$/.test(row.tool)||!record(row.args)||JSON.stringify(row.args).length>24000)fail('BUSINESS_INVALID');return{tool:row.tool,args:row.args as Record<string,unknown>};});
+      }
       const reply = record(raw.reply), cognition = record(reply?.cognition), frame = record(cognition?.frame), owner = record(frame?.owner);
-      if (owner && (owner.ownerUserId !== input.accountUid || owner.username !== input.username)) fail('RESPONSE_OWNER_MISMATCH');
+      if (owner && (owner.ownerUserId !== input.accountUid || owner.username !== username)) fail('RESPONSE_OWNER_MISMATCH');
       if (!reply || !bounded(reply.message, 24000) || !['upstream', 'fallback', 'local'].includes(String(reply.source)) || !Array.isArray(reply.actions) || reply.actions.length > 20) fail('RESPONSE_INVALID');
       if (!Array.isArray(reply.memory) || reply.memory.length > 32) fail('MEMORY_INVALID');
       const memoryIds = new Set<string>();
@@ -105,7 +131,7 @@ export function createNativeTwin(input: { accountUid: string; username: string |
         }
       }
       input.assertOpen();
-      return { requestId: question.requestId, message: reply.message, authority: 'generated-interpretation', source: reply.source as NativeTwinReply['source'], memoryScope: typeof reply.memoryScope === 'string' ? reply.memoryScope : 'none', memory, sourceReferences, sharedContext: context?.records.map(({ id, title }) => ({ id, title, authority: 'owner-supplied-context' as const })) ?? [], actionHandoffs };
+      return { ...(businessActions?{businessActions}:{}), requestId: question.requestId, message: reply.message, authority: 'generated-interpretation', source: reply.source as NativeTwinReply['source'], memoryScope: typeof reply.memoryScope === 'string' ? reply.memoryScope : 'none', memory, sourceReferences, sharedContext: context?.records.map(({ id, title }) => ({ id, title, authority: 'owner-supplied-context' as const })) ?? [], actionHandoffs };
     },
   });
 }
