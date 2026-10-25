@@ -2,6 +2,7 @@ import {checkoutApprovalDigest,checkoutInteger,emptyCheckoutSnapshot,readHostedC
 import type {CheckoutNotes} from './checkout-notes';
 import type {SharedWallet} from './shared-wallet';
 import type {WalletSend,WalletSendOutcome,WalletSendReview} from './wallet-send';
+import {createFixedSale,fixedSalePaymentNote,type FixedSaleFields} from './fixed-checkout';
 export interface HostedCheckoutDependencies {identityDigest:string;assertCurrent():void;walletSend():Promise<WalletSend>;notes:CheckoutNotes;readWallet():Promise<SharedWallet>;store:CheckoutStateStore;lock<T>(work:()=>Promise<T>):Promise<T>;}
 const centsToDollars=(n:bigint)=>`${n/100n}.${String(n%100n).padStart(2,'0')}`;
 function message(cause:unknown){const code=cause instanceof Error?cause.message:'';if(/ALREADY_DEPOSITED|already_claimed/.test(code))return 'This Note has already been deposited.';if(/NOTE_IDENTITY_BINDING|NOTE_RECEIVING_CUSTODY/.test(code))return 'Use the Identity Record that owns this Note, or ask its holder to address it to your identity.';if(/IDENTITY|identity|closed/.test(code))return 'Your identity changed. Reopen this checkout.';if(/APPROVAL|CONFIRMATION/.test(code))return 'Review this payment before approving it.';if(/PENDING|pending/.test(code))return 'Your original payment is pending. Check its saved result before starting another.';if(/INSUFFICIENT|funding_changed/.test(code))return 'Your available balance changed. Review the payment again.';if(/RECEIVING_CUSTODY|BINDING|EXACT_HEAD/.test(code))return 'Use the Identity Record that owns this Note, or ask its holder to address it to your identity.';return 'This payment needs attention. Your original request is saved; check its result to continue.';}
@@ -17,8 +18,12 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
  async function admittedReceipt(outcome:WalletSendOutcome,row:CheckoutSnapshot=view):Promise<CheckoutReceipt>{
   const a=row.approval;if(!a||outcome.status!=='recorded'||outcome.clientNonce!==a.clientNonce)throw Error('CHECKOUT_RESULT_MISMATCH');
   const result=await(await input.walletSend()).retainedResult(a.clientNonce);assert();const r=result?.receipt;
-  if(!r||result.outcome.status!=='recorded'||r.transferId!==outcome.transferId||r.senderUserId!==a.accountUid||r.recipientUserId!==a.recipient.userId||r.amountUsdCents!==a.amountUsdCents||r.clientNonce!==a.clientNonce)throw Error('CHECKOUT_RESULT_MISMATCH');
-  return{...r,checkoutId:a.checkoutId,recipient:a.recipient,method:a.method};
+  if(!r||result.outcome.status!=='recorded'||r.transferId!==outcome.transferId||r.senderUserId!==a.accountUid||r.recipientUserId!==a.recipient.userId||r.amountUsdCents!==a.amountUsdCents||r.clientNonce!==a.clientNonce||a.fixedSale&&result.note!==fixedSalePaymentNote(a.fixedSale,a.clientNonce))throw Error('CHECKOUT_RESULT_MISMATCH');
+  return{...r,checkoutId:a.checkoutId,recipient:a.recipient,method:a.method,...(a.fixedSale?{fixedSale:a.fixedSale}:{})};
+ }
+ async function paidFixedSale(fields:FixedSaleFields){
+  const sale=await createFixedSale(fields);assert();const row=[view,...(stored?.history??[])].find(row=>row.phase==='paid'&&row.approval?.fixedSale?.digest===sale.digest);
+  if(!row)return null;if(!row.walletOutcome)throw Error('CHECKOUT_RESULT_MISMATCH');return admittedReceipt(row.walletOutcome,row);
  }
  const ready=load().then(async()=>{if(view.phase==='paid'){if(!view.walletOutcome)throw Error('CHECKOUT_RESULT_MISMATCH');await admittedReceipt(view.walletOutcome);}}).catch(error=>{if(!closed)publish({...view,phase:'attention-required',error:message(error)});throw error;});void ready.catch(()=>{});
  async function run<T>(work:()=>Promise<T>):Promise<T>{
@@ -39,6 +44,7 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
   return{accountUid:wallet.userId,card:charge.toString(),balance:fromBalance.toString(),noteAmountUsdCents:noteAmount.toString(),noteSurplusUsdCents:(noteAmount>amount?noteAmount-amount:0n).toString()};
  }
  function walletOptions(a:CheckoutApproval){return{clientNonce:a.clientNonce,...(a.method==='card'?{fundingPreference:'card' as const}:{}),cardFundingLimitUsdCents:a.cardAmountUsdCents,checkoutContext:{checkoutId:a.checkoutId,username:a.recipient.username}};}
+ function walletRequest(a:CheckoutApproval){return{recipient:a.recipient.userId,amountUsdCents:a.amountUsdCents,...(a.fixedSale?{note:fixedSalePaymentNote(a.fixedSale,a.clientNonce)}:{})};}
  async function adopt(outcome:WalletSendOutcome){
   assert();if(outcome.clientNonce!==view.approval?.clientNonce)throw Error('CHECKOUT_RESULT_MISMATCH');
   if(outcome.status==='recorded'){const receipt=await admittedReceipt(outcome);await save({...view,phase:'paid',walletOutcome:outcome,receipt,error:null});}
@@ -47,7 +53,7 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
  async function continuePayment(recover=false){
   const a=view.approval;if(!a||!view.approvalHistory.some(old=>old.digest===a.digest)||view.phase==='not-sent')return;
   const api=await input.walletSend(),existing=await api.retainedResult(a.clientNonce);assert();
-  if(existing){const o=existing.outcome;if(o.status==='unknown'){const result=await api.resolve(true);if(result)await adopt(result);}else if(o.status==='funding'){const result=await api.resumeFunding();if(result)await adopt(result);}else await adopt(o);return;}
+  if(existing){if(a.fixedSale&&existing.note!==fixedSalePaymentNote(a.fixedSale,a.clientNonce))throw Error('CHECKOUT_RESULT_MISMATCH');const o=existing.outcome;if(o.status==='unknown'){const result=await api.resolve(true);if(result)await adopt(result);}else if(o.status==='funding'){const result=await api.resumeFunding();if(result)await adopt(result);}else await adopt(o);return;}
   if(a.method==='note'){
    for(const source of a.noteSourceDigests){let entry=view.notes.find(n=>n.sourceDigest===source);if(!entry)throw Error('CHECKOUT_NOTE_SOURCE_REQUIRED');
     if(entry.status==='confirmed')continue;
@@ -63,8 +69,8 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
     const {digest:_,...body}=a,next=await sign({...body,cardAmountUsdCents:funding.card,balanceContributionUsdCents:funding.balance,noteAmountUsdCents:'0',noteSurplusUsdCents:'0'});assert();prepared=null;await save({...view,phase:'reviewed',approval:next,error:null});return;
    }
   }
-  const w=preparedApi===api&&prepared&&prepared.clientNonce===a.clientNonce&&prepared.cardFundingLimitUsdCents===a.cardAmountUsdCents?prepared:await api.prepare({recipient:a.recipient.userId,amountUsdCents:a.amountUsdCents},walletOptions(a));assert();
-  if(w.accountUid!==a.accountUid||w.recipientUserId!==a.recipient.userId||w.amountUsdCents!==a.amountUsdCents||w.clientNonce!==a.clientNonce||w.fundingPreference!==(a.method==='card'?'card':undefined))throw Error('CHECKOUT_RESULT_MISMATCH');
+  const w=preparedApi===api&&prepared&&prepared.clientNonce===a.clientNonce&&prepared.cardFundingLimitUsdCents===a.cardAmountUsdCents?prepared:await api.prepare(walletRequest(a),walletOptions(a));assert();
+  if(w.accountUid!==a.accountUid||w.recipientUserId!==a.recipient.userId||w.amountUsdCents!==a.amountUsdCents||w.clientNonce!==a.clientNonce||w.fundingPreference!==(a.method==='card'?'card':undefined)||a.fixedSale&&w.note!==fixedSalePaymentNote(a.fixedSale,a.clientNonce))throw Error('CHECKOUT_RESULT_MISMATCH');
   await save({...view,phase:'submitting',error:null});const result=await api.execute(w,w.digest);prepared=null;assert();await adopt(result);
  }
  const approve=(digest:string)=>run(async()=>{
@@ -74,10 +80,14 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
  });
  return{
   ready,snapshot:()=>view,subscribe(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};},
-  prepare(value:{recipient:string;amountUsdCents:string;method:CheckoutMethod}){return run(async()=>{
+  inspectFixedSale(fields:FixedSaleFields){return run(()=>paidFixedSale(fields));},
+  prepare(value:{recipient:string;amountUsdCents:string;method:CheckoutMethod;fixedSale?:FixedSaleFields}){return run(async()=>{
    if(!checkoutInteger(value.amountUsdCents,true)||!['card','balance','note'].includes(value.method))throw Error('Enter an amount greater than zero.');
+   const fixedSale=value.fixedSale?await createFixedSale(value.fixedSale):undefined;
+   if(fixedSale&&(fixedSale.username!==value.recipient||fixedSale.amountUsdCents!==value.amountUsdCents))throw Error('This checkout has a fixed recipient and total. Open the original payment link.');
+   if(value.fixedSale&&await paidFixedSale(value.fixedSale))throw Error('This checkout was already paid. Open its saved payment receipt.');
    const old=view.approval,continuing=view.approvalHistory.length>0&&view.phase!=='paid'&&view.phase!=='not-sent';
-   if(continuing&&(!old||value.method!=='note'||old.method!=='note'||old.amountUsdCents!==value.amountUsdCents||old.recipient.username!==value.recipient||view.walletOutcome||view.notes.some(n=>n.status!=='inspected'&&n.status!=='confirmed')))throw Error('CHECKOUT_PAYMENT_PENDING');
+   if(continuing&&(!old||value.method!=='note'||old.method!=='note'||old.amountUsdCents!==value.amountUsdCents||old.recipient.username!==value.recipient||old.fixedSale?.digest!==fixedSale?.digest||view.walletOutcome||view.notes.some(n=>n.status!=='inspected'&&n.status!=='confirmed')))throw Error('CHECKOUT_PAYMENT_PENDING');
    if(!continuing&&stored&&hasPendingHostedCheckout(stored))throw Error('CHECKOUT_PAYMENT_PENDING');
    if(value.method==='note'&&!view.notes.length)throw Error('Choose a Note before reviewing payment.');
    const nonce=continuing?old!.clientNonce:crypto.randomUUID(),api=await input.walletSend();
@@ -86,9 +96,10 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
    let funding={card:value.method==='card'?value.amountUsdCents:'0',balance:'0'};
    const balance=value.method==='balance'?await input.readWallet():null;if(balance)funding=observedProposal(balance,value.amountUsdCents);
    const noteFunding=value.method==='note'?await noteProposal(value.amountUsdCents,view.notes,old?.accountUid):null;if(noteFunding)funding=noteFunding;
-   const w=await api.prepare({recipient:continuing?old!.recipient.userId:username,amountUsdCents:value.amountUsdCents},{clientNonce:nonce,...(value.method==='card'?{fundingPreference:'card' as const}:{}),cardFundingLimitUsdCents:funding.card,checkoutContext:{checkoutId:nonce,username}});assert();if(balance&&balance.userId!==w.accountUid||noteFunding&&noteFunding.accountUid!==w.accountUid)throw Error('CHECKOUT_RESULT_MISMATCH');
+   const w=await api.prepare({recipient:continuing&&!fixedSale?old!.recipient.userId:username,amountUsdCents:value.amountUsdCents,...(fixedSale?{note:fixedSalePaymentNote(fixedSale,nonce)}:{})},{clientNonce:nonce,...(value.method==='card'?{fundingPreference:'card' as const}:{}),cardFundingLimitUsdCents:funding.card,checkoutContext:{checkoutId:nonce,username}});assert();if(balance&&balance.userId!==w.accountUid||noteFunding&&noteFunding.accountUid!==w.accountUid)throw Error('CHECKOUT_RESULT_MISMATCH');
+   if(fixedSale&&w.recipientUserId!==fixedSale.recipientUserId){api.discard(w);throw Error('The recipient no longer matches this checkout. Ask for a new payment link.');}
    const recipient=continuing?old!.recipient:{userId:w.recipientUserId,username,displayName:w.recipientLabel.startsWith('@')?w.recipientLabel.slice(1):username,avatarUrl:w.recipientAvatarUrl??null};
-   const a=await sign({checkoutId:nonce,clientNonce:nonce,identityDigest:input.identityDigest,accountUid:w.accountUid,recipient,amountUsdCents:value.amountUsdCents,method:value.method,cardAmountUsdCents:funding.card,balanceContributionUsdCents:funding.balance,...(noteFunding?{noteAmountUsdCents:noteFunding.noteAmountUsdCents,noteSurplusUsdCents:noteFunding.noteSurplusUsdCents}:{}),noteSourceDigests:value.method==='note'?view.notes.map(n=>n.sourceDigest):[]});assert();
+   const a=await sign({checkoutId:nonce,clientNonce:nonce,identityDigest:input.identityDigest,accountUid:w.accountUid,recipient,amountUsdCents:value.amountUsdCents,method:value.method,cardAmountUsdCents:funding.card,balanceContributionUsdCents:funding.balance,...(noteFunding?{noteAmountUsdCents:noteFunding.noteAmountUsdCents,noteSurplusUsdCents:noteFunding.noteSurplusUsdCents}:{}),noteSourceDigests:value.method==='note'?view.notes.map(n=>n.sourceDigest):[],...(fixedSale?{fixedSale}:{})});assert();
    prepared=w;preparedApi=api;
    const history=[...(stored?.history??[])];if(!continuing&&old&&old.checkoutId!==nonce)history.push(view.phase==='paid'||view.phase==='not-sent'?view:{...view,phase:'not-sent'});
    await save({...emptyCheckoutSnapshot(),phase:'reviewed',approval:a,notes:value.method==='note'?view.notes:[],approvalHistory:continuing?view.approvalHistory:[]},history);return a;
@@ -103,10 +114,11 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
   approve,approveShortfall:approve,
   inspectReturn(checkoutId:string,sessionId:string){return run(async()=>{
    const row=[view,...(stored?.history??[])].find(candidate=>candidate.approval?.checkoutId===checkoutId);
-   if(!row?.approval)return{matched:false,receipt:null};
+   if(!row?.approval)return{matched:false as const,receipt:null};
    const retained=await(await input.walletSend()).retainedResult(row.approval.clientNonce);assert();
-   if(retained?.fundingSessionId!==sessionId)return{matched:false,receipt:null};
-   return{matched:true,username:row.approval.recipient.username,checkoutId:row.approval.checkoutId,status:retained.outcome.status,receipt:retained.outcome.status==='recorded'?await admittedReceipt(retained.outcome,row):null};
+   if(retained?.fundingSessionId!==sessionId)return{matched:false as const,receipt:null};
+   if(row.approval.fixedSale&&retained.note!==fixedSalePaymentNote(row.approval.fixedSale,row.approval.clientNonce))throw Error('CHECKOUT_RESULT_MISMATCH');
+   return{matched:true as const,username:row.approval.recipient.username,checkoutId:row.approval.checkoutId,status:retained.outcome.status,receipt:retained.outcome.status==='recorded'?await admittedReceipt(retained.outcome,row):null,...(row.approval.fixedSale?{fixedSale:row.approval.fixedSale}:{})};
   });},
   check(expectedCheckoutId?:string){return run(async()=>{if(expectedCheckoutId&&view.approval?.checkoutId!==expectedCheckoutId)return;await continuePayment(true);});},
   back(expectedCheckoutId?:string){return run(async()=>{

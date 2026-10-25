@@ -1,0 +1,30 @@
+// @vitest-environment happy-dom
+import {act} from 'react';
+import {createRoot} from 'react-dom/client';
+import {afterEach,expect,it,vi} from 'vitest';
+import {HostedCheckout} from '../src/checkout/HostedCheckout';
+import {hostedFixture,checkoutRecipient} from './fixtures/hosted-checkout';
+import type {OpenIdentity} from '../src/receiz/native-identity';
+import type {FixedSaleFields} from '../src/receiz/fixed-checkout';
+Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+afterEach(()=>vi.unstubAllGlobals());
+const sale:FixedSaleFields={schema:'bank.fixed-checkout.v1',saleId:'20000000-0000-4000-8000-000000000001',recipientUserId:checkoutRecipient,username:'merchant',currency:'usd',amountUsdCents:'1000'};
+const click=(host:HTMLElement,label:string)=>{const button=[...host.querySelectorAll('button')].find(button=>button.textContent?.trim()===label);expect(button,label).toBeTruthy();if(button!.type==='submit'&&button!.form)button!.form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));else button!.click();};
+const settle=async(host:HTMLElement,text:string)=>{for(let i=0;i<40&&!host.textContent?.includes(text);i++)await act(async()=>{await new Promise(resolve=>setTimeout(resolve,5));});expect(host.textContent).toContain(text);};
+it('shows the retained completed receipt when the same fixed link is reopened after another checkout',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(null,{status:404})));const f=hostedFixture(),controller=f.newController();await controller.ready;const a=await controller.prepare({recipient:'merchant',amountUsdCents:'1000',method:'balance',fixedSale:sale});await controller.approve(a.digest);await controller.back();const identity={hostedCheckout:async()=>controller}as unknown as OpenIdentity,session={open:async()=>identity,import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host);try{await act(async()=>root.render(<HostedCheckout request={{username:'merchant',amount:'10.00',fixedSale:sale}} identitySession={session}/>));await settle(host,'Payment complete.');expect(host.querySelector('form')).toBeNull();expect(f.transfer).toHaveBeenCalledOnce();}finally{await act(async()=>root.unmount());}
+});
+it('paints a locked total before entry, binds review and removes repeat payment after completion',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(null,{status:404})));const f=hostedFixture(),controller=f.newController();await controller.ready;const identity={hostedCheckout:async()=>controller}as unknown as OpenIdentity,session={open:async()=>identity,import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<HostedCheckout request={{username:'merchant',amount:'10.00',fixedSale:sale}} identitySession={session}/>));const input=host.querySelector<HTMLInputElement>('[aria-label="Payment amount"]')!;expect(input.value).toBe('10.00');expect(input.readOnly||input.disabled).toBe(true);await act(async()=>click(host,'Continue'));await settle(host,'Review payment');expect(controller.snapshot().approval?.fixedSale?.saleId).toBe(sale.saleId);expect(host.textContent).toContain('Checkout reference');await act(async()=>click(host,'Pay $10.00'));await settle(host,'Payment complete.');expect(host.textContent).not.toContain('Make another payment');expect(f.transfer).toHaveBeenCalledOnce();}finally{await act(async()=>root.unmount());}
+});
+it('keeps another sale’s pending payment out of the new fixed checkout and links its original',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(null,{status:404})));const f=hostedFixture(0),controller=f.newController();await controller.ready;const a=await controller.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card',fixedSale:sale});await controller.approve(a.digest);
+ const identity={hostedCheckout:async()=>controller}as unknown as OpenIdentity,session={open:async()=>identity,import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host),next={...sale,saleId:'20000000-0000-4000-8000-000000000002',amountUsdCents:'2000'};
+ try{await act(async()=>root.render(<HostedCheckout request={{username:'merchant',amount:'20.00',fixedSale:next}} identitySession={session}/>));expect(host.querySelector<HTMLInputElement>('[aria-label="Payment amount"]')?.value).toBe('20.00');expect(host.querySelector('iframe')).toBeNull();expect(host.textContent).not.toContain('Resume secure checkout');await settle(host,'Open its original checkout');const link=[...host.querySelectorAll('a')].find(link=>link.textContent==='Open its original checkout');expect(link?.getAttribute('href')).toContain('sale='+sale.saleId);expect(f.transfer).not.toHaveBeenCalled();}finally{await act(async()=>root.unmount());}
+});
+it('restores the fixed sale from the exact card-return approval without URL-supplied sale fields',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(null,{status:404})));const f=hostedFixture(0),controller=f.newController();await controller.ready;const a=await controller.prepare({recipient:'merchant',amountUsdCents:'1000',method:'card',fixedSale:sale});await controller.approve(a.digest);
+ const identity={hostedCheckout:async()=>controller}as unknown as OpenIdentity,session={open:async()=>identity,import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<HostedCheckout request={{username:'merchant'}} returnContext={{username:'merchant',checkoutId:a.checkoutId,sessionId:'cs_test_hostedoriginal'}} identitySession={session}/>));await settle(host,'Complete your payment.');await settle(host,'Check payment status');f.creditCard();await act(async()=>click(host,'Check payment status'));await settle(host,'Payment complete.');expect(controller.snapshot().receipt?.fixedSale?.saleId).toBe(sale.saleId);expect(host.textContent).not.toContain('Make another payment');expect(f.transfer).toHaveBeenCalledOnce();}finally{await act(async()=>root.unmount());}
+});

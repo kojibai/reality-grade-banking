@@ -1,3 +1,4 @@
+import {readWalletTransferOriginal} from './wallet-transfer-original';
 import {loadReceiz} from './client';
 import {profileAvatarUrl} from './profile-avatar.js';
 import {parseSharedWallet} from './shared-wallet';
@@ -28,10 +29,8 @@ function quote(v:unknown,amount:string):WalletSendQuote{
 function recorded(raw:unknown,c:Checkpoint){
  const r=object(raw);if(r.ok!==true||r.found!==true)throw Error('BANK_WALLET_OUTCOME_UNKNOWN');const t=object(r.transfer);
  if(!uuid(t.id)||t.clientNonce!==c.body.clientNonce||t.senderUserId!==c.review.accountUid||t.recipientUserId!==c.body.recipientUserId||t.conversationId!==c.body.conversationId||t.amountUsdCents!==c.review.amountUsdCents||!integer(t.amountPhiMicro,true)||!integer(t.usdPerPhiMicrocents,true))throw Error('BANK_WALLET_OUTCOME_MISMATCH');
- const source=object(r.source),row=object(source.transfer),message=object(source.message),original=object(message.sealed_original),receipt=object(message.receiz_receipt);
- if(!uuid(t.messageId)||row.id!==t.id||row.message_id!==t.messageId||row.client_nonce!==t.clientNonce||row.sender_user_id!==t.senderUserId||row.recipient_user_id!==t.recipientUserId||row.conversation_id!==t.conversationId||message.id!==t.messageId||message.sender_user_id!==t.senderUserId||message.conversation_id!==t.conversationId||original.primitive!=='receiz.chat.message.original.v1'||original.messageId!==t.messageId||original.conversationId!==t.conversationId||original.senderUserId!==t.senderUserId||typeof message.body!=='string'||original.body!==message.body||!['digest','payloadDigest','originDigest'].every(k=>typeof receipt[k]==='string'&&/^[a-f0-9]{64}$/.test(receipt[k])&&original[k==='digest'?'receiptDigest':k]===receipt[k]))throw Error('BANK_WALLET_ORIGINAL_UNAVAILABLE');
- for(const [field,column] of [['amountPhiMicro','amount_phi_micro'],['amountUsdCents','amount_usd_cents'],['usdPerPhiMicrocents','usd_per_phi_microcents']])if(String(row[column])!==t[field])throw Error('BANK_WALLET_OUTCOME_MISMATCH');
- for(const carried of [row.metadata,message.wallet_transfer,original.walletTransfer]){const value=object(carried);if(value.senderUserId!==t.senderUserId||value.recipientUserId!==t.recipientUserId||!['amountPhiMicro','amountUsdCents','usdPerPhiMicrocents'].every(field=>value[field]===t[field]))throw Error('BANK_WALLET_OUTCOME_MISMATCH');if(c.review.note!==undefined&&(value.note!==c.review.note||value.noteVisibility!=='public'))throw Error('BANK_WALLET_NOTE_MISMATCH');}
+ const original=readWalletTransferOriginal(raw);
+ if(c.review.note!==undefined&&original.carried.some(value=>value.note!==c.review.note||value.noteVisibility!=='public'))throw Error('BANK_WALLET_NOTE_MISMATCH');
  return{status:'recorded' as const,clientNonce:c.body.clientNonce,transferId:t.id};
 }
 /** The installed SDK's connected Wallet operation. These retained HTTP originals
@@ -185,7 +184,7 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
   async retainedResult(clientNonce:string){if(!uuid(clientNonce))throw Error('BANK_WALLET_NONCE_INVALID');const s=await read(),c=s&&[s.current,...s.history].find(c=>c.body.clientNonce===clientNonce);if(!c)return null;
    const result=outcome(c);let receipt:WalletSendReceipt|null=null;
    if(result.status==='recorded'){const source=object(c.record),at=source.transfer?.createdAt??source.source?.transfer?.created_at;receipt={transferId:result.transferId,clientNonce,senderUserId:c.review.accountUid,recipientUserId:c.review.recipientUserId,amountUsdCents:c.review.amountUsdCents,recordedAt:typeof at==='string'&&Number.isFinite(Date.parse(at))?at:null};}
-   return{outcome:result,receipt,fundingSessionId:c.funding?.checkout?.sessionId};},
+   return{outcome:result,receipt,fundingSessionId:c.funding?.checkout?.sessionId,...(c.review.note?{note:c.review.note}:{})};},
   discard(review:WalletSendReview){held.delete(review);},
  });
 }

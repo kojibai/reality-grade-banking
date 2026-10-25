@@ -1,3 +1,4 @@
+import {buildFixedSaleUrl,type FixedSale} from './fixed-checkout';
 import {buildPaymentRequest,publicReceizId} from './payment-request';
 import {buildCheckoutRequest} from './checkout-request';
 
@@ -17,3 +18,5 @@ export function buildPaymentTools(coordinate:string,dollars?:string){
   externalWidgetHtml:`<div class="receiz-pay-embed" data-username="${username}"></div>\n<script src="https://receiz.com/receiz-pay-embed.js" async></script>`,
  };
 }
+
+export function buildFixedPaymentTools(sale:FixedSale){const hostedCheckoutLink=buildFixedSaleUrl(sale);return{hostedCheckoutLink,buttonHtml:`<a href="${escapeHtml(hostedCheckoutLink)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 24px;border-radius:12px;background:#172b45;color:#fff;font:600 16px/1.4 system-ui,sans-serif;text-decoration:none">Pay @${sale.username}</a>`};}

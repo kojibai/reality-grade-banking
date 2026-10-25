@@ -828,6 +828,8 @@ export const saveNativeAssetState=(binding:{artifactSha256:string},value:import(
 
 export const loadWalletSendState=(binding:{artifactSha256:string})=>loadNoteState(binding,'wallet-sends');
 export const loadHostedCheckoutState=(binding:{artifactSha256:string})=>loadNoteState(binding,'hosted-checkouts');
+export const loadMerchantCounterState=(binding:{artifactSha256:string})=>loadNoteState(binding,'merchant-counter');
+export const saveMerchantCounterState=(binding:{artifactSha256:string},next:import('./merchant-counter-state').MerchantCounterState,expected:unknown)=>saveNoteState(binding,'merchant-counter',next,expected);
 export async function saveHostedCheckoutState(binding:{artifactSha256:string},next:import('./checkout-state').HostedCheckoutState,expected:unknown){
  await(await import('./checkout-state')).readHostedCheckoutState(next,binding.artifactSha256);await saveNoteState(binding,'hosted-checkouts',next,expected);
 }

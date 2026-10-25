@@ -1,6 +1,7 @@
+import {readFixedSaleFields,type FixedSaleFields} from './fixed-checkout';
 import {BANK_PUBLIC_ORIGIN,BANK_PAYMENT_ORIGINS} from './config';
 import {publicReceizId} from './public-receiz-id';
-export interface CheckoutRequest {username:string;amount?:string;}
+export interface CheckoutRequest {username:string;amount?:string;fixedSale?:FixedSaleFields;}
 export interface CheckoutReturn {username:string;checkoutId:string;sessionId:string;}
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 const tracking=/^(?:utm_[a-z0-9_]{1,64}|fbclid|igsh|igshid|mibextid|gclid|dclid|gbraid|wbraid|msclkid|ttclid|twclid|li_fat_id|srsltid|mc_cid|mc_eid)$/;
@@ -12,8 +13,14 @@ export function buildCheckoutRequest(coordinate:string,amount?:string){const url
 export function parseCheckoutRequest(input:string,origin?:string):CheckoutRequest|null{
  const initial=new URL(input,origin??BANK_PUBLIC_ORIGIN);if(!initial.pathname.startsWith('/pay/'))return null;
  const url=checked(input,origin),match=/^\/pay\/([a-z0-9_]{3,24})\/?$/.exec(url.pathname);if(!match)throw Error('This checkout address could not be read.');
- for(const [key,value]of url.searchParams)if(url.searchParams.getAll(key).length!==1||key!=='amount'&&(!tracking.test(key)||value.length>2048))throw Error('This checkout request could not be read.');
- return{username:match[1],...(url.searchParams.has('amount')?{amount:dollars(url.searchParams.get('amount')!)}:{})};
+ for(const [key,value]of url.searchParams)if(url.searchParams.getAll(key).length!==1||!['amount','sale','recipient','fixed'].includes(key)&&(!tracking.test(key)||value.length>2048))throw Error('This checkout request could not be read.');
+ const amount=url.searchParams.has('amount')?dollars(url.searchParams.get('amount')!):undefined;
+ if(['sale','recipient','fixed'].some(key=>url.searchParams.has(key))){
+  if(!amount||url.searchParams.get('fixed')!=='1'||!url.searchParams.has('sale')||!url.searchParams.has('recipient'))throw Error('This fixed checkout request is incomplete.');
+  const [whole,fraction]=amount.split('.'),fixedSale=readFixedSaleFields({schema:'bank.fixed-checkout.v1',saleId:url.searchParams.get('sale'),recipientUserId:url.searchParams.get('recipient'),username:match[1],currency:'usd',amountUsdCents:String(BigInt(whole)*100n+BigInt(fraction))});
+  return{username:match[1],amount,fixedSale};
+ }
+ return{username:match[1],...(amount?{amount}:{})};
 }
 export function buildCheckoutReturn(context:{username:string;checkoutId:string},origin:string){
  if(!uuid.test(context.checkoutId)||!permittedOrigin(origin))throw Error('Invalid checkout return.');

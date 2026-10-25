@@ -27,7 +27,7 @@ export function LiveActions({ action, identity, wallet, onClose, onForget, onRef
   else if(action.kind==='market-trade') body=<MarketTradeFlow key={`${identity.binding?.artifactSha256}:${action.marketItemId}:${action.side}`} identity={identity} wallet={wallet} intent={{itemId:action.marketItemId,side:action.side,title:marketItems.find(item=>item.id===action.marketItemId)?.title??'Proof object'}} onRefresh={onRefresh}/>;
   else if (action.kind === 'trade') body = <LiveOwnership identity={identity} mode={action.mode} initialDigest={action.assetId} onRefresh={onRefresh} />;
   else if (action.kind === 'exchange') body = <LiveExchange identity={identity} items={marketItems} onRefresh={onRefresh} />;
-  else if (action.kind === 'receive') body = <LiveReceive identity={identity} onRefresh={onRefresh} />;
+  else if (action.kind === 'receive') body = <LiveReceive identity={identity} onRefresh={onRefresh} active={active}/>;
   else if (action.kind === 'deposit') body = <LiveDeposit identity={identity} onClose={onClose} onRefresh={onRefresh} resumeSessionId={cardResumeSessionId} onResumeConsumed={onCardResumeConsumed} />;
   else if (action.kind === 'send') body = <LiveSend identity={identity} onRefresh={onRefresh} wallet={wallet} initialRequest={action.recipient?null:paymentRequest} initialRecipient={action.recipient} onClose={onClose} />;
   else if (action.kind === 'pending' || action.kind === 'asset' || action.kind === 'proof') body = <LiveAssetDetail identity={identity} onRefresh={onRefresh} digest={action.kind === 'pending' ? action.depositId : action.assetId} />;

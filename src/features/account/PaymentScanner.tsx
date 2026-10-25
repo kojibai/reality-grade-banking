@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Camera, Upload } from 'lucide-react';
 import { paymentDecoder, openQrImage } from '../../receiz/payment-decoder';
 import { parsePaymentRequest, type PaymentRequest } from '../../receiz/payment-request';
-export function PaymentScanner({ onRequest }: { onRequest: (request: PaymentRequest) => void }) {
+export function PaymentScanner({ onRequest, onCheckout = url => location.assign(url) }: { onRequest: (request: PaymentRequest) => void; onCheckout?: (url: string) => void }) {
   const video = useRef<HTMLVideoElement>(null), stream = useRef<MediaStream | null>(null), ticket = useRef(0), frame = useRef(0);
   const [error, setError] = useState(''), [active, setActive] = useState(false), [link, setLink] = useState('');
   const stop = () => { ticket.current++; cancelAnimationFrame(frame.current); stream.current?.getTracks().forEach(track => track.stop()); stream.current = null; setActive(false); };
   useEffect(() => { const hidden = () => { if (document.hidden) stop(); }; document.addEventListener('visibilitychange', hidden); return () => { document.removeEventListener('visibilitychange', hidden); ticket.current++; cancelAnimationFrame(frame.current); stream.current?.getTracks().forEach(track => track.stop()); }; }, []);
-  const accept = (value: string) => { try { const request = parsePaymentRequest(value); stop(); setError(''); onRequest(request); return true; } catch { setError('Scan or paste a payment link.'); return false; } };
+  const accept = (value: string) => { try { const request = parsePaymentRequest(value); stop(); setError(''); if (request.checkoutUrl) onCheckout(request.checkoutUrl); else onRequest(request); return true; } catch { setError('Scan or paste a payment link.'); return false; } };
   const scan = async () => {
     stop(); setError(''); const current = ticket.current;
     try { if (!isSecureContext || !navigator.mediaDevices?.getUserMedia) throw new Error('Camera access needs a secure browser. Open bank.receiz.com over HTTPS.'); const decoder = paymentDecoder(); const media = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' } } }); if (current !== ticket.current) { media.getTracks().forEach(track => track.stop()); return; } stream.current = media; video.current!.srcObject = media; await video.current!.play(); setActive(true);

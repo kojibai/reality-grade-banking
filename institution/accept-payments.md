@@ -41,6 +41,38 @@ the carrier, relabel a Note or call a legacy claim method to bypass custody.
 
 ## No code
 
+### Fixed totals and Counter
+
+Open **Receive → Counter**, enter the sale total and choose **Create checkout**.
+The saved checkout supplies one fixed link, website button and QR. Customers
+review that recipient and total, then pay using the existing Balance, Card or
+Note flow. Any card minimum remainder or Note surplus stays in their account.
+
+Keep Counter open and connected. It shows **Paid** after the merchant's actual
+incoming original matches the saved recipient, exact cents and checkout
+reference. It retains that complete original with the sale. Payment funding,
+a customer's screen and a return URL alone cannot confirm the sale. Automatic
+checks pause when Counter is hidden or offline; the saved request and any
+accepted payment remain available. **Check payment** resumes a receiving read.
+
+**Next sale** keeps earlier requests and their evidence. Reopening the same
+identity on that device restores saved checkouts. An Identity Record restores
+the identity; it does not export every private checkout stored on a device.
+Use **Save payment evidence** for a completed sale's complete retained record.
+
+A public fixed link is not an exclusive order reservation. Two different
+customers can pay it; Counter keeps both actual payments and calls out the
+additional payment. Review those records before fulfilling again. A merchant
+starting another checkout does not cancel a customer's submitted payment.
+
+The [typed fixed-checkout example](examples/fixed-checkout.ts) validates the
+saved request and generates the same URL and safe button HTML. Its public fields
+carry no account access, signing key or payment approval. The exact sale reference
+is recorded in the existing public payment note. A changed link becomes a
+different request and cannot mark the original merchant sale Paid.
+
+### Editable receiving links
+
 1. Open **Receive** under the account that should receive payment.
 2. Choose Checkout link, optionally enter an amount, and share the link or QR.
 3. For a website, open **Accept payments anywhere** and copy the button or
