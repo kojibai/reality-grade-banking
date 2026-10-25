@@ -7,6 +7,30 @@ const address=v=>typeof v==='string'&&v.length<=254&&/^[^\s@<>,;]+@[^\s@<>,;]+\.
 const text=(v,max)=>typeof v==='string'&&v.trim().length>0&&v.length<=max&&!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(v);
 async function readBody(req){const reader=req.body?.getReader();if(!reader)return '';const chunks=[];let total=0;for(;;){const {value,done}=await reader.read();if(done)break;total+=value.byteLength;if(total>MAX){await reader.cancel();throw Error('TOO_LARGE');}chunks.push(value);}return new TextDecoder().decode(Buffer.concat(chunks));}
 function visitor(req){const raw=req.headers.get('cookie')?.split(';').map(v=>v.trim()).find(v=>v.startsWith('receiz_world_visitor='))?.split('=').slice(1).join('=');let value='';try{value=decodeURIComponent(raw??'').trim().toLowerCase().replace(/[^a-z0-9:_-]+/g,'').slice(0,120);}catch{}return value.length>=8?value:null;}
+// Native tokens are provisional. Only the owned Twin's accepted final reply
+// admits memory, proof receipts and actions; no local model or reply is created.
+function nativeStream(response,messageId){
+ const encoder=new TextEncoder(),decoder=new TextDecoder();let buffer='',accepted=false,failed=false;
+ const event=(controller,value)=>controller.enqueue(encoder.encode('data: '+JSON.stringify(value)+'\n\n'));
+ const refuse=(controller,error='RECEIZ_RESULT_UNCONFIRMED')=>{if(!failed){failed=true;event(controller,{type:'error',error});}};
+ const consume=(controller,frame)=>{
+  if(failed)return;const data=frame.split(/\r?\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n');if(!data)return;
+  let value;try{value=JSON.parse(data);}catch{refuse(controller);return;}
+  if(['reply_start','reply_delta','reply_preview'].includes(value.type)){
+   if(accepted||value.messageId!==messageId){refuse(controller,'RECEIZ_SOURCE_MISMATCH');return;}
+   if(value.type==='reply_delta'&&typeof value.delta!=='string'){refuse(controller);return;}
+  }else if(value.type==='reply_done'){
+   if(accepted||value.world?.username!==OWNER||typeof value.reply?.message!=='string'||value.assistantMessage?.id&&value.assistantMessage.id!==messageId){refuse(controller,'RECEIZ_SOURCE_MISMATCH');return;}accepted=true;
+  }else if(value.type==='error'){failed=true;}
+  else if(value.type==='done'){if(!accepted){refuse(controller);return;}}
+  else return;
+  event(controller,value);
+ };
+ return response.body.pipeThrough(new TransformStream({
+  transform(chunk,controller){buffer+=decoder.decode(chunk,{stream:true});let match;while((match=/\r?\n\r?\n/.exec(buffer))){const frame=buffer.slice(0,match.index);buffer=buffer.slice(match.index+match[0].length);consume(controller,frame);}if(buffer.length>2000000){buffer='';refuse(controller);}},
+  flush(controller){buffer+=decoder.decode();if(buffer.trim())consume(controller,buffer);if(!accepted&&!failed)refuse(controller);}
+ }));
+}
 export async function handleCooperativeConversation(request,{fetch:transport=globalThis.fetch}={}){
  const existing=visitor(request),who=existing??'guest_'+randomUUID(),thread='cooperatives:'+createHash('sha256').update(who).digest('hex').slice(0,40);
  const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Set-Cookie':`receiz_world_visitor=${encodeURIComponent(who)}; Path=/; Max-Age=31536000; SameSite=Lax; HttpOnly${new URL(request.url).protocol==='https:'?'; Secure':''}`};
@@ -51,7 +75,13 @@ export async function handleCooperativeConversation(request,{fetch:transport=glo
    const questions=body.questions??[];if(!Array.isArray(questions)||questions.length>12||questions.some(q=>!q||!text(q.id,64)||!text(q.label,120)||typeof q.answer!=='string'||q.answer.length>300))return fail(400,'BOOKING_QUESTIONS_REQUIRED');
    payload={...common,action:'book',slotStartAt:body.slotStartAt,name:body.name,email:body.email,notes:body.notes??'',timezone:body.timezone??'',questions:questions.map(q=>({id:q.id,label:q.label,required:q.required===true,answer:q.answer}))};
   }
-  const response=await transport(ORIGIN+'/api/world/profile/'+OWNER,{method:'POST',headers:nativeHeaders,body:JSON.stringify(payload),signal:AbortSignal.timeout(90000)}),data=await response.json();
+  const streaming=body.action==='message'&&request.headers.get('accept')?.includes('text/event-stream');
+  if(streaming){payload.deliveryMode='text';payload.clientAssistantMessageId=body.clientOperationId;nativeHeaders.Accept='text/event-stream';}
+  const response=await transport(ORIGIN+'/api/world/profile/'+OWNER+(streaming?'/stream':''),{method:'POST',headers:nativeHeaders,body:JSON.stringify(payload),signal:AbortSignal.any([request.signal,AbortSignal.timeout(110000)])});
+  if(streaming&&response.ok&&response.headers.get('content-type')?.includes('text/event-stream')&&response.body){
+   return new Response(nativeStream(response,body.clientOperationId),{headers:{...headers,'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store, no-transform','X-Accel-Buffering':'no'}});
+  }
+  const data=await response.json();
   if(!response.ok||data.ok!==true)return result(response.status>=400?response.status:502,{ok:false,error:typeof data.error==='string'?data.error:'RECEIZ_RESULT_UNCONFIRMED',...(typeof data.operationStatus==='string'?{operationStatus:data.operationStatus}:{})});
   if(data.world?.username!==OWNER||typeof data.reply?.message!=='string')return fail(502,'RECEIZ_SOURCE_MISMATCH');
   if(body.action==='book'){
