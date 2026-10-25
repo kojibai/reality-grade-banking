@@ -201,6 +201,9 @@
     request.handled = true;
     void ensureBankRuntime().then(request.resolve, request.reject);
   });
+  const anchorTarget = root => {
+    try { return root?.querySelector('#' + CSS.escape(decodeURIComponent(location.hash.slice(1)))); } catch { return null; }
+  };
   const render = async (restoring = false) => {
     const path = pathname(location.pathname), page = pageAt(path), learn = Boolean(page && !page.runtime);
     let focusPublic = false, destination;
@@ -243,8 +246,7 @@
     const url=snapshot().url;
     if (restoring && (positions.has(url)||history.state?.publicNavigation?.url === url)) scrollTo({top:positions.get(url)??history.state.publicNavigation.scroll,behavior:'instant'});
     else {
-      let id; try { id = decodeURIComponent(location.hash.slice(1)); } catch { id = ''; }
-      const target = page && id ? destination.querySelector('[id="' + CSS.escape(id) + '"]') : null;
+      const target = page ? anchorTarget(destination) : null;
       if (target) { target.classList.add('visible'); target.querySelectorAll('.reveal').forEach(node => node.classList.add('visible')); target.scrollIntoView({ behavior: 'instant' }); }
       else scrollTo({ top: 0, behavior: 'instant' });
     }
@@ -272,7 +274,15 @@
     const link = event.target.closest?.('a[href]'); if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.download || link.target && link.target !== '_self') return;
     const url = new URL(link.href, location.href); if (url.origin !== location.origin || url.search || !publicPath(url.pathname) && url.pathname !== '/' || !publicPath(location.pathname) && location.pathname !== '/') return;
     if (pathname(url.pathname) === pathname(location.pathname) && publicPath(url.pathname)) {
-      if (url.hash) return; // ordinary same-page anchor navigation
+      if (url.hash) {
+        // An explicit repeat click must reach the existing destination even when
+        // the URL anchor is unchanged. Keep the conversation and history intact.
+        if (url.hash === location.hash && !publicRoot?.hidden) {
+          const target = anchorTarget(publicRoot);
+          if (target) { event.preventDefault(); target.scrollIntoView(); }
+        }
+        return;
+      }
       if (!location.hash) { event.preventDefault(); scrollTo({top:0,behavior:'instant'}); return; }
     }
     if (!publicPath(location.pathname)) bankUrl = location.pathname + location.search + location.hash;
