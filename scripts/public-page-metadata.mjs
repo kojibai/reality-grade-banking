@@ -1,3 +1,4 @@
+import {standardPages} from '../src/content/standard-pages.mjs';
 import {outcomePages} from '../src/content/outcome-pages.mjs';
 import {identityContinuityPage} from '../src/content/identity-continuity.mjs';
 import {twinSalesPages} from '../src/content/twin-pages.mjs';
@@ -13,6 +14,7 @@ import {canonicalPublicPath} from '../src/content/public-routes.mjs';
 import {protectionPage} from './vault-protection-page.mjs';
 export const publicOrigin = 'https://bankeiz.com';
 export const publicPages = [
+ ...standardPages.map(page=>({path:page.path,id:'standard-'+page.key,title:page.title+' | Open standard',description:page.description,lines:page.lines,caption:'The standard of the proof-native economy.',motif:'layers'})),
  ...outcomePages.map(page=>({path:page.path,id:'solution-'+page.key,title:page.title+' | Reality-grade banking',description:page.description,lines:page.lines,caption:page.promise,motif:'layers'})),
  {path:identityContinuityPage.path,id:'identity-continuity',title:identityContinuityPage.title+' | Bankeiz',description:identityContinuityPage.description,lines:identityContinuityPage.lines,caption:'Authentication opens the door. Continuity brings your identity with you.',motif:'key'},
  ...twinSalesPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-grade banking',description:page.description,lines:page.lines,caption:'Contacts, context and calendar. One connected relationship.',motif:'bank'})),
@@ -23,8 +25,8 @@ export const publicPages = [
   {path:'/business/',id:'business',title:'More done. Less on your shoulders. | Business — $149/month',description:'Create proposals, campaigns and creative with your context in play. Help clients get answers and take the next step. Business is $149/month.',lines:['More done.','Less on your shoulders.'],caption:'Your context. Your work. A useful next step.',motif:'bank',size:84},
   {path:directoryPage.path,id:'business-for',title:'Find your fit: 30 ways to put Business to work | $149/month',description:directoryPage.description,lines:['Your work.','More possibilities.'],caption:'Find the part that changes your day.',motif:'layers',size:88},
   ...businessFits.map(fit=>({path:`/business/for/${fit.slug}/`,id:`business-fit-${fit.slug}`,title:`${fit.headline} | ${fit.label} — $149/month`,description:fit.description,lines:businessFitArt[fit.slug].lines,caption:'Your work. Your review. Your final say.',motif:{context:'layers',create:'cube',teach:'book',connect:'bank',build:'code',own:'badge'}[fit.story],size:Math.min(92,Math.floor(900/(Math.max(fit.label.length+1,15)*.54)))})),
-  {path:'/',id:'home',title:'Bankeiz — Proof-native banking. Your value, connected.',description:'Open your proof-native account. Hold, send and receive value with Receiz ID, Reserve, Settlement and verifiable proof objects.',lines:['Your value.','More possibilities.'],caption:'Hold. Move. Grow.',motif:'layers'},
-  {path:'/learn/',id:'learn',title:'Proof-native banking explained | Bankeiz',description:'Learn how proof-native banking connects your identity, verifiable asset ownership, Reserve funds and Settlement value in one account.',lines:['Your value.','Connected.'],caption:'The foundations of proof-native banking.',motif:'layers'},
+  {path:'/',id:'home',title:'Reality-grade banking | The proof-native economy',description:'The open standard for interacting with the proof-native economy. Hold originals, verify ownership and move value through Receiz reality-grade infrastructure.',lines:['Your value.','More possibilities.'],caption:'Hold. Move. Grow.',motif:'layers'},
+  {path:'/learn/',id:'learn',title:'Reality-grade banking explained | Proof-native economy',description:'Learn how proof-native banking connects your identity, verifiable asset ownership, Reserve funds and Settlement value in one account.',lines:['Your value.','Connected.'],caption:'The foundations of proof-native banking.',motif:'layers'},
   {path:'/learn/guides/',id:'guides',title:'All guides: banking, assets & economic standards | Bankeiz',description:'Explore the complete Bankeiz guide collection: your account, payments, Notes, assets, markets, transaction history and implementation standards.',lines:['The complete','picture.'],caption:'Banking. Assets. Markets. History. Standards.',motif:'book'},
   {path:'/learn/receiz-id/',id:'receiz-id',title:'Receiz ID & Identity Records | Bankeiz',description:'Create a Receiz ID, open an existing account and back up your Identity Record. Understand how device-held signing keeps your authority with you.',lines:['Your identity.','In your hands.'],caption:'Receiz ID & Identity Records.',motif:'fingerprint'},
   {path:'/learn/proof-objects/',id:'proof-objects',title:'Proof objects & verifiable asset ownership | Bankeiz',description:'Understand sealed proof objects, original evidence, ownership history, public asset listings and custody-backed physical assets.',lines:['Own the source.','Carry the proof.'],caption:'Verifiable assets. Connected ownership.',motif:'cube'},
@@ -78,7 +80,8 @@ export function structuredMetadata(page,image) {
   if(page.path!=='/')crumbs.push({name:page.title.split(' | ')[0],item:url});
   return {'@context':'https://schema.org','@graph':[
     {'@type':page.path==='/explore/'||page.path==='/ledger/'?'CollectionPage':'WebPage','@id':url+'#page',url,name:page.title,description:page.description,inLanguage:'en',isPartOf:{'@id':publicOrigin+'/#website'},publisher:{'@id':publicOrigin+'/#organization'},primaryImageOfPage:{'@type':'ImageObject',url:publicOrigin+image.url,width:image.width,height:image.height,caption:image.alt}},
-    {'@type':'BreadcrumbList',itemListElement:crumbs.map((item,index)=>({'@type':'ListItem',position:index+1,...item}))}
+    {'@type':'BreadcrumbList',itemListElement:crumbs.map((item,index)=>({'@type':'ListItem',position:index+1,...item}))},
+    ...((page.id.startsWith('standard-')||['reality-grade-banking','proof-native-economy'].includes(page.id))?[{'@type':'DefinedTermSet','@id':publicOrigin+'/about/#terminology',name:'Proof-native economy, reality-grade banking and reality-grade infrastructure',hasDefinedTerm:[{name:'Proof-native economy',description:'The economic system where participating value carries its required source, rights and proof.'},{name:'Reality-grade banking',description:'The open standard for interacting with the proof-native economy while preserving source, authority and continuity.'},{name:'Reality-grade infrastructure',description:'Receiz implements the primitives of reality-grade banking through its SDK, MCP and AI Skills.'}].map((term,index)=>({'@type':'DefinedTerm','@id':publicOrigin+'/about/#term-'+index,inDefinedTermSet:publicOrigin+'/about/#terminology',...term}))}]:[])
   ]};
 }
 export function applyPublicMetadata(html,page,image) {

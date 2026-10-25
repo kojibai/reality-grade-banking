@@ -20,7 +20,8 @@ assert.equal(manifest.pages['/ledger/'], '/ledger/', 'Public Ledger links reopen
 assert.ok(shell.includes('/explore/'),'Public explorer has a retained read-only entry.');
 for(const path of ['/explore','/explore/','/explorer','/explorer/'])assert.equal(manifest.pages[path],'/explore/','Explorer aliases reopen the same public entry offline.');
 for(const [alias,path] of Object.entries(publicRouteAliases)){
- for(const route of [alias,alias.slice(0,-1),path,path.slice(0,-1)])assert.equal(manifest.pages[route],'/learn/','Marketing aliases reopen the same retained document offline');
+ const retained=path==='/learn/reality-grade-banking/'?path:'/learn/';
+ for(const route of [alias,alias.slice(0,-1),path,path.slice(0,-1)])assert.equal(manifest.pages[route],retained,'Public aliases reopen their established retained document offline');
 }
 for (const entry of manifest.resources) {
   const url = new URL(entry.url, 'https://bankeiz.com');

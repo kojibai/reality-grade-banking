@@ -1,0 +1,23 @@
+# Reality-grade banking: the standard in practice
+
+## Approved objective and framing
+The user authorized the trust and money suite, detailed market education, and independent documentation. The final binding relationship is explicit: the proof-native economy is the economic system; reality-grade banking is the open interaction standard; Receiz supplies the reality-grade infrastructure through SDK, MCP and AI Skills. Bankeiz is the open implementation, with its name kept subtle in the footer. The experience should feel calm, exact and foundational. No invented customer testimonials, adoption, institutional endorsement, charter, insurance or universal financial guarantee. A claim without its required proof cannot qualify under the standard; this is not a claim that unrelated economies literally do not exist.
+
+## Implemented scope
+Eighteen new canonical pages: /trust/, /money/, /deposit/, /fees/, /help/, /about/, /in-practice/, /accept-payments/, /start/, /privacy/, /terms/, /market/, /market/buy/, /market/sell/, /market/value/, /market/ownership/, /market/history/, /market/costs/. Requested /customers/ and /switch/ remain aliases. /standard/ and /reality-grade-banking/ retain the existing complete standard documents and their canonical URLs. Existing pages and Business payment review remain intact.
+
+The market suite follows original asset, defined rights, advisory native quote, exact approval, actual recorded trade and same-reference recovery. A portfolio observation remains beneath ownership authority. A valuation does not create backing, liquidity, a buyer or a redemption right. Actual custody and rights retain their own evidence.
+
+Seventeen task-oriented documentation articles cover first use, infrastructure, identity, funding, payments, receiving, Vaults, Notes, records, recovery, agents, integration, SDK, MCP, AI Skills, market trading and market records. docs-app is a self-contained Node project with no dependencies or environment secrets. Its package and vercel.json build to dist from that folder alone. Canonical origin: https://docs.bankeiz.com. The main build has a /docs/ mirror with the same canonical links and no banking runtime. After the user launches the subdomain, matching permanent redirects from bankeiz.com/docs can replace the mirror entrance. No premature redirect to an unavailable domain.
+
+## Preserved law and implementation
+Reuse the existing source, identity, ownership, Settlement, financial authorization and recovery primitives. No account-entry, signing, storage, payment execution or AI behavior change. Source evidence: config.ts scopes/consent, card-deposit.ts exact credit, native-payment.ts, hosted-checkout.ts, market-trade.ts, market-portfolio.ts, Note contracts, native-twin.ts, and current-function-boundaries.md.
+
+Privacy explains device custody, chosen disclosure and actual connected-service paths, with links to published provider policies. Terms explain open-source licensing, custody responsibilities and exact operation/service scope, without inventing a new operator agreement or reconciling different parent instruments into an invented venue. Existing copyright and notices remain.
+
+## Architecture and qualification
+Static registry/template, page-only CSS and transparent coded SVGs with phone variants, existing native public navigation and source-bound actions. Share images are unique and price-free. Economy/banking/infrastructure definitions are in visible content, structured metadata and llms.txt. Main documentation source lives in docs-app/content.mjs and is re-exported for the main build. Search is local.
+
+The docs entrance is reserved in both profile routing and the existing public-document router while /u/docs/ remains available. Corresponding source includes the whole independent project and excludes generated output and installed dependencies. The new readable reality-grade alias preserves its established own offline document.
+
+Full suite: 501 files and 3,139 tests passed. Production typecheck/build, public metadata, offline, source and licensing gates passed. All 138 canonical sharing cards verified. Shared presentation remains 14,996 gzip bytes. CUA checked all eighteen pages at 1280px and390px: no horizontal overflow, header overlap or SVG-label overflow. Additional320px and901px checks passed. Actual /docs/ navigation, phone contents navigation, search and standalone build from an isolated folder passed. Two independent review findings were reproduced RED and fixed. No source authority was replaced. No push or deployment performed. NFT/crypto audience pages remain separately deferred at the user's request.

@@ -1,3 +1,4 @@
+import {standardPages} from '../src/content/standard-pages.mjs';
 import {outcomePages} from '../src/content/outcome-pages.mjs';
 import {bankMarkSvg} from '../branding/bank-mark.mjs';
 // Public, static learning surfaces. No account state or application runtime is loaded here.
@@ -14,6 +15,7 @@ import {togetherPages} from '../src/content/together.mjs';
 import {cooperativePages} from '../src/content/cooperatives.mjs';
 // Public discovery only. Existing routes and native authorities are unchanged.
 const solutionGuides=[
+ ...standardPages.map(page=>({...page,group:page.key.startsWith('market')?'Markets':'The standard'})),
  ...outcomePages.map(page=>({...page,group:page.key==='proof'?'Assets':'Banking',title:({agent:'Your agent',fraud:'Payment fraud',recover:'Recover your identity','get-paid':'Get paid. Keep the story.',proof:'Open the proof'})[page.key]})),
  {slug:'identity-continuity',path:'/id/',group:'Banking',title:'Identity continuity',description:'Open Bankeiz with the Receiz identity you already hold. Authentication, recovery and supported history stay connected.'},
  ...twinSalesPages.map(page=>({...page,group:'Banking',title:page.key==='your-twin'?'Your Twin':'See it in action'})),
@@ -26,6 +28,10 @@ const solutionGuides=[
  ...togetherPages.map(page=>({...page,group:'Together'}))
 ];
 const relatedSolutions={
+ 'deposits':['/deposit/','/money/','/fees/'],
+ 'markets':['/market/','/market/buy/','/market/sell/'],
+ 'fractional-ownership':['/market/ownership/'],
+ 'price-history':['/market/value/'],
  'security':['/fraud/','/proof/','/protect/','/vaults/','/id/'],
  'receiz-id':['/recover/','/vaults/','/protect/','/id/'],
  'proof-objects':['/proof/','/vaults/'],'ownership':['/proof/','/vaults/'],

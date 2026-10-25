@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 
 // Deliberate release allowlist. Never archive a checkout, home directory,
 // operator environment, installed dependencies or an arbitrary git status list.
-const directories = ['src', 'server', 'api', 'scripts', 'tests', 'conformance', 'verify', 'receipt', 'ledger', 'explore', 'pay', 'vault', 'institution', 'branding', 'public', 'docs', 'native', '.github'];
+const directories = ['src', 'server', 'api', 'scripts', 'tests', 'conformance', 'verify', 'receipt', 'ledger', 'explore', 'pay', 'vault', 'institution', 'branding', 'public', 'docs', 'docs-app', 'native', '.github'];
 const files = ['package.json', 'package-lock.json', 'index.html', 'vite.config.ts', 'tsconfig.json', 'vercel.json', '.gitignore', '.gitattributes', 'README.md', 'CHANGELOG.md', 'LICENSE', 'NOTICE', 'LICENSING.md', 'LICENSE-PROPOSAL.md', 'SOURCE.md', 'THIRD_PARTY_NOTICES.md', 'TRADEMARKS.md', 'CONFORMANCE.md', 'CONTRIBUTING.md', 'GOVERNANCE.md', 'SECURITY.md'];
 export const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 export async function sourceFiles() {
@@ -16,7 +16,7 @@ export async function sourceFiles() {
     if (/\.(?:pem|p12|pfx|key)$/i.test(name)) throw Error(`Source archive rejects private-key container: ${path}`);
     if (stat.isDirectory()) {
       for (const entry of await readdir(path)) {
-        if (entry === '.DS_Store') continue;
+        if (entry === '.DS_Store' || path === 'docs-app' && ['dist','node_modules','.vercel'].includes(entry)) continue;
         await visit(`${path}/${entry}`);
       }
     } else if (stat.isFile()) paths.push(path);

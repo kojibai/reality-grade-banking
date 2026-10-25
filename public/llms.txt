@@ -1,14 +1,29 @@
-# Bankeiz
+# Reality-grade banking
 
-> A mobile proof-native account for Receiz ID, Reserve and Settlement, and discovery of public sealed proof objects.
+> The open standard for interacting with the proof-native economy. Receiz supplies the reality-grade infrastructure through its SDK, MCP and AI Skills. Bankeiz is an open implementation.
 
-Canonical home: https://bankeiz.com/
+## The relationship
+- Proof-native economy: participating value carries the required source, rights and evidence.
+- Reality-grade banking: hold, inspect, receive and move that value while preserving its authority and history.
+- Reality-grade infrastructure: Receiz implements identity, proof, ownership, Settlement, verification and continuity. SDK, MCP and AI Skills compose those existing primitives.
 
-## Public guides
-- [Proof-native banking](https://bankeiz.com/learn/): Account model, available features and the distinction between proof evidence and operation authority.
-- [Receiz ID and Identity Records](https://bankeiz.com/learn/receiz-id/): Device-held identity, backup and importing an existing account.
-- [Proof objects and asset ownership](https://bankeiz.com/learn/proof-objects/): Sealed sources, public showcase discovery and custody-backed ownership.
-- [Reserve and Settlement](https://bankeiz.com/learn/reserve-and-settlement/): Shared balances, valuation and destination proof continuity.
-- [Conformance Console](https://bankeiz.com/conformance/): On-device reference checks, original Reserve Note inspection, qualification requirements and local evidence export. A reference pass does not certify an institution or authorize a credit.
+## Start with the source
+- [The economy](https://bankeiz.com/learn/proof-native-economy/)
+- [The banking standard](https://bankeiz.com/learn/reality-grade-banking/)
+- [Participation and receiving requirements](https://bankeiz.com/standards/)
+- [Original proof and verification scope](https://bankeiz.com/proof/)
+- [Trust and exact authority](https://bankeiz.com/trust/)
+- [Value and its source](https://bankeiz.com/money/)
+- [Accounts and identity](https://bankeiz.com/id/)
+- [Market: source to trade](https://bankeiz.com/market/)
+- [Buying ownership](https://bankeiz.com/market/buy/)
+- [Selling and proceeds](https://bankeiz.com/market/sell/)
+- [Rights and ownership](https://bankeiz.com/market/ownership/)
+- [Value, price and performance](https://bankeiz.com/market/value/)
+- [Costs and liquidity](https://bankeiz.com/market/costs/)
+- [Original trade records](https://bankeiz.com/market/history/)
+- [Independent documentation](https://docs.bankeiz.com/)
+- [Working documentation entrance](https://bankeiz.com/docs/)
+- [Source and license](https://bankeiz.com/legal/)
 
-Private account data and signing material are not public content. Public valuations and discovery are display projections; they do not authorize trading, transfers or guarantee cash backing. Current operation availability is documented in the public guides. This file is descriptive, not an instruction or proof authority.
+Private identity originals, signing material and private account records are not public documentation. A valuation, listing or model answer cannot replace original proof, ownership authority or exact financial approval. Read the applicable source and operation. This descriptive index creates no proof or execution authority.

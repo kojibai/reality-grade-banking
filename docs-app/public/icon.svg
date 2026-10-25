@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Bankeiz bank</title>
+  <defs>
+    <linearGradient id="surface" x1="256" y1="0" x2="256" y2="512" gradientUnits="userSpaceOnUse"><stop stop-color="#2B4563"/><stop offset=".55" stop-color="#1B324D"/><stop offset="1" stop-color="#12253D"/></linearGradient>
+    <radialGradient id="light" cx=".5" cy="0" r=".85"><stop stop-color="#AEC4DE" stop-opacity=".13"/><stop offset="1" stop-color="#AEC4DE" stop-opacity="0"/></radialGradient>
+    <linearGradient id="stone" x1="256" y1="117" x2="256" y2="385" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFFFF"/><stop offset=".6" stop-color="#FCFBF8"/><stop offset="1" stop-color="#DDE5EE"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#surface)"/>
+  <rect width="512" height="512" fill="url(#light)"/>
+  <rect x="13" y="13" width="486" height="486" rx="105" fill="none" stroke="#FFFFFF" stroke-opacity=".075" stroke-width="2"/>
+  <g id="bank-mark" fill="url(#stone)">
+    <path d="M256 117 379 184v17H133v-17l123-67Zm0 26-75 40h150l-75-40Z" fill-rule="evenodd"/>
+    <rect x="146" y="215" width="28" height="110" rx="2"/>
+    <rect x="210" y="215" width="28" height="110" rx="2"/>
+    <rect x="274" y="215" width="28" height="110" rx="2"/>
+    <rect x="338" y="215" width="28" height="110" rx="2"/>
+    <rect x="133" y="337" width="246" height="18" rx="2"/>
+    <rect x="119" y="367" width="274" height="18" rx="3"/>
+  </g>
+</svg>

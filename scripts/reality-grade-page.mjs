@@ -17,7 +17,7 @@ const source = 'https://github.com/kojibai/reality-grade-banking';
 export function realityGradeContent() {
   return `${learnHeader()}<main id="main" class="reality-page">
     <section class="learn-shell reality-hero motion-region">
-      <div class="reality-hero-copy"><p class="reality-eyebrow">Reality-Grade Banking</p><h1>Your value.<br>Beyond the screen.</h1><p class="reality-lead">Hold the original. Verify what is yours.<br>Keep its history connected as it moves.</p><a class="text-action" href="#the-standard">Explore the standard ${arrow}</a></div>
+      <div class="reality-hero-copy"><p class="reality-eyebrow">Reality-Grade Banking</p><h1>Your value.<br>Beyond the screen.</h1><p class="reality-lead">The standard for interacting with the proof-native economy.<br>Built on Receiz reality-grade infrastructure.</p><a class="text-action" href="#the-standard">Explore the standard ${arrow}</a></div>
       <div class="reality-orbit" aria-hidden="true"><div class="reality-orbit-ring ring-one"></div><div class="reality-orbit-ring ring-two"></div><img src="/learn/proof-glass.webp" width="1000" height="1000" alt="" decoding="async" fetchpriority="high"><span class="reality-orbit-label label-source">Original source</span><span class="reality-orbit-label label-owner">Ownership</span><span class="reality-orbit-label label-history">History</span></div>
       <div class="reality-hero-baseline"><span>Value. Ownership. Continuity.</span><span>A standard you can inspect.</span></div>
     </section>

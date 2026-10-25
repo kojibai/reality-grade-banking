@@ -1,0 +1,7 @@
+import {createServer} from 'node:http';
+import {readFile,stat} from 'node:fs/promises';
+import {resolve,extname,sep} from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root=fileURLToPath(new URL('./dist/',import.meta.url)),port=Number(process.env.PORT||4321),types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.txt':'text/plain; charset=utf-8','.xml':'application/xml; charset=utf-8'};
+if(!Number.isInteger(port)||port<1||port>65535)throw Error('DOCS_PORT_INVALID');
+createServer(async(req,res)=>{try{if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);res.end();return;}const path=decodeURIComponent(new URL(req.url,'http://localhost').pathname);let file=resolve(root,'.'+path);if(file!==resolve(root)&&!file.startsWith(resolve(root)+sep)){res.writeHead(404);res.end();return;}if((await stat(file)).isDirectory())file=resolve(file,'index.html');const bytes=await readFile(file);res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(req.method==='HEAD'?undefined:bytes);}catch{res.writeHead(404);res.end('Documentation page not found.');}}).listen(port,'127.0.0.1',()=>console.log('Independent docs: http://127.0.0.1:'+port));

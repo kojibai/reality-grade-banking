@@ -1,6 +1,150 @@
 {
   "schema": "bankeiz.public-social-images.v1",
   "images": {
+    "/trust/": {
+      "url": "/social/standard-trust-9e111e7a30a381bd.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "9e111e7a30a381bd04bbcc56afcc7d8a88e4806dedbd6a5850e31e11bc011a62",
+      "bytes": 303436,
+      "alt": "Bankeiz. Hold the source. Keep the authority. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/money/": {
+      "url": "/social/standard-money-e248900c7fca3c7e.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "e248900c7fca3c7ebce30150a1b4212f3e8eaadc81152e63b24559a618efdffb",
+      "bytes": 299104,
+      "alt": "Bankeiz. Your value. Its source, intact. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/deposit/": {
+      "url": "/social/standard-deposit-1d52dff81aa68731.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "1d52dff81aa687312b41fc12e0a2373facf38d928e6edb0fe74708416b5faa49",
+      "bytes": 305280,
+      "alt": "Bankeiz. Bring value in. Keep its origin. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/fees/": {
+      "url": "/social/standard-fees-e8684941479f0971.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "e8684941479f097141143e18b87e5ccc94a1b94e10ac9274f102efe3e8c33673",
+      "bytes": 302921,
+      "alt": "Bankeiz. Know the amount. Approve the action. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/help/": {
+      "url": "/social/standard-help-aa5048db8032b270.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "aa5048db8032b270dd94c1590fd28903eb1d97dc0c7c7ca28ac7a59aca190960",
+      "bytes": 302621,
+      "alt": "Bankeiz. Keep the reference. Find the real result. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/about/": {
+      "url": "/social/standard-about-88066410423096e3.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "88066410423096e36c0e4c0c9cc12d8c2e784cf64a362d3ceea1fe637f52e4ae",
+      "bytes": 307309,
+      "alt": "Bankeiz. A standard. Open to everyone. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/in-practice/": {
+      "url": "/social/standard-in-practice-f9801b49ac5ca20d.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "f9801b49ac5ca20d519042a5a063abfa93d64c2e53c29e48fb0cb85774a2bd54",
+      "bytes": 303772,
+      "alt": "Bankeiz. Own the source. Live with continuity. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/accept-payments/": {
+      "url": "/social/standard-accept-payments-15009341c20935b4.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "15009341c20935b4f490db8a942b5f6161b39f4b88c901b0b0118c3bacbf5d75",
+      "bytes": 311722,
+      "alt": "Bankeiz. One payment page. The whole record. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/start/": {
+      "url": "/social/standard-start-af00ba8e0177d63e.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "af00ba8e0177d63ee2bee2038e732bd9b2df8bb39ffa9125da23f036440434c8",
+      "bytes": 306876,
+      "alt": "Bankeiz. Start as yourself. Keep what is yours. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/privacy/": {
+      "url": "/social/standard-privacy-6f00ebe7414547ae.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "6f00ebe7414547ae9121144f7f839f2400b3fcbc93e1918692364af2a0e43ef3",
+      "bytes": 307691,
+      "alt": "Bankeiz. Your context. Chosen by you. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/terms/": {
+      "url": "/social/standard-terms-e8c3725137815786.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "e8c37251378157865bfbd9deee4013405668d1ca5be44cb7e3220abfa65ac7f8",
+      "bytes": 302103,
+      "alt": "Bankeiz. Use the standard. Keep the responsibilities. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/market/": {
+      "url": "/social/standard-market-cbdc033d3d707e53.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "cbdc033d3d707e53b7ca45d311e67264a597ba545741cc64e113eab51c4966e5",
+      "bytes": 302772,
+      "alt": "Bankeiz. The asset. The rights. The whole record. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/market/buy/": {
+      "url": "/social/standard-market-buy-2f6f7678ce122a28.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "2f6f7678ce122a288c34e6d8b0f73c2c0a73f4dedc8b33a60da4bda272eee4d1",
+      "bytes": 309069,
+      "alt": "Bankeiz. Know what you buy. Keep what happened. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/market/sell/": {
+      "url": "/social/standard-market-sell-e30e4b8b08b8776a.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "e30e4b8b08b8776a5a7b01c32aeb4771010e902304fa76b1788b3c352e6d0e24",
+      "bytes": 305790,
+      "alt": "Bankeiz. Choose what to sell. Follow the proceeds. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/market/value/": {
+      "url": "/social/standard-market-value-bd6a5d894111ebf6.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "bd6a5d894111ebf683cc87ce73698d7d41b9ab34bab78f870d55772f54e44136",
+      "bytes": 307383,
+      "alt": "Bankeiz. Read the value. Know the basis. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/market/ownership/": {
+      "url": "/social/standard-market-ownership-08fa3e170f27862b.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "08fa3e170f27862b5f753e381ed039ff8c84cf6d1fdc562a3ec8e3bea4c25d9b",
+      "bytes": 304664,
+      "alt": "Bankeiz. Buy defined rights. Inspect their source. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/market/history/": {
+      "url": "/social/standard-market-history-792362713d153060.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "792362713d1530607b954686cfdb8fc89a3debdbc93bd9d73dee9b0afc83ea37",
+      "bytes": 300551,
+      "alt": "Bankeiz. Every trade. A result you can follow. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
+    "/market/costs/": {
+      "url": "/social/standard-market-costs-a5f6f478af941892.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "a5f6f478af9418927fa2fc0f7538e2e2a4384fddc738430e7f6edcfcb18233b3",
+      "bytes": 303157,
+      "alt": "Bankeiz. Know the route. Understand the result. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
     "/agent/": {
       "url": "/social/solution-agent-73df612d940a3490.png",
       "width": 1730,
@@ -770,12 +914,12 @@
       "alt": "Bankeiz. Defined rights. Visible backing. Know exactly what the proof establishes. An engraved cube motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/proof-native-economy/": {
-      "url": "/social/proof-native-economy-bb5eed3bdfa236af.png",
+      "url": "/social/proof-native-economy-803a60b031c5278e.png",
       "width": 1730,
       "height": 909,
-      "sha256": "bb5eed3bdfa236af48e8c66dd2be072b167aad832b32282ce8de7ebbce4066bc",
-      "bytes": 464449,
-      "alt": "Bankeiz. Value. Connected to source. Use the value you already hold. An engraved globe motif on layered cobalt, clear glass and navy forms."
+      "sha256": "803a60b031c5278e02e7105704ac55d9f3d4ccc6204fc95156ac60d04dd5ad87",
+      "bytes": 480429,
+      "alt": "Bankeiz. Value. Connected to source. The economic system. Reality-grade banking is how you interact with it. Receiz is the reality-grade infrastructure. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/markets/": {
       "url": "/social/markets-940be1a08cb599d6.png",

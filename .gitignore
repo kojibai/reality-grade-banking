@@ -18,3 +18,6 @@ test-results/
 
 # Reproducible, document-only PDF resources
 /public/pdf-runtime/
+
+# Independent static documentation build
+/docs-dist/

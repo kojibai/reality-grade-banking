@@ -77,7 +77,7 @@
   let bankLoading = null;
   const pathname = path => aliases[path=path.endsWith('/')?path:path+'/']||(path==='/explorer/'?'/explore/':path);
   const assetMetadata=new Map(),assetEntries=new Map();
-  const profileNames=new Set(['api','asset','assets','auth','market','native','offline','source','u']);
+  const profileNames=new Set(['api','asset','assets','auth','docs','market','native','offline','source','u']);
   const profileName=path=>{const match=/^\/(?:u\/)?([a-z0-9_]{3,24})\/?$/.exec(path);return match&&(path.startsWith('/u/')||!pages[pathname(path)]&&!profileNames.has(match[1]))?match[1]:null;};
   const keepAsset=value=>{if(value&&typeof value.id==='string'&&value.id.length<=256&&typeof value.title==='string'){assetMetadata.set(value.id,{...value,description:value.description??value.summary});assetEntries.delete(value.id);if(assetMetadata.size>48){const first=assetMetadata.keys().next().value;assetMetadata.delete(first);assetEntries.delete(first);}}};
   try{keepAsset(JSON.parse(document.getElementById('public-asset-seed')?.textContent??'null'));}catch{}

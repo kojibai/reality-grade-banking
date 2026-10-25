@@ -25,6 +25,342 @@
   },
   "rewrites": [
     {
+      "source": "/trust/",
+      "destination": "/trust/index.html"
+    },
+    {
+      "source": "/trust",
+      "destination": "/trust/index.html"
+    },
+    {
+      "source": "/money/",
+      "destination": "/money/index.html"
+    },
+    {
+      "source": "/money",
+      "destination": "/money/index.html"
+    },
+    {
+      "source": "/deposit/",
+      "destination": "/deposit/index.html"
+    },
+    {
+      "source": "/deposit",
+      "destination": "/deposit/index.html"
+    },
+    {
+      "source": "/fees/",
+      "destination": "/fees/index.html"
+    },
+    {
+      "source": "/fees",
+      "destination": "/fees/index.html"
+    },
+    {
+      "source": "/help/",
+      "destination": "/help/index.html"
+    },
+    {
+      "source": "/help",
+      "destination": "/help/index.html"
+    },
+    {
+      "source": "/about/",
+      "destination": "/about/index.html"
+    },
+    {
+      "source": "/about",
+      "destination": "/about/index.html"
+    },
+    {
+      "source": "/in-practice/",
+      "destination": "/in-practice/index.html"
+    },
+    {
+      "source": "/in-practice",
+      "destination": "/in-practice/index.html"
+    },
+    {
+      "source": "/accept-payments/",
+      "destination": "/accept-payments/index.html"
+    },
+    {
+      "source": "/accept-payments",
+      "destination": "/accept-payments/index.html"
+    },
+    {
+      "source": "/start/",
+      "destination": "/start/index.html"
+    },
+    {
+      "source": "/start",
+      "destination": "/start/index.html"
+    },
+    {
+      "source": "/privacy/",
+      "destination": "/privacy/index.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy/index.html"
+    },
+    {
+      "source": "/terms/",
+      "destination": "/terms/index.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms/index.html"
+    },
+    {
+      "source": "/market/",
+      "destination": "/market/index.html"
+    },
+    {
+      "source": "/market",
+      "destination": "/market/index.html"
+    },
+    {
+      "source": "/market/buy/",
+      "destination": "/market/buy/index.html"
+    },
+    {
+      "source": "/market/buy",
+      "destination": "/market/buy/index.html"
+    },
+    {
+      "source": "/market/sell/",
+      "destination": "/market/sell/index.html"
+    },
+    {
+      "source": "/market/sell",
+      "destination": "/market/sell/index.html"
+    },
+    {
+      "source": "/market/value/",
+      "destination": "/market/value/index.html"
+    },
+    {
+      "source": "/market/value",
+      "destination": "/market/value/index.html"
+    },
+    {
+      "source": "/market/ownership/",
+      "destination": "/market/ownership/index.html"
+    },
+    {
+      "source": "/market/ownership",
+      "destination": "/market/ownership/index.html"
+    },
+    {
+      "source": "/market/history/",
+      "destination": "/market/history/index.html"
+    },
+    {
+      "source": "/market/history",
+      "destination": "/market/history/index.html"
+    },
+    {
+      "source": "/market/costs/",
+      "destination": "/market/costs/index.html"
+    },
+    {
+      "source": "/market/costs",
+      "destination": "/market/costs/index.html"
+    },
+    {
+      "source": "/customers/",
+      "destination": "/in-practice/index.html"
+    },
+    {
+      "source": "/customers",
+      "destination": "/in-practice/index.html"
+    },
+    {
+      "source": "/switch/",
+      "destination": "/start/index.html"
+    },
+    {
+      "source": "/switch",
+      "destination": "/start/index.html"
+    },
+    {
+      "source": "/standard/",
+      "destination": "/standards/index.html"
+    },
+    {
+      "source": "/standard",
+      "destination": "/standards/index.html"
+    },
+    {
+      "source": "/reality-grade-banking/",
+      "destination": "/learn/reality-grade-banking/index.html"
+    },
+    {
+      "source": "/reality-grade-banking",
+      "destination": "/learn/reality-grade-banking/index.html"
+    },
+    {
+      "source": "/standards/",
+      "destination": "/standards/index.html"
+    },
+    {
+      "source": "/standards",
+      "destination": "/standards/index.html"
+    },
+    {
+      "source": "/learn/reality-grade-banking/",
+      "destination": "/learn/reality-grade-banking/index.html"
+    },
+    {
+      "source": "/learn/reality-grade-banking",
+      "destination": "/learn/reality-grade-banking/index.html"
+    },
+    {
+      "source": "/docs/",
+      "destination": "/docs/index.html"
+    },
+    {
+      "source": "/docs",
+      "destination": "/docs/index.html"
+    },
+    {
+      "source": "/docs/getting-started/",
+      "destination": "/docs/getting-started/index.html"
+    },
+    {
+      "source": "/docs/getting-started",
+      "destination": "/docs/getting-started/index.html"
+    },
+    {
+      "source": "/docs/infrastructure/",
+      "destination": "/docs/infrastructure/index.html"
+    },
+    {
+      "source": "/docs/infrastructure",
+      "destination": "/docs/infrastructure/index.html"
+    },
+    {
+      "source": "/docs/identity/",
+      "destination": "/docs/identity/index.html"
+    },
+    {
+      "source": "/docs/identity",
+      "destination": "/docs/identity/index.html"
+    },
+    {
+      "source": "/docs/funding/",
+      "destination": "/docs/funding/index.html"
+    },
+    {
+      "source": "/docs/funding",
+      "destination": "/docs/funding/index.html"
+    },
+    {
+      "source": "/docs/payments/",
+      "destination": "/docs/payments/index.html"
+    },
+    {
+      "source": "/docs/payments",
+      "destination": "/docs/payments/index.html"
+    },
+    {
+      "source": "/docs/receiving/",
+      "destination": "/docs/receiving/index.html"
+    },
+    {
+      "source": "/docs/receiving",
+      "destination": "/docs/receiving/index.html"
+    },
+    {
+      "source": "/docs/vaults/",
+      "destination": "/docs/vaults/index.html"
+    },
+    {
+      "source": "/docs/vaults",
+      "destination": "/docs/vaults/index.html"
+    },
+    {
+      "source": "/docs/notes/",
+      "destination": "/docs/notes/index.html"
+    },
+    {
+      "source": "/docs/notes",
+      "destination": "/docs/notes/index.html"
+    },
+    {
+      "source": "/docs/records/",
+      "destination": "/docs/records/index.html"
+    },
+    {
+      "source": "/docs/records",
+      "destination": "/docs/records/index.html"
+    },
+    {
+      "source": "/docs/recovery/",
+      "destination": "/docs/recovery/index.html"
+    },
+    {
+      "source": "/docs/recovery",
+      "destination": "/docs/recovery/index.html"
+    },
+    {
+      "source": "/docs/agents/",
+      "destination": "/docs/agents/index.html"
+    },
+    {
+      "source": "/docs/agents",
+      "destination": "/docs/agents/index.html"
+    },
+    {
+      "source": "/docs/integrations/",
+      "destination": "/docs/integrations/index.html"
+    },
+    {
+      "source": "/docs/integrations",
+      "destination": "/docs/integrations/index.html"
+    },
+    {
+      "source": "/docs/sdk/",
+      "destination": "/docs/sdk/index.html"
+    },
+    {
+      "source": "/docs/sdk",
+      "destination": "/docs/sdk/index.html"
+    },
+    {
+      "source": "/docs/mcp/",
+      "destination": "/docs/mcp/index.html"
+    },
+    {
+      "source": "/docs/mcp",
+      "destination": "/docs/mcp/index.html"
+    },
+    {
+      "source": "/docs/ai-skills/",
+      "destination": "/docs/ai-skills/index.html"
+    },
+    {
+      "source": "/docs/ai-skills",
+      "destination": "/docs/ai-skills/index.html"
+    },
+    {
+      "source": "/docs/market-trading/",
+      "destination": "/docs/market-trading/index.html"
+    },
+    {
+      "source": "/docs/market-trading",
+      "destination": "/docs/market-trading/index.html"
+    },
+    {
+      "source": "/docs/market-records/",
+      "destination": "/docs/market-records/index.html"
+    },
+    {
+      "source": "/docs/market-records",
+      "destination": "/docs/market-records/index.html"
+    },
+    {
       "source": "/agents",
       "destination": "/agent/index.html"
     },
