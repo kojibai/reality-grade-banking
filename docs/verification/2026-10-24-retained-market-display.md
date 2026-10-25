@@ -74,10 +74,19 @@ are outside the repository in `/private/tmp/bank-scroll-paint/`, including
 `image-after.log`, `retained-value-full-tests.log` and
 `retained-value-browser-gate.log`.
 
-## Mobile blanking boundary
+## Mobile confirmation and regression boundary
 
-These are confirmed costs that competed with rendering. They do not establish
-the exact cause of intermittent white tiles on the user's physical iPhone.
-The plain-list symptom was not reproduced in desktop Safari or Chromium.
-Actual-device verification remains necessary; no page-wide paint fix or fully
-offline financial execution is claimed by this change.
+On October 24, after this change, the user confirmed that the intermittent
+mobile page blanking was fixed: “that was exactly it … yes was definitely
+the issue and the fix.” This is the user's actual-device observation; the
+local Chromium measurements above independently establish the removed work.
+The plain-list symptom was not reproduced in the desktop test environment.
+
+Preserve both boundaries: recurring value updates reuse worker-held inputs,
+and offscreen list artwork does not all load eagerly. The real-worker and
+hook regressions cover equivalent results, source replacement, invalidation,
+restart and queued updates; the Market regression covers image node/URL
+retention through value changes and the leading/offscreen loading policy.
+Do not reintroduce full input copies on each pulse or eager decoding of the
+whole unseen collection. No shared CSS or proof-object effects were changed.
+This confirmation makes no claim about fully offline financial execution.
