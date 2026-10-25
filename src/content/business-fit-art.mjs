@@ -1,36 +1,1054 @@
-// Editorial illustration models, never live work, proof or account state.
-// Every fit specifies its own input, process and reviewable result.
-const object=(kind,title,lines=[],variant='')=>({kind,title,lines,variant});
-const story=(lines,...objects)=>({lines,objects});
+// Editorial illustration models, never live payments, proof or account state.
+// Each money story retains its audience’s custom object geometry.
 export const businessFitArt={
- agencies:story(['The next revision.','Still on brief.'],object('feedback','CLIENT BRIEF',['The audience','The tone','The feedback']),object('campaign','DIRECTION',['Their voice','Your thinking'],'revision'),object('presentation','NEXT VERSION',['Campaign revision','Ready to review'],'campaign')),
- consultants:story(['Your expertise.','A head start.'],object('framework','YOUR METHOD',['Client context','The real question']),object('analysis','RECOMMENDATION',['Priorities','Trade-offs']),object('report','CLIENT BRIEFING',['The recommendation','The next decision'])),
- freelancers:story(['Proposal ready.','Back to the work.'],object('conversation','NEW ENQUIRY',['Can you help with','this project?']),object('scope','CLEAR SCOPE',['What is included','What needs deciding']),object('proposal','YOUR PROPOSAL',['The work','The next step'])),
- designers:story(['From the brief','to the presentation.'],object('moodboard','THE BRIEF',['References','The direction']),object('artwork','EXPLORE DIRECTIONS',['Form / colour / story']),object('presentation','CLIENT PRESENTATION',['The direction','The reason behind it'],'design')),
- creators:story(['One strong idea.','A whole series.'],object('notebook','YOUR POINT OF VIEW',['The idea','Your own voice']),object('studio','BUILD THE STORY',['Writing / visuals']),object('series','YOUR NEXT SERIES',['One story','More ways to share'])),
- musicians:story(['The release, ready.','The music, yours.'],object('record','YOUR TRACK',['The starting point']),object('artwork','THE RELEASE WORLD',['Cover / story / tone'],'music'),object('release','RELEASE MATERIALS',['Artwork + release copy','Ready to review'])),
- authors:story(['The next chapter.','The same world.'],object('book','YOUR STORY SO FAR',['The world','The characters']),object('story-map','KEEP THE THREAD',['Character / place','What happens next']),object('manuscript','THE NEXT CHAPTER',['Your voice','The story continues'])),
- filmmakers:story(['Make them see','the film you see.'],object('script','THE PREMISE',['The character','The turning point']),object('storyboard','KEY FRAMES',['The visual direction']),object('presentation','YOUR FILM PITCH',['Treatment + key frames','Ready to discuss'],'film')),
- podcasters:story(['Better prepared.','Better conversations.'],object('research','THE GUEST',['Their story','Your angle']),object('microphone','THE CONVERSATION',['Questions that connect']),object('episode','YOUR EPISODE KIT',['Interview arc','Notes + episode copy'])),
- coaches:story(['The session, ready.','Your focus, on them.'],object('notebook','YOUR APPROACH',['Your method','Their goal']),object('session','THE SESSION',['Focus / practice','Reflection']),object('workbook','CLIENT MATERIALS',['Exercises','Follow-up to review'])),
- educators:story(['What you know.','Lessons they can use.'],object('book','YOUR KNOWLEDGE',['The subject','The examples']),object('lesson','A CLEAR SEQUENCE',['Understand','Try it']),object('course','LEARNING MATERIALS',['Lessons + exercises','Ready to teach'])),
- accountants:story(['Explain the number.','Keep the whole story.'],object('records','CHOSEN RECORDS',['Payment question','Supporting context']),object('analysis','FOLLOW THE STORY',['The source','The explanation']),object('report','CLIENT EXPLANATION',['What the records say','Ready to check'])),
- researchers:story(['A clearer briefing.','Sources still in reach.'],object('research','SOURCE MATERIAL',['Selected excerpts','Your research question']),object('citations','BUILD THE ARGUMENT',['Evidence','Gaps to resolve']),object('briefing','YOUR BRIEFING',['The finding','Connected sources'])),
- founders:story(['The next decision.','The next thing, ready.'],object('feedback','WHAT YOU KNOW',['The customer','The decisions']),object('roadmap','THE NEXT MOVE',['The priority','The trade-off']),object('launch','WORK TO MOVE IT ON',['Offer + materials','Ready to review'])),
- 'service-businesses':story(['Keep enquiries moving.','Stay on the job.'],object('tools','YOUR WORKDAY',['The job in hand']),object('conversation','THE FIRST QUESTIONS',['Can you help?','How do I book?']),object('booking','A CLEAR NEXT STEP',['Booking / payment','Your chosen route'])),
- 'real-estate':story(['The property, clear.','The next step, easy.'],object('house','THE PROPERTY',['Authorised details']),object('property','THE QUESTIONS',['Space / location','Viewing details']),object('calendar','TOWARD A VIEWING',['Useful answers','Appointment route'])),
- ecommerce:story(['Their question, answered.','Their next step, clear.'],object('parcel','YOUR PRODUCT',['The item','Your policies']),object('conversation','SHOPPER QUESTIONS',['Is this right for me?','What about delivery?']),object('store','TOWARD A PURCHASE',['Product information','Purchase or support'])),
- hospitality:story(['Help them picture it.','Help them book it.'],object('stay','THE EXPERIENCE',['The stay','The occasion']),object('concierge','THE PRACTICAL DETAILS',['What is included?','How does it work?']),object('booking','TOWARD A RESERVATION',['Useful answers','Reservation route'])),
- teams:story(['The work moves on.','The why goes with it.'],object('decisions','THE DECISIONS',['What changed','Why it matters']),object('handoff','CONNECT THE WORK',['Context','Responsibilities']),object('project','A USEFUL HANDOFF',['The next task','The reason behind it'])),
- communities:story(['A better welcome.','A clearer way in.'],object('people','THE NEXT MEMBER',['Where do I start?']),object('guide','THE WELCOME',['The answers','The way things work']),object('community','A WAY TO TAKE PART',['People + purpose','The next step'])),
- events:story(['The invite, ready.','The way in, clear.'],object('calendar','YOUR EVENT',['The date','The details']),object('invitation','THE INVITE',['What is happening','Why come along?']),object('ticket','A WAY TO JOIN',['Practical information','Booking route'])),
- nonprofits:story(['Show the work.','Make support easier.'],object('fieldwork','THE PROJECT',['The work','The records']),object('report','THE STORY + SOURCE',['What has happened','What supports it']),object('support','SUPPORTER UPDATE',['A clear account','A way to help'])),
- 'project-leaders':story(['The next phase.','Without starting over.'],object('decisions','THE PROJECT SO FAR',['Decisions','The blocker']),object('dependencies','WHAT DEPENDS ON WHAT',['The order','The next owner']),object('project','THE NEXT PHASE',['A practical plan','Ready to hand over'])),
- 'product-builders':story(['From the problem','to something to try.'],object('feedback','THE USER PROBLEM',['Who needs it','What gets in the way']),object('wireframe','THE SMALLEST VERSION',['One useful job']),object('prototype','SOMETHING TO TRY',['A working direction','Ready for feedback'])),
- developers:story(['From the API brief','to code you can test.'],object('contract','THE REQUIREMENTS',['API contract','Expected behaviour']),object('code','THE IMPLEMENTATION',['Build the request','Handle the response']),object('terminal','READY TO TEST',['Request + response','Inspect the result'])),
- startups:story(['One clear offer.','More ways in.'],object('feedback','WHAT YOU ARE HEARING',['The problem','Customer feedback']),object('pitch','YOUR OFFER',['Who it helps','Why it matters']),object('launch','DECK + PAGE + ENQUIRY',['A coherent story','A way to respond'])),
- collectors:story(['The collection, seen.','Its story, connected.'],object('collection','YOUR ORIGINALS',['The objects','The history']),object('catalogue','THE COLLECTION STORY',['What connects them','Where they came from']),object('gallery','A PLACE TO EXPLORE',['The presentation','The enquiry route'])),
- professionals:story(['Less going in circles.','A next step, ready.'],object('notebook','YOUR BACKGROUND',['The context','Your priorities']),object('roadmap','WORK IT THROUGH',['The decision','What comes next']),object('briefing','A USEFUL NEXT STEP',['The brief or draft','Ready to review'])),
- 'career-builders':story(['Make your work','speak for you.'],object('portfolio-notes','YOUR EXPERIENCE',['The work','What you contributed']),object('case-study','THE CASE STUDY',['The problem','Your contribution']),object('portfolio','YOUR WORK, PRESENTED',['A clearer portfolio','A way to get in touch'])),
- 'knowledge-businesses':story(['Years of knowledge.','Useful again today.'],object('archive','YOUR KNOWLEDGE',['The archive','The customer question']),object('citations','A USEFUL ANSWER',['Your approach','The relevant sources']),object('guide','SOMETHING THEY CAN USE',['A practical guide','An offer to explore'])),
+  "agencies": {
+    "lines": [
+      "Client payments, clear.",
+      "Less chasing."
+    ],
+    "objects": [
+      {
+        "kind": "feedback",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "campaign",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": "revision"
+      },
+      {
+        "kind": "presentation",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": "campaign"
+      }
+    ]
+  },
+  "consultants": {
+    "lines": [
+      "Your expertise.",
+      "Less money admin."
+    ],
+    "objects": [
+      {
+        "kind": "framework",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "analysis",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "report",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "freelancers": {
+    "lines": [
+      "Do the work.",
+      "Make getting paid easier."
+    ],
+    "objects": [
+      {
+        "kind": "conversation",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "scope",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "proposal",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "designers": {
+    "lines": [
+      "Good work.",
+      "Clearer project money."
+    ],
+    "objects": [
+      {
+        "kind": "moodboard",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "artwork",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "presentation",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": "design"
+      }
+    ]
+  },
+  "creators": {
+    "lines": [
+      "Sales, sponsors & costs.",
+      "One clearer picture."
+    ],
+    "objects": [
+      {
+        "kind": "notebook",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "studio",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "series",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "musicians": {
+    "lines": [
+      "Music first.",
+      "The money, clearer."
+    ],
+    "objects": [
+      {
+        "kind": "record",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "artwork",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": "music"
+      },
+      {
+        "kind": "release",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "authors": {
+    "lines": [
+      "The writing is yours.",
+      "Understand what it earns."
+    ],
+    "objects": [
+      {
+        "kind": "book",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "story-map",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "manuscript",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "filmmakers": {
+    "lines": [
+      "Keep production moving.",
+      "Keep the money in view."
+    ],
+    "objects": [
+      {
+        "kind": "script",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "storyboard",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "presentation",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": "film"
+      }
+    ]
+  },
+  "podcasters": {
+    "lines": [
+      "Your show. Your money.",
+      "Less financial admin."
+    ],
+    "objects": [
+      {
+        "kind": "research",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "microphone",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "episode",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "coaches": {
+    "lines": [
+      "Focus on your clients.",
+      "Simplify the payment side."
+    ],
+    "objects": [
+      {
+        "kind": "notebook",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "session",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "workbook",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "educators": {
+    "lines": [
+      "Teach what you know.",
+      "Simplify course money."
+    ],
+    "objects": [
+      {
+        "kind": "book",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "lesson",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "course",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "accountants": {
+    "lines": [
+      "Explain the payment.",
+      "Keep the source in view."
+    ],
+    "objects": [
+      {
+        "kind": "records",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "analysis",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "report",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "researchers": {
+    "lines": [
+      "Funding, costs & proof.",
+      "Less financial admin."
+    ],
+    "objects": [
+      {
+        "kind": "research",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "citations",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "briefing",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "founders": {
+    "lines": [
+      "Know where money stands.",
+      "Get back to the business."
+    ],
+    "objects": [
+      {
+        "kind": "feedback",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "roadmap",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "launch",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "service-businesses": {
+    "lines": [
+      "Finish the job.",
+      "Make getting paid easier."
+    ],
+    "objects": [
+      {
+        "kind": "tools",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "conversation",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "booking",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "real-estate": {
+    "lines": [
+      "Property payments.",
+      "The context stays together."
+    ],
+    "objects": [
+      {
+        "kind": "house",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "property",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "calendar",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "ecommerce": {
+    "lines": [
+      "Busy sales.",
+      "A clearer money picture."
+    ],
+    "objects": [
+      {
+        "kind": "parcel",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "conversation",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "store",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "hospitality": {
+    "lines": [
+      "Keep serving people.",
+      "Make money admin lighter."
+    ],
+    "objects": [
+      {
+        "kind": "stay",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "concierge",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "booking",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "teams": {
+    "lines": [
+      "The amount. The reason.",
+      "A clearer money handover."
+    ],
+    "objects": [
+      {
+        "kind": "decisions",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "handoff",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "project",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "communities": {
+    "lines": [
+      "Shared money.",
+      "Clearer for everyone."
+    ],
+    "objects": [
+      {
+        "kind": "people",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "guide",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "community",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "events": {
+    "lines": [
+      "An event to deliver.",
+      "The money, in view."
+    ],
+    "objects": [
+      {
+        "kind": "calendar",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "invitation",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "ticket",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "nonprofits": {
+    "lines": [
+      "Funding with a purpose.",
+      "The evidence, together."
+    ],
+    "objects": [
+      {
+        "kind": "fieldwork",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "report",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "support",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "project-leaders": {
+    "lines": [
+      "The next cost.",
+      "A clearer next decision."
+    ],
+    "objects": [
+      {
+        "kind": "decisions",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "dependencies",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "project",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "product-builders": {
+    "lines": [
+      "Keep building.",
+      "Make money decisions clearer."
+    ],
+    "objects": [
+      {
+        "kind": "feedback",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "wireframe",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "prototype",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "developers": {
+    "lines": [
+      "Trace the payment.",
+      "Keep the actual source."
+    ],
+    "objects": [
+      {
+        "kind": "contract",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "code",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "terminal",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "startups": {
+    "lines": [
+      "Keep moving.",
+      "Keep cash decisions clear."
+    ],
+    "objects": [
+      {
+        "kind": "feedback",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "pitch",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "launch",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "collectors": {
+    "lines": [
+      "The object. The value.",
+      "The money story, together."
+    ],
+    "objects": [
+      {
+        "kind": "collection",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "catalogue",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "gallery",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "professionals": {
+    "lines": [
+      "Your money, clearer.",
+      "Your evening, yours."
+    ],
+    "objects": [
+      {
+        "kind": "notebook",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "roadmap",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "briefing",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "career-builders": {
+    "lines": [
+      "New work.",
+      "Clearer money commitments."
+    ],
+    "objects": [
+      {
+        "kind": "portfolio-notes",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "case-study",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "portfolio",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  },
+  "knowledge-businesses": {
+    "lines": [
+      "Expertise that helps.",
+      "Money that’s easier to run."
+    ],
+    "objects": [
+      {
+        "kind": "archive",
+        "title": "YOUR MONEY RECORDS",
+        "lines": [
+          "Payments & costs",
+          "Your chosen records"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "citations",
+        "title": "THE PICTURE TOGETHER",
+        "lines": [
+          "The source & context",
+          "Questions to work through"
+        ],
+        "variant": ""
+      },
+      {
+        "kind": "guide",
+        "title": "YOUR NEXT MONEY STEP",
+        "lines": [
+          "A clear next step",
+          "Ready for your review"
+        ],
+        "variant": ""
+      }
+    ]
+  }
 };

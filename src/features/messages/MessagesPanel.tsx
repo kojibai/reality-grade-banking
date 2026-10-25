@@ -38,14 +38,13 @@ type PendingChatMessage={id:string;body:string;createdAt:string;status:'sending'
 type ActiveCall={id:string;mode:'voice'|'video'};
 type HeldCall={conversationId:string;title:string;video:boolean;callId?:string};
 function TwinAccessReply({onUpgrade,business=false}:{onUpgrade():void;business?:boolean}){
-  return <div className="bank-twin-reply bank-twin-access-reply"><span>{business?'Your agent · Business':'Agent access'}</span><p>Less starting over. More getting it done.</p><ul>
-    <li><strong>Stop repeating the whole story.</strong> Pick up with the available conversation history, memories and background you choose to bring.</li>
-    <li><strong>Know what happened to the money.</strong> Turn chosen payment records and funding history into clear answers. Work through the next move before you approve it.</li>
-    <li><strong>Get the next draft off your list.</strong> Create proposals, documents and campaigns. Make images, video, music and code you can refine and use.</li>
-    <li><strong>Help clients without stopping your work.</strong> Set up answers to their questions and a path to the booking, payment or person you choose.</li>
-    <li><strong>Give people one clear front door.</strong> Use your own domain, route enquiries to your team and bring client-facing help to multiple sites.</li>
-    <li><strong>Keep the record when it matters.</strong> Keep original proof objects, ownership and history connected, with a source to inspect behind the result.</li>
-  </ul><p>Start the work here, with the background you choose. Configure creation, client-facing answers, your domain and team routes in Receiz with the same account. Keep your ID, messages and conversation history. Business is an optional addition for these extra jobs.</p><p><strong>Business — $149/month.</strong> Renews monthly until cancelled. Review the plan before paying. Your core proof objects, ownership and supported value stay free.</p><button type="button" onClick={onUpgrade}>{business?'Get Business — $149/month':'Unlock your agent'}<ArrowUpRight size={16}/></button></div>;
+  return <div className="bank-twin-reply bank-twin-access-reply"><span>{business?'Your agent · Business':'More help with your money'}</span><p>Less time managing money. More time running your business.</p><ul>
+    <li><strong>Know where your money stands.</strong> Ask about the payment records, costs and commitments you share. See what came in, what went out and what needs attention.</li>
+    <li><strong>Make getting paid less work.</strong> Prepare a clear payment request, client response or follow-up with the work and available payment history in view.</li>
+    <li><strong>Get the money admin off your evening.</strong> Turn the records you bring into a useful summary, working document or handover you can review.</li>
+    <li><strong>Work through the next money move.</strong> Compare an upcoming cost or prepare a supported payment to people or employees. Review the recipient, amount and action before approving it.</li>
+    <li><strong>Keep clients moving while you work.</strong> Set up answers to payment questions, your domain and team routes. Keep the supported context connected across compatible apps.</li>
+  </ul><p>Ask here with the background you choose. Set up your agent, client payment answers, domain and team routes in the same account. Keep your ID, messages and history. Core banking remains available; Business is an optional addition for the extra money work.</p><p><strong>Business — $149/month.</strong> Renews monthly until cancelled. Review the plan before paying. Your core proof objects, ownership and supported value stay free.</p><button type="button" onClick={onUpgrade}>{business?'Get Business — $149/month':'Explore Business'}<ArrowUpRight size={16}/></button></div>;
 }
 function ConversationAvatar({row,owner}:{row:ChatConversation;owner:string}){
  const peers=row.members.filter(person=>person.kind==='user'&&person.userId!==owner).slice(0,2);

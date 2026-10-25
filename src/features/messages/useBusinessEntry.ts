@@ -1,9 +1,9 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import type {OpenIdentity} from '../../receiz/native-identity';
 export const BUSINESS_ENTRY_HASH='#account/messages/business';
-export const BUSINESS_OPENING_MESSAGE='Show me how Business can help me get more done.';
+export const BUSINESS_OPENING_MESSAGE='Show me how Business can make managing my money easier.';
 export interface BusinessStart {title:string;question:string;hint:string;}
-export const BUSINESS_FIRST_TASK:BusinessStart=Object.freeze({title:'Get the next piece of work off your list.',question:'Help me finish one useful piece of work today. Ask what I need to deliver and the background you need, then work with me on a draft I can review and use.',hint:'Bring a proposal, client reply, campaign or payment question you need to finish.'});
+export const BUSINESS_FIRST_TASK:BusinessStart=Object.freeze({title:'Make the money side of my business easier.',question:'Help me understand my money and take financial admin off my list. Ask which payment, cash-flow question or follow-up I want to handle, then work from the records I choose and prepare a next step for my review.',hint:'Bring the payment question, costs, commitments or client follow-up you want to work through.'});
 export interface BusinessAssistantRequest {id:string;owner:OpenIdentity;start:BusinessStart;}
 // Public editorial intent only. It grants no account access or action authority.
 function publicStart():BusinessStart|null{

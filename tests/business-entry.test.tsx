@@ -57,10 +57,10 @@ it('uses the explicit audience task when a generic route event was observed just
 it.each(['{invalid',JSON.stringify({title:'x',question:'x'.repeat(601),hint:'x'}),JSON.stringify({title:'',question:'x',hint:'x'})])('uses the default task for malformed or unbounded public editorial text',async(raw)=>{
  const source=document.createElement('div');source.id='public-learn-root';const main=document.createElement('main');main.dataset.businessStart=raw;source.append(main);document.body.append(source);
  history.replaceState(null,'','/'+BUSINESS_ENTRY_HASH);const f=fixture();
- try{f.state.opening=false;f.state.identity=owner;await f.render();expect(f.result.request?.start.title).toBe('Get the next piece of work off your list.');expect(f.create).not.toHaveBeenCalled();}finally{f.close();source.remove();}
+ try{f.state.opening=false;f.state.identity=owner;await f.render();expect(f.result.request?.start.title).toBe('Make the money side of my business easier.');expect(f.create).not.toHaveBeenCalled();}finally{f.close();source.remove();}
 });
 it('does not retain audience context from a hidden page click after navigating to another public page',async()=>{
  history.replaceState(null,'','/business/for/agencies/');const f=fixture();
  const source=document.createElement('div');source.id='public-learn-root';source.hidden=true;const main=document.createElement('main');main.dataset.businessStart=JSON.stringify({title:'Hidden task',question:'Hidden question',hint:'Hidden hint'});const link=document.createElement('a');link.href='/'+BUSINESS_ENTRY_HASH;link.dataset.businessCheckout='';link.addEventListener('click',e=>e.preventDefault());main.append(link);source.append(main);document.body.append(source);
- try{f.state.opening=false;f.state.identity=owner;await f.render();await act(async()=>link.click());source.remove();history.replaceState(null,'','/business/');await f.event();history.replaceState(null,'','/'+BUSINESS_ENTRY_HASH);await f.event();expect(f.result.request?.start.title).toBe('Get the next piece of work off your list.');}finally{f.close();source.remove();}
+ try{f.state.opening=false;f.state.identity=owner;await f.render();await act(async()=>link.click());source.remove();history.replaceState(null,'','/business/');await f.event();history.replaceState(null,'','/'+BUSINESS_ENTRY_HASH);await f.event();expect(f.result.request?.start.title).toBe('Make the money side of my business easier.');}finally{f.close();source.remove();}
 });

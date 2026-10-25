@@ -9,7 +9,7 @@ import {publicPage} from '../scripts/public-page-metadata.mjs';
 import {learningPages} from '../src/content/learning-pages.mjs';
 it('presents an actionable monthly offer and direct existing-account purchase intent without private scripts',()=>{
  const html=businessContent(),doc=new DOMParser().parseFromString(html,'text/html');
- expect(doc.querySelector('h1')?.textContent).toBe('More done.Less on your shoulders.');
+ expect(doc.querySelector('h1')?.textContent).toBe('Less money admin.More room to run your business.');
  expect(doc.querySelector('.business-price')?.textContent).toContain('$149');
  expect(doc.querySelector('a[data-business-checkout]')?.getAttribute('href')).toBe(businessOffer.checkoutHref);
  expect(doc.body.textContent).toContain('7,500');expect(doc.body.textContent).toContain('$1,499/year');
@@ -37,16 +37,16 @@ it('connects free participation to the paid offer without describing fiat fundin
 it('makes the monthly value concrete and keeps metered usage in billing details',()=>{
  const doc=new DOMParser().parseFromString(businessContent(),'text/html');
  const hero=doc.querySelector('.business-hero')!;
- expect(hero.textContent).toContain('proposals, campaigns and creative');
- expect(hero.textContent).toContain('booking, payment or person');
- expect(hero.textContent).toContain('Pick up the work without rebuilding the brief');
- expect(hero.textContent).toContain('Help clients find answers and take the next step');
+ expect(hero.textContent).toContain('Know where your money stands');
+ expect(hero.textContent).toContain('Make getting paid less work');
+ expect(hero.textContent).toContain('Understand what came in, what went out and what needs attention');
+ expect(hero.textContent).toContain('Spend less time on financial admin');
  expect(hero.textContent).not.toMatch(/credits|7,500|Twin|Creator AI/);
  expect(doc.querySelector('.business-terms')?.textContent).toContain('Opens your agent. Creates a Receiz ID if needed. Review before paying.');
  expect(doc.querySelector('.business-existing')?.getAttribute('href')).toBe('/#account/messages');
- expect(doc.querySelector('.business-workflow')?.textContent).toContain('available history and selected memories');
- expect(doc.querySelector('.business-workflow')?.textContent).toContain('Review the result');
- expect(doc.querySelector('.business-benefits')?.textContent).toContain('proof objects, ownership and history');
+ expect(doc.querySelector('.business-workflow')?.textContent).toContain('available history');
+ expect(doc.querySelector('.business-workflow')?.textContent).toContain('Review the details');
+ expect(doc.querySelector('.business-benefits')?.textContent).toContain('source behind each answer');
  expect(doc.querySelector('.business-faq')?.textContent).toContain('7,500 monthly AI usage credits; use is metered');
  expect(doc.querySelector('a[href="/fit/"]')).not.toBeNull();
 });

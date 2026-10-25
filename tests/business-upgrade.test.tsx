@@ -56,6 +56,6 @@ it('scrolls only the explicit Business landing to the payment action once, prese
   review.scrollTop=180;await act(async()=>root.render(<TwinUpgradePanel {...props}/>));expect(review.scrollTop).toBe(180);
   await act(async()=>root.render(<TwinUpgradePanel {...props} paymentLandingId="next-click"/>));expect(review.scrollTop).toBe(1200);
   expect(host.textContent).not.toContain('monthly AI usage credits');
-  for(const value of ['context you choose','ready to review','clear next step','booking, payment or your team','More work ready to use'])expect(host.textContent).toContain(value);
+  for(const value of ['what came in','what went out','payment requests','client follow-ups','Less financial admin'])expect(host.textContent).toContain(value);
  }finally{height.mockRestore();await act(async()=>root.unmount());host.remove();}
 });

@@ -267,7 +267,7 @@ export const standardPages=[
       ],
       [
         "Business is optional.",
-        "Business is $149 per month and renews until cancelled. It adds the agent and business tools to the same account. The secure subscription review supplies the exact billing terms and included usage before you pay."
+        "Business is $149 per month and renews until cancelled. It adds help with cash-flow questions, payment preparation, follow-ups and repeat financial admin to the same account. The secure subscription review supplies the exact billing terms and included usage before you pay."
       ],
       [
         "A price and a valuation are different.",
@@ -579,7 +579,7 @@ export const standardPages=[
     "faq": [
       [
         "Do I need Business to receive a payment?",
-        "Core supported financial operations are available without Business. Business adds the agent and business tools under its own plan."
+        "Core supported financial operations are available without Business. Business adds extra financial intelligence, automation and business tools under its own plan."
       ],
       [
         "Does a scan authorize payment?",
@@ -621,7 +621,7 @@ export const standardPages=[
       ],
       [
         "Finish one useful action.",
-        "Start with the outcome you need: inspect an original, send a receiving request or fund a supported payment. Follow that action through its actual result and keep the reference. Core banking and supported value remain available without Business; the optional upgrade adds tools for the work around your business."
+        "Start with the outcome you need: inspect an original, send a receiving request or fund a supported payment. Follow that action through its actual result and keep the reference. Core banking and supported value remain available without Business; the optional upgrade helps with cash-flow questions, payment preparation and the repeat financial admin around your business."
       ],
       [
         "Keep the evidence.",
