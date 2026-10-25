@@ -8,11 +8,12 @@ import {retainedMarketDisplaySource,publishMarketDisplaySource} from '../src/rec
 import type {LedgerValueIndex} from '../src/receiz/ledger-value';
 import {parseMarketCapSource} from '../src/receiz/market-projection/source';
 import {Ledger} from '../src/features/ledger/Ledger';
+import {PublicLedgerApp} from '../src/public-ledger/PublicLedgerApp';
 import {parsePublicNetworkPage} from '../src/receiz/public-network';
 import * as receipts from '../src/receiz/ledger-receipts';
-const network=vi.hoisted(()=>({records:[] as ReturnType<typeof parsePublicNetworkPage>['records']}));
+const network=vi.hoisted(()=>({pulse:14647307,records:[] as ReturnType<typeof parsePublicNetworkPage>['records']}));
 vi.mock('../src/receiz/usePublicNetwork',()=>({usePublicNetwork:()=>({records:network.records,sources:{},bootstrap:false,refresh:()=>{},loadMore:()=>{}})}));
-vi.mock('../src/receiz/client',()=>({RECEIZ_VERSION:'129.0.0',loadReceiz:async()=>({receizKaiNow:()=>({pulse:14647307})})}));
+vi.mock('../src/receiz/client',()=>({RECEIZ_VERSION:'129.0.0',loadReceiz:async()=>({receizKaiNow:()=>({pulse:network.pulse})})}));
 const input = JSON.parse(readFileSync('public/receiz-public-capitalization.json', 'utf8'));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: ReturnType<typeof createRoot> | null = null;
@@ -124,4 +125,36 @@ it('holds inactive values and immediately adopts the latest shared source when r
  const next={...retainedMarketDisplaySource()!,serverPulse:retainedMarketDisplaySource()!.serverPulse+1,proofObjectHash:'c'.repeat(64)};
  act(()=>publishMarketDisplaySource(next));expect(host.querySelector('output')!.getAttribute('data-source')).toBe(held);
  await act(async()=>root!.render(<Probe active/>));expect(host.querySelector('output')!.getAttribute('data-source')).toBe('c'.repeat(64));
+});
+it.each(['account','public'] as const)('keeps %s historical receipt captures settled when only the display pulse advances',async surface=>{
+ publishMarketDisplaySource(parseMarketCapSource(input),'shipped');
+ vi.stubGlobal('fetch',async()=>new Response(null,{status:503}));
+ network.records=parsePublicNetworkPage('wallet',{ok:true,events:Array.from({length:50},(_,i)=>({id:`settled-${i}`,kind:i%2?'note_mint':'chat_transfer',amountUsdCents:'10000',pulse:100+i}))}).records;
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ await act(async()=>root!.render(surface==='account'?<Ledger active/>:<PublicLedgerApp active/>));
+ const selector=surface==='account'?'.ledger-receipt-actions a':'.public-ledger-receipts a';
+ const links=[...host.querySelectorAll(selector)].map(a=>a.getAttribute('href'));expect(links).toHaveLength(50);
+ const receipt=vi.spyOn(receipts,'receiptLink');
+ try{
+  const held=retainedMarketDisplaySource()!;
+  act(()=>publishMarketDisplaySource({...held,serverPulse:held.serverPulse+1}));
+  expect(receipt).not.toHaveBeenCalled();
+  expect([...host.querySelectorAll(selector)].map(a=>a.getAttribute('href'))).toEqual(links);
+ }finally{receipt.mockRestore();}
+});
+
+it.each(['account','public'] as const)('retains %s asset-linked historical receipts across the local clock tick',async surface=>{
+ vi.useFakeTimers();network.pulse=14647307;
+ publishMarketDisplaySource(parseMarketCapSource(input),'shipped');
+ vi.stubGlobal('fetch',async()=>new Response(null,{status:503}));
+ const assetId=retainedMarketDisplaySource()!.valueRows[0].id;
+ network.records=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'asset-linked-note',kind:'note_mint',amountUsdCents:'10000',assetId,pulse:100}]}).records;
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ await act(async()=>root!.render(surface==='account'?<Ledger active/>:<PublicLedgerApp active/>));
+ const selector=surface==='account'?'.ledger-receipt-actions a':'.public-ledger-receipts a';
+ const link=host.querySelector(selector)!.getAttribute('href'),receipt=vi.spyOn(receipts,'receiptLink');
+ try{
+  network.pulse+=10;await act(async()=>vi.advanceTimersByTimeAsync(1000));
+  expect(receipt).not.toHaveBeenCalled();expect(host.querySelector(selector)!.getAttribute('href')).toBe(link);
+ }finally{receipt.mockRestore();network.pulse=14647307;}
 });

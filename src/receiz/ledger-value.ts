@@ -87,7 +87,7 @@ export function readLedgerValueDisplay(input: unknown): LedgerValueDisplay | nul
   }
   return result;
 }
-export type LedgerValueIndex = { source: MarketCapSource; evaluationPulse?:number; rows: Map<string, MarketValueRow | null>; cardHistory:Map<MarketValueRow,SportsCopyHistory>; copyValuations:Map<string,LedgerCardCopyValuation|null>; transferValues:WeakMap<PublicRecord,LedgerValueDisplay>; valuationTraces:WeakMap<PublicRecord,LedgerFields|null> };
+export type LedgerValueIndex = { source: MarketCapSource; evaluationPulse?:number; rows: Map<string, MarketValueRow | null>; cardHistory:Map<MarketValueRow,SportsCopyHistory>; copyValuations:Map<string,LedgerCardCopyValuation|null>; transferValues:WeakMap<PublicRecord,LedgerValueDisplay>; valuationTraces:WeakMap<PublicRecord,LedgerFields|null>; recordedValuationTraces:WeakMap<PublicRecord,{source:MarketCapSource;value:LedgerValueDisplay;context:LedgerFields|null}> };
 export function indexLedgerValues(source: MarketCapSource): LedgerValueIndex {
   const rows = new Map<string, MarketValueRow | null>(),cardHistory=new Map<MarketValueRow,SportsCopyHistory>(),copyValuations=new Map<string,LedgerCardCopyValuation|null>();
   for (const row of source.valueRows) {
@@ -97,7 +97,7 @@ export function indexLedgerValues(source: MarketCapSource): LedgerValueIndex {
     const history=prepareSportsCopyHistory(row);if(history&&history.until<=source.serverPulse)cardHistory.set(row,history);
     for(const copy of row.sealedCopies??[]){const value=prepareLedgerCardCopyValuation(copy,row,source.serverPulse);if(!value)continue;for(const key of [copy.collectibleId,copy.claimHash])copyValuations.set(key,copyValuations.has(key)?null:value);}
   }
-  return { source, rows,cardHistory,copyValuations,transferValues:new WeakMap(),valuationTraces:new WeakMap() };
+  return { source, rows,cardHistory,copyValuations,transferValues:new WeakMap(),valuationTraces:new WeakMap(),recordedValuationTraces:new WeakMap() };
 }
 const pricingFields=['id','source','seed','baseUsdValue','birthUsdValue','marketUsdValue','proofTotalValueUsd','scoreDelta','quoteUsdPerPhi','historyEvaluationPulse'];
 const groupFields=['sport','cardId','rarity'],modelFields=['baseUsdValue','birthUsdValue','marketUsdValue','proofTotalValueUsd','scoreDelta','seed'];
@@ -208,12 +208,15 @@ function calculateLedgerValue(record: PublicRecord, index: LedgerValueIndex | nu
   return { amountUsdCents: null, basis: 'unavailable', pulse: eventPulse, considerationUsdCents: null, gap: 'The source carries no supported value operands.' };
 }
 /** Event coordinates do not advance with the UI clock. Reuse their result for
- * list, inspector and receipt, including subsequent live-pulse renders. */
+ * list, inspector and receipt, including subsequent live-pulse renders. The
+ * existing event cache also covers notes, trades and other recorded payments;
+ * proof listings still evaluate at the current display pulse. A changed input
+ * index owns a fresh cache, so newly supplied value operands remain visible. */
 export function ledgerValueForRecord(record:PublicRecord,index:LedgerValueIndex|null=null):LedgerValueDisplay{
-  const transfer=/transfer|send|payment_sent|payment_received/i.test(record.kind),held=transfer?index?.transferValues.get(record):undefined;
+  const recorded=/transfer|send|payment_sent|payment_received/i.test(record.kind)||(record.source!=='proofs'&&record.kind!=='market-asset'),held=recorded?index?.transferValues.get(record):undefined;
   if(held)return held;
   const value=calculateLedgerValue(record,index);
-  if(transfer)index?.transferValues.set(record,value);
+  if(recorded)index?.transferValues.set(record,value);
   return value;
 }
 export function ledgerValueLabel(value: LedgerValueDisplay): string {

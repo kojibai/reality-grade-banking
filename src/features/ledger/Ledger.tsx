@@ -23,7 +23,10 @@ const noRecords:PublicRecord[]=[];
 const rowPresentations=new WeakMap<PublicRecord,{valueSource:LedgerValueIndex|null;value:ReturnType<typeof ledgerValueForRecord>;valuation:ReturnType<typeof ledgerValuationContext>;link:ReturnType<typeof receiptLink>}>();
 function rowPresentation(record:PublicRecord,valueSource:LedgerValueIndex|null){
   const held=rowPresentations.get(record);if(held?.valueSource===valueSource)return held;
-  const value=ledgerValueForRecord(record,valueSource),valuation=ledgerValuationContext(record,valueSource,value),result={valueSource,value,valuation,link:receiptLink(record,value,valuation)};
+  const value=ledgerValueForRecord(record,valueSource),valuation=ledgerValuationContext(record,valueSource,value);
+  // A live display clock does not change an already captured event. Retain its
+  // complete link instead of serializing/compressing its funding graph again.
+  const result={valueSource,value,valuation,link:held?.value===value&&held.valuation===valuation?held.link:receiptLink(record,value,valuation)};
   rowPresentations.set(record,result);return result;
 }
 const LedgerRow=memo(function LedgerRow({ record, expanded, onExpand, personal = false, valueSource, relations, executionRecords = [] }: { personal?: boolean; executionRecords?:PublicRecord[]; record: PublicRecord; expanded: boolean; onExpand: (id:string) => void; valueSource: LedgerValueIndex | null; relations:ReturnType<typeof indexLedgerRelations> }) {

@@ -76,5 +76,11 @@ function calculateLedgerValuationContext(record:PublicRecord,index:LedgerValueIn
 export function ledgerValuationContext(record:PublicRecord,index:LedgerValueIndex|null,value?:LedgerValueDisplay):LedgerFields|null{
  const transfer=/transfer|send|payment_sent|payment_received/i.test(record.kind);
  if(transfer&&index?.valuationTraces.has(record))return index.valuationTraces.get(record)??null;
- const context=calculateLedgerValuationContext(record,index,value??ledgerValueForRecord(record,index));if(transfer)index?.valuationTraces.set(record,context);return context;
+ const resolved=value??ledgerValueForRecord(record,index),recorded=transfer||(record.source!=='proofs'&&record.kind!=='market-asset');
+ const held=recorded?index?.recordedValuationTraces.get(record):undefined;
+ if(held&&held.source===index?.source&&held.value===resolved)return held.context;
+ const context=calculateLedgerValuationContext(record,index,resolved);
+ if(transfer)index?.valuationTraces.set(record,context);
+ if(recorded&&index)index.recordedValuationTraces.set(record,{source:index.source,value:resolved,context});
+ return context;
 }
