@@ -10,7 +10,7 @@ import {profilePagePath,profilePageUsername} from '../src/receiz/public-profile'
 import social from '../public/social/manifest.json';
 
 it('gives the complete marketing documents short canonical, social and structured-data URLs while preserving old URLs',()=>{
- expect(publicRouteAliases).toEqual({'/learn/protect-your-value/':'/protect/','/learn/vaults/':'/vaults/','/business/for/':'/fit/','/cooperatives/':'/coops/','/cooperate/':'/coops/'});
+ expect(publicRouteAliases).toEqual({'/learn/identity-continuity/':'/id/','/learn/protect-your-value/':'/protect/','/learn/vaults/':'/vaults/','/business/for/':'/fit/','/cooperatives/':'/coops/','/cooperate/':'/coops/'});
  for(const [old,path] of Object.entries(publicRouteAliases)){
   expect(publicPage(old)).toBe(publicPage(path));expect(publicPage(old+'index.html?ref=old')).toBe(publicPage(path));
   expect(publicPages.some(page=>page.path===old)).toBe(false);
@@ -20,7 +20,7 @@ it('gives the complete marketing documents short canonical, social and structure
   expect(doc.querySelector('meta[property="og:url"]')?.getAttribute('content')).toBe('https://bankeiz.com'+path);
   const graph=JSON.parse(doc.querySelector('script[type="application/ld+json"]')!.textContent!)['@graph'];
   expect(graph[0].url).toBe('https://bankeiz.com'+path);expect(graph[1].itemListElement.at(-1).item).toBe('https://bankeiz.com'+path);
-  const username=path.slice(1,-1);expect(profilePageUsername(path)).toBeNull();expect(profilePagePath(username)).toBe('/u/'+username+'/');expect(profilePageUsername('/u/'+username+'/')).toBe(username);
+  const username=path.slice(1,-1);expect(profilePageUsername(path)).toBeNull();if(username==='id'){expect(()=>profilePagePath(username)).toThrow('PROFILE_USERNAME_INVALID');expect(profilePageUsername('/u/id/')).toBeNull();}else{expect(profilePagePath(username)).toBe('/u/'+username+'/');expect(profilePageUsername('/u/'+username+'/')).toBe(username);}
  }
  expect(canonicalPublicPath('/vault/held-proof/')).toBe('/vault/held-proof/');expect(publicPage('/vault/held-proof/')).toBeUndefined();
  expect(publicPage('/business/for/agencies/')?.path).toBe('/business/for/agencies/');expect(publicPage('/cooperatives/producers/')?.path).toBe('/cooperatives/producers/');

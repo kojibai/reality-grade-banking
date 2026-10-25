@@ -1,13 +1,13 @@
 import {expect,it} from 'vitest';
 import {handleCooperativeConversation} from '../server/cooperative-conversation.mjs';
 const encoder=new TextEncoder(),frame=(value:unknown)=>encoder.encode('data: '+JSON.stringify(value)+'\n\n');
-const body={action:'message',message:'What can we build together?',consent:true,clientOperationId:'stream-operation-123',quoteExpiresAt:new Date(Date.now()+600000).toISOString(),pagePath:'/your-twin/'};
+const body={action:'message',message:'What can we build together?',consent:true,replyToOperationId:'accepted-parent-operation',clientOperationId:'stream-operation-123',quoteExpiresAt:new Date(Date.now()+600000).toISOString(),pagePath:'/your-twin/'};
 const request=()=>new Request('https://bankeiz.com/api/cooperatives',{method:'POST',headers:{Origin:'https://bankeiz.com','Content-Type':'application/json',Accept:'text/event-stream',Cookie:'receiz_world_visitor=guest_existing_123456'},body:JSON.stringify(body)});
 it('streams the existing owned Twin before completion, preserving the operation, identity, native brain receipt and actions',async()=>{
  let stream!:ReadableStreamDefaultController<Uint8Array>,target='',sent:any;
  const upstream=new ReadableStream<Uint8Array>({start(c){stream=c;}});
  const response=await handleCooperativeConversation(request(),{fetch:async(url,init)=>{target=String(url);sent=JSON.parse(String(init?.body));return new Response(upstream,{headers:{'Content-Type':'text/event-stream'}});}});
- expect(target).toBe('https://receiz.com/api/world/profile/bjklock/stream');expect(sent.deliveryMode).toBe('text');expect(sent.clientOperationId).toBe(body.clientOperationId);expect(sent.clientAssistantMessageId).toBe(body.clientOperationId);expect(sent.quoteExpiresAt).toBe(body.quoteExpiresAt);expect(sent.clientContext.pagePath).toBe('/your-twin/');expect(response.headers.get('content-type')).toContain('text/event-stream');
+ expect(target).toBe('https://receiz.com/api/world/profile/bjklock/stream');expect(sent.deliveryMode).toBe('text');expect(sent.replyToOperationId).toBe('accepted-parent-operation');expect(sent.clientOperationId).toBe(body.clientOperationId);expect(sent.clientAssistantMessageId).toBe(body.clientOperationId);expect(sent.quoteExpiresAt).toBe(body.quoteExpiresAt);expect(sent.clientContext.pagePath).toBe('/your-twin/');expect(response.headers.get('content-type')).toContain('text/event-stream');
  const reader=response.body!.getReader();stream.enqueue(frame({type:'reply_start',messageId:body.clientOperationId}));expect(new TextDecoder().decode((await reader.read()).value)).toContain('reply_start');
  stream.enqueue(frame({type:'reply_delta',messageId:body.clientOperationId,delta:'Here’s the first thought.'}));expect(new TextDecoder().decode((await reader.read()).value)).toContain('first thought');
  const reply={message:'Here’s the first thought.',source:'upstream',proof:{sourcePrimitive:'receiz.subject.proof_brain.v1',subjectId:'native-subject',subjectHead:'native-head'},actions:[{kind:'schedule',label:'See times',href:'/calendar/bjklock'}]};

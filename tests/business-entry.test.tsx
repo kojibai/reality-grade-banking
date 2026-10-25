@@ -15,7 +15,7 @@ function fixture(){
  const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
  return {state,create,get result(){return result;},render:()=>act(async()=>root.render(<Harness/>)),event:()=>act(async()=>dispatchEvent(new Event('receiz-bank:surface'))),close:()=>{act(()=>root.unmount());host.remove();}};
 }
-it('waits for restore, creates once only for the explicit Business intent, and binds the assistant request to that identity',async()=>{
+it('waits for restore, creates once only for the explicit Business intent, and binds the agent request to that identity',async()=>{
  history.replaceState(null,'','/'+BUSINESS_ENTRY_HASH);const f=fixture();
  try{await f.render();expect(f.create).not.toHaveBeenCalled();f.state.opening=false;await f.render();expect(f.create).toHaveBeenCalledExactlyOnceWith(true);await f.render();expect(f.create).toHaveBeenCalledOnce();f.state.identity=owner;await f.render();expect(f.result.request?.owner).toBe(owner);const id=f.result.request!.id;await act(()=>f.result.consume(id));expect(location.hash).toBe('#account/messages');expect(f.result.request).toBeNull();await f.event();expect(f.create).toHaveBeenCalledOnce();}finally{f.close();}
 });

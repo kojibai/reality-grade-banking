@@ -42,7 +42,7 @@ it('makes the monthly value concrete and keeps metered usage in billing details'
  expect(hero.textContent).toContain('Pick up the work without rebuilding the brief');
  expect(hero.textContent).toContain('Help clients find answers and take the next step');
  expect(hero.textContent).not.toMatch(/credits|7,500|Twin|Creator AI/);
- expect(doc.querySelector('.business-terms')?.textContent).toContain('Opens your assistant. Creates a Receiz ID if needed. Review before paying.');
+ expect(doc.querySelector('.business-terms')?.textContent).toContain('Opens your agent. Creates a Receiz ID if needed. Review before paying.');
  expect(doc.querySelector('.business-existing')?.getAttribute('href')).toBe('/#account/messages');
  expect(doc.querySelector('.business-workflow')?.textContent).toContain('available history and selected memories');
  expect(doc.querySelector('.business-workflow')?.textContent).toContain('Review the result');

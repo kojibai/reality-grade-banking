@@ -13,6 +13,7 @@ import {togetherPages} from '../src/content/together.mjs';
 import {cooperativePages} from '../src/content/cooperatives.mjs';
 // Public discovery only. Existing routes and native authorities are unchanged.
 const solutionGuides=[
+ {slug:'identity-continuity',path:'/id/',group:'Banking',title:'Identity continuity',description:'Open Bankeiz with the Receiz identity you already hold. Authentication, recovery and supported history stay connected.'},
  ...twinSalesPages.map(page=>({...page,group:'Banking',title:page.key==='your-twin'?'Your Twin':'See it in action'})),
  {slug:'vaults',path:'/vaults/',group:'Banking',title:'Your Vaults',description:'Hold money and originals separately, add optional passkey protection and share their proof.'},
  {slug:'protect-your-value',path:'/protect/',group:'Banking',title:'Protect your value',description:'See how separate Vault authority, optional passkey encryption and public proof protect access.'},
@@ -23,8 +24,8 @@ const solutionGuides=[
  ...togetherPages.map(page=>({...page,group:'Together'}))
 ];
 const relatedSolutions={
- 'security':['/protect/','/vaults/'],
- 'receiz-id':['/vaults/','/protect/'],
+ 'security':['/protect/','/vaults/','/id/'],
+ 'receiz-id':['/vaults/','/protect/','/id/'],
  'proof-objects':['/vaults/'],'ownership':['/vaults/'],
  'physical-assets':['/coops/'],'asset-rights-and-backing':['/cooperatives/infrastructure/'],
  'proof-native-economy':['/coops/','/together/'],'institutions':['/cooperatives/infrastructure/'],

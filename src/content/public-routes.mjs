@@ -1,5 +1,6 @@
 // Public document aliases only; proof and account routes retain their existing authority.
 export const publicRouteAliases=Object.freeze({
+ '/learn/identity-continuity/':'/id/',
  '/learn/protect-your-value/':'/protect/',
  '/learn/vaults/':'/vaults/',
  '/business/for/':'/fit/',

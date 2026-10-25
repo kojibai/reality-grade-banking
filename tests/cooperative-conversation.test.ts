@@ -5,9 +5,9 @@ const request=(data:unknown,headers:Record<string,string>={})=>new Request('http
 it('binds the visitor conversation to bjklock and preserves the original native operation and response',async()=>{
  let sent:Record<string,unknown>={},target='',cookie='';
  const native={ok:true,world:{username:'bjklock',memories:[]},reply:{message:'Tell me where payment holds up your next delivery.',memoryScope:'relationship',bookingSlots:[],bookingConfirmation:null}};
- const response=await handleCooperativeConversation(request({action:'message',message:'We have stock waiting.',consent:true,...operation,username:'another',visitorKey:'substitute',threadKey:'substitute'}),{fetch:async(url,init)=>{target=String(url);sent=JSON.parse(String(init?.body));cookie=new Headers(init?.headers).get('cookie')??'';return Response.json(native);}});
+ const response=await handleCooperativeConversation(request({action:'message',message:'We have stock waiting.',consent:true,...operation,replyToOperationId:'accepted-parent-operation',username:'another',visitorKey:'substitute',threadKey:'substitute'}),{fetch:async(url,init)=>{target=String(url);sent=JSON.parse(String(init?.body));cookie=new Headers(init?.headers).get('cookie')??'';return Response.json(native);}});
  expect(response.status).toBe(200);expect(await response.json()).toEqual(native);expect(target).toBe('https://receiz.com/api/world/profile/bjklock');
- expect(sent.message).toBe('We have stock waiting.');expect(sent.clientOperationId).toBe('test-cooperative-operation');expect(sent.quoteExpiresAt).toBe(operation.quoteExpiresAt);
+ expect(sent.replyToOperationId).toBe('accepted-parent-operation');expect(sent.message).toBe('We have stock waiting.');expect(sent.clientOperationId).toBe('test-cooperative-operation');expect(sent.quoteExpiresAt).toBe(operation.quoteExpiresAt);
  expect(sent.visitorKey).toBe('guest_existing_123456');expect(sent.threadKey).not.toBe('substitute');expect(cookie).toBe('receiz_world_visitor=guest_existing_123456');
 });
 it('uses the existing booking action with the same visitor and returns success only with a real calendar confirmation',async()=>{

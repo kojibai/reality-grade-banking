@@ -70,7 +70,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     if (path === '/conformance/') continue;
     const canonicalPath=canonicalPublicPath(path),cooperative=[...cooperativePages,...togetherPages,...twinSalesPages].some(page=>page.path===canonicalPath);
     if(cooperative){urls.add('/learn/cooperatives.js');urls.add('/learn/cooperative-twin.js');}
-    const knownGuide=['/protect/','/vaults/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
+    const knownGuide=['/protect/','/vaults/','/id/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
     if(canonicalPath===directoryPage.path)urls.add('/learn/business-fit.js');
     if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     // Each retained document already carries the complete public catalog.

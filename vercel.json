@@ -25,6 +25,22 @@
   },
   "rewrites": [
     {
+      "source": "/id",
+      "destination": "/id/index.html"
+    },
+    {
+      "source": "/id/",
+      "destination": "/id/index.html"
+    },
+    {
+      "source": "/learn/identity-continuity",
+      "destination": "/id/index.html"
+    },
+    {
+      "source": "/learn/identity-continuity/",
+      "destination": "/id/index.html"
+    },
+    {
       "source": "/your-twin",
       "destination": "/your-twin/index.html"
     },

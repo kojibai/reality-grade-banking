@@ -1,6 +1,14 @@
 {
   "schema": "bankeiz.public-social-images.v1",
   "images": {
+    "/id/": {
+      "url": "/social/identity-continuity-d33075b370ac1dd8.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "d33075b370ac1dd83a40064f7ecb0292841f6309503c7b3c2bfecf1a9425bb34",
+      "bytes": 335170,
+      "alt": "A different app. The same you. Two independent applications, Receiz and Bankeiz, display the same representative Receiz ID in a silver and blue illustrative continuity diagram."
+    },
     "/your-twin/": {
       "url": "/social/your-twin-691b7b142a9c37f5.png",
       "width": 1730,
@@ -674,12 +682,12 @@
       "alt": "Bankeiz. Notes. The complete picture. Your money. Ready to carry. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/messages/": {
-      "url": "/social/messages-6646f03b2a3007c8.png",
+      "url": "/social/messages-e66a570dd4446479.png",
       "width": 1730,
       "height": 909,
-      "sha256": "6646f03b2a3007c89236ccfb982e5348493c086fc6fd55015b20fd6e4bdf98e8",
-      "bytes": 465915,
-      "alt": "Bankeiz. Messages and your assistant. The complete picture. Your conversations. In the same account. An engraved bank motif on layered cobalt, clear glass and navy forms."
+      "sha256": "e66a570dd44464796406cace71ede743283f8d0a2d1b32c515475c88f4d7f383",
+      "bytes": 469907,
+      "alt": "Bankeiz. Messages and your agent. The complete picture. Your conversations. In the same account. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/creating-an-asset/": {
       "url": "/social/creating-an-asset-447502362481501f.png",

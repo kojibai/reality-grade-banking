@@ -1,3 +1,4 @@
+import {identityContinuityPage} from '../src/content/identity-continuity.mjs';
 import {twinSalesPages} from '../src/content/twin-pages.mjs';
 import {togetherPages} from '../src/content/together.mjs';
 import {bankMarkSvg} from '../branding/bank-mark.mjs';
@@ -11,6 +12,7 @@ import {canonicalPublicPath} from '../src/content/public-routes.mjs';
 import {protectionPage} from './vault-protection-page.mjs';
 export const publicOrigin = 'https://bankeiz.com';
 export const publicPages = [
+ {path:identityContinuityPage.path,id:'identity-continuity',title:identityContinuityPage.title+' | Bankeiz',description:identityContinuityPage.description,lines:identityContinuityPage.lines,caption:'Authentication opens the door. Continuity brings your identity with you.',motif:'key'},
  ...twinSalesPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-grade banking',description:page.description,lines:page.lines,caption:'Contacts, context and calendar. One connected relationship.',motif:'bank'})),
  ...togetherPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-grade banking',description:page.description,lines:page.lines,caption:'Your source. Your ownership. Our next possibility.',motif:'globe'})),
   {path:protectionPage.path,id:'protect-your-value',title:protectionPage.title+' | Reality-grade banking',description:protectionPage.description,lines:['Prove it’s yours.','Keep it yours.'],caption:'Share proof without sharing access.',motif:'key'},

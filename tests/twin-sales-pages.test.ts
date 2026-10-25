@@ -24,8 +24,8 @@ it.each(['/your-twin/','/in-action/'])('publishes %s with both sides, native con
  expect(doc.querySelectorAll('[data-coop-twin]')).toHaveLength(1);
  expect(doc.querySelector('.coop-twin-top p')?.textContent).toContain('AI Twin');
  expect(doc.querySelector('#conversation [data-twin-composer]')).not.toBeNull();
- expect(doc.querySelector('#conversation [data-twin-book-form]')).not.toBeNull();
- expect(doc.querySelector('[data-twin-composer] input[name=consent]')?.hasAttribute('required')).toBe(true);
+ expect(doc.querySelector('#conversation [data-twin-book-form]')).toBeNull();expect(doc.querySelector('#conversation [data-twin-composer]')?.textContent).toContain('Sending shares this conversation');
+ expect(doc.querySelector('[data-twin-composer] input[name=consent]')).toBeNull();expect(doc.querySelector('[data-twin-composer]')?.textContent).toContain('Sending shares this conversation');
  expect(doc.querySelectorAll('.site-footer a[href="'+path+'"]')).toHaveLength(0);
  expect(siteFooterHtml('/business/')).toContain('href="'+path+'"');
  expect(doc.body.textContent).toContain('contact');expect(doc.body.textContent).toContain('calendar');expect(doc.body.textContent).toContain('context');
