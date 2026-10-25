@@ -4,6 +4,9 @@ import { readFileSync } from 'node:fs';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 import App from '../src/App';
+import {beginProfileAccountAction,consumeProfileAccountAction,readProfileAccountAction} from '../src/receiz/profile-actions';
+import {parsePublicProfile} from '../src/receiz/public-profile';
+import {profileFixture} from './fixtures/public-profile';
 const fixture = vi.hoisted(() => ({ identity: { binding: { identityOwnerReceizId: 'receiz_device_fixture', artifactOwnerReceizId: 'fixture.receiz.id' }, localHistory: {}, listDeposits: async () => [], pendingCardDeposit: async () => null } }));
 vi.mock('../src/receiz/useNativeAccount', () => ({ useNativeAccount: () => ({ identity: fixture.identity, wallet: null, opening: false, busy: false, error: null, observedAt: null, refresh: async () => {}, forget: async () => {} }) }));
 vi.mock('../src/features/market/Market', () => ({ Market: ({active}:{active:boolean}) => <span data-market-active={String(active)}/> }));
@@ -11,8 +14,13 @@ vi.mock('../src/features/ledger/Ledger', () => ({ Ledger: () => null }));
 // Route/modal tests use a local account fixture. Public discovery has its own
 // tests and must not make localhost requests while exercising navigation.
 vi.mock('../src/receiz/usePublicMarket', () => ({ usePublicMarket: () => ({ catalog: null, status: 'loading', refresh: async () => {} }) }));
-vi.mock('../src/features/messages/MessagesPanel',()=>({MessagesPanel:({active,initialBusinessRequest}:{active:boolean;initialBusinessRequest?:{id:string}|null})=><section data-messaging-active={String(active)} data-business-entry={initialBusinessRequest?.id??''}><input aria-label="Retained message draft" defaultValue=""/></section>}));
+vi.mock('../src/features/messages/MessagesPanel',()=>({MessagesPanel:({active,initialBusinessRequest,initialRecipient}:{active:boolean;initialBusinessRequest?:{id:string}|null;initialRecipient?:{person:{userId:string}}|null})=><section data-messaging-active={String(active)} data-message-recipient={initialRecipient?.person.userId??''} data-business-entry={initialBusinessRequest?.id??''}><input aria-label="Retained message draft" defaultValue=""/></section>}));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+it('opens the chosen profile recipient after account admission without dropping the Message intent',async()=>{
+ history.replaceState(null,'','/#account');const host=document.createElement('div'),root=createRoot(host);document.body.append(host);const profile=parsePublicProfile(profileFixture(),'alexmorgan');
+ try{await act(async()=>root.render(<App/>));await act(async()=>beginProfileAccountAction('messages',profile));expect(host.querySelector('[data-messaging-active="true"]')?.getAttribute('data-message-recipient')).toBe(profile.userId);expect(location.hash).toBe('#account/messages');expect(readProfileAccountAction()).toBeNull();}
+ finally{const action=readProfileAccountAction();if(action)consumeProfileAccountAction(action.id);act(()=>root.unmount());host.remove();history.replaceState(null,'','/');}
+});
 it('resumes the retained bank surface after returning from an in-app receipt',async()=>{
  history.replaceState(null,'','/#market');const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
  try{await act(async()=>root.render(<App/>));expect(host.querySelector('[data-market-active]')?.getAttribute('data-market-active')).toBe('true');

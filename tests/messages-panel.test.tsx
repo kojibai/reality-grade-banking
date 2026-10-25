@@ -283,7 +283,10 @@ it('keeps one joined call while Messages closes, another conversation opens, and
 });
 
 it('opens a profile recipient in the existing direct conversation without creating a duplicate',async()=>{
- const f=fixture();try{await f.render(true,f.identity,undefined,{id:1,person:peer});expect(f.host.querySelector('.bank-thread-title')?.textContent??f.host.textContent).toContain('Sam');expect(f.api.createConversation).not.toHaveBeenCalled();expect(f.host.querySelector('[aria-label="Message…"]')).not.toBeNull();}finally{f.unmount();}
+ const f=fixture();try{await f.render(true,f.identity,undefined,{id:1,person:peer});expect(f.host.querySelector('.bank-thread-title')?.textContent??f.host.textContent).toContain('Sam');expect(f.api.createConversation).not.toHaveBeenCalled();expect(document.activeElement).toBe(f.host.querySelector('[aria-label="Message…"]'));}finally{f.unmount();}
+});
+it('uses the explicit profile Message action to open messaging access and leave the composer ready without sending',async()=>{
+ const f=fixture(false);try{await f.render(true,f.identity,undefined,{id:41,person:peer});expect(f.host.querySelector('[aria-label="Message…"]')).not.toBeNull();expect(document.activeElement).toBe(f.host.querySelector('[aria-label="Message…"]'));expect(f.api.createConversation).not.toHaveBeenCalled();expect(f.api.send).not.toHaveBeenCalled();}finally{f.unmount();}
 });
 it('creates only once for a new profile Message intent and never sends a message automatically',async()=>{
  const f=fixture();f.api.knownConversations=()=>[];try{await f.render(true,f.identity,undefined,{id:2,person:other});expect(f.api.createConversation).toHaveBeenCalledExactlyOnceWith({participantUserIds:[other.userId]});expect(f.api.send).not.toHaveBeenCalled();await f.render(false,f.identity,undefined,{id:2,person:other});await f.render(true,f.identity,undefined,{id:2,person:other});expect(f.api.createConversation).toHaveBeenCalledTimes(1);}finally{f.unmount();}

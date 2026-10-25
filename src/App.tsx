@@ -54,6 +54,13 @@ function BankApp() {
   const identityImage=useMemo(()=>account.identity?identityProfileAvatar(account.identity):null,[account.identity,profileRevision]);
   useEffect(()=>{if(account.identity)publishAccountAppearance({avatarUrl:identityImage,name:account.identity.accountUsername?.()??account.identity.username??'ID'});else if(!account.opening&&!account.busy)publishAccountAppearance(null);},[account.identity,identityImage,account.opening,account.busy,profileRevision]);
   const profileAction=useSyncExternalStore(subscribeProfileActions,readProfileAccountAction,()=>null);
+  const messageEntryAttempt=useRef<number|null>(null);
+  useEffect(()=>{
+    // The explicit Message tap continues through the existing account owner.
+    // Let saved-account restoration finish first; a failure must never replace it.
+    if(!onBank||profileAction?.kind!=='messages'||account.identity||account.opening||account.busy||account.error||messageEntryAttempt.current===profileAction.id)return;
+    messageEntryAttempt.current=profileAction.id;void account.create(true);
+  },[onBank,profileAction,account.identity,account.opening,account.busy,account.error,account.create]);
   const [notification,setNotification]=useState<NotificationTarget|null>(()=>notificationFromUrl(location.search));
   useEffect(()=>{if(!('serviceWorker'in navigator))return;const receive=(event:MessageEvent)=>{if(event.data?.type!=='BANK_NOTIFICATION_OPEN')return;const target=notificationTarget(event.data.target);setNotification(target);history.replaceState({panel:'account',sheet:{kind:'messages'}},'', '/'+location.search+'#account/messages');dispatchEvent(new PopStateEvent('popstate'));};navigator.serviceWorker.addEventListener('message',receive);return()=>navigator.serviceWorker.removeEventListener('message',receive);},[]);
   const [messageRecipient,setMessageRecipient]=useState<{owner:typeof account.identity;id:number;person:{userId:string;username:string;displayName:string;avatarUrl:string|null}}|null>(null);

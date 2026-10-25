@@ -5,7 +5,10 @@ import { expect, it, vi } from 'vitest';
 import App from '../src/App';
 import type { SharedWallet } from '../src/receiz/shared-wallet';
 import type { WalletPoint } from '../src/receiz/wallet-series';
-const account = vi.hoisted(() => ({ state: { identity: null, wallet: null as SharedWallet|null, walletHistory: [] as WalletPoint[], opening: false, openingStage: 'identity' as 'identity'|'history'|'ready', busy: false, error: null, observedAt: null as string|null, create: vi.fn(), importId: vi.fn() } }));
+import {beginProfileAccountAction,consumeProfileAccountAction,readProfileAccountAction} from '../src/receiz/profile-actions';
+import {parsePublicProfile} from '../src/receiz/public-profile';
+import {profileFixture} from './fixtures/public-profile';
+const account = vi.hoisted(() => ({ state: { identity: null, wallet: null as SharedWallet|null, walletHistory: [] as WalletPoint[], opening: false, openingStage: 'identity' as 'identity'|'history'|'ready', busy: false, error: null as string|null, observedAt: null as string|null, create: vi.fn(), importId: vi.fn() } }));
 vi.mock('../src/receiz/usePublicMarket',()=>({usePublicMarket:()=>({catalog:null,status:'loading',error:null})}));
 vi.mock('../src/receiz/useNativeAccount', () => ({ useNativeAccount: () => account.state }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -33,4 +36,21 @@ it('keeps the entrance until the canonical identity and complete supported accou
     expect(host.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow')).toBe('1');
     expect(host.querySelector('.identity-entrance')?.hasAttribute('hidden')).toBe(true);
   }finally{act(()=>root.unmount());Object.assign(account.state,previous);}
+});
+it('continues an explicit profile Message through account entry once after saved-account restoration',async()=>{
+ const previous={...account.state},host=document.createElement('div'),root=createRoot(host);account.state.create.mockClear();account.state.opening=true;account.state.error=null;
+ const profile=parsePublicProfile(profileFixture(),'alexmorgan');history.replaceState(null,'','/#account/messages');
+ try{
+  beginProfileAccountAction('messages',profile);
+  await act(async()=>root.render(<App/>));expect(account.state.create).not.toHaveBeenCalled();
+  account.state.opening=false;await act(async()=>root.render(<App/>));
+  expect(account.state.create).toHaveBeenCalledExactlyOnceWith(true);
+  await act(async()=>root.render(<App/>));expect(account.state.create).toHaveBeenCalledTimes(1);
+  expect(readProfileAccountAction()?.profile.userId).toBe(profile.userId);
+ }finally{consumeProfileAccountAction(readProfileAccountAction()!.id);act(()=>root.unmount());Object.assign(account.state,previous);history.replaceState(null,'','/');}
+});
+it('preserves a saved-account restore failure instead of replacing that account for a Message',async()=>{
+ const previous={...account.state},host=document.createElement('div'),root=createRoot(host);account.state.create.mockClear();account.state.opening=false;account.state.error='Saved account temporarily unavailable';
+ try{beginProfileAccountAction('messages',parsePublicProfile(profileFixture(),'alexmorgan'));await act(async()=>root.render(<App/>));expect(account.state.create).not.toHaveBeenCalled();expect(host.textContent).toContain('Saved account temporarily unavailable');}
+ finally{consumeProfileAccountAction(readProfileAccountAction()!.id);act(()=>root.unmount());Object.assign(account.state,previous);}
 });
