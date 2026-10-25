@@ -15,3 +15,18 @@ it('includes the standalone docs project and deployment configuration in corresp
 },15000);
 
 it('is a dependency-free Vercel project rooted at docs-app',()=>{const config=JSON.parse(readFileSync('docs-app/vercel.json','utf8')),pkg=JSON.parse(readFileSync('docs-app/package.json','utf8'));expect(config).toMatchObject({framework:null,buildCommand:'npm run build',outputDirectory:'dist'});expect(pkg.scripts.build).toBe('node build.mjs');expect(pkg.dependencies??{}).toEqual({});for(const file of ['docs-app/build.mjs','docs-app/renderer.mjs','docs-app/content.mjs'])expect(readFileSync(file,'utf8')).not.toMatch(/from ['"]\.\.\//);});
+
+// The public subdomain is deployed; old docs links keep their article path.
+it('routes only the docs entrance and descendants permanently to the canonical docs host',()=>{
+ const config=JSON.parse(readFileSync('vercel.json','utf8'));
+ expect(config.redirects).toEqual([
+  {source:'/docs',destination:'https://docs.bankeiz.com/',permanent:true},
+  {source:'/docs/:path*',destination:'https://docs.bankeiz.com/:path*',permanent:true},
+ ]);
+ // Keep the generated mirror available to local/offline consumers.
+ expect(config.rewrites).toEqual(expect.arrayContaining([
+  {source:'/docs/',destination:'/docs/index.html'},
+  {source:'/docs/market-records/',destination:'/docs/market-records/index.html'},
+ ]));
+ expect(JSON.parse(readFileSync('docs-app/vercel.json','utf8')).redirects).toBeUndefined();
+});

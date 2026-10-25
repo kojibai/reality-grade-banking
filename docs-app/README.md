@@ -15,6 +15,6 @@ Create a **separate** Vercel project from the same repository:
 
 ## One canonical source
 
-`content.mjs` is the authored documentation source. The main repository re-exports it for tests and the `/docs/` mirror. The main build's mirror uses the same canonical URLs at docs.bankeiz.com. After the separate domain is live, configure matching permanent redirects from bankeiz.com/docs/ and its article paths to the primary docs URLs. Keep the mirror until the domain is confirmed working; do not redirect users to an unavailable domain.
+`content.mjs` is the authored documentation source. The main repository re-exports it for tests and the `/docs/` mirror. The main build's mirror uses the same canonical URLs at docs.bankeiz.com. The subdomain is live. The main project's `vercel.json` now permanently redirects `bankeiz.com/docs` and `/docs/*` to the matching primary docs URLs; deploy the main Bankeiz project to activate those rules. The generated mirror remains available for local and offline use. The docs project itself has no cross-domain redirect, so article navigation stays on docs.bankeiz.com.
 
 Revise documentation with the operation it describes. Search filters locally without requests. Source links point to the corresponding implementation. Generated dist, dependencies and local Vercel settings are excluded from corresponding-source archives.
