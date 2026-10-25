@@ -5,7 +5,8 @@ import {ledgerPaymentReference,ledgerRecordTitle,ledgerPaymentRole,groupLedgerPa
 import {useEffect,useMemo,useState} from 'react';
 import {ArrowLeft,ArrowUpRight,FileText,Link2,Share2} from 'lucide-react';
 import {openReceiptShare} from './openReceiptShare';
-import {initialReceiptSnapshot,readReceiptSnapshot,receiptSnapshotDigest} from '../../receiz/receipt-snapshot';
+import {initialReceiptSnapshot,readReceiptSnapshot,receiptSnapshotDigest,receiptLedgerUrl} from '../../receiz/receipt-snapshot';
+import {copySavedReceiptLink} from '../../receiz/receipt-sharing';
 import type {PublicRecord} from '../../receiz/public-network';
 import type {LedgerValueIndex} from '../../receiz/ledger-value';
 import {completeLedgerReceipt,readReceiptLink,readLocalReceiptContext,releaseLocalReceiptContext,type LedgerReceipt} from '../../receiz/ledger-receipts';
@@ -34,8 +35,8 @@ export function ReceiptView({onBack,active=true}:{onBack():void;active?:boolean}
   return record&&related?groupLedgerPaymentRecords([record,...related.filter(other=>other.id!==record.id)]).find(group=>group.record===record)?.executionRecords??[]:[];
  },[record,localContext]);
  const {copied,confirm}=useCopyFeedback(location.href);
- const copy=()=>{if(receipt)openReceiptShare(()=>localContext?completeLedgerReceipt(localContext.record,localContext.value,localContext.valuation):receipt,receiptSnapshotDigest(location.href)?undefined:location.href,()=>{confirm();setNotice('');},receiptSnapshotDigest(location.href)?location.href:undefined);};
- const share=copy;
+ const copy=async()=>{if(!receipt)return;try{await copySavedReceiptLink(localContext?completeLedgerReceipt(localContext.record,localContext.value,localContext.valuation):receipt,location.href);confirm();setNotice('');}catch{setNotice('The receipt link could not be copied. Try again.');}};
+ const share=()=>{if(receipt)openReceiptShare(()=>localContext?completeLedgerReceipt(localContext.record,localContext.value,localContext.valuation):receipt,receiptSnapshotDigest(location.href)?undefined:location.href,()=>{confirm();setNotice('');},receiptSnapshotDigest(location.href)?location.href:undefined);};
  if(error)return <main className="receipt-page"><div className="receipt-error"><FileText size={30}/><h1>Receipt unavailable.</h1><p>{error}</p><button onClick={onBack}>Return to bank<ArrowLeft size={16}/></button></div></main>;
  if(!receipt)return null;
  const proof=/proof|market.asset/i.test(receipt.kind),value:LedgerValueDisplay=localContext?.value??receipt.value??{basis:receipt.amountUsdCents===null?'unavailable':'payment',amountUsdCents:receipt.amountUsdCents,pulse:receipt.pulse,considerationUsdCents:null},amount=value.amountUsdCents===null?'Recorded':formatMoney(value.amountUsdCents),label=proof?'Proof receipt':'Activity receipt';
@@ -46,6 +47,7 @@ export function ReceiptView({onBack,active=true}:{onBack():void;active?:boolean}
  <ReceiptLiveValue active={active} record={record!} value={value} valueSource={localContext?.valueSource??null}/>
  <LedgerExecutionRecords records={executionRecords} valueSource={localContext?.valueSource??null} relations={localContext?.relations??new Map()}/>
  <div className="receipt-provenance"><LedgerFundingTrace record={record!} relations={localContext?.relations}/></div>
+ <a className="receipt-ledger-link" href={receiptLedgerUrl(receipt)}>View in Ledger<ArrowUpRight size={13}/></a>
  <footer className="receipt-source"><Link2 size={17} strokeWidth={1.5}/><div><strong>The record stays connected.</strong><p>{receipt.sourceUrl?'Inspect the original source and its supported claims.':'This link carries the selected ledger entry.'}</p></div>{receipt.sourceUrl&&<a href={receipt.sourceUrl} target="_blank" rel="noreferrer" aria-label="Inspect original receipt" title="Inspect original receipt"><ArrowUpRight size={18}/></a>}</footer>
  <details className="receipt-inspection" onToggle={event=>setInspectionOpen(event.currentTarget.open)}><summary>Inspect full record</summary>{receipt.contextOmitted&&!localContext&&<p className="receipt-context-note">This link carries the core receipt. Additional source context remains in the Ledger.</p>}{inspectionOpen&&<LedgerInspector receiptMode inApp relations={localContext?.relations} record={record!} value={value} valueSource={localContext?.valueSource??null} valuation={localContext?.valuation??receipt.valuation}/>}</details>
  </article><p className="receipt-caption">This shareable display record is not independently verified. A calculated protocol value is separate from a completed sale price and available account funds.</p><p className="receipt-status" role="status">{notice}</p><div className="receipt-signature"><a href="/learn/reality-grade-banking/">Reality-grade banking</a></div></main>;

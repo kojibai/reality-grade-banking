@@ -48,12 +48,30 @@ it('opens a short receipt with one digest-bound source read and carries escaped 
  const {handleReceiptPreview}=await preview();const res=await handleReceiptPreview(new Request('https://bankeiz.com/receipt/'+digest+'/'),{page:async()=>'<html><head></head><body><div id="root"></div></body></html>',image:vi.fn()});
  expect(res.status).toBe(200);const html=await res.text();expect(html).toContain('id="receipt-snapshot"');expect(html).not.toContain('<script>bad()');expect(html).toContain('data-digest="'+digest+'"');expect(fetcher).toHaveBeenCalledOnce();expect(html).toContain('/api/receipt?s='+digest+'&amp;image=1');
 });
+it('accepts the same short digest carried by both the public path and hosting rewrite',async()=>{
+ const {completeLedgerReceipt}=await import('../src/receiz/ledger-receipts'),{receiptDigest}=await import('../src/receiz/receipt-snapshot');
+ const receipt=completeLedgerReceipt(source()),bytes=new TextEncoder().encode(JSON.stringify(receipt)),digest=await receiptDigest(bytes),fetcher=vi.fn(async()=>new Response(bytes));vi.stubGlobal('fetch',fetcher);
+ const {handleReceiptPreview}=await preview(),deps={page:async()=>'<html><head></head><body></body></html>',image:vi.fn()};
+ const response=await handleReceiptPreview(new Request(`https://bankeiz.com/receipt/${digest}/?s=${digest}`),deps);
+ expect(response.status).toBe(200);expect(await response.text()).toContain('id="receipt-snapshot"');expect(fetcher).toHaveBeenCalledOnce();
+ expect((await handleReceiptPreview(new Request(`https://bankeiz.com/receipt/${digest}/?s=${'a'.repeat(64)}`),deps)).status).toBe(400);expect(fetcher).toHaveBeenCalledOnce();
+});
 it('preserves literal replacement metacharacters in a saved receipt seed',async()=>{
  const {completeLedgerReceipt}=await import('../src/receiz/ledger-receipts'),{receiptDigest}=await import('../src/receiz/receipt-snapshot');
  const receipt=completeLedgerReceipt(source());receipt.title="Price $$100 $& $` $'";
  const bytes=new TextEncoder().encode(JSON.stringify(receipt)),digest=await receiptDigest(bytes);vi.stubGlobal('fetch',vi.fn(async()=>new Response(bytes)));
  const {handleReceiptPreview}=await preview(),res=await handleReceiptPreview(new Request('https://bankeiz.com/receipt/'+digest+'/'),{page:async()=>'<html><head></head><body><div id="root"></div></body></html>',image:vi.fn()});
  const html=await res.text(),json=html.match(/id="receipt-snapshot"[^>]*>([\s\S]*?)<\/script>/)![1];expect(JSON.parse(json).title).toBe(receipt.title);
+});
+it('accepts the exact named route parameter from hosting and rejects a conflicting digest',async()=>{
+ const {handleReceiptPreview}=await preview(),digest='a'.repeat(64),page=vi.fn(),image=vi.fn();
+ for(const path of [`/receipt/${digest}/?s=${digest}&digest=${digest}`,`/api/receipt?s=${digest}&digest=${digest}`]){
+  expect((await handleReceiptPreview(new Request('https://bankeiz.com'+path,{method:'HEAD'}),{page,image})).status).toBe(200);
+ }
+ for(const path of [`/receipt/${digest}/?s=${digest}&digest=${'b'.repeat(64)}`,`/api/receipt?digest=${digest}`,`/api/receipt?s=${digest}&digest=${digest}&digest=${digest}`]){
+  expect((await handleReceiptPreview(new Request('https://bankeiz.com'+path,{method:'HEAD'}),{page,image})).status).toBe(400);
+ }
+ expect(page).not.toHaveBeenCalled();expect(image).not.toHaveBeenCalled();
 });
 it('rejects an empty snapshot selector mixed into a legacy receipt request',async()=>{
  const {handleReceiptPreview}=await preview(),{compactReceiptLink}=await import('../src/receiz/receipt-sharing');expect((await handleReceiptPreview(new Request(compactReceiptLink(receiptLink(source())!)+'&s='))).status).toBe(400);

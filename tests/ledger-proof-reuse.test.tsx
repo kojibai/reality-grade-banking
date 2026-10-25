@@ -27,6 +27,7 @@ it('shares an in-flight media open and its actual carried proof with inspection 
  expect(host.textContent).toContain('0542b6f8fa11ddf3ba9376ddd92479b8d427deb3b4080c70efac2ce83bccf1ec');
  expect(host.textContent).toContain('2379438979429017618313346380631207613449243518095004417272903686797126332908');
  expect(host.textContent).toContain('23faa69f1b2478049001cda0faccbcead8443ac75bf34aca58a9103fac6aff5c');
+ const fullProof=host.querySelector<HTMLDetailsElement>('.ledger-proof-details .ledger-exact-json')!;act(()=>{fullProof.open=true;fullProof.dispatchEvent(new Event('toggle'));});
  expect(host.textContent).toContain('signatureV4');expect(host.textContent).toContain('nativeRecordSeal');expect(host.textContent).toContain('pi_a');
  expect(fetch).toHaveBeenCalledOnce();expect(boundary.open).toHaveBeenCalledOnce();
  await act(async()=>{[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Inspect full original'))!.click();});

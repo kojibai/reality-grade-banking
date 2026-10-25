@@ -32,3 +32,14 @@ it('preserves clipboard fallback and never reports an aborted native share as a 
  vi.stubGlobal('navigator',{clipboard:{writeText}});expect(await shareReceiptLink(link)).toBe('copied');expect(readReceiptLink(writeText.mock.calls[0][0])).toEqual(readReceiptLink(link));
  await copyReceiptLink(link);expect(writeText).toHaveBeenCalledTimes(2);
 });
+it('starts the Safari clipboard write from the original tap while retaining the complete short receipt',async()=>{
+ const receipt=readReceiptLink(receiptLink(row())!),{receiptDigest}=await import('../src/receiz/receipt-snapshot');
+ let finish!:(response:Response)=>void,clipboardValue!:Promise<Blob>;
+ vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(resolve=>{finish=resolve;})));
+ const write=vi.fn(async(items:{data:Record<string,Promise<Blob>>}[])=>{clipboardValue=items[0].data['text/plain'];await clipboardValue;});
+ vi.stubGlobal('ClipboardItem',class{constructor(public data:Record<string,Promise<Blob>>) {}});vi.stubGlobal('navigator',{clipboard:{write}});
+ const {copySavedReceiptLink}=await import('../src/receiz/receipt-sharing');const copying=copySavedReceiptLink(receipt);
+ expect(write).toHaveBeenCalledOnce();
+ await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));finish(Response.json({ok:true,sha256:await receiptDigest(new TextEncoder().encode(JSON.stringify(receipt)))}));
+ await copying;expect(await(await clipboardValue).text()).toMatch(/^https:\/\/bankeiz.com\/receipt\/[a-f0-9]{64}\/$/);
+});

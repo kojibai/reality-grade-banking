@@ -8,6 +8,7 @@ import type {LocalLedgerDisplay} from '../receiz/public-ledger-archive';
 import { memo, useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, ChevronDown, Layers3, Link2, RefreshCw, Search, Share2 } from 'lucide-react';
 import {openReceiptShare} from '../features/receipts/openReceiptShare';
+import {copySavedReceiptLink} from '../receiz/receipt-sharing';
 import {completeLedgerReceipt,readPublicLedgerSelection} from '../receiz/ledger-receipts';
 import {BankMark} from '../components/BankMark';
 import {ledgerAssetTrade,ledgerTradeSummary} from '../receiz/ledger-asset-trade';
@@ -28,13 +29,13 @@ const PublicRow=memo(function PublicRow({record,valueSource,relations,capture,ex
   useEffect(()=>{if(selected)setOpen(true);},[selected]);
   const {copied,confirm}=useCopyFeedback(record.id);
   const value=useMemo(()=>capture?.value??ledgerValueForRecord(record,valueSource),[record,valueSource,capture]),valuation=useMemo(()=>capture?capture.valuation:ledgerValuationContext(record,valueSource,value),[capture,record,valueSource,value]),receipt=useMemo(()=>receiptLink(record,value,valuation),[record,value,valuation]),kind=activityCategory(record);
-  const copy=()=>openReceiptShare(()=>completeLedgerReceipt(record,value,valuation),receipt!,()=>{confirm();setCopyError(false);});
-  const share=copy;
+  const copy=async()=>{try{await copySavedReceiptLink(completeLedgerReceipt(record,value,valuation));confirm();setCopyError(false);}catch{setCopyError(true);}};
+  const share=()=>openReceiptShare(()=>completeLedgerReceipt(record,value,valuation),receipt!,()=>{confirm();setCopyError(false);});
   const currentValue=useMemo(()=>capture?capture.currentValue:/transfer|send/i.test(record.kind)?ledgerCurrentAssetValue(record,valueSource):null,[record,valueSource,capture]);
   const localReceipt=receipt?new URL(receipt).pathname+new URL(receipt).hash:null;
   return <article className={`public-ledger-row ${open?'is-open':''}`}>
     <div className="public-ledger-row-line"><button className="public-ledger-event" onClick={()=>setOpen(!open)} aria-expanded={open}><span className={`public-ledger-event-icon ${kind}`}><Layers3 size={17} strokeWidth={1.5}/></span><span><strong>{title}</strong>{tradeSummary&&<span className="ledger-trade-summary">{tradeSummary}</span>}<small>{record.time?new Date(record.time).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'Time not supplied'}</small></span></button><span className="public-ledger-source">{kind==='transactions'?'Transactions':sourceNames[record.source]}</span><span className="public-ledger-coordinate" title={record.kaiUpulse??record.pulse??undefined}>{record.kaiUpulse?`☤µKAI ${record.kaiUpulse}`:record.pulse?`☤KAI ${record.pulse}`:'—'}</span><button className="public-ledger-amount-toggle" onClick={()=>setOpen(!open)} aria-expanded={open} aria-label={`${open?'Close':'Inspect'} value: ${title}`}><LedgerValue inlineChange className="public-ledger-amount" value={value} currentValue={currentValue} trade={trade}/><ChevronDown className="public-ledger-chevron" size={14} strokeWidth={1.5}/></button><div className="public-ledger-receipts">{receipt&&<><a href={localReceipt!} onClick={event=>openLedgerReceipt(event,receipt,{record,value,valuation,valueSource,relations})} aria-label={`Open receipt: ${title}`} title="Open receipt"><Link2 size={15}/></a><button onClick={()=>void copy()} aria-label={`${copied?'Receipt copied':'Copy receipt'}: ${title}`} title={copied?'Copied':'Copy receipt link'}><CopyFeedbackIcon copied={copied} size={15}/></button><button onClick={()=>void share()} aria-label={`Share receipt: ${title}`} title="Share receipt"><Share2 size={14}/></button></>}</div></div>
-    {open&&<div className="public-ledger-record-detail"><LedgerInspector inApp record={record} value={value} currentValue={currentValue} valuation={valuation} relations={relations} valueSource={valueSource}/><LedgerExecutionRecords records={executionRecords} valueSource={valueSource} relations={relations}/>{copyError&&<p role="status">Open the receipt to copy its link from the address bar.</p>}</div>}
+    {open&&<div className="public-ledger-record-detail"><LedgerInspector preparedReceipt={receipt} inApp record={record} value={value} currentValue={currentValue} valuation={valuation} relations={relations} valueSource={valueSource}/><LedgerExecutionRecords records={executionRecords} valueSource={valueSource} relations={relations}/>{copyError&&<p role="status">Open the receipt to copy its link from the address bar.</p>}</div>}
   </article>;
 });
 

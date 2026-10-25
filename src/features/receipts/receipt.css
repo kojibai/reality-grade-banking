@@ -3,3 +3,4 @@
 .receipt-context-note{font-size:11px;line-height:1.7;color:#8293a8;margin:0 0 15px}
 
 .receipt-header{display:grid;grid-template-columns:78px minmax(0,1fr) 78px}.receipt-brand{justify-self:center}.receipt-back{justify-self:start}.receipt-header-actions{display:flex;gap:6px;justify-self:end}
+.receipt-ledger-link{display:flex;align-items:center;justify-content:center;gap:5px;margin:16px 22px;color:#62748a;font-size:11px;text-underline-offset:3px}

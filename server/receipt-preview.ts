@@ -53,9 +53,12 @@ export async function handleReceiptPreview(request:Request,deps?:PreviewDependen
  try{
   const url=new URL(request.url);
   shortDigest=receiptSnapshotDigest(url.origin+url.pathname);
-  if(!['/receipt/','/api/receipt'].includes(url.pathname)&&!shortDigest||url.hash||[...url.searchParams.keys()].some(key=>!['r','s','image'].includes(key)||url.searchParams.getAll(key).length!==1)||url.searchParams.has('image')&&url.searchParams.get('image')!=='1')throw Error();
+  if(!['/receipt/','/api/receipt'].includes(url.pathname)&&!shortDigest||url.hash||[...url.searchParams.keys()].some(key=>!['r','s','digest','image'].includes(key)||url.searchParams.getAll(key).length!==1)||url.searchParams.has('image')&&url.searchParams.get('image')!=='1')throw Error();
   const selected=url.searchParams.get('s');
-  if(selected!==null){if(url.pathname!=='/api/receipt'||shortDigest||url.searchParams.has('r')||!/^[a-f0-9]{64}$/.test(selected))throw Error();shortDigest=selected;}
+  if(selected!==null){if((url.pathname!=='/api/receipt'&&shortDigest!==selected)||shortDigest!==null&&shortDigest!==selected||url.searchParams.has('r')||!/^[a-f0-9]{64}$/.test(selected))throw Error();shortDigest=selected;}
+  // Hosting may carry the named path parameter as well as our explicit
+  // selector. Every supplied coordinate must identify the same exact record.
+  if(url.searchParams.has('digest')&&url.searchParams.get('digest')!==shortDigest)throw Error();
   if(shortDigest&&url.searchParams.has('r'))throw Error();
   packet=url.searchParams.get('r')??'';image=url.searchParams.get('image')==='1';
   if(!shortDigest)receipt=readReceiptLink(`${BANK_PUBLIC_ORIGIN}/receipt/?r=${packet}`);

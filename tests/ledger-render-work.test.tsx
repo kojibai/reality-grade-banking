@@ -24,7 +24,7 @@ it('expands a row without regenerating the other rows’ rich receipts or making
  act(()=>root.render(<Ledger active={false}/>));const links=[...host.querySelectorAll('.ledger-receipt-actions a')].map(a=>a.getAttribute('href'));
  held.receipt.mockClear();held.title.mockClear();act(()=>host.querySelector<HTMLButtonElement>('.asset-row')!.click());
  expect(host.querySelectorAll('.ledger-inspector')).toHaveLength(1);
- expect(held.receipt.mock.calls.length).toBeLessThanOrEqual(1);
+ expect(held.receipt).not.toHaveBeenCalled();
  expect(held.title.mock.calls.length).toBeLessThanOrEqual(2);
  expect([...host.querySelectorAll('.ledger-receipt-actions a')].map(a=>a.getAttribute('href'))).toEqual(links);expect(fetch).not.toHaveBeenCalled();
 });
@@ -44,6 +44,21 @@ it('keeps prepared payment groups and funding relations when returning to My his
  act(()=>tab('Public').click());act(()=>tab('My history').click());
  expect(held.group).not.toHaveBeenCalled();expect(held.enrich).not.toHaveBeenCalled();expect(held.relations).not.toHaveBeenCalled();
  expect(host.querySelectorAll('.asset-row')).toHaveLength(1);expect(host.querySelector('.ledger-receipt-actions a')?.getAttribute('href')).toBe(link);expect(fetch).not.toHaveBeenCalled();
+});
+it('reuses the standalone public row receipt when inspecting and closing the same record',()=>{
+ const records=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'public-inspect',actionKind:'record',summary:'Public original'}]}).records;
+ held.network={records,sources:{},bootstrap:false,refresh:()=>{},loadMore:()=>{}};
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);const host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ act(()=>root.render(<PublicLedgerApp active={false}/>));const href=host.querySelector('.public-ledger-receipts a')?.getAttribute('href');held.receipt.mockClear();
+ const button=host.querySelector<HTMLButtonElement>('.public-ledger-event')!;
+ act(()=>button.click());expect(host.querySelector('.ledger-inspector')).not.toBeNull();act(()=>button.click());act(()=>button.click());
+ expect(held.receipt).not.toHaveBeenCalled();expect(host.querySelector('.public-ledger-receipts a')?.getAttribute('href')).toBe(href);expect(fetch).not.toHaveBeenCalled();
+});
+it('does not encode another receipt inside the receipt page inspection',()=>{
+ const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'receipt-inspect',actionKind:'record',summary:'Selected original'}]}).records[0];
+ const value=ledgerValueForRecord(record),host=document.createElement('div');document.body.append(host);root=createRoot(host);held.receipt.mockClear();
+ act(()=>root.render(<LedgerInspector receiptMode record={record} value={value}/>));
+ expect(host.querySelector('.ledger-inspector')).not.toBeNull();expect(held.receipt).not.toHaveBeenCalled();
 });
 it('uses prepared activity categories instead of scanning all records on each filter click',()=>{
  const records=parsePublicNetworkPage('actions',{ok:true,actions:Array.from({length:500},(_,i)=>({id:String(i),actionKind:i%2?'record':'chat_transfer',summary:`Recorded action ${i}`,pulse:i+1,amountUsdCents:'100'}))}).records;

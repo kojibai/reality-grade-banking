@@ -39,14 +39,14 @@ function ExactRecordJson({value}:{value:unknown}){
  return <details className="ledger-exact-json" onToggle={event=>{if(event.currentTarget.open)setOpened(true);}}><summary>Exact selected record · JSON</summary>{opened&&<pre>{text}</pre>}</details>;
 }
 
-export function LedgerInspector({record,value,currentValue,valuation,relations,valueSource=null,inApp=false,receiptMode=false}:{record:PublicRecord;value:LedgerValueDisplay;currentValue?:LedgerValueDisplay|null;valuation?:LedgerFields|null;relations?:ReturnType<typeof indexLedgerRelations>;valueSource?:LedgerValueIndex|null;inApp?:boolean;receiptMode?:boolean}){
+export function LedgerInspector({record,value,currentValue,valuation,relations,valueSource=null,inApp=false,receiptMode=false,preparedReceipt}:{record:PublicRecord;value:LedgerValueDisplay;currentValue?:LedgerValueDisplay|null;valuation?:LedgerFields|null;relations?:ReturnType<typeof indexLedgerRelations>;valueSource?:LedgerValueIndex|null;inApp?:boolean;receiptMode?:boolean;preparedReceipt?:string|null}){
  const title=ledgerRecordTitle(record),paymentRole=ledgerPaymentRole(record);
  const {copied,confirm,clear}=useCopyFeedback(record.id);
  const [notice,setNotice]=useState(''),[connectionsOpen,setConnectionsOpen]=useState(false),[shownRelated,setShownRelated]=useState(20);
  const originalInspection=useSyncExternalStore(subscribeProofInspections,()=>retainedProofInspection(record.evidence.artifactDigest),()=>null);
  const receiptRecord=useMemo(()=>originalInspection&&(originalInspection.report.proofHistory||originalInspection.report.causalLineage)?{...record,details:{...record.details,...(originalInspection.report.proofHistory?{proofHistory:originalInspection.report.proofHistory as unknown as LedgerFields,proofHistoryArtifactDigest:originalInspection.report.artifactSha256}:{}),...(originalInspection.report.causalLineage?{causalLineage:originalInspection.report.causalLineage as unknown as LedgerFields}:{})}}:record,[record,originalInspection]);
  const document=useMemo(()=>({...ledgerInspectionDocument(receiptRecord,value),valuation:valuation??null,fundingTrace:ledgerInspectedProvenance(record,originalInspection?.report)??ledgerFundingTrace(record)}),[record,receiptRecord,value,valuation,originalInspection]);
- const exactJson=()=>JSON.stringify(document,null,2),link=useMemo(()=>receiptLink(receiptRecord,value,valuation),[receiptRecord,value,valuation]);
+ const exactJson=()=>JSON.stringify(document,null,2),link=useMemo(()=>receiptMode?null:receiptRecord===record&&preparedReceipt!==undefined?preparedReceipt:receiptLink(receiptRecord,value,valuation),[receiptMode,receiptRecord,record,preparedReceipt,value,valuation]);
  const related=relations?ledgerRelatedRecords(record,relations):[];
  const details=document.details,original=typeof details.originalUrl==='string'?details.originalUrl:null,reading=typeof details.readingUrl==='string'?details.readingUrl:null;
  const participants=Object.fromEntries(Object.entries(details).filter(([key])=>['actor','subject','sender','recipient','fromActor','toActor','owner','previousOwner','newOwner','creator','actorUserId','subjectUserId'].includes(key)));

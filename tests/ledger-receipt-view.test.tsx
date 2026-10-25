@@ -135,5 +135,12 @@ it('uses the complete short-route initial data on its first render without a sec
  const row=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'seeded-receipt',kind:'chat_transfer',amountUsdCents:'2700'}]}).records[0],receipt=completeLedgerReceipt(row),digest='a'.repeat(64);
  const seed=document.createElement('script');seed.id='receipt-snapshot';seed.type='application/json';seed.setAttribute('data-digest',digest);seed.textContent=JSON.stringify(receipt);document.head.append(seed);
  const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
- try{const host=mount('https://bankeiz.com/receipt/'+digest+'/');expect(host.querySelector('.receipt-value h1')?.textContent).toBe('$27.00');expect(fetch).not.toHaveBeenCalled();}finally{seed.remove();vi.unstubAllGlobals();}
+ const writeText=vi.fn().mockResolvedValue(undefined);vi.stubGlobal('navigator',{clipboard:{writeText}});
+ try{
+  const host=mount('https://bankeiz.com/receipt/'+digest+'/');expect(host.querySelector('.receipt-value h1')?.textContent).toBe('$27.00');
+  expect(host.querySelector('.receipt-ledger-link')?.getAttribute('href')).toBe('https://bankeiz.com/ledger/#record=wallet%3Aseeded-receipt');
+  await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Copy receipt link"]')!.click());
+  expect(writeText).toHaveBeenCalledExactlyOnceWith('https://bankeiz.com/receipt/'+digest+'/');expect(host.querySelector('[aria-label="Receipt link copied"]')).not.toBeNull();
+  expect(document.querySelector('.receipt-share-panel')).toBeNull();expect(fetch).not.toHaveBeenCalled();
+ }finally{seed.remove();vi.unstubAllGlobals();}
 });
