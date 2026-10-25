@@ -59,3 +59,38 @@
 @media(max-width:480px){.business-scene .business-scene-stage{aspect-ratio:auto;height:590px}.business-scene-layer{width:160%;bottom:auto;right:auto}.business-scene-layer-0{left:0;top:0}.business-scene-layer-1{left:-10%;top:180px}.business-scene-layer-2{left:-100%;top:360px}.business-scene figcaption{display:block;position:absolute;inset:5px 0 auto;height:590px;border:0;margin:0;padding:0;font-size:12px;pointer-events:none}.business-scene figcaption>span{position:absolute;left:61%;right:0;top:100px}.business-scene figcaption>span:nth-child(2){left:0;right:53%;top:280px}.business-scene figcaption>span:nth-child(3){top:460px}.business-scene figcaption small{font-size:9px;margin-bottom:10px}.business-flow-wide{display:none}.business-flow-mobile{display:initial}.business-optical-glint{left:59%;top:208px;width:24%;height:120px}}
 @media(max-width:480px){.business-scene-teach .business-scene-layer{width:140%}.business-scene-teach .business-scene-layer-1{left:-4%}.business-scene-teach .business-scene-layer-2{left:-85%}}
 @media(prefers-reduced-motion:reduce){.business-scene *{animation:none!important;transition:none!important}}
+/* Audience-specific, source-to-result illustrations. No added runtime or image request. */
+.fit-outcome-scene{padding:0 0 12px}
+.fit-art-objects{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:30px;position:relative}
+.fit-outcome-scene .fit-art-step{position:relative;inset:auto;width:auto;clip-path:none;animation:none;transform:none;min-width:0}
+.fit-art-step>svg{display:block;width:100%;height:auto;overflow:visible;animation:fit-art-lift 12s ease-in-out infinite;animation-delay:var(--fit-phase)}
+.fit-art-caption{font-size:15px;line-height:1.55;max-width:27ch;margin:0 auto;padding:0 16px;color:#253d60;text-align:center;min-height:4.4em}
+.fit-art-caption small{display:block;font-size:10px;color:#7b8eaa;letter-spacing:.1em;margin-bottom:8px}
+.fit-outcome-scene figcaption.fit-art-note{position:static;display:block;height:auto;inset:auto;border:0;padding:28px 0 0;margin:0;text-align:center;font-size:11px;font-weight:400;line-height:1.6;color:#71849e}
+.fit-art-connector{position:absolute;left:calc(100% - 21px);top:40%;width:72px;height:1px;background:linear-gradient(90deg,#9bb5e666,#5783ddaa);z-index:1}
+.fit-art-connector:after{content:"";position:absolute;right:0;top:-3px;width:6px;height:6px;border-top:1px solid #7195d6;border-right:1px solid #7195d6;transform:rotate(45deg)}
+.fit-art-connector i{position:absolute;top:-2px;left:0;width:5px;height:5px;border-radius:50%;background:#315ed9;box-shadow:0 0 9px #315ed966;animation:fit-art-signal 12s linear infinite;animation-delay:var(--fit-phase)}
+.fit-art-build,.fit-art-window{animation:fit-art-build 12s ease-in-out infinite;animation-delay:var(--fit-phase)}
+.fit-art-ink,.fit-art-trace{stroke-dasharray:100;animation:fit-art-write 12s ease-in-out infinite;animation-delay:var(--fit-phase)}
+.fit-art-record{animation:fit-art-record 28s linear infinite}
+.fit-art-wave{animation:fit-art-wave 1.8s ease-in-out infinite}
+.fit-art-caret{animation:fit-art-build 1.2s ease-in-out infinite}
+@keyframes fit-art-lift{0%,100%{transform:translateY(0)}40%{transform:translateY(-7px)}70%{transform:translateY(-2px)}}
+@keyframes fit-art-build{0%,12%,100%{opacity:.65}34%,86%{opacity:1}}
+@keyframes fit-art-write{0%,12%,100%{stroke-dashoffset:35}40%,86%{stroke-dashoffset:0}}
+@keyframes fit-art-signal{0%,9%{transform:translateX(0);opacity:0}15%{opacity:1}32%{transform:translateX(66px);opacity:1}38%,100%{transform:translateX(66px);opacity:0}}
+@keyframes fit-art-record{to{transform:rotate(360deg)}}
+@keyframes fit-art-wave{0%,100%{transform:scaleY(.55)}50%{transform:scaleY(1)}}
+@media(max-width:800px){.fit-art-objects{gap:14px}.fit-art-caption{font-size:13px;padding:0 6px}.fit-art-connector{left:calc(100% - 14px);width:42px}}
+@media(max-width:600px){
+ .fit-art-objects{grid-template-columns:minmax(0,1fr);gap:20px}
+ .fit-outcome-scene .fit-art-step{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);align-items:center}
+ .fit-art-step>svg{width:100%;height:auto}
+ .fit-art-caption{text-align:left;padding:0 0 0 4px;margin:0;max-width:none;font-size:13px;min-height:0}
+ .fit-art-caption small{font-size:10px;margin-bottom:9px}
+ .fit-art-connector{left:31%;top:calc(100% - 5px);width:1px;height:30px;background:linear-gradient(#9bb5e666,#5783ddaa)}
+ .fit-art-connector:after{top:auto;bottom:0;right:-3px;transform:rotate(135deg)}
+ .fit-art-connector i{left:-2px;top:0;animation-name:fit-art-signal-down}
+ .fit-outcome-scene figcaption.fit-art-note{font-size:10px;padding-top:25px}
+}
+@keyframes fit-art-signal-down{0%,9%{transform:translateY(0);opacity:0}15%{opacity:1}32%{transform:translateY(25px);opacity:1}38%,100%{transform:translateY(25px);opacity:0}}

@@ -2,6 +2,7 @@ import {learnHeader} from './learn-template.mjs';
 import {siteFooterHtml} from './site-footer.mjs';
 import {businessFits,fitGroups,fitGoals} from '../src/content/business-fits.mjs';
 import {businessScene} from './business-scene.mjs';
+import {fitOutcomeScene} from './business-fit-art.mjs';
 import {businessCheckout,businessPriceCard,businessIncluded,businessBanking,businessFaq,businessMobileAction} from './business-page.mjs';
 const esc=value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const arrow='<span aria-hidden="true">↗</span>';
@@ -21,7 +22,7 @@ export function fitContent(fit){
  const related=businessFits.filter(other=>other.slug!==fit.slug&&other.group===fit.group).slice(0,3);
  return `${learnHeader()}<main id="main" class="business-page fit-page">
  <section class="learn-shell business-hero fit-hero"><div class="business-intro"><a class="fit-back" href="/fit/">All ways to use Business ${arrow}</a><span class="fit-label">${esc(fit.label)}</span><h1>${esc(fit.headline)}</h1><p>${esc(fit.pain)}</p><a class="business-text-link" href="#your-work">See it in your work ${arrow}</a></div>${businessPriceCard(fit.benefits.map(([outcome])=>outcome))}</section>
- <section class="learn-shell fit-visual" aria-label="Business for ${esc(fit.label)}">${businessScene(fit.story,fit.visualLabels,{eager:true})}</section>
+ <section class="learn-shell fit-visual" aria-label="Business for ${esc(fit.label)}">${fitOutcomeScene(fit)}</section>
  <section id="your-work" class="learn-shell fit-story"><div><h2>Start with a real<br>piece of your work.</h2><p>${esc(fit.scenario)}</p></div><div class="fit-question"><p>One useful place to begin</p><blockquote>“${esc(fit.question)}”</blockquote><span>Bring the context. Work through the answer. Keep the final say.</span></div></section>
  <section class="learn-shell fit-outcomes"><h2>What changes in your day.</h2><div>${fit.benefits.map(([title,copy],index)=>`<article><span>0${index+1}</span><h3>${esc(title)}</h3><p>${esc(copy)}</p></article>`).join('')}</div></section>
  <section class="learn-shell business-workflow"><h2>Your first useful session.</h2><ol>${fit.steps.map((step,index)=>`<li><span aria-hidden="true">0${index+1}</span><p>${esc(step)}</p></li>`).join('')}</ol><p class="business-context-note">Work from the information and permissions you provide. Review generated material and consequential proposals before using their supported actions.</p></section>
