@@ -196,7 +196,6 @@
 .entrance-learn { display: inline-block; color: var(--muted); font-size: 11px; margin: 13px 0 0; text-decoration: underline; text-underline-offset: 3px; }
 .value-chart.red { color: var(--red, #be4b52); }
 .value-chart svg:focus-visible { outline: 1px solid currentColor; outline-offset: 6px; border-radius: 4px; }
-.periods { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
 .chart-period-change { display: flex; align-items: baseline; gap: 9px; margin-top: 12px; min-height: 18px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .chart-period-change span { color: var(--muted, #8290a4); font-size: 10px; }
 .sheet, .sheet-body { overscroll-behavior: contain; }

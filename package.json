@@ -13,7 +13,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
-    "test:browser": "node scripts/check-browser-regressions.mjs",
+    "test:browser": "node scripts/check-browser-regressions.mjs && node scripts/check-chart-period-layout.mjs",
     "test:vault-browser": "node scripts/check-vault-browser.mjs",
     "release:check": "node scripts/receiz-release.mjs",
     "vercel:check": "node scripts/check-vercel-build.mjs",
