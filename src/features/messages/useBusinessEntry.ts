@@ -18,7 +18,13 @@ export function useBusinessEntry(account:EntryAccount,onBank:boolean){
  },[]);
  useEffect(()=>{
   if(!onBank||!intent)return;
-  if(intent.owner&&intent.owner!==account.identity){setIntent(null);return;}
+  if(intent.owner&&intent.owner!==account.identity){
+   setIntent(null);
+   // A delayed hash/surface event must not rebind the abandoned request to
+   // another account while its original opening URL is still selected.
+   if(requested())history.replaceState(history.state,'','#account');
+   return;
+  }
   if(account.identity){if(!intent.owner)setIntent({...intent,owner:account.identity});return;}
   // Failed restore never authorizes a replacement identity or a render retry.
   if(account.opening||account.busy||account.error||attempted.current.has(intent.id))return;

@@ -31,3 +31,7 @@ it('cancels an unconsumed opening intent when the user navigates away',async()=>
  history.replaceState(null,'','/'+BUSINESS_ENTRY_HASH);const f=fixture();
  try{f.state.identity=owner;f.state.opening=false;await f.render();expect(f.result.request).not.toBeNull();history.replaceState(null,'','/business/');await f.event();await f.render();expect(f.result.request).toBeNull();}finally{f.close();}
 });
+it('does not recreate a cancelled Business intent from a delayed surface event after the identity changes',async()=>{
+ history.replaceState(null,'','/'+BUSINESS_ENTRY_HASH);const f=fixture();
+ try{f.state.opening=false;f.state.identity=owner;await f.render();expect(f.result.request?.owner).toBe(owner);f.state.identity={binding:{identityOwnerReceizId:'replacement'}} as OpenIdentity;await f.render();await f.event();expect(f.result.request).toBeNull();expect(f.create).not.toHaveBeenCalled();}finally{f.close();}
+});
