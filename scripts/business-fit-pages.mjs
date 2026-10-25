@@ -1,6 +1,6 @@
 import {learnHeader} from './learn-template.mjs';
 import {siteFooterHtml} from './site-footer.mjs';
-import {businessFits,fitGroups,fitGoals} from '../src/content/business-fits.mjs';
+import {businessFits,fitGroups,fitGoals,businessFitStart} from '../src/content/business-fits.mjs';
 import {businessScene} from './business-scene.mjs';
 import {fitOutcomeScene} from './business-fit-art.mjs';
 import {businessCheckout,businessPriceCard,businessIncluded,businessBanking,businessFaq,businessMobileAction} from './business-page.mjs';
@@ -20,7 +20,7 @@ export function directoryContent(){return `${learnHeader()}<main id="main" class
  </main>${businessMobileAction()}${siteFooterHtml('/fit/')}`;}
 export function fitContent(fit){
  const related=businessFits.filter(other=>other.slug!==fit.slug&&other.group===fit.group).slice(0,3);
- return `${learnHeader()}<main id="main" class="business-page fit-page">
+ return `${learnHeader()}<main id="main" class="business-page fit-page" data-business-start="${esc(JSON.stringify(businessFitStart(fit)))}">
  <section class="learn-shell business-hero fit-hero"><div class="business-intro"><a class="fit-back" href="/fit/">All ways to use Business ${arrow}</a><span class="fit-label">${esc(fit.label)}</span><h1>${esc(fit.headline)}</h1><p>${esc(fit.pain)}</p><a class="business-text-link" href="#your-work">See it in your work ${arrow}</a></div>${businessPriceCard(fit.benefits.map(([outcome])=>outcome))}</section>
  <section class="learn-shell fit-visual" aria-label="Business for ${esc(fit.label)}">${fitOutcomeScene(fit)}</section>
  <section id="your-work" class="learn-shell fit-story"><div><h2>Start with a real<br>piece of your work.</h2><p>${esc(fit.scenario)}</p></div><div class="fit-question"><p>One useful place to begin</p><blockquote>“${esc(fit.question)}”</blockquote><span>Bring the context. Work through the answer. Keep the final say.</span></div></section>

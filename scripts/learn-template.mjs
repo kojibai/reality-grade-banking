@@ -21,7 +21,7 @@ const solutionGuides=[
  ...twinSalesPages.map(page=>({...page,group:'Banking',title:page.key==='your-twin'?'Your Twin':'See it in action'})),
  {slug:'vaults',path:'/vaults/',group:'Banking',title:'Your Vaults',description:'Hold money and originals separately, add optional passkey protection and share their proof.'},
  {slug:'protect-your-value',path:'/protect/',group:'Banking',title:'Protect your value',description:'See how separate Vault authority, optional passkey encryption and public proof protect access.'},
- {slug:'business',path:'/business/',group:'Banking',title:'Business · $149/month',description:'Work from your context, create what comes next and help clients take the next step.'},
+ {slug:'business',path:'/business/',group:'Banking',title:'Business',description:'Work from your context, create what comes next and help clients take the next step.'},
  {...directoryPage,group:'Banking'},
  ...businessFitPages.map(page=>({...page,group:'Business by your work',title:page.fit.label})),
  ...cooperativePages.map(page=>({...page,group:'Cooperatives'})),
@@ -87,7 +87,7 @@ export function learnHome() {
     ['06','Protect your value','See the protection behind separate Vault authority and optional passkey encryption.','/protect/'],
     ['07','The cooperative economy','Put what your members already produce to work through defined rights and connected proof.','/coops/']
   ].map(([number,title,copy,slug])=>`<a class="guide-row reveal" href="${slug.startsWith('/')?slug:'/learn/'+slug+'/'}"><span class="guide-number">${number}</span><div><h3>${title}</h3><p>${copy}</p></div>${arrow}</a>`).join('')}</div></section>
-  <section class="learn-shell learn-business-offer"><div><h2>Less explaining.<br>More getting it done.</h2><p>Get help that works from your context. Continue the conversation, create the work and give clients a useful next step.</p></div><div><p>An assistant for your business, in the same account. Core proof, ownership and Settlement stay free.</p><strong>Business · $149/month</strong><small>Your context. Your work. Renews until cancelled.</small><a class="learn-button button-cobalt" href="/business/">See what Business includes ${arrow}</a></div></section>
+  <section class="learn-shell learn-business-offer"><div><h2>Get the work out the door.<br>Keep your day moving.</h2><p>The proposal you need to finish. The client reply waiting on you. The campaign that needs its next version. Bring the brief and decisions you choose, then work toward something ready to review and use.</p></div><div><strong>Less re-explaining. Fewer loose ends.</strong><p>Keep useful context for the next conversation. Create the documents and creative around the same work. Give client enquiries answers and a clear path to the next booking, payment or person.</p><small>Your account, originals and supported value stay available without Business. The optional upgrade adds tools for the work around your business.</small><a class="learn-button button-cobalt" href="/business/">See it in your work ${arrow}</a></div></section>
   <section class="learn-finale motion-region"><div class="learn-shell"><div class="reveal"><h2>A familiar place.<br>A new kind of possibility.</h2><a class="learn-button button-paper" href="/">Enter bank ${arrow}</a></div></div></section></main>${siteFooterHtml('/learn/')}`;
 }
 

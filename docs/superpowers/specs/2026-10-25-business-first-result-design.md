@@ -1,0 +1,14 @@
+# Business: promised outcome to first useful session
+
+User approved the proposed activation/chat, offer/fit and standard-page refinement. Additional instructions: /learn is entirely value-led with no upgrade price; explain Business as an optional add-on for additional work, never payment for core banking/software. Speak in practical buyer outcomes. Preserve existing page style and every Get Business destination.
+
+Existing primitives: admitted Receiz ID, existing messaging/twin request, verified Business entitlement, retained same-identity checkout. No new identity, billing, storage, financial writer or authority. Frozen entry and /#account/messages/business remain unchanged. A free explicit entry still lands at the bottom payment action. Existing paid entry may send its one approved opening; newly confirmed upgrades prepare an editable useful task without another automatic/metered send. Preserve ordinary saved questions, selected-context consent, unknown-result recovery, hidden-page state and owner replacement.
+
+Carry only public editorial start text from the selected audience page through the existing Business entry request: title, question, first-step hint. Static inert markup plus the already mounted entry hook; no global navigation JS changes, URL changes, analytics or storage. Cold explicit entry may reuse the retained originating public document. Warm entry captures the exact unmodified CTA click. Bound and validate the text as display/task intent, never authority. Cancel intent with the existing identity/view rules.
+
+Public work: refine Business benefits/FAQ to optional additional outcomes and agent wording; keep real prices/renewal in offer and checkout; update Learn's discovery block and Business catalogue label without price. Refine only Start/Trust/Deposit/Help content and relevant deep-document links. No invented capabilities, service status, insurance, support SLA or liquidity.
+
+Contracts: source-specific cold/warm intent capture, same exact href, wrong identity cancellation, confirmed access versus unconfirmed charge, new-subscription useful draft, preservation of ordinary/custom drafts, no automatic record disclosure/request, hidden confirmation and once-only callback. Public Learn no price and outcome language. Full existing account-entry/billing/messaging tests remain.
+
+
+Additional user instruction: use the bank logo as the search/platform site icon. Existing public/icon.svg is the sole visual source; existing 192/512 PNG and Apple180 variants already derive from it. Add explicit 192px PNG favicon discovery, fix pay's missing favicon.svg reference, and ship deterministic raster/Apple copies with the standalone docs app. App-icon and docs-output contracts must fail on a missing/mismatched logo or uncrawlable discovery. No visual mark redesign, routing, navigation runtime or first-paint dependency. Google format/crawl/refresh guidance is an external mechanics boundary only.

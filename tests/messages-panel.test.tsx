@@ -22,7 +22,7 @@ function fixture(consented=true){
  const api={accountUid:uid,twin,callTransport:{heldFetch:vi.fn(async(_path:string,_init?:RequestInit)=>Response.json({ok:true,calls:[],activeCall:null}))},knownConversations:()=>[conversation],knownMessages:():ChatPage|null=>page,conversations:vi.fn(async(_signal?:AbortSignal)=>[conversation]),messages:vi.fn(async(_id:string,_before?:string,_signal?:AbortSignal)=>page),search:vi.fn(async(_query:string,_signal?:AbortSignal)=>[peer,other]),createConversation:vi.fn(async(_input:{participantUserIds:string[];title?:string})=>threadId),send:vi.fn(async(_id:string,_body:string,_options?:MessageSendOptions)=>({...message,id:'sent-1',senderUserId:uid,body:'My draft'}))};
  const identity={binding:{identityOwnerReceizId:'owner'},knownTwinAccess:()=>true,messaging:vi.fn(async(approve=false)=>{if(!approved&&!approve)throw Error('MESSAGING_CONSENT_REQUIRED');approved=true;return api;})} as unknown as OpenIdentity;
  const host=document.createElement('div');document.body.appendChild(host);const root=createRoot(host),onClose=vi.fn(),onOpen=vi.fn(),onPreparePayment=vi.fn();
- const render=(active=true,nextIdentity=identity,twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>,initialRecipient?:{id:number;person:typeof peer},initialNotification?:import('../src/pwa/notification-target').NotificationTarget,initialBusinessRequest?:{id:string},onBusinessConsumed?: (id:string)=>void)=>act(async()=>root.render(<MessagesPanel identity={nextIdentity} active={active} onClose={onClose} onOpen={onOpen} onPreparePayment={onPreparePayment} twinContextRecords={twinContextRecords} initialRecipient={initialRecipient} initialNotification={initialNotification} initialBusinessRequest={initialBusinessRequest} onBusinessConsumed={onBusinessConsumed}/>));
+ const render=(active=true,nextIdentity=identity,twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>,initialRecipient?:{id:number;person:typeof peer},initialNotification?:import('../src/pwa/notification-target').NotificationTarget,initialBusinessRequest?:{id:string;start?:import('../src/features/messages/useBusinessEntry').BusinessStart},onBusinessConsumed?: (id:string)=>void)=>act(async()=>root.render(<MessagesPanel identity={nextIdentity} active={active} onClose={onClose} onOpen={onOpen} onPreparePayment={onPreparePayment} twinContextRecords={twinContextRecords} initialRecipient={initialRecipient} initialNotification={initialNotification} initialBusinessRequest={initialBusinessRequest} onBusinessConsumed={onBusinessConsumed}/>));
  const click=async(label:string)=>{const button=[...host.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===label||b.textContent===label);expect(button,'button '+label).toBeTruthy();await act(async()=>button!.click());};
  const input=async(label:string,value:string)=>{const field=host.querySelector<HTMLInputElement>('[aria-label="'+label+'"]')!;expect(field,'input '+label).toBeTruthy();await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(field,value);field.dispatchEvent(new Event('input',{bubbles:true}));});};
  const submit=()=>act(async()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
@@ -402,5 +402,30 @@ it('explains the full Business value to a regular unpaid assistant question in c
   for(const outcome of ['Stop repeating the whole story','Know what happened to the money','Get the next draft off your list','Help clients without stopping your work','one clear front door','Keep the record when it matters','$149/month'])expect(reply.textContent).toContain(outcome);
   expect(reply.textContent).toContain('same account');expect(reply.textContent).toContain('supported value stay free');
   expect(f.api.twin.ask).not.toHaveBeenCalled();
+ }finally{f.unmount();}
+});
+
+it.each([false,true])('opens the promised first task after confirmed Business access, including Back/reopen=%s, without an automatic send',async(reopen)=>{
+ const f=fixture(),start={title:'Get the client revision ready.',question:'Help me turn this feedback into the next campaign draft.',hint:'Bring the brief and approved feedback.'};
+ const upgrade=vi.fn(async()=>({accountUid:uid,twinAccess:true})),identity={...f.identity,knownTwinAccess:()=>false,upgradeTwin:upgrade};
+ try{
+  await f.render(true,identity,[{id:'private',title:'Private record',text:'Never selected'}],undefined,undefined,{id:'first-task',start});
+  await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));
+  expect(f.host.textContent).toContain(start.title);if(reopen){await f.click('Back to conversation');await f.click('Get Business — $149/month');await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));}await f.click('Continue to secure payment');
+  const draft=f.host.querySelector<HTMLInputElement>('[aria-label="Ask your agent…"]')!;expect(draft.value).toBe(start.question);expect(f.host.textContent).toContain(start.hint);expect(f.api.twin.ask).not.toHaveBeenCalled();
+  await f.submit();expect(f.api.twin.ask).toHaveBeenCalledOnce();expect(f.api.twin.ask.mock.calls[0]?.[0]).toMatchObject({message:start.question});expect(f.api.twin.ask.mock.calls[0]?.[0]).not.toHaveProperty('context');expect(upgrade).toHaveBeenCalledOnce();
+ }finally{f.unmount();}
+});
+
+
+it.each([false,true])('preserves an ordinary unsent agent draft when an explicit Business opening arrives; already paid=%s',async(paid)=>{
+ const f=fixture(),start={title:'Finish the proposal.',question:'Help me finish this chosen proposal.',hint:'Bring the client brief.'};
+ const upgrade=vi.fn(async()=>({accountUid:uid,twinAccess:true})),identity={...f.identity,knownTwinAccess:()=>paid,upgradeTwin:upgrade};
+ try{
+  await f.render(true,identity);if(!paid)await f.click('Your agent');await f.input('Ask your agent…','My custom unsent question');
+  await f.render(true,identity,undefined,undefined,undefined,{id:'preserve-draft',start});
+  if(!paid){await vi.waitFor(()=>expect(f.host.textContent).toContain('Continue to secure payment'));await f.click('Continue to secure payment');expect(f.api.twin.ask).not.toHaveBeenCalled();}
+  else{await vi.waitFor(()=>expect(f.api.twin.ask).toHaveBeenCalledOnce());expect(f.api.twin.ask.mock.calls[0]?.[0].message).toBe(start.question);}
+  expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your agent…"]')?.value).toBe('My custom unsent question');
  }finally{f.unmount();}
 });

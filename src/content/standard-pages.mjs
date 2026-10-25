@@ -32,8 +32,8 @@ export const standardPages=[
         "A proof-native claim carries the evidence required by its format. Open the original, verify what it establishes and follow the source. A name, picture or database entry cannot replace that authority."
       ],
       [
-        "You authorize the exact action.",
-        "Opening your account and moving value are separate operations. A payment identifies the recipient and amount. The actual financial operation requires its own approval; a message or an agent’s suggestion does not spend for you."
+        "Keep control of the decision.",
+        "Before moving value, inspect the actual recipient, source, amount and displayed terms. Opening your account, reading your records and approving a financial operation remain separate. A public proof or an agent’s suggestion cannot spend for you. The exact supported approval and accepted result remain inspectable."
       ],
       [
         "The history stays connected.",
@@ -64,6 +64,14 @@ export const standardPages=[
       [
         "/money/",
         "Understand what you hold"
+      ],
+      [
+        "/docs/trust/",
+        "Know what protects your value"
+      ],
+      [
+        "/docs/security/",
+        "Understand authority, originals and protection"
       ]
     ],
     "faq": [
@@ -176,8 +184,8 @@ export const standardPages=[
         "Open your existing identity and choose Deposit. Select the incoming source you actually hold. Card funding, an original Note, a proof object and physical intake establish different facts and follow their own paths."
       ],
       [
-        "For card funding, keep the exact checkout.",
-        "Choose the amount and review the payment in its secure form. Bankeiz retains the unfinished operation so you can check its original result. Funds become available after the same account and exact amount receive confirmed credit."
+        "Know when the money is available.",
+        "Choose the amount and review the payment in its secure form. Keep the saved checkout. A provider payment and Reserve account credit are distinct results: use the actual credited source only after the original session, amount and receiving account match. If interrupted, check that deposit before creating another."
       ],
       [
         "For a Note, use the original.",
@@ -204,6 +212,14 @@ export const standardPages=[
       [
         "/help/",
         "Recover a pending result"
+      ],
+      [
+        "/docs/funding/",
+        "Card funding states and exact continuation"
+      ],
+      [
+        "/docs/offline/",
+        "Received Notes and confirmed account credit"
       ]
     ],
     "faq": [
@@ -312,8 +328,8 @@ export const standardPages=[
     ],
     "sections": [
       [
-        "An unfinished payment.",
-        "Reopen the retained operation on the same device and identity. Check the existing result before trying again. A timeout does not establish failure, and a completed animation does not establish financial success."
+        "Get back to the result you already started.",
+        "Reopen the retained operation on the same device and identity. Use its existing status or recovery action to establish the original outcome. A timeout leaves an unknown result; it does not authorize another charge or transfer. Keep the original reference while the result is resolved."
       ],
       [
         "An account you need to recover.",
@@ -344,6 +360,10 @@ export const standardPages=[
       [
         "/privacy/",
         "Information and privacy"
+      ],
+      [
+        "/docs/backup/",
+        "Protect originals before changing devices"
       ]
     ],
     "faq": [
@@ -600,8 +620,8 @@ export const standardPages=[
         "Save the supported Identity Record and any required phrase somewhere you control. Never publish the private identity original as a demonstration or payment request. A public proof has its own deliberate disclosure path."
       ],
       [
-        "Choose one useful action.",
-        "Inspect a proof object, send a receiving request or fund your next supported payment. Review the actual recipient, value and operation before authorizing a financial action."
+        "Finish one useful action.",
+        "Start with the outcome you need: inspect an original, send a receiving request or fund a supported payment. Follow that action through its actual result and keep the reference. Core banking and supported value remain available without Business; the optional upgrade adds tools for the work around your business."
       ],
       [
         "Keep the evidence.",
@@ -624,6 +644,10 @@ export const standardPages=[
       [
         "/docs/getting-started/",
         "Follow the first-use guide"
+      ],
+      [
+        "/docs/backup/",
+        "Save identity and proof backups separately"
       ]
     ],
     "faq": [

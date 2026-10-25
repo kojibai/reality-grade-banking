@@ -220,3 +220,6 @@ export const businessFits=[
 ];
 export const directoryPage={slug:'business-for',path:'/fit/',title:'Find your fit',description:'Find the Business workflow for your work: client services, creative work, expertise, operations, products and personal projects. $149/month.',intro:'Find the part that changes your day.',sections:[]};
 export const businessFitPages=businessFits.map(fit=>({slug:`business-fit-${fit.slug}`,path:`/business/for/${fit.slug}/`,title:fit.headline,description:fit.description,intro:fit.label,sections:[],fit}));
+
+// The chosen page already carries this public first-session context.
+export const businessFitStart=fit=>({title:fit.benefits[0][0],question:fit.question,hint:fit.steps[0]});

@@ -38,3 +38,24 @@ it('ships reproducible PWA and Apple sizes from the same original vector', () =>
   expect(read('scripts/build-offline-shell.mjs').toString()).toContain("'/apple-touch-icon.png'");
   expect(JSON.parse(read('package.json').toString()).scripts.build).toContain('node scripts/build-icons.mjs');
 });
+
+
+it('advertises the same crawlable PNG bank favicon across app entries, public pages and standalone docs', async () => {
+  const entries = ['index.html', 'pay/index.html', 'vault/index.html', 'conformance/index.html', 'verify/index.html', 'receipt/index.html', 'ledger/index.html', 'explore/index.html'];
+  for (const path of entries) {
+    const html = read(path).toString();
+    expect(html, path).toContain('rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"');
+    expect(html, path).not.toContain('href="/favicon.svg"');
+  }
+  expect(read('scripts/build-public-pages.mjs').toString()).toContain('rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"');
+  // @ts-expect-error Static ESM renderer has no declaration.
+  const { docsDocument } = await import('../docs-app/renderer.mjs');
+  for (const base of ['/', '/docs/']) {
+    expect(docsDocument(null, { base })).toContain(`rel="icon" type="image/png" sizes="192x192" href="${base}assets/icon-192.png"`);
+  }
+  expect(read('docs-app/public/icon-192.png').equals(read('public/icon-192.png'))).toBe(true);
+  expect(read('docs-app/public/icon.svg').equals(read('public/icon.svg'))).toBe(true);
+  const robots = read('public/robots.txt').toString();
+  expect(robots).toContain('Allow: /');
+  expect(robots).not.toMatch(/Disallow: \/(?:icon|favicon|apple-touch)/);
+});

@@ -4,3 +4,5 @@ export const fitGroups:{id:string;label:string}[];
 export const fitGoals:{id:string;label:string}[];
 export const directoryPage:{slug:string;path:string;title:string;description:string;intro:string;sections:never[]};
 export const businessFitPages:(typeof directoryPage & {fit:BusinessFit})[];
+
+export function businessFitStart(fit:BusinessFit):{title:string;question:string;hint:string};

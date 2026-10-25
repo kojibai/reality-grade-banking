@@ -23,7 +23,7 @@ export function validateDocs(){
 export async function buildDocs({root=resolve(appRoot,'dist'),base='/'}={}){
  validateDocs();if(!/^\/(?:docs\/)?$/.test(base))throw Error('DOCS_BASE_INVALID');
  const output=resolve(root);await mkdir(output+'/assets',{recursive:true});await mkdir(output+'/examples',{recursive:true});
- for(const [source,target] of [['styles.css','docs.css'],['search.js','docs.js'],['public/icon.svg','icon.svg'],['public/docs-share.png','docs-share.png']])await copyFile(resolve(appRoot,source),output+'/assets/'+target);
+ for(const [source,target] of [['styles.css','docs.css'],['search.js','docs.js'],['public/icon.svg','icon.svg'],['public/icon-192.png','icon-192.png'],['public/apple-touch-icon.png','apple-touch-icon.png'],['public/docs-share.png','docs-share.png']])await copyFile(resolve(appRoot,source),output+'/assets/'+target);
  await writeFile(output+'/examples/sdk-sandbox.mjs',sdkSandboxExample);await writeFile(output+'/examples/mcp-check.mjs',mcpCheckExample);
  for(const page of [null,...docsArticles]){const folder=output+(page?'/'+page.slug:'');await mkdir(folder,{recursive:true});await writeFile(folder+'/index.html',docsDocument(page,{base}));await writeFile(folder+'/index.md',docsMarkdown(page));}
  await writeFile(output+'/sitemap.xml',`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['',...docsArticles.map(p=>p.slug+'/')].map(path=>`<url><loc>${docsOrigin}/${path}</loc><lastmod>${docsEdition.reviewed}</lastmod></url>`).join('')}</urlset>`);

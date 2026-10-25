@@ -15,5 +15,15 @@ for (const [name, size] of variants) {
   if (check) {
     if (!(await readFile(target)).equals(bytes)) throw new Error(`APP_ICON_OUT_OF_DATE:${name}`);
   } else await writeFile(target, bytes);
+  if (size !== 512) {
+    const docsTarget = new URL(`../docs-app/public/${name}`, import.meta.url);
+    if (check) {
+      if (!(await readFile(docsTarget)).equals(bytes)) throw new Error(`DOCS_ICON_OUT_OF_DATE:${name}`);
+    } else await writeFile(docsTarget, bytes);
+  }
 }
+const docsVector = new URL('../docs-app/public/icon.svg', import.meta.url);
+if (check) {
+  if (!(await readFile(docsVector)).equals(source)) throw new Error('DOCS_ICON_OUT_OF_DATE:icon.svg');
+} else await writeFile(docsVector, source);
 console.log(`${check ? 'Verified' : 'Generated'} Bankeiz PWA 192/512 and Apple 180 icons from public/icon.svg.`);

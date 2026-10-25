@@ -76,3 +76,7 @@ it('puts three audience-specific results beside every $149 offer and sends every
  }
  expect(cards.size).toBe(30);
 });
+
+it('carries each page’s public first task without changing any checkout destination or loading an account',()=>{
+ for(const fit of businessFits){const doc=new DOMParser().parseFromString(fitContent(fit),'text/html');const start=JSON.parse(doc.querySelector<HTMLElement>('main[data-business-start]')!.dataset.businessStart!);expect(start).toEqual({title:fit.benefits[0][0],question:fit.question,hint:fit.steps[0]});for(const link of doc.querySelectorAll('a[data-business-checkout]'))expect(link.getAttribute('href')).toBe(businessOffer.checkoutHref);expect(doc.querySelector('script,iframe')).toBeNull();}
+});
