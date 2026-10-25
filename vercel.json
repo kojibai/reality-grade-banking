@@ -25,6 +25,14 @@
   },
   "rewrites": [
     {
+      "source": "/agents",
+      "destination": "/agent/index.html"
+    },
+    {
+      "source": "/agents/",
+      "destination": "/agent/index.html"
+    },
+    {
       "source": "/agent",
       "destination": "/agent/index.html"
     },

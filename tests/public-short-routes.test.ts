@@ -10,7 +10,7 @@ import {profilePagePath,profilePageUsername} from '../src/receiz/public-profile'
 import social from '../public/social/manifest.json';
 
 it('gives the complete marketing documents short canonical, social and structured-data URLs while preserving old URLs',()=>{
- expect(publicRouteAliases).toEqual({'/learn/identity-continuity/':'/id/','/learn/protect-your-value/':'/protect/','/learn/vaults/':'/vaults/','/business/for/':'/fit/','/cooperatives/':'/coops/','/cooperate/':'/coops/'});
+ expect(publicRouteAliases).toEqual({'/agents/':'/agent/','/learn/identity-continuity/':'/id/','/learn/protect-your-value/':'/protect/','/learn/vaults/':'/vaults/','/business/for/':'/fit/','/cooperatives/':'/coops/','/cooperate/':'/coops/'});
  for(const [old,path] of Object.entries(publicRouteAliases)){
   expect(publicPage(old)).toBe(publicPage(path));expect(publicPage(old+'index.html?ref=old')).toBe(publicPage(path));
   expect(publicPages.some(page=>page.path===old)).toBe(false);
@@ -34,6 +34,7 @@ it('routes direct canonical and legacy documents in preview and deployment witho
   const req={url:input+'?ref=retained'};middleware(req,null,()=>{});expect(req.url).toBe(path+'index.html?ref=retained');
  }
  for(const path of Object.values(publicRouteAliases))for(const input of [path,path.slice(0,-1)])expect(deployment.rewrites.find((r:{source:string})=>r.source===input)?.destination).toBe(path+'index.html');
+ for(const input of ['/agents','/agents/'])expect(deployment.rewrites.find((r:{source:string})=>r.source===input)?.destination).toBe('/agent/index.html');
  const proof={url:'/vault/held-proof/'};middleware(proof,null,()=>{});expect(proof.url).toBe('/vault/held-proof/');
 });
 

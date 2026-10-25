@@ -44,6 +44,6 @@ it('appends confirmed PBI authorship without fetching or replacing held assets a
  expect(retainedPublicProfile('alexmorgan')!.items).toBe(items);expect(retainedPublicProfile('otherperson')).toBe(other);
 });
 
-it.each(['agent','fraud','recover','proof'])('keeps the %s landing route distinct while preserving the same named profile under /u',username=>{
+it.each(['agent','agents','fraud','recover','proof'])('keeps the %s landing route distinct while preserving the same named profile under /u',username=>{
  expect(profilePageUsername('/'+username)).toBeNull();expect(profilePageUsername('/'+username+'/')).toBeNull();expect(profilePagePath(username)).toBe('/u/'+username+'/');expect(profilePageUsername('/u/'+username+'/')).toBe(username);
 });

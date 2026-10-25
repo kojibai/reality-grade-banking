@@ -2,11 +2,11 @@
   "schema": "bankeiz.public-social-images.v1",
   "images": {
     "/agent/": {
-      "url": "/social/solution-agent-9480ff7f2843d424.png",
+      "url": "/social/solution-agent-73df612d940a3490.png",
       "width": 1730,
       "height": 909,
-      "sha256": "9480ff7f2843d424d38fffce5fb6f42fd3af097c0f7931edf689e343bd231886",
-      "bytes": 394291,
+      "sha256": "73df612d940a34904660c1ea994a7ed323e1bacfe58e6e2a8d0088bf85ffd6ba",
+      "bytes": 394634,
       "alt": "Your agent. Still with you. Less briefing. Less chasing. More moving forward. Custom glass and blue objects illustrate the source, authority and connected outcome. Illustrative process."
     },
     "/fraud/": {
