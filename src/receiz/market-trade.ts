@@ -45,7 +45,7 @@ export async function validateMarketTradeState(raw:unknown,ownerReceizId?:string
 }
 /** Connected Market observations retain original transaction rows. They are not
  * native receipts and do not establish irreversible Offline Note custody. */
-export function createMarketTrade(input:{ownerReceizId:string;assertOpen():void;assertNoOtherPending():Promise<void>;onRecorded?(accountUid:string,original:unknown):Promise<void>;afterRecorded?(accountUid:string,original:unknown):Promise<void>;lock<T>(operation:()=>Promise<T>):Promise<T>;store:{read():Promise<unknown>;write(next:MarketTradeState,previous:unknown):Promise<void>};connect(readOnly?:boolean):Promise<{client:MarketClient;accountUid:string}>}){
+export function createMarketTrade(input:{ownerReceizId:string;assertOpen():void;assertNoOtherPending(checkedMarket:MarketTradeState|null):Promise<void>;onRecorded?(accountUid:string,original:unknown):Promise<void>;afterRecorded?(accountUid:string,original:unknown):Promise<void>;lock<T>(operation:()=>Promise<T>):Promise<T>;store:{read():Promise<unknown>;write(next:MarketTradeState,previous:unknown):Promise<void>};connect(readOnly?:boolean):Promise<{client:MarketClient;accountUid:string}>}){
  const held=new WeakSet<MarketTradeReview>(),digest=async(value:unknown)=>(await loadReceiz()).digestReceizCanonicalV122(value);
  const unsigned=(r:MarketTradeReview)=>Object.fromEntries(Object.entries(r).filter(([k])=>k!=='digest'));
  async function read(){input.assertOpen();const raw=await input.store.read();input.assertOpen();return validateMarketTradeState(raw,input.ownerReceizId);}
@@ -60,7 +60,7 @@ export function createMarketTrade(input:{ownerReceizId:string;assertOpen():void;
  }
  return Object.freeze({
   async status(){const s=await read();return s?outcome(s.current):null;},
-  async prepare(value:MarketTradeInput):Promise<MarketTradeReview>{return input.lock(async()=>{await input.assertNoOtherPending();const previous=await read();if(previous?.current.status==='unknown')throw Error('BANK_EXECUTION_PENDING');
+  async prepare(value:MarketTradeInput):Promise<MarketTradeReview>{return input.lock(async()=>{const previous=await read();await input.assertNoOtherPending(previous);if(previous?.current.status==='unknown')throw Error('BANK_EXECUTION_PENDING');
    if(value.amountUsdCents!==undefined&&value.shareQuantityMicro!==undefined)throw Error('BANK_MARKET_REQUEST_INVALID');
    const dollars=value.side==='buy'||value.amountUsdCents!==undefined;
    const body:MarketBody={marketItemId:value.marketItemId,side:value.side,clientNonce:crypto.randomUUID(),...(dollars?{amountUsd:integer(value.amountUsdCents,true)?units(value.amountUsdCents,100n,2):''}:{shareQuantity:integer(value.shareQuantityMicro,true)?units(value.shareQuantityMicro):''})};validateBody(body);
@@ -72,7 +72,7 @@ export function createMarketTrade(input:{ownerReceizId:string;assertOpen():void;
    if(body.side==='sell'&&dollars){const position=object(observation.position);if(position.owner_user_id!==context.accountUid||position.market_item_id!==body.marketItemId||!integer(position.share_quantity_micro,true)||BigInt(preview.shareQuantityMicro)>BigInt(position.share_quantity_micro)||BigInt(preview.settlementUsdCents)>cents(body.amountUsd)!)throw Error('BANK_MARKET_QUOTE_INVALID');}
    const valueToHold={schema:'bank.market-review.v1' as const,ownerReceizId:input.ownerReceizId,accountUid:context.accountUid,title:String(observation.item.title??'Proof object').slice(0,200),body:Object.freeze(body),observation};const review=Object.freeze({...valueToHold,digest:await digest(valueToHold)});input.assertOpen();held.add(review);return review;
   });},
-  async execute(review:MarketTradeReview,confirmation:string):Promise<MarketTradeOutcome>{return input.lock(async()=>{input.assertOpen();if(!held.has(review)||confirmation!==review.digest||review.digest!==await digest(unsigned(review)))throw Error('BANK_MARKET_EXACT_CONFIRMATION_REQUIRED');await input.assertNoOtherPending();const previous=await read();if(previous?.current.status==='unknown')throw Error('BANK_EXECUTION_PENDING');
+  async execute(review:MarketTradeReview,confirmation:string):Promise<MarketTradeOutcome>{return input.lock(async()=>{input.assertOpen();if(!held.has(review)||confirmation!==review.digest||review.digest!==await digest(unsigned(review)))throw Error('BANK_MARKET_EXACT_CONFIRMATION_REQUIRED');const previous=await read();await input.assertNoOtherPending(previous);if(previous?.current.status==='unknown')throw Error('BANK_EXECUTION_PENDING');
    const context=await input.connect();input.assertOpen();if(context.accountUid!==review.accountUid)throw Error('BANK_MARKET_IDENTITY_CHANGED');const next:MarketTradeState={schema:'bank.market-trades.v1',authority:'market-observation',current:{review,body:{...review.body},status:'unknown'},history:previous?[...previous.history,previous.current]:[]};if(next.history.length>1000)throw Error('BANK_MARKET_CAPACITY');await input.store.write(next,previous);input.assertOpen();held.delete(review);
    let returned:unknown,failure:MarketFailure|undefined;
    try{returned=await context.client.request('/api/connect/market/shares/trade',{method:'POST',body:{...next.current.body}});}catch(cause){

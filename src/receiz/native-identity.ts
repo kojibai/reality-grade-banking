@@ -1251,13 +1251,13 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       || [...state.history, state.current].some(checkpoint => !checkpoint || !['prepared', 'unknown', 'committed', 'zero-write'].includes(String(checkpoint.state)))) throw Error('BANK_EXECUTION_CHECKPOINT_INVALID');
     return [...state.history, state.current].some(checkpoint => checkpoint.state === 'prepared' || checkpoint.state === 'unknown');
   }
-  async function assertNoOtherPending(reconcileNotes=true,continuingFundingNonce?:string) {
+  async function assertNoOtherPending(reconcileNotes=true,continuingFundingNonce?:string,checkedMarket?:{state:import('./market-trade').MarketTradeState|null}) {
     noteOpen();
     const legacy = await deviceBankExecutionStore(binding).load();
     if (legacy && ['prepared', 'unknown'].includes(legacy.state)) throw Error('BANK_EXECUTION_PENDING');
-    const [payments, assets, sends, market] = await Promise.all([loadNativePaymentState(binding), loadNativeAssetState(binding),loadWalletSendState(binding),loadMarketTradeState(binding)]);
+    const [payments, assets, sends, market] = await Promise.all([loadNativePaymentState(binding), loadNativeAssetState(binding),loadWalletSendState(binding),checkedMarket?Promise.resolve(checkedMarket.state):loadMarketTradeState(binding)]);
     noteOpen();
-    if (hasPendingNative(payments, 'payments') || hasPendingNative(assets, 'assets') || hasPendingWalletSend(sends,continuingFundingNonce) || await hasPendingMarketTrade(market)) throw Error('BANK_EXECUTION_PENDING');
+    if (hasPendingNative(payments, 'payments') || hasPendingNative(assets, 'assets') || hasPendingWalletSend(sends,continuingFundingNonce) || await hasPendingMarketTrade(market,!!checkedMarket)) throw Error('BANK_EXECUTION_PENDING');
     if(reconcileNotes)await reconcileReceivedNotesLocked();
   }
   function hasPendingWalletSend(raw:unknown,continuingFundingNonce?:string):boolean {
@@ -1265,11 +1265,11 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     if(s.schema!=='bank.wallet-sends.v1'||s.authority!=='wallet-observation'||!s.current||!Array.isArray(s.history)||s.history.length>1000||[...s.history,s.current].some(c=>!c||!['unknown','recorded','not-sent','funding'].includes(c.status)))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
     return [...s.history,s.current].some(c=>c.status==='unknown'||c.status==='funding'&&!(c===s.current&&continuingFundingNonce&&c.body?.clientNonce===continuingFundingNonce));
   }
-  async function hasPendingMarketTrade(raw:unknown):Promise<boolean>{
+  async function hasPendingMarketTrade(raw:unknown,alreadyValidated=false):Promise<boolean>{
     if(raw==null)return false;const s=raw as import('./market-trade').MarketTradeState;
     if(s.schema!=='bank.market-trades.v1'||s.authority!=='market-observation'||!s.current||!Array.isArray(s.history)||s.history.length>1000||[...s.history,s.current].some(c=>!c||!['unknown','recorded','not-sent'].includes(c.status)))throw Error('BANK_MARKET_CHECKPOINT_INVALID');
     if([...s.history,s.current].some(c=>c.status==='unknown'))return true;
-    await(await import('./market-trade')).validateMarketTradeState(raw,binding.artifactOwnerReceizId);return false;
+    if(!alreadyValidated)await(await import('./market-trade')).validateMarketTradeState(raw,binding.artifactOwnerReceizId);return false;
   }
   async function withAccountExecutionLock<T>(operation:()=>Promise<T>):Promise<T>{
     if(!navigator.locks)throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');
@@ -1319,7 +1319,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     ownerReceizId:binding.artifactOwnerReceizId,assertOpen:noteOpen,
     onRecorded:async(_uid,original)=>{if(!lifetime.signal.aborted){walletRevision++;const api=await marketPortfolio();noteOpen();api.adoptRecorded(original);}},
     afterRecorded:async(uid)=>{if(!lifetime.signal.aborted){try{const api=await marketPortfolio();noteOpen();api.invalidate();}finally{if(!lifetime.signal.aborted)dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:binding.artifactSha256,accountUid:uid}}));}}},
-    assertNoOtherPending:async()=>{if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');await assertNoOtherPending();if(await(await offlineNotes()).pending())throw Error('BANK_NOTE_ATTEMPT_PENDING');await assertWalletSendCustody(binding);if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},
+    assertNoOtherPending:async checkedMarket=>{if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');await assertNoOtherPending(true,undefined,{state:checkedMarket});if(await(await offlineNotes()).pending())throw Error('BANK_NOTE_ATTEMPT_PENDING');await assertWalletSendCustody(binding);if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},
     store:{read:()=>loadMarketTradeState(binding),write:(next,previous)=>saveMarketTradeState(binding,next,previous)},
     connect:async readOnly=>{const connected=await connectClient(readOnly?BANK_MARKET_READ_SCOPES:BANK_MARKET_TRADE_SCOPES,readOnly?BANK_MARKET_READ_CONSENT:BANK_MARKET_CONSENT);noteOpen();const account=clientAccounts.get(connected);if(!account)throw Error('BANK_MARKET_IDENTITY_CHANGED');return{client:connected,accountUid:account.accountUid};},
     lock:async operation=>withAccountExecutionLock(async()=>await navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},operation)),

@@ -7,11 +7,11 @@ import type {BankOperationInput} from '../src/receiz/bank-operations';
 
 // Real asset/payment choreography; only identity admission, encrypted storage
 // and authenticated transport are isolated protocol fixtures here.
-const p=vi.hoisted(()=>({generic:null as unknown,payment:null as unknown,asset:null as unknown,wallet:null as unknown,market:null as unknown,note:null as unknown,storedHead:null as unknown,request:vi.fn(),qualify:vi.fn(),locks:vi.fn()}));
+const p=vi.hoisted(()=>({generic:null as unknown,payment:null as unknown,asset:null as unknown,wallet:null as unknown,market:null as unknown,note:null as unknown,storedHead:null as unknown,marketReads:0,request:vi.fn(),qualify:vi.fn(),locks:vi.fn()}));
 vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),
  loadOfflineNoteState:async()=>p.note,loadPreparedNoteState:async()=>null,loadConnectedNoteState:async()=>null,
  loadWalletObservation:async()=>p.storedHead,assertWalletSendCustody:async()=>{if((p.storedHead as {source?:string}|null)?.source==='local-note-head')throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},loadAccountLedgerState:async()=>null,loadReceivedNoteDepositState:async()=>null,loadBankOperation:async()=>p.generic,
- loadNativePaymentState:async()=>p.payment,loadNativeAssetState:async()=>p.asset,loadWalletSendState:async()=>p.wallet,loadMarketTradeState:async()=>p.market,
+ loadNativePaymentState:async()=>p.payment,loadNativeAssetState:async()=>p.asset,loadWalletSendState:async()=>p.wallet,loadMarketTradeState:async()=>{p.marketReads++;return p.market;},
  saveNativePaymentState:async(_binding:unknown,value:unknown,expected:unknown)=>{expect(p.payment).toEqual(expected);p.payment=structuredClone(value);},
  saveNativeAssetState:async(_binding:unknown,value:unknown,expected:unknown)=>{expect(p.asset).toEqual(expected);p.asset=structuredClone(value);},
 }));
@@ -38,7 +38,7 @@ function unknown(kind:'assets'|'payments'){
  return{schema:kind==='assets'?'bank.native-assets.v1':'bank.native-payments.v1',current:{prepared:value,consentProof:{schema:'receiz.identity.login_proof.v1',keyId:'a'.repeat(64),alg:'Ed25519',challengeB64Url:value.challengeB64Url,signatureB64Url:'fixture'},state:'unknown'},history:[]};
 }
 beforeEach(()=>{
- p.generic=null;p.payment=null;p.asset=null;p.wallet=null;p.market=null;p.note=null;p.storedHead=null;p.qualify.mockReset().mockRejectedValue(Error('GENERIC_RUNTIME_MUST_NOT_BE_USED'));
+ p.marketReads=0;p.generic=null;p.payment=null;p.asset=null;p.wallet=null;p.market=null;p.note=null;p.storedHead=null;p.qualify.mockReset().mockRejectedValue(Error('GENERIC_RUNTIME_MUST_NOT_BE_USED'));
  const locks=new Map<string,Promise<unknown>>();
  p.locks.mockReset().mockImplementation((name:string,_options:unknown,operation:()=>Promise<unknown>)=>{const result=(locks.get(name)??Promise.resolve()).catch(()=>{}).then(operation);locks.set(name,result);return result;});
  vi.stubGlobal('navigator',{locks:{request:p.locks}});
@@ -114,4 +114,12 @@ it('blocks a new native action while a connected Market request has an unknown r
 });
 it('uses the registered Bank application for connected Market read consent',async()=>{
  const identity=await open();try{await expect((await identity.marketTrade!()).prepare({marketItemId:'asset:one',side:'buy',amountUsdCents:'100'})).rejects.toThrow('BANK_MARKET_IDENTITY_CHANGED');}finally{identity.dispose();}
+});
+
+it.each(['buy','sell'] as const)('opens %s review with one locked Market checkpoint read',async side=>{
+ const identity=await open();try{
+  const api=await identity.marketTrade!();p.marketReads=0;
+  await expect(api.prepare({marketItemId:'asset:one',side,...(side==='buy'?{amountUsdCents:'100'}:{shareQuantityMicro:'1000000'})})).rejects.toThrow('BANK_MARKET_IDENTITY_CHANGED');
+  expect(p.marketReads).toBe(1);expect(p.request).not.toHaveBeenCalled();
+ }finally{identity.dispose();}
 });
