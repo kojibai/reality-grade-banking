@@ -1,7 +1,7 @@
 import {publicProfileLink,profileUsername,type PublicProfile} from './public-profile';
 import {profileAvatarUrl} from './profile-avatar';
 export type ProfileLink={label:string;url:string};
-export type ProfilePatch=Partial<Record<'displayName'|'bio'|'location'|'websiteUrl'|'socialXUrl'|'socialInstagramUrl'|'socialYoutubeUrl'|'socialLinkedinUrl'|'socialGithubUrl'|'avatarUrl'|'bannerUrl',string|null>>&{username?:string;links?:ProfileLink[]};
+export type ProfilePatch=Partial<Record<'displayName'|'bio'|'location'|'websiteUrl'|'socialXUrl'|'socialInstagramUrl'|'socialYoutubeUrl'|'socialLinkedinUrl'|'socialGithubUrl'|'avatarUrl'|'bannerUrl',string|null>>&{username?:string;links?:ProfileLink[];isPrivate?:boolean;showSchedulerButton?:boolean};
 export type ProfileUpdate={accountUid:string;profilePath:string;profile:Readonly<Record<string,unknown>>};
 export type OwnerProfilePresentation={userId:string;username:string;displayName:string;avatarUrl:string|null};
 export interface ProfileEditor {update(input:ProfilePatch):Promise<ProfileUpdate>;availability(username:string):Promise<{available:boolean;isCurrent?:boolean;suggestions?:readonly string[]}>;uploadImage?(file:File,kind:'avatar'|'banner'):Promise<ProfileUpdate>;}
@@ -20,6 +20,7 @@ export function createProfileEditor(deps:{accountUid:string;current():boolean;up
  async update(input){
   assert();const patch:ProfilePatch={},limits:Record<string,number>={username:24,displayName:80,bio:280,location:100,websiteUrl:240,socialXUrl:240,socialInstagramUrl:240,socialYoutubeUrl:240,socialLinkedinUrl:240,socialGithubUrl:240,avatarUrl:240,bannerUrl:240};
   for(const [key,value]of Object.entries(input)){
+   if(key==='isPrivate'||key==='showSchedulerButton'){if(typeof value!=='boolean')throw Error('PROFILE_FIELD_INVALID');patch[key]=value;continue;}
    if(key==='links'){
     if(!Array.isArray(value)||value.length>20)throw Error('PROFILE_LINKS_INVALID');
     patch.links=value.map(link=>{if(!link||typeof link.label!=='string'||!link.label.trim()||link.label.length>80||typeof link.url!=='string'||link.url.length>2048||!publicProfileLink(link.url))throw Error('PROFILE_LINK_INVALID');return {label:link.label.trim(),url:new URL(link.url).href};});continue;
