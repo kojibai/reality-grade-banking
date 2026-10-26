@@ -457,8 +457,28 @@ it('retrieves money tools itself, carries actual results into the same Twin, and
  }finally{f.unmount();}
 });
 it('opens a secure credit top-up from the message box and returns to the same draft and conversation',async()=>{
- const f=fixture(),upgradeTwin=vi.fn(async(_input:import('../src/receiz/twin-upgrade').TwinUpgradeInput)=>({accountUid:uid,twinAccess:true,creditsBalance:{grantRemaining:'100',purchasedRemaining:'50',totalRemaining:'150'}})),identity={...f.identity,upgradeTwin};
- try{await f.render(true,identity);await f.click('Your agent');await f.input('Ask your agent…','My unfinished money question');await f.click('Add credits');await vi.waitFor(()=>expect(f.host.textContent).toContain('Keep the work moving.'));expect(f.host.textContent).toContain('150');expect(upgradeTwin.mock.calls.map(call=>call[0].action)).toEqual(['credits-balance','credits-quote']);await f.click('Back to conversation');expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your agent…"]')?.value).toBe('My unfinished money question');expect(f.api.twin.ask).not.toHaveBeenCalled();}finally{f.unmount();}
+ const f=fixture(),result={accountUid:uid,twinAccess:true,creditsBalance:{grantRemaining:'100',purchasedRemaining:'50',totalRemaining:'150'}},balance=deferred<typeof result>();
+ const upgradeTwin=vi.fn(async(input:import('../src/receiz/twin-upgrade').TwinUpgradeInput)=>{
+  if(input.action==='credits-balance')return balance.promise;
+  if(input.action!=='credits-quote')throw Error('UNEXPECTED_CREDIT_EFFECT');
+  return{accountUid:uid,twinAccess:true,creditFunding:{quote:{schema:'receiz.usage.reserve-purchase.quote.v1' as const,ownerUserId:uid,clientOperationId:input.operationId,credits:'2500',amountUsdCents:'2500',expiresAt:new Date(Date.now()+60000).toISOString(),bankContributionUsdCents:'0',cardShortfallUsdCents:'2500',minimumCardDepositUsdCents:'50' as const,exactCardDepositAvailable:true}}};
+ }),identity={...f.identity,upgradeTwin};
+ try{
+  await f.render(true,identity);await f.click('Your agent');await f.input('Ask your agent…','My unfinished money question');await f.click('Add credits');
+  await vi.waitFor(()=>{
+   expect(f.host.textContent).toContain('Keep the work moving.');
+   expect(upgradeTwin.mock.calls.map(call=>call[0].action)).toEqual(['credits-balance']);
+  });
+  expect(f.host.querySelector('.bank-credits-balance')).toBeNull();
+  await act(async()=>balance.resolve(result));
+  await vi.waitFor(()=>{
+   expect(f.host.querySelector('.bank-credits-balance strong')?.textContent).toBe('150');
+   expect(upgradeTwin.mock.calls.map(call=>call[0].action)).toEqual(['credits-balance','credits-quote']);
+   expect(f.host.querySelector<HTMLButtonElement>('.bank-twin-credits .primary-button')?.disabled).toBe(false);
+  });
+  expect(f.host.querySelector('.bank-twin-credits [role="alert"]')).toBeNull();
+  await f.click('Back to conversation');expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your agent…"]')?.value).toBe('My unfinished money question');expect(f.api.twin.ask).not.toHaveBeenCalled();
+ }finally{f.unmount();balance.resolve(result);}
 });
 it('keeps the composer usable after a definitive credit refusal and offers the same in-chat top-up',async()=>{
  const f=fixture(),identity={...f.identity,upgradeTwin:vi.fn(async()=>({accountUid:uid,twinAccess:true,creditsBalance:{grantRemaining:'0',purchasedRemaining:'0',totalRemaining:'0'}}))};f.api.twin.ask.mockRejectedValueOnce(Error('usage_provider_allowance_exhausted'));
