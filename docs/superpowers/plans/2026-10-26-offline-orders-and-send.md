@@ -102,3 +102,7 @@ The exact signed request binds the whole admitted Source, genuine predecessor, a
 ## Execution ruling
 
 The user explicitly requested inline main execution and then said to finish the agreed flow end to end after clarifying the design. Preserve that authorization; do not ask again for an execution method or another abstract design choice. New destructive/production side effects still require their own concrete authorization. Tests and component commits do not establish consumer activation.
+
+## October 26 Send timing clarification
+
+The user confirmed: seal and durably retain Send at its original Kai with normal Identity signing, without additional device/PBI/Note custody requirements. The receiver is credited only when that exact Send is accepted during sync. Preserve the original sent Kai and the distinct received/accepted Kai; neither replaces the other. Local sealing does not claim that the other account has already received funds. Reconnect must retain once-only acceptance and cannot create a second Send.
