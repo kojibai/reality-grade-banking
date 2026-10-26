@@ -63,3 +63,28 @@ it('uses actual Kai asset growth for local Buy and Sell and reconnects with the 
  const originals=f.requests.flatMap(batch=>batch.originals).map(row=>JSON.parse(new TextDecoder().decode(f.runtime.decode(row.artifactBytesB64u))));
  expect(originals.map(row=>row.effect.executionPriceUsdCents)).toEqual([buy.operation.effect.executionPriceUsdCents,sell.operation.effect.executionPriceUsdCents]);expect(originals.map(row=>row.atKaiUPulse)).toEqual([buy.operation.atKaiUPulse,sell.operation.atKaiUPulse]);session.dispose();
 });
+
+
+it('uses finite quantity rights with dynamic prices and keeps Send independent of a refused Buy',async()=>{
+ const f=await localFinancialFixture({dynamicMarket:true,growth:true,quantityMarket:'1'}),session=await createLocalFinancialSession(f.options);
+ await expect(session.execute({operationId:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',action:{kind:'buy',marketItemId:'asset:held',amountUsdCents:'100'}})).rejects.toThrow('ACCOUNT_FINANCIAL_BUY_CAPACITY');
+ expect((await session.current()).state.sequence).toBe('0');
+ const sent=await session.execute({operationId:'cccccccc-cccc-4ccc-8ccc-cccccccccccc',action:{kind:'send',recipientUserId:'33333333-3333-4333-8333-333333333333',conversationId:'44444444-4444-4444-8444-444444444444',amountUsdCents:'100'}});
+ expect(sent.status).toBe('committed');expect(f.requests).toHaveLength(0);
+ f.connect();expect((await session.flush()).status).toBe('published');expect(f.requests.flatMap(batch=>batch.originals)).toHaveLength(1);session.dispose();
+});
+
+it('consumes and restores quantity rights once while retaining the original pulse and exact dynamic Buy/Sell prices',async()=>{
+ const f=await localFinancialFixture({dynamicMarket:true,growth:true,quantityMarket:'2000000'}),session=await createLocalFinancialSession(f.options);
+ const request={operationId:'dddddddd-dddd-4ddd-8ddd-dddddddddddd',action:{kind:'buy' as const,marketItemId:'asset:held',amountUsdCents:'100'}};
+ const buy=await session.execute(request);expect(buy.status).toBe('committed');if(buy.status!=='committed')throw Error('Missing Buy Original');
+ const next=JSON.parse(JSON.stringify(buy.operation.nextState));expect(next.marketCapacity[0].buyShareQuantityMicro).toBe(String(2000000n-BigInt(String(buy.operation.effect.shareQuantityMicro))));
+ f.at(14017492000123n);
+ const sell=await session.execute({operationId:'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',action:{kind:'sell',marketItemId:'asset:held',shareQuantityMicro:String(buy.operation.effect.shareQuantityMicro)}});expect(sell.status).toBe('committed');if(sell.status!=='committed')throw Error('Missing Sell Original');
+ expect(JSON.parse(JSON.stringify(sell.operation.nextState)).marketCapacity[0].buyShareQuantityMicro).toBe('2000000');
+ f.at(18000000000123n);expect(await session.execute(request)).toEqual(buy);expect(f.requests).toHaveLength(0);
+ f.connect();expect((await session.flush()).status).toBe('published');
+ const originals=f.requests.flatMap(batch=>batch.originals).map(row=>JSON.parse(new TextDecoder().decode(f.runtime.decode(row.artifactBytesB64u))));
+ expect(originals.map(row=>row.atKaiUPulse)).toEqual([buy.operation.atKaiUPulse,sell.operation.atKaiUPulse]);expect(originals.map(row=>row.effect.executionPriceUsdCents)).toEqual([buy.operation.effect.executionPriceUsdCents,sell.operation.effect.executionPriceUsdCents]);
+ const count=f.requests.length;await session.flush();expect(f.requests).toHaveLength(count);session.dispose();
+});

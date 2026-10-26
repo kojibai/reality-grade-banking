@@ -60,9 +60,9 @@ export async function validateReceizAccountFinancialSourceOpenings(input:unknown
   for(const key of ['allocationId','receizKeyId','sourceAccountArtifactSha256','sourceInventorySha256','executionProgramSha256','initialStateSha256','receivingCustodyCommitmentDigest'])hash(f[key]);
   const at=positive(f.fundedAtKaiUPulse);
   for(const [key,value]of [['executionProgramSha256',body.program],['initialStateSha256',body.initialState],['sourceInventorySha256',body.inventory]]as const)if(await digest(value)!==f[key])fail('OPENING');
-  const dynamic=(body.program as Record<string,unknown>)?.schema==='receiz.bank.offline-financial-program.v2';
+  const programVersion=(body.program as Record<string,unknown>)?.schema,quantityBudget=programVersion==='receiz.bank.offline-financial-program.v3',dynamic=quantityBudget||programVersion==='receiz.bank.offline-financial-program.v2';
   const p=object(body.program,['schema','sourceFamily','applicationId','accountUserId','ownerReceizId','nativeValueEnabled','usdPerPhiMicrocents','validFromKaiUPulse','expiresAtKaiUPulse','walletValuation','marketTerms','identity','custodian',...(dynamic?['marketPricing']:[]),...(Object.hasOwn(body.program as object,'recipientBindings')?['recipientBindings']:[])]);
-  if(!['receiz.bank.offline-financial-program.v1','receiz.bank.offline-financial-program.v2'].includes(string(p.schema))||p.sourceFamily!=='connected-wallet-share-market'||p.applicationId!==f.applicationId||p.accountUserId!==f.accountUserId||p.ownerReceizId!==f.ownerReceizId||p.validFromKaiUPulse!==at||BigInt(positive(p.expiresAtKaiUPulse))<=BigInt(at))fail('PROGRAM');
+  if(!['receiz.bank.offline-financial-program.v1','receiz.bank.offline-financial-program.v2','receiz.bank.offline-financial-program.v3'].includes(string(p.schema))||p.sourceFamily!=='connected-wallet-share-market'||p.applicationId!==f.applicationId||p.accountUserId!==f.accountUserId||p.ownerReceizId!==f.ownerReceizId||p.validFromKaiUPulse!==at||BigInt(positive(p.expiresAtKaiUPulse))<=BigInt(at))fail('PROGRAM');
   if(p.recipientBindings!==undefined){
    const recipients=array(p.recipientBindings).map(value=>{const r=object(value,['recipientUserId','recipientOwnerReceizId','conversationId','sourceAccountArtifactSha256']);
     if(!UUID.test(string(r.recipientUserId))||r.recipientUserId===f.accountUserId||!UUID.test(string(r.conversationId))||!/^[-a-z0-9_]+\.receiz\.id$/u.test(string(r.recipientOwnerReceizId)))fail('RECIPIENT');hash(r.sourceAccountArtifactSha256);return string(r.recipientUserId)+':'+string(r.conversationId);
@@ -99,13 +99,13 @@ export async function validateReceizAccountFinancialSourceOpenings(input:unknown
   if(state.schema!=='receiz.account-financial-state.v1'||state.allocationId!==f.allocationId||state.accountUserId!==f.accountUserId||state.sequence!=='0'||state.lastKaiUPulse!==at)fail('STATE');
   same(wallet(state.wallet),projected.wallet);same(state.walletLedger,ledger);same(positions(state.positions),positions(inventory.positions));
   const terms=array(p.marketTerms).map(t=>{
-   const r=object(t,['marketItemId','sourceArtifactSha256','bidPriceUsdCents','askPriceUsdCents','referenceMidUsdCents','maxSingleTradeUsdCents','buyCapacityUsdCents','backedSellLiquidityUsdCents','targetBudgetUsdCents']);
+   const r=object(t,['marketItemId','sourceArtifactSha256','bidPriceUsdCents','askPriceUsdCents','referenceMidUsdCents','maxSingleTradeUsdCents','buyCapacityUsdCents','backedSellLiquidityUsdCents','targetBudgetUsdCents',...(quantityBudget?['buyShareQuantityMicro']:[])]);
    const id=string(r.marketItemId);if(id.trim()!==id||id.length<3||id.length>240||/[\u0000-\u001f]/u.test(id))fail('TERM');hash(r.sourceArtifactSha256);
    for(const k of ['bidPriceUsdCents','askPriceUsdCents','referenceMidUsdCents','targetBudgetUsdCents'])positive(r[k]);
-   for(const k of ['maxSingleTradeUsdCents','buyCapacityUsdCents','backedSellLiquidityUsdCents'])uint(r[k]);
+   for(const k of ['maxSingleTradeUsdCents','buyCapacityUsdCents','backedSellLiquidityUsdCents',...(quantityBudget?['buyShareQuantityMicro']:[])])uint(r[k]);
    if(BigInt(string(r.askPriceUsdCents))<=BigInt(string(r.bidPriceUsdCents))||BigInt(string(r.targetBudgetUsdCents))>50000000000n)fail('TERM');return r;
   });ordered(terms.map(t=>string(t.marketItemId)));
-  same(state.marketCapacity,terms.map(t=>({marketItemId:t.marketItemId,buyCapacityUsdCents:t.buyCapacityUsdCents,backedSellLiquidityUsdCents:t.backedSellLiquidityUsdCents})));
+  same(state.marketCapacity,terms.map(t=>({marketItemId:t.marketItemId,buyCapacityUsdCents:t.buyCapacityUsdCents,backedSellLiquidityUsdCents:t.backedSellLiquidityUsdCents,...(quantityBudget?{buyShareQuantityMicro:t.buyShareQuantityMicro}:{})})));
  const compiledMarketPricing=new Map<string,ReturnType<typeof compileBankOfflineMarketPricing>>();
   if(dynamic){
    same(state.marketActivity,[]);

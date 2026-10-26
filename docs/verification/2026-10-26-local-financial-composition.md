@@ -51,3 +51,12 @@ all 548 files and all 3,469 tests with zero failures and zero skips. No DNS
 implementation or assertion was changed; its earlier standalone mismatch is
 recorded above rather than described as a financial fix. Receiz's expanded
 financial gate passes 81 tests with zero skips.
+
+The matching v3 SDK now retains finite Buy share-quantity rights while keeping
+prices dynamic at each original Kai. The added Bank composition tests cover
+quantity refusal without a financial write, a successful Send after that
+refusal, Buy/Sell quantity consumption and restoration, exact retries and
+unchanged prices through ordered reconnect. These are actual native SDK
+mechanics under synthetic funding. Consumer activation remains subject to the
+remaining boundaries above; this update adds no preparation or HTTP request
+to the existing app screens.

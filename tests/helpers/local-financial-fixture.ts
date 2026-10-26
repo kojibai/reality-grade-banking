@@ -8,7 +8,7 @@ const sha=async(v:Uint8Array)=>Buffer.from(await crypto.subtle.digest('SHA-256',
 const digest=(v:unknown)=>sha(bytes(v));
 /** Synthetic funding/issuer and durable stores; real preferred SDK Source
  * admission, Identity consent, signatures, arithmetic and commit run unchanged. */
-export async function localFinancialFixture(settings:{growth?:boolean;dynamicMarket?:boolean}={}){
+export async function localFinancialFixture(settings:{growth?:boolean;dynamicMarket?:boolean;quantityMarket?:string}={}){
  const f=await conformanceOfflineFixture({financial:true}),r=f.runtime;
  const identityVerification=await r.verifyReceizArtifact(new File([new Uint8Array(f.identity.bytes)],'identity.png',{type:'image/png'}));
  const identityAdmission=await r.createReceizArtifactAdmissionEngine()(identityVerification,{profile:'identity',identityPassphrase:f.identity.phrase});
@@ -35,6 +35,7 @@ export async function localFinancialFixture(settings:{growth?:boolean;dynamicMar
   Object.assign(term,{bidPriceUsdCents:String(opening.bidPriceUsdCents),askPriceUsdCents:String(opening.askPriceUsdCents),referenceMidUsdCents:String(opening.referenceMidUsdCents),targetBudgetUsdCents:String(opening.pressure.targetBudgetUsdCents)});
   Object.assign(program,{schema:'receiz.bank.offline-financial-program.v2',marketPricing:[{marketItemId:term.marketItemId,basis}]});Object.assign(initialState,{marketActivity:[]});
  }
+ if(settings.quantityMarket!==undefined){Object.assign(program,{schema:'receiz.bank.offline-financial-program.v3'});Object.assign(term,{buyShareQuantityMicro:settings.quantityMarket});Object.assign(initialState.marketCapacity[0]!,{buyShareQuantityMicro:settings.quantityMarket});}
  const inventory={schema:'receiz.bank.offline-financial-capture.v1',accountUserId:accountUid,walletAccount:{balancePhiMicro:'1000000',membershipRevision:'0'},rawSettledUsdCents:'10000',principalArtifactIds:publicGlyphs.map(g=>g.id),ledgerKnownKaiHead:at,ledgerExactJson:'[]',positionsExactJson:'[]',walletLedger,profileSeed:{amountPhiMicro:'0',amountUsdCents:'0'},positions};
  const identityArtifact={artifactSha256:await sha(f.identity.bytes),exactBytesB64u:encode(f.identity.bytes)};
  const funding={schema:'receiz.bank.offline-financial-allocation.v1',allocationId,applicationId,accountUserId:accountUid,ownerReceizId,receizKeyId:binding.keyId,sourceAccountArtifactSha256:identityArtifact.artifactSha256,sourceInventorySha256:await digest(inventory),executionProgramSha256:await digest(program),initialStateSha256:await digest(initialState),receivingCustodyCommitmentDigest:await digest(program.custodian),fundedAtKaiUPulse:at};
