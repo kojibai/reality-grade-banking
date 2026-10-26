@@ -24,8 +24,11 @@ it('ships all six complete genuine public intervals before any network read or w
   }
 });
 it('refreshes a constant public valuation basis without rebuilding historic samples', async () => {
-  const retained=(await buildMarketHistory(seed))!;
-  calculate.mockClear(); const source = { ...seed, serverPulse: seed.serverPulse + 60, currentUsd: seed.currentUsd + 100 };
+  // The shipped-inventory contract above covers full coverage. This cache
+  // refresh needs one genuine row, not a second full historical rebuild.
+  const row=structuredClone(seed.valueRows[0]),small={...seed,valueRows:[row],marketAssetsPriced:row.source==='market-desk-live-asset'?1:0,sportsCardsPriced:row.source==='sports-economy-card'?1:0,cardsInCirculation:Math.max(1,row.sealedCopies?.length??0),unpricedSealedBirths:undefined,sportsHistorySnapshot:undefined,sportsHistoryEvaluationPulse:undefined,sourceEvaluation:undefined};
+  const retained=(await buildMarketHistory(small))!;
+  calculate.mockClear(); const source = { ...small, serverPulse: seed.serverPulse + 60, currentUsd: seed.currentUsd + 100 };
   const updated = (await buildMarketHistory(source, retained))!;
   expect(calculate.mock.calls.length).toBeLessThanOrEqual(6);
   for (const period of CHART_PERIODS) {

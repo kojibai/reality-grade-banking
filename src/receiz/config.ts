@@ -48,4 +48,6 @@ export const BANK_MARKET_READ_CONSENT = 'Allow Bankeiz to read my live Market qu
 
 // Existing Receiz host services; these scopes do not grant financial execution.
 export const BANK_MESSAGING_SCOPES=['receiz:chat.read','receiz:chat.write','receiz:chat.calls','receiz:twin.execute'] as const;
+export const BANK_ORGANIZER_SCOPES=['receiz:app_state.read','receiz:app_state.write'] as const;
+export const BANK_ORGANIZER_CONSENT='Use my existing Receiz ID contacts, calendar and booking availability inside Bankeiz. Read my existing records and save only contact, appointment and availability changes I choose. This does not authorize payments or send messages without my action.';
 export const BANK_MESSAGING_CONSENT='Allow Bankeiz to open my existing Receiz conversations, read and send messages, create direct and group conversations, join calls, and talk to my existing owner Twin using this Identity Seal. Messages and selected Twin context are sent to Receiz only when I choose. Camera and microphone require my separate device permission. This does not authorize payments or automatic replies.';

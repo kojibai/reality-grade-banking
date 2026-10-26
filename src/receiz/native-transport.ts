@@ -1,4 +1,5 @@
 import {isPeopleSearchQuery} from './people-search.js';
+import {permittedOrganizerPath} from './organizer-paths.js';
 import {permittedTwinConversationRead} from './twin-conversations.js';
 import { BANK_APPLICATION_ID, isBankNativeApplicationId, bankNoteRpId } from './config.js';
 import { NATIVE_EXECUTION_POST_PATHS, permittedNativeExecutionRead } from './native-execution-paths.js';
@@ -30,6 +31,7 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
 export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
   if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return false;
+  if(permittedOrganizerPath(url,method))return true;
   if(permittedTwinConversationRead(url))return method.toUpperCase()==='GET';
   if(url.pathname==='/api/connect/payments/session'&&method.toUpperCase()==='DELETE')return [...url.searchParams.keys()].length===1&&url.searchParams.getAll('sessionId').length===1&&/^cs_[a-zA-Z0-9_]{8,200}$/.test(url.searchParams.get('sessionId')??'');
   if(url.pathname==='/api/receiz/identity/profile')return method.toUpperCase()==='PATCH'&&!url.search;
@@ -51,6 +53,8 @@ export function permittedNativePath(path: string, method: string): boolean {
     if(verb==='POST')return keys.length===1;
     return keys.length===2&&(url.searchParams.has('intent')?url.searchParams.get('intent')==='quote':url.searchParams.has('allocationId')?/^[a-f0-9]{64}$/.test(url.searchParams.get('allocationId')??''):/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(url.searchParams.get('noteId')??''));
   }
+  if(url.pathname==='/api/mcp/account')return method.toUpperCase()==='POST'&&!url.search;
+  if(/^\/api\/mcp\/device\/attempt\/[A-Za-z0-9_-]{1,160}$/.test(url.pathname))return method.toUpperCase()==='GET'&&!url.search;
   if (permittedNativeChatPath(url, method)) return true;
   if (/^\/api\/developers\/twin\/[a-z0-9_]{3,24}\/money$/.test(url.pathname)) {const keys=[...url.searchParams.keys()];return method.toUpperCase()==='POST'?!url.search:method.toUpperCase()==='GET'&&keys.every(k=>k==='cursor')&&url.searchParams.getAll('cursor').length<=1&&(!url.searchParams.has('cursor')||/^[A-Za-z0-9_-]{1,500}$/.test(url.searchParams.get('cursor')??''));}
   if (/^\/api\/developers\/twin\/[a-z0-9_]{3,24}\/message$/.test(url.pathname)) return method.toUpperCase()==='POST'&&!url.search;

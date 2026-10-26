@@ -859,6 +859,9 @@ export const saveMessagingConsent=(binding:{artifactSha256:string},value:unknown
 export const loadMessagingDisplay=(binding:{artifactSha256:string})=>loadNoteState(binding,'messaging-display-v1');
 export const saveMessagingDisplay=(binding:{artifactSha256:string},value:import('./messaging-retention').MessagingDisplay,expected:unknown)=>saveNoteState(binding,'messaging-display-v1',value,expected);
 
+export const loadOrganizerDisplay=(binding:{artifactSha256:string})=>loadNoteState(binding,'organizer-display-v1');
+export const saveOrganizerDisplay=(binding:{artifactSha256:string},value:import('./organizer-types').OrganizerDisplay,expected:unknown)=>saveNoteState(binding,'organizer-display-v1',value,expected);
+
 export const loadBackedAssetPublicationState=(binding:{artifactSha256:string})=>loadNoteState(binding,'backed-asset-publication');
 export const saveBackedAssetPublicationState=(binding:{artifactSha256:string},value:unknown,expected:unknown)=>saveNoteState(binding,'backed-asset-publication',value,expected);
 

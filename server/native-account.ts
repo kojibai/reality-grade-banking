@@ -77,7 +77,7 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
       }
     }
     let body: Buffer | undefined;
-    if (['POST','PATCH'].includes(request.method) || request.method==='DELETE' && path==='/api/chat/notifications/push') {
+    if (['POST','PATCH','PUT'].includes(request.method) || request.method==='DELETE' && path==='/api/chat/notifications/push') {
       const contentType=request.headers.get('content-type');multipart=!!multipartPath&&typeof contentType==='string'&&/^multipart\/form-data;\s*boundary=(?:[A-Za-z0-9'()+_,.\/=:?-]{1,100}|"[A-Za-z0-9'()+_,.\/=:?-]{1,100}")$/i.test(contentType);
       if (!multipart&&!contentType?.startsWith('application/json')||multipartPath&&!multipart) return fail(415);
       headers['Content-Type'] = multipart?contentType!:'application/json'; body = await bytes(request.body,multipart?4*1024*1024:LIMIT,signal);

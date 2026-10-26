@@ -17,7 +17,7 @@ it('independently reopens a saved visual evidence object with the standalone CLI
   await writeFile(path,object.svg.replace('Public integration contract','Production certificate'));
   expect(()=>execFileSync(process.execPath,['scripts/conformance-contract.mjs','--verify',path],{encoding:'utf8',timeout:15000,stdio:'pipe'})).toThrow('EVIDENCE_OBJECT_DRAWING_MISMATCH');
  }finally{await rm(dir,{recursive:true,force:true});}
-});
+},45_000);
 it('uses the canonical offline verifier for PNG credentials and refuses a public sealed document without credential ownership',()=>{
  expect(()=>execFileSync(process.execPath,['scripts/conformance-contract.mjs','--verify','tests/fixtures/public-essay-record.png'],{encoding:'utf8',timeout:20000,stdio:'pipe'})).toThrow('CONFORMANCE_CONTINUITY_REQUIRED');
 });

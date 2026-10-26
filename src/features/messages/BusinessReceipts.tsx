@@ -1,7 +1,7 @@
 import {ArrowUpRight,Check,Copy,FileCheck,Globe,Info} from 'lucide-react';
 import {useState} from 'react';
 import type {BusinessChatReceipt} from '../../receiz/business-chat';
-export function BusinessReceipts({receipts,onConnect}:{receipts:readonly BusinessChatReceipt[];onConnect?:(href:string)=>void}){
+export function BusinessReceipts({receipts,onConnect,onReceizAction}:{receipts:readonly BusinessChatReceipt[];onConnect?:(href:string)=>void;onReceizAction?:(id:string,action:'approve'|'inspect')=>void}){
  const[copied,setCopied]=useState('');
  async function copy(value:string){try{await navigator.clipboard.writeText(value);setCopied(value);}catch{setCopied('');}}
  return <div className="bank-business-receipts" aria-label="Native setup results">{receipts.map(receipt=>{
@@ -15,6 +15,8 @@ export function BusinessReceipts({receipts,onConnect}:{receipts:readonly Busines
     {automatic?<details><summary>Connection details</summary>{records}</details>:<>{records}<details><summary>Domain instructions</summary><ol>{domain.steps.map((step,index)=><li key={index}>{step}</li>)}</ol></details></>}
    </>}
    {receipt.connect&&onConnect&&<button className="primary-button" type="button" onClick={()=>onConnect(receipt.connect!.href)}>{receipt.connect.label}</button>}
+   {receipt.reviewTool&&onReceizAction&&<><p>{receipt.reviewTool.name.replace(/^receiz_/,'').replaceAll('_',' ')}</p><details><summary>Action details</summary><pre>{receipt.reviewTool.argumentsJson}</pre></details><button type="button" className="primary-button" onClick={()=>onReceizAction(receipt.id,'approve')}>Run this action</button></>}
+   {receipt.inspectTool&&onReceizAction&&<button type="button" className="secondary-button" onClick={()=>onReceizAction(receipt.id,'inspect')}>Check result</button>}
    {receipt.details&&<details><summary>View native result</summary><pre>{receipt.details}</pre></details>}
   </section>;
  })}</div>;

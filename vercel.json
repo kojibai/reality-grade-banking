@@ -37,6 +37,10 @@
   ],
   "rewrites": [
     {
+      "source": "/book/:username",
+      "destination": "/book/index.html"
+    },
+    {
       "source": "/action",
       "destination": "/action/index.html"
     },

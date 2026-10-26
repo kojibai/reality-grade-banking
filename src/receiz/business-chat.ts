@@ -1,9 +1,11 @@
+import type {NativeReceizTools,ReceizToolResult} from './native-receiz-tools';
+import type {NativeOrganizer} from './native-organizer';
 import {businessSetupTools,parseBusinessSetupCall,type BusinessOperation,type createBusinessSetupTools} from './business-setup';
 import type {createBusinessProfileTools} from './business-profile-tools';
 import {BusinessDnsConnectionRequired,changedBusinessDomain,type createBusinessDnsTools,type BusinessDnsView} from './business-dns-tools';
 import type {ProfilePatch} from './profile-edit';
 import type {AssetComposerDraft} from './asset-composer';
-export type BusinessChatReceipt={id:string;tool:string;status:'accepted'|'refused'|'unknown'|'needs-file'|'manual'|'waiting'|'connect';title:string;summary:string;details?:string;domain?:BusinessDnsView;domainChecking?:boolean;connect?:{label:string;href:string}};
+export type BusinessChatReceipt={id:string;tool:string;status:'accepted'|'refused'|'unknown'|'needs-file'|'manual'|'waiting'|'connect'|'review';title:string;summary:string;details?:string;reviewTool?:{name:string;argumentsJson:string};inspectTool?:boolean;domain?:BusinessDnsView;domainChecking?:boolean;connect?:{label:string;href:string}};
 export type BusinessChatProgress={onProgress?:(tool:string)=>void};
 
 const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
@@ -11,17 +13,31 @@ const exact=(value:Record<string,unknown>,keys:string[])=>{if(Object.keys(value)
 /** Private same-owner execution. Files and enclosing Originals never enter tool
  * JSON. A repeated accepted native response reuses its actual result; unknown
  * effects are not automatically retried. The UI supplies explicit owner turns. */
-export function createBusinessChat(input:{accountUid:string;profile():Promise<ReturnType<typeof createBusinessProfileTools>>;setup():Promise<ReturnType<typeof createBusinessSetupTools>>;dns(provider?:string,expectedHostname?:string):Promise<ReturnType<typeof createBusinessDnsTools>>;retainOriginal?(file:File):Promise<void>;assertOpen():void}){
+export function createBusinessChat(input:{accountUid:string;organizer?():Promise<NativeOrganizer>;receizTools?():Promise<NativeReceizTools>;username?():string|undefined;profile():Promise<ReturnType<typeof createBusinessProfileTools>>;setup():Promise<ReturnType<typeof createBusinessSetupTools>>;dns(provider?:string,expectedHostname?:string):Promise<ReturnType<typeof createBusinessDnsTools>>;retainOriginal?(file:File):Promise<void>;assertOpen():void}){
  let files:File[]=[],original:File|undefined,sealedSelection:File[]=[];
  const pendingHostnames=new Map<string,string>();
  const actionResults=new Map<string,Promise<BusinessChatReceipt>>();
  const retained=new Map<string,{fingerprint:string;result:Promise<BusinessChatReceipt[]>;run:(options?:BusinessChatProgress)=>Promise<BusinessChatReceipt[]>}>();
+ const receizReceipt=(id:string,result:ReceizToolResult,args?:Record<string,unknown>):BusinessChatReceipt=>({id,tool:'business_receiz_call',status:result.status==='pending'?'waiting':result.status==='review'?'review':result.status,
+  title:result.status==='review'?'Review Receiz action':result.status==='pending'?'Receiz action is pending':result.status==='unknown'?'Result not confirmed':'Receiz result',
+  summary:result.status==='review'?'Run this chosen action through your existing Receiz tools. Its native checks and consent still apply.':result.status==='pending'?'Check this same attempt for its result. It has not been repeated.':result.status==='unknown'?'The result is not confirmed. This action has not been repeated.':'Receiz returned the native result shown below.',
+  ...(result.status==='review'&&args?{reviewTool:{name:result.tool,argumentsJson:JSON.stringify(args,null,2)}}:{}),...(result.status==='pending'?{inspectTool:true}:{}),...(result.result?{details:JSON.stringify(result.result).slice(0,16000)}:{})});
  async function perform(id:string,action:{tool:string;args:Record<string,unknown>},selected:File[]):Promise<BusinessChatReceipt>{
   input.assertOpen();const {tool,args}=action;
   const receipt=(status:BusinessChatReceipt['status'],title:string,summary:string,extra:Partial<BusinessChatReceipt>={}):BusinessChatReceipt=>({id,tool,status,title,summary,...extra});
   let started=false;
   try{
    if(!record(args))throw Error('BUSINESS_CHAT_INPUT_INVALID');
+   if(tool==='business_receiz_call'){
+    exact(args,['name','arguments']);if(typeof args.name!=='string'||!record(args.arguments)||!input.receizTools)throw Error('RECEIZ_TOOL_UNAVAILABLE');const tools=await input.receizTools();input.assertOpen();
+    const result=await tools.execute(id,args.name,args.arguments);return receizReceipt(id,result,args.arguments);
+   }
+   if(/^business_(?:find_contacts|save_contact|read_calendar|create_appointment|update_appointment|cancel_appointment|booking_link|read_availability|update_availability)$/.test(tool)){
+    if(!input.organizer)throw Error('ORGANIZER_UNAVAILABLE');const {executeOrganizerTwinAction}=await import('./organizer-twin'),api=await input.organizer();input.assertOpen();if(api.accountUid!==input.accountUid)throw Error('ORGANIZER_OWNER_MISMATCH');
+    // Argument errors are refused before dispatch. An uncertain write is kept
+    // by the shared request journal and is never automatically replayed.
+    try{const result=await executeOrganizerTwinAction(api,tool,args,input.username?.());input.assertOpen();return receipt('accepted','Organizer updated','The result is available in your Contacts and Calendar.',{details:JSON.stringify(result).slice(0,16000)});}catch(cause){if(cause instanceof Error&&cause.message==='ORGANIZER_WRITE_UNCONFIRMED')started=true;throw cause;}
+   }
    if(businessSetupTools.some(row=>row.name===tool)){
     const operation:BusinessOperation|undefined=['business_configure_agent','business_create_work'].includes(tool)?{id,quoteExpiresAt:new Date(Date.now()+5*60*1000).toISOString()}:undefined;
     const call=parseBusinessSetupCall({tool,args,...(operation?{operation}:{})}),setup=await input.setup();input.assertOpen();started=true;
@@ -57,6 +73,10 @@ export function createBusinessChat(input:{accountUid:string;profile():Promise<Re
   }catch(cause){input.assertOpen();if(cause instanceof BusinessDnsConnectionRequired){if(cause.hostname)pendingHostnames.set(id,cause.hostname);return receipt('connect','Connect your provider','Approve provider access, then I can continue here.',{connect:cause.action});}return receipt(started?'unknown':'refused',started?'Result not confirmed':'Action needs attention',started?'I have not retried this change. Ask me to check its current state first.':cause instanceof Error?cause.message:'This request could not be started.');}
  }
  return Object.freeze({
+  async resolveReceizAction(requestId:string,id:string,action:'approve'|'inspect'){
+   input.assertOpen();const known=retained.get(requestId);if(!known||!input.receizTools)throw Error('RECEIZ_TOOL_REQUEST_UNKNOWN');const prior=await known.result,row=prior.find(row=>row.id===id);if(!row||row.tool!=='business_receiz_call'||(action==='approve'?row.status!=='review':!row.inspectTool))return prior;
+   const tools=await input.receizTools();input.assertOpen();const result=action==='approve'?await tools.approve(id):await tools.inspect(id);input.assertOpen();actionResults.set(id,Promise.resolve(receizReceipt(id,result)));known.result=known.run();return known.result;
+  },
   async monitorDomain(requestId:string,options:{signal:AbortSignal;onUpdate(receipts:BusinessChatReceipt[]):void}){
    input.assertOpen();const known=retained.get(requestId);if(!known)return;let receipts=await known.result;const receipt=receipts.find(row=>row.status==='waiting'&&row.domain?.providerResult?.status==='applied');if(!receipt?.domain||options.signal.aborted)return;
    const expected=receipt.domain.hostname,dns=await input.dns(receipt.domain.provider,expected),{monitorBusinessDomain}=await import('./business-domain-monitor');input.assertOpen();
