@@ -1,3 +1,4 @@
+import {bankingPage} from '../src/content/banking-walkthrough.mjs';
 import {portabilityPages} from '../src/content/portability-pages.mjs';
 import {standardPages} from '../src/content/standard-pages.mjs';
 import {outcomePages} from '../src/content/outcome-pages.mjs';
@@ -20,7 +21,8 @@ const solutionGuides=[
  ...standardPages.map(page=>({...page,group:page.key.startsWith('market')?'Markets':'The standard'})),
  ...outcomePages.map(page=>({...page,group:page.key==='proof'?'Assets':'Banking',title:({agent:'Your agent',fraud:'Payment fraud',recover:'Recover your identity','get-paid':'Get paid. Keep the story.',proof:'Open the proof'})[page.key]})),
  {slug:'identity-continuity',path:'/id/',group:'Banking',title:'Identity continuity',description:'Open Bankeiz with the Receiz identity you already hold. Authentication, recovery and supported history stay connected.'},
- ...twinSalesPages.map(page=>({...page,group:'Banking',title:page.key==='your-twin'?'Your Twin':'See it in action'})),
+ {...bankingPage,group:'Banking',title:'See banking in action'},
+ ...twinSalesPages.map(page=>({...page,group:'Banking',title:page.key==='your-twin'?'Your Twin':'Business in action'})),
  {slug:'vaults',path:'/vaults/',group:'Banking',title:'Your Vaults',description:'Hold money and originals separately, add optional passkey protection and share their proof.'},
  {slug:'protect-your-value',path:'/protect/',group:'Banking',title:'Protect your value',description:'See how separate Vault authority, optional passkey encryption and public proof protect access.'},
  {slug:'business',path:'/business/',group:'Banking',title:'Business',description:'Understand cash flow, simplify payment work and spend less time on financial admin.'},
@@ -40,8 +42,8 @@ const relatedSolutions={
  'get-paid':['/get-paid/'],'payment-requests':['/get-paid/','/fraud/'],'receipts':['/proof/','/get-paid/'],
  'physical-assets':['/coops/'],'asset-rights-and-backing':['/cooperatives/infrastructure/'],
  'proof-native-economy':['/coops/','/together/'],'institutions':['/cooperatives/infrastructure/'],
- 'messages':['/agent/','/business/','/fit/','/your-twin/','/in-action/'],
- 'for-businesses':['/business/','/fit/','/your-twin/','/in-action/'],'for-independent-work':['/fit/'],
+ 'messages':['/agent/','/business/','/fit/','/your-twin/','/action/'],
+ 'for-businesses':['/business/','/fit/','/your-twin/','/action/'],'for-independent-work':['/fit/'],
  'for-creators':['/fit/','/together/creators/'],'for-communities':['/coops/','/together/communities/'],
  'for-institutions':['/cooperatives/infrastructure/'],'for-public-finance':['/coops/']
 };

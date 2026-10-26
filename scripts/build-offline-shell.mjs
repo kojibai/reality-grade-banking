@@ -1,3 +1,4 @@
+import {bankingPage} from '../src/content/banking-walkthrough.mjs';
 import {portabilityPages} from '../src/content/portability-pages.mjs';
 import {economyPages} from '../src/content/existing-economy.mjs';
 import {standardPages} from '../src/content/standard-pages.mjs';
@@ -72,8 +73,9 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     // Conformance remains an on-demand console, outside the bank installation
     // cache. Its retained online navigation does not add verifier work at boot.
     if (path === '/conformance/') continue;
-    const canonicalPath=canonicalPublicPath(path),cooperative=canonicalPath==='/agent/'||[...portabilityPages,...economyPages,...cooperativePages,...togetherPages,...twinSalesPages].some(page=>page.path===canonicalPath);
+    const canonicalPath=canonicalPublicPath(path),cooperative=canonicalPath===bankingPage.path||canonicalPath==='/agent/'||[...portabilityPages,...economyPages,...cooperativePages,...togetherPages,...twinSalesPages].some(page=>page.path===canonicalPath);
     if(cooperative){urls.add('/learn/cooperatives.js');urls.add('/learn/cooperative-twin.js');}
+    if(cooperative||canonicalPath==='/business/'||businessFitPages.some(page=>page.path===canonicalPath)||canonicalPath==='/vaults/')urls.add('/learn/product-walkthrough.js');
     if(economyPages.some(page=>page.path===canonicalPath)||canonicalPath==='/coops/'){urls.add('/learn/economy.js');urls.add('/learn/economy-model.mjs');}
     const knownGuide=standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/protect/','/vaults/','/id/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
     if(canonicalPath===directoryPage.path)urls.add('/learn/business-fit.js');

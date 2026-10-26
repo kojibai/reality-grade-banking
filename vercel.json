@@ -37,6 +37,22 @@
   ],
   "rewrites": [
     {
+      "source": "/action",
+      "destination": "/action/index.html"
+    },
+    {
+      "source": "/action/",
+      "destination": "/action/index.html"
+    },
+    {
+      "source": "/banking",
+      "destination": "/banking/index.html"
+    },
+    {
+      "source": "/banking/",
+      "destination": "/banking/index.html"
+    },
+    {
       "source": "/crypto",
       "destination": "/crypto/index.html"
     },

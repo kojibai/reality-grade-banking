@@ -1,3 +1,4 @@
+import {bankingPage} from '../src/content/banking-walkthrough.mjs';
 import {portabilityPages} from '../src/content/portability-pages.mjs';
 import {economyPages} from '../src/content/existing-economy.mjs';
 import {standardPages} from '../src/content/standard-pages.mjs';
@@ -16,6 +17,7 @@ import {canonicalPublicPath} from '../src/content/public-routes.mjs';
 import {protectionPage} from './vault-protection-page.mjs';
 export const publicOrigin = 'https://bankeiz.com';
 export const publicPages = [
+ {...bankingPage,id:'banking',motif:'bank'},
  ...portabilityPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-Grade Banking',description:page.description,lines:page.shareLines,caption:page.shareCaption,motif:'layers'})),
  ...economyPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-Grade Banking',description:page.description,lines:page.lines,caption:page.eyebrow,motif:'layers'})),
  ...standardPages.map(page=>({path:page.path,id:'standard-'+page.key,title:page.title+' | Open standard',description:page.description,lines:page.lines,caption:'The standard of the proof-native economy.',motif:'layers'})),

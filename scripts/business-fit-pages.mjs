@@ -1,3 +1,4 @@
+import {productMoment} from './product-walkthrough.mjs';
 import {learnHeader} from './learn-template.mjs';
 import {siteFooterHtml} from './site-footer.mjs';
 import {businessFits,fitGroups,fitGoals,businessFitStart} from '../src/content/business-fits.mjs';
@@ -20,7 +21,7 @@ export function directoryContent(){return `${learnHeader()}<main id="main" class
  </main>${businessMobileAction()}${siteFooterHtml('/fit/')}`;}
 export function fitContent(fit){
  const related=businessFits.filter(other=>other.slug!==fit.slug&&other.group===fit.group).slice(0,3);
- return `${learnHeader()}<main id="main" class="business-page fit-page" data-business-start="${esc(JSON.stringify(businessFitStart(fit)))}">
+ return `${learnHeader()}<main id="main" class="business-page fit-page" data-coop data-business-start="${esc(JSON.stringify(businessFitStart(fit)))}">
  <section class="learn-shell business-hero fit-hero"><div class="business-intro"><a class="fit-back" href="/fit/">All ways to use Business ${arrow}</a><span class="fit-label">${esc(fit.label)}</span><h1>${esc(fit.headline)}</h1><p>${esc(fit.pain)}</p><a class="business-text-link" href="#your-work">See it in your work ${arrow}</a></div>${businessPriceCard(fit.benefits.map(([outcome])=>outcome))}</section>
  <section class="learn-shell fit-visual" aria-label="Business for ${esc(fit.label)}">${fitOutcomeScene(fit)}</section>
  <section id="your-work" class="learn-shell fit-story"><div><h2>Start with a real<br>money question.</h2><p>${esc(fit.scenario)}</p></div><div class="fit-question"><p>One useful place to begin</p><blockquote>“${esc(fit.question)}”</blockquote><span>Bring the context. Work through the answer. Keep the final say.</span></div></section>
@@ -28,6 +29,7 @@ export function fitContent(fit){
  <section class="learn-shell business-workflow"><h2>Your first useful session.</h2><ol>${fit.steps.map((step,index)=>`<li><span aria-hidden="true">0${index+1}</span><p>${esc(step)}</p></li>`).join('')}</ol><p class="business-context-note">Work from the information and permissions you provide. Review generated material and consequential proposals before using their supported actions.</p></section>
  ${businessIncluded(fit.description)}${businessBanking()}${businessFaq()}
  <section class="learn-shell fit-related"><h2>More of your work?</h2><nav>${related.map(other=>`<a href="${fitPath(other)}">${esc(other.label)} ${arrow}</a>`).join('')}<a href="/fit/">Explore every fit ${arrow}</a><a href="/business/">The complete offer ${arrow}</a></nav></section>
+ ${productMoment({id:'fit-money-ui',title:esc(fit.headline),body:'See how the money questions fit into your account. Ask naturally, work from available records and review the next step before a payment or message is sent.'})}
  <section class="learn-shell business-close fit-close"><h2>${esc(fit.benefits[0][0])}</h2>${businessCheckout()}<p>$149/month · Renews until cancelled.<br>Annual option: $1,499/year, renewing until cancelled.</p></section>
  </main>${businessMobileAction()}${siteFooterHtml(fitPath(fit))}`;
 }

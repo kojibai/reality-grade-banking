@@ -16,7 +16,7 @@ it('presents an actionable monthly offer and direct existing-account purchase in
  expect(doc.body.textContent).toContain('use their supported value without this subscription');
  expect(doc.querySelector('.business-banking a[href="/learn/get-paid/"]')).not.toBeNull();
  expect(doc.body.textContent).toContain('records you choose');
- expect(doc.querySelector('script,iframe,input')).toBeNull();
+ expect(doc.querySelector('script,iframe')).toBeNull();expect([...doc.querySelectorAll('input')].every(input=>input.closest('[inert]'))).toBe(true);
  expect(doc.querySelector('header')?.outerHTML).toBe(new DOMParser().parseFromString(learnHeader(),'text/html').querySelector('header')?.outerHTML);
  expect(publicPage('/business/')?.title).toContain('$149/month');
  expect(readFileSync('scripts/build-public-pages.mjs','utf8')).toContain('businessContent()');

@@ -1,0 +1,6 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Real product UI · Read-only examples</title><style>body{margin:0;padding:22px;background:#fbfcfe;display:grid;grid-template-columns:440px 440px;gap:40px;align-items:start}.product-screen{margin:0!important}</style><div id="account"></div><div id="messages"></div><script type="module">
+import {productScreen,productPreviewCss} from '../../scripts/product-walkthrough.mjs';
+import presentation from '../../public/learn/product-walkthrough.css?inline';
+const style=document.createElement('style');style.textContent=productPreviewCss+presentation;document.head.append(style);
+document.querySelector('#account').innerHTML=productScreen('account','share-account');document.querySelector('#messages').innerHTML=productScreen('messages','share-messages');
+</script></html>

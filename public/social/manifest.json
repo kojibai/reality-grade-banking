@@ -1,6 +1,14 @@
 {
   "schema": "bankeiz.public-social-images.v1",
   "images": {
+    "/banking/": {
+      "url": "/social/banking-ce2126752f3a437a.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "ce2126752f3a437a03a366832ccb41e46583e5a9c59439f1b328b5a31159cae5",
+      "bytes": 360301,
+      "alt": "Your money. See it working. The actual interface. From account to payment record. Actual account and agent interface with clearly labeled example data."
+    },
     "/crypto/": {
       "url": "/social/portability-crypto-df57c3fbeabe1afe.png",
       "width": 1730,
@@ -273,13 +281,13 @@
       "bytes": 354897,
       "alt": "Your Twin connects a visitor’s question and answer to the owner’s shared contact details, conversation context and confirmed calendar appointment. Illustrative workflow."
     },
-    "/in-action/": {
-      "url": "/social/in-action-63a6d3b9eae8e531.png",
+    "/action/": {
+      "url": "/social/in-action-b3b8ed0b01f4ba57.png",
       "width": 1730,
       "height": 909,
-      "sha256": "63a6d3b9eae8e531b5f5afac64fb23e5250f8dfcf681043d2f87f2720b857390",
-      "bytes": 355003,
-      "alt": "Your Twin connects a visitor’s question and answer to the owner’s shared contact details, conversation context and confirmed calendar appointment. Illustrative workflow."
+      "sha256": "b3b8ed0b01f4ba57c0e5a3d3c35232385ddfacc0f2603ecc453738821de76929",
+      "bytes": 270889,
+      "alt": "Their next step. Your context, connected. Client payment questions. Connected context. Less financial admin. Actual account and agent interface with clearly labeled example data."
     },
     "/together/": {
       "url": "/social/together-7d0dd1da1d7fbd09.png",

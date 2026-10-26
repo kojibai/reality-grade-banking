@@ -1,0 +1,62 @@
+// @vitest-environment happy-dom
+import {expect,it} from 'vitest';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {ProductScreen} from '../src/presentation/ProductScreen';
+it.each(['entry','account','deposit','receive','send','record','vault','messages'])('renders %s from the actual product components as an inert example',screen=>{
+ const doc=new DOMParser().parseFromString(renderToStaticMarkup(<ProductScreen screen={screen}/>),'text/html');
+ expect(doc.querySelector('[data-product-example]')).not.toBeNull();expect(doc.querySelector('[inert]')).not.toBeNull();expect(doc.body.textContent).toContain('Example');
+ expect(doc.querySelector('[data-source-components]')?.getAttribute('data-source-components')?.length).toBeGreaterThan(4);
+ expect(doc.querySelector('iframe,script')).toBeNull();
+});
+
+import {afterEach,vi} from 'vitest';
+import preview from '../src/content/product-ui.generated.json';
+import {productWalkthrough,productMoment} from '../scripts/product-walkthrough.mjs';
+// @ts-expect-error Public enhancement stays a standalone page-only module.
+import {init} from '../public/learn/product-walkthrough.js';
+import {canonicalPublicPath} from '../src/content/public-routes.mjs';
+import {publicPage} from '../scripts/public-page-metadata.mjs';
+// @ts-expect-error Public document template stays standalone ESM.
+import {bankingContent} from '../scripts/banking-page.mjs';
+import {paymentQr,paymentQrPath} from '../src/receiz/payment-qr';
+afterEach(()=>{document.body.innerHTML='';window.dispatchEvent(new Event('receiz-learn:page'));vi.useRealTimers();vi.unstubAllGlobals();});
+it('keeps example IDs local, dialogs visible and receiving coordinates nonfunctional',()=>{
+ const doc=new DOMParser().parseFromString(productWalkthrough()+productMoment(),'text/html');
+ const ids=[...doc.querySelectorAll('[id]')].map(el=>el.id);expect(new Set(ids).size).toBe(ids.length);
+ expect([...doc.querySelectorAll('dialog')].every(el=>el.hasAttribute('open'))).toBe(true);
+ const qr=doc.querySelector('[data-product-example=receive] .payment-qr path')?.getAttribute('d');
+ expect(qr).toBe(paymentQrPath(paymentQr('https://example.invalid/')));
+ expect(doc.querySelectorAll('[data-product-choice]')).toHaveLength(8);
+ expect(preview.css).not.toMatch(/(?:^|})\s*(?:body|html|:root)\s*\{/);
+ expect(preview.css).toContain('@container product-screen');
+});
+it('publishes separate one-word banking and Business stories while retaining live Twin and exact payment destination',()=>{
+ expect(canonicalPublicPath('/in-action/')).toBe('/action/');expect(publicPage('/banking/')?.path).toBe('/banking/');
+ const doc=new DOMParser().parseFromString(bankingContent(),'text/html');
+ expect(doc.querySelectorAll('[data-product-choice]')).toHaveLength(8);expect(doc.querySelector('[data-coop-twin]')).not.toBeNull();
+ expect(doc.querySelector('[data-product-example] [data-coop-twin]')).toBeNull();
+ expect(doc.querySelector('a[href="/action/"]')).not.toBeNull();
+});
+it('supports repeated step selection and keyboard selection without transport or touching the live conversation',()=>{
+ vi.stubGlobal('matchMedia',()=>({matches:true,addEventListener(){},removeEventListener(){}}));
+ vi.stubGlobal('IntersectionObserver',class{observe(){}disconnect(){}});const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ document.body.innerHTML=productWalkthrough()+'<div data-coop-twin><p>Real conversation stays here.</p></div>';init();init();
+ const click=(key:string)=>(document.querySelector(`[data-product-choice="${key}"]`) as HTMLButtonElement).click();
+ click('send');click('account');click('send');expect((document.querySelector('[data-product-panel=send]') as HTMLElement).hidden).toBe(false);
+ const sender=document.querySelector('[data-product-choice=send]')!;sender.dispatchEvent(new KeyboardEvent('keydown',{key:'End',bubbles:true}));
+ expect(document.querySelector('[data-product-choice=messages]')?.getAttribute('aria-pressed')).toBe('true');
+ expect(document.querySelector('[data-coop-twin]')?.textContent).toBe('Real conversation stays here.');expect(fetch).not.toHaveBeenCalled();
+ window.dispatchEvent(new Event('receiz-learn:page'));click('account');expect(document.querySelector('[data-product-choice=account]')?.getAttribute('aria-pressed')).toBe('true');
+});
+it('animates typing into complete example replies, then reveals the follow-up without a model request',()=>{
+ vi.useFakeTimers();vi.stubGlobal('matchMedia',()=>({matches:false,addEventListener(){},removeEventListener(){}}));
+ const callbacks:((entries:{isIntersecting:boolean}[])=>void)[]=[];
+ vi.stubGlobal('IntersectionObserver',class{constructor(fn:(entries:{isIntersecting:boolean}[])=>void){callbacks.push(fn);}observe(){}disconnect(){}});
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);document.body.innerHTML=productMoment();init();callbacks[0]([{isIntersecting:true}]);
+ expect(document.querySelector('.bank-typing-dots')).not.toBeNull();vi.advanceTimersByTime(3000);
+ expect(document.querySelector('[data-example-response] p')?.textContent).toContain('$1,875');
+ vi.advanceTimersByTime(1400);expect((document.querySelector('[data-example-followup]') as HTMLElement).hidden).toBe(false);expect(fetch).not.toHaveBeenCalled();
+});
+
+import {outcomePages,outcomeContent} from '../scripts/outcome-page.mjs';
+it('keeps the agent example inside its cold-entry enhancement root',()=>{const doc=new DOMParser().parseFromString(outcomeContent(outcomePages.find(page=>page.key==='agent')!),'text/html');expect(doc.querySelector('[data-coop] [data-product-walkthrough=agent-money-ui]')).not.toBeNull();});

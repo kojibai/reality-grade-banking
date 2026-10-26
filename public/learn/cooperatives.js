@@ -32,6 +32,7 @@ function mountProcess(root){
 export function init(){
  const root=document.querySelector('[data-coop]');if(!root||mounted.has(root))return;
  mounted.add(root);releaseProcess();mountProcess(root);
+ if(root.querySelector("[data-product-walkthrough]"))void import("./product-walkthrough.js").then(module=>module.init());
  root.addEventListener('click',event=>{const object=event.target.closest('[data-object-choice]'),network=event.target.closest('[data-network-choice]');if(object)select(root,'data-object-choice','data-object-panel',object.dataset.objectChoice);if(network)select(root,'data-network-choice','data-network-panel',network.dataset.networkChoice);});
  root.querySelectorAll('[data-coop-twin]').forEach(mountConversation);
 }

@@ -1,3 +1,4 @@
+import {productMoment} from './product-walkthrough.mjs';
 import {learnHeader} from './learn-template.mjs';
 import {siteFooterHtml} from './site-footer.mjs';
 import {businessOffer,businessBenefits,businessQuestions} from '../src/content/business-offer.mjs';
@@ -12,7 +13,7 @@ export const businessBanking=()=>`<section class="business-core business-banking
 export const businessIncluded=(intro='For people who run the business and carry its money admin too.')=>`<section id="included" class="learn-shell business-included"><h2>Less chasing.<br>Less money admin.</h2><p class="business-section-intro">${escape(intro)}</p><div class="business-benefits">${businessBenefits.map(([title,copy])=>`<div>${check}<div><h3>${escape(title)}</h3><p>${escape(copy)}</p></div></div>`).join('')}</div><p class="business-credit-note">Start with the money question in front of you. Set up your agent, client answers, domain and team routes by talking here. Core banking stays available without Business.</p><div class="business-core-links"><a class="business-text-link" href="/fit/">Find your kind of work${arrow}</a><a class="business-text-link" href="/your-twin/">Be there for the next client conversation${arrow}</a><a class="business-text-link" href="/in-action/">See both sides in action${arrow}</a></div></section>`;
 export const businessFaq=()=>`<section class="learn-shell business-faq"><h2>A few things you might be wondering.</h2>${businessQuestions.map(([question,answer])=>`<details><summary>${escape(question)}<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></summary><p>${escape(answer)}</p></details>`).join('')}</section>`;
 export const businessMobileAction=()=>`<div class="business-mobile-action"><span><strong>$149/month</strong><small>Renews until cancelled</small></span><a data-business-checkout href="${businessOffer.checkoutHref}">Get Business ${arrow}</a></div>`;
-export function businessContent(){return `${learnHeader()}<main id="main" class="business-page">
+export function businessContent(){return `${learnHeader()}<main id="main" class="business-page" data-coop>
  <section class="learn-shell business-hero" aria-labelledby="business-title">
   <div class="business-intro"><h1 id="business-title">Less money admin.<br>More room to run your business.</h1><p>Know where your money stands. Make getting paid less work. Hand off the repeat questions, payment preparation and financial admin that eat into your day, with an agent that keeps the background together. You keep the final say.</p><a class="business-text-link" href="#how-it-works">See how it works${arrow}</a></div>
   ${businessPriceCard()}
@@ -23,6 +24,7 @@ export function businessContent(){return `${learnHeader()}<main id="main" class=
   <li><span aria-hidden="true">02</span><h3>Get the picture together</h3><p>Connect the amount to the client, the work and the available history. Work through your cash position and the questions that need an answer.</p></li>
   <li><span aria-hidden="true">03</span><h3>Take the admin off your list</h3><p>Prepare the request, follow-up, summary or supported payment. Review the details, approve what happens next and keep its result with the record.</p></li>
  </ol><p class="business-context-note">Your context. Your voice. Your final say. Share what matters and keep the original records close.</p><a class="business-text-link" href="/learn/messages/">See how conversations and memories work${arrow}</a></section>
+ ${productMoment({id:'business-money-ui'})}
  ${businessIncluded()}
  ${businessBanking()}
  ${businessFaq()}

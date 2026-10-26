@@ -8,16 +8,17 @@ import {readFileSync} from 'node:fs';
 import {learningDirectoryPage} from '../scripts/learn-template.mjs';
 import {businessContent} from '../scripts/business-page.mjs';
 
-it.each(['/your-twin/','/in-action/'])('publishes %s with both sides, native conversation and the existing reviewed Business payment destination',async path=>{
- expect(publicPage(path)?.path).toBe(path);
+it.each(['/your-twin/','/action/'])('publishes %s with both sides, native conversation and the existing reviewed Business payment destination',async path=>{
+ expect(publicPage(path)?.path).toBe(path);if(path==='/action/')expect(publicPage('/in-action/')).toBe(publicPage(path));
  const {twinSalesPages,twinPageContent}=await import('../scripts/twin-page.mjs');
  const page=twinSalesPages.find(p=>p.path===path)!;
  const doc=new DOMParser().parseFromString(twinPageContent(page),'text/html');
  expect(doc.querySelector('h1')?.textContent?.length).toBeGreaterThan(15);
  expect(doc.querySelectorAll('[data-process-step]')).toHaveLength(4);
- expect(doc.querySelectorAll('svg[data-twin-art]').length).toBeGreaterThanOrEqual(2);
+ expect(doc.querySelectorAll('svg[data-twin-art]').length).toBeGreaterThanOrEqual(path==='/action/'?1:2);
  expect(doc.querySelector('iframe,canvas,video')).toBeNull();
  expect(doc.querySelectorAll('main img')).toHaveLength(0);
+ expect(doc.querySelector('[data-product-example=messages]')).not.toBeNull();
  const purchase=[...doc.querySelectorAll('a[data-business-checkout]')];
  expect(purchase.length).toBeGreaterThanOrEqual(3);
  for(const button of purchase)expect(button.getAttribute('href')).toBe('/#account/messages/business');
@@ -35,14 +36,14 @@ it.each(['/your-twin/','/in-action/'])('publishes %s with both sides, native con
 it('keeps the new sales routes discoverable, distinct and source-bound in their public previews',()=>{
  const directory=new DOMParser().parseFromString(learningDirectoryPage(),'text/html'),business=new DOMParser().parseFromString(businessContent(),'text/html');
  const rewrites=JSON.parse(readFileSync('vercel.json','utf8')).rewrites as {source:string;destination:string}[];
- for(const path of ['/your-twin/','/in-action/']){
+ for(const path of ['/your-twin/','/action/']){
   expect(directory.querySelector('main a[href="'+path+'"]')).not.toBeNull();
   expect(business.querySelector('main a[href="'+path+'"]')).not.toBeNull();
   for(const source of [path,path.slice(0,-1)])expect(rewrites.find(route=>route.source===source)?.destination).toBe(path+'index.html');
   const art=new DOMParser().parseFromString(shareCardSvg(publicPage(path)!),'image/svg+xml');
-  expect(art.querySelector('[data-twin-art]')).not.toBeNull();expect(art.querySelector('parsererror')).toBeNull();
+  expect(art.querySelector(path==='/action/'?'[data-product-share]':'[data-twin-art]')).not.toBeNull();expect(art.querySelector('parsererror')).toBeNull();if(path==='/action/')expect(art.querySelector('image')?.getAttribute('href')).toMatch(/^data:image\/png;base64,/);
   expect(art.documentElement.textContent).not.toMatch(/\$149|month|7,500/);
-  expect(art.documentElement.textContent).toContain('Contacts, context and calendar.');
+  expect(art.documentElement.textContent).toContain(path==='/action/'?'See your agent inside your banking.':'Contacts, context and calendar.');
  }
- expect(publicPage('/your-twin/')?.title).not.toBe(publicPage('/in-action/')?.title);
+ expect(publicPage('/your-twin/')?.title).not.toBe(publicPage('/action/')?.title);
 });
