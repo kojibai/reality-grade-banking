@@ -1,3 +1,4 @@
+import {publicIllustrations} from '../src/content/public-imagery.mjs';
 import {bankingPage} from '../src/content/banking-walkthrough.mjs';
 import {portabilityPages} from '../src/content/portability-pages.mjs';
 import {economyPages} from '../src/content/existing-economy.mjs';
@@ -16,6 +17,7 @@ import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const fixedResources = [
+  ...publicIllustrations.flatMap(image=>[image.src,...[384,640].map(width=>image.src.replace('.webp',`-${width}.webp`))]),
   '/native/vault.v1.mjs', '/native/vault.v1.manifest.json',
   '/snarkjs.min.js',
   '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png',

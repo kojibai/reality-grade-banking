@@ -137,10 +137,12 @@ await checkLedgerEntry('ledger/index.html');
 const noteGuide = await readFile('dist/learn/reserve-and-settlement/index.html', 'utf8');
 assert.ok(!learn.includes('src="/learn/reserve-note.webp"'), 'Learn home stays free of note illustrations');
 assert.ok(noteGuide.includes('id="how-notes-work"'));
-assert.ok(noteGuide.includes('Unissued specimens, with no spendable value.'));
-assert.ok(learn.includes('legacy payment rails') && !learn.includes('familiar payment rails'));
+assert.ok(noteGuide.includes('Unissued specimen, with no spendable value.'));
+assert.equal((noteGuide.match(/class="note-specimen /g)??[]).length,1,'One Settlement Note specimen');
+assert.ok(learn.includes('data-product-example="account"') && !learn.includes('Two connected rails.'),'Learn foregrounds the actual account and actions');
 for (const rail of ['reserve', 'settlement']) {
-  assert.ok(noteGuide.includes(`src="/learn/${rail}-note.webp" width="1620" height="972" style="width:100%;max-width:100%;height:auto" loading="lazy"`));
+  if(rail==='settlement')assert.ok(noteGuide.includes(`src="/learn/${rail}-note.webp" width="1620" height="972" style="width:100%;max-width:100%;height:auto" loading="lazy"`));
+  else assert.ok(!noteGuide.includes(`src="/learn/${rail}-note.webp"`));
   const note = await readFile(`dist/learn/${rail}-note.webp`);
   assert.equal(note.toString('ascii', 0, 4), 'RIFF');
   assert.equal(note.toString('ascii', 8, 12), 'WEBP');

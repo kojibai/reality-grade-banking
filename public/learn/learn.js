@@ -332,7 +332,7 @@ document.addEventListener('input',event=>{
  if(!event.target.matches?.('[data-example-input]'))return;
  const region=event.target.closest('[data-learning-funding]'),amount=Number(event.target.value),reserve=Math.min(amount,60),settlement=amount-reserve;
  region.querySelector('[data-example-amount]').textContent=`$${amount}`;
- region.querySelector('[data-example-title]').textContent=settlement?'Settlement Reserve Note':'Reserve Note';
+ region.querySelector('[data-example-title]').textContent='Settlement Note';
  region.querySelector('[data-example-reserve]').textContent=`$${reserve}`;
  region.querySelector('[data-example-settlement]').textContent=`$${settlement}`;
 });

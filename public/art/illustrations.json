@@ -1,0 +1,259 @@
+{
+  "schema": "bankeiz.public-illustrations.v1",
+  "notice": "Presentation only; these illustrations carry no identity, proof admission, custody, funds or execution authority.",
+  "images": [
+    {
+      "key": "deposit-source",
+      "src": "/art/deposit-source.webp",
+      "width": 1024,
+      "height": 896,
+      "alt": "Illustration: a Bitcoin source remains connected to a glass and cobalt proof object.",
+      "bytes": 117040,
+      "sha256": "579c9724f2f6ef40e91bc3b6c34bf68f3dfce569007f2c219cfcb0de30b0f13d",
+      "variants": [
+        {
+          "src": "/art/deposit-source-384.webp",
+          "width": 384,
+          "bytes": 26116,
+          "sha256": "8059c98ff1cc207f7e2dc4c5f521c8f2f481519dc8b5846ae85b5b327885edb6"
+        },
+        {
+          "src": "/art/deposit-source-640.webp",
+          "width": 640,
+          "bytes": 59076,
+          "sha256": "f4d19ffcf7bf5644665fe8c8f61f670a47ad620e5bf2e1380b5453e4bd2fd232"
+        }
+      ]
+    },
+    {
+      "key": "proof-nft",
+      "src": "/art/proof-nft.webp",
+      "width": 1024,
+      "height": 896,
+      "alt": "Illustration: a collectible original and a portable proof object keep their source relationship.",
+      "bytes": 114540,
+      "sha256": "d41d09c8377e6a20966a1c9c7113cbbd8dd0407e3f431a822e30942b0757dad1",
+      "variants": [
+        {
+          "src": "/art/proof-nft-384.webp",
+          "width": 384,
+          "bytes": 24870,
+          "sha256": "8cdbce292c67483ca947d3423a0267775c7ef66316b237fbafd035525fb665e8"
+        },
+        {
+          "src": "/art/proof-nft-640.webp",
+          "width": 640,
+          "bytes": 54592,
+          "sha256": "5c9c7b3136e18be1b35ef578b1acab1a2a49c6d6400167baaeb79be303a2fbd7"
+        }
+      ]
+    },
+    {
+      "key": "proof-transfer",
+      "src": "/art/proof-transfer.webp",
+      "width": 1024,
+      "height": 896,
+      "alt": "Illustration: two proof objects remain connected through one transfer and its source layers.",
+      "bytes": 95856,
+      "sha256": "7a382b440e82a641fe8e896fe1df6cdf1c40e4db5e15a09529f3c6ff5d997b5a",
+      "variants": [
+        {
+          "src": "/art/proof-transfer-384.webp",
+          "width": 384,
+          "bytes": 17362,
+          "sha256": "660122aca833a0d9e0eb54fbcab8168db88692f2125c89bd6e7ce656f99c7a9b"
+        },
+        {
+          "src": "/art/proof-transfer-640.webp",
+          "width": 640,
+          "bytes": 40470,
+          "sha256": "abffa75725b64cb4bd5204e74c4aadece7591f1e838e7e5975ebc8c37ef34f8e"
+        }
+      ]
+    },
+    {
+      "key": "proof-vault",
+      "src": "/art/proof-vault.webp",
+      "width": 1024,
+      "height": 896,
+      "alt": "Illustration: an original inside a private Vault remains separate from the passkey outside it.",
+      "bytes": 114380,
+      "sha256": "96e3331fc1c1587f5bc34e794848731a8ef3b301aa1c2d1adcc14766ac2f40cb",
+      "variants": [
+        {
+          "src": "/art/proof-vault-384.webp",
+          "width": 384,
+          "bytes": 27250,
+          "sha256": "22cd00afeea6e74241f84db1d3094ae78820d4837700c959bc1fb1557ac85893"
+        },
+        {
+          "src": "/art/proof-vault-640.webp",
+          "width": 640,
+          "bytes": 62836,
+          "sha256": "85ec3ee7600d67b63b4939f9efac409d6ec531c9d738b57cfb98cda2b6202277"
+        }
+      ]
+    },
+    {
+      "key": "proof-cooperative",
+      "src": "/art/proof-cooperative.webp",
+      "width": 1024,
+      "height": 896,
+      "alt": "Illustration: productive goods and useful work connect to one proof object.",
+      "bytes": 98098,
+      "sha256": "6bc433da61106037b5d5cf1cf599911b8764538209955cc35cff6e0a330005d5",
+      "variants": [
+        {
+          "src": "/art/proof-cooperative-384.webp",
+          "width": 384,
+          "bytes": 16404,
+          "sha256": "11f882b6daf4c8d6e0f6d679882af023d56c23e5ec76f0c95770039e8e45e0df"
+        },
+        {
+          "src": "/art/proof-cooperative-640.webp",
+          "width": 640,
+          "bytes": 35070,
+          "sha256": "871da5537d052a114be326fbfaa543acebc1b5a4007f4788c0a180a4c87af5d4"
+        }
+      ]
+    },
+    {
+      "key": "proof-identity",
+      "src": "/art/proof-identity.webp",
+      "width": 1024,
+      "height": 896,
+      "alt": "Illustration: one sealed identity original connects across two different application portals.",
+      "bytes": 113726,
+      "sha256": "c9e76d8bc0bfc85547be3ffbf494bf78d2334b7bda9aaa1af392796bf97fa823",
+      "variants": [
+        {
+          "src": "/art/proof-identity-384.webp",
+          "width": 384,
+          "bytes": 22360,
+          "sha256": "b40708db255f421eb0c6604623e7ec60e1c151ab791a6d5c9aa270beabfe1ff4"
+        },
+        {
+          "src": "/art/proof-identity-640.webp",
+          "width": 640,
+          "bytes": 47750,
+          "sha256": "104e4335f1a95602b5eb45a6c588075ae7dadb129c258dd55ad8dab2c2695481"
+        }
+      ]
+    },
+    {
+      "key": "proof-record",
+      "src": "/art/proof-record.webp",
+      "width": 1024,
+      "height": 896,
+      "alt": "Illustration: a source Original, its connected history layers and an inspection lens.",
+      "bytes": 110036,
+      "sha256": "6db7ca6df347ba183cc44878d879df3d613b014db93e9d888c210d4b9a1d7a1b",
+      "variants": [
+        {
+          "src": "/art/proof-record-384.webp",
+          "width": 384,
+          "bytes": 23038,
+          "sha256": "09b67e9bf6471cede68008fff4015902d11c6f53cb55cb15f039ff0b14d84843"
+        },
+        {
+          "src": "/art/proof-record-640.webp",
+          "width": 640,
+          "bytes": 52214,
+          "sha256": "fd7e831debfd6e3079f2a55044cbed7d23d2e385c60e2f3dcf45831e0367aec7"
+        }
+      ]
+    },
+    {
+      "key": "proof-assets",
+      "src": "/art/proof-assets.webp",
+      "width": 1024,
+      "height": 896,
+      "alt": "Illustration: a shoe, property and original work connect to a sealed proof object.",
+      "bytes": 85280,
+      "sha256": "8755cf3f9a4d577bd0b16648e9838d76cc0ee57b3016a6b67588ceb11302bdd3",
+      "variants": [
+        {
+          "src": "/art/proof-assets-384.webp",
+          "width": 384,
+          "bytes": 15908,
+          "sha256": "714de7c0d8f4178d83f8cf833dd4c95b8fee0d76eb5376eb677e2e1320204be6"
+        },
+        {
+          "src": "/art/proof-assets-640.webp",
+          "width": 640,
+          "bytes": 32888,
+          "sha256": "899fa463fc18f5805919686e7e2ab71e0af1d5967a516288e19535853a43f8cf"
+        }
+      ]
+    },
+    {
+      "key": "proof-money",
+      "src": "/art/proof-money.webp",
+      "width": 1024,
+      "height": 896,
+      "alt": "Illustration: incoming and outgoing records connect to one native proof object and its context.",
+      "bytes": 103940,
+      "sha256": "7affa01469431d4d5f1f06489c8f13c5b84055fc639b447f21eb53c3d500f948",
+      "variants": [
+        {
+          "src": "/art/proof-money-384.webp",
+          "width": 384,
+          "bytes": 18440,
+          "sha256": "f8cbff26f6d6440f7824ba554c2b79eca5e01955b254fb9af9b7e92ee7986855"
+        },
+        {
+          "src": "/art/proof-money-640.webp",
+          "width": 640,
+          "bytes": 41340,
+          "sha256": "8e3943a3939d4f592f5c6b8eff6026d5152cf75dfbf67a73e9dbc6450efbfe46"
+        }
+      ]
+    },
+    {
+      "key": "proof-network",
+      "src": "/art/proof-network.webp",
+      "width": 1024,
+      "height": 896,
+      "alt": "Illustration: one portable Original remains connected across places and compatible experiences.",
+      "bytes": 107990,
+      "sha256": "0621109e39af40deb2866ecf1a6a3313670140b346c74eb101857c4fb1793035",
+      "variants": [
+        {
+          "src": "/art/proof-network-384.webp",
+          "width": 384,
+          "bytes": 23316,
+          "sha256": "42c632556213540a23b51b302c67c9c01b4d1e1180ab30e053ceeb5f9eda58d3"
+        },
+        {
+          "src": "/art/proof-network-640.webp",
+          "width": 640,
+          "bytes": 53202,
+          "sha256": "11a1325a81d54760aeefd495d1b21a17a2be9f26846c702aaa21b28e780f5427"
+        }
+      ]
+    },
+    {
+      "key": "proof-market",
+      "src": "/art/proof-market.webp",
+      "width": 1024,
+      "height": 896,
+      "alt": "Illustration: defined ownership slices remain connected to the whole and its source.",
+      "bytes": 95916,
+      "sha256": "0bea0508a4c3d79b895139311469baba5932984d5adc542da1e47555d302e9c9",
+      "variants": [
+        {
+          "src": "/art/proof-market-384.webp",
+          "width": 384,
+          "bytes": 17502,
+          "sha256": "80c255f5d2c70a7b00ff8b7f829894b4b94bd590aaa734b7627f803a37c1bf16"
+        },
+        {
+          "src": "/art/proof-market-640.webp",
+          "width": 640,
+          "bytes": 39534,
+          "sha256": "55fa61df895d3a94d6bd94a07ad4443160fd574e8c02e3df4a56b0956ee97d91"
+        }
+      ]
+    }
+  ]
+}

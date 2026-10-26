@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { noteDenomination, notePreviewCents, reserveNoteDesign } from '../src/receiz/note-design';
 
-describe('Reserve Note denominations', () => {
+describe('Settlement Note denominations', () => {
   it.each([
     ['1', '$0.01', 'ONE CENT'],
     ['100', '$1', 'ONE DOLLAR'],
@@ -29,25 +29,25 @@ describe('Reserve Note denominations', () => {
     expect(design.denominations).toHaveLength(5);
     expect(design.denominations.map(value => value.value)).toEqual(['$123.45', '123.45', '123.45', '123.45', '123.45']);
     expect(design.serial).toBe('RN 12345678 90AB4CDE');
-    expect(design.title).toBe('RESERVE NOTE');
-    expect(design.subtitle).toBe('PROOF-BACKED VALUE');
+    expect(design.title).toBe('SETTLEMENT NOTE');
+    expect(design.subtitle).toBe('PROOF-NATIVE VALUE');
   });
 
-  it('keeps Settlement artwork visually identical while identifying its own rail', () => {
+  it('uses one Settlement Note design while preserving exact source identifiers and units', () => {
     const reserve = reserveNoteDesign('12345', '12345678-90ab-4cde-8000-000000000000');
     const settlement = reserveNoteDesign('12345', '12345678-90ab-4cde-8000-000000000000', 'settlement');
     expect(settlement.title).toBe('SETTLEMENT NOTE'); expect(settlement.subtitle).toBe('PROOF-NATIVE VALUE');
     expect(settlement.serial).toBe('SN 12345678 90AB4CDE');
-    expect(settlement.denominations).toEqual(reserve.denominations);
-    expect(settlement.texts.some(text => text.value === 'REDEEMABLE INTO SETTLEMENT')).toBe(true);
+    expect(settlement.denominations).toEqual(reserve.denominations);expect(settlement.images).toEqual(reserve.images);expect(reserve.texts.some(text=>text.value==='DENOMINATED IN USD')).toBe(true);expect(settlement.texts.some(text=>text.value==='VALUE AT CREATION · USD')).toBe(true);
+    expect(settlement.texts.some(text => text.value === 'DEPOSIT INTO YOUR ACCOUNT')).toBe(true);
     expect(settlement.texts.some(text => text.value === 'REDEEMABLE INTO RESERVE')).toBe(false);
   });
 
-  it('retains a third matching design for the signed composite',()=>{
+  it('uses the same Settlement Note design while retaining the composite source serial',()=>{
     const design=reserveNoteDesign('10000','12345678-90ab-4cde-8000-000000000000','composite');
-    expect(design.title).toBe('SETTLEMENT RESERVE NOTE');expect(design.subtitle).toBe('PROOF-BACKED NATIVE VALUE');
-    expect(design.serial).toBe('SR 12345678 90AB4CDE');expect(design.images[0].asset).toBe('/notes/settlement-reserve-note-masthead.png');
-    expect(design.texts.some(text=>text.value==='REDEEMABLE INTO SETTLEMENT + RESERVE')).toBe(true);
+    expect(design.title).toBe('SETTLEMENT NOTE');expect(design.subtitle).toBe('PROOF-NATIVE VALUE');
+    expect(design.serial).toBe('SR 12345678 90AB4CDE');expect(design.images[0].asset).toBe('/notes/settlement-note-masthead.png');
+    expect(design.texts.some(text=>text.value==='DEPOSIT INTO YOUR ACCOUNT')).toBe(true);
     expect(design.denominations).toEqual(reserveNoteDesign('10000','12345678-90ab-4cde-8000-000000000000').denominations);
   });
 

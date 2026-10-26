@@ -44,3 +44,5 @@
 @media(max-width:430px){.learning-group>div{grid-template-columns:minmax(0,1fr)}.learning-group a{padding-bottom:24px}.learning-visual-art{max-height:210px}.learning-steps{gap:6px}.learning-steps button{font-size:11px;margin-right:10px}.learning-funding{padding:22px}.learning-step-panel h2{font-size:24px}}
 
 .learning-directory>h1{font-size:clamp(40px,6vw,74px);letter-spacing:-.045em;margin:22px 0 28px;line-height:1.08}
+
+.notes-gallery-single{grid-template-columns:minmax(0,1fr)!important;max-width:730px;margin-inline:auto}

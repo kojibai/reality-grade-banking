@@ -1,0 +1,51 @@
+// @vitest-environment happy-dom
+import {expect,it} from 'vitest';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {businessFits} from '../src/content/business-fits.mjs';
+import {moneyExamples} from '../src/content/money-examples.mjs';
+import {ProductScreen} from '../src/presentation/ProductScreen';
+import {productMoment} from '../scripts/product-walkthrough.mjs';
+// @ts-expect-error Static ESM template.
+import {learnHome} from '../scripts/learn-template.mjs';
+
+it('gives each audience a distinct four-turn financial conversation with retained context',()=>{
+ const examples=businessFits.map(fit=>moneyExamples[fit.slug]);
+ expect(examples.every(Boolean)).toBe(true);
+ expect(new Set(examples.map(example=>example.question)).size).toBe(30);
+ expect(new Set(examples.map(example=>example.answer)).size).toBe(30);
+ expect(new Set(examples.map(example=>example.followupAnswer)).size).toBe(30);
+ for(const example of examples){expect(example.followup.length).toBeGreaterThan(10);expect(example.balanceCents).toMatch(/^\d+$/);expect(example.followupAnswer.length).toBeGreaterThan(60);}
+});
+it('keeps the selected story bound to actual message components and its sample account',()=>{
+ const example=moneyExamples.agencies,doc=new DOMParser().parseFromString(renderToStaticMarkup(<ProductScreen screen="messages" example="agencies"/>),'text/html');
+ expect(doc.querySelectorAll('[data-example-response]')).toHaveLength(2);
+ expect(doc.querySelector('[data-example-scenario="agencies"]')).not.toBeNull();
+ expect(doc.body.textContent).toContain(example.question);expect(doc.body.textContent).toContain(example.followupAnswer);
+ expect(doc.querySelector('[inert]')).not.toBeNull();expect(doc.querySelector('iframe,script')).toBeNull();
+ expect(productMoment({example:'agencies'})).toContain('data-example-scenario="agencies"');
+});
+it('keeps the learn overview about the actual account and actions, with funding depth one level below',()=>{
+ const doc=new DOMParser().parseFromString(learnHome(),'text/html');
+ expect(doc.querySelector('.rail-section')).toBeNull();
+ expect(doc.querySelector('[data-product-example="account"]')).not.toBeNull();
+ expect(doc.querySelector('[data-product-choice="send"]')).not.toBeNull();
+ expect(doc.querySelector('a[href="/learn/reserve-and-settlement/"]')?.textContent).toContain('Where your funds come from');
+ expect(doc.querySelector('.learn-business-offer')?.textContent).not.toContain('$149');
+});
+
+it('makes receiving continuity an institutional requirement without inventing a redemption right',()=>{
+ const source=learningPages.find(page=>page.slug==='reserve-and-settlement')!.sections.flat().join(' ');
+ expect(source).toContain('source classification follows the funds');
+ expect(source).toContain('receiving implementation must demonstrate');
+ expect(source).toContain('ownership, exact value and carried history');
+});
+import {learningPages} from '../src/content/learning-pages.mjs';
+import {businessContent} from '../scripts/business-page.mjs';
+it('continues a Business decision with a different confirmed fact instead of repeating the same example',()=>{
+ const doc=new DOMParser().parseFromString(businessContent(),'text/html');
+ const scenes=[...doc.querySelectorAll('[data-example-scenario]')].map(el=>el.getAttribute('data-example-scenario'));
+ expect(scenes).toEqual(['business-plan','business-followthrough']);
+ expect(moneyExamples['business-plan'].answer).toContain('$4,000');
+ expect(moneyExamples['business-followthrough'].answer).toContain('$4,000');
+ expect(moneyExamples['business-plan'].question).not.toBe(moneyExamples['business-followthrough'].question);
+});

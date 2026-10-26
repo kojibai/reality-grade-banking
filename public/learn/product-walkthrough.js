@@ -1,20 +1,25 @@
 // Illustrative animation only. This module has no transport, account or payment API.
 const mounted=new WeakSet(),running=new Set();
 function animate(example){
- const response=example.querySelector('[data-example-response]'),p=response?.querySelector('p');if(!p)return()=>{};
- const answer=response.dataset.exampleAnswer,follow=[...example.querySelectorAll('[data-example-followup]')],full=p.textContent;
- let timer=0,observer,alive=true,visible=false,inView=false;
- const restore=()=>{clearTimeout(timer);p.textContent=full;response.removeAttribute('data-example-playing');follow.forEach(el=>{el.hidden=false;});};
+ const replies=[...example.querySelectorAll('[data-example-response]')].map(el=>({el,p:el.querySelector('p'),answer:el.dataset.exampleAnswer}));
+ if(!replies.length||replies.some(reply=>!reply.p||!reply.answer))return()=>{};
+ const follow=[...example.querySelectorAll('[data-example-followup]')];
+ let timer=0,alive=true,visible=false,inView=false;
+ const scroll=()=>{const box=example.querySelector('.bank-conversation-scroll');if(box)box.scrollTop=box.scrollHeight;};
+ const restore=()=>{clearTimeout(timer);for(const reply of replies){reply.p.textContent=reply.answer;reply.el.removeAttribute('data-example-playing');}follow.forEach(el=>{el.hidden=false;});};
  const stop=()=>{visible=false;restore();};
  const start=()=>{if(!alive||document.hidden||!example.isConnected||example.closest('[hidden]')||matchMedia('(prefers-reduced-motion:reduce)').matches)return;
-  visible=true;clearTimeout(timer);let index=0;p.replaceChildren();response.setAttribute('data-example-playing','');follow.forEach(el=>{el.hidden=true;});
-  const dots=document.createElement('span');dots.className='bank-typing-dots';dots.innerHTML='<i></i><i></i><i></i>';p.append(dots);
-  const type=()=>{if(!alive||!visible)return;index=Math.min(answer.length,index+5);p.textContent=answer.slice(0,index);if(index<answer.length)timer=setTimeout(type,22);else{response.removeAttribute('data-example-playing');timer=setTimeout(()=>{follow.forEach(el=>{el.hidden=false;});const scroll=example.querySelector('.bank-conversation-scroll');if(scroll)scroll.scrollTo({top:scroll.scrollHeight,behavior:'smooth'});timer=setTimeout(()=>{const scroll=example.querySelector('.bank-conversation-scroll');if(scroll)scroll.scrollTop=0;start();},14000);},1200);}};
-  timer=setTimeout(type,650);
+  visible=true;restore();follow.forEach(el=>{el.hidden=true;});const box=example.querySelector('.bank-conversation-scroll');if(box)box.scrollTop=0;
+  const play=turn=>{if(!alive||!visible)return;const reply=replies[turn];if(turn)follow.forEach(el=>{el.hidden=false;});let index=0;
+   reply.p.replaceChildren();reply.el.setAttribute('data-example-playing','');
+   const dots=document.createElement('span');dots.className='bank-typing-dots';dots.innerHTML='<i></i><i></i><i></i>';reply.p.append(dots);if(turn)scroll();
+   const type=()=>{if(!alive||!visible)return;index=Math.min(reply.answer.length,index+5);reply.p.textContent=reply.answer.slice(0,index);if(turn)scroll();if(index<reply.answer.length)timer=setTimeout(type,22);else{reply.el.removeAttribute('data-example-playing');timer=setTimeout(()=>{if(turn+1<replies.length)play(turn+1);else timer=setTimeout(start,14000);},1000);}};
+   timer=setTimeout(type,450);
+  };play(0);
  };
- observer=new IntersectionObserver(entries=>{inView=entries[0].isIntersecting;if(inView)start();else stop();},{threshold:.35});observer.observe(example);
+ const observer=new IntersectionObserver(entries=>{inView=entries[0].isIntersecting;if(inView)start();else stop();},{threshold:.35});observer.observe(example);
  const visibility=()=>{if(document.hidden)stop();else if(inView)start();};document.addEventListener('visibilitychange',visibility);
- const motion=matchMedia('(prefers-reduced-motion:reduce)'),change=()=>{restore();if(!motion.matches)start();};motion.addEventListener('change',change);
+ const motion=matchMedia('(prefers-reduced-motion:reduce)'),change=()=>{stop();if(inView&&!motion.matches)start();};motion.addEventListener('change',change);
  return()=>{alive=false;restore();observer.disconnect();document.removeEventListener('visibilitychange',visibility);motion.removeEventListener('change',change);};
 }
 export function init(){document.querySelectorAll('[data-product-walkthrough]').forEach(root=>{

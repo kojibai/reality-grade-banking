@@ -26,8 +26,8 @@ it('explains connected creation and offline receipt without implying device qual
  expect(copy).toContain('does not require a custody conformance Face ID prompt');
  expect(copy).toContain('reconciles on connection');
  expect(copy).toContain('conforming protected');
- expect(copy).toContain('Settlement Reserve Note');
- expect(copy).toContain('Proof-backed Native value');
+ expect(copy).toContain('Settlement Note');
+ expect(copy).toContain('exact Reserve and Settlement funding composition');
 });
 
 it('keeps public guide interactions free of account transport and financial execution',()=>{

@@ -55,8 +55,21 @@ it('animates typing into complete example replies, then reveals the follow-up wi
  const fetch=vi.fn();vi.stubGlobal('fetch',fetch);document.body.innerHTML=productMoment();init();callbacks[0]([{isIntersecting:true}]);
  expect(document.querySelector('.bank-typing-dots')).not.toBeNull();vi.advanceTimersByTime(3000);
  expect(document.querySelector('[data-example-response] p')?.textContent).toContain('$1,875');
- vi.advanceTimersByTime(1400);expect((document.querySelector('[data-example-followup]') as HTMLElement).hidden).toBe(false);expect(fetch).not.toHaveBeenCalled();
+ vi.advanceTimersByTime(5000);expect(document.querySelectorAll('[data-example-response]')[1].textContent).toContain('partial payment');expect((document.querySelector('[data-example-followup]') as HTMLElement).hidden).toBe(false);expect(fetch).not.toHaveBeenCalled();
 });
 
 import {outcomePages,outcomeContent} from '../scripts/outcome-page.mjs';
 it('keeps the agent example inside its cold-entry enhancement root',()=>{const doc=new DOMParser().parseFromString(outcomeContent(outcomePages.find(page=>page.key==='agent')!),'text/html');expect(doc.querySelector('[data-coop] [data-product-walkthrough=agent-money-ui]')).not.toBeNull();});
+
+it('keeps all four turns readable outside the inert animation with native disclosure and no script',()=>{
+ const doc=new DOMParser().parseFromString(productMoment({example:'agencies'}),'text/html'),transcript=doc.querySelector('.product-transcript')!;
+ expect(transcript.closest('[inert]')).toBeNull();expect(transcript.querySelector('summary')).not.toBeNull();expect(transcript.querySelectorAll('p')).toHaveLength(4);
+ expect(transcript.textContent).toContain('remaining $4,800');
+});
+it('keeps the Business follow-through account and payment in the same story',()=>{
+ const doc=new DOMParser().parseFromString(productWalkthrough({kind:'business',example:'action-followthrough'}),'text/html');
+ expect(doc.querySelector('[data-product-panel=account]')?.textContent).toContain('$9,500.00');
+ expect(doc.querySelector('[data-product-panel=record]')?.textContent).toContain('$900.00');
+ expect(doc.querySelector('[data-product-panel=record]')?.textContent).toContain('Leah');
+ expect(doc.querySelector('[data-product-panel=send]')).toBeNull();
+});

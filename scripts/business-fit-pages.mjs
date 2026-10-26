@@ -29,7 +29,7 @@ export function fitContent(fit){
  <section class="learn-shell business-workflow"><h2>Your first useful session.</h2><ol>${fit.steps.map((step,index)=>`<li><span aria-hidden="true">0${index+1}</span><p>${esc(step)}</p></li>`).join('')}</ol><p class="business-context-note">Work from the information and permissions you provide. Review generated material and consequential proposals before using their supported actions.</p></section>
  ${businessIncluded(fit.description)}${businessBanking()}${businessFaq()}
  <section class="learn-shell fit-related"><h2>More of your work?</h2><nav>${related.map(other=>`<a href="${fitPath(other)}">${esc(other.label)} ${arrow}</a>`).join('')}<a href="/fit/">Explore every fit ${arrow}</a><a href="/business/">The complete offer ${arrow}</a></nav></section>
- ${productMoment({id:'fit-money-ui',title:esc(fit.headline),body:'See how the money questions fit into your account. Ask naturally, work from available records and review the next step before a payment or message is sent.'})}
+ ${productMoment({id:'fit-money-ui',example:fit.slug,title:esc(fit.headline),body:'See how the money questions fit into your account. Ask naturally, work from available records and review the next step before a payment or message is sent.'})}
  <section class="learn-shell business-close fit-close"><h2>${esc(fit.benefits[0][0])}</h2>${businessCheckout()}<p>$149/month · Renews until cancelled.<br>Annual option: $1,499/year, renewing until cancelled.</p></section>
  </main>${businessMobileAction()}${siteFooterHtml(fitPath(fit))}`;
 }

@@ -123,7 +123,7 @@ export const standardPages=[
       ],
       [
         "Use value without losing the story.",
-        "Supported payments use available Reserve first, then Settlement. Original Notes preserve their funding composition. A confirmed payment connects its participants, amount, time and available source evidence in the receipt."
+        "Enter one amount. The account uses its available funds automatically, preserving the exact sources in the original. Notes carry their funded value and complete composition. A confirmed payment connects its participants, amount, time and available source evidence in the receipt."
       ]
     ],
     "related": [
@@ -444,7 +444,7 @@ export const standardPages=[
     "faq": [
       [
         "Is the standard the same as one website?",
-        "The standard defines the preserved evidence and operations. A website is one implementation. Independent participants integrate the same proof, authority and receiving requirements."
+        "The standard defines the preserved evidence and operations. A website is one implementation. Independent institutions can participate through their own interface when their receiving implementation demonstrates the required proof, ownership, exact value and history continuity. A new balance without that continuity does not satisfy the standard."
       ],
       [
         "What must a participant preserve?",
@@ -552,7 +552,7 @@ export const standardPages=[
       ],
       [
         "Let the payer choose the supported method.",
-        "The hosted page supports card, account balance and the current Reserve, Settlement and Settlement Reserve Note paths. Available methods and any additional card funding are shown in the actual review."
+        "The hosted page supports card, account balance and Settlement Notes with their original funding sources. Available methods and any additional card funding are shown in the actual review."
       ],
       [
         "Confirm credit before delivery.",
