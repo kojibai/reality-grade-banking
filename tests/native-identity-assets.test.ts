@@ -7,9 +7,9 @@ import type {BankOperationInput} from '../src/receiz/bank-operations';
 
 // Real asset/payment choreography; only identity admission, encrypted storage
 // and authenticated transport are isolated protocol fixtures here.
-const p=vi.hoisted(()=>({generic:null as unknown,payment:null as unknown,asset:null as unknown,wallet:null as unknown,market:null as unknown,note:null as unknown,storedHead:null as unknown,marketReads:0,request:vi.fn(),qualify:vi.fn(),locks:vi.fn()}));
+const p=vi.hoisted(()=>({generic:null as unknown,payment:null as unknown,asset:null as unknown,wallet:null as unknown,market:null as unknown,note:null as unknown,credit:null as unknown,storedHead:null as unknown,marketReads:0,request:vi.fn(),qualify:vi.fn(),locks:vi.fn()}));
 vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),
- loadOfflineNoteState:async()=>p.note,loadPreparedNoteState:async()=>null,loadConnectedNoteState:async()=>null,
+ loadOfflineNoteState:async()=>p.note,loadPreparedNoteState:async()=>null,loadConnectedNoteState:async()=>null,loadTwinCreditPurchaseState:async()=>p.credit,
  loadWalletObservation:async()=>p.storedHead,assertWalletSendCustody:async()=>{if((p.storedHead as {source?:string}|null)?.source==='local-note-head')throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},loadAccountLedgerState:async()=>null,loadReceivedNoteDepositState:async()=>null,loadBankOperation:async()=>p.generic,
  loadNativePaymentState:async()=>p.payment,loadNativeAssetState:async()=>p.asset,loadWalletSendState:async()=>p.wallet,loadMarketTradeState:async()=>{p.marketReads++;return p.market;},
  saveNativePaymentState:async(_binding:unknown,value:unknown,expected:unknown)=>{expect(p.payment).toEqual(expected);p.payment=structuredClone(value);},
@@ -38,7 +38,7 @@ function unknown(kind:'assets'|'payments'){
  return{schema:kind==='assets'?'bank.native-assets.v1':'bank.native-payments.v1',current:{prepared:value,consentProof:{schema:'receiz.identity.login_proof.v1',keyId:'a'.repeat(64),alg:'Ed25519',challengeB64Url:value.challengeB64Url,signatureB64Url:'fixture'},state:'unknown'},history:[]};
 }
 beforeEach(()=>{
- p.marketReads=0;p.generic=null;p.payment=null;p.asset=null;p.wallet=null;p.market=null;p.note=null;p.storedHead=null;p.qualify.mockReset().mockRejectedValue(Error('GENERIC_RUNTIME_MUST_NOT_BE_USED'));
+ p.marketReads=0;p.generic=null;p.payment=null;p.asset=null;p.wallet=null;p.market=null;p.note=null;p.credit=null;p.storedHead=null;p.qualify.mockReset().mockRejectedValue(Error('GENERIC_RUNTIME_MUST_NOT_BE_USED'));
  const locks=new Map<string,Promise<unknown>>();
  p.locks.mockReset().mockImplementation((name:string,_options:unknown,operation:()=>Promise<unknown>)=>{const result=(locks.get(name)??Promise.resolve()).catch(()=>{}).then(operation);locks.set(name,result);return result;});
  vi.stubGlobal('navigator',{locks:{request:p.locks}});
@@ -107,6 +107,16 @@ it('refuses a new Wallet Send while a funded Note is awaiting issuance before it
 
 it('reopens durable Note custody before Wallet review when a different tab changed the saved local head',async()=>{
  const identity=await open();try{expect(identity.knownWallet()).toBeNull();p.storedHead={source:'local-note-head'};await expect((await identity.walletSend!()).prepare({recipient:'receiver',amountUsdCents:'100'})).rejects.toThrow('BANK_WALLET_LOCAL_HEAD_REQUIRED');expect(p.request).not.toHaveBeenCalled();}finally{identity.dispose();}
+});
+
+it('retained unknown credit purchase blocks new Send, Note and asset execution after reopening',async()=>{
+ p.credit={schema:'bank.twin-credit-purchase-intent.v1',ownerUid:'fixture-user',identityDigest:'b'.repeat(64),operationId:'approved-operation',stage:'unknown',quote:{schema:'receiz.usage.reserve-purchase.quote.v1',ownerUserId:'fixture-user',clientOperationId:'approved-operation',credits:'2500',amountUsdCents:'2500',expiresAt:'2099-01-01T00:00:00Z',bankContributionUsdCents:'2500',cardShortfallUsdCents:'0',minimumCardDepositUsdCents:'50',exactCardDepositAvailable:true}};
+ const identity=await open();try{
+  await expect((await identity.walletSend!()).prepare({recipient:'receiver',amountUsdCents:'100'})).rejects.toThrow('BANK_EXECUTION_PENDING');
+  await expect((await identity.offlineNotes!()).review!('100')).rejects.toThrow('BANK_EXECUTION_PENDING');
+  await expect((await identity.operations!()).prepare(fund)).rejects.toThrow('BANK_EXECUTION_PENDING');
+  expect(p.request).not.toHaveBeenCalled();expect(p.credit).toMatchObject({stage:'unknown',operationId:'approved-operation'});
+ }finally{identity.dispose();}
 });
 
 it('blocks a new native action while a connected Market request has an unknown result',async()=>{

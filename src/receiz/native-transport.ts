@@ -1,4 +1,5 @@
 import {isPeopleSearchQuery} from './people-search.js';
+import {permittedTwinConversationRead} from './twin-conversations.js';
 import { BANK_APPLICATION_ID, isBankNativeApplicationId, bankNoteRpId } from './config.js';
 import { NATIVE_EXECUTION_POST_PATHS, permittedNativeExecutionRead } from './native-execution-paths.js';
 import { isNativeChatStreamPath, NATIVE_CHAT_STREAM_TIMEOUT_MS, permittedNativeChatPath } from './native-chat-paths.js';
@@ -29,6 +30,7 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
 export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
   if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return false;
+  if(permittedTwinConversationRead(url))return method.toUpperCase()==='GET';
   if(url.pathname==='/api/connect/payments/session'&&method.toUpperCase()==='DELETE')return [...url.searchParams.keys()].length===1&&url.searchParams.getAll('sessionId').length===1&&/^cs_[a-zA-Z0-9_]{8,200}$/.test(url.searchParams.get('sessionId')??'');
   if(url.pathname==='/api/receiz/identity/profile')return method.toUpperCase()==='PATCH'&&!url.search;
   if(/^\/api\/connect\/vault\/(?:custody|market-shares\/(?:prepare|execute|recover|portfolio|source))$/.test(url.pathname))return method.toUpperCase()==='POST'&&[...url.searchParams.keys()].length===1&&url.searchParams.getAll('applicationId').length===1&&url.searchParams.get('applicationId')===BANK_APPLICATION_ID;
@@ -50,6 +52,7 @@ export function permittedNativePath(path: string, method: string): boolean {
     return keys.length===2&&(url.searchParams.has('intent')?url.searchParams.get('intent')==='quote':url.searchParams.has('allocationId')?/^[a-f0-9]{64}$/.test(url.searchParams.get('allocationId')??''):/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(url.searchParams.get('noteId')??''));
   }
   if (permittedNativeChatPath(url, method)) return true;
+  if (/^\/api\/developers\/twin\/[a-z0-9_]{3,24}\/money$/.test(url.pathname)) {const keys=[...url.searchParams.keys()];return method.toUpperCase()==='POST'?!url.search:method.toUpperCase()==='GET'&&keys.every(k=>k==='cursor')&&url.searchParams.getAll('cursor').length<=1&&(!url.searchParams.has('cursor')||/^[A-Za-z0-9_-]{1,500}$/.test(url.searchParams.get('cursor')??''));}
   if (/^\/api\/developers\/twin\/[a-z0-9_]{3,24}\/message$/.test(url.pathname)) return method.toUpperCase()==='POST'&&!url.search;
   if (url.pathname === '/api/connect/market/shares/trade') return method.toUpperCase()==='POST'?!url.search:method.toUpperCase()==='GET'&&[...url.searchParams.keys()].length===1&&url.searchParams.getAll('clientNonce').length===1&&/^[A-Za-z0-9._:-]{8,120}$/.test(url.searchParams.get('clientNonce')??'');
   if (url.pathname === '/api/connect/market/shares/quote') {
@@ -59,6 +62,7 @@ export function permittedNativePath(path: string, method: string): boolean {
   if (url.pathname === '/api/chat/users/search') return method.toUpperCase()==='GET' && [...url.searchParams.keys()].length===1 && url.searchParams.getAll('q').length===1 && isPeopleSearchQuery(url.searchParams.get('q'));
   if (url.pathname === '/api/connect/transfers' && method.toUpperCase()==='GET') {
     const keys=[...url.searchParams.keys()];
+    if(url.searchParams.has('saleDigest'))return /^[a-f0-9]{64}$/.test(url.searchParams.get('saleDigest')??'')&&keys.every(key=>['saleDigest','cursor'].includes(key)&&url.searchParams.getAll(key).length===1)&&(!url.searchParams.has('cursor')||/^[A-Za-z0-9_-]{1,2048}$/.test(url.searchParams.get('cursor')??''));
     if(keys.length===2)return url.searchParams.getAll('clientNonce').length===1&&url.searchParams.getAll('transferId').length===1&&/^[A-Za-z0-9._:-]{8,120}$/.test(url.searchParams.get('clientNonce')??'')&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(url.searchParams.get('transferId')??'');
     return keys.length===1 && (url.searchParams.has('clientNonce') ? /^[A-Za-z0-9._:-]{8,120}$/.test(url.searchParams.get('clientNonce')??'') : /^\d{1,18}\.\d{2}$/.test(url.searchParams.get('amountUsd')??''));
   }

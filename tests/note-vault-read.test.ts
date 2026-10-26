@@ -1,5 +1,5 @@
 import {afterEach,expect,it,vi} from 'vitest';
-import {loadOfflineNoteState,loadPreparedNoteState,loadReceivedNoteDepositState,loadConnectedNoteState,loadAssetPublicationState,assertWalletSendCustody,loadWalletObservation,forgetDeviceIdentity,saveDeviceIdentity} from '../src/receiz/identity-vault';
+import {loadOfflineNoteState,loadPreparedNoteState,loadReceivedNoteDepositState,loadConnectedNoteState,loadAssetPublicationState,loadTwinCreditPurchaseState,assertWalletSendCustody,loadWalletObservation,forgetDeviceIdentity,saveDeviceIdentity} from '../src/receiz/identity-vault';
 import {atNoteStage,noteFailureStage} from '../src/receiz/note-stage';
 import {BANK_STORAGE_APPLICATION_ID} from '../src/receiz/config';
 
@@ -24,6 +24,16 @@ it.each(['offline-notes','prepared-notes','received-note-deposits'])('opens %s f
 it.each(['connected-notes','asset-publication'])('opens retained %s without writes or another identity read',async family=>{
  const f=await fixture(family),read=family==='connected-notes'?loadConnectedNoteState:loadAssetPublicationState;
  expect(await read(f.binding)).toEqual(f.state);expect(f.transactions).toEqual(['identity,operations']);expect(f.writes).not.toHaveBeenCalled();
+});
+it('opens retained credit-purchase coordination through the existing identity-bound encryption without writes',async()=>{
+ const f=await fixture('twin-credit-purchase');expect(await loadTwinCreditPurchaseState(f.binding)).toEqual(f.state);expect(f.transactions).toEqual(['identity,operations']);expect(f.writes).not.toHaveBeenCalled();
+});
+it('an unknown credit purchase prevents discarding its encrypted recovery coordinates with the identity',async()=>{
+ const f=await fixture('twin-credit-purchase',null);
+ const quote={schema:'receiz.usage.reserve-purchase.quote.v1',ownerUserId:'owner',clientOperationId:'approved-operation',credits:'2500',amountUsdCents:'2500',expiresAt:'2099-01-01T00:00:00Z',bankContributionUsdCents:'2500',cardShortfallUsdCents:'0',minimumCardDepositUsdCents:'50',exactCardDepositAvailable:true};
+ const state={schema:'bank.twin-credit-purchase-intent.v1',ownerUid:'owner',identityDigest:f.binding.artifactSha256,operationId:'approved-operation',quote,stage:'unknown'};
+ f.row.bytes=await crypto.subtle.encrypt({name:'AES-GCM',iv:f.row.iv,additionalData:new TextEncoder().encode(f.row.key)},f.saved.wrappingKey,new TextEncoder().encode(JSON.stringify(state)));
+ const original=f.row.bytes.slice(0);await expect(forgetDeviceIdentity()).rejects.toThrow('credit purchase outcome');expect(f.row.bytes).toEqual(original);expect(f.writes).not.toHaveBeenCalled();
 });
 it('distinguishes a failed saved identity decrypt from a checkpoint failure without replacing the original exception',async()=>{
  const f=await fixture();new Uint8Array(f.saved.bytes)[0]^=1;

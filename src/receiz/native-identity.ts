@@ -1,4 +1,5 @@
 import {isPeopleSearchQuery} from './people-search.js';
+import {permittedTwinConversationRead} from './twin-conversations';
 import {withDeviceIdentityEntry} from './device-identity-entry';
 import {buildCheckoutReturn} from './checkout-request';
 import {loadHostedCheckoutState,saveHostedCheckoutState,loadMerchantCounterState,saveMerchantCounterState} from './identity-vault';
@@ -10,6 +11,8 @@ import {loadReceivedProofState,saveReceivedProofState} from './identity-vault';
 import {loadMarketTradeState,saveMarketTradeState} from './identity-vault';
 import {BANK_MARKET_READ_SCOPES,BANK_MARKET_TRADE_SCOPES,BANK_MARKET_CONSENT,BANK_MARKET_READ_CONSENT} from './config';
 import {loadWalletSendState,saveWalletSendState,assertWalletSendCustody} from './identity-vault';
+import {loadTwinCreditPurchaseState,saveTwinCreditPurchaseState} from './identity-vault';
+import {createTwinCreditPurchaseCoordination,readTwinCreditPurchaseIntent,type RecoveredTwinCreditPurchase} from './twin-credit-purchase-intent';
 import {BANK_WALLET_SEND_SCOPES,BANK_WALLET_SEND_CONSENT} from './config';
 import { loadNativePaymentState, saveNativePaymentState, loadNativeAssetState, saveNativeAssetState, loadOfflineNoteState, saveOfflineNoteState, loadPreparedNoteState, savePreparedNoteState, saveOfflineNoteBlob, loadOfflineNoteBlob } from './identity-vault';
 import { createBankNoteAttestationFetch } from './note-attestation-transport';
@@ -67,6 +70,7 @@ export interface OpenIdentity {
   vaults?:()=>Promise<import('./vault/manager').VaultManager>;
   hostedCheckout?:()=>Promise<import('./hosted-checkout').HostedCheckoutController>;
   merchantCounter?:()=>Promise<import('./merchant-counter').MerchantCounterController>;
+  moneyTools?:()=>Promise<import('./money-workspace').MoneyWorkspace & import('./money-conversation-retention').MoneyConversationRetention & {downloadSource(digest:string):Promise<File>}>;
   businessSetup?:()=>Promise<import('./business-chat').BusinessChat>;
   profile?:()=>Promise<import('./profile-edit').ProfileEditor>;
   knownProfile?:()=>import('./profile-edit').OwnerProfilePresentation|null;
@@ -88,6 +92,7 @@ export interface OpenIdentity {
   knownTwinAccess?: () => boolean|null;
   retainTwinAccessQuestions?: (questions:readonly import('./messaging-retention').TwinAccessQuestion[]) => void;
   upgradeTwin?: (input:import('./twin-upgrade').TwinUpgradeInput) => Promise<import('./twin-upgrade').TwinUpgradeResult>;
+  recoverTwinCreditPurchase?:()=>Promise<RecoveredTwinCreditPurchase|null>;
   messaging?: (approved?:boolean) => Promise<import('./native-messaging').NativeMessaging>;
   offlineNotes?: () => Promise<BankOfflineNotes>;
   knownReceivedNotes?: () => readonly import('./offline-notes').BankNoteDepositResult[];
@@ -423,8 +428,10 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
         if(lifetime.signal.aborted&&verb==='DELETE'&&init?.signal===null&&callMembershipCleanup.has(path)&&Date.now()<=callCleanupUntil)return callMembershipCleanup.get(path)!();
         assertOpen();const url=new URL(path,'https://receiz.com');
         const search=url.pathname==='/api/chat/users/search'&&verb==='GET'&&[...url.searchParams.keys()].join(',')==='q'&&isPeopleSearchQuery(url.searchParams.get('q'));
+        const moneyJournal=url.pathname===`/api/developers/twin/${presentationUsername}/money`&&(['GET','POST'].includes(verb))&&(verb==='POST'?!url.search:[...url.searchParams.keys()].every(key=>key==='cursor')&&url.searchParams.getAll('cursor').length<=1&&(url.searchParams.get('cursor')===null||/^[A-Za-z0-9_-]{1,500}$/.test(url.searchParams.get('cursor')!)));
         const twin=url.pathname===`/api/developers/twin/${presentationUsername}/message`&&verb==='POST'&&!url.search;
-        if(!path.startsWith('/api/')||url.origin!=='https://receiz.com'||url.hash||!permittedNativeChatPath(url,verb)&&!search&&!twin)throw Error('MESSAGING_PATH_DENIED');
+        const twinHistory=url.pathname===`/api/developers/twin/${presentationUsername}/conversations`&&verb==='GET'&&permittedTwinConversationRead(url,uid);
+        if(!path.startsWith('/api/')||url.origin!=='https://receiz.com'||url.hash||!permittedNativeChatPath(url,verb)&&!search&&!twin&&!moneyJournal&&!twinHistory)throw Error('MESSAGING_PATH_DENIED');
         const connected=sdk.receizKaiNow().pulse<messagingExpires?messagingClient:await connectClient(BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT),owner=clientAccounts.get(connected);
         if(connected!==messagingClient){messagingClient=connected;messagingExpires=expiresAtKai;}
         assertOpen();if(owner?.accountUid!==uid||owner.applicationId!==BANK_APPLICATION_ID)throw Error('MESSAGING_IDENTITY_CHANGED');
@@ -450,19 +457,40 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     messagingPromise=attempt;
     try{return await attempt;}catch(cause){if(messagingPromise===attempt)messagingPromise=undefined;throw cause;}
   }
-  async function upgradeTwin(input:import('./twin-upgrade').TwinUpgradeInput){
-    if(lifetime.signal.aborted)throw Error('MESSAGING_IDENTITY_CLOSED');
-    await prepareTransport();
+  async function requestNativeTwinUpgrade(input:import('./twin-upgrade').TwinUpgradeInput){
+      if(lifetime.signal.aborted)throw Error('MESSAGING_IDENTITY_CLOSED');
+      await prepareTransport();
+      if(!accountUid)await connectClient(BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT);
+      const uid=accountUid;if(!uid)throw Error('MESSAGING_IDENTITY_CHANGED');
+      const creditsReserveEligible=input.action==='credits-quote'?await qualifyTwinReserveCredits():undefined;
+      const proof=await unsigned.identity.buildReceizIdContinueRequest({schema:'receiz.device.identity.v1',createdAt:keyFile.issuedAt,updatedAt:keyFile.issuedAt,localUid:keyFile.owner.uid,username:keyFile.owner.username??keyFile.keyId,displayName:keyFile.owner.displayName??keyFile.owner.username??'Receiz account',deviceName:null,keyFile:transportKeyFile},{passphrase:transportPhrase});
+      const {requestTwinUpgrade}=await import('./twin-upgrade');
+      const result=await requestTwinUpgrade(uid,proof,input);
+      if(lifetime.signal.aborted||accountUid!==uid)throw Error('MESSAGING_IDENTITY_CHANGED');
+      confirmedTwinAccess=result.twinAccess;
+      const retention=await messagingRetention,held=retention.known();
+      if(held?.accountUid===uid)retention.capture({...held,twinAccess:result.twinAccess});
+      return creditsReserveEligible===undefined?result:{...result,creditsReserveEligible};
+  }
+  async function twinCreditPurchaseCoordination(){
+    noteOpen();await prepareTransport();
     if(!accountUid)await connectClient(BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT);
     const uid=accountUid;if(!uid)throw Error('MESSAGING_IDENTITY_CHANGED');
-    const proof=await unsigned.identity.buildReceizIdContinueRequest({schema:'receiz.device.identity.v1',createdAt:keyFile.issuedAt,updatedAt:keyFile.issuedAt,localUid:keyFile.owner.uid,username:keyFile.owner.username??keyFile.keyId,displayName:keyFile.owner.displayName??keyFile.owner.username??'Receiz account',deviceName:null,keyFile:transportKeyFile},{passphrase:transportPhrase});
-    const {requestTwinUpgrade}=await import('./twin-upgrade');
-    const result=await requestTwinUpgrade(uid,proof,input);
-    if(lifetime.signal.aborted||accountUid!==uid)throw Error('MESSAGING_IDENTITY_CHANGED');
-    confirmedTwinAccess=result.twinAccess;
-    const retention=await messagingRetention,held=retention.known();
-    if(held?.accountUid===uid)retention.capture({...held,twinAccess:result.twinAccess});
-    return result;
+    return createTwinCreditPurchaseCoordination({ownerUid:uid,identityDigest:binding.artifactSha256,
+      read:()=>loadTwinCreditPurchaseState(binding),write:(next,previous)=>saveTwinCreditPurchaseState(binding,next,previous),
+      request:requestNativeTwinUpgrade,onCompleted:result=>recordTwinReserveCompletion(result,uid)});
+  }
+  async function upgradeTwin(input:import('./twin-upgrade').TwinUpgradeInput){
+    if(input.action==='credits-purchase')return withAccountExecutionLock(()=>noteLock(async()=>{await assertWalletSendReady(undefined,input.operationId);return(await twinCreditPurchaseCoordination()).execute(input.operationId);}));
+    if(input.action==='credits-purchase-status')return(await twinCreditPurchaseCoordination()).status(input.operationId);
+    if(input.action==='credits-checkout')await assertNoPendingTwinCreditPurchase();
+    return requestNativeTwinUpgrade(input);
+  }
+  async function recoverTwinCreditPurchase():Promise<RecoveredTwinCreditPurchase|null>{
+    return withAccountExecutionLock(()=>noteLock(async()=>{
+      if(!await readPendingTwinCreditPurchase())return null;
+      return(await twinCreditPurchaseCoordination()).recover();
+    }));
   }
   let businessChat:Promise<import('./business-chat').BusinessChat>|undefined;
   async function businessSetup(){
@@ -498,6 +526,31 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       }});
       return createBusinessChat({accountUid:uid,assertOpen,setup:async()=>setup,profile:async()=>profiles,dns,retainOriginal:async file=>{await holdProof(file);assertOpen();}});
     })().catch(cause=>{businessChat=undefined;throw cause;});
+  }
+  let moneyWorkspace:Promise<import('./money-workspace').MoneyWorkspace & import('./money-conversation-retention').MoneyConversationRetention & {downloadSource(digest:string):Promise<File>}>|undefined;
+  async function moneyTools(){
+    lifetime.signal.throwIfAborted();
+    return moneyWorkspace??=(async()=>{
+      const api=await messaging();noteOpen();const uid=api.accountUid;
+      const assertOpen=()=>{noteOpen();if(accountUid!==uid)throw Error('MONEY_IDENTITY_CHANGED');};
+      const [{createMoneyWorkspace},{searchMoneyHistory},{heldAccountProofBytes},vault,{createMoneyConversationRetention}]=await Promise.all([import('./money-workspace'),import('./money-history'),import('./account-proof'),import('./identity-vault'),import('./money-conversation-retention')]);assertOpen();
+      const sources=new Map<string,import('./account-proof').VerifiedAccountProof>();let heldSourceJson:string|undefined,heldProof:import('./account-proof').VerifiedAccountProof|null=null;
+      const proof=async()=>{
+        assertOpen();const state=await loadAccountLedgerState(binding) as {sourceJson?:string}|null;assertOpen();
+        if(!heldProof||state?.sourceJson!==heldSourceJson){heldProof=await localLedger.original();heldSourceJson=state?.sourceJson;}
+        heldProof??=await accountProof();assertOpen();sources.set(heldProof.sourceDigest,heldProof);return heldProof;
+      };
+      const workspace=createMoneyWorkspace({accountUid:uid,identityDigest:binding.artifactSha256,assertOpen,
+        store:{read:()=>vault.loadMoneyWorkspaceState(binding),write:(next,previous)=>vault.saveMoneyWorkspaceState(binding,next,previous)},
+        lock:async work=>{assertOpen();if(!navigator.locks)throw Error('MONEY_DEVICE_LOCK_REQUIRED');return navigator.locks.request(`receiz-bank-money-workspace:${binding.artifactSha256}`,{signal:lifetime.signal},work);},
+        journal:api.twin.moneyJournal,counter:merchantCounter,messages:async()=>api,history:async query=>{const source=await proof();assertOpen();return searchMoneyHistory(source,binding,query);},
+      });
+      const continuation=createMoneyConversationRetention({accountUid:uid,identityDigest:binding.artifactSha256,assertOpen,
+        store:{read:()=>vault.loadMoneyConversationState(binding),write:(next,previous)=>vault.saveMoneyConversationState(binding,next,previous)},
+        lock:async work=>{assertOpen();if(!navigator.locks)throw Error('MONEY_DEVICE_LOCK_REQUIRED');return navigator.locks.request(`receiz-bank-money-workspace:${binding.artifactSha256}`,{signal:lifetime.signal},work);},
+      });
+      return Object.freeze({...workspace,...continuation,async downloadSource(digest:string){assertOpen();if(!/^[a-f0-9]{64}$/.test(digest))throw Error('MONEY_SOURCE_REQUIRED');let source=sources.get(digest);if(!source){const current=await proof();if(current.sourceDigest===digest)source=current;}if(!source)throw Error('MONEY_EXACT_SOURCE_NOT_HELD');return new File([new Uint8Array(heldAccountProofBytes(source))],`account-proof-${digest.slice(0,16)}.json`,{type:'application/json'});}});
+    })().catch(cause=>{moneyWorkspace=undefined;throw cause;});
   }
   const prepareReceivingUsername=createReceivingUsernamePreparation({signal:lifetime.signal,confirmed:()=>confirmedUsername,
     connect:async()=>{const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT),bound=clientAccounts.get(current);if(!bound||bound.applicationId!==BANK_APPLICATION_ID)throw Error('RECEIVING_USERNAME_IDENTITY_CHANGED');return bound.accountUid;},
@@ -1287,8 +1340,9 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       || [...state.history, state.current].some(checkpoint => !checkpoint || !['prepared', 'unknown', 'committed', 'zero-write'].includes(String(checkpoint.state)))) throw Error('BANK_EXECUTION_CHECKPOINT_INVALID');
     return [...state.history, state.current].some(checkpoint => checkpoint.state === 'prepared' || checkpoint.state === 'unknown');
   }
-  async function assertNoOtherPending(reconcileNotes=true,continuingFundingNonce?:string,checkedMarket?:{state:import('./market-trade').MarketTradeState|null}) {
+  async function assertNoOtherPending(reconcileNotes=true,continuingFundingNonce?:string,checkedMarket?:{state:import('./market-trade').MarketTradeState|null},continuingCreditOperation?:string) {
     noteOpen();
+    await assertNoPendingTwinCreditPurchase(continuingCreditOperation);
     const legacy = await deviceBankExecutionStore(binding).load();
     if (legacy && ['prepared', 'unknown'].includes(legacy.state)) throw Error('BANK_EXECUTION_PENDING');
     const [payments, assets, sends, market] = await Promise.all([loadNativePaymentState(binding), loadNativeAssetState(binding),loadWalletSendState(binding),checkedMarket?Promise.resolve(checkedMarket.state):loadMarketTradeState(binding)]);
@@ -1311,15 +1365,65 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     if(!navigator.locks)throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');
     return navigator.locks.request(`receiz-bank-execution:${binding.artifactSha256}`,{signal:lifetime.signal},operation);
   }
+  async function assertWalletExecutionQualification(reconcileNotes:boolean,continuingFundingNonce?:string,continuingCreditOperation?:string){
+    if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');
+    if(continuingCreditOperation===undefined)await assertNoOtherPending(reconcileNotes,continuingFundingNonce);
+    else await assertNoOtherPending(reconcileNotes,continuingFundingNonce,undefined,continuingCreditOperation);
+    if(await(await offlineNotes()).pending())throw Error('BANK_NOTE_ATTEMPT_PENDING');
+    await assertWalletSendCustody(binding);
+    if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');
+  }
+  async function assertWalletSendReady(continuingFundingNonce?:string,continuingCreditOperation?:string){
+    if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');
+    await assertNoPendingTwinCreditPurchase(continuingCreditOperation);
+    await cancelUnsentNotesLocked();
+    await assertWalletExecutionQualification(true,continuingFundingNonce,continuingCreditOperation);
+  }
+  async function qualifyTwinReserveCredits(){
+    try{await assertWalletExecutionQualification(false);return true;}
+    catch{noteOpen();return false;}
+  }
+  async function recordConnectedWalletResponse(response:unknown,uid:string){
+    try{if(response&&knownWallet?.walletScope!=='native-full'&&!hasLocalWalletHead()&&(!knownWallet||!isWalletQuoteHeld(knownWallet)))await adoptConnectedWalletResponse(response,uid,walletRevision,true);}
+    finally{if(!lifetime.signal.aborted)walletRevision++;}
+  }
+  function announceConnectedWalletRecord(uid:string){
+    if(!lifetime.signal.aborted)dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:binding.artifactSha256,accountUid:uid}}));
+  }
+  async function refreshTwinReserveWallet(uid:string,earlierRead:Promise<unknown>|undefined){
+    try{
+      // A pre-debit reader must drain before reading the newly recorded source.
+      // The partial purchase response is never a complete wallet projection.
+      await earlierRead?.catch(()=>{});
+      if(lifetime.signal.aborted||accountUid!==uid||hasLocalWalletHead())return;
+      await readWallet();
+      if(!lifetime.signal.aborted&&accountUid===uid)dispatchEvent(new Event('bankeiz:account-observation'));
+    }catch{/* Retained purchase remains terminal when optional display is unavailable. */}
+  }
+  async function readPendingTwinCreditPurchase(){
+    return readTwinCreditPurchaseIntent(await loadTwinCreditPurchaseState(binding),binding.artifactSha256,accountUid??undefined);
+  }
+  async function assertNoPendingTwinCreditPurchase(continuingOperationId?:string){
+    const pending=await readPendingTwinCreditPurchase();
+    if(pending&&pending.operationId!==continuingOperationId)throw Error('BANK_EXECUTION_PENDING');
+  }
+  async function recordTwinReserveCompletion(result:import('./twin-upgrade').TwinUpgradeResult,uid:string){
+    const debitId=result.creditFunding?.purchase?.walletDebitId;
+    if(typeof debitId==='string'&&!recordedTwinReserveDebits.has(debitId)){
+      recordedTwinReserveDebits.add(debitId);
+      const earlierRead=walletReading;
+      await recordConnectedWalletResponse(undefined,uid);
+      announceConnectedWalletRecord(uid);
+      void refreshTwinReserveWallet(uid,earlierRead);
+    }
+  }
+  const recordedTwinReserveDebits=new Set<string>();
   let walletSendPromise:Promise<import('./wallet-send').WalletSend>|undefined;
   const walletSend=()=>walletSendPromise??=import('./wallet-send').then(({createWalletSend})=>createWalletSend({
     ownerReceizId:binding.artifactOwnerReceizId,assertOpen:noteOpen,
-    onRecorded:async(response,uid)=>{
-      try{if(response&&knownWallet?.walletScope!=='native-full'&&!hasLocalWalletHead()&&(!knownWallet||!isWalletQuoteHeld(knownWallet)))await adoptConnectedWalletResponse(response,uid,walletRevision,true);}
-      finally{if(!lifetime.signal.aborted)walletRevision++;}
-    },
-    afterRecorded:async(_response,uid)=>{if(!lifetime.signal.aborted)dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:binding.artifactSha256,accountUid:uid}}));},
-    assertNoOtherPending:async continuingFundingNonce=>{if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');await cancelUnsentNotesLocked();await assertNoOtherPending(true,continuingFundingNonce);if(await(await offlineNotes()).pending())throw Error('BANK_NOTE_ATTEMPT_PENDING');await assertWalletSendCustody(binding);if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},
+    onRecorded:recordConnectedWalletResponse,
+    afterRecorded:async(_response,uid)=>announceConnectedWalletRecord(uid),
+    assertNoOtherPending:assertWalletSendReady,
     store:{read:()=>loadWalletSendState(binding),write:(next,previous)=>saveWalletSendState(binding,next,previous)},
     connect:async readOnly=>{const connected=await connectClient(readOnly?BANK_READ_SCOPES:BANK_WALLET_SEND_SCOPES,readOnly?BANK_READ_CONSENT:BANK_WALLET_SEND_CONSENT);noteOpen();const account=clientAccounts.get(connected);if(!account)throw Error('BANK_WALLET_IDENTITY_CHANGED');return{client:connected,accountUid:account.accountUid};},
     lock:async operation=>withAccountExecutionLock(async()=>await navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},operation)),
@@ -1669,7 +1773,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const uid=accountUid??knownWallet?.wallet.userId;if(!uid)return;
     retainedMessaging.retainTwinAccessQuestions(uid,questions);
   };
-  return { businessSetup,vaults, hostedCheckout, merchantCounter, profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, backedAssetPublication, createComposedAsset:(definition,draft)=>createAsset(definition,undefined,false,draft), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { vaultManager?.dispose();checkoutController?.dispose();merchantController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { moneyTools,businessSetup,vaults, hostedCheckout, merchantCounter, profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, recoverTwinCreditPurchase, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, backedAssetPublication, createComposedAsset:(definition,draft)=>createAsset(definition,undefined,false,draft), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { vaultManager?.dispose();checkoutController?.dispose();merchantController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 async function createFreshNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

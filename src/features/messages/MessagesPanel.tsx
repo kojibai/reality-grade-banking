@@ -1,3 +1,7 @@
+import type {MoneyReceipt} from '../../receiz/money-workspace';
+import type {MoneyQuestion} from '../../receiz/money-conversation';
+import {isOwnerTwinThreadKey,type TwinConversation} from '../../receiz/twin-conversations';
+import {TwinConversations} from './TwinConversations';
 import {businessActivityLabel} from './business-activity';
 import {composeTwinOwnerContext} from '../../receiz/twin-owner-context';
 import {BUSINESS_OPENING_MESSAGE,BUSINESS_FIRST_TASK,type BusinessStart} from './useBusinessEntry';
@@ -19,6 +23,8 @@ import type {OpenIdentity} from '../../receiz/native-identity';
 import {MessagingError,type ChatConversation,type ChatMessage,type ChatPage,type ChatPerson,type NativeMessaging} from '../../receiz/native-messaging';
 import type {NativeTwinAsk,NativeTwinMemory,NativeTwinReply} from '../../receiz/native-twin';
 const TwinUpgradePanel=lazy(()=>import('./TwinUpgradePanel').then(module=>({default:module.TwinUpgradePanel})));
+const TwinCreditsPanel=lazy(()=>import('./TwinCreditsPanel').then(module=>({default:module.TwinCreditsPanel})));
+const MoneyReceipts=lazy(()=>import('./MoneyReceipts').then(module=>({default:module.MoneyReceipts})));
 const BusinessReceipts=lazy(()=>import('./BusinessReceipts').then(module=>({default:module.BusinessReceipts})));
 import type {BusinessChatReceipt} from '../../receiz/business-chat';
 const CallPanel=lazy(()=>import('./CallPanel').then(module=>({default:module.CallPanel})));
@@ -34,6 +40,7 @@ export interface MessagesPanelProps {
 }
 type Mode='twin'|'inbox'|'thread'|'new'|'call';
 type TwinExchange={id:string;question:string;reply:NativeTwinReply;memoryIds:string[]};
+type TwinHeldThread={title:string;draft:string;exchanges:TwinExchange[];pending:MoneyQuestion|null;moneyReceipts:Record<string,MoneyReceipt[]>;moneyQuestions:Record<string,string>;businessReceipts:Record<string,BusinessChatReceipt[]>;businessContext:BusinessChatReceipt[];history:NativeTwinMemory[];cursor:string|null;hasMore:boolean;contextIds:string[];accessQuestions:Array<{id:string;question:string}>;files:File[];start:BusinessStart|null;hydrated:boolean};
 type PendingChatMessage={id:string;body:string;createdAt:string;status:'sending'|'unknown'|'refused'};
 type ActiveCall={id:string;mode:'voice'|'video'};
 type HeldCall={conversationId:string;title:string;video:boolean;callId?:string};
@@ -57,6 +64,7 @@ function ChatProfiles({thread,owner,active}:{thread:ChatConversation;owner:strin
  return peer?<AccountProfileLink username={peer.username} className="bank-chat-profile" label={'View '+personName(peer)+' profile'}><ProfileAvatar src={peer.avatarUrl} name={personName(peer)}/><span>{personName(peer)}</span></AccountProfileLink>:<div className="bank-chat-members" ref={region}><button type="button" aria-label="View group members" aria-expanded={open} onClick={()=>setOpen(value=>!value)}><Users size={16}/><span>{people.length} people</span></button>{open&&<div className="bank-chat-member-list" role="region" aria-label="Group profiles">{people.map(person=><AccountProfileLink key={person.userId} username={person.username} className="bank-chat-member" label={'View '+personName(person)+' profile'}><ProfileAvatar src={person.avatarUrl} name={personName(person)}/><span><strong>{personName(person)}</strong>{person.username&&<small>@{person.username}</small>}</span><ArrowUpRight size={13}/></AccountProfileLink>)}</div>}</div>;
 }
 function personName(person:ChatPerson){return person.displayName||person.username||'Receiz account';}
+function exhaustedCredits(cause:unknown){return cause instanceof Error&&['usage_insufficient_credits','usage_provider_allowance_exhausted','usage_provider_budget_exhausted'].includes(cause.message);}
 function errorText(cause:unknown){const code=cause instanceof Error?cause.message:'Request failed';return code==='insufficient_scope'?'Receiz has not granted this permission. Close and reopen messages to review access.':code;}
 function timeLabel(raw:string|null){if(!raw)return '';const date=new Date(raw);return Number.isFinite(date.getTime())?new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}).format(date):'';}
 function mergedMessages(previous:ChatMessage[],incoming:ChatMessage[]){const rows=new Map(previous.map(message=>[message.id,message]));for(const message of incoming)rows.set(message.id,message);return [...rows.values()];}
@@ -78,6 +86,7 @@ export function MessagesPanel(props:MessagesPanelProps){
 }
 function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinContextRecords=[],initialRecipient,initialNotification,initialBusinessRequest,onBusinessConsumed}:MessagesPanelProps){
   const [retained]=useState(()=>identity.knownMessagingDisplay?.()??null);
+  const connectedOwner=useRef(retained?.accountUid??null);
   const [api,setApi]=useState<NativeMessaging|null>(null),[consent,setConsent]=useState<'checking'|'needed'|'ready'|'error'>('checking');
   const [twinFirst,setTwinFirst]=useState(()=>identity.knownTwinAccess?.()===true),viewChosen=useRef(!!initialBusinessRequest);
   const businessRequests=useRef(new Set<string>()),businessEntryApproval=useRef(!!initialBusinessRequest);
@@ -100,11 +109,24 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
   const chooseView=()=>{viewChosen.current=true;notificationEpoch.current++;notificationWork.current?.abort();notificationCall.current=null;freshNotificationThread.current=null;notificationAttempt.current=initialNotification??null;};
   const [contextIds,setContextIds]=useState<string[]>([]),[proposal,setProposal]=useState<string|null>(null);
   const [businessReceipts,setBusinessReceipts]=useState<Record<string,BusinessChatReceipt[]>>({}),[businessWorking,setBusinessWorking]=useState(''),[twinStream,setTwinStream]=useState(''),[selectedFileNames,setSelectedFileNames]=useState<string[]>([]);
-  const domainMonitors=useRef(new Map<string,AbortController>()),domainMonitorDone=useRef(new Set<string>());
+  const domainMonitors=useRef(new Map<string,AbortController>()),domainMonitorDone=useRef(new Set<string>()),businessThreadOwners=useRef(new Map<string,string>());
   const businessContext=useRef<BusinessChatReceipt[]>([]),connectionCleanup=useRef<(()=>void)|null>(null),providerCompletion=useRef<(()=>Promise<void>)|null>(null),providerOwner=useRef(identity);providerOwner.current=identity;
+  function publishBusinessThreadReceipts(key:string,id:string,next:BusinessChatReceipt[]){
+    if(!alive.current)return;businessThreadOwners.current.set(id,key);
+    const merged=(held:BusinessChatReceipt[])=>[...held.filter(row=>!next.some(value=>value.id===row.id)),...next].slice(-6);
+    if(key===twinThreadRef.current){businessContext.current=merged(businessContext.current);setBusinessReceipts(rows=>({...rows,[id]:next}));}
+    else{const held=heldTwinThreads.current.get(key);if(held)heldTwinThreads.current.set(key,{...held,businessContext:merged(held.businessContext),businessReceipts:{...held.businessReceipts,[id]:next}});}
+  }
   const streamTwinDelta=useCallback((text:string)=>{if(alive.current)setTwinStream(current=>current+text);},[]);
   useEffect(()=>()=>{connectionCleanup.current?.();providerCompletion.current=null;for(const monitor of domainMonitors.current.values())monitor.abort();},[identity]);
-  const [pendingTwin,setPendingTwin]=useState<Omit<NativeTwinAsk,'signal'>|null>(null);
+  const moneyCheckpoint=useRef<MoneyQuestion|null>(null),moneyRestored=useRef<OpenIdentity|null>(null),moneyRestoreSerial=useRef(0),selectedTwinFiles=useRef<File[]>([]);
+  const [pendingTwin,setPendingTwin]=useState<MoneyQuestion|null>(null);
+  const [moneyQuestions,setMoneyQuestions]=useState<Record<string,string>>({});
+  const [moneyReceipts,setMoneyReceipts]=useState<Record<string,MoneyReceipt[]>>({}),[creditsOpen,setCreditsOpen]=useState(false);
+  const [twinThreadKey,setTwinThreadKey]=useState<string|null>(null),[twinHistory,setTwinHistory]=useState<NativeTwinMemory[]>([]),[twinHistoryCursor,setTwinHistoryCursor]=useState<string|null>(null),[twinHistoryMore,setTwinHistoryMore]=useState(false);
+  const [pastOpen,setPastOpen]=useState(false),[pastBusy,setPastBusy]=useState(false),[threadSwitching,setThreadSwitching]=useState(false),[pastThreads,setPastThreads]=useState<TwinConversation[]>([]),[pastCursor,setPastCursor]=useState<string|null>(null),[pastMore,setPastMore]=useState(false);
+  const heldTwinThreads=useRef(new Map<string,TwinHeldThread>()),twinThreadEpoch=useRef(0),twinThreadRef=useRef(''),twinSwitching=useRef(false);
+  const selectedTwinKey=twinThreadKey??`api:${api?.accountUid??retained?.accountUid??''}`;twinThreadRef.current=selectedTwinKey;
   const [pageVisible,setPageVisible]=useState(()=>document.visibilityState!=='hidden');
   useEffect(()=>{if(!active&&!callLive){setHeldCall(null);setMode(current=>current==='call'?'thread':current);}},[active,callLive]);
   const openCall=(video:boolean)=>{if(!selected)return;chooseView();if(!callLive)setHeldCall({conversationId:selected.id,title:page?.conversation.title||selected.title,video,callId:activeCall?.id});setMode('call');};
@@ -118,7 +140,7 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
   useEffect(()=>{
     if(!pageVisible){for(const monitor of domainMonitors.current.values())monitor.abort();domainMonitors.current.clear();return;}
     if(!identity.businessSetup)return;
-    for(const [id,receipts] of Object.entries(businessReceipts)){if(domainMonitors.current.has(id)||domainMonitorDone.current.has(id)||!receipts.some(row=>row.status==='waiting'&&row.domain?.providerResult?.status==='applied'))continue;const abort=new AbortController();domainMonitors.current.set(id,abort);void identity.businessSetup().then(async setup=>{if(abort.signal.aborted||typeof setup.monitorDomain!=='function')return;await setup.monitorDomain(id,{signal:abort.signal,onUpdate:next=>{if(!alive.current||abort.signal.aborted)return;businessContext.current=[...businessContext.current.filter(row=>!next.some(value=>value.id===row.id)),...next].slice(-6);setBusinessReceipts(rows=>({...rows,[id]:next}));}});}).catch(()=>{}).finally(()=>{if(!abort.signal.aborted)domainMonitorDone.current.add(id);if(domainMonitors.current.get(id)===abort)domainMonitors.current.delete(id);});}
+    for(const [id,receipts] of Object.entries(businessReceipts)){if(domainMonitors.current.has(id)||domainMonitorDone.current.has(id)||!receipts.some(row=>row.status==='waiting'&&row.domain?.providerResult?.status==='applied'))continue;const abort=new AbortController(),origin=businessThreadOwners.current.get(id)??twinThreadRef.current;businessThreadOwners.current.set(id,origin);domainMonitors.current.set(id,abort);void identity.businessSetup().then(async setup=>{if(abort.signal.aborted||typeof setup.monitorDomain!=='function')return;await setup.monitorDomain(id,{signal:abort.signal,onUpdate:next=>{if(!alive.current||abort.signal.aborted)return;publishBusinessThreadReceipts(origin,id,next);}});}).catch(()=>{}).finally(()=>{if(!abort.signal.aborted)domainMonitorDone.current.add(id);if(domainMonitors.current.get(id)===abort)domainMonitors.current.delete(id);});}
   },[pageVisible,businessReceipts,identity]);
   const controller=useCallback(()=>{const value=new AbortController();controllers.current.add(value);return value;},[]);
   const stop=useCallback(()=>{for(const value of controllers.current)value.abort();controllers.current.clear();},[]);
@@ -146,7 +168,13 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
       setTwinFirst(first);
       if(first)setTwinAccessQuestions([]);
       if(!viewChosen.current)setMode(first?'twin':'inbox');
-      if(retained&&retained.accountUid!==next.accountUid){setSelected(null);setPage(null);setUpgradeOpen(false);setTwinAccessQuestions([]);setTwinDraft('');setMode(first?'twin':'inbox');}
+      if(connectedOwner.current&&connectedOwner.current!==next.accountUid){
+        twinThreadEpoch.current++;moneyRestoreSerial.current++;heldTwinThreads.current.clear();moneyCheckpoint.current=null;moneyRestored.current=null;selectedTwinFiles.current=[];businessContext.current=[];
+        setTwinThreadKey(null);setTwinHistory([]);setTwinHistoryCursor(null);setTwinHistoryMore(false);setPastThreads([]);setPastOpen(false);setPastCursor(null);setPastMore(false);setPastBusy(false);setThreadSwitching(false);twinSwitching.current=false;setPendingTwin(null);setMoneyReceipts({});setMoneyQuestions({});setExchanges([]);setBusinessReceipts({});setBusinessWorking('');setTwinStream('');setContextIds([]);setSelectedFileNames([]);
+        connectionCleanup.current?.();providerCompletion.current=null;for(const monitor of domainMonitors.current.values())monitor.abort();domainMonitors.current.clear();domainMonitorDone.current.clear();businessThreadOwners.current.clear();
+        setSelected(null);setPage(null);setUpgradeOpen(false);setTwinAccessQuestions([]);setTwinDraft('');setMode(first?'twin':'inbox');
+      }
+      connectedOwner.current=next.accountUid;
       setApi(next);setInbox(next.knownConversations());setConsent('ready');
     }catch(cause){
       if(!live()||attempt!==connection.current)return;
@@ -234,7 +262,7 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
       await read('thread:'+id,pending.signal,()=>api.messages(id,undefined,pending.signal),next=>{setSelected(next.conversation);setPage(next);setMode('thread');});
       if(held)setMode('thread');controllers.current.delete(pending);
     }catch(cause){if(live())setNotice(cause instanceof MessagingError&&cause.ambiguous?'Conversation outcome is unknown. Check Messages before trying again.':errorText(cause));}
-    finally{sending.current=false;if(alive.current)setBusy(false);}
+    finally{sending.current=false;if(alive.current){setBusy(false);setBusinessWorking('');}}
   };
   const recipientAttempt=useRef<number|null>(null);
   useEffect(()=>{
@@ -270,13 +298,14 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
     // A failed/ambiguous creation is never automatically repeated on reopen.
   },[initialRecipient?.id,api,active,pageVisible,busy]);
   const connectBusinessProvider=(requestId:string,href:string)=>{
+    const origin=twinThreadRef.current;
     if(!identity.businessSetup||!live())return;
     const url=new URL(href);if(!['https://vercel.com','https://connect.vercel.com'].includes(url.origin))return;
     connectionCleanup.current?.();providerCompletion.current=null;
     const popup=window.open(url.href,'bankeiz-provider-connect','popup,width=520,height=740');
     if(!popup){setNotice('Allow the provider connection window, then try Connect again.');return;}
     let finished=false;setBusinessWorking('Waiting for your provider approval…');
-    const continueSetup=async()=>{if(!alive.current||providerOwner.current!==identity)return;try{setBusinessWorking('Checking your connection and setting up your domain…');const setup=await identity.businessSetup!(),receipts=await setup.resume(requestId,{onProgress:tool=>{if(live())setBusinessWorking(businessActivityLabel(tool));}});if(!alive.current||providerOwner.current!==identity)return;businessContext.current=[...businessContext.current.filter(row=>!receipts.some(next=>next.id===row.id)),...receipts].slice(-6);setBusinessReceipts(rows=>({...rows,[requestId]:receipts}));}catch(cause){if(alive.current&&providerOwner.current===identity)setNotice('Provider setup needs checking. '+errorText(cause));}finally{if(alive.current&&providerOwner.current===identity)setBusinessWorking('');}};
+    const continueSetup=async()=>{if(!alive.current||providerOwner.current!==identity)return;try{if(origin===twinThreadRef.current)setBusinessWorking('Checking your connection and setting up your domain…');const setup=await identity.businessSetup!(),receipts=await setup.resume(requestId,{onProgress:tool=>{if(live()&&origin===twinThreadRef.current)setBusinessWorking(businessActivityLabel(tool));}});if(!alive.current||providerOwner.current!==identity)return;publishBusinessThreadReceipts(origin,requestId,receipts);}catch(cause){if(alive.current&&providerOwner.current===identity&&origin===twinThreadRef.current)setNotice('Provider setup needs checking. '+errorText(cause));}finally{if(alive.current&&providerOwner.current===identity&&origin===twinThreadRef.current)setBusinessWorking('');}};
     const resume=async()=>{if(finished)return;finished=true;cleanup();if(!live()){if(alive.current&&providerOwner.current===identity){providerCompletion.current=continueSetup;setBusinessWorking('');}return;}await continueSetup();};
     const receive=(event:MessageEvent)=>{if(event.origin===location.origin&&event.source===popup&&event.data?.type==='bankeiz:dns-connected')void resume();};
     const poll=setInterval(()=>{if(popup.closed)void resume();},500),timeout=setTimeout(()=>{if(!finished){finished=true;cleanup();if(live()){setBusinessWorking('');setNotice('Provider approval is still pending. You can return to Connect when ready.');}}},10*60*1000);
@@ -284,35 +313,60 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
     connectionCleanup.current=()=>{finished=true;cleanup();};window.addEventListener('message',receive);
   };
   const applyBusinessActions=async(reply:NativeTwinReply)=>{
+    const origin=twinThreadRef.current;businessThreadOwners.current.set(reply.requestId,origin);
     if(!identity.businessSetup||!reply.businessActions?.length)return;
     setBusinessWorking(businessActivityLabel(reply.businessActions[0].tool));
-    try{const setup=await identity.businessSetup();if(!live())return;const receipts=await setup.execute(reply.requestId,reply.businessActions,{onProgress:tool=>{if(live())setBusinessWorking(businessActivityLabel(tool));}});if(!live())return;businessContext.current=[...businessContext.current,...receipts].slice(-6);setBusinessReceipts(rows=>({...rows,[reply.requestId]:receipts}));}
+    try{const setup=await identity.businessSetup();if(!live())return;const receipts=await setup.execute(reply.requestId,reply.businessActions,{onProgress:tool=>{if(live()&&origin===twinThreadRef.current)setBusinessWorking(businessActivityLabel(tool));}});if(!live())return;publishBusinessThreadReceipts(origin,reply.requestId,receipts);}
     catch(cause){if(live())setNotice('Setup result needs checking. '+errorText(cause));}
     finally{if(alive.current)setBusinessWorking('');}
   };
   const acceptTwin=(question:Omit<NativeTwinAsk,'signal'>,reply:NativeTwinReply)=>{
+    if((question.threadKey??`api:${api?.accountUid}`)!==twinThreadRef.current)return false;
     const exchange: TwinExchange={id:question.requestId,question:question.message,reply,memoryIds:currentTwinMemoryIds(question.message,reply)};
     setExchanges(rows=>rows.some(row=>row.id===question.requestId)?rows.map(row=>row.id===question.requestId?exchange:row):[...rows,exchange]);
-    setTwinDraft(current=>current.trim()===question.message?'':current);setContextIds([]);setPendingTwin(null);setTwinStream('');
+    setTwinDraft(current=>current.trim()===question.message?'':current);setContextIds([]);setPendingTwin(null);setTwinStream('');return true;
+  };
+  const saveMoneyCheckpoint=async(question:MoneyQuestion|null,key=question?.threadKey??twinThreadRef.current)=>{if(key===twinThreadRef.current)moneyCheckpoint.current=question;if(identity.moneyTools){const tools=await identity.moneyTools();await tools.checkpoint?.(question,key);}};
+  const pauseMoneyTask=async()=>{const held=moneyCheckpoint.current;if(!held?.moneyTask)return false;const next:MoneyQuestion={...held,requestId:crypto.randomUUID(),quoteExpiresAt:new Date(Date.now()+5*60*1000).toISOString(),moneyPaused:'credits'};await saveMoneyCheckpoint(next);setPendingTwin(next);setTwinDraft(current=>current||held.moneyTask!.humanText);return true;};
+  useEffect(()=>{if(mode!=='twin'||!active||!api||!identity.moneyTools||moneyRestored.current===identity)return;moneyRestored.current=identity;const epoch=twinThreadEpoch.current,serial=moneyRestoreSerial.current;void identity.moneyTools().then(async tools=>{const question=await tools.recoverQuestion?.();if(!question||!live()||moneyCheckpoint.current||epoch!==twinThreadEpoch.current||serial!==moneyRestoreSerial.current)return;const key=question.threadKey??`api:${api.accountUid}`;if(!isOwnerTwinThreadKey(key,api.accountUid))return;setTwinThreadKey(key);twinThreadRef.current=key;moneyCheckpoint.current=question;setPendingTwin(question);if(question.moneyTask){const root=question.moneyTask.humanRequestId;setMoneyReceipts(rows=>({...rows,[root]:question.moneyTask!.receipts}));setMoneyQuestions(rows=>({...rows,[root]:question.moneyTask!.humanText}));}if(question.moneyPaused)setTwinDraft(current=>current||question.moneyTask?.humanText||question.message);}).catch(()=>{});},[mode,active,api,identity]);
+  const askTwin=async(question:MoneyQuestion,signal:AbortSignal)=>{
+    if(!api)throw Error('MESSAGING_UNAVAILABLE');
+    if(!identity.moneyTools||!question.moneyTools){const reply=await api.twin.ask({...question,signal,onDelta:streamTwinDelta});return{reply,question};}
+    const {runMoneyConversation}=await import('../../receiz/money-conversation');
+    const rootId=question.moneyTask?.humanRequestId??question.requestId;setMoneyQuestions(rows=>({...rows,[rootId]:question.moneyTask?.humanText??question.message}));
+    const result=await runMoneyConversation({accountUid:api.accountUid,question,signal,
+      ask:next=>{if(signal.aborted||!live())throw Error('MONEY_CHAT_INACTIVE');setBusinessWorking('');setTwinStream('');return api.twin.ask(next);},
+      execute:async(turn,action)=>{if(signal.aborted||!live())throw Error('MONEY_CHAT_INACTIVE');const workspace=await identity.moneyTools!();if(signal.aborted||!live())throw Error('MONEY_CHAT_INACTIVE');return workspace.execute(turn,action);},
+      onCheckpoint:async next=>{if(!signal.aborted&&live()){await saveMoneyCheckpoint(next);setPendingTwin(next);}},onDelta:streamTwinDelta,
+      onProgress:status=>{if(!signal.aborted&&live()){setTwinStream('');setBusinessWorking(status);}},
+      onReceipt:receipt=>{if(!signal.aborted&&live())setMoneyReceipts(rows=>({...rows,[rootId]:[...(rows[rootId]??[]).filter(row=>row.id!==receipt.id),receipt]}));},
+    });
+    return{reply:result.reply,question:{...question,requestId:result.humanRequestId,message:result.humanText}};
+  };
+  const downloadMoneySource=async(digest:string)=>{
+    if(!identity.moneyTools||!live())return;
+    try{const tools=await identity.moneyTools(),file=await tools.downloadSource(digest);if(!live())return;const url=URL.createObjectURL(file),link=document.createElement('a');link.href=url;link.download=file.name;link.click();setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(cause){if(live())setNotice('Source download needs attention. '+errorText(cause));}
   };
   const recoverTwin=async()=>{
-    if(!api||!pendingTwin||sending.current||!live())return;
-    sending.current=true;setBusy(true);setNotice('');const pending=controller();
+    if(!api||!pendingTwin||sending.current||twinSwitching.current||!live())return;
+    moneyRestoreSerial.current++;sending.current=true;setBusy(true);setNotice('');const pending=controller();
     try{
-      setTwinStream('');const reply=await api.twin.ask({...pendingTwin,signal:pending.signal,onDelta:streamTwinDelta});
-      if(!pending.signal.aborted&&live()){acceptTwin(pendingTwin,reply);await applyBusinessActions(reply);}
-    }catch(cause){if(!pending.signal.aborted&&live())setNotice('Agent response is not confirmed. '+errorText(cause));}
-    finally{controllers.current.delete(pending);sending.current=false;if(alive.current)setBusy(false);}
+      setTwinStream('');const result=await askTwin({...pendingTwin,moneyPaused:undefined,quoteExpiresAt:pendingTwin.moneyPaused?new Date(Date.now()+5*60*1000).toISOString():pendingTwin.quoteExpiresAt},pending.signal);
+      if(!pending.signal.aborted&&live()){if(acceptTwin(result.question,result.reply)){void saveMoneyCheckpoint(null,result.question.threadKey??`api:${api.accountUid}`).catch(()=>{});await applyBusinessActions(result.reply);}}
+    }catch(cause){if(!pending.signal.aborted&&live()){if(exhaustedCredits(cause)){setTwinDraft(current=>current||pendingTwin.moneyTask?.humanText||pendingTwin.message);if(!await pauseMoneyTask())setPendingTwin(null);setNotice('Add credits to keep going. Your conversation and completed work are still here.');}else setNotice('Agent response is not confirmed. '+errorText(cause));}}
+    finally{controllers.current.delete(pending);sending.current=false;if(alive.current){setBusy(false);setBusinessWorking('');}}
   };
   const send=async(text:string,isTwin:boolean,id?:string,openingId?:string)=>{
     if((!api&&!openingId)||sending.current||!live())return;
-    text=text.trim();if(!text||!isTwin&&!id)return;
+    if(isTwin&&twinSwitching.current)return;
+    text=text.trim();if(!text||!isTwin&&!id)return;if(isTwin)moneyRestoreSerial.current++;
     const twinAccess=twinFirst||identity.knownTwinAccess?.()===true;
     if(isTwin&&!twinAccess){followLatest.current=true;const questions=[...twinAccessQuestions,{id:openingId??crypto.randomUUID(),question:text}].slice(-8);setTwinAccessQuestions(questions);identity.retainTwinAccessQuestions?.(questions);if(!openingId)setTwinDraft('');setNotice('');return;}
     if(!api)return;
     if(isTwin&&!twinFirst){setTwinFirst(true);setTwinAccessQuestions([]);identity.retainTwinAccessQuestions?.([]);}
     if(isTwin&&readiness?.status==='profile-required')return;
-    if(isTwin&&pendingTwin){setNotice('Agent response is not confirmed. Check the previous request before asking again.');return;}
+    if(isTwin&&pendingTwin?.moneyPaused&&text===(pendingTwin.moneyTask?.humanText??pendingTwin.message)){void recoverTwin();return;}
+    if(isTwin&&pendingTwin&&!pendingTwin.moneyPaused){setNotice('Agent response is not confirmed. Check the previous request before asking again.');return;}
     if(!isTwin)peerTyping.current?.update(false);
     sending.current=true;followLatest.current=true;setBusy(true);setNotice('');setDeltas({});setTypingNames({});const pending=controller();
     let acknowledged=false;
@@ -322,11 +376,11 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
     try{
       if(isTwin){
         const requestId=crypto.randomUUID(),selectedRecords=openingId?[]:twinContextRecords.slice(0,12).filter(record=>contextIds.includes(record.id)),receipts=businessContext.current.map(receipt=>({id:'setup:'+receipt.id,title:receipt.title,text:JSON.stringify({status:receipt.status,summary:receipt.summary,...(receipt.domain?{hostname:receipt.domain.hostname,warning:receipt.domain.warning}:{}),...(receipt.details?{nativeResultExcerpt:receipt.details.slice(0,1200)}:{})})})),records=composeTwinOwnerContext(selectedRecords,receipts);
-        const question:Omit<NativeTwinAsk,'signal'>={message:text,requestId,quoteExpiresAt:new Date(Date.now()+5*60*1000).toISOString(),...(identity.businessSetup?{businessSetup:true}:{}),...(records.length?{context:{schema:'receiz.owner-twin.context.v1' as const,ownerUid:api.accountUid,disclosure:'owner-approved-for-this-request' as const,records:records.map(({id,title,text})=>({id,title,text}))}}:{})};
+        const question:Omit<NativeTwinAsk,'signal'>={message:text,requestId,threadKey:selectedTwinKey,quoteExpiresAt:new Date(Date.now()+5*60*1000).toISOString(),...(identity.businessSetup?{businessSetup:true}:{}),...(identity.moneyTools?{moneyTools:true}:{}),...(records.length?{context:{schema:'receiz.owner-twin.context.v1' as const,ownerUid:api.accountUid,disclosure:'owner-approved-for-this-request' as const,records:records.map(({id,title,text})=>({id,title,text}))}}:{})};
         setTwinStream('');setPendingTwin(question);if(!openingId)setTwinDraft('');
-        const reply=await api.twin.ask({...question,signal:pending.signal,onDelta:streamTwinDelta});
+        const result=await askTwin(question,pending.signal);
         if(pending.signal.aborted||!live())return;
-        acceptTwin(question,reply);await applyBusinessActions(reply);
+        if(acceptTwin(result.question,result.reply)){void saveMoneyCheckpoint(null,result.question.threadKey??`api:${api.accountUid}`).catch(()=>{});await applyBusinessActions(result.reply);}
       }else if(id){
         const accept=(message:ChatMessage)=>{
           if(message.senderKind==='user'&&message.senderUserId===api.accountUid)acknowledged=true;
@@ -353,9 +407,9 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
           if(cause.acknowledgedMessageId){acknowledged=true;clearOutgoing();}
           setNotice(cause.acknowledgedMessageId?'Your message was received. The AI reply is incomplete; refresh to inspect it.':'Delivery is not confirmed. Check the conversation before sending again.');
           await Promise.all([refreshThread(id,pending.signal),refreshInbox(pending.signal)]);
-        }else setNotice(isTwin?'Agent response is not confirmed. Check the previous request before asking again. '+errorText(cause):errorText(cause));
+        }else if(isTwin&&exhaustedCredits(cause)){if(!await pauseMoneyTask())setPendingTwin(null);setTwinDraft(current=>current||text);setNotice('Add credits to keep going. Your conversation and completed work are still here.');}else setNotice(isTwin?'Agent response is not confirmed. Check the previous request before asking again. '+errorText(cause):errorText(cause));
       }
-    }finally{controllers.current.delete(pending);sending.current=false;if(alive.current){if(outgoing&&id&&!acknowledged){setDrafts(rows=>rows[id]?rows:{...rows,[id]:text});setPendingMessages(rows=>rows[id]?.id===outgoing.id&&rows[id].status==='sending'?{...rows,[id]:{...rows[id],status:'unknown'}}:rows);}setBusy(false);setDeltas({});setTypingNames({});}}
+    }finally{controllers.current.delete(pending);sending.current=false;if(alive.current){if(outgoing&&id&&!acknowledged){setDrafts(rows=>rows[id]?rows:{...rows,[id]:text});setPendingMessages(rows=>rows[id]?.id===outgoing.id&&rows[id].status==='sending'?{...rows,[id]:{...rows[id],status:'unknown'}}:rows);}setBusy(false);setBusinessWorking('');setDeltas({});setTypingNames({});}}
   };
 
 
@@ -378,6 +432,52 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
     onBusinessConsumed?.(initialBusinessRequest.id);
   },[initialBusinessRequest,active,pageVisible,api,pendingTwin,twinFirst,busy,onBusinessConsumed]);
 
+  const twinTitle=exchanges[0]?.question??pendingTwin?.moneyTask?.humanText??pendingTwin?.message??heldTwinThreads.current.get(selectedTwinKey)?.title??(selectedTwinKey===`api:${api?.accountUid}`?'Current conversation':'New conversation');
+  const captureTwin=():TwinHeldThread=>({title:twinTitle.slice(0,100),draft:twinDraft,exchanges,pending:pendingTwin,moneyReceipts,moneyQuestions,businessReceipts,businessContext:businessContext.current,history:twinHistory,cursor:twinHistoryCursor,hasMore:twinHistoryMore,contextIds,accessQuestions:twinAccessQuestions,files:selectedTwinFiles.current,start:businessStart,hydrated:!!(exchanges.length||pendingTwin||twinHistory.length||heldTwinThreads.current.get(selectedTwinKey)?.hydrated)});
+  const localTwinThreads=()=>{
+    heldTwinThreads.current.set(selectedTwinKey,captureTwin());
+    return [...heldTwinThreads.current].filter(([key,value])=>api&&isOwnerTwinThreadKey(key,api.accountUid)&&(value.hydrated||!!value.draft.trim()||key!==`api:${api.accountUid}`)).map(([threadKey,value])=>({threadKey,title:value.title,preview:value.exchanges.at(-1)?.reply.message.slice(0,180)??value.pending?.message.slice(0,180)??'',updatedAt:value.exchanges.at(-1)?.reply.memory.at(-1)?.createdAt??new Date().toISOString()}));
+  };
+  const listTwinThreads=async(cursor?:string)=>{
+    if(!api||!live())return;const epoch=twinThreadEpoch.current,local=localTwinThreads();setPastThreads(rows=>[...new Map([...rows,...local].map(row=>[row.threadKey,row])).values()]);
+    let held:TwinConversation[]=[];const serial=moneyRestoreSerial.current;
+    void (async()=>{const tools=await identity.moneyTools?.(),retained=await tools?.retainedThreads?.()??[];if(!live()||epoch!==twinThreadEpoch.current||serial!==moneyRestoreSerial.current)return;held=retained.map(row=>({...row,updatedAt:new Date().toISOString()}));setPastThreads(rows=>[...new Map([...rows,...held,...local].map(row=>[row.threadKey,row])).values()]);})().catch(cause=>{if(live()&&epoch===twinThreadEpoch.current)setNotice('Some saved money tasks could not be read. Your held chat is preserved. '+errorText(cause));});
+    if(!api.twin.conversations?.list)return;setPastBusy(true);
+    try{const page=await api.twin.conversations.list(cursor);if(!live()||epoch!==twinThreadEpoch.current)return;setPastThreads(rows=>[...new Map([...rows,...page.threads,...held,...local].map(row=>[row.threadKey,row])).values()]);setPastCursor(page.nextCursor);setPastMore(page.hasMore);}
+    catch(cause){if(live()&&epoch===twinThreadEpoch.current)setNotice('Past conversations are unavailable. Your current chat is preserved. '+errorText(cause));}
+    finally{if(alive.current&&epoch===twinThreadEpoch.current)setPastBusy(false);}
+  };
+  const switchTwinThread=async(key:string)=>{
+    if(!api||busy||sending.current||businessWorking||!isOwnerTwinThreadKey(key,api.accountUid))return;
+    if(key===selectedTwinKey&&captureTwin().hydrated){setPastOpen(false);return;}
+    const epoch=++twinThreadEpoch.current;heldTwinThreads.current.set(selectedTwinKey,captureTwin());twinSwitching.current=true;setThreadSwitching(true);setPastBusy(true);
+    try{
+      const tools=await identity.moneyTools?.();tools?.clearReviewDisplay?.();
+      let held=heldTwinThreads.current.get(key);
+      if(!held?.hydrated){
+        const pending=held?.pending??await tools?.recoverQuestion?.(key)??null;
+        const page=pending?{entries:[],nextCursor:null,hasMore:false}:await api.twin.conversations?.read(key);if(!page)throw Error('TWIN_CONVERSATION_UNAVAILABLE');
+        held={title:pastThreads.find(row=>row.threadKey===key)?.title??held?.title??'Conversation',draft:held?.draft??'',exchanges:held?.exchanges??[],pending,moneyReceipts:{},moneyQuestions:{},businessReceipts:{},businessContext:[],history:page.entries,cursor:page.nextCursor,hasMore:page.hasMore,contextIds:held?.contextIds??[],accessQuestions:held?.accessQuestions??[],files:held?.files??[],start:held?.start??null,hydrated:true};
+      }
+      if((selectedTwinFiles.current.length||held.files.length)&&identity.businessSetup){const setup=await identity.businessSetup();if(!live()||epoch!==twinThreadEpoch.current)return;setup.selectFiles(held.files);}
+      if(!live()||epoch!==twinThreadEpoch.current)return;
+      if(held.pending?.moneyTask){const task=held.pending.moneyTask;held={...held,moneyReceipts:{...held.moneyReceipts,[task.humanRequestId]:task.receipts},moneyQuestions:{...held.moneyQuestions,[task.humanRequestId]:task.humanText}};}
+      heldTwinThreads.current.set(key,held);setTwinThreadKey(key);twinThreadRef.current=key;setTwinDraft(held.draft);setExchanges(held.exchanges);setPendingTwin(held.pending);moneyCheckpoint.current=held.pending;setMoneyReceipts(held.moneyReceipts);setMoneyQuestions(held.moneyQuestions);setBusinessReceipts(held.businessReceipts);businessContext.current=held.businessContext;setTwinHistory(held.history);setTwinHistoryCursor(held.cursor);setTwinHistoryMore(held.hasMore);setContextIds(held.contextIds);setTwinStream('');selectedTwinFiles.current=held.files;setSelectedFileNames(held.files.map(file=>file.name));setTwinAccessQuestions(held.accessQuestions);setBusinessStart(held.start);setPastOpen(false);setNotice('');setBusinessWorking('');followLatest.current=true;
+    }catch(cause){if(live()&&epoch===twinThreadEpoch.current)setNotice('This conversation could not be opened. Your current chat is preserved. '+errorText(cause));}
+    finally{if(alive.current&&epoch===twinThreadEpoch.current){twinSwitching.current=false;setThreadSwitching(false);setPastBusy(false);}}
+  };
+  const newTwinThread=()=>{
+    if(!api||busy||sending.current||businessWorking)return;
+    const key=`api:${api.accountUid}:${crypto.randomUUID()}`;
+    heldTwinThreads.current.set(key,{title:'New conversation',draft:'',exchanges:[],pending:null,moneyReceipts:{},moneyQuestions:{},businessReceipts:{},businessContext:[],history:[],cursor:null,hasMore:false,contextIds:[],accessQuestions:[],files:[],start:null,hydrated:true});
+    void switchTwinThread(key);
+  };
+  const earlierTwinMessages=async()=>{
+    if(!api?.twin.conversations||pastBusy||!live())return;const key=selectedTwinKey,epoch=twinThreadEpoch.current;setPastBusy(true);
+    try{const page=await api.twin.conversations.read(key,twinHistoryCursor??undefined);if(!live()||key!==twinThreadRef.current||epoch!==twinThreadEpoch.current)return;setTwinHistory(rows=>[...new Map([...page.entries,...rows].map(row=>[row.id,row])).values()]);setTwinHistoryCursor(page.nextCursor);setTwinHistoryMore(page.hasMore);}
+    catch(cause){if(live()&&key===twinThreadRef.current)setNotice('Earlier messages are unavailable. Your held conversation is preserved. '+errorText(cause));}
+    finally{if(alive.current&&key===twinThreadRef.current)setPastBusy(false);}
+  };
   const availableContext=twinContextRecords.slice(0,12),contextSize=availableContext.filter(record=>contextIds.includes(record.id)).reduce((size,record)=>size+record.id.length+record.title.length+record.text.length,0);
   const accountUid=api?.accountUid??retained?.accountUid??'';
   const thread=page?.conversation??selected,title=mode==='twin'?'Your agent':mode==='new'?'New conversation':mode==='inbox'?'Messages':thread?.title||'Conversation';
@@ -385,7 +485,7 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
   const ownAvatar=memberById.get(accountUid)?.avatarUrl??identityProfileAvatar(identity);
   const draft=mode==='twin'?twinDraft:selected?drafts[selected.id]??'':'',readiness=api?.twin.readiness();
   const representedMemoryIds=new Set(exchanges.flatMap(exchange=>exchange.memoryIds));
-  const twinMemory=(exchanges.at(-1)?.reply.memory??[]).filter(row=>!memoryIdentity(row).some(id=>representedMemoryIds.has(id)));
+  const twinMemory=[...new Map([...twinHistory,...(exchanges.at(-1)?.reply.memory??[])].map(row=>[row.persistedId??row.id,row])).values()].filter(row=>!memoryIdentity(row).some(id=>representedMemoryIds.has(id)));
   const setDraft=(value:string)=>{if(mode==='twin')setTwinDraft(value);else if(selected){setDrafts(rows=>({...rows,[selected.id]:value}));peerTyping.current?.update(!!value.trim());}};
   const peerNames=thread?.members.filter(person=>person.kind==='user'&&typingPeers.includes(person.userId)).map(personName)??[];
   const peerLabel=peerNames.slice(0,2).join(', ')+(peerNames.length>2?' and '+(peerNames.length-2)+' others':'');
@@ -393,12 +493,13 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,twinCo
   return <div className="bank-messages-host"><Sheet title={title} active={active} onClose={onClose}><section className="bank-messaging" aria-label="Your agent and messages">
     {consent==='needed'?<div className="bank-messaging-consent"><BankMark/><h3>Your conversations,<br/>through your ID.</h3><p>Use your existing Receiz messages, groups, calls and agent through this ID. Nothing sent until you send.</p><button className="primary-button" type="button" onClick={()=>void connect(true)}>Enable messages<ArrowUpRight size={17}/></button></div>:<>
       {(mode==='twin'||mode==='inbox')&&<nav className="bank-messaging-nav" aria-label="Conversation views">{(twinFirst?['twin','inbox'] as const:['inbox','twin'] as const).map(view=><button key={view} className={mode===view?'active':''} type="button" onClick={()=>{chooseView();setUpgradeOpen(false);setMode(view);setNotice('');}}>{view==='twin'?'Your agent':'Messages'}</button>)}<NotificationsControl api={api}/>{mode==='inbox'&&<button className="bank-compose-new" aria-label="New conversation" type="button" onClick={()=>{chooseView();setMode('new');setNotice('');}}><SquarePen size={19}/></button>}</nav>}
-      {mode==='twin'&&(!upgradeOpen||twinFirst?<><div className="bank-conversation-scroll" ref={scrollArea} onScroll={trackScroll}>{!exchanges.length&&!pendingTwin&&!twinAccessQuestions.length?<div className="bank-twin-welcome"><div className="bank-twin-mark"><BankMark/></div>{businessStart?<><h3>{businessStart.title}</h3><p>{businessStart.hint} Keep the background together and work toward a result you can review and use.</p></>:<><h3>Your money.<br/>Your history.<br/>Help with what’s next.</h3><p>Understand a payment, bring a memory into context, or prepare your next move. Continue the conversation with the history you choose to share.</p></>}<div className="bank-twin-suggestions">{['Explain my last payment','Find a memory','Prepare a payment'].map(text=><button key={text} type="button" onClick={()=>setTwinDraft(text)}>{text}<ArrowUpRight size={16}/></button>)}</div></div>:<div className="bank-thread-messages">{!!twinMemory.length&&<section className="bank-twin-memory" aria-label="Earlier conversation"><p className="bank-message-date">Earlier conversation</p>{twinMemory.map(row=><div key={row.persistedId||row.transportId||row.id} className={row.role==='user'?'bank-message-own':'bank-message-other'}><span className="bank-message-sender">{row.role==='user'?'You':'Your agent'} · {row.scope} memory</span><p>{row.body}</p></div>)}</section>}{twinAccessQuestions.map(row=><div className="bank-twin-exchange" key={row.id}><div className="bank-message-own">{row.question}</div><TwinAccessReply business={row.question===BUSINESS_OPENING_MESSAGE} onUpgrade={()=>{setUpgradeQuestion(row.question);setUpgradeOpen(true);}}/></div>)}{exchanges.map(exchange=><div className="bank-twin-exchange" key={exchange.id}><div className="bank-message-own">{exchange.question}</div><div className="bank-twin-reply"><span className="bank-twin-reply-identity">{ownAvatar&&<ProfileAvatar src={ownAvatar} name="Your agent" eager/>}Your agent · Generated interpretation{exchange.reply.source!=='upstream'?' · '+exchange.reply.source:''}</span><p>{exchange.reply.message}</p>{businessReceipts[exchange.id]?.length?<Suspense fallback={null}><BusinessReceipts receipts={businessReceipts[exchange.id]} onConnect={href=>connectBusinessProvider(exchange.id,href)}/></Suspense>:null}{!!exchange.reply.sharedContext.length&&<p className="bank-twin-context-used">Shared for this request: {exchange.reply.sharedContext.map(record=>record.title).join(', ')}</p>}{exchange.reply.actionHandoffs.map((action,index)=><div className="bank-twin-proposal" key={index}><small>Proposal · review before acting</small><button type="button" onClick={()=>setProposal(proposal===action.href?null:action.href)}>{action.label}<ArrowUpRight size={15}/></button>{proposal===action.href&&<div><p>This suggestion has not been executed.</p><a href={action.href} target="_blank" rel="noopener noreferrer">Review in Receiz</a>{onPreparePayment&&['pay','deposit'].includes(action.kind)&&<button type="button" onClick={()=>onPreparePayment?.()}>Prepare a payment in Bank</button>}</div>}</div>)}</div></div>)}</div>}{pendingTwin&&!exchanges.some(row=>row.id===pendingTwin.requestId)&&<div className="bank-thread-messages bank-twin-pending"><div className="bank-message-own"><p>{pendingTwin.message}</p><small className="bank-delivery-status">{busy?'Sending':'Awaiting confirmation'}</small></div>{busy&&<TypingBubble name="Your agent" text={twinStream} avatarUrl={ownAvatar}/>}</div>}{businessWorking&&<div className="bank-agent-working"><TypingBubble name="Your agent" text="" activity="working" status={businessWorking} avatarUrl={ownAvatar}/></div>}</div>
+      {mode==='twin'&&(creditsOpen?<Suspense fallback={null}><TwinCreditsPanel identity={identity} onBack={()=>setCreditsOpen(false)}/></Suspense>:!upgradeOpen||twinFirst?<><TwinConversations title={twinTitle} open={pastOpen} busy={pastBusy} disabled={busy||!!businessWorking||!api} threads={pastThreads} selected={selectedTwinKey} hasMore={pastMore} onNew={newTwinThread} onToggle={()=>{setPastOpen(value=>!value);if(!pastOpen)void listTwinThreads();}} onSelect={key=>void switchTwinThread(key)} onMore={()=>void listTwinThreads(pastCursor??undefined)}/><div className="bank-conversation-scroll" ref={scrollArea} onScroll={trackScroll}>{!exchanges.length&&!pendingTwin&&!twinAccessQuestions.length&&!twinHistory.length?<div className="bank-twin-welcome"><div className="bank-twin-mark"><BankMark/></div>{businessStart?<><h3>{businessStart.title}</h3><p>{businessStart.hint} Keep the background together and work toward a result you can review and use.</p></>:<><h3>Your money.<br/>Your history.<br/>Help with what’s next.</h3><p>Understand a payment, bring a memory into context, or prepare your next move. Continue the conversation with the history you choose to share.</p></>}<div className="bank-twin-suggestions">{['Explain my last payment','What’s owed and due?','Prepare a payment'].map(text=><button key={text} type="button" onClick={()=>setTwinDraft(text)}>{text}<ArrowUpRight size={16}/></button>)}</div></div>:<div className="bank-thread-messages">{(!!twinMemory.length||twinHistoryMore||!!pendingTwin&&!!api?.twin.conversations)&&<section className="bank-twin-memory" aria-label="Earlier conversation"><p className="bank-message-date">Earlier conversation</p>{(twinHistoryMore||!twinHistory.length)&&api?.twin.conversations&&<button type="button" className="bank-twin-history-more" disabled={pastBusy} onClick={()=>void earlierTwinMessages()}>Earlier messages</button>}{twinMemory.map(row=><div key={row.persistedId||row.transportId||row.id} className={row.role==='user'?'bank-message-own':'bank-message-other'}><span className="bank-message-sender">{row.role==='user'?'You':'Your agent'} · {row.scope} memory</span><p>{row.body}</p></div>)}</section>}{twinAccessQuestions.map(row=><div className="bank-twin-exchange" key={row.id}><div className="bank-message-own">{row.question}</div><TwinAccessReply business={row.question===BUSINESS_OPENING_MESSAGE} onUpgrade={()=>{setUpgradeQuestion(row.question);setUpgradeOpen(true);}}/></div>)}{exchanges.map(exchange=><div className="bank-twin-exchange" key={exchange.id}><div className="bank-message-own">{exchange.question}</div><div className="bank-twin-reply"><span className="bank-twin-reply-identity">{ownAvatar&&<ProfileAvatar src={ownAvatar} name="Your agent" eager/>}Your agent · Generated interpretation{exchange.reply.source!=='upstream'?' · '+exchange.reply.source:''}</span><p>{exchange.reply.message}</p>{moneyReceipts[exchange.id]?.length?<Suspense fallback={null}><MoneyReceipts receipts={moneyReceipts[exchange.id]} onDownload={digest=>void downloadMoneySource(digest)} onReviewShown={reviewId=>{if(live())void identity.moneyTools?.().then(tools=>tools.markReviewDisplayed(reviewId,exchange.id));}}/></Suspense>:null}{businessReceipts[exchange.id]?.length?<Suspense fallback={null}><BusinessReceipts receipts={businessReceipts[exchange.id]} onConnect={href=>connectBusinessProvider(exchange.id,href)}/></Suspense>:null}{!!exchange.reply.sharedContext.length&&<p className="bank-twin-context-used">Shared for this request: {exchange.reply.sharedContext.map(record=>record.title).join(', ')}</p>}{exchange.reply.actionHandoffs.map((action,index)=><div className="bank-twin-proposal" key={index}><small>Proposal · review before acting</small><button type="button" onClick={()=>setProposal(proposal===action.href?null:action.href)}>{action.label}<ArrowUpRight size={15}/></button>{proposal===action.href&&<div><p>This suggestion has not been executed.</p><a href={action.href} target="_blank" rel="noopener noreferrer">Review in Receiz</a>{onPreparePayment&&['pay','deposit'].includes(action.kind)&&<button type="button" onClick={()=>onPreparePayment?.()}>Prepare a payment in Bank</button>}</div>}</div>)}</div></div>)}</div>}{Object.entries(moneyReceipts).filter(([rootId])=>!exchanges.some(row=>row.id===rootId)).map(([rootId,receipts])=><div className="bank-twin-exchange" key={rootId}><div className="bank-message-own">{moneyQuestions[rootId]}</div><Suspense fallback={null}><MoneyReceipts receipts={receipts} onDownload={digest=>void downloadMoneySource(digest)} onReviewShown={reviewId=>{if(live())void identity.moneyTools?.().then(tools=>tools.markReviewDisplayed(reviewId,rootId));}}/></Suspense></div>)}{pendingTwin&&!moneyReceipts[pendingTwin.moneyTask?.humanRequestId??pendingTwin.requestId]?.length&&!exchanges.some(row=>row.id===pendingTwin.requestId)&&<div className="bank-thread-messages bank-twin-pending"><div className="bank-message-own"><p>{pendingTwin.message}</p><small className="bank-delivery-status">{busy?'Sending':'Awaiting confirmation'}</small></div>{busy&&!businessWorking&&<TypingBubble name="Your agent" text={twinStream} avatarUrl={ownAvatar}/>}</div>}{businessWorking&&<div className="bank-agent-working"><TypingBubble name="Your agent" text="" activity="working" status={businessWorking} avatarUrl={ownAvatar}/></div>}</div>
         {!!availableContext.length&&<details className="bank-twin-context"><summary><Paperclip size={13} aria-hidden="true"/>Add context{contextIds.length?' · '+contextIds.length+' selected':''}</summary><p>Only chosen excerpts are shared for this request. The generated reply may remain in your existing conversation memory.</p>{availableContext.map(record=><label key={record.id}><input type="checkbox" checked={contextIds.includes(record.id)} disabled={!contextIds.includes(record.id)&&contextSize+record.id.length+record.title.length+record.text.length>16000} onChange={event=>setContextIds(ids=>event.target.checked?[...ids,record.id]:ids.filter(id=>id!==record.id))}/><span>{record.title}</span></label>)}</details>}
         {twinFirst&&readiness?.status==='profile-required'&&<p className="bank-messaging-notice" role="status">Your agent needs a public username before you can ask it.</p>}
-        {identity.businessSetup&&twinFirst&&<label className="bank-business-attach"><Paperclip size={14}/><span>{selectedFileNames.length?selectedFileNames.join(', '):'Attach work or an image'}</span><input type="file" multiple disabled={busy} onChange={event=>{const files=Array.from(event.currentTarget.files??[]);void identity.businessSetup!().then(setup=>{if(live()){setup.selectFiles(files);setSelectedFileNames(files.map(file=>file.name));}}).catch(cause=>{if(live())setNotice(errorText(cause));});}}/></label>}
-        <MessageComposer draft={draft} setDraft={setDraft} submit={submit} placeholder="Ask your agent…" onSendMoney={onPreparePayment?preparePayment:undefined} busy={busy} connected={!!api} disabled={twinFirst&&readiness?.status==='profile-required'||!!pendingTwin} maxLength={1200}/>
-        {pendingTwin&&!busy&&<div className="bank-twin-recovery"><p role="status">The previous agent response is not confirmed.</p><button type="button" onClick={()=>void recoverTwin()}>Check previous agent request</button><button type="button" onClick={()=>{setPendingTwin(null);setNotice('The previous question may have been received. A new question is a separate request.');}}>Write a new question</button></div>}<p className="bank-messaging-caption">Business plan and usage credits required. Questions and replies may remain in your existing conversation memory.</p>
+        {identity.businessSetup&&twinFirst&&<label className="bank-business-attach"><Paperclip size={14}/><span>{selectedFileNames.length?selectedFileNames.join(', '):'Attach work or an image'}</span><input type="file" multiple disabled={busy} onChange={event=>{const files=Array.from(event.currentTarget.files??[]);selectedTwinFiles.current=files;void identity.businessSetup!().then(setup=>{if(live()){setup.selectFiles(files);setSelectedFileNames(files.map(file=>file.name));}}).catch(cause=>{if(live())setNotice(errorText(cause));});}}/></label>}
+        <MessageComposer draft={draft} setDraft={setDraft} submit={submit} placeholder="Ask your agent…" onSendMoney={onPreparePayment?preparePayment:undefined} busy={busy} connected={!!api} disabled={threadSwitching||twinFirst&&readiness?.status==='profile-required'||!!pendingTwin&&!pendingTwin.moneyPaused} maxLength={1200}/>
+        {identity.upgradeTwin&&(twinFirst||identity.knownTwinAccess?.()===true)&&<div className="bank-chat-credits"><button type="button" onClick={()=>setCreditsOpen(true)}>Add credits<ArrowUpRight size={12}/></button></div>}
+        {pendingTwin&&!busy&&<div className="bank-twin-recovery"><p role="status">{pendingTwin.moneyPaused?'Your money task is saved. Add credits, then continue.':'The previous agent response is not confirmed.'}</p><button type="button" disabled={threadSwitching} onClick={()=>void recoverTwin()}>{pendingTwin.moneyPaused?'Resume money task':'Check previous agent request'}</button><button type="button" disabled={threadSwitching} onClick={()=>{setPendingTwin(null);void saveMoneyCheckpoint(null).catch(()=>{});setNotice('The previous question may have been received. A new question is a separate request.');}}>Write a new question</button></div>}<p className="bank-messaging-caption">Business plan and usage credits required. Questions and replies may remain in your existing conversation memory.</p>
       </>:<Suspense fallback={null}><TwinUpgradePanel identity={identity} initialReview firstTask={upgradeQuestion===BUSINESS_OPENING_MESSAGE?businessStart??undefined:undefined} paymentLandingId={businessReviewLanding} onBack={()=>{setBusinessReviewLanding(undefined);setUpgradeOpen(false);setTwinDraft(current=>current||(upgradeQuestion===BUSINESS_OPENING_MESSAGE?businessStart?.question??BUSINESS_FIRST_TASK.question:upgradeQuestion)||twinAccessQuestions.at(-1)?.question||'');}} onUpgraded={()=>{setTwinFirst(true);setUpgradeOpen(false);setTwinDraft(current=>current||(upgradeQuestion===BUSINESS_OPENING_MESSAGE?businessStart?.question??BUSINESS_FIRST_TASK.question:upgradeQuestion)||twinAccessQuestions.at(-1)?.question||'');setTwinAccessQuestions([]);identity.retainTwinAccessQuestions?.([]);setNotice('Business is active. Add the background you want to use, then send when you are ready.');}}/></Suspense>)}
       {mode==='inbox'&&<div className="bank-inbox"><label className="bank-message-search"><Search size={17}/><input aria-label="Search messages" placeholder="Search messages" value={inboxQuery} onChange={event=>setInboxQuery(event.target.value)}/></label>{inbox.filter(row=>(row.title+' '+row.members.map(personName).join(' ')).toLowerCase().includes(inboxQuery.toLowerCase())).map(row=><button type="button" key={row.id} className="bank-thread-row" aria-label={'Open conversation '+row.title} onClick={()=>pick(row)}><ConversationAvatar row={row} owner={accountUid}/><span className="bank-thread-summary"><strong>{row.title}</strong><span>{row.previewMessage?.body||'No messages yet'}</span></span><span className="bank-thread-time">{timeLabel(row.lastMessageAt)}{row.unreadCount>0&&<i aria-label={row.unreadCount+' unread messages'}/>}</span></button>)}{!inbox.length&&<p className="bank-empty-message">Your existing conversations appear here. Start one with a Receiz username.</p>}</div>}
       {mode==='new'&&<div className="bank-new-thread"><button type="button" className="bank-messaging-back" onClick={()=>{chooseView();setMode('inbox');}}><ChevronLeft size={17}/>Messages</button><p>Who would you like to talk to?</p><label className="bank-message-search"><Search size={17}/><input aria-label="Find a person by name or username" placeholder="Name or username" value={query} onChange={event=>setQuery(event.target.value)} autoComplete="off" maxLength={40}/></label>{!!picked.length&&<div className="bank-picked-people">{picked.map(person=><button key={person.userId} type="button" onClick={()=>setPicked(rows=>rows.filter(row=>row.userId!==person.userId))}>Remove {personName(person)} ×</button>)}</div>}{picked.length>1&&<input className="bank-group-name" aria-label="Group name" placeholder="Group name (optional)" value={groupName} maxLength={120} onChange={event=>setGroupName(event.target.value)}/>}

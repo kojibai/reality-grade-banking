@@ -2,7 +2,7 @@ import type {PublicRecord} from './public-network';
 import {readWalletFundingAttribution,walletAttributionFitsRecord} from './ledger-wallet-fifo';
 const activityTitles:Record<string,string>={
  market_buy:'Asset Purchase',market_sell:'Asset Sale',
- sports_pack_purchase:'Pack Purchase',signal_pack_purchase:'Pack Purchase',signal_card_reward_seal:'Collectible Created',
+ ai_credit_purchase:'Agent Usage',sports_pack_purchase:'Pack Purchase',signal_pack_purchase:'Pack Purchase',signal_card_reward_seal:'Collectible Created',
  prediction_wager:'Prediction Placed',prediction_payout:'Prediction Payout',prediction_refund:'Prediction Refund',
  note_mint:'Note Created',note_claim:'Note Deposited',
  offline_cash_allocate:'Note Created',offline_cash_cancel:'Note Refunded',offline_note_redeem:'Note Deposited',

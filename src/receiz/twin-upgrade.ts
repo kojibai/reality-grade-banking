@@ -1,6 +1,7 @@
+import {readTwinCreditFunding} from './twin-credit-funding.js';
 export type TwinBillingInterval='month'|'year';
-export type TwinUpgradeInput={action:'checkout';interval:TwinBillingInterval}|{action:'status';sessionId?:string}|{action:'billing'};
-export type TwinUpgradeResult={accountUid:string;twinAccess:boolean;checkout?:{sessionId:string;clientSecret:string;interval:TwinBillingInterval};billingPortal?:string};
+export type TwinUpgradeInput={action:'checkout';interval:TwinBillingInterval}|{action:'status';sessionId?:string}|{action:'billing'}|{action:'credits-checkout';amountUsd:string;operationId:string}|{action:'credits-status';sessionId:string}|{action:'credits-balance'}|{action:'credits-quote';amountUsd:string;operationId:string}|{action:'credits-purchase'|'credits-purchase-status';operationId:string};
+export type TwinUpgradeResult={accountUid:string;twinAccess:boolean;checkout?:{sessionId:string;clientSecret:string;interval:TwinBillingInterval};billingPortal?:string;creditsCheckout?:{sessionId:string;clientSecret:string;amountUsdCents:string;credits:string};creditsBalance?:{grantRemaining:string;purchasedRemaining:string;totalRemaining:string};creditsReserveEligible?:boolean;creditFunding?:import('./twin-credit-funding').TwinCreditFunding;creditsStatus?:{sessionId:string;state:string;settled:boolean}};
 export class TwinUpgradeError extends Error{
  constructor(readonly checkoutNotStarted=false){super('Your account upgrade could not be confirmed. Check your account before starting another payment.');}
 }
@@ -18,5 +19,6 @@ export async function requestTwinUpgrade(accountUid:string,continuation:unknown,
  let value;try{value=JSON.parse(raw);}catch{throw Error('Upgrade response could not be confirmed.');}
  if(!response.ok||value?.ok!==true)throw new TwinUpgradeError(value?.checkoutOutcome==='not-started');
  if(value.accountUid!==accountUid||typeof value.twinAccess!=='boolean'||value.billingPortal!==undefined&&!twinBillingPortalUrl(value.billingPortal)||value.checkout&&(!twinCheckoutSession(value.checkout.sessionId)||!twinCheckoutSecret(value.checkout.sessionId,value.checkout.clientSecret)||!['month','year'].includes(value.checkout.interval)))throw Error('Upgrade response could not be confirmed.');
+ if(value.creditFunding){if(!('operationId' in input))throw Error('Credit funding could not be confirmed.');readTwinCreditFunding(value.creditFunding,accountUid,input.operationId);}
  return value;
 }

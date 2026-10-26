@@ -1,0 +1,20 @@
+import {useEffect,useMemo,useState,useSyncExternalStore} from 'react';
+import {ArrowRight,ChevronLeft} from 'lucide-react';
+import type {OpenIdentity} from '../../receiz/native-identity';
+import {twinCreditsSession} from '../../receiz/twin-credits-session';
+import {creditFundingCents} from '../../receiz/twin-credit-funding';
+import {formatMoney}from'../../core/money';
+import {ReceizCardCheckout} from '../deposit/ReceizCardCheckout';
+export function TwinCreditsPanel({identity,onBack}:{identity:OpenIdentity;onBack():void}){
+ const session=useMemo(()=>twinCreditsSession(identity),[identity]),state=useSyncExternalStore(session.subscribe,session.known,session.known),[amount,setAmount]=useState(()=>session.known().amountUsd??'25');
+ useEffect(()=>{void session.balance().then(()=>session.prepare(amount));},[session]);
+ const selectedAmount=state.amountUsd??amount;
+ const q=state.funding?.quote,extra=q&&state.reserveEligible&&BigInt(q.cardShortfallUsdCents)>0n&&BigInt(q.cardShortfallUsdCents)<50n?50n-BigInt(q.cardShortfallUsdCents):0n;
+ return <div className="bank-twin-upgrade bank-twin-credits"><button className="bank-messaging-back" type="button" onClick={onBack}><ChevronLeft size={15}/>Back to conversation</button><h3>{state.settled?'Ready to keep going.':'Keep the work moving.'}</h3><p>{state.settled?'Your top-up is confirmed. Your agent and conversation are right where you left them.':'Add usage for your agent’s next tasks. Your conversation stays here.'}</p>
+  {state.balance&&<p className="bank-credits-balance"><strong>{BigInt(state.balance.totalRemaining).toLocaleString()}</strong> credits available</p>}
+  {state.settled?<><button className="primary-button" type="button" onClick={onBack}>Continue your conversation<ArrowRight size={16}/></button><button className="bank-messaging-back" type="button" onClick={()=>{session.newTopUp();void session.prepare(amount);}}>Add another top-up</button></>:state.checkout?<ReceizCardCheckout checkout={state.checkout} purpose="credits" onCheck={()=>session.check()}/>:state.uncertain?<button className="primary-button" type="button" disabled={state.pending} onClick={()=>void session.retry()}>Check this same top-up<ArrowRight size={16}/></button>:state.fundingStarted?<button className="primary-button" type="button" disabled={state.pending} onClick={()=>void session.check()}>Check this top-up<ArrowRight size={16}/></button>:<><div className="bank-credits-amounts" aria-label="Top-up amount">{['10','25','50','100'].map(value=><button type="button" key={value} disabled={state.pending} aria-pressed={creditFundingCents(selectedAmount)===creditFundingCents(value)} onClick={()=>{setAmount(value);void session.prepare(value);}}>${value}</button>)}</div><p><strong>{BigInt(creditFundingCents(selectedAmount)).toLocaleString()} credits</strong> · one-time payment · purchased credits do not expire.</p>
+   {q&&<div className="bank-money-review"><p><strong>{formatMoney(q.amountUsdCents)} total</strong></p><p>{state.reserveEligible&&q.bankContributionUsdCents!=='0'?`${formatMoney(q.bankContributionUsdCents)} from your available Reserve`:'Pay by card'}{state.reserveEligible&&q.bankContributionUsdCents!=='0'&&q.cardShortfallUsdCents!=='0'?` + ${formatMoney(q.cardShortfallUsdCents)} funded by card`:''}</p>{extra>0n&&<small>The card minimum is $0.50. {formatMoney(String(extra))} stays in your Reserve after this top-up.</small>}</div>}
+   <button className="primary-button" type="button" disabled={state.pending||!q} onClick={()=>void (q&&Date.parse(q.expiresAt)<=Date.now()?session.prepare(amount):session.approve())}>{state.pending?'Checking funding…':q&&Date.parse(q.expiresAt)<=Date.now()?'Refresh funding quote':state.reserveEligible&&q?.cardShortfallUsdCents==='0'?'Add credits from your balance':'Continue to secure payment'}<ArrowRight size={16}/></button>{!q&&!state.pending&&<button className="secondary-button" type="button" onClick={()=>void session.prepare(amount)}>Check funding options</button>}</>}
+  {state.notice&&<p role="status">{state.notice}</p>}{state.error&&<p className="bank-messaging-error" role="alert">{state.error}</p>}
+ </div>;
+}
