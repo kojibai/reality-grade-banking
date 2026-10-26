@@ -6,9 +6,10 @@ const encode=(v:Uint8Array)=>Buffer.from(v).toString('base64url');
 const bytes=(v:unknown)=>new TextEncoder().encode(canonicalJson(v));
 const sha=async(v:Uint8Array)=>Buffer.from(await crypto.subtle.digest('SHA-256',v.slice().buffer)).toString('hex');
 const digest=(v:unknown)=>sha(bytes(v));
+type FinancialFixtureSettings={growth?:boolean;dynamicMarket?:boolean;quantityMarket?:string;fullGrowthBudget?:boolean};
 /** Synthetic funding/issuer and durable stores; real preferred SDK Source
  * admission, Identity consent, signatures, arithmetic and commit run unchanged. */
-export async function localFinancialFixture(settings:{growth?:boolean;dynamicMarket?:boolean;quantityMarket?:string;fullGrowthBudget?:boolean}={}){
+export async function createLocalFinancialFixtureFactory(){
  const f=await conformanceOfflineFixture({financial:true}),r=f.runtime;
  const identityVerification=await r.verifyReceizArtifact(new File([new Uint8Array(f.identity.bytes)],'identity.png',{type:'image/png'}));
  const identityAdmission=await r.createReceizArtifactAdmissionEngine()(identityVerification,{profile:'identity',identityPassphrase:f.identity.phrase});
@@ -16,8 +17,12 @@ export async function localFinancialFixture(settings:{growth?:boolean;dynamicMar
  if(!f.ports.openPayload)throw Error('Fixture opener');
  const opened=await f.ports.openPayload({bytes:f.identity.bytes,filename:'identity.png',mimeType:'image/png'});
  const keyFile=r.identityTools.parseReceizIdentityArtifactText(new TextDecoder().decode(opened.bytes));
- const ownerReceizId=binding.artifactOwnerReceizId,accountUid='11111111-1111-4111-8111-111111111111',applicationId='rc_bank_account_test',allocationId='ab'.repeat(32),at='14000000000123';
  const enrollment=await f.store.load();if(!enrollment)throw Error('Fixture enrollment');
+ // Reuse only the fixed SDK build, synthetic signer and admitted Identity.
+ // Every scenario still seals and admits its actual Source and creates fresh
+ // financial stores, exact-original retention, clocks and delivery state.
+ return async(settings:FinancialFixtureSettings={})=>{
+ const ownerReceizId=binding.artifactOwnerReceizId,accountUid='11111111-1111-4111-8111-111111111111',applicationId='rc_bank_account_test',allocationId='ab'.repeat(32),at='14000000000123';
  const publicKeyRawB64u=enrollment.cert.subjectPublicKeyRawB64u;
  const publicGlyphs=settings.growth?[{id:'22222222-2222-4222-8222-222222222222',livePulseSeed:{kind:'sigil',claimPulse:13000000,beat:0,stepIndex:0,chakraDay:null,creatorVerified:false,kaiSignature:null,userPhiKey:null}}]:[];
  const economy=r.projectGlyphEconomy({publicGlyphs,computedPulse:14000000});
@@ -50,4 +55,5 @@ export async function localFinancialFixture(settings:{growth?:boolean;dynamicMar
  const originals=new Map<string,Uint8Array>(),requests:FinancialPublication[]=[],listeners=new Set<()=>void>();let online=false,now=14000000000124n;
  const options:LocalFinancialSessionOptions={sourceBytes:sealed.artifactBytes,applicationId,accountUid,ownerReceizId,runtime,store:r.stores.createReceizInMemoryAdmissionStore(),originals:{retain:async(sha,b)=>{if(!originals.has(sha))originals.set(sha,b.slice());},read:async sha=>originals.get(sha)?.slice()??null},signOwner,signRecord:async b=>new Uint8Array(await crypto.subtle.sign('Ed25519',enrollment.privateKey,b.slice().buffer)),assertOpen(){},online:()=>online,subscribeReconnect:listener=>{listeners.add(listener);return()=>{listeners.delete(listener);};},publish:async batch=>{requests.push(structuredClone(batch));return{schema:'receiz.account-financial-publication-ack.v1',allocationId:batch.allocationId,sourceArtifactSha256:batch.sourceArtifactSha256,accepted:batch.originals.map(({operationId,artifactSha256,sequence})=>({operationId,artifactSha256,sequence}))};}};
  return{options,runtime,requests,originals,listeners,connect(){online=true;for(const listener of listeners)listener();},at(v:bigint){now=v;}};
+ };
 }

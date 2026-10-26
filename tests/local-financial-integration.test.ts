@@ -1,6 +1,9 @@
-import {expect,it} from 'vitest';
+import {beforeAll,expect,it} from 'vitest';
 import {createLocalFinancialSession} from '../src/receiz/local-financial';
-import {localFinancialFixture} from './helpers/local-financial-fixture';
+import {createLocalFinancialFixtureFactory} from './helpers/local-financial-fixture';
+
+let localFinancialFixture:Awaited<ReturnType<typeof createLocalFinancialFixtureFactory>>;
+beforeAll(async()=>{localFinancialFixture=await createLocalFinancialFixtureFactory();},60000);
 
 it('commits offline at the original pulse and publishes the exact causal prefix without executing again',async()=>{
  const f=await localFinancialFixture();
@@ -97,4 +100,17 @@ it('uses the full verified growing wallet within finite share rights without fre
  const buy=await session.execute({operationId:'f2222222-2222-4222-8222-222222222222',action:{kind:'buy',marketItemId:'asset:held',amountUsdCents:'25000'}});expect(buy.status).toBe('committed');if(buy.status!=='committed')throw Error('Missing Buy Original');
  expect(BigInt(String(buy.operation.effect.shareQuantityMicro))).toBeLessThan(2000000n);expect(buy.operation.atKaiUPulse).toBe('14017492000124');expect(f.requests).toHaveLength(0);
  f.connect();expect((await session.flush()).status).toBe('published');expect(f.requests.flatMap(batch=>batch.originals)).toHaveLength(1);session.dispose();
+});
+
+it('shares immutable cryptographic setup while isolating each scenario financial state and exact originals',async()=>{
+ const first=await localFinancialFixture(),second=await localFinancialFixture();
+ expect(first.runtime.admitReceizAccountFinancialSource).toBe(second.runtime.admitReceizAccountFinancialSource);
+ expect(first.options.store).not.toBe(second.options.store);expect(first.originals).not.toBe(second.originals);
+ const sender=await createLocalFinancialSession(first.options),untouched=await createLocalFinancialSession(second.options);
+ const before=await untouched.current(),retainedBefore=new Map(second.originals);
+ try{
+  expect((await sender.execute({operationId:'f3333333-3333-4333-8333-333333333333',action:{kind:'send',recipientUserId:'33333333-3333-4333-8333-333333333333',conversationId:'44444444-4444-4444-8444-444444444444',amountUsdCents:'100'}})).status).toBe('committed');
+  expect(await untouched.current()).toEqual(before);expect(first.originals.size).toBeGreaterThan(retainedBefore.size);expect(second.originals).toEqual(retainedBefore);
+  expect(first.requests).toHaveLength(0);expect(second.requests).toHaveLength(0);
+ }finally{sender.dispose();untouched.dispose();}
 });
