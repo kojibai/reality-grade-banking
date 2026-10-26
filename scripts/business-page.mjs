@@ -1,4 +1,4 @@
-import {productMoment} from './product-walkthrough.mjs';
+import {productMoment,agentWorkflowMoment} from './product-walkthrough.mjs';
 import {learnHeader} from './learn-template.mjs';
 import {siteFooterHtml} from './site-footer.mjs';
 import {businessOffer,businessBenefits,businessQuestions} from '../src/content/business-offer.mjs';
@@ -27,7 +27,7 @@ export function businessContent(){return `${learnHeader()}<main id="main" class=
  ${productMoment({id:'business-money-ui',example:'business-plan',title:'Can I afford this?<br>With everything else in view.',body:'Your balance is one part of the answer. Your upcoming payments, earlier decisions and the cash buffer you set give it meaning.'})}
  ${businessIncluded()}
  ${businessBanking()}
- ${productMoment({id:'business-followthrough',example:'business-followthrough',title:'The payment arrived.<br>The decision moves forward.',body:'Continue the same decision when something changes. Your agent keeps the earlier commitments and your own limits with the new payment.'})}
+ ${agentWorkflowMoment({id:'business-followthrough',title:'From the next client.<br>To money in your account.',body:'Give your agent the outcome and your approved introduction. See new people become contacts, an agreed call land in your calendar, and the project deposit arrive—with the whole conversation still connected.'})}
  ${businessFaq()}
  <section class="learn-shell business-close"><h2>Run your business.<br>Spend less of your day managing money.</h2>${businessCheckout()}<p>$149/month · Renews until cancelled.<br>Or select $1,499/year in the upgrade review. Renews until cancelled.</p></section>
  </main>${businessMobileAction()}${siteFooterHtml('/business/')}`;}

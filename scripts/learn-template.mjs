@@ -1,4 +1,4 @@
-import {productWalkthrough} from './product-walkthrough.mjs';
+import {productWalkthrough,agentWorkflowMoment} from './product-walkthrough.mjs';
 import {bankingPage} from '../src/content/banking-walkthrough.mjs';
 import {portabilityPages} from '../src/content/portability-pages.mjs';
 import {standardPages} from '../src/content/standard-pages.mjs';
@@ -108,10 +108,11 @@ export function learnArticle(page, pages, escape) {
     if(!solution)throw Error('PUBLIC_RELATED_SOLUTION_MISSING:'+path);
     related.push(solution);
   }
-  return `${learnHeader()}<main id="main" class="learn-shell article-main">
+  return `${learnHeader()}<main id="main" class="learn-shell article-main"${['messages','get-paid'].includes(page.slug)?' data-coop':''}>
     <a class="article-back text-action" href="${notice ? '/' : '/learn/guides/'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6"/></svg>${notice ? 'Back to bank' : 'All guides'}</a>
     <div class="article-heading">${notice ? `<div class="article-notice-meta">Account information · Updated ${escape(page.updated)}</div>` : `<div class="learning-eyebrow">${escape(page.group??'Learn')} · The complete picture</div>`}<h1>${escape(page.title)}</h1><p>${escape(page.intro)}</p></div>
     ${page.visual?learningVisual(page,escape):''}
+    ${['messages','get-paid'].includes(page.slug)?agentWorkflowMoment({id:'guide-agent-workflow',title:'See the follow-through.<br>Already done.',body:'The next person, the agreed appointment and their payment stay together. Watch the same conversation carry every step forward.'}):''}
     <div class="article-layout"><aside class="article-toc">${notice ? `<details class="notice-contents"><summary>In this notice</summary>${contents}</details>` : contents}</aside>
       <article class="article-content">${page.sections.map(([heading,copy])=>`<section id="${sectionId(heading)}"><h2>${escape(heading)}</h2>${heading === 'How notes work' ? '<span id="value-you-can-carry" aria-hidden="true"></span>' : ''}<p>${escape(copy)}</p>${page.slug === 'reserve-and-settlement' && heading === 'How notes work' ? noteShowcase : ''}${page.slug === 'reserve-and-settlement' && heading === 'Using Notes offline' ? `<a class="underlined-action" href="/conformance/#note-continuity">Inspect the Note continuity standard ${arrow}</a>` : ''}${page.slug === 'reserve-and-settlement' && heading === 'Device integration and availability' ? `<a class="underlined-action" href="/conformance/#device-evidence">Check this device’s evidence ${arrow}</a>` : ''}${page.slug === 'reserve-and-settlement' && heading === 'Settlement and destination continuity' ? `<a class="underlined-action" href="/learn/how-value-works/">See how value is calculated ${arrow}</a>` : ''}${heading === 'History is carried evidence' || heading === 'The receiving standard' ? `<a class="underlined-action" href="/ledger/">Explore the public ledger ${arrow}</a>` : ''}</section>`).join('')}
         ${page.slug==='notes'?noteShowcase:''}

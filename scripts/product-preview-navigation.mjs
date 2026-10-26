@@ -16,13 +16,21 @@ export async function exampleNavigation(html,screen){
   if(button.closest('.ledger-event')&&button.classList.contains('asset-row'))next='record';
   if(button.closest('.market-rows')&&button.classList.contains('asset-row'))next='asset-detail-'+(exampleAssets.find(asset=>asset.title===button.querySelector('strong')?.textContent)?.id||exampleAssets[0].id);
   if(label==='Your vaults'||label==='Open your vaults'||label==='Create vault')next='vault';
+  const flow=button.closest('[data-agent-workflow]');
+  if(flow){
+   if(button.classList.contains('organizer-person-row')){const person=[...flow.querySelectorAll('[data-workflow-pane^=person]')].find(pane=>pane.querySelector('.organizer-person-head h3')?.textContent===button.getAttribute('aria-label'));if(person)button.dataset.workflowOpen=person.dataset.workflowPane;}
+   if(button.classList.contains('organizer-agenda-row'))button.dataset.workflowOpen='event';
+   if(button.classList.contains('organizer-back'))button.dataset.workflowOpen=button.closest('[data-workflow-pane]')?.dataset.workflowPane==='event'?'calendar':'contacts';
+   if(label==='Open conversation')button.dataset.workflowOpen='chat';
+   if(button.hasAttribute('data-workflow-open')||button.hasAttribute('data-workflow-step')){allow(button);button.removeAttribute('disabled');continue;}
+  }
   if(button.closest('.bank-messaging')&&!next)continue;
   allow(button);button.dataset.exampleAction=next||'explain';
   if(next==='send-complete'){button.dataset.exampleRequiresApproval='';button.setAttribute('disabled','');}
   else button.removeAttribute('disabled');
   if(!next)button.dataset.exampleFeedback=label;
  }
- for(const link of frame.querySelectorAll('a')){allow(link);link.dataset.exampleAction=(link.closest('.ledger-event')||link.getAttribute('aria-label')==='Open full receipt')?'record':'explain';link.dataset.exampleFeedback=link.getAttribute('aria-label')||link.textContent.trim()||'Payment link';link.setAttribute('href','https://example.invalid/');link.removeAttribute('target');}
+ for(const link of frame.querySelectorAll('a')){allow(link);if(link.closest('[data-agent-workflow]')&&link.getAttribute('aria-label')==='Open full receipt'){link.dataset.workflowOpen='record';link.setAttribute('href','https://example.invalid/');link.removeAttribute('target');continue;}link.dataset.exampleAction=(link.closest('.ledger-event')||link.getAttribute('aria-label')==='Open full receipt')?'record':'explain';link.dataset.exampleFeedback=link.getAttribute('aria-label')||link.textContent.trim()||'Payment link';link.setAttribute('href','https://example.invalid/');link.removeAttribute('target');}
  for(const label of frame.querySelectorAll('label')){
   const checkbox=label.querySelector('input[type=checkbox]');
   if(screen==='send-review'&&checkbox){allow(label);allow(checkbox);checkbox.dataset.exampleApprove='';continue;}

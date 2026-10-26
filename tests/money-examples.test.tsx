@@ -41,10 +41,12 @@ it('makes receiving continuity an institutional requirement without inventing a 
 });
 import {learningPages} from '../src/content/learning-pages.mjs';
 import {businessContent} from '../scripts/business-page.mjs';
-it('continues a Business decision with a different confirmed fact instead of repeating the same example',()=>{
+it('pairs a financial decision with a distinct connected client-to-payment workflow',()=>{
  const doc=new DOMParser().parseFromString(businessContent(),'text/html');
  const scenes=[...doc.querySelectorAll('[data-example-scenario]')].map(el=>el.getAttribute('data-example-scenario'));
- expect(scenes).toEqual(['business-plan','business-followthrough']);
+ expect(scenes).toEqual(['business-plan','agent-workflow']);
+ expect(doc.querySelector('[data-agent-workflow] .bank-chat-payment')?.textContent).toContain('$300.00');
+ expect(doc.querySelector('[data-agent-workflow] .organizer-agenda-row')?.textContent).toContain('Mia');
  expect(moneyExamples['business-plan'].answer).toContain('$4,000');
  expect(moneyExamples['business-followthrough'].answer).toContain('$4,000');
  expect(moneyExamples['business-plan'].question).not.toBe(moneyExamples['business-followthrough'].question);

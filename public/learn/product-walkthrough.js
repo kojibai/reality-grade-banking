@@ -1,6 +1,7 @@
 // Illustrative animation only. This module has no transport, account or payment API.
 const mounted=new WeakSet(),running=new Set(),reading=new WeakMap();
 function animate(example){
+ if(example.querySelector('[data-agent-workflow]'))return animateWorkflow(example);
  const replies=[...example.querySelectorAll('[data-example-response]')].map(el=>({el,p:el.querySelector('p'),answer:el.dataset.exampleAnswer}));
  if(!replies.length||replies.some(reply=>!reply.p||!reply.answer))return()=>{};
  const follow=[...example.querySelectorAll('[data-example-followup]')];
@@ -28,6 +29,41 @@ function animate(example){
  const motion=matchMedia('(prefers-reduced-motion:reduce)'),change=()=>{stop();if(inView&&!motion.matches)start();};motion.addEventListener('change',change);
  return()=>{alive=false;restore();observer.disconnect();document.removeEventListener('visibilitychange',visibility);motion.removeEventListener('change',change);box?.removeEventListener('wheel',input);box?.removeEventListener('touchmove',input);box?.removeEventListener('pointerdown',input);box?.removeEventListener('keydown',keys);box?.removeEventListener('scroll',moved);};
 }
+
+const workflowReading=new WeakMap();
+function animateWorkflow(example){
+ const flow=example.querySelector('[data-agent-workflow]'),box=flow.querySelector('[data-agent-workflow-scroll]');
+ const turns=[...flow.querySelectorAll('[data-workflow-turn]')],steps=[...flow.querySelectorAll('[data-workflow-step]')],panes=[...flow.querySelectorAll('[data-workflow-pane]')];
+ const replies=[...flow.querySelectorAll('[data-workflow-answer]')].map(el=>({el,p:el.querySelector('p'),answer:el.dataset.workflowAnswer}));
+ const statuses=['One request. The next steps stay together.','Finding people who fit your offer.','Contacts saved with their business and conversation.','Confirmed. The appointment is already in your calendar.','Contact saved. Call booked. Payment received.'];
+ const durations=[1800,3300,4300,4500,14500],timers=new Set();let alive=true,inView=false,manual=workflowReading.has(flow);
+ const later=(fn,ms)=>{const timer=setTimeout(()=>{timers.delete(timer);if(alive)fn();},ms);timers.add(timer);};
+ const clear=()=>{timers.forEach(clearTimeout);timers.clear();};
+ const restore=()=>{for(const reply of replies){reply.p.textContent=reply.answer;reply.el.removeAttribute('data-workflow-typing');}};
+ const showPane=name=>{for(const pane of panes)pane.hidden=pane.dataset.workflowPane!==name;for(const button of flow.querySelectorAll('.bank-organizer-tools [data-workflow-open]'))button.setAttribute('aria-current',String(button.dataset.workflowOpen===name));};
+ const scroll=()=>{if(box&&!manual)box.scrollTop=box.scrollHeight;};
+ const phase=(value,typing=false)=>{
+  flow.dataset.workflowPhase=String(value);turns.forEach((turn,index)=>{turn.hidden=index>value;});steps.forEach((button,index)=>{button.setAttribute('aria-pressed',String(index===value));button.toggleAttribute('data-done',index<value);});flow.querySelector('[data-workflow-status]').textContent=statuses[value];
+  showPane(value===2?'contacts':value===3?'calendar':'chat');restore();
+  if(typing){const reply=replies[value];reply.p.replaceChildren();reply.el.setAttribute('data-workflow-typing','');const dots=document.createElement('span');dots.className='bank-typing-dots';dots.innerHTML='<i></i><i></i><i></i>';reply.p.append(dots);let count=0;
+   const type=()=>{count=Math.min(count+7,reply.answer.length);reply.p.textContent=reply.answer.slice(0,count);scroll();if(count<reply.answer.length)later(type,18);else reply.el.removeAttribute('data-workflow-typing');};later(type,180);
+  }scroll();
+ };
+ const play=value=>{if(!alive||manual||document.hidden||!inView)return;phase(value,true);later(()=>play((value+1)%5),durations[value]);};
+ const start=()=>{clear();if(!alive||manual||document.hidden||!inView||matchMedia('(prefers-reduced-motion:reduce)').matches)return;play(0);};
+ const keep=()=>{manual=true;clear();restore();workflowReading.set(flow,true);};
+ const input=()=>{if(!manual)keep();};
+ const keys=event=>{if(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key))input();};
+ const click=event=>{const open=event.target.closest('[data-workflow-open]'),step=event.target.closest('[data-workflow-step]');if(!open&&!step)return;event.preventDefault();event.stopPropagation();
+  if(step){const index=Number(step.dataset.workflowStep);if(index===0){manual=false;workflowReading.delete(flow);if(reduced.matches){manual=true;phase(0);workflowReading.set(flow,true);}else start();}else{keep();phase(index);if(box)box.scrollTop=box.scrollHeight;}}else{keep();const name=open.dataset.workflowOpen,required=name==='record'?4:['calendar','event'].includes(name)?3:name.startsWith('person')||name==='contacts'?2:0;if(Number(flow.dataset.workflowPhase)<required)phase(required);showPane(name);if(name==='chat'&&box)box.scrollTop=box.scrollHeight;}
+ };
+ flow.addEventListener('click',click);flow.addEventListener('wheel',input,{passive:true});flow.addEventListener('touchmove',input,{passive:true});flow.addEventListener('keydown',keys);
+ const observer=new IntersectionObserver(entries=>{inView=entries[0].isIntersecting;if(inView)start();else{clear();restore();}},{threshold:.35});observer.observe(example);
+ const visibility=()=>{if(document.hidden){clear();restore();}else start();};document.addEventListener('visibilitychange',visibility);
+ const reduced=matchMedia('(prefers-reduced-motion:reduce)'),change=()=>{clear();restore();if(reduced.matches){phase(4);showPane('chat');}else start();};reduced.addEventListener('change',change);
+ return()=>{alive=false;clear();restore();observer.disconnect();flow.removeEventListener('click',click);flow.removeEventListener('wheel',input);flow.removeEventListener('touchmove',input);flow.removeEventListener('keydown',keys);document.removeEventListener('visibilitychange',visibility);reduced.removeEventListener('change',change);};
+}
+
 let exampleSequence=0;
 const exampleBanks=new WeakMap(),sharedExampleBanks=new WeakMap();
 function exampleSource(root,name){let views=exampleBanks.get(root);if(!views){views=JSON.parse(root.querySelector('[data-example-views]')?.content.textContent||'{}');exampleBanks.set(root,views);}const view=views[name];if(typeof view!=='number')return view;

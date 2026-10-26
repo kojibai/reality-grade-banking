@@ -92,7 +92,7 @@ it('lets a reader scroll back while replies stream and never restarts their read
 it('preserves a manually chosen chat position when switching away and back to Messages',()=>{
  vi.useFakeTimers();vi.stubGlobal('matchMedia',()=>({matches:false,addEventListener(){},removeEventListener(){}}));
  const callbacks:((entries:{isIntersecting:boolean}[])=>void)[]=[];vi.stubGlobal('IntersectionObserver',class{constructor(fn:(entries:{isIntersecting:boolean}[])=>void){callbacks.push(fn);}observe(){}disconnect(){}});
- document.body.innerHTML=productWalkthrough();init();const select=(step:string)=>(document.querySelector(`[data-product-choice="${step}"]`)as HTMLButtonElement).click();select('messages');callbacks.at(-1)!([{isIntersecting:true}]);
+ document.body.innerHTML=productWalkthrough({example:'overview'});init();const select=(step:string)=>(document.querySelector(`[data-product-choice="${step}"]`)as HTMLButtonElement).click();select('messages');callbacks.at(-1)!([{isIntersecting:true}]);
  const box=document.querySelector('.bank-conversation-scroll')as HTMLElement;let top=0;Object.defineProperties(box,{clientHeight:{value:100},scrollHeight:{value:500},scrollTop:{get:()=>top,set:value=>{top=Math.max(0,Math.min(400,value));}}});
  box.dispatchEvent(new WheelEvent('wheel',{deltaY:-100,bubbles:true}));box.scrollTop=240;box.dispatchEvent(new Event('scroll'));select('account');select('messages');callbacks.at(-1)!([{isIntersecting:true}]);vi.advanceTimersByTime(30000);
  expect(box.scrollTop).toBe(240);expect(document.querySelectorAll('[data-example-response]')[1].textContent).toContain('partial payment');
