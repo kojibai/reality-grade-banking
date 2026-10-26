@@ -1,0 +1,6 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Banking walkthrough · Example only</title><link rel="stylesheet" href="/learn/product-walkthrough.css"><style>body{margin:0;background:#fbfcfe;font-family:Inter,system-ui,sans-serif;color:#172b45}main{max-width:1050px;margin:auto;padding:30px 22px}.product-walkthrough{margin-top:20px}header>p{font-size:12px;color:#8191a7}</style></head><body><main><header><p>Source-rendered example · No account, payment, identity or proof is created.</p></header><div id="tour"></div></main><script type="module">
+import {productWalkthrough,productPreviewCss} from '../../scripts/product-walkthrough.mjs';
+import {init} from '../../public/learn/product-walkthrough.js';
+const style=document.createElement('style');style.textContent=productPreviewCss;document.head.prepend(style);
+document.querySelector('#tour').innerHTML=productWalkthrough();init();
+</script></body></html>

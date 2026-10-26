@@ -42,12 +42,12 @@ const LedgerRow=memo(function LedgerRow({ record, expanded, onExpand, personal =
     {expanded && <div className="projection-detail"><LedgerInspector preparedReceipt={link} record={record} value={value} currentValue={/transfer|send/i.test(record.kind)?ledgerCurrentAssetValue(record,valueSource):null} valuation={valuation} relations={relations} valueSource={valueSource} inApp/><LedgerExecutionRecords records={executionRecords} valueSource={valueSource} relations={relations}/><p className="body-copy small-copy">{personal ? record.origin === 'private-account' ? 'Private activity from your authenticated account. Held proof history remains authoritative.' : 'History carried by your opened Identity Record.' : 'Public source record. Inspect the original proof for independent verification.'}</p></div>}
   </div>;
 });
-export function Ledger({ active = true, personalHistory = null, privateHistory }: { active?: boolean; personalHistory?: PersonalHistory | null; privateHistory?: ReturnType<typeof usePrivateHistory> }) {
+export function Ledger({ active = true, personalHistory = null, privateHistory,initialTab='public' }: { initialTab?:'mine'|'public';active?: boolean; personalHistory?: PersonalHistory | null; privateHistory?: ReturnType<typeof usePrivateHistory> }) {
   const [filter,setFilter]=useState<ActivityCategory>('all');
   const [historyFilter,setHistoryFilter]=useState<'all'|'out'|'in'>('all');
   const valueSource = useLedgerValueSource(active);
-  const [tab, setTab] = useState<'mine' | 'public'>('public'), [expanded, setExpanded] = useState<string | null>(null), [shown, setShown] = useState(50);
-  const [prepareMine,setPrepareMine]=useState(false);
+  const [tab, setTab] = useState<'mine' | 'public'>(initialTab), [expanded, setExpanded] = useState<string | null>(null), [shown, setShown] = useState(50);
+  const [prepareMine,setPrepareMine]=useState(initialTab==='mine');
   const toggleExpanded=useCallback((id:string)=>setExpanded(current=>current===id?null:id),[]);
   const { records:sourceRecords, sources, bootstrap, capturedAt, refresh, loadMore } = usePublicNetwork(active && tab === 'public');
   const records=useMemo(()=>enrichWalletFundingContext(sourceRecords,sourceRecords),[sourceRecords]);

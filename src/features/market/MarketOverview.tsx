@@ -6,9 +6,16 @@ import { chartChange, chartPeriodBounds, chartDateLabel } from '../../core/chart
 import type { PublicMarketCatalog } from '../../receiz/public-market';
 import { publicMarketCapitalization } from '../../receiz/market-capitalization';
 import { useMarketCapitalization } from '../../receiz/market-projection/useMarketCapitalization';
-export function MarketOverview({ catalog, historyCatalog, active = true, sourceActive=active, onExplore }: { catalog: PublicMarketCatalog | null; historyCatalog?: PublicMarketCatalog | null; active?: boolean; sourceActive?:boolean; onExplore: () => void }) {
-  const [info, setInfo] = useState(false), [period, setPeriod] = useState<ChartPeriod>('ALL');
-  const { source, points, status } = useMarketCapitalization(period, active,historyCatalog??catalog,sourceActive);
+type OverviewProps={catalog:PublicMarketCatalog|null;historyCatalog?:PublicMarketCatalog|null;active?:boolean;sourceActive?:boolean;onExplore():void};
+export function MarketOverview({catalog,historyCatalog,active=true,sourceActive=active,onExplore}:OverviewProps){
+ const [period,setPeriod]=useState<ChartPeriod>('ALL');
+ const projection=useMarketCapitalization(period,active,historyCatalog??catalog,sourceActive);
+ return <MarketOverviewView catalog={catalog} projection={projection} period={period} onPeriodChange={setPeriod} onExplore={onExplore}/>;
+}
+/** The same chart presentation, independent of account and discovery effects. */
+export function MarketOverviewView({catalog,projection,period,onPeriodChange,onExplore}:{catalog:PublicMarketCatalog|null;projection:Pick<ReturnType<typeof useMarketCapitalization>,'source'|'points'|'status'>;period:ChartPeriod;onPeriodChange(value:ChartPeriod):void;onExplore():void}){
+ const [info,setInfo]=useState(false);
+ const {source,points,status}=projection;
   const counts = useMemo(() => publicMarketCapitalization(catalog), [catalog]);
   const change = points.length > 1 ? chartChange(points[0].usdCents, points.at(-1)!.usdCents) : null;
   const timeRange=chartPeriodBounds(points,period);
@@ -29,7 +36,7 @@ export function MarketOverview({ catalog, historyCatalog, active = true, sourceA
     </section>}
     {change && <div className={`chart-period-change ${change.trend === 'down' ? 'negative' : change.trend === 'up' ? 'positive' : 'muted'}`}><strong>{change.trend === 'up' ? '↗' : change.trend === 'down' ? '↘' : '→'} {BigInt(change.deltaCents) > 0n ? '+' : ''}{formatMoney(change.deltaCents)} {change.percent !== null && `(${change.percent > 0 ? '+' : ''}${change.percent.toFixed(2)}%)`}</strong><span>{period === 'ALL' ? 'Since first issuance' : period} · projected value</span></div>}
     <ValueChart interpolation="step" key={period} times={points.map(point => Date.parse(point.at))} timeRange={timeRange} color={change?.trend === 'down' ? 'red' : change?.trend === 'up' ? 'green' : 'blue'} values={points.map(point => Number(point.usdCents) / 100)} label={`Global Market Cap · projected value history · ${period === 'ALL'?'All history':period}`} tooltip={index => ({ value: formatMoney(points[index].usdCents), label: `${new Date(points[index].at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })} · ☤KAI ${points[index].pulse.toLocaleString()}` })} />
-    <Periods value={period} onChange={setPeriod} />
+    <Periods value={period} onChange={onPeriodChange} />
     {timeRange && <div className="chart-date-range"><span>{chartDateLabel(timeRange.start,period)}</span><span>{chartDateLabel(timeRange.end,period)}</span></div>}
     <button className="market-view-assets" onClick={onExplore}>View assets<ArrowRight size={16} /></button>
   </div>;

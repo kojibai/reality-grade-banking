@@ -47,3 +47,12 @@ it('opens an ownership form from Send without a permanently disabled action', as
     expect(host.textContent).not.toContain('still being connected');
   } finally { act(() => root.unmount()); }
 });
+
+it('keeps Send focused on the payment and uses memo for text rather than a Settlement Note',async()=>{
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<LiveSend identity={identity} wallet={null} onClose={()=>{}}/>));
+ expect(host.textContent).not.toContain('Payment options');expect(host.textContent).not.toContain('Add money by card');
+ expect(host.textContent).toContain('Create note');expect(host.textContent).toContain('Add a memo');
+ expect(host.querySelector('textarea[aria-label="Payment memo"]')).not.toBeNull();
+ }finally{act(()=>root.unmount());}
+});

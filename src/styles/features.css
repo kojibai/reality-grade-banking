@@ -304,3 +304,7 @@
 
 .market-trade-condition{margin-top:17px;border:1px solid #dce5f1}.market-trade-condition strong{display:block;color:var(--navy);font-size:13px}.market-trade-condition p{margin:5px 0 0}
 .identity-vault-entry{display:flex;align-items:center;gap:14px;width:100%;padding:22px 2px;border:0;border-top:1px solid #e2e8ee;border-bottom:1px solid #e2e8ee;background:transparent;color:#537589;text-align:left;cursor:pointer}.identity-vault-entry>span{flex:1}.identity-vault-entry strong{display:block;font-size:13px;color:#183249;font-weight:500}.identity-vault-entry small{display:block;font-size:11px;color:#8093a4;margin-top:5px}
+
+.send-recipient{position:relative}.send-recipient>.form-field>span{padding-right:68px}.send-recipient .payment-scanner--compact .scanner-actions{position:absolute;right:0;top:-4px;display:flex;gap:3px;margin:0}.payment-scanner--compact .scanner-actions .icon-button{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;min-width:27px;min-height:27px;padding:5px;border:0;background:transparent;color:#7b8ba1;border-radius:8px}.payment-scanner--compact .scanner-actions .icon-button:hover{color:var(--blue);background:#edf2fb}.payment-link-dropdown{margin:-9px 0 15px}.payment-link-dropdown>summary{font-size:11px;color:#8290a2;cursor:pointer;padding:5px 0}.payment-link-dropdown .form-field{margin-top:8px}.payment-link-dropdown>.text-button{font-size:11px}.payment-scanner--compact .payment-camera{margin-top:10px}
+
+.payment-link-dropdown>summary>span{margin-left:6px;font-size:10px;color:#99a4b2}

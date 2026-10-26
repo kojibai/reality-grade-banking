@@ -15,8 +15,8 @@ import {UnfinishedCheckouts} from '../../components/UnfinishedCheckouts';
 
 const ReceivedOriginal=lazy(()=>import('./ReceivedOriginal').then(module=>({default:module.ReceivedOriginal})));
 
-export function LiveDeposit({ identity, onClose, onRefresh, resumeSessionId, onResumeConsumed, funding, onCreateAsset }: { onCreateAsset?:()=>void;resumeSessionId?:string|null;onResumeConsumed?:()=>void;identity: OpenIdentity; onClose: () => void; onRefresh: () => void; funding?:{purchase?:{itemId:string;title:string};purpose?:'purchase'|'payment';initialAmount?:string;onBack?(amount:string):void;onCheckout?(checkout:Pick<CardCheckout,'sessionId'|'amountUsdCents'>):void;onPurchaseApproved?(checkout:Pick<CardCheckout,'sessionId'|'amountUsdCents'>):void;onCredited(checkout:Pick<CardCheckout,'sessionId'|'amountUsdCents'>):void} }) {
-  const [kind, setKind] = useState<'choose' | 'asset' | 'dollars' | 'note'>(funding?'dollars':'choose');
+export function LiveDeposit({ identity, onClose, onRefresh, resumeSessionId, onResumeConsumed, funding, onCreateAsset, initialKind='choose' }: { initialKind?:'choose'|'asset'; onCreateAsset?:()=>void;resumeSessionId?:string|null;onResumeConsumed?:()=>void;identity: OpenIdentity; onClose: () => void; onRefresh: () => void; funding?:{purchase?:{itemId:string;title:string};purpose?:'purchase'|'payment';initialAmount?:string;onBack?(amount:string):void;onCheckout?(checkout:Pick<CardCheckout,'sessionId'|'amountUsdCents'>):void;onPurchaseApproved?(checkout:Pick<CardCheckout,'sessionId'|'amountUsdCents'>):void;onCredited(checkout:Pick<CardCheckout,'sessionId'|'amountUsdCents'>):void} }) {
+  const [kind, setKind] = useState<'choose' | 'asset' | 'dollars' | 'note'>(funding?'dollars':initialKind);
   const [amount, setAmount] = useState(funding?.initialAmount??'');
   const [deposit, setDeposit] = useState<HeldDeposit | null>(null), [checkout, setCheckout] = useState<CardCheckout | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [cardStatus, setCardStatus] = useState('');

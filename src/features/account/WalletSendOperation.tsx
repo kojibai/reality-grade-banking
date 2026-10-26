@@ -67,24 +67,31 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children}
    {busy&&<p className="body-copy small-copy" role="status">Confirming your payment…</p>}
    {diagnostics}</section>;
  }
- if(outcome)return <section className="native-operation-result" aria-live="polite">
-  {outcome.status==='recorded'&&<div className="status-icon success"><Check size={30}/></div>}
-  <h1 className="sheet-hero">{outcome.status==='recorded'?'Payment sent.':outcome.status==='not-sent'?'Payment not sent.':'Confirming your payment.'}</h1>
-  <p className="body-copy">{outcome.status==='recorded'?'Wallet recorded your payment. Its transaction record is saved on this device, and your account and Ledger are refreshing.':outcome.status==='not-sent'?'Wallet did not submit this payment. Check your available value and review again.':'Your exact request is saved. Checking its original reference will not send another payment.'}</p>
-  {outcome.status==='unknown'?<button className="primary-button" disabled={busy} onClick={()=>void check()}>{busy?'Checking outcome…':'Check payment outcome'}</button>:<button className="secondary-button" onClick={()=>{setOutcome(null);setApproved(false);}}> {outcome.status==='recorded'?'Send another payment':'Review again'}</button>}
-  {identity&&<WalletSendRecovery key={outcome.status} identity={identity} onRefresh={onRefresh}/>} {diagnostics}
- </section>;
- if(review)return <section className="native-operation-review"><h1 className="sheet-hero">Review payment.</h1><div className="detail-list">
+ if(outcome)return <WalletPaymentResult outcome={outcome} busy={busy} onCheck={()=>void check()} onAgain={()=>{setOutcome(null);setApproved(false);}}>{identity&&<WalletSendRecovery key={outcome.status} identity={identity} onRefresh={onRefresh}/>} {diagnostics}</WalletPaymentResult>;
+ if(review)return <WalletPaymentReview review={review} approved={approved} busy={busy} onApprove={setApproved} onSend={()=>void send()} onEdit={()=>{api.current?.discard(review);held.current=null;setReview(null);setApproved(false);}}>{diagnostics}</WalletPaymentReview>;
+ return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset><div className="note-box"><ShieldCheck size={18}/><p>Review the recipient and amount before approving your payment.</p></div><details className="transaction-proof-details"><summary>Wallet access</summary><p className="small-copy">{identityRecordCopy(BANK_WALLET_SEND_CONSENT)}</p></details>
+  <button className="primary-button" disabled={busy||!ready} onClick={()=>void prepare()}>{busy?'Checking payment…':'Review payment'}<ArrowRight size={17}/></button>{diagnostics}</>;
+}
+
+/** Shared presentation only. Financial authority remains in WalletSendOperation. */
+export function WalletPaymentReview({review,approved,busy,onApprove,onSend,onEdit,children}:{review:WalletSendReview;approved:boolean;busy:boolean;onApprove(value:boolean):void;onSend():void;onEdit():void;children?:ReactNode}){return <section className="native-operation-review"><h1 className="sheet-hero">Review payment.</h1><div className="detail-list">
   <div><span>Recipient</span><strong>{review.recipientLabel}</strong></div><div><span>You send</span><strong>{formatMoney(review.amountUsdCents)}</strong></div>
   <div><span>Φ at this quote</span><strong>{formatUnits(review.quote.amountPhiMicro)} Φ</strong></div>
   <div><span>From</span><strong>{BigInt(review.quote.settledUsdCents)>0n?(BigInt(review.quote.ecosystemUsdCents)>0n?'Composite balance':'Reserve'):'Settlement'}</strong></div>
   {BigInt(review.quote.settledUsdCents)>0n&&BigInt(review.quote.ecosystemUsdCents)>0n&&<><div><span>Reserve</span><strong>{formatMoney(review.quote.settledUsdCents)}</strong></div><div><span>Settlement</span><strong>{formatMoney(review.quote.ecosystemUsdCents)}</strong></div></>}
-  {review.note&&<div><span>Public note</span><strong className="send-public-note">{review.note}</strong></div>}
+  {review.note&&<div><span>Payment memo</span><strong className="send-public-note">{review.note}</strong></div>}
   <div><span>Fee</span><strong>$0.00</strong></div></div>
   <p className="body-copy small-copy">Reserve is used first; Settlement covers the remainder. The dollar amount is fixed. Wallet computes the Φ amount and funding split from your current account when you send.</p>
-  <label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event=>setApproved(event.target.checked)}/><span>I approve sending {formatMoney(review.amountUsdCents)} to {review.recipientLabel} using my balance and a card payment for any amount needed{review.note?', and publishing the note shown above':''}.</span></label>
-  <button className="primary-button" disabled={busy||!approved} onClick={()=>void send()}>{busy?'Sending payment…':'Send payment'}<ArrowRight size={17}/></button>
-  <button className="secondary-button" disabled={busy} onClick={()=>{api.current?.discard(review);held.current=null;setReview(null);setApproved(false);}}>Edit details</button>{diagnostics}</section>;
- return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset><div className="note-box"><ShieldCheck size={18}/><p>Review the recipient and amount before approving your payment.</p></div><details className="transaction-proof-details"><summary>Wallet access</summary><p className="small-copy">{identityRecordCopy(BANK_WALLET_SEND_CONSENT)}</p></details>
-  <button className="primary-button" disabled={busy||!ready} onClick={()=>void prepare()}>{busy?'Checking payment…':'Review payment'}<ArrowRight size={17}/></button>{diagnostics}</>;
+  <label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event=>onApprove(event.target.checked)}/><span>I approve sending {formatMoney(review.amountUsdCents)} to {review.recipientLabel} using my balance and a card payment for any amount needed{review.note?', and publishing the memo shown above':''}.</span></label>
+  <button className="primary-button" disabled={busy||!approved} onClick={onSend}>{busy?'Sending payment…':'Send payment'}<ArrowRight size={17}/></button>
+  <button className="secondary-button" disabled={busy} onClick={onEdit}>Edit details</button>{children}</section>;
+}
+
+export function WalletPaymentResult({outcome,busy,onCheck,onAgain,children}:{outcome:WalletSendOutcome;busy:boolean;onCheck():void;onAgain():void;children?:ReactNode}){return <section className="native-operation-result" aria-live="polite">
+  {outcome.status==='recorded'&&<div className="status-icon success"><Check size={30}/></div>}
+  <h1 className="sheet-hero">{outcome.status==='recorded'?'Payment sent.':outcome.status==='not-sent'?'Payment not sent.':'Confirming your payment.'}</h1>
+  <p className="body-copy">{outcome.status==='recorded'?'Wallet recorded your payment. Its transaction record is saved on this device, and your account and Ledger are refreshing.':outcome.status==='not-sent'?'Wallet did not submit this payment. Check your available value and review again.':'Your exact request is saved. Checking its original reference will not send another payment.'}</p>
+  {outcome.status==='unknown'?<button className="primary-button" disabled={busy} onClick={onCheck}>{busy?'Checking outcome…':'Check payment outcome'}</button>:<button className="secondary-button" onClick={onAgain}> {outcome.status==='recorded'?'Send another payment':'Review again'}</button>}
+  {children}
+ </section>;
 }

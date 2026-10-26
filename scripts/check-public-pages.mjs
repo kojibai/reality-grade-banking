@@ -46,6 +46,9 @@ for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/
 // navigation does not depend on fetching a replacement document.
 const navigationPattern = /<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/;
 const carriedNavigation = JSON.parse(html.match(navigationPattern)[1]);
+const sharedExamplePattern=/<template data-shared-example-views>[^<]*<\/template>/g;
+const sharedExampleBank=html.match(sharedExamplePattern);
+assert.equal(sharedExampleBank?.length,1,'The carried walkthrough destinations exist once in the initial document');
 const navigation = structuredClone(carriedNavigation);
 for(const page of [...Object.values(navigation.pages),navigation.bank])if(Array.isArray(page.head))page.head=page.head.map(part=>typeof part==='number'?navigation.styles[part]:part).join('');
 assert.ok(navigation.pages['/explore/'].head.includes('.ledger-proof-details')&&navigation.pages['/explore/'].head.includes('.ledger-proof-actions'),'Retained public asset navigation carries evidence styles before the lazy reader opens');
@@ -63,6 +66,8 @@ assert.ok(navigation.pages['/legal/'], 'Legal notices must use the retained publ
 assert.ok(navigation.pages['/schemas/'], 'The complete schema reference must be carried for document-free public navigation');
 const sharedHeader = navigation.pages['/learn/'].content.match(/<header class="learn-header">[\s\S]*?<\/header>/)[0];
 for (const [path, entry] of Object.entries(navigation.pages)) {
+  const routeHtml=await readFile(`dist${path}index.html`,'utf8');
+  assert.deepEqual(routeHtml.match(sharedExamplePattern),sharedExampleBank,`Cold ${path} keeps the same shared walkthrough destinations`);
   const output = await readFile(`dist${path}index.html`, 'utf8');
   if(entry.content.includes('class="site-footer"'))assert.ok(entry.content.includes(siteFooterHtml(path)),`Carried footer differs at ${path}`);
   assert.deepEqual(JSON.parse(output.match(navigationPattern)[1]), carriedNavigation, `Public navigation differs at ${path}`);

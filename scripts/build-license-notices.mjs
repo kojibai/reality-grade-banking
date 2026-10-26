@@ -89,6 +89,7 @@ const publicLegalHtml=applyPublicMetadata(legalHtml,publicPage('/legal/'),social
 const bankHtml = await readFile('dist/index.html', 'utf8');
 const navigationPattern = /<script id="receiz-navigation" type="application\/json">[\s\S]*?<\/script>/;
 const navigationScript = bankHtml.match(navigationPattern)?.[0];
+const sharedExamples=bankHtml.match(/<template data-shared-example-views>[^<]*<\/template>/)?.[0]??'';
 if (!navigationScript) throw Error('Build public pages before legal notices.');
 const navigation = JSON.parse(navigationScript.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, ''));
 navigation.pages['/legal/'] = {
@@ -96,7 +97,7 @@ navigation.pages['/legal/'] = {
   content: publicLegalHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/)[1],
 };
 const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify(navigation).replaceAll('<', '\\u003c')}</script>`;
-await writeFile('dist/legal/index.html', publicLegalHtml.replace(/<body([^>]*)>([\s\S]*?)<\/body>/, (_, attributes, content) => `<body${attributes}><div id="public-learn-root">${content}</div>${bundle}</body>`));
+await writeFile('dist/legal/index.html', publicLegalHtml.replace(/<body([^>]*)>([\s\S]*?)<\/body>/, (_, attributes, content) => `<body${attributes}><div id="public-learn-root">${content}</div>${bundle}${sharedExamples}</body>`));
 for (const file of ['dist/index.html', ...[...Object.keys(navigation.pages),...Object.keys(navigation.aliases??{})].filter(path => path !== '/legal/').map(path => `dist${path}index.html`)]) {
   await writeFile(file, (await readFile(file, 'utf8')).replace(navigationPattern, () => bundle));
 }

@@ -28,10 +28,10 @@ function exactPhi(value?: string): string {
   const [whole, fraction] = formatUnits(value).split('.');
   return `${new Intl.NumberFormat('en-US').format(BigInt(whole))}${fraction ? `.${fraction}` : ''}`;
 }
-export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel }: { identity: OpenIdentity; mode: 'create' | 'deposit'; onBack: () => void; onRefresh: () => void; backLabel?:string }) {
+export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, initialReview=false }: { identity: OpenIdentity; mode: 'create' | 'deposit'; onBack: () => void; onRefresh: () => void; backLabel?:string;initialReview?:boolean }) {
   const [rail, setRail] = useState<BankNoteRail>(()=>identity.knownWallet?.()?.wallet.reserveUsdCents==='0'?'settlement':'reserve');
   const [funding,setFunding]=useState<BankNoteReview|null>(null);
-  const [amount, setAmount] = useState('100'), [review, setReview] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState(''),[registrationCode,setRegistrationCode]=useState('');
+  const [amount, setAmount] = useState('100'), [review, setReview] = useState(initialReview), [busy, setBusy] = useState(false), [error, setError] = useState(''),[registrationCode,setRegistrationCode]=useState('');
   const [failureStage,setFailureStage]=useState<ReturnType<typeof noteFailureStage>>(null);
   const [connectionRequired,setConnectionRequired]=useState(false);
   const [inventoryReady,setInventoryReady]=useState(false);

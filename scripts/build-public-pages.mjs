@@ -1,3 +1,4 @@
+import {packExampleBanks} from './product-preview-bank.mjs';
 import {withPublicIllustration} from './public-imagery.mjs';
 import {bankingPage,bankingContent} from './banking-page.mjs';
 import {productPreviewCss} from './product-walkthrough.mjs';
@@ -116,10 +117,11 @@ const bankStyles = [...bankHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^"]
 const bankCss = Object.fromEntries(await Promise.all(bankStyles.map(async url => [url,await readFile('dist'+url,'utf8')])));
 const bankContent = bankHtml.match(/<div id="root">([\s\S]*?)<\/div><noscript>/)[1];
 const bankHead = bankHtml.match(/<head>([\s\S]+)<\/head>/)[1];
-const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({ pages: publicPages, aliases:publicRouteAliases, bank: { head: bankHead, entry: bankEntry, styles: bankStyles,css:bankCss,content:bankContent } })).replaceAll('<', '\\u003c')}</script>`;
+const exampleBanks=packExampleBanks(publicPages);Object.assign(publicPages,exampleBanks.pages);
+const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({ pages: publicPages, aliases:publicRouteAliases, bank: { head: bankHead, entry: bankEntry, styles: bankStyles,css:bankCss,content:bankContent } })).replaceAll('<', '\\u003c')}</script>`+exampleBanks.shared;
 await writeFile('dist/learn/learn.css', publicCss);
 await writeFile('dist/learn/learn.js', publicJs);
-let entryHtml = bankHtml.replace('</head>', `<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>', `${bundle}</body>`);
+let entryHtml = bankHtml.replace('</head>', `<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>', () => `${bundle}</body>`);
 // The initial entrance must paint even while a deployment's CSS URLs are slow.
 // Embed the exact emitted styles, so the settled account also has its styles
 // before React can publish it. Navigation still retains the original CSS URLs.
@@ -134,7 +136,7 @@ const documents={...publicPages,...Object.fromEntries(Object.entries(publicRoute
 for (const [path, page] of Object.entries(documents)) {
   await mkdir(`dist${path}`, { recursive: true });
   const runtimeHtml = runtimeDocuments.get(path);
-  await writeFile(`dist${path}index.html`, runtimeHtml ? runtimeHtml.replace('<body>',`<body data-bank-surface="${page.runtime}">`).replace('</head>',`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>',`${bundle}</body>`) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`);
+  await writeFile(`dist${path}index.html`, runtimeHtml ? runtimeHtml.replace('<body>',`<body data-bank-surface="${page.runtime}">`).replace('</head>',`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>',()=>`${bundle}</body>`) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`);
 }
 const urls = [...metadataPages.filter(page=>!page.noindex).map(page=>page.path),...assetPaths];
 if(urls.length>50000)throw Error('SITEMAP_PARTITION_REQUIRED');

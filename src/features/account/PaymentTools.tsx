@@ -4,8 +4,8 @@ import {ArrowUpRight,ChevronDown,Code2,Globe2} from 'lucide-react';
 import {buildPaymentTools} from '../../receiz/payment-tools';
 import './payment-tools.css';
 
-export function PaymentTools({username,amount}:{username:string;amount:string}){
- const [mode,setMode]=useState<'button'|'checkout'>('button');
+export function PaymentTools({username,amount,initialMode='button'}:{username:string;amount:string;initialMode?:'button'|'checkout'}){
+ const [mode,setMode]=useState<'button'|'checkout'>(initialMode);
  const [feedback,setFeedback]=useState<{value:string;ok:boolean}|null>(null);
  useEffect(()=>{if(!feedback)return;const timer=setTimeout(()=>setFeedback(null),1600);return()=>clearTimeout(timer);},[feedback]);
  let tools:ReturnType<typeof buildPaymentTools>;
