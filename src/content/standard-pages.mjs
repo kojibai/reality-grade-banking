@@ -197,6 +197,7 @@ export const standardPages=[
       ]
     ],
     "related": [
+      ["/crypto/", "Explore the crypto you already hold"],
       [
         "/money/",
         "What your account holds"

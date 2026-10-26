@@ -1,6 +1,22 @@
 {
   "schema": "bankeiz.public-social-images.v1",
   "images": {
+    "/crypto/": {
+      "url": "/social/portability-crypto-df57c3fbeabe1afe.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "df57c3fbeabe1afee0815f60d43e4bc0ac5d25f1a9c486edb6a953fc8c9c7ec1",
+      "bytes": 246279,
+      "alt": "Your value. More useful. Keep the source. Open the next possibility. A wallet or collection, a portable proof object and compatible experiences remain connected. Illustrative source and next-use story."
+    },
+    "/nfts/": {
+      "url": "/social/portability-nfts-af5cc31202e40809.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "af5cc31202e4080944359ff2b9c78f94a082b737aabb69f5bd5f4b81ac8be16b",
+      "bytes": 246212,
+      "alt": "Your collection. A life beyond the marketplace. The object. Its ownership. A connected next life. A wallet or collection, a portable proof object and compatible experiences remain connected. Illustrative source and next-use story."
+    },
     "/economy/": {
       "url": "/social/economy-economy-a3024cbd3d00ebed.png",
       "width": 1730,

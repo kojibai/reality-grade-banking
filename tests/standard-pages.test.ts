@@ -11,7 +11,7 @@ import social from '../public/social/manifest.json';
 const parse=(s:string)=>new DOMParser().parseFromString(s,'text/html');
 it('adds eleven complete standard documents and retains existing primitives and pages',()=>{
  expect(standardPages.slice(0,11).map(p=>p.path)).toEqual(['/trust/','/money/','/deposit/','/fees/','/help/','/about/','/in-practice/','/accept-payments/','/start/','/privacy/','/terms/']);
- expect(publicPages).toHaveLength(145);
+ expect(publicPages).toHaveLength(147);
  for(const p of standardPages){const d=parse(standardContent(p));expect(publicPage(p.path)?.id).toBe('standard-'+p.key);expect(d.querySelector('h1')?.textContent).toBeTruthy();expect(d.querySelectorAll('main section').length).toBeGreaterThanOrEqual(5);expect(d.querySelector('canvas,iframe,video')).toBeNull();expect(d.querySelector('main')?.textContent).not.toMatch(/FDIC.insured|guaranteed returns|cannot be hacked|24.7 support|Kojib/);expect(d.querySelector('main')?.textContent).toContain('Illustrative');expect(d.querySelector('footer a[href="'+p.path+'"]')).toBeNull();for(const a of d.querySelectorAll('[data-business-checkout]'))expect(a.getAttribute('href')).toBe('/#account/messages/business');}
  for(const path of ['/protect/','/proof/','/business/','/id/','/learn/deposits/'])expect(publicPage(path)).toBeDefined();
 });

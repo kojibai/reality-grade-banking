@@ -1,3 +1,4 @@
+import {portabilityPages} from '../src/content/portability-pages.mjs';
 import {standardPages} from '../src/content/standard-pages.mjs';
 import {outcomePages} from '../src/content/outcome-pages.mjs';
 import {bankMarkSvg} from '../branding/bank-mark.mjs';
@@ -15,6 +16,7 @@ import {togetherPages} from '../src/content/together.mjs';
 import {cooperativePages} from '../src/content/cooperatives.mjs';
 // Public discovery only. Existing routes and native authorities are unchanged.
 const solutionGuides=[
+ ...portabilityPages.map(page=>({...page,group:'Assets',title:page.key==='crypto'?'Crypto holdings':'NFTs & collections'})),
  ...standardPages.map(page=>({...page,group:page.key.startsWith('market')?'Markets':'The standard'})),
  ...outcomePages.map(page=>({...page,group:page.key==='proof'?'Assets':'Banking',title:({agent:'Your agent',fraud:'Payment fraud',recover:'Recover your identity','get-paid':'Get paid. Keep the story.',proof:'Open the proof'})[page.key]})),
  {slug:'identity-continuity',path:'/id/',group:'Banking',title:'Identity continuity',description:'Open Bankeiz with the Receiz identity you already hold. Authentication, recovery and supported history stay connected.'},
@@ -28,13 +30,13 @@ const solutionGuides=[
  ...togetherPages.map(page=>({...page,group:'Together'}))
 ];
 const relatedSolutions={
- 'deposits':['/deposit/','/money/','/fees/'],
+ 'deposits':['/deposit/','/money/','/fees/','/crypto/'],
  'markets':['/market/','/market/buy/','/market/sell/'],
  'fractional-ownership':['/market/ownership/'],
  'price-history':['/market/value/'],
  'security':['/fraud/','/proof/','/protect/','/vaults/','/id/'],
  'receiz-id':['/recover/','/vaults/','/protect/','/id/'],
- 'proof-objects':['/proof/','/vaults/'],'ownership':['/proof/','/vaults/'],
+ 'proof-objects':['/proof/','/vaults/','/crypto/','/nfts/'],'ownership':['/proof/','/vaults/','/nfts/'],
  'get-paid':['/get-paid/'],'payment-requests':['/get-paid/','/fraud/'],'receipts':['/proof/','/get-paid/'],
  'physical-assets':['/coops/'],'asset-rights-and-backing':['/cooperatives/infrastructure/'],
  'proof-native-economy':['/coops/','/together/'],'institutions':['/cooperatives/infrastructure/'],

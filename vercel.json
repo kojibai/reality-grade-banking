@@ -37,6 +37,30 @@
   ],
   "rewrites": [
     {
+      "source": "/crypto",
+      "destination": "/crypto/index.html"
+    },
+    {
+      "source": "/crypto/",
+      "destination": "/crypto/index.html"
+    },
+    {
+      "source": "/nfts",
+      "destination": "/nfts/index.html"
+    },
+    {
+      "source": "/nfts/",
+      "destination": "/nfts/index.html"
+    },
+    {
+      "source": "/nft",
+      "destination": "/nfts/index.html"
+    },
+    {
+      "source": "/nft/",
+      "destination": "/nfts/index.html"
+    },
+    {
       "source": "/economy/",
       "destination": "/economy/index.html"
     },

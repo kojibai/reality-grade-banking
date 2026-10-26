@@ -10,7 +10,7 @@ import {profilePagePath,profilePageUsername} from '../src/receiz/public-profile'
 import social from '../public/social/manifest.json';
 
 it('gives the complete marketing documents short canonical, social and structured-data URLs while preserving old URLs',()=>{
- expect(publicRouteAliases).toEqual({'/customers/':'/in-practice/','/switch/':'/start/','/standard/':'/standards/','/reality-grade-banking/':'/learn/reality-grade-banking/','/agents/':'/agent/','/learn/identity-continuity/':'/id/','/learn/protect-your-value/':'/protect/','/learn/vaults/':'/vaults/','/business/for/':'/fit/','/cooperatives/':'/coops/','/cooperate/':'/coops/'});
+ expect(publicRouteAliases).toEqual({'/nft/':'/nfts/','/customers/':'/in-practice/','/switch/':'/start/','/standard/':'/standards/','/reality-grade-banking/':'/learn/reality-grade-banking/','/agents/':'/agent/','/learn/identity-continuity/':'/id/','/learn/protect-your-value/':'/protect/','/learn/vaults/':'/vaults/','/business/for/':'/fit/','/cooperatives/':'/coops/','/cooperate/':'/coops/'});
  for(const [old,path] of Object.entries(publicRouteAliases)){
   expect(publicPage(old)).toBe(publicPage(path));expect(publicPage(old+'index.html?ref=old')).toBe(publicPage(path));
   expect(publicPages.some(page=>page.path===old)).toBe(false);
