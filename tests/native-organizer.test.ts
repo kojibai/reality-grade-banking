@@ -54,3 +54,45 @@ it('refuses incomplete or foreign empty calendar pages without caching the range
  for(const bad of [{ok:true,events:[]},{ok:true,events:[],signedIn:true,ownerUid:other,complete:true,hasMore:false,nextCursor:null},{ok:true,events:[],signedIn:true,ownerUid:uid,complete:false,hasMore:false,nextCursor:null},{ok:true,events:[],signedIn:true,ownerUid:uid,complete:true,hasMore:'false',nextCursor:null},{ok:true,events:[],signedIn:true,ownerUid:uid,complete:true,hasMore:true,nextCursor:'empty-page'}]){response=bad;await expect(api.events(range)).rejects.toThrow();expect(api.known().ranges).toHaveLength(0);}
  response={ok:true,events:[],signedIn:true,ownerUid:uid,complete:true,hasMore:false,nextCursor:null};await api.events(range);await api.events(range);expect(request).toHaveBeenCalledTimes(6);
 });
+it('retains every loaded month across navigation and reopening instead of evicting its coverage',async()=>{
+ const request=vi.fn(async()=>Response.json({ok:true,signedIn:true,ownerUid:uid,complete:true,events:[],hasMore:false,nextCursor:null}));
+ const api=createNativeOrganizer({accountUid:uid,request});
+ for(let month=0;month<15;month++)await api.events({start:new Date(Date.UTC(2026,month,1)).toISOString(),end:new Date(Date.UTC(2026,month+1,1)).toISOString()});
+ const restored=createNativeOrganizer({accountUid:uid,request,retained:api.known()});
+ await restored.events({start:'2026-01-01T00:00:00.000Z',end:'2026-02-01T00:00:00.000Z'});
+ expect(request).toHaveBeenCalledTimes(15);
+});
+it('updates the loaded calendar from the exact appointment response without reading it again',async()=>{
+ const request=vi.fn(async(_path:string,init?:RequestInit)=>Response.json(init?.method==='POST'?{ok:true,event}:{ok:true,signedIn:true,ownerUid:uid,complete:true,events:[],hasMore:false,nextCursor:null}));
+ const api=createNativeOrganizer({accountUid:uid,request});await api.events(range);
+ await api.saveEvent({title:event.title,startAt:event.startAt,endAt:event.endAt});
+ expect((await api.events(range)).map(row=>row.id)).toEqual([event.id]);expect(request).toHaveBeenCalledTimes(2);
+});
+it('preserves the upstream error code and HTTP status without admitting a failed empty list',async()=>{
+ const request=vi.fn(async()=>Response.json({ok:false,error:'contacts_load_failed',detail:'private server detail'},{status:500}));
+ const api=createNativeOrganizer({accountUid:uid,request});
+ await expect(api.contacts()).rejects.toMatchObject({message:'contacts_load_failed',status:500});expect(api.knownContacts()).toBeNull();expect(request).toHaveBeenCalledTimes(1);
+});
+it('reuses the held calendar slice until its records change instead of filtering it again on return',async()=>{
+ const request=vi.fn(async(_path:string,init?:RequestInit)=>Response.json(init?.method==='POST'?{ok:true,event}:{ok:true,signedIn:true,ownerUid:uid,complete:true,events:[],hasMore:false,nextCursor:null}));
+ const api=createNativeOrganizer({accountUid:uid,request});await api.events(range);const held=api.knownEvents(range);
+ expect(api.knownEvents(range)).toBe(held);expect(await api.events(range)).toBe(held);
+ await api.saveEvent({title:event.title,startAt:event.startAt,endAt:event.endAt});expect(api.knownEvents(range)).not.toBe(held);expect(api.knownEvents(range)).toHaveLength(1);expect(held).toHaveLength(0);
+ expect(request).toHaveBeenCalledTimes(2);
+});
+it('merges an initial calendar read with an appointment saved while that read was in flight',async()=>{
+ let finish!:(value:Response)=>void;
+ const older={...event,id:'00000000-0000-4000-8000-000000000009',title:'Existing appointment'};
+ const request=vi.fn((_path:string,init?:RequestInit)=>init?.method==='POST'?Promise.resolve(Response.json({ok:true,event})):new Promise<Response>(resolve=>{finish=resolve;}));
+ const api=createNativeOrganizer({accountUid:uid,request}),reading=api.events(range);
+ await api.saveEvent({title:event.title,startAt:event.startAt,endAt:event.endAt});
+ finish(Response.json({ok:true,signedIn:true,ownerUid:uid,complete:true,events:[older],hasMore:false,nextCursor:null}));
+ expect((await reading).map(row=>row.id).sort()).toEqual([event.id,older.id].sort());
+ await api.events(range);expect(request).toHaveBeenCalledTimes(2);
+});
+it('deduplicates repeated IDs while retaining distinct appointments and sign-in history',()=>{
+ const newer={...event,title:'Updated lunch',updatedAt:'2026-10-27T00:00:00Z'},distinct={...event,id:'00000000-0000-4000-8000-000000000006'};
+ const signIn={...event,id:'00000000-0000-4000-8000-000000000007',title:'Signed in',source:'system',kind:'traction',metadata:{actionKind:'auth.login.receiz_id'}};
+ const api=createNativeOrganizer({accountUid:uid,request:vi.fn(),carried:{calendar:{events:[newer,event,distinct,signIn]}}});
+ expect(api.knownEvents(range)?.map(row=>row.title)).toEqual(['Updated lunch','Lunch','Signed in']);expect(api.known().events).toHaveLength(3);
+});

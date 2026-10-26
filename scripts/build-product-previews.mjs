@@ -17,6 +17,9 @@ export function scopeProductCss(css){
  root.walkDecls(decl=>{decl.value=decl.value.replace(/100d?vh/g,'680px').replace(/(\d+(?:\.\d+)?)vw\b/g,'$1cqw');});return root.toString();
 }
 if(process.argv[1]?.endsWith('build-product-previews.mjs')){
+ // Fixed reference examples must render identically on developer machines and CI.
+ // This build-only process never changes the running app's local-time display.
+ process.env.TZ='UTC';
  const server=await createServer({server:{middlewareMode:true,hmr:false,ws:false},optimizeDeps:{noDiscovery:true,include:[]},appType:'custom'});
  try{
   const {ProductScreen,productScreenNames}=await server.ssrLoadModule('/src/presentation/ProductScreen.tsx');

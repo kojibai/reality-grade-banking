@@ -47,7 +47,7 @@ export function calendarRange(value:CalendarRange):CalendarRange {
  return {start:new Date(value.start).toISOString(),end:new Date(value.end).toISOString()};
 }
 export function readOrganizerDisplay(value:unknown,owner:string):OrganizerDisplay|null {
- try{const v=organizerRecord(value);if(v.schema!=='bankeiz.organizer-display.v1'||v.accountUid!==owner||!Array.isArray(v.ranges)||v.ranges.length>12||v.contacts!==null&&!Array.isArray(v.contacts))return null;
+ try{const v=organizerRecord(value);if(v.schema!=='bankeiz.organizer-display.v1'||v.accountUid!==owner||!Array.isArray(v.ranges)||v.ranges.length>20000||v.contacts!==null&&!Array.isArray(v.contacts))return null;
   const events=v.events===null||v.events===undefined?null:Array.isArray(v.events)&&v.events.length<=20000?v.events.map(value=>organizerEvent(value,owner)):null;
   return{schema:'bankeiz.organizer-display.v1',accountUid:owner,contactsComplete:v.contactsComplete!==false&&v.contacts!==null,contacts:v.contacts===null?null:(v.contacts as unknown[]).map(organizerContact),events,ranges:v.ranges.map(value=>{const row=organizerRecord(value),range=calendarRange(row as unknown as CalendarRange);return{...range,complete:row.complete===true};}),username:typeof v.username==='string'&&/^[a-z0-9_]{3,24}$/.test(v.username)?v.username:null};
  }catch{return null;}

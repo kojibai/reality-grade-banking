@@ -6,7 +6,8 @@ Messages keeps conversations, people and appointments in the same sheet. Calenda
 
 - Use the Calendar or Contacts icon in Messages. Return to the conversation without losing its draft, position or active call.
 - Open a person to message, call, view their profile or prepare an appointment. Import existing CSV, vCard or JSON contacts, or use the device contact picker where supported.
-- Calendar offers agenda and week views, appointment creation, editing and cancellation. Cancellation retains the record and its continuity.
+- Calendar offers Agenda, Week and Month, appointment creation, editing and cancellation. Tap a month cell to open that day's Agenda; use the arrows for nearby months or the month/year heading's date picker for a direct jump. Cancellation retains the record and its continuity.
+- The small link icon beside Return to conversation opens booking controls. The existing booking link remains at the bottom of Calendar.
 - Your booking link opens a Bankeiz guest page. Configure availability, questions and custom links inside Calendar. Guests choose an offered instant in their timezone, keep their details when changing slots and receive the same appointment held in the host’s Calendar.
 - Past conversations appears only with Agent access and actual conversation history. A draft by itself does not make the icon appear.
 
@@ -16,6 +17,12 @@ The organizer is loaded after intent. Login and ordinary Messages opening perfor
 
 A partial contact write never claims a complete collection. Calendar ranges become complete only after admitted owner pages and valid pagination. Closing or changing identity stops old-account operations and discards late responses. An uncertain write preserves the draft and never retries automatically.
 
+Loaded calendar coverage is retained with its records, rather than discarded after twelve ranges. Returning to it makes no service read. The controller reuses the last unchanged event slice instead of filtering it twice on return. An appointment saved during an initial read merges with the incoming collection; it does not discard that collection and force another read.
+
+Day and week intervals begin at local midnight, including Monday morning and overnight appointments. Repeated event IDs show the latest held revision once; distinct appointments at the same time remain distinct. System sign-in events remain in held history but are omitted from Calendar views and day counts. This is a display filter, not cancellation or deletion.
+
+Contacts failures retain the friendly message and add collapsed protocol code/HTTP-status details. No response body, account record or credential is displayed. The reported persistent new-account failure still requires its specific code/status; a successful existing-account read does not establish its cause.
+
 ## Agent actions
 
 The owner’s agent uses these same organizer operations and receives their actual results. The native tool connection can discover the installed Receiz tool catalog and AI skills. Read-only tools use their native access checks; other actions show the exact retained request for human review. Checking a pending result inspects the same attempt rather than submitting another action.
@@ -23,6 +30,8 @@ The owner’s agent uses these same organizer operations and receives their actu
 Native full-tool execution requires the application’s registered `mcp:execute` scope and the same owner’s configured native runtime. Catalog discovery does not grant custody, provision a host or replace a tool’s own consent requirements. Ordinary messaging and financial approvals retain their existing behavior.
 
 An agent replying to another person uses the existing conversation booking tools. It can remember facts the visitor actually supplied, present available times and prepare a visible appointment review. Booking requires that exact prior receipt-bound review and the visitor’s subsequent confirmation. It does not expose private owner management.
+
+Add credits appears only after the existing agent response reports exhausted usage, or an admitted saved task is paused for credits. Ordinary messaging does not request a credit balance to decide whether to show this control. A confirmed top-up or successful agent response clears it; funding never automatically sends the retained draft.
 
 ## Qualification
 

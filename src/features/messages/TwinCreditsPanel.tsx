@@ -5,9 +5,10 @@ import {twinCreditsSession} from '../../receiz/twin-credits-session';
 import {creditFundingCents} from '../../receiz/twin-credit-funding';
 import {formatMoney}from'../../core/money';
 import {ReceizCardCheckout} from '../deposit/ReceizCardCheckout';
-export function TwinCreditsPanel({identity,onBack}:{identity:OpenIdentity;onBack():void}){
+export function TwinCreditsPanel({identity,onBack,onFunded}:{identity:OpenIdentity;onBack():void;onFunded?():void}){
  const session=useMemo(()=>twinCreditsSession(identity),[identity]),state=useSyncExternalStore(session.subscribe,session.known,session.known),[amount,setAmount]=useState(()=>session.known().amountUsd??'25');
  useEffect(()=>{void session.balance().then(()=>session.prepare(amount));},[session]);
+ useEffect(()=>{if(state.settled)onFunded?.();},[state.settled,onFunded]);
  const selectedAmount=state.amountUsd??amount;
  const q=state.funding?.quote,extra=q&&state.reserveEligible&&BigInt(q.cardShortfallUsdCents)>0n&&BigInt(q.cardShortfallUsdCents)<50n?50n-BigInt(q.cardShortfallUsdCents):0n;
  return <div className="bank-twin-upgrade bank-twin-credits"><button className="bank-messaging-back" type="button" onClick={onBack}><ChevronLeft size={15}/>Back to conversation</button><h3>{state.settled?'Ready to keep going.':'Keep the work moving.'}</h3><p>{state.settled?'Your top-up is confirmed. Your agent and conversation are right where you left them.':'Add usage for your agent’s next tasks. Your conversation stays here.'}</p>

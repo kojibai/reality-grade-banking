@@ -1,13 +1,16 @@
 // @vitest-environment happy-dom
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
-import {afterEach,expect,it,vi} from 'vitest';
+import {afterEach,beforeAll,expect,it,vi} from 'vitest';
 import {MessagesPanel} from '../src/features/messages/MessagesPanel';
 import {MessagingError,type ChatConversation,type ChatMessage,type ChatPage,type NativeMessaging,type MessageSendOptions} from '../src/receiz/native-messaging';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 import type {NativeTwinAsk,NativeTwinMemory,NativeTwinReply} from '../src/receiz/native-twin';
 
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+// Cold module transforms belong to fixture setup, not the one-second UI wait.
+// These views still mount only through the real Messages controls in each test.
+beforeAll(async()=>{await Promise.all([import('../src/features/messages/MoneyReceipts'),import('../src/features/messages/TwinCreditsPanel')]);});
 afterEach(()=>{vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});});
 const uid='33333333-3333-4333-8333-333333333333',threadId='11111111-1111-4111-8111-111111111111';
 const peer={kind:'user' as const,userId:'22222222-2222-4222-8222-222222222222',username:'sam',displayName:'Sam',avatarUrl:null};
@@ -470,7 +473,8 @@ it('opens a secure credit top-up from the message box and returns to the same dr
   return{accountUid:uid,twinAccess:true,creditFunding:{quote:{schema:'receiz.usage.reserve-purchase.quote.v1' as const,ownerUserId:uid,clientOperationId:input.operationId,credits:'2500',amountUsdCents:'2500',expiresAt:new Date(Date.now()+60000).toISOString(),bankContributionUsdCents:'0',cardShortfallUsdCents:'2500',minimumCardDepositUsdCents:'50' as const,exactCardDepositAvailable:true}}};
  }),identity={...f.identity,upgradeTwin};
  try{
-  await f.render(true,identity);await f.click('Your agent');await f.input('Ask your agent…','My unfinished money question');await f.click('Add credits');
+  f.api.twin.ask.mockRejectedValueOnce(Error('usage_insufficient_credits'));
+  await f.render(true,identity);await f.click('Your agent');expect(f.host.querySelector('.bank-chat-credits')).toBeNull();await f.input('Ask your agent…','My unfinished money question');await f.submit();await f.click('Add credits');
   await vi.waitFor(()=>{
    expect(f.host.textContent).toContain('Keep the work moving.');
    expect(upgradeTwin.mock.calls.map(call=>call[0].action)).toEqual(['credits-balance']);
@@ -483,7 +487,7 @@ it('opens a secure credit top-up from the message box and returns to the same dr
    expect(f.host.querySelector<HTMLButtonElement>('.bank-twin-credits .primary-button')?.disabled).toBe(false);
   });
   expect(f.host.querySelector('.bank-twin-credits [role="alert"]')).toBeNull();
-  await f.click('Back to conversation');expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your agent…"]')?.value).toBe('My unfinished money question');expect(f.api.twin.ask).not.toHaveBeenCalled();
+  await f.click('Back to conversation');expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your agent…"]')?.value).toBe('My unfinished money question');expect(f.api.twin.ask).toHaveBeenCalledOnce();
  }finally{f.unmount();balance.resolve(result);}
 });
 it('keeps the composer usable after a definitive credit refusal and offers the same in-chat top-up',async()=>{
@@ -539,3 +543,12 @@ it('keeps a background domain completion and its exact setup context inside the 
 
 it('shows Past conversations only with agent entitlement and actual saved history',async()=>{const f=fixture(),list=vi.fn(async()=>({threads:[],hasMore:false,nextCursor:null}));Object.assign(f.api.twin,{conversations:{list,read:vi.fn()}});try{await f.render(true,{...f.identity,knownTwinAccess:()=>false});await f.click('Your agent');expect(f.host.querySelector('[aria-label="Past conversations"]')).toBeNull();expect(list).not.toHaveBeenCalled();await f.render(true,f.identity);await vi.waitFor(()=>expect(list).toHaveBeenCalledTimes(1));expect(f.host.querySelector('[aria-label="Past conversations"]')).toBeNull();}finally{f.unmount();}});
 it('uses the first needed history list for the eligible icon and reuses it when opened',async()=>{const f=fixture(),list=vi.fn(async()=>({threads:[{threadKey:`api:${uid}`,title:'Existing saved conversation',preview:'A real saved reply',updatedAt:'2026-10-26T12:00:00Z'}],hasMore:false,nextCursor:null}));Object.assign(f.api.twin,{conversations:{list,read:vi.fn()}});try{await f.render();await vi.waitFor(()=>expect(f.host.querySelector('[aria-label="Past conversations"]')).not.toBeNull());await f.click('Past conversations');expect(f.host.textContent).toContain('Existing saved conversation');expect(list).toHaveBeenCalledTimes(1);}finally{f.unmount();}});
+
+it('only offers credit funding after an exhausted-credit response and clears it when the agent can reply',async()=>{
+ const f=fixture(),upgradeTwin=vi.fn(),identity={...f.identity,upgradeTwin};
+ f.api.twin.ask.mockRejectedValueOnce(Error('usage_insufficient_credits'));
+ try{await f.render(true,identity);await f.click('Your agent');expect(f.host.querySelector('.bank-chat-credits')).toBeNull();expect(upgradeTwin).not.toHaveBeenCalled();
+  await f.input('Ask your agent…','Keep my question');await f.submit();expect(f.host.querySelector('.bank-chat-credits')).not.toBeNull();
+  await f.submit();expect(f.host.querySelector('.bank-chat-credits')).toBeNull();expect(upgradeTwin).not.toHaveBeenCalled();
+ }finally{f.unmount();}
+});
