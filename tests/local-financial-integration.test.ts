@@ -1,0 +1,65 @@
+import {expect,it} from 'vitest';
+import {createLocalFinancialSession} from '../src/receiz/local-financial';
+import {localFinancialFixture} from './helpers/local-financial-fixture';
+
+it('commits offline at the original pulse and publishes the exact causal prefix without executing again',async()=>{
+ const f=await localFinancialFixture();
+ const session=await createLocalFinancialSession(f.options);
+ const first=await session.execute({operationId:'55555555-5555-4555-8555-555555555555',action:{kind:'buy',marketItemId:'asset:held',amountUsdCents:'100'}});
+ expect(first.status).toBe('committed');if(first.status!=='committed')throw Error('Fixture commit');expect(f.requests).toHaveLength(0);
+ const second=await session.execute({operationId:'66666666-6666-4666-8666-666666666666',action:{kind:'sell',marketItemId:'asset:held',shareQuantityMicro:'500000'}});
+ expect(second.status).toBe('committed');if(second.status!=='committed')throw Error('Fixture commit');expect(f.requests).toHaveLength(0);
+ f.connect();expect((await session.flush()).status).toBe('published');
+ expect(f.requests.flatMap(b=>b.originals.map(o=>o.operationId))).toEqual([first.operation.operationId,second.operation.operationId]);
+ expect(f.requests.flatMap(b=>b.originals.map(o=>JSON.parse(new TextDecoder().decode(f.runtime.decode(o.artifactBytesB64u))).atKaiUPulse))).toEqual([first.operation.atKaiUPulse,second.operation.atKaiUPulse]);
+ const sent=f.requests.length;await session.flush();expect(f.requests).toHaveLength(sent);
+ session.dispose();
+});
+
+it('uses the existing shared native SDK module for financial functions instead of another verifier bundle',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const text=await readFile(new URL('../public/native/offline-notes.v129.mjs',import.meta.url),'utf8');
+ const {build}=await import('esbuild');
+ const result=await build({stdin:{contents:text,sourcefile:'shared-sdk.mjs',loader:'js'},write:false,format:'esm',metafile:true});
+ const exported=Object.values(result.metafile!.outputs)[0].exports;
+ for(const key of ['admitReceizAccountFinancialSource','createReceizAccountFinancialExecutor','createReceizAccountFinancialPublisher','projectReceizAccountFinancialAction','financialSourceApplicationId','financialKaiNow'])expect(exported,key).toContain(key);
+});
+
+
+it('recovers exact retained commits on cold reopen and does not depend on optional presentation or delivery',async()=>{
+ const f=await localFinancialFixture(),first=await createLocalFinancialSession({...f.options,onCommitted(){throw Error('Display unavailable');}});
+ const request={operationId:'77777777-7777-4777-8777-777777777777',action:{kind:'send' as const,recipientUserId:'33333333-3333-4333-8333-333333333333',conversationId:'44444444-4444-4444-8444-444444444444',amountUsdCents:'100'}};
+ const committed=await first.execute(request);expect(committed.status).toBe('committed');
+ const before=await first.current();first.dispose();expect(f.listeners.size).toBe(0);
+ const cold=await createLocalFinancialSession(f.options);expect(await cold.current()).toEqual(before);
+ expect(await cold.execute(request)).toEqual(committed);expect(f.requests).toHaveLength(0);expect(f.listeners.size).toBe(1);
+ f.connect();expect((await cold.flush()).status).toBe('published');expect(f.requests.flatMap(b=>b.originals)).toHaveLength(1);
+ cold.dispose();expect(f.listeners.size).toBe(0);
+});
+
+it('projects genuine retained Kai growth offline and retains every committed debit',async()=>{
+ const f=await localFinancialFixture({growth:true}),session=await createLocalFinancialSession(f.options);
+ const before=await session.wallet();f.at(14017492000000n);const grown=await session.wallet();expect(BigInt(grown.availableUsdCents)).toBeGreaterThan(BigInt(before.availableUsdCents));
+ const sent=await session.execute({operationId:'88888888-8888-4888-8888-888888888888',action:{kind:'send',recipientUserId:'33333333-3333-4333-8333-333333333333',conversationId:'44444444-4444-4444-8444-444444444444',amountUsdCents:'100'}});
+ expect(sent.status).toBe('committed');expect(BigInt((await session.wallet()).availableUsdCents)).toBe(BigInt(grown.availableUsdCents)-100n);
+ expect(f.requests).toHaveLength(0);session.dispose();
+});
+
+it('refuses a foreign admitted Source scope before creating local financial state',async()=>{
+ const f=await localFinancialFixture();
+ await expect(createLocalFinancialSession({...f.options,accountUid:'99999999-9999-4999-8999-999999999999'})).rejects.toThrow('BANK_LOCAL_FINANCIAL_IDENTITY_MISMATCH');
+ expect(f.originals.size).toBe(0);expect(f.requests).toHaveLength(0);expect(f.listeners.size).toBe(0);
+});
+
+it('uses actual Kai asset growth for local Buy and Sell and reconnects with the exact original prices',async()=>{
+ const f=await localFinancialFixture({dynamicMarket:true,growth:true}),session=await createLocalFinancialSession(f.options);
+ const request={operationId:'99999999-9999-4999-8999-999999999999',action:{kind:'buy' as const,marketItemId:'asset:held',amountUsdCents:'100'}};
+ const buy=await session.execute(request);expect(buy.status).toBe('committed');if(buy.status!=='committed')throw Error('Missing Buy Original');
+ f.at(14017492000123n);
+ const sell=await session.execute({operationId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',action:{kind:'sell',marketItemId:'asset:held',shareQuantityMicro:'100000'}});expect(sell.status).toBe('committed');if(sell.status!=='committed')throw Error('Missing Sell Original');
+ expect(buy.operation.effect.executionPriceUsdCents).toBe('1030149');expect(sell.operation.effect.executionPriceUsdCents).not.toBe('100');expect(sell.operation.atKaiUPulse).toBe('14017492000123');expect(f.requests).toHaveLength(0);
+ f.at(18000000000123n);expect(await session.execute(request)).toEqual(buy);
+ f.connect();expect((await session.flush()).status).toBe('published');
+ const originals=f.requests.flatMap(batch=>batch.originals).map(row=>JSON.parse(new TextDecoder().decode(f.runtime.decode(row.artifactBytesB64u))));
+ expect(originals.map(row=>row.effect.executionPriceUsdCents)).toEqual([buy.operation.effect.executionPriceUsdCents,sell.operation.effect.executionPriceUsdCents]);expect(originals.map(row=>row.atKaiUPulse)).toEqual([buy.operation.atKaiUPulse,sell.operation.atKaiUPulse]);session.dispose();
+});

@@ -140,7 +140,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "0ebf1ca7701ff173736928d9e076ed3b61124a158f513c5a7d7d97853805d854"
+      "sha256": "aff2874a827edf693150670a40f4c9ea315a9989e2c5af068f9db54b927c26f1"
     },
     {
       "path": "app/lib/wallet/bankNotes/bytePacking.ts",
@@ -477,6 +477,30 @@
     {
       "path": "node_modules/.pnpm/snarkjs@0.7.6/node_modules/snarkjs/build/browser.esm.js",
       "sha256": "aa06a6c132fd50ed658b558f5273c339fd58a0f51f6f201ad9320aebbcb28c3e"
+    },
+    {
+      "path": "packages/receiz-sdk/src/accountFinancialBrowser.ts",
+      "sha256": "4488eb78660013989bce87ea821e7e223df2395c5477f4d3da54ede08d35ac4b"
+    },
+    {
+      "path": "packages/receiz-sdk/src/accountFinancialCommit.ts",
+      "sha256": "45e2df711416c0814f092f38af3e9141cc26ed93040ca258ea33e2ba53476051"
+    },
+    {
+      "path": "packages/receiz-sdk/src/accountFinancialExecution.ts",
+      "sha256": "e4c84d6632ceb12ce870de149130a6abf7e94110deb37089252970ef3aba6ed1"
+    },
+    {
+      "path": "packages/receiz-sdk/src/accountFinancialMath.generated.js",
+      "sha256": "be8e6295d224dfc21d6ce060494779339c479af2ce89e70e6e37da5770586cd6"
+    },
+    {
+      "path": "packages/receiz-sdk/src/accountFinancialPublication.ts",
+      "sha256": "4e426b5c604728a353c928640519a85ed93f36c2027177aab8eb1da424991743"
+    },
+    {
+      "path": "packages/receiz-sdk/src/accountFinancialSource.ts",
+      "sha256": "89822a52dd22d0295a7d6a7b0d2befb687e81be4325abbf13ce40c1d6e002565"
     },
     {
       "path": "packages/receiz-sdk/src/admissionStore.ts",
@@ -1330,7 +1354,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "0ebf1ca7701ff173736928d9e076ed3b61124a158f513c5a7d7d97853805d854"
+      "sha256": "aff2874a827edf693150670a40f4c9ea315a9989e2c5af068f9db54b927c26f1"
     },
     {
       "path": "app/lib/wallet/bankNotes/bytePacking.ts",
@@ -2669,27 +2693,27 @@
       "mode": 420
     },
     {
-      "path": "npm/dijkstrajs@1.0.3/dijkstra.js",
-      "sha256": "7f5721e77332370a71314f1536b8c552f4f9dbd99bbc6c5aa10df3253eacfd5c",
-      "bytes": 5206,
-      "mode": 420
-    },
-    {
       "path": "npm/dijkstrajs@1.0.3/LICENSE.md",
       "sha256": "c46324e45a005413535a6fb7a97e9eacd3cc6bf30335b7d5c10b8ee3af9e60c2",
       "bytes": 714,
       "mode": 420
     },
     {
-      "path": "npm/dijkstrajs@1.0.3/package.json",
-      "sha256": "b523e007019401be68405b83e846ef9da4682026e8be339ee4ee7888e90b865a",
-      "bytes": 1268,
-      "mode": 420
-    },
-    {
       "path": "npm/dijkstrajs@1.0.3/README.md",
       "sha256": "a318033578d0f261e3706ee479e345124fec5659dbb306c1ed250dd67e8fcf6c",
       "bytes": 391,
+      "mode": 420
+    },
+    {
+      "path": "npm/dijkstrajs@1.0.3/dijkstra.js",
+      "sha256": "7f5721e77332370a71314f1536b8c552f4f9dbd99bbc6c5aa10df3253eacfd5c",
+      "bytes": 5206,
+      "mode": 420
+    },
+    {
+      "path": "npm/dijkstrajs@1.0.3/package.json",
+      "sha256": "b523e007019401be68405b83e846ef9da4682026e8be339ee4ee7888e90b865a",
+      "bytes": 1268,
       "mode": 420
     },
     {
@@ -2729,6 +2753,18 @@
       "mode": 420
     },
     {
+      "path": "npm/ffjavascript@0.3.1/COPYING",
+      "sha256": "d95c74a62d14f13ebfbc8c1783c315e2ed2389e80048b264bdeddb8114dee945",
+      "bytes": 35130,
+      "mode": 420
+    },
+    {
+      "path": "npm/ffjavascript@0.3.1/README.md",
+      "sha256": "53c12f13fb5aefe96a5c497217308754ad32dc02f383885e66454c65e479f7e3",
+      "bytes": 676,
+      "mode": 420
+    },
+    {
       "path": "npm/ffjavascript@0.3.1/build/browser.esm.js",
       "sha256": "0a383967e6341c194c9ce348476756559cdcf21aea4eac944a023f5e79fac1d8",
       "bytes": 575310,
@@ -2741,12 +2777,6 @@
       "mode": 420
     },
     {
-      "path": "npm/ffjavascript@0.3.1/COPYING",
-      "sha256": "d95c74a62d14f13ebfbc8c1783c315e2ed2389e80048b264bdeddb8114dee945",
-      "bytes": 35130,
-      "mode": 420
-    },
-    {
       "path": "npm/ffjavascript@0.3.1/main.js",
       "sha256": "9425a0b85916388119934338563d270d450e8b64684385d13ebf320aab19e958",
       "bytes": 766,
@@ -2756,12 +2786,6 @@
       "path": "npm/ffjavascript@0.3.1/package.json",
       "sha256": "a2073c1a961d1c835809b1332c5e38e6233587b20da7b469e1c5dbe76957443b",
       "bytes": 1345,
-      "mode": 420
-    },
-    {
-      "path": "npm/ffjavascript@0.3.1/README.md",
-      "sha256": "53c12f13fb5aefe96a5c497217308754ad32dc02f383885e66454c65e479f7e3",
-      "bytes": 676,
       "mode": 420
     },
     {
@@ -2813,6 +2837,12 @@
       "mode": 420
     },
     {
+      "path": "npm/ffjavascript@0.3.1/src/engine.js",
+      "sha256": "43c3423dd270f1d912e13d0a2aa7d149de083a025a6285131fd7ebd93fd098a0",
+      "bytes": 2133,
+      "mode": 420
+    },
+    {
       "path": "npm/ffjavascript@0.3.1/src/engine_applykey.js",
       "sha256": "aef6b1d98d13c7e0fed521573810efbcde30879e90697695a9f50b80e6b6a854",
       "bytes": 3757,
@@ -2840,12 +2870,6 @@
       "path": "npm/ffjavascript@0.3.1/src/engine_pairing.js",
       "sha256": "af47ee375defc84001d0347059bdfd6912ec09b50c3d921348d266d0fcb10b0a",
       "bytes": 4052,
-      "mode": 420
-    },
-    {
-      "path": "npm/ffjavascript@0.3.1/src/engine.js",
-      "sha256": "43c3423dd270f1d912e13d0a2aa7d149de083a025a6285131fd7ebd93fd098a0",
-      "bytes": 2133,
       "mode": 420
     },
     {
@@ -2909,15 +2933,15 @@
       "mode": 420
     },
     {
-      "path": "npm/ffjavascript@0.3.1/src/threadman_thread.js",
-      "sha256": "1a59efc8330f68587dc0c9f09947363cd847d697daca01605b2eacbc10908d13",
-      "bytes": 3707,
-      "mode": 420
-    },
-    {
       "path": "npm/ffjavascript@0.3.1/src/threadman.js",
       "sha256": "bc5a9f8a68047c23baa890908784d63335c9898ec79025378f4a228891d3ee13",
       "bytes": 6880,
+      "mode": 420
+    },
+    {
+      "path": "npm/ffjavascript@0.3.1/src/threadman_thread.js",
+      "sha256": "1a59efc8330f68587dc0c9f09947363cd847d697daca01605b2eacbc10908d13",
+      "bytes": 3707,
       "mode": 420
     },
     {
@@ -3011,6 +3035,18 @@
       "mode": 420
     },
     {
+      "path": "npm/fflate@0.8.3/LICENSE",
+      "sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551",
+      "bytes": 1069,
+      "mode": 420
+    },
+    {
+      "path": "npm/fflate@0.8.3/README.md",
+      "sha256": "021950f8aa043d57876d65917abb546c29de4007e8f873cac142c5394d4e17bc",
+      "bytes": 27362,
+      "mode": 420
+    },
+    {
       "path": "npm/fflate@0.8.3/esm/browser.d.ts",
       "sha256": "985db2599e33d85a70a6da5f2b7b6f1b0bf9b9119781b684573a1a9b463e0cc4",
       "bytes": 53488,
@@ -3083,21 +3119,9 @@
       "mode": 420
     },
     {
-      "path": "npm/fflate@0.8.3/LICENSE",
-      "sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551",
-      "bytes": 1069,
-      "mode": 420
-    },
-    {
       "path": "npm/fflate@0.8.3/package.json",
       "sha256": "5922d8150b307bc0e4e441491c779c45379e9913d348848fca8d5cf02db4d134",
       "bytes": 3543,
-      "mode": 420
-    },
-    {
-      "path": "npm/fflate@0.8.3/README.md",
-      "sha256": "021950f8aa043d57876d65917abb546c29de4007e8f873cac142c5394d4e17bc",
-      "bytes": 27362,
       "mode": 420
     },
     {
@@ -3113,15 +3137,27 @@
       "mode": 420
     },
     {
-      "path": "npm/hash-wasm@4.12.0/biome.json",
-      "sha256": "3cbc171826935fd5e39d5d74a2251cf7f0e902cd08d2170cb0c53bdb9764a38f",
-      "bytes": 690,
-      "mode": 420
-    },
-    {
       "path": "npm/hash-wasm@4.12.0/CHANGELOG.md",
       "sha256": "5bae2eafd865f069fd6b30476e2a0d29d966bfddf95490e774dd2de35cbdbaf8",
       "bytes": 5056,
+      "mode": 420
+    },
+    {
+      "path": "npm/hash-wasm@4.12.0/LICENSE",
+      "sha256": "c14dea172f72f2714284a0ac2ab1b00b5352a01409d58255a46227ffc541debd",
+      "bytes": 1630,
+      "mode": 420
+    },
+    {
+      "path": "npm/hash-wasm@4.12.0/README.md",
+      "sha256": "240e346e626eff8fdbfb9c9eb429e03877802d0f86fe1eb30e19bb7f2f5db88b",
+      "bytes": 21991,
+      "mode": 420
+    },
+    {
+      "path": "npm/hash-wasm@4.12.0/biome.json",
+      "sha256": "3cbc171826935fd5e39d5d74a2251cf7f0e902cd08d2170cb0c53bdb9764a38f",
+      "bytes": 690,
       "mode": 420
     },
     {
@@ -3206,6 +3242,12 @@
       "path": "npm/hash-wasm@4.12.0/dist/keccak.umd.min.js",
       "sha256": "e27ef358910bbf7b6c3efaaa1a2ddc1b3cbccc61c00574ded4ad78b3cafea4f5",
       "bytes": 11297,
+      "mode": 420
+    },
+    {
+      "path": "npm/hash-wasm@4.12.0/dist/lib/WASMInterface.d.ts",
+      "sha256": "a2bc59da4f44ff533bd0b7ea20946f8c52eae8895531746dee71603e3b7d5578",
+      "bytes": 2266,
       "mode": 420
     },
     {
@@ -3365,12 +3407,6 @@
       "mode": 420
     },
     {
-      "path": "npm/hash-wasm@4.12.0/dist/lib/WASMInterface.d.ts",
-      "sha256": "a2bc59da4f44ff533bd0b7ea20946f8c52eae8895531746dee71603e3b7d5578",
-      "bytes": 2266,
-      "mode": 420
-    },
-    {
       "path": "npm/hash-wasm@4.12.0/dist/lib/whirlpool.d.ts",
       "sha256": "6dc0148fe65a487db8bd552670f0fe87498c0a8e644c38092a185a05030282bf",
       "bytes": 412,
@@ -3506,6 +3542,12 @@
       "path": "npm/hash-wasm@4.12.0/jest.config.js",
       "sha256": "f7c5ea087fd13efbed884d0e7edff284d4b9b5d2873431c3936763297617a2f4",
       "bytes": 151,
+      "mode": 420
+    },
+    {
+      "path": "npm/hash-wasm@4.12.0/lib/WASMInterface.ts",
+      "sha256": "57148c496abdc8d1f541a127f4d5601ceca962f06ca91d4e9fb519f4f77bbc02",
+      "bytes": 8407,
       "mode": 420
     },
     {
@@ -3665,12 +3707,6 @@
       "mode": 420
     },
     {
-      "path": "npm/hash-wasm@4.12.0/lib/WASMInterface.ts",
-      "sha256": "57148c496abdc8d1f541a127f4d5601ceca962f06ca91d4e9fb519f4f77bbc02",
-      "bytes": 8407,
-      "mode": 420
-    },
-    {
       "path": "npm/hash-wasm@4.12.0/lib/whirlpool.ts",
       "sha256": "a452d2eb3641c9cb75743c2a5910f11f8b75d2ff0e7c7886d1a15be7cc45ec7a",
       "bytes": 1426,
@@ -3701,21 +3737,9 @@
       "mode": 420
     },
     {
-      "path": "npm/hash-wasm@4.12.0/LICENSE",
-      "sha256": "c14dea172f72f2714284a0ac2ab1b00b5352a01409d58255a46227ffc541debd",
-      "bytes": 1630,
-      "mode": 420
-    },
-    {
       "path": "npm/hash-wasm@4.12.0/package.json",
       "sha256": "bdb86309706014e1e3062ce78aa7a2e8b196a44d5a22ceec8978d864e28116f7",
       "bytes": 2371,
-      "mode": 420
-    },
-    {
-      "path": "npm/hash-wasm@4.12.0/README.md",
-      "sha256": "240e346e626eff8fdbfb9c9eb429e03877802d0f86fe1eb30e19bb7f2f5db88b",
-      "bytes": 21991,
       "mode": 420
     },
     {
@@ -3911,6 +3935,18 @@
       "mode": 420
     },
     {
+      "path": "npm/jszip@3.10.1/LICENSE.markdown",
+      "sha256": "566c953c6090b1218ca6217dd7359d45dde46581968586dc607d59a78af6a9c4",
+      "bytes": 33753,
+      "mode": 420
+    },
+    {
+      "path": "npm/jszip@3.10.1/README.markdown",
+      "sha256": "5eee3659204ed8f04b58d388b2dae55539c5cbcda733e4e945811c9121a68ede",
+      "bytes": 678,
+      "mode": 420
+    },
+    {
       "path": "npm/jszip@3.10.1/deps.js",
       "sha256": "35b1b517365d5935151333ef8b57048261b79573b765e96e5ba69aa0cc05a8bb",
       "bytes": 1356,
@@ -3983,15 +4019,15 @@
       "mode": 420
     },
     {
-      "path": "npm/jszip@3.10.1/lib/generate/index.js",
-      "sha256": "19f13a6ff615464657aa5b8651e669950c633095cea37d3179a51d8c645adb3b",
-      "bytes": 2035,
-      "mode": 420
-    },
-    {
       "path": "npm/jszip@3.10.1/lib/generate/ZipFileWorker.js",
       "sha256": "907d84ea582def3954aade073444f398bef6edf1b931084da4a77bb4dc26c1c8",
       "bytes": 17954,
+      "mode": 420
+    },
+    {
+      "path": "npm/jszip@3.10.1/lib/generate/index.js",
+      "sha256": "19f13a6ff615464657aa5b8651e669950c633095cea37d3179a51d8c645adb3b",
+      "bytes": 2035,
       "mode": 420
     },
     {
@@ -4061,12 +4097,6 @@
       "mode": 420
     },
     {
-      "path": "npm/jszip@3.10.1/lib/reader/readerFor.js",
-      "sha256": "1eef5a73bba844922812893f9a7e01cfdb54072aae42f7ecf67c41dc925ea9cf",
-      "bytes": 904,
-      "mode": 420
-    },
-    {
       "path": "npm/jszip@3.10.1/lib/reader/StringReader.js",
       "sha256": "477a2e887eee11a56a50726152327b2a4d75d778f96463933197706e1ce90d59",
       "bytes": 1020,
@@ -4076,6 +4106,12 @@
       "path": "npm/jszip@3.10.1/lib/reader/Uint8ArrayReader.js",
       "sha256": "198816389bc1c62b3ca7c5c6f5fdff1b076f83e5bd74b37ee5b504e6d7e155d9",
       "bytes": 652,
+      "mode": 420
+    },
+    {
+      "path": "npm/jszip@3.10.1/lib/reader/readerFor.js",
+      "sha256": "1eef5a73bba844922812893f9a7e01cfdb54072aae42f7ecf67c41dc925ea9cf",
+      "bytes": 904,
       "mode": 420
     },
     {
@@ -4157,21 +4193,9 @@
       "mode": 420
     },
     {
-      "path": "npm/jszip@3.10.1/LICENSE.markdown",
-      "sha256": "566c953c6090b1218ca6217dd7359d45dde46581968586dc607d59a78af6a9c4",
-      "bytes": 33753,
-      "mode": 420
-    },
-    {
       "path": "npm/jszip@3.10.1/package.json",
       "sha256": "83569b5b130b5ec27ae281ed80420ad364baf1bf64cb82e6ac8fb891e1b4ec4c",
       "bytes": 1787,
-      "mode": 420
-    },
-    {
-      "path": "npm/jszip@3.10.1/README.markdown",
-      "sha256": "5eee3659204ed8f04b58d388b2dae55539c5cbcda733e4e945811c9121a68ede",
-      "bytes": 678,
       "mode": 420
     },
     {
@@ -4190,6 +4214,18 @@
       "path": "npm/jszip@3.10.1/vendor/FileSaver.js",
       "sha256": "67421e50f3ff4c97f1c3fa3749bf071cc57357c0da97783f4f8fe3affa3a52cf",
       "bytes": 7745,
+      "mode": 420
+    },
+    {
+      "path": "npm/noble--curves@2.3.0/LICENSE",
+      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
+      "bytes": 1109,
+      "mode": 420
+    },
+    {
+      "path": "npm/noble--curves@2.3.0/README.md",
+      "sha256": "376f253af16775b8f7ceb64049f19aeb2fa5a996fd52373bc876fe17f3017113",
+      "bytes": 48123,
       "mode": 420
     },
     {
@@ -4409,12 +4445,6 @@
       "mode": 420
     },
     {
-      "path": "npm/noble--curves@2.3.0/LICENSE",
-      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
-      "bytes": 1109,
-      "mode": 420
-    },
-    {
       "path": "npm/noble--curves@2.3.0/misc.d.ts",
       "sha256": "0b25724c5cd37368b400811194ba4af73f588cbeadf4604769aef1b29858d0dd",
       "bytes": 4410,
@@ -4442,12 +4472,6 @@
       "path": "npm/noble--curves@2.3.0/package.json",
       "sha256": "a12e5b5c3132780440184f4410c18c6d4746a5adc14c06ff6391bb4e8ffffecc",
       "bytes": 2649,
-      "mode": 420
-    },
-    {
-      "path": "npm/noble--curves@2.3.0/README.md",
-      "sha256": "376f253af16775b8f7ceb64049f19aeb2fa5a996fd52373bc876fe17f3017113",
-      "bytes": 48123,
       "mode": 420
     },
     {
@@ -4625,6 +4649,18 @@
       "mode": 420
     },
     {
+      "path": "npm/noble--hashes@2.3.0/LICENSE",
+      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
+      "bytes": 1109,
+      "mode": 420
+    },
+    {
+      "path": "npm/noble--hashes@2.3.0/README.md",
+      "sha256": "f7b0023803b40b446d41992fe8f1b566c977ce741c1d133331323112f843a83c",
+      "bytes": 23934,
+      "mode": 420
+    },
+    {
       "path": "npm/noble--hashes@2.3.0/_blake.d.ts",
       "sha256": "c32b86abfcd4514e98a2f27b4f67672cb1446ac081d2e715d0dca60e96e8120a",
       "bytes": 740,
@@ -4769,12 +4805,6 @@
       "mode": 420
     },
     {
-      "path": "npm/noble--hashes@2.3.0/LICENSE",
-      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
-      "bytes": 1109,
-      "mode": 420
-    },
-    {
       "path": "npm/noble--hashes@2.3.0/package.json",
       "sha256": "dcd1dbb2aeea98180b497a7bd60c8ac145eb68f98c2397d4294f60aa3d03c824",
       "bytes": 2422,
@@ -4790,12 +4820,6 @@
       "path": "npm/noble--hashes@2.3.0/pbkdf2.js",
       "sha256": "fcdb455bc18fb981616bafcba03a7248e58bcd5d3eac5573b69f148085bd5724",
       "bytes": 7097,
-      "mode": 420
-    },
-    {
-      "path": "npm/noble--hashes@2.3.0/README.md",
-      "sha256": "f7b0023803b40b446d41992fe8f1b566c977ce741c1d133331323112f843a83c",
-      "bytes": 23934,
       "mode": 420
     },
     {
@@ -4982,6 +5006,12 @@
       "path": "npm/noble--hashes@2.3.0/webcrypto.js",
       "sha256": "84922086ee8ea11c342e20088bd847ba6b670be8f5f9b7a965a55b95fbeff755",
       "bytes": 7471,
+      "mode": 420
+    },
+    {
+      "path": "npm/qrcode@1.5.4/README.md",
+      "sha256": "2c562622aa4a285617dbf412fa51ae73b6f00a73c8423c295103c4bbbae72035",
+      "bytes": 22372,
       "mode": 420
     },
     {
@@ -5225,9 +5255,15 @@
       "mode": 420
     },
     {
-      "path": "npm/qrcode@1.5.4/README.md",
-      "sha256": "2c562622aa4a285617dbf412fa51ae73b6f00a73c8423c295103c4bbbae72035",
-      "bytes": 22372,
+      "path": "npm/react@19.2.8/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
+      "bytes": 1088,
+      "mode": 420
+    },
+    {
+      "path": "npm/react@19.2.8/README.md",
+      "sha256": "faf7a5814bedadb9ecabcb8cf727a3477696bb0d3a5b57d5433110aa6094b85e",
+      "bytes": 1158,
       "mode": 420
     },
     {
@@ -5369,12 +5405,6 @@
       "mode": 420
     },
     {
-      "path": "npm/react@19.2.8/LICENSE",
-      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
-      "bytes": 1088,
-      "mode": 420
-    },
-    {
       "path": "npm/react@19.2.8/package.json",
       "sha256": "e40c3ed9b633c9ecf188e09a4be309780a1ea0a9c068278a30ff6a27e7b2dbb6",
       "bytes": 1242,
@@ -5387,9 +5417,15 @@
       "mode": 420
     },
     {
-      "path": "npm/react@19.2.8/README.md",
-      "sha256": "faf7a5814bedadb9ecabcb8cf727a3477696bb0d3a5b57d5433110aa6094b85e",
-      "bytes": 1158,
+      "path": "npm/snarkjs@0.7.6/COPYING",
+      "sha256": "d95c74a62d14f13ebfbc8c1783c315e2ed2389e80048b264bdeddb8114dee945",
+      "bytes": 35130,
+      "mode": 420
+    },
+    {
+      "path": "npm/snarkjs@0.7.6/README.md",
+      "sha256": "921c13ee78c1ec3158189b45390e790b5c3a6afedab96e63036de91111e09075",
+      "bytes": 28246,
       "mode": 420
     },
     {
@@ -5429,12 +5465,6 @@
       "mode": 420
     },
     {
-      "path": "npm/snarkjs@0.7.6/COPYING",
-      "sha256": "d95c74a62d14f13ebfbc8c1783c315e2ed2389e80048b264bdeddb8114dee945",
-      "bytes": 35130,
-      "mode": 420
-    },
-    {
       "path": "npm/snarkjs@0.7.6/main.js",
       "sha256": "f1e0cb097ab972c2b1bfaa074ec06efad53b693a5b27cb6e628f61dfbfcf2047",
       "bytes": 342,
@@ -5447,9 +5477,9 @@
       "mode": 420
     },
     {
-      "path": "npm/snarkjs@0.7.6/README.md",
-      "sha256": "921c13ee78c1ec3158189b45390e790b5c3a6afedab96e63036de91111e09075",
-      "bytes": 28246,
+      "path": "npm/snarkjs@0.7.6/src/Keccak256Transcript.js",
+      "sha256": "3f873d79b7e19160b4a0575d26be995b51afc26193c9b723799f7fab182967ca",
+      "bytes": 2153,
       "mode": 420
     },
     {
@@ -5468,6 +5498,12 @@
       "path": "npm/snarkjs@0.7.6/src/curves.js",
       "sha256": "eca7e0344d5b7a9f9db81128058faa5cb2020de9bb40ed01523d1e7a083f15bb",
       "bytes": 1994,
+      "mode": 420
+    },
+    {
+      "path": "npm/snarkjs@0.7.6/src/fflonk.js",
+      "sha256": "283ed71d96f92afde8c1a951b73465b083821c0909af9d7f0cb7f2797ac15a76",
+      "bytes": 1117,
       "mode": 420
     },
     {
@@ -5513,9 +5549,9 @@
       "mode": 420
     },
     {
-      "path": "npm/snarkjs@0.7.6/src/fflonk.js",
-      "sha256": "283ed71d96f92afde8c1a951b73465b083821c0909af9d7f0cb7f2797ac15a76",
-      "bytes": 1117,
+      "path": "npm/snarkjs@0.7.6/src/groth16.js",
+      "sha256": "ba611c98dd0af11da12b246a30e296306c776e77724582591157f82edcc4f8d0",
+      "bytes": 975,
       "mode": 420
     },
     {
@@ -5540,18 +5576,6 @@
       "path": "npm/snarkjs@0.7.6/src/groth16_verify.js",
       "sha256": "983d0eec8a5f23c85efaec276c7ee47e7e9edc72c15814b1850f8874270ee6bd",
       "bytes": 3568,
-      "mode": 420
-    },
-    {
-      "path": "npm/snarkjs@0.7.6/src/groth16.js",
-      "sha256": "ba611c98dd0af11da12b246a30e296306c776e77724582591157f82edcc4f8d0",
-      "bytes": 975,
-      "mode": 420
-    },
-    {
-      "path": "npm/snarkjs@0.7.6/src/Keccak256Transcript.js",
-      "sha256": "3f873d79b7e19160b4a0575d26be995b51afc26193c9b723799f7fab182967ca",
-      "bytes": 2153,
       "mode": 420
     },
     {
@@ -5582,6 +5606,12 @@
       "path": "npm/snarkjs@0.7.6/src/mul_z.js",
       "sha256": "b89b91ea5a4977a47b14f09450458cd91fdf0a404488c50e705366ab1395e8bf",
       "bytes": 3920,
+      "mode": 420
+    },
+    {
+      "path": "npm/snarkjs@0.7.6/src/plonk.js",
+      "sha256": "bb31f2c9260cbeef818b1493b5d67069c3f32c03cab7f9d43210d2b7e9951b94",
+      "bytes": 1036,
       "mode": 420
     },
     {
@@ -5627,12 +5657,6 @@
       "mode": 420
     },
     {
-      "path": "npm/snarkjs@0.7.6/src/plonk.js",
-      "sha256": "bb31f2c9260cbeef818b1493b5d67069c3f32c03cab7f9d43210d2b7e9951b94",
-      "bytes": 1036,
-      "mode": 420
-    },
-    {
       "path": "npm/snarkjs@0.7.6/src/polynomial/cpolynomial.js",
       "sha256": "a144a076b8bbd7854fc21963f7777f21bbc9df3b27581144a42d4000fa1ce106",
       "bytes": 3074,
@@ -5648,6 +5672,12 @@
       "path": "npm/snarkjs@0.7.6/src/polynomial/polynomial.js",
       "sha256": "e9b7ab013533dad8fb4204bbfda36be425bccb3e0630e2ae066a0bfe6abfd4fc",
       "bytes": 34772,
+      "mode": 420
+    },
+    {
+      "path": "npm/snarkjs@0.7.6/src/powersoftau.js",
+      "sha256": "125862fd50e8cb55812d9c811b7c73ca0797c5dfe048082ef49d138423da2a18",
+      "bytes": 1464,
       "mode": 420
     },
     {
@@ -5723,15 +5753,15 @@
       "mode": 420
     },
     {
-      "path": "npm/snarkjs@0.7.6/src/powersoftau.js",
-      "sha256": "125862fd50e8cb55812d9c811b7c73ca0797c5dfe048082ef49d138423da2a18",
-      "bytes": 1464,
-      "mode": 420
-    },
-    {
       "path": "npm/snarkjs@0.7.6/src/proof.js",
       "sha256": "f36a952ca4a72ead2ed995951825e8baaa00d5ea67776a23d3e2a23cc3b4ea9f",
       "bytes": 2915,
+      "mode": 420
+    },
+    {
+      "path": "npm/snarkjs@0.7.6/src/r1cs.js",
+      "sha256": "0cb884f57eb2b5c9b52756f54c809280e6df1b2bad811fa49493826c228a09f4",
+      "bytes": 879,
       "mode": 420
     },
     {
@@ -5759,12 +5789,6 @@
       "mode": 420
     },
     {
-      "path": "npm/snarkjs@0.7.6/src/r1cs.js",
-      "sha256": "0cb884f57eb2b5c9b52756f54c809280e6df1b2bad811fa49493826c228a09f4",
-      "bytes": 879,
-      "mode": 420
-    },
-    {
       "path": "npm/snarkjs@0.7.6/src/solidity.js",
       "sha256": "cd1ef4e4fe81ffdacf78b93e8c1e9e49aa06ccd6256d3e5fcc3ecd27b251a7bc",
       "bytes": 909,
@@ -5774,6 +5798,12 @@
       "path": "npm/snarkjs@0.7.6/src/taskmanager.js",
       "sha256": "aca9ebbc995868327c61a3b7c31431d03825e34bcc0ef8ec5ebc4d7fa42ca530",
       "bytes": 6077,
+      "mode": 420
+    },
+    {
+      "path": "npm/snarkjs@0.7.6/src/wtns.js",
+      "sha256": "e808ed4d2793458f0caa03648e5166314807983ee41a2020a380f0008f7686ff",
+      "bytes": 937,
       "mode": 420
     },
     {
@@ -5807,9 +5837,9 @@
       "mode": 420
     },
     {
-      "path": "npm/snarkjs@0.7.6/src/wtns.js",
-      "sha256": "e808ed4d2793458f0caa03648e5166314807983ee41a2020a380f0008f7686ff",
-      "bytes": 937,
+      "path": "npm/snarkjs@0.7.6/src/zkey.js",
+      "sha256": "f002686004a868965553c1956758c45963136367c7727f0e09cd2188a528743a",
+      "bytes": 1458,
       "mode": 420
     },
     {
@@ -5888,12 +5918,6 @@
       "path": "npm/snarkjs@0.7.6/src/zkey_verify_fromr1cs.js",
       "sha256": "a1f4eec931507fb86f4f3ba5f241ba26a0eda825460a8fa8cab7bd0c947ddcc0",
       "bytes": 1186,
-      "mode": 420
-    },
-    {
-      "path": "npm/snarkjs@0.7.6/src/zkey.js",
-      "sha256": "f002686004a868965553c1956758c45963136367c7727f0e09cd2188a528743a",
-      "bytes": 1458,
       "mode": 420
     },
     {
@@ -6455,6 +6479,12 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/market/marketPulsePricing.ts",
+      "sha256": "bf72e29c9d95b3f166268882b8f6c708ed4b88128b5f3a879f0e56ed44e703a8",
+      "bytes": 6326,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/market/portableState.ts",
       "sha256": "deb9cd216fe2e12eb48f1a1be6b0cd4a99701db713e60aecfdec5c238e282bd8",
       "bytes": 2919,
@@ -6497,6 +6527,12 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/market/shareFees.ts",
+      "sha256": "a08fce47a9e11106133a3c1b51c54c9b29589f11097af499251ca9d78d2fb39e",
+      "bytes": 9421,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/market/shareMath.ts",
       "sha256": "e99a869d7e1f12541b5d98750b4a2a11ce98c1c3bbb21ee722f66952d6e59e1e",
       "bytes": 5352,
@@ -6509,9 +6545,21 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/market/shareTradeAccounting.ts",
+      "sha256": "8f11398c4f8c456ebcd5a0f7ed3dfea4e8d16a58b3940f9f371bcf7c7d6cac9a",
+      "bytes": 5862,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/market/snapshotContinuity.ts",
       "sha256": "57728cbc76f42544913fd8351642d2322da272a1ee6abe2466fb382aff852699",
       "bytes": 43230,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/market/walletBudget.ts",
+      "sha256": "bbc71aa21cd3e12c4832926a26035cb08623c1100adb7c8115901476bffbaa16",
+      "bytes": 5569,
       "mode": 420
     },
     {
@@ -6953,12 +7001,6 @@
       "mode": 420
     },
     {
-      "path": "receiz/app/lib/profile/showcase/publicationIdentityCustody.ts",
-      "sha256": "b8520c47c719d55b698c3dd7868af0b47a4c31219e65411d0fb80940a3cbe5ba",
-      "bytes": 2932,
-      "mode": 420
-    },
-    {
       "path": "receiz/app/lib/profile/showcase/publicProfileDocumentRefresh.client.ts",
       "sha256": "636a777902be115beee7119366ac7427ee32d0c941ca1b693d43aabe30639361",
       "bytes": 6845,
@@ -6986,6 +7028,12 @@
       "path": "receiz/app/lib/profile/showcase/publicProjectionScope.ts",
       "sha256": "c92a7dc54d647bddc0f79409f8d90ad2f6aa06ad52f40dbe52391628502c9366",
       "bytes": 1849,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/profile/showcase/publicationIdentityCustody.ts",
+      "sha256": "b8520c47c719d55b698c3dd7868af0b47a4c31219e65411d0fb80940a3cbe5ba",
+      "bytes": 2932,
       "mode": 420
     },
     {
@@ -7205,6 +7253,12 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/wallet/amounts.ts",
+      "sha256": "26cd5a271b46a400c1d27f60493a9811b3e4282ddb6510497f773af7b0387f81",
+      "bytes": 5504,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/wallet/backgroundHydration.ts",
       "sha256": "433ee1b0c093e78f521b4481a95e7a3ff8de86381268affc22c69590b4eac9dc",
       "bytes": 9228,
@@ -7241,8 +7295,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "0ebf1ca7701ff173736928d9e076ed3b61124a158f513c5a7d7d97853805d854",
-      "bytes": 35793,
+      "sha256": "aff2874a827edf693150670a40f4c9ea315a9989e2c5af068f9db54b927c26f1",
+      "bytes": 35952,
       "mode": 420
     },
     {
@@ -7348,6 +7402,18 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/wallet/bankNotes/offlineMarketPricing.ts",
+      "sha256": "57158dd5f32c030683598e58c70474f34138c1c7a814d3cc55cd0316cee6ccb3",
+      "bytes": 5903,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/wallet/bankNotes/offlineWalletValuation.ts",
+      "sha256": "504c5c243e5df2815af60e3d934f286d0f6a02e6cb2372bec3119ba43d6ec7ca",
+      "bytes": 8006,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/wallet/bankNotes/preparedBrowser.ts",
       "sha256": "4228a27af3e606a4bded013f4387db4cbe655d6c21aa413a488662a1366e6342",
       "bytes": 35467,
@@ -7390,9 +7456,21 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/wallet/fundingContinuity/lawfulSources.ts",
+      "sha256": "f672eb84f63bd6416ef6ec9bcdd1fa88b8cf520d41597aab64d7489dcfff92eb",
+      "bytes": 1288,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/wallet/glyphEconomyProjection.ts",
       "sha256": "0cd85a7879ea739e184e43bea3b398c4f7bb0389707a956a6ad60c3e8b4f6017",
       "bytes": 7603,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/wallet/kaiSigilWatermark.ts",
+      "sha256": "ce5033f96578c9f31e3bfa3a6e8c9e898db8b780eb54ed8d8891c719e01789ec",
+      "bytes": 7528,
       "mode": 420
     },
     {
@@ -7486,15 +7564,9 @@
       "mode": 420
     },
     {
-      "path": "receiz/app/lib/wallet/kaiSigilWatermark.ts",
-      "sha256": "ce5033f96578c9f31e3bfa3a6e8c9e898db8b780eb54ed8d8891c719e01789ec",
-      "bytes": 7528,
-      "mode": 420
-    },
-    {
       "path": "receiz/app/lib/wallet/lawfulActionSettlement.ts",
-      "sha256": "51342fae6da140709468a34d18c2a5ff385a5cf5beb8aca32be6ca4356c235e9",
-      "bytes": 2148,
+      "sha256": "2b23abb3504d8b5ea487f2369b899d4f652de31457f6ae3da18aa7a3c3dc0af1",
+      "bytes": 2681,
       "mode": 420
     },
     {
@@ -7519,6 +7591,12 @@
       "path": "receiz/app/lib/wallet/verifiedReserveCreditProof.ts",
       "sha256": "c77c0a57427a079f8ee84212d82714aaab0846a36938ff42c7dc81f8cf768b42",
       "bytes": 5130,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/wallet/walletSummaryProjection.ts",
+      "sha256": "d49c44b50a01a16cff27398b3b8ada96f2858a5f34b037b4f90d972af19e423a",
+      "bytes": 8439,
       "mode": 420
     },
     {
@@ -7566,7 +7644,8 @@
     {
       "path": "receiz/app/utils/phi-issuance.ts",
       "sha256": "69622c017e955734525e121a7b27bdaa42066932657b145e02be493792de9c74",
-      "mode": 420
+      "mode": 420,
+      "bytes": 23792
     },
     {
       "path": "receiz/app/utils/pngChunks.ts",
@@ -7821,9 +7900,9 @@
       "mode": 420
     },
     {
-      "path": "receiz/packages/receiz-sdk/offline-resources/kai_sigil_proof_final.zkey",
-      "sha256": "838d15799730189054f811e172176df804137374fa8bb6ab7bfd50630cc8986a",
-      "bytes": 26800,
+      "path": "receiz/packages/receiz-sdk/offline-resources/kai-proof-worker.mjs",
+      "sha256": "231b06b5719eb9bff3f6e97febef575eded6fc0982d88e731bbcbcb347debc5b",
+      "bytes": 16291,
       "mode": 420
     },
     {
@@ -7833,9 +7912,9 @@
       "mode": 420
     },
     {
-      "path": "receiz/packages/receiz-sdk/offline-resources/kai-proof-worker.mjs",
-      "sha256": "231b06b5719eb9bff3f6e97febef575eded6fc0982d88e731bbcbcb347debc5b",
-      "bytes": 16291,
+      "path": "receiz/packages/receiz-sdk/offline-resources/kai_sigil_proof_final.zkey",
+      "sha256": "838d15799730189054f811e172176df804137374fa8bb6ab7bfd50630cc8986a",
+      "bytes": 26800,
       "mode": 420
     },
     {
@@ -8145,6 +8224,48 @@
       "mode": 420
     },
     {
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialBrowser.ts",
+      "sha256": "4488eb78660013989bce87ea821e7e223df2395c5477f4d3da54ede08d35ac4b",
+      "bytes": 1528,
+      "mode": 420
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialCommit.ts",
+      "sha256": "45e2df711416c0814f092f38af3e9141cc26ed93040ca258ea33e2ba53476051",
+      "bytes": 20366,
+      "mode": 420
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialExecution.ts",
+      "sha256": "e4c84d6632ceb12ce870de149130a6abf7e94110deb37089252970ef3aba6ed1",
+      "bytes": 10815,
+      "mode": 420
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialMath.generated.d.ts",
+      "sha256": "153ea06ce7bf02bd6a611bf7fe1cf0049afbce2cb52b2197bde1f091e5a2cec7",
+      "bytes": 3155,
+      "mode": 420
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialMath.generated.js",
+      "sha256": "be8e6295d224dfc21d6ce060494779339c479af2ce89e70e6e37da5770586cd6",
+      "bytes": 35273,
+      "mode": 420
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialPublication.ts",
+      "sha256": "4e426b5c604728a353c928640519a85ed93f36c2027177aab8eb1da424991743",
+      "bytes": 6440,
+      "mode": 420
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialSource.ts",
+      "sha256": "89822a52dd22d0295a7d6a7b0d2befb687e81be4325abbf13ce40c1d6e002565",
+      "bytes": 17458,
+      "mode": 420
+    },
+    {
       "path": "receiz/packages/receiz-sdk/src/admissionStore.ts",
       "sha256": "4bce7ed9f9ee6edf5fc01024edf171ea5e24d9b75a37b1e5cc5b68eaeb3356f4",
       "bytes": 13022,
@@ -8193,12 +8314,6 @@
       "mode": 420
     },
     {
-      "path": "receiz/packages/receiz-sdk/src/artifacts.ts",
-      "sha256": "8db4e2f6e0a51ef2757f2a91d0483fd8168668694a1d3f68884c3a48ad048f39",
-      "bytes": 18156,
-      "mode": 420
-    },
-    {
       "path": "receiz/packages/receiz-sdk/src/artifactTransition.ts",
       "sha256": "5fa50c90e4f27965c56d925fca5b724de2af275a4c96b8d4dff8388a9c116aa5",
       "bytes": 165876,
@@ -8244,6 +8359,12 @@
       "path": "receiz/packages/receiz-sdk/src/artifactVerification.ts",
       "sha256": "710335ab1962b04607691c2191ab4e1c12ceda90aa3751e211b4d77bfa21e9f3",
       "bytes": 17688,
+      "mode": 420
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/artifacts.ts",
+      "sha256": "8db4e2f6e0a51ef2757f2a91d0483fd8168668694a1d3f68884c3a48ad048f39",
+      "bytes": 18156,
       "mode": 420
     },
     {
@@ -8493,15 +8614,15 @@
       "mode": 420
     },
     {
-      "path": "receiz/packages/receiz-sdk/src/livingSubjects.ts",
-      "sha256": "4f5ed579c6781d002607266bf19a745132be02631d47d03a2e38538b2534c3d6",
-      "bytes": 41096,
-      "mode": 420
-    },
-    {
       "path": "receiz/packages/receiz-sdk/src/livingSubjectSchemas.ts",
       "sha256": "721e6458104f9b64591197797902d4b3afb3a3e698e3bc3bda465fe325efe3d5",
       "bytes": 17172,
+      "mode": 420
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/livingSubjects.ts",
+      "sha256": "4f5ed579c6781d002607266bf19a745132be02631d47d03a2e38538b2534c3d6",
+      "bytes": 41096,
       "mode": 420
     },
     {
@@ -9471,6 +9592,12 @@
       "mode": 420
     },
     {
+      "path": "receiz/scripts/sync_account_financial_math.mjs",
+      "sha256": "35442bb81766f994af0f3518418329936bbcff0895ad6366d1d396b94b6e3eac",
+      "bytes": 2845,
+      "mode": 420
+    },
+    {
       "path": "receiz/scripts/sync_canonical_anchor_parser.mjs",
       "sha256": "e49e49afae2b6e51a8a3137fa4d1396706203f9929fcf31ee1d93863ae9dae10",
       "bytes": 2288,
@@ -9510,6 +9637,18 @@
       "path": "upstream/circom_runtime@0.1.28/.gitignore",
       "sha256": "758644a23d167ded6e060f887fa8e4e7180c985ba79b5d9d782ee566c3647caa",
       "bytes": 988,
+      "mode": 420
+    },
+    {
+      "path": "upstream/circom_runtime@0.1.28/COPYING",
+      "sha256": "efa4deca2c66de9adbba2209df1538afe5ae605f0ad6e125b245e4059ebf8cbe",
+      "bytes": 11317,
+      "mode": 420
+    },
+    {
+      "path": "upstream/circom_runtime@0.1.28/README.md",
+      "sha256": "9cced69d2c044f5ba39769fbab2ad81fa27e22b21a324354cddb9f0299966b51",
+      "bytes": 306,
       "mode": 420
     },
     {
@@ -9561,15 +9700,15 @@
       "mode": 420
     },
     {
-      "path": "upstream/circom_runtime@0.1.28/c/old/buildasm/cmpops_old.asm.ejs",
-      "sha256": "744188b1cb1bddab419dae6081a7c20f3be5935c935e011efa454c900a0bcd88",
-      "bytes": 2834,
-      "mode": 420
-    },
-    {
       "path": "upstream/circom_runtime@0.1.28/c/old/buildasm/cmpops.asm.ejs",
       "sha256": "34705ea527f08f654ed24378dd34460a8b5973bed78a0a04bd96e859ca70c6e5",
       "bytes": 9519,
+      "mode": 420
+    },
+    {
+      "path": "upstream/circom_runtime@0.1.28/c/old/buildasm/cmpops_old.asm.ejs",
+      "sha256": "744188b1cb1bddab419dae6081a7c20f3be5935c935e011efa454c900a0bcd88",
+      "bytes": 2834,
       "mode": 420
     },
     {
@@ -9747,12 +9886,6 @@
       "mode": 493
     },
     {
-      "path": "upstream/circom_runtime@0.1.28/COPYING",
-      "sha256": "efa4deca2c66de9adbba2209df1538afe5ae605f0ad6e125b245e4059ebf8cbe",
-      "bytes": 11317,
-      "mode": 420
-    },
-    {
       "path": "upstream/circom_runtime@0.1.28/js/utils.js",
       "sha256": "873f67fd72ded694a2581dfa9908d16ade026fd07fa1335fc57ccb34f74b8ec7",
       "bytes": 1945,
@@ -9783,12 +9916,6 @@
       "mode": 420
     },
     {
-      "path": "upstream/circom_runtime@0.1.28/README.md",
-      "sha256": "9cced69d2c044f5ba39769fbab2ad81fa27e22b21a324354cddb9f0299966b51",
-      "bytes": 306,
-      "mode": 420
-    },
-    {
       "path": "upstream/circom_runtime@0.1.28/rollup.cjs.config.js",
       "sha256": "71cf9625a5c5093a79884b2c6f52ef3d7f0d904538c6767141f8dd60b908c6bf",
       "bytes": 337,
@@ -9813,6 +9940,12 @@
       "mode": 420
     },
     {
+      "path": "upstream/fastfile@0.0.20/README.md",
+      "sha256": "a894e62631719662b57675b32fddcfa6748f17894ed5b71387e9675a716622c7",
+      "bytes": 1023,
+      "mode": 420
+    },
+    {
       "path": "upstream/fastfile@0.0.20/index.cjs",
       "sha256": "28790f74789a27a573312f3899d0b002e0a7e03321c03c2fc49fbf06a8bb8528",
       "bytes": 70,
@@ -9828,12 +9961,6 @@
       "path": "upstream/fastfile@0.0.20/package.json",
       "sha256": "0fe78b9027ddec810b331fed28c1596b9c609d806b6a256a3bb0c13fcdab076e",
       "bytes": 898,
-      "mode": 420
-    },
-    {
-      "path": "upstream/fastfile@0.0.20/README.md",
-      "sha256": "a894e62631719662b57675b32fddcfa6748f17894ed5b71387e9675a716622c7",
-      "bytes": 1023,
       "mode": 420
     },
     {
@@ -9885,6 +10012,12 @@
       "mode": 420
     },
     {
+      "path": "upstream/ffjavascript@0.3.0/README.md",
+      "sha256": "53c12f13fb5aefe96a5c497217308754ad32dc02f383885e66454c65e479f7e3",
+      "bytes": 676,
+      "mode": 420
+    },
+    {
       "path": "upstream/ffjavascript@0.3.0/main.js",
       "sha256": "9425a0b85916388119934338563d270d450e8b64684385d13ebf320aab19e958",
       "bytes": 766,
@@ -9900,12 +10033,6 @@
       "path": "upstream/ffjavascript@0.3.0/package.json",
       "sha256": "7b64be4f3c7d5d7c886e447e184a4848c1fb197f44c1d479d569095ecc082415",
       "bytes": 1343,
-      "mode": 420
-    },
-    {
-      "path": "upstream/ffjavascript@0.3.0/README.md",
-      "sha256": "53c12f13fb5aefe96a5c497217308754ad32dc02f383885e66454c65e479f7e3",
-      "bytes": 676,
       "mode": 420
     },
     {
@@ -9957,6 +10084,12 @@
       "mode": 420
     },
     {
+      "path": "upstream/ffjavascript@0.3.0/src/engine.js",
+      "sha256": "43c3423dd270f1d912e13d0a2aa7d149de083a025a6285131fd7ebd93fd098a0",
+      "bytes": 2133,
+      "mode": 420
+    },
+    {
       "path": "upstream/ffjavascript@0.3.0/src/engine_applykey.js",
       "sha256": "aef6b1d98d13c7e0fed521573810efbcde30879e90697695a9f50b80e6b6a854",
       "bytes": 3757,
@@ -9984,12 +10117,6 @@
       "path": "upstream/ffjavascript@0.3.0/src/engine_pairing.js",
       "sha256": "af47ee375defc84001d0347059bdfd6912ec09b50c3d921348d266d0fcb10b0a",
       "bytes": 4052,
-      "mode": 420
-    },
-    {
-      "path": "upstream/ffjavascript@0.3.0/src/engine.js",
-      "sha256": "43c3423dd270f1d912e13d0a2aa7d149de083a025a6285131fd7ebd93fd098a0",
-      "bytes": 2133,
       "mode": 420
     },
     {
@@ -10053,15 +10180,15 @@
       "mode": 420
     },
     {
-      "path": "upstream/ffjavascript@0.3.0/src/threadman_thread.js",
-      "sha256": "1a59efc8330f68587dc0c9f09947363cd847d697daca01605b2eacbc10908d13",
-      "bytes": 3707,
-      "mode": 420
-    },
-    {
       "path": "upstream/ffjavascript@0.3.0/src/threadman.js",
       "sha256": "bc5a9f8a68047c23baa890908784d63335c9898ec79025378f4a228891d3ee13",
       "bytes": 6880,
+      "mode": 420
+    },
+    {
+      "path": "upstream/ffjavascript@0.3.0/src/threadman_thread.js",
+      "sha256": "1a59efc8330f68587dc0c9f09947363cd847d697daca01605b2eacbc10908d13",
+      "bytes": 3707,
       "mode": 420
     },
     {
@@ -10119,6 +10246,12 @@
       "mode": 420
     },
     {
+      "path": "upstream/ffjavascript@0.3.1/README.md",
+      "sha256": "53c12f13fb5aefe96a5c497217308754ad32dc02f383885e66454c65e479f7e3",
+      "bytes": 676,
+      "mode": 420
+    },
+    {
       "path": "upstream/ffjavascript@0.3.1/main.js",
       "sha256": "9425a0b85916388119934338563d270d450e8b64684385d13ebf320aab19e958",
       "bytes": 766,
@@ -10134,12 +10267,6 @@
       "path": "upstream/ffjavascript@0.3.1/package.json",
       "sha256": "a2073c1a961d1c835809b1332c5e38e6233587b20da7b469e1c5dbe76957443b",
       "bytes": 1345,
-      "mode": 420
-    },
-    {
-      "path": "upstream/ffjavascript@0.3.1/README.md",
-      "sha256": "53c12f13fb5aefe96a5c497217308754ad32dc02f383885e66454c65e479f7e3",
-      "bytes": 676,
       "mode": 420
     },
     {
@@ -10191,6 +10318,12 @@
       "mode": 420
     },
     {
+      "path": "upstream/ffjavascript@0.3.1/src/engine.js",
+      "sha256": "43c3423dd270f1d912e13d0a2aa7d149de083a025a6285131fd7ebd93fd098a0",
+      "bytes": 2133,
+      "mode": 420
+    },
+    {
       "path": "upstream/ffjavascript@0.3.1/src/engine_applykey.js",
       "sha256": "aef6b1d98d13c7e0fed521573810efbcde30879e90697695a9f50b80e6b6a854",
       "bytes": 3757,
@@ -10218,12 +10351,6 @@
       "path": "upstream/ffjavascript@0.3.1/src/engine_pairing.js",
       "sha256": "af47ee375defc84001d0347059bdfd6912ec09b50c3d921348d266d0fcb10b0a",
       "bytes": 4052,
-      "mode": 420
-    },
-    {
-      "path": "upstream/ffjavascript@0.3.1/src/engine.js",
-      "sha256": "43c3423dd270f1d912e13d0a2aa7d149de083a025a6285131fd7ebd93fd098a0",
-      "bytes": 2133,
       "mode": 420
     },
     {
@@ -10287,15 +10414,15 @@
       "mode": 420
     },
     {
-      "path": "upstream/ffjavascript@0.3.1/src/threadman_thread.js",
-      "sha256": "1a59efc8330f68587dc0c9f09947363cd847d697daca01605b2eacbc10908d13",
-      "bytes": 3707,
-      "mode": 420
-    },
-    {
       "path": "upstream/ffjavascript@0.3.1/src/threadman.js",
       "sha256": "bc5a9f8a68047c23baa890908784d63335c9898ec79025378f4a228891d3ee13",
       "bytes": 6880,
+      "mode": 420
+    },
+    {
+      "path": "upstream/ffjavascript@0.3.1/src/threadman_thread.js",
+      "sha256": "1a59efc8330f68587dc0c9f09947363cd847d697daca01605b2eacbc10908d13",
+      "bytes": 3707,
       "mode": 420
     },
     {
@@ -10362,6 +10489,18 @@
       "path": "upstream/fflate@0.8.3/CHANGELOG.md",
       "sha256": "adea1c1555f1496882896a5de3edbd53eb9a2e952555fd392e4a5dd2215ba7df",
       "bytes": 4560,
+      "mode": 420
+    },
+    {
+      "path": "upstream/fflate@0.8.3/LICENSE",
+      "sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551",
+      "bytes": 1069,
+      "mode": 420
+    },
+    {
+      "path": "upstream/fflate@0.8.3/README.md",
+      "sha256": "021950f8aa043d57876d65917abb546c29de4007e8f873cac142c5394d4e17bc",
+      "bytes": 27362,
       "mode": 420
     },
     {
@@ -10461,12 +10600,6 @@
       "mode": 420
     },
     {
-      "path": "upstream/fflate@0.8.3/LICENSE",
-      "sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551",
-      "bytes": 1069,
-      "mode": 420
-    },
-    {
       "path": "upstream/fflate@0.8.3/package-lock.json",
       "sha256": "fe16ccad387bbd0c30c2e7bae165f131e779e38ae3da490d9f7fefbb862ea187",
       "bytes": 150571,
@@ -10476,12 +10609,6 @@
       "path": "upstream/fflate@0.8.3/package.json",
       "sha256": "5922d8150b307bc0e4e441491c779c45379e9913d348848fca8d5cf02db4d134",
       "bytes": 3543,
-      "mode": 420
-    },
-    {
-      "path": "upstream/fflate@0.8.3/README.md",
-      "sha256": "021950f8aa043d57876d65917abb546c29de4007e8f873cac142c5394d4e17bc",
-      "bytes": 27362,
       "mode": 420
     },
     {
@@ -10551,21 +10678,39 @@
       "mode": 420
     },
     {
-      "path": "upstream/hash-wasm@4.12.0/biome.json",
-      "sha256": "3cbc171826935fd5e39d5d74a2251cf7f0e902cd08d2170cb0c53bdb9764a38f",
-      "bytes": 690,
-      "mode": 420
-    },
-    {
       "path": "upstream/hash-wasm@4.12.0/CHANGELOG.md",
       "sha256": "5bae2eafd865f069fd6b30476e2a0d29d966bfddf95490e774dd2de35cbdbaf8",
       "bytes": 5056,
       "mode": 420
     },
     {
+      "path": "upstream/hash-wasm@4.12.0/LICENSE",
+      "sha256": "c14dea172f72f2714284a0ac2ab1b00b5352a01409d58255a46227ffc541debd",
+      "bytes": 1630,
+      "mode": 420
+    },
+    {
+      "path": "upstream/hash-wasm@4.12.0/README.md",
+      "sha256": "240e346e626eff8fdbfb9c9eb429e03877802d0f86fe1eb30e19bb7f2f5db88b",
+      "bytes": 21991,
+      "mode": 420
+    },
+    {
+      "path": "upstream/hash-wasm@4.12.0/biome.json",
+      "sha256": "3cbc171826935fd5e39d5d74a2251cf7f0e902cd08d2170cb0c53bdb9764a38f",
+      "bytes": 690,
+      "mode": 420
+    },
+    {
       "path": "upstream/hash-wasm@4.12.0/jest.config.js",
       "sha256": "f7c5ea087fd13efbed884d0e7edff284d4b9b5d2873431c3936763297617a2f4",
       "bytes": 151,
+      "mode": 420
+    },
+    {
+      "path": "upstream/hash-wasm@4.12.0/lib/WASMInterface.ts",
+      "sha256": "57148c496abdc8d1f541a127f4d5601ceca962f06ca91d4e9fb519f4f77bbc02",
+      "bytes": 8407,
       "mode": 420
     },
     {
@@ -10725,12 +10870,6 @@
       "mode": 420
     },
     {
-      "path": "upstream/hash-wasm@4.12.0/lib/WASMInterface.ts",
-      "sha256": "57148c496abdc8d1f541a127f4d5601ceca962f06ca91d4e9fb519f4f77bbc02",
-      "bytes": 8407,
-      "mode": 420
-    },
-    {
       "path": "upstream/hash-wasm@4.12.0/lib/whirlpool.ts",
       "sha256": "a452d2eb3641c9cb75743c2a5910f11f8b75d2ff0e7c7886d1a15be7cc45ec7a",
       "bytes": 1426,
@@ -10761,12 +10900,6 @@
       "mode": 420
     },
     {
-      "path": "upstream/hash-wasm@4.12.0/LICENSE",
-      "sha256": "c14dea172f72f2714284a0ac2ab1b00b5352a01409d58255a46227ffc541debd",
-      "bytes": 1630,
-      "mode": 420
-    },
-    {
       "path": "upstream/hash-wasm@4.12.0/package-lock.json",
       "sha256": "e3b215b48609880059c3b2864910ec10a79388d3c47f34e312b1efa507d8192d",
       "bytes": 368537,
@@ -10779,22 +10912,10 @@
       "mode": 420
     },
     {
-      "path": "upstream/hash-wasm@4.12.0/README.md",
-      "sha256": "240e346e626eff8fdbfb9c9eb429e03877802d0f86fe1eb30e19bb7f2f5db88b",
-      "bytes": 21991,
-      "mode": 420
-    },
-    {
       "path": "upstream/hash-wasm@4.12.0/rollup.config.mjs",
       "sha256": "243a8ac2ec4cc2384c2d163a749ba6e036df82e9b6a893a33c0a8c1eb231d91c",
       "bytes": 1943,
       "mode": 420
-    },
-    {
-      "path": "upstream/hash-wasm@4.12.0/scripts/build.sh",
-      "sha256": "335f7cf5543e81d4ad1df59e298f3cbffd184202b239371b73112f0568ab5769",
-      "bytes": 996,
-      "mode": 493
     },
     {
       "path": "upstream/hash-wasm@4.12.0/scripts/Dockerfile",
@@ -10803,16 +10924,22 @@
       "mode": 420
     },
     {
-      "path": "upstream/hash-wasm@4.12.0/scripts/make_json.js",
-      "sha256": "3ca85ef095c7ec40f53080543b3f381f779ce458a635ba4d1417343ba5375881",
-      "bytes": 666,
-      "mode": 420
-    },
-    {
       "path": "upstream/hash-wasm@4.12.0/scripts/Makefile-clang",
       "sha256": "21f03aaa99f2d74e53c529e359ebf123444d8764911e8e74ba50a6b975818d11",
       "bytes": 1668,
       "mode": 493
+    },
+    {
+      "path": "upstream/hash-wasm@4.12.0/scripts/build.sh",
+      "sha256": "335f7cf5543e81d4ad1df59e298f3cbffd184202b239371b73112f0568ab5769",
+      "bytes": 996,
+      "mode": 493
+    },
+    {
+      "path": "upstream/hash-wasm@4.12.0/scripts/make_json.js",
+      "sha256": "3ca85ef095c7ec40f53080543b3f381f779ce458a635ba4d1417343ba5375881",
+      "bytes": 666,
+      "mode": 420
     },
     {
       "path": "upstream/hash-wasm@4.12.0/scripts/optimize.js",
@@ -11313,6 +11440,12 @@
       "mode": 420
     },
     {
+      "path": "upstream/iden3--bigarray@0.0.2/README.md",
+      "sha256": "22f01d5bf53a06cf2ba069f16e839479da68be1b24322ea77b7e13f23e8929ed",
+      "bytes": 305,
+      "mode": 420
+    },
+    {
       "path": "upstream/iden3--bigarray@0.0.2/package-lock.json",
       "sha256": "dacb7f1b3b7d7bb4eb08c04df3976fa9c961fb0865fe3e70b1c53b3015394b40",
       "bytes": 43351,
@@ -11322,12 +11455,6 @@
       "path": "upstream/iden3--bigarray@0.0.2/package.json",
       "sha256": "f6cbeb8e5d93606f56d3634a93cdfa29167d8375868bad4ff35c60eb0738fdf5",
       "bytes": 809,
-      "mode": 420
-    },
-    {
-      "path": "upstream/iden3--bigarray@0.0.2/README.md",
-      "sha256": "22f01d5bf53a06cf2ba069f16e839479da68be1b24322ea77b7e13f23e8929ed",
-      "bytes": 305,
       "mode": 420
     },
     {
@@ -11355,6 +11482,12 @@
       "mode": 420
     },
     {
+      "path": "upstream/iden3--binfileutils@0.0.12/README.md",
+      "sha256": "cdc72e2834e54783e038ba092b26ee00016a8aa0bd1b7a3d201fb8ad9ca9d3ba",
+      "bytes": 238,
+      "mode": 420
+    },
+    {
       "path": "upstream/iden3--binfileutils@0.0.12/package-lock.json",
       "sha256": "638694deb239c8fbbf16732663cd6c780098ffdba58db5245d26eb764c049afc",
       "bytes": 75265,
@@ -11364,12 +11497,6 @@
       "path": "upstream/iden3--binfileutils@0.0.12/package.json",
       "sha256": "cd344564fb0bee03eac3529cb9b0f393f1d140cbb5b83fcb6d5bd893bc7cb488",
       "bytes": 755,
-      "mode": 420
-    },
-    {
-      "path": "upstream/iden3--binfileutils@0.0.12/README.md",
-      "sha256": "cdc72e2834e54783e038ba092b26ee00016a8aa0bd1b7a3d201fb8ad9ca9d3ba",
-      "bytes": 238,
       "mode": 420
     },
     {
@@ -11424,6 +11551,18 @@
       "path": "upstream/jszip@3.10.1/CHANGES.md",
       "sha256": "dfb792e5a1bf94399d7c11227197158d9851d64520f400ac9848435364fc64f6",
       "bytes": 12038,
+      "mode": 420
+    },
+    {
+      "path": "upstream/jszip@3.10.1/LICENSE.markdown",
+      "sha256": "566c953c6090b1218ca6217dd7359d45dde46581968586dc607d59a78af6a9c4",
+      "bytes": 33753,
+      "mode": 420
+    },
+    {
+      "path": "upstream/jszip@3.10.1/README.markdown",
+      "sha256": "5eee3659204ed8f04b58d388b2dae55539c5cbcda733e4e945811c9121a68ede",
+      "bytes": 678,
       "mode": 420
     },
     {
@@ -11499,15 +11638,15 @@
       "mode": 420
     },
     {
-      "path": "upstream/jszip@3.10.1/lib/generate/index.js",
-      "sha256": "19f13a6ff615464657aa5b8651e669950c633095cea37d3179a51d8c645adb3b",
-      "bytes": 2035,
-      "mode": 420
-    },
-    {
       "path": "upstream/jszip@3.10.1/lib/generate/ZipFileWorker.js",
       "sha256": "907d84ea582def3954aade073444f398bef6edf1b931084da4a77bb4dc26c1c8",
       "bytes": 17954,
+      "mode": 420
+    },
+    {
+      "path": "upstream/jszip@3.10.1/lib/generate/index.js",
+      "sha256": "19f13a6ff615464657aa5b8651e669950c633095cea37d3179a51d8c645adb3b",
+      "bytes": 2035,
       "mode": 420
     },
     {
@@ -11577,12 +11716,6 @@
       "mode": 420
     },
     {
-      "path": "upstream/jszip@3.10.1/lib/reader/readerFor.js",
-      "sha256": "1eef5a73bba844922812893f9a7e01cfdb54072aae42f7ecf67c41dc925ea9cf",
-      "bytes": 904,
-      "mode": 420
-    },
-    {
       "path": "upstream/jszip@3.10.1/lib/reader/StringReader.js",
       "sha256": "477a2e887eee11a56a50726152327b2a4d75d778f96463933197706e1ce90d59",
       "bytes": 1020,
@@ -11592,6 +11725,12 @@
       "path": "upstream/jszip@3.10.1/lib/reader/Uint8ArrayReader.js",
       "sha256": "198816389bc1c62b3ca7c5c6f5fdff1b076f83e5bd74b37ee5b504e6d7e155d9",
       "bytes": 652,
+      "mode": 420
+    },
+    {
+      "path": "upstream/jszip@3.10.1/lib/reader/readerFor.js",
+      "sha256": "1eef5a73bba844922812893f9a7e01cfdb54072aae42f7ecf67c41dc925ea9cf",
+      "bytes": 904,
       "mode": 420
     },
     {
@@ -11673,21 +11812,9 @@
       "mode": 420
     },
     {
-      "path": "upstream/jszip@3.10.1/LICENSE.markdown",
-      "sha256": "566c953c6090b1218ca6217dd7359d45dde46581968586dc607d59a78af6a9c4",
-      "bytes": 33753,
-      "mode": 420
-    },
-    {
       "path": "upstream/jszip@3.10.1/package.json",
       "sha256": "83569b5b130b5ec27ae281ed80420ad364baf1bf64cb82e6ac8fb891e1b4ec4c",
       "bytes": 1787,
-      "mode": 420
-    },
-    {
-      "path": "upstream/jszip@3.10.1/README.markdown",
-      "sha256": "5eee3659204ed8f04b58d388b2dae55539c5cbcda733e4e945811c9121a68ede",
-      "bytes": 678,
       "mode": 420
     },
     {
@@ -11706,6 +11833,18 @@
       "path": "upstream/jszip@3.10.1/vendor/FileSaver.js",
       "sha256": "67421e50f3ff4c97f1c3fa3749bf071cc57357c0da97783f4f8fe3affa3a52cf",
       "bytes": 7745,
+      "mode": 420
+    },
+    {
+      "path": "upstream/noble--curves@2.3.0/LICENSE",
+      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
+      "bytes": 1109,
+      "mode": 420
+    },
+    {
+      "path": "upstream/noble--curves@2.3.0/README.md",
+      "sha256": "376f253af16775b8f7ceb64049f19aeb2fa5a996fd52373bc876fe17f3017113",
+      "bytes": 48123,
       "mode": 420
     },
     {
@@ -11925,12 +12064,6 @@
       "mode": 420
     },
     {
-      "path": "upstream/noble--curves@2.3.0/LICENSE",
-      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
-      "bytes": 1109,
-      "mode": 420
-    },
-    {
       "path": "upstream/noble--curves@2.3.0/misc.d.ts",
       "sha256": "0b25724c5cd37368b400811194ba4af73f588cbeadf4604769aef1b29858d0dd",
       "bytes": 4410,
@@ -11958,12 +12091,6 @@
       "path": "upstream/noble--curves@2.3.0/package.json",
       "sha256": "a12e5b5c3132780440184f4410c18c6d4746a5adc14c06ff6391bb4e8ffffecc",
       "bytes": 2649,
-      "mode": 420
-    },
-    {
-      "path": "upstream/noble--curves@2.3.0/README.md",
-      "sha256": "376f253af16775b8f7ceb64049f19aeb2fa5a996fd52373bc876fe17f3017113",
-      "bytes": 48123,
       "mode": 420
     },
     {
@@ -12153,6 +12280,24 @@
       "mode": 420
     },
     {
+      "path": "upstream/noble--hashes@1.7.1/LICENSE",
+      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
+      "bytes": 1109,
+      "mode": 420
+    },
+    {
+      "path": "upstream/noble--hashes@1.7.1/README.md",
+      "sha256": "71e3ee066ef5a1b5ab9281b293ec2c78f2fb1dfe52a98da24f4e4d4a7cc31364",
+      "bytes": 22617,
+      "mode": 420
+    },
+    {
+      "path": "upstream/noble--hashes@1.7.1/SECURITY.md",
+      "sha256": "7b19e02974e8b10ec208811707deea6873905ce1661176678bfbe7c9ab8ad4d4",
+      "bytes": 722,
+      "mode": 420
+    },
+    {
       "path": "upstream/noble--hashes@1.7.1/audit/README.md",
       "sha256": "bfd037a669aab0fc30c255bdbfda07bc3bb97d3f506a457fb52d3297b5006b78",
       "bytes": 178,
@@ -12171,12 +12316,6 @@
       "mode": 420
     },
     {
-      "path": "upstream/noble--hashes@1.7.1/LICENSE",
-      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
-      "bytes": 1109,
-      "mode": 420
-    },
-    {
       "path": "upstream/noble--hashes@1.7.1/package-lock.json",
       "sha256": "c59a0574ec54c675ea1524f39d3bca1d3792db25066f08f6eced711e22987c26",
       "bytes": 3623,
@@ -12186,18 +12325,6 @@
       "path": "upstream/noble--hashes@1.7.1/package.json",
       "sha256": "9ee984d71c0fa47593abd3980a8de9183b31c24595a2f27fcdeb0cea8e9b48e1",
       "bytes": 4299,
-      "mode": 420
-    },
-    {
-      "path": "upstream/noble--hashes@1.7.1/README.md",
-      "sha256": "71e3ee066ef5a1b5ab9281b293ec2c78f2fb1dfe52a98da24f4e4d4a7cc31364",
-      "bytes": 22617,
-      "mode": 420
-    },
-    {
-      "path": "upstream/noble--hashes@1.7.1/SECURITY.md",
-      "sha256": "7b19e02974e8b10ec208811707deea6873905ce1661176678bfbe7c9ab8ad4d4",
-      "bytes": 722,
       "mode": 420
     },
     {
@@ -12381,6 +12508,24 @@
       "mode": 420
     },
     {
+      "path": "upstream/noble--hashes@1.8.0/LICENSE",
+      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
+      "bytes": 1109,
+      "mode": 420
+    },
+    {
+      "path": "upstream/noble--hashes@1.8.0/README.md",
+      "sha256": "750304789ba07818cc3a35d20e9dfc047b54f7fc4472ffc82834dc91420cb6dc",
+      "bytes": 21606,
+      "mode": 420
+    },
+    {
+      "path": "upstream/noble--hashes@1.8.0/SECURITY.md",
+      "sha256": "94a551b29cb5c699bd43dc96417074f0225494ca9dd26ff93a166f252a2c8da8",
+      "bytes": 722,
+      "mode": 420
+    },
+    {
       "path": "upstream/noble--hashes@1.8.0/audit/README.md",
       "sha256": "bfd037a669aab0fc30c255bdbfda07bc3bb97d3f506a457fb52d3297b5006b78",
       "bytes": 178,
@@ -12399,12 +12544,6 @@
       "mode": 420
     },
     {
-      "path": "upstream/noble--hashes@1.8.0/LICENSE",
-      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
-      "bytes": 1109,
-      "mode": 420
-    },
-    {
       "path": "upstream/noble--hashes@1.8.0/package-lock.json",
       "sha256": "5beee89844ceed647234ef71bc5a5f40ac83ee08ba787322e72d1ded552e8431",
       "bytes": 3623,
@@ -12414,18 +12553,6 @@
       "path": "upstream/noble--hashes@1.8.0/package.json",
       "sha256": "7c4657c5e616c22cefa2691cc30670824a639dc71d97bf83925be2d239dc60e3",
       "bytes": 6734,
-      "mode": 420
-    },
-    {
-      "path": "upstream/noble--hashes@1.8.0/README.md",
-      "sha256": "750304789ba07818cc3a35d20e9dfc047b54f7fc4472ffc82834dc91420cb6dc",
-      "bytes": 21606,
-      "mode": 420
-    },
-    {
-      "path": "upstream/noble--hashes@1.8.0/SECURITY.md",
-      "sha256": "94a551b29cb5c699bd43dc96417074f0225494ca9dd26ff93a166f252a2c8da8",
-      "bytes": 722,
       "mode": 420
     },
     {
@@ -12627,33 +12754,9 @@
       "mode": 420
     },
     {
-      "path": "upstream/noble--hashes@2.3.0/audit/README.md",
-      "sha256": "bfd037a669aab0fc30c255bdbfda07bc3bb97d3f506a457fb52d3297b5006b78",
-      "bytes": 178,
-      "mode": 420
-    },
-    {
-      "path": "upstream/noble--hashes@2.3.0/jsr.json",
-      "sha256": "e14a3784091d866e6cbcf38206c21114b0e58e4f2836811cc2ff71cecf0b0851",
-      "bytes": 825,
-      "mode": 420
-    },
-    {
       "path": "upstream/noble--hashes@2.3.0/LICENSE",
       "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
       "bytes": 1109,
-      "mode": 420
-    },
-    {
-      "path": "upstream/noble--hashes@2.3.0/package-lock.json",
-      "sha256": "42cfb82f169937366cab71e57930d85d94b6d73fce32e28321f57ac2deb468d2",
-      "bytes": 3798,
-      "mode": 420
-    },
-    {
-      "path": "upstream/noble--hashes@2.3.0/package.json",
-      "sha256": "dcd1dbb2aeea98180b497a7bd60c8ac145eb68f98c2397d4294f60aa3d03c824",
-      "bytes": 2422,
       "mode": 420
     },
     {
@@ -12666,6 +12769,30 @@
       "path": "upstream/noble--hashes@2.3.0/SECURITY.md",
       "sha256": "6e6c08c7d01c2d2d7a00c9f2685cb21c1e3343a8f87a91fc8908ac77e475cfae",
       "bytes": 722,
+      "mode": 420
+    },
+    {
+      "path": "upstream/noble--hashes@2.3.0/audit/README.md",
+      "sha256": "bfd037a669aab0fc30c255bdbfda07bc3bb97d3f506a457fb52d3297b5006b78",
+      "bytes": 178,
+      "mode": 420
+    },
+    {
+      "path": "upstream/noble--hashes@2.3.0/jsr.json",
+      "sha256": "e14a3784091d866e6cbcf38206c21114b0e58e4f2836811cc2ff71cecf0b0851",
+      "bytes": 825,
+      "mode": 420
+    },
+    {
+      "path": "upstream/noble--hashes@2.3.0/package-lock.json",
+      "sha256": "42cfb82f169937366cab71e57930d85d94b6d73fce32e28321f57ac2deb468d2",
+      "bytes": 3798,
+      "mode": 420
+    },
+    {
+      "path": "upstream/noble--hashes@2.3.0/package.json",
+      "sha256": "dcd1dbb2aeea98180b497a7bd60c8ac145eb68f98c2397d4294f60aa3d03c824",
+      "bytes": 2422,
       "mode": 420
     },
     {
@@ -12807,39 +12934,15 @@
       "mode": 420
     },
     {
-      "path": "upstream/noble--hashes@2.4.0/audit/README.md",
-      "sha256": "bfd037a669aab0fc30c255bdbfda07bc3bb97d3f506a457fb52d3297b5006b78",
-      "bytes": 178,
-      "mode": 420
-    },
-    {
       "path": "upstream/noble--hashes@2.4.0/CHANGELOG.md",
       "sha256": "0dee037e131f349d660ce65a8f449e1b4de370457e79b0ce6443e680cdf87b0e",
       "bytes": 12401,
       "mode": 420
     },
     {
-      "path": "upstream/noble--hashes@2.4.0/jsr.json",
-      "sha256": "514f9249050c0dcc08a97df22181ad2d6f56bdb32a874352ead7b1266735790f",
-      "bytes": 825,
-      "mode": 420
-    },
-    {
       "path": "upstream/noble--hashes@2.4.0/LICENSE",
       "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
       "bytes": 1109,
-      "mode": 420
-    },
-    {
-      "path": "upstream/noble--hashes@2.4.0/package-lock.json",
-      "sha256": "978b336683b76d42a074c15e0478fde84f6001fc7badc834af38ed81ef1585c5",
-      "bytes": 18880,
-      "mode": 420
-    },
-    {
-      "path": "upstream/noble--hashes@2.4.0/package.json",
-      "sha256": "3e361734f5269de162fa362483d7f45dee7efb533ec217157945338f7591baaf",
-      "bytes": 2583,
       "mode": 420
     },
     {
@@ -12852,6 +12955,30 @@
       "path": "upstream/noble--hashes@2.4.0/SECURITY.md",
       "sha256": "0b2bc315d26fce709fc99643603c50d97aa26e969b3d9b7f11ca15d3e045196d",
       "bytes": 722,
+      "mode": 420
+    },
+    {
+      "path": "upstream/noble--hashes@2.4.0/audit/README.md",
+      "sha256": "bfd037a669aab0fc30c255bdbfda07bc3bb97d3f506a457fb52d3297b5006b78",
+      "bytes": 178,
+      "mode": 420
+    },
+    {
+      "path": "upstream/noble--hashes@2.4.0/jsr.json",
+      "sha256": "514f9249050c0dcc08a97df22181ad2d6f56bdb32a874352ead7b1266735790f",
+      "bytes": 825,
+      "mode": 420
+    },
+    {
+      "path": "upstream/noble--hashes@2.4.0/package-lock.json",
+      "sha256": "978b336683b76d42a074c15e0478fde84f6001fc7badc834af38ed81ef1585c5",
+      "bytes": 18880,
+      "mode": 420
+    },
+    {
+      "path": "upstream/noble--hashes@2.4.0/package.json",
+      "sha256": "3e361734f5269de162fa362483d7f45dee7efb533ec217157945338f7591baaf",
+      "bytes": 2583,
       "mode": 420
     },
     {
@@ -12993,6 +13120,12 @@
       "mode": 420
     },
     {
+      "path": "upstream/r1csfile@0.0.48/README.md",
+      "sha256": "2bfe417e32c9d7cb047f978f6d3092322f64a356c4b6fb3811fd72c9428a10b1",
+      "bytes": 244,
+      "mode": 420
+    },
+    {
       "path": "upstream/r1csfile@0.0.48/package-lock.json",
       "sha256": "dad562f31b08bf20a66c3cd593badb37fa49134eabd27e48a0b0f9efa2e38df8",
       "bytes": 110075,
@@ -13005,12 +13138,6 @@
       "mode": 420
     },
     {
-      "path": "upstream/r1csfile@0.0.48/README.md",
-      "sha256": "2bfe417e32c9d7cb047f978f6d3092322f64a356c4b6fb3811fd72c9428a10b1",
-      "bytes": 244,
-      "mode": 420
-    },
-    {
       "path": "upstream/r1csfile@0.0.48/rollup.cjs.config.js",
       "sha256": "e0b878259a77154539242fe4b8b9c2471c9ae280f0552e7b79528b4520c21ca3",
       "bytes": 346,
@@ -13020,6 +13147,18 @@
       "path": "upstream/r1csfile@0.0.48/src/r1csfile.js",
       "sha256": "534789bb4fb0836f3626f3690c47978ce3424df38c4cb2c4fcf8e9b8a1816d38",
       "bytes": 11656,
+      "mode": 420
+    },
+    {
+      "path": "upstream/react@19.2.8/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
+      "bytes": 1088,
+      "mode": 420
+    },
+    {
+      "path": "upstream/react@19.2.8/README.md",
+      "sha256": "faf7a5814bedadb9ecabcb8cf727a3477696bb0d3a5b57d5433110aa6094b85e",
+      "bytes": 1158,
       "mode": 420
     },
     {
@@ -13161,12 +13300,6 @@
       "mode": 420
     },
     {
-      "path": "upstream/react@19.2.8/LICENSE",
-      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
-      "bytes": 1088,
-      "mode": 420
-    },
-    {
       "path": "upstream/react@19.2.8/package.json",
       "sha256": "e40c3ed9b633c9ecf188e09a4be309780a1ea0a9c068278a30ff6a27e7b2dbb6",
       "bytes": 1242,
@@ -13179,12 +13312,6 @@
       "mode": 420
     },
     {
-      "path": "upstream/react@19.2.8/README.md",
-      "sha256": "faf7a5814bedadb9ecabcb8cf727a3477696bb0d3a5b57d5433110aa6094b85e",
-      "bytes": 1158,
-      "mode": 420
-    },
-    {
       "path": "upstream/snarkjs@0.7.6/.eslintrc.cjs",
       "sha256": "ce23f6ec4ea5bae20314bd82ace3e749f66444cb04b2b3f3834e06ee8c687c46",
       "bytes": 626,
@@ -13194,6 +13321,18 @@
       "path": "upstream/snarkjs@0.7.6/.gitignore",
       "sha256": "2ec56d07b8ca228fd2395a2025d0df145c3b8acfa427f902db95f6a845548c7b",
       "bytes": 996,
+      "mode": 420
+    },
+    {
+      "path": "upstream/snarkjs@0.7.6/COPYING",
+      "sha256": "d95c74a62d14f13ebfbc8c1783c315e2ed2389e80048b264bdeddb8114dee945",
+      "bytes": 35130,
+      "mode": 420
+    },
+    {
+      "path": "upstream/snarkjs@0.7.6/README.md",
+      "sha256": "921c13ee78c1ec3158189b45390e790b5c3a6afedab96e63036de91111e09075",
+      "bytes": 28246,
       "mode": 420
     },
     {
@@ -13221,21 +13360,15 @@
       "mode": 420
     },
     {
-      "path": "upstream/snarkjs@0.7.6/config/rollup.iife_min.config.js",
-      "sha256": "4610030f1a9442124a472f47018c20334c7fcaf7affe3bb8637b8af5e4bade44",
-      "bytes": 303,
-      "mode": 420
-    },
-    {
       "path": "upstream/snarkjs@0.7.6/config/rollup.iife.config.js",
       "sha256": "a00738d0b331049d3914089243fbb612025121e46352b4fa0dd3ebffcd47b190",
       "bytes": 1603,
       "mode": 420
     },
     {
-      "path": "upstream/snarkjs@0.7.6/COPYING",
-      "sha256": "d95c74a62d14f13ebfbc8c1783c315e2ed2389e80048b264bdeddb8114dee945",
-      "bytes": 35130,
+      "path": "upstream/snarkjs@0.7.6/config/rollup.iife_min.config.js",
+      "sha256": "4610030f1a9442124a472f47018c20334c7fcaf7affe3bb8637b8af5e4bade44",
+      "bytes": 303,
       "mode": 420
     },
     {
@@ -13257,21 +13390,9 @@
       "mode": 420
     },
     {
-      "path": "upstream/snarkjs@0.7.6/README.md",
-      "sha256": "921c13ee78c1ec3158189b45390e790b5c3a6afedab96e63036de91111e09075",
-      "bytes": 28246,
-      "mode": 420
-    },
-    {
       "path": "upstream/snarkjs@0.7.6/scripts/lagrange_fftext.js",
       "sha256": "ddc9f0dc356a52aa1bc284e91060d05888db4edc03119740785df7e405ae3401",
       "bytes": 2080,
-      "mode": 420
-    },
-    {
-      "path": "upstream/snarkjs@0.7.6/scripts/prover_fftext.js",
-      "sha256": "1e1dbbe949b42a713842b9dba158dc4c2cec3c0ed73e36515028fd29319d6e1f",
-      "bytes": 1160,
       "mode": 420
     },
     {
@@ -13281,9 +13402,21 @@
       "mode": 420
     },
     {
+      "path": "upstream/snarkjs@0.7.6/scripts/prover_fftext.js",
+      "sha256": "1e1dbbe949b42a713842b9dba158dc4c2cec3c0ed73e36515028fd29319d6e1f",
+      "bytes": 1160,
+      "mode": 420
+    },
+    {
       "path": "upstream/snarkjs@0.7.6/scripts/verify_fftext.js",
       "sha256": "525fbc765802d37175f18cbccc3a6fcbd679c3bc174772118fa4c66a45a4b45d",
       "bytes": 1254,
+      "mode": 420
+    },
+    {
+      "path": "upstream/snarkjs@0.7.6/src/Keccak256Transcript.js",
+      "sha256": "3f873d79b7e19160b4a0575d26be995b51afc26193c9b723799f7fab182967ca",
+      "bytes": 2153,
       "mode": 420
     },
     {
@@ -13302,6 +13435,12 @@
       "path": "upstream/snarkjs@0.7.6/src/curves.js",
       "sha256": "eca7e0344d5b7a9f9db81128058faa5cb2020de9bb40ed01523d1e7a083f15bb",
       "bytes": 1994,
+      "mode": 420
+    },
+    {
+      "path": "upstream/snarkjs@0.7.6/src/fflonk.js",
+      "sha256": "283ed71d96f92afde8c1a951b73465b083821c0909af9d7f0cb7f2797ac15a76",
+      "bytes": 1117,
       "mode": 420
     },
     {
@@ -13347,9 +13486,9 @@
       "mode": 420
     },
     {
-      "path": "upstream/snarkjs@0.7.6/src/fflonk.js",
-      "sha256": "283ed71d96f92afde8c1a951b73465b083821c0909af9d7f0cb7f2797ac15a76",
-      "bytes": 1117,
+      "path": "upstream/snarkjs@0.7.6/src/groth16.js",
+      "sha256": "ba611c98dd0af11da12b246a30e296306c776e77724582591157f82edcc4f8d0",
+      "bytes": 975,
       "mode": 420
     },
     {
@@ -13374,18 +13513,6 @@
       "path": "upstream/snarkjs@0.7.6/src/groth16_verify.js",
       "sha256": "983d0eec8a5f23c85efaec276c7ee47e7e9edc72c15814b1850f8874270ee6bd",
       "bytes": 3568,
-      "mode": 420
-    },
-    {
-      "path": "upstream/snarkjs@0.7.6/src/groth16.js",
-      "sha256": "ba611c98dd0af11da12b246a30e296306c776e77724582591157f82edcc4f8d0",
-      "bytes": 975,
-      "mode": 420
-    },
-    {
-      "path": "upstream/snarkjs@0.7.6/src/Keccak256Transcript.js",
-      "sha256": "3f873d79b7e19160b4a0575d26be995b51afc26193c9b723799f7fab182967ca",
-      "bytes": 2153,
       "mode": 420
     },
     {
@@ -13416,6 +13543,12 @@
       "path": "upstream/snarkjs@0.7.6/src/mul_z.js",
       "sha256": "b89b91ea5a4977a47b14f09450458cd91fdf0a404488c50e705366ab1395e8bf",
       "bytes": 3920,
+      "mode": 420
+    },
+    {
+      "path": "upstream/snarkjs@0.7.6/src/plonk.js",
+      "sha256": "bb31f2c9260cbeef818b1493b5d67069c3f32c03cab7f9d43210d2b7e9951b94",
+      "bytes": 1036,
       "mode": 420
     },
     {
@@ -13461,12 +13594,6 @@
       "mode": 420
     },
     {
-      "path": "upstream/snarkjs@0.7.6/src/plonk.js",
-      "sha256": "bb31f2c9260cbeef818b1493b5d67069c3f32c03cab7f9d43210d2b7e9951b94",
-      "bytes": 1036,
-      "mode": 420
-    },
-    {
       "path": "upstream/snarkjs@0.7.6/src/polynomial/cpolynomial.js",
       "sha256": "a144a076b8bbd7854fc21963f7777f21bbc9df3b27581144a42d4000fa1ce106",
       "bytes": 3074,
@@ -13482,6 +13609,12 @@
       "path": "upstream/snarkjs@0.7.6/src/polynomial/polynomial.js",
       "sha256": "e9b7ab013533dad8fb4204bbfda36be425bccb3e0630e2ae066a0bfe6abfd4fc",
       "bytes": 34772,
+      "mode": 420
+    },
+    {
+      "path": "upstream/snarkjs@0.7.6/src/powersoftau.js",
+      "sha256": "125862fd50e8cb55812d9c811b7c73ca0797c5dfe048082ef49d138423da2a18",
+      "bytes": 1464,
       "mode": 420
     },
     {
@@ -13557,15 +13690,15 @@
       "mode": 420
     },
     {
-      "path": "upstream/snarkjs@0.7.6/src/powersoftau.js",
-      "sha256": "125862fd50e8cb55812d9c811b7c73ca0797c5dfe048082ef49d138423da2a18",
-      "bytes": 1464,
-      "mode": 420
-    },
-    {
       "path": "upstream/snarkjs@0.7.6/src/proof.js",
       "sha256": "f36a952ca4a72ead2ed995951825e8baaa00d5ea67776a23d3e2a23cc3b4ea9f",
       "bytes": 2915,
+      "mode": 420
+    },
+    {
+      "path": "upstream/snarkjs@0.7.6/src/r1cs.js",
+      "sha256": "0cb884f57eb2b5c9b52756f54c809280e6df1b2bad811fa49493826c228a09f4",
+      "bytes": 879,
       "mode": 420
     },
     {
@@ -13593,12 +13726,6 @@
       "mode": 420
     },
     {
-      "path": "upstream/snarkjs@0.7.6/src/r1cs.js",
-      "sha256": "0cb884f57eb2b5c9b52756f54c809280e6df1b2bad811fa49493826c228a09f4",
-      "bytes": 879,
-      "mode": 420
-    },
-    {
       "path": "upstream/snarkjs@0.7.6/src/solidity.js",
       "sha256": "cd1ef4e4fe81ffdacf78b93e8c1e9e49aa06ccd6256d3e5fcc3ecd27b251a7bc",
       "bytes": 909,
@@ -13608,6 +13735,12 @@
       "path": "upstream/snarkjs@0.7.6/src/taskmanager.js",
       "sha256": "aca9ebbc995868327c61a3b7c31431d03825e34bcc0ef8ec5ebc4d7fa42ca530",
       "bytes": 6077,
+      "mode": 420
+    },
+    {
+      "path": "upstream/snarkjs@0.7.6/src/wtns.js",
+      "sha256": "e808ed4d2793458f0caa03648e5166314807983ee41a2020a380f0008f7686ff",
+      "bytes": 937,
       "mode": 420
     },
     {
@@ -13641,9 +13774,9 @@
       "mode": 420
     },
     {
-      "path": "upstream/snarkjs@0.7.6/src/wtns.js",
-      "sha256": "e808ed4d2793458f0caa03648e5166314807983ee41a2020a380f0008f7686ff",
-      "bytes": 937,
+      "path": "upstream/snarkjs@0.7.6/src/zkey.js",
+      "sha256": "f002686004a868965553c1956758c45963136367c7727f0e09cd2188a528743a",
+      "bytes": 1458,
       "mode": 420
     },
     {
@@ -13725,12 +13858,6 @@
       "mode": 420
     },
     {
-      "path": "upstream/snarkjs@0.7.6/src/zkey.js",
-      "sha256": "f002686004a868965553c1956758c45963136367c7727f0e09cd2188a528743a",
-      "bytes": 1458,
-      "mode": 420
-    },
-    {
       "path": "upstream/snarkjs@0.7.6/templates/verifier_fflonk.sol.ejs",
       "sha256": "749da7b58dbd758b9ac4561d139599cf08402ada8f33f83ace8683300a4c4370",
       "bytes": 44033,
@@ -13773,6 +13900,12 @@
       "mode": 420
     },
     {
+      "path": "upstream/wasmbuilder@0.0.16/README.md",
+      "sha256": "b05a6cfac7760a05146cd77efd795795090ea4f2d418593e605d71cf10530569",
+      "bytes": 243,
+      "mode": 420
+    },
+    {
       "path": "upstream/wasmbuilder@0.0.16/main.js",
       "sha256": "5b1c847bff5a126919f4d71402f34a5339e2d76489b2c71c5ea081ed59f765fa",
       "bytes": 908,
@@ -13791,21 +13924,9 @@
       "mode": 420
     },
     {
-      "path": "upstream/wasmbuilder@0.0.16/README.md",
-      "sha256": "b05a6cfac7760a05146cd77efd795795090ea4f2d418593e605d71cf10530569",
-      "bytes": 243,
-      "mode": 420
-    },
-    {
       "path": "upstream/wasmbuilder@0.0.16/rollup.cjs.config.js",
       "sha256": "53c6064b909a982d785f39dec35004b6a126c7cd6e73cbfdd51da0ffd624f35f",
       "bytes": 338,
-      "mode": 420
-    },
-    {
-      "path": "upstream/wasmbuilder@0.0.16/src/codebuilder_wat.js",
-      "sha256": "80b17c23f1843a6c362d11b781c5bbb04fc58f1baf5e2db6ee99ba5f4be5695f",
-      "bytes": 10348,
       "mode": 420
     },
     {
@@ -13815,9 +13936,9 @@
       "mode": 420
     },
     {
-      "path": "upstream/wasmbuilder@0.0.16/src/functionbuilder_wat.js",
-      "sha256": "d800dadfcccc6ae8ce45bdfc99a5c8dff07cc21895f6ecf3e74741d3e2b22d75",
-      "bytes": 4252,
+      "path": "upstream/wasmbuilder@0.0.16/src/codebuilder_wat.js",
+      "sha256": "80b17c23f1843a6c362d11b781c5bbb04fc58f1baf5e2db6ee99ba5f4be5695f",
+      "bytes": 10348,
       "mode": 420
     },
     {
@@ -13827,15 +13948,21 @@
       "mode": 420
     },
     {
-      "path": "upstream/wasmbuilder@0.0.16/src/modulebuilder_wat.js",
-      "sha256": "6a57b38c446d5cdcb6c4dc5a63d5f29b9fef360c55426a016d2dbbb4b846a9b8",
-      "bytes": 7892,
+      "path": "upstream/wasmbuilder@0.0.16/src/functionbuilder_wat.js",
+      "sha256": "d800dadfcccc6ae8ce45bdfc99a5c8dff07cc21895f6ecf3e74741d3e2b22d75",
+      "bytes": 4252,
       "mode": 420
     },
     {
       "path": "upstream/wasmbuilder@0.0.16/src/modulebuilder.js",
       "sha256": "eec8540d92f355f344b8b8e5cea9dcfad6be57ae908ca6f96fa479223ef88d5b",
       "bytes": 9377,
+      "mode": 420
+    },
+    {
+      "path": "upstream/wasmbuilder@0.0.16/src/modulebuilder_wat.js",
+      "sha256": "6a57b38c446d5cdcb6c4dc5a63d5f29b9fef360c55426a016d2dbbb4b846a9b8",
+      "bytes": 7892,
       "mode": 420
     },
     {
@@ -13881,6 +14008,18 @@
       "mode": 420
     },
     {
+      "path": "upstream/wasmcurves@0.2.2/README.md",
+      "sha256": "d1ddb3e723d72bcdc1425761465bf60d16ae65f5fa99d37842331b358baa5818",
+      "bytes": 392,
+      "mode": 420
+    },
+    {
+      "path": "upstream/wasmcurves@0.2.2/TODO",
+      "sha256": "267774c44b6d8f8eb6e1bf027332a0154a8ea6e319b86127170926ac33ba15fd",
+      "bytes": 14,
+      "mode": 420
+    },
+    {
       "path": "upstream/wasmcurves@0.2.2/index.js",
       "sha256": "01700d3c06016a5894623c935e5eaf884f124780bac879b42f245c6298393162",
       "bytes": 1235,
@@ -13896,12 +14035,6 @@
       "path": "upstream/wasmcurves@0.2.2/package.json",
       "sha256": "9b26e1a9536c3073d126c43a3649f4c780f83a6711a9c0477d70ed48778c6e79",
       "bytes": 800,
-      "mode": 420
-    },
-    {
-      "path": "upstream/wasmcurves@0.2.2/README.md",
-      "sha256": "d1ddb3e723d72bcdc1425761465bf60d16ae65f5fa99d37842331b358baa5818",
-      "bytes": 392,
       "mode": 420
     },
     {
@@ -14082,12 +14215,6 @@
       "path": "upstream/wasmcurves@0.2.2/src/utils.js",
       "sha256": "1da17413512b2fa2b6c05df25839466441aa583a27fd2bf71ce28a62d7615958",
       "bytes": 1478,
-      "mode": 420
-    },
-    {
-      "path": "upstream/wasmcurves@0.2.2/TODO",
-      "sha256": "267774c44b6d8f8eb6e1bf027332a0154a8ea6e319b86127170926ac33ba15fd",
-      "bytes": 14,
       "mode": 420
     },
     {
@@ -14530,6 +14657,11 @@
       "mode": 420
     },
     {
+      "path": "vault/node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/LICENSE",
+      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
+      "mode": 420
+    },
+    {
       "path": "vault/node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/_md.js",
       "sha256": "60cf3010fda89e3e4d3f0e7ff1ce249e9c467f34b4fd41b6fd6101d9f69be763",
       "mode": 420
@@ -14537,11 +14669,6 @@
     {
       "path": "vault/node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/_u64.js",
       "sha256": "b09da8c07fe8187c07649494cdb7cd0bcf13df90b506a9473d19e4d5f8c2e102",
-      "mode": 420
-    },
-    {
-      "path": "vault/node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/LICENSE",
-      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
       "mode": 420
     },
     {
@@ -14560,13 +14687,13 @@
       "mode": 420
     },
     {
-      "path": "vault/node_modules/.pnpm/dijkstrajs@1.0.3/node_modules/dijkstrajs/dijkstra.js",
-      "sha256": "7f5721e77332370a71314f1536b8c552f4f9dbd99bbc6c5aa10df3253eacfd5c",
+      "path": "vault/node_modules/.pnpm/dijkstrajs@1.0.3/node_modules/dijkstrajs/LICENSE.md",
+      "sha256": "c46324e45a005413535a6fb7a97e9eacd3cc6bf30335b7d5c10b8ee3af9e60c2",
       "mode": 420
     },
     {
-      "path": "vault/node_modules/.pnpm/dijkstrajs@1.0.3/node_modules/dijkstrajs/LICENSE.md",
-      "sha256": "c46324e45a005413535a6fb7a97e9eacd3cc6bf30335b7d5c10b8ee3af9e60c2",
+      "path": "vault/node_modules/.pnpm/dijkstrajs@1.0.3/node_modules/dijkstrajs/dijkstra.js",
+      "sha256": "7f5721e77332370a71314f1536b8c552f4f9dbd99bbc6c5aa10df3253eacfd5c",
       "mode": 420
     },
     {
@@ -14585,13 +14712,13 @@
       "mode": 420
     },
     {
-      "path": "vault/node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
-      "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1",
+      "path": "vault/node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/LICENSE",
+      "sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551",
       "mode": 420
     },
     {
-      "path": "vault/node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/LICENSE",
-      "sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551",
+      "path": "vault/node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
+      "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1",
       "mode": 420
     },
     {
@@ -14600,18 +14727,23 @@
       "mode": 420
     },
     {
-      "path": "vault/node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm/dist/index.esm.js",
-      "sha256": "2d6333a619d7f64adc313a38732425fc0c6f0baaa36c1419cf05672bcd89340d",
-      "mode": 420
-    },
-    {
       "path": "vault/node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm/LICENSE",
       "sha256": "c14dea172f72f2714284a0ac2ab1b00b5352a01409d58255a46227ffc541debd",
       "mode": 420
     },
     {
+      "path": "vault/node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm/dist/index.esm.js",
+      "sha256": "2d6333a619d7f64adc313a38732425fc0c6f0baaa36c1419cf05672bcd89340d",
+      "mode": 420
+    },
+    {
       "path": "vault/node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm/package.json",
       "sha256": "bdb86309706014e1e3062ce78aa7a2e8b196a44d5a22ceec8978d864e28116f7",
+      "mode": 420
+    },
+    {
+      "path": "vault/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/LICENSE",
+      "sha256": "8df47c6ad9ac2c41eb9b2a72def9908959da0ede8dadd56c7b249c1bdb0c5ce6",
       "mode": 420
     },
     {
@@ -14750,11 +14882,6 @@
       "mode": 420
     },
     {
-      "path": "vault/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/LICENSE",
-      "sha256": "8df47c6ad9ac2c41eb9b2a72def9908959da0ede8dadd56c7b249c1bdb0c5ce6",
-      "mode": 420
-    },
-    {
       "path": "vault/node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/package.json",
       "sha256": "cbe26d7282c802f4ab9c1f790c5d8450d2b5c82e8bb5f67e3a5c2641ea347d1d",
       "mode": 420
@@ -14785,13 +14912,13 @@
       "mode": 420
     },
     {
-      "path": "vault/packages/receiz-sdk/src/artifacts.ts",
-      "sha256": "8db4e2f6e0a51ef2757f2a91d0483fd8168668694a1d3f68884c3a48ad048f39",
+      "path": "vault/packages/receiz-sdk/src/artifactVerification.ts",
+      "sha256": "710335ab1962b04607691c2191ab4e1c12ceda90aa3751e211b4d77bfa21e9f3",
       "mode": 420
     },
     {
-      "path": "vault/packages/receiz-sdk/src/artifactVerification.ts",
-      "sha256": "710335ab1962b04607691c2191ab4e1c12ceda90aa3751e211b4d77bfa21e9f3",
+      "path": "vault/packages/receiz-sdk/src/artifacts.ts",
+      "sha256": "8db4e2f6e0a51ef2757f2a91d0483fd8168668694a1d3f68884c3a48ad048f39",
       "mode": 420
     },
     {
@@ -16503,6 +16630,147 @@
       "sha256": "2b09bee73258933d5a73136dc17f80b7bb2284da63a993b250011720c4dfad5e",
       "purpose": "Resolve the stable native asset trade selector into an exact current-head review during the existing preparation read. Legacy exact-head selectors and execution checks remain unchanged.",
       "sourceCommit": "dd5995e7f"
+    },
+    {
+      "id": "bank-local-financial-accountFinancialSource",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialSource.ts",
+      "baseSha256": null,
+      "sha256": "89822a52dd22d0295a7d6a7b0d2befb687e81be4325abbf13ce40c1d6e002565",
+      "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-accountFinancialExecution",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialExecution.ts",
+      "baseSha256": null,
+      "sha256": "e4c84d6632ceb12ce870de149130a6abf7e94110deb37089252970ef3aba6ed1",
+      "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-accountFinancialCommit",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialCommit.ts",
+      "baseSha256": null,
+      "sha256": "45e2df711416c0814f092f38af3e9141cc26ed93040ca258ea33e2ba53476051",
+      "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-accountFinancialPublication",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialPublication.ts",
+      "baseSha256": null,
+      "sha256": "4e426b5c604728a353c928640519a85ed93f36c2027177aab8eb1da424991743",
+      "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-accountFinancialMath.generated",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialMath.generated.js",
+      "baseSha256": null,
+      "sha256": "be8e6295d224dfc21d6ce060494779339c479af2ce89e70e6e37da5770586cd6",
+      "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-accountFinancialMath.generated.d",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialMath.generated.d.ts",
+      "baseSha256": null,
+      "sha256": "153ea06ce7bf02bd6a611bf7fe1cf0049afbce2cb52b2197bde1f091e5a2cec7",
+      "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-browser-accountFinancialBrowser",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialBrowser.ts",
+      "baseSha256": null,
+      "sha256": "4488eb78660013989bce87ea821e7e223df2395c5477f4d3da54ede08d35ac4b",
+      "purpose": "Share the existing native SDK verifier and Source/commit/publication functions for local financial execution. No new verifier bundle or provider code.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-browser-browser",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "0ebf1ca7701ff173736928d9e076ed3b61124a158f513c5a7d7d97853805d854",
+      "sha256": "aff2874a827edf693150670a40f4c9ea315a9989e2c5af068f9db54b927c26f1",
+      "purpose": "Add only shared financial exports to the existing Bank Note application profile; preserve all receiving and deposit behavior.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-app-lib-market-marketPulsePricing.ts",
+      "path": "receiz/app/lib/market/marketPulsePricing.ts",
+      "sha256": "bf72e29c9d95b3f166268882b8f6c708ed4b88128b5f3a879f0e56ed44e703a8",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-market-shareFees.ts",
+      "path": "receiz/app/lib/market/shareFees.ts",
+      "sha256": "a08fce47a9e11106133a3c1b51c54c9b29589f11097af499251ca9d78d2fb39e",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-market-shareTradeAccounting.ts",
+      "path": "receiz/app/lib/market/shareTradeAccounting.ts",
+      "sha256": "8f11398c4f8c456ebcd5a0f7ed3dfea4e8d16a58b3940f9f371bcf7c7d6cac9a",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-market-walletBudget.ts",
+      "path": "receiz/app/lib/market/walletBudget.ts",
+      "sha256": "bbc71aa21cd3e12c4832926a26035cb08623c1100adb7c8115901476bffbaa16",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-wallet-amounts.ts",
+      "path": "receiz/app/lib/wallet/amounts.ts",
+      "sha256": "26cd5a271b46a400c1d27f60493a9811b3e4282ddb6510497f773af7b0387f81",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-wallet-bankNotes-offlineMarketPricing.ts",
+      "path": "receiz/app/lib/wallet/bankNotes/offlineMarketPricing.ts",
+      "sha256": "57158dd5f32c030683598e58c70474f34138c1c7a814d3cc55cd0316cee6ccb3",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-wallet-bankNotes-offlineWalletValuation.ts",
+      "path": "receiz/app/lib/wallet/bankNotes/offlineWalletValuation.ts",
+      "sha256": "504c5c243e5df2815af60e3d934f286d0f6a02e6cb2372bec3119ba43d6ec7ca",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-wallet-fundingContinuity-lawfulSources.ts",
+      "path": "receiz/app/lib/wallet/fundingContinuity/lawfulSources.ts",
+      "sha256": "f672eb84f63bd6416ef6ec9bcdd1fa88b8cf520d41597aab64d7489dcfff92eb",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-wallet-walletSummaryProjection.ts",
+      "path": "receiz/app/lib/wallet/walletSummaryProjection.ts",
+      "sha256": "d49c44b50a01a16cff27398b3b8ada96f2858a5f34b037b4f90d972af19e423a",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-scripts-sync_account_financial_math.mjs",
+      "path": "receiz/scripts/sync_account_financial_math.mjs",
+      "sha256": "35442bb81766f994af0f3518418329936bbcff0895ad6366d1d396b94b6e3eac",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-canonical-lawful-amount-parser",
+      "path": "receiz/app/lib/wallet/lawfulActionSettlement.ts",
+      "sha256": "2b23abb3504d8b5ea487f2369b899d4f652de31457f6ae3da18aa7a3c3dc0af1",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Exact corresponding canonical source for financial arithmetic reproduction; no Bank call site or connected operation changes."
     }
   ],
   "historicalValuation": {
@@ -17438,6 +17706,10 @@
       "sha256": "0329d952ff212de56ba593fb1c848b13aec0325e4e8aba9cd24a5edf4d0b73c6"
     },
     {
+      "path": "app/lib/wallet/fundingContinuity/lawfulSources.ts",
+      "sha256": "f672eb84f63bd6416ef6ec9bcdd1fa88b8cf520d41597aab64d7489dcfff92eb"
+    },
+    {
       "path": "app/lib/wallet/glyphEconomyProjection.ts",
       "sha256": "0cd85a7879ea739e184e43bea3b398c4f7bb0389707a956a6ad60c3e8b4f6017"
     },
@@ -17479,7 +17751,7 @@
     },
     {
       "path": "app/lib/wallet/lawfulActionSettlement.ts",
-      "sha256": "51342fae6da140709468a34d18c2a5ff385a5cf5beb8aca32be6ca4356c235e9"
+      "sha256": "2b23abb3504d8b5ea487f2369b899d4f652de31457f6ae3da18aa7a3c3dc0af1"
     },
     {
       "path": "app/lib/wallet/noteClaimStatusLink.client.ts",

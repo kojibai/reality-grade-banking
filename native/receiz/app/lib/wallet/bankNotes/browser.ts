@@ -372,3 +372,6 @@ export function createBankPreparedBrowserRuntime(input:Omit<BankPreparedNotesInp
 export * from "./connectedNote";
 export * from "./connectedNoteImage";
 export type {BankNoteAccountReceivingRequest} from "./accountReceiving";
+
+// Shared native financial composition; preserve the existing Bank Note profile.
+export * from '../../../../packages/receiz-sdk/src/accountFinancialBrowser';

@@ -89,7 +89,7 @@ try {
   assert.equal('// Generated from the canonical app seal core by scripts/build_offline_sdk_runtime.mjs.\n' + core.outputFiles[0].text, await readFile(resolve(source, 'packages/receiz-sdk/src/offlineSealImplementation.js'), 'utf8'), 'Preferred SDK sealing source differs.');
   const worker = await build({ ...common, entryPoints: ['packages/receiz-sdk/src/offlineKaiProofNodeWorker.ts'], platform: 'node', external: ['snarkjs', 'hash-wasm', '@noble/hashes/*'], legalComments: 'none' });
   assert.equal('// Generated from the SDK live KaiSigil proof composition by scripts/build_offline_sdk_runtime.mjs.\n' + worker.outputFiles[0].text, await readFile(resolve(source, 'packages/receiz-sdk/offline-resources/kai-proof-worker.mjs'), 'utf8'), 'Preferred Kai worker source differs.');
-  for (const name of ['sync_canonical_anchor_parser.mjs', 'sync_sigil_valuation_core.mjs']) execFileSync(process.execPath, [resolve(source, 'scripts', name), '--check'], { cwd: source, stdio: 'pipe' });
+  for (const name of ['sync_canonical_anchor_parser.mjs', 'sync_sigil_valuation_core.mjs', 'sync_account_financial_math.mjs']) execFileSync(process.execPath, [resolve(source, 'scripts', name), '--check', ...(name==='sync_account_financial_math.mjs'?['--esbuild-from',bank]:[])], { cwd: source, stdio: 'pipe' });
 
   if (process.argv.includes('--sdk')) {
     const sdk = resolve(source, 'packages/receiz-sdk');

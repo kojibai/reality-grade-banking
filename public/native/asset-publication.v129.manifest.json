@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.0.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "dc7dbeee50432a64ceb16748123e8af55f66c4540b3ac22f7c53f5229a7ca0cb",
-  "sourceTreeSha256": "31a5dd970cd828198e58bae34a93faba9741c04385d6aed492a521e2af3dced6",
-  "inputs": 496,
-  "bytes": 2922329,
+  "moduleSha256": "edf5d2f8ca54b591f419607a2a7aea8d895758c6fabb88aae59dd1142593faf1",
+  "sourceTreeSha256": "45410bdf237d87bf27baa8f87673c617637d643b8cb6fb660fe0f9fe647388a3",
+  "inputs": 497,
+  "bytes": 2922366,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -598,6 +598,147 @@
       "sha256": "2b09bee73258933d5a73136dc17f80b7bb2284da63a993b250011720c4dfad5e",
       "purpose": "Resolve the stable native asset trade selector into an exact current-head review during the existing preparation read. Legacy exact-head selectors and execution checks remain unchanged.",
       "sourceCommit": "dd5995e7f"
+    },
+    {
+      "id": "bank-local-financial-accountFinancialSource",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialSource.ts",
+      "baseSha256": null,
+      "sha256": "89822a52dd22d0295a7d6a7b0d2befb687e81be4325abbf13ce40c1d6e002565",
+      "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-accountFinancialExecution",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialExecution.ts",
+      "baseSha256": null,
+      "sha256": "e4c84d6632ceb12ce870de149130a6abf7e94110deb37089252970ef3aba6ed1",
+      "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-accountFinancialCommit",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialCommit.ts",
+      "baseSha256": null,
+      "sha256": "45e2df711416c0814f092f38af3e9141cc26ed93040ca258ea33e2ba53476051",
+      "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-accountFinancialPublication",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialPublication.ts",
+      "baseSha256": null,
+      "sha256": "4e426b5c604728a353c928640519a85ed93f36c2027177aab8eb1da424991743",
+      "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-accountFinancialMath.generated",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialMath.generated.js",
+      "baseSha256": null,
+      "sha256": "be8e6295d224dfc21d6ce060494779339c479af2ce89e70e6e37da5770586cd6",
+      "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-accountFinancialMath.generated.d",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialMath.generated.d.ts",
+      "baseSha256": null,
+      "sha256": "153ea06ce7bf02bd6a611bf7fe1cf0049afbce2cb52b2197bde1f091e5a2cec7",
+      "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-browser-accountFinancialBrowser",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialBrowser.ts",
+      "baseSha256": null,
+      "sha256": "4488eb78660013989bce87ea821e7e223df2395c5477f4d3da54ede08d35ac4b",
+      "purpose": "Share the existing native SDK verifier and Source/commit/publication functions for local financial execution. No new verifier bundle or provider code.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-browser-browser",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "0ebf1ca7701ff173736928d9e076ed3b61124a158f513c5a7d7d97853805d854",
+      "sha256": "aff2874a827edf693150670a40f4c9ea315a9989e2c5af068f9db54b927c26f1",
+      "purpose": "Add only shared financial exports to the existing Bank Note application profile; preserve all receiving and deposit behavior.",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+    },
+    {
+      "id": "bank-local-financial-app-lib-market-marketPulsePricing.ts",
+      "path": "receiz/app/lib/market/marketPulsePricing.ts",
+      "sha256": "bf72e29c9d95b3f166268882b8f6c708ed4b88128b5f3a879f0e56ed44e703a8",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-market-shareFees.ts",
+      "path": "receiz/app/lib/market/shareFees.ts",
+      "sha256": "a08fce47a9e11106133a3c1b51c54c9b29589f11097af499251ca9d78d2fb39e",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-market-shareTradeAccounting.ts",
+      "path": "receiz/app/lib/market/shareTradeAccounting.ts",
+      "sha256": "8f11398c4f8c456ebcd5a0f7ed3dfea4e8d16a58b3940f9f371bcf7c7d6cac9a",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-market-walletBudget.ts",
+      "path": "receiz/app/lib/market/walletBudget.ts",
+      "sha256": "bbc71aa21cd3e12c4832926a26035cb08623c1100adb7c8115901476bffbaa16",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-wallet-amounts.ts",
+      "path": "receiz/app/lib/wallet/amounts.ts",
+      "sha256": "26cd5a271b46a400c1d27f60493a9811b3e4282ddb6510497f773af7b0387f81",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-wallet-bankNotes-offlineMarketPricing.ts",
+      "path": "receiz/app/lib/wallet/bankNotes/offlineMarketPricing.ts",
+      "sha256": "57158dd5f32c030683598e58c70474f34138c1c7a814d3cc55cd0316cee6ccb3",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-wallet-bankNotes-offlineWalletValuation.ts",
+      "path": "receiz/app/lib/wallet/bankNotes/offlineWalletValuation.ts",
+      "sha256": "504c5c243e5df2815af60e3d934f286d0f6a02e6cb2372bec3119ba43d6ec7ca",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-wallet-fundingContinuity-lawfulSources.ts",
+      "path": "receiz/app/lib/wallet/fundingContinuity/lawfulSources.ts",
+      "sha256": "f672eb84f63bd6416ef6ec9bcdd1fa88b8cf520d41597aab64d7489dcfff92eb",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-app-lib-wallet-walletSummaryProjection.ts",
+      "path": "receiz/app/lib/wallet/walletSummaryProjection.ts",
+      "sha256": "d49c44b50a01a16cff27398b3b8ada96f2858a5f34b037b4f90d972af19e423a",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-scripts-sync_account_financial_math.mjs",
+      "path": "receiz/scripts/sync_account_financial_math.mjs",
+      "sha256": "35442bb81766f994af0f3518418329936bbcff0895ad6366d1d396b94b6e3eac",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
+    },
+    {
+      "id": "bank-local-financial-canonical-lawful-amount-parser",
+      "path": "receiz/app/lib/wallet/lawfulActionSettlement.ts",
+      "sha256": "2b23abb3504d8b5ea487f2369b899d4f652de31457f6ae3da18aa7a3c3dc0af1",
+      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "purpose": "Exact corresponding canonical source for financial arithmetic reproduction; no Bank call site or connected operation changes."
     }
   ]
 }

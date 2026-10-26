@@ -1,3 +1,4 @@
+import {readLawfulActionFundingSources,type LawfulActionFundingSource} from './fundingContinuity/lawfulSources';
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type WalletLawfulActionRpcError = {
@@ -58,13 +59,18 @@ export function composeWalletDisplayedTotals(input: WalletDisplayedTotalsInput):
 export async function loadWalletLawfulActionSettlementPhiMicro(
   sb: SupabaseClient,
   userId: string,
+  options?: {onSources:(sources:readonly LawfulActionFundingSource[]|undefined)=>void},
 ): Promise<bigint | null> {
   const result = await sb.rpc("wallet_lawful_action_settlement_phi_micro_v125", {
     p_user_id: userId,
+    ...(options?{p_with_sources:true}:{}),
   });
   if (result.error) {
     if (isMissingLawfulActionProjection(result.error)) return null;
     throw new Error(result.error.message || "wallet_lawful_action_settlement_read_failed");
   }
-  return parseNonNegativeBigint(result.data);
+  const packet=result.data&&typeof result.data==='object'&&!Array.isArray(result.data)?result.data as Record<string,unknown>:null;
+  const amount=parseNonNegativeBigint(packet?packet.phiMicro:result.data);
+  if(options)options.onSources(amount===null?undefined:readLawfulActionFundingSources(packet?.sources,amount));
+  return amount;
 }
