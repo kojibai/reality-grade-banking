@@ -28,7 +28,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
  if(source.accountUserId!==input.accountUid||source.ownerReceizId!==input.ownerReceizId||runtime.financialSourceApplicationId(source)!==input.applicationId)throw Error('BANK_LOCAL_FINANCIAL_IDENTITY_MISMATCH');
  const kai=input.kai??runtime.financialKaiNow;
  const executor=await runtime.createReceizAccountFinancialExecutor({source,store:input.store,originals:input.originals,signOwner:input.signOwner,signRecord:input.signRecord,kai});
- const publisher=await runtime.createReceizAccountFinancialPublisher({source,executor,store:input.store,publish:async batch=>{input.assertOpen();if(!input.online())throw Error('BANK_LOCAL_FINANCIAL_OFFLINE');return input.publish(batch);}});
+ const publisher=await runtime.createReceizAccountFinancialPublisher({source,executor,store:input.store,originals:input.originals,publish:async batch=>{input.assertOpen();if(!input.online())throw Error('BANK_LOCAL_FINANCIAL_OFFLINE');return input.publish(batch);}});
  let closed=false,scheduled=false;
  function open(){input.assertOpen();if(closed)throw Error('BANK_LOCAL_FINANCIAL_CLOSED');}
  function nudge(){
@@ -52,6 +52,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   current(){open();return executor.current();},
   async wallet(){open();const current=await executor.current();open();return runtime.financialSourceWalletAt(source,current.state,kai());},
   resolve(operationId:string){open();return executor.resolve(operationId);},
+  async received(operationId:string){open();const proof=await publisher.received(operationId);open();return proof;},
   flush(){open();return publisher.flush();},
   dispose(){if(closed)return;closed=true;unsubscribe?.();publisher.dispose();},
  });

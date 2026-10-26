@@ -114,3 +114,27 @@ it('shares immutable cryptographic setup while isolating each scenario financial
   expect(first.requests).toHaveLength(0);expect(second.requests).toHaveLength(0);
  }finally{sender.dispose();untouched.dispose();}
 });
+
+it('keeps local sealing distinct from received status and never asks the network to inspect that status',async()=>{
+ const f=await localFinancialFixture(),session=await createLocalFinancialSession(f.options);
+ const result=await session.execute({operationId:'f4444444-4444-4444-8444-444444444444',action:{kind:'send',recipientUserId:'33333333-3333-4333-8333-333333333333',conversationId:'44444444-4444-4444-8444-444444444444',amountUsdCents:'100'}});
+ expect(result.status).toBe('committed');expect(await session.received('f4444444-4444-4444-8444-444444444444')).toBeNull();expect(f.requests).toHaveLength(0);
+ f.connect();expect((await session.flush()).status).toBe('published');const count=f.requests.length;
+ expect(await session.received('f4444444-4444-4444-8444-444444444444')).toBeNull();expect(f.requests).toHaveLength(count);session.dispose();
+});
+
+it('retains the verified received proof on reconnect and reopens it offline with both original and accepted Kai',async()=>{
+ const f=await localFinancialFixture({receivedProof:true}),session=await createLocalFinancialSession(f.options);
+ const id='f5555555-5555-4555-8555-555555555555',result=await session.execute({operationId:id,action:{kind:'send',recipientUserId:'33333333-3333-4333-8333-333333333333',conversationId:'44444444-4444-4444-8444-444444444444',amountUsdCents:'100'}});
+ expect(result.status).toBe('committed');if(result.status!=='committed')throw Error('Fixture send');
+ expect(await session.received(id)).toBeNull();expect(f.requests).toHaveLength(0);f.connect();expect((await session.flush()).status).toBe('published');
+ const proof=await session.received(id);expect(proof?.schema).toBe('receiz.account-financial-receipt.v2');expect(proof?.atKaiUPulse).toBe(result.operation.atKaiUPulse);expect(BigInt(proof!.receivedAtKaiUPulse)).toBeGreaterThan(BigInt(proof!.atKaiUPulse));expect(proof?.financialOriginalSha256).toBe(result.operation.artifactSha256);
+ const requestCount=f.requests.length;session.dispose();const cold=await createLocalFinancialSession({...f.options,online:()=>false});
+ expect(await cold.received(id)).toEqual(proof);expect(await cold.resolve(id)).toEqual(result);expect(f.requests).toHaveLength(requestCount);cold.dispose();
+});
+
+it('keeps a locally sealed Send pending when delivery lacks its genuine received proof',async()=>{
+ const f=await localFinancialFixture({receivedProof:true}),publish=f.options.publish,session=await createLocalFinancialSession({...f.options,publish:async batch=>({...await publish(batch) as object,schema:'receiz.account-financial-publication-ack.v2',received:[{operationId:batch.originals[0].operationId,receiptOriginalB64u:'AA'}]})});
+ const id='f6666666-6666-4666-8666-666666666666',sent=await session.execute({operationId:id,action:{kind:'send',recipientUserId:'33333333-3333-4333-8333-333333333333',conversationId:'44444444-4444-4444-8444-444444444444',amountUsdCents:'100'}});
+ expect(sent.status).toBe('committed');f.connect();expect((await session.flush()).status).toBe('pending');expect(await session.received(id)).toBeNull();expect(await session.resolve(id)).toEqual(sent);session.dispose();
+});

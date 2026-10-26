@@ -627,9 +627,9 @@
       "id": "bank-local-financial-accountFinancialPublication",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialPublication.ts",
       "baseSha256": null,
-      "sha256": "4e426b5c604728a353c928640519a85ed93f36c2027177aab8eb1da424991743",
+      "sha256": "3822a690046fbbb9d3650fd44b5ca9f6887de52c682e506a0a8626e2dec5825c",
       "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
-      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+      "sourceCommit": "4180472d858abf82e95ff973511552122435108d"
     },
     {
       "id": "bank-local-financial-accountFinancialMath.generated",
@@ -739,6 +739,14 @@
       "sha256": "2b23abb3504d8b5ea487f2369b899d4f652de31457f6ae3da18aa7a3c3dc0af1",
       "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
       "purpose": "Exact corresponding canonical source for financial arithmetic reproduction; no Bank call site or connected operation changes."
+    },
+    {
+      "id": "bank-local-financial-accountFinancialReceipt",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialReceipt.ts",
+      "baseSha256": null,
+      "sha256": "ee18599003d552a2e3b3af99b6d9e81f6c27bb486640ccfaffa67b10479deb9e",
+      "sourceCommit": "4180472d858abf82e95ff973511552122435108d",
+      "purpose": "Verify and retain the exact read-only received proof through existing Source-bound publication; no provider code or Bank financial call-site activation."
     }
   ]
 }

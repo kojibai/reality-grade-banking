@@ -1,10 +1,10 @@
 {
   "schema": "receiz.bank.native-runtime-build.v1",
   "version": "129.0.0",
-  "moduleSha256": "870792ff40d2e2cbde567a628e8b7dc6113eeffd14d0c0b1bf342ad1b5eb764d",
-  "sourceTreeSha256": "858a87ecd95392a73f986db612fc5d7e12650761fa892aea23e9ecace170429e",
-  "inputs": 306,
-  "bytes": 2421610,
+  "moduleSha256": "1518d5a9919febfe0daeb1cc028a6dd56daf34f8b59aba760d5f2dd5acb3fc12",
+  "sourceTreeSha256": "d1496fab7987cd5fcc1cf1279385b3cfb57bd763de960758ce96a117caa2f13b",
+  "inputs": 307,
+  "bytes": 2427747,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -626,9 +626,9 @@
       "id": "bank-local-financial-accountFinancialPublication",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialPublication.ts",
       "baseSha256": null,
-      "sha256": "4e426b5c604728a353c928640519a85ed93f36c2027177aab8eb1da424991743",
+      "sha256": "3822a690046fbbb9d3650fd44b5ca9f6887de52c682e506a0a8626e2dec5825c",
       "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
-      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+      "sourceCommit": "4180472d858abf82e95ff973511552122435108d"
     },
     {
       "id": "bank-local-financial-accountFinancialMath.generated",
@@ -738,6 +738,14 @@
       "sha256": "2b23abb3504d8b5ea487f2369b899d4f652de31457f6ae3da18aa7a3c3dc0af1",
       "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
       "purpose": "Exact corresponding canonical source for financial arithmetic reproduction; no Bank call site or connected operation changes."
+    },
+    {
+      "id": "bank-local-financial-accountFinancialReceipt",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialReceipt.ts",
+      "baseSha256": null,
+      "sha256": "ee18599003d552a2e3b3af99b6d9e81f6c27bb486640ccfaffa67b10479deb9e",
+      "sourceCommit": "4180472d858abf82e95ff973511552122435108d",
+      "purpose": "Verify and retain the exact read-only received proof through existing Source-bound publication; no provider code or Bank financial call-site activation."
     }
   ]
 }

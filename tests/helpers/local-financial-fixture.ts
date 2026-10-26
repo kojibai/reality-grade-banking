@@ -6,7 +6,7 @@ const encode=(v:Uint8Array)=>Buffer.from(v).toString('base64url');
 const bytes=(v:unknown)=>new TextEncoder().encode(canonicalJson(v));
 const sha=async(v:Uint8Array)=>Buffer.from(await crypto.subtle.digest('SHA-256',v.slice().buffer)).toString('hex');
 const digest=(v:unknown)=>sha(bytes(v));
-type FinancialFixtureSettings={growth?:boolean;dynamicMarket?:boolean;quantityMarket?:string;fullGrowthBudget?:boolean};
+type FinancialFixtureSettings={growth?:boolean;dynamicMarket?:boolean;quantityMarket?:string;fullGrowthBudget?:boolean;receivedProof?:boolean};
 /** Synthetic funding/issuer and durable stores; real preferred SDK Source
  * admission, Identity consent, signatures, arithmetic and commit run unchanged. */
 export async function createLocalFinancialFixtureFactory(){
@@ -53,7 +53,17 @@ export async function createLocalFinancialFixtureFactory(){
  const sealed=await sealer.seal({bytes:r.portable.serializeReceizPortableAssetDocument(document),filename:'source.json',mimeType:'application/json'});
  const runtime:LocalFinancialRuntime&{decode(v:string):Uint8Array}={...r.financialSource,...r.financialCommit,...r.financialExecution,...r.financialPublication,financialSourceApplicationId:source=>r.financialSource.readReceizAccountFinancialSourceCustody(source).body.funding.applicationId,financialKaiNow:()=>String(now++),financialSourceWalletAt:(source,state,at)=>({...r.financialSource.readReceizAccountFinancialSourceCustody(source).valuation.at(state.walletLedger,source.accountUserId,at).wallet}),decode:v=>new Uint8Array(Buffer.from(v,'base64url'))};
  const originals=new Map<string,Uint8Array>(),requests:FinancialPublication[]=[],listeners=new Set<()=>void>();let online=false,now=14000000000124n;
- const options:LocalFinancialSessionOptions={sourceBytes:sealed.artifactBytes,applicationId,accountUid,ownerReceizId,runtime,store:r.stores.createReceizInMemoryAdmissionStore(),originals:{retain:async(sha,b)=>{if(!originals.has(sha))originals.set(sha,b.slice());},read:async sha=>originals.get(sha)?.slice()??null},signOwner,signRecord:async b=>new Uint8Array(await crypto.subtle.sign('Ed25519',enrollment.privateKey,b.slice().buffer)),assertOpen(){},online:()=>online,subscribeReconnect:listener=>{listeners.add(listener);return()=>{listeners.delete(listener);};},publish:async batch=>{requests.push(structuredClone(batch));return{schema:'receiz.account-financial-publication-ack.v1',allocationId:batch.allocationId,sourceArtifactSha256:batch.sourceArtifactSha256,accepted:batch.originals.map(({operationId,artifactSha256,sequence})=>({operationId,artifactSha256,sequence}))};}};
+ const options:LocalFinancialSessionOptions={sourceBytes:sealed.artifactBytes,applicationId,accountUid,ownerReceizId,runtime,store:r.stores.createReceizInMemoryAdmissionStore(),originals:{retain:async(sha,b)=>{if(!originals.has(sha))originals.set(sha,b.slice());},read:async sha=>originals.get(sha)?.slice()??null},signOwner,signRecord:async b=>new Uint8Array(await crypto.subtle.sign('Ed25519',enrollment.privateKey,b.slice().buffer)),assertOpen(){},online:()=>online,subscribeReconnect:listener=>{listeners.add(listener);return()=>{listeners.delete(listener);};},publish:async batch=>{requests.push(structuredClone(batch));const acknowledged={allocationId:batch.allocationId,sourceArtifactSha256:batch.sourceArtifactSha256,accepted:batch.originals.map(({operationId,artifactSha256,sequence})=>({operationId,artifactSha256,sequence}))};
+  if(!settings.receivedProof)return{schema:'receiz.account-financial-publication-ack.v1',...acknowledged};
+  const received=[];
+  for(const row of batch.originals){
+   const operation=JSON.parse(new TextDecoder().decode(runtime.decode(row.artifactBytesB64u)));if(operation.effect.kind!=='send')continue;
+   const receivedAt=new Date().toISOString(),ms=Date.parse(receivedAt),effect={...operation.effect,recipientReceizId:operation.effect.recipientOwnerReceizId};
+   const unsigned={schema:'receiz.account-financial-receipt.v2',rights:'read-only',issuerRootKid:f.roots[0].kid,issuedAtMs:ms,operationId:operation.operationId,financialOriginalSha256:row.artifactSha256,fundingSourceSha256:batch.sourceArtifactSha256,atKaiUPulse:operation.atKaiUPulse,receivedAt,receivedAtKaiUPulse:String(r.financialKaiBridge.microPulsesSinceGenesisEpochMsV124(BigInt(ms))),ownerReceizId,effect:Object.fromEntries(r.financialReceipt.accountFinancialPublicEffectFields('send').map((key:string)=>[key,effect[key]]))};
+   const signature=await f.signFinancial(new TextEncoder().encode('receiz.bank.offline-reserve.v129\0'+canonicalJson(unsigned))),receipt=bytes({...unsigned,financialRootSignature:{kid:signature.kid,alg:signature.alg,sig:signature.sig}});
+   received.push({operationId:row.operationId,receiptOriginalB64u:encode(receipt)});
+  }
+  return{schema:'receiz.account-financial-publication-ack.v2',...acknowledged,received};}};
  return{options,runtime,requests,originals,listeners,connect(){online=true;for(const listener of listeners)listener();},at(v:bigint){now=v;}};
  };
 }
