@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -24,6 +24,11 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - name: Use preinstalled Chrome for browser checks
+        run: |
+          browser_path="$(command -v google-chrome)"
+          "$browser_path" --version
+          echo "BANK_BROWSER_EXECUTABLE=$browser_path" >> "$GITHUB_ENV"
       - run: npm ci
       - run: npm run release:check
       - run: npm test
@@ -32,7 +37,6 @@ jobs:
       - run: npm run native:check
       - run: npm run native:rebuild -- --sdk
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
       - run: npm run test:vault-browser
       - name: Retain browser regression evidence
