@@ -74,7 +74,7 @@ it('takes a buyer without account funds directly from amount to the existing car
     expect(dialog.textContent).not.toContain('Pay with a Note'); expect(dialog.textContent).not.toContain('Back to purchase');
     await enterAmount(dialog, '25'); await act(async () => button(dialog, 'Continue to payment').click());
     expect(identity.beginCardDeposit).toHaveBeenCalledExactlyOnceWith('25', true);
-    expect(dialog.querySelector('iframe')?.title).toBe('Secure card deposit');
+    expect(dialog.querySelector('iframe')?.title).toBe('Secure deposit payment');
     expect(market).not.toHaveBeenCalled(); expect(api.prepare).not.toHaveBeenCalled(); expect(api.execute).not.toHaveBeenCalled();
   } finally {act(() => root.unmount()); host.remove();}
 });
@@ -124,7 +124,7 @@ it('continues the approved purchase automatically once account-bound card credit
     await act(async () => {beginPublicAssetTrade({itemId: 'profile:artist:source', side: 'buy', title: 'An original'});});
     const dialog = host.querySelector('dialog')!; expect(dialog.textContent).toContain('Buy ownership'); expect(dialog.querySelector('input')?.value).toBe(''); expect(dialog.textContent).not.toContain('Wire');
     await enterAmount(dialog, '25'); await act(async () => button(dialog, 'Continue to payment').click());
-    expect(identity.beginCardDeposit).toHaveBeenCalledExactlyOnceWith('25', true); expect(dialog.querySelector('iframe')?.title).toBe('Secure card deposit');
+    expect(identity.beginCardDeposit).toHaveBeenCalledExactlyOnceWith('25', true); expect(dialog.querySelector('iframe')?.title).toBe('Secure deposit payment');
     await act(async () => button(dialog, 'Check deposit status').click()); expect(dialog.textContent).toContain('Account credit is pending'); expect(api.prepare).not.toHaveBeenCalled();
     credit(); await act(async () => button(dialog, 'Check deposit status').click());
     expect(dialog.textContent).toContain('Purchase complete');expect(api.prepare).toHaveBeenCalledExactlyOnceWith({marketItemId:'profile:artist:source',side:'buy',amountUsdCents:'2500'});expect(api.execute).toHaveBeenCalledExactlyOnceWith(review,review.digest);expect(dialog.textContent).not.toContain('Confirm purchase');

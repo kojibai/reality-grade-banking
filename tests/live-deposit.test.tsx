@@ -22,33 +22,55 @@ it('starts blank after reopening and resumes a retained checkout only when expli
     expect(host.querySelector('input')?.value).toBe(''); expect(host.querySelector('iframe')).toBeNull(); expect(begin).not.toHaveBeenCalled();
   } finally { act(() => root.unmount()); }
 });
-it('retains the asset, dollars and proof chooser inside the app without a wallet handoff', () => {
+it('offers one asset deposit path that requires its original proof instead of an intake form', async () => {
   const host = document.createElement('div'), root = createRoot(host);
-  try { act(() => root.render(<LiveDeposit identity={{} as OpenIdentity} onClose={vi.fn()} onRefresh={vi.fn()} />));
-    expect(host.textContent).toContain('Deposit what'); expect(host.textContent).toContain('An asset'); expect(host.textContent).toContain('Add money'); expect(host.textContent).toContain('A proof object');
-    expect(host.querySelector('a[href*="receiz.com/wallet"]')).toBeNull(); expect(host.textContent).not.toContain('Demo');
-    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('An asset'))!.click());
-    expect(host.textContent).toContain('Deposit an asset.'); expect(host.querySelector('input[placeholder="Describe what you own"]')).not.toBeNull();
+  try { await act(async () => root.render(<LiveDeposit identity={{} as OpenIdentity} onClose={vi.fn()} onRefresh={vi.fn()} />));
+    expect([...host.querySelectorAll('.deposit-options strong')].map(node => node.textContent)).toEqual(['Add money', 'An asset', 'Settlement Note']);
+    expect(host.querySelector('a[href*="receiz.com/wallet"]')).toBeNull();
+    await act(async () => { [...host.querySelectorAll('button')].find(button => button.textContent?.includes('An asset'))!.click(); await vi.dynamicImportSettled(); });
+    expect(host.textContent).toContain('Deposit an asset.');
+    expect(host.querySelector('input[type="file"][aria-label="Choose original proof object"]')).not.toBeNull();
+    expect(host.querySelector('input[placeholder="Describe what you own"]')).toBeNull();
+    expect(host.querySelector('input[type="number"]')).toBeNull();
   } finally { act(() => root.unmount()); }
 });
-it('dollar deposits show native card and wire methods, never credit money from an amount form', () => {
-  const create = vi.fn(), host = document.createElement('div'), root = createRoot(host);
-  try { act(() => root.render(<LiveDeposit identity={{ beginCardDeposit: create } as unknown as OpenIdentity} onClose={vi.fn()} onRefresh={vi.fn()} />));
-    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Add money'))!.click());
-    expect(host.textContent).toContain('Card'); expect(host.textContent).toContain('Wire'); expect(create).not.toHaveBeenCalled(); expect(host.textContent).not.toContain('Added to your balance');
+it('opens payment checkout directly without a method selector or an unfunded balance credit', async () => {
+  const checkout = { sessionId: 'cs_fixture_cardonly', clientSecret: 'cs_fixture_cardonly_secret_fixture', amountUsdCents: '10000' };
+  const create = vi.fn(async () => checkout), refresh = vi.fn(), host = document.createElement('div'), root = createRoot(host);
+  const click = (text: string) => [...host.querySelectorAll('button')].find(button => button.textContent === text)!.click();
+  try { await act(async () => root.render(<LiveDeposit identity={{ beginCardDeposit: create } as unknown as OpenIdentity} onClose={vi.fn()} onRefresh={refresh} />));
+    await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Add money'))!.click());
+    expect([...host.querySelectorAll('button')].some(button => ['Card', 'Wire'].includes(button.textContent ?? ''))).toBe(false);
+    expect(host.textContent).toContain('Choose how to pay at secure checkout.'); expect(host.textContent).not.toMatch(/card|wire/i); expect(create).not.toHaveBeenCalled();
+    act(() => click('$100')); await act(async () => click('Continue'));
+    expect(create).toHaveBeenCalledExactlyOnceWith('100', true);
+    expect(host.querySelector('iframe')?.getAttribute('src')).toContain(checkout.sessionId);
+    expect(refresh).not.toHaveBeenCalled(); expect(host.textContent).not.toContain('Added to your balance');
   } finally { act(() => root.unmount()); }
 });
-it('shows Receiz shipping instructions and the carried reference after saving a physical request', async () => {
-  const identity = { startAssetIntake: async () => ({ kind: 'intake', title: 'Fixture Jordans', intake: { quantity: '1' }, delivery: { schema: 'receiz.bank.delivery-instructions.v1', recipient: 'Receiz', publicAlias: 'receiz', addressLines: ['1270 Ave of the Americas, 7th Fl', 'New York, NY 10020', 'United States'], reference: 'fef806e9-82bd-44a8-9bb4-f6b5afc9aef0' } }) } as unknown as OpenIdentity;
+it('opens the existing exact-original review from An asset without accepting an estimate as funding', async () => {
+  const review = { digest: 'a'.repeat(64), filename: 'wheat.receiz', title: 'Wheat harvest', owner: 'farmer.receiz.id', size: 100, kind: 'hold' as const };
+  const api = { status: async () => null, inspect: vi.fn(async () => review), receive: vi.fn(async () => ({ status: 'held', digest: review.digest, filename: review.filename })), discard: vi.fn() };
+  const intake = vi.fn(), card = vi.fn(), refresh = vi.fn();
+  const identity = { receivedProof: async () => api, startAssetIntake: intake, beginCardDeposit: card } as unknown as OpenIdentity;
   const host = document.createElement('div'), root = createRoot(host);
   try {
-    act(() => root.render(<LiveDeposit identity={identity} onClose={() => {}} onRefresh={() => {}} />));
-    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('An asset'))!.click());
-    await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Continue'))!.click());
-    expect(host.textContent).toContain('1270 Ave of the Americas, 7th Fl');
-    expect(host.textContent).toContain('fef806e9-82bd-44a8-9bb4-f6b5afc9aef0');
-    expect(host.textContent).toContain('Awaiting verified receipt');
+    await act(async () => root.render(<LiveDeposit identity={identity} onClose={() => {}} onRefresh={refresh} />));
+    await act(async () => { [...host.querySelectorAll('button')].find(button => button.textContent?.includes('An asset'))!.click(); await vi.dynamicImportSettled(); });
+    const picker = host.querySelector<HTMLInputElement>('input[aria-label="Choose original proof object"]');
+    expect(picker).not.toBeNull();
+    const original = new File(['complete original fixture'], review.filename);
+    Object.defineProperty(picker!, 'files', { value: [original] });
+    await act(async () => picker!.dispatchEvent(new Event('change', { bubbles: true })));
+    expect(host.textContent).toContain('Wheat harvest'); expect(host.textContent).toContain('farmer');
+    expect(api.inspect).toHaveBeenCalledExactlyOnceWith(original);
+    expect(host.querySelector<HTMLButtonElement>('.primary-button')?.disabled).toBe(true);
+    expect(api.receive).not.toHaveBeenCalled(); expect(refresh).not.toHaveBeenCalled();
+    act(() => host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+    await act(async () => host.querySelector<HTMLButtonElement>('.primary-button')!.click());
+    expect(host.textContent).toContain('Your original is held.');
     expect(host.textContent).not.toContain('Added to your balance');
+    expect(intake).not.toHaveBeenCalled(); expect(card).not.toHaveBeenCalled();
   } finally { act(() => root.unmount()); }
 });
 it('retains the carried delivery destination in Assets with its actual artifact owner', async () => {
@@ -119,7 +141,13 @@ it('resumes a known processing cancellation into status recovery without reopeni
  try{await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Add money'))!.click());await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Cancel $10.00 checkout"]')!.click());await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Check payment status'))!.click());expect(host.querySelector('iframe')).toBeNull();expect(host.textContent).toContain('Account credit is pending');await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Check deposit status')!.click());expect(check).toHaveBeenCalledExactlyOnceWith(checkout);}finally{act(()=>root.unmount());}
 });
 
-it('opens asset creation from the deposit chooser without starting any deposit',async()=>{
- const create=vi.fn(),start=vi.fn(),card=vi.fn(),identity={pendingCardDeposits:async()=>[],startAssetIntake:start,beginCardDeposit:card}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}} onCreateAsset={create}/>));const link=host.querySelector<HTMLButtonElement>('[aria-label="Create an asset instead"]');expect(link).not.toBeNull();await act(()=>link!.click());expect(create).toHaveBeenCalledOnce();expect(start).not.toHaveBeenCalled();expect(card).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
+it.each([false, true])('opens Create an asset inside the unified asset path (native receiving: %s)', async native => {
+ const create=vi.fn(),start=vi.fn(),card=vi.fn(),identity={pendingCardDeposits:async()=>[],startAssetIntake:start,beginCardDeposit:card,...(native?{receivedProof:async()=>({status:async()=>null})}:{})}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}} onCreateAsset={create}/>));
+  await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('An asset'))!.click());
+  const link=host.querySelector<HTMLButtonElement>('[aria-label="Create an asset instead"]');
+  expect(host.textContent).toContain('Don’t have a proof object?'); expect(link).not.toBeNull();
+  await act(()=>link!.click()); expect(create).toHaveBeenCalledOnce(); expect(start).not.toHaveBeenCalled(); expect(card).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
 });

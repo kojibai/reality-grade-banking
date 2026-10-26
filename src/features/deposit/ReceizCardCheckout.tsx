@@ -8,7 +8,7 @@ export function ReceizCardCheckout({ checkout, onCheck, purpose='deposit' }: { c
   const [error, setError] = useState(''), [ready, setReady] = useState(false), [attempt, setAttempt] = useState(0);
   useEffect(() => {
     setReady(false); setError('');
-    const timeout = setTimeout(() => setError(`The secure card form did not load. Check ${statusLabel} status before trying again.`), 20_000);
+    const timeout = setTimeout(() => setError(`Secure checkout did not load. Check ${statusLabel} status before trying again.`), 20_000);
     const receive = (event: MessageEvent) => {
       if (event.source !== frame.current?.contentWindow || !event.data || typeof event.data !== 'object') return;
       const data = event.data;
@@ -28,5 +28,5 @@ export function ReceizCardCheckout({ checkout, onCheck, purpose='deposit' }: { c
   // window.name across origins. The short-lived secret stays inside this frame.
   const name = JSON.stringify({ source: 'receiz-pay-embed-bootstrap', clientSecret: checkout.clientSecret, sessionId: checkout.sessionId, amountUsdCents: checkout.amountUsdCents });
   const fragment = new URLSearchParams({ client_secret: checkout.clientSecret, session_id: checkout.sessionId, ...(checkout.amountUsdCents?{amount_usd_cents:checkout.amountUsdCents}:{}) });
-  return <>{!ready && !error && <p className="body-copy" role="status">Loading secure card form…</p>}{error && <div className="note-box" role="status"><p>{error}</p></div>}<iframe key={attempt} ref={frame} title={purpose==='credits'?'Secure credit top-up':purpose==='upgrade'?'Secure account upgrade':purpose==='payment'?'Secure card payment':'Secure card deposit'} className="receiz-card-frame" hidden={Boolean(error)} src={`${ORIGIN}/payments/embed/checkout#${fragment}`} name={name} referrerPolicy="no-referrer" allow="payment" />{error && <button className="secondary-button" onClick={() => setAttempt(value => value + 1)}>Reload secure form</button>}<button className="secondary-button" onClick={() => void onCheck()}>Check {statusLabel} status</button></>;
+  return <>{!ready && !error && <p className="body-copy" role="status">Loading secure checkout…</p>}{error && <div className="note-box" role="status"><p>{error}</p></div>}<iframe key={attempt} ref={frame} title={purpose==='credits'?'Secure credit top-up':purpose==='upgrade'?'Secure account upgrade':purpose==='payment'?'Secure payment':'Secure deposit payment'} className="receiz-card-frame" hidden={Boolean(error)} src={`${ORIGIN}/payments/embed/checkout#${fragment}`} name={name} referrerPolicy="no-referrer" allow="payment" />{error && <button className="secondary-button" onClick={() => setAttempt(value => value + 1)}>Reload secure form</button>}<button className="secondary-button" onClick={() => void onCheck()}>Check {statusLabel} status</button></>;
 }

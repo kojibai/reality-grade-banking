@@ -25,7 +25,7 @@ it('carries an insufficient-balance Buy from the signed-in Market sheet into car
  const f=fixture();try{
   await f.render();await enter(f.host,'100');await act(async()=>button(f.host,'Review trade').click());
   expect(f.host.textContent).toContain('Continue to payment');expect(f.host.querySelector<HTMLInputElement>('input')?.value).toBe('100');expect(f.identity.beginCardDeposit).not.toHaveBeenCalled();expect(f.api.execute).not.toHaveBeenCalled();
-  await act(async()=>button(f.host,'Continue to payment').click());expect(f.identity.beginCardDeposit).toHaveBeenCalledExactlyOnceWith('100',true);expect(f.host.querySelector('iframe')?.title).toBe('Secure card deposit');
+  await act(async()=>button(f.host,'Continue to payment').click());expect(f.identity.beginCardDeposit).toHaveBeenCalledExactlyOnceWith('100',true);expect(f.host.querySelector('iframe')?.title).toBe('Secure deposit payment');
   f.credit();await act(async()=>button(f.host,'Check deposit status').click());expect(f.host.textContent).toContain('Purchase complete.');expect(f.api.prepare).toHaveBeenLastCalledWith({marketItemId:itemId,side:'buy',amountUsdCents:'10000'});expect(f.api.execute).toHaveBeenCalledOnce();expect(f.identity.beginCardDeposit).toHaveBeenCalledOnce();
  }finally{f.close();}
 });

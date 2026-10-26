@@ -4,7 +4,7 @@ Deposit admits value to the account. Create seals the Original. Sell exchanges d
 
 ## Reused implementation
 
-- `LiveDeposit` reuses card credit, Note deposit, proof admission and `startAssetIntake`. Any-asset intake saves the same sealed request with `custody:awaiting-receipt` and `createsSpendableValue:false`. A title or estimate is not a funded receipt.
+- `LiveDeposit` offers Add money, An asset and Settlement Note. An asset requires the complete Original and reuses the existing proof inspection, ownership review, exact consent and receiving recovery. There is no separate proof-object category or new-asset estimate form in Deposit. If the user has no Original, Create an asset opens the existing composer. Historical intake requests remain readable in Assets; their awaiting-receipt state does not establish funding.
 - `CreateAsset` reuses `createComposedAsset`, canonical publication, retained recovery and optional native backing. Original/cover/attachments/full text keep their exact roles and bytes. The preview grants no ownership or funding.
 - A confirmed public creation links to the exact source-matched, already-admitted asset. Pending publication retains its exact Original and recovery path. A missing admitted display coordinate falls back to the owner profile without inventing one or fetching before navigation.
 - `LiveMarketTrade` uses the existing Market position writer; native-bound assets route to `LiveOwnership`. The native offer contract requires actual owned units or funded bids. Neither a projection nor listing publication is a buyer.

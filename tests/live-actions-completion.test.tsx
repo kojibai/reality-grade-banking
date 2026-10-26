@@ -23,7 +23,7 @@ it('addresses the depositor directly and keeps technical consent inside deposit 
   try {
     await act(async () => root.render(<LiveDeposit identity={identity} onClose={vi.fn()} onRefresh={vi.fn()} />));
     act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Add money'))!.click());
-    expect(host.textContent).toContain('Continue to add this amount to your account by card.');
+    expect(host.textContent).toContain('Choose how to pay at secure checkout.');
     const detail = [...host.querySelectorAll('details')].find(node => node.querySelector('summary')?.textContent === 'Deposit details');
     expect(detail).toBeDefined(); expect(detail!.open).toBe(false);
     expect(detail!.textContent).toContain('This does not authorize');

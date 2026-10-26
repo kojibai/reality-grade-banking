@@ -3,3 +3,5 @@
 .deposit-asset-details{border:1px solid #e0e6ef;border-radius:12px;padding:0 13px;margin:16px 0;background:#fff}.deposit-asset-details>summary{display:flex;justify-content:space-between;align-items:center;min-height:47px;font-size:13px;font-weight:550;cursor:pointer}.deposit-asset-details>summary>span{font-size:10px;font-weight:400;color:#8797ac}.deposit-asset-details[open]{padding-bottom:13px}.deposit-asset-details .form-field{margin-top:12px}
 
 .deposit-create-route{font-size:11px;line-height:1.8;text-align:center;color:#8593a7;margin:15px 0 0}.deposit-create-route button{display:inline-flex;align-items:center;gap:5px;color:#3154d8;font-size:inherit;font-weight:550;background:none;border:0;padding:2px 3px;cursor:pointer}
+
+.deposit-flow .deposit-payment-summary{font-size:11px;line-height:1.65;margin:14px 0 0;color:#788598}

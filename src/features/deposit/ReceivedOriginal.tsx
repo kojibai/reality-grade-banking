@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {Check,ShieldCheck,Upload} from 'lucide-react';
+import {ArrowRight,Check,ShieldCheck,Upload} from 'lucide-react';
 import type {OpenIdentity} from '../../receiz/native-identity';
 import type {ReceivedProof,ReceivedProofReview,ReceivedProofStatus} from '../../receiz/received-proof';
 function receiveError(cause:unknown){
@@ -11,7 +11,7 @@ function receiveError(cause:unknown){
  if(code.includes('PENDING'))return 'Finish the saved receiving request before opening another original.';
  return 'The original could not be received yet. Keep this file and device; any saved receiving request remains available below.';
 }
-export function ReceivedOriginal({identity,onRefresh,onClose}:{identity:OpenIdentity;onRefresh:()=>void;onClose:()=>void}){
+export function ReceivedOriginal({identity,onRefresh,onClose,onCreateAsset}:{identity:OpenIdentity;onRefresh:()=>void;onClose:()=>void;onCreateAsset?:()=>void}){
  const [api,setApi]=useState<ReceivedProof|null>(null),[review,setReview]=useState<ReceivedProofReview|null>(null),[status,setStatus]=useState<ReceivedProofStatus|null>(null);
  const [approved,setApproved]=useState(false),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const generation=useRef(0),running=useRef(false);
@@ -29,9 +29,10 @@ export function ReceivedOriginal({identity,onRefresh,onClose}:{identity:OpenIden
  const pending=status&&status.status!=='held',held=status?.status==='held';
  return <section className="received-original">
   {held?<><div className="status-icon success"><Check size={34}/></div><h1 className="sheet-hero">Your original is held.</h1><p className="body-copy">The complete proof and its verified ownership are saved privately on this device.</p><div className="detail-list"><div><span>Original</span><strong>{status.filename}</strong></div><div><span>Status</span><strong>Original proof held</strong></div></div><button className="primary-button" disabled={busy} onClick={()=>void save()}>Save original proof</button><button className="secondary-button" onClick={onClose}>Done</button></>:
-  <><h1 className="sheet-hero">Bring your value<br/>with you.</h1><p className="body-copy">Open the complete original to review its proof and ownership.</p>
+  <><header className="deposit-step-intro"><img src="/art/proof-assets-384.webp" width="1024" height="896" alt="" decoding="async"/><h1 className="sheet-hero">Deposit an asset.</h1><p className="body-copy">Upload its original proof object to verify its source and ownership.</p></header>
   {loading&&<p className="body-copy" role="status">Opening saved receiving details…</p>}
-  {!loading&&!pending&&<label className="file-drop"><Upload size={30}/><strong>{busy?'Verifying original proof…':'Choose your proof object'}</strong><span>Original PNG, PDF, SVG, JSON or supported file</span><input disabled={!api||busy} type="file" aria-label="Choose original proof object" onChange={event=>{void inspect(event.target.files?.[0]);event.target.value='';}}/></label>}
+  {!loading&&!pending&&<label className="file-drop"><Upload size={30}/><strong>{busy?'Verifying original proof…':'Upload proof object'}</strong><span>Original PNG, PDF, SVG, JSON or supported file</span><input disabled={!api||busy} type="file" aria-label="Choose original proof object" onChange={event=>{void inspect(event.target.files?.[0]);event.target.value='';}}/></label>}
+  {!loading&&!pending&&!review&&onCreateAsset&&<p className="deposit-create-route">Don’t have a proof object? <button type="button" aria-label="Create an asset instead" onClick={onCreateAsset}>Create an asset<ArrowRight size={13}/></button></p>}
   {review&&<><div className="detail-list"><div><span>Original</span><strong>{review.title}</strong></div><div><span>Current owner</span><strong>{review.owner.replace(/\.receiz\.id$/,'')}</strong></div><div><span>Receiving</span><strong>{review.kind==='claim'?'Ownership handoff':'Already owned by you'}</strong></div></div><details className="deposit-consent-details"><summary>Proof reference</summary><code className="payment-link">{review.digest}</code></details><label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event=>setApproved(event.target.checked)}/><span>{review.kind==='claim'?'Receive this exact original into my Receiz ID and preserve its ownership history.':'Keep this exact original in my account.'}</span></label><button className="primary-button" disabled={busy||!approved} onClick={()=>void receive()}>{busy?'Receiving original…':review.kind==='claim'?'Receive original':'Keep original'}</button></>}
   {pending&&<><div className="note-box"><ShieldCheck size={18}/><p>{status.status==='claimed'?'Ownership was verified. Finish saving the original on this device.':'Your receiving request is saved. Resume the same original to confirm its result.'}</p></div><div className="detail-list"><div><span>Original</span><strong>{status.filename}</strong></div></div><label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event=>setApproved(event.target.checked)}/><span>{status.status==='claimed'?'Save the verified original on this device.':'Resume this exact receiving request.'}</span></label><button className="primary-button" disabled={busy||!approved} onClick={()=>void resume()}>{busy?'Checking original…':status.status==='claimed'?'Finish saving original':'Resume receiving'}</button></>}
   <p className="body-copy small-copy">The proof’s own rules determine its ownership and use. Receiving an original does not itself add a cash deposit.</p></>}
