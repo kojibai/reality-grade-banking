@@ -11,6 +11,10 @@ if(snapshotFlag>=0)args.splice(snapshotFlag,2);
 const [input,output='src/content/conformance-baseline.json']=args;
 if(input==='--snapshot'){
  if(!args[1])throw Error('SOURCE_SNAPSHOT_PATH_REQUIRED');
+ // A clean checkout has no generated verifier yet. The source snapshot must
+ // include the shipped runtime, independently of parallel test-file ordering.
+ try{await readFile(new URL('public/proof-verifier/v129/build.json',root));}
+ catch(error){if(error.code!=='ENOENT')throw error;const{buildProofVerifier}=await import('./build-proof-verifier.mjs');await buildProofVerifier();}
  const entries=await baselineInputs();
  await writeFile(args[1],JSON.stringify({schema:'receiz.bank.test-source-snapshot.v1',createdAt:Date.now(),inputs:entries.map(({path,sha256})=>({path,sha256}))}));
  console.log(JSON.stringify({output:args[1],inputs:entries.length}));
