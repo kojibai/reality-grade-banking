@@ -1,0 +1,8 @@
+import {BookOpen,FileText,Image as ImageIcon,Music2,Video} from 'lucide-react';
+import type {AssetComposerDraft} from '../../receiz/asset-composer';
+/** Presentation of the already selected draft. No source read, seal or funding. */
+export function AssetStudioPreview({title,kind='moment',artwork,artworkLabel='Selected cover',filename,complete=false}:{title:string;kind?:AssetComposerDraft['kind'];artwork?:string;artworkLabel?:string;filename?:string;complete?:boolean}){
+ const Icon=kind==='audio'?Music2:['pdf','epub'].includes(kind)?BookOpen:kind==='video'?Video:kind==='image'?ImageIcon:FileText;
+ const label=kind==='audio'?'Audio':kind==='epub'?'Book':kind==='pdf'?'Document':kind==='video'?'Video':kind==='image'?'Image':'Original';
+ return <section className={`asset-studio-preview${complete?' is-complete':''}`} aria-label="Your asset preview"><div className="asset-studio-case"><img className="asset-studio-frame" src="/art/create-original-frame.webp" srcSet="/art/create-original-frame-320.webp 320w, /art/create-original-frame.webp 640w" sizes="180px" width="640" height="788" alt="" decoding="async"/>{artwork?<img className="asset-studio-cover" src={artwork} alt={artworkLabel}/>:<span className="asset-studio-empty" aria-hidden="true"><Icon size={30} strokeWidth={1.2}/></span>}</div><div className="asset-studio-context"><span className="asset-studio-eyebrow">{complete?'Your original':'Preview'}</span>{kind==='audio'?<img className="asset-studio-wave" src="/art/create-sound-trace.webp" width="480" height="240" alt="" decoding="async"/>:<span className="asset-studio-kind"><Icon size={17} strokeWidth={1.3}/>{label}</span>}<strong>{title.trim()||'Your original'}</strong><small>{filename??'Your work. Its source. Together.'}</small></div></section>;
+}

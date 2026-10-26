@@ -18,3 +18,8 @@ it('does not assign current shipping instructions to an older or nonphysical req
 it('refuses delivery instructions linked to a different request', () => {
   expect(() => open({ ...request(), delivery: { ...delivery, reference: 'b317e2da-66fc-4b74-8fce-d16a6e791007' } })).toThrow('delivery');
 });
+
+it('retains an open asset request without inventing a physical delivery or funding result',()=>{
+ const held=open({...request('other'),asset:{title:'Seasonal harvest — 1,000 kg potatoes',category:'other',quantity:'1',estimatedValue:''}});
+ expect(held.intake?.title).toBe('Seasonal harvest — 1,000 kg potatoes');expect(held.intake?.category).toBe('other');expect(held.delivery).toBeUndefined();expect(held.status).toBe('awaiting-custody');expect(held.nativeAsset).toBeUndefined();
+});

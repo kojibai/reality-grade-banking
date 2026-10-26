@@ -18,10 +18,10 @@ it('creates from an amount alone, shows the signed split in details and retains 
  const operations=createBankOperations({ownerReceizId:'owner.receiz.id',assertOpen(){},assets,store:{load:async()=>null,saveNew:async()=>{},replace:async()=>{}},context:async()=>{throw Error('NO_GENERIC_RUNTIME');},lock:async run=>run()});
  const backingDrafts:unknown[]=[];
  const identity={backedAssetPublication:async()=>({pending:async()=>({state:null,deposit:null}),operations:(draft:unknown)=>{backingDrafts.push(draft);return identity.operations!();}}),operations:async()=>({...operations,prepare:async(input:Parameters<typeof operations.prepare>[0])=>{const result=await operations.prepare(input);preparedReady=result;return result;}}),listDeposits:async()=>[],binding:{artifactOwnerReceizId:'owner.receiz.id'}} as unknown as OpenIdentity;
- const host=document.createElement('div');document.body.append(host);const root=createRoot(host),button=(label:string)=>[...host.querySelectorAll('button')].find(b=>b.textContent===label)!;
+ const host=document.createElement('div');document.body.append(host);const root=createRoot(host),button=(label:string)=>[...host.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===label||b.textContent===label)!;
  const enter=async(label:string,value:string)=>{const input=[...host.querySelectorAll('label')].find(l=>l.textContent?.includes(label))!.querySelector('input')!;await act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}));});};
  try{
-  await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={vi.fn()} onClose={vi.fn()}/>));await act(()=>button('Create with backing').click());
+  await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={vi.fn()} onClose={vi.fn()}/>));await act(()=>button('Add backing').click());
   expect(host.textContent).not.toContain('Back it with');expect(host.querySelectorAll('select')).toHaveLength(0);expect(calls).toEqual([]);
   const essay=host.querySelector('textarea[aria-label="Full text"]')??[...host.querySelectorAll('label')].find(label=>label.textContent?.includes('Full text'))?.querySelector('textarea');if(essay)await act(()=>{Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')!.set!.call(essay,'A complete authored work');essay.dispatchEvent(new Event('input',{bubbles:true}));});
   await enter('Title','Unit');await enter('Short code','UNIT');await enter('Backing amount','100');

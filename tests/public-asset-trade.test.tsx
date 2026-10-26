@@ -125,7 +125,7 @@ it('continues the approved purchase automatically once account-bound card credit
     const dialog = host.querySelector('dialog')!; expect(dialog.textContent).toContain('Buy ownership'); expect(dialog.querySelector('input')?.value).toBe(''); expect(dialog.textContent).not.toContain('Wire');
     await enterAmount(dialog, '25'); await act(async () => button(dialog, 'Continue to payment').click());
     expect(identity.beginCardDeposit).toHaveBeenCalledExactlyOnceWith('25', true); expect(dialog.querySelector('iframe')?.title).toBe('Secure card deposit');
-    await act(async () => button(dialog, 'Check deposit status').click()); expect(dialog.textContent).toContain('Reserve credit is pending'); expect(api.prepare).not.toHaveBeenCalled();
+    await act(async () => button(dialog, 'Check deposit status').click()); expect(dialog.textContent).toContain('Account credit is pending'); expect(api.prepare).not.toHaveBeenCalled();
     credit(); await act(async () => button(dialog, 'Check deposit status').click());
     expect(dialog.textContent).toContain('Purchase complete');expect(api.prepare).toHaveBeenCalledExactlyOnceWith({marketItemId:'profile:artist:source',side:'buy',amountUsdCents:'2500'});expect(api.execute).toHaveBeenCalledExactlyOnceWith(review,review.digest);expect(dialog.textContent).not.toContain('Confirm purchase');
     await act(async()=>button(dialog,'Review another trade').click());expect(dialog.textContent).toContain('Review trade');expect(dialog.textContent).not.toContain('Completing your purchase');expect(api.execute).toHaveBeenCalledOnce();
@@ -155,7 +155,7 @@ it('explicitly resumes the exact native checkout after a return without starting
     expect(host.querySelector('dialog')).toBeNull(); expect(identity.checkCardDeposit).not.toHaveBeenCalled();
     await act(async () => button(host, 'Check deposit and continue').click());
     const dialog = host.querySelector('dialog')!;
-    expect(identity.checkCardDeposit).toHaveBeenCalledExactlyOnceWith(checkout); expect(identity.beginCardDeposit).not.toHaveBeenCalled(); expect(dialog.textContent).toContain('Reserve credit is pending');
+    expect(identity.checkCardDeposit).toHaveBeenCalledExactlyOnceWith(checkout); expect(identity.beginCardDeposit).not.toHaveBeenCalled(); expect(dialog.textContent).toContain('Account credit is pending');
     credit(); await act(async () => button(dialog, 'Check deposit status').click());
     expect(dialog.querySelector('input')?.value).toBe('25.00'); expect(api.prepare).not.toHaveBeenCalled(); expect(api.execute).not.toHaveBeenCalled(); expect(identity.beginCardDeposit).not.toHaveBeenCalled();
   } finally {act(() => root.unmount());}

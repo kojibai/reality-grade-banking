@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import {expect,it} from 'vitest';
+import {readFileSync} from 'node:fs';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {ProductScreen} from '../src/presentation/ProductScreen';
 it.each(['entry','account','deposit','receive','send','record','vault','messages'])('renders %s from the actual product components as an inert example',screen=>{
@@ -72,4 +73,39 @@ it('keeps the Business follow-through account and payment in the same story',()=
  expect(doc.querySelector('[data-product-panel=record]')?.textContent).toContain('$900.00');
  expect(doc.querySelector('[data-product-panel=record]')?.textContent).toContain('Leah');
  expect(doc.querySelector('[data-product-panel=send]')).toBeNull();
+});
+
+it.each(['send','receive','deposit','messages'])('makes the published %s example scrollable while its actions stay inert',screen=>{
+ const doc=new DOMParser().parseFromString(preview.screens[screen as keyof typeof preview.screens],'text/html'),scroll=doc.querySelector('[data-example-scroll]');
+ expect(scroll).not.toBeNull();expect(scroll?.closest('[inert]')).toBeNull();expect(scroll?.getAttribute('tabindex')).toBe('0');
+ for(const el of doc.querySelectorAll('.product-screen button,.product-screen input,.product-screen a,.product-screen form'))expect(el.hasAttribute('inert')).toBe(true);
+});
+it('lets a reader scroll back while replies stream and never restarts their reading position',()=>{
+ vi.useFakeTimers();vi.stubGlobal('matchMedia',()=>({matches:false,addEventListener(){},removeEventListener(){}}));
+ const callbacks:((entries:{isIntersecting:boolean}[])=>void)[]=[];vi.stubGlobal('IntersectionObserver',class{constructor(fn:(entries:{isIntersecting:boolean}[])=>void){callbacks.push(fn);}observe(){}disconnect(){}});
+ document.body.innerHTML=productMoment();const box=document.querySelector('.bank-conversation-scroll') as HTMLElement;let top=0;Object.defineProperties(box,{clientHeight:{value:100},scrollHeight:{value:500},scrollTop:{get:()=>top,set:value=>{top=Math.max(0,Math.min(400,value));}}});
+ init();callbacks[0]([{isIntersecting:true}]);vi.advanceTimersByTime(2200);box.dispatchEvent(new WheelEvent('wheel',{deltaY:-100,bubbles:true}));box.scrollTop=100;box.dispatchEvent(new Event('scroll'));vi.advanceTimersByTime(30000);
+ expect(box.scrollTop).toBe(100);expect(document.querySelectorAll('[data-example-response]')[1].textContent).toContain('partial payment');
+ callbacks[0]([{isIntersecting:false}]);callbacks[0]([{isIntersecting:true}]);expect(box.scrollTop).toBe(100);
+});
+
+it('preserves a manually chosen chat position when switching away and back to Messages',()=>{
+ vi.useFakeTimers();vi.stubGlobal('matchMedia',()=>({matches:false,addEventListener(){},removeEventListener(){}}));
+ const callbacks:((entries:{isIntersecting:boolean}[])=>void)[]=[];vi.stubGlobal('IntersectionObserver',class{constructor(fn:(entries:{isIntersecting:boolean}[])=>void){callbacks.push(fn);}observe(){}disconnect(){}});
+ document.body.innerHTML=productWalkthrough();init();const select=(step:string)=>(document.querySelector(`[data-product-choice="${step}"]`)as HTMLButtonElement).click();select('messages');callbacks.at(-1)!([{isIntersecting:true}]);
+ const box=document.querySelector('.bank-conversation-scroll')as HTMLElement;let top=0;Object.defineProperties(box,{clientHeight:{value:100},scrollHeight:{value:500},scrollTop:{get:()=>top,set:value=>{top=Math.max(0,Math.min(400,value));}}});
+ box.dispatchEvent(new WheelEvent('wheel',{deltaY:-100,bubbles:true}));box.scrollTop=240;box.dispatchEvent(new Event('scroll'));select('account');select('messages');callbacks.at(-1)!([{isIntersecting:true}]);vi.advanceTimersByTime(30000);
+ expect(box.scrollTop).toBe(240);expect(document.querySelectorAll('[data-example-response]')[1].textContent).toContain('partial payment');
+});
+
+it('follows the first streaming reply by default and respects a reader scrolling back',()=>{
+ vi.useFakeTimers();vi.stubGlobal('matchMedia',()=>({matches:false,addEventListener(){},removeEventListener(){}}));
+ const callbacks:((entries:{isIntersecting:boolean}[])=>void)[]=[];vi.stubGlobal('IntersectionObserver',class{constructor(fn:(entries:{isIntersecting:boolean}[])=>void){callbacks.push(fn);}observe(){}disconnect(){}});
+ document.body.innerHTML=productMoment();const box=document.querySelector('.bank-conversation-scroll')as HTMLElement;let top=0;Object.defineProperties(box,{clientHeight:{value:100},scrollHeight:{value:500},scrollTop:{get:()=>top,set:value=>{top=Math.max(0,Math.min(400,value));}}});
+ init();callbacks[0]([{isIntersecting:true}]);vi.advanceTimersByTime(1000);expect(box.scrollTop).toBe(400);
+ box.dispatchEvent(new WheelEvent('wheel',{deltaY:-100,bubbles:true}));box.scrollTop=100;box.dispatchEvent(new Event('scroll'));vi.advanceTimersByTime(1500);expect(box.scrollTop).toBe(100);
+});
+it('keeps the account backdrop outside the scroll container while a real sheet example scrolls',()=>{
+ const css=readFileSync('public/learn/product-walkthrough.css','utf8');expect(css).toMatch(/\.product-screen:has\(dialog\) \.console\{overflow:clip\}/);
+ expect(css).toContain('.product-screen [data-example-scroll]{overflow-y:auto');
 });

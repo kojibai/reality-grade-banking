@@ -43,3 +43,9 @@ it('keeps selected artwork stable through stale and accepted discovery without a
  const accepted=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:imported-new',receizId:'imported-new',title:'A complete work',ownerUsername:'artist',profileOriginal:{media:original.media}}]}});
  expect(adoption.mergeAdmittedPublicAssets(accepted).items[0].artworkUrl).toBe('blob:local-artwork');expect(create).toHaveBeenCalledOnce();expect(revoke).not.toHaveBeenCalled();
 });
+
+it('selects the exact admitted Original for the owner without fetching or inventing a listing',()=>{
+ const request=vi.spyOn(globalThis,'fetch');adoption.retainAssetPublicationAdmission(admission,owner);
+ expect(adoption.admittedAssetPublicationItem(reference.artifactSha256,'artist')).toMatchObject({id:'profile:artist:imported-new',originalDigest:reference.artifactSha256});
+ expect(adoption.admittedAssetPublicationItem(reference.artifactSha256,'another')).toBeNull();expect(adoption.admittedAssetPublicationItem('e'.repeat(64),'artist')).toBeNull();expect(request).not.toHaveBeenCalled();
+});

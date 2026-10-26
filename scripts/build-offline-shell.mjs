@@ -27,6 +27,7 @@ const fixedResources = [
   '/native/identity-artwork.v129.mjs', '/native/identity-artwork.v129.manifest.json',
   '/notes/banknote-engraving.webp', '/notes/denomination-engraving.png',
   '/notes/reserve-note-masthead.png', '/notes/settlement-note-masthead.png', '/notes/settlement-reserve-note-masthead.png', '/notes/fonts/Cinzel.ttf',
+  '/art/create-original-frame.webp', '/art/create-original-frame-320.webp', '/art/create-sound-trace.webp',
   '/learn/proof-glass.webp', '/learn/reserve-note.webp', '/learn/settlement-note.webp',
   '/art/ledger-memory-crystal-v3.png',
   '/receiz-public-market.json', '/receiz-public-capitalization.json', '/receiz-public-sports.json', '/receiz-public-chart-history.json', '/receiz-public-ledger.json.gz.bin',

@@ -22,8 +22,8 @@ it('addresses the depositor directly and keeps technical consent inside deposit 
   const host = document.createElement('div'), root = createRoot(host);
   try {
     await act(async () => root.render(<LiveDeposit identity={identity} onClose={vi.fn()} onRefresh={vi.fn()} />));
-    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Dollars'))!.click());
-    expect(host.textContent).toContain('Continue to add this amount to your Reserve by card.');
+    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Add money'))!.click());
+    expect(host.textContent).toContain('Continue to add this amount to your account by card.');
     const detail = [...host.querySelectorAll('details')].find(node => node.querySelector('summary')?.textContent === 'Deposit details');
     expect(detail).toBeDefined(); expect(detail!.open).toBe(false);
     expect(detail!.textContent).toContain('This does not authorize');
@@ -33,7 +33,7 @@ it('offers funded creation through the transaction review instead of only sealin
   const host = document.createElement('div'), root = createRoot(host);
   try {
     await act(async () => root.render(<CreateAsset identity={identity} onClose={vi.fn()} onRefresh={vi.fn()} />));
-    const choice = [...host.querySelectorAll('button')].find(button => button.textContent === 'Create with backing');
+    const choice = [...host.querySelectorAll('button')].find(button => button.getAttribute('aria-label') === 'Add backing');
     expect(choice).toBeDefined(); act(() => choice!.click());
     expect(host.textContent).toContain('Backing amount'); expect(host.textContent).toContain('Review asset creation');
   } finally { act(() => root.unmount()); }

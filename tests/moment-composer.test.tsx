@@ -3,6 +3,8 @@ import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {afterEach,expect,it,vi} from 'vitest';
 import {CreateAsset} from '../src/features/assets/CreateAsset';
+import * as adoption from '../src/receiz/asset-publication-adoption';
+import type {PublicMarketItem} from '../src/receiz/public-market';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 afterEach(()=>vi.restoreAllMocks());
@@ -20,7 +22,7 @@ it('keeps selection local, adapts to audio and carries the selected original onl
  const identity={listDeposits:async()=>[],createComposedAsset:createAsset} as unknown as OpenIdentity;
  try{
   await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));
-  expect(host.textContent).toContain('Description');expect(host.textContent).toContain('Full text');
+  expect(host.textContent).toContain('Description');expect(host.querySelector('textarea[aria-label="Full text"]')).not.toBeNull();
   expect(host.querySelector('input[type=file]')).not.toBeNull();
   expect(host.textContent).toContain('public on your profile and in Market');
   await title(host);await select(host,file);expect(createAsset).not.toHaveBeenCalled();expect(host.textContent).toContain('Music details');expect(host.textContent).toContain('song.mp3');
@@ -54,8 +56,14 @@ it('retains the selected original and refuses a generic funding fallback if the 
  try{
   await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));
   await select(host,new File(['evidence'],'evidence.txt',{type:'text/plain'}));
-  act(()=>click(host,'Create with backing'));await act(async()=>click(host,'Review asset creation'));
+  act(()=>click(host,'Add backing'));await act(async()=>click(host,'Review asset creation'));
   expect(operations).not.toHaveBeenCalled();expect(host.textContent).toContain('Verified transaction terms are unavailable');
-  act(()=>click(host,'Public original'));expect(host.textContent).toContain('evidence.txt');
+  act(()=>click(host,'Remove backing'));expect(host.textContent).toContain('evidence.txt');
  }finally{act(()=>root.unmount());}
+});
+
+it.each(['pending','published']as const)('links only a published creation to its exact already-admitted asset (%s)',async status=>{
+ const digest='c'.repeat(64),item={id:'profile:artist:exact-original',originalDigest:digest}as PublicMarketItem,lookup=vi.spyOn(adoption,'admittedAssetPublicationItem').mockReturnValue(item),create=vi.fn(async()=>({bytes:new Uint8Array([1]),filename:'original.receiz',title:'Moment',digest,kind:'proof',status:'held-proof',pulse:'1',publication:{status}}));
+ const identity={pendingAssetPublication:async()=>null,createComposedAsset:create,accountUsername:()=> 'artist'}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));await title(host);await act(async()=>click(host,'Create asset'));const link=host.querySelector<HTMLAnchorElement>('a[href^="/asset/"]');if(status==='published'){expect(lookup).toHaveBeenCalledWith(digest,'artist');expect(link?.getAttribute('href')).toBe('/asset/profile%3Aartist%3Aexact-original/');expect(link?.textContent).toContain('Open your asset');}else{expect(lookup).not.toHaveBeenCalled();expect(link).toBeNull();expect(host.textContent).toContain('Public delivery is pending');}expect(create).toHaveBeenCalledOnce();}finally{act(()=>root.unmount());}
 });

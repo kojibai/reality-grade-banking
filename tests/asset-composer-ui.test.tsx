@@ -23,3 +23,13 @@ it('rejects a file above the effective limit before retaining it or reading its 
  const {AssetComposer}=await import('../src/features/assets/AssetComposer');const change=vi.fn(),host=document.createElement('div'),root=createRoot(host),file=new File(['oversize'],'large.mp3',{type:'audio/mpeg'});Object.defineProperty(file,'size',{value:65*1024*1024});const read=vi.spyOn(file,'arrayBuffer');
  try{await act(async()=>root.render(<AssetComposer value={{title:'A release',description:'',kind:'moment',longForm:'',files:[]}} onChange={change}/>));await select(host,'Choose original',[file]);expect(change).not.toHaveBeenCalled();expect(host.querySelector('[role=alert]')?.textContent).toContain('64 MB');expect(read).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
 });
+
+it('updates the tangible preview from the retained title and cover without reading or changing the original files',async()=>{
+ const {AssetComposer}=await import('../src/features/assets/AssetComposer');const original=new File(['song'],'blue-hour.wav',{type:'audio/wav'}),cover=new File(['cover'],'cover.png',{type:'image/png'}),read=vi.spyOn(original,'arrayBuffer');
+ let draft:AssetComposerDraft={title:'Blue Hour',description:'',kind:'audio',longForm:'',files:[{id:'source',file:original,role:'primary'},{id:'cover',file:cover,role:'cover'}]};
+ const host=document.createElement('div'),root=createRoot(host),render=()=>root.render(<AssetComposer value={draft} onChange={next=>{draft=next;render();}}/>);
+ try{await act(render);expect(host.querySelector('[aria-label="Your asset preview"]')?.textContent).toContain('Blue Hour');expect(host.querySelector('[aria-label="Your asset preview"] img[alt="Selected cover"]')).not.toBeNull();
+  const title=host.querySelector<HTMLInputElement>('[aria-label=Title]')!;await act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(title,'Blue Hour, Live');title.dispatchEvent(new Event('input',{bubbles:true}));});
+  expect(host.querySelector('[aria-label="Your asset preview"]')?.textContent).toContain('Blue Hour, Live');expect(draft.files[0].file).toBe(original);expect(draft.files[1].file).toBe(cover);expect(read).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});

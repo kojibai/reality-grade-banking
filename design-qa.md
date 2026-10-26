@@ -108,3 +108,20 @@ offline shell, conformance separation, source archive, licensing and public-page
 checks passed. Scoped Receiz runtime tests passed 5/5 and scoped ESLint passed.
 Unrelated Receiz native/Crystal changes were preserved. Download controls,
 canonical verification, Note custody and antirollback were not changed.
+
+
+## Deposit and Create an asset · October 26, 2026
+
+final result: passed
+
+The approved concept references are `exec-96df36d8-9f6b-42df-ada4-ba3428a70719.png` (Deposit) and `exec-105cc78e-a2db-4980-86cf-5be1b982dbc4.png` (Create), under the session generated_images directory. Both references and the rendered screenshots were opened. Combined comparison inputs are `/private/tmp/bankeiz-deposit-design-comparison.png` and `/private/tmp/bankeiz-create-design-comparison.png`: reference normalized to 390px wide on the left; the real 390×844 production-component Sheet on the right. The concepts are 1024×1536 compositions, not runtime viewport specifications. The existing native Sheet size, larger touch targets, typography metrics and scroll behavior remain intact. The user explicitly approved the current rendered look on October 26.
+
+Fidelity surfaces checked: Inter/native typography and heading hierarchy; the warm white/navy/cobalt palette; rounded grouped choices and native control spacing; transparent glass frame/source art and selected actual cover; short, user-approved creation/deposit copy. The supplied title/file controls and optional sections remain real controls. The generic portrait frame supports different originals; the chosen source artwork replaces the concept’s fictional album cover. This is an intentional production adaptation, not a claim of pixel-identical geometry.
+
+Mobile 390×844 and the native desktop 1212×720 composition were inspected in the in-app browser. The final mobile DOM reported no horizontal overflow. The browser viewport override did not reliably apply the later 320px request, so that separate size is not claimed. Mobile screenshots: `/private/tmp/bankeiz-deposit-mobile-final.png`, `/private/tmp/bankeiz-create-mobile-final.png`. Desktop composition was also displayed in the browser tool output. The illustrative fixture is `http://127.0.0.1:4194/tests/browser/premium-popovers.html`; it uses actual components and a synthetic identity, with no real financial effects.
+
+Interactions verified: Add money → native amount/method UI → All deposits; Deposit → Create; retained title preview; native audio and cover selection; optional backing review with final execution disabled until approval. No relevant browser console errors were reported. Exact files, publication retry and approval behavior also pass the focused component/transport tests.
+
+The user’s clipped Send/Receive screenshots were treated as failing evidence. Native inner scrolling now reaches their remaining content while actions remain inert. Receive was observed at scrollTop 750 with 1231px content in a 481px viewport. The chat automatically reached scrollTop313 for 620px content in a 307px viewport. Manual Home then step changes retained reading position0. A screenshot exposed the backdrop scrolling14.5px, shifting navigation: the backdrop is now overflow:clip; after native focus/step changes backdrop scrollTop and the gap between navigation and the frame bottom were both0. Evidence: `/private/tmp/bankeiz-receive-scroll-mobile.png`, `/private/tmp/bankeiz-chat-reading-bottom-fixed.png`.
+
+No actionable visual P0/P1/P2 remains in this checkpoint. The expanded rights/terms forms and the newly discussed Create → published Original → asset deposit → admitted value flow are a following implementation scope. This checkpoint does not enable new issuance or universal asset liquidation.

@@ -35,7 +35,7 @@ it('reopens Deposit after admission when returning from card checkout', async ()
   try {
     await act(async () => root.render(<App />));
     expect(location.hash).toBe('#account/deposit');
-    expect(host.querySelector('dialog')?.textContent).toContain('Turn what you own');
+    expect(host.querySelector('dialog')?.textContent).toContain('Deposit what');
   } finally { act(() => root.unmount()); history.replaceState(null, '', '/'); }
 });
 
@@ -47,7 +47,7 @@ it('suspends an open bank sheet on public pages and restores its retained draft 
     const opener = host.querySelector<HTMLButtonElement>('button.nav-deposit')!; opener.focus(); act(() => opener.click());
     const dialog = host.querySelector('dialog')!;
     expect(dialog.open).toBe(true); expect(document.body.style.position).toBe('fixed');
-    act(() => [...dialog.querySelectorAll('button')].find(button => button.textContent?.includes('Dollars'))!.click());
+    act(() => [...dialog.querySelectorAll('button')].find(button => button.textContent?.includes('Add money'))!.click());
     act(() => [...dialog.querySelectorAll('button')].find(button => button.textContent === '$250')!.click());
     const draft = dialog.querySelector('input')!; expect(draft.value).toBe('250');
     history.pushState(null, '', '/legal/');
