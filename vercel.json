@@ -37,6 +37,62 @@
   ],
   "rewrites": [
     {
+      "source": "/economy/",
+      "destination": "/economy/index.html"
+    },
+    {
+      "source": "/economy",
+      "destination": "/economy/index.html"
+    },
+    {
+      "source": "/farmers/",
+      "destination": "/farmers/index.html"
+    },
+    {
+      "source": "/farmers",
+      "destination": "/farmers/index.html"
+    },
+    {
+      "source": "/fuel/",
+      "destination": "/fuel/index.html"
+    },
+    {
+      "source": "/fuel",
+      "destination": "/fuel/index.html"
+    },
+    {
+      "source": "/repairs/",
+      "destination": "/repairs/index.html"
+    },
+    {
+      "source": "/repairs",
+      "destination": "/repairs/index.html"
+    },
+    {
+      "source": "/grocers/",
+      "destination": "/grocers/index.html"
+    },
+    {
+      "source": "/grocers",
+      "destination": "/grocers/index.html"
+    },
+    {
+      "source": "/housing/",
+      "destination": "/housing/index.html"
+    },
+    {
+      "source": "/housing",
+      "destination": "/housing/index.html"
+    },
+    {
+      "source": "/workers/",
+      "destination": "/workers/index.html"
+    },
+    {
+      "source": "/workers",
+      "destination": "/workers/index.html"
+    },
+    {
       "source": "/trust/",
       "destination": "/trust/index.html"
     },

@@ -434,6 +434,10 @@ export const standardPages=[
       [
         "/legal/",
         "Open-source license and source"
+      ],
+      [
+        "/economy/",
+        "See an existing economy at work"
       ]
     ],
     "faq": [

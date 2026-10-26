@@ -1,3 +1,4 @@
+import {economyPages} from '../src/content/existing-economy.mjs';
 import {standardPages} from '../src/content/standard-pages.mjs';
 import {outcomePages} from '../src/content/outcome-pages.mjs';
 import {identityContinuityPage} from '../src/content/identity-continuity.mjs';
@@ -14,6 +15,7 @@ import {canonicalPublicPath} from '../src/content/public-routes.mjs';
 import {protectionPage} from './vault-protection-page.mjs';
 export const publicOrigin = 'https://bankeiz.com';
 export const publicPages = [
+ ...economyPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-Grade Banking',description:page.description,lines:page.lines,caption:page.eyebrow,motif:'layers'})),
  ...standardPages.map(page=>({path:page.path,id:'standard-'+page.key,title:page.title+' | Open standard',description:page.description,lines:page.lines,caption:'The standard of the proof-native economy.',motif:'layers'})),
  ...outcomePages.map(page=>({path:page.path,id:'solution-'+page.key,title:page.title+' | Reality-grade banking',description:page.description,lines:page.lines,caption:page.promise,motif:'layers'})),
  {path:identityContinuityPage.path,id:'identity-continuity',title:identityContinuityPage.title+' | Bankeiz',description:identityContinuityPage.description,lines:identityContinuityPage.lines,caption:'Authentication opens the door. Continuity brings your identity with you.',motif:'key'},

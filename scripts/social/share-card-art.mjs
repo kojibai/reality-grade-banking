@@ -1,3 +1,4 @@
+import {economyShareCard} from './economy-share.mjs';
 import {standardShareCard} from './standard-share.mjs';
 import {outcomeShareCard} from './outcome-share.mjs';
 import {identityContinuityShareCard} from './identity-continuity-share.mjs';
@@ -13,6 +14,7 @@ import {businessFitShareCard} from './business-fit-share.mjs';
 const icons={layers:Layers3,fingerprint:Fingerprint,cube:Box,shield:ShieldCheck,key:KeyRound,bank:Landmark,valuation:ChartNoAxesCombined,badge:BadgeCheck,scan:ScanLine,ledger:NotebookTabs,globe:Globe2,code:Braces,book:BookOpen,receipt:ReceiptText};
 const bank='<path d="m256 117 123 67v17H133v-17l123-67Zm0 26-75 40h150l-75-40Z" fill-rule="evenodd"/><rect x="146" y="215" width="28" height="110" rx="2"/><rect x="210" y="215" width="28" height="110" rx="2"/><rect x="274" y="215" width="28" height="110" rx="2"/><rect x="338" y="215" width="28" height="110" rx="2"/><rect x="133" y="337" width="246" height="18" rx="2"/><rect x="119" y="367" width="274" height="18" rx="3"/>';
 export function shareCardSvg(page){
+ if(page.id?.startsWith('economy-'))return economyShareCard(page);
  if(page.id?.startsWith('standard-'))return standardShareCard(page);
  if(page.id?.startsWith('solution-'))return outcomeShareCard(page);
  if(page.id==='identity-continuity')return identityContinuityShareCard();

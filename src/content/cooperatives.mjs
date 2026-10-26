@@ -29,7 +29,7 @@ export const networkMembers=[
 
 const route=(suffix,title,description,kind)=>({slug:'cooperatives'+(suffix?'-'+suffix:''),path:suffix?'/cooperatives/'+suffix+'/':'/coops/',title,description,intro:description,sections:[],cooperativeKind:kind});
 export const cooperativePages=[
- route('','Your members have the value. Put it to work.','Connect your cooperative’s goods, services and trading relationships to the proof-native economy through reality-grade banking.','main'),
+ route('','Your Members Already Produce the Value. Why Are They Borrowing Just to Move It?','Connect your cooperative’s goods, services and trading relationships to the proof-native economy through reality-grade banking.','main'),
  ...cooperativeSectors.map(s=>route(s.slug,s.headline,s.description,s.slug)),
  route('infrastructure','See the exchange. Inspect the infrastructure.','Walk through existing proof objects, ownership, receiving, payments and Settlement, with source evidence and organization-specific qualification.','infrastructure'),
  route('connect','What do your members have that others need?','Talk through your cooperative’s operating needs with BJ Klock’s Receiz Twin, ask questions and book an available time in the same conversation.','connect')

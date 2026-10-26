@@ -1,6 +1,62 @@
 {
   "schema": "bankeiz.public-social-images.v1",
   "images": {
+    "/economy/": {
+      "url": "/social/economy-economy-a3024cbd3d00ebed.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "a3024cbd3d00ebed6d970cba39d2430d131e6a9e0c40894748c63440ff7cae79",
+      "bytes": 226140,
+      "alt": "The value is here. Let it move. Reality-Grade Banking Custom objects show what this participant already has and needs next. Illustrative exchange."
+    },
+    "/farmers/": {
+      "url": "/social/economy-farmers-bd19b980974d7129.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "bd19b980974d71299dd3a8d7923dbf64a6cadf71a869bfccb59aa4b92dd92d61",
+      "bytes": 235715,
+      "alt": "The harvest is here. Keep the farm moving. Reality-Grade Banking for Farmers Custom objects show what this participant already has and needs next. Illustrative exchange."
+    },
+    "/fuel/": {
+      "url": "/social/economy-fuel-9072870c311842db.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "9072870c311842dbe11f341dd11a17d256ec5852acdfcf44e64dace9a7876532",
+      "bytes": 265024,
+      "alt": "Keep customers moving. Keep value useful. Reality-Grade Banking for Fuel Suppliers Custom objects show what this participant already has and needs next. Illustrative exchange."
+    },
+    "/repairs/": {
+      "url": "/social/economy-repairs-3c8faea9f49e21b2.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "3c8faea9f49e21b257a66f24495b95366a30d7dc4d4bf80bf08a4081b2f359f8",
+      "bytes": 210020,
+      "alt": "The work is done. Make the payment useful. Reality-Grade Banking for Repairs Custom objects show what this participant already has and needs next. Illustrative exchange."
+    },
+    "/grocers/": {
+      "url": "/social/economy-grocers-bbf474b0701a7a01.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "bbf474b0701a7a01cbce171380905da252c9b7d951ba7aa593fad4b0ed64f96d",
+      "bytes": 208741,
+      "alt": "Food on the shelf. Value moving onward. Reality-Grade Banking for Grocers Custom objects show what this participant already has and needs next. Illustrative exchange."
+    },
+    "/housing/": {
+      "url": "/social/economy-housing-48bdda671143a85b.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "48bdda671143a85b9149f64f701c2ba5de99154f8bf3764d1b28d9ffa7e5e551",
+      "bytes": 225690,
+      "alt": "Keep the homes cared for. Keep value connected. Reality-Grade Banking for Housing Custom objects show what this participant already has and needs next. Illustrative exchange."
+    },
+    "/workers/": {
+      "url": "/social/economy-workers-8ff0f2e0fa9c0dab.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "8ff0f2e0fa9c0dab1a54d4ab8eff35839999fcec8f3688bbc791dd7e76244d5e",
+      "bytes": 249711,
+      "alt": "Your work is real. Make the next step useful. Reality-Grade Banking for Workers Custom objects show what this participant already has and needs next. Illustrative exchange."
+    },
     "/trust/": {
       "url": "/social/standard-trust-9e111e7a30a381bd.png",
       "width": 1730,
@@ -274,12 +330,12 @@
       "alt": "Prove it’s yours. Keep it yours. A separate passkey, private Vault and public proof illustrate keeping evidence separate from access."
     },
     "/coops/": {
-      "url": "/social/cooperatives-244fa5b63d227677.png",
+      "url": "/social/cooperatives-2f092ea99ae5d86d.png",
       "width": 1730,
       "height": 909,
-      "sha256": "244fa5b63d227677b0f497701aedeab29c602c8c2bca3de2df2fb92a1937f894",
-      "bytes": 268709,
-      "alt": "Your members have the value. Put it to work. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+      "sha256": "2f092ea99ae5d86d8d0c2266c639908f234b192b6421a8437798f1fece2c5236",
+      "bytes": 282151,
+      "alt": "Your Members Already Produce the Value. Why Are They Borrowing Just to Move It? | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/producers/": {
       "url": "/social/cooperatives-producers-c9afb0d91b53ad12.png",

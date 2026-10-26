@@ -40,6 +40,8 @@
   window.addEventListener('receiz-learn:page', configureMotion);
   const fit=()=>{const file=document.querySelector('[data-fit-directory]')?'business-fit':document.querySelector('[data-coop]')?'cooperatives':null;if(file)import('/learn/'+file+'.js').then(module=>module.init()).catch(()=>{});};
   fit();addEventListener('receiz-learn:page',fit);
+  const economy=()=>{if(document.querySelector('[data-economy-interfaces],[data-economy-circle],[data-economy-numbers]'))import('/learn/economy.js').then(module=>module.init()).catch(()=>{});};
+  economy();addEventListener('receiz-learn:page',economy);
   reducedMotion.addEventListener?.('change', configureMotion);
   addEventListener('hashchange', () => {
     // Restrict selectors to a DOM id, including malformed user-supplied hashes.
