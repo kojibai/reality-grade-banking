@@ -88,3 +88,13 @@ it('consumes and restores quantity rights once while retaining the original puls
  expect(originals.map(row=>row.atKaiUPulse)).toEqual([buy.operation.atKaiUPulse,sell.operation.atKaiUPulse]);expect(originals.map(row=>row.effect.executionPriceUsdCents)).toEqual([buy.operation.effect.executionPriceUsdCents,sell.operation.effect.executionPriceUsdCents]);
  const count=f.requests.length;await session.flush();expect(f.requests).toHaveLength(count);session.dispose();
 });
+
+it('uses the full verified growing wallet within finite share rights without freezing a preparation-time dollar ceiling',async()=>{
+ const restricted=await localFinancialFixture({dynamicMarket:true,growth:true,quantityMarket:'2000000'}),limited=await createLocalFinancialSession(restricted.options);
+ await expect(limited.execute({operationId:'f1111111-1111-4111-8111-111111111111',action:{kind:'buy',marketItemId:'asset:held',amountUsdCents:'25000'}})).rejects.toThrow('ACCOUNT_FINANCIAL_BUY_CAPACITY');limited.dispose();
+ const f=await localFinancialFixture({dynamicMarket:true,growth:true,quantityMarket:'2000000',fullGrowthBudget:true}),session=await createLocalFinancialSession(f.options);
+ const opening=await session.wallet();f.at(14017492000123n);const current=await session.wallet();expect(BigInt(current.availableUsdCents)).toBeGreaterThan(BigInt(opening.availableUsdCents));
+ const buy=await session.execute({operationId:'f2222222-2222-4222-8222-222222222222',action:{kind:'buy',marketItemId:'asset:held',amountUsdCents:'25000'}});expect(buy.status).toBe('committed');if(buy.status!=='committed')throw Error('Missing Buy Original');
+ expect(BigInt(String(buy.operation.effect.shareQuantityMicro))).toBeLessThan(2000000n);expect(buy.operation.atKaiUPulse).toBe('14017492000124');expect(f.requests).toHaveLength(0);
+ f.connect();expect((await session.flush()).status).toBe('published');expect(f.requests.flatMap(batch=>batch.originals)).toHaveLength(1);session.dispose();
+});

@@ -619,9 +619,9 @@
       "id": "bank-local-financial-accountFinancialCommit",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialCommit.ts",
       "baseSha256": null,
-      "sha256": "45e2df711416c0814f092f38af3e9141cc26ed93040ca258ea33e2ba53476051",
+      "sha256": "ac410ff8f9a20f95afefa7146acd7fea3111e120a73f563c8d8ef8de6add3f45",
       "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
-      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+      "sourceCommit": "c622c2d4f23984837a4ec1dedbd33d9962ac438e"
     },
     {
       "id": "bank-local-financial-accountFinancialPublication",

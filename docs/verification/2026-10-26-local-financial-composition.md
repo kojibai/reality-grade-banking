@@ -25,8 +25,9 @@ valuation core. No physical-device or real-money test is claimed.
 ## Activation boundary
 
 This session composition is not yet selected by the application's existing
-Send and Market buttons. Source preparation, incoming-credit succession and
-custody handoff must be qualified and connected before activation. Ordinary
+Send and Market buttons. The qualified source preparation and custody handoff still need application
+wiring. Incoming-credit succession, recipient evidence and financial views
+must be connected and qualified before activation. Ordinary
 connected functions retain their existing path. Passing these component tests
 does not establish a complete consumer offline flow.
 
@@ -60,3 +61,34 @@ unchanged prices through ordered reconnect. These are actual native SDK
 mechanics under synthetic funding. Consumer activation remains subject to the
 remaining boundaries above; this update adds no preparation or HTTP request
 to the existing app screens.
+
+
+The matching SDK also retains an exact closing Original. Closing a source
+prevents another local action while retaining its existing financial Originals
+for ordered publication and recovery. The handoff returns custody only after
+the exact financial prefix has been adopted; it neither moves money nor
+re-executes a trade. This is a qualified SDK boundary, not an enabled consumer
+control.
+
+Programme v3 can keep growing Wallet value available within finite share
+rights without imposing the dollar ceiling from preparation time. Existing
+explicit monetary limits remain binding, as do current-pulse trade limits,
+quantity, funding and cash classification. The added fixture proves both an
+explicit smaller limit refusing a trade and the genuinely growing source
+executing within its finite quantity rights.
+
+Determinism requires complete inputs. Kai determines growth; current Market
+bid/ask also incorporates inventory and recent trading activity. An offline
+source can calculate from its carried inputs and local succession. It cannot
+infer unseen trades on other devices. Publication must retain the exact local
+Original rather than replace its inputs or price. No equality with an unseen
+concurrent global quote is claimed.
+
+The handoff source update passes all 548 Bank test files and all 3,472 tests
+with zero failures and zero skips using four workers. The first default-worker
+run had one asynchronous Messages timeout; its unchanged isolated case and the
+subsequent complete suite pass. No Messages implementation or assertion was
+changed. Strict types, exact native-source reproduction and proving-resource
+integrity also pass. The corresponding SDK/service component gate passes 102
+tests with zero skips. These are qualification results, not consumer offline
+activation or measured production latency savings.

@@ -1,10 +1,10 @@
 {
   "schema": "receiz.bank.native-runtime-build.v1",
   "version": "129.0.0",
-  "moduleSha256": "2f538c03632a8a3ca520930096fa15d5ce0812f635b681a01e27fd787a3be786",
-  "sourceTreeSha256": "51aabfd18a595d79a5df65b2f1d2b1072892978b1f607ddddc7420f25f77aebe",
+  "moduleSha256": "870792ff40d2e2cbde567a628e8b7dc6113eeffd14d0c0b1bf342ad1b5eb764d",
+  "sourceTreeSha256": "858a87ecd95392a73f986db612fc5d7e12650761fa892aea23e9ecace170429e",
   "inputs": 306,
-  "bytes": 2416044,
+  "bytes": 2421610,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -618,9 +618,9 @@
       "id": "bank-local-financial-accountFinancialCommit",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialCommit.ts",
       "baseSha256": null,
-      "sha256": "45e2df711416c0814f092f38af3e9141cc26ed93040ca258ea33e2ba53476051",
+      "sha256": "ac410ff8f9a20f95afefa7146acd7fea3111e120a73f563c8d8ef8de6add3f45",
       "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
-      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+      "sourceCommit": "c622c2d4f23984837a4ec1dedbd33d9962ac438e"
     },
     {
       "id": "bank-local-financial-accountFinancialPublication",
