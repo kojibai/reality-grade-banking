@@ -32,3 +32,14 @@ it('keeps an unsupported object’s supplied chart without inventing dates or pe
  const fetch=vi.fn();vi.stubGlobal('fetch',fetch);const host=document.createElement('div'),root=createRoot(host);
  try{act(()=>root.render(<PublicAssetDetail item={{...item,id:'unknown-source',assetId:'unknown-object',category:'sports',chart:[1,2,3]}}/>));expect(host.querySelector('.periods')).toBeNull();expect(host.querySelector('svg[data-range-start]')).toBeNull();expect(host.textContent).not.toContain('projected value');expect(fetch).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
 });
+it('switches the top figure with the chart metric without repeating the formula or rereading sources',()=>{
+ vi.useFakeTimers();clock.pulse=source.serverPulse;const fetch=vi.fn();vi.stubGlobal('fetch',fetch);const host=document.createElement('div'),root=createRoot(host);
+ const inventory={schema:'receiz.market.share-inventory.v1' as const,marketItemId:item.id,assetId:item.assetId,family:'generic' as const,quantityScope:'canonical-asset' as const,observedAtKaiUPulse:String(BigInt(clock.pulse)*1000000n),outstandingShareQuantityMicro:'2500000',availableShareQuantityMicro:'4000000',positionsMicro:'2000000',certificatesMicro:'500000',reservedBuyMicro:'0',availability:'quote-capacity' as const};
+ try{
+  act(()=>root.render(<PublicAssetDetail item={{...item,shareInventory:inventory}} readOnly/>));const before=host.querySelector('.asset-price')!.textContent,media=host.querySelector('.proof-media');
+  const cap=host.querySelectorAll<HTMLButtonElement>('.asset-chart-metric button')[1];act(()=>cap.click());
+  expect(host.querySelector('.asset-price')!.textContent).not.toBe(before);expect(host.querySelector('.asset-price span')!.textContent).toBe('Market cap');expect(host.querySelector('.share-chart-coverage')).toBeNull();
+  const summary=host.querySelector('.share-inventory summary')!.textContent!.replace('Shares & market cap','').replace('⌄','').trim();expect(host.querySelector('.asset-price')!.textContent).toContain(summary);
+  act(()=>host.querySelectorAll<HTMLButtonElement>('.asset-chart-metric button')[0].click());expect(host.querySelector('.asset-price')!.textContent).toBe(before);expect(host.querySelector('.proof-media')).toBe(media);expect(fetch).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
