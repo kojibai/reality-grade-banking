@@ -7,7 +7,7 @@ import {AmountInput} from '../../components/AmountInput';
 import {NativeOperation} from '../account/NativeOperation';
 import {bankOperationDollars} from '../../receiz/bank-operations';
 import {profilePagePath,retainedPublicProfile} from '../../receiz/public-profile';
-import {admittedAssetPublicationItem} from '../../receiz/asset-publication-adoption';
+import {admittedAssetPublicationItem,subscribeAssetPublicationAdmissions} from '../../receiz/asset-publication-adoption';
 import {assetPagePath,retainPublicAsset} from '../../receiz/public-asset-page';
 import {AssetComposer} from './AssetComposer';
 import {AssetStudioPreview} from './AssetStudioPreview';
@@ -26,7 +26,8 @@ export function CreateAsset({identity,onRefresh,onClose}:{identity:OpenIdentity;
   const value=result&&resultBacked?await(await identity.backedAssetPublication()).resume():result?await identity.retryAssetPublication!():await identity.createComposedAsset(definition!,selected!);
   if(active.current){if(value)setResult(value);onRefresh();}
  }catch(cause){if(active.current)setError(cause instanceof Error&&cause.message.startsWith('COMPOSER_')?'Check your original, cover and file sizes before creating this asset.':cause instanceof Error?cause.message:'Your asset could not be created. Your selected files remain here.');}finally{running.current=false;if(active.current)setBusy(false);}}
- async function publishMarket(){if(!result||running.current)return;running.current=true;setBusy(true);setError('');try{const signed=await identity.publishAssetToMarket(result);if(active.current){setResult(signed);onRefresh();}}catch(cause){if(active.current)setError(cause instanceof Error&&cause.message==='passkey_cancelled'?'Signing was cancelled. Your original remains saved.':cause instanceof Error?cause.message:'Your original remains saved. Try publishing again.');}finally{running.current=false;if(active.current)setBusy(false);}}
+ useEffect(()=>{if(!result||result.pbiSigned)return;const digest=result.digest,username=identity.accountUsername?.()??identity.username;if(!username)return;const admitted=()=>{if(!active.current||!admittedAssetPublicationItem(digest,username)?.hasPbiSignature)return;setResult(current=>current?.digest===digest?{...current,pbiSigned:true}:current);setBusy(false);};admitted();return subscribeAssetPublicationAdmissions(admitted);},[identity,result?.digest,result?.pbiSigned]);
+ async function publishMarket(){if(!result||running.current)return;running.current=true;setBusy(true);setError('');try{const signed=await identity.publishAssetToMarket(result);if(active.current){setResult(signed);}}catch(cause){if(active.current&&!admittedAssetPublicationItem(result.digest,identity.accountUsername?.()??identity.username??'')?.hasPbiSignature)setError(cause instanceof Error&&cause.message==='passkey_cancelled'?'Signing was cancelled. Your original remains saved.':cause instanceof Error?cause.message:'Your original remains saved. Try publishing again.');}finally{running.current=false;if(active.current)setBusy(false);}}
  function save(){if(!result)return;const url=URL.createObjectURL(new Blob([new Uint8Array(result.bytes)])),link=document.createElement('a');link.href=url;link.download=result.filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
  const published=result?.publication?.status==='published',username=identity.accountUsername?.()??identity.username;
  const publicItem=published&&result&&username?(admittedAssetPublicationItem(result.digest,username)??retainedPublicProfile(username)?.items.find(item=>item.originalDigest===result.digest)??null):null;

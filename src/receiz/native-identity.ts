@@ -1396,7 +1396,8 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     });noteOpen();
     const adoption=await import('./asset-publication-adoption');adoption.acknowledgeAssetPublication(source.digest,receipt);
     if(receipt.status==='published')void adoption.refreshAssetPublicationCatalog(source.digest);
-    return {...source,pbiSigned:true,publication:receipt.status==='published'?{status:'published',showcaseArtifactDigest:receipt.artifactDigest}:{status:receipt.status,code:receipt.code}};
+    const delivery:import('./asset-publication').AssetPublicationDelivery=receipt.status==='published'?{status:'published',showcaseArtifactDigest:receipt.artifactDigest}:{status:receipt.status,code:receipt.code};
+    return {...source,pbiSigned:true,publication:source.publication?.status==='published'?source.publication:delivery,marketPublication:delivery};
   }
   let backedPublicationPromise:Promise<import('./backed-asset-client').BackedAssetClient>|undefined;
   const backedAssetPublication=()=>backedPublicationPromise??=import('./backed-asset-client').then(async({createBackedAssetClient})=>{
