@@ -1,4 +1,4 @@
-import {productMoment,agentWorkflowMoment} from './product-walkthrough.mjs';
+import {productMoment,agentWorkflowMoment,dailyMoneyWalkthrough} from './product-walkthrough.mjs';
 import {learnHeader} from './learn-template.mjs';
 import {siteFooterHtml} from './site-footer.mjs';
 import {businessOffer,businessBenefits,businessQuestions} from '../src/content/business-offer.mjs';
@@ -24,7 +24,7 @@ export function businessContent(){return `${learnHeader()}<main id="main" class=
   <li><span aria-hidden="true">02</span><h3>Get the picture together</h3><p>Connect the amount to the client, the work and the available history. Work through your cash position and the questions that need an answer.</p></li>
   <li><span aria-hidden="true">03</span><h3>Take the admin off your list</h3><p>Prepare the request, follow-up, summary or supported payment. Review the details, approve what happens next and keep its result with the record.</p></li>
  </ol><p class="business-context-note">Your context. Your voice. Your final say. Share what matters and keep the original records close.</p><a class="business-text-link" href="/learn/messages/">See how conversations and memories work${arrow}</a></section>
- ${productMoment({id:'business-money-ui',example:'business-plan',title:'Can I afford this?<br>With everything else in view.',body:'Your balance is one part of the answer. Your upcoming payments, earlier decisions and the cash buffer you set give it meaning.'})}
+ <div class="learn-shell">${dailyMoneyWalkthrough({id:'business-money-ui',title:'Pay people. Get paid.<br>Know what you can spend.'})}</div>
  ${businessIncluded()}
  ${businessBanking()}
  ${agentWorkflowMoment({id:'business-followthrough',title:'From the next client.<br>To money in your account.',body:'Give your agent the outcome and your approved introduction. See new people become contacts, an agreed call land in your calendar, and the project deposit arrive—with the whole conversation still connected.'})}

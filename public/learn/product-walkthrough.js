@@ -43,8 +43,8 @@ function animateWorkflow(example){
  const showPane=name=>{for(const pane of panes)pane.hidden=pane.dataset.workflowPane!==name;for(const button of flow.querySelectorAll('.bank-organizer-tools [data-workflow-open]'))button.setAttribute('aria-current',String(button.dataset.workflowOpen===name));};
  const scroll=()=>{if(box&&!manual)box.scrollTop=box.scrollHeight;};
  const phase=(value,typing=false)=>{
-  flow.dataset.workflowPhase=String(value);turns.forEach((turn,index)=>{turn.hidden=index>value;});steps.forEach((button,index)=>{button.setAttribute('aria-pressed',String(index===value));button.toggleAttribute('data-done',index<value);});flow.querySelector('[data-workflow-status]').textContent=statuses[value];
-  showPane(value===2?'contacts':value===3?'calendar':'chat');restore();
+  flow.dataset.workflowPhase=String(value);turns.forEach((turn,index)=>{turn.hidden=index>value;});steps.forEach((button,index)=>{button.setAttribute('aria-pressed',String(index===value));button.toggleAttribute('data-done',index<value);});flow.querySelector('[data-workflow-status]').textContent=steps[value].dataset.workflowStatusText||statuses[value];
+  showPane(steps[value].dataset.workflowPaneTarget||(value===2?'contacts':value===3?'calendar':'chat'));restore();
   if(typing){const reply=replies[value];reply.p.replaceChildren();reply.el.setAttribute('data-workflow-typing','');const dots=document.createElement('span');dots.className='bank-typing-dots';dots.innerHTML='<i></i><i></i><i></i>';reply.p.append(dots);let count=0;
    const type=()=>{count=Math.min(count+7,reply.answer.length);reply.p.textContent=reply.answer.slice(0,count);scroll();if(count<reply.answer.length)later(type,18);else reply.el.removeAttribute('data-workflow-typing');};later(type,180);
   }scroll();
@@ -53,15 +53,16 @@ function animateWorkflow(example){
  const start=()=>{clear();if(!alive||manual||document.hidden||!inView||matchMedia('(prefers-reduced-motion:reduce)').matches)return;play(0);};
  const keep=()=>{manual=true;clear();restore();workflowReading.set(flow,true);};
  const input=()=>{if(!manual)keep();};
- const keys=event=>{if(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key))input();};
- const click=event=>{const open=event.target.closest('[data-workflow-open]'),step=event.target.closest('[data-workflow-step]');if(!open&&!step)return;event.preventDefault();event.stopPropagation();
-  if(step){const index=Number(step.dataset.workflowStep);if(index===0){manual=false;workflowReading.delete(flow);if(reduced.matches){manual=true;phase(0);workflowReading.set(flow,true);}else start();}else{keep();phase(index);if(box)box.scrollTop=box.scrollHeight;}}else{keep();const name=open.dataset.workflowOpen,required=name==='record'?4:['calendar','event'].includes(name)?3:name.startsWith('person')||name==='contacts'?2:0;if(Number(flow.dataset.workflowPhase)<required)phase(required);showPane(name);if(name==='chat'&&box)box.scrollTop=box.scrollHeight;}
+ const keys=event=>{if(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' ','Enter'].includes(event.key))input();};
+ const inspect=event=>{if(event.target.closest('summary'))input();};
+ const click=event=>{if(event.target.closest('summary'))input();const open=event.target.closest('[data-workflow-open]'),step=event.target.closest('[data-workflow-step]');if(!open&&!step)return;event.preventDefault();event.stopPropagation();
+  if(step){const index=Number(step.dataset.workflowStep);if(index===0){manual=false;workflowReading.delete(flow);if(reduced.matches){manual=true;phase(0);workflowReading.set(flow,true);}else start();}else{keep();phase(index);if(box)box.scrollTop=box.scrollHeight;}}else{keep();const name=open.dataset.workflowOpen,required=name.startsWith('record')?4:name==='source'?2:['calendar','event'].includes(name)?3:name.startsWith('person')||name==='contacts'?2:0;if(Number(flow.dataset.workflowPhase)<required)phase(required);showPane(name);if(name==='chat'&&box)box.scrollTop=box.scrollHeight;}
  };
- flow.addEventListener('click',click);flow.addEventListener('wheel',input,{passive:true});flow.addEventListener('touchmove',input,{passive:true});flow.addEventListener('keydown',keys);
+ flow.addEventListener('click',click);flow.addEventListener('pointerdown',inspect);flow.addEventListener('wheel',input,{passive:true});flow.addEventListener('touchmove',input,{passive:true});flow.addEventListener('keydown',keys);
  const observer=new IntersectionObserver(entries=>{inView=entries[0].isIntersecting;if(inView)start();else{clear();restore();}},{threshold:.35});observer.observe(example);
  const visibility=()=>{if(document.hidden){clear();restore();}else start();};document.addEventListener('visibilitychange',visibility);
  const reduced=matchMedia('(prefers-reduced-motion:reduce)'),change=()=>{clear();restore();if(reduced.matches){phase(4);showPane('chat');}else start();};reduced.addEventListener('change',change);
- return()=>{alive=false;clear();restore();observer.disconnect();flow.removeEventListener('click',click);flow.removeEventListener('wheel',input);flow.removeEventListener('touchmove',input);flow.removeEventListener('keydown',keys);document.removeEventListener('visibilitychange',visibility);reduced.removeEventListener('change',change);};
+ return()=>{alive=false;clear();restore();observer.disconnect();flow.removeEventListener('click',click);flow.removeEventListener('pointerdown',inspect);flow.removeEventListener('wheel',input);flow.removeEventListener('touchmove',input);flow.removeEventListener('keydown',keys);document.removeEventListener('visibilitychange',visibility);reduced.removeEventListener('change',change);};
 }
 
 let exampleSequence=0;
@@ -71,15 +72,16 @@ function exampleSource(root,name){let views=exampleBanks.get(root);if(!views){vi
 function cloneExample(source){
  const holder=document.createElement('template');holder.innerHTML=source.html;
  const frame=holder.content.querySelector('.product-screen'),prefix='example-view-'+(++exampleSequence)+'-',ids=new Map();
+ if(source.view)frame.dataset.exampleView=source.view;
  for(const node of frame.querySelectorAll('[id]')){ids.set(node.id,prefix+node.id);node.id=prefix+node.id;}
  for(const node of frame.querySelectorAll('*'))for(const name of ['aria-labelledby','aria-describedby','aria-controls','href','fill','filter','clip-path','mask','style']){let value=node.getAttribute(name);if(!value)continue;for(const [old,next]of ids){if(name.startsWith('aria-'))value=value.split(' ').map(id=>id===old?next:id).join(' ');else value=value.replaceAll('#'+old,'#'+next);}node.setAttribute(name,value);}
  return frame;
 }
 function exampleViews(root,select,refreshMotion){
- const timers=new Set();
+ const timers=new Set(),moneyStages=new Map();
  const template=name=>exampleSource(root,name);
  const describe=(frame,name)=>{const source=template(name);if(!source)return;let caption=root.querySelector('.product-frame-caption');if(!caption){caption=root.querySelector('.product-example-feedback');if(!caption){caption=document.createElement('p');caption.className='product-example-feedback';root.append(caption);}}caption.textContent=source.copy||'Actual interface · Example data. No account changes or money moves.';};
- const show=(frame,name)=>{const source=template(name);if(!source)return;const choice=root.querySelector(`[data-product-choice="${name}"]`),panel=root.querySelector(`[data-product-panel="${name}"]`);if(choice&&panel){select(choice);frame=panel.querySelector('.product-screen');}if(frame?.dataset.exampleView!==name){const next=cloneExample(source);frame.replaceWith(next);frame=next;}describe(frame,name);refreshMotion();};
+ const show=(frame,name)=>{const current=frame?.querySelector('[data-daily-money]');if(current)moneyStages.set(current.dataset.dailyMoney,current.dataset.workflowPhase==='4'?'after':'before');const gallery=root.hasAttribute('data-daily-money-gallery'),story=gallery?root.querySelector('[data-product-choice][aria-pressed=true]')?.dataset.productChoice:root.dataset.productScenario;if(name==='messages'&&gallery)name=story||name;if(name==='account'&&story&&moneyStages.has(story)){const account=(gallery?story+':':'')+(moneyStages.get(story)==='after'?'account-after':'account');if(template(account))name=account;}const source=template(name);if(!source)return;const choice=root.querySelector(`[data-product-choice="${name}"]`),panel=root.querySelector(`[data-product-panel="${name}"]`);if(choice&&panel){select(choice);frame=panel.querySelector('.product-screen');}if(frame?.dataset.exampleView!==name){const next=cloneExample(source);frame.replaceWith(next);frame=next;}describe(frame,name);refreshMotion();};
  const click=event=>{const control=event.target.closest('[data-example-action]'),frame=control?.closest('.product-screen');if(!control||!frame||!root.contains(frame))return;event.preventDefault();event.stopPropagation();const action=control.dataset.exampleAction;
   if(action==='explain'){let notice=frame.querySelector('.product-local-feedback');if(!notice){notice=document.createElement('p');notice.className='product-example-feedback product-local-feedback';notice.setAttribute('role','status');(frame.querySelector('.sheet,[data-example-scroll]')||frame).append(notice);}notice.textContent=control.dataset.exampleFeedback==='Scan QR'?'Scan a payment QR to fill in its recipient and requested amount. This walkthrough uses an example request.':`${control.dataset.exampleFeedback||'This action'} · Explore the example here. Your real account stays separate.`;return;}
   if(action==='send-complete'){if(!frame.querySelector('[data-example-approve]')?.checked)return;control.disabled=true;control.textContent='Sending example payment…';frame.setAttribute('data-example-transition','');const timer=setTimeout(()=>{timers.delete(timer);if(frame.isConnected&&!frame.closest('[hidden]'))show(frame,'send-complete');},450);timers.add(timer);return;}

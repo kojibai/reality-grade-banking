@@ -1,3 +1,4 @@
+import {dailyMoneyStories} from '../src/content/daily-money-stories.mjs';
 import {productMoment} from './product-walkthrough.mjs';
 import {learnHeader} from './learn-template.mjs';
 import {siteFooterHtml} from './site-footer.mjs';
@@ -25,11 +26,11 @@ export function fitContent(fit){
  <section class="learn-shell business-hero fit-hero"><div class="business-intro"><a class="fit-back" href="/fit/">All ways to use Business ${arrow}</a><span class="fit-label">${esc(fit.label)}</span><h1>${esc(fit.headline)}</h1><p>${esc(fit.pain)}</p><a class="business-text-link" href="#your-work">See it in your work ${arrow}</a></div>${businessPriceCard(fit.benefits.map(([outcome])=>outcome))}</section>
  <section class="learn-shell fit-visual" aria-label="Business for ${esc(fit.label)}">${fitOutcomeScene(fit)}</section>
  <section id="your-work" class="learn-shell fit-story"><div><h2>Start with a real<br>money question.</h2><p>${esc(fit.scenario)}</p></div><div class="fit-question"><p>One useful place to begin</p><blockquote>“${esc(fit.question)}”</blockquote><span>Bring the context. Work through the answer. Keep the final say.</span></div></section>
+ ${productMoment({id:'fit-money-ui',example:fit.slug,title:esc(fit.headline),body:esc(dailyMoneyStories[fit.slug].outcomeLabel)+' Follow the original work, your instruction and the finished result in the same conversation.'})}
  <section class="learn-shell fit-outcomes"><h2>What gets easier around your money.</h2><div>${fit.benefits.map(([title,copy],index)=>`<article><span>0${index+1}</span><h3>${esc(title)}</h3><p>${esc(copy)}</p></article>`).join('')}</div></section>
  <section class="learn-shell business-workflow"><h2>Your first useful session.</h2><ol>${fit.steps.map((step,index)=>`<li><span aria-hidden="true">0${index+1}</span><p>${esc(step)}</p></li>`).join('')}</ol><p class="business-context-note">Work from the information and permissions you provide. Review generated material and consequential proposals before using their supported actions.</p></section>
  ${businessIncluded(fit.description)}${businessBanking()}${businessFaq()}
  <section class="learn-shell fit-related"><h2>More of your work?</h2><nav>${related.map(other=>`<a href="${fitPath(other)}">${esc(other.label)} ${arrow}</a>`).join('')}<a href="/fit/">Explore every fit ${arrow}</a><a href="/business/">The complete offer ${arrow}</a></nav></section>
- ${productMoment({id:'fit-money-ui',example:fit.slug,title:esc(fit.headline),body:'See how the money questions fit into your account. Ask naturally, work from available records and review the next step before a payment or message is sent.'})}
  <section class="learn-shell business-close fit-close"><h2>${esc(fit.benefits[0][0])}</h2>${businessCheckout()}<p>$149/month · Renews until cancelled.<br>Annual option: $1,499/year, renewing until cancelled.</p></section>
  </main>${businessMobileAction()}${siteFooterHtml(fitPath(fit))}`;
 }

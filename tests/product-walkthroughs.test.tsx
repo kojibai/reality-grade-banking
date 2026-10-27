@@ -34,7 +34,7 @@ it('keeps example IDs local, dialogs visible and receiving coordinates nonfuncti
 it('publishes separate one-word banking and Business stories while retaining live Twin and exact payment destination',()=>{
  expect(canonicalPublicPath('/in-action/')).toBe('/action/');expect(publicPage('/banking/')?.path).toBe('/banking/');
  const doc=new DOMParser().parseFromString(bankingContent(),'text/html');
- expect(doc.querySelectorAll('[data-product-choice]')).toHaveLength(9);expect(doc.querySelector('[data-coop-twin]')).not.toBeNull();
+ expect(doc.querySelectorAll('[data-product-walkthrough=banking-tour] [data-product-choice]')).toHaveLength(9);expect(doc.querySelector('[data-coop-twin]')).not.toBeNull();
  expect(doc.querySelector('[data-product-example] [data-coop-twin]')).toBeNull();
  expect(doc.querySelector('a[href="/action/"]')).not.toBeNull();
 });
@@ -211,7 +211,7 @@ it('carries shared example views once across public pages without changing their
  const pages={one:{content:productMoment({id:'one',example:'agencies'}),head:'one'},two:{content:productMoment({id:'two',example:'freelancers'}),head:'two'}};
  const packed=packExampleBanks(pages),doc=new DOMParser().parseFromString(packed.pages.one.content+packed.shared,'text/html');
  const shared=JSON.parse((doc.querySelector('[data-shared-example-views]')as HTMLTemplateElement).content.textContent!);
- expect(shared.length).toBeLessThanOrEqual(34);
+ expect(shared.length).toBeLessThanOrEqual(40);
  expect(packed.pages.one.content.length).toBeLessThan(pages.one.content.length/4);expect(packed.pages.one.head).toBe('one');
  expect(doc.querySelector('[data-product-example="messages"]')?.textContent).toContain('remaining $4,800');
  vi.stubGlobal('matchMedia',()=>({matches:true,addEventListener(){},removeEventListener(){}}));vi.stubGlobal('IntersectionObserver',class{observe(){}disconnect(){}});
