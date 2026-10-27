@@ -62,23 +62,31 @@ export function shareQuantityAtPulse(inventory:PublicShareInventory,pulse:number
  const history=inventory.history??[{kaiUPulse:inventory.observedAtKaiUPulse,outstandingShareQuantityMicro:inventory.outstandingShareQuantityMicro}];let quantity:string|null=null;
  for(const point of history){if(BigInt(point.kaiUPulse)>at)break;if(inventory.family==='native'||inventory.historyBasis==='recorded-transactions'||BigInt(point.kaiUPulse)===at)quantity=point.outstandingShareQuantityMicro;}return quantity;
 }
-export function publicShareCapitalization(catalog:PublicMarketCatalog|null){
+/** Select one current, compatible observation for each canonical asset. */
+export function publicCapitalizationAssets(catalog:PublicMarketCatalog|null){
  const groups=new Map<string,PublicMarketItem[]>();
  for(const item of catalog?.items??[]){const key=item.nativeAsset?'native:'+item.nativeAsset.id:'asset:'+item.assetId;const values=groups.get(key)??[];values.push(item);groups.set(key,values);}
- let total=0n,covered=0,shares=0n;
+ const selected:PublicMarketItem[]=[];
  for(const items of groups.values()){
-  const sports=items.find(item=>item.category==='sports');
-  if(sports){
-   const price=sports.priceUsd===null?null:Math.round(sports.priceUsd*100),copies=sports.circulationCount??1;
-   const cents=sports.capitalizationUsdCents??(price!==null&&Number.isSafeInteger(price)&&price>=0&&Number.isSafeInteger(copies)&&copies>=0?(BigInt(price)*BigInt(copies)).toString():null);
-   if(cents!==null&&uint(cents)){total+=BigInt(cents);covered++;}continue;
-  }
+  const sports=items.find(item=>item.category==='sports');if(sports){selected.push(sports);continue;}
   const candidates=items.filter(item=>item.shareInventory&&item.shareInventory.assetId===item.assetId&&item.shareInventory.marketItemId===item.id).sort((a,b)=>BigInt(a.shareInventory!.observedAtKaiUPulse)>BigInt(b.shareInventory!.observedAtKaiUPulse)?-1:1),item=candidates[0];
   if(!item||item.priceUsd===null||!Number.isSafeInteger(Math.round(item.priceUsd*100))||item.priceUsd<0)continue;
   if(candidates.some(other=>other.shareInventory!.observedAtKaiUPulse===item.shareInventory!.observedAtKaiUPulse&&(other.shareInventory!.outstandingShareQuantityMicro!==item.shareInventory!.outstandingShareQuantityMicro||other.shareInventory!.availableShareQuantityMicro!==item.shareInventory!.availableShareQuantityMicro)))continue;
-  const quantity=marketCapitalizationQuantity(item.shareInventory!);if(quantity===null)continue;total+=BigInt(shareCapitalizationUsdCents(String(Math.round(item.priceUsd*100)),quantity));shares+=BigInt(item.shareInventory!.outstandingShareQuantityMicro);covered++;
+  if(marketCapitalizationQuantity(item.shareInventory!)!==null)selected.push(item);
  }
- return{usdCents:total.toString(),outstandingShareQuantityMicro:shares.toString(),covered,listed:groups.size,complete:!!catalog?.complete&&covered===groups.size&&(!catalog?.items.some(item=>item.category==='sports')||catalog.sportsCoverage==='complete')};
+ return {items:selected,listed:groups.size};
+}
+export function publicShareCapitalization(catalog:PublicMarketCatalog|null){
+ const {items,listed}=publicCapitalizationAssets(catalog);let total=0n,covered=0,shares=0n;
+ for(const item of items){
+  if(item.category==='sports'){
+   const price=item.priceUsd===null?null:Math.round(item.priceUsd*100),copies=item.circulationCount??1;
+   const cents=item.capitalizationUsdCents??(price!==null&&Number.isSafeInteger(price)&&price>=0&&Number.isSafeInteger(copies)&&copies>=0?(BigInt(price)*BigInt(copies)).toString():null);
+   if(cents!==null&&uint(cents)){total+=BigInt(cents);covered++;}continue;
+  }
+  total+=BigInt(shareCapitalizationUsdCents(String(Math.round(item.priceUsd!*100)),marketCapitalizationQuantity(item.shareInventory!)!));shares+=BigInt(item.shareInventory!.outstandingShareQuantityMicro);covered++;
+ }
+ return{usdCents:total.toString(),outstandingShareQuantityMicro:shares.toString(),covered,listed,complete:!!catalog?.complete&&covered===listed&&(!catalog?.items.some(item=>item.category==='sports')||catalog.sportsCoverage==='complete')};
 }
 
 /** Keep accepted quantity observations when later public responses only carry a

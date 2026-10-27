@@ -59,3 +59,21 @@ export function shareCapitalizationPoints(points:readonly CapitalizationPoint[],
  }
  return merged.concat(samples.slice(sampleIndex));
 }
+
+/** The same release/capacity/supply tape used by the individual asset chart.
+ * A whole-pulse display samples an admitted subpulse event only after it occurs. */
+export function prepareShareCapitalizationAtPulse(inventory:PublicShareInventory){
+ const release=inventory.releaseCapitalization;
+ const history=inventory.family==='generic'?(release?[release,...(inventory.capitalizationHistory??[]).filter(point=>BigInt(point.kaiUPulse)>BigInt(release.kaiUPulse))]:inventory.capitalizationHistory??[]):inventory.history??[];
+ const coordinates=history.map(point=>BigInt(point.kaiUPulse)),observed=BigInt(inventory.observedAtKaiUPulse);
+ return (pulse:number,unitPriceUsdCents:string):string|null=>{
+  const coordinate=BigInt(pulse)*1000000n;let lo=0,hi=coordinates.length;
+  while(lo<hi){const mid=(lo+hi)>>>1;if(coordinates[mid]<=coordinate)lo=mid+1;else hi=mid;}
+  if(coordinate>observed){const quantity=marketCapitalizationQuantity(inventory);return quantity===null?null:shareCapitalizationUsdCents(unitPriceUsdCents,quantity);}
+  if(lo===0)return history.length&&coordinate<coordinates[0]?'0':null;
+  const point=history[lo-1];
+  if(inventory.family==='native')return shareCapitalizationUsdCents(unitPriceUsdCents,point.outstandingShareQuantityMicro);
+  const capacity=point as NonNullable<PublicShareInventory['capitalizationHistory']>[number];
+  return shareCapitalizationUsdCents(coordinate===coordinates[lo-1]?capacity.unitPriceUsdCents:unitPriceUsdCents,(BigInt(capacity.outstandingShareQuantityMicro)+BigInt(capacity.availableShareQuantityMicro)).toString());
+ };
+}

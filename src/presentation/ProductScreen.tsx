@@ -9,6 +9,7 @@ import {readLedgerDetails} from '../receiz/ledger-inspection';
 import {exampleAssets} from '../content/product-example-assets.mjs';
 import {Market} from '../features/market/Market';
 import {MarketOverviewView} from '../features/market/MarketOverview';
+import {publicShareCapitalization} from '../receiz/market-share-inventory';
 import {PublicAssetDetail} from '../features/market/PublicAssetDetail';
 import {parsePublicMarket} from '../receiz/public-market';
 import {LiveAssets} from '../features/assets/LiveAssets';
@@ -55,6 +56,8 @@ exampleCatalog.items=exampleAssets.map((asset,index)=>({...exampleCatalog.items[
 // Scripted demonstration supply only; never used by the live Market.
 for(const item of exampleCatalog.items)item.shareInventory={schema:'receiz.market.share-inventory.v1',marketItemId:item.id,assetId:item.assetId,family:'generic',quantityScope:'canonical-asset',observedAtKaiUPulse:'14800000000000',outstandingShareQuantityMicro:'1000000',availableShareQuantityMicro:'250000',positionsMicro:'1000000',certificatesMicro:'0',reservedBuyMicro:'0',availability:'quote-capacity',historyBasis:'observations'};
 exampleCatalog.sourceCount=exampleAssets.length;
+const exampleMarketCap=publicShareCapitalization(exampleCatalog);
+const exampleMarketPoints=['850000','1000000','1125000'].map((value,index)=>({at:`2026-10-${18+index}T12:00:00Z`,pulse:index+1,usdCents:(BigInt(exampleMarketCap.usdCents)*BigInt(value)/1125000n).toString()}));
 const exampleReview:WalletSendReview={schema:'bank.wallet-send-review.v1',ownerReceizId:'example.receiz.id',accountUid:'example-only',recipientUserId:'alex-example',recipientLabel:'Alex · Example',amountUsdCents:'12500',clientNonce:'example-not-a-payment',digest:'example-not-an-approval',note:'Design work',quote:{amountUsdCents:'12500',amountPhiMicro:'6250000',usdPerPhiMicrocents:'2000000000',settledUsdCents:'12500',ecosystemUsdCents:'0',fundingRule:'settled_first_then_phi'}};
 export const productScreenNames=['entry','account','deposit','receive','send','record','vault','messages','market','assets','ledger','identity','note-create','note-review','note-deposit','send-ownership','send-review','send-complete','receive-checkout','receive-embedded','counter','create-asset','deposit-asset','add-money','asset-detail',...exampleAssets.map(asset=>'asset-detail-'+asset.id)] as const;
 export type ProductScreenName=typeof productScreenNames[number];
@@ -70,7 +73,7 @@ export function ProductScreen({screen,example='overview',financialStage='before'
  const selectedExample=screen.startsWith('asset-detail-')?exampleCatalog.items.find(item=>item.id===screen.slice('asset-detail-'.length))??exampleCatalog.items[0]:exampleCatalog.items[0];
  switch(screen.startsWith('asset-detail-')?'asset-detail':screen){
  case 'asset-detail':source='ConsoleShell,Sheet,PublicAssetDetail';body=sheet('Your asset',<PublicAssetDetail item={selectedExample} onTrade={noop}/>);break;
- case 'market':source='ConsoleShell,Market,MarketOverview,PublicObjectRow';body=<Market overview={<MarketOverviewView catalog={exampleCatalog} period="ALL" onPeriodChange={noop} onExplore={noop} projection={{source:{currentUsd:11250,marketAssetsPriced:exampleAssets.length,cardsInCirculation:0,generatedAt:'2026-10-20T12:00:00Z'} as never,points:[{at:'2026-10-18T12:00:00Z',pulse:1,usdCents:'850000'},{at:'2026-10-19T12:00:00Z',pulse:2,usdCents:'1000000'},{at:'2026-10-20T12:00:00Z',pulse:3,usdCents:'1125000'}] as never,status:'live'}}/>} active={false} sourceActive={false} onAction={noop} source={{catalog:exampleCatalog,historyCatalog:exampleCatalog,status:'live',quoteStatus:'fresh',sportsStatus:'retained',error:null,refresh:async()=>{}} as never}/>;break;
+ case 'market':source='ConsoleShell,Market,MarketOverview,PublicObjectRow';body=<Market overview={<MarketOverviewView catalog={exampleCatalog} period="ALL" onPeriodChange={noop} onExplore={noop} projection={{source:{currentUsd:Number(exampleMarketCap.usdCents)/100,shareCapitalization:exampleMarketCap,marketAssetsPriced:exampleAssets.length,cardsInCirculation:0,generatedAt:'2026-10-20T12:00:00Z'} as never,points:exampleMarketPoints as never,status:'live'}}/>} active={false} sourceActive={false} onAction={noop} source={{catalog:exampleCatalog,historyCatalog:exampleCatalog,status:'live',quoteStatus:'fresh',sportsStatus:'retained',error:null,refresh:async()=>{}} as never}/>;break;
  case 'assets':source='ConsoleShell,LiveAssets,Investments,PublicObjectRow';body=<LiveAssets identity={identity} active={false} revision={0} showcase={exampleCatalog.items} source={{sources:[],error:'',busy:false}} onOpen={noop}/>;break;
  case 'ledger':source='ConsoleShell,Ledger,LedgerInspector';body=<Ledger active={false} initialTab="mine" personalHistory={{available:true,completeAtSealedHead:true,records:[{...record,accountFlow:'out'}]}}/>;break;
  case 'identity':source='ConsoleShell,Sheet,IdentityProfile';body=sheet('Your account',<IdentityProfile identity={identity} active={false} onForget={async()=>forbidden()} onRefresh={noop}/>);break;

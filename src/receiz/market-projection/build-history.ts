@@ -1,6 +1,6 @@
 import { CHART_PERIODS, type ChartPeriod } from '../../core/chart-history';
 import { marketPeriodPulses, marketPulseTime } from './project';
-import { marketCapSummary, marketHistoryBasis,marketHistoryMembership,retainMarketInterval,MARKET_HISTORY_POLICY, type CapitalizationPoint, type MarketHistorySnapshot } from './history';
+import { marketCapSummary, marketHistoryBasis,marketHistoryMembership,retainMarketInterval,MARKET_HISTORY_POLICY,SHARE_MARKET_HISTORY_POLICY, type CapitalizationPoint, type MarketHistorySnapshot } from './history';
 import type { MarketCapSource } from './source';
 import type{PublicMarketCatalog}from'../public-market';
 import{currentMarketDisplayModel}from'./catalog-source';
@@ -8,6 +8,7 @@ import {marketPulseAtOrAfterTime}from'./sealed-copies';
 import {mergeMarketCopyObservations}from'./copy-observations';
 import {sameSportsPricingOperands}from'./sports-observations';
 import {marketCapChartUsdAtPulse,prepareMarketChartProjection} from './interpolated-history';
+import {prepareGlobalShareCapitalization} from './global-share-capitalization';
 function significantEventPulses(source:MarketCapSource):{ranked:number[];observed:number[]}{
  const events=new Map<number,number>(),observed=new Set<number>(),add=(pulse:number,value:number)=>events.set(pulse,(events.get(pulse)??0)+Math.abs(value));
  for(const birth of source.unpricedSealedBirths??[])add(marketPulseAtOrAfterTime(birth.sealedAt),birth.birthUsdValue);
@@ -31,23 +32,28 @@ function significantEventPulses(source:MarketCapSource):{ranked:number[];observe
  return {ranked:[...events].sort((a,b)=>b[1]-a[1]||a[0]-b[0]).map(([pulse])=>pulse),observed:[...observed].sort((a,b)=>a-b)};
 }
 /** Run at build time or in the worker; never calculate these curves on the UI thread. */
-export async function buildMarketHistory(source: MarketCapSource, previous: MarketHistorySnapshot | null = null, continuing: () => boolean = () => true, yieldSample: () => Promise<void> = async () => {},current?:{catalog:PublicMarketCatalog|null;pulse:number}): Promise<MarketHistorySnapshot | null> {
+export async function buildMarketHistory(source: MarketCapSource, previous: MarketHistorySnapshot | null = null, continuing: () => boolean = () => true, yieldSample: () => Promise<void> = async () => {},current?:{catalog:PublicMarketCatalog|null;pulse:number;capitalization?:boolean}): Promise<MarketHistorySnapshot | null> {
   if(current)source=currentMarketDisplayModel(source,current.catalog,current.pulse,previous?.copyObservations);
   const mergedCopies=mergeMarketCopyObservations(source,previous?.copyObservations);source=mergedCopies.source;
-  const [basisSha256,membershipSha256] = await Promise.all([marketHistoryBasis(source),marketHistoryMembership(source)]);
+  const shares=current?.capitalization&&current.catalog?prepareGlobalShareCapitalization(source,current.catalog):null;
+  if(shares&&(!shares.coverage.covered||previous?.summary.shareCapitalization&&shares.coverage.listed>=previous.summary.shareCapitalization.listed&&shares.coverage.covered<previous.summary.shareCapitalization.covered))return null;
+  const policy=shares?SHARE_MARKET_HISTORY_POLICY:MARKET_HISTORY_POLICY;
+  if(shares)source={...source,currentUsd:Number(shares.coverage.usdCents)/100};
+  const summary=()=>({...marketCapSummary(source),...(shares?{shareCapitalization:shares.coverage}:{})});
+  const [basisSha256,membershipSha256] = await Promise.all([marketHistoryBasis(source,shares?.basis),marketHistoryMembership(source)]);
   if (!continuing()) return null;
-  const sameBasis = previous?.historyPolicy===MARKET_HISTORY_POLICY && previous?.basisSha256 === basisSha256 && previous.summary.serverPulse <= source.serverPulse;
-  const matchingMembership=previous?.historyPolicy===MARKET_HISTORY_POLICY&&previous?.membershipSha256===membershipSha256&&previous.summary.serverPulse<=source.serverPulse;
+  const sameBasis = previous?.historyPolicy===policy && previous?.basisSha256 === basisSha256 && previous.summary.serverPulse <= source.serverPulse;
+  const matchingMembership=previous?.historyPolicy===policy&&previous?.membershipSha256===membershipSha256&&previous.summary.serverPulse<=source.serverPulse;
   // A saved newer collection must survive while its matching operands load.
   // Identical operands can still advance locally without replacing that capture.
   if(previous&&Date.parse(source.generatedAt)<Date.parse(previous.summary.generatedAt)){
     if(!sameBasis)return null;
     source={...source,...previous.summary,serverPulse:source.serverPulse,currentUsd:source.currentUsd};
   }
-  if (sameBasis && previous.summary.serverPulse === source.serverPulse && previous.summary.currentUsd === source.currentUsd) return { ...previous, summary: marketCapSummary(source) };
+  if (sameBasis && previous.summary.serverPulse === source.serverPulse && previous.summary.currentUsd === source.currentUsd) return { ...previous, summary: summary() };
   const context=prepareMarketChartProjection(source),memo = new Map<number, CapitalizationPoint>(), series = {} as Record<ChartPeriod, CapitalizationPoint[]>;
   const discovered=significantEventPulses(source);
-  const events={ranked:discovered.ranked.filter(pulse=>pulse>=source.firstIssuancePulse&&pulse<=source.serverPulse),observed:discovered.observed.filter(pulse=>pulse>=source.firstIssuancePulse&&pulse<=source.serverPulse)};
+  const events={ranked:[...new Set([...discovered.ranked,...(shares?.events??[])])].filter(pulse=>pulse>=source.firstIssuancePulse&&pulse<=source.serverPulse),observed:[...new Set([...discovered.observed,...(shares?.events??[])])].filter(pulse=>pulse>=source.firstIssuancePulse&&pulse<=source.serverPulse).sort((a,b)=>a-b)};
   const eventPulses=[...events.ranked].sort((a,b)=>a-b),protectedPulses=new Set(eventPulses);
   if(eventPulses.length>100000)throw Error('Public market event coverage exceeds capacity.');
   const knownObservations=new Set(previous?.observationPulses??[]),newObservations=new Set(events.observed.filter(pulse=>!knownObservations.has(pulse)));
@@ -61,7 +67,7 @@ export async function buildMarketHistory(source: MarketCapSource, previous: Mark
   const point = async (pulse: number) => {
     if (!memo.has(pulse)) {
       const held=sameMembership&&!sameBasis&&pulse<replaceFrom&&pulse<=previous.summary.serverPulse?heldAt(pulse):undefined;
-      memo.set(pulse, { at: new Date(marketPulseTime(pulse)).toISOString(), pulse, usdCents:held?.usdCents??String(Math.round(marketCapChartUsdAtPulse(source, pulse,context) * 100)) });
+      memo.set(pulse, { at: new Date(marketPulseTime(pulse)).toISOString(), pulse, usdCents:held?.usdCents??shares?.at(pulse)??String(Math.round(marketCapChartUsdAtPulse(source, pulse,context) * 100)) });
       await yieldSample();
     }
     return memo.get(pulse)!;
@@ -72,7 +78,7 @@ export async function buildMarketHistory(source: MarketCapSource, previous: Mark
       const additions=events.ranked.filter(pulse=>(pulse>previous.summary.serverPulse||newObservations.has(pulse))&&pulse>pulses[0]&&pulse<source.serverPulse);
       const retained=new Map<number,CapitalizationPoint>();
       for(const prior of previous.series[period]){if(!continuing())return null;retained.set(prior.pulse,prior.pulse>=replaceFrom?await point(prior.pulse):prior);}
-      for(const pulse of additions){if(!continuing())return null;retained.set(pulse,await point(pulse));}
+      for(const pulse of new Set([...additions,...pulses.filter(pulse=>pulse>previous.summary.serverPulse)])){if(!continuing())return null;retained.set(pulse,await point(pulse));}
       series[period] = retainMarketInterval([...retained.values()].sort((a,b)=>a.pulse-b.pulse), await point(pulses[0]), await point(source.serverPulse),protectedPulses);
     }
     else {
@@ -82,5 +88,5 @@ export async function buildMarketHistory(source: MarketCapSource, previous: Mark
     }
     if (!continuing()) return null;
   }
-  return { schema: 'bank.public-market-history.v1',historyPolicy:MARKET_HISTORY_POLICY,eventPulses,basisSha256,membershipSha256,observationPulses:events.observed,copyObservations:mergedCopies.tape,summary: marketCapSummary(source), series };
+  return { schema: 'bank.public-market-history.v1',historyPolicy:policy,eventPulses,basisSha256,membershipSha256,observationPulses:events.observed,copyObservations:mergedCopies.tape,summary: summary(), series };
 }

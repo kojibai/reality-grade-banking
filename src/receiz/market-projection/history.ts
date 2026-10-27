@@ -7,10 +7,11 @@ import {publicSportsSealedBirths} from './sealed-copies';
 import {unpackMarketHistory} from './history-wire';
 export interface CapitalizationPoint { at: string; pulse: number; usdCents: string; }
 export const MARKET_HISTORY_POLICY='native-card-history-and-every-seal-v6' as const;
-export type MarketCapSummary = Omit<MarketCapSource, 'valueRows'> & {unpricedSealedBirthCount?:number};
+export const SHARE_MARKET_HISTORY_POLICY='share-capitalization-and-release-v1' as const;
+export type MarketCapSummary = Omit<MarketCapSource, 'valueRows'> & {unpricedSealedBirthCount?:number;shareCapitalization?:{usdCents:string;covered:number;listed:number;complete:boolean;outstandingShareQuantityMicro:string}};
 export interface MarketHistorySnapshot {
   schema: 'bank.public-market-history.v1';
-  historyPolicy?:'sealed-values-and-dated-observations-v1'|'sealed-births-and-dated-observations-v2'|'sealed-births-and-source-captures-v3'|'every-seal-and-source-capture-v4'|'sealed-entries-and-projected-growth-v5'|typeof MARKET_HISTORY_POLICY;
+  historyPolicy?:'sealed-values-and-dated-observations-v1'|'sealed-births-and-dated-observations-v2'|'sealed-births-and-source-captures-v3'|'every-seal-and-source-capture-v4'|'sealed-entries-and-projected-growth-v5'|typeof MARKET_HISTORY_POLICY|typeof SHARE_MARKET_HISTORY_POLICY;
   eventPulses?:number[];
   basisSha256: string;
   membershipSha256?:string;
@@ -20,8 +21,8 @@ export interface MarketHistorySnapshot {
   series: Record<ChartPeriod, CapitalizationPoint[]>;
 }
 /** Public chart retention is display data; this digest grants no proof authority. */
-export async function marketHistoryBasis(source: MarketCapSource): Promise<string> {
-  const bytes = new TextEncoder().encode(JSON.stringify({historyPolicy:MARKET_HISTORY_POLICY,first:source.firstIssuancePulse,aggregateObservation:source.undatedHistory??null,sportsHistorySnapshot:source.sportsHistorySnapshot??null,sportsHistoryEvaluationPulse:source.sportsHistoryEvaluationPulse??null,sourceEvaluation:source.sourceEvaluation??null,unpricedSealedBirths:source.unpricedSealedBirths??null,rows:source.valueRows}));
+export async function marketHistoryBasis(source: MarketCapSource,shareBasis?:unknown): Promise<string> {
+  const bytes = new TextEncoder().encode(JSON.stringify({historyPolicy:shareBasis===undefined?MARKET_HISTORY_POLICY:SHARE_MARKET_HISTORY_POLICY,...(shareBasis===undefined?{}:{shareBasis}),first:source.firstIssuancePulse,aggregateObservation:source.undatedHistory??null,sportsHistorySnapshot:source.sportsHistorySnapshot??null,sportsHistoryEvaluationPulse:source.sportsHistoryEvaluationPulse??null,sourceEvaluation:source.sourceEvaluation??null,unpricedSealedBirths:source.unpricedSealedBirths??null,rows:source.valueRows}));
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 /** Seal identity is stable when only a later valuation observation changes. */
@@ -46,9 +47,13 @@ export function parseMarketHistory(input: unknown): MarketHistorySnapshot {
   if(summary.unpricedSealedBirthCount!==undefined&&(!Number.isSafeInteger(summary.unpricedSealedBirthCount)||summary.unpricedSealedBirthCount<0||summary.unpricedSealedBirthCount>10000||summary.unpricedSealedBirths!==undefined&&summary.unpricedSealedBirths.length!==summary.unpricedSealedBirthCount))throw Error('Public market birth coverage count is invalid.');
   if(summary.undatedHistory?.unpricedCopies!==undefined&&summary.undatedHistory.unpricedCopies!==(summary.unpricedSealedBirthCount??summary.unpricedSealedBirths?.length??0))throw new Error('Public market unpriced coverage is invalid.');
   if(value.observationPulses!==undefined&&(!Array.isArray(value.observationPulses)||value.observationPulses.length>10000||value.observationPulses.some((pulse,index)=>!Number.isSafeInteger(pulse)||pulse<0||pulse>1e10||index>0&&pulse<=value.observationPulses![index-1])))throw new Error('Public market chart observation coordinates are invalid.');
-  if(value.membershipSha256!==undefined&&!/^[a-f0-9]{64}$/.test(value.membershipSha256)||value.historyPolicy!==undefined&&!['sealed-values-and-dated-observations-v1','sealed-births-and-dated-observations-v2','sealed-births-and-source-captures-v3','every-seal-and-source-capture-v4','sealed-entries-and-projected-growth-v5',MARKET_HISTORY_POLICY].includes(value.historyPolicy))throw new Error('Public market chart policy is invalid.');
+  if(value.membershipSha256!==undefined&&!/^[a-f0-9]{64}$/.test(value.membershipSha256)||value.historyPolicy!==undefined&&!['sealed-values-and-dated-observations-v1','sealed-births-and-dated-observations-v2','sealed-births-and-source-captures-v3','every-seal-and-source-capture-v4','sealed-entries-and-projected-growth-v5',MARKET_HISTORY_POLICY,SHARE_MARKET_HISTORY_POLICY].includes(value.historyPolicy))throw new Error('Public market chart policy is invalid.');
   if(value.copyObservations!==undefined&&!validMarketCopyObservationTape(value.copyObservations))throw new Error('Public market copy observations are invalid.');
-  if(value.eventPulses!==undefined&&(!Array.isArray(value.eventPulses)||value.eventPulses.length>100000||value.eventPulses.some((pulse,index)=>!Number.isSafeInteger(pulse)||pulse<summary.firstIssuancePulse||pulse>summary.serverPulse||index>0&&pulse<=value.eventPulses![index-1]))||value.historyPolicy===MARKET_HISTORY_POLICY&&!value.eventPulses)throw Error('Public market event coordinates are invalid.');
+  if(value.eventPulses!==undefined&&(!Array.isArray(value.eventPulses)||value.eventPulses.length>100000||value.eventPulses.some((pulse,index)=>!Number.isSafeInteger(pulse)||pulse<summary.firstIssuancePulse||pulse>summary.serverPulse||index>0&&pulse<=value.eventPulses![index-1]))||(value.historyPolicy===MARKET_HISTORY_POLICY||value.historyPolicy===SHARE_MARKET_HISTORY_POLICY)&&!value.eventPulses)throw Error('Public market event coordinates are invalid.');
+  if(value.historyPolicy===SHARE_MARKET_HISTORY_POLICY){
+    const cap=summary.shareCapitalization;
+    if(!cap||!/^(0|[1-9]\d{0,15})$/.test(cap.usdCents)||Number(cap.usdCents)!==Math.round(summary.currentUsd*100)||![cap.covered,cap.listed].every(n=>Number.isSafeInteger(n)&&n>=0)||cap.covered>cap.listed||typeof cap.complete!=='boolean'||cap.complete&&cap.covered!==cap.listed||!/^(0|[1-9]\d{0,38})$/.test(cap.outstandingShareQuantityMicro))throw Error('Public share capitalization summary is invalid.');
+  }else if(summary.shareCapitalization)throw Error('Public share capitalization policy is missing.');
   for (const period of CHART_PERIODS) {
     const points = value.series[period];
     if (!Array.isArray(points) || points.length < 1 || points.length > 96+(value.eventPulses?.length??0) || points[0].pulse !== marketPeriodPulses(summary, period)[0] || points.at(-1)!.pulse !== summary.serverPulse || points.at(-1)!.usdCents !== String(Math.round(summary.currentUsd * 100))) throw new Error('Public market chart interval is incomplete.');

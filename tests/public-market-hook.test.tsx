@@ -181,3 +181,12 @@ it('refreshes only share quotes immediately after a recorded trade, without redi
   expect(network.quotes.mock.calls.length).toBe(quotes+1);expect(network.quotes.mock.calls.at(-1)?.[1]).toBe(nonce);expect(network.membership.mock.calls).toHaveLength(before);expect(read().quoteStatus).toBe('fresh');
  });
 });
+it('enriches retained assets from shipped share observations while every live source is unavailable',async()=>{
+ const row={id:'a',receizId:'a',title:'A',valueUsd:10,pulse:'14700000'};
+ const old={...sourceInput(['a']),transport:{...sourceInput(['a']).transport,generatedAt:'2026-10-20T12:00:00Z',publicOriginals:[row]}};
+ const shipped={...old,transport:{...old.transport,generatedAt:'2026-10-19T12:00:00Z'},snapshot:{ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[{itemId:'a',visibility:'public',priceUsd:10,quoteUsdPerPhi:1,shareInventory:{schema:'receiz.market.share-inventory.v1',marketItemId:'a',assetId:'a',family:'generic',quantityScope:'canonical-asset',observedAtKaiUPulse:'14710000000000',outstandingShareQuantityMicro:'1000000',availableShareQuantityMicro:'2000000',positionsMicro:'1000000',certificatesMicro:'0',reservedBuyMicro:'0',availability:'quote-capacity'}}]}}};
+ localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(old));network.membership.mockRejectedValue(Error('unavailable'));network.quotes.mockRejectedValue(Error('unavailable'));
+ const fetch=vi.fn(async input=>input==='/receiz-public-market.json'?Response.json(shipped):new Response('',{status:503}));vi.stubGlobal('fetch',fetch);
+ let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket();return null;}
+ try{await act(async()=>root.render(<Probe/>));expect(state.catalog?.items[0].shareInventory?.outstandingShareQuantityMicro).toBe('1000000');expect(state.catalog?.items[0].shareInventory?.availableShareQuantityMicro).toBe('2000000');expect(fetch.mock.calls.filter(([path])=>path==='/receiz-public-market.json')).toHaveLength(1);}finally{act(()=>root.unmount());}
+});

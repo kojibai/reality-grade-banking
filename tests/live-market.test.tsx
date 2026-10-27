@@ -181,9 +181,9 @@ it.each(['market','explorer'] as const)('keeps %s healthy when carried valuation
 it('keeps the period caption steady through pulse jobs and gives history the stable source operands',()=>{
  const basis=catalog(1),priced={...basis,items:basis.items.map(item=>({...item,priceUsd:99,localValuationPulse:14720000}))};
  source.value={catalog:priced,historyCatalog:basis,status:'live',sportsStatus:'fresh',error:null,refresh:vi.fn()};
- capitalization.value={source:{currentUsd:12,marketAssetsPriced:1,cardsInCirculation:0,generatedAt:'2026-10-19T12:00:00Z'},points:[{pulse:1,at:'2026-10-18T12:00:00Z',usdCents:'1000'},{pulse:2,at:'2026-10-19T12:00:00Z',usdCents:'1200'}],status:'live',historyUpdating:false};
+ capitalization.value={source:{currentUsd:12,marketAssetsPriced:1,cardsInCirculation:0,shareCapitalization:{usdCents:'1200',covered:1,listed:1,complete:true,outstandingShareQuantityMicro:'1000000'},generatedAt:'2026-10-19T12:00:00Z'},points:[{pulse:1,at:'2026-10-18T12:00:00Z',usdCents:'1000'},{pulse:2,at:'2026-10-19T12:00:00Z',usdCents:'1200'}],status:'live',historyUpdating:false};
  const {host,root}=mount(),caption=host.querySelector('.chart-period-change span')!.textContent;
- expect(caption).toBe('Since first issuance · projected value');expect(capitalization.catalog).toBe(basis);expect(host.textContent).toContain('1 assets in circulation · 1 assets listed');
+ expect(caption).toBe('Since first issuance · market cap');expect(capitalization.catalog).toBe(basis);expect(host.textContent).toContain('1 assets in circulation · 1 assets listed');
  capitalization.value={...capitalization.value,historyUpdating:true};
  act(()=>root.render(<BankContext.Provider value={{state:createDemoState(),commit:vi.fn(),open:vi.fn(),close:vi.fn(),navigate:vi.fn(),saveRule:vi.fn(),updateIdentity:vi.fn(),resetDemo:vi.fn()}}><Market/></BankContext.Provider>));
  expect(host.querySelector('.chart-period-change span')!.textContent).toBe(caption);expect(host.textContent).not.toContain('retained chart');

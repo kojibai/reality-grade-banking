@@ -3,16 +3,16 @@ import{receizKaiNow}from'@receiz/sdk';
 import type { ChartPeriod } from '../../core/chart-history';
 import type{PublicMarketCatalog}from'../public-market';
 import {packMarketHistory} from './history-wire';
-import seedHistory from '../../../public/receiz-public-chart-history.json';
+import seedHistory from '../../../public/receiz-public-share-chart-history.json';
 import { type MarketCapSource } from './source';
-import { parseMarketHistory,MARKET_HISTORY_POLICY, type MarketHistorySnapshot } from './history';
+import { parseMarketHistory,SHARE_MARKET_HISTORY_POLICY, type MarketHistorySnapshot } from './history';
 import {readMarketDisplaySource,retainedMarketDisplaySource} from './display-source';
 export type { CapitalizationPoint } from './history';
-const KEY = 'receiz-bank-public-graph-history-v2';
+const KEY = 'receiz-bank-public-share-graph-history-v1';
 const shipped = parseMarketHistory(seedHistory);
 const now=()=>{try{return receizKaiNow().pulse;}catch{return 0;}};
 function restore(): MarketHistorySnapshot {
-  try { const cached = parseMarketHistory(JSON.parse(localStorage.getItem(KEY) ?? 'null')); if (cached.historyPolicy===MARKET_HISTORY_POLICY&&cached.summary.serverPulse >= shipped.summary.serverPulse) return cached; } catch { /* Only bounded public display data is retained. */ }
+  try { const cached = parseMarketHistory(JSON.parse(localStorage.getItem(KEY) ?? 'null')); if (cached.historyPolicy===SHARE_MARKET_HISTORY_POLICY&&cached.summary.serverPulse >= shipped.summary.serverPulse) return cached; } catch { /* Only bounded public display data is retained. */ }
   return shipped;
 }
 type WorkerInput={source:{ok:true;marketCapProjection:MarketCapSource};history:MarketHistorySnapshot;catalog:PublicMarketCatalog|null;pulse:number};
@@ -28,7 +28,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     // Structured cloning the whole retained collection blocks the UI thread.
     // This worker already owns its inputs and its last complete history.
     if(held?.source===source&&held.catalog===input.catalog)worker.current.postMessage({id,marketTick:true,pulse:input.pulse});
-    else{worker.current.postMessage({...input,history:heldHistory.current,id});workerInputs.current={source,catalog:input.catalog};}
+    else{worker.current.postMessage({...input,history:heldHistory.current,id,shareCapitalization:true});workerInputs.current={source,catalog:input.catalog};}
   },[]);
   useEffect(()=>{
     if(!active)return;
@@ -65,6 +65,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
       if(event.data.error)workerInputs.current=null;
       if(event.data.history)try{
         const next=parseMarketHistory(event.data.history);
+        if(next.historyPolicy!==SHARE_MARKET_HISTORY_POLICY)throw Error('Share capitalization publication required.');
         // Amount, inventory and every interval are one completed publication.
         heldHistory.current=next;setHistory(next);
         try{localStorage.setItem(KEY,JSON.stringify(packMarketHistory(next)));}catch{/* Optional public retention. */}

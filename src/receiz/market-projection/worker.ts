@@ -6,10 +6,10 @@ import type{PublicMarketCatalog}from'../public-market';
 import {buildProfileGrowth,type ProfileGrowthHistory,type ProfileGrowthRow} from './profile-growth';
 let investmentRows:InvestmentHistoryRow[]|null=null,investmentHistory:InvestmentHistory|null=null;
 let latest = 0, retained: MarketHistorySnapshot | null = null;
-let marketSource:MarketCapSource|null=null,marketCatalog:PublicMarketCatalog|null=null;
+let marketSource:MarketCapSource|null=null,marketCatalog:PublicMarketCatalog|null=null,shareCapitalization=false;
 // Publish only complete curves. Ordinary same-basis refreshes retain every
 // prior sample and calculate just the moving opening bounds and newest point.
-self.onmessage = async (event: MessageEvent<{ id: number; source?: unknown; history?: unknown; cancel?: boolean;catalog?:PublicMarketCatalog|null;pulse?:number;marketTick?:boolean;profileRows?:ProfileGrowthRow[];profileHistory?:ProfileGrowthHistory|null;investmentRows?:InvestmentHistoryRow[];investmentTick?:boolean }>) => {
+self.onmessage = async (event: MessageEvent<{ id: number; source?: unknown; history?: unknown; cancel?: boolean;catalog?:PublicMarketCatalog|null;pulse?:number;marketTick?:boolean;shareCapitalization?:boolean;profileRows?:ProfileGrowthRow[];profileHistory?:ProfileGrowthHistory|null;investmentRows?:InvestmentHistoryRow[];investmentTick?:boolean }>) => {
   const { id } = event.data; latest = id;
   if (event.data.cancel) return;
   try {
@@ -17,10 +17,11 @@ self.onmessage = async (event: MessageEvent<{ id: number; source?: unknown; hist
     if(event.data.profileRows){let samples=0;const growth=await buildProfileGrowth(event.data.profileRows,event.data.pulse!,event.data.profileHistory??null,()=>latest===id,async()=>{if(++samples%8===0)await new Promise(resolve=>setTimeout(resolve,0));});if(latest===id&&growth)self.postMessage({id,growth});return;}
     if(event.data.source)marketSource=null;
     if (event.data.history) retained = parseMarketHistory(event.data.history);
-    if(event.data.source){marketSource=parseMarketCapSource(event.data.source);marketCatalog=event.data.catalog??null;}
+    if(event.data.source){marketSource=parseMarketCapSource(event.data.source);marketCatalog=event.data.catalog??null;shareCapitalization=event.data.shareCapitalization===true;}
     else if(!event.data.marketTick)return;
     if(!marketSource)throw Error('Market inputs are unavailable.');
-    const next = await buildMarketHistory(marketSource, retained, () => latest === id, () => new Promise(resolve => setTimeout(resolve, 0)),event.data.pulse===undefined?undefined:{catalog:marketCatalog,pulse:event.data.pulse});
+    if(shareCapitalization&&!marketCatalog){self.postMessage({id,retained:true});return;}
+    const next = await buildMarketHistory(marketSource, retained, () => latest === id, () => new Promise(resolve => setTimeout(resolve, 0)),event.data.pulse===undefined?undefined:{catalog:marketCatalog,pulse:event.data.pulse,capitalization:shareCapitalization});
     if (latest !== id) return;
     // A newer retained capture is a completed job too. Without an ack the UI
     // keeps its queue busy forever and never dispatches newly arrived operands.

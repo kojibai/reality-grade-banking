@@ -1,4 +1,4 @@
-import {compatibleShareInventory} from './market-share-inventory';
+import {compatibleShareInventory,mergeShareInventory} from './market-share-inventory';
 import { useCallback, useEffect, useMemo, useRef, useState,type SetStateAction } from 'react';
 import {receizKaiNow} from '@receiz/sdk';
 import { fetchPublicSports, mergePublicSports,retainPublicSportsInput } from './public-sports';
@@ -85,7 +85,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
           const hint=hints.get(item.id);
           if(!hint||hint.assetId!==item.assetId||hint.pulse!==item.pulse||hint.originalDigest!==item.originalDigest||hint.verifyUrl!==item.verifyUrl)return item;
           const presented=item.mediaKind===undefined&&hint.mediaKind!==undefined?{...item,mediaKind:hint.mediaKind}:item;
-          return {...retainPublicArtwork(presented,hint),...(item.hasLongForm===undefined?{hasLongForm:hint.hasLongForm,readingUrl:hint.readingUrl}:{}),...(!item.livePulseSeed&&hint.livePulseSeed?{livePulseSeed:hint.livePulseSeed,valuationBinding:hint.valuationBinding}:{})};
+          return {...retainPublicArtwork(presented,hint),shareInventory:mergeShareInventory(compatibleShareInventory(item,item.shareInventory),compatibleShareInventory(item,hint.shareInventory)??null),...(item.hasLongForm===undefined?{hasLongForm:hint.hasLongForm,readingUrl:hint.readingUrl}:{}),...(!item.livePulseSeed&&hint.livePulseSeed?{livePulseSeed:hint.livePulseSeed,valuationBinding:hint.valuationBinding}:{})};
         })};
       });
     }).catch(() => {});

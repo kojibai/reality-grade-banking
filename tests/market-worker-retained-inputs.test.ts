@@ -36,3 +36,17 @@ it('replaces an established pricing source and retains only the completed replac
  const third=parseMarketHistory(replies.at(-1)!.history),full=(await buildMarketHistory(replacement,second,undefined,undefined,{catalog:null,pulse:14720002}))!;
  expect(third).toEqual(full);expect(third.summary.serverPulse).toBe(14720002);
 });
+it('publishes one share-cap total and all intervals from retained worker operands without another source read',async()=>{
+ const seed=source.valueRows[0].marketItem!.livePulseSeed!;
+ const catalog={items:[{id:'retained-object',assetId:'retained-object',category:'proof',pulse:String(seed.claimPulse),priceUsd:100,livePulseSeed:seed,valuationBinding:{itemId:'retained-object',assetId:'retained-object'},shareInventory:{schema:'receiz.market.share-inventory.v1',marketItemId:'retained-object',assetId:'retained-object',family:'generic',quantityScope:'canonical-asset',observedAtKaiUPulse:'14719900000000',outstandingShareQuantityMicro:'1000000',availableShareQuantityMicro:'49000000',positionsMicro:'1000000',certificatesMicro:'0',reservedBuyMicro:'0',availability:'quote-capacity',releaseCapitalization:{kaiUPulse:'14719900000000',unitPriceUsdCents:'100',outstandingShareQuantityMicro:'0',availableShareQuantityMicro:'50000000',modelVersion:'market-share-quote-v1'}}}],complete:true,revision:'held',observedAt:source.generatedAt,sourceCount:1} as import('../src/receiz/public-market').PublicMarketCatalog;
+ await host.onmessage!({data:{id:1,source:{ok:true,marketCapProjection:source},catalog,pulse:14720000,shareCapitalization:true}});
+ const first=parseMarketHistory(replies.at(-1)!.history);expect(first.summary.shareCapitalization?.covered).toBe(1);
+ await host.onmessage!({data:{id:2,marketTick:true,pulse:14720001}});
+ const next=parseMarketHistory(replies.at(-1)!.history);
+ for(const points of Object.values(next.series))expect(points.at(-1)?.usdCents).toBe(next.summary.shareCapitalization?.usdCents);
+ const full=await buildMarketHistory(source,first,undefined,undefined,{catalog,pulse:14720001,capitalization:true});expect(next).toEqual(full);
+});
+it('retains the prepared share-cap publication while membership has not arrived instead of publishing unit values',async()=>{
+ await host.onmessage!({data:{id:1,source:{ok:true,marketCapProjection:source},catalog:null,pulse:14720000,shareCapitalization:true}});
+ expect(replies).toEqual([{id:1,retained:true}]);
+});
