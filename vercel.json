@@ -22,6 +22,10 @@
     },
     "api/cooperatives.ts": {
       "maxDuration": 120
+    },
+    "api/book.ts": {
+      "maxDuration": 30,
+      "includeFiles": "{dist/book/index.html,server/booking-runtime/**,scripts/social/fonts/*.ttf}"
     }
   },
   "redirects": [
@@ -44,6 +48,32 @@
     {
       "source": "/shares/:noteToken",
       "destination": "/explore/index.html"
+    },
+    {
+      "source": "/book/:username/og.png",
+      "destination": "/api/book?username=:username&image=1"
+    },
+    {
+      "source": "/book/:username/",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(?:[Bb]ot|[Cc]rawler|[Ss]pider|[Ss]lurp|facebookexternalhit|[Ww]hats[Aa]pp|Telegram|Discord|Slack|LinkedIn|[Ii][Mm]essage|[Ll]ink[Pp]resentation|[Ff]acebot).*"
+        }
+      ],
+      "destination": "/api/book?username=:username"
+    },
+    {
+      "source": "/book/:username",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(?:[Bb]ot|[Cc]rawler|[Ss]pider|[Ss]lurp|facebookexternalhit|[Ww]hats[Aa]pp|Telegram|Discord|Slack|LinkedIn|[Ii][Mm]essage|[Ll]ink[Pp]resentation|[Ff]acebot).*"
+        }
+      ],
+      "destination": "/api/book?username=:username"
     },
     {
       "source": "/book/:username/",

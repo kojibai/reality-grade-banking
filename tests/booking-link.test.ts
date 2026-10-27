@@ -7,5 +7,5 @@ it('uses a Bankeiz URL and carries only the existing public scheduling overrides
 });
 it('routes both generated and manually typed booking URLs directly to the same built page',async()=>{
  const {readFile}=await import('node:fs/promises'),config=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url),'utf8'));
- for(const source of ['/book/:username/','/book/:username'])expect(config.rewrites.find((route:{source:string})=>route.source===source)?.destination).toBe('/book/index.html');
+ for(const source of ['/book/:username/','/book/:username'])expect(config.rewrites.find((route:{source:string;has?:unknown[]})=>route.source===source&&!route.has)?.destination).toBe('/book/index.html');
 });

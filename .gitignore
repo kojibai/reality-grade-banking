@@ -23,3 +23,5 @@ test-results/
 /docs-dist/
 
 /server/profile-runtime/share-history/
+
+/server/booking-runtime/*.mjs
