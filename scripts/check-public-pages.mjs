@@ -50,7 +50,7 @@ const sharedExamplePattern=/<template data-shared-example-views>[^<]*<\/template
 const sharedExampleBank=html.match(sharedExamplePattern);
 assert.equal(sharedExampleBank?.length,1,'The carried walkthrough destinations exist once in the initial document');
 const navigation = structuredClone(carriedNavigation);
-for(const page of [...Object.values(navigation.pages),navigation.bank])if(Array.isArray(page.head))page.head=page.head.map(part=>typeof part==='number'?navigation.styles[part]:part).join('');
+for(const page of [...Object.values(navigation.pages),navigation.bank])for(const field of ['head','content'])if(Array.isArray(page[field]))page[field]=page[field].map(part=>typeof part==='number'?navigation.styles[part]:part).join('');
 assert.ok(navigation.pages['/explore/'].head.includes('.ledger-proof-details')&&navigation.pages['/explore/'].head.includes('.ledger-proof-actions'),'Retained public asset navigation carries evidence styles before the lazy reader opens');
 assert.ok(navigation.bank.content.includes('class="account-opening-geometry"'),'Cold Bank navigation carries its actual opening artwork');
 for(const url of navigation.bank.styles)assert.equal(navigation.bank.css[url],await readFile('dist'+url,'utf8'),'Cold Bank navigation carries the exact emitted CSS');

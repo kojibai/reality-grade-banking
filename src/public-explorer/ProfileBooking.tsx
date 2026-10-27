@@ -1,4 +1,5 @@
 import {Sheet} from '../components/Sheet';
+import {InlineOpening} from '../components/InlineOpening';
 import {BookingIntro} from '../features/booking/BookingIntro';
 import type {BookingAvailability} from '../receiz/organizer-types';
 import {createPublicBooking} from '../receiz/public-booking';
@@ -13,6 +14,6 @@ export function ProfileBooking({userId,username,owner,active,onClose}:{userId:st
  const service=useMemo(()=>createPublicBooking({username,request:(path,init)=>nativeFetch('https://receiz.com'+path,init)}),[userId,username]);
  const [opening,setOpening]=useState<Promise<BookingAvailability>|null>(null);
  useEffect(()=>{const read=service.availability();void read.catch(()=>{});setOpening(read);},[service]);
- const frame=<section className="booking-panel" aria-busy="true"><section className="booking-card bank-organizer" aria-label="Book an appointment"><div className="organizer-scroll"><BookingIntro owner={owner}/></div></section></section>;
- return <Sheet active={active} title="Book a time" navigation="back" onClose={onClose}>{opening?<Suspense fallback={frame}><BookingEditor service={service} opening={opening} owner={owner} embedded/></Suspense>:frame}</Sheet>;
+ const frame=<section className="booking-panel" aria-busy="true"><section className="booking-card bank-organizer" aria-label="Book an appointment"><div className="organizer-scroll"><BookingIntro owner={owner}/><InlineOpening label="Preparing this calendar"/></div></section></section>;
+ return <Sheet className="profile-booking-sheet" active={active} title="Book a time" navigation="back" onClose={onClose}>{opening?<Suspense fallback={frame}><BookingEditor service={service} opening={opening} owner={owner} embedded/></Suspense>:frame}</Sheet>;
 }

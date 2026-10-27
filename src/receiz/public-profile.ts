@@ -74,7 +74,7 @@ export function publicProfilePageError(username:string):string{
 export function retainedPublicProfile(username:string):PublicProfile|null{
  const previous=held.get(username);if(previous)return previous;
  if(typeof document==='undefined')return null;
- try{const value=JSON.parse(document.getElementById('public-profile-seed')?.textContent??'null');if(value?.schema==='bankeiz.public-profile.v1'&&value.username===username&&typeof value.userId==='string'&&Array.isArray(value.items)){retainPublicProfile(value);return value;}}catch{/* No carried public page. */}return null;
+ try{const seed=document.getElementById('public-profile-seed'),value=JSON.parse(seed?.textContent??'null');if(value?.schema==='bankeiz.public-profile.v1'&&value.username===username&&typeof value.userId==='string'&&Array.isArray(value.items)){const retained=retainPublicProfile(value);if(seed){seed.textContent='';seed.remove();}return retained;}}catch{/* No carried public page. */}return null;
 }
 const reads=new Map<string,Promise<PublicProfile>>();
 export function fetchPublicProfile(username:string,cursor?:string,priority:RequestPriority='auto'):Promise<PublicProfile>{

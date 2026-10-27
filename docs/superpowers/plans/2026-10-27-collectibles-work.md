@@ -374,3 +374,55 @@ timeout changes. After the concurrent balance-disclosure commit 64edd45, its
 changed tests plus all booking regressions passed together: 148 tests, 22 files.
 The combined candidate passed the complete production build, strict typecheck,
 source archive, public-page, offline-shell and licensing gates.
+
+## Booking layout and shared public bootstrap follow-up
+
+The user reproduced remaining hesitation in both Safari and Instagram, more
+noticeably in Instagram. Vercel inspection confirmed production was serving
+8a4e56a; this was not assumed to be a stale deployment. Actual iPhone Instagram
+execution is not available to this browser harness and is not claimed verified.
+
+The pending intro and full editor used an auto-sized dialog, so first open
+resized visibly. Booking now has one viewport-bounded height for pending,
+time selection and guest details, using the stable small viewport height.
+Intro typography is available with the existing small booking stylesheet,
+before optional organizer styles arrive. No extra wrapper or animation is added.
+Back reset the non-scrolling sheet body; the actual dialog was the scroller.
+It now resets that same dialog. Selecting a time reveals Continue with native
+nearest scrolling, without moving focus, reading the source again or waiting.
+
+The live public document captured 15,850,304 uncompressed bytes. Its carried
+navigation used 9,939,283 serialized bytes; the profile seed used 2,456,221.
+After parsing, those serialized DOM copies were still retained as well as the
+parsed data. The profile now releases its adopted seed; navigation clears its
+text but preserves the EMPTY router marker required by Receipt Back. Repeated
+initialization safely ignores that marker. This is not clearing proof objects,
+account data or the retained public catalog.
+
+Build-time interning shares repeated public HTML tokens through the existing
+style/markup table. Runtime expands and retains only a visited destination's
+exact head/body. All 148 captured destinations reproduce exactly; aliases,
+retained workspace DOM, data and requests are unchanged. The captured document
+falls to about 12.42 MB before transfer compression, about 22% less. This is an
+HTML/JSON size saving, not a measured 22% bandwidth or iPhone load-time claim.
+The existing shared public runtime gzip budget remains below 15,000 bytes.
+
+The full initial candidate and subsequent shared-table candidate each passed
+3,963 tests in 640 files; the production build, offline shell, complete source,
+licensing and public navigation gates passed. Review caught the Receipt Back
+marker dependency before commit; the empty-marker correction has focused
+navigation/retained-account coverage and no remaining review findings. Final
+build/browser checks include the user-requested Continue reveal.
+
+The final direct browser loop observed a 660 px dialog before the first offered
+times arrived, after they arrived, in guest details, after Back, and after
+close/reopen. The chosen time remained selected and Continue was visible after
+selection. No appointment was submitted. The existing inline indicator appears
+only during a real initial wait; it has no minimum-duration timer, fetch or
+retained-calendar overlay. An earlier temporary preview mixed its working
+directory and asset root; that harness was corrected before this direct loop.
+
+Follow-up request retained separately: replace text Insights entry with a quiet
+icon; public visitors receive the existing public Insights, while owners get a
+deeper chart dashboard using their existing permitted analytics. No new private
+analytics capability or dashboard is represented as finished in this fix.

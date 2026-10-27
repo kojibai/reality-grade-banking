@@ -26,6 +26,7 @@ it('opens the actual booking frame on the first tap and reads offered times whil
   expect(request).toHaveBeenCalledOnce();
   await act(async()=>{gate.ready();});
   await vi.waitFor(()=>expect(host.querySelector('[data-slot-start]')).not.toBeNull());
+  expect(host.querySelector('.booking-panel [role="status"]')).toBeNull();
   expect(request).toHaveBeenCalledOnce();
  }finally{gate.ready();act(()=>root.unmount());host.remove();}
 });
@@ -40,9 +41,11 @@ it('keeps the same profile frame while the first offered times are still in flig
   expect(host.querySelector('.booking-panel')?.textContent??'').toContain('Alex Morgan');
   expect(host.querySelector('.booking-panel')?.textContent??'').toContain('Good things start');
   expect(host.querySelector('.booking-panel')?.textContent??'').not.toMatch(/Opening|Preparing/);
+  expect(host.querySelector('.booking-panel [role="status"]')?.getAttribute('aria-label')).toBe('Preparing this calendar');
   expect(host.querySelector('[data-slot-start]')).toBeNull();expect(request).toHaveBeenCalledOnce();
   await act(async()=>resolve(Response.json({ok:false},{status:503})));
   await vi.waitFor(()=>expect(host.querySelector('[role="alert"]')?.textContent).toContain('temporarily unavailable'));
+  expect(host.querySelector('.booking-panel [role="status"]')).toBeNull();
   expect(request).toHaveBeenCalledOnce();
  }finally{act(()=>root.unmount());host.remove();}
 });
