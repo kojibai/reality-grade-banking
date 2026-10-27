@@ -8,14 +8,17 @@ const uint=(value:string)=>{if(!/^(0|[1-9]\d{0,29})$/.test(value))throw Error('A
 /** Existing wallet rate: the v129 policy, empty cashflow metadata, $100 quote,
  * no streak/lifetime/hold. Explicit past Kai only; no clock or network read.
  * This is reproducible display math, never a recorded quote or credit source. */
-export function historicalWalletUsdRate(kaiUPulse:string):string{
+export type WalletRateCalculation=Readonly<{kaiUPulse:string;nowPulse:number;quoteInputs:{meta:{ip:{expectedCashflowPhi:never[]}};usd:number;currentStreakDays:number;lifetimeUsdSoFar:number;plannedHoldBeats:number};quote:ReturnType<typeof quotePhiForUsd>;fixedUsdPerPhi:string;usdPerPhiMicrocents:string}>;
+export function historicalWalletUsdRate(kaiUPulse:string,observe?:(value:WalletRateCalculation)=>void):string{
  const whole=uint(kaiUPulse)/1_000_000n;
  if(whole>BigInt(Number.MAX_SAFE_INTEGER))throw Error('ACCOUNT_HISTORY_COORDINATE_INVALID');
  const quote=quotePhiForUsd({meta:{ip:{expectedCashflowPhi:[]}},nowPulse:Number(whole),usd:100,currentStreakDays:0,lifetimeUsdSoFar:0,plannedHoldBeats:0},DEFAULT_ISSUANCE_POLICY);
  if(!Number.isFinite(quote.usdPerPhi)||quote.usdPerPhi<=0)throw Error('ACCOUNT_HISTORY_RATE_UNAVAILABLE');
  const fixed=quote.usdPerPhi.toFixed(8);
  if(!/^\d+\.\d{8}$/.test(fixed))throw Error('ACCOUNT_HISTORY_RATE_UNAVAILABLE');
- return BigInt(fixed.replace('.','')).toString();
+ const result=BigInt(fixed.replace('.','')).toString();
+ observe?.({kaiUPulse,nowPulse:Number(whole),quoteInputs:{meta:{ip:{expectedCashflowPhi:[]}},usd:100,currentStreakDays:0,lifetimeUsdSoFar:0,plannedHoldBeats:0},quote,fixedUsdPerPhi:fixed,usdPerPhiMicrocents:result});
+ return result;
 }
 type Holding={kai:bigint;reserve:bigint;phi:bigint};
 export type WalletHistoryMovement=Pick<AccountProofTransaction,'kaiUPulse'|'reserveDeltaUsdCents'|'settlementDeltaPhiMicro'>;

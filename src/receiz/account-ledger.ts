@@ -1,3 +1,4 @@
+import {rememberNativeBalanceCalculation} from './balance-calculation-observation';
 import type { ReceizIdentityPublicBinding } from '@receiz/sdk';
 import { heldAccountProofBytes, isVerifiedAccountProof, verifyAccountProof, type VerifiedAccountProof } from './account-proof';
 import { verifyAccountProofContinuation } from './account-proof-public';
@@ -53,8 +54,9 @@ export async function accountLedgerObservation(proof: VerifiedAccountProof, acco
   const lastEntryKaiUPulse = financial.length ? financial.reduce((head, row) => BigInt(row.kaiUPulse) > head ? BigInt(row.kaiUPulse) : head, 0n).toString() : c.kaiUPulse;
   const settlement = c.settlementPhiMicro === '0' ? '0' : sdk.quoteReceizDisplayUsdV122(c.settlementPhiMicro, c.usdPerPhiMicrocents!);
   const wallet = {
-    userId: accountUid, totalUsdCents: (BigInt(c.reserveUsdCents) + BigInt(settlement)).toString(),
+    userId: accountUid,balanceSourceSha256:proof.sourceDigest, totalUsdCents: (BigInt(c.reserveUsdCents) + BigInt(settlement)).toString(),
     reserveUsdCents: c.reserveUsdCents, settlementUsdCents: settlement, balancePhiMicro: c.balancePhiMicro!,
+    settlementPhiMicro:c.settlementPhiMicro,reservePhiMicro:(BigInt(c.balancePhiMicro!)-BigInt(c.settlementPhiMicro)).toString(),
     portfolioUsdCents: null, pnlUsdCents: null, withdrawableUsdCents: null, projectionComplete: true,
     pulse: (BigInt(lastEntryKaiUPulse) / 1_000_000n).toString(), kaiUpulse: lastEntryKaiUPulse,
   };
@@ -63,7 +65,8 @@ export async function accountLedgerObservation(proof: VerifiedAccountProof, acco
   // exact checkpoint quote and wallet remain unchanged and win at its endpoint.
   const separate = proof.statement.components;
   const excludesAggregate = separate && (BigInt(separate.artifactIntrinsicPhiMicro) > 0n || separate.lawfulValues.some(value=>BigInt(value.settlementPhiMicro)>0n));
-  return { wallet, observedAt, walletScope: excludesAggregate ? 'native-cash-only' : 'native-full', history: appendWalletPoint(history, wallet, walletPointTime(c.kaiUPulse), c.kaiUPulse), historyBasis: { schema: 'bank.account-history-display.v1', startKaiUPulse: history[0]?.kaiUPulse ?? c.kaiUPulse, endKaiUPulse: c.kaiUPulse, settlementPhiMicro: c.settlementPhiMicro, balancePhiMicro: c.balancePhiMicro!, reserveUsdCents: c.reserveUsdCents } };
+  const observation:WalletObservation={ wallet, observedAt, walletScope: excludesAggregate ? 'native-cash-only' : 'native-full', history: appendWalletPoint(history, wallet, walletPointTime(c.kaiUPulse), c.kaiUPulse), historyBasis: { schema: 'bank.account-history-display.v1', startKaiUPulse: history[0]?.kaiUPulse ?? c.kaiUPulse, endKaiUPulse: c.kaiUPulse, settlementPhiMicro: c.settlementPhiMicro, balancePhiMicro: c.balancePhiMicro!, reserveUsdCents: c.reserveUsdCents } };
+  rememberNativeBalanceCalculation(observation,{kind:'native',userId:accountUid,kaiUPulse:c.kaiUPulse,source:'verified-account-checkpoint',sourceDigest:proof.sourceDigest,statement:{checkpoint:proof.statement.checkpoint,transactions:proof.statement.transactions,sourceFrontier:proof.statement.sourceFrontier,components:proof.statement.components},reserveUsdCents:c.reserveUsdCents,settlementPhiMicro:c.settlementPhiMicro,balancePhiMicro:c.balancePhiMicro!,rateMicrocents:c.usdPerPhiMicrocents!,output:wallet});return observation;
 }
 
 /** Encrypted storage beneath canonical verification. The host account alias is

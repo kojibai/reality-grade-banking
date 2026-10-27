@@ -1,3 +1,4 @@
+import {currentWalletObservation,advanceCurrentWalletObservation} from './current-wallet-valuation';
 import {isPeopleSearchQuery} from './people-search.js';
 import {permittedTwinConversationRead} from './twin-conversations';
 import {withDeviceIdentityEntry} from './device-identity-entry';
@@ -27,7 +28,7 @@ import { projectHeldDeposit, validateAssetIntake, type AssetIntake, type HeldDep
 import { protectIdentityKeyFile, unprotectIdentityKeyFile } from './identity-protection';
 import type { ProtectedIdentityTransport } from './identity-vault';
 import { identityNeedsPhrase } from './identity-lock';
-import { parseSharedWallet } from './shared-wallet';
+import { parseSharedWallet, projectUnchangedWalletPhiSplit } from './shared-wallet';
 import { physicalDeliveryInstructions } from './custody-delivery';
 import { BANK_NATIVE_OPERATIONS, summarizeNativeBankReadiness, type BankNativeReadiness } from './bank-native-readiness';
 import { BankConnectionError } from './bank-connection-error';
@@ -46,7 +47,7 @@ import {loadBankProofResources} from './proof-resource-continuity';
 import {readLocalAccountCheckpoint} from './local-account-checkpoint';
 import {BANK_PREPARED_NOTE_CREDIT_ENABLED} from './config';
 import { readNoteAccountObservation } from './note-account-observation';
-import {readCompositeWalletSource,compositeWalletEndpointMatches,advanceCompositeWalletObservation,mergeCompositeWalletSources,reconcileCompositeWalletObservation,validCursor} from './composite-wallet-source';
+import {canAdvanceCompositeWalletSource,readCompositeWalletSource,compositeWalletEndpointMatches,advanceCompositeWalletObservation,mergeCompositeWalletSources,reconcileCompositeWalletObservation,validCursor} from './composite-wallet-source';
 import { hasSettledAccountView } from './account-view';
 import {createLocalNoteInventory,createLocalNoteDepositQueue} from './note-local-inventory';
 import {loadReceivedNoteDepositState,saveReceivedNoteDepositState} from './identity-vault';
@@ -666,7 +667,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const originalPoint=projectCompositeWalletAt(source,source.throughKaiUPulse);
     if(!compositeWalletEndpointMatches(source,wallet,originalPoint))return null;
     const now=String(sdk.receizKaiNow().uPulse);
-    if(/^\d{1,30}$/.test(now)&&BigInt(now)>BigInt(source.throughKaiUPulse)){source={...source,throughKaiUPulse:now};const point=projectCompositeWalletAt(source,now);Object.assign(wallet,{totalUsdCents:point.totalUsdCents,settlementUsdCents:point.settlementUsdCents,reserveUsdCents:point.reserveUsdCents,balancePhiMicro:point.balancePhiMicro??wallet.balancePhiMicro});}
+    if(canAdvanceCompositeWalletSource(source)&&/^\d{1,30}$/.test(now)&&BigInt(now)>BigInt(source.throughKaiUPulse)){source={...source,throughKaiUPulse:now};const point=projectCompositeWalletAt(source,now);const projected={...wallet,totalUsdCents:point.totalUsdCents,settlementUsdCents:point.settlementUsdCents,reserveUsdCents:point.reserveUsdCents,balancePhiMicro:point.balancePhiMicro??wallet.balancePhiMicro};Object.assign(wallet,projected,projectUnchangedWalletPhiSplit(wallet,projected));}
     const observation=await prepareCompositeWallet({wallet,observedAt:new Date().toISOString()},source,lifetime.signal,retained);noteOpen();
     if(protectedChartFrame())return null;
     return observation ? advanceCompositeWalletObservation(observation,String(sdk.receizKaiNow().uPulse)) ?? observation : null;
@@ -732,6 +733,9 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       && /^\d{1,30}$/.test(wallet.kaiUpulse) && /^\d{1,30}$/.test(knownWallet.wallet.kaiUpulse)
       && BigInt(wallet.kaiUpulse) < BigInt(knownWallet.wallet.kaiUpulse);
     if ((hasLocalWalletHead() || olderSharedCoordinate() || startedRevision !== walletRevision && !laterSharedCoordinate()) && knownWallet) return knownWallet.wallet;
+    const candidateKai=wallet.currentBalanceSource?String(sdk.receizKaiNow().uPulse):undefined;
+    const currentCandidate=candidateKai?currentWalletObservation(wallet,knownWallet,candidateKai):null;
+    if(wallet.currentBalanceSource&&knownWallet?.historyBasis?.kind==='current-valuation-v129'&&!currentCandidate)return knownWallet.wallet;
     if (publishBeforeChart && !lifetime.signal.aborted) {
       // The authenticated absolute balance is already admitted. A chart worker
       // enriches its presentation; it must not hold a retained payment open.
@@ -740,7 +744,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       const retained=previous&&reconcileCompositeWalletObservation(previous,wallet,
         typeof projectedPulse==='number'&&Number.isSafeInteger(projectedPulse)&&projectedPulse>=0?String(BigInt(projectedPulse)*1000000n)
         :previous.chartSource?.composition==='account-only'&&sameWalletFinancialState(previous.wallet,wallet)?previous.historyBasis?.endKaiUPulse??'': '');
-      const published=retained??{...extendWalletHistory(previous,wallet,new Date().toISOString(),String(sdk.receizKaiNow().uPulse)),...(previous?.chartSource?{chartSource:previous.chartSource}:{})};
+      const published=retained??currentCandidate??{...extendWalletHistory(previous,wallet,new Date().toISOString(),candidateKai??String(sdk.receizKaiNow().uPulse)),...(previous?.chartSource?{chartSource:previous.chartSource}:{})};
       knownWallet=published;void persistWalletObservation(published).catch(()=>{});
       if(typeof dispatchEvent==='function')dispatchEvent(new Event('bankeiz:account-observation'));
       setTimeout(()=>{void (async()=>{
@@ -763,11 +767,11 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       const retained=previous&&reconcileCompositeWalletObservation(previous,wallet,
         typeof projectedPulse==='number'&&Number.isSafeInteger(projectedPulse)&&projectedPulse>=0?String(BigInt(projectedPulse)*1000000n)
         :previous.chartSource?.composition==='account-only'&&sameWalletFinancialState(previous.wallet,wallet)?previous.historyBasis?.endKaiUPulse??'': '');
-      knownWallet = chart ?? retained ?? {...extendWalletHistory(previous, wallet, new Date().toISOString(), String(sdk.receizKaiNow().uPulse)),...(previous?.chartSource?{chartSource:previous.chartSource}:{})};
+      knownWallet = chart ?? retained ?? currentCandidate ?? {...extendWalletHistory(previous, wallet, new Date().toISOString(), candidateKai??String(sdk.receizKaiNow().uPulse)),...(previous?.chartSource?{chartSource:previous.chartSource}:{})};
       if(previous?.chartSource&&!chart&&!retained)void prepareCompositeChart().catch(()=>{});
       void persistWalletObservation(knownWallet).catch(()=>{});
     }
-    return knownWallet?.chartSource||startedRevision!==walletRevision?knownWallet?.wallet??wallet:wallet;
+    return knownWallet?.chartSource||knownWallet?.historyBasis?.kind==='current-valuation-v129'||startedRevision!==walletRevision?knownWallet?.wallet??wallet:wallet;
   }
   async function refreshLocalValuation() {
     const before = knownWallet, basis = before?.historyBasis, startedNoteEpoch = noteOperationEpoch;
@@ -775,6 +779,11 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       const kai=String(sdk.receizKaiNow().uPulse);
       if(BigInt(kai)/1000000n<=BigInt(basis.endKaiUPulse)/1000000n)return null;
       const next=advanceCompositeWalletObservation(before,kai);
+      if(next&&knownWallet===before&&startedNoteEpoch===noteOperationEpoch){knownWallet=next;void persistWalletObservation(next).catch(()=>{});return next;}
+      return null;
+    }
+    if(before?.wallet.currentBalanceSource&&basis?.kind==='current-valuation-v129'&&!activeNoteOperations&&!lifetime.signal.aborted){
+      const next=advanceCurrentWalletObservation(before,String(sdk.receizKaiNow().uPulse));
       if(next&&knownWallet===before&&startedNoteEpoch===noteOperationEpoch){knownWallet=next;void persistWalletObservation(next).catch(()=>{});return next;}
       return null;
     }
@@ -797,7 +806,8 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     } catch { return null; }
   }
   function matchesNoteDisplay(source: ReturnType<typeof parseSharedWallet>, display: NonNullable<typeof knownWallet> | null) {
-    if (!display || sdk.canonicalizeReceizConstitution(source) === sdk.canonicalizeReceizConstitution(display.wallet)) return true;
+    const withoutDisplayOperands=(wallet:ReturnType<typeof parseSharedWallet>)=>Object.fromEntries(Object.entries(wallet).filter(([field])=>!['reservePhiMicro','settlementPhiMicro','originalProofReferences','reserveFundingSource','currentBalanceSource','balanceSourceSha256'].includes(field)));
+    if (!display || sdk.canonicalizeReceizConstitution(withoutDisplayOperands(source)) === sdk.canonicalizeReceizConstitution(withoutDisplayOperands(display.wallet))) return true;
     const basis = display.historyBasis;
     if (isWalletQuoteHeld(display) || display.walletScope !== 'native-full' || !hasSettledAccountView(display) || !basis || basis.kind !== undefined
       || display.wallet.projectionComplete !== true || display.history?.at(-1)?.valuation !== 'deterministic-v129'
@@ -808,7 +818,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       || !sameWalletFinancialState(source, display.wallet)) return false;
     // Only the two display quotes can differ beneath this unchanged native
     // source. Funding still uses the exact protected response, never this match.
-    const withoutQuotes = (wallet: ReturnType<typeof parseSharedWallet>) => Object.fromEntries(Object.entries(wallet).filter(([field]) => field !== 'totalUsdCents' && field !== 'settlementUsdCents'));
+    const withoutQuotes = (wallet: ReturnType<typeof parseSharedWallet>) => Object.fromEntries(Object.entries(withoutDisplayOperands(wallet)).filter(([field])=>field!=='totalUsdCents'&&field!=='settlementUsdCents'));
     return sdk.canonicalizeReceizConstitution(withoutQuotes(source)) === sdk.canonicalizeReceizConstitution(withoutQuotes(display.wallet));
   }
   let noteRuntime: BankNoteRuntime | undefined;

@@ -1,3 +1,4 @@
+import {projectUnchangedWalletPhiSplit} from './shared-wallet';
 import {projectCompositeWalletAt,projectCompositeWalletHistory,projectCompositeWalletExtension,projectCompositeWalletCoordinates,validateCompositeWalletSource,type CompositeWalletSource} from './composite-wallet-history';
 import type {WalletObservation} from './wallet-observation';
 import {isWalletQuoteHeld} from './wallet-observation';
@@ -34,6 +35,9 @@ export function compositeWalletEndpointMatches(source:CompositeWalletSource,wall
  const fields=source.composition==='account-only'?['totalUsdCents','settlementUsdCents','reserveUsdCents'] as const:['totalUsdCents','settlementUsdCents','reserveUsdCents','balancePhiMicro'] as const;
  return source.userId===wallet.userId&&point.userId===wallet.userId&&fields.every(field=>wallet[field]===point[field]);
 }
+/** A display epoch marker selects future projection only. It never admits an
+ * Original or replaces the server's exact own-signed membership boundary. */
+export function canAdvanceCompositeWalletSource(source:CompositeWalletSource):boolean{return source.composition==='account-only'||source.objects.length===0||source.earningMembershipPolicy==='public-pbi-original-v1';}
 function protectedFrame(value:WalletObservation){return value.source==='local-note-head'||value.walletScope==='native-full'||isWalletQuoteHeld(value);}
 /** Newly received source can refine calculated display samples in the interval
  * we advanced locally. It cannot rewrite its retained original movements. */
@@ -46,7 +50,7 @@ function changedSourceFrom(previous:CompositeWalletSource,next:CompositeWalletSo
   for(const row of held.values())include(row.kaiUPulse);
  }
  const objects=new Map(previous.objects.map(row=>[row.id,row]));
- for(const row of next.objects){const old=objects.get(row.id);if(!old||JSON.stringify(old)!==JSON.stringify(row)){for(const item of [...(old?.intervals??[]),...row.intervals])include(item.fromKaiUPulse);}objects.delete(row.id);}
+ for(const row of next.objects){const old=objects.get(row.id);if(!old||JSON.stringify({id:old.id,seed:old.seed,intervals:old.intervals})!==JSON.stringify({id:row.id,seed:row.seed,intervals:row.intervals})){for(const item of [...(old?.intervals??[]),...row.intervals])include(item.fromKaiUPulse);}objects.delete(row.id);}
  for(const row of objects.values())for(const interval of row.intervals)include(interval.fromKaiUPulse);
  return first;
 }
@@ -68,16 +72,18 @@ export function compositeWalletObservation(value:WalletObservation,source:Compos
  try{const point=projectCompositeWalletAt(source,source.throughKaiUPulse);
   if(!compositeWalletEndpointMatches(source,value.wallet,point))return null;
   if(retained&&(protectedFrame(retained)||retained.wallet.userId!==value.wallet.userId))return null;
-  const history=retained?.historyBasis?.kind==='portfolio-model-v129'&&retained.history?.length ? mergeWalletPoints([reconciledHistory(source,retained),[point]],value.wallet.userId) : projectCompositeWalletHistory(source);
+  const changedEarningEpoch=retained?.chartSource&&!canAdvanceCompositeWalletSource(retained.chartSource)&&canAdvanceCompositeWalletSource(source);
+  const history=changedEarningEpoch&&retained?.history?.length?mergeWalletPoints([retained.history,[point]],source.userId):retained?.historyBasis?.kind==='portfolio-model-v129'&&retained.history?.length ? mergeWalletPoints([reconciledHistory(source,retained),[point]],value.wallet.userId) : projectCompositeWalletHistory(source);
   return {...value,observedAt:point.at,history,chartSource:source,historyBasis:{schema:'bank.account-history-display.v1',kind:'portfolio-model-v129',startKaiUPulse:history[0].kaiUPulse!,endKaiUPulse:point.kaiUPulse!,balancePhiMicro:point.balancePhiMicro??value.wallet.balancePhiMicro,reserveUsdCents:point.reserveUsdCents}};
  }catch{return null;}
 }
 /** Local pulse advancement never replays the held past or needs a network quote. */
 export function advanceCompositeWalletObservation(value:WalletObservation,kaiUPulse:string):WalletObservation|null{
- if(protectedFrame(value)||value.historyBasis?.kind!=='portfolio-model-v129'||!value.chartSource||!/^\d{1,30}$/.test(kaiUPulse)||BigInt(kaiUPulse)<=BigInt(value.historyBasis.endKaiUPulse))return null;
+ if(protectedFrame(value)||value.historyBasis?.kind!=='portfolio-model-v129'||!value.chartSource||!canAdvanceCompositeWalletSource(value.chartSource)||!/^\d{1,30}$/.test(kaiUPulse)||BigInt(kaiUPulse)<=BigInt(value.historyBasis.endKaiUPulse))return null;
  const source={...value.chartSource,throughKaiUPulse:kaiUPulse};
  try{const point=projectCompositeWalletAt(source,kaiUPulse),gap=BigInt(kaiUPulse)-BigInt(value.historyBasis.endKaiUPulse),history=gap<=2_000_000n?mergeWalletPoints([value.history??[],[point]],value.wallet.userId):mergeWalletPoints([value.history??[],projectCompositeWalletExtension(source,value.historyBasis.endKaiUPulse)],value.wallet.userId);
-  return {...value,wallet:{...value.wallet,totalUsdCents:point.totalUsdCents,settlementUsdCents:point.settlementUsdCents,reserveUsdCents:point.reserveUsdCents,balancePhiMicro:point.balancePhiMicro??value.wallet.balancePhiMicro},observedAt:walletPointTime(kaiUPulse),history,chartSource:source,historyBasis:{...value.historyBasis,endKaiUPulse:kaiUPulse,balancePhiMicro:point.balancePhiMicro??value.wallet.balancePhiMicro,reserveUsdCents:point.reserveUsdCents}};
+  const projectedWallet={...value.wallet,totalUsdCents:point.totalUsdCents,settlementUsdCents:point.settlementUsdCents,reserveUsdCents:point.reserveUsdCents,balancePhiMicro:point.balancePhiMicro??value.wallet.balancePhiMicro};
+  return {...value,wallet:{...projectedWallet,...projectUnchangedWalletPhiSplit(value.wallet,projectedWallet)},observedAt:walletPointTime(kaiUPulse),history,chartSource:source,historyBasis:{...value.historyBasis,endKaiUPulse:kaiUPulse,balancePhiMicro:point.balancePhiMicro??value.wallet.balancePhiMicro,reserveUsdCents:point.reserveUsdCents}};
  }catch{return null;}
 }
 /** An ordinary authenticated quote can confirm this same source without

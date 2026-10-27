@@ -335,3 +335,10 @@ it('does not first-paint the empty primary wallet retained by an earlier incorre
  p.switchRequest.mockResolvedValue({ok:true,session:{uid:recoveredUid}});p.wallet.mockResolvedValue(wallet(recoveredUid));
  const identity=await open();try{expect(identity.knownWallet()).toBeNull();expect((await identity.readWallet()).userId).toBe(recoveredUid);}finally{identity.dispose();}
 });
+it('returns the exact current native display frame stored for the header and trace when the existing Kai clock follows packet capture',async()=>{
+ const packet=(await import('./fixtures/current-balance/mixed.json')).default,{readBalanceCalculation}=await import('../src/receiz/balance-calculation');
+ p.pulse=packet.wallet.currentBalanceSource.computedPulse+1;p.wallet.mockResolvedValue(packet);p.continuation.mockResolvedValue({ok:true,session:{uid:packet.wallet.userId}});
+ const identity=await open();try{const returned=await identity.readWallet(),held=identity.knownWallet()!;expect(held.historyBasis?.kind).toBe('current-valuation-v129');expect(held.historyBasis?.endKaiUPulse).toBe(String(BigInt(p.pulse)*1_000_000n));expect(returned).toBe(held.wallet);expect(readBalanceCalculation(returned,held)?.kaiUPulse).toBe(held.historyBasis?.endKaiUPulse);expect(p.wallet).toHaveBeenCalledTimes(1);
+  const before=identity.knownWallet();p.pulse++;p.wallet.mockResolvedValue({...packet,wallet:{...packet.wallet,currentBalanceSource:{...packet.wallet.currentBalanceSource,artifactBaseUsdCents:'1'}}});expect(await identity.readWallet()).toBe(before!.wallet);expect(identity.knownWallet()).toBe(before);
+ }finally{identity.dispose();}
+});

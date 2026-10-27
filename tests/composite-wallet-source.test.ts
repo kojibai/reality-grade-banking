@@ -1,9 +1,9 @@
-import {it,expect} from 'vitest';
+import {it,expect,vi} from 'vitest';
 import {readCompositeWalletSource,mergeCompositeWalletSources,compositeWalletObservation,advanceCompositeWalletObservation,reconcileCompositeWalletObservation} from '../src/receiz/composite-wallet-source';
 import {projectCompositeWalletAt,type CompositeWalletSource} from '../src/receiz/composite-wallet-history';
 import {hasSettledAccountView} from '../src/receiz/account-view';
 import type {SharedWallet} from '../src/receiz/shared-wallet';
-const source=():CompositeWalletSource=>({schema:'receiz.wallet.chart-source.v129',authority:'authenticated-display-source',userId:'owner',throughKaiUPulse:'14710000000000',objects:[{id:'a',seed:{kind:'sigil',claimPulse:10825210,beat:2,stepIndex:3,creatorVerified:true},intervals:[{fromKaiUPulse:'10825210000000',toKaiUPulse:null}]}],movements:[],lawfulValues:[]});
+const source=():CompositeWalletSource=>({schema:'receiz.wallet.chart-source.v129',authority:'authenticated-display-source',earningMembershipPolicy:'public-pbi-original-v1',userId:'owner',throughKaiUPulse:'14710000000000',objects:[{id:'a',seed:{kind:'sigil',claimPulse:10825210,beat:2,stepIndex:3,creatorVerified:true},intervals:[{fromKaiUPulse:'10825210000000',toKaiUPulse:null}]}],movements:[],lawfulValues:[]});
 function observation(s=source()){const p=projectCompositeWalletAt(s,s.throughKaiUPulse),wallet:SharedWallet={userId:s.userId,totalUsdCents:p.totalUsdCents,settlementUsdCents:p.settlementUsdCents,reserveUsdCents:p.reserveUsdCents,balancePhiMicro:p.balancePhiMicro??'0',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:false,pulse:null,kaiUpulse:null};return{wallet,observedAt:p.at};}
 it('admits complete calculated periods from authenticated same-account operands before the visible frame',()=>{const s=source(),v=compositeWalletObservation(observation(s),s);expect(hasSettledAccountView(v)).toBe(true);expect(v?.history?.[0].kaiUPulse).toBe('10825210000000');expect(v?.chartSource).toBe(s);expect(v?.historyBasis?.kind).toBe('portfolio-model-v129');});
 it('does not turn a chart source into spending authority or overwrite a local Note successor',()=>{const s=source();expect(compositeWalletObservation({...observation(s),source:'local-note-head',localHeadDigest:'a'.repeat(64)},s)).toBeNull();expect(compositeWalletObservation({...observation(s),wallet:{...observation(s).wallet,userId:'foreign'}},s)).toBeNull();expect(compositeWalletObservation({...observation(s),wallet:{...observation(s).wallet,totalUsdCents:'1'}},s)).toBeNull();});
@@ -83,4 +83,36 @@ it('requires a complete source when account composition changes and retains orig
  const merged=mergeCompositeWalletSources(a,next);expect(merged.movements).toEqual(next.movements);expect(merged.objects).toEqual(next.objects);
  expect(()=>mergeCompositeWalletSources(a,{...next,movements:[{...next.movements[0],usdCents:'2000'}]})).toThrow('MOVEMENT_CHANGED');
  expect(()=>mergeCompositeWalletSources(a,{...next,movements:[]})).toThrow();
+});
+
+it('retains an old unmarked cohort snapshot and curve without extending future unsigned growth or making a read',()=>{
+ const s=source();delete s.earningMembershipPolicy;const value=compositeWalletObservation(observation(s),s)!;
+ const before=JSON.stringify(value),fetch=vi.spyOn(globalThis,'fetch').mockImplementation(()=>{throw Error('NETWORK_FORBIDDEN');});
+ try{expect(advanceCompositeWalletObservation(value,'14710001000000')).toBeNull();expect(JSON.stringify(value)).toBe(before);
+ expect(value.wallet).toEqual(observation(s).wallet);expect(hasSettledAccountView(value)).toBe(true);expect(fetch).not.toHaveBeenCalled();}finally{fetch.mockRestore();}
+});
+it('appends the new closed signed cohort without rewriting the old snapshot history',()=>{
+ const old=source();delete old.earningMembershipPolicy;old.objects.push({...old.objects[0],id:'unsigned-B'});
+ const retained=compositeWalletObservation(observation(old),old)!,before=structuredClone(retained.history);
+ const current={...source(),throughKaiUPulse:'14710001000000'};
+ const value=compositeWalletObservation(observation(current),current,retained)!;
+ expect(value.history!.filter(row=>BigInt(row.kaiUPulse!)<=BigInt(old.throughKaiUPulse))).toEqual(before);
+ expect(value.chartSource?.objects.map(row=>row.id)).toEqual(['a']);
+ expect(advanceCompositeWalletObservation(value,'14710002000000')?.chartSource?.objects.map(row=>row.id)).toEqual(['a']);
+});
+it('refreshes the exact split at the actual marked-source advance callsite with unequal-rate funded backing',()=>{
+ const s=source();s.movements=[{id:'funded-one',kaiUPulse:'12000000000000',direction:'credit',phiMicro:'100001',usdCents:'103',reserveSliceUsdCents:'103',profileSeed:false},{id:'funded-two',kaiUPulse:'13000000000000',direction:'credit',phiMicro:'700001',usdCents:'250',reserveSliceUsdCents:'250',profileSeed:false}];
+ const initial=compositeWalletObservation(observation(s),s)!;
+ initial.wallet={...initial.wallet,reservePhiMicro:'800002',settlementPhiMicro:(BigInt(initial.wallet.balancePhiMicro)-800002n).toString()};
+ const before=structuredClone(initial),next=advanceCompositeWalletObservation(initial,'14710001000000')!;
+ expect(next.wallet.reservePhiMicro).toBe('800002');expect(next.wallet.reserveUsdCents).toBe('353');
+ expect(BigInt(next.wallet.reservePhiMicro!)+BigInt(next.wallet.settlementPhiMicro!)).toBe(BigInt(next.wallet.balancePhiMicro));
+ expect(next.wallet.settlementPhiMicro).not.toBe(initial.wallet.settlementPhiMicro);expect(initial).toEqual(before);
+});
+it('adds proof inspection references without replaying or resampling a settled economic history',()=>{
+ const s=source(),retained=compositeWalletObservation(observation(s),s)!;
+ retained.history=[retained.history![0],retained.history![Math.floor(retained.history!.length/2)],retained.history!.at(-1)!];
+ const before=structuredClone(retained.history),withProof={...s,objects:s.objects.map(object=>({...object,proof:{sourceSha256:'a'.repeat(64),pbiReceiptHash:'b'.repeat(64),verifyPath:'/v/exact/source/14710000'}}))};
+ const next=compositeWalletObservation(observation(withProof),withProof,retained)!;
+ expect(next.history).toEqual(before);expect(next.chartSource?.objects[0].proof).toEqual(withProof.objects[0].proof);
 });

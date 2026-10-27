@@ -15,7 +15,7 @@ function proof(count:number,reserve='1000',settlement='0',rate='200000000'){
 function setup(){let state:unknown=null;const write=vi.fn(async(next:unknown,expected:unknown)=>{expect(expected).toBe(state);state=next;});return{ledger:createLocalAccountLedger({owner:{keyId:'a'.repeat(64),artifactOwnerReceizId:'owner.receiz.id'},read:async()=>state,write,assertOpen:()=>{}}),write,state:()=>state,set:(v:unknown)=>{state=v;}};}
 it('restores both rails and exact original from a complete retained account source without transport',async()=>{
  const s=setup(),v=proof(1,'1000','1000000','200000000');const saved=await s.ledger.retain(v,'bound-user'),restored=await s.ledger.restore();
- expect(saved.observation.wallet).toMatchObject({reserveUsdCents:'1000',settlementUsdCents:'200',totalUsdCents:'1200',balancePhiMicro:'5000000'});expect(restored?.proof).toBe(v);expect(restored?.observation).toEqual(saved.observation);expect((s.state() as {sourceJson:string}).sourceJson).toBe(v.sourceDigest);
+ expect(saved.observation.wallet).toMatchObject({reserveUsdCents:'1000',settlementUsdCents:'200',totalUsdCents:'1200',balancePhiMicro:'5000000',settlementPhiMicro:'1000000',reservePhiMicro:'4000000'});expect(restored?.proof).toBe(v);expect(restored?.observation).toEqual(saved.observation);expect((s.state() as {sourceJson:string}).sourceJson).toBe(v.sourceDigest);
 });
 it('reopens the exact original for backup without reconstructing its chart or consulting transport',async()=>{
  const s=setup(),v=proof(1);expect(await s.ledger.original()).toBeNull();await s.ledger.retain(v,'bound-user');
