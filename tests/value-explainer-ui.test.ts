@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from 'vitest';
+import {readFileSync} from 'node:fs';
 // @ts-expect-error Public-page templates are plain ESM.
 import { valueExplainerContent } from '../scripts/value-explainer-template.mjs';
 import { mountValueExplainer, traceMarkup } from '../src/value-explainer/main';
@@ -8,7 +9,7 @@ import {calculatePhiUsd} from '../src/value-explainer/phi-usd';
 const clock=vi.hoisted(()=>({pulse:14710100,uPulse:14710100000123n}));
 vi.mock('@receiz/sdk',async importOriginal=>({...await importOriginal<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({...clock})}));
 
-afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks();vi.useRealTimers();clock.pulse=14710100;clock.uPulse=14710100000123n; });
+afterEach(() => { document.body.replaceChildren(); document.querySelector('head > script[src="/snarkjs.min.js"]')?.remove(); vi.restoreAllMocks();vi.useRealTimers();clock.pulse=14710100;clock.uPulse=14710100000123n; });
 
 function mount() {
   document.body.innerHTML = valueExplainerContent();
@@ -19,6 +20,18 @@ function mount() {
 const metadata=()=>calculateIllustration({...DEMO_SCENARIO,evaluationPulse:String(clock.pulse)}).metadata;
 const converted=(amount:string,kai=String(clock.uPulse))=>calculatePhiUsd(amount,kai,metadata());
 function manualPhi(root:HTMLElement){const source=root.querySelector<HTMLSelectElement>('[data-phi-usd-source]')!;source.value='manual';source.dispatchEvent(new Event('change',{bubbles:true}));}
+
+it('projects the carried proof source origin and head after local upload verification',async()=>{
+ const root=mount(),input=root.querySelector<HTMLInputElement>('#value-proof-file')!;
+ const file=new File([readFileSync('tests/fixtures/public-essay-record.png')],'sealed-essay.png',{type:'image/png'});
+ const fetcher=vi.spyOn(globalThis,'fetch').mockImplementation(()=>{throw Error('NETWORK_FORBIDDEN');});
+ Object.defineProperty(input,'files',{configurable:true,value:[file]});input.dispatchEvent(new Event('change',{bubbles:true}));
+ await vi.waitFor(()=>expect(root.querySelector('[data-value-proof-status]')?.textContent).toBe('Original verified. Value calculated on this device.'),{timeout:20000});
+ const output=root.querySelector('[data-value-proof-result]')!;
+ expect(output.textContent).toContain('14611069000000');expect(output.textContent).toContain('Carried whole-pulse origin expressed in µPulses');
+ expect(output.textContent).toContain('Sealed proof head');expect(output.textContent).toContain('51ceab4b3909e7e67570ee5822c41af5');
+ expect(output.textContent).not.toContain('Admitted history head');expect(root.querySelector('[data-value-proof-usd]')?.textContent).toBe('$4,749.29');expect(fetcher).not.toHaveBeenCalled();
+},30000);
 
 it('automatically converts the calculated Phi and allows independent entry then relinking',()=>{
  const root=mount(),amount=root.querySelector<HTMLInputElement>('[data-phi-usd-amount]')!,source=root.querySelector<HTMLSelectElement>('[data-phi-usd-source]')!;

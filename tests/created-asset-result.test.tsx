@@ -17,6 +17,7 @@ function render(value:CreatedAssetResultValue,options:{busy?:boolean;publicItem?
 it.each([{signed:false,label:'Retry public delivery',action:'retry'},{signed:true,label:'Finish publishing',action:'publish'}])('retries the same pending $signed Original through its original action',({signed,label,action})=>{
  const view=render({...result,pbiSigned:signed,publication:{status:'pending'}});
  expect(view.host.querySelector('.proof-coordinate')?.textContent).toBe('a'.repeat(64));
+ expect(view.host.querySelector('h1')?.textContent).toBe(signed?'Your Original is signed.':'Your Original is sealed.');
  expect(view.host.querySelector('a.primary-button')).toBeNull();
  act(()=>view.button(label).click());expect(view.actions).toEqual([action]);
 });
@@ -28,14 +29,36 @@ it('keeps signed public results openable and preserves the save and close action
  link.addEventListener('click',event=>event.preventDefault());act(()=>link.click());
  act(()=>view.button('Save original proof').click());act(()=>view.button('Done').click());
  expect(view.actions).toEqual(['open','save','close']);
+ expect(view.host.querySelector('h1')?.textContent).toBe('Your Original is signed and public.');
  expect(view.host.textContent).toContain('SONG');expect(view.host.textContent).toContain('250');
- expect(view.button('Publish')).toBeUndefined();
+ expect(view.button('Sign')).toBeUndefined();
 });
 
 it('preserves the profile destination and prevents a busy unsigned result from signing again',()=>{
  const view=render(result,{busy:true,error:'Your original remains saved.'});
  expect(view.host.querySelector('a.primary-button')?.getAttribute('href')).toBe('/artist/');
  expect(view.host.querySelector('[role="alert"]')?.textContent).toBe('Your original remains saved.');
- expect(view.button('Signing and publishing…').disabled).toBe(true);
- act(()=>view.button('Signing and publishing…').click());expect(view.actions).toEqual([]);
+ expect(view.button('Signing your Original…').disabled).toBe(true);
+ act(()=>view.button('Signing your Original…').click());expect(view.actions).toEqual([]);
+});
+
+it('shows sealed accrual before this Original’s own Sign action unlocks its value',()=>{
+ const view=render(result);
+ expect(view.host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');
+ expect(view.host.textContent).toContain('Your Original is already earning.');
+ expect(view.host.textContent).toContain('Your Original is already public on Receiz');
+ expect(view.host.textContent).not.toMatch(/Sign this Original with PBI to publish|PBI signing displays|same action publishes/i);
+ expect(view.host.querySelector('a[href="/learn/earn-from-originals/"]')?.textContent).toContain('Sign this Original to unlock its value');
+ expect(view.host.textContent).not.toMatch(/enable earning|earning turns on|start earning/i);
+ act(()=>view.button('Sign').click());expect(view.actions).toEqual(['publish']);
+});
+
+it('keeps existing Receiz publication distinct from pending Market listing after signing',()=>{
+ const view=render({...result,pbiSigned:true,marketPublication:{status:'pending',code:'DELIVERY_PENDING'}});
+ expect(view.host.querySelector('h1')?.textContent).toBe('Your Original is signed and public.');
+ expect(view.host.textContent).toContain('Your Original is public on Receiz.');
+ expect(view.host.textContent).toContain('Market listing delivery is pending.');
+ expect(view.host.textContent).not.toContain('public on your profile and in Market');
+ expect(view.button('Sign')).toBeUndefined();
+ expect(view.host.querySelector('a.primary-button')?.getAttribute('href')).toBe('/artist/');
 });

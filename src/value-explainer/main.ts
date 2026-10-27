@@ -2,6 +2,7 @@ import { SIGIL_VALUATION_POLICY, type SigilCalculationTerm, type SigilMetadataLi
 import {receizKaiNow} from '@receiz/sdk';
 import {walletPointTime} from '../receiz/wallet-series';
 import {mountPhiUsdCalculator} from './phi-usd-ui';
+import type {ProofDisplayFacts} from './proof';
 import {
   calculateIllustration, DEMO_SCENARIO, MAX_CASHFLOWS, formatPhiMicro, formatUsdCents,
   illustrationRecord, sampleIllustration, stableStringify, type ValueScenario,
@@ -34,12 +35,12 @@ function chartMarkup(samples: ReturnType<typeof sampleIllustration>['samples'], 
 
 function binding(label: string, value: unknown) { return `<div><dt>${escape(label)}</dt><dd>${escape(value ?? 'Not carried')}</dd></div>`; }
 
-function projectionMarkup(projection: ReceizProofValueProjectionV129): string {
+function projectionMarkup(projection: ReceizProofValueProjectionV129, displayFacts: ProofDisplayFacts): string {
   const at=walletPointTime(projection.valuationKaiUPulse),date=new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'medium'}).format(new Date(at));
   return `<div class="value-proof-value"><span class="value-verified-label"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2 17 5v5c0 4-7 8-7 8S3 14 3 10V5l7-3Z"/><path d="m6.5 10 2.5 2.5 4.5-5"/></svg>Verified original</span><p class="value-result-kind">Present value</p><output class="value-result-amount" data-value-proof-usd>${projection.displayUsdCents===null?'Dollar value unavailable':formatUsdCents(projection.displayUsdCents)}</output><p class="value-proof-phi" data-value-proof-phi>${formatPhiMicro(projection.proofValuePhiMicro)} Φ</p><time data-value-proof-time datetime="${escape(at)}">${escape(date)}</time><p class="value-proof-coordinate">Pulse ${escape(projection.valuationKaiPulse)} <span>·</span> ${escape(projection.valuationKaiUPulse)} ☤uKAI</p></div><p class="value-form-note">Calculated from the verified original at this captured pulse. The dollar amount is a deterministic valuation, not a completed sale or a cash redemption.</p><details class="value-detail"><summary>Proof and valuation details</summary><div class="value-detail-body"><dl class="value-binding-list">${[
     binding('Current proof digest', projection.proofDigest), binding('Original proof digest', projection.originProofDigest),
-    binding('Admitted history head', projection.historyHead), binding('Original Kai pulse', projection.originKaiPulse),
-    binding('Original Kai µPulse', projection.originKaiUPulse), binding('Evaluation Kai µPulse', projection.valuationKaiUPulse),
+    binding(displayFacts.headLabel, displayFacts.head), binding('Original Kai pulse', projection.originKaiPulse),
+    binding('Original Kai µPulse', displayFacts.originKaiUPulse), binding('Origin coordinate basis', displayFacts.originBasis), binding('Evaluation Kai µPulse', projection.valuationKaiUPulse),
     binding('Policy', `${projection.algorithm} · ${projection.policyChecksum}`), binding('Projection digest', projection.projectionDigest),
     binding('Market reference (Φ micro-units)', projection.marketReferenceValuePhiMicro),
     binding('Last completed sale (Φ micro-units)', projection.lastExecutedPricePhiMicro),
@@ -174,7 +175,7 @@ export function mountValueExplainer(root: HTMLElement) {
         return;
       }
       proofStatus.textContent = 'Original verified. Value calculated on this device.';
-      proofResult.innerHTML = projectionMarkup(result.projection);
+      proofResult.innerHTML = projectionMarkup(result.projection, result.displayFacts!);
       proofResult.hidden = false;
       phiUsd.setCalculatedPhi(result.projection.proofValuePhiMicro,result.projection.inputs.metadata as SigilMetadataLite);
       proofResult.querySelector('[data-value-download-replay]')!.addEventListener('click', () => downloadJson(result.replay, `bankeiz-public-value-replay-${result.replay!.replayDigest.slice(0, 12)}.json`));
