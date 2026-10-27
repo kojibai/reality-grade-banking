@@ -7,7 +7,7 @@ import {publicSportsSealedBirths} from './sealed-copies';
 import {unpackMarketHistory} from './history-wire';
 export interface CapitalizationPoint { at: string; pulse: number; usdCents: string; }
 export const MARKET_HISTORY_POLICY='native-card-history-and-every-seal-v6' as const;
-export const SHARE_MARKET_HISTORY_POLICY='share-capitalization-and-release-v1' as const;
+export const SHARE_MARKET_HISTORY_POLICY='pbi-signed-share-capitalization-and-release-v1' as const;
 export type MarketCapSummary = Omit<MarketCapSource, 'valueRows'> & {unpricedSealedBirthCount?:number;shareCapitalization?:{usdCents:string;covered:number;listed:number;complete:boolean;outstandingShareQuantityMicro:string}};
 export interface MarketHistorySnapshot {
   schema: 'bank.public-market-history.v1';

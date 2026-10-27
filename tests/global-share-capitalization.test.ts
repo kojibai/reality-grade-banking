@@ -10,7 +10,7 @@ import type {PublicMarketCatalog,PublicMarketItem} from '../src/receiz/public-ma
 const issue=14700000,end=14900000,seed={kind:'sigil',claimPulse:issue,beat:2,stepIndex:3,creatorVerified:true};
 const source:MarketCapSource={schema:'receiz.proof_graph.market_cap_projection.v1',source:'market-desk-live-assets.sum + single-card-current-live-value-proof.sum',proofObjectHash:'a'.repeat(64),generatedAt:new Date(marketPulseTime(end)).toISOString(),firstIssuancePulse:issue,serverPulse:end,currentUsd:100,cardsInCirculation:0,sportsCardsPriced:0,marketAssetsPriced:1,valueRows:[{id:'public-market:one',source:'market-desk-live-asset',baseUsdValue:100,birthUsdValue:100,marketUsdValue:100,proofTotalValueUsd:100,scoreDelta:0,seed:'asset',marketItem:{id:'one',source:'profile',priceUsd:100,pricePhi:1,quoteUsdPerPhi:100,changePct:0,livePulseSeed:seed}}]};
 function catalog(){
- const item={id:'one',assetId:'asset',category:'proof',pulse:String(issue),priceUsd:100,livePulseSeed:seed,valuationBinding:{itemId:'one',assetId:'asset'}} as PublicMarketItem;
+ const item={id:'one',assetId:'asset',category:'proof',hasPbiSignature:true,pulse:String(issue),priceUsd:100,livePulseSeed:seed,valuationBinding:{itemId:'one',assetId:'asset'}} as PublicMarketItem;
  const release={kaiUPulse:String(issue*1000000),unitPriceUsdCents:String(Math.round(publicSigilUsdAtPulse(seed,issue)*100)),outstandingShareQuantityMicro:'0',availableShareQuantityMicro:'100000000',modelVersion:'market-share-quote-v1'};
  item.shareInventory=readPublicShareInventory({schema:'receiz.market.share-inventory.v1',marketItemId:item.id,assetId:item.assetId,family:'generic',quantityScope:'canonical-asset',observedAtKaiUPulse:String((end-1)*1000000),outstandingShareQuantityMicro:'2000000',positionsMicro:'2000000',certificatesMicro:'0',reservedBuyMicro:'0',availableShareQuantityMicro:'50000000',availability:'quote-capacity',releaseCapitalization:release,capitalizationHistory:[{kaiUPulse:String((end-1)*1000000),unitPriceUsdCents:'10000',outstandingShareQuantityMicro:'2000000',availableShareQuantityMicro:'50000000'}]},item)!;
  return {items:[item],complete:true,revision:'one',observedAt:source.generatedAt,sourceCount:1} as PublicMarketCatalog;
@@ -57,4 +57,20 @@ it('preserves the legacy unit-value history separately from the share-cap public
 it('refuses an internally inconsistent cap headline before publishing any interval',async()=>{
  const held=catalog(),history=(await buildMarketHistory(source,null,undefined,undefined,{catalog:held,pulse:end,capitalization:true}))!;
  expect(()=>parseMarketHistory({...history,summary:{...history.summary,shareCapitalization:{...history.summary.shareCapitalization!,usdCents:'1'}}})).toThrow('capitalization summary');
+});
+
+it('limits the global amount, count and every period to PBI-signed Market assets while retaining cards and raw holdings',async()=>{
+ const held=catalog(),signed={...held.items[0],hasPbiSignature:true};
+ const unsigned={...signed,id:'unsigned',assetId:'unsigned-asset',hasPbiSignature:false};unsigned.shareInventory={...signed.shareInventory!,marketItemId:unsigned.id,assetId:unsigned.assetId};
+ const sports={id:'card',assetId:'card',category:'sports',priceUsd:10,capitalizationUsdCents:'1000',circulationCount:1} as PublicMarketItem;
+ const mixed={...held,items:[signed,unsigned,sports],sportsCoverage:'complete' as const};
+ const history=(await buildMarketHistory(source,null,undefined,undefined,{catalog:mixed,pulse:end,capitalization:true}))!;
+ const expected=publicShareCapitalization(publicCatalogAtPulse({...mixed,items:[signed,sports]},source,end));
+ expect(history.summary.shareCapitalization).toMatchObject({usdCents:expected.usdCents,listed:2,covered:2});expect(history.summary.marketAssetsPriced).toBe(1);
+ for(const points of Object.values(history.series))expect(points.at(-1)?.usdCents).toBe(expected.usdCents);
+ expect(mixed.items).toHaveLength(3);expect(mixed.items[1].shareInventory).toBeDefined();
+});
+it('publishes zero for a complete Market containing no signed assets instead of retaining an unsigned total',async()=>{
+ const held=catalog();held.items[0].hasPbiSignature=false;const history=(await buildMarketHistory(source,null,undefined,undefined,{catalog:held,pulse:end,capitalization:true}))!;
+ expect(history.summary.shareCapitalization).toMatchObject({usdCents:'0',listed:0,covered:0,complete:true});
 });

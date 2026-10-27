@@ -23,3 +23,10 @@ it('reuses an already opened original report to fill an older catalogue without 
  const selected={...item,proofManifest:undefined,proofManifestSource:undefined,originalDigest:digest},fetch=vi.fn().mockRejectedValue(Error('offline'));vi.stubGlobal('fetch',fetch);const host=document.createElement('div'),root=createRoot(host);
  try{await act(async()=>root.render(<PublicAssetDetail item={selected}/>));const requests=fetch.mock.calls.length;act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Show proof material"]')!.click());expect(host.textContent).toContain('ABCD1234/12345678');expect(host.textContent).toContain('987654321');expect(host.textContent).toContain(hash.slice(0,16).toUpperCase());expect(fetch.mock.calls.length).toBe(requests);}finally{act(()=>root.unmount());}
 });
+
+it('shows the carried Moment image basis from an already verified receipt without another read',async()=>{
+ const digest='d'.repeat(64),basis='ef'.repeat(32),bundle={code:'ABCD1234',kaiPulseEternal:'12345678',verifyPath,artifactSha256Basis:basis};
+ retainProofInspection({artifactSha256:digest,verification:{kind:'png',bundle},groth16:null} as unknown as ProofInspection,new Uint8Array([1]),'moment.png');
+ const selected={...item,mediaKind:'moment' as const,proofManifest:undefined,proofManifestSource:undefined,originalDigest:digest},fetch=vi.fn().mockRejectedValue(Error('offline'));vi.stubGlobal('fetch',fetch);const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<PublicAssetDetail item={selected}/>));const requests=fetch.mock.calls.length;act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Show proof material"]')!.click());const row=[...host.querySelectorAll('.asset-proof-back-body>dl>div')].find(row=>row.querySelector('dt')?.textContent==='Media SHA-256');expect(row?.querySelector('dd')?.textContent).toBe(basis.toUpperCase());expect(fetch.mock.calls.length).toBe(requests);}finally{act(()=>root.unmount());}
+});

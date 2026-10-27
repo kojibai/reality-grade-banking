@@ -15,8 +15,8 @@ const clock=vi.hoisted(()=>({pulse:14720000}));vi.mock('@receiz/sdk',async origi
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 afterEach(() => { vi.unstubAllGlobals(); localStorage.clear();vi.useRealTimers(); });
 it('discards an older history policy even when its retained endpoint is current',async()=>{
- const old={...historyFile,historyPolicy:'sealed-values-and-dated-observations-v1',summary:{...historyFile.summary,proofObjectHash:'c'.repeat(64)}};
- localStorage.setItem('receiz-bank-public-share-graph-history-v1',JSON.stringify(old));
+ const old={...historyFile,historyPolicy:'share-capitalization-and-release-v1',summary:{...historyFile.summary,proofObjectHash:'c'.repeat(64)}};
+ localStorage.setItem('receiz-bank-pbi-market-share-graph-history-v1',JSON.stringify(old));
  let state!:ReturnType<typeof useMarketCapitalization>;const root=createRoot(document.createElement('div'));
  function Probe(){state=useMarketCapitalization('ALL',false);return null;}
  try{await act(async()=>root.render(<Probe/>));expect(state.source.proofObjectHash).toBe(historyFile.summary.proofObjectHash);}finally{act(()=>root.unmount());}
@@ -32,7 +32,7 @@ it('feeds live membership to the chart worker and publishes all periods and thei
  class WorkerStub{onmessage:((event:any)=>void)|null=null;constructor(){worker=this;}postMessage(message:any){messages.push(message);}terminate(){}}
  vi.stubGlobal('Worker',WorkerStub);
  const seed={kind:'sigil',claimPulse:14700000,beat:2,stepIndex:3,creatorVerified:true};
- const catalog=parsePublicMarket({ok:true,transport:{generatedAt:'2026-10-18T22:00:00Z',publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1,revision:'new'},publicOriginals:[{id:'new',receizId:'new',title:'New object',pulse:'14700000',livePulseSeed:seed}]}});
+ const catalog=parsePublicMarket({ok:true,transport:{generatedAt:'2026-10-18T22:00:00Z',publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1,revision:'new'},publicOriginals:[{id:'new',receizId:'new',title:'New object',profileOriginal:{hasPbiSignature:true},pulse:'14700000',livePulseSeed:seed}]}});
  catalog.items[0].shareInventory={schema:'receiz.market.share-inventory.v1',marketItemId:catalog.items[0].id,assetId:catalog.items[0].assetId,family:'generic',quantityScope:'canonical-asset',observedAtKaiUPulse:'14700000000000',outstandingShareQuantityMicro:'1000000',positionsMicro:'1000000',certificatesMicro:'0',reservedBuyMicro:'0',availableShareQuantityMicro:'0',availability:'quote-capacity',releaseCapitalization:{kaiUPulse:'14700000000000',unitPriceUsdCents:'100',outstandingShareQuantityMicro:'0',availableShareQuantityMicro:'1000000',modelVersion:'market-share-quote-v1'}};
  let state!:ReturnType<typeof useMarketCapitalization>,renders=0;const root=createRoot(document.createElement('div'));
  function Probe({period='ALL'}:{period?:ChartPeriod}){renders++;state=useMarketCapitalization(period,true,catalog);return null;}
@@ -102,7 +102,7 @@ it('restarts a suspended PWA worker and samples the canonical pulse immediately 
 it.each(['onerror','onmessageerror'] as const)('recovers a visible failed worker on the next Kai pulse after %s',async(kind)=>{
  vi.useFakeTimers();clock.pulse=shippedHistory.summary.serverPulse+1;
  const original=parseMarketCapSource(sourceFile),row=original.valueRows.find(row=>row.marketItem?.livePulseSeed)!,tiny={...original,generatedAt:'2026-10-19T05:00:00Z',serverPulse:clock.pulse-1,valueRows:[row],marketAssetsPriced:1,sportsCardsPriced:0,cardsInCirculation:0,unpricedSealedBirths:undefined,sportsHistorySnapshot:undefined,sportsHistoryEvaluationPulse:undefined,sourceEvaluation:undefined};
- const catalog=parsePublicMarket({ok:true,transport:{generatedAt:tiny.generatedAt,publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1,revision:'recovery'},publicOriginals:[{id:row.marketItem!.id,receizId:row.seed,title:'Retained asset',pulse:String(row.marketItem!.livePulseSeed!.claimPulse),livePulseSeed:row.marketItem!.livePulseSeed}]}});
+ const catalog=parsePublicMarket({ok:true,transport:{generatedAt:tiny.generatedAt,publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1,revision:'recovery'},publicOriginals:[{id:row.marketItem!.id,receizId:row.seed,title:'Retained asset',profileOriginal:{hasPbiSignature:true},pulse:String(row.marketItem!.livePulseSeed!.claimPulse),livePulseSeed:row.marketItem!.livePulseSeed}]}});
  const item=catalog.items[0],at=String(BigInt(item.pulse!)*1000000n);item.shareInventory={schema:'receiz.market.share-inventory.v1',marketItemId:item.id,assetId:item.assetId,family:'generic',quantityScope:'canonical-asset',observedAtKaiUPulse:at,outstandingShareQuantityMicro:'1000000',positionsMicro:'1000000',certificatesMicro:'0',reservedBuyMicro:'0',availableShareQuantityMicro:'0',availability:'quote-capacity',releaseCapitalization:{kaiUPulse:at,unitPriceUsdCents:'100',outstandingShareQuantityMicro:'0',availableShareQuantityMicro:'1000000',modelVersion:'market-share-quote-v1'}};
  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({ok:true,marketCapProjection:tiny})));
  const workers:WorkerStub[]=[];

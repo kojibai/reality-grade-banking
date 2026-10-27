@@ -13,11 +13,11 @@ export function AssetProofBack({item}:{item:PublicMarketItem}){
  const inspection=useSyncExternalStore(subscribeProofInspections,()=>retainedProofInspection(item.originalDigest??undefined),()=>null);
  const record=useMemo(()=>publicMarketRecord(item),[item]);
  const rows=useMemo(()=>{
-  const manifest=item.proofManifest??publicAssetManifest(item.proofManifestSource??{media:{originalDownloadSha256Hex:item.originalDigest}},item),bundle=inspection?.report.verification.bundle as Record<string,unknown>|undefined;
+  const manifest=item.proofManifest??publicAssetManifest(item.proofManifestSource??{mediaKind:item.mediaKind,media:{originalDownloadSha256Hex:item.originalDigest}},item),bundle=inspection?.report.verification.bundle as Record<string,unknown>|undefined;
   if(!bundle)return manifest;
   // Older retained catalogues lack display manifest fields. Exact successful
   // SDK inspection can fill only the fields it actually carries.
-  const verified=publicAssetManifest({code:bundle.code,pulse:bundle.kaiPulseEternal,verifyPath:bundle.verifyPath,proof:{groth16Id:typeof bundle.groth16ProofDigest==='string'?bundle.groth16ProofDigest.slice(0,16).toUpperCase():null,poseidon:bundle.zkPoseidonHash}},item);
+  const verified=publicAssetManifest({code:bundle.code,pulse:bundle.kaiPulseEternal,verifyPath:bundle.verifyPath,mediaKind:item.mediaKind,recordCardMediaSha256Hex:item.mediaKind==='moment'&&inspection?.report.verification.kind==='png'?bundle.artifactSha256Basis:undefined,proof:{groth16Id:typeof bundle.groth16ProofDigest==='string'?bundle.groth16ProofDigest.slice(0,16).toUpperCase():null,poseidon:bundle.zkPoseidonHash}},item);
   const replacements=new Map(verified.map(row=>[row.label,row]));
   return manifest.map(row=>row.value==='Unavailable'||row.label==='Pulse'&&row.value==='pending'||row.label==='Coordinate'&&row.value.startsWith('pending/')?replacements.get(row.label)??row:row);
  },[item,inspection]);

@@ -34,6 +34,7 @@ export function publicAssetManifest(profileInput:unknown,fallback:{verifyUrl?:st
  const profile=record(profileInput),media=record(profile.media),proof=record(profile.proof),verifyPath=text(profile.verifyPath,1000)??fallback.verifyUrl??null;
  let parts:string[]=[];try{parts=new URL(verifyPath??'','https://receiz.com').pathname.split('/').filter(Boolean);}catch{}
  const v=parts.indexOf('v'),code=text(profile.code,80)??(v>=0?parts[v+2]:null),pulse=text(profile.pulse,80)??fallback.pulse??(v>=0?parts[v+3]:null);
+ const moment=profile.media===null||profile.mediaKind==='moment'||media.kind==='moment',mediaDigest=moment?(hash(profile.recordCardMediaSha256Hex)??hash(profile.recordMediaSha256Hex)):(hash(media.sha256Hex)??hash(media.originalDownloadSha256Hex)??hash(profile.recordMediaSha256Hex));
  const rows:PublicAssetManifestRow[]=[
   {label:'Coordinate',value:`${code??'pending'}/${pulse??'pending'}`},
   {label:'Pulse',value:pulse??'pending'},
@@ -42,7 +43,7 @@ export function publicAssetManifest(profileInput:unknown,fallback:{verifyUrl?:st
   {label:'Groth16',value:text(proof.groth16Id,160)??'Unavailable'},
   {label:'Poseidon',value:text(proof.poseidon,160)??'Unavailable'},
   {label:'Claim SHA-256',value:hash(profile.claimHashHex)??'Unavailable'},
-  {label:'Media SHA-256',value:hash(media.sha256Hex)??hash(media.originalDownloadSha256Hex)??(profile.media===null||profile.mediaKind==='moment'?hash(profile.recordCardMediaSha256Hex):null)??hash(profile.recordMediaSha256Hex)??'Unavailable'},
+  {label:'Media SHA-256',value:mediaDigest??'Unavailable'},
  ];
  const native=publicNativeAssetBinding(profile.nativeAsset);if(native)rows.push({label:'Native Asset',value:native.id},{label:'Issuance Source SHA-256',value:native.issuanceSourceSha256},{label:'Current Asset Source SHA-256',value:native.headSourceSha256},{label:'Public Backing Certificate SHA-256',value:native.publicCertificateSha256});
  if(Array.isArray(profile.attachments))for(const [index,input]of profile.attachments.slice(0,200).entries()){

@@ -8,7 +8,7 @@ import { type MarketCapSource } from './source';
 import { parseMarketHistory,SHARE_MARKET_HISTORY_POLICY, type MarketHistorySnapshot } from './history';
 import {readMarketDisplaySource,retainedMarketDisplaySource} from './display-source';
 export type { CapitalizationPoint } from './history';
-const KEY = 'receiz-bank-public-share-graph-history-v1';
+const KEY = 'receiz-bank-pbi-market-share-graph-history-v1';
 const shipped = parseMarketHistory(seedHistory);
 const now=()=>{try{return receizKaiNow().pulse;}catch{return 0;}};
 function restore(): MarketHistorySnapshot {

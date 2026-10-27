@@ -8,7 +8,7 @@ import {marketPulseAtOrAfterTime}from'./sealed-copies';
 import {mergeMarketCopyObservations}from'./copy-observations';
 import {sameSportsPricingOperands}from'./sports-observations';
 import {marketCapChartUsdAtPulse,prepareMarketChartProjection} from './interpolated-history';
-import {prepareGlobalShareCapitalization} from './global-share-capitalization';
+import {prepareGlobalShareCapitalization,globalMarketCapitalizationInputs} from './global-share-capitalization';
 function significantEventPulses(source:MarketCapSource):{ranked:number[];observed:number[]}{
  const events=new Map<number,number>(),observed=new Set<number>(),add=(pulse:number,value:number)=>events.set(pulse,(events.get(pulse)??0)+Math.abs(value));
  for(const birth of source.unpricedSealedBirths??[])add(marketPulseAtOrAfterTime(birth.sealedAt),birth.birthUsdValue);
@@ -33,10 +33,11 @@ function significantEventPulses(source:MarketCapSource):{ranked:number[];observe
 }
 /** Run at build time or in the worker; never calculate these curves on the UI thread. */
 export async function buildMarketHistory(source: MarketCapSource, previous: MarketHistorySnapshot | null = null, continuing: () => boolean = () => true, yieldSample: () => Promise<void> = async () => {},current?:{catalog:PublicMarketCatalog|null;pulse:number;capitalization?:boolean}): Promise<MarketHistorySnapshot | null> {
+  if(current?.capitalization&&current.catalog){const scoped=globalMarketCapitalizationInputs(source,current.catalog);source=scoped.source;current={...current,catalog:scoped.catalog};}
   if(current)source=currentMarketDisplayModel(source,current.catalog,current.pulse,previous?.copyObservations);
   const mergedCopies=mergeMarketCopyObservations(source,previous?.copyObservations);source=mergedCopies.source;
   const shares=current?.capitalization&&current.catalog?prepareGlobalShareCapitalization(source,current.catalog):null;
-  if(shares&&(!shares.coverage.covered||previous?.summary.shareCapitalization&&shares.coverage.listed>=previous.summary.shareCapitalization.listed&&shares.coverage.covered<previous.summary.shareCapitalization.covered))return null;
+  if(shares&&(!shares.coverage.covered&&!(shares.coverage.complete&&shares.coverage.listed===0)||previous?.historyPolicy===SHARE_MARKET_HISTORY_POLICY&&previous?.summary.shareCapitalization&&shares.coverage.listed>=previous.summary.shareCapitalization.listed&&shares.coverage.covered<previous.summary.shareCapitalization.covered))return null;
   const policy=shares?SHARE_MARKET_HISTORY_POLICY:MARKET_HISTORY_POLICY;
   if(shares)source={...source,currentUsd:Number(shares.coverage.usdCents)/100};
   const summary=()=>({...marketCapSummary(source),...(shares?{shareCapitalization:shares.coverage}:{})});
@@ -46,7 +47,7 @@ export async function buildMarketHistory(source: MarketCapSource, previous: Mark
   const matchingMembership=previous?.historyPolicy===policy&&previous?.membershipSha256===membershipSha256&&previous.summary.serverPulse<=source.serverPulse;
   // A saved newer collection must survive while its matching operands load.
   // Identical operands can still advance locally without replacing that capture.
-  if(previous&&Date.parse(source.generatedAt)<Date.parse(previous.summary.generatedAt)){
+  if(previous&&previous.historyPolicy===policy&&Date.parse(source.generatedAt)<Date.parse(previous.summary.generatedAt)){
     if(!sameBasis)return null;
     source={...source,...previous.summary,serverPulse:source.serverPulse,currentUsd:source.currentUsd};
   }

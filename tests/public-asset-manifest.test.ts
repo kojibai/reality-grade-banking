@@ -1,5 +1,5 @@
 import {expect,it} from 'vitest';
-import {publicAssetManifest,publicManifestLink} from '../src/receiz/public-asset-manifest';
+import {publicAssetManifest,readPublicAssetManifestSource,publicManifestLink} from '../src/receiz/public-asset-manifest';
 import {parsePublicMarket} from '../src/receiz/public-market';
 const hash='ab'.repeat(32),verifyPath='/v/20261020_1200/ABCD1234/12345678';
 const profile={code:'ABCD1234',pulse:'12345678',verifyPath,proof:{circuit:'Groth16',groth16Id:'ABCDEF0123456789',poseidon:'12345678901234567890'},claimHashHex:hash,pbiReceiptHash:hash,media:{sha256Hex:hash},attachments:[{id:'appendix',name:'Complete appendix.pdf',sha256Hex:hash,src:'/api/storage/object?bucket=receiz-profile-originals&path=creator/appendix.pdf',downloadName:'appendix.pdf'}]};
@@ -29,3 +29,11 @@ it('uses the carried receipt-card digest for Moments represented by a compact me
  const item=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:writer:moment',receizId:'moment',title:'A moment.',profileOriginal:source}]}}).items[0];
  expect(publicAssetManifest(item.proofManifestSource).find(row=>row.label==='Media SHA-256')?.value).toBe('CD'.repeat(32));
 });
+
+it('uses the carried Moment-card image hash ahead of enclosing artifact and generic media hashes without reading media',()=>{
+ const moment={mediaKind:'moment',recordCardMediaSha256Hex:'ab'.repeat(32),recordMediaSha256Hex:'cd'.repeat(32),media:{sha256Hex:'ef'.repeat(32),originalDownloadSha256Hex:'12'.repeat(32)}};
+ for(const value of [moment,readPublicAssetManifestSource(moment)])expect(publicAssetManifest(value).find(row=>row.label==='Media SHA-256')?.value).toBe('AB'.repeat(32));
+ expect(publicAssetManifest({...moment,mediaKind:'image'}).find(row=>row.label==='Media SHA-256')?.value).toBe('EF'.repeat(32));
+});
+
+it('retains the carried sealed receipt image hash when the display-card hash is not separately supplied',()=>{const digest='bb'.repeat(32),source={mediaKind:'moment',media:null,claimHashHex:'aa'.repeat(32),recordMediaSha256Hex:digest};expect(publicAssetManifest(readPublicAssetManifestSource(source)).find(row=>row.label==='Media SHA-256')?.value).toBe(digest.toUpperCase());expect(publicAssetManifest(source).find(row=>row.label==='Claim SHA-256')?.value).toBe('AA'.repeat(32));});
