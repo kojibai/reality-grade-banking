@@ -57,7 +57,7 @@ it('opens the existing sheet on intent, keeping the asset URL and head while run
   try {
     await act(async () => root.render(<PublicAssetTradeHost/>)); expect(loader).not.toHaveBeenCalled();
     await act(async () => {beginPublicAssetTrade({itemId: 'profile:artist:source', side: 'buy', title: 'An original'});});
-    expect(host.querySelector('dialog')?.open).toBe(true); expect(host.textContent).toContain('Opening your account'); expect(loader).toHaveBeenCalledOnce();
+    expect(host.querySelector('dialog')?.open).toBe(true); expect(host.querySelector('[role="status"][aria-label="Preparing your account"]')).not.toBeNull(); expect(loader).toHaveBeenCalledOnce();
     expect(location.pathname).toBe('/asset/source/'); expect(document.title).toBe('An original | Bankeiz');
     expect(beginPublicAssetTrade({itemId: 'sports:rsc_0123456789abcdef', side: 'buy', title: 'Sports'})).toBe(false);
   } finally {act(() => root.unmount()); host.remove(); removeEventListener('bankeiz:request-bank-runtime', loader);}

@@ -72,3 +72,11 @@ it('paints a background task’s saved contact immediately in the already-open l
  const f=await fixture(),newContact={...contact,id:'00000000-0000-4000-8000-000000000009',fullName:'New research lead'};
  await act(async()=>f.api.mergeSavedContacts(owner,[newContact]));expect(f.host.textContent).toContain('New research lead');expect(f.request).toHaveBeenCalledTimes(1);
 });
+
+it('paints held Contacts on the first render without reopening its service',async()=>{
+ const f=await fixture(),open=vi.fn(()=>new Promise<never>(()=>{}));
+ const identity={knownOrganizer:()=>f.api,knownOrganizerDisplay:()=>f.api.known(),organizer:open,accountUsername:()=> 'bjklock'} as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);cleanups.push(()=>act(()=>root.unmount()));
+ act(()=>root.render(<OrganizerPanel identity={identity} entry={{id:2,view:'contacts'}} active onBack={()=>{}} onMessage={()=>{}}/>));
+ expect(host.textContent).toContain('Maya Chen');expect(host.querySelector('[role="status"]')).toBeNull();expect(open).not.toHaveBeenCalled();expect(f.request).toHaveBeenCalledOnce();
+});

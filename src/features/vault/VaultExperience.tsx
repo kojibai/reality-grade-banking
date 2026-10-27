@@ -1,3 +1,4 @@
+import {InlineOpening} from '../../components/InlineOpening';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {ArrowDownLeft,ArrowUpRight,Banknote,Check,ChevronRight,CreditCard,Download,FileCheck2,Fingerprint,Layers3,LockKeyhole,Plus,ShieldCheck,Upload} from 'lucide-react';
 import {Sheet} from '../../components/Sheet';
@@ -93,6 +94,6 @@ export function VaultExperience({identity,initialBytes,initialMode='home',active
  {mode==='send'&&<label>Recipient Receiz ID<input autoComplete="off" disabled={busy} value={recipient} onChange={e=>setRecipient(e.target.value)}/></label>}
  <button className="primary-button" disabled={busy} onClick={()=>{if(chosen){void move(chosen.startsWith('assets:')?'assets':'investments',mode==='send'?'send':'return',candidates[0]);return;}void run(async ticket=>{const current=session.current!,request={amountUsdCents:dollars(amount),rail};let outcome:unknown;if(mode==='balance')outcome=await current.addBalance(request);else if(mode==='card'){const next=await current.addCard({amount});if(ticket===epoch.current)setCard({id:next.id,checkout:next.checkout,phase:'checkout',amountUsdCents:next.checkout.amountUsdCents});}else if(mode==='send')outcome=await current.sendMoney({...request,recipient:recipient.trim()});else outcome=await current.returnMoney(request);await refresh(ticket);if(ticket===epoch.current&&mode!=='card'){setMode('home');setNotice(obj(outcome).complete===true&&obj(outcome).result==='committed'?'Your value moved with its original proof.':obj(outcome).result==='zero-write'?'No value moved. This request is closed.':'Your request is retained. Continue its pending operation to obtain the result.');}});}}>Review</button></>}</>}
  </div>}
- {busy&&!gate&&<p className="vault-status" role="status">Opening the exact originals…</p>}{notice&&<p className="vault-status" role="status">{notice}</p>}{error&&<p className="vault-error" role="alert">{error}</p>}
+ {busy&&!gate&&<p className="vault-status" role="status"><InlineOpening label="Preparing the exact originals"/></p>}{notice&&<p className="vault-status" role="status">{notice}</p>}{error&&<p className="vault-error" role="alert">{error}</p>}
  </section></Sheet>;
 }

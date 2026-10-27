@@ -1,3 +1,4 @@
+import {InlineOpening} from './components/InlineOpening';
 import {clearNotificationUrl,notificationFromUrl,notificationTarget,type NotificationTarget} from './pwa/notification-target';
 import {publishAccountAppearance} from './receiz/account-appearance';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
@@ -42,7 +43,7 @@ export default function App() {
  const bankMounted=useRef(!receipt&&!vault);
  useEffect(()=>{const changed=()=>{setReceipt(location.pathname==='/receipt/'&&!document.getElementById('root')?.hidden?location.href:null);setVault(vaultLocation(location.href));if(location.pathname==='/')bankMounted.current=true;};addEventListener('popstate',changed);addEventListener('bankeiz:receipt',changed);addEventListener('receiz-bank:surface',changed);return()=>{removeEventListener('popstate',changed);removeEventListener('bankeiz:receipt',changed);removeEventListener('receiz-bank:surface',changed);};},[]);
  const session=readCardReturn(location.search);
- return <>{(bankMounted.current||!receipt&&!vault)&&<div hidden={!!receipt||!!vault} inert={!!receipt||!!vault}>{session?<CardDepositReturn sessionId={session}/>:<BankApp/>}</div>}{vault&&<Suspense fallback={<main className="vault-loading" role="status">Opening the record…</main>}><VaultPage route={vault}/></Suspense>}{receipt&&document.body.dataset.bankSurface!=='receipt'&&<ReceiptView key={receipt} onBack={()=>{if(history.state?.bankReceipt)history.back();else{history.replaceState(null,'','/#ledger');dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));}}}/>}</>;
+ return <>{(bankMounted.current||!receipt&&!vault)&&<div hidden={!!receipt||!!vault} inert={!!receipt||!!vault}>{session?<CardDepositReturn sessionId={session}/>:<BankApp/>}</div>}{vault&&<Suspense fallback={<main className="vault-loading" role="status"><InlineOpening label="Preparing the record"/></main>}><VaultPage route={vault}/></Suspense>}{receipt&&document.body.dataset.bankSurface!=='receipt'&&<ReceiptView key={receipt} onBack={()=>{if(history.state?.bankReceipt)history.back();else{history.replaceState(null,'','/#ledger');dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));}}}/>}</>;
 }
 const EMPTY_MARKET_ITEMS:import('./receiz/public-market').PublicMarketItem[]=[];
 function BankApp() {

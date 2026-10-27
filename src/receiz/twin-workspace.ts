@@ -3,6 +3,7 @@ import {profileUsername} from './public-profile';
 export type TwinAgent={version:number;agentId:string;ownerUserId:string;displayName:string;systemPersona:string;memoryScope:string;capabilities:string[];policy:Record<string,unknown>;updatedAt:string};
 export type TwinPortrait={ownerUserId?:string;avatarId:string;avatarImageUrl:string;visualStyle?:string;sourceImageUrl?:string|null};
 export type TwinSettings={profile:{userId:string;username:string;displayName?:string};agent:TwinAgent|null;avatar:TwinPortrait|null};
+export const twinEmbedCode=(settings:TwinSettings)=>`<script src="https://receiz.com/receiz-twin-embed.js" data-username="${settings.profile.username}" async></script>`;
 export type TwinWorkspaceRequest={action:'inspect'|'save'|'portrait'|'work'|'task';patch?:Record<string,unknown>;style?:string;prompt?:string;operation?:{id:string;quoteExpiresAt:string}};
 export type TwinWork={tasks:Record<string,unknown>[];campaigns:Record<string,unknown>[];attribution?:Record<string,unknown>};
 const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
@@ -10,15 +11,16 @@ const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof va
  * store, and no mutation retry with a replacement operation identifier. */
 export function createTwinWorkspace(input:{accountUid:string;assertOpen():void;onContacts?(owner:string,contacts:unknown[]):Promise<void>;request(input:TwinWorkspaceRequest,file?:File):Promise<unknown>}){
  let settings:Promise<TwinSettings>|undefined,work:Promise<TwinWork>|undefined;
+ let heldSettings:TwinSettings|null=null,heldWork:TwinWork|null=null;
  const contactVersions=new Map<string,string>();let workReading=false;
  let pending:{request:TwinWorkspaceRequest;file?:File}|undefined;
  function owner(value:unknown):TwinAgent|null{if(value===null)return null;if(!record(value)||value.ownerUserId!==input.accountUid||typeof value.agentId!=='string'||typeof value.displayName!=='string'||typeof value.systemPersona!=='string'||!Array.isArray(value.capabilities)||!record(value.policy))throw Error('TWIN_WORKSPACE_OWNER_MISMATCH');return value as TwinAgent;}
  function portrait(value:unknown):TwinPortrait|null{if(value===null)return null;if(!record(value)||value.ownerUserId!==input.accountUid||typeof value.avatarId!=='string'||typeof value.avatarImageUrl!=='string')throw Error('TWIN_WORKSPACE_OWNER_MISMATCH');const avatarImageUrl=profileAvatarUrl(value.avatarImageUrl);if(!avatarImageUrl)throw Error('TWIN_IMAGE_URL_INVALID');return{...value,avatarImageUrl,sourceImageUrl:profileAvatarUrl(value.sourceImageUrl)} as TwinPortrait;}
  async function read(request:TwinWorkspaceRequest,file?:File){input.assertOpen();const result=await input.request(request,file);input.assertOpen();if(!record(result)||result.ok!==true)throw Error(record(result)&&typeof result.error==='string'?result.error:'TWIN_RESULT_UNCONFIRMED');return result;}
- const load=()=>{input.assertOpen();return settings??=read({action:'inspect'}).then(result=>{const p=result.profile;if(!record(p)||p.userId!==input.accountUid||!profileUsername(p.username))throw Error('TWIN_WORKSPACE_OWNER_MISMATCH');return{profile:p as TwinSettings['profile'],agent:owner(result.agent),avatar:portrait(result.avatar)};}).catch(error=>{settings=undefined;throw error;});};
+ const load=()=>{input.assertOpen();return settings??=read({action:'inspect'}).then(result=>{const p=result.profile;if(!record(p)||p.userId!==input.accountUid||!profileUsername(p.username))throw Error('TWIN_WORKSPACE_OWNER_MISMATCH');heldSettings={profile:p as TwinSettings['profile'],agent:owner(result.agent),avatar:portrait(result.avatar)};return heldSettings;}).catch(error=>{settings=undefined;throw error;});};
  async function apply(){if(!pending)throw Error('TWIN_CHANGE_MISSING');const held=pending;const result=await read(held.request,held.file),current=await load();input.assertOpen();
-  if(held.request.action==='save')settings=Promise.resolve({...current,agent:owner(result.agent)});
-  else if(held.request.action==='portrait')settings=Promise.resolve({...current,avatar:portrait(result.avatar)});
+  if(held.request.action==='save')settings=Promise.resolve(heldSettings={...current,agent:owner(result.agent)});
+  else if(held.request.action==='portrait')settings=Promise.resolve(heldSettings={...current,avatar:portrait(result.avatar)});
   else if(held.request.action==='task'){work=undefined;}
   pending=undefined;return result;
  }
@@ -26,7 +28,7 @@ export function createTwinWorkspace(input:{accountUid:string;assertOpen():void;o
  async function loadWork(refresh=false){input.assertOpen();if(refresh&&!workReading)work=undefined;if(!work){workReading=true;work=read({action:'work'}).then(async result=>{
     if(!Array.isArray(result.tasks)||!Array.isArray(result.campaigns))throw Error('TWIN_WORK_UNAVAILABLE');
     for(const task of result.tasks){if(!record(task)||typeof task.id!=='string'||typeof task.contactsSyncedAt!=='string'||!Array.isArray(task.contactUpdates)||contactVersions.get(task.id)===task.contactsSyncedAt)continue;await input.onContacts?.(input.accountUid,task.contactUpdates);input.assertOpen();contactVersions.set(task.id,task.contactsSyncedAt);}
-    return{tasks:result.tasks,campaigns:result.campaigns,...(record(result.attribution)?{attribution:result.attribution}:{})} as TwinWork;
+    heldWork={tasks:result.tasks,campaigns:result.campaigns,...(record(result.attribution)?{attribution:result.attribution}:{})} as TwinWork;return heldWork;
    }).catch(error=>{work=undefined;throw error;}).finally(()=>{workReading=false;});}return work;}
  const listeners=new Set<{next(value:TwinWork):void;error(cause:unknown):void;version?:string}>();let timer:ReturnType<typeof setTimeout>|undefined,reading=false,queuedRefresh=false;
  const visible=()=>typeof document==='undefined'||document.visibilityState!=='hidden';
@@ -37,8 +39,11 @@ export function createTwinWorkspace(input:{accountUid:string;assertOpen():void;o
  }
  const resume=()=>{clearTimeout(timer);if(visible())void tick(true);};
  return{
+  accountUid:input.accountUid,
+  knownSettings(){try{input.assertOpen();return heldSettings;}catch{return null;}},
+  knownWork(){try{input.assertOpen();return heldWork;}catch{return null;}},
   settings:load,
-  embed(){input.assertOpen();return load().then(s=>`<script src="https://receiz.com/receiz-twin-embed.js" data-username="${s.profile.username}" async></script>`);},
+  embed(){input.assertOpen();return load().then(twinEmbedCode);},
   save(patch:Record<string,unknown>){return change({action:'save',patch});},
   portrait(file:File,style:string,prompt:string){if(!file.type.startsWith('image/')||!file.size||file.size>3_500_000)return Promise.reject(Error('TWIN_IMAGE_INVALID'));return change({action:'portrait',style,prompt},file);},
   retry(){input.assertOpen();if(pending?.request.action!=='portrait')return Promise.reject(Error('TWIN_INSPECT_CURRENT_REQUIRED'));return apply();},

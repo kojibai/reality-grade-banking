@@ -1,3 +1,4 @@
+import {InlineOpening} from '../../components/InlineOpening';
 import {lazy,Suspense,useState} from 'react';
 import {ArrowUpRight,ChevronRight,ShieldCheck} from 'lucide-react';
 import {formatMoney,formatUnits} from '../../core/money';
@@ -9,7 +10,7 @@ type Rail='settlement'|'reserve';
 const unit=(value:unknown):string|null=>typeof value==='string'&&/^(0|[1-9]\d{0,39})$/.test(value)?value:null;
 function RailDetails({rail,phi,usd,wallet,observation}:{rail:Rail;phi:string|null;usd:string|null;wallet:SharedWallet|null;observation:WalletObservation|null}){
  const [open,setOpen]=useState(false);
- return <details className="balance-rail-details" data-balance-rail={rail} open={open}><summary onClick={event=>{event.preventDefault();setOpen(value=>!value);}}><span>{rail==='settlement'?'Settlement':'Reserve'}<small>{rail==='settlement'?'Proof-native value':'Proof-backed funds'}</small></span><strong>{usd===null?'Unavailable':formatMoney(usd)}</strong><ChevronRight size={16} strokeWidth={1.6} aria-hidden="true"/></summary>{open&&<div className="balance-rail-body"><p className="balance-rail-phi" data-rail-phi>{phi===null?'Exact Φ unavailable':`${formatUnits(phi)} Φ`}</p><Suspense fallback={<p className="balance-calculation">Opening calculation details…</p>}><CalculationDetails rail={rail} wallet={wallet} observation={observation}/></Suspense></div>}</details>;
+ return <details className="balance-rail-details" data-balance-rail={rail} open={open}><summary onClick={event=>{event.preventDefault();setOpen(value=>!value);}}><span>{rail==='settlement'?'Settlement':'Reserve'}<small>{rail==='settlement'?'Proof-native value':'Proof-backed funds'}</small></span><strong>{usd===null?'Unavailable':formatMoney(usd)}</strong><ChevronRight size={16} strokeWidth={1.6} aria-hidden="true"/></summary>{open&&<div className="balance-rail-body"><p className="balance-rail-phi" data-rail-phi>{phi===null?'Exact Φ unavailable':`${formatUnits(phi)} Φ`}</p><Suspense fallback={<p className="balance-calculation"><InlineOpening label="Preparing calculation details"/></p>}><CalculationDetails rail={rail} wallet={wallet} observation={observation}/></Suspense></div>}</details>;
 }
 /** Presentation beneath the existing wallet frame. No reads, pricing or clocks. */
 export function BalanceDetails({wallet,observation=null}:{wallet:SharedWallet|null;observation?:WalletObservation|null}){

@@ -1,3 +1,4 @@
+import {InlineOpening} from '../components/InlineOpening';
 import {certificatePageToken} from '../receiz/share-certificates';
 import {lazy,Suspense} from 'react';
 const CertificatePage=lazy(()=>import('../features/certificates/PublicCertificatePage').then(m=>({default:m.PublicCertificatePage})));
@@ -37,5 +38,5 @@ function ExplorerContents({active=true}:{active?:boolean}){
 
 export function PublicExplorer({active=true}:{active?:boolean}){
  const[path,setPath]=useState(()=>location.pathname);useEffect(()=>{const change=()=>setPath(location.pathname);addEventListener('popstate',change);addEventListener('receiz-bank:surface',change);return()=>{removeEventListener('popstate',change);removeEventListener('receiz-bank:surface',change);};},[]);
- const token=certificatePageToken(path);return token?<Suspense fallback={<main className="main-panel"><h1>Share certificate</h1><p className="body-copy">Opening the live share record…</p></main>}><CertificatePage key={token} token={token} active={active}/></Suspense>:<ExplorerContents active={active}/>;
+ const token=certificatePageToken(path);return token?<Suspense fallback={<main className="main-panel"><h1>Share certificate</h1><p className="body-copy"><InlineOpening label="Preparing the live share record"/></p></main>}><CertificatePage key={token} token={token} active={active}/></Suspense>:<ExplorerContents active={active}/>;
 }

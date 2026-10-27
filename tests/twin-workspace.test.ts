@@ -44,3 +44,12 @@ it('rejects an unsafe saved portrait URL without changing the account settings',
  const api=createTwinWorkspace({accountUid:uid,request:async()=>({...view,avatar:{...view.avatar,avatarImageUrl:'javascript:alert(1)'}}),assertOpen(){}});
  await expect(api.settings()).rejects.toThrow('TWIN_IMAGE_URL_INVALID');
 });
+
+
+it('exposes only already accepted owner-scoped settings and work without starting a read',async()=>{
+ let open=true;const work={ok:true,tasks:[{id:'done',status:'completed'}],campaigns:[]},request=vi.fn(async(input:{action:string})=>input.action==='work'?work:view);
+ const api=createTwinWorkspace({accountUid:uid,request,assertOpen(){if(!open)throw Error('Closed');}});
+ expect(api.knownSettings()).toBeNull();expect(api.knownWork()).toBeNull();expect(request).not.toHaveBeenCalled();
+ const settings=await api.settings(),result=await api.work();expect(api.knownSettings()).toBe(settings);expect(api.knownWork()).toBe(result);expect(request).toHaveBeenCalledTimes(2);
+ open=false;expect(api.knownSettings()).toBeNull();expect(api.knownWork()).toBeNull();expect(request).toHaveBeenCalledTimes(2);
+});

@@ -1,3 +1,4 @@
+import {InlineOpening} from '../../components/InlineOpening';
 import {useEffect,useRef,useState,type ReactNode} from 'react';
 import {ArrowLeft,ArrowRight,Check,ShieldCheck} from 'lucide-react';
 import type {OpenIdentity} from '../../receiz/native-identity';
@@ -63,7 +64,7 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children}
   const remainder=cardAmount&&shortfall?(BigInt(cardAmount)-BigInt(shortfall)).toString():'0';
   return <section className="native-operation-result" aria-live="polite"><button type="button" className="text-button" disabled={busy} onClick={()=>void backToSend()}><ArrowLeft size={15}/>Back to send</button><h1 className="sheet-hero">{cardAmount?`Pay ${formatMoney(cardAmount)}.`:'Complete your payment.'}</h1><p className="body-copy">{fromBalance&&BigInt(fromBalance)>0n?`Your ${formatMoney(fromBalance)} balance and this card payment send ${formatMoney(outcome.amountUsdCents)} to ${outcome.recipientLabel}.`:`Complete your card payment to send ${formatMoney(outcome.amountUsdCents)} to ${outcome.recipientLabel}.`}</p>
    {BigInt(remainder)>0n&&<p className="body-copy small-copy">{formatMoney(cardAmount!)} card minimum. {formatMoney(remainder)} stays in your balance.</p>}
-   {outcome.checkout?<ReceizCardCheckout checkout={outcome.checkout} purpose="payment" onCheck={check}/>:<><p className="body-copy small-copy">{outcome.stage==='reviewing'?'Your send is saved. Check your balance to continue with the amount needed.':'Your approved payment is saved. Resume the same checkout to continue.'}</p><button className="primary-button" disabled={busy} onClick={()=>void check()}>{busy?'Opening secure checkout…':'Resume secure checkout'}</button></>}
+   {outcome.checkout?<ReceizCardCheckout checkout={outcome.checkout} purpose="payment" onCheck={check}/>:<><p className="body-copy small-copy">{outcome.stage==='reviewing'?'Your send is saved. Check your balance to continue with the amount needed.':'Your approved payment is saved. Resume the same checkout to continue.'}</p><button className="primary-button" disabled={busy} onClick={()=>void check()}>{<>Resume secure checkout{busy&&<InlineOpening compact label="Preparing secure checkout"/>}</>}</button></>}
    {busy&&<p className="body-copy small-copy" role="status">Confirming your payment…</p>}
    {diagnostics}</section>;
  }

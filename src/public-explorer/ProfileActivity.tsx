@@ -1,3 +1,4 @@
+import {InlineOpening} from '../components/InlineOpening';
 import {ArrowUpRight,BookOpen,FileText,Image,Music2,Video} from 'lucide-react';
 import {assetPagePath,retainPublicAsset} from '../receiz/public-asset-page';
 import {marketContentLabel} from '../receiz/market-categories';
@@ -27,6 +28,6 @@ export function ProfileActivity({items,hasMore,onMore,busy=false,active=true}:{i
     </a>
    </li>;
   })}</ol>:<div className="profile-activity-empty"><FileText size={24} strokeWidth={1.2}/><h3>No public activity yet</h3><p>Published assets will appear here.</p></div>}
-  <div ref={feed.tail} aria-hidden="true"/>{feed.remaining&&<button className="secondary-button profile-load-more" disabled={busy} onClick={feed.loadMore}>{busy?'Opening more activity…':'More activity'}</button>}
+  <div ref={feed.tail} aria-hidden="true"/>{feed.remaining&&<button className="secondary-button profile-load-more" disabled={busy&&feed.count>=items.length} onClick={feed.loadMore}>{<>More activity{busy&&feed.count>=items.length&&<InlineOpening compact label="Preparing more activity"/>}</>}</button>}
  </section>;
 }

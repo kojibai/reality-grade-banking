@@ -1,3 +1,4 @@
+import {InlineOpening} from '../../components/InlineOpening';
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowUpRight, BadgeCheck, ChevronRight, FileText, Fingerprint, LockKeyhole } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
@@ -58,7 +59,7 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
     <p className="identity-pbi-hint"><Fingerprint size={12} aria-hidden="true"/>Passkey sign-in &amp; recovery</p>
     {passkeyError&&<p className="error-message" role="alert">{passkeyError}</p>}
     {identity.vaults&&<button type="button" className="identity-vault-entry" onClick={()=>setVaultsOpen({owner:identity,mode:'home'})}><LockKeyhole size={23} strokeWidth={1.3}/><span><strong>Your vaults</strong><small>Your money. Your originals. Their proof.</small></span><ChevronRight size={16}/></button>}
-    {vaultsOpen?.owner===identity&&<Suspense fallback={<p className="body-copy small-copy" role="status">Opening your vaults…</p>}><PrivateVaults active={active&&vaultsActive} initialMode={vaultsOpen.mode} identity={identity} onRefresh={onRefresh} onClose={()=>setVaultsOpen(null)}/></Suspense>}
+    {vaultsOpen?.owner===identity&&<Suspense fallback={<p className="body-copy small-copy" role="status"><InlineOpening label="Preparing your vaults"/></p>}><PrivateVaults active={active&&vaultsActive} initialMode={vaultsOpen.mode} identity={identity} onRefresh={onRefresh} onClose={()=>setVaultsOpen(null)}/></Suspense>}
     <ProofPortabilityPanel identity={identity} />
     <BankConnection identity={identity} onRefresh={onRefresh} />
     <section className="profile-device" aria-label="Device custody">

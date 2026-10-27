@@ -1,12 +1,15 @@
 import {lazy,Suspense,useEffect,useMemo,useRef,useState,type FormEvent} from 'react';
 import {ArrowLeft,ArrowUpRight,Brain,Camera,Check,ChevronDown,RefreshCw} from 'lucide-react';
 import type {OpenIdentity} from '../../receiz/native-identity';
-import type {TwinSettings,TwinWorkspace,TwinWork} from '../../receiz/twin-workspace';
+import {twinEmbedCode,type TwinSettings,type TwinWorkspace,type TwinWork} from '../../receiz/twin-workspace';
+import {TwinWorkspaceOpening} from './TwinWorkspaceOpening';
 import {readHeldTwinMind,type HeldMindConversation,type HeldMindLedger} from '../../receiz/twin-mind-display';
 import {businessCapabilities} from '../../receiz/business-setup';
 import {CopyFeedbackIcon,useCopyFeedback} from '../../components/CopyFeedback';
 import './twin-workspace.css';
-const TwinMindView=lazy(()=>import('./twin-mind/TwinMindView'));
+let mindCode:Promise<typeof import('./twin-mind/TwinMindView')>|undefined;
+const prepareMindCode=()=>mindCode??=import('./twin-mind/TwinMindView').catch(cause=>{mindCode=undefined;throw cause;});
+const TwinMindView=lazy(prepareMindCode);
 const record=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,unknown>:{};
 const rows=(v:unknown)=>Array.isArray(v)?v.map(record):[];
 const text=(v:unknown)=>typeof v==='string'?v:'';
@@ -16,34 +19,42 @@ const skills:Record<string,string>={'lead-qualifier':'Qualify leads','offer-matc
 const presentations:Record<string,{label:string;values:string[]}>={embodimentMode:{label:'Presence',values:['text','voice','avatar-live']},renderMode:{label:'Portrait display',values:['portrait','live-video']},replyVoiceMode:{label:'Voice',values:['muted','browser','generated']},fallbackVoiceStyle:{label:'Voice style',values:['neutral','feminine','masculine']},outreachOfferMode:{label:'Offer to share',values:['saved-business','receiz-affiliate']}};
 const title=(s:string)=>s.replace(/-/g,' ').replace(/^./,v=>v.toUpperCase());
 export function TwinWorkspacePanel({identity,accountUid,heldConversations,heldLedger,active,initialTab='settings',onBack}:{identity:OpenIdentity;accountUid:string;heldConversations?:readonly HeldMindConversation[];heldLedger?:HeldMindLedger;active:boolean;initialTab?:'settings'|'mind'|'work'|'embed';onBack():void}){
- const [api,setApi]=useState<TwinWorkspace|null>(null),[settings,setSettings]=useState<TwinSettings|null>(null),[tab,setTab]=useState<'settings'|'mind'|'work'|'embed'>(initialTab);
- const [work,setWork]=useState<TwinWork|null>(null),[embed,setEmbed]=useState(''),[previewOpen,setPreviewOpen]=useState(false),[settingsError,setSettingsError]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
+ const [api,setApi]=useState<TwinWorkspace|null>(()=>identity.knownTwinWorkspace?.()??null),[settings,setSettings]=useState<TwinSettings|null>(()=>api?.knownSettings()??null),[tab,setTab]=useState<'settings'|'mind'|'work'|'embed'>(initialTab);
+ const [work,setWork]=useState<TwinWork|null>(()=>api?.knownWork()??null),[settingsError,setSettingsError]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
+ const embed=tab==='embed'&&settings?twinEmbedCode(settings):'';
+ const previewFrame=useRef<HTMLIFrameElement>(null),[previewExpanded,setPreviewExpanded]=useState(false);
+ const apiRef=useRef(api);apiRef.current=api;
  const mind=useMemo(()=>tab==='mind'&&active?readHeldTwinMind(identity,accountUid,heldConversations,heldLedger):null,[identity,accountUid,tab,active,heldConversations,heldLedger]);
  const alive=useRef(true),currentIdentity=useRef(identity),copy=useCopyFeedback(embed);currentIdentity.current=identity;
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[identity]);
  useEffect(()=>{
-  if(tab==='mind')return;let current=true,connected=!!api;
-  void (api?Promise.resolve(api):identity.twinWorkspace!()).then(async client=>{
-   if(!current)return;connected=true;if(!api)setApi(client);
-   if(tab==='settings'||tab==='embed'){const value=await client.settings();if(current){setSettings(value);setSettingsError('');}}
-  }).catch(()=>{if(current){const message='Your Twin could not be opened. Your existing settings are unchanged.';if(connected)setSettingsError(message);else setError(message);}});
-  return()=>{current=false;};
- },[identity,tab,api]);
- useEffect(()=>{if(!api||!active)return;let current=true;
-  if(tab==='embed'&&!embed)void api.embed().then(value=>{if(current)setEmbed(value);}).catch(()=>{if(current)setError('Your Twin link is unavailable.');});
-  if(tab==='work')return api.watchWork(value=>{if(current)setWork(value);},()=>{if(current)setError('Your latest work could not be read. Your saved work is unchanged.');});
-  return()=>{current=false;};
- },[api,active,tab,embed]);
+  if(tab==='mind'||!active)return;let current=true,connected=!!apiRef.current,stopWork:(()=>void)|undefined;
+  const held=apiRef.current??identity.knownTwinWorkspace?.();
+  void (held?Promise.resolve(held):identity.twinWorkspace!()).then(client=>{
+   if(!current)return;connected=true;setApi(client);
+   if(tab==='work'){
+    const known=client.knownWork();if(known)setWork(known);
+    stopWork=client.watchWork(value=>{if(current)setWork(value);},()=>{if(current)setError('Your latest work could not be read. Your saved work is unchanged.');});
+   }else return client.settings().then(value=>{if(current){setSettings(value);setSettingsError('');}});
+  }).catch(()=>{if(current){const message='Your Twin could not be opened. Your existing settings are unchanged.';if(connected&&tab!=='work')setSettingsError(message);else setError(message);}});
+  return()=>{current=false;stopWork?.();};
+ },[identity,tab,active]);
+ useEffect(()=>{
+  if(tab!=='embed'||!active||!settings)return;
+  const message=(event:MessageEvent)=>{if(event.source!==previewFrame.current?.contentWindow||event.origin!=='https://receiz.com')return;const value=record(event.data);if(value.type==='receiz:twin-stage'&&value.username===settings.profile.username&&typeof value.open==='boolean')setPreviewExpanded(value.open);};
+  window.addEventListener('message',message);return()=>window.removeEventListener('message',message);
+ },[tab,active,settings]);
  async function run(action:()=>Promise<unknown>,message:string){if(!api||busy)return false;setBusy(true);setError('');setNotice('');try{await action();const current=await api.settings();if(alive.current&&currentIdentity.current===identity){setSettings(current);setNotice(message);}return true;}catch{if(alive.current&&currentIdentity.current===identity)setError(api.hasPending()?'The result is not confirmed. Your request is retained; it has not been repeated.':'This could not be completed. Your current settings are kept.');return false;}finally{if(alive.current&&currentIdentity.current===identity)setBusy(false);}}
- const choose=(value:typeof tab)=>{setError('');setNotice('');setTab(value);};
- return <div className="bank-twin-workspace"><div className="twin-workspace-top"><button type="button" onClick={onBack}><ArrowLeft size={15}/>Conversation</button><span><Brain size={16}/>Your Twin</span></div><nav aria-label="Twin controls">{(['settings','mind','work','embed'] as const).map(value=><button type="button" key={value} aria-current={tab===value?'page':undefined} onClick={()=>choose(value)}>{value==='embed'?'Add to website':title(value)}</button>)}</nav><div className="twin-workspace-scroll">
+ const choose=(value:typeof tab)=>{setError('');setNotice('');if(value!=='embed')setPreviewExpanded(false);setTab(value);};
+ return <div className="bank-twin-workspace" data-active={active}><div className="twin-workspace-top"><button type="button" onClick={onBack}><ArrowLeft size={15}/>Conversation</button><span><Brain size={16}/>Your Twin</span></div><nav aria-label="Twin controls">{(['settings','mind','work','embed'] as const).map(value=><button type="button" key={value} aria-current={tab===value?'page':undefined} onPointerEnter={value==='mind'?()=>void prepareMindCode().catch(()=>{}):undefined} onPointerDown={value==='mind'?()=>void prepareMindCode().catch(()=>{}):undefined} onFocus={value==='mind'?()=>void prepareMindCode().catch(()=>{}):undefined} onClick={()=>choose(value)}>{value==='embed'?'Add to website':title(value)}</button>)}</nav><div className="twin-workspace-scroll">
   {tab==='settings'&&settings&&api&&<TwinSettingsForm key={settings.agent?.updatedAt??'new'} value={settings} busy={busy} onSave={patch=>void run(()=>api.save(patch),'Your Twin settings are saved.')} onPortrait={(file,style,prompt)=>run(()=>api.portrait(file,style,prompt),'Your Twin portrait is saved.')} />}
-  {tab==='settings'&&!settings&&!settingsError&&<p className="twin-muted" role="status">Opening your Twin…</p>}
-  {tab==='mind'&&<><h3>Your continuity.</h3><p className="twin-muted">Your available sources and conversations, together.</p>{mind&&<Suspense fallback={<p className="twin-muted" role="status">Opening your saved mind…</p>}><TwinMindView value={mind} active={active}/></Suspense>}</>}
-  {tab==='work'&&<><div className="twin-work-heading"><h3>Work, moving forward.</h3><button type="button" aria-label="Refresh agent work" disabled={!api} onClick={()=>void api?.refreshWork()}><RefreshCw size={15}/></button></div><p className="twin-muted">Your existing tasks and campaigns. Keep the conversation going while your agent works.</p>{work?<TwinWorkView value={work}/>:<p className="twin-muted" role="status">Opening your work…</p>}</>}
-  {tab==='embed'&&<><h3>Your Twin, anywhere.</h3><p className="twin-muted">Add your existing Twin to your website. Its identity, settings and continuity stay together.</p>{embed&&<><div className="twin-embed"><code>{embed}</code><button type="button" aria-label={copy.copied?'Embed copied':'Copy Twin embed'} onClick={()=>{void navigator.clipboard.writeText(embed).then(copy.confirm).catch(()=>setError('The embed could not be copied.'));}}><CopyFeedbackIcon copied={copy.copied}/></button></div><button type="button" className="twin-text-link" onClick={()=>setPreviewOpen(value=>!value)} aria-expanded={previewOpen}>Preview your Twin<ArrowUpRight size={14}/></button>{previewOpen&&<iframe className="twin-embed-preview" title="Your Twin website preview" src={'https://receiz.com/world/embed/'+settings?.profile.username} referrerPolicy="no-referrer"/>}</>}</>}
+  {tab==='settings'&&!settings&&!settingsError&&!error&&<TwinWorkspaceOpening view="settings" active={active}/>}
+  {tab==='mind'&&<><h3>Your continuity.</h3><p className="twin-muted">Your available sources and conversations, together.</p>{mind&&<Suspense fallback={<TwinWorkspaceOpening view="mind" active={active}/>}><TwinMindView value={mind} active={active}/></Suspense>}</>}
+  {tab==='work'&&<><div className="twin-work-heading"><h3>Work, moving forward.</h3><button type="button" aria-label="Refresh agent work" disabled={!api} onClick={()=>void api?.refreshWork()}><RefreshCw size={15}/></button></div><p className="twin-muted">Your existing tasks and campaigns. Keep the conversation going while your agent works.</p>{work?<TwinWorkView value={work}/>:!error&&<TwinWorkspaceOpening view="work" active={active}/>}</>}
+  {tab==='embed'&&<><h3>Your Twin, anywhere.</h3><p className="twin-muted">Add your existing Twin to your website. Its identity, settings and continuity stay together.</p>{embed&&<><div className="twin-embed"><code>{embed}</code><button type="button" aria-label={copy.copied?'Embed copied':'Copy Twin embed'} onClick={()=>{void navigator.clipboard.writeText(embed).then(copy.confirm).catch(()=>setError('The embed could not be copied.'));}}><CopyFeedbackIcon copied={copy.copied}/></button></div><iframe ref={previewFrame} className="twin-embed-preview" data-open={previewExpanded} title="Your Twin website preview" src={'https://receiz.com/world/embed/'+settings!.profile.username} loading="lazy" referrerPolicy="no-referrer"/></>}</>}
+  {tab==='embed'&&!embed&&!settingsError&&!error&&<TwinWorkspaceOpening view="embed" active={active}/>}
   {api?.hasPending()&&<button type="button" className="twin-text-link" disabled={busy} onClick={()=>void run(async()=>{if(api.pendingKind()==='portrait')return api.retry();setSettings(await api.refresh());},api.pendingKind()==='portrait'?'Your Twin portrait is saved.':'Current settings are shown. Review any changes before saving again.')}>{api.pendingKind()==='portrait'?'Check portrait request':'Review current settings'}</button>}
-  {tab==='settings'&&settingsError&&<p className="twin-error" role="alert">{settingsError}</p>}{notice&&<p className="twin-notice" role="status"><Check size={14}/>{notice}</p>}{error&&<p className="twin-error" role="alert">{error}</p>}
+  {(tab==='settings'||tab==='embed')&&settingsError&&<p className="twin-error" role="alert">{settingsError}</p>}{notice&&<p className="twin-notice" role="status"><Check size={14}/>{notice}</p>}{error&&<p className="twin-error" role="alert">{error}</p>}
  </div></div>;
 }
 function TwinSettingsForm({value,busy,onSave,onPortrait}:{value:TwinSettings;busy:boolean;onSave(patch:Record<string,unknown>):void;onPortrait(file:File,style:string,prompt:string):Promise<boolean>}){

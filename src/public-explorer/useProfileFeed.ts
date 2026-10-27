@@ -7,14 +7,14 @@ export function useProfileFeed({length,boundary,hasMore,active,busy,onMore,initi
  const [windows,setWindows]=useState<Record<string,number>>(()=>({[view]:initialCount})),tail=useRef<HTMLDivElement>(null),attempted=useRef(''),count=windows[view]??PAGE_SIZE;
  const remaining=count<length||hasMore;
  const loadMore=useCallback((automatic=false)=>{
-  if(busy)return;
   if(count<length){setWindows(previous=>({...previous,[view]:Math.min(length,count+PAGE_SIZE)}));return;}
+  if(busy)return;
   if(hasMore&&onMore&&(!automatic||attempted.current!==boundary)){attempted.current=boundary;onMore();}
  },[busy,count,length,hasMore,onMore,boundary,view]);
  useEffect(()=>{
-  if(!active||!remaining||busy||!tail.current||typeof IntersectionObserver==='undefined')return;
+  if(!active||!remaining||(busy&&count>=length)||!tail.current||typeof IntersectionObserver==='undefined')return;
   const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))loadMore(true);},{rootMargin:'1400px 0px'});
   observer.observe(tail.current);return()=>observer.disconnect();
- },[active,remaining,busy,loadMore]);
+ },[active,remaining,busy,count,length,loadMore]);
  return {count,remaining,tail,loadMore:()=>loadMore(false)};
 }
