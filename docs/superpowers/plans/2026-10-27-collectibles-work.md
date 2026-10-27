@@ -326,3 +326,51 @@ the complete production build/source/offline-shell checks. Two stale copy
 assertions from main 6103ce8 were updated to its committed money/source wording;
 the same receiving continuity requirements stay asserted. Other developers’
 ongoing Messaging/Twin edits and generated files were excluded and preserved.
+
+## Profile booking first-open and retained presentation
+
+The profile booking path had a code → availability waterfall. It also constructed
+a timezone formatter for every slot on each of several scans, and unmounted the
+entire time picker on the guest-details step. The source service already retained
+its single successful availability response; there was no evidence of a repeated
+network read on ordinary close/reopen. The confirmed regression was repeated
+presentation work, not a new booking rule or a timezone network lookup.
+
+The small existing profile frame now paints on the first tap from the carried
+profile. The one availability read and optional booking-editor import start
+together after that tap, with no request before intent and no second read on
+editor handoff, Back or reopen. First-ever offered times still require the actual
+source response. No times are fabricated and confirmation still submits the
+exact offered instant with the existing conflict/outcome recovery rules.
+
+The offered source is indexed once per display zone using five reusable
+formatters; each source retains at most two display-zone indexes through a weak
+reference. Day/time selection uses those indexes. The time picker stays mounted
+while guest details are shown, and parent pulse renders do not rebuild it.
+
+On the actual public capture of 665 offered slots, five local CPU measurements
+had medians of 66.388 ms before and 5.674 ms after; a retained lookup averaged
+0.000185 ms over 1,000 calls. These are local presentation measurements, not
+physical-iPhone end-to-end times. A read-only public availability request took
+0.589 s; that first source delivery is separate from the repeated CPU work.
+The 842-slot regression first failed at 2,530 formatter constructions; it now
+requires fewer than twelve on opening, none on Back or an unchanged rerender,
+the same picker DOM nodes, and one source read. Additional cases cover a first
+tap while the editor is suspended, a pending/failed first read without an
+automatic retry, and daylight-saving display with unchanged offered instants.
+
+CUA checked the actual local main app: select an offered time, Continue, Back,
+close and reopen; the selection stays intact. No appointment was submitted.
+Evidence: /private/tmp/profile-booking-repaired.png. Receiz, SQL, availability
+rules and financial behavior are unchanged by this fix. The unrelated shared
+workspace opening-indicator work is preserved outside this commit.
+
+Final qualification: 3,882 passing tests in 627 files with no skips in the
+isolated booking candidate. The initial unrestricted-worker sandbox run had
+five fixture/deadline failures (business-fit artwork, business-fit journeys,
+canonical-document rejection and two cooperative-preview HTTP cases); the
+permitted local-HTTP run with two workers passed them all without code or
+timeout changes. After the concurrent balance-disclosure commit 64edd45, its
+changed tests plus all booking regressions passed together: 148 tests, 22 files.
+The combined candidate passed the complete production build, strict typecheck,
+source archive, public-page, offline-shell and licensing gates.
