@@ -68,7 +68,7 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
   const abort = new AbortController(), streamPath = isNativeChatStreamPath(new URL(path,'https://receiz.com').pathname);
   const signal = AbortSignal.any([request.signal,abort.signal,AbortSignal.timeout(streamPath?NATIVE_CHAT_STREAM_TIMEOUT_MS:60_000)]);
   try {
-    const artifactPath=path==='/api/receiz/ownership/bearer-claim',multipartPath=artifactPath||path==='/api/document-verify'||path==='/api/profile/me/media';
+    const certificateExport=path==='/api/connect/market/shares/export'||/^\/api\/connect\/market\/share-certificates\/[^/]+\/download$/.test(path),certificateImport=path==='/api/connect/market/shares/import',artifactPath=path==='/api/receiz/ownership/bearer-claim'||certificateExport,multipartPath=artifactPath&&!certificateExport||certificateImport||path==='/api/document-verify'||path==='/api/profile/me/media';
     const headers: Record<string, string> = { Accept: streamPath?'text/event-stream':artifactPath?'application/vnd.receiz.bundle+json, application/octet-stream':'application/json' };
     let multipart=false;
     const authorization = request.headers.get('authorization'); if (authorization) headers.Authorization = authorization;
@@ -81,7 +81,7 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
     if (['POST','PATCH','PUT'].includes(request.method) || request.method==='DELETE' && path==='/api/chat/notifications/push') {
       const contentType=request.headers.get('content-type');multipart=!!multipartPath&&typeof contentType==='string'&&/^multipart\/form-data;\s*boundary=(?:[A-Za-z0-9'()+_,.\/=:?-]{1,100}|"[A-Za-z0-9'()+_,.\/=:?-]{1,100}")$/i.test(contentType);
       if (!multipart&&!contentType?.startsWith('application/json')||multipartPath&&!multipart) return fail(415);
-      headers['Content-Type'] = multipart?contentType!:'application/json'; body = await bytes(request.body,multipart?4*1024*1024:LIMIT,signal);
+      headers['Content-Type'] = multipart?contentType!:'application/json'; body = await bytes(request.body,certificateImport?26*1024*1024:multipart?4*1024*1024:LIMIT,signal);
     }
     signal.throwIfAborted();
     const response = await fetch(`https://receiz.com${path}`, { method: request.method, headers, body: multipart&&body?new Uint8Array(body):body?.toString('utf8'), credentials: 'omit', redirect: 'error', signal });
@@ -96,12 +96,13 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
       if (!streamPath || !response.ok || !response.body) { await response.body?.cancel(); return fail(503); }
       return new Response(streamingBody(response.body,signal,abort), {status:response.status,headers:{...base,'Cache-Control':'no-store, no-transform','Content-Type':response.headers.get('content-type')!,'X-Accel-Buffering':'no'}});
     }
-    const output = await bytes(response.body,LIMIT,signal);
+    const output = await bytes(response.body,certificateExport?26*1024*1024:LIMIT,signal);
     if (process.env.RECEIZ_BANK_QUALIFICATION_DIAGNOSTICS === '1' && response.status === 503 && path.startsWith('/api/sdk/v1/runtime/qualify?') && body) {
       const probes = await probeNativeQualification(body.toString('utf8'), authorization ?? undefined);
       for (const probe of probes) console.warn('receiz-bank native qualification probe', probe);
     }
     const responseHeaders:Record<string,string>={...base,'Content-Type':artifactPath&&response.ok?response.headers.get('content-type')??'application/octet-stream':'application/json'};
+    for(const key of ['x-receiz-actor-user','x-receiz-share-certificate','x-receiz-market-item']){const value=response.headers.get(key);if(value)responseHeaders[key]=value;}
     const challenge = response.headers.get('www-authenticate'); if (challenge) responseHeaders['WWW-Authenticate'] = challenge;
     if(artifactPath&&response.ok)for(const key of ['content-disposition','x-receiz-continuity','x-receiz-owner','x-receiz-record-id','x-receiz-claim-id','x-receiz-verify-path','x-receiz-signature-version']){const value=response.headers.get(key);if(value)responseHeaders[key]=value;}
     return new Response([204,205,304].includes(response.status)?null:completeBody(output),{status:response.status,headers:responseHeaders});

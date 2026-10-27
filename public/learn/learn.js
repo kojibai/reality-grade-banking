@@ -94,13 +94,13 @@
   const keepAsset=value=>{if(value&&typeof value.id==='string'&&value.id.length<=256&&typeof value.title==='string'){assetMetadata.set(value.id,{...value,description:value.description??value.summary});assetEntries.delete(value.id);if(assetMetadata.size>48){const first=assetMetadata.keys().next().value;assetMetadata.delete(first);assetEntries.delete(first);}}};
   try{keepAsset(JSON.parse(document.getElementById('public-asset-seed')?.textContent??'null'));}catch{}
   const assetAt=path=>{
-    const name=profileName(path),match=/^\/asset\/([^/]+)\/?$/.exec(path),base=pages['/explore/'];if(!base||!name&&!match)return;
-    let id;try{id=name?'@'+name:decodeURIComponent(match[1]);}catch{return;}if(!id||id.length>256||/[\x00-\x1f\x7f]/.test(id))return;
+    const name=profileName(path),match=/^\/(asset|shares)\/([^/]+)\/?$/.exec(path),certificate=match?.[1]==='shares',base=pages['/explore/'];if(!base||!name&&!match)return;
+    let id;try{id=name?'@'+name:(certificate?'certificate:':'')+decodeURIComponent(match[2]);}catch{return;}if(!id||id.length>256||/[\x00-\x1f\x7f]/.test(id))return;
     if(assetEntries.has(id))return assetEntries.get(id);
-    const meta=assetMetadata.get(id),title=(meta?.title||(name?'@'+name:'Public asset'))+' | Bankeiz',description=String(meta?.description||(name?'Public assets. Original work. Connected history.':'Inspect this asset, its media, ownership, valuation and original evidence.')).slice(0,300),url='https://bankeiz.com'+(name?path:'/asset/'+encodeURIComponent(id)+'/'),image=name?meta?.image:url+'og.png';
+    const meta=assetMetadata.get(id),title=(meta?.title||(name?'@'+name:certificate?'Share certificate':'Public asset'))+' | Bankeiz',description=String(meta?.description||(name?'Public assets. Original work. Connected history.':'Ownership, value, proof.')).slice(0,300),url='https://bankeiz.com'+(name||certificate?path:'/asset/'+encodeURIComponent(id)+'/'),image=certificate?null:name?meta?.image:url+'og.png';
     const template=document.createElement('template');template.innerHTML=base.head;
     template.content.querySelector('title').textContent=title;
-    for(const node of template.content.querySelectorAll('meta')){const key=node.getAttribute('property')||node.name;if(['description','og:description','twitter:description'].includes(key))node.content=description;else if(['og:title','twitter:title','og:image:alt','twitter:image:alt'].includes(key))node.content=title;else if(key==='og:url')node.content=url;else if(key==='og:type'&&name)node.content='profile';else if(['og:image','og:image:secure_url','twitter:image'].includes(key)&&image)node.content=image;else if(key==='robots')node.content=meta?'index,follow,max-image-preview:large':'noindex,follow';}
+    for(const node of template.content.querySelectorAll('meta')){const key=node.getAttribute('property')||node.name;if(/^(og:|twitter:)?description$/.test(key))node.content=description;else if(/^(og|twitter):(title|image:alt)$/.test(key))node.content=title;else if(key==='og:url')node.content=url;else if(key==='og:type'&&name)node.content='profile';else if(/^(og:image(:secure_url)?|twitter:image)$/.test(key)&&image)node.content=image;else if(key==='robots')node.content=meta?'index,follow,max-image-preview:large':'noindex,follow';}
     if(!name&&meta?.media){
       for(const key in meta.media){
         const attribute=key[0]==='o'?'property':'name',node=template.content.querySelector(`meta[${attribute}="${key}"]`)||document.createElement('meta');

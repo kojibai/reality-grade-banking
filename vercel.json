@@ -37,6 +37,14 @@
   ],
   "rewrites": [
     {
+      "source": "/shares/:noteToken/",
+      "destination": "/explore/index.html"
+    },
+    {
+      "source": "/shares/:noteToken",
+      "destination": "/explore/index.html"
+    },
+    {
       "source": "/book/:username/",
       "destination": "/book/index.html"
     },

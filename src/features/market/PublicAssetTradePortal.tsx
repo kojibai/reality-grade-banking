@@ -1,3 +1,5 @@
+import {CertificateManager} from '../certificates/CertificateManager';
+import {closePublicAssetTrade} from '../../receiz/public-asset-trade';
 import {useEffect,useLayoutEffect,useRef,useState,useSyncExternalStore,type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
 import {Entrance} from '../identity/Entrance';
@@ -27,6 +29,7 @@ function PublicAssetTradeFlow({request, account}: {request: PublicAssetTradeRequ
     <p className="body-copy small-copy">Your device-held account opens here. You review the amount before any payment. <a href="/learn/account-access/">Account access</a></p>
   </div>;
   if (!account.identity) return <Entrance opening={account.opening} openingStage={account.openingStage} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId}/>;
+  if(request.certificateAction==='manage'&&request.certificateToken)return <CertificateManager identity={account.identity} initialToken={request.certificateToken} embedded onClose={()=>closePublicAssetTrade(request.id)} onRefresh={()=>{void account.refresh();}}/>;
   return <MarketTradeFlow key={account.identity.binding?.artifactSha256} identity={account.identity} wallet={account.wallet} intent={{...request,initialBudget:budget}} onRefresh={()=>{void account.refresh();}}/>;
 }
 

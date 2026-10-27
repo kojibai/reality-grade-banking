@@ -16,13 +16,18 @@ async function noteRemovalGuard(saved: SavedIdentity) {
   const db = await database();
   const rows: {key:string;row:PrivateBankOperation|undefined}[]=[];
   try {
-    for (const family of ['hosted-checkouts','offline-notes','prepared-notes','connected-notes','asset-publication','backed-asset-publication','received-note-deposits','native-payments','native-assets','wallet-sends','market-trades','received-proof','twin-credit-purchase']) {
+    for (const family of ['hosted-checkouts','offline-notes','prepared-notes','connected-notes','asset-publication','backed-asset-publication','received-note-deposits','native-payments','native-assets','wallet-sends','market-trades','share-certificates','received-proof','twin-credit-purchase']) {
       const key=`${family}|${BANK_STORAGE_APPLICATION_ID}|${digest}`;
       const row=await new Promise<PrivateBankOperation|undefined>((resolve,reject)=>{const read=db.transaction('operations').objectStore('operations').get(key);read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error);});
       rows.push({key,row});
       if(!row)continue;
       const clear=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(row.iv),additionalData:new TextEncoder().encode(key)},saved.wrappingKey,row.bytes);
       const state=JSON.parse(new TextDecoder().decode(clear));
+      if(family==='share-certificates'){
+        const checkpoint=(await import('./share-certificates')).readShareCertificateCheckpoint(state,digest);
+        if(checkpoint?.current.status==='pending')throw Error('Keep this ID until its certificate operation is confirmed. Reopen Certificates to continue the exact request.');
+        continue;
+      }
       if(family==='twin-credit-purchase'){
         if((await import('./twin-credit-purchase-intent')).readTwinCreditPurchaseIntent(state,digest))throw Error('Keep this identity until its credit purchase outcome is confirmed. Reopen the same top-up to recover it.');
         continue;
@@ -870,3 +875,6 @@ export const loadMoneyWorkspaceState=(binding:{artifactSha256:string})=>loadNote
 export const saveMoneyWorkspaceState=(binding:{artifactSha256:string},value:import('./money-workspace').MoneyState,expected:unknown)=>saveNoteState(binding,'money-workspace',value,expected);
 export const loadMoneyConversationState=(binding:{artifactSha256:string})=>loadNoteState(binding,'money-conversation');
 export const saveMoneyConversationState=(binding:{artifactSha256:string},value:import('./money-conversation-retention').MoneyConversationState,expected:unknown)=>saveNoteState(binding,'money-conversation',value,expected);
+
+export const loadShareCertificateState=(binding:{artifactSha256:string})=>loadNoteState(binding,'share-certificates');
+export const saveShareCertificateState=(binding:{artifactSha256:string},value:import('./share-certificates').ShareCertificateCheckpoint,expected:unknown)=>saveNoteState(binding,'share-certificates',value,expected);

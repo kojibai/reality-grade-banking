@@ -7,9 +7,9 @@ import type {BankOperationInput} from '../src/receiz/bank-operations';
 
 // Real asset/payment choreography; only identity admission, encrypted storage
 // and authenticated transport are isolated protocol fixtures here.
-const p=vi.hoisted(()=>({generic:null as unknown,payment:null as unknown,asset:null as unknown,wallet:null as unknown,market:null as unknown,note:null as unknown,credit:null as unknown,storedHead:null as unknown,marketReads:0,request:vi.fn(),qualify:vi.fn(),locks:vi.fn()}));
+const p=vi.hoisted(()=>({generic:null as unknown,payment:null as unknown,asset:null as unknown,wallet:null as unknown,market:null as unknown,note:null as unknown,credit:null as unknown,certificate:null as unknown,storedHead:null as unknown,marketReads:0,request:vi.fn(),qualify:vi.fn(),locks:vi.fn()}));
 vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),
- loadOfflineNoteState:async()=>p.note,loadPreparedNoteState:async()=>null,loadConnectedNoteState:async()=>null,loadTwinCreditPurchaseState:async()=>p.credit,
+ loadOfflineNoteState:async()=>p.note,loadPreparedNoteState:async()=>null,loadConnectedNoteState:async()=>null,loadTwinCreditPurchaseState:async()=>p.credit,loadShareCertificateState:async()=>p.certificate,
  loadWalletObservation:async()=>p.storedHead,assertWalletSendCustody:async()=>{if((p.storedHead as {source?:string}|null)?.source==='local-note-head')throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');},loadAccountLedgerState:async()=>null,loadReceivedNoteDepositState:async()=>null,loadBankOperation:async()=>p.generic,
  loadNativePaymentState:async()=>p.payment,loadNativeAssetState:async()=>p.asset,loadWalletSendState:async()=>p.wallet,loadMarketTradeState:async()=>{p.marketReads++;return p.market;},
  saveNativePaymentState:async(_binding:unknown,value:unknown,expected:unknown)=>{expect(p.payment).toEqual(expected);p.payment=structuredClone(value);},
@@ -38,7 +38,7 @@ function unknown(kind:'assets'|'payments'){
  return{schema:kind==='assets'?'bank.native-assets.v1':'bank.native-payments.v1',current:{prepared:value,consentProof:{schema:'receiz.identity.login_proof.v1',keyId:'a'.repeat(64),alg:'Ed25519',challengeB64Url:value.challengeB64Url,signatureB64Url:'fixture'},state:'unknown'},history:[]};
 }
 beforeEach(()=>{
- p.marketReads=0;p.generic=null;p.payment=null;p.asset=null;p.wallet=null;p.market=null;p.note=null;p.credit=null;p.storedHead=null;p.qualify.mockReset().mockRejectedValue(Error('GENERIC_RUNTIME_MUST_NOT_BE_USED'));
+ p.marketReads=0;p.generic=null;p.payment=null;p.asset=null;p.wallet=null;p.market=null;p.note=null;p.credit=null;p.certificate=null;p.storedHead=null;p.qualify.mockReset().mockRejectedValue(Error('GENERIC_RUNTIME_MUST_NOT_BE_USED'));
  const locks=new Map<string,Promise<unknown>>();
  p.locks.mockReset().mockImplementation((name:string,_options:unknown,operation:()=>Promise<unknown>)=>{const result=(locks.get(name)??Promise.resolve()).catch(()=>{}).then(operation);locks.set(name,result);return result;});
  vi.stubGlobal('navigator',{locks:{request:p.locks}});
@@ -132,4 +132,9 @@ it.each(['buy','sell'] as const)('opens %s review with one locked Market checkpo
   await expect(api.prepare({marketItemId:'asset:one',side,...(side==='buy'?{amountUsdCents:'100'}:{shareQuantityMicro:'1000000'})})).rejects.toThrow('BANK_MARKET_IDENTITY_CHANGED');
   expect(p.marketReads).toBe(1);expect(p.request).not.toHaveBeenCalled();
  }finally{identity.dispose();}
+});
+
+it('a retained certificate operation blocks another financial action before transport',async()=>{
+ p.certificate={schema:'bank.share-certificates.v1',identityDigest:'b'.repeat(64),current:{kind:'trade',status:'pending',accountUid:'fixture-user',token:'certificate-pending-target',body:{clientNonce:'00000000-0000-4000-8000-000000000001',side:'buy',amountUsd:'1.00'}},history:[]};
+ const identity=await open();try{await expect((await identity.operations!()).prepare(fund)).rejects.toThrow('BANK_EXECUTION_PENDING');expect(p.request).not.toHaveBeenCalled();}finally{identity.dispose();}
 });

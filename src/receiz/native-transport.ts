@@ -58,6 +58,11 @@ export function permittedNativePath(path: string, method: string): boolean {
   if (permittedNativeChatPath(url, method)) return true;
   if (/^\/api\/developers\/twin\/[a-z0-9_]{3,24}\/money$/.test(url.pathname)) {const keys=[...url.searchParams.keys()];return method.toUpperCase()==='POST'?!url.search:method.toUpperCase()==='GET'&&keys.every(k=>k==='cursor')&&url.searchParams.getAll('cursor').length<=1&&(!url.searchParams.has('cursor')||/^[A-Za-z0-9_-]{1,500}$/.test(url.searchParams.get('cursor')??''));}
   if (/^\/api\/developers\/twin\/[a-z0-9_]{3,24}\/message$/.test(url.pathname)) return method.toUpperCase()==='POST'&&!url.search;
+  if(url.pathname==='/api/connect/market/share-certificates/operations/close')return method.toUpperCase()==='POST'&&!url.search;
+  if(url.pathname==='/api/connect/market/share-certificates')return method.toUpperCase()==='GET'&&[...url.searchParams.keys()].every(k=>k==='cursor')&&url.searchParams.getAll('cursor').length<=1&&(!url.searchParams.has('cursor')||/^[a-f0-9-]{36}$/i.test(url.searchParams.get('cursor')??''));
+  if(['/api/connect/market/shares/export','/api/connect/market/shares/import'].includes(url.pathname))return method.toUpperCase()==='POST'&&!url.search;
+  const certificate=/^\/api\/(connect\/market|market)\/share-certificates\/([^/]+)(?:\/(download|trade))?$/.exec(url.pathname);
+  if(certificate){let token:string;try{token=decodeURIComponent(certificate[2]);}catch{return false;}return /^[A-Za-z0-9._:-]{16,200}$/.test(token)&&!url.search&&(certificate[1]==='market'?!certificate[3]&&method.toUpperCase()==='GET':method.toUpperCase()===(certificate[3]==='trade'?'POST':'GET'));}
   if (url.pathname === '/api/connect/market/shares/trade') return method.toUpperCase()==='POST'?!url.search:method.toUpperCase()==='GET'&&[...url.searchParams.keys()].length===1&&url.searchParams.getAll('clientNonce').length===1&&/^[A-Za-z0-9._:-]{8,120}$/.test(url.searchParams.get('clientNonce')??'');
   if (url.pathname === '/api/connect/market/shares/quote') {
     const side=url.searchParams.get('side'),amount=url.searchParams.has('amountUsd')?'amountUsd':'shareQuantity',id=url.searchParams.get('marketItemId');
