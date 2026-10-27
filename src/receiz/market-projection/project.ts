@@ -14,9 +14,10 @@ const roundPhi = (n: number) => Math.round(n * 1e6) / 1e6;
 function hash(input: string) { let h = 2166136261; for (let i = 0; i < input.length; i++) h = Math.imul(h ^ input.charCodeAt(i), 16777619); return h >>> 0; }
 const rateMeta = { ip: { expectedCashflowPhi: [] } } as unknown as SigilMetadataLite;
 function rate(pulse: number, meta = rateMeta, computed={unsigned:unsignedAtPulse(meta,pulse)}) { return marketProofUsdQuote(meta,pulse,computed).quote.usdPerPhi; }
+export function publicSigilValuationMetadata(seed:MarketPulseSeed){return {pulse:seed.claimPulse,kaiPulse:seed.claimPulse,beat:seed.beat,stepIndex:seed.stepIndex,stepsPerBeat:44,quality:'high',creatorVerified:seed.creatorVerified,creatorRep:0,chakraDay:seed.chakraDay??undefined,kaiSignature:seed.kaiSignature??undefined,userPhiKey:seed.userPhiKey??undefined}as SigilMetadataLite;}
 export function publicSigilQuoteAtPulse(seed:MarketPulseSeed,pulse:number){
  if(seed.kind!=='sigil'||!Number.isSafeInteger(pulse)||pulse<seed.claimPulse)throw Error('Public object valuation seed is unavailable.');
- const meta={pulse:seed.claimPulse,kaiPulse:seed.claimPulse,beat:seed.beat,stepIndex:seed.stepIndex,stepsPerBeat:44,quality:'high',creatorVerified:seed.creatorVerified,creatorRep:0,chakraDay:seed.chakraDay??undefined,kaiSignature:seed.kaiSignature??undefined,userPhiKey:seed.userPhiKey??undefined}as SigilMetadataLite;
+ const meta=publicSigilValuationMetadata(seed);
  const computed={unsigned:unsignedAtPulse(meta,pulse)},phi=Math.max(.000001,roundPhi(computed.unsigned.valuePhi));
  const usdPerPhi=rate(pulse,meta,computed);return {pricePhi:phi,quoteUsdPerPhi:usdPerPhi,priceUsd:marketProofUsdCents(phi,usdPerPhi)/100};
 }

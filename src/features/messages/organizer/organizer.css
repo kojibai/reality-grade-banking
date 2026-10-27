@@ -7,3 +7,4 @@
 
 .organizer-empty-actions{display:flex;align-items:center;justify-content:center;gap:18px}.organizer-empty-actions button{display:inline-flex;align-items:center;gap:5px;padding:7px 0}
 .organizer-week-strip,.organizer-agenda{touch-action:pan-y pinch-zoom}
+.organizer-form>.organizer-timezone{display:flex;align-items:center;gap:7px;margin:0 0 8px;color:#8799b0}.organizer-form>.organizer-timezone select{flex:1;min-width:0;max-width:100%;font:inherit;font-size:11px;padding:7px 0;background:transparent;border:0;color:#748aa8}

@@ -1,3 +1,4 @@
+import {deviceCalendarTimezone} from './calendar-timezone';
 import {permittedOrganizerPath} from './organizer-paths';
 import {calendarRange,organizerContact,organizerEvent,organizerRecord,readOrganizerDisplay,type AppointmentInput,type BookingAvailability,type BookingQuestion,type BookingSchedule,type CalendarRange,type OrganizerContact,type OrganizerDisplay,type OrganizerEvent} from './organizer-types';
 export type {OrganizerContact,OrganizerEvent,OrganizerDisplay,CalendarRange,BookingAvailability,BookingQuestion,BookingSchedule,AppointmentInput} from './organizer-types';
@@ -19,7 +20,7 @@ export function createNativeOrganizer({accountUid,request,retained,carried,onCha
   if(display.events===null&&Array.isArray(events))try{display={...display,events:order(events.map(v=>organizerEvent(v,accountUid)))};}catch{/* Available admitted domains remain independent. */}
  }
  const eventProofs=new WeakMap<OrganizerEvent,Promise<import('./calendar-proof').CalendarProof>>();
- const bookingCache=new Map<string,BookingAvailability>();
+ const bookingCache=new Map<string,BookingAvailability>(),defaultBookingKeys=new Map<string,string>();
  const pending=new Map<string,Promise<unknown>>();let contactRevision=0,eventRevision=0;const contactChanges=new Map<string,{revision:number;contact:OrganizerContact|null}>(),eventChanges=new Map<string,{revision:number;event:OrganizerEvent}>();let eventSlice:{start:string;end:string;revision:number;events:OrganizerEvent[]}|null=null;
  const listeners=new Set<()=>void>();
  const changed=(kind:'contact'|'event')=>{if(kind==='contact')contactRevision++;else eventRevision++;onChange?.(display);for(const notify of listeners)notify();};
@@ -50,8 +51,8 @@ export function createNativeOrganizer({accountUid,request,retained,carried,onCha
   async importContacts(contacts:unknown[],source:string,fileName:string){if(!contacts.length||contacts.length>5000)throw Error('contacts_import_empty');const data=await write('/api/contacts/import','POST',{contacts,source,fileName});if(!Array.isArray(data.contacts))throw Error('ORGANIZER_WRITE_UNCONFIRMED');const incoming=data.contacts.map(organizerContact);display={...display,contacts:[...new Map([...(display.contacts??[]),...incoming].map(row=>[row.id,row])).values()]};changed('contact');for(const contact of incoming)contactChanges.set(contact.id,{revision:contactRevision,contact});return data;},
   async saveEvent(input:AppointmentInput,eventId?:string,expectedEvent?:OrganizerEvent){if(eventId&&!uuid.test(eventId))throw Error('ORGANIZER_EVENT_INVALID');const data=await write('/api/calendar/events'+(eventId?'/'+eventId:''),eventId?'PATCH':'POST',{kind:'appointment',source:'manual',...input,...(eventId?{expectedEvent}:{})});return acceptEvent(data.event);},
   async cancelEvent(eventId:string,expectedEvent:OrganizerEvent){if(!uuid.test(eventId))throw Error('ORGANIZER_EVENT_INVALID');const data=await write('/api/calendar/events/'+eventId,'PATCH',{action:'cancel',expectedEvent});return acceptEvent(data.event);},
-  availability(username:string,query=''):Promise<BookingAvailability>{const key=username+':'+query,known=bookingCache.get(key);if(known)return Promise.resolve(known);return once('booking:'+key,async()=>{const {readBookingAvailability}=await import('./public-booking'),value=readBookingAvailability(await checked('/api/calendar/embed/'+encodeURIComponent(username)+(query?'?'+query:'')),username);bookingCache.set(key,value);return value;});},
-  async saveAvailability(username:string,scheduleConfig:BookingSchedule,customQuestions:BookingQuestion[]){const result=await write('/api/calendar/embed/'+encodeURIComponent(username),'PUT',{scheduleConfig,customQuestions});bookingCache.clear();return result;},
+  availability(username:string,query=''):Promise<BookingAvailability>{const timezone=deviceCalendarTimezone(),key=username+':'+query+':'+timezone,known=bookingCache.get(key);if(known)return Promise.resolve(known);return once('booking:'+key,async()=>{const {readBookingAvailability}=await import('./public-booking'),value=readBookingAvailability(await (query?checked('/api/calendar/embed/'+encodeURIComponent(username)+'?'+query):write('/api/calendar/embed/'+encodeURIComponent(username),'PUT',{action:'availability',timezone})),username);if(!query){const previous=defaultBookingKeys.get(username);if(previous&&previous!==key)bookingCache.delete(previous);defaultBookingKeys.set(username,key);}bookingCache.set(key,value);return value;});},
+  async saveAvailability(username:string,scheduleConfig:BookingSchedule,customQuestions:BookingQuestion[]){const result=await write('/api/calendar/embed/'+encodeURIComponent(username),'PUT',{scheduleConfig,customQuestions});bookingCache.clear();defaultBookingKeys.clear();return result;},
  };
 }
 export type NativeOrganizer=ReturnType<typeof createNativeOrganizer>;

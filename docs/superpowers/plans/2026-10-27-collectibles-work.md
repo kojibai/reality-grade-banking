@@ -77,6 +77,78 @@ finished presentation changes are being qualified separately; whole Collectibles
 cross-system exchange, exact standalone card actions and public collection
 availability remain unfinished and must not be described as live.
 
+## Current profile review: placement, booking and value history
+
+The user requested a real bjklock profile review before committing. No commit,
+push or deployment is authorized by merely opening this review. The profile
+review uses a read-only capture of the existing public profile and public Sports
+collection, bound to the same immutable owner ID. It is not a complete native
+Collectibles release. It currently contains 3,829 Sports cards across baseball,
+soccer and fight. Wildz and Signal inventory, exact native card faces, individual
+current values/history, public delivery and native commerce remain unfinished.
+The athlete photograph tiles are temporary preview presentation, not the final
+card design. The finished catalog must preserve each native card's actual front
+and back, per-copy valuation, rarity and continuity.
+
+The latest requested placement supersedes the earlier tabs-row mockup: a quiet
+collection icon sits left below the banner, booking sits right, and the portrait
+remains centered. The Assets, Public Activity and growth controls stay in place.
+An already-held public collection view is accepted only for the same immutable
+profile owner, and only its publicly visible cards are rendered. Display input
+does not grant custody or enable financial actions.
+
+Booking lazily opens the existing booking experience inside a Back-only sheet.
+It stays mounted while closed so its availability, draft and completion state
+survive reopening together. The ordinary standalone booking page is unchanged.
+The native profile's existing scheduling visibility preference governs the icon.
+
+Originals value now opens one mobile SVG value-history sheet. The existing
+history's dollar samples drive Originals. Market cap
+composes the existing compatible per-original share inventory in the same price
+pass; missing supply coverage is shown as unavailable, never as zero or a partial
+complete total. Six existing periods, date bounds and accessible pointer/keyboard
+inspection remain. Mode and period switching select held arrays and issue no
+request. No new renderer dependency, page timer or animation loop is added.
+
+The chart worker and history-row preparation now wait for the first explicit
+chart opening. Closing retains the result and leaves the worker idle; new source
+revisions are prepared only on reopening. The opening sample doubles as the
+period's appreciation baseline, removing a second opening-price pass. The
+underlying appreciation calculation stays available as a distinct definition.
+Private holdings and financial execution are unchanged.
+
+### Review corrections: existing capacity formula and value change
+
+- The user explicitly retained the existing capitalization contract: generic
+  outstanding shares plus remaining quote buying capacity, multiplied by unit
+  price; native issued supply counted once. The global formula and prepared
+  global history were not modified. A discussion about conventional corporate
+  stock terminology did not authorize redefining that existing metric.
+- The preview omitted `membership.snapshot` when parsing its existing carried
+  Market data. Passing that saved snapshot reveals its existing share records
+  without any extra data request. The complete real public profile has 611
+  signed originals, and all 611 have canonical asset records in that snapshot.
+- Profile history previously required the media export digest to remain equal
+  before accepting the canonical asset's share history. Ninety-four appended
+  media versions failed that unnecessary condition. Share supply is now joined
+  by the existing canonical asset/issuance binding, using the common canonical
+  capitalization selector; conflicting simultaneous aliases stay unavailable.
+  The stricter media digest check still governs replacing pricing operands.
+- The user confirmed retaining the existing 6,000% appreciation definition:
+  `(current total / combined starting values of all originals - 1) × 100`.
+  It excludes newly created principal from appreciation and stays identical in
+  the profile summary and value sheet. The total-growth experiment comparing
+  the first $219.95 with the entire present collection was withdrawn. A compact
+  disclosure now explains the actual starting/current values and formula.
+- The Market cap disclosure separately explains the per-original existing
+  share-capacity formula and its period change, with the actual opening/current
+  cap values. Both disclosures stay collapsed below the chart by default.
+- A worker retains the full profile rows and its completed history. Later
+  evaluations carry only `{id, profileTick: true, pulse}`. The unchanged input
+  fingerprint is cached per immutable rows revision, and an already-running
+  evaluation of the same pulse is not queued a second time. No source requests,
+  page clock or additional worker are introduced by these disclosures.
+
 ## Approved signed-originals profile refinement
 
 - [x] Reproduce unsigned originals appearing despite only profile-level PBI.
@@ -134,3 +206,89 @@ checks form the final release qualification before staging the scoped patch.
 
 Live Collection inventory/actions, standalone card commerce and cross-system
 exchange remain the next implementation work. This commit is not their release.
+
+
+## Held owner collection integration
+
+The live Assets entry now indexes the SDK-admitted account projection once per
+identity/source revision. Its canonical account UUID is checked separately from
+the Identity Seal key owner. Sports and Signal rows retain exact collectible and
+claim identities; foreign or conflicting rows cannot become actionable holdings.
+An onward transfer's original earner is not confused with its current row owner.
+No new source read, verification, export or pricing operation is performed by
+opening the view or navigating categories. Prepared individual values are joined
+only by exact collectible/claim; a grouped Market value is never substituted.
+The UI consumes arbitrary-depth taxonomy, with no family-specific UI branches.
+
+The collection sheet is loaded only on demand, uses one Back control and mounts
+40 gallery items at a time. Only the selected card mounts the existing swipe/3D
+component and chart. Ownership/funding disclosures stay unmounted until opened.
+Separate source-bound native appends and exact pack-purchase rows are retained
+by reference alongside the original card row; saving the owner record does not
+serialize the private account. This JSON is labelled a card record, not a newly
+verified proof object. Native exact original PNG bytes are not fabricated from a
+portrait or social preview. The current card face uses available native artwork
+and its admitted fields; native original export remains part of the action bridge.
+
+Ruling: display admission does not grant financial execution — existing native
+Send/list/purchase paths and a common cross-system exchange still need stable
+attempt recovery, exact consent and source ownership participation. No frontend
+button may imply those contracts already exist. Current production actions are
+unchanged and no native or SQL update has been made in this step.
+
+Source qualification correction: Sports generic transfer covers baseball,
+soccer and fight through app/api/game/sports/_lib/sportsVaultTransferRoute.ts,
+not baseball only. Sports exchanges remain same-sport. Signal lacks a common
+exact-card swap. Wildz source journals explicitly use staged purchase/transfer
+participation. SDK v129 registered atomic operations do not automatically admit
+legacy card custody into those operations; two separate transfers cannot supply
+that missing conservation/acceptance contract.
+
+The owner collection integration is being qualified as a separate, reviewable
+commit. Public collection links, the live public profile shortcut, complete
+Wildz discovery and native commerce/cross-system exchange remain unfinished.
+
+
+### Held collection review and qualification
+
+A fresh review caught three display issues before this commit: duplicate rows
+with different ownership/visibility heads were being selected by order, native
+Sports settlement fields and nested Signal payload fields were omitted from
+disclosure, and Show more could accumulate every gallery tile. Red regression
+checks reproduced those cases. The fix compares duplicate source structures
+without hashing/reopening every card, maps actual native fields once per held
+record, and replaces pages with a fixed 40-entry window for gallery/history/
+source steps. Back preserves the catalog position; no new DOM layer or frame
+loop was added. Review confirmed all three resolved with no new serious finding.
+
+The isolated locked-dependency suite passes 3,795 tests in 606 files. The first
+attempt's two HTTP tests were blocked by the local sandbox's listen permission;
+the fully permitted rerun passed. No timeout or assertion was weakened.
+Product examples retain exactly the same screen markup and add only the 398
+characters of scoped entry CSS discovered by their existing generator. This
+avoids the generated-preview freshness failure on deployment. Build/browser/
+source-archive gates are being completed before the exact candidate is staged.
+
+### Live calculation and booking-zone qualification
+
+The expanded profile calculation reads the same current Kai result as the chart.
+It does not fetch or quote separately when a disclosure opens. A regression keeps
+an expanded disclosure mounted/open through a pulse update, checks the new exact
+arithmetic and records zero network reads. Pulse-only worker messages contain the
+new pulse, without resending the collection. The public source review at port
+5183 uses a fixed capture; production uses the existing app pulse.
+
+Booking availability carries the already-known device IANA zone in its existing
+request. Automatic owner-local times require no preference resave; manual choices
+win. Visitor formatting remains local to the visitor, and accepted appointment
+instants are unchanged. Availability and custom-link views reuse their held
+results. A changed automatic zone resolves once; returning from another zone
+cannot reuse an obsolete automatic preference. The editor holds one consistent
+zone throughout an editing session. Timezone controls/options are only prepared
+inside the availability experience, outside account/profile entry.
+
+An isolated candidate at current main f8bf584 plus these scoped files passed
+3,875 tests in 623 files with no skips, the full production build and the emitted
+plain-Node API regression. The provider contract must be available before this
+new automatic-initialization client is deployed. No production operation or
+commit is implied by these local checks. Foreign working changes are preserved.

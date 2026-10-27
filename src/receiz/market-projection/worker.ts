@@ -5,16 +5,17 @@ import { buildMarketHistory } from './build-history';
 import type{PublicMarketCatalog}from'../public-market';
 import {buildProfileGrowth,type ProfileGrowthHistory,type ProfileGrowthRow} from './profile-growth';
 let investmentRows:InvestmentHistoryRow[]|null=null,investmentHistory:InvestmentHistory|null=null;
+let profileRows:ProfileGrowthRow[]|null=null,profileHistory:ProfileGrowthHistory|null=null;
 let latest = 0, retained: MarketHistorySnapshot | null = null;
 let marketSource:MarketCapSource|null=null,marketCatalog:PublicMarketCatalog|null=null,shareCapitalization=false;
 // Publish only complete curves. Ordinary same-basis refreshes retain every
 // prior sample and calculate just the moving opening bounds and newest point.
-self.onmessage = async (event: MessageEvent<{ id: number; source?: unknown; history?: unknown; cancel?: boolean;catalog?:PublicMarketCatalog|null;pulse?:number;marketTick?:boolean;shareCapitalization?:boolean;profileRows?:ProfileGrowthRow[];profileHistory?:ProfileGrowthHistory|null;investmentRows?:InvestmentHistoryRow[];investmentTick?:boolean }>) => {
+self.onmessage = async (event: MessageEvent<{ id: number; source?: unknown; history?: unknown; cancel?: boolean;catalog?:PublicMarketCatalog|null;pulse?:number;marketTick?:boolean;shareCapitalization?:boolean;profileRows?:ProfileGrowthRow[];profileHistory?:ProfileGrowthHistory|null;profileTick?:boolean;investmentRows?:InvestmentHistoryRow[];investmentTick?:boolean }>) => {
   const { id } = event.data; latest = id;
   if (event.data.cancel) return;
   try {
     if(event.data.investmentRows||event.data.investmentTick){if(event.data.investmentRows){investmentRows=event.data.investmentRows;investmentHistory=null;}if(!investmentRows)return;const investments=await buildInvestmentHistory(investmentRows,event.data.pulse!,()=>latest===id,()=>new Promise(resolve=>setTimeout(resolve,0)),investmentHistory);if(latest===id){if(investments)investmentHistory=investments;self.postMessage({id,investments});}return;}
-    if(event.data.profileRows){let samples=0;const growth=await buildProfileGrowth(event.data.profileRows,event.data.pulse!,event.data.profileHistory??null,()=>latest===id,async()=>{if(++samples%8===0)await new Promise(resolve=>setTimeout(resolve,0));});if(latest===id&&growth)self.postMessage({id,growth});return;}
+    if(event.data.profileRows||event.data.profileTick){if(event.data.profileRows){profileRows=event.data.profileRows;profileHistory=event.data.profileHistory??null;}if(!profileRows)return;let samples=0;const growth=await buildProfileGrowth(profileRows,event.data.pulse!,profileHistory,()=>latest===id,async()=>{if(++samples%8===0)await new Promise(resolve=>setTimeout(resolve,0));});if(latest===id&&growth){profileHistory=growth;self.postMessage({id,growth});}return;}
     if(event.data.source)marketSource=null;
     if (event.data.history) retained = parseMarketHistory(event.data.history);
     if(event.data.source){marketSource=parseMarketCapSource(event.data.source);marketCatalog=event.data.catalog??null;shareCapitalization=event.data.shareCapitalization===true;}

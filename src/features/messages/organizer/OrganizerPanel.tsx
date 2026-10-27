@@ -1,4 +1,5 @@
 import {parseOrganizerContactsFile} from '../../../receiz/contact-import';
+import {deviceCalendarTimezone} from '../../../receiz/calendar-timezone';
 import {Link,Upload} from 'lucide-react';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import type {OpenIdentity} from '../../../receiz/native-identity';
@@ -23,7 +24,7 @@ export function OrganizerPanel({identity,entry,active,onBack,onMessage}:{identit
  useEffect(()=>{if(!api||!active||!['contacts','person','contact-form'].includes(view))return;let current=true;setContacts(api.knownContacts());void api.contacts().then(rows=>{if(current&&alive.current)setContacts(rows);}).catch(cause=>{if(current&&alive.current)setError(cause);});return()=>{current=false;};},[api,active,view]);
  const window=useMemo(()=>calendarWindow(day),[day.slice(0,7)]);
  useEffect(()=>{if(!api||!active||view!=='calendar')return;let current=true;setEvents(api.knownEvents(window));void api.events(window).then(rows=>{if(current&&alive.current)setEvents(rows);}).catch(cause=>{if(current&&alive.current)setError(cause);});return()=>{current=false;};},[api,active,view,window]);
- useEffect(()=>{if(!api||!active||!username||!['links','availability','custom'].includes(view)||availability)return;let current=true;void api.availability(username).then(value=>{if(current&&alive.current)setAvailability(value);}).catch(cause=>{if(current&&alive.current)setError(cause);});return()=>{current=false;};},[api,active,username,view,availability]);
+ useEffect(()=>{if(!api||!active||!username||!['links','availability','custom'].includes(view))return;if(availability&&(availability.savedScheduleConfig.timezoneMode==='manual'||availability.savedScheduleConfig.timezone===deviceCalendarTimezone()))return;let current=true;void api.availability(username).then(value=>{if(current&&alive.current)setAvailability(value);}).catch(cause=>{if(current&&alive.current)setError(cause);});return()=>{current=false;};},[api,active,username,view,availability]);
  useEffect(()=>{if(!api||!active)return;return api.subscribe?.(()=>{setContacts(api.knownContacts());setEvents(api.knownEvents(window));});},[api,active,window]);
  const sync=()=>{if(!api)return;setContacts(api.knownContacts());setEvents(api.knownEvents(window));};
  const run=async(action:()=>Promise<void>)=>{if(!api||writeInFlight.current)return;writeInFlight.current=true;setBusy(true);setError('');try{await action();if(alive.current)sync();}catch(cause){if(alive.current)setError(cause);}finally{writeInFlight.current=false;if(alive.current)setBusy(false);}};

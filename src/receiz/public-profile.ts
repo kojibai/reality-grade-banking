@@ -16,6 +16,7 @@ export interface PublicProfile {
  websiteUrl:string|null;avatarUrl:string|null;bannerUrl:string|null;socialLinks:{label:string;url:string}[];
  links:{label:string;url:string}[];
  authorshipVerified:boolean;pbiReceiptHash:string|null;createdAt:string|null;
+ bookingEnabled?:boolean;
  stats:{originals:number|null;views:number|null;plays:number|null;seconds:number|null;completion:number|null};
  items:PublicMarketItem[];nextCursor:string|null;
 }
@@ -42,7 +43,7 @@ export function parsePublicProfile(input:unknown,expectedUsername:string):Public
  const stats=object(view.stats),unavailable=Array.isArray(view.unavailableDecorators)&&view.unavailableDecorators.includes('engagement');
  const hash=text(p.authorshipPbiReceiptHash,64);
  const page=object(view.originalsPage),cursor=text(page.nextCursor,4096);
- return {schema:'bankeiz.public-profile.v1',userId:String(p.userId),username,displayName,bio:text(p.bio,280),location:text(p.location,100),websiteUrl:publicProfileLink(p.websiteUrl),avatarUrl:profileAvatarUrl(p.avatarUrl),bannerUrl:profileAvatarUrl(p.bannerUrl),
+ return {schema:'bankeiz.public-profile.v1',userId:String(p.userId),username,displayName,bookingEnabled:p.showSchedulerButton===true,bio:text(p.bio,280),location:text(p.location,100),websiteUrl:publicProfileLink(p.websiteUrl),avatarUrl:profileAvatarUrl(p.avatarUrl),bannerUrl:profileAvatarUrl(p.bannerUrl),
   socialLinks:[['X','socialXUrl'],['Instagram','socialInstagramUrl'],['YouTube','socialYoutubeUrl'],['LinkedIn','socialLinkedinUrl'],['GitHub','socialGithubUrl']].flatMap(([label,key])=>{const url=publicProfileLink(p[key]);return url?[{label,url}]:[];}),
   links:Array.isArray(p.links)?p.links.slice(0,20).flatMap(value=>{const link=object(value),label=text(link.label,80),url=publicProfileLink(link.url);return label&&url&&url.length<=2048?[{label,url}]:[];}):[],
   authorshipVerified:p.authorshipVerified===true,pbiReceiptHash:hash&&/^[a-f0-9]{64}$/i.test(hash)?hash:null,createdAt:text(p.createdAt,64),

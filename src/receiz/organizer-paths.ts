@@ -1,3 +1,4 @@
+import {validCalendarTimezone} from './calendar-timezone.js';
 const uuid=/^[a-f\d]{8}-[a-f\d]{4}-[1-5][a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i;
 const date=(value:string)=>value.length<=35&&Number.isFinite(Date.parse(value));
 /** Coordinates only. The existing Receiz service independently checks the
@@ -19,7 +20,7 @@ export function permittedOrganizerPath(url:URL,method:string):boolean {
  if(/^\/api\/calendar\/embed\/[a-z0-9_]{3,24}$/.test(path)){
   if(['POST','PUT'].includes(verb))return !url.search;
   if(verb!=='GET')return false;
-  return [...params].every(([key,value])=>key==='slotMinutes'?/^\d{2,3}$/.test(value)&&+value>=15&&+value<=180:key==='daysForward'?/^\d{1,3}$/.test(value)&&+value>=1&&+value<=45:key==='hourStarts'?/^(?:[01]?\d|2[0-3])(?:,(?:[01]?\d|2[0-3])){0,23}$/.test(value):key==='weekdayIndexes'?/^[0-6](?:,[0-6]){0,6}$/.test(value):key==='questions'?value.length<=8192:false);
+  return [...params].every(([key,value])=>key==='timezone'?validCalendarTimezone(value):key==='slotMinutes'?/^\d{2,3}$/.test(value)&&+value>=15&&+value<=180:key==='daysForward'?/^\d{1,3}$/.test(value)&&+value>=1&&+value<=45:key==='hourStarts'?/^(?:[01]?\d|2[0-3])(?:,(?:[01]?\d|2[0-3])){0,23}$/.test(value):key==='weekdayIndexes'?/^[0-6](?:,[0-6]){0,6}$/.test(value):key==='questions'?value.length<=8192:false);
  }
  return false;
 }

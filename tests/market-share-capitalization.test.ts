@@ -64,3 +64,20 @@ it('binds release capitalization to the asset’s own release pulse',()=>{
  expect(readPublicShareInventory(inventory({releaseCapitalization:{...release,unitPriceUsdCents:'0'}}),item({pulse:'14900000'}))).toBeNull();
  expect(readPublicShareInventory(inventory({releaseCapitalization:{...release,availableShareQuantityMicro:'0'}}),item({pulse:'14900000'}))).toBeNull();
 });
+
+it('discloses the exact operands of the existing capacity calculation including observation price and cent rounding',async()=>{
+ const {prepareShareCapitalizationAtPulse}=await import('../src/receiz/market-share-chart');
+ const source=readPublicShareInventory(inventory({capitalizationHistory:[{kaiUPulse:'15000000000000',unitPriceUsdCents:'1234',outstandingShareQuantityMicro:'2500000',availableShareQuantityMicro:'4000000'}]}),item())!;
+ let trace:unknown;
+ expect(prepareShareCapitalizationAtPulse(source)(15000000,'9999',value=>{trace=value;})).toBe('8021');
+ expect(trace).toEqual({sourceKaiUPulse:'15000000000000',unitPriceUsdCents:'1234',outstandingShareQuantityMicro:'2500000',availableShareQuantityMicro:'4000000',quantityMicro:'6500000',usdCents:'8021'});
+ expect(prepareShareCapitalizationAtPulse(source)(15000001,'200',value=>{trace=value;})).toBe('1300');
+ expect(trace).toMatchObject({unitPriceUsdCents:'200',quantityMicro:'6500000',usdCents:'1300'});
+});
+
+it('keeps a known native pre-issuance zero explainable instead of reporting missing share history',async()=>{
+ const {prepareShareCapitalizationAtPulse}=await import('../src/receiz/market-share-chart');
+ const native=item({nativeAsset:{id:'a'.repeat(64),issuanceSourceSha256:'b'.repeat(64),headSourceSha256:'c'.repeat(64),publicCertificateSha256:'d'.repeat(64)}}),source=readPublicShareInventory(inventory({family:'native',nativeAssetId:'a'.repeat(64),issuanceSourceSha256:'b'.repeat(64),sourceHeadSha256:'c'.repeat(64),outstandingShareQuantityMicro:'100000000',availableShareQuantityMicro:'40000000',availability:'open-offers',observedAtKaiUPulse:'15000001000000',history:[{kaiUPulse:'15000000500000',outstandingShareQuantityMicro:'100000000'}]}),native)!;
+ let trace:unknown;expect(prepareShareCapitalizationAtPulse(source)(15000000,'1234',value=>{trace=value;})).toBe('0');
+ expect(trace).toMatchObject({quantityMicro:'0',usdCents:'0',beforeIssuance:true});
+});

@@ -13,7 +13,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
-    "test:browser": "node scripts/check-browser-regressions.mjs && node scripts/check-chart-period-layout.mjs && node scripts/check-account-opening-progress.mjs",
+    "test:browser": "node scripts/check-browser-regressions.mjs && node scripts/check-chart-period-layout.mjs && node scripts/check-account-opening-progress.mjs && node scripts/check-collectibles-browser.mjs",
     "test:vault-browser": "node scripts/check-vault-browser.mjs",
     "release:check": "node scripts/receiz-release.mjs",
     "vercel:check": "node scripts/check-vercel-build.mjs",
@@ -42,7 +42,8 @@
     "previews:build": "node scripts/build-product-previews.mjs",
     "previews:check": "node scripts/build-product-previews.mjs --check",
     "imagery:build": "node scripts/build-public-imagery.mjs",
-    "imagery:check": "node scripts/build-public-imagery.mjs --check"
+    "imagery:check": "node scripts/build-public-imagery.mjs --check",
+    "test:collectibles-browser": "node scripts/check-collectibles-browser.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-route-53": "3.1156.0",

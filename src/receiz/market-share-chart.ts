@@ -4,6 +4,7 @@ import {shareCapitalizationUsdCents,marketCapitalizationQuantity} from './market
 import type {CapitalizationPoint} from './market-projection/history';
 type ShareCapPoint=CapitalizationPoint&{kaiUPulse:string};
 type UnitResolver=(pulse:number)=>string|null;
+export interface ShareCapitalizationCalculation {sourceKaiUPulse:string;unitPriceUsdCents:string;outstandingShareQuantityMicro:string;availableShareQuantityMicro:string|null;quantityMicro:string;usdCents:string;beforeIssuance?:true}
 const observations=new WeakMap<PublicShareInventory,readonly ShareCapPoint[]>();
 const nativeAnchors=new WeakMap<PublicShareInventory,WeakMap<UnitResolver,readonly ShareCapPoint[]>>();
 const at=(coordinate:bigint,price:string,quantity:string):ShareCapPoint=>({pulse:Number(coordinate/1000000n),kaiUPulse:coordinate.toString(),at:new Date(marketUPulseTime(coordinate.toString())).toISOString(),usdCents:shareCapitalizationUsdCents(price,quantity)});
@@ -66,14 +67,15 @@ export function prepareShareCapitalizationAtPulse(inventory:PublicShareInventory
  const release=inventory.releaseCapitalization;
  const history=inventory.family==='generic'?(release?[release,...(inventory.capitalizationHistory??[]).filter(point=>BigInt(point.kaiUPulse)>BigInt(release.kaiUPulse))]:inventory.capitalizationHistory??[]):inventory.history??[];
  const coordinates=history.map(point=>BigInt(point.kaiUPulse)),observed=BigInt(inventory.observedAtKaiUPulse);
- return (pulse:number,unitPriceUsdCents:string):string|null=>{
+ const value=(price:string,quantity:string,outstanding:string,available:string|null,sourceKaiUPulse:string,explain?:((value:ShareCapitalizationCalculation)=>void))=>{const usdCents=shareCapitalizationUsdCents(price,quantity);explain?.({sourceKaiUPulse,unitPriceUsdCents:price,outstandingShareQuantityMicro:outstanding,availableShareQuantityMicro:available,quantityMicro:quantity,usdCents});return usdCents;};
+ return (pulse:number,unitPriceUsdCents:string,explain?:(value:ShareCapitalizationCalculation)=>void):string|null=>{
   const coordinate=BigInt(pulse)*1000000n;let lo=0,hi=coordinates.length;
   while(lo<hi){const mid=(lo+hi)>>>1;if(coordinates[mid]<=coordinate)lo=mid+1;else hi=mid;}
-  if(coordinate>observed){const quantity=marketCapitalizationQuantity(inventory);return quantity===null?null:shareCapitalizationUsdCents(unitPriceUsdCents,quantity);}
-  if(lo===0)return history.length&&coordinate<coordinates[0]?'0':null;
+  if(coordinate>observed){const quantity=marketCapitalizationQuantity(inventory);return quantity===null?null:value(unitPriceUsdCents,quantity,inventory.outstandingShareQuantityMicro,inventory.availableShareQuantityMicro,inventory.observedAtKaiUPulse,explain);}
+  if(lo===0){if(!history.length||coordinate>=coordinates[0])return null;if(inventory.family==='native')explain?.({sourceKaiUPulse:history[0].kaiUPulse,unitPriceUsdCents,outstandingShareQuantityMicro:'0',availableShareQuantityMicro:null,quantityMicro:'0',usdCents:'0',beforeIssuance:true});return '0';}
   const point=history[lo-1];
-  if(inventory.family==='native')return shareCapitalizationUsdCents(unitPriceUsdCents,point.outstandingShareQuantityMicro);
+  if(inventory.family==='native')return value(unitPriceUsdCents,point.outstandingShareQuantityMicro,point.outstandingShareQuantityMicro,null,point.kaiUPulse,explain);
   const capacity=point as NonNullable<PublicShareInventory['capitalizationHistory']>[number];
-  return shareCapitalizationUsdCents(coordinate===coordinates[lo-1]?capacity.unitPriceUsdCents:unitPriceUsdCents,(BigInt(capacity.outstandingShareQuantityMicro)+BigInt(capacity.availableShareQuantityMicro)).toString());
+  return value(coordinate===coordinates[lo-1]?capacity.unitPriceUsdCents:unitPriceUsdCents,(BigInt(capacity.outstandingShareQuantityMicro)+BigInt(capacity.availableShareQuantityMicro)).toString(),capacity.outstandingShareQuantityMicro,capacity.availableShareQuantityMicro,capacity.kaiUPulse,explain);
  };
 }

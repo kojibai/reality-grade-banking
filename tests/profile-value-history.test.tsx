@@ -1,0 +1,84 @@
+// @vitest-environment happy-dom
+import {act} from 'react';
+import {createRoot} from 'react-dom/client';
+import {afterEach,expect,it,vi} from 'vitest';
+import {ProfileGrowthPeek} from '../src/public-explorer/ProfileGrowthPeek';
+import {PublicProfilePage} from '../src/public-explorer/PublicProfilePage';
+import {parsePublicProfile,retainPublicProfile,forgetPublicProfile} from '../src/receiz/public-profile';
+import {profileFixture} from './fixtures/public-profile';
+import {CHART_PERIODS} from '../src/core/chart-history';
+import type {ProfileGrowthHistory} from '../src/receiz/market-projection/profile-growth';
+import {publicCatalogAtPulse} from '../src/receiz/market-projection/catalog-prices';
+Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+const cleanup:Array<()=>void>=[];afterEach(()=>{cleanup.splice(0).forEach(run=>run());vi.unstubAllGlobals();vi.restoreAllMocks();forgetPublicProfile('alexmorgan');});
+function mount(){const host=document.createElement('div');document.body.append(host);const root=createRoot(host);cleanup.push(()=>{act(()=>root.unmount());host.remove();});return {host,root};}
+it('opens Originals value from the held total, starts no chart worker before the tap and performs no source read',async()=>{
+ const input=profileFixture();Object.assign(input.profile.originals[0].marketPreview!,{livePulseSeed:{kind:'sigil',claimPulse:14800000,beat:2,stepIndex:3,creatorVerified:true}});
+ const profile=parsePublicProfile(input,'alexmorgan');profile.nextCursor=null;profile.items=profile.items.map(item=>({...item,hasPbiSignature:true}));retainPublicProfile(profile);
+ const started=vi.fn(),sent=vi.fn(),fetcher=vi.spyOn(globalThis,'fetch');let receive:((event:{data:{id:number;growth:ProfileGrowthHistory}})=>void)|undefined;
+ vi.stubGlobal('Worker',class{constructor(){started();}set onmessage(value:typeof receive){receive=value;}postMessage=sent;terminate(){};});
+ const historyCatalog={items:profile.items,complete:true,revision:'held-revision',observedAt:'2026-10-27T00:00:00Z',sourceCount:profile.items.length};
+ const source={catalog:publicCatalogAtPulse(historyCatalog,null,15000000),historyCatalog,status:'ready',pulse:15000000} as unknown as React.ComponentProps<typeof PublicProfilePage>['source'];const {host,root}=mount();
+ await act(async()=>root.render(<PublicProfilePage username="alexmorgan" source={source} initialProfile={profile} active/>));
+ expect(started).not.toHaveBeenCalled();
+ const opener=host.querySelector<HTMLButtonElement>('button.profile-originals-value');expect(opener).not.toBeNull();
+ await act(async()=>opener!.click());expect(started).toHaveBeenCalledOnce();expect(sent).toHaveBeenCalledOnce();expect(host.querySelector('dialog')?.textContent).toContain('Originals');expect(fetcher).not.toHaveBeenCalled();
+ const point={pulse:15000000,at:'2026-10-27T00:00:00Z',percent:25,usd:250,assets:1},history={basis:'same-inputs',pulse:15000000,series:Object.fromEntries(CHART_PERIODS.map(period=>[period,[point]]))} as ProfileGrowthHistory;
+ await act(async()=>receive!({data:{id:sent.mock.calls[0][0].id,growth:history}}));expect(sent).toHaveBeenCalledOnce();
+ await act(async()=>root.render(<PublicProfilePage username="alexmorgan" source={{...source,catalog:publicCatalogAtPulse(historyCatalog,null,15000001),pulse:15000001}} initialProfile={profile} active/>));
+ expect(sent).toHaveBeenCalledTimes(2);expect(sent.mock.calls[1][0]).toEqual({id:2,profileTick:true,pulse:15000001});
+ await act(async()=>receive!({data:{id:2,growth:{...history,pulse:15000001}}}));
+  await act(async()=>host.querySelector<HTMLButtonElement>('dialog [aria-label="Close"]')!.click());await act(async()=>opener!.click());expect(started).toHaveBeenCalledOnce();expect(sent).toHaveBeenCalledTimes(2);
+});
+it('switches dollar history and capitalization immediately using the same retained points and leaves missing coverage honest',async()=>{
+ const points=[{pulse:14000000,at:'2026-01-01T00:00:00Z',percent:0,usd:100,basisUsd:100,assets:1,capitalizationUsdCents:'100000'},{pulse:15000000,at:'2026-10-27T00:00:00Z',percent:25,usd:250,basisUsd:200,assets:2,capitalizationUsdCents:'150000'}];
+ const history={basis:'held',pulse:15000000,series:Object.fromEntries(CHART_PERIODS.map(period=>[period,points]))} as ProfileGrowthHistory;
+ const {host,root}=mount(),fetcher=vi.spyOn(globalThis,'fetch');
+ await act(async()=>root.render(<ProfileGrowthPeek name="Alex" total={25} currentValue={250} history={history} unavailable={false} onClose={()=>{}} active/>));
+ expect(host.querySelector('.profile-history-amount')?.textContent).toBe('$250.00');expect(host.querySelector('[aria-label^="Originals value, from"]')).not.toBeNull();
+ expect(host.querySelector('.profile-history-change')?.textContent).toContain('+25%');expect(host.querySelector('.profile-history-change')?.textContent).toContain('appreciation');expect(host.querySelector('.profile-history-basis')?.textContent).toContain('$200.00');expect(host.querySelector('.profile-history-basis summary')?.textContent).toContain('Originals value');
+ await act(async()=>[...host.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Market cap')!.click());
+ expect(host.querySelector('.profile-history-amount')?.textContent).toBe('$1,500.00');expect(host.querySelector('.profile-history-change')?.textContent).toContain('+50%');expect(host.querySelector('[aria-label^="Market capitalization, from"]')).not.toBeNull();
+ expect(host.querySelector('.profile-history-basis summary')?.textContent).toContain('Market cap');expect(host.querySelector('.profile-history-basis')?.textContent).toContain('$1,000.00');expect(host.querySelector('.profile-history-basis')?.textContent).toContain('remaining buying capacity');
+ const missing={...history,series:Object.fromEntries(CHART_PERIODS.map(period=>[period,points.map(point=>({...point,capitalizationUsdCents:null}))]))} as ProfileGrowthHistory;
+ await act(async()=>root.render(<ProfileGrowthPeek name="Alex" total={25} currentValue={125} history={missing} unavailable={false} onClose={()=>{}} active/>));
+ expect(host.querySelector('.value-chart')).toBeNull();expect(host.textContent).toContain('Share history is not included');expect(host.textContent).not.toContain('$0.00');expect(fetcher).not.toHaveBeenCalled();
+});
+
+it('reveals paged exact per-original arithmetic only on request without fetching or evaluating prices',async()=>{
+ const entries=Array.from({length:45},()=>({seed:{kind:'sigil',claimPulse:14000000,beat:2,stepIndex:3,creatorVerified:true},birthUsd:100}));
+ const originals=entries.map((_,index)=>({id:'original-'+index,assetId:'asset-'+index,title:'Original '+index,originalDigest:null}));
+ const point={pulse:15000000,at:'2026-10-27T00:00:00Z',percent:50,usd:6750,basisUsd:4500,assets:45,capitalizationUsdCents:null};
+ const calculation={current:entries.map(()=>({usd:150,phi:3,usdPerPhi:50,capitalization:null})),startingUsd:Object.fromEntries(CHART_PERIODS.map(period=>[period,entries.map(()=>100)]))};
+ const history={basis:'exact-held-inputs',pulse:15000000,series:Object.fromEntries(CHART_PERIODS.map(period=>[period,[point]])),calculation} as ProfileGrowthHistory;
+ const {host,root}=mount(),fetcher=vi.spyOn(globalThis,'fetch');
+ await act(async()=>root.render(<ProfileGrowthPeek name="Alex" total={50} history={history} calculationRows={entries} originals={originals} unavailable={false} onClose={()=>{}} active/>));
+ expect(host.textContent).not.toContain('Original 0');
+ const breakdown=[...host.querySelectorAll<HTMLDetailsElement>('details')].find(item=>item.querySelector('summary')?.textContent?.includes('Every original'));
+ expect(breakdown).toBeDefined();
+ await act(async()=>{breakdown!.open=true;breakdown!.dispatchEvent(new Event('toggle'));});
+ expect(host.querySelectorAll('.profile-calculation-original')).toHaveLength(20);
+ const first=host.querySelector<HTMLDetailsElement>('.profile-calculation-original')!;
+ await act(async()=>{first.open=true;first.dispatchEvent(new Event('toggle'));});
+ expect(first.textContent).toContain('$100.00');expect(first.textContent).toContain('$150.00');expect(first.textContent).toContain('150');
+ expect(host.textContent).not.toContain('Original 44');
+ await act(async()=>[...host.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.getAttribute('aria-label')==='Next originals')!.click());
+ expect(host.querySelectorAll('.profile-calculation-original')).toHaveLength(20);expect(host.textContent).toContain('Original 20');expect(host.textContent).not.toContain('Original 0');
+ let saved:Blob|null=null;vi.spyOn(URL,'createObjectURL').mockImplementation(value=>{saved=value as Blob;return 'blob:calculation-record';});vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
+ await act(async()=>[...host.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Save calculation record')!.click());
+ const record=JSON.parse(await saved!.text());expect(record.originals).toHaveLength(45);expect(record.originals[44]).toMatchObject({assetId:'asset-44',startingUsd:100,resolvedMetadata:{pulse:14000000,kaiPulse:14000000,stepsPerBeat:44,quality:'high',creatorRep:0},current:{usd:150,phi:3,usdPerPhi:50}});expect(record.summary).toMatchObject({usd:6750,basisUsd:4500,percent:50});
+ expect(fetcher).not.toHaveBeenCalled();
+});
+it('updates already-open calculation disclosures from the new shared result without fetching or remounting them',async()=>{
+ const rows=[{seed:{kind:'sigil',claimPulse:14000000,beat:2,stepIndex:3,creatorVerified:true},birthUsd:100}],originals=[{id:'original',assetId:'asset',title:'Held original',originalDigest:null}];
+ const result=(pulse:number,usd:number)=>({basis:'same-held-inputs',pulse,series:Object.fromEntries(CHART_PERIODS.map(period=>[period,[{pulse,at:'2026-10-27T00:00:00Z',usd,basisUsd:100,percent:usd-100,assets:1,capitalizationUsdCents:null}]])),calculation:{current:[{usd,phi:usd/50,usdPerPhi:50,capitalization:null}],startingUsd:Object.fromEntries(CHART_PERIODS.map(period=>[period,[100]]))}} as ProfileGrowthHistory);
+ const {host,root}=mount(),fetcher=vi.spyOn(globalThis,'fetch');
+ const render=(history:ProfileGrowthHistory)=>root.render(<ProfileGrowthPeek name="Alex" total={null} history={history} calculationRows={rows} originals={originals} unavailable={false} onClose={()=>{}} active/>);
+ await act(async()=>render(result(15000000,150)));
+ const basis=host.querySelector<HTMLDetailsElement>('.profile-history-basis')!,exact=[...host.querySelectorAll<HTMLDetailsElement>('details')].find(item=>item.querySelector('summary')?.textContent==='Exact totals & rounding')!;
+ await act(async()=>{basis.open=true;exact.open=true;exact.dispatchEvent(new Event('toggle'));});
+ expect(exact.textContent).toContain('15000000');
+ await act(async()=>render(result(15000001,151)));
+ expect(host.querySelector('.profile-history-amount')?.textContent).toBe('$151.00');expect(exact.open).toBe(true);expect(basis.open).toBe(true);expect(host.querySelector('.profile-calculation-details details')).toBe(exact);
+ expect(exact.textContent).toContain('15000001');expect(exact.textContent).toContain('(151 ÷ 100 − 1) × 100 = 51%');expect(fetcher).not.toHaveBeenCalled();
+});
