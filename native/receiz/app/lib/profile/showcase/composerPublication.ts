@@ -668,12 +668,13 @@ async function publishComposerBoundedShowcaseFromCausalHead(
       while (source.referencedSources?.[0]) source = source.referencedSources[0];
       let firstPaint = await boundedVault.readFirstPaint(artifactId);
       const priorSourceDigest = priorOriginal.importedSource?.sourceArtifactSha256 ?? prior.artifactSha256;
-      if (priorSourceDigest !== source.descriptor.artifactSha256) {
+      const signingAddition = !priorOriginal.hasPbiSignature && input.importedPlacement.original.hasPbiSignature;
+      if (priorSourceDigest !== source.descriptor.artifactSha256 || signingAddition) {
         const continuity = source.verification.assetContinuity;
         const proofPredecessor = continuity?.state === "verified" && continuity.carrier === "portable_asset"
           ? continuity.proofPredecessor : coerceReceizNativeRecordSeal(source.verification.bundle?.nativeRecordSeal)?.proofPredecessor;
-        if (continuity?.state !== "verified" || proofPredecessor?.artifactSha256 !== priorSourceDigest
-          || proofPredecessor.headReference !== priorOriginal.importedSource?.sourceProofHead) throw new TypeError("IMPORTED_SOURCE_EXACT_PREDECESSOR_REQUIRED");
+        if (priorSourceDigest !== source.descriptor.artifactSha256 && (continuity?.state !== "verified" || proofPredecessor?.artifactSha256 !== priorSourceDigest
+          || proofPredecessor.headReference !== priorOriginal.importedSource?.sourceProofHead)) throw new TypeError("IMPORTED_SOURCE_EXACT_PREDECESSOR_REQUIRED");
         const currentOriginal = input.importedPlacement.original;
         if ((priorOriginal.hasPbiSignature && !currentOriginal.hasPbiSignature)
           || priorOriginal.importedSource?.pbiAppendHeads.some((head, index) => currentOriginal.importedSource?.pbiAppendHeads[index] !== head)) throw new TypeError("IMPORTED_SOURCE_SIGNATURE_HISTORY_CONFLICT");

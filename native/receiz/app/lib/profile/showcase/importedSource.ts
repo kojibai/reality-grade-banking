@@ -326,10 +326,11 @@ async function openImportedProofSourceWithTraversal(
     const reference = decodeImportedSourceReference(nestedPayload.bytes);
     const nested = await reopenImportedProofSourceWithTraversal(reference, options.resolveSourceBlock, {
       ...options, coldSpool: options.nestedColdSpool?.(reference) }, traversal, true);
-    const expected = projectImportedSourceOriginal(nested, reference);
+    const authorshipProof = (carriedOriginal as unknown as Record<string, unknown> | null)?.pbiAuthorshipProof;
+    const expected = authorshipProof ? await (await import("./importedSourceAuthorship")).projectPbiSignedImportedSourceOriginal(nested, reference, authorshipProof) : projectImportedSourceOriginal(nested, reference);
     const { jcsCanonicalize } = await import("@/app/utils/jcs");
     if (!carriedOriginal || jcsCanonicalize(carriedOriginal) !== jcsCanonicalize(expected)) throw new TypeError("IMPORTED_SOURCE_NESTED_PROJECTION_INVALID");
-    projection = Object.freeze({ ...nested.projection, originalCreator: expected.originalCreator ?? null });
+    projection = Object.freeze({ ...nested.projection, ...(authorshipProof?{carriedOriginal:expected}:{}), originalCreator: expected.originalCreator ?? null });
     payload = nested.payload;
     composerResources = nested.composerResources;
     referencedSources = Object.freeze([nested]);

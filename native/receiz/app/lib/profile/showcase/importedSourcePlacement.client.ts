@@ -17,8 +17,11 @@ export async function sealAndAdmitImportedSourcePlacement(input: Readonly<{
   immutableVersion: string;
   seal?: ComposerProfileOriginalChildSealer;
   admit?: ComposerProfileOriginalChildAdmitter;
+  authorshipProof?: import("./importedSourceAuthorship").ImportedSourceAuthorshipProof;
 }>) {
-  const original = projectImportedSourceOriginal(input.source, input.reference);
+  const original = input.authorshipProof
+    ? await (await import("./importedSourceAuthorship")).projectPbiSignedImportedSourceOriginal(input.source,input.reference,input.authorshipProof)
+    : projectImportedSourceOriginal(input.source, input.reference);
   const admission = await sealAndAdmitComposerProfileOriginalChild({
     renderedSealedBytes: encodeImportedSourceReference(input.reference),
     renderedMimeType: IMPORTED_SOURCE_REFERENCE_MIME,

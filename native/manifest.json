@@ -6880,7 +6880,7 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/composerPublication.ts",
-      "sha256": "405abf7db484d280a25279489721635dba76add46a1ccfa232dd7f5c25fe9eae",
+      "sha256": "499ea5db4ef4a99fe15b8bb153325ea5b67833e45d59fde19b1a51fffdc6f2e6",
       "bytes": 40600,
       "mode": 420
     },
@@ -6892,7 +6892,7 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "dcf2818ad43d0bb2e9ecdf16b966d461dba4dad8386bf4dfc875306fbe0ecbe4",
+      "sha256": "b0de5b87651b88f58c8042d278ed8cffa3f9d9b83d6804798a89e9eb37964eef",
       "bytes": 10702,
       "mode": 420
     },
@@ -6922,8 +6922,13 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSource.ts",
-      "sha256": "ca7bc4084356d9360a02e1ad5c21468a6fa34c4cf5d47c38c719f8c46874fbb6",
+      "sha256": "94198bc2ebd9bd1ae7fc420f3cc742e504789ca54f00b75f89a7aacb29882ade",
       "bytes": 28581,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/profile/showcase/importedSourceAuthorship.ts",
+      "sha256": "93f2c9fea78f1caa5d463e8e47d7cf968724c8ca40a6cbe163bd15e1f46f9537",
       "mode": 420
     },
     {
@@ -6940,7 +6945,7 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSourcePlacement.client.ts",
-      "sha256": "23ec4ebe0f4a19160d09a1753c9330aa7ca56a867aa235739d75330c369b7781",
+      "sha256": "bdbd60e4280d3ba1542f22eae6a84bf48c137e978f8ee23bf969184a3cfce767",
       "bytes": 1765,
       "mode": 420
     },
@@ -16797,6 +16802,41 @@
       "sha256": "ee18599003d552a2e3b3af99b6d9e81f6c27bb486640ccfaffa67b10479deb9e",
       "sourceCommit": "4180472d858abf82e95ff973511552122435108d",
       "purpose": "Verify and retain the exact read-only received proof through existing Source-bound publication; no provider code or Bank financial call-site activation."
+    },
+    {
+      "id": "bankeiz-pbi-market-publication-v129",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "dcf2818ad43d0bb2e9ecdf16b966d461dba4dad8386bf4dfc875306fbe0ecbe4",
+      "sha256": "b0de5b87651b88f58c8042d278ed8cffa3f9d9b83d6804798a89e9eb37964eef",
+      "purpose": "Compose the existing local PBI authorship verifier with exact imported source and the existing sealed Showcase child. Preserve original source, account entry, ownership, chronology and public-profile creation. No new issuer or registry."
+    },
+    {
+      "id": "bankeiz-pbi-market-publication-v129",
+      "path": "receiz/app/lib/profile/showcase/importedSourceAuthorship.ts",
+      "baseSha256": null,
+      "sha256": "93f2c9fea78f1caa5d463e8e47d7cf968724c8ca40a6cbe163bd15e1f46f9537",
+      "purpose": "Compose the existing local PBI authorship verifier with exact imported source and the existing sealed Showcase child. Preserve original source, account entry, ownership, chronology and public-profile creation. No new issuer or registry."
+    },
+    {
+      "id": "bankeiz-pbi-market-publication-v129",
+      "path": "receiz/app/lib/profile/showcase/importedSource.ts",
+      "baseSha256": "ca7bc4084356d9360a02e1ad5c21468a6fa34c4cf5d47c38c719f8c46874fbb6",
+      "sha256": "94198bc2ebd9bd1ae7fc420f3cc742e504789ca54f00b75f89a7aacb29882ade",
+      "purpose": "Compose the existing local PBI authorship verifier with exact imported source and the existing sealed Showcase child. Preserve original source, account entry, ownership, chronology and public-profile creation. No new issuer or registry."
+    },
+    {
+      "id": "bankeiz-pbi-market-publication-v129",
+      "path": "receiz/app/lib/profile/showcase/importedSourcePlacement.client.ts",
+      "baseSha256": "23ec4ebe0f4a19160d09a1753c9330aa7ca56a867aa235739d75330c369b7781",
+      "sha256": "bdbd60e4280d3ba1542f22eae6a84bf48c137e978f8ee23bf969184a3cfce767",
+      "purpose": "Compose the existing local PBI authorship verifier with exact imported source and the existing sealed Showcase child. Preserve original source, account entry, ownership, chronology and public-profile creation. No new issuer or registry."
+    },
+    {
+      "id": "bankeiz-pbi-market-publication-v129",
+      "path": "receiz/app/lib/profile/showcase/composerPublication.ts",
+      "baseSha256": "405abf7db484d280a25279489721635dba76add46a1ccfa232dd7f5c25fe9eae",
+      "sha256": "499ea5db4ef4a99fe15b8bb153325ea5b67833e45d59fde19b1a51fffdc6f2e6",
+      "purpose": "Compose the existing local PBI authorship verifier with exact imported source and the existing sealed Showcase child. Preserve original source, account entry, ownership, chronology and public-profile creation. No new issuer or registry."
     }
   ],
   "historicalValuation": {
@@ -17409,7 +17449,7 @@
     },
     {
       "path": "app/lib/profile/showcase/composerPublication.ts",
-      "sha256": "405abf7db484d280a25279489721635dba76add46a1ccfa232dd7f5c25fe9eae"
+      "sha256": "499ea5db4ef4a99fe15b8bb153325ea5b67833e45d59fde19b1a51fffdc6f2e6"
     },
     {
       "path": "app/lib/profile/showcase/composerResources.ts",
@@ -17417,7 +17457,7 @@
     },
     {
       "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "dcf2818ad43d0bb2e9ecdf16b966d461dba4dad8386bf4dfc875306fbe0ecbe4"
+      "sha256": "b0de5b87651b88f58c8042d278ed8cffa3f9d9b83d6804798a89e9eb37964eef"
     },
     {
       "path": "app/lib/profile/showcase/economyRetry.ts",
@@ -17437,7 +17477,11 @@
     },
     {
       "path": "app/lib/profile/showcase/importedSource.ts",
-      "sha256": "ca7bc4084356d9360a02e1ad5c21468a6fa34c4cf5d47c38c719f8c46874fbb6"
+      "sha256": "94198bc2ebd9bd1ae7fc420f3cc742e504789ca54f00b75f89a7aacb29882ade"
+    },
+    {
+      "path": "app/lib/profile/showcase/importedSourceAuthorship.ts",
+      "sha256": "93f2c9fea78f1caa5d463e8e47d7cf968724c8ca40a6cbe163bd15e1f46f9537"
     },
     {
       "path": "app/lib/profile/showcase/importedSourceCustody.client.ts",
@@ -17449,7 +17493,7 @@
     },
     {
       "path": "app/lib/profile/showcase/importedSourcePlacement.client.ts",
-      "sha256": "23ec4ebe0f4a19160d09a1753c9330aa7ca56a867aa235739d75330c369b7781"
+      "sha256": "bdbd60e4280d3ba1542f22eae6a84bf48c137e978f8ee23bf969184a3cfce767"
     },
     {
       "path": "app/lib/profile/showcase/importedSourcePrivacy.ts",

@@ -6,7 +6,7 @@ import {admitPbiAccountCredential} from './pbi-account-source';
 
 /** Reuses held original custody. Its key signs the existing exact-account
  * switch before canonical enrollment; the private key stays on this device. */
-export async function connectPbiToAccount(identity:OpenIdentity,assertCurrent:()=>void){
+export async function connectPbiToAccount(identity:Pick<OpenIdentity,'binding'|'backup'|'knownWallet'|'readWallet'>,assertCurrent:()=>void){
  try{
   assertCurrent();const sdk=await loadReceiz();
   // Explicit connection establishes this key's existing account binding before

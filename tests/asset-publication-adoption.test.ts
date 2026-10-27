@@ -49,3 +49,16 @@ it('selects the exact admitted Original for the owner without fetching or invent
  expect(adoption.admittedAssetPublicationItem(reference.artifactSha256,'artist')).toMatchObject({id:'profile:artist:imported-new',originalDigest:reference.artifactSha256});
  expect(adoption.admittedAssetPublicationItem(reference.artifactSha256,'another')).toBeNull();expect(adoption.admittedAssetPublicationItem('e'.repeat(64),'artist')).toBeNull();expect(request).not.toHaveBeenCalled();
 });
+
+it('keeps a newly signed Original through stale unsigned discovery without adding a second asset',()=>{
+ const empty=parsePublicMarket({ok:true,transport:{publicOriginals:[]}});
+ adoption.retainAssetPublicationAdmission(admission,owner);
+ const unsigned=adoption.mergeAdmittedPublicAssets(empty);
+ adoption.acceptDiscoveredPublicAssets(unsigned);
+ const signed={...admission,original:{...original,hasPbiSignature:true,pbiReceiptHash:'e'.repeat(64)},firstPaint:{artifactDigest:'f'.repeat(64)}};
+ adoption.retainAssetPublicationAdmission(signed,owner);
+ const updated=adoption.mergeAdmittedPublicAssets(unsigned);
+ expect(updated.items).toHaveLength(1);expect(updated.items[0].hasPbiSignature).toBe(true);
+ adoption.acceptDiscoveredPublicAssets(unsigned);
+ expect(adoption.mergeAdmittedPublicAssets(unsigned).items[0].hasPbiSignature).toBe(true);
+});

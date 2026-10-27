@@ -22,5 +22,6 @@ export async function signPbiProfile(device:PbiAccountDevice,accountUid:string,c
  if(!verified.ok)throw Error('PBI_PROFILE_ASSERTION_INVALID');
  const result=await pbiAccountRequest('presence-enroll',{...input,challengeId:challenge.id,actionHashHex:actionHash,assertion});assertCurrent();const key=result.key;
  if(result.ok!==true||key?.keyId!==device.keyId||key.pbiDecision!=='PBI_VERIFIED'||key.pbiChallengeId!==challenge.id||typeof key.pbiReceiptHash!=='string'||!/^[a-f0-9]{64}$/.test(key.pbiReceiptHash)||typeof key.attestedAt!=='string'||!Number.isFinite(Date.parse(key.attestedAt)))throw Error('PBI_PROFILE_SIGNING_UNCONFIRMED');
+ const {rememberAssetPbiCredential}=await import('./asset-pbi-credential');assertCurrent();rememberAssetPbiCredential(device.keyId,accountUid,credential);
  return {keyId:device.keyId,pbiReceiptHash:key.pbiReceiptHash,pbiChallengeId:challenge.id,attestedAt:key.attestedAt};
 }

@@ -52,17 +52,20 @@ export function parsePublicProfile(input:unknown,expectedUsername:string):Public
 /** Only this tab's observed public projection is retained, never a private
  * account or persistent owner cache. Refresh refusals remove the old view. */
 const held=new Map<string,PublicProfile>(),observed=new Map<string,number>();
+const confirmedProfilePbi=new Map<string,string>();
+export const knownProfilePbiAuthorship=(uid:string)=>confirmedProfilePbi.get(uid)??null;
 const listeners=new Set<()=>void>();
 export const subscribePublicProfiles=(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};};
-export function retainPublicProfile(input:PublicProfile){const profile=mergeAdmittedProfileAssets(input);for(const [name,previous]of held)if(name!==profile.username&&previous.userId===profile.userId)forgetPublicProfile(name);held.delete(profile.username);held.set(profile.username,profile);observed.set(profile.username,Date.now());retainRecipientPortrait(profile.username,profile.avatarUrl);if(held.size>24)forgetPublicProfile(held.keys().next().value!);if(typeof dispatchEvent==='function')dispatchEvent(new CustomEvent('bankeiz:profile-metadata',{detail:{username:profile.username,title:profile.displayName,description:profile.bio,image:profile.bannerUrl??profile.avatarUrl}}));for(const listener of listeners)listener();return profile;}
+export function retainPublicProfile(input:PublicProfile){const previous=held.get(input.username),receipt=confirmedProfilePbi.get(input.userId)??(previous?.userId===input.userId?previous.pbiReceiptHash:null),profile=mergeAdmittedProfileAssets(receipt?{...input,authorshipVerified:true,pbiReceiptHash:input.pbiReceiptHash??receipt}:input);for(const [name,previous]of held)if(name!==profile.username&&previous.userId===profile.userId)forgetPublicProfile(name);held.delete(profile.username);held.set(profile.username,profile);observed.set(profile.username,Date.now());retainRecipientPortrait(profile.username,profile.avatarUrl);if(held.size>24)forgetPublicProfile(held.keys().next().value!);if(typeof dispatchEvent==='function')dispatchEvent(new CustomEvent('bankeiz:profile-metadata',{detail:{username:profile.username,title:profile.displayName,description:profile.bio,image:profile.bannerUrl??profile.avatarUrl}}));for(const listener of listeners)listener();return profile;}
 /** Append the confirmed canonical PBI enrollment to held public presentation.
  * No original, membership, pricing or private profile data is replaced. */
 export function retainProfilePbiAuthorship(accountUid:string,receiptHash:string){
  if(!/^[a-f0-9]{64}$/.test(receiptHash))throw Error('PROFILE_PBI_RECEIPT_INVALID');
+ confirmedProfilePbi.set(accountUid,receiptHash);if(confirmedProfilePbi.size>24)confirmedProfilePbi.delete(confirmedProfilePbi.keys().next().value!);
  for(const profile of [...held.values()])if(profile.userId===accountUid)retainPublicProfile({...profile,authorshipVerified:true,pbiReceiptHash:receiptHash});
 }
 export function forgetPublicProfile(username:string){forgetRecipientPortrait(username);forgetAssetPublicationAdmissions(username);held.delete(username);observed.delete(username);if(typeof document!=='undefined'){const seed=document.getElementById('public-profile-seed');try{if(JSON.parse(seed?.textContent??'null')?.username===username)seed?.remove();}catch{/* Invalid seeds are never adopted. */}}for(const listener of listeners)listener();}
-export function forgetPublicProfilesForAccount(uid:string){for(const [name,profile]of held)if(profile.userId===uid)forgetPublicProfile(name);}
+export function forgetPublicProfilesForAccount(uid:string){confirmedProfilePbi.delete(uid);for(const [name,profile]of held)if(profile.userId===uid)forgetPublicProfile(name);}
 export const publicProfileNeedsRefresh=(username:string)=>Date.now()-(observed.get(username)??0)>15_000;
 export function publicProfilePageError(username:string):string{
  if(typeof document==='undefined')return '';try{const value=JSON.parse(document.getElementById('public-profile-error')?.textContent??'null');return value?.username===username&&Date.now()-value.at<15_000&&['PROFILE_PRIVATE','PROFILE_NOT_FOUND','PROFILE_UNAVAILABLE'].includes(value.code)?value.code:'';}catch{return '';}

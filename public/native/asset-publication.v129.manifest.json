@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.0.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "edf5d2f8ca54b591f419607a2a7aea8d895758c6fabb88aae59dd1142593faf1",
-  "sourceTreeSha256": "45410bdf237d87bf27baa8f87673c617637d643b8cb6fb660fe0f9fe647388a3",
-  "inputs": 497,
-  "bytes": 2922366,
+  "moduleSha256": "3fad45d02d3acaffdc23e5666543e264fb186212d9288db0b355bbce81175f4e",
+  "sourceTreeSha256": "644b371759d82eb4bc30537b11ead466c57265e75a8f4e7589472fd2799a1069",
+  "inputs": 498,
+  "bytes": 2924571,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -747,6 +747,41 @@
       "sha256": "ee18599003d552a2e3b3af99b6d9e81f6c27bb486640ccfaffa67b10479deb9e",
       "sourceCommit": "4180472d858abf82e95ff973511552122435108d",
       "purpose": "Verify and retain the exact read-only received proof through existing Source-bound publication; no provider code or Bank financial call-site activation."
+    },
+    {
+      "id": "bankeiz-pbi-market-publication-v129",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "dcf2818ad43d0bb2e9ecdf16b966d461dba4dad8386bf4dfc875306fbe0ecbe4",
+      "sha256": "b0de5b87651b88f58c8042d278ed8cffa3f9d9b83d6804798a89e9eb37964eef",
+      "purpose": "Compose the existing local PBI authorship verifier with exact imported source and the existing sealed Showcase child. Preserve original source, account entry, ownership, chronology and public-profile creation. No new issuer or registry."
+    },
+    {
+      "id": "bankeiz-pbi-market-publication-v129",
+      "path": "receiz/app/lib/profile/showcase/importedSourceAuthorship.ts",
+      "baseSha256": null,
+      "sha256": "93f2c9fea78f1caa5d463e8e47d7cf968724c8ca40a6cbe163bd15e1f46f9537",
+      "purpose": "Compose the existing local PBI authorship verifier with exact imported source and the existing sealed Showcase child. Preserve original source, account entry, ownership, chronology and public-profile creation. No new issuer or registry."
+    },
+    {
+      "id": "bankeiz-pbi-market-publication-v129",
+      "path": "receiz/app/lib/profile/showcase/importedSource.ts",
+      "baseSha256": "ca7bc4084356d9360a02e1ad5c21468a6fa34c4cf5d47c38c719f8c46874fbb6",
+      "sha256": "94198bc2ebd9bd1ae7fc420f3cc742e504789ca54f00b75f89a7aacb29882ade",
+      "purpose": "Compose the existing local PBI authorship verifier with exact imported source and the existing sealed Showcase child. Preserve original source, account entry, ownership, chronology and public-profile creation. No new issuer or registry."
+    },
+    {
+      "id": "bankeiz-pbi-market-publication-v129",
+      "path": "receiz/app/lib/profile/showcase/importedSourcePlacement.client.ts",
+      "baseSha256": "23ec4ebe0f4a19160d09a1753c9330aa7ca56a867aa235739d75330c369b7781",
+      "sha256": "bdbd60e4280d3ba1542f22eae6a84bf48c137e978f8ee23bf969184a3cfce767",
+      "purpose": "Compose the existing local PBI authorship verifier with exact imported source and the existing sealed Showcase child. Preserve original source, account entry, ownership, chronology and public-profile creation. No new issuer or registry."
+    },
+    {
+      "id": "bankeiz-pbi-market-publication-v129",
+      "path": "receiz/app/lib/profile/showcase/composerPublication.ts",
+      "baseSha256": "405abf7db484d280a25279489721635dba76add46a1ccfa232dd7f5c25fe9eae",
+      "sha256": "499ea5db4ef4a99fe15b8bb153325ea5b67833e45d59fde19b1a51fffdc6f2e6",
+      "purpose": "Compose the existing local PBI authorship verifier with exact imported source and the existing sealed Showcase child. Preserve original source, account entry, ownership, chronology and public-profile creation. No new issuer or registry."
     }
   ]
 }

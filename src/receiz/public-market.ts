@@ -14,6 +14,8 @@ import {profileAvatarUrl} from './profile-avatar.js';
 /** Public discovery and quotes are display projections; they grant no ownership. */
 export interface PublicMarketItem {
   shareInventory?:PublicShareInventory;
+  /** Existing Original authorship projection; never ownership or funding authority. */
+  hasPbiSignature?:boolean;
   id: string; assetId: string; title: string; summary: string; category: 'proof' | 'sports'; circulationCount?: number; pricedCount?: number; capitalizationUsdCents?: string | null;
   sourceUrl: string | null; verifyUrl: string | null; originalUrl: string | null;
   originalDigest: string | null; pulse: string | null; sealedAt: string | null;
@@ -129,7 +131,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
     const sealedAt = text(source.createdAt, 64);
     const publicUsername = text(source.ownerUsername, 64);
     const ownerUsername = publicUsername && /^[a-zA-Z0-9_-]{1,64}$/.test(publicUsername) ? publicUsername : null;
-    items.push({ id, assetId, title, summary: text(source.summary, 8192) ?? '', category: 'proof',
+    items.push({ id, assetId, title, hasPbiSignature:profile.hasPbiSignature===true||typeof profile.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)||typeof profile.signedArtifactDownloadUrl==='string'&&Boolean(safeReceizPublicUrl(profile.signedArtifactDownloadUrl,'original')), summary: text(source.summary, 8192) ?? '', category: 'proof',
       sourceUrl: safeReceizPublicUrl(source.canonicalHref, 'source'), verifyUrl,readingUrl,
       originalUrl: materialOriginal ?? safeReceizPublicUrl(media.originalDownloadSrc, 'original'), originalDigest: digest && /^[a-f0-9]{64}$/i.test(digest) ? digest.toLowerCase() : null,
       ...(publicNativeAssetBinding(profile.nativeAsset)?{nativeAsset:publicNativeAssetBinding(profile.nativeAsset)}:{}),

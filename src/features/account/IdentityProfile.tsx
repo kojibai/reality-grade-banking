@@ -1,12 +1,12 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowUpRight, ChevronRight, FileText, Fingerprint, LockKeyhole } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, ChevronRight, FileText, Fingerprint, LockKeyhole } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import {QuickProfileEditor} from './QuickProfileEditor';
 import { BankConnection } from './BankConnection';
 import { ProofPortabilityPanel } from './ProofPortabilityPanel';
 import {ProfileAvatar} from '../../components/ProfileAvatar';
 import {identityProfileAvatar} from '../../receiz/profile-avatar';
-import {profilePagePath,profileUsername} from '../../receiz/public-profile';
+import {profilePagePath,profileUsername,retainedPublicProfile,knownProfilePbiAuthorship} from '../../receiz/public-profile';
 const PrivateVaults=lazy(()=>import('../vault/VaultExperience').then(module=>({default:module.VaultExperience})));
 
 export function IdentityProfile({ identity, onForget, onRefresh, active=true, vaultsEntry, onVaultsEntryConsumed }: { identity: OpenIdentity; onForget: () => Promise<void>; onRefresh: () => void; active?:boolean; vaultsEntry?:'create'; onVaultsEntryConsumed?():void }) {
@@ -28,7 +28,8 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
     finally{passkeyPending.current=false;if(current.current===identity)setPasskeyBusy(false);}
   };
   const publicId = identity.accountUsername?.() || identity.username || identity.binding.identityOwnerReceizId;
-  const backupId = () => {
+  const profileVerified=passkeyConnected||!!knownProfilePbiAuthorship(identity.knownWallet?.()?.wallet.userId??'')||!!retainedPublicProfile(publicId)?.authorshipVerified;
+ const backupId = () => {
     const held = identity.backup(), url = URL.createObjectURL(new Blob([new Uint8Array(held.bytes)]));
     const link = document.createElement('a'); link.href = url; link.download = held.filename; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1_000); setBackup(true);
@@ -53,7 +54,8 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
       {identity.needsPhrase && <input type="password" readOnly value={identity.backup().phrase} aria-label="Private recovery phrase" />}
       <button className="text-button" onClick={() => setBackup(false)}>{identity.needsPhrase ? 'Hide recovery phrase' : 'Hide backup details'}</button>
     </div>}
-    <button type="button" className="identity-passkey" aria-label={passkeyConnected?'Passkey connected':'Connect passkey'} disabled={passkeyBusy||passkeyConnected} onClick={()=>void connectPasskey()}><span className="identity-passkey-icon"><Fingerprint size={23} strokeWidth={1.4} aria-hidden="true"/></span><span>Passkey</span><small>{passkeyBusy?'Connecting…':passkeyConnected?'Connected':'Connect'}</small></button>
+    <button type="button" className={"identity-passkey"+(profileVerified?" is-verified":"")} aria-label={profileVerified?'Passkey connected':'Connect passkey'} disabled={passkeyBusy||profileVerified} onClick={()=>void connectPasskey()}><span className="identity-passkey-icon"><BadgeCheck size={23} strokeWidth={1.4} aria-hidden="true"/></span><span>{profileVerified?'Verified profile':'Verify profile'}</span><small>{passkeyBusy?'Signing…':profileVerified?'Verified':'Sign with PBI'}</small></button>
+    <p className="identity-pbi-hint"><Fingerprint size={12} aria-hidden="true"/>Passkey sign-in &amp; recovery</p>
     {passkeyError&&<p className="error-message" role="alert">{passkeyError}</p>}
     {identity.vaults&&<button type="button" className="identity-vault-entry" onClick={()=>setVaultsOpen({owner:identity,mode:'home'})}><LockKeyhole size={23} strokeWidth={1.3}/><span><strong>Your vaults</strong><small>Your money. Your originals. Their proof.</small></span><ChevronRight size={16}/></button>}
     {vaultsOpen?.owner===identity&&<Suspense fallback={<p className="body-copy small-copy" role="status">Opening your vaults…</p>}><PrivateVaults active={active&&vaultsActive} initialMode={vaultsOpen.mode} identity={identity} onRefresh={onRefresh} onClose={()=>setVaultsOpen(null)}/></Suspense>}

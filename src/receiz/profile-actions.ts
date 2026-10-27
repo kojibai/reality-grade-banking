@@ -14,3 +14,7 @@ export function attachProfileEdit(id:number,slot:HTMLElement|null){if(edit?.id==
 export function beginProfileAccountAction(kind:AccountAction['kind'],profile:PublicProfile){action={id:++sequence,kind,profile};notify();requestBankNavigation(`#account/${kind}`);}
 export const readProfileAccountAction=()=>action;
 export function consumeProfileAccountAction(id:number){if(action?.id===id){action=null;notify();}}
+
+let profileSigner:{uid:string;sign:()=>Promise<void>}|null=null;
+export function registerProfilePbiSigner(uid:string,sign:()=>Promise<void>){const handler={uid,sign};profileSigner=handler;return()=>{if(profileSigner===handler)profileSigner=null;};}
+export async function signProfileWithPbi(profile:PublicProfile){if(profile.userId!==owner||profileSigner?.uid!==profile.userId)throw Error('Reopen your account to sign this profile.');await profileSigner.sign();}
