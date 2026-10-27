@@ -136,7 +136,7 @@ it('uses the carried member portrait for a world Twin while preparing, streaming
 });
 it('requires one explicit permission before private reads, then opens Twin without sending anything',async()=>{
  const outbound=vi.fn(()=>{throw Error('No outbound tests');});vi.stubGlobal('fetch',outbound);const f=fixture(false);
- try{await f.render();expect(f.host.textContent).toContain('Use your existing Receiz messages, groups, calls and agent through this ID. Nothing sent until you send.');expect(f.api.conversations).not.toHaveBeenCalled();expect(f.api.twin.ask).not.toHaveBeenCalled();await f.click('Enable messages');expect(f.identity.messaging).toHaveBeenLastCalledWith(true);expect(f.host.textContent).toContain('Your money.');expect(f.api.twin.ask).not.toHaveBeenCalled();expect(outbound).not.toHaveBeenCalled();}finally{f.unmount();}
+ try{await f.render();expect(f.host.textContent).toContain('Use your existing Receiz messages, groups, calls and agent through this ID. Nothing sent until you send.');expect(f.api.conversations).not.toHaveBeenCalled();expect(f.api.twin.ask).not.toHaveBeenCalled();await f.click('Enable messages');expect(f.identity.messaging).toHaveBeenLastCalledWith(true);expect(f.host.textContent).toContain('A little more room');expect(f.api.twin.ask).not.toHaveBeenCalled();expect(outbound).not.toHaveBeenCalled();}finally{f.unmount();}
 });
 it('uses known thread truth immediately and keeps it through a background refresh',async()=>{
  const pending=deferred<ChatPage>(),f=fixture();f.api.messages.mockImplementation(()=>pending.promise);
