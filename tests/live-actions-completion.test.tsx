@@ -22,9 +22,9 @@ it('addresses the depositor directly and keeps technical consent inside deposit 
   const host = document.createElement('div'), root = createRoot(host);
   try {
     await act(async () => root.render(<LiveDeposit identity={identity} onClose={vi.fn()} onRefresh={vi.fn()} />));
-    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Add money'))!.click());
+    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Add funds'))!.click());
     expect(host.textContent).toContain('Choose how to pay at secure checkout.');
-    const detail = [...host.querySelectorAll('details')].find(node => node.querySelector('summary')?.textContent === 'Deposit details');
+    const detail = [...host.querySelectorAll('details')].find(node => node.querySelector('summary')?.textContent === 'Details');
     expect(detail).toBeDefined(); expect(detail!.open).toBe(false);
     expect(detail!.textContent).toContain('This does not authorize');
   } finally { act(() => root.unmount()); }
@@ -51,7 +51,7 @@ it('opens an ownership form from Send without a permanently disabled action', as
 it('keeps Send focused on the payment and uses memo for text rather than a Settlement Note',async()=>{
  const host=document.createElement('div'),root=createRoot(host);
  try{await act(async()=>root.render(<LiveSend identity={identity} wallet={null} onClose={()=>{}}/>));
- expect(host.textContent).not.toContain('Payment options');expect(host.textContent).not.toContain('Add money by card');
+ expect(host.textContent).not.toContain('Payment options');expect(host.textContent).not.toContain('Add funds by card');
  expect(host.textContent).toContain('Create note');expect(host.textContent).toContain('Add a memo');
  expect(host.querySelector('textarea[aria-label="Payment memo"]')).not.toBeNull();
  }finally{act(()=>root.unmount());}

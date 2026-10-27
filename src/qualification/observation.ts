@@ -1,0 +1,15 @@
+import type {QualificationBaseline,QualificationInput} from './policy.js';
+export type OriginalsObservation=QualificationInput&{schema:'bankeiz.originals-observation.v1';authority:'observation-only';accountUid:string;username:string;sourceOriginalIds:string[];membershipComplete:boolean;witnessComplete:boolean;acceptance:'not-admitted';economyActive:false};
+const record=(value:unknown):Record<string,unknown>=>value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
+export function parseOriginalsObservation(input:unknown,accountUid:string):OriginalsObservation{
+ const envelope=record(input),value=record(envelope.observation),baseline=record(value.baseline),retention=record(value.retention);
+ if(value.accountUid!==accountUid)throw Error('QUALIFICATION_ACCOUNT_MISMATCH');
+ const keys=['pbi','avatar','header','threeOriginals','verifiedOriginal'];
+ if(envelope.ok!==true||value.schema!=='bankeiz.originals-observation.v1'||value.authority!=='observation-only'||value.acceptance!=='not-admitted'||value.economyActive!==false||value.fundingUsdCents!==null||typeof value.username!=='string'||!/^[a-z0-9_]{3,40}$/.test(value.username)||typeof value.membershipComplete!=='boolean'||typeof value.witnessComplete!=='boolean'||keys.some(key=>baseline[key]!==true&&baseline[key]!==false&&baseline[key]!==null))throw Error('QUALIFICATION_SOURCE_INVALID');
+ if(!Array.isArray(value.sourceOriginalIds)||value.sourceOriginalIds.some(id=>typeof id!=='string'||!id||id.length>128)||new Set(value.sourceOriginalIds).size!==value.sourceOriginalIds.length)throw Error('QUALIFICATION_MEMBERSHIP_INVALID');
+ if(value.membershipComplete?value.originals!==value.sourceOriginalIds.length:value.originals!==null)throw Error('QUALIFICATION_MEMBERSHIP_INCOMPLETE');
+ if(value.witnessComplete?(!value.membershipComplete||value.retention===null||typeof retention.starts!=='number'||typeof retention.retained!=='number'||value.witnessedBreaths===null):(value.retention!==null||value.witnessedBreaths!==null))throw Error('QUALIFICATION_WITNESS_INCOMPLETE');
+ const result:OriginalsObservation={schema:'bankeiz.originals-observation.v1',authority:'observation-only',accountUid,username:value.username,sourceOriginalIds:value.sourceOriginalIds as string[],membershipComplete:value.membershipComplete,witnessComplete:value.witnessComplete,originals:value.originals as number|null,witnessedBreaths:value.witnessedBreaths as number|null,retention:value.retention===null?null:{starts:retention.starts as number,retained:retention.retained as number},fundingUsdCents:null,baseline:baseline as QualificationBaseline,acceptance:'not-admitted',economyActive:false};
+ if(result.originals!==null&&(!Number.isSafeInteger(result.originals)||result.originals<0)||result.witnessedBreaths!==null&&(!Number.isSafeInteger(result.witnessedBreaths)||result.witnessedBreaths<0)||result.retention&&Object.values(result.retention).some(value=>!Number.isFinite(value)||value<0))throw Error('QUALIFICATION_COUNTER_INVALID');
+ return result;
+}

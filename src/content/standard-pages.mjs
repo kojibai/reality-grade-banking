@@ -1,7 +1,7 @@
 // Public explanation of the standard; existing originals and operations remain authority.
 export const standardHierarchy=Object.freeze([
  ['Proof-native economy','Value with its required source, rights and evidence.','/learn/proof-native-economy/'],
- ['Reality-grade banking','The standard for interacting with that economy.','/learn/reality-grade-banking/'],
+ ['Reality-grade banking','Banking that preserves the economy’s identity, ownership and continuity laws.','/learn/reality-grade-banking/'],
  ['Reality-grade infrastructure','Receiz SDK, MCP and AI Skills implement the primitives.','/docs/infrastructure/'],
 ]);
 export const standardPages=[
@@ -41,11 +41,11 @@ export const standardPages=[
       ],
       [
         "The standard is open to inspection.",
-        "Reality-grade banking is the interaction standard of the proof-native economy. Receiz supplies the reality-grade infrastructure through its SDK, MCP and AI Skills. Independent implementations preserve the same source, authority and continuity requirements."
+        "Reality-grade banking is the interaction standard of the proof-native economy. Receiz supplies the reality-grade infrastructure through its SDK, MCP and AI Skills. Independent implementations must demonstrate conformance to the same applicable identity, ownership, value, history and continuity laws."
       ],
       [
         "What must remain true.",
-        "Verify the original source before admitting its claim. Require the relevant owner authority before an action. Preserve exact value and predecessor relationships through financial execution. Keep the confirmed history; later verified truth appends instead of replacing what was already established. These are participation requirements that can be inspected in the source and exercised through conformance."
+        "Verify the original source before admitting its claim. Require the relevant owner authority before an action. Preserve exact value and predecessor relationships through financial execution. Keep the confirmed history; later verified truth appends instead of replacing what was already established. These are proof-native laws, inspectable in the source and enforced through conformance."
       ]
     ],
     "related": [
@@ -118,8 +118,8 @@ export const standardPages=[
         "Settlement records proof-native value in exact Phi units. Its dollar presentation follows the supported deterministic conversion. Reserve and Settlement retain their distinct sources beneath the account’s displayed total."
       ],
       [
-        "A valuation is a calculation.",
-        "An asset valuation is distinct from cash backing, a sale price or a redemption right. Inspect the actual ownership, funding, rights and executable offer. A displayed amount does not create a buyer or a cash-out promise."
+        "Value follows its law.",
+        "Intrinsic proof value follows its fixed valuation law. The Original carries ownership, funding and exchange rights. A market offer supplies the actual executable price and a completed sale records its funded proceeds."
       ],
       [
         "Use value without losing the story.",
@@ -146,8 +146,8 @@ export const standardPages=[
     ],
     "faq": [
       [
-        "Can I withdraw every displayed valuation?",
-        "A valuation does not establish cash proceeds or redemption. Use the available payment, trade and redemption operations and inspect their actual rights and terms."
+        "What rights travel with my value?",
+        "The Original carries the actual ownership, funding, use and exchange rights. Receiving institutions must demonstrate conformance to the identity, value, history and continuity laws governing the capability you use."
       ],
       [
         "Who owns my originals?",
@@ -181,7 +181,7 @@ export const standardPages=[
     "sections": [
       [
         "Begin inside your account.",
-        "Open your existing identity and choose Deposit. Select the incoming source you actually hold. Card funding, an original Note, a proof object and physical intake establish different facts and follow their own paths."
+        "Open your existing identity and choose Add. Select the incoming source you actually hold. Card funding, an original Note, a proof object and physical intake establish different facts and follow their own paths."
       ],
       [
         "Know when the money is available.",

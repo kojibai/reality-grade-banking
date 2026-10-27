@@ -35,7 +35,7 @@ it('reopens Deposit after admission when returning from card checkout', async ()
   try {
     await act(async () => root.render(<App />));
     expect(location.hash).toBe('#account/deposit');
-    expect(host.querySelector('dialog')?.textContent).toContain('Deposit what');
+    expect(host.querySelector('dialog')?.textContent).toContain('Add to');
   } finally { act(() => root.unmount()); history.replaceState(null, '', '/'); }
 });
 
@@ -47,7 +47,7 @@ it('suspends an open bank sheet on public pages and restores its retained draft 
     const opener = host.querySelector<HTMLButtonElement>('button.nav-deposit')!; opener.focus(); act(() => opener.click());
     const dialog = host.querySelector('dialog')!;
     expect(dialog.open).toBe(true); expect(document.body.style.position).toBe('fixed');
-    act(() => [...dialog.querySelectorAll('button')].find(button => button.textContent?.includes('Add money'))!.click());
+    act(() => [...dialog.querySelectorAll('button')].find(button => button.textContent?.includes('Add funds'))!.click());
     act(() => [...dialog.querySelectorAll('button')].find(button => button.textContent === '$250')!.click());
     const draft = dialog.querySelector('input')!; expect(draft.value).toBe('250');
     history.pushState(null, '', '/legal/');
@@ -103,4 +103,10 @@ it('composes Get Business with the retained account and opens the assistant requ
   expect(host.querySelector('[data-business-entry]')?.getAttribute('data-business-entry')).toBeTruthy();
   expect(host.querySelector('.bank-twin-upgrade')).toBeNull();
  }finally{act(()=>root.unmount());host.remove();history.replaceState(null,'','/');}
+});
+
+it('lands a restored account directly in the requested Create an asset composer',async()=>{
+ history.replaceState(null,'','/#account/currency');const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<App/>));expect(location.hash).toBe('#account/currency');expect(host.querySelector('dialog')?.textContent).toContain('Your next original.');const dialog=host.querySelector('dialog')!;expect(host.querySelector(`[id="${dialog.getAttribute('aria-labelledby')}"]`)?.textContent).toBe('Create an asset');}
+ finally{act(()=>root.unmount());history.replaceState(null,'','/');}
 });

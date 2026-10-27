@@ -1,16 +1,16 @@
 import {useEffect,useRef,useState} from 'react';
-import {ArrowRight,Check,ChevronRight,Landmark,ShieldCheck} from 'lucide-react';
+import {ArrowRight,ChevronRight,Landmark,ShieldCheck} from 'lucide-react';
 import type {OpenIdentity} from '../../receiz/native-identity';
 import type {HeldDeposit} from '../../receiz/deposit-source';
 import {composerDefinition,readComposerCapacity,validateComposerAssetDraft,type AssetComposerDraft} from '../../receiz/asset-composer';
 import {AmountInput} from '../../components/AmountInput';
 import {NativeOperation} from '../account/NativeOperation';
 import {bankOperationDollars} from '../../receiz/bank-operations';
-import {profilePagePath,retainedPublicProfile} from '../../receiz/public-profile';
+import {retainedPublicProfile} from '../../receiz/public-profile';
 import {admittedAssetPublicationItem,subscribeAssetPublicationAdmissions} from '../../receiz/asset-publication-adoption';
-import {assetPagePath,retainPublicAsset} from '../../receiz/public-asset-page';
+import {retainPublicAsset} from '../../receiz/public-asset-page';
 import {AssetComposer} from './AssetComposer';
-import {AssetStudioPreview} from './AssetStudioPreview';
+import {CreatedAssetResult} from './CreatedAssetResult';
 import './asset-studio.css';
 import type {BackedPublicationState} from '../../receiz/backed-asset-publication';
 export function CreateAsset({identity,onRefresh,onClose}:{identity:OpenIdentity;onRefresh():void;onClose():void}){
@@ -31,7 +31,7 @@ export function CreateAsset({identity,onRefresh,onClose}:{identity:OpenIdentity;
  function save(){if(!result)return;const url=URL.createObjectURL(new Blob([new Uint8Array(result.bytes)])),link=document.createElement('a');link.href=url;link.download=result.filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
  const published=result?.publication?.status==='published',username=identity.accountUsername?.()??identity.username;
  const publicItem=published&&result&&username?(admittedAssetPublicationItem(result.digest,username)??retainedPublicProfile(username)?.items.find(item=>item.originalDigest===result.digest)??null):null;
- if(result)return <div className="asset-creation creation-complete"><AssetStudioPreview title={result.title} complete/><div className="status-icon success"><Check size={34}/></div><h1 className="sheet-hero">{published?'Your asset is public.':'Your asset is sealed.'}</h1><p className="body-copy">{result.title} is held in your account as an original proof object.</p><p className="body-copy small-copy">{published?(result.pbiSigned?'Your signed Original is public on your profile and in Market.':'Your original, artwork, attachments and full text form one public proof object. PBI signing displays your Original on your profile and in Market.'):result.publication?.status==='rejected'?'Public delivery needs attention. Your exact original remains held in your account.':'Public delivery is pending. Your exact original remains held in your account. Retry to deliver the same proof.'}</p><details className="transaction-proof-details"><summary>Asset details</summary><div className="detail-list"><div><span>Short code</span><strong>{result.assetDefinition?.symbol??settings.symbol}</strong></div><div><span>Defined units</span><strong>{result.assetDefinition?.units??settings.units}</strong></div><div><span>Source</span><strong className="proof-coordinate">{result.digest}</strong></div></div></details>{!published&&<button className="primary-button" disabled={busy} onClick={()=>void (result.pbiSigned?publishMarket():create())}>{busy?'Delivering your original…':result.pbiSigned?'Finish publishing':'Retry public delivery'}</button>}{published&&!result.pbiSigned&&<button className="primary-button" disabled={busy} onClick={()=>void publishMarket()}>{busy?'Signing and publishing…':'Publish to Market'}<ShieldCheck size={17}/></button>}{publicItem?<a className="primary-button" href={assetPagePath(publicItem.id)} onClick={()=>retainPublicAsset(publicItem)}>Open your asset<ArrowRight size={17}/></a>:published&&username&&/^[a-z0-9_]{3,24}$/.test(username)&&<a className="primary-button" href={profilePagePath(username)}>Open your profile</a>}<button className="secondary-button" onClick={save}>Save original proof</button>{error&&<p className="error-message" role="alert">{error}</p>}<button className="secondary-button" onClick={onClose}>Done</button></div>;
+ if(result)return <CreatedAssetResult result={result} settings={settings} busy={busy} error={error} username={username} publicItem={publicItem} onRetryDelivery={create} onPublishMarket={publishMarket} onOpenAsset={()=>{if(publicItem)retainPublicAsset(publicItem);}} onSave={save} onClose={onClose}/>;
  async function adoptBacked(completed?:HeldDeposit|null){const current=await(await identity.backedAssetPublication()).pending(!completed);if(active.current){setResultBacked(true);setBackedState(current.state);if(completed??current.deposit){setResult(completed??current.deposit);onRefresh();}}}
  async function resumeBacked(){if(running.current)return;running.current=true;setBusy(true);setError('');try{const completed=await(await identity.backedAssetPublication()).resume();await adoptBacked(completed);onRefresh();}catch(cause){if(active.current)setError(cause instanceof Error?cause.message:'Your original creation remains saved. Try again when connected.');}finally{running.current=false;if(active.current)setBusy(false);}}
  if(backedState&&!result&&backedState.stage!=='published'){

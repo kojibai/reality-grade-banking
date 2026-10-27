@@ -1,3 +1,4 @@
+import {handleOriginalsQualification} from './originals-qualification.js';
 import {relayTwinWorkspace} from './twin-workspace.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Readable } from 'node:stream';
@@ -20,6 +21,7 @@ export async function handleBankApi(request: Request): Promise<Response> {
   if (url.pathname==='/api/bank/business/dns')return relayBusinessDns(request);
   if (url.pathname==='/api/bank/twin-workspace') return relayTwinWorkspace(request);
   if (url.pathname==='/api/bank/business/setup') return relayBusinessSetup(request);
+  if (url.pathname.startsWith('/api/bank/originals-qualification/')) return handleOriginalsQualification(request);
   if (url.pathname.startsWith('/api/bank/native')) return relayNativeAccount(request);
   if (url.pathname.startsWith('/api/bank/public-profile/')) return handlePublicProfile(request);
   if (url.pathname==='/api/bank/public-document') return handlePublicDocument(request);

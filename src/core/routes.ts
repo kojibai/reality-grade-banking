@@ -24,7 +24,7 @@ export function parseRoute(hash: string): ConsoleRoute {
     if(kind==='messages')return {panel,sheet:{kind:'messages',...(id==='business'?{business:true as const}:{})}};
     if(kind==='profile')return {panel,sheet:{kind:'profile',...(id==='vaults'&&mode==='create'?{vaults:'create' as const}:{})}};
     if (kind === 'send') return { panel, sheet: { kind: 'send', assetId: id } };
-    if (['deposit', 'receive', 'balance', 'growth', 'currency', 'exchange', 'rules', 'business'].includes(kind)) return { panel, sheet: { kind: kind as 'deposit' | 'receive' | 'balance' | 'growth' | 'currency' | 'exchange' | 'rules' | 'business' } };
+    if (['earn-originals', 'account-proof', 'deposit', 'receive', 'balance', 'growth', 'currency', 'exchange', 'rules', 'business'].includes(kind)) return { panel, sheet: { kind: kind as 'earn-originals' | 'account-proof' | 'deposit' | 'receive' | 'balance' | 'growth' | 'currency' | 'exchange' | 'rules' | 'business' } };
     return { panel, sheet: null };
   } catch { return { panel: 'account', sheet: null }; }
 }

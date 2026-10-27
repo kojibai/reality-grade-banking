@@ -89,6 +89,7 @@ export function permittedNativePath(path: string, method: string): boolean {
     return verb === 'POST' ? !url.searchParams.has(recoveryKey) : recoveryKey === 'allocationId' ? /^[a-f0-9]{64}$/.test(url.searchParams.get(recoveryKey) ?? '') : /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(url.searchParams.get(recoveryKey) ?? '');
   }
   if (url.pathname === '/api/connect/offline-notes/custody/attestation') return ['GET', 'POST'].includes(method.toUpperCase()) && url.searchParams.getAll('origin').length === 1 && [...url.searchParams.keys()].every(key => key === 'origin') && Boolean(bankNoteRpId(url.searchParams.get('origin') ?? ''));
+  if(url.pathname==='/api/connect/originals-qualification')return method.toUpperCase()==='GET'&&[...url.searchParams.keys()].length===1&&url.searchParams.getAll('applicationId').length===1&&url.searchParams.get('applicationId')===BANK_APPLICATION_ID;
   if (url.pathname === '/api/wallet/ledger') return method.toUpperCase() === 'GET' && url.searchParams.get('limit') === '100' && url.searchParams.get('includeReceiz') === '0' && [...url.searchParams.keys()].every(key => ['limit', 'includeReceiz', 'cursor'].includes(key) && url.searchParams.getAll(key).length === 1) && (!url.searchParams.has('cursor') || /^[A-Za-z0-9_-]{1,2048}$/.test(url.searchParams.get('cursor')!));
   if (/^\/api\/sdk\/v1\/subjects\/receiz%3Asubject%3A[a-f0-9]{64}\/state$/.test(url.pathname)) return method.toUpperCase() === 'GET' && !url.search;
   if (NATIVE_PATHS[url.pathname] !== method.toUpperCase()) return false;

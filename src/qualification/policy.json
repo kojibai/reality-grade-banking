@@ -1,0 +1,10 @@
+{
+  "id": "bankeiz.earn-from-originals.v1",
+  "originals": 500,
+  "witnessedBreaths": 150000,
+  "retentionMinimum": 0.4,
+  "fullFundingUsdCents": "25000000",
+  "originalsShareBps": 5000,
+  "witnessShareBps": 5000,
+  "economyActive": false
+}
