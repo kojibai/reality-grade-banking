@@ -2,7 +2,7 @@ import {N_DAY_MICRO,DAYS_PER_MONTH,MONTHS_PER_YEAR,momentFromPulse} from '../../
 import {KAI_DAYS} from '../components/kai-klok';
 /** A display index of already-carried sources. Spatial proximity is visual;
  * edges mean index membership or recorded turns in the same conversation. */
-export type MindNode={id:string;kind:'identity'|'source'|'user'|'assistant';label:string;body:string;at:number|null;pulse?:string;record:Record<string,unknown>};
+export type MindNode={id:string;kind:'identity'|'source'|'user'|'assistant';label:string;body:string;at:number|null;pulse?:string;record:Record<string,unknown>;sourceKind?:string;href?:string};
 export type MindEdge={from:string;to:string;kind:'membership'|'conversation'};
 export type TwinMindGraph={nodes:MindNode[];edges:MindEdge[];sources:MindNode[];memory:MindNode[]};
 export type MindPoint={node:MindNode;x:number;y:number;color?:string};
@@ -12,6 +12,7 @@ const text=(value:unknown)=>typeof value==='string'?value:'';
 const kai=(v:unknown)=>typeof v==='string'&&/^(0|[1-9][0-9]{0,29})$/.test(v)?v:undefined;
 const date=(value:unknown)=>{const n=Date.parse(text(value));return Number.isFinite(n)?n:null;};
 export function buildTwinMindGraph(bundle:Record<string,unknown>):TwinMindGraph{
+ if(bundle.schema==='bankeiz.twin-mind-display.v1')return bundle.graph as TwinMindGraph;
  const owner=record(bundle.owner),root:MindNode={id:'identity',kind:'identity',label:text(owner.displayName)||text(owner.username)||'Your Twin',body:'Your saved sources and conversations.',at:null,...(kai(record(bundle.proofBrain).showcaseHeadKai)?{pulse:kai(record(bundle.proofBrain).showcaseHeadKai)}:{}),record:owner};
  const sources=rows(record(bundle.showcase).items).map((row,index):MindNode=>({id:'source:'+(text(row.id)||index),kind:'source',label:text(row.title)||'Proof object',body:text(row.summary),at:date(row.createdAt),...(kai(row.kaiPulse)?{pulse:kai(row.kaiPulse)}:{}),record:row}));
  const memory=rows(record(bundle.memory).entries).map((row,index):MindNode=>({id:'memory:'+index,kind:row.role==='assistant'?'assistant':'user',label:row.role==='assistant'?'Your Twin':'Message',body:text(row.body),at:date(row.createdAt),record:row}));

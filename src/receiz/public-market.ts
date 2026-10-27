@@ -1,5 +1,5 @@
-import {readPublicShareInventory,mergeShareInventory,compatibleShareInventory} from './market-share-inventory';
-import type {PublicShareInventory} from './market-share-inventory';
+import {readPublicShareInventory,mergeShareInventory,compatibleShareInventory} from './market-share-inventory.js';
+import type {PublicShareInventory} from './market-share-inventory.js';
 import {publicNativeAssetBinding,type PublicNativeAssetBinding} from './native-asset-public-binding.js';
 import {assetPublicationFreshnessHint,acceptDiscoveredPublicAssets} from './asset-publication-adoption.js';
 import {safeImportedSourceUrl} from "./imported-source-url.js";
