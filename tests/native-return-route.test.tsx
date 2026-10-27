@@ -47,7 +47,7 @@ it('suspends an open bank sheet on public pages and restores its retained draft 
     const opener = host.querySelector<HTMLButtonElement>('button.nav-deposit')!; opener.focus(); act(() => opener.click());
     const dialog = host.querySelector('dialog')!;
     expect(dialog.open).toBe(true); expect(document.body.style.position).toBe('fixed');
-    act(() => [...dialog.querySelectorAll('button')].find(button => button.textContent?.includes('Add funds'))!.click());
+    act(() => [...dialog.querySelectorAll('button')].find(button => button.textContent?.includes('Add money'))!.click());
     act(() => [...dialog.querySelectorAll('button')].find(button => button.textContent === '$250')!.click());
     const draft = dialog.querySelector('input')!; expect(draft.value).toBe('250');
     history.pushState(null, '', '/legal/');

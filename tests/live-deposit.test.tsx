@@ -14,18 +14,18 @@ it('starts blank after reopening and resumes a retained checkout only when expli
   try {
     await act(async () => root.render(<LiveDeposit identity={identity} onClose={() => {}} onRefresh={() => {}} />));
     expect(host.textContent).toContain('Choose what you’re adding.'); expect(host.querySelector('iframe')).toBeNull();
-    act(() => click('Add funds'));
+    act(() => click('Add money'));
     expect(host.querySelector('input')?.value).toBe(''); expect(host.querySelector('iframe')).toBeNull();
     act(() => click('Resume secure checkout'));
     expect(host.querySelector('iframe')?.getAttribute('src')).toContain('cs_fixture123456');
-    act(() => click('All options')); act(() => click('Add funds'));
+    act(() => click('All options')); act(() => click('Add money'));
     expect(host.querySelector('input')?.value).toBe(''); expect(host.querySelector('iframe')).toBeNull(); expect(begin).not.toHaveBeenCalled();
   } finally { act(() => root.unmount()); }
 });
 it('offers one asset deposit path that requires its original proof instead of an intake form', async () => {
   const host = document.createElement('div'), root = createRoot(host);
   try { await act(async () => root.render(<LiveDeposit identity={{} as OpenIdentity} onClose={vi.fn()} onRefresh={vi.fn()} />));
-    expect([...host.querySelectorAll('.deposit-options strong')].map(node => node.textContent)).toEqual(['Add funds', 'An asset', 'Settlement Note']);
+    expect([...host.querySelectorAll('.deposit-options strong')].map(node => node.textContent)).toEqual(['Add money', 'An asset', 'Settlement Note']);
     expect(host.querySelector('a[href*="receiz.com/wallet"]')).toBeNull();
     await act(async () => { [...host.querySelectorAll('button')].find(button => button.textContent?.includes('An asset'))!.click(); await vi.dynamicImportSettled(); });
     expect(host.textContent).toContain('Deposit an asset.');
@@ -39,7 +39,7 @@ it('opens payment checkout directly without a method selector or an unfunded bal
   const create = vi.fn(async () => checkout), refresh = vi.fn(), host = document.createElement('div'), root = createRoot(host);
   const click = (text: string) => [...host.querySelectorAll('button')].find(button => button.textContent === text)!.click();
   try { await act(async () => root.render(<LiveDeposit identity={{ beginCardDeposit: create } as unknown as OpenIdentity} onClose={vi.fn()} onRefresh={refresh} />));
-    await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Add funds'))!.click());
+    await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Add money'))!.click());
     expect([...host.querySelectorAll('button')].some(button => ['Card', 'Wire'].includes(button.textContent ?? ''))).toBe(false);
     expect(host.textContent).toContain('Choose how to pay at secure checkout.'); expect(host.textContent).not.toMatch(/card|wire/i); expect(create).not.toHaveBeenCalled();
     act(() => click('$100')); await act(async () => click('Continue'));
@@ -91,11 +91,11 @@ it.each(['credited', 'expired', 'unpaid'])('returns to a new amount after a conf
   const host = document.createElement('div'), root = createRoot(host);
   try {
     await act(async () => root.render(<LiveDeposit identity={identity} onClose={() => {}} onRefresh={() => {}} />));
-    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Add funds'))!.click());
+    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Add money'))!.click());
     act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Resume secure checkout'))!.click());
     await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Check deposit status'))!.click());
     act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('All options'))!.click());
-    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Add funds'))!.click());
+    act(() => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Add money'))!.click());
     expect(host.querySelector('iframe')).toBeNull(); expect(host.textContent).toContain('Add to your balance.');
   } finally { act(() => root.unmount()); }
 });
@@ -106,7 +106,7 @@ it('a delayed initial resume list cannot erase a checkout created while the read
   const host = document.createElement('div'), root = createRoot(host), click = (text: string) => [...host.querySelectorAll('button')].find(button => button.textContent?.includes(text))!.click();
   try {
     await act(async () => root.render(<LiveDeposit identity={identity} onClose={() => {}} onRefresh={() => {}} />));
-    act(() => click('Add funds')); await act(async () => click('Continue')); act(() => click('All options')); act(() => click('Add funds'));
+    act(() => click('Add money')); await act(async () => click('Continue')); act(() => click('All options')); act(() => click('Add money'));
     expect(host.textContent).toContain('Resume secure checkout');
     await act(async () => restore([])); expect(host.textContent).toContain('Resume secure checkout');
   } finally { act(() => root.unmount()); }
@@ -130,15 +130,15 @@ it('a paid checkout awaiting credit stays recoverable and does not reopen a paym
 it('cancels only the selected unfinished checkout without opening or creating a payment',async()=>{
  const one={sessionId:'cs_fixture_cancelone',clientSecret:'private-one',amountUsdCents:'1000'},two={sessionId:'cs_fixture_canceltwo',clientSecret:'private-two',amountUsdCents:'2500'},cancel=vi.fn(async()=>({status:'expired'}));
  const identity={pendingCardDeposits:async()=>[one,two],cancelCardDeposit:cancel,beginCardDeposit:vi.fn()}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Add funds'))!.click());const remove=host.querySelector<HTMLButtonElement>('[aria-label="Cancel $10.00 checkout"]');expect(remove).not.toBeNull();await act(async()=>remove!.click());expect(cancel).toHaveBeenCalledExactlyOnceWith(one);expect(host.textContent).not.toContain('$10.00');expect(host.textContent).toContain('$25.00');expect(host.querySelector('iframe')).toBeNull();expect(identity.beginCardDeposit).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
+ try{await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Add money'))!.click());const remove=host.querySelector<HTMLButtonElement>('[aria-label="Cancel $10.00 checkout"]');expect(remove).not.toBeNull();await act(async()=>remove!.click());expect(cancel).toHaveBeenCalledExactlyOnceWith(one);expect(host.textContent).not.toContain('$10.00');expect(host.textContent).toContain('$25.00');expect(host.querySelector('iframe')).toBeNull();expect(identity.beginCardDeposit).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
 });
 it.each(['open','settling'])('retains an unfinished checkout when cancellation returns %s',async status=>{
  const checkout={sessionId:'cs_fixture_cancelpending',clientSecret:'private-only',amountUsdCents:'1000'},identity={pendingCardDeposits:async()=>[checkout],cancelCardDeposit:async()=>({status})}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Add funds'))!.click());const remove=host.querySelector<HTMLButtonElement>('[aria-label="Cancel $10.00 checkout"]');expect(remove).not.toBeNull();await act(async()=>remove!.click());expect(host.textContent).toContain('$10.00');expect(host.textContent).not.toContain('cancelled');}finally{act(()=>root.unmount());}
+ try{await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Add money'))!.click());const remove=host.querySelector<HTMLButtonElement>('[aria-label="Cancel $10.00 checkout"]');expect(remove).not.toBeNull();await act(async()=>remove!.click());expect(host.textContent).toContain('$10.00');expect(host.textContent).not.toContain('cancelled');}finally{act(()=>root.unmount());}
 });
 it('resumes a known processing cancellation into status recovery without reopening the card form',async()=>{
  const checkout={sessionId:'cs_fixture_processing',clientSecret:'private-only',amountUsdCents:'1000'},check=vi.fn(async()=>({status:'settling'})),identity={pendingCardDeposits:async()=>[checkout],cancelCardDeposit:async()=>({status:'settling'}),checkCardDeposit:check}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Add funds'))!.click());await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Cancel $10.00 checkout"]')!.click());await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Check payment status'))!.click());expect(host.querySelector('iframe')).toBeNull();expect(host.textContent).toContain('Account credit is pending');await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Check deposit status')!.click());expect(check).toHaveBeenCalledExactlyOnceWith(checkout);}finally{act(()=>root.unmount());}
+ try{await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Add money'))!.click());await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Cancel $10.00 checkout"]')!.click());await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Check payment status'))!.click());expect(host.querySelector('iframe')).toBeNull();expect(host.textContent).toContain('Account credit is pending');await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Check deposit status')!.click());expect(check).toHaveBeenCalledExactlyOnceWith(checkout);}finally{act(()=>root.unmount());}
 });
 
 it.each([false, true])('opens Create an asset inside the unified asset path (native receiving: %s)', async native => {
