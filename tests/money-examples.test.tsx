@@ -36,8 +36,8 @@ it('keeps the learn overview about the actual account and actions, with funding 
 it('makes receiving continuity an institutional requirement without inventing a redemption right',()=>{
  const source=learningPages.find(page=>page.slug==='reserve-and-settlement')!.sections.flat().join(' ');
  expect(source).toContain('source classification follows the funds');
- expect(source).toContain('receiving implementation must demonstrate');
- expect(source).toContain('ownership, exact value and carried history');
+ expect(source).toContain('Conformance demonstrates that preservation for the exact receiving capability, implementation and version.');
+ expect(source).toContain('exact source, identity, ownership, value and history');
 });
 import {learningPages} from '../src/content/learning-pages.mjs';
 import {businessContent} from '../scripts/business-page.mjs';

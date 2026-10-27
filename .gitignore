@@ -21,3 +21,5 @@ test-results/
 
 # Independent static documentation build
 /docs-dist/
+
+/server/profile-runtime/share-history/

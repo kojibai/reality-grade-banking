@@ -1,4 +1,5 @@
 import {parsePublicProfile,profileUsername,type PublicProfile} from '../src/receiz/public-profile.js';
+import {reuseShippedProfileShareHistory} from './profile-share-history.js';
 import {profileAvatarUrl} from '../src/receiz/profile-avatar.js';
 export class PublicProfileError extends Error {constructor(message:string,public status:number){super(message);}}
 const LIMIT=32*1024*1024;
@@ -10,7 +11,7 @@ async function readBody(response:Response,limit=LIMIT){
 }
 /** Coalesces simultaneous reads only. Fresh named reads enforce current
  * privacy/handle ownership instead of serving a previous owner's response. */
-export function createPublicProfileReader(fetchImpl:typeof fetch=fetch){
+export function createPublicProfileReader(fetchImpl:typeof fetch=fetch,enrich:(profile:PublicProfile)=>Promise<PublicProfile>=reuseShippedProfileShareHistory){
  const pending=new Map<string,Promise<PublicProfile>>();
  return(username:string,cursor?:string):Promise<PublicProfile>=>{
   if(!profileUsername(username)||cursor!==undefined&&(!cursor||cursor.length>4096||/[\x00-\x1f\x7f]/.test(cursor)))return Promise.reject(new PublicProfileError('PROFILE_USERNAME_INVALID',400));
@@ -29,7 +30,7 @@ export function createPublicProfileReader(fetchImpl:typeof fetch=fetch){
     const profile=parsePublicProfile(input,username);
     if(cursor&&cursor!=='all:'+profile.userId)throw new PublicProfileError('PROFILE_CHANGED',409);
     if(cursor&&profile.nextCursor)throw Error('PROFILE_COLLECTION_INCOMPLETE');
-    return profile;
+    return enrich(profile);
    }catch(cause){if(cause instanceof PublicProfileError)throw cause;throw new PublicProfileError(cause instanceof Error?cause.message:'PROFILE_UNAVAILABLE',cause instanceof Error&&cause.message==='PROFILE_PRIVATE'?403:503);}
   })();pending.set(key,attempt);void attempt.finally(()=>{if(pending.get(key)===attempt)pending.delete(key);}).catch(()=>{});return attempt;
  };

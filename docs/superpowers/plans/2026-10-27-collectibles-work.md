@@ -292,3 +292,37 @@ An isolated candidate at current main f8bf584 plus these scoped files passed
 plain-Node API regression. The provider contract must be available before this
 new automatic-initialization client is deployed. No production operation or
 commit is implied by these local checks. Foreign working changes are preserved.
+
+## Cold-profile Market capitalization delivery repair
+
+Live public response inspection found all 611 profile Originals but zero carried
+share inventories. The existing public Market snapshot already contained the
+share tape for every one of those assets. Profile routes intentionally avoid
+rediscovering the Market, so the direct profile never received those operands.
+The earlier arithmetic tests supplied inventory directly and missed delivery.
+
+Ruling: partition the already-shipped public tape during the existing profile
+build and append only exact compatible asset records to the same canonical
+profile response. No remote read, generic zero supply or financial quote is
+added. Newer live observations win. Contradictory records cannot supply a total.
+The per-profile file is parsed once per deployment worker; taps do not read it.
+This is retained public chart data at its disclosed source coordinate, not a
+fresh ownership/financial admission. Originals absent from that tape remain
+explicitly uncovered until a carried source supplies them.
+
+The actual captured bjklock profile now joins 611/611 share records and builds
+64/64 ALL-period capitalization points with no missing cap. The local join was
+3.31 ms. CUA verified a cold main-app profile at port 5190, Originals → Market
+cap, the curve and its exact arithmetic disclosure. It required no Market
+discovery request. Evidence: /private/tmp/profile-market-cap-repaired.png.
+Focused delivery, profile, chart and emitted-Node checks: 51 passed in 6 files;
+strict whole-workspace typecheck and profile render build passed.
+
+This repair changes no pricing, supply, execution or ownership rule. Live
+Collectibles/actions/cross-system exchange remain the ongoing task.
+
+The final isolated candidate passed all 3,878 tests in 624 files, no skips, plus
+the complete production build/source/offline-shell checks. Two stale copy
+assertions from main 6103ce8 were updated to its committed money/source wording;
+the same receiving continuity requirements stay asserted. Other developers’
+ongoing Messaging/Twin edits and generated files were excluded and preserved.

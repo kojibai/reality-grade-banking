@@ -28,9 +28,9 @@ it('uses the existing logo in the top navigation and keeps the name in the foote
  expect(doc.querySelector('header a[href="/business/"]')).not.toBeNull();
 });
 it('connects free participation to the paid offer without describing fiat funding as destruction',()=>{
- const home=learnHome();expect(home).toContain('Use the value');expect(home).toContain('you already hold.');expect(home).toContain('href="/business/"');
+ const home=learnHome();expect(home).toContain('Your money.');expect(home).toContain('Its Original carries the record of where it came from, who owns it and how it moved.');expect(home).toContain('href="/business/"');
  const economy=learningPages.find(page=>page.slug==='proof-native-economy')!;
- expect(JSON.stringify(economy)).toContain('Use the value you already hold');
+ expect(JSON.stringify(economy)).toContain('Carry the history with the asset and keep the evidence with the payment.');
  expect(JSON.stringify(learningPages.find(page=>page.slug==='deposits'))).toContain('Bring your money into proof');
 });
 
