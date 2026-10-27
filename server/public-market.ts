@@ -19,7 +19,7 @@ export function resolvePublicMarketTarget(requestUrl: string): URL | null {
   if (local.pathname === `${PREFIX}membership` && (!local.search||local.searchParams.size===1&&local.searchParams.getAll('afterPublication').length===1&&/^[a-f0-9]{64}$/.test(local.searchParams.get('afterPublication')??''))) return new URL('https://receiz.com/api/market/public-membership');
   if (local.pathname === `${PREFIX}sports` && !local.search) return new URL('https://receiz.com/api/game/sports/economy');
   if (local.pathname === `${PREFIX}capitalization` && !local.search) return new URL('https://receiz.com/api/proof-graph/market-cap');
-  if (local.pathname === `${PREFIX}quotes` && !local.search) return new URL('https://receiz.com/api/market/public-snapshot?detail=full');
+  if(local.pathname===`${PREFIX}quotes`&&(!local.search||local.searchParams.size===1&&local.searchParams.getAll('afterTrade').length===1&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(local.searchParams.get('afterTrade')??''))){const target=new URL('https://receiz.com/api/market/public-snapshot?detail=full');if(local.search)target.searchParams.set('afterTrade',local.searchParams.get('afterTrade')!);return target;}
   if(local.pathname===`${PREFIX}provenance`){
     const id=local.searchParams.get('collectibleId'),claim=local.searchParams.get('claimHash');
     if([...local.searchParams.keys()].some(key=>!['collectibleId','claimHash'].includes(key))||local.searchParams.getAll('collectibleId').length!==1||local.searchParams.getAll('claimHash').length!==1||!id||!/^rsc_[a-f0-9]{16}$/i.test(id)||!claim||!/^[a-f0-9]{64}$/i.test(claim))return null;
@@ -50,7 +50,8 @@ async function readBounded(response: Response): Promise<Uint8Array> {
   const bytes = new Uint8Array(length); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; } return bytes;
 }
 async function loadPublicResponse(target: URL,afterPublication?:string): Promise<CachedResponse> {
-  const key = target.href, previous = cache.get(key),pendingKey=afterPublication?key+":after:"+afterPublication:key;
+  const cacheTarget=new URL(target);if(cacheTarget.pathname==='/api/market/public-snapshot')cacheTarget.searchParams.delete('afterTrade');
+  const key = cacheTarget.href, previous = cache.get(key),pendingKey=afterPublication?key+":after:"+afterPublication:key;
   const original = target.pathname === '/api/profile/originals/download' || target.pathname.startsWith('/api/proof-material/packages/')||target.pathname==='/api/receiz/download'||target.pathname==='/api/profile/showcase/imported-source';
   if (!afterPublication && !original && previous && Date.now() - previous.fetchedAt < 60_000) return previous;
   const inflight = pending.get(pendingKey); if (inflight) return inflight;
@@ -112,7 +113,7 @@ export async function publicMarketMiddleware(request: IncomingMessage, response:
   response.setHeader('X-Content-Type-Options', 'nosniff'); response.setHeader('Cache-Control', 'no-store');
   if (request.method !== 'GET') { response.writeHead(405, { Allow: 'GET' }); response.end(); return; }
   const target = resolvePublicMarketTarget(request.url); if (!target) { response.writeHead(400); response.end(); return; }
-  try { const result = await loadPublicResponse(target,new URL(request.url,'http://localhost').searchParams.get('afterPublication')??undefined); response.setHeader('Content-Type', result.type); response.writeHead(200); response.end(result.bytes); }
+  try { const result = await loadPublicResponse(target,new URL(request.url,'http://localhost').searchParams.get('afterPublication')??new URL(request.url,'http://localhost').searchParams.get('afterTrade')??undefined); response.setHeader('Content-Type', result.type); response.writeHead(200); response.end(result.bytes); }
   catch (cause) { const purchase=cause instanceof OriginalPurchaseRefusal;response.writeHead(purchase?402:503, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ ok: false, error: purchase?'original_purchase_required':'Receiz public source is temporarily unavailable.' })); }
 }
 /** Build-time public discovery seed. Report-only projection, never a held account. */

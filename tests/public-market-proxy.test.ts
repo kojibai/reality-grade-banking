@@ -92,3 +92,16 @@ it('uses a bounded publication hint to bypass a stale membership response withou
  const request=async(path:string)=>{let body='';await publicMarketMiddleware({method:'GET',url:path,headers:{}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:(bytes:Uint8Array)=>{body=new TextDecoder().decode(bytes);}}as unknown as ServerResponse,vi.fn());return JSON.parse(body);};
  await request('/api/bank/public-market/membership?afterPublication='+'8'.repeat(64));await request('/api/bank/public-market/membership');const fresh=await request(url);expect(fresh.transport.publicOriginals[0].id).toBe('publication-new');expect(fetcher.mock.calls.at(-1)?.[0].toString()).toBe('https://receiz.com/api/market/public-membership');expect(fetcher.mock.calls.at(-1)?.[1]).toMatchObject({cache:'no-store'});
 });
+it('allows a bounded post-trade freshness reference without widening the upstream destination',async()=>{
+ const nonce='10000000-0000-4000-8000-000000000001',path='/api/bank/public-market/quotes?afterTrade='+nonce;
+ expect(resolvePublicMarketTarget(path)?.href).toBe('https://receiz.com/api/market/public-snapshot?detail=full&afterTrade='+nonce);
+ for(const bad of [path+'&afterTrade='+nonce,path+'&url=https://other.test',path.replace(nonce,'not-a-reference')])expect(resolvePublicMarketTarget(bad)).toBeNull();
+ const fetcher=vi.fn<typeof fetch>(async()=>Response.json({ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[]}}));vi.stubGlobal('fetch',fetcher);
+ await publicMarketMiddleware({method:'GET',url:path,headers:{}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:vi.fn()}as unknown as ServerResponse,vi.fn());
+ expect(fetcher.mock.calls[0]?.[1]).toMatchObject({cache:'no-store',credentials:'omit',redirect:'error'});
+});
+it('publishes fresh post-trade quotes into the same normal quote cache entry',async()=>{
+ const nonce='20000000-0000-4000-8000-000000000001',fetcher=vi.fn<typeof fetch>(async()=>Response.json({ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[{itemId:'post-trade-asset',priceUsd:88}]}}));vi.stubGlobal('fetch',fetcher);
+ const request=async(url:string)=>{let body='';await publicMarketMiddleware({method:'GET',url,headers:{}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:(v:Uint8Array)=>{body=new TextDecoder().decode(v);}}as unknown as ServerResponse,vi.fn());return JSON.parse(body);};
+ await request('/api/bank/public-market/quotes?afterTrade='+nonce);fetcher.mockClear();const result=await request('/api/bank/public-market/quotes');expect(result.data.liveMarkets[0].priceUsd).toBe(88);expect(fetcher).not.toHaveBeenCalled();
+});

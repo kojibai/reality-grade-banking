@@ -9,3 +9,6 @@ export function marketPeriodPulses(seed: Pick<MarketCapSource, 'serverPulse' | '
   const size = Math.min(count, last - first + 1);
   return Array.from({ length: size }, (_, i) => size === 1 ? last : Math.round(first + (last - first) * i / (size - 1)));
 }
+
+/** UTC label for a carried micro-pulse; it grants no temporal authority. */
+export function marketUPulseTime(uPulse:string):number {const n=BigInt(uPulse)*T_NUM,d=T_DEN*1000000n,q=n/d,r=n%d;return Number(1715323541888n+q+(r*2n>d||r*2n===d&&q%2n===1n?1n:0n));}

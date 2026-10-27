@@ -86,6 +86,12 @@ export function publicSportsQuoteAtPulse(row:MarketValueRow,pulse:number,quoteMo
  const copy=row.sealedCopies?.find(copy=>copy.claimHash===row.seed);if(copy)return sealedCopyValue(copy,pulse,quoteMove);
  return sportsUnitValue(row,pulse,quoteMove);
 }
+/** Current capitalization of the existing sports-copy source. The aggregate
+ * is evaluated once, never multiplied by circulation again. */
+export function publicSportsCapitalizationUsdAtPulse(row:MarketValueRow,pulse:number,quoteMove:number){
+ if(row.source!=='sports-economy-card'||!Number.isSafeInteger(pulse)||pulse<0)throw Error('Public object valuation seed is unavailable.');
+ return row.sealedCopies?round(row.sealedCopies.reduce((sum,copy)=>sum+sealedCopyValue(copy,pulse,quoteMove),0)):sportsValue(row,pulse,quoteMove);
+}
 export function marketQuoteMovementAtPulse(pulse:number){const current=rate(pulse),previous=rate(Math.max(0,pulse-1));return Math.abs(current-previous)/previous;}
 /** Single-object display math, using the same admitted sigil operands as the graph. */
 export function marketAssetUsdAtPulse(row:MarketValueRow,pulse:number):number{

@@ -174,3 +174,10 @@ it('adopts a newly admitted asset immediately and keeps it through a stale refre
  const ref={schema:'receiz.imported-proof-source.v1',artifactSha256:'a'.repeat(64),byteLength:2,filename:'asset.receizbundle',mimeType:'application/vnd.receiz.bundle+json',bytes:{kind:'bytes',sha256:'b'.repeat(64),byteLength:2,contentByteLength:2,height:0}},path='/api/profile/showcase/imported-source?'+new URLSearchParams({reference:JSON.stringify(ref)});
  try{await observe(async read=>{const calls=network.membership.mock.calls.length;await act(()=>adoption.retainAssetPublicationAdmission({username:'artist',sourceReference:ref,firstPaint:{artifactDigest:'c'.repeat(64)},original:{id:'new-work',assetTitle:'A new work',showOnProfile:true,importedSource:{reference:ref},media:{kind:'image',src:path+'&payload=1',originalDownloadSrc:path,originalDownloadSha256Hex:ref.artifactSha256}}},{identityDigest:'d'.repeat(64),accountUid:'owner'}));expect(read().catalog?.items[0].id).toBe('profile:artist:new-work');expect(network.membership).toHaveBeenCalledTimes(calls);await act(async()=>read().refresh());expect(read().catalog?.items.filter(item=>item.id==='profile:artist:new-work')).toHaveLength(1);});}finally{adoption.forgetAssetPublicationAdmissions();}
 });
+it('refreshes only share quotes immediately after a recorded trade, without rediscovering known membership',async()=>{
+ network.membership.mockResolvedValue(parsePublicMarket(sourceInput()));network.quotes.mockResolvedValue(quoteInput());
+ await observe(async read=>{const before=network.membership.mock.calls.length,quotes=network.quotes.mock.calls.length,nonce='10000000-0000-4000-8000-000000000001';
+  await act(async()=>{dispatchEvent(new CustomEvent('bankeiz:market-shares-changed',{detail:{clientNonce:nonce}}));});
+  expect(network.quotes.mock.calls.length).toBe(quotes+1);expect(network.quotes.mock.calls.at(-1)?.[1]).toBe(nonce);expect(network.membership.mock.calls).toHaveLength(before);expect(read().quoteStatus).toBe('fresh');
+ });
+});

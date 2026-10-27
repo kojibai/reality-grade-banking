@@ -1,3 +1,5 @@
+import {readPublicShareInventory,mergeShareInventory,compatibleShareInventory} from './market-share-inventory';
+import type {PublicShareInventory} from './market-share-inventory';
 import {publicNativeAssetBinding,type PublicNativeAssetBinding} from './native-asset-public-binding.js';
 import {assetPublicationFreshnessHint,acceptDiscoveredPublicAssets} from './asset-publication-adoption.js';
 import {safeImportedSourceUrl} from "./imported-source-url.js";
@@ -11,6 +13,7 @@ import {publicDocumentUrl} from './public-document.js';
 import {profileAvatarUrl} from './profile-avatar.js';
 /** Public discovery and quotes are display projections; they grant no ownership. */
 export interface PublicMarketItem {
+  shareInventory?:PublicShareInventory;
   id: string; assetId: string; title: string; summary: string; category: 'proof' | 'sports'; circulationCount?: number; pricedCount?: number; capitalizationUsdCents?: string | null;
   sourceUrl: string | null; verifyUrl: string | null; originalUrl: string | null;
   originalDigest: string | null; pulse: string | null; sealedAt: string | null;
@@ -170,7 +173,7 @@ export function mergePublicQuotes(catalog: PublicMarketCatalog, snapshot: unknow
     const chart = Array.isArray(quote.chart) ? quote.chart.slice(-256).map(point => nonnegative(record(point).value)).filter((v): v is number => v !== null).map(value => basis ? value * basis : value).filter(Number.isFinite) : [];
     return { ...item, priceUsd: nonnegative(quote.priceUsd) ?? item.priceUsd,
       changePct: typeof quote.changePct === 'number' && Number.isFinite(quote.changePct) && Math.abs(quote.changePct) <= 1e6 ? quote.changePct : null,
-      chart: basis ? chart : [] };
+      chart: basis ? chart : [],shareInventory:mergeShareInventory(compatibleShareInventory(item,item.shareInventory),readPublicShareInventory(quote.shareInventory,item)) };
   }) };
 }
 export function validatePublicQuotes(snapshot: unknown): unknown {
@@ -185,8 +188,8 @@ export async function fetchPublicMarket(signal?: AbortSignal,afterPublication=as
   if (catalog.complete) try { localStorage.setItem('receiz-bank-public-discovery-v2', JSON.stringify(input)); } catch { /* Storage capacity does not change source availability. */ }
   return catalog;
 }
-export async function fetchPublicQuotes(signal?: AbortSignal): Promise<unknown> {
-  const response = await fetch('/api/bank/public-market/quotes', { signal, credentials: 'omit' });
+export async function fetchPublicQuotes(signal?: AbortSignal,afterTrade?:string): Promise<unknown> {
+  const response = await fetch('/api/bank/public-market/quotes'+(afterTrade&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(afterTrade)?'?afterTrade='+afterTrade:''), { signal, credentials: 'omit' });
   if (!response.ok) throw new Error('Public quotes could not be refreshed.');
   return validatePublicQuotes(await response.json());
 }

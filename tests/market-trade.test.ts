@@ -116,3 +116,7 @@ it.each(['buy','sell'] as const)('requests only needed wallet context for %s rev
  const query=new URL(f.request.mock.calls[0][0],'https://test.invalid').searchParams;
  expect(query.get('balance')).toBe(side==='sell'?'omit':null);expect(f.submitTrade).not.toHaveBeenCalled();
 });
+it('publishes a read-only share refresh only after retaining a recorded trade, and observer failure cannot change the outcome',async()=>{
+ const f=fixture(),observed=vi.fn((_event:Event)=>{expect(f.state.current.status).toBe('recorded');throw Error('display observer failed');});vi.stubGlobal('dispatchEvent',observed);
+ try{const api=createMarketTrade(f.options),review=await api.prepare({marketItemId:'asset:one',side:'buy',amountUsdCents:'1000'});expect(observed).not.toHaveBeenCalled();expect((await api.execute(review,review.digest)).status).toBe('recorded');expect(observed).toHaveBeenCalledOnce();expect(observed.mock.calls[0]?.[0]).toMatchObject({type:'bankeiz:market-shares-changed',detail:{clientNonce:review.body.clientNonce}});}finally{vi.unstubAllGlobals();}
+});

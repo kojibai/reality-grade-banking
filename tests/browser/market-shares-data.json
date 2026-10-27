@@ -1,0 +1,219 @@
+{
+  "schema": "receiz.market.share-inventory.v1",
+  "marketItemId": "profile:bjklock:d1d5a3f4-5db9-444e-88f5-95443fb70598",
+  "assetId": "d1d5a3f4-5db9-444e-88f5-95443fb70598",
+  "family": "generic",
+  "quantityScope": "canonical-asset",
+  "observedAtKaiUPulse": "14847924926888",
+  "outstandingShareQuantityMicro": "158449285",
+  "availableShareQuantityMicro": "109705534",
+  "maxPurchaseShareQuantityMicro": "73759429",
+  "releaseCapitalization": {
+    "kaiUPulse": "14708297000000",
+    "unitPriceUsdCents": "22436",
+    "outstandingShareQuantityMicro": "0",
+    "availableShareQuantityMicro": "269844981",
+    "modelVersion": "market-share-quote-v1"
+  },
+  "capitalizationHistory": [
+    {
+      "kaiUPulse": "14759041000000",
+      "unitPriceUsdCents": "488770",
+      "outstandingShareQuantityMicro": "0",
+      "availableShareQuantityMicro": "269848173"
+    },
+    {
+      "kaiUPulse": "14760780000000",
+      "unitPriceUsdCents": "424020",
+      "outstandingShareQuantityMicro": "20448",
+      "availableShareQuantityMicro": "269273378"
+    },
+    {
+      "kaiUPulse": "14761358000000",
+      "unitPriceUsdCents": "413143",
+      "outstandingShareQuantityMicro": "43970",
+      "availableShareQuantityMicro": "269249430"
+    },
+    {
+      "kaiUPulse": "14761364000000",
+      "unitPriceUsdCents": "410459",
+      "outstandingShareQuantityMicro": "0",
+      "availableShareQuantityMicro": "269806672"
+    },
+    {
+      "kaiUPulse": "14766746000000",
+      "unitPriceUsdCents": "477031",
+      "outstandingShareQuantityMicro": "1217276",
+      "availableShareQuantityMicro": "268093769"
+    },
+    {
+      "kaiUPulse": "14781053000000",
+      "unitPriceUsdCents": "528825",
+      "outstandingShareQuantityMicro": "22126536",
+      "availableShareQuantityMicro": "247504191"
+    },
+    {
+      "kaiUPulse": "14781217000000",
+      "unitPriceUsdCents": "512060",
+      "outstandingShareQuantityMicro": "16594902",
+      "availableShareQuantityMicro": "253605679"
+    },
+    {
+      "kaiUPulse": "14781303000000",
+      "unitPriceUsdCents": "510250",
+      "outstandingShareQuantityMicro": "0",
+      "availableShareQuantityMicro": "270412309"
+    },
+    {
+      "kaiUPulse": "14783027000000",
+      "unitPriceUsdCents": "517776",
+      "outstandingShareQuantityMicro": "19628164",
+      "availableShareQuantityMicro": "250050262"
+    },
+    {
+      "kaiUPulse": "14793395000000",
+      "unitPriceUsdCents": "479537",
+      "outstandingShareQuantityMicro": "38916724",
+      "availableShareQuantityMicro": "230432282"
+    },
+    {
+      "kaiUPulse": "14798758000000",
+      "unitPriceUsdCents": "488334",
+      "outstandingShareQuantityMicro": "39956458",
+      "availableShareQuantityMicro": "229058452"
+    },
+    {
+      "kaiUPulse": "14799809000000",
+      "unitPriceUsdCents": "571908",
+      "outstandingShareQuantityMicro": "80736664",
+      "availableShareQuantityMicro": "187245111"
+    },
+    {
+      "kaiUPulse": "14799902000000",
+      "unitPriceUsdCents": "577971",
+      "outstandingShareQuantityMicro": "1833593",
+      "availableShareQuantityMicro": "268183626"
+    },
+    {
+      "kaiUPulse": "14799972000000",
+      "unitPriceUsdCents": "563208",
+      "outstandingShareQuantityMicro": "45091127",
+      "availableShareQuantityMicro": "224343534"
+    },
+    {
+      "kaiUPulse": "14806470000000",
+      "unitPriceUsdCents": "554990",
+      "outstandingShareQuantityMicro": "89368145",
+      "availableShareQuantityMicro": "179553543"
+    },
+    {
+      "kaiUPulse": "14806475000000",
+      "unitPriceUsdCents": "553431",
+      "outstandingShareQuantityMicro": "134145093",
+      "availableShareQuantityMicro": "133946320"
+    },
+    {
+      "kaiUPulse": "14813818000000",
+      "unitPriceUsdCents": "594101",
+      "outstandingShareQuantityMicro": "178683206",
+      "availableShareQuantityMicro": "88948580"
+    },
+    {
+      "kaiUPulse": "14822537000000",
+      "unitPriceUsdCents": "593683",
+      "outstandingShareQuantityMicro": "170277005",
+      "availableShareQuantityMicro": "98782297"
+    },
+    {
+      "kaiUPulse": "14847924926888",
+      "unitPriceUsdCents": "610859",
+      "outstandingShareQuantityMicro": "158449285",
+      "availableShareQuantityMicro": "109705534"
+    }
+  ],
+  "availability": "quote-capacity",
+  "positionsMicro": "158449285",
+  "certificatesMicro": "0",
+  "reservedBuyMicro": "0",
+  "historyBasis": "recorded-transactions",
+  "history": [
+    {
+      "kaiUPulse": "14759041000000",
+      "outstandingShareQuantityMicro": "20448"
+    },
+    {
+      "kaiUPulse": "14760780000000",
+      "outstandingShareQuantityMicro": "43970"
+    },
+    {
+      "kaiUPulse": "14761358000000",
+      "outstandingShareQuantityMicro": "0"
+    },
+    {
+      "kaiUPulse": "14761364000000",
+      "outstandingShareQuantityMicro": "1217276"
+    },
+    {
+      "kaiUPulse": "14766746000000",
+      "outstandingShareQuantityMicro": "22126536"
+    },
+    {
+      "kaiUPulse": "14781053000000",
+      "outstandingShareQuantityMicro": "16594902"
+    },
+    {
+      "kaiUPulse": "14781217000000",
+      "outstandingShareQuantityMicro": "0"
+    },
+    {
+      "kaiUPulse": "14781303000000",
+      "outstandingShareQuantityMicro": "19628164"
+    },
+    {
+      "kaiUPulse": "14783027000000",
+      "outstandingShareQuantityMicro": "38916724"
+    },
+    {
+      "kaiUPulse": "14793395000000",
+      "outstandingShareQuantityMicro": "39956458"
+    },
+    {
+      "kaiUPulse": "14798758000000",
+      "outstandingShareQuantityMicro": "80736664"
+    },
+    {
+      "kaiUPulse": "14799809000000",
+      "outstandingShareQuantityMicro": "1833593"
+    },
+    {
+      "kaiUPulse": "14799902000000",
+      "outstandingShareQuantityMicro": "45091127"
+    },
+    {
+      "kaiUPulse": "14799972000000",
+      "outstandingShareQuantityMicro": "89368145"
+    },
+    {
+      "kaiUPulse": "14806470000000",
+      "outstandingShareQuantityMicro": "134145093"
+    },
+    {
+      "kaiUPulse": "14806475000000",
+      "outstandingShareQuantityMicro": "178683206"
+    },
+    {
+      "kaiUPulse": "14813818000000",
+      "outstandingShareQuantityMicro": "170277005"
+    },
+    {
+      "kaiUPulse": "14822537000000",
+      "outstandingShareQuantityMicro": "158449285"
+    }
+  ],
+  "capacity": {
+    "askPriceUsdCents": "621133",
+    "hardCapUsdCents": "164931900",
+    "openInterestUsdCents": "96790172",
+    "maxSingleTradeUsdCents": "45814416"
+  }
+}

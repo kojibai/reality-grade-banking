@@ -3,6 +3,7 @@ import {useEffect,useState,useSyncExternalStore} from 'react';
 import { ExternalLink, FileCheck2 } from 'lucide-react';
 import {PublicObjectArtwork} from './PublicObjectRow';
 import {OpenInvestment} from '../assets/OpenInvestment';
+import {ShareInventory} from './ShareInventory';
 import {PublicAssetChart} from './PublicAssetChart';
 import {usePublicAssetPeriods} from '../../receiz/market-projection/usePublicAssetPeriods';
 import { formatPublicPrice,publicAssetImagePreviewUrl, type PublicMarketItem } from '../../receiz/public-market';
@@ -46,7 +47,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
     {standalone&&<div className="public-asset-media">{object}</div>}
     <div className="asset-price">{formatPublicPrice(price)}<span>Market Value</span></div>
     {!periods&&item.changePct !== null && <div className={`price-change ${item.changePct >= 0 ? 'positive' : 'negative'}`}>{item.changePct > 0 ? '+' : ''}{item.changePct}%</div>}
-    <PublicAssetChart periods={periods} fallback={item.chart}/><OpenInvestment item={item}/>
+    <PublicAssetChart periods={periods} fallback={item.chart} item={item} inventory={item.category==='sports'?undefined:item.shareInventory}/><ShareInventory item={item} priceUsd={price}/><OpenInvestment item={item}/>
     {!readOnly&&<div className="dual-actions"><button className="primary-button" disabled={!canReviewTrade} onClick={() => { retainPublicAsset(item);onTrade?.('buy', item.id); }}>Buy ownership</button><button className="secondary-button" disabled={!canReviewTrade} onClick={() => { retainPublicAsset(item);onTrade?.('sell', item.id); }}>Take cash</button></div>}
     {!readOnly&&<details className="transaction-proof-details asset-trade-terms"><summary>Ownership &amp; payment</summary><p className="body-copy small-copy">Inspect the Original for what is included and any use or delivery terms. Your approved trade records the ownership units bought or sold. A completed sale credits the seller’s proceeds to their account; the source and ownership history stay connected.</p></details>}
     {!standalone&&object}
