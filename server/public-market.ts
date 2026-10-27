@@ -6,7 +6,7 @@ import {publicAssetTitle,publicAuthoredAssetTitle} from '../src/receiz/asset-tit
 import {publicMediaPlayback} from '../src/receiz/public-asset-embed.js';
 import {publicDocumentUrl} from '../src/receiz/public-document.js';
 import {publicDocumentMiddleware} from './public-document.js';
-import { publicMaterialOriginalUrl,publicMediaArtworkUrl,publicMediaKind, safeReceizPublicUrl } from '../src/receiz/public-market.js';
+import { publicMaterialOriginalUrl,publicMediaArtworkUrl,publicMediaKind,safeReceizArtworkUrl, safeReceizPublicUrl } from '../src/receiz/public-market.js';
 import {publicMarketPulseSeed,publicSportsValueRow} from '../src/receiz/market-projection/source.js';
 import {publicSportsSealedCopies,publicSportsSealedBirths} from '../src/receiz/market-projection/sealed-copies.js';
 import {boundSportsHistoryObservation,publicSportsGroupIdentity,publicSportsHistorySnapshot} from '../src/receiz/market-projection/sports-observations.js';
@@ -89,7 +89,8 @@ async function loadPublicResponse(target: URL,afterPublication?:string): Promise
           const births=publicSportsSealedBirths(card.sealedBirths),rawBirths=Array.isArray(card.sealedBirths)?card.sealedBirths:[];
           const sealedBirths=births?.map(copy=>{const carried=rawBirths.find(value=>value?.collectibleId?.toLowerCase()===copy.collectibleId&&value?.claimHash?.toLowerCase()===copy.claimHash) as Record<string,unknown>|undefined;return {...copy,ownerUsername:typeof carried?.ownerUsername==='string'&&/^[a-zA-Z0-9_-]{1,64}$/.test(carried.ownerUsername)?carried.ownerUsername:null,ownerDisplayName:typeof carried?.ownerDisplayName==='string'&&carried.ownerDisplayName.length<=128?carried.ownerDisplayName:null};});
           const valuationRow=publicSportsValueRow(card),historyObservation=valuationRow?.historyObservation;
-          return {...Object.fromEntries(fields.map(key => [key, card[key]])),...(sealedCopies?{sealedCopies}:{}),...(sealedBirths?{sealedBirths}:{}),...(historyObservation?{historyObservation}:{}),valuationRow};
+          const imageUrl=safeReceizArtworkUrl(card.imageUrl);
+          return {...Object.fromEntries(fields.map(key => [key, card[key]])),...(imageUrl?{imageUrl}:{}),...(sealedCopies?{sealedCopies}:{}),...(sealedBirths?{sealedBirths}:{}),...(historyObservation?{historyObservation}:{}),valuationRow};
         });
         const metadataAt=typeof input.sealedBirthsObservedAt==='string'&&input.sealedBirthsObservedAt.length<=64&&Number.isFinite(Date.parse(input.sealedBirthsObservedAt))?input.sealedBirthsObservedAt:undefined;
         const historySnapshot=publicSportsHistorySnapshot(input.historySnapshot);

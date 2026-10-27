@@ -23,6 +23,8 @@ export interface PublicMarketItem {
   hasLongForm?: boolean;
   mediaKind?:PublicMediaKind;
   artworkUrl?:string|null;
+  /** Exact public card discovery claim; a display binding, never custody. */
+  cardClaimHash?:string;
   playback?:PublicPlayback|null;
   documentUrl?:string|null;
   proofManifest?:PublicAssetManifestRow[];
@@ -55,6 +57,7 @@ export function safeReceizArtworkUrl(input:unknown):string|null {
   try {
     const url=new URL(value,'https://receiz.com');
     if(url.origin!=='https://receiz.com'||url.username||url.password||url.hash)return null;
+    if(/^\/api\/game\/sports\/(?:baseball\/player-image\/[1-9][0-9]{0,11}|soccer\/player-image\/[A-Za-z0-9]{2,5}\/[0-9]{1,3}\/[a-z0-9-]{1,100}|fight\/fighter-image\/[a-z0-9-]{1,100})$/.test(url.pathname))return !url.search?url.href:null;
     const imported=safeImportedSourceUrl(value,"media");if(imported)return imported;
     const params=url.searchParams,only=(keys:string[])=>[...params.keys()].every(key=>keys.includes(key)&&params.getAll(key).length===1),image=(path:string)=>/\.(?:avif|gif|jpe?g|png|webp|svg)$/i.test(path),pathSafe=(path:string)=>path.length<=2048&&/^[a-zA-Z0-9_./-]+$/.test(path)&&path.split('/').every(part=>part&&part!=='.'&&part!=='..');
     if(url.pathname==='/api/profile/originals/media')return only(['receizId','slot','width'])&&/^[a-zA-Z0-9_-]{1,128}$/.test(params.get('receizId')??'')&&/^(?:preview|audioCover|videoPoster|epubCover|imageVariant|audioCoverVariant|videoPosterVariant|epubCoverVariant)$/.test(params.get('slot')??'')&&(!params.has('width')||/^\d{2,4}$/.test(params.get('width')!)&&Number(params.get('width'))<=4096)?url.href:null;

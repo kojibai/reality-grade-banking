@@ -84,6 +84,12 @@ it('carries exact per-copy sealed values and only public owner names through spo
  const result=JSON.parse(body),card=result.cards[0];expect(card.sealedCopies[0]).toMatchObject({sealedAt:copy.sealedAt,birthUsdValue:10,ownerUsername:'current_holder'});expect(card.valuationRow.sealedCopies[0]).not.toHaveProperty('ownerUsername');expect(body).not.toContain('private-');
  expect(result.sealedBirthsObservedAt).toBe(sealedBirthsObservedAt);expect(card.sealedBirths[0]).toMatchObject({sealedAt:copy.sealedAt,birthUsdValue:10,ownerUsername:'current_holder'});expect(card.valuationRow.sealedBirths[0]).toEqual({collectibleId:copy.collectibleId,claimHash:copy.claimHash,sealedAt:copy.sealedAt,birthUsdValue:10});
 });
+it('keeps native public card artwork in the existing sports response without forwarding private fields or another read',async()=>{
+ vi.resetModules();const {publicMarketMiddleware:freshMiddleware}=await import('../server/public-market');
+ const imageUrl='/api/game/sports/baseball/player-image/694819',fetcher=vi.fn(async()=>Response.json({ok:true,schema:'receiz.sports_economy.live_inventory.v1',cards:[{collectibleId:'rsc_abcdef0123456789',claimHash:'f'.repeat(64),imageUrl,privateAccount:'never-forward'}]}));vi.stubGlobal('fetch',fetcher);
+ let body='';await freshMiddleware({method:'GET',url:'/api/bank/public-market/sports',headers:{}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:(bytes:Uint8Array)=>{body=new TextDecoder().decode(bytes);}}as unknown as ServerResponse,vi.fn());
+ expect(JSON.parse(body).cards[0].imageUrl).toBe('https://receiz.com'+imageUrl);expect(body).not.toContain('never-forward');expect(fetcher).toHaveBeenCalledOnce();
+});
 it('uses a bounded publication hint to bypass a stale membership response without forwarding the hint upstream',async()=>{
  const digest='9'.repeat(64),url='/api/bank/public-market/membership?afterPublication='+digest;
  expect(resolvePublicMarketTarget(url)?.href).toBe('https://receiz.com/api/market/public-membership');

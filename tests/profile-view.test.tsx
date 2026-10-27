@@ -100,7 +100,7 @@ it('opens the existing trade intent from the chart sheet without submitting a pu
 it('switches weighted showcase percentage periods immediately without a source read',async()=>{
  const {PublicProfilePage}=await import('../src/public-explorer/PublicProfilePage'),{retainPublicProfile,forgetPublicProfile}=await import('../src/receiz/public-profile');
  const raw=profileFixture();Object.assign(raw.profile.originals[0].marketPreview!,{livePulseSeed:{kind:'sigil',claimPulse:14800000,beat:2,stepIndex:3,creatorVerified:true}});
- const profile=parsePublicProfile(raw,'alexmorgan');profile.userId='period-control-owner';profile.nextCursor=null;retainPublicProfile(profile);
+ const profile=parsePublicProfile(raw,'alexmorgan');profile.items=profile.items.map(item=>({...item,hasPbiSignature:true}));profile.userId='period-control-owner';profile.nextCursor=null;retainPublicProfile(profile);
  const source={catalog:null,pulse:15000000,status:'loading'} as unknown as import('react').ComponentProps<typeof PublicProfilePage>['source'];
  const fetcher=vi.spyOn(globalThis,'fetch');element=document.createElement('div');document.body.append(element);root=createRoot(element);
  try{

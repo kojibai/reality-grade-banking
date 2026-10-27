@@ -20,7 +20,7 @@ vi.mock('../src/features/market/MarketOverview',()=>({MarketOverview:()=>null}))
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 it('restores the signed-in Market feed after the real retained App and selected asset sheet return',async()=>{
  history.replaceState({},'','/#market');
- fixture.source={catalog:parsePublicMarket({ok:true,transport:{publicOriginals:Array.from({length:130},(_,i)=>({id:'object-'+i,receizId:'asset-'+i,title:'Kept object '+i,valueUsd:5,profileOriginal:{media:{kind:'audio'}}}))}}),status:'live',error:null,refresh:vi.fn()};
+ fixture.source={catalog:parsePublicMarket({ok:true,transport:{publicOriginals:Array.from({length:130},(_,i)=>({id:'object-'+i,receizId:'asset-'+i,title:'Kept object '+i,valueUsd:5,profileOriginal:{hasPbiSignature:true,media:{kind:'audio'}}}))}}),status:'live',error:null,refresh:vi.fn()};
  document.head.innerHTML='<title>Market</title>';document.body.innerHTML='<div id="root"></div><div id="public-explore-root" data-public-runtime="explore" hidden><main><h1>Standalone asset</h1><a href="/#market">Back to Market</a></main></div>';
  const data=document.createElement('script');data.id='receiz-navigation';data.type='application/json';data.textContent=JSON.stringify({pages:{'/explore/':{runtime:'explore',entry:'/already-loaded.js',content:'',head:'<title>Explore</title><meta name="description" content="Explore"><link rel="canonical" href="https://bankeiz.com/explore/">'}},bank:{entry:'/unused.js',head:'<title>Market</title>',styles:[]}});document.body.append(data);
  let position=0;const paints:{top:number;locked:boolean;url:string}[]=[];

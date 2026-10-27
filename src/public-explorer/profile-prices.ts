@@ -14,12 +14,22 @@ export function profileCollectionPrices(items:PublicMarketItem[],catalog:PublicM
   try{const end=Math.max(pulse,seed.claimPulse),first=marketPeriodPulses({firstIssuancePulse:seed.claimPulse,serverPulse:end},'1D',2)[0],priceUsd=publicSigilQuoteAtPulse(seed,end).priceUsd,previous=publicSigilQuoteAtPulse(seed,first).priceUsd;return {...merged,priceUsd,changePct:publicProfileMovement(priceUsd,previous),localValuationPulse:end};}catch{return {...merged,changePct:null};}
  });
 }
-/** Aggregate current values against the same assets' creation values. This is
- * a weighted collection return, never an average of per-object percentages. */
-export function profileCollectionReturn(items:PublicMarketItem[],source:MarketCapSource|null,period:ChartPeriod='ALL'):number|null{
- if(!items.length)return null;let current=0,birth=0;
- for(const item of items){const seed=publicAssetPulseSeed(item,source);if(!seed||item.priceUsd===null||!Number.isFinite(item.priceUsd)||item.priceUsd<0)return null;
-  try{if(period!=='ALL'&&item.localValuationPulse===undefined)return null;const opening=period==='ALL'?seed.claimPulse:marketPeriodPulses({firstIssuancePulse:seed.claimPulse,serverPulse:item.localValuationPulse!},period,2)[0],initial=publicSigilQuoteAtPulse(seed,opening).priceUsd;if(!Number.isFinite(initial)||initial<=0)return null;current+=item.priceUsd;birth+=initial;}catch{return null;}
+/** Reuse the prepared current values in the existing weighted-return pass.
+ * Missing growth operands do not hide a fully priced collection. Missing
+ * current values never become a misleading total of just the priced subset. */
+export function profileCollectionSummary(items:PublicMarketItem[],source:MarketCapSource|null,period:ChartPeriod='ALL'):{valueUsd:number|null;returnPct:number|null}{
+ if(!items.length)return {valueUsd:null,returnPct:null};let current=0,birth=0,growthAvailable=true;
+ for(const item of items){
+  if(item.priceUsd===null||!Number.isFinite(item.priceUsd)||item.priceUsd<0)return {valueUsd:null,returnPct:null};
+  current+=item.priceUsd;
+  if(!growthAvailable)continue;
+  const seed=publicAssetPulseSeed(item,source);if(!seed){growthAvailable=false;continue;}
+  try{if(period!=='ALL'&&item.localValuationPulse===undefined){growthAvailable=false;continue;}const opening=period==='ALL'?seed.claimPulse:marketPeriodPulses({firstIssuancePulse:seed.claimPulse,serverPulse:item.localValuationPulse!},period,2)[0],initial=publicSigilQuoteAtPulse(seed,opening).priceUsd;if(!Number.isFinite(initial)||initial<=0){growthAvailable=false;continue;}birth+=initial;}catch{growthAvailable=false;}
  }
- return publicProfileMovement(current,birth);
+ if(!Number.isFinite(current))return {valueUsd:null,returnPct:null};
+ return {valueUsd:current,returnPct:growthAvailable?publicProfileMovement(current,birth):null};
+}
+/** A weighted collection return, never an average of per-object percentages. */
+export function profileCollectionReturn(items:PublicMarketItem[],source:MarketCapSource|null,period:ChartPeriod='ALL'):number|null{
+ return profileCollectionSummary(items,source,period).returnPct;
 }

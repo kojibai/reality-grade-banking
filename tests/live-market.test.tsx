@@ -23,7 +23,7 @@ function mount(mode:'market'|'explorer'='market') {
   act(() => root.render(<BankContext.Provider value={{ state, commit, open, close: vi.fn(), navigate: vi.fn(), saveRule: vi.fn(), updateIdentity: vi.fn(), resetDemo: vi.fn() }}><Market mode={mode} /></BankContext.Provider>));
   return { host, root, commit, open };
 }
-function catalog(count = 1001) { return parsePublicMarket({ ok: true, transport: { generatedAt: '2026-10-13T12:00:00Z', publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: count, revision: 'r1' }, publicOriginals: Array.from({ length: count }, (_, i) => ({ id: `public-${i}`, receizId: `asset-${i}`, title: `Public object ${i}`, valueUsd: 5, ownerUsername: 'alice', canonicalHref: `/alice/verified/asset-${i}` })) } }); }
+function catalog(count = 1001) { return parsePublicMarket({ ok: true, transport: { generatedAt: '2026-10-13T12:00:00Z', publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: count, revision: 'r1' }, publicOriginals: Array.from({ length: count }, (_, i) => ({ id: `public-${i}`, receizId: `asset-${i}`, title: `Public object ${i}`, valueUsd: 5, profileOriginal:{hasPbiSignature:true}, ownerUsername: 'alice', canonicalHref: `/alice/verified/asset-${i}` })) } }); }
 it('prioritizes leading artwork without eagerly loading the whole retained list or replacing images on a value update',()=>{
  const held=catalog(50);held.items=held.items.map((item,index)=>({...item,artworkUrl:`https://receiz.com/artwork/list-${index}.png`}));source.value={catalog:held,status:'live',error:null,refresh:vi.fn()};
  const host=document.createElement('div'),root=createRoot(host);document.body.append(host);roots.push(root);act(()=>root.render(<Market/>));
@@ -33,7 +33,7 @@ it('prioritizes leading artwork without eagerly loading the whole retained list 
 });
 it.each(['market','explorer']as const)('populates %s content filters from the original media metadata and places cards in Collectibles',mode=>{
  const kinds=['audio','epub','image','video','pdf',null,null];
- const held=parsePublicMarket({ok:true,transport:{publicOriginals:kinds.map((kind,i)=>({id:'typed-'+i,receizId:'typed-'+i,title:'Typed object '+i,profileOriginal:{media:kind?{kind}:null,hasLongForm:i===5}}))}});
+ const held=parsePublicMarket({ok:true,transport:{publicOriginals:kinds.map((kind,i)=>({id:'typed-'+i,receizId:'typed-'+i,title:'Typed object '+i,profileOriginal:{hasPbiSignature:true,media:kind?{kind}:null,hasLongForm:i===5}}))}});
  held.items.push({...held.items[0],id:'collectible',assetId:'rsc_0123456789abcdef',title:'Collectible one',category:'sports'});
  source.value={catalog:held,status:'live',error:null,refresh:vi.fn()};const {host,root}=mount(mode);
  const filters=[...host.querySelectorAll<HTMLButtonElement|HTMLAnchorElement>('.filters button,.filters a')];

@@ -4,7 +4,10 @@ export async function writeAssetTitleIndex(check=false){
  const source=JSON.parse(await readFile(new URL('../public/receiz-public-market.json',import.meta.url),'utf8')),titles={},artwork={};
  for(const row of source.transport.publicOriginals){
   const profile=row.profileOriginal,media=profile?.media,title=profile?.assetTitle,digest=media?.originalDownloadSha256Hex??media?.material?.sealedArtifactSha256Hex;
-  if(/^[a-z0-9_]{3,24}$/.test(row.ownerUsername??'')&&typeof profile?.artworkUrl==='string'){
+  // Early profile hints may only prepare explicitly PBI-signed objects.
+  // Unknown signing metadata waits for the normal carried profile response.
+  const signed=profile?.hasPbiSignature===true||typeof profile?.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash);
+  if(signed&&/^[a-z0-9_]{3,24}$/.test(row.ownerUsername??'')&&typeof profile?.artworkUrl==='string'){
    try{const image=new URL(profile.artworkUrl,'https://receiz.com');if(image.origin==='https://receiz.com'&&!image.username&&!image.password&&image.href.length<=8192){const urls=artwork[row.ownerUsername]??=[];if(urls.length<6&&!urls.includes(image.href))urls.push(image.href);}}catch{/* No new artwork lookup. */}
   }
   if(typeof title!=='string'||!title.trim()||title.length>4096||typeof digest!=='string'||!/^[a-f0-9]{64}$/i.test(digest))continue;

@@ -1,0 +1,11 @@
+.collectible-card{position:relative;width:100%;perspective:1000px;cursor:grab;touch-action:pan-y pinch-zoom;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;outline-offset:8px;border-radius:10px}
+.collectible-card:active{cursor:grabbing}
+.collectible-card:focus-visible{outline:2px solid var(--color-primary,#254cce)}
+.collectible-card__handling{transform:rotateX(var(--collectible-tilt-x,0deg)) rotateY(var(--collectible-tilt-y,0deg));transform-style:preserve-3d;transition:transform 180ms ease-out}
+.collectible-card[data-handling]>.collectible-card__handling{transform:translateY(-3px) rotateX(var(--collectible-tilt-x,0deg)) rotateY(var(--collectible-tilt-y,0deg));transition-duration:70ms}
+.collectible-card__turn{position:relative;transform-style:preserve-3d;transform:rotateY(0deg);transition:transform 480ms cubic-bezier(.22,.75,.25,1)}
+.collectible-card[data-flipped=true] .collectible-card__turn{transform:rotateY(180deg)}
+.collectible-card__face{width:100%;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.collectible-card__face--back{position:absolute;inset:0;transform:rotateY(180deg)}
+.collectible-card img{pointer-events:none;-webkit-user-drag:none}
+@media(prefers-reduced-motion:reduce){.collectible-card__handling,.collectible-card[data-handling]>.collectible-card__handling{transform:none;transition:none}.collectible-card__turn{transition:none}}

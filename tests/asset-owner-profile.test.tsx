@@ -11,7 +11,7 @@ vi.mock('../src/receiz/market-projection/usePublicAssetPeriods',()=>({usePublicA
 let root:Root|undefined,element:HTMLDivElement;
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 beforeEach(()=>{vi.useFakeTimers();vi.spyOn(document,'readyState','get').mockReturnValue('complete');vi.stubGlobal('requestIdleCallback',undefined);vi.stubGlobal('requestAnimationFrame',(callback:FrameRequestCallback)=>setTimeout(()=>callback(performance.now()),16));vi.stubGlobal('cancelAnimationFrame',clearTimeout);});
-const fixture=()=>{const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.nextCursor=null;return profile;};
+const fixture=()=>{const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.items=profile.items.map(item=>({...item,hasPbiSignature:true}));profile.nextCursor=null;return profile;};
 const asset=()=>({...fixture().items[0],originalUrl:null,originalDigest:null,ownerAvatarUrl:undefined});
 afterEach(async()=>{if(root)await act(()=>root!.unmount());root=undefined;element?.remove();forgetPublicProfile('alexmorgan');document.querySelectorAll('[data-profile-preload]').forEach(node=>node.remove());vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();});
 async function settle(){await act(()=>vi.advanceTimersByTimeAsync(32));}

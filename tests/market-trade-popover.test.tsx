@@ -13,7 +13,7 @@ import {PublicAssetTradePortal,type PublicTradeAccount} from '../src/features/ma
 import {closePublicAssetTrade} from '../src/receiz/public-asset-trade';
 vi.mock('../src/features/market/MarketOverview',()=>({MarketOverview:()=>null}));
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
-const catalog=()=>parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:work',receizId:'work',title:'The First Light',valueUsd:12}]}});
+const catalog=()=>parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:work',receizId:'work',title:'The First Light',valueUsd:12,profileOriginal:{hasPbiSignature:true}}]}});
 it('keeps asset creation while directing purchases through each asset instead of a separate Exchange picker',async()=>{
  const source={catalog:catalog(),status:'live',error:null,refresh:vi.fn()} as never,open=vi.fn(),host=document.createElement('div'),root=createRoot(host);
  try{await act(async()=>root.render(<Market source={source} onAction={open}/>));

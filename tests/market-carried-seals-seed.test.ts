@@ -14,7 +14,9 @@ it('ships every verified copy with its own seal and owner while preserving all r
  const input=JSON.parse(await readFile(new URL('../public/receiz-public-sports.json',import.meta.url),'utf8'));
  const priced=input.cards.filter((card:Record<string,unknown>)=>card.valuationRow),unpriced=input.cards.filter((card:Record<string,unknown>)=>!card.valuationRow);
  expect(priced).toHaveLength(1962);expect(unpriced).toHaveLength(615);
- const retained=priced.map(({sealedBirths,historyObservation,...card}:Record<string,unknown>)=>{const {historyObservation:record,sportsGroup,...valuationRow}=card.valuationRow as Record<string,unknown>;return {...card,valuationRow};});
+ // Artwork is additive display metadata. Every retained financial operand and
+ // identity field must still match the original, independently pinned digest.
+ const retained=priced.map(({sealedBirths,historyObservation,imageUrl,...card}:Record<string,unknown>)=>{const {historyObservation:record,sportsGroup,...valuationRow}=card.valuationRow as Record<string,unknown>;return {...card,valuationRow};});
  expect(createHash('sha256').update(JSON.stringify(retained)).digest('hex')).toBe('252d1e47bc57fe513ce3b902302d150a573199d341a8a4f9abe1db7f271cf678');
  const copies=input.cards.flatMap((card:{sealedBirths:unknown})=>{expect(publicSportsSealedBirths(card.sealedBirths)).toBeDefined();return card.sealedBirths;});
  expect(copies).toHaveLength(5366);expect(new Set(copies.map((copy:{collectibleId:string;claimHash:string})=>copy.collectibleId+':'+copy.claimHash)).size).toBe(5366);

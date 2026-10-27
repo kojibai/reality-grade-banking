@@ -4,6 +4,29 @@ import { parsePublicMarket } from '../src/receiz/public-market';
 import { publicMarketCapitalization } from '../src/receiz/market-capitalization';
 const base = () => parsePublicMarket({ ok: true, transport: { publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: 1 }, publicOriginals: [{ id: 'original', receizId: 'original', title: 'Original', valueUsd: 10 }] } });
 const card = { collectibleId: 'rsc_0123456789abcdef', claimHash: 'a'.repeat(64), athlete: 'Public athlete', sport: 'baseball', rarity: 'Rare', liveValueUsd: 25, totalValueUsd: 50, issuedCount: 2, vaultCount: 2, pricedCount: 2, route: '/game/sports/card/rsc_0123456789abcdef?claimHash=' + 'a'.repeat(64) };
+it('reuses native card artwork in discovery and retains it only for the same exact card claim',async()=>{
+ const {retainPublicSportsInput}=await import('../src/receiz/public-sports');
+ const imageUrl='/api/game/sports/baseball/player-image/694819',capture={ok:true,schema:'receiz.sports_economy.live_inventory.v1',generatedAt:'2026-10-27T00:00:00Z',cards:[{...card,imageUrl}]};
+ const held=mergePublicSports(base(),capture);expect(held.items[1].artworkUrl).toBe('https://receiz.com'+imageUrl);
+ const thinner={...capture,generatedAt:'2026-10-27T01:00:00Z',cards:[card]},retained=retainPublicSportsInput(capture,thinner) as typeof capture;
+ expect(retained.cards[0].imageUrl).toBe('https://receiz.com'+imageUrl);expect(mergePublicSports(held,thinner).items[1].artworkUrl).toBe('https://receiz.com'+imageUrl);
+ const uppercase={...capture,cards:[{...card,claimHash:card.claimHash.toUpperCase(),imageUrl}]},upperHeld=mergePublicSports(base(),uppercase);
+ expect(mergePublicSports(upperHeld,{...thinner,cards:[{...card,claimHash:card.claimHash.toUpperCase()}]}).items[1].artworkUrl).toBe('https://receiz.com'+imageUrl);
+ const changed={...thinner,cards:[{...card,claimHash:'b'.repeat(64)}]};expect(mergePublicSports(held,changed).items[1].artworkUrl).toBeUndefined();
+ expect(mergePublicSports(base(),{...capture,cards:[{...card,imageUrl:'https://evil.test/card.png'}]}).items[1].artworkUrl).toBeUndefined();
+});
+it('adds exact-claim artwork from an older fallback without replacing newer owners, prices or history',()=>{
+ const birth={collectibleId:card.collectibleId,claimHash:card.claimHash,sealedAt:'2026-10-01T12:00:00Z',birthUsdValue:10,ownerUsername:'current_holder',ownerDisplayName:'Current Holder'};
+ const fresh={ok:true,schema:'receiz.sports_economy.live_inventory.v1',generatedAt:'2026-10-27T01:00:00Z',cards:[{...card,issuedCount:1,vaultCount:1,pricedCount:1,totalValueUsd:25,sealedBirths:[birth]}]};
+ const held=mergePublicSports(base(),fresh),imageUrl='/api/game/sports/baseball/player-image/694819';
+ const fallback={...fresh,fallback:true,generatedAt:'2026-10-26T01:00:00Z',cards:[{...fresh.cards[0],claimHash:card.claimHash.toUpperCase(),imageUrl,liveValueUsd:999,totalValueUsd:999,sealedBirths:[{...birth,ownerUsername:'stale_holder'}]}]};
+ const next=mergePublicSports(held,fallback);
+ expect(next.items[1].artworkUrl).toBe('https://receiz.com'+imageUrl);
+ expect({...next.items[1],artworkUrl:undefined}).toEqual({...held.items[1],artworkUrl:undefined});
+ expect(next.items[0]).toBe(held.items[0]);expect(next.sportsObservedAt).toBe(held.sportsObservedAt);expect(next.sportsSealedBirthsObservedAt).toBe(held.sportsSealedBirthsObservedAt);
+ expect(mergePublicSports(held,{...fallback,cards:[{...fallback.cards[0],claimHash:'b'.repeat(64)}]})).toBe(held);
+ expect(mergePublicSports(next,{...fallback,cards:[{...fallback.cards[0],imageUrl:'/api/game/sports/baseball/player-image/123456'}]})).toBe(next);
+});
 it('retains the canonical card valuation operands bound to its exact public claim',async()=>{
  const {publicSportsValueRow}=await import('../src/receiz/market-projection/source');
  const row=publicSportsValueRow({...card,cardId:'public-card',baseRating:90,proofValueUsd:20,proofTotalValueUsd:40,representativeValueUsd:25,card:{currentScore:2,projectedScore:3}});
