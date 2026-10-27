@@ -147,7 +147,7 @@ export const standardPages=[
     "faq": [
       [
         "What rights travel with my value?",
-        "The Original carries the actual ownership, funding, use and exchange rights. Receiving institutions must demonstrate conformance to the identity, value, history and continuity laws governing the capability you use."
+        "The Original carries the actual ownership, funding, use and exchange rights. The Original carries the money independently of the interface. Share completed Notes directly, including offline delivery. Any receiving implementation preserves the exact value, identity, ownership and history together. Its conformance evidence demonstrates that preservation for the capability you use."
       ],
       [
         "Who owns my originals?",
@@ -408,7 +408,7 @@ export const standardPages=[
       ],
       [
         "The banking standard.",
-        "Reality-grade banking defines how people, applications and institutions hold, inspect, receive and move that value while preserving its authority. The interface can change. The source and applicable receiving requirements remain."
+        "Reality-grade banking defines how people, applications and institutions handle proof-native money while preserving its authority. The Original carries the proof, exact value, ownership and history independently of the interface. Banking implementations make those operations convenient and keep the source intact."
       ],
       [
         "The infrastructure.",
@@ -444,7 +444,7 @@ export const standardPages=[
     "faq": [
       [
         "Is the standard the same as one website?",
-        "The standard defines the preserved evidence and operations. A website is one implementation. Independent institutions can participate through their own interface when their receiving implementation demonstrates the required proof, ownership, exact value and history continuity. A new balance without that continuity does not satisfy the standard."
+        "Your money and its proof are carried by the Original. A complete addressed Note can be delivered directly, including offline. Choose Bankeiz for convenience, reuse its open-source code or implement the receiving standard in your own application. Every receiving implementation preserves the exact proof, ownership, value and continuous history. Conformance demonstrates that preservation for the assessed capability."
       ],
       [
         "What must a participant preserve?",
