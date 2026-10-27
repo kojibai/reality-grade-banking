@@ -1,11 +1,11 @@
 import {beforeEach,expect,it,vi} from 'vitest';
-import {BANK_APPLICATION_ID,BANK_READ_SCOPES,BANK_MESSAGING_SCOPES} from '../src/receiz/config';
+import {BANK_APPLICATION_ID,BANK_READ_SCOPES,BANK_MESSAGING_SCOPES,BANK_ORGANIZER_SCOPES} from '../src/receiz/config';
 import {openCanonicalIdentity,importNativeIdentity} from '../src/receiz/native-identity';
 import type {WalletObservation} from '../src/receiz/wallet-observation';
 // Integration sequencing only. The independent Chrome test opens real v129
 // native originals with the actual verifier and encrypted IndexedDB store.
-const p=vi.hoisted(()=>({messagingDisplay:null as unknown,saveMessagingDisplay:vi.fn(),messagingConsent:null as unknown,saveMessaging:vi.fn(),scopes:[] as string[],known:null as WalletObservation|null,projection:null as unknown,device:vi.fn(),restore:vi.fn(),retain:vi.fn(),original:vi.fn(),proof:vi.fn(),continueId:vi.fn(),wallet:vi.fn(),save:vi.fn(),request:vi.fn(),library:vi.fn(),heldFetch:undefined as typeof fetch|undefined}));
-vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>p.known,saveWalletObservation:p.save,saveDeviceIdentity:p.device,loadMessagingDisplay:async()=>p.messagingDisplay,saveMessagingDisplay:p.saveMessagingDisplay,loadMessagingConsent:async()=>p.messagingConsent,saveMessagingConsent:p.saveMessaging}));
+const p=vi.hoisted(()=>({pulse:100,organizerDisplay:null as unknown,saveOrganizerDisplay:vi.fn(),messagingDisplay:null as unknown,saveMessagingDisplay:vi.fn(),messagingConsent:null as unknown,saveMessaging:vi.fn(),scopes:[] as string[],known:null as WalletObservation|null,projection:null as unknown,device:vi.fn(),restore:vi.fn(),retain:vi.fn(),original:vi.fn(),proof:vi.fn(),continueId:vi.fn(),wallet:vi.fn(),save:vi.fn(),request:vi.fn(),library:vi.fn(),heldFetch:undefined as typeof fetch|undefined}));
+vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>p.known,saveWalletObservation:p.save,loadOrganizerDisplay:async()=>p.organizerDisplay,saveOrganizerDisplay:p.saveOrganizerDisplay,saveDeviceIdentity:p.device,loadMessagingDisplay:async()=>p.messagingDisplay,saveMessagingDisplay:p.saveMessagingDisplay,loadMessagingConsent:async()=>p.messagingConsent,saveMessagingConsent:p.saveMessaging}));
 vi.mock('../src/receiz/account-ledger',async original=>({...await original<typeof import('../src/receiz/account-ledger')>(),createLocalAccountLedger:()=>({restore:p.restore,retain:p.retain,original:p.original})}));
 vi.mock('../src/receiz/proof-library',()=>({createProofLibrary:p.library}));
 vi.mock('../src/receiz/account-proof',async original=>({...await original<typeof import('../src/receiz/account-proof')>(),readAccountProof:p.proof}));
@@ -13,14 +13,14 @@ vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({
  verifyReceizArtifact:async()=>({status:'verified-artifact'}),createReceizArtifactAdmissionEngine:()=>async()=>({verdict:'canonical-identity'}),isSdkIssuedReceizArtifactAdmission:()=>true,
  readReceizIdentityPublicBinding:async()=>({keyId:'fixture-key',artifactSha256:'a'.repeat(64),artifactOwnerReceizId:'owner.receiz.id'}),
  readReceizIdentityArtifact:async()=>({owner:{uid:'owner',username:'owner'},issuedAt:'2026-10-13T00:00:00Z',keyId:'fixture-key',crypto:{}}),projectReceizIdentityAccount:async()=>p.projection??({authority:'identity-only'}),
- receizKaiNow:()=>({pulse:100,uPulse:'100000000'}),sha256ReceizBytes:async()=> 'a'.repeat(64),createReceizProofAuthorityChallenge:()=>({challenge:{},challengeB64Url:'fixture'}),
+ receizKaiNow:()=>({pulse:p.pulse,uPulse:String(p.pulse*1000000)}),sha256ReceizBytes:async()=> 'a'.repeat(64),createReceizProofAuthorityChallenge:()=>({challenge:{},challengeB64Url:'fixture'}),
  createReceizClient:({accessToken,applicationId=BANK_APPLICATION_ID,fetchImpl}:{accessToken?:string;applicationId?:string;fetchImpl?:typeof fetch}={})=>{p.heldFetch=fetchImpl;return accessToken?{auth:{grantedScopes:async()=>p.scopes},connect:{wallet:p.wallet},request:p.request}:{identity:{continueReceizId:p.continueId,signLoginProof:async()=>({}),exchangeProofAuthority:async()=>({applicationId,keyId:'fixture-key',artifactDigest:'a'.repeat(64),grantedScopes:p.scopes,accessToken:'fixture-only',expiresAtKai:200})}};},
 })}));
 const observation=(reserve='600',kai='100000002'):WalletObservation=>({observedAt:'2026-10-18T12:00:00Z',wallet:{userId:'bound-user',totalUsdCents:reserve,reserveUsdCents:reserve,settlementUsdCents:'0',balancePhiMicro:'3000000',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:'100',kaiUpulse:kai}});
 const proof={sourceDigest:'b'.repeat(64),statement:{schema:'bankeiz.public-account-statement.v2'}};
 const carriedProjection=()=> ({authority:'verified-identity-portable-state',portableStateVerified:true,completeAtSealedHead:true,owner:{uid:'owner'},verifiedState:{account:{userId:'owner'},exportedAt:'2026-10-18T12:00:00Z',accountStateHead:{kaiUpulse:'10000000'},wallet:{routeSummary:{userId:'owner',balanceUsd:'50.92',balancePhiMicro:'3000000',quote:{usdPerPhiMicrocents:'4092328496'},valueStates:{settledBalanceUsdCents:'1000',ecosystemBalanceUsdCents:'4092'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'3000000'}},ledgerEntries:[{id:'funded',user_id:'owner',direction:'credit',entry_kind:'admin_adjustment',amount_phi_micro:'2000000',amount_usd_cents:'1000',kai_upulse:'2000000',metadata:{}},{id:'received',user_id:'owner',direction:'credit',entry_kind:'chat_transfer',amount_phi_micro:'1000000',amount_usd_cents:'5024',kai_upulse:'3000000',metadata:{rail:'settlement'}}]},ledger:{entries:[{actorUserId:'owner',subjectUserId:null,kaiUpulse:'1000000'}]}}});
 beforeEach(()=>{
- p.messagingDisplay=null;p.saveMessagingDisplay.mockReset().mockResolvedValue(undefined);p.messagingConsent=null;p.saveMessaging.mockReset().mockResolvedValue(undefined);p.scopes=[...BANK_READ_SCOPES];p.known=null;p.projection=null;p.device.mockReset().mockResolvedValue(undefined);p.restore.mockReset().mockResolvedValue(null);p.retain.mockReset().mockResolvedValue({proof,observation:observation()});p.proof.mockReset().mockImplementation(async({request})=>{await request('/account-source');return proof;});
+ p.pulse=100;p.organizerDisplay=null;p.saveOrganizerDisplay.mockReset().mockResolvedValue(undefined);p.messagingDisplay=null;p.saveMessagingDisplay.mockReset().mockResolvedValue(undefined);p.messagingConsent=null;p.saveMessaging.mockReset().mockResolvedValue(undefined);p.scopes=[...BANK_READ_SCOPES];p.known=null;p.projection=null;p.device.mockReset().mockResolvedValue(undefined);p.restore.mockReset().mockResolvedValue(null);p.retain.mockReset().mockResolvedValue({proof,observation:observation()});p.proof.mockReset().mockImplementation(async({request})=>{await request('/account-source');return proof;});
  p.original.mockReset().mockResolvedValue(null);p.library.mockReset().mockImplementation(options=>options);
  p.continueId.mockReset().mockResolvedValue({ok:true,session:{uid:'bound-user'}});p.wallet.mockReset().mockResolvedValue({ok:true,wallet:{userId:'bound-user',balanceUsd:'8.00',balancePhiMicro:'4000000',valueStates:{settledBalanceUsdCents:'800',ecosystemBalanceUsdCents:'0'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'100000003'}}});p.save.mockReset().mockResolvedValue(undefined);p.request.mockReset().mockResolvedValue({});
 });
@@ -385,4 +385,25 @@ it('restores the identity-bound inbox before any remote messaging grant and seed
  const restored=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
  try{expect(restored.knownMessagingDisplay!()?.inbox[0].title).toBe('Retained Mira');expect(p.continueId).not.toHaveBeenCalled();expect((await restored.messaging!()).knownConversations()[0].title).toBe('Retained Mira');restored.dispose();expect(restored.knownMessagingDisplay!()).toBeNull();}finally{restored.dispose();}
  p.messagingConsent=null;const legacy=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);try{expect(legacy.knownMessagingDisplay!()).toBeNull();await expect(legacy.messaging!()).rejects.toThrow('MESSAGING_CONSENT_REQUIRED');}finally{legacy.dispose();}
+});
+
+it('binds a first-use empty organizer to the continued account instead of its provisional wallet placement',async()=>{
+ p.known={...observation(),wallet:{...observation().wallet,userId:'provisional-device-owner'}};p.scopes=[...BANK_ORGANIZER_SCOPES];
+ const upstream=vi.spyOn(globalThis,'fetch').mockResolvedValue(Response.json({ok:true,signedIn:true,complete:true,ownerUid:'bound-user',projection:{ownerUid:'bound-user',complete:true,contacts:[]}}));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const api=await identity.organizer!();expect(api.accountUid).toBe('bound-user');expect(await api.contacts()).toEqual([]);expect(await api.contacts()).toEqual([]);expect(p.continueId).toHaveBeenCalledTimes(1);expect(upstream).toHaveBeenCalledTimes(1);expect(p.wallet).not.toHaveBeenCalled();}
+ finally{identity.dispose();upstream.mockRestore();}
+});
+it('opens retained empty contacts without a grant, wallet read or collection reload',async()=>{
+ p.known=observation();p.organizerDisplay={schema:'bankeiz.organizer-display.v1',accountUid:'bound-user',contacts:[],contactsComplete:true,events:null,ranges:[],username:null};
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const api=await identity.organizer!();expect(await api.contacts()).toEqual([]);expect(p.continueId).not.toHaveBeenCalled();expect(p.wallet).not.toHaveBeenCalled();}
+ finally{identity.dispose();}
+});
+it('rejects a different account on organizer grant refresh before reading its contacts',async()=>{
+ p.known=observation();p.scopes=[...BANK_ORGANIZER_SCOPES];
+ const upstream=vi.spyOn(globalThis,'fetch').mockResolvedValue(Response.json({ok:true,signedIn:true,complete:true,ownerUid:'bound-user',projection:{ownerUid:'bound-user',complete:true,contacts:[]}}));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const api=await identity.organizer!();await api.contacts();p.pulse=201;p.continueId.mockResolvedValue({ok:true,session:{uid:'foreign-user'}});await expect(api.contacts(true)).rejects.toThrow('ORGANIZER_IDENTITY_CHANGED');expect(api.knownContacts()).toEqual([]);expect(upstream).toHaveBeenCalledTimes(1);}
+ finally{identity.dispose();upstream.mockRestore();}
 });

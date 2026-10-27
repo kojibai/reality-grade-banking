@@ -65,3 +65,8 @@ it('refreshes billing access without creating a subscription, even if the previo
   expect(fetcher.mock.calls.some(([url])=>String(url).endsWith('/checkout'))).toBe(false);
  }
 });
+it('uses the additive native balance endpoint only for its explicitly selected funding policy',async()=>{
+ const operationId='balance-operation-001',quote={schema:'receiz.usage.balance-purchase.quote.v1',ownerUserId:uid,clientOperationId:operationId,fundingPolicy:'reserve-settlement-card',credits:'1000',amountUsdCents:'1000',bankContributionUsdCents:'975',reserveContributionUsdCents:'600',settlementContributionUsdCents:'375',cardShortfallUsdCents:'25',minimumCardDepositUsdCents:'50',exactCardDepositAvailable:false,expiresAt:'2099-01-01T00:00:00Z'};
+ const fetcher=vi.fn<typeof fetch>(async(url,init)=>String(url).endsWith('/continue')?Response.json({ok:true,session:{uid,plan:'business'}},{headers:{'set-cookie':sessionCookie+'; HttpOnly; Secure'}}):(()=>{expect(String(url)).toBe('https://receiz.com/api/usage/balance-purchase');expect(JSON.parse(String(init?.body))).toEqual({action:'quote',clientOperationId:operationId,amountUsd:'10'});return Response.json({ok:true,quote});})());vi.stubGlobal('fetch',fetcher);
+ const response=await relayNativeAccount(request({action:'credits-quote',fundingMode:'balance',operationId,amountUsd:'10'}));expect(response.status).toBe(200);expect((await response.json()).creditFunding.quote).toEqual(quote);expect(fetcher).toHaveBeenCalledTimes(2);
+});

@@ -96,3 +96,20 @@ it('deduplicates repeated IDs while retaining distinct appointments and sign-in 
  const api=createNativeOrganizer({accountUid:uid,request:vi.fn(),carried:{calendar:{events:[newer,event,distinct,signIn]}}});
  expect(api.knownEvents(range)?.map(row=>row.title)).toEqual(['Updated lunch','Lunch','Signed in']);expect(api.known().events).toHaveLength(3);
 });
+it('reads and checks one selected native Calendar proof once, never on range navigation',async()=>{
+ const {canonicalizeReceizConstitution}=await import('@receiz/sdk'),core={kind:'receiz.calendar.event.bundle.v1',version:1,hashAlgorithm:'sha256-jcs',event:{...event,createdByUserId:null},provenance:{},conversation:{},visitor:{},summary:null};
+ const bundleHash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonicalizeReceizConstitution(core))))].map(v=>v.toString(16).padStart(2,'0')).join('');
+ const request=vi.fn(async()=>Response.json({ok:true,verified:true,bundleHash,bundle:{...core,bundleHash}})),api=createNativeOrganizer({accountUid:uid,request,carried:{calendar:{events:[event]}}});
+ expect(api.knownEvents(range)).toHaveLength(1);expect(request).not.toHaveBeenCalled();
+ const a=await api.eventProof(event),b=await api.eventProof(event);expect(a).toBe(b);expect(request).toHaveBeenCalledTimes(1);
+ await expect(api.eventProof({...event,ownerUserId:other})).rejects.toThrow();expect(request).toHaveBeenCalledTimes(1);
+});
+
+it('merges the native task’s saved contact results once without reloading the collection or replacing newer edits',async()=>{
+ const updatedAt='2026-10-27T00:00:00Z',contact={id:'contact-one',fullName:'New lead',email:'lead@example.test',phone:'',linkedUserId:'',createdAt:updatedAt,updatedAt,interactions:[]};
+ const request=vi.fn(),onChange=vi.fn(),api=createNativeOrganizer({accountUid:'owner',request,onChange});
+ api.mergeSavedContacts('owner',[contact]);expect(api.knownContacts()).toEqual([contact]);expect(request).not.toHaveBeenCalled();expect(onChange).toHaveBeenCalledOnce();
+ api.mergeSavedContacts('owner',[contact]);expect(onChange).toHaveBeenCalledOnce();
+ api.mergeSavedContacts('owner',[{...contact,fullName:'Older version',updatedAt:'2026-10-26T00:00:00Z'}]);expect(api.knownContacts()?.[0].fullName).toBe('New lead');
+ expect(()=>api.mergeSavedContacts('other',[contact])).toThrow('ORGANIZER_OWNER_MISMATCH');expect(api.knownContacts()?.[0].fullName).toBe('New lead');
+});

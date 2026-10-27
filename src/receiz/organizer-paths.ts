@@ -14,6 +14,7 @@ export function permittedOrganizerPath(url:URL,method:string):boolean {
   if(verb!=='GET')return false;
   return [...params].every(([key,value])=>key==='start'||key==='end'?date(value):key==='limit'?/^(?:[1-9]\d?|[1-4]\d{2}|500)$/.test(value):key==='cursor'?/^[A-Za-z0-9_-]{1,2048}$/.test(value):false);
  }
+ if(path.startsWith('/api/calendar/events/')&&path.endsWith('/bundle')){let id:string;try{id=decodeURIComponent(path.slice('/api/calendar/events/'.length,-'/bundle'.length));}catch{return false;}const parts=id.split(':');return !url.search&&verb==='GET'&&(uuid.test(id)||parts[0]==='wallet'&&((['transfer','note_mint','reserve_credit','wallet_ledger_entry'].includes(parts[1]!)&&parts.length===3&&uuid.test(parts[2]!))||(parts[1]==='note_claim'&&parts.length===4&&uuid.test(parts[2]!)&&uuid.test(parts[3]!))));}
  if(/^\/api\/calendar\/events\/[a-f\d-]{36}$/.test(path))return uuid.test(path.slice('/api/calendar/events/'.length))&&!url.search&&verb==='PATCH';
  if(/^\/api\/calendar\/embed\/[a-z0-9_]{3,24}$/.test(path)){
   if(['POST','PUT'].includes(verb))return !url.search;

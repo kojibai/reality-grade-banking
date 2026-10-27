@@ -37,16 +37,16 @@ export function createTwinCreditPurchaseCoordination(input:{ownerUid:string;iden
   if(source.purchase?.status==='completed')await input.onCompleted?.(result);
   return result;
  }
- async function status(operationId:string){return observe(operationId,await input.request({action:'credits-purchase-status',operationId}));}
- async function execute(operationId:string){
+ async function status(operationId:string,fundingMode?:'balance'){const held=await pending();const mode=held?.quote.schema==='receiz.usage.balance-purchase.quote.v1'?'balance':held?undefined:fundingMode;return observe(operationId,await input.request({...(mode?{fundingMode:mode}:{}),action:'credits-purchase-status',operationId}));}
+ async function execute(operationId:string,fundingMode?:'balance'){
   const held=await pending();if(held&&held.operationId!==operationId)throw Error('BANK_EXECUTION_PENDING');
-  const checked=await status(operationId),source=funding(checked,operationId);
+  const checked=await status(operationId,fundingMode),source=funding(checked,operationId);
   if(source.purchase?.status!=='ready')return checked;
   const current=await pending();if(current&&current.operationId!==operationId)throw Error('BANK_EXECUTION_PENDING');
   if(current&&!sameTwinCreditQuote(current.quote,source.quote))throw Error('BANK_CREDIT_INTENT_CHANGED');
   const intent=current?{...current,stage:'dispatching' as const}:twinCreditPurchaseIntent(input.ownerUid,input.identityDigest,operationId,source.quote);
   await input.write(intent,current);
-  try{return await observe(operationId,await input.request({action:'credits-purchase',operationId}));}
+  try{return await observe(operationId,await input.request({action:'credits-purchase',operationId,...(source.quote.schema==='receiz.usage.balance-purchase.quote.v1'?{fundingMode:'balance' as const}:{})}));}
   catch(cause){await input.write({...intent,stage:'unknown'},intent).catch(()=>{});throw cause;}
  }
  async function recover():Promise<RecoveredTwinCreditPurchase|null>{

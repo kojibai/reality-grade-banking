@@ -1,3 +1,4 @@
+import {relayTwinWorkspace} from './twin-workspace.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
 import { Readable } from 'node:stream';
@@ -107,7 +108,7 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
   } catch { abort.abort(); return fail(503); }
 }
 export async function nativeAccountMiddleware(req: IncomingMessage, res: ServerResponse, next: () => void) {
-  if (!req.url?.startsWith(PREFIX)&&!['/api/bank/business/setup','/api/bank/business/dns','/api/bank/business/dns-return'].includes(req.url?.split('?')[0]??'')) { next(); return; }
+  if (!req.url?.startsWith(PREFIX)&&!['/api/bank/twin-workspace','/api/bank/business/setup','/api/bank/business/dns','/api/bank/business/dns-return'].includes(req.url?.split('?')[0]??'')) { next(); return; }
   const controller = new AbortController(), abort = () => controller.abort();
   const close = () => { if (!res.writableFinished) abort(); };
   req.once('aborted',abort); res.once('close',close);
@@ -116,7 +117,7 @@ export async function nativeAccountMiddleware(req: IncomingMessage, res: ServerR
     const host = req.headers.host ?? 'localhost', scheme = /^(localhost|127\.0\.0\.1)(:|$)/.test(host)?'http':'https';
     const body = ['POST','PATCH'].includes(req.method ?? '') || req.method==='DELETE' && req.url?.split('?')[0]===PREFIX+'/api/chat/notifications/push' ? Readable.toWeb(req) as unknown as ReadableStream<Uint8Array> : undefined;
     const request = new Request(`${scheme}://${host}${req.url}`,{method:req.method,headers:Object.fromEntries(Object.entries(req.headers).filter((entry):entry is [string,string]=>typeof entry[1]==='string')),body,signal:controller.signal,...body?{duplex:'half'}:{}});
-    const response = await (new URL(request.url).pathname==='/api/bank/business/setup'?relayBusinessSetup(request):new URL(request.url).pathname==='/api/bank/business/dns'?relayBusinessDns(request):new URL(request.url).pathname==='/api/bank/business/dns-return'&&request.method==='GET'?dnsConnectionReturn(request):relayNativeAccount(request));
+    const response = await (new URL(request.url).pathname==='/api/bank/twin-workspace'?relayTwinWorkspace(request):new URL(request.url).pathname==='/api/bank/business/setup'?relayBusinessSetup(request):new URL(request.url).pathname==='/api/bank/business/dns'?relayBusinessDns(request):new URL(request.url).pathname==='/api/bank/business/dns-return'&&request.method==='GET'?dnsConnectionReturn(request):relayNativeAccount(request));
     res.writeHead(response.status,Object.fromEntries(response.headers));
     reader = response.body?.getReader();
     if (reader) for (;;) { const part = await reader.read(); if (part.done) break; if (!res.write(part.value)) await once(res,'drain',{signal:controller.signal}); }

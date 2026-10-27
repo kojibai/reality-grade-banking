@@ -7,7 +7,7 @@ export type TwinOwnerContext = Readonly<{
   records: ReadonlyArray<Readonly<{ id: string; title: string; text: string }>>;
 }>;
 export type NativeTwinRequest = (path: string, init?: RequestInit) => Promise<Response>;
-export type NativeTwinAsk = { message: string; requestId: string; quoteExpiresAt: string; threadKey?: string; context?: TwinOwnerContext; moneyContext?:{schema:'bank.money-tool-results.v1';ownerUid:string;results:string}; signal?: AbortSignal; businessSetup?:boolean; organizerTools?:boolean; receizTools?:boolean; moneyTools?:boolean; onDelta?:(text:string)=>void };
+export type NativeTwinAsk = { message: string; requestId: string; quoteExpiresAt: string; threadKey?: string; context?: TwinOwnerContext; moneyContext?:{schema:'bank.money-tool-results.v1';ownerUid:string;results:string}; signal?: AbortSignal; businessSetup?:boolean; organizerTools?:boolean;worldTools?:boolean; receizTools?:boolean; moneyTools?:boolean; onDelta?:(text:string)=>void };
 export type NativeTwinSourceReference = { coordinate: string; sourceDigest: string; excerptDigest: string; authority: string };
 export type NativeTwinMemory = { id: string; persistedId?: string; transportId?: string; role: 'user' | 'assistant'; body: string; createdAt: string; scope: 'session' | 'relationship' | 'venture'; channel: 'profile' | 'world' | 'chat' };
 export type NativeTwinReply = {
@@ -116,7 +116,7 @@ export function createNativeTwin(input: { accountUid: string; username: string |
       const context = ownerContext(question.context, input.accountUid);
       const moneyContext=question.moneyContext;
       if(moneyContext&&(moneyContext.ownerUid!==input.accountUid||moneyContext.schema!=='bank.money-tool-results.v1'||typeof moneyContext.results!=='string'||moneyContext.results.length>32000))fail('MONEY_CONTEXT_INVALID');
-      const body = { message: question.message, requestId: question.requestId, quoteExpiresAt: question.quoteExpiresAt, ...(question.threadKey === undefined ? {} : { threadKey: question.threadKey }), ...(context ? { ownerContext: context } : {}), ...(moneyContext?{moneyContext}:{}), allowBrowserVoiceFallback: false, ...(question.businessSetup?{businessSetup:true}:{}), ...(question.organizerTools?{organizerTools:true}:{}), ...(question.receizTools?{receizTools:true}:{}), ...(question.moneyTools?{moneyTools:true}:{}), ...(question.onDelta?{stream:true}:{}) };
+      const body = { message: question.message, requestId: question.requestId, quoteExpiresAt: question.quoteExpiresAt, ...(question.threadKey === undefined ? {} : { threadKey: question.threadKey }), ...(context ? { ownerContext: context } : {}), ...(moneyContext?{moneyContext}:{}), allowBrowserVoiceFallback: false, ...(question.businessSetup?{businessSetup:true}:{}), ...(question.organizerTools?{organizerTools:true}:{}), ...(question.worldTools?{worldTools:true}:{}), ...(question.receizTools?{receizTools:true}:{}), ...(question.moneyTools?{moneyTools:true}:{}), ...(question.onDelta?{stream:true}:{}) };
       const response = await input.request(`/api/developers/twin/${username}/message`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), ...(question.signal ? { signal: question.signal } : {}) });
       input.assertOpen();
       const raw = await twinJson(response,question.onDelta,question.moneyTools?64000:24000);

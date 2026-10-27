@@ -233,3 +233,10 @@
 
 /* Stable message surfaces remain mounted while the organizer occupies the sheet. */
 .bank-message-views{display:contents}.bank-message-views[hidden]{display:none}.bank-organizer-tools{display:flex;gap:15px;align-items:center;margin-left:auto}.bank-messaging-nav .bank-organizer-tools button{border:0!important;padding:8px 0;background:none;color:#7b8fae}.bank-messaging-nav .bank-organizer-tools button[aria-current=true]{color:var(--blue)}.bank-messaging-nav .bank-organizer-tools+.bank-notifications{margin-left:0}
+
+.bank-twin-content{display:contents}.bank-twin-content[hidden]{display:none}.bank-business-attachment-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-right:16px;flex-shrink:0}.bank-business-attachment-row>.bank-business-attach{flex:1;min-width:0}.bank-twin-settings-button{display:flex;align-items:center;justify-content:center;min-width:36px;min-height:36px;padding:7px;background:none;border:0;color:#8193ac;flex-shrink:0}
+
+
+.bank-business-attachment-row>.bank-twin-settings-button{margin-left:auto}
+
+.bank-twin-opening{flex:1;min-height:0;padding:14px 18px}.bank-twin-opening>button{display:flex;align-items:center;gap:7px;border:0;background:none;color:var(--muted);font:inherit;font-size:12px;padding:5px 0}.bank-twin-opening>nav{display:flex;justify-content:space-between;gap:8px;margin-top:14px;border-bottom:1px solid var(--line)}.bank-twin-opening>nav button{font:inherit;font-size:11px;color:var(--muted);border:0;border-bottom:2px solid transparent;background:none;padding:14px 0}.bank-twin-opening>nav button[aria-current]{color:var(--navy);border-bottom-color:var(--navy)}

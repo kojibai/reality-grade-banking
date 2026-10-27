@@ -1,3 +1,4 @@
+import {calendarEventTitle} from '../../../receiz/calendar-labels';
 import {useMemo} from 'react';
 import type {OrganizerEvent} from '../../../receiz/native-organizer';
 import {addDays,dayDate,dayLabel,localDay} from './ui';
@@ -13,5 +14,5 @@ export function CalendarMonth({events,day,start,end,onDay}:{events:OrganizerEven
   }
   return [...byDay];
  },[events,start,end]);
- return <section aria-label="Monthly appointments" className="organizer-month-view"><div className="organizer-month-weekdays" aria-hidden="true">{['M','T','W','T','F','S','S'].map((label,index)=><span key={index}>{label}</span>)}</div><div className="organizer-month-grid">{cells.map(([date,rows])=><button key={date} type="button" className={`${date.slice(0,7)!==day.slice(0,7)?'outside ':''}${date===day?'active':''}`} aria-label={`${dayLabel(date)} · ${rows.length} appointment${rows.length===1?'':'s'}`} aria-pressed={date===day} onClick={()=>onDay(date)}><time dateTime={date}>{dayDate(date).getDate()}</time>{rows.slice(0,2).map(event=><span key={event.id}>{event.title}</span>)}{rows.length>2&&<small>+{rows.length-2} more</small>}</button>)}</div></section>;
+ return <section aria-label="Monthly appointments" className="organizer-month-view"><div className="organizer-month-weekdays" aria-hidden="true">{['M','T','W','T','F','S','S'].map((label,index)=><span key={index}>{label}</span>)}</div><div className="organizer-month-grid">{cells.map(([date,rows])=><button key={date} type="button" className={`${date.slice(0,7)!==day.slice(0,7)?'outside ':''}${date===day?'active':''}`} aria-label={`${dayLabel(date)} · ${rows.length} appointment${rows.length===1?'':'s'}`} aria-pressed={date===day} onClick={()=>onDay(date)}><time dateTime={date}>{dayDate(date).getDate()}</time>{rows.slice(0,2).map(event=><span key={event.id}>{calendarEventTitle(event)}</span>)}{rows.length>2&&<small>+{rows.length-2} more</small>}</button>)}</div></section>;
 }

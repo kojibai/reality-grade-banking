@@ -72,6 +72,7 @@ export interface OpenIdentity {
   merchantCounter?:()=>Promise<import('./merchant-counter').MerchantCounterController>;
   moneyTools?:()=>Promise<import('./money-workspace').MoneyWorkspace & import('./money-conversation-retention').MoneyConversationRetention & {downloadSource(digest:string):Promise<File>}>;
   businessSetup?:()=>Promise<import('./business-chat').BusinessChat>;
+  twinWorkspace?:()=>Promise<import('./twin-workspace').TwinWorkspace>;
   profile?:()=>Promise<import('./profile-edit').ProfileEditor>;
   knownProfile?:()=>import('./profile-edit').OwnerProfilePresentation|null;
   prepareAccountView: (options?:{resume?:boolean}) => Promise<import('./wallet-observation').WalletObservation>;
@@ -417,10 +418,20 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const assertOpen=()=>{if(lifetime.signal.aborted)throw Error('ORGANIZER_IDENTITY_CLOSED');};assertOpen();
     if(organizerPromise)return organizerPromise;
     const attempt=(async()=>{
-      const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId;if(!uid)throw Error('ORGANIZER_ACCOUNT_REQUIRED');
-      const [{createNativeOrganizer},{openOrganizerRetention},storage,{permittedOrganizerPath}]=await Promise.all([import('./native-organizer'),import('./organizer-retention'),import('./identity-vault'),import('./organizer-paths')]);assertOpen();
-      const retention=await openOrganizerRetention({accountUid:uid,load:()=>storage.loadOrganizerDisplay(binding),save:(value,expected)=>storage.saveOrganizerDisplay(binding,value,expected),isOpen:()=>!lifetime.signal.aborted});assertOpen();
+      const [{createNativeOrganizer},{openOrganizerRetention},storage,{permittedOrganizerPath},{readOrganizerDisplay}]=await Promise.all([import('./native-organizer'),import('./organizer-retention'),import('./identity-vault'),import('./organizer-paths'),import('./organizer-types')]);assertOpen();
+      const saved=await storage.loadOrganizerDisplay(binding).catch(()=>null);assertOpen();
+      let uid=carriedAccountUid??accountUid??knownWallet?.wallet.userId;
       let connected:ReceizClient|null=null,expires=0;
+      // First-use wallet placement can precede account continuation. Bind a
+      // missing organizer to that same checked connection before capturing its
+      // owner. Complete retained/carried records still open without a grant.
+      if(!carriedAccountUid&&!(uid&&readOrganizerDisplay(saved,uid))){
+        connected=await connectClient(BANK_ORGANIZER_SCOPES,BANK_ORGANIZER_CONSENT);assertOpen();
+        const owner=clientAccounts.get(connected);if(!owner||owner.applicationId!==BANK_APPLICATION_ID)throw Error('ORGANIZER_IDENTITY_CHANGED');
+        uid=owner.accountUid;expires=expiresAtKai;
+      }
+      if(!uid)throw Error('ORGANIZER_ACCOUNT_REQUIRED');
+      const retention=await openOrganizerRetention({accountUid:uid,load:async()=>saved,save:(value,expected)=>storage.saveOrganizerDisplay(binding,value,expected),isOpen:()=>!lifetime.signal.aborted});assertOpen();
       const request=async(path:string,init?:RequestInit)=>{
         assertOpen();if(!permittedOrganizerPath(new URL(path,'https://receiz.com'),init?.method??'GET'))throw Error('ORGANIZER_PATH_DENIED');
         if(!connected||sdk.receizKaiNow().pulse>=expires){connected=await connectClient(BANK_ORGANIZER_SCOPES,BANK_ORGANIZER_CONSENT);expires=expiresAtKai;}
@@ -519,8 +530,8 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       request:requestNativeTwinUpgrade,onCompleted:result=>recordTwinReserveCompletion(result,uid)});
   }
   async function upgradeTwin(input:import('./twin-upgrade').TwinUpgradeInput){
-    if(input.action==='credits-purchase')return withAccountExecutionLock(()=>noteLock(async()=>{await assertWalletSendReady(undefined,input.operationId);return(await twinCreditPurchaseCoordination()).execute(input.operationId);}));
-    if(input.action==='credits-purchase-status')return(await twinCreditPurchaseCoordination()).status(input.operationId);
+    if(input.action==='credits-purchase')return withAccountExecutionLock(()=>noteLock(async()=>{await assertWalletSendReady(undefined,input.operationId);return(await twinCreditPurchaseCoordination()).execute(input.operationId,input.fundingMode);}));
+    if(input.action==='credits-purchase-status')return(await twinCreditPurchaseCoordination()).status(input.operationId,input.fundingMode);
     if(input.action==='credits-checkout')await assertNoPendingTwinCreditPurchase();
     return requestNativeTwinUpgrade(input);
   }
@@ -529,6 +540,23 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       if(!await readPendingTwinCreditPurchase())return null;
       return(await twinCreditPurchaseCoordination()).recover();
     }));
+  }
+  let twinWorkspacePromise:Promise<import('./twin-workspace').TwinWorkspace>|undefined;
+  async function twinWorkspace(){
+    lifetime.signal.throwIfAborted();
+    return twinWorkspacePromise??=(async()=>{
+      const current=await connectClient(BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT),uid=clientAccounts.get(current)?.accountUid;
+      if(!uid||uid!==accountUid)throw Error('TWIN_WORKSPACE_IDENTITY_CHANGED');
+      const assertOpen=()=>{lifetime.signal.throwIfAborted();if(accountUid!==uid)throw Error('TWIN_WORKSPACE_IDENTITY_CHANGED');};
+      const {createTwinWorkspace}=await import('./twin-workspace');assertOpen();
+      return createTwinWorkspace({accountUid:uid,assertOpen,onContacts:async(owner,contacts)=>{if(organizerPromise){const held=await organizerPromise;assertOpen();held.mergeSavedContacts(owner,contacts);}},request:async(input,file)=>{
+        assertOpen();await prepareTransport();assertOpen();
+        const continuation=await unsigned.identity.buildReceizIdContinueRequest({schema:'receiz.device.identity.v1',createdAt:keyFile.issuedAt,updatedAt:keyFile.issuedAt,localUid:keyFile.owner.uid,username:keyFile.owner.username??keyFile.keyId,displayName:keyFile.owner.displayName??keyFile.owner.username??'Receiz account',deviceName:null,keyFile:transportKeyFile},{passphrase:transportPhrase});assertOpen();
+        const data={...input,accountUid:uid,continuation:typeof continuation==='string'?continuation:JSON.stringify(continuation)};
+        const form=file?new FormData():null;if(form){form.set('input',JSON.stringify(data));form.set('image',file!);}
+        const response=await fetch('/api/bank/twin-workspace',{method:'POST',credentials:'omit',redirect:'error',signal:lifetime.signal,...(form?{body:form}:{headers:{'content-type':'application/json'},body:JSON.stringify(data)})});assertOpen();return response.json();
+      }});
+    })().catch(error=>{twinWorkspacePromise=undefined;throw error;});
   }
   let businessChat:Promise<import('./business-chat').BusinessChat>|undefined;
   async function businessSetup(){
@@ -562,7 +590,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
         if(result.status!=='ready')throw Error('BUSINESS_DNS_CONNECTION_UNCONFIRMED');
         return{accountUid:uid,provider:selected,canWrite:true,apply:async plan=>{const response=await requestHost('/api/bank/business/dns',{provider:selected,hostname:plan.hostname,action:'apply'});assertOpen();if(response.accountUid!==uid||response.hostname!==hostname)throw Error('BUSINESS_DNS_CONNECTION_UNCONFIRMED');return response.result;}};
       }});
-      return createBusinessChat({accountUid:uid,assertOpen,organizer,receizTools,username:()=>presentationUsername||confirmedUsername||undefined,setup:async()=>setup,profile:async()=>profiles,dns,retainOriginal:async file=>{await holdProof(file);assertOpen();}});
+      return createBusinessChat({accountUid:uid,assertOpen,organizer,receizTools,twinWorkspace,username:()=>presentationUsername||confirmedUsername||undefined,setup:async()=>setup,profile:async()=>profiles,dns,retainOriginal:async file=>{await holdProof(file);assertOpen();}});
     })().catch(cause=>{businessChat=undefined;throw cause;});
   }
   let moneyWorkspace:Promise<import('./money-workspace').MoneyWorkspace & import('./money-conversation-retention').MoneyConversationRetention & {downloadSource(digest:string):Promise<File>}>|undefined;
@@ -1811,7 +1839,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const uid=accountUid??knownWallet?.wallet.userId;if(!uid)return;
     retainedMessaging.retainTwinAccessQuestions(uid,questions);
   };
-  return { organizer,receizTools,moneyTools,businessSetup,vaults, hostedCheckout, merchantCounter, profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, recoverTwinCreditPurchase, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, backedAssetPublication, createComposedAsset:(definition,draft)=>createAsset(definition,undefined,false,draft), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { vaultManager?.dispose();checkoutController?.dispose();merchantController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  return { organizer,receizTools,moneyTools,businessSetup,twinWorkspace,vaults, hostedCheckout, merchantCounter, profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, recoverTwinCreditPurchase, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, backedAssetPublication, createComposedAsset:(definition,draft)=>createAsset(definition,undefined,false,draft), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null), receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { vaultManager?.dispose();checkoutController?.dispose();merchantController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
 }
 async function createFreshNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
   if (!consentApproved) throw new Error('Approve account read access before creating your ID.');

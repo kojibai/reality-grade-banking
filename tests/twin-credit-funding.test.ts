@@ -10,3 +10,15 @@ it('uses full direct card checkout when the held account source does not qualify
 it('recovers an encrypted pending native purchase before allowing a new quote or card checkout',async()=>{
  const f=fixture('2500');await f.session.prepare('25');const held=f.session.known().funding!,upgradeTwin=f.upgradeTwin;const recoverTwinCreditPurchase=vi.fn(async()=>({operationId:held.quote.clientOperationId,amountUsd:'25',funding:{...held,purchase:{status:'ready' as const}}}));const session=twinCreditsSession({upgradeTwin,recoverTwinCreditPurchase} as unknown as OpenIdentity);const before=upgradeTwin.mock.calls.length;await session.prepare('100');expect(session.known().amountUsd).toBe('25');expect(session.known().uncertain).toBe(true);expect(upgradeTwin.mock.calls).toHaveLength(before);await session.check();expect(session.known().settled).toBe(true);expect(upgradeTwin.mock.calls.slice(before).map(c=>c[0].action)).toEqual(['credits-purchase-status','credits-purchase','credits-balance']);expect(recoverTwinCreditPurchase).toHaveBeenCalledTimes(1);
 });
+it('accepts explicit balance funding terms and refuses a split that drops or duplicates either source',async()=>{
+ const {readTwinCreditFunding}=await import('../src/receiz/twin-credit-funding');const quote={schema:'receiz.usage.balance-purchase.quote.v1',fundingPolicy:'reserve-settlement-card',ownerUserId:'owner',clientOperationId:'balance-funding-test',credits:'1000',amountUsdCents:'1000',expiresAt:'2099-01-01T00:00:00Z',bankContributionUsdCents:'975',reserveContributionUsdCents:'600',settlementContributionUsdCents:'375',cardShortfallUsdCents:'25',minimumCardDepositUsdCents:'50',exactCardDepositAvailable:false};
+ expect(readTwinCreditFunding({quote},'owner','balance-funding-test').quote).toEqual(quote);
+ expect(()=>readTwinCreditFunding({quote:{...quote,settlementContributionUsdCents:'400'}},'owner','balance-funding-test')).toThrow();
+});
+it('keeps the new balance policy through minimum-card shortfall funding and the exact native purchase',async()=>{
+ const f=fixture('2475'),original=f.upgradeTwin.getMockImplementation()!;
+ f.upgradeTwin.mockImplementation(async input=>{const result=await original(input);if(result.creditFunding?.quote)Object.assign(result.creditFunding.quote,{schema:'receiz.usage.balance-purchase.quote.v1',fundingPolicy:'reserve-settlement-card',reserveContributionUsdCents:'1000',settlementContributionUsdCents:'1475'});return result;});
+ await f.session.prepare('25');expect(f.upgradeTwin.mock.calls[0][0]).toMatchObject({action:'credits-quote',fundingMode:'balance'});
+ await f.session.approve();expect(f.beginCardDeposit).toHaveBeenCalledExactlyOnceWith('0.50',true);expect(f.session.known().funding?.quote.cardShortfallUsdCents).toBe('25');
+ await f.session.check();expect(f.session.known().settled).toBe(true);expect(f.beginCardDeposit).toHaveBeenCalledOnce();for(const [input] of f.upgradeTwin.mock.calls)if(input.action==='credits-purchase'||input.action==='credits-purchase-status')expect(input.fundingMode).toBe('balance');
+});

@@ -5,7 +5,7 @@ import type {createBusinessProfileTools} from './business-profile-tools';
 import {BusinessDnsConnectionRequired,changedBusinessDomain,type createBusinessDnsTools,type BusinessDnsView} from './business-dns-tools';
 import type {ProfilePatch} from './profile-edit';
 import type {AssetComposerDraft} from './asset-composer';
-export type BusinessChatReceipt={id:string;tool:string;status:'accepted'|'refused'|'unknown'|'needs-file'|'manual'|'waiting'|'connect'|'review';title:string;summary:string;details?:string;reviewTool?:{name:string;argumentsJson:string};inspectTool?:boolean;domain?:BusinessDnsView;domainChecking?:boolean;connect?:{label:string;href:string}};
+export type BusinessChatReceipt={id:string;tool:string;workTaskId?:string;workTerminal?:boolean;status:'accepted'|'refused'|'unknown'|'needs-file'|'manual'|'waiting'|'connect'|'review';title:string;summary:string;details?:string;reviewTool?:{name:string;argumentsJson:string};inspectTool?:boolean;domain?:BusinessDnsView;domainChecking?:boolean;connect?:{label:string;href:string}};
 export type BusinessChatProgress={onProgress?:(tool:string)=>void};
 
 const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
@@ -13,7 +13,7 @@ const exact=(value:Record<string,unknown>,keys:string[])=>{if(Object.keys(value)
 /** Private same-owner execution. Files and enclosing Originals never enter tool
  * JSON. A repeated accepted native response reuses its actual result; unknown
  * effects are not automatically retried. The UI supplies explicit owner turns. */
-export function createBusinessChat(input:{accountUid:string;organizer?():Promise<NativeOrganizer>;receizTools?():Promise<NativeReceizTools>;username?():string|undefined;profile():Promise<ReturnType<typeof createBusinessProfileTools>>;setup():Promise<ReturnType<typeof createBusinessSetupTools>>;dns(provider?:string,expectedHostname?:string):Promise<ReturnType<typeof createBusinessDnsTools>>;retainOriginal?(file:File):Promise<void>;assertOpen():void}){
+export function createBusinessChat(input:{accountUid:string;twinWorkspace?():Promise<import('./twin-workspace').TwinWorkspace>;organizer?():Promise<NativeOrganizer>;receizTools?():Promise<NativeReceizTools>;username?():string|undefined;profile():Promise<ReturnType<typeof createBusinessProfileTools>>;setup():Promise<ReturnType<typeof createBusinessSetupTools>>;dns(provider?:string,expectedHostname?:string):Promise<ReturnType<typeof createBusinessDnsTools>>;retainOriginal?(file:File):Promise<void>;assertOpen():void}){
  let files:File[]=[],original:File|undefined,sealedSelection:File[]=[];
  const pendingHostnames=new Map<string,string>();
  const actionResults=new Map<string,Promise<BusinessChatReceipt>>();
@@ -28,6 +28,13 @@ export function createBusinessChat(input:{accountUid:string;organizer?():Promise
   let started=false;
   try{
    if(!record(args))throw Error('BUSINESS_CHAT_INPUT_INVALID');
+   if(tool==='business_start_task'||tool==='business_inspect_work'){
+    exact(args,tool==='business_start_task'?['prompt']:[]);if(!input.twinWorkspace)throw Error('TWIN_WORK_UNAVAILABLE');
+    if(tool==='business_start_task'&&(typeof args.prompt!=='string'||!args.prompt.trim()||args.prompt.length>8000))throw Error('BUSINESS_CHAT_INPUT_INVALID');
+    const api=await input.twinWorkspace();input.assertOpen();started=tool==='business_start_task';
+    const result=tool==='business_start_task'?await api.task(args.prompt as string):await api.work(true);input.assertOpen();
+    return receipt('accepted',started?'Your work has started':'Your agent’s work',started?'The existing task is underway. Keep chatting; open Work in your Twin to see its actual progress.':'The latest native tasks and campaign results are shown.',{details:JSON.stringify(result).slice(0,16000),...(started&&record(result)&&'task' in result&&record(result.task)&&typeof result.task.id==='string'?{workTaskId:result.task.id}:{})});
+   }
    if(tool==='business_receiz_call'){
     exact(args,['name','arguments']);if(typeof args.name!=='string'||!record(args.arguments)||!input.receizTools)throw Error('RECEIZ_TOOL_UNAVAILABLE');const tools=await input.receizTools();input.assertOpen();
     const result=await tools.execute(id,args.name,args.arguments);return receizReceipt(id,result,args.arguments);
@@ -76,6 +83,22 @@ export function createBusinessChat(input:{accountUid:string;organizer?():Promise
   async resolveReceizAction(requestId:string,id:string,action:'approve'|'inspect'){
    input.assertOpen();const known=retained.get(requestId);if(!known||!input.receizTools)throw Error('RECEIZ_TOOL_REQUEST_UNKNOWN');const prior=await known.result,row=prior.find(row=>row.id===id);if(!row||row.tool!=='business_receiz_call'||(action==='approve'?row.status!=='review':!row.inspectTool))return prior;
    const tools=await input.receizTools();input.assertOpen();const result=action==='approve'?await tools.approve(id):await tools.inspect(id);input.assertOpen();actionResults.set(id,Promise.resolve(receizReceipt(id,result)));known.result=known.run();return known.result;
+  },
+  async monitorWork(requestId:string,options:{signal:AbortSignal;onUpdate(receipts:BusinessChatReceipt[]):void}){
+   input.assertOpen();const known=retained.get(requestId);if(!known||!input.twinWorkspace||options.signal.aborted)return;let receipts=await known.result;
+   if(!receipts.some(row=>row.workTaskId&&!row.workTerminal))return;const api=await input.twinWorkspace();input.assertOpen();if(options.signal.aborted)return;
+   await new Promise<void>(resolve=>{let stop=()=>{},ended=false;const done=()=>{if(ended)return;ended=true;stop();options.signal.removeEventListener('abort',done);resolve();};
+    const publish=(tasks:Record<string,unknown>[]|null,attribution?:Record<string,unknown>)=>{
+     if(ended||options.signal.aborted)return;try{input.assertOpen();}catch{done();return;}
+     const byId=new Map(tasks?.map(task=>[task.id,task])??[]);
+     receipts=receipts.map(row=>{
+      if(!row.workTaskId||row.workTerminal)return row;const task=byId.get(row.workTaskId);
+      const next:BusinessChatReceipt=task?{...row,title:task.status==='completed'?'Your work is complete':task.status==='blocked'?'Your work needs a next step':task.status==='failed'?'Your work needs attention':'Your agent is working',summary:typeof task.summary==='string'?task.summary:row.summary,details:JSON.stringify({task,attribution}).slice(0,16000),workTerminal:!['planning','running'].includes(String(task.status))}:{...row,title:'Work progress is unavailable',summary:'This task is not in the current work view. Your saved contacts and campaigns remain available. The task has not been repeated.',workTerminal:true};
+      actionResults.set(row.id,Promise.resolve(next));return next;
+     });known.result=Promise.resolve(receipts);options.onUpdate(receipts);if(!receipts.some(row=>row.workTaskId&&!row.workTerminal))done();
+    };
+    options.signal.addEventListener('abort',done,{once:true});stop=api.watchWork(value=>publish(value.tasks,value.attribution),()=>publish(null));if(ended)stop();
+   });
   },
   async monitorDomain(requestId:string,options:{signal:AbortSignal;onUpdate(receipts:BusinessChatReceipt[]):void}){
    input.assertOpen();const known=retained.get(requestId);if(!known)return;let receipts=await known.result;const receipt=receipts.find(row=>row.status==='waiting'&&row.domain?.providerResult?.status==='applied');if(!receipt?.domain||options.signal.aborted)return;

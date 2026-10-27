@@ -56,3 +56,14 @@ it.each(['agenda','week','month'] as const)('keeps sign-in activity out of %s wi
  const host=await render(layout,[signIn,appointmentWithSimilarName]);expect(host.textContent).not.toContain('Signed in activity');expect(host.textContent).toContain('Signed in');
  if(layout==='month')expect(host.querySelector('[aria-label="Monday, October 26 · 1 appointment"]')).toBeTruthy();
 });
+function touch(host:Element,type:string,x:number,y:number){const event=new Event(type,{bubbles:true,cancelable:true});Object.defineProperties(event,{touches:{value:type==='touchend'?[]:[{identifier:1,clientX:x,clientY:y}]},changedTouches:{value:[{identifier:1,clientX:x,clientY:y}]}});host.dispatchEvent(event);}
+it('turns weeks on the day strip and days on Agenda while ignoring vertical scrolling and cancelled gestures',async()=>{
+ const host=await render('agenda');
+ const swipe=async(selector:string,dx:number,dy=0,cancel=false)=>act(async()=>{const area=host.querySelector(selector)!;touch(area,'touchstart',160,100);touch(area,'touchmove',160+dx,100+dy);touch(area,cancel?'touchcancel':'touchend',160+dx,100+dy);});
+ await swipe('.organizer-agenda',-80);expect(host.querySelector('.organizer-date-heading')?.textContent).toContain('Tuesday, October 27');
+ await swipe('.organizer-agenda',80);expect(host.querySelector('.organizer-date-heading')?.textContent).toContain('Monday, October 26');
+ await swipe('.organizer-agenda',-80,120);expect(host.querySelector('.organizer-date-heading')?.textContent).toContain('Monday, October 26');
+ await swipe('.organizer-agenda',-80,0,true);expect(host.querySelector('.organizer-date-heading')?.textContent).toContain('Monday, October 26');
+ await swipe('.organizer-week-strip',-80);expect(host.querySelector('.organizer-date-heading')?.textContent).toContain('Monday, November 2');
+ await swipe('.organizer-week-strip',80);expect(host.querySelector('.organizer-date-heading')?.textContent).toContain('Monday, October 26');
+});

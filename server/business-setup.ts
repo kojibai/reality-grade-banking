@@ -4,14 +4,14 @@ const origin='https://receiz.com';
 const uuid=/^[a-f\d]{8}-[a-f\d]{4}-[1-8][a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i;
 const pick=(row:Record<string,unknown>,keys:string[])=>Object.fromEntries(keys.filter(key=>Object.hasOwn(row,key)).map(key=>[key,row[key]]));
 class NativeRefusal extends Error{constructor(code:string,readonly operationStatus?:unknown,readonly newActionRequired?:unknown){super(/^[a-zA-Z0-9_:-]{1,160}$/.test(code)?code:'native_operation_unavailable');}}
-async function readJson(input:Request|Response,limit:number){
+export async function readJson(input:Request|Response,limit:number){
  if(!input.body)throw new NativeRefusal('native_result_missing');
  const reader=input.body.getReader(),decoder=new TextDecoder('utf-8',{fatal:true});let raw='',size=0;
  try{for(;;){const part=await reader.read();if(part.done)break;size+=part.value.length;if(size>limit)throw new NativeRefusal('native_result_capacity');raw+=decoder.decode(part.value,{stream:true});}const value=setupRecord(JSON.parse(raw+decoder.decode()));if(!value)throw new NativeRefusal('native_result_invalid');return value;}
  finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
 }
-function freshCookie(headers:Headers){const matches=headers.getSetCookie().flatMap(value=>{if(/,\s*[^;,\s=]+=/.test(value))return [];const match=/^receiz_session=([A-Za-z0-9_.-]{20,8192})(?:;|$)/.exec(value);return match&&/;\s*HttpOnly(?:;|$)/i.test(value)?['receiz_session='+match[1]]:[];});return matches.length===1?matches[0]:null;}
-function continuationProof(value:unknown){if(typeof value!=='string'||value.length>32*1024)throw new NativeRefusal('invalid_continuation');const proof=setupRecord(JSON.parse(value));if(!proof||typeof proof.keyId!=='string'||typeof proof.signatureB64Url!=='string'||Object.keys(proof).some(key=>!['keyId','alg','publicKeyRawB64u','localUid','username','displayName','deviceName','createdAt','challengeB64Url','signatureB64Url','next'].includes(key)))throw new NativeRefusal('invalid_continuation');return value;}
+export function freshCookie(headers:Headers){const matches=headers.getSetCookie().flatMap(value=>{if(/,\s*[^;,\s=]+=/.test(value))return [];const match=/^receiz_session=([A-Za-z0-9_.-]{20,8192})(?:;|$)/.exec(value);return match&&/;\s*HttpOnly(?:;|$)/i.test(value)?['receiz_session='+match[1]]:[];});return matches.length===1?matches[0]:null;}
+export function continuationProof(value:unknown){if(typeof value!=='string'||value.length>32*1024)throw new NativeRefusal('invalid_continuation');const proof=setupRecord(JSON.parse(value));if(!proof||typeof proof.keyId!=='string'||typeof proof.signatureB64Url!=='string'||Object.keys(proof).some(key=>!['keyId','alg','publicKeyRawB64u','localUid','username','displayName','deviceName','createdAt','challengeB64Url','signatureB64Url','next'].includes(key)))throw new NativeRefusal('invalid_continuation');return value;}
 function agentFrom(data:Record<string,unknown>,uid:string){
  if(data.agent===null)return null;
  const agent=setupRecord(data.agent);if(!agent||agent.ownerUserId!==uid||typeof agent.agentId!=='string'||!agent.agentId)throw new NativeRefusal('business_setup_owner_mismatch');
