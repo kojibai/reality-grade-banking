@@ -23,7 +23,7 @@ export interface MeetingCaptureState {
 }
 export function createMeetingCapture(eventId: string, archive: MeetingArchive) {
     let held: MeetingCaptureState | null = null, queue = Promise.resolve(), active: string | null = null,finishing:{runId:string;endedAt:string}|null=null;
-    let pendingProof:{file:File;createdAt:string;call?:{id:string;status:string};parts:{digest:string;size:number}[]}|null=null;
+    let pendingProof:{file:File;input:string;createdAt:string;call?:{id:string;status:string};parts:{digest:string;size:number}[]}|null=null;
     const pending: {
         runId: string;
         blob: Blob;
@@ -79,9 +79,11 @@ export function createMeetingCapture(eventId: string, archive: MeetingArchive) {
                 throw Error('MEETING_CAPTURE_STILL_ACTIVE');
             if (!held)
                 await save({ schema: 'bankeiz.meeting.capture.v1', eventId, runs: [] });
-            if(pendingProof)return retainProof();
-            const files: Record<string, Uint8Array> = { 'meeting.json': new TextEncoder().encode(JSON.stringify({ schema: 'bankeiz.meeting.record.v1', capture: {schema:held!.schema,eventId:held!.eventId,runs:held!.runs}, incompleteCaptureRuns: held!.runs.filter(run => !run.endedAt).map(run => run.id), evidence, interpretations, scope: 'The actual captured intervals and source records. Uncaptured time and disconnected media are not represented as recorded.', sealedAt: new Date().toISOString() }, null, 2)) };
-            for (const [index, run] of held!.runs.entries()) {
+            const request=JSON.stringify({capture:{schema:held!.schema,eventId:held!.eventId,runs:held!.runs},evidence,interpretations});
+            if(pendingProof){const sameInput=pendingProof.input===request,prior=await retainProof();if(sameInput)return prior;}
+            const input=JSON.parse(request) as {capture:{schema:string;eventId:string;runs:CaptureRun[]};evidence:unknown;interpretations:unknown[]};
+            const files: Record<string, Uint8Array> = { 'meeting.json': new TextEncoder().encode(JSON.stringify({ schema: 'bankeiz.meeting.record.v1', ...input, incompleteCaptureRuns: input.capture.runs.filter(run => !run.endedAt).map(run => run.id), scope: 'The actual captured intervals and source records. Uncaptured time and disconnected media are not represented as recorded.', sealedAt: new Date().toISOString() }, null, 2)) };
+            for (const [index, run] of input.capture.runs.entries()) {
                 const parts: Uint8Array<ArrayBuffer>[] = [];
                 for (const part of run.chunks) {
                     const bytes = await archive.restore(part.digest);
@@ -92,8 +94,8 @@ export function createMeetingCapture(eventId: string, archive: MeetingArchive) {
                 files[`recording-${index + 1}.${run.mimeType.includes('mp4') ? 'mp4' : 'webm'}`] = new Uint8Array(await new Blob(parts).arrayBuffer());
             }
             const { zip } = await import('fflate'), bytes = await new Promise<Uint8Array>((resolve, reject) => zip(files, { level: 0 }, (error, value) => error ? reject(error) : resolve(value)));
-            const sourceCall=(evidence as {artifact?:{call?:{id?:unknown;status?:unknown}}})?.artifact?.call;
-            pendingProof={file:await archive.seal(bytes, 'meeting-record.zip'),createdAt:new Date().toISOString(),parts:[],...(typeof sourceCall?.id==='string'&&typeof sourceCall.status==='string'?{call:{id:sourceCall.id,status:sourceCall.status}}:{})};
+            const sourceCall=(input.evidence as {artifact?:{call?:{id?:unknown;status?:unknown}}})?.artifact?.call;
+            pendingProof={file:await archive.seal(bytes, 'meeting-record.zip'),input:request,createdAt:new Date().toISOString(),parts:[],...(typeof sourceCall?.id==='string'&&typeof sourceCall.status==='string'?{call:{id:sourceCall.id,status:sourceCall.status}}:{})};
             return retainProof();
         },
     };
