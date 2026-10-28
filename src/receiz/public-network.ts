@@ -65,7 +65,19 @@ export function parsePublicNetworkPage(source: PublicSource, input: unknown): Pu
   return { source, records: mergePublicRecords([], rows.map(raw => {const record=row(source,raw);return source==='wallet'?applyLedgerFundingContext(record,envelope.fundingContexts):record;})), nextCursor,
     total: digits(rollup.count ?? rollup.totalLedgerEntries, 20), complete: nextCursor === null };
 }
+/** Compare only overlapping admitted records. A repeated head is not new
+ * history, and must not invalidate every retained Ledger projection. */
+function sameRecordedValue(left:unknown,right:unknown):boolean {
+  if(Object.is(left,right))return true;
+  if(!left||!right||typeof left!=='object'||typeof right!=='object'||Array.isArray(left)!==Array.isArray(right))return false;
+  const keys=Object.keys(left),other=Object.keys(right);
+  return keys.length===other.length&&keys.every(key=>Object.prototype.hasOwnProperty.call(right,key)&&sameRecordedValue((left as Record<string,unknown>)[key],(right as Record<string,unknown>)[key]));
+}
+function recordedCoordinate(record:PublicRecord):bigint|null {
+  return record.kaiUpulse?BigInt(record.kaiUpulse):record.pulse?BigInt(record.pulse)*1_000_000n:null;
+}
 export function mergePublicRecords(known: readonly PublicRecord[], incoming: readonly PublicRecord[]): PublicRecord[] {
+  let changed=false;
   const records = new Map(known.map(item => [item.id, item])); for (const item of incoming) {
     const previous=records.get(item.id);let merged=retainLedgerAssetTrade(previous,mergeTransferEvidence(previous,item));
     if(previous?.authority==='account-source-projection'&&item.authority===previous.authority&&item.kind===previous.kind&&item.sourceId===previous.sourceId){
@@ -78,11 +90,23 @@ export function mergePublicRecords(known: readonly PublicRecord[], incoming: rea
         if(typeof before==='string'&&after===undefined)merged={...merged,details:{...merged.details,[key]:before}};
       }
     }
-    records.set(item.id,retainLedgerFundingContext(previous,merged));
+    const retained=retainLedgerFundingContext(previous,merged);
+    if(previous&&sameRecordedValue(previous,retained))continue;
+    changed=true;records.set(item.id,retained);
+  }
+  // Raw callers may supply unordered or duplicate rows. Reuse only when the
+  // complete existing list already has the same canonical ordering/content.
+  if(!changed&&records.size===known.length){
+    let ordered=true,previous:bigint|null=null;
+    for(let i=0;i<known.length;i++){
+      const current=recordedCoordinate(known[i]);
+      if(i>0&&(previous===null&&current!==null||previous!==null&&current!==null&&current>previous)){ordered=false;break;}
+      previous=current;
+    }
+    if(ordered)return known as PublicRecord[];
   }
   return [...records.values()].sort((left, right) => {
-    const a = left.kaiUpulse ? BigInt(left.kaiUpulse) : left.pulse ? BigInt(left.pulse) * 1_000_000n : null;
-    const b = right.kaiUpulse ? BigInt(right.kaiUpulse) : right.pulse ? BigInt(right.pulse) * 1_000_000n : null;
+    const a = recordedCoordinate(left), b = recordedCoordinate(right);
     return a !== null && b !== null && a !== b ? a > b ? -1 : 1 : a !== null && b === null ? -1 : a === null && b !== null ? 1 : 0;
   });
 }

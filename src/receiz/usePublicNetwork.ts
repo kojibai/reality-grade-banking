@@ -31,7 +31,9 @@ export function usePublicNetwork(active = true) {
   const update = (source: PublicSource, patch: Partial<PublicSourceState>) => { const next = { ...sourceState.current, [source]: { ...sourceState.current[source], ...patch } }; sourceState.current = next; setSources(next); };
   const append = (source: PublicSource, incoming: PublicRecord[], replace = false) => {
     const incomingIds = new Set(incoming.map(row => row.id));
-    const next = mergePublicRecords(replace ? rows.current.filter(row => row.source !== source || incomingIds.has(row.id)) : rows.current, incoming); rows.current = next; setRecords(next);
+    const held=rows.current;
+    const removed=replace&&held.some(row=>row.source===source&&!incomingIds.has(row.id));
+    const next = mergePublicRecords(removed ? held.filter(row => row.source !== source || incomingIds.has(row.id)) : held, incoming); rows.current = next; setRecords(next);
   };
   const performSourceRead = useCallback(async (source: PublicSource, phase: 'head' | 'older') => {
     const controller = lifetime.current, before = sourceState.current[source];

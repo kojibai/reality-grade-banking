@@ -234,3 +234,13 @@ it('includes old trade rows restored by a delayed seed while the live head is st
   expect(cache.save.mock.calls.at(-1)![0].inspectionVersion).toBe(PUBLIC_NETWORK_INSPECTION_VERSION);
  });
 });
+
+it('keeps the held record list across unchanged complete source refreshes',async()=>{
+ network.read.mockImplementation(async(source:PublicSource)=>page(source,[source+'-same']));
+ await observe(async read=>{
+  const held=read().records;
+  await act(async()=>{await read().refresh();});
+  expect(read().records).toBe(held);
+  expect(network.read).toHaveBeenCalledTimes(8);
+ });
+});

@@ -13,7 +13,7 @@ it('starts blank after reopening and resumes a retained checkout only when expli
   const click = (text: string) => [...host.querySelectorAll('button')].find(button => button.textContent?.includes(text))!.click();
   try {
     await act(async () => root.render(<LiveDeposit identity={identity} onClose={() => {}} onRefresh={() => {}} />));
-    expect(host.textContent).toContain('Choose what you’re adding.'); expect(host.querySelector('iframe')).toBeNull();
+    expect(host.querySelector('h1')?.textContent).toBe('Add money toyour account.'); expect(host.textContent).toContain('Choose what you’re adding.'); expect(host.querySelector('iframe')).toBeNull();
     act(() => click('Add money'));
     expect(host.querySelector('input')?.value).toBe(''); expect(host.querySelector('iframe')).toBeNull();
     act(() => click('Resume secure checkout'));

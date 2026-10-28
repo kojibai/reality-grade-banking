@@ -71,3 +71,24 @@ it('does not let a generic thin row replace a bound transfer kind',()=>{
  const conflicting=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'bound-kind',entryHash:'b'.repeat(64)}]}).records;
  expect(()=>mergePublicRecords(known,conflicting)).toThrow(/conflict/i);
 });
+
+it('keeps the same retained list and rows when an overlapping head carries unchanged data',()=>{
+ const raw={ok:true,actions:[{id:'newest',actionKind:'record',pulse:200,summary:'Newest'},{id:'older',actionKind:'record',pulse:100,summary:'Older'}]};
+ const held=parsePublicNetworkPage('actions',raw).records;
+ const incoming=parsePublicNetworkPage('actions',structuredClone(raw)).records;
+ expect(mergePublicRecords(held,incoming)).toBe(held);
+ expect(mergePublicRecords(held,[])).toBe(held);
+});
+it('still orders and deduplicates raw retained input before reusing a settled list',()=>{
+ const raw=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'new',actionKind:'record',pulse:2},{id:'old',actionKind:'record',pulse:1}]}).records;
+ const next=mergePublicRecords([raw[1],raw[0],raw[1]],[]);
+ expect(next.map(row=>row.sourceId)).toEqual(['new','old']);
+ expect(mergePublicRecords(next,[])).toBe(next);
+});
+it('retains richer repeated metadata and exact later additions instead of comparing only proof hashes',()=>{
+ const held=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'held',actionKind:'record',pulse:2,entryHash:'a'.repeat(64),summary:'Before'}]}).records;
+ const richer=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'held',actionKind:'record',pulse:2,entryHash:'a'.repeat(64),summary:'After'}]}).records;
+ const changed=mergePublicRecords(held,richer);expect(changed).not.toBe(held);expect(changed[0].title).toBe('After');
+ const newest=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'new',actionKind:'record',pulse:3}]}).records;
+ expect(mergePublicRecords(changed,newest).map(row=>row.sourceId)).toEqual(['new','held']);
+});

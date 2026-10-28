@@ -35,7 +35,7 @@ it('reopens Deposit after admission when returning from card checkout', async ()
   try {
     await act(async () => root.render(<App />));
     expect(location.hash).toBe('#account/deposit');
-    expect(host.querySelector('dialog')?.textContent).toContain('Add to');
+    expect(host.querySelector('dialog h1')?.textContent).toBe('Add money toyour account.');
   } finally { act(() => root.unmount()); history.replaceState(null, '', '/'); }
 });
 
