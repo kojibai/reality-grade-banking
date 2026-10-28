@@ -91,7 +91,7 @@ export function readLedgerValuationTrace(raw:unknown):LedgerFields|null {
    }}catch{/* Unsupported temporal bounds cannot supply model operands. */}
   }
  }
- const seed=select(source.seed,['kind','claimPulse','beat','stepIndex','creatorVerified','chakraDay','kaiSignature','userPhiKey']);if(Object.keys(seed).length)result.seed=seed;
+ const seed=select(source.seed,['kind','claimPulse','beat','stepIndex','frequencyHz','creatorVerified','chakraDay','kaiSignature','userPhiKey']);if(Object.keys(seed).length)result.seed=seed;
  const quote=select(source.quote,['referenceUsd','currentStreakDays','lifetimeUsdSoFar','plannedHoldBeats']);if(Object.keys(quote).length)result.quote=quote;
  // The display model is version-pinned, so a transported policy must exactly
  // match the public implementation before it is included in its trace.

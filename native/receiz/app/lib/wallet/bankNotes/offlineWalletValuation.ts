@@ -48,7 +48,7 @@ export function compileBankOfflineWalletValuation(input:unknown,openingKaiUPulse
   ||typeof basis.membershipDigest!=="string"||!HEX.test(basis.membershipDigest)||basis.projectorDigest!==GLYPH_SETTLEMENT_PROJECTOR_DIGEST)fail();
  uint(basis.lawfulActionPhiMicro);uint(basis.profileSeedPhiMicro);uint(basis.profileSeedUsdCents);
  for(const glyph of basis.publicGlyphs){
-  exact(glyph,["id","livePulseSeed"]);exact(glyph.livePulseSeed,["kind","claimPulse","beat","stepIndex","chakraDay","creatorVerified","kaiSignature","userPhiKey"]);
+  exact(glyph,["id","livePulseSeed"]);exact(glyph.livePulseSeed,["kind","claimPulse","beat","stepIndex","chakraDay","creatorVerified","kaiSignature","userPhiKey",...(Object.hasOwn(glyph.livePulseSeed,"frequencyHz")?["frequencyHz"]:[])]);
   if(typeof glyph.id!=="string"||glyph.id!==glyph.id.trim().toLowerCase()||!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/u.test(glyph.id))fail();
  }
  const held=basis as BankOfflineWalletValuationBasis;

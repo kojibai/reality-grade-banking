@@ -1,4 +1,5 @@
-import { computeIntrinsicUnsigned, type SigilMetadataLite } from '@receiz/sdk/valuation';
+import {publicSigilValuationMetadata} from './market-projection/source';
+import { computeIntrinsicUnsigned } from '@receiz/sdk/valuation';
 import { DEFAULT_ISSUANCE_POLICY, quotePhiForUsd } from './canonical-market-issuance';
 import {ledgerAssetTrade} from './ledger-asset-trade';
 import type { MarketCapSource, MarketPulseSeed, MarketValueRow } from './market-projection/source';
@@ -102,7 +103,7 @@ export function indexLedgerValues(source: MarketCapSource): LedgerValueIndex {
 const pricingFields=['id','source','seed','baseUsdValue','birthUsdValue','marketUsdValue','proofTotalValueUsd','scoreDelta','quoteUsdPerPhi','historyEvaluationPulse'];
 const groupFields=['sport','cardId','rarity'],modelFields=['baseUsdValue','birthUsdValue','marketUsdValue','proofTotalValueUsd','scoreDelta','seed'];
 const observationFields=['at','usdValue','scope','pricedCopies','vaultCopies','sourceHash','collectibleId','claimHash'];
-const itemFields=['id','source','priceUsd','pricePhi','quoteUsdPerPhi','changePct','pricingSourceKey'],seedFields=['kind','claimPulse','beat','stepIndex','creatorVerified','chakraDay','kaiSignature','userPhiKey'];
+const itemFields=['id','source','priceUsd','pricePhi','quoteUsdPerPhi','changePct','pricingSourceKey'],seedFields=['kind','claimPulse','beat','stepIndex','frequencyHz','creatorVerified','chakraDay','kaiSignature','userPhiKey'];
 const copyFields=['collectibleId','claimHash','sealedAt','birthUsdValue','proofValueUsd','currentValueUsd','valuationPulse'],quoteFields=['at','usdValue','basis','pulse'];
 function sameFields(a:unknown,b:unknown,keys:readonly string[]){if(a===b)return true;if(!a||!b)return false;const left=a as Record<string,unknown>,right=b as Record<string,unknown>;return keys.every(key=>left[key]===right[key]);}
 function sameList<T>(a:readonly T[]|undefined,b:readonly T[]|undefined,equal:(a:T,b:T)=>boolean):boolean{return a===b||!!a&&!!b&&a.length===b.length&&a.every((value,i)=>equal(value,b[i]));}
@@ -146,7 +147,15 @@ export function ledgerProofValueSeed(record:PublicRecord,index:LedgerValueIndex|
  const live=row?.source==='market-desk-live-asset'?row.marketItem?.livePulseSeed:null;
  if(!carried)return live??null;
  if(record.valueOperands?.assetId&&record.valueOperands.assetId!==carried.assetId||record.valueOperands?.marketItemId&&record.valueOperands.marketItemId!==carried.marketItemId||record.evidence.objectId&&record.evidence.objectId!==carried.assetId||record.source==='proofs'&&record.sourceId!==carried.marketItemId)return null;
- if(live&&(row?.seed!==carried.assetId||row.marketItem?.id!==carried.marketItemId||JSON.stringify(publicMarketPulseSeed(live,String(live.claimPulse)))!==JSON.stringify(carried.seed)))return null;
+ if(live){
+  const selected=publicMarketPulseSeed(live,String(live.claimPulse));
+  if(!selected||row?.seed!==carried.assetId||row.marketItem?.id!==carried.marketItemId)return null;
+  const {frequencyHz:currentFrequency,...currentCore}=selected,{frequencyHz:recordedFrequency,...recordedCore}=carried.seed;
+  if(JSON.stringify(currentCore)!==JSON.stringify(recordedCore)||currentFrequency!==undefined&&recordedFrequency!==undefined&&currentFrequency!==recordedFrequency)return null;
+  // Complete a public derived valuation input only. Executed amounts are read
+  // separately; an explicit conflicting operand is never replaced.
+  if(recordedFrequency===undefined&&currentFrequency!==undefined)return {...carried.seed,frequencyHz:currentFrequency};
+ }
  return carried.seed;
 }
 export function ledgerCardHistory(record:PublicRecord,index:LedgerValueIndex|null,row=ledgerValueRow(record,index)):SportsCopyHistory|null{
@@ -160,7 +169,7 @@ export function ledgerCardHistory(record:PublicRecord,index:LedgerValueIndex|nul
 }
 function valueAtPulse(seed: MarketPulseSeed, pulse: number): string | null {
   if (!Number.isSafeInteger(pulse) || pulse < seed.claimPulse) return null;
-  const meta = { pulse: seed.claimPulse, kaiPulse: seed.claimPulse, beat: seed.beat, stepIndex: seed.stepIndex, stepsPerBeat: 44, quality: 'high', creatorVerified: seed.creatorVerified, creatorRep: 0, chakraDay: seed.chakraDay ?? undefined, kaiSignature: seed.kaiSignature ?? undefined, userPhiKey: seed.userPhiKey ?? undefined } as SigilMetadataLite;
+  const meta = publicSigilValuationMetadata(seed);
   const computed = computeIntrinsicUnsigned(meta, pulse);
   const quote = quotePhiForUsd({ meta, nowPulse: pulse, usd: 100, currentStreakDays: 0, lifetimeUsdSoFar: 0, plannedHoldBeats: 0 }, DEFAULT_ISSUANCE_POLICY, computed);
   const phi = computed.unsigned.valuePhi;

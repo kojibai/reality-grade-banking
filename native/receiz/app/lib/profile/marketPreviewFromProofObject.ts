@@ -1,3 +1,4 @@
+import {sigilFrequencyFromMoment} from "../market/sigilFrequency";
 import { publicOriginalMetricEnvelope } from "@/app/lib/market/compose";
 import type { MarketDeskPulseValueSeed } from "@/app/lib/market/types";
 import type { ProfileOriginal } from "@/app/lib/profile/types";
@@ -36,6 +37,7 @@ export function deriveProfileOriginalPulseValueSeedFromProofObject(args: {
   return {
     kind: "sigil",
     claimPulse: creationPulse,
+    frequencyHz: sigilFrequencyFromMoment(originalMoment),
     beat: originalMoment.beat,
     stepIndex: originalMoment.stepIndex,
     chakraDay: originalMoment.chakraDay ?? null,
@@ -46,6 +48,7 @@ export function deriveProfileOriginalPulseValueSeedFromProofObject(args: {
 }
 
 export function deriveProfileOriginalMarketPreviewFromProofCoordinates(args: {
+  frequencyHz?: number;
   originalId: string;
   createdAt: string;
   pulse: string | null | undefined;
@@ -80,6 +83,7 @@ export function deriveProfileOriginalMarketPreviewFromProofCoordinates(args: {
   const livePulseSeed: MarketDeskPulseValueSeed = {
     kind: "sigil",
     claimPulse: creationPulse,
+    frequencyHz: args.frequencyHz ?? sigilFrequencyFromMoment(originalMoment),
     beat: originalMoment.beat,
     stepIndex: originalMoment.stepIndex,
     chakraDay: originalMoment.chakraDay ?? null,
@@ -96,6 +100,7 @@ export function deriveProfileOriginalMarketPreviewFromProofCoordinates(args: {
     quality: "high",
     creatorVerified: args.creatorVerified,
     creatorRep: 0,
+    frequencyHz: livePulseSeed.frequencyHz,
     chakraDay: originalMoment.chakraDay,
     kaiSignature: creatorUsername || undefined,
     userPhiKey: livePulseSeed.userPhiKey ?? undefined,
@@ -160,6 +165,7 @@ export function deriveProfileOriginalMarketPreviewFromProofObject(args: {
   valuationKaiPulse?: number | string | null;
 }): NonNullable<ProfileOriginal["marketPreview"]> | null {
   return deriveProfileOriginalMarketPreviewFromProofCoordinates({
+    frequencyHz: args.original.marketPreview?.livePulseSeed?.frequencyHz,
     originalId: args.original.id,
     createdAt: args.original.createdAt,
     pulse: args.original.pulse,
@@ -182,7 +188,7 @@ export function attachMissingProfileOriginalMarketPreviewsFromProofObjects(args:
   valuationKaiPulse?: number | string | null;
 }): ProfileOriginal[] {
   return args.originals.map((original) => {
-    if (!original.showOnProfile || original.marketPreview != null) return original;
+    if (!original.showOnProfile || original.marketPreview != null && (original.marketPreview.livePulseSeed?.kind !== "sigil" || original.marketPreview.livePulseSeed.frequencyHz !== undefined)) return original;
 
     return {
       ...original,

@@ -26,6 +26,7 @@ function valuationMetaFromPulseSeed(seed: MarketDeskPulseValueSeed): SigilMetada
     quality: "high",
     creatorVerified: seed.creatorVerified,
     creatorRep: 0,
+    frequencyHz: seed.frequencyHz,
     chakraDay: seed.chakraDay ?? undefined,
     kaiSignature: seed.kaiSignature ?? undefined,
     userPhiKey: seed.userPhiKey ?? undefined,

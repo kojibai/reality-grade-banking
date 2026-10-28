@@ -7,7 +7,7 @@ import type {CompositeBalanceObject} from '../../receiz/composite-wallet-history
 import type {SharedWallet} from '../../receiz/shared-wallet';
 import type {WalletObservation} from '../../receiz/wallet-observation';
 import type {AccountStatement} from '../../receiz/account-proof-statement';
-const json=(value:unknown)=>JSON.stringify(value,null,2);
+const json=(value:unknown)=>JSON.stringify(value,(key,value)=>key==='frequencyHz'&&value==='undefined'?'Not carried in this calculation input; canonical neutral resonance is 0.5':value,2);
 function Depth({title,children,className=''}:{title:string;children:()=>ReactNode;className?:string}){const[open,setOpen]=useState(false);return <details className={className} open={open}><summary onClick={event=>{event.preventDefault();setOpen(value=>!value);}}>{title}<ChevronRight size={14} aria-hidden="true"/></summary>{open&&children()}</details>;}
 function ProofReference({value}:{value:BalanceOriginalProofReference}){const href=balanceProofHref(value);return <dl className="balance-proof-reference"><div><dt>Enclosing source SHA-256</dt><dd><code>{value.sourceSha256}</code></dd></div><div><dt>Own PBI receipt hash</dt><dd><code>{value.pbiReceiptHash}</code></dd></div>{href&&<div><dt>Source inspection</dt><dd><a href={href} target="_blank" rel="noreferrer">Inspect original source<ArrowUpRight size={13} aria-hidden="true"/></a></dd></div>}</dl>;}
 function OriginalDetails({value}:{value:CompositeBalanceObject}){

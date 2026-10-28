@@ -4,7 +4,7 @@ import type {SigilMetadataLite} from '@receiz/sdk/valuation';
 import {computeIntrinsicUnsigned as computeChartUnsigned} from './generated/chart-valuation.mjs';
 import {quoteReceizDisplayUsdV122} from '@receiz/sdk';
 import {quotePhiForUsd,DEFAULT_ISSUANCE_POLICY} from './canonical-market-issuance';
-import {publicMarketPulseSeed,type MarketPulseSeed} from './market-projection/source';
+import {publicMarketPulseSeed,publicSigilValuationMetadata,type MarketPulseSeed} from './market-projection/source';
 import {historicalWalletUsdRate,type WalletRateCalculation} from './historical-wallet';
 import {walletPointTime,type WalletPoint} from './wallet-series';
 import {sampleChartIndices} from '../core/chart-history';
@@ -35,7 +35,7 @@ function compileObjects(rows:readonly {id:string;proof?:BalanceOriginalProofRefe
   if(!identifier(object.id)||ids.has(object.id)||!seed||!active&&(!Array.isArray(object.intervals)||object.intervals.length>100000))throw Error('COMPOSITE_HISTORY_OBJECT_INVALID');ids.add(object.id);
   const birth=BigInt(seed.claimPulse)*1000000n;let last=-1n;
   const intervals=active?null:object.intervals!.map(interval=>{const from=kai(interval.fromKaiUPulse),to=interval.toKaiUPulse===null?end+1n:kai(interval.toKaiUPulse);if(from<birth||from> end||from<last||to<=from||to>end+1n)throw Error('COMPOSITE_HISTORY_INTERVAL_INVALID');last=to;coordinates.add(from);if(to<=end)coordinates.add(to);return {from,to};});
-  const meta={pulse:seed.claimPulse,kaiPulse:seed.claimPulse,beat:seed.beat,stepIndex:seed.stepIndex,stepsPerBeat:44,quality:'high',creatorVerified:seed.creatorVerified,creatorRep:0,chakraDay:seed.chakraDay??undefined,kaiSignature:seed.kaiSignature??undefined,userPhiKey:seed.userPhiKey??undefined}as SigilMetadataLite;
+  const meta=publicSigilValuationMetadata(seed);
   return {id:object.id,proof:readBalanceOriginalProofReference(object.proof,object.id),intervals,meta,prices:new Map<number,{phi:bigint;usd:bigint}>()};
  });
 }

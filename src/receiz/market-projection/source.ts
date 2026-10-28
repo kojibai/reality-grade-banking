@@ -1,8 +1,12 @@
 import {publicSportsSealedCopies,publicSportsSealedBirths,type MarketSealedCopy,type MarketSealedBirth} from './sealed-copies.js';
 import {boundSportsHistoryObservation,publicSportsGroupIdentity,publicSportsHistorySnapshot,sameSportsPricingOperands,type SportsGroupIdentity,type SportsHistoryObservation,type SportsHistorySnapshot} from './sports-observations.js';
 import {marketPulseAtOrAfterTime} from './sealed-copies.js';
+import type {SigilMetadataLite} from '@receiz/sdk/valuation';
 /** Public Proof Graph display source, never ownership, cash backing or execution authority. */
-export interface MarketPulseSeed { kind: string; claimPulse: number; beat: number; stepIndex: number; creatorVerified: boolean; chakraDay?: string | null; kaiSignature?: string | null; userPhiKey?: string | null; }
+export interface MarketPulseSeed { kind: string; claimPulse: number; beat: number; stepIndex: number; creatorVerified: boolean; frequencyHz?:number; chakraDay?: string | null; kaiSignature?: string | null; userPhiKey?: string | null; }
+/** The same carried operands for public value, balance and Ledger inspection.
+ * Older seeds remain exact: an omitted frequency is never invented here. */
+export function publicSigilValuationMetadata(seed:MarketPulseSeed):SigilMetadataLite{return {pulse:seed.claimPulse,kaiPulse:seed.claimPulse,beat:seed.beat,stepIndex:seed.stepIndex,stepsPerBeat:44,quality:'high',creatorVerified:seed.creatorVerified,creatorRep:0,frequencyHz:seed.frequencyHz,chakraDay:seed.chakraDay??undefined,kaiSignature:seed.kaiSignature??undefined,userPhiKey:seed.userPhiKey??undefined};}
 export interface MarketValueRow { id: string; source: 'market-desk-live-asset' | 'sports-economy-card'; baseUsdValue: number; birthUsdValue: number; marketUsdValue: number; proofTotalValueUsd: number; scoreDelta: number; seed: string; quoteUsdPerPhi?: number; sportsGroup?:SportsGroupIdentity;sealedCopies?:MarketSealedCopy[];sealedBirths?:MarketSealedBirth[];historyObservation?:SportsHistoryObservation;historyEvaluationPulse?:number;marketItem?: { id: string; source: string; priceUsd: number; pricePhi: number; quoteUsdPerPhi: number; changePct: number; pricingSourceKey?: string; livePulseSeed?: MarketPulseSeed | null; }; }
 export interface MarketCapSource { schema: 'receiz.proof_graph.market_cap_projection.v1'; source: string; proofObjectHash: string; generatedAt: string; firstIssuancePulse: number; serverPulse: number; currentUsd: number; cardsInCirculation: number; sportsCardsPriced: number; marketAssetsPriced: number; valueRows: MarketValueRow[];unpricedSealedBirths?:MarketSealedBirth[];sportsHistorySnapshot?:SportsHistorySnapshot;sportsHistoryEvaluationPulse?:number;sourceEvaluation?:{pulse:number;usdValue:number;sourceHash:string};undatedHistory?:{rows:number;undatedRows?:number;birthOnlyRows?:number;unpricedCopies?:number;observationPulse:number;observationUsd:number;sourceReportedTotalUsd:number;modelPulse:number}; }
 /** Existing public valuation operands only; this display input grants no rights. */
@@ -10,7 +14,8 @@ export function publicMarketPulseSeed(input:unknown,pulse:unknown):MarketPulseSe
  const seed=input as MarketPulseSeed|null;
  if(!seed||seed.kind!=='sigil'||typeof pulse!=='string'||!/^\d{1,10}$/.test(pulse)||!Number.isSafeInteger(seed.claimPulse)||seed.claimPulse<0||seed.claimPulse>1e10||seed.claimPulse!==Number(pulse)||!Number.isInteger(seed.beat)||seed.beat<0||seed.beat>35||!Number.isInteger(seed.stepIndex)||seed.stepIndex<0||seed.stepIndex>43||typeof seed.creatorVerified!=='boolean')return;
  for(const key of ['chakraDay','kaiSignature','userPhiKey']as const)if(seed[key]!=null&&(typeof seed[key]!=='string'||seed[key]!.length>(key==='chakraDay'?64:512)))return;
- return {kind:seed.kind,claimPulse:seed.claimPulse,beat:seed.beat,stepIndex:seed.stepIndex,creatorVerified:seed.creatorVerified,...Object.fromEntries((['chakraDay','kaiSignature','userPhiKey']as const).filter(key=>seed[key]!==undefined).map(key=>[key,seed[key]]))};
+ if(seed.frequencyHz!==undefined&&(typeof seed.frequencyHz!=='number'||!Number.isFinite(seed.frequencyHz)||seed.frequencyHz<=0))return;
+ return {kind:seed.kind,claimPulse:seed.claimPulse,beat:seed.beat,stepIndex:seed.stepIndex,creatorVerified:seed.creatorVerified,...(seed.frequencyHz!==undefined?{frequencyHz:seed.frequencyHz}:{}),...Object.fromEntries((['chakraDay','kaiSignature','userPhiKey']as const).filter(key=>seed[key]!==undefined).map(key=>[key,seed[key]]))};
 }
 const finite = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= 1e13;
 const count = (v: unknown) => Number.isSafeInteger(v) && Number(v) >= 0;
@@ -82,7 +87,7 @@ export function parseMarketCapSource(input: unknown): MarketCapSource {
       market++; const item = row.marketItem;
       if (!item || !text(item.id) || !text(item.source) || ![item.priceUsd, item.pricePhi, item.quoteUsdPerPhi, item.changePct].every(finite) || item.priceUsd < 0 || item.pricePhi < 0 || item.quoteUsdPerPhi <= 0) throw new Error('Public market valuation basis is unavailable.');
       const meta = item.livePulseSeed;
-      if (meta && (meta.kind !== 'sigil' || !count(meta.claimPulse) || !count(meta.beat) || meta.beat > 35 || !count(meta.stepIndex) || meta.stepIndex > 43 || typeof meta.creatorVerified !== 'boolean')) throw new Error('Public valuation metadata is invalid.');
+      if (meta && (meta.kind !== 'sigil' || !count(meta.claimPulse) || !count(meta.beat) || meta.beat > 35 || !count(meta.stepIndex) || meta.stepIndex > 43 || typeof meta.creatorVerified !== 'boolean' || meta.frequencyHz !== undefined && (typeof meta.frequencyHz !== 'number' || !Number.isFinite(meta.frequencyHz) || meta.frequencyHz <= 0))) throw new Error('Public valuation metadata is invalid.');
     } else if (row.source === 'sports-economy-card') sports++;
     else throw new Error('Unknown public capitalization source.');
   }

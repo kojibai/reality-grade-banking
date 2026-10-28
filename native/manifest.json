@@ -492,7 +492,7 @@
     },
     {
       "path": "packages/receiz-sdk/src/accountFinancialMath.generated.js",
-      "sha256": "be8e6295d224dfc21d6ce060494779339c479af2ce89e70e6e37da5770586cd6"
+      "sha256": "8cbbc584776501072ed1027bc3019354a84a4f3c466c759bf92f9b866aa3d9ec"
     },
     {
       "path": "packages/receiz-sdk/src/accountFinancialPublication.ts",
@@ -5949,6 +5949,24 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/components/KaiSigil/freq.ts",
+      "sha256": "f2a1b483c1db2fbe1b6cf2cc3348e67b2d455d25edc41da76da7b898588632e1",
+      "bytes": 346,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/components/KaiSigil/step.ts",
+      "sha256": "83c98390477b4dad7bba18daad3443156f3eb02159b25408278e1dfb9aa06a23",
+      "bytes": 1136,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/components/KaiSigil/types.ts",
+      "sha256": "9d367f2583c015fe1eaa32168638af36672ca616ef2c1eae81a42269b30c272e",
+      "bytes": 3444,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/components/pwa/sessionSync.ts",
       "sha256": "e3807257be47f272912c67085f4408169970c71ee5212cb668b82a33bde2e3ca",
       "bytes": 2875,
@@ -6484,8 +6502,8 @@
     },
     {
       "path": "receiz/app/lib/market/marketPulsePricing.ts",
-      "sha256": "bf72e29c9d95b3f166268882b8f6c708ed4b88128b5f3a879f0e56ed44e703a8",
-      "bytes": 6326,
+      "sha256": "35a1e011c39afcbdebd4affb27fe91cd39da147921bf37d4fd1d2f06e2cb809c",
+      "bytes": 6361,
       "mode": 420
     },
     {
@@ -6555,9 +6573,21 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/market/sigilFrequency.ts",
+      "sha256": "de9efd7ebcf7a141f1497d85abd4fe4c9aa2040d280f912a9e0c4ccbda31b0f0",
+      "bytes": 763,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/market/snapshotContinuity.ts",
       "sha256": "57728cbc76f42544913fd8351642d2322da272a1ee6abe2466fb382aff852699",
       "bytes": 43230,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/market/types.ts",
+      "sha256": "4e170a220e725cdd7aac7ec74a20f3ae8a9f7227c9675dbad81651927927c72a",
+      "bytes": 17038,
       "mode": 420
     },
     {
@@ -6664,8 +6694,8 @@
     },
     {
       "path": "receiz/app/lib/profile/marketPreviewFromProofObject.ts",
-      "sha256": "3959dac6f75d20665f6c621b2dcd86ace1b757ecc082e91f096b92cf5353ab60",
-      "bytes": 7110,
+      "sha256": "9400ba0380422c880d0a94ccc135c6d6ef986c5a8c23b7fa95f1f443eda84dad",
+      "bytes": 7583,
       "mode": 420
     },
     {
@@ -7412,14 +7442,14 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/offlineMarketPricing.ts",
-      "sha256": "57158dd5f32c030683598e58c70474f34138c1c7a814d3cc55cd0316cee6ccb3",
-      "bytes": 5903,
+      "sha256": "586c55088e97b990e1a1c5b1566fb7c30f55874f0796485a707285121f8f7ec3",
+      "bytes": 6095,
       "mode": 420
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/offlineWalletValuation.ts",
-      "sha256": "504c5c243e5df2815af60e3d934f286d0f6a02e6cb2372bec3119ba43d6ec7ca",
-      "bytes": 8006,
+      "sha256": "639578519aff527280b6b2e8f2e52c4864c94466bd6dd275c7d8bfff8a2c1e24",
+      "bytes": 8079,
       "mode": 420
     },
     {
@@ -7472,8 +7502,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/glyphEconomyProjection.ts",
-      "sha256": "0cd85a7879ea739e184e43bea3b398c4f7bb0389707a956a6ad60c3e8b4f6017",
-      "bytes": 7603,
+      "sha256": "a0888c8e7df7db7b19f613bf332c8cdd9c58e1b0390ee419aa4d311abe2b38d9",
+      "bytes": 7978,
       "mode": 420
     },
     {
@@ -8258,8 +8288,8 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/accountFinancialMath.generated.js",
-      "sha256": "be8e6295d224dfc21d6ce060494779339c479af2ce89e70e6e37da5770586cd6",
-      "bytes": 35273,
+      "sha256": "8cbbc584776501072ed1027bc3019354a84a4f3c466c759bf92f9b866aa3d9ec",
+      "bytes": 35781,
       "mode": 420
     },
     {
@@ -16690,7 +16720,7 @@
       "id": "bank-local-financial-accountFinancialMath.generated",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialMath.generated.js",
       "baseSha256": null,
-      "sha256": "be8e6295d224dfc21d6ce060494779339c479af2ce89e70e6e37da5770586cd6",
+      "sha256": "8cbbc584776501072ed1027bc3019354a84a4f3c466c759bf92f9b866aa3d9ec",
       "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
       "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
     },
@@ -16721,7 +16751,7 @@
     {
       "id": "bank-local-financial-app-lib-market-marketPulsePricing.ts",
       "path": "receiz/app/lib/market/marketPulsePricing.ts",
-      "sha256": "bf72e29c9d95b3f166268882b8f6c708ed4b88128b5f3a879f0e56ed44e703a8",
+      "sha256": "35a1e011c39afcbdebd4affb27fe91cd39da147921bf37d4fd1d2f06e2cb809c",
       "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
       "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
     },
@@ -16756,14 +16786,14 @@
     {
       "id": "bank-local-financial-app-lib-wallet-bankNotes-offlineMarketPricing.ts",
       "path": "receiz/app/lib/wallet/bankNotes/offlineMarketPricing.ts",
-      "sha256": "57158dd5f32c030683598e58c70474f34138c1c7a814d3cc55cd0316cee6ccb3",
+      "sha256": "586c55088e97b990e1a1c5b1566fb7c30f55874f0796485a707285121f8f7ec3",
       "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
       "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
     },
     {
       "id": "bank-local-financial-app-lib-wallet-bankNotes-offlineWalletValuation.ts",
       "path": "receiz/app/lib/wallet/bankNotes/offlineWalletValuation.ts",
-      "sha256": "504c5c243e5df2815af60e3d934f286d0f6a02e6cb2372bec3119ba43d6ec7ca",
+      "sha256": "639578519aff527280b6b2e8f2e52c4864c94466bd6dd275c7d8bfff8a2c1e24",
       "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
       "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
     },
@@ -16837,6 +16867,94 @@
       "baseSha256": "405abf7db484d280a25279489721635dba76add46a1ccfa232dd7f5c25fe9eae",
       "sha256": "499ea5db4ef4a99fe15b8bb153325ea5b67833e45d59fde19b1a51fffdc6f2e6",
       "purpose": "Compose the existing local PBI authorship verifier with exact imported source and the existing sealed Showcase child. Preserve original source, account entry, ownership, chronology and public-profile creation. No new issuer or registry."
+    },
+    {
+      "id": "bank-original-frequency-app-lib-market-types.ts",
+      "path": "receiz/app/lib/market/types.ts",
+      "baseSha256": null,
+      "sha256": "4e170a220e725cdd7aac7ec74a20f3ae8a9f7227c9675dbad81651927927c72a",
+      "sourceCommit": "df7cd0d231f9665220a647c606c80a68f44e7538",
+      "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
+    },
+    {
+      "id": "bank-original-frequency-app-lib-market-marketPulsePricing.ts",
+      "path": "receiz/app/lib/market/marketPulsePricing.ts",
+      "baseSha256": "bf72e29c9d95b3f166268882b8f6c708ed4b88128b5f3a879f0e56ed44e703a8",
+      "sha256": "35a1e011c39afcbdebd4affb27fe91cd39da147921bf37d4fd1d2f06e2cb809c",
+      "sourceCommit": "df7cd0d231f9665220a647c606c80a68f44e7538",
+      "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
+    },
+    {
+      "id": "bank-original-frequency-app-lib-market-sigilFrequency.ts",
+      "path": "receiz/app/lib/market/sigilFrequency.ts",
+      "baseSha256": null,
+      "sha256": "de9efd7ebcf7a141f1497d85abd4fe4c9aa2040d280f912a9e0c4ccbda31b0f0",
+      "sourceCommit": "df7cd0d231f9665220a647c606c80a68f44e7538",
+      "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
+    },
+    {
+      "id": "bank-original-frequency-app-lib-profile-marketPreviewFromProofObject.ts",
+      "path": "receiz/app/lib/profile/marketPreviewFromProofObject.ts",
+      "baseSha256": "3959dac6f75d20665f6c621b2dcd86ace1b757ecc082e91f096b92cf5353ab60",
+      "sha256": "9400ba0380422c880d0a94ccc135c6d6ef986c5a8c23b7fa95f1f443eda84dad",
+      "sourceCommit": "df7cd0d231f9665220a647c606c80a68f44e7538",
+      "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
+    },
+    {
+      "id": "bank-original-frequency-app-lib-wallet-glyphEconomyProjection.ts",
+      "path": "receiz/app/lib/wallet/glyphEconomyProjection.ts",
+      "baseSha256": "0cd85a7879ea739e184e43bea3b398c4f7bb0389707a956a6ad60c3e8b4f6017",
+      "sha256": "a0888c8e7df7db7b19f613bf332c8cdd9c58e1b0390ee419aa4d311abe2b38d9",
+      "sourceCommit": "df7cd0d231f9665220a647c606c80a68f44e7538",
+      "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
+    },
+    {
+      "id": "bank-original-frequency-app-lib-wallet-bankNotes-offlineWalletValuation.ts",
+      "path": "receiz/app/lib/wallet/bankNotes/offlineWalletValuation.ts",
+      "baseSha256": "504c5c243e5df2815af60e3d934f286d0f6a02e6cb2372bec3119ba43d6ec7ca",
+      "sha256": "639578519aff527280b6b2e8f2e52c4864c94466bd6dd275c7d8bfff8a2c1e24",
+      "sourceCommit": "df7cd0d231f9665220a647c606c80a68f44e7538",
+      "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
+    },
+    {
+      "id": "bank-original-frequency-app-lib-wallet-bankNotes-offlineMarketPricing.ts",
+      "path": "receiz/app/lib/wallet/bankNotes/offlineMarketPricing.ts",
+      "baseSha256": "57158dd5f32c030683598e58c70474f34138c1c7a814d3cc55cd0316cee6ccb3",
+      "sha256": "586c55088e97b990e1a1c5b1566fb7c30f55874f0796485a707285121f8f7ec3",
+      "sourceCommit": "df7cd0d231f9665220a647c606c80a68f44e7538",
+      "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
+    },
+    {
+      "id": "bank-original-frequency-app-components-KaiSigil-freq.ts",
+      "path": "receiz/app/components/KaiSigil/freq.ts",
+      "baseSha256": null,
+      "sha256": "f2a1b483c1db2fbe1b6cf2cc3348e67b2d455d25edc41da76da7b898588632e1",
+      "sourceCommit": "df7cd0d231f9665220a647c606c80a68f44e7538",
+      "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
+    },
+    {
+      "id": "bank-original-frequency-app-components-KaiSigil-step.ts",
+      "path": "receiz/app/components/KaiSigil/step.ts",
+      "baseSha256": null,
+      "sha256": "83c98390477b4dad7bba18daad3443156f3eb02159b25408278e1dfb9aa06a23",
+      "sourceCommit": "df7cd0d231f9665220a647c606c80a68f44e7538",
+      "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
+    },
+    {
+      "id": "bank-original-frequency-app-components-KaiSigil-types.ts",
+      "path": "receiz/app/components/KaiSigil/types.ts",
+      "baseSha256": null,
+      "sha256": "9d367f2583c015fe1eaa32168638af36672ca616ef2c1eae81a42269b30c272e",
+      "sourceCommit": "df7cd0d231f9665220a647c606c80a68f44e7538",
+      "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
+    },
+    {
+      "id": "bank-original-frequency-packages-receiz-sdk-src-accountFinancialMath.generated.js",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialMath.generated.js",
+      "baseSha256": "be8e6295d224dfc21d6ce060494779339c479af2ce89e70e6e37da5770586cd6",
+      "sha256": "8cbbc584776501072ed1027bc3019354a84a4f3c466c759bf92f9b866aa3d9ec",
+      "sourceCommit": "df7cd0d231f9665220a647c606c80a68f44e7538",
+      "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
     }
   ],
   "historicalValuation": {
@@ -16854,6 +16972,14 @@
     {
       "path": "app/components/KaiSigil/constants.ts",
       "sha256": "49a5c16ef9b0da5dc1bda670d0da5d4512ce5131b4184a0ad4551f7a15bf242c"
+    },
+    {
+      "path": "app/components/KaiSigil/freq.ts",
+      "sha256": "f2a1b483c1db2fbe1b6cf2cc3348e67b2d455d25edc41da76da7b898588632e1"
+    },
+    {
+      "path": "app/components/KaiSigil/step.ts",
+      "sha256": "83c98390477b4dad7bba18daad3443156f3eb02159b25408278e1dfb9aa06a23"
     },
     {
       "path": "app/components/pwa/sessionSync.ts",
@@ -17240,6 +17366,10 @@
       "sha256": "71229ff0a57cff916128b3c0a87adb872b5fad9f5279ede44955fcf4f23f2043"
     },
     {
+      "path": "app/lib/market/sigilFrequency.ts",
+      "sha256": "de9efd7ebcf7a141f1497d85abd4fe4c9aa2040d280f912a9e0c4ccbda31b0f0"
+    },
+    {
       "path": "app/lib/market/snapshotContinuity.ts",
       "sha256": "57728cbc76f42544913fd8351642d2322da272a1ee6abe2466fb382aff852699"
     },
@@ -17309,7 +17439,7 @@
     },
     {
       "path": "app/lib/profile/marketPreviewFromProofObject.ts",
-      "sha256": "3959dac6f75d20665f6c621b2dcd86ace1b757ecc082e91f096b92cf5353ab60"
+      "sha256": "9400ba0380422c880d0a94ccc135c6d6ef986c5a8c23b7fa95f1f443eda84dad"
     },
     {
       "path": "app/lib/profile/materialProjection.client.ts",
@@ -17781,7 +17911,7 @@
     },
     {
       "path": "app/lib/wallet/glyphEconomyProjection.ts",
-      "sha256": "0cd85a7879ea739e184e43bea3b398c4f7bb0389707a956a6ad60c3e8b4f6017"
+      "sha256": "a0888c8e7df7db7b19f613bf332c8cdd9c58e1b0390ee419aa4d311abe2b38d9"
     },
     {
       "path": "app/lib/wallet/kaiSigilWatermark.ts",

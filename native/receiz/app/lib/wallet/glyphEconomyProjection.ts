@@ -42,6 +42,7 @@ export type GlyphEconomyProjection = {
 };
 
 type CanonicalGlyphSeed = {
+  frequencyHz?: number;
   id: string;
   kind: "sigil";
   claimPulse: number;
@@ -84,6 +85,7 @@ function canonicalGlyphSeed(glyph: GlyphEconomyPublicSeed): CanonicalGlyphSeed |
   if (typeof seed.creatorVerified !== "boolean") return null;
   if (seed.kaiSignature !== null && typeof seed.kaiSignature !== "string") return null;
   if (seed.userPhiKey !== null && typeof seed.userPhiKey !== "string") return null;
+  if (seed.frequencyHz !== undefined && (typeof seed.frequencyHz !== "number" || !Number.isFinite(seed.frequencyHz) || seed.frequencyHz <= 0)) return null;
 
   return {
     id,
@@ -95,6 +97,7 @@ function canonicalGlyphSeed(glyph: GlyphEconomyPublicSeed): CanonicalGlyphSeed |
     creatorVerified: seed.creatorVerified,
     kaiSignature: optionalText(seed.kaiSignature),
     userPhiKey: optionalText(seed.userPhiKey),
+    ...(seed.frequencyHz !== undefined ? {frequencyHz:seed.frequencyHz} : {}),
   };
 }
 
@@ -110,6 +113,7 @@ function publicSeedFromCanonical(seed: CanonicalGlyphSeed): GlyphEconomyPublicSe
       creatorVerified: seed.creatorVerified,
       kaiSignature: seed.kaiSignature,
       userPhiKey: seed.userPhiKey,
+      ...(seed.frequencyHz !== undefined ? {frequencyHz:seed.frequencyHz} : {}),
     },
   };
 }
@@ -124,6 +128,7 @@ function valuationMeta(seed: MarketDeskPulseValueSeed): SigilMetadataLite {
     quality: "high",
     creatorVerified: seed.creatorVerified,
     creatorRep: 0,
+    frequencyHz: seed.frequencyHz,
     chakraDay: seed.chakraDay ?? undefined,
     kaiSignature: seed.kaiSignature ?? undefined,
     userPhiKey: seed.userPhiKey ?? undefined,
