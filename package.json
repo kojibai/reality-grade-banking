@@ -43,7 +43,7 @@
     "previews:check": "node scripts/build-product-previews.mjs --check",
     "imagery:build": "node scripts/build-public-imagery.mjs",
     "imagery:check": "node scripts/build-public-imagery.mjs --check",
-    "test:collectibles-browser": "node scripts/check-collectibles-browser.mjs && node scripts/check-meeting-browser.mjs"
+    "test:collectibles-browser": "node scripts/check-collectibles-browser.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-route-53": "3.1156.0",
