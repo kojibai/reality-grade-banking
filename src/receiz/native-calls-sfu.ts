@@ -5,7 +5,7 @@ export interface NativeSfuRoom {
   on(event:string,listener:(...args:unknown[])=>void):unknown;
   connect(url:string,token:string):Promise<void>;
   disconnect():void|Promise<void>;
-  localParticipant:{publishTrack(track:MediaStreamTrack,options?:Record<string,unknown>):Promise<unknown>;unpublishTrack?(track:MediaStreamTrack,stopOnUnpublish?:boolean):Promise<unknown>};
+  localParticipant:{publishData?(data:Uint8Array,options?:{reliable?:boolean}):Promise<unknown>;publishTrack(track:MediaStreamTrack,options?:Record<string,unknown>):Promise<unknown>;unpublishTrack?(track:MediaStreamTrack,stopOnUnpublish?:boolean):Promise<unknown>};
 }
 export interface NativeSfuClient {
   Room:new(options?:Record<string,unknown>)=>NativeSfuRoom;

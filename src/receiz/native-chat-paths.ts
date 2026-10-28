@@ -1,7 +1,7 @@
 const UUID = '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}';
 // Keep ten seconds of cleanup margin inside the existing120s deployment.
 export const NATIVE_CHAT_STREAM_TIMEOUT_MS = 110_000;
-const conversation = new RegExp(`^/api/chat/conversations/${UUID}/(messages(?:/stream)?|typing(?:/stream)?|ai|calls(?:/${UUID}(?:/(?:participants|signals|sfu/session))?)?)$`, 'i');
+const conversation = new RegExp(`^/api/chat/conversations/${UUID}/(messages(?:/stream)?|typing(?:/stream)?|ai|calls(?:/${UUID}(?:/(?:participants|signals|transcript|notes|export|sfu/session))?)?)$`, 'i');
 const stream = new RegExp(`^/api/chat/conversations/${UUID}/(?:messages|typing)/stream$`, 'i');
 const instant = (v: string) => v.length <= 40 && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(v) && Number.isFinite(Date.parse(v));
 function page(url: URL, coordinate: 'before' | 'since', min: number, max: number) {
@@ -13,6 +13,7 @@ function page(url: URL, coordinate: 'before' | 'since', min: number, max: number
  * registered bearer scope, principal and conversation/call membership. */
 export function permittedNativeChatPath(url: URL, method: string): boolean {
   const verb = method.toUpperCase(), path = url.pathname;
+  if(new RegExp(`^/api/calendar/meetings/${UUID}/[A-Za-z0-9_-]{16,160}(?:/(?:evidence|twin|recording))?$`,'i').test(path))return !url.search&&((path.endsWith('/twin')||path.endsWith('/recording'))?verb==='POST':path.endsWith('/evidence')?verb==='GET':['GET','POST'].includes(verb));
   if (path === '/api/chat/notifications/push') return ['GET','POST','DELETE'].includes(verb) && !url.search;
   if (path === '/api/chat/conversations') return ['GET','POST'].includes(verb) && !url.search;
   if (['/api/chat/ai','/api/chat/calls/ice'].includes(path)) return verb === 'GET' && !url.search;
@@ -23,9 +24,12 @@ export function permittedNativeChatPath(url: URL, method: string): boolean {
   if (tail === 'typing') return verb === 'POST' && !url.search;
   if (tail === 'typing/stream') return verb === 'GET' && !url.search;
   if (tail === 'ai') return ['GET','PATCH'].includes(verb) && !url.search;
+  if(tail.endsWith('/transcript'))return verb==='GET'?page(url,'since',1,1000):verb==='POST'&&!url.search;
+  if(tail.endsWith('/notes'))return ['GET','POST'].includes(verb)&&!url.search;
+  if(tail.endsWith('/export'))return verb==='GET'&&!url.search;
   if (tail.endsWith('/signals')) return verb === 'GET' ? page(url,'since',1,600) : verb === 'POST' && !url.search;
   if (tail.endsWith('/participants')) return ['POST','DELETE'].includes(verb) && !url.search;
   if (tail.endsWith('/sfu/session')) return verb === 'GET' && !url.search;
   return (tail === 'calls' ? ['GET','POST'] : ['GET','PATCH']).includes(verb) && !url.search;
 }
-export const isNativeChatStreamPath = (path: string) => stream.test(path)||/^\/api\/developers\/twin\/[a-z0-9_]{3,24}\/message$/.test(path);
+export const isNativeChatStreamPath = (path: string) => stream.test(path)||/^\/api\/calendar\/meetings\/[a-f0-9-]{36}\/[A-Za-z0-9_-]{16,160}\/twin$/i.test(path)||/^\/api\/developers\/twin\/[a-z0-9_]{3,24}\/message$/.test(path);

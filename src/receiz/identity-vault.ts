@@ -878,3 +878,9 @@ export const saveMoneyConversationState=(binding:{artifactSha256:string},value:i
 
 export const loadShareCertificateState=(binding:{artifactSha256:string})=>loadNoteState(binding,'share-certificates');
 export const saveShareCertificateState=(binding:{artifactSha256:string},value:import('./share-certificates').ShareCertificateCheckpoint,expected:unknown)=>saveNoteState(binding,'share-certificates',value,expected);
+
+// Meeting capture uses the same encrypted private-file and revision mechanics;
+// it never reads or writes a financial Note checkpoint.
+const meetingFamily=(id:string)=>{if(!/^[a-f0-9-]{36}$/i.test(id))throw Error('MEETING_COORDINATE_INVALID');return 'meeting-capture:'+id;};
+export const loadMeetingCapture=(binding:{artifactSha256:string},id:string)=>loadNoteState(binding,meetingFamily(id));
+export const saveMeetingCapture=(binding:{artifactSha256:string},id:string,value:unknown,expected:unknown)=>saveNoteState(binding,meetingFamily(id),value,expected);

@@ -12,7 +12,7 @@ export function readBookingAvailability(raw:unknown,username:string):BookingAvai
  return{owner:owner as unknown as BookingAvailability['owner'],scheduleConfig:schedule(data.scheduleConfig),savedScheduleConfig:schedule(data.savedScheduleConfig),customQuestions:questions(data.customQuestions),savedCustomQuestions:questions(data.savedCustomQuestions),slots};
 }
 export interface GuestBookingInput {slotStartAt:string;name:string;email:string;timezone:string;notes:string;questions:Array<BookingQuestion&{answer:string}>}
-export interface BookingConfirmation {event:OrganizerEvent;icsHref:string;confirmationHref:string}
+export interface BookingConfirmation {event:OrganizerEvent;icsHref:string;confirmationHref:string;inviteSummary?:{delivered:number}|null}
 function confirmationHref(raw:unknown){if(typeof raw!=='string'||raw.length>2048)throw Error('BOOKING_OUTCOME_UNCONFIRMED');const url=new URL(raw,'https://receiz.com');if(url.origin!=='https://receiz.com'||!/^\/(?:api\/)?calendar\/confirmation\/[a-f\d-]{36}(?:\/bundle)?\/?$/.test(url.pathname))throw Error('BOOKING_OUTCOME_UNCONFIRMED');return url.href;}
 export function createPublicBooking({username,query=new URLSearchParams(),request}:{username:string;query?:URLSearchParams;request:OrganizerRequest}){
  if(!/^[a-z0-9_]{3,24}$/.test(username))throw Error('BOOKING_USERNAME_REQUIRED');
@@ -20,10 +20,10 @@ export function createPublicBooking({username,query=new URLSearchParams(),reques
  return{known:()=>held,
   availability(refresh=false):Promise<BookingAvailability>{if(held&&!refresh)return Promise.resolve(held);if(pending)return pending;const attempt=(async()=>{const response=await request(path+(params.size?'?'+params:''));const data=await response.json();if(!response.ok)throw Error('BOOKING_UNAVAILABLE');held=readBookingAvailability(data,username);return held;})();pending=attempt;void attempt.finally(()=>{if(pending===attempt)pending=null;}).catch(()=>{});return attempt;},
   async confirm(input:GuestBookingInput):Promise<BookingConfirmation>{if(attempted)throw Error('BOOKING_ALREADY_ATTEMPTED');if(!held?.slots.some(slot=>slot.startAt===input.slotStartAt))throw Error('BOOKING_SLOT_NOT_OFFERED');attempted=true;let response:Response;
-   try{response=await request(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...input,scheduleConfig:held.scheduleConfig})});}catch(cause){throw Error('BOOKING_OUTCOME_UNCONFIRMED',{cause});}
+   try{response=await request(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...input,meeting:true,scheduleConfig:held.scheduleConfig})});}catch(cause){throw Error('BOOKING_OUTCOME_UNCONFIRMED',{cause});}
    let data:Record<string,unknown>;try{data=organizerRecord(await response.json());}catch(cause){throw Error('BOOKING_OUTCOME_UNCONFIRMED',{cause});}
    if(!response.ok){if(response.status<500&&response.status!==408)attempted=false;throw Error(response.status>=500||response.status===408?'BOOKING_OUTCOME_UNCONFIRMED':typeof data.error==='string'?data.error:'BOOKING_UNAVAILABLE');}
-   if(data.ok!==true||data.booked!==true)throw Error('BOOKING_OUTCOME_UNCONFIRMED');const pack=organizerRecord(data.pack);let event:OrganizerEvent;try{event=organizerEvent(data.event);}catch(cause){throw Error('BOOKING_OUTCOME_UNCONFIRMED',{cause});}return{event,icsHref:confirmationHref(pack.icsPath),confirmationHref:confirmationHref(pack.confirmationPath)};
+   if(data.ok!==true||data.booked!==true)throw Error('BOOKING_OUTCOME_UNCONFIRMED');const pack=organizerRecord(data.pack);let event:OrganizerEvent;try{event=organizerEvent(data.event);}catch(cause){throw Error('BOOKING_OUTCOME_UNCONFIRMED',{cause});}return{event,icsHref:confirmationHref(pack.icsPath),confirmationHref:confirmationHref(pack.confirmationPath),inviteSummary:typeof organizerRecord(data.inviteSummary).delivered==='number'?{delivered:Number(organizerRecord(data.inviteSummary).delivered)}:null};
   },
  };
 }

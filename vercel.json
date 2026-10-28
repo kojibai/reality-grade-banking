@@ -42,6 +42,14 @@
   ],
   "rewrites": [
     {
+      "source": "/meet/:eventId/:key/",
+      "destination": "/meet/index.html"
+    },
+    {
+      "source": "/meet/:eventId/:key",
+      "destination": "/meet/index.html"
+    },
+    {
       "source": "/shares/:noteToken/",
       "destination": "/explore/index.html"
     },

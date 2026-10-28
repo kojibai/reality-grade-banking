@@ -10,10 +10,11 @@ export interface NativeCallParticipant {
   mutedByModerator:boolean; metadata:Record<string,unknown>;
 }
 export interface NativeCallSummary {
+  meetingRecording?:{active:boolean;hostId:string;updatedAt:string;expiresAt:string}|null;
   id:string; conversationId:string; mode:'voice'|'video'; topology:'mesh'|'sfu'; title:string|null;
   status:'active'|'ended'|'archived'; startedBy:string|null; startedAt:string; endedAt:string|null;
   locked:boolean; participants:NativeCallParticipant[]; activeParticipantCount:number;
-  viewerPermissions:{canEndCall:boolean};
+  viewerPermissions:{canEndCall:boolean;canShareScreen?:boolean};
 }
 interface CallSignal {
   id:string; callId:string; conversationId:string; senderUserId:string; targetUserId:string|null;
@@ -24,7 +25,7 @@ export type NativeCallPhase='idle'|'loading'|'ready'|'joining'|'waiting'|'connec
 export interface NativeCallSnapshot {
   phase:NativeCallPhase; call:NativeCallSummary|null; calls:NativeCallSummary[]; joined:boolean;
   error:string|null; localStream:MediaStream|null; remoteStreams:{userId:string;stream:MediaStream}[];
-  micEnabled:boolean; videoEnabled:boolean; iceSource:string|null;
+  micEnabled:boolean; videoEnabled:boolean; activeSpeakerId?:string|null;screenSharing?:boolean; iceSource:string|null;
 }
 export interface NativeCallIdentity {heldFetch(input:string,init?:RequestInit):Promise<Response>;forController?():NativeCallIdentity}
 export interface NativeCallRuntime {
@@ -33,7 +34,7 @@ export interface NativeCallRuntime {
   createStream():MediaStream;
   loadSfu():Promise<NativeSfuClient>;
 }
-export interface NativeCallOptions {identity:NativeCallIdentity; conversationId:string; userId:string; initialCallId?:string; runtime?:NativeCallRuntime}
+export interface NativeCallOptions {identity:NativeCallIdentity; conversationId:string; userId:string; initialCallId?:string; initialCall?:NativeCallSummary;activityHints?:boolean; runtime?:NativeCallRuntime}
 const browserRuntime:NativeCallRuntime={
   getUserMedia:constraints=>{
     if(!globalThis.navigator?.mediaDevices?.getUserMedia)throw Error('media_unavailable');
@@ -63,10 +64,14 @@ const stopStream=(stream:MediaStream|null)=>stream?.getTracks().forEach(track=>t
 export function createNativeCallController(options:NativeCallOptions) {
   const {conversationId,userId}=options,identity=options.identity.forController?.()??options.identity,runtime=options.runtime??browserRuntime;
   const base=`/api/chat/conversations/${encodeURIComponent(conversationId)}/calls`;
-  let state:NativeCallSnapshot={phase:'idle',call:null,calls:[],joined:false,error:null,localStream:null,remoteStreams:[],micEnabled:false,videoEnabled:false,iceSource:null};
+  const initial=options.initialCall?readCall(options.initialCall,conversationId):null,initialCallId=options.initialCallId??initial?.id;
+  let state:NativeCallSnapshot={phase:initial?(initial.status==='active'?'ready':'ended'):'idle',call:initial,calls:initial?[initial]:[],joined:false,error:null,localStream:null,remoteStreams:[],micEnabled:false,videoEnabled:false,iceSource:null};
+  const activityListeners=new Set<()=>void>(),channels=new Map<string,RTCDataChannel>();let activityAt=0,activityTimer:ReturnType<typeof setTimeout>|null=null;
   const listeners=new Set<()=>void>(),peers=new Map<string,RTCPeerConnection>(),remote=new Map<string,MediaStream>(),iceQueue=new Map<string,RTCIceCandidateInit[]>(),seen=new Set<string>(),pendingNegotiation=new Set<string>();
   const lifetime=new AbortController();
   let generation=0,closed=false,joining=false,leaving=false,cameraChanging=false,refreshing=false,membershipCallId:string|null=null,signalSince:string|null=null;
+  let pendingScreen:MediaStream|null=null;
+  let screenTrack:MediaStreamTrack|null=null,cameraBeforeShare:MediaStreamTrack[]=[];
   let room:NativeSfuRoom|null=null,roomConnected=false,rtcConfiguration:RTCConfiguration={iceServers:[]};
   function update(patch:Partial<NativeCallSnapshot>){state={...state,...patch};listeners.forEach(listener=>listener());}
   function current(epoch:number){return !closed&&generation===epoch;}
@@ -77,15 +82,21 @@ export function createNativeCallController(options:NativeCallOptions) {
     return payload;
   }
   function path(id:string){return `${base}/${encodeURIComponent(id)}`;}
-  function mediaState(){return {audioEnabled:state.localStream?.getAudioTracks().some(track=>track.enabled&&track.readyState==='live')??false,videoEnabled:state.localStream?.getVideoTracks().some(track=>track.enabled&&track.readyState==='live')??false,screenShareEnabled:false};}
+  function mediaState(){return {audioEnabled:state.localStream?.getAudioTracks().some(track=>track.enabled&&track.readyState==='live')??false,videoEnabled:state.localStream?.getVideoTracks().some(track=>track.enabled&&track.readyState==='live')??false,screenShareEnabled:!!screenTrack};}
   function remoteChanged(){update({remoteStreams:[...remote].map(([remoteUserId,stream])=>({userId:remoteUserId,stream}))});}
-  function dropPeer(remoteUserId:string){const peer=peers.get(remoteUserId);peers.delete(remoteUserId);if(peer){peer.onicecandidate=null;peer.ontrack=null;peer.onconnectionstatechange=null;peer.close();}iceQueue.delete(remoteUserId);pendingNegotiation.delete(remoteUserId);const stream=remote.get(remoteUserId);stopStream(stream??null);remote.delete(remoteUserId);}
+  function receiveActivity(value:unknown){if(value!=='bankeiz.chat'||!state.joined||closed)return;const emit=()=>{activityTimer=null;if(!state.joined||closed)return;activityAt=Date.now();for(const listener of activityListeners)listener();},delay=250-(Date.now()-activityAt);if(delay<=0)emit();else activityTimer??=setTimeout(emit,delay);}
+  function holdChannel(id:string,channel:RTCDataChannel){channels.get(id)?.close();channels.set(id,channel);const epoch=generation;channel.onmessage=event=>{if(current(epoch))receiveActivity(event.data);};}
+  function notifyActivity(){if(!state.joined||closed||!options.activityHints)return;for(const channel of channels.values())if(channel.readyState==='open')try{channel.send('bankeiz.chat');}catch{/* Existing source refresh continues independently. */}if(room?.localParticipant.publishData)void room.localParticipant.publishData(new TextEncoder().encode('bankeiz.chat'),{reliable:true}).catch(()=>{});}
+  function dropPeer(remoteUserId:string){const channel=channels.get(remoteUserId);if(channel){channel.onmessage=null;channel.close();channels.delete(remoteUserId);} const peer=peers.get(remoteUserId);peers.delete(remoteUserId);if(peer){peer.onicecandidate=null;peer.ontrack=null;peer.onconnectionstatechange=null;peer.ondatachannel=null;peer.close();}iceQueue.delete(remoteUserId);pendingNegotiation.delete(remoteUserId);const stream=remote.get(remoteUserId);stopStream(stream??null);remote.delete(remoteUserId);}
   function cleanup(){
+    if(activityTimer)clearTimeout(activityTimer);activityTimer=null;
+    stopStream(pendingScreen);pendingScreen=null;
+    screenTrack?.stop();screenTrack=null;for(const track of cameraBeforeShare)track.stop();cameraBeforeShare=[];
     for(const id of peers.keys())dropPeer(id);
     const prior=room;room=null;roomConnected=false;
     if(prior){try{void Promise.resolve(prior.disconnect()).catch(()=>{});}catch{/* Local tracks still close below. */}}
     for(const stream of remote.values())stopStream(stream);remote.clear();iceQueue.clear();seen.clear();pendingNegotiation.clear();signalSince=null;
-    stopStream(state.localStream);update({joined:false,localStream:null,remoteStreams:[],micEnabled:false,videoEnabled:false});
+    stopStream(state.localStream);update({joined:false,localStream:null,remoteStreams:[],micEnabled:false,videoEnabled:false,screenSharing:false});
   }
   async function leaveMembership(){const id=membershipCallId;membershipCallId=null;if(!id)return null;const payload=await request(`${path(id)}/participants`,'DELETE',undefined,null);return readCall(payload.call,conversationId);}
   async function reportConnection(){
@@ -109,6 +120,7 @@ export function createNativeCallController(options:NativeCallOptions) {
     const existing=peers.get(remoteUserId);if(existing)return existing;
     const peer=runtime.createPeer(rtcConfiguration),epoch=generation;
     peers.set(remoteUserId,peer);
+    if(options.activityHints){peer.ondatachannel=event=>{if(current(epoch)&&event.channel.label==='bankeiz.activity')holdChannel(remoteUserId,event.channel);};if(userId.localeCompare(remoteUserId)<0&&typeof peer.createDataChannel==='function')holdChannel(remoteUserId,peer.createDataChannel('bankeiz.activity'));}
     for(const track of state.localStream?.getTracks()??[])peer.addTrack(track,state.localStream!);
     peer.onicecandidate=event=>{if(event.candidate&&current(epoch))void sendSignal(remoteUserId,'ice',{candidate:event.candidate.toJSON()}).catch(error=>{if(current(epoch))update({error:errorText(error)});});};
     peer.ontrack=event=>{if(!current(epoch))return;for(const track of event.streams.flatMap(stream=>stream.getTracks()))addRemoteTrack(remoteUserId,track);addRemoteTrack(remoteUserId,event.track);};
@@ -190,10 +202,10 @@ export function createNativeCallController(options:NativeCallOptions) {
     try{
       if(state.joined&&state.call){const result=await request(path(state.call.id));if(!current(epoch))return;acceptCall(readCall(result.call,conversationId));if(state.joined){await syncMesh();await pollSignals();}}
       else{
-        const result=options.initialCallId?await request(path(options.initialCallId)):await request(base);
+        const result=initialCallId?await request(path(initialCallId)):await request(base);
         if(!current(epoch))return;
         const calls=Array.isArray(result.calls)?result.calls.map(row=>readCall(row,conversationId)):[];
-        const selected=options.initialCallId?result.call:result.activeCall;
+        const selected=initialCallId?result.call:result.activeCall;
         const call=selected?readCall(selected,conversationId):null;update({calls,call,phase:call&&call.status!=='active'?'ended':'ready',error:null});
       }
     }catch(error){if(current(epoch))update({error:errorText(error),...(!state.joined?{phase:'error' as const}:{})});}
@@ -214,6 +226,8 @@ export function createNativeCallController(options:NativeCallOptions) {
       const stream=remote.get(participant.identity);if(track.mediaStreamTrack)stream?.removeTrack(track.mediaStreamTrack as MediaStreamTrack);if(!stream?.getTracks().length)remote.delete(participant.identity);remoteChanged();
     });
     listen('ParticipantDisconnected',participant=>{if(object(participant)&&typeof participant.identity==='string'){stopStream(remote.get(participant.identity)??null);remote.delete(participant.identity);remoteChanged();}});
+    listen('DataReceived',(payload,participant)=>{if(options.activityHints&&payload instanceof Uint8Array&&payload.byteLength===12&&object(participant)&&state.call?.participants.some(p=>p.userId===participant.identity&&!p.leftAt))receiveActivity(new TextDecoder().decode(payload));});
+    listen('ActiveSpeakersChanged',participants=>{if(Array.isArray(participants)){const participant=participants.find(value=>object(value)&&typeof value.identity==='string');update({activeSpeakerId:object(participant)?String(participant.identity):null});}});
     listen('Reconnecting',()=>{roomConnected=false;void reportConnection();});
     listen('Reconnected',()=>{roomConnected=true;void reportConnection();});
     listen('Disconnected',()=>{roomConnected=false;update({phase:'reconnecting',error:'The call media service disconnected. Leave and rejoin to reconnect.'});void reportConnection();});
@@ -302,6 +316,7 @@ export function createNativeCallController(options:NativeCallOptions) {
     state.localStream?.getAudioTracks().forEach(track=>{track.enabled=enabled;});update({micEnabled:enabled});await reportConnection();
   }
   async function setCameraEnabled(enabled:boolean){
+    if(screenTrack){update({error:'Stop screen sharing to change your camera.'});return;}
     if(!state.joined||!state.localStream||!state.call||cameraChanging)return;
     const stream=state.localStream,call=state.call,epoch=generation;
     let tracks=stream.getVideoTracks().filter(track=>track.readyState==='live');
@@ -343,6 +358,31 @@ export function createNativeCallController(options:NativeCallOptions) {
       if(current(epoch))update({videoEnabled:mediaState().videoEnabled,error:errorText(error)});
     }finally{cameraChanging=false;}
   }
-  return {getSnapshot:()=>state,subscribe:(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};},refresh,join,leave,close,end,setMicrophoneEnabled,setCameraEnabled};
+  async function setScreenShare(display:MediaStream|null){
+    if(!state.joined||!state.localStream||!state.call||cameraChanging){stopStream(display);return;}
+    if(state.call.viewerPermissions.canShareScreen===false){stopStream(display);throw Error('Screen sharing is limited by the host.');}
+    pendingScreen=display;const rollback:(()=>Promise<unknown>)[]=[],negotiate=new Set<string>();
+    const epoch=generation,prior=state.localStream,call=state.call,track=display?.getVideoTracks()[0]??null,previous=screenTrack,originalCamera=screenTrack?cameraBeforeShare:prior.getVideoTracks();
+    if(display&&!track){stopStream(display);throw Error('The screen could not be shared.');}
+    const next=track??originalCamera.find(t=>t.readyState==='live')??null;cameraChanging=true;
+    try{
+      if(call.topology==='sfu'){
+        if(!room)throw Error('chat_call_sfu_unavailable');
+        const activeRoom=room;if(next){await activeRoom.localParticipant.publishTrack(next,{source:track?'screen_share':'camera'});rollback.push(async()=>activeRoom.localParticipant.unpublishTrack?.(next,false));}
+        for(const old of prior.getVideoTracks())if(old!==next){await activeRoom.localParticipant.unpublishTrack?.(old,false);rollback.push(()=>activeRoom.localParticipant.publishTrack(old,{source:previous?'screen_share':'camera'}));}
+      }else for(const[id,peer]of peers){
+        const sender=peer.getSenders().find(sender=>sender.track?.kind==='video');
+        if(sender){const old=sender.track;await sender.replaceTrack(next);rollback.push(()=>sender.replaceTrack(old));}else if(next){const added=peer.addTrack(next,prior);negotiate.add(id);rollback.push(async()=>peer.removeTrack(added));}
+      }
+      if(call.topology==='mesh')for(const id of negotiate){const peer=peers.get(id)!;if(peer.signalingState==='stable')await offer(id,peer);else pendingNegotiation.add(id);}
+      if(!current(epoch)||!state.joined){for(const undo of rollback.reverse())await undo().catch(()=>{});stopStream(display);return;}
+      const stream=runtime.createStream();for(const audio of prior.getAudioTracks())stream.addTrack(audio);if(next)stream.addTrack(next);
+      if(track){cameraBeforeShare=originalCamera;screenTrack=track;for(const other of display!.getTracks())if(other!==track)other.stop();track.addEventListener('ended',()=>{if(screenTrack===track&&state.joined)void setScreenShare(null).catch(error=>update({error:errorText(error)}));},{once:true});}
+      else{screenTrack=null;cameraBeforeShare=[];}if(previous&&previous!==next)previous.stop();
+      update({localStream:stream,screenSharing:!!track,videoEnabled:!!next?.enabled,error:null});
+      rollback.length=0;await reportConnection();
+    }catch(error){for(const undo of rollback.reverse())await undo().catch(()=>{});stopStream(display);if(current(epoch))update({error:errorText(error)});throw error;}finally{if(pendingScreen===display)pendingScreen=null;cameraChanging=false;}
+  }
+  return {notifyActivity,subscribeActivity:(listener:()=>void)=>{activityListeners.add(listener);return()=>{activityListeners.delete(listener);};},getSnapshot:()=>state,subscribe:(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};},refresh,join,leave,close,end,setMicrophoneEnabled,setCameraEnabled,setScreenShare};
 }
 export type NativeCallController=ReturnType<typeof createNativeCallController>;

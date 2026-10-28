@@ -1,8 +1,9 @@
-import {ArrowDownLeft,ArrowUpRight} from 'lucide-react';
+import {ArrowDownLeft,ArrowUpRight,Sparkles} from 'lucide-react';
 import type {ChatMessage,ChatPerson} from '../../receiz/native-messaging';
 import {readMessagePayment} from '../../receiz/message-payment';
 import {formatMoney,formatUnits} from '../../core/money';
 export function PaymentMessage({message,accountUid,members}:{message:ChatMessage;accountUid:string;members:ChatPerson[]}){
+ if(message.walletTransfer?.kind==='bankeiz.meeting.twin')return <div aria-label="Twin reply"><small className="bank-delivery-status"><Sparkles size={12}/>{String(message.walletTransfer.displayName??'Twin')}{Number(message.walletTransfer.parts)>1?` · ${message.walletTransfer.part}/${message.walletTransfer.parts}`:''}</small><p>{message.body}</p></div>;
  const payment=readMessagePayment(message,accountUid);if(!payment)return <p>{message.body}</p>;
  const peer=members.find(person=>person.userId===(payment.direction==='sent'?payment.recipientUserId:payment.senderUserId));
  const name=peer?.displayName||peer?.username||'Receiz account';
