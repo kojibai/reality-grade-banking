@@ -28,7 +28,21 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
     catch(cause){if(current.current===identity&&!(cause instanceof Error&&['passkey_cancelled','PBI_ACCOUNT_CLOSED'].includes(cause.message)))setPasskeyError('Your passkey could not be connected. Try again.');}
     finally{passkeyPending.current=false;if(current.current===identity)setPasskeyBusy(false);}
   };
-  const publicId = identity.accountUsername?.() || identity.username || identity.binding.identityOwnerReceizId;
+  const [preparedProfile,setPreparedProfile]=useState<{owner:OpenIdentity;username:string}|null>(null),[profileOpening,setProfileOpening]=useState<OpenIdentity|null>(null),[profileError,setProfileError]=useState<{owner:OpenIdentity;message:string}|null>(null);
+  const profilePending=useRef<OpenIdentity|null>(null);
+  const publicId = identity.accountUsername?.() || (preparedProfile?.owner===identity?preparedProfile.username:null) || identity.username || identity.binding.identityOwnerReceizId;
+  const openPublicProfile=async()=>{
+    if(profilePending.current===identity||!identity.prepareReceivingUsername)return;
+    profilePending.current=identity;setProfileOpening(identity);setProfileError(null);
+    try{
+      const username=profileUsername(await identity.prepareReceivingUsername());
+      if(current.current!==identity)return;
+      if(!username)throw Error('PROFILE_USERNAME_UNAVAILABLE');
+      setPreparedProfile({owner:identity,username});
+      dispatchEvent(new CustomEvent('bankeiz:navigate-public',{detail:{path:profilePagePath(username)}}));
+    }catch{if(current.current===identity)setProfileError({owner:identity,message:'Your profile could not be opened. Try again.'});}
+    finally{if(profilePending.current===identity)profilePending.current=null;if(current.current===identity)setProfileOpening(null);}
+  };
   const profileVerified=passkeyConnected||!!knownProfilePbiAuthorship(identity.knownWallet?.()?.wallet.userId??'')||!!retainedPublicProfile(publicId)?.authorshipVerified;
  const backupId = () => {
     const held = identity.backup(), url = URL.createObjectURL(new Blob([new Uint8Array(held.bytes)]));
@@ -48,7 +62,8 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
       <p>Your verified identity, secured on this device.</p>
     </div>
     {identity.profile&&<QuickProfileEditor identity={identity} username={publicId}/>}
-    {profileUsername(publicId)&&<a className="identity-public-profile-link" href={profilePagePath(publicId)}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></a>}
+    {profileUsername(publicId)?<a className="identity-public-profile-link" href={profilePagePath(publicId)}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></a>:identity.prepareReceivingUsername&&<button type="button" className="identity-public-profile-link" disabled={profileOpening===identity} aria-busy={profileOpening===identity} onClick={()=>void openPublicProfile()}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></button>}
+    {profileError?.owner===identity&&<p className="error-message" role="alert">{profileError.message}</p>}
     <button className="primary-button" onClick={backupId}>Back up my Identity Record</button>
     {backup && <div className="identity-import profile-backup">
       <p className="body-copy small-copy">{identity.needsPhrase ? 'Save this recovery phrase separately from your downloaded Identity Record. It unlocks your signing key on another device.' : 'Your Identity Record opens without an unlock phrase.'}</p>
