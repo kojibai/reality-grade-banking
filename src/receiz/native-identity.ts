@@ -1,4 +1,6 @@
 import {currentWalletObservation,advanceCurrentWalletObservation} from './current-wallet-valuation';
+import {createNativeMessaging} from './native-messaging';
+import {createNativeTwin} from './native-twin';
 import {isPeopleSearchQuery} from './people-search.js';
 import {permittedTwinConversationRead} from './twin-conversations';
 import {withDeviceIdentityEntry} from './device-identity-entry';
@@ -519,7 +521,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
         };
         return callMembershipPath.test(path)&&['POST','DELETE'].includes((init?.method??'GET').toUpperCase())?orderCallMembership(path,perform):perform();
       };
-      const [{createNativeMessaging},{createNativeTwin}]=await Promise.all([import('./native-messaging'),import('./native-twin')]);assertOpen();
+      assertOpen();
       // Profile display coordinates come from continuation; Receiz independently
       // enforces that this handle belongs to the bearer subject on every ask.
       const twin=createNativeTwin({accountUid:uid,username:()=>presentationUsername??'',request,assertOpen});
