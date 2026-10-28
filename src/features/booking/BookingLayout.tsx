@@ -1,3 +1,4 @@
+import type {PublicTwinBookingPaymentRequest} from '../../receiz/public-booking-conversation';
 import {lazy,Suspense,useLayoutEffect,useState,type ReactNode} from 'react';
 import {InlineOpening} from '../../components/InlineOpening';
 import {ProfileAvatar} from '../../components/ProfileAvatar';
@@ -11,10 +12,10 @@ export function BookingOpening({owner,error}:{owner?:Owner;error?:string}){
 }
 /** The first accepted availability chooses one presentation for this lifetime.
  * Later decoration cannot replace the visitor's settled calendar or chat. */
-export function BookingLayout({service,source,owner,error,children}:{service:Service;source:BookingAvailability|null;owner?:Owner;error?:string;children:ReactNode}){
- const [mode,setMode]=useState<'calendar'|'conversation'|null>(()=>source?(source.conversation?.state==='ready'?'conversation':'calendar'):null);
- useLayoutEffect(()=>{if(source)setMode(current=>current??(source.conversation?.state==='ready'?'conversation':'calendar'));},[source]);
+export function BookingLayout({service,source,owner,error,children,onPayment,paymentHandledId,onResume}:{service:Service;source:BookingAvailability|null;owner?:Owner;error?:string;children:ReactNode;onPayment?(request:PublicTwinBookingPaymentRequest):void;paymentHandledId?:string|null;onResume?():void}){
+ const [mode,setMode]=useState<'calendar'|'conversation'|null>(()=>source?(source.conversation?.state==='ready'&&source.bookingSettings?.conversationEnabled!==false?'conversation':'calendar'):null);
+ useLayoutEffect(()=>{if(source)setMode(current=>current??(source.conversation?.state==='ready'&&source.bookingSettings?.conversationEnabled!==false?'conversation':'calendar'));},[source]);
  if(mode===null)return <BookingOpening owner={source?.owner??owner} error={error}/>;
  if(mode==='calendar')return <section className="booking-card bank-organizer" aria-label="Book an appointment"><div className="organizer-scroll">{children}</div></section>;
- return <Suspense fallback={<BookingOpening owner={source?.owner??owner}/>}><Conversation service={service} source={source!}>{children}</Conversation></Suspense>;
+ return <Suspense fallback={<BookingOpening owner={source?.owner??owner}/>}><Conversation service={service} source={source!} onPayment={onPayment} paymentHandledId={paymentHandledId} onResume={onResume}>{children}</Conversation></Suspense>;
 }

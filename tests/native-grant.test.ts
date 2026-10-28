@@ -3,7 +3,7 @@ import { BANK_APPLICATION_ID, BANK_READ_SCOPES, BANK_CARD_SCOPES, BANK_NATIVE_SC
 import { openCanonicalIdentity } from '../src/receiz/native-identity';
 // Protocol-mechanics fixtures only. They are not canonical SDK admission/live-user evidence.
 const protocol = vi.hoisted(() => ({ grant: vi.fn(), scopes: vi.fn(), wallet: vi.fn(), continueId: vi.fn(), client: vi.fn(), qualify: vi.fn(), pendingCard: null as unknown, pendingSend: null as any, saveCard:vi.fn(), request:vi.fn(), checkoutSession: vi.fn() }));
-vi.mock('../src/receiz/identity-vault', async importOriginal => ({ ...await importOriginal<typeof import('../src/receiz/identity-vault')>(), loadCardOperation: async () => protocol.pendingCard, loadCardOperations: async () => protocol.pendingCard ? [protocol.pendingCard] : [],loadWalletSendState:async()=>protocol.pendingSend,saveCardOperation:protocol.saveCard }));
+vi.mock('../src/receiz/identity-vault', async importOriginal => ({ ...await importOriginal<typeof import('../src/receiz/identity-vault')>(), loadHostedCheckoutState:async()=>null,loadCardOperation: async () => protocol.pendingCard, loadCardOperations: async () => protocol.pendingCard ? [protocol.pendingCard] : [],loadWalletSendState:async()=>protocol.pendingSend,saveCardOperation:protocol.saveCard }));
 vi.mock('../src/receiz/client', () => ({ loadReceiz: async () => ({
   verifyReceizArtifact: async () => ({ status: 'verified-artifact' }), createReceizArtifactAdmissionEngine: () => async () => ({ verdict: 'canonical-identity' }), isSdkIssuedReceizArtifactAdmission: () => true,
   readReceizIdentityPublicBinding: async () => ({ keyId: 'fixture-key', artifactSha256: 'a'.repeat(64) }),

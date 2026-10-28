@@ -1,13 +1,14 @@
+import {formatMoney} from '../../core/money';
 import {ArrowUp,CalendarDays,ChevronLeft,Clock,Sparkles} from 'lucide-react';
 import {useEffect,useLayoutEffect,useRef,useState,useSyncExternalStore,type FormEvent,type KeyboardEvent,type ReactNode} from 'react';
 import {InlineOpening} from '../../components/InlineOpening';
 import {ProfileAvatar} from '../../components/ProfileAvatar';
 import {bankMeetingPath} from '../../receiz/meeting-links';
-import {createPublicBookingConversation} from '../../receiz/public-booking-conversation';
+import {createPublicBookingConversation,type PublicTwinBookingPaymentRequest} from '../../receiz/public-booking-conversation';
 import type {BookingAvailability} from '../../receiz/organizer-types';
 import type {createPublicBooking} from '../../receiz/public-booking';
 type Service=ReturnType<typeof createPublicBooking>;
-export default function BookingConversation({service,source,children}:{service:Service;source:BookingAvailability;children:ReactNode}){
+export default function BookingConversation({service,source,children,onPayment,paymentHandledId,onResume}:{service:Service;source:BookingAvailability;children:ReactNode;onPayment?(request:PublicTwinBookingPaymentRequest):void;paymentHandledId?:string|null;onResume?():void}){
  const [controller]=useState(()=>createPublicBookingConversation({username:service.username,options:service.linkOptions()}));
  const state=useSyncExternalStore(controller.subscribe,controller.known,controller.known);
  const [manual,setManual]=useState(false),transcript=useRef<HTMLDivElement>(null),composer=useRef<HTMLTextAreaElement>(null),manualPanel=useRef<HTMLElement>(null),back=useRef<HTMLButtonElement>(null),choose=useRef<HTMLButtonElement>(null),following=useRef(true),mounted=useRef(false),wasManual=useRef(false);
@@ -28,14 +29,16 @@ export default function BookingConversation({service,source,children}:{service:S
  const booking=state.bookingConfirmation,meeting=bankMeetingPath(booking?.location??'');
  const error=state.error?(state.pending?'Your reply has not been confirmed yet. Retry the same message to continue.':'That reply could not be completed. Your message is kept here.'):'';
  return <section className="booking-card bank-organizer booking-conversation-card" aria-label="Book an appointment">
-  <header className="booking-conversation-owner"><ProfileAvatar src={source.owner.avatarUrl} name={source.owner.displayName}/><div><h1>{source.owner.displayName}</h1><p><Clock size={14}/>{source.scheduleConfig.slotMinutes} minutes<span>·</span>Meeting link included</p></div></header>
+  <header className="booking-conversation-owner"><ProfileAvatar src={source.owner.avatarUrl} name={source.owner.displayName}/><div><h1>{source.owner.displayName}</h1><p><Clock size={14}/>{source.scheduleConfig.slotMinutes} minutes{source.bookingPrice&&source.bookingPrice.priceUsdCents!=='0'&&<> · {formatMoney(source.bookingPrice.priceUsdCents)}</>}<span>·</span>Meeting link included</p></div></header>
   <div className="booking-conversation-frame" onKeyDownCapture={overlayKey}>
    <div className="booking-chat" inert={manual} aria-hidden={manual||undefined}>
     <div className="booking-chat-heading"><span><Sparkles size={17}/>{source.owner.displayName}’s Twin</span><small>Booking</small></div>
     <div className="booking-transcript" data-booking-transcript ref={transcript} role="log" aria-label="Booking conversation" onScroll={()=>{const node=transcript.current;if(node)following.current=node.scrollHeight-node.scrollTop-node.clientHeight<36;}}>
      <p className="booking-chat-intro">When’s a good time for you and {source.owner.displayName} to speak? I’ll check the calendar.</p>
+     {onResume&&<div className="booking-chat-confirmation"><strong>Your saved booking.</strong><p>Continue with the same appointment and payment.</p><button type="button" className="organizer-primary" onClick={()=>{onResume();setManual(true);}}>Resume booking</button></div>}
      {state.messages.map(message=><div key={message.id} className={'booking-chat-message booking-chat-message-'+message.role} data-message-status={message.status}>{message.body?<p>{message.body}</p>:message.status==='pending'&&state.busy?<InlineOpening label="Checking your request"/>:null}</div>)}
      {booking&&<div className="booking-chat-confirmation"><strong>You’re booked.</strong><p>{booking.title}</p><p>{new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short',...(booking.timezone?{timeZone:booking.timezone}:{})}).format(new Date(booking.startAt))}</p>{meeting&&<a href={meeting}>Join meeting ↗</a>}</div>}
+     {state.bookingPaymentRequest&&state.bookingPaymentRequest.proposalOperationId!==paymentHandledId&&onPayment&&<div className="booking-chat-confirmation"><strong>Your appointment is ready to review.</strong><p>{formatMoney(state.bookingPaymentRequest.bookingPrice.priceUsdCents)}</p><button type="button" className="organizer-primary" onClick={()=>{onPayment(state.bookingPaymentRequest!);setManual(true);}}>Review payment</button></div>}
      {error&&<div className="booking-chat-error" role="alert"><p>{error}</p>{state.pending&&!state.busy&&<button type="button" onClick={()=>void controller.retry()}>Retry message</button>}</div>}
     </div>
     <form className="booking-composer" onSubmit={send}><textarea ref={composer} aria-label="Your reply" placeholder="I’m free tomorrow afternoon…" rows={1} maxLength={6500} value={state.draft} onChange={event=>controller.setDraft(event.target.value)} onKeyDown={key}/><button type="submit" aria-label="Send reply" disabled={state.busy||!!state.pending||!state.draft.trim()}><ArrowUp size={20}/></button></form>

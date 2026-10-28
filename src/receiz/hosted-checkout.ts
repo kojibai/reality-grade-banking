@@ -1,4 +1,5 @@
-import {checkoutApprovalDigest,checkoutInteger,emptyCheckoutSnapshot,readHostedCheckoutState,hasPendingHostedCheckout,type CheckoutApproval,type CheckoutMethod,type CheckoutSnapshot,type CheckoutStateStore,type HostedCheckoutState,type CheckoutReceipt} from './checkout-state';
+import type {PaidBookingPreparation,PaidBookingReview} from './paid-booking';
+import {readBookingCheckoutContext,sameBookingCheckout,checkoutUuid,type BookingCheckoutContext,checkoutApprovalDigest,checkoutInteger,emptyCheckoutSnapshot,readHostedCheckoutState,hasPendingHostedCheckout,type CheckoutApproval,type CheckoutMethod,type CheckoutSnapshot,type CheckoutStateStore,type HostedCheckoutState,type CheckoutReceipt} from './checkout-state';
 import type {CheckoutNotes} from './checkout-notes';
 import type {SharedWallet} from './shared-wallet';
 import type {WalletSend,WalletSendOutcome,WalletSendReview} from './wallet-send';
@@ -18,8 +19,8 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
  async function admittedReceipt(outcome:WalletSendOutcome,row:CheckoutSnapshot=view):Promise<CheckoutReceipt>{
   const a=row.approval;if(!a||outcome.status!=='recorded'||outcome.clientNonce!==a.clientNonce)throw Error('CHECKOUT_RESULT_MISMATCH');
   const result=await(await input.walletSend()).retainedResult(a.clientNonce);assert();const r=result?.receipt;
-  if(!r||result.outcome.status!=='recorded'||r.transferId!==outcome.transferId||r.senderUserId!==a.accountUid||r.recipientUserId!==a.recipient.userId||r.amountUsdCents!==a.amountUsdCents||r.clientNonce!==a.clientNonce||a.fixedSale&&result.note!==fixedSalePaymentNote(a.fixedSale,a.clientNonce))throw Error('CHECKOUT_RESULT_MISMATCH');
-  return{...r,checkoutId:a.checkoutId,recipient:a.recipient,method:a.method,...(a.fixedSale?{fixedSale:a.fixedSale}:{})};
+  if(!r||result.outcome.status!=='recorded'||r.transferId!==outcome.transferId||r.senderUserId!==a.accountUid||r.recipientUserId!==a.recipient.userId||r.amountUsdCents!==a.amountUsdCents||r.clientNonce!==a.clientNonce||a.fixedSale&&result.note!==fixedSalePaymentNote(a.fixedSale,a.clientNonce)||!sameBookingCheckout(result?.booking,a.booking))throw Error('CHECKOUT_RESULT_MISMATCH');
+  return{...r,checkoutId:a.checkoutId,recipient:a.recipient,method:a.method,...(a.fixedSale?{fixedSale:a.fixedSale}:{}),...(a.booking?{booking:a.booking}:{})};
  }
  async function paidFixedSale(fields:FixedSaleFields){
   const sale=await createFixedSale(fields);assert();const row=[view,...(stored?.history??[])].find(row=>row.phase==='paid'&&row.approval?.fixedSale?.digest===sale.digest);
@@ -43,7 +44,7 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
   if(charge>10000000n)throw Error('CHECKOUT_CARD_LIMIT');
   return{accountUid:wallet.userId,card:charge.toString(),balance:fromBalance.toString(),noteAmountUsdCents:noteAmount.toString(),noteSurplusUsdCents:(noteAmount>amount?noteAmount-amount:0n).toString()};
  }
- function walletOptions(a:CheckoutApproval){return{clientNonce:a.clientNonce,...(a.method==='card'?{fundingPreference:'card' as const}:{}),cardFundingLimitUsdCents:a.cardAmountUsdCents,checkoutContext:{checkoutId:a.checkoutId,username:a.recipient.username}};}
+ function walletOptions(a:CheckoutApproval){return{clientNonce:a.clientNonce,...(a.method==='card'?{fundingPreference:'card' as const}:{}),cardFundingLimitUsdCents:a.cardAmountUsdCents,checkoutContext:{checkoutId:a.checkoutId,username:a.recipient.username,...(a.booking?{booking:a.booking,bookingOptions:view.bookingPreparation?.options??{}}:{})},...(a.booking?{booking:a.booking}:{})};}
  function walletRequest(a:CheckoutApproval){return{recipient:a.recipient.userId,amountUsdCents:a.amountUsdCents,...(a.fixedSale?{note:fixedSalePaymentNote(a.fixedSale,a.clientNonce)}:{})};}
  async function adopt(outcome:WalletSendOutcome){
   assert();if(outcome.clientNonce!==view.approval?.clientNonce)throw Error('CHECKOUT_RESULT_MISMATCH');
@@ -53,7 +54,7 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
  async function continuePayment(recover=false){
   const a=view.approval;if(!a||!view.approvalHistory.some(old=>old.digest===a.digest)||view.phase==='not-sent')return;
   const api=await input.walletSend(),existing=await api.retainedResult(a.clientNonce);assert();
-  if(existing){if(a.fixedSale&&existing.note!==fixedSalePaymentNote(a.fixedSale,a.clientNonce))throw Error('CHECKOUT_RESULT_MISMATCH');const o=existing.outcome;if(o.status==='unknown'){const result=await api.resolve(true);if(result)await adopt(result);}else if(o.status==='funding'){const result=await api.resumeFunding();if(result)await adopt(result);}else await adopt(o);return;}
+  if(existing){if(a.fixedSale&&existing.note!==fixedSalePaymentNote(a.fixedSale,a.clientNonce)||!sameBookingCheckout(existing.booking,a.booking))throw Error('CHECKOUT_RESULT_MISMATCH');const o=existing.outcome;if(o.status==='unknown'){const result=await api.resolve(true,a.clientNonce);if(result)await adopt(result);}else if(o.status==='funding'){const result=await api.resumeFunding(a.clientNonce);if(result)await adopt(result);}else await adopt(o);return;}
   if(a.method==='note'){
    for(const source of a.noteSourceDigests){let entry=view.notes.find(n=>n.sourceDigest===source);if(!entry)throw Error('CHECKOUT_NOTE_SOURCE_REQUIRED');
     if(entry.status==='confirmed')continue;
@@ -70,7 +71,7 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
    }
   }
   const w=preparedApi===api&&prepared&&prepared.clientNonce===a.clientNonce&&prepared.cardFundingLimitUsdCents===a.cardAmountUsdCents?prepared:await api.prepare(walletRequest(a),walletOptions(a));assert();
-  if(w.accountUid!==a.accountUid||w.recipientUserId!==a.recipient.userId||w.amountUsdCents!==a.amountUsdCents||w.clientNonce!==a.clientNonce||w.fundingPreference!==(a.method==='card'?'card':undefined)||a.fixedSale&&w.note!==fixedSalePaymentNote(a.fixedSale,a.clientNonce))throw Error('CHECKOUT_RESULT_MISMATCH');
+  if(w.accountUid!==a.accountUid||w.recipientUserId!==a.recipient.userId||w.amountUsdCents!==a.amountUsdCents||w.clientNonce!==a.clientNonce||w.fundingPreference!==(a.method==='card'?'card':undefined)||a.fixedSale&&w.note!==fixedSalePaymentNote(a.fixedSale,a.clientNonce)||!sameBookingCheckout(w.booking,a.booking))throw Error('CHECKOUT_RESULT_MISMATCH');
   await save({...view,phase:'submitting',error:null});const result=await api.execute(w,w.digest);prepared=null;assert();await adopt(result);
  }
  const approve=(digest:string)=>run(async()=>{
@@ -81,28 +82,56 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
  return{
   ready,snapshot:()=>view,subscribe(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};},
   inspectFixedSale(fields:FixedSaleFields){return run(()=>paidFixedSale(fields));},
-  prepare(value:{recipient:string;amountUsdCents:string;method:CheckoutMethod;fixedSale?:FixedSaleFields}){return run(async()=>{
+  retainBookingPreparation(value:PaidBookingPreparation){return run(async()=>{
+   const {readPaidBookingPreparation}=await import('./paid-booking');const next=await readPaidBookingPreparation(value);assert();const prior=view.bookingPreparation;
+   if(prior?.operationId===next.operationId){if(await checkoutApprovalDigest(prior as never)!==await checkoutApprovalDigest({...next,review:prior.review} as never))throw Error('BOOKING_PREPARATION_CONFLICT');return prior;}
+   if(stored&&hasPendingHostedCheckout(stored))throw Error('CHECKOUT_PAYMENT_PENDING');
+   const history=[...(stored?.history??[])];if(view.approval||prior)history.push(view);await save({...emptyCheckoutSnapshot(),phase:'preparing',bookingPreparation:next},history);return next;
+  });},
+  retainBookingReview(review:PaidBookingReview,operationId:string){return run(async()=>{
+   const held=view.bookingPreparation;if(!held||held.operationId!==operationId)throw Error('BOOKING_PREPARATION_CONFLICT');
+   const {readPaidBookingReview}=await import('./paid-booking');const next=await readPaidBookingReview(review,held);assert();
+   if(held.review&&(held.review.termsDigest!==next.termsDigest||held.review.sourceReference!==next.sourceReference))throw Error('BOOKING_TERMS_CHANGED');
+   if(held.review?.phase==='cancelled-unpaid'&&next.phase!=='cancelled-unpaid'||['confirmed-paid','cancelled-paid'].includes(held.review?.phase??'')&&!['confirmed-paid','cancelled-paid'].includes(next.phase))throw Error('BOOKING_TRUTH_DOWNGRADE');
+   await save({...view,bookingPreparation:{...held,review:next}});return next;
+  });},
+  closeBooking(booking:BookingCheckoutContext){return run(async()=>{
+   const exact=readBookingCheckoutContext(booking),a=view.approval;if(view.bookingPreparation?.operationId!==exact.operationId||a&&!sameBookingCheckout(a.booking,exact))throw Error('BOOKING_PREPARATION_CONFLICT');
+   if(a){const api=await input.walletSend();let held=await api.retainedResult(a.clientNonce);assert();if(held?.outcome.status==='funding'){await api.cancelFunding(a.clientNonce);held=await api.retainedResult(a.clientNonce);assert();}if(held?.outcome.status==='unknown'){const found=await api.resolve(true,a.clientNonce);if(found)await adopt(found);return;}if(held){await adopt(held.outcome);return;}}
+   if(prepared)preparedApi?.discard(prepared);prepared=null;await save({...view,phase:'not-sent',error:null});
+  });},
+  prepare(value:{recipient:string;amountUsdCents:string;method:CheckoutMethod;fixedSale?:FixedSaleFields;checkoutId?:string;booking?:BookingCheckoutContext}){return run(async()=>{
    if(!checkoutInteger(value.amountUsdCents,true)||!['card','balance','note'].includes(value.method))throw Error('Enter an amount greater than zero.');
+   const booking=value.booking===undefined?undefined:readBookingCheckoutContext(value.booking);if((value.checkoutId!==undefined)!==(booking!==undefined)||booking&&(!checkoutUuid(value.checkoutId)||value.checkoutId!==booking.operationId||value.method==='note'))throw Error('BOOKING_CHECKOUT_CONTEXT_INVALID');
    const fixedSale=value.fixedSale?await createFixedSale(value.fixedSale):undefined;
    if(fixedSale&&(fixedSale.username!==value.recipient||fixedSale.amountUsdCents!==value.amountUsdCents))throw Error('This checkout has a fixed recipient and total. Open the original payment link.');
+   if(booking&&(!fixedSale||fixedSale.saleId!==booking.reservationId))throw Error('BOOKING_CHECKOUT_CONTEXT_INVALID');
+   if(!booking&&view.bookingPreparation&&['confirmed-paid','cancelled-paid','cancelled-unpaid'].includes(view.bookingPreparation.review?.phase??'')){
+    // Native terminal terms do not erase unresolved Wallet/Note custody.
+    // Preserve the complete accepted booking before starting an ordinary edit.
+    if(stored&&hasPendingHostedCheckout(stored))throw Error('CHECKOUT_PAYMENT_PENDING');
+    await save(emptyCheckoutSnapshot(),[...(stored?.history??[]),view]);
+   }
+   if(view.bookingPreparation&&(!booking||view.bookingPreparation.operationId!==booking.operationId||view.bookingPreparation.review?.phase!=='ready'))throw Error('BOOKING_REVIEW_REQUIRED');
+   if(booking&&view.approval?.booking){const old=view.approval;if(!sameBookingCheckout(old.booking,booking)||old.recipient.username!==value.recipient||old.amountUsdCents!==value.amountUsdCents||old.fixedSale?.digest!==fixedSale?.digest)throw Error('BOOKING_TERMS_CHANGED');if(old.method===value.method)return old;if(view.approvalHistory.length)throw Error('CHECKOUT_PAYMENT_PENDING');}
    if(value.fixedSale&&await paidFixedSale(value.fixedSale))throw Error('This checkout was already paid. Open its saved payment receipt.');
    const old=view.approval,continuing=view.approvalHistory.length>0&&view.phase!=='paid'&&view.phase!=='not-sent';
    if(continuing&&(!old||value.method!=='note'||old.method!=='note'||old.amountUsdCents!==value.amountUsdCents||old.recipient.username!==value.recipient||old.fixedSale?.digest!==fixedSale?.digest||view.walletOutcome||view.notes.some(n=>n.status!=='inspected'&&n.status!=='confirmed')))throw Error('CHECKOUT_PAYMENT_PENDING');
-   if(!continuing&&stored&&hasPendingHostedCheckout(stored))throw Error('CHECKOUT_PAYMENT_PENDING');
+   if(!continuing&&stored&&hasPendingHostedCheckout(booking?{...stored,current:{...stored.current,bookingPreparation:undefined}}:stored))throw Error('CHECKOUT_PAYMENT_PENDING');
    if(value.method==='note'&&!view.notes.length)throw Error('Choose a Note before reviewing payment.');
-   const nonce=continuing?old!.clientNonce:crypto.randomUUID(),api=await input.walletSend();
+   const nonce=continuing?old!.clientNonce:value.checkoutId??crypto.randomUUID(),api=await input.walletSend();
    if(prepared)preparedApi?.discard(prepared);prepared=null;preparedApi=null;
    const username=value.recipient.replace(/^@/,'').replace(/\.receiz\.id$/i,'').toLowerCase();if(!/^[a-z0-9_]{3,24}$/.test(username))throw Error('Use a Receiz ID.');
    let funding={card:value.method==='card'?value.amountUsdCents:'0',balance:'0'};
    const balance=value.method==='balance'?await input.readWallet():null;if(balance)funding=observedProposal(balance,value.amountUsdCents);
    const noteFunding=value.method==='note'?await noteProposal(value.amountUsdCents,view.notes,old?.accountUid):null;if(noteFunding)funding=noteFunding;
-   const w=await api.prepare({recipient:continuing&&!fixedSale?old!.recipient.userId:username,amountUsdCents:value.amountUsdCents,...(fixedSale?{note:fixedSalePaymentNote(fixedSale,nonce)}:{})},{clientNonce:nonce,...(value.method==='card'?{fundingPreference:'card' as const}:{}),cardFundingLimitUsdCents:funding.card,checkoutContext:{checkoutId:nonce,username}});assert();if(balance&&balance.userId!==w.accountUid||noteFunding&&noteFunding.accountUid!==w.accountUid)throw Error('CHECKOUT_RESULT_MISMATCH');
+   const w=await api.prepare({recipient:continuing&&!fixedSale?old!.recipient.userId:username,amountUsdCents:value.amountUsdCents,...(fixedSale?{note:fixedSalePaymentNote(fixedSale,nonce)}:{})},{clientNonce:nonce,...(value.method==='card'?{fundingPreference:'card' as const}:{}),cardFundingLimitUsdCents:funding.card,checkoutContext:{checkoutId:nonce,username,...(booking?{booking,bookingOptions:view.bookingPreparation?.options??{}}:{})},...(booking?{booking}:{})});assert();if(balance&&balance.userId!==w.accountUid||noteFunding&&noteFunding.accountUid!==w.accountUid)throw Error('CHECKOUT_RESULT_MISMATCH');
    if(fixedSale&&w.recipientUserId!==fixedSale.recipientUserId){api.discard(w);throw Error('The recipient no longer matches this checkout. Ask for a new payment link.');}
    const recipient=continuing?old!.recipient:{userId:w.recipientUserId,username,displayName:w.recipientLabel.startsWith('@')?w.recipientLabel.slice(1):username,avatarUrl:w.recipientAvatarUrl??null};
-   const a=await sign({checkoutId:nonce,clientNonce:nonce,identityDigest:input.identityDigest,accountUid:w.accountUid,recipient,amountUsdCents:value.amountUsdCents,method:value.method,cardAmountUsdCents:funding.card,balanceContributionUsdCents:funding.balance,...(noteFunding?{noteAmountUsdCents:noteFunding.noteAmountUsdCents,noteSurplusUsdCents:noteFunding.noteSurplusUsdCents}:{}),noteSourceDigests:value.method==='note'?view.notes.map(n=>n.sourceDigest):[],...(fixedSale?{fixedSale}:{})});assert();
+   const a=await sign({checkoutId:nonce,clientNonce:nonce,identityDigest:input.identityDigest,accountUid:w.accountUid,recipient,amountUsdCents:value.amountUsdCents,method:value.method,cardAmountUsdCents:funding.card,balanceContributionUsdCents:funding.balance,...(noteFunding?{noteAmountUsdCents:noteFunding.noteAmountUsdCents,noteSurplusUsdCents:noteFunding.noteSurplusUsdCents}:{}),noteSourceDigests:value.method==='note'?view.notes.map(n=>n.sourceDigest):[],...(fixedSale?{fixedSale}:{}),...(booking?{booking}:{})});assert();
    prepared=w;preparedApi=api;
    const history=[...(stored?.history??[])];if(!continuing&&old&&old.checkoutId!==nonce)history.push(view.phase==='paid'||view.phase==='not-sent'?view:{...view,phase:'not-sent'});
-   await save({...emptyCheckoutSnapshot(),phase:'reviewed',approval:a,notes:value.method==='note'?view.notes:[],approvalHistory:continuing?view.approvalHistory:[]},history);return a;
+   await save({...emptyCheckoutSnapshot(),...(view.bookingPreparation?{bookingPreparation:view.bookingPreparation}:{}),phase:'reviewed',approval:a,notes:value.method==='note'?view.notes:[],approvalHistory:continuing?view.approvalHistory:[]},history);return a;
   });},
   inspectNote(file:File){return run(async()=>{
    if(view.walletOutcome&&view.walletOutcome.status!=='not-sent'||view.notes.some(n=>['depositing','received','attention-required'].includes(n.status)))throw Error('CHECKOUT_PAYMENT_PENDING');
@@ -123,6 +152,7 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
   check(expectedCheckoutId?:string){return run(async()=>{if(expectedCheckoutId&&view.approval?.checkoutId!==expectedCheckoutId)return;await continuePayment(true);});},
   back(expectedCheckoutId?:string){return run(async()=>{
    if(expectedCheckoutId&&view.approval?.checkoutId!==expectedCheckoutId)return false;
+   if(view.bookingPreparation&&!['confirmed-paid','cancelled-paid','cancelled-unpaid'].includes(view.bookingPreparation.review?.phase??''))return false;
    // Back withdraws an unsent payment approval. Card funding is not a
    // submitted transfer; its original deposit remains independently retained.
    // Never discard an uncertain transfer or a Note whose credit is pending.

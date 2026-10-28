@@ -1,7 +1,8 @@
+import {readSavedBookingOptions} from './booking-settings';
 import {deviceCalendarTimezone} from './calendar-timezone';
 import {permittedOrganizerPath} from './organizer-paths';
-import {calendarRange,organizerContact,organizerEvent,organizerRecord,visibleOrganizerEvents,readOrganizerDisplay,type AppointmentInput,type BookingAvailability,type BookingQuestion,type BookingSchedule,type CalendarRange,type OrganizerContact,type OrganizerDisplay,type OrganizerEvent} from './organizer-types';
-export type {OrganizerContact,OrganizerEvent,OrganizerDisplay,CalendarRange,BookingAvailability,BookingQuestion,BookingSchedule,AppointmentInput} from './organizer-types';
+import {calendarRange,organizerContact,organizerEvent,organizerRecord,visibleOrganizerEvents,readOrganizerDisplay,type AppointmentInput,type BookingAvailability,type BookingSettingsInput,type BookingQuestion,type BookingSchedule,type CalendarRange,type OrganizerContact,type OrganizerDisplay,type OrganizerEvent} from './organizer-types';
+export type {OrganizerContact,OrganizerEvent,OrganizerDisplay,CalendarRange,BookingAvailability,BookingSettingsInput,BookingQuestion,BookingSchedule,AppointmentInput} from './organizer-types';
 export type OrganizerRequest=(path:string,init?:RequestInit)=>Promise<Response>;
 export class OrganizerRequestError extends Error {
  constructor(code:string,readonly status:number|null,options?:ErrorOptions,readonly responseCode:string|null=null){super(code,options);this.name='OrganizerRequestError';}
@@ -55,7 +56,7 @@ export function createNativeOrganizer({accountUid,request,retained,carried,onCha
   async cancelEvent(eventId:string,expectedEvent:OrganizerEvent){if(!uuid.test(eventId))throw Error('ORGANIZER_EVENT_INVALID');const data=await write('/api/calendar/events/'+eventId,'PATCH',{action:'cancel',expectedEvent});return acceptEvent(data.event);},
   knownAvailability(username:string,query=''){assertOpen();return bookingCache.get(username+':'+query+':'+deviceCalendarTimezone())??null;},
   availability(username:string,query=''):Promise<BookingAvailability>{const timezone=deviceCalendarTimezone(),key=username+':'+query+':'+timezone,known=bookingCache.get(key);if(known)return Promise.resolve(known);return once('booking:'+key,async()=>{const {readBookingAvailability}=await import('./public-booking'),value=readBookingAvailability(await (query?checked('/api/calendar/embed/'+encodeURIComponent(username)+'?'+query):write('/api/calendar/embed/'+encodeURIComponent(username),'PUT',{action:'availability',timezone})),username);if(!query){const previous=defaultBookingKeys.get(username);if(previous&&previous!==key)bookingCache.delete(previous);defaultBookingKeys.set(username,key);}bookingCache.set(key,value);return value;});},
-  async saveAvailability(username:string,scheduleConfig:BookingSchedule,customQuestions:BookingQuestion[]){const result=await write('/api/calendar/embed/'+encodeURIComponent(username),'PUT',{scheduleConfig,customQuestions});bookingCache.clear();defaultBookingKeys.clear();return result;},
+  async saveAvailability(username:string,scheduleConfig:BookingSchedule,customQuestions:BookingQuestion[],options:BookingSettingsInput={}){const result=await write('/api/calendar/embed/'+encodeURIComponent(username),'PUT',{scheduleConfig,customQuestions,...options});let saved;try{saved=readSavedBookingOptions(result,options);}catch(cause){throw Error('ORGANIZER_WRITE_UNCONFIRMED',{cause});}bookingCache.clear();defaultBookingKeys.clear();return{...result,scheduleConfig:result.scheduleConfig,customQuestions:result.customQuestions,...saved};},
  };
 }
 export type NativeOrganizer=ReturnType<typeof createNativeOrganizer>;

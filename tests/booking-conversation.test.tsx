@@ -4,16 +4,17 @@ import {createRoot} from 'react-dom/client';
 import {afterEach,expect,it,vi} from 'vitest';
 import {PublicBookingPage} from '../src/features/booking/PublicBookingPage';
 import {createPublicBooking} from '../src/receiz/public-booking';
+vi.mock('../src/features/booking/BookingPayment',()=>({default:({input}:{input:{slotStartAt:string;bookingPolicyRevision:string}})=><section data-controlled-booking-payment>{input.slotStartAt} · {input.bookingPolicyRevision}</section>}));
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const config={slotMinutes:30,hourStarts:[9,10],weekdayIndexes:[1],daysForward:14};
 const ownerId='ca7b930e-9137-41c9-8922-df2fb377c728';
 const source=(state?:'ready'|'unavailable'|'unknown')=>({ok:true,owner:{userId:ownerId,username:'bjklock',displayName:'BJ Klock',avatarUrl:null},scheduleConfig:config,savedScheduleConfig:config,customQuestions:[{id:'topic',label:'Topic',required:true}],savedCustomQuestions:[],slots:[{id:'one',startAt:'2026-11-02T14:00:00.000Z',endAt:'2026-11-02T14:30:00.000Z'}],...(state?{conversation:{state,ownerUserId:ownerId,username:'bjklock'}}:{})});
 const cleanups:Array<()=>void>=[];
 afterEach(()=>{for(const cleanup of cleanups.splice(0))cleanup();vi.unstubAllGlobals();});
-async function mount(state?:'ready'|'unavailable'|'unknown'){
+async function mount(state?:'ready'|'unavailable'|'unknown',returned?:import('../src/receiz/checkout-request').CheckoutReturn){
  const request=vi.fn(async()=>Response.json(source(state))),service=createPublicBooking({username:'bjklock',request});
  await service.availability();const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
- cleanups.push(()=>{act(()=>root.unmount());host.remove();});await act(async()=>root.render(<PublicBookingPage service={service}/>));
+ cleanups.push(()=>{act(()=>root.unmount());host.remove();});await act(async()=>root.render(<PublicBookingPage service={service} returned={returned}/>));
  if(state==='ready')await vi.waitFor(()=>expect(host.querySelector('textarea[aria-label="Your reply"]')).not.toBeNull());
  return{host,root,service,request,button:(label:string)=>[...host.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent?.trim()===label)!};
 }
@@ -51,3 +52,7 @@ it('does not replace an already settled calendar when later eligibility becomes 
  await act(async()=>root.render(<PublicBookingPage service={service} opening={refresh}/>));
  expect(host.querySelector('textarea[aria-label="Your reply"]')).toBeNull();expect(host.querySelector('[data-slot-start]')).toBe(offered);
 });
+
+it('offers explicit saved-booking resumption on the visible Twin surface before opening any payment',async()=>{const f=await mount('ready',{username:'bjklock',checkoutId:'00000000-0000-4000-8000-000000000003',sessionId:'cs_test_saved_session_123'}),buttons=[...f.host.querySelectorAll('.booking-chat button')];expect(buttons.some(button=>button.textContent?.trim()==='Resume booking')).toBe(true);expect(f.host.querySelector('[data-booking-manual]')?.hasAttribute('hidden')).toBe(true);expect(f.request).toHaveBeenCalledOnce();});
+
+it('opens the accepted Twin handoff inside the same full-frame payment layer only after Review payment',async()=>{let turn=0;const input={slotStartAt:'2026-11-02T14:00:00.000Z',name:'Alex',email:'alex@example.test',timezone:'UTC',notes:'',questions:[],meeting:true,bookingPolicyRevision:'price-policy'};const fetcher=vi.fn<typeof fetch>(async(_url,init)=>{const pending=JSON.parse(String(init?.body));return Response.json({ok:true,world:{username:'bjklock'},assistantMessage:{id:pending.clientAssistantMessageId},reply:{message:++turn===1?'Review this appointment.':'Continue to exact payment review.',memory:[],...(turn===2?{bookingPaymentRequest:{username:'bjklock',proposalOperationId:pending.replyToOperationId,bookingPrice:{currency:'usd',priceUsdCents:'2500',feeUsdCents:'0',policyRevision:'price-policy'},input}}:{})}});});vi.stubGlobal('fetch',fetcher);const f=await mount('ready'),field=f.host.querySelector<HTMLTextAreaElement>('[aria-label="Your reply"]')!;for(const message of ['Tuesday please','Yes, book it']){await fill(field,message);await act(async()=>f.host.querySelector<HTMLButtonElement>('[aria-label="Send reply"]')!.click());}const review=f.button('Review payment');expect(review).toBeTruthy();expect(f.host.querySelector('[data-controlled-booking-payment]')).toBeNull();await act(async()=>review.click());await vi.waitFor(()=>expect(f.host.querySelector('[data-controlled-booking-payment]')).not.toBeNull());expect(f.host.querySelector('[data-controlled-booking-payment]')?.textContent).toContain('price-policy');expect(f.host.querySelector('[data-booking-manual]')?.hasAttribute('hidden')).toBe(false);expect(f.host.querySelector('.booking-chat')?.hasAttribute('inert')).toBe(true);expect(fetcher).toHaveBeenCalledTimes(2);expect(f.request).toHaveBeenCalledOnce();});

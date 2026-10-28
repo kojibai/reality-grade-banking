@@ -17,6 +17,13 @@ export function permittedOrganizerPath(url:URL,method:string):boolean {
  }
  if(path.startsWith('/api/calendar/events/')&&path.endsWith('/bundle')){let id:string;try{id=decodeURIComponent(path.slice('/api/calendar/events/'.length,-'/bundle'.length));}catch{return false;}const parts=id.split(':');return !url.search&&verb==='GET'&&(uuid.test(id)||parts[0]==='wallet'&&((['transfer','note_mint','reserve_credit','wallet_ledger_entry'].includes(parts[1]!)&&parts.length===3&&uuid.test(parts[2]!))||(parts[1]==='note_claim'&&parts.length===4&&uuid.test(parts[2]!)&&uuid.test(parts[3]!))));}
  if(/^\/api\/calendar\/events\/[a-f\d-]{36}$/.test(path))return uuid.test(path.slice('/api/calendar/events/'.length))&&!url.search&&verb==='PATCH';
+ if(/^\/api\/calendar\/embed\/[a-z0-9_]{3,24}\/paid$/.test(path)){
+  if(verb==='GET')return uuid.test(params.get('operationId')??'')&&[...params].every(([key,value])=>key==='operationId'||key==='reservationId'&&uuid.test(value));
+  if(verb!=='POST')return false;
+  // Only the existing schedule/question coordinates cross this boundary.
+  // Price, payer and accepted terms are independently admitted by Calendar.
+  const calendar=new URL(url);calendar.pathname=path.slice(0,-'/paid'.length);return permittedOrganizerPath(calendar,'GET');
+ }
  if(/^\/api\/calendar\/embed\/[a-z0-9_]{3,24}$/.test(path)){
   if(['POST','PUT'].includes(verb))return !url.search;
   if(verb!=='GET')return false;

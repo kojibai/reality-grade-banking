@@ -15,7 +15,11 @@ export interface BookingSchedule {timezone?:string;timezoneMode?:'auto'|'manual'
 export interface BookingQuestion {id:string;label:string;required:boolean}
 export interface BookingSlot {id:string;startAt:string;endAt:string}
 export interface PublicBookingConversation {state:'ready'|'unavailable'|'unknown';ownerUserId:string;username:string}
+export interface BookingPrice {currency:'usd';priceUsdCents:string;feeUsdCents:'0';policyRevision:string|null}
+export interface BookingSettings {conversationEnabled:boolean;conversationAvailable?:boolean}
+export interface BookingSettingsInput {bookingPriceUsdCents?:string;bookingPolicyRevision?:string|null;conversationEnabled?:boolean}
 export interface BookingAvailability {
+ bookingPrice?:BookingPrice;bookingSettings?:BookingSettings;
  conversation?:PublicBookingConversation;
  owner:{userId?:string;username:string;displayName:string;avatarUrl:string|null};scheduleConfig:BookingSchedule;savedScheduleConfig:BookingSchedule;
  customQuestions:BookingQuestion[];savedCustomQuestions:BookingQuestion[];slots:BookingSlot[];

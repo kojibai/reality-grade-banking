@@ -14,3 +14,8 @@
 
 /* Readable text entry avoids automatic focus magnification; page zoom stays available. */
 @media(pointer:coarse){.organizer-search input,.organizer-form input:not([type=checkbox]),.organizer-form textarea,.organizer-form select,.organizer-form>.organizer-timezone select{font-size:16px}}
+
+/* Calendar settings remain readable without focus magnification. */
+.bank-organizer .booking-settings-form :is(input,textarea,select){font-size:16px}
+
+.bank-organizer .booking-settings-form>.organizer-timezone{flex-direction:row}

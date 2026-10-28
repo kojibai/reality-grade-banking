@@ -1,3 +1,8 @@
+import {validCalendarTimezone} from './calendar-timezone';
+import {readBookingPrice} from './booking-settings';
+import {readBookingSchedule} from './public-booking';
+import type {BookingPrice} from './organizer-types';
+import type {PaidBookingInput} from './paid-booking';
 import {bookingOverrides} from './booking-link';
 
 export interface PublicBookingMessage {
@@ -11,7 +16,9 @@ export interface PendingBookingMessage {
 export interface PublicTwinBookingConfirmation {
  eventId:string;title:string;startAt:string;endAt:string;attendeeName:string;attendeeEmail:string;timezone:string|null;location:string;
 }
+export interface PublicTwinBookingPaymentRequest {username:string;proposalOperationId:string;bookingPrice:BookingPrice;input:PaidBookingInput}
 export interface PublicBookingConversationSnapshot {
+ bookingPaymentRequest:PublicTwinBookingPaymentRequest|null;
  draft:string;messages:readonly PublicBookingMessage[];busy:boolean;pending:PendingBookingMessage|null;
  lastAcceptedOperationId:string|null;error:string;bookingConfirmation:PublicTwinBookingConfirmation|null;
  /** Exact accepted native reply retains proposal, memory and proof relationships. */
@@ -34,11 +41,20 @@ function confirmation(raw:unknown):PublicTwinBookingConfirmation|null{
  return value as unknown as PublicTwinBookingConfirmation;
 }
 
+/** Projection of a tool-derived accepted reply, never financial approval. */
+function paymentRequest(raw:unknown,username:string,pending:PendingBookingMessage):PublicTwinBookingPaymentRequest|null{
+ if(raw===undefined||raw===null)return null;const value=record(raw),input=record(value.input),price=readBookingPrice(value.bookingPrice);
+ const stamp=(v:unknown)=>typeof v==='string'&&v.length<=40&&Number.isFinite(Date.parse(v));
+ if(value.username!==username||!pending.replyToOperationId||value.proposalOperationId!==pending.replyToOperationId||!price||price.priceUsdCents==='0'||input.meeting!==true||input.bookingPolicyRevision!==price.policyRevision||Object.keys(input).some(key=>!['slotStartAt','name','email','timezone','notes','questions','scheduleConfig','meeting','bookingPolicyRevision'].includes(key))||!stamp(input.slotStartAt)||typeof input.name!=='string'||!input.name.trim()||input.name.length>72||typeof input.email!=='string'||input.email.length>200||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)||!validCalendarTimezone(input.timezone)||typeof input.notes!=='string'||input.notes.length>2000||!Array.isArray(input.questions)||input.questions.length>12||input.questions.some(raw=>{const q=record(raw);return typeof q.id!=='string'||q.id.length>200||typeof q.label!=='string'||q.label.length>1000||typeof q.required!=='boolean'||typeof q.answer!=='string'||q.answer.length>2000;}))throw Error('RECEIZ_RESULT_UNCONFIRMED');
+ if(input.scheduleConfig!==undefined)readBookingSchedule(input.scheduleConfig);
+ return structuredClone({username,proposalOperationId:pending.replyToOperationId,bookingPrice:price,input:input as unknown as PaidBookingInput});
+}
+
 export function createPublicBookingConversation({username,options,request=globalThis.fetch}:{username:string;options:URLSearchParams;request?:typeof fetch}):PublicBookingConversationController{
  if(!validUsername(username))throw Error('BOOKING_USERNAME_REQUIRED');
  const params=bookingOverrides(new URLSearchParams(options));params.sort();
  const path='/api/bank/booking/'+username+'/conversation'+(params.size?'?'+params:'');
- let state:PublicBookingConversationSnapshot={draft:'',messages:[],busy:false,pending:null,lastAcceptedOperationId:null,error:'',bookingConfirmation:null,reply:null};
+ let state:PublicBookingConversationSnapshot={draft:'',messages:[],busy:false,pending:null,lastAcceptedOperationId:null,error:'',bookingConfirmation:null,bookingPaymentRequest:null,reply:null};
  const listeners=new Set<()=>void>();let disposed=false,active:AbortController|null=null,work:Promise<void>|null=null;
  const publish=(patch:Partial<PublicBookingConversationSnapshot>)=>{if(disposed)return;state={...state,...patch};for(const listener of listeners)listener();};
  const reviseMessage=(id:string,patch:Partial<PublicBookingMessage>)=>publish({messages:state.messages.map(row=>row.id===id?{...row,...patch}:row)});
@@ -46,7 +62,7 @@ export function createPublicBookingConversation({username,options,request=global
  const accept=(event:Record<string,unknown>,pending:PendingBookingMessage)=>{
   const reply=record(event.reply);
   if(record(event.world).username!==username||typeof reply.message!=='string'||event.assistantMessage&&record(event.assistantMessage).id!==pending.clientAssistantMessageId)throw Error('RECEIZ_SOURCE_MISMATCH');
-  const booked=confirmation(reply.bookingConfirmation);
+  const booked=confirmation(reply.bookingConfirmation),payment=paymentRequest(reply.bookingPaymentRequest,username,pending);
   // Preserve prior accepted history; native memory may be a bounded window.
   // UUID transport identities let the current provisional rows become the
   // actual native rows without remounting or comparing message text.
@@ -70,7 +86,7 @@ export function createPublicBookingConversation({username,options,request=global
    if(!order.includes(id)){const at=nextAnchor===undefined?-1:order.indexOf(nextAnchor);order.splice(at<0?order.length:at,0,id);}
    nextAnchor=id;
   }
-  publish({messages:order.map(id=>rows.get(id)!),pending:null,lastAcceptedOperationId:pending.clientOperationId,reply,bookingConfirmation:booked??state.bookingConfirmation,error:''});
+  publish({messages:order.map(id=>rows.get(id)!),pending:null,lastAcceptedOperationId:pending.clientOperationId,reply,bookingConfirmation:booked??state.bookingConfirmation,bookingPaymentRequest:payment,error:''});
  };
  const refuse=(value:Record<string,unknown>,pending:PendingBookingMessage)=>{
   const status=value.operationStatus,error=typeof value.error==='string'?value.error:'RECEIZ_RESULT_UNCONFIRMED';

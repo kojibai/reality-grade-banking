@@ -16,3 +16,9 @@ it('admits only one exact selected native Calendar proof read',()=>{
  for(const path of [`/api/calendar/events/${id}/bundle`,`/api/calendar/events/${encodeURIComponent('wallet:transfer:'+id)}/bundle`])expect(check(path)).toBe(true);
  for(const [path,method] of [[`/api/calendar/events/${id}/bundle?owner=foreign`,'GET'],[`/api/calendar/events/${id}/bundle`,'POST'],['/api/calendar/events/foreign/bundle','GET'],[`/api/calendar/events/${encodeURIComponent('wallet:transfer:'+id+':foreign')}/bundle`,'GET']])expect(check(path,method)).toBe(false);
 });
+
+it('binds authenticated paid-booking paths to exact status coordinates or existing shared-link options',()=>{
+ const operation='00000000-0000-4000-8000-000000000001',reservation='00000000-0000-4000-8000-000000000002',base='/api/calendar/embed/bjklock/paid';
+ for(const [path,method] of [[base+'?operationId='+operation,'GET'],[base+'?operationId='+operation+'&reservationId='+reservation,'GET'],[base,'POST'],[base+'?slotMinutes=60&timezone=UTC&questions=%5B%5D','POST']]){expect(check(path,method),path).toBe(true);expect(permittedNativePath(path,method),path).toBe(true);}
+ for(const [path,method] of [[base,'GET'],[base+'?operationId=foreign','GET'],[base+'?operationId='+operation+'&ownerUid=other','GET'],[base+'?operationId='+operation+'&operationId='+operation,'GET'],[base+'?priceUsdCents=1','POST'],[base+'?conversationEnabled=true','POST'],[base+'?operationId='+operation,'POST'],[base,'PUT'],[base,'DELETE']])expect(check(path,method),path).toBe(false);
+});
