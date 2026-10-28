@@ -4,7 +4,7 @@ import {profileAvatarUrl} from './profile-avatar.js';
 import {retainRecipientPortrait,forgetRecipientPortrait} from './recipient-portrait.js';
 
 const names=/^[a-z0-9_]{3,24}$/;
-const reserved=new Set(['moments','meet','book','banking','action','crypto','nft','nfts','economy','farmers','fuel','repairs','grocers','housing','workers','trust','money','deposit','fees','help','about','customers','switch','start','privacy','terms','docs','standard','standards','agent','agents','fraud','recover','proof','together','cooperate','protect','vaults','fit','coops','cooperatives','business','pay','api','asset','assets','auth','conformance','explore','explorer','learn','legal','ledger','market','market-cap','native','offline','receipt','source','verify','u']);
+const reserved=new Set(['moments','meet','book','banking','guide','action','crypto','nft','nfts','economy','farmers','fuel','repairs','grocers','housing','workers','trust','money','deposit','fees','help','about','customers','switch','start','privacy','terms','docs','standard','standards','agent','agents','fraud','recover','proof','together','cooperate','protect','vaults','fit','coops','cooperatives','business','pay','api','asset','assets','auth','conformance','explore','explorer','learn','legal','ledger','market','market-cap','native','offline','receipt','source','verify','u']);
 export const profileUsername=(value:unknown):string|null=>typeof value==='string'&&names.test(value)?value:null;
 export function profilePagePath(username:string){if(!profileUsername(username))throw Error('PROFILE_USERNAME_INVALID');return reserved.has(username)?`/u/${username}/`:`/${username}/`;}
 export function profilePageUsername(path:string):string|null{

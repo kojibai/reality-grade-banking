@@ -45,16 +45,16 @@ it('has custom share artwork with its own four sources and no purchase price',as
 it('keeps the story accessible without autoplay and cancels motion when navigation removes it',async()=>{
  expect(existsSync('public/learn/moments.js')).toBe(true);
  const {momentsContent}=await import(/* @vite-ignore */ momentsModule);document.body.innerHTML=momentsContent();
- const callbacks:{cb:IntersectionObserverCallback,disconnect:ReturnType<typeof vi.fn>}[]=[];
- class Observer{cb:IntersectionObserverCallback;disconnect=vi.fn();constructor(cb:IntersectionObserverCallback){this.cb=cb;callbacks.push(this);}observe(){}unobserve(){}takeRecords(){return[];}}
+ const callbacks:{cb:IntersectionObserverCallback,disconnect:ReturnType<typeof vi.fn>,root:Element|null}[]=[];
+ class Observer{cb:IntersectionObserverCallback;root:Element|null=null;disconnect=vi.fn();constructor(cb:IntersectionObserverCallback){this.cb=cb;callbacks.push(this);}observe(root:Element){this.root=root;}unobserve(){}takeRecords(){return[];}}
  vi.stubGlobal('IntersectionObserver',Observer);vi.stubGlobal('matchMedia',()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()}));vi.useFakeTimers();
  const modulePath='../public/learn/moments.js';const {init}=await import(/* @vite-ignore */ modulePath);init();init();
- const root=document.querySelector<HTMLElement>('[data-moments-story]')!;expect(callbacks).toHaveLength(1);
- callbacks[0].cb([{isIntersecting:true,intersectionRatio:.8}] as IntersectionObserverEntry[],{} as IntersectionObserver);
+ const root=document.querySelector<HTMLElement>('[data-moments-story]')!;expect(callbacks).toHaveLength(2);const originalObserver=callbacks.find(observer=>observer.root===root)!;expect(originalObserver).toBeDefined();
+ originalObserver.cb([{isIntersecting:true,intersectionRatio:.8}] as IntersectionObserverEntry[],{} as IntersectionObserver);
  await vi.advanceTimersByTimeAsync(4200);expect(root.dataset.frame).toBe('1');expect(root.textContent).toContain('$120');
  const exchange=root.querySelector<HTMLButtonElement>('[data-moment-chapter="2"]')!;exchange.click();expect(root.dataset.frame).toBe('2');expect(root.querySelector('[data-moment-title]')?.textContent).toContain('Repairs paid');
  exchange.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));expect(root.dataset.frame).toBe('6');expect(root.textContent).toContain('$145');
- root.remove();window.dispatchEvent(new Event('receiz-learn:page'));expect(callbacks[0].disconnect).toHaveBeenCalledOnce();expect(root.dataset.active).toBe('false');expect(vi.getTimerCount()).toBe(0);
+ root.remove();window.dispatchEvent(new Event('receiz-learn:page'));expect(originalObserver.disconnect).toHaveBeenCalledOnce();expect(root.dataset.active).toBe('false');expect(vi.getTimerCount()).toBe(0);
  vi.useRealTimers();vi.unstubAllGlobals();document.body.innerHTML='';
 });
 

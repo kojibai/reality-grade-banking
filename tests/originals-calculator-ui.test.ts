@@ -13,7 +13,10 @@ it('teaches seal-based accrual and each Original’s own signature as access to 
  expect(page.textContent).toContain('Each Original needs its own PBI signature to unlock its value.');
  expect(page.textContent).toContain('Value accrues from the seal. Your signature unlocks what this Original has earned.');
  expect(page.textContent).not.toMatch(/earning turns on|earning on|enables? (?:account )?earning|from your first Original|unsigned Original does not earn/i);
- expect(page.textContent).not.toMatch(/500|150,000|40%|250,000|shared baseline|funding requirement|become qualified/i);
+ const explanation=page.cloneNode(true) as HTMLElement;
+ explanation.querySelectorAll('.product-screen').forEach(screen=>screen.remove());
+ // Illustrative existing holdings are not qualification grants.
+ expect(explanation.textContent).not.toMatch(/500|150,000|40%|250,000|shared baseline|funding requirement|become qualified/i);
  expect(page.querySelector('[data-originals-calculator]')).toBeNull();
  expect(page.querySelector('[data-originals-example]')).not.toBeNull();
  expect(page.querySelector('[data-example-verify]')?.textContent).toContain('Verify');

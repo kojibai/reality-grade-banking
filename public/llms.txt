@@ -7,6 +7,11 @@
 - Reality-grade banking: hold, inspect, receive and move that value while preserving its authority and history.
 - Reality-grade infrastructure: Receiz implements identity, proof, ownership, Settlement, verification and continuity. SDK, MCP and AI Skills compose those existing primitives.
 
+## Use the account
+- [Practical user guide: controls, result and evidence](https://bankeiz.com/guide/)
+- [Actual banking walkthrough](https://bankeiz.com/banking/)
+- [Complete canonical operating manual](https://docs.bankeiz.com/)
+
 ## Start with the source
 - [The economy](https://bankeiz.com/learn/proof-native-economy/)
 - [The banking standard](https://bankeiz.com/learn/reality-grade-banking/)

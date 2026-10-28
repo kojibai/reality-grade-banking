@@ -1,6 +1,7 @@
 import {momentsPage,momentsFaq} from '../src/content/personal-moments.mjs';
 import {meetingPage} from '../src/content/meeting-page.mjs';
 import {bankingPage} from '../src/content/banking-walkthrough.mjs';
+import {guidePage} from '../src/content/user-guide.mjs';
 import {portabilityPages} from '../src/content/portability-pages.mjs';
 import {economyPages} from '../src/content/existing-economy.mjs';
 import {standardPages} from '../src/content/standard-pages.mjs';
@@ -21,6 +22,7 @@ export const publicOrigin = 'https://bankeiz.com';
 export const publicPages = [
  {...momentsPage,id:'moments',motif:'layers',faq:momentsFaq},
  {...bankingPage,id:'banking',motif:'bank'},
+ {...guidePage,id:'guide',motif:'book'},
  {...meetingPage,id:'meet',motif:'bank'},
  ...portabilityPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-Grade Banking',description:page.description,lines:page.shareLines,caption:page.shareCaption,motif:'layers'})),
  ...economyPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-Grade Banking',description:page.description,lines:page.lines,caption:page.eyebrow,motif:'layers'})),

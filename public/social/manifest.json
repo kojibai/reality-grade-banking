@@ -17,6 +17,14 @@
       "bytes": 360301,
       "alt": "Your money. See it working. The actual interface. From account to payment record. Actual account and agent interface with clearly labeled example data."
     },
+    "/guide/": {
+      "url": "/social/guide-a02be5df709f4a13.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "a02be5df709f4a139d6eee2e29e9d4a8d85b3189f23ebe7dd4bfbedca3a70c56",
+      "bytes": 133870,
+      "alt": "Your next step. From here to done. The Bankeiz user guide connects Send money, Get paid and the Ledger receipt to practical controls and the evidence to keep."
+    },
     "/meet/": {
       "url": "/social/meet-f1a3d8ee0e92db0c.png",
       "width": 1730,

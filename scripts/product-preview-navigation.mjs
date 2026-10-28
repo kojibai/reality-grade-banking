@@ -1,3 +1,4 @@
+import{localizeProductExampleArtwork}from'../src/presentation/product-example-artwork.mjs';
 import {Window} from 'happy-dom';
 import {exampleAssets} from '../src/content/product-example-assets.mjs';
 const routes={'Create asset':'created-asset','Sign':'signed-asset',Enter:'account','Remove ID from this device':'entry','Use existing account':'account','Continue with PBI':'account',Account:'account',Market:'market',Add:'deposit',Deposit:'deposit',Assets:'assets',Ledger:'ledger',Send:'send',Receive:'receive','Create note':'note-create','Deposit note':'note-deposit','Pay with a Note':'note-deposit','Send money':'send','Send ownership':'send-ownership','Review payment':'send-review','Edit details':'send','Send another payment':'send','Send payment':'send-complete','All send options':'send','All receive options':'receive','Back to payment':'send','All deposits':'deposit',Counter:'counter','Back to Receive':'receive','Send link':'receive','Checkout link':'receive-checkout','Payment button':'receive','Embedded checkout':'receive-embedded','Review note':'note-review','Edit amount':'note-create','Add money':'add-money','An asset':'deposit-asset','Settlement Note':'note-deposit','Create an asset':'create-asset','View assets':'assets','Your history':'ledger'};
@@ -11,7 +12,7 @@ export async function exampleNavigation(html,screen){
   let next=routes[label];
   if(label==='Close'||button.classList.contains('bank-home-mark'))next='account';
   if(label==='Account settings')next='identity';if(label==='Open your agent and messages')next='messages';
-  if(label==='Create an asset instead')next='create-asset';if(label==='View all activity'||label==='View all')next=label==='View all activity'?'ledger':'assets';
+  if(label==='Create an asset instead')next='create-asset';if(label==='View all activity'||label==='View all'||label==='View investments')next=label==='View all activity'?'ledger':'assets';
   if(button.classList.contains('deposit-money-choice'))next='add-money';
   if(button.closest('.ledger-event')&&button.classList.contains('asset-row'))next='record';
   if(button.closest('.market-rows')&&button.classList.contains('asset-row'))next='asset-detail-'+(exampleAssets.find(asset=>asset.title===button.querySelector('strong')?.textContent)?.id||exampleAssets[0].id);
@@ -42,5 +43,5 @@ export async function exampleNavigation(html,screen){
  }
  // Trusted local display art for labeled examples; never Original bytes or ownership evidence.
  for(const row of frame.querySelectorAll('.market-rows .asset-row')){const asset=exampleAssets.find(asset=>asset.title===row.querySelector('strong')?.textContent),mark=row.querySelector('.asset-mark');if(!asset||!mark)continue;mark.classList.add('market-object-artwork');const image=doc.createElement('img');image.src=asset.image;image.alt='';image.loading='lazy';image.decoding='async';image.width=60;image.height=60;mark.replaceChildren(image);}
- const result=doc.body.innerHTML;await window.happyDOM.close();return result;
+ const result=localizeProductExampleArtwork(doc.body.innerHTML);await window.happyDOM.close();return result;
 }

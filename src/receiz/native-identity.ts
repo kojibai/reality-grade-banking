@@ -135,7 +135,10 @@ export interface OpenIdentity {
   dispose: () => void; backup: () => { bytes: Uint8Array; filename: string; phrase: string };
 }
 // Exact private material is retained only inside this closure and encrypted device custody.
-export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, filename: string, consentApproved = false, protectedTransport?: ProtectedIdentityTransport, messagingIncludedAtEntry = false): Promise<OpenIdentity> {
+export function openCanonicalIdentity(bytes: Uint8Array, phrase: string, filename: string, consentApproved = false, protectedTransport?: ProtectedIdentityTransport, messagingIncludedAtEntry = false): Promise<OpenIdentity> {
+  return openIdentity(bytes, phrase, filename, consentApproved, protectedTransport, messagingIncludedAtEntry);
+}
+async function openIdentity(bytes: Uint8Array, phrase: string, filename: string, consentApproved = false, protectedTransport?: ProtectedIdentityTransport, messagingIncludedAtEntry = false, freshAccountCreation = false): Promise<OpenIdentity> {
   if (!bytes.length || bytes.length > 32 * 1024 * 1024) throw new Error('Identity Record exceeds the supported device capacity.');
   const sdk = await loadReceiz(); const verification = await sdk.verifyReceizArtifact(bytes);
   if (verification.status !== 'verified-artifact') throw new Error('Import your complete Receiz Identity Record. This file is not a verified identity proof.');
@@ -1596,6 +1599,9 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
   const knownMarketPortfolio=()=>{
     const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId??keyFile.owner.uid;
     if(uid&&portfolioSeedUid!==uid){portfolioSeedUid=uid;portfolioView=readSealedMarketPortfolio(localHistory,uid);try{const retained=parseMarketPortfolio(portfolioStored,uid);if(!portfolioView||Date.parse(retained.observedAt)>=Date.parse(portfolioView.observedAt))portfolioView=retained;}catch{/* Same-owner encrypted retention only. */}}
+    // Only the fresh-creation caller can project its verified empty genesis.
+    // The continued account is the same new identity; restore never enters here.
+    if(uid&&!portfolioView&&freshAccountCreation&&carriedWallet?.source==='account-genesis')portfolioView={schema:'bankeiz.market-portfolio.v1',authority:'market-observation',accountUid:uid,observedAt:carriedWallet.observedAt,source:'sealed-head',positions:[],trades:[]};
     return portfolioView;
   };
   const marketPortfolio=()=>portfolioPromise??=(async()=>{
@@ -1965,7 +1971,7 @@ async function createFreshNativeIdentity(consentApproved: boolean): Promise<Open
     const { createNewIdentityImageSource } = await import('./identity-image');
     return owned.seal(await createNewIdentityImageSource(portableKey, protectedKey));
   });
-  const identity = await openCanonicalIdentity(sealed.artifactBytes, '', sealed.filename, true, { bytes: new Uint8Array(protectedSeal.artifactBytes), phrase: protectionSecret }, true);
+  const identity = await openIdentity(sealed.artifactBytes, '', sealed.filename, true, { bytes: new Uint8Array(protectedSeal.artifactBytes), phrase: protectionSecret }, true, true);
   if (identity.needsPhrase || identity.binding.keyId !== protectedBinding.keyId || identity.binding.artifactOwnerReceizId !== protectedBinding.artifactOwnerReceizId) { identity.dispose(); throw new Error('The self-contained Identity Record did not preserve its original identity.'); }
   const genesis = identity.knownWallet();
   if (!genesis || genesis.source !== 'account-genesis') { identity.dispose(); throw new Error('The signed account genesis could not be opened.'); }

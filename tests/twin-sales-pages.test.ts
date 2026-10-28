@@ -7,6 +7,7 @@ import {readFileSync} from 'node:fs';
 // @ts-expect-error Static guide template is plain ESM.
 import {learningDirectoryPage} from '../scripts/learn-template.mjs';
 import {businessContent} from '../scripts/business-page.mjs';
+import {exampleAssets} from '../src/content/product-example-assets.mjs';
 
 it.each(['/your-twin/','/action/'])('publishes %s with both sides, native conversation and the existing reviewed Business payment destination',async path=>{
  expect(publicPage(path)?.path).toBe(path);if(path==='/action/')expect(publicPage('/in-action/')).toBe(publicPage(path));
@@ -17,7 +18,12 @@ it.each(['/your-twin/','/action/'])('publishes %s with both sides, native conver
  expect(doc.querySelectorAll('[data-process-step]')).toHaveLength(4);
  expect(doc.querySelectorAll('svg[data-twin-art]').length).toBeGreaterThanOrEqual(path==='/action/'?1:2);
  expect(doc.querySelector('iframe,canvas,video')).toBeNull();
- expect(doc.querySelectorAll('main img')).toHaveLength(0);
+ // The actual product walkthrough includes populated, local example artwork.
+ // The authored story itself still uses its original vector visuals.
+ for(const image of doc.querySelectorAll('main img')){
+  expect(image.closest('.product-screen')).not.toBeNull();
+  expect(exampleAssets.map(asset=>asset.image)).toContain(image.getAttribute('src'));
+ }
  expect(doc.querySelector('[data-product-example=messages]')).not.toBeNull();
  const purchase=[...doc.querySelectorAll('a[data-business-checkout]')];
  expect(purchase.length).toBeGreaterThanOrEqual(3);

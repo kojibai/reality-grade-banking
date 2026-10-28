@@ -14,3 +14,19 @@ export const momentFrames=Object.freeze([
 ]);
 export function momentFrame(index){const at=Number.isFinite(index)?Math.max(0,Math.min(momentFrames.length-1,Math.trunc(index))):0,frame=momentFrames[at],balances=[12000,12000,12000,12000];for(const payment of momentPayments.slice(0,frame.count)){balances[payment.from]-=payment.cents;balances[payment.to]+=payment.cents;}return{...frame,index:at,basis:'fixed-usd-reference',balances};}
 export const momentAmount=cents=>'$'+(cents/100).toLocaleString('en-US',{maximumFractionDigits:0});
+
+// Separate, fixed illustration of the existing source and receiving laws.
+// These numbers are explanatory: no proof is admitted and no value is issued.
+const causalSourceIdentity='illustrative-original-a';
+const causalState=(title,detail,values={})=>Object.freeze({title,detail,sourceIdentity:causalSourceIdentity,basis:'fixed-illustrative-phi',sourceCount:0,files:1,calculated:0,admitted:false,used:0,remaining:0,payments:0,...values,balances:Object.freeze(values.balances??[0,0,0])});
+export const causalFrames=Object.freeze([
+ causalState('Begin with your source.','A captured moment. No sealed origin or accepted funds.'),
+ causalState('One seal. One Kai origin.','The Original binds the source and its own origin. That origin stays fixed.',{sourceCount:1}),
+ causalState('Calculate the value.','At this fixed illustrative coordinate: 100 Φ calculated. Not yet spendable.',{sourceCount:1,calculated:100}),
+ causalState('Your signature unlocks its use.','Assume this Original’s own PBI, public proof, current ownership and monetary admission are accepted.',{sourceCount:1,calculated:100,admitted:true,remaining:100,balances:[100,0,0]}),
+ causalState('Two files. The same Original.','A second file carries the same source identity and history. It adds no value.',{sourceCount:1,files:2,calculated:100,admitted:true,remaining:100,balances:[100,0,0]}),
+ causalState('Send 30 Φ. Keep 70 Φ.','The accepted payment records 30 Φ used from this source and 30 Φ received.',{sourceCount:1,files:2,calculated:100,admitted:true,used:30,remaining:70,payments:1,balances:[70,30,0]}),
+ causalState('An earlier copy cannot undo the payment.','The accepted history still records 30 Φ used. Reopening an old file restores no funds.',{sourceCount:1,files:2,calculated:100,admitted:true,used:30,remaining:70,payments:1,balances:[70,30,0]}),
+ causalState('The next person sends 10 Φ onward.','The next accepted payment leaves 70 / 20 / 10 Φ. The owner’s source still records 30 Φ used.',{sourceCount:1,files:2,calculated:100,admitted:true,used:30,remaining:70,payments:2,balances:[70,20,10]})
+]);
+export function causalFrame(index){const at=Number.isFinite(index)?Math.max(0,Math.min(causalFrames.length-1,Math.trunc(index))):0;return{...causalFrames[at],index:at,balances:[...causalFrames[at].balances]};}

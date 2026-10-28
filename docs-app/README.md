@@ -22,7 +22,7 @@ Revise documentation with the operation it describes. Search filters locally wit
 
 ## Manual structure and public formats
 
-The manual contains 37 sourced articles in nine subject groups and four reading paths. All seventeen originally published article URLs remain available. `articles/*.mjs` holds the authored chapters; `content.mjs` assembles them, `renderer.mjs` renders semantic static HTML, and `markdown.mjs` renders the same content for export. `examples.mjs` is the single source for the downloadable SDK/MCP examples.
+The manual contains 45 sourced articles in ten subject groups and six reading paths. All seventeen originally published article URLs remain available. `articles/*.mjs` holds the authored chapters; `content.mjs` assembles them, `renderer.mjs` renders semantic static HTML, and `markdown.mjs` renders the same content for export. `examples.mjs` is the single source for the downloadable SDK/MCP examples.
 
 The build publishes a Markdown copy at every article's `index.md`, an `articles.json` public content index, `llms.txt`, `llms-full.txt`, `sitemap.xml`, and read-only local example files. Documentation JSON is public explanatory content, never identity, proof admission or financial authority. Search uses one in-document text index and the local 1.2 KB script; it makes no network requests and searches paragraph, table, step and example text. Reading does not load the Bank application or inspect an account.
 
