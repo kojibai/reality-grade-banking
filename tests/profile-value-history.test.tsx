@@ -12,9 +12,10 @@ import {publicCatalogAtPulse} from '../src/receiz/market-projection/catalog-pric
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const cleanup:Array<()=>void>=[];afterEach(()=>{cleanup.splice(0).forEach(run=>run());vi.unstubAllGlobals();vi.restoreAllMocks();forgetPublicProfile('alexmorgan');});
 function mount(){const host=document.createElement('div');document.body.append(host);const root=createRoot(host);cleanup.push(()=>{act(()=>root.unmount());host.remove();});return {host,root};}
-it('opens Originals value from the held total, starts no chart worker before the tap and performs no source read',async()=>{
+it('paints the profile first, prepares its curve off the tap path, and opens the retained chart without a source read',async()=>{
  const input=profileFixture();Object.assign(input.profile.originals[0].marketPreview!,{livePulseSeed:{kind:'sigil',claimPulse:14800000,beat:2,stepIndex:3,creatorVerified:true}});
  const profile=parsePublicProfile(input,'alexmorgan');profile.nextCursor=null;profile.items=profile.items.map(item=>({...item,hasPbiSignature:true}));retainPublicProfile(profile);
+ const frames=new Map<number,FrameRequestCallback>();let frameId=0;vi.stubGlobal('requestAnimationFrame',(callback:FrameRequestCallback)=>{frames.set(++frameId,callback);return frameId;});vi.stubGlobal('cancelAnimationFrame',(id:number)=>frames.delete(id));
  const started=vi.fn(),sent=vi.fn(),fetcher=vi.spyOn(globalThis,'fetch');let receive:((event:{data:{id:number;growth:ProfileGrowthHistory}})=>void)|undefined;
  vi.stubGlobal('Worker',class{constructor(){started();}set onmessage(value:typeof receive){receive=value;}postMessage=sent;terminate(){};});
  const historyCatalog={items:profile.items,complete:true,revision:'held-revision',observedAt:'2026-10-27T00:00:00Z',sourceCount:profile.items.length};
@@ -22,13 +23,26 @@ it('opens Originals value from the held total, starts no chart worker before the
  await act(async()=>root.render(<PublicProfilePage username="alexmorgan" source={source} initialProfile={profile} active/>));
  expect(started).not.toHaveBeenCalled();
  const opener=host.querySelector<HTMLButtonElement>('button.profile-originals-value');expect(opener).not.toBeNull();
- await act(async()=>opener!.click());expect(started).toHaveBeenCalledOnce();expect(sent).toHaveBeenCalledOnce();expect(host.querySelector('dialog')?.textContent).toContain('Originals');expect(fetcher).not.toHaveBeenCalled();
+ for(let frame=0;frame<2;frame++)await act(async()=>{const work=[...frames.values()];frames.clear();for(const callback of work)callback(frame*16);});
+ expect(started).toHaveBeenCalledOnce();expect(sent).toHaveBeenCalledOnce();expect(host.querySelector('dialog')).toBeNull();expect(fetcher).not.toHaveBeenCalled();
  const point={pulse:15000000,at:'2026-10-27T00:00:00Z',percent:25,usd:250,assets:1},history={basis:'same-inputs',pulse:15000000,series:Object.fromEntries(CHART_PERIODS.map(period=>[period,[point]]))} as ProfileGrowthHistory;
  await act(async()=>receive!({data:{id:sent.mock.calls[0][0].id,growth:history}}));expect(sent).toHaveBeenCalledOnce();
+ await act(async()=>opener!.click());expect(host.querySelector('dialog [aria-label^="Originals value, from"]')).not.toBeNull();expect(host.querySelector('dialog')?.textContent).not.toContain('Preparing');
  await act(async()=>root.render(<PublicProfilePage username="alexmorgan" source={{...source,catalog:publicCatalogAtPulse(historyCatalog,null,15000001),pulse:15000001}} initialProfile={profile} active/>));
  expect(sent).toHaveBeenCalledTimes(2);expect(sent.mock.calls[1][0]).toEqual({id:2,profileTick:true,pulse:15000001});
  await act(async()=>receive!({data:{id:2,growth:{...history,pulse:15000001}}}));
   await act(async()=>host.querySelector<HTMLButtonElement>('dialog [aria-label="Close"]')!.click());await act(async()=>opener!.click());expect(started).toHaveBeenCalledOnce();expect(sent).toHaveBeenCalledTimes(2);
+ await act(async()=>root.render(<div>Another page</div>));
+ await act(async()=>root.render(<PublicProfilePage username="alexmorgan" source={{...source,pulse:15000001}} initialProfile={profile} active/>));
+ await act(async()=>host.querySelector<HTMLButtonElement>('button.profile-originals-value')!.click());
+ expect(host.querySelector('dialog [aria-label^="Originals value, from"]')).not.toBeNull();expect(host.querySelector('dialog')?.textContent).not.toContain('Preparing');expect(sent).toHaveBeenCalledTimes(2);
+ await act(async()=>host.querySelector<HTMLButtonElement>('dialog [aria-label="Close"]')!.click());
+ await act(async()=>root.render(<PublicProfilePage username="alexmorgan" source={{...source,pulse:15000002}} initialProfile={profile} active/>));
+ expect(sent).toHaveBeenCalledTimes(2);expect(fetcher).not.toHaveBeenCalled();
+ const changedCatalog={...historyCatalog,revision:'new-share-source',items:[...historyCatalog.items]};
+ await act(async()=>root.render(<PublicProfilePage username="alexmorgan" source={{...source,historyCatalog:changedCatalog,pulse:15000002}} initialProfile={profile} active/>));
+ await act(async()=>host.querySelector<HTMLButtonElement>('button.profile-originals-value')!.click());
+ expect(host.querySelector('dialog .value-chart')).toBeNull();expect(sent).toHaveBeenCalledTimes(3);expect(fetcher).not.toHaveBeenCalled();
 });
 it('switches dollar history and capitalization immediately using the same retained points and leaves missing coverage honest',async()=>{
  const points=[{pulse:14000000,at:'2026-01-01T00:00:00Z',percent:0,usd:100,basisUsd:100,assets:1,capitalizationUsdCents:'100000'},{pulse:15000000,at:'2026-10-27T00:00:00Z',percent:25,usd:250,basisUsd:200,assets:2,capitalizationUsdCents:'150000'}];

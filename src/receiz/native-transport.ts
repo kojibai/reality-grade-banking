@@ -32,6 +32,7 @@ export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
   if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return false;
   if(permittedOrganizerPath(url,method))return true;
+  if(url.pathname==='/api/connect/profile/analytics')return method.toUpperCase()==='GET'&&!url.search;
   if(permittedTwinConversationRead(url))return method.toUpperCase()==='GET';
   if(url.pathname==='/api/connect/payments/session'&&method.toUpperCase()==='DELETE')return [...url.searchParams.keys()].length===1&&url.searchParams.getAll('sessionId').length===1&&/^cs_[a-zA-Z0-9_]{8,200}$/.test(url.searchParams.get('sessionId')??'');
   if(url.pathname==='/api/receiz/identity/profile')return method.toUpperCase()==='PATCH'&&!url.search;

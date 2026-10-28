@@ -4,6 +4,9 @@ import {publicAssetPulseSeed} from '../receiz/market-projection/asset';
 import {publicSigilQuoteAtPulse,marketPeriodPulses} from '../receiz/market-projection/project';
 import {publicProfileMovement} from '../receiz/public-profile';
 import type {ChartPeriod} from '../core/chart-history';
+const signedOriginals=new WeakMap<PublicMarketItem[],PublicMarketItem[]>();
+/** One selection per immutable held collection, also reused after navigation. */
+export function profileSignedOriginals(items:PublicMarketItem[]){let held=signedOriginals.get(items);if(!held){held=items.filter(item=>item.hasPbiSignature===true);signedOriginals.set(items,held);}return held;}
 /** The current collection's one shared local clock/pricing operands; no
  * timers, history graphs, network reads or per-card subscriptions. */
 export function profileCollectionPrices(items:PublicMarketItem[],catalog:PublicMarketCatalog|null,source:MarketCapSource|null,pulse:number){
