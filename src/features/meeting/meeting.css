@@ -28,3 +28,12 @@
 
 /* Readable text entry avoids automatic focus magnification; page zoom stays available. */
 @media(pointer:coarse){input,textarea,select,.meeting-money select,.meeting-composer textarea,.meeting-identity-unlock input{font-size:16px}}
+
+.meeting-calendar-holder{--navy:#172d48;--ink:#172d48;--muted:#8090a8;--line:#dae3ef;--blue:#294fd3;--cobalt:#294fd3;flex:1;min-height:0;display:flex;overflow:hidden;color:#172d48}.meeting-calendar-holder[hidden]{display:none}.meeting-calendar-holder .organizer-scroll{padding:20px}.meeting-calendar-holder .organizer-form input,.meeting-calendar-holder .organizer-form textarea,.meeting-calendar-holder .organizer-form select{font-size:16px}.meeting-calendar-label{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#3154d2;padding:8px 10px}.meeting-identity-save{margin-top:28px;padding-top:19px;border-top:1px solid #dce4ef}.meeting-identity-save button{display:inline-flex;align-items:center;gap:9px;border:0;background:transparent;color:#536f97;font-size:12px;cursor:pointer;padding:7px 0}.meeting-identity-save small{display:block;font-size:10px;line-height:1.6;color:#8a9bb1;margin-top:4px}
+
+.meeting-overlay-tabs button[hidden]{display:none}
+
+.meeting-people-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}.meeting-people-heading h2{margin:0}.meeting-people-heading>button{display:inline-flex;align-items:center;gap:6px;background:transparent;color:#526f9d;font-size:11px;padding:7px 0}.meeting-people-heading>button:focus-visible{outline:2px solid #8aa1cc;outline-offset:4px}
+
+@media(max-width:620px){.meeting-overlay-tabs{gap:1px;padding:8px 6px}.meeting-overlay-tabs button{min-width:0;gap:4px;padding:10px 6px;font-size:9px;white-space:nowrap}.meeting-overlay-tabs button>svg{width:14px;height:14px;flex-shrink:0}.meeting-overlay-tabs button.meeting-close-overlay{width:28px;padding:7px;flex-shrink:0}}
+@media(max-width:350px){.meeting-overlay-tabs button{font-size:0;gap:0;padding:11px 10px}.meeting-overlay-tabs button>svg{width:16px;height:16px}}

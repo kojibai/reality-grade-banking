@@ -32,3 +32,15 @@
 
 .meeting-preview-source .meeting-bank-source button:disabled{opacity:1}
 .meeting-bank-source [data-meeting-demo-action]:is(.message-entry,.organizer-meet-now),.meeting-bank-source[data-meeting-create=start-messages] [aria-label=Calendar]{border-radius:8px;outline-color:#5578e58a}
+
+/* The screen leads; compact progress stays directly beside it. */
+.meet-demo>.meet-steps{display:flex;flex-wrap:nowrap;gap:5px;margin:8px 0 0;padding:0;justify-content:center}
+.meet-demo>.meet-steps button{position:relative;display:grid;place-items:center;flex:1;max-width:70px;min-width:0;height:38px;padding:0;border:0;border-radius:10px;background:transparent;color:#8294af}
+.meet-demo>.meet-steps button::after{content:"";height:3px;width:65%;border-radius:3px;background:#d6dfec;transition:background .2s,transform .2s}
+.meet-demo>.meet-steps button[aria-pressed=true]{background:transparent}.meet-demo>.meet-steps button[aria-pressed=true]::after{background:#3154d2;transform:scaleY(1.35)}
+.meet-demo>.meet-steps button>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.meet-demo-top small{display:block;font-size:10px;letter-spacing:0;color:#7288a7;white-space:nowrap}.meet-demo-caption{margin-top:6px}.meet-story-captions{margin-top:22px;min-height:170px}
+.meet-has-advanced .meeting-preview-source{animation:meet-screen-enter .22s ease-out}
+@keyframes meet-screen-enter{from{opacity:.8;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:800px){.meet-experience{gap:22px}.meet-story-captions{min-height:150px}.meet-story-captions h3{font-size:18px;margin:0 0 10px}.meet-story-captions p{font-size:13px;margin:0}.meet-creation .meet-demo-view,.meet-story-demo .meet-demo-view{height:clamp(360px,calc(100svh - 190px),620px)}.meet-story>p:last-child{margin-bottom:0}}
+@media(prefers-reduced-motion:reduce){.meet-has-advanced .meeting-preview-source{animation:none}.meet-demo>.meet-steps button::after{transition:none}}

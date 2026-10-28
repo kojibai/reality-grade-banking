@@ -1,3 +1,4 @@
+import {IdentityRecordIcon} from '../../components/IdentityRecordIcon';
 import {InlineOpening} from '../../components/InlineOpening';
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowUpRight, BadgeCheck, ChevronRight, FileText, Fingerprint, LockKeyhole } from 'lucide-react';
@@ -64,7 +65,7 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
     {identity.profile&&<QuickProfileEditor identity={identity} username={publicId}/>}
     {profileUsername(publicId)?<a className="identity-public-profile-link" href={profilePagePath(publicId)}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></a>:identity.prepareReceivingUsername&&<button type="button" className="identity-public-profile-link" disabled={profileOpening===identity} aria-busy={profileOpening===identity} onClick={()=>void openPublicProfile()}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></button>}
     {profileError?.owner===identity&&<p className="error-message" role="alert">{profileError.message}</p>}
-    <button className="primary-button" onClick={backupId}>Back up my Identity Record</button>
+    <button className="primary-button" onClick={backupId}><IdentityRecordIcon action="save" size={20}/>Back up my Identity Record</button>
     {backup && <div className="identity-import profile-backup">
       <p className="body-copy small-copy">{identity.needsPhrase ? 'Save this recovery phrase separately from your downloaded Identity Record. It unlocks your signing key on another device.' : 'Your Identity Record opens without an unlock phrase.'}</p>
       {identity.needsPhrase && <input type="password" readOnly value={identity.backup().phrase} aria-label="Private recovery phrase" />}

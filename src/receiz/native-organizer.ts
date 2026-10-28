@@ -4,7 +4,7 @@ import {calendarRange,organizerContact,organizerEvent,organizerRecord,visibleOrg
 export type {OrganizerContact,OrganizerEvent,OrganizerDisplay,CalendarRange,BookingAvailability,BookingQuestion,BookingSchedule,AppointmentInput} from './organizer-types';
 export type OrganizerRequest=(path:string,init?:RequestInit)=>Promise<Response>;
 export class OrganizerRequestError extends Error {
- constructor(code:string,readonly status:number|null,options?:ErrorOptions){super(code,options);this.name='OrganizerRequestError';}
+ constructor(code:string,readonly status:number|null,options?:ErrorOptions,readonly responseCode:string|null=null){super(code,options);this.name='OrganizerRequestError';}
 }
 const overlaps=(event:OrganizerEvent,range:CalendarRange)=>Date.parse(event.endAt)>=Date.parse(range.start)&&Date.parse(event.startAt)<=Date.parse(range.end);
 const order=(events:OrganizerEvent[])=>{const rows=new Map<string,OrganizerEvent>();for(const event of events){const held=rows.get(event.id);if(!held||Date.parse(event.updatedAt)>=Date.parse(held.updatedAt))rows.set(event.id,event);}return [...rows.values()].sort((a,b)=>a.startAt.localeCompare(b.startAt)||a.id.localeCompare(b.id));};
@@ -28,7 +28,7 @@ export function createNativeOrganizer({accountUid,request,retained,carried,onCha
  async function checked(path:string,init?:RequestInit){assertOpen();if(!permittedOrganizerPath(new URL(path,'https://receiz.com'),init?.method??'GET'))throw Error('ORGANIZER_PATH_DENIED');let response:Response;
   try{response=await request(path,init);}catch(cause){assertOpen();if(init?.method&&init.method!=='GET')throw Error('ORGANIZER_WRITE_UNCONFIRMED',{cause});throw cause;}
   assertOpen();let data:Record<string,unknown>;try{data=organizerRecord(await response.json());}catch(cause){throw new OrganizerRequestError(init?.method&&init.method!=='GET'?'ORGANIZER_WRITE_UNCONFIRMED':'ORGANIZER_RESPONSE_INVALID',response.status,{cause});}
-  assertOpen();if(!response.ok||data.ok!==true)throw new OrganizerRequestError(response.status>=500&&init?.method&&init.method!=='GET'?'ORGANIZER_WRITE_UNCONFIRMED':typeof data.error==='string'?data.error:'ORGANIZER_RESPONSE_INVALID',response.status);return data;
+  assertOpen();if(!response.ok||data.ok!==true)throw new OrganizerRequestError(response.status>=500&&init?.method&&init.method!=='GET'?'ORGANIZER_WRITE_UNCONFIRMED':typeof data.error==='string'?data.error:'ORGANIZER_RESPONSE_INVALID',response.status,undefined,typeof data.error==='string'?data.error:null);return data;
  }
  function once<T>(key:string,read:()=>Promise<T>):Promise<T>{const held=pending.get(key);if(held)return held as Promise<T>;const promise=read();pending.set(key,promise);void promise.finally(()=>{if(pending.get(key)===promise)pending.delete(key);}).catch(()=>{});return promise;}
  const knownEvents=(raw:CalendarRange)=>{assertOpen();const range=calendarRange(raw);if(display.events===null)return null;if(eventSlice&&eventSlice.start===range.start&&eventSlice.end===range.end&&eventSlice.revision===eventRevision)return eventSlice.events;const events=visibleOrganizerEvents(display.events.filter(row=>overlaps(row,range)));eventSlice={...range,revision:eventRevision,events};return events;};
