@@ -13,7 +13,7 @@ page('earn-from-originals','Banking','Earn from Originals','Your Original is alr
  ['Inspect a real proof','Open a real sealed public essay and calculate its value locally. Change one carried character with a repaired PNG checksum and see the enclosing proof reject the alteration.'],
  ['Receiving continuity law','The Original carries its value and proof independently of the interface. Completed Notes can be delivered directly, including offline. Reality-grade banking implementations make those operations convenient and preserve the exact value, ownership, history and carried rights. People and institutions can reuse the open-source implementation or build their own.'],
  ['Accrual and access','Sealing fixes the origin. Signing unlocks access to the value that has accrued; it does not restart the clock or add a one-time bonus. Each Original keeps the same valuation, issuance, ownership and Settlement law.']
-],['/learn/how-value-works/','/learn/creating-an-asset/','/learn/proof-native-economy/'],{originalsQualification:true}),
+],['/moments/','/learn/how-value-works/','/learn/creating-an-asset/','/learn/proof-native-economy/'],{originalsQualification:true}),
 ...audiencePages,
 page('your-account','Banking','Your account','Understand your available balance, saved observations and received Notes in one account.','One balance. A clear view of what you can use.','funding',[
  ['A familiar starting point','Your account brings available money and its history into one place. Send an amount, receive a payment or create a Note without choosing a funding rail. The application selects available Reserve first, then Settlement for the remainder. The transaction proof preserves the exact composition underneath.'],

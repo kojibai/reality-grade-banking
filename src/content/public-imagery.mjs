@@ -17,7 +17,7 @@ const byKey=new Map(publicIllustrations.map(scene=>[scene.key,scene]));
 export function publicIllustration(page){
  if(!page||page.kind==='account-notice')return null;
  const path=page.path??'',slug=page.slug??'',key=page.key??'',text=(slug+' '+key+' '+(page.title??'')).toLowerCase();
- if(['/','/verify/','/ledger/','/receipt/','/explore/','/schemas/','/legal/','/fit/','/learn/guides/'].includes(path)||/^\/(?:vault|u)\//.test(path)||['guides','fit'].includes(slug)||page.bankingWalkthrough||page.twinSales&&key==='in-action')return null;
+ if(['/','/verify/','/ledger/','/receipt/','/explore/','/schemas/','/legal/','/fit/','/learn/guides/'].includes(path)||/^\/(?:vault|u)\//.test(path)||['guides','fit'].includes(slug)||page.moments||page.bankingWalkthrough||page.twinSales&&key==='in-action')return null;
  const get=key=>byKey.get(key);
  if(page.portability||/^\/(?:crypto|nfts)\//.test(path))return get(key==='nfts'||slug==='nfts'?'proof-nft':'deposit-source');
  if(/(?:protect|security|signing-key|vault|fraud|recover|privacy)/.test(text))return get('proof-vault');

@@ -42,6 +42,14 @@
   ],
   "rewrites": [
     {
+      "source": "/moments/",
+      "destination": "/moments/index.html"
+    },
+    {
+      "source": "/moments",
+      "destination": "/moments/index.html"
+    },
+    {
       "source": "/meet/",
       "destination": "/meet/index.html"
     },

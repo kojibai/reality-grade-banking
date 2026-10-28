@@ -9,19 +9,14 @@
     revealObserver?.disconnect();
     motionObserver?.disconnect();
     root.classList.remove('motion-ready');
-    if (reducedMotion.matches || !('IntersectionObserver' in window)) return;
+    if (reducedMotion.matches || !window.IntersectionObserver) return;
     const regions = document.querySelectorAll('.motion-region');
     const reveals = document.querySelectorAll('.reveal');
     // User navigation paints already-carried public content immediately.
     // A second entrance animation must not make the next page look unloaded.
     if (event?.type === 'receiz-learn:page') reveals.forEach(node => node.classList.add('visible'));
     // Anchor navigation must never depend on an observer firing to reveal its destination.
-    const showHash = () => {
-      let id; try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
-      const target = document.getElementById(id);
-      target?.querySelectorAll('.reveal').forEach(node => node.classList.add('visible'));
-      target?.classList.add('visible');
-    };
+
     revealObserver = new IntersectionObserver(entries => {
       for (const entry of entries) if (entry.isIntersecting) {
         entry.target.classList.add('visible');
@@ -34,11 +29,15 @@
     regions.forEach(node => motionObserver.observe(node));
     reveals.forEach(node => revealObserver.observe(node));
     root.classList.add('motion-ready');
-    showHash();
+
+      let id; try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
+      const target = document.getElementById(id);
+      target?.querySelectorAll('.reveal').forEach(node => node.classList.add('visible'));
+      target?.classList.add('visible');
   };
   configureMotion();
   window.addEventListener('receiz-learn:page', configureMotion);
-  const loadPublic=file=>file&&import('/learn/'+file+'.js').then(module=>module.init()).catch(()=>{});const fit=()=>{loadPublic(document.querySelector('[data-fit-directory]')?'business-fit':document.querySelector('.meet-public')?'meet':document.querySelector('[data-coop]')?'cooperatives':'');loadPublic(document.querySelector('[data-economy-interfaces],[data-economy-circle],[data-economy-numbers]')?'economy':'');};fit();addEventListener('receiz-learn:page',fit);
+  const loadPublic=file=>file&&import('/learn/'+file+'.js').then(module=>module.init()).catch(()=>{});const fit=()=>{loadPublic(document.querySelector('[data-fit-directory]')?'business-fit':document.querySelector('.meet-public')?'meet':document.querySelector('[data-coop]')?'cooperatives':document.querySelector('.moments-page')?'moments':'');loadPublic(document.querySelector('[data-economy-interfaces],[data-economy-circle],[data-economy-numbers]')?'economy':'');};fit();addEventListener('receiz-learn:page',fit);
   reducedMotion.addEventListener?.('change', configureMotion);
   addEventListener('hashchange', () => {
     // Restrict selectors to a DOM id, including malformed user-supplied hashes.

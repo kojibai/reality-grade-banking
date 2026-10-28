@@ -1,6 +1,14 @@
 {
   "schema": "bankeiz.public-social-images.v1",
   "images": {
+    "/moments/": {
+      "url": "/social/moments-409e8ac6b1086ab8.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "409e8ac6b1086ab89a70ca9396fc7388b59b5376b723bef3e0e96691c64d10d1",
+      "bytes": 246445,
+      "alt": "Yours to originate. Ours to exchange. Four distinct glass Originals show a farmer, mechanic, musician and builder, connected through an illustrative exchange. Your moments. Your proof. Your choice."
+    },
     "/banking/": {
       "url": "/social/banking-ce2126752f3a437a.png",
       "width": 1730,

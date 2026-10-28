@@ -1,4 +1,5 @@
 import {productWalkthrough,agentWorkflowMoment,productMoment,dailyMoneyWalkthrough} from './product-walkthrough.mjs';
+import {momentsPage} from '../src/content/personal-moments.mjs';
 import {meetingPage} from '../src/content/meeting-page.mjs';
 import {bankingPage} from '../src/content/banking-walkthrough.mjs';
 import {portabilityPages} from '../src/content/portability-pages.mjs';
@@ -19,6 +20,7 @@ import {togetherPages} from '../src/content/together.mjs';
 import {cooperativePages} from '../src/content/cooperatives.mjs';
 // Public discovery only. Existing routes and native authorities are unchanged.
 const solutionGuides=[
+ {...momentsPage,group:'Assets',title:'Your moments, your value'},
  ...portabilityPages.map(page=>({...page,group:'Assets',title:page.key==='crypto'?'Crypto holdings':'NFTs & collections'})),
  ...standardPages.map(page=>({...page,group:page.key.startsWith('market')?'Markets':'The standard'})),
  ...outcomePages.map(page=>({...page,group:page.key==='proof'?'Assets':'Banking',title:({agent:'Your agent',fraud:'Payment fraud',recover:'Recover your identity','get-paid':'Get paid. Keep the story.',proof:'Open the proof'})[page.key]})),
