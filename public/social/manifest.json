@@ -10,12 +10,12 @@
       "alt": "Your money. See it working. The actual interface. From account to payment record. Actual account and agent interface with clearly labeled example data."
     },
     "/meet/": {
-      "url": "/social/meet-126231868e7165af.png",
+      "url": "/social/meet-f1a3d8ee0e92db0c.png",
       "width": 1730,
       "height": 909,
-      "sha256": "126231868e7165af0bd5278efe087a948b1941a00c34f6c4c98e13b357a33dba",
-      "bytes": 647174,
-      "alt": "Be here. Keep everything connected. The actual meeting interface shows full-screen conversation, the Twin and the next appointment. Illustrative participant and scripted example."
+      "sha256": "f1a3d8ee0e92db0ca8a803972887bff6294e69166b312ac6578fb1e1657f9c34",
+      "bytes": 636984,
+      "alt": "Be here. Keep everything connected. The actual meeting interface shows sending money beside the conversation, with the recorded payment and meeting context together. Illustrative participant and scripted example."
     },
     "/crypto/": {
       "url": "/social/portability-crypto-df57c3fbeabe1afe.png",

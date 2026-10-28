@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { CardCheckout } from '../../receiz/card-deposit';
 const ORIGIN = 'https://receiz.com';
 // Receiz owns the card runtime. The bank never collects card details or calls Stripe.
-export function ReceizCardCheckout({ checkout, onCheck, purpose='deposit' }: { checkout: Pick<CardCheckout,'sessionId'|'clientSecret'> & {amountUsdCents?:string}; onCheck: () => Promise<void>;purpose?:'deposit'|'upgrade'|'payment'|'credits' }) {
+export function ReceizCardCheckout({ checkout, onCheck, purpose='deposit',loading }: { checkout: Pick<CardCheckout,'sessionId'|'clientSecret'> & {amountUsdCents?:string}; onCheck: () => Promise<void>;loading?:ReactNode;purpose?:'deposit'|'upgrade'|'payment'|'credits' }) {
   const statusLabel=purpose==='credits'?'top-up':purpose==='upgrade'?'upgrade':purpose==='payment'?'payment':'deposit';
   const frame = useRef<HTMLIFrameElement>(null), check = useRef(onCheck); check.current = onCheck;
   const [error, setError] = useState(''), [ready, setReady] = useState(false), [attempt, setAttempt] = useState(0);
@@ -28,5 +28,5 @@ export function ReceizCardCheckout({ checkout, onCheck, purpose='deposit' }: { c
   // window.name across origins. The short-lived secret stays inside this frame.
   const name = JSON.stringify({ source: 'receiz-pay-embed-bootstrap', clientSecret: checkout.clientSecret, sessionId: checkout.sessionId, amountUsdCents: checkout.amountUsdCents });
   const fragment = new URLSearchParams({ client_secret: checkout.clientSecret, session_id: checkout.sessionId, ...(checkout.amountUsdCents?{amount_usd_cents:checkout.amountUsdCents}:{}) });
-  return <>{!ready && !error && <p className="body-copy" role="status">Loading secure checkout…</p>}{error && <div className="note-box" role="status"><p>{error}</p></div>}<iframe key={attempt} ref={frame} title={purpose==='credits'?'Secure credit top-up':purpose==='upgrade'?'Secure account upgrade':purpose==='payment'?'Secure payment':'Secure deposit payment'} className="receiz-card-frame" hidden={Boolean(error)} src={`${ORIGIN}/payments/embed/checkout#${fragment}`} name={name} referrerPolicy="no-referrer" allow="payment" />{error && <button className="secondary-button" onClick={() => setAttempt(value => value + 1)}>Reload secure form</button>}<button className="secondary-button" onClick={() => void onCheck()}>Check {statusLabel} status</button></>;
+  return <>{!ready && !error && (loading??<p className="body-copy" role="status">Loading secure checkout…</p>)}{error && <div className="note-box" role="status"><p>{error}</p></div>}<iframe key={attempt} ref={frame} title={purpose==='credits'?'Secure credit top-up':purpose==='upgrade'?'Secure account upgrade':purpose==='payment'?'Secure payment':'Secure deposit payment'} className="receiz-card-frame" hidden={Boolean(error)} src={`${ORIGIN}/payments/embed/checkout#${fragment}`} name={name} referrerPolicy="no-referrer" allow="payment" />{error && <button className="secondary-button" onClick={() => setAttempt(value => value + 1)}>Reload secure form</button>}<button className="secondary-button" onClick={() => void onCheck()}>Check {statusLabel} status</button></>;
 }
