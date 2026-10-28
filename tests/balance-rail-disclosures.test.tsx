@@ -26,11 +26,13 @@ it('preserves dollars and independently reveals exact source Phi at unequal fund
  await act(async()=>settlement.querySelector('summary')!.click());expect(settlement.open).toBe(false);expect(settlement.querySelector('[data-rail-phi]')).toBeNull();expect(v.fetch).not.toHaveBeenCalled();
 });
 it.each([
+ {name:'funded Reserve with unknown units',reserveUsdCents:'100',settlementUsdCents:'900',reservePhiMicro:null,settlementPhiMicro:'2000000',balancePhiMicro:'2100000',expected:['settlement','reserve']},
  {name:'Reserve only',reserveUsdCents:'100',settlementUsdCents:'0',reservePhiMicro:'100000',settlementPhiMicro:'0',balancePhiMicro:'100000',expected:['reserve']},
  {name:'Settlement only',reserveUsdCents:'0',settlementUsdCents:'900',reservePhiMicro:'0',settlementPhiMicro:'2000000',balancePhiMicro:'2000000',expected:['settlement']},
+ {name:'subcent total',reserveUsdCents:'0',settlementUsdCents:'0',reservePhiMicro:'1',settlementPhiMicro:'0',balancePhiMicro:'1',expected:['reserve']},
  {name:'true zero',reserveUsdCents:'0',settlementUsdCents:'0',reservePhiMicro:'0',settlementPhiMicro:'0',balancePhiMicro:'0',expected:['reserve']},
- {name:'subcent Reserve',reserveUsdCents:'0',settlementUsdCents:'900',reservePhiMicro:'1',settlementPhiMicro:'2000000',balancePhiMicro:'2000001',expected:['settlement','reserve']},
- {name:'unknown Reserve units',reserveUsdCents:'0',settlementUsdCents:'900',reservePhiMicro:null,settlementPhiMicro:'2000000',balancePhiMicro:'2100000',expected:['settlement','reserve']},
+ {name:'subcent Reserve',reserveUsdCents:'0',settlementUsdCents:'900',reservePhiMicro:'1',settlementPhiMicro:'2000000',balancePhiMicro:'2000001',expected:['settlement']},
+ {name:'zero-dollar Reserve with unknown units',reserveUsdCents:'0',settlementUsdCents:'900',reservePhiMicro:null,settlementPhiMicro:'2000000',balancePhiMicro:'2100000',expected:['settlement']},
 ])('shows only established funded rails, preserving $name',async input=>{
  const v=view({...base,...input,totalUsdCents:(BigInt(input.reserveUsdCents)+BigInt(input.settlementUsdCents)).toString()});
  expect([...v.host.querySelectorAll('[data-balance-rail]')].map(row=>row.getAttribute('data-balance-rail'))).toEqual(input.expected);

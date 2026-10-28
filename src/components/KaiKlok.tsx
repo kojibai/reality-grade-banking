@@ -24,7 +24,7 @@ function KaiDate({ moment }: { moment: KaiKlokMoment }) {
 }
 
 function KaiFace({ moment, visible, revision, readMotion }: { moment: KaiKlokMoment; visible: boolean; revision: number; readMotion: () => KaiPulseMotion }) {
-  const face = projectCanonicalKaiFace(moment.pulse);
+  const face = useMemo(() => projectCanonicalKaiFace(moment.pulse, moment), [moment]);
   const tones = bankKaiMomentTones(moment, 'dark');
   const dial = useRef<HTMLDivElement>(null);
   useKaiOrb(dial, moment.pulse, visible, revision, readMotion);
@@ -59,7 +59,8 @@ function KaiMomentReading({ moment }: { moment: KaiKlokMoment }) {
 }
 
 export function KaiKlok({ active = true }: { active?: boolean }) {
-  const { pulse, boundary, visible, revision, readPulseMotion } = useKaiKlok(active), moment = projectKaiKlok(pulse);
+  const { pulse, boundary, visible, revision, readPulseMotion } = useKaiKlok(active);
+  const moment = useMemo(() => projectKaiKlok(pulse), [pulse]);
   const lightTones = bankKaiMomentTones(moment, 'light');
   const arkIndex = Math.floor(moment.beat / 6);
   const epochMs = Number(epochMsFromPulse(BigInt(pulse)));

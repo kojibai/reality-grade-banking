@@ -2,7 +2,7 @@ import {
   BASE_DAY_MICRO, BEATS_DAY, N_DAY_MICRO,
   latticeFromMicroPulses, momentFromPulse,
 } from '../../native/receiz/app/utils/kai_pulse';
-import { projectKaiKlok } from './kai-klok';
+import { projectKaiKlok, type KaiKlokMoment } from './kai-klok';
 import { BANK_KAI_PALETTE, bankKaiBeatTone, bankKaiMomentTones } from './kai-klok-palette';
 import type { KaiKlockProps } from './kai-klok/CanonicalKaiKlock';
 
@@ -18,8 +18,9 @@ export function kaiBoundary(previous: number, next: number): KaiBoundary {
 }
 
 /** One controlled native eternal coordinate; presentation never creates an anchor. */
-export function projectCanonicalKaiFace(pulse: number): KaiKlockProps & { canonical: NonNullable<KaiKlockProps['canonical']> } {
-  const moment = projectKaiKlok(pulse), exact = momentFromPulse(pulse);
+export function projectCanonicalKaiFace(pulse: number, moment: KaiKlokMoment = projectKaiKlok(pulse)): KaiKlockProps & { canonical: NonNullable<KaiKlockProps['canonical']> } {
+  if (moment.pulse !== pulse) throw new TypeError('KAI_KLOK_DISPLAY_COORDINATE_MISMATCH');
+  const exact = momentFromPulse(pulse);
   const micro = BigInt(pulse) * 1_000_000n;
   const dayMicro = micro % N_DAY_MICRO;
   const lattice = latticeFromMicroPulses(micro);

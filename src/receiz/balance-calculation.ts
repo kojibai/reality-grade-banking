@@ -22,7 +22,16 @@ function native(value:NativeBalanceCalculation):BalanceCalculation{
 }
 /** Read-only inspection of the SAME held source and coordinate as the header.
  * An incomplete or changed endpoint supplies no illustrative replacement. */
+const calculations=new WeakMap<SharedWallet,{observation:WalletObservation|null;value:BalanceCalculation}>();
 export function readBalanceCalculation(wallet:SharedWallet|null,observation:WalletObservation|null):BalanceCalculation|null{
+ if(!wallet)return null;
+ const held=calculations.get(wallet);
+ if(held?.observation===observation)return held.value;
+ const value=computeBalanceCalculation(wallet,observation);
+ if(value)calculations.set(wallet,{observation,value});
+ return value;
+}
+function computeBalanceCalculation(wallet:SharedWallet,observation:WalletObservation|null):BalanceCalculation|null{
  if(!wallet)return null;
  const matching=observation&&same(wallet,observation.wallet);
  if(matching){

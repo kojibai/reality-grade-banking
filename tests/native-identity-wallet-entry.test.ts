@@ -47,39 +47,28 @@ beforeEach(() => {
 });
 const open = () => openCanonicalIdentity(new Uint8Array([1]), '', 'fixture.receiz', true);
 
-it('starts the first protected wallet read while scopes are pending and adopts only after both succeed', async () => {
-  const scopes = deferred<string[]>();
-  p.scopes.mockReturnValue(scopes.promise);
+it('starts the protected wallet from the returned grant without waiting for a duplicate scope echo', async () => {
+  p.scopes.mockImplementation(()=>{throw Error('DUPLICATE_SCOPE_ECHO');});
   const identity = await open();
   try {
-    const reading = identity.readWallet();
-    await vi.waitFor(() => expect(p.scopes).toHaveBeenCalledTimes(1));
-    expect(p.wallet).toHaveBeenCalledExactlyOnceWith(BANK_APPLICATION_ID, 'grant-100');
-    expect(identity.knownWallet()).toBeNull();
-    expect(p.save).not.toHaveBeenCalled();
-    scopes.resolve([...BANK_READ_SCOPES]);
-    expect((await reading).totalUsdCents).toBe('800');
+    expect((await identity.readWallet()).totalUsdCents).toBe('800');
     expect(identity.knownWallet()?.wallet.userId).toBe('bound-user');
-    expect(p.wallet).toHaveBeenCalledTimes(1);
+    expect(p.wallet).toHaveBeenCalledExactlyOnceWith(BANK_APPLICATION_ID, 'grant-100');
+    expect(p.scopes).not.toHaveBeenCalled();
   } finally { identity.dispose(); }
 });
 
-it.each(['missing scopes', 'scope request failed'])('rejects %s without adopting a completed prefetched wallet', async failure => {
-  const scopes = deferred<string[]>();
-  p.scopes.mockReturnValueOnce(scopes.promise);
-  const identity = await open();
-  try {
-    const reading = identity.readWallet();
-    void reading.catch(() => {});
-    await vi.waitFor(() => expect(p.scopes).toHaveBeenCalledTimes(1));
-    expect(p.wallet).toHaveBeenCalledTimes(1);
-    if (failure === 'missing scopes') scopes.resolve(['receiz:wallet.read']); else scopes.reject(Error('SCOPES_UNAVAILABLE'));
-    await expect(reading).rejects.toThrow(failure === 'missing scopes' ? 'permission is unavailable' : 'SCOPES_UNAVAILABLE');
-    expect(identity.knownWallet()).toBeNull();
-    expect(p.save).not.toHaveBeenCalled();
+it.each(['missing scopes', 'protected resource denied'])('rejects %s without adopting a wallet', async failure => {
+  const cause=Error('RESOURCE_ACCESS_DENIED');
+  if(failure==='missing scopes')p.grant.mockResolvedValueOnce({applicationId:BANK_APPLICATION_ID,keyId:'fixture-key',artifactDigest:'a'.repeat(64),grantedScopes:['receiz:wallet.read'],accessToken:'grant-100',expiresAtKai:200});
+  else p.wallet.mockRejectedValueOnce(cause);
+  const identity=await open();
+  try{
+    await expect(identity.readWallet()).rejects.toThrow(failure==='missing scopes'?'same identity and scopes':'RESOURCE_ACCESS_DENIED');
+    expect(identity.knownWallet()).toBeNull();expect(p.save).not.toHaveBeenCalled();expect(p.scopes).not.toHaveBeenCalled();
+    expect(p.wallet).toHaveBeenCalledTimes(failure==='missing scopes'?0:1);
     expect((await identity.readWallet()).totalUsdCents).toBe('800');
-    expect(p.grant).toHaveBeenCalledTimes(2);
-  } finally { identity.dispose(); }
+  }finally{identity.dispose();}
 });
 
 it('does not retry a second zero-write unbound response', async () => {
@@ -163,16 +152,12 @@ it('consumes each prefetched response once and binds a renewed grant to its own 
 });
 
 it('exposes a failed prefetched request once and allows an ordinary later retry', async () => {
-  const scopes = deferred<string[]>();
-  p.scopes.mockReturnValueOnce(scopes.promise);
   p.wallet.mockRejectedValueOnce(Error('WALLET_UNAVAILABLE'));
   const identity = await open();
   try {
     const reading = identity.readWallet();
     void reading.catch(() => {});
-    await vi.waitFor(() => expect(p.scopes).toHaveBeenCalledTimes(1));
-    expect(p.wallet).toHaveBeenCalledTimes(1);
-    scopes.resolve([...BANK_READ_SCOPES]);
+    await vi.waitFor(() => expect(p.wallet).toHaveBeenCalledTimes(1));
     await expect(reading).rejects.toThrow('WALLET_UNAVAILABLE');
     expect(identity.knownWallet()).toBeNull();
     expect(p.save).not.toHaveBeenCalled();
@@ -190,7 +175,7 @@ it('overlaps continuation with the grant and protected reads without adopting be
     const reading = identity.readWallet();
     await vi.waitFor(() => expect(p.grant).toHaveBeenCalledTimes(1));
     await vi.waitFor(() => expect(p.wallet).toHaveBeenCalledTimes(1));
-    expect(p.scopes).toHaveBeenCalledTimes(1);
+    expect(p.scopes).not.toHaveBeenCalled();
     expect(identity.knownWallet()).toBeNull();
     expect(p.save).not.toHaveBeenCalled();
     continuation.resolve({ ok: true, session: { uid: 'bound-user' } });

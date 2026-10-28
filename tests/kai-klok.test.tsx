@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { KaiKlok } from '../src/components/KaiKlok';
 import { projectKaiKlok } from '../src/components/kai-klok';
+import * as kaiProjection from '../src/components/kai-klok';
 import { GENESIS_TS, N_DAY_MICRO, epochMsFromPulse } from '../native/receiz/app/utils/kai_pulse';
 import { projectCanonicalKaiFace, kaiBoundary } from '../src/components/kai-klok-face';
 import { BANK_KAI_PALETTE } from '../src/components/kai-klok-palette';
@@ -177,4 +178,13 @@ it('maps every native header ark, day and month to its approved Bankeiz presenta
     const host = mount();
     expect(host.querySelector<HTMLElement>('.kai-klok')!.style.getPropertyValue('--kai-month')).toBe(BANK_KAI_PALETTE.light.months[i]);
   }
+});
+
+it('reuses the header coordinate when opening and reopening its face within the same pulse',()=>{
+ vi.useFakeTimers();vi.setSystemTime(Number(epochMsFromPulse(14_717_707n))+10);
+ const project=vi.spyOn(kaiProjection,'projectKaiKlok'),host=mount();
+ act(()=>host.querySelector<HTMLButtonElement>('.kai-header-button')!.click());
+ act(()=>host.querySelector<HTMLButtonElement>('.kai-close')!.click());
+ act(()=>host.querySelector<HTMLButtonElement>('.kai-header-button')!.click());
+ expect(project).toHaveBeenCalledTimes(1);
 });

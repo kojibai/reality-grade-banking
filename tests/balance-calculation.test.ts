@@ -57,3 +57,15 @@ it('cannot lend old calculation/proof lineage to equal amounts from another sour
  expect(readBalanceCalculation({...held.wallet,balanceSourceSha256:'a'.repeat(64)},held)).toBeNull();
  expect(readBalanceCalculation({...held.wallet,originalProofReferences:{other:{sourceSha256:'b'.repeat(64),pbiReceiptHash:'c'.repeat(64)}}},held)).toBeNull();
 });
+
+it('reuses one exact calculation for both balance disclosures and reopening the same held frame',async()=>{
+ const {readBalanceCalculation}=await import('../src/receiz/balance-calculation'),{compositeWalletObservation}=await import('../src/receiz/composite-wallet-source');
+ const s=source(),point=composite.projectCompositeWalletAt(s,end),wallet={userId:'owner',totalUsdCents:point.totalUsdCents,reserveUsdCents:point.reserveUsdCents,settlementUsdCents:point.settlementUsdCents,balancePhiMicro:point.balancePhiMicro!,portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:null,kaiUpulse:null};
+ const held=compositeWalletObservation({wallet,observedAt:point.at},s)!,inspect=vi.spyOn(composite,'inspectCompositeWalletAt');
+ try{
+  const first=readBalanceCalculation(wallet,held);expect(first).not.toBeNull();
+  for(let i=0;i<5;i++)expect(readBalanceCalculation(wallet,held)).toBe(first);
+  expect(inspect).toHaveBeenCalledTimes(1);
+  expect(readBalanceCalculation(wallet,{...held,chartSource:{...s,objects:[]}})).toBeNull();
+ }finally{inspect.mockRestore();}
+});

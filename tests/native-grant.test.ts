@@ -64,8 +64,8 @@ it.each(['application', 'key', 'artifact', 'scope'])('refuses a foreign or insuf
   const identity = await openCanonicalIdentity(new Uint8Array([1]), 'fixture-phrase', 'fixture.receiz', true);
   await expect(identity.readWallet()).rejects.toThrow('same identity'); expect(protocol.wallet).not.toHaveBeenCalled();
 });
-it('introspects real granted scopes and rejects a revoked read without adopting its prefetched wallet', async () => {
-  protocol.scopes.mockResolvedValue([]); const identity = await openCanonicalIdentity(new Uint8Array([1]), 'fixture-phrase', 'fixture.receiz', true);
+it('rejects a protected wallet denied by the server without adopting its prefetched result', async () => {
+  protocol.wallet.mockRejectedValue(Error('Receiz account permission is unavailable.')); const identity = await openCanonicalIdentity(new Uint8Array([1]), 'fixture-phrase', 'fixture.receiz', true);
   try { await expect(identity.readWallet()).rejects.toThrow('permission'); expect(identity.knownWallet()).toBeNull(); expect(protocol.wallet).toHaveBeenCalledTimes(1); }
   finally { identity.dispose(); }
 });
@@ -128,4 +128,16 @@ it.each(['expired','complete_unpaid','paid'])('cancellation uses the original re
  protocol.request.mockResolvedValue({ok:true,session:{sessionId:checkout.sessionId,currency:'usd',amountUsdCents:'1000',isPaid:state==='paid',state},settlement:state==='paid'?{userId:'fixture-owner',amountUsdCents:'1000',amountPhiMicro:'10'}:null});
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture-phrase','fixture.receiz',true);
  try{expect((await identity.cancelCardDeposit!(checkout)).status).toBe(state==='paid'?'credited':state==='complete_unpaid'?'settling':'expired');expect(protocol.request).toHaveBeenCalledExactlyOnceWith('/api/connect/payments/session?sessionId=cs_test_adaptercancel',{method:'DELETE'});expect(protocol.checkoutSession).not.toHaveBeenCalled();expect(protocol.grant.mock.calls[0][0].applicationId).toBe('rc_ELkGAUBINd9Nw4bE5zMqUsgc');if(state==='expired')expect(protocol.saveCard).toHaveBeenCalledExactlyOnceWith(expect.anything(),null,false,operationId);else expect(protocol.saveCard).not.toHaveBeenCalled();}finally{identity.dispose();}
+});
+
+it('uses the exact returned access grant without a duplicate scope-echo request',async()=>{
+ protocol.scopes.mockRejectedValue(Error('DUPLICATE_SCOPE_READ_FORBIDDEN'));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture-phrase','fixture.receiz',true);
+ try{
+  expect((await identity.readWallet()).totalUsdCents).toBe('300');
+  expect(protocol.continueId).toHaveBeenCalledTimes(1);
+  expect(protocol.grant).toHaveBeenCalledTimes(1);
+  expect(protocol.scopes).not.toHaveBeenCalled();
+  expect(protocol.wallet).toHaveBeenCalledTimes(1);
+ }finally{identity.dispose();}
 });

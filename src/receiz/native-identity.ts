@@ -320,16 +320,15 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.');
       if (grant.applicationId !== applicationId || grant.keyId !== transportBinding.keyId || grant.artifactDigest !== transportBinding.artifactSha256 || scopes.some(scope => !grant.grantedScopes.includes(scope))) throw new Error('Receiz did not grant this bank access to the same identity and scopes.');
       const protectedClient = sdk.createReceizClient({ applicationId, baseUrl: 'https://receiz.com', accessToken: grant.accessToken, fetchImpl: heldFetch });
-      const checkingScopes = protectedClient.auth.grantedScopes().then(granted => {
-        if (scopes.some(scope => !granted.includes(scope))) throw new Error('Receiz account permission is unavailable.');
-        return granted;
-      });
-      // A requested wallet read enforces its own bearer scope on the server.
-      // Keep its result private until the independent scope check succeeds.
+      // The exact exchange above already returned and checked this grant's
+      // scopes. Resource endpoints enforce their bearer scope and revocation;
+      // reading the same token's scope claims again adds no new permission.
+      const granted = [...grant.grantedScopes];
+      // Keep the prefetched wallet private until account continuation succeeds.
       const walletResponse = walletRead ? (knownWallet || typeof protectedClient.request !== 'function' ? protectedClient.connect.wallet() : protectedClient.request('/api/connect/wallet/me?history=1', {method:'GET'}).then<unknown>(response => response && typeof response === 'object' && 'wallet' in response ? response : protectedClient.connect.wallet())) : undefined;
-      // The HTTP read can reject before the slower scope check completes.
+      // The HTTP read can reject before account continuation completes.
       if (walletResponse) void walletResponse.catch(() => {});
-      const [granted, session] = await Promise.all([checkingScopes, continuing]);
+      const session = await continuing;
       if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.');
       client = protectedClient; clientApplicationId = applicationId; grantedScopes = granted; expiresAtKai = grant.expiresAtKai; accountUid = session.uid;
       if(session.twinAccess!==null)confirmedTwinAccess=session.twinAccess;
