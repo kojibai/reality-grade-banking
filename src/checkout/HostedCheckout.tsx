@@ -13,13 +13,13 @@ const sameSale=(a?:FixedSaleFields,b?:FixedSaleFields)=>a===undefined?b===undefi
 import {emptyCheckoutSnapshot,type CheckoutSnapshot,type CheckoutReceipt as Receipt} from '../receiz/checkout-state';
 import type {OpenIdentity} from '../receiz/native-identity';
 import type {HostedCheckoutController} from '../receiz/hosted-checkout';
-import type {createCheckoutIdentitySession} from './checkout-identity';
+import type {CheckoutIdentitySession} from './checkout-identity';
 import {CheckoutIdentity} from './CheckoutIdentity';
 import {CheckoutReceipt} from './CheckoutReceipt';
 const Notes=lazy(()=>import('./CheckoutNotes').then(module=>({default:module.CheckoutNotes})));
 const Card=lazy(()=>import('../features/deposit/ReceizCardCheckout').then(module=>({default:module.ReceizCardCheckout})));
 const money=(value:string)=>{const match=/^(0|[1-9]\d{0,15})(?:\.(\d{1,2}))?$/.exec(value);if(!match)throw Error('Enter a dollar amount with up to two decimal places.');const cents=BigInt(match[1])*100n+BigInt((match[2]??'').padEnd(2,'0'));if(cents<=0n)throw Error('Enter an amount greater than zero.');return cents.toString();};
-type IdentitySession=ReturnType<typeof createCheckoutIdentitySession>;
+type IdentitySession=CheckoutIdentitySession;
 /** Wallet and card share one outline; the overlapping edges stay transparent. */
 function BalanceCardIcon({size=26}:{size?:number}){
  return <svg className="checkout-balance-card-icon" width={size*36/28} height={size} viewBox="0 0 36 28" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">

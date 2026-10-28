@@ -35,6 +35,8 @@ export function createMeetingSession(input: {
     entry: {
         open(): Promise<OpenIdentity>;
         close(): void;
+        import?(file:File,phrase:string):Promise<OpenIdentity>;
+        recoverPbi?():Promise<OpenIdentity>;
     };
     controller?: typeof createNativeCallController;
 }) {
@@ -51,9 +53,11 @@ export function createMeetingSession(input: {
         join(): Promise<JoinedMeeting> { if (closed)
             return Promise.reject(Error('MEETING_CLOSED')); if (joined)
             return Promise.resolve(joined); if (pending)
-            return pending; const task = (async () => { const identity = await input.entry.open(), messaging = await identity.messaging!(true); assertOpen(); const response = await messaging.callTransport.heldFetch(path, { method: 'POST' }), data = await response.json(); assertOpen(); if (!response.ok || data.ok !== true || data.viewerId !== messaging.accountUid || data.conversationId !== input.eventId || data.call?.conversationId !== input.eventId || typeof data.hostId !== 'string' || data.isHost !== (data.viewerId === data.hostId))
+            return pending; const task = (async () => { const identity = await input.entry.open(), messaging = await identity.messaging!(true); assertOpen(); const response = await messaging.callTransport.heldFetch(path, { method: 'POST', headers: {'Content-Type':'application/json'}, body:'{}' }), data = await response.json(); assertOpen(); if (!response.ok || data.ok !== true || data.viewerId !== messaging.accountUid || data.conversationId !== input.eventId || data.call?.conversationId !== input.eventId || typeof data.hostId !== 'string' || data.isHost !== (data.viewerId === data.hostId))
             throw Error('MEETING_ADMISSION_UNCONFIRMED'); const meeting = read(data.meeting), controller = (input.controller ?? createNativeCallController)({ identity: messaging.callTransport, conversationId: input.eventId, userId: data.viewerId, activityHints:true,initialCallId:data.call.id,initialCall: data.call as NativeCallSummary }); held = meeting; const calendarSaved = data.isHost || !identity.organizer ? undefined : identity.organizer().then(api => api.saveEvent({ title: meeting.title, startAt: meeting.startAt, endAt: meeting.endAt, meetingAttendance: { eventId: input.eventId, key: input.key } })); void calendarSaved?.catch(() => { }); return joined = { calendarSaved, identity, messaging, meeting, controller, conversationId: input.eventId, viewerId: data.viewerId, hostId: data.hostId, isHost: data.isHost, attendees: Array.isArray(data.attendees) ? data.attendees : [], sharedContext: typeof data.sharedContext === 'string' ? data.sharedContext : '' }; })(); pending = task; void task.finally(() => { if (pending === task)
             pending = null; }).catch(() => { }); return task; },
+        async importIdentity(file:File,phrase:string) { assertOpen(); if(joined||pending)throw Error("MEETING_ENTRY_IN_PROGRESS"); if(!input.entry.import)throw Error("MEETING_IDENTITY_IMPORT_UNAVAILABLE"); return input.entry.import(file,phrase); },
+        async recoverPbi() { assertOpen(); if(joined||pending)throw Error("MEETING_ENTRY_IN_PROGRESS"); if(!input.entry.recoverPbi)throw Error("MEETING_PBI_UNAVAILABLE"); return input.entry.recoverPbi(); },
         async close() { if (closed)
             return; closed = true; await joined?.controller.close(); input.entry.close(); },
     };

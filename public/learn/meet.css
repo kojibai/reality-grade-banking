@@ -8,3 +8,5 @@
 
 @container meeting-preview (max-width:360px){.meeting-preview-source .meeting-controls{width:calc(100% - 16px);max-width:calc(100% - 16px);padding:6px;gap:0}.meeting-preview-source .meeting-controls>button{flex:1;min-width:0;padding:6px 3px}.meeting-preview-source .meeting-controls>button.meeting-leave{min-width:0;margin-left:3px}.meeting-preview-source .meeting-control-divider{flex:0 0 1px;margin:0 3px}.meeting-preview-source .meeting-controls>button>svg{width:17px;height:17px}}
 .meeting-preview-source .meeting-feed.is-floating{touch-action:none;cursor:grab}.meeting-preview-source .meeting-feed.is-floating.is-dragging{cursor:grabbing}
+
+@media(max-width:600px){.meet-public .meet-actions{flex-direction:column;align-items:center;gap:18px}.meet-public .meet-actions>.learn-button{justify-content:center;max-width:100%}.meet-public .meet-actions>.meet-text-link{justify-content:center;text-align:center}}

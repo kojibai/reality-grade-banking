@@ -50,6 +50,14 @@
       "destination": "/meet/index.html"
     },
     {
+      "source": "/meet/start/",
+      "destination": "/meet/room.html"
+    },
+    {
+      "source": "/meet/start",
+      "destination": "/meet/room.html"
+    },
+    {
       "source": "/meet/:eventId/:key/",
       "destination": "/meet/room.html"
     },

@@ -1,5 +1,6 @@
+import { IdentityRecordIcon } from '../../components/IdentityRecordIcon';
 import { useRef, useState } from 'react';
-import { Fingerprint, ArrowUpRight, Upload } from 'lucide-react';
+import { Fingerprint, ArrowUpRight } from 'lucide-react';
 import { inspectIdentityLock } from '../../receiz/identity-lock';
 import { branding } from '../../../branding/profile.mjs';
 import { BankMark } from '../../components/BankMark';
@@ -25,7 +26,7 @@ export function Entrance({ opening, openingStage = 'identity', busy, error, onCr
   return <><div className="console identity-entrance" hidden={opening || explicitOpening} inert={opening || explicitOpening}><header className="app-header"><span className="bank-home-mark" role="img" aria-label={branding.applicationName}><BankMark /></span><EntranceConformanceStatus /></header><main className="entrance-content"><button type="button" className="entrance-symbol" aria-label="Continue with PBI" disabled={busy || inspecting} onClick={() => void onPbi?.()}><Fingerprint size={39} strokeWidth={1.4} /></button><h1>Your value.<br />More possibilities.</h1><p className="page-subtitle">One place for all your value. Wherever you go.</p>
     {!opening && <>
       <button className="primary-button" disabled={busy || inspecting} onClick={() => void onCreate(true)}>Enter<ArrowUpRight size={20} /></button>
-      <button className="secondary-button" disabled={busy || inspecting} onClick={() => picker.current?.click()}><Upload size={18} />Use existing account</button>
+      <button className="secondary-button" disabled={busy || inspecting} onClick={() => picker.current?.click()}><IdentityRecordIcon size={18} />Use existing account</button>
       <input ref={picker} type="file" accept=".png,.pdf,.receiz,.receizkey,.json,application/octet-stream" hidden onChange={event => { const selected = event.target.files?.[0] ?? null; event.target.value = ''; void chooseFile(selected); }} />
       {file && <form className="identity-import" onSubmit={event => { event.preventDefault(); if (needsPhrase && phrase && !busy && !inspecting && !fileError) void onImport(file, phrase, true); }}><span className="small-copy">{file.name}</span>{needsPhrase && <><label>Unlock phrase<input type="password" autoComplete="off" value={phrase} onChange={event => setPhrase(event.target.value)} placeholder="Unlock your Identity Record" /></label><button className="primary-button" disabled={busy || inspecting || Boolean(fileError) || !phrase}>Unlock account</button></>}{fileError && <p className="form-error" role="alert">{fileError}</p>}</form>}
     <p className="entrance-consent">By continuing, you authorize <a href="/learn/account-access/">account access</a>, including balance viewing, your Twin, messages and calls. Your <a href="/learn/signing-key/">signing key</a> stays on this device.</p></>}{error && <p role="alert" className="form-error">{error}</p>}<a className="entrance-learn" href="/learn/">Explore Reality-grade banking</a></main></div>{explicitOpening ? <AccountOpening stage={openingStage} inspecting={inspecting && !busy}/> : opening && <AccountOpening stage={openingStage} resuming/>}</>;
