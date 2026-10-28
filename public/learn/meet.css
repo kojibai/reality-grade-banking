@@ -10,3 +10,25 @@
 .meeting-preview-source .meeting-feed.is-floating{touch-action:none;cursor:grab}.meeting-preview-source .meeting-feed.is-floating.is-dragging{cursor:grabbing}
 
 @media(max-width:600px){.meet-public .meet-actions{flex-direction:column;align-items:center;gap:18px}.meet-public .meet-actions>.learn-button{justify-content:center;max-width:100%}.meet-public .meet-actions>.meet-text-link{justify-content:center;text-align:center}}
+
+/* Source-rendered account controls, isolated from the live banking application. */
+.meeting-bank-source{height:100%;position:relative;color:#172d48;background:#fafbf9;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;container-type:inline-size}
+.meeting-bank-source .console{position:absolute;inset:0;width:100%;height:100%;min-height:0;overflow:hidden;background:#fafbf9}
+.meeting-bank-source .app-header{position:absolute;inset:0 0 auto;height:72px;padding:14px 18px;gap:12px;background:#fafbf9;z-index:2}
+.meeting-bank-source .main-panel{position:absolute;inset:72px 0 68px;padding:18px 20px;overflow:auto;min-width:0}
+.meeting-bank-source .bottom-nav{position:absolute;inset:auto 0 0;width:100%;height:68px;z-index:4}
+.meeting-bank-source .sheet{position:absolute;display:flex;flex-direction:column;inset:76px 10px 76px;margin:0;width:calc(100% - 20px);max-width:none;height:calc(100% - 152px);max-height:none;background:#fafbf9;border:1px solid #e1e6ef;border-radius:24px;padding:0;box-shadow:0 12px 35px #172d4815;color:#172d48;z-index:3;overflow:hidden}
+.meeting-bank-source .sheet-header{flex:none;padding:18px 20px}.meeting-bank-source .sheet-header h2{font-size:19px;margin:0}.meeting-bank-source .sheet-body{min-height:0;flex:1;padding:0 16px 16px;overflow:auto}
+.meeting-bank-source .bank-messaging{height:100%;min-height:0;display:flex;flex-direction:column;overflow:visible}.meeting-bank-source .bank-messaging-nav{flex:none}.meeting-bank-source .bank-organizer{flex:1;min-height:0}.meeting-bank-source .organizer-scroll{height:100%;overflow:auto;padding:18px 2px}.meeting-bank-source .organizer-event-mark{margin-top:12px}.meeting-bank-source .organizer-lead{font-size:26px}
+.meeting-bank-source .organizer-topline{flex-wrap:wrap;gap:16px}.meeting-bank-source .organizer-shortcuts{margin-left:auto}.meeting-bank-source .bank-conversation-empty{padding:60px 16px;color:#7d8da5;text-align:center}
+.meeting-bank-source[data-meeting-create=start-account] .message-entry,.meeting-bank-source[data-meeting-create=start-messages] .bank-organizer-tools [aria-label=Calendar],.meeting-bank-source[data-meeting-create=start-calendar] .organizer-meet-now,.meeting-bank-source[data-meeting-create=start-event] [data-meeting-demo-action=start-join]{outline:2px solid #5578e5;outline-offset:5px;box-shadow:0 0 0 7px #3154d20a}
+.meeting-bank-source .balance-amount{font-size:clamp(28px,8cqw,48px)}.meeting-bank-source .balance-chart{max-height:155px}.meeting-bank-source .account-layout{display:block}.meeting-bank-source .account-secondary{margin-top:26px}
+.meet-creation .meet-demo-view{height:680px;background:#fafbf9;max-width:520px;margin-inline:auto}.meet-creation .meet-demo-top,.meet-creation .meet-demo-caption{max-width:520px;margin-inline:auto}.meet-creation .meet-demo-caption{margin-top:18px}
+@container meeting-preview (max-width:360px){.meeting-bank-source .app-header{padding:12px;gap:8px}.meeting-bank-source .main-panel{padding:14px}.meeting-bank-source .bank-messaging-nav{gap:6px}.meeting-bank-source .bank-messaging-nav>button{padding:9px 7px;font-size:12px}.meeting-bank-source .bank-organizer-tools{gap:0}.meeting-bank-source .bank-compose-new{display:none}.meeting-bank-source .sheet-body{padding-inline:12px}.meeting-bank-source .organizer-shortcuts{gap:8px}}
+
+.meeting-bank-source .bottom-nav{transform:none;max-width:none}
+.meeting-bank-source .sheet{inset:8px 0;width:100%;height:calc(100% - 16px)}
+.meeting-bank-source button:disabled{opacity:1;cursor:default}
+
+.meeting-preview-source .meeting-bank-source button:disabled{opacity:1}
+.meeting-bank-source [data-meeting-demo-action]:is(.message-entry,.organizer-meet-now),.meeting-bank-source[data-meeting-create=start-messages] [aria-label=Calendar]{border-radius:8px;outline-color:#5578e58a}

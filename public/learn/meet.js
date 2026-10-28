@@ -17,7 +17,7 @@ export function init(){
   const show=(root,key)=>{
    if(!views[key])return;drag=null;
    const holder=document.createElement('template');holder.innerHTML=views[key];root.querySelector('.meet-demo-view').replaceChildren(holder.content);root.dataset.meetingCurrent=key;
-   const story=root.closest('.meet-experience'),caption=key==='paid'?'pay':key==='chat'?'twin':key==='people'?'room':key;
+   const story=root.closest('.meet-experience'),caption=key==='start-join'?'start-event':key==='paid'?'pay':key==='chat'?'twin':key==='people'?'room':key;
    if(story){story.querySelectorAll('[data-meeting-step]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.meetingStep===caption)));story.querySelectorAll('[data-meeting-copy]').forEach(copy=>copy.hidden=copy.dataset.meetingCopy!==caption);}
    const held=positions.get(root);if(held)place(root,root.querySelector('.meeting-feed.is-floating'),held.x,held.y);
    const scroll=root.querySelector('.meeting-conversation');if(scroll)scroll.scrollTop=scroll.scrollHeight;

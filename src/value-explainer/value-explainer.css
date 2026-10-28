@@ -234,3 +234,6 @@
 @media(prefers-reduced-motion:reduce){.value-page *,.value-page *:before,.value-page *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 .document-hidden .value-page *,.motion-ready .value-page .motion-region:not(.in-view) *{animation-play-state:paused!important}
 @media(max-width:500px){.value-page .value-field input:not([type=file]),.value-page .value-field select,.value-page .value-field textarea{font-size:16px}.value-chart text{font-size:20px}}
+
+/* Readable text entry avoids automatic focus magnification; page zoom stays available. */
+@media(pointer:coarse){.value-proof-form input[type=file]{font-size:16px}}

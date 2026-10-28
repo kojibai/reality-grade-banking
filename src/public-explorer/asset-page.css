@@ -5,3 +5,6 @@
 .asset-profile-byline{display:inline-flex;gap:9px;align-items:center;margin:-10px 0 20px;color:var(--navy);text-decoration:none;font-size:10px}.asset-profile-byline>.profile-avatar{width:30px;height:30px;font-size:10px}.asset-profile-byline>span:not(.profile-avatar)>span{display:block;font-size:12px;margin-top:3px}.asset-profile-byline>svg{margin-left:8px;color:var(--muted)}
 
 .asset-profile-byline>.profile-avatar{flex:0 0 30px;align-self:center}.asset-profile-byline>span:not(.profile-avatar){min-width:0}
+
+/* Readable text entry avoids automatic focus magnification; page zoom stays available. */
+@media(pointer:coarse){.public-copy-select select{font-size:16px}}

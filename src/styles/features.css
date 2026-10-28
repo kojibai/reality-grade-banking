@@ -355,3 +355,6 @@
  .ledger-personal-rows .asset-row>svg{grid-column:3;grid-row:1;justify-self:end;margin-top:3px}
  .ledger-personal-rows .ledger-receipt-actions{justify-content:flex-end;padding:0 10px 8px;gap:2px}
 }
+
+/* Readable text entry avoids automatic focus magnification; page zoom stays available. */
+@media(pointer:coarse){.note-rail-choice select,.send-note-field textarea{font-size:16px}}

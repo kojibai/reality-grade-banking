@@ -11,3 +11,6 @@
 
 .organizer-shortcuts{display:flex;align-items:center;gap:12px;flex-shrink:0}.organizer-meet-now{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:5px 0;color:#617c9e;font-size:11px;white-space:nowrap}.organizer-meet-now:disabled{opacity:.55}.organizer-meeting-share{margin:0 0 22px}.organizer-meeting-share>.organizer-copy{width:100%;margin:0 0 12px}.organizer-meeting-invite{margin:18px 0 0!important;gap:12px}.organizer-meeting-invite .organizer-copy{width:100%;color:var(--blue)}
 .bank-organizer a.organizer-primary{color:#fff;gap:8px}
+
+/* Readable text entry avoids automatic focus magnification; page zoom stays available. */
+@media(pointer:coarse){.organizer-search input,.organizer-form input:not([type=checkbox]),.organizer-form textarea,.organizer-form select,.organizer-form>.organizer-timezone select{font-size:16px}}

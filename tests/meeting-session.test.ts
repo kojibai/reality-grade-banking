@@ -8,3 +8,15 @@ it('joins through the actual bounded Bankeiz relay using its required JSON reque
  const identity={messaging:async()=>({accountUid:uid,callTransport:{heldFetch:(path:string,init:RequestInit)=>relayNativeAccount(new Request('https://bankeiz.com/api/bank/native'+path,{...init,headers:{...init.headers,authorization:'Bearer fixture'}}))}})};
  const controller={close:vi.fn()};try{const session=createMeetingSession({eventId:id,key,request:async()=>Response.json({}),entry:{open:async()=>identity,close(){}}as never,controller:()=>controller as never});const room=await session.join();expect(room.viewerId).toBe(uid);expect(remote).toHaveBeenCalledOnce();await session.close();}finally{remote.mockRestore();}
 });
+it('an explicit accepted identity change re-enters under that identity and closes the previous controller',async()=>{
+ let viewer=uid;const next='33333333-3333-4333-8333-333333333333',closed:ReturnType<typeof vi.fn>[]=[];
+ const identity=()=>({messaging:async()=>({accountUid:viewer,callTransport:{heldFetch:async()=>Response.json({ok:true,viewerId:viewer,hostId:uid,isHost:viewer===uid,conversationId:id,call:{id:uid,conversationId:id},meeting:{id,title:'Plan',host:{displayName:'BJ'},url:`https://bankeiz.com/meet/${id}/${key}/`}})}})});
+ const session=createMeetingSession({eventId:id,key,request:async()=>Response.json({}),entry:{open:async()=>identity(),import:async()=>{viewer=next;return identity();},close(){}} as never,controller:()=>{const close=vi.fn(async()=>{});closed.push(close);return{close}as never;}});
+ await session.join();await session.importIdentity({}as File,'');expect(closed[0]).toHaveBeenCalledOnce();expect((await session.join()).viewerId).toBe(next);await session.close();
+});
+
+it('cancelled explicit identity recovery preserves the admitted identity and call',async()=>{
+ const close=vi.fn(),identity={messaging:async()=>({accountUid:uid,callTransport:{heldFetch:async()=>Response.json({ok:true,viewerId:uid,hostId:uid,isHost:true,conversationId:id,call:{id:uid,conversationId:id},meeting:{id,title:'Plan',host:{displayName:'BJ'},url:`https://bankeiz.com/meet/${id}/${key}/`}})}})};
+ const session=createMeetingSession({eventId:id,key,request:async()=>Response.json({}),entry:{open:async()=>identity,recoverPbi:async()=>{throw Error('passkey_cancelled');},close(){}} as never,controller:()=>({close})as never});
+ const original=await session.join();await expect(session.recoverPbi()).rejects.toThrow('passkey_cancelled');expect(await session.join()).toBe(original);expect(close).not.toHaveBeenCalled();await session.close();
+});

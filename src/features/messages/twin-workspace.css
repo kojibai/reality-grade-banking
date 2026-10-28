@@ -5,3 +5,6 @@
 .twin-work-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.twin-work-heading>button{border:0;background:none;color:#8193ac;padding:5px;flex-shrink:0}
 
 .twin-embed-preview[data-open=true]{height:min(520px,60dvh)}
+
+/* Readable text entry avoids automatic focus magnification; page zoom stays available. */
+@media(pointer:coarse){.twin-workspace-scroll input:not([type=checkbox]):not([type=file]),.twin-workspace-scroll select,.twin-workspace-scroll textarea{font-size:16px}}

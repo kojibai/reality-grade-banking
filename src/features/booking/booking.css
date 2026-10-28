@@ -4,3 +4,6 @@
 .sheet.profile-booking-sheet{height:min(660px,calc(100svh - 108px));max-height:calc(100svh - 108px)}
 .booking-lead{font-size:27px;letter-spacing:-.9px;line-height:1.25;font-weight:560;margin:5px 0 12px!important}
 @media(min-width:720px){.sheet.profile-booking-sheet{height:min(660px,calc(100svh - 48px));max-height:calc(100svh - 48px)}}
+
+/* Readable text entry avoids automatic focus magnification; page zoom stays available. */
+@media(pointer:coarse){.booking-timezone select{font-size:16px}}

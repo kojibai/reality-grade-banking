@@ -21,3 +21,6 @@ h3 { font-size: 16px; font-weight: 650; }
 
 /* Container focus supports route announcements without outlining whole pages. */
 main[tabindex="-1"]:focus, h1[tabindex="-1"]:focus, dialog:focus, [data-pointer-focus-return]:focus { outline: none; }
+
+/* Readable text entry avoids automatic focus magnification; page zoom stays available. */
+@media(pointer:coarse){input,textarea,select,[contenteditable]:not([contenteditable=false]){font-size:16px}}

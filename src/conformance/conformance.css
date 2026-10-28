@@ -53,3 +53,6 @@
 @media(max-width:600px){.implementation-baseline{padding:18px}.implementation-baseline h2{font-size:23px}.implementation-baseline header>p,.implementation-baseline>p{font-size:13px}}
 
 .conformance-brand{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px}.conformance-brand svg{width:32px;height:32px}
+
+/* Readable text entry avoids automatic focus magnification; page zoom stays available. */
+@media(pointer:coarse){.assessment-inputs input{font-size:16px}}

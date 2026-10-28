@@ -1,7 +1,8 @@
+import {OrganizerShortcuts} from './OrganizerShortcuts';
 import {InlineOpening} from '../../../components/InlineOpening';
 import {parseOrganizerContactsFile} from '../../../receiz/contact-import';
 import {deviceCalendarTimezone} from '../../../receiz/calendar-timezone';
-import {Link,Upload,Video} from 'lucide-react';
+import {Upload} from 'lucide-react';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import type {OpenIdentity} from '../../../receiz/native-identity';
 import type {ChatPerson} from '../../../receiz/native-messaging';
@@ -48,7 +49,7 @@ export function OrganizerPanel({identity,entry,active,onBack,onMessage}:{identit
  const importPhone=()=>void run(async()=>{if(!phoneContacts)throw Error('CONTACT_PICKER_UNAVAILABLE');const chosen=await phoneContacts.select(['name','email','tel'],{multiple:true});if(!chosen.length)return;await api!.importContacts(chosen.map(row=>({fullName:row.name?.[0]??'',email:row.email?.[0]??'',phone:row.tel?.[0]??'',emails:row.email??[],phones:row.tel??[]})),'phone','Device contacts');if(alive.current){go('contacts');setNotice('Contacts imported.');}});
  const linkedPerson=event?contacts?.find(row=>row.email&&event.attendees.includes(row.email))??null:null;
  return <div className="bank-organizer" hidden={!active}><div className="organizer-scroll" ref={scroll}>
-  <div className="organizer-topline"><button type="button" className="organizer-return" onClick={onBack}>Return to conversation</button>{view==='calendar'&&<div className="organizer-shortcuts"><button type="button" className="organizer-meet-now" disabled={!api||busy} aria-busy={busy} onClick={meetNow}>{busy?<InlineOpening compact label="Preparing meeting"/>:<Video size={16}/>}<span>Meet now</span></button><button type="button" className="organizer-booking-shortcut" aria-label="Booking link" title="Booking link" onClick={()=>go('links')}><Link size={17}/></button></div>}</div>
+  <div className="organizer-topline"><button type="button" className="organizer-return" onClick={onBack}>Return to conversation</button>{view==='calendar'&&<OrganizerShortcuts ready={!!api} busy={busy} onMeet={meetNow} onBooking={()=>go('links')}/>}</div>
   {view==='contacts'&&<ContactsView waiting={!error} search={contactSearch} onSearch={setContactSearch} contacts={contacts} onOpen={value=>{setPerson(value);go('person');}} onAdd={()=>{setEditContact(null);go('contact-form');}} onImport={()=>go('import')}/>}
   {view==='person'&&person&&<PersonView person={person} events={events??[]} onBack={()=>go('contacts')} onEdit={()=>{setEditContact(person);go('contact-form');}} onMessage={()=>message(person)} onSchedule={schedule}/>}
   {view==='contact-form'&&<ContactForm key={editContact?.id??'new'} person={editContact} busy={busy} onBack={()=>go(editContact?'person':'contacts')} onSave={saveContact} onArchive={editContact&&!editContact.id.startsWith('conversation:')?()=>void run(async()=>{await api!.archiveContact(editContact.id);if(alive.current)go('contacts');}):undefined}/>}

@@ -10,7 +10,7 @@ import type {NativeTwinAsk,NativeTwinMemory,NativeTwinReply} from '../src/receiz
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 // Cold module transforms belong to fixture setup, not the one-second UI wait.
 // These views still mount only through the real Messages controls in each test.
-beforeAll(async()=>{await Promise.all([import('../src/features/messages/MoneyReceipts'),import('../src/features/messages/TwinCreditsPanel'),import('../src/features/messages/TwinUpgradePanel')]);});
+beforeAll(async()=>{await Promise.all([import('../src/receiz/money-conversation'),import('../src/features/messages/MoneyReceipts'),import('../src/features/messages/TwinCreditsPanel'),import('../src/features/messages/TwinUpgradePanel')]);});
 afterEach(()=>{vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});});
 const uid='33333333-3333-4333-8333-333333333333',threadId='11111111-1111-4111-8111-111111111111';
 const peer={kind:'user' as const,userId:'22222222-2222-4222-8222-222222222222',username:'sam',displayName:'Sam',avatarUrl:null};
