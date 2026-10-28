@@ -13,7 +13,7 @@ export const businessBenefits=[
  ['Stop piecing the same payment together','Keep the client, purpose and available payment history in the conversation. Return to an outstanding question with its background already there.'],
  ['Get financial admin off your evening','Turn the records you provide into a working summary, client update, payment reminder or handover you can review. Spend less time rebuilding the same explanation.'],
  ['Work out the next move before money moves','Compare a purchase, upcoming expense or payment to people or employees against the records you share. Prepare the details and review the recipient, amount and supported action before approving it.'],
- ['Keep the business moving while you work','Set up answers to client payment questions, route enquiries to your team and connect the next booking or payment on your own domain. Your agent carries the supported context across compatible apps with the same account.'],
+ ['Keep the business moving while you work','Set up answers to client payment questions, route enquiries to your team and connect the next booking or payment on your own domain. Your agent carries the supported context across apps that follow the standard with the same account.'],
 ];
 export const businessQuestions=[
  ['Who is this for?','People who run a business and carry its money admin themselves: owners, independent professionals, studios and teams. Start with a real payment question, outstanding client payment or upcoming expense. The fit directory shows the money work in thirty different kinds of business.'],

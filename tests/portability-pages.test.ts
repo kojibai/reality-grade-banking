@@ -31,7 +31,7 @@ it.each(['crypto','nfts'])('makes %s immediately readable, visual and connected 
 it('preserves no-runtime animation, reduced motion, source/transfer boundaries and explicit hosting before profile routing',()=>{
  const css=readFileSync('public/learn/portability.css','utf8');expect(css).toContain('prefers-reduced-motion');expect(css).toContain('document-hidden');expect(css).toContain('@keyframes');expect(css).not.toMatch(/url\(|backdrop-filter|animation-timeline/);
  const routes=JSON.parse(readFileSync('vercel.json','utf8')).rewrites;for(const path of ['/crypto','/crypto/','/nfts','/nfts/','/nft','/nft/'])expect(routes.find((row:{source:string})=>row.source===path)).toBeDefined();
- const text=portabilityPages.map(p=>parse(portabilityContent(p)).querySelector('main')!.textContent).join(' ');expect(text).toContain('source snapshot');expect(text).toContain('chain fees');expect(text).toContain('offline verification');expect(text).toContain('compatible');
+ const text=portabilityPages.map(p=>parse(portabilityContent(p)).querySelector('main')!.textContent).join(' ');expect(text).toContain('source snapshot');expect(text).toContain('chain fees');expect(text).toContain('offline verification');expect(text).toContain('conformance requirements');
 });
 it('keeps extracted social artwork transparent without filling connection paths black',()=>{
  for(const page of portabilityPages){const doc=new DOMParser().parseFromString(shareCardSvg(publicPage(page.path)!),'image/svg+xml');expect(doc.querySelector('svg[viewBox="0 0 900 610"]')?.getAttribute('fill')).toBe('none');}

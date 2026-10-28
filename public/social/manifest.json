@@ -26,19 +26,19 @@
       "alt": "Be here. Keep everything connected. The actual meeting interface shows sending money beside the conversation, with the recorded payment and meeting context together. Illustrative participant and scripted example."
     },
     "/crypto/": {
-      "url": "/social/portability-crypto-df57c3fbeabe1afe.png",
+      "url": "/social/portability-crypto-05818df7521e225b.png",
       "width": 1730,
       "height": 909,
-      "sha256": "df57c3fbeabe1afee0815f60d43e4bc0ac5d25f1a9c486edb6a953fc8c9c7ec1",
-      "bytes": 246279,
+      "sha256": "05818df7521e225b895088942c1d33dc27d2e70d6ba686c44a1e68901324571e",
+      "bytes": 246233,
       "alt": "Your value. More useful. Keep the source. Open the next possibility. A wallet or collection, a portable proof object and compatible experiences remain connected. Illustrative source and next-use story."
     },
     "/nfts/": {
-      "url": "/social/portability-nfts-af5cc31202e40809.png",
+      "url": "/social/portability-nfts-2191eb15a042246d.png",
       "width": 1730,
       "height": 909,
-      "sha256": "af5cc31202e4080944359ff2b9c78f94a082b737aabb69f5bd5f4b81ac8be16b",
-      "bytes": 246212,
+      "sha256": "2191eb15a042246d52dbfe70a77367b52880fd9b6f5859694000e427ba8537f9",
+      "bytes": 246152,
       "alt": "Your collection. A life beyond the marketplace. The object. Its ownership. A connected next life. A wallet or collection, a portable proof object and compatible experiences remain connected. Illustrative source and next-use story."
     },
     "/economy/": {

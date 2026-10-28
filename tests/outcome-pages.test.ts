@@ -9,7 +9,7 @@ const parse=(html:string)=>new DOMParser().parseFromString(html,'text/html');
 it('adds five distinct canonical outcome pages without redirecting or replacing the existing explanations',()=>{
  expect(outcomePages.map(p=>p.path)).toEqual(['/agent/','/fraud/','/recover/','/get-paid/','/proof/']);
  for(const p of outcomePages){expect(publicPage(p.path)?.id).toBe('solution-'+p.key);expect(publicPage(p.path.slice(0,-1))).toBe(publicPage(p.path));expect(parse(outcomeContent(p)).querySelector('h1')?.textContent?.trim()).toBeTruthy();}
- expect(publicPages).toHaveLength(150);for(const path of ['/id/','/protect/','/vaults/','/your-twin/','/in-action/','/learn/get-paid/','/learn/proof-objects/'])expect(publicPage(path)).toBeDefined();
+ expect(publicPages).toHaveLength(151);for(const path of ['/id/','/protect/','/vaults/','/your-twin/','/in-action/','/learn/get-paid/','/learn/proof-objects/'])expect(publicPage(path)).toBeDefined();
 });
 it.each(['agent','fraud','recover','get-paid','proof'])('keeps %s useful, inspectable and discoverable with unique price-free art',key=>{
  const p=outcomePages.find(p=>p.key===key)!;expect(p.visualLabels).toHaveLength(3);expect(p).not.toHaveProperty('visual');const doc=parse(outcomeContent(p));expect(doc.querySelectorAll('main section').length).toBeGreaterThanOrEqual(6);expect(doc.querySelector('[data-outcome-art="'+key+'"]')).not.toBeNull();expect(doc.querySelector('[data-outcome-art]')?.getAttribute('viewBox')).toBe('0 0 900 680');
@@ -19,7 +19,7 @@ it.each(['agent','fraud','recover','get-paid','proof'])('keeps %s useful, inspec
 });
 it('agent sells continuity and reuses the exact reviewed Business and native conversation paths',()=>{
  const doc=parse(outcomeContent(outcomePages[0]));expect(doc.querySelectorAll('[data-business-checkout]').length).toBeGreaterThanOrEqual(2);for(const a of doc.querySelectorAll('[data-business-checkout]'))expect(a.getAttribute('href')).toBe('/#account/messages/business');
- expect(doc.querySelector('main[data-coop]')).not.toBeNull();expect(doc.querySelector('[data-coop-twin]')).not.toBeNull();expect(doc.querySelector('[data-twin-composer]')).not.toBeNull();expect(doc.querySelector('[data-twin-book-form]')).toBeNull();expect(doc.querySelector('main')?.textContent).toContain('compatible apps');expect(doc.querySelector('main')?.textContent).toContain('authorized');
+ expect(doc.querySelector('main[data-coop]')).not.toBeNull();expect(doc.querySelector('[data-coop-twin]')).not.toBeNull();expect(doc.querySelector('[data-twin-composer]')).not.toBeNull();expect(doc.querySelector('[data-twin-book-form]')).toBeNull();expect(doc.querySelector('main')?.textContent).toContain('apps that follow the standard');expect(doc.querySelector('main')?.textContent).toContain('authorized');
 });
 it('keeps proof, fraud and recovery promises bound to existing original authority',()=>{
  const fraud=parse(outcomeContent(outcomePages[1])),recover=parse(outcomeContent(outcomePages[2])),proof=parse(outcomeContent(outcomePages[4]));

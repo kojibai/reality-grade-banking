@@ -10,7 +10,7 @@ export const publicIllustrations=Object.freeze([
  scene('proof-record','a source Original, its connected history layers and an inspection lens.'),
  scene('proof-assets','a shoe, property and original work connect to a sealed proof object.'),
  scene('proof-money','incoming and outgoing records connect to one native proof object and its context.'),
- scene('proof-network','one portable Original remains connected across places and compatible experiences.'),
+ scene('proof-network','one portable Original remains connected across places and experiences built to the standard.'),
  scene('proof-market','defined ownership slices remain connected to the whole and its source.'),
 ]);
 const byKey=new Map(publicIllustrations.map(scene=>[scene.key,scene]));
