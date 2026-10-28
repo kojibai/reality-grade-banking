@@ -9,6 +9,7 @@ Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const gate=vi.hoisted(()=>{let ready!:()=>void;const promise=new Promise<void>(resolve=>{ready=resolve;});return{promise,ready};});
 const request=vi.hoisted(()=>vi.fn());
 vi.mock('../src/receiz/native-transport',()=>({nativeFetch:request}));
+vi.mock('../src/receiz/public-booking-request',()=>({createPublicBookingRequest:()=>request}));
 vi.mock('../src/features/booking/PublicBookingPage',async()=>{await gate.promise;return vi.importActual('../src/features/booking/PublicBookingPage');});
 it('opens the actual booking frame on the first tap and reads offered times while the optional editor code loads',async()=>{
  const config={slotMinutes:30,hourStarts:[9],weekdayIndexes:[1],daysForward:14};
@@ -21,7 +22,7 @@ it('opens the actual booking frame on the first tap and reads offered times whil
   expect(request).not.toHaveBeenCalled();
   act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Book a time with Alex Morgan"]')!.click());
   expect(host.querySelector<HTMLDialogElement>('dialog')?.open).toBe(true);
-  expect(host.querySelector('.booking-panel')?.textContent??'').toContain('Good things start');
+  expect(host.querySelector('.booking-panel [role="status"]')?.getAttribute('aria-label')).toBe('Preparing this calendar');
   expect(host.querySelector('.booking-panel')?.textContent??'').toContain('Alex Morgan');
   expect(request).toHaveBeenCalledOnce();
   await act(async()=>{gate.ready();});
@@ -39,7 +40,7 @@ it('keeps the same profile frame while the first offered times are still in flig
   await act(async()=>root.render(<PublicProfilePage username="alexmorgan" initialProfile={profile} source={source} active/>));
   await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Book a time with Alex Morgan"]')!.click());
   expect(host.querySelector('.booking-panel')?.textContent??'').toContain('Alex Morgan');
-  expect(host.querySelector('.booking-panel')?.textContent??'').toContain('Good things start');
+  expect(host.querySelector('.booking-panel [role="status"]')?.getAttribute('aria-label')).toBe('Preparing this calendar');
   expect(host.querySelector('.booking-panel')?.textContent??'').not.toMatch(/Opening|Preparing/);
   expect(host.querySelector('.booking-panel [role="status"]')?.getAttribute('aria-label')).toBe('Preparing this calendar');
   expect(host.querySelector('[data-slot-start]')).toBeNull();expect(request).toHaveBeenCalledOnce();

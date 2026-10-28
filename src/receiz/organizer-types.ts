@@ -14,8 +14,10 @@ export interface CalendarRange {start:string;end:string}
 export interface BookingSchedule {timezone?:string;timezoneMode?:'auto'|'manual';slotMinutes:number;hourStarts:number[];weekdayIndexes:number[];daysForward:number}
 export interface BookingQuestion {id:string;label:string;required:boolean}
 export interface BookingSlot {id:string;startAt:string;endAt:string}
+export interface PublicBookingConversation {state:'ready'|'unavailable'|'unknown';ownerUserId:string;username:string}
 export interface BookingAvailability {
- owner:{username:string;displayName:string;avatarUrl:string|null};scheduleConfig:BookingSchedule;savedScheduleConfig:BookingSchedule;
+ conversation?:PublicBookingConversation;
+ owner:{userId?:string;username:string;displayName:string;avatarUrl:string|null};scheduleConfig:BookingSchedule;savedScheduleConfig:BookingSchedule;
  customQuestions:BookingQuestion[];savedCustomQuestions:BookingQuestion[];slots:BookingSlot[];
 }
 export interface OrganizerDisplay {

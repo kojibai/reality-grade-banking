@@ -1,3 +1,4 @@
+import {handlePublicBookingConversation} from './public-booking-conversation.js';
 import {handleOriginalsQualification} from './originals-qualification.js';
 import {relayTwinWorkspace} from './twin-workspace.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -17,6 +18,7 @@ import {handlePublicDocument} from './public-document.js';
 // adapter changes HTTP interfaces only; it never parses or reseals a proof.
 export async function handleBankApi(request: Request): Promise<Response> {
   const url = new URL(request.url);
+  if (url.pathname.startsWith('/api/bank/booking/')) return handlePublicBookingConversation(request);
   if (url.pathname==='/api/bank/business/dns-return'&&request.method==='GET')return dnsConnectionReturn(request);
   if (url.pathname==='/api/bank/business/dns')return relayBusinessDns(request);
   if (url.pathname==='/api/bank/twin-workspace') return relayTwinWorkspace(request);

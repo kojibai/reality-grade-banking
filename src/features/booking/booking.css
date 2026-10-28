@@ -7,3 +7,51 @@
 
 /* Readable text entry avoids automatic focus magnification; page zoom stays available. */
 @media(pointer:coarse){.booking-timezone select{font-size:16px}}
+
+/* One bounded booking conversation; the existing manual form stays mounted. */
+.booking-card.booking-conversation-card{display:block;max-width:540px;padding:22px;box-sizing:border-box}
+.booking-conversation-owner{display:flex;align-items:center;gap:12px;padding:0 0 18px;flex-shrink:0}
+.booking-conversation-owner>.profile-avatar{width:43px;height:43px;flex-shrink:0}
+.booking-conversation-owner h1{font-size:20px;letter-spacing:-.6px;line-height:1.25;margin:0 0 6px;white-space:normal}
+.booking-conversation-owner p{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:11px;line-height:1.5;color:var(--muted);margin:0}
+.booking-conversation-frame{position:relative;height:clamp(420px,65svh,570px);min-width:0;border-top:1px solid var(--line)}
+.booking-chat{height:100%;display:flex;flex-direction:column;min-width:0;box-sizing:border-box;padding-top:15px}
+.booking-chat-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--muted);font-size:12px;flex-shrink:0}
+.booking-chat-heading>span{display:flex;align-items:center;gap:7px;min-width:0}
+.booking-chat-heading svg{color:var(--blue);flex-shrink:0}
+.booking-chat-heading small{font-size:10px}
+.booking-transcript{min-height:0;flex:1;overflow:auto;overscroll-behavior:contain;padding:18px 2px 18px 0;scrollbar-width:thin;overflow-wrap:anywhere}
+.booking-chat-intro{font-size:17px;line-height:1.6;margin:0 0 22px;letter-spacing:-.15px}
+.booking-chat-message{font-size:15px;line-height:1.65;margin:0 0 18px;white-space:pre-wrap}
+.booking-chat-message p{margin:0}
+.booking-chat-message-user{margin-left:25px;border-radius:17px 17px 4px 17px;background:#edf2ff;padding:12px 14px}
+.booking-chat-message-assistant{padding-right:7px}
+.booking-chat-message-assistant:empty{display:none}
+.booking-composer{display:flex;align-items:flex-end;gap:8px;flex-shrink:0;padding:7px;border:1px solid var(--line);border-radius:16px;background:var(--bg)}
+.booking-composer textarea{min-width:0;flex:1;resize:none;max-height:110px;min-height:44px;padding:10px 7px;border:0;border-radius:10px;background:transparent;color:var(--navy);font:inherit;font-size:16px;line-height:1.5;box-sizing:border-box;overscroll-behavior:contain}
+.booking-composer textarea::placeholder{color:#7b8ea8}
+.booking-composer button{width:40px;height:40px;display:grid;place-items:center;border:0;border-radius:12px;color:#fff;background:var(--blue);flex-shrink:0}
+.booking-composer button:disabled{opacity:.4}
+.booking-choose-time{display:flex;align-items:center;justify-content:center;gap:7px;flex-shrink:0;width:100%;min-height:44px;margin-top:7px;border:0;background:none;color:var(--muted);font-size:12px}
+.booking-manual-layer{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;min-width:0;background:#fff;animation:booking-manual-enter .2s ease-out}
+.booking-manual-layer[hidden]{display:none}
+.booking-manual-layer>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:11px;color:var(--muted);flex-shrink:0}
+.booking-manual-layer>header button{display:flex;align-items:center;gap:4px;min-height:38px;background:none;border:0;color:var(--navy);padding:0 5px 0 0;font-size:12px}
+.booking-conversation-card .booking-manual-layer>.organizer-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 3px 18px}
+.booking-manual-layer .booking-owner,.booking-manual-layer .booking-lead,.booking-manual-layer .booking-duration{display:none}
+.booking-chat-error{font-size:12px;line-height:1.6;color:var(--muted);margin:12px 0}
+.booking-chat-error button{min-height:38px;padding:4px 0;color:var(--blue);border:0;background:none;font:inherit}
+.booking-chat-confirmation{border:1px solid var(--line);border-radius:14px;padding:14px;margin:14px 0;font-size:13px;line-height:1.6}
+.booking-chat-confirmation p{margin:5px 0}
+.booking-chat-confirmation a{color:var(--blue)}
+.booking-page .booking-card.bank-organizer :is(input,textarea,select),.booking-panel .booking-card.bank-organizer :is(input,textarea,select){font-size:16px}
+.booking-opening{min-height:160px;box-sizing:border-box}
+.sheet.profile-booking-sheet[open]:has(.booking-conversation-card){display:flex;flex-direction:column}
+.profile-booking-sheet>.sheet-body:has(.booking-conversation-card){display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.booking-panel:has(>.booking-conversation-card){display:flex;flex-direction:column;height:100%;min-height:0;flex:1}
+.booking-panel .booking-conversation-card{padding:0;display:flex;flex-direction:column;height:100%;min-height:0;flex:1}
+.booking-panel .booking-conversation-frame{height:auto;min-height:0;flex:1}
+.booking-panel .booking-conversation-card .booking-manual-layer>.organizer-scroll{padding:12px 3px 16px}
+@keyframes booking-manual-enter{from{transform:translateY(-10px)}to{transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.booking-manual-layer{animation:none}}
+@media(max-width:360px){.booking-conversation-card{padding:18px 16px}.booking-conversation-owner h1{font-size:19px}.booking-chat-heading{font-size:11px}}
