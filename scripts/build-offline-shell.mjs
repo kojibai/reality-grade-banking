@@ -1,4 +1,5 @@
 import {publicIllustrations} from '../src/content/public-imagery.mjs';
+import {meetingPage} from '../src/content/meeting-page.mjs';
 import {bankingPage} from '../src/content/banking-walkthrough.mjs';
 import {portabilityPages} from '../src/content/portability-pages.mjs';
 import {economyPages} from '../src/content/existing-economy.mjs';
@@ -27,6 +28,7 @@ const fixedResources = [
   '/native/identity-artwork.v129.mjs', '/native/identity-artwork.v129.manifest.json',
   '/notes/banknote-engraving.webp', '/notes/denomination-engraving.png',
   '/notes/reserve-note-masthead.png', '/notes/settlement-note-masthead.png', '/notes/settlement-reserve-note-masthead.png', '/notes/fonts/Cinzel.ttf',
+  '/art/meeting-maya.webp', '/learn/meet.js',
   '/art/create-original-frame.webp', '/art/create-original-frame-320.webp', '/art/create-sound-trace.webp',
   '/learn/proof-glass.webp', '/learn/reserve-note.webp', '/learn/settlement-note.webp',
   '/art/ledger-memory-crystal-v3.png',
@@ -80,7 +82,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     if(cooperative){urls.add('/learn/cooperatives.js');urls.add('/learn/cooperative-twin.js');}
     if(cooperative||canonicalPath==='/business/'||businessFitPages.some(page=>page.path===canonicalPath)||canonicalPath==='/vaults/')urls.add('/learn/product-walkthrough.js');
     if(economyPages.some(page=>page.path===canonicalPath)||canonicalPath==='/coops/'){urls.add('/learn/economy.js');urls.add('/learn/economy-model.mjs');}
-    const knownGuide=standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/protect/','/vaults/','/id/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
+    const knownGuide=canonicalPath===meetingPage.path||standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/protect/','/vaults/','/id/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
     if(canonicalPath===directoryPage.path)urls.add('/learn/business-fit.js');
     if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     // Each retained document already carries the complete public catalog.

@@ -11,7 +11,7 @@ import { CameraTile, MeetingAudio, type Feed } from './MeetingMedia';
 import { useSpeaker } from './useSpeaker';
 import { startMeetingRecording } from './recording';
 import { useMeetingCaptions } from './captions';
-interface TwinTurn {
+export interface TwinTurn {
     id: string;
     question: string;
     message: string;
@@ -24,12 +24,14 @@ interface TwinTurn {
     }[];
 }
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'Please try again.';
-export function MeetingRoom({ room, path, onRejoin }: {
+export function MeetingRoom({ room, path, onRejoin, initialPanel = null, initialTwinTurns = [] }: {
+    initialPanel?: 'chat' | 'twin' | 'people' | 'record' | null;
+    initialTwinTurns?: TwinTurn[];
     room: JoinedMeeting;
     path: string;
     onRejoin(video: boolean): void;
 }) {
-    const state = useSyncExternalStore(room.controller.subscribe, room.controller.getSnapshot, room.controller.getSnapshot), [panel, setPanel] = useState<'chat' | 'twin' | 'people' | 'record' | null>(null), [clear, setClear] = useState(false), [pin, setPin] = useState<string | null>(null), [chat, setChat] = useState<ChatPage | null>(() => room.messaging.knownMessages(room.conversationId)), [draft, setDraft] = useState(''), [sending, setSending] = useState(false), [error, setError] = useState(''), [copied, setCopied] = useState(false), [turns, setTurns] = useState<TwinTurn[]>([]), [twinDraft, setTwinDraft] = useState(''), [working, setWorking] = useState(false), [privateTwin, setPrivateTwin] = useState(false), [recording, setRecording] = useState(false), [recordBusy, setRecordBusy] = useState(false), [sealBusy, setSealBusy] = useState(false), [proof, setProof] = useState<File | null>(null), [savedCapture, setSavedCapture] = useState(false),[storedProof,setStoredProof]=useState(false);
+    const state = useSyncExternalStore(room.controller.subscribe, room.controller.getSnapshot, room.controller.getSnapshot), [panel, setPanel] = useState<'chat' | 'twin' | 'people' | 'record' | null>(initialPanel), [clear, setClear] = useState(false), [pin, setPin] = useState<string | null>(null), [chat, setChat] = useState<ChatPage | null>(() => room.messaging.knownMessages(room.conversationId)), [draft, setDraft] = useState(''), [sending, setSending] = useState(false), [error, setError] = useState(''), [copied, setCopied] = useState(false), [turns, setTurns] = useState<TwinTurn[]>(initialTwinTurns), [twinDraft, setTwinDraft] = useState(''), [working, setWorking] = useState(false), [privateTwin, setPrivateTwin] = useState(false), [recording, setRecording] = useState(false), [recordBusy, setRecordBusy] = useState(false), [sealBusy, setSealBusy] = useState(false), [proof, setProof] = useState<File | null>(null), [savedCapture, setSavedCapture] = useState(false),[storedProof,setStoredProof]=useState(false);
     const captureReady=useRef<Promise<MeetingCapture>|null>(null),captureFinalizing=useRef<Promise<void>|null>(null),sealTask=useRef<Promise<void>|null>(null),endRecorder=useRef<ReturnType<typeof createMeetingEndRecord>|null>(null),initialCallStatus=useRef(state.call?.status),finalRecordCall=useRef<string|null>(null);
     const joinedAt = useRef(Date.now()), twinAudio = useRef<MediaStream | null>(null);
     const recordingRef = useRef<Awaited<ReturnType<typeof startMeetingRecording>> | null>(null), capture = useRef<MeetingCapture | null>(null), feedsRef = useRef<Feed[]>([]), turnsRef = useRef<TwinTurn[]>([]), alive = useRef(true), chatEnd = useRef<HTMLDivElement>(null), twinEnd = useRef<HTMLDivElement>(null), root = useRef<HTMLElement>(null), lastFrameEvents = useRef<{

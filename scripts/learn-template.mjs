@@ -1,4 +1,5 @@
 import {productWalkthrough,agentWorkflowMoment,productMoment,dailyMoneyWalkthrough} from './product-walkthrough.mjs';
+import {meetingPage} from '../src/content/meeting-page.mjs';
 import {bankingPage} from '../src/content/banking-walkthrough.mjs';
 import {portabilityPages} from '../src/content/portability-pages.mjs';
 import {standardPages} from '../src/content/standard-pages.mjs';
@@ -22,6 +23,7 @@ const solutionGuides=[
  ...standardPages.map(page=>({...page,group:page.key.startsWith('market')?'Markets':'The standard'})),
  ...outcomePages.map(page=>({...page,group:page.key==='proof'?'Assets':'Banking',title:({agent:'Your agent',fraud:'Payment fraud',recover:'Recover your identity','get-paid':'Get paid. Keep the story.',proof:'Open the proof'})[page.key]})),
  {slug:'identity-continuity',path:'/id/',group:'Banking',title:'Identity continuity',description:'Open Bankeiz with the Receiz identity you already hold. Authentication, recovery and supported history stay connected.'},
+ {...meetingPage,group:'Banking',title:'Meetings, connected'},
  {...bankingPage,group:'Banking',title:'See banking in action'},
  ...twinSalesPages.map(page=>({...page,group:'Banking',title:page.key==='your-twin'?'Your Twin':'Business in action'})),
  {slug:'vaults',path:'/vaults/',group:'Banking',title:'Your Vaults',description:'Hold money and originals separately, add optional passkey protection and share their proof.'},

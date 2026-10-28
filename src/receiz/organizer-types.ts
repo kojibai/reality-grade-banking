@@ -25,7 +25,7 @@ export interface OrganizerDisplay {
  username:string|null;
 }
 export interface AppointmentInput {
- meetingAttendance?:{eventId:string;key:string};meeting?:boolean;meetingRequestId?:string;
+ inviteEmails?:string[];meetingAttendance?:{eventId:string;key:string};meeting?:boolean;meetingRequestId?:string;
  title:string;startAt:string;endAt:string;location?:string;note?:string;attendees?:string[];
  metadata?:Record<string,unknown>;kind?:'appointment';source?:'manual'|'message';
 }
@@ -39,8 +39,8 @@ export function organizerContact(value:unknown):OrganizerContact {
  return Object.fromEntries(fields.filter(key=>key in v).map(key=>[key,v[key]])) as unknown as OrganizerContact;
 }
 export function organizerEvent(value:unknown,owner?:string):OrganizerEvent {
- const v=organizerRecord(value);
- if(!text(v.id)||!v.id||!text(v.ownerUserId)||owner&&v.ownerUserId!==owner||!text(v.title)||v.title.length>2000||!date(v.startAt)||!date(v.endAt)||Date.parse(v.endAt)<=Date.parse(v.startAt)||!text(v.location)||!text(v.note)||!Array.isArray(v.attendees)||!v.attendees.every(text)||!text(v.kind)||!text(v.source)||!date(v.createdAt)||!date(v.updatedAt))throw Error('ORGANIZER_EVENT_INVALID');
+ const v=organizerRecord(value),invitation=organizerRecord(organizerRecord(v.metadata).bankMeetingInvitation);
+ if(!text(v.id)||!v.id||!text(v.ownerUserId)||owner&&v.ownerUserId!==owner&&!(invitation.schema==='bankeiz.meeting.invitation.v1'&&invitation.recipientUserId===owner&&invitation.hostUserId===v.ownerUserId)||!text(v.title)||v.title.length>2000||!date(v.startAt)||!date(v.endAt)||Date.parse(v.endAt)<=Date.parse(v.startAt)||!text(v.location)||!text(v.note)||!Array.isArray(v.attendees)||!v.attendees.every(text)||!text(v.kind)||!text(v.source)||!date(v.createdAt)||!date(v.updatedAt))throw Error('ORGANIZER_EVENT_INVALID');
  return {...v,metadata:organizerRecord(v.metadata)} as unknown as OrganizerEvent;
 }
 export function calendarRange(value:CalendarRange):CalendarRange {
@@ -52,4 +52,11 @@ export function readOrganizerDisplay(value:unknown,owner:string):OrganizerDispla
   const events=v.events===null||v.events===undefined?null:Array.isArray(v.events)&&v.events.length<=20000?v.events.map(value=>organizerEvent(value,owner)):null;
   return{schema:'bankeiz.organizer-display.v1',accountUid:owner,contactsComplete:v.contactsComplete!==false&&v.contacts!==null,contacts:v.contacts===null?null:(v.contacts as unknown[]).map(organizerContact),events,ranges:v.ranges.map(value=>{const row=organizerRecord(value),range=calendarRange(row as unknown as CalendarRange);return{...range,complete:row.complete===true};}),username:typeof v.username==='string'&&/^[a-z0-9_]{3,24}$/.test(v.username)?v.username:null};
  }catch{return null;}
+}
+
+/** Both accepted records stay in held history. The host appointment supplies
+ * one visible meeting when an earlier guest attendance copy is also present. */
+export function visibleOrganizerEvents(events:OrganizerEvent[]){
+ const invitations=new Set(events.flatMap(event=>{const value=organizerRecord(event.metadata.bankMeetingInvitation);return value.schema==='bankeiz.meeting.invitation.v1'&&value.hostUserId===event.ownerUserId&&typeof value.recipientUserId==='string'?[event.id+':'+value.recipientUserId+':'+event.ownerUserId]:[];}));
+ return events.filter(event=>{const attendance=organizerRecord(event.metadata.bankMeetingAttendance);return !invitations.has(String(attendance.hostEventId)+':'+event.ownerUserId+':'+String(attendance.hostUserId));});
 }

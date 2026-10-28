@@ -1,3 +1,4 @@
+import {meetingPage} from '../src/content/meeting-page.mjs';
 import {bankingPage} from '../src/content/banking-walkthrough.mjs';
 import {portabilityPages} from '../src/content/portability-pages.mjs';
 import {economyPages} from '../src/content/existing-economy.mjs';
@@ -18,6 +19,7 @@ import {protectionPage} from './vault-protection-page.mjs';
 export const publicOrigin = 'https://bankeiz.com';
 export const publicPages = [
  {...bankingPage,id:'banking',motif:'bank'},
+ {...meetingPage,id:'meet',motif:'bank'},
  ...portabilityPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-Grade Banking',description:page.description,lines:page.shareLines,caption:page.shareCaption,motif:'layers'})),
  ...economyPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-Grade Banking',description:page.description,lines:page.lines,caption:page.eyebrow,motif:'layers'})),
  ...standardPages.map(page=>({path:page.path,id:'standard-'+page.key,title:page.title+' | Open standard',description:page.description,lines:page.lines,caption:'The standard of the proof-native economy.',motif:'layers'})),
@@ -87,6 +89,7 @@ export function structuredMetadata(page,image) {
   return {'@context':'https://schema.org','@graph':[
     {'@type':page.path==='/explore/'||page.path==='/ledger/'?'CollectionPage':'WebPage','@id':url+'#page',url,name:page.title,description:page.description,inLanguage:'en',isPartOf:{'@id':publicOrigin+'/#website'},publisher:{'@id':publicOrigin+'/#organization'},primaryImageOfPage:{'@type':'ImageObject',url:publicOrigin+image.url,width:image.width,height:image.height,caption:image.alt}},
     {'@type':'BreadcrumbList',itemListElement:crumbs.map((item,index)=>({'@type':'ListItem',position:index+1,...item}))},
+    ...(Array.isArray(page.faq)?[{'@type':'FAQPage','@id':url+'#questions',mainEntity:page.faq.map(([name,text])=>({'@type':'Question',name,acceptedAnswer:{'@type':'Answer',text}}))}]:[]),
     ...((page.id.startsWith('standard-')||['reality-grade-banking','proof-native-economy'].includes(page.id))?[{'@type':'DefinedTermSet','@id':publicOrigin+'/about/#terminology',name:'Proof-native economy, reality-grade banking and reality-grade infrastructure',hasDefinedTerm:[{name:'Proof-native economy',description:'The economic system where participating value carries its required source, rights and proof.'},{name:'Reality-grade banking',description:'The open standard for interacting with the proof-native economy while preserving source, authority and continuity.'},{name:'Reality-grade infrastructure',description:'Receiz implements the primitives of reality-grade banking through its SDK, MCP and AI Skills.'}].map((term,index)=>({'@type':'DefinedTerm','@id':publicOrigin+'/about/#term-'+index,inDefinedTermSet:publicOrigin+'/about/#terminology',...term}))}]:[])
   ]};
 }

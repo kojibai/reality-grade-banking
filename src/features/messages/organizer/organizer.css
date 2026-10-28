@@ -8,3 +8,6 @@
 .organizer-empty-actions{display:flex;align-items:center;justify-content:center;gap:18px}.organizer-empty-actions button{display:inline-flex;align-items:center;gap:5px;padding:7px 0}
 .organizer-week-strip,.organizer-agenda{touch-action:pan-y pinch-zoom}
 .organizer-form>.organizer-timezone{display:flex;align-items:center;gap:7px;margin:0 0 8px;color:#8799b0}.organizer-form>.organizer-timezone select{flex:1;min-width:0;max-width:100%;font:inherit;font-size:11px;padding:7px 0;background:transparent;border:0;color:#748aa8}
+
+.organizer-shortcuts{display:flex;align-items:center;gap:12px;flex-shrink:0}.organizer-meet-now{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:5px 0;color:#617c9e;font-size:11px;white-space:nowrap}.organizer-meet-now:disabled{opacity:.55}.organizer-meeting-share{margin:0 0 22px}.organizer-meeting-share>.organizer-copy{width:100%;margin:0 0 12px}.organizer-meeting-invite{margin:18px 0 0!important;gap:12px}.organizer-meeting-invite .organizer-copy{width:100%;color:var(--blue)}
+.bank-organizer a.organizer-primary{color:#fff;gap:8px}

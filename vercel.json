@@ -42,12 +42,20 @@
   ],
   "rewrites": [
     {
-      "source": "/meet/:eventId/:key/",
+      "source": "/meet/",
       "destination": "/meet/index.html"
     },
     {
-      "source": "/meet/:eventId/:key",
+      "source": "/meet",
       "destination": "/meet/index.html"
+    },
+    {
+      "source": "/meet/:eventId/:key/",
+      "destination": "/meet/room.html"
+    },
+    {
+      "source": "/meet/:eventId/:key",
+      "destination": "/meet/room.html"
     },
     {
       "source": "/shares/:noteToken/",
