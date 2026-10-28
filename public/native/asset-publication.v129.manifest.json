@@ -635,9 +635,9 @@
       "id": "bank-local-financial-accountFinancialMath.generated",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialMath.generated.js",
       "baseSha256": null,
-      "sha256": "8cbbc584776501072ed1027bc3019354a84a4f3c466c759bf92f9b866aa3d9ec",
+      "sha256": "15cbc5d54f8841657033a8ccd2f6d8c82558f57c305306ed9e186c7bb60c85e5",
       "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
-      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664"
+      "sourceCommit": "856f24879e6a6b06b3c1032a8311cb12a9db2b07"
     },
     {
       "id": "bank-local-financial-accountFinancialMath.generated.d",
@@ -701,15 +701,15 @@
     {
       "id": "bank-local-financial-app-lib-wallet-bankNotes-offlineMarketPricing.ts",
       "path": "receiz/app/lib/wallet/bankNotes/offlineMarketPricing.ts",
-      "sha256": "586c55088e97b990e1a1c5b1566fb7c30f55874f0796485a707285121f8f7ec3",
-      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "sha256": "37db35a8e7da04104fffc2ff6d6b477ca59f1f6c75c954fe095f3358cd7070ba",
+      "sourceCommit": "856f24879e6a6b06b3c1032a8311cb12a9db2b07",
       "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
     },
     {
       "id": "bank-local-financial-app-lib-wallet-bankNotes-offlineWalletValuation.ts",
       "path": "receiz/app/lib/wallet/bankNotes/offlineWalletValuation.ts",
-      "sha256": "639578519aff527280b6b2e8f2e52c4864c94466bd6dd275c7d8bfff8a2c1e24",
-      "sourceCommit": "1d0be24bb33d9e25301f90ccebd71ae96e876664",
+      "sha256": "10dd4ce94c9f5a10e5555749490033b1a6b9f3b0ad411339c100285157078670",
+      "sourceCommit": "856f24879e6a6b06b3c1032a8311cb12a9db2b07",
       "purpose": "Matching canonical SDK sources for local financial calculation and exact-original recovery; no service integration code."
     },
     {
@@ -827,16 +827,16 @@
       "id": "bank-original-frequency-app-lib-wallet-bankNotes-offlineWalletValuation.ts",
       "path": "receiz/app/lib/wallet/bankNotes/offlineWalletValuation.ts",
       "baseSha256": "504c5c243e5df2815af60e3d934f286d0f6a02e6cb2372bec3119ba43d6ec7ca",
-      "sha256": "639578519aff527280b6b2e8f2e52c4864c94466bd6dd275c7d8bfff8a2c1e24",
-      "sourceCommit": "df7cd0d231f9665220a647c606c80a68f44e7538",
+      "sha256": "10dd4ce94c9f5a10e5555749490033b1a6b9f3b0ad411339c100285157078670",
+      "sourceCommit": "856f24879e6a6b06b3c1032a8311cb12a9db2b07",
       "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
     },
     {
       "id": "bank-original-frequency-app-lib-wallet-bankNotes-offlineMarketPricing.ts",
       "path": "receiz/app/lib/wallet/bankNotes/offlineMarketPricing.ts",
       "baseSha256": "57158dd5f32c030683598e58c70474f34138c1c7a814d3cc55cd0316cee6ccb3",
-      "sha256": "586c55088e97b990e1a1c5b1566fb7c30f55874f0796485a707285121f8f7ec3",
-      "sourceCommit": "df7cd0d231f9665220a647c606c80a68f44e7538",
+      "sha256": "37db35a8e7da04104fffc2ff6d6b477ca59f1f6c75c954fe095f3358cd7070ba",
+      "sourceCommit": "856f24879e6a6b06b3c1032a8311cb12a9db2b07",
       "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
     },
     {
@@ -867,8 +867,8 @@
       "id": "bank-original-frequency-packages-receiz-sdk-src-accountFinancialMath.generated.js",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialMath.generated.js",
       "baseSha256": "be8e6295d224dfc21d6ce060494779339c479af2ce89e70e6e37da5770586cd6",
-      "sha256": "8cbbc584776501072ed1027bc3019354a84a4f3c466c759bf92f9b866aa3d9ec",
-      "sourceCommit": "df7cd0d231f9665220a647c606c80a68f44e7538",
+      "sha256": "15cbc5d54f8841657033a8ccd2f6d8c82558f57c305306ed9e186c7bb60c85e5",
+      "sourceCommit": "856f24879e6a6b06b3c1032a8311cb12a9db2b07",
       "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
     }
   ]

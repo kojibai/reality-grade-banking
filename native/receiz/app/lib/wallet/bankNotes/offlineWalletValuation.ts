@@ -22,8 +22,10 @@ export type BankOfflineWalletLedger=Readonly<{
 }>;
 const MAX=(1n<<63n)-1n,HEX=/^[a-f0-9]{64}$/u;
 function fail():never{throw Error("OFFLINE_FINANCIAL_VALUATION_INVALID");}
-function exact(v:unknown,keys:readonly string[]):asserts v is Record<string,unknown>{
- if(!v||typeof v!=="object"||Array.isArray(v)||Object.keys(v).length!==keys.length||keys.some(k=>!Object.hasOwn(v,k)))fail();
+function exact(v:unknown,keys:readonly string[],optionalKey?:string):asserts v is Record<string,unknown>{
+ if(!v||typeof v!=="object"||Array.isArray(v))fail();
+ const optionalCount=optionalKey!==undefined&&Object.hasOwn(v,optionalKey)?1:0;
+ if(Object.keys(v).length!==keys.length+optionalCount||keys.some(k=>!Object.hasOwn(v,k)))fail();
 }
 function uint(v:unknown):bigint{
  if(typeof v!=="string"||!/^(0|[1-9][0-9]{0,18})$/u.test(v)||BigInt(v)>MAX)fail();return BigInt(v);
@@ -48,7 +50,7 @@ export function compileBankOfflineWalletValuation(input:unknown,openingKaiUPulse
   ||typeof basis.membershipDigest!=="string"||!HEX.test(basis.membershipDigest)||basis.projectorDigest!==GLYPH_SETTLEMENT_PROJECTOR_DIGEST)fail();
  uint(basis.lawfulActionPhiMicro);uint(basis.profileSeedPhiMicro);uint(basis.profileSeedUsdCents);
  for(const glyph of basis.publicGlyphs){
-  exact(glyph,["id","livePulseSeed"]);exact(glyph.livePulseSeed,["kind","claimPulse","beat","stepIndex","chakraDay","creatorVerified","kaiSignature","userPhiKey",...(Object.hasOwn(glyph.livePulseSeed,"frequencyHz")?["frequencyHz"]:[])]);
+  exact(glyph,["id","livePulseSeed"]);exact(glyph.livePulseSeed,["kind","claimPulse","beat","stepIndex","chakraDay","creatorVerified","kaiSignature","userPhiKey"],"frequencyHz");
   if(typeof glyph.id!=="string"||glyph.id!==glyph.id.trim().toLowerCase()||!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/u.test(glyph.id))fail();
  }
  const held=basis as BankOfflineWalletValuationBasis;

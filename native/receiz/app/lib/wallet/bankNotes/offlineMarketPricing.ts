@@ -9,7 +9,11 @@ export type OfflineMarketPriceBasis=Readonly<{schema:'receiz.bank.offline-market
 const MAX=(1n<<63n)-1n;
 const EMPTY_FLOW:readonly OfflineMarketTradeFlow[]=Object.freeze([]);
 function fail():never{throw Error('OFFLINE_MARKET_PRICING_INVALID');}
-function exact(v:unknown,keys:readonly string[]):asserts v is Record<string,unknown>{if(!v||typeof v!=='object'||Array.isArray(v)||Object.keys(v).length!==keys.length||keys.some(k=>!Object.hasOwn(v,k)))fail();}
+function exact(v:unknown,keys:readonly string[],optionalKey?:string):asserts v is Record<string,unknown>{
+ if(!v||typeof v!=="object"||Array.isArray(v))fail();
+ const optionalCount=optionalKey!==undefined&&Object.hasOwn(v,optionalKey)?1:0;
+ if(Object.keys(v).length!==keys.length+optionalCount||keys.some(k=>!Object.hasOwn(v,k)))fail();
+}
 function uint(v:unknown):bigint{if(typeof v!=='string'||!/^(0|[1-9][0-9]{0,18})$/u.test(v)||BigInt(v)>MAX)fail();return BigInt(v);}
 function pulse(v:unknown){const n=uint(v);if(n<=0n||n/1000000n>BigInt(Number.MAX_SAFE_INTEGER))fail();return n;}
 function flow(v:unknown):OfflineMarketTradeFlow{exact(v,['side','notionalUsdCents','atKaiUPulse']);if(!['buy','sell'].includes(String(v.side))||uint(v.notionalUsdCents)<=0n)fail();pulse(v.atKaiUPulse);return v as OfflineMarketTradeFlow;}
@@ -23,7 +27,7 @@ export function compileBankOfflineMarketPricing(input:unknown,openingKaiUPulse:s
  const item=value.item;if(typeof item.id!=='string'||!item.id||item.id.length>240||item.pricingSourceKey!==null&&(typeof item.pricingSourceKey!=='string'||item.pricingSourceKey.length>240)||!['venture','assetseal','profile','starter'].includes(String(item.source)))fail();
  for(const key of['priceUsd','pricePhi','intrinsicPhi','quoteUsdPerPhi','changePct','volumeUsd','liquidityUsd','holders'])if(typeof item[key]!=='number'||!Number.isFinite(item[key])||key!=='changePct'&&item[key]<0)fail();
  if(!Number.isSafeInteger(item.holders))fail();
- if(item.livePulseSeed!==null){const seed=item.livePulseSeed;exact(seed,['kind','claimPulse','beat','stepIndex','chakraDay','creatorVerified','kaiSignature','userPhiKey',...(Object.hasOwn(seed,'frequencyHz')?['frequencyHz']:[])]);if(seed.kind!=='sigil'||typeof seed.creatorVerified!=='boolean')fail();if(seed.frequencyHz!==undefined&&(typeof seed.frequencyHz!=='number'||!Number.isFinite(seed.frequencyHz)||seed.frequencyHz<=0))fail();for(const key of['claimPulse','beat','stepIndex'])if(!Number.isSafeInteger(seed[key])||Number(seed[key])<0)fail();if(BigInt(Number(seed.claimPulse))>opening/1000000n||Number(seed.beat)>35||Number(seed.stepIndex)>43)fail();for(const key of['chakraDay','kaiSignature','userPhiKey'])if(seed[key]!==null&&typeof seed[key]!=='string')fail();}
+ if(item.livePulseSeed!==null){const seed=item.livePulseSeed;exact(seed,['kind','claimPulse','beat','stepIndex','chakraDay','creatorVerified','kaiSignature','userPhiKey'],'frequencyHz');if(seed.kind!=='sigil'||typeof seed.creatorVerified!=='boolean')fail();if(seed.frequencyHz!==undefined&&(typeof seed.frequencyHz!=='number'||!Number.isFinite(seed.frequencyHz)||seed.frequencyHz<=0))fail();for(const key of['claimPulse','beat','stepIndex'])if(!Number.isSafeInteger(seed[key])||Number(seed[key])<0)fail();if(BigInt(Number(seed.claimPulse))>opening/1000000n||Number(seed.beat)>35||Number(seed.stepIndex)>43)fail();for(const key of['chakraDay','kaiSignature','userPhiKey'])if(seed[key]!==null&&typeof seed[key]!=='string')fail();}
  const initialQuantity=uint(value.livePositionQuantityMicro),certificateQuantity=uint(value.certificateQuantityMicro),trades=value.recentTrades.map(flow);
  for(const trade of trades)if(pulse(trade.atKaiUPulse)>opening)fail();
  const basis=value as unknown as OfflineMarketPriceBasis;

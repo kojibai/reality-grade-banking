@@ -47,3 +47,21 @@ This field-preservation correction does not resolve the separate historical
 Phi/USD aggregate divergence identified on klok. No zero-Phi account fix or
 financial reconciliation is claimed here. Deploy the matching Bankeiz reader before enabling the updated
 Receiz producer; old readers may omit unknown calculation operands.
+
+
+## Matching optional-field validator correction
+
+Receiz commit 856f24879 fixes the guard order in the two closed offline
+calculation input validators. Bankeiz includes the same source correction and
+reproduced SDK-math extraction. Malformed seeds are rejected before optional
+frequency inspection; valid old and frequency-carrying sources retain their
+existing calculations. No display, request or financial rule changes here.
+
+The included-source rebuild and native-source check pass. Current main f3a2ac2
+plus this matching composition passes all 661 files / 4,076 tests, zero skipped,
+and the complete production build with exact lockfile-installed dependencies.
+The Receiz counterpart passes full TypeScript, 56 relevant regressions and its
+actual production build, including 336 static pages. A separate read-only review
+found no new acceptance or authority expansion in the validator correction.
+The signed-Original/legacy-seed balance transition remains a separate unresolved
+source-composition issue; no account balance was changed by this correction.
