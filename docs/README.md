@@ -5,6 +5,13 @@ by this repository. Bankeiz is its live branded reference implementation, built
 on Receiz. These materials connect the implementation to its original sources,
 operating contracts, independent receiving tools and release evidence.
 
+Proof-native cash is the money held and used through the supported account and
+Note contracts. Its source records preserve the funding, ownership and history.
+Reserve and Settlement describe the exact funding composition underneath one
+ordinary account amount; they do not require the user to choose separate kinds
+of money. A dollar reference, an asset valuation and an executed payment each
+retain their actual meaning.
+
 ## Start with the task
 
 | Task | Start here |

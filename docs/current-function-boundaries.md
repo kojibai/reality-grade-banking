@@ -10,6 +10,13 @@ includes receiving requirements, independent inspection, matching native
 source and integration materials. Product release publication follows the
 [versioned qualification record](releases/3.0.0-qualification.md).
 
+Proof-native cash is the money held and used through the supported account and
+Note contracts. Its source records preserve the funding, ownership and history.
+Reserve and Settlement describe the exact funding composition underneath one
+ordinary account amount; they do not require the user to choose separate kinds
+of money. A dollar reference, an asset valuation and an executed payment each
+retain their actual meaning.
+
 ## Product connections
 
 | Capability | Implemented connection | Assessment boundary |

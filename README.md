@@ -24,6 +24,13 @@ People can use Bankeiz. Builders and institutions can inspect the implementation
 reproduce its checks and operate their own authorized integrations under the
 published requirements. The architecture is not limited to one brand or operator.
 
+Proof-native cash is the money held and used through the supported account and
+Note contracts. Its source records preserve the funding, ownership and history.
+Reserve and Settlement describe the exact funding composition underneath one
+ordinary account amount; they do not require the user to choose separate kinds
+of money. A dollar reference, an asset valuation and an executed payment each
+retain their actual meaning.
+
 **The payment moves. Its proof stays connected.**
 
 [Open Bankeiz](https://bankeiz.com/) ·

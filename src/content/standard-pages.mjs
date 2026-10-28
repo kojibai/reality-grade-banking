@@ -832,7 +832,7 @@ export const standardPages=[
     "sections": [
       [
         "Start with what exists.",
-        "Open an asset’s original, claim, authorship, ownership and supported history. Inspect the actual rights being offered. A polished listing does not create title, physical custody, a license or cash backing."
+        "Open an asset’s original, claim, authorship, ownership and supported history. Inspect the actual rights being offered. Title, physical custody, licenses and contributed funding are established by their corresponding originals."
       ],
       [
         "Understand the value on the screen.",
@@ -883,8 +883,8 @@ export const standardPages=[
         "The original, asset identity, actual rights, offered share units, supported funding, live review and terms. For physical assets, also inspect custody and the actual legal claim."
       ],
       [
-        "Is market value the amount available to cash out?",
-        "No. Aggregate or individual valuation does not establish an executable sale or redemption. Availability, your held shares, the supported route and its current execution determine the actual result."
+        "How do market value and sale proceeds connect?",
+        "An executable sale has its own review, current capacity and accepted financial result. Availability, your held shares, the supported route and its current execution determine the actual result."
       ]
     ],
     "action": "Explore original assets",
@@ -1019,8 +1019,8 @@ export const standardPages=[
     ],
     "faq": [
       [
-        "Is Take cash the same as a bank withdrawal?",
-        "It names the supported market sale action. Its recorded financial result is distinct from a later payout to an outside bank, card or other destination. Use the actual available route and terms."
+        "What happens when I choose Take cash?",
+        "It sells supported ownership units and records the proceeds in your account. You can use those funds for payments, purchases or a funded Note. A transfer to another institution follows that destination’s supported receiving route and terms."
       ],
       [
         "What if I lose the response?",
@@ -1066,7 +1066,7 @@ export const standardPages=[
       ],
       [
         "Quote and execution.",
-        "A native market quote is an advisory preview for the selected account, asset and side. The recorded execution establishes the actual quantities and financial result. Market capitalization aggregates supported valuations; it is not cash reserves, trading liquidity or realized output."
+        "A native market quote is an advisory preview for the selected account, asset and side. The recorded execution establishes the actual quantities and financial result. Market capitalization aggregates supported valuations. Available account cash, trading liquidity and realized output retain their own records."
       ]
     ],
     "related": [
@@ -1132,7 +1132,7 @@ export const standardPages=[
       ],
       [
         "Read each right separately.",
-        "Authorship, current ownership, copyright, a usage license, revenue participation, cash backing and physical title are distinct. A valid seal establishes the assertions its verifier covers. Other rights need their own defined grant and evidence."
+        "Authorship, current ownership, copyright, a usage license, revenue participation, contributed funding and physical title are distinct. A valid seal establishes the assertions its verifier covers. Other rights need their own defined grant and evidence."
       ],
       [
         "Preserve the chain.",
@@ -1268,7 +1268,7 @@ export const standardPages=[
       ],
       [
         "Read what can actually execute.",
-        "A valid original and a supported valuation do not guarantee an available sale, buyer or redemption. The live route, held quantity, actual rights and execution conditions determine whether the requested operation can complete."
+        "The original establishes its supported evidence and valuation. A sale uses an available buyer or supported purchase route, exact terms and accepted execution. The live route, held quantity, actual rights and execution conditions determine whether the requested operation can complete."
       ],
       [
         "Keep funding and trading distinct.",
@@ -1300,7 +1300,7 @@ export const standardPages=[
     "faq": [
       [
         "Does market capitalization measure liquidity?",
-        "No. It aggregates the supported asset valuation universe. It does not establish cash backing, a bid, trading volume or the amount available for immediate sale."
+        "No. It aggregates the supported asset valuation universe. Actual funding, bids, trading volume and the amount available for immediate sale each have their own evidence."
       ],
       [
         "Does Business guarantee better trading access?",
