@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.0.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "9ff3d835a7def13184f1e74bd3fed2e20c90c52bb05faec6be3bc85db116c8cf",
+  "moduleSha256": "39b87eb0d79bea12dad991443496240ed1becbb07111a8a45450b651a6d3cb95",
   "sourceTreeSha256": "4dbfd71fab351b4aab423ce20f57f7d3920b895cfa5c43257ddd51f832d9662c",
   "inputs": 501,
-  "bytes": 2924757,
+  "bytes": 2924556,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -871,5 +871,11 @@
       "sourceCommit": "856f24879e6a6b06b3c1032a8311cb12a9db2b07",
       "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
     }
-  ]
+  ],
+  "browserDefines": {
+    "process.env.NEXT_PUBLIC_RECEIZ_SIGNING_V4_ROOT_PUBLIC_KEYS_JSON": "\"\"",
+    "process.env.NEXT_PUBLIC_RECEIZ_SIGNING_V4_PUBLIC_KEYS_JSON": "\"\"",
+    "process.env.NEXT_PUBLIC_SW_VERSION": "\"129.0.0\"",
+    "process.env.NEXT_PUBLIC_RECEIZ_PROFILE_RUNTIME_ID": "\"\""
+  }
 }

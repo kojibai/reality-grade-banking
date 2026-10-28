@@ -24,6 +24,28 @@ const object=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'&&!Array.
 const text=(v:unknown,max=4096)=>typeof v==='string'&&v.trim()&&v.length<=max?v.trim():null;
 const number=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)&&v>=0?v:null;
 export function publicProfileLink(v:unknown){const raw=text(v,8192);if(!raw)return null;try{const u=new URL(raw);return u.protocol==='https:'&&!u.username&&!u.password?u.href:null;}catch{return null;}}
+function publicOriginalItems(rows:unknown[],p:Record<string,unknown>,collection=false):PublicMarketItem[]{
+ const username=String(p.username),displayName=text(p.displayName,80)??username;
+ const originals=rows.filter(row=>object(row).showOnProfile===true).map(value=>{
+  const row=object(value),market=object(row.marketPreview),media=row.media===null?null:object(row.media),id=text(row.id,128),long=object(row.longForm);
+  if(collection&&typeof row.hasLongForm!=='boolean')throw Error('PROFILE_COLLECTION_READER_METADATA_INVALID');
+  return {id:`profile:${username}:${id}`,receizId:id,title:text(row.claim,8192)??text(long.title,500)??'Original',summary:text(row.claim,8192)??'',ownerUsername:username,ownerDisplayName:displayName,
+   canonicalHref:`https://receiz.com/${username}/verified/${encodeURIComponent(id??'')}`,verifyHref:row.verifyUrl??row.verifyPath,pulse:row.pulse,createdAt:row.createdAt,valueUsd:market.priceUsd,livePulseSeed:market.livePulseSeed,
+   profileOriginal:{...row,media,hasLongForm:collection?row.hasLongForm:Boolean(long.text),longForm:row.longForm}};
+ });
+ return parsePublicMarket({ok:true,transport:{publicOriginals:originals}}).items.map(item=>({...item,ownerAvatarUrl:profileAvatarUrl(p.avatarUrl)}));
+}
+/** The anonymous verified-viewer route admits the selected public Original.
+ * This is a display projection; it adds no ownership or trading authority. */
+export function parsePublicOriginal(input:unknown,username:string,originalId:string):PublicMarketItem{
+ const envelope=object(input),view=object(envelope.viewer),p=object(view.profile);
+ if(envelope.ok!==true||!profileUsername(username)||p.username!==username||!text(p.userId,256)||p.isPrivate!==false||!Array.isArray(view.originals)||view.originals.length>10_000)throw Error('PROFILE_ORIGINAL_UNAVAILABLE');
+ const rows=view.originals.filter(value=>object(value).id===originalId);
+ if(rows.length!==1)throw Error('PROFILE_ORIGINAL_UNAVAILABLE');
+ const items=publicOriginalItems(rows,p),item=items[0];
+ if(items.length!==1||item?.id!==`profile:${username}:${originalId}`)throw Error('PROFILE_ORIGINAL_UNAVAILABLE');
+ return item;
+}
 /** Public presentation projection only. A handle and these fields confer no
  * identity, ownership, write authority or device qualification. */
 export function parsePublicProfile(input:unknown,expectedUsername:string):PublicProfile{
@@ -32,14 +54,7 @@ export function parsePublicProfile(input:unknown,expectedUsername:string):Public
  if(p.isPrivate!==false||viewer.canView!==true)throw Error('PROFILE_PRIVATE');
  const username=expectedUsername,displayName=text(p.displayName,80)??username,rows=Array.isArray(view.originals)?view.originals:[];
  if(rows.length>10_000)throw Error('PROFILE_PAGE_TOO_LARGE');
- const originals=rows.filter(row=>object(row).showOnProfile===true).map(value=>{
-  const row=object(value),market=object(row.marketPreview),media=row.media===null?null:object(row.media),id=text(row.id,128),long=object(row.longForm);
-  if(envelope.representation==='collection-v2'&&typeof row.hasLongForm!=='boolean')throw Error('PROFILE_COLLECTION_READER_METADATA_INVALID');
-  return {id:`profile:${username}:${id}`,receizId:id,title:text(row.claim,8192)??text(long.title,500)??'Original',summary:text(row.claim,8192)??'',ownerUsername:username,ownerDisplayName:displayName,
-   canonicalHref:`https://receiz.com/${username}/verified/${encodeURIComponent(id??'')}`,verifyHref:row.verifyUrl??row.verifyPath,pulse:row.pulse,createdAt:row.createdAt,valueUsd:market.priceUsd,livePulseSeed:market.livePulseSeed,
-   profileOriginal:{...row,media,hasLongForm:envelope.representation==='collection-v2'?row.hasLongForm:Boolean(long.text),longForm:row.longForm}};
- });
- const items=parsePublicMarket({ok:true,transport:{publicOriginals:originals}}).items.map(item=>({...item,ownerAvatarUrl:profileAvatarUrl(p.avatarUrl)}));
+ const items=publicOriginalItems(rows,p,envelope.representation==='collection-v2');
  const stats=object(view.stats),unavailable=Array.isArray(view.unavailableDecorators)&&view.unavailableDecorators.includes('engagement');
  const hash=text(p.authorshipPbiReceiptHash,64);
  const page=object(view.originalsPage),cursor=text(page.nextCursor,4096);

@@ -2,7 +2,7 @@ import {expect,it,vi} from 'vitest';
 import {assetPreviewItem,handleAssetPreview} from '../server/asset-preview';
 import {Window} from 'happy-dom';
 import {assetPagePath,assetPageId} from '../src/receiz/public-asset-page';
-import {parsePublicMarket} from '../src/receiz/public-market';
+import {parsePublicMarket,type PublicMarketItem} from '../src/receiz/public-market';
 import {publicAssetManifest} from '../src/receiz/public-asset-manifest';
 const item=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:source',receizId:'source',title:'A moment $& <script>one</script>',summary:'The complete original.',ownerUsername:'artist',profileOriginal:{media:{kind:'image'}}}]}}).items[0];
 const html='<html><head><title>Explore</title><meta name="description" content="Explore"><link rel="canonical" href="https://bankeiz.com/explore/"></head><body><div id="public-explore-root" data-public-runtime="explore"><main>Explore fallback</main></div><script id="receiz-navigation" type="application/json">{"pages":{}}</script></body></html>';
@@ -131,4 +131,35 @@ it('resolves newly published public assets once per source window, without quote
  const resolve=createLiveAssetResolver(read);
  const rows=await Promise.all([resolve('profile:new:publication'),resolve('profile:new:publication'),resolve('profile:absent:publication')]);
  expect(rows[0]?.title).toBe('Newly published');expect(rows[1]).toEqual(rows[0]);expect(rows[2]).toBeNull();expect(read.mock.calls).toEqual([['membership']]);
+});
+it('resolves a cold profile asset directly without waiting for global discovery',async()=>{
+ const {createLiveAssetResolver}=await import('../server/asset-preview');
+ const read=vi.fn(async()=>{throw Error('GLOBAL_DISCOVERY_MUST_NOT_RUN');});
+ const original=vi.fn(async()=>({id:'profile:artist:imported-work',title:'The exact new Original'} as PublicMarketItem));
+ const resolve=createLiveAssetResolver(read,original);
+ const rows=await Promise.all([resolve('profile:artist:imported-work'),resolve('profile:artist:imported-work')]);
+ expect(rows[0]?.title).toBe('The exact new Original');expect(rows[1]).toEqual(rows[0]);
+ expect(original).toHaveBeenCalledExactlyOnceWith('artist','imported-work');expect(read).not.toHaveBeenCalled();
+});
+it('does not replace a missing, private or substituted exact Original with global discovery',async()=>{
+ const {createLiveAssetResolver}=await import('../server/asset-preview');
+ const read=vi.fn(async()=>{throw Error('GLOBAL_DISCOVERY_MUST_NOT_RUN');});
+ for(const result of [null,{id:'profile:other:imported-work',title:'Different owner'} as PublicMarketItem]){
+  expect(await createLiveAssetResolver(read,async()=>result)('profile:artist:imported-work')).toBeNull();
+ }
+ expect(read).not.toHaveBeenCalled();
+});
+it.each(['mismatch','refusal'])('clears an expired exact Original when the next read reports %s',async failure=>{
+ let now=10000;const clock=vi.spyOn(Date,'now').mockImplementation(()=>now);
+ try{
+  const {createLiveAssetResolver}=await import('../server/asset-preview');
+  const read=vi.fn(async()=>{throw Error('GLOBAL_DISCOVERY_MUST_NOT_RUN');});
+  const original=vi.fn(async()=>({id:'profile:artist:imported-work',title:'Previously public'} as PublicMarketItem));
+  const resolve=createLiveAssetResolver(read,original);
+  expect((await resolve('profile:artist:imported-work'))?.title).toBe('Previously public');now+=21000;
+  if(failure==='mismatch')original.mockResolvedValue({id:'profile:other:imported-work'} as PublicMarketItem);
+  else original.mockRejectedValue(Error('PROFILE_ORIGINAL_UNAVAILABLE'));
+  expect(await resolve('profile:artist:imported-work')).toBeNull();now+=6000;
+  expect(await resolve('profile:artist:imported-work')).toBeNull();expect(read).not.toHaveBeenCalled();
+ }finally{clock.mockRestore();}
 });

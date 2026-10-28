@@ -1,4 +1,4 @@
-import {parsePublicProfile,profileUsername,type PublicProfile} from '../src/receiz/public-profile.js';
+import {parsePublicProfile,parsePublicOriginal,profileUsername,type PublicProfile} from '../src/receiz/public-profile.js';
 import {reuseShippedProfileShareHistory} from './profile-share-history.js';
 import {profileAvatarUrl} from '../src/receiz/profile-avatar.js';
 export class PublicProfileError extends Error {constructor(message:string,public status:number){super(message);}}
@@ -36,6 +36,15 @@ export function createPublicProfileReader(fetchImpl:typeof fetch=fetch,enrich:(p
  };
 }
 export const readPublicProfile=createPublicProfileReader();
+export function createPublicOriginalReader(fetchImpl:typeof fetch=fetch){
+ return async(username:string,originalId:string)=>{
+  if(!profileUsername(username)||!/^[A-Za-z0-9_-]{1,128}$/.test(originalId))throw new PublicProfileError('PROFILE_ORIGINAL_INVALID',400);
+  const response=await fetchImpl(`https://receiz.com/api/profile/${username}/originals/${originalId}/verified`,{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12_000),headers:{accept:'application/json'}});
+  if(!response.ok){await response.body?.cancel().catch(()=>{});if([403,404].includes(response.status))return null;throw new PublicProfileError('PROFILE_UNAVAILABLE',503);}
+  return parsePublicOriginal(await readBody(response),username,originalId);
+ };
+}
+export const readPublicOriginal=createPublicOriginalReader();
 const portraitReads=new Map<string,Promise<{username:string;avatarUrl:string|null}>>();
 function readPublicPortrait(username:string){
  const held=portraitReads.get(username);if(held)return held;

@@ -50,7 +50,16 @@ try {
   else assert.deepEqual(inputList, manifest.notesInputs, 'Native input closure differs.');
   if (refreshComposition) await writeFile(notesManifestPath, JSON.stringify({ ...notesManifest, moduleSha256: hash(notesBytes), sourceTreeSha256: hash(JSON.stringify(inputList)), inputs: inputList.length, bytes: notesBytes.length, applicationPatches: manifest.applicationPatches ?? [] }, null, 2) + '\n');
 
-  const publication = await build({ ...common, entryPoints: ['app/lib/profile/showcase/connectedAssetPublication.client.ts'], alias: { '@': source }, outfile: resolve(bank, 'public/native/asset-publication.v129.mjs'), banner: { js: '/*! Receiz Bank Public Originals — exact v129 Showcase source admission, custody and public projection. Generated; do not edit. */' } });
+  // Next normally supplies these public build-time defaults. This standalone
+  // browser composition uses the included pinned roots, not a Node global or
+  // the build machine's environment. Proof and publication rules stay native.
+  const publicationBrowserDefines = {
+    'process.env.NEXT_PUBLIC_RECEIZ_SIGNING_V4_ROOT_PUBLIC_KEYS_JSON': '""',
+    'process.env.NEXT_PUBLIC_RECEIZ_SIGNING_V4_PUBLIC_KEYS_JSON': '""',
+    'process.env.NEXT_PUBLIC_SW_VERSION': JSON.stringify(manifest.receizVersion),
+    'process.env.NEXT_PUBLIC_RECEIZ_PROFILE_RUNTIME_ID': '""',
+  };
+  const publication = await build({ ...common, define: publicationBrowserDefines, entryPoints: ['app/lib/profile/showcase/connectedAssetPublication.client.ts'], alias: { '@': source }, outfile: resolve(bank, 'public/native/asset-publication.v129.mjs'), banner: { js: '/*! Receiz Bank Public Originals — exact v129 Showcase source admission, custody and public projection. Generated; do not edit. */' } });
   const publicationBytes = publication.outputFiles[0].contents;
   const publicationManifestPath = resolve(bank, 'public/native/asset-publication.v129.manifest.json');
   const publicationInputs = await Promise.all(Object.keys(publication.metafile.inputs).sort().map(async path => ({ path: relative(source, resolve(source, path)), sha256: hash(await readFile(resolve(source, path))) })));
@@ -58,7 +67,7 @@ try {
   if (refreshComposition) {
     manifest.assetPublicationInputs = publicationInputs;
     await writeFile(resolve(bank, 'native/manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
-    await writeFile(publicationManifestPath, JSON.stringify({ ...publicationManifest, schema: 'bankeiz.native-asset-publication.v129', receizVersion: manifest.receizVersion, entry: 'app/lib/profile/showcase/connectedAssetPublication.client.ts', moduleSha256: hash(publicationBytes), sourceTreeSha256: hash(JSON.stringify(publicationInputs)), inputs: publicationInputs.length, bytes: publicationBytes.length, applicationPatches: manifest.applicationPatches ?? [] }, null, 2) + '\n');
+    await writeFile(publicationManifestPath, JSON.stringify({ ...publicationManifest, schema: 'bankeiz.native-asset-publication.v129', receizVersion: manifest.receizVersion, entry: 'app/lib/profile/showcase/connectedAssetPublication.client.ts', browserDefines: publicationBrowserDefines, moduleSha256: hash(publicationBytes), sourceTreeSha256: hash(JSON.stringify(publicationInputs)), inputs: publicationInputs.length, bytes: publicationBytes.length, applicationPatches: manifest.applicationPatches ?? [] }, null, 2) + '\n');
   } else {
     assert.equal(hash(publicationBytes), publicationManifest.moduleSha256, 'Public Original composition rebuild differs.');
     assert.deepEqual(publicationInputs, manifest.assetPublicationInputs, 'Public Original input closure differs.');

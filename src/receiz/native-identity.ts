@@ -1392,7 +1392,11 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       if(!account||!request||account.applicationId!==BANK_APPLICATION_ID)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');
       const assertCurrent=()=>{lifetime.signal.throwIfAborted();if(clientAccounts.get(connected)?.accountUid!==account.accountUid||presentationUsername&&presentationUsername!==username)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');};
       const {loadAssetPublicationRuntime,createAssetPublicationFetch}=await import('./asset-publication-runtime');
-      const native=await loadBankNoteRuntime(),sealer=await ownedSealer(),sealDocument=await native.createBankNativeNoteSealer({enrollment:await sealer.enroll(),resources:sealingResources!});
+      const native=await loadBankNoteRuntime();await ownedSealer();
+      const {createReceizIndexedDbSealStore}=await import('@receiz/sdk/offline');
+      const enrollment=await createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer').load();
+      if(!enrollment||!sealingResources)throw Error('Your device sealing key is unavailable.');
+      const sealDocument=await native.createBankNativeNoteSealer({enrollment,resources:sealingResources});
       return(await loadAssetPublicationRuntime()).createConnectedAssetPublicationRuntime({identity:new Uint8Array(bytes),passphrase:phrase,account:{uid:account.accountUid,username},sealDocument,assertCurrent,onLocalAdmission:admission=>{assertCurrent();adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:account.accountUid,isCurrent:()=>!lifetime.signal.aborted&&clientAccounts.get(connected)?.accountUid===account.accountUid&&(!presentationUsername||presentationUsername===username),artwork});},fetchImpl:createAssetPublicationFetch({applicationId:BANK_APPLICATION_ID,username,assertCurrent,request:async(path,init)=>{const held=await loadDeviceIdentity();if(!held||await sdk.sha256ReceizBytes(held.bytes)!==binding.artifactSha256)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');return request(path,init);}})});
   }
   async function createAsset(input: AssetDefinition | null, draft?: AssetMomentDraft, localOnly=false, composed?:AssetComposerDraft): Promise<HeldDeposit> {

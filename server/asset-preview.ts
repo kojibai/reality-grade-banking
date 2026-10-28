@@ -10,6 +10,7 @@ import {handleAssetOembed} from './asset-oembed';
 import {assetEmbedPlayer} from './asset-embed-player';
 import {profileAvatarUrl} from '../src/receiz/profile-avatar';
 import {profilePagePath,profileUsername} from '../src/receiz/public-profile';
+import {readPublicOriginal} from './public-profile';
 type Dependencies={page():Promise<string>;item(id:string):Promise<PublicMarketItem|null>;image(item:PublicMarketItem):Promise<Uint8Array>};
 const escape=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 import {isShareTrackingKey} from './share-tracking.js';
@@ -18,21 +19,28 @@ export async function assetPreviewItem(id:string){
  catalog??=(async()=>{const {readFile}=await import('node:fs/promises'),[market,sports]=await Promise.all(['market','sports'].map(name=>readFile(`public/receiz-public-${name}.json`,'utf8').then(JSON.parse))),base=parsePublicMarket(market,market.snapshot);return new Map(mergePublicSports(base,sports).items.map(item=>[item.id,item]));})().catch(error=>{catalog=undefined;throw error;});
  return(await catalog).get(id)??await resolveLiveAsset(id);
 }
-/** Cold preview misses reuse public discovery, once per source window. No
- * identity, original download, quote graph or private account is opened. */
-export function createLiveAssetResolver(read:typeof readReceizPublicMarketSource){
+/** Cold profile assets read their exact anonymous Original coordinate. Other
+ * families reuse discovery once per source window; no private account, quote
+ * graph or original-byte download is opened. */
+export function createLiveAssetResolver(read:typeof readReceizPublicMarketSource,readOriginal?:typeof readPublicOriginal){
  const cache=new Map<string,{until:number;value:Map<string,PublicMarketItem>}>(),pending=new Map<string,Promise<Map<string,PublicMarketItem>>>();
  return async(id:string):Promise<PublicMarketItem|null>=>{
-  const kind=id.startsWith('sports:')?'sports':'membership',previous=cache.get(kind);
+  const coordinate=readOriginal?/^profile:([a-z0-9_]{3,24}):([A-Za-z0-9_-]{1,128})$/.exec(id):null;
+  const kind=coordinate?id:id.startsWith('sports:')?'sports':'membership',previous=cache.get(kind);
   if(previous&&previous.until>Date.now())return previous.value.get(id)??null;
   let attempt=pending.get(kind);
   if(!attempt){
-   attempt=(async()=>{try{const input=await read(kind),base=kind==='membership'?parsePublicMarket(input):mergePublicSports({items:[],complete:false,revision:'public-preview',observedAt:null,sourceCount:0},input),value=new Map(base.items.map(item=>[item.id,item]));cache.set(kind,{until:Date.now()+60_000,value});return value;}catch{const value=previous?.value??new Map<string,PublicMarketItem>();cache.set(kind,{until:Date.now()+5_000,value});return value;}finally{pending.delete(kind);}})();pending.set(kind,attempt);
+   attempt=(async()=>{try{
+    let items:PublicMarketItem[];
+    if(coordinate){const item=await readOriginal!(coordinate[1],coordinate[2]);if(item&&item.id!==id)throw Error('PROFILE_ORIGINAL_UNAVAILABLE');items=item?[item]:[];}
+    else{const source=id.startsWith('sports:')?'sports':'membership',input=await read(source);items=source==='membership'?parsePublicMarket(input).items:mergePublicSports({items:[],complete:false,revision:'public-preview',observedAt:null,sourceCount:0},input).items;}
+    const value=new Map(items.map(item=>[item.id,item]));cache.set(kind,{until:Date.now()+(coordinate?20_000:60_000),value});while(cache.size>64)cache.delete(cache.keys().next().value!);return value;
+   }catch{const value=coordinate?new Map<string,PublicMarketItem>():previous?.value??new Map<string,PublicMarketItem>();cache.set(kind,{until:Date.now()+5_000,value});while(cache.size>64)cache.delete(cache.keys().next().value!);return value;}finally{pending.delete(kind);}})();pending.set(kind,attempt);
   }
   return(await attempt).get(id)??null;
  };
 }
-const resolveLiveAsset=createLiveAssetResolver(readReceizPublicMarketSource);
+const resolveLiveAsset=createLiveAssetResolver(readReceizPublicMarketSource,readPublicOriginal);
 export function assetPreviewHtml(html:string,id:string,item:PublicMarketItem|null){
  const path=assetPagePath(id),canonical='https://bankeiz.com'+path,title=(item?.title??'Public asset')+' | Bankeiz',description=(item?.summary||'Inspect this asset, its media, ownership, valuation and original evidence.').replace(/[\x00-\x1f\x7f]/g,' ').slice(0,300),image=canonical+'og.png';
  const embed=publicAssetEmbed(item),kind=embed?.kind,discovery=embed?`<link rel="alternate" type="application/json+oembed" href="${escape('https://bankeiz.com/oembed?'+new URLSearchParams({url:canonical,format:'json'}))}" title="${escape(item!.title)}">`:'';
