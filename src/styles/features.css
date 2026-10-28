@@ -152,6 +152,10 @@
 .payment-qr { display: block; width: min(100%, 245px); height: auto; background: white; border-radius: 12px; }
 .receiving-card .receiving-coordinate { font-size: 12px; max-width: 100%; overflow-wrap: anywhere; letter-spacing: 0; text-align: center; }
 .payment-link { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; user-select: all; margin: 18px 0; }
+.receive-top-actions{gap:8px;margin:0 0 2px}.receive-top-actions .note-action{min-height:28px;margin:0;padding:4px 6px;font-size:11px}
+.receive-heading{font-size:clamp(19px,5.6vw,24px);line-height:1.15;letter-spacing:-.6px;margin:3px 0 6px}.receive-intro{font-size:11px;line-height:1.45;margin:0}
+.receive-link-modes{padding:3px;margin:6px 0 0}.receive-link-modes button{min-height:28px;padding:6px;font-size:11px}
+.receive-payment-card{padding:10px 12px;gap:8px;margin-top:8px}.receive-hint{font-size:11px;line-height:1.45;margin:10px 0 0}
 .receive-payment-link{margin:22px 0 16px;padding-top:15px;border-top:1px solid var(--line);min-width:0}.receive-payment-link>span{display:block;font-size:10px;color:var(--muted);letter-spacing:.02em}.receive-payment-link>div{display:flex;align-items:center;gap:12px;min-width:0}.receive-payment-link .payment-link{display:block;flex:1;min-width:0;margin:9px 0;color:var(--navy);font-size:12px;line-height:1.6;text-decoration:none}.receive-payment-link .icon-button{width:32px;height:32px;flex-shrink:0;color:#748195;background:transparent}.receive-payment-link .payment-link:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
 .payment-camera { width: 100%; border-radius: 12px; margin-top: 15px; }
 .receive-payment-link .receive-link-copy { transition: color 160ms ease; }

@@ -48,3 +48,12 @@ it('keeps an open rail on the same live wallet frame as the dollar header withou
  v.render({...base,totalUsdCents:'1100',settlementUsdCents:'1000',balancePhiMicro:'2200000',settlementPhiMicro:'2100000'});
  expect(v.host.querySelector('.balance-sheet-amount')?.textContent).toBe('$11.00');expect(settlement.open).toBe(true);expect(settlement.querySelector('summary')?.textContent).toContain('$10.00');expect(settlement.querySelector('[data-rail-phi]')?.textContent).toBe('2.1 Φ');expect(v.fetch).not.toHaveBeenCalled();
 });
+
+it('shows the already-carried exact account Phi total when an older frame omits its rail-unit aliases',async()=>{
+ const v=view({...base,reservePhiMicro:null,settlementPhiMicro:null}),settlement=v.rail('settlement');
+ await act(async()=>settlement.querySelector('summary')!.click());
+ expect(settlement.querySelector('[data-rail-phi]')?.textContent).toBe('Account total · 2.1 Φ');
+ expect(settlement.querySelector('summary')?.textContent).toContain('$9.00');
+ v.render({...base,balancePhiMicro:'2200000',reservePhiMicro:null,settlementPhiMicro:null});
+ expect(settlement.querySelector('[data-rail-phi]')?.textContent).toBe('Account total · 2.2 Φ');expect(v.fetch).not.toHaveBeenCalled();
+});

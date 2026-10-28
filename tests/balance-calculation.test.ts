@@ -5,8 +5,24 @@ import {quoteReceizDisplayUsdV122} from '@receiz/sdk';
 import {historicalWalletUsdRate} from '../src/receiz/historical-wallet';
 import {walletPointTime} from '../src/receiz/wallet-series';
 import type {WalletObservation} from '../src/receiz/wallet-observation';
+import {readFileSync} from 'node:fs';
+import {parseSharedWallet} from '../src/receiz/shared-wallet';
 const end='14710000000123';
 function source():composite.CompositeWalletSource{return{schema:'receiz.wallet.chart-source.v129',earningMembershipPolicy:'public-pbi-original-v1',authority:'authenticated-display-source',userId:'owner',throughKaiUPulse:end,objects:[{id:'signed-A',seed:{kind:'sigil',claimPulse:10825210,beat:2,stepIndex:3,creatorVerified:true},intervals:[{fromKaiUPulse:'10825210000000',toKaiUPulse:null}]}],movements:[{id:'funded-first-rate',kaiUPulse:'12000000000000',direction:'credit',phiMicro:'1000001',usdCents:'103',reserveSliceUsdCents:'103',profileSeed:false},{id:'funded-second-rate',kaiUPulse:'13000000000000',direction:'credit',phiMicro:'123456',usdCents:'57',reserveSliceUsdCents:'57',profileSeed:false}],lawfulValues:[{id:'one-micro',kaiUPulse:'14000000000000',deltaPhiMicro:'1'}]};}
+it('uses the held live chart frame when its older current-source capture no longer matches the displayed pulse',async()=>{
+ const {readBalanceCalculation}=await import('../src/receiz/balance-calculation'),{compositeWalletObservation,advanceCompositeWalletObservation}=await import('../src/receiz/composite-wallet-source');
+ const envelope=JSON.parse(readFileSync(new URL('./fixtures/current-balance/public.json',import.meta.url),'utf8')),captured=parseSharedWallet(envelope,envelope.wallet.userId);
+ const s=source(),laterCapture=BigInt(captured.currentBalanceSource!.computedPulse+10)*1000000n;s.userId=captured.userId;s.throughKaiUPulse=(BigInt(end)>laterCapture?BigInt(end):laterCapture).toString();
+ const point=composite.projectCompositeWalletAt(s,s.throughKaiUPulse),wallet={...captured,totalUsdCents:point.totalUsdCents,reserveUsdCents:point.reserveUsdCents,settlementUsdCents:point.settlementUsdCents,balancePhiMicro:point.balancePhiMicro!,reservePhiMicro:null,settlementPhiMicro:null};
+ const held=compositeWalletObservation({wallet,observedAt:point.at},s)!;
+ const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(()=>{throw Error('NETWORK_FORBIDDEN');});
+ try{
+  const trace=readBalanceCalculation(wallet,held);expect(trace?.kind).toBe('composite');expect(trace?.objects.map(object=>object.id)).toEqual(['signed-A']);expect(trace?.kaiUPulse).toBe(s.throughKaiUPulse);
+  const next=advanceCompositeWalletObservation(held,(BigInt(s.throughKaiUPulse)+1000000n).toString())!;
+  expect(readBalanceCalculation(next.wallet,next)).toMatchObject({kind:'composite',kaiUPulse:next.historyBasis!.endKaiUPulse,output:next.wallet});
+  expect(readBalanceCalculation({...next.wallet,totalUsdCents:'1'},next)).toBeNull();expect(fetch).not.toHaveBeenCalled();
+ }finally{fetch.mockRestore();}
+});
 it.each(['mixed rates','subcent','zero','one-cent'] as const)('observes the actual composite calculator with bit-identical %s outputs and no IO',mode=>{
  const s=source();if(mode!=='mixed rates')s.objects=[];if(mode==='zero'){s.movements=[];s.lawfulValues=[];}if(mode==='subcent'){s.movements=[];}if(mode==='one-cent'){s.lawfulValues=[];s.movements=[{...s.movements[0],phiMicro:'1',usdCents:'1',reserveSliceUsdCents:'0'}];}
  const before=JSON.stringify(s),plain=composite.projectCompositeWalletAt(s,end),fetch=vi.spyOn(globalThis,'fetch').mockImplementation(()=>{throw Error('NETWORK_FORBIDDEN');});

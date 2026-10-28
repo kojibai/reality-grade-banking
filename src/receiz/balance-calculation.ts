@@ -35,7 +35,10 @@ function computeBalanceCalculation(wallet:SharedWallet,observation:WalletObserva
  if(!wallet)return null;
  const matching=observation&&same(wallet,observation.wallet);
  if(matching){
-  const current=wallet.currentBalanceSource,currentKai=observation.historyBasis?.kind==='current-valuation-v129'?observation.historyBasis.endKaiUPulse:current?currentBalanceCaptureKai(current):null;
+  const basis=observation.historyBasis,current=wallet.currentBalanceSource;
+  // A live chart frame can also retain the older current-only capture. Inspect
+  // the source that produced this displayed coordinate, never that old capture.
+  const currentKai=basis?.kind==='current-valuation-v129'?basis.endKaiUPulse:basis?.kind==='portfolio-model-v129'?null:current?currentBalanceCaptureKai(current):null;
   if(current&&currentKai){try{const actual=inspectCurrentWalletAt(current,currentKai),point=actual.point;
     if(!(['userId','totalUsdCents','reserveUsdCents','settlementUsdCents','balancePhiMicro'] as const).every(key=>wallet[key]===point[key]))return null;
     const reserve=current.reservePhiMicro;if(reserve!==null&&current.settlementPhiMicro!==null&&(wallet.reservePhiMicro!==reserve||BigInt(wallet.balancePhiMicro)<BigInt(reserve)||wallet.settlementPhiMicro!==(BigInt(wallet.balancePhiMicro)-BigInt(reserve)).toString()))return null;
