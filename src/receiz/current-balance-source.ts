@@ -1,8 +1,12 @@
+import {readWalletCashBasis,type WalletCashBasis} from './wallet-cash-basis';
 import {publicMarketPulseSeed,type MarketPulseSeed} from './market-projection/source';
 import {readBalanceOriginalProofReferences,readReserveFundingSource,type BalanceOriginalProofReference,type ReserveFundingSource} from './balance-source-references';
 /** The already selected current aggregate operands. No transactions, historic
  * intervals, proof admission or financial execution authority are created. */
 export type CurrentBalanceSource=Readonly<{
+ cashBasis?:WalletCashBasis;cashBasisAccepted?:boolean;
+ /** Older operands retained after a completed result; never a live calculation. */
+ historicalContextOnly?:true;
  userId:string;sourceSha256?:string;earningMembershipPolicy:'public-pbi-original-v1';creationSigilBenefitsEnabled:true;
  computedPulse:number;computedAt:string;glyphs:readonly Readonly<{id:string;livePulseSeed:MarketPulseSeed}>[];
  artifactBasePhiMicro:string;artifactBaseUsdCents:string;lawfulActionPhiMicro:string;
@@ -21,10 +25,12 @@ export function readCurrentBalanceSource(input:unknown,userId:string):CurrentBal
  const unsigned=['artifactBasePhiMicro','artifactBaseUsdCents','lawfulActionPhiMicro','accountBalancePhiMicro','profileSeedPhiMicro','profileSeedUsdCents','ledgerSettledUsdCents','usdPerPhiMicrocents','balancePhiMicro','balanceUsdCents','reserveUsdCents','settlementUsdCents'] as const;
  if(unsigned.some(key=>!uint(input[key]))||!signed(input.transactionDeltaPhiMicro)||!signed(input.transactionDeltaUsdCents)||input.usdPerPhiMicrocents==='0'||!(input.reservePhiMicro===null||uint(input.reservePhiMicro))||!(input.settlementPhiMicro===null||uint(input.settlementPhiMicro)))return;
  if(input.sourceSha256!==undefined&&(typeof input.sourceSha256!=='string'||!/^[a-f0-9]{64}$/.test(input.sourceSha256)))return;
+ let cashBasis:WalletCashBasis|undefined;try{cashBasis=readWalletCashBasis(input.cashBasis);}catch{return;}
+ if(cashBasis&&(typeof input.cashBasisAccepted!=='boolean'||BigInt(cashBasis.fromKaiUPulse)>BigInt(Number(input.computedPulse))*1000000n))return;
  const glyphs:{id:string;livePulseSeed:MarketPulseSeed}[]=[],ids=new Set<string>();
  for(const row of input.glyphs){if(!record(row)||typeof row.id!=='string'||!row.id||row.id.length>512||ids.has(row.id)||!record(row.livePulseSeed))return;const seed=publicMarketPulseSeed(row.livePulseSeed,String(row.livePulseSeed.claimPulse));if(!seed)return;ids.add(row.id);glyphs.push({id:row.id,livePulseSeed:seed});}
  const originalProofReferences=readBalanceOriginalProofReferences(input.originalProofReferences),reserveFundingSource=readReserveFundingSource(input.reserveFundingSource,userId,input.reserveUsdCents as string);
  const scalar=Object.fromEntries(unsigned.map(key=>[key,input[key]])) as Pick<CurrentBalanceSource,typeof unsigned[number]>;
- return freeze({userId,...(input.sourceSha256?{sourceSha256:input.sourceSha256 as string}:{}),earningMembershipPolicy:'public-pbi-original-v1',creationSigilBenefitsEnabled:true,computedPulse:Number(input.computedPulse),computedAt:input.computedAt,glyphs,...scalar,transactionDeltaPhiMicro:input.transactionDeltaPhiMicro,transactionDeltaUsdCents:input.transactionDeltaUsdCents,reservePhiMicro:input.reservePhiMicro,settlementPhiMicro:input.settlementPhiMicro,...(originalProofReferences?{originalProofReferences}:{}),...(reserveFundingSource?{reserveFundingSource}:{})} as CurrentBalanceSource);
+ return freeze({userId,...(input.historicalContextOnly===true?{historicalContextOnly:true}:{}),...(cashBasis?{cashBasis,cashBasisAccepted:input.cashBasisAccepted as boolean}:{}),...(input.sourceSha256?{sourceSha256:input.sourceSha256 as string}:{}),earningMembershipPolicy:'public-pbi-original-v1',creationSigilBenefitsEnabled:true,computedPulse:Number(input.computedPulse),computedAt:input.computedAt,glyphs,...scalar,transactionDeltaPhiMicro:input.transactionDeltaPhiMicro,transactionDeltaUsdCents:input.transactionDeltaUsdCents,reservePhiMicro:input.reservePhiMicro,settlementPhiMicro:input.settlementPhiMicro,...(originalProofReferences?{originalProofReferences}:{}),...(reserveFundingSource?{reserveFundingSource}:{})} as CurrentBalanceSource);
 }
 export const currentBalanceCaptureKai=(source:CurrentBalanceSource)=>(BigInt(source.computedPulse)*1_000_000n).toString();

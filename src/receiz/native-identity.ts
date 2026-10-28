@@ -1,3 +1,4 @@
+import {keepsWalletCashComposition} from './wallet-cash-basis';
 import {currentWalletObservation,advanceCurrentWalletObservation} from './current-wallet-valuation';
 import {createNativeMessaging} from './native-messaging';
 import {createNativeTwin} from './native-twin';
@@ -701,7 +702,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     const financialHeadChanged=()=>knownWallet?.wallet!==walletAtStart&&(!knownWallet||!walletAtStart||!sameWalletFinancialState(knownWallet.wallet,walletAtStart));
     const startedRevision=walletRevision,current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT),bound=clientAccounts.get(current);
     if(!bound||bound.applicationId!==BANK_APPLICATION_ID)return null;
-    const cursor=knownWallet?.chartSource?.transport?.cursor,after=validCursor(cursor)?`&after=${encodeURIComponent(cursor)}`:'';
+    const cursor=knownWallet?.chartSource?.transport?.cursor,cashUpgrade=knownWallet?.wallet.currentBalanceSource?.cashBasis&&knownWallet.chartSource?.composition!=='cash-plus-originals',after=!cashUpgrade&&validCursor(cursor)?`&after=${encodeURIComponent(cursor)}`:'';
     let response=await current.request(`/api/connect/wallet/me?history=1${after}`,{method:'GET'});noteOpen();
     if(financialHeadChanged())return knownWallet;
     if(walletRevision!==startedRevision||hasLocalWalletHead())return null;
@@ -744,7 +745,7 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
     return adoptConnectedWalletResponse(response,bound?.applicationId === BANK_APPLICATION_ID ? bound.accountUid : '',startedRevision);
   }
   async function adoptConnectedWalletResponse(response:unknown,expectedUserId:string,startedRevision:number,publishBeforeChart=false){
-    noteOpen();const wallet = parseSharedWallet(response,expectedUserId);
+    noteOpen();let wallet = parseSharedWallet(response,expectedUserId);
     // A read that began before a completed local note result cannot overwrite
     // that result when its delayed response finally arrives. A later shared
     // transaction can supersede a read-only projection only with a strictly
@@ -756,9 +757,16 @@ export async function openCanonicalIdentity(bytes: Uint8Array, phrase: string, f
       && /^\d{1,30}$/.test(wallet.kaiUpulse) && /^\d{1,30}$/.test(knownWallet.wallet.kaiUpulse)
       && BigInt(wallet.kaiUpulse) < BigInt(knownWallet.wallet.kaiUpulse);
     if ((hasLocalWalletHead() || olderSharedCoordinate() || startedRevision !== walletRevision && !laterSharedCoordinate()) && knownWallet) return knownWallet.wallet;
+    if(knownWallet&&!keepsWalletCashComposition([knownWallet.wallet.currentBalanceSource,knownWallet.chartSource],wallet.currentBalanceSource)){
+      if(!publishBeforeChart&&!laterSharedCoordinate())return knownWallet.wallet;
+      // A completed financial result still moves immediately. Retain the older
+      // exact calculation only as context. Equal amounts are not evidence that
+      // an older capture includes this completed result's new movements.
+      wallet={...wallet,currentBalanceSource:knownWallet.wallet.currentBalanceSource?{...knownWallet.wallet.currentBalanceSource,historicalContextOnly:true}:undefined};
+    }
     const candidateKai=wallet.currentBalanceSource?String(sdk.receizKaiNow().uPulse):undefined;
     const currentCandidate=candidateKai?currentWalletObservation(wallet,knownWallet,candidateKai):null;
-    if(wallet.currentBalanceSource&&knownWallet?.historyBasis?.kind==='current-valuation-v129'&&!currentCandidate)return knownWallet.wallet;
+    if(wallet.currentBalanceSource&&knownWallet?.historyBasis?.kind==='current-valuation-v129'&&!currentCandidate&&!publishBeforeChart&&!laterSharedCoordinate())return knownWallet.wallet;
     if (publishBeforeChart && !lifetime.signal.aborted) {
       // The authenticated absolute balance is already admitted. A chart worker
       // enriches its presentation; it must not hold a retained payment open.

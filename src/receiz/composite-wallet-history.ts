@@ -1,3 +1,4 @@
+import {readWalletCashBasis,type WalletCashBasis} from './wallet-cash-basis';
 import type {CurrentBalanceSource} from './current-balance-source';
 import {readBalanceOriginalProofReference,type BalanceOriginalProofReference} from './balance-source-references';
 import type {SigilMetadataLite} from '@receiz/sdk/valuation';
@@ -12,9 +13,9 @@ import {sampleChartIndices} from '../core/chart-history';
 /** Authenticated legacy read operands, not a public account proof, custody
  * source or execution input. Original source evidence remains authoritative. */
 export interface CompositeWalletSource {
- schema:'receiz.wallet.chart-source.v129';earningMembershipPolicy?:'public-pbi-original-v1';composition?:'profile-plus-ledger'|'account-only';authority:'authenticated-display-source';userId:string;throughKaiUPulse:string;
+ schema:'receiz.wallet.chart-source.v129';earningMembershipPolicy?:'public-pbi-original-v1';composition?:'profile-plus-ledger'|'account-only'|'cash-plus-originals';cashBasis?:WalletCashBasis;cashBasisAccepted?:boolean;cashCapture?:{accountBalancePhiMicro:string;usdPerPhiMicrocents:string};authority:'authenticated-display-source';userId:string;throughKaiUPulse:string;
  objects:{id:string;proof?:BalanceOriginalProofReference;seed:MarketPulseSeed;intervals:{fromKaiUPulse:string;toKaiUPulse:string|null}[]}[];
- movements:{id:string;kaiUPulse:string;direction:'credit'|'debit';phiMicro:string;usdCents:string;reserveSliceUsdCents:string;profileSeed:boolean}[];
+ movements:{id:string;kaiUPulse:string;direction:'credit'|'debit';phiMicro:string;usdCents:string;reserveSliceUsdCents:string;profileSeed:boolean;accountPostPhiMicro?:string}[];
  lawfulValues:{id:string;kaiUPulse:string;deltaPhiMicro:string}[];
  transport?:{after:string|null;cursor:string|null;capturedKaiUPulse?:string};
 }
@@ -26,7 +27,7 @@ const nonnegative=(n:bigint)=>n>0n?n:0n;
 const exact=(v:unknown,signed=false):bigint=>{if(typeof v!=='string'||!(signed?/^(0|-?[1-9]\d{0,39})$/:/^(0|[1-9]\d{0,39})$/).test(v))throw Error('COMPOSITE_HISTORY_AMOUNT_INVALID');return BigInt(v);};
 const kai=(v:unknown):bigint=>{const n=exact(v);if(n>10_000_000_000_000_000n)throw Error('COMPOSITE_HISTORY_COORDINATE_INVALID');return n;};
 const identifier=(v:unknown):v is string=>typeof v==='string'&&v.length>0&&v.length<=512;
-type CurrentState={at:bigint;gross:bigint;deltaPhi:bigint;deltaUsd:bigint;reserve:bigint;lawfulPhi:bigint;capturePulse:number;rate:string};
+type CurrentState={accountPostPhi?:bigint;at:bigint;gross:bigint;deltaPhi:bigint;deltaUsd:bigint;reserve:bigint;lawfulPhi:bigint;capturePulse:number;rate:string};
 type Compiled=Omit<ReturnType<typeof compile>,'source'|'objects'>&{source:CompositeWalletSource|CurrentBalanceSource;objects:ReturnType<typeof compileObjects>;currentState?:CurrentState};
 export function validateCompositeWalletSource(source:CompositeWalletSource):void{compile(source);}
 function compileObjects(rows:readonly {id:string;proof?:BalanceOriginalProofReference;seed:MarketPulseSeed;intervals?:{fromKaiUPulse:string;toKaiUPulse:string|null}[]}[],end:bigint,coordinates:Set<bigint>,active=false){
@@ -41,13 +42,17 @@ function compileObjects(rows:readonly {id:string;proof?:BalanceOriginalProofRefe
 }
 function compile(source:CompositeWalletSource){
  if(source?.schema!=='receiz.wallet.chart-source.v129'||source.authority!=='authenticated-display-source'||!identifier(source.userId)||!Array.isArray(source.objects)||source.objects.length>10000||!Array.isArray(source.movements)||source.movements.length>100000||!Array.isArray(source.lawfulValues)||source.lawfulValues.length>100000)throw Error('COMPOSITE_HISTORY_SOURCE_REQUIRED');
- if(source.composition!==undefined&&!['profile-plus-ledger','account-only'].includes(source.composition))throw Error('COMPOSITE_HISTORY_SOURCE_REQUIRED');
+ if(source.composition!==undefined&&!['profile-plus-ledger','account-only','cash-plus-originals'].includes(source.composition))throw Error('COMPOSITE_HISTORY_SOURCE_REQUIRED');
  // Account-only history is a dollar timeline of recorded movements. Its
  // current Phi snapshot is separate; these operands do not reconstruct it.
  if(source.composition==='account-only'&&(source.objects.length||source.lawfulValues.length||source.movements.some(row=>row.profileSeed)))throw Error('COMPOSITE_HISTORY_SOURCE_REQUIRED');
+ const cashBasis=readWalletCashBasis(source.cashBasis);
+ if((source.composition==='cash-plus-originals')!==Boolean(cashBasis)||cashBasis&&(typeof source.cashBasisAccepted!=='boolean'||BigInt(cashBasis.fromKaiUPulse)>kai(source.throughKaiUPulse)||source.movements.some(row=>row.profileSeed)))throw Error('COMPOSITE_HISTORY_SOURCE_REQUIRED');
+ if(source.cashCapture){exact(source.cashCapture.accountBalancePhiMicro);if(exact(source.cashCapture.usdPerPhiMicrocents)===0n)throw Error('COMPOSITE_HISTORY_SOURCE_REQUIRED');}
  const end=kai(source.throughKaiUPulse),coordinates=new Set<bigint>([end]),ids=new Set<string>();
+ if(cashBasis)coordinates.add(kai(cashBasis.fromKaiUPulse));
  const objects=compileObjects(source.objects,end,coordinates);
- ids.clear();let gross=0n,creditsPhi=0n,creditsUsd=0n,seedPhi=0n,seedUsd=0n,reserve=0n;
+ ids.clear();let gross=0n,creditsPhi=0n,creditsUsd=0n,seedPhi=0n,seedUsd=0n,reserve=0n;let accountPostPhi:bigint|undefined;
  const states=source.movements.map((row,index)=>{if(!identifier(row.id)||ids.has(row.id)||!['credit','debit'].includes(row.direction)||typeof row.profileSeed!=='boolean')throw Error('COMPOSITE_HISTORY_MOVEMENT_INVALID');ids.add(row.id);const at=kai(row.kaiUPulse);if(at>end)throw Error('COMPOSITE_HISTORY_COORDINATE_INVALID');coordinates.add(at);return {row,index,at};}).sort((a,b)=>a.at<b.at?-1:a.at>b.at?1:a.index-b.index).map(({row,at})=>{
   const phi=exact(row.phiMicro),usd=exact(row.usdCents),slice=exact(row.reserveSliceUsdCents),sign=row.direction==='credit'?1n:-1n;
   if(slice>usd||row.profileSeed&&row.direction!=='credit')throw Error('COMPOSITE_HISTORY_MOVEMENT_INVALID');
@@ -55,7 +60,8 @@ function compile(source:CompositeWalletSource){
   // ledger-only delta is valid spending from that source, not an overdraft.
   gross+=sign*phi;creditsPhi+=sign*phi;creditsUsd+=sign*usd;reserve=nonnegative(reserve+sign*slice);
   if(row.profileSeed){seedPhi=phi;seedUsd=usd;}
-  return {at,gross,deltaPhi:creditsPhi-seedPhi,deltaUsd:creditsUsd-seedUsd,reserve};
+  accountPostPhi=row.accountPostPhiMicro===undefined?undefined:exact(row.accountPostPhiMicro);
+  return {at,gross,deltaPhi:creditsPhi-seedPhi,deltaUsd:creditsUsd-seedUsd,reserve,accountPostPhi};
  });
  ids.clear();let lawful=0n;
  const values=source.lawfulValues.map((row,index)=>{if(!identifier(row.id)||ids.has(row.id))throw Error('COMPOSITE_HISTORY_LAWFUL_VALUE_INVALID');ids.add(row.id);const at=kai(row.kaiUPulse);if(at>end)throw Error('COMPOSITE_HISTORY_COORDINATE_INVALID');coordinates.add(at);return {at,index,delta:exact(row.deltaPhiMicro,true)};}).sort((a,b)=>a.at<b.at?-1:a.at>b.at?1:a.index-b.index).map(row=>{lawful+=row.delta;if(lawful<0n)throw Error('COMPOSITE_HISTORY_LAWFUL_VALUE_INVALID');return {at:row.at,phi:lawful};});
@@ -64,6 +70,7 @@ function compile(source:CompositeWalletSource){
 function latest<T extends {at:bigint}>(rows:readonly T[],at:bigint):T|undefined{let lo=0,hi=rows.length;while(lo<hi){const mid=(lo+hi)>>>1;if(rows[mid].at<=at)lo=mid+1;else hi=mid;}return rows[lo-1];}
 function point(model:Compiled,at:bigint,observe?:(value:CompositeBalanceCalculation)=>void):CompositeWalletPoint{
  const observedObjects:CompositeBalanceObject[]|null=observe?[]:null;
+ const cashBasis='composition'in model.source&&model.source.composition==='cash-plus-originals'?model.source.cashBasis:undefined,activeCash=!!cashBasis&&at>=BigInt(cashBasis.fromKaiUPulse);
  let intrinsicPhi=0n,intrinsicUsd=0n;const pulse=Number(at/1000000n);
  for(const object of model.objects){if(object.intervals&&!object.intervals.some(interval=>interval.from<=at&&at<interval.to))continue;
   let price=object.prices.get(pulse);
@@ -77,18 +84,23 @@ function point(model:Compiled,at:bigint,observe?:(value:CompositeBalanceCalculat
  }
  let rateCalculation:WalletRateCalculation|undefined;
  const state=model.currentState??latest(model.states,at),lawful=model.currentState?.lawfulPhi??latest(model.values,at)?.phi??0n,rate=lawful>0n||(state?.gross??0n)>0n?(model.currentState&&pulse===model.currentState.capturePulse?model.currentState.rate:historicalWalletUsdRate(at.toString(),observe?value=>{rateCalculation=value;}:undefined)):null;
- const lawfulUsd=lawful?BigInt(quoteReceizDisplayUsdV122(lawful.toString(),rate!)):0n,total=nonnegative(intrinsicUsd+lawfulUsd+(state?.deltaUsd??0n)),phi=nonnegative(intrinsicPhi+lawful+(state?.deltaPhi??0n));
- const grossUsd=state&&state.gross>0n?BigInt(quoteReceizDisplayUsdV122(state.gross.toString(),rate!)):0n,heldReserve=state?.reserve??0n,reserve=heldReserve<grossUsd?heldReserve:grossUsd;
+ const lawfulUsd=lawful?BigInt(quoteReceizDisplayUsdV122(lawful.toString(),rate!)):0n,total=nonnegative(intrinsicUsd+lawfulUsd+(state?.deltaUsd??0n)+(activeCash?BigInt(cashBasis!.usdOffsetCents):0n)),phi=nonnegative(intrinsicPhi+lawful+(state?.deltaPhi??0n)+(activeCash?BigInt(cashBasis!.phiOffsetMicro):0n));
+ const capture='cashCapture'in model.source?model.source.cashCapture:undefined,captureAt='transport'in model.source?model.source.transport?.capturedKaiUPulse:undefined;
+ const captured=capture&&captureAt&&at>=BigInt(captureAt),grossPhi=captured?BigInt(capture.accountBalancePhiMicro):(cashBasis&&state?.accountPostPhi!==undefined?state.accountPostPhi:(state?.gross??0n)+(activeCash?BigInt(cashBasis!.phiOffsetMicro):0n));
+ const capRate=captured&&pulse===Number(BigInt(captureAt)/1000000n)?capture.usdPerPhiMicrocents:rate??(grossPhi>0n?historicalWalletUsdRate(at.toString()):null);
+ const grossUsd=grossPhi>0n?BigInt(quoteReceizDisplayUsdV122(grossPhi.toString(),capRate!)):0n,heldReserve=state?.reserve??0n,reserve=heldReserve<grossUsd?heldReserve:grossUsd;
  if(reserve>total)throw Error('COMPOSITE_HISTORY_RAILS_INCONSISTENT');
- const result:CompositeWalletPoint={userId:model.source.userId,at:walletPointTime(at.toString()),kaiUPulse:at.toString(),totalUsdCents:total.toString(),reserveUsdCents:reserve.toString(),settlementUsdCents:(total-reserve).toString(),...(('composition'in model.source&&model.source.composition==='account-only')?{}:{balancePhiMicro:phi.toString()}),valuation:'portfolio-model-v129'};
+ const result:CompositeWalletPoint={userId:model.source.userId,at:walletPointTime(at.toString()),kaiUPulse:at.toString(),totalUsdCents:total.toString(),reserveUsdCents:reserve.toString(),settlementUsdCents:(total-reserve).toString(),...(('composition'in model.source&&model.source.composition==='account-only'||cashBasis&&!activeCash)?{}:{balancePhiMicro:phi.toString()}),valuation:'portfolio-model-v129'};
+ const carriedCash=model.source.cashBasis,cashShown=Boolean(carriedCash&&(model.currentState||activeCash)),cashPhi=cashShown?BigInt(carriedCash!.phiOffsetMicro):0n,cashUsd=cashShown?BigInt(carriedCash!.usdOffsetCents):0n;
+ const rawDeltaPhi=(state?.deltaPhi??0n)-(model.currentState?cashPhi:0n),rawDeltaUsd=(state?.deltaUsd??0n)-(model.currentState?cashUsd:0n);
  observe?.({kind:model.currentState?'current':'composite',source:model.source,artifactBasePhiMicro:String(intrinsicPhi),artifactBaseUsdCents:String(intrinsicUsd),...(rateCalculation?{rateCalculation}:{}),rateSource:rate===null?'not-used':model.currentState&&pulse===model.currentState.capturePulse?'carried-wallet-quote':'local-historical-quote',kaiUPulse:at.toString(),point:result,objects:observedObjects!,steps:[
   {label:'Originals in the current source cohort',formula:'sum(current Original projections)',operands:Object.fromEntries(observedObjects!.map(object=>[object.id,object.usdCents])),result:String(intrinsicUsd),unit:'USD cents'},
-  {label:'Recorded ledger movement',formula:'credits − debits − replaced profile seed',operands:{grossPhiMicro:String(state?.gross??0n),deltaPhiMicro:String(state?.deltaPhi??0n),deltaUsdCents:String(state?.deltaUsd??0n)},result:String(state?.deltaUsd??0n),unit:'USD cents'},
+  {label:'Recorded ledger movement',formula:cashShown?'credits − debits + retained prior funds adjustment':'credits − debits − replaced profile seed',operands:{grossPhiMicro:String(state?.gross??0n),deltaPhiMicro:String(rawDeltaPhi),deltaUsdCents:String(rawDeltaUsd),...(cashShown?{cashPhiOffsetMicro:String(cashPhi),cashUsdOffsetCents:String(cashUsd)}:{})},result:String(rawDeltaUsd+cashUsd),unit:'USD cents'},
   {label:'Accepted lawful value',formula:'quoteReceizDisplayUsdV122(lawful Φµ, rate)',operands:{lawfulPhiMicro:String(lawful),usdPerPhiMicrocents:rate??'Not used'},result:String(lawfulUsd),unit:'USD cents'},
-  {label:'Displayed dollar balance',formula:'max(0, Original USD cents + lawful USD cents + recorded USD delta)',operands:{originalUsdCents:String(intrinsicUsd),lawfulUsdCents:String(lawfulUsd),ledgerDeltaUsdCents:String(state?.deltaUsd??0n)},result:result.totalUsdCents,unit:'USD cents'},
-  {label:'Reserve',formula:'min(held Reserve USD cents, quoted gross account Φ)',operands:{heldReserveUsdCents:String(heldReserve),grossPhiMicro:String(state?.gross??0n),quotedGrossUsdCents:String(grossUsd),usdPerPhiMicrocents:rate??'Not used'},result:result.reserveUsdCents,unit:'USD cents'},
+  {label:'Displayed dollar balance',formula:cashShown?'max(0, Original USD cents + lawful USD cents + recorded USD delta + prior funds adjustment)':'max(0, Original USD cents + lawful USD cents + recorded USD delta)',operands:{originalUsdCents:String(intrinsicUsd),lawfulUsdCents:String(lawfulUsd),ledgerDeltaUsdCents:String(rawDeltaUsd),...(cashShown?{cashUsdOffsetCents:String(cashUsd)}:{})},result:result.totalUsdCents,unit:'USD cents'},
+  {label:'Reserve',formula:'min(held Reserve USD cents, quoted gross account Φ)',operands:{heldReserveUsdCents:String(heldReserve),grossPhiMicro:String(grossPhi),quotedGrossUsdCents:String(grossUsd),usdPerPhiMicrocents:capRate??'Not used'},result:result.reserveUsdCents,unit:'USD cents'},
   {label:'Settlement',formula:'displayed dollar balance − Reserve',operands:{totalUsdCents:result.totalUsdCents,reserveUsdCents:result.reserveUsdCents},result:result.settlementUsdCents,unit:'USD cents'},
-  {label:'Total source Φ',formula:('composition'in model.source&&model.source.composition==='account-only')?'Account Φ is carried separately; this source is a dollar history':'max(0, Original Φµ + lawful Φµ + recorded Φµ delta)',operands:{originalPhiMicro:String(intrinsicPhi),lawfulPhiMicro:String(lawful),ledgerDeltaPhiMicro:String(state?.deltaPhi??0n)},result:result.balancePhiMicro??'Carried separately',unit:'Φ micro-units'},
+  {label:'Total source Φ',formula:('composition'in model.source&&model.source.composition==='account-only')?'Account Φ is carried separately; this source is a dollar history':cashShown?'max(0, Original Φµ + lawful Φµ + recorded Φµ delta + prior funds adjustment)':'max(0, Original Φµ + lawful Φµ + recorded Φµ delta)',operands:{originalPhiMicro:String(intrinsicPhi),lawfulPhiMicro:String(lawful),ledgerDeltaPhiMicro:String(rawDeltaPhi),...(cashShown?{cashPhiOffsetMicro:String(cashPhi)}:{})},result:result.balancePhiMicro??'Carried separately',unit:'Φ micro-units'},
  ]});
  return result;
 }
@@ -118,7 +130,7 @@ function requireCurrentCapture(source:CurrentBalanceSource):CompositeBalanceCalc
  currentCaptures.set(source,actual);return actual;
 }
 export function inspectCurrentWalletAt(source:CurrentBalanceSource,atKaiUPulse:string):CompositeBalanceCalculation{
- if(source.earningMembershipPolicy!=='public-pbi-original-v1'||source.creationSigilBenefitsEnabled!==true)throw Error('CURRENT_BALANCE_SOURCE_REQUIRED');
+ if(source.historicalContextOnly||source.earningMembershipPolicy!=='public-pbi-original-v1'||source.creationSigilBenefitsEnabled!==true)throw Error('CURRENT_BALANCE_SOURCE_REQUIRED');
  const captured=requireCurrentCapture(source),at=kai(atKaiUPulse);if(at===BigInt(captured.kaiUPulse))return captured;
  const known=currentFrames.get(source);if(known?.kaiUPulse===atKaiUPulse)return known;
  let actual:CompositeBalanceCalculation|undefined;point(currentModel(source,at),at,value=>{actual=value;});currentFrames.set(source,actual!);return actual!;

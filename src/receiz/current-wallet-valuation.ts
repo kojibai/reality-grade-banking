@@ -1,3 +1,4 @@
+import {keepsWalletCashComposition} from './wallet-cash-basis';
 import {currentBalanceCaptureKai} from './current-balance-source';
 import {projectCurrentWalletAt} from './composite-wallet-history';
 import {isWalletQuoteHeld,type WalletObservation} from './wallet-observation';
@@ -8,6 +9,7 @@ const fields=['userId','totalUsdCents','reserveUsdCents','settlementUsdCents','b
  * any past interval, authorize execution or displace a held local note head. */
 export function currentWalletObservation(wallet:SharedWallet,previous?:WalletObservation|null,evaluationKaiUPulse?:string):WalletObservation|null{
  const source=wallet.currentBalanceSource;if(!source||source.userId!==wallet.userId||previous?.source==='local-note-head'||previous&&isWalletQuoteHeld(previous))return null;
+ if(!keepsWalletCashComposition([previous?.wallet.currentBalanceSource,previous?.chartSource],source))return null;
  try{const kai=currentBalanceCaptureKai(source),point=projectCurrentWalletAt(source,kai);
   if(!fields.every(key=>wallet[key]===point[key])||wallet.reservePhiMicro!==source.reservePhiMicro||wallet.settlementPhiMicro!==source.settlementPhiMicro)return null;
   // A current packet cannot rewrite or splice an older coordinate into known

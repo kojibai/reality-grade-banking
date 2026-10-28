@@ -92,6 +92,16 @@ it('curates bounded public source provenance without forwarding private fields',
  const output=curatePublicCapitalization({ok:true,marketCapProjection:{...source,sourceEvaluation:{pulse:400,usdValue:110,sourceHash:hash,privateAccount:'secret'},sportsHistorySnapshot:{...snapshot,privateAccount:'secret'},valueRows:[{...row,historyObservation:{...observation,privateAccount:'secret'},historyEvaluationPulse:450}]}});
  expect(output.marketCapProjection).toMatchObject({sportsHistorySnapshot:snapshot,sportsHistoryEvaluationPulse:450,sourceEvaluation:{pulse:400,usdValue:110,sourceHash:hash}});expect(output.marketCapProjection.valueRows[0]).toMatchObject({historyObservation:observation,historyEvaluationPulse:450});expect(JSON.stringify(output)).not.toContain('secret');
 });
+it('preserves carried Original frequency through capitalization transport without inventing it for legacy seeds',()=>{
+ const seed={kind:'sigil',claimPulse:100,beat:0,stepIndex:0,creatorVerified:true,chakraDay:'Root',kaiSignature:'held',userPhiKey:'owner'};
+ const envelope=(livePulseSeed:object)=>({ok:true,marketCapProjection:{...source,sportsCardsPriced:0,marketAssetsPriced:1,valueRows:[{id:'original',source:'market-desk-live-asset',seed:'original',baseUsdValue:100,birthUsdValue:100,marketUsdValue:100,proofTotalValueUsd:100,scoreDelta:0,marketItem:{id:'profile:owner:original',source:'profile',priceUsd:100,pricePhi:1,quoteUsdPerPhi:100,changePct:0,livePulseSeed}}]}});
+ const carried=JSON.parse(JSON.stringify(curatePublicCapitalization(envelope({...seed,frequencyHz:194.18,privateAccount:'secret'}))));
+ expect(parseMarketCapSource(carried).valueRows[0].marketItem!.livePulseSeed!.frequencyHz).toBe(194.18);
+ expect(JSON.stringify(carried)).not.toContain('secret');
+ const legacy=JSON.parse(JSON.stringify(curatePublicCapitalization(envelope(seed))));
+ expect(Object.hasOwn(parseMarketCapSource(legacy).valueRows[0].marketItem!.livePulseSeed!,'frequencyHz')).toBe(false);
+ for(const frequencyHz of [0,-1,'194.18'])expect(()=>parseMarketCapSource(JSON.parse(JSON.stringify(curatePublicCapitalization(envelope({...seed,frequencyHz})))))).toThrow();
+});
 it('retains the real May10 birth and June23 source totals without an October14 performance catch-up',()=>{
  const read=(name:string)=>JSON.parse(readFileSync(new URL(`../public/${name}`,import.meta.url),'utf8'));
  const input=parseMarketCapSource(read('receiz-public-capitalization.json')),cards=read('receiz-public-sports.json'),catalog=mergePublicSports(parsePublicMarket(read('receiz-public-market.json')),cards),model=currentMarketDisplayModel(input,catalog,14718387);

@@ -1,3 +1,4 @@
+import {keepsWalletCashComposition} from './wallet-cash-basis';
 import {projectUnchangedWalletPhiSplit} from './shared-wallet';
 import {projectCompositeWalletAt,projectCompositeWalletHistory,projectCompositeWalletExtension,projectCompositeWalletCoordinates,validateCompositeWalletSource,type CompositeWalletSource} from './composite-wallet-history';
 import type {WalletObservation} from './wallet-observation';
@@ -16,16 +17,22 @@ export function validCursor(value:unknown):value is string{return typeof value==
 export function mergeCompositeWalletSources(previous:CompositeWalletSource,next:CompositeWalletSource):CompositeWalletSource{
  if(previous.userId!==next.userId||BigInt(next.transport?.capturedKaiUPulse??next.throughKaiUPulse)<BigInt(previous.transport?.capturedKaiUPulse??previous.throughKaiUPulse))throw Error('COMPOSITE_HISTORY_SOURCE_REGRESSED');
  const compositionChanged=(previous.composition??'profile-plus-ledger')!==(next.composition??'profile-plus-ledger');
+ const cashUpgrade=next.composition==='cash-plus-originals'&&!!next.cashBasis;
+ if(!keepsWalletCashComposition([previous],next))throw Error('COMPOSITE_HISTORY_CASH_BASIS_CHANGED');
  if(compositionChanged&&next.transport?.after)throw Error('COMPOSITE_HISTORY_COMPOSITION_CHANGED');
  const nextIds=new Set(next.movements.map(row=>row.id));
  if(compositionChanged&&previous.movements.some(row=>!nextIds.has(row.id)))throw Error('COMPOSITE_HISTORY_COMPOSITION_INCOMPLETE');
- const rows=new Map(previous.movements.map(row=>[row.id,row]));
+ const rows=new Map(previous.movements.map(row=>[row.id,cashUpgrade?{...row,profileSeed:false}:row]));
  for(const row of next.movements){
   const held=rows.get(row.id);
+  // A different display composition may omit optional recorded postbalances.
+  // Keep evidence already held; an actually changed supplied value still fails.
+  const adopted=held?.accountPostPhiMicro!==undefined&&row.accountPostPhiMicro===undefined?{...row,accountPostPhiMicro:held.accountPostPhiMicro}:row;
   // Seed exclusion is derived from the selected composition. A complete
   // replacement may reclassify it, but cannot rewrite an original amount.
-  if(held&&JSON.stringify(compositionChanged?{...held,profileSeed:false}:held)!==JSON.stringify(compositionChanged?{...row,profileSeed:false}:row))throw Error('COMPOSITE_HISTORY_MOVEMENT_CHANGED');
-  rows.set(row.id,row);
+  const comparable=(value:typeof row)=>{const {accountPostPhiMicro,...rest}=value;return {...(compositionChanged?{...rest,profileSeed:false}:rest),...(held?.accountPostPhiMicro===undefined?{}:{accountPostPhiMicro})};};
+  if(held&&JSON.stringify(comparable(held))!==JSON.stringify(comparable(adopted)))throw Error('COMPOSITE_HISTORY_MOVEMENT_CHANGED');
+  rows.set(row.id,adopted);
  }
  const source={...next,movements:[...rows.values()],lawfulValues:next.lawfulValues};validateCompositeWalletSource(source);return source;
 }
@@ -43,6 +50,8 @@ function protectedFrame(value:WalletObservation){return value.source==='local-no
  * we advanced locally. It cannot rewrite its retained original movements. */
 function changedSourceFrom(previous:CompositeWalletSource,next:CompositeWalletSource):bigint|null{
  let first:bigint|null=null;
+ if((previous.composition??'profile-plus-ledger')!==(next.composition??'profile-plus-ledger'))first=0n;
+ else if(JSON.stringify(previous.cashBasis)!==JSON.stringify(next.cashBasis))first=BigInt(next.cashBasis?.fromKaiUPulse??'0');
  const include=(at:string)=>{const n=BigInt(at);if(first===null||n<first)first=n;};
  for(const key of ['movements','lawfulValues'] as const){
   const held=new Map(previous[key].map(row=>[row.id,row]));
@@ -68,7 +77,7 @@ function reconciledHistory(source:CompositeWalletSource,retained:WalletObservati
  return mergeWalletPoints([held.filter(row=>row.kaiUPulse&&BigInt(row.kaiUPulse)<boundary),projectCompositeWalletCoordinates(source,coordinates),extension],source.userId);
 }
 export function compositeWalletObservation(value:WalletObservation,source:CompositeWalletSource,retained?:WalletObservation):WalletObservation|null{
- if(protectedFrame(value)||source.userId!==value.wallet.userId)return null;
+ if(protectedFrame(value)||source.userId!==value.wallet.userId||!keepsWalletCashComposition([retained?.wallet.currentBalanceSource,retained?.chartSource],source))return null;
  try{const point=projectCompositeWalletAt(source,source.throughKaiUPulse);
   if(!compositeWalletEndpointMatches(source,value.wallet,point))return null;
   if(retained&&(protectedFrame(retained)||retained.wallet.userId!==value.wallet.userId))return null;
