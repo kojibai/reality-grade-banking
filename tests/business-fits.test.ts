@@ -11,7 +11,10 @@ import {init} from '../public/learn/business-fit.js';
 it('covers distinct useful fits with complete public journeys and canonical metadata',()=>{
  expect(businessFits).toHaveLength(30);
  for(const key of ['slug','headline','description','scenario']) expect(new Set(businessFits.map(fit=>fit[key as keyof typeof fit])).size).toBe(businessFits.length);
- for(const fit of businessFits){
+ expect(new Set(businessFits.map(fit=>fit.benefits.map(([outcome])=>outcome).join('|'))).size).toBe(30);
+});
+
+it.each(businessFits)('keeps the complete public journey, offer and first task for $slug',fit=>{
   expect(fitGroups.some(group=>group.id===fit.group)).toBe(true);
   expect(fit.benefits).toHaveLength(3);expect(fit.steps).toHaveLength(3);
   const path=`/business/for/${fit.slug}/`,doc=new DOMParser().parseFromString(fitContent(fit),'text/html');
@@ -28,7 +31,20 @@ it('covers distinct useful fits with complete public journeys and canonical meta
   expect(doc.querySelector('script,iframe')).toBeNull();
   expect(publicPage(path)?.id).toBe(`business-fit-${fit.slug}`);
   expect(businessFitPages.some(page=>page.path===path)).toBe(true);
- }
+  const outcomes=[...doc.querySelectorAll('.business-offer>ul>li')].map(li=>li.textContent);
+  expect(outcomes,fit.slug).toEqual(fit.benefits.map(([outcome])=>outcome));
+  const actions=[...doc.querySelectorAll<HTMLAnchorElement>('a')].filter(a=>a.textContent?.trim().startsWith('Get Business'));
+  expect(actions.length,fit.slug).toBe(3);
+  for(const action of actions){
+   expect(action.hasAttribute('data-business-checkout'),fit.slug).toBe(true);
+   expect(action.getAttribute('href'),fit.slug).toBe(businessOffer.checkoutHref);
+   expect(action.getAttribute('href'),fit.slug).toBe('/#account/messages/business');
+  }
+  expect(doc.querySelector('.fit-close h2')?.textContent,fit.slug).toBe(fit.benefits[0][0]);
+  expect(doc.querySelector('.fit-hero')?.textContent,fit.slug).not.toMatch(/credits|7,500|your frame|production integrations/i);
+  const start=JSON.parse(doc.querySelector<HTMLElement>('main[data-business-start]')!.dataset.businessStart!);
+  expect(start).toEqual({title:fit.benefits[0][0],question:fit.question,hint:fit.steps[0]});
+  for(const link of doc.querySelectorAll('a[data-business-checkout]'))expect(link.getAttribute('href')).toBe(businessOffer.checkoutHref);
 });
 it('filters locally, clears empty results and reinitializes after retained navigation',async()=>{
  document.body.innerHTML=directoryContent();init();init();
@@ -55,28 +71,4 @@ it('keeps the entire useful directory readable before filtering, and assets outs
  expect(css).toContain('prefers-reduced-motion');expect(css).toContain('animation-play-state:paused');
  expect(css).toContain('document-hidden');expect(css).toContain('.business-scene:not(.in-view)');
  expect(readFileSync('scripts/learn-assets.mjs','utf8')).not.toContain('business.css');
-});
-
-it('puts three audience-specific results beside every $149 offer and sends every Get Business action to the same bottom-review entry',()=>{
- const cards=new Set<string>();
- for(const fit of businessFits){
-  const doc=new DOMParser().parseFromString(fitContent(fit),'text/html');
-  const outcomes=[...doc.querySelectorAll('.business-offer>ul>li')].map(li=>li.textContent);
-  expect(outcomes,fit.slug).toEqual(fit.benefits.map(([outcome])=>outcome));
-  cards.add(outcomes.join('|'));
-  const actions=[...doc.querySelectorAll<HTMLAnchorElement>('a')].filter(a=>a.textContent?.trim().startsWith('Get Business'));
-  expect(actions.length,fit.slug).toBe(3);
-  for(const action of actions){
-   expect(action.hasAttribute('data-business-checkout'),fit.slug).toBe(true);
-   expect(action.getAttribute('href'),fit.slug).toBe(businessOffer.checkoutHref);
-   expect(action.getAttribute('href'),fit.slug).toBe('/#account/messages/business');
-  }
-  expect(doc.querySelector('.fit-close h2')?.textContent,fit.slug).toBe(fit.benefits[0][0]);
-  expect(doc.querySelector('.fit-hero')?.textContent,fit.slug).not.toMatch(/credits|7,500|your frame|production integrations/i);
- }
- expect(cards.size).toBe(30);
-});
-
-it('carries each page’s public first task without changing any checkout destination or loading an account',()=>{
- for(const fit of businessFits){const doc=new DOMParser().parseFromString(fitContent(fit),'text/html');const start=JSON.parse(doc.querySelector<HTMLElement>('main[data-business-start]')!.dataset.businessStart!);expect(start).toEqual({title:fit.benefits[0][0],question:fit.question,hint:fit.steps[0]});for(const link of doc.querySelectorAll('a[data-business-checkout]'))expect(link.getAttribute('href')).toBe(businessOffer.checkoutHref);expect(doc.querySelector('script,iframe')).toBeNull();}
 });

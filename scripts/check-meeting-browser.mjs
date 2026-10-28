@@ -6,7 +6,7 @@ import{join}from'node:path';
 const cache=await mkdtemp(join(tmpdir(),'bank-meeting-browser-'));
 const server=await createServer({cacheDir:cache,server:{host:'127.0.0.1',port:0,hmr:false,ws:false},optimizeDeps:{noDiscovery:true,include:['react','react-dom/client','lucide-react','fflate']}});
 await server.listen();const origin=server.resolvedUrls.local[0].replace(/\/$/,'');
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,...(process.env.BANK_BROWSER_EXECUTABLE?{executablePath:process.env.BANK_BROWSER_EXECUTABLE}:{})});
 try{for(const width of[320,390,440,768,1280]){
  const page=await browser.newPage({viewport:{width,height:900},hasTouch:width<600,isMobile:width<600});await page.route('**/*',route=>new URL(route.request().url()).origin===origin?route.continue():route.abort());const errors=[];page.on('pageerror',error=>errors.push(error.message));
  await page.goto(origin+'/meet/#start');const story=page.locator('.meet-creation');await story.getByRole('heading',{name:'Your next meeting. Four familiar steps.'}).waitFor();
