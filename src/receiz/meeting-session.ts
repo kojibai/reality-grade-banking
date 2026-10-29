@@ -1,3 +1,6 @@
+import {readFixedSale,type FixedSale} from './fixed-checkout';
+import type {CheckoutIdentitySession} from '../checkout/checkout-identity';
+import {rememberMeetingPaymentReturn} from './meeting-payment-return';
 import { createNativeCallController, type NativeCallSummary } from './native-calls';
 import type { OpenIdentity } from './native-identity';
 import type { NativeMessaging } from './native-messaging';
@@ -13,6 +16,7 @@ export interface MeetingView {
     };
     twin: boolean;
     recording: boolean;
+    priceUsdCents?:string;
     url: string;
 }
 export interface JoinedMeeting {
@@ -28,6 +32,7 @@ export interface JoinedMeeting {
     sharedContext: string;
     controller: ReturnType<typeof createNativeCallController>;
 }
+export class MeetingPaymentRequired extends Error {constructor(readonly sale:FixedSale){super('Payment is required for this appointment.');}}
 export function createMeetingSession(input: {
     eventId: string;
     key: string;
@@ -42,14 +47,15 @@ export function createMeetingSession(input: {
 }) {
     const path = `/api/calendar/meetings/${input.eventId}/${input.key}`;
     let held: MeetingView | null = null, joined: JoinedMeeting | null = null, pending: Promise<JoinedMeeting> | null = null, closed = false;
+    let payment:FixedSale|null=null;
     const assertOpen = () => { if (closed)
         throw Error('MEETING_CLOSED'); };
-    const read = (value: unknown): MeetingView => { const v = value as MeetingView; if (!v || v.id !== input.eventId || !bankMeetingPath(v.url) || !v.host || typeof v.title !== 'string')
+    const read = (value: unknown): MeetingView => { const v = value as MeetingView; if (!v || v.id !== input.eventId || !bankMeetingPath(v.url) || !v.host || typeof v.title !== 'string'||v.priceUsdCents!==undefined&&(!/^[1-9]\d{0,7}$/.test(v.priceUsdCents)||BigInt(v.priceUsdCents)>10000000n))
         throw Error('MEETING_UNAVAILABLE'); return v; };
     let switching:Promise<OpenIdentity>|null=null;
     const changeIdentity=(select:()=>Promise<OpenIdentity>)=>{
         assertOpen();if(pending)throw Error('MEETING_ENTRY_IN_PROGRESS');if(switching)return switching;
-        const task=(async()=>{const next=await select();assertOpen();const previous=joined;joined=null;await previous?.controller.close();return next;})();
+        const task=(async()=>{const next=await select();assertOpen();const previous=joined;joined=null;payment=null;await previous?.controller.close();return next;})();
         switching=task;void task.finally(()=>{if(switching===task)switching=null;}).catch(()=>{});return task;
     };
     const session = { path, known: () => held,
@@ -59,9 +65,10 @@ export function createMeetingSession(input: {
         join(): Promise<JoinedMeeting> { if(switching)return switching.then(()=>session.join()); if (closed)
             return Promise.reject(Error('MEETING_CLOSED')); if (joined)
             return Promise.resolve(joined); if (pending)
-            return pending; const task = (async () => { const identity = await input.entry.open(), messaging = await identity.messaging!(true); assertOpen(); const response = await messaging.callTransport.heldFetch(path, { method: 'POST', headers: {'Content-Type':'application/json'}, body:'{}' }), data = await response.json(); assertOpen(); if (!response.ok || data.ok !== true || data.viewerId !== messaging.accountUid || data.conversationId !== input.eventId || data.call?.conversationId !== input.eventId || typeof data.hostId !== 'string' || data.isHost !== (data.viewerId === data.hostId))
+            return pending; const task = (async () => { const identity = await input.entry.open(), messaging = await identity.messaging!(true); assertOpen(); const response = await messaging.callTransport.heldFetch(path, { method: 'POST', headers: {'Content-Type':'application/json'}, body:'{}' }), data = await response.json(); assertOpen(); if(response.status===402&&data.error==='meeting_payment_required'){const sale=await readFixedSale(data.payment);assertOpen();if(sale.saleId!==input.eventId||held&&(sale.username!==held.host.username||sale.amountUsdCents!==held.priceUsdCents))throw Error('MEETING_PAYMENT_MISMATCH');payment=sale;throw new MeetingPaymentRequired(sale);} if (!response.ok || data.ok !== true || data.viewerId !== messaging.accountUid || data.conversationId !== input.eventId || data.call?.conversationId !== input.eventId || typeof data.hostId !== 'string' || data.isHost !== (data.viewerId === data.hostId))
             throw Error('MEETING_ADMISSION_UNCONFIRMED'); const meeting = read(data.meeting), controller = (input.controller ?? createNativeCallController)({ identity: messaging.callTransport, conversationId: input.eventId, userId: data.viewerId, activityHints:true,initialCallId:data.call.id,initialCall: data.call as NativeCallSummary }); held = meeting; const calendarSaved = data.isHost || !identity.organizer ? undefined : identity.organizer().then(api => api.saveEvent({ title: meeting.title, startAt: meeting.startAt, endAt: meeting.endAt, meetingAttendance: { eventId: input.eventId, key: input.key } })); void calendarSaved?.catch(() => { }); return joined = { calendarSaved, identity, messaging, meeting, controller, conversationId: input.eventId, viewerId: data.viewerId, hostId: data.hostId, isHost: data.isHost, attendees: Array.isArray(data.attendees) ? data.attendees : [], sharedContext: typeof data.sharedContext === 'string' ? data.sharedContext : '' }; })(); pending = task; void task.finally(() => { if (pending === task)
             pending = null; }).catch(() => { }); return task; },
+        paymentCheckout(){assertOpen();if(!payment)throw Error('MEETING_PAYMENT_REVIEW_REQUIRED');const sale=payment,{digest:_,...fixedSale}=sale;rememberMeetingPaymentReturn(sale,`/meet/${input.eventId}/${input.key}/`);const identitySession:CheckoutIdentitySession={open:input.entry.open,import:input.entry.import??(()=>Promise.reject(Error('MEETING_IDENTITY_IMPORT_UNAVAILABLE'))),close(){}};return{request:{username:sale.username,amount:`${BigInt(sale.amountUsdCents)/100n}.${(BigInt(sale.amountUsdCents)%100n).toString().padStart(2,'0')}`,fixedSale},identitySession};},
         async importIdentity(file:File,phrase:string) { assertOpen(); if(!input.entry.import)throw Error("MEETING_IDENTITY_IMPORT_UNAVAILABLE"); return changeIdentity(()=>input.entry.import!(file,phrase)); },
         async recoverPbi() { assertOpen(); if(!input.entry.recoverPbi)throw Error("MEETING_PBI_UNAVAILABLE"); return changeIdentity(()=>input.entry.recoverPbi!()); },
         async close() { if (closed)

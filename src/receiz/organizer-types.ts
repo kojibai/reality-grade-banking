@@ -31,6 +31,7 @@ export interface OrganizerDisplay {
  username:string|null;
 }
 export interface AppointmentInput {
+ meetingPriceUsdCents?:string;
  inviteEmails?:string[];meetingAttendance?:{eventId:string;key:string};meeting?:boolean;meetingRequestId?:string;
  title:string;startAt:string;endAt:string;location?:string;note?:string;attendees?:string[];
  metadata?:Record<string,unknown>;kind?:'appointment';source?:'manual'|'message';

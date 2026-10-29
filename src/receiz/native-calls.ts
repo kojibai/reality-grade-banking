@@ -1,3 +1,4 @@
+import {bankMeetingPath,meetingCoordinate} from './meeting-links';
 import {loadReceizSfuClient, type NativeSfuClient, type NativeSfuRoom} from './native-calls-sfu';
 
 /** Projections of Receiz app/lib/chat/types.ts. Membership and permission remain
@@ -24,7 +25,7 @@ interface CallSignal {
 export type NativeCallPhase='idle'|'loading'|'ready'|'joining'|'waiting'|'connecting'|'connected'|'reconnecting'|'leaving'|'ending'|'left'|'ended'|'error';
 export interface NativeCallSnapshot {
   phase:NativeCallPhase; call:NativeCallSummary|null; calls:NativeCallSummary[]; joined:boolean;
-  error:string|null; localStream:MediaStream|null; remoteStreams:{userId:string;stream:MediaStream}[];
+  paymentPath?:string;error:string|null; localStream:MediaStream|null; remoteStreams:{userId:string;stream:MediaStream}[];
   micEnabled:boolean; videoEnabled:boolean; activeSpeakerId?:string|null;screenSharing?:boolean; iceSource:string|null;
 }
 export interface NativeCallIdentity {heldFetch(input:string,init?:RequestInit):Promise<Response>;forController?():NativeCallIdentity}
@@ -78,6 +79,7 @@ export function createNativeCallController(options:NativeCallOptions) {
   async function request(path:string,method='GET',body?:unknown,signal:AbortSignal|null=lifetime.signal):Promise<Record<string,unknown>>{
     const response=await identity.heldFetch(path,{method,signal,cache:'no-store',...(body===undefined?{}:{headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})});
     const payload:unknown=await response.json();
+    if(response.status===402&&object(payload)&&payload.error==='meeting_payment_required'&&typeof payload.meetingPath==='string'&&meetingCoordinate(payload.meetingPath)?.eventId===conversationId&&bankMeetingPath('https://bankeiz.com'+payload.meetingPath)){update({paymentPath:payload.meetingPath+'?pay=1'});throw Error('Pay for this appointment to join.');}
     if(!response.ok||!object(payload)||payload.ok===false)throw Error(object(payload)&&typeof payload.error==='string'?payload.error:`Call request failed (${response.status}).`);
     return payload;
   }

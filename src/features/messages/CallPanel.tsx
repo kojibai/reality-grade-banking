@@ -10,6 +10,7 @@ export interface CallPanelProps {
   minimized?:boolean;onMinimize?():void;onRestore?():void;onLiveChange?(live:boolean):void;
 }
 function statusText(state:NativeCallSnapshot){
+  if(state.paymentPath)return 'Appointment payment';
   switch(state.phase){
     case 'idle':case 'loading':return 'Checking calls…';
     case 'joining':return 'Joining call…';
@@ -95,10 +96,10 @@ export function CallPanel({identity,conversationId,conversationTitle,userId,init
       </div>:<div className="bank-call-person" aria-hidden="true">{initials}</div>}
       <h3>{title}</h3>
       {active&&<p className="bank-call-members">{participants.length} joined{state.call?.locked?' · Locked':''}</p>}
-      {state.error&&<p className="bank-call-error" role="alert">{state.error}</p>}
+      {state.error&&!state.paymentPath&&<p className="bank-call-error" role="alert">{state.error}</p>}
       {!state.joined&&<p className="bank-call-hint">Your microphone{video?' and camera':''} will turn on when you {active?'join':'start'}.</p>}
       {state.joined&&state.iceSource==='fallback'&&<p className="bank-call-hint">Direct connectivity only. A media connection has to complete before the call is connected.</p>}
-      {!state.joined&&<button type="button" className="bank-call-start" aria-label={active?'Join call':'Start call'} disabled={busy} onClick={()=>void controller.join(video?'video':'voice')}><Phone size={17}/>{busy?'Please wait…':active?'Join call':'Start call'}</button>}
+      {state.paymentPath&&!state.joined?<a className="bank-call-start" href={state.paymentPath}>Pay for appointment</a>:!state.joined&&<button type="button" className="bank-call-start" aria-label={active?'Join call':'Start call'} disabled={busy} onClick={()=>void controller.join(video?'video':'voice')}><Phone size={17}/>{busy?'Please wait…':active?'Join call':'Start call'}</button>}
       <div className="bank-call-controls">
         {state.joined&&<button type="button" aria-label={state.micEnabled?'Mute microphone':'Unmute microphone'} aria-pressed={state.micEnabled} onClick={()=>void controller.setMicrophoneEnabled(!state.micEnabled)}>{state.micEnabled?<Mic size={21}/>:<MicOff size={21}/>}</button>}
         <button type="button" aria-label={state.joined?(state.videoEnabled?'Disable camera':'Enable camera'):(video?'Use voice only':'Use video')} aria-pressed={state.joined?state.videoEnabled:video} disabled={busy} onClick={()=>state.joined?void controller.setCameraEnabled(!state.videoEnabled):setVideo(value=>!value)}>{(state.joined?state.videoEnabled:video)?<Video size={22}/>:<VideoOff size={22}/>}</button>

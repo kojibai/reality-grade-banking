@@ -1,3 +1,4 @@
+import './checkout.css';
 import {lazy,Suspense,useEffect,useRef,useState} from 'react';
 import {ArrowLeft,ArrowRight,Banknote,LockKeyhole,ShieldCheck} from 'lucide-react';
 import {BankMark} from '../components/BankMark';
@@ -30,7 +31,7 @@ function BalanceCardIcon({size=26}:{size?:number}){
  </svg>;
 }
 
-export function HostedCheckout({request,identitySession,returnContext}:{request:CheckoutRequest;identitySession:IdentitySession;returnContext?:CheckoutReturn}){
+export function HostedCheckout({request,identitySession,returnContext,onPaid}:{request:CheckoutRequest;identitySession:IdentitySession;returnContext?:CheckoutReturn;onPaid?(receipt:Receipt):void}){
  const [identity,setIdentity]=useState<OpenIdentity|null>(null),[controller,setController]=useState<HostedCheckoutController|null>(null),[snapshot,setSnapshot]=useState<CheckoutSnapshot>(emptyCheckoutSnapshot),[amount,setAmount]=useState(request.amount??''),[method,setMethod]=useState<'balance'|'note'>('balance'),[busy,setBusy]=useState(false),[error,setError]=useState(''),[entryError,setEntryError]=useState(false),[engaged,setEngaged]=useState(Boolean(returnContext)),[backView,setBackView]=useState(false),[returnedReceipt,setReturnedReceipt]=useState<Receipt|null>(null),[returnBlocked,setReturnBlocked]=useState(false),[returnedStatus,setReturnedStatus]=useState<string|null>(null);
  const [restoredSale,setRestoredSale]=useState<FixedSaleFields|undefined>(undefined),fixedSale=restoredSale??request.fixedSale;
  const [cardObservation,setCardObservation]=useState<{sessionId:string;status:CardDepositStatus['status']}|null>(null);
@@ -58,6 +59,8 @@ export function HostedCheckout({request,identitySession,returnContext}:{request:
  useEffect(()=>{if(saved?.recipient.avatarUrl){const value=retainRecipientPortrait(saved.recipient.username,saved.recipient.avatarUrl);if(value.username===request.username)setPortrait(value);}},[saved?.recipient.username,saved?.recipient.avatarUrl,request.username]);
  const outcome=snapshot.walletOutcome,funding=outcome?.status==='funding'?outcome:null;
  const pending=snapshot.approvalHistory.length>0&&!['paid','not-sent'].includes(snapshot.phase),sameRecipient=saved?.recipient.username===request.username&&sameSale(saved.fixedSale,fixedSale);
+ const paidCallback=useRef(onPaid);paidCallback.current=onPaid;const notifiedPaid=useRef<string|null>(null);
+ useEffect(()=>{if(paid&&notifiedPaid.current!==paid.clientNonce){notifiedPaid.current=paid.clientNonce;paidCallback.current?.(paid);}},[paid]);
  const originalCheckout=saved?.fixedSale?buildFixedSaleUrl(saved.fixedSale):'/pay/'+saved?.recipient.username+'/';
  const cardStatus=cardObservation?.sessionId===funding?.checkout?.sessionId?cardObservation?.status:null,cardForm=['credited','settling'].includes(cardStatus??'')?null:funding?.checkout;
  async function cancelUnfinished(){

@@ -19,7 +19,7 @@ if (/^\/meet\/start\/?$/.test(location.pathname)) {
  window.addEventListener('pagehide',event=>{if(!event.persisted){closed=true;entry?.close();}});
 } else if (!coordinate)
  root.render(<main className="meeting-lobby"><h1>Check your meeting link.</h1><p>Your host can send you another invitation.</p></main>);
-else showMeeting(coordinate);
+else showMeeting(coordinate,new URLSearchParams(location.search).get('pay')==='1');
 function showMeeting(coordinate:NonNullable<ReturnType<typeof meetingCoordinate>>,autoJoin=false){
  const service = createMeetingSession({ ...coordinate, request: (path, init) => nativeFetch('https://receiz.com' + path, init), entry: {
   open:async()=>(await getEntry()).open(),import:async(file,phrase)=>(await getEntry()).import(file,phrase),recoverPbi:async()=>(await getEntry()).recoverPbi(),close(){closed=true;entry?.close();}
