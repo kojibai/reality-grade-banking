@@ -1,6 +1,6 @@
 import {keepsWalletCashComposition} from './wallet-cash-basis';
 import {currentBalanceCaptureKai} from './current-balance-source';
-import {projectCurrentWalletAt} from './composite-wallet-history';
+import {projectCurrentWalletAt,projectCurrentWalletExtension} from './composite-wallet-history';
 import {isWalletQuoteHeld,type WalletObservation} from './wallet-observation';
 import type {SharedWallet} from './shared-wallet';
 import {mergeWalletPoints} from './wallet-series';
@@ -32,6 +32,9 @@ export function advanceCurrentWalletObservation(value:WalletObservation,kaiUPuls
   const point=projectCurrentWalletAt(source,kaiUPulse),total=point.balancePhiMicro!;
   const split=previousReserve!==null&&previousSettlement!==null&&BigInt(previousReserve)<=BigInt(total)?{reservePhiMicro:previousReserve,settlementPhiMicro:(BigInt(total)-BigInt(previousReserve)).toString()}:{reservePhiMicro:null,settlementPhiMicro:null};
   const wallet={...value.wallet,totalUsdCents:point.totalUsdCents,reserveUsdCents:point.reserveUsdCents,settlementUsdCents:point.settlementUsdCents,balancePhiMicro:total,...split};
-  return {...value,wallet,observedAt:point.at,history:mergeWalletPoints([value.history??[],[point]],wallet.userId),historyBasis:{...basis,endKaiUPulse:kaiUPulse,balancePhiMicro:total,reserveUsdCents:point.reserveUsdCents}};
+  // Ordinary ticks stay endpoint-only. After suspension, calculate the unseen
+  // interval once from the same held operands, just as full-history resume does.
+  const added=BigInt(kaiUPulse)-BigInt(basis.endKaiUPulse)<=2_000_000n?[point]:projectCurrentWalletExtension(source,basis.endKaiUPulse,kaiUPulse);
+  return {...value,wallet,observedAt:point.at,history:mergeWalletPoints([value.history??[],added],wallet.userId),historyBasis:{...basis,endKaiUPulse:kaiUPulse,balancePhiMicro:total,reserveUsdCents:point.reserveUsdCents}};
  }catch{return null;}
 }

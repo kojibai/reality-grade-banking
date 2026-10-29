@@ -136,6 +136,18 @@ export function inspectCurrentWalletAt(source:CurrentBalanceSource,atKaiUPulse:s
  let actual:CompositeBalanceCalculation|undefined;point(currentModel(source,at),at,value=>{actual=value;});currentFrames.set(source,actual!);return actual!;
 }
 export function projectCurrentWalletAt(source:CurrentBalanceSource,atKaiUPulse:string):CompositeWalletPoint{return inspectCurrentWalletAt(source,atKaiUPulse).point;}
+/** Fill only the elapsed interval after held current operands. Their original
+ * capture remains the lower bound; this does not infer earlier ownership. */
+export function projectCurrentWalletExtension(source:CurrentBalanceSource,fromKaiUPulse:string,toKaiUPulse:string):CompositeWalletPoint[]{
+ const from=kai(fromKaiUPulse),end=kai(toKaiUPulse);
+ inspectCurrentWalletAt(source,fromKaiUPulse);
+ if(end<from)throw Error('CURRENT_BALANCE_PAST_UNAVAILABLE');
+ if(end===from)return [];
+ const model=currentModel(source,end),coordinates=new Set<bigint>([end]);
+ for(let i=1;i<=96;i++){const at=from+(end-from)*BigInt(i)/96n;if(at>from)coordinates.add(at);}
+ return [...coordinates].sort((a,b)=>a<b?-1:a>b?1:0).map(at=>point(model,at));
+}
+
 /** Reconcile only display coordinates affected by newly received source rows.
  * The original movements are retained separately and are never synthesized. */
 export function projectCompositeWalletCoordinates(source:CompositeWalletSource,coordinates:readonly string[]):CompositeWalletPoint[]{
