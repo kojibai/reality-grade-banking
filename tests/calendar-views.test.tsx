@@ -18,23 +18,23 @@ const events=[
  appointment('Previous Sunday','2026-10-25T09:00:00','2026-10-25T10:00:00'),
  appointment('Next Monday','2026-11-02T09:00:00','2026-11-02T10:00:00'),
 ];
-async function render(layout:CalendarLayout,rows:OrganizerEvent[]=events){
+async function render(layout:CalendarLayout,rows:OrganizerEvent[]=events,onOpen=vi.fn()){
  const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
  cleanups.push(()=>{act(()=>root.unmount());host.remove();});
- function Calendar(){const[day,onDay]=useState('2026-10-26'),[view,onLayout]=useState(layout);return <CalendarView day={day} events={rows} layout={view} onLayout={onLayout} onDay={onDay} onOpen={vi.fn()} onAdd={vi.fn()} onLinks={vi.fn()}/>;}
+ function Calendar(){const[day,onDay]=useState('2026-10-26'),[view,onLayout]=useState(layout);return <CalendarView day={day} events={rows} layout={view} onLayout={onLayout} onDay={onDay} onOpen={onOpen} onAdd={vi.fn()} onLinks={vi.fn()}/>;}
  await act(async()=>root.render(<Calendar/>));
  return host;
 }
-it('includes Monday morning, afternoon and overnight appointments in the selected day',async()=>{
+it('shows the selected day from latest to earliest time, including overnight appointments',async()=>{
  const host=await render('agenda');
- expect([...host.querySelectorAll('.organizer-agenda-row strong')].map(row=>row.textContent)).toEqual(['Sunday into Monday','Monday morning','Monday afternoon']);
+ expect([...host.querySelectorAll('.organizer-agenda-row strong')].map(row=>row.textContent)).toEqual(['Monday afternoon','Monday morning','Sunday into Monday']);
 });
 it('shows the held month, includes overnight appointments and opens all of a chosen day in Agenda',async()=>{
  const cancelled={...appointment('Cancelled appointment','2026-10-26T12:00:00','2026-10-26T13:00:00'),metadata:{cancelled:true}};
  const host=await render('month',[...events,cancelled]),monday=host.querySelector<HTMLButtonElement>('.organizer-month-grid [aria-label="Monday, October 26 · 3 appointments"]');
  expect(monday).toBeTruthy();expect(monday?.textContent).toContain('+1 more');expect(host.textContent).not.toContain('Cancelled appointment');
  await act(async()=>monday!.click());expect(host.querySelector('.organizer-month-grid')).toBeNull();
- expect([...host.querySelectorAll('.organizer-agenda-row strong')].map(row=>row.textContent)).toEqual(['Sunday into Monday','Monday morning','Monday afternoon']);
+ expect([...host.querySelectorAll('.organizer-agenda-row strong')].map(row=>row.textContent)).toEqual(['Monday afternoon','Monday morning','Sunday into Monday']);
 });
 it('moves through the year without month-end date overflow and retains the direct date picker',async()=>{
  const host=await render('month');
@@ -47,8 +47,8 @@ it('moves through the year without month-end date overflow and retains the direc
 
 it('places the complete Monday in its own week and excludes the next Monday',async()=>{
  const host=await render('week'),buttons=[...host.querySelectorAll<HTMLButtonElement>('.organizer-week-day>button')];
- expect(buttons.map(row=>row.querySelector('strong')?.textContent)).toEqual(['Sunday into Monday','Monday morning','Monday afternoon']);
- for(const button of buttons){expect(button.getAttribute('aria-label')).toContain('Monday');expect(parseFloat(button.style.top)).toBeGreaterThanOrEqual(0);}
+ expect(buttons.map(row=>row.querySelector('strong')?.textContent)).toEqual(['Monday afternoon','Monday morning','Sunday into Monday']);
+ for(const button of buttons){expect(button.getAttribute('aria-label')).toContain('Monday');expect(parseFloat(button.style.getPropertyValue('--week-top'))).toBeGreaterThanOrEqual(0);}
 });
 it.each(['agenda','week','month'] as const)('keeps sign-in activity out of %s without hiding an appointment with a similar title',async layout=>{
  const signIn={...appointment('Signed in activity','2026-10-26T11:00:00','2026-10-26T11:10:00'),source:'system',kind:'traction',metadata:{actionKind:'auth.login.passkey',ledgerEntryId:'entry-1'}};
@@ -66,4 +66,20 @@ it('turns weeks on the day strip and days on Agenda while ignoring vertical scro
  await swipe('.organizer-agenda',-80,0,true);expect(host.querySelector('.organizer-date-heading')?.textContent).toContain('Monday, October 26');
  await swipe('.organizer-week-strip',-80);expect(host.querySelector('.organizer-date-heading')?.textContent).toContain('Monday, November 2');
  await swipe('.organizer-week-strip',80);expect(host.querySelector('.organizer-date-heading')?.textContent).toContain('Monday, October 26');
+});
+
+it('keeps one complete week of event controls, ordered latest first within each day and opening the held event',async()=>{
+ const onOpen=vi.fn(),host=await render('week',events,onOpen),days=[...host.querySelectorAll('.organizer-week-day')];
+ expect(days).toHaveLength(7);
+ const monday=days[0],buttons=[...monday.querySelectorAll<HTMLButtonElement>('button')];
+ expect(buttons.map(button=>button.querySelector('strong')?.textContent)).toEqual(['Monday afternoon','Monday morning','Sunday into Monday']);
+ expect(monday.querySelector('time')?.getAttribute('datetime')).toBe('2026-10-26');
+ expect(days[1].textContent).toContain('No appointments');
+ expect(host.querySelectorAll('.organizer-week-day>button')).toHaveLength(3);
+ await act(async()=>buttons[0].click());expect(onOpen).toHaveBeenCalledOnce();expect(onOpen).toHaveBeenCalledWith(events[1]);
+});
+it('does not change the chosen day when the week content is scrolled vertically or diagonally',async()=>{
+ const host=await render('week'),area=host.querySelector('.organizer-week-overflow')!;
+ for(const [dx,dy] of [[0,-180],[-85,-160],[80,180]])await act(async()=>{touch(area,'touchstart',160,250);touch(area,'touchmove',160+dx,250+dy);touch(area,'touchend',160+dx,250+dy);});
+ expect(host.querySelector<HTMLInputElement>('[aria-label="Choose calendar date"]')?.value).toBe('2026-10-26');
 });
