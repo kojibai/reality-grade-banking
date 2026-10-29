@@ -306,27 +306,38 @@ export default [
 {
   "slug": "calendar-booking",
   "title": "Plan appointments and share a booking link",
-  "summary": "Set availability, invite people, let a guest choose a time and inspect the same appointment and its record.",
+  "summary": "Set availability, choose free or priced appointments, book through Calendar or a Business Twin and inspect the same appointment, payment and record.",
   "group": "People & meetings",
   "related": [
     "contacts",
     "meetings",
     "messages",
+    "payments",
+    "funding",
     "records"
   ],
   "sections": [
     {
-      "title": "Find the right day",
+      "title": "Choose how people book you",
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Use Calendar for your plans, bookings and the supported records connected to them. Open the account’s message icon, then Calendar. Choose Agenda, Week or Month; use Today, the date chooser, and previous/next controls to move through the calendar. Select an appointment to open its details. Displayed local time and timezone help you recognize the plan; the same recorded event retains its source coordinate."
+          "text": "Use Calendar to keep your appointments, people and meeting invitations together. Regular accounts keep the calendar-first flow. A Business host with an enabled booking Twin can offer a conversation first, with Choose a time opening the same calendar inside it. The host can choose Calendar only. Optional paid booking uses the same Calendar and existing account payment route; it is separate from whether a Twin is enabled. Ordinary appointments you create yourself retain their existing flow."
+        },
+        {
+          "type": "note",
+          "title": "Availability and qualification",
+          "text": "These paid-booking instructions apply where the booking and payment services are enabled and qualified. This guide does not establish live financial qualification. If the host’s price cannot be saved or a payment review cannot be accepted, keep the actual error or saved request; that failure does not turn a priced appointment into a free or confirmed booking."
         }
       ]
     },
     {
-      "title": "Create and invite",
+      "title": "Find a day, create and invite",
       "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Open the account’s message icon, then Calendar. Choose Agenda, Week or Month; use Today, the date chooser and previous/next controls to move through the calendar. Select an appointment to inspect it. Check the displayed timezone before arranging a time."
+        },
         {
           "type": "steps",
           "items": [
@@ -344,34 +355,33 @@ export default [
             ],
             [
               "Choose Create appointment",
-              "The actual saved event opens. Invitations are sent through the existing invitation operation; inspect its sent or delivery-pending result."
+              "The actual saved event opens. Inspect its invitation result separately from the saved appointment; sent, pending and unknown delivery are different outcomes."
             ]
           ]
         }
       ]
     },
     {
-      "title": "Inspect or change an appointment",
-      "blocks": [
-        {
-          "type": "paragraph",
-          "text": "The selected event shows date/time/timezone, attendees, location or Join meeting, and notes. Use Copy meeting link to share the actual room. Invite people accepts email addresses; Send invitations reports sent or pending delivery. Edit appointment changes the same event through Save changes. Cancel appointment requires Confirm cancellation; cancelled history remains preserved. An invitation entry has its own controls and does not grant the guest host editing authority. Where the selected record carries supported evidence, inspect Record continuity, View receipt and Download proof record. Record integrity is distinct from current ownership or available account funds."
-        }
-      ]
-    },
-    {
-      "title": "Save your availability",
+      "title": "Save your availability and booking choices",
       "blocks": [
         {
           "type": "steps",
           "items": [
             [
-              "Open Your booking link",
-              "Use the row in Calendar or its Booking link shortcut. Choose a public username in Identity if prompted."
+              "Open Calendar → Your booking link → Availability",
+              "Use the booking-link row or shortcut in Calendar. Choose a public username in Identity if prompted. These are the owner’s settings for the public booking page."
             ],
             [
-              "Choose Availability",
+              "Set the schedule",
               "Set Appointment length, Available days, Available start times and People can book ahead. Use the automatic device timezone or select the intended manual timezone."
+            ],
+            [
+              "Choose the booking conversation when offered",
+              "For Business with an enabled booking Twin, Booking experience offers Twin booking or Calendar only. Select the intended starting view. This owner-only choice is not an appearance or color editor."
+            ],
+            [
+              "Choose an optional Appointment price",
+              "Free is the default. Expand Appointment price, enter Price in USD with no more than two decimal places, or leave 0 for free appointments. Paid booking does not require a Twin. This is the saved appointment price, separate from the schedule and guest questions."
             ],
             [
               "Ask useful questions",
@@ -379,7 +389,7 @@ export default [
             ],
             [
               "Choose Save availability",
-              "Availability saved confirms the saved schedule. Copy the booking link and open it as a guest to inspect offered times and questions."
+              "Availability saved confirms the accepted settings. Reopen Availability to inspect the saved price and available Booking experience choice, then open the public link as a guest to inspect the offered schedule and questions."
             ]
           ]
         }
@@ -390,42 +400,171 @@ export default [
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Your booking link opens bankeiz.com/book/yourname. Copy it for the people you want to book. Add it to your website exposes Copy embed for the same booking page. Create a custom link lets you change schedule and guest questions for that link without changing your usual saved availability: choose Create link, then copy it or Preview booking page. Review the actual public schedule and questions before distributing a link."
+          "text": "Your booking link opens bankeiz.com/book/yourname. Copy it for the people you want to book. Add it to your website exposes Copy embed for the same booking page. Create a custom link changes schedule and guest questions for that link without changing your usual saved availability: choose Create link, then copy it or Preview booking page. A custom link cannot change the saved price or Booking experience. Inspect the actual public schedule, questions and price before distributing it."
         }
       ]
     },
     {
-      "title": "Book as a guest and confirm the result",
+      "title": "Book through the calendar",
       "blocks": [
         {
           "type": "steps",
           "items": [
             [
               "Choose the time",
-              "Open the host’s booking page, check Your timezone, choose a day and available start time, then Continue."
+              "Open the host’s booking page. Check Your timezone, choose a day and available start time, then Continue. In a Twin conversation, Choose a time opens these same controls."
             ],
             [
               "Enter your details",
-              "Enter Your name and Email, answer any required guest questions, and add Anything you’d like to share? when useful."
+              "Enter Your name and Email, answer any required guest questions and add Anything you’d like to share? when useful. These are appointment details, not payment approval."
             ],
             [
-              "Choose Book this time",
-              "You’re booked confirms the accepted appointment. A selected time alone is not a completed booking."
+              "Continue the free or priced path",
+              "For a free appointment, choose Book this time and wait for You’re booked. For a positive price, choose Continue to payment and follow the payment review below. A selected time, submitted form or proposed appointment alone is not a confirmed booking."
             ],
             [
-              "Keep the appointment",
-              "Use Add to calendar to save its calendar file and Join meeting where included. The host’s Calendar contains the same confirmed appointment."
+              "Keep the accepted result",
+              "When confirmed, use Add to calendar for its calendar file and Join meeting where included. The host’s Calendar contains the same confirmed appointment."
             ]
           ]
         }
       ]
     },
     {
-      "title": "If the result needs attention",
+      "title": "Book through the host’s Twin",
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            [
+              "Start with the booking question",
+              "For a Business host with an enabled booking Twin, the initial question asks when you and the displayed host can speak. It is static opening copy, not a generated reply or a booking. Enter your request in Your reply and choose Send reply."
+            ],
+            [
+              "Supply only the missing details",
+              "The owner’s actual Twin checks the owner’s availability and uses its existing conversation and booking tools. Give the requested name, email, timezone and required answers. Choose a time opens the calendar over the conversation; Conversation returns to the retained thread and draft."
+            ],
+            [
+              "Inspect the accepted review, then later reply Yes",
+              "Read the proposed host, time, guest details and any price. After that accepted review, explicitly confirm it in a later reply Yes. A proposed time, streamed text or generated success sentence alone does not establish an appointment or payment."
+            ],
+            [
+              "Follow the actual free or paid result",
+              "A free appointment is complete only when the accepted result says You’re booked. For a priced appointment, Your appointment is ready to review offers Review payment. Choose it to open the same account payment review used by the calendar path. The Twin does not approve or send payment; Pay remains your separate explicit action."
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "If a reply is interrupted, Retry message continues that same pending message. Keep the existing thread and inspect its accepted result. An unavailable Twin does not require a replacement booking: Choose a time keeps the manual calendar available."
+        }
+      ]
+    },
+    {
+      "title": "Review and pay for a priced appointment",
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            [
+              "Open the payment review deliberately",
+              "Account entry opens only after a positive-price Continue to payment, the Twin’s Review payment, or your explicit Resume booking after a checkout return. Opening the calendar or reading the conversation does not enter payment."
+            ],
+            [
+              "Use the intended existing account",
+              "Review Your account, on this device. Before starting an approval, Use existing Identity Record opens your original account on this device; unlock a protected record when asked. Save Identity Record retains the same account for another device. Your appointment email does not select or create your payment identity. Once a booking request is pending, continue with the same account that started it."
+            ],
+            [
+              "Check the exact terms and contributions",
+              "Read the host, date, time, timezone and appointment total. From balance shows the available account contribution when nonzero. At checkout shows the actual external funding amount when needed. Funding covers the shortfall; the minimum payment at checkout is $0.50. For example, a $1.00 appointment with $0.80 available needs $0.20 more: At checkout is $0.50 and $0.30 stays in your balance. Read the displayed amounts before approving."
+            ],
+            [
+              "Choose Pay for the displayed appointment total",
+              "Pay explicitly approves these exact terms for this saved booking. If secure checkout is needed, complete it using an available payment method for the same request. The external funding amount and appointment total can differ because of the minimum; funding alone does not confirm the appointment."
+            ],
+            [
+              "Wait for the actual confirmation",
+              "Keep the booking open or return through Resume booking, then Check booking when offered. Your booking is saved or a completed checkout page is progress, not You’re booked. Do not pay a second request to discover the first result."
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Inspect the confirmed result and invitation",
       "blocks": [
         {
           "type": "paragraph",
-          "text": "If a time is no longer available, choose a different offered time. If the booking result is not confirmed, check with the host before submitting another booking; your draft details stay in the form. Email delivery is reported separately from the saved appointment. A downloaded calendar file helps carry the actual event but does not independently prove delivery to every attendee. Continue the original appointment or request instead of creating a replacement merely because a response was interrupted."
+          "text": "You’re booked identifies the accepted appointment. For a priced appointment, confirmation requires the accepted Wallet Original matched to this booking and the Calendar confirmed-paid result for the same event. An account funding receipt, checkout return, local status, time selection or Twin text cannot replace that evidence. Pending funding or payment does not confirm the appointment, issue its confirmation invitation or grant Join meeting."
+        },
+        {
+          "type": "steps",
+          "items": [
+            [
+              "Inspect the event and meeting",
+              "Check the confirmed title, time and timezone. Use Join meeting when included. In the host’s Calendar, open that same appointment and inspect its actual attendees, location and notes."
+            ],
+            [
+              "Retain the calendar file",
+              "Add to calendar downloads the event’s ICS file. A calendar file carries that event; it does not independently prove payment or email delivery."
+            ],
+            [
+              "Inspect the actual invitation status",
+              "The booking invitation email’s primary action opens Messages; its secondary direct Bankeiz Join meeting link opens the room. The invitation includes the calendar/ICS event. The saved appointment does not guarantee email delivery: when the provider outcome is unknown, keep the confirmed on-screen event and inspect the actual pending or unknown delivery result."
+            ],
+            [
+              "Inspect supported evidence",
+              "Open Record continuity, View receipt and Download proof record where offered on the selected Calendar record. Retain the actual booking payment Original and event record. Record integrity is distinct from current ownership or available account funds."
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Continue a saved booking or resolve an interruption",
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            [
+              "Check this booking",
+              "Check booking checks the same saved request and same operation. If offered, Retry booking request resends that retained request rather than making another reservation. Use Try account again or the original Identity Record when account access needs attention; continue with the same account."
+            ],
+            [
+              "Resume after checkout",
+              "Use Resume booking on the original return page. It is visible in both the Twin and calendar views and resumes the retained appointment/payment request. A checkout return locates that request; it is not proof of payment or booking. If a return does not match, keep the original link and saved request."
+            ],
+            [
+              "Close an unpaid request before choosing another time",
+              "Cancel this booking asks to close that same unpaid request. A timeout, closed checkout tab or cancelled checkout does not prove an unpaid closure. Only an accepted cancelled-unpaid result closes it; Choose another time then starts a new operation and review. If the outcome remains unknown, continue Check booking instead of treating it as cancelled."
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "For the free calendar path, if a time is no longer available, choose a different offered time. If the result says it is not confirmed, check with the host before submitting another booking; the form retains your draft. A failed or unknown delivery is separate from the appointment and does not instruct you to book again."
+        }
+      ]
+    },
+    {
+      "title": "Change or cancel the same appointment",
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            [
+              "Inspect before editing",
+              "Select the appointment in Calendar. Use Copy meeting link for its actual room, or Invite people → email addresses → Send invitations and inspect the invitation result. An invitation does not grant host editing authority."
+            ],
+            [
+              "Reschedule the existing event",
+              "As the host, choose Edit appointment, change the date/time and choose Save changes. For a paid appointment, the accepted revision preserves the same event, price and actual payment; there is no second charge. A new time must still be available. An unpaid reservation must be closed through its own recovery before a new operation can review another time."
+            ],
+            [
+              "Cancel deliberately",
+              "Cancel appointment requires Confirm cancellation. A paid cancellation records cancelled-paid and retains the actual payment Original and history. It does not promise an automatic refund; arrange any refund through an actually supported payment route and keep its separate accepted result. Cancelled history remains preserved."
+            ]
+          ]
         },
         {
           "type": "links",
@@ -437,13 +576,21 @@ export default [
             [
               "Keep the person’s details",
               "contacts"
+            ],
+            [
+              "Inspect the payment",
+              "payments"
+            ],
+            [
+              "Understand funding",
+              "funding"
             ]
           ]
         }
       ]
     }
   ],
-  "sources": [source("src/features/messages/organizer/CalendarViews.tsx","Calendar navigation, appointment and invitation controls"), source("src/features/messages/organizer/BookingSettings.tsx","Availability, custom links and embed"), source("src/features/booking/PublicBookingPage.tsx","Guest time selection and confirmed booking"), source("src/features/messages/organizer/CalendarRecordDetails.tsx","Selected event evidence and receipt inspection")]
+  "sources": [source("src/features/messages/organizer/CalendarViews.tsx","Calendar navigation, appointment and invitation controls"), source("src/features/messages/organizer/BookingSettings.tsx","Owner availability, booking mode, optional price and custom links"), source("src/features/booking/PublicBookingPage.tsx","Calendar booking, explicit payment entry and accepted confirmation"), source("src/features/booking/BookingLayout.tsx","Stable calendar or Business Twin starting view"), source("src/features/booking/BookingConversation.tsx","Owner Twin review, explicit payment handoff and retained conversation"), source("src/features/booking/BookingPayment.tsx","Exact payment review, account entry, checkout return and same-request recovery"), source("src/receiz/booking-settings.ts","Accepted saved booking settings and exact price parsing"), source("src/receiz/paid-booking.ts","Accepted Wallet Original, Calendar phases and retained payment operation"), source("src/checkout/CheckoutIdentity.tsx","Existing Identity Record import and save controls"), source("src/features/messages/organizer/CalendarRecordDetails.tsx","Selected event evidence and receipt inspection")]
 },
 {
   "slug": "meetings",
