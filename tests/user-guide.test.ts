@@ -21,14 +21,14 @@ it('reserves a canonical indexed user-guide route while preserving its public us
  expect(doc.querySelector('link[rel=canonical]')?.getAttribute('href')).toBe('https://bankeiz.com/guide/');expect(doc.querySelector('meta[property="og:image"]')?.getAttribute('content')).toContain('guide-example.png');
  expect(readFileSync('public/llms.txt','utf8')).toContain('https://bankeiz.com/guide/');
 });
-it('renders practical task controls and all 45 canonical chapters without copying their manuals or loading an account',async()=>{
+it('renders practical task controls and all 47 canonical chapters without copying their manuals or loading an account',async()=>{
  const {guideContent,guideStyles}=await import('../scripts/user-guide-page.mjs');
  const {guideTasks}=await import('../src/content/user-guide.mjs');
  const html=guideContent(),doc=parse(html),main=doc.querySelector('main')!;
  expect(main.querySelector('h1')?.textContent).toContain('What would you like to do?');
  expect(main.querySelectorAll('[data-guide-task]')).toHaveLength(guideTasks.length);
  for(const task of guideTasks){const row=main.querySelector(`[data-guide-task="${task.id}"]`)!;expect(row.textContent).toContain(task.why);for(const field of ['click','result','evidence'] as const)expect(row.textContent).toContain(task[field]);expect(row.querySelector('a')?.getAttribute('href')).toBe(docsOrigin+'/'+task.slug+'/');}
- const chapters=[...main.querySelectorAll<HTMLAnchorElement>('[data-guide-article]')];expect(chapters).toHaveLength(45);
+ const chapters=[...main.querySelectorAll<HTMLAnchorElement>('[data-guide-article]')];expect(chapters).toHaveLength(47);
  expect(new Set(chapters.map(a=>a.getAttribute('href')))).toEqual(new Set(docsArticles.map(a=>docsOrigin+'/'+a.slug+'/')));
  for(const href of ['/learn/','/banking/','#guide-money','#guide-people','#guide-business','#guide-protection','#guide-manual'])expect(main.querySelector(`a[href="${href}"]`),href).not.toBeNull();
  expect(main.querySelector('script,iframe,form,canvas,video')).toBeNull();expect(html).not.toMatch(/\/api\/|type="module"|data-coop|data-product-walkthrough/);

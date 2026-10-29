@@ -5,7 +5,7 @@ import {docsArticles,docsOrigin,docsEdition} from '../src/content/banking-docs.m
 import {docsDocument} from '../scripts/docs-app.mjs';
 const parse=(s:string)=>new DOMParser().parseFromString(s.replace(/<link\b[^>]*rel="stylesheet"[^>]*>/g,''),'text/html');
 it('preserves seventeen published articles within the complete task-oriented manual',()=>{
- expect(docsArticles).toHaveLength(45);expect(docsOrigin).toBe('https://docs.bankeiz.com');
+ expect(docsArticles).toHaveLength(47);expect(docsOrigin).toBe('https://docs.bankeiz.com');
  for(const page of [null,...docsArticles])expect(parse(docsDocument(page)).querySelector('.docs-footer>p')?.textContent).toBe('Proof-native economy · Reality-grade banking · Reality-grade infrastructure.');
  for(const p of docsArticles){expect(p.sections.length).toBeGreaterThanOrEqual(3);expect(p.sources.length).toBeGreaterThan(0);for(const [label,href] of p.sources){expect(label).toBeTruthy();expect(href).toMatch(/^https:\/\/(?:github.com\/kojibai\/reality-grade-banking|receiz.com\/developers|docs.receiz.com)/);}}
 });
@@ -17,4 +17,15 @@ it('renders independent readable first paint with a shared canonical, source lin
 it('keeps every repository source link resolvable and filters documentation locally',()=>{
  for(const p of docsArticles)for(const [,href] of p.sources){const marker='/blob/'+docsEdition.sourceRevision+'/';if(href.includes(marker))expect(existsSync(href.split(marker)[1]),href).toBe(true);}
  document.body.innerHTML=parse(docsDocument(null,{base:'/docs/'})).body.innerHTML;new Function(readFileSync('docs-app/search.js','utf8'))();const input=document.querySelector<HTMLInputElement>('[data-doc-search]')!;input.value='market nonce';input.dispatchEvent(new Event('input'));const shown=[...document.querySelectorAll<HTMLElement>('.docs-index-card')].filter(e=>!e.hidden);expect(shown.length).toBeGreaterThan(0);expect(shown.map(e=>e.getAttribute('href'))).toEqual(expect.arrayContaining(['/docs/market-trading/','/docs/market-records/']));const index=JSON.parse(document.querySelector('#docs-search-index')!.textContent!);expect(shown.every(e=>index[e.dataset.docId!].includes('market')&&index[e.dataset.docId!].includes('nonce'))).toBe(true);input.value='nothingmatches987';input.dispatchEvent(new Event('input'));expect(document.querySelector('[data-doc-search-status]')?.textContent).toContain('0 matching');input.value='';input.dispatchEvent(new Event('input'));expect([...document.querySelectorAll<HTMLElement>('.docs-index-card')].filter(e=>!e.hidden)).toHaveLength(docsArticles.length);document.body.innerHTML='';
+});
+
+it('makes all three architecture terms direct links to distinct in-depth chapters in either docs deployment',()=>{
+ for(const base of ['/','/docs/']){
+  const doc=parse(docsDocument(null,{base})),architecture=doc.querySelector('.docs-architecture')!;
+  for(const [title,slug] of [['Proof-native economy','economy'],['Reality-grade banking','banking'],['Reality-grade infrastructure','infrastructure']]){
+   const link=architecture.querySelector<HTMLAnchorElement>('a[href="'+base+slug+'/"]');
+   expect(link?.textContent).toContain(title);const page=docsArticles.find(p=>p.slug===slug)!;expect(page?.sections.length).toBeGreaterThanOrEqual(5);
+   const chapter=parse(docsDocument(page,{base}));expect(chapter.querySelector('h1')?.textContent).toBe(title);expect(chapter.querySelector('link[rel=canonical]')?.getAttribute('href')).toBe(docsOrigin+'/'+slug+'/');
+  }
+ }
 });

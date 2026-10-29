@@ -2,3 +2,5 @@
 .organizer-record-conversation p{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--navy)}
 
 .organizer-record>dl dd.organizer-record-number{text-align:left;white-space:nowrap;overflow-wrap:normal;overflow-x:auto}
+
+.organizer-record-proof>summary{display:flex;align-items:center;gap:7px;cursor:pointer;color:#607fa4;font-size:11px;min-height:32px;list-style:none}.organizer-record-proof>summary::-webkit-details-marker{display:none}.organizer-record-proof .organizer-proof-status{font-size:10px;line-height:1.6;color:var(--muted);margin:8px 0}.organizer-proof-retry{display:inline-flex;align-items:center;gap:5px;padding:6px 0;min-height:32px;border:0;background:none;color:#607fa4;font:inherit;font-size:11px;cursor:pointer}.organizer-record-proof>summary:focus-visible,.organizer-proof-retry:focus-visible{outline:2px solid #315edc;outline-offset:4px;border-radius:3px}

@@ -44,7 +44,7 @@ it('renders six independent frontend views beneath one explicitly illustrative v
  const doc=parse(economyContent());expect(doc.querySelectorAll('[data-economy-interface]')).toHaveLength(6);expect(doc.querySelectorAll('[data-economy-interface-panel]')).toHaveLength(6);
  expect(doc.querySelectorAll('[data-economy-interface-panel]:not([hidden])')).toHaveLength(1);
  expect(new Set([...doc.querySelectorAll('[data-economy-source]')].map(e=>e.getAttribute('data-economy-source'))).size).toBe(1);
- expect(doc.body.textContent).toContain('The frontend changes. The proof doesn’t.');expect(doc.body.textContent).toContain('No funds move');
+ expect(doc.body.textContent).toContain('The frontend changes. The proof doesn’t.');expect(doc.querySelector('.ec-interfaces .ec-illustration-note')?.textContent).toContain('Illustrated interfaces');
  expect(doc.querySelector('[data-economy-boundaries]')?.textContent).toMatch(/Glyph[\s\S]*Settlement[\s\S]*Reserve[\s\S]*ownership[\s\S]*USD[\s\S]*exchange price[\s\S]*receiving[\s\S]*offline proof[\s\S]*offline financial/i);
  expect(siteFooterHtml('/business/')).toContain('href="/economy/"');expect(parse(siteFooterHtml('/economy/')).querySelector('a[href="/economy/"]')).toBeNull();
 });

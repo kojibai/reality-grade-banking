@@ -33,3 +33,6 @@ h1{font-size:clamp(36px,4.3vw,60px);line-height:1.08;letter-spacing:-.045em;font
 
 /* Readable text entry avoids automatic focus magnification; page zoom stays available. */
 @media(pointer:coarse){.docs-search input{font-size:16px}}
+
+/* Every foundation is a direct, quietly signposted chapter. */
+.docs-architecture>a{position:relative;display:block;padding:6px 22px 6px 0;font-size:13px;line-height:1.6;text-decoration:none;border-radius:3px}.docs-architecture>a i{position:absolute;top:7px;right:0;font-style:normal;color:#7c92af;font-size:13px}.docs-architecture>a:hover strong{text-decoration:underline;text-underline-offset:4px}.docs-architecture>a:focus-visible{outline:2px solid #315bd8;outline-offset:6px}
