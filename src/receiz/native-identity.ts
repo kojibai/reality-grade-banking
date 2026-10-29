@@ -1999,7 +1999,7 @@ async function importNativeIdentityUnlocked(file: File, phrase: string, consentA
 export async function restoreNativeIdentity(): Promise<OpenIdentity | null> { const saved = await loadDeviceIdentity(); return saved && saved.readConsent ? openCanonicalIdentity(saved.bytes, saved.phrase, saved.filename, true, saved.protectedTransport) : null; }
 export async function createNativeIdentity(consentApproved:boolean):Promise<OpenIdentity>{
  if(!consentApproved)throw Error('Approve account read access before creating your ID.');
- return withDeviceIdentityEntry(async()=>{const saved=await loadDeviceIdentity();if(saved){const restored=await restoreNativeIdentity();if(!restored)throw Error('Your saved identity needs to be reopened.');return restored;}return createFreshNativeIdentity(true);});
+ return withDeviceIdentityEntry(async()=>{const saved=await loadDeviceIdentity();if(saved){if(!saved.readConsent)throw Error('Your saved identity needs to be reopened.');return openCanonicalIdentity(saved.bytes,saved.phrase,saved.filename,true,saved.protectedTransport);}return createFreshNativeIdentity(true);});
 }
 export function importNativeIdentity(file:File,phrase:string,consentApproved:boolean){return withDeviceIdentityEntry(()=>importNativeIdentityUnlocked(file,phrase,consentApproved));}
 export function forgetDeviceIdentity(){return withDeviceIdentityEntry(async()=>{await(await import('./identity-vault')).forgetDeviceIdentity();});}

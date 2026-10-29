@@ -28,3 +28,10 @@ it('reuses the first admitted identity across simultaneous creators instead of o
 it('preserves unreadable saved identity custody instead of automatically creating another',async()=>{
  p.read.mockRejectedValue(Error('saved identity unavailable'));await expect(createNativeIdentity(true)).rejects.toThrow('saved identity');expect(p.image).not.toHaveBeenCalled();expect(p.persist).not.toHaveBeenCalled();
 });
+
+it.each([true,false])('reuses the identity custody already read under the entry lock, preserving saved consent: %s',async(readConsent)=>{
+ const bytes=new Uint8Array([8,9,10]);p.read.mockResolvedValue({bytes,filename:'held-identity.png',phrase:'',readConsent});
+ if(!readConsent){await expect(createNativeIdentity(true)).rejects.toThrow('saved identity');}
+ else{const identity=await createNativeIdentity(true);try{expect(identity.backup()).toEqual({bytes,filename:'held-identity.png',phrase:''});}finally{identity.dispose();}}
+ expect(p.read).toHaveBeenCalledTimes(1);expect(p.image).not.toHaveBeenCalled();expect(p.seal).not.toHaveBeenCalled();expect(p.persist).not.toHaveBeenCalled();
+});
