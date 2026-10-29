@@ -15,7 +15,7 @@ it('preserves an Original download purchase refusal without forwarding upstream 
 });
 it('allows only fixed public Receiz contracts with bounded query arguments', () => {
   expect(resolvePublicMarketTarget('/api/bank/public-market/membership')?.href).toBe('https://receiz.com/api/market/public-membership');
-  expect(resolvePublicMarketTarget('/api/bank/public-market/quotes')?.href).toBe('https://receiz.com/api/market/public-snapshot?detail=full');
+  expect(resolvePublicMarketTarget('/api/bank/public-market/quotes')?.href).toBe('https://receiz.com/api/market/public-snapshot?detail=full&projection=asset-quotes');
   expect(resolvePublicMarketTarget('/api/bank/public-market/membership?url=https://evil.test')).toBeNull();
   expect(resolvePublicMarketTarget('/api/bank/public-market/secret')).toBeNull();
   const provenance='/api/bank/public-market/provenance?collectibleId=rsc_0123456789abcdef&claimHash='+'a'.repeat(64);
@@ -100,7 +100,7 @@ it('uses a bounded publication hint to bypass a stale membership response withou
 });
 it('allows a bounded post-trade freshness reference without widening the upstream destination',async()=>{
  const nonce='10000000-0000-4000-8000-000000000001',path='/api/bank/public-market/quotes?afterTrade='+nonce;
- expect(resolvePublicMarketTarget(path)?.href).toBe('https://receiz.com/api/market/public-snapshot?detail=full&afterTrade='+nonce);
+ expect(resolvePublicMarketTarget(path)?.href).toBe('https://receiz.com/api/market/public-snapshot?detail=full&projection=asset-quotes&afterTrade='+nonce);
  for(const bad of [path+'&afterTrade='+nonce,path+'&url=https://other.test',path.replace(nonce,'not-a-reference')])expect(resolvePublicMarketTarget(bad)).toBeNull();
  const fetcher=vi.fn<typeof fetch>(async()=>Response.json({ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[]}}));vi.stubGlobal('fetch',fetcher);
  await publicMarketMiddleware({method:'GET',url:path,headers:{}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:vi.fn()}as unknown as ServerResponse,vi.fn());

@@ -152,13 +152,17 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
    const alias=value.recipient.trim().replace(/\.receiz\.id$/i,'').replace(/^@/,'').toLowerCase();
    if(!/^[a-z0-9_]{3,24}$/.test(alias)&&!uuid(alias))throw Error('Enter a Receiz ID.');
    const context=await input.connect();input.assertOpen();if(!uuid(context.accountUid))throw Error('BANK_WALLET_IDENTITY_CHANGED');
+   if(uuid(alias)&&alias===context.accountUid)throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');
+   // Both reads use already validated, independent inputs. A quote is advisory;
+   // it never submits a payment, creates a conversation or changes funding.
+   const quoteRead=context.client.request(`/api/connect/transfers?amountUsd=${dollars(value.amountUsdCents)}`,{method:'GET'}).then(value=>({value}),error=>({error}));
    let userId=alias,label=alias,avatarUrl:string|null=null;
    if(!uuid(alias)){const found=object(await context.client.request(`/api/chat/users/search?q=${encodeURIComponent(alias)}`,{method:'GET'}));input.assertOpen();
     const matches=found.ok===true&&Array.isArray(found.users)?found.users.filter((u:Json)=>u.kind==='user'&&typeof u.username==='string'&&u.username.toLowerCase()===alias&&uuid(u.userId)):[];
     if(matches.length!==1)throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');userId=matches[0].userId;label=`@${matches[0].username}`;avatarUrl=profileAvatarUrl(matches[0].avatarUrl);
    }
    if(userId===context.accountUid)throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');
-   const raw=object(await context.client.request(`/api/connect/transfers?amountUsd=${dollars(value.amountUsdCents)}`,{method:'GET'}));input.assertOpen();if(raw.ok!==true||raw.senderUserId!==context.accountUid)throw Error('BANK_WALLET_IDENTITY_CHANGED');if(note&&raw.capabilities?.publicTransferNotes!==true)throw Error('BANK_WALLET_PUBLIC_NOTE_UNAVAILABLE');
+   const quoted=await quoteRead;if('error'in quoted)throw quoted.error;const raw=object(quoted.value);input.assertOpen();if(raw.ok!==true||raw.senderUserId!==context.accountUid)throw Error('BANK_WALLET_IDENTITY_CHANGED');if(note&&raw.capabilities?.publicTransferNotes!==true)throw Error('BANK_WALLET_PUBLIC_NOTE_UNAVAILABLE');
    const preview={schema:'bank.wallet-send-review.v1' as const,ownerReceizId:input.ownerReceizId,accountUid:context.accountUid,recipientUserId:userId,recipientLabel:label,...(options?.conversationId?{conversationId:options.conversationId}:{}),...(avatarUrl?{recipientAvatarUrl:avatarUrl}:{}),amountUsdCents:value.amountUsdCents,clientNonce:options?.clientNonce??crypto.randomUUID(),...(note?{note}:{}),...(options?.fundingPreference?{fundingPreference:options.fundingPreference}:{}),...(options?.cardFundingLimitUsdCents!==undefined?{cardFundingLimitUsdCents:options.cardFundingLimitUsdCents}:{}),...(options?.checkoutContext?{checkoutContext:Object.freeze({...options.checkoutContext})}:{}),...(booking?{booking}:{}),quote:Object.freeze(quote(raw.quote,value.amountUsdCents))};
    const review=Object.freeze({...preview,digest:await digest(preview)});input.assertOpen();held.add(review);return review;
   });},
