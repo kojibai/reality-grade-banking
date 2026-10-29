@@ -322,7 +322,7 @@ export default [
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Use Calendar to keep your appointments, people and meeting invitations together. Regular accounts keep the calendar-first flow. A Business host with an enabled booking Twin can offer a conversation first, with Choose a time opening the same calendar inside it. The host can choose Calendar only. Optional paid booking uses the same Calendar and existing account payment route; it is separate from whether a Twin is enabled. Ordinary appointments you create yourself retain their existing flow."
+          "text": "Use Calendar to keep your appointments, people and meeting invitations together. Regular accounts keep the calendar-first flow. A Business host with an enabled booking Twin can offer a conversation first, with Choose a time opening the same calendar inside it. The host can choose Calendar only. Optional paid booking uses the same Calendar and existing account payment route; it is separate from whether a Twin is enabled. New appointment can include a Meeting link and an optional Appointment price. Each invited guest pays that listed price before entering; the host joins directly."
         },
         {
           "type": "note",
@@ -389,10 +389,23 @@ export default [
             ],
             [
               "Choose Save availability",
-              "Availability saved confirms the accepted settings. Reopen Availability to inspect the saved price and available Booking experience choice, then open the public link as a guest to inspect the offered schedule and questions."
+              "Availability saved confirms the accepted settings. Reopen Availability & offers to inspect the saved price and available Booking experience choice, then open the public link as a guest to inspect the offered schedule and questions."
             ]
           ]
         }
+      ]
+    },
+    {
+      "title": "Offer different appointments on one calendar",
+      "blocks": [
+        {"type":"paragraph","text":"In Calendar → Your booking link → Availability & offers, open Appointment offers and choose Add another offer. Name each appointment and choose its length. Open its optional Appointment price only when you want to charge, then enter its price in USD. Use 0 for a free offer. Save availability accepts the catalog; all offers share the same available hours and busy calendar."},
+        {"type":"paragraph","text":"Your public booking link presents the choices first. A direct link from Offer links opens that appointment immediately. A Business host’s enabled Twin books the selected offer using the same availability, duration and price. Calendar only continues through the existing time picker. Custom schedule links keep the selected offer’s accepted price and duration."}
+      ]
+    },
+    {
+      "title": "Charge for an appointment you create",
+      "blocks": [
+        {"type":"paragraph","text":"Choose New appointment, enter its details and invitees, then enable Meeting link. Open Appointment price and enter Price per guest in USD. Leave 0 for free. Create appointment sends each guest the invitation and its payment link. Each guest reviews their own payment: available account funds first, then the shortfall through existing checkout. The matching Wallet Original admits that guest to the meeting. One guest’s payment covers that guest; the host joins directly."}
       ]
     },
     {

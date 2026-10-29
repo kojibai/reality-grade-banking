@@ -1,3 +1,4 @@
+import {readBookingOffers} from './booking-offers';
 import {organizerRecord,type BookingPrice,type BookingSettings,type BookingSettingsInput} from './organizer-types';
 const invalid=():never=>{throw Error('BOOKING_SOURCE_INVALID');};
 export function readBookingPrice(raw:unknown):BookingPrice|undefined{
@@ -13,7 +14,7 @@ export function readBookingSettings(raw:unknown):BookingSettings|undefined{
 export function bookingPriceInputCents(input:string){const value=input.trim()||'0';if(!/^\d{1,6}(?:\.\d{1,2})?$/.test(value))throw Error('Enter a price with up to two decimal places.');const [whole,fraction='']=value.split('.'),cents=BigInt(whole)*100n+BigInt(fraction.padEnd(2,'0'));if(cents>10000000n)throw Error('Enter a price up to $100,000.00.');return cents.toString();}
 export function bookingPriceDollars(cents:string){const value=BigInt(cents);return `${value/100n}.${(value%100n).toString().padStart(2,'0')}`;}
 export function readSavedBookingOptions(result:Record<string,unknown>,input:BookingSettingsInput){
- const bookingPrice=readBookingPrice(result.bookingPrice),bookingSettings=readBookingSettings(result.bookingSettings);
- if(input.bookingPriceUsdCents!==undefined&&bookingPrice?.priceUsdCents!==input.bookingPriceUsdCents||input.conversationEnabled!==undefined&&bookingSettings?.conversationEnabled!==input.conversationEnabled)throw Error('ORGANIZER_WRITE_UNCONFIRMED');
- return{...(bookingPrice?{bookingPrice}:{}),...(bookingSettings?{bookingSettings}:{})};
+ const bookingPrice=readBookingPrice(result.bookingPrice),bookingSettings=readBookingSettings(result.bookingSettings),bookingOffers=result.bookingOffers===undefined?undefined:readBookingOffers(result.bookingOffers);
+ if(input.bookingPriceUsdCents!==undefined&&bookingPrice?.priceUsdCents!==input.bookingPriceUsdCents||input.conversationEnabled!==undefined&&bookingSettings?.conversationEnabled!==input.conversationEnabled||input.bookingOffers!==undefined&&JSON.stringify(bookingOffers)!==JSON.stringify(readBookingOffers(input.bookingOffers)))throw Error('ORGANIZER_WRITE_UNCONFIRMED');
+ return{...(bookingOffers===undefined?{}:{bookingOffers}),...(bookingPrice?{bookingPrice}:{}),...(bookingSettings?{bookingSettings}:{})};
 }

@@ -29,7 +29,7 @@ export default function BookingConversation({service,source,children,onPayment,p
  const booking=state.bookingConfirmation,meeting=bankMeetingPath(booking?.location??'');
  const error=state.error?(state.pending?'Your reply has not been confirmed yet. Retry the same message to continue.':'That reply could not be completed. Your message is kept here.'):'';
  return <section className="booking-card bank-organizer booking-conversation-card" aria-label="Book an appointment">
-  <header className="booking-conversation-owner"><ProfileAvatar src={source.owner.avatarUrl} name={source.owner.displayName}/><div><h1>{source.owner.displayName}</h1><p><Clock size={14}/>{source.scheduleConfig.slotMinutes} minutes{source.bookingPrice&&source.bookingPrice.priceUsdCents!=='0'&&<> · {formatMoney(source.bookingPrice.priceUsdCents)}</>}<span>·</span>Meeting link included</p></div></header>
+  <header className="booking-conversation-owner"><ProfileAvatar src={source.owner.avatarUrl} name={source.owner.displayName}/><div><h1>{source.owner.displayName}</h1><p>{source.selectedBookingOffer&&<>{source.selectedBookingOffer.name}<span>·</span></>}<Clock size={14}/>{source.scheduleConfig.slotMinutes} minutes{source.bookingPrice&&source.bookingPrice.priceUsdCents!=='0'&&<> · {formatMoney(source.bookingPrice.priceUsdCents)}</>}<span>·</span>Meeting link included</p></div></header>
   <div className="booking-conversation-frame" onKeyDownCapture={overlayKey}>
    <div className="booking-chat" inert={manual} aria-hidden={manual||undefined}>
     <div className="booking-chat-heading"><span><Sparkles size={17}/>{source.owner.displayName}’s Twin</span><small>Booking</small></div>

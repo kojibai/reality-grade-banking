@@ -1,3 +1,4 @@
+import type {BookingOffer} from './booking-offers';
 export interface OrganizerContact {
  id:string;linkedUserId:string;fullName:string;email:string;phone:string;
  company?:string;role?:string;location?:string;notes?:string;tags?:string[];
@@ -17,9 +18,9 @@ export interface BookingSlot {id:string;startAt:string;endAt:string}
 export interface PublicBookingConversation {state:'ready'|'unavailable'|'unknown';ownerUserId:string;username:string}
 export interface BookingPrice {currency:'usd';priceUsdCents:string;feeUsdCents:'0';policyRevision:string|null}
 export interface BookingSettings {conversationEnabled:boolean;conversationAvailable?:boolean}
-export interface BookingSettingsInput {bookingPriceUsdCents?:string;bookingPolicyRevision?:string|null;conversationEnabled?:boolean}
+export interface BookingSettingsInput {bookingPriceUsdCents?:string;bookingPolicyRevision?:string|null;conversationEnabled?:boolean;bookingOffers?:BookingOffer[]}
 export interface BookingAvailability {
- bookingPrice?:BookingPrice;bookingSettings?:BookingSettings;
+ bookingPrice?:BookingPrice;bookingSettings?:BookingSettings;bookingOffers?:BookingOffer[];selectedBookingOffer?:BookingOffer;
  conversation?:PublicBookingConversation;
  owner:{userId?:string;username:string;displayName:string;avatarUrl:string|null};scheduleConfig:BookingSchedule;savedScheduleConfig:BookingSchedule;
  customQuestions:BookingQuestion[];savedCustomQuestions:BookingQuestion[];slots:BookingSlot[];

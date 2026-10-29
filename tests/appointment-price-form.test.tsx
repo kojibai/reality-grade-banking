@@ -8,7 +8,7 @@ it('keeps free creation unchanged and sends one explicit price per guest for a p
  try{await act(async()=>root.render(<AppointmentForm day="2030-01-01" busy={false} onBack={()=>{}} onSave={save}/>));
  const form=host.querySelector('form')!;expect(host.querySelector('[aria-label="Price per guest in USD"]')).toBeNull();
  host.querySelector<HTMLInputElement>('[name="title"]')!.value='Consultation';await act(async()=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));expect(save.mock.calls[0][0]).not.toHaveProperty('meetingPriceUsdCents');
- await act(async()=>host.querySelector<HTMLButtonElement>('.organizer-link-row')!.click());const price=host.querySelector<HTMLInputElement>('[aria-label="Price per guest in USD"]')!;expect(price.value).toBe('0.00');
+ await act(async()=>host.querySelector<HTMLButtonElement>('.organizer-link-row')!.click());const price=host.querySelector<HTMLInputElement>('[aria-label="Price per guest in USD"]')!;expect(price.value).toBe('0.00');expect(price.closest('details')!.open).toBe(false);expect(price.closest('details')!.querySelector('summary')!.textContent).toContain('Optional');
  await act(async()=>{const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!;setter.call(price,'75.00');price.dispatchEvent(new Event('input',{bubbles:true}));price.dispatchEvent(new Event('change',{bubbles:true}));});
  await act(async()=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));expect(save.mock.calls.at(-1)?.[0]).toMatchObject({meeting:true,meetingPriceUsdCents:'7500'});
  }finally{act(()=>root.unmount());host.remove();}

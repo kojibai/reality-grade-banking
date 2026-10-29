@@ -19,3 +19,9 @@
 .bank-organizer .booking-settings-form :is(input,textarea,select){font-size:16px}
 
 .bank-organizer .booking-settings-form>.organizer-timezone{flex-direction:row}
+
+.organizer-offer-fields{display:grid;gap:14px;padding:18px 0;border-top:1px solid var(--bank-border,#dce3ed)}
+.organizer-offer-heading{display:flex;align-items:center;justify-content:space-between}.organizer-offer-heading button{display:grid;place-items:center;background:none;border:0;padding:8px;color:inherit}
+.organizer-offer-terms{display:grid;grid-template-columns:1fr;gap:12px;min-width:0}.organizer-offer-terms label{min-width:0}.organizer-offer-terms input,.organizer-offer-terms select{width:100%;min-width:0}
+
+.organizer-offer-price{margin:0!important;padding:0!important;border:0!important}.organizer-offer-price>summary{font-size:11px}.organizer-offer-price>label{margin-top:14px}

@@ -74,8 +74,8 @@ export const guideTasks=Object.freeze([
     "slug": "calendar-booking",
     "title": "Plan a time or meet now",
     "why": "Keep the person, appointment, invitation and conversation together.",
-    "click": "Header message icon → Calendar → New appointment or Meet now. Your booking link shares available times.",
-    "result": "Create appointment saves the event. Free guests use Book this time; priced bookings use Continue to payment or the Twin’s review, then explicit Pay. Only the accepted result says You’re booked.",
+    "click": "Header message icon → Calendar → New appointment or Meet now. Your booking link shares available times and any appointment offers.",
+    "result": "Create appointment saves the event. Its optional price applies to each invited guest. Free guests use Book this time; priced bookings use Continue to payment or the Twin’s review, then explicit Pay. Only the accepted result says You’re booked.",
     "evidence": "Open the confirmed event, actual invitation status and supported Record continuity. A priced booking also retains its payment Original; funding alone is pending."
   },
   {
