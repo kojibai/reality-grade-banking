@@ -1,3 +1,4 @@
+import {afterPublicNavigationReady} from '../core/public-document-entry';
 import {mergeAdmittedProfileAssets,forgetAssetPublicationAdmissions,acceptDiscoveredProfileAssets} from './asset-publication-adoption.js';
 import {parsePublicMarket,type PublicMarketItem} from './public-market.js';
 import {profileAvatarUrl} from './profile-avatar.js';
@@ -78,7 +79,7 @@ export const subscribePublicProfiles=(listener:()=>void)=>{listeners.add(listene
 function publishProfileMetadata(profile:PublicProfile){
  if(typeof dispatchEvent!=='function')return;
  const publish=()=>{if(held.get(profile.username)===profile)dispatchEvent(new CustomEvent('bankeiz:profile-metadata',{detail:{username:profile.username,title:profile.displayName,description:profile.bio,image:profile.bannerUrl??profile.avatarUrl}}));};
- if(typeof document!=='undefined'&&(document.readyState==='loading'||document.readyState==='interactive'&&!!document.getElementById('receiz-navigation')?.textContent))document.addEventListener('DOMContentLoaded',publish,{once:true});else publish();
+ afterPublicNavigationReady(publish);
 }
 export function retainPublicProfile(input:PublicProfile){const previous=held.get(input.username),receipt=confirmedProfilePbi.get(input.userId)??(previous?.userId===input.userId?previous.pbiReceiptHash:null),profile=mergeAdmittedProfileAssets(receipt?{...input,authorshipVerified:true,pbiReceiptHash:input.pbiReceiptHash??receipt}:input);for(const [name,previous]of held)if(name!==profile.username&&previous.userId===profile.userId)forgetPublicProfile(name);held.delete(profile.username);held.set(profile.username,profile);observed.set(profile.username,Date.now());retainRecipientPortrait(profile.username,profile.avatarUrl);if(held.size>24)forgetPublicProfile(held.keys().next().value!);publishProfileMetadata(profile);for(const listener of listeners)listener();return profile;}
 /** Append the confirmed canonical PBI enrollment to held public presentation.

@@ -1,3 +1,4 @@
+import {startPublicDocumentRuntime} from '../core/public-document-entry';
 import {BankMark} from '../components/BankMark';
 import {SiteFooter} from '../components/SiteFooter';
 import { StrictMode,useEffect,useState } from 'react';
@@ -21,4 +22,4 @@ export function VerifyApp() {
     </main><SiteFooter/>
   </div>;
 }
-createRoot(publicRuntimeRoot('verify'),{identifierPrefix:'public-verify-'}).render(<StrictMode><VerifyApp /></StrictMode>);
+startPublicDocumentRuntime('verify',()=>createRoot(publicRuntimeRoot('verify'),{identifierPrefix:'public-verify-'}).render(<StrictMode><VerifyApp /></StrictMode>));

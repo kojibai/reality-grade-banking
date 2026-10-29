@@ -44,7 +44,7 @@ function receiptHtml(html:string,receipt:LedgerReceipt,canonical:string,packet:s
   .replace(/<link\b[^>]*rel\s*=\s*["']canonical["'][^>]*>/gi,'')
   .replace(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi,'')
   .replace(/<\/head>/i,()=>tags+'\n</head>')
-  .replace(/<\/body>/i,()=>(shortDigest?`<script type="application/json" id="receipt-snapshot" data-digest="${shortDigest}">${JSON.stringify(receipt).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026')}</script>`:'')+'</body>');
+  .replace(/<script id="receiz-navigation"|<\/body>/i,match=>(shortDigest?`<script type="application/json" id="receipt-snapshot" data-digest="${shortDigest}">${JSON.stringify(receipt).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026')}</script>`:'')+match);
 }
 export async function handleReceiptPreview(request:Request,deps?:PreviewDependencies):Promise<Response>{
  const headers=new Headers({'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'});

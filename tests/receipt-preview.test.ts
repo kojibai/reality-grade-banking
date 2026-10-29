@@ -76,3 +76,10 @@ it('accepts the exact named route parameter from hosting and rejects a conflicti
 it('rejects an empty snapshot selector mixed into a legacy receipt request',async()=>{
  const {handleReceiptPreview}=await preview(),{compactReceiptLink}=await import('../src/receiz/receipt-sharing');expect((await handleReceiptPreview(new Request(compactReceiptLink(receiptLink(source())!)+'&s='))).status).toBe(400);
 });
+it('carries the same verified short receipt before unrelated navigation so early entry never reads it again',async()=>{
+ const {completeLedgerReceipt}=await import('../src/receiz/ledger-receipts'),{receiptDigest}=await import('../src/receiz/receipt-snapshot');
+ const receipt=completeLedgerReceipt(source()),bytes=new TextEncoder().encode(JSON.stringify(receipt)),digest=await receiptDigest(bytes),fetcher=vi.fn(async()=>new Response(bytes));vi.stubGlobal('fetch',fetcher);
+ const {handleReceiptPreview}=await preview(),template='<html><head></head><body><div id="public-receipt-root">Complete receipt view</div><script id="receiz-navigation" type="application/json">{"all":"existing navigation"}</script></body></html>';
+ const response=await handleReceiptPreview(new Request('https://bankeiz.com/receipt/'+digest+'/'),{page:async()=>template,image:vi.fn()}),html=await response.text();
+ expect(response.status).toBe(200);expect(html.indexOf('id="receipt-snapshot"')).toBeLessThan(html.indexOf('id="receiz-navigation"'));expect(JSON.parse(html.match(/id="receipt-snapshot"[^>]*>([\s\S]*?)<\/script>/)![1])).toEqual(receipt);expect(html).toContain('{"all":"existing navigation"}');expect(fetcher).toHaveBeenCalledOnce();
+});

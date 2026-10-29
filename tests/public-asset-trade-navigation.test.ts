@@ -5,6 +5,8 @@ import {expect, it, vi} from 'vitest';
 it('loads the bank once on explicit public intent, preserves the public surface, and reuses that root on bank navigation', async () => {
   history.replaceState(null, '', '/explore/');
   document.head.innerHTML = '<title>Explore</title><link rel="canonical" href="https://bankeiz.com/explore/">';
+  // The generated public document already carries its settled surface.
+  document.body.dataset.bankSurface = 'explore';
   document.body.innerHTML = '<div id="public-explore-root" data-public-runtime="explore"><main>Public asset</main><a href="/">Bank</a></div>';
   const data = document.createElement('script'); data.id = 'receiz-navigation';
   data.textContent = JSON.stringify({pages: {'/explore/': {runtime: 'explore', head: '<title>Explore</title>', content: '<main>Explore</main>', entry: '/explore.js'}}, bank: {styles: ['/bank.css'], css: {'/bank.css': '.bank{color:navy}'}, head: '<title>Bank</title>', content: '<main>Opening account</main>', entry: '/bank.js'}}); document.body.append(data);

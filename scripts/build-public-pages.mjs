@@ -1,3 +1,4 @@
+import {earlyPublicRuntimeDocument} from './public-runtime-document.mjs';
 import {momentsPage,momentsContent} from './moments-page.mjs';
 import {originalsQualificationContent} from './originals-qualification-template.mjs';
 import {writeOriginalsQualificationAssets} from './originals-qualification-assets.mjs';
@@ -144,7 +145,7 @@ const documents={...publicPages,...Object.fromEntries(Object.entries(publicRoute
 for (const [path, page] of Object.entries(documents)) {
   await mkdir(`dist${path}`, { recursive: true });
   const runtimeHtml = runtimeDocuments.get(path);
-  await writeFile(`dist${path}index.html`, runtimeHtml ? runtimeHtml.replace('<body>',`<body data-bank-surface="${page.runtime}">`).replace('</head>',`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>',()=>`${bundle}</body>`) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`);
+  await writeFile(`dist${path}index.html`, runtimeHtml ? earlyPublicRuntimeDocument(runtimeHtml).replace('<body>',`<body data-bank-surface="${page.runtime}">`).replace('</head>',`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>',()=>`${bundle}</body>`) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`);
 }
 const urls = [...metadataPages.filter(page=>!page.noindex).map(page=>page.path),...assetPaths];
 if(urls.length>50000)throw Error('SITEMAP_PARTITION_REQUIRED');

@@ -1,3 +1,4 @@
+import {afterPublicNavigationReady} from '../core/public-document-entry';
 import type {PublicMarketItem} from './public-market';
 import {publicAssetEmbed,publicAssetMediaMetadata} from './public-asset-embed.js';
 const held=new Map<string,PublicMarketItem>();
@@ -7,7 +8,7 @@ export function assetPageId(path:string):string|null{
  try{const id=decodeURIComponent(match[1]);return id.length>0&&id.length<=256&&!/[\x00-\x1f\x7f]/.test(id)?id:null;}catch{return null;}
 }
 /** Public display only. Retaining a selected row opens no reader or account. */
-export function retainPublicAsset(item:PublicMarketItem){held.delete(item.id);held.set(item.id,item);if(held.size>48)held.delete(held.keys().next().value!);if(typeof dispatchEvent==='function')dispatchEvent(new CustomEvent('bankeiz:asset-metadata',{detail:{id:item.id,title:item.title,description:item.summary,media:publicAssetMediaMetadata(publicAssetEmbed(item)),oembed:'https://bankeiz.com/oembed?url='+encodeURIComponent('https://bankeiz.com'+assetPagePath(item.id))}}));}
+export function retainPublicAsset(item:PublicMarketItem){held.delete(item.id);held.set(item.id,item);if(held.size>48)held.delete(held.keys().next().value!);if(typeof dispatchEvent==='function')afterPublicNavigationReady(()=>{if(held.get(item.id)===item)dispatchEvent(new CustomEvent('bankeiz:asset-metadata',{detail:{id:item.id,title:item.title,description:(item.summary||'Inspect this asset, its media, ownership, valuation and original evidence.').replace(/[\x00-\x1f\x7f]/g,' ').slice(0,300),media:publicAssetMediaMetadata(publicAssetEmbed(item)),oembed:'https://bankeiz.com/oembed?url='+encodeURIComponent('https://bankeiz.com'+assetPagePath(item.id))}}));});}
 export function retainedPublicAsset(id:string){return held.get(id)??null;}
 /** Retain an already-carried portrait across a lighter quote projection, only
  * for the same artifact and owner presentation. An explicit clear still wins. */

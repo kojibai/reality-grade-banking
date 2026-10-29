@@ -1,3 +1,4 @@
+import {startPublicDocumentRuntime} from '../core/public-document-entry';
 import { StrictMode,useEffect,useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { PublicLedgerApp } from './PublicLedgerApp';
@@ -12,4 +13,4 @@ function PublicLedgerRoot(){
  const showingReceipt=location.pathname==='/receipt/'&&receipt===location.href;
  return <><div hidden={showingReceipt} inert={showingReceipt}><PublicLedgerApp active={active&&!showingReceipt}/></div>{active&&showingReceipt&&receipt&&document.body.dataset.bankSurface!=='receipt'&&<ReceiptView key={receipt} onBack={()=>history.back()}/>}</>;
 }
-createRoot(publicRuntimeRoot('ledger'),{identifierPrefix:'public-ledger-'}).render(<StrictMode><PublicLedgerRoot/></StrictMode>);
+startPublicDocumentRuntime('ledger',()=>createRoot(publicRuntimeRoot('ledger'),{identifierPrefix:'public-ledger-'}).render(<StrictMode><PublicLedgerRoot/></StrictMode>));

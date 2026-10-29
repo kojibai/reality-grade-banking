@@ -1,3 +1,4 @@
+import {afterPublicNavigationReady} from '../core/public-document-entry';
 export interface PublicAssetTradeIntent {certificateToken?:string;certificateAction?:'manage';itemId: string; side: 'buy' | 'sell'; title: string; initialBudget?: string; resumeSessionId?: string; resumeTradeReview?: boolean;}
 export interface PublicAssetTradeRequest extends PublicAssetTradeIntent {id: number; pathname: string; slot: HTMLElement | null; connected: boolean;}
 let current: PublicAssetTradeRequest | null = null, sequence = 0;
@@ -25,7 +26,9 @@ export function connectPublicAssetTrade(id: number): void {
 export function requestPublicAssetBankRuntime(): Promise<void> {
   return new Promise((resolve, reject) => {
     const detail = {handled: false, resolve, reject};
-    dispatchEvent(new CustomEvent('bankeiz:request-bank-runtime', {detail}));
-    if (!detail.handled) reject(new Error('Your account could not open here. Please try again.'));
+    afterPublicNavigationReady(()=>{
+      dispatchEvent(new CustomEvent('bankeiz:request-bank-runtime', {detail}));
+      if (!detail.handled) reject(new Error('Your account could not open here. Please try again.'));
+    });
   });
 }
