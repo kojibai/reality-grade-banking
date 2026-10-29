@@ -72,7 +72,15 @@ const confirmedProfilePbi=new Map<string,string>();
 export const knownProfilePbiAuthorship=(uid:string)=>confirmedProfilePbi.get(uid)??null;
 const listeners=new Set<()=>void>();
 export const subscribePublicProfiles=(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};};
-export function retainPublicProfile(input:PublicProfile){const previous=held.get(input.username),receipt=confirmedProfilePbi.get(input.userId)??(previous?.userId===input.userId?previous.pbiReceiptHash:null),profile=mergeAdmittedProfileAssets(receipt?{...input,authorshipVerified:true,pbiReceiptHash:input.pbiReceiptHash??receipt}:input);for(const [name,previous]of held)if(name!==profile.username&&previous.userId===profile.userId)forgetPublicProfile(name);held.delete(profile.username);held.set(profile.username,profile);observed.set(profile.username,Date.now());retainRecipientPortrait(profile.username,profile.avatarUrl);if(held.size>24)forgetPublicProfile(held.keys().next().value!);if(typeof dispatchEvent==='function')dispatchEvent(new CustomEvent('bankeiz:profile-metadata',{detail:{username:profile.username,title:profile.displayName,description:profile.bio,image:profile.bannerUrl??profile.avatarUrl}}));for(const listener of listeners)listener();return profile;}
+/** The initial head already carries this profile. Its router is installed
+ * after the trailing document; deliver that same metadata when its listener
+ * exists, and never replay a source that has since been replaced or removed. */
+function publishProfileMetadata(profile:PublicProfile){
+ if(typeof dispatchEvent!=='function')return;
+ const publish=()=>{if(held.get(profile.username)===profile)dispatchEvent(new CustomEvent('bankeiz:profile-metadata',{detail:{username:profile.username,title:profile.displayName,description:profile.bio,image:profile.bannerUrl??profile.avatarUrl}}));};
+ if(typeof document!=='undefined'&&(document.readyState==='loading'||document.readyState==='interactive'&&!!document.getElementById('receiz-navigation')?.textContent))document.addEventListener('DOMContentLoaded',publish,{once:true});else publish();
+}
+export function retainPublicProfile(input:PublicProfile){const previous=held.get(input.username),receipt=confirmedProfilePbi.get(input.userId)??(previous?.userId===input.userId?previous.pbiReceiptHash:null),profile=mergeAdmittedProfileAssets(receipt?{...input,authorshipVerified:true,pbiReceiptHash:input.pbiReceiptHash??receipt}:input);for(const [name,previous]of held)if(name!==profile.username&&previous.userId===profile.userId)forgetPublicProfile(name);held.delete(profile.username);held.set(profile.username,profile);observed.set(profile.username,Date.now());retainRecipientPortrait(profile.username,profile.avatarUrl);if(held.size>24)forgetPublicProfile(held.keys().next().value!);publishProfileMetadata(profile);for(const listener of listeners)listener();return profile;}
 /** Append the confirmed canonical PBI enrollment to held public presentation.
  * No original, membership, pricing or private profile data is replaced. */
 export function retainProfilePbiAuthorship(accountUid:string,receiptHash:string){

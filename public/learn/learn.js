@@ -120,10 +120,11 @@
   const publicPath = path => Boolean(pageAt(path));
   // An offline deep link can be served by the retained Learn document. Its
   // canonical identifies the markup actually present, not the requested URL.
-  const initialCanonical=document.querySelector('link[rel="canonical"]')?.href;
-  let renderedPublicPath = publicRoot ? pathname(new URL(initialCanonical||location.href).pathname) : null;
+  // The current document already owns its visible runtime; initialization is
+  // not a navigation and must preserve its head, focus and scroll.
   const runtimeRoots = new Map([...document.querySelectorAll('[data-public-runtime]')].map(root => [root.dataset.publicRuntime, root]));
   const loaded = new Set(runtimeRoots.keys());
+  let renderedPublicPath = pathname(new URL(document.querySelector('link[rel="canonical"]')?.href||location.href).pathname);
   const hide = root => { if (root) { root.hidden = true; root.setAttribute('inert', ''); } };
   const show = root => { root.hidden = false; root.removeAttribute('inert'); };
   const loadRuntime = (page, root) => {
@@ -305,7 +306,7 @@
   // under its retained URL before switching, so Forward also restores it.
   window.addEventListener('popstate', () => {rememberPosition(displayedUrl,currentScroll());void render(true);});
   window.addEventListener('bankeiz:receipt', () => {if (pages['/receipt/'] && pathname(location.pathname) === '/receipt/') void render();});
-  if (publicPath(location.pathname)) { styles(false); if (!publicRoot || renderedPublicPath!==pathname(location.pathname)) void render(); }
+  if (publicPath(location.pathname)) { styles(false); if (renderedPublicPath!==pathname(location.pathname)) void render(); }
   // Pointer/keyboard intent fetches code bytes only; no account module or
   // hidden workspace executes before navigation selects that destination.
   const preload = event => {

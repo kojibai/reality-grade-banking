@@ -98,3 +98,12 @@ it('prepares the real renderer alongside the single source read without delaying
  expect(new TextDecoder().decode((await reader.read()).value)).toContain('Complete public profile');expect(render).toHaveBeenCalledOnce();
  expect((await reader.read()).done).toBe(true);
 });
+it('starts the same profile module asynchronously while preserving its complete carried source and navigation',()=>{
+ const profile=parsePublicProfile(profileFixture(),'alexmorgan'),page=html.replace('</head>','<script type="module" crossorigin src="/assets/explore-test.js"></script></head>');
+ const result=profilePreviewHtml(page,'alexmorgan',profile,undefined,'<article>Same public profile</article>');
+ expect(result).toContain('<script type="module" async crossorigin src="/assets/explore-test.js"></script>');
+ expect(result.indexOf('public-profile-seed')).toBeLessThan(result.indexOf('receiz-navigation'));
+ const payload=/<script id="public-profile-seed" type="application\/json">([\s\S]*?)<\/script>/.exec(result)![1];
+ expect(JSON.parse(payload)).toEqual(profile);expect(result).toContain('<article>Same public profile</article>');
+ expect(result).toContain('<script id="receiz-navigation" type="application/json">{}</script>');
+});
