@@ -1,5 +1,5 @@
 import {Sheet} from '../components/Sheet';
-import {BookingOpening} from '../features/booking/BookingLayout';
+import {BookingOpening} from '../features/booking/BookingOpening';
 import type {BookingAvailability} from '../receiz/organizer-types';
 import {createPublicBooking} from '../receiz/public-booking';
 import {createPublicBookingRequest} from '../receiz/public-booking-request';
