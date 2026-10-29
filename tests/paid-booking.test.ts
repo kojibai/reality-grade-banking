@@ -89,3 +89,21 @@ it.each(['confirmed-paid','cancelled-unpaid'] as const)('ordinary checkout archi
 it('a booking adapter hides an ordinary funded checkout and cannot resume, cancel or replace it',async()=>{
  const f=hostedFixture(0,2500),checkout=f.newController();await checkout.prepare({recipient:'merchant',amountUsdCents:'2500',method:'card'});const original=checkout.snapshot().approval!;await checkout.approve(original.digest);const pending=structuredClone(checkout.snapshot()),request=vi.fn();const paid=createPaidBooking({accountUid:checkoutSender,username:'another',checkout,request,assertCurrent:f.deps.assertCurrent});const snap=paid.snapshot();expect(snap).toMatchObject({preparation:null,booking:null,error:'CHECKOUT_PAYMENT_PENDING',checkout:{approval:null,walletOutcome:null,receipt:null,notes:[]}});expect(paid.snapshot()).toBe(snap);await paid.check();await paid.cancelUnpaid();await expect(paid.approve(original.digest)).rejects.toThrow('BOOKING_REVIEW_REQUIRED');await expect(paid.prepare(input)).rejects.toThrow('CHECKOUT_PAYMENT_PENDING');expect(checkout.snapshot().approval).toEqual(original);expect(checkout.snapshot().walletOutcome).toEqual(pending.walletOutcome);expect(checkout.snapshot().bookingPreparation).toBeUndefined();expect(request).not.toHaveBeenCalled();expect(f.begin).toHaveBeenCalledOnce();expect(f.transfer).not.toHaveBeenCalled();expect(paid.snapshot().checkout.walletOutcome).toBeNull();
 });
+
+it.each([false,true])('repairs a preparing reservation on explicit Check after reopen (lost response: %s) with the retained operation and no automatic approval',async lostResponse=>{
+ const x=await fixture(),one=x.newController(),base=x.request.getMockImplementation()!;let registrationAvailable=false,prepares=0;
+ x.request.mockImplementation(async(path,init)=>{
+  const body=init?.body?JSON.parse(String(init.body)):null;const response=await base(path,init);
+  if(body?.action!=='prepare')return response;
+  prepares++;x.native.phase=registrationAvailable?'ready':'preparing';
+  if(lostResponse&&prepares===1)throw Error('lost reservation response');
+  return Response.json({ok:true,booking:x.native});
+ });
+ if(lostResponse)await expect(one.paid.prepare(input)).rejects.toThrow('lost reservation response');else await one.paid.prepare(input);
+ const retained=structuredClone(x.f.state!.current.bookingPreparation!),terms=structuredClone(x.native.terms);expect(one.checkout.snapshot().approval).toBeNull();expect(retained.review?.phase??null).toBe(lostResponse?null:'preparing');one.paid.dispose();one.checkout.dispose();
+ const two=x.newController();await two.paid.ready;expect(prepares).toBe(1);await two.paid.check();expect(prepares).toBe(2);expect(two.paid.snapshot().booking?.phase).toBe('preparing');expect(two.checkout.snapshot().approval).toBeNull();expect(two.checkout.snapshot().approvalHistory).toEqual([]);expect(x.f.begin).not.toHaveBeenCalled();expect(x.f.transfer).not.toHaveBeenCalled();
+ if(lostResponse){expect(x.requests[1].body).toBeNull();expect(x.requests[1].path).toContain('operationId='+retained.operationId);}
+ registrationAvailable=true;await two.paid.check();expect(prepares).toBe(3);expect(two.paid.snapshot().booking?.terms).toEqual(terms);expect(two.paid.snapshot().booking?.phase).toBe('ready');expect(two.checkout.snapshot().approval?.clientNonce).toBe(retained.operationId);expect(two.checkout.snapshot().approvalHistory).toEqual([]);
+ for(const request of x.requests.filter(row=>row.body?.action==='prepare')){expect(request.body).toEqual({action:'prepare',operationId:retained.operationId,input:retained.input});expect(request.path).toContain('slotMinutes=30');}
+ await two.paid.check();expect(prepares).toBe(3);expect(x.f.begin).not.toHaveBeenCalled();expect(x.debits).toBe(0);await two.paid.approve(two.checkout.snapshot().approval!.digest);x.f.creditCard();await two.paid.check();expect(x.debits).toBe(1);expect(two.paid.snapshot().booking?.phase).toBe('confirmed-paid');expect(two.paid.snapshot().booking?.terms.reservationId).toBe(terms.reservationId);expect(two.checkout.snapshot().receipt?.clientNonce).toBe(retained.operationId);
+});

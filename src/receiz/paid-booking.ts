@@ -67,8 +67,16 @@ export function createPaidBooking({accountUid,username,options=new URLSearchPara
  }
  async function check(){
   const held=preparation();if(!held)return;
-  const native=await read(held.review?'reconcile':'status',held);assert();
-  if(!native)return;await accept(native);if(native.phase==='cancelled-unpaid'||native.phase==='preparing')return;
+  const action=held.review?.phase==='preparing'?'prepare':held.review?'reconcile':'status';
+  let native=await read(action,held);assert();
+  if(!native)return;await accept(native);
+  // Source may have accepted the reservation before its payment gate could
+  // register. Explicit Check repairs that gate with the retained request;
+  // status reads remain read-only and never manufacture a new operation.
+  if(native.phase==='preparing'&&action!=='prepare'){
+   native=await read('prepare',preparation()!);assert();if(!native)return;await accept(native);
+  }
+  if(native.phase==='cancelled-unpaid'||native.phase==='preparing')return;
   const current=checkout.snapshot();if(!current.approvalHistory.length)return;
   await checkout.check(held.operationId);assert();
   if(checkout.snapshot().phase==='paid'&&!['confirmed-paid','cancelled-paid'].includes(native.phase)){const final=await read('reconcile',preparation()!);if(final)await accept(final);}
