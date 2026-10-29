@@ -56,3 +56,27 @@ it('recovers a surviving unsubmitted conversation by default after another threa
  const f=await fixture(),a=`api:${accountUid}`,b=`api:${accountUid}:20000000-0000-4000-8000-000000000001`,first={...await question(),threadKey:a,moneyPaused:'credits'as const},second={...await question(),threadKey:b,requestId:'generation-0004'};
  await f.api.checkpoint(first);await f.api.checkpoint(second);await f.api.checkpoint(null,b);const reopened=await fixture(f.saved());expect(await reopened.api.recoverQuestion()).toEqual(first);expect(await reopened.api.retainedThreads?.()).toMatchObject([{threadKey:a,title:first.message}]);
 });
+
+it('retains the owner chat Calendar, workspace and Receiz tool flags exactly across recovery',async()=>{
+ const f=await fixture(),q={...await question(),organizerTools:true,worldTools:true,receizTools:true};
+ await f.api.checkpoint(q);expect(await f.api.recoverQuestion()).toEqual(q);
+ const off={...q,organizerTools:false,worldTools:false,receizTools:false};
+ await f.api.checkpoint(off);expect(await f.api.recoverQuestion()).toEqual(off);
+});
+it.each(['organizerTools','worldTools','receizTools'])('rejects invalid %s opt-ins without replacing the held conversation',async key=>{
+ const f=await fixture(),q=await question();await f.api.checkpoint(q);
+ for(const value of ['true',1,{},null])await expect(f.api.checkpoint({...q,[key]:value})).rejects.toThrow('MONEY_CONVERSATION_INVALID');
+ expect(await f.api.recoverQuestion()).toEqual(q);expect(f.store.write).toHaveBeenCalledOnce();
+});
+it('recovers the same multi-tool owner request and never executes an accepted money tool twice',async()=>{
+ const {runMoneyConversation}=await import('../src/receiz/money-conversation');
+ const f=await fixture(),q={message:'What do you know about my money?',requestId:humanRequestId,quoteExpiresAt:new Date().toISOString(),moneyTools:true,organizerTools:true,worldTools:true,receizTools:true};
+ const action={tool:'money_list_commitments' as const,args:{direction:'payable' as const}},execute=vi.fn(async(turn:{requestId:string})=>({id:turn.requestId,tool:action.tool,status:'accepted' as const,summary:'Tracked commitments',data:{count:0}}));
+ let round=0;const ask=vi.fn(async(input:MoneyQuestion)=>{if(++round===2)throw Error('transport interrupted');return{requestId:input.requestId,message:'Your records are here.',authority:'generated-interpretation' as const,source:'upstream' as const,memoryScope:'relationship',memory:[],sourceReferences:[],sharedContext:[],actionHandoffs:[],moneyActions:round===1?[action]:[]};});
+ const onCheckpoint=(next:MoneyQuestion)=>f.api.checkpoint(next);
+ await expect(runMoneyConversation({accountUid,question:q,ask,execute,onCheckpoint})).rejects.toThrow('transport interrupted');
+ const held=await f.api.recoverQuestion();expect(held).toMatchObject({organizerTools:true,worldTools:true,receizTools:true,moneyTask:{step:1}});
+ const result=await runMoneyConversation({accountUid,question:held!,ask,execute,onCheckpoint});
+ expect(result.reply.message).toBe('Your records are here.');expect(execute).toHaveBeenCalledOnce();
+ expect(ask.mock.calls[2][0].requestId).toBe(held!.requestId);expect(ask.mock.calls[2][0].moneyContext?.results).toContain('Tracked commitments');
+});

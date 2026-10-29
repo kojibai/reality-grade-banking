@@ -24,9 +24,9 @@ function receipt(value:unknown):asserts value is MoneyReceipt{
 /** Retained choreography is not human approval, settlement evidence or an outbox.
  * Complete receipts and their exact action fingerprints survive without truncation. */
 export async function readMoneyQuestion(raw:unknown,accountUid:string):Promise<MoneyQuestion>{
- exact(raw,['message','requestId','quoteExpiresAt','threadKey','context','moneyContext','moneyTools','businessSetup','moneyTask','moneyPaused']);
+ exact(raw,['message','requestId','quoteExpiresAt','threadKey','context','moneyContext','moneyTools','businessSetup','organizerTools','worldTools','receizTools','moneyTask','moneyPaused']);
  const value={...raw};for(const key of Object.keys(value))if(value[key]===undefined)delete value[key];
- if(!text(value.message,1200)||!text(value.requestId,160)||value.requestId.trim().length<8||typeof value.quoteExpiresAt!=='string'||!Number.isFinite(Date.parse(value.quoteExpiresAt))||value.moneyTools!==true||value.businessSetup!==undefined&&typeof value.businessSetup!=='boolean'||value.threadKey!==undefined&&!isOwnerTwinThreadKey(value.threadKey,accountUid)||value.moneyPaused!==undefined&&value.moneyPaused!=='credits')invalid();
+ if(!text(value.message,1200)||!text(value.requestId,160)||value.requestId.trim().length<8||typeof value.quoteExpiresAt!=='string'||!Number.isFinite(Date.parse(value.quoteExpiresAt))||value.moneyTools!==true||['businessSetup','organizerTools','worldTools','receizTools'].some(key=>value[key]!==undefined&&typeof value[key]!=='boolean')||value.threadKey!==undefined&&!isOwnerTwinThreadKey(value.threadKey,accountUid)||value.moneyPaused!==undefined&&value.moneyPaused!=='credits')invalid();
  json(value);
  let heldReceipts:MoneyReceipt[]=[];
  if(value.moneyTask!==undefined){

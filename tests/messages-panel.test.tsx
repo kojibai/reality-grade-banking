@@ -562,3 +562,22 @@ it('opens the actual appointment message from an invite, joins its existing conv
 });
 it('offers an explicit invitation retry after one failed open without recreating identity or starting a call',async()=>{const f=fixture(),meeting={eventId:threadId,key:'abcdefghijklmnop'},messageId='55555555-5555-4555-8555-555555555555',invited={...page,messages:[{...message,id:messageId}],hasMore:false,nextCursor:null};f.api.knownMessages=()=>invited;f.api.messages.mockResolvedValue(invited);let attempts=0;f.api.callTransport.heldFetch.mockImplementation(async(_path,init)=>{if(init?.method==='POST'){if(++attempts===1)throw Error('temporary_network_failure');return Response.json({ok:true,viewerId:uid,conversationId:threadId,messageId});}return Response.json({ok:true,calls:[],activeCall:null});});try{await f.render(true,f.identity,undefined,undefined,undefined,undefined,undefined,meeting);await vi.waitFor(()=>expect(f.host.textContent).toContain('Retry invitation'));expect(attempts).toBe(1);await f.click('Retry invitation');await vi.waitFor(()=>expect(f.host.querySelector('[data-chat-message="'+messageId+'"]')).not.toBeNull());expect(attempts).toBe(2);}finally{f.unmount();}});
 it('does not replay an abandoned email invitation after the user chooses Messages and reopens the panel',async()=>{const f=fixture(),meeting={eventId:threadId,key:'abcdefghijklmnop'},pending=deferred<Response>();let starts=0;f.api.callTransport.heldFetch.mockImplementation(async(_path,init)=>init?.method==='POST'?(starts++,pending.promise):Response.json({ok:true,calls:[],activeCall:null}));try{await f.render(true,f.identity,undefined,undefined,undefined,undefined,undefined,meeting);expect(starts).toBe(1);await f.click('Messages');await f.render(false,f.identity,undefined,undefined,undefined,undefined,undefined,meeting);await f.render(true,f.identity,undefined,undefined,undefined,undefined,undefined,meeting);expect(starts).toBe(1);}finally{pending.resolve(Response.json({ok:false}));f.unmount();}});
+
+it('sends and continues the full owner Twin through the real retained-money validator',async()=>{
+ const {createMoneyConversationRetention}=await import('../src/receiz/money-conversation-retention');
+ const f=fixture();let saved:unknown=null;
+ const retention=createMoneyConversationRetention({accountUid:uid,identityDigest:'a'.repeat(64),assertOpen(){},store:{read:async()=>structuredClone(saved),write:async next=>{saved=structuredClone(next);}},lock:async work=>work()});
+ const execute=vi.fn(),tools={...retention,execute,synchronize:async()=>{},clearReviewDisplay(){},markReviewDisplayed(){},downloadSource:async()=>new File(['source'],'source.json')};
+ const identity={...f.identity,organizer:vi.fn(),twinWorkspace:vi.fn(),receizTools:vi.fn(),moneyTools:async()=>tools} as unknown as OpenIdentity;
+ try{
+  await f.render(true,identity);await f.input('Ask your agent…','What’s some things you know about me?');await f.submit();
+  await vi.waitFor(()=>expect(f.host.textContent).toContain('A generated answer'));
+  expect(f.api.twin.ask).toHaveBeenCalledOnce();expect(f.api.twin.ask.mock.calls[0][0]).toMatchObject({organizerTools:true,worldTools:true,receizTools:true,moneyTools:true});
+  expect(f.host.textContent).not.toContain('Awaiting confirmation');expect(f.host.textContent).not.toContain('MONEY_CONVERSATION_INVALID');
+  expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your agent…"]')?.disabled).toBe(false);
+  await f.input('Ask your agent…','And what did we discuss?');await f.submit();
+  await vi.waitFor(()=>expect(f.api.twin.ask).toHaveBeenCalledTimes(2));
+  await vi.waitFor(async()=>expect(await retention.recoverQuestion()).toBeNull());
+  expect(execute).not.toHaveBeenCalled();expect(identity.organizer).not.toHaveBeenCalled();
+ }finally{f.unmount();}
+});

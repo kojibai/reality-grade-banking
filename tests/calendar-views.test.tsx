@@ -68,10 +68,11 @@ it('turns weeks on the day strip and days on Agenda while ignoring vertical scro
  await swipe('.organizer-week-strip',80);expect(host.querySelector('.organizer-date-heading')?.textContent).toContain('Monday, October 26');
 });
 
-it('keeps one complete week of event controls, ordered latest first within each day and opening the held event',async()=>{
+it('keeps one complete week of event controls, ordered newest day and time first and opening the held event',async()=>{
  const onOpen=vi.fn(),host=await render('week',events,onOpen),days=[...host.querySelectorAll('.organizer-week-day')];
  expect(days).toHaveLength(7);
- const monday=days[0],buttons=[...monday.querySelectorAll<HTMLButtonElement>('button')];
+ expect(days.map(day=>day.querySelector('time')?.getAttribute('datetime'))).toEqual(['2026-11-01','2026-10-31','2026-10-30','2026-10-29','2026-10-28','2026-10-27','2026-10-26']);
+ const monday=days[6],buttons=[...monday.querySelectorAll<HTMLButtonElement>('button')];
  expect(buttons.map(button=>button.querySelector('strong')?.textContent)).toEqual(['Monday afternoon','Monday morning','Sunday into Monday']);
  expect(monday.querySelector('time')?.getAttribute('datetime')).toBe('2026-10-26');
  expect(days[1].textContent).toContain('No appointments');
