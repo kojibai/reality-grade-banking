@@ -19,6 +19,9 @@ it('teaches seal-based accrual and each Original’s own signature as access to 
  expect(explanation.textContent).not.toMatch(/500|150,000|40%|250,000|shared baseline|funding requirement|become qualified/i);
  expect(page.querySelector('[data-originals-calculator]')).toBeNull();
  expect(page.querySelector('[data-originals-example]')).not.toBeNull();
+ const story=page.querySelector('#why-an-original-has-value')!;expect(story.textContent).toContain('Your first book.');expect(story.textContent).toContain('The Original still verifies.');expect(story.textContent).not.toMatch(/later copy|14,000,000|50,000,000|pulse/i);
+ expect(page.querySelectorAll('#originals-deeper a')).toHaveLength(6);expect(page.querySelector('#originals-deeper a[href="/docs/ownership/"]')).not.toBeNull();
+
  expect(page.querySelector('[data-example-verify]')?.textContent).toContain('Verify');
  expect(page.querySelector('[data-example-tamper]')?.textContent).toContain('Change one character');
  expect(page.querySelector('a[href="/learn/how-value-works/#verify-your-proof"]')).not.toBeNull();

@@ -28,7 +28,7 @@ it('keeps source identity and SVG definitions separate and names the illustrativ
  for(let i=0;i<8;i++)expect(model.causalFrame(i)).toMatchObject({basis:'fixed-illustrative-phi',sourceIdentity:'illustrative-original-a'});
  const {momentsContent}=await import(/* @vite-ignore */ pagePath);const doc=new DOMParser().parseFromString(momentsContent(),'text/html'),root=doc.querySelector('[data-moments-causal]')!;
  const ids=[...root.querySelectorAll('[id]')].map(n=>n.id);expect(new Set(ids).size).toBe(ids.length);
- for(const label of ['100 Φ','not a grant','same Original'])expect(root.textContent).toContain(label);
+ for(const label of ['100 Φ','not a grant','Duplicate claim rejected'])expect(root.textContent).toContain(label);
  expect(root.querySelectorAll('[data-causal-step]')).toHaveLength(8);
 });
 it('runs only the visible causal story and stops on background, reduced motion and page removal',async()=>{
