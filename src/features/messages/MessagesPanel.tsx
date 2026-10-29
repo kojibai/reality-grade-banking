@@ -359,10 +359,13 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,heldLe
   const applyBusinessActions=async(reply:NativeTwinReply,question:NativeTwinAsk)=>{
     const origin=twinThreadRef.current;businessThreadOwners.current.set(reply.requestId,origin);
     if(!identity.businessSetup||!reply.businessActions?.length)return;
-    const readyReceipts=prepareBusinessReceiptCode();void readyReceipts.catch(()=>{});
+    // Presentation code never gates native execution. Publish held receipts as
+    // they arrive, then repaint once if their renderer finishes after them.
+    const receiptCodePending=!BusinessReceipts;
+    void prepareBusinessReceiptCode().then(()=>{if(receiptCodePending&&alive.current&&providerOwner.current===identity)setBusinessReceipts(rows=>Object.keys(rows).length?{...rows}:rows);},()=>{if(live())setNotice('The result display could not be opened.');});
     if(api&&reply.businessActions.every(action=>/^business_(?:find_contacts|save_contact|read_calendar|create_appointment|update_appointment|cancel_appointment|booking_link|read_availability|update_availability|receiz_call)$/.test(action.tool))){
       const root=question.requestId;businessThreadOwners.current.set(root,origin);setBusinessWorking(businessActivityLabel(reply.businessActions[0].tool));
-      try{const [{createOwnerToolConversation},setup]=await Promise.all([import('../../receiz/owner-tool-conversation'),identity.businessSetup(),readyReceipts]);if(!live())return;
+      try{const [{createOwnerToolConversation},setup]=await Promise.all([import('../../receiz/owner-tool-conversation'),identity.businessSetup()]);if(!live())return;
        const task=createOwnerToolConversation({accountUid:api.accountUid,question,assertOpen:()=>{if(!live())throw Error('OWNER_TOOL_CONVERSATION_CLOSED');},
         ask:next=>{setBusinessWorking('Putting your records together…');return api.twin.ask(next);},execute:async(id,actions)=>{setBusinessWorking(businessActivityLabel(actions[0].tool));return setup.execute(id,actions);},
         onReceipts:receipts=>publishBusinessThreadReceipts(origin,root,receipts),onReply:next=>{if(!live())return;if(origin===twinThreadRef.current)setExchanges(rows=>rows.map(row=>row.id===root?{...row,reply:next}:row));else{const held=heldTwinThreads.current.get(origin);if(held)heldTwinThreads.current.set(origin,{...held,exchanges:held.exchanges.map(row=>row.id===root?{...row,reply:next}:row)});}}});
@@ -370,7 +373,7 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,heldLe
       }catch(cause){if(live()&&exhaustedCredits(cause))setCreditsNeededFor(identity);if(live())setNotice(exhaustedCredits(cause)?'Add credits to continue. Your completed work is still here.':'Organizer result needs checking. '+errorText(cause));}finally{if(alive.current)setBusinessWorking('');}return;
     }
     setBusinessWorking(businessActivityLabel(reply.businessActions[0].tool));
-    try{const setup=await identity.businessSetup();if(!live())return;const [receipts]=await Promise.all([setup.execute(reply.requestId,reply.businessActions,{onProgress:tool=>{if(live()&&origin===twinThreadRef.current)setBusinessWorking(businessActivityLabel(tool));}}),readyReceipts]);if(!live())return;publishBusinessThreadReceipts(origin,reply.requestId,receipts);}
+    try{const setup=await identity.businessSetup();if(!live())return;const receipts=await setup.execute(reply.requestId,reply.businessActions,{onProgress:tool=>{if(live()&&origin===twinThreadRef.current)setBusinessWorking(businessActivityLabel(tool));}});if(!live())return;publishBusinessThreadReceipts(origin,reply.requestId,receipts);}
     catch(cause){if(live())setNotice('Setup result needs checking. '+errorText(cause));}
     finally{if(alive.current)setBusinessWorking('');}
   };
