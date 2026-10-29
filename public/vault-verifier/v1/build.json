@@ -836,7 +836,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "e072bf7611b8720783af2f15dbedea72cb6accdeb18dfdfd8a947c2fbf01b0dd"
+      "sha256": "d668f202ffdbeff6b41b48d95775724033551e82a3e9697074e286ea29dbd639"
     },
     {
       "path": "public/native/offline-notes.v129.manifest.json",
@@ -940,7 +940,7 @@
     },
     {
       "path": "src/receiz/organizer-paths.ts",
-      "sha256": "c011d3b928bca8ba724a13fc2f625e9010b7068fcc678dc439e82a172184603b"
+      "sha256": "5e4cb82c2d616275a70d1a4dec40635b4915c36c0c0cde98a19e3b3d01ba2c65"
     },
     {
       "path": "src/receiz/original-capacity.ts",
@@ -1033,20 +1033,20 @@
   ],
   "files": {
     "inspector.js": {
-      "sha256": "26037bc196b9ab366f3f58028bbda5e65bab77d497b93c3a3a61ccab1bbae4de",
-      "bytes": 7401708
+      "sha256": "105d8c030def9c8ffe0b2009b6e73fdd94bdd78afe666e38e3cf6fab65b4964e",
+      "bytes": 7401750
     },
     "inspector.js.map": {
-      "sha256": "6fa9587555d6cdf3d65ef71e8ce0c4ec339355de0b74982181d176d229a4f999",
-      "bytes": 19233842
+      "sha256": "8000fb95b3bce063bdef5cdf646b29a8595e30ca6951b428d691e1e356942054",
+      "bytes": 19234438
     },
     "verify.mjs": {
       "sha256": "651f040833c87512c9b336be97c80497747ec9eb503a30dd098bdcac6a48905f",
       "bytes": 854
     },
     "verify.html": {
-      "sha256": "a85214932ab055305af81f746647a4ee90f0abbd27e322ebd0c8bb442539fa2a",
-      "bytes": 7404916
+      "sha256": "c8bc68d20995118a010f31921af3cf0e317d9f3edf1cbaf85e5277945dbe1170",
+      "bytes": 7404958
     },
     "README.txt": {
       "sha256": "1a17e322029bd496e05b2e9d641c032e2a2daf3ef8fcd60eb977c6d09e7379b7",

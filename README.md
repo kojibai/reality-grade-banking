@@ -1,10 +1,10 @@
-# Reality-grade banking
+# Reality-Grade Banking
 
 **An open banking architecture for the proof-native economy.**
 
 [![Verify reference](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml)
 [![GPL-3.0-only](https://img.shields.io/badge/License-GPL--3.0--only-2349d8.svg)](LICENSE)
-[![Version 3.0.0](https://img.shields.io/badge/Release-3.0.0-2349d8.svg)](docs/releases/3.0.0.md)
+[![Version 4.0.0](https://img.shields.io/badge/Release-4.0.0-2349d8.svg)](docs/releases/4.0.0.md)
 [![Receiz v129](https://img.shields.io/badge/Receiz-129.0.0-2349d8.svg)](package.json)
 
 Reality-Grade Banking is an open banking architecture and receiving standard for money
@@ -82,8 +82,8 @@ on a screenshot or another application's interpretation.
   Take cash actions. Each public asset has its own shareable page. Assets also
   brings together existing Receiz share holdings, current value, cost basis,
   unrealized return and trade history through one account-bound read.
-- **Conversations and assistance.** Existing Receiz messages, groups and calls
-  stay connected to the same ID. Assistant access follows the account's actual
+- **Conversations and your agent.** Existing Receiz messages, groups and calls
+  stay connected to the same ID. Agent access follows the account's actual
   entitlement; consequential actions retain their own approval.
 - **An inspectable economy.** Public assets, valuation methods, the Ledger,
   original receipts and source-of-funds views make the supporting evidence
@@ -284,13 +284,16 @@ See the [origin contract](docs/bankeiz-origin-activation.md),
 
 ## Release evidence
 
-**[Version 3.0.0](docs/releases/3.0.0.md)** brings hosted checkout for links,
-website buttons and in-person QR together with the public conformance workspace,
-independent adapter tests and original evidence credentials. It includes the
-complete profile, composer, investment, payment, media and Ledger foundation.
-The [qualification record](docs/releases/3.0.0-qualification.md) identifies exact
-verification and publication steps. The release commit is prepared for operator
-push and the matching `v3.0.0` publication.
+**[Version 4.0.0](docs/releases/4.0.0.md) — Money that shows its work.**
+One connected account brings money, Originals, shares, a financial agent, contacts,
+Calendar, booking and full-screen meetings together. The practical guide and
+populated interactive walkthroughs show the controls, results and evidence.
+The [qualification record](docs/releases/4.0.0-qualification.md) identifies its
+exact source, checks, operating boundaries and publication.
+
+[Version 3.0.0](https://github.com/kojibai/reality-grade-banking/releases/tag/v3.0.0)
+was published October 22, 2026 from `dcfb7ed`. Its [full notes](docs/releases/3.0.0.md)
+and historical qualification remain available.
 
 The retained [v2.0.0 source tag](https://github.com/kojibai/reality-grade-banking/tree/v2.0.0)
 identifies `3368876`. Its [full notes](docs/releases/2.0.0.md) and historical

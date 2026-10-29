@@ -27,7 +27,7 @@ it('opens the existing Calendar beside Record and the full Contacts view inside 
  await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Your contacts')!.click());expect(host.textContent).toContain('Maya Chen');expect(f.ask).not.toHaveBeenCalled();expect(f.saveEvent).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());}
 });
-it('End ends a paid host call and keeps the record visible while the optional Twin recap runs in the background',async()=>{
- const f=fixture(true),end=vi.fn(async()=>{});Object.assign(f.room.controller,{end});const host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<MeetingRoom room={f.room as never} path="/meeting" onRejoin={()=>{}}/>));await act(async()=>[...host.querySelectorAll('button')].find(b=>b.querySelector('small')?.textContent==='End')!.click());expect(end).toHaveBeenCalledOnce();expect(f.ask).toHaveBeenCalledOnce();expect(host.querySelector('.meeting-overlay')?.getAttribute('aria-label')).toBe('Meeting record');expect(host.textContent).toContain('Your meeting.');}finally{act(()=>root.unmount());}
+it('End ends a paid host call and shows the final screen while the optional Twin recap runs in the background',async()=>{
+ const f=fixture(true),snapshot=f.room.controller.getSnapshot(),end=vi.fn(async()=>{Object.assign(snapshot,{joined:false,phase:'left',call:{...snapshot.call,status:'ended'}});});Object.assign(f.room.controller,{end});const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<MeetingRoom room={f.room as never} path="/meeting" onRejoin={()=>{}}/>));await act(async()=>[...host.querySelectorAll('button')].find(b=>b.querySelector('small')?.textContent==='End')!.click());expect(end).toHaveBeenCalledOnce();expect(f.ask).toHaveBeenCalledOnce();expect(host.querySelector('[aria-label="Meeting complete"]')).not.toBeNull();expect(host.querySelector('.meeting-stage')).toBeNull();expect(host.querySelector('[aria-label="Meeting controls"]')).toBeNull();}finally{act(()=>root.unmount());}
 });

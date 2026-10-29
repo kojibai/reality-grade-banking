@@ -1,0 +1,75 @@
+{
+  "native": "fd7cf17e5b20534c9004b21be3844312af79e63b",
+  "ready": true,
+  "cron": {
+    "verifiedAt": "2026-10-29T01:18:00Z",
+    "projectId": "prj_CaIzvnEahD7QipTX2lO64bY7q611",
+    "deploymentId": "dpl_BFLBp7rDwQTLMARmH75WbsT8rrHJ",
+    "sha": "fd7cf17e5b20534c9004b21be3844312af79e63b",
+    "environment": "production",
+    "schedule": "*/1 * * * *",
+    "enabled": true,
+    "path": "/api/calendar/bookings/reconcile",
+    "observedRequests": "2026-10-28 21:09:49 through 21:17:49 EDT, one per minute",
+    "requestId": "245tb-1793236609160-e7eb6bb98683",
+    "userAgent": "vercel-cron/1.0",
+    "status": 200,
+    "functionDurationMs": 306,
+    "responseDurationMs": 348,
+    "source": "Vercel Cron Jobs settings and Request Logs UI"
+  },
+  "migrations": [
+    {
+      "file": "20261028213923_calendar_paid_booking.sql",
+      "version": "20261029005346",
+      "sha256": "e480d89705b188340013b88294879d03a447ea557a9aad76cfda41ca3b155f17"
+    },
+    {
+      "file": "20261028235000_calendar_paid_booking_phases.sql",
+      "version": "20261029005356",
+      "sha256": "1faf0e410dd10add8f692f579775f9ea8b54e035b622a4ab1d7b8957387edf49"
+    },
+    {
+      "file": "20261029000214_calendar_paid_booking_activation.sql",
+      "version": "20261029012109",
+      "sha256": "b1e1b0ec3b8d4622abd3b5f9cbdca29df9f123e6253c2e654df59de6a914294f"
+    }
+  ],
+  "walletWriterMd5": "33b14267fc02a4886662ffe1c0f87439",
+  "advisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "count": 298
+    },
+    {
+      "name": "function_search_path_mutable",
+      "level": "WARN",
+      "count": 6
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "level": "WARN",
+      "count": 65
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "level": "WARN",
+      "count": 65
+    }
+  ],
+  "liveTestPayments": 0,
+  "liveTestBookings": 0,
+  "customerEmailsSent": 0,
+  "schema": "bankeiz.booking-rollout-evidence.v1",
+  "bankImplementation": "31146426c554be0b002b7283bfa4de10dcb78d96",
+  "checks": {
+    "nativeFocused": 182,
+    "frozenAccountEntry": 57,
+    "bankFocused": 101,
+    "controlledChromeCases": 39,
+    "nativeProductionBuild": "READY",
+    "nativeFullReleaseFreeze": "interrupted; not a pass"
+  },
+  "scope": "Booking readiness and scheduler verification. Controlled checks perform no real financial operation or customer email."
+}

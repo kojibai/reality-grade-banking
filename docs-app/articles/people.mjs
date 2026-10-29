@@ -723,7 +723,7 @@ export default [
     {
       "title": "Keep and inspect the meeting proof",
       "blocks": [
-        {"type": "paragraph", "text": "End or Leave closes the call immediately and automatically offers the private meeting-and-identity ZIP after preparing its actual record. A browser download request does not confirm that the operating system saved the file. Check your browser downloads and the ZIP you actually retained. The extracted playable files and identity travel beside the exact sealed proof; they do not replace or reseal it."},
+        {"type": "paragraph", "text": "End or Leave closes the live room and console immediately. A finished screen matches the entrance: New meeting, Save session and Save Identity Record. The two Save actions download separate exact proof files only when you choose them. Recording finalization, proof preparation and optional Twin work never hold the closeout screen open. A browser download request does not confirm that the operating system saved the file. Check the files your browser actually saved."},
         {
           "type": "steps",
           "items": [
@@ -741,7 +741,7 @@ export default [
             ],
             [
               "Continue as yourself",
-              "Save Identity Record remains available separately for the supported identity return path. Find the next step helps prepare a follow-up whose appointment/action has its own result."
+              "On the finished screen, Save session keeps the exact sealed meeting Original and Save Identity Record keeps your existing account record. Keep your private unlock phrase separately. New meeting opens the existing entrance; Find the next step prepares a follow-up whose appointment/action has its own result."
             ]
           ]
         }
@@ -752,7 +752,7 @@ export default [
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Use Rejoin meeting or Join with audio when returning to an active room. If an instant meeting could not be confirmed, Try again continues its saved request. A pending payment uses Check payment or the saved checkout, while Cancel payment follows that attempt’s actual state. Inspect the recorded conversation/account result before Send another. If export preparation fails, reopen Record → Download meeting & ID to retry the same retained proof without pressing End or Leave again. Reopening a historical ended room does not automatically export your identity; choose Download meeting & ID deliberately when you want that private file. A sealed meeting proof is retained evidence; it does not execute its recorded payment again or grant a reader host or spending authority."
+          "text": "Use Rejoin meeting or Join with audio when returning to an active room. If an instant meeting could not be confirmed, Try again continues its saved request. A pending payment uses Check payment or the saved checkout, while Cancel payment follows that attempt’s actual state. Inspect the recorded conversation/account result before Send another. If export preparation fails, choose Save session again on the finished screen to retry the same retained proof without another End or Leave. Record also retains the optional Download meeting & ID folder. Reopening a historical ended room exports nothing automatically; choose the session and Identity Record files deliberately. A sealed meeting proof is retained evidence; it does not execute its recorded payment again or grant a reader host or spending authority."
         },
         {
           "type": "links",

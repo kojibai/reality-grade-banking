@@ -4,6 +4,35 @@ Reality-Grade Banking repository releases include the Bankeiz reference
 application. Its product versions are independent of Receiz protocol/package versions.
 Full release records and qualification evidence live in [docs/releases](docs/releases/README.md).
 
+## 4.0.0 — Money that shows its work
+
+Version 4 connects everyday money, Originals, shares, the financial agent,
+contacts, Calendar, booking and full-screen meetings. Receiz SDK, MCP and AI Skills
+remain pinned together at 129.0.0.
+[Full release notes](docs/releases/4.0.0.md) ·
+[Qualification record](docs/releases/4.0.0-qualification.md).
+
+- Signed public Originals, canonical share capacity and capitalization, live asset
+  charts, owner-only certificate deposits and public share purchase links.
+- Streamed financial conversations, retained private threads, money questions,
+  Business setup and secure provider connections through the existing agent.
+- Calendar and contacts in Messages, meeting links in booking invitations and
+  optional priced appointments through the existing approved payment flow.
+- Business booking conversations with the real owner Twin, retained full-frame
+  Calendar and the owner's choice of Twin booking or Calendar only.
+- Full-screen meetings, chat, supported payments, optional Twin context, follow-up
+  scheduling and immediate End independent of downloads or optional Twin work.
+- An entrance-style meeting closeout with New meeting and separate explicit
+  session/Identity Record proof downloads; optional folder export remains available.
+- The practical guide, 45 sourced manual chapters, populated interactive tours,
+  distinct money workflows and an additional causal animation on /moments/.
+- Known investments paint immediately; genuine signed fresh genesis establishes
+  an empty portfolio without delaying account entry.
+
+The additional direct Shares/Originals sending picker remains v5 work. Existing
+supported transfers remain included. Qualification and operating scope remain
+identified by their actual source and evidence.
+
 ## 3.0.0 — prepared for publication
 
 Version 3 adds hosted payments and independent public conformance to the complete

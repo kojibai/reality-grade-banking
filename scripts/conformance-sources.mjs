@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 export const baselineRoot=new URL('../',import.meta.url);
 export const baselineHash=bytes=>createHash('sha256').update(bytes).digest('hex');
 export async function baselineInputs(){
- const directories=['src','server','api','institution','tests','native','scripts','public','branding','docs','conformance','verify','receipt','ledger','explore','pay','.github'];
+ const directories=['src','docs-app','server','api','institution','tests','native','scripts','public','branding','docs','conformance','verify','receipt','ledger','explore','pay','.github'];
  const paths=new Set(['package.json','package-lock.json','tsconfig.json','vite.config.ts','vercel.json','index.html','README.md','CONFORMANCE.md','CONTRIBUTING.md','LICENSE','NOTICE','LICENSING.md','LICENSE-PROPOSAL.md','SOURCE.md','THIRD_PARTY_NOTICES.md','TRADEMARKS.md','GOVERNANCE.md','SECURITY.md','CHANGELOG.md','.gitignore','.gitattributes']);
  // Tests also execute deterministic generated public verifier resources. Git
  // ignores those outputs, so inspect the actual shipped tree as well.
@@ -11,7 +11,7 @@ export async function baselineInputs(){
   if(entry.name==='.DS_Store')continue;
   if(entry.isSymbolicLink())throw Error(`BASELINE_REJECTS_SYMLINK:${path}${entry.name}`);
   const next=path+entry.name;
-  if(entry.isDirectory())await walk(next+'/');else if(entry.isFile())paths.add(next);
+  if(entry.isDirectory()){if(next==='docs-app/dist')continue;await walk(next+'/');}else if(entry.isFile())paths.add(next);
  }}
  for(const directory of directories)await walk(directory+'/');
  // These generated evidence outputs bind assessed inputs and cannot hash themselves.
