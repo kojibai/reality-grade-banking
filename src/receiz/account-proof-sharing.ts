@@ -20,7 +20,16 @@ export function createAccountProofSharing(input: { applicationId?: string; previ
   if (!isBankNativeApplicationId(applicationId)) throw Error('ACCOUNT_PROOF_APPLICATION_MISMATCH');
   const path = `/api/connect/account-proof/sharing?applicationId=${encodeURIComponent(applicationId)}`;
   const readStatus = async () => { input.assertOpen(); const result = parse(await input.request(path, 'GET')); input.assertOpen(); return result; };
-  const status = async () => { const current = await readStatus(); if (!input.previous) return current; const previous = await input.previous.status(); input.assertOpen(); return {...current, otherLiveUpdates: previous.liveUpdates || !!previous.otherLiveUpdates}; };
+  const status = async () => {
+    input.assertOpen();
+    const currentRead = readStatus(), prior = input.previous;
+    // The independent earlier registration cannot outrank a refused current
+    // registration. Observe its failure now, consume it in the original order.
+    const previousRead = prior ? (async () => { try { input.assertOpen(); return { value: await prior.status() }; } catch (error) { return { error }; } })() : null;
+    const current = await currentRead; if (!previousRead) return current;
+    const result = await previousRead; if ('error' in result) throw result.error;
+    input.assertOpen(); return {...current, otherLiveUpdates: result.value.liveUpdates || !!result.value.otherLiveUpdates};
+  };
   async function change(action: string, fields: Record<string, unknown>) {
     const prior = await readStatus(), sdk = await loadReceiz();
     const matches = (value: AccountProofSharingStatus) => action === 'disable-live-updates'
