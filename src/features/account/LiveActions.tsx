@@ -1,4 +1,5 @@
 import {BalanceDetails} from './BalanceDetails';
+import {currentAvailabilityDifference} from '../../receiz/wallet-availability';
 import {AccountProofPanel} from './AccountProofPanel';
 import {EarnFromOriginals} from '../qualification/EarnFromOriginals';
 import {BusinessUpgradePanel} from '../messages/BusinessUpgradePanel';
@@ -22,7 +23,7 @@ export function LiveActions({ action, identity, wallet, onClose, onForget, onRef
   useEffect(()=>{if(action.kind==='send'&&cardResumeSessionId)onCardResumeConsumed?.();},[action.kind,cardResumeSessionId,onCardResumeConsumed]);
   const titles: Record<string, string> = { business: 'Business', 'market-trade':'Market trade','account-proof':'Your account proof','earn-originals':'Earn from Originals',deposit: 'Add', send: 'Send', receive: 'Receive', balance: 'Your balance', growth: 'Settlement', profile: 'Your Receiz ID', currency: 'Create an asset', exchange: 'Exchange', rules: 'Money rules' };
   let body;
-  if (action.kind === 'balance' || action.kind === 'growth') body = <><p className="balance-label">Available balance</p><div className="success-amount navy-text balance-sheet-amount">{wallet ? formatMoney(wallet.totalUsdCents) : '—'}</div><p className="body-copy small-copy">{wallet ? 'Ready to send, receive or keep with you.' : 'Your verified account balance appears here.'}</p><p className="balance-local-time">{new Date().toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'})} · Local time</p><BalanceDetails wallet={wallet} observation={identity.knownWallet?.()??null}/></>;
+  if (action.kind === 'balance' || action.kind === 'growth') {const observation=identity.knownWallet?.()??null,difference=currentAvailabilityDifference(wallet,observation?.history??[],observation?.observedAt??null);body = <><p className="balance-label">Available balance</p><div className="success-amount navy-text balance-sheet-amount">{wallet ? formatMoney(wallet.totalUsdCents) : '—'}</div><p className="body-copy small-copy">{wallet ? difference!==null?'Your Settlement calculation is below.':'Ready to send, receive or keep with you.' : 'Your verified account balance appears here.'}</p><p className="balance-local-time">{new Date().toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'})} · Local time</p><BalanceDetails wallet={wallet} observation={observation} focusSettlement={action.kind==='balance'&&action.focus==='settlement'}/></>;}
   else if(action.kind==='earn-originals') body=<EarnFromOriginals key={`${identity.binding?.artifactSha256}:${wallet?.userId??identity.walletReceivingAddress?.()??''}`} identity={identity} accountUid={wallet?.userId??identity.walletReceivingAddress?.()??null} onOpen={onOpen}/>;
   else if (action.kind === 'account-proof') body = <AccountProofPanel identity={identity}/>;
   else if (action.kind === 'business') body = <BusinessUpgradePanel identity={identity} onOpenAssistant={onOpenAssistant} active={active}/>;

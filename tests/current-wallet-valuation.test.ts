@@ -44,3 +44,17 @@ it('cannot replace an accepted cash composition with a changed or missing later 
  expect(keepsWalletCashComposition([{cashBasis,cashBasisAccepted:false}],undefined)).toBe(true);
  expect(keepsWalletCashComposition([{cashBasis,cashBasisAccepted:true}],undefined)).toBe(false);
 });
+
+it('retains the zero-floor difference through current valuation persistence and removes it on real value growth with no sale',async()=>{
+ const {readWalletObservation}=await import('../src/receiz/wallet-observation'),{BANK_APPLICATION_ID}=await import('../src/receiz/config');
+ const envelope=JSON.parse(readFileSync(new URL('./fixtures/current-balance/public.json',import.meta.url),'utf8')),original=parseSharedWallet(envelope,envelope.wallet.userId),source={...structuredClone(original.currentBalanceSource!)};
+ source.transactionDeltaUsdCents=String(-BigInt(source.artifactBaseUsdCents)-1n);source.transactionDeltaPhiMicro=String(-BigInt(source.artifactBasePhiMicro));
+ source.balanceUsdCents='0';source.settlementUsdCents='0';source.reserveUsdCents='0';source.balancePhiMicro='0';source.reservePhiMicro='0';source.settlementPhiMicro='0';
+ const wallet={...original,currentBalanceSource:source,totalUsdCents:'0',settlementUsdCents:'0',reserveUsdCents:'0',balancePhiMicro:'0',reservePhiMicro:'0',settlementPhiMicro:'0'};
+ const captured=currentWalletObservation(wallet)!;expect(captured).not.toBeNull();expect(captured.history?.at(-1)?.availabilityGapUsdCents).toBe('1');
+ const binding={keyId:'display-only',artifactSha256:'a'.repeat(64)},packet=JSON.parse(JSON.stringify({...captured,schema:'receiz.bank.private-wallet-observation.v1',authority:'read-only-observation',applicationId:BANK_APPLICATION_ID,...binding})),restored=readWalletObservation(packet,binding)!;
+ expect(restored).not.toBeNull();expect(restored.history?.at(-1)?.availabilityGapUsdCents).toBe('1');
+ const start=BigInt(currentBalanceCaptureKai(source));let grown:ReturnType<typeof advanceCurrentWalletObservation>=null;
+ for(const pulses of [1n,2n,3n,5n,10n,20n,50n,100n,200n,1000n]){const candidate=advanceCurrentWalletObservation(restored,String(start+pulses*1_000_000n));if(candidate&&BigInt(candidate.wallet.totalUsdCents)>0n){grown=candidate;break;}}
+ expect(grown).not.toBeNull();expect(grown!.history?.at(-1)?.availabilityGapUsdCents).toBeUndefined();expect(grown!.wallet.currentBalanceSource?.transactionDeltaUsdCents).toBe(source.transactionDeltaUsdCents);
+});

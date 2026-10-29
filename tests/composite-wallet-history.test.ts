@@ -52,3 +52,13 @@ it('restores Reserve from a later funded credit after earlier proof-derived spen
  expect(projectCompositeWalletAt(source,'12000000000000').reserveUsdCents).toBe('0');
  const point=projectCompositeWalletAt(source,end);expect(point.reserveUsdCents).toBe('200');expect(point.totalUsdCents).toBe((originalValue(Number(BigInt(end)/1000000n)).usd+100n).toString());
 });
+
+it('carries the existing zero-floor difference through the same valuation pass, reducing it with credits and omitting it after recovery',()=>{
+ const source=fixture(),value=originalValue(Number(BigInt(end)/1000000n)),gap=12345n;
+ source.movements=[{id:'spent',kaiUPulse:end,direction:'debit',phiMicro:'0',usdCents:String(value.usd+gap),reserveSliceUsdCents:'0',profileSeed:false}];
+ const before=projectCompositeWalletAt(source,end);expect(before.totalUsdCents).toBe('0');expect(before.reserveUsdCents).toBe('0');expect(before.settlementUsdCents).toBe('0');expect(before.availabilityGapUsdCents).toBe(String(gap));
+ source.movements.push({id:'sale',kaiUPulse:end,direction:'credit',phiMicro:'0',usdCents:'2000',reserveSliceUsdCents:'0',profileSeed:false});
+ expect(projectCompositeWalletAt(source,end).availabilityGapUsdCents).toBe('10345');
+ source.movements.push({id:'received',kaiUPulse:end,direction:'credit',phiMicro:'0',usdCents:'10346',reserveSliceUsdCents:'0',profileSeed:false});
+ const after=projectCompositeWalletAt(source,end);expect(after.totalUsdCents).toBe('1');expect(after.availabilityGapUsdCents).toBeUndefined();
+});
