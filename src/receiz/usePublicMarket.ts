@@ -21,28 +21,43 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
   const running = useRef<AbortController | null>(null);
   const sportsRunning=useRef<AbortController|null>(null);
   const pendingMarketChange=useRef<string|undefined>(undefined);
+  const quoteRead=useRef<{controller:AbortController;nonce:string|undefined;pending:Promise<void>}|null>(null);
+  const quoteGeneration=useRef(0),latestQuotes=useRef<unknown>(null);
   const generation = useRef(0), sports = useRef<unknown>(null);
   useEffect(()=>subscribeAssetPublicationAdmissions(accepted=>{setCatalog(current=>{
     if(!accepted)return current;const previous=new Map(current?.items.map(item=>[item.id,item]));
     return mergePublicSports({...accepted,items:accepted.items.map(item=>{const prior=previous.get(item.id),next={...retainPublicArtwork(item,prior),shareInventory:compatibleShareInventory(item,prior?.shareInventory)};return prior?.chart.length?{...next,priceUsd:prior.priceUsd,changePct:prior.changePct,chart:prior.chart}:next;})},sports.current);
   });}),[setCatalog]);
   useEffect(() => { try { sports.current = JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1') ?? 'null'); } catch { /* No retained public inventory. */ } }, []);
+  // Share observations have their own read lifetime. A recorded trade never
+  // waits for unrelated membership/sports discovery to finish first.
+  const refreshQuotes=useCallback((afterTrade?:string):Promise<void>=>{
+    const previous=quoteRead.current;
+    if(previous&&(!afterTrade||previous.nonce===afterTrade))return previous.pending;
+    previous?.controller.abort();
+    const controller=new AbortController(),attempt=++quoteGeneration.current;
+    const current=()=>!controller.signal.aborted&&attempt===quoteGeneration.current;
+    setQuoteStatus('loading');
+    const pending=fetchPublicQuotes(controller.signal,afterTrade).then(validatePublicQuotes).then(value=>{
+      if(!current())return;latestQuotes.current=value;
+      if(pendingMarketChange.current===afterTrade)pendingMarketChange.current=undefined;
+      setCatalog(catalog=>catalog?mergePublicQuotes(catalog,value):catalog);setQuoteStatus('fresh');
+    },()=>{if(current()){setQuoteStatus('stale');setError(message=>[message,'Public prices and charts could not be refreshed. Showing cached quotes.'].filter(Boolean).join(' '));}}).finally(()=>{
+      if(quoteRead.current?.controller===controller)quoteRead.current=null;
+    });
+    quoteRead.current={controller,nonce:afterTrade,pending};return pending;
+  },[setCatalog]);
   const refresh = useCallback(async (quotesOnly=false) => {
+    if(quotesOnly){await refreshQuotes(pendingMarketChange.current);return;}
     if (running.current) return;
     // Prepare pricing operands beside discovery, before an object is opened.
     // The overview and direct-object paths share this same read and cache.
-    if(!quotesOnly)void prepareMarketDisplaySource();
+    void prepareMarketDisplaySource();
     const controller = new AbortController(); running.current = controller; const attempt = ++generation.current;
-    setQuoteStatus('loading');
     const currentAttempt=()=>!controller.signal.aborted&&attempt===generation.current;
-    let latestQuotes:unknown=null;const afterTrade=pendingMarketChange.current;
-    // Independent sources publish independently. A stalled sports response must
-    // never hold a proof object's available quote or history behind it.
-    const quotesAttempt = fetchPublicQuotes(controller.signal,afterTrade).then(validatePublicQuotes).then(value=>{
-      if(!currentAttempt())return;latestQuotes=value;if(pendingMarketChange.current===afterTrade)pendingMarketChange.current=undefined;
-      setCatalog(current=>current?mergePublicQuotes(current,value):current);setQuoteStatus('fresh');
-    },()=>{if(currentAttempt()){setQuoteStatus('stale');setError(message=>[message,'Public prices and charts could not be refreshed. Showing cached quotes.'].filter(Boolean).join(' '));}});
-    const membershipAttempt = quotesOnly?Promise.resolve():fetchPublicMarket(controller.signal).then(value=>({value,error:null}),cause=>({value:null,error:cause instanceof Error?cause.message:'The public Market could not be refreshed.'})).then(membership=>{
+    latestQuotes.current=null;
+    const quotesAttempt=refreshQuotes(pendingMarketChange.current);
+    const membershipAttempt = fetchPublicMarket(controller.signal).then(value=>({value,error:null}),cause=>({value:null,error:cause instanceof Error?cause.message:'The public Market could not be refreshed.'})).then(membership=>{
       if(!currentAttempt())return;const next=membership.value;
       setCatalog(current=>{
         if(!next||!next.complete&&current)return current;
@@ -52,13 +67,13 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
           const presented={...retainPublicArtwork(item,quoted),shareInventory:compatibleShareInventory(item,quoted?.shareInventory)};
           return quoted?.chart.length?{...presented,priceUsd:quoted.priceUsd,changePct:quoted.changePct,chart:quoted.chart}:presented;
         })},sports.current);
-        if(latestQuotes)updated=mergePublicQuotes(updated,latestQuotes);
+        if(latestQuotes.current)updated=mergePublicQuotes(updated,latestQuotes.current);
         return updated;
       });
       setStatus(next?.complete?'live':'stale');
       setError(next?.complete?null:membership.error??'The public collection is incomplete. Keeping the last complete collection.');
     });
-    if(!quotesOnly&&!sportsRunning.current){
+    if(!sportsRunning.current){
       const cards=new AbortController();sportsRunning.current=cards;
       void fetchPublicSports(cards.signal).catch(()=>null).then(value=>{
         if(cards.signal.aborted)return;
@@ -68,8 +83,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     }
     await Promise.allSettled([membershipAttempt,quotesAttempt]);
     if (running.current === controller) running.current = null;
-    if(currentAttempt()&&pendingMarketChange.current&&pendingMarketChange.current!==afterTrade)void refresh(true);
-  }, []);
+  }, [refreshQuotes]);
   useEffect(()=>{if(!active)return;const changed=(event:Event)=>{const nonce=(event as CustomEvent<{clientNonce?:unknown}>).detail?.clientNonce;if(typeof nonce!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(nonce))return;pendingMarketChange.current=nonce;void refresh(true);};addEventListener('bankeiz:market-shares-changed',changed);return()=>removeEventListener('bankeiz:market-shares-changed',changed);},[active,refresh]);
   useEffect(() => {
     if (!active) return;
@@ -93,7 +107,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     const interval = setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 60_000);
     const wake = () => { if (document.visibilityState === 'visible') void refresh(); };
     document.addEventListener('visibilitychange', wake); window.addEventListener('online', wake);
-    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); seed.abort(); running.current?.abort(); running.current = null;sportsRunning.current?.abort();sportsRunning.current=null; };
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); seed.abort(); running.current?.abort(); running.current = null;quoteRead.current?.controller.abort();quoteRead.current=null;sportsRunning.current?.abort();sportsRunning.current=null; };
   }, [active, refresh]);
   useEffect(()=>{if(!displayActive)return;const update=()=>{if(document.visibilityState==='visible')setPulse(previous=>Math.max(previous,receizKaiNow().pulse));};update();const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);window.addEventListener('pageshow',update);window.addEventListener('focus',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update);window.removeEventListener('pageshow',update);window.removeEventListener('focus',update);};},[displayActive]);
   const pricedCatalog=useMemo(()=>active?publicCatalogAtPulse(catalog,pricingSource,pulse,selectedItemId):catalog,[catalog,pricingSource,pulse,active,selectedItemId]);

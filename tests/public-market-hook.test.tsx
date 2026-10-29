@@ -190,3 +190,40 @@ it('enriches retained assets from shipped share observations while every live so
  let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket();return null;}
  try{await act(async()=>root.render(<Probe/>));expect(state.catalog?.items[0].shareInventory?.outstandingShareQuantityMicro).toBe('1000000');expect(state.catalog?.items[0].shareInventory?.availableShareQuantityMicro).toBe('2000000');expect(fetch.mock.calls.filter(([path])=>path==='/receiz-public-market.json')).toHaveLength(1);}finally{act(()=>root.unmount());}
 });
+
+const shareQuoteInput=(held='1000000',at='14710100000000')=>{const value=quoteInput();Object.assign(value.data.liveMarkets[0],{shareInventory:{schema:'receiz.market.share-inventory.v1',marketItemId:'a',assetId:'a',family:'generic',quantityScope:'canonical-asset',observedAtKaiUPulse:at,outstandingShareQuantityMicro:held,availableShareQuantityMicro:'9000000',positionsMicro:held,certificatesMicro:'0',reservedBuyMicro:'0',availability:'quote-capacity'}});return value;};
+function deferredQuote<T>(){let resolve!:(value:T)=>void;const promise=new Promise<T>(r=>{resolve=r;});return{promise,resolve};}
+it('does not queue a post-trade share update behind a stalled collection or older quote',async()=>{
+ const membership=deferredQuote<ReturnType<typeof parsePublicMarket>>(),oldQuote=deferredQuote<unknown>(),fresh=deferredQuote<unknown>();
+ localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(sourceInput()));network.membership.mockReturnValue(membership.promise);network.quotes.mockReturnValueOnce(oldQuote.promise).mockReturnValueOnce(fresh.promise);
+ await observe(async read=>{
+  const nonce='10000000-0000-4000-8000-000000000021';
+  await act(async()=>{dispatchEvent(new CustomEvent('bankeiz:market-shares-changed',{detail:{clientNonce:nonce}}));});
+  expect(network.quotes).toHaveBeenCalledTimes(2);expect(network.quotes.mock.calls[1][1]).toBe(nonce);expect(network.membership).toHaveBeenCalledTimes(1);
+  await act(async()=>fresh.resolve(shareQuoteInput('2000000','14710101000000')));
+  expect(read().catalog?.items[0].shareInventory?.outstandingShareQuantityMicro).toBe('2000000');expect(read().quoteStatus).toBe('fresh');
+  await act(async()=>oldQuote.resolve(shareQuoteInput('1000000')));expect(read().catalog?.items[0].shareInventory?.outstandingShareQuantityMicro).toBe('2000000');expect(read().quoteStatus).toBe('fresh');
+  await act(async()=>membership.resolve(parsePublicMarket(sourceInput(['a','b','c']))));expect(read().catalog?.items).toHaveLength(3);expect(read().catalog?.items[0].shareInventory?.outstandingShareQuantityMicro).toBe('2000000');expect(network.quotes).toHaveBeenCalledTimes(2);
+ });
+});
+it('coalesces the same post-trade nonce while its fresh share observation is pending',async()=>{
+ const fresh=deferredQuote<unknown>();network.membership.mockResolvedValue(parsePublicMarket(sourceInput()));network.quotes.mockResolvedValueOnce(shareQuoteInput()).mockReturnValueOnce(fresh.promise);
+ await observe(async read=>{
+  const nonce='10000000-0000-4000-8000-000000000022';
+  await act(async()=>{dispatchEvent(new CustomEvent('bankeiz:market-shares-changed',{detail:{clientNonce:nonce}}));dispatchEvent(new CustomEvent('bankeiz:market-shares-changed',{detail:{clientNonce:nonce}}));});
+  expect(network.quotes).toHaveBeenCalledTimes(2);
+  await act(async()=>fresh.resolve(shareQuoteInput('3000000','14710102000000')));expect(read().catalog?.items[0].shareInventory?.outstandingShareQuantityMicro).toBe('3000000');expect(network.membership).toHaveBeenCalledTimes(1);
+ });
+});
+it('ignores superseded trade replies and aborts the fresh read when the surface closes',async()=>{
+ const first=deferredQuote<unknown>(),second=deferredQuote<unknown>();network.membership.mockResolvedValue(parsePublicMarket(sourceInput()));network.quotes.mockResolvedValueOnce(shareQuoteInput()).mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+ let currentSignal:AbortSignal|undefined;
+ await observe(async read=>{
+  await act(async()=>dispatchEvent(new CustomEvent('bankeiz:market-shares-changed',{detail:{clientNonce:'10000000-0000-4000-8000-000000000023'}})));
+  const firstSignal=network.quotes.mock.calls.at(-1)?.[0] as AbortSignal;
+  await act(async()=>dispatchEvent(new CustomEvent('bankeiz:market-shares-changed',{detail:{clientNonce:'10000000-0000-4000-8000-000000000024'}})));
+  currentSignal=network.quotes.mock.calls.at(-1)?.[0] as AbortSignal;expect(firstSignal.aborted).toBe(true);
+  await act(async()=>first.resolve(shareQuoteInput('4000000','14710104000000')));expect(read().catalog?.items[0].shareInventory?.outstandingShareQuantityMicro).toBe('1000000');expect(read().quoteStatus).toBe('loading');
+ });
+ expect(currentSignal?.aborted).toBe(true);await act(async()=>second.resolve(shareQuoteInput('5000000','14710105000000')));
+});
