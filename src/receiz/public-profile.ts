@@ -1,4 +1,4 @@
-import {afterPublicNavigationReady} from '../core/public-document-entry';
+import {afterPublicNavigationReady} from '../core/public-document-entry.js';
 import {mergeAdmittedProfileAssets,forgetAssetPublicationAdmissions,acceptDiscoveredProfileAssets} from './asset-publication-adoption.js';
 import {parsePublicMarket,type PublicMarketItem} from './public-market.js';
 import {profileAvatarUrl} from './profile-avatar.js';

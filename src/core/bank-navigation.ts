@@ -1,4 +1,4 @@
-import {afterPublicNavigationReady} from './public-document-entry';
+import {afterPublicNavigationReady} from './public-document-entry.js';
 /** Ask the existing public navigator to reveal the retained Bank surface. */
 export function requestBankNavigation(hash:string):boolean{
   const detail={hash,handled:false};

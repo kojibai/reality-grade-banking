@@ -116,9 +116,17 @@ try{
    assert.equal(await page.locator('.market-rows').count(),0,'Cold asset mounted an unseen collection');
    assert.equal(await page.locator('link[data-profile-preload]').count(),0,'Asset preloaded linked profile images');
    await page.screenshot({path:resolve(output,`asset-${width}.png`)});
-   const copy=page.getByRole('button',{name:'Copy asset link',exact:true}),box=await copy.boundingBox();await copy.click();const copied=page.getByRole('button',{name:'Asset link copied',exact:true});await copied.waitFor();
+   const copy=page.getByRole('button',{name:'Copy asset link',exact:true});
+   // Settle the same actionability/scroll position before measuring. The trial
+   // performs no copy; it keeps entry animation and driver scrolling out of
+   // the comparison of the actual Copy and confirmation control.
+   await copy.click({trial:true});const box=await copy.boundingBox();await copy.click();const copied=page.getByRole('button',{name:'Asset link copied',exact:true});await copied.waitFor();
    assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),`${origin}/asset/${encodeURIComponent(selected.id)}/`);
-   assert.deepEqual(await copied.boundingBox(),box,'Copy confirmation shifted its button');await copy.waitFor({timeout:2500});
+   const confirmedBox=await copied.boundingBox();assert.ok(box&&confirmedBox,'Copy control must remain visible');
+   // Chromium reports fractional CSS pixels. Reject movement beyond 0.1px,
+   // while allowing its observed 1/16px layout rounding at the same position.
+   for(const field of ['x','y','width','height'])assert.ok(Math.abs(confirmedBox[field]-box[field])<=0.1,`Copy confirmation changed ${field}: ${box[field]} → ${confirmedBox[field]}`);
+   await copy.waitFor({timeout:2500});
    checkColdImages();assert.equal(await page.locator('link[data-profile-preload]').count(),0,'Deferred profile preparation preloaded unused images');
    await page.getByRole('link',{name:'Explore',exact:true}).first().click();const search=page.getByRole('textbox',{name:'Search proof objects'});await search.waitFor({timeout:2500});await search.fill('Selected regression specimen');
    await page.evaluate(()=>{window.__retainedSearch=document.querySelector('input[aria-label="Search proof objects"]');});

@@ -1,4 +1,4 @@
-import {afterPublicNavigationReady} from '../core/public-document-entry';
+import {afterPublicNavigationReady} from '../core/public-document-entry.js';
 import type {PublicMarketItem} from './public-market';
 import {publicAssetEmbed,publicAssetMediaMetadata} from './public-asset-embed.js';
 const held=new Map<string,PublicMarketItem>();

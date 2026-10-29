@@ -1,4 +1,4 @@
-import {afterPublicNavigationReady} from '../core/public-document-entry';
+import {afterPublicNavigationReady} from '../core/public-document-entry.js';
 export interface PublicAssetTradeIntent {certificateToken?:string;certificateAction?:'manage';itemId: string; side: 'buy' | 'sell'; title: string; initialBudget?: string; resumeSessionId?: string; resumeTradeReview?: boolean;}
 export interface PublicAssetTradeRequest extends PublicAssetTradeIntent {id: number; pathname: string; slot: HTMLElement | null; connected: boolean;}
 let current: PublicAssetTradeRequest | null = null, sequence = 0;
