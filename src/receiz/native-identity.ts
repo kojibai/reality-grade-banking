@@ -600,10 +600,10 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   async function businessSetup(){
     lifetime.signal.throwIfAborted();
     return businessChat??=(async()=>{
-      const current=await connectClient(BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT),uid=clientAccounts.get(current)?.accountUid;
+      const [current,[{createBusinessChat},{createBusinessSetupTools},{createBusinessProfileTools},{createBusinessDnsTools}]]=await Promise.all([connectClient(BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT),Promise.all([import('./business-chat'),import('./business-setup'),import('./business-profile-tools'),import('./business-dns-tools')])]);
+      const uid=clientAccounts.get(current)?.accountUid;
       if(!uid||uid!==accountUid)throw Error('BUSINESS_SETUP_IDENTITY_CHANGED');
-      const assertOpen=()=>{lifetime.signal.throwIfAborted();if(accountUid!==uid)throw Error('BUSINESS_SETUP_IDENTITY_CHANGED');};
-      const [{createBusinessChat},{createBusinessSetupTools},{createBusinessProfileTools},{createBusinessDnsTools}]=await Promise.all([import('./business-chat'),import('./business-setup'),import('./business-profile-tools'),import('./business-dns-tools')]);assertOpen();
+      const assertOpen=()=>{lifetime.signal.throwIfAborted();if(accountUid!==uid)throw Error('BUSINESS_SETUP_IDENTITY_CHANGED');};assertOpen();
       const requestHost=async(path:'/api/bank/business/setup'|'/api/bank/business/dns',details:Record<string,unknown>)=>{
         assertOpen();await prepareTransport();assertOpen();
         const continuation=await unsigned.identity.buildReceizIdContinueRequest({schema:'receiz.device.identity.v1',createdAt:keyFile.issuedAt,updatedAt:keyFile.issuedAt,localUid:keyFile.owner.uid,username:keyFile.owner.username??keyFile.keyId,displayName:keyFile.owner.displayName??keyFile.owner.username??'Receiz account',deviceName:null,keyFile:transportKeyFile},{passphrase:transportPhrase});assertOpen();
@@ -635,9 +635,8 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   async function moneyTools(){
     lifetime.signal.throwIfAborted();
     return moneyWorkspace??=(async()=>{
-      const api=await messaging();noteOpen();const uid=api.accountUid;
-      const assertOpen=()=>{noteOpen();if(accountUid!==uid)throw Error('MONEY_IDENTITY_CHANGED');};
-      const [{createMoneyWorkspace},{searchMoneyHistory},{heldAccountProofBytes},vault,{createMoneyConversationRetention}]=await Promise.all([import('./money-workspace'),import('./money-history'),import('./account-proof'),import('./identity-vault'),import('./money-conversation-retention')]);assertOpen();
+      const [api,[{createMoneyWorkspace},{searchMoneyHistory},{heldAccountProofBytes},vault,{createMoneyConversationRetention}]]=await Promise.all([messaging(),Promise.all([import('./money-workspace'),import('./money-history'),import('./account-proof'),import('./identity-vault'),import('./money-conversation-retention')])]);noteOpen();const uid=api.accountUid;
+      const assertOpen=()=>{noteOpen();if(accountUid!==uid)throw Error('MONEY_IDENTITY_CHANGED');};assertOpen();
       const sources=new Map<string,import('./account-proof').VerifiedAccountProof>();let heldSourceJson:string|undefined,heldProof:import('./account-proof').VerifiedAccountProof|null=null;
       const proof=async()=>{
         assertOpen();const state=await loadAccountLedgerState(binding) as {sourceJson?:string}|null;assertOpen();
@@ -666,9 +665,9 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     if(profileEditor)return profileEditor;
     const statement='Update the profile of my existing Receiz account with the details I choose. This changes public presentation and does not authorize a payment.';
     const connect=()=>connectClient([...BANK_READ_SCOPES,'profile'],statement);
-    const current=await connect(),uid=clientAccounts.get(current)?.accountUid;
+    const [current,{createProfileEditor,readProfileImageUpdate,ownerProfilePresentation}]=await Promise.all([connect(),import('./profile-edit')]);
+    const uid=clientAccounts.get(current)?.accountUid;
     if(!uid||lifetime.signal.aborted)throw Error('PROFILE_ACCOUNT_CLOSED');
-    const {createProfileEditor,readProfileImageUpdate,ownerProfilePresentation}=await import('./profile-edit');
     return profileEditor=createProfileEditor({accountUid:uid,current:()=>!lifetime.signal.aborted&&accountUid===uid,
       update:async input=>{const next=await connect();if(clientAccounts.get(next)?.accountUid!==uid)throw Error('PROFILE_ACCOUNT_MISMATCH');return next.profile.update(input);},availability:async username=>{const next=await connect();if(clientAccounts.get(next)?.accountUid!==uid)throw Error('PROFILE_ACCOUNT_MISMATCH');return next.identity.checkUsernameAvailability(username);},
       uploadImage:async(file,kind)=>{const next=await connect();if(clientAccounts.get(next)?.accountUid!==uid)throw Error('PROFILE_ACCOUNT_MISMATCH');const request=clientFetches.get(next);if(!request)throw Error('PROFILE_ACCOUNT_CLOSED');const body=new FormData();body.set('kind',kind);body.set('file',file);const response=await request('/api/profile/me/media',{method:'POST',body,signal:lifetime.signal}),value=await response.json();if(!response.ok||value?.ok!==true)throw Error('PROFILE_IMAGE_UNAVAILABLE');return readProfileImageUpdate(value,uid,kind);},
@@ -1393,17 +1392,16 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     catch (error) { throw new BankConnectionError('native-services', error); }
   }
   async function openAssetPublicationRuntime(artwork?:Blob){
-    const adoption=await import('./asset-publication-adoption');
-      const username=await prepareReceivingUsername(),connected=await connectClient([...BANK_READ_SCOPES,'profile','receiz:record','receiz:seal'],'Seal the original I choose and publish its exact verified source, media and full text on my public profile and in Market. This does not authorize a payment or asset funding.'),account=clientAccounts.get(connected),request=clientFetches.get(connected);
+    const [adoption,{loadAssetPublicationRuntime,createAssetPublicationFetch},username]=await Promise.all([import('./asset-publication-adoption'),import('./asset-publication-runtime'),prepareReceivingUsername()]);
+      const connected=await connectClient([...BANK_READ_SCOPES,'profile','receiz:record','receiz:seal'],'Seal the original I choose and publish its exact verified source, media and full text on my public profile and in Market. This does not authorize a payment or asset funding.'),account=clientAccounts.get(connected),request=clientFetches.get(connected);
       if(!account||!request||account.applicationId!==BANK_APPLICATION_ID)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');
       const assertCurrent=()=>{lifetime.signal.throwIfAborted();if(clientAccounts.get(connected)?.accountUid!==account.accountUid||presentationUsername&&presentationUsername!==username)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');};
-      const {loadAssetPublicationRuntime,createAssetPublicationFetch}=await import('./asset-publication-runtime');
-      const native=await loadBankNoteRuntime();await ownedSealer();
-      const {createReceizIndexedDbSealStore}=await import('@receiz/sdk/offline');
+      const [native,{createReceizIndexedDbSealStore},publication]=await Promise.all([loadBankNoteRuntime(),import('@receiz/sdk/offline'),loadAssetPublicationRuntime()]);
+      await ownedSealer();
       const enrollment=await createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer').load();
       if(!enrollment||!sealingResources)throw Error('Your device sealing key is unavailable.');
       const sealDocument=await native.createBankNativeNoteSealer({enrollment,resources:sealingResources});
-      return(await loadAssetPublicationRuntime()).createConnectedAssetPublicationRuntime({identity:new Uint8Array(bytes),passphrase:phrase,account:{uid:account.accountUid,username},sealDocument,assertCurrent,onLocalAdmission:admission=>{assertCurrent();adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:account.accountUid,isCurrent:()=>!lifetime.signal.aborted&&clientAccounts.get(connected)?.accountUid===account.accountUid&&(!presentationUsername||presentationUsername===username),artwork});},fetchImpl:createAssetPublicationFetch({applicationId:BANK_APPLICATION_ID,username,assertCurrent,request:async(path,init)=>{const held=await loadDeviceIdentity();if(!held||await sdk.sha256ReceizBytes(held.bytes)!==binding.artifactSha256)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');return request(path,init);}})});
+      return publication.createConnectedAssetPublicationRuntime({identity:new Uint8Array(bytes),passphrase:phrase,account:{uid:account.accountUid,username},sealDocument,assertCurrent,onLocalAdmission:admission=>{assertCurrent();adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:account.accountUid,isCurrent:()=>!lifetime.signal.aborted&&clientAccounts.get(connected)?.accountUid===account.accountUid&&(!presentationUsername||presentationUsername===username),artwork});},fetchImpl:createAssetPublicationFetch({applicationId:BANK_APPLICATION_ID,username,assertCurrent,request:async(path,init)=>{const held=await loadDeviceIdentity();if(!held||await sdk.sha256ReceizBytes(held.bytes)!==binding.artifactSha256)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');return request(path,init);}})});
   }
   async function createAsset(input: AssetDefinition | null, draft?: AssetMomentDraft, localOnly=false, composed?:AssetComposerDraft): Promise<HeldDeposit> {
     lifetime.signal.throwIfAborted();

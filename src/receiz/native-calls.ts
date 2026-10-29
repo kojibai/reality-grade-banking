@@ -138,7 +138,16 @@ export function createNativeCallController(options:NativeCallOptions) {
     const call=state.call;if(!state.joined||!call||call.topology!=='mesh')return;
     const users=new Set(call.participants.filter(p=>p.participantKind==='user'&&p.userId&&p.userId!==userId&&p.leftAt===null).map(p=>p.userId!));
     for(const id of peers.keys())if(!users.has(id))dropPeer(id);
-    for(const id of users){if(peers.has(id))continue;const peer=ensurePeer(id);if(userId.localeCompare(id)<0)await offer(id,peer);}
+    // Independent peers do not wait for each other's signaling round trip.
+    // Bound preparation; each peer retains its own ordered offer chain.
+    const epoch=generation,missing=[...users].filter(id=>!peers.has(id));
+    for(let start=0;start<missing.length;start+=4){
+      await Promise.all(missing.slice(start,start+4).map(async id=>{
+        if(!current(epoch)||!state.joined||peers.has(id))return;
+        const peer=ensurePeer(id);if(userId.localeCompare(id)<0)await offer(id,peer);
+      }));
+    }
+    if(!current(epoch)||!state.joined)return;
     remoteChanged();
     // Membership means joined. Only actual RTC state establishes connectivity.
     const states=[...peers.values()].map(peer=>peer.connectionState);

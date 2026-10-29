@@ -1,3 +1,4 @@
+import {appendFileSync} from 'node:fs';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {createNativeCallController, type NativeCallSummary, type NativeCallRuntime} from '../src/receiz/native-calls';
 
@@ -17,14 +18,14 @@ class Peer {
  async setRemoteDescription(sdp:RTCSessionDescriptionInit){this.remoteDescription=sdp;this.signalingState=sdp.type==='offer'?'have-remote-offer':'stable';}
  async addIceCandidate(candidate:RTCIceCandidateInit){if(!this.remoteDescription)throw Error('No remote description');this.candidates.push(candidate);}close(){this.closed=true;this.connectionState='closed';}
 }
-function fixture(options:{activityHints?:boolean;initialCall?:NativeCallSummary;active?:NativeCallSummary|null;signals?:unknown[];fail?:string;participantFailure?:boolean;joinResponse?:Promise<Response>;createResponse?:Promise<Response>;leaveResponse?:Promise<Response>;endResponse?:Promise<Response>;onLeave?:()=>void;media?:()=>Promise<MediaStream>;sfu?:NativeCallRuntime['loadSfu']}={}){
+function fixture(options:{activityHints?:boolean;initialCall?:NativeCallSummary;active?:NativeCallSummary|null;signals?:unknown[];fail?:string;participantFailure?:boolean;joinResponse?:Promise<Response>;createResponse?:Promise<Response>;leaveResponse?:Promise<Response>;endResponse?:Promise<Response>;onLeave?:()=>void;signalResponse?:(body:Record<string,unknown>)=>Promise<Response>;media?:()=>Promise<MediaStream>;sfu?:NativeCallRuntime['loadSfu']}={}){
  let current=options.active===undefined?call():options.active;let signals=options.signals??[];
  const requests:{url:string;method:string;body:Record<string,unknown>|null}[]=[],peers:Peer[]=[],stream=new Stream([new Track('audio')]);
  const heldFetch=vi.fn(async(url:string,init?:RequestInit)=>{if(init?.signal?.aborted)throw new DOMException('Aborted','AbortError');const method=init?.method??'GET',body=typeof init?.body==='string'?JSON.parse(init.body):null;requests.push({url,method,body});
   if(url.endsWith('/participants')&&method==='DELETE')options.onLeave?.();
   if(options.fail)return Response.json({ok:false,error:options.fail},{status:403});
   if(url==='/api/chat/calls/ice')return Response.json({ok:true,iceServers:[{urls:'turn:existing.example',username:'held',credential:'synthetic'}],source:'provider'});
-  if(url.endsWith('/signals')&&method==='POST')return Response.json({ok:true,signal:{id:'sent'}});
+  if(url.endsWith('/signals')&&method==='POST')return options.signalResponse?options.signalResponse(body!):Response.json({ok:true,signal:{id:'sent'}});
   if(url.includes('/signals?')){const pending=signals;signals=[];return Response.json({ok:true,signals:pending,lastSignalAt:'2026-10-19T12:00:01.000Z'});}
   if(url.endsWith('/participants')&&method==='DELETE'&&options.leaveResponse)return options.leaveResponse;
   if(url.endsWith('/participants')&&method==='POST'&&body?.action==='join'&&options.joinResponse)return options.joinResponse;
@@ -110,3 +111,20 @@ it('rolls back earlier video senders when a later screen-share replacement fails
 it('meeting activity uses the existing RTC connection only as a hint, with no carried message authority',async()=>{const f=fixture({activityHints:true});await f.controller.refresh();await f.controller.join('voice');const received=vi.fn();f.controller.subscribeActivity(received);f.controller.notifyActivity();const channel=f.peers[0].dataChannels[0];expect(channel.sent).toEqual(['bankeiz.chat']);channel.onmessage?.({data:'untrusted message text'});expect(received).not.toHaveBeenCalled();channel.onmessage?.({data:'bankeiz.chat'});expect(received).toHaveBeenCalledTimes(1);await f.controller.close();expect(channel.readyState).toBe('closed');});
 
 it('retains a seeded terminal call by reading that exact source, never the active-call list',async()=>{const ended=call({status:'ended',endedAt:'2026-10-19T13:00:00Z'}),f=fixture({initialCall:ended,active:ended});await f.controller.refresh();expect(f.requests[0].url).toBe(`${path}/${callId}`);expect(f.controller.getSnapshot()).toMatchObject({phase:'ended',call:{id:callId,status:'ended'}});await f.controller.close();});
+
+
+it('starts independent mesh peers together, bounded to four, without duplicate offers',async()=>{
+ const remote=Array.from({length:6},(_,i)=>`44444444-4444-4444-8444-${String(i+1).padStart(12,'0')}`),releases:Array<()=>void>=[];let pending=0,peak=0;
+ const selected=call({participants:[participant(self),...remote.map(participant)]}),f=fixture({initialCall:selected,active:selected,signalResponse:async()=>{pending++;peak=Math.max(peak,pending);await new Promise<void>(resolve=>process.env.BANKEIZ_LATENCY_EVIDENCE?setTimeout(resolve,200):releases.push(resolve));pending--;return Response.json({ok:true});}}),started=performance.now(),joining=f.controller.join('voice');
+ try{if(process.env.BANKEIZ_LATENCY_EVIDENCE){await joining;appendFileSync(process.env.BANKEIZ_LATENCY_EVIDENCE,JSON.stringify({path:'Six mesh peers',completeMs:Math.round(performance.now()-started),signalDelayMs:200,peak})+'\n');}else{await vi.waitFor(()=>expect(releases).toHaveLength(4),{timeout:500});expect(f.peers).toHaveLength(4);releases.splice(0).forEach(release=>release());await vi.waitFor(()=>expect(releases).toHaveLength(2));releases.splice(0).forEach(release=>release());await joining;}expect(peak).toBe(4);const targets=f.requests.filter(r=>r.body?.signalType==='offer').map(r=>r.body?.targetUserId);expect(targets).toEqual(remote);expect(f.controller.getSnapshot().joined).toBe(true);}
+ finally{while(pending){releases.splice(0).forEach(release=>release());await new Promise(resolve=>setTimeout(resolve,0));}await joining;await f.controller.close();}
+});
+it('does not create later mesh peers or revive media when End happens during delayed offers',async()=>{
+ let release!:()=>void;const delayed=new Promise<void>(resolve=>release=resolve),remote=Array.from({length:6},(_,i)=>`44444444-4444-4444-8444-${String(i+1).padStart(12,'0')}`),selected=call({participants:[participant(self),...remote.map(participant)]}),f=fixture({initialCall:selected,active:selected,endResponse:Promise.resolve(Response.json({ok:true,call:call({status:'ended',participants:[],activeParticipantCount:0})})),signalResponse:async()=>{await delayed;return Response.json({ok:true});}}),joining=f.controller.join('voice');
+ await vi.waitFor(()=>expect(f.requests.some(r=>r.body?.signalType==='offer')).toBe(true));const created=f.peers.length;await f.controller.end();release();await joining;expect(f.peers).toHaveLength(created);expect(f.peers.every(p=>p.closed)).toBe(true);expect(f.controller.getSnapshot()).toMatchObject({joined:false,phase:'ended',localStream:null});await f.controller.close();
+});
+
+it('cleans all bounded mesh work if one independent offer fails',async()=>{
+ const remote=Array.from({length:6},(_,i)=>`44444444-4444-4444-8444-${String(i+1).padStart(12,'0')}`),selected=call({participants:[participant(self),...remote.map(participant)]});let release!:()=>void;const delayed=new Promise<void>(resolve=>release=resolve),f=fixture({initialCall:selected,active:selected,signalResponse:async body=>{if(body.targetUserId===remote[0])throw Error('offer refused');await delayed;return Response.json({ok:true});}});
+ try{await f.controller.join('voice');expect(f.controller.getSnapshot()).toMatchObject({phase:'error',joined:false,localStream:null});expect(f.peers).toHaveLength(4);expect(f.peers.every(peer=>peer.closed)).toBe(true);release();await new Promise(resolve=>setTimeout(resolve,0));expect(f.peers).toHaveLength(4);expect(f.stream.getTracks().every(track=>track.readyState==='ended')).toBe(true);}finally{release();await f.controller.close();}
+});
