@@ -19,7 +19,7 @@ async function open(width,mode,capability='ready'){
  await page.goto(origin+'/tests/browser/booking-conversation.html?mode='+mode+'&capability='+capability);
  if(mode==='sheet'){await page.getByRole('button',{name:'Open booking',exact:true}).waitFor();check((await stats(page)).reads===0,'Speculative availability before profile tap');await page.getByRole('button',{name:'Open booking',exact:true}).click();await page.getByRole('dialog').waitFor();}
  if(capability==='ready')await page.getByRole('textbox',{name:'Your reply',exact:true}).waitFor();else await page.locator('.booking-time-list button').first().waitFor();
- check((await stats(page)).reads===1,'More than one availability GET');check((await stats(page)).messages.length===0,'Welcome request on open');await geometry(page);
+ check(await page.locator('.booking-page,.booking-panel').evaluateAll(frames=>frames.every(frame=>![...frame.childNodes].some(node=>node.nodeType===Node.TEXT_NODE&&node.textContent?.trim()))),'Stray offer count above booking panel');check((await stats(page)).reads===1,'More than one availability GET');check((await stats(page)).messages.length===0,'Welcome request on open');await geometry(page);
  return {page,errors,external};
 }
 try{

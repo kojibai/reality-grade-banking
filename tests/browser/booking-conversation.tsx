@@ -14,7 +14,7 @@ const owner={userId:ownerId,username,displayName:'Casey Example',avatarUrl:null}
 const schedule={slotMinutes:30,hourStarts:Array.from({length:24},(_,hour)=>hour),weekdayIndexes:[1,2,3,4,5],daysForward:14,timezone:'UTC',timezoneMode:'manual' as const};
 const questions=Array.from({length:6},(_,index)=>({id:'topic-'+index,label:index?'Extra detail '+index:'What would you like to discuss?',required:index===0}));
 const slots=Array.from({length:8},(_,day)=>schedule.hourStarts.map(hour=>{const startAt=new Date(Date.UTC(2026,10,2+day,hour)).toISOString();return{id:startAt,startAt,endAt:new Date(Date.parse(startAt)+30*60000).toISOString()};})).flat();
-const calendar={ok:true,owner,scheduleConfig:schedule,savedScheduleConfig:schedule,customQuestions:questions,savedCustomQuestions:questions,slots,...(ready?{conversation:{state:'ready',ownerUserId:ownerId,username}}:{})};
+const calendar={ok:true,bookingOffers:[],owner,scheduleConfig:schedule,savedScheduleConfig:schedule,customQuestions:questions,savedCustomQuestions:questions,slots,...(ready?{conversation:{state:'ready',ownerUserId:ownerId,username}}:{})};
 const fixture={controlled:true,reads:0,manualWrites:0,messages:[] as Array<Record<string,unknown>>,unexpected:[] as string[],accepted:0,delta:()=>{},finish:()=>{},more:()=>{}};
 Object.assign(window,{bookingFixture:fixture});
 const encoder=new TextEncoder(),memory:Array<Record<string,unknown>>=[];
