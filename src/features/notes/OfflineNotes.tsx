@@ -1,6 +1,6 @@
 import {InlineOpening} from '../../components/InlineOpening';
 import {sameNoteFundingParts} from '../../receiz/note-funding';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, Check, Download, FileDown, ShieldCheck, Upload } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { BankNoteReview, BankNoteRail, BankNoteImage, BankNoteInspection, BankNoteDepositResult, BankOfflineNotes } from '../../receiz/offline-notes';
@@ -40,10 +40,13 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
   const [saved, setSaved] = useState<BankNoteImage[]>([]);
   const [received,setReceived]=useState<BankNoteDepositResult[]>([]);
   const [pending, setPending] = useState<{ amountUsdCents: string; noteId: string; rail?: BankNoteRail; amountPhiMicro?:string;fundingParts?:BankNoteReview['fundingParts']; canCancel?: boolean } | null>(null), [created, setCreated] = useState<BankNoteImage | null>(null), [inspection, setInspection] = useState<BankNoteInspection | null>(null), [deposited, setDeposited] = useState<BankNoteDepositResult | null>(null), [image, setImage] = useState<Uint8Array | null>(null), [imageUrl, setImageUrl] = useState(''), [notice, setNotice] = useState('');
-  const alive = useRef(true), running = useRef(false), api = useRef<BankOfflineNotes | null>(null);
+  const alive = useRef(true), running = useRef(false), api = useMemo(() => ({ current: null as BankOfflineNotes | null, pending: undefined as Promise<BankOfflineNotes> | undefined }), [identity]);
   const report=(cause:unknown)=>{setError(noteError(cause));setConnectionRequired(mode==='create'&&cause instanceof Error&&cause.message==='BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');setRegistrationCode(noteRegistrationCode(cause));setRegistrationEvidence(noteRegistrationEvidence(cause));setFailureStage(noteFailureStage(cause));};
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-  const notes = async () => api.current ??= await identity.offlineNotes!();
+  const notes = async () => {
+    if(api.current)return Promise.resolve(api.current);
+    return api.pending ??= identity.offlineNotes!().then(value => api.current = value).catch(cause => { api.pending = undefined; throw cause; });
+  };
   const saveCreated=(downloadOnly=false)=>{
     if(!created)return;const note=created;
     void run(async()=>{
@@ -72,7 +75,9 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
     if (!identity.offlineNotes || mode !== 'create') return;
     let current = true;setInventoryReady(false);
     void notes().then(async n => {
-      const items=n.savedNotes?await n.savedNotes():[],value=await n.pending();
+      const itemsRead=n.savedNotes?n.savedNotes():Promise.resolve([]);
+      const pendingRead=(async()=>{try{return {value:await n.pending()};}catch(error){return {error};}})();
+      const items=await itemsRead,result=await pendingRead;if('error' in result)throw result.error;const value=result.value;
       if(!current)return;
       setSaved(items);
       if(value)setFunding({...value,rail:value.rail??'reserve'});
@@ -106,7 +111,7 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
       }
     } finally { running.current = false; if (alive.current) setBusy(false); }
   };
-  const inspect = (file?: File) => { if (!file || running.current) return; setImage(null); setInspection(null); setDeposited(null); void run(async () => { if (file.size > 32 * 1024 * 1024) throw new Error('This original exceeds the supported Note proof capacity.'); const bytes = new Uint8Array(await file.arrayBuffer()), result = await (await notes()).inspect(bytes); if (alive.current) { setImage(bytes); setInspection(result); } }); };
+  const inspect = (file?: File) => { if (!file || running.current) return; setImage(null); setInspection(null); setDeposited(null); void run(async () => { if (file.size > 32 * 1024 * 1024) throw new Error('This original exceeds the supported Note proof capacity.'); const prepared=notes().then(value=>({value}),error=>({error})),bytes = new Uint8Array(await file.arrayBuffer()),runtime=await prepared;if('error' in runtime)throw runtime.error;const result = await runtime.value.inspect(bytes); if (alive.current) { setImage(bytes); setInspection(result); } }); };
   const depositReviewedNote = () => run(async () => {
     if (!image || !inspection) throw Error('BANK_NOTE_REVIEW_REQUIRED');
     const result = await (await notes()).deposit(image);

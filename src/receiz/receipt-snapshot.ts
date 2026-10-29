@@ -8,7 +8,15 @@ export function receiptSnapshotDigest(link:string){const url=new URL(link,BANK_P
 export function receiptSnapshotUrl(digest:string){if(!valid(digest))throw Error('RECEIPT_INVALID');return `${BANK_PUBLIC_ORIGIN}/receipt/${digest}/`;}
 export async function receiptDigest(bytes:Uint8Array){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes.slice().buffer)),b=>b.toString(16).padStart(2,'0')).join('');}
 async function boundedBody(response:Response){if(Number(response.headers.get('content-length'))>MAX_BYTES)throw Error('RECEIPT_TOO_LARGE');if(!response.body)throw Error('RECEIPT_INVALID');const reader=response.body.getReader(),chunks:Uint8Array[]=[];let size=0;try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>MAX_BYTES)throw Error('RECEIPT_TOO_LARGE');chunks.push(value);}}finally{await reader.cancel().catch(()=>{});reader.releaseLock();}const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}return bytes;}
+const receiptReads=new WeakMap<typeof fetch,Map<string,Promise<LedgerReceipt>>>();
 export async function readReceiptSnapshot(digest:string,fetcher:typeof fetch=fetch):Promise<LedgerReceipt>{
+ if(!valid(digest))throw Error('RECEIPT_INVALID');
+ let pending=receiptReads.get(fetcher);if(!pending){pending=new Map();receiptReads.set(fetcher,pending);}
+ const existing=pending.get(digest);if(existing)return existing;
+ const work=readReceiptSource(digest,fetcher);pending.set(digest,work);
+ try{return await work;}finally{if(pending.get(digest)===work)pending.delete(digest);}
+}
+async function readReceiptSource(digest:string,fetcher:typeof fetch):Promise<LedgerReceipt>{
  if(!valid(digest))throw Error('RECEIPT_INVALID');
  const retained=typeof window!=='undefined'?await cachedReceiptSnapshot(digest):null;
  if(retained){const bytes=new TextEncoder().encode(retained.payload);if(await receiptDigest(bytes)===digest)return readLedgerReceipt(JSON.parse(retained.payload));}

@@ -108,7 +108,13 @@ export function createProofLibrary(input: {
   }
   async function exportBackup() {
     input.assertOpen();
-    const sources = [...await input.readOwned(), ...await input.readArchive(), ...await input.readRecoveries(), ...await input.readNotes(), ...(await input.readAccount?.() ?? [])];
+    // Start independent retained-source reads together; consume in the same
+    // family/error order and keep every canonical admission below unchanged.
+    const reads = [() => input.readOwned(), () => input.readArchive(), () => input.readRecoveries(), () => input.readNotes(), () => input.readAccount?.() ?? []]
+      .map(async read => { try { return { value: await read() }; } catch (error) { return { error }; } });
+    const sources: ProofSource[] = [];
+    for (const read of reads) { const result = await read; if ('error' in result) throw result.error; sources.push(...result.value); }
+    input.assertOpen();
     const accepted = await admit(sources), sdk = await loadReceiz();
     const bytes = new TextEncoder().encode(JSON.stringify({ schema: 'bankeiz.proof-backup.v1', applicationId: BANK_APPLICATION_ID,
       keyId: binding.keyId, ownerReceizId: binding.artifactOwnerReceizId,

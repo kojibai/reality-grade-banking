@@ -45,8 +45,12 @@ async function inspectOriginal(record:PublicRecord,signal?:AbortSignal){
 export async function downloadLedgerEvidence(record:PublicRecord,report?:OfflineProofReport|null):Promise<Uint8Array>{
  const admitted=report?admittedProofInspection(report):null;
  if(report&&(!admitted||report.artifactSha256!==record.evidence.artifactDigest?.toLowerCase()))throw Error('ORIGINAL_INSPECTION_REQUIRED');
- const verifier=await loadOfflineProofVerifier(),files:Record<string,Uint8Array>={},encode=(v:unknown)=>new TextEncoder().encode(JSON.stringify(v,null,2));
- const buildResponse=await fetch(BASE+'build.json',{credentials:'omit'});if(!buildResponse.ok)throw Error('OFFLINE_VERIFIER_UNAVAILABLE');const build=await buildResponse.json() as {sdk:string;files:Record<string,{sha256:string;bytes:number}>};
+ const verifierReady=loadOfflineProofVerifier();
+ // Observe metadata failure immediately while preserving verifier-first error
+ // precedence. Neither preparation can admit an original or skip its hashes.
+ const buildReady=(async()=>{try{return {response:await fetch(BASE+'build.json',{credentials:'omit'})};}catch(error){return {error};}})();
+ const verifier=await verifierReady,files:Record<string,Uint8Array>={},encode=(v:unknown)=>new TextEncoder().encode(JSON.stringify(v,null,2));
+ const result=await buildReady;if('error' in result)throw result.error;const buildResponse=result.response;if(!buildResponse.ok)throw Error('OFFLINE_VERIFIER_UNAVAILABLE');const build=await buildResponse.json() as {sdk:string;files:Record<string,{sha256:string;bytes:number}>};
  if(build.sdk!=='129.0.0'||!build.files||Object.keys(build.files).length>30)throw Error('OFFLINE_VERIFIER_BUILD_INVALID');
  await Promise.all(Object.entries(build.files).map(async([name,entry])=>{if(!/^[a-zA-Z0-9_.-]+$/.test(name)||entry.bytes>8*1024*1024)throw Error('OFFLINE_VERIFIER_BUILD_INVALID');const path=name==='verifier.js.map'?name+'.bin':name;const r=await fetch(BASE+path,{credentials:'omit'});if(!r.ok)throw Error('OFFLINE_VERIFIER_UNAVAILABLE');const bytes=await readPublicLedgerBytes(r,8*1024*1024);if(bytes.length!==entry.bytes||await verifier.sha256Hex(bytes)!==entry.sha256)throw Error('OFFLINE_VERIFIER_INTEGRITY');files[name]=bytes;}));
  files['build.json']=encode(build);files['record.json']=encode(ledgerInspectionDocument(record,ledgerValueForRecord(record)));

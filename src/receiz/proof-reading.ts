@@ -3,6 +3,8 @@ import {safeReceizPublicUrl} from './public-market';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
 export type ProofReading={title:string;text:string;sha256:string;artifactDigest:string};
 const readings=new Map<string,ProofReading>();
+type ReadingPreparation={controller:AbortController;work:Promise<ProofReading>;readers:number;done:boolean};
+const preparations=new Map<string,ReadingPreparation>();
 const readingKey=(postUrl:string,imageDigest:string)=>imageDigest.toLowerCase()+':'+postUrl;
 /** Public, verified text only. Reopening a reader does not reread its source. */
 export function retainedPublicReading(postUrl:string,imageDigest:string){return readings.get(readingKey(postUrl,imageDigest))??null;}
@@ -23,8 +25,23 @@ export async function verifyProofReadingBytes(bytes:Uint8Array,imageDigest:strin
 export async function readPublicProofReading(postUrl:string,imageDigest:string,signal?:AbortSignal):Promise<ProofReading>{
  const safe=safeReceizPublicUrl(postUrl,'proof');if(!safe)throw Error('This carried text source is not supported.');signal?.throwIfAborted();
  const key=readingKey(postUrl,imageDigest),retained=readings.get(key);if(retained){readings.delete(key);readings.set(key,retained);return retained;}
- const url=new URL(safe),timeout=AbortSignal.timeout(90_000),requestSignal=signal?AbortSignal.any([signal,timeout]):timeout;
- const response=await fetch(`/api/bank/public-market/record?path=${encodeURIComponent(url.pathname+url.search)}`,{credentials:'omit',redirect:'error',signal:requestSignal});
- if(!response.ok)throw Error('The carried text could not be opened. You can retry or inspect its source.');
- const bytes=await readPublicLedgerBytes(response,16*1024*1024);requestSignal.throwIfAborted();const reading=await verifyProofReadingBytes(bytes,imageDigest,safe);requestSignal.throwIfAborted();readings.set(key,reading);while(readings.size>24)readings.delete(readings.keys().next().value!);return reading;
+ let preparation=preparations.get(key);
+ if(!preparation){
+  const controller=new AbortController(),work=(async()=>{
+   const url=new URL(safe),requestSignal=AbortSignal.any([controller.signal,AbortSignal.timeout(90_000)]);
+   const response=await fetch(`/api/bank/public-market/record?path=${encodeURIComponent(url.pathname+url.search)}`,{credentials:'omit',redirect:'error',signal:requestSignal});
+   if(!response.ok)throw Error('The carried text could not be opened. You can retry or inspect its source.');
+   const bytes=await readPublicLedgerBytes(response,16*1024*1024);requestSignal.throwIfAborted();const reading=await verifyProofReadingBytes(bytes,imageDigest,safe);requestSignal.throwIfAborted();readings.set(key,reading);while(readings.size>24)readings.delete(readings.keys().next().value!);return reading;
+  })();
+  preparation={controller,work,readers:0,done:false};preparations.set(key,preparation);
+  const held=preparation,finish=()=>{held.done=true;if(preparations.get(key)===held)preparations.delete(key);};void work.then(finish,finish);
+ }
+ const held=preparation;held.readers++;
+ return new Promise((resolve,reject)=>{
+  let active=true;
+  const release=()=>{if(!active)return;active=false;signal?.removeEventListener('abort',abort);held.readers--;if(!held.readers&&!held.done){if(preparations.get(key)===held)preparations.delete(key);held.controller.abort();}};
+  const abort=()=>{if(!active)return;release();reject(signal?.reason??new DOMException('Aborted','AbortError'));};
+  if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
+  void held.work.then(value=>{if(active){release();resolve(value);}},cause=>{if(active){release();reject(cause);}});
+ });
 }

@@ -70,3 +70,17 @@ it('backs up a received predecessor as evidence without converting it into an ow
  const api=createProofLibrary({binding,assertOpen(){},readOwned:async()=>[],readArchive:async()=>[source],readRecoveries:async()=>[],readNotes:async()=>[],commit});
  const backup=await api.exportBackup(),review=await api.inspect(new File([new Uint8Array(backup.bytes)],backup.filename));expect(review.items[0]).toMatchObject({kind:'received-original',title:'Received original · original.txt'});await api.retain(review);expect(commit.mock.calls[0][0]).toEqual([source]);
 });
+it('starts all retained backup families together while preserving exact ordered bytes and verification',async()=>{
+ let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve),started:number[]=[];
+ const read=(n:number)=>async()=>{started.push(n);if(n===1)await gate;return[{kind:'received-original' as const,filename:`${n}.receiz`,bytes:new Uint8Array([n])}];};
+ const api=createProofLibrary({binding,assertOpen(){},readOwned:read(1),readArchive:read(2),readRecoveries:read(3),readNotes:read(4),readAccount:read(5),commit:vi.fn()});
+ const work=api.exportBackup();await Promise.resolve();const before=[...started];release();const result=JSON.parse(new TextDecoder().decode((await work).bytes));
+ expect(before).toEqual([1,2,3,4,5]);expect(result.sources.map((s:{filename:string;bytesB64u:string})=>[s.filename,s.bytesB64u])).toEqual([['1.receiz','AQ'],['2.receiz','Ag'],['3.receiz','Aw'],['4.receiz','BA'],['5.receiz','BQ']]);expect(boundary.open).toHaveBeenCalledTimes(5);
+});
+it('keeps family failure precedence and rejects an identity closed during backup preparation',async()=>{
+ let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);let closed=false;
+ const api=createProofLibrary({binding,assertOpen(){if(closed)throw Error('IDENTITY_CLOSED');},readOwned:async()=>{await gate;return[];},readArchive:async()=>[],readRecoveries:async()=>[],readNotes:async()=>[],commit:vi.fn()});
+ const work=api.exportBackup();closed=true;release();await expect(work).rejects.toThrow('IDENTITY_CLOSED');
+ const failed=createProofLibrary({binding,assertOpen(){},readOwned:async()=>{await Promise.resolve();throw Error('FIRST_SOURCE_REFUSED');},readArchive:async()=>{throw Error('LATER_SOURCE_REFUSED');},readRecoveries:async()=>[],readNotes:async()=>[],commit:vi.fn()});
+ await expect(failed.exportBackup()).rejects.toThrow('FIRST_SOURCE_REFUSED');
+});
