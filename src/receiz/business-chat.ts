@@ -40,7 +40,7 @@ export function createBusinessChat(input:{accountUid:string;twinWorkspace?():Pro
     const result=await tools.execute(id,args.name,args.arguments);return receizReceipt(id,result,args.arguments);
    }
    if(/^business_(?:find_contacts|save_contact|read_calendar|create_appointment|update_appointment|cancel_appointment|booking_link|read_availability|update_availability)$/.test(tool)){
-    if(!input.organizer)throw Error('ORGANIZER_UNAVAILABLE');const {executeOrganizerTwinAction}=await import('./organizer-twin'),api=await input.organizer();input.assertOpen();if(api.accountUid!==input.accountUid)throw Error('ORGANIZER_OWNER_MISMATCH');
+    if(!input.organizer)throw Error('ORGANIZER_UNAVAILABLE');const [{executeOrganizerTwinAction},api]=await Promise.all([import('./organizer-twin'),input.organizer()]);input.assertOpen();if(api.accountUid!==input.accountUid)throw Error('ORGANIZER_OWNER_MISMATCH');
     // Argument errors are refused before dispatch. An uncertain write is kept
     // by the shared request journal and is never automatically replayed.
     try{const result=await executeOrganizerTwinAction(api,tool,args,input.username?.());input.assertOpen();return receipt('accepted','Organizer updated','The result is available in your Contacts and Calendar.',{details:JSON.stringify(result).slice(0,16000)});}catch(cause){if(cause instanceof Error&&cause.message==='ORGANIZER_WRITE_UNCONFIRMED')started=true;throw cause;}

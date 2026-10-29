@@ -73,6 +73,6 @@ export async function handleAssetPreview(request:Request,dependencies?:Dependenc
  // HEAD probes neither parse the catalog nor read HTML, load fonts or render PNG.
  if(request.method==='HEAD')return new Response(null,{headers});
  const deps=dependencies??{page:async()=>(await import('node:fs/promises')).readFile('dist/explore/index.html','utf8'),item:assetPreviewItem,image:async(item:PublicMarketItem)=>(await import('./asset-preview-render')).renderAssetImage(item)};
- try{const item=await deps.item(id);if(image)return item?new Response(await deps.image(item) as Uint8Array<ArrayBuffer>,{headers}):new Response(null,{status:404,headers});if(player){const body=item?assetEmbedPlayer(item):null;return new Response(body??'This public player is unavailable. Open the asset page to inspect its source.',{status:body?200:404,headers});}return new Response(assetPreviewHtml(await deps.page(),id,item),{headers});}
+ try{if(!image&&!player){const [item,html]=await Promise.all([deps.item(id),deps.page()]);return new Response(assetPreviewHtml(html,id,item),{headers});}const item=await deps.item(id);if(image)return item?new Response(await deps.image(item) as Uint8Array<ArrayBuffer>,{headers}):new Response(null,{status:404,headers});const body=item?assetEmbedPlayer(item):null;return new Response(body??'This public player is unavailable. Open the asset page to inspect its source.',{status:body?200:404,headers});}
  catch{headers.set('Cache-Control','no-store');return new Response('The public asset preview is temporarily unavailable.',{status:503,headers});}
 }

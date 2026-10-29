@@ -71,9 +71,13 @@ export async function handleReceiptPreview(request:Request,deps?:PreviewDependen
    page:async()=>(await import('node:fs/promises')).readFile('dist/receipt/index.html','utf8'),
    image:async(receipt:LedgerReceipt)=>(await import('./receipt-preview-render')).renderReceiptImage(receipt),
   };
+  // Prepare only the existing HTML template. Its failure cannot outrank the
+  // exact receipt read, and a rejected template never becomes unhandled.
+  const page=image?null:dependencies.page().then(value=>({ok:true as const,value}),error=>({ok:false as const,error}));
   if(shortDigest){receipt=await readReceiptSnapshot(shortDigest);headers.set('Cache-Control','public, max-age=60, s-maxage=300');}
   if(!receipt)throw Error('RECEIPT_INVALID');
   if(image){const bytes=await dependencies.image(receipt);headers.set('Cache-Control','public, max-age=31536000, immutable');return new Response(bytes as Uint8Array<ArrayBuffer>,{headers});}
-  return new Response(receiptHtml(await dependencies.page(),receipt,shortDigest?receiptSnapshotUrl(shortDigest):`${BANK_PUBLIC_ORIGIN}/receipt/?r=${packet}`,packet,shortDigest??undefined),{headers});
+  const template=await page!;if(!template.ok)throw template.error;
+  return new Response(receiptHtml(template.value,receipt,shortDigest?receiptSnapshotUrl(shortDigest):`${BANK_PUBLIC_ORIGIN}/receipt/?r=${packet}`,packet,shortDigest??undefined),{headers});
  }catch(error){headers.set('Cache-Control','no-store');return new Response(error instanceof Error&&error.message==='RECEIPT_NOT_FOUND'?'Receipt not found.':'Receipt preview is temporarily unavailable.',{status:error instanceof Error&&error.message==='RECEIPT_NOT_FOUND'?404:503,headers});}
 }

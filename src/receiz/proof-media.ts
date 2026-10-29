@@ -9,6 +9,7 @@ import {loadOfflineProofVerifier} from './ledger-offline-proof';
 import {readAssetMoment,type MomentMetadata} from './asset-moment';
 import {readComposerAssetContent,readComposerCapacity,type ComposerAssetFile} from './asset-composer';
 import {safeImportedSourceUrl} from './imported-source-url';
+import {safeReceizPublicUrl} from './public-market';
 import {readExactByteBlocks} from '../../native/receiz/packages/receiz-sdk/src/exactByteBlocks';
 import {ORIGINAL_PNG_MAX_BYTES,originalReadLimit} from './original-capacity';
 
@@ -19,6 +20,8 @@ export type MediaFile={kind:MediaKind;filename:string;mimeType:string;bytes:Uint
 export type ProofMediaSource={kind:'held';bytes:Uint8Array;filename:string;digest:string;related?:readonly {digest:string;bytes:Uint8Array;filename:string}[]}|{kind:'public';url:string;digest:string;postUrl?:string;hasLongForm?:boolean};
 export type OpenedProofMedia={artifactDigest:string;files:MediaFile[];linkedArtifactDigest?:string;readText?:(signal?:AbortSignal)=>Promise<ProofReading>};
 const publicMedia=new Map<string,OpenedProofMedia>();
+type PublicMediaPreparation={controller:AbortController;work:Promise<OpenedProofMedia>;readers:number;done:boolean};
+const publicMediaPreparations=new Map<string,PublicMediaPreparation>();
 const mediaCacheKey=(source:ProofMediaSource)=>source.kind==='public'?`${source.digest}:${source.url}:${source.postUrl??''}:${source.hasLongForm===true}`:null;
 export function retainedPublicMedia(source:ProofMediaSource){const key=mediaCacheKey(source);return key?publicMedia.get(key)??null:null;}
 const MAX=16*1024*1024;
@@ -79,16 +82,36 @@ export function readMediaPayload(payload:ReceizVerifiedPayload,composer?:Compose
  * does not admit ownership, custody, transfers or account value. */
 export function openProofMedia(source:ProofMediaSource,signal?:AbortSignal):Promise<OpenedProofMedia>{
  signal?.throwIfAborted();const cached=retainedPublicMedia(source);if(cached)return Promise.resolve(cached);
- return trackProofInspection(source.digest,openOriginalMedia(source,signal).then(opened=>{
-  const key=mediaCacheKey(source),size=(media:OpenedProofMedia)=>media.files.reduce((sum,file)=>sum+file.bytes.length+(file.text?.length??0)*2+(file.chapters?.reduce((sum,chapter)=>sum+chapter.text.length*2+(chapter.blocks?.reduce((size,block)=>size+block.text.length*2,0)??0),0)??0),0),bytes=size(opened),limit=16*1024*1024;
-  // Public originals only. Never publish private held media through this cache.
-  if(key&&bytes<=limit){while(publicMedia.size&&(publicMedia.size>=4||[...publicMedia.values()].reduce((sum,media)=>sum+size(media),0)+bytes>limit))publicMedia.delete(publicMedia.keys().next().value!);publicMedia.set(key,opened);}return opened;
- }));
+ const key=mediaCacheKey(source);
+ if(!key)return trackProofInspection(source.digest,openOriginalMedia(source,signal));
+ let preparation=publicMediaPreparations.get(key);
+ if(!preparation){
+  const controller=new AbortController(),work=trackProofInspection(source.digest,openOriginalMedia(source,controller.signal).then(opened=>{
+   controller.signal.throwIfAborted();
+   const size=(media:OpenedProofMedia)=>media.files.reduce((sum,file)=>sum+file.bytes.length+(file.text?.length??0)*2+(file.chapters?.reduce((sum,chapter)=>sum+chapter.text.length*2+(chapter.blocks?.reduce((size,block)=>size+block.text.length*2,0)??0),0)??0),0),bytes=size(opened),limit=16*1024*1024;
+   // Public originals only. Never publish private held media through this map.
+   if(bytes<=limit){while(publicMedia.size&&(publicMedia.size>=4||[...publicMedia.values()].reduce((sum,media)=>sum+size(media),0)+bytes>limit))publicMedia.delete(publicMedia.keys().next().value!);publicMedia.set(key,opened);}return opened;
+  }));
+  preparation={controller,work,readers:0,done:false};publicMediaPreparations.set(key,preparation);
+  const held=preparation,finish=()=>{held.done=true;if(publicMediaPreparations.get(key)===held)publicMediaPreparations.delete(key);};
+  void work.then(finish,finish);
+ }
+ const held=preparation;held.readers++;
+ return new Promise((resolve,reject)=>{
+  let active=true;
+  const release=()=>{if(!active)return;active=false;signal?.removeEventListener('abort',abort);held.readers--;if(!held.readers&&!held.done){if(publicMediaPreparations.get(key)===held)publicMediaPreparations.delete(key);held.controller.abort();}};
+  const abort=()=>{if(!active)return;release();reject(signal?.reason??new DOMException('Aborted','AbortError'));};
+  if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
+  void held.work.then(value=>{if(active){release();resolve(value);}},cause=>{if(active){release();reject(cause);}});
+ });
 }
 async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Promise<OpenedProofMedia>{
  if(!/^[a-f0-9]{64}$/i.test(source.digest))throw Error('The original digest is unavailable.');
- signal?.throwIfAborted();let bytes:Uint8Array,filename:string;const retained=source.kind==='public'?retainedAssetPublicationSource(source.digest):null;
- if(source.kind==='held'){if(source.bytes.length>originalReadLimit(source.bytes,MAX))throw Error('This original exceeds the supported reader capacity.');bytes=new Uint8Array(source.bytes);filename=source.filename;}else if(retained){bytes=new Uint8Array(await retained.arrayBuffer());filename=retained.name;}else{
+ signal?.throwIfAborted();const retained=source.kind==='public'?retainedAssetPublicationSource(source.digest):null;
+ if(source.kind==='held'&&(!source.bytes.length||source.bytes.length>originalReadLimit(source.bytes,MAX)))throw Error('This original exceeds the supported reader capacity.');
+ if(source.kind==='public'&&!retained&&!safeReceizPublicUrl(source.url,'original'))throw Error('This original source is not supported.');
+ const readBytes=async()=>{let bytes:Uint8Array,filename:string;
+ if(source.kind==='held'){bytes=new Uint8Array(source.bytes);filename=source.filename;}else if(retained){bytes=new Uint8Array(await retained.arrayBuffer());filename=retained.name;}else{
   const timeout=AbortSignal.timeout(90_000),publicSignal=signal?AbortSignal.any([signal,timeout]):timeout;
   const url=new URL(await resolvePublicOriginalUrl(source.url,source.digest,publicSignal));publicSignal.throwIfAborted();
   // Immutable public material already supports anonymous CORS. Use its exact
@@ -99,9 +122,18 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
   if(!response.ok)throw Error('The original could not be opened. You can retry or inspect its source.');bytes=await readPublicLedgerBytes(response,MAX,ORIGINAL_PNG_MAX_BYTES);filename='original.receiz';
  }
  if(!bytes.length||bytes.length>originalReadLimit(bytes,MAX))throw Error('This original exceeds the supported reader capacity.');
+ return {bytes,filename};
+ };
+ // Observe code failure independently; the exact source keeps its original
+ // refusal/receiving result even when verifier preparation fails first.
+ const preparedVerifier=loadOfflineProofVerifier().then(value=>({ok:true as const,value}),()=>({ok:false as const}));
+ const {bytes,filename}=await readBytes();signal?.throwIfAborted();
+ const prepared=await preparedVerifier;signal?.throwIfAborted();
+ if(!prepared.ok)throw Error('This original could not be opened as verified media. Inspect its proof source for details.');
+ const verifier=prepared.value;
  // Rendering needs the canonical read contract, including older carriers.
  // Append/admission custody is separate and is never relaxed by this reader.
- let opened;try{opened=await(await loadOfflineProofVerifier()).readArtifact(bytes,filename);}catch{throw Error('This original could not be opened as verified media. Inspect its proof source for details.');}signal?.throwIfAborted();
+ let opened;try{opened=await verifier.readArtifact(bytes,filename);}catch{throw Error('This original could not be opened as verified media. Inspect its proof source for details.');}signal?.throwIfAborted();
  if(opened.report.artifactSha256.toLowerCase()!==source.digest.toLowerCase())throw Error('This original does not match the selected proof.');
  retainProofInspection(opened.report,bytes,filename);
  const json=readMediaJson(opened.payload);

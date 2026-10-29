@@ -611,8 +611,10 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       };
       const setup=createBusinessSetupTools({accountUid:uid,assertOpen,invoke:call=>requestHost('/api/bank/business/setup',call)});
       const profiles=createBusinessProfileTools({accountUid:uid,ownerReceizId:binding.artifactOwnerReceizId,assertOpen,profile,verifyOriginal:async file=>unsigned.artifacts.verifyAndOpen(file),publication:()=>openAssetPublicationRuntime(),prepareOriginal:async draft=>{
-        assertOpen();const native=await loadBankNoteRuntime(),sealer=await ownedSealer(),sealDocument=await native.createBankNativeNoteSealer({enrollment:await sealer.enroll(),resources:sealingResources!});assertOpen();
-        const {loadBusinessSealRuntime}=await import('./business-seal-runtime'),{prepareConnectedComposerSource}=await loadBusinessSealRuntime();
+        assertOpen();const [sealDocument,{prepareConnectedComposerSource}]=await Promise.all([
+          (async()=>{const native=await loadBankNoteRuntime(),sealer=await ownedSealer();return native.createBankNativeNoteSealer({enrollment:await sealer.enroll(),resources:sealingResources!});})(),
+          import('./business-seal-runtime').then(module=>module.loadBusinessSealRuntime()),
+        ]);assertOpen();
         return prepareConnectedComposerSource({draft,ownerReceizId:binding.artifactOwnerReceizId,sealDocument,assertCurrent:assertOpen});
       }});
       const dns=async(provider?:string,expectedHostname?:string)=>createBusinessDnsTools({accountUid:uid,expectedHostname,assertOpen,execute:(tool,args)=>setup.execute(tool,args),connection:async hostname=>{
