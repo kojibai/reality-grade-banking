@@ -12,7 +12,15 @@ export function readCertificateState(raw:unknown,token:string):CertificateState{
  if(r.ok!==true||n.noteToken!==token||!certificateToken(token)||typeof n.title!=='string'||typeof i.id!=='string'||!i.id||i.id.length>512||!['minted','claimed','void'].includes(n.status)||!['originalShareQuantityMicro','remainingShareQuantityMicro','lastPriceUsdCents','remainingCostBasisUsdCents'].every(k=>exact(n[k]))||!Array.isArray(n.historyEvents)||n.historyEvents.length>10000||typeof v.isOwner!=='boolean'||typeof v.signedIn!=='boolean'||typeof v.canTrade!=='boolean')throw Error('CERTIFICATE_SOURCE_MISMATCH');
  return s as CertificateState;
 }
-export async function fetchPublicCertificate(token:string,signal?:AbortSignal){if(!certificateToken(token))throw Error('CERTIFICATE_TOKEN_INVALID');const response=await nativeFetch(`https://receiz.com/api/market/share-certificates/${encodeURIComponent(token)}`,{method:'GET',credentials:'omit',signal});if(!response.ok)throw Error(response.status===404?'CERTIFICATE_NOT_FOUND':'CERTIFICATE_UNAVAILABLE');return readCertificateState(await response.json(),token);}
+const publicCertificateReads=new Map<string,Promise<CertificateState>>();
+/** React replay and simultaneous public viewers share one bounded source read.
+ * Each caller may stop observing; neither a refresh nor a UI cache grants shares. */
+export async function fetchPublicCertificate(token:string,signal?:AbortSignal){
+ if(!certificateToken(token))throw Error('CERTIFICATE_TOKEN_INVALID');signal?.throwIfAborted();
+ let read=publicCertificateReads.get(token);
+ if(!read){read=(async()=>{const response=await nativeFetch(`https://receiz.com/api/market/share-certificates/${encodeURIComponent(token)}`,{method:'GET',credentials:'omit'});if(!response.ok)throw Error(response.status===404?'CERTIFICATE_NOT_FOUND':'CERTIFICATE_UNAVAILABLE');return readCertificateState(await response.json(),token);})();publicCertificateReads.set(token,read);const held=read;void read.finally(()=>{if(publicCertificateReads.get(token)===held)publicCertificateReads.delete(token);}).catch(()=>{});}
+ const result=await read;signal?.throwIfAborted();return result;
+}
 export type CertificateFile={token:string;marketItemId:string;filename:string;bytes:Uint8Array};
 /** Enclosing canonical verification precedes projection of the PNG payload.
  * This file is ownership evidence; the authenticated owner authorizes deposit. */

@@ -12,9 +12,10 @@ export interface InvestmentHistory {pulse:number;series:Record<ChartPeriod,{puls
 function atPulse(at:string){const time=Date.parse(at);let pulse=Math.max(0,Math.floor((time-marketPulseTime(0))/((3+Math.sqrt(5))*1000)));while(marketPulseTime(pulse)<time)pulse++;return pulse;}
 export function investmentHistoryRows(portfolio:MarketPortfolio|null,items:PublicMarketItem[],source:MarketCapSource|null,pulse:number):InvestmentHistoryRow[]|null{
  if(!portfolio?.positions.length||!Number.isSafeInteger(pulse)||pulse<0)return null;
- const trades=new Map<string,typeof portfolio.trades>();for(const t of portfolio.trades){const group=trades.get(t.marketItemId)??[];group.push(t);trades.set(t.marketItemId,group);}
+ const trades=new Map<string,typeof portfolio.trades>();for(const t of portfolio.trades){if(t.affectsPosition===false)continue;const group=trades.get(t.marketItemId)??[];group.push(t);trades.set(t.marketItemId,group);}
  try{return portfolio.positions.map(position=>{const item=portfolioItem(position,{items} as PublicMarketCatalog),seed=publicAssetPulseSeed(item,source);if(!seed)throw Error('No bound pricing');let quantity=0n;
-  const events=(trades.get(position.marketItemId)??[]).slice().sort((a,b)=>Date.parse(a.executedAt)-Date.parse(b.executedAt)||a.id.localeCompare(b.id)).map(trade=>{const at=atPulse(trade.executedAt);quantity+=(trade.side==='buy'?1n:-1n)*BigInt(trade.shareQuantityMicro);if(quantity<0n||at<seed.claimPulse)throw Error('Incomplete position history');return{pulse:at,quantity:quantity.toString()};});
+  const movements=[...(trades.get(position.marketItemId)??[]).map(t=>({id:t.id,kai:t.kaiUPulse?BigInt(t.kaiUPulse):BigInt(atPulse(t.executedAt))*1000000n,delta:(t.side==='buy'?1n:-1n)*BigInt(t.shareQuantityMicro)})),...(portfolio.shareMovements??[]).filter(m=>m.marketItemId===position.marketItemId).map(m=>({id:m.id,kai:BigInt(m.kaiUPulse),delta:BigInt(m.shareQuantityMicroDelta)}))];
+  const events=movements.sort((a,b)=>a.kai<b.kai?-1:a.kai>b.kai?1:a.id.localeCompare(b.id)).map(m=>{const at=Number(m.kai/1000000n);quantity+=m.delta;if(quantity<0n||at<seed.claimPulse)throw Error('Incomplete position history');return{pulse:at,quantity:quantity.toString()};});
   if(!events.length||quantity!==BigInt(position.shareQuantityMicro))throw Error('Incomplete position history');return{seed,events};
  });}catch{return null;}
 }

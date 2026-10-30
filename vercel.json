@@ -5,7 +5,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/index.ts": {
-      "includeFiles": "server/profile-runtime/share-history/**",
+      "includeFiles": "{server/profile-runtime/share-history/**,public/receiz-public-market.json,public/receiz-public-sports.json}",
       "maxDuration": 120
     },
     "api/receipt.ts": {
@@ -75,11 +75,11 @@
     },
     {
       "source": "/shares/:noteToken/",
-      "destination": "/explore/index.html"
+      "destination": "/shares/index.html"
     },
     {
       "source": "/shares/:noteToken",
-      "destination": "/explore/index.html"
+      "destination": "/shares/index.html"
     },
     {
       "source": "/book/:username/og.png",

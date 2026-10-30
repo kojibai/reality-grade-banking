@@ -15,9 +15,9 @@ type Dependencies={page():Promise<string>;item(id:string):Promise<PublicMarketIt
 const escape=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 import {isShareTrackingKey} from './share-tracking.js';
 let catalog:Promise<Map<string,PublicMarketItem>>|undefined;
-export async function assetPreviewItem(id:string){
+export async function assetPreviewItem(id:string,options:{shippedOnly?:boolean}={}){
  catalog??=(async()=>{const {readFile}=await import('node:fs/promises'),[market,sports]=await Promise.all(['market','sports'].map(name=>readFile(`public/receiz-public-${name}.json`,'utf8').then(JSON.parse))),base=parsePublicMarket(market,market.snapshot);return new Map(mergePublicSports(base,sports).items.map(item=>[item.id,item]));})().catch(error=>{catalog=undefined;throw error;});
- return(await catalog).get(id)??await resolveLiveAsset(id);
+ return(await catalog).get(id)??(options.shippedOnly?null:await resolveLiveAsset(id));
 }
 /** Cold profile assets read their exact anonymous Original coordinate. Other
  * families reuse discovery once per source window; no private account, quote

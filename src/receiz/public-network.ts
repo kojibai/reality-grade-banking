@@ -1,3 +1,4 @@
+import {enrichLedgerCertificateReferences} from './ledger-share-certificate';
 import {applyLedgerFundingContext,retainLedgerFundingContext} from './ledger-funding-context';
 import {safeLedgerSourceUrl} from './ledger-receipts';
 import { parsePublicMarket } from './public-market.ts';
@@ -105,10 +106,10 @@ export function mergePublicRecords(known: readonly PublicRecord[], incoming: rea
     }
     if(ordered)return known as PublicRecord[];
   }
-  return [...records.values()].sort((left, right) => {
+  return enrichLedgerCertificateReferences([...records.values()].sort((left, right) => {
     const a = recordedCoordinate(left), b = recordedCoordinate(right);
     return a !== null && b !== null && a !== b ? a > b ? -1 : 1 : a !== null && b === null ? -1 : a === null && b !== null ? 1 : 0;
-  });
+  }));
 }
 /** Append supported fields only beneath the same immutable transaction source.
  * A repeated thin projection cannot erase its already carried event snapshot. */

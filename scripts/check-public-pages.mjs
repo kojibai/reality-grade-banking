@@ -169,3 +169,10 @@ async function checkCheckoutEntry(key){
 }
 await checkCheckoutEntry('pay/index.html');
 console.log('Verified dedicated hosted checkout entry and static import boundary.');
+
+const certificateDocument=await readFile('dist/shares/index.html','utf8');
+const certificatePaint=certificateDocument.slice(certificateDocument.indexOf('id="public-explore-root"'),certificateDocument.indexOf('<script id="receiz-navigation"'));
+assert.ok(certificatePaint.includes('certificate-public-header')&&certificatePaint.includes('certificate-public-footer'),'A direct certificate carries its own settled public shell.');
+assert.ok(!certificatePaint.includes('site-footer'),'A certificate never first paints the global footer.');
+assert.ok(certificateDocument.includes('data-bank-surface="explore"')&&certificateDocument.includes('/learn/learn.js')&&certificateDocument.includes('id="receiz-navigation"'),'Certificate entry retains the existing public navigation and Bank purchase host.');
+console.log('Verified direct certificate shell, compact footer, existing navigation and purchase runtime.');

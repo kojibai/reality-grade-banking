@@ -28,7 +28,7 @@ const actionTitles:Record<string,string>={
  'receiz.sports_arena.pack_purchase':'Pack Received','receiz.sports_arena.reward_pack':'Reward Pack Received','receiz.sports_arena.pack_derby_reward':'Reward Pack Received',
  'receiz.signal_run.rewarded_card_seal':'Collectible Created','signal_run.vault.global_sync':'Collectibles Registered',
  'receiz.sports_arena.tournament_entry':'Tournament Entry','receiz.sports_arena.entry':'Sports Entry','signal_run.best_score':'Personal Best Updated','signal_run.card.live_battle':'Collectible Match',
- 'market.share.buy':'Asset Purchase','market.share.sell':'Asset Sale','market.share.import':'Ownership Imported','market.share.export':'Ownership Exported',
+ 'market.share.buy':'Asset Purchase','market.share.sell':'Asset Sale','market.share.import':'Shares deposited','market.share.export':'Shares withdrawn',
  'market.prediction.wager':'Prediction Placed','market.prediction.payout':'Prediction Payout','market.prediction.refund':'Prediction Refund','market.prediction.export':'Prediction Exported',
  'wallet.reserve.credit':'Money Added',
  'receiz.chat.message':'Message Saved','receiz.chat.conversation':'Conversation Saved',

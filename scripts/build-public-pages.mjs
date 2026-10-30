@@ -1,3 +1,5 @@
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
 import {earlyPublicRuntimeDocument} from './public-runtime-document.mjs';
 import {momentsPage,momentsContent} from './moments-page.mjs';
 import {originalsQualificationContent} from './originals-qualification-template.mjs';
@@ -62,12 +64,14 @@ const economyCss=await readFile('public/learn/economy.css','utf8');
 const cooperativeCss=await readFile('public/learn/cooperatives.css','utf8');
 const protectionCss=await readFile('public/learn/vault-protection.css','utf8');
 const valueHead = originalsAssets.head + `<link rel="stylesheet" href="${valueAssets.cssUrl}"><script src="${valueAssets.jsUrl}" defer></script>`;
-let bankHtml;
+let bankHtml,certificateShell;
 let assetPaths=[];
 const publicPages = {};
 const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' });
 try {
   const { AccountOpening } = await server.ssrLoadModule('/src/features/identity/AccountOpening.tsx');
+  const { PublicCertificatePage } = await server.ssrLoadModule('/src/features/certificates/PublicCertificatePage.tsx');
+  certificateShell=renderToStaticMarkup(createElement(PublicCertificatePage,{token:'',active:false}));
   const { BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_MESSAGING_CONSENT, BANK_MESSAGING_SCOPES } = await server.ssrLoadModule('/src/receiz/config.ts');
   const {parsePublicMarket}=await server.ssrLoadModule('/src/receiz/public-market.ts'),{mergePublicSports}=await server.ssrLoadModule('/src/receiz/public-sports.ts');
   const [market,sports]=await Promise.all(['market','sports'].map(name=>readFile(`public/receiz-public-${name}.json`,'utf8').then(JSON.parse)));
@@ -113,6 +117,13 @@ for (const runtime of ['ledger','explore','verify','conformance','receipt']) {
   publicPages[path] = { runtime, title: publicPage(path)?.title??'Transaction receipt · Bankeiz', content: publicEntryFallback(path)||'<main><h1>Transaction receipt</h1></main>', head: pageHead, entry: head.match(/<script type="module"[^>]*src="([^"]+)"/)[1] };
   runtimeDocuments.set(path, html.replace(/<head>[\s\S]+?<\/head>/,`<head>${pageHead}${head.match(/<script type="module"[^>]*>[\s\S]*?<\/script>/)[0]}</head>`).replace('<div id="root">',`<div id="public-${runtime}-root" data-public-runtime="${runtime}">`));
 }
+// A direct certificate paints its own settled header/footer, never the
+// unrelated catalog. Keep the same Explorer runtime and Bank purchase host.
+{
+ const base=publicPages['/explore/'],styles=await readFile('src/features/certificates/certificates.css','utf8');
+ const head=base.head.replace(/<title>[\s\S]*?<\/title>/,'<title>Share certificate | Bankeiz</title>')+`<style data-public-page-style="certificate">${styles}</style>`;
+ runtimeDocuments.set('/shares/',`<!doctype html><html lang="en"><head>${head}<script type="module" src="${base.entry}"></script></head><body><div id="public-explore-root" data-public-runtime="explore">${certificateShell}</div></body></html>`);
+}
 // Category and aggregate views retain the very same Explorer root and reader.
 // Changing these routes cannot open another feed or another valuation engine.
 for(const path of ['/market-cap/',...assetCategories.map(category=>category.path)]){
@@ -141,11 +152,12 @@ for (const match of [...entryHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^
   entryHtml = entryHtml.replace(match[0], `<style data-bank-stylesheet="${escape(match[1])}">${css}</style>`);
 }
 await writeFile('dist/index.html', entryHtml);
+const runtimeDocumentHtml=(html,runtime)=>earlyPublicRuntimeDocument(html).replace('<body>',`<body data-bank-surface="${runtime}">`).replace('</head>',`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>',()=>`${bundle}</body>`);
 const documents={...publicPages,...Object.fromEntries(Object.entries(publicRouteAliases).map(([alias,path])=>[alias,publicPages[path]]))};
 for (const [path, page] of Object.entries(documents)) {
   await mkdir(`dist${path}`, { recursive: true });
   const runtimeHtml = runtimeDocuments.get(path);
-  await writeFile(`dist${path}index.html`, runtimeHtml ? earlyPublicRuntimeDocument(runtimeHtml).replace('<body>',`<body data-bank-surface="${page.runtime}">`).replace('</head>',`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>',()=>`${bundle}</body>`) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`);
+  await writeFile(`dist${path}index.html`, runtimeHtml ? runtimeDocumentHtml(runtimeHtml,page.runtime) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`);
 }
 const urls = [...metadataPages.filter(page=>!page.noindex).map(page=>page.path),...assetPaths];
 if(urls.length>50000)throw Error('SITEMAP_PARTITION_REQUIRED');
@@ -153,3 +165,6 @@ if(urls.length>50000)throw Error('SITEMAP_PARTITION_REQUIRED');
 // guide. Canonical publication dates can be added when they are source-backed.
 await writeFile('dist/sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(path => `<url><loc>${origin}${path}</loc></url>`).join('')}</urlset>`);
 console.log(`Prerendered the existing entrance and ${pages.length} public guides; generated canonical sitemap.`);
+
+await mkdir('dist/shares',{recursive:true});
+await writeFile('dist/shares/index.html',runtimeDocumentHtml(runtimeDocuments.get('/shares/'),'explore'));

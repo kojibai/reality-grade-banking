@@ -1,3 +1,4 @@
+import {readLedgerShareCertificate,ledgerShareCertificate,certificateShareValue,isCertificateMovement} from './ledger-share-certificate';
 import {publicSigilValuationMetadata} from './market-projection/source';
 import { computeIntrinsicUnsigned } from '@receiz/sdk/valuation';
 import { DEFAULT_ISSUANCE_POLICY, quotePhiForUsd } from './canonical-market-issuance';
@@ -49,6 +50,7 @@ export function readLedgerValueOperands(input: unknown): LedgerValueOperands {
   for (const key of ['amountPhiMicro', 'usdPerPhiMicrocents', 'considerationUsdCents', 'cardValueUsdCents', 'proofValueUsdCents', 'valuePulse', 'settledUsdCents', 'phiUsdCents'] as const) {
     const field = uint(value[key] ?? receipt[key]); if (field !== undefined) result[key] = field;
   }
+  const certificate=readLedgerShareCertificate(value.certificate);for(const key of ['marketItemId','assetId'] as const){if(certificate?.[key]&&!result[key])result[key]=certificate[key];}
   const proof=object(value.proofValuation),assetId=text(proof.assetId),marketItemId=text(proof.marketItemId),rawSeed=object(proof.seed),seed=publicMarketPulseSeed(rawSeed,String(rawSeed.claimPulse));
   if(assetId&&marketItemId&&seed&&(!result.assetId||result.assetId===assetId)&&(!result.marketItemId||result.marketItemId===marketItemId))result.proofValuation={assetId,marketItemId,seed};
   // The private v129 ledger explicitly names this amount as the transferred card snapshot.
@@ -179,6 +181,11 @@ function calculateLedgerValue(record: PublicRecord, index: LedgerValueIndex | nu
   const operands = readLedgerValueOperands(record.valueOperands), transfer = /transfer|send|payment_sent|payment_received/i.test(record.kind);
   const card = /(?:card|proof|original)[._-]transfer/i.test(record.kind);
   const eventPulse = record.pulse ?? (record.kaiUpulse ? String(BigInt(record.kaiUpulse) / 1_000_000n) : null);
+  if(isCertificateMovement(record.kind)){
+   const certificate=ledgerShareCertificate(record),seed=certificate?ledgerProofValueSeed(record,index):null;
+   const cents=seed&&eventPulse&&(!record.kaiUpulse||BigInt(record.kaiUpulse)/1000000n===BigInt(eventPulse))?valueAtPulse(seed,Number(eventPulse)):null;
+   return {amountUsdCents:certificate&&cents!==null?certificateShareValue(cents,certificate.shareQuantityMicro):null,basis:certificate&&cents!==null?'intrinsic-model':'unavailable',pulse:eventPulse,considerationUsdCents:null};
+  }
   const trade=ledgerAssetTrade(record);
   if(trade?.settlementUsdCents!==undefined)return {amountUsdCents:trade.settlementUsdCents,basis:'payment',pulse:eventPulse,considerationUsdCents:null};
   if (operands.cardValueState === 'conflicting-recorded-snapshots') return { amountUsdCents: null, basis: 'unavailable', pulse: eventPulse, considerationUsdCents: null, gap: 'The source carries conflicting card value snapshots.' };

@@ -1,3 +1,4 @@
+import {readLedgerShareCertificate,isCertificateMovement} from './ledger-share-certificate';
 import {readLedgerFundingContext} from './ledger-funding-context';
 import {RECEIZ_VERSION} from './client';
 import type {PublicRecord} from './public-network';
@@ -32,6 +33,7 @@ function identity(raw:unknown):LedgerFields {
 /** Selected public evidence only. Never retain arbitrary metadata or custody payloads. */
 export function readLedgerDetails(raw:unknown):LedgerFields {
  const source=object(raw),result=select(source,['sourceObservedAt','seq','actionScope','chakraDay','objectId','objectLabel','assetId','marketItemId','collectibleId','receizId','claimHash','noteId','sortKaiPulse','sortOrdinal','transactionLinkKind','fundingTransferId','ledgerEntryKind','reserveCreditKind']);
+ const certificate=readLedgerShareCertificate(source.certificate??(isCertificateMovement(String(source.actionKind??source.kind))?source.payload:null));if(certificate)result.certificate=certificate as unknown as LedgerFields;
  const tradeSide=ledgerAssetTradeSide({kind:String(source.actionKind??source.kind??''),details:result}),metadata=object(source.metadata);
  const assetTrade=readLedgerAssetTrade(source.assetTrade??(/^market\.share\.(buy|sell)$/.test(String(source.actionKind??source.kind))?source.payload:tradeSide?{...metadata,side:metadata.side??tradeSide}:null));
  if(assetTrade)result.assetTrade=assetTrade as unknown as LedgerFields;

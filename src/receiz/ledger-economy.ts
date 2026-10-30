@@ -1,3 +1,5 @@
+import {chartChange} from '../core/chart-history';
+import {ledgerShareCertificate,isCertificateMovement,certificateShareValue} from './ledger-share-certificate';
 import {ledgerPaymentReference} from './ledger-payment-records';
 import {RECEIZ_VERSION} from './client';
 import type {PublicRecord} from './public-network';
@@ -38,6 +40,13 @@ export function ledgerRelatedRecords(record:PublicRecord,index:RelationIndex){
 }
 const valueRow=ledgerValueRow;
 export function ledgerCurrentAssetValue(record:PublicRecord,index:LedgerValueIndex|null,evaluationPulse?:number):LedgerValueDisplay|null {
+ if(isCertificateMovement(record.kind)){
+  const facts=ledgerShareCertificate(record);if(!facts)return null;
+  const unit=ledgerCurrentAssetValue({...record,kind:'market-asset',source:'proofs',sourceId:record.valueOperands?.proofValuation?.marketItemId??facts.marketItemId??record.sourceId},index,evaluationPulse);
+  if(!unit||unit.amountUsdCents===null)return null;
+  const {comparison,...base}=unit,amountUsdCents=certificateShareValue(unit.amountUsdCents,facts.shareQuantityMicro),previous=comparison?certificateShareValue(comparison.amountUsdCents,facts.shareQuantityMicro):null,change=previous===null?null:chartChange(previous,amountUsdCents);
+  return{...base,amountUsdCents,...(comparison&&previous!==null&&change?.percent!==null&&change?.percent!==undefined?{comparison:{pulse:comparison.pulse,amountUsdCents:previous,percent:change.percent}}:{})};
+ }
  const copy=ledgerCardCopyValuation(record,index,true),pulse=Math.max(evaluationPulse??index?.evaluationPulse??index?.source.serverPulse??0,copy?.copy.valuationPulse??0);
  if(!Number.isSafeInteger(pulse)||pulse<0||pulse>1e10)return null;
  if(copy){const usd=ledgerCardCopyUsdAtPulse(copy,pulse),amount=usd===undefined?undefined:ledgerUsdCents(usd);return amount===undefined?null:{basis:'live-model',amountUsdCents:amount,pulse:String(pulse),considerationUsdCents:null};}
@@ -71,7 +80,7 @@ function calculateLedgerValuationContext(record:PublicRecord,index:LedgerValueIn
  if(!index)return null;
  const seed=ledgerProofValueSeed(record,index,row);
  if(value.basis!=='intrinsic-model'||seed?.kind!=='sigil')return row?{...common,calculationKind:'source-context',sourceValueUsd:row.marketUsdValue}:null;
- return {...common,evaluationPulse:value.basis==='intrinsic-model'&&value.pulse?value.pulse:String(index.evaluationPulse??index.source.serverPulse),seed:Object.fromEntries(Object.entries(seed).filter(([,v])=>v!==null&&v!==undefined)) as LedgerFields,intrinsicFunction:'@receiz/sdk/valuation.computeIntrinsicUnsigned',quoteFunction:'canonical-market-issuance.quotePhiForUsd',quote:{referenceUsd:100,currentStreakDays:0,lifetimeUsdSoFar:0,plannedHoldBeats:0},policy:JSON.parse(JSON.stringify(DEFAULT_ISSUANCE_POLICY)) as LedgerFields,rounding:'Math.round(valuePhi × usdPerPhi × 100)'};
+ return {...common,...(ledgerShareCertificate(record)?{shareQuantityMicro:ledgerShareCertificate(record)!.shareQuantityMicro,shareValueFormula:'floor(unit USD cents × moved shares in micro-units / 1,000,000)'}:{}),evaluationPulse:value.basis==='intrinsic-model'&&value.pulse?value.pulse:String(index.evaluationPulse??index.source.serverPulse),seed:Object.fromEntries(Object.entries(seed).filter(([,v])=>v!==null&&v!==undefined)) as LedgerFields,intrinsicFunction:'@receiz/sdk/valuation.computeIntrinsicUnsigned',quoteFunction:'canonical-market-issuance.quotePhiForUsd',quote:{referenceUsd:100,currentStreakDays:0,lifetimeUsdSoFar:0,plannedHoldBeats:0},policy:JSON.parse(JSON.stringify(DEFAULT_ISSUANCE_POLICY)) as LedgerFields,rounding:'Math.round(valuePhi × usdPerPhi × 100)'};
 }
 export function ledgerValuationContext(record:PublicRecord,index:LedgerValueIndex|null,value?:LedgerValueDisplay):LedgerFields|null{
  const transfer=/transfer|send|payment_sent|payment_received/i.test(record.kind);

@@ -1,0 +1,7 @@
+// @vitest-environment happy-dom
+import {act} from 'react';import {createRoot} from 'react-dom/client';import {expect,it,vi} from 'vitest';
+const gate=vi.hoisted(()=>({release:null as null|(()=>void)}));
+vi.mock('../src/features/certificates/PublicCertificatePage',()=>new Promise(resolve=>{gate.release=()=>resolve({PublicCertificateContent:()=> <section data-certificate-ready>Share record ready</section>});}));
+import {PublicExplorer} from '../src/public-explorer/PublicExplorer';
+Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+it('keeps the same public header and footer nodes while the certificate feature module opens',async()=>{vi.stubGlobal('location',{pathname:'/shares/share_module_continuity_fixture/'});const host=document.createElement('div'),root=createRoot(host);try{await act(async()=>root.render(<PublicExplorer/>));const header=host.querySelector('.certificate-public-header'),footer=host.querySelector('.certificate-public-footer');expect(header).not.toBeNull();expect(footer).not.toBeNull();expect(host.querySelector('.site-footer')).toBeNull();expect(host.textContent).toContain('Share certificate');expect(gate.release).not.toBeNull();await act(async()=>{gate.release!();});expect(host.querySelector('[data-certificate-ready]')).not.toBeNull();expect(host.querySelector('.certificate-public-header')).toBe(header);expect(host.querySelector('.certificate-public-footer')).toBe(footer);}finally{act(()=>root.unmount());vi.unstubAllGlobals();}});

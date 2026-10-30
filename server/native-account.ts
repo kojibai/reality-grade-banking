@@ -96,7 +96,18 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
       if (!streamPath || !response.ok || !response.body) { await response.body?.cancel(); return fail(503); }
       return new Response(streamingBody(response.body,signal,abort), {status:response.status,headers:{...base,'Cache-Control':'no-store, no-transform','Content-Type':response.headers.get('content-type')!,'X-Accel-Buffering':'no'}});
     }
-    const output = await bytes(response.body,certificateExport?26*1024*1024:LIMIT,signal);
+    let output = await bytes(response.body,certificateExport?26*1024*1024:LIMIT,signal);
+    // Older certificate projections can omit an Original's pricing operands.
+    // Reuse the exact public source already shipped for that same artifact;
+    // no account, quote or discovery request belongs in this public read.
+    if(response.ok&&request.method==='GET'&&/^\/api\/market\/share-certificates\/[^/]+$/.test(path)){
+      try{const raw=JSON.parse(new TextDecoder().decode(output)),item=raw?.ok===true?raw.state?.item:null;
+        if(item&&item.livePulseSeed==null&&typeof item.id==='string'&&typeof item.assetId==='string'){
+          const {assetPreviewItem}=await import('./asset-runtime/asset-preview.mjs'),held=await assetPreviewItem(item.id,{shippedOnly:true});
+          if(held&&held.id===item.id&&held.assetId===item.assetId&&held.livePulseSeed){item.livePulseSeed=held.livePulseSeed;output=Buffer.from(JSON.stringify(raw),'utf8');}
+        }
+      }catch{/* Exact upstream certificate remains usable without display operands. */}
+    }
     if (process.env.RECEIZ_BANK_QUALIFICATION_DIAGNOSTICS === '1' && response.status === 503 && path.startsWith('/api/sdk/v1/runtime/qualify?') && body) {
       const probes = await probeNativeQualification(body.toString('utf8'), authorization ?? undefined);
       for (const probe of probes) console.warn('receiz-bank native qualification probe', probe);

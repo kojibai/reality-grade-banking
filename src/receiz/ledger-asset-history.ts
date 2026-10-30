@@ -1,3 +1,4 @@
+import {ledgerShareCertificate,certificateShareValue,isCertificateMovement} from './ledger-share-certificate';
 import {ledgerAssetTradeSide} from './ledger-asset-trade';
 import {ledgerCardCopyValuation,ledgerValueRow,ledgerProofValueSeed,type LedgerValueIndex} from './ledger-value';
 import {ledgerCardCopyUsdAtPulse} from './ledger-card-copy';
@@ -8,17 +9,18 @@ import {marketPeriodPulses,marketPulseTime} from './market-projection/coordinate
 import {retainMarketInterval,type CapitalizationPoint} from './market-projection/history';
 import {CHART_PERIODS} from '../core/chart-history';
 
-const held=new WeakMap<PublicRecord,{basis:object;copy:object|null;pulse:number;periods:PublicAssetPeriods}>();
+const held=new WeakMap<PublicRecord,{basis:object;copy:object|null;pulse:number;periods:PublicAssetPeriods;display:PublicAssetPeriods}>();
 /** Only already-indexed source operands. No lookup, inventory scan, source
  * verification or additional clock. Event values remain fixed separately. */
 export function ledgerAssetPeriods(record:PublicRecord,index:LedgerValueIndex|null):PublicAssetPeriods|null{
  if(ledgerAssetTradeSide(record))return null;
+ const certificate=ledgerShareCertificate(record);if(isCertificateMovement(record.kind)&&!certificate)return null;
  const row=ledgerValueRow(record,index),copy=ledgerCardCopyValuation(record,index,true);
  const seed=ledgerProofValueSeed(record,index,row);
  const pulse=Math.max(index?.evaluationPulse??index?.source.serverPulse??0,copy?.copy.valuationPulse??0);
  if(!copy&&!seed||!Number.isSafeInteger(pulse)||pulse<0||pulse>1e10)return null;
  const basis=copy?.copy??record.valueOperands?.proofValuation??row!,previous=held.get(record),reuse=previous?.basis===basis&&previous.copy===(copy?.copy??null)&&previous.pulse<=pulse&&pulse-previous.pulse<=2;
- if(reuse&&previous.pulse===pulse)return previous.periods;
+ if(reuse&&previous.pulse===pulse)return previous.display;
  let periods:PublicAssetPeriods|null=null;
  if(copy){
   if(pulse<copy.issue)return null;
@@ -34,5 +36,7 @@ export function ledgerAssetPeriods(record:PublicRecord,index:LedgerValueIndex|nu
   const item:PublicMarketItem={id:itemId,assetId,title:record.title,summary:'',category:'proof',pulse:String(seed.claimPulse),livePulseSeed:seed,valuationBinding:{itemId,assetId},sourceUrl:null,verifyUrl:null,originalUrl:null,originalDigest:null,sealedAt:null,ownerUsername:null,ownerDisplayName:null,ownerProfileUrl:null,priceUsd:null,changePct:null,chart:[],authority:'projection-only',canTrade:false};
   periods=projectPublicAssetPeriods(item,index?.source??null,pulse,reuse?previous.periods:null);
  }
- if(periods)held.set(record,{basis,copy:copy?.copy??null,pulse,periods});return periods;
+ if(!periods)return null;
+ const display=certificate?Object.fromEntries(CHART_PERIODS.map(period=>[period,periods![period].map(point=>({...point,usdCents:certificateShareValue(point.usdCents,certificate.shareQuantityMicro)}))])) as PublicAssetPeriods:periods;
+ held.set(record,{basis,copy:copy?.copy??null,pulse,periods,display});return display;
 }
