@@ -57,6 +57,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   if (manifest['receipt/index.html']) {visit('receipt/index.html');urls.add('/receipt/');}
   if (manifest['ledger/index.html']) {visit('ledger/index.html');urls.add('/ledger/');}
   if (manifest['explore/index.html']) {visit('explore/index.html');urls.add('/explore/');}
+  if (manifest['feed/index.html']) {visit('feed/index.html');urls.add('/feed/');}
   // Vite emits module-worker files outside the entry's manifest dependency list.
   for (const name of await readdir(resolve(root, 'assets'))) if (/^worker-[\w-]+\.js$/.test(name)) urls.add('/assets/' + name);
   // The public calculator is emitted separately from Vite's app manifest.
@@ -74,6 +75,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   if (manifest['verify/index.html']) { pages['/verify/'] = '/verify/'; pages['/verify'] = '/verify/'; }
   if (manifest['receipt/index.html']) pages['/receipt/']='/receipt/';
   if (manifest['ledger/index.html']) {pages['/ledger/']='/ledger/';pages['/ledger']='/ledger/';}
+  if (manifest['feed/index.html'])for(const path of ['/feed','/feed/'])pages[path]='/feed/';
   if (manifest['explore/index.html'])for(const path of ['/explore','/explore/','/explorer','/explorer/'])pages[path]='/explore/';
   for (const path of Object.keys(navigation.pages)) {
     // Conformance remains an on-demand console, outside the bank installation
@@ -86,7 +88,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     if(canonicalPath===momentsPage.path){urls.add('/learn/moments.js');urls.add('/learn/moments-model.mjs');}
     const knownGuide=canonicalPath===momentsPage.path||canonicalPath===meetingPage.path||standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/protect/','/vaults/','/id/','/guide/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
     if(canonicalPath===directoryPage.path)urls.add('/learn/business-fit.js');
-    if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
+    if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/feed/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     // Each retained document already carries the complete public catalog.
     // New routes reuse an existing shell instead of installing dozens of
     // identical copies of that catalog and all its embedded workspace CSS.

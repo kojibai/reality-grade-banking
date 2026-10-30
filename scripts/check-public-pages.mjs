@@ -66,6 +66,9 @@ assert.ok(navigation.pages['/legal/'], 'Legal notices must use the retained publ
 assert.ok(navigation.pages['/schemas/'], 'The complete schema reference must be carried for document-free public navigation');
 const sharedHeader = navigation.pages['/learn/'].content.match(/<header class="learn-header">[\s\S]*?<\/header>/)[0];
 for (const [path, entry] of Object.entries(navigation.pages)) {
+  // Feed is a dedicated immersive document; its lean navigation and first paint
+  // have their own assertions below. Existing guide documents remain identical.
+  if(path==='/feed/')continue;
   const routeHtml=await readFile(`dist${path}index.html`,'utf8');
   assert.deepEqual(routeHtml.match(sharedExamplePattern),sharedExampleBank,`Cold ${path} keeps the same shared walkthrough destinations`);
   const output = await readFile(`dist${path}index.html`, 'utf8');
@@ -176,3 +179,17 @@ assert.ok(certificatePaint.includes('certificate-public-header')&&certificatePai
 assert.ok(!certificatePaint.includes('site-footer'),'A certificate never first paints the global footer.');
 assert.ok(certificateDocument.includes('data-bank-surface="explore"')&&certificateDocument.includes('/learn/learn.js')&&certificateDocument.includes('id="receiz-navigation"'),'Certificate entry retains the existing public navigation and Bank purchase host.');
 console.log('Verified direct certificate shell, compact footer, existing navigation and purchase runtime.');
+
+const feedDocument=await readFile('dist/feed/index.html','utf8');
+const feedOpening=feedDocument.slice(0,feedDocument.indexOf('<script id="receiz-navigation"'));
+assert.ok(feedOpening.includes('data-public-runtime="feed"')&&feedOpening.includes('data-feed-item=')&&feedOpening.includes('id="public-feed-seed"'),'Feed first paint carries actual existing source rows and their matching stage.');
+assert.ok(feedOpening.includes('<style data-public-page-style="feed">')&&!/<link rel="stylesheet"/.test(feedOpening),'The feed stage never waits on a stylesheet request.');
+assert.ok(/<script type="module" async[^>]*src="\/assets\/feed-/.test(feedDocument),'Feed starts before its unrelated navigation payload.');
+assert.ok(!feedOpening.includes('site-footer')&&!feedOpening.includes('account-opening-screen'),'Feed first paint is the actual content, with no global footer or account-entry work.');
+const feedNavigation=JSON.parse(feedDocument.match(navigationPattern)[1]);
+assert.deepEqual(Object.keys(feedNavigation.pages).sort(),['/explore/','/feed/'],'Feed carries only its existing return/asset runtime and the Bank action host, not the marketing/example catalog.');
+assert.ok(feedDocument.length<600000,'The dedicated feed document stays under 600 kB uncompressed.');
+const feedImports=new Set();
+async function checkFeedEntry(key){if(feedImports.has(key))return;feedImports.add(key);const entry=builds[key];assert.ok(entry);const body=await readFile('dist/'+entry.file,'utf8');assert.ok(!/createNativeIdentity|\/api\/chat\/conversations|native-account\/ensure|createCheckoutIdentitySession/.test(body),'Feed static entry cannot mount account/payment/messaging execution before user intent.');for(const dep of entry.imports??[])await checkFeedEntry(dep);}
+await checkFeedEntry('feed/index.html');
+console.log('Verified source-carried Feed first paint, inline styles, lean navigation and intent-only account import boundary.');

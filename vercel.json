@@ -42,6 +42,14 @@
   ],
   "rewrites": [
     {
+      "source": "/feed",
+      "destination": "/feed/index.html"
+    },
+    {
+      "source": "/feed/",
+      "destination": "/feed/index.html"
+    },
+    {
       "source": "/moments/",
       "destination": "/moments/index.html"
     },
