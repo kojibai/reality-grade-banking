@@ -3,5 +3,8 @@ body[data-bank-surface="discover"]{background:#fcfbf8}.discovery-page{min-height
 
 .discover-video{display:block;width:100%;height:100%;object-fit:cover;background:#172b45}.discover-cover>img{object-fit:cover}
 
+.discover-people-list.is-expanded{grid-auto-flow:row;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-columns:auto;gap:24px 15px;overflow:visible;overscroll-behavior-x:auto;scroll-snap-type:none}
+@media(min-width:720px){.discover-people-list.is-expanded{grid-template-columns:repeat(6,minmax(0,1fr))}}
+
 .discover-search-tools{position:sticky;top:max(10px,env(safe-area-inset-top));z-index:6;isolation:isolate;transform:translateY(0);transition:transform .2s ease}.discover-search-tools:before{content:'';position:absolute;inset:-12px -20px 0;background:#fcfbf8;z-index:-1}.discover-search-tools.is-away{transform:translateY(calc(-100% - 20px - env(safe-area-inset-top)))}
 @media(prefers-reduced-motion:reduce){.discover-search-tools{transition:none}}

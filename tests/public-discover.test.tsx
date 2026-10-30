@@ -15,3 +15,25 @@ it('opens the header Feed in place and returns to the same discovery controls',a
 it('keeps additional already-indexed people in the compact horizontal row',async()=>{const host=document.createElement('div'),root=createRoot(host),seed=['firstperson','secondperson','thirdperson','fourthperson'].map((username,i)=>({...work(String(i),'image'),ownerUsername:username,ownerDisplayName:username}));try{await act(async()=>root.render(<Discover seed={seed} active={false}/>));expect([...host.querySelectorAll('.discover-people-list a')].map(a=>a.getAttribute('href'))).toEqual(seed.map(item=>'/'+item.ownerUsername+'/'));expect(load).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}});
 
 it('continues the horizontal people row through the complete indexed list before its end',async()=>{const observed:{callback:IntersectionObserverCallback;options:IntersectionObserverInit;live:boolean}[]=[],host=document.createElement('div'),root=createRoot(host),seed=Array.from({length:55},(_,i)=>({...work('Work '+i,'image'),ownerUsername:'person_'+i,ownerDisplayName:'Person '+i}));vi.stubGlobal('IntersectionObserver',class{entry:{callback:IntersectionObserverCallback;options:IntersectionObserverInit;live:boolean};constructor(callback:IntersectionObserverCallback,options:IntersectionObserverInit){this.entry={callback,options,live:true};observed.push(this.entry);}observe(){}disconnect(){this.entry.live=false;}});document.body.append(host);try{await act(async()=>root.render(<Discover seed={seed} active/>));const row=host.querySelector('.discover-people-list');expect(row?.querySelectorAll('a')).toHaveLength(20);const continueRow=async()=>{const observer=[...observed].reverse().find(o=>o.live&&o.options.root===row)!;expect(observer.options.rootMargin).toBe('0px 400px');await act(async()=>observer.callback([{isIntersecting:true}]as IntersectionObserverEntry[],{}as IntersectionObserver));};await continueRow();expect(row?.querySelectorAll('a')).toHaveLength(40);await continueRow();expect(row?.querySelectorAll('a')).toHaveLength(55);expect(row).toBe(host.querySelector('.discover-people-list'));expect(load).toHaveBeenCalledTimes(1);}finally{act(()=>root.unmount());host.remove();vi.unstubAllGlobals();}});
+
+it('expands People into viewport-scrolled batches from the same held collection',async()=>{
+ const observed:{callback:IntersectionObserverCallback;options:IntersectionObserverInit;live:boolean;target?:Element}[]=[],host=document.createElement('div'),root=createRoot(host),seed=Array.from({length:55},(_,i)=>({...work('Work '+i,'image'),ownerUsername:'person_'+i,ownerDisplayName:'Person '+i}));
+ vi.stubGlobal('IntersectionObserver',class{entry:typeof observed[number];constructor(callback:IntersectionObserverCallback,options:IntersectionObserverInit){this.entry={callback,options,live:true};observed.push(this.entry);}observe(target:Element){this.entry.target=target;}disconnect(){this.entry.live=false;}});document.body.append(host);
+ try{
+  await act(async()=>root.render(<Discover seed={seed} active/>));
+  await act(async()=>[...host.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent?.startsWith('See all'))!.click());
+  const list=host.querySelector('.discover-people-list')!;
+  expect(list.querySelectorAll('a')).toHaveLength(20);
+  const observer=[...observed].reverse().find(entry=>entry.live&&entry.target===list.lastElementChild)!;
+  expect(observer.options.root??null).toBeNull();
+  expect(observer.options.rootMargin).toBe('400px 0px');
+  await act(async()=>observer.callback([{isIntersecting:true}]as IntersectionObserverEntry[],{}as IntersectionObserver));
+  expect(list.querySelectorAll('a')).toHaveLength(40);
+  await act(async()=>[...host.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent?.startsWith('Show more'))!.click());
+  expect(list.querySelectorAll('a')).toHaveLength(55);
+  expect(list.lastElementChild?.getAttribute('href')).toBe('/person_54/');
+  expect([...host.querySelectorAll('button')].some(button=>button.textContent?.startsWith('Show more'))).toBe(false);
+  expect(host.querySelector('.discover-people-list')).toBe(list);
+  expect(load).toHaveBeenCalledTimes(1);
+ }finally{act(()=>root.unmount());host.remove();vi.unstubAllGlobals();}
+});

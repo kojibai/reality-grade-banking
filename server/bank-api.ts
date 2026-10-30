@@ -26,7 +26,7 @@ export async function handleBankApi(request: Request): Promise<Response> {
   if (url.pathname.startsWith('/api/bank/originals-qualification/')) return handleOriginalsQualification(request);
   if (url.pathname.startsWith('/api/bank/native')) return relayNativeAccount(request);
   if (url.pathname.startsWith('/api/bank/public-profile/')) return handlePublicProfile(request);
-  if (url.pathname==='/api/bank/public-document') return handlePublicDocument(request);
+  if (url.pathname==='/api/bank/public-document'||url.pathname==='/api/bank/public-book') return handlePublicDocument(request);
   const stream = request.body ? Readable.fromWeb(request.body as unknown as NodeReadableStream<Uint8Array>) : Readable.from([]);
   const req = Object.assign(stream, { url: `${url.pathname}${url.search}`, method: request.method, headers: { ...Object.fromEntries(request.headers), host: url.host } }) as IncomingMessage;
   const headers = new Headers({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });

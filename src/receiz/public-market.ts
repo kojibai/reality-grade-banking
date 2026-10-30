@@ -12,6 +12,7 @@ import {readPublicAssetManifestSource,type PublicAssetManifestRow,type PublicAss
 import {publicAssetTitle} from './asset-title.js';
 import {publicMediaPlayback,type PublicPlayback} from './public-asset-embed.js';
 import {publicDocumentUrl} from './public-document.js';
+import {publicBookSource,type PublicBookSource} from './public-book.js';
 import {profileAvatarUrl} from './profile-avatar.js';
 /** Public discovery and quotes are display projections; they grant no ownership. */
 export interface PublicMarketItem {
@@ -31,6 +32,7 @@ export interface PublicMarketItem {
   cardClaimHash?:string;
   playback?:PublicPlayback|null;
   documentUrl?:string|null;
+  book?:PublicBookSource;
   proofManifest?:PublicAssetManifestRow[];
   proofManifestSource?:PublicAssetManifestSource;
   readingUrl?: string | null;
@@ -140,7 +142,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
     const verifyUrl=safeReceizPublicUrl(source.verifyHref,'proof'),readingTz=profile.readingTzMinutesEast??media.receiptTzMinutesEast;
     let readingUrl=verifyUrl;if(readingUrl&&typeof readingTz==='number'&&Number.isInteger(readingTz)&&readingTz>=-840&&readingTz<=840){const coordinate=new URL(readingUrl);coordinate.searchParams.set('tz',String(readingTz));readingUrl=coordinate.href;}
     const sealedAt = text(source.createdAt, 64);
-    const publicUsername = text(source.ownerUsername, 64);
+    const book=publicBookSource(source),publicUsername = text(source.ownerUsername, 64);
     const ownerUsername = publicUsername && /^[a-zA-Z0-9_-]{1,64}$/.test(publicUsername) ? publicUsername : null;
     const ownerUserId=text(source.ownerUserId,64),ownerCreatedAt=text(source.ownerCreatedAt,64),rawOwnerName=text(source.ownerDisplayName,128);
     const ownerDisplayName=rawOwnerName&&rawOwnerName!=='Receiz ID'?rawOwnerName:ownerCreatedAt?publicAccountDisplayName({displayName:rawOwnerName,username:ownerUsername,createdAt:ownerCreatedAt},ownerUsername??''):rawOwnerName;
@@ -155,6 +157,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
       ...(profile.mediaKind==='video'||media.kind==='video'?{videoPosterUrl:safeReceizArtworkUrl(media.videoPosterSrc)}:{}),
       playback:publicMediaPlayback(source,materialOriginal),
       documentUrl:publicDocumentUrl(source,materialOriginal),
+      ...(book?{book}:{}),
       proofManifestSource:readPublicAssetManifestSource(profile),
       pulse: typeof source.pulse === 'string' && /^\d{1,24}$/.test(source.pulse) ? source.pulse : null,livePulseSeed:publicMarketPulseSeed(source.livePulseSeed,source.pulse),valuationBinding:{itemId:id,assetId},
       sealedAt: sealedAt && Number.isFinite(Date.parse(sealedAt)) ? sealedAt : null,

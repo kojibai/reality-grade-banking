@@ -12,7 +12,7 @@ export function MusicMiniPlayer(){
  useEffect(()=>{if(!open)return;const from=location.href,changed=()=>{if(location.href!==from)setOpen(false);};addEventListener('receiz-bank:surface',changed);addEventListener('receiz-learn:page',changed);return()=>{removeEventListener('receiz-bank:surface',changed);removeEventListener('receiz-learn:page',changed);};},[open]);
  useEffect(()=>{if(!state.itemId){setOpen(false);return;}const update=()=>{
   const dialogs=[...document.querySelectorAll<HTMLDialogElement>('dialog[open]')].filter(dialog=>!dialog.closest('[hidden]')),host=dialogs.at(-1)??document.body;
-  const music=[...host.querySelectorAll<HTMLElement>('.feed-stage[data-feed-kind="audio"][aria-hidden="false"]')].some(node=>!node.closest('[hidden]')&&node.getClientRects().length>0);
+  const music=[...host.querySelectorAll<HTMLElement>('.feed-stage[data-feed-kind="audio"][aria-hidden="false"]')].some(node=>node.dataset.feedItem===state.itemId&&!node.closest('[hidden]')&&node.getClientRects().length>0);
   setSurface(previous=>previous.host===host&&previous.full===music?previous:{host,full:music});
  };update();const observer=new MutationObserver(records=>{if(records.some(record=>record.type==='attributes'||[...record.addedNodes,...record.removedNodes].some(node=>node instanceof Element&&(node.matches('dialog,.public-feed')||node.querySelector('dialog,.public-feed')))))update();});observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['open','hidden','aria-hidden','data-bank-surface']});return()=>observer.disconnect();},[state.itemId]);
  const queue=feedMusicQueue(),at=queue.findIndex(item=>item.id===state.itemId),item=queue[at];if(!item)return null;
