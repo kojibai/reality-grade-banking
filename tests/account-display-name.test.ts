@@ -1,0 +1,12 @@
+import {expect,it} from 'vitest';
+import {parsePublicProfile} from '../src/receiz/public-profile';
+import {profileFixture} from './fixtures/public-profile';
+import {createProfileEditor} from '../src/receiz/profile-edit';
+import * as genesis from '../src/receiz/new-account-genesis';
+const birth={createdAt:'2026-02-25T06:44:59.650624Z',creationKaiMicroPulse:'10824603119470'};
+const source=(displayName:string|null)=>{const f=profileFixture();return {...f,profile:{...f.profile,profile:{...f.profile.profile,...birth,displayName}}};};
+it('projects the shared creation-pulse name for a profile and its existing owned objects without mutating the source',()=>{const input=source('Receiz ID'),before=JSON.stringify(input),profile=parsePublicProfile(input,'alexmorgan');expect(profile.displayName).toBe('10,824,603');expect(profile.items[0].ownerDisplayName).toBe(profile.displayName);expect(JSON.stringify(input)).toBe(before);});
+it('preserves explicit custom names including a number',()=>{for(const name of ['Alex Morgan','20,000,000'])expect(parsePublicProfile(source(name),'alexmorgan').displayName).toBe(name);});
+it('clearing a custom name accepts only the lawful shared default returned by the existing profile update',async()=>{const input=source('10,824,603'),api=createProfileEditor({accountUid:'account-1',current:()=>true,availability:async()=>({available:true}),update:async()=>({accountUid:'account-1',profilePath:'/alexmorgan',profile:input.profile}),publish:()=>{}});await expect(api.update({displayName:null})).resolves.toMatchObject({profilePath:'/alexmorgan'});});
+it('fresh identity options set the same original creation date and root default before existing identity sealing',()=>{const fn=(genesis as unknown as Record<string,unknown>).freshAccountIdentityOptions;expect(typeof fn).toBe('function');expect((fn as (at:string)=>unknown)('2026-02-25T06:44:59.650Z')).toEqual({createdAt:'2026-02-25T06:44:59.650Z',displayName:'10,824,603'});});
+it('uses original account birth when a retained legacy coordinate belongs to a later device',()=>{const input=source('Receiz ID');input.profile.profile.creationKaiMicroPulse='14000000000000';expect(parsePublicProfile(input,'alexmorgan').displayName).toBe('10,824,603');});

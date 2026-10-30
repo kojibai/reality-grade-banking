@@ -1,3 +1,4 @@
+import {publicAccountDisplayName} from './account-name.js';
 import {afterPublicNavigationReady} from '../core/public-document-entry.js';
 import {mergeAdmittedProfileAssets,forgetAssetPublicationAdmissions,acceptDiscoveredProfileAssets} from './asset-publication-adoption.js';
 import {parsePublicMarket,type PublicMarketItem} from './public-market.js';
@@ -27,7 +28,7 @@ const text=(v:unknown,max=4096)=>typeof v==='string'&&v.trim()&&v.length<=max?v.
 const number=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)&&v>=0?v:null;
 export function publicProfileLink(v:unknown){const raw=text(v,8192);if(!raw)return null;try{const u=new URL(raw);return u.protocol==='https:'&&!u.username&&!u.password?u.href:null;}catch{return null;}}
 function publicOriginalItems(rows:unknown[],p:Record<string,unknown>,collection=false):PublicMarketItem[]{
- const username=String(p.username),displayName=text(p.displayName,80)??username;
+ const username=String(p.username),displayName=publicAccountDisplayName(p,username);
  const originals=rows.filter(row=>object(row).showOnProfile===true).map(value=>{
   const row=object(value),market=object(row.marketPreview),media=row.media===null?null:object(row.media),id=text(row.id,128),long=object(row.longForm);
   if(collection&&typeof row.hasLongForm!=='boolean')throw Error('PROFILE_COLLECTION_READER_METADATA_INVALID');
@@ -54,7 +55,7 @@ export function parsePublicProfile(input:unknown,expectedUsername:string):Public
  const envelope=object(input),view=object(envelope.profile),p=object(view.profile),viewer=object(view.viewer);
  if(envelope.ok!==true||!text(p.userId,256)||p.username!==expectedUsername||!profileUsername(p.username))throw Error('PROFILE_IDENTITY_MISMATCH');
  if(p.isPrivate!==false||viewer.canView!==true)throw Error('PROFILE_PRIVATE');
- const username=expectedUsername,displayName=text(p.displayName,80)??username,rows=Array.isArray(view.originals)?view.originals:[];
+ const username=expectedUsername,displayName=publicAccountDisplayName(p,username),rows=Array.isArray(view.originals)?view.originals:[];
  if(rows.length>10_000)throw Error('PROFILE_PAGE_TOO_LARGE');
  const items=publicOriginalItems(rows,p,envelope.representation==='collection-v2');
  const stats=object(view.stats),unavailable=Array.isArray(view.unavailableDecorators)&&view.unavailableDecorators.includes('engagement');

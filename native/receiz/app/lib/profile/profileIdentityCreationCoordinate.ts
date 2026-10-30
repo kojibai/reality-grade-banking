@@ -1,4 +1,4 @@
-import { microPulsesSinceGenesis } from "@/app/utils/kai_pulse";
+import { microPulsesSinceGenesis } from "../../utils/kai_pulse.js";
 
 export const PROFILE_IDENTITY_CREATION_KAI_SOURCES = [
   "sealed-receiz-identity",

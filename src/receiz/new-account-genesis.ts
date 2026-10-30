@@ -1,3 +1,4 @@
+import {projectReceizAccountDisplayName} from './account-name.js';
 import type { ReceizKeyFile } from '@receiz/sdk';
 import { loadReceiz } from './client';
 import { BANK_APPLICATION_ID } from './config';
@@ -23,4 +24,9 @@ export async function initializeFreshBankAccount(keyFile: ReceizKeyFile, passphr
     bankGenesis: { schema: 'bank.account-genesis.v1', applicationId: BANK_APPLICATION_ID, keyId: keyFile.keyId, userId: keyFile.owner.uid, createdAt: keyFile.issuedAt, kaiUPulse: String(kai.uPulse) },
     wallet: { routeSummary: wallet },
   } });
+}
+
+/** Name the original creation event before the existing SDK seals the identity. */
+export function freshAccountIdentityOptions(createdAt=new Date().toISOString()) {
+ return {createdAt,displayName:projectReceizAccountDisplayName({createdAt})};
 }

@@ -45,7 +45,7 @@ import { parsePrivateHistoryPage, privateHistoryPath, type PrivateHistoryPage } 
 import { createBankExecutionRecovery, type BankExecutionRecovery } from './bank-execution-recovery';
 import { deviceBankExecutionStore } from './bank-execution-vault';
 import { createBankCommittedSourceRestoration } from './bank-committed-sources';
-import { initializeFreshBankAccount } from './new-account-genesis';
+import { freshAccountIdentityOptions, initializeFreshBankAccount } from './new-account-genesis';
 import {loadBankProofResources} from './proof-resource-continuity';
 import {readLocalAccountCheckpoint} from './local-account-checkpoint';
 import {BANK_PREPARED_NOTE_CREDIT_ENABLED} from './config';
@@ -1971,7 +1971,7 @@ async function createFreshNativeIdentity(consentApproved: boolean): Promise<Open
   // stays internal; the actual user-held download is sealed with the same key
   // in its supported no-phrase form, then independently admitted again.
   const protectionSecret = sdk.receizBase64UrlEncode(crypto.getRandomValues(new Uint8Array(32)));
-  const protectedSeal = await atIdentityCreationStage('identity-seal',()=>sealer.createIdentity({ passphrase: protectionSecret }));
+  const protectedSeal = await atIdentityCreationStage('identity-seal',()=>sealer.createIdentity({ ...freshAccountIdentityOptions(), passphrase: protectionSecret }));
   const verification = await sdk.verifyReceizArtifact(protectedSeal.artifactBytes);
   const admission = await sdk.createReceizArtifactAdmissionEngine()(verification, { profile: 'identity', identityPassphrase: protectionSecret });
   const protectedBinding = await sdk.readReceizIdentityPublicBinding(admission);

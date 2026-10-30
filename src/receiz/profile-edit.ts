@@ -1,3 +1,4 @@
+import {publicAccountDisplayName} from './account-name.js';
 import {publicProfileLink,profileUsername,type PublicProfile} from './public-profile';
 import {profileAvatarUrl} from './profile-avatar';
 export type ProfileLink={label:string;url:string};
@@ -32,7 +33,7 @@ export function createProfileEditor(deps:{accountUid:string;current():boolean;up
   }
   const result=await deps.update(patch);assert();if(result.accountUid!==deps.accountUid)throw Error('PROFILE_ACCOUNT_MISMATCH');
   const profile=object(result.profile.profile);if(profile.userId!==undefined&&profile.userId!==deps.accountUid)throw Error('PROFILE_ACCOUNT_MISMATCH');
-  for(const [key,value]of Object.entries(patch))if(key==='links'?JSON.stringify(profile.links)!==JSON.stringify(value):key==='displayName'&&value===null?profile.displayName!==null&&profile.displayName!==profile.username:(key==='avatarUrl'||key==='bannerUrl')&&value?profileAvatarUrl(profile[key])!==profileAvatarUrl(value):key.endsWith('Url')&&value?publicProfileLink(profile[key])!==publicProfileLink(value):profile[key]!==value)throw Error('PROFILE_UPDATE_UNCONFIRMED');
+  for(const [key,value]of Object.entries(patch))if(key==='links'?JSON.stringify(profile.links)!==JSON.stringify(value):key==='displayName'&&value===null?profile.displayName!==null&&profile.displayName!==publicAccountDisplayName({...profile,displayName:null},String(profile.username)):(key==='avatarUrl'||key==='bannerUrl')&&value?profileAvatarUrl(profile[key])!==profileAvatarUrl(value):key.endsWith('Url')&&value?publicProfileLink(profile[key])!==publicProfileLink(value):profile[key]!==value)throw Error('PROFILE_UPDATE_UNCONFIRMED');
   if(!profileUsername(profile.username)||result.profilePath!==`/${profile.username}`)throw Error('PROFILE_UPDATE_UNCONFIRMED');
   deps.publish(result);return result;
  }};

@@ -6663,6 +6663,11 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/profile/displayName.ts",
+      "sha256": "8daf94052171aa5ea80a8af66518b77ba901df0a011ba9d2c712998bebd3cb7f",
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/profile/identityArtwork.ts",
       "sha256": "5b4c019484cb73506e0a6f8c7f3b8b49ab0e4eebd7c8c22404e79db262c4e01d",
       "bytes": 75655,
@@ -6754,7 +6759,7 @@
     },
     {
       "path": "receiz/app/lib/profile/profileIdentityCreationCoordinate.ts",
-      "sha256": "8e00ca17b1d2e045931e91577935362b416d080939c1bfea3f1f40b85e789618",
+      "sha256": "9f16c626597ec0686d85011714856bb98a16fdee2a26d7b012c65b7a5929dfae",
       "bytes": 5465,
       "mode": 420
     },
@@ -8260,6 +8265,11 @@
       "path": "receiz/packages/receiz-sdk/scripts/compact-registry-projections.mjs",
       "sha256": "b4ee230dd0c50f017ffde40d1d0f512f58b4819e7e483b3fac74c3f8397ec671",
       "bytes": 3727,
+      "mode": 420
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/accountDisplayName.ts",
+      "sha256": "a633ba584afc678638c9bc0c076e36058141f6b15c59b98a99cf5787240a6e5b",
       "mode": 420
     },
     {
@@ -16955,6 +16965,30 @@
       "sha256": "15cbc5d54f8841657033a8ccd2f6d8c82558f57c305306ed9e186c7bb60c85e5",
       "sourceCommit": "856f24879e6a6b06b3c1032a8311cb12a9db2b07",
       "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
+    },
+    {
+      "id": "shared-creation-pulse-display-name",
+      "path": "receiz/packages/receiz-sdk/src/accountDisplayName.ts",
+      "baseSha256": null,
+      "sha256": "a633ba584afc678638c9bc0c076e36058141f6b15c59b98a99cf5787240a6e5b",
+      "purpose": "Compose the exact shared original-account display-name projection. Existing Kai calculations, proof verification, financial behavior and published SDK package outputs are unchanged.",
+      "sourceCommit": "d63a89e06cd04e4d808d51507745825f3ef96c12"
+    },
+    {
+      "id": "shared-creation-pulse-display-name",
+      "path": "receiz/app/lib/profile/displayName.ts",
+      "baseSha256": null,
+      "sha256": "8daf94052171aa5ea80a8af66518b77ba901df0a011ba9d2c712998bebd3cb7f",
+      "purpose": "Compose the exact shared original-account display-name projection. Existing Kai calculations, proof verification, financial behavior and published SDK package outputs are unchanged.",
+      "sourceCommit": "d63a89e06cd04e4d808d51507745825f3ef96c12"
+    },
+    {
+      "id": "shared-creation-pulse-display-name",
+      "path": "receiz/app/lib/profile/profileIdentityCreationCoordinate.ts",
+      "baseSha256": "8e00ca17b1d2e045931e91577935362b416d080939c1bfea3f1f40b85e789618",
+      "sha256": "9f16c626597ec0686d85011714856bb98a16fdee2a26d7b012c65b7a5929dfae",
+      "purpose": "Compose the exact shared original-account display-name projection. Existing Kai calculations, proof verification, financial behavior and published SDK package outputs are unchanged.",
+      "sourceCommit": "d63a89e06cd04e4d808d51507745825f3ef96c12"
     }
   ],
   "historicalValuation": {
@@ -16963,7 +16997,7 @@
     "sourcePath": "app/utils/phi-issuance.ts",
     "sourceSha256": "69622c017e955734525e121a7b27bdaa42066932657b145e02be493792de9c74",
     "sdkVersion": "129.0.0",
-    "intrinsicAlgorithm": "phi/kosmos-vφ-5",
+    "intrinsicAlgorithm": "phi/kosmos-v\u03c6-5",
     "intrinsicPolicyChecksum": "b05b2049",
     "sampleUsd": 100,
     "historicalPointsAreRecordedQuotes": false
@@ -17475,7 +17509,7 @@
     },
     {
       "path": "app/lib/profile/profileIdentityCreationCoordinate.ts",
-      "sha256": "8e00ca17b1d2e045931e91577935362b416d080939c1bfea3f1f40b85e789618"
+      "sha256": "9f16c626597ec0686d85011714856bb98a16fdee2a26d7b012c65b7a5929dfae"
     },
     {
       "path": "app/lib/profile/profileIdentityGenesis.ts",
