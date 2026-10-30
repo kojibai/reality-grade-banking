@@ -68,7 +68,8 @@ import {BANK_CONNECTED_NOTE_ISSUANCE_ENABLED} from './config';
 import {ownerTwinAccountAccess} from './twin-access';
 import {publishOpenPortfolio} from './market-portfolio-presentation';
 import {createMarketPortfolio,parseMarketPortfolio,readSealedMarketPortfolio,type MarketPortfolio,type MarketPortfolioClient} from './market-portfolio';
-import {loadMarketPortfolioState,saveMarketPortfolioState} from './identity-vault';
+import {loadMarketPortfolioState,saveMarketPortfolioState,loadOrganizerDisplay} from './identity-vault';
+import {projectOrganizerDisplay,readOrganizerDisplay,type OrganizerDisplay} from './organizer-types';
 
 export interface OpenIdentity {
   meetingArchive?:()=>Promise<import('./meeting-capture').MeetingArchive>;
@@ -164,6 +165,11 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     &&carriedAccountState?.schema==='receiz.account.state.v3'
     &&typeof carriedAccountState.account?.userId==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(carriedAccountState.account.userId)
     ?carriedAccountState.account.userId.toLowerCase():null;
+  // Read this existing encrypted slot alongside the account's other local
+  // records, never for the first time on the Calendar/Contacts icon tap.
+  // It is optional and is deliberately not awaited by account entry.
+  let savedOrganizer:unknown=null;
+  const organizerDisplayRead=Promise.resolve().then(()=>freshAccountCreation?null:loadOrganizerDisplay(binding)).catch(()=>null).then(value=>{savedOrganizer=value;return value;});
   const [savedWallet,savedPortfolio] = await Promise.all([loadWalletObservation(binding),Promise.resolve().then(()=>loadMarketPortfolioState(binding)).catch(()=>null)]);
   let knownWallet = savedWallet&&(!carriedAccountUid||savedWallet.wallet.userId===carriedAccountUid)?savedWallet:null;
   let walletRevision = 0;
@@ -445,15 +451,24 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   }
   let heldOrganizer:import('./native-organizer').NativeOrganizer|null=null;
   const knownOrganizer=()=>{if(lifetime.signal.aborted)return null;return heldOrganizer?.accountUid===(accountUid??carriedAccountUid??knownWallet?.wallet.userId)?heldOrganizer:null;};
-  const knownOrganizerDisplay=()=>{if(lifetime.signal.aborted)return null;const value=heldOrganizer?.known();return value&&value.accountUid===(accountUid??carriedAccountUid??knownWallet?.wallet.userId)?value:null;};
+  let organizerSeed:{uid:string;saved:unknown;display:OrganizerDisplay}|undefined;
+  const knownOrganizerDisplay=()=>{
+    if(lifetime.signal.aborted)return null;
+    const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId;if(!uid)return null;
+    const held=heldOrganizer?.known();if(held?.accountUid===uid)return held;
+    if(!organizerSeed||organizerSeed.uid!==uid||organizerSeed.saved!==savedOrganizer){
+      const display=projectOrganizerDisplay(uid,savedOrganizer,localHistory.portableStateVerified&&carriedAccountUid===uid?localHistory.verifiedState:null);
+      organizerSeed={uid,saved:savedOrganizer,display};
+    }
+    const value=organizerSeed.display;return value.contacts!==null||value.events!==null?value:null;
+  };
   let organizerPromise:Promise<import('./native-organizer').NativeOrganizer>|undefined;
   let organizerRequest:import('./native-organizer').OrganizerRequest|undefined;
   async function organizer(){
     const assertOpen=()=>{if(lifetime.signal.aborted)throw Error('ORGANIZER_IDENTITY_CLOSED');};assertOpen();
     if(organizerPromise)return organizerPromise;
     const attempt=(async()=>{
-      const [{createNativeOrganizer},{openOrganizerRetention},storage,{permittedOrganizerPath},{readOrganizerDisplay}]=await Promise.all([import('./native-organizer'),import('./organizer-retention'),import('./identity-vault'),import('./organizer-paths'),import('./organizer-types')]);assertOpen();
-      const saved=await storage.loadOrganizerDisplay(binding).catch(()=>null);assertOpen();
+      const [{createNativeOrganizer},{openOrganizerRetention},storage,{permittedOrganizerPath},saved]=await Promise.all([import('./native-organizer'),import('./organizer-retention'),import('./identity-vault'),import('./organizer-paths'),organizerDisplayRead]);assertOpen();
       let uid=carriedAccountUid??accountUid??knownWallet?.wallet.userId;
       let connected:ReceizClient|null=null,expires=0;
       // First-use wallet placement can precede account continuation. Bind a

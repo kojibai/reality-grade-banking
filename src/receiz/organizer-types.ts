@@ -62,6 +62,22 @@ export function readOrganizerDisplay(value:unknown,owner:string):OrganizerDispla
  }catch{return null;}
 }
 
+export const orderOrganizerEvents=(events:OrganizerEvent[])=>{const rows=new Map<string,OrganizerEvent>();for(const event of events){const held=rows.get(event.id);if(!held||Date.parse(event.updatedAt)>=Date.parse(held.updatedAt))rows.set(event.id,event);}return [...rows.values()].sort((a,b)=>a.startAt.localeCompare(b.startAt)||a.id.localeCompare(b.id));};
+
+/** The same admitted local/carried projection feeds first paint and the
+ * existing organizer. It grants no transport or write authority. */
+export function projectOrganizerDisplay(accountUid:string,retained?:unknown,carried?:unknown):OrganizerDisplay {
+ let display=readOrganizerDisplay(retained,accountUid)??{schema:'bankeiz.organizer-display.v1' as const,accountUid,contacts:null,contactsComplete:false,events:null,ranges:[],username:null};
+ if(display.events!==null)display={...display,events:orderOrganizerEvents(display.events)};
+ // The caller supplies only the SDK-admitted, already-verified portable state.
+ // Use its existing domain shapes without repeating identity/proof admission.
+ if(carried){const state=organizerRecord(carried),contacts=organizerRecord(state.contactsProjection).contacts??state.contacts,calendar=organizerRecord(state.calendar),events=calendar.events??state.calendarEvents;
+  if(display.contacts===null&&Array.isArray(contacts))try{display={...display,contacts:contacts.map(organizerContact),contactsComplete:true};}catch{/* Partial carried domains never erase a stronger held view. */}
+  if(display.events===null&&Array.isArray(events))try{display={...display,events:orderOrganizerEvents(events.map(v=>organizerEvent(v,accountUid)))};}catch{/* Available admitted domains remain independent. */}
+ }
+ return display;
+}
+
 /** Both accepted records stay in held history. The host appointment supplies
  * one visible meeting when an earlier guest attendance copy is also present. */
 export function visibleOrganizerEvents(events:OrganizerEvent[]){

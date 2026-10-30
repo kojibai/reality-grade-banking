@@ -1,25 +1,17 @@
 import {readSavedBookingOptions} from './booking-settings';
 import {deviceCalendarTimezone} from './calendar-timezone';
 import {permittedOrganizerPath} from './organizer-paths';
-import {calendarRange,organizerContact,organizerEvent,organizerRecord,visibleOrganizerEvents,readOrganizerDisplay,type AppointmentInput,type BookingAvailability,type BookingSettingsInput,type BookingQuestion,type BookingSchedule,type CalendarRange,type OrganizerContact,type OrganizerDisplay,type OrganizerEvent} from './organizer-types';
+import {calendarRange,organizerContact,organizerEvent,organizerRecord,visibleOrganizerEvents,projectOrganizerDisplay,orderOrganizerEvents as order,type AppointmentInput,type BookingAvailability,type BookingSettingsInput,type BookingQuestion,type BookingSchedule,type CalendarRange,type OrganizerContact,type OrganizerDisplay,type OrganizerEvent} from './organizer-types';
 export type {OrganizerContact,OrganizerEvent,OrganizerDisplay,CalendarRange,BookingAvailability,BookingSettingsInput,BookingQuestion,BookingSchedule,AppointmentInput} from './organizer-types';
 export type OrganizerRequest=(path:string,init?:RequestInit)=>Promise<Response>;
 export class OrganizerRequestError extends Error {
  constructor(code:string,readonly status:number|null,options?:ErrorOptions,readonly responseCode:string|null=null){super(code,options);this.name='OrganizerRequestError';}
 }
 const overlaps=(event:OrganizerEvent,range:CalendarRange)=>Date.parse(event.endAt)>=Date.parse(range.start)&&Date.parse(event.startAt)<=Date.parse(range.end);
-const order=(events:OrganizerEvent[])=>{const rows=new Map<string,OrganizerEvent>();for(const event of events){const held=rows.get(event.id);if(!held||Date.parse(event.updatedAt)>=Date.parse(held.updatedAt))rows.set(event.id,event);}return [...rows.values()].sort((a,b)=>a.startAt.localeCompare(b.startAt)||a.id.localeCompare(b.id));};
 const contains=(held:CalendarRange,range:CalendarRange)=>held.start<=range.start&&held.end>=range.end;
 const uuid=/^[a-f\d]{8}-[a-f\d]{4}-[1-5][a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i;
 export function createNativeOrganizer({accountUid,request,retained,carried,onChange,assertOpen=()=>{}}:{accountUid:string;request:OrganizerRequest;retained?:unknown;carried?:unknown;onChange?:(display:OrganizerDisplay)=>void;assertOpen?:()=>void}){
- let display=readOrganizerDisplay(retained,accountUid)??{schema:'bankeiz.organizer-display.v1' as const,accountUid,contacts:null,contactsComplete:false,events:null,ranges:[],username:null};
- if(display.events!==null)display={...display,events:order(display.events)};
- // The caller supplies only the SDK-admitted, already-verified portable state.
- // Use its existing domain shapes without repeating identity/proof admission.
- if(carried){const state=organizerRecord(carried),contacts=organizerRecord(state.contactsProjection).contacts??state.contacts,calendar=organizerRecord(state.calendar),events=calendar.events??state.calendarEvents;
-  if(display.contacts===null&&Array.isArray(contacts))try{display={...display,contacts:contacts.map(organizerContact),contactsComplete:true};}catch{/* Partial carried domains never erase a stronger held view. */}
-  if(display.events===null&&Array.isArray(events))try{display={...display,events:order(events.map(v=>organizerEvent(v,accountUid)))};}catch{/* Available admitted domains remain independent. */}
- }
+ let display=projectOrganizerDisplay(accountUid,retained,carried);
  const invitationResults=new Map<string,{delivered:number;status:string}>();
  const eventProofs=new WeakMap<OrganizerEvent,Promise<import('./calendar-proof').CalendarProof>>();
  const bookingCache=new Map<string,BookingAvailability>(),defaultBookingKeys=new Map<string,string>();

@@ -156,9 +156,9 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,heldLe
   const [pageVisible,setPageVisible]=useState(()=>document.visibilityState!=='hidden');
   useEffect(()=>{if(!active&&!callLive){setHeldCall(null);setMode(current=>current==='call'?'thread':current);}},[active,callLive]);
   const openCall=(video:boolean)=>{if(!selected)return;chooseView();if(!callLive)setHeldCall({conversationId:selected.id,title:page?.conversation.title||selected.title,video,callId:activeCall?.id});setMode('call');};
-  // Warm only the next-view code after the existing Messages surface settles.
+  // Warm next-view code in parallel with Messages, independent of its transport.
   // This mounts no organizer, reads no private records and requests no grant.
-  useEffect(()=>{if(!api||!active||!identity.organizer||organizerCodeReady)return;let cancelled=false,frame=0;const warm=()=>{if(!cancelled)void preloadMessageOrganizer().catch(()=>{});};if('requestIdleCallback' in window){const id=window.requestIdleCallback(warm);return()=>{cancelled=true;window.cancelIdleCallback(id);};}frame=requestAnimationFrame(()=>{frame=requestAnimationFrame(warm);});return()=>{cancelled=true;cancelAnimationFrame(frame);};},[api,active,identity]);
+  useEffect(()=>{if(active&&identity.organizer&&!organizerCodeReady)void preloadMessageOrganizer().catch(()=>{});},[active,identity]);
   const contacts=useMemo(()=>api?conversationPeople(inbox,api.accountUid):[],[inbox,api]);
   const suggestedPeople=useMemo(()=>api?peopleSuggestions(contacts,people,query,api.accountUid):[],[contacts,people,query,api]);
   const alive=useRef(true),activeRef=useRef(active),selection=useRef<string|null>(null),connection=useRef(0),sending=useRef(false);
