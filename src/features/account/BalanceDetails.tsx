@@ -16,16 +16,18 @@ function RailDetails({rail,phi,usd,wallet,observation,difference,controlledOpen,
 }
 /** Presentation beneath the existing wallet frame. No reads, pricing or clocks. */
 export function BalanceDetails({wallet,observation=null,focusSettlement=false}:{wallet:SharedWallet|null;observation?:WalletObservation|null;focusSettlement?:boolean}){
- const zero=wallet?.totalUsdCents==='0',difference=currentAvailabilityDifference(wallet,observation?.history??[],observation?.observedAt??null);
- const rails:Rail[]=zero&&difference===null?['reserve']:['settlement','reserve'];
+ const zero=wallet?.totalUsdCents==='0',difference=currentAvailabilityDifference(wallet,observation?.history??[],observation?.observedAt??null),fundedDifference=!!wallet&&BigInt(wallet.reserveUsdCents)>BigInt(wallet.totalUsdCents);
  const [sourceOpen,setSourceOpen]=useState(focusSettlement),[settlementOpen,setSettlementOpen]=useState(focusSettlement),[pendingFocus,setPendingFocus]=useState(focusSettlement),settlementElement=useRef<HTMLDetailsElement>(null);
+ const fundedInspection=useRef<string|null>(null);if(fundedDifference)fundedInspection.current=wallet!.userId;
+ const keepFundedInspection=settlementOpen&&fundedInspection.current===wallet?.userId;
+ const rails:Rail[]=zero&&difference===null&&!fundedDifference&&!keepFundedInspection?['reserve']:['settlement','reserve'];
  // Focus is explicit navigation intent. Later valuation changes may remove the
  // explanation, but must never close an inspection or reopen a user's choice.
  useLayoutEffect(()=>{if(focusSettlement){setSourceOpen(true);setSettlementOpen(true);setPendingFocus(true);}},[focusSettlement]);
  useEffect(()=>{if(pendingFocus&&sourceOpen&&settlementOpen){settlementElement.current?.scrollIntoView?.({block:'start'});setPendingFocus(false);}},[pendingFocus,sourceOpen,settlementOpen]);
  return <div className="balance-technical-details"><details className="balance-source-details" open={sourceOpen}><summary onClick={event=>{event.preventDefault();setSourceOpen(value=>!value);}}>Source &amp; proof details<ChevronRight size={16} aria-hidden="true"/></summary><div className="balance-technical-content"><div className="balance-rail-list" aria-label="Balance value states">{rails.map(rail=>{
   const phi=zero&&wallet?.balancePhiMicro==='0'?'0':unit(wallet?.[rail==='settlement'?'settlementPhiMicro':'reservePhiMicro']),usd=wallet?.[rail==='settlement'?'settlementUsdCents':'reserveUsdCents']??null;
-  if(!zero&&usd==='0')return null;
+  if(!zero&&usd==='0'&&!fundedDifference&&!(rail==='settlement'&&keepFundedInspection))return null;
   return <RailDetails key={rail} rail={rail} phi={phi} usd={usd} wallet={wallet} observation={observation} difference={difference} controlledOpen={rail==='settlement'?settlementOpen:undefined} onOpenChange={rail==='settlement'?setSettlementOpen:undefined} elementRef={rail==='settlement'?settlementElement:undefined}/>;
  })}</div><div className="detail-list">{wallet?.pulse&&<div><span>☤KAI</span><strong>{Number(wallet.pulse).toLocaleString('en-US')}</strong></div>}{wallet?.kaiUpulse&&<div><span>Micro-pulse</span><strong>{wallet.kaiUpulse}</strong></div>}</div><aside className="balance-proof-notice" aria-label="Proof continuity"><span className="balance-proof-mark" aria-hidden="true"><ShieldCheck size={18} strokeWidth={1.7}/></span><div><h2>Proof continuity</h2><p>The Original carries your money and its proof. Completed Notes can travel directly between people, including offline. Banking implementations preserve the exact value, ownership and history as they handle it. Explore the open standard below.</p><a href="/learn/how-value-works/">How value is calculated</a><a href="/learn/reserve-and-settlement/#the-receiving-standard">Receiving conformance laws<ArrowUpRight size={14} strokeWidth={1.7} aria-hidden="true"/></a></div></aside></div></details></div>;
 }

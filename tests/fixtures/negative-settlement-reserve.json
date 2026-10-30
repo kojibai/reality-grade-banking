@@ -1,0 +1,440 @@
+{
+  "description": "Read-only native projectWalletSummary output for a $500 source-value difference. No proof admission or financial execution.",
+  "nativeCommit": "acde0bf13e36ea73b100ae05df8a2f513f13dcf2",
+  "cases": [
+    {
+      "depositUsdCents": "0",
+      "ok": true,
+      "wallet": {
+        "userId": "reserve-edge-owner",
+        "creationSigilBenefitsEnabled": true,
+        "creationSigilEntitlementEnabled": true,
+        "legacySigilClaimEnabled": false,
+        "balancePhiMicro": "0",
+        "balancePhi": "0",
+        "balanceUsd": "0.00",
+        "reservePhiMicro": "0",
+        "settlementPhiMicro": "0",
+        "bankNoteValueProjection": {
+          "schema": "receiz.bank.local-rail-value.v1",
+          "reserveBackingPhiMicro": "0",
+          "settlementPhiMicro": "0"
+        },
+        "currentBalanceSource": {
+          "userId": "reserve-edge-owner",
+          "earningMembershipPolicy": "public-pbi-original-v1",
+          "creationSigilBenefitsEnabled": true,
+          "computedPulse": 14859363,
+          "computedAt": "2026-10-27T19:09:40.416Z",
+          "glyphs": [
+            {
+              "id": "imported-5adfa261e34ed46dee8f77b53d372be77ffeb6f0d8f9b5a2e435ce6c1cc51260",
+              "livePulseSeed": {
+                "kind": "sigil",
+                "claimPulse": 14859362,
+                "beat": 19,
+                "stepIndex": 3,
+                "chakraDay": "Heart",
+                "creatorVerified": false,
+                "kaiSignature": "artifactowner",
+                "userPhiKey": "b00658ef-34dd-4490-ada5-9347b913e045:imported-5adfa261e34ed46dee8f77b53d372be77ffeb6f0d8f9b5a2e435ce6c1cc51260"
+              }
+            }
+          ],
+          "artifactBasePhiMicro": "2156150",
+          "artifactBaseUsdCents": "24075",
+          "lawfulActionPhiMicro": "0",
+          "accountBalancePhiMicro": "0",
+          "transactionDeltaPhiMicro": "-2156150",
+          "transactionDeltaUsdCents": "-74075",
+          "profileSeedPhiMicro": "0",
+          "profileSeedUsdCents": "0",
+          "ledgerSettledUsdCents": "0",
+          "usdPerPhiMicrocents": "10512814016",
+          "balancePhiMicro": "0",
+          "balanceUsdCents": "0",
+          "reserveUsdCents": "0",
+          "settlementUsdCents": "0",
+          "reservePhiMicro": "0",
+          "settlementPhiMicro": "0"
+        },
+        "valueStates": {
+          "settledBalanceUsd": "0.00",
+          "settledBalanceUsdCents": "0",
+          "ecosystemBalanceUsd": "0.00",
+          "ecosystemBalanceUsdCents": "0",
+          "livePortfolioValueUsd": null,
+          "livePortfolioValueUsdCents": null,
+          "unrealizedPnlUsd": null,
+          "unrealizedPnlUsdCents": null,
+          "withdrawableNowUsd": null,
+          "withdrawableNowUsdCents": null
+        },
+        "quote": {
+          "usdPerPhiMicrocents": "10512814016"
+        },
+        "rollup": {
+          "totalCreditPhiMicro": "0",
+          "totalDebitPhiMicro": "2156150",
+          "totalCreditUsdCents": "0",
+          "totalDebitUsdCents": "74075",
+          "transferCount": 1,
+          "noteMintCount": 0,
+          "noteClaimCount": 0,
+          "lastEntryAt": "2026-10-27T19:09:40.416Z",
+          "lastEntryKaiUpulse": "14859363000000",
+          "lastEntryKaiPulse": "14859363"
+        },
+        "sync": {
+          "profileBasePhiMicro": "2156150",
+          "lawfulActionPhiMicro": "0",
+          "lawfulActionProjectionAvailable": true,
+          "transactionDeltaPhiMicro": "-2156150",
+          "transactionDeltaUsdCents": "-74075",
+          "profileSeedPhiMicro": "0",
+          "accountBalancePhiMicro": "0",
+          "profileProjectionKaiPulse": 14859363,
+          "projectionComplete": true,
+          "sourceArtifactCount": 1,
+          "artifactCount": 1,
+          "invalidArtifactCount": 0,
+          "duplicateArtifactCount": 0,
+          "membershipDigest": null,
+          "projectorDigest": null,
+          "projectorVersion": null,
+          "projectedAt": "2026-10-27T19:09:40.416Z",
+          "source": "profile_plus_ledger_v1",
+          "acceptedSettlementIds": []
+        },
+        "creationSigil": null
+      }
+    },
+    {
+      "depositUsdCents": "20000",
+      "ok": true,
+      "wallet": {
+        "userId": "reserve-edge-owner",
+        "creationSigilBenefitsEnabled": true,
+        "creationSigilEntitlementEnabled": true,
+        "legacySigilClaimEnabled": false,
+        "balancePhiMicro": "1902440",
+        "balancePhi": "1.90244",
+        "balanceUsd": "0.00",
+        "reservePhiMicro": "1902440",
+        "settlementPhiMicro": "0",
+        "bankNoteValueProjection": {
+          "schema": "receiz.bank.local-rail-value.v1",
+          "reserveBackingPhiMicro": "1902440",
+          "settlementPhiMicro": "0"
+        },
+        "currentBalanceSource": {
+          "userId": "reserve-edge-owner",
+          "earningMembershipPolicy": "public-pbi-original-v1",
+          "creationSigilBenefitsEnabled": true,
+          "computedPulse": 14859363,
+          "computedAt": "2026-10-27T19:09:40.416Z",
+          "glyphs": [
+            {
+              "id": "imported-5adfa261e34ed46dee8f77b53d372be77ffeb6f0d8f9b5a2e435ce6c1cc51260",
+              "livePulseSeed": {
+                "kind": "sigil",
+                "claimPulse": 14859362,
+                "beat": 19,
+                "stepIndex": 3,
+                "chakraDay": "Heart",
+                "creatorVerified": false,
+                "kaiSignature": "artifactowner",
+                "userPhiKey": "b00658ef-34dd-4490-ada5-9347b913e045:imported-5adfa261e34ed46dee8f77b53d372be77ffeb6f0d8f9b5a2e435ce6c1cc51260"
+              }
+            }
+          ],
+          "artifactBasePhiMicro": "2156150",
+          "artifactBaseUsdCents": "24075",
+          "lawfulActionPhiMicro": "0",
+          "accountBalancePhiMicro": "1902440",
+          "transactionDeltaPhiMicro": "-253710",
+          "transactionDeltaUsdCents": "-54075",
+          "profileSeedPhiMicro": "0",
+          "profileSeedUsdCents": "0",
+          "ledgerSettledUsdCents": "20000",
+          "usdPerPhiMicrocents": "10512814016",
+          "balancePhiMicro": "1902440",
+          "balanceUsdCents": "0",
+          "reserveUsdCents": "20000",
+          "settlementUsdCents": "0",
+          "reservePhiMicro": "1902440",
+          "settlementPhiMicro": "0"
+        },
+        "valueStates": {
+          "settledBalanceUsd": "200.00",
+          "settledBalanceUsdCents": "20000",
+          "ecosystemBalanceUsd": "0.00",
+          "ecosystemBalanceUsdCents": "0",
+          "livePortfolioValueUsd": null,
+          "livePortfolioValueUsdCents": null,
+          "unrealizedPnlUsd": null,
+          "unrealizedPnlUsdCents": null,
+          "withdrawableNowUsd": null,
+          "withdrawableNowUsdCents": null
+        },
+        "quote": {
+          "usdPerPhiMicrocents": "10512814016"
+        },
+        "rollup": {
+          "totalCreditPhiMicro": "1902440",
+          "totalDebitPhiMicro": "2156150",
+          "totalCreditUsdCents": "20000",
+          "totalDebitUsdCents": "74075",
+          "transferCount": 1,
+          "noteMintCount": 0,
+          "noteClaimCount": 0,
+          "lastEntryAt": "2026-10-27T19:09:40.416Z",
+          "lastEntryKaiUpulse": "14859363000000",
+          "lastEntryKaiPulse": "14859363"
+        },
+        "sync": {
+          "profileBasePhiMicro": "2156150",
+          "lawfulActionPhiMicro": "0",
+          "lawfulActionProjectionAvailable": true,
+          "transactionDeltaPhiMicro": "-253710",
+          "transactionDeltaUsdCents": "-54075",
+          "profileSeedPhiMicro": "0",
+          "accountBalancePhiMicro": "1902440",
+          "profileProjectionKaiPulse": 14859363,
+          "projectionComplete": true,
+          "sourceArtifactCount": 1,
+          "artifactCount": 1,
+          "invalidArtifactCount": 0,
+          "duplicateArtifactCount": 0,
+          "membershipDigest": null,
+          "projectorDigest": null,
+          "projectorVersion": null,
+          "projectedAt": "2026-10-27T19:09:40.416Z",
+          "source": "profile_plus_ledger_v1",
+          "acceptedSettlementIds": [
+            "fixture-funded-credit"
+          ]
+        },
+        "creationSigil": null
+      }
+    },
+    {
+      "depositUsdCents": "50000",
+      "ok": true,
+      "wallet": {
+        "userId": "reserve-edge-owner",
+        "creationSigilBenefitsEnabled": true,
+        "creationSigilEntitlementEnabled": true,
+        "legacySigilClaimEnabled": false,
+        "balancePhiMicro": "4756101",
+        "balancePhi": "4.756101",
+        "balanceUsd": "0.00",
+        "reservePhiMicro": "4756101",
+        "settlementPhiMicro": "0",
+        "bankNoteValueProjection": {
+          "schema": "receiz.bank.local-rail-value.v1",
+          "reserveBackingPhiMicro": "4756101",
+          "settlementPhiMicro": "0"
+        },
+        "currentBalanceSource": {
+          "userId": "reserve-edge-owner",
+          "earningMembershipPolicy": "public-pbi-original-v1",
+          "creationSigilBenefitsEnabled": true,
+          "computedPulse": 14859363,
+          "computedAt": "2026-10-27T19:09:40.416Z",
+          "glyphs": [
+            {
+              "id": "imported-5adfa261e34ed46dee8f77b53d372be77ffeb6f0d8f9b5a2e435ce6c1cc51260",
+              "livePulseSeed": {
+                "kind": "sigil",
+                "claimPulse": 14859362,
+                "beat": 19,
+                "stepIndex": 3,
+                "chakraDay": "Heart",
+                "creatorVerified": false,
+                "kaiSignature": "artifactowner",
+                "userPhiKey": "b00658ef-34dd-4490-ada5-9347b913e045:imported-5adfa261e34ed46dee8f77b53d372be77ffeb6f0d8f9b5a2e435ce6c1cc51260"
+              }
+            }
+          ],
+          "artifactBasePhiMicro": "2156150",
+          "artifactBaseUsdCents": "24075",
+          "lawfulActionPhiMicro": "0",
+          "accountBalancePhiMicro": "4756101",
+          "transactionDeltaPhiMicro": "2599951",
+          "transactionDeltaUsdCents": "-24075",
+          "profileSeedPhiMicro": "0",
+          "profileSeedUsdCents": "0",
+          "ledgerSettledUsdCents": "50000",
+          "usdPerPhiMicrocents": "10512814016",
+          "balancePhiMicro": "4756101",
+          "balanceUsdCents": "0",
+          "reserveUsdCents": "50000",
+          "settlementUsdCents": "0",
+          "reservePhiMicro": "4756101",
+          "settlementPhiMicro": "0"
+        },
+        "valueStates": {
+          "settledBalanceUsd": "500.00",
+          "settledBalanceUsdCents": "50000",
+          "ecosystemBalanceUsd": "0.00",
+          "ecosystemBalanceUsdCents": "0",
+          "livePortfolioValueUsd": null,
+          "livePortfolioValueUsdCents": null,
+          "unrealizedPnlUsd": null,
+          "unrealizedPnlUsdCents": null,
+          "withdrawableNowUsd": null,
+          "withdrawableNowUsdCents": null
+        },
+        "quote": {
+          "usdPerPhiMicrocents": "10512814016"
+        },
+        "rollup": {
+          "totalCreditPhiMicro": "4756101",
+          "totalDebitPhiMicro": "2156150",
+          "totalCreditUsdCents": "50000",
+          "totalDebitUsdCents": "74075",
+          "transferCount": 1,
+          "noteMintCount": 0,
+          "noteClaimCount": 0,
+          "lastEntryAt": "2026-10-27T19:09:40.416Z",
+          "lastEntryKaiUpulse": "14859363000000",
+          "lastEntryKaiPulse": "14859363"
+        },
+        "sync": {
+          "profileBasePhiMicro": "2156150",
+          "lawfulActionPhiMicro": "0",
+          "lawfulActionProjectionAvailable": true,
+          "transactionDeltaPhiMicro": "2599951",
+          "transactionDeltaUsdCents": "-24075",
+          "profileSeedPhiMicro": "0",
+          "accountBalancePhiMicro": "4756101",
+          "profileProjectionKaiPulse": 14859363,
+          "projectionComplete": true,
+          "sourceArtifactCount": 1,
+          "artifactCount": 1,
+          "invalidArtifactCount": 0,
+          "duplicateArtifactCount": 0,
+          "membershipDigest": null,
+          "projectorDigest": null,
+          "projectorVersion": null,
+          "projectedAt": "2026-10-27T19:09:40.416Z",
+          "source": "profile_plus_ledger_v1",
+          "acceptedSettlementIds": [
+            "fixture-funded-credit"
+          ]
+        },
+        "creationSigil": null
+      }
+    },
+    {
+      "depositUsdCents": "70000",
+      "ok": true,
+      "wallet": {
+        "userId": "reserve-edge-owner",
+        "creationSigilBenefitsEnabled": true,
+        "creationSigilEntitlementEnabled": true,
+        "legacySigilClaimEnabled": false,
+        "balancePhiMicro": "6658541",
+        "balancePhi": "6.658541",
+        "balanceUsd": "200.00",
+        "reservePhiMicro": "6658541",
+        "settlementPhiMicro": "0",
+        "bankNoteValueProjection": {
+          "schema": "receiz.bank.local-rail-value.v1",
+          "reserveBackingPhiMicro": "6658541",
+          "settlementPhiMicro": "0"
+        },
+        "currentBalanceSource": {
+          "userId": "reserve-edge-owner",
+          "earningMembershipPolicy": "public-pbi-original-v1",
+          "creationSigilBenefitsEnabled": true,
+          "computedPulse": 14859363,
+          "computedAt": "2026-10-27T19:09:40.416Z",
+          "glyphs": [
+            {
+              "id": "imported-5adfa261e34ed46dee8f77b53d372be77ffeb6f0d8f9b5a2e435ce6c1cc51260",
+              "livePulseSeed": {
+                "kind": "sigil",
+                "claimPulse": 14859362,
+                "beat": 19,
+                "stepIndex": 3,
+                "chakraDay": "Heart",
+                "creatorVerified": false,
+                "kaiSignature": "artifactowner",
+                "userPhiKey": "b00658ef-34dd-4490-ada5-9347b913e045:imported-5adfa261e34ed46dee8f77b53d372be77ffeb6f0d8f9b5a2e435ce6c1cc51260"
+              }
+            }
+          ],
+          "artifactBasePhiMicro": "2156150",
+          "artifactBaseUsdCents": "24075",
+          "lawfulActionPhiMicro": "0",
+          "accountBalancePhiMicro": "6658541",
+          "transactionDeltaPhiMicro": "4502391",
+          "transactionDeltaUsdCents": "-4075",
+          "profileSeedPhiMicro": "0",
+          "profileSeedUsdCents": "0",
+          "ledgerSettledUsdCents": "70000",
+          "usdPerPhiMicrocents": "10512814016",
+          "balancePhiMicro": "6658541",
+          "balanceUsdCents": "20000",
+          "reserveUsdCents": "70000",
+          "settlementUsdCents": "0",
+          "reservePhiMicro": "6658541",
+          "settlementPhiMicro": "0"
+        },
+        "valueStates": {
+          "settledBalanceUsd": "700.00",
+          "settledBalanceUsdCents": "70000",
+          "ecosystemBalanceUsd": "0.00",
+          "ecosystemBalanceUsdCents": "0",
+          "livePortfolioValueUsd": null,
+          "livePortfolioValueUsdCents": null,
+          "unrealizedPnlUsd": null,
+          "unrealizedPnlUsdCents": null,
+          "withdrawableNowUsd": null,
+          "withdrawableNowUsdCents": null
+        },
+        "quote": {
+          "usdPerPhiMicrocents": "10512814016"
+        },
+        "rollup": {
+          "totalCreditPhiMicro": "6658541",
+          "totalDebitPhiMicro": "2156150",
+          "totalCreditUsdCents": "70000",
+          "totalDebitUsdCents": "74075",
+          "transferCount": 1,
+          "noteMintCount": 0,
+          "noteClaimCount": 0,
+          "lastEntryAt": "2026-10-27T19:09:40.416Z",
+          "lastEntryKaiUpulse": "14859363000000",
+          "lastEntryKaiPulse": "14859363"
+        },
+        "sync": {
+          "profileBasePhiMicro": "2156150",
+          "lawfulActionPhiMicro": "0",
+          "lawfulActionProjectionAvailable": true,
+          "transactionDeltaPhiMicro": "4502391",
+          "transactionDeltaUsdCents": "-4075",
+          "profileSeedPhiMicro": "0",
+          "accountBalancePhiMicro": "6658541",
+          "profileProjectionKaiPulse": 14859363,
+          "projectionComplete": true,
+          "sourceArtifactCount": 1,
+          "artifactCount": 1,
+          "invalidArtifactCount": 0,
+          "duplicateArtifactCount": 0,
+          "membershipDigest": null,
+          "projectorDigest": null,
+          "projectorVersion": null,
+          "projectedAt": "2026-10-27T19:09:40.416Z",
+          "source": "profile_plus_ledger_v1",
+          "acceptedSettlementIds": [
+            "fixture-funded-credit"
+          ]
+        },
+        "creationSigil": null
+      }
+    }
+  ]
+}
