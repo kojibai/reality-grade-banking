@@ -95,9 +95,9 @@ const uniqueImages=new Set(),uniqueTitles=new Set(),uniqueDescriptions=new Set()
 for(const page of publicPages){
  const html=await readFile(`dist${page.path}index.html`,'utf8'),head=html.match(/<head>([\s\S]+?)<\/head>/)[1],image=socialImages.images[page.path],bytes=await readFile('dist'+image.url),url=publicOrigin+page.path;
  assert.equal((head.match(/<title>/g)??[]).length,1,`Single title: ${page.path}`);assert.ok(head.includes(`<title>${escapeMetadata(page.title)}</title>`));
- assert.equal((head.match(/rel="canonical"/g)??[]).length,1);assert.ok(head.includes(`rel="canonical" href="${url}"`));
+ assert.equal((head.match(/rel="canonical"/g)??[]).length,page.template?0:1);if(!page.template)assert.ok(head.includes(`rel="canonical" href="${url}"`));
  assert.ok(head.includes(`name="description" content="${escapeMetadata(page.description)}"`));
- assert.ok(head.includes(`property="og:url" content="${url}"`));
+ if(page.template)assert.ok(!head.includes('property="og:url"'),'A route template must not replace a personalized URL');else assert.ok(head.includes(`property="og:url" content="${url}"`));
  assert.ok(head.includes(`property="og:image" content="${publicOrigin+image.url}"`));assert.ok(head.includes(`name="twitter:image" content="${publicOrigin+image.url}"`));
  for(const field of ['og:image:width','og:image:height','og:image:alt','twitter:image:alt'])assert.ok(head.includes(field),`${field}: ${page.path}`);
  assert.equal(bytes.readUInt32BE(16),image.width);assert.equal(bytes.readUInt32BE(20),image.height);assert.equal(createHash('sha256').update(bytes).digest('hex'),image.sha256);assert.equal(bytes.length,image.bytes);
@@ -106,7 +106,7 @@ for(const page of publicPages){
  assert.equal(sitemap.includes(`<loc>${url}</loc>`),!page.noindex,`Only indexable canonical pages belong in sitemap: ${page.path}`);
  assert.ok(head.includes(page.noindex?'noindex,':'index,follow,max-image-preview:large'));assert.ok(!head.includes('dateModified'), 'No invented modification date');
  const graphs=[...head.matchAll(/<script type="application\/ld\+json">([^<]+)<\/script>/g)].flatMap(match=>JSON.parse(match[1])['@graph']);
- assert.ok(graphs.some(node=>node.url===url&&node['@id']===url+'#page'),'Page-specific structured data');assert.ok(graphs.some(node=>node['@type']==='BreadcrumbList'));
+ if(page.template){assert.ok(page.noindex,'Route templates are not standalone search results');assert.ok(graphs.some(node=>node['@type']==='WebPage'&&node.name===page.title));}else{assert.ok(graphs.some(node=>node.url===url&&node['@id']===url+'#page'),'Page-specific structured data');assert.ok(graphs.some(node=>node['@type']==='BreadcrumbList'));}
  if(['/explore/','/ledger/','/verify/','/conformance/'].includes(page.path))assert.ok(/<h1>[\s\S]+?<\/h1>/.test(html),'Public entry has readable copy before JavaScript');
 }
 assert.equal(uniqueTitles.size,publicPages.length);assert.equal(uniqueDescriptions.size,publicPages.length);assert.ok(!sitemap.includes('<lastmod>'),'A build date must not impersonate a content modification date');

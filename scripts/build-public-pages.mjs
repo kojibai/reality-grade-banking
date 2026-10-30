@@ -120,7 +120,7 @@ for (const runtime of ['ledger','explore','verify','conformance','receipt','feed
     return readFile('dist'+match[1], 'utf8');
   }))).join('\n');
   const pageHead = head.replace(/<link rel="(?:stylesheet|modulepreload)"[^>]*>/g,'').replace(/<script type="module"[^>]*>[\s\S]*?<\/script>/g,'') + `<style data-public-page-style="${runtime}">${css}</style>`;
-  publicPages[path] = { runtime, title: runtime==='feed'?'For you | Bankeiz':publicPage(path)?.title??'Transaction receipt · Bankeiz', content: runtime==='discover'?discoveryState.navigationContent:runtime==='feed'?feedState.navigationContent:publicEntryFallback(path)||'<main><h1>Transaction receipt</h1></main>', head: pageHead, entry: head.match(/<script type="module"[^>]*src="([^"]+)"/)[1] };
+  publicPages[path] = { runtime, title: publicPage(path)?.title??'Transaction receipt · Bankeiz', content: runtime==='discover'?discoveryState.navigationContent:runtime==='feed'?feedState.navigationContent:publicEntryFallback(path)||'<main><h1>Transaction receipt</h1></main>', head: pageHead, entry: head.match(/<script type="module"[^>]*src="([^"]+)"/)[1] };
   runtimeDocuments.set(path, html.replace(/<head>[\s\S]+?<\/head>/,`<head>${pageHead}${head.match(/<script type="module"[^>]*>[\s\S]*?<\/script>/)[0]}</head>`).replace('<div id="root">',`<div id="public-${runtime}-root" data-public-runtime="${runtime}">`));
 }
 // A direct certificate paints its own settled header/footer, never the

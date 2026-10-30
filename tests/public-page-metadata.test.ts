@@ -2,6 +2,8 @@
 import {expect,it} from 'vitest';
 import {applyPublicMetadata,publicPage,publicEntryFallback,publicPages} from '../scripts/public-page-metadata.mjs';
 import social from '../public/social/manifest.json';
+import {readFile} from 'node:fs/promises';
+import {publicMetadataPlugin} from '../scripts/public-metadata-plugin.mjs';
 const image=(path:string)=>social.images[path as keyof typeof social.images];
 it('replaces generic preview metadata while preserving private-reader security and executable entry tags',()=>{
  const source='<html><head><title>Old</title><meta name="robots" content="index,follow"><meta name="referrer" content="no-referrer"><link rel="canonical" href="https://old.example/"><meta property="og:image" content="old.png"><meta name="twitter:image" content="old.png"><style>body{color:#172b45}</style></head><body><div id="root"></div><script type="module" src="/receipt.js"></script></body></html>';
@@ -16,4 +18,25 @@ it('gives each public function its own preview while excluding private receipt r
  expect(publicPage('/explore/index.html')?.path).toBe('/explore/');expect(publicPage('/learn/signing-key/?from=bank')?.id).toBe('signing-key');expect(publicPage('/api/wallet/me')).toBeUndefined();
  expect(publicEntryFallback('/')).toBe('');expect(publicEntryFallback('/receipt/')).toBe('');
  const fallback=new DOMParser().parseFromString(publicEntryFallback('/verify/'),'text/html');expect(fallback.querySelector('h1')?.textContent).toBe('Verify an account proof');expect(fallback.body.textContent).toContain('no verification has run yet');expect(fallback.querySelector('script,input,button')).toBeNull();
+});
+it.each(['/feed/','/discover/','/book/'])('ships complete social metadata in the initial %s document without adding runtime work',async path=>{
+ const page=publicPage(path);expect(page).toBeDefined();
+ const source=await readFile(process.cwd()+path+'index.html','utf8');
+ const transform=publicMetadataPlugin().transformIndexHtml as (html:string,context:{path:string})=>string;
+ const html=transform(source,{path:path+'index.html'});
+ const doc=new DOMParser().parseFromString(html,'text/html'),meta=(key:string)=>doc.querySelector(`meta[property="${key}"],meta[name="${key}"]`)?.getAttribute('content');
+ for(const key of ['og:title','og:description','og:image','og:image:secure_url','og:image:type','og:image:width','og:image:height','og:image:alt','twitter:card','twitter:title','twitter:description','twitter:image','twitter:image:alt'])expect(meta(key),key).toBeTruthy();
+ expect(meta('og:image')).toBe('https://bankeiz.com'+image(path).url);expect(meta('twitter:image')).toBe(meta('og:image'));
+ expect(meta('twitter:card')).toBe('summary_large_image');expect(meta('og:image:type')).toBe('image/png');
+ expect([...doc.querySelectorAll('script[type=module]')].map(node=>node.getAttribute('src'))).toEqual([...new DOMParser().parseFromString(source,'text/html').querySelectorAll('script[type=module]')].map(node=>node.getAttribute('src')));
+ expect(doc.querySelector('link[rel=preload],link[rel=prefetch]')).toBeNull();
+ if(path==='/book/'){
+  expect(meta('robots')).toBe('noindex,follow');
+  expect(meta('og:url')).toBeUndefined();expect(doc.querySelector('link[rel=canonical]')).toBeNull();
+ }else{
+  expect(meta('og:url')).toBe('https://bankeiz.com'+path);
+  expect(doc.querySelector('link[rel=canonical]')?.getAttribute('href')).toBe(meta('og:url'));
+  const graph=JSON.parse(doc.querySelector('script[type="application/ld+json"]')!.textContent!)['@graph'];
+  expect(graph[0]['@type']).toBe('CollectionPage');
+ }
 });

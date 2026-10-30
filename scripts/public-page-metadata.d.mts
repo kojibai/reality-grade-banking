@@ -1,4 +1,4 @@
-export type PublicPageMetadata={path:string;id:string;title:string;description:string;lines:string[];caption:string;motif:string;noindex?:boolean;robots?:string;faq?:Array<[string,string]>};
+export type PublicPageMetadata={path:string;id:string;title:string;description:string;lines:string[];caption:string;motif:string;noindex?:boolean;robots?:string;template?:boolean;faq?:Array<[string,string]>};
 export type SocialImage={url:string;width:number;height:number;sha256:string;bytes:number;alt:string};
 export const publicOrigin:string;
 export const publicPages:PublicPageMetadata[];

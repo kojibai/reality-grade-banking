@@ -833,6 +833,22 @@
       "bytes": 468338,
       "alt": "Bankeiz. Find your next discovery. People. Originals. Possibilities. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
+    "/feed/": {
+      "url": "/social/feed-e042fde48769b111.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "e042fde48769b1110c8689d60cfaf4e6a0630659a70582a23881239f63ec9fd6",
+      "bytes": 458518,
+      "alt": "Bankeiz. Something new. For you. Watch. Listen. Read. Connect. An engraved play motif on layered cobalt, clear glass and navy forms."
+    },
+    "/book/": {
+      "url": "/social/book-1a3247fab5d425f2.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "1a3247fab5d425f26dab1feb6129acea72183bd03725618d7aee4463b64f74df",
+      "bytes": 462420,
+      "alt": "Bankeiz. A little time. Set aside. Choose a time. Keep life connected. An engraved calendar motif on layered cobalt, clear glass and navy forms."
+    },
     "/explore/": {
       "url": "/social/explore-ad9236b89fa95e71.png",
       "width": 1730,

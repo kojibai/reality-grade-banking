@@ -11,6 +11,12 @@ it('serves personalized crawler metadata without loading the image renderer or c
 it('escapes names and keeps scheduling questions, availability and guest information out of metadata',async()=>{
  const html=bookingPreviewHtml(await page(),{...owner,displayName:'Alex </title><script>bad</script> & Co'});expect(html).toContain('&lt;script&gt;');expect(html).not.toContain('<script>bad');expect(html.match(/<title>/g)).toHaveLength(1);expect(html).not.toContain(owner.avatarUrl);expect(html).not.toContain('slots');
 });
+it('replaces the static fallback graph with the same personalized invitation as the social tags',async()=>{
+ const fallback=(await page()).replace('</head>','<script type="application/ld+json">{"@type":"WebPage","name":"Make time | Bankeiz"}</script></head>');
+ const html=bookingPreviewHtml(fallback,owner),graphs=[...html.matchAll(/<script type="application\/ld\+json">([^<]+)<\/script>/g)].map(match=>JSON.parse(match[1]));
+ expect(graphs).toHaveLength(1);expect(graphs[0]).toMatchObject({'@type':'WebPage',name:'Meet with Alex Morgan | Bankeiz',url:'https://bankeiz.com/book/alexmorgan/'});
+ expect(graphs[0].primaryImageOfPage.url).toMatch(/^https:\/\/bankeiz.com\/book\/alexmorgan\/og.png\?v=/);
+});
 it.each(['/book/alexmorgan/og.png','/api/book?username=alexmorgan&image=1','/api/book/?username=alexmorgan&image=1'])('uses the same public owner for the PNG at %s',async path=>{
  const read=vi.fn(async()=>owner),image=vi.fn(async()=>new Uint8Array([137,80,78,71]));const response=await handleBookingPreview(new Request('https://bankeiz.com'+path),{owner:read,page,image});expect(response.status).toBe(200);expect(response.headers.get('content-type')).toBe('image/png');expect(image).toHaveBeenCalledExactlyOnceWith(owner);expect(read).toHaveBeenCalledExactlyOnceWith('alexmorgan');
 });
