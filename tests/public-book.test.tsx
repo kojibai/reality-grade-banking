@@ -8,7 +8,7 @@ import {readPublicBook,retainedPublicBook} from '../src/receiz/public-book-reade
 import FeedExperience from '../src/public-feed/FeedExperience';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const id='6e0ad6b8-8537-40ee-9bb6-a64d06d0f71b',digest='a'.repeat(64),reading='https://receiz.com/api/profile/originals/media?receizId='+id+'&slot=preview';
-const bytes=zipSync({'mimetype':strToU8('application/epub+zip'),'META-INF/container.xml':strToU8('<container><rootfiles><rootfile full-path="EPUB/book.opf"/></rootfiles></container>'),'EPUB/book.opf':strToU8('<package><metadata><title>A readable book</title></metadata><manifest><item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="chapter"/></spine></package>'),'EPUB/chapter.xhtml':strToU8('<html><body><h1>Chapter one</h1><p>Public reading stays open. Owning the downloadable Original is separate.</p></body></html>')});
+const bytes=zipSync({'mimetype':strToU8('application/epub+zip'),'META-INF/container.xml':strToU8('<container><rootfiles><rootfile full-path="EPUB/book.opf"/></rootfiles></container>'),'EPUB/book.opf':strToU8('<package><metadata><title>Unknown</title></metadata><manifest><item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="chapter"/></spine></package>'),'EPUB/chapter.xhtml':strToU8('<html><body><h1>Chapter one</h1><p>Public reading stays open. Owning the downloadable Original is separate.</p></body></html>')});
 const hex=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes))),b=>b.toString(16).padStart(2,'0')).join('');
 const original={id:'profile:artist:'+id,receizId:id,title:'A readable book',ownerUsername:'artist',canonicalHref:'/artist/verified/'+id,profileOriginal:{mediaKind:'epub',media:{kind:'epub',src:reading,sha256Hex:hex,originalDownloadSrc:'/api/profile/originals/download?receizId='+id+'&kind=original',originalDownloadSha256Hex:digest,originalDownloadPriceCents:500,material:null}}},membership={ok:true,transport:{publicOriginals:[original]}};
 afterEach(()=>vi.restoreAllMocks());
@@ -44,6 +44,7 @@ it('reads a paid-download book in the existing reader without buying, exposing a
  try{
   await act(async()=>root.render(<FeedExperience item={item}/>));
   await vi.waitFor(()=>expect(host.querySelector('[aria-label="EPUB reader"]')?.textContent).toContain('Public reading stays open.'));
+  expect(host.querySelector('.proof-book-heading strong')?.textContent).toBe(item.title);
   expect(host.querySelector('a[download]')).toBeNull();expect(host.textContent).not.toContain('separate download');expect(host.textContent).not.toContain('Original verified');
   const before=fetcher.mock.calls.length;act(()=>root.unmount());root=createRoot(host);await act(async()=>root.render(<FeedExperience item={item}/>));
   expect(host.querySelector('[aria-label="EPUB reader"]')?.textContent).toContain('Public reading stays open.');expect(fetcher.mock.calls.length).toBe(before);expect(before).toBe(1);
