@@ -16,9 +16,14 @@ export function walletPointTime(kaiUPulse: string): string {
  * The complete admitted original remains the retained account source. */
 function retainWalletPoints(history: readonly WalletPoint[]): WalletPoint[] {
   if (history.length <= 4096) return [...history];
-  const indices = new Set<number>();
+  const indices = new Set<number>(),times=history.map(point=>Date.parse(point.at));
   for (const rail of ['totalUsdCents', 'reserveUsdCents', 'settlementUsdCents'] as const) {
-    for (const index of sampleChartIndices(history.map(point => Number(point[rail])), 1366)) indices.add(index);
+    const values=history.map(point=>Number(point[rail])),temporal=sampleChartIndices(values,682,times);
+    // Share the same cache budget between historical time coverage and dense
+    // observations. Unused time bins go back to recent/detail coverage, so
+    // improving All/1Y never erases the shape used by the shorter periods.
+    for(const index of temporal)indices.add(index);
+    for(const index of sampleChartIndices(values,1368-temporal.length))indices.add(index);
   }
   return [...indices].sort((a, b) => a - b).map(index => history[index]);
 }

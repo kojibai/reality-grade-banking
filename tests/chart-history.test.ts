@@ -30,6 +30,16 @@ it('bounds chart geometry while retaining the beginning, latest and sharp extrem
   expect(indices[0]).toBe(0); expect(indices.at(-1)).toBe(9999);
   expect(indices).toContain(2001); expect(indices).toContain(8001);
 });
+it('keeps sparse older history visible when recent pulse observations are much denser',()=>{
+ const day=86400000,times=[...Array.from({length:96},(_,i)=>i*day),...Array.from({length:10000},(_,i)=>96*day+i*6000)],values=times.map((_,i)=>100+Math.sin(i)*20);
+ const indices=sampleChartIndices(values,320,times);
+ expect(indices.filter(index=>index<96)).toHaveLength(96);expect(indices.length).toBeLessThanOrEqual(320);
+ expect(indices[0]).toBe(0);expect(indices.at(-1)).toBe(values.length-1);
+ const history=times.map((at,i):WalletPoint=>({userId:'dense-owner',at:new Date(at).toISOString(),kaiUPulse:String(i+1),totalUsdCents:String(Math.round(values[i]*100)),reserveUsdCents:'0',settlementUsdCents:String(Math.round(values[i]*100))}));
+ const held=mergeWalletPoints([history],'dense-owner');
+ expect(held.filter(point=>Date.parse(point.at)<96*day)).toEqual(history.slice(0,96));expect(held.length).toBeLessThanOrEqual(4096);
+ expect(chartPeriodPoints(held,'1D').length).toBeGreaterThan(640);
+});
 it('keeps an actual observed quote over a model sample at the exact same display coordinate in either merge order',()=>{
   const observed:WalletPoint={userId:'owner',at:'2026-10-18T12:00:00Z',kaiUPulse:'15000000000000',totalUsdCents:'100',reserveUsdCents:'0',settlementUsdCents:'100'};
   const model:WalletPoint={...observed,totalUsdCents:'101',settlementUsdCents:'101',valuation:'deterministic-v129'};

@@ -26,12 +26,19 @@ export function chartChange(from: string, to: string) {
   const opening = BigInt(from), delta = BigInt(to) - opening;
   return { deltaCents: delta.toString(), percent: opening === 0n ? null : Number(delta * 1_000_000n / opening) / 10_000, trend: delta > 0n ? 'up' as const : delta < 0n ? 'down' as const : 'flat' as const };
 }
-/** Display sampling preserves endpoints and extrema without changing source values. */
-export function sampleChartIndices(values: readonly number[], limit = 320): number[] {
+/** Display sampling preserves endpoints and extrema without changing source values.
+ * Ordered source times distribute the same budget over elapsed time, so dense
+ * recent pulse observations cannot consume the older visible history. */
+export function sampleChartIndices(values: readonly number[], limit = 320, times?:readonly number[]): number[] {
   if (values.length <= limit) return values.map((_, i) => i);
   const buckets = Math.max(1, Math.floor((limit - 2) / 2)), indices = new Set([0, values.length - 1]);
+  const timed=times?.length===values.length&&Number.isFinite(times[0])&&Number.isFinite(times.at(-1))&&times.at(-1)!>times[0];
+  let cursor=1;
   for (let bucket = 0; bucket < buckets; bucket++) {
-    const start = 1 + Math.floor(bucket * (values.length - 2) / buckets), end = 1 + Math.floor((bucket + 1) * (values.length - 2) / buckets);
+    const start = timed?cursor:1+Math.floor(bucket*(values.length-2)/buckets);
+    if(timed){const boundary=times![0]+(times!.at(-1)!-times![0])*(bucket+1)/buckets;while(cursor<values.length-1&&(bucket===buckets-1||times![cursor]<boundary))cursor++;}
+    const end=timed?cursor:1+Math.floor((bucket+1)*(values.length-2)/buckets);
+    if(start===end)continue;
     let min = start, max = start;
     for (let i = start + 1; i < end; i++) { if (values[i] < values[min]) min = i; if (values[i] > values[max]) max = i; }
     indices.add(min); indices.add(max);
