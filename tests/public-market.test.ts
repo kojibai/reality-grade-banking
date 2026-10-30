@@ -94,3 +94,5 @@ describe('Receiz public Market catalog', () => {
     expect(item.canTrade).toBe(false);
   });
 });
+
+it('retains the existing public lyrics as a display projection, with no verification or custody authority',()=>{const longForm={title:'Song',text:'The full lyrics\nLine two',sha256Hex:'f'.repeat(64)},item=parsePublicMarket(membership([original(1,{profileOriginal:{mediaKind:'audio',longForm}})])).items[0];expect(item.carriedText).toEqual(longForm);expect(item.authority).toBe('projection-only');expect(item.canTrade).toBe(false);expect(parsePublicMarket(membership([original(2,{profileOriginal:{longForm:{...longForm,sha256Hex:'invalid'}}})])).items[0].carriedText).toBeUndefined();});

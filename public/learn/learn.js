@@ -76,7 +76,7 @@
   element.textContent = '';
   // Shared CSS is carried once. Expand only the visited page, retaining its
   // exact head for subsequent visits. Legacy saved documents still use strings.
-  for (const page of [...Object.values(pages), bank]) for(const field of ['head','content']) if (Array.isArray(page[field])) {
+  for (const page of [...Object.values(pages),bank,bank.css]) for(const field in page) if (field!=='styles'&&Array.isArray(page[field])) {
     const parts = page[field];
     Object.defineProperty(page, field, {get() {
       const value = parts.map(part => typeof part === 'number' ? sharedStyleBlocks[part] : part).join('');
@@ -117,7 +117,6 @@
   addEventListener('bankeiz:asset-metadata',event=>{keepAsset(event.detail);if(pathname(location.pathname)==='/asset/'+encodeURIComponent(event.detail?.id)+'/'){const page=assetAt(pathname(location.pathname));if(page)restoreHead(page.head);}});
   addEventListener('bankeiz:profile-metadata',event=>{const value=event.detail;if(!value||!profileName('/u/'+value.username+'/'))return;keepAsset({...value,id:'@'+value.username});if(profileName(pathname(location.pathname))===value.username){const page=assetAt(pathname(location.pathname));if(page)restoreHead(page.head);}});
   const pageAt = path => pages[pathname(path)] || assetAt(pathname(path)) || (/^\/verify\/[a-f0-9]{64}\/?$/.test(path) ? pages['/verify/'] : undefined);
-  const publicPath = path => Boolean(pageAt(path));
   // An offline deep link can be served by the retained Learn document. Its
   // canonical identifies the markup actually present, not the requested URL.
   // The current document already owns its visible runtime; initialization is
@@ -273,20 +272,22 @@
     const assetReturnPath=enteringAsset?(leavingAsset?history.state?.assetReturnPath:panel?'/#'+panel:location.pathname):undefined;
     remember(); history.pushState({ ...(assetReturnPath?{assetReturnPath}:{}),publicNavigation: { url: target, scroll: returning ? positions.get(target) ?? 0 : 0 } }, '', target); void render(returning);
   };
+  // Lazy public destinations reuse this retained router and catalog by reference.
+  Object.assign(element,{pages,navigate});
   addEventListener('bankeiz:navigate-public',event=>{const path=event.detail?.path;if(typeof path==='string'&&path.length<100&&profileName(path)){navigate(path);}});
   // Retained call controls can return from a public workspace without a
   // synthetic link, a second router, or a document navigation.
   addEventListener('bankeiz:navigate-bank', event => {
     const request = event.detail;
     if (!request || typeof request.hash !== 'string' || request.hash.length > 2048 || !/^#(?:account|market|assets|ledger)(?:\/[^\s?#]*)?$/.test(request.hash)) return;
-    if (!publicPath(location.pathname) && location.pathname !== '/') return;
+    if (!pageAt(location.pathname) && location.pathname !== '/') return;
     request.handled = true;
     navigate('/' + request.hash);
   });
   document.addEventListener('click', event => {
     const link = event.target.closest?.('a[href]'); if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.download || link.target && link.target !== '_self') return;
-    const url = new URL(link.href, location.href); if (url.origin !== location.origin || url.search || !publicPath(url.pathname) && url.pathname !== '/' || !publicPath(location.pathname) && location.pathname !== '/') return;
-    if (pathname(url.pathname) === pathname(location.pathname) && publicPath(url.pathname)) {
+    const url = new URL(link.href, location.href); if (url.origin !== location.origin || url.search || !pageAt(url.pathname) && url.pathname !== '/' || !pageAt(location.pathname) && location.pathname !== '/') return;
+    if (pathname(url.pathname) === pathname(location.pathname) && pageAt(url.pathname)) {
       if (url.hash) {
         // An explicit repeat click must reach the existing destination even when
         // the URL anchor is unchanged. Keep the conversation and history intact.
@@ -298,15 +299,15 @@
       }
       if (!location.hash) { event.preventDefault(); scrollTo({top:0,behavior:'instant'}); return; }
     }
-    if (!publicPath(location.pathname)) bankUrl = location.pathname + location.search + location.hash;
-    const target = url.pathname === '/' && !url.hash && publicPath(location.pathname) && bankLoaded ? bankUrl : url.pathname + url.hash;
+    if (!pageAt(location.pathname)) bankUrl = location.pathname + location.search + location.hash;
+    const target = url.pathname === '/' && !url.hash && pageAt(location.pathname) && bankLoaded ? bankUrl : url.pathname + url.hash;
     event.preventDefault(); navigate(target);
   });
   // popstate already exposes the destination URL. Save the view being left
   // under its retained URL before switching, so Forward also restores it.
   window.addEventListener('popstate', () => {rememberPosition(displayedUrl,currentScroll());void render(true);});
   window.addEventListener('bankeiz:receipt', () => {if (pages['/receipt/'] && pathname(location.pathname) === '/receipt/') void render();});
-  if (publicPath(location.pathname)) { styles(false); if (renderedPublicPath!==pathname(location.pathname)) void render(); }
+  if (pageAt(location.pathname)) { styles(false); if (renderedPublicPath!==pathname(location.pathname)) void render(); }
   // Pointer/keyboard intent fetches code bytes only; no account module or
   // hidden workspace executes before navigation selects that destination.
   const preload = event => {

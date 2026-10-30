@@ -1,0 +1,11 @@
+.music-mini-player{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));z-index:1000;display:flex;align-items:center;width:114px;max-width:calc(100vw - 32px);height:48px;padding:3px 5px 3px 7px;border:1px solid #e2e6ec;border-radius:28px;background:#ffffffed;box-shadow:0 4px 22px #172b4514;color:#172b45;backdrop-filter:blur(18px);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;isolation:isolate}
+.music-mini-player button{display:flex;align-items:center;justify-content:center;min-width:0;height:42px;border:0;background:none;color:inherit;padding:0;border-radius:24px;cursor:pointer;box-shadow:none;flex:none}
+.music-mini-player .music-mini-open{width:36px;flex:none;padding:0}
+.music-mini-open img{width:30px;height:30px;border-radius:50%;object-fit:cover;flex:none}
+.music-mini-open>svg{margin:0 5px;flex:none}
+.music-mini-player .music-mini-transport{width:38px}
+.music-mini-player .music-mini-stop{width:30px;color:#7b8798}
+.music-mini-player button:focus-visible{outline:2px solid #254bd8;outline-offset:1px}
+body:not([data-bank-surface]) .music-mini-player,body[data-bank-surface="bank"] .music-mini-player{bottom:calc(94px + env(safe-area-inset-bottom))}
+@media(min-width:760px){.music-mini-player{right:24px}}
+@media(prefers-reduced-transparency:reduce){.music-mini-player{background:#fff;backdrop-filter:none}}

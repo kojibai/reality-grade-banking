@@ -1,3 +1,5 @@
+import {publicAccountDisplayName} from './account-name.js';
+import {publicCarriedText,type PublicCarriedText} from './public-carried-text.js';
 import {readPublicShareInventory,mergeShareInventory,compatibleShareInventory} from './market-share-inventory.js';
 import type {PublicShareInventory} from './market-share-inventory.js';
 import {publicNativeAssetBinding,type PublicNativeAssetBinding} from './native-asset-public-binding.js';
@@ -21,8 +23,10 @@ export interface PublicMarketItem {
   originalDigest: string | null; pulse: string | null; sealedAt: string | null;
   nativeAsset?:PublicNativeAssetBinding;
   hasLongForm?: boolean;
+  carriedText?:PublicCarriedText|null;
   mediaKind?:PublicMediaKind;
   artworkUrl?:string|null;
+  videoPosterUrl?:string|null;
   /** Exact public card discovery claim; a display binding, never custody. */
   cardClaimHash?:string;
   playback?:PublicPlayback|null;
@@ -38,6 +42,10 @@ export interface PublicMarketItem {
   valuationBinding?:{itemId:string;assetId:string};
   ownerUsername: string | null; ownerDisplayName: string | null; ownerProfileUrl: string | null;
   ownerAvatarUrl?:string|null;
+  /** Initial-page thumbnail of the same local public Seal artwork. */
+  ownerAvatarFallback?:string|null;
+  /** Public original-account coordinates for its deterministic seal portrait only. */
+  ownerIdentity?:{userId:string;username:string;createdAt:string};
   priceUsd: number | null; changePct: number | null; chart: number[];
   authority: 'projection-only'; canTrade: false;
 }
@@ -134,20 +142,25 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
     const sealedAt = text(source.createdAt, 64);
     const publicUsername = text(source.ownerUsername, 64);
     const ownerUsername = publicUsername && /^[a-zA-Z0-9_-]{1,64}$/.test(publicUsername) ? publicUsername : null;
+    const ownerUserId=text(source.ownerUserId,64),ownerCreatedAt=text(source.ownerCreatedAt,64),rawOwnerName=text(source.ownerDisplayName,128);
+    const ownerDisplayName=rawOwnerName&&rawOwnerName!=='Receiz ID'?rawOwnerName:ownerCreatedAt?publicAccountDisplayName({displayName:rawOwnerName,username:ownerUsername,createdAt:ownerCreatedAt},ownerUsername??''):rawOwnerName;
     items.push({ id, assetId, title, hasPbiSignature:profile.hasPbiSignature===true||typeof profile.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)||typeof profile.signedArtifactDownloadUrl==='string'&&Boolean(safeReceizPublicUrl(profile.signedArtifactDownloadUrl,'original')), summary: text(source.summary, 8192) ?? '', category: 'proof',
       sourceUrl: safeReceizPublicUrl(source.canonicalHref, 'source'), verifyUrl,readingUrl,
       originalUrl: materialOriginal ?? safeReceizPublicUrl(media.originalDownloadSrc, 'original'), originalDigest: digest && /^[a-f0-9]{64}$/i.test(digest) ? digest.toLowerCase() : null,
       ...(publicNativeAssetBinding(profile.nativeAsset)?{nativeAsset:publicNativeAssetBinding(profile.nativeAsset)}:{}),
+      ...(publicCarriedText(profile.longForm)?{carriedText:publicCarriedText(profile.longForm)}:{}),
       hasLongForm:typeof profile.hasLongForm==='boolean'?profile.hasLongForm:Object.hasOwn(profile,'longForm')?Boolean(profile.longForm):undefined,
       mediaKind:publicMediaKind(profile.mediaKind??media.kind??(profile.media===null?null:undefined)),
       artworkUrl:publicMediaArtworkUrl({...media,kind:profile.mediaKind??media.kind},profile.artworkUrl),
+      ...(profile.mediaKind==='video'||media.kind==='video'?{videoPosterUrl:safeReceizArtworkUrl(media.videoPosterSrc)}:{}),
       playback:publicMediaPlayback(source,materialOriginal),
       documentUrl:publicDocumentUrl(source,materialOriginal),
       proofManifestSource:readPublicAssetManifestSource(profile),
       pulse: typeof source.pulse === 'string' && /^\d{1,24}$/.test(source.pulse) ? source.pulse : null,livePulseSeed:publicMarketPulseSeed(source.livePulseSeed,source.pulse),valuationBinding:{itemId:id,assetId},
       sealedAt: sealedAt && Number.isFinite(Date.parse(sealedAt)) ? sealedAt : null,
-      ownerUsername, ownerDisplayName: text(source.ownerDisplayName, 128), ownerProfileUrl: ownerUsername ? `https://receiz.com/${encodeURIComponent(ownerUsername)}` : null,
+      ownerUsername, ownerDisplayName, ownerProfileUrl: ownerUsername ? `https://receiz.com/${encodeURIComponent(ownerUsername)}` : null,
       ...(source.ownerAvatarUrl!==undefined?{ownerAvatarUrl:profileAvatarUrl(source.ownerAvatarUrl)}:{}),
+      ...(ownerUserId&&ownerUsername&&ownerCreatedAt&&Number.isFinite(Date.parse(ownerCreatedAt))?{ownerIdentity:{userId:ownerUserId,username:ownerUsername,createdAt:ownerCreatedAt}}:{}),
       priceUsd: nonnegative(source.valueUsd), changePct: null, chart: [], authority: 'projection-only', canTrade: false });
   }
   const catalog: PublicMarketCatalog = { items, complete: meta.version === 1 && meta.scope === 'whole-market-visible-showcase' && meta.source === 'canonical-complete' && meta.isComplete === true && meta.itemCount === items.length,

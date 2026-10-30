@@ -1,3 +1,4 @@
+import {renderDiscoveryState,applyDiscoveryState} from './discover-page.mjs';
 import {renderFeedState,applyFeedState} from './feed-page.mjs';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
@@ -65,7 +66,7 @@ const economyCss=await readFile('public/learn/economy.css','utf8');
 const cooperativeCss=await readFile('public/learn/cooperatives.css','utf8');
 const protectionCss=await readFile('public/learn/vault-protection.css','utf8');
 const valueHead = originalsAssets.head + `<link rel="stylesheet" href="${valueAssets.cssUrl}"><script src="${valueAssets.jsUrl}" defer></script>`;
-let bankHtml,certificateShell,feedState;
+let bankHtml,certificateShell,feedState,discoveryState;
 let assetPaths=[];
 const publicPages = {};
 const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' });
@@ -74,6 +75,7 @@ try {
   const { PublicCertificatePage } = await server.ssrLoadModule('/src/features/certificates/PublicCertificatePage.tsx');
   certificateShell=renderToStaticMarkup(createElement(PublicCertificatePage,{token:'',active:false}));
   feedState=await renderFeedState(server);
+  discoveryState=await renderDiscoveryState(server);
   const { BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_MESSAGING_CONSENT, BANK_MESSAGING_SCOPES } = await server.ssrLoadModule('/src/receiz/config.ts');
   const {parsePublicMarket}=await server.ssrLoadModule('/src/receiz/public-market.ts'),{mergePublicSports}=await server.ssrLoadModule('/src/receiz/public-sports.ts');
   const [market,sports]=await Promise.all(['market','sports'].map(name=>readFile(`public/receiz-public-${name}.json`,'utf8').then(JSON.parse)));
@@ -107,9 +109,10 @@ publicPages['/schemas/'] = {
 // existing readable first paint and exact emitted CSS with every public entry;
 // route changes need neither a replacement document nor a stylesheet round trip.
 const runtimeDocuments = new Map();
-for (const runtime of ['ledger','explore','verify','conformance','receipt','feed']) {
+for (const runtime of ['ledger','explore','verify','conformance','receipt','feed','discover']) {
   const path = `/${runtime}/`; let html = await readFile(`dist${path}index.html`, 'utf8');
   if(runtime==='feed')html=applyFeedState(html,feedState);
+  if(runtime==='discover')html=applyDiscoveryState(html,discoveryState);
   const head = html.match(/<head>([\s\S]+?)<\/head>/)[1];
   const cssLinks = [...head.matchAll(/<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g)];
   const css = (await Promise.all(cssLinks.map(async match => {
@@ -117,7 +120,7 @@ for (const runtime of ['ledger','explore','verify','conformance','receipt','feed
     return readFile('dist'+match[1], 'utf8');
   }))).join('\n');
   const pageHead = head.replace(/<link rel="(?:stylesheet|modulepreload)"[^>]*>/g,'').replace(/<script type="module"[^>]*>[\s\S]*?<\/script>/g,'') + `<style data-public-page-style="${runtime}">${css}</style>`;
-  publicPages[path] = { runtime, title: runtime==='feed'?'For you | Bankeiz':publicPage(path)?.title??'Transaction receipt · Bankeiz', content: runtime==='feed'?feedState.navigationContent:publicEntryFallback(path)||'<main><h1>Transaction receipt</h1></main>', head: pageHead, entry: head.match(/<script type="module"[^>]*src="([^"]+)"/)[1] };
+  publicPages[path] = { runtime, title: runtime==='feed'?'For you | Bankeiz':publicPage(path)?.title??'Transaction receipt · Bankeiz', content: runtime==='discover'?discoveryState.navigationContent:runtime==='feed'?feedState.navigationContent:publicEntryFallback(path)||'<main><h1>Transaction receipt</h1></main>', head: pageHead, entry: head.match(/<script type="module"[^>]*src="([^"]+)"/)[1] };
   runtimeDocuments.set(path, html.replace(/<head>[\s\S]+?<\/head>/,`<head>${pageHead}${head.match(/<script type="module"[^>]*>[\s\S]*?<\/script>/)[0]}</head>`).replace('<div id="root">',`<div id="public-${runtime}-root" data-public-runtime="${runtime}">`));
 }
 // A direct certificate paints its own settled header/footer, never the
@@ -156,12 +159,13 @@ for (const match of [...entryHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^
 }
 await writeFile('dist/index.html', entryHtml);
 const runtimeDocumentHtml=(html,runtime)=>earlyPublicRuntimeDocument(html).replace('<body>',`<body data-bank-surface="${runtime}">`).replace('</head>',`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>',()=>`${bundle}</body>`);
+await writeFile('dist/discover/navigation.json',JSON.stringify(publicPages['/discover/']));
 const documents={...publicPages,...Object.fromEntries(Object.entries(publicRouteAliases).map(([alias,path])=>[alias,publicPages[path]]))};
 for (const [path, page] of Object.entries(documents)) {
   await mkdir(`dist${path}`, { recursive: true });
   const runtimeHtml = runtimeDocuments.get(path);
-  const feedBundle=page.runtime==='feed'?`<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({reserved:feedState.profileNames,pages:{'/feed/':publicPages['/feed/'],'/explore/':publicPages['/explore/']},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:bankStyles,css:bankCss,content:bankContent}})).replaceAll('<','\\u003c')}</script>`:null;
-  const feedHtml=page.runtime==='feed'?earlyPublicRuntimeDocument(runtimeHtml).replace('</head>',`<script src="${jsUrl}" defer></script></head>`).replace('</body>',()=>`${feedBundle}</body>`):null;
+  const feedBundle=['feed','discover'].includes(page.runtime)?`<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({reserved:feedState.profileNames,pages:{'/feed/':publicPages['/feed/'],'/explore/':publicPages['/explore/'],...(page.runtime==='discover'?{'/discover/':publicPages['/discover/']}:{})},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:bankStyles,css:bankCss,content:bankContent}})).replaceAll('<','\\u003c')}</script>`:null;
+  const feedHtml=['feed','discover'].includes(page.runtime)?earlyPublicRuntimeDocument(runtimeHtml).replace('</head>',`<script src="${jsUrl}" defer></script></head>`).replace('</body>',()=>`${feedBundle}</body>`):null;
   await writeFile(`dist${path}index.html`, feedHtml??(runtimeHtml ? runtimeDocumentHtml(runtimeHtml,page.runtime) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`));
 }
 const urls = [...metadataPages.filter(page=>!page.noindex).map(page=>page.path),...assetPaths];

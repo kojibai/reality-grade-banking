@@ -33,3 +33,13 @@
 
 /* Readable text entry avoids automatic focus magnification; page zoom stays available. */
 @media(pointer:coarse){.profile-search input,.profile-editor input,.profile-editor textarea,.profile-growth-duration select{font-size:16px}}
+
+.profile-footer{display:flex;align-items:center;justify-content:space-between;gap:16px 24px;border-top:1px solid var(--line,#e5e8ee);margin:48px 0 0;padding:22px 0 8px;color:var(--muted,#8290a2);font-size:11px;line-height:1.5}
+.profile-footer a{color:inherit;text-decoration:none}
+.profile-footer a:hover{color:var(--accent,#254bd8)}
+.profile-footer a:focus-visible{outline:2px solid var(--accent,#254bd8);outline-offset:4px;border-radius:3px}
+.profile-footer-signature{display:inline-flex;align-items:center;gap:9px;min-height:36px}
+.profile-footer-signature svg{width:18px;height:18px;flex:none}
+.profile-footer nav{display:flex;gap:18px;align-items:center}
+.profile-footer nav a{display:inline-flex;align-items:center;min-height:40px}
+@media(max-width:540px){.profile-footer{flex-direction:column;gap:4px;padding-top:18px;text-align:center}.profile-footer nav{gap:26px}}

@@ -1,3 +1,4 @@
+import {publicOwnerThumbnails} from './public-owner-thumbnails.mjs';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {readFile} from 'node:fs/promises';
@@ -6,7 +7,7 @@ export const feedSeedScript=seed=>`<script id="public-feed-seed" type="applicati
 export async function renderFeedState(server){
  const [{PublicFeed},{orderFeedItems},{parsePublicMarket},input]=await Promise.all([server.ssrLoadModule('/src/public-feed/PublicFeed.tsx'),server.ssrLoadModule('/src/public-feed/feed-items.ts'),server.ssrLoadModule('/src/receiz/public-market.ts'),readFile('public/receiz-public-market.json','utf8').then(JSON.parse)]);
  const {publicProfileReservedNames}=await server.ssrLoadModule('/src/receiz/public-profile.ts');
- const seed=orderFeedItems(parsePublicMarket(input,input.snapshot).items).slice(0,8);
+ const seed=await publicOwnerThumbnails(orderFeedItems(parsePublicMarket(input,input.snapshot).items).slice(0,8),server);
  if(!seed.length)throw Error('PUBLIC_FEED_SOURCE_EMPTY');
  const render=rows=>renderToStaticMarkup(createElement(PublicFeed,{seed:rows,active:false}));
  return{seed,profileNames:publicProfileReservedNames,content:render(seed),navigationContent:render(seed.slice(0,1))+feedSeedScript(seed.slice(0,1))};

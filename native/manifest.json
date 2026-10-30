@@ -6664,7 +6664,7 @@
     },
     {
       "path": "receiz/app/lib/profile/displayName.ts",
-      "sha256": "9762c39cc70ace642657532cd5cd965d452b15809056c23f09af6b4b106afac7",
+      "sha256": "cb633f7bc9c6f1ede01d6a49ee83cefa18a1781ec8973d6bb582028a5e61ea7f",
       "mode": 420
     },
     {
@@ -15250,6 +15250,11 @@
       "path": "vault/packages/receiz-sdk/src/verifier/signatureV4.ts",
       "sha256": "9d384bdf2f62449009fcfbc7fc14d8b04c22d5169e571a95da30a9426886cf83",
       "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/profile/usernameLabel.ts",
+      "sha256": "ff4daeade3f1b345503a2f2ecdb3e91540678980a41e4e626b5e030a9aa1e759",
+      "mode": 420
     }
   ],
   "sdkOutputs": [
@@ -17002,6 +17007,22 @@
       "sha256": "7410acd57e880b62488bed821bde5c568eb2cc0ceec6afebc59ab1a05d3cedbf",
       "purpose": "Exact shared display projection of admitted username choices; raw profile/history, identity entry and financial authority remain unchanged.",
       "sourceCommit": "7cb18cb6027d6a64aed4cc7c5b446e201e631257"
+    },
+    {
+      "id": "concise-username-displayName.ts",
+      "path": "receiz/app/lib/profile/displayName.ts",
+      "baseSha256": "9762c39cc70ace642657532cd5cd965d452b15809056c23f09af6b4b106afac7",
+      "sha256": "cb633f7bc9c6f1ede01d6a49ee83cefa18a1781ec8973d6bb582028a5e61ea7f",
+      "sourceCommit": "1bf06230f2d1fd3a46f83c56500426c529874044",
+      "purpose": "Use one display-only username formatter across Receiz and Bankeiz. Full identity, proof, route, payment and recovery coordinates remain unchanged."
+    },
+    {
+      "id": "concise-username-usernameLabel.ts",
+      "path": "receiz/app/lib/profile/usernameLabel.ts",
+      "baseSha256": null,
+      "sha256": "ff4daeade3f1b345503a2f2ecdb3e91540678980a41e4e626b5e030a9aa1e759",
+      "sourceCommit": "1bf06230f2d1fd3a46f83c56500426c529874044",
+      "purpose": "Use one display-only username formatter across Receiz and Bankeiz. Full identity, proof, route, payment and recovery coordinates remain unchanged."
     }
   ],
   "historicalValuation": {

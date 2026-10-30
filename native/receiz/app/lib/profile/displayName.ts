@@ -1,11 +1,14 @@
 import {profileNameChoice,type ProfileNameChoice} from './profileNameChoice.js';
 import {projectReceizAccountDisplayName} from "../../../packages/receiz-sdk/src/accountDisplayName.js";
 import {resolveProfileIdentityCreationKaiMicroPulse} from './profileIdentityCreationCoordinate.js';
+import {profileUsernameLabel} from './usernameLabel.js';
+export {profileUsernameLabel};
+
 /** Current name projection beneath the unchanged admitted ProfileRow. */
 export function profileDisplayName(row:Readonly<{display_name?:string|null;username?:string|null;created_at?:string|null;creation_kai_upulse?:string|number|null;creation_kai_source?:string|null}>,admittedChoice?:ProfileNameChoice):string {
  const saved=row.display_name?.trim(),choice=admittedChoice??profileNameChoice(row);
  if(saved&&saved!=='Receiz ID'&&choice?.customDisplayName!==false)return saved;
- return projectReceizAccountDisplayName({displayName:choice?.customDisplayName===false?null:saved,chosenUsername:choice?.chosenUsername===row.username?row.username:null,creationKaiMicroPulse:resolveProfileIdentityCreationKaiMicroPulse({originalAccountCreatedAt:row.created_at,persistedMicroPulse:row.creation_kai_upulse==null?null:String(row.creation_kai_upulse),persistedSource:row.creation_kai_source}),fallback:row.username??undefined});
+ return projectReceizAccountDisplayName({displayName:choice?.customDisplayName===false?null:saved,chosenUsername:choice?.chosenUsername===row.username&&row.username?profileUsernameLabel(row.username):null,creationKaiMicroPulse:resolveProfileIdentityCreationKaiMicroPulse({originalAccountCreatedAt:row.created_at,persistedMicroPulse:row.creation_kai_upulse==null?null:String(row.creation_kai_upulse),persistedSource:row.creation_kai_source}),fallback:row.username??undefined});
 }
 
 /** Camel-case public/held profiles share the exact original-account resolver. */

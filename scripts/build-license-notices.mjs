@@ -100,7 +100,7 @@ const bundle = `<script id="receiz-navigation" type="application/json">${JSON.st
 await writeFile('dist/legal/index.html', publicLegalHtml.replace(/<body([^>]*)>([\s\S]*?)<\/body>/, (_, attributes, content) => `<body${attributes}><div id="public-learn-root">${content}</div>${bundle}${sharedExamples}</body>`));
 // The dedicated Feed keeps its lean source/asset navigation. Its Legal link
 // opens the complete legal document through normal navigation.
-for (const file of ['dist/index.html', ...[...Object.keys(navigation.pages),...Object.keys(navigation.aliases??{})].filter(path => path !== '/legal/' && path !== '/feed/').map(path => `dist${path}index.html`)]) {
+for (const file of ['dist/index.html', ...[...Object.keys(navigation.pages),...Object.keys(navigation.aliases??{})].filter(path => path !== '/legal/' && path !== '/feed/' && path !== '/discover/').map(path => `dist${path}index.html`)]) {
   await writeFile(file, (await readFile(file, 'utf8')).replace(navigationPattern, () => bundle));
 }
 console.log(`Published GPLv3, ownership, policies and supplied notices for ${packages.length} production dependencies at /legal/.`);

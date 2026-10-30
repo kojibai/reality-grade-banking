@@ -19,15 +19,23 @@ export function compactNavigation(input) {
     }
     return referenced?result:value;
   };
+  // Bank styles already occur inside the public runtime heads. Share the same
+  // exact CSS strings; every destination still expands losslessly on access.
+  const cssEntries=Object.entries(input.bank.css??{}).filter(([,css])=>typeof css==='string'&&css);
+  const cssReferences=value=>{
+    let parts=[value];for(const [,css]of cssEntries)parts=parts.flatMap(part=>typeof part==='string'?part.split(css).flatMap((text,i)=>i?[intern(css),text]:[text]):[part]);
+    return parts.length===1?[intern(value)]:parts;
+  };
   const head = value => {
     const parts = value.split(/(<style\b[^>]*>[\s\S]*?<\/style>)/gi);
     if (parts.length === 1) return value;
-    return parts.map((part, index) => {
+    return parts.flatMap((part, index) => {
       if (index % 2 === 0) return part;
-      return intern(part);
+      return cssReferences(part);
     });
   };
   const page = value => ({ ...value, head: head(value.head),...(typeof value.content==='string'?{content:content(value.content)}:{}) });
   const pages=Object.fromEntries(Object.entries(input.pages).map(([path,value])=>[path,page(value)])),bank=page(input.bank);
+  if(input.bank.css)bank.css=Object.fromEntries(cssEntries.map(([url,css])=>[url,[intern(css)]]));
   return { ...input, pages, bank, styles };
 }

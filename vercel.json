@@ -42,6 +42,14 @@
   ],
   "rewrites": [
     {
+      "source": "/discover",
+      "destination": "/discover/index.html"
+    },
+    {
+      "source": "/discover/",
+      "destination": "/discover/index.html"
+    },
+    {
       "source": "/feed",
       "destination": "/feed/index.html"
     },

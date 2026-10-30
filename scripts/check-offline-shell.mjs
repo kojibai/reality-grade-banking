@@ -54,3 +54,5 @@ assert.equal(manifest.pages['/pay/index.html'],'/pay/index.html');
 
 assert.equal(manifest.pages['/moments/'],'/learn/','Moments reuses the retained public shell offline.');
 for(const path of ['/learn/moments.js','/learn/moments-model.mjs'])assert.ok(shell.includes(path),'The Moments presentation is available offline.');
+
+assert.ok(shell.includes('/discover/'),'Discovery has its own source-bound offline document.');for(const path of ['/discover','/discover/'])assert.equal(manifest.pages[path],'/discover/');

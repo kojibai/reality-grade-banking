@@ -50,7 +50,7 @@ const sharedExamplePattern=/<template data-shared-example-views>[^<]*<\/template
 const sharedExampleBank=html.match(sharedExamplePattern);
 assert.equal(sharedExampleBank?.length,1,'The carried walkthrough destinations exist once in the initial document');
 const navigation = structuredClone(carriedNavigation);
-for(const page of [...Object.values(navigation.pages),navigation.bank])for(const field of ['head','content'])if(Array.isArray(page[field]))page[field]=page[field].map(part=>typeof part==='number'?navigation.styles[part]:part).join('');
+for(const page of [...Object.values(navigation.pages),navigation.bank,navigation.bank.css??{}])for(const field of Object.keys(page).filter(key=>key!=='styles'))if(Array.isArray(page[field]))page[field]=page[field].map(part=>typeof part==='number'?navigation.styles[part]:part).join('');
 assert.ok(navigation.pages['/explore/'].head.includes('.ledger-proof-details')&&navigation.pages['/explore/'].head.includes('.ledger-proof-actions'),'Retained public asset navigation carries evidence styles before the lazy reader opens');
 assert.ok(navigation.bank.content.includes('class="account-opening-geometry"'),'Cold Bank navigation carries its actual opening artwork');
 for(const url of navigation.bank.styles)assert.equal(navigation.bank.css[url],await readFile('dist'+url,'utf8'),'Cold Bank navigation carries the exact emitted CSS');
@@ -68,7 +68,7 @@ const sharedHeader = navigation.pages['/learn/'].content.match(/<header class="l
 for (const [path, entry] of Object.entries(navigation.pages)) {
   // Feed is a dedicated immersive document; its lean navigation and first paint
   // have their own assertions below. Existing guide documents remain identical.
-  if(path==='/feed/')continue;
+  if(path==='/feed/'||path==='/discover/')continue;
   const routeHtml=await readFile(`dist${path}index.html`,'utf8');
   assert.deepEqual(routeHtml.match(sharedExamplePattern),sharedExampleBank,`Cold ${path} keeps the same shared walkthrough destinations`);
   const output = await readFile(`dist${path}index.html`, 'utf8');
@@ -194,3 +194,11 @@ const feedImports=new Set();
 async function checkFeedEntry(key){if(feedImports.has(key))return;feedImports.add(key);const entry=builds[key];assert.ok(entry);const body=await readFile('dist/'+entry.file,'utf8');assert.ok(!/createNativeIdentity|\/api\/chat\/conversations|native-account\/ensure|createCheckoutIdentitySession/.test(body),'Feed static entry cannot mount account/payment/messaging execution before user intent.');for(const dep of entry.imports??[])await checkFeedEntry(dep);}
 await checkFeedEntry('feed/index.html');
 console.log('Verified source-carried Feed first paint, inline styles, lean navigation and intent-only account import boundary.');
+
+const discoveryDocument=await readFile('dist/discover/index.html','utf8');
+const discoveryOpening=discoveryDocument.slice(0,discoveryDocument.indexOf('<script id="receiz-navigation"'));
+assert.ok(discoveryOpening.includes('data-public-runtime="discover"')&&discoveryOpening.includes('class="discover-gallery"')&&discoveryOpening.includes('id="public-discovery-seed"'),'Discovery paints the real gallery and its same source before navigation.');
+assert.ok(discoveryOpening.includes('<style data-public-page-style="discover">')&&!/<link rel="stylesheet"/.test(discoveryOpening),'Discovery does not wait for a stylesheet.');
+assert.ok(/<script type="module" async[^>]*src="\/assets\/discover-/.test(discoveryDocument),'Discovery hydrates before unrelated document payload.');
+assert.ok(!discoveryOpening.includes('site-footer')&&!discoveryOpening.includes('account-opening-screen'),'Discovery starts with works, without footer or account work.');
+assert.ok(discoveryDocument.length<700000,'Discovery document remains below 700 kB uncompressed.');

@@ -1,3 +1,4 @@
+import {profileUsernameLabel} from '../../receiz/account-name';
 import {CopyFeedbackIcon} from '../../components/CopyFeedback';
 import {useEffect,useState} from 'react';
 import {ArrowUpRight,ChevronDown,Code2,Globe2} from 'lucide-react';
@@ -22,7 +23,7 @@ export function PaymentTools({username,amount,initialMode='button'}:{username:st
     <button type="button" aria-pressed={mode==='checkout'} className={mode==='checkout'?'active':''} onClick={()=>setMode('checkout')}>Embedded checkout</button>
    </div>
    <p className="payment-tools-caption">{mode==='button'?'Paste into an HTML block on your website. Customers pay directly with a card, balance or any supported Note. No signup step.':'Paste into a custom HTML block that allows scripts. The existing Receiz checkout opens card payment within your site.'}</p>
-   {mode==='button'&&<div className="payment-button-preview"><a href={tools.hostedCheckoutLink} target="_blank" rel="noopener noreferrer">Pay @{tools.username}<ArrowUpRight size={16}/></a></div>}
+   {mode==='button'&&<div className="payment-button-preview"><a href={tools.hostedCheckoutLink} target="_blank" rel="noopener noreferrer">Pay @{profileUsernameLabel(tools.username)}<ArrowUpRight size={16}/></a></div>}
    <label className="payment-tools-code"><span><Code2 size={15}/>{mode==='button'?'Your payment button':'Your checkout code'}</span><textarea aria-label={mode==='button'?'Payment button code':'Checkout code'} value={code} readOnly rows={4} spellCheck={false}/></label>
    <button type="button" className="secondary-button" aria-label={copied?(mode==='button'?'Payment button code copied':'Checkout code copied'):(mode==='button'?'Copy payment button code':'Copy checkout code')} onClick={()=>void copy(code)}><CopyFeedbackIcon copied={copied} size={17}/>Copy code</button>
    {mode==='checkout'&&<><p className="payment-tools-caption">No website? Share your Receiz card checkout link instead. Customers choose the amount there; the optional amount above applies to your Bankeiz button.</p><div className="payment-tools-link"><a href={tools.externalCheckoutLink} target="_blank" rel="noopener noreferrer">receiz.com/payments/{tools.username}<ArrowUpRight size={15}/></a><button type="button" aria-label={feedback?.value===tools.externalCheckoutLink&&feedback.ok?'Checkout link copied':'Copy checkout link'} onClick={()=>void copy(tools.externalCheckoutLink)}><CopyFeedbackIcon copied={feedback?.value===tools.externalCheckoutLink&&feedback.ok===true}/></button></div></>}
