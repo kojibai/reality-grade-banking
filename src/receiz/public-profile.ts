@@ -1,3 +1,4 @@
+import {publicProfileArtwork} from './profile-artwork.js';
 import {publicAccountDisplayName} from './account-name.js';
 import {afterPublicNavigationReady} from '../core/public-document-entry.js';
 import {mergeAdmittedProfileAssets,forgetAssetPublicationAdmissions,acceptDiscoveredProfileAssets} from './asset-publication-adoption.js';
@@ -57,15 +58,22 @@ export function parsePublicProfile(input:unknown,expectedUsername:string):Public
  if(p.isPrivate!==false||viewer.canView!==true)throw Error('PROFILE_PRIVATE');
  const username=expectedUsername,displayName=publicAccountDisplayName(p,username),rows=Array.isArray(view.originals)?view.originals:[];
  if(rows.length>10_000)throw Error('PROFILE_PAGE_TOO_LARGE');
+ const images=publicProfileArtwork(p);
  const items=publicOriginalItems(rows,p,envelope.representation==='collection-v2');
  const stats=object(view.stats),unavailable=Array.isArray(view.unavailableDecorators)&&view.unavailableDecorators.includes('engagement');
  const hash=text(p.authorshipPbiReceiptHash,64);
  const page=object(view.originalsPage),cursor=text(page.nextCursor,4096);
- return {schema:'bankeiz.public-profile.v1',userId:String(p.userId),username,displayName,bookingEnabled:p.showSchedulerButton===true,bio:text(p.bio,280),location:text(p.location,100),websiteUrl:publicProfileLink(p.websiteUrl),avatarUrl:profileAvatarUrl(p.avatarUrl),bannerUrl:profileAvatarUrl(p.bannerUrl),
+ return {schema:'bankeiz.public-profile.v1',userId:String(p.userId),username,displayName,bookingEnabled:p.showSchedulerButton===true,bio:text(p.bio,280),location:text(p.location,100),websiteUrl:publicProfileLink(p.websiteUrl),avatarUrl:images.avatarUrl,bannerUrl:images.bannerUrl,
   socialLinks:[['X','socialXUrl'],['Instagram','socialInstagramUrl'],['YouTube','socialYoutubeUrl'],['LinkedIn','socialLinkedinUrl'],['GitHub','socialGithubUrl']].flatMap(([label,key])=>{const url=publicProfileLink(p[key]);return url?[{label,url}]:[];}),
   links:Array.isArray(p.links)?p.links.slice(0,20).flatMap(value=>{const link=object(value),label=text(link.label,80),url=publicProfileLink(link.url);return label&&url&&url.length<=2048?[{label,url}]:[];}):[],
   authorshipVerified:p.authorshipVerified===true,pbiReceiptHash:hash&&/^[a-f0-9]{64}$/i.test(hash)?hash:null,createdAt:text(p.createdAt,64),
   stats:{originals:number(stats.originals),views:unavailable?null:number(stats.originalViews),plays:unavailable?null:number(stats.streams),seconds:unavailable?null:number(stats.witnessedSeconds),completion:unavailable?null:number(stats.streamCompletionRatePct)},items,nextCursor:page.hasMore===true&&cursor&&!/[\x00-\x1f\x7f]/.test(cursor)?'all:'+p.userId:null};
+}
+
+/** Inline deterministic artwork is already in the document; social crawlers
+ * require a public HTTP image rather than a repeated data: payload. */
+export function publicProfileSocialImage(profile:Pick<PublicProfile,'bannerUrl'|'avatarUrl'>):string|null {
+ return publicProfileLink(profile.bannerUrl)??publicProfileLink(profile.avatarUrl);
 }
 
 /** Only this tab's observed public projection is retained, never a private
@@ -80,7 +88,7 @@ export const subscribePublicProfiles=(listener:()=>void)=>{listeners.add(listene
  * exists, and never replay a source that has since been replaced or removed. */
 function publishProfileMetadata(profile:PublicProfile){
  if(typeof dispatchEvent!=='function')return;
- const publish=()=>{if(held.get(profile.username)===profile)dispatchEvent(new CustomEvent('bankeiz:profile-metadata',{detail:{username:profile.username,title:profile.displayName,description:profile.bio,image:profile.bannerUrl??profile.avatarUrl}}));};
+ const publish=()=>{if(held.get(profile.username)===profile)dispatchEvent(new CustomEvent('bankeiz:profile-metadata',{detail:{username:profile.username,title:profile.displayName,description:profile.bio,image:publicProfileSocialImage(profile)}}));};
  afterPublicNavigationReady(publish);
 }
 export function retainPublicProfile(input:PublicProfile){const previous=held.get(input.username),receipt=confirmedProfilePbi.get(input.userId)??(previous?.userId===input.userId?previous.pbiReceiptHash:null),profile=mergeAdmittedProfileAssets(receipt?{...input,authorshipVerified:true,pbiReceiptHash:input.pbiReceiptHash??receipt}:input);for(const [name,previous]of held)if(name!==profile.username&&previous.userId===profile.userId)forgetPublicProfile(name);held.delete(profile.username);held.set(profile.username,profile);observed.set(profile.username,Date.now());retainRecipientPortrait(profile.username,profile.avatarUrl);if(held.size>24)forgetPublicProfile(held.keys().next().value!);publishProfileMetadata(profile);for(const listener of listeners)listener();return profile;}

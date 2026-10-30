@@ -107,3 +107,4 @@ it('starts the same profile module asynchronously while preserving its complete 
  expect(JSON.parse(payload)).toEqual(profile);expect(result).toContain('<article>Same public profile</article>');
  expect(result).toContain('<script id="receiz-navigation" type="application/json">{}</script>');
 });
+it('keeps inline identity artwork out of preload and social-image tags',()=>{const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.avatarUrl='data:image/svg+xml;charset=utf-8,%3Csvg%3E%3C%2Fsvg%3E';profile.bannerUrl=profile.avatarUrl;const result=profilePreviewHtml(html,'alexmorgan',profile),head=result.split('</head>')[0];expect(head).not.toMatch(/(?:href|content)="data:image/);expect(result).toContain('public-profile-seed');profile.avatarUrl='https://receiz.com/avatar.png';expect(profilePreviewHtml(html,'alexmorgan',profile)).toContain('<meta property="og:image" content="https://receiz.com/avatar.png">');});

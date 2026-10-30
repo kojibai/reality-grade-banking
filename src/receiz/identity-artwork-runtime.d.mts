@@ -1,0 +1,1 @@
+export function artwork(input:Readonly<{userId:string;createdAt:string;creationKaiMicroPulse:string;receizId?:string|null;genesisReceizId?:string|null;pbiReceiptHash?:string|null;pbiSignedAt?:string|null;pbiSignedKaiMicroPulse?:string|null}>):Readonly<{avatarSvg:string;bannerSvg:string;seedHash:string;baseSeedHash:string;pulse:string}>;

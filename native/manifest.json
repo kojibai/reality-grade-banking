@@ -6664,7 +6664,7 @@
     },
     {
       "path": "receiz/app/lib/profile/displayName.ts",
-      "sha256": "8daf94052171aa5ea80a8af66518b77ba901df0a011ba9d2c712998bebd3cb7f",
+      "sha256": "9762c39cc70ace642657532cd5cd965d452b15809056c23f09af6b4b106afac7",
       "mode": 420
     },
     {
@@ -6773,6 +6773,11 @@
       "path": "receiz/app/lib/profile/profileIdentityShowcase.ts",
       "sha256": "944ba742539042acc0a0c18dc631c48168530b98f09c1a945290486cb9408706",
       "bytes": 4958,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/profile/profileNameChoice.ts",
+      "sha256": "7410acd57e880b62488bed821bde5c568eb2cc0ceec6afebc59ab1a05d3cedbf",
       "mode": 420
     },
     {
@@ -8269,7 +8274,7 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/accountDisplayName.ts",
-      "sha256": "a633ba584afc678638c9bc0c076e36058141f6b15c59b98a99cf5787240a6e5b",
+      "sha256": "3bb1eed3233a784f55102c07b90b11dc06b9e9ad42839dfa925c8b2c38d08340",
       "mode": 420
     },
     {
@@ -16968,27 +16973,35 @@
     },
     {
       "id": "shared-creation-pulse-display-name",
-      "path": "receiz/packages/receiz-sdk/src/accountDisplayName.ts",
-      "baseSha256": null,
-      "sha256": "a633ba584afc678638c9bc0c076e36058141f6b15c59b98a99cf5787240a6e5b",
-      "purpose": "Compose the exact shared original-account display-name projection. Existing Kai calculations, proof verification, financial behavior and published SDK package outputs are unchanged.",
-      "sourceCommit": "d63a89e06cd04e4d808d51507745825f3ef96c12"
-    },
-    {
-      "id": "shared-creation-pulse-display-name",
-      "path": "receiz/app/lib/profile/displayName.ts",
-      "baseSha256": null,
-      "sha256": "8daf94052171aa5ea80a8af66518b77ba901df0a011ba9d2c712998bebd3cb7f",
-      "purpose": "Compose the exact shared original-account display-name projection. Existing Kai calculations, proof verification, financial behavior and published SDK package outputs are unchanged.",
-      "sourceCommit": "d63a89e06cd04e4d808d51507745825f3ef96c12"
-    },
-    {
-      "id": "shared-creation-pulse-display-name",
       "path": "receiz/app/lib/profile/profileIdentityCreationCoordinate.ts",
       "baseSha256": "8e00ca17b1d2e045931e91577935362b416d080939c1bfea3f1f40b85e789618",
       "sha256": "9f16c626597ec0686d85011714856bb98a16fdee2a26d7b012c65b7a5929dfae",
       "purpose": "Compose the exact shared original-account display-name projection. Existing Kai calculations, proof verification, financial behavior and published SDK package outputs are unchanged.",
       "sourceCommit": "d63a89e06cd04e4d808d51507745825f3ef96c12"
+    },
+    {
+      "id": "chosen-profile-name-packages-receiz-sdk-src-accountDisplayName.ts",
+      "path": "receiz/packages/receiz-sdk/src/accountDisplayName.ts",
+      "baseSha256": "a633ba584afc678638c9bc0c076e36058141f6b15c59b98a99cf5787240a6e5b",
+      "sha256": "3bb1eed3233a784f55102c07b90b11dc06b9e9ad42839dfa925c8b2c38d08340",
+      "purpose": "Exact shared display projection of admitted username choices; raw profile/history, identity entry and financial authority remain unchanged.",
+      "sourceCommit": "7cb18cb6027d6a64aed4cc7c5b446e201e631257"
+    },
+    {
+      "id": "chosen-profile-name-app-lib-profile-displayName.ts",
+      "path": "receiz/app/lib/profile/displayName.ts",
+      "baseSha256": "8daf94052171aa5ea80a8af66518b77ba901df0a011ba9d2c712998bebd3cb7f",
+      "sha256": "9762c39cc70ace642657532cd5cd965d452b15809056c23f09af6b4b106afac7",
+      "purpose": "Exact shared display projection of admitted username choices; raw profile/history, identity entry and financial authority remain unchanged.",
+      "sourceCommit": "7cb18cb6027d6a64aed4cc7c5b446e201e631257"
+    },
+    {
+      "id": "chosen-profile-name-app-lib-profile-profileNameChoice.ts",
+      "path": "receiz/app/lib/profile/profileNameChoice.ts",
+      "baseSha256": null,
+      "sha256": "7410acd57e880b62488bed821bde5c568eb2cc0ceec6afebc59ab1a05d3cedbf",
+      "purpose": "Exact shared display projection of admitted username choices; raw profile/history, identity entry and financial authority remain unchanged.",
+      "sourceCommit": "7cb18cb6027d6a64aed4cc7c5b446e201e631257"
     }
   ],
   "historicalValuation": {

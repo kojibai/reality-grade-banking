@@ -4,12 +4,15 @@ import {microPulsesSinceGenesisEpochMsV124} from "./v124KaiBridge.generated.js";
  * Never samples time, fetches an identity or changes the carried source. */
 export function projectReceizAccountDisplayName(input: Readonly<{
   displayName?: string | null;
+  chosenUsername?: string | null;
+  useDefaultDisplayName?: boolean;
   creationKaiMicroPulse?: string | number | bigint | null;
   createdAt?: string | null;
   fallback?: string;
 }>): string {
   const saved = input.displayName?.trim() ?? "";
-  if (saved && saved !== "Receiz ID") return saved;
+  if (saved && saved !== "Receiz ID" && !input.useDefaultDisplayName) return saved;
+  if (input.chosenUsername) return input.chosenUsername;
   const creationMs = input.createdAt ? Date.parse(input.createdAt) : NaN;
   const value = input.creationKaiMicroPulse ?? (Number.isSafeInteger(creationMs) ? microPulsesSinceGenesisEpochMsV124(BigInt(creationMs)) : null);
   const exact = typeof value === "number" ? Number.isSafeInteger(value) && value >= 0 ? String(value) : ""

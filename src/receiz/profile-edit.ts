@@ -1,3 +1,4 @@
+import {publicProfileArtwork} from './profile-artwork.js';
 import {publicAccountDisplayName} from './account-name.js';
 import {publicProfileLink,profileUsername,type PublicProfile} from './public-profile';
 import {profileAvatarUrl} from './profile-avatar';
@@ -12,7 +13,7 @@ const object=(value:unknown):Record<string,unknown>=>value&&typeof value==='obje
 export function ownerProfilePresentation(result:ProfileUpdate):OwnerProfilePresentation{
  const profile=object(result.profile.profile),username=profileUsername(profile.username);
  if(profile.userId!==result.accountUid||!username)throw Error('PROFILE_ACCOUNT_MISMATCH');
- return {userId:result.accountUid,username,displayName:typeof profile.displayName==='string'?profile.displayName:username,avatarUrl:profileAvatarUrl(profile.avatarUrl)};
+ return {userId:result.accountUid,username,displayName:typeof profile.displayName==='string'?profile.displayName:username,avatarUrl:publicProfileArtwork(profile).avatarUrl};
 }
 export function createProfileEditor(deps:{accountUid:string;current():boolean;update(input:ProfilePatch):Promise<ProfileUpdate>;uploadImage?:ProfileEditor['uploadImage'];availability:ProfileEditor['availability'];publish(result:ProfileUpdate):void}):ProfileEditor{
  const assert=()=>{if(!deps.current())throw Error('PROFILE_ACCOUNT_CLOSED');};
