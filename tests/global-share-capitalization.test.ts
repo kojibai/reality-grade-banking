@@ -7,6 +7,7 @@ import {publicCatalogAtPulse} from '../src/receiz/market-projection/catalog-pric
 import {parseMarketHistory} from '../src/receiz/market-projection/history';
 import type {MarketCapSource} from '../src/receiz/market-projection/source';
 import type {PublicMarketCatalog,PublicMarketItem} from '../src/receiz/public-market';
+import type {GlobalMarketCalculation} from '../src/receiz/market-projection/calculation';
 const issue=14700000,end=14900000,seed={kind:'sigil',claimPulse:issue,beat:2,stepIndex:3,creatorVerified:true};
 const source:MarketCapSource={schema:'receiz.proof_graph.market_cap_projection.v1',source:'market-desk-live-assets.sum + single-card-current-live-value-proof.sum',proofObjectHash:'a'.repeat(64),generatedAt:new Date(marketPulseTime(end)).toISOString(),firstIssuancePulse:issue,serverPulse:end,currentUsd:100,cardsInCirculation:0,sportsCardsPriced:0,marketAssetsPriced:1,valueRows:[{id:'public-market:one',source:'market-desk-live-asset',baseUsdValue:100,birthUsdValue:100,marketUsdValue:100,proofTotalValueUsd:100,scoreDelta:0,seed:'asset',marketItem:{id:'one',source:'profile',priceUsd:100,pricePhi:1,quoteUsdPerPhi:100,changePct:0,livePulseSeed:seed}}]};
 function catalog(){
@@ -22,6 +23,14 @@ it('publishes the same share-inclusive total in the summary and every chart endp
  expect(history.series.ALL[0].usdCents).toBe(String(BigInt(held.items[0].shareInventory!.releaseCapitalization!.unitPriceUsdCents)*100n));
  for(const points of Object.values(history.series))expect(points.at(-1)?.usdCents).toBe(expected.usdCents);
  expect(()=>parseMarketHistory(history)).not.toThrow();
+});
+it('exposes one current calculation from the same quote pass without expanding stored chart history',async()=>{
+ let calculation:GlobalMarketCalculation|undefined,calls=0;
+ const history=(await buildMarketHistory(source,null,undefined,undefined,{catalog:catalog(),pulse:end,capitalization:true,onCalculation:value=>{calculation=value;calls++;}}))!;
+ expect(calls).toBe(1);expect(calculation).toMatchObject({pulse:history.summary.serverPulse,sourceHash:history.summary.proofObjectHash,usdCents:history.summary.shareCapitalization!.usdCents,covered:1});
+ expect(calculation!.assets).toHaveLength(1);expect(calculation!.assets[0].valuation).toMatchObject({kind:'sigil',pulse:end});
+ expect(calculation!.assets[0].runningTotalUsdCents).toBe(calculation!.usdCents);expect(calculation!.assets[0].inventory).not.toHaveProperty('history');expect(calculation!.assets[0].inventory).not.toHaveProperty('capitalizationHistory');
+ expect(history).not.toHaveProperty('calculation');expect(history.summary).not.toHaveProperty('assets');
 });
 it('fills the elapsed time after a retained head so daily and weekly windows contain valuations throughout the gap',async()=>{
  const oldEnd=end-8*Math.ceil(86400/(3+Math.sqrt(5))),previous=(await buildMarketHistory({...source,serverPulse:oldEnd,currentUsd:100}))!;

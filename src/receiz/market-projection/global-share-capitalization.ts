@@ -9,6 +9,7 @@ import {publicSigilUsdAtPulse,marketRowsUsdAtPulse} from './project';
 import {marketCapChartUsdAtPulse,prepareMarketChartProjection} from './interpolated-history';
 import {currentMarketDisplayModel} from './catalog-source';
 import type {MarketCapSource} from './source';
+import type {GlobalMarketCalculation,GlobalMarketContribution,MarketUnitCalculation,MarketQuoteMovementCalculation} from './calculation';
 
 /** The same signed membership as discovery, over existing captured operands.
  * Cards retain their full sealed-copy history. This selects a display universe;
@@ -23,9 +24,16 @@ export function globalMarketCapitalizationInputs(source:MarketCapSource,catalog:
 
 /** Read-only composition of the existing pricing and share primitives. No
  * current quantity is projected backward across its recorded coordinate. */
-export function prepareGlobalShareCapitalization(source:MarketCapSource,catalog:PublicMarketCatalog){
+export function prepareGlobalShareCapitalization(source:MarketCapSource,catalog:PublicMarketCatalog,captureCalculation=false){
  catalog=marketDiscoveryCatalog(catalog)!;
- const current=publicCatalogAtPulse(catalog,source,source.serverPulse)!,coverage=publicShareCapitalization(current),selected=publicCapitalizationAssets(current).items;
+ const quotes=captureCalculation?new Map<string,MarketUnitCalculation>():null,assets:GlobalMarketContribution[]=[];
+ let quoteMovement:MarketQuoteMovementCalculation|undefined;
+ const current=publicCatalogAtPulse(catalog,source,source.serverPulse,undefined,quotes?(id,value)=>quotes.set(id,value):undefined,captureCalculation?value=>{quoteMovement=value;}:undefined)!,coverage=publicShareCapitalization(current,captureCalculation?row=>{
+  const {item,...contribution}=row,inventory=item.shareInventory;
+  const retainedInventory=inventory?(({history:_history,capitalizationHistory:_observations,...retained})=>retained)(inventory):undefined;
+  assets.push({...contribution,id:item.id,assetId:item.assetId,title:item.title??item.assetId,category:item.category,copies:item.circulationCount??1,...(retainedInventory?{inventory:retainedInventory}:{}),...(quotes?.has(item.id)?{valuation:quotes.get(item.id)}:{})});
+ }:undefined),selected=publicCapitalizationAssets(current).items;
+ const calculation:GlobalMarketCalculation|undefined=captureCalculation?{pulse:source.serverPulse,sourceHash:source.proofObjectHash,generatedAt:source.generatedAt,...coverage,...(quoteMovement?{quoteMovement}:{}),assets}:undefined;
  const proofs=selected.filter(item=>item.category==='proof').map(item=>({item,seed:publicAssetPulseSeed(item,source),value:prepareShareCapitalizationAtPulse(item.shareInventory!)}));
  const sportsRows=source.valueRows.filter(row=>row.source==='sports-economy-card');
  // Keep the existing sealed-copy history and its native projection. Original
@@ -51,5 +59,5 @@ export function prepareGlobalShareCapitalization(source:MarketCapSource,catalog:
   }
   return total.toString();
  };
- return {coverage,events,basis,at};
+ return {coverage,events,basis,at,calculation};
 }

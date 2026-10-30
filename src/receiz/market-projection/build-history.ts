@@ -9,6 +9,7 @@ import {mergeMarketCopyObservations}from'./copy-observations';
 import {sameSportsPricingOperands}from'./sports-observations';
 import {marketCapChartUsdAtPulse,prepareMarketChartProjection} from './interpolated-history';
 import {prepareGlobalShareCapitalization,globalMarketCapitalizationInputs} from './global-share-capitalization';
+import type {GlobalMarketCalculation} from './calculation';
 function significantEventPulses(source:MarketCapSource):{ranked:number[];observed:number[]}{
  const events=new Map<number,number>(),observed=new Set<number>(),add=(pulse:number,value:number)=>events.set(pulse,(events.get(pulse)??0)+Math.abs(value));
  for(const birth of source.unpricedSealedBirths??[])add(marketPulseAtOrAfterTime(birth.sealedAt),birth.birthUsdValue);
@@ -32,15 +33,16 @@ function significantEventPulses(source:MarketCapSource):{ranked:number[];observe
  return {ranked:[...events].sort((a,b)=>b[1]-a[1]||a[0]-b[0]).map(([pulse])=>pulse),observed:[...observed].sort((a,b)=>a-b)};
 }
 /** Run at build time or in the worker; never calculate these curves on the UI thread. */
-export async function buildMarketHistory(source: MarketCapSource, previous: MarketHistorySnapshot | null = null, continuing: () => boolean = () => true, yieldSample: () => Promise<void> = async () => {},current?:{catalog:PublicMarketCatalog|null;pulse:number;capitalization?:boolean}): Promise<MarketHistorySnapshot | null> {
+export async function buildMarketHistory(source: MarketCapSource, previous: MarketHistorySnapshot | null = null, continuing: () => boolean = () => true, yieldSample: () => Promise<void> = async () => {},current?:{catalog:PublicMarketCatalog|null;pulse:number;capitalization?:boolean;onCalculation?:(value:GlobalMarketCalculation)=>void}): Promise<MarketHistorySnapshot | null> {
   if(current?.capitalization&&current.catalog){const scoped=globalMarketCapitalizationInputs(source,current.catalog);source=scoped.source;current={...current,catalog:scoped.catalog};}
   if(current)source=currentMarketDisplayModel(source,current.catalog,current.pulse,previous?.copyObservations);
   const mergedCopies=mergeMarketCopyObservations(source,previous?.copyObservations);source=mergedCopies.source;
-  const shares=current?.capitalization&&current.catalog?prepareGlobalShareCapitalization(source,current.catalog):null;
+  const shares=current?.capitalization&&current.catalog?prepareGlobalShareCapitalization(source,current.catalog,!!current.onCalculation):null;
   if(shares&&(!shares.coverage.covered&&!(shares.coverage.complete&&shares.coverage.listed===0)||previous?.historyPolicy===SHARE_MARKET_HISTORY_POLICY&&previous?.summary.shareCapitalization&&shares.coverage.listed>=previous.summary.shareCapitalization.listed&&shares.coverage.covered<previous.summary.shareCapitalization.covered))return null;
   const policy=shares?SHARE_MARKET_HISTORY_POLICY:MARKET_HISTORY_POLICY;
   if(shares)source={...source,currentUsd:Number(shares.coverage.usdCents)/100};
   const summary=()=>({...marketCapSummary(source),...(shares?{shareCapitalization:shares.coverage}:{})});
+  const publish=(value:MarketHistorySnapshot)=>{if(shares?.calculation)current?.onCalculation?.({...shares.calculation,basisSha256:value.basisSha256,sourceHash:source.proofObjectHash,generatedAt:source.generatedAt});return value;};
   const [basisSha256,membershipSha256] = await Promise.all([marketHistoryBasis(source,shares?.basis),marketHistoryMembership(source)]);
   if (!continuing()) return null;
   const sameBasis = previous?.historyPolicy===policy && previous?.basisSha256 === basisSha256 && previous.summary.serverPulse <= source.serverPulse;
@@ -51,7 +53,7 @@ export async function buildMarketHistory(source: MarketCapSource, previous: Mark
     if(!sameBasis)return null;
     source={...source,...previous.summary,serverPulse:source.serverPulse,currentUsd:source.currentUsd};
   }
-  if (sameBasis && previous.summary.serverPulse === source.serverPulse && previous.summary.currentUsd === source.currentUsd) return { ...previous, summary: summary() };
+  if (sameBasis && previous.summary.serverPulse === source.serverPulse && previous.summary.currentUsd === source.currentUsd) return publish({ ...previous, summary: summary() });
   const context=prepareMarketChartProjection(source),memo = new Map<number, CapitalizationPoint>(), series = {} as Record<ChartPeriod, CapitalizationPoint[]>;
   const discovered=significantEventPulses(source);
   const events={ranked:[...new Set([...discovered.ranked,...(shares?.events??[])])].filter(pulse=>pulse>=source.firstIssuancePulse&&pulse<=source.serverPulse),observed:[...new Set([...discovered.observed,...(shares?.events??[])])].filter(pulse=>pulse>=source.firstIssuancePulse&&pulse<=source.serverPulse).sort((a,b)=>a-b)};
@@ -89,5 +91,5 @@ export async function buildMarketHistory(source: MarketCapSource, previous: Mark
     }
     if (!continuing()) return null;
   }
-  return { schema: 'bank.public-market-history.v1',historyPolicy:policy,eventPulses,basisSha256,membershipSha256,observationPulses:events.observed,copyObservations:mergedCopies.tape,summary: summary(), series };
+  return publish({ schema: 'bank.public-market-history.v1',historyPolicy:policy,eventPulses,basisSha256,membershipSha256,observationPulses:events.observed,copyObservations:mergedCopies.tape,summary: summary(), series });
 }

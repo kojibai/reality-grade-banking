@@ -76,15 +76,18 @@ export function publicCapitalizationAssets(catalog:PublicMarketCatalog|null){
  }
  return {items:selected,listed:groups.size};
 }
-export function publicShareCapitalization(catalog:PublicMarketCatalog|null){
+export type PublicShareContribution={item:PublicMarketItem;basis:'share-supply'|'carried-collectible-aggregate'|'unit-times-copies';unitPriceUsdCents:string|null;quantityMicro:string|null;usdCents:string;runningTotalUsdCents:string};
+export function publicShareCapitalization(catalog:PublicMarketCatalog|null,explain?:(row:PublicShareContribution)=>void){
  const {items,listed}=publicCapitalizationAssets(catalog);let total=0n,covered=0,shares=0n;
  for(const item of items){
   if(item.category==='sports'){
    const price=item.priceUsd===null?null:Math.round(item.priceUsd*100),copies=item.circulationCount??1;
    const cents=item.capitalizationUsdCents??(price!==null&&Number.isSafeInteger(price)&&price>=0&&Number.isSafeInteger(copies)&&copies>=0?(BigInt(price)*BigInt(copies)).toString():null);
-   if(cents!==null&&uint(cents)){total+=BigInt(cents);covered++;}continue;
+   if(cents!==null&&uint(cents)){total+=BigInt(cents);covered++;explain?.({item,basis:item.capitalizationUsdCents!==undefined?'carried-collectible-aggregate':'unit-times-copies',unitPriceUsdCents:price!==null&&Number.isSafeInteger(price)&&price>=0?String(price):null,quantityMicro:null,usdCents:cents,runningTotalUsdCents:total.toString()});}continue;
   }
-  total+=BigInt(shareCapitalizationUsdCents(String(Math.round(item.priceUsd!*100)),marketCapitalizationQuantity(item.shareInventory!)!));shares+=BigInt(item.shareInventory!.outstandingShareQuantityMicro);covered++;
+  const price=String(Math.round(item.priceUsd!*100)),quantity=marketCapitalizationQuantity(item.shareInventory!)!,cents=shareCapitalizationUsdCents(price,quantity);
+  total+=BigInt(cents);shares+=BigInt(item.shareInventory!.outstandingShareQuantityMicro);covered++;
+  explain?.({item,basis:'share-supply',unitPriceUsdCents:price,quantityMicro:quantity,usdCents:cents,runningTotalUsdCents:total.toString()});
  }
  return{usdCents:total.toString(),outstandingShareQuantityMicro:shares.toString(),covered,listed,complete:!!catalog?.complete&&covered===listed&&(!catalog?.items.some(item=>item.category==='sports')||catalog.sportsCoverage==='complete')};
 }

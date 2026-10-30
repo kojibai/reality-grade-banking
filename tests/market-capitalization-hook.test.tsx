@@ -14,6 +14,25 @@ import{buildMarketHistory}from'../src/receiz/market-projection/build-history';
 const clock=vi.hoisted(()=>({pulse:14720000}));vi.mock('@receiz/sdk',async original=>({...await original<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 afterEach(() => { vi.unstubAllGlobals(); localStorage.clear();vi.useRealTimers(); });
+it('opens held calculation details without refetching or requesting another valuation and reuses them on reopen',async()=>{
+ const workers:any[]=[],fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+ class WorkerStub{onmessage:((event:any)=>void)|null=null;messages:any[]=[];constructor(){workers.push(this);}postMessage(value:any){this.messages.push(value);}terminate(){}}
+ vi.stubGlobal('Worker',WorkerStub);let state!:ReturnType<typeof useMarketCapitalization>;const root=createRoot(document.createElement('div'));
+ function Probe(){state=useMarketCapitalization('ALL',true,null,false);return null;}
+ try{
+  await act(async()=>root.render(<Probe/>));const worker=workers[0],summary=state.source;
+  act(()=>state.inspectCalculation(true));expect(worker.messages.at(-1)).toEqual({marketInspect:true,readCalculation:true});
+  const calculation={basisSha256:shippedHistory.basisSha256,pulse:summary.serverPulse,sourceHash:summary.proofObjectHash,generatedAt:summary.generatedAt,...summary.shareCapitalization!,assets:[]};
+  act(()=>state.inspectCalculation(false));
+  act(()=>worker.onmessage({data:{inspectionOnly:true,marketCalculation:calculation}}));expect(state.calculation).toBeNull();
+  act(()=>state.inspectCalculation(true));expect(state.calculation).toBe(calculation);expect(worker.messages.at(-1)).toEqual({marketInspect:true,readCalculation:false});
+  act(()=>worker.onmessage({data:{inspectionOnly:true,marketCalculation:{...calculation,pulse:calculation.pulse-1}}}));expect(state.calculation).toBe(calculation);
+  expect(worker.messages.every((message:any)=>message.marketInspect!==undefined||message.cancel)).toBe(true);expect(fetcher).not.toHaveBeenCalled();
+  const id=[...worker.messages].reverse().find((value:any)=>typeof value.id==='number').id,nextHistory={...shippedHistory,basisSha256:'d'.repeat(64),summary:{...shippedHistory.summary,shareCapitalization:{...shippedHistory.summary.shareCapitalization!,listed:summary.shareCapitalization!.listed+1,complete:false}}},nextCalculation={...calculation,basisSha256:nextHistory.basisSha256,listed:nextHistory.summary.shareCapitalization.listed,complete:false};
+  act(()=>worker.onmessage({data:{id,history:nextHistory,marketCalculation:nextCalculation}}));expect(state.calculation).toBe(nextCalculation);
+  act(()=>worker.onmessage({data:{inspectionOnly:true,marketCalculation:calculation}}));expect(state.calculation).toBe(nextCalculation);
+ }finally{act(()=>root.unmount());}
+});
 it('discards an older history policy even when its retained endpoint is current',async()=>{
  const old={...historyFile,historyPolicy:'share-capitalization-and-release-v1',summary:{...historyFile.summary,proofObjectHash:'c'.repeat(64)}};
  localStorage.setItem('receiz-bank-pbi-market-share-graph-history-v1',JSON.stringify(old));

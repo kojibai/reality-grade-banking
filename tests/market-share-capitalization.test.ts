@@ -22,6 +22,16 @@ it('counts each canonical asset once, including all issued fractional shares',()
  const alias={...a,id:'profile:two:asset'};const catalog={items:[a,alias],complete:true} as PublicMarketCatalog;
  expect(publicShareCapitalization(catalog)).toMatchObject({usdCents:'8021',covered:1,listed:1,complete:true});
 });
+it('carries the exact operands of the existing sum once per included asset without changing its result',()=>{
+ const a=item({title:'An Original'});a.shareInventory=readPublicShareInventory(inventory(),a)!;
+ const card=item({id:'card',assetId:'card',title:'A card',category:'sports',priceUsd:9.99,capitalizationUsdCents:'12345',circulationCount:4}),catalog={items:[a,{...a,id:'alias'},card],complete:true,sportsCoverage:'complete'} as PublicMarketCatalog;
+ const rows:unknown[]=[];
+ const sum=publicShareCapitalization(catalog,(row)=>rows.push(row));
+ expect(sum).toEqual(publicShareCapitalization(catalog));expect(sum.usdCents).toBe('20366');
+ expect(rows).toHaveLength(2);
+ expect(rows[0]).toMatchObject({item:a,unitPriceUsdCents:'1234',quantityMicro:'6500000',usdCents:'8021',runningTotalUsdCents:'8021'});
+ expect(rows[1]).toMatchObject({item:card,unitPriceUsdCents:'999',quantityMicro:null,usdCents:'12345',runningTotalUsdCents:'20366',basis:'carried-collectible-aggregate'});
+});
 it('preserves sports aggregate-copy capitalization and reports missing share coverage',()=>{
  const sports=item({id:'sports:one',assetId:'card',category:'sports',capitalizationUsdCents:'9876',circulationCount:8});
  expect(publicShareCapitalization({items:[sports,item()],complete:true}as PublicMarketCatalog)).toMatchObject({usdCents:'9876',covered:1,listed:2,complete:false});

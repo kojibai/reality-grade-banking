@@ -198,9 +198,13 @@ it('keeps a historical pricing date in source accounting instead of the Market o
  expect(overview.textContent).not.toContain('Sealed entries · pricing record');
  expect(overview.textContent).not.toContain(new Date(at).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}));
  act(()=>host.querySelector<HTMLButtonElement>('button[aria-label="About market capitalization"]')!.click());
- const details=overview.querySelector('details')!,record=[...details.querySelectorAll('dl>div')].find(row=>row.querySelector('dt')?.textContent==='Valuation record');
+ const details=overview.querySelector('details')!;
+ expect(details.querySelector('dl')).toBeNull();
+ act(()=>details.querySelector('summary')!.click());
+ const record=[...details.querySelectorAll('dl>div')].find(row=>row.querySelector('dt')?.textContent==='Valuation record');
  expect(record?.querySelector('dd')?.textContent).toBe(new Date(at).toLocaleString());
  expect(details.textContent).toContain('Individual object bases1,197');expect(details.textContent).toContain('Aggregate valuation groups745');
+ act(()=>details.querySelector('summary')!.click());expect(details.querySelector('dl')).toBeNull();
 });
 it('routes a public Market purchase with the exact Market item ID to the connected Market writer',()=>{
  source.value={catalog:catalog(1),status:'live',error:null,refresh:vi.fn()};const{host,open}=mount();act(()=>(host.querySelector('.market-rows button')as HTMLButtonElement).click());const button=[...host.querySelectorAll('dialog button')].find(b=>b.textContent?.includes('Buy ownership'))as HTMLButtonElement;

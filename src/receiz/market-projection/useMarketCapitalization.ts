@@ -7,6 +7,7 @@ import seedHistory from '../../../public/receiz-public-share-chart-history.json'
 import { type MarketCapSource } from './source';
 import { parseMarketHistory,SHARE_MARKET_HISTORY_POLICY, type MarketHistorySnapshot } from './history';
 import {readMarketDisplaySource,retainedMarketDisplaySource} from './display-source';
+import {marketCalculationMatches,type GlobalMarketCalculation} from './calculation';
 export type { CapitalizationPoint } from './history';
 const KEY = 'receiz-bank-pbi-market-share-graph-history-v1';
 const shipped = parseMarketHistory(seedHistory);
@@ -20,7 +21,10 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
   const [history,setHistory]=useState<MarketHistorySnapshot>(restore),[fullSource,setFullSource]=useState<MarketCapSource|null>(retainedMarketDisplaySource),[pulse,setPulse]=useState(now),[status,setStatus]=useState<'cached'|'live'|'unavailable'>('cached');
   const heldHistory=useRef(history),worker=useRef<Worker|null>(null),request=useRef(0),acceptedSource=useRef<MarketCapSource|null>(null),busy=useRef(false),queued=useRef<WorkerInput|null>(null),latestInput=useRef<WorkerInput|null>(null),restartWorker=useRef<(()=>void)|null>(null);
   const workerInputs=useRef<{source:MarketCapSource;catalog:PublicMarketCatalog|null}|null>(null);
+  const [calculation,setCalculation]=useState<GlobalMarketCalculation|null>(null),heldCalculation=useRef<GlobalMarketCalculation|null>(null),inspecting=useRef(false);
   heldHistory.current=history;
+  const acceptCalculation=useCallback((value:GlobalMarketCalculation|null|undefined)=>{if(!marketCalculationMatches(value,heldHistory.current.summary,heldHistory.current.basisSha256))return;heldCalculation.current=value!;if(inspecting.current)setCalculation(value!);},[]);
+  const inspectCalculation=useCallback((open:boolean)=>{if(inspecting.current===open)return;inspecting.current=open;const held=heldCalculation.current,matching=marketCalculationMatches(held,heldHistory.current.summary,heldHistory.current.basisSha256);if(open&&matching)setCalculation(held);worker.current?.postMessage({marketInspect:open,...(open?{readCalculation:!matching}:{})});},[]);
   const dispatch=useCallback(()=>{
     if(busy.current||!worker.current||!queued.current)return;
     const input=queued.current;queued.current=null;busy.current=true;
@@ -61,18 +65,21 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     worker.current?.terminate();worker.current=null;workerInputs.current=null;busy.current=false;++request.current;
     let instance: Worker; try { instance = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); } catch { return; } worker.current = instance;
     instance.onmessage = event => {
+      if(worker.current!==instance)return;
+      if(event.data.inspectionOnly){acceptCalculation(event.data.marketCalculation);return;}
       if(event.data.id!==request.current)return;busy.current=false;
       if(event.data.error)workerInputs.current=null;
       if(event.data.history)try{
         const next=parseMarketHistory(event.data.history);
         if(next.historyPolicy!==SHARE_MARKET_HISTORY_POLICY)throw Error('Share capitalization publication required.');
         // Amount, inventory and every interval are one completed publication.
-        heldHistory.current=next;setHistory(next);
+        heldHistory.current=next;setHistory(next);acceptCalculation(event.data.marketCalculation);
         try{localStorage.setItem(KEY,JSON.stringify(packMarketHistory(next)));}catch{/* Optional public retention. */}
       }catch{workerInputs.current=null;/* Resend the last admitted history after a rejected publication. */}
       if(queued.current)dispatch();
     };
     instance.onerror=instance.onmessageerror=()=>{if(worker.current!==instance)return;instance.terminate();worker.current=null;workerInputs.current=null;busy.current=false;};
+    if(inspecting.current)instance.postMessage({marketInspect:true,readCalculation:false});
     if(latestInput.current){queued.current={...latestInput.current,pulse:Math.max(latestInput.current.pulse,now())};dispatch();}
     };
     restartWorker.current=start;start();
@@ -84,7 +91,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     const focus=()=>{if(document.visibilityState==='visible'&&(busy.current||!worker.current))start();};
     document.addEventListener('visibilitychange',visibility);window.addEventListener('pageshow',pageshow);window.addEventListener('focus',focus);
     return () => { restartWorker.current=null;worker.current?.terminate(); worker.current = null;workerInputs.current=null;busy.current=false;queued.current=null;++request.current;document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pageshow',pageshow);window.removeEventListener('focus',focus); };
-  }, [dispatch,active]);
+  }, [dispatch,active,acceptCalculation]);
   useEffect(() => {
     if (!fullSource || !active) {latestInput.current=null;queued.current=null;busy.current=false;worker.current?.postMessage({id:++request.current,cancel:true});return;}
     // Finish the current complete publication, then process the latest request.
@@ -94,5 +101,5 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     if(!worker.current)restartWorker.current?.();else dispatch();
   }, [fullSource, active,catalog,pulse,dispatch]);
   // Period selection is always a synchronous lookup, with no network or job.
-  return { source:history.summary, points: history.series[period], status, get historyUpdating(){return busy.current;} };
+  return { source:history.summary, points: history.series[period], status,calculation:marketCalculationMatches(calculation,history.summary,history.basisSha256)?calculation:null,inspectCalculation,get historyUpdating(){return busy.current;} };
 }

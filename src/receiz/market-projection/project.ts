@@ -6,6 +6,7 @@ import {boundSportsHistoryObservation,type SportsHistoryObservation} from './spo
 import type { ChartPeriod } from '../../core/chart-history';
 import { marketPulseTime, marketPeriodPulses } from './coordinates';
 import {marketPulseAtOrAfterTime,type MarketSealedBirth,type MarketSealedCopy} from './sealed-copies';
+import type {SigilQuoteCalculation,SportsUnitCalculation,SportsCopyCalculation,SportsQuoteCalculation,MarketQuoteMovementCalculation} from './calculation';
 // Canonical public Proof Graph display rules from the v129 Receiz host.
 // Pricing stays deterministic; historical membership starts at the carried seal.
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
@@ -15,11 +16,13 @@ function hash(input: string) { let h = 2166136261; for (let i = 0; i < input.len
 const rateMeta = { ip: { expectedCashflowPhi: [] } } as unknown as SigilMetadataLite;
 function rate(pulse: number, meta = rateMeta, computed={unsigned:unsignedAtPulse(meta,pulse)}) { return marketProofUsdQuote(meta,pulse,computed).quote.usdPerPhi; }
 export {publicSigilValuationMetadata} from './source';
-export function publicSigilQuoteAtPulse(seed:MarketPulseSeed,pulse:number){
+export function publicSigilQuoteAtPulse(seed:MarketPulseSeed,pulse:number,explain?:(value:SigilQuoteCalculation)=>void){
  if(seed.kind!=='sigil'||!Number.isSafeInteger(pulse)||pulse<seed.claimPulse)throw Error('Public object valuation seed is unavailable.');
  const meta=publicSigilValuationMetadata(seed);
  const computed={unsigned:unsignedAtPulse(meta,pulse)},phi=Math.max(.000001,roundPhi(computed.unsigned.valuePhi));
- const usdPerPhi=rate(pulse,meta,computed);return {pricePhi:phi,quoteUsdPerPhi:usdPerPhi,priceUsd:marketProofUsdCents(phi,usdPerPhi)/100};
+ const usdPerPhi=rate(pulse,meta,computed),cents=marketProofUsdCents(phi,usdPerPhi);
+ explain?.({kind:'sigil',pulse,metadata:meta,intrinsicPhi:computed.unsigned.valuePhi,roundedPhi:phi,usdPerPhi,usdCents:String(cents)});
+ return {pricePhi:phi,quoteUsdPerPhi:usdPerPhi,priceUsd:cents/100};
 }
 export function publicSigilUsdAtPulse(seed:MarketPulseSeed,pulse:number):number{return publicSigilQuoteAtPulse(seed,pulse).priceUsd;}
 function marketValue(row: MarketValueRow, pulse: number, usdPerPhi: number): number {
@@ -34,26 +37,33 @@ function marketValue(row: MarketValueRow, pulse: number, usdPerPhi: number): num
   }
   return Math.round(phi * usdPerPhi * 100) / 100;
 }
-export function sportsUnitValue(row: MarketValueRow, pulse: number, quoteMove: number): number {
+export function sportsUnitValue(row: MarketValueRow, pulse: number, quoteMove: number,explain?:(value:SportsUnitCalculation)=>void): number {
   const base = row.baseUsdValue; if (base <= 0 || row.proofTotalValueUsd <= 0) return 0;
   const signal = (hash(`card:${row.seed}`) % 1e6) / 1e6;
   const wave = (Math.sin((pulse + signal * 987) * .19) + 1) / 2, drift = (Math.sin((pulse + signal * 421) * .047) + 1) / 2, trend = (Math.sin((pulse + signal * 193) * .083) + 1) / 2;
   const pressure = round(base * clamp((row.marketUsdValue - base) / base, 0, .18) * .22);
   const carry = base * (.001 + quoteMove * .008 + wave * .0038 + drift * .0014 + trend * .0011 + clamp(Math.max(0, row.scoreDelta) * .0012, 0, .018) + clamp(Math.max(0, base - row.birthUsdValue) / base, 0, .12) * .028) + pressure;
-  return round(base + round(Math.max(.0001, carry)));
+  const value=round(base + round(Math.max(.0001, carry)));
+  explain?.({pulse,seed:row.seed,base,birth:row.birthUsdValue,market:row.marketUsdValue,score:row.scoreDelta,quoteMove,signal,wave,drift,trend,pressure,carry,value});
+  return value;
 }
 function sportsValue(row:MarketValueRow,pulse:number,quoteMove:number){const unit=sportsUnitValue(row,pulse,quoteMove);return unit>0?round(row.proofTotalValueUsd*unit/row.baseUsdValue):0;}
-function sealedCopyValue(copy:MarketSealedCopy,pulse:number,quoteMove:number):number{
- if(pulse<marketPulseAtOrAfterTime(copy.sealedAt))return 0;
+function reportCopy(explain:((value:SportsCopyCalculation)=>void)|undefined,copy:MarketSealedCopy,valueUsd:number,branch:SportsCopyCalculation['branch'],extra?:Partial<SportsCopyCalculation>){
+ if(explain)explain({collectibleId:copy.collectibleId,claimHash:copy.claimHash,sealedAt:copy.sealedAt,birthUsd:copy.birthUsdValue,valueUsd,branch,...extra});return valueUsd;
+}
+function sealedCopyValue(copy:MarketSealedCopy,pulse:number,quoteMove:number,explain?:(value:SportsCopyCalculation)=>void):number{
+ if(pulse<marketPulseAtOrAfterTime(copy.sealedAt))return reportCopy(explain,copy,0,'before-seal');
  const model=copy.valuation,observed=copy.valuationPulse;
  if(model&&observed!==undefined&&pulse>=observed){
-  if(pulse===observed)return copy.currentValueUsd;
+  if(pulse===observed)return reportCopy(explain,copy,copy.currentValueUsd,'recorded-value',explain?{observation:{at:new Date(marketPulseTime(observed)).toISOString(),pulse:observed,usdValue:copy.currentValueUsd}}:undefined);
   // The host rounds each single-card chart quote to cents before summing.
-  return Number(Math.max(0,sportsUnitValue({id:copy.collectibleId,source:'sports-economy-card',...model,proofTotalValueUsd:model.baseUsdValue},pulse,quoteMove)).toFixed(2));
+  let unit:SportsUnitCalculation|undefined;
+  const value=Number(Math.max(0,sportsUnitValue({id:copy.collectibleId,source:'sports-economy-card',...model,proofTotalValueUsd:model.baseUsdValue},pulse,quoteMove,explain?value=>{unit=value;}:undefined)).toFixed(2));
+  return reportCopy(explain,copy,value,'projected-model',unit?{unit}:undefined);
  }
- let amount=copy.birthUsdValue;
- for(const point of copy.valueHistory??[]){if(pulse<(point.pulse??marketPulseAtOrAfterTime(point.at)))break;amount=point.usdValue;}
- return amount;
+ let amount=copy.birthUsdValue,observation:SportsCopyCalculation['observation'];
+ for(const point of copy.valueHistory??[]){if(pulse<(point.pulse??marketPulseAtOrAfterTime(point.at)))break;amount=point.usdValue;observation=point;}
+ return reportCopy(explain,copy,amount,'recorded-value',explain&&observation?{observation}:undefined);
 }
 interface PreparedSportsRow {observation?:SportsHistoryObservation;observed?:number;model?:MarketValueRow;laterBirths:{pulse:number;usdValue:number}[];}
 interface MarketProjectionContext {rows:ReadonlyMap<MarketValueRow,PreparedSportsRow>;birthPulses:ReadonlyMap<MarketSealedBirth,number>;}
@@ -89,11 +99,14 @@ export function publicSportsQuoteAtPulse(row:MarketValueRow,pulse:number,quoteMo
 }
 /** Current capitalization of the existing sports-copy source. The aggregate
  * is evaluated once, never multiplied by circulation again. */
-export function publicSportsCapitalizationUsdAtPulse(row:MarketValueRow,pulse:number,quoteMove:number){
+export function publicSportsCapitalizationUsdAtPulse(row:MarketValueRow,pulse:number,quoteMove:number,explain?:(value:SportsQuoteCalculation)=>void){
  if(row.source!=='sports-economy-card'||!Number.isSafeInteger(pulse)||pulse<0)throw Error('Public object valuation seed is unavailable.');
- return row.sealedCopies?round(row.sealedCopies.reduce((sum,copy)=>sum+sealedCopyValue(copy,pulse,quoteMove),0)):sportsValue(row,pulse,quoteMove);
+ if(!explain)return row.sealedCopies?round(row.sealedCopies.reduce((sum,copy)=>sum+sealedCopyValue(copy,pulse,quoteMove),0)):sportsValue(row,pulse,quoteMove);
+ if(row.sealedCopies){const copies:SportsCopyCalculation[]=[],unroundedUsd=row.sealedCopies.reduce((sum,copy)=>sum+sealedCopyValue(copy,pulse,quoteMove,value=>copies.push(value)),0),roundedUsd=round(unroundedUsd);explain({kind:'collectible',pulse,quoteMove,unroundedUsd,roundedUsd,copies});return roundedUsd;}
+ let unit:SportsUnitCalculation|undefined;const value=sportsUnitValue(row,pulse,quoteMove,value=>{unit=value;}),unroundedUsd=value>0?row.proofTotalValueUsd*value/row.baseUsdValue:0,roundedUsd=round(unroundedUsd);
+ explain({kind:'collectible',pulse,quoteMove,unroundedUsd,roundedUsd,unit,proofTotalValueUsd:row.proofTotalValueUsd,baseUsdValue:row.baseUsdValue});return roundedUsd;
 }
-export function marketQuoteMovementAtPulse(pulse:number){const current=rate(pulse),previous=rate(Math.max(0,pulse-1));return Math.abs(current-previous)/previous;}
+export function marketQuoteMovementAtPulse(pulse:number,explain?:(value:MarketQuoteMovementCalculation)=>void){const current=rate(pulse),previous=rate(Math.max(0,pulse-1)),movement=Math.abs(current-previous)/previous;explain?.({pulse,currentUsdPerPhi:current,previousUsdPerPhi:previous,movement});return movement;}
 /** Single-object display math, using the same admitted sigil operands as the graph. */
 export function marketAssetUsdAtPulse(row:MarketValueRow,pulse:number):number{
  const meta=row.marketItem?.livePulseSeed;if(row.source!=='market-desk-live-asset'||meta?.kind!=='sigil'||!Number.isSafeInteger(pulse)||pulse<meta.claimPulse)throw Error('Public object valuation seed is unavailable.');
