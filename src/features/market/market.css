@@ -4,3 +4,5 @@
 .market-cap-history-coverage{font-size:11px;color:var(--muted);margin:8px 0 12px;line-height:1.4}
 
 .market-cap-explanation>p+p{margin-top:12px}.market-cap-explanation strong{color:var(--navy,#172e44);font-weight:600}.market-cap-explanation details{margin-top:16px;border-top:1px solid #e3e9f0;padding-top:14px}.market-cap-explanation summary{color:var(--navy,#172e44);font-weight:550;cursor:pointer}.market-cap-explanation details p{margin-top:12px}.market-cap-explanation dl{margin-top:14px}.market-cap-explanation dl>div{display:flex;justify-content:space-between;gap:20px;padding:7px 0}.market-cap-explanation dt{color:#7b8da5}.market-cap-explanation dd{margin:0;text-align:right;color:#334e6a;font-variant-numeric:tabular-nums}
+
+.market-collection-tools{display:flex;align-items:center;gap:12px}.market-feed-entry{display:grid;place-items:center;width:40px;min-height:44px;padding:0;color:#75869c;background:transparent;border:0;border-radius:50%;cursor:pointer}.market-feed-entry:hover{color:var(--blue,#244dcb);background:#244dcb06}.market-feed-entry:focus-visible{outline:2px solid #7192fa;outline-offset:2px}.market-feed-entry:disabled{opacity:.35;cursor:default}

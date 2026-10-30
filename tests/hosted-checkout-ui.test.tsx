@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import {act} from 'react';
+import {act,StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {HostedCheckout} from '../src/checkout/HostedCheckout';
@@ -119,3 +119,5 @@ it.each([
   await settle(host,'Payment complete.');expect((await f.deps.readWallet()).totalUsdCents).toBe(String(left));expect(f.transfer).toHaveBeenCalledTimes(charge?2:1);await act(async()=>controller.check());expect(f.transfer).toHaveBeenCalledTimes(charge?2:1);expect(f.begin).toHaveBeenCalledTimes(charge?1:0);
  }finally{await act(async()=>root.unmount());}
 });
+
+it('ignores an older entry rejection after a replayed checkout opened successfully',async()=>{const f=hostedFixture(1000),controller=f.newController();await controller.ready;const identity={hostedCheckout:async()=>controller,knownWallet:()=>({wallet:{totalUsdCents:'1000'}}),backup:()=>({bytes:new Uint8Array([1]),filename:'identity_record.png',phrase:''})}as unknown as OpenIdentity;let reject!:(cause:Error)=>void;const session={open:vi.fn().mockImplementationOnce(()=>new Promise((_resolve,no)=>{reject=no;})).mockResolvedValue(identity),import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host);try{await act(async()=>root.render(<StrictMode><HostedCheckout request={{username:'merchant',amount:'10.00'}} identitySession={session}/></StrictMode>));await act(async()=>reject(Error('closed older entry')));expect(host.textContent).not.toContain('Your saved account could not be opened');expect(f.transfer).not.toHaveBeenCalled();expect(f.begin).not.toHaveBeenCalled();}finally{await act(async()=>root.unmount());}});

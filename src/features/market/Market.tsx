@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Plus, Search, RefreshCw } from 'lucide-react';
+import { Plus, Search, RefreshCw,GalleryVerticalEnd } from 'lucide-react';
 import {flushSync} from 'react-dom';
 import { BankContext, type UIAction } from '../../core/useBank';
 import { Sheet } from '../../components/Sheet';
@@ -13,6 +13,8 @@ import {beginPublicAssetTrade} from '../../receiz/public-asset-trade';
 import {PublicAssetTradeHost} from '../../public-explorer/PublicAssetTradeHost';
 import {marketDiscoverable} from '../../receiz/market-pbi-publication';
 import './market.css';
+import {MarketFeedPopover as MarketFeed} from './MarketFeedPopover';
+
 
 function selectedObject(prefix:string): string | null { try { return location.hash.startsWith(prefix) ? decodeURIComponent(location.hash.slice(prefix.length)) : null; } catch { return null; } }
 type MarketProps = { overview?:ReactNode; mode?:'market'|'explorer';active?: boolean; onAction?: (action: UIAction) => void; source?: ReturnType<typeof usePublicMarket>;publicCategory?:{label:string;description:string};overviewOnly?:boolean;sourceActive?:boolean };
@@ -21,6 +23,8 @@ function ConnectedMarket(props: MarketProps) { const source = usePublicMarket(pr
 function MarketView({ mode='market',active = true, sourceActive=active, onAction, source,publicCategory,overviewOnly=false,overview }: MarketProps & { source: ReturnType<typeof usePublicMarket> }) {
   const explorer=mode==='explorer',prefix=explorer?'#object/':'#market/public/';
   const bank = useContext(BankContext); const open = onAction ?? bank?.open ?? (() => {}); const { catalog, historyCatalog, status, quoteStatus, error, refresh } = source;
+  const [feedOpen,setFeedOpen]=useState(false),feedMounted=useRef(false);
+  useEffect(()=>{if(!active)setFeedOpen(false);},[active]);
   const [query, setQuery] = useState(''), [filter, setFilter] = useState<MarketContentFilter>((publicCategory?.label as MarketContentFilter)??'All'), [shown, setShown] = useState(50), [selectedId, setSelectedId] = useState(()=>selectedObject(prefix));
   useEffect(()=>{if(explorer){setFilter((publicCategory?.label as MarketContentFilter)??'All');setQuery('');}},[explorer,publicCategory?.label]);
   const normalizedQuery=query.trim().toLocaleLowerCase();
@@ -51,7 +55,8 @@ function MarketView({ mode='market',active = true, sourceActive=active, onAction
     {error && <p className="body-copy small-copy market-error" role="status">{localPricing?'Collection refresh is unavailable. Retained pricing inputs continue at the live Kai pulse.':error}{catalog&&!localPricing ? ' Your last public collection remains available.' : ''}</p>}
     <div className={overviewOnly||publicCategory?'market-layout market-single':'market-layout'}><div>{!publicCategory&&(overview??<MarketOverview catalog={catalog} historyCatalog={historyCatalog} active={active} sourceActive={sourceActive} onExplore={() => overviewOnly?document.querySelector<HTMLAnchorElement>('[data-cap-explore]')?.click():collection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />)}
     {!explorer&&<div className="market-actions"><button className="primary-button navy-button" onClick={() => open({ kind: 'currency' })}><Plus size={19} />Create an asset</button></div>}</div>
-    {!overviewOnly&&<section id="market-explore" ref={collection}><div className="section-heading"><h2>{explorer?'Public collection':'Explore'}</h2><span className="muted result-count">{assets.length.toLocaleString()} assets</span></div><div className="market-rows">{assets.slice(0, shown).map((asset,index) => <PublicObjectRow key={asset.id} item={asset} eagerArtwork={index<6} onOpen={()=>view(asset)}/>)}{!assets.length && <div className="empty-state">{catalog ? 'No matching public assets. Try another search.' : status === 'loading' ? 'Loading public proof objects…' : 'The public collection is temporarily unavailable.'}</div>}</div><div ref={loadMore} className="public-market-sentinel" aria-hidden="true" />{assets.length > shown && typeof IntersectionObserver === 'undefined' && <button className="text-button public-market-more" onClick={() => setShown(count => count + 50)}>Show more assets</button>}</section>}</div>
+    {!overviewOnly&&<section id="market-explore" ref={collection}><div className="section-heading"><h2>{explorer?'Public collection':'Explore'}</h2><div className="market-collection-tools"><span className="muted result-count">{assets.length.toLocaleString()} assets</span>{<button className="market-feed-entry" title="Open feed" aria-label="Open feed" disabled={!catalog} onClick={()=>{feedMounted.current=true;setFeedOpen(true);}}><GalleryVerticalEnd size={18} strokeWidth={1.5}/></button>}</div></div><div className="market-rows">{assets.slice(0, shown).map((asset,index) => <PublicObjectRow key={asset.id} item={asset} eagerArtwork={index<6} onOpen={()=>view(asset)}/>)}{!assets.length && <div className="empty-state">{catalog ? 'No matching public assets. Try another search.' : status === 'loading' ? 'Loading public proof objects…' : 'The public collection is temporarily unavailable.'}</div>}</div><div ref={loadMore} className="public-market-sentinel" aria-hidden="true" />{assets.length > shown && typeof IntersectionObserver === 'undefined' && <button className="text-button public-market-more" onClick={() => setShown(count => count + 50)}>Show more assets</button>}</section>}</div>
+    {feedMounted.current&&catalog&&<MarketFeed items={catalog.items} active={active&&feedOpen} paused={!!selectedId} onClose={()=>setFeedOpen(false)} onAsset={view} onBuy={item=>{setFeedOpen(false);if(explorer)beginPublicAssetTrade({itemId:item.id,side:'buy',title:item.title});else open({kind:'market-trade',marketItemId:item.id,side:'buy'});}} onPay={explorer?undefined:item=>{if(item.ownerUsername){setFeedOpen(false);open({kind:'send',paymentRequest:{recipient:item.ownerUsername}});}}}/>}
     {active && selectedId && <Sheet title="Public asset" onClose={close}>{selected ? <PublicAssetDetail key={selected.id} item={selected} onTrade={(side, marketItemId) => {if(explorer)beginPublicAssetTrade({itemId:marketItemId,side,title:selected.title});else open({kind:'market-trade',marketItemId,side});}} /> : <p className="body-copy">{catalog ? 'This object is no longer in the public collection.' : 'Loading the public source…'}</p>}</Sheet>}
     {active&&explorer&&<PublicAssetTradeHost/>}
   </section>;

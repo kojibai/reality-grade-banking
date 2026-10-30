@@ -2,8 +2,8 @@ import {InlineOpening} from '../components/InlineOpening';
 import {AssetObject} from '../features/media/AssetObject';
 import {AssetProofBack} from '../features/media/AssetProofBack';
 import {PublicImageDialog} from '../features/media/ProofMedia';
-import {useEffect,useState} from 'react';
-import {ArrowDownRight,ArrowUpRight,BookOpen,FileText,Grid2X2,Image,Music2,Play,RectangleHorizontal,Search,Video} from 'lucide-react';
+import {useEffect,useState,useRef} from 'react';
+import {ArrowDownRight,ArrowUpRight,BookOpen,FileText,Grid2X2,GalleryVerticalEnd,Image,Music2,Play,RectangleHorizontal,Search,Video} from 'lucide-react';
 import type {PublicProfile} from '../receiz/public-profile';
 import {formatPublicPrice,publicAssetImagePreviewUrl,type PublicMarketItem} from '../receiz/public-market';
 import {assetPagePath,retainPublicAsset} from '../receiz/public-asset-page';
@@ -13,18 +13,23 @@ import {ProofPdfPreview} from '../features/media/ProofPdfPreview';
 import {publicDocumentReaderUrl} from '../receiz/public-document';
 import {MomentCard} from '../features/media/MomentCard';
 import {useProfileFeed} from './useProfileFeed';
+import {MarketFeedPopover} from '../features/market/MarketFeedPopover';
+import {beginPublicAssetTrade} from '../receiz/public-asset-trade';
 import {ProfileValuePeek} from './ProfileValuePeek';
 const preferences=new Map<string,{columns:1|2;filter:MarketContentFilter;query:string;count:number}>();
 const percent=new Intl.NumberFormat(undefined,{maximumFractionDigits:2});
 // Square grid slots reserve their geometry for native lazy covers. Natural-height
 // single-column images retain eager loading so unloaded rows do not collapse.
 export function ProfileCollection({profile,items,active,onMore,busy=false}:{profile:PublicProfile;items:PublicMarketItem[];active:boolean;onMore?:()=>void;busy?:boolean}){
+ const [feedOpen,setFeedOpen]=useState(false),feedMounted=useRef(false);
+ useEffect(()=>{if(!active)setFeedOpen(false);},[active]);
  const [saved]=useState(()=>preferences.get(profile.userId)),[columns,setColumns]=useState<1|2>(saved?.columns??2),[filter,setFilter]=useState<MarketContentFilter>(saved?.filter??'All'),[query,setQuery]=useState(saved?.query??''),[opened,setOpened]=useState<string|null>(null),[preview,setPreview]=useState<PublicMarketItem|null>(null);
  const [priceId,setPriceId]=useState<string|null>(null),priceItem=priceId?items.find(item=>item.id===priceId):null;
  const normalized=query.trim().toLocaleLowerCase(),shown=items.filter(item=>matchesMarketContent(item,filter)&&(!normalized||(item.title+' '+item.summary).toLocaleLowerCase().includes(normalized)));
- const feed=useProfileFeed({length:shown.length,boundary:profile.userId+':'+items.length+':'+profile.nextCursor,hasMore:!!profile.nextCursor,active,busy,onMore,initialCount:saved?.count,view:filter+':'+normalized});
+ const feed=useProfileFeed({length:shown.length,boundary:profile.userId+':'+items.length+':'+profile.nextCursor,hasMore:!!profile.nextCursor,active:active&&!feedOpen,busy,onMore,initialCount:saved?.count,view:filter+':'+normalized});
  useEffect(()=>{preferences.set(profile.userId,{columns,filter,query,count:feed.count});if(preferences.size>24)preferences.delete(preferences.keys().next().value!);},[profile.userId,columns,filter,query,feed.count]);
- return <section className="profile-collection" aria-label="Public assets"><div className="profile-collection-toolbar"><label className="profile-search"><Search size={15}/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search assets" aria-label="Search this collection"/></label><div className="profile-view-switch" role="group" aria-label="Collection view"><button type="button" aria-label="Single-column view" aria-pressed={columns===1} onClick={()=>setColumns(1)}><RectangleHorizontal size={18}/></button><button type="button" aria-label="Double-column view" aria-pressed={columns===2} onClick={()=>setColumns(2)}><Grid2X2 size={18}/></button></div></div>
+ return <section className="profile-collection" aria-label="Public assets"><div className="profile-collection-toolbar"><label className="profile-search"><Search size={15}/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search assets" aria-label="Search this collection"/></label><div className="profile-view-switch" role="group" aria-label="Collection view"><button type="button" aria-label="Single-column view" aria-pressed={columns===1} onClick={()=>setColumns(1)}><RectangleHorizontal size={18}/></button><button type="button" aria-label="Double-column view" aria-pressed={columns===2} onClick={()=>setColumns(2)}><Grid2X2 size={18}/></button><button type="button" aria-label="Open feed" aria-haspopup="dialog" title="Open feed" onClick={event=>{event.currentTarget.closest('.profile-collection')?.querySelectorAll<HTMLMediaElement>('audio,video').forEach(media=>media.pause());feedMounted.current=true;setFeedOpen(true);}}><GalleryVerticalEnd size={18} strokeWidth={1.5}/></button></div></div>
+ {feedMounted.current&&<MarketFeedPopover items={items} active={active&&feedOpen} onClose={()=>setFeedOpen(false)} onBuy={item=>{setFeedOpen(false);beginPublicAssetTrade({itemId:item.id,side:'buy',title:item.title});}} onMore={onMore} hasMore={!!profile.nextCursor} continuationKey={profile.nextCursor??undefined} moreBusy={busy}/>}
  <div className="profile-categories" role="group" aria-label="Collection categories">{MARKET_CONTENT_FILTERS.filter(label=>label==='All'||items.some(item=>matchesMarketContent(item,label))).map(label=><button type="button" key={label} aria-pressed={filter===label} onClick={()=>setFilter(label)}>{label}</button>)}</div>
  <div className="profile-collection-grid" data-columns={columns}>{shown.slice(0,feed.count).map((item,index)=>{
   const hasSource=!!item.originalUrl&&!!item.originalDigest,mediaOpen=opened===item.id,Icon=item.mediaKind==='audio'?Music2:item.mediaKind==='epub'?BookOpen:item.mediaKind==='video'?Video:item.mediaKind==='image'?Image:FileText;

@@ -6,10 +6,10 @@ export const feedSeedScript=seed=>`<script id="public-feed-seed" type="applicati
 export async function renderFeedState(server){
  const [{PublicFeed},{orderFeedItems},{parsePublicMarket},input]=await Promise.all([server.ssrLoadModule('/src/public-feed/PublicFeed.tsx'),server.ssrLoadModule('/src/public-feed/feed-items.ts'),server.ssrLoadModule('/src/receiz/public-market.ts'),readFile('public/receiz-public-market.json','utf8').then(JSON.parse)]);
  const {publicProfileReservedNames}=await server.ssrLoadModule('/src/receiz/public-profile.ts');
- const seed=orderFeedItems(parsePublicMarket(input,input.snapshot).items).slice(0,12);
+ const seed=orderFeedItems(parsePublicMarket(input,input.snapshot).items).slice(0,8);
  if(!seed.length)throw Error('PUBLIC_FEED_SOURCE_EMPTY');
  const render=rows=>renderToStaticMarkup(createElement(PublicFeed,{seed:rows,active:false}));
- return{seed,reserved:publicProfileReservedNames,content:render(seed),navigationContent:render(seed.slice(0,1))+feedSeedScript(seed.slice(0,1))};
+ return{seed,profileNames:publicProfileReservedNames,content:render(seed),navigationContent:render(seed.slice(0,1))+feedSeedScript(seed.slice(0,1))};
 }
 export function applyFeedState(html,state){return html.replace('<div id="root"></div>',()=>`<div id="public-feed-root" data-public-runtime="feed">${state.content}</div>${feedSeedScript(state.seed)}`);}
 export function feedPageDevPlugin(){return{name:'bankeiz-feed-first-paint',async transformIndexHtml(html,context){if(!context.server||!/^\/feed\/(?:index\.html)?$/.test(context.path))return html;const state=await renderFeedState(context.server),{AccountOpening}=await context.server.ssrLoadModule('/src/features/identity/AccountOpening.tsx');

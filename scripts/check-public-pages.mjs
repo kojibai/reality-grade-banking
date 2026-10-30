@@ -188,6 +188,7 @@ assert.ok(/<script type="module" async[^>]*src="\/assets\/feed-/.test(feedDocume
 assert.ok(!feedOpening.includes('site-footer')&&!feedOpening.includes('account-opening-screen'),'Feed first paint is the actual content, with no global footer or account-entry work.');
 const feedNavigation=JSON.parse(feedDocument.match(navigationPattern)[1]);
 assert.deepEqual(Object.keys(feedNavigation.pages).sort(),['/explore/','/feed/'],'Feed carries only its existing return/asset runtime and the Bank action host, not the marketing/example catalog.');
+assert.ok(feedNavigation.reserved?.includes('learn')&&feedNavigation.reserved?.includes('ledger'),'The shipped lean navigation carries the existing reserved route projection.');
 assert.ok(feedDocument.length<600000,'The dedicated feed document stays under 600 kB uncompressed.');
 const feedImports=new Set();
 async function checkFeedEntry(key){if(feedImports.has(key))return;feedImports.add(key);const entry=builds[key];assert.ok(entry);const body=await readFile('dist/'+entry.file,'utf8');assert.ok(!/createNativeIdentity|\/api\/chat\/conversations|native-account\/ensure|createCheckoutIdentitySession/.test(body),'Feed static entry cannot mount account/payment/messaging execution before user intent.');for(const dep of entry.imports??[])await checkFeedEntry(dep);}
