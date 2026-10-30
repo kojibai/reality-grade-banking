@@ -1,0 +1,31 @@
+async function createFreshNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {
+  if (!consentApproved) throw new Error('Approve account read access before creating your ID.');
+  const sdk = await loadReceiz();
+  const resources = await atIdentityCreationStage('proof-resources',()=>loadBankProofResources(fetch));
+  const { createReceizOfflineSealer, createReceizIndexedDbSealStore } = await import('@receiz/sdk/offline');
+  const signerStore=certificateTimeSafeStore(createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer'));
+  const sealer = createReceizOfflineSealer({ store: signerStore, resources, fetch: certificateTimeSafeFetch(nativeFetch) });
+  await atIdentityCreationStage('device-signer',()=>sealer.enroll());
+  // v129's onboarding sealer requires protected bootstrap custody. This secret
+  // stays internal; the actual user-held download is sealed with the same key
+  // in its supported no-phrase form, then independently admitted again.
+  const protectionSecret = sdk.receizBase64UrlEncode(crypto.getRandomValues(new Uint8Array(32)));
+  const protectedSeal = await atIdentityCreationStage('identity-seal',()=>sealer.createIdentity({ passphrase: protectionSecret }));
+  const verification = await sdk.verifyReceizArtifact(protectedSeal.artifactBytes);
+  const admission = await sdk.createReceizArtifactAdmissionEngine()(verification, { profile: 'identity', identityPassphrase: protectionSecret });
+  const protectedBinding = await sdk.readReceizIdentityPublicBinding(admission);
+  const protectedKey = await sdk.readReceizIdentityArtifact(protectedSeal.artifactBytes);
+  const initializedKey = await atIdentityCreationStage('account-genesis',()=>initializeFreshBankAccount(protectedKey, protectionSecret));
+  const portableKey = await unprotectIdentityKeyFile(initializedKey, protectionSecret);
+  const owned = createReceizOfflineSealer({ ownerIdentityAdmission: admission, store: signerStore, resources, fetch: certificateTimeSafeFetch(nativeFetch) });
+  const sealed = await atIdentityCreationStage('portable-identity',async()=>{
+    const { createNewIdentityImageSource } = await import('./identity-image');
+    return owned.seal(await createNewIdentityImageSource(portableKey, protectedKey));
+  });
+  const identity = await openIdentity(sealed.artifactBytes, '', sealed.filename, true, { bytes: new Uint8Array(protectedSeal.artifactBytes), phrase: protectionSecret }, true, true);
+  if (identity.needsPhrase || identity.binding.keyId !== protectedBinding.keyId || identity.binding.artifactOwnerReceizId !== protectedBinding.artifactOwnerReceizId) { identity.dispose(); throw new Error('The self-contained Identity Record did not preserve its original identity.'); }
+  const genesis = identity.knownWallet();
+  if (!genesis || genesis.source !== 'account-genesis') { identity.dispose(); throw new Error('The signed account genesis could not be opened.'); }
+  try{await atIdentityCreationStage('device-custody',()=>identity.persistDeviceCustody(true));}catch(error){identity.dispose();throw error;}
+  return identity;
+}

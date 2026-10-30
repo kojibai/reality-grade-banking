@@ -4,7 +4,12 @@ const p=vi.hoisted(()=>({image:vi.fn(),seal:vi.fn(),persist:vi.fn(),read:vi.fn()
 const key=()=>({keyId:'a'.repeat(64),issuedAt:'2026-10-21T12:00:00Z',owner:{uid:'owner',username:'owner'},crypto:{publicKeyRawB64u:'public'},portableState:{snapshot:{}}});
 vi.mock('../src/receiz/identity-image',()=>({createNewIdentityImageSource:p.image}));
 vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({verifyReceizArtifact:async()=>({status:'verified-artifact'}),createReceizArtifactAdmissionEngine:()=>async()=>({verdict:'canonical-identity'}),isSdkIssuedReceizArtifactAdmission:()=>true,readReceizIdentityPublicBinding:async()=>({keyId:'a'.repeat(64),artifactSha256:'b'.repeat(64),artifactOwnerReceizId:'owner.receiz.id'}),readReceizIdentityArtifact:async()=>key(),projectReceizIdentityAccount:async()=>({authority:'identity-only'}),receizBase64UrlEncode:()=> 'synthetic-only-protection',createReceizClient:()=>({})})}));
-vi.mock('@receiz/sdk/offline',()=>({createReceizIndexedDbSealStore:()=>({}),createReceizOfflineSealer:()=>({enroll:async()=>{},createIdentity:async()=>({artifactBytes:new Uint8Array([1])}),seal:p.seal})}));
+// Exercise the installed SDK's real input guard. The empty test store stops at
+// enrollment, before proof resources, signatures or network work are consumed.
+vi.mock('@receiz/sdk/offline',async original=>{
+ const sdk=await original<typeof import('@receiz/sdk/offline')>(),boundary=sdk.createReceizOfflineSealer({store:sdk.createReceizMemorySealStore(),resources:{wasm:new Uint8Array([1]),zkey:new Uint8Array([2])}});
+ return {createReceizIndexedDbSealStore:()=>({}),createReceizOfflineSealer:()=>({enroll:async()=>{},createIdentity:async(input:Parameters<typeof boundary.createIdentity>[0])=>{try{await boundary.createIdentity(input);}catch(cause){if(!(cause instanceof Error)||cause.message!=='offline_seal_enrollment_required')throw cause;}return {artifactBytes:new Uint8Array([1])};},seal:p.seal})};
+});
 vi.mock('../src/receiz/proof-resource-continuity',()=>({loadBankProofResources:async()=>({wasm:new Uint8Array([1]),zkey:new Uint8Array([2])})}));
 vi.mock('../src/receiz/new-account-genesis',async original=>({...await original<typeof import('../src/receiz/new-account-genesis')>(),initializeFreshBankAccount:async(value:unknown)=>value}));
 vi.mock('../src/receiz/identity-protection',()=>({unprotectIdentityKeyFile:async(value:unknown)=>value}));
