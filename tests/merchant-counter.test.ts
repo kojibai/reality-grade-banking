@@ -44,3 +44,8 @@ it('updates an already-open register once per newly retained payment and does no
 it('refreshes the already-open register after cancellation releases reserved stock',async()=>{
  const f=fixture(),sync=vi.fn(async()=>{}),c=createMerchantCounter({...f.deps,lifecycle:{open:async()=>{},cancel:async()=>'cancelled'},createRegister:async()=>({sync,dispose(){}}as never)});await c.ready;await c.register();await c.create('1000');await c.cancel(c.snapshot().active!.request.saleId);expect(sync).toHaveBeenCalledExactlyOnceWith(true);expect(c.snapshot().active!.requestStatus).toBe('cancelled');
 });
+
+it('keeps an older checkout intact when the existing cancellation contract reports an accepted payment',async()=>{
+ const f=fixture(),old=createMerchantCounter(f.deps);await old.ready;await old.create('1000');const request=old.snapshot().active!.request;old.dispose();const cancel=vi.fn(async()=>'paid' as const),controller=createMerchantCounter({...f.deps,lifecycle:{open:async()=>{},cancel}});await controller.ready;const before=structuredClone(f.state);
+ await expect(controller.cancel(request.saleId)).rejects.toThrow('Payment was already accepted');expect(cancel).toHaveBeenCalledExactlyOnceWith(request);expect(f.state).toEqual(before);expect(controller.snapshot().active!.requestStatus).not.toBe('cancelled');controller.dispose();
+});
