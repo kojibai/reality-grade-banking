@@ -4,6 +4,16 @@ import { parsePublicMarket } from '../src/receiz/public-market';
 import { publicMarketCapitalization } from '../src/receiz/market-capitalization';
 const base = () => parsePublicMarket({ ok: true, transport: { publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: 1 }, publicOriginals: [{ id: 'original', receizId: 'original', title: 'Original', valueUsd: 10 }] } });
 const card = { collectibleId: 'rsc_0123456789abcdef', claimHash: 'a'.repeat(64), athlete: 'Public athlete', sport: 'baseball', rarity: 'Rare', liveValueUsd: 25, totalValueUsd: 50, issuedCount: 2, vaultCount: 2, pricedCount: 2, route: '/game/sports/card/rsc_0123456789abcdef?claimHash=' + 'a'.repeat(64) };
+it('retains matching card presentation through thin captures and fills it from older metadata without rolling prices back',async()=>{
+ const {retainPublicSportsInput}=await import('../src/receiz/public-sports');
+ const presentation={collectibleId:card.collectibleId,claimHash:card.claimHash,facts:[{label:'Position',value:'Pitcher'}]},imageUrl='/api/game/sports/baseball/player-image/694819';
+ const rich={ok:true,schema:'receiz.sports_economy.live_inventory.v1',generatedAt:'2026-10-26T01:00:00Z',cards:[{...card,imageUrl,presentation}]},thin={...rich,generatedAt:'2026-10-27T01:00:00Z',cards:[{...card,imageUrl,liveValueUsd:30}]};
+ expect((retainPublicSportsInput(rich,thin) as typeof rich).cards[0].presentation).toEqual(presentation);
+ const held=mergePublicSports(base(),thin),enriched=mergePublicSports(held,{...rich,fallback:true});
+ expect(enriched.items[1].collectiblePresentation).toEqual(presentation);expect(enriched.items[1].priceUsd).toBe(30);expect(enriched.sportsObservedAt).toBe(thin.generatedAt);
+ const wrong={...rich,cards:[{...rich.cards[0],presentation:{...presentation,claimHash:'b'.repeat(64)}}]};
+ const rejected=mergePublicSports(held,{...wrong,fallback:true});expect(rejected.items[1].collectiblePresentation).toBeUndefined();expect(rejected.items[1].priceUsd).toBe(30);
+});
 it('reuses native card artwork in discovery and retains it only for the same exact card claim',async()=>{
  const {retainPublicSportsInput}=await import('../src/receiz/public-sports');
  const imageUrl='/api/game/sports/baseball/player-image/694819',capture={ok:true,schema:'receiz.sports_economy.live_inventory.v1',generatedAt:'2026-10-27T00:00:00Z',cards:[{...card,imageUrl}]};

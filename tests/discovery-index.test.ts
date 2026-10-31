@@ -9,3 +9,12 @@ it('does not invent public people or infer profile verification from an Original
 it('keeps the visible prefix when a new media kind arrives',()=>{const first=work('video',{mediaKind:'video'}),next=work('photo');expect(buildDiscoveryIndex([first,next]).items).toEqual([first,next]);});
 
 it('finds the displayed short handle while retaining the full Receiz ID and profile route',()=>{const row=work('short-handle',{ownerUsername:'receiz_fyudsis',ownerDisplayName:'14,000,001'}),index=buildDiscoveryIndex([row]);expect(searchDiscovery(index,'@fyudsis','All').items).toEqual([row]);expect(searchDiscovery(index,'@fyudsis','People').people[0]?.username).toBe('receiz_fyudsis');expect(searchDiscovery(index,'@receiz_fyudsis','People').people).toHaveLength(1);expect(row.ownerUsername).toBe('receiz_fyudsis');});
+
+it('includes images carrying long-form text in both Images and Essays, including their creators',()=>{
+ const illustrated=work('illustrated-essay',{hasLongForm:true,ownerUsername:'writer'}),photo=work('photo',{hasLongForm:false,ownerUsername:'photographer'}),essay=work('text-essay',{mediaKind:'moment',hasLongForm:true,ownerUsername:'writer'}),lyrics=work('lyrics',{mediaKind:'audio',hasLongForm:true,ownerUsername:'musician'}),card=work('card',{category:'sports',hasLongForm:true,ownerUsername:'collector'}),index=buildDiscoveryIndex([illustrated,photo,essay,lyrics,card]);
+ expect(searchDiscovery(index,'','essay').items.map(item=>item.id)).toEqual(['illustrated-essay','text-essay']);
+ expect(searchDiscovery(index,'','essay').people.map(person=>person.username)).toEqual(['writer']);
+ expect(searchDiscovery(index,'','image').items.map(item=>item.id)).toEqual(['illustrated-essay','photo']);
+ expect(searchDiscovery(index,'illustrated','essay').items).toEqual([illustrated]);
+ expect(searchDiscovery(index,'','All').items).toHaveLength(5);
+});

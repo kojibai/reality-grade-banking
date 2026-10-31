@@ -2,6 +2,7 @@ import { safeReceizArtworkUrl,safeReceizPublicUrl, type PublicMarketCatalog, typ
 import {readPublicSportsValueRow} from './market-projection/source';
 import {publicSportsSealedBirths} from './market-projection/sealed-copies';
 import {boundSportsHistoryObservation,publicSportsHistoryObservation,publicSportsHistorySnapshot} from './market-projection/sports-observations';
+import {readPublicCollectiblePresentation} from './public-collectible-presentation';
 function object(value: unknown): Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function cents(value: unknown): string | null { if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return null; const result = Math.round(value * 100); return Number.isSafeInteger(result) ? String(result) : null; }
 function count(value: unknown): number | null { return Number.isSafeInteger(value) && Number(value) >= 0 && Number(value) <= 1e9 ? Number(value) : null; }
@@ -26,11 +27,12 @@ export function retainPublicSportsInput(previous:unknown,input:unknown):unknown{
   const carryBirths=oldBirths&&(!births||olderCapture(metadataAt(base),metadataAt(other))===false&&metadataAt(base)!==metadataAt(other));
   const historyObservation=!row?.historyObservation&&prior?old?.historyObservation:undefined;
   const imageUrl=!safeReceizArtworkUrl(card.imageUrl)?safeReceizArtworkUrl(prior?.imageUrl):null;
-  if(!full&&!carryBirths&&!historyObservation&&!imageUrl)return raw;
+  const presentation=!readPublicCollectiblePresentation(card.presentation,card.collectibleId,card.claimHash)?readPublicCollectiblePresentation(prior?.presentation,card.collectibleId,card.claimHash):undefined;
+  if(!full&&!carryBirths&&!historyObservation&&!imageUrl&&!presentation)return raw;
   changed=true;const sealedBirths=carryBirths?prior!.sealedBirths:card.sealedBirths;
   const pricing=row??old,target=pricing?{...pricing,...(full?{sealedCopies:full}:{}),...(sealedBirths?{sealedBirths:publicSportsSealedBirths(sealedBirths)}:{})}:undefined;
   const bound=target?(boundSportsHistoryObservation(card.historyObservation??row?.historyObservation,target)??boundSportsHistoryObservation(historyObservation,target)):undefined;
-  return {...card,...(imageUrl?{imageUrl}:{}),...(full?{sealedCopies:prior!.sealedCopies}:{}),...(carryBirths?{sealedBirths}:{}),historyObservation:bound,valuationRow:target?{...target,historyObservation:bound}:undefined};
+  return {...card,...(imageUrl?{imageUrl}:{}),...(presentation?{presentation}:{}),...(full?{sealedCopies:prior!.sealedCopies}:{}),...(carryBirths?{sealedBirths}:{}),historyObservation:bound,valuationRow:target?{...target,historyObservation:bound}:undefined};
  });
  const extras=rejectPrices&&!olderCapture(metadataAt(held),metadataAt(next))?next:!rejectPrices&&olderCapture(metadataAt(held),metadataAt(next))?held:null;
  if(extras){
@@ -43,9 +45,12 @@ export function retainPublicSportsInput(previous:unknown,input:unknown):unknown{
  return changed||historySnapshot&&!base.historySnapshot?{...base,cards:merged,...(typeof newestMetadata==='string'?{sealedBirthsObservedAt:newestMetadata}:{}),...(historySnapshot?{historySnapshot}:{})}:rejectPrices?previous:input;
 }
 /** Owners can be refreshed independently of the retained aggregate price. */
-function applyCopyMetadata(item:PublicMarketItem,card:Record<string,unknown>,prior:PublicMarketItem|undefined,birthsFresh:boolean,birthsNewerThanFull:boolean){
+function applyCopyMetadata(item:PublicMarketItem,card:Record<string,unknown>,prior:PublicMarketItem|undefined,birthsFresh:boolean,birthsNewerThanFull:boolean,keepPresentation=false){
  const imageUrl=safeReceizArtworkUrl(card.imageUrl)??(prior&&sameItemClaim(prior,card.claimHash)?safeReceizArtworkUrl(prior.artworkUrl):null);
  if(imageUrl)item.artworkUrl=imageUrl;
+ const incomingPresentation=readPublicCollectiblePresentation(card.presentation,item.assetId,card.claimHash),heldPresentation=prior&&sameItemClaim(prior,card.claimHash)?readPublicCollectiblePresentation(prior.collectiblePresentation,item.assetId,card.claimHash):undefined;
+ const presentation=keepPresentation?heldPresentation??incomingPresentation:incomingPresentation??heldPresentation;
+ if(presentation)item.collectiblePresentation=presentation;
  const row=item.sportsValuation,old=prior?.sportsValuation;
  if(row&&!row.sealedCopies?.length&&old?.seed===row.seed&&old.sealedCopies?.length)item.sportsValuation={...row,sealedCopies:old.sealedCopies};
  const incoming=publicSportsSealedBirths(card.sealedBirths)??row?.sealedBirths,retained=itemClaim(prior??item)===card.claimHash?old?.sealedBirths??prior?.sealedBirths:undefined;
@@ -76,15 +81,15 @@ export function mergePublicSports(catalog: PublicMarketCatalog, input: unknown):
   if(keepPrices){
    const historySnapshot=publicSportsHistorySnapshot(data.historySnapshot)??catalog.sportsHistorySnapshot;
    if(!birthsFresh&&!data.cards.some(raw=>publicSportsHistoryObservation(object(raw).historyObservation))){
-    // Older captures may fill missing artwork for the exact held claim, but
+    // Older captures may fill missing artwork/card facts for the exact held claim, but
     // cannot roll prices, owners, provenance or capture metadata backward.
-    const artwork=new Map<string,string>();
-    for(const raw of data.cards){const card=object(raw),prior=previous.get(String(card.collectibleId).toLowerCase());if(!prior||safeReceizArtworkUrl(prior.artworkUrl)||!sameItemClaim(prior,card.claimHash))continue;const imageUrl=safeReceizArtworkUrl(card.imageUrl);if(imageUrl)artwork.set(prior.id,imageUrl);}
-    if(!artwork.size)return catalog;
-    return {...catalog,items:catalog.items.map(item=>{const artworkUrl=artwork.get(item.id);return artworkUrl?{...item,artworkUrl}:item;})};
+    const metadata=new Map<string,{artworkUrl?:string;collectiblePresentation?:PublicMarketItem['collectiblePresentation']}>();
+    for(const raw of data.cards){const card=object(raw),prior=previous.get(String(card.collectibleId).toLowerCase());if(!prior||!sameItemClaim(prior,card.claimHash))continue;const artworkUrl=!safeReceizArtworkUrl(prior.artworkUrl)?safeReceizArtworkUrl(card.imageUrl):null,collectiblePresentation=!prior.collectiblePresentation?readPublicCollectiblePresentation(card.presentation,prior.assetId,card.claimHash):undefined;if(artworkUrl||collectiblePresentation)metadata.set(prior.id,{...(artworkUrl?{artworkUrl}:{}),...(collectiblePresentation?{collectiblePresentation}:{})});}
+    if(!metadata.size)return catalog;
+    return {...catalog,items:catalog.items.map(item=>metadata.has(item.id)?{...item,...metadata.get(item.id)}:item)};
    }
    const incoming=new Map(data.cards.map(raw=>{const card=object(raw);return [cardKey(card),card];}));let changed=false;
-   const items=catalog.items.map(prior=>{const card=incoming.get(`${prior.assetId.toLowerCase()}:${itemClaim(prior)}`);if(!card||!publicSportsSealedBirths(card.sealedBirths)&&!publicSportsHistoryObservation(card.historyObservation)&&!safeReceizArtworkUrl(card.imageUrl))return prior;const item={...prior};applyCopyMetadata(item,card,prior,birthsFresh,!olderCapture(catalog.sportsObservedAt,metadataAt(data)));changed=true;return item;});
+   const items=catalog.items.map(prior=>{const card=incoming.get(`${prior.assetId.toLowerCase()}:${itemClaim(prior)}`);if(!card||!publicSportsSealedBirths(card.sealedBirths)&&!publicSportsHistoryObservation(card.historyObservation)&&!safeReceizArtworkUrl(card.imageUrl)&&!readPublicCollectiblePresentation(card.presentation,prior.assetId,card.claimHash))return prior;const item={...prior};applyCopyMetadata(item,card,prior,birthsFresh,!olderCapture(catalog.sportsObservedAt,metadataAt(data)),true);changed=true;return item;});
    const existing=new Set(items.map(item=>item.assetId.toLowerCase())),extra=data.cards.filter(raw=>{const card=object(raw);return !existing.has(String(card.collectibleId).toLowerCase())&&publicSportsSealedBirths(card.sealedBirths)&&!readPublicSportsValueRow(card.valuationRow,card.claimHash,card)&&card.pricedCount===0&&card.liveValueUsd==null&&card.totalValueUsd==null;});
    if(extra.length){const added=mergePublicSports({...catalog,items:[],sportsObservedAt:null,sportsSealedBirthsObservedAt:null},{...data,fallback:false,cards:extra});items.push(...added.items);changed||=added.items.length>0;}
    return changed?{...catalog,items,sportsHistorySnapshot:historySnapshot,sportsSealedBirthsObservedAt:birthsFresh?metadataAt(data) as string:catalog.sportsSealedBirthsObservedAt,...(data.fallback===true||extra.length?{sportsCoverage:'partial' as const}:{})}:data.fallback===true?{...catalog,sportsCoverage:'partial'}:catalog;

@@ -12,6 +12,7 @@ import {publicMarketPulseSeed,publicSportsValueRow} from '../src/receiz/market-p
 import {publicSportsSealedCopies,publicSportsSealedBirths} from '../src/receiz/market-projection/sealed-copies.js';
 import {boundSportsHistoryObservation,publicSportsGroupIdentity,publicSportsHistorySnapshot} from '../src/receiz/market-projection/sports-observations.js';
 import {profileAvatarUrl} from '../src/receiz/profile-avatar.js';
+import {projectPublicCollectiblePresentation} from '../src/receiz/public-collectible-presentation.js';
 
 const PREFIX = '/api/bank/public-market/';
 const MAX_BYTES = 128 * 1024 * 1024;
@@ -92,7 +93,8 @@ async function loadPublicResponse(target: URL,afterPublication?:string): Promise
           const sealedBirths=births?.map(copy=>{const carried=rawBirths.find(value=>value?.collectibleId?.toLowerCase()===copy.collectibleId&&value?.claimHash?.toLowerCase()===copy.claimHash) as Record<string,unknown>|undefined;return {...copy,ownerUsername:typeof carried?.ownerUsername==='string'&&/^[a-zA-Z0-9_-]{1,64}$/.test(carried.ownerUsername)?carried.ownerUsername:null,ownerDisplayName:typeof carried?.ownerDisplayName==='string'&&carried.ownerDisplayName.length<=128?carried.ownerDisplayName:null};});
           const valuationRow=publicSportsValueRow(card),historyObservation=valuationRow?.historyObservation;
           const imageUrl=safeReceizArtworkUrl(card.imageUrl);
-          return {...Object.fromEntries(fields.map(key => [key, card[key]])),...(imageUrl?{imageUrl}:{}),...(sealedCopies?{sealedCopies}:{}),...(sealedBirths?{sealedBirths}:{}),...(historyObservation?{historyObservation}:{}),valuationRow};
+          const presentation=projectPublicCollectiblePresentation(card);
+          return {...Object.fromEntries(fields.map(key => [key, card[key]])),...(imageUrl?{imageUrl}:{}),...(presentation?{presentation}:{}),...(sealedCopies?{sealedCopies}:{}),...(sealedBirths?{sealedBirths}:{}),...(historyObservation?{historyObservation}:{}),valuationRow};
         });
         const metadataAt=typeof input.sealedBirthsObservedAt==='string'&&input.sealedBirthsObservedAt.length<=64&&Number.isFinite(Date.parse(input.sealedBirthsObservedAt))?input.sealedBirthsObservedAt:undefined;
         const historySnapshot=publicSportsHistorySnapshot(input.historySnapshot);

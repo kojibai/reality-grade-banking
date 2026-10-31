@@ -19,8 +19,9 @@ export function buildDiscoveryIndex(rows:readonly PublicMarketItem[]){
 export type DiscoveryIndex=ReturnType<typeof buildDiscoveryIndex>;
 export function searchDiscovery(index:DiscoveryIndex,query:string,filter:DiscoveryFilter){
  const words=normalize(query.trim()).split(/\s+/).filter(Boolean),matches=(text:string)=>words.every(word=>text.includes(word));
- const items=filter==='People'?[]:index.items.filter(item=>(filter==='All'||feedKind(item)===filter)&&matches(index.entries.get(item.id)!));
- const people=index.people.filter(person=>(filter==='All'||filter==='People'||person.items.some(item=>feedKind(item)===filter))&&matches(normalize(`${person.name} @${person.username} @${profileUsernameLabel(person.username)}`)));
+ const matchesKind=(item:PublicMarketItem)=>{if(filter==='All')return true;const kind=feedKind(item);return kind===filter||filter==='essay'&&kind==='image'&&item.hasLongForm===true;};
+ const items=filter==='People'?[]:index.items.filter(item=>matchesKind(item)&&matches(index.entries.get(item.id)!));
+ const people=index.people.filter(person=>(filter==='All'||filter==='People'||person.items.some(matchesKind))&&matches(normalize(`${person.name} @${person.username} @${profileUsernameLabel(person.username)}`)));
  return {items,people};
 }
 

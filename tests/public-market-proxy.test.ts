@@ -90,6 +90,15 @@ it('keeps native public card artwork in the existing sports response without for
  let body='';await freshMiddleware({method:'GET',url:'/api/bank/public-market/sports',headers:{}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:(bytes:Uint8Array)=>{body=new TextDecoder().decode(bytes);}}as unknown as ServerResponse,vi.fn());
  expect(JSON.parse(body).cards[0].imageUrl).toBe('https://receiz.com'+imageUrl);expect(body).not.toContain('never-forward');expect(fetcher).toHaveBeenCalledOnce();
 });
+it('keeps the native public card face and reverse fields in the same response without copying arbitrary fields',async()=>{
+ vi.resetModules();const {publicMarketMiddleware:freshMiddleware}=await import('../server/public-market');
+ const collectibleId='rsc_abcdef0123456789',claimHash='f'.repeat(64),fetcher=vi.fn(async()=>Response.json({ok:true,schema:'receiz.sports_economy.live_inventory.v1',cards:[{collectibleId,claimHash,athlete:'Public athlete',sport:'baseball',rarity:'Rare',issueLine:'#2 / 10 issued',pulledFromPack:'Opening Pack',card:{position:'Pitcher',rating:94,teamCode:'NYY',projectedScore:12.5,currentScore:0,baseCard:{sealedCardId:'rsc_mlb_694819',basisHash:'a'.repeat(64)},playerBio:{bats:'Right',height:'6 ft 2',privateEmail:'never-forward'},media:{source:'mlb',sourceId:'694819',deterministicAssetId:'sports.mlb.card_media.694819.v1'},privateSession:'never-forward'},privateAccount:'never-forward'}]}));vi.stubGlobal('fetch',fetcher);
+ let body='';await freshMiddleware({method:'GET',url:'/api/bank/public-market/sports',headers:{}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:(bytes:Uint8Array)=>{body=new TextDecoder().decode(bytes);}}as unknown as ServerResponse,vi.fn());
+ const presentation=JSON.parse(body).cards[0].presentation;
+ expect(presentation).toMatchObject({collectibleId,claimHash});
+ expect(presentation.facts).toEqual(expect.arrayContaining([{label:'Position',value:'Pitcher'},{label:'Rating',value:'94'},{label:'Base seal',value:'rsc_mlb_694819'},{label:'Height',value:'6 ft 2'},{label:'Pack',value:'Opening Pack'}]));
+ expect(body).not.toContain('never-forward');expect(fetcher).toHaveBeenCalledOnce();
+});
 it('uses a bounded publication hint to bypass a stale membership response without forwarding the hint upstream',async()=>{
  const digest='9'.repeat(64),url='/api/bank/public-market/membership?afterPublication='+digest;
  expect(resolvePublicMarketTarget(url)?.href).toBe('https://receiz.com/api/market/public-membership');

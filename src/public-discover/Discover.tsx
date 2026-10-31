@@ -6,6 +6,7 @@ import {DiscoveryVideo} from './DiscoveryVideo';
 import {BankMark} from '../components/BankMark';
 import {ProfileAvatar} from '../components/ProfileAvatar';
 import {PublicOwnerAvatar} from '../public-explorer/PublicOwnerAvatar';
+import {PublicCollectibleArtwork} from '../features/collectibles/PublicCollectibleArtwork';
 import {readAccountAppearance,subscribeAccountAppearance} from '../receiz/account-appearance';
 import {safeReceizArtworkUrl,type PublicMarketItem} from '../receiz/public-market';
 import {profilePagePath} from '../receiz/public-profile';
@@ -25,7 +26,7 @@ function Work({item,onOpen,eager,active}:{item:PublicMarketItem;onOpen():void;ea
  const kind=feedKind(item),text=kind==='moment'||kind==='essay',image=text||kind==='document'?null:safeReceizArtworkUrl(item.artworkUrl),Icon=icons[kind],ref=useRef<HTMLDivElement>(null),[visible,setVisible]=useState(false);
  useEffect(()=>{if(!active||kind!=='document'&&kind!=='video'||!ref.current)return;if(typeof IntersectionObserver==='undefined'){setVisible(true);return;}const observer=new IntersectionObserver(entries=>{const near=entries.some(entry=>entry.isIntersecting);if(kind==='video')setVisible(near);else if(near){setVisible(true);observer.disconnect();}},{rootMargin:'100px'});observer.observe(ref.current);return()=>observer.disconnect();},[kind,active]);
  return <button className="discover-work" onClick={onOpen} aria-label={`Open ${item.title}`}><div ref={ref} aria-hidden="true" className={`discover-cover is-${kind}`}>
- {kind==='video'?<DiscoveryVideo item={item} active={active&&visible}/>:kind==='document'&&visible?<Suspense fallback={<span className="discover-cover-title">{item.title}</span>}><Document item={item}/></Suspense>:image?<img src={image} alt="" loading={eager?'eager':'lazy'} fetchPriority={eager?'high':'low'} decoding="async" referrerPolicy="no-referrer" crossOrigin={image.includes('/api/proof-material/packages/')?'anonymous':undefined}/>:<div className="discover-text-work"><span>{kind==='moment'?'This happened':kind==='essay'?'Essay':kind==='book'?'Book':'Original'}</span><p>{feedText(item).slice(0,240)}</p></div>}
+ {kind==='collectible'&&image?<PublicCollectibleArtwork item={item} eager={eager}/>:kind==='video'?<DiscoveryVideo item={item} active={active&&visible}/>:kind==='document'&&visible?<Suspense fallback={<span className="discover-cover-title">{item.title}</span>}><Document item={item}/></Suspense>:image?<img src={image} alt="" loading={eager?'eager':'lazy'} fetchPriority={eager?'high':'low'} decoding="async" referrerPolicy="no-referrer" crossOrigin={image.includes('/api/proof-material/packages/')?'anonymous':undefined}/>:<div className="discover-text-work"><span>{kind==='moment'?'This happened':kind==='essay'?'Essay':kind==='book'?'Book':'Original'}</span><p>{feedText(item).slice(0,240)}</p></div>}
  <span className="discover-kind" aria-label={categories.find(([key])=>key===kind)?.[1]??kind}><Icon size={17} strokeWidth={1.6}/></span></div><strong className="discover-work-title">{item.title}</strong><span className="discover-work-owner">{discoveryOwnerName(item)}</span></button>;
 }
 /** Direction changes affect only these same controls, never the gallery/source. */

@@ -5,6 +5,7 @@ import {afterEach,expect,it,vi} from 'vitest';
 import {parsePublicMarket} from '../src/receiz/public-market';
 import {PublicAssetDetail} from '../src/features/market/PublicAssetDetail';
 import {retainProofInspection,type ProofInspection} from '../src/receiz/proof-inspection';
+import {mergePublicSports} from '../src/receiz/public-sports';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 afterEach(()=>vi.unstubAllGlobals());
 const hash='ab'.repeat(32),verifyPath='/v/20261020_1200/ABCD1234/12345678';
@@ -29,4 +30,21 @@ it('shows the carried Moment image basis from an already verified receipt withou
  retainProofInspection({artifactSha256:digest,verification:{kind:'png',bundle},groth16:null} as unknown as ProofInspection,new Uint8Array([1]),'moment.png');
  const selected={...item,mediaKind:'moment' as const,proofManifest:undefined,proofManifestSource:undefined,originalDigest:digest},fetch=vi.fn().mockRejectedValue(Error('offline'));vi.stubGlobal('fetch',fetch);const host=document.createElement('div'),root=createRoot(host);
  try{await act(async()=>root.render(<PublicAssetDetail item={selected}/>));const requests=fetch.mock.calls.length;act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Show proof material"]')!.click());const row=[...host.querySelectorAll('.asset-proof-back-body>dl>div')].find(row=>row.querySelector('dt')?.textContent==='Media SHA-256');expect(row?.querySelector('dd')?.textContent).toBe(basis.toUpperCase());expect(fetch.mock.calls.length).toBe(requests);}finally{act(()=>root.unmount());}
+});
+
+it('shows the collectible artwork and its carried card record instead of an unrelated Original manifest, without reads on flip',async()=>{
+ const collectibleId='rsc_0123456789abcdef',claimHash='e'.repeat(64),imageUrl='/api/game/sports/baseball/player-image/694819',fetch=vi.fn().mockRejectedValue(Error('offline'));vi.stubGlobal('fetch',fetch);
+ const selected=mergePublicSports({items:[],complete:true,revision:'',observedAt:null,sourceCount:0},{ok:true,schema:'receiz.sports_economy.live_inventory.v1',cards:[{collectibleId,claimHash,athlete:'Public athlete',sport:'baseball',rarity:'Rare',issueLine:'#2 / 10 issued',imageUrl,liveValueUsd:25,totalValueUsd:25,issuedCount:1,vaultCount:1,pricedCount:1,sealedBirths:[{collectibleId,claimHash,sealedAt:'2026-10-01T12:00:00Z',birthUsdValue:10,ownerUsername:'holder'}],presentation:{collectibleId,claimHash,facts:[{label:'Position',value:'Pitcher'},{label:'Rating',value:'94'},{label:'Base seal',value:'rsc_mlb_694819'}]}}]}).items[0];
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<PublicAssetDetail item={selected} standalone/>));
+  expect(host.querySelector('.public-collectible-artwork img')?.getAttribute('src')).toBe('https://receiz.com'+imageUrl);
+  expect(host.querySelector('.public-collectible-artwork')?.textContent).toContain('94');
+  expect(host.querySelector('.public-collectible-artwork')?.textContent).toContain('Pitcher');
+  const reads=fetch.mock.calls.length;act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Show proof material"]')!.click());
+  const back=host.querySelector('.asset-proof-back-body')!;
+  expect(back.textContent).toContain('Collectible record');expect(back.textContent).toContain(claimHash.toUpperCase());expect(back.textContent).toContain('Pitcher');expect(back.textContent).toContain('94');expect(back.textContent).toContain('rsc_mlb_694819');expect(back.textContent).toContain('$25.00');
+  expect(back.textContent).not.toMatch(/Unavailable|pending|Groth16|Poseidon/);
+  expect(fetch.mock.calls.length).toBe(reads);
+ }finally{act(()=>root.unmount());}
 });

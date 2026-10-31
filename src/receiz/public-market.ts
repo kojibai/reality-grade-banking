@@ -10,6 +10,7 @@ import type {MarketSealedBirth} from './market-projection/sealed-copies.js';
 import type {SportsHistorySnapshot} from './market-projection/sports-observations.js';
 import {readPublicAssetManifestSource,type PublicAssetManifestRow,type PublicAssetManifestSource} from './public-asset-manifest.js';
 import {publicAssetTitle} from './asset-title.js';
+import type {PublicCollectiblePresentation} from './public-collectible-presentation.js';
 import {publicMediaPlayback,type PublicPlayback} from './public-asset-embed.js';
 import {publicDocumentUrl} from './public-document.js';
 import {publicBookSource,type PublicBookSource} from './public-book.js';
@@ -30,6 +31,7 @@ export interface PublicMarketItem {
   videoPosterUrl?:string|null;
   /** Exact public card discovery claim; a display binding, never custody. */
   cardClaimHash?:string;
+  collectiblePresentation?:PublicCollectiblePresentation;
   playback?:PublicPlayback|null;
   documentUrl?:string|null;
   book?:PublicBookSource;
