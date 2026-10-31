@@ -9,7 +9,7 @@ import {businessCheckout,businessPriceCard,businessIncluded,businessBanking,busi
 const esc=value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const arrow='<span aria-hidden="true">↗</span>';
 const fitPath=fit=>`/business/for/${fit.slug}/`;
-export function directoryContent(){return `${learnHeader()}<main id="main" class="business-page fit-directory" data-fit-directory>
+export function directoryContent(){return `${learnHeader()}<main id="main" class="business-page fit-directory" data-fit-directory data-public-script="business-fit">
  <section class="learn-shell fit-directory-hero"><h1>Make the money side<br>of your work easier.</h1><div><p>You know the payment questions and admin that keep following you home. Start there.</p><p>Find your kind of business and see how to get clearer about cash flow, make getting paid less work and reduce repeat financial admin.</p><a class="business-text-link" href="/business/">See everything in Business — $149/month ${arrow}</a></div></section>
  <div class="learn-shell">${businessScene('context',['Your payments & commitments','The picture comes together','Your next money move'],{eager:true})}</div>
  <section class="learn-shell fit-directory-results" aria-labelledby="fit-directory-title"><h2 id="fit-directory-title">What would make the biggest difference?</h2><p class="fit-directory-note">Start with a result, or explore all ${businessFits.length} ways to put it to work.</p>

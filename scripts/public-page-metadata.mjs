@@ -1,3 +1,5 @@
+import {matterPage} from '../src/content/digital-matter.mjs';
+import {bookingGuidePage} from '../src/content/booking-guide.mjs';
 import {momentsPage,momentsFaq} from '../src/content/personal-moments.mjs';
 import {meetingPage} from '../src/content/meeting-page.mjs';
 import {bankingPage} from '../src/content/banking-walkthrough.mjs';
@@ -24,6 +26,8 @@ export const publicPages = [
  {...bankingPage,id:'banking',motif:'bank'},
  {...guidePage,id:'guide',motif:'book'},
  {...meetingPage,id:'meet',motif:'bank'},
+ {...bookingGuidePage,id:'book',motif:'calendar'},
+ {...matterPage,id:'digital-matter',motif:'cube'},
  ...portabilityPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-Grade Banking',description:page.description,lines:page.shareLines,caption:page.shareCaption,motif:'layers'})),
  ...economyPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-Grade Banking',description:page.description,lines:page.lines,caption:page.eyebrow,motif:'layers'})),
  ...standardPages.map(page=>({path:page.path,id:'standard-'+page.key,title:page.title+' | Open standard',description:page.description,lines:page.lines,caption:'The standard of the proof-native economy.',motif:'layers'})),
@@ -55,7 +59,7 @@ export const publicPages = [
   // This static document hosts /book/:username. Unknown preview clients get
   // complete sharing metadata without a server read on the visitor's path.
   // Only the personalized crawler response can declare the owner's URL.
-  {path:'/book/',id:'book',title:'Make time | Bankeiz',description:'Choose a time. Keep the conversation moving. Book directly with someone on Bankeiz.',lines:['A little time.','Set aside.'],caption:'Choose a time. Keep life connected.',motif:'calendar',noindex:true,template:true},
+  {path:'/booking/',id:'booking',title:'Make time | Bankeiz',description:'Choose a time. Keep the conversation moving. Book directly with someone on Bankeiz.',lines:['A little time.','Set aside.'],caption:'Choose a time. Keep life connected.',motif:'calendar',noindex:true,template:true},
   {path:'/explore/',id:'explore',title:'Asset explorer: public proof objects & live value | Bankeiz',description:'Explore public proof objects and assets without an account. Inspect live valuations, sealed moments, ownership and the original evidence behind each listing.',lines:['A world of value.','Open to explore.'],caption:'Sealed moments. Public value.',motif:'globe'},
   {path:'/schemas/',id:'schemas',title:'Receiz SDK schemas & proof formats | Bankeiz',description:'Inspect and download the original Receiz SDK schemas, source documentation and integrity digests for independent proof-object integrations.',lines:['The standard.','Down to the byte.'],caption:'Original schemas. Open implementation.',motif:'code'},
   {path:'/legal/',id:'legal',title:'License, source & notices | Bankeiz',description:'Read the Bankeiz software license, attribution, source archive, build materials and third-party notices for the open reference implementation.',lines:['Open source.','Clear foundations.'],caption:'Source. License. Attribution.',motif:'book',noindex:true},

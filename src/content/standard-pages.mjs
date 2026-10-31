@@ -342,7 +342,7 @@ export const standardPages=[
       ],
       [
         "A person to help with the next step.",
-        "Email info@receiz.com with the page, operation reference, approximate time and a description of the problem. Share only the public or deliberately disclosed information needed to investigate. Keep signing keys, private originals, phrases and full card details out of your message."
+        "Open BJ’s booking panel right here. Ask the Twin your question or choose a time to speak. Include the page and operation reference when asking about an account or payment. Keep private identity files, signing keys and full card details on your device."
       ]
     ],
     "related": [
@@ -374,11 +374,11 @@ export const standardPages=[
       ],
       [
         "Can I ask BJ about using the standard?",
-        "Yes. The live demonstration lets you speak with BJ’s AI Twin and arrange a confirmed appointment conversationally. Account-support investigations use the support route above."
+        "Yes. Open the contact panel to speak with BJ’s Twin or arrange an appointment. The same panel handles questions, support and finding a time to speak."
       ]
     ],
-    "action": "Email support",
-    "href": "mailto:info@receiz.com"
+    "action": "Message Receiz",
+    "href": "/book/bjklock/"
   },
   {
     "key": "about",
@@ -721,8 +721,8 @@ export const standardPages=[
         "Read the exact account permissions"
       ],
       [
-        "mailto:info@receiz.com",
-        "Ask about your information"
+        "/book/bjklock/",
+        "Message about your information"
       ]
     ],
     "faq": [

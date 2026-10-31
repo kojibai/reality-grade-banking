@@ -37,7 +37,7 @@
   };
   configureMotion();
   window.addEventListener('receiz-learn:page', configureMotion);
-  const loadPublic=file=>file&&import('/learn/'+file+'.js').then(module=>module.init()).catch(()=>{});const fit=()=>{loadPublic(document.querySelector('[data-fit-directory]')?'business-fit':document.querySelector('.meet-public')?'meet':document.querySelector('[data-coop]')?'cooperatives':document.querySelector('.moments-page')?'moments':'');loadPublic(document.querySelector('[data-economy-interfaces],[data-economy-circle],[data-economy-numbers]')?'economy':'');};fit();addEventListener('receiz-learn:page',fit);
+  const loadPublic=file=>file&&import('/learn/'+file+'.js').then(module=>module.init()).catch(()=>{});const fit=()=>{loadPublic(document.querySelector('[data-public-script]')?.dataset.publicScript||(document.querySelector('.meet-public')?'meet':document.querySelector('[data-coop]')?'cooperatives':document.querySelector('.moments-page')?'moments':''));loadPublic(document.querySelector('[data-economy-interfaces],[data-economy-circle],[data-economy-numbers]')?'economy':'');};fit();addEventListener('receiz-learn:page',fit);
   reducedMotion.addEventListener?.('change', configureMotion);
   addEventListener('hashchange', () => {
     // Restrict selectors to a DOM id, including malformed user-supplied hashes.

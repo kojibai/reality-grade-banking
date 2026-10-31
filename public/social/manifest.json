@@ -33,6 +33,22 @@
       "bytes": 636984,
       "alt": "Be here. Keep everything connected. The actual meeting interface shows sending money beside the conversation, with the recorded payment and meeting context together. Illustrative participant and scripted example."
     },
+    "/book/": {
+      "url": "/social/book-56905f30002f770b.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "56905f30002f770b8cf6b4191be57c7da6c63c117a9802a4d9c6bde61974d211",
+      "bytes": 472200,
+      "alt": "Bankeiz. Make time. Keep everything connected. Your calendar. Your people. Your next appointment. An engraved calendar motif on layered cobalt, clear glass and navy forms."
+    },
+    "/matter/": {
+      "url": "/social/digital-matter-0b99eaf5c2257602.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "0b99eaf5c2257602bc2748ed5ef877925d65dada6da84fb4d37e4c38d2b9d6cc",
+      "bytes": 216262,
+      "alt": "Digital Matter. Reality, with a body. An illustrative baseball and its measured seam geometry stay together inside glass proof layers. The object, its evidence and its continuing history."
+    },
     "/crypto/": {
       "url": "/social/portability-crypto-05818df7521e225b.png",
       "width": 1730,
@@ -841,8 +857,8 @@
       "bytes": 458518,
       "alt": "Bankeiz. Something new. For you. Watch. Listen. Read. Connect. An engraved play motif on layered cobalt, clear glass and navy forms."
     },
-    "/book/": {
-      "url": "/social/book-1a3247fab5d425f2.png",
+    "/booking/": {
+      "url": "/social/booking-1a3247fab5d425f2.png",
       "width": 1730,
       "height": 909,
       "sha256": "1a3247fab5d425f26dab1feb6129acea72183bd03725618d7aee4463b64f74df",

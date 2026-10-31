@@ -19,7 +19,7 @@ it('gives each public function its own preview while excluding private receipt r
  expect(publicEntryFallback('/')).toBe('');expect(publicEntryFallback('/receipt/')).toBe('');
  const fallback=new DOMParser().parseFromString(publicEntryFallback('/verify/'),'text/html');expect(fallback.querySelector('h1')?.textContent).toBe('Verify an account proof');expect(fallback.body.textContent).toContain('no verification has run yet');expect(fallback.querySelector('script,input,button')).toBeNull();
 });
-it.each(['/feed/','/discover/','/book/'])('ships complete social metadata in the initial %s document without adding runtime work',async path=>{
+it.each(['/feed/','/discover/','/booking/'])('ships complete social metadata in the initial %s document without adding runtime work',async path=>{
  const page=publicPage(path);expect(page).toBeDefined();
  const source=await readFile(process.cwd()+path+'index.html','utf8');
  const transform=publicMetadataPlugin().transformIndexHtml as (html:string,context:{path:string})=>string;
@@ -30,7 +30,7 @@ it.each(['/feed/','/discover/','/book/'])('ships complete social metadata in the
  expect(meta('twitter:card')).toBe('summary_large_image');expect(meta('og:image:type')).toBe('image/png');
  expect([...doc.querySelectorAll('script[type=module]')].map(node=>node.getAttribute('src'))).toEqual([...new DOMParser().parseFromString(source,'text/html').querySelectorAll('script[type=module]')].map(node=>node.getAttribute('src')));
  expect(doc.querySelector('link[rel=preload],link[rel=prefetch]')).toBeNull();
- if(path==='/book/'){
+ if(path==='/booking/'){
   expect(meta('robots')).toBe('noindex,follow');
   expect(meta('og:url')).toBeUndefined();expect(doc.querySelector('link[rel=canonical]')).toBeNull();
  }else{

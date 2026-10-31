@@ -1,3 +1,4 @@
+import {matterShareCard} from './matter-share.mjs';
 import {momentsShareCard} from './moments-share.mjs';
 import {guideShareCard} from './guide-share.mjs';
 import {meetingShareCard} from './meeting-share.mjs';
@@ -19,6 +20,7 @@ import {businessFitShareCard} from './business-fit-share.mjs';
 const icons={layers:Layers3,fingerprint:Fingerprint,cube:Box,shield:ShieldCheck,key:KeyRound,bank:Landmark,valuation:ChartNoAxesCombined,badge:BadgeCheck,scan:ScanLine,ledger:NotebookTabs,globe:Globe2,code:Braces,book:BookOpen,receipt:ReceiptText,calendar:CalendarDays,play:Play};
 const bank='<path d="m256 117 123 67v17H133v-17l123-67Zm0 26-75 40h150l-75-40Z" fill-rule="evenodd"/><rect x="146" y="215" width="28" height="110" rx="2"/><rect x="210" y="215" width="28" height="110" rx="2"/><rect x="274" y="215" width="28" height="110" rx="2"/><rect x="338" y="215" width="28" height="110" rx="2"/><rect x="133" y="337" width="246" height="18" rx="2"/><rect x="119" y="367" width="274" height="18" rx="3"/>';
 export function shareCardSvg(page){
+ if(page.id==='digital-matter')return matterShareCard();
  if(page.id==='moments')return momentsShareCard();
  if(page.id==='guide')return guideShareCard();
  if(page.id==='meet')return meetingShareCard();

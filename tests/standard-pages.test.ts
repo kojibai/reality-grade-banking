@@ -11,7 +11,7 @@ import social from '../public/social/manifest.json';
 const parse=(s:string)=>new DOMParser().parseFromString(s,'text/html');
 it('adds eleven complete standard documents and retains existing primitives and pages',()=>{
  expect(standardPages.slice(0,11).map(p=>p.path)).toEqual(['/trust/','/money/','/deposit/','/fees/','/help/','/about/','/in-practice/','/accept-payments/','/start/','/privacy/','/terms/']);
- expect(publicPages).toHaveLength(155);
+ expect(publicPages).toHaveLength(157);
  for(const p of standardPages){const d=parse(standardContent(p));expect(publicPage(p.path)?.id).toBe('standard-'+p.key);expect(d.querySelector('h1')?.textContent).toBeTruthy();expect(d.querySelectorAll('main section').length).toBeGreaterThanOrEqual(5);expect(d.querySelector('canvas,iframe,video')).toBeNull();expect(d.querySelector('main')?.textContent).not.toMatch(/FDIC.insured|guaranteed returns|cannot be hacked|24.7 support|Kojib/);expect(d.querySelector('main')?.textContent).toContain('Illustrative');expect(d.querySelector('footer a[href="'+p.path+'"]')).toBeNull();for(const a of d.querySelectorAll('[data-business-checkout]'))expect(a.getAttribute('href')).toBe('/#account/messages/business');}
  for(const path of ['/protect/','/proof/','/business/','/id/','/learn/deposits/'])expect(publicPage(path)).toBeDefined();
 });
@@ -23,7 +23,7 @@ it('keeps standard URLs distinct from named profiles and canonicalizes the alter
 it('keeps money, safety, privacy and service terms scoped to their real sources',()=>{
  const page=(key:string)=>parse(standardContent(standardPages.find(p=>p.key===key)!));
  expect(page('money').querySelector('main')?.textContent).toContain('Reserve');expect(page('money').querySelector('main')?.textContent).toContain('Settlement');expect(page('money').querySelector('main')?.textContent).toContain('valuation');
- expect(page('help').querySelector('a[href="mailto:info@receiz.com"]')).not.toBeNull();expect(page('privacy').querySelector('a[href="https://receiz.com/privacy"]')).not.toBeNull();expect(page('terms').querySelector('a[href="/legal/"]')).not.toBeNull();
+ expect(page('help').querySelector('a[href="/book/bjklock/"]')?.getAttribute('onclick')).toContain("import('/learn/contact.js')");expect(page('privacy').querySelector('a[href="https://receiz.com/privacy"]')).not.toBeNull();expect(page('terms').querySelector('a[href="/legal/"]')).not.toBeNull();
  expect(page('in-practice').querySelector('a[href="/in-action/#conversation"]')).not.toBeNull();expect(page('deposit').querySelector('a[href="/"]')).not.toBeNull();
 });
 it.each(['trust','money','deposit','fees','help','about','in-practice','accept-payments','start','privacy','terms'])('gives %s a distinct responsive illustration and price-free sharing story',key=>{

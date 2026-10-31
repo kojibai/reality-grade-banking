@@ -7,5 +7,5 @@ export function bookingPreviewPlugin():Plugin{
   if(!api&&!image&&(!booking||!isBookingShareCrawler(req.headers['user-agent']??'')))return next();
   try{const response=await handleBookingPreview(new Request(url,{method:req.method}),{page,owner:readBookingOwner,image:async owner=>(await import('./booking-share-art')).renderBookingImage(owner)});res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));}catch{res.writeHead(503,{'cache-control':'no-store'});res.end('Booking invitation unavailable.');}
  };
- return{name:'bankeiz-booking-share',configureServer(server){server.middlewares.use(middleware(async()=>server.transformIndexHtml('/book/index.html',await readFile('book/index.html','utf8'))));},configurePreviewServer(server){server.middlewares.use(middleware(()=>readFile('dist/book/index.html','utf8')));}};
+ return{name:'bankeiz-booking-share',configureServer(server){server.middlewares.use(middleware(async()=>server.transformIndexHtml('/booking/index.html',await readFile('booking/index.html','utf8'))));},configurePreviewServer(server){server.middlewares.use(middleware(()=>readFile('dist/booking/index.html','utf8')));}};
 }

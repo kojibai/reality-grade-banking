@@ -25,7 +25,7 @@
     },
     "api/book.ts": {
       "maxDuration": 30,
-      "includeFiles": "{dist/book/index.html,server/booking-runtime/**,scripts/social/fonts/*.ttf}"
+      "includeFiles": "{dist/booking/index.html,server/booking-runtime/**,scripts/social/fonts/*.ttf}"
     }
   },
   "redirects": [
@@ -41,6 +41,22 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/matter",
+      "destination": "/matter/index.html"
+    },
+    {
+      "source": "/matter/",
+      "destination": "/matter/index.html"
+    },
+    {
+      "source": "/book",
+      "destination": "/book/index.html"
+    },
+    {
+      "source": "/book/",
+      "destination": "/book/index.html"
+    },
     {
       "source": "/discover",
       "destination": "/discover/index.html"
@@ -125,11 +141,11 @@
     },
     {
       "source": "/book/:username/",
-      "destination": "/book/index.html"
+      "destination": "/booking/index.html"
     },
     {
       "source": "/book/:username",
-      "destination": "/book/index.html"
+      "destination": "/booking/index.html"
     },
     {
       "source": "/action",

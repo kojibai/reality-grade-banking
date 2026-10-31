@@ -4,19 +4,13 @@ import {readFile,writeFile} from 'node:fs/promises';
 import {createServer} from 'vite';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {createElement} from 'react';
-import postcss from 'postcss';
 import {exampleNavigation} from './product-preview-navigation.mjs';
 import {scrollableProductPreview} from './product-preview-readonly.mjs';
 import {moneyExamples} from '../src/content/money-examples.mjs';
 import {transform} from 'esbuild';
 const styles=['src/styles/tokens.css','src/styles/app.css','src/styles/features.css','src/components/kai-klok.css','src/features/messages/messages.css','src/features/ledger/ledger-inspector.css','src/features/ledger/ledger-value.css','src/features/vault/vault.css','src/features/deposit/deposit.css','src/features/account/payment-tools.css','src/features/account/merchant-counter.css','src/features/market/market.css'];
-export function scopeProductCss(css){
- const root=postcss.parse(css),names=new Map();root.walkAtRules(/keyframes$/,rule=>{names.set(rule.params,'product-example-'+rule.params);rule.params='product-example-'+rule.params;});
- root.walkDecls(/^animation/,decl=>{for(const [from,to] of names)decl.value=decl.value.replace(new RegExp('(?<![\\w-])'+from+'(?![\\w-])','g'),to);});
- root.walkAtRules('media',rule=>{if(/^(?:\(m(?:in|ax)-width:[^)]+\))(?:\s+and\s+\(m(?:in|ax)-width:[^)]+\))*$/.test(rule.params)){rule.name='container';rule.params='product-screen '+rule.params;}});
- root.walkRules(rule=>{if(rule.parent?.type==='atrule'&&/keyframes$/.test(rule.parent.name))return;rule.selectors=rule.selectors.map(s=>{if(s===':root'||s==='body'||s==='html')return '.product-screen';return '.product-screen '+s.replace(/^html[^ ]*\s*/, '');});});
- root.walkDecls(decl=>{decl.value=decl.value.replace(/100d?vh/g,'680px').replace(/(\d+(?:\.\d+)?)vw\b/g,'$1cqw');});return root.toString();
-}
+export {scopeProductCss} from './scope-product-css.mjs';
+import {scopeProductCss} from './scope-product-css.mjs';
 if(process.argv[1]?.endsWith('build-product-previews.mjs')){
  // Fixed reference examples must render identically on developer machines and CI.
  // This build-only process never changes the running app's local-time display.

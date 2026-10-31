@@ -38,8 +38,8 @@ it('routes social crawlers and images while preserving the existing static path 
  const config=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url),'utf8'));
  for(const path of ['/book/:username/','/book/:username']){
   const routes=config.rewrites.filter((route:{source:string})=>route.source===path),shared=routes.find((route:{has?:unknown[]})=>route.has?.length),regular=routes.find((route:{has?:unknown[]})=>!route.has);
-  expect(regular.destination).toBe('/book/index.html');expect(shared.destination).toBe('/api/book?username=:username');const pattern=new RegExp(shared.has[0].value);
+  expect(regular.destination).toBe('/booking/index.html');expect(shared.destination).toBe('/api/book?username=:username');const pattern=new RegExp(shared.has[0].value);
   for(const ua of ['Twitterbot/1.0','facebookexternalhit/1.1','WhatsApp/2.0','Applebot','LinkedInBot','TelegramBot','Slackbot-LinkExpanding'])expect(pattern.test(ua),ua).toBe(true);expect(pattern.test('Mozilla/5.0 Safari/605.1.15')).toBe(false);
  }
- expect(config.rewrites.find((route:{source:string})=>route.source==='/book/:username/og.png')?.destination).toBe('/api/book?username=:username&image=1');expect(config.functions['api/book.ts'].includeFiles).toContain('dist/book/index.html');expect(config.functions['api/book.ts'].includeFiles).toContain('fonts');
+ expect(config.rewrites.find((route:{source:string})=>route.source==='/book/:username/og.png')?.destination).toBe('/api/book?username=:username&image=1');expect(config.functions['api/book.ts'].includeFiles).toContain('dist/booking/index.html');expect(config.functions['api/book.ts'].includeFiles).toContain('fonts');
 });

@@ -43,7 +43,7 @@ export async function handleBookingPreview(request:Request,dependencies?:Depende
  const allowed=new Set<string>(['username','image','v',...BOOKING_LINK_KEYS]);
  if(!username||!usernamePattern.test(username)||url.hash||url.searchParams.has('username')&&url.searchParams.get('username')!==username||[...url.searchParams.keys()].some(key=>!isShareTrackingKey(key)&&(!allowed.has(key)||url.searchParams.getAll(key).length!==1))||url.searchParams.has('image')&&url.searchParams.get('image')!=='1'||url.searchParams.has('v')&&!/^[a-f0-9]{16}$/.test(url.searchParams.get('v')!))return new Response(null,{status:400,headers});
  if(request.method==='HEAD')return new Response(null,{headers});
- const deps=dependencies??{owner:readBookingOwner,page:async()=>(await import('node:fs/promises')).readFile('dist/book/index.html','utf8'),image:async owner=>(await import('./booking-share-art')).renderBookingImage(owner)};
+ const deps=dependencies??{owner:readBookingOwner,page:async()=>(await import('node:fs/promises')).readFile('dist/booking/index.html','utf8'),image:async owner=>(await import('./booking-share-art')).renderBookingImage(owner)};
  try{
   // The template read and public owner read are independent. PNG rendering and
   // portrait retrieval are reached only by the dedicated social image request.
