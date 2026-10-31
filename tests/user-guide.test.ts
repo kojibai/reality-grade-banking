@@ -11,7 +11,7 @@ import {gzipSync} from 'node:zlib';
 import {siteFooterHtml} from '../scripts/site-footer.mjs';
 const parse=(html:string)=>new DOMParser().parseFromString(html,'text/html');
 it('reserves a canonical indexed user-guide route while preserving its public username route',()=>{
- const page=publicPage('/guide/');expect(page).toMatchObject({id:'guide',path:'/guide/'});expect(publicPages).toHaveLength(155);
+ const page=publicPage('/guide/');expect(page).toMatchObject({id:'guide',path:'/guide/'});expect(publicPages.filter(entry=>entry.path==='/guide/')).toEqual([page]);
  expect(publicPage('/guide')).toBe(page);expect(page?.noindex).not.toBe(true);
  expect(profilePagePath('guide')).toBe('/u/guide/');expect(profilePageUsername('/guide/')).toBeNull();expect(profilePageUsername('/u/guide/')).toBe('guide');
  const rewrites=JSON.parse(readFileSync('vercel.json','utf8')).rewrites;

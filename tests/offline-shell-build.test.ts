@@ -19,6 +19,7 @@ it('versions complete final pages and fixed-path native resources and includes l
     await writeFile(join(dir,'learn/business-fit.js'),'public directory enhancement');
     await writeFile(join(dir,'learn/economy.js'),'public economy interaction');await writeFile(join(dir,'learn/economy-model.mjs'),'public illustrative arithmetic');
     await writeFile(join(dir,'learn/product-walkthrough.js'),'read-only product walkthrough');
+    await writeFile(join(dir,'learn/contact.js'),'shared in-place contact');
     await writeFile(join(dir,'learn/cooperatives.js'),'cooperative interaction');await writeFile(join(dir,'learn/cooperative-twin.js'),'native twin projection');
     await mkdir(join(dir, 'launch'));
     await writeFile(join(dir, 'launch/iphone-402-874-3-portrait.png'), 'launch artwork');
@@ -30,6 +31,7 @@ it('versions complete final pages and fixed-path native resources and includes l
     await writeFile(join(dir,'proof-verifier/v129/verifier.js.map'),'public complete source');
     await writeFile(join(dir,'proof-verifier/v129/verifier.js.map.bin'),'public complete source');
     const first = await buildOfflineShell(dir, { fixed: [native] });
+    expect(first.resources.filter(resource=>resource.url==='/learn/contact.js')).toEqual([expect.objectContaining({bytes:Buffer.byteLength('shared in-place contact'),sha256:expect.stringMatching(/^[a-f0-9]{64}$/)})]);
     for(const path of ['economy','farmers','fuel','repairs','grocers','housing','workers'])expect(first.pages['/'+path+'/']).toBe('/learn/');
     for(const url of ['/learn/economy.js','/learn/economy-model.mjs'])expect(first.resources.some((resource:{url:string})=>resource.url===url)).toBe(true);
     expect(first.resources.some((v: { url: string }) => v.url === '/proof-verifier/v129/verifier.js.map')).toBe(false);
@@ -62,6 +64,8 @@ it('versions complete final pages and fixed-path native resources and includes l
     await writeFile(join(dir, 'legal/index.html'), 'updated final notices'); const third = await buildOfflineShell(dir, { fixed: [native] });
     expect(third.version).not.toBe(second.version);
     expect(JSON.parse(await readFile(join(dir, 'offline-build.json'), 'utf8'))).toEqual(third);
+    await writeFile(join(dir,'learn/contact.js'),'updated shared in-place contact');const fourth=await buildOfflineShell(dir,{fixed:[native]});
+    expect(fourth.version).not.toBe(third.version);expect(fourth.resources.find(resource=>resource.url==='/learn/contact.js')?.sha256).not.toBe(first.resources.find(resource=>resource.url==='/learn/contact.js')?.sha256);
     const sw = await readFile(join(dir, 'sw.js'), 'utf8'); expect(sw).not.toContain('__RESOURCE_HASHES__'); expect(sw).toContain(native);
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
