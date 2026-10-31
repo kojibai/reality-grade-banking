@@ -31,6 +31,7 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
 export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
   if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return false;
+  if(url.pathname==='/api/connect/merchant-counter'){const keys=[...url.searchParams.keys()];return method.toUpperCase()==='POST'?!url.search:method.toUpperCase()==='GET'&&(keys.length===0||keys.length===1&&(url.searchParams.getAll('after').length===1&&/^(0|[1-9]\d{0,14})$/.test(url.searchParams.get('after')??'')||url.searchParams.getAll('resume').length===1&&/^(0|[1-9]\d{0,14})$/.test(url.searchParams.get('resume')??'')||url.searchParams.getAll('saleDigest').length===1&&/^[a-f0-9]{64}$/.test(url.searchParams.get('saleDigest')??'')||url.searchParams.getAll('image').length===1&&/^[a-f0-9]{64}$/.test(url.searchParams.get('image')??'')||url.searchParams.getAll('request').length===1&&/^[a-f0-9]{64}$/.test(url.searchParams.get('request')??'')));}
   if(permittedOrganizerPath(url,method))return true;
   if(url.pathname==='/api/connect/profile/analytics')return method.toUpperCase()==='GET'&&!url.search;
   if(permittedTwinConversationRead(url))return method.toUpperCase()==='GET';

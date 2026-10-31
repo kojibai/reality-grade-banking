@@ -15,8 +15,8 @@ export async function readMerchantResponse(response:Response):Promise<unknown>{
 /** Recipient-owned fixed-sale discovery supplies references only. Each actual
  * original must still pass the existing exact receiving inspector. */
 export function createMerchantReceive(input:{accountUid:string;request(path:string,signal:AbortSignal):Promise<unknown>}){
- const admitted=new Map<string,MerchantPaymentEvidence>(),unacknowledged=new Map<string,{saleId:string;evidence:MerchantPaymentEvidence}>(),pending=new Map<string,Candidate>(),discovery=new Map<string,Discovery>();let nextSale=0,unresolved=false;
- return{unresolved:()=>unresolved,remember(evidence:MerchantPaymentEvidence){const key=evidence.transferId+':'+evidence.clientNonce;admitted.set(key,evidence);unacknowledged.delete(key);},async check(sales:readonly FixedSale[],signal:AbortSignal){
+ const admitted=new Set<string>(),unacknowledged=new Map<string,{saleId:string;evidence:MerchantPaymentEvidence}>(),pending=new Map<string,Candidate>(),discovery=new Map<string,Discovery>();let nextSale=0,unresolved=false;
+ return{unresolved:()=>unresolved,remember(evidence:MerchantPaymentEvidence){const key=evidence.transferId+':'+evidence.clientNonce;admitted.add(key);unacknowledged.delete(key);},async check(sales:readonly FixedSale[],signal:AbortSignal){
   signal.throwIfAborted();if(sales.some(sale=>sale.recipientUserId!==input.accountUid))throw Error('MERCHANT_ACCOUNT_MISMATCH');
   if(sales.some(sale=>!/^[a-f0-9]{64}$/.test(sale.digest)))throw Error('MERCHANT_SALE_INVALID');
   const byDigest=new Map(sales.map(sale=>[sale.digest,sale])),ordered=[...byDigest.values()];
@@ -55,7 +55,7 @@ export function createMerchantReceive(input:{accountUid:string;request(path:stri
   // unavailable originals ahead of later payments or manufacture paid state.
   await Promise.all([...pending].slice(0,4).map(async([key,candidate])=>{
    pending.delete(key);
-   try{signal.throwIfAborted();const raw=await input.request(`/api/connect/transfers?clientNonce=${candidate.clientNonce}&transferId=${candidate.transferId}`,signal);signal.throwIfAborted();const evidence=await inspectMerchantPayment(raw,candidate.sale,input.accountUid);signal.throwIfAborted();if(evidence.transferId!==candidate.transferId||evidence.clientNonce!==candidate.clientNonce)throw Error('MERCHANT_PAYMENT_MISMATCH');admitted.set(key,evidence);const match={saleId:candidate.sale.saleId,evidence};unacknowledged.set(key,match);found.set(key,match);}
+   try{signal.throwIfAborted();const raw=await input.request(`/api/connect/transfers?clientNonce=${candidate.clientNonce}&transferId=${candidate.transferId}`,signal);signal.throwIfAborted();const evidence=await inspectMerchantPayment(raw,candidate.sale,input.accountUid);signal.throwIfAborted();if(evidence.transferId!==candidate.transferId||evidence.clientNonce!==candidate.clientNonce)throw Error('MERCHANT_PAYMENT_MISMATCH');admitted.add(key);const match={saleId:candidate.sale.saleId,evidence};unacknowledged.set(key,match);found.set(key,match);}
    catch{signal.throwIfAborted();pending.set(key,candidate);}
   }));
   unresolved=!!discoveryError||ordered.some(value=>!discovery.get(value.digest)?.complete)||pending.size>0;

@@ -884,3 +884,8 @@ export const saveShareCertificateState=(binding:{artifactSha256:string},value:im
 const meetingFamily=(id:string)=>{if(!/^[a-f0-9-]{36}$/i.test(id))throw Error('MEETING_COORDINATE_INVALID');return 'meeting-capture:'+id;};
 export const loadMeetingCapture=(binding:{artifactSha256:string},id:string)=>loadNoteState(binding,meetingFamily(id));
 export const saveMeetingCapture=(binding:{artifactSha256:string},id:string,value:unknown,expected:unknown)=>saveNoteState(binding,meetingFamily(id),value,expected);
+
+// Register work points to an immutable encrypted catalog. Cart edits do not
+// serialize or re-encrypt the full catalog or any payment-original history.
+export const loadCounterRegisterWork=(binding:{artifactSha256:string})=>loadNoteState(binding,'counter-register');
+export const saveCounterRegisterWork=(binding:{artifactSha256:string},value:unknown,expected:unknown)=>saveNoteState(binding,'counter-register',value,expected);

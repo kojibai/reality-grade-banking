@@ -19,4 +19,4 @@ export function buildPaymentTools(coordinate:string,dollars?:string){
  };
 }
 
-export function buildFixedPaymentTools(sale:FixedSale){const hostedCheckoutLink=buildFixedSaleUrl(sale);return{hostedCheckoutLink,buttonHtml:`<a href="${escapeHtml(hostedCheckoutLink)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 24px;border-radius:12px;background:#172b45;color:#fff;font:600 16px/1.4 system-ui,sans-serif;text-decoration:none">Pay @${sale.username}</a>`};}
+export function buildFixedPaymentTools(sale:FixedSale,options?:{counter?:boolean}){const hostedCheckoutLink=buildFixedSaleUrl(sale,options);return{hostedCheckoutLink,buttonHtml:`<a href="${escapeHtml(hostedCheckoutLink)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 24px;border-radius:12px;background:#172b45;color:#fff;font:600 16px/1.4 system-ui,sans-serif;text-decoration:none">Pay @${sale.username}</a>`};}

@@ -1,6 +1,7 @@
 import type {OpenIdentity} from '../receiz/native-identity';
 export interface CheckoutIdentitySession {
  open():Promise<OpenIdentity>;
+ restore?():Promise<OpenIdentity|null>;
  import(file:File,phrase:string):Promise<OpenIdentity>;
  close():void;
 }
@@ -11,7 +12,7 @@ interface IdentityEntry {
  recover?():Promise<OpenIdentity>;
 }
 export function createCheckoutIdentitySession(deps:IdentityEntry){
- let current:OpenIdentity|null=null,opening:Promise<OpenIdentity>|null=null,selection:Promise<OpenIdentity>|null=null,closed=false;
+ let current:OpenIdentity|null=null,opening:Promise<OpenIdentity>|null=null,restoring:Promise<OpenIdentity|null>|null=null,selection:Promise<OpenIdentity>|null=null,closed=false;
  const assertOpen=()=>{if(closed)throw Error('Checkout identity session is closed.');};
  const adopt=(next:OpenIdentity)=>{if(closed){next.dispose();assertOpen();}const previous=current;current=next;if(previous&&previous!==next)previous.dispose();return next;};
  const open=():Promise<OpenIdentity>=>{
@@ -19,16 +20,16 @@ export function createCheckoutIdentitySession(deps:IdentityEntry){
   // An explicit Identity Record/PBI selection owns entry until it resolves.
   if(selection)return selection;
   if(current)return Promise.resolve(current);if(opening)return opening;
-  const attempt=(async()=>{const restored=await deps.restore();if(closed){restored?.dispose();assertOpen();}return adopt(restored??await deps.create(true));})();
+  const attempt=(async()=>{const restored=await(restoring??deps.restore());if(closed){restored?.dispose();assertOpen();}return adopt(restored??await deps.create(true));})();
   opening=attempt;void attempt.finally(()=>{if(opening===attempt)opening=null;}).catch(()=>{});return attempt;
  };
  const select=(read:()=>Promise<OpenIdentity>):Promise<OpenIdentity>=>{
   try{assertOpen();}catch(error){return Promise.reject(error);}
   if(selection)return selection;
-  const attempt=(async()=>{if(opening)await opening.catch(()=>{});assertOpen();return adopt(await read());})();
+  const attempt=(async()=>{if(opening)await opening.catch(()=>{});else if(restoring)await restoring.catch(()=>{});assertOpen();return adopt(await read());})();
   selection=attempt;void attempt.finally(()=>{if(selection===attempt)selection=null;}).catch(()=>{});return attempt;
  };
- return{open,import:(file:File,phrase:string)=>select(()=>deps.importIdentity(file,phrase,true)),
+ return{open,restore():Promise<OpenIdentity|null>{try{assertOpen();}catch(error){return Promise.reject(error);}if(selection)return selection;if(current)return Promise.resolve(current);if(opening)return opening;if(restoring)return restoring;const attempt=(async()=>{const held=await deps.restore();if(closed){held?.dispose();assertOpen();}return held?adopt(held):null;})();restoring=attempt;void attempt.finally(()=>{if(restoring===attempt)restoring=null;}).catch(()=>{});return attempt;},import:(file:File,phrase:string)=>select(()=>deps.importIdentity(file,phrase,true)),
   recoverPbi:()=>select(()=>{if(!deps.recover)throw Error('PBI recovery is unavailable here.');return deps.recover();}),
   close(){if(closed)return;closed=true;current?.dispose();current=null;}};
 }

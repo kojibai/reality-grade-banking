@@ -7,6 +7,7 @@ import type {OpenIdentity} from '../src/receiz/native-identity';
 import {hostedFixture} from './fixtures/hosted-checkout';
 import {parsePublicProfile,retainPublicProfile,forgetPublicProfile} from '../src/receiz/public-profile';
 import {profileFixture} from './fixtures/public-profile';
+import {createFixedSale} from '../src/receiz/fixed-checkout';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 beforeEach(()=>{sessionStorage.clear();vi.stubGlobal('fetch',vi.fn(async()=>new Response(null,{status:404})));});
 afterEach(()=>{forgetPublicProfile('alexmorgan');vi.unstubAllGlobals();});
@@ -15,6 +16,11 @@ const click=(host:HTMLElement,text:string)=>{const button=[...host.querySelector
 it('paints the recipient and amount while device entry is pending without financial actions',async()=>{
  const open=vi.fn(()=>new Promise<OpenIdentity>(()=>{})),session={open,import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host);
  try{await act(async()=>root.render(<HostedCheckout request={{username:'merchant',amount:'12.30'}} identitySession={session}/>));expect(host.textContent).toContain('@merchant');expect(host.querySelector<HTMLInputElement>('[aria-label="Payment amount"]')?.value).toBe('12.30');expect(host.textContent).not.toContain('Create account');expect(host.textContent).not.toContain('Enter bank');expect(host.querySelector('iframe')).toBeNull();}finally{await act(async()=>root.unmount());}
+});
+it('recovers an accepted Counter payment on a closed public link without creating an account or approving twice',async()=>{
+ const f=hostedFixture(1000),controller=f.newController();await controller.ready;const fixedSale=await createFixedSale({schema:'bank.fixed-checkout.v1',saleId:'20000000-0000-4000-8000-000000000099',recipientUserId:'10000000-0000-4000-8000-000000000002',username:'merchant',currency:'usd',amountUsdCents:'1000'});const {digest:_,...fields}=fixedSale;const approval=await controller.prepare({recipient:'merchant',amountUsdCents:'1000',method:'balance',fixedSale:fields});f.loseResponse(true);f.loseLookup(true);await controller.approve(approval.digest);expect(controller.snapshot().phase).toBe('confirming');
+ const identity={hostedCheckout:async()=>controller}as unknown as OpenIdentity,session={open:vi.fn(),restore:vi.fn(async()=>identity),import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host);vi.mocked(fetch).mockImplementation(async input=>String(input).includes('merchant-counter')?Response.json({ok:true,schema:'receiz.merchant-counter.v1',found:true,status:'paid',saleDigest:fixedSale.digest,recipientUserId:fixedSale.recipientUserId,amountUsdCents:'1000'}):new Response(null,{status:404}));
+ try{await act(async()=>root.render(<HostedCheckout request={{username:'merchant',amount:'10.00',fixedSale:fields,counter:true}} identitySession={session}/>));await settle(host,'Check my saved payment');expect(session.open).not.toHaveBeenCalled();f.loseLookup(false);await act(async()=>click(host,'Check my saved payment'));await settle(host,'Payment complete');expect(f.transfer).toHaveBeenCalledOnce();expect(f.begin).not.toHaveBeenCalled();}finally{await act(async()=>root.unmount());}
 });
 it('paints a retained recipient portrait without another profile request or waiting for device entry',async()=>{
  const profile=profileFixture();profile.profile.profile.avatarUrl='https://receiz.com/retained-portrait.png';retainPublicProfile(parsePublicProfile(profile,'alexmorgan'));

@@ -15,9 +15,10 @@ export async function readFixedSale(raw:unknown):Promise<FixedSale>{
  if(!raw||typeof raw!=='object'||Array.isArray(raw))return invalid();const {digest,...value}=raw as Record<string,unknown>;if(typeof digest!=='string'||!/^[a-f0-9]{64}$/.test(digest))return invalid();const sale=await createFixedSale(value as unknown as FixedSaleFields);if(sale.digest!==digest)return invalid();return sale;
 }
 /** Public request coordinates, not a signed invoice or a payment approval. */
-export function buildFixedSaleUrl(input:FixedSaleFields){
+export function buildFixedSaleUrl(input:FixedSaleFields,options?:{counter?:boolean}){
  const value=readFixedSaleFields(Object.fromEntries(fields.map(key=>[key,input[key]]))),amount=BigInt(value.amountUsdCents),url=new URL(`/pay/${value.username}/`,BANK_PUBLIC_ORIGIN);
  url.searchParams.set('fixed','1');url.searchParams.set('sale',value.saleId);url.searchParams.set('recipient',value.recipientUserId);url.searchParams.set('amount',`${amount/100n}.${String(amount%100n).padStart(2,'0')}`);
+ if(options?.counter)url.searchParams.set('counter','1');
  if(new TextEncoder().encode(url.href).length>230)return invalid();return url.href;
 }
 export function fixedSalePaymentNote(sale:FixedSale,clientNonce:string){if(!/^[a-f0-9]{64}$/.test(sale.digest)||!uuid(clientNonce))return invalid();return`bank.sale.v1:${sale.digest}:${clientNonce}`;}

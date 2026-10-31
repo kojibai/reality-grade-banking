@@ -1,3 +1,4 @@
+import {parseFixedSalePaymentNote} from './fixed-checkout';
 import {bookingOverrides} from './booking-link';
 import {readBookingCheckoutContext,readBookingTransferOriginal,sameBookingCheckout,type BookingCheckoutContext} from './checkout-state';
 import {readWalletTransferOriginal} from './wallet-transfer-original';
@@ -57,8 +58,8 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
    if(r.cardFundingLimitUsdCents!==undefined&&(!integer(r.cardFundingLimitUsdCents)||BigInt(r.cardFundingLimitUsdCents)>10000000n))throw Error('BANK_WALLET_FUNDING_INVALID');
    if(r.fundingPreference!==undefined&&r.fundingPreference!=='card'||r.checkoutContext&&!validCheckoutContext(r.checkoutContext,r.clientNonce,r.booking))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
    if(r.recipientAvatarUrl!==undefined&&profileAvatarUrl(r.recipientAvatarUrl)!==r.recipientAvatarUrl)throw Error('BANK_WALLET_CHECKPOINT_INVALID');
-   quote(r.quote,r.amountUsdCents);if(c.status==='recorded')recorded(c.record,c as Checkpoint);if(c.status==='not-sent'&&!['wallet_insufficient_funds','wallet_funding_changed','invalid_token','insufficient_scope','access_denied','public_note_unavailable','card_unpaid','card_expired','card_cancelled','calendar_booking_closed'].includes(c.reason))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
-   if(c.reason==='calendar_booking_closed'&&!r.booking)throw Error('BANK_WALLET_CHECKPOINT_INVALID');
+   quote(r.quote,r.amountUsdCents);if(c.status==='recorded')recorded(c.record,c as Checkpoint);if(c.status==='not-sent'&&!['wallet_insufficient_funds','wallet_funding_changed','invalid_token','insufficient_scope','access_denied','public_note_unavailable','card_unpaid','card_expired','card_cancelled','calendar_booking_closed','merchant_counter_closed','merchant_counter_payment_mismatch'].includes(c.reason))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
+   if(c.reason==='calendar_booking_closed'&&!r.booking)throw Error('BANK_WALLET_CHECKPOINT_INVALID');if(['merchant_counter_closed','merchant_counter_payment_mismatch'].includes(c.reason)&&parseFixedSalePaymentNote(r.note)?.clientNonce!==r.clientNonce)throw Error('BANK_WALLET_CHECKPOINT_INVALID');
    if((c.status==='funding'||r.fundingPreference==='card')&&!c.funding)throw Error('BANK_WALLET_FUNDING_INVALID');
    if(c.funding){const f=object(c.funding);
     if(!['reviewing','creating','ready','credited'].includes(f.stage)||!integer(f.amountUsdCents,true))throw Error('BANK_WALLET_FUNDING_INVALID');
@@ -123,10 +124,11 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
   try{acknowledgement=review.note?await context.client.request('/api/connect/transfers/public-note',{method:'POST',body}):await context.client.connect.transfer(body);}catch(error){
    input.assertOpen();const e=error as {status?:number;payload?:Json},p=e.payload;
    const bookingClosed=!!review.booking&&(p?.error==='calendar_booking_closed'||p?.submission?.error==='calendar_booking_closed')&&p?.submission?.status==='not-submitted'&&p.submission.clientNonce===body.clientNonce&&sameBookingCheckout(p.booking,review.booking);
+   const counterRefused=!!parseFixedSalePaymentNote(review.note)&&parseFixedSalePaymentNote(review.note)?.clientNonce===body.clientNonce&&['merchant_counter_closed','merchant_counter_payment_mismatch'].includes(p?.error)&&p?.submission?.status==='not-submitted'&&p.submission.clientNonce===body.clientNonce;
    const refused=['wallet_insufficient_funds','wallet_funding_changed'].includes(p?.error)&&p?.submission?.status==='not-submitted'&&p?.submission?.clientNonce===body.clientNonce;
    const denied=[401,403].includes(e.status??0)&&['invalid_token','insufficient_scope','access_denied'].includes(p?.error);
    const unavailable=!!review.note&&[404,405].includes(e.status??0);
-   if(refused||denied||unavailable||bookingClosed){
+   if(refused||denied||unavailable||bookingClosed||counterRefused){
     if(refused&&p!.error==='wallet_insufficient_funds'&&input.funding&&!s.current.funding&&allowFunding){
      const next:WalletSendState={...s,current:{...s.current,status:'funding',funding:{stage:'reviewing',amountUsdCents:review.amountUsdCents,refusal:{status:'not-submitted',clientNonce:body.clientNonce,error:'wallet_insufficient_funds'}}}};
      await input.store.write(next,s);input.assertOpen();return openFunding(next,context);

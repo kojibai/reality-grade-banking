@@ -2,6 +2,9 @@ import {expect,it,vi} from 'vitest';
 import {createCheckoutIdentitySession} from '../src/checkout/checkout-identity';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 function fixture(){const identity={dispose:vi.fn(),prepareAccountView:vi.fn()}as unknown as OpenIdentity;let held:OpenIdentity|null=null;const create=vi.fn(async()=>held=identity),restore=vi.fn(async()=>held),importIdentity=vi.fn(async()=>identity);return{identity,create,restore,importIdentity,deps:{create,restore,importIdentity}};}
+it('opens only an existing identity for closed-checkout recovery and never creates one',async()=>{
+ const f=fixture(),s=createCheckoutIdentitySession(f.deps);expect(await s.restore()).toBeNull();expect(f.create).not.toHaveBeenCalled();f.restore.mockResolvedValue(f.identity);expect(await s.restore()).toBe(f.identity);expect(await s.open()).toBe(f.identity);expect(f.create).not.toHaveBeenCalled();s.close();
+});
 it('reuses one identity for simultaneous landing consumers without preparing a dashboard',async()=>{
  const f=fixture(),session=createCheckoutIdentitySession(f.deps);const [a,b]=await Promise.all([session.open(),session.open()]);expect(a).toBe(b);expect(f.create).toHaveBeenCalledTimes(1);expect(f.identity.prepareAccountView).not.toHaveBeenCalled();session.close();expect(f.identity.dispose).toHaveBeenCalledOnce();
 });
