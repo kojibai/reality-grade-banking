@@ -788,6 +788,14 @@
       "destination": "/vault/index.html"
     },
     {
+      "source": "/merchant",
+      "destination": "/merchant/index.html"
+    },
+    {
+      "source": "/merchant/",
+      "destination": "/merchant/index.html"
+    },
+    {
       "source": "/business",
       "destination": "/business/index.html"
     },
