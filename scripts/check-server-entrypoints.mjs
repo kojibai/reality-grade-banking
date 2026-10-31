@@ -16,7 +16,7 @@ async function emit(source){
 }
 try{
  await writeFile(join(stage,'package.json'),'{"type":"module"}');await symlink(resolve(root,'node_modules'),join(stage,'node_modules'),'dir');
- for(const name of ['index','profile','asset','receipt','book','cooperatives'])await emit(resolve(root,'api/'+name+'.ts'));
+ for(const name of ['index','profile','asset','receipt','book','cooperatives','read'])await emit(resolve(root,'api/'+name+'.ts'));
  await emit(resolve(root,'tests/fixtures/public-profile.ts'));
  await cp(resolve(root,'server/profile-runtime'),resolve(stage,'server/profile-runtime'),{recursive:true});
  await mkdir(resolve(stage,'dist/explore'),{recursive:true});await copyFile(resolve(root,'dist/explore/index.html'),resolve(stage,'dist/explore/index.html'));
@@ -32,7 +32,7 @@ globalThis.fetch=async(url,init)=>{
  assert.equal(String(url),'https://receiz.com/api/profile/alexmorgan?surface=public-route&representation=collection-v2');
  assert.equal(init.credentials,'omit');calls++;return Response.json(profileFixture());
 };
-for(const name of ['index','profile','asset','receipt','book','cooperatives']){
+for(const name of ['index','profile','asset','receipt','book','cooperatives','read']){
  const {default:api}=await import('./api/'+name+'.js');
  assert.equal(typeof api.fetch,'function',name+' must boot in plain Node');console.log('BOOT',name);
 }
@@ -40,6 +40,13 @@ assert.equal(calls,0,'Function imports must not request upstream data.');
 const {default:profile}=await import('./api/profile.js');
 assert.equal((await profile.fetch(new Request('https://bankeiz.com/api/profile?username=alexmorgan',{method:'HEAD'}))).status,200);
 assert.equal(calls,0,'HEAD must not request a profile.');
+const {default:reading}=await import('./api/read.js');
+assert.equal((await reading.fetch(new Request('https://bankeiz.com/read/profiles/alexmorgan/',{method:'HEAD'}))).status,200);
+assert.equal(calls,0,'Reading HEAD must not request any source.');
+const readable=await reading.fetch(new Request('https://bankeiz.com/read/profiles/alexmorgan/',{headers:{accept:'text/plain',authorization:'Bearer unused',cookie:'unused'}}));
+assert.equal(readable.status,200);assert.equal(readable.headers.get('content-type'),'text/plain; charset=utf-8');
+const readableText=await readable.text();assert.ok(readableText.includes('Alex Morgan'));assert.ok(!readableText.includes('private@example.com'));assert.equal(calls,1);
+calls=0;
 const response=await profile.fetch(new Request('https://bankeiz.com/api/profile?username=alexmorgan',{headers:{accept:'text/html','user-agent':'Browser smoke check'}}));
 assert.equal(response.status,200);const html=await response.text();
 assert.ok(html.includes('Alex Morgan | Bankeiz'));

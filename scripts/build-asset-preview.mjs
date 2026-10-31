@@ -10,3 +10,7 @@ for(const file of outputs){const bytes=Buffer.from(file.contents),held=await rea
 const wanted=new Set(outputs.map(file=>basename(file.path)));
 for(const name of await readdir(outdir))if(name.endsWith('.mjs')&&!wanted.has(name))await unlink(`${outdir}/${name}`);
 console.log('Built read-only asset previews from existing public readers; PNG renderer remains lazy.');
+
+// Compile the separate anonymous reading entry with the existing public
+// presentation compiler. This never enters the client import graph.
+await import('./build-public-reading.mjs');

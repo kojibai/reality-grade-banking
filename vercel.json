@@ -26,6 +26,9 @@
     "api/book.ts": {
       "maxDuration": 30,
       "includeFiles": "{dist/booking/index.html,server/booking-runtime/**,scripts/social/fonts/*.ttf}"
+    },
+    "api/read.ts": {
+      "maxDuration": 30
     }
   },
   "redirects": [
@@ -41,6 +44,22 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/read/assets/:asset/",
+      "destination": "/api/read?kind=asset&id=:asset"
+    },
+    {
+      "source": "/read/assets/:asset",
+      "destination": "/api/read?kind=asset&id=:asset"
+    },
+    {
+      "source": "/read/profiles/:username([a-z0-9_]{3,24})/",
+      "destination": "/api/read?kind=profile&id=:username"
+    },
+    {
+      "source": "/read/profiles/:username([a-z0-9_]{3,24})",
+      "destination": "/api/read?kind=profile&id=:username"
+    },
     {
       "source": "/matter",
       "destination": "/matter/index.html"
@@ -928,6 +947,60 @@
     {
       "source": "/:username([a-z0-9_]{3,24})",
       "destination": "/api/profile?username=:username"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/read/pages/:path*",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'none'; img-src https:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/read/public/:path*",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'none'; img-src https:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/read/catalog/:path*",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'none'; img-src https:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/read/ledger/:path*",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'none'; img-src https:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+      ]
     }
   ]
 }

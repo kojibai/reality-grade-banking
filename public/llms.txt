@@ -12,6 +12,15 @@
 - [Actual banking walkthrough](https://bankeiz.com/banking/)
 - [Complete canonical operating manual](https://docs.bankeiz.com/)
 
+## Read public content without running the app
+- [Public reading directory](https://bankeiz.com/read/public/)
+- [All public Originals and their owners](https://bankeiz.com/read/catalog/)
+- [Retained public Ledger evidence](https://bankeiz.com/read/ledger/)
+- Reading pages contain ordinary links and have an index.txt text counterpart. App pages advertise their reading view with rel=alternate.
+- Read a named Original at /read/assets/{URL-encoded asset ID}/ and a public profile at /read/profiles/{username}/. Use Accept: text/plain or ?format=text for text. These routes use the same anonymous public sources, preserve refusals and require no account access.
+- Original reading views expose complete carried public text, observed pricing and valuation inputs, known proof details and permitted material references. Prices remain public source observations, not execution terms. Linked downloads retain their existing access rules. Audio, video and document bytes are referenced, not transcribed or converted into invented text.
+- Catalog and Ledger reading pages disclose their capture basis and link to later pages. Retained history is not a claim about current ownership, current visibility or a current executable price.
+
 ## Start with the source
 - [The economy](https://bankeiz.com/learn/proof-native-economy/)
 - [The banking standard](https://bankeiz.com/learn/reality-grade-banking/)

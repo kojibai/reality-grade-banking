@@ -32,6 +32,7 @@ import {businessPage,businessContent} from './business-page.mjs';
 import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
 import {directoryContent,fitContent} from './business-fit-pages.mjs';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import {gunzipSync} from 'node:zlib';
 import { createServer } from 'vite';
 import { openingShellHtml } from './opening-shell.mjs';
 import { buildLaunchImages } from './build-launch-images.mjs';
@@ -69,7 +70,7 @@ const economyCss=await readFile('public/learn/economy.css','utf8');
 const cooperativeCss=await readFile('public/learn/cooperatives.css','utf8');
 const protectionCss=await readFile('public/learn/vault-protection.css','utf8');
 const valueHead = originalsAssets.head + `<link rel="stylesheet" href="${valueAssets.cssUrl}"><script src="${valueAssets.jsUrl}" defer></script>`;
-let bankHtml,certificateShell,feedState,discoveryState,bookingExamples;
+let bankHtml,certificateShell,feedState,discoveryState,bookingExamples,readingWriter,readingCatalog,readingLedger,readingLinks;
 let assetPaths=[];
 const publicPages = {};
 const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' });
@@ -83,7 +84,11 @@ try {
   const { BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_MESSAGING_CONSENT, BANK_MESSAGING_SCOPES } = await server.ssrLoadModule('/src/receiz/config.ts');
   const {parsePublicMarket}=await server.ssrLoadModule('/src/receiz/public-market.ts'),{mergePublicSports}=await server.ssrLoadModule('/src/receiz/public-sports.ts');
   const [market,sports]=await Promise.all(['market','sports'].map(name=>readFile(`public/receiz-public-${name}.json`,'utf8').then(JSON.parse)));
-  assetPaths=mergePublicSports(parsePublicMarket(market,market.snapshot),sports).items.map(item=>`/asset/${encodeURIComponent(item.id)}/`);
+  readingCatalog=mergePublicSports(parsePublicMarket(market,market.snapshot),sports);
+  assetPaths=readingCatalog.items.map(item=>`/asset/${encodeURIComponent(item.id)}/`);
+  const [reading,ledger,readingMetadata,ledgerBytes]=await Promise.all([server.ssrLoadModule('/scripts/public-reading-pages.mjs'),server.ssrLoadModule('/src/receiz/public-network-cache.ts'),server.ssrLoadModule('/server/public-reading-links.ts'),readFile('public/receiz-public-ledger.json.gz.bin')]);
+  readingWriter=reading.writePublicReadingPages;readingLinks=readingMetadata.publicReadingLinks;
+  readingLedger=ledger.parsePublicNetworkCache(JSON.parse(gunzipSync(ledgerBytes)));
   pages.push(merchantPage,momentsPage,bankingPage,guidePage,meetingPage,bookingGuidePage,matterPage,...accountNoticePages(BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_MESSAGING_CONSENT, BANK_MESSAGING_SCOPES), realityGradePage, valueExplainerPage, businessPage,vaultPage,protectionPage,directoryPage,...businessFitPages,...portabilityPages,...economyPages,...cooperativePages,...togetherPages,...twinSalesPages,identityContinuityPage,...outcomePages,...standardPages);
   const html = await readFile('dist/index.html', 'utf8');
   const launchImages = await buildLaunchImages('dist', AccountOpening);
@@ -161,7 +166,8 @@ for (const match of [...entryHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^
   const css = await readFile('dist' + resource.pathname, 'utf8');
   entryHtml = entryHtml.replace(match[0], `<style data-bank-stylesheet="${escape(match[1])}">${css}</style>`);
 }
-await writeFile('dist/index.html', entryHtml);
+const withReadingLink=(html,path)=>{const page=publicPage(path);return page&&!page.noindex?html.replace('</head>',()=>readingLinks('page',page.path)+'</head>'):html;};
+await writeFile('dist/index.html', withReadingLink(entryHtml,'/'));
 const runtimeDocumentHtml=(html,runtime)=>earlyPublicRuntimeDocument(html).replace('<body>',`<body data-bank-surface="${runtime}">`).replace('</head>',`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>',()=>`${bundle}</body>`);
 await writeFile('dist/discover/navigation.json',JSON.stringify(publicPages['/discover/']));
 const documents={...publicPages,...Object.fromEntries(Object.entries(publicRouteAliases).map(([alias,path])=>[alias,publicPages[path]]))};
@@ -170,7 +176,7 @@ for (const [path, page] of Object.entries(documents)) {
   const runtimeHtml = runtimeDocuments.get(path);
   const feedBundle=['feed','discover'].includes(page.runtime)?`<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({reserved:feedState.profileNames,pages:{'/feed/':publicPages['/feed/'],'/explore/':publicPages['/explore/'],...(page.runtime==='discover'?{'/discover/':publicPages['/discover/']}:{})},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:bankStyles,css:bankCss,content:bankContent}})).replaceAll('<','\\u003c')}</script>`:null;
   const feedHtml=['feed','discover'].includes(page.runtime)?earlyPublicRuntimeDocument(runtimeHtml).replace('</head>',`<script src="${jsUrl}" defer></script></head>`).replace('</body>',()=>`${feedBundle}</body>`):null;
-  await writeFile(`dist${path}index.html`, feedHtml??(runtimeHtml ? runtimeDocumentHtml(runtimeHtml,page.runtime) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`));
+  await writeFile(`dist${path}index.html`, withReadingLink(feedHtml??(runtimeHtml ? runtimeDocumentHtml(runtimeHtml,page.runtime) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`),path));
 }
 const urls = [...metadataPages.filter(page=>!page.noindex).map(page=>page.path),...assetPaths];
 if(urls.length>50000)throw Error('SITEMAP_PARTITION_REQUIRED');
@@ -181,3 +187,12 @@ console.log(`Prerendered the existing entrance and ${pages.length} public guides
 
 await mkdir('dist/shares',{recursive:true});
 await writeFile('dist/shares/index.html',runtimeDocumentHtml(runtimeDocuments.get('/shares/'),'explore'));
+
+// Build-only public reading. Existing app/navigation documents retain their
+// exact content and runtime; inert alternate links are the only HTML addition.
+const readingPages=Object.fromEntries(metadataPages.filter(page=>!page.noindex).flatMap(page=>{
+ const existing=publicPages[page.path]??(page.path==='/'?publicPages['/learn/']:null);
+ return existing?[[page.path,{title:page.title,description:page.description,content:existing.content}]]:[];
+}));
+const readingResult=await readingWriter({outdir:'dist',pages:readingPages,catalog:readingCatalog,ledger:readingLedger});
+console.log(`Wrote ${readingResult.pages} static public reading pages from existing sources; ${readingResult.assets} assets and ${readingResult.publicRecords} public records, no additional source requests.`);

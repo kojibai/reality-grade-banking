@@ -36,12 +36,15 @@ export function createPublicProfileReader(fetchImpl:typeof fetch=fetch,enrich:(p
  };
 }
 export const readPublicProfile=createPublicProfileReader();
-export function createPublicOriginalReader(fetchImpl:typeof fetch=fetch){
+type OriginalReader<T>=(username:string,originalId:string)=>Promise<T|null>;
+export function createPublicOriginalReader(fetchImpl?:typeof fetch):OriginalReader<ReturnType<typeof parsePublicOriginal>>;
+export function createPublicOriginalReader<T extends ReturnType<typeof parsePublicOriginal>>(fetchImpl:typeof fetch,project:(input:unknown,username:string,originalId:string)=>T):OriginalReader<T>;
+export function createPublicOriginalReader(fetchImpl:typeof fetch=fetch,project:typeof parsePublicOriginal=parsePublicOriginal){
  return async(username:string,originalId:string)=>{
   if(!profileUsername(username)||!/^[A-Za-z0-9_-]{1,128}$/.test(originalId))throw new PublicProfileError('PROFILE_ORIGINAL_INVALID',400);
   const response=await fetchImpl(`https://receiz.com/api/profile/${username}/originals/${originalId}/verified`,{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12_000),headers:{accept:'application/json'}});
   if(!response.ok){await response.body?.cancel().catch(()=>{});if([403,404].includes(response.status))return null;throw new PublicProfileError('PROFILE_UNAVAILABLE',503);}
-  return parsePublicOriginal(await readBody(response),username,originalId);
+  return project(await readBody(response),username,originalId);
  };
 }
 export const readPublicOriginal=createPublicOriginalReader();

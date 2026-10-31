@@ -5,8 +5,9 @@ import {publicProfileArtwork} from '../src/content/public-asset-titles.js';
 import {safeReceizArtworkUrl} from '../src/receiz/public-market.js';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
+import {publicReadingLinks} from './public-reading-links.js';
 const escape=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
-function profilePageTemplate(html:string){return html.replace(/<script\b[^>]*>/gi,tag=>/\btype="module"/.test(tag)&&/\bsrc="(?:\/assets\/explore-[^"]+\.js|\/src\/public-explorer\/main\.tsx)"/.test(tag)&&! /\basync(?:\s|>)/.test(tag)?tag.replace('type="module"','type="module" async'):tag).replace(/<title>[\s\S]*?<\/title>/gi,'').replace(/<meta\b[^>]*(?:name="(?:description|robots|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/gi,'').replace(/<link\b[^>]*rel="canonical"[^>]*>/gi,'').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/gi,'');}
+function profilePageTemplate(html:string){return html.replace(/<script\b[^>]*>/gi,tag=>/\btype="module"/.test(tag)&&/\bsrc="(?:\/assets\/explore-[^"]+\.js|\/src\/public-explorer\/main\.tsx)"/.test(tag)&&! /\basync(?:\s|>)/.test(tag)?tag.replace('type="module"','type="module" async'):tag).replace(/<title>[\s\S]*?<\/title>/gi,'').replace(/<meta\b[^>]*(?:name="(?:description|robots|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/gi,'').replace(/<link\b[^>]*(?:rel="canonical"|data-public-reading="(?:html|text)")[^>]*>/gi,'').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/gi,'');}
 export function profilePreviewHtml(html:string,username:string,profile:PublicProfile|null,error?:string,content?:string){
  const name=profile?.displayName??'Profile',title=name+' | Bankeiz',description=profile?.bio??`Explore @${username}'s public assets and activity.`,canonical='https://bankeiz.com'+profilePagePath(username);
  const socialImage=profile?publicProfileSocialImage(profile):null;
@@ -17,7 +18,7 @@ export function profilePreviewHtml(html:string,username:string,profile:PublicPro
  const navigationSeed=html.includes('<script id="receiz-navigation"');
  const initial=content??`<main class="public-entry-placeholder"><a href="/explore/">Explore</a><h1>${escape(name)}</h1><p>@${username}</p><p>${escape(description)}</p></main>`;
  return profilePageTemplate(html)
- .replace('</head>',()=>tags+hints+'</head>').replace(/(<div id="public-explore-root"[^>]*>)[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_whole,start,end)=>start+initial+end).replace(navigationSeed?'<script id="receiz-navigation"':'</body>',()=>seed+(navigationSeed?'<script id="receiz-navigation"':'</body>'));
+ .replace('</head>',()=>tags+hints+(profile?publicReadingLinks('profile',username):'')+'</head>').replace(/(<div id="public-explore-root"[^>]*>)[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_whole,start,end)=>start+initial+end).replace(navigationSeed?'<script id="receiz-navigation"':'</body>',()=>seed+(navigationSeed?'<script id="receiz-navigation"':'</body>'));
 }
 export async function prepareProfileDocument(){const path=pathToFileURL(resolve('server/profile-runtime/profile-document.mjs')).href;return import(path);}
 export async function renderProfileDocument(profile:PublicProfile):Promise<string>{return(await prepareProfileDocument()).renderPublicProfile(profile);}
