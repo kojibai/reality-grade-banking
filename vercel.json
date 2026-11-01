@@ -926,11 +926,11 @@
     },
     {
       "source": "/pay/:username/",
-      "destination": "/pay/index.html"
+      "destination": "/pay/checkout.html"
     },
     {
       "source": "/pay/:username",
-      "destination": "/pay/index.html"
+      "destination": "/pay/checkout.html"
     },
     {
       "source": "/u/:username([a-z0-9_]{3,24})/",

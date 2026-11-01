@@ -49,8 +49,8 @@ for(const [name,expected]of Object.entries(JSON.parse(await readFile('dist/proof
  assert.equal(actual.bytes,expected.bytes,'Offline proof source size changed: '+name);
 }
 
-assert.ok(shell.includes('/pay/index.html'),'The static checkout document participates in exact build caching, without request parameters or payment responses.');
-assert.equal(manifest.pages['/pay/index.html'],'/pay/index.html');
+assert.ok(shell.includes('/pay/checkout.html'),'The static checkout document participates in exact build caching, without request parameters or payment responses.');
+assert.equal(manifest.pages['/pay/checkout.html'],'/pay/checkout.html');
 
 assert.equal(manifest.pages['/moments/'],'/learn/','Moments reuses the retained public shell offline.');
 for(const path of ['/learn/moments.js','/learn/moments-model.mjs'])assert.ok(shell.includes(path),'The Moments presentation is available offline.');

@@ -54,7 +54,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   }
   visit('index.html');
   if(manifest['vault/index.html']){visit('vault/index.html');urls.add('/vault/index.html');}
-  if(manifest['pay/index.html']){visit('pay/index.html');urls.add('/pay/index.html');}
+  if(manifest['pay/checkout.html']){visit('pay/checkout.html');urls.add('/pay/checkout.html');}
   if (manifest['verify/index.html']) { visit('verify/index.html'); urls.add('/verify/'); }
   if (manifest['receipt/index.html']) {visit('receipt/index.html');urls.add('/receipt/');}
   if (manifest['ledger/index.html']) {visit('ledger/index.html');urls.add('/ledger/');}
@@ -75,7 +75,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   urls.add('/learn/contact.js');
   const pages = { '/': '/index.html', '/index.html': '/index.html', '/receipt/':'/index.html' };
   if(manifest['vault/index.html'])pages['/vault/index.html']='/vault/index.html';
-  if(manifest['pay/index.html'])pages['/pay/index.html']='/pay/index.html';
+  if(manifest['pay/checkout.html'])pages['/pay/checkout.html']='/pay/checkout.html';
   if (manifest['verify/index.html']) { pages['/verify/'] = '/verify/'; pages['/verify'] = '/verify/'; }
   if (manifest['receipt/index.html']) pages['/receipt/']='/receipt/';
   if (manifest['ledger/index.html']) {pages['/ledger/']='/ledger/';pages['/ledger']='/ledger/';}
@@ -92,8 +92,9 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     if(economyPages.some(page=>page.path===canonicalPath)||canonicalPath==='/coops/'){urls.add('/learn/economy.js');urls.add('/learn/economy-model.mjs');}
     if(canonicalPath===momentsPage.path){urls.add('/learn/moments.js');urls.add('/learn/moments-model.mjs');}
     if(canonicalPath===bookingGuidePage.path)urls.add('/learn/book.js');
+    if(canonicalPath==='/pay/')urls.add('/learn/pay.js');
     if(canonicalPath===matterPage.path){urls.add('/learn/matter.js');urls.add('/learn/product-walkthrough.js');}
-    const knownGuide=[bookingGuidePage.path,matterPage.path].includes(canonicalPath)||canonicalPath===momentsPage.path||canonicalPath===meetingPage.path||standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/merchant/','/protect/','/vaults/','/id/','/guide/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
+    const knownGuide=['/pay/',bookingGuidePage.path,matterPage.path].includes(canonicalPath)||canonicalPath===momentsPage.path||canonicalPath===meetingPage.path||standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/merchant/','/protect/','/vaults/','/id/','/guide/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
     if(canonicalPath===directoryPage.path)urls.add('/learn/business-fit.js');
     if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/discover/','/feed/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     // Each retained document already carries the complete public catalog.

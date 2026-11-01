@@ -41,7 +41,7 @@ it('ships reproducible PWA and Apple sizes from the same original vector', () =>
 
 
 it('advertises the same crawlable PNG bank favicon across app entries, public pages and standalone docs', async () => {
-  const entries = ['index.html', 'pay/index.html', 'vault/index.html', 'conformance/index.html', 'verify/index.html', 'receipt/index.html', 'ledger/index.html', 'explore/index.html'];
+  const entries = ['index.html', 'pay/checkout.html', 'vault/index.html', 'conformance/index.html', 'verify/index.html', 'receipt/index.html', 'ledger/index.html', 'explore/index.html'];
   for (const path of entries) {
     const html = read(path).toString();
     expect(html, path).toContain('rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"');

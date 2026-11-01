@@ -1,8 +1,8 @@
 import {expect,it} from 'vitest';
 import {checkoutEntryPath} from '../server/checkout-preview-plugin';
 it('routes checkout cold loads and card returns to their own entry rather than a profile or account app',()=>{
- expect(checkoutEntryPath('/pay/no/')).toBe('/pay/index.html');expect(checkoutEntryPath('/pay/')).toBe('/pay/index.html');
- expect(checkoutEntryPath('/pay/merchant/?amount=12.30')).toBe('/pay/index.html');expect(checkoutEntryPath('/pay/merchant')).toBe('/pay/index.html');expect(checkoutEntryPath('/pay/merchant/?checkoutReturn=1&session_id=cs_test_return123&checkout_id=x')).toBe('/pay/index.html');expect(checkoutEntryPath('/merchant/')).toBeNull();expect(checkoutEntryPath('/pay/index.html')).toBeNull();
+ expect(checkoutEntryPath('/pay/no/')).toBe('/pay/checkout.html');expect(checkoutEntryPath('/pay/')).toBeNull();
+ expect(checkoutEntryPath('/pay/merchant/?amount=12.30')).toBe('/pay/checkout.html');expect(checkoutEntryPath('/pay/merchant')).toBe('/pay/checkout.html');expect(checkoutEntryPath('/pay/merchant/?checkoutReturn=1&session_id=cs_test_return123&checkout_id=x')).toBe('/pay/checkout.html');expect(checkoutEntryPath('/merchant/')).toBeNull();expect(checkoutEntryPath('/pay/index.html')).toBeNull();
 });
 import {checkoutEntry} from '../src/checkout/entry';
 it('rejects invalid pages before device entry and handles iframe returns without opening checkout',()=>{

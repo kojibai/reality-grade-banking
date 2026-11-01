@@ -1,5 +1,6 @@
 import {matterPage} from '../src/content/digital-matter.mjs';
 import {bookingGuidePage} from '../src/content/booking-guide.mjs';
+import {paymentGuidePage,paymentGuideFaq} from '../src/content/payment-guide.mjs';
 import {momentsPage,momentsFaq} from '../src/content/personal-moments.mjs';
 import {meetingPage} from '../src/content/meeting-page.mjs';
 import {bankingPage} from '../src/content/banking-walkthrough.mjs';
@@ -28,6 +29,7 @@ export const publicPages = [
  {...guidePage,id:'guide',motif:'book'},
  {...meetingPage,id:'meet',motif:'bank'},
  {...bookingGuidePage,id:'book',motif:'calendar'},
+ {...paymentGuidePage,id:'pay',motif:'receipt',faq:paymentGuideFaq},
  {...matterPage,id:'digital-matter',motif:'cube'},
  ...portabilityPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-Grade Banking',description:page.description,lines:page.shareLines,caption:page.shareCaption,motif:'layers'})),
  ...economyPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Reality-Grade Banking',description:page.description,lines:page.lines,caption:page.eyebrow,motif:'layers'})),
