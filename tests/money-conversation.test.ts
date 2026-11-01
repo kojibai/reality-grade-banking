@@ -24,7 +24,23 @@ it('returns actual tool failure to the Twin instead of trapping an already accep
  let count=0;const ask=vi.fn(async q=>reply(q.requestId,++count===1?[{tool:'money_search_history',args:{}}]:[])),execute=vi.fn(async()=>{throw Error('MONEY_SOURCE_UNAVAILABLE');});
  const result=await runMoneyConversation({accountUid:'owner',question:base,ask,execute});expect(result.receipts[0].status).toBe('refused');expect(result.receipts[0].summary).toContain('MONEY_SOURCE_UNAVAILABLE');expect(ask).toHaveBeenCalledTimes(2);
 });
+it('keeps bounded HTTP diagnostics without exposing private SDK payloads or arbitrary messages',async()=>{
+ let count=0;const ask=vi.fn(async q=>reply(q.requestId,++count===1?[{tool:'money_search_history',args:{}}]:[]));
+ const execute=vi.fn(async()=>{throw Object.assign(Error('account_proof_source_unavailable'),{status:503,payload:{private:'do-not-disclose'}});});
+ const result=await runMoneyConversation({accountUid:'owner',question:base,ask,execute});
+ expect(result.receipts[0].summary).toBe('HTTP_503');expect(JSON.stringify(result)).not.toContain('do-not-disclose');
+});
 it('keeps full tool receipts for recovery while bounding only the next model working context',async()=>{
  let calls=0;const ask=vi.fn(async q=>reply(q.requestId,++calls<=2?[{tool:'money_search_history',args:{offset:calls}}]:[]));const execute=vi.fn(async(turn)=>({id:turn.requestId,tool:'money_search_history',status:'accepted' as const,summary:'Actual retained source',data:{sourceDigest:'a'.repeat(64),transactions:[{description:'x'.repeat(18000)}]}}));
  const result=await runMoneyConversation({accountUid:'owner',question:base,ask,execute});expect(result.receipts).toHaveLength(2);expect((result.receipts[0].data!.transactions as any[])[0].description.length).toBe(18000);const context=ask.mock.calls[2][0].moneyContext.results;expect(context.length).toBeLessThanOrEqual(32000);expect(context).toContain('retained');expect(JSON.parse(context).at(-1).data.transactions[0].description.length).toBe(18000);
+});
+it('continues a valid large history result with bounded model text while retaining every exact receipt',async()=>{
+ let calls=0;const ask=vi.fn(async q=>reply(q.requestId,++calls===1?[{tool:'money_search_history',args:{}}]:[]));
+ const trade={side:'sell',shareQuantityMicro:'2500000',priceUsdCents:'1000',feeUsdCents:'37',realizedCostBasisUsdCents:'2100',settlementUsdCents:'2463'};
+ const transactions=Array.from({length:20},(_,index)=>({transactionId:'transaction-'+index,amountUsdCents:'9007199254740993',description:'x'.repeat(12000),title:'y'.repeat(4000),assetTrade:trade}));
+ const execute=vi.fn(async()=>({id:'large',tool:'money_search_history',status:'accepted' as const,summary:'Recorded history',data:{coverage:{complete:false},transactions,nextOffset:20}}));
+ const result=await runMoneyConversation({accountUid:'owner',question:base,ask,execute});
+ expect((result.receipts[0].data!.transactions as typeof transactions)[0].description).toHaveLength(12000);
+ const context=ask.mock.calls[1][0].moneyContext.results;expect(context.length).toBeLessThanOrEqual(32000);
+ const working=JSON.parse(context)[0];expect(working.data.nextOffset).toBe(20);expect(working.data.transactions).toHaveLength(20);expect(working.data.transactions[0].amountUsdCents).toBe('9007199254740993');expect(working.data.transactions[0].assetTrade).toEqual(trade);expect(working.data.workingProjection).toContain('Full');
 });

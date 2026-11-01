@@ -2,6 +2,9 @@ import {beforeEach,expect,it,vi} from 'vitest';
 import {BANK_APPLICATION_ID,BANK_READ_SCOPES,BANK_MESSAGING_SCOPES,BANK_ORGANIZER_SCOPES} from '../src/receiz/config';
 import {openCanonicalIdentity,importNativeIdentity} from '../src/receiz/native-identity';
 import type {WalletObservation} from '../src/receiz/wallet-observation';
+import {parsePrivateHistoryPage} from '../src/receiz/private-history';
+const moneyHistory=vi.hoisted(()=>({cache:null as import('../src/receiz/identity-vault').PrivateHistoryCache|null}));
+vi.mock('../src/receiz/private-history-restore',()=>({preloadPrivateHistory:async()=>moneyHistory.cache,updatePrivateHistory:(_identity:unknown,_uid:string,value:import('../src/receiz/identity-vault').PrivateHistoryCache)=>{moneyHistory.cache=value;return true;}}));
 // Integration sequencing only. The independent Chrome test opens real v129
 // native originals with the actual verifier and encrypted IndexedDB store.
 const p=vi.hoisted(()=>({pulse:100,organizerDisplay:null as unknown,saveOrganizerDisplay:vi.fn(),messagingDisplay:null as unknown,saveMessagingDisplay:vi.fn(),messagingConsent:null as unknown,saveMessaging:vi.fn(),scopes:[] as string[],known:null as WalletObservation|null,projection:null as unknown,device:vi.fn(),restore:vi.fn(),retain:vi.fn(),original:vi.fn(),proof:vi.fn(),continueId:vi.fn(),wallet:vi.fn(),save:vi.fn(),request:vi.fn(),library:vi.fn(),heldFetch:undefined as typeof fetch|undefined}));
@@ -18,8 +21,31 @@ vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({
 })}));
 const observation=(reserve='600',kai='100000002'):WalletObservation=>({observedAt:'2026-10-18T12:00:00Z',wallet:{userId:'bound-user',totalUsdCents:reserve,reserveUsdCents:reserve,settlementUsdCents:'0',balancePhiMicro:'3000000',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:'100',kaiUpulse:kai}});
 const proof={sourceDigest:'b'.repeat(64),statement:{schema:'bankeiz.public-account-statement.v2'}};
+it('reuses My history for financial recaps when the separate complete account-proof source is unavailable',async()=>{
+ p.scopes=[...BANK_READ_SCOPES,...BANK_MESSAGING_SCOPES];p.proof.mockRejectedValue(Object.assign(Error('account_proof_source_unavailable'),{status:503}));
+ const page=parsePrivateHistoryPage({ok:true,accountUserId:'bound-user',nextCursor:null,events:[{id:'receipt:1',kind:'reserve_credit',createdAt:'2026-11-01T13:00:00Z',amountUsdCents:'20000'}]},'bound-user');
+ moneyHistory.cache={schema:'bank.private-history-cache.v1',accountUid:'bound-user',observedAt:'2026-11-01T13:00:00Z',records:page.records,nextCursor:null,pages:[{cursor:null,json:page.sourceJson}]};
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  await identity.messaging!(true);p.request.mockClear();p.proof.mockClear();
+  const tools=await identity.moneyTools!(),result=await tools.execute({requestId:'money-history-owner-read',humanText:'Recap my transactions'},{tool:'money_search_history',args:{}});
+  expect(result).toMatchObject({status:'accepted',data:{authority:'authenticated-account-history',transactions:[{amountUsdCents:'20000'}]}});
+  expect(p.request).not.toHaveBeenCalled();expect(p.proof).not.toHaveBeenCalled();expect(p.original).not.toHaveBeenCalled();
+ }finally{identity.dispose();}
+});
+it('uses one ordinary owner-bound Ledger page on a first financial recap, without the optional full-source read',async()=>{
+ p.scopes=[...BANK_READ_SCOPES,...BANK_MESSAGING_SCOPES];p.request.mockResolvedValue({ok:true,accountUserId:'bound-user',nextCursor:null,events:[]});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  await identity.messaging!(true);p.request.mockClear();
+  const tools=await identity.moneyTools!();await tools.execute({requestId:'money-history-first-read',humanText:'Recap my transactions'},{tool:'money_search_history',args:{}});
+  await tools.execute({requestId:'money-history-next-read',humanText:'Recap my transactions'},{tool:'money_search_history',args:{}});
+  expect(p.request).toHaveBeenCalledExactlyOnceWith('/api/wallet/ledger?limit=100&includeReceiz=0');expect(p.proof).not.toHaveBeenCalled();
+ }finally{identity.dispose();}
+});
 const carriedProjection=()=> ({authority:'verified-identity-portable-state',portableStateVerified:true,completeAtSealedHead:true,owner:{uid:'owner'},verifiedState:{account:{userId:'owner'},exportedAt:'2026-10-18T12:00:00Z',accountStateHead:{kaiUpulse:'10000000'},wallet:{routeSummary:{userId:'owner',balanceUsd:'50.92',balancePhiMicro:'3000000',quote:{usdPerPhiMicrocents:'4092328496'},valueStates:{settledBalanceUsdCents:'1000',ecosystemBalanceUsdCents:'4092'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'3000000'}},ledgerEntries:[{id:'funded',user_id:'owner',direction:'credit',entry_kind:'admin_adjustment',amount_phi_micro:'2000000',amount_usd_cents:'1000',kai_upulse:'2000000',metadata:{}},{id:'received',user_id:'owner',direction:'credit',entry_kind:'chat_transfer',amount_phi_micro:'1000000',amount_usd_cents:'5024',kai_upulse:'3000000',metadata:{rail:'settlement'}}]},ledger:{entries:[{actorUserId:'owner',subjectUserId:null,kaiUpulse:'1000000'}]}}});
 beforeEach(()=>{
+ moneyHistory.cache=null;
  p.pulse=100;p.organizerDisplay=null;p.saveOrganizerDisplay.mockReset().mockResolvedValue(undefined);p.messagingDisplay=null;p.saveMessagingDisplay.mockReset().mockResolvedValue(undefined);p.messagingConsent=null;p.saveMessaging.mockReset().mockResolvedValue(undefined);p.scopes=[...BANK_READ_SCOPES];p.known=null;p.projection=null;p.device.mockReset().mockResolvedValue(undefined);p.restore.mockReset().mockResolvedValue(null);p.retain.mockReset().mockResolvedValue({proof,observation:observation()});p.proof.mockReset().mockImplementation(async({request})=>{await request('/account-source');return proof;});
  p.original.mockReset().mockResolvedValue(null);p.library.mockReset().mockImplementation(options=>options);
  p.continueId.mockReset().mockResolvedValue({ok:true,session:{uid:'bound-user'}});p.wallet.mockReset().mockResolvedValue({ok:true,wallet:{userId:'bound-user',balanceUsd:'8.00',balancePhiMicro:'4000000',valueStates:{settledBalanceUsdCents:'800',ecosystemBalanceUsdCents:'0'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'100000003'}}});p.save.mockReset().mockResolvedValue(undefined);p.request.mockReset().mockResolvedValue({});

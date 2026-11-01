@@ -64,7 +64,7 @@ export function createMoneyWorkspace(input:{accountUid:string;identityDigest:str
   if(!/^[A-Za-z0-9][A-Za-z0-9:_-]{7,159}$/.test(turn.requestId)||['constructor','prototype','__proto__'].includes(turn.requestId))throw Error('MONEY_INPUT_INVALID');
   const id=turn.requestId,tool=action.tool,args=action.args;
   if(tool==='money_find_person'){exact(args,['query']);if(!text(args.query,100))throw Error('MONEY_INPUT_INVALID');const api=await input.messages(),people=await api.search(args.query);input.assertOpen();return make(id,tool,'accepted','People matching your existing account directory.',{people:people.map(({userId,username,displayName})=>({userId,username,displayName})),authority:'native-account-directory'});}
-  if(tool==='money_search_history')return make(id,tool,'accepted','Financial history from your retained account source.',await input.history(args) as Record<string,unknown>);
+  if(tool==='money_search_history'){const data=await input.history(args) as Record<string,unknown>;return make(id,tool,'accepted',data.authority==='authenticated-account-history'?'Recorded activity from your same-account Ledger. Coverage is included; these observations do not establish settlement.':'Financial history from your retained account source.',data);}
   if(input.journal&&tool==='money_send_reviewed'){if(syncFlight)await syncFlight;await synchronize();}
   if(input.journal&&!initialized){initialized=true;const held=await input.store.read();input.assertOpen();if(held===null&&tool!=='money_record_commitment')await synchronize();else void synchronize().catch(()=>{});}
   return input.lock(async()=>{

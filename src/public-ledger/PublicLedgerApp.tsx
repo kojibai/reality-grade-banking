@@ -1,6 +1,7 @@
 import {CopyFeedbackIcon,useCopyFeedback} from '../components/CopyFeedback';
 import {LedgerExecutionRecords} from '../features/ledger/LedgerExecutionRecords';
 import {groupLedgerPaymentRecords,ledgerRecordTitle} from '../receiz/ledger-payment-records';
+import {filterLedgerGroups} from '../receiz/ledger-search';
 import {SiteFooter} from '../components/SiteFooter';
 import {LedgerProofControls} from './LedgerProofControls';
 import type {PublicLedgerFileReview} from '../receiz/public-ledger-proof';
@@ -54,7 +55,7 @@ export function PublicLedgerApp({active=true}:{active?:boolean}){
     for(const group of paymentGroups)result[activityCategory(group.record)].push(group);
     return result;
   },[paymentGroups]);
-  const records=useMemo(()=>{const selected=categories[filter],query=search.trim().toLocaleLowerCase();return query?selected.filter(({record,executionRecords})=>[record,...executionRecords].some(record=>[ledgerRecordTitle(record),record.title,ledgerTradeSummary(record),record.kind,record.sourceId,record.kaiUpulse,record.pulse,record.sender,record.recipient,record.actor,...Object.values(record.evidence),...Object.values(record.valueOperands??{})].some(value=>typeof value==='string'&&value.toLocaleLowerCase().includes(query)))):selected;},[categories,filter,search]);
+  const records=useMemo(()=>filterLedgerGroups(categories[filter],search),[categories,filter,search]);
   const relations=useMemo(()=>indexLedgerRelations(ledger.records),[ledger.records]),capturedValues=useMemo(()=>new Map(archive?.displayValues.map(value=>[value.id,value])??[]),[archive]);
   const {transactions,representedSources}=useMemo(()=>{
     const representedSources=new Set<PublicSource>();let transactions=0;
