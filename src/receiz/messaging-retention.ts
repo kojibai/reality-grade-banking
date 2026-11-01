@@ -1,3 +1,4 @@
+import {accountCreationPresentation,accountPersonName} from './account-presentation';
 import type {ChatConversation,ChatMessage,ChatPage,ChatPerson} from './native-messaging';
 import {profileAvatarUrl} from './profile-avatar';
 
@@ -15,7 +16,7 @@ const size=(value:unknown)=>encoder.encode(JSON.stringify(value)).byteLength;
 const object=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
 const text=(value:unknown,max:number)=>typeof value==='string'?value.slice(0,max):'';
 function person(value:ChatPerson):ChatPerson {
-  return {kind:value.kind,userId:text(value.userId,200),username:text(value.username,100)||null,displayName:text(value.displayName,200)||null,avatarUrl:profileAvatarUrl(value.avatarUrl),aiAgentId:text(value.aiAgentId,100)||null};
+  return {...accountCreationPresentation(value as unknown as Record<string,unknown>),kind:value.kind,userId:text(value.userId,200),username:text(value.username,100)||null,displayName:value.kind==='user'?accountPersonName(value):text(value.displayName,200)||null,avatarUrl:profileAvatarUrl(value.avatarUrl),aiAgentId:text(value.aiAgentId,100)||null};
 }
 function message(value:ChatMessage,preview=false):ChatMessage {
   const payment=object(value.walletTransfer);

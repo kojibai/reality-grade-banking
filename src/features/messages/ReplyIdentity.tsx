@@ -1,3 +1,4 @@
+import {accountPersonName} from '../../receiz/account-presentation';
 import {AccountProfileLink} from '../../components/AccountProfileLink';
 import {ProfileAvatar} from '../../components/ProfileAvatar';
 import type {ChatPerson} from '../../receiz/native-messaging';
@@ -9,6 +10,7 @@ export function chatReplyPerson(userId:string,agentId:string|null|undefined,memb
  return members.find(person=>person.kind==='user'&&person.userId===(owner??userId))
   ??members.find(person=>person.kind==='ai'&&!!agentId&&person.aiAgentId===agentId)??null;
 }
-export function ReplyIdentity({name,person,avatarUrl}:{name:string;person?:ChatPerson|null;avatarUrl?:string|null}){
- return <AccountProfileLink username={person?.kind==='user'?person.username:null} className="bank-message-sender" label={'View '+name+' profile'}><ProfileAvatar src={avatarUrl??person?.avatarUrl} name={name} eager/><span>{name}</span></AccountProfileLink>;
+export function ReplyIdentity({name,person,avatarUrl,human=false}:{name:string;human?:boolean;person?:ChatPerson|null;avatarUrl?:string|null}){
+ const label=human&&person?.kind==='user'?accountPersonName(person):name;
+ return <AccountProfileLink username={person?.kind==='user'?person.username:null} className="bank-message-sender" label={'View '+label+' profile'}><ProfileAvatar account={person} src={avatarUrl??person?.avatarUrl} name={label} eager/><span>{label}</span></AccountProfileLink>;
 }

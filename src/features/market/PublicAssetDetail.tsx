@@ -20,7 +20,7 @@ import {AssetProofBack} from '../media/AssetProofBack';
 import {marketContentLabel} from '../../receiz/market-categories';
 import {preparePublicProfile,profilePagePath,profileUsername,retainedPublicProfile,subscribePublicProfiles} from '../../receiz/public-profile';
 import {AccountProfileLink} from '../../components/AccountProfileLink';
-import {ProfileAvatar} from '../../components/ProfileAvatar';
+import {PublicOwnerAvatar} from '../../public-explorer/PublicOwnerAvatar';
 import {PublicCollectibleArtwork} from '../collectibles/PublicCollectibleArtwork';
 
 export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=false }: { item: PublicMarketItem; onTrade?: (mode: 'buy' | 'sell', digest: string) => void;readOnly?:boolean;standalone?:boolean }) {
@@ -47,8 +47,8 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
   const media=item.originalUrl&&item.originalDigest?<ProofMedia publicBook={item.book} allowMediaDownload={item.mediaKind!=='epub'} publicDocument={item.documentUrl?{url:item.documentUrl,assetId:item.assetId}:null} publicAudio={item.mediaKind==='audio'&&item.playback?{...item.playback,assetId:item.assetId}:null} publicVideo={item.mediaKind==='video'&&item.playback?{...item.playback,assetId:item.assetId}:null} artworkUrl={item.artworkUrl} publicImageUrl={publicAssetImagePreviewUrl(item)} autoOpen={standalone} key={[item.originalDigest,item.originalUrl,item.readingUrl??item.verifyUrl].join(':')} title={item.title} source={{kind:"public",url:item.originalUrl,digest:item.originalDigest,...(item.verifyUrl?{postUrl:item.readingUrl??item.verifyUrl,hasLongForm:item.hasLongForm}:{})}}/>:null;
   const collectibleArtwork=item.category==='sports'?safeReceizArtworkUrl(item.artworkUrl):null;
   const object=<AssetObject key={item.id} label={item.title} front={media??(collectibleArtwork?<PublicCollectibleArtwork item={item} eager/>:item.mediaKind==='moment'?<div className="public-collectible-moment"><MomentCard item={item}/></div>:<div className="public-collectible-face"><span>{marketContentLabel(item)}</span><h2>{item.title}</h2><p>{item.summary}</p><code>{item.assetId}</code><small>Public source presentation</small></div>)} renderBack={()=> <AssetProofBack item={item}/>}/>;
-  return <><div className="asset-detail-heading"><PublicObjectArtwork artworkUrl={item.artworkUrl}/><div><h1>{item.title}</h1><p>{standalone?'Source. Ownership. Continuity.':'Public source'}</p></div></div>
-    {standalone&&owner&&<a className="asset-profile-byline" href={profilePagePath(owner)}><ProfileAvatar src={ownerAvatar} name={item.ownerDisplayName??owner} eager/><span>Owner<span>@{profileUsernameLabel(owner)}</span></span><ExternalLink size={13}/></a>}
+  return <><div className="asset-detail-heading"><PublicObjectArtwork item={item} artworkUrl={item.artworkUrl}/><div><h1>{item.title}</h1><p>{standalone?'Source. Ownership. Continuity.':'Public source'}</p></div></div>
+    {standalone&&owner&&<a className="asset-profile-byline" href={profilePagePath(owner)}><PublicOwnerAvatar item={item} src={ownerAvatar} name={item.ownerDisplayName??owner} eager/><span>Owner<span>@{profileUsernameLabel(owner)}</span></span><ExternalLink size={13}/></a>}
     {!standalone&&<AssetPageLinks item={item}/>}
     {standalone&&<div className="public-asset-media">{object}</div>}
     <div className="asset-price public-asset-price"><strong className="asset-price-amount" style={{fontSize:`min(35px, calc((100cqw - 92px) / ${Math.max(1,headline.length*.55)}))`}}>{headline}</strong><span>{showCap?'Market cap':'Market Value'}</span></div>

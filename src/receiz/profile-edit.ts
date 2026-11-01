@@ -1,3 +1,4 @@
+import {accountCreationPresentation,type AccountPresentation} from './account-presentation';
 import {publicProfileArtwork} from './profile-artwork.js';
 import {publicAccountDisplayName} from './account-name.js';
 import {publicProfileLink,profileUsername,type PublicProfile} from './public-profile';
@@ -5,7 +6,7 @@ import {profileAvatarUrl} from './profile-avatar';
 export type ProfileLink={label:string;url:string};
 export type ProfilePatch=Partial<Record<'displayName'|'bio'|'location'|'websiteUrl'|'socialXUrl'|'socialInstagramUrl'|'socialYoutubeUrl'|'socialLinkedinUrl'|'socialGithubUrl'|'avatarUrl'|'bannerUrl',string|null>>&{username?:string;links?:ProfileLink[];isPrivate?:boolean;showSchedulerButton?:boolean};
 export type ProfileUpdate={accountUid:string;profilePath:string;profile:Readonly<Record<string,unknown>>};
-export type OwnerProfilePresentation={userId:string;username:string;displayName:string;avatarUrl:string|null};
+export type OwnerProfilePresentation=AccountPresentation&{userId:string;username:string;displayName:string;avatarUrl:string|null};
 export interface ProfileEditor {update(input:ProfilePatch):Promise<ProfileUpdate>;availability(username:string):Promise<{available:boolean;isCurrent?:boolean;suggestions?:readonly string[]}>;uploadImage?(file:File,kind:'avatar'|'banner'):Promise<ProfileUpdate>;}
 const object=(value:unknown):Record<string,unknown>=>value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
 /** Minimal confirmed owner-only metadata, including private accounts. Never
@@ -13,7 +14,7 @@ const object=(value:unknown):Record<string,unknown>=>value&&typeof value==='obje
 export function ownerProfilePresentation(result:ProfileUpdate):OwnerProfilePresentation{
  const profile=object(result.profile.profile),username=profileUsername(profile.username);
  if(profile.userId!==result.accountUid||!username)throw Error('PROFILE_ACCOUNT_MISMATCH');
- return {userId:result.accountUid,username,displayName:typeof profile.displayName==='string'?profile.displayName:username,avatarUrl:publicProfileArtwork(profile).avatarUrl};
+ return {...accountCreationPresentation(profile),userId:result.accountUid,username,displayName:publicAccountDisplayName(profile,username),avatarUrl:publicProfileArtwork(profile).avatarUrl};
 }
 export function createProfileEditor(deps:{accountUid:string;current():boolean;update(input:ProfilePatch):Promise<ProfileUpdate>;uploadImage?:ProfileEditor['uploadImage'];availability:ProfileEditor['availability'];publish(result:ProfileUpdate):void}):ProfileEditor{
  const assert=()=>{if(!deps.current())throw Error('PROFILE_ACCOUNT_CLOSED');};

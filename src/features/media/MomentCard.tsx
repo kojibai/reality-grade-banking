@@ -4,7 +4,8 @@ import type {PublicMarketItem} from '../../receiz/public-market';
 import './moment-card.css';
 const time=new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'UTC'});
 /** The same carried front fields as the live player, presented locally. */
-export function MomentCard({item,compact=false}:{item:PublicMarketItem;compact?:boolean}){
+export function MomentCard({item,compact=false,thumbnail=false}:{item:PublicMarketItem;compact?:boolean;thumbnail?:boolean}){
+ if(thumbnail)return <span className="moment-card is-thumbnail" aria-hidden="true"><span className="moment-card-ornament"><Fingerprint size={13} strokeWidth={.7}/></span><span className="moment-card-quote">{(item.summary||item.title).slice(0,140)}</span><small>{item.pulse}</small></span>;
  const source=item.proofManifestSource;let anchor:string|null=null,code=source?.code??null;
  try{const url=new URL(item.verifyUrl??'','https://receiz.com');anchor=url.searchParams.get('a');code??=url.pathname.split('/')[3]??null;}catch{/* Missing fields stay absent. */}
  const proof=source?.proof.groth16Id,poseidon=source?.proof.poseidon,date=item.sealedAt&&Number.isFinite(Date.parse(item.sealedAt))?time.format(new Date(item.sealedAt))+' UTC':null;

@@ -1,3 +1,4 @@
+import type {AccountPresentation} from './account-presentation';
 import type {BookingOffer} from './booking-offers';
 export interface OrganizerContact {
  id:string;linkedUserId:string;fullName:string;email:string;phone:string;
@@ -22,7 +23,7 @@ export interface BookingSettingsInput {bookingPriceUsdCents?:string;bookingPolic
 export interface BookingAvailability {
  bookingPrice?:BookingPrice;bookingSettings?:BookingSettings;bookingOffers?:BookingOffer[];selectedBookingOffer?:BookingOffer;
  conversation?:PublicBookingConversation;
- owner:{userId?:string;username:string;displayName:string;avatarUrl:string|null};scheduleConfig:BookingSchedule;savedScheduleConfig:BookingSchedule;
+ owner:AccountPresentation&{userId?:string;username:string;displayName:string;avatarUrl:string|null};scheduleConfig:BookingSchedule;savedScheduleConfig:BookingSchedule;
  customQuestions:BookingQuestion[];savedCustomQuestions:BookingQuestion[];slots:BookingSlot[];
 }
 export interface OrganizerDisplay {

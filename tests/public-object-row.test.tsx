@@ -37,6 +37,14 @@ it('keeps the fallback icon when artwork is absent instead of loading the sealed
  const fetcher=vi.spyOn(globalThis,'fetch'),host=mount(item('audio'));
  expect(host.querySelector('img')).toBeNull();expect(host.querySelector('.asset-mark svg')).not.toBeNull();expect(fetcher).not.toHaveBeenCalled();
 });
+it('uses the carried Moment card as its unique local thumbnail when no image was supplied',()=>{
+ const fetcher=vi.spyOn(globalThis,'fetch'),value={...item('moment'),title:'What we focus on grows',summary:'Keep your attention on what matters.',pulse:'14500211'},host=mount(value);
+ const thumbnail=host.querySelector('.market-object-moment');expect(thumbnail).not.toBeNull();
+ expect(thumbnail?.textContent).toContain(value.summary);expect(thumbnail?.textContent).toContain(value.pulse);
+ expect(host.querySelector('.asset-mark.proof')).toBeNull();expect(host.querySelector('img')).toBeNull();expect(fetcher).not.toHaveBeenCalled();
+ act(()=>root!.render(<PublicObjectRow item={{...value,summary:'A different carried moment.',pulse:'14500212'}} onOpen={()=>{}}/>));
+ expect(thumbnail?.textContent).toContain('A different carried moment.');expect(thumbnail?.textContent).toContain('14500212');
+});
 it('keeps the fallback icon for an unsupported artwork URL',()=>{
  const host=mount({...item('image'),artworkUrl:'https://outside.example/artwork.png'});
  expect(host.querySelector('img')).toBeNull();expect(host.querySelector('.asset-mark svg')).not.toBeNull();

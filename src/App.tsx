@@ -9,7 +9,7 @@ import {mergePublicRecords} from './receiz/public-network';
 import {useAssetEntry} from './features/assets/useAssetEntry';
 import {useBusinessEntry} from './features/messages/useBusinessEntry';
 import {MessagesPanel} from './features/messages/MessagesPanel';
-import {identityProfileAvatar} from './receiz/profile-avatar';
+import {identityProfileAvatar,identityProfileName} from './receiz/profile-avatar';
 import { ConsoleShell } from './components/ConsoleShell';
 import type { Panel } from './components/BottomNav';
 import { Market } from './features/market/Market';
@@ -57,7 +57,7 @@ function BankApp() {
   const [profileRevision,setProfileRevision]=useState(0);
   useEffect(()=>{const updated=()=>setProfileRevision(value=>value+1);addEventListener('bankeiz:profile-updated',updated);return()=>removeEventListener('bankeiz:profile-updated',updated);},[]);
   const identityImage=useMemo(()=>account.identity?identityProfileAvatar(account.identity):null,[account.identity,profileRevision]);
-  useEffect(()=>{if(account.identity)publishAccountAppearance({avatarUrl:identityImage,name:account.identity.accountUsername?.()??account.identity.username??'ID'});else if(!account.opening&&!account.busy)publishAccountAppearance(null);},[account.identity,identityImage,account.opening,account.busy,profileRevision]);
+  useEffect(()=>{if(account.identity)publishAccountAppearance({avatarUrl:identityImage,name:identityProfileName(account.identity)});else if(!account.opening&&!account.busy)publishAccountAppearance(null);},[account.identity,identityImage,account.opening,account.busy,profileRevision]);
   const profileAction=useSyncExternalStore(subscribeProfileActions,readProfileAccountAction,()=>null);
   const messageEntryAttempt=useRef<number|null>(null);
   useEffect(()=>{
