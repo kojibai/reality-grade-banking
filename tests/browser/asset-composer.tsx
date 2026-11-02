@@ -3,6 +3,7 @@ import {createNativeAssets} from '../../src/receiz/native-asset';
 import {nativeAssetChallenge} from '../../src/receiz/native-asset-protocol';
 import {createRoot} from 'react-dom/client';
 import {CreateAsset} from '../../src/features/assets/CreateAsset';
+import {Sheet} from '../../src/components/Sheet';
 import type {OpenIdentity} from '../../src/receiz/native-identity';
 import '../../src/styles/tokens.css';import '../../src/styles/app.css';import '../../src/styles/features.css';
 const fixture={created:0,retried:0,funded:0,definition:null as unknown,draft:null as unknown};Object.assign(window,{composerFixture:fixture});
@@ -12,4 +13,4 @@ const assets=createNativeAssets({ownerReceizId:'artist.receiz.id',keyId:'a'.repe
 const operations=createBankOperations({ownerReceizId:'artist.receiz.id',assertOpen(){},lock:async run=>run(),store:{load:async()=>null,saveNew:async()=>{},replace:async()=>{}},context:async()=>{throw Error('No generic runtime in fixture');},assets:{...assets,execute:async()=>{fixture.funded++;fundedDeposit={...result,publication:{status:new URLSearchParams(location.search).has('published')?'published':'pending'}};return{status:'committed',nativeAssetSource:{schema:'bank-display-fixture'}} as never;}}});
 const backed={pending:async(includePublished=false)=>({state:fundedDeposit?{stage:fundedDeposit.publication.status==='published'?'published':'publication-pending'}:null,deposit:fundedDeposit?.publication.status==='published'&&!includePublished?null:fundedDeposit}),resume:async()=>{fixture.retried++;fundedDeposit={...result,publication:{status:'published'}};return fundedDeposit;},operations:(draft:unknown)=>{fixture.draft=draft;return operations;}};
 const identity={backedAssetPublication:async()=>backed,username:'artist',accountUsername:()=> 'artist',pendingAssetPublication:async()=>null,createComposedAsset:async(definition:unknown,draft:unknown)=>{fixture.created++;fixture.definition=definition;fixture.draft=draft;return{...result,publication:{status:'pending' as const}};},retryAssetPublication:async()=>{fixture.retried++;return{...result,publication:{status:'published' as const}};}} as unknown as OpenIdentity;
-createRoot(document.getElementById('root')!).render(<main className="sheet-content" style={{maxWidth:520,margin:'20px auto',padding:22}}><CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/></main>);
+createRoot(document.getElementById('root')!).render(<Sheet title="New original" className="sheet--asset-studio" onClose={()=>{}}><CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/></Sheet>);

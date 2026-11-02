@@ -141,13 +141,7 @@ it('resumes a known processing cancellation into status recovery without reopeni
  try{await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Add money'))!.click());await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Cancel $10.00 checkout"]')!.click());await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Check payment status'))!.click());expect(host.querySelector('iframe')).toBeNull();expect(host.textContent).toContain('Account credit is pending');await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Check deposit status')!.click());expect(check).toHaveBeenCalledExactlyOnceWith(checkout);}finally{act(()=>root.unmount());}
 });
 
-it.each([false, true])('opens Create an asset inside the unified asset path (native receiving: %s)', async native => {
- const create=vi.fn(),start=vi.fn(),card=vi.fn(),identity={pendingCardDeposits:async()=>[],startAssetIntake:start,beginCardDeposit:card,...(native?{receivedProof:async()=>({status:async()=>null})}:{})}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
- try{
-  await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}} onCreateAsset={create}/>));
-  await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('An asset'))!.click());
-  const link=host.querySelector<HTMLButtonElement>('[aria-label="Create an asset instead"]');
-  expect(host.textContent).toContain('Don’t have a proof object?'); expect(link).not.toBeNull();
-  await act(()=>link!.click()); expect(create).toHaveBeenCalledOnce(); expect(start).not.toHaveBeenCalled(); expect(card).not.toHaveBeenCalled();
- }finally{act(()=>root.unmount());}
+it.each([false, true])('opens the composer directly from An asset when it is available (native receiving: %s)', async native => {
+ const create=vi.fn(),start=vi.fn(),card=vi.fn(),received=vi.fn(async()=>({status:async()=>null})),identity={pendingCardDeposits:async()=>[],startAssetIntake:start,beginCardDeposit:card,...(native?{receivedProof:received}:{})}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}} onCreateAsset={create}/>));await act(()=>[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('An asset'))!.click());expect(create).toHaveBeenCalledOnce();expect(received).not.toHaveBeenCalled();expect(start).not.toHaveBeenCalled();expect(card).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
 });

@@ -15,14 +15,14 @@ it('shows the published asset returned by funding recovery instead of reopening 
  try{await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));expect(host.textContent).toContain('Confirming your asset.');await act(async()=>click(host,'Continue creation'));expect(host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Sign')).toBe(true);expect(host.textContent).not.toContain('Public delivery is pending');expect(host.querySelector('a')?.getAttribute('href')).toBe('/artist/');expect(backed.resume).toHaveBeenCalledOnce();}finally{act(()=>root.unmount());}
 });
 async function title(host:HTMLElement){const input=host.querySelector<HTMLInputElement>('input[aria-label="Title"]')!;await act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'Moment');input.dispatchEvent(new Event('input',{bubbles:true}));});}
-const click=(host:HTMLElement,text:string)=>[...host.querySelectorAll('button')].find(button=>button.textContent?.includes(text))!.click();
+const click=(host:HTMLElement,text:string)=>{if(text==='Create asset'&&host.querySelector('[data-creation-step=canvas]'))host.querySelector<HTMLButtonElement>('[aria-label="Review original"]')!.click();[...host.querySelectorAll('button')].find(button=>button.textContent?.includes(text))!.click();};
 async function select(host:HTMLElement,file:File){const input=host.querySelector('input[aria-label="Choose original"]')!;Object.defineProperty(input,'files',{configurable:true,value:[file]});await act(async()=>input.dispatchEvent(new Event('change',{bubbles:true})));}
 it('keeps selection local, adapts to audio and carries the selected original only when the author seals',async()=>{
  const createAsset=vi.fn<OpenIdentity['createComposedAsset']>(async()=>({bytes:new Uint8Array([1]),filename:'moment.receiz',title:'Moment',digest:'a'.repeat(64),kind:'proof',status:'held-proof',pulse:'1'})),host=document.createElement('div'),root=createRoot(host),file=new File(['original audio'],'song.mp3',{type:'audio/mpeg'});
  const identity={listDeposits:async()=>[],createComposedAsset:createAsset} as unknown as OpenIdentity;
  try{
   await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));
-  expect(host.textContent).toContain('Description');expect(host.querySelector('textarea[aria-label="Full text"]')).not.toBeNull();
+  expect(host.textContent).toContain('Description');await act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Review original"]')!.click());expect(host.querySelector('textarea[aria-label="Full text"]')).not.toBeNull();
   expect(host.querySelector('input[type=file]')).not.toBeNull();
   expect(host.textContent).toContain('Sealing publishes the Original on Receiz. Signing unlocks its accrued value.');
   await title(host);await select(host,file);expect(createAsset).not.toHaveBeenCalled();expect(host.textContent).toContain('Music details');expect(host.textContent).toContain('song.mp3');

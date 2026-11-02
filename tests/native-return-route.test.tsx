@@ -107,6 +107,6 @@ it('composes Get Business with the retained account and opens the assistant requ
 
 it('lands a restored account directly in the requested Create an asset composer',async()=>{
  history.replaceState(null,'','/#account/currency');const host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<App/>));expect(location.hash).toBe('#account/currency');expect(host.querySelector('dialog')?.textContent).toContain('Your next original.');const dialog=host.querySelector('dialog')!;expect(host.querySelector(`[id="${dialog.getAttribute('aria-labelledby')}"]`)?.textContent).toBe('Create an asset');}
+ try{await act(async()=>root.render(<App/>));expect(location.hash).toBe('#account/currency');expect(host.querySelector('dialog')?.textContent).toContain('Make it yours.');const dialog=host.querySelector('dialog')!;expect(host.querySelector(`[id="${dialog.getAttribute('aria-labelledby')}"]`)?.textContent).toBe('New original');}
  finally{act(()=>root.unmount());history.replaceState(null,'','/');}
 });

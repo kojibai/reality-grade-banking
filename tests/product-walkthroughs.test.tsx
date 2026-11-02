@@ -153,7 +153,7 @@ it('opens Market creation and explains it, then returns to Account and entry thr
  document.body.innerHTML=productWalkthrough();init();(document.querySelector('[data-product-choice=account]')as HTMLButtonElement).click();
  const active=()=>document.querySelector('[data-product-panel]:not([hidden])')!;
  const press=(name:string)=>{const node=[...active().querySelectorAll<HTMLButtonElement>('button')].find(button=>(button.getAttribute('aria-label')||button.textContent)?.trim()===name);expect(node,name).toBeDefined();node!.click();};
- press('Market');press('Create an asset');expect(active().querySelector('[data-product-example=create-asset]')).not.toBeNull();expect(active().textContent).toContain('Your next original.');expect(document.querySelector('.product-frame-caption')?.textContent).toContain('Create an Original');
+ press('Market');press('Create an asset');expect(active().querySelector('[data-product-example=create-asset]')).not.toBeNull();expect(active().textContent).toContain('Make it yours.');expect(document.querySelector('.product-frame-caption')?.textContent).toContain('Create an Original');
  press('Close');press('Account settings');press('Remove ID from this device');expect(active().querySelector('[data-product-example=entry]')).not.toBeNull();
 });
 it('carries a rich example funding allocation in the payment record without requiring a live source read',()=>{
@@ -202,7 +202,7 @@ it('keeps destination HTML inert until selected instead of parsing thousands of 
  expect(doc.querySelectorAll('.product-screen')).toHaveLength(1);
  expect(doc.querySelectorAll('template[data-example-view]')).toHaveLength(0);
  const bank=doc.querySelector('template[data-example-views]');expect(bank).not.toBeNull();
- const views=JSON.parse((bank as HTMLTemplateElement).content.textContent!);expect(views['create-asset'].html).toContain('Your next original.');expect(views.market.html).toContain('Wheat harvest');
+ const views=JSON.parse((bank as HTMLTemplateElement).content.textContent!);expect(views['create-asset'].html).toContain('Make it yours.');expect(views.market.html).toContain('Wheat harvest');
 });
 
 // The carried navigation bundle must reuse the same immutable example destinations.

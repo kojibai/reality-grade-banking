@@ -125,3 +125,50 @@ Interactions verified: Add money → native amount/method UI → All deposits; D
 The user’s clipped Send/Receive screenshots were treated as failing evidence. Native inner scrolling now reaches their remaining content while actions remain inert. Receive was observed at scrollTop 750 with 1231px content in a 481px viewport. The chat automatically reached scrollTop313 for 620px content in a 307px viewport. Manual Home then step changes retained reading position0. A screenshot exposed the backdrop scrolling14.5px, shifting navigation: the backdrop is now overflow:clip; after native focus/step changes backdrop scrollTop and the gap between navigation and the frame bottom were both0. Evidence: `/private/tmp/bankeiz-receive-scroll-mobile.png`, `/private/tmp/bankeiz-chat-reading-bottom-fixed.png`.
 
 No actionable visual P0/P1/P2 remains in this checkpoint. The expanded rights/terms forms and the newly discussed Create → published Original → asset deposit → admitted value flow are a following implementation scope. This checkpoint does not enable new issuance or universal asset liquidation.
+
+
+## Full-screen Create an asset · November 1, 2026
+
+Visual result: passed.
+
+The user selected the second immersive-canvas reference
+`exec-1fb0d744-e265-479e-9d41-94f9930727ef.png` and its native-capture refinement
+`exec-a0d0d582-81ed-487b-b613-bddbfee1f278.png`. Both belong to this chat's generated
+images. The reference and actual implementation were inspected together at
+390×844 in `/private/tmp/bankeiz-asset-studio-comparison.png`. Final image-only and
+review states were recaptured and opened at the same viewport in
+`/private/tmp/bankeiz-asset-studio-selected-final.png` and
+`/private/tmp/bankeiz-asset-studio-review-final.png`.
+
+The full-screen canvas, quiet header, lower title/caption, ivory four-action dock,
+Bankeiz typography, navy/cobalt palette and compact review hierarchy retain the
+selected composition. The preview uses an actual selected local file, not the
+reference's fictional coastline. The author's selected artwork is never replaced
+by a demonstration photo. The current @artist byline is a fixture identity.
+
+Intentional adaptations: images are their own artwork and have no separate cover
+control; music/books retain optional covers and video retains a poster. Music and
+video keep playback when artwork is chosen. The existing public-original rule,
+backing, metadata and signing controls are preserved rather than introducing new
+rights or earning behavior. Full-screen styles apply only to this editor; embedded
+product illustrations retain their existing frames.
+
+The retained draft keeps exact File objects through canvas/review/back. Explicit
+proof import uses the existing verified admission view and returns to the same
+draft without unrelated checkout reads. Camera code loads and requests permission
+only on a camera action; close, suspension, backgrounding and late permission
+release its resources. No new account-data request is needed for selecting media,
+changing content-specific fields or changing editor views.
+
+The earlier cover-first camera entry and retained-sheet camera cleanup findings
+were fixed with failing-then-passing tests. Playback with artwork and image-only
+artwork received the same regression treatment. No visual P0/P1/P2 remains in this
+checkpoint. The synthetic capture qualification does not claim a physical iPhone
+camera run or a live publication from this display fixture.
+
+Release evidence: all 4,845 tests across 793 files passed. TypeScript and the
+production build passed. All existing browser gates, the new full-screen
+composer/synthetic capture checks at 320/390/1280px and the Vault browser check
+passed. Native capture produced a decoded JPEG and an AVC MP4 through the actual
+browser encoders, without requesting physical camera hardware or moving funds.
+The independent scoped review found no remaining material issue.
