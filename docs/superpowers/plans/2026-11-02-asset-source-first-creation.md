@@ -39,3 +39,6 @@ A real previous-publisher fixture reproduces `PROFILE_SHOWCASE_PREDECESSOR_DELIV
 Preserve failed authenticated metadata reads instead of relabeling HTTP 401/503 as a pending predecessor. A failed runtime opening must be retryable through normal current-account connection; no authorization fallback or repeated automatic request.
 
 An authored image essay already carries long-form text in its canonical content payload. Use that opened payload for the existing full-text reader, including held media and public sources missing optional display hints. Keep legacy post-record reading for its original carriers. Do not synthesize a duplicate essay attachment beside primary media or rewrite the sealed Original.
+
+
+A public transport contains visible child bodies while its sealed persistent tree retains hidden members. Pending-append selection must use the exact child named by the admitted append delta, then match it to SDK-derived membership. Comparing all placements against visible transport children incorrectly treats hidden members as new additions. Qualify the previous-publisher retry after a genuine SDK visibility transition; preserve hidden membership without publishing hidden bodies.

@@ -95,6 +95,26 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  const beforeQuota=finalizations;rejectOutboxWrite=true;
  await expect(runtime.publish(quota.artifact)).rejects.toThrow('PROFILE_SHOWCASE_PUBLICATION_ACTION_NOT_RETAINED');expect(finalizations).toBe(beforeQuota);
  rejectOutboxWrite=false;runtime=await open();expect((await runtime.publish(quota.artifact)).status).toBe('published');
+ // Public source transports omit hidden child bodies while sealed membership
+ // retains those members. Reproduce the actual account shape with a real SDK
+ // visibility transition before the interrupted append.
+ const visibilityVault=r.showcaseVault.createProfileShowcaseBoundedEdgeVault({databaseName:'visibility-fixture'});
+ const beforeVisibility=await r.showcaseRetainer.retainAcceptedShowcasePredecessor({source:complete,artifactId,vault:visibilityVault,canonicalSignatureV4RootPublicKeys:roots});
+ await visibilityVault.selectOwnerRestoreHead(beforeVisibility,null,undefined,undefined,true);
+ const commitDomain={scheme:'receiz-commit-domain.v1',value:'fixture-visibility'},visibilityStore=r.showcaseTransitionStore.createReceizBrowserArtifactTransitionStore({databaseName:'visibility-transitions',namespace:'hide',commitDomain});
+ await visibilityStore.ensureHead(artifactId,{algorithm:'sha-256',binds:'verified-proof-history',value:beforeVisibility.proofHistoryHead.headDigest});
+ const hiddenChild=complete.children[0].reference,authority=await r.showcaseAuthority.createProfileShowcaseVisibilityAuthority({actorAdmission:actor,predecessorAdmission:beforeVisibility,
+  child:hiddenChild,visibility:'hidden',keyFile:await r.readReceizIdentityArtifact(identity),passphrase:f.identity.phrase,commitDomain,store:visibilityStore,
+  sealer:r.showcaseComposerPublication.createProfileShowcaseNativeTransitionSealer(owner,visibilityVault,seal),
+  persistentStateIO:await visibilityVault.createTransitionPersistentStateIO(artifactId,beforeVisibility.artifactSha256),
+  resolveVerifiedHistoricalArtifactDigest:(count:number)=>visibilityVault.resolveVerifiedHistoricalArtifactDigest(artifactId,beforeVisibility.artifactSha256,count)});
+ const hiddenAdmission=await r.showcaseTransitions.sealCommitAndReadmitBoundedProfileShowcaseTransition({...authority,
+  resolveVerifiedHistoricalArtifactDigest:(count:number)=>visibilityVault.resolveVerifiedHistoricalArtifactDigest(artifactId,beforeVisibility.artifactSha256,count)});
+ await visibilityVault.admit({showcaseAdmission:hiddenAdmission,children:authority.children,segments:authority.segments});
+ const hiddenSource=await visibilityVault.exportCompleteSource(artifactId);
+ const hiddenTransport=await r.showcaseTransport.writeProfileShowcaseCompleteSourceTransport(hiddenSource,async(ref:{sha256:string},bytes:Uint8Array)=>{blocks.set(ref.sha256,bytes);},{exportImportedSource:async()=>{}});
+ expect((await request('/api/profile/showcase/publication',{method:'POST',body:JSON.stringify({action:'finalize',scope:{publicationVersion:2,ownerReceizId:owner,artifactId,artifactDigest:hiddenSource.artifactDigest,username,profileIdentity:uid},transport:hiddenTransport})})).ok).toBe(true);
+ expect(complete.children.some((child:any)=>child.reference.childArtifactDigest===hiddenChild.childArtifactDigest)).toBe(false);
  // Upgrade from the genuine previous publisher after commit but before any
  // finalize action exists. Its SDK commit and exact child remain on-device.
  attemptDigest=undefined;const previous=await open(true);
@@ -103,6 +123,7 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  const beforeUpgrade={seals,children:complete.children.length};reads.length=0;
  runtime=await open();expect((await runtime.publish(older.artifact)).status).toBe('published');
  expect(seals).toBe(beforeUpgrade.seals);expect(complete.children).toHaveLength(beforeUpgrade.children+1);
+ expect(complete.children.some((child:any)=>child.reference.childArtifactDigest===hiddenChild.childArtifactDigest)).toBe(false);
  expect(reads.some(sha=>oldBodies.has(sha))).toBe(false);
  let failedReads=0;
  await expect(r.connectedComposer.createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,

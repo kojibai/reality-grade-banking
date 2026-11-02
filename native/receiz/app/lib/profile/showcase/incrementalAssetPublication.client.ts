@@ -135,7 +135,11 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
     const localIO=await input.vault.createTransitionPersistentStateIO(input.artifactId,digest);
     const membership=await deriveReceizProfileShowcasePersistentMembershipV114({state:{schema:'receiz.profile-showcase.persistent-state.v114',placementRoot:head.placementRoot as string,
      orderRoot:head.orderRoot as string,counts:head.counts as any,maximumKaiUpulse:head.headKaiUpulse as string},io:{writeNode:localIO.writeNode,resolveNode:async digest=>await localIO.resolveNode(digest)??await prior.io.resolveNode(digest)}});
-    const added=membership.placements.filter(member=>!context.children.some(child=>child.reference.childArtifactDigest===member.reference.childArtifactDigest));
+    // The public transport omits hidden bodies; its child list is not the full
+    // membership baseline. The admitted delta names the exact appended child.
+    const delta=Array.isArray(head.directDelta)&&head.directDelta.length===1?head.directDelta[0] as Record<string,unknown>:null;
+    if(delta?.kind!=='showcase.append'||!delta.child)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
+    const added=membership.placements.filter(member=>jcsCanonicalize(member.reference)===jcsCanonicalize(delta.child));
     if(added.length!==1)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
     const child=await input.vault.reopenRetainedChild(added[0]!.reference);
     if(!child)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');

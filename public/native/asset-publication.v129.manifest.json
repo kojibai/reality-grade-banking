@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.0.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "66d377b151831ec6ce9e31e5550a34306ed04bb01ce65b344de35d35a1ebd11b",
-  "sourceTreeSha256": "3c6628ad450f0362fdbb5edcce37a58f2e66e40b731becc8b2a83cecdc8868c0",
+  "moduleSha256": "91ff3de717508a7920ea8b1b5ccdb769a2984e0bb8c6c85962432c8b862fa72e",
+  "sourceTreeSha256": "133b410611a929df729f5a247b59bbaf4d3fdb3cd26a504b359b42a0abc5c2e0",
   "inputs": 504,
-  "bytes": 2987406,
+  "bytes": 2987536,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
