@@ -90,9 +90,9 @@ export function KaiKlok({ active = true }: { active?: boolean }) {
         <h3>{moment.weekday}<span>{moment.monthName} · Y{moment.year}</span></h3>
         <KaiMomentReading moment={moment} />
         <div className="kai-moment-identity">
-          <div><i style={{ background: lightTones.phase }} aria-hidden="true" /><span>Phase {arkIndex + 1} of 6<small>{moment.phase}</small></span></div>
+          <div><i style={{ background: lightTones.phase }} aria-hidden="true" /><span>Phase {arkIndex + 1} of 6<small title={moment.phase}>{KAI_PHASE_MEANINGS[moment.phase].resonance}</small></span></div>
           <div><i style={{ background: lightTones.day }} aria-hidden="true" /><span>Day {moment.day} of 42<small>{KAI_DAY_MEANINGS[moment.weekday].resonance}</small></span></div>
-          <div><i style={{ background: BANK_KAI_PALETTE.light.weeks[moment.week - 1] }} aria-hidden="true" /><span>Week {moment.week} of 7<small>{moment.weekName}</small></span></div>
+          <div><i style={{ background: BANK_KAI_PALETTE.light.weeks[moment.week - 1] }} aria-hidden="true" /><span>Week {moment.week} of 7<small title={moment.weekName}>{KAI_WEEK_MEANINGS[moment.weekName].resonance}</small></span></div>
           <div><i style={{ background: moment.month === 8 ? BANK_KAI_PALETTE.light.monthPrism : lightTones.month }} aria-hidden="true" /><span>Month {moment.month} of 8<small>{KAI_MONTH_MEANINGS[moment.monthName].resonance}</small></span></div>
         </div>
         <dl className="kai-units"><div><dt>BEAT</dt><dd>{String(moment.beat).padStart(2, '0')}<span>/ 36 beats per day</span></dd></div><div><dt>STEP</dt><dd>{String(moment.step).padStart(2, '0')}<span>/ 44 steps per beat</span></dd></div><div><dt>PULSE</dt><dd>{String(moment.withinStep).padStart(2, '0')}<span>/ 11 pulses per step</span></dd></div></dl>

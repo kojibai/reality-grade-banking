@@ -63,7 +63,7 @@ it('opens a live, named Kai Klok explanation without requesting any network or a
   expect(panel.querySelector('[aria-label="Kai days"] [aria-current]')?.textContent).toContain('Aquaris');
   expect(panel.querySelector('[aria-label="Kai months"] [aria-current]')?.textContent).toContain('Kaelus');
   expect(panel.querySelector('[aria-label="Kai phases"] [aria-current]')?.textContent).toContain('Harmonization');
-  expect(panel.querySelector('.kai-moment-identity > div')?.textContent).toBe('Phase 3 of 6Harmonization');
+  expect(panel.querySelector('.kai-moment-identity > div')?.textContent).toBe('Phase 3 of 6Balance · clarity · coherent action');
   const headings = [...panel.querySelectorAll('.kai-technical h3')].map(node => node.textContent);
   expect(headings.indexOf('Operational phases')).toBeLessThan(headings.indexOf('Days'));
   expect(panel.querySelector('.kai-face-arcs [aria-current]')?.textContent).toBe('Harmonization');
@@ -78,6 +78,20 @@ it('opens a live, named Kai Klok explanation without requesting any network or a
   act(() => panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
   expect(host.querySelector('[role="dialog"]')).toBeNull();
   expect(document.activeElement).toBe(trigger);
+});
+
+it('shows the existing three-term Phase and Week meanings beside Day and Month',()=>{
+ vi.useFakeTimers({toFake:['Date','performance','setTimeout','clearTimeout']});
+ const pulse=(12n*N_DAY_MICRO+20n*N_DAY_MICRO/36n+999_999n)/1_000_000n;
+ vi.setSystemTime(Number(epochMsFromPulse(pulse))+2);
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ const host=mount();act(()=>host.querySelector('button')!.click());
+ const entries=host.querySelectorAll('.kai-moment-identity > div');
+ expect(entries[0].textContent).toBe('Phase 4 of 6Reciprocity · perspective · understanding');
+ expect(entries[2].textContent).toBe('Week 3 of 7Clarity · alignment · resolve');
+ expect(host.querySelector('.kai-face-arcs [aria-current]')?.textContent).toBe('Reflection');
+ expect(host.querySelector('[aria-label="Kai weeks"] [aria-current]')?.textContent).toContain('Radiant Will');
+ expect(fetch).not.toHaveBeenCalled();
 });
 
 it('feeds the face only the exact native eternal state', () => {

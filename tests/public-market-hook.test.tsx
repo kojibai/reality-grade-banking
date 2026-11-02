@@ -2,7 +2,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { usePublicMarket } from '../src/receiz/usePublicMarket';
+let usePublicMarket:typeof import('../src/receiz/usePublicMarket')['usePublicMarket'];
 import { parsePublicMarket } from '../src/receiz/public-market';
 import {publicSigilQuoteAtPulse} from '../src/receiz/market-projection/project';
 import {publicSportsValueRow} from '../src/receiz/market-projection/source';
@@ -13,7 +13,7 @@ vi.mock('@receiz/sdk',async original=>({...await original<typeof import('@receiz
 const network = vi.hoisted(() => ({ membership: vi.fn(), quotes: vi.fn() }));
 vi.mock('../src/receiz/public-market', async original => ({ ...await original<typeof import('../src/receiz/public-market')>(), fetchPublicMarket: network.membership, fetchPublicQuotes: network.quotes }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-beforeEach(() => { network.membership.mockReset(); network.quotes.mockReset(); });
+beforeEach(async () => { vi.resetModules();network.membership.mockReset(); network.quotes.mockReset();({usePublicMarket}=await import('../src/receiz/usePublicMarket')); });
 afterEach(() => { vi.unstubAllGlobals(); localStorage.clear();vi.useRealTimers();clock.pulse=14710100; });
 const sourceInput = (items = ['a', 'b'], complete = true) => ({ ok: true, transport: { publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: complete ? 'canonical-complete' : 'partial', isComplete: complete, itemCount: items.length, revision: 'r1' }, publicOriginals: items.map(id => ({ id, receizId: id, title: id, valueUsd: 10 })) } });
 const quoteInput = (priceUsd = 10) => ({ ok: true, data: { schema: 'receiz.market.public-snapshot.v1', generatedAt: '2026-10-13T12:00:00Z', liveMarkets: [{ itemId: 'a', visibility: 'public', priceUsd, quoteUsdPerPhi: 1, chart: [{ value: 9 }, { value: priceUsd }] }] } });

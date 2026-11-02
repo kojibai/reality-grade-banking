@@ -3,8 +3,8 @@ import {expect,it,vi} from 'vitest';
 import * as pricing from '../src/receiz/market-projection/project';
 import {CHART_PERIODS} from '../src/core/chart-history';
 import {parseMarketCapSource} from '../src/receiz/market-projection/source';
-import {matchPublicAssetRow,projectPublicAssetPeriods} from '../src/receiz/market-projection/asset';
-import {marketAssetUsdAtPulse,marketPulseTime} from '../src/receiz/market-projection/project';
+import {matchPublicAssetRow,publicAssetPulseSeed,projectPublicAssetPeriods} from '../src/receiz/market-projection/asset';
+import {publicSigilUsdAtPulse,marketPulseTime} from '../src/receiz/market-projection/project';
 import {parsePublicMarket} from '../src/receiz/public-market';
 const source=parseMarketCapSource(JSON.parse(readFileSync(new URL('../public/receiz-public-capitalization.json',import.meta.url),'utf8')));
 const input=JSON.parse(readFileSync(new URL('../public/receiz-public-market.json',import.meta.url),'utf8')),catalog=parsePublicMarket(input,input.snapshot);
@@ -12,7 +12,7 @@ const item=catalog.items.find(item=>source.valueRows.some(row=>row.marketItem?.i
 it('recomputes six bounded object histories from the exact admitted public seed and real Kai bounds',()=>{
  const histories=projectPublicAssetPeriods(item,source,source.serverPulse)!;
  expect(histories).not.toBeNull();const row=matchPublicAssetRow(item,source)!;
- for(const period of CHART_PERIODS){const points=histories[period];expect(points.length).toBeLessThanOrEqual(96);expect(points.length).toBeGreaterThan(1);expect(points.at(-1)?.pulse).toBe(source.serverPulse);expect(points.at(-1)?.usdCents).toBe(String(Math.round(marketAssetUsdAtPulse(row,source.serverPulse)*100)));expect(points[0].pulse).toBeGreaterThanOrEqual(row.marketItem!.livePulseSeed!.claimPulse);for(const point of points)expect(Date.parse(point.at)).toBe(marketPulseTime(point.pulse));}
+ for(const period of CHART_PERIODS){const points=histories[period];expect(points.length).toBeLessThanOrEqual(96);expect(points.length).toBeGreaterThan(1);expect(points.at(-1)?.pulse).toBe(source.serverPulse);expect(points.at(-1)?.usdCents).toBe(String(Math.round(publicSigilUsdAtPulse(publicAssetPulseSeed(item,source)!,source.serverPulse)*100)));expect(points[0].pulse).toBeGreaterThanOrEqual(row.marketItem!.livePulseSeed!.claimPulse);for(const point of points)expect(Date.parse(point.at)).toBe(marketPulseTime(point.pulse));}
  expect(histories['1D'][0].pulse).toBeGreaterThan(histories['1W'][0].pulse);expect(histories['1W'][0].pulse).toBeGreaterThan(histories['1M'][0].pulse);expect(histories.ALL[0].pulse).toBe(row.marketItem!.livePulseSeed!.claimPulse);
  expect(histories['1D'].map(point=>point.usdCents)).not.toEqual(histories['1W'].map(point=>point.usdCents));
 });
