@@ -384,3 +384,86 @@ export async function reconstructProfileShowcaseCompleteSourceTransport(
     children, ...(legacyPredecessor ? { legacyPredecessor } : {}), ...(checkpointBoundary ? { checkpointBoundary } : {}),
     ...(ancestry ? { ancestry } : {}) };
 }
+
+/** Immutable byte locators beneath the same complete-source verifier. An append
+ * needs the current carrier and inventories, never historical child payloads.
+ * This observation supplies no artifact admission or publication authority. */
+export type ProfileShowcaseAppendTransport = Readonly<{
+  transport: ProfileShowcaseCompleteSourceTransport;
+  envelope: Record<string, unknown>;
+  exactSealedArtifactBytes: Uint8Array;
+  witnessNodes: ProfileShowcaseCompletePublicSource["witnessNodes"];
+  children: readonly ProfileShowcaseCompleteSourceChildDescriptor[];
+  ancestry: readonly AncestryDescriptor[];
+}>;
+export async function readProfileShowcaseAppendTransport(
+  input: ProfileShowcaseCompleteSourceTransport, resolveBlock: ExactByteBlockResolver,
+  capacity: CompleteSourceExecutionCapacity = COMPLETE_SOURCE_EXECUTION_CAPACITY,
+): Promise<ProfileShowcaseAppendTransport> {
+  const transport = parseCompleteSourceTransport(input);
+  let reads = 0, retained = 0, records = 0;
+  const resolve: ExactByteBlockResolver = ref => {
+    if (++reads > capacity.blockReads) throw new ExactByteBlockExecutionUnavailable("append transport", reads, capacity.blockReads, true);
+    return resolveBlock(ref);
+  };
+  const reserve = (length: number, component: string, maximum: number) => {
+    if (length > maximum || retained + length > capacity.retainedBytes) throw new ExactByteBlockExecutionUnavailable(component, length, Math.min(maximum, capacity.retainedBytes - retained));
+    retained += length;
+  };
+  const read = (value: unknown, component: string, maximum: number) => {
+    const ref = parseExactByteBlockReference(value); reserve(ref.contentByteLength, component, maximum);
+    return reconstructExactByteBlocks(ref, resolve, {component, maxContentBytes: maximum, maxBlockReads: capacity.blockReads});
+  };
+  const root = await read(transport.root, "append envelope", capacity.envelopeBytes);
+  let decoded: unknown; try { decoded = JSON.parse(new TextDecoder("utf-8", {fatal: true}).decode(root)); } catch { return invalid(); }
+  const envelope = completeSourceEnvelope(decoded, transport.artifactDigest);
+  const inventory = async (value: unknown) => {
+    const rows: unknown[] = [];
+    for await (const row of readCompleteSourceInventory(value, resolve, capacity,
+      length => reserve(length, "append inventory", capacity.inventoryBytes), () => {
+        if (++records > capacity.inventoryRecords) throw new ExactByteBlockExecutionUnavailable("append inventory", records, capacity.inventoryRecords, true);
+      })) rows.push(row);
+    return rows;
+  };
+  const [carrier, nodes, childRows, ancestorRows] = await Promise.all([
+    read(envelope.carrier, "append carrier", capacity.artifactBytes), inventory(envelope.nodes),
+    inventory(envelope.children), envelope.ancestry ? inventory(envelope.ancestry) : Promise.resolve([]),
+  ]);
+  const children = childRows.map(value => {
+    if (!object(value) || !exactKeys(value, ["reference", "bytes"])) return invalid();
+    return {reference: parseReference(value.reference), bytes: parseExactByteBlockReference(value.bytes)};
+  });
+  if (new Set(children.map(child => child.reference.childArtifactDigest)).size !== children.length) invalid();
+  const seen = new Set([transport.artifactDigest]);
+  const ancestry = ancestorRows.map(value => {
+    if (!object(value) || !exactKeys(value, ["artifactDigest", "bytes"]) || !digest(value.artifactDigest) || seen.has(value.artifactDigest)) return invalid();
+    seen.add(value.artifactDigest); return {artifactDigest: value.artifactDigest, bytes: parseExactByteBlockReference(value.bytes)};
+  });
+  return {transport: {transportVersion: 2, ...transport}, envelope, exactSealedArtifactBytes: carrier,
+    witnessNodes: nodes as ProfileShowcaseCompletePublicSource["witnessNodes"], children, ancestry};
+}
+
+/** Emits the unchanged complete v2 transport using already delivered immutable
+ * references. Finalization still reconstructs and canonically admits the full
+ * successor. References never substitute for ownership, consent or proof. */
+export async function writeProfileShowcaseAppendTransport(
+  prior: ProfileShowcaseAppendTransport,
+  next: Pick<ProfileShowcaseCompletePublicSource, "artifactDigest" | "exactSealedArtifactBytes" | "witnessNodes" | "children">,
+  write: ExactByteBlockWriter,
+): Promise<ProfileShowcaseCompleteSourceTransport> {
+  if (!digest(next.artifactDigest) || next.artifactDigest === prior.transport.artifactDigest) invalid();
+  const inventory = (rows: readonly unknown[]) => writeExactByteBlocks(new Blob(rows.map(row => `${jcsCanonicalize(row)}\n`)), write);
+  const carrier = await writeExactByteBlocks(blob(next.exactSealedArtifactBytes), write);
+  const nodes = await inventory(next.witnessNodes);
+  const children = [...prior.children];
+  for (const child of next.children) {
+    if (children.some(held => held.reference.childArtifactDigest === child.reference.childArtifactDigest)) invalid();
+    children.push({reference: parseReference(child.reference), bytes: await writeExactByteBlocks(blob(child.exactSealedArtifactBytes), write)});
+  }
+  const childRoot = await inventory(children);
+  const ancestry = await inventory([...prior.ancestry, {artifactDigest: prior.transport.artifactDigest,
+    bytes: parseExactByteBlockReference(prior.envelope.carrier)}].sort((a,b) => a.artifactDigest.localeCompare(b.artifactDigest)));
+  const root = await writeExactByteBlocks(new Blob([jcsCanonicalize({...prior.envelope,
+    artifactDigest: next.artifactDigest, carrier, nodes, children: childRoot, ancestry})]), write);
+  return Object.freeze({transportVersion: 2, artifactDigest: next.artifactDigest, root});
+}

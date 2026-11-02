@@ -969,6 +969,48 @@
       "sha256": "3bc3ea2c79eca9322a24b099a7439499aa6cfb76a2befe4fa5a9fea84353eed4",
       "purpose": "Reuse the existing verified-source Market display projection and held artwork for the exact local Original. Preserve sealed projection, source bytes, custody, account entry, earning eligibility and publication receipt authority. No added reads.",
       "sourceCommit": "d8b6917ab1bb03f22f9c5ac7ce24a4dfe36d3144"
+    },
+    {
+      "id": "bankeiz-incremental-original-delivery",
+      "path": "receiz/app/lib/profile/showcase/completeSourceTransport.ts",
+      "baseSha256": "38840bbe92bc10ec4ea600c7579045ebd2d553fbde68c8aa32cedd9c51a0e555",
+      "sha256": "79af5b6eddbba449be86f2cf0f8371e73ea6f772369dfab2e5b9664da887a62b",
+      "purpose": "Use existing SDK exact-predecessor admission, append capability, atomic commit and v2 publication while retaining immutable historical byte references. Reuse runtime-admitted context and the existing signed outbox; preserve exact source, media, Kai, consent, signing and account entry."
+    },
+    {
+      "id": "bankeiz-incremental-original-delivery",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
+      "sha256": "ca9c5153bb4ff64ea330526c7d8ab604233aabb2a2d23f0f5b56d5c5544469c8",
+      "purpose": "Use existing SDK exact-predecessor admission, append capability, atomic commit and v2 publication while retaining immutable historical byte references. Reuse runtime-admitted context and the existing signed outbox; preserve exact source, media, Kai, consent, signing and account entry."
+    },
+    {
+      "id": "bankeiz-incremental-original-delivery",
+      "path": "receiz/app/lib/profile/showcase/publicProjectionPublication.ts",
+      "baseSha256": "9b212579e87eaf03c45dc9913db08bf9cd37e0512847d9701acb68fbc86e5a05",
+      "sha256": "39d069bd1c946abb5d3d46e72dd55671eb1fb40b18e6bf6fdb6669493b048ebf",
+      "purpose": "Use existing SDK exact-predecessor admission, append capability, atomic commit and v2 publication while retaining immutable historical byte references. Reuse runtime-admitted context and the existing signed outbox; preserve exact source, media, Kai, consent, signing and account entry."
+    },
+    {
+      "id": "bankeiz-incremental-original-delivery",
+      "path": "receiz/app/lib/profile/showcase/appendTransportAdmission.ts",
+      "baseSha256": null,
+      "sha256": "7aaba3a27640b196ba19c9466e082dabde2d31af4d980fc617b156fe13234669",
+      "purpose": "Use existing SDK exact-predecessor admission, append capability, atomic commit and v2 publication while retaining immutable historical byte references. Reuse runtime-admitted context and the existing signed outbox; preserve exact source, media, Kai, consent, signing and account entry."
+    },
+    {
+      "id": "bankeiz-incremental-original-delivery",
+      "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
+      "baseSha256": null,
+      "sha256": "5ee7ab7fb6c3cd5137b26c0553ac9b7065e4b5476559bcd440391e0d1b7652fb",
+      "purpose": "Use existing SDK exact-predecessor admission, append capability, atomic commit and v2 publication while retaining immutable historical byte references. Reuse runtime-admitted context and the existing signed outbox; preserve exact source, media, Kai, consent, signing and account entry."
+    },
+    {
+      "id": "bankeiz-pending-publication-retention",
+      "path": "receiz/app/lib/offline/localSignedActionOutbox.ts",
+      "baseSha256": "27831d434ed185deb43a0d07bc8bd1f9bf7f1adbc979a222416576e9c516324a",
+      "sha256": "667604bb2a0a7d044bdc0f5c989fac6f53d5ff7a6a8d5e48ff2c14569c059e6b",
+      "purpose": "Keep pending exact source-bound publication actions outside the completed-action presentation cache limit. Preserve existing signed action consent, scope, account entry and automatic replay exclusion."
     }
   ]
 }

@@ -836,11 +836,11 @@
     },
     {
       "path": "package.json",
-      "sha256": "5e1e783e7787b546252e853fc3fc533eb86c1b763cbba402bc97ccf1f35c2581"
+      "sha256": "325dd138b5064df814319603db439027c737389f16fb40c5b05a266a91ab6655"
     },
     {
       "path": "public/native/offline-notes.v129.manifest.json",
-      "sha256": "7e09f801c62a724e41d4203a22d75f55dfe31764283cd1d4c163d544a801cc2c"
+      "sha256": "47847ee1a24b9a67918f69ed0c00b433d217a96b2403ef11124a2787f8a7b463"
     },
     {
       "path": "public/native/offline-notes.v129.mjs",
@@ -1033,20 +1033,20 @@
   ],
   "files": {
     "inspector.js": {
-      "sha256": "aa04a85ae0acfb1a6d16fe1733b2078943d402c2c73ef10a2ec5f8c87a9b9635",
-      "bytes": 7406370
+      "sha256": "92ca0fca1eb2277bc796aba164d531b78440c2f22ef9cab233b9ddac26c25ff5",
+      "bytes": 7412493
     },
     "inspector.js.map": {
-      "sha256": "13d5837205ad2750c5dcbbacbdc5b976c16f8a14835dc74d33ae73a2136a40bc",
-      "bytes": 19247948
+      "sha256": "112f204fca1d3cea6284915b179f4ceb220f2850f785f599b1c7160658cb7ab4",
+      "bytes": 19255965
     },
     "verify.mjs": {
       "sha256": "651f040833c87512c9b336be97c80497747ec9eb503a30dd098bdcac6a48905f",
       "bytes": 854
     },
     "verify.html": {
-      "sha256": "1806c663d26586b47b55df7abf7ea42eb2b3bce50b3e09db5e08b34ed125faf9",
-      "bytes": 7409578
+      "sha256": "b8b43ca9ee6b0e50e1f4097ffdc428fc06cffc48f78ae1ff9fe80fe6fbc30887",
+      "bytes": 7415701
     },
     "README.txt": {
       "sha256": "1a17e322029bd496e05b2e9d641c032e2a2daf3ef8fcd60eb977c6d09e7379b7",

@@ -414,10 +414,15 @@ export function readLocalSignedActionOutbox(): LocalSignedActionOutbox {
 }
 
 function pruneEntries(entries: Record<string, LocalSignedActionOutboxEntry>): Record<string, LocalSignedActionOutboxEntry> {
+  // A pending source-bound publication carries the exact prepared append for
+  // retry. The completed-action presentation limit cannot erase that custody.
+  const retained = Object.values(entries).filter(entry => entry.status === "pending"
+    && entry.envelope.request.path === "/api/profile/showcase/publication");
+  const pending = new Set(retained.map(entry => entry.actionId));
   return Object.fromEntries(
-    Object.values(entries)
+    [...retained, ...Object.values(entries).filter(entry => !pending.has(entry.actionId))
       .sort((left, right) => right.updatedAtMs - left.updatedAtMs || right.createdAtMs - left.createdAtMs)
-      .slice(0, LOCAL_SIGNED_ACTION_MAX_ENTRIES)
+      .slice(0, LOCAL_SIGNED_ACTION_MAX_ENTRIES)]
       .map((entry) => [entry.actionId, entry]),
   );
 }

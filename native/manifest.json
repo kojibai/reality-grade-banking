@@ -6616,8 +6616,8 @@
     },
     {
       "path": "receiz/app/lib/offline/localSignedActionOutbox.ts",
-      "sha256": "27831d434ed185deb43a0d07bc8bd1f9bf7f1adbc979a222416576e9c516324a",
-      "bytes": 33823,
+      "sha256": "667604bb2a0a7d044bdc0f5c989fac6f53d5ff7a6a8d5e48ff2c14569c059e6b",
+      "bytes": 34272,
       "mode": 420
     },
     {
@@ -6841,6 +6841,12 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/profile/showcase/appendTransportAdmission.ts",
+      "sha256": "7aaba3a27640b196ba19c9466e082dabde2d31af4d980fc617b156fe13234669",
+      "bytes": 5769,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/profile/showcase/artifact.ts",
       "sha256": "9c302a8ef0581b098f812197495d782deaed3f4a009b35b16cd6bb95cf13af37",
       "bytes": 23247,
@@ -6896,8 +6902,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/completeSourceTransport.ts",
-      "sha256": "38840bbe92bc10ec4ea600c7579045ebd2d553fbde68c8aa32cedd9c51a0e555",
-      "bytes": 22687,
+      "sha256": "79af5b6eddbba449be86f2cf0f8371e73ea6f772369dfab2e5b9664da887a62b",
+      "bytes": 28339,
       "mode": 420
     },
     {
@@ -6921,7 +6927,7 @@
     {
       "path": "receiz/app/lib/profile/showcase/composerPublication.ts",
       "sha256": "499ea5db4ef4a99fe15b8bb153325ea5b67833e45d59fde19b1a51fffdc6f2e6",
-      "bytes": 40600,
+      "bytes": 40793,
       "mode": 420
     },
     {
@@ -6932,8 +6938,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
-      "bytes": 14727,
+      "sha256": "ca9c5153bb4ff64ea330526c7d8ab604233aabb2a2d23f0f5b56d5c5544469c8",
+      "bytes": 16112,
       "mode": 420
     },
     {
@@ -6963,24 +6969,19 @@
     {
       "path": "receiz/app/lib/profile/showcase/importedSource.ts",
       "sha256": "94198bc2ebd9bd1ae7fc420f3cc742e504789ca54f00b75f89a7aacb29882ade",
-      "bytes": 28581,
+      "bytes": 28891,
       "mode": 420
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSourceAuthorship.ts",
       "sha256": "93f2c9fea78f1caa5d463e8e47d7cf968724c8ca40a6cbe163bd15e1f46f9537",
-      "mode": 420
+      "mode": 420,
+      "bytes": 2673
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
       "sha256": "10a57d98c55b258b73fd6a64af54fd63306ca4bce0195b2322d2e6a5dde2c1b2",
       "bytes": 14958,
-      "mode": 420
-    },
-    {
-      "path": "receiz/app/lib/profile/showcase/importedSourceMarketPreview.ts",
-      "sha256": "3bc3ea2c79eca9322a24b099a7439499aa6cfb76a2befe4fa5a9fea84353eed4",
-      "bytes": 6214,
       "mode": 420
     },
     {
@@ -6990,9 +6991,15 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/profile/showcase/importedSourceMarketPreview.ts",
+      "sha256": "3bc3ea2c79eca9322a24b099a7439499aa6cfb76a2befe4fa5a9fea84353eed4",
+      "bytes": 6214,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/profile/showcase/importedSourcePlacement.client.ts",
       "sha256": "bdbd60e4280d3ba1542f22eae6a84bf48c137e978f8ee23bf969184a3cfce767",
-      "bytes": 1765,
+      "bytes": 2029,
       "mode": 420
     },
     {
@@ -7011,6 +7018,12 @@
       "path": "receiz/app/lib/profile/showcase/importedSourceReference.ts",
       "sha256": "3440ff243287b33cabf35e430566156794b72eb9eac55cea0d9117dda5ef28f1",
       "bytes": 1507,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
+      "sha256": "5ee7ab7fb6c3cd5137b26c0553ac9b7065e4b5476559bcd440391e0d1b7652fb",
+      "bytes": 17771,
       "mode": 420
     },
     {
@@ -7063,8 +7076,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/publicProjectionPublication.ts",
-      "sha256": "9b212579e87eaf03c45dc9913db08bf9cd37e0512847d9701acb68fbc86e5a05",
-      "bytes": 11209,
+      "sha256": "39d069bd1c946abb5d3d46e72dd55671eb1fb40b18e6bf6fdb6669493b048ebf",
+      "bytes": 12400,
       "mode": 420
     },
     {
@@ -7149,6 +7162,11 @@
       "path": "receiz/app/lib/profile/username.ts",
       "sha256": "786ba62332b309e716e0aae560ac30be9107955523929347f3eeb02593811b51",
       "bytes": 4059,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/profile/usernameLabel.ts",
+      "sha256": "ff4daeade3f1b345503a2f2ecdb3e91540678980a41e4e626b5e030a9aa1e759",
       "mode": 420
     },
     {
@@ -15256,11 +15274,6 @@
       "path": "vault/packages/receiz-sdk/src/verifier/signatureV4.ts",
       "sha256": "9d384bdf2f62449009fcfbc7fc14d8b04c22d5169e571a95da30a9426886cf83",
       "mode": 420
-    },
-    {
-      "path": "receiz/app/lib/profile/usernameLabel.ts",
-      "sha256": "ff4daeade3f1b345503a2f2ecdb3e91540678980a41e4e626b5e030a9aa1e759",
-      "mode": 420
     }
   ],
   "sdkOutputs": [
@@ -17081,6 +17094,48 @@
       "sha256": "3bc3ea2c79eca9322a24b099a7439499aa6cfb76a2befe4fa5a9fea84353eed4",
       "purpose": "Reuse the existing verified-source Market display projection and held artwork for the exact local Original. Preserve sealed projection, source bytes, custody, account entry, earning eligibility and publication receipt authority. No added reads.",
       "sourceCommit": "d8b6917ab1bb03f22f9c5ac7ce24a4dfe36d3144"
+    },
+    {
+      "id": "bankeiz-incremental-original-delivery",
+      "path": "receiz/app/lib/profile/showcase/completeSourceTransport.ts",
+      "baseSha256": "38840bbe92bc10ec4ea600c7579045ebd2d553fbde68c8aa32cedd9c51a0e555",
+      "sha256": "79af5b6eddbba449be86f2cf0f8371e73ea6f772369dfab2e5b9664da887a62b",
+      "purpose": "Use existing SDK exact-predecessor admission, append capability, atomic commit and v2 publication while retaining immutable historical byte references. Reuse runtime-admitted context and the existing signed outbox; preserve exact source, media, Kai, consent, signing and account entry."
+    },
+    {
+      "id": "bankeiz-incremental-original-delivery",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
+      "sha256": "ca9c5153bb4ff64ea330526c7d8ab604233aabb2a2d23f0f5b56d5c5544469c8",
+      "purpose": "Use existing SDK exact-predecessor admission, append capability, atomic commit and v2 publication while retaining immutable historical byte references. Reuse runtime-admitted context and the existing signed outbox; preserve exact source, media, Kai, consent, signing and account entry."
+    },
+    {
+      "id": "bankeiz-incremental-original-delivery",
+      "path": "receiz/app/lib/profile/showcase/publicProjectionPublication.ts",
+      "baseSha256": "9b212579e87eaf03c45dc9913db08bf9cd37e0512847d9701acb68fbc86e5a05",
+      "sha256": "39d069bd1c946abb5d3d46e72dd55671eb1fb40b18e6bf6fdb6669493b048ebf",
+      "purpose": "Use existing SDK exact-predecessor admission, append capability, atomic commit and v2 publication while retaining immutable historical byte references. Reuse runtime-admitted context and the existing signed outbox; preserve exact source, media, Kai, consent, signing and account entry."
+    },
+    {
+      "id": "bankeiz-incremental-original-delivery",
+      "path": "receiz/app/lib/profile/showcase/appendTransportAdmission.ts",
+      "baseSha256": null,
+      "sha256": "7aaba3a27640b196ba19c9466e082dabde2d31af4d980fc617b156fe13234669",
+      "purpose": "Use existing SDK exact-predecessor admission, append capability, atomic commit and v2 publication while retaining immutable historical byte references. Reuse runtime-admitted context and the existing signed outbox; preserve exact source, media, Kai, consent, signing and account entry."
+    },
+    {
+      "id": "bankeiz-incremental-original-delivery",
+      "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
+      "baseSha256": null,
+      "sha256": "5ee7ab7fb6c3cd5137b26c0553ac9b7065e4b5476559bcd440391e0d1b7652fb",
+      "purpose": "Use existing SDK exact-predecessor admission, append capability, atomic commit and v2 publication while retaining immutable historical byte references. Reuse runtime-admitted context and the existing signed outbox; preserve exact source, media, Kai, consent, signing and account entry."
+    },
+    {
+      "id": "bankeiz-pending-publication-retention",
+      "path": "receiz/app/lib/offline/localSignedActionOutbox.ts",
+      "baseSha256": "27831d434ed185deb43a0d07bc8bd1f9bf7f1adbc979a222416576e9c516324a",
+      "sha256": "667604bb2a0a7d044bdc0f5c989fac6f53d5ff7a6a8d5e48ff2c14569c059e6b",
+      "purpose": "Keep pending exact source-bound publication actions outside the completed-action presentation cache limit. Preserve existing signed action consent, scope, account entry and automatic replay exclusion."
     }
   ],
   "historicalValuation": {
@@ -17513,7 +17568,7 @@
     },
     {
       "path": "app/lib/offline/localSignedActionOutbox.ts",
-      "sha256": "27831d434ed185deb43a0d07bc8bd1f9bf7f1adbc979a222416576e9c516324a"
+      "sha256": "667604bb2a0a7d044bdc0f5c989fac6f53d5ff7a6a8d5e48ff2c14569c059e6b"
     },
     {
       "path": "app/lib/offlineReceiz.ts",
@@ -17652,6 +17707,10 @@
       "sha256": "c2b673e28b391ab88ed1be14d05ec3d916d1c64a2966f13900c97eb13fcc3d8f"
     },
     {
+      "path": "app/lib/profile/showcase/appendTransportAdmission.ts",
+      "sha256": "7aaba3a27640b196ba19c9466e082dabde2d31af4d980fc617b156fe13234669"
+    },
+    {
       "path": "app/lib/profile/showcase/artifact.ts",
       "sha256": "9c302a8ef0581b098f812197495d782deaed3f4a009b35b16cd6bb95cf13af37"
     },
@@ -17689,7 +17748,7 @@
     },
     {
       "path": "app/lib/profile/showcase/completeSourceTransport.ts",
-      "sha256": "38840bbe92bc10ec4ea600c7579045ebd2d553fbde68c8aa32cedd9c51a0e555"
+      "sha256": "79af5b6eddbba449be86f2cf0f8371e73ea6f772369dfab2e5b9664da887a62b"
     },
     {
       "path": "app/lib/profile/showcase/composerChild.ts",
@@ -17713,7 +17772,7 @@
     },
     {
       "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731"
+      "sha256": "ca9c5153bb4ff64ea330526c7d8ab604233aabb2a2d23f0f5b56d5c5544469c8"
     },
     {
       "path": "app/lib/profile/showcase/economyRetry.ts",
@@ -17768,6 +17827,10 @@
       "sha256": "3440ff243287b33cabf35e430566156794b72eb9eac55cea0d9117dda5ef28f1"
     },
     {
+      "path": "app/lib/profile/showcase/incrementalAssetPublication.client.ts",
+      "sha256": "5ee7ab7fb6c3cd5137b26c0553ac9b7065e4b5476559bcd440391e0d1b7652fb"
+    },
+    {
       "path": "app/lib/profile/showcase/legacyMigrationPayload.ts",
       "sha256": "3eb24588b349d9e9dbe1b7efab0d41a0c064b474e823fe5576b762cda494f874"
     },
@@ -17801,7 +17864,7 @@
     },
     {
       "path": "app/lib/profile/showcase/publicProjectionPublication.ts",
-      "sha256": "9b212579e87eaf03c45dc9913db08bf9cd37e0512847d9701acb68fbc86e5a05"
+      "sha256": "39d069bd1c946abb5d3d46e72dd55671eb1fb40b18e6bf6fdb6669493b048ebf"
     },
     {
       "path": "app/lib/profile/showcase/publicProjectionRetry.ts",

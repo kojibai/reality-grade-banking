@@ -78,6 +78,24 @@ export async function publishProfileShowcasePublicProjection(
   refreshDocument: typeof refreshAcceptedPublicProfileDocument = refreshAcceptedPublicProfileDocument,
   delivery: Readonly<{exportImportedSource?: (reference: import('./importedSourceReference').ImportedProofSourceReference, write: import('../../transport/exactByteBlocks').ExactByteBlockWriter) => Promise<void>}> = {},
 ): Promise<ProfileShowcasePublicProjectionPublicationResult> {
+  return publishProfileShowcaseTransport(source.artifactDigest, ownerReceizId, fetchImpl, profileUsername,
+    capturedScope, readRoute, () => resolveIdentity(source), refreshDocument,
+    write => writeProfileShowcaseCompleteSourceTransport(source, write, {exportImportedSource: delivery.exportImportedSource
+      ?? ((reference, writer) => createImportedProofSourceCustody().exportBlocks(reference, writer))}));
+}
+
+/** Same authenticated v2 publisher; callers may reuse immutable byte references
+ * rather than reopening all historical payloads to serialize them again. */
+export async function publishProfileShowcaseTransport(
+  artifactDigest: string, ownerReceizId: string, fetchImpl: typeof fetch,
+  profileUsername: string | undefined,
+  capturedScope: ProfileShowcaseCompletePublicationScope | undefined,
+  readRoute: typeof readProfileShowcasePublicationRoute,
+  resolveIdentity: () => ReturnType<typeof resolvePublicationIdentityCustody>,
+  refreshDocument: typeof refreshAcceptedPublicProfileDocument,
+  writeTransport: (write: import('../../transport/exactByteBlocks').ExactByteBlockWriter) => Promise<import('./completeSourceTransport').ProfileShowcaseCompleteSourceTransport>,
+  association?: Readonly<{publicationSourceArtifactSha256:string;publicationChildArtifactDigest:string;publicationPredecessorArtifactDigest:string}>,
+): Promise<ProfileShowcasePublicProjectionPublicationResult> {
   const pending = () => Object.freeze({ status: "pending" as const, code: "PROFILE_SHOWCASE_PUBLIC_PROJECTION_UNAVAILABLE" });
   try {
     const visibleProfileRoute = () => {
@@ -89,13 +107,13 @@ export async function publishProfileShowcasePublicProjection(
     const route = readRoute() ?? visibleProfileRoute();
     const scope = parseProfileShowcaseCompletePublicationScope(capturedScope ?? {
       publicationVersion: 2, ownerReceizId, artifactId: `profile-showcase:${ownerReceizId}`,
-      artifactDigest: source.artifactDigest, username: profileUsername ?? route?.username,
+      artifactDigest, username: profileUsername ?? route?.username,
       profileIdentity: route?.profileIdentity,
     });
-    if (scope.artifactDigest !== source.artifactDigest || scope.ownerReceizId !== ownerReceizId
+    if (scope.artifactDigest !== artifactDigest || scope.ownerReceizId !== ownerReceizId
       || (profileUsername && scope.username !== profileUsername)) return pending();
     const scopeKey = profileShowcaseCompletePublicationScopeKey(scope);
-    const identity = await resolveIdentity(source);
+    const identity = await resolveIdentity();
     if (!identity) return { status: "pending", code: "PROFILE_SHOWCASE_SOURCE_IDENTITY_CUSTODY_REQUIRED" };
     const identityBinding = await readReceizIdentityPublicBinding(identity.actorAdmission);
     if (identityBinding.keyId !== identity.keyFile.keyId || identityBinding.publicKeyRawB64u !== identity.keyFile.crypto.publicKeyRawB64u) return pending();
@@ -149,16 +167,16 @@ export async function publishProfileShowcasePublicProjection(
         if (committed?.status !== "stored" || profileShowcaseCompletePublicationScopeKey(committed.scope) !== scopeKey) throw new TypeError("PROFILE_SHOWCASE_PUBLICATION_BLOCK_COMMIT_FAILED");
       }
     };
-    const transport = await writeProfileShowcaseCompleteSourceTransport(source, async (reference, bytes) => {
+    const transport = await writeTransport(async (reference, bytes) => {
       if (seen.has(reference.sha256)) return;
       seen.add(reference.sha256);
       queue.push({ reference, bytes });
       if (queue.length === 16) await flush();
-    }, { exportImportedSource: delivery.exportImportedSource ?? ((reference, write) => createImportedProofSourceCustody().exportBlocks(reference, write)) });
+    });
     await flush();
-    const value = await plan({ action: "finalize", scope, transport }) as ProfileShowcasePublicProjectionPublicationResult;
+    const value = await plan({ action: "finalize", scope, transport, ...association }) as ProfileShowcasePublicProjectionPublicationResult;
     if (value?.status === "published" && value.publicationVersion === 2 && value.scope
-      && value.artifactDigest === source.artifactDigest && routeStillCurrent()
+      && value.artifactDigest === artifactDigest && routeStillCurrent()
       && profileShowcaseCompletePublicationScopeKey(value.scope) === scopeKey) {
       const refreshed = await refreshDocument({ username: scope.username,
         artifactDigest: value.artifactDigest, operationCount: value.operationCount });

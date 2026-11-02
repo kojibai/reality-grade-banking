@@ -1,4 +1,5 @@
 "use client";
+import {createIncrementalAssetPublisher} from "./incrementalAssetPublication.client";
 import {prepareConnectedComposerSource,prepareConnectedComposerContent,sealConnectedComposerContent} from "../composerPreparation.client";
 import type {ComposerAssetDraft} from "../composerPreparation";
 import {verifyReceizArtifact,createReceizArtifactAdmissionEngine,readReceizIdentityArtifact} from "../../../../packages/receiz-sdk/src/index";
@@ -50,7 +51,11 @@ export async function createConnectedAssetPublicationRuntime(input:Readonly<{
  const keyFile=await readReceizIdentityArtifact(input.identity);input.assertCurrent();
  const username=input.account.username.toLowerCase(),account={username,profileIdentity:input.account.uid};
  if(!/^[a-z0-9_]{3,24}$/.test(username)||!input.account.uid)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_ACCOUNT_REQUIRED");
- const accepted=await readRecoveredAccountShowcaseScope({username,accountId:input.account.uid},input.fetchImpl);input.assertCurrent();
+ let acceptedDelivery:unknown;
+ const fetchDelivery:typeof fetch=async(resource,init)=>{const response=await input.fetchImpl(resource,init);
+  const url=new URL(resource instanceof Request?resource.url:String(resource),'https://receiz.com');
+  if(url.pathname==='/api/profile/showcase/accepted-source'&&!url.searchParams.has('block')&&response.ok)acceptedDelivery=await response.clone().json();return response;};
+ const accepted=await readRecoveredAccountShowcaseScope({username,accountId:input.account.uid},fetchDelivery);input.assertCurrent();
  const artifactId=accepted?.locator.showcaseArtifactId??`profile-showcase:${admitted.ownerReceizId}` as ProfileShowcaseArtifactId;
  const owner=artifactId.slice("profile-showcase:".length);
  const vault=createProfileShowcaseBoundedEdgeVault({resolveVerifiedCheckpointActorEvidence:async digest=>digest===admitted.artifactSha256?admitted:null});
@@ -59,6 +64,11 @@ export async function createConnectedAssetPublicationRuntime(input:Readonly<{
   const sealed=await sealDocument({fileBytes:args.payloadBytes,filename:args.filename,mime:args.mimeType,options:{forceBundleEnvelope:true,nativeRecordSeal:{ownerReceizId:args.ownerReceizId,recordId:args.recordId}}});
   return new File([sealed.artifactBytes.slice()],sealed.downloadName,{type:sealed.kind==="bundle"?"application/vnd.receiz.bundle+json":"application/octet-stream"});
  };
+ const incremental=createIncrementalAssetPublisher({artifactId,owner,username,uid:input.account.uid,actorAdmission:admitted,keyFile,passphrase:input.passphrase,
+  sealDocument,childSealer,fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent,readAccepted:async(refresh=false)=>{
+   if(!refresh&&acceptedDelivery)return acceptedDelivery;const response=await fetchDelivery(`/api/profile/showcase/accepted-source?username=${encodeURIComponent(username)}`,{credentials:'same-origin',cache:'no-store'});
+   if(!response.ok)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');return acceptedDelivery;
+  }});
  const deliveries=new Map<string,Promise<ProfileShowcasePublicProjectionPublicationResult>>();
  const custody=createImportedProofSourceCustody();
  // Acknowledged immutable source closures are already stored by this transport.
@@ -77,8 +87,12 @@ export async function createConnectedAssetPublicationRuntime(input:Readonly<{
  };
  return {async stage(file:File){input.assertCurrent();const source=await openImportedProofSource(file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});if(source.projection.ownerReceizId!==admitted.ownerReceizId)throw new TypeError('PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH');const reference=await custody.hold(source),{stageProfileShowcaseSourceBlocks}=await import('./sourceBlockPublication.client');await stageProfileShowcaseSourceBlocks({scope:{publicationVersion:2,ownerReceizId:owner,artifactId,artifactDigest:reference.artifactSha256,...account},fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent,exportBlocks:write=>custody.exportBlocks(reference,write)});return reference;},prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:admitted.ownerReceizId!,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:admitted.ownerReceizId!,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),async publish(file:File,authorizeMarket?:(input:import("../../../../packages/receiz-sdk/src/pbiLocalAuthorship").LocalPbiAuthorshipInput)=>Promise<import("./importedSourceAuthorship").ImportedSourceAuthorshipProof>){
   input.assertCurrent();
-  const opened=await admitConnectedComposerSource({file,ownerReceizId:admitted.ownerReceizId!,username,assertCurrent:input.assertCurrent});
+  const opened=await admitConnectedComposerSource({file,ownerReceizId:admitted.ownerReceizId!,username,assertCurrent:input.assertCurrent,
+   ...(!authorizeMarket?{onLocalAdmission:input.onLocalAdmission}:{})});
   const {source,reference}=opened;let original=opened.original;
+  if(!authorizeMarket){const result=await withProfileShowcaseCausalAppendLock(artifactId,()=>incremental.publish(opened));if(result){
+   input.assertCurrent();return result;}}
+
   await withProfileShowcaseCausalAppendLock(artifactId,async()=>{input.assertCurrent();await recoverAcceptedShowcasePredecessor({username,artifactId,vault,fetchImpl:input.fetchImpl,retainImportedSources:async(complete,fromAcceptedTransport)=>{
     // Only an exact server-accepted head (or a receipt from this runtime) may
     // reuse remote media custody. A local, unacknowledged source still exports
@@ -93,7 +107,7 @@ export async function createConnectedAssetPublicationRuntime(input:Readonly<{
    if(known?.hasPbiSignature&&known.pbiAuthorshipProof){original=await(await import("./importedSourceAuthorship")).projectPbiSignedImportedSourceOriginal(source,reference,known.pbiAuthorshipProof);if(original.pbiReceiptHash!==known.pbiReceiptHash)throw new TypeError("IMPORTED_SOURCE_PBI_PROOF_INVALID");}
    else{const pbi=await import("./importedSourceAuthorship");authorshipProof=await authorizeMarket(await pbi.importedSourceAuthorshipInput(source,admitted.actor.actorId,profileShowcaseLiveKaiUpulse()));input.assertCurrent();original=await pbi.projectPbiSignedImportedSourceOriginal(source,reference,authorshipProof);input.assertCurrent();}
   }
-  const localAdmission=async(firstPaint:ProfileShowcaseBoundedFirstPaint)=>{input.assertCurrent();retainImportedProfileOriginalMaterial(original,username,source);await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,source,username,input.account.uid),sourceReference:reference,firstPaint,artwork:sourceArtwork(source)}));input.assertCurrent();};
+  const localAdmission=async(firstPaint:ProfileShowcaseBoundedFirstPaint)=>{input.assertCurrent();retainImportedProfileOriginalMaterial(original,username,source);if(authorizeMarket)await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,source,username,input.account.uid),sourceReference:reference,firstPaint,artwork:sourceArtwork(source)}));input.assertCurrent();};
   if(!existing||authorshipProof){
    const placement=await sealAndAdmitImportedSourcePlacement({source,reference,ownerReceizId:owner,immutableVersion:profileShowcaseLiveKaiUpulse(),seal:childSealer,authorshipProof});input.assertCurrent();
    await publishComposerBoundedShowcaseIfAuthorized({importedPlacement:placement,renderedSealedArtifact:source.exactArtifact,username,

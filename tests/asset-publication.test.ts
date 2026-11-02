@@ -2,10 +2,10 @@ import {expect,it} from 'vitest';
 import {createAssetPublication, type AssetPublicationState} from '../src/receiz/asset-publication';
 
 const owner='owner.receiz.id', digest='a'.repeat(64), intent={definition:{name:'Original',symbol:'ORG',units:'1',description:'Exact original',linkedProofDigest:null},moment:{text:'Long form stays complete',files:[{filename:'song.wav',bytesB64u:'AQID'}]}};
-function fixture(){
+function fixture(failureCode='LOST_RESPONSE'){
  let state:AssetPublicationState|null=null,seals=0,publications=0,fail=false,closed=false;
  const sources=new Map<string,File>();
- const api=createAssetPublication({ownerReceizId:owner,assertOpen:()=>{if(closed)throw Error('CLOSED');},lock:async run=>run(),read:async()=>state,write:async(next,previous)=>{expect(state).toEqual(previous);state=structuredClone(next);},seal:async()=>{seals++;return new File([new Uint8Array([1,2,3])],'original.receizbundle',{type:'application/vnd.receiz.bundle+json'});},retain:async file=>{sources.set(digest,file);return digest;},restore:async ref=>{const source=sources.get(ref);if(!source)throw Error('SOURCE_MISSING');return source;},readIntent:async()=>intent,publish:async file=>{publications++;expect([...new Uint8Array(await file.arrayBuffer())]).toEqual([1,2,3]);if(fail)throw Error('LOST_RESPONSE');return {status:'published',artifactDigest:'b'.repeat(64),operationCount:2,visibleChildCount:1};}});
+ const api=createAssetPublication({ownerReceizId:owner,assertOpen:()=>{if(closed)throw Error('CLOSED');},lock:async run=>run(),read:async()=>state,write:async(next,previous)=>{expect(state).toEqual(previous);state=structuredClone(next);},seal:async()=>{seals++;return new File([new Uint8Array([1,2,3])],'original.receizbundle',{type:'application/vnd.receiz.bundle+json'});},retain:async file=>{sources.set(digest,file);return digest;},restore:async ref=>{const source=sources.get(ref);if(!source)throw Error('SOURCE_MISSING');return source;},readIntent:async()=>intent,publish:async file=>{publications++;expect([...new Uint8Array(await file.arrayBuffer())]).toEqual([1,2,3]);if(fail)throw Error(failureCode);return {status:'published',artifactDigest:'b'.repeat(64),operationCount:2,visibleChildCount:1};}});
  return {api,get state(){return state;},get seals(){return seals;},get publications(){return publications;},set fail(value:boolean){fail=value;},set closed(value:boolean){closed=value;}};
 }
 it('retains exact intent and sealed original before delivering it to Showcase',async()=>{
@@ -29,6 +29,12 @@ it('does not seal a different intent while the previous original awaits publicat
 });
 it('refuses stale account access before creating or delivering any original',async()=>{
  const f=fixture();f.closed=true;await expect(f.api.create(intent)).rejects.toThrow('CLOSED');expect(f.seals).toBe(0);expect(f.publications).toBe(0);
+});
+it('retains a structured publication failure code without exposing arbitrary exception text',async()=>{
+ const protocol=fixture('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');protocol.fail=true;
+ expect((await protocol.api.create(intent)).publication.code).toBe('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
+ const unknown=fixture('private exception details');unknown.fail=true;
+ expect((await unknown.api.create(intent)).publication.code).toBe('BANK_ASSET_PUBLICATION_DELIVERY_PENDING');
 });
 it('reopens a pending original locally after refresh and resumes without the author reselecting files',async()=>{
  const f=fixture();expect(await f.api.pending()).toBeNull();f.fail=true;await f.api.create(intent);

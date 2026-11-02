@@ -60,7 +60,7 @@ export function createAssetPublication(dependencies:Dependencies){
   if(!delivery){
    delivery=(async()=>{
     dependencies.assertOpen();let receipt:AssetPublicationReceipt;
-    try{receipt=readReceipt(await dependencies.publish(held.file));}catch{receipt={status:'pending',code:'BANK_ASSET_PUBLICATION_DELIVERY_PENDING'};}
+    try{receipt=readReceipt(await dependencies.publish(held.file));}catch(error){receipt={status:'pending',code:error instanceof Error&&/^(?:PROFILE_SHOWCASE|IMPORTED_SOURCE|BANK_ASSET_PUBLICATION)_[A-Z0-9_]+$/.test(error.message)?error.message:'BANK_ASSET_PUBLICATION_DELIVERY_PENDING'};}
     dependencies.assertOpen();
     await dependencies.lock(async()=>{
      dependencies.assertOpen();const prior=await dependencies.read(),current=readAssetPublicationState(prior,dependencies.ownerReceizId);
