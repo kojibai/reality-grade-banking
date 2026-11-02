@@ -17,7 +17,14 @@ import {publishProfileShowcasePublicProjection,type ProfileShowcasePublicProject
 import type {ProfileShowcaseCompletePublicSource,ProfileShowcaseBoundedFirstPaint} from "./boundedEdgeVault";
 import type {ProfileShowcaseArtifactId} from "./types";
 import {retainImportedProfileOriginalMaterial} from "../materialProjection.client";
-export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:import("../types").ProfileOriginal;sourceReference:import("./importedSourceReference").ImportedProofSourceReference;firstPaint:ProfileShowcaseBoundedFirstPaint|null}>;
+import {attachImportedSourceMarketPreviews} from "./importedSourceMarketPreview";
+export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:import("../types").ProfileOriginal;sourceReference:import("./importedSourceReference").ImportedProofSourceReference;firstPaint:ProfileShowcaseBoundedFirstPaint|null;artwork?:Blob}>;
+const localDisplays=new WeakMap<import("../types").ProfileOriginal,Map<string,import("../types").ProfileOriginal>>();
+function sourceDisplay(original:import("../types").ProfileOriginal,source:Awaited<ReturnType<typeof openImportedProofSource>>,username:string,owner:string){
+ let views=localDisplays.get(original);if(!views){views=new Map();localDisplays.set(original,views);}let display=views.get(username);
+ if(!display){display=attachImportedSourceMarketPreviews({originals:[original],ownerUserId:owner,ownerUsername:username,sources:[source]})[0]!;views.set(username,display);}return display;
+}
+function sourceArtwork(source:Awaited<ReturnType<typeof openImportedProofSource>>){const cover=source.projection.bankAsset?.composer?.files.find(file=>file.role==='cover');return cover?source.composerResources?.[cover.id]:source.projection.payloadMimeType.startsWith('image/')?source.payload:undefined;}
 // The already-open ID can prepare and admit its one source without reading a Showcase.
 export {prepareConnectedComposerContent,sealConnectedComposerContent};
 const locallyOpened=new WeakMap<File,{source:Awaited<ReturnType<typeof openImportedProofSource>>;reference:import("./importedSourceReference").ImportedProofSourceReference;original:import("../types").ProfileOriginal}>();
@@ -29,7 +36,7 @@ export async function admitConnectedComposerSource(input:Readonly<{file:File;own
  }
  if(held.source.projection.ownerReceizId!==input.ownerReceizId)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH");
  input.assertCurrent();retainImportedProfileOriginalMaterial(held.original,input.username,held.source);
- await input.onLocalAdmission?.(Object.freeze({username:input.username,original:held.original,sourceReference:held.reference,firstPaint:null}));input.assertCurrent();return held;
+ await input.onLocalAdmission?.(Object.freeze({username:input.username,original:sourceDisplay(held.original,held.source,input.username,input.ownerReceizId),sourceReference:held.reference,firstPaint:null,artwork:sourceArtwork(held.source)}));input.assertCurrent();return held;
 }
 /** Composition of the canonical Receiz uploader's exact source admission,
  * placement, causal append, custody and public projection. No parallel store. */
@@ -86,7 +93,7 @@ export async function createConnectedAssetPublicationRuntime(input:Readonly<{
    if(known?.hasPbiSignature&&known.pbiAuthorshipProof){original=await(await import("./importedSourceAuthorship")).projectPbiSignedImportedSourceOriginal(source,reference,known.pbiAuthorshipProof);if(original.pbiReceiptHash!==known.pbiReceiptHash)throw new TypeError("IMPORTED_SOURCE_PBI_PROOF_INVALID");}
    else{const pbi=await import("./importedSourceAuthorship");authorshipProof=await authorizeMarket(await pbi.importedSourceAuthorshipInput(source,admitted.actor.actorId,profileShowcaseLiveKaiUpulse()));input.assertCurrent();original=await pbi.projectPbiSignedImportedSourceOriginal(source,reference,authorshipProof);input.assertCurrent();}
   }
-  const localAdmission=async(firstPaint:ProfileShowcaseBoundedFirstPaint)=>{input.assertCurrent();retainImportedProfileOriginalMaterial(original,username,source);await input.onLocalAdmission?.(Object.freeze({username,original,sourceReference:reference,firstPaint}));input.assertCurrent();};
+  const localAdmission=async(firstPaint:ProfileShowcaseBoundedFirstPaint)=>{input.assertCurrent();retainImportedProfileOriginalMaterial(original,username,source);await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,source,username,input.account.uid),sourceReference:reference,firstPaint,artwork:sourceArtwork(source)}));input.assertCurrent();};
   if(!existing||authorshipProof){
    const placement=await sealAndAdmitImportedSourcePlacement({source,reference,ownerReceizId:owner,immutableVersion:profileShowcaseLiveKaiUpulse(),seal:childSealer,authorshipProof});input.assertCurrent();
    await publishComposerBoundedShowcaseIfAuthorized({importedPlacement:placement,renderedSealedArtifact:source.exactArtifact,username,

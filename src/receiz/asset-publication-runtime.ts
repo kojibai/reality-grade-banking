@@ -3,7 +3,7 @@ import type {AssetPublicationReceipt} from './asset-publication';
 import type {BankNoteRuntimeFactory} from './offline-notes';
 import publicationBuild from '../../public/native/asset-publication.v129.manifest.json';
 import {parseExactByteBlockReference,type ExactByteBlockReference} from '../../native/receiz/packages/receiz-sdk/src/exactByteBlocks';
-export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:unknown;sourceReference:unknown;firstPaint:Readonly<{artifactDigest:string}>|null}>;
+export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:unknown;sourceReference:unknown;firstPaint:Readonly<{artifactDigest:string}>|null;artwork?:Blob}>;
 export interface AssetPublicationRuntimeModule{
  prepareConnectedComposerContent(input:{draft:AssetComposerDraft;ownerReceizId:string;assertCurrent():void}):Promise<ComposerAssetContent>;
  sealConnectedComposerContent(input:{content:ComposerAssetContent;sealDocument:Parameters<BankNoteRuntimeFactory>[0]['sealDocument'];assertCurrent():void}):Promise<PreparedComposerSource>;

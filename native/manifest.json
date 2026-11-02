@@ -6932,8 +6932,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "623fd57cfb685974dde2be6d4c608e51abe1b4bad58da57a5dcea72ea3f9c9d7",
-      "bytes": 13543,
+      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
+      "bytes": 14727,
       "mode": 420
     },
     {
@@ -6975,6 +6975,12 @@
       "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
       "sha256": "10a57d98c55b258b73fd6a64af54fd63306ca4bce0195b2322d2e6a5dde2c1b2",
       "bytes": 14958,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/profile/showcase/importedSourceMarketPreview.ts",
+      "sha256": "3bc3ea2c79eca9322a24b099a7439499aa6cfb76a2befe4fa5a9fea84353eed4",
+      "bytes": 6214,
       "mode": 420
     },
     {
@@ -16427,7 +16433,7 @@
       "id": "bankeiz-connected-showcase-publication-v129",
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
       "baseSha256": null,
-      "sha256": "623fd57cfb685974dde2be6d4c608e51abe1b4bad58da57a5dcea72ea3f9c9d7",
+      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
       "purpose": "Compose the existing v129 exact imported source, sealed Showcase placement, causal custody and complete-source block publisher for an explicitly selected public Bank moment. Keeps source verification, complete media/text, current account access and exact-source retries. SDK, MCP and AI skill packages remain unchanged.",
       "sourceCommit": "0a4eca945",
       "additionalSourceFiles": 438
@@ -16444,7 +16450,7 @@
       "id": "bankeiz-connected-showcase-custody-v129",
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
       "baseSha256": "9ae000fd20d7ddb7803d35ea037b25ca17ac034d08fbd4d12f885c0673f46461",
-      "sha256": "623fd57cfb685974dde2be6d4c608e51abe1b4bad58da57a5dcea72ea3f9c9d7",
+      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
       "purpose": "Retain missing exact imported-original predecessor bytes only after canonical Showcase source admission on a newly connected Bank origin. Known custody remains immediate.",
       "sourceCommit": "0a4eca945"
     },
@@ -16476,7 +16482,7 @@
       "id": "bankeiz-connected-publication-ancestry-inventory-v129",
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
       "baseSha256": "6aa04282c76f28ebc8f550501731f3a61a3cede300b67525b92a818a834865dd",
-      "sha256": "623fd57cfb685974dde2be6d4c608e51abe1b4bad58da57a5dcea72ea3f9c9d7",
+      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
       "purpose": "Recover imported media from the complete source visible child inventory (ancestry carries sealed carriers only); require admitted custody and repair nested closure metadata before export-only reuse. Real cold runtime regressions verify direct, interrupted nested, completed-spool recovery, v2 successors and retry idempotency.",
       "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52"
     },
@@ -16532,7 +16538,7 @@
       "id": "bankeiz-composer-media-connectedAssetPublication.client",
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
       "baseSha256": "5fa004a2e54b9eb8677cdcf2884be89cf09f2567ad6772fb7783ad7adcddbd6b",
-      "sha256": "623fd57cfb685974dde2be6d4c608e51abe1b4bad58da57a5dcea72ea3f9c9d7",
+      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
       "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
       "sourceCommit": "b974758ac"
     },
@@ -16588,7 +16594,7 @@
       "id": "bankeiz-composer-recoverable-connectedAssetPublication.client",
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
       "baseSha256": "92d5ba4988ce5fddff37b42cb4bf089ef20c2ae49aabef1fb571493d98c60179",
-      "sha256": "623fd57cfb685974dde2be6d4c608e51abe1b4bad58da57a5dcea72ea3f9c9d7",
+      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
       "purpose": "Split exact resource preparation from canonical sealing and retain the existing asset definition for stable Bank creation retries. Existing Receiz UI and v129 proof/financial authority remain unchanged.",
       "sourceCommit": "3dfd63ba8"
     },
@@ -16596,7 +16602,7 @@
       "id": "bank-connected-asset-local-admission",
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
       "baseSha256": "258783460d6695d4dc5e4c599e195f70b1e100656211622576f33e439dcad14c",
-      "sha256": "623fd57cfb685974dde2be6d4c608e51abe1b4bad58da57a5dcea72ea3f9c9d7",
+      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
       "purpose": "Forward the canonical verified local admission to retained Bank profile and Market views.",
       "sourceCommit": "b579ae34d"
     },
@@ -16620,7 +16626,7 @@
       "id": "bank-native-backed-publication",
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
       "baseSha256": "a20cd2a465cefdc1141a63304eb8acbe323104d36aaabc4be81df82581b04e32",
-      "sha256": "623fd57cfb685974dde2be6d4c608e51abe1b4bad58da57a5dcea72ea3f9c9d7",
+      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
       "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
       "sourceCommit": "ec6c438e9"
     },
@@ -16857,7 +16863,7 @@
       "id": "bankeiz-pbi-market-publication-v129",
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
       "baseSha256": "dcf2818ad43d0bb2e9ecdf16b966d461dba4dad8386bf4dfc875306fbe0ecbe4",
-      "sha256": "623fd57cfb685974dde2be6d4c608e51abe1b4bad58da57a5dcea72ea3f9c9d7",
+      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
       "purpose": "Compose the existing local PBI authorship verifier with exact imported source and the existing sealed Showcase child. Preserve original source, account entry, ownership, chronology and public-profile creation. No new issuer or registry."
     },
     {
@@ -17044,7 +17050,7 @@
       "id": "bankeiz-source-first-connectedAssetPublication.client",
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
       "baseSha256": "b0de5b87651b88f58c8042d278ed8cffa3f9d9b83d6804798a89e9eb37964eef",
-      "sha256": "623fd57cfb685974dde2be6d4c608e51abe1b4bad58da57a5dcea72ea3f9c9d7",
+      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
       "purpose": "Expose existing local preparation and exact source admission independently of connected Showcase recovery; reuse the same source during delivery."
     },
     {
@@ -17060,6 +17066,21 @@
       "baseSha256": "4063e6abe5b1c47ae1e98135a699e1587185c0faf72601a27c9ade150253e520",
       "sha256": "c2b673e28b391ab88ed1be14d05ec3d916d1c64a2966f13900c97eb13fcc3d8f",
       "purpose": "Identify an actual accepted transport during existing predecessor recovery so stale presentation pointers cannot force old media to be fetched again. Canonical source admission and finalization remain unchanged."
+    },
+    {
+      "id": "bankeiz-source-first-display",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "623fd57cfb685974dde2be6d4c608e51abe1b4bad58da57a5dcea72ea3f9c9d7",
+      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
+      "purpose": "Reuse the existing verified-source Market display projection and held artwork for the exact local Original. Preserve sealed projection, source bytes, custody, account entry, earning eligibility and publication receipt authority. No added reads."
+    },
+    {
+      "id": "bankeiz-source-first-display",
+      "path": "receiz/app/lib/profile/showcase/importedSourceMarketPreview.ts",
+      "baseSha256": null,
+      "sha256": "3bc3ea2c79eca9322a24b099a7439499aa6cfb76a2befe4fa5a9fea84353eed4",
+      "purpose": "Reuse the existing verified-source Market display projection and held artwork for the exact local Original. Preserve sealed projection, source bytes, custody, account entry, earning eligibility and publication receipt authority. No added reads.",
+      "sourceCommit": "d8b6917ab1bb03f22f9c5ac7ce24a4dfe36d3144"
     }
   ],
   "historicalValuation": {
@@ -17692,7 +17713,7 @@
     },
     {
       "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "623fd57cfb685974dde2be6d4c608e51abe1b4bad58da57a5dcea72ea3f9c9d7"
+      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731"
     },
     {
       "path": "app/lib/profile/showcase/economyRetry.ts",
@@ -17725,6 +17746,10 @@
     {
       "path": "app/lib/profile/showcase/importedSourceErrors.ts",
       "sha256": "c39f9b5bd24f0da29dd8e24a09820d98622eb326217cda4f09449b7bed9c6464"
+    },
+    {
+      "path": "app/lib/profile/showcase/importedSourceMarketPreview.ts",
+      "sha256": "3bc3ea2c79eca9322a24b099a7439499aa6cfb76a2befe4fa5a9fea84353eed4"
     },
     {
       "path": "app/lib/profile/showcase/importedSourcePlacement.client.ts",
