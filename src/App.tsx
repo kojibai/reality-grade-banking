@@ -57,7 +57,7 @@ function BankApp() {
   const [profileRevision,setProfileRevision]=useState(0);
   useEffect(()=>{const updated=()=>setProfileRevision(value=>value+1);addEventListener('bankeiz:profile-updated',updated);return()=>removeEventListener('bankeiz:profile-updated',updated);},[]);
   const identityImage=useMemo(()=>account.identity?identityProfileAvatar(account.identity):null,[account.identity,profileRevision]);
-  useEffect(()=>{if(account.identity)publishAccountAppearance({avatarUrl:identityImage,name:identityProfileName(account.identity)});else if(!account.opening&&!account.busy)publishAccountAppearance(null);},[account.identity,identityImage,account.opening,account.busy,profileRevision]);
+  useEffect(()=>{if(account.identity)publishAccountAppearance({avatarUrl:identityImage,name:identityProfileName(account.identity),accountUid:account.identity.knownProfile?.()?.userId??account.identity.knownWallet?.()?.wallet.userId,identityKeyId:account.identity.binding.keyId});else if(!account.opening&&!account.busy)publishAccountAppearance(null);},[account.identity,identityImage,account.opening,account.busy,profileRevision]);
   const profileAction=useSyncExternalStore(subscribeProfileActions,readProfileAccountAction,()=>null);
   const messageEntryAttempt=useRef<number|null>(null);
   useEffect(()=>{

@@ -1,7 +1,9 @@
 // @vitest-environment happy-dom
-import {act} from 'react';
+import {act,useEffect,useMemo,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {afterEach,expect,it,vi} from 'vitest';
+import {readFileSync} from 'node:fs';
+import ts from 'typescript';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 afterEach(()=>vi.unstubAllGlobals());
@@ -118,4 +120,61 @@ it('restores the same owner’s public hint after an upload or explicit removal 
 it('keeps the existing public appearance hint bounded and clears an older portrait for an oversized replacement',async()=>{
  const key='bankeiz.account-appearance.v1',previous=localStorage.getItem(key),appearance=await import('../src/receiz/account-appearance');
  try{appearance.publishAccountAppearance({name:'Owner',avatarUrl:'https://receiz.com/owner.png'});appearance.publishAccountAppearance({name:'Owner',avatarUrl:'data:image/svg+xml;base64,'+'a'.repeat(256*1024)});expect(localStorage.getItem(key)).toBeNull();vi.resetModules();expect((await import('../src/receiz/account-appearance')).readAccountAppearance()).toBeNull();}finally{if(previous===null)localStorage.removeItem(key);else localStorage.setItem(key,previous);vi.resetModules();}
+});
+
+
+it('reuses the current same-account public portrait after reopening instead of older carried artwork, without a read',async()=>{
+ const{identityProfileAvatar}=await helpers(),{parsePublicProfile,retainPublicProfile,forgetPublicProfilesForAccount}=await import('../src/receiz/public-profile'),{profileFixture}=await import('./fixtures/public-profile');
+ const original=profileFixture();original.profile.profile.avatarUrl='https://receiz.com/new-photo.webp';const fresh=retainPublicProfile(parsePublicProfile(original,'alexmorgan')),read=vi.fn();vi.stubGlobal('fetch',read);
+ const reopened={knownProfile:()=>null,accountUsername:()=>fresh.username,knownWallet:()=>null,localHistory:{portableStateVerified:true,verifiedState:{account:{userId:fresh.userId},profile:{userId:fresh.userId,username:fresh.username,avatarUrl:'https://receiz.com/old-photo.webp'}}}} as unknown as OpenIdentity;
+ try{expect(identityProfileAvatar(reopened)).toBe(fresh.avatarUrl);expect(read).not.toHaveBeenCalled();reopened.knownProfile=()=>({userId:fresh.userId,username:fresh.username,displayName:'Alex',avatarUrl:null});expect(identityProfileAvatar(reopened)).toBeNull();}finally{forgetPublicProfilesForAccount(fresh.userId);}
+});
+it('never uses a current public portrait for another account sharing an older carried handle',async()=>{
+ const{identityProfileAvatar}=await helpers(),{parsePublicProfile,retainPublicProfile,forgetPublicProfilesForAccount}=await import('../src/receiz/public-profile'),{profileFixture}=await import('./fixtures/public-profile');const input=profileFixture();input.profile.profile.userId='other-account';retainPublicProfile(parsePublicProfile(input,'alexmorgan'));
+ const reopened={knownProfile:()=>null,accountUsername:()=> 'alexmorgan',localHistory:{portableStateVerified:true,verifiedState:{account:{userId:'account-1'},profile:{avatarUrl:'https://receiz.com/own-photo.webp'}}}} as unknown as OpenIdentity;
+ try{expect(identityProfileAvatar(reopened)).toBe('https://receiz.com/own-photo.webp');}finally{forgetPublicProfilesForAccount('other-account');}
+});
+
+
+it('retains the last observed photo across a cold module reopen only for the same admitted identity',async()=>{
+ const storageKey='bankeiz.account-appearance.v1',prior=localStorage.getItem(storageKey),keyId='d'.repeat(64),source={account:{userId:'account-1'},profile:{avatarUrl:'https://receiz.com/old-photo.webp'}},owner={binding:{keyId},knownProfile:()=>null,knownWallet:()=>null,localHistory:{portableStateVerified:true,verifiedState:source}} as unknown as OpenIdentity;
+ try{
+  const first=await import('../src/receiz/account-appearance');first.publishAccountAppearance({name:'Alex',avatarUrl:'https://receiz.com/current-photo.webp',accountUid:'account-1',identityKeyId:keyId} as never);vi.resetModules();let avatar=await helpers();expect(avatar.identityProfileAvatar(owner)).toBe('https://receiz.com/current-photo.webp');
+  const appearance=await import('../src/receiz/account-appearance');appearance.publishAccountAppearance({name:'Alex',avatarUrl:null,accountUid:'account-1',identityKeyId:keyId} as never);vi.resetModules();avatar=await helpers();expect(avatar.identityProfileAvatar(owner)).toBeNull();
+  expect(avatar.identityProfileAvatar({...owner,binding:{keyId:'e'.repeat(64)},localHistory:{portableStateVerified:true,verifiedState:{...source,account:{userId:'other-account'}}}} as OpenIdentity)).toBe('https://receiz.com/old-photo.webp');
+ }finally{if(prior===null)localStorage.removeItem(storageKey);else localStorage.setItem(storageKey,prior);vi.resetModules();}
+});
+
+it('updates the retained BankApp header and cold appearance after observing the same owner’s newer portrait',async()=>{
+ const storageKey='bankeiz.account-appearance.v1',prior=localStorage.getItem(storageKey);localStorage.removeItem(storageKey);vi.resetModules();
+ const avatar=await helpers(),appearance=await import('../src/receiz/account-appearance'),profiles=await import('../src/receiz/public-profile'),{profileFixture}=await import('./fixtures/public-profile');
+ const input=profileFixture();input.profile.profile.avatarUrl='https://receiz.com/current-photo.webp';const profile=profiles.parsePublicProfile(input,'alexmorgan');
+ const identity={binding:{keyId:'d'.repeat(64)},knownProfile:()=>null,knownWallet:()=>null,localHistory:{portableStateVerified:true,verifiedState:{account:{userId:profile.userId},profile:{userId:profile.userId,username:profile.username,displayName:'Alex',avatarUrl:'https://receiz.com/old-photo.webp'}}}} as unknown as OpenIdentity;
+ // Execute App's actual subscription, memo and appearance effect. Merely
+ // calling the helper again would hide a stale memo in the retained BankApp.
+ const source=readFileSync(process.cwd()+'/src/App.tsx','utf8'),start=source.indexOf('  const [profileRevision,setProfileRevision]'),end=source.indexOf('  const profileAction=',start);
+ expect(start).toBeGreaterThan(0);expect(end).toBeGreaterThan(start);
+ const code=ts.transpileModule(source.slice(start,end)+'\nreturn identityImage;',{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+ const hooks=new Function('account','useState','useEffect','useMemo','identityProfileAvatar','identityProfileName','publishAccountAppearance',code);
+ function Header({active}:{active:boolean}){const src=hooks({identity,opening:false,busy:false},useState,useEffect,useMemo,avatar.identityProfileAvatar,avatar.identityProfileName,appearance.publishAccountAppearance);return <div hidden={!active}><img src={src}/></div>;}
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<Header active/>));expect(host.querySelector('img')?.getAttribute('src')).toBe('https://receiz.com/old-photo.webp');
+  await act(async()=>root.render(<Header active={false}/>));await act(async()=>{profiles.retainPublicProfile(profile);});
+  await act(async()=>root.render(<Header active/>));expect(host.querySelector('img')?.getAttribute('src')).toBe(profile.avatarUrl);
+  expect(JSON.parse(localStorage.getItem(storageKey)!).avatarUrl).toBe(profile.avatarUrl);
+ }finally{act(()=>root.unmount());profiles.forgetPublicProfilesForAccount(profile.userId);if(prior===null)localStorage.removeItem(storageKey);else localStorage.setItem(storageKey,prior);vi.resetModules();}
+});
+
+it('realizes an observed default from its public coordinates and only announces portrait changes',async()=>{
+ const avatar=await helpers(),profiles=await import('../src/receiz/public-profile'),{profileFixture}=await import('./fixtures/public-profile'),{publicProfileAvatar}=await import('../src/receiz/profile-artwork');
+ const input=profileFixture(),profile=profiles.parsePublicProfile({...input,profile:{...input.profile,profile:{...input.profile.profile,createdAt:'2026-02-25T06:44:59.650624Z'}}},'alexmorgan'),updated=vi.fn();addEventListener('bankeiz:profile-updated',updated);
+ const identity={knownProfile:()=>null,knownWallet:()=>null,localHistory:{portableStateVerified:true,verifiedState:{account:{userId:profile.userId},profile:{avatarUrl:'https://receiz.com/old-photo.webp'}}}} as unknown as OpenIdentity;
+ try{
+  profiles.retainPublicProfile(profile);expect(updated).toHaveBeenCalledTimes(1);
+  profiles.retainPublicProfile({...profile,stats:{...profile.stats,views:999}});expect(updated).toHaveBeenCalledTimes(1);
+  profiles.retainPublicProfile({...profile,avatarUrl:null});
+  const expected=publicProfileAvatar({...profile,avatarUrl:null,authorshipPbiReceiptHash:profile.pbiReceiptHash});expect(expected).not.toBeNull();expect(avatar.identityProfileAvatar(identity)).toBe(expected);expect(updated).toHaveBeenCalledTimes(2);
+  profiles.retainPublicProfile({...profile,avatarUrl:null});expect(updated).toHaveBeenCalledTimes(2);
+ }finally{removeEventListener('bankeiz:profile-updated',updated);profiles.forgetPublicProfilesForAccount(profile.userId);}
 });

@@ -2,7 +2,20 @@ import {accountPersonName} from './account-presentation.js';
 import {publicProfileAvatar} from './profile-artwork.js';
 import {isBankNativeApplicationId} from './config.js';
 import type {OpenIdentity} from './native-identity';
+import {readAccountAppearance} from './account-appearance.js';
 const object=(value:unknown):Record<string,unknown>=>value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
+// Index the same held public presentation by immutable account ID. This keeps
+// the early avatar helper independent of the full Market/profile import graph.
+const observedPortraits=new Map<string,{username:string;avatarUrl:string|null}>();
+export function rememberObservedProfilePortrait(profile:{userId:string;username:string;avatarUrl:string|null;createdAt?:string|null;authorshipVerified?:boolean;pbiReceiptHash?:string|null}){
+ const avatarUrl=profileAvatarUrl(profile.avatarUrl)??publicProfileAvatar({...profile,authorshipPbiReceiptHash:profile.pbiReceiptHash}),previous=observedPortraits.get(profile.userId);
+ observedPortraits.delete(profile.userId);observedPortraits.set(profile.userId,{username:profile.username,avatarUrl});if(observedPortraits.size>24)observedPortraits.delete(observedPortraits.keys().next().value!);
+ // The retained BankApp memo and its existing cold-page hint observe this
+ // event. Repeated public values and valuation updates do not repaint it.
+ if((!previous||previous.avatarUrl!==avatarUrl)&&typeof dispatchEvent==='function')dispatchEvent(new Event('bankeiz:profile-updated'));
+}
+export function forgetObservedProfilePortrait(username:string){for(const[uid,profile]of observedPortraits)if(profile.username===username)observedPortraits.delete(uid);}
+
 /** Public presentation only. Preserve carried Receiz seal artwork intact;
  * never use a private Identity Seal backup as an avatar. */
 export function profileAvatarUrl(value:unknown):string|null {
@@ -27,10 +40,14 @@ function freshGenesisProfile(identity:OpenIdentity,source:Record<string,unknown>
 }
 export function identityProfileAvatar(identity:OpenIdentity):string|null {
  const current=identity.knownProfile?.();if(current)return profileAvatarUrl(current.avatarUrl)??publicProfileAvatar(current);
+ const source=identity.localHistory?.portableStateVerified===true?object(identity.localHistory.verifiedState):{},walletUid=identity.knownWallet?.()?.wallet.userId,uid=walletUid??object(source.account).userId;
+ const observed=typeof uid==='string'?observedPortraits.get(uid):undefined;if(observed)return observed.avatarUrl;
+ // The existing cold-page hint is usable only beneath this admitted account
+ // or its exact local identity key. It never establishes identity or funds.
+ const appearance=readAccountAppearance();if(appearance&&(typeof uid==='string'&&appearance.accountUid===uid||!walletUid&&appearance.identityKeyId&&appearance.identityKeyId===identity.binding?.keyId))return appearance.avatarUrl;
  const held=identity.knownMessagingDisplay?.();
  if(held)for(const conversation of held.inbox){const own=conversation.members.find(person=>person.kind==='user'&&person.userId===held.accountUid),avatar=profileAvatarUrl(own?.avatarUrl)??(own?publicProfileAvatar(own as unknown as Record<string,unknown>):null);if(avatar)return avatar;}
  if(identity.localHistory?.portableStateVerified!==true)return null;
- const source=object(identity.localHistory.verifiedState);
  const profile=object(source.profile),view=object(object(source.profileView).profile);
  const avatar=profileAvatarUrl(profile.avatarUrl)??profileAvatarUrl(view.avatarUrl)??publicProfileAvatar(profile)??publicProfileAvatar(view);
  if(avatar)return avatar;
