@@ -13,7 +13,7 @@ export function profileAvatarUrl(value:unknown):string|null {
  try{const url=new URL(raw,raw.startsWith('/')?'https://receiz.com':undefined);return url.protocol==='https:'&&!url.username&&!url.password?url.href:null;}catch{return null;}
 }
 /** The signed Bank bootstrap establishes birth only for its exact admitted
- * account. A device, recovery or export timestamp never names another account. */
+ * identity. A connected wallet's account UID does not replace that identity. */
 function freshGenesisProfile(identity:OpenIdentity,source:Record<string,unknown>):Record<string,unknown>|null {
  const projection=identity.localHistory,genesis=object(source.bankGenesis),account=object(source.account),userId=account.userId,owner=projection.owner?.uid;
  if(projection.schema!=='receiz.sdk.identity_account_projection.v1'||projection.authority!=='verified-identity-portable-state'
@@ -23,7 +23,6 @@ function freshGenesisProfile(identity:OpenIdentity,source:Record<string,unknown>
   ||typeof account.username!=='string'||!account.username||typeof genesis.createdAt!=='string'||source.createdAt!==genesis.createdAt||!Number.isFinite(Date.parse(genesis.createdAt))
   ||typeof source.exportedAt!=='string'||!Number.isFinite(Date.parse(source.exportedAt))||Date.parse(genesis.createdAt)>Date.parse(source.exportedAt)
   ||typeof genesis.kaiUPulse!=='string'||!/^\d{1,30}$/.test(genesis.kaiUPulse))return null;
- const active=identity.walletReceivingAddress?.();if(active&&active!==userId)return null;
  return {userId,username:identity.accountUsername?.()||account.username,createdAt:genesis.createdAt};
 }
 export function identityProfileAvatar(identity:OpenIdentity):string|null {

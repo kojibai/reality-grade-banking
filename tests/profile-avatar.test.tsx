@@ -56,6 +56,18 @@ it('shows the canonical public seal from a genuine fresh signed account genesis 
  }finally{act(()=>root.unmount());}
  expect(JSON.stringify(projection)).toBe(before);
 });
+it('keeps the admitted Identity Seal in the popover when the same key connects to its account’s different receiving identifier',async()=>{
+ const {identity,created,key,projection}=await freshSignedAccount(),{identityProfileAvatar}=await helpers(),before=JSON.stringify(projection),avatar=identityProfileAvatar(identity),fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ let receivingId=created.localUid;
+ const connected={...identity,walletReceivingAddress:()=>receivingId},host=document.createElement('div'),root=createRoot(host),{IdentityProfile}=await import('../src/features/account/IdentityProfile');
+ try{
+  act(()=>root.render(<IdentityProfile identity={connected} active={false} onForget={async()=>{}} onRefresh={()=>{}}/>));expect(host.querySelector('.profile-identity img')?.getAttribute('src')===avatar).toBe(true);
+  receivingId='00000000-0000-4000-8000-000000000099';
+  act(()=>root.render(<IdentityProfile identity={connected} active={false} onForget={async()=>{}} onRefresh={()=>{}}/>));expect(host.querySelector('.profile-identity img')?.getAttribute('src')===avatar).toBe(true);
+  const {projectReceizIdentityAccount}=await import('@receiz/sdk'),reopened={...connected,localHistory:await projectReceizIdentityAccount(key)};
+  expect(identityProfileAvatar(reopened)===avatar).toBe(true);expect(fetch).not.toHaveBeenCalled();expect(JSON.stringify(projection)).toBe(before);
+ }finally{act(()=>root.unmount());}
+});
 it('never treats a recovered account, export, device timestamp or mismatched genesis as account birth',async()=>{
  const {identity,projection}=await freshSignedAccount(),{identityProfileAvatar}=await helpers();
  for(const alter of [
@@ -67,7 +79,6 @@ it('never treats a recovered account, export, device timestamp or mismatched gen
   (value:Record<string,unknown>)=>{(value.bankGenesis as Record<string,unknown>).createdAt='2026-02-26T00:00:00Z';},
   (value:Record<string,unknown>)=>{(value.account as Record<string,unknown>).userId='a-recovered-account';},
  ]){const state=structuredClone(projection.verifiedState) as Record<string,unknown>;alter(state);expect(identityProfileAvatar({...identity,localHistory:{...projection,verifiedState:state}})).toBeNull();}
- expect(identityProfileAvatar({...identity,walletReceivingAddress:()=> 'another-account'})).toBeNull();
  expect(identityProfileAvatar({...identity,localHistory:{...projection,portableStateVerified:false}})).toBeNull();
  expect(identityProfileAvatar({...identity,localHistory:{...projection,authority:'identity-only'}})).toBeNull();
  expect(identityProfileAvatar({...identity,binding:{...identity.binding,keyId:'another-key'}})).toBeNull();
