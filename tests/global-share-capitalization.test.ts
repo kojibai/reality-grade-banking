@@ -68,18 +68,19 @@ it('refuses an internally inconsistent cap headline before publishing any interv
  expect(()=>parseMarketHistory({...history,summary:{...history.summary,shareCapitalization:{...history.summary.shareCapitalization!,usdCents:'1'}}})).toThrow('capitalization summary');
 });
 
-it('limits the global amount, count and every period to PBI-signed Market assets while retaining cards and raw holdings',async()=>{
+it('includes every supported public Original in the existing global calculation regardless of PBI, retaining cards and raw holdings',async()=>{
  const held=catalog(),signed={...held.items[0],hasPbiSignature:true};
- const unsigned={...signed,id:'unsigned',assetId:'unsigned-asset',hasPbiSignature:false};unsigned.shareInventory={...signed.shareInventory!,marketItemId:unsigned.id,assetId:unsigned.assetId};
+ const unsigned={...signed,id:'unsigned',assetId:'unsigned-asset',hasPbiSignature:false,valuationBinding:{itemId:'unsigned',assetId:'unsigned-asset'}};unsigned.shareInventory={...signed.shareInventory!,marketItemId:unsigned.id,assetId:unsigned.assetId};
  const sports={id:'card',assetId:'card',category:'sports',priceUsd:10,capitalizationUsdCents:'1000',circulationCount:1} as PublicMarketItem;
  const mixed={...held,items:[signed,unsigned,sports],sportsCoverage:'complete' as const};
  const history=(await buildMarketHistory(source,null,undefined,undefined,{catalog:mixed,pulse:end,capitalization:true}))!;
- const expected=publicShareCapitalization(publicCatalogAtPulse({...mixed,items:[signed,sports]},source,end));
- expect(history.summary.shareCapitalization).toMatchObject({usdCents:expected.usdCents,listed:2,covered:2});expect(history.summary.marketAssetsPriced).toBe(1);
+ const expected=publicShareCapitalization(publicCatalogAtPulse(mixed,source,end));
+ expect(history.summary.shareCapitalization).toMatchObject({usdCents:expected.usdCents,listed:3,covered:3});expect(history.summary.marketAssetsPriced).toBe(2);
  for(const points of Object.values(history.series))expect(points.at(-1)?.usdCents).toBe(expected.usdCents);
- expect(mixed.items).toHaveLength(3);expect(mixed.items[1].shareInventory).toBeDefined();
+ expect(mixed.items).toHaveLength(3);expect(mixed.items[1].shareInventory).toBeDefined();expect(mixed.items[1].hasPbiSignature).toBe(false);
 });
-it('publishes zero for a complete Market containing no signed assets instead of retaining an unsigned total',async()=>{
+it('uses the same share quantities and prices for an unsigned public Original without promoting its signature',async()=>{
  const held=catalog();held.items[0].hasPbiSignature=false;const history=(await buildMarketHistory(source,null,undefined,undefined,{catalog:held,pulse:end,capitalization:true}))!;
- expect(history.summary.shareCapitalization).toMatchObject({usdCents:'0',listed:0,covered:0,complete:true});
+ expect(history.summary.shareCapitalization).toEqual(publicShareCapitalization(publicCatalogAtPulse(held,source,end)));
+ expect(history.summary.shareCapitalization).toMatchObject({listed:1,covered:1,complete:true});expect(held.items[0].hasPbiSignature).toBe(false);
 });

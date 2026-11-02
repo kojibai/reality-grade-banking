@@ -12,7 +12,6 @@ import { PublicAssetDetail } from './PublicAssetDetail';
 import {MARKET_CONTENT_FILTERS,matchesMarketContent,type MarketContentFilter} from '../../receiz/market-categories';
 import {beginPublicAssetTrade} from '../../receiz/public-asset-trade';
 import {PublicAssetTradeHost} from '../../public-explorer/PublicAssetTradeHost';
-import {marketDiscoverable} from '../../receiz/market-pbi-publication';
 import './market.css';
 import {MarketFeedPopover as MarketFeed} from './MarketFeedPopover';
 
@@ -30,7 +29,7 @@ function MarketView({ mode='market',active = true, sourceActive=active, onAction
   const [query, setQuery] = useState(''), [filter, setFilter] = useState<MarketContentFilter>((publicCategory?.label as MarketContentFilter)??'All'), [shown, setShown] = useState(50), [selectedId, setSelectedId] = useState(()=>selectedObject(prefix));
   useEffect(()=>{if(explorer){setFilter((publicCategory?.label as MarketContentFilter)??'All');setQuery('');}},[explorer,publicCategory?.label]);
   const normalizedQuery=query.trim().toLocaleLowerCase();
-  const assets = useMemo(() => (catalog?.items ?? []).filter(asset => marketDiscoverable(asset)&&matchesMarketContent(asset,filter)&&(!normalizedQuery || `${asset.title} ${asset.summary} ${asset.assetId}`.toLocaleLowerCase().includes(normalizedQuery))), [catalog, normalizedQuery, filter]);
+  const assets = useMemo(() => (catalog?.items ?? []).filter(asset => matchesMarketContent(asset,filter)&&(!normalizedQuery || `${asset.title} ${asset.summary} ${asset.assetId}`.toLocaleLowerCase().includes(normalizedQuery))), [catalog, normalizedQuery, filter]);
   const selected = catalog?.items.find(item => item.id === selectedId);
   const loadMore = useRef<HTMLDivElement | null>(null), collection = useRef<HTMLElement | null>(null);
   useEffect(() => {

@@ -128,7 +128,9 @@ try{
    for(const field of ['x','y','width','height'])assert.ok(Math.abs(confirmedBox[field]-box[field])<=0.1,`Copy confirmation changed ${field}: ${box[field]} → ${confirmedBox[field]}`);
    await copy.waitFor({timeout:2500});
    checkColdImages();assert.equal(await page.locator('link[data-profile-preload]').count(),0,'Deferred profile preparation preloaded unused images');
-   await page.getByRole('link',{name:'Explore',exact:true}).first().click();const search=page.getByRole('textbox',{name:'Search proof objects'});await search.waitFor({timeout:2500});await search.fill('Selected regression specimen');
+   await page.getByRole('link',{name:'Explore',exact:true}).first().click();const search=page.getByRole('textbox',{name:'Search proof objects'});await search.waitFor({timeout:2500});
+   const unsigned=market.transport.publicOriginals.find(item=>item.profileOriginal.hasPbiSignature===false);await search.fill(unsigned.title);await page.locator('.market-rows .asset-row').filter({hasText:unsigned.title}).first().waitFor({timeout:2500});
+   await search.fill('Selected regression specimen');
    await page.evaluate(()=>{window.__retainedSearch=document.querySelector('input[aria-label="Search proof objects"]');});
    await page.locator('.market-rows .asset-row').first().scrollIntoViewIfNeeded();const savedScroll=await page.evaluate(()=>scrollY);
    await page.locator('.market-rows .asset-row').first().click();await page.getByRole('link',{name:'Asset page',exact:true}).click();await page.locator('.public-asset-top').waitFor();await page.locator('.public-asset-top a').first().click();

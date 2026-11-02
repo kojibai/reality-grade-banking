@@ -25,6 +25,15 @@ function mount(mode:'market'|'explorer'='market') {
 }
 function catalog(count = 1001) { return parsePublicMarket({ ok: true, transport: { generatedAt: '2026-10-13T12:00:00Z', publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: count, revision: 'r1' }, publicOriginals: Array.from({ length: count }, (_, i) => ({ id: `public-${i}`, receizId: `asset-${i}`, title: `Public object ${i}`, valueUsd: 5, profileOriginal:{hasPbiSignature:true}, ownerUsername: 'alice', canonicalHref: `/alice/verified/asset-${i}` })) } }); }
 function loadedSource(count=1,refresh=vi.fn(async()=>{})):NonNullable<Parameters<typeof Market>[0]['source']>{return{catalog:catalog(count),historyCatalog:null,pulse:14720000,quoteStatus:'fresh',sportsStatus:'fresh',status:'live',error:null,refresh};}
+it.each(['market','explorer'] as const)('displays signed and unsigned public Originals in %s from the held catalog without another read',mode=>{
+ const held=loadedSource(2),fetcher=vi.fn();held.catalog!.items[1].hasPbiSignature=false;vi.stubGlobal('fetch',fetcher);
+ source.value=held;const {host}=mount(mode);
+ expect(host.querySelectorAll('.market-rows .asset-row')).toHaveLength(2);
+ expect(host.querySelector('.market-rows')?.textContent).toContain('Public object 1');
+ expect(capitalization.catalog).toBe(held.catalog);
+ expect(held.catalog!.items[1]).toMatchObject({hasPbiSignature:false,priceUsd:5,assetId:'asset-1'});
+ expect(fetcher).not.toHaveBeenCalled();expect(held.refresh).not.toHaveBeenCalled();
+});
 it('reveals the retained Explorer search and categories on upward scroll and focus without rereading its source',()=>{
  const refresh=vi.fn(async()=>{}),fetcher=vi.fn(),held=loadedSource(2,refresh),frames=new Map<number,FrameRequestCallback>();let frame=0;
  vi.stubGlobal('fetch',fetcher);vi.stubGlobal('requestAnimationFrame',(read:FrameRequestCallback)=>{frames.set(++frame,read);return frame;});vi.stubGlobal('cancelAnimationFrame',(id:number)=>frames.delete(id));Object.defineProperty(window,'scrollY',{value:0,configurable:true});

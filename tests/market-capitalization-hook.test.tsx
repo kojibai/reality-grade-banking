@@ -33,8 +33,8 @@ it('opens held calculation details without refetching or requesting another valu
   act(()=>worker.onmessage({data:{inspectionOnly:true,marketCalculation:calculation}}));expect(state.calculation).toBe(nextCalculation);
  }finally{act(()=>root.unmount());}
 });
-it('discards an older history policy even when its retained endpoint is current',async()=>{
- const old={...historyFile,historyPolicy:'share-capitalization-and-release-v1',summary:{...historyFile.summary,proofObjectHash:'c'.repeat(64)}};
+it('discards the former signed-only chart even when its retained endpoint is current',async()=>{
+ const old={...historyFile,historyPolicy:'pbi-signed-share-capitalization-and-release-v1',summary:{...historyFile.summary,proofObjectHash:'c'.repeat(64)}};
  localStorage.setItem('receiz-bank-pbi-market-share-graph-history-v1',JSON.stringify(old));
  let state!:ReturnType<typeof useMarketCapitalization>;const root=createRoot(document.createElement('div'));
  function Probe(){state=useMarketCapitalization('ALL',false);return null;}

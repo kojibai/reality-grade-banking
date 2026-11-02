@@ -9,6 +9,7 @@ export const subscribeAccountAppearance=(listener:()=>void)=>{listeners.add(list
 export function publishAccountAppearance(value:AccountAppearance|null){
  if(value?.name===appearance?.name&&value?.avatarUrl===appearance?.avatarUrl)return;
  appearance=value;
- try{if(value&&(!value.avatarUrl||value.avatarUrl.length<=8192))localStorage.setItem(KEY,JSON.stringify(value));else localStorage.removeItem(KEY);}catch{/* Optional public presentation hint. */}
+ // Complete public SVG seals use the same bounded image size as profileAvatarUrl.
+ try{if(value&&(!value.avatarUrl||value.avatarUrl.length<=256*1024))localStorage.setItem(KEY,JSON.stringify(value));else localStorage.removeItem(KEY);}catch{/* Optional public presentation hint. */}
  for(const listener of listeners)listener();
 }

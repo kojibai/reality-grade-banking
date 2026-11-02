@@ -80,3 +80,31 @@ it('uses the already-confirmed same-account username for the fresh seal when the
  expect(avatar).not.toBeNull();expect(decodeURIComponent(avatar!.slice(avatar!.indexOf(',')+1))).toBe(expected.avatarSvg);
  expect(JSON.stringify(projection)).toBe(before);
 });
+
+it('keeps a genuine fresh public seal in the existing appearance hint across a public-document reload',async()=>{
+ const {identity,projection}=await freshSignedAccount(),{identityProfileAvatar,identityProfileName}=await helpers(),avatar=identityProfileAvatar(identity),name=identityProfileName(identity),before=JSON.stringify(projection),key='bankeiz.account-appearance.v1',previous=localStorage.getItem(key),fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ expect(avatar).not.toBeNull();expect(avatar!.length).toBeGreaterThan(8192);
+ const first=await import('../src/receiz/account-appearance'),host=document.createElement('div'),root=createRoot(host);
+ try{
+  first.publishAccountAppearance({avatarUrl:avatar,name});expect(first.readAccountAppearance()?.avatarUrl===avatar).toBe(true);
+  vi.resetModules();const restored=await import('../src/receiz/account-appearance');expect(restored.readAccountAppearance()?.avatarUrl===avatar).toBe(true);expect(restored.readAccountAppearance()?.name).toBe(name);
+  const saved=JSON.parse(localStorage.getItem(key)!);expect(Object.keys(saved).sort()).toEqual(['avatarUrl','name']);
+  const {Discover}=await import('../src/public-discover/Discover');act(()=>root.render(<Discover seed={[]} active={false}/>));expect(host.querySelector('.discover-account img')?.getAttribute('src')===avatar).toBe(true);
+  expect(fetch).not.toHaveBeenCalled();expect(JSON.stringify(projection)).toBe(before);
+ }finally{act(()=>root.unmount());if(previous===null)localStorage.removeItem(key);else localStorage.setItem(key,previous);vi.resetModules();}
+});
+it('restores the same owner’s public hint after an upload or explicit removal without reviving an older portrait',async()=>{
+ const {identity,created}=await freshSignedAccount(),{identityProfileAvatar,identityProfileName}=await helpers(),key='bankeiz.account-appearance.v1',previous=localStorage.getItem(key),photo='https://receiz.com/current-owner-photo.png';
+ let current:{userId:string;username:string;displayName:string;avatarUrl:string|null;createdAt?:string}={userId:created.localUid,username:created.username,displayName:'Current owner',avatarUrl:photo};
+ const owner={...identity,knownProfile:()=>current},name=identityProfileName(owner),fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ const reload=async()=>{const appearance=await import('../src/receiz/account-appearance');appearance.publishAccountAppearance({avatarUrl:identityProfileAvatar(owner),name});vi.resetModules();return(await import('../src/receiz/account-appearance')).readAccountAppearance();};
+ try{
+  expect((await reload())?.avatarUrl).toBe(photo);
+  current={...current,avatarUrl:null};expect(identityProfileAvatar(owner)).toBeNull();expect(await reload()).toEqual({avatarUrl:null,name});
+  current={...current,createdAt:'2026-02-25T06:44:59.650624Z'};const seal=identityProfileAvatar(owner);expect(seal).not.toBeNull();expect((await reload())?.avatarUrl===seal).toBe(true);expect(fetch).not.toHaveBeenCalled();
+ }finally{if(previous===null)localStorage.removeItem(key);else localStorage.setItem(key,previous);vi.resetModules();}
+});
+it('keeps the existing public appearance hint bounded and clears an older portrait for an oversized replacement',async()=>{
+ const key='bankeiz.account-appearance.v1',previous=localStorage.getItem(key),appearance=await import('../src/receiz/account-appearance');
+ try{appearance.publishAccountAppearance({name:'Owner',avatarUrl:'https://receiz.com/owner.png'});appearance.publishAccountAppearance({name:'Owner',avatarUrl:'data:image/svg+xml;base64,'+'a'.repeat(256*1024)});expect(localStorage.getItem(key)).toBeNull();vi.resetModules();expect((await import('../src/receiz/account-appearance')).readAccountAppearance()).toBeNull();}finally{if(previous===null)localStorage.removeItem(key);else localStorage.setItem(key,previous);vi.resetModules();}
+});
