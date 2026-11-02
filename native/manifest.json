@@ -160,7 +160,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/connectedNote.ts",
-      "sha256": "38e14bd4e5f5b9f94c9df05ef6a347aee0f1f81192b43e4c2a455391a4d6a81e"
+      "sha256": "8166ba0fe97430ccee7683a380f0983d9beec99a071d932aee06e9b7f08dbb04"
     },
     {
       "path": "app/lib/wallet/bankNotes/connectedNoteImage.ts",
@@ -7374,7 +7374,7 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/connectedNote.ts",
-      "sha256": "38e14bd4e5f5b9f94c9df05ef6a347aee0f1f81192b43e4c2a455391a4d6a81e",
+      "sha256": "8166ba0fe97430ccee7683a380f0983d9beec99a071d932aee06e9b7f08dbb04",
       "bytes": 32058,
       "mode": 420
     },
@@ -17023,6 +17023,14 @@
       "sha256": "ff4daeade3f1b345503a2f2ecdb3e91540678980a41e4e626b5e030a9aa1e759",
       "sourceCommit": "1bf06230f2d1fd3a46f83c56500426c529874044",
       "purpose": "Use one display-only username formatter across Receiz and Bankeiz. Full identity, proof, route, payment and recovery coordinates remain unchanged."
+    },
+    {
+      "id": "bankeiz-note-recipient-binding",
+      "path": "receiz/app/lib/wallet/bankNotes/connectedNote.ts",
+      "baseSha256": "38e14bd4e5f5b9f94c9df05ef6a347aee0f1f81192b43e4c2a455391a4d6a81e",
+      "sha256": "8166ba0fe97430ccee7683a380f0983d9beec99a071d932aee06e9b7f08dbb04",
+      "purpose": "Optional recipient account UID is covered by existing Note signatures and funding admission. Default bearer Notes retain their exact existing signing bytes. Published SDK package sources and outputs are unchanged.",
+      "reviewPatchSha256": "c8483980d45c3f11a58573434e559223a4d63cdee4ca479b0ed5167858735b15"
     }
   ],
   "historicalValuation": {
@@ -17031,7 +17039,7 @@
     "sourcePath": "app/utils/phi-issuance.ts",
     "sourceSha256": "69622c017e955734525e121a7b27bdaa42066932657b145e02be493792de9c74",
     "sdkVersion": "129.0.0",
-    "intrinsicAlgorithm": "phi/kosmos-v\u03c6-5",
+    "intrinsicAlgorithm": "phi/kosmos-vφ-5",
     "intrinsicPolicyChecksum": "b05b2049",
     "sampleUsd": 100,
     "historicalPointsAreRecordedQuotes": false

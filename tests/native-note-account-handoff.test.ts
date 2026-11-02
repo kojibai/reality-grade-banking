@@ -535,10 +535,58 @@ it('publishes a durably confirmed deposit even when a later deposit in the same 
   const notes=await identity.offlineNotes!();await notes.deposit(one);await notes.deposit(two);
   expect(identity.knownReceivedNotes!().map(row=>row.status)).toEqual(['received','received']);
   vi.stubGlobal('navigator',{onLine:true,locks:{request:locked}});
-  await expect(notes.create('100')).rejects.toThrow('SECOND_RESPONSE_UNAVAILABLE');
+  await expect(notes.create('100')).rejects.toThrow('BANK_NOTE_DEPOSIT_RECONCILIATION_REQUIRED');
   expect((await notes.receivedNotes!()).map(row=>[row.noteId,row.status])).toEqual([['one','confirmed'],['two','received']]);
   expect(identity.knownReceivedNotes!().map(row=>[row.noteId,row.status])).toEqual([['two','received']]);
   expect(fixture.create).not.toHaveBeenCalled();
+ }finally{identity.dispose();vi.unstubAllGlobals();}
+});
+
+it.each([
+ ['SECOND_RESPONSE_UNAVAILABLE',true],
+ ['BANK_NOTE_ALREADY_DEPOSITED',false],
+]as const)('isolates paused %s while preserving spend qualification and later incoming deposits',async(error,blocksSpending)=>{
+ // Boundary choreography only: accepted-source and native-credit ports are
+ // isolated here; genuine cryptographic originals remain in the source tests.
+ fixture.incoming=true;
+ const locked=async(_name:string,_options:unknown,run:()=>Promise<unknown>)=>run();
+ const online=(value:boolean)=>vi.stubGlobal('navigator',{onLine:value,locks:{request:locked}});
+ online(false);
+ const source=(id:string)=>new TextEncoder().encode(id),keyId=(fixture.keyFile as sdk.ReceizKeyFile).keyId;
+ fixture.openIncoming.mockImplementation(async(bytes:Uint8Array)=>({rail:'reserve',noteId:new TextDecoder().decode(bytes),amountPhiMicro:'1000000',amountUsdCents:'200',receiverUserId:'connected-account',receiverKeyId:keyId,redemptionDigest:'c'.repeat(64),terminalArtifactSha256:'d'.repeat(64),terminalSourceBytes:bytes.slice()}));
+ let state:unknown=null;const blobs=new Map<string,Uint8Array>();
+ vi.mocked(loadReceivedNoteDepositState).mockImplementation(async()=>structuredClone(state));
+ vi.mocked(saveReceivedNoteDepositState).mockImplementation(async(_binding,next,previous)=>{expect(previous).toEqual(state);state=structuredClone(next);});
+ vi.mocked(saveOfflineNoteBlob).mockImplementation(async(_binding,bytes)=>{const key=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes)))).map(v=>v.toString(16).padStart(2,'0')).join('');blobs.set(key,bytes.slice());return key;});
+ vi.mocked(loadOfflineNoteBlob).mockImplementation(async(_binding,key)=>blobs.get(key)!.slice());
+ let failure=true;
+ fixture.request.mockImplementation(async(path:string,options?:{body?:{terminalArtifactBytes?:string}})=>{if(failure&&(path.includes('noteId=paused')||options?.body?.terminalArtifactBytes==='paused'))throw Error(error);return{found:true};});
+ fixture.verifyIncomingCredit.mockImplementation(async(_response:unknown,bytes:Uint8Array)=>({rail:'reserve',noteId:new TextDecoder().decode(bytes),amountPhiMicro:'1000000',amountUsdCents:'200',reserveAfterUsdCents:'200',walletAfterPhiMicro:'1000000',proofBytes:new TextEncoder().encode('isolated-complete-credit')}));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
+ const failedRequests=()=>fixture.request.mock.calls.filter(([path,options])=>String(path).includes('noteId=paused')||(options as {body?:{terminalArtifactBytes?:string}}|undefined)?.body?.terminalArtifactBytes==='paused');
+ try{
+  const notes=await identity.offlineNotes!();await notes.deposit(source('first'));await notes.deposit(source('paused'));
+  online(true);await notes.reconcileReceivedNotes!();
+  expect((await notes.receivedNotes!()).map(row=>[row.noteId,row.status])).toEqual([['first','confirmed'],['paused','received']]);
+  expect(identity.knownReceivedNotes!()).toMatchObject([{noteId:'paused',status:'received',depositError:error}]);
+  const retained=(state as {entries:Record<string,{submissionRef:string}>}).entries.paused.submissionRef;
+  expect(failedRequests()).toHaveLength(1);
+  if(blocksSpending){
+   await expect(notes.create('100')).rejects.toThrow('BANK_NOTE_DEPOSIT_RECONCILIATION_REQUIRED');
+   await expect(notes.create('100')).rejects.toThrow('BANK_NOTE_DEPOSIT_RECONCILIATION_REQUIRED');
+   expect(fixture.create).not.toHaveBeenCalled();
+  }else{await notes.create('100');expect(fixture.create).toHaveBeenCalledOnce();}
+  expect(failedRequests()).toHaveLength(1);
+  online(false);expect(await notes.deposit(source('later'))).toMatchObject({noteId:'later',status:'received'});
+  online(true);await notes.reconcileReceivedNotes!();
+  expect((await notes.receivedNotes!()).map(row=>[row.noteId,row.status])).toEqual([['first','confirmed'],['paused','received'],['later','confirmed']]);
+  expect(failedRequests()).toHaveLength(1);
+  expect((state as {entries:Record<string,{submissionRef:string}>}).entries.paused.submissionRef).toBe(retained);
+  // Explicit retry alone recovers the retained attempt; no fresh POST or claim.
+  failure=false;await notes.reconcileReceivedNotes!(true);
+  expect((await notes.receivedNotes!()).every(row=>row.status==='confirmed')).toBe(true);
+  expect(failedRequests()).toHaveLength(2);expect(failedRequests()[1][0]).toContain('noteId=paused');
+  expect((state as {entries:Record<string,{submissionRef:string}>}).entries.paused.submissionRef).toBe(retained);
  }finally{identity.dispose();vi.unstubAllGlobals();}
 });
 

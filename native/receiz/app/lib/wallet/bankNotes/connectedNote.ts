@@ -26,6 +26,7 @@ export type BankConnectedNoteIssueBasis = Readonly<{
     schema: 'receiz.bank.connected-note.issue.v1';
     profile: typeof BANK_CONNECTED_NOTE_PROFILE;
     accountUserId: string;
+    recipientUserId?: string;
     issuer: BankConnectedNoteKey;
     noteAuthority: BankConnectedNoteKey;
     noteId: string;
@@ -57,6 +58,7 @@ export type BankConnectedNoteFunding = Readonly<{
     operationId: string;
     noteId: string;
     accountUserId: string;
+    recipientUserId?: string;
     issuer: BankConnectedNoteKey;
     noteAuthority: BankConnectedNoteKey;
     rail: BankConnectedNoteRail;
@@ -163,6 +165,7 @@ export function bankConnectedNoteFundingPartsValid(value: unknown, rail: unknown
     return values[0] + values[2] === BigInt(cents) && values[1] + values[3] === BigInt(phi);
 }
 const splitFields = (v: unknown) => record(v) && v.rail === 'composite' ? ['fundingParts'] : [];
+const recipientFields = (v: unknown) => record(v) && Object.hasOwn(v, 'recipientUserId') ? ['recipientUserId'] : [];
 const keyFields = ['keyId', 'algorithm', 'publicKeyRawB64u'];
 async function checkKey(v: unknown) {
     if (!exact(v, keyFields))
@@ -183,12 +186,12 @@ const issueFields = ['schema', 'profile', 'accountUserId', 'issuer', 'noteAuthor
 export async function verifyBankConnectedNoteIssue(value: unknown, options: Readonly<{
     nowMs?: number;
 }> = {}): Promise<BankConnectedNoteIssue> {
-    if (!exact(value, [...issueFields, ...splitFields(value), 'operationId', 'signatureB64Url']))
+    if (!exact(value, [...issueFields, ...splitFields(value), ...recipientFields(value), 'operationId', 'signatureB64Url']))
         fail('AUTHORIZATION_INVALID');
     const v = value as BankConnectedNoteIssue, { operationId, signatureB64Url, ...b } = v;
     await checkKey(b.issuer);
     await checkKey(b.noteAuthority);
-    if (b.schema !== 'receiz.bank.connected-note.issue.v1' || b.profile !== BANK_CONNECTED_NOTE_PROFILE || !uuid(b.accountUserId) || !uuid(b.noteId) || !uuid(b.clientNonce) || !['reserve', 'settlement', 'composite'].includes(b.rail) || !uint(b.amountUsdCents, true) || BigInt(b.amountUsdCents) > 100000000n || !uint(b.usdPerPhiMicrocents, true) || !uint(b.quotePulse) || b.quotePulse !== String(Math.floor(momentFromUTC(new Date(b.issuedAtMs)).pulse)) || !uint(b.expectedReserveBeforeUsdCents) || !uint(b.expectedWalletBeforePhiMicro) || b.issuer.keyId === b.noteAuthority.keyId || b.rail === 'reserve' && b.amountPhiMicro !== null || b.rail !== 'reserve' && !uint(b.amountPhiMicro, true) || !bankConnectedNoteFundingPartsValid(b.fundingParts, b.rail, b.amountUsdCents, b.amountPhiMicro) || !Number.isSafeInteger(b.issuedAtMs) || !Number.isSafeInteger(b.expiresAtMs) || b.expiresAtMs - b.issuedAtMs !== 300000 || b.issuedAtMs <= 0)
+    if (b.schema !== 'receiz.bank.connected-note.issue.v1' || b.profile !== BANK_CONNECTED_NOTE_PROFILE || !uuid(b.accountUserId) || Object.hasOwn(b, 'recipientUserId') && !uuid(b.recipientUserId) || !uuid(b.noteId) || !uuid(b.clientNonce) || !['reserve', 'settlement', 'composite'].includes(b.rail) || !uint(b.amountUsdCents, true) || BigInt(b.amountUsdCents) > 100000000n || !uint(b.usdPerPhiMicrocents, true) || !uint(b.quotePulse) || b.quotePulse !== String(Math.floor(momentFromUTC(new Date(b.issuedAtMs)).pulse)) || !uint(b.expectedReserveBeforeUsdCents) || !uint(b.expectedWalletBeforePhiMicro) || b.issuer.keyId === b.noteAuthority.keyId || b.rail === 'reserve' && b.amountPhiMicro !== null || b.rail !== 'reserve' && !uint(b.amountPhiMicro, true) || !bankConnectedNoteFundingPartsValid(b.fundingParts, b.rail, b.amountUsdCents, b.amountPhiMicro) || !Number.isSafeInteger(b.issuedAtMs) || !Number.isSafeInteger(b.expiresAtMs) || b.expiresAtMs - b.issuedAtMs !== 300000 || b.issuedAtMs <= 0)
         fail('AUTHORIZATION_INVALID');
     if (options.nowMs !== undefined && (options.nowMs < b.issuedAtMs - 30000 || options.nowMs > b.expiresAtMs))
         fail('AUTHORIZATION_EXPIRED');
@@ -201,6 +204,7 @@ export async function createBankConnectedNoteIssue(input: Readonly<{
     identity: ReceizKeyFileV1;
     passphrase?: string;
     accountUserId: string;
+    recipientUserId?: string;
     noteIdentity: ReceizKeyFileV1;
     rail: BankConnectedNoteRail;
     fundingParts?: BankConnectedNoteFundingParts;
@@ -214,9 +218,10 @@ export async function createBankConnectedNoteIssue(input: Readonly<{
     noteId?: string;
     nowMs?: number;
 }>): Promise<BankConnectedNoteIssue> {
+    if (Object.hasOwn(input, 'recipientUserId') && !uuid(input.recipientUserId)) fail('AUTHORIZATION_INVALID');
     if (!bankConnectedNoteFundingPartsValid(input.fundingParts, input.rail, input.amountUsdCents, input.amountPhiMicro) || input.rail !== 'composite' && Object.hasOwn(input, 'fundingParts')) fail('AUTHORIZATION_INVALID');
     const identity = parseReceizIdentityArtifactText(JSON.stringify(input.identity)), note = parseReceizIdentityArtifactText(JSON.stringify(input.noteIdentity)), now = input.nowMs ?? Date.now();
-    const basis: BankConnectedNoteIssueBasis = { schema: 'receiz.bank.connected-note.issue.v1', profile: BANK_CONNECTED_NOTE_PROFILE, accountUserId: input.accountUserId, issuer: publicKey(identity), noteAuthority: publicKey(note), noteId: input.noteId ?? crypto.randomUUID(), clientNonce: input.clientNonce ?? crypto.randomUUID(), rail: input.rail, amountUsdCents: input.amountUsdCents, ...(Object.hasOwn(input, 'fundingParts') ? { fundingParts: input.fundingParts } : {}), amountPhiMicro: input.rail !== 'reserve' ? input.amountPhiMicro ?? fail('EXACT_PHI_REQUIRED') : null, usdPerPhiMicrocents: input.usdPerPhiMicrocents, quotePulse: input.quotePulse ?? String(Math.floor(momentFromUTC(new Date(now)).pulse)), expectedReserveBeforeUsdCents: input.expectedReserveBeforeUsdCents, expectedWalletBeforePhiMicro: input.expectedWalletBeforePhiMicro, issuedAtMs: now, expiresAtMs: now + 300000 };
+    const basis: BankConnectedNoteIssueBasis = { schema: 'receiz.bank.connected-note.issue.v1', profile: BANK_CONNECTED_NOTE_PROFILE, accountUserId: input.accountUserId, ...(Object.hasOwn(input, 'recipientUserId') ? { recipientUserId: input.recipientUserId } : {}), issuer: publicKey(identity), noteAuthority: publicKey(note), noteId: input.noteId ?? crypto.randomUUID(), clientNonce: input.clientNonce ?? crypto.randomUUID(), rail: input.rail, amountUsdCents: input.amountUsdCents, ...(Object.hasOwn(input, 'fundingParts') ? { fundingParts: input.fundingParts } : {}), amountPhiMicro: input.rail !== 'reserve' ? input.amountPhiMicro ?? fail('EXACT_PHI_REQUIRED') : null, usdPerPhiMicrocents: input.usdPerPhiMicrocents, quotePulse: input.quotePulse ?? String(Math.floor(momentFromUTC(new Date(now)).pulse)), expectedReserveBeforeUsdCents: input.expectedReserveBeforeUsdCents, expectedWalletBeforePhiMicro: input.expectedWalletBeforePhiMicro, issuedAtMs: now, expiresAtMs: now + 300000 };
     const operationId = await digestReceizAuthority('identity', basis.schema, basis);
     return verifyBankConnectedNoteIssue({ ...basis, operationId, signatureB64Url: await sign(identity, input.passphrase, basis.schema, operationId) });
 }
@@ -248,7 +253,7 @@ async function financial(value: unknown, signature: unknown, roots: ReadonlyMap<
         fail();
     const funding = value.schema === 'receiz.bank.connected-note.funding.v1';
     if (funding) {
-        if (!exact(value, ['schema', 'profile', 'operationId', 'noteId', 'accountUserId', 'issuer', 'noteAuthority', 'rail', 'amountPhiMicro', 'amountUsdCents', 'usdPerPhiMicrocents', 'fundedAtKai', 'debitLedgerId', 'privateAccountSnapshotSha256', ...splitFields(value)]) || !uuid(value.accountUserId) || !uuid(value.debitLedgerId) || !uint(value.usdPerPhiMicrocents, true) || !uint(value.fundedAtKai) || ((BigInt(value.rail === 'composite' ? (value.fundingParts as BankConnectedNoteFundingParts).settlement.amountPhiMicro : value.amountPhiMicro as string) * BigInt(value.usdPerPhiMicrocents as string) + 500000000000n) / 1000000000000n) !== BigInt(value.rail === 'composite' ? (value.fundingParts as BankConnectedNoteFundingParts).settlement.amountUsdCents : value.amountUsdCents as string))
+        if (!exact(value, ['schema', 'profile', 'operationId', 'noteId', 'accountUserId', 'issuer', 'noteAuthority', 'rail', 'amountPhiMicro', 'amountUsdCents', 'usdPerPhiMicrocents', 'fundedAtKai', 'debitLedgerId', 'privateAccountSnapshotSha256', ...splitFields(value), ...recipientFields(value)]) || !uuid(value.accountUserId) || Object.hasOwn(value, 'recipientUserId') && !uuid(value.recipientUserId) || !uuid(value.debitLedgerId) || !uint(value.usdPerPhiMicrocents, true) || !uint(value.fundedAtKai) || ((BigInt(value.rail === 'composite' ? (value.fundingParts as BankConnectedNoteFundingParts).settlement.amountPhiMicro : value.amountPhiMicro as string) * BigInt(value.usdPerPhiMicrocents as string) + 500000000000n) / 1000000000000n) !== BigInt(value.rail === 'composite' ? (value.fundingParts as BankConnectedNoteFundingParts).settlement.amountUsdCents : value.amountUsdCents as string))
             fail();
         await checkKey(value.issuer);
         await checkKey(value.noteAuthority);
@@ -337,9 +342,10 @@ async function readBankConnectedNoteSourceUncached(input: Uint8Array, options: B
         const i = handover.intent, request = await verifyBankNoteAccountReceivingRequest(dec(handover.receivingRequest));
         if (!exact(i, ['schema', 'noteId', 'fundingArtifactSha256', 'receivingRequestDigest', 'receiverUserId', 'receiverKeyId', 'nonce', 'kai']) || i.schema !== 'receiz.bank.connected-note.handover.v1' || i.noteId !== funding.noteId || i.fundingArtifactSha256 !== fundingArtifactSha256 || i.receivingRequestDigest !== request.requestDigest || i.receiverUserId !== request.receiverUserId || i.receiverKeyId !== request.receiverKeyId || !uuid(i.nonce) || !uint(i.kai) || await digestReceizAuthority('identity', i.schema, i) !== handover.handoverDigest)
             fail('HANDOVER_INVALID');
+        if (funding.recipientUserId !== undefined && (i.receiverUserId !== funding.recipientUserId || request.receiverUserId !== funding.recipientUserId)) fail('RECIPIENT_MISMATCH');
         await verify(funding.noteAuthority, i.schema, handover.handoverDigest, handover.signatureB64Url);
     }
-    return Object.freeze({ kind: handover ? 'handover' as const : 'funding' as const, noteId: funding.noteId, rail: funding.rail, ...(funding.fundingParts ? { fundingParts: funding.fundingParts } : {}), amountPhiMicro: funding.amountPhiMicro, amountUsdCents: funding.amountUsdCents, ...(handover ? { receiverUserId: handover.intent.receiverUserId, receiverKeyId: handover.intent.receiverKeyId, redemptionDigest: handover.handoverDigest } : {}), terminalArtifactSha256: await sha256Hex(bytes), terminalSourceBytes: bytes, fundingArtifactSha256, fundingSourceBytes: fundingBytes, funding, handover, exclusiveConsumption: 'connection-required' as const });
+    return Object.freeze({ kind: handover ? 'handover' as const : 'funding' as const, noteId: funding.noteId, ...(funding.recipientUserId !== undefined ? { recipientUserId: funding.recipientUserId } : {}), rail: funding.rail, ...(funding.fundingParts ? { fundingParts: funding.fundingParts } : {}), amountPhiMicro: funding.amountPhiMicro, amountUsdCents: funding.amountUsdCents, ...(handover ? { receiverUserId: handover.intent.receiverUserId, receiverKeyId: handover.intent.receiverKeyId, redemptionDigest: handover.handoverDigest } : {}), terminalArtifactSha256: await sha256Hex(bytes), terminalSourceBytes: bytes, fundingArtifactSha256, fundingSourceBytes: fundingBytes, funding, handover, exclusiveConsumption: 'connection-required' as const });
 }
 export async function createBankConnectedNoteHandover(input: Readonly<{
     fundingSourceBytes: Uint8Array;
@@ -353,7 +359,9 @@ export async function createBankConnectedNoteHandover(input: Readonly<{
     const source = await readBankConnectedNoteSource(input.fundingSourceBytes, input);
     if (source.kind !== 'funding' || source.funding.noteAuthority.keyId !== input.noteIdentity.keyId)
         fail('NOTE_AUTHORITY_REQUIRED');
-    const request = await verifyBankNoteAccountReceivingRequest(input.receivingRequestBytes), intent: HandoverIntent = { schema: 'receiz.bank.connected-note.handover.v1', noteId: source.noteId, fundingArtifactSha256: source.fundingArtifactSha256, receivingRequestDigest: request.requestDigest, receiverUserId: request.receiverUserId, receiverKeyId: request.receiverKeyId, nonce: input.nonce ?? crypto.randomUUID(), kai: input.kai }, handoverDigest = await digestReceizAuthority('identity', intent.schema, intent);
+    const request = await verifyBankNoteAccountReceivingRequest(input.receivingRequestBytes);
+    if (source.funding.recipientUserId !== undefined && request.receiverUserId !== source.funding.recipientUserId) fail('RECIPIENT_MISMATCH');
+    const intent: HandoverIntent = { schema: 'receiz.bank.connected-note.handover.v1', noteId: source.noteId, fundingArtifactSha256: source.fundingArtifactSha256, receivingRequestDigest: request.requestDigest, receiverUserId: request.receiverUserId, receiverKeyId: request.receiverKeyId, nonce: input.nonce ?? crypto.randomUUID(), kai: input.kai }, handoverDigest = await digestReceizAuthority('identity', intent.schema, intent);
     const result = new TextEncoder().encode(canonical({ schema: 'receiz.bank.connected-note.handover-source.v1', fundingSource: enc(source.fundingSourceBytes), receivingRequest: enc(input.receivingRequestBytes), intent, handoverDigest, signatureB64Url: await sign(input.noteIdentity, input.passphrase, intent.schema, handoverDigest) }));
     await readBankConnectedNoteSource(result, input);
     return result;
@@ -377,6 +385,7 @@ export async function createBankConnectedNoteClaim(input: Readonly<{
     roots?: ReadonlyMap<string, ReceizSignatureV4RootPublicKey>;
 }>): Promise<BankConnectedNoteClaim> {
     const source = await readBankConnectedNoteSource(input.sourceBytes, input);
+    if (source.funding.recipientUserId !== undefined && input.accountUserId !== source.funding.recipientUserId) fail('RECIPIENT_MISMATCH');
     if (source.kind !== 'handover' || source.receiverUserId !== input.accountUserId || source.receiverKeyId !== input.identity.keyId)
         fail('IDENTITY_BINDING_REQUIRED');
     const basis = { schema: 'receiz.bank.connected-note.claim.v1' as const, noteId: source.noteId, sourceSha256: source.terminalArtifactSha256, handoverDigest: source.redemptionDigest!, receiverUserId: input.accountUserId, receiver: publicKey(input.identity), nonce: input.nonce ?? crypto.randomUUID() }, claimDigest = await digestReceizAuthority('identity', basis.schema, basis);

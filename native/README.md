@@ -83,3 +83,9 @@ provenance. Its new dependency authoring/runtime trees and notices are retained
 alongside the existing native sources. Rebuilding this module does not replace
 the pinned Note/receiver modules or the published SDK package. See the
 [public asset publication contract](../docs/public-asset-publication-v129.md).
+
+## Direct Note delivery
+
+Bankeiz composes the existing connected Note funding, per-Note authority and canonical PNG seal into one transferable image. Save and send the original PNG; the receiver imports it and signs the existing account claim. No account signing key or private account opening is included. A copied file cannot produce a second accepted credit.
+
+The optional recipient account UID is covered by the existing issuer and funding signatures and checked by the native handover, claim and receiver verifier. Omitted recipient terms preserve the existing bearer Note signing bytes. This browser-source patch changes no published SDK package or verification root. Its exact source and review hashes are recorded in the composition manifest.

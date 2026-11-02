@@ -76,3 +76,24 @@ it('the self-deposit producer admits actual handover receiver binding and never 
  vi.mocked(f.module.readBankConnectedNoteSource).mockResolvedValue({kind:'handover',noteId:'22222222-2222-4222-8222-222222222222',rail:'reserve',amountUsdCents:'200',amountPhiMicro:'1000000',receiverUserId:'11111111-1111-4111-8111-111111111111',receiverKeyId:'a'.repeat(64),redemptionDigest:'c'.repeat(64),terminalArtifactSha256:createHash('sha256').update(raw).digest('hex'),terminalSourceBytes:raw} as any);
  const result=await f.runtime.prepareSelfDeposit('22222222-2222-4222-8222-222222222222',new Uint8Array([4]));expect(result.sourceBytes).toEqual(raw);expect(f.module.exportBankConnectedNoteImage).toHaveBeenCalledOnce();expect(f.sealImage).toHaveBeenCalledOnce();
 });
+
+it('carries the chosen stable recipient in the existing signed issue and refuses a different recovered target',async()=>{
+ const f=fixture(),recipient='33333333-3333-4333-8333-333333333333';
+ const reviewed=await f.runtime.review('200',recipient);expect(reviewed.recipientUserId).toBe(recipient);
+ await f.runtime.create('200',undefined,recipient);
+ expect(vi.mocked(f.module.createBankConnectedNoteIssue).mock.calls[0][0]).toMatchObject({recipientUserId:recipient});
+ expect(f.request.mock.calls.map(c=>c[1].method)).toEqual(['GET','POST']);
+ const g=fixture(),verify=g.module.verifyBankConnectedNoteFunding;
+ const original=vi.mocked(verify).getMockImplementation()!;
+ vi.mocked(verify).mockImplementation(async(...args)=>{const result=await original(...args);return{...result,funding:{...result.funding,recipientUserId:'44444444-4444-4444-8444-444444444444'}};});
+ await expect(g.runtime.create('200',undefined,recipient)).rejects.toThrow('BANK_NOTE_EXACT_RESUME_REQUIRED');
+ expect(await g.runtime.pending()).toMatchObject({recipientUserId:recipient});
+ await expect(g.runtime.create('200')).rejects.toThrow('BANK_NOTE_EXACT_RESUME_REQUIRED');
+});
+
+it('refuses an older or changed signer that drops a reviewed recipient before retaining or submitting it',async()=>{
+ const f=fixture(),create=vi.mocked(f.module.createBankConnectedNoteIssue),original=create.getMockImplementation()!;
+ create.mockImplementation(async(...args)=>{const result=await original(...args);delete result.recipientUserId;return result;});
+ await expect(f.runtime.create('200',undefined,'33333333-3333-4333-8333-333333333333')).rejects.toThrow('BANK_NOTE_EXACT_RESUME_REQUIRED');
+ expect(f.request.mock.calls.map(c=>c[1].method)).toEqual(['GET']);expect(await f.runtime.pending()).toBeNull();
+});

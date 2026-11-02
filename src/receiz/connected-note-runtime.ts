@@ -2,11 +2,12 @@ import type {BankNoteImage,BankNoteInspection,BankNoteRail,BankNoteReview} from 
 import type {ReceivedNoteSource} from './note-received-deposits';
 
 type Transfer={requestRef:string;sourceRef?:string;imageRef?:string;purpose?:'self-deposit';creditRef?:string};
-type Row={noteId:string;operationId:string;rail:BankNoteRail;amountUsdCents:string;authorizationRef:string;noteIdentityRef:string;phase:'prepared'|'submitted'|'issued'|'cancelled';sourceRef?:string;openingRef?:string;imageRef?:string;transfer?:Transfer;cancellationRef?:string;cancelRequestRef?:string};
+type Row={noteId:string;operationId:string;rail:BankNoteRail;amountUsdCents:string;authorizationRef:string;noteIdentityRef:string;phase:'prepared'|'submitted'|'issued'|'cancelled';sourceRef?:string;openingRef?:string;imageRef?:string;deliveryImage?:true;transfer?:Transfer;cancellationRef?:string;cancelRequestRef?:string};
 type State={schema:'bank.connected-notes.v1';uid:string;keyId:string;current:string|null;notes:Record<string,Row>};
 const hash=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 const json=(v:unknown)=>new TextEncoder().encode(JSON.stringify(v));
 const parse=(v:Uint8Array)=>JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(v));
+const recipientValid=(value:string|undefined)=>value===undefined||/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 const fail=(code='PRIVATE_SOURCE_INVALID'):never=>{throw Error(`BANK_NOTE_${code}`);};
 /** Checkpoint validation is retention only. Funding and credit authority always
  * come from the complete native source, never these labels or cached amounts. */
@@ -17,6 +18,7 @@ export function readConnectedNoteCheckpoint(value:unknown):State|null{
  for(const [id,row]of Object.entries(s.notes)){
   if(!row||row.noteId!==id||!id||!hash(row.operationId)||!hash(row.authorizationRef)||!hash(row.noteIdentityRef)||!['reserve','settlement','composite'].includes(row.rail)||!/^\d{1,9}$/.test(row.amountUsdCents)||BigInt(row.amountUsdCents)<=0n||BigInt(row.amountUsdCents)>100000000n||!['prepared','submitted','issued','cancelled'].includes(row.phase))fail();
   for(const ref of [row.sourceRef,row.openingRef,row.imageRef,row.cancellationRef,row.cancelRequestRef,row.transfer?.requestRef,row.transfer?.sourceRef,row.transfer?.imageRef,row.transfer?.creditRef])if(ref!==undefined&&!hash(ref))fail();
+  if(row.deliveryImage!==undefined&&row.deliveryImage!==true||row.deliveryImage&&!row.imageRef)fail();
   if(row.transfer?.creditRef&&(!row.transfer.sourceRef||row.transfer.purpose!=='self-deposit'))fail();
   if(row.transfer?.purpose!==undefined&&row.transfer.purpose!=='self-deposit'||row.transfer?.purpose==='self-deposit'&&row.transfer.imageRef)fail();
   if(row.phase==='issued'&&(!row.sourceRef||!row.openingRef)||row.phase==='cancelled'&&!row.cancellationRef||row.imageRef&&row.phase!=='issued'||row.transfer&&(!row.sourceRef||!row.transfer.requestRef||row.transfer.imageRef&&!row.transfer.sourceRef))fail();
@@ -41,7 +43,7 @@ export interface ConnectedNotePorts{
  uid:string;keyId:string;assertOpen():void;read():Promise<unknown>;write(next:unknown,previous:unknown):Promise<void>;
  retain(bytes:Uint8Array):Promise<string>;restore(ref:string):Promise<Uint8Array>;
  review?(amountUsdCents:string,rail?:BankNoteRail):Promise<BankNoteReview>;
- prepare(amountUsdCents:string,rail?:BankNoteRail):Promise<ConnectedNotePreparation>;
+ prepare(amountUsdCents:string,rail?:BankNoteRail,recipientUserId?:string):Promise<ConnectedNotePreparation>;
  /** The port independently verifies complete native funding and its opening. */
  issue(authorization:unknown,operationId:string,recoverFirst:boolean,allowSubmit?:boolean):Promise<ConnectedNoteFundingResult>;
  /** The returned bytes are a verified native cancellation, not an HTTP flag. */
@@ -53,6 +55,8 @@ export interface ConnectedNotePorts{
  verifySelfDeposit?(source:Uint8Array):Promise<ReceivedNoteSource>;
  verifySelfDepositCredit?(source:Uint8Array,receipt:Uint8Array,expected:SelfDepositCreditBinding):Promise<void>;
  image(source:Uint8Array,note:BankNoteInspection):Promise<Uint8Array>;
+ /** Existing scoped Note authority enters only the complete sealed delivery. */
+ deliveryImage?(source:Uint8Array,note:BankNoteInspection,noteIdentity:Uint8Array):Promise<Uint8Array>;
  onIssued?():void;
 }
 /** The caller serializes mutations with the existing account/Notes locks. No
@@ -70,7 +74,7 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
  async function original(ref:string){const bytes=await input.restore(ref);input.assertOpen();const d=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes)))].map(v=>v.toString(16).padStart(2,'0')).join('');if(d!==ref)fail('SOURCE_REQUIRED');return bytes;}
  async function save(state:State,previous:unknown){await input.write(state,previous);input.assertOpen();return load();}
  const current=(state:State)=>state.current?state.notes[state.current]!:null;
- async function reviewed(row:Row){const a=parse(await original(row.authorizationRef));if(a.noteId!==row.noteId||a.amountUsdCents!==row.amountUsdCents||a.rail!==row.rail)fail('EXACT_RESUME_REQUIRED');return{noteId:row.noteId,rail:row.rail,amountUsdCents:row.amountUsdCents,...(a.amountPhiMicro?{amountPhiMicro:a.amountPhiMicro}:{}),...(a.fundingParts?{fundingParts:a.fundingParts}:{}),canCancel:row.phase!=='issued'};}
+ async function reviewed(row:Row){const a=parse(await original(row.authorizationRef));if(a.noteId!==row.noteId||a.amountUsdCents!==row.amountUsdCents||a.rail!==row.rail)fail('EXACT_RESUME_REQUIRED');return{noteId:row.noteId,rail:row.rail,amountUsdCents:row.amountUsdCents,...(a.amountPhiMicro?{amountPhiMicro:a.amountPhiMicro}:{}),...(a.fundingParts?{fundingParts:a.fundingParts}:{}),...(a.recipientUserId?{recipientUserId:a.recipientUserId}:{}),canCancel:row.phase!=='issued'};}
  async function note(row:Row):Promise<BankNoteImage>{
   if(!row.imageRef||!row.sourceRef)return fail('SOURCE_REQUIRED');const inspection=await inspectSource(row.sourceRef);
   if(inspection.noteId!==row.noteId||inspection.amountUsdCents!==row.amountUsdCents||inspection.rail!==row.rail)fail('SOURCE_REQUIRED');
@@ -103,7 +107,7 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
 
  return{
   async pending(){const row=current((await load()).state);return row&&row.phase!=='cancelled'?reviewed(row):null;},
-  async review(amountUsdCents:string):Promise<BankNoteReview>{const row=current((await load()).state);if(row){if(row.amountUsdCents!==amountUsdCents)fail('EXACT_RESUME_REQUIRED');return reviewed(row);}if(!input.review)fail('REVIEW_REQUIRED');return input.review!(amountUsdCents);},
+  async review(amountUsdCents:string,recipientUserId?:string):Promise<BankNoteReview>{if(!recipientValid(recipientUserId))fail('RECIPIENT_REQUIRED');const row=current((await load()).state);if(row){const held=await reviewed(row);if(row.amountUsdCents!==amountUsdCents||held.recipientUserId!==recipientUserId)fail('EXACT_RESUME_REQUIRED');return held;}if(!input.review)fail('REVIEW_REQUIRED');return{...await input.review!(amountUsdCents),...(recipientUserId?{recipientUserId}:{})};},
   async hasNote(id:string){const row=(await load()).state.notes[id];return !!row&&row.phase==='issued';},
   async holdsFundingSource(id:string,source:Uint8Array){
    const row=(await load()).state.notes[id];
@@ -112,12 +116,13 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
    return held.length===source.length&&held.every((value,index)=>value===source[index]);
   },
   async savedNotes(){const {state}=await load();return Promise.all(Object.values(state.notes).filter(row=>row.phase==='issued'&&!!row.imageRef).map(note));},
-  async create(amountUsdCents:string,rail?:BankNoteRail):Promise<BankNoteImage>{
+  async create(amountUsdCents:string,rail?:BankNoteRail,recipientUserId?:string):Promise<BankNoteImage>{
+   if(!recipientValid(recipientUserId))fail('RECIPIENT_REQUIRED');
    let held=await load(),row=current(held.state);
-   if(row&&(row.amountUsdCents!==amountUsdCents||rail!==undefined&&row.rail!==rail))fail('EXACT_RESUME_REQUIRED');
+   if(row&&(row.amountUsdCents!==amountUsdCents||rail!==undefined&&row.rail!==rail||(await reviewed(row)).recipientUserId!==recipientUserId))fail('EXACT_RESUME_REQUIRED');
    if(!row){
     if(Object.keys(held.state.notes).length>=128)fail('DEVICE_CAPACITY');
-    const prepared=await input.prepare(amountUsdCents,rail);input.assertOpen();
+    const prepared=await input.prepare(amountUsdCents,rail,recipientUserId);input.assertOpen();
     if(prepared.amountUsdCents!==amountUsdCents||rail!==undefined&&prepared.rail!==rail||held.state.notes[prepared.noteId]||!hash(prepared.operationId))fail('EXACT_RESUME_REQUIRED');
     const [authorizationRef,noteIdentityRef]=await Promise.all([input.retain(json(prepared.authorization)),input.retain(prepared.noteIdentityBytes)]);input.assertOpen();
     row={noteId:prepared.noteId,operationId:prepared.operationId,rail:prepared.rail,amountUsdCents,authorizationRef,noteIdentityRef,phase:'prepared'};
@@ -132,7 +137,20 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
     const [sourceRef,openingRef]=await Promise.all([input.retain(result.sourceBytes),input.retain(result.privateOpeningBytes)]);input.assertOpen();
     row={...row,sourceRef,openingRef,phase:'issued'};held.state.notes[row.noteId]=row;held=await save(held.state,held.previous);input.onIssued?.();
    }
-   if(!row.imageRef){const source=await original(row.sourceRef!),inspection=await inspectSource(row.sourceRef!),imageRef=await input.retain(await input.image(source,inspection));input.assertOpen();row={...row,imageRef};held.state.notes[row.noteId]=row;held.state.current=null;await save(held.state,held.previous);}
+   if(!row.imageRef){const source=await original(row.sourceRef!),inspection=await inspectSource(row.sourceRef!),image=input.deliveryImage?await input.deliveryImage(source,inspection,await original(row.noteIdentityRef)):await input.image(source,inspection),imageRef=await input.retain(image);input.assertOpen();row={...row,imageRef,...(input.deliveryImage?{deliveryImage:true as const}:{})};held.state.notes[row.noteId]=row;held.state.current=null;await save(held.state,held.previous);}
+   return note(row);
+  },
+  async exportNote(id:string):Promise<BankNoteImage>{
+   const held=await load();let row=held.state.notes[id];
+   if(!row||row.phase!=='issued'||!row.sourceRef||!row.imageRef)fail('SOURCE_REQUIRED');
+   // Upgrade an older retained funding image only on explicit Save. Its old
+   // original remains content-addressed; no financial issue is repeated.
+   if(!row.transfer&&!row.deliveryImage&&input.deliveryImage){
+    const source=await original(row.sourceRef!),inspection=await inspectSource(row.sourceRef!);
+    const image=await input.deliveryImage(source,inspection,await original(row.noteIdentityRef));input.assertOpen();
+    const imageRef=await input.retain(image);input.assertOpen();
+    row={...row,imageRef,deliveryImage:true};held.state.notes[id]=row;await save(held.state,held.previous);
+   }
    return note(row);
   },
   async cancelUnfunded(){

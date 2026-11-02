@@ -358,3 +358,5 @@
 
 /* Readable text entry avoids automatic focus magnification; page zoom stays available. */
 @media(pointer:coarse){.note-rail-choice select,.send-note-field textarea{font-size:16px}}
+
+.note-recipient-choice>label{display:flex;align-items:center;gap:10px;margin:10px 0;color:var(--navy)}.note-recipient-choice>label input{width:16px;height:16px;margin:0;accent-color:var(--blue)}

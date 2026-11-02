@@ -1,0 +1,32 @@
+{
+  "schema": "bank.synthetic-note-delivery-fixture.v1",
+  "sourceCommit": "5358975b99fcee8a3ca511e5d30c438fdb085f61",
+  "synthetic": true,
+  "authority": "actual-native-writer-with-ephemeral-test-roots",
+  "roots": [
+    {
+      "kid": "receiz.v4.test.bank-note",
+      "alg": "Ed25519",
+      "publicKeyRawB64u": "ny3P31kNqpcYoIohsPswku8kepJe7qyBg9FSKNL-BJM",
+      "status": "active"
+    }
+  ],
+  "sender": {
+    "uid": "0f11b13f-a66d-422e-85e4-4d6acb7286f1",
+    "keyId": "99a26bd2e9ac270315f412138a30a0715bb447301de3f79c1e22c8f97d5418d3"
+  },
+  "noteId": "061a7fd7-368c-49d5-a0b8-b0220dbc99be",
+  "noteKeyId": "5a2d9fb4aaa916c2a1e20b6e1fedf00359e6bbec3bfc4da0542f12ef9379957d",
+  "secondNoteId": "ad1324b0-61e0-4778-bdfd-15a1fcd63fcd",
+  "amountUsdCents": "200",
+  "amountPhiMicro": "1000000",
+  "sha256": {
+    "note.png": "a5cf09bdfc8e4c503a7d23e480b52020557ff9ba6de2cb943ff6e279e525fb78",
+    "bare.png": "02f6069faae3a15d70e3b339c609e2391398a92f318a74ad5c9f27cc27d4529a",
+    "funding.receizbundle": "6411d38dd4b12853a77f404341eccf26be5ca0f3f320765ba955300534e4de06",
+    "note-authority.json": "a77e3afbc5aecd6bfbca60dff22b89a4695c7480e700aec148ca4dbdc8a3f93e",
+    "wrong-note-authority.png": "20f41e011e77f040983598d4a1fc28b52a551836bab3e711999d97aa0b7f0864",
+    "second-note.png": "2f2aa10df058c8ed379d323e34260b5d0ee2a2d2dd5d8d491e36e788efb05059"
+  },
+  "accountPrivateKeysIncluded": false
+}

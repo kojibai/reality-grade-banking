@@ -14,7 +14,7 @@ function fixture(){
  const notesLock=source.slice(noteStart,noteEnd);
  const pendingStart=source.indexOf('  function hasPendingNative('),pendingEnd=source.indexOf('  async function withAccountExecutionLock<',pendingStart),pendingSource=source.slice(pendingStart,pendingEnd);
  const body=source.slice(start,end).replace("const {requestTwinUpgrade}=await import('./twin-upgrade');",'const {requestTwinUpgrade}=deps;');
- const state={head:false,durableHead:false,pending:false,note:false,locked:false,notesLocked:false,revisionAtRead:-1};
+ const state={received:[] as Array<{status:'received';depositError?:string}>,head:false,durableHead:false,pending:false,note:false,locked:false,notesLocked:false,revisionAtRead:-1};
  const events:{type:string;detail?:unknown}[]=[],trace:string[]=[];
  const quote={schema:'receiz.usage.reserve-purchase.quote.v1',ownerUserId:'owner',clientOperationId:'approved-operation',credits:'2500',amountUsdCents:'2500',expiresAt:'2099-01-01T00:00:00Z',bankContributionUsdCents:'2500',cardShortfallUsdCents:'0',minimumCardDepositUsdCents:'50',exactCardDepositAvailable:true};
  let retained:unknown=null;
@@ -27,6 +27,7 @@ function fixture(){
   createTwinCreditPurchaseCoordination,readTwinCreditPurchaseIntent,
   loadTwinCreditPurchaseState:async()=>structuredClone(retained),saveTwinCreditPurchaseState:async(_binding:unknown,next:unknown,previous:unknown)=>{expect(retained).toEqual(previous);retained=structuredClone(next);},
   deviceBankExecutionStore:()=>({load:async()=>state.pending?{state:'unknown'}:null}),loadNativePaymentState:async()=>null,loadNativeAssetState:async()=>null,loadWalletSendState:async()=>null,loadMarketTradeState:async()=>null,reconcileReceivedNotesLocked:vi.fn(async()=>{}),
+  localReceivedNotes:()=>({list:async()=>state.received}),
   offlineNotes:async()=>({pending:async()=>state.note?{noteId:'held-note'}:null}),
   assertWalletSendCustody:vi.fn(async()=>{if(state.durableHead)throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');}),
   isWalletQuoteHeld:()=>false,adoptConnectedWalletResponse:vi.fn(async()=>{}),
@@ -37,7 +38,7 @@ function fixture(){
   navigator:{locks:{request:async<T,>(_name:string,_options:unknown,work:()=>Promise<T>)=>{state.notesLocked=true;trace.push('notes-lock');try{return await work();}finally{state.notesLocked=false;}}}},
   requestTwinUpgrade:vi.fn(async(_uid:string,_proof:unknown,input:{action:string})=>{trace.push('request:'+input.action);return{accountUid:'owner',twinAccess:true,creditFunding:{quote,...(input.action==='credits-quote'?{}:{purchase:input.action==='credits-purchase-status'?{status:'ready'}:{status:'completed',amountUsdCents:'2500',purchasedCredits:'2500',bucketId:'native-bucket',walletDebitId:'native-debit',balanceAfterPhiMicro:'999999999999'}})}};}),
  };
- const code=transformSync(`function harness(deps:any){const{lifetime,prepareTransport,connectClient,unsigned,keyFile,transportKeyFile,transportPhrase,messagingRetention,noteOpen,hasLocalWalletHead,cancelUnsentNotesLocked,offlineNotes,assertWalletSendCustody,isWalletQuoteHeld,adoptConnectedWalletResponse,readWallet,navigator,dispatchEvent,CustomEvent,Event,withAccountExecutionLock,createTwinCreditPurchaseCoordination,readTwinCreditPurchaseIntent,loadTwinCreditPurchaseState,saveTwinCreditPurchaseState,deviceBankExecutionStore,loadNativePaymentState,loadNativeAssetState,loadWalletSendState,loadMarketTradeState,loadHostedCheckoutState,loadShareCertificateState,reconcileReceivedNotesLocked}=deps;const binding={artifactSha256:'identity-digest',keyId:'identity-key'},BANK_MESSAGING_SCOPES=[],BANK_MESSAGING_CONSENT='';let accountUid='owner',confirmedTwinAccess=false,walletRevision=0,knownWallet=deps.initial,walletReading=deps.walletReading;${pendingSource}${notesLock}${helpers}${body};return{run:upgradeTwin,recover:recoverTwinCreditPurchase,otherMoney:()=>assertNoOtherPending(false),revision:()=>walletRevision};}`,{loader:'ts',target:'es2022'}).code;
+ const code=transformSync(`function harness(deps:any){const{lifetime,prepareTransport,connectClient,unsigned,keyFile,transportKeyFile,transportPhrase,messagingRetention,noteOpen,hasLocalWalletHead,cancelUnsentNotesLocked,offlineNotes,assertWalletSendCustody,isWalletQuoteHeld,adoptConnectedWalletResponse,readWallet,navigator,dispatchEvent,CustomEvent,Event,withAccountExecutionLock,createTwinCreditPurchaseCoordination,readTwinCreditPurchaseIntent,loadTwinCreditPurchaseState,saveTwinCreditPurchaseState,deviceBankExecutionStore,loadNativePaymentState,loadNativeAssetState,loadWalletSendState,loadMarketTradeState,loadHostedCheckoutState,loadShareCertificateState,reconcileReceivedNotesLocked,localReceivedNotes}=deps;const binding={artifactSha256:'identity-digest',keyId:'identity-key'},BANK_MESSAGING_SCOPES=[],BANK_MESSAGING_CONSENT='';let accountUid='owner',confirmedTwinAccess=false,walletRevision=0,knownWallet=deps.initial,walletReading=deps.walletReading;${pendingSource}${notesLock}${helpers}${body};return{run:upgradeTwin,recover:recoverTwinCreditPurchase,otherMoney:()=>assertNoOtherPending(false),revision:()=>walletRevision};}`,{loader:'ts',target:'es2022'}).code;
  return{state,deps,trace,events,quote,retained:()=>retained,open:()=>new Function(code+';return harness;')()(deps)};
 }
 
@@ -108,4 +109,11 @@ it('an unknown Reserve purchase blocks different money work across reopen until 
  f.deps.requestTwinUpgrade.mockImplementation(base);
  await reopened.run({action:'credits-purchase',operationId:'approved-operation'});expect(f.retained()).toBeNull();
  await expect(reopened.otherMoney()).resolves.toBeUndefined();expect(f.events.filter(event=>event.type==='bankeiz:wallet-send-recorded')).toHaveLength(1);
+});
+
+it.each(['unknown','spent'] as const)('Reserve purchases preserve the %s Note-credit boundary',async outcome=>{
+ const f=fixture();f.state.received=[{status:'received',depositError:outcome==='spent'?'BANK_NOTE_ALREADY_DEPOSITED':'BANK_NOTE_DEPOSIT_UNCONFIRMED'}];
+ const attempt=f.open().run({action:'credits-purchase',operationId:'approved-operation'});
+ if(outcome==='unknown'){await expect(attempt).rejects.toThrow('BANK_NOTE_DEPOSIT_RECONCILIATION_REQUIRED');expect(f.deps.requestTwinUpgrade).not.toHaveBeenCalled();}
+ else{await attempt;expect(f.deps.requestTwinUpgrade).toHaveBeenCalled();}
 });

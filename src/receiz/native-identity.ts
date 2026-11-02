@@ -917,6 +917,13 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     connectedNotes=createConnectedNoteApplication({uid,keyId:binding.keyId,assertOpen:()=>{noteOpen();if(receivingUid()!==uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');},
       read:()=>loadConnectedNoteState(binding),write:(next,previous)=>saveConnectedNoteState(binding,next,previous),retain:bytes=>saveOfflineNoteBlob(binding,bytes),restore:ref=>loadOfflineNoteBlob(binding,ref),
       module:loadBankNoteRuntime,context:connectedContext,sdk,artwork:bankNoteArtwork,sealImage:noteImages.exportImage,
+      deliveryImage:async(source,note,noteIdentityBytes)=>{
+        const module=await loadBankNoteRuntime(),{attachConnectedNoteDelivery,assertConnectedNoteDeliveryPreserved}=await import('./note-delivery');
+        const bare=await module.exportBankConnectedNoteImage(source,await bankNoteArtwork(note.amountUsdCents,note.noteId,false,note.rail));noteOpen();
+        const prepared=await attachConnectedNoteDelivery({native:module,image:bare,source,noteIdentityBytes});noteOpen();
+        const sealed=await noteImages.exportImage(prepared,note.noteId);noteOpen();
+        assertConnectedNoteDeliveryPreserved(prepared,sealed);return sealed;
+      },
       onFundingVerified:(source,opening,proof)=>{void noteHistoryReader().then(reader=>reader.rememberFunding(source,opening,proof)).catch(()=>{});},
       onIssued:()=>{walletRevision++;if(knownWallet){knownWallet={...knownWallet,historyBasis:undefined,walletScope:undefined,quoteHold:createWalletQuoteHold(knownWallet.wallet)};void persistWalletObservation(knownWallet).catch(()=>{});}noteHistoryRecorded();},
     });return connectedNotes;
@@ -961,19 +968,19 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   }
   async function paintReceivedNotes(){receivedNoteDisplay=await localReceivedNotes().list({pendingOnly:true});noteOpen();if(typeof dispatchEvent==='function')dispatchEvent(new Event('bankeiz:account-observation'));}
   async function finishSelfDeposits(){const connected=localConnectedNotes();for(const id of await connected.pendingSelfDeposits()){const confirmed=await localReceivedNotes().confirmed(id);noteOpen();if(confirmed)await connected.confirmSelfDeposit(id,confirmed.proofBytes);}}
-  async function reconcileReceivedNotesLocked(refresh=false){
+  async function reconcileReceivedNotesLocked(refresh=false,retryFailed=false){
     const queue=localReceivedNotes(),before=await queue.list({pendingOnly:true});
-    if(!before.some(note=>note.status==='received')){await finishSelfDeposits();return;}
+    if(!before.some(note=>note.status==='received'&&(retryFailed||!note.depositError))){await finishSelfDeposits();return;}
     if(typeof navigator!=='undefined'&&navigator.onLine===false)throw Error('BANK_NOTE_DEPOSIT_RECONCILIATION_REQUIRED');
     // Each exact credit is committed durably before the next submission. A
     // later failure must not leave a confirmed amount in Received Notes or let
     // an older in-flight wallet observation replace the execution boundary.
-    try{await queue.reconcile();}
+    try{await queue.reconcile({retryFailed});}
     finally{noteOpen();await finishSelfDeposits();walletRevision++;await paintReceivedNotes();noteHistoryRecorded();}
     if(refresh)await readAndAdoptWallet();
   }
-  function synchronizeReceivedNotes(){
-    return withAccountExecutionLock(()=>navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},async()=>{await assertNoOtherPending(false);await reconcileReceivedNotesLocked(true);}));
+  function synchronizeReceivedNotes(retryFailed=false){
+    return withAccountExecutionLock(()=>navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},async()=>{await assertNoOtherPending(false);await reconcileReceivedNotesLocked(true,retryFailed);}));
   }
   let receivedNotesStarted=false;
   function startReceivedNotes(){
@@ -1006,9 +1013,21 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const inventory=createLocalNoteInventory({keyId:binding.keyId,uid:()=>accountUid??knownWallet?.wallet.userId??null,readLegacy:()=>atNoteStage('saved-notes',()=>loadOfflineNoteState(binding)),readPrepared:()=>atNoteStage('prepared-notes',()=>loadPreparedNoteState(binding)),restore:ref=>atNoteStage('note-image',()=>loadOfflineNoteBlob(binding,ref)),inspect,assertOpen:noteOpen});
     localNoteInventory=inventory;
     const action=async<T,>(operation:()=>Promise<T>):Promise<T>=>{noteOpen();activeNoteOperations++;noteOperationEpoch++;try{return await operation();}finally{activeNoteOperations--;}};
-    localNotes={exportImage:noteImages.exportImage,savedNotes:async()=>[...await inventory.savedNotes(),...(await localConnectedNotes().savedNotes()).map(note=>({...note,consumption:'connection-required' as const}))],pending:notePending,inspect,receivedNotes:()=>localReceivedNotes().list(),reconcileReceivedNotes:async()=>{await synchronizeReceivedNotes();return localReceivedNotes().list();},
+    localNotes={exportImage:noteImages.exportImage,exportNote:id=>action(()=>withAccountExecutionLock(()=>noteLock(async()=>{
+      if(await localConnectedNotes().hasNote(id))return localConnectedNotes().exportNote(id);
+      const note=(await inventory.savedNotes()).find(note=>note.noteId===id);if(!note)throw Error('BANK_NOTE_SOURCE_REQUIRED');
+      return{...note,image:await noteImages.exportImage(note.image,id)};
+    }))),savedNotes:async()=>[...await inventory.savedNotes(),...(await localConnectedNotes().savedNotes()).map(note=>({...note,consumption:'connection-required' as const}))],pending:notePending,inspect,receivedNotes:()=>localReceivedNotes().list(),reconcileReceivedNotes:async(retryFailed=false)=>{await synchronizeReceivedNotes(retryFailed);return localReceivedNotes().list();},
       validateDeposit:async image=>{
         const module=await loadBankNoteRuntime(),uid=receivingUid();noteOpen();
+        if(await isConnectedNote(module,image)){
+          const {openConnectedNoteDelivery,prepareConnectedNoteDelivery}=await import('./note-delivery'),delivery=await openConnectedNoteDelivery({native:module,bytes:image});noteOpen();
+          if(delivery.noteIdentity){if(delivery.source.funding.recipientUserId&&delivery.source.funding.recipientUserId!==uid)throw Error('BANK_NOTE_RECIPIENT_MISMATCH');if(receivingUid()!==uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');return;}
+          if(delivery.source.kind==='funding'){
+            const retained=await localReceivedNotes().retainedSource(delivery.source.noteId);noteOpen();
+            if(retained){await prepareConnectedNoteDelivery({native:module,delivery,identity:keyFile,accountUserId:uid,kai:String(sdk.receizKaiNow().pulse),retainedSource:retained});noteOpen();if(receivingUid()!==uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');return;}
+          }
+        }
         await validateNativeNoteDeposit({image,module,context:{receiverUserId:uid,receiverKeyId:binding.keyId},connected:localConnectedNotes(),savedNotes:()=>inventory.savedNotes(),inspectLegacy:inspect,
           holdsLegacyReceivingCustody:source=>holdsLegacyNoteReceivingCustody({image:source,uid,keyId:binding.keyId,read:()=>loadOfflineNoteState(binding),inspectCommitment:async bytes=>(await import('./note-proof-portability')).inspectLegacyReceivingCommitment(bytes)}),
           holdsReceivingCustody:async source=>{
@@ -1031,7 +1050,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
           const connected=await isConnectedNote(module,image),row=connected?await readConnectedNote(module,image):await inspect(image);
           return withAccountExecutionLock(()=>noteLock(async()=>{
             await assertNoOtherPending(false);
-            return recoverConnectedNoteDeposit({noteId:row.noteId,funding:connected&&'kind'in row&&row.kind==='funding',connected:localConnectedNotes(),received:localReceivedNotes(),reconcile:()=>reconcileReceivedNotesLocked(true)});
+            return recoverConnectedNoteDeposit({noteId:row.noteId,funding:connected&&'kind'in row&&row.kind==='funding',connected:localConnectedNotes(),received:localReceivedNotes(),reconcile:()=>reconcileReceivedNotesLocked(true,true)});
           }));
         }
         const row=await inspect(image),saved=await loadOfflineNoteState(binding) as {schema?:string;deposits?:Record<string,unknown>}|null;noteOpen();
@@ -1040,15 +1059,15 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         if(saved?.schema!=='receiz.bank.offline-notes-device.v1'||!saved.deposits?.[row.noteId])return null;
         return(await openNotesExecution()).deposit(image);
       },
-      review:amount=>action(()=>withAccountExecutionLock(async()=>{
+      review:(amount,recipientUserId)=>action(()=>withAccountExecutionLock(async()=>{
         await assertNoteCreateState();const pending=await notePending();
-        if(pending){if(pending.amountUsdCents!==amount)throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');return{...pending,rail:pending.rail??'reserve'};}
+        if(pending){if(pending.amountUsdCents!==amount||pending.recipientUserId!==recipientUserId)throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');return{...pending,rail:pending.rail??'reserve'};}
         if(navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
         if(!BANK_CONNECTED_NOTE_ISSUANCE_ENABLED)throw Error('BANK_NOTE_SERVICE_UNAVAILABLE');
-        await connectedContext();return noteLock(()=>localConnectedNotes().review(amount));
+        await connectedContext();return noteLock(()=>localConnectedNotes().review(amount,recipientUserId));
       })),
       prepareResources:count=>action(()=>withAccountExecutionLock(async()=>{await assertNoPendingWalletSend();return(await openNotesExecution()).prepareResources!(count);})),
-      create:(amount,rail)=>action(()=>withAccountExecutionLock(async()=>{
+      create:(amount,rail,recipientUserId)=>action(()=>withAccountExecutionLock(async()=>{
         await assertNoteCreateState();
         const connected=await localConnectedNotes().pending();let legacy=await inventory.pending();
         if(!connected&&BANK_CONNECTED_NOTE_ISSUANCE_ENABLED&&legacy&&navigator.onLine!==false){
@@ -1061,8 +1080,9 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         }
         if(connected||BANK_CONNECTED_NOTE_ISSUANCE_ENABLED&&!legacy&&navigator.onLine!==false){
           if(!connected)await connectedContext();
-          return noteLock(async()=>{await assertNoteCreateState();const result=await localConnectedNotes().create(amount,rail);return{...result,consumption:'connection-required' as const};});
+          return noteLock(async()=>{await assertNoteCreateState();const runtime=localConnectedNotes(),result=recipientUserId===undefined?await runtime.create(amount,rail):await runtime.create(amount,rail,recipientUserId);return{...result,consumption:'connection-required' as const};});
         }
+        if(recipientUserId)throw Error('BANK_NOTE_RECIPIENT_BINDING_UNAVAILABLE');
         if(!legacy&&navigator.onLine===false&&!BANK_PREPARED_NOTE_CREDIT_ENABLED)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
         try{return await(await openNotesExecution()).create(amount,rail??legacy?.rail);}
         catch(cause){await cancelRejectedNotePreparation(cause);throw cause;}
@@ -1081,11 +1101,19 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         const result=await withAccountExecutionLock(()=>navigator.locks.request(`receiz-bank-notes:${binding.keyId}`,{signal:lifetime.signal},async()=>{
           let original=image;
           if(await isConnectedNote(module,image)){
-            const held=await readConnectedNote(module,image);
-            if(await localReceivedNotes().confirmed(held.noteId))throw Error('BANK_NOTE_ALREADY_DEPOSITED');
-            if(held.kind==='funding'&&await localConnectedNotes().hasNote(held.noteId)){
-              const request=await module.createBankNoteAccountReceivingRequest({identity:keyFile,passphrase:phrase,accountUserId:receivingUid()});
-              original=(await localConnectedNotes().prepareSelfDeposit(held.noteId,request)).sourceBytes;
+            const {openConnectedNoteDelivery,prepareConnectedNoteDelivery}=await import('./note-delivery'),delivery=await openConnectedNoteDelivery({native:module,bytes:image}),held=delivery.source;noteOpen();
+            if(receivingUid().startsWith('receiz_device_'))await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);
+            if(held.funding.recipientUserId&&held.funding.recipientUserId!==receivingUid())throw Error('BANK_NOTE_RECIPIENT_MISMATCH');
+            const queue=localReceivedNotes(),confirmed=await queue.confirmed(held.noteId);if(confirmed)return confirmed;
+            original=held.terminalSourceBytes;
+            if(held.kind==='funding'){
+              const retained=await queue.retainedSource(held.noteId),self=await localConnectedNotes().recoverSelfDeposit(held.noteId);noteOpen();
+              if(self||retained)original=await prepareConnectedNoteDelivery({native:module,delivery,identity:keyFile,passphrase:phrase,accountUserId:receivingUid(),kai:String(sdk.receizKaiNow().pulse),retainedSource:self?.sourceBytes??retained!});
+              else if(await localConnectedNotes().holdsFundingSource(held.noteId,held.terminalSourceBytes)){
+                const request=await module.createBankNoteAccountReceivingRequest({identity:keyFile,passphrase:phrase,accountUserId:receivingUid()});
+                original=(await localConnectedNotes().prepareSelfDeposit(held.noteId,request)).sourceBytes;
+              }else original=await prepareConnectedNoteDelivery({native:module,delivery,identity:keyFile,passphrase:phrase,accountUserId:receivingUid(),kai:String(sdk.receizKaiNow().pulse)});
+              noteOpen();
             }
           }
           const received=await localReceivedNotes().receive(original);
@@ -1522,7 +1550,14 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const [payments, assets, sends, market] = await Promise.all([loadNativePaymentState(binding), loadNativeAssetState(binding),loadWalletSendState(binding),checkedMarket?Promise.resolve(checkedMarket.state):loadMarketTradeState(binding)]);
     noteOpen();
     if (hasPendingNative(payments, 'payments') || hasPendingNative(assets, 'assets') || hasPendingWalletSend(sends,continuingFundingNonce) || await hasPendingMarketTrade(market,!!checkedMarket)) throw Error('BANK_EXECUTION_PENDING');
-    if(reconcileNotes)await reconcileReceivedNotesLocked();
+    if(reconcileNotes){
+      await reconcileReceivedNotesLocked();
+      // An unknown credit outcome retains the existing account spend barrier.
+      // A known spent copy grants no new credit and only pauses that Note;
+      // incoming Note reconciliation uses reconcileNotes=false and continues.
+      const pending=await localReceivedNotes().list({pendingOnly:true});
+      if(pending.some(note=>note.status==='received'&&note.depositError!=='BANK_NOTE_ALREADY_DEPOSITED'))throw Error('BANK_NOTE_DEPOSIT_RECONCILIATION_REQUIRED');
+    }
   }
   function hasPendingWalletSend(raw:unknown,continuingFundingNonce?:string):boolean {
     if(raw==null)return false;const s=raw as import('./wallet-send').WalletSendState;

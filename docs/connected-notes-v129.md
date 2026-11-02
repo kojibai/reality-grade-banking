@@ -11,18 +11,16 @@ antirollback requirements of qualified continuous offline sending.
 1. The account holder enters one amount in Create Note. Reserve is used first; Settlement covers only the remainder. No funding selector is presented. A split appears only when both contribute.
 2. One selected-account quote read supplies the exact wallet baseline, deterministic rate
    and Kai pulse. The Identity Seal signs the exact issue intent and a separate
-   public Note authority. Its private Note key is retained only in the existing
-   encrypted device vault, before submission.
+   public Note authority. Its private Note key is retained in the existing encrypted device vault before submission. Only this per-Note authority, never the account key, enters the complete delivery image.
 3. The selected existing account writer verifies current account/key membership,
    the signed quote pulse and deterministic rate, expiry and account baseline.
    Under its existing account/global locks, it reserves the exact value once.
 4. Bank independently opens the complete canonical funding original and the
    protected financial-root signature, then its private account opening. Both
-   remain retained before packaging. The PNG carries the complete public source;
-   it contains no private signing key or private account balance opening.
-5. The holder opens the receiver's existing signed receiving request. The Note
-   authority signs the whole funding original and that exact recipient. This
-   handover is retained before packaging and can be delivered offline.
+   remain retained before packaging. The PNG carries the complete public funding source and its scoped per-Note delivery authority under the canonical image seal. It contains no account signing key or private account balance opening.
+5. The holder saves and sends the original PNG. On import, the receiving account locally composes its existing signed receiving request and the Note handover from that complete image. No receiving-request file exchange is needed for a new connected Note. The exact terminal is retained before credit submission; reimport reuses it.
+   Anyone holding the Note may deposit it by default. An optional selected person's stable account UID is included in the signed issue and financial funding source, so only that account can form an accepted handover or claim even after a username change. A missing or changed signed target is refused before submission.
+
 6. The receiver verifies the complete source and destination offline. **Received
    Notes** holds it separately from available account credit. This is verified
    receipt and retention, not evidence of irreversible consumption on a
@@ -32,7 +30,7 @@ antirollback requirements of qualified continuous offline sending.
    atomically once. Changed recipients, competing claims and replay cannot mint
    another credit. Only the full verified native credit and private opening can
    mark the local queue confirmed. Reconciliation runs before account spending
-   or creating a new Note from that value.
+   or creating a new Note from that value. Unknown outcomes keep that spending barrier. A known already-deposited copy stays paused without blocking a later valid incoming Note; retries are explicit and reuse the retained claim.
 
 Qualified local consumption continues to require the existing attested custody
 and rollback-resistant exact-head retirement. It may continue offline within its
@@ -47,7 +45,7 @@ Receiz account access and rail scopes. Bank proxies only this bounded route.
 | Action | Contract |
 | --- | --- |
 | Quote | GET with `intent=quote`. Returns the selected account baseline, `quotePulse`, deterministic rate, `issuedAtMs` and five-minute `expiresAtMs`. No debit. |
-| Issue | POST `{action:"issue", authorization}`. The closed signed `receiz.bank.connected-note.issue.v1` basis includes profile, account UUID, issuer public key, Note authority public key, Note UUID, client nonce, rail, USD denomination, exact Settlement Phi or mandatory composite funding parts where applicable, rate, quote pulse, expected balances and expiry. Its authority digest is the immutable operation ID. |
+| Issue | POST `{action:"issue", authorization}`. The closed signed `receiz.bank.connected-note.issue.v1` basis includes profile, account UUID, optional immutable recipient account UUID, issuer public key, Note authority public key, Note UUID, client nonce, rail, USD denomination, exact Settlement Phi or mandatory composite funding parts where applicable, rate, quote pulse, expected balances and expiry. Its authority digest is the immutable operation ID. |
 | Recover issue | GET with only `allocationId=<operationId>` in addition to origin. Returns that exact complete funding or cancellation source and private opening, or definite absence. |
 | Cancel | POST `{action:"cancel", authorization:<signed cancellation>}`. The native writer atomically records a permanent tombstone. A lost response, GET miss or local flag cannot abandon an issue. Published funding cannot be cancelled by this path. The returned cancellation is financially signed, sealed and independently verified. |
 | Claim | POST `{action:"claim", claim, source}`. The claim binds the exact full source SHA-256, handover digest, Note and receiver key/account. It is retained before entering submission. |
@@ -72,7 +70,7 @@ carrying both the complete source and its opening for independent verification.
 The existing encrypted vault retains content-addressed blobs and compare-and-swap
 checkpoints. `bank.connected-notes.v1` holds exact issue authorization, private
 Note key, verified funding/opening, original image and bound handover references.
-Labels never authorize money. The same pending amount, rail and authority must
+Labels never authorize money. Older qualified device-held Notes retain their original handover controls under the folded compatibility details; resealing their image does not turn them into bearer Notes. The same pending amount, rail, optional recipient and authority must
 resume after an interruption. Failed image packaging reuses the verified source;
 it cannot allocate again or silently select another recipient.
 

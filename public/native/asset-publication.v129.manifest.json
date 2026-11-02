@@ -3,7 +3,7 @@
   "receizVersion": "129.0.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
   "moduleSha256": "39b87eb0d79bea12dad991443496240ed1becbb07111a8a45450b651a6d3cb95",
-  "sourceTreeSha256": "4dbfd71fab351b4aab423ce20f57f7d3920b895cfa5c43257ddd51f832d9662c",
+  "sourceTreeSha256": "46dda950b9b63a46e07b864fe431a95db49dc3255011e45b85c8470024daecce",
   "inputs": 501,
   "bytes": 2924556,
   "applicationPatches": [
@@ -870,6 +870,62 @@
       "sha256": "15cbc5d54f8841657033a8ccd2f6d8c82558f57c305306ed9e186c7bb60c85e5",
       "sourceCommit": "856f24879e6a6b06b3c1032a8311cb12a9db2b07",
       "purpose": "Matching source frequency propagation and calculator input support; unchanged signed records, execution rules and omitted-frequency replay."
+    },
+    {
+      "id": "shared-creation-pulse-display-name",
+      "path": "receiz/app/lib/profile/profileIdentityCreationCoordinate.ts",
+      "baseSha256": "8e00ca17b1d2e045931e91577935362b416d080939c1bfea3f1f40b85e789618",
+      "sha256": "9f16c626597ec0686d85011714856bb98a16fdee2a26d7b012c65b7a5929dfae",
+      "purpose": "Compose the exact shared original-account display-name projection. Existing Kai calculations, proof verification, financial behavior and published SDK package outputs are unchanged.",
+      "sourceCommit": "d63a89e06cd04e4d808d51507745825f3ef96c12"
+    },
+    {
+      "id": "chosen-profile-name-packages-receiz-sdk-src-accountDisplayName.ts",
+      "path": "receiz/packages/receiz-sdk/src/accountDisplayName.ts",
+      "baseSha256": "a633ba584afc678638c9bc0c076e36058141f6b15c59b98a99cf5787240a6e5b",
+      "sha256": "3bb1eed3233a784f55102c07b90b11dc06b9e9ad42839dfa925c8b2c38d08340",
+      "purpose": "Exact shared display projection of admitted username choices; raw profile/history, identity entry and financial authority remain unchanged.",
+      "sourceCommit": "7cb18cb6027d6a64aed4cc7c5b446e201e631257"
+    },
+    {
+      "id": "chosen-profile-name-app-lib-profile-displayName.ts",
+      "path": "receiz/app/lib/profile/displayName.ts",
+      "baseSha256": "8daf94052171aa5ea80a8af66518b77ba901df0a011ba9d2c712998bebd3cb7f",
+      "sha256": "9762c39cc70ace642657532cd5cd965d452b15809056c23f09af6b4b106afac7",
+      "purpose": "Exact shared display projection of admitted username choices; raw profile/history, identity entry and financial authority remain unchanged.",
+      "sourceCommit": "7cb18cb6027d6a64aed4cc7c5b446e201e631257"
+    },
+    {
+      "id": "chosen-profile-name-app-lib-profile-profileNameChoice.ts",
+      "path": "receiz/app/lib/profile/profileNameChoice.ts",
+      "baseSha256": null,
+      "sha256": "7410acd57e880b62488bed821bde5c568eb2cc0ceec6afebc59ab1a05d3cedbf",
+      "purpose": "Exact shared display projection of admitted username choices; raw profile/history, identity entry and financial authority remain unchanged.",
+      "sourceCommit": "7cb18cb6027d6a64aed4cc7c5b446e201e631257"
+    },
+    {
+      "id": "concise-username-displayName.ts",
+      "path": "receiz/app/lib/profile/displayName.ts",
+      "baseSha256": "9762c39cc70ace642657532cd5cd965d452b15809056c23f09af6b4b106afac7",
+      "sha256": "cb633f7bc9c6f1ede01d6a49ee83cefa18a1781ec8973d6bb582028a5e61ea7f",
+      "sourceCommit": "1bf06230f2d1fd3a46f83c56500426c529874044",
+      "purpose": "Use one display-only username formatter across Receiz and Bankeiz. Full identity, proof, route, payment and recovery coordinates remain unchanged."
+    },
+    {
+      "id": "concise-username-usernameLabel.ts",
+      "path": "receiz/app/lib/profile/usernameLabel.ts",
+      "baseSha256": null,
+      "sha256": "ff4daeade3f1b345503a2f2ecdb3e91540678980a41e4e626b5e030a9aa1e759",
+      "sourceCommit": "1bf06230f2d1fd3a46f83c56500426c529874044",
+      "purpose": "Use one display-only username formatter across Receiz and Bankeiz. Full identity, proof, route, payment and recovery coordinates remain unchanged."
+    },
+    {
+      "id": "bankeiz-note-recipient-binding",
+      "path": "receiz/app/lib/wallet/bankNotes/connectedNote.ts",
+      "baseSha256": "38e14bd4e5f5b9f94c9df05ef6a347aee0f1f81192b43e4c2a455391a4d6a81e",
+      "sha256": "8166ba0fe97430ccee7683a380f0983d9beec99a071d932aee06e9b7f08dbb04",
+      "purpose": "Optional recipient account UID is covered by existing Note signatures and funding admission. Default bearer Notes retain their exact existing signing bytes. Published SDK package sources and outputs are unchanged.",
+      "reviewPatchSha256": "c8483980d45c3f11a58573434e559223a4d63cdee4ca479b0ed5167858735b15"
     }
   ],
   "browserDefines": {

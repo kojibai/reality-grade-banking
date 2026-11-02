@@ -33,8 +33,8 @@ it('retains one recipient-bound source immediately offline and survives a reopen
 it('keeps the original pending after a lost response and confirms only after the native full credit proof reopens',async()=>{
  expect(typeof inventory.createLocalNoteDepositQueue).toBe('function');
  const p=ports(),queue=inventory.createLocalNoteDepositQueue(p.input);await queue.receive(terminal);
- p.fail(true);await expect(queue.reconcile()).rejects.toThrow('network response lost');expect((await queue.list())[0].status).toBe('received');
- p.fail(false);await queue.reconcile();expect((await queue.list())[0].status).toBe('confirmed');
+ p.fail(true);await queue.reconcile();expect((await queue.list())[0]).toMatchObject({status:'received',depositError:'BANK_NOTE_DEPOSIT_UNCONFIRMED'});
+ p.fail(false);await queue.reconcile();expect(p.submitted).toBe(1);await queue.reconcile({retryFailed:true});expect((await queue.list())[0].status).toBe('confirmed');
  expect(p.attempts).toEqual([false,true]);
  const count=p.submitted;await queue.reconcile();expect(p.submitted).toBe(count);
  expect((await queue.confirmed(metadata.noteId))?.status).toBe('confirmed');
@@ -79,6 +79,6 @@ it('retains the exact signed claim before submission and reuses it after a lost 
    if(attempts===1)throw Error('LOST_CLAIM_RESPONSE');return native.verifyBankNoteAccountDepositCredit(credit,bytes,context);
  }};
  const queue=inventory.createLocalNoteDepositQueue(input);await queue.receive(terminal);
- await expect(queue.reconcile()).rejects.toThrow('LOST_CLAIM_RESPONSE');
- await inventory.createLocalNoteDepositQueue(input).reconcile();expect(preparations).toBe(1);expect(attempts).toBe(2);
+ await queue.reconcile();expect((await queue.list())[0]).toMatchObject({status:'received',depositError:'LOST_CLAIM_RESPONSE'});
+ await inventory.createLocalNoteDepositQueue(input).reconcile({retryFailed:true});expect(preparations).toBe(1);expect(attempts).toBe(2);
 },30000);

@@ -1,24 +1,25 @@
 export type BankNoteRail = 'reserve' | 'settlement' | 'composite';
 export type BankNoteFundingParts={reserve:{amountUsdCents:string;amountPhiMicro:string};settlement:{amountUsdCents:string;amountPhiMicro:string}};
-export type BankNoteReview={rail:BankNoteRail;amountUsdCents:string;amountPhiMicro?:string;fundingParts?:BankNoteFundingParts};
+export type BankNoteReview={recipientUserId?:string;rail:BankNoteRail;amountUsdCents:string;amountPhiMicro?:string;fundingParts?:BankNoteFundingParts};
 export interface BankNoteImage extends Omit<BankNoteReview,'rail'> { noteId: string; rail?: BankNoteRail; image: Uint8Array; transferred?: boolean; transferPending?: boolean; selfDeposit?:'pending'|'confirmed'; accountUpdateWarning?: string; consumption?:'connection-required'; }
 export interface BankNoteInspection extends Omit<BankNoteReview,'rail'> { rail?: BankNoteRail; noteId: string; amountPhiMicro: string; consumption?:'connection-required'; }
 export interface BankNoteDeposit extends Omit<BankNoteReview,'rail'> { status?:'confirmed'; rail?: BankNoteRail; walletAfterPhiMicro?: string; noteId: string; proofBytes: Uint8Array; reserveAfterUsdCents: string; }
-export interface BankReceivedNoteDeposit extends BankNoteReview {status:'received';noteId:string;amountPhiMicro:string;proofBytes:Uint8Array;}
+export interface BankReceivedNoteDeposit extends BankNoteReview {status:'received';depositError?:string;noteId:string;amountPhiMicro:string;proofBytes:Uint8Array;}
 export type BankNoteDepositResult=BankNoteDeposit|BankReceivedNoteDeposit;
 export interface BankOfflineNotes {
+  exportNote?(id:string):Promise<BankNoteImage>;
   exportImage?(image:Uint8Array,noteId:string):Promise<Uint8Array>;
   receivedNotes?():Promise<BankNoteDepositResult[]>;
-  reconcileReceivedNotes?():Promise<BankNoteDepositResult[]>;
+  reconcileReceivedNotes?(retryFailed?:boolean):Promise<BankNoteDepositResult[]>;
   recoverDeposit?(image:Uint8Array):Promise<BankNoteDepositResult|null>;
   /** Read-only admission for this active receiver or locally held funding custody. */
   validateDeposit?(image:Uint8Array):Promise<void>;
   prepareResources?(count:{notes:number;receivers:number}):Promise<void>;
-  review?(amount:string):Promise<BankNoteReview>;
+  review?(amount:string,recipientUserId?:string):Promise<BankNoteReview>;
   savedNotes(): Promise<BankNoteImage[]>;
-  pending(): Promise<{ noteId: string; rail?: BankNoteRail; amountUsdCents: string; amountPhiMicro?:string;fundingParts?:BankNoteFundingParts;canCancel?: boolean } | null>;
+  pending(): Promise<{ noteId: string; rail?: BankNoteRail; amountUsdCents: string; amountPhiMicro?:string;fundingParts?:BankNoteFundingParts;recipientUserId?:string;canCancel?: boolean } | null>;
   cancelUnfunded(): Promise<void>;
-  create(amount: string, rail?: BankNoteRail): Promise<BankNoteImage>;
+  create(amount: string, rail?: BankNoteRail, recipientUserId?:string): Promise<BankNoteImage>;
   receivingRequest(): Promise<Uint8Array>;
   transfer(noteId: string, request?: Uint8Array): Promise<{ noteId: string; image: Uint8Array }>;
   inspect(image: Uint8Array): Promise<BankNoteInspection>;

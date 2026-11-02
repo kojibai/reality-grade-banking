@@ -255,5 +255,110 @@ test('locks the amount throughout a deferred review and confirms only the review
 test.each(['pending','confirmed'] as const)('labels a self-deposit %s original truthfully and never offers it as an addressed handover',async selfDeposit=>{
  const transfer=vi.fn(),note={noteId:'self-note',rail:'reserve',amountUsdCents:'200',image:new Uint8Array([1,2]),selfDeposit,transferred:false,transferPending:false,consumption:'connection-required'};
  const identity={offlineNotes:async()=>({savedNotes:async()=>[note],pending:async()=>null,transfer})}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));expect(host.textContent).toContain(selfDeposit==='pending'?'Deposit pending · original kept':'Deposited · original kept');await act(async()=>host.querySelector<HTMLButtonElement>('.asset-row')!.click());expect(host.textContent).not.toContain('Your note is addressed.');expect(host.textContent).not.toContain('Save this updated image and send it');expect(host.textContent).toContain(selfDeposit==='pending'?'Your deposit is pending.':'Your note is deposited.');expect(host.querySelector<HTMLInputElement>('input[type="file"]')?.disabled).toBe(true);expect(transfer).not.toHaveBeenCalled();if(selfDeposit==='pending'){note.selfDeposit='confirmed';await act(async()=>dispatchEvent(new Event('bankeiz:account-observation')));expect(host.textContent).toContain('Your note is deposited.');}}finally{act(()=>root.unmount());}
+ try{await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));expect(host.textContent).toContain(selfDeposit==='pending'?'Deposit pending · original kept':'Deposited · original kept');await act(async()=>host.querySelector<HTMLButtonElement>('.asset-row')!.click());expect(host.textContent).not.toContain('Your note is addressed.');expect(host.textContent).not.toContain('Save this updated image and send it');expect(host.textContent).toContain(selfDeposit==='pending'?'Your deposit is pending.':'Your note is deposited.');expect(host.querySelector<HTMLInputElement>('input[type="file"]')).toBeNull();expect(transfer).not.toHaveBeenCalled();if(selfDeposit==='pending'){note.selfDeposit='confirmed';await act(async()=>dispatchEvent(new Event('bankeiz:account-observation')));expect(host.textContent).toContain('Your note is deposited.');}}finally{act(()=>root.unmount());}
+});
+
+test('direct Note delivery needs no receiving-request download or recipient JSON upload',async()=>{
+ const note={noteId:'direct-note',rail:'reserve',amountUsdCents:'200',image:new Uint8Array([1,2]),consumption:'connection-required'};
+ const exportNote=vi.fn().mockResolvedValue({...note,image:new Uint8Array([3,4])}),request=vi.fn();
+ const identity={offlineNotes:async()=>({savedNotes:async()=>[note],pending:async()=>null,exportNote,receivingRequest:request})}as unknown as OpenIdentity;
+ const url=vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:note-fixture'),anchor=vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<OfflineNotes identity={identity} mode="deposit" onBack={vi.fn()} onRefresh={vi.fn()}/>));
+  expect(host.textContent).not.toContain('Create receiving request');expect(request).not.toHaveBeenCalled();
+  await act(async()=>root.render(<OfflineNotes key="create" identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));
+  await act(async()=>host.querySelector<HTMLButtonElement>('.asset-row')!.click());
+  expect(host.querySelector('input[type=file]')).toBeNull();
+  expect(host.textContent).not.toContain('Older Note handover');
+  expect(host.textContent).toContain('Anyone holding it can deposit its value once.');
+  await act(async()=>click(host,'Save note image'));expect(exportNote).toHaveBeenCalledExactlyOnceWith('direct-note');
+ }finally{act(()=>root.unmount());url.mockRestore();anchor.mockRestore();}
+});
+
+test('an older device-held Note keeps its exact handover under folded compatibility details',async()=>{
+ const note={noteId:'older-note',rail:'reserve',amountUsdCents:'200',image:new Uint8Array([1,2])},request=new Uint8Array([7,8]),updated=new Uint8Array([3,4]);
+ const transfer=vi.fn().mockResolvedValue({noteId:note.noteId,image:updated});
+ const identity={offlineNotes:async()=>({savedNotes:async()=>[note],pending:async()=>null,transfer})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));
+  await act(async()=>host.querySelector<HTMLButtonElement>('.asset-row')!.click());
+  const details=[...host.querySelectorAll('details')].find(item=>item.querySelector('summary')?.textContent==='Older Note handover')!;
+  expect(details).toBeDefined();expect(details.open).toBe(false);
+  expect(host.textContent).not.toContain('Anyone holding it can deposit its value once.');
+  expect(host.textContent).toContain('This older Note is held by this device.');
+  expect(transfer).not.toHaveBeenCalled();
+  details.open=true;const upload=details.querySelector<HTMLInputElement>('input[type=file]')!;
+  Object.defineProperty(upload,'files',{value:[{size:request.length,arrayBuffer:async()=>request.buffer}]});
+  await act(async()=>upload.dispatchEvent(new Event('change',{bubbles:true})));
+  expect(transfer).toHaveBeenCalledExactlyOnceWith(note.noteId,request);
+  expect(host.textContent).toContain('Your note is transferred.');
+  expect(host.textContent).toContain('Save this updated image and send it to the recipient.');
+  expect(host.querySelector('input[type=file]')).toBeNull();
+ }finally{act(()=>root.unmount());}
+});
+
+test('Deposit offers an older Note request only inside folded compatibility details and on explicit click',async()=>{
+ const request=new Uint8Array([7,8]),receivingRequest=vi.fn().mockResolvedValue(request);
+ const identity={offlineNotes:async()=>({receivingRequest})}as unknown as OpenIdentity;
+ const blobs:Blob[]=[],url=vi.spyOn(URL,'createObjectURL').mockImplementation(value=>{blobs.push(value as Blob);return'blob:request-fixture';}),anchor=vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<OfflineNotes identity={identity} mode="deposit" onBack={vi.fn()} onRefresh={vi.fn()}/>));
+  const details=[...host.querySelectorAll('details')].find(item=>item.querySelector('summary')?.textContent==='Receiving an older Note?')!;
+  expect(details).toBeDefined();expect(details.open).toBe(false);expect(receivingRequest).not.toHaveBeenCalled();
+  expect(host.querySelector('.file-drop input[type=file]')).not.toBeNull();
+  details.open=true;expect(receivingRequest).not.toHaveBeenCalled();
+  await act(async()=>click(host,'Save receiving request'));
+  expect(receivingRequest).toHaveBeenCalledOnce();expect([...new Uint8Array(await blobs.at(-1)!.arrayBuffer())]).toEqual([...request]);
+ }finally{act(()=>root.unmount());url.mockRestore();anchor.mockRestore();}
+});
+
+test('only the optional recipient uses directory access and the selected immutable account carries through review and issue',async()=>{
+ const peer={kind:'user',userId:'33333333-3333-4333-8333-333333333333',username:'mira',displayName:'Mira',avatarUrl:null};
+ const search=vi.fn(),conversations=vi.fn(),messaging=vi.fn(async()=>({accountUid:'owner',knownConversations:()=>[{members:[peer]}],search,conversations}));
+ const review=vi.fn(async(amountUsdCents:string,recipientUserId?:string)=>({rail:'reserve',amountUsdCents,...(recipientUserId?{recipientUserId}:{})}));
+ const create=vi.fn(async(amountUsdCents:string,_rail:unknown,recipientUserId?:string)=>({noteId:'targeted',rail:'reserve',amountUsdCents,recipientUserId,image:new Uint8Array([1])}));
+ const identity={messaging,offlineNotes:async()=>({pending:async()=>null,savedNotes:async()=>[],review,create})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);document.body.appendChild(host);
+ try{
+  await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));
+  expect(messaging).not.toHaveBeenCalled();
+  await act(async()=>host.querySelectorAll<HTMLInputElement>('input[type=radio]')[1].click());
+  await act(async()=>host.querySelector<HTMLInputElement>('[role=combobox]')!.focus());
+  await act(async()=>host.querySelector<HTMLElement>('[role=option]')!.click());
+  await act(async()=>click(host,'Review note'));
+  expect(review).toHaveBeenCalledExactlyOnceWith('10000',peer.userId);expect(host.textContent).toContain('@mira');
+  await act(async()=>click(host,'Create funded note'));
+  expect(create).toHaveBeenCalledExactlyOnceWith('10000',undefined,peer.userId);expect(search).not.toHaveBeenCalled();expect(conversations).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());host.remove();}
+});
+
+test('an outstanding review keeps its selected account when an already visible suggestion is clicked',async()=>{
+ const chosen={kind:'user',userId:'33333333-3333-4333-8333-333333333333',username:'mira',displayName:'Mira',avatarUrl:null};
+ const other={...chosen,userId:'44444444-4444-4444-8444-444444444444',username:'mirabel',displayName:'Mirabel'};
+ let finish!:(value:unknown)=>void;
+ const review=vi.fn(()=>new Promise(resolve=>{finish=resolve;}));
+ const create=vi.fn(async(amountUsdCents:string,_rail:unknown,recipientUserId?:string)=>({noteId:'targeted',rail:'reserve',amountUsdCents,recipientUserId,image:new Uint8Array([1])}));
+ const identity={messaging:async()=>({accountUid:'owner',knownConversations:()=>[{members:[chosen,other]}],search:async()=>[],conversations:async()=>[]}),offlineNotes:async()=>({pending:async()=>null,savedNotes:async()=>[],review,create})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);document.body.appendChild(host);
+ try{
+  await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));
+  await act(async()=>host.querySelectorAll<HTMLInputElement>('input[type=radio]')[1].click());
+  const field=host.querySelector<HTMLInputElement>('[role=combobox]')!;
+  await act(async()=>field.focus());
+  await act(async()=>[...host.querySelectorAll<HTMLElement>('[role=option]')].find(row=>row.textContent?.includes('@mira')&&!row.textContent?.includes('@mirabel'))!.click());
+  await act(async()=>{field.blur();field.focus();});
+  const otherSuggestion=[...host.querySelectorAll<HTMLElement>('[role=option]')].find(row=>row.textContent?.includes('@mirabel'))!;
+  expect(otherSuggestion).toBeDefined();
+  await act(async()=>click(host,'Review note'));
+  expect(review).toHaveBeenCalledExactlyOnceWith('10000',chosen.userId);
+  await act(async()=>otherSuggestion.click());
+  await act(async()=>finish({rail:'reserve',amountUsdCents:'10000',recipientUserId:chosen.userId}));
+  const summary=host.querySelector('.detail-list')?.textContent;
+  expect(summary).toContain('@mira');expect(summary).not.toContain('@mirabel');
+  await act(async()=>click(host,'Create funded note'));
+  expect(create).toHaveBeenCalledExactlyOnceWith('10000',undefined,chosen.userId);
+ }finally{act(()=>root.unmount());host.remove();}
 });
