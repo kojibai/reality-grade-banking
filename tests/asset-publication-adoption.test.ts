@@ -62,3 +62,12 @@ it('keeps a newly signed Original through stale unsigned discovery without addin
  adoption.acceptDiscoveredPublicAssets(unsigned);
  expect(adoption.mergeAdmittedPublicAssets(unsigned).items[0].hasPbiSignature).toBe(true);
 });
+
+it('displays a canonically admitted local Original before Showcase delivery without inventing a Showcase head',()=>{
+ adoption.retainAssetPublicationAdmission({...admission,firstPaint:null},owner);
+ expect(adoption.admittedAssetPublicationItem(reference.artifactSha256,'artist')?.title).toBe('A complete work');
+ expect(adoption.admittedAssetPublicationDelivery(reference.artifactSha256,'artist')).toBeNull();
+ expect(adoption.assetPublicationFreshnessHint()).toBeUndefined();
+ adoption.acknowledgeAssetPublication(reference.artifactSha256,{status:'published',artifactDigest:'f'.repeat(64),operationCount:1,visibleChildCount:1});
+ expect(adoption.admittedAssetPublicationDelivery(reference.artifactSha256,'artist')).toEqual({status:'published',showcaseArtifactDigest:'f'.repeat(64)});
+});

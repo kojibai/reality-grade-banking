@@ -17,17 +17,18 @@ vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({
 })}));
 vi.mock('@receiz/sdk/offline',()=>({createReceizIndexedDbSealStore:()=>({load:p.load}),createReceizOfflineSealer:()=>({enroll:p.enroll})}));
 vi.mock('../src/receiz/offline-notes',()=>({loadBankNoteRuntime:async()=>({createBankNativeNoteSealer:p.nativeSealer})}));
-vi.mock('../src/receiz/asset-publication-runtime',()=>({loadAssetPublicationRuntime:async()=>({createConnectedAssetPublicationRuntime:async()=>({prepareContent:p.prepare})}),createAssetPublicationFetch:()=>vi.fn()}));
+vi.mock('../src/receiz/asset-publication-runtime',()=>({loadAssetPublicationRuntime:async()=>({prepareConnectedComposerContent:p.prepare,sealConnectedComposerContent:async()=>{throw Error('PREPARED_FROM_SAVED_SIGNER');}}),createAssetPublicationFetch:()=>vi.fn()}));
 vi.mock('../src/receiz/proof-resource-continuity',()=>({loadBankProofResources:async()=>({wasm:new Uint8Array([1]),zkey:new Uint8Array([2])})}));
 vi.mock('../src/receiz/identity-protection',()=>({unprotectIdentityKeyFile:async(value:unknown)=>value}));
 vi.mock('../src/receiz/identity-lock',()=>({identityNeedsPhrase:()=>false}));
-vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>null,loadAccountLedgerState:async()=>null,loadMarketPortfolioState:async()=>null,loadMessagingDisplay:async()=>null}));
+vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>null,loadAccountLedgerState:async()=>null,loadMarketPortfolioState:async()=>null,loadMessagingDisplay:async()=>null,loadAssetPublicationState:async()=>null}));
 beforeEach(async()=>{
+ vi.stubGlobal('navigator',{locks:{request:async(_name:string,_options:unknown,run:()=>Promise<unknown>)=>run()}});
  vi.stubGlobal('location',{origin:'https://bankeiz.com'});
  p.enrollment={privateKey:(await crypto.subtle.generateKey('Ed25519',false,['sign','verify'])).privateKey,cert:{issuedAtMs:0}};
  p.enroll.mockReset().mockResolvedValue(undefined);p.load.mockReset().mockResolvedValue(p.enrollment);
  p.nativeSealer.mockReset().mockImplementation(async(input:{enrollment:{privateKey:CryptoKey}})=>{if(input.enrollment.privateKey.extractable)throw Error('extractable key');return p.sealDocument;});
- p.prepare.mockReset().mockRejectedValue(Error('PREPARED_FROM_SAVED_SIGNER'));
+ p.prepare.mockReset().mockResolvedValue({schema:'receiz.bank.asset-content.v2'});p.sealDocument.mockReset();
 });
 afterEach(()=>vi.unstubAllGlobals());
 const definition={name:'An Original',symbol:'ORIG',units:'1000',description:'',linkedProofDigest:null};
@@ -42,10 +43,10 @@ it('opens asset creation with the existing non-exportable enrollment, enrolling 
  }finally{identity.dispose();}
 });
 it('reports unavailable local signer custody before opening publication',async()=>{
- p.load.mockResolvedValue(null);
+ p.load.mockResolvedValue(null);p.prepare.mockResolvedValue({schema:'receiz.bank.asset-content.v2'});
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','synthetic.receiz',true);
  try{
   await expect(identity.createComposedAsset!(definition,draft)).rejects.toThrow('Your device sealing key is unavailable.');
-  expect(p.nativeSealer).not.toHaveBeenCalled();expect(p.prepare).not.toHaveBeenCalled();
+  expect(p.nativeSealer).not.toHaveBeenCalled();expect(p.prepare).toHaveBeenCalledOnce();
  }finally{identity.dispose();}
 });

@@ -104,3 +104,7 @@
 
 .asset-canvas-playback{position:relative;z-index:1;width:min(360px,calc(100% - 40px));align-self:center;margin:auto 20px 0}
 .asset-canvas-media--video{top:var(--studio-header,0px);height:calc(100% - var(--studio-header,0px) - 210px)}
+
+.asset-seal-progress{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:18px 0;border-top:1px solid var(--border,#e1e6ef);border-bottom:1px solid var(--border,#e1e6ef);margin:12px 0;color:var(--navy,#172b45)}
+.asset-seal-progress>div{display:grid;gap:6px;min-width:0}.asset-seal-progress strong{font-size:14px;font-weight:500}.asset-seal-progress>div>span{font-size:11px;color:#7b8ba1;font-variant-numeric:tabular-nums}
+.asset-seal-progress>progress{appearance:none;display:block;width:100%;height:2px;border:0;background:#e7ecf4;color:var(--blue,#244dcb)}.asset-seal-progress>progress::-webkit-progress-bar{background:#e7ecf4}.asset-seal-progress>progress::-webkit-progress-value{background:var(--blue,#244dcb)}.asset-seal-progress>progress::-moz-progress-bar{background:var(--blue,#244dcb)}

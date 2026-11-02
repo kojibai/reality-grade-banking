@@ -512,6 +512,12 @@ export type ProfileShowcaseBoundedEdgeVault = Readonly<{
     actualReadRequestsByStore: Readonly<Record<string, number>>;
     actualWriteRequestsByStore: Readonly<Record<string, number>>;
     serializedRecordBytes: number;
+    runtimeCompleteSourcePreparations: number;
+    runtimePersistentSourcePreparations: number;
+    runtimeHistoricalIndexes: number;
+    runtimeHistoricalLookups: number;
+    runtimeHistoricalLookupWorkspaces: number;
+    runtimeActiveHistoricalResolutions: number;
     historyNodeObjectCount: number;
     cumulativeArrayKeys: readonly string[];
     foregroundChildArtifactReopens: number;
@@ -922,14 +928,79 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
     unresolvedDigests: readonly string[];
     checkpointAncestors: readonly Readonly<{ artifactDigest: string; operationCount: number }>[];
   }>;
-  const verifiedHistoricalIndexes = new Map<
-    string,
-    Promise<VerifiedHistoricalIndex | null>
-  >();
-  const verifiedHistoricalLookups = new Map<string, Promise<string | null>>();
+  type HistoricalWork = { artifactId: ProfileShowcaseArtifactId; digest: string; settled: boolean };
+  const verifiedHistoricalIndexes = new Map<string, HistoricalWork & {
+    promise: Promise<VerifiedHistoricalIndex | null>;
+  }>();
+  const verifiedHistoricalLookups = new Map<string, HistoricalWork & { promise: Promise<string | null> }>();
+  // Derived work only: keep current canonical history plus one requested
+  // historical workspace. In-use resolutions retain their shared index until
+  // all exact proof lookups finish; completion cannot select an older workspace.
+  const historicalWorkspaces = new Map<ProfileShowcaseArtifactId, string>();
+  const activeHistoricalResolutions = new Map<string, number>();
+  function releaseSupersededHistoricalWork(artifactId: ProfileShowcaseArtifactId) {
+    const current = preparationHeads.get(artifactId), requested = historicalWorkspaces.get(artifactId);
+    const keep = (record: HistoricalWork) => !record.settled || record.artifactId !== artifactId
+      || record.digest === current || record.digest === requested
+      || activeHistoricalResolutions.has(`${artifactId}:${record.digest}`);
+    for (const [key, record] of verifiedHistoricalIndexes) if (!keep(record)) verifiedHistoricalIndexes.delete(key);
+    for (const [key, record] of verifiedHistoricalLookups) if (!keep(record)) verifiedHistoricalLookups.delete(key);
+  }
+  const requestHistoricalWorkspace = (artifactId: ProfileShowcaseArtifactId, digest: string) => {
+    historicalWorkspaces.set(artifactId, digest);
+    releaseSupersededHistoricalWork(artifactId);
+  };
   const checkpointSources = new Map<string, ReturnType<typeof readReceizProfileShowcaseCheckpointCustodyV114>>();
   const completeLegacyActorRoots = new Map<string, readonly string[]>();
-  const completeSources = new Map<string, Promise<ProfileShowcaseCompleteSource>>();
+  const completeSources = new Map<string, {
+    firstPaint: ProfileShowcaseBoundedFirstPaint;
+    complete: Promise<ProfileShowcaseCompleteSource>;
+    settled: boolean;
+  }>();
+  // Resource ownership only. These observations cannot admit/select proof.
+  // A canonically verified effective head pins its current preparations; late
+  // historical completions cannot repin after a newer selection was observed.
+  const observedSelections = new Map<ProfileShowcaseArtifactId, Readonly<{ key: string }>>();
+  const preparationHeads = new Map<ProfileShowcaseArtifactId, string>();
+  const selectionKey = (active: ActiveRecord | null) => {
+    const text = (value: unknown) => typeof value === "string" ? value : null;
+    const hold = active?.replacementPresentationHold;
+    const reference = hold?.replacedChild;
+    return JSON.stringify([text(active?.artifactId), text(active?.artifactDigest),
+      Boolean(active && "replacementPresentationHold" in active), typeof hold, hold === null,
+      text(hold?.artifactDigest), text(hold?.intermediateArtifactDigest),
+      text(reference?.stableChildArtifactId), text(reference?.immutableVersion), text(reference?.childArtifactDigest),
+      text(reference?.admissionEvidenceRoot), text(reference?.contentDigest)]);
+  };
+  const observeSelection = (artifactId: ProfileShowcaseArtifactId, active: ActiveRecord | null) => {
+    const key = selectionKey(active);
+    const previous = observedSelections.get(artifactId);
+    if (previous?.key === key) return previous;
+    const observation = Object.freeze({ key });
+    observedSelections.set(artifactId, observation);
+    return observation;
+  };
+  const pinVerifiedPreparation = (artifactId: ProfileShowcaseArtifactId,
+    observation: Readonly<{ key: string }> | undefined, digest: string) => {
+    if (!observation || observedSelections.get(artifactId) !== observation) return false;
+    preparationHeads.set(artifactId, digest);
+    releaseSupersededPreparations(artifactId);
+    releaseSupersededHistoricalWork(artifactId);
+    return true;
+  };
+  // Realization memo beneath this vault's canonical admission. Public export
+  // has a visible-only closure, separate from private complete owner custody.
+  // Keep one selected export per artifact and never retain failure or absence.
+  const publicExports = new Map<ProfileShowcaseArtifactId, Readonly<{
+    digest: string;
+    promise: Promise<ProfileShowcaseCompletePublicSource | null>;
+  }>>();
+  const copyPublicExport = (source: ProfileShowcaseCompletePublicSource) => {
+    const copy = Object.freeze(structuredClone(source));
+    const actor = publicSourceActorCustody.get(source);
+    if (actor) publicSourceActorCustody.set(copy, actor);
+    return copy;
+  };
   // Only canonical child projection can enter this runtime custody. A stored
   // projection digest is an integrity check, not evidence of that admission.
   const canonicalChildSources = new Map<string, ChildRecord>();
@@ -974,7 +1045,13 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
       const carrier = readReceizBoundedProfileShowcaseInspectionCarrier(inspection);
       if (inspection.artifactSha256 !== digest || carrier.artifactId !== artifactId) return null;
       return Object.freeze((carrier["profile-showcase"].parentHeads as readonly { artifactDigest: string }[]).map(parent => parent.artifactDigest).sort());
-    })().catch(() => { verifiedHistoricalParents.delete(key); return null; });
+    })().then(parents => {
+      if (!parents && verifiedHistoricalParents.get(key) === pending) verifiedHistoricalParents.delete(key);
+      return parents;
+    }, () => {
+      if (verifiedHistoricalParents.get(key) === pending) verifiedHistoricalParents.delete(key);
+      return null;
+    });
     verifiedHistoricalParents.set(key, pending);
     return pending;
   };
@@ -1055,16 +1132,20 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
   ): Promise<VerifiedHistoricalIndex | null> => {
     const key = `${artifactId}:${descendantArtifactDigest}`;
     const retained = verifiedHistoricalIndexes.get(key);
-    if (retained) return retained;
-    const pending = buildVerifiedHistoricalIndex(
-      artifactId,
-      descendantArtifactDigest,
-    ).catch((error) => {
-      verifiedHistoricalIndexes.delete(key);
+    if (retained) return retained.promise;
+    const record = { artifactId, digest: descendantArtifactDigest, settled: false,
+      promise: buildVerifiedHistoricalIndex(artifactId, descendantArtifactDigest) };
+    record.promise = record.promise.then(index => {
+      record.settled = true;
+      if (!index && verifiedHistoricalIndexes.get(key) === record) verifiedHistoricalIndexes.delete(key);
+      releaseSupersededHistoricalWork(artifactId);
+      return index;
+    }, error => {
+      if (verifiedHistoricalIndexes.get(key) === record) verifiedHistoricalIndexes.delete(key);
       throw error;
     });
-    verifiedHistoricalIndexes.set(key, pending);
-    return pending;
+    verifiedHistoricalIndexes.set(key, record);
+    return record.promise;
   };
 
   const verifyHistoricalDigestAtOperationCount = async (
@@ -1115,16 +1196,21 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
     artifactId: ProfileShowcaseArtifactId,
     descendantArtifactDigest: string,
     operationCount: number,
+    retainedIndex?: () => Promise<VerifiedHistoricalIndex | null>,
   ): Promise<string | null> => {
-    const index = await verifiedHistoricalIndex(
+    const key = `${artifactId}:${descendantArtifactDigest}`;
+    activeHistoricalResolutions.set(key, (activeHistoricalResolutions.get(key) ?? 0) + 1);
+    requestHistoricalWorkspace(artifactId, descendantArtifactDigest);
+    try {
+    const index = await (retainedIndex ? retainedIndex() : verifiedHistoricalIndex(
       artifactId,
       descendantArtifactDigest,
-    );
+    ));
     if (!index) return null;
     const indexed = index.byOperationCount.get(operationCount);
     if (indexed === null) return null;
     if (indexed !== undefined) {
-      return verifyHistoricalDigestAtOperationCount(
+      return await verifyHistoricalDigestAtOperationCount(
         artifactId,
         descendantArtifactDigest,
         indexed,
@@ -1148,6 +1234,27 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
       .filter(checkpoint => operationCount > 0 && operationCount <= checkpoint.operationCount)
       .map(checkpoint => checkpoint.artifactDigest));
     return checkpointMatches.size === 1 ? [...checkpointMatches][0]! : null;
+    } finally {
+      const remaining = (activeHistoricalResolutions.get(key) ?? 1) - 1;
+      if (remaining) activeHistoricalResolutions.set(key, remaining);
+      else activeHistoricalResolutions.delete(key);
+      releaseSupersededHistoricalWork(artifactId);
+    }
+  };
+
+  // The existing SDK may request ancestry in multiple admission phases.
+  // Its callback owns this index across those phases, independently of global
+  // workspace eviction; nothing retains it after that admission returns.
+  const createHistoricalResolver = (artifactId: ProfileShowcaseArtifactId, digest: string) => {
+    let index: Promise<VerifiedHistoricalIndex | null> | undefined;
+    const retainedIndex = () => {
+      if (!index) index = verifiedHistoricalIndex(artifactId, digest).then(value => {
+        if (!value) index = undefined;
+        return value;
+      }, error => { index = undefined; throw error; });
+      return index;
+    };
+    return (count: number) => resolveFromVerifiedHistoricalIndex(artifactId, digest, count, retainedIndex);
   };
 
   const admitExactStoredMergeHead = async (input: Readonly<{
@@ -1214,7 +1321,7 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         verifiedParents[0].historyNode,
         verifiedParents[1].historyNode,
       ],
-      resolveVerifiedHistoricalArtifactDigest: count => resolveFromVerifiedHistoricalIndex(input.head.artifactId, commonDigests[0]!, count),
+      resolveVerifiedHistoricalArtifactDigest: createHistoricalResolver(input.head.artifactId, commonDigests[0]!),
       candidateArtifact: input.candidateArtifact,
       canonicalSignatureV4RootPublicKeys: roots,
     });
@@ -1234,6 +1341,12 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         "PROFILE_SHOWCASE_BOUNDED_EDGE_ACTIVE_READ_FAILED",
       );
       if (!activePointer) return null;
+      // Caller-supplied candidate pointers are verification context, not a
+      // read of current selection. They cannot move resource ownership.
+      const knownObservation = observedSelections.get(artifactId);
+      const observation = knownActivePointer
+        ? knownObservation?.key === selectionKey(activePointer) ? knownObservation : undefined
+        : observeSelection(artifactId, activePointer);
       const active = retainedArtifactDigest ? { ...activePointer, artifactDigest: retainedArtifactDigest } : activePointer;
       noteRequest(active.artifactDigest, "reads", ACTIVE_STORE);
       const head = await readObject<HeadRecord>(
@@ -1327,7 +1440,7 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
               predecessorArtifact: exactArtifactFile(predecessorArtifact),
               candidateArtifact: exactCandidateArtifact,
               predecessorHistoryNode,
-              resolveVerifiedHistoricalArtifactDigest: count => resolveFromVerifiedHistoricalIndex(artifactId, parentDigest, count),
+              resolveVerifiedHistoricalArtifactDigest: createHistoricalResolver(artifactId, parentDigest),
               canonicalSignatureV4RootPublicKeys: roots,
             });
             admittedDigest = successor.artifactSha256;
@@ -1544,6 +1657,11 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         segments: structuredClone(segments),
       };
       boundedFirstPaintRuntimeCustody.add(firstPaint);
+      if (repairChildProjections && activePointer.artifactId === artifactId
+        && activePointer.artifactDigest === firstPaint.artifactDigest
+        && !("replacementPresentationHold" in activePointer)) {
+        pinVerifiedPreparation(artifactId, observation, firstPaint.artifactDigest);
+      }
       return Object.freeze(firstPaint);
   }
 
@@ -1808,17 +1926,45 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
     };
     return { io, memory, checkpoints, stateFor, collectRemaining: async () => { while (await collectNext()) { /* Collect exact remaining ancestors. */ } }, get legacyState() { return legacyState; }, get legacyPredecessor() { return legacyPredecessor; } };
   };
-  const persistentSources = new Map<string, ReturnType<typeof preparePersistentSource>>();
-  const readPersistentSource = (source: ProfileShowcaseBoundedFirstPaint) => {
-    let held = persistentSources.get(source.artifactDigest);
-    if (!held) {
-      held = preparePersistentSource(source).catch(error => { persistentSources.delete(source.artifactDigest); throw error; });
-      persistentSources.set(source.artifactDigest, held);
+  const persistentSources = new Map<string, {
+    artifactId: ProfileShowcaseArtifactId;
+    settled: boolean;
+    preparation: ReturnType<typeof preparePersistentSource>;
+  }>();
+  const activePreparations = new Map<string, number>();
+  function releaseSupersededPreparations(artifactId: ProfileShowcaseArtifactId) {
+    const currentDigest = preparationHeads.get(artifactId);
+    for (const [key, record] of completeSources) {
+      if (record.settled && record.firstPaint.carrier.artifactId === artifactId
+        && record.firstPaint.artifactDigest !== currentDigest) completeSources.delete(key);
     }
-    return held;
+    for (const [digest, record] of persistentSources) {
+      const pendingComplete = [...completeSources.values()].some(complete => !complete.settled
+        && complete.firstPaint.artifactDigest === digest && complete.firstPaint.carrier.artifactId === artifactId);
+      if (record.settled && record.artifactId === artifactId && digest !== currentDigest
+        && !activePreparations.has(digest) && !pendingComplete) persistentSources.delete(digest);
+    }
+  }
+  const readPersistentSource = (source: ProfileShowcaseBoundedFirstPaint) => {
+    const retained = persistentSources.get(source.artifactDigest);
+    if (retained) return retained.preparation;
+    const artifactId = source.carrier.artifactId as ProfileShowcaseArtifactId;
+    const record = { artifactId, settled: false, preparation: preparePersistentSource(source) };
+    record.preparation = record.preparation.then(prepared => {
+      record.settled = true;
+      releaseSupersededPreparations(artifactId);
+      return prepared;
+    }, error => {
+      if (persistentSources.get(source.artifactDigest) === record) persistentSources.delete(source.artifactDigest);
+      throw error;
+    });
+    persistentSources.set(source.artifactDigest, record);
+    return record.preparation;
   };
   const prepareCompleteSource = async (source: ProfileShowcaseBoundedFirstPaint, visibleOnly = false, retainedChildrenOnly = false,
     retainedHiddenOnly = false): Promise<ProfileShowcaseCompleteSource> => {
+    activePreparations.set(source.artifactDigest, (activePreparations.get(source.artifactDigest) ?? 0) + 1);
+    try {
     const head = source.carrier["profile-showcase"];
     const persistent = await readPersistentSource(source);
     const { io, memory, checkpoints, stateFor } = persistent;
@@ -1888,15 +2034,20 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
     return Object.freeze({ artifactDigest: source.artifactDigest, exactSealedArtifactBytes: source.exactSealedArtifactBytes.slice(),
       carrier: structuredClone(source.carrier), ...complete, children: Object.freeze(children),
       ...(legacyPredecessor ? { legacyPredecessor } : {}) });
+    } finally {
+      const remaining = (activePreparations.get(source.artifactDigest) ?? 1) - 1;
+      if (remaining) activePreparations.set(source.artifactDigest, remaining);
+      else activePreparations.delete(source.artifactDigest);
+      releaseSupersededPreparations(source.carrier.artifactId as ProfileShowcaseArtifactId);
+    }
   };
 
   // Complete-source preparation and bounded presentation share exactly the
   // same effective-head selection, quarantine and replacement-hold rules.
-  const readEffectiveSourceProjection = async (
-    artifactId: ProfileShowcaseArtifactId,
-    repairChildProjections: boolean,
-    resolveHistorical: ProfileShowcaseBoundedEdgeVault["resolveVerifiedHistoricalArtifactDigest"],
-  ): Promise<ProfileShowcaseBoundedFirstPaint | null> => {
+  // Observe the existing current selection and pending visibility boundary once.
+  // This supplies no admission: only a previously verified complete Source may
+  // be reused beneath this same selection, with no replacement presentation.
+  const readEffectiveSourceSelection = async (artifactId: ProfileShowcaseArtifactId) => {
       const db = await database;
       const pendingVisibility = await requestResult(
         db.transaction(VISIBILITY_TRANSITION_STORE, "readonly")
@@ -1915,11 +2066,23 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
       // The verified active head (or its replacement presentation hold) stays
       // available until the sealed visibility successor is admitted.
       const active = await readObject<ActiveRecord>(ACTIVE_STORE, artifactId, "PROFILE_SHOWCASE_BOUNDED_EDGE_ACTIVE_READ_FAILED");
+      return { active, observation: observeSelection(artifactId, active) };
+  };
+  const readEffectiveSourceProjection = async (
+    artifactId: ProfileShowcaseArtifactId,
+    repairChildProjections: boolean,
+    resolveHistorical: ProfileShowcaseBoundedEdgeVault["resolveVerifiedHistoricalArtifactDigest"],
+    selection?: Awaited<ReturnType<typeof readEffectiveSourceSelection>>,
+  ): Promise<ProfileShowcaseBoundedFirstPaint | null> => {
+      const { active, observation } = selection ?? await readEffectiveSourceSelection(artifactId);
       if (!active) return null;
       const source = await readVerifiedSourceProjection(artifactId, undefined, active, repairChildProjections);
       if (!source) return null;
       const hold = active.replacementPresentationHold;
-      if (!("replacementPresentationHold" in active)) return source; // Old records have no hold.
+      if (!("replacementPresentationHold" in active)) {
+        pinVerifiedPreparation(artifactId, observation, source.artifactDigest);
+        return source;
+      } // Old records have no hold.
       if (!hold || typeof hold.artifactDigest !== "string"
         || typeof hold.intermediateArtifactDigest !== "string" || !hold.replacedChild) return null;
       try {
@@ -1938,6 +2101,7 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
           ? source.artifactDigest
           : await resolveHistorical(artifactId, source.artifactDigest, intermediateCount);
         if (intermediateInHistory !== intermediate.artifactDigest) return null;
+        pinVerifiedPreparation(artifactId, observation, held.artifactDigest);
         return held;
       } catch {
         return null;
@@ -2799,7 +2963,7 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
                 predecessorArtifact: exactArtifactFile(predecessorArtifact),
                 candidateArtifact,
                 predecessorHistoryNode,
-                resolveVerifiedHistoricalArtifactDigest: count => resolveFromVerifiedHistoricalIndex(artifactId, predecessorArtifactDigest, count),
+                resolveVerifiedHistoricalArtifactDigest: createHistoricalResolver(artifactId, predecessorArtifactDigest),
                 canonicalSignatureV4RootPublicKeys: roots,
               });
           } else {
@@ -2997,35 +3161,72 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         || operationCount < 0
       ) return null;
       const key = `${artifactId}:${descendantArtifactDigest}:${operationCount}`;
+      requestHistoricalWorkspace(artifactId, descendantArtifactDigest);
       const retained = verifiedHistoricalLookups.get(key);
-      if (retained) return retained;
-      const pending = resolveFromVerifiedHistoricalIndex(
-        artifactId,
-        descendantArtifactDigest,
-        operationCount,
-      ).catch((error) => {
-        verifiedHistoricalLookups.delete(key);
+      if (retained) return retained.promise;
+      const record = { artifactId, digest: descendantArtifactDigest, settled: false,
+        promise: resolveFromVerifiedHistoricalIndex(artifactId, descendantArtifactDigest, operationCount) };
+      record.promise = record.promise.then(digest => {
+        record.settled = true;
+        if (!digest && verifiedHistoricalLookups.get(key) === record) verifiedHistoricalLookups.delete(key);
+        releaseSupersededHistoricalWork(artifactId);
+        return digest;
+      }, error => {
+        if (verifiedHistoricalLookups.get(key) === record) verifiedHistoricalLookups.delete(key);
         throw error;
       });
-      verifiedHistoricalLookups.set(key, pending);
-      return pending;
+      verifiedHistoricalLookups.set(key, record);
+      return record.promise;
     },
 
     async readCompleteSource(artifactId, retainedArtifactDigest?: string, options = {}) {
+      const selection = retainedArtifactDigest ? undefined : await readEffectiveSourceSelection(artifactId);
+      const active = retainedArtifactDigest
+        ? await readObject<ActiveRecord>(ACTIVE_STORE, artifactId, "PROFILE_SHOWCASE_BOUNDED_EDGE_ACTIVE_READ_FAILED")
+        : selection?.active;
+      const observation = selection?.observation ?? observeSelection(artifactId, active ?? null);
+      const selectedDigest = retainedArtifactDigest ?? active?.artifactDigest;
+      const retainedKey = `${artifactId}:${selectedDigest}${options.retainedHiddenOnly ? ":retained-hidden" : ""}`;
+      if (!active) return null;
+      // Reuse complete admitted truth only beneath the same current selection.
+      // Historical and replacement-presentation reads retain their verified path.
+      if (active?.artifactId === artifactId
+        && active.artifactDigest === selectedDigest
+        && (retainedArtifactDigest
+          ? !active.replacementPresentationHold
+          : !("replacementPresentationHold" in active))) {
+        const held = completeSources.get(retainedKey);
+        if (held) {
+          noteRequest(active.artifactDigest, "reads", ACTIVE_STORE);
+          return structuredClone(await held.complete);
+        }
+      }
       const source = retainedArtifactDigest
-        ? await readVerifiedSourceProjection(artifactId, retainedArtifactDigest)
-        : await readEffectiveSourceProjection(artifactId, true, this.resolveVerifiedHistoricalArtifactDigest);
+        ? await readVerifiedSourceProjection(artifactId, retainedArtifactDigest, active ?? undefined)
+        : await readEffectiveSourceProjection(artifactId, true, this.resolveVerifiedHistoricalArtifactDigest, selection);
       if (!source) return null;
-      const key = source.artifactDigest + (options.retainedHiddenOnly ? ":retained-hidden" : "");
+      const key = `${artifactId}:${source.artifactDigest}${options.retainedHiddenOnly ? ":retained-hidden" : ""}`;
       let complete = completeSources.get(key);
       if (!complete) {
-        complete = prepareCompleteSource(source, false, false, options.retainedHiddenOnly).catch((error) => {
-          completeSources.delete(key);
+        const record = { firstPaint: source, settled: false,
+          complete: prepareCompleteSource(source, false, false, options.retainedHiddenOnly) };
+        record.complete = record.complete.then(prepared => {
+          record.settled = true;
+          const current = active.artifactId === artifactId && active.artifactDigest === source.artifactDigest
+            && !("replacementPresentationHold" in active);
+          if (!(current && pinVerifiedPreparation(artifactId, observation, source.artifactDigest))) {
+            releaseSupersededPreparations(artifactId);
+          }
+          return prepared;
+        }, error => {
+          if (completeSources.get(key) === record) completeSources.delete(key);
+          releaseSupersededPreparations(artifactId);
           throw error;
         });
-        completeSources.set(key, complete);
+        completeSources.set(key, record);
+        complete = record;
       }
-      return structuredClone(await complete);
+      return structuredClone(await complete.complete);
     },
 
     async readPublicationHead(artifactId) {
@@ -3176,13 +3377,22 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
     },
 
     async exportCompleteSource(artifactId, ancestorArtifactDigest) {
+      const selection = ancestorArtifactDigest ? undefined : await readEffectiveSourceSelection(artifactId);
+      const active = selection?.active;
+      const reusable = active?.artifactId === artifactId && !("replacementPresentationHold" in active);
+      const retained = publicExports.get(artifactId);
+      if (reusable && retained?.digest === active.artifactDigest) {
+        const held = await retained.promise;
+        return held ? copyPublicExport(held) : null;
+      }
+      const prepare = async () => {
       const current = ancestorArtifactDigest ? await this.readPublicationHead(artifactId) : null;
       if (ancestorArtifactDigest && (!current || ancestorArtifactDigest !== current.artifactDigest
         && !await this.isVerifiedPublicationAncestor(artifactId, ancestorArtifactDigest, current.artifactDigest))) return null;
       const source = ancestorArtifactDigest && ancestorArtifactDigest !== current?.artifactDigest
         ? await readVerifiedSourceProjection(artifactId, ancestorArtifactDigest, undefined, true)
         : null;
-      const publicSource = source ?? await readEffectiveSourceProjection(artifactId, true, this.resolveVerifiedHistoricalArtifactDigest);
+      const publicSource = source ?? await readEffectiveSourceProjection(artifactId, true, this.resolveVerifiedHistoricalArtifactDigest, selection);
       const complete = publicSource ? await prepareCompleteSource(publicSource, true) : null;
       if (!complete) return null;
       const visible = new Set(complete.placements.filter((placement) => placement.visibility === "visible")
@@ -3470,10 +3680,36 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         }
       }
       return exported;
+      };
+      if (!reusable) return prepare();
+      // The private memo never shares mutable byte arrays with callers or the
+      // exposed public handoff. Reuse carries the existing actor custody too.
+      const promise = prepare().then(source => source ? copyPublicExport(source) : null);
+      const record = { digest: active.artifactDigest, promise };
+      publicExports.set(artifactId, record);
+      try {
+        const source = await promise;
+        if (!source && publicExports.get(artifactId) === record) publicExports.delete(artifactId);
+        return source ? copyPublicExport(source) : null;
+      } catch (error) {
+        if (publicExports.get(artifactId) === record) publicExports.delete(artifactId);
+        throw error;
+      }
     },
 
     async readFirstPaint(artifactId) {
-      return readEffectiveSourceProjection(artifactId, false, this.resolveVerifiedHistoricalArtifactDigest);
+      const selection = await readEffectiveSourceSelection(artifactId);
+      const active = selection.active;
+      if (active?.artifactId === artifactId && !("replacementPresentationHold" in active)) {
+        const key = `${artifactId}:${active.artifactDigest}`;
+        const held = completeSources.get(key) ?? completeSources.get(`${key}:retained-hidden`);
+        if (held) {
+          const firstPaint = Object.freeze(structuredClone(held.firstPaint));
+          boundedFirstPaintRuntimeCustody.add(firstPaint);
+          return firstPaint;
+        }
+      }
+      return readEffectiveSourceProjection(artifactId, false, this.resolveVerifiedHistoricalArtifactDigest, selection);
     },
 
     async beginVisibilityTransition(input) {
@@ -3954,6 +4190,13 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         actualReadRequestsByStore: Object.freeze({ ...counts.reads }),
         actualWriteRequestsByStore: Object.freeze({ ...counts.writes }),
         serializedRecordBytes: headReferenceBytes,
+        runtimeCompleteSourcePreparations: completeSources.size,
+        runtimePersistentSourcePreparations: persistentSources.size,
+        runtimeHistoricalIndexes: verifiedHistoricalIndexes.size,
+        runtimeHistoricalLookups: verifiedHistoricalLookups.size,
+        runtimeHistoricalLookupWorkspaces: new Set([...verifiedHistoricalLookups.values()]
+          .map(record => `${record.artifactId}:${record.digest}`)).size,
+        runtimeActiveHistoricalResolutions: [...activeHistoricalResolutions.values()].reduce((sum, count) => sum + count, 0),
         historyNodeObjectCount: nodeCount,
         cumulativeArrayKeys: cumulativeArrayKeys(head),
         foregroundChildArtifactReopens:

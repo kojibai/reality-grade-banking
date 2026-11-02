@@ -24,3 +24,14 @@ it.each(['delayed','delivery-error'] as const)('finishes from the verified local
  if(mode==='delivery-error'){await act(async()=>{fail(Error('Background delivery unavailable'));await pending.catch(()=>{});});expect(host.querySelector('[role=alert]')).toBeNull();expect(host.textContent).toContain('Your Original is public on Receiz.');}
  }finally{await act(async()=>{finish({...original,pbiSigned:true});await pending.catch(()=>{});});act(()=>root.unmount());adoption.forgetAssetPublicationAdmissions();}
 });
+
+it('updates local completion from the real delivery acknowledgment without another account read or retry',async()=>{
+ const pending={...original,publication:{status:'pending'}},read=vi.fn(async()=>pending),retry=vi.fn(),identity={accountUsername:()=> 'artist',pendingAssetPublication:read,retryAssetPublication:retry} as unknown as OpenIdentity;
+ const reference={schema:'receiz.imported-proof-source.v1',artifactSha256:original.digest,byteLength:3,filename:original.filename,mimeType:'application/vnd.receiz.bundle+json',bytes:{kind:'bytes',sha256:'b'.repeat(64),byteLength:3,contentByteLength:3,height:0}};
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));expect(host.textContent).toContain('Global delivery has started.');
+ await act(()=>adoption.retainAssetPublicationAdmission({username:'artist',sourceReference:reference,firstPaint:null,original:{id:'imported-local',assetTitle:original.title,showOnProfile:true,importedSource:{reference},media:{kind:'file',originalDownloadSha256Hex:original.digest,originalDownloadSrc:'/api/profile/showcase/imported-source?'+new URLSearchParams({reference:JSON.stringify(reference)})}}},{identityDigest:'d'.repeat(64),accountUid:'owner'}));
+ await act(()=>adoption.acknowledgeAssetPublication(original.digest,{status:'published',artifactDigest:'f'.repeat(64),operationCount:1,visibleChildCount:1}));
+ expect(host.textContent).toContain('Your Original is already public on Receiz and accruing value');expect(read).toHaveBeenCalledOnce();expect(retry).not.toHaveBeenCalled();expect(host.textContent).toContain('Open your asset');
+ }finally{act(()=>root.unmount());adoption.forgetAssetPublicationAdmissions();}
+});

@@ -12,7 +12,7 @@ it('shows the published asset returned by funding recovery instead of reopening 
  const deposit={bytes:new Uint8Array([1]),filename:'work.receiz',title:'Recovered work',digest:'a'.repeat(64),kind:'proof',status:'held-proof',pulse:'1',publication:{status:'published'}};let published=false;
  const backed={pending:async()=>({state:{stage:published?'published':'funding-pending'},deposit:null}),resume:vi.fn(async()=>{published=true;return deposit;})};
  const identity={backedAssetPublication:async()=>backed,accountUsername:()=> 'artist'} as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));expect(host.textContent).toContain('Confirming your asset.');await act(async()=>click(host,'Continue creation'));expect(host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Sign')).toBe(true);expect(host.textContent).not.toContain('Public delivery is pending');expect(host.querySelector('a')?.getAttribute('href')).toBe('/artist/');expect(backed.resume).toHaveBeenCalledOnce();}finally{act(()=>root.unmount());}
+ try{await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));expect(host.textContent).toContain('Confirming your asset.');await act(async()=>click(host,'Continue creation'));expect(host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Sign')).toBe(true);expect(host.textContent).not.toContain('Global delivery has started.');expect(host.querySelector('a')?.getAttribute('href')).toBe('/artist/');expect(backed.resume).toHaveBeenCalledOnce();}finally{act(()=>root.unmount());}
 });
 async function title(host:HTMLElement){const input=host.querySelector<HTMLInputElement>('input[aria-label="Title"]')!;await act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'Moment');input.dispatchEvent(new Event('input',{bubbles:true}));});}
 const click=(host:HTMLElement,text:string)=>{if(text==='Create asset'&&host.querySelector('[data-creation-step=canvas]'))host.querySelector<HTMLButtonElement>('[aria-label="Review original"]')!.click();[...host.querySelectorAll('button')].find(button=>button.textContent?.includes(text))!.click();};
@@ -26,7 +26,7 @@ it('keeps selection local, adapts to audio and carries the selected original onl
   expect(host.querySelector('input[type=file]')).not.toBeNull();
   expect(host.textContent).toContain('Sealing publishes the Original on Receiz. Signing unlocks its accrued value.');
   await title(host);await select(host,file);expect(createAsset).not.toHaveBeenCalled();expect(host.textContent).toContain('Music details');expect(host.textContent).toContain('song.mp3');
-  await act(async()=>click(host,'Create asset'));expect(createAsset).toHaveBeenCalledOnce();expect(createAsset.mock.calls[0]).toHaveLength(2);expect(createAsset.mock.calls[0][1]).toMatchObject({files:[{file,role:'primary'}]});
+  await act(async()=>click(host,'Create asset'));expect(createAsset).toHaveBeenCalledOnce();expect(createAsset.mock.calls[0]).toHaveLength(3);expect(createAsset.mock.calls[0][2]).toEqual(expect.any(Function));expect(createAsset.mock.calls[0][1]).toMatchObject({files:[{file,role:'primary'}]});
   expect(host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');
  }finally{act(()=>root.unmount());}
 });
@@ -37,9 +37,9 @@ it('distinguishes retained original custody from confirmed public delivery and r
  try{
   await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));
   await title(host);await act(async()=>click(host,'Create asset'));
-  expect(host.textContent).toContain('Public delivery is pending');expect(host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');expect(host.textContent).not.toContain('Your Original is signed and public.');
+  expect(host.textContent).toContain('Global delivery has started.');expect(host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');expect(host.textContent).not.toContain('Your Original is signed and public.');
   await act(async()=>click(host,'Retry public delivery'));expect(createAsset.mock.calls[1]).toEqual(createAsset.mock.calls[0]);
-  expect(host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Sign')).toBe(true);expect(host.textContent).not.toContain('Public delivery is pending');expect(host.querySelector('a')?.getAttribute('href')).toBe('/owner/');expect(host.querySelector('a')?.hasAttribute('target')).toBe(false);
+  expect(host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Sign')).toBe(true);expect(host.textContent).not.toContain('Global delivery has started.');expect(host.querySelector('a')?.getAttribute('href')).toBe('/owner/');expect(host.querySelector('a')?.hasAttribute('target')).toBe(false);
  }finally{act(()=>root.unmount());}
 });
 it('reopens pending source custody after refresh and resumes it without a new form submission',async()=>{
@@ -47,8 +47,8 @@ it('reopens pending source custody after refresh and resumes it without a new fo
  const createAsset=vi.fn(),retryAssetPublication=vi.fn(async()=>({...pending,publication:{status:'published' as const}})),host=document.createElement('div'),root=createRoot(host),identity={listDeposits:async()=>[],createComposedAsset:createAsset,pendingAssetPublication:async()=>pending,retryAssetPublication} as unknown as OpenIdentity;
  try{
   await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));
-  expect(host.textContent).toContain('Retained moment');expect(host.textContent).toContain('Public delivery is pending');
-  await act(async()=>click(host,'Retry public delivery'));expect(retryAssetPublication).toHaveBeenCalledOnce();expect(createAsset).not.toHaveBeenCalled();expect(host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Sign')).toBe(true);expect(host.textContent).not.toContain('Public delivery is pending');
+  expect(host.textContent).toContain('Retained moment');expect(host.textContent).toContain('Global delivery has started.');
+  await act(async()=>click(host,'Retry public delivery'));expect(retryAssetPublication).toHaveBeenCalledOnce();expect(createAsset).not.toHaveBeenCalled();expect(host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Sign')).toBe(true);expect(host.textContent).not.toContain('Global delivery has started.');
  }finally{act(()=>root.unmount());}
 });
 it('retains the selected original and refuses a generic funding fallback if the backed publisher is unavailable',async()=>{
@@ -65,5 +65,5 @@ it('retains the selected original and refuses a generic funding fallback if the 
 it.each(['pending','published']as const)('links only a published creation to its exact already-admitted asset (%s)',async status=>{
  const digest='c'.repeat(64),item={id:'profile:artist:exact-original',originalDigest:digest}as PublicMarketItem,lookup=vi.spyOn(adoption,'admittedAssetPublicationItem').mockReturnValue(status==='published'?item:null),create=vi.fn(async()=>({bytes:new Uint8Array([1]),filename:'original.receiz',title:'Moment',digest,kind:'proof',status:'held-proof',pulse:'1',publication:{status}}));
  const identity={pendingAssetPublication:async()=>null,createComposedAsset:create,accountUsername:()=> 'artist'}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));await title(host);await act(async()=>click(host,'Create asset'));const link=host.querySelector<HTMLAnchorElement>('a[href^="/asset/"]');if(status==='published'){expect(lookup).toHaveBeenCalledWith(digest,'artist');expect(link?.getAttribute('href')).toBe('/asset/profile%3Aartist%3Aexact-original/');expect(link?.textContent).toContain('Open your asset');}else{expect(lookup).toHaveBeenCalledWith(digest,'artist');expect(link).toBeNull();expect(host.textContent).toContain('Public delivery is pending');}expect(create).toHaveBeenCalledOnce();}finally{act(()=>root.unmount());}
+ try{await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));await title(host);await act(async()=>click(host,'Create asset'));const link=host.querySelector<HTMLAnchorElement>('a[href^="/asset/"]');if(status==='published'){expect(lookup).toHaveBeenCalledWith(digest,'artist');expect(link?.getAttribute('href')).toBe('/asset/profile%3Aartist%3Aexact-original/');expect(link?.textContent).toContain('Open your asset');}else{expect(lookup).toHaveBeenCalledWith(digest,'artist');expect(link).toBeNull();expect(host.textContent).toContain('Global delivery has started.');}expect(create).toHaveBeenCalledOnce();}finally{act(()=>root.unmount());}
 });

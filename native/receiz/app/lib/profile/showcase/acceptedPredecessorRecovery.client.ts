@@ -10,7 +10,7 @@ import { retainAcceptedShowcasePredecessor } from "./acceptedPredecessorCustody"
 export async function recoverAcceptedShowcasePredecessor(input: Readonly<{
   username: string; artifactId: ProfileShowcaseArtifactId; vault: ProfileShowcaseBoundedEdgeVault;
   fetchImpl?: typeof fetch;
-  retainImportedSources?: (source:ProfileShowcaseCompletePublicSource)=>Promise<void>;
+  retainImportedSources?: (source:ProfileShowcaseCompletePublicSource,fromAcceptedTransport?:boolean)=>Promise<void>;
 }>) {
   const held = await input.vault.reopenHead(input.artifactId);
   if (held) {
@@ -29,7 +29,7 @@ export async function recoverAcceptedShowcasePredecessor(input: Readonly<{
 export async function readAcceptedShowcasePredecessor(input: Readonly<{
   username: string; artifactId: ProfileShowcaseArtifactId; vault: ProfileShowcaseBoundedEdgeVault;
   fetchImpl?: typeof fetch;
-  retainImportedSources?: (source:ProfileShowcaseCompletePublicSource)=>Promise<void>;
+  retainImportedSources?: (source:ProfileShowcaseCompletePublicSource,fromAcceptedTransport?:boolean)=>Promise<void>;
 }>) {
   const fetchImpl = input.fetchImpl ?? fetch;
   const path = "/api/profile/showcase/accepted-source";
@@ -44,6 +44,6 @@ export async function readAcceptedShowcasePredecessor(input: Readonly<{
     return new Uint8Array(await block.arrayBuffer());
   });
   const admission = await retainAcceptedShowcasePredecessor({ source, artifactId: input.artifactId, vault: input.vault });
-  await input.retainImportedSources?.(source);
+  await input.retainImportedSources?.(source,true);
   return admission;
 }

@@ -14,7 +14,7 @@ async function open(){const host=document.createElement('div');document.body.app
 it('opens the immersive local canvas without camera permission, network work or sealing',async()=>{
  const media=vi.fn();vi.stubGlobal('navigator',{mediaDevices:{getUserMedia:media}});const fetch=vi.fn();vi.stubGlobal('fetch',fetch);const{host,create}=await open();
  expect(host.querySelector('.asset-composer--studio[data-studio-mode="canvas"]')).not.toBeNull();expect(host.querySelector('button[aria-label="Open camera"]')).not.toBeNull();expect(host.querySelector('button[aria-label="Review original"]')?.textContent).toContain('Next');expect(host.querySelector('input[aria-label="Choose original"]')).not.toBeNull();
- expect(media).not.toHaveBeenCalled();expect(fetch).not.toHaveBeenCalled();expect(create).not.toHaveBeenCalled();
+ expect(host.querySelector('[aria-label="Choose cover"]')).toBeNull(); expect(media).not.toHaveBeenCalled();expect(fetch).not.toHaveBeenCalled();expect(create).not.toHaveBeenCalled();
 });
 it('keeps the exact selected file and edits across canvas, review and back, sealing only on Create',async()=>{
  const{host,create}=await open();const file=new File(['photo'],'coast.jpg',{type:'image/jpeg'});const input=host.querySelector<HTMLInputElement>('[aria-label="Choose original"]')!;Object.defineProperty(input,'files',{configurable:true,value:[file]});await act(()=>input.dispatchEvent(new Event('change',{bubbles:true})));
@@ -26,8 +26,8 @@ it('does not replace media or lose the draft when the gallery is cancelled',asyn
  const{host,create}=await open();await change(host,'Title','Still here');const input=host.querySelector<HTMLInputElement>('[aria-label="Choose original"]')!;Object.defineProperty(input,'files',{configurable:true,value:[]});await act(()=>input.dispatchEvent(new Event('change',{bubbles:true})));expect(host.querySelector<HTMLInputElement>('[aria-label="Title"]')!.value).toBe('Still here');expect(host.querySelector('.asset-composer--studio')).not.toBeNull();expect(create).not.toHaveBeenCalled();
 });
 
-it('keeps camera capture reachable after choosing artwork before an original',async()=>{
- const{host}=await open();const input=host.querySelector<HTMLInputElement>('[aria-label="Choose cover"]')!;Object.defineProperty(input,'files',{configurable:true,value:[new File(['cover'],'cover.png',{type:'image/png'})]});await act(()=>input.dispatchEvent(new Event('change',{bubbles:true})));expect(host.querySelector('button[aria-label="Open camera"]')).not.toBeNull();
+it('keeps camera capture reachable after choosing an original and its cover',async()=>{
+ const{host}=await open();for(const[label,file]of [['Choose original',new File(['song'],'song.mp3',{type:'audio/mpeg'})],['Choose cover',new File(['cover'],'cover.png',{type:'image/png'})]]as const){const input=host.querySelector<HTMLInputElement>(`[aria-label="${label}"]`)!;Object.defineProperty(input,'files',{configurable:true,value:[file]});await act(()=>input.dispatchEvent(new Event('change',{bubbles:true})));}expect(host.querySelector('button[aria-label="Open camera"]')).not.toBeNull();
 });
 it('releases a mounted camera when the retained editor is suspended without discarding its draft',async()=>{
  const{host,render}=await open();await change(host,'Title','A retained draft');await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Open camera"]')!.click());expect(host.querySelector('[data-test-camera]')).not.toBeNull();await act(()=>render(false));expect(host.querySelector('[data-test-camera]')).toBeNull();expect(capture.stopped).toHaveBeenCalledOnce();await act(()=>render(true));expect(host.querySelector<HTMLInputElement>('[aria-label="Title"]')!.value).toBe('A retained draft');expect(host.querySelector('[data-test-camera]')).toBeNull();
@@ -52,6 +52,6 @@ it.each([['audio/mpeg','song.mp3','Music details','Primary artist','music','prim
 
 it('uses the image itself as artwork without a separate cover field or a previous cover file',async()=>{
  const{host,create}=await open();
- for(const[label,file]of [['Choose cover',new File(['old cover'],'cover.png',{type:'image/png'})],['Choose original',new File(['photo'],'photo.jpg',{type:'image/jpeg'})]]as const){const input=host.querySelector<HTMLInputElement>(`[aria-label="${label}"]`)!;Object.defineProperty(input,'files',{configurable:true,value:[file]});await act(()=>input.dispatchEvent(new Event('change',{bubbles:true})));}
+ for(const[label,file]of [['Choose original',new File(['song'],'song.mp3',{type:'audio/mpeg'})],['Choose cover',new File(['old cover'],'cover.png',{type:'image/png'})],['Choose original',new File(['photo'],'photo.jpg',{type:'image/jpeg'})]]as const){const input=host.querySelector<HTMLInputElement>(`[aria-label="${label}"]`)!;Object.defineProperty(input,'files',{configurable:true,value:[file]});await act(()=>input.dispatchEvent(new Event('change',{bubbles:true})));}
  expect(host.querySelector('[aria-label="Choose cover"]')).toBeNull();expect(host.querySelector('img[alt="Selected original"]')).not.toBeNull();await change(host,'Title','My photo');await act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Review original"]')!.click());expect(host.querySelector('[aria-label="Choose cover"]')).toBeNull();await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Create asset'))!.click());expect(create.mock.calls[0][1].files.map(entry=>entry.role)).toEqual(['primary']);
 });

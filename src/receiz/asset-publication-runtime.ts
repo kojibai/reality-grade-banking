@@ -3,8 +3,11 @@ import type {AssetPublicationReceipt} from './asset-publication';
 import type {BankNoteRuntimeFactory} from './offline-notes';
 import publicationBuild from '../../public/native/asset-publication.v129.manifest.json';
 import {parseExactByteBlockReference,type ExactByteBlockReference} from '../../native/receiz/packages/receiz-sdk/src/exactByteBlocks';
-export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:unknown;sourceReference:unknown;firstPaint:Readonly<{artifactDigest:string}>}>;
+export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:unknown;sourceReference:unknown;firstPaint:Readonly<{artifactDigest:string}>|null}>;
 export interface AssetPublicationRuntimeModule{
+ prepareConnectedComposerContent(input:{draft:AssetComposerDraft;ownerReceizId:string;assertCurrent():void}):Promise<ComposerAssetContent>;
+ sealConnectedComposerContent(input:{content:ComposerAssetContent;sealDocument:Parameters<BankNoteRuntimeFactory>[0]['sealDocument'];assertCurrent():void}):Promise<PreparedComposerSource>;
+ admitConnectedComposerSource(input:{file:File;ownerReceizId:string;username:string;assertCurrent():void;onLocalAdmission?(admission:ConnectedAssetLocalAdmission):Promise<void>|void}):Promise<unknown>;
  resolveComposerBlock(reference:ExactByteBlockReference):Promise<Uint8Array>;
  createConnectedAssetPublicationRuntime(input:{identity:Uint8Array;passphrase:string;account:{uid:string;username:string};sealDocument:Parameters<BankNoteRuntimeFactory>[0]['sealDocument'];fetchImpl:typeof fetch;assertCurrent():void;onLocalAdmission?(admission:ConnectedAssetLocalAdmission):Promise<void>|void}):Promise<{stage(file:File):Promise<import('../../native/receiz/app/lib/profile/showcase/importedSourceReference').ImportedProofSourceReference>;prepare(draft:AssetComposerDraft):Promise<PreparedComposerSource>;prepareContent(draft:AssetComposerDraft):Promise<ComposerAssetContent>;sealContent(content:ComposerAssetContent):Promise<PreparedComposerSource>;publish(file:File,authorizeMarket?:(input:import("../../native/receiz/packages/receiz-sdk/src/pbiLocalAuthorship").LocalPbiAuthorshipInput)=>Promise<import("../../native/receiz/packages/receiz-sdk/src/pbiLocalAuthorship").LocalPbiAuthorshipProofV1>):Promise<AssetPublicationReceipt>}>;
 }

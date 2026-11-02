@@ -39,3 +39,17 @@ it('refuses delivery if restored canonical intent differs from its retained requ
  const f=fixture();f.fail=true;await f.api.create(intent);f.state!.intentDigest='c'.repeat(64);
  await expect(f.api.resume()).rejects.toThrow('BANK_ASSET_PUBLICATION_SOURCE_INTENT_MISMATCH');expect(f.publications).toBe(1);expect(f.seals).toBe(1);
 });
+
+it('returns the durably held Original while delivery is in flight, starts immediately, and coalesces a retry',async()=>{
+ let state:AssetPublicationState|null=null,seals=0,publications=0;
+ let complete!:(receipt:{status:'published';artifactDigest:string;operationCount:number;visibleChildCount:number})=>void;
+ const network=new Promise<{status:'published';artifactDigest:string;operationCount:number;visibleChildCount:number}>(resolve=>{complete=resolve;});
+ const file=new File(['exact sealed Original'],'original.receizbundle');
+ const api=createAssetPublication({ownerReceizId:'source-first.receiz.id',assertOpen:()=>{},lock:async run=>run(),read:async()=>state,write:async(next,previous)=>{expect(state).toEqual(previous);state=next;},seal:async()=>{seals++;return file;},retain:async()=>digest,restore:async()=>file,readIntent:async()=>intent,publish:async source=>{expect(state?.sourceDigest).toBe(digest);expect(source).toBe(file);publications++;return network;}});
+ const result=await api.createLocal(intent);
+ expect(result.publication.status).toBe('pending');expect(seals).toBe(1);expect(publications).toBe(1);
+ const retry=api.resume();
+ await Promise.resolve();expect(publications).toBe(1);
+ complete({status:'published',artifactDigest:'b'.repeat(64),operationCount:2,visibleChildCount:1});
+ expect((await retry).publication.status).toBe('published');expect(seals).toBe(1);expect(publications).toBe(1);
+});

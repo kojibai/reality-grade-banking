@@ -1,0 +1,28 @@
+import {expect,it} from 'vitest';
+import {appendFileSync} from 'node:fs';
+import {conformanceOfflineFixture} from './helpers/conformance-offline-sealer';
+import {createAssetPublication,type AssetPublicationState} from '../src/receiz/asset-publication';
+
+it('seals one image essay locally, preserves its exact media and Kai, and delivers the same proof after interruption',async()=>{
+ const f=await conformanceOfflineFixture({composer:true}),r=f.runtime;
+ const admitted=await r.createReceizArtifactAdmissionEngine()(await r.verifyReceizArtifact(new File([new Uint8Array(f.identity.bytes)],'identity.png')),{profile:'identity',identityPassphrase:f.identity.phrase});
+ const owner=(await r.readReceizIdentityPublicBinding(admitted)).artifactOwnerReceizId;
+ const enrollment=await f.store.load();if(!enrollment)throw Error('Fixture enrollment missing');
+ const sealDocument=await r.createBankNativeNoteSealer({enrollment,resources:f.resources});
+ const blocks=new Map<string,Uint8Array>(),writeBlock=async(reference:{sha256:string},bytes:Uint8Array)=>{blocks.set(reference.sha256,new Uint8Array(bytes));};
+ const image=new File([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jQmcAAAAASUVORK5CYII=','base64')],'original.png',{type:'image/png'});
+ const draft={kind:'image',title:'The original image essay',description:'A complete work',longForm:'Its exact image and full essay stay together.',files:[{id:'photo',role:'primary',file:image}]};
+ const started=performance.now(),content=await r.composer.prepareConnectedComposerContent({draft,ownerReceizId:owner,writeBlock,assertCurrent(){}});
+ const preparedAt=performance.now(),prepared=await r.composer.sealConnectedComposerContent({content,sealDocument,writeBlock,assertCurrent(){}}),sealedAt=performance.now();
+ const opened=await r.openImportedProofSource(prepared.artifact,{canonicalSignatureV4RootPublicKeys:new Map(f.roots.map((root:{kid:string})=>[root.kid,root])),resolveSourceBlock:async(reference:{sha256:string})=>blocks.get(reference.sha256)??null});
+ expect(opened.projection.bankAsset.composer.title).toBe(draft.title);expect(opened.projection.bankAsset.composer.longForm).toBe(draft.longForm);
+ expect(new Uint8Array(await opened.payload.arrayBuffer())).toEqual(new Uint8Array(await image.arrayBuffer()));
+ expect(opened.projection.ownerReceizId).toBe(owner);expect(opened.projection.pulse).toMatch(/^\d+$/);
+ const digest=prepared.reference.artifactSha256,artifactBytes=new Uint8Array(await prepared.artifact.arrayBuffer());
+ let state:AssetPublicationState|null=null,seals=0,deliveries=0,connected=false;const retained=new Map<string,File>();
+ const api=createAssetPublication({ownerReceizId:owner,assertOpen(){},lock:async run=>run(),read:async()=>state,write:async(next,previous)=>{expect(state).toEqual(previous);state=next;},seal:async()=>{seals++;return prepared.artifact;},retain:async file=>{retained.set(digest,file);return digest;},restore:async key=>{const file=retained.get(key);if(!file)throw Error('Source missing');return file;},readIntent:async()=>content,publish:async file=>{deliveries++;expect(new Uint8Array(await file.arrayBuffer())).toEqual(artifactBytes);if(!connected)throw Error('NETWORK_UNAVAILABLE');return{status:'published',artifactDigest:'b'.repeat(64),operationCount:1,visibleChildCount:1};}});
+ const local=await api.createLocal(content);expect(local.digest).toBe(digest);expect(local.publication.status).toBe('pending');
+ await api.resume();connected=true;const global=await api.resume();expect(global.publication.status).toBe('published');expect(seals).toBe(1);expect(deliveries).toBeGreaterThanOrEqual(2);
+ expect(opened.verification.bundle.kaiPulseEternal).toBe(opened.projection.pulse);
+ if(process.env.BANKEIZ_COMPOSER_EVIDENCE)appendFileSync(process.env.BANKEIZ_COMPOSER_EVIDENCE,JSON.stringify({kind:'real canonical image essay; synthetic certificate and memory transport',prepareMs:Math.round(preparedAt-started),sealMs:Math.round(sealedAt-preparedAt),sourceBytes:artifactBytes.length,sourceDigest:digest,originalPulse:opened.projection.pulse})+'\n');
+},15000);

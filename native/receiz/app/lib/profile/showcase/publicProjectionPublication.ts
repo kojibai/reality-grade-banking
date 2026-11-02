@@ -76,6 +76,7 @@ export async function publishProfileShowcasePublicProjection(
   readRoute: typeof readProfileShowcasePublicationRoute = readProfileShowcasePublicationRoute,
   resolveIdentity: typeof resolvePublicationIdentityCustody = resolvePublicationIdentityCustody,
   refreshDocument: typeof refreshAcceptedPublicProfileDocument = refreshAcceptedPublicProfileDocument,
+  delivery: Readonly<{exportImportedSource?: (reference: import('./importedSourceReference').ImportedProofSourceReference, write: import('../../transport/exactByteBlocks').ExactByteBlockWriter) => Promise<void>}> = {},
 ): Promise<ProfileShowcasePublicProjectionPublicationResult> {
   const pending = () => Object.freeze({ status: "pending" as const, code: "PROFILE_SHOWCASE_PUBLIC_PROJECTION_UNAVAILABLE" });
   try {
@@ -153,7 +154,7 @@ export async function publishProfileShowcasePublicProjection(
       seen.add(reference.sha256);
       queue.push({ reference, bytes });
       if (queue.length === 16) await flush();
-    }, { exportImportedSource: (reference, write) => createImportedProofSourceCustody().exportBlocks(reference, write) });
+    }, { exportImportedSource: delivery.exportImportedSource ?? ((reference, write) => createImportedProofSourceCustody().exportBlocks(reference, write)) });
     await flush();
     const value = await plan({ action: "finalize", scope, transport }) as ProfileShowcasePublicProjectionPublicationResult;
     if (value?.status === "published" && value.publicationVersion === 2 && value.scope

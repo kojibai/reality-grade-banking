@@ -5,12 +5,12 @@ import {expect,it,vi} from 'vitest';
 import type {AssetComposerDraft} from '../src/receiz/asset-composer';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 async function select(host:HTMLElement,label:string,files:File[]){const input=host.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!;Object.defineProperty(input,'files',{value:files,configurable:true});await act(async()=>input.dispatchEvent(new Event('change',{bubbles:true})));}
-it('keeps artwork separate when selected before music and exposes the matching metadata',async()=>{
+it('shows separate artwork after selecting music and exposes the matching metadata',async()=>{
  const {AssetComposer}=await import('../src/features/assets/AssetComposer');
  let draft:AssetComposerDraft={title:'A release',description:'',kind:'moment',longForm:'An essay',files:[]};const host=document.createElement('div'),root=createRoot(host);
  const render=()=>root.render(<AssetComposer value={draft} onChange={next=>{draft=next;render();}}/>);
- try{await act(render);await select(host,'Choose cover',[new File(['cover'],'cover.png',{type:'image/png'})]);await select(host,'Choose original',[new File(['song'],'song.mp3',{type:'audio/mpeg'})]);
-  expect(draft.kind).toBe('audio');expect(draft.files.map(file=>file.role)).toEqual(['cover','primary']);expect(host.textContent).toContain('Primary artist');expect(host.textContent).toContain('cover.png');expect(draft.longForm).toBe('An essay');
+ try{await act(render);expect(host.querySelector('[aria-label="Choose cover"]')).toBeNull();await select(host,'Choose original',[new File(['song'],'song.mp3',{type:'audio/mpeg'})]);await select(host,'Choose cover',[new File(['cover'],'cover.png',{type:'image/png'})]);
+  expect(draft.kind).toBe('audio');expect(draft.files.map(file=>file.role)).toEqual(['primary','cover']);expect(host.textContent).toContain('Primary artist');expect(host.textContent).toContain('cover.png');expect(draft.longForm).toBe('An essay');
   await act(async()=>host.querySelector<HTMLButtonElement>('button[aria-label="Remove cover.png"]')!.click());expect(draft.files.map(file=>file.role)).toEqual(['primary']);
  }finally{act(()=>root.unmount());}
 });

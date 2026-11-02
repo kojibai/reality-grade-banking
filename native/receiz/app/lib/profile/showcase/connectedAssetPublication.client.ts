@@ -10,14 +10,27 @@ import {projectImportedSourceOriginal,readImportedSourceTransportReference} from
 import {sealAndAdmitImportedSourcePlacement} from "./importedSourcePlacement.client";
 import {publishComposerBoundedShowcaseIfAuthorized,withProfileShowcaseCausalAppendLock} from "./composerPublication";
 import {profileShowcaseLiveKaiUpulse} from "./liveKaiTimeSource";
-import {recoverAcceptedShowcasePredecessor} from "./acceptedPredecessorRecovery.client";
+import {recoverAcceptedShowcasePredecessor,readAcceptedShowcasePredecessor} from "./acceptedPredecessorRecovery.client";
 import {readRecoveredAccountShowcaseScope} from "./recoveredAccountScope.client";
 import {loadCompleteLegacyProfileShowcase} from "./composerLegacyMigration";
 import {publishProfileShowcasePublicProjection,type ProfileShowcasePublicProjectionPublicationResult} from "./publicProjectionPublication";
 import type {ProfileShowcaseCompletePublicSource,ProfileShowcaseBoundedFirstPaint} from "./boundedEdgeVault";
 import type {ProfileShowcaseArtifactId} from "./types";
 import {retainImportedProfileOriginalMaterial} from "../materialProjection.client";
-export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:import("../types").ProfileOriginal;sourceReference:import("./importedSourceReference").ImportedProofSourceReference;firstPaint:ProfileShowcaseBoundedFirstPaint}>;
+export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:import("../types").ProfileOriginal;sourceReference:import("./importedSourceReference").ImportedProofSourceReference;firstPaint:ProfileShowcaseBoundedFirstPaint|null}>;
+// The already-open ID can prepare and admit its one source without reading a Showcase.
+export {prepareConnectedComposerContent,sealConnectedComposerContent};
+const locallyOpened=new WeakMap<File,{source:Awaited<ReturnType<typeof openImportedProofSource>>;reference:import("./importedSourceReference").ImportedProofSourceReference;original:import("../types").ProfileOriginal}>();
+export async function admitConnectedComposerSource(input:Readonly<{file:File;ownerReceizId:string;username:string;assertCurrent():void;onLocalAdmission?(admission:ConnectedAssetLocalAdmission):Promise<void>|void}>){
+ input.assertCurrent();const custody=createImportedProofSourceCustody();let held=locallyOpened.get(input.file);
+ if(!held){const source=await openImportedProofSource(input.file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});input.assertCurrent();
+  if(source.projection.ownerReceizId!==input.ownerReceizId)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH");
+  const reference=await custody.hold(source),original=projectImportedSourceOriginal(source,reference);held={source,reference,original};locallyOpened.set(input.file,held);
+ }
+ if(held.source.projection.ownerReceizId!==input.ownerReceizId)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH");
+ input.assertCurrent();retainImportedProfileOriginalMaterial(held.original,input.username,held.source);
+ await input.onLocalAdmission?.(Object.freeze({username:input.username,original:held.original,sourceReference:held.reference,firstPaint:null}));input.assertCurrent();return held;
+}
 /** Composition of the canonical Receiz uploader's exact source admission,
  * placement, causal append, custody and public projection. No parallel store. */
 export async function createConnectedAssetPublicationRuntime(input:Readonly<{
@@ -40,30 +53,31 @@ export async function createConnectedAssetPublicationRuntime(input:Readonly<{
   return new File([sealed.artifactBytes.slice()],sealed.downloadName,{type:sealed.kind==="bundle"?"application/vnd.receiz.bundle+json":"application/octet-stream"});
  };
  const deliveries=new Map<string,Promise<ProfileShowcasePublicProjectionPublicationResult>>();
+ const custody=createImportedProofSourceCustody();
+ // Acknowledged immutable source closures are already stored by this transport.
+ // Reuse their exact references; never download/reopen/re-upload old media just
+ // to append one new Original. Finalization still admits the full successor.
+ const deliveredSources=new Set<string>();
+ const acceptedHeads=new Set<string>();
+ const sourceKey=(reference:import('./importedSourceReference').ImportedProofSourceReference)=>JSON.stringify(reference);
+ const rememberDeliveredSources=async(source:ProfileShowcaseCompletePublicSource)=>{for(const child of source.children){const reference=await readImportedSourceTransportReference(child.exactSealedArtifactBytes);if(reference)deliveredSources.add(sourceKey(reference));}acceptedHeads.add(source.artifactDigest);};
  const deliver=(source:ProfileShowcaseCompletePublicSource)=>{
   const held=deliveries.get(source.artifactDigest);if(held)return held;
   input.assertCurrent();const result=publishProfileShowcasePublicProjection(source,owner,input.fetchImpl,username,
    {publicationVersion:2,ownerReceizId:owner,artifactId,artifactDigest:source.artifactDigest,...account},()=>{input.assertCurrent();return account;},
-   async()=>({actorAdmission:admitted,keyFile,passphrase:input.passphrase}),async()=>"unavailable" as const);
+   async()=>({actorAdmission:admitted,keyFile,passphrase:input.passphrase}),async()=>"unavailable" as const,{exportImportedSource:async(reference,write)=>{if(!deliveredSources.has(sourceKey(reference)))await custody.exportBlocks(reference,write);}}).then(async receipt=>{if(receipt.status==='published')await rememberDeliveredSources(source);return receipt;});
   deliveries.set(source.artifactDigest,result);return result;
  };
- const custody=createImportedProofSourceCustody();
  return {async stage(file:File){input.assertCurrent();const source=await openImportedProofSource(file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});if(source.projection.ownerReceizId!==admitted.ownerReceizId)throw new TypeError('PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH');const reference=await custody.hold(source),{stageProfileShowcaseSourceBlocks}=await import('./sourceBlockPublication.client');await stageProfileShowcaseSourceBlocks({scope:{publicationVersion:2,ownerReceizId:owner,artifactId,artifactDigest:reference.artifactSha256,...account},fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent,exportBlocks:write=>custody.exportBlocks(reference,write)});return reference;},prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:admitted.ownerReceizId!,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:admitted.ownerReceizId!,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),async publish(file:File,authorizeMarket?:(input:import("../../../../packages/receiz-sdk/src/pbiLocalAuthorship").LocalPbiAuthorshipInput)=>Promise<import("./importedSourceAuthorship").ImportedSourceAuthorshipProof>){
   input.assertCurrent();
-  const source=await openImportedProofSource(file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});
-  if(source.projection.ownerReceizId!==admitted.ownerReceizId)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH");
-  const reference=await custody.hold(source);let original=projectImportedSourceOriginal(source,reference);input.assertCurrent();
-  await withProfileShowcaseCausalAppendLock(artifactId,async()=>{input.assertCurrent();await recoverAcceptedShowcasePredecessor({username,artifactId,vault,fetchImpl:input.fetchImpl,retainImportedSources:async complete=>{
-    // The current complete source owns the visible child inventory; ancestry carries only sealed carrier bytes.
-    for(const child of complete.children){
-     const reference=await readImportedSourceTransportReference(child.exactSealedArtifactBytes);if(!reference)continue;
-     // Root segments can survive an interrupted nested opening without a complete source record.
-     try{const held=await custody.readHeld(reference);if(held){if(held.referencedSources?.length||held.projection.bankAsset?.composer)await custody.hold(held);await custody.exportBlocks(reference,async()=>{});continue;}}catch(error){if(!(error instanceof Error)||error.message!=="IMPORTED_SOURCE_CUSTODY_SEGMENT_MISSING")throw error;}
-     input.assertCurrent();await custody.reopen(reference,async ref=>{
-      try{return await custody.resolveBlock(ref);}catch(error){if(!(error instanceof Error)||error.message!=="IMPORTED_SOURCE_CUSTODY_SEGMENT_MISSING")throw error;}
-      input.assertCurrent();const response=await input.fetchImpl(`/api/profile/showcase/accepted-source?username=${encodeURIComponent(username)}&block=${encodeURIComponent(JSON.stringify(ref))}`,{cache:"no-store"});if(!response.ok)throw new TypeError("PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING");return new Uint8Array(await response.arrayBuffer());
-     });input.assertCurrent();
-    }
+  const opened=await admitConnectedComposerSource({file,ownerReceizId:admitted.ownerReceizId!,username,assertCurrent:input.assertCurrent});
+  const {source,reference}=opened;let original=opened.original;
+  await withProfileShowcaseCausalAppendLock(artifactId,async()=>{input.assertCurrent();await recoverAcceptedShowcasePredecessor({username,artifactId,vault,fetchImpl:input.fetchImpl,retainImportedSources:async(complete,fromAcceptedTransport)=>{
+    // Only an exact server-accepted head (or a receipt from this runtime) may
+    // reuse remote media custody. A local, unacknowledged source still exports
+    // its complete exact-byte closure through the unchanged transport below.
+    if(fromAcceptedTransport||acceptedHeads.has(complete.artifactDigest)||complete.artifactDigest===accepted?.locator.acceptedArtifactDigest)await rememberDeliveredSources(complete);
+    else await readAcceptedShowcasePredecessor({username,artifactId,vault,fetchImpl:input.fetchImpl,retainImportedSources:rememberDeliveredSources});
    }});input.assertCurrent();});
   const existing=await vault.resolveOriginalChildCustody(artifactId,original.id);
   const known=existing?JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(existing.verifiedRouteProjectionBytes)):null;
