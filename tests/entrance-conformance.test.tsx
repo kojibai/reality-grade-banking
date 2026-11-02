@@ -199,7 +199,9 @@ it('closes on Escape and close-button activation, restoring focus only from insi
   await click(trigger());
   const close = host.querySelector<HTMLButtonElement>('button[aria-label="Close conformance status"]')!;
   expect(document.activeElement).toBe(close);
-  act(() => close.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+  act(() => close.dispatchEvent(escape));
+  expect(escape.defaultPrevented).toBe(true);
   expect(host.querySelector('[role=dialog]')).toBeNull();
   expect(document.activeElement).toBe(trigger());
   await click(trigger());

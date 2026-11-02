@@ -266,52 +266,13 @@ test('direct Note delivery needs no receiving-request download or recipient JSON
  const host=document.createElement('div'),root=createRoot(host);
  try{
   await act(async()=>root.render(<OfflineNotes identity={identity} mode="deposit" onBack={vi.fn()} onRefresh={vi.fn()}/>));
-  expect(host.textContent).not.toContain('Create receiving request');expect(request).not.toHaveBeenCalled();
+  expect(host.textContent).not.toContain('Create receiving request');expect(host.textContent).not.toContain('Receiving an older Note?');expect(request).not.toHaveBeenCalled();
   await act(async()=>root.render(<OfflineNotes key="create" identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));
   await act(async()=>host.querySelector<HTMLButtonElement>('.asset-row')!.click());
   expect(host.querySelector('input[type=file]')).toBeNull();
   expect(host.textContent).not.toContain('Older Note handover');
   expect(host.textContent).toContain('Anyone holding it can deposit its value once.');
   await act(async()=>click(host,'Save note image'));expect(exportNote).toHaveBeenCalledExactlyOnceWith('direct-note');
- }finally{act(()=>root.unmount());url.mockRestore();anchor.mockRestore();}
-});
-
-test('an older device-held Note keeps its exact handover under folded compatibility details',async()=>{
- const note={noteId:'older-note',rail:'reserve',amountUsdCents:'200',image:new Uint8Array([1,2])},request=new Uint8Array([7,8]),updated=new Uint8Array([3,4]);
- const transfer=vi.fn().mockResolvedValue({noteId:note.noteId,image:updated});
- const identity={offlineNotes:async()=>({savedNotes:async()=>[note],pending:async()=>null,transfer})}as unknown as OpenIdentity;
- const host=document.createElement('div'),root=createRoot(host);
- try{
-  await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));
-  await act(async()=>host.querySelector<HTMLButtonElement>('.asset-row')!.click());
-  const details=[...host.querySelectorAll('details')].find(item=>item.querySelector('summary')?.textContent==='Older Note handover')!;
-  expect(details).toBeDefined();expect(details.open).toBe(false);
-  expect(host.textContent).not.toContain('Anyone holding it can deposit its value once.');
-  expect(host.textContent).toContain('This older Note is held by this device.');
-  expect(transfer).not.toHaveBeenCalled();
-  details.open=true;const upload=details.querySelector<HTMLInputElement>('input[type=file]')!;
-  Object.defineProperty(upload,'files',{value:[{size:request.length,arrayBuffer:async()=>request.buffer}]});
-  await act(async()=>upload.dispatchEvent(new Event('change',{bubbles:true})));
-  expect(transfer).toHaveBeenCalledExactlyOnceWith(note.noteId,request);
-  expect(host.textContent).toContain('Your note is transferred.');
-  expect(host.textContent).toContain('Save this updated image and send it to the recipient.');
-  expect(host.querySelector('input[type=file]')).toBeNull();
- }finally{act(()=>root.unmount());}
-});
-
-test('Deposit offers an older Note request only inside folded compatibility details and on explicit click',async()=>{
- const request=new Uint8Array([7,8]),receivingRequest=vi.fn().mockResolvedValue(request);
- const identity={offlineNotes:async()=>({receivingRequest})}as unknown as OpenIdentity;
- const blobs:Blob[]=[],url=vi.spyOn(URL,'createObjectURL').mockImplementation(value=>{blobs.push(value as Blob);return'blob:request-fixture';}),anchor=vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
- const host=document.createElement('div'),root=createRoot(host);
- try{
-  await act(async()=>root.render(<OfflineNotes identity={identity} mode="deposit" onBack={vi.fn()} onRefresh={vi.fn()}/>));
-  const details=[...host.querySelectorAll('details')].find(item=>item.querySelector('summary')?.textContent==='Receiving an older Note?')!;
-  expect(details).toBeDefined();expect(details.open).toBe(false);expect(receivingRequest).not.toHaveBeenCalled();
-  expect(host.querySelector('.file-drop input[type=file]')).not.toBeNull();
-  details.open=true;expect(receivingRequest).not.toHaveBeenCalled();
-  await act(async()=>click(host,'Save receiving request'));
-  expect(receivingRequest).toHaveBeenCalledOnce();expect([...new Uint8Array(await blobs.at(-1)!.arrayBuffer())]).toEqual([...request]);
  }finally{act(()=>root.unmount());url.mockRestore();anchor.mockRestore();}
 });
 

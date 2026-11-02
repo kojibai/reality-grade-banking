@@ -106,6 +106,7 @@ export function EntranceConformanceStatus() {
     const outside = (event: PointerEvent) => { if (event.target instanceof Node && !wrapper.current?.contains(event.target)) setOpen(false); };
     const escape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+      event.preventDefault(); event.stopPropagation();
       if (popup.current?.contains(document.activeElement)) trigger.current?.focus({ preventScroll: true });
       setOpen(false);
     };
