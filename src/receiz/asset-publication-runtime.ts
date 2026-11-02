@@ -88,6 +88,12 @@ export function createAssetPublicationFetch(input:{applicationId:string;username
    endpoint.searchParams.set('username',input.username);endpoint.searchParams.set('action','inventory');const cursor=url.searchParams.get('cursor');if(cursor)endpoint.searchParams.set('cursor',cursor);
   }else fail();
   const response=await input.request(endpoint.pathname+endpoint.search,init);input.assertCurrent();
+  // A failed authenticated read is not evidence of a missing causal predecessor.
+  // Preserve the actual boundary refusal; never bypass it or loop requests.
+  if(url.pathname==='/api/profile/showcase/accepted-source'&&!response.ok){
+   if(response.status===401||response.status===403)throw Error('BANK_ASSET_PUBLICATION_AUTHORIZATION_UNAVAILABLE');
+   if(response.status>=500)throw Error('BANK_ASSET_PUBLICATION_SERVICE_UNAVAILABLE');
+  }
   if(operation&&response.ok){
    const value:unknown=await response.clone().json().catch(()=>null);input.assertCurrent();
    try{

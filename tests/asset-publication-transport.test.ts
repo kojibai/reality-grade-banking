@@ -10,3 +10,8 @@ it('routes source publication and canonical custody through the current connecte
  expect(calls[2].init).toMatchObject({body:'exact-body',headers:{'x-receiz-local-action-signature':'exact'}});
  await expect(fetch('/api/profile/foreign/originals')).rejects.toThrow('BANK_ASSET_PUBLICATION_TRANSPORT_INVALID');expect(calls.length).toBe(3);
 });
+
+it.each([{status:401,code:'BANK_ASSET_PUBLICATION_AUTHORIZATION_UNAVAILABLE'},{status:403,code:'BANK_ASSET_PUBLICATION_AUTHORIZATION_UNAVAILABLE'},{status:503,code:'BANK_ASSET_PUBLICATION_SERVICE_UNAVAILABLE'},{status:521,code:'BANK_ASSET_PUBLICATION_SERVICE_UNAVAILABLE'}])('preserves the actual failed delivery read instead of calling HTTP $status a pending predecessor',async({status,code})=>{
+ let reads=0;const fetch=createAssetPublicationFetch({applicationId:'rc_bank',username:'owner',assertCurrent:()=>{},request:async()=>{reads++;return Response.json({error:'unavailable'},{status});}});
+ await expect(fetch('/api/profile/showcase/accepted-source?username=owner')).rejects.toThrow(code);expect(reads).toBe(1);
+});

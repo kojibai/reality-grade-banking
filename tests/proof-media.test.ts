@@ -3,7 +3,7 @@ import {afterEach,expect,it,vi} from 'vitest';
 import {zipSync,strToU8} from 'fflate';
 import {receizBase64UrlEncode} from '@receiz/sdk';
 const opened=vi.hoisted(()=>vi.fn());
-vi.mock('../src/receiz/ledger-offline-proof',()=>({loadOfflineProofVerifier:async()=>({readArtifact:async(bytes:Uint8Array,filename:string)=>{const value=await opened(new File([new Uint8Array(bytes)],filename));return {report:{schema:'bankeiz.offline-proof-inspection.v1',sdk:'129.0.0',artifactSha256:value.sealedArtifact.artifactSha256,payloadSha256:value.verifiedPayload.sha256},payload:value.verifiedPayload};}})}));
+vi.mock('../src/receiz/ledger-offline-proof',()=>({loadOfflineProofVerifier:async()=>({readArtifact:async(bytes:Uint8Array,filename:string)=>{const value=await opened(new File([new Uint8Array(bytes)],filename));return {report:{schema:'bankeiz.offline-proof-inspection.v1',sdk:'129.0.0',artifactSha256:value.sealedArtifact.artifactSha256,payloadSha256:value.verifiedPayload.sha256,verification:value.verification},payload:value.verifiedPayload};}})}));
 import {openProofMedia,readMediaPayload,readDocumentText} from '../src/receiz/proof-media';
 import {prepareAssetMoment} from '../src/receiz/asset-moment';
 afterEach(()=>{opened.mockReset();vi.restoreAllMocks();});
@@ -117,4 +117,19 @@ it('reuses a retained authored source through the unchanged canonical reader wit
  opened.mockResolvedValueOnce({sealedArtifact:{artifactSha256:'d'.repeat(64)},verifiedPayload:{bytes:new TextEncoder().encode('Read locally'),filename:'essay.txt',mimeType:'text/plain',sha256:'e'.repeat(64)}});
  const remote=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('No download expected'));
  try{const result=await openProofMedia({kind:'public',url:'https://receiz.com/api/proof-material/packages/'+'d'.repeat(64)+'/artifact',digest:'d'.repeat(64)});expect(result.files[0].text).toBe('Read locally');expect(remote).not.toHaveBeenCalled();}finally{adoption.forgetAssetPublicationAdmissions();remote.mockRestore();}
+});
+
+it('reads an authored essay from its already-open canonical payload instead of the legacy post-record route',async()=>{
+ const adoption=await import('../src/receiz/asset-publication-adoption'),digest='e'.repeat(64),text='The exact carried essay.\n\n<script>remains inert text</script>';
+ const content={schema:'receiz.bank.asset-content.v2',ownerReceizId:'writer.receiz.id',title:'An authored moment',description:'',kind:'moment',longForm:text,files:[]};
+ adoption.retainAssetPublicationSource(digest,new File([new Uint8Array([4])],'authored.receiz'));
+ opened.mockResolvedValueOnce({sealedArtifact:{artifactSha256:digest},verification:{bundle:{nativeRecordSeal:{ownerReceizId:content.ownerReceizId}}},verifiedPayload:{...payload,bytes:strToU8(JSON.stringify(content)),mimeType:'application/json'}});
+ const remote=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('The essay is already carried'));
+ try{
+  const media=await openProofMedia({kind:'public',url:'https://receiz.com/api/proof-material/packages/'+digest+'/artifact',digest,postUrl:'https://receiz.com/v/20261012_1401/0C19C291/14611069?a=cd412215&ms=1791828092396',hasLongForm:true});
+  expect(media.readText).toBeTypeOf('function');
+  const reading=await media.readText!();expect(reading).toMatchObject({title:content.title,text,artifactDigest:digest});
+  expect(reading.sha256).toBe(await(await import('@receiz/sdk')).sha256ReceizBytes(strToU8(text)));
+  expect(await media.readText!()).toBe(reading);expect(remote).not.toHaveBeenCalled();expect(opened).toHaveBeenCalledOnce();
+ }finally{adoption.forgetAssetPublicationAdmissions();}
 });

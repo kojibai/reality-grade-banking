@@ -5,7 +5,7 @@ import {conformanceOfflineFixture} from './helpers/conformance-offline-sealer';
 afterEach(()=>vi.unstubAllGlobals());
 
 it('publishes through the installed SDK for fresh and nonempty accounts, retaining old media without fetching it on append or retry',async()=>{
- const f=await conformanceOfflineFixture({composer:true}),r=f.runtime;
+ const f=await conformanceOfflineFixture({composer:true,previousComposer:true}),r=f.runtime;
  vi.stubGlobal('indexedDB',new IDBFactory());
  const values=new Map<string,string>(),events=new EventTarget();
  let rejectOutboxWrite=false;
@@ -17,7 +17,7 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  const owner=(await r.readReceizIdentityPublicBinding(actor)).artifactOwnerReceizId,username='sdk_artist',uid='sdk-account',artifactId=`profile-showcase:${owner}`;
  const enrollment=await f.store.load(),seal=await r.createBankNativeNoteSealer({enrollment,resources:f.resources});
  const blocks=new Map<string,Uint8Array>(),staged=new Map<string,Uint8Array>(),reads:string[]=[],timeline:string[]=[];
- let accepted:Record<string,unknown>={status:'unmigrated'},complete:any,finalizations=0,seals=0,interrupt=false,attemptDigest:string|undefined,active=true,switchOnUpload=false;
+ let accepted:Record<string,unknown>={status:'unmigrated'},complete:any,finalizations=0,seals=0,interrupt=false,attemptDigest:string|undefined,active=true,switchOnUpload=false,interruptBeforeUpload=false;
  const roots=new Map(f.roots.map((root:{kid:string})=>[root.kid,root]));
  const request:typeof fetch=async(input,init)=>{
   const url=new URL(String(input),'https://bankeiz.test');
@@ -29,6 +29,7 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
   if(url.pathname===`/api/profile/${username}/originals`)return Response.json({ok:true,originals:[],page:{hasMore:false,nextCursor:null}});
   if(url.pathname!=='/api/profile/showcase/publication')return Response.json({status:'pending',code:'FIXTURE_UNRELATED_SYNC'});
   const body=JSON.parse(String(init?.body));
+  if(body.action==='initialize-blocks'&&interruptBeforeUpload)return Response.json({status:'pending',code:'PROFILE_SHOWCASE_PUBLICATION_BLOCK_UPLOAD_FAILED'});
   if(body.action==='initialize-blocks')return Response.json({status:'uploads',scope:body.scope,uploads:body.references.map((reference:{sha256:string})=>({reference,alreadyStored:blocks.has(reference.sha256),signedUrl:`https://storage.test/${reference.sha256}`,stagingObjectName:reference.sha256}))});
   if(body.action==='commit-blocks'){for(const item of body.blocks){const bytes=staged.get(item.stagingObjectName);if(!bytes)throw Error('Missing staged bytes');blocks.set(item.reference.sha256,bytes);}return Response.json({status:'stored',scope:body.scope});}
   expect(body.action).toBe('finalize');finalizations++;timeline.push('finalize');
@@ -43,7 +44,7 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
   return Response.json({status:'published',publicationVersion:2,scope:body.scope,artifactDigest:body.transport.artifactDigest,operationCount:admitted.proofHistoryHead.nodeCount,visibleChildCount:source.children.length});
  };
  vi.stubGlobal('fetch',request);
- const open=()=>r.connectedComposer.createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,account:{uid,username},assertCurrent(){if(!active)throw Error('ACCOUNT_CLOSED');},fetchImpl:request,onLocalAdmission:(value:any)=>{expect(value.original.marketPreview?.quote?.priceUsd??value.original.marketPreview).toBeDefined();timeline.push('local');},sealDocument:async(args:any)=>{seals++;return seal(args);}});
+ const open=(previous=false)=>(previous?r.previousConnectedComposer:r.connectedComposer).createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,account:{uid,username},assertCurrent(){if(!active)throw Error('ACCOUNT_CLOSED');},fetchImpl:request,onLocalAdmission:(value:any)=>{expect(value.original.marketPreview?.quote?.priceUsd??value.original.marketPreview).toBeDefined();timeline.push('local');},sealDocument:async(args:any)=>{seals++;return seal(args);}});
  const image=new File([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jQmcAAAAASUVORK5CYII=','base64')],'original.png',{type:'image/png'});
  let runtime=await open();
  const prior=await runtime.prepare({kind:'image',title:'First exact image',description:'',longForm:'First full essay',files:[{id:'photo',role:'primary',file:image}]});
@@ -94,4 +95,18 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  const beforeQuota=finalizations;rejectOutboxWrite=true;
  await expect(runtime.publish(quota.artifact)).rejects.toThrow('PROFILE_SHOWCASE_PUBLICATION_ACTION_NOT_RETAINED');expect(finalizations).toBe(beforeQuota);
  rejectOutboxWrite=false;runtime=await open();expect((await runtime.publish(quota.artifact)).status).toBe('published');
-},30000);
+ // Upgrade from the genuine previous publisher after commit but before any
+ // finalize action exists. Its SDK commit and exact child remain on-device.
+ attemptDigest=undefined;const previous=await open(true);
+ const older=await previous.prepare({kind:'image',title:'Previously sealed pending image',description:'',longForm:'The exact essay survives the upgrade',files:[{id:'photo',role:'primary',file:image}]});
+ interruptBeforeUpload=true;expect((await previous.publish(older.artifact)).status).toBe('pending');interruptBeforeUpload=false;
+ const beforeUpgrade={seals,children:complete.children.length};reads.length=0;
+ runtime=await open();expect((await runtime.publish(older.artifact)).status).toBe('published');
+ expect(seals).toBe(beforeUpgrade.seals);expect(complete.children).toHaveLength(beforeUpgrade.children+1);
+ expect(reads.some(sha=>oldBodies.has(sha))).toBe(false);
+ let failedReads=0;
+ await expect(r.connectedComposer.createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,
+  account:{uid:'a-current-account-with-no-cached-placement',username:'service_failure'},assertCurrent(){},sealDocument:seal,
+  fetchImpl:async()=>{failedReads++;throw Error('BANK_ASSET_PUBLICATION_SERVICE_UNAVAILABLE');}})).rejects.toThrow('BANK_ASSET_PUBLICATION_SERVICE_UNAVAILABLE');
+ expect(failedReads).toBe(1);
+},60000);

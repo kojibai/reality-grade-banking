@@ -51,11 +51,19 @@ export async function createConnectedAssetPublicationRuntime(input:Readonly<{
  const keyFile=await readReceizIdentityArtifact(input.identity);input.assertCurrent();
  const username=input.account.username.toLowerCase(),account={username,profileIdentity:input.account.uid};
  if(!/^[a-z0-9_]{3,24}$/.test(username)||!input.account.uid)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_ACCOUNT_REQUIRED");
- let acceptedDelivery:unknown;
- const fetchDelivery:typeof fetch=async(resource,init)=>{const response=await input.fetchImpl(resource,init);
+ let acceptedDelivery:unknown,acceptedReadFailure:unknown;
+ const fetchDelivery:typeof fetch=async(resource,init)=>{
   const url=new URL(resource instanceof Request?resource.url:String(resource),'https://receiz.com');
-  if(url.pathname==='/api/profile/showcase/accepted-source'&&!url.searchParams.has('block')&&response.ok)acceptedDelivery=await response.clone().json();return response;};
+  const metadata=url.pathname==='/api/profile/showcase/accepted-source'&&!url.searchParams.has('block');
+  try{const response=await input.fetchImpl(resource,init);
+   if(metadata){if(response.ok)acceptedDelivery=await response.clone().json();else acceptedReadFailure=TypeError(`PROFILE_SHOWCASE_DELIVERY_READ_HTTP_${response.status}`);}
+   return response;
+  }catch(error){if(metadata)acceptedReadFailure=error;throw error;}
+ };
  const accepted=await readRecoveredAccountShowcaseScope({username,accountId:input.account.uid},fetchDelivery);input.assertCurrent();
+ // Do not cache a runtime whose initial placement lookup failed. Local sealing
+ // is independent; explicit delivery can open a fresh current-account runtime.
+ if(acceptedReadFailure)throw acceptedReadFailure;
  const artifactId=accepted?.locator.showcaseArtifactId??`profile-showcase:${admitted.ownerReceizId}` as ProfileShowcaseArtifactId;
  const owner=artifactId.slice("profile-showcase:".length);
  const vault=createProfileShowcaseBoundedEdgeVault({resolveVerifiedCheckpointActorEvidence:async digest=>digest===admitted.artifactSha256?admitted:null});
@@ -65,7 +73,7 @@ export async function createConnectedAssetPublicationRuntime(input:Readonly<{
   return new File([sealed.artifactBytes.slice()],sealed.downloadName,{type:sealed.kind==="bundle"?"application/vnd.receiz.bundle+json":"application/octet-stream"});
  };
  const incremental=createIncrementalAssetPublisher({artifactId,owner,username,uid:input.account.uid,actorAdmission:admitted,keyFile,passphrase:input.passphrase,
-  sealDocument,childSealer,fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent,readAccepted:async(refresh=false)=>{
+  sealDocument,childSealer,fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent,vault,readAccepted:async(refresh=false)=>{
    if(!refresh&&acceptedDelivery)return acceptedDelivery;const response=await fetchDelivery(`/api/profile/showcase/accepted-source?username=${encodeURIComponent(username)}`,{credentials:'same-origin',cache:'no-store'});
    if(!response.ok)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');return acceptedDelivery;
   }});

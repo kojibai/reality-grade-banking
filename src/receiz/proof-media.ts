@@ -7,7 +7,7 @@ import type {ReceizVerifiedPayload} from '@receiz/sdk';
 import {retainProofInspection,trackProofInspection} from './proof-inspection';
 import {loadOfflineProofVerifier} from './ledger-offline-proof';
 import {readAssetMoment,type MomentMetadata} from './asset-moment';
-import {readComposerAssetContent,readComposerCapacity,type ComposerAssetFile} from './asset-composer';
+import {readComposerAssetContent,readComposerCapacity,type ComposerAssetFile,type ComposerAssetContent} from './asset-composer';
 import {safeImportedSourceUrl} from './imported-source-url';
 import {safeReceizPublicUrl} from './public-market';
 import {readExactByteBlocks} from '../../native/receiz/packages/receiz-sdk/src/exactByteBlocks';
@@ -54,16 +54,16 @@ async function readBasicMediaPayload(payload:ReceizVerifiedPayload,json?:ReturnT
  return [file];
 }
 export type ComposerMediaContext={ownerReceizId:string;resolveFile(file:ComposerAssetFile):Promise<Uint8Array>};
-async function readPayload(payload:ReceizVerifiedPayload,json:ReturnType<typeof readMediaJson>,composer?:ComposerMediaContext):Promise<MediaFile[]>{
+async function readPayload(payload:ReceizVerifiedPayload,json:ReturnType<typeof readMediaJson>,composer?:ComposerMediaContext,authored?:ComposerAssetContent):Promise<MediaFile[]>{
  if(!payload.bytes.length||payload.bytes.length>originalReadLimit(payload.bytes,MAX,payload.mimeType))throw Error('This media exceeds the supported reader capacity.');
  if(json){
   const value=json.value;
   if(value?.schema==='receiz.bank.asset-content.v2'){
    if(!composer)throw Error('The original files are not available in this view.');
-   const content=readComposerAssetContent(value,composer.ownerReceizId),files:MediaFile[]=[];
+   const content=authored??readComposerAssetContent(value,composer.ownerReceizId),files:MediaFile[]=[];
    const primary=content.files.find(file=>file.role==='primary');
    if(primary){const bytes=await composer.resolveFile(primary),{sha256ReceizBytes}=await import('@receiz/sdk');if(bytes.length!==primary.size||await sha256ReceizBytes(bytes)!==primary.sha256)throw Error('The original file does not match its sealed source.');files.push(...await readBasicMediaPayload({bytes,filename:primary.name,mimeType:primary.mime,sha256:primary.sha256},undefined,readComposerCapacity().maxPrimaryBytes[content.kind]??MAX));}
-   if(content.longForm){const {sha256ReceizBytes}=await import('@receiz/sdk'),bytes=new TextEncoder().encode(content.title+'\n\n'+content.longForm);files.push(...await readBasicMediaPayload({bytes,sha256:await sha256ReceizBytes(bytes),filename:'Long-form text.txt',mimeType:'text/plain'}));}
+   if(content.longForm&&(!authored||!primary)){const {sha256ReceizBytes}=await import('@receiz/sdk'),bytes=new TextEncoder().encode(content.title+'\n\n'+content.longForm);files.push(...await readBasicMediaPayload({bytes,sha256:await sha256ReceizBytes(bytes),filename:'Long-form text.txt',mimeType:'text/plain'}));}
    return files;
   }
   if(value?.schema==='receiz.bank.asset-definition.v1'&&value.moment!=null){
@@ -152,7 +152,8 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
    const result=new Uint8Array(file.size);let offset=0;for(const part of parts){result.set(part,offset);offset+=part.length;}return result;
   }
  }:undefined;
- const files=await readPayload(opened.payload,json,composer);signal?.throwIfAborted();
+ const authored=composer?readComposerAssetContent(json!.value,composer.ownerReceizId):undefined;
+ const files=await readPayload(opened.payload,json,composer,authored);signal?.throwIfAborted();
  if(source.kind==='held'&&json){
   const value=json.value;
   const linked=value?.schema==='receiz.bank.asset-definition.v1'?value.definition?.linkedProofDigest:null;
@@ -162,5 +163,14 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
    if(held){const media=await openProofMedia({kind:'held',...held},signal);return {artifactDigest:source.digest,linkedArtifactDigest:linked,files:[...media.files,...files]};}
   }
  }
- return {artifactDigest:source.digest,files,...(source.kind==='public'&&source.postUrl?{readText:(signal?:AbortSignal)=>readPublicProofReading(source.postUrl!,source.digest,signal)}:{})};
+ // The canonical read already binds authored text to this exact Original.
+ // The older post-record route describes a different carrier, not this payload.
+ let carriedReading:Promise<ProofReading>|undefined;
+ const readText=authored?.longForm?async(signal?:AbortSignal)=>{
+  signal?.throwIfAborted();
+  carriedReading??=import('@receiz/sdk').then(async({sha256ReceizBytes})=>({title:authored.title,text:authored.longForm,
+   sha256:await sha256ReceizBytes(new TextEncoder().encode(authored.longForm)),artifactDigest:source.digest}));
+  const result=await carriedReading;signal?.throwIfAborted();return result;
+ }:source.kind==='public'&&source.hasLongForm&&source.postUrl?(signal?:AbortSignal)=>readPublicProofReading(source.postUrl!,source.digest,signal):undefined;
+ return {artifactDigest:source.digest,files,...(readText?{readText}:{})};
 }

@@ -18,6 +18,7 @@ import {readExactByteBlocks,reconstructExactByteBlocks,type ExactByteBlockRefere
 import {readLocalSignedActionOutbox,enqueueSourceBoundPublicationAction} from '../../offline/localSignedActionOutbox';
 import type {OpenedImportedProofSource,ImportedProofSourceReference} from './importedSource';
 import type {ProfileShowcaseArtifactId} from './types';
+import type {ProfileShowcaseBoundedEdgeVault} from './boundedEdgeVault';
 import type {receizeDocumentBytesClient} from '../../documentSeal/receizeDocumentBytesClient';
 
 /** Extends the existing sealed head with SDK plan/capability/commit/admission.
@@ -26,7 +27,7 @@ import type {receizeDocumentBytesClient} from '../../documentSeal/receizeDocumen
 export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcaseArtifactId;owner:string;username:string;uid:string;
  actorAdmission:ReceizVerifiedIdentityArtifactAdmission;keyFile:ReceizKeyFile;passphrase:string;
  sealDocument:typeof receizeDocumentBytesClient;childSealer:Parameters<typeof sealAndAdmitImportedSourcePlacement>[0]['seal'];
- fetchImpl:typeof fetch;assertCurrent():void;readAccepted(refresh?:boolean):Promise<unknown>}){
+ fetchImpl:typeof fetch;assertCurrent():void;readAccepted(refresh?:boolean):Promise<unknown>;vault:ProfileShowcaseBoundedEdgeVault}){
  const custody=createImportedProofSourceCustody();let accepted:unknown;const heldBlocks=new Map<string,Promise<Uint8Array>>();
  const published=new Map<string,ProfileShowcasePublicProjectionPublicationResult>();
  let heldHead:{context:ProfileShowcaseAppendTransport;prior:Awaited<ReturnType<typeof admitProfileShowcaseAppendTransport>>}|undefined;
@@ -83,6 +84,15 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
   const child=context.children.find(child=>child.reference.childArtifactDigest===childDigest);if(!child)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
   for(const ref of [context.transport.root,context.envelope.carrier,context.envelope.nodes,context.envelope.children,context.envelope.ancestry,child.bytes])if(ref)await emitTree(ref as ExactByteBlockReference,write);
  };
+ const deliverPrepared=async(body:any,prepared:ProfileShowcaseAppendTransport,reference:ImportedProofSourceReference)=>{
+  const result=await publishProfileShowcaseTransport(body.scope.artifactDigest,input.owner,input.fetchImpl,input.username,body.scope,
+   ()=>{input.assertCurrent();return{username:input.username,profileIdentity:input.uid};},async()=>identity(),async()=> 'unavailable',async write=>{
+    await emitPrepared(prepared,body.publicationChildArtifactDigest,reference,write);return body.transport;
+   },{publicationSourceArtifactSha256:reference.artifactSha256,publicationChildArtifactDigest:body.publicationChildArtifactDigest,publicationPredecessorArtifactDigest:body.publicationPredecessorArtifactDigest});
+  if(result.status==='published'){heldHead=undefined;published.set(reference.artifactSha256,result);accepted={status:'accepted',artifactId:input.artifactId,transport:body.transport,
+   binding:{username:input.username,profileIdentity:input.uid,locator:{acceptedArtifactDigest:body.transport.artifactDigest}}};}
+  return result;
+ };
  return {async publish(opened:{source:OpenedImportedProofSource;reference:ImportedProofSourceReference}):Promise<ProfileShowcasePublicProjectionPublicationResult|null>{
   input.assertCurrent();
   const known=published.get(opened.reference.artifactSha256);if(known)return known;
@@ -91,13 +101,7 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    const {body,context:prepared}=replay;
    // Replay transport only: the saved signature and unchanged server verifier
    // still govern acceptance. No persisted projection is promoted to proof.
-   const result=await publishProfileShowcaseTransport(body.scope.artifactDigest,input.owner,input.fetchImpl,input.username,body.scope,
-    ()=>{input.assertCurrent();return{username:input.username,profileIdentity:input.uid};},async()=>identity(),async()=> 'unavailable',async write=>{
-     await emitPrepared(prepared,body.publicationChildArtifactDigest,opened.reference,write);return body.transport;
-    },{publicationSourceArtifactSha256:opened.reference.artifactSha256,publicationChildArtifactDigest:body.publicationChildArtifactDigest,publicationPredecessorArtifactDigest:body.publicationPredecessorArtifactDigest});
-   if(result.status==='published'){heldHead=undefined;published.set(opened.reference.artifactSha256,result);accepted={status:'accepted',artifactId:input.artifactId,transport:body.transport,
-    binding:{username:input.username,profileIdentity:input.uid,locator:{acceptedArtifactDigest:body.transport.artifactDigest}}};}
-   return result;
+   return deliverPrepared(body,prepared,opened.reference);
   }
   accepted??=await input.readAccepted();
   if((accepted as any)?.status==='unmigrated')return null;
@@ -115,7 +119,41 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
   if(committed?.headDigest&&committed.headDigest!==heldHead.prior.admission.proofHistoryHead!.headDigest){
    accepted=await input.readAccepted(true);input.assertCurrent();if(!validAccepted(accepted))throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
    const next=await readHead();if(!next)return null;
-   if(next.prior.admission.artifactSha256===heldHead.prior.admission.artifactSha256)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
+   if(next.prior.admission.artifactSha256===heldHead.prior.admission.artifactSha256){
+    // Earlier publishers committed before preparing a delivery action. Locate
+    // that exact candidate, then admit its direct succession and carried child.
+    // Neither the local pointer nor its projection is proof authority.
+    const digest=(committed.state as any)?.artifactDigest;
+    if(typeof digest!=='string'||!/^[a-f0-9]{64}$/.test(digest))throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
+    const {context,prior}=next,store=createReceizBrowserArtifactTransitionStore({databaseName,namespace:`profile-showcase-local:${prior.admission.artifactSha256}`,commitDomain});
+    const candidate=await store.resolveCandidate({algorithm:'sha-256',binds:'exact-artifact-bytes',value:digest});
+    if(!candidate)throw TypeError('PROFILE_SHOWCASE_COMMITTED_CANDIDATE_UNAVAILABLE');
+    const admission=await admitReceizProfileShowcaseSuccessorWithPredecessorContext({predecessorAdmission:prior.admission,
+     candidateArtifact:{artifact:new File([candidate.exactBytes.slice().buffer as ArrayBuffer],candidate.filename,{type:candidate.mimeType})},resolveVerifiedHistoricalArtifactDigest:prior.resolveHistorical});
+    if(admission.artifactSha256!==digest||admission.proofHistoryHead?.headDigest!==committed.headDigest)throw TypeError('PROFILE_SHOWCASE_PREPARED_COMMIT_MISMATCH');
+    const carrier=await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission),head=carrier['profile-showcase'];
+    const localIO=await input.vault.createTransitionPersistentStateIO(input.artifactId,digest);
+    const membership=await deriveReceizProfileShowcasePersistentMembershipV114({state:{schema:'receiz.profile-showcase.persistent-state.v114',placementRoot:head.placementRoot as string,
+     orderRoot:head.orderRoot as string,counts:head.counts as any,maximumKaiUpulse:head.headKaiUpulse as string},io:{writeNode:localIO.writeNode,resolveNode:async digest=>await localIO.resolveNode(digest)??await prior.io.resolveNode(digest)}});
+    const added=membership.placements.filter(member=>!context.children.some(child=>child.reference.childArtifactDigest===member.reference.childArtifactDigest));
+    if(added.length!==1)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
+    const child=await input.vault.reopenRetainedChild(added[0]!.reference);
+    if(!child)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
+    const childAdmission=child.admittedArtifact;
+    const childBytes=new Uint8Array(await childAdmission.openedArtifact.sealedArtifact.artifact.arrayBuffer());
+    if(childAdmission.profile!=='portable-state'||childAdmission.artifactSha256!==added[0]!.reference.childArtifactDigest
+     ||childAdmission.artifactId!==added[0]!.reference.stableChildArtifactId||childAdmission.payloadSha256!==added[0]!.reference.contentDigest
+     ||jcsCanonicalize(await readImportedSourceTransportReference(childBytes))!==jcsCanonicalize(opened.reference))throw TypeError('PROFILE_SHOWCASE_PREPARED_SOURCE_MISMATCH');
+    input.assertCurrent();
+    const transport=await writeProfileShowcaseAppendTransport(context,{artifactDigest:digest,exactSealedArtifactBytes:candidate.exactBytes,witnessNodes:membership.witnessNodes,
+     children:[{reference:added[0]!.reference,exactSealedArtifactBytes:childBytes}]},custody.writeBlock);
+    const prepared=await readProfileShowcaseAppendTransport(transport,custody.resolveBlock),signer=await actor();input.assertCurrent();
+    const body={action:'finalize',scope:scope(digest),transport,publicationSourceArtifactSha256:opened.reference.artifactSha256,
+     publicationChildArtifactDigest:childAdmission.artifactSha256,publicationPredecessorArtifactDigest:prior.admission.artifactSha256,identityBinding:signer.binding};
+    const action=await enqueueSourceBoundPublicationAction(JSON.stringify(body),signer.custody),held=action&&readLocalSignedActionOutbox().entries[action.actionId];
+    if(!action||held?.signatureB64Url!==action.signatureB64Url||held.envelope.request.bodyReplayText!==action.envelope.request.bodyReplayText)throw TypeError('PROFILE_SHOWCASE_PUBLICATION_ACTION_NOT_RETAINED');
+    input.assertCurrent();return deliverPrepared(body,prepared,opened.reference);
+   }
    heldHead=next;
   }
   const {context,prior}=heldHead;input.assertCurrent();

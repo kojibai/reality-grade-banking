@@ -232,3 +232,31 @@ it('aborts and discards carried text when the selected post changes even with th
   await act(async()=>finish({title:'Old essay',text:'Stale private-looking text must not appear.',sha256:'c'.repeat(64),artifactDigest:'d'.repeat(64)}));expect(host.querySelector('dialog')).toBeNull();expect(host.textContent).not.toContain('Stale private-looking');
  }finally{act(()=>root.unmount());}
 });
+
+it('opens imported authored text with the same reader without requesting a legacy post record',async()=>{
+ const reading={title:'Image and essay',text:'The complete sealed essay.',sha256:'c'.repeat(64),artifactDigest:source.digest};
+ open.mockResolvedValue({artifactDigest:source.digest,files:[{...media.files[0],kind:'image',mimeType:'image/png'}],readText:async()=>reading});
+ vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:authored-essay');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+ vi.spyOn(HTMLDialogElement.prototype,'showModal').mockImplementation(function(this:HTMLDialogElement){this.open=true;});vi.spyOn(HTMLDialogElement.prototype,'close').mockImplementation(function(this:HTMLDialogElement){this.open=false;});vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+ const reference={schema:'receiz.imported-proof-source.v1',artifactSha256:source.digest,byteLength:1,filename:'authored.receiz',mimeType:'application/json',bytes:{kind:'bytes',sha256:'d'.repeat(64),byteLength:1,contentByteLength:1,height:0}};
+ const publicSource={kind:'public' as const,digest:source.digest,url:'https://receiz.com/api/profile/showcase/imported-source?reference='+encodeURIComponent(JSON.stringify(reference)),postUrl:'https://receiz.com/v/20261012_1401/0C19C291/14611069?a=cd412215&ms=1791828092396',hasLongForm:true};
+ const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
+ try{
+  await act(async()=>root.render(<ProofMedia source={publicSource} title={reading.title} publicImageUrl="https://receiz.com/image.jpg" autoOpen/>));
+  await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Read full text"]')!.click());
+  expect(host.querySelector('dialog .proof-reading-text')?.textContent).toBe(reading.text);expect(readPublic).not.toHaveBeenCalled();expect(open).toHaveBeenCalledOnce();
+ }finally{act(()=>root.unmount());host.remove();}
+});
+
+it.each([source,{kind:'public' as const,url:'https://receiz.com/api/proof-material/packages/'+'e'.repeat(64)+'/artifact',digest:'e'.repeat(64)}])('keeps canonical authored text accessible when optional projection hints are absent: $kind',async(selected)=>{
+ const reading={title:'Held image and essay',text:'Carried on this device.',sha256:'c'.repeat(64),artifactDigest:source.digest};
+ retained.mockReturnValue({artifactDigest:source.digest,files:[{...media.files[0],kind:'image',mimeType:'image/png'}],readText:async()=>reading});
+ vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:held-essay');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+ vi.spyOn(HTMLDialogElement.prototype,'showModal').mockImplementation(function(this:HTMLDialogElement){this.open=true;});vi.spyOn(HTMLDialogElement.prototype,'close').mockImplementation(function(this:HTMLDialogElement){this.open=false;});vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+ const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
+ try{
+  await act(async()=>root.render(<ProofMedia source={selected} title={reading.title}/>));
+  const read=host.querySelector<HTMLButtonElement>('[aria-label="Read full text"]');expect(read).not.toBeNull();
+  await act(async()=>read!.click());expect(host.querySelector('dialog .proof-reading-text')?.textContent).toBe(reading.text);expect(readPublic).not.toHaveBeenCalled();expect(open).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());host.remove();}
+});
