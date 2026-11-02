@@ -1,4 +1,4 @@
-import {expect,it} from 'vitest';
+import {expect,it,vi} from 'vitest';
 import {Window} from 'happy-dom';
 import {parsePublicMarket} from '../src/receiz/public-market';
 import {parsePublicProfile} from '../src/receiz/public-profile';
@@ -22,13 +22,13 @@ it('carries known proof, valuation and chart operands without inventing missing 
  expect(text).toContain('https://bankeiz.com/artist/');expect(text).not.toContain('Unavailable');expect(text).not.toContain('spendable');
 });
 
-it('shows the same signed public Original cohort as the profile and excludes unselected private fields',()=>{
+it('shows signed and unsigned public Originals with their held values while excluding private fields and making no reads',()=>{
  const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.items=[{...item,hasPbiSignature:true},{...item,id:'profile:artist:unsigned',title:'Unsigned work',hasPbiSignature:false}];
- const text=renderReadingDocument(publicProfileReading(profile),'text');expect(text).toContain(item.title);expect(text).not.toContain('Unsigned work');expect(text).not.toContain('private@example.com');expect(text).not.toContain('secret');
+ const before=JSON.stringify(profile),fetcher=vi.spyOn(globalThis,'fetch');try{const text=renderReadingDocument(publicProfileReading(profile),'text');expect(text).toContain(item.title);expect(text).toContain('Unsigned work');expect(text).toContain('Observed USD value: 123.45');expect(text).not.toContain('private@example.com');expect(text).not.toContain('secret');expect(JSON.stringify(profile)).toBe(before);expect(fetcher).not.toHaveBeenCalled();}finally{fetcher.mockRestore();}
 });
 
-it('windows large profiles without dropping links to later signed Originals',()=>{
- const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.items=Array.from({length:101},(_,i)=>({...item,id:'profile:artist:work-'+i,title:'Work '+i,hasPbiSignature:true}));
+it('windows large public profiles without dropping unsigned Originals or links to later pages',()=>{
+ const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.items=Array.from({length:101},(_,i)=>({...item,id:'profile:artist:work-'+i,title:'Work '+i,hasPbiSignature:i%2===0}));
  const text=renderReadingDocument(publicProfileReading(profile,1),'text');expect(text).toContain('Work 0');expect(text).not.toContain('Work 50\n');expect(text).toContain('/read/profiles/alexmorgan/?page=2');
  expect(()=>publicProfileReading(profile,4)).toThrow('READING_PAGE_NOT_FOUND');
 });

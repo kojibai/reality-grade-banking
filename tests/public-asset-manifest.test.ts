@@ -1,5 +1,5 @@
-import {expect,it} from 'vitest';
-import {publicAssetManifest,readPublicAssetManifestSource,publicManifestLink} from '../src/receiz/public-asset-manifest';
+import {expect,it,vi} from 'vitest';
+import {publicAssetManifest,readPublicAssetManifestSource,publicManifestLink,retainPublicMomentManifest} from '../src/receiz/public-asset-manifest';
 import {parsePublicMarket} from '../src/receiz/public-market';
 const hash='ab'.repeat(32),verifyPath='/v/20261020_1200/ABCD1234/12345678';
 const profile={code:'ABCD1234',pulse:'12345678',verifyPath,proof:{circuit:'Groth16',groth16Id:'ABCDEF0123456789',poseidon:'12345678901234567890'},claimHashHex:hash,pbiReceiptHash:hash,media:{sha256Hex:hash},attachments:[{id:'appendix',name:'Complete appendix.pdf',sha256Hex:hash,src:'/api/storage/object?bucket=receiz-profile-originals&path=creator/appendix.pdf',downloadName:'appendix.pdf'}]};
@@ -37,3 +37,16 @@ it('uses the carried Moment-card image hash ahead of enclosing artifact and gene
 });
 
 it('retains the carried sealed receipt image hash when the display-card hash is not separately supplied',()=>{const digest='bb'.repeat(32),source={mediaKind:'moment',media:null,claimHashHex:'aa'.repeat(32),recordMediaSha256Hex:digest};expect(publicAssetManifest(readPublicAssetManifestSource(source)).find(row=>row.label==='Media SHA-256')?.value).toBe(digest.toUpperCase());expect(publicAssetManifest(source).find(row=>row.label==='Claim SHA-256')?.value).toBe('AA'.repeat(32));});
+
+const momentProjection=(cardHash?:string)=>parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:moment',receizId:'moment',ownerUsername:'artist',title:'Moment',pulse:'12345678',verifyHref:verifyPath+'?a=12345678&ms=1791828092396',profileOriginal:{...profile,verifyPath:verifyPath+'?a=12345678&ms=1791828092396',media:null,recordCardMediaSha256Hex:cardHash}}]}}).items[0];
+it('keeps the carried Moment-card basis through a thinner projection of the exact signed proof',()=>{
+ const previous=momentProjection('cd'.repeat(32)),current=momentProjection(),before=structuredClone(current),fetch=vi.spyOn(globalThis,'fetch');
+ try{const retained=retainPublicMomentManifest(current,previous);expect(publicAssetManifest(retained.proofManifestSource).find(row=>row.label==='Media SHA-256')?.value).toBe('CD'.repeat(32));expect(retained.authority).toBe('projection-only');expect(retained.canTrade).toBe(false);expect(current).toEqual(before);expect(fetch).not.toHaveBeenCalled();}finally{fetch.mockRestore();}
+});
+it('never carries a historical Moment basis across another card signature, proof, claim, coordinate or source',()=>{
+ const previous=momentProjection('cd'.repeat(32)),current=momentProjection(),source=current.proofManifestSource!;
+ const changed=[{...current,assetId:'other'},{...current,ownerUsername:'other'},{...current,verifyUrl:current.verifyUrl+'&tz=1'},{...current,originalDigest:'ef'.repeat(32)},{...current,proofManifestSource:{...source,pbiReceiptHash:'ef'.repeat(32)}},{...current,proofManifestSource:{...source,claimHashHex:'ef'.repeat(32)}},{...current,proofManifestSource:{...source,proof:{...source.proof,groth16Id:'another'}}},{...current,proofManifestSource:{...source,proof:{...source.proof,poseidon:'another'}}}];
+ for(const item of changed)expect(retainPublicMomentManifest(item,previous)).toBe(item);
+ const carried=momentProjection('ef'.repeat(32));expect(retainPublicMomentManifest(carried,previous)).toBe(carried);
+ expect(retainPublicMomentManifest(current,{...previous,proofManifestSource:{...previous.proofManifestSource!,recordCardMediaSha256Hex:'invalid'}})).toBe(current);
+});

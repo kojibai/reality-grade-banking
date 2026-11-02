@@ -24,6 +24,30 @@ function mount(mode:'market'|'explorer'='market') {
   return { host, root, commit, open };
 }
 function catalog(count = 1001) { return parsePublicMarket({ ok: true, transport: { generatedAt: '2026-10-13T12:00:00Z', publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: 'canonical-complete', isComplete: true, itemCount: count, revision: 'r1' }, publicOriginals: Array.from({ length: count }, (_, i) => ({ id: `public-${i}`, receizId: `asset-${i}`, title: `Public object ${i}`, valueUsd: 5, profileOriginal:{hasPbiSignature:true}, ownerUsername: 'alice', canonicalHref: `/alice/verified/asset-${i}` })) } }); }
+function loadedSource(count=1,refresh=vi.fn(async()=>{})):NonNullable<Parameters<typeof Market>[0]['source']>{return{catalog:catalog(count),historyCatalog:null,pulse:14720000,quoteStatus:'fresh',sportsStatus:'fresh',status:'live',error:null,refresh};}
+it('reveals the retained Explorer search and categories on upward scroll and focus without rereading its source',()=>{
+ const refresh=vi.fn(async()=>{}),fetcher=vi.fn(),held=loadedSource(2,refresh),frames=new Map<number,FrameRequestCallback>();let frame=0;
+ vi.stubGlobal('fetch',fetcher);vi.stubGlobal('requestAnimationFrame',(read:FrameRequestCallback)=>{frames.set(++frame,read);return frame;});vi.stubGlobal('cancelAnimationFrame',(id:number)=>frames.delete(id));Object.defineProperty(window,'scrollY',{value:0,configurable:true});
+ const host=document.createElement('div'),root=createRoot(host);document.body.append(host);roots.push(root);
+ const scroll=(y:number)=>act(()=>{Object.defineProperty(window,'scrollY',{value:y,configurable:true});dispatchEvent(new Event('scroll'));for(const[id,read]of frames){frames.delete(id);read(0);}});
+ try{
+  act(()=>root.render(<Market mode="explorer" source={held}/>));const input=host.querySelector<HTMLInputElement>('[aria-label="Search proof objects"]')!,categories=host.querySelector('[aria-label="Asset categories"]'),tools=input.closest('.market-explorer-tools');
+  expect(tools).not.toBeNull();expect(tools!.children).toHaveLength(2);expect(tools!.querySelector('h1,.market-source-status,.market-layout,.app-header')).toBeNull();expect(tools!.contains(categories)).toBe(true);
+  act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'Public object 0');input.dispatchEvent(new Event('input',{bubbles:true}));});const row=host.querySelector('.asset-row');
+  scroll(450);expect(tools!.classList.contains('is-away')).toBe(true);scroll(400);expect(tools!.classList.contains('is-away')).toBe(false);scroll(470);expect(tools!.classList.contains('is-away')).toBe(true);
+  act(()=>input.focus());expect(tools!.classList.contains('is-away')).toBe(false);scroll(600);expect(tools!.classList.contains('is-away')).toBe(false);act(()=>input.blur());scroll(670);expect(tools!.classList.contains('is-away')).toBe(true);scroll(100);expect(tools!.classList.contains('is-away')).toBe(false);
+  expect(host.querySelector('input')).toBe(input);expect(input.value).toBe('Public object 0');expect(host.querySelector('[aria-label="Asset categories"]')).toBe(categories);expect(host.querySelector('.asset-row')).toBe(row);expect(refresh).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();
+ }finally{Object.defineProperty(window,'scrollY',{value:0,configurable:true});}
+});
+it('removes the Explorer scroll listener and cancels its pending frame when the retained view becomes inactive',()=>{
+ const held=loadedSource(),add=vi.spyOn(window,'addEventListener'),remove=vi.spyOn(window,'removeEventListener'),request=vi.fn(()=>19),cancel=vi.fn();vi.stubGlobal('requestAnimationFrame',request);vi.stubGlobal('cancelAnimationFrame',cancel);
+ const host=document.createElement('div'),root=createRoot(host);document.body.append(host);roots.push(root);
+ try{act(()=>root.render(<Market mode="explorer" active source={held}/>));const input=host.querySelector('input'),listener=add.mock.calls.find(([event])=>event==='scroll');expect(listener).toEqual(['scroll',expect.any(Function),{passive:true}]);act(()=>dispatchEvent(new Event('scroll')));expect(request).toHaveBeenCalledTimes(1);act(()=>root.render(<Market mode="explorer" active={false} source={held}/>));expect(remove).toHaveBeenCalledWith('scroll',listener![1]);expect(cancel).toHaveBeenCalledWith(19);act(()=>dispatchEvent(new Event('scroll')));expect(request).toHaveBeenCalledTimes(1);expect(host.querySelector('input')).toBe(input);expect(held.refresh).not.toHaveBeenCalled();}finally{add.mockRestore();remove.mockRestore();}
+});
+it.each([{mode:'market' as const,active:true,overviewOnly:false},{mode:'explorer' as const,active:false,overviewOnly:false},{mode:'explorer' as const,active:true,overviewOnly:true}])('does not add scroll work for $mode with active=$active and overviewOnly=$overviewOnly',props=>{
+ const add=vi.spyOn(window,'addEventListener'),held=loadedSource(),host=document.createElement('div'),root=createRoot(host);roots.push(root);document.body.append(host);
+ try{act(()=>root.render(<Market {...props} source={held}/>));expect(add.mock.calls.filter(([event])=>event==='scroll')).toHaveLength(0);if(props.mode==='market'){expect(host.querySelector('.market-explorer-tools')).toBeNull();expect(host.querySelector('[aria-label="Search assets or currencies"]')).not.toBeNull();}expect(held.refresh).not.toHaveBeenCalled();}finally{add.mockRestore();}
+});
 it('prioritizes leading artwork without eagerly loading the whole retained list or replacing images on a value update',()=>{
  const held=catalog(50);held.items=held.items.map((item,index)=>({...item,artworkUrl:`https://receiz.com/artwork/list-${index}.png`}));source.value={catalog:held,status:'live',error:null,refresh:vi.fn()};
  const host=document.createElement('div'),root=createRoot(host);document.body.append(host);roots.push(root);act(()=>root.render(<Market/>));

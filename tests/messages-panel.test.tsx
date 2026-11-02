@@ -117,6 +117,21 @@ it('shows carried participant images in the inbox, conversation and contact choi
  f.api.conversations.mockResolvedValue([withImage]);f.api.messages.mockResolvedValue({...page,conversation:withImage});
  try{await f.render();await f.click('Messages');expect(f.host.querySelector('.bank-thread-row img')?.getAttribute('src')).toBe(avatar);await f.click('Open conversation Sam');expect(f.host.querySelector('.bank-message-sender img')?.getAttribute('src')).toBe(avatar);await f.click('Back to messages');await f.click('New conversation');expect(f.host.querySelector('.bank-pick-person img')?.getAttribute('src')).toBe(avatar);expect(f.api.search).not.toHaveBeenCalled();}finally{f.unmount();}
 });
+it('shows public Identity Seals for numeric and custom-name inbox accounts from the carried chat coordinates',async()=>{
+ const {chatPerson}=await import('../src/receiz/native-messaging'),{projectMessagingDisplay,readMessagingDisplay}=await import('../src/receiz/messaging-retention');
+ const birth={createdAt:'2026-02-25T06:44:59.650624Z'};
+ const numeric=chatPerson({...peer,...birth,username:'receiz_numeric',displayName:'10,824,603',displayNameSource:'creation-pulse'})!,tash=chatPerson({...other,...birth,username:'receiz_tash',displayName:'Tash S',displayNameSource:'custom'})!;
+ const rows=[{...conversation,title:'10,824,603',members:[numeric]},{...conversation,id:'55555555-5555-4555-8555-555555555555',title:'Tash S',members:[tash]}];
+ const held=readMessagingDisplay(projectMessagingDisplay({accountUid:uid,inbox:rows,pages:[]})),f=fixture();f.api.conversations.mockResolvedValue(rows);
+ try{
+  await f.render(true,{...f.identity,knownMessagingDisplay:()=>held});await f.click('Messages');
+  const portraits=[...f.host.querySelectorAll<HTMLImageElement>('.bank-thread-row .profile-avatar img')];expect(portraits).toHaveLength(2);
+  expect(portraits.every(image=>image.getAttribute('src')?.startsWith('data:image/svg+xml'))).toBe(true);
+  expect([...f.host.querySelectorAll('.bank-conversation-avatar')].map(avatar=>avatar.textContent)).toEqual(['','']);
+  expect(f.host.querySelector('[aria-label="Open conversation 10,824,603"]')).not.toBeNull();expect(f.host.querySelector('[aria-label="Open conversation Tash S"]')).not.toBeNull();
+  expect(f.api.search).not.toHaveBeenCalled();
+ }finally{f.unmount();}
+});
 it('uses the carried member portrait for a world Twin while preparing, streaming and after reply, leaving outgoing bubbles unchanged',async()=>{
  const f=fixture(),pending=deferred<ChatMessage>(),avatar='https://receiz.com/portrait.png',withImage={...conversation,members:[{...peer,avatarUrl:avatar}]};let options:MessageSendOptions|undefined;
  f.api.conversations.mockResolvedValue([withImage]);f.api.messages.mockResolvedValue({...page,conversation:withImage});f.api.knownMessages=()=>({...page,conversation:withImage});f.api.send.mockImplementation(async(_id,_body,value)=>{options=value;return pending.promise;});

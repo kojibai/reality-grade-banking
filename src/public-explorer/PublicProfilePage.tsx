@@ -14,7 +14,7 @@ import {ProfileGrowthPeek} from './ProfileGrowthPeek';
 import {useProfileGrowth} from '../receiz/market-projection/useProfileGrowth';
 import {CHART_PERIODS,type ChartPeriod} from '../core/chart-history';
 import {PublicAssetTradeHost} from './PublicAssetTradeHost';
-import {profileCollectionPrices,profileCollectionSummary,profileSignedOriginals} from './profile-prices';
+import {profileCollectionPrices,profileCollectionSummary} from './profile-prices';
 import {fetchPublicProfile,profilePagePath,publicProfilePageError,publicProfileNeedsRefresh,retainedPublicProfile,retainPublicProfile,type PublicProfile} from '../receiz/public-profile';
 import {buildCheckoutRequest} from '../receiz/checkout-request';
 import {beginProfileAccountAction,beginProfileEdit,closeProfileEdit,attachProfileEdit,readProfileEdit,readProfileOwner,subscribeProfileActions,signProfileWithPbi} from '../receiz/profile-actions';
@@ -47,9 +47,9 @@ export function PublicProfilePage({username,source,active,initialProfile,collect
  const [growthPeriod,setGrowthPeriod]=useState<ChartPeriod>('ALL');
  const cycleGrowth=(direction:number)=>setGrowthPeriod(period=>CHART_PERIODS[(CHART_PERIODS.indexOf(period)+direction+CHART_PERIODS.length)%CHART_PERIODS.length]);
  useEffect(()=>{if(!active)return;let alive=true;const current=retainedPublicProfile(username);setProfile(current);if((!current||publicProfileNeedsRefresh(username))&&(!publicProfilePageError(username)||current||retry>0))void fetchPublicProfile(username).then(value=>{if(alive){setProfile(value);setError('');}},cause=>{if(alive){if(['PROFILE_PRIVATE','PROFILE_NOT_FOUND','PROFILE_CHANGED'].includes(cause.message)||!retainedPublicProfile(username))setProfile(null);setError(cause.message);}});const update=()=>{setProfile(retainedPublicProfile(username));};addEventListener('bankeiz:profile-updated',update);return()=>{alive=false;removeEventListener('bankeiz:profile-updated',update);};},[username,active,retry]);
- // Select once per held revision, before pricing or building the growth view.
- // Profile-level PBI never promotes unsigned objects or changes held ownership.
- const originals=useMemo(()=>profile?profileSignedOriginals(profile.items):emptyItems,[profile?.items]);
+ // The public source already selects profile visibility. Keep that complete
+ // collection for display without changing any object's signing metadata.
+ const originals=profile?.items??emptyItems;
  // A public presentation may reuse an already-held owner-bound collection;
  // it never opens private account state or infers membership from a handle.
  const publicCollection=useMemo(()=>collection&&profile&&collection.accountUserId===profile.userId&&collection.status!=='unavailable'?{...collection,cards:collection.cards.filter(card=>card.publiclyVisible&&card.ownerUserId===profile!.userId)}:null,[collection,profile?.userId]);

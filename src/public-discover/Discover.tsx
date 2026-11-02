@@ -1,4 +1,5 @@
 import {profileUsernameLabel} from '../receiz/account-name';
+import {useScrollReveal} from '../core/useScrollReveal';
 import {lazy,Suspense,useEffect,useMemo,useRef,useState,useSyncExternalStore} from 'react';
 import {ArrowRight,BookOpen,FileText,GalleryVerticalEnd,Image as ImageIcon,Music2,Play,Search,X} from 'lucide-react';
 import {MarketFeedPopover as Viewer} from '../features/market/MarketFeedPopover';
@@ -29,17 +30,9 @@ function Work({item,onOpen,eager,active}:{item:PublicMarketItem;onOpen():void;ea
  {kind==='collectible'&&image?<PublicCollectibleArtwork item={item} eager={eager}/>:kind==='video'?<DiscoveryVideo item={item} active={active&&visible}/>:kind==='document'&&visible?<Suspense fallback={<span className="discover-cover-title">{item.title}</span>}><Document item={item}/></Suspense>:image?<img src={image} alt="" loading={eager?'eager':'lazy'} fetchPriority={eager?'high':'low'} decoding="async" referrerPolicy="no-referrer" crossOrigin={image.includes('/api/proof-material/packages/')?'anonymous':undefined}/>:<div className="discover-text-work"><span>{kind==='moment'?'This happened':kind==='essay'?'Essay':kind==='book'?'Book':'Original'}</span><p>{feedText(item).slice(0,240)}</p></div>}
  <span className="discover-kind" aria-label={categories.find(([key])=>key===kind)?.[1]??kind}><Icon size={17} strokeWidth={1.6}/></span></div><strong className="discover-work-title">{item.title}</strong><span className="discover-work-owner">{discoveryOwnerName(item)}</span></button>;
 }
-/** Direction changes affect only these same controls, never the gallery/source. */
-function useScrollReveal(active:boolean){
- const [away,setAway]=useState(false);
- useEffect(()=>{if(!active)return;let previous=window.scrollY,frame=0;
- const read=()=>{frame=0;const y=window.scrollY,delta=y-previous;if(document.activeElement?.closest('.discover-search')){setAway(false);previous=y;return;}if(y<180)setAway(false);else if(Math.abs(delta)>6){setAway(delta>0);previous=y;}if(y<180)previous=y;};
- const scroll=()=>{if(!frame)frame=requestAnimationFrame(read);};window.addEventListener('scroll',scroll,{passive:true});return()=>{window.removeEventListener('scroll',scroll);cancelAnimationFrame(frame);};},[active]);
- return {away,reveal:()=>setAway(false)};
-}
 export function Discover({seed,active=true}:{seed:PublicMarketItem[];active?:boolean}){
  const [items,setItems]=useState(seed),[query,setQuery]=useState(''),[filter,setFilter]=useState<DiscoveryFilter>('All'),[shown,setShown]=useState(20),[selected,setSelected]=useState<{id?:string}|null>(null),[collecting,setCollecting]=useState(false);
- const scrollTools=useScrollReveal(active);
+ const scrollTools=useScrollReveal(active,'.discover-search');
  const appearance=useSyncExternalStore(subscribeAccountAppearance,readAccountAppearance,()=>null),index=useMemo(()=>buildDiscoveryIndex(items),[items]),results=useMemo(()=>searchDiscovery(index,query,filter),[index,query,filter]),more=useRef<HTMLDivElement>(null);
  const searched=query.trim().length>0,rows=results.items.slice(0,shown),initial=!searched&&filter==='All',people=results.people;
  useEffect(()=>{if(!active)return;const abort=new AbortController();void prepareFeedItems(abort.signal).then(found=>{if(!abort.signal.aborted)setItems(held=>appendFeedItems(held,found));}).catch(()=>{});return()=>abort.abort();},[active]);

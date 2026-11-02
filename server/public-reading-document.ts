@@ -65,7 +65,7 @@ function copyReading(item:PublicMarketItem):ReadingFragment[]{
  return(item.sealedCopies??[]).flatMap(copy=>[readingFields('Public collectible copy',[{label:'Collectible ID',value:copy.collectibleId},{label:'Claim SHA-256',value:copy.claimHash},{label:'Sealed at',value:copy.sealedAt},{label:'Public owner',value:copy.ownerUsername?'@'+copy.ownerUsername:copy.ownerDisplayName,href:copy.ownerUsername?'/read/profiles/'+copy.ownerUsername+'/':copy.ownerProfileUrl}])]);
 }
 export function publicProfileReading(profile:PublicProfile,page=1):ReadingDocument{
- const selected=pageRows(profile.items.filter(item=>item.hasPbiSignature===true),page),path='/read/profiles/'+profile.username+'/';
+ const selected=pageRows(profile.items,page),path='/read/profiles/'+profile.username+'/';
  return createReadingDocument(profile.displayName,profile.bio??'Public Originals and profile.',origin+profilePagePath(profile.username),[
   readingFields('Public profile',[{label:'Receiz ID',value:profile.username},{label:'Location',value:profile.location},{label:'Created',value:profile.createdAt},{label:'Profile PBI receipt',value:profile.pbiReceiptHash}]),
   readingFields('Carried public statistics',Object.entries(profile.stats).map(([label,value])=>({label,value}))),

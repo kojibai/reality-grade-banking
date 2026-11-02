@@ -7,7 +7,7 @@ it('serves an escaped public profile seed as inline HTML',()=>{
  const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.bio='</script><script>alert(1)</script>';
  const result=profilePreviewHtml(html,'alexmorgan',profile);expect(result).toContain('public-profile-seed');expect(result).toContain('Alex Morgan | Bankeiz');expect(result).toContain('https://bankeiz.com/alexmorgan/');expect(result).not.toContain('</script><script>alert');
 });
-it('preloads only the first displayed signed originals and keeps unsigned inventory in the carried seed',()=>{
+it('preloads the first displayed public Originals regardless of signing and keeps the complete public seed',()=>{
  const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.avatarUrl=null;profile.bannerUrl=null;
  const original=profile.items[0];profile.items=[
   {...original,id:'unsigned-cover',hasPbiSignature:false,artworkUrl:'https://receiz.com/artwork/unsigned.png'},
@@ -17,7 +17,7 @@ it('preloads only the first displayed signed originals and keeps unsigned invent
   {...original,id:'signed-cover-3',hasPbiSignature:true,artworkUrl:'https://receiz.com/artwork/signed-3.png'},
  ];
  const result=profilePreviewHtml(html,'alexmorgan',profile);
- expect([...result.matchAll(/<link rel="preload" as="image" href="([^"]+)"/g)].map(match=>match[1])).toEqual(['https://receiz.com/artwork/signed-1.png','https://receiz.com/artwork/signed-2.png']);
+ expect([...result.matchAll(/<link rel="preload" as="image" href="([^"]+)"/g)].map(match=>match[1])).toEqual(['https://receiz.com/artwork/unsigned.png','https://receiz.com/artwork/signed-1.png']);
  expect(result).toContain('unsigned-cover');expect(profile.items).toHaveLength(5);
 });
 it('handles HEAD without fetching a profile or rendering a page',async()=>{

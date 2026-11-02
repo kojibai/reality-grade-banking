@@ -85,7 +85,7 @@ export function safeReceizArtworkUrl(input:unknown):string|null {
 /** Use the same cover priorities carried by Receiz's live player. */
 export function publicMediaArtworkUrl(input:unknown,retainedArtwork?:unknown):string|null {
   const media=record(input),kind=publicMediaKind(media.kind),material=record(media.material),digest=media.originalDownloadSha256Hex;
-  const primary=kind==='audio'?media.audioCoverSrc:kind==='video'?media.videoPosterSrc:kind==='epub'?media.epubCoverSrc:kind==='image'?media.src:null;
+  const primary=kind==='audio'?media.audioCoverSrc:kind==='video'?media.videoPosterSrc:kind==='epub'||kind==='pdf'||kind==='file'?media.epubCoverSrc:kind==='image'?media.src:null;
   const imageOriginal=kind==='image'&&typeof digest==='string'&&/^[a-f0-9]{64}$/i.test(digest)&&digest.toLowerCase()===String(material.sealedArtifactSha256Hex).toLowerCase()&&(!media.originalDownloadMime||/^image\/(?:png|jpeg|webp|gif|avif|bmp)$/i.test(String(media.originalDownloadMime)))?publicMaterialOriginalUrl(material.originalArtifactSrc)??publicMaterialOriginalUrl(material.proofObjectUrl):null;
   for(const candidate of [primary,imageOriginal,retainedArtwork,media.derivativeDownloadSrc,media.receiptDownloadSrc]){const url=safeReceizArtworkUrl(candidate);if(url)return url;}return null;
 }

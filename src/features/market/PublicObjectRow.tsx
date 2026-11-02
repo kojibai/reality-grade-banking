@@ -2,12 +2,16 @@ import {useState} from 'react';
 import {ArrowDownRight,ArrowUpRight} from 'lucide-react';
 import {AssetMark} from '../../components/AssetMark';
 import {MomentCard} from '../media/MomentCard';
+import {ProofPdfPreview} from '../media/ProofPdfPreview';
+import {publicDocumentReaderUrl} from '../../receiz/public-document';
 import {formatPublicPrice,safeReceizArtworkUrl,type PublicMarketItem} from '../../receiz/public-market';
 import {marketContentLabel} from '../../receiz/market-categories';
 import './market.css';
 const percent=new Intl.NumberFormat(undefined,{maximumFractionDigits:2});
 export function PublicObjectArtwork({artworkUrl,item,eager=true}:{artworkUrl:PublicMarketItem['artworkUrl'];item?:PublicMarketItem;eager?:boolean}){
  const [failedArtwork,setFailedArtwork]=useState<string|null>(null),safeArtwork=safeReceizArtworkUrl(artworkUrl),artwork=safeArtwork!==failedArtwork?safeArtwork:null;
+ const document=item?.mediaKind==='pdf'&&item.documentUrl&&(!artwork||new URL(artwork).pathname==='/api/receiz/download')?publicDocumentReaderUrl(item.documentUrl,item.assetId):null;
+ if(document&&item)return <span className="asset-mark market-object-document"><ProofPdfPreview key={document+':'+item.originalDigest} url={document} title={item.title} cacheKey={'market:'+item.id+':'+(item.originalDigest??document)}/></span>;
  return artwork?<span className="asset-mark market-object-artwork"><img src={artwork} alt="" loading={eager?'eager':'lazy'} decoding="async" referrerPolicy="no-referrer" crossOrigin={artwork.includes('/api/proof-material/packages/')?'anonymous':undefined} onError={()=>setFailedArtwork(artwork)}/></span>:item?.mediaKind==='moment'?<span className="asset-mark market-object-moment"><MomentCard item={item} thumbnail/></span>:<AssetMark kind="proof"/>;
 }
 function PublicObjectProvenance({item}:{item:PublicMarketItem}){

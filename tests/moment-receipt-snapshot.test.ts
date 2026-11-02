@@ -2,6 +2,9 @@ import {expect,it,vi} from 'vitest';
 import source from '../public/receiz-public-market.json';
 import {parsePublicMarket} from '../src/receiz/public-market';
 import {publicAssetManifest} from '../src/receiz/public-asset-manifest';
+import {reuseShippedProfileShareHistory} from '../server/profile-share-history';
+import {parsePublicProfile} from '../src/receiz/public-profile';
+import {profileFixture} from './fixtures/public-profile';
 it('paints the verified carried receipt SHAs from the existing retained catalogue without a request',()=>{
  const request=vi.spyOn(globalThis,'fetch');try{
   const catalog=parsePublicMarket(source,source.snapshot),moments=catalog.items.filter(item=>item.mediaKind==='moment'&&item.proofManifestSource?.recordCardMediaSha256Hex);
@@ -16,4 +19,9 @@ it('paints the verified carried receipt SHAs from the existing retained catalogu
   for(const item of moments)expect(publicAssetManifest(item.proofManifestSource).find(row=>row.label==='Media SHA-256')?.value).toBe(item.proofManifestSource!.recordCardMediaSha256Hex);
   expect(request).not.toHaveBeenCalled();
  }finally{request.mockRestore();}
+});
+it('carries the known Moment basis in the existing profile partition when the live collection omits it',async()=>{
+ const catalog=parsePublicMarket(source,source.snapshot),known=catalog.items.find(item=>item.assetId==='cd5a74fa-bdc5-45b8-8e4b-8aa7fe4df420')!;
+ const current={...known,proofManifestSource:{...known.proofManifestSource!,recordCardMediaSha256Hex:null}},profile={...parsePublicProfile(profileFixture(),'alexmorgan'),username:known.ownerUsername!,items:[current]};
+ const fetch=vi.spyOn(globalThis,'fetch');try{const result=await reuseShippedProfileShareHistory(profile);expect(publicAssetManifest(result.items[0].proofManifestSource).find(row=>row.label==='Media SHA-256')?.value).toBe('F167D2B6ECD5D0A5C69B5BE21048A0CC7F020C360EEB6C2D4EC1D8F49688D5DB');expect(fetch).not.toHaveBeenCalled();}finally{fetch.mockRestore();}
 });

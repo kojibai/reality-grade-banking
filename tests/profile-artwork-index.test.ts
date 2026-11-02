@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {expect,it} from 'vitest';
 
-it('prepares early profile covers only from object-level PBI metadata while retaining every standalone title',()=>{
+it('prepares early covers for the existing public profile order regardless of PBI while retaining every standalone title',()=>{
  const root=realpathSync(mkdtempSync(join(tmpdir(),'bank-profile-pbi-index-')));
  try{
   for(const path of ['scripts','public','src/content'])mkdirSync(join(root,path),{recursive:true});
@@ -14,7 +14,7 @@ it('prepares early profile covers only from object-level PBI metadata while reta
   execFileSync(process.execPath,[join(root,'scripts/build-asset-title-index.mjs')],{cwd:root,stdio:'pipe'});
   const output=readFileSync(join(root,'src/content/public-asset-titles.ts'),'utf8');
   const covers=JSON.parse(output.split('export const publicProfileArtwork:Readonly<Record<string,readonly string[]>>=')[1].trim().slice(0,-1));
-  expect(covers).toEqual({alexmorgan:['https://receiz.com/artwork/signed.png','https://receiz.com/artwork/receipt.png']});
+  expect(covers).toEqual({alexmorgan:['https://receiz.com/artwork/unsigned.png','https://receiz.com/artwork/signed.png','https://receiz.com/artwork/receipt.png','https://receiz.com/artwork/invalid.png']});
   const titles=JSON.parse(output.split('export const publicAssetTitles:Readonly<Record<string,readonly [string,string,string]>>=')[1].split(';\n')[0]);
   expect(Object.keys(titles)).toEqual(['unsigned','signed','receipt','invalid']);
  }finally{rmSync(root,{recursive:true,force:true});}

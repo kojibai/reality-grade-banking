@@ -34,3 +34,49 @@ it('keeps a readable fallback after an image fails and clears the failed source 
 it('respects a confirmed removed portrait instead of reviving older messaging or sealed artwork',async()=>{
  const {identityProfileAvatar}=await helpers();const identity={knownProfile:()=>({avatarUrl:null}),localHistory:{portableStateVerified:true,verifiedState:{profile:{avatarUrl:'https://receiz.com/old.png'}}}} as unknown as OpenIdentity;expect(identityProfileAvatar(identity)).toBeNull();
 });
+
+async function freshSignedAccount(){
+ const {createReceizIdIdentity,projectReceizIdentityAccount}=await import('@receiz/sdk'),{initializeFreshBankAccount}=await import('../src/receiz/new-account-genesis');
+ const created=await createReceizIdIdentity({createdAt:'2026-02-25T06:44:59.650624Z',username:'receiz_fresh_owner'}),key=await initializeFreshBankAccount(created.keyFile),projection=await projectReceizIdentityAccount(key);
+ const forbidden=()=>{throw Error('avatar presentation must not open or read an identity');};
+ const identity={username:created.username,accountUsername:()=>created.username,binding:{keyId:key.keyId,identityOwnerReceizId:created.localUid},localHistory:projection,knownProfile:()=>null,knownMessagingDisplay:()=>null,walletReceivingAddress:()=>created.localUid,backup:forbidden,readWallet:forbidden,prepareAccountView:forbidden,profile:forbidden,messaging:forbidden} as unknown as OpenIdentity;
+ return {identity,created,key,projection};
+}
+it('shows the canonical public seal from a genuine fresh signed account genesis before any profile or conversation exists',async()=>{
+ const {identity,created,projection}=await freshSignedAccount(),{identityProfileAvatar}=await helpers(),before=JSON.stringify(projection),avatar=identityProfileAvatar(identity);
+ expect(avatar).not.toBeNull();expect(avatar).toMatch(/^data:image\/svg\+xml/);
+ const {pathToFileURL}=await import('node:url'),canonical=await import(pathToFileURL(process.cwd()+'/public/native/identity-artwork.v129.mjs').href),expected=canonical.artwork({userId:created.localUid,createdAt:'2026-02-25T06:44:59.650624Z',creationKaiMicroPulse:'10824603119470',receizId:'receiz_fresh_owner',pbiReceiptHash:null});
+ expect(decodeURIComponent(avatar!.slice(avatar!.indexOf(',')+1))).toBe(expected.avatarSvg);
+ const {ConsoleShell}=await import('../src/components/ConsoleShell'),{IdentityProfile}=await import('../src/features/account/IdentityProfile'),host=document.createElement('div'),root=createRoot(host);
+ try{
+  act(()=>root.render(<ConsoleShell identityImage={avatar} active={false} panel="account" onNavigate={()=>{}} onDeposit={()=>{}} onProfile={()=>{}}><IdentityProfile identity={identity} active={false} onForget={async()=>{}} onRefresh={()=>{}}/></ConsoleShell>));
+  expect(host.querySelector('[aria-label="Account settings"] img')?.getAttribute('src')).toBe(avatar);expect(host.querySelector('[aria-label="Account settings"]')?.textContent).toBe('');
+  expect(host.querySelector('.profile-identity img')?.getAttribute('src')).toBe(avatar);
+  act(()=>host.querySelector<HTMLButtonElement>('.quick-profile-toggle')!.click());expect(host.querySelector('.quick-profile-photo img')?.getAttribute('src')).toBe(avatar);
+ }finally{act(()=>root.unmount());}
+ expect(JSON.stringify(projection)).toBe(before);
+});
+it('never treats a recovered account, export, device timestamp or mismatched genesis as account birth',async()=>{
+ const {identity,projection}=await freshSignedAccount(),{identityProfileAvatar}=await helpers();
+ for(const alter of [
+  (value:Record<string,unknown>)=>{delete value.bankGenesis;},
+  (value:Record<string,unknown>)=>{value.schema='receiz.device.identity.v1';delete value.bankGenesis;},
+  (value:Record<string,unknown>)=>{(value.bankGenesis as Record<string,unknown>).keyId='another-key';},
+  (value:Record<string,unknown>)=>{(value.bankGenesis as Record<string,unknown>).userId='another-user';},
+  (value:Record<string,unknown>)=>{(value.bankGenesis as Record<string,unknown>).applicationId='another-app';},
+  (value:Record<string,unknown>)=>{(value.bankGenesis as Record<string,unknown>).createdAt='2026-02-26T00:00:00Z';},
+  (value:Record<string,unknown>)=>{(value.account as Record<string,unknown>).userId='a-recovered-account';},
+ ]){const state=structuredClone(projection.verifiedState) as Record<string,unknown>;alter(state);expect(identityProfileAvatar({...identity,localHistory:{...projection,verifiedState:state}})).toBeNull();}
+ expect(identityProfileAvatar({...identity,walletReceivingAddress:()=> 'another-account'})).toBeNull();
+ expect(identityProfileAvatar({...identity,localHistory:{...projection,portableStateVerified:false}})).toBeNull();
+ expect(identityProfileAvatar({...identity,localHistory:{...projection,authority:'identity-only'}})).toBeNull();
+ expect(identityProfileAvatar({...identity,binding:{...identity.binding,keyId:'another-key'}})).toBeNull();
+ expect(identityProfileAvatar({...identity,binding:{...identity.binding,identityOwnerReceizId:'another-owner'}})).toBeNull();
+});
+it('uses the already-confirmed same-account username for the fresh seal when the signed bootstrap has an older alias',async()=>{
+ const {identity,created,projection}=await freshSignedAccount(),{identityProfileAvatar}=await helpers(),before=JSON.stringify(projection);
+ const {pathToFileURL}=await import('node:url'),canonical=await import(pathToFileURL(process.cwd()+'/public/native/identity-artwork.v129.mjs').href),expected=canonical.artwork({userId:created.localUid,createdAt:'2026-02-25T06:44:59.650624Z',creationKaiMicroPulse:'10824603119470',receizId:'fresh_current_name',pbiReceiptHash:null});
+ const avatar=identityProfileAvatar({...identity,accountUsername:()=> 'fresh_current_name'});
+ expect(avatar).not.toBeNull();expect(decodeURIComponent(avatar!.slice(avatar!.indexOf(',')+1))).toBe(expected.avatarSvg);
+ expect(JSON.stringify(projection)).toBe(before);
+});

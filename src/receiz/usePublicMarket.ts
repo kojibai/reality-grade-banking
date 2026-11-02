@@ -1,4 +1,5 @@
 import {compatibleShareInventory,mergeShareInventory} from './market-share-inventory';
+import {retainPublicMomentManifest} from './public-asset-manifest';
 import { useCallback, useEffect, useMemo, useRef, useState,type SetStateAction } from 'react';
 import {receizKaiNow} from '@receiz/sdk';
 import { fetchPublicSports, mergePublicSports,retainPublicSportsInput } from './public-sports';
@@ -26,7 +27,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
   const generation = useRef(0), sports = useRef<unknown>(null);
   useEffect(()=>subscribeAssetPublicationAdmissions(accepted=>{setCatalog(current=>{
     if(!accepted)return current;const previous=new Map(current?.items.map(item=>[item.id,item]));
-    return mergePublicSports({...accepted,items:accepted.items.map(item=>{const prior=previous.get(item.id),next={...retainPublicArtwork(item,prior),shareInventory:compatibleShareInventory(item,prior?.shareInventory)};return prior?.chart.length?{...next,priceUsd:prior.priceUsd,changePct:prior.changePct,chart:prior.chart}:next;})},sports.current);
+    return mergePublicSports({...accepted,items:accepted.items.map(item=>{const prior=previous.get(item.id),next={...retainPublicMomentManifest(retainPublicArtwork(item,prior),prior),shareInventory:compatibleShareInventory(item,prior?.shareInventory)};return prior?.chart.length?{...next,priceUsd:prior.priceUsd,changePct:prior.changePct,chart:prior.chart}:next;})},sports.current);
   });}),[setCatalog]);
   useEffect(() => { try { sports.current = JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1') ?? 'null'); } catch { /* No retained public inventory. */ } }, []);
   // Share observations have their own read lifetime. A recorded trade never
@@ -64,7 +65,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
         const previous=new Map(current?.items.map(item=>[item.id,item]));
         let updated=mergePublicSports({...next,items:next.items.map(item=>{
           const quoted=previous.get(item.id);
-          const presented={...retainPublicArtwork(item,quoted),shareInventory:compatibleShareInventory(item,quoted?.shareInventory)};
+          const presented={...retainPublicMomentManifest(retainPublicArtwork(item,quoted),quoted),shareInventory:compatibleShareInventory(item,quoted?.shareInventory)};
           return quoted?.chart.length?{...presented,priceUsd:quoted.priceUsd,changePct:quoted.changePct,chart:quoted.chart}:presented;
         })},sports.current);
         if(latestQuotes.current)updated=mergePublicQuotes(updated,latestQuotes.current);
@@ -99,7 +100,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
           const hint=hints.get(item.id);
           if(!hint||hint.assetId!==item.assetId||hint.pulse!==item.pulse||hint.originalDigest!==item.originalDigest||hint.verifyUrl!==item.verifyUrl)return item;
           const presented=item.mediaKind===undefined&&hint.mediaKind!==undefined?{...item,mediaKind:hint.mediaKind}:item;
-          return {...retainPublicArtwork(presented,hint),shareInventory:mergeShareInventory(compatibleShareInventory(item,item.shareInventory),compatibleShareInventory(item,hint.shareInventory)??null),...(item.hasLongForm===undefined?{hasLongForm:hint.hasLongForm,readingUrl:hint.readingUrl}:{}),...(!item.livePulseSeed&&hint.livePulseSeed?{livePulseSeed:hint.livePulseSeed,valuationBinding:hint.valuationBinding}:{})};
+          return {...retainPublicMomentManifest(retainPublicArtwork(presented,hint),hint),shareInventory:mergeShareInventory(compatibleShareInventory(item,item.shareInventory),compatibleShareInventory(item,hint.shareInventory)??null),...(item.hasLongForm===undefined?{hasLongForm:hint.hasLongForm,readingUrl:hint.readingUrl}:{}),...(!item.livePulseSeed&&hint.livePulseSeed?{livePulseSeed:hint.livePulseSeed,valuationBinding:hint.valuationBinding}:{})};
         })};
       });
     }).catch(() => {});

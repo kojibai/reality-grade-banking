@@ -1,5 +1,6 @@
 import {publicNativeAssetBinding} from './native-asset-public-binding.js';
 import {safeImportedSourceUrl} from "./imported-source-url.js";
+import type {PublicMarketItem} from './public-market.js';
 /** The live-player manifest, projected from the same public ProfileOriginal.
  * These are source display fields. Rendering them performs no verification. */
 export type PublicAssetManifestRow={label:string;value:string;href?:string;downloadName?:string};
@@ -7,6 +8,27 @@ export type PublicAssetManifestSource={mediaKind?:string|null;code:string|null;p
 const record=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
 const text=(value:unknown,max=4096)=>typeof value==='string'&&value.trim()&&value.length<=max?value.trim():typeof value==='number'&&Number.isSafeInteger(value)?String(value):null;
 const hash=(value:unknown)=>{const raw=text(value,160);return raw&&/^[a-f0-9]{64}$/i.test(raw)?raw.toUpperCase():null;};
+export type PublicMomentManifestHint=Pick<PublicMarketItem,'id'|'assetId'|'ownerUsername'|'mediaKind'|'category'|'pulse'|'verifyUrl'|'originalDigest'|'nativeAsset'|'proofManifestSource'>;
+/** A thinner public projection must not erase an already-carried card basis.
+ * The complete coordinate, claim, proof and current PBI receipt must agree;
+ * an old pre-append card or a changed source cannot supply this display field.
+ * This projects one existing value and never opens or verifies an artifact. */
+export function retainPublicMomentManifest(item:PublicMarketItem,previous?:PublicMomentManifestHint):PublicMarketItem{
+ const current=item.proofManifestSource,held=previous?.proofManifestSource,basis=hash(held?.recordCardMediaSha256Hex);
+ if(!previous||!current||!held||!basis||hash(current.recordCardMediaSha256Hex)||item.category!=='proof'||previous.category!=='proof'||item.mediaKind!=='moment'||previous.mediaKind!=='moment'
+  ||item.id!==previous.id||item.assetId!==previous.assetId||!item.ownerUsername||item.ownerUsername!==previous.ownerUsername
+  ||!item.pulse||item.pulse!==previous.pulse||!item.verifyUrl||item.verifyUrl!==previous.verifyUrl||item.originalDigest!==previous.originalDigest)return item;
+ if(publicManifestLink(current.verifyPath)!==item.verifyUrl||publicManifestLink(held.verifyPath)!==item.verifyUrl
+  ||!current.code||current.code!==held.code||current.pulse!==item.pulse||held.pulse!==item.pulse
+  ||!hash(current.claimHashHex)||hash(current.claimHashHex)!==hash(held.claimHashHex)
+  ||!hash(current.pbiReceiptHash)||hash(current.pbiReceiptHash)!==hash(held.pbiReceiptHash)
+  ||!current.proof?.groth16Id||current.proof.groth16Id!==held.proof?.groth16Id
+  ||!current.proof.poseidon||current.proof.poseidon!==held.proof?.poseidon||current.proof.circuit!==held.proof?.circuit)return item;
+ if(item.nativeAsset||previous.nativeAsset){const currentNative=publicNativeAssetBinding(item.nativeAsset),heldNative=publicNativeAssetBinding(previous.nativeAsset);
+  if(!currentNative||!heldNative||(['id','issuanceSourceSha256','headSourceSha256','publicCertificateSha256'] as const).some(key=>currentNative[key]!==heldNative[key]))return item;
+ }
+ return {...item,proofManifestSource:{...current,recordCardMediaSha256Hex:basis}};
+}
 /** Keep only bounded public inputs in discovery. Allocate the manifest rows for
  * the selected asset, rather than thousands of unused backs in the catalogue. */
 export function readPublicAssetManifestSource(input:unknown):PublicAssetManifestSource|undefined{

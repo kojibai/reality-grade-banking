@@ -7,6 +7,7 @@ import { parsePublicMarket } from '../src/receiz/public-market';
 import {publicSigilQuoteAtPulse} from '../src/receiz/market-projection/project';
 import {publicSportsValueRow} from '../src/receiz/market-projection/source';
 import {fetchPublicSports} from '../src/receiz/public-sports';
+import {publicAssetManifest} from '../src/receiz/public-asset-manifest';
 const clock=vi.hoisted(()=>({pulse:14710100}));
 vi.mock('@receiz/sdk',async original=>({...await original<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
 const network = vi.hoisted(() => ({ membership: vi.fn(), quotes: vi.fn() }));
@@ -21,6 +22,13 @@ it('retains carried album artwork across a thinner refresh of the exact same pub
  const source={...sourceInput(['a']),transport:{...sourceInput(['a']).transport,publicOriginals:[row]}},thin={...source,transport:{...source.transport,publicOriginals:[{...row,profileOriginal:{...row.profileOriginal,artworkUrl:null}}]}};
  network.membership.mockResolvedValueOnce(parsePublicMarket(source)).mockResolvedValueOnce(parsePublicMarket(thin)).mockResolvedValueOnce(parsePublicMarket({...thin,transport:{...thin.transport,publicOriginals:[{...row,profileOriginal:{mediaKind:'audio',media:{originalDownloadSha256Hex:'b'.repeat(64)}}}]}}));network.quotes.mockResolvedValue(quoteInput());
  await observe(async read=>{expect(read().catalog?.items[0].artworkUrl).toBe('https://receiz.com/artwork/album.jpg');await act(async()=>read().refresh());expect(read().catalog?.items[0].artworkUrl).toBe('https://receiz.com/artwork/album.jpg');await act(async()=>read().refresh());expect(read().catalog?.items[0].artworkUrl).toBeNull();});
+});
+it('retains a carried Moment-card SHA through a thinner live refresh and refuses a different PBI append',async()=>{
+ const verifyPath='/v/20261020_1200/ABCD1234/12345678?a=12345678&ms=1791828092396',proof={circuit:'Groth16',groth16Id:'original-proof',poseidon:'123456789'},profile={code:'ABCD1234',pulse:'12345678',verifyPath,claimHashHex:'a'.repeat(64),pbiReceiptHash:'b'.repeat(64),proof,media:null};
+ const row={id:'profile:artist:moment',receizId:'moment',ownerUsername:'artist',title:'Moment',pulse:'12345678',verifyHref:verifyPath,profileOriginal:profile};
+ const catalog=(profileOriginal:typeof profile&{recordCardMediaSha256Hex?:string})=>parsePublicMarket({...sourceInput(['moment']),transport:{...sourceInput(['moment']).transport,publicOriginals:[{...row,profileOriginal}]}});
+ network.membership.mockResolvedValueOnce(catalog({...profile,recordCardMediaSha256Hex:'c'.repeat(64)})).mockResolvedValueOnce(catalog(profile)).mockResolvedValueOnce(catalog({...profile,pbiReceiptHash:'d'.repeat(64)}));network.quotes.mockResolvedValue(quoteInput());
+ await observe(async read=>{await act(async()=>read().refresh());expect(publicAssetManifest(read().catalog?.items[0].proofManifestSource).find(row=>row.label==='Media SHA-256')?.value).toBe('C'.repeat(64));await act(async()=>read().refresh());expect(publicAssetManifest(read().catalog?.items[0].proofManifestSource).find(row=>row.label==='Media SHA-256')?.value).toBe('Unavailable');});
 });
 async function observe(run: (read: () => ReturnType<typeof usePublicMarket>) => Promise<void>) {
   let state!: ReturnType<typeof usePublicMarket>; const root = createRoot(document.createElement('div'));
