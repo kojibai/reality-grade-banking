@@ -65,6 +65,7 @@ export type ProfileShowcasePublicProjectionPublicationResult =
     }>;
 
 class PublicationRejection extends Error {}
+class PublicationPending extends Error {}
 
 /** Immediate servant distribution of an already-settled local proof object. */
 export async function publishProfileShowcasePublicProjection(
@@ -136,8 +137,11 @@ export async function publishProfileShowcaseTransport(
       if (!routeStillCurrent()) throw new TypeError("PROFILE_SHOWCASE_PUBLICATION_ACCOUNT_CHANGED");
       const response = action ? await deliverSourceBoundPublicationAction(action, fetchImpl, headers)
         : await fetchImpl("/api/profile/showcase/publication", { method: "POST", credentials: "same-origin", headers, body: bodyText });
-      const value = await response.json();
+      const value = await response.json().catch(() => null);
       if (value?.status === "rejected" && typeof value.code === "string" && value.code.trim()) throw new PublicationRejection(value.code);
+      if (value?.status === "pending" && typeof value.code === "string" && value.code.trim()) throw new PublicationPending(value.code);
+      if (!response.ok) throw new PublicationPending(`PROFILE_SHOWCASE_PUBLICATION_HTTP_${response.status}`);
+      if (!value || typeof value !== "object") throw new PublicationPending("PROFILE_SHOWCASE_PUBLICATION_RESPONSE_INVALID");
       return value;
     };
     const queue: Array<{ reference: ExactByteBlockReference; bytes: Uint8Array }> = [];
@@ -188,7 +192,8 @@ export async function publishProfileShowcaseTransport(
     return pending();
   } catch (error) {
     if (error instanceof PublicationRejection) return { status: "rejected", code: error.message };
-    if (error instanceof Error && /^PROFILE_SHOWCASE_[A-Z0-9_]+$/.test(error.message)) {
+    if (error instanceof PublicationPending) return { status: "pending", code: error.message };
+    if (error instanceof Error && /^(?:PROFILE_SHOWCASE_|BANK_ASSET_PUBLICATION_)[A-Z0-9_]+$/.test(error.message)) {
       return { status: "pending", code: error.message };
     }
     console.warn("profile_showcase_public_projection_delivery_failed",

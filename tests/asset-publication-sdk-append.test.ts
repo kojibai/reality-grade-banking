@@ -17,7 +17,7 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  const owner=(await r.readReceizIdentityPublicBinding(actor)).artifactOwnerReceizId,username='sdk_artist',uid='sdk-account',artifactId=`profile-showcase:${owner}`;
  const enrollment=await f.store.load(),seal=await r.createBankNativeNoteSealer({enrollment,resources:f.resources});
  const blocks=new Map<string,Uint8Array>(),staged=new Map<string,Uint8Array>(),reads:string[]=[],timeline:string[]=[];
- let accepted:Record<string,unknown>={status:'unmigrated'},complete:any,finalizations=0,seals=0,interrupt=false,attemptDigest:string|undefined,active=true,switchOnUpload=false,interruptBeforeUpload=false;
+ let accepted:Record<string,unknown>={status:'unmigrated'},complete:any,finalizations=0,seals=0,finalHTTPStatus=0,interrupt=false,attemptDigest:string|undefined,active=true,switchOnUpload=false,interruptBeforeUpload=false;
  const roots=new Map(f.roots.map((root:{kid:string})=>[root.kid,root]));
  const request:typeof fetch=async(input,init)=>{
   const url=new URL(String(input),'https://bankeiz.test');
@@ -33,6 +33,7 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
   if(body.action==='initialize-blocks')return Response.json({status:'uploads',scope:body.scope,uploads:body.references.map((reference:{sha256:string})=>({reference,alreadyStored:blocks.has(reference.sha256),signedUrl:`https://storage.test/${reference.sha256}`,stagingObjectName:reference.sha256}))});
   if(body.action==='commit-blocks'){for(const item of body.blocks){const bytes=staged.get(item.stagingObjectName);if(!bytes)throw Error('Missing staged bytes');blocks.set(item.reference.sha256,bytes);}return Response.json({status:'stored',scope:body.scope});}
   expect(body.action).toBe('finalize');finalizations++;timeline.push('finalize');
+  if(finalHTTPStatus)return Response.json({error:'access_denied'},{status:finalHTTPStatus});
   const source=await r.showcaseTransport.reconstructProfileShowcaseCompleteSourceTransport(body.transport,async(ref:{sha256:string})=>blocks.get(ref.sha256)??null);
   const vault=r.showcaseVault.createProfileShowcaseBoundedEdgeVault({databaseName:`independent-receiver-${finalizations}`});
   const admitted=await r.showcaseRetainer.retainAcceptedShowcasePredecessor({source,artifactId,vault,canonicalSignatureV4RootPublicKeys:roots});
@@ -58,6 +59,7 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  vi.stubGlobal('indexedDB',new IDBFactory());runtime=await open();reads.length=0;timeline.length=0;
  const next=await runtime.prepare({kind:'image',title:'Next exact image',description:'',longForm:'Next full essay',files:[{id:'photo',role:'primary',file:image}]});
  interrupt=true;expect((await runtime.publish(next.artifact)).status).toBe('pending');
+ finalHTTPStatus=403;expect(await runtime.publish(next.artifact)).toEqual({status:'pending',code:'PROFILE_SHOWCASE_PUBLICATION_HTTP_403'});finalHTTPStatus=0;
  expect(timeline.indexOf('local')).toBeLessThan(timeline.indexOf('finalize'));
  // Later unrelated/completed transport activity cannot evict an unfinished
  // publication's exact committed association. These copies are storage fixtures,

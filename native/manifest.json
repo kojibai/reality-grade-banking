@@ -7076,7 +7076,7 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/publicProjectionPublication.ts",
-      "sha256": "39d069bd1c946abb5d3d46e72dd55671eb1fb40b18e6bf6fdb6669493b048ebf",
+      "sha256": "41db18707a658f43b2f011d48384cee144e73b2167090b4bde42c955f494fa15",
       "bytes": 12400,
       "mode": 420
     },
@@ -17070,7 +17070,7 @@
       "id": "bankeiz-source-first-publicProjectionPublication",
       "path": "receiz/app/lib/profile/showcase/publicProjectionPublication.ts",
       "baseSha256": "614e052d061c36e5a0c2f86dc8610435796c51a7d7749d6515498c21c7747a48",
-      "sha256": "9b212579e87eaf03c45dc9913db08bf9cd37e0512847d9701acb68fbc86e5a05",
+      "sha256": "41db18707a658f43b2f011d48384cee144e73b2167090b4bde42c955f494fa15",
       "purpose": "Reuse exact immutable source closures from an acknowledged publication while the unchanged finalizer verifies the successor. New/unacknowledged sources still export every committed byte."
     },
     {
@@ -17113,7 +17113,7 @@
       "id": "bankeiz-incremental-original-delivery",
       "path": "receiz/app/lib/profile/showcase/publicProjectionPublication.ts",
       "baseSha256": "9b212579e87eaf03c45dc9913db08bf9cd37e0512847d9701acb68fbc86e5a05",
-      "sha256": "39d069bd1c946abb5d3d46e72dd55671eb1fb40b18e6bf6fdb6669493b048ebf",
+      "sha256": "41db18707a658f43b2f011d48384cee144e73b2167090b4bde42c955f494fa15",
       "purpose": "Use existing SDK exact-predecessor admission, append capability, atomic commit and v2 publication while retaining immutable historical byte references. Reuse runtime-admitted context and the existing signed outbox; preserve exact source, media, Kai, consent, signing and account entry."
     },
     {
@@ -17871,7 +17871,7 @@
     },
     {
       "path": "app/lib/profile/showcase/publicProjectionPublication.ts",
-      "sha256": "39d069bd1c946abb5d3d46e72dd55671eb1fb40b18e6bf6fdb6669493b048ebf"
+      "sha256": "41db18707a658f43b2f011d48384cee144e73b2167090b4bde42c955f494fa15"
     },
     {
       "path": "app/lib/profile/showcase/publicProjectionRetry.ts",
