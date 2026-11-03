@@ -28,6 +28,13 @@ const object=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'&&!Array.
 const text=(v:unknown,max=4096)=>typeof v==='string'&&v.trim()&&v.length<=max?v.trim():null;
 const number=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)&&v>=0?v:null;
 export function publicProfileLink(v:unknown){const raw=text(v,8192);if(!raw)return null;try{const u=new URL(raw);return u.protocol==='https:'&&!u.username&&!u.password?u.href:null;}catch{return null;}}
+/** Match Receiz's latest showcase presentation: sealed Kai pulse, then Original
+ * ID. Accepted storage order and mutable display dates do not rank Originals. */
+function compareProfileOriginals(left:PublicMarketItem,right:PublicMarketItem){
+ if(left.pulse&&right.pulse){const a=BigInt(left.pulse),b=BigInt(right.pulse);if(a!==b)return a>b?-1:1;}
+ else if(left.pulse||right.pulse)return left.pulse?-1:1;
+ return right.assetId.localeCompare(left.assetId);
+}
 function publicOriginalItems(rows:unknown[],p:Record<string,unknown>,collection=false):PublicMarketItem[]{
  const username=String(p.username),displayName=publicAccountDisplayName(p,username);
  const originals=rows.filter(row=>object(row).showOnProfile===true).map(value=>{
@@ -37,7 +44,7 @@ function publicOriginalItems(rows:unknown[],p:Record<string,unknown>,collection=
    canonicalHref:`https://receiz.com/${username}/verified/${encodeURIComponent(id??'')}`,verifyHref:row.verifyUrl??row.verifyPath,pulse:row.pulse,createdAt:row.createdAt,valueUsd:market.priceUsd,livePulseSeed:market.livePulseSeed,
    profileOriginal:{...row,media,hasLongForm:collection?row.hasLongForm:Boolean(long.text),longForm:row.longForm}};
  });
- return parsePublicMarket({ok:true,transport:{publicOriginals:originals}}).items.map(item=>({...item,ownerAvatarUrl:profileAvatarUrl(p.avatarUrl)}));
+ return parsePublicMarket({ok:true,transport:{publicOriginals:originals}}).items.map(item=>({...item,ownerAvatarUrl:profileAvatarUrl(p.avatarUrl)})).sort(compareProfileOriginals);
 }
 /** The anonymous verified-viewer route admits the selected public Original.
  * This is a display projection; it adds no ownership or trading authority. */
