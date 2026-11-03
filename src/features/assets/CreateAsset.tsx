@@ -23,7 +23,28 @@ export function CreateAsset({identity,onRefresh,onClose,active:visible=true}:{ac
  const [progress,setProgress]=useState<import('../../receiz/asset-publication').AssetCreationProgress|null>(null),[elapsed,setElapsed]=useState(0);
  const [backedState,setBackedState]=useState<BackedPublicationState|null>(null),[resultBacked,setResultBacked]=useState(false);
  const active=useRef(true),running=useRef(false),revision=useRef(0);
- useEffect(()=>{active.current=true;const at=revision.current;void Promise.allSettled([identity.backedAssetPublication?.().then(api=>api.pending())??Promise.resolve(null),identity.pendingAssetPublication?.()??Promise.resolve(null)]).then(([backed,ordinary])=>{if(!active.current||at!==revision.current)return;if(backed.status==='fulfilled'&&backed.value?.state&&backed.value.state.stage!=='published'){setBackedState(backed.value.state);setFunded(true);setResultBacked(true);if(backed.value.deposit)setResult(backed.value.deposit);}else if(ordinary.status==='fulfilled'&&ordinary.value)setResult(ordinary.value);if(backed.status==='rejected'||ordinary.status==='rejected')setError('A saved creation could not be reopened. Your original recovery remains on this device.');});return()=>{active.current=false;};},[identity]);
+ useEffect(()=>{
+  active.current=true;running.current=false;setBusy(false);let current=true;const at=revision.current;
+  const stillCurrent=()=>current&&active.current&&at===revision.current;
+  void Promise.allSettled([identity.backedAssetPublication?.().then(api=>api.pending())??Promise.resolve(null),identity.pendingAssetPublication?.()??Promise.resolve(null)]).then(async([backed,ordinary])=>{
+   if(!stillCurrent())return;
+   if(backed.status==='fulfilled'&&backed.value?.state&&backed.value.state.stage!=='published'){setBackedState(backed.value.state);setFunded(true);setResultBacked(true);if(backed.value.deposit)setResult(backed.value.deposit);}
+   else if(ordinary.status==='fulfilled'&&ordinary.value){
+    setResult(ordinary.value);
+    // Continue only this saved, unsigned delivery once. Its existing publisher
+    // reuses the exact retained append and persists the returned acknowledgment.
+    // Opening an empty editor or a newly created result starts no extra delivery.
+    if(ordinary.value.publication?.status==='pending'&&!ordinary.value.pbiSigned&&identity.retryAssetPublication){
+     running.current=true;setBusy(true);
+     try{const settled=await identity.retryAssetPublication();if(stillCurrent()&&settled){setResult(settled);onRefresh();}}
+     catch(cause){if(stillCurrent())setError(cause instanceof Error?cause.message:'Your original remains saved. Try delivery again.');}
+     finally{if(current){running.current=false;if(stillCurrent())setBusy(false);}}
+    }
+   }
+   if(stillCurrent()&&(backed.status==='rejected'||ordinary.status==='rejected'))setError('A saved creation could not be reopened. Your original recovery remains on this device.');
+  });
+  return()=>{current=false;active.current=false;};
+ },[identity]);
  useEffect(()=>{if(!busy||result)return;const started=performance.now();setElapsed(0);const timer=setInterval(()=>setElapsed(Math.floor((performance.now()-started)/1000)),1000);return()=>clearInterval(timer);},[busy,!!result]);
  async function create(){if(running.current)return;running.current=true;revision.current++;setBusy(true);setProgress({stage:'preparing'});setError('');try{
   const definition=result?null:composerDefinition(draft,settings);

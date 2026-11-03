@@ -47,8 +47,7 @@ it('reopens pending source custody after refresh and resumes it without a new fo
  const createAsset=vi.fn(),retryAssetPublication=vi.fn(async()=>({...pending,publication:{status:'published' as const}})),host=document.createElement('div'),root=createRoot(host),identity={listDeposits:async()=>[],createComposedAsset:createAsset,pendingAssetPublication:async()=>pending,retryAssetPublication} as unknown as OpenIdentity;
  try{
   await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));
-  expect(host.textContent).toContain('Retained moment');expect(host.textContent).toContain('Global delivery has started.');
-  await act(async()=>click(host,'Retry public delivery'));expect(retryAssetPublication).toHaveBeenCalledOnce();expect(createAsset).not.toHaveBeenCalled();expect(host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Sign')).toBe(true);expect(host.textContent).not.toContain('Global delivery has started.');
+  expect(host.textContent).toContain('Retained moment');expect(retryAssetPublication).toHaveBeenCalledOnce();expect(createAsset).not.toHaveBeenCalled();expect(host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Sign')).toBe(true);expect(host.textContent).not.toContain('Global delivery has started.');expect(host.textContent).not.toContain('Retry public delivery');
  }finally{act(()=>root.unmount());}
 });
 it('retains the selected original and refuses a generic funding fallback if the backed publisher is unavailable',async()=>{
