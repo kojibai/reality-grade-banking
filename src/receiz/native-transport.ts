@@ -100,13 +100,16 @@ export function permittedNativePath(path: string, method: string): boolean {
   if (!url.search) return url.pathname !== '/api/connect/payments/session';
   return url.pathname === '/api/connect/payments/session' && [...url.searchParams.keys()].length === 1 && /^cs_[a-zA-Z0-9_]{8,200}$/.test(url.searchParams.get('sessionId') ?? '');
 }
-export function nativeRequestTimeout(input: RequestInfo | URL): number {
+export function nativeRequestTimeout(input: RequestInfo | URL,method='GET'): number {
   const url = new URL(input instanceof Request ? input.url : String(input), 'https://receiz.com');
+  // Preserve the exact publication reply within the existing 120s function
+  // budget. This is a deadline, not a wait, retry or account-entry operation.
+  if(url.pathname==='/api/connect/profile/showcase/publication'&&method.toUpperCase()==='POST')return 110_000;
   return isNativeChatStreamPath(url.pathname) ? NATIVE_CHAT_STREAM_TIMEOUT_MS : 60_000;
 }
 export const nativeFetch: typeof fetch = (input, init) => {
   const url = new URL(input instanceof Request ? input.url : String(input), 'https://receiz.com');
   const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
   if (!permittedNativePath(url.href, method)) throw new Error('Unsupported Receiz bank transport.');
-  return fetch(`/api/bank/native${url.pathname}${url.search}`, { ...init, credentials: 'omit', redirect: 'error', signal: init?.signal ?? AbortSignal.timeout(nativeRequestTimeout(input)) });
+  return fetch(`/api/bank/native${url.pathname}${url.search}`, { ...init, credentials: 'omit', redirect: 'error', signal: init?.signal ?? AbortSignal.timeout(nativeRequestTimeout(input,method)) });
 };

@@ -3,8 +3,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
 import { Readable } from 'node:stream';
 import { once } from 'node:events';
-import { permittedNativePath } from '../src/receiz/native-transport.js';
-import { isNativeChatStreamPath, NATIVE_CHAT_STREAM_TIMEOUT_MS } from '../src/receiz/native-chat-paths.js';
+import { permittedNativePath,nativeRequestTimeout } from '../src/receiz/native-transport.js';
+import { isNativeChatStreamPath } from '../src/receiz/native-chat-paths.js';
 import { probeNativeQualification } from './native-qualification-probe.js';
 import {relayBusinessDns,dnsConnectionReturn} from './business-dns-route.js';
 import {relayBusinessSetup} from './business-setup.js';
@@ -66,7 +66,7 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
   if (!path) return fail(400);
   if (request.headers.has('origin') && request.headers.get('origin') !== url.origin) return fail(403);
   const abort = new AbortController(), streamPath = isNativeChatStreamPath(new URL(path,'https://receiz.com').pathname);
-  const signal = AbortSignal.any([request.signal,abort.signal,AbortSignal.timeout(streamPath?NATIVE_CHAT_STREAM_TIMEOUT_MS:60_000)]);
+  const signal = AbortSignal.any([request.signal,abort.signal,AbortSignal.timeout(nativeRequestTimeout(path,request.method))]);
   try {
     const certificateExport=path==='/api/connect/market/shares/export'||/^\/api\/connect\/market\/share-certificates\/[^/]+\/download$/.test(path),certificateImport=path==='/api/connect/market/shares/import',artifactPath=path==='/api/receiz/ownership/bearer-claim'||certificateExport,multipartPath=artifactPath&&!certificateExport||certificateImport||path==='/api/document-verify'||path==='/api/profile/me/media';
     const headers: Record<string, string> = { Accept: streamPath?'text/event-stream':artifactPath?'application/vnd.receiz.bundle+json, application/octet-stream':'application/json' };
