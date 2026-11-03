@@ -12,6 +12,27 @@ const membership=(ids:string[],generatedAt='2026-11-01T12:00:00Z')=>({ok:true,tr
 const sports={ok:true,schema:'receiz.sports_economy.live_inventory.v1',generatedAt:'2026-11-01T12:00:00Z',cards:[{collectibleId:'rsc_0123456789abcdef',claimHash:'a'.repeat(64),sport:'baseball',athlete:'Public card',issuedCount:1,vaultCount:1,pricedCount:1,liveValueUsd:25,totalValueUsd:25}]};
 const quotes={ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[]}};
 
+it('restores the complete bundled catalogue beside a pending Original on a cold PWA open',async()=>{
+ const adoption=await import('../src/receiz/asset-publication-adoption');
+ const ref={schema:'receiz.imported-proof-source.v1',artifactSha256:'a'.repeat(64),byteLength:2,filename:'asset.receizbundle',mimeType:'application/vnd.receiz.bundle+json',bytes:{kind:'bytes',sha256:'b'.repeat(64),byteLength:2,contentByteLength:2,height:0}},path='/api/profile/showcase/imported-source?'+new URLSearchParams({reference:JSON.stringify(ref)});
+ adoption.retainAssetPublicationAdmission({username:'artist',sourceReference:ref,firstPaint:null,original:{id:'pending-work',assetTitle:'Pending delivery',showOnProfile:true,importedSource:{reference:ref},media:{kind:'image',src:path+'&payload=1',originalDownloadSrc:path,originalDownloadSha256Hex:ref.artifactSha256}}},{identityDigest:'d'.repeat(64),accountUid:'owner'});
+ vi.resetModules();
+ const fetcher=vi.fn(async(input:RequestInfo|URL)=>{
+  const path=String(input);
+  if(path==='/receiz-public-market.json')return Response.json(membership(['signed','unsigned']));
+  if(path==='/receiz-public-sports.json'||path==='/api/bank/public-market/sports')return Response.json(sports);
+  if(path==='/api/bank/public-market/quotes')return Response.json(quotes);
+  return new Promise<Response>(()=>{});
+ });vi.stubGlobal('fetch',fetcher);
+ const {usePublicMarket}=await import('../src/receiz/usePublicMarket');let state!:ReturnType<typeof PublicMarketHook>;
+ const root=createRoot(document.createElement('div'));function Probe(){state=usePublicMarket();return null;}
+ try{
+  await act(async()=>root.render(<Probe/>));
+  expect(state.catalog?.items.map(item=>item.id)).toEqual(['profile:artist:pending-work','signed','unsigned','sports:rsc_0123456789abcdef']);
+  expect(fetcher.mock.calls.map(call=>String(call[0]))).toEqual(['/receiz-public-sports.json','/receiz-public-market.json','/api/bank/public-market/quotes','/api/bank/public-market/membership','/api/bank/public-market/sports']);
+ }finally{act(()=>root.unmount());}
+});
+
 it.each(['new','already-mounted'] as const)('paints the whole settled public catalogue in a %s workspace when optional storage cannot retain it',async lifetime=>{
  const key='receiz-bank-public-discovery-v2',previous=JSON.stringify(membership(['signed']));localStorage.setItem(key,previous);
  const storage=localStorage;vi.stubGlobal('localStorage',{getItem:storage.getItem.bind(storage),removeItem:storage.removeItem.bind(storage),setItem:(key:string,value:string)=>{if(key==='receiz-bank-public-discovery-v2'||key==='receiz-bank-public-sports-v1')throw new DOMException('Public display cache is full','QuotaExceededError');storage.setItem(key,value);}});

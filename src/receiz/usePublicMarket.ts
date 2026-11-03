@@ -109,7 +109,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
       if (!response.ok) return; const input = await response.json(); const cached = parsePublicMarket(input, input.snapshot); rememberPublicOriginalLocators(cached);
       if (seed.signal.aborted) return;
       setCatalog(current => {
-        if(!current||cached.complete&&Date.parse(cached.observedAt??'')>Date.parse(current.observedAt??''))return mergePublicSports(cached,retainedSports);
+        if(!current||cached.complete&&(!Number.isFinite(Date.parse(current.observedAt??''))||Date.parse(cached.observedAt??'')>Date.parse(current.observedAt??'')))return mergePublicSports(cached,retainedSports);
         const hints=new Map(cached.items.map(item=>[item.id,item]));
         return {...current,items:current.items.map(item=>{
           const hint=hints.get(item.id);
