@@ -35,7 +35,7 @@ export function retainPublicMomentManifest(item:PublicMarketItem,previous?:Publi
 export function readPublicAssetManifestSource(input:unknown):PublicAssetManifestSource|undefined{
  const source=record(input),proof=record(source.proof),media=record(source.media);
  if(!['code','pulse','verifyPath','claimHashHex','pbiReceiptHash','proof','attachments','recordCardMediaSha256Hex','recordMediaSha256Hex'].some(key=>Object.hasOwn(source,key)))return;
- return {mediaKind:text(source.mediaKind,40)??text(media.kind,40)??(source.media===null?'moment':null),code:text(source.code,80),pulse:text(source.pulse,80),verifyPath:text(source.verifyPath,1000),claimHashHex:hash(publicClaimHash(source)),pbiReceiptHash:hash(source.pbiReceiptHash),recordCardMediaSha256Hex:hash(source.recordCardMediaSha256Hex),recordMediaSha256Hex:hash(source.recordMediaSha256Hex),proof:{circuit:text(proof.circuit,80),groth16Id:text(proof.groth16Id,160),poseidon:text(proof.poseidon,160)},media:source.media===null?null:{sha256Hex:hash(media.sha256Hex),originalDownloadSha256Hex:hash(media.originalDownloadSha256Hex)},attachments:Array.isArray(source.attachments)?source.attachments.slice(0,200).map(input=>{const row=record(input);return {id:text(row.id,240),name:text(row.name),src:publicManifestLink(row.src),downloadName:text(row.downloadName,240),sha256Hex:hash(row.sha256Hex)};}):[]};
+ return {mediaKind:text(source.mediaKind,40)??text(media.kind,40)??(source.media===null?'moment':null),code:text(source.code,80),pulse:text(source.pulse,80),verifyPath:text(source.verifyPath,8192),claimHashHex:hash(publicClaimHash(source)),pbiReceiptHash:hash(source.pbiReceiptHash),recordCardMediaSha256Hex:hash(source.recordCardMediaSha256Hex),recordMediaSha256Hex:hash(source.recordMediaSha256Hex),proof:{circuit:text(proof.circuit,80),groth16Id:text(proof.groth16Id,160),poseidon:text(proof.poseidon,160)},media:source.media===null?null:{sha256Hex:hash(media.sha256Hex),originalDownloadSha256Hex:hash(media.originalDownloadSha256Hex)},attachments:Array.isArray(source.attachments)?source.attachments.slice(0,200).map(input=>{const row=record(input);return {id:text(row.id,240),name:text(row.name),src:publicManifestLink(row.src),downloadName:text(row.downloadName,240),sha256Hex:hash(row.sha256Hex)};}):[]};
 }
 /** No arbitrary hosts, script URLs, credentials, or account routes on the back. */
 export function publicManifestLink(value:unknown):string|null{
@@ -54,7 +54,7 @@ export function publicManifestLink(value:unknown):string|null{
  }catch{return null;}
 }
 export function publicAssetManifest(profileInput:unknown,fallback:{verifyUrl?:string|null;pulse?:string|null}={}):PublicAssetManifestRow[]{
- const profile=record(profileInput),media=record(profile.media),proof=record(profile.proof),verifyPath=text(profile.verifyPath,1000)??fallback.verifyUrl??null;
+ const profile=record(profileInput),media=record(profile.media),proof=record(profile.proof),verifyPath=text(profile.verifyPath,8192)??fallback.verifyUrl??null;
  let parts:string[]=[];try{parts=new URL(verifyPath??'','https://receiz.com').pathname.split('/').filter(Boolean);}catch{}
  const v=parts.indexOf('v'),code=text(profile.code,80)??(v>=0?parts[v+2]:null),pulse=text(profile.pulse,80)??fallback.pulse??(v>=0?parts[v+3]:null);
  const moment=profile.media===null||profile.mediaKind==='moment'||media.kind==='moment',mediaDigest=moment?(hash(profile.recordCardMediaSha256Hex)??hash(profile.recordMediaSha256Hex)):(hash(media.sha256Hex)??hash(media.originalDownloadSha256Hex)??hash(profile.recordMediaSha256Hex));

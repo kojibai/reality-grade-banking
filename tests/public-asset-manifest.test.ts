@@ -59,3 +59,11 @@ it('projects the exact UTF-8 claim description hash when a sealed native Origina
  const recorded={...source,claimHashHex:'cd'.repeat(32)};
  expect(publicAssetManifest(recorded).find(row=>row.label==='Claim SHA-256')?.value).toBe('CD'.repeat(32));
 });
+
+it('retains a carried proof-bearing receipt longer than a bare verification path without fetching it',()=>{
+ const proofPath=verifyPath+'?c='+('x'.repeat(1400)),fetcher=vi.spyOn(globalThis,'fetch');
+ try{const source=readPublicAssetManifestSource({...profile,verifyPath:proofPath});expect(source?.verifyPath).toBe(proofPath);
+  for(const input of [{...profile,verifyPath:proofPath},source])expect(publicAssetManifest(input).find(row=>row.label==='Verify Path')).toMatchObject({value:proofPath,href:'https://receiz.com'+proofPath});
+  expect(fetcher).not.toHaveBeenCalled();
+ }finally{fetcher.mockRestore();}
+});
