@@ -31,10 +31,11 @@ export function CreateAsset({identity,onRefresh,onClose,active:visible=true}:{ac
    if(backed.status==='fulfilled'&&backed.value?.state&&backed.value.state.stage!=='published'){setBackedState(backed.value.state);setFunded(true);setResultBacked(true);if(backed.value.deposit)setResult(backed.value.deposit);}
    else if(ordinary.status==='fulfilled'&&ordinary.value){
     setResult(ordinary.value);
-    // Continue only this saved, unsigned delivery once. Its existing publisher
+    // Continue only this saved, unsigned delivery once, including an earlier
+    // refusal whose accepted receipt was not returned. Its existing publisher
     // reuses the exact retained append and persists the returned acknowledgment.
     // Opening an empty editor or a newly created result starts no extra delivery.
-    if(ordinary.value.publication?.status==='pending'&&!ordinary.value.pbiSigned&&identity.retryAssetPublication){
+    if((ordinary.value.publication?.status==='pending'||ordinary.value.publication?.status==='rejected')&&!ordinary.value.pbiSigned&&identity.retryAssetPublication){
      running.current=true;setBusy(true);
      try{const settled=await identity.retryAssetPublication();if(stillCurrent()&&settled){setResult(settled);onRefresh();}}
      catch(cause){if(stillCurrent())setError(cause instanceof Error?cause.message:'Your original remains saved. Try delivery again.');}

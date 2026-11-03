@@ -37,14 +37,14 @@ it('updates restored completion from the delivery acknowledgment without repeate
  }finally{act(()=>root.unmount());adoption.forgetAssetPublicationAdmissions();}
 });
 
-it('finishes the saved delivery on reopen and offers Sign without resealing or requiring another tap',async()=>{
+it.each(['pending','rejected'] as const)('finishes the saved %s delivery on reopen and offers Sign without resealing or requiring another tap',async initialStatus=>{
  let state:AssetPublicationState|null=null,seals=0,deliveries=0,lostAcknowledgment=true;
  const file=new File(['the exact saved Original'],'original.receizbundle'),intent={title:'An existing Original'};
  const api=createAssetPublication({ownerReceizId:'artist.receiz.id',assertOpen(){},lock:async run=>run(),read:async()=>state,
   write:async(next,previous)=>{expect(state).toEqual(previous);state=structuredClone(next);},
   seal:async()=>{seals++;return file;},retain:async()=>original.digest,restore:async()=>file,readIntent:async()=>intent,
-  publish:async source=>{expect(source).toBe(file);deliveries++;if(lostAcknowledgment)throw Error('Lost acknowledgment');return{status:'published',artifactDigest:'f'.repeat(64),operationCount:45,visibleChildCount:612};}});
- const initial=await api.create(intent);expect(initial.publication.status).toBe('pending');lostAcknowledgment=false;
+  publish:async source=>{expect(source).toBe(file);deliveries++;if(lostAcknowledgment){if(initialStatus==='rejected')return{status:'rejected',code:'PROFILE_SHOWCASE_COMPLETE_PROJECTION_CUSTODY_REQUIRED'};throw Error('Lost acknowledgment');}return{status:'published',artifactDigest:'f'.repeat(64),operationCount:45,visibleChildCount:612};}});
+ const initial=await api.create(intent);expect(initial.publication.status).toBe(initialStatus);lostAcknowledgment=false;
  const deposit=async(value:Awaited<ReturnType<typeof api.resume>>|null)=>value?{...original,publication:value.publication}:null;
  const identity={accountUsername:()=> 'artist',pendingAssetPublication:async()=>deposit(await api.pending()),retryAssetPublication:async()=>deposit(await api.resume())}as unknown as OpenIdentity;
  const host=document.createElement('div'),root=createRoot(host);
@@ -82,9 +82,9 @@ it('joins an existing delivery on reopen without sending or sealing it twice',as
  }finally{await act(async()=>{complete({status:'published',artifactDigest:'e'.repeat(64),operationCount:2,visibleChildCount:1});await api.resume();});act(()=>root.unmount());adoption.forgetAssetPublicationAdmissions();}
 });
 
-it('retains a failed saved delivery without automatically looping or claiming it was published',async()=>{
+it.each(['pending','rejected'] as const)('retains a %s saved delivery without automatically looping or claiming it was published',async status=>{
  let attempts=0;
- const pending={...original,publication:{status:'pending',code:'PROFILE_SHOWCASE_PUBLICATION_HTTP_503'}},identity={accountUsername:()=> 'artist',pendingAssetPublication:async()=>pending,retryAssetPublication:async()=>{attempts++;return pending;}}as unknown as OpenIdentity;
+ const pending={...original,publication:{status,code:'PROFILE_SHOWCASE_PUBLICATION_HTTP_503'}},identity={accountUsername:()=> 'artist',pendingAssetPublication:async()=>pending,retryAssetPublication:async()=>{attempts++;return pending;}}as unknown as OpenIdentity;
  const host=document.createElement('div'),root=createRoot(host);
  try{
   await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));
