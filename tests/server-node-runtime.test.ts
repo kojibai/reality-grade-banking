@@ -17,7 +17,7 @@ it('boots the emitted API graph in plain Node and forwards enrollment and public
     // Node, rather than the bundler/test loader, must resolve the result.
     for (const item of ts.preProcessFile(javascript, true, true).importedFiles) {
       if (!item.fileName.startsWith('.')) continue;
-      const base = resolve(dirname(file), item.fileName), candidates = item.fileName.endsWith('.js') ? [base.replace(/\.js$/u, '.ts')] : [base, base + '.ts'];
+      const base = resolve(dirname(file), item.fileName), candidates = item.fileName.endsWith('.js') ? [base, base.replace(/\.js$/u, '.ts')] : [base, base + '.ts'];
       let dependency: string | undefined;
       for (const candidate of candidates) if (await stat(candidate).then(s => s.isFile(), () => false)) { dependency = candidate; break; }
       if (!dependency) throw Error(`Missing server source: ${item.fileName}`);

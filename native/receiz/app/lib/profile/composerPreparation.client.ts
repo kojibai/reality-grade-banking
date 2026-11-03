@@ -29,7 +29,7 @@ export async function sealConnectedComposerContent(input:{content:ComposerAssetC
  const payloadBytes=new TextEncoder().encode(jcsCanonicalize(content));
  const {prepareNativeProofObjectSeal}=await import("../documentSeal/prepareNativeProofObjectSeal");
  const prepared=await prepareNativeProofObjectSeal({fileBytes:payloadBytes,filename:"asset-content.json",mime:"application/json",ownerReceizId:content.ownerReceizId});input.assertCurrent();
- const sealed=await input.sealDocument({fileBytes:prepared.fileBytes,filename:prepared.filename,mime:prepared.mime,options:{forceBundleEnvelope:true,nativeRecordSeal:prepared.nativeRecordSeal}});input.assertCurrent();
+ const sealed=await input.sealDocument({fileBytes:prepared.fileBytes,filename:prepared.filename,mime:prepared.mime,options:{forceBundleEnvelope:true,nativeRecordSeal:prepared.nativeRecordSeal,...(content.description?{claimSha256Hex:bytesToHex(sha256(new TextEncoder().encode(content.description)))}:{})}});input.assertCurrent();
  const exact=Uint8Array.from(sealed.artifactBytes),artifact=new File([exact.buffer],sealed.downloadName,{type:sealed.kind==="bundle"?"application/vnd.receiz.bundle+json":"application/octet-stream"});
  const bytes=await writeExactByteBlocks(artifact,async(reference,block)=>{input.assertCurrent();await writeBlock(reference,block);input.assertCurrent();});
  const reference=parseImportedProofSourceReference({schema:"receiz.imported-proof-source.v1",artifactSha256:bytesToHex(sha256(exact)),byteLength:artifact.size,filename:artifact.name,mimeType:artifact.type,bytes});

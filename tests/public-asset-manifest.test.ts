@@ -50,3 +50,12 @@ it('never carries a historical Moment basis across another card signature, proof
  const carried=momentProjection('ef'.repeat(32));expect(retainPublicMomentManifest(carried,previous)).toBe(carried);
  expect(retainPublicMomentManifest(current,{...previous,proofManifestSource:{...previous.proofManifestSource!,recordCardMediaSha256Hex:'invalid'}})).toBe(current);
 });
+
+it('projects the exact UTF-8 claim description hash when a sealed native Original has no separate claim field',async()=>{
+ const claim='  The money doesn’t need to come back.\nΦ remains.  ',expected=Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(claim))).toString('hex').toUpperCase();
+ const source={claim,claimHashHex:null,proof:{circuit:'Groth16'}};
+ for(const value of [source,readPublicAssetManifestSource(source)])expect(publicAssetManifest(value).find(row=>row.label==='Claim SHA-256')?.value).toBe(expected);
+ expect(source.claimHashHex).toBeNull();
+ const recorded={...source,claimHashHex:'cd'.repeat(32)};
+ expect(publicAssetManifest(recorded).find(row=>row.label==='Claim SHA-256')?.value).toBe('CD'.repeat(32));
+});

@@ -12,13 +12,17 @@ it('seals one image essay locally, preserves its exact media and Kai, and delive
  const admitted=await r.createReceizArtifactAdmissionEngine()(await r.verifyReceizArtifact(new File([new Uint8Array(f.identity.bytes)],'identity.png')),{profile:'identity',identityPassphrase:f.identity.phrase});
  const owner=(await r.readReceizIdentityPublicBinding(admitted)).artifactOwnerReceizId;
  const enrollment=await f.store.load();if(!enrollment)throw Error('Fixture enrollment missing');
- const sealDocument=await r.createBankNativeNoteSealer({enrollment,resources:f.resources});
+ const nativeSeal=await r.createBankNativeNoteSealer({enrollment,resources:f.resources});let claimSha256Hex:string|undefined;
+ const sealDocument=async(args:{options?:{claimSha256Hex?:string|null}})=>{claimSha256Hex=args.options?.claimSha256Hex??undefined;return nativeSeal(args);};
  const custody=r.createImportedProofSourceCustody(),blocks=new Map<string,Uint8Array>(),writeBlock=async(reference:{sha256:string},bytes:Uint8Array)=>{blocks.set(reference.sha256,new Uint8Array(bytes));await custody.writeBlock(reference,bytes);};
  const image=new File([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jQmcAAAAASUVORK5CYII=','base64')],'original.png',{type:'image/png'});
  const draft={kind:'image',title:'The original image essay',description:'A complete work',longForm:'Its exact image and full essay stay together.',files:[{id:'photo',role:'primary',file:image}]};
  const started=performance.now(),content=await r.composer.prepareConnectedComposerContent({draft,ownerReceizId:owner,writeBlock,assertCurrent(){}});
  const preparedAt=performance.now(),prepared=await r.composer.sealConnectedComposerContent({content,sealDocument,writeBlock,assertCurrent(){}}),sealedAt=performance.now();
+ expect(claimSha256Hex).toBe(Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(draft.description))).toString('hex'));
  const opened=await r.openImportedProofSource(prepared.artifact,{canonicalSignatureV4RootPublicKeys:new Map(f.roots.map((root:{kid:string})=>[root.kid,root])),resolveSourceBlock:async(reference:{sha256:string})=>blocks.get(reference.sha256)??null});
+ const bundle=opened.verification.bundle,anchorInput=`${bundle.code}:${bundle.kaiPulseEternal}:${claimSha256Hex}:${bundle.artifactSha256Basis}`,anchor=Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(anchorInput))).toString('hex').slice(0,8);
+ expect(bundle.anchorId).toBe(anchor);
  expect(opened.projection.bankAsset.composer.title).toBe(draft.title);expect(opened.projection.bankAsset.composer.longForm).toBe(draft.longForm);
  expect(new Uint8Array(await opened.payload.arrayBuffer())).toEqual(new Uint8Array(await image.arrayBuffer()));
  expect(opened.projection.ownerReceizId).toBe(owner);expect(opened.projection.pulse).toMatch(/^\d+$/);

@@ -122,3 +122,11 @@ it('publishes fresh post-trade quotes into the same normal quote cache entry',as
 });
 
 it('carries bounded public lyrics in the existing membership response without private fields or another request',async()=>{const longForm={title:'Song lyrics',text:'Every word\nAlready carried',sha256Hex:'a'.repeat(64)},fetchSource=vi.fn(async()=>Response.json({ok:true,transport:{publicMembership:{},publicOriginals:[{id:'song',receizId:'song',title:'Song',profileOriginal:{longForm:{...longForm,privateField:'omit-this-field'},media:{kind:'audio'}}}]}}));vi.stubGlobal('fetch',fetchSource);let body='';await publicMarketMiddleware({method:'GET',url:'/api/bank/public-market/membership?afterPublication='+'f'.repeat(64),headers:{cookie:'secret'}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:(bytes:Uint8Array)=>{body=new TextDecoder().decode(bytes);}}as unknown as ServerResponse,vi.fn());expect(JSON.parse(body).transport.publicOriginals[0].profileOriginal.longForm).toEqual(longForm);expect(body).not.toContain('omit-this-field');expect(fetchSource).toHaveBeenCalledTimes(1);});
+
+it('carries the exact description claim digest through the existing membership read without carrying the text or fetching again',async()=>{
+ vi.resetModules();const {publicMarketMiddleware:fresh}=await import('../server/public-market');
+ const claim='A complete sealed description.\nΦ stays with the source.',expected=Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(claim))).toString('hex');
+ const fetcher=vi.fn(async()=>Response.json({ok:true,transport:{publicMembership:{},publicOriginals:[{id:'claim-projection',receizId:'claim-projection',title:'Exact description',profileOriginal:{claim,claimHashHex:null}}]}}));vi.stubGlobal('fetch',fetcher);
+ let body='';await fresh({method:'GET',url:'/api/bank/public-market/membership',headers:{}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:(bytes:Uint8Array)=>{body=new TextDecoder().decode(bytes);}}as unknown as ServerResponse,vi.fn());
+ expect(JSON.parse(body).transport.publicOriginals[0].profileOriginal.claimHashHex).toBe(expected);expect(body).not.toContain(claim);expect(fetcher).toHaveBeenCalledOnce();
+});

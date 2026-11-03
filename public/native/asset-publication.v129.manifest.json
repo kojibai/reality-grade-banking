@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.0.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "91ff3de717508a7920ea8b1b5ccdb769a2984e0bb8c6c85962432c8b862fa72e",
-  "sourceTreeSha256": "133b410611a929df729f5a247b59bbaf4d3fdb3cd26a504b359b42a0abc5c2e0",
+  "moduleSha256": "d992a31ea5bc50354b4c34ada0659ca3cd19b46200422df559eb112aa5b86160",
+  "sourceTreeSha256": "b825b18dd20c8830f1bdb5b70683ccab47eddb949b1cb8f10d34717e13240b17",
   "inputs": 504,
-  "bytes": 2987536,
+  "bytes": 2987621,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -1012,6 +1012,13 @@
       "baseSha256": "27831d434ed185deb43a0d07bc8bd1f9bf7f1adbc979a222416576e9c516324a",
       "sha256": "667604bb2a0a7d044bdc0f5c989fac6f53d5ff7a6a8d5e48ff2c14569c059e6b",
       "purpose": "Keep pending exact source-bound publication actions outside the completed-action presentation cache limit. Preserve existing signed action consent, scope, account entry and automatic replay exclusion."
+    },
+    {
+      "id": "bankeiz-composer-description-claim",
+      "path": "receiz/app/lib/profile/composerPreparation.client.ts",
+      "baseSha256": "aa681c14cb1e8b91ce80622d8730dd82e1312f6cb515a5a21354db5045baa819",
+      "sha256": "94c07dc09eb1bae18f8846720f959bcc7f643830f5d9116df70dd41f51290b15",
+      "purpose": "Pass the exact description claim SHA through the existing document sealer option; preserve sealed payload, local creation and existing proof objects."
     }
   ],
   "browserDefines": {

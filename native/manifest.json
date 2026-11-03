@@ -6646,8 +6646,8 @@
     },
     {
       "path": "receiz/app/lib/profile/composerPreparation.client.ts",
-      "sha256": "aa681c14cb1e8b91ce80622d8730dd82e1312f6cb515a5a21354db5045baa819",
-      "bytes": 4515,
+      "sha256": "94c07dc09eb1bae18f8846720f959bcc7f643830f5d9116df70dd41f51290b15",
+      "bytes": 4626,
       "mode": 420
     },
     {
@@ -17136,6 +17136,13 @@
       "baseSha256": "27831d434ed185deb43a0d07bc8bd1f9bf7f1adbc979a222416576e9c516324a",
       "sha256": "667604bb2a0a7d044bdc0f5c989fac6f53d5ff7a6a8d5e48ff2c14569c059e6b",
       "purpose": "Keep pending exact source-bound publication actions outside the completed-action presentation cache limit. Preserve existing signed action consent, scope, account entry and automatic replay exclusion."
+    },
+    {
+      "id": "bankeiz-composer-description-claim",
+      "path": "receiz/app/lib/profile/composerPreparation.client.ts",
+      "baseSha256": "aa681c14cb1e8b91ce80622d8730dd82e1312f6cb515a5a21354db5045baa819",
+      "sha256": "94c07dc09eb1bae18f8846720f959bcc7f643830f5d9116df70dd41f51290b15",
+      "purpose": "Pass the exact description claim SHA through the existing document sealer option; preserve sealed payload, local creation and existing proof objects."
     }
   ],
   "historicalValuation": {
@@ -17144,7 +17151,7 @@
     "sourcePath": "app/utils/phi-issuance.ts",
     "sourceSha256": "69622c017e955734525e121a7b27bdaa42066932657b145e02be493792de9c74",
     "sdkVersion": "129.0.0",
-    "intrinsicAlgorithm": "phi/kosmos-vφ-5",
+    "intrinsicAlgorithm": "phi/kosmos-v\u03c6-5",
     "intrinsicPolicyChecksum": "b05b2049",
     "sampleUsd": 100,
     "historicalPointsAreRecordedQuotes": false
@@ -17588,7 +17595,7 @@
     },
     {
       "path": "app/lib/profile/composerPreparation.client.ts",
-      "sha256": "aa681c14cb1e8b91ce80622d8730dd82e1312f6cb515a5a21354db5045baa819"
+      "sha256": "94c07dc09eb1bae18f8846720f959bcc7f643830f5d9116df70dd41f51290b15"
     },
     {
       "path": "app/lib/profile/composerPreparation.ts",

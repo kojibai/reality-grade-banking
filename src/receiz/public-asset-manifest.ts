@@ -1,3 +1,4 @@
+import {publicClaimHash} from './public-claim-hash.js';
 import {publicNativeAssetBinding} from './native-asset-public-binding.js';
 import {safeImportedSourceUrl} from "./imported-source-url.js";
 import type {PublicMarketItem} from './public-market.js';
@@ -34,7 +35,7 @@ export function retainPublicMomentManifest(item:PublicMarketItem,previous?:Publi
 export function readPublicAssetManifestSource(input:unknown):PublicAssetManifestSource|undefined{
  const source=record(input),proof=record(source.proof),media=record(source.media);
  if(!['code','pulse','verifyPath','claimHashHex','pbiReceiptHash','proof','attachments','recordCardMediaSha256Hex','recordMediaSha256Hex'].some(key=>Object.hasOwn(source,key)))return;
- return {mediaKind:text(source.mediaKind,40)??text(media.kind,40)??(source.media===null?'moment':null),code:text(source.code,80),pulse:text(source.pulse,80),verifyPath:text(source.verifyPath,1000),claimHashHex:hash(source.claimHashHex),pbiReceiptHash:hash(source.pbiReceiptHash),recordCardMediaSha256Hex:hash(source.recordCardMediaSha256Hex),recordMediaSha256Hex:hash(source.recordMediaSha256Hex),proof:{circuit:text(proof.circuit,80),groth16Id:text(proof.groth16Id,160),poseidon:text(proof.poseidon,160)},media:source.media===null?null:{sha256Hex:hash(media.sha256Hex),originalDownloadSha256Hex:hash(media.originalDownloadSha256Hex)},attachments:Array.isArray(source.attachments)?source.attachments.slice(0,200).map(input=>{const row=record(input);return {id:text(row.id,240),name:text(row.name),src:publicManifestLink(row.src),downloadName:text(row.downloadName,240),sha256Hex:hash(row.sha256Hex)};}):[]};
+ return {mediaKind:text(source.mediaKind,40)??text(media.kind,40)??(source.media===null?'moment':null),code:text(source.code,80),pulse:text(source.pulse,80),verifyPath:text(source.verifyPath,1000),claimHashHex:hash(publicClaimHash(source)),pbiReceiptHash:hash(source.pbiReceiptHash),recordCardMediaSha256Hex:hash(source.recordCardMediaSha256Hex),recordMediaSha256Hex:hash(source.recordMediaSha256Hex),proof:{circuit:text(proof.circuit,80),groth16Id:text(proof.groth16Id,160),poseidon:text(proof.poseidon,160)},media:source.media===null?null:{sha256Hex:hash(media.sha256Hex),originalDownloadSha256Hex:hash(media.originalDownloadSha256Hex)},attachments:Array.isArray(source.attachments)?source.attachments.slice(0,200).map(input=>{const row=record(input);return {id:text(row.id,240),name:text(row.name),src:publicManifestLink(row.src),downloadName:text(row.downloadName,240),sha256Hex:hash(row.sha256Hex)};}):[]};
 }
 /** No arbitrary hosts, script URLs, credentials, or account routes on the back. */
 export function publicManifestLink(value:unknown):string|null{
@@ -64,7 +65,7 @@ export function publicAssetManifest(profileInput:unknown,fallback:{verifyUrl?:st
   {label:'Circuit',value:text(proof.circuit,80)??'Groth16'},
   {label:'Groth16',value:text(proof.groth16Id,160)??'Unavailable'},
   {label:'Poseidon',value:text(proof.poseidon,160)??'Unavailable'},
-  {label:'Claim SHA-256',value:hash(profile.claimHashHex)??'Unavailable'},
+  {label:'Claim SHA-256',value:hash(publicClaimHash(profile))??'Unavailable'},
   {label:'Media SHA-256',value:mediaDigest??'Unavailable'},
  ];
  const native=publicNativeAssetBinding(profile.nativeAsset);if(native)rows.push({label:'Native Asset',value:native.id},{label:'Issuance Source SHA-256',value:native.issuanceSourceSha256},{label:'Current Asset Source SHA-256',value:native.headSourceSha256},{label:'Public Backing Certificate SHA-256',value:native.publicCertificateSha256});
