@@ -7022,8 +7022,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
-      "sha256": "c48f93584ebba4bbbc069cc023368bd0f24bf5ee9d873d353b58a1dab6d89c5b",
-      "bytes": 22493,
+      "sha256": "0b235648281b4f529cf51ef3a4dd3d003ce2cce112793d3ba76a39c14e2304f2",
+      "bytes": 20982,
       "mode": 420
     },
     {
@@ -17127,7 +17127,7 @@
       "id": "bankeiz-incremental-original-delivery",
       "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
       "baseSha256": null,
-      "sha256": "5ee7ab7fb6c3cd5137b26c0553ac9b7065e4b5476559bcd440391e0d1b7652fb",
+      "sha256": "0b235648281b4f529cf51ef3a4dd3d003ce2cce112793d3ba76a39c14e2304f2",
       "purpose": "Use existing SDK exact-predecessor admission, append capability, atomic commit and v2 publication while retaining immutable historical byte references. Reuse runtime-admitted context and the existing signed outbox; preserve exact source, media, Kai, consent, signing and account entry."
     },
     {
@@ -17151,7 +17151,7 @@
     "sourcePath": "app/utils/phi-issuance.ts",
     "sourceSha256": "69622c017e955734525e121a7b27bdaa42066932657b145e02be493792de9c74",
     "sdkVersion": "129.0.0",
-    "intrinsicAlgorithm": "phi/kosmos-v\u03c6-5",
+    "intrinsicAlgorithm": "phi/kosmos-vφ-5",
     "intrinsicPolicyChecksum": "b05b2049",
     "sampleUsd": 100,
     "historicalPointsAreRecordedQuotes": false
@@ -17835,7 +17835,7 @@
     },
     {
       "path": "app/lib/profile/showcase/incrementalAssetPublication.client.ts",
-      "sha256": "c48f93584ebba4bbbc069cc023368bd0f24bf5ee9d873d353b58a1dab6d89c5b"
+      "sha256": "0b235648281b4f529cf51ef3a4dd3d003ce2cce112793d3ba76a39c14e2304f2"
     },
     {
       "path": "app/lib/profile/showcase/legacyMigrationPayload.ts",

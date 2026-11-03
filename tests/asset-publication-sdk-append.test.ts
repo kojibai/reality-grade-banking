@@ -1,8 +1,8 @@
 import {afterEach,expect,it,vi} from 'vitest';
-import {IDBFactory} from 'fake-indexeddb';
+import {IDBFactory,IDBObjectStore} from 'fake-indexeddb';
 import {conformanceOfflineFixture} from './helpers/conformance-offline-sealer';
 
-afterEach(()=>vi.unstubAllGlobals());
+afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
 
 it('publishes through the installed SDK for fresh and nonempty accounts, retaining old media without fetching it on append or retry',async()=>{
  const f=await conformanceOfflineFixture({composer:true,previousComposer:true}),r=f.runtime;
@@ -50,6 +50,7 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  const prior=await runtime.prepare({kind:'image',title:'First exact image',description:'',longForm:'First full essay',files:[{id:'photo',role:'primary',file:image}]});
  expect((await runtime.publish(prior.artifact)).status).toBe('published');
  expect(timeline.indexOf('local')).toBeLessThan(timeline.indexOf('finalize'));
+ const acceptedPriorHead=complete.artifactDigest;
  const priorChildren=complete.children.map((child:any)=>child.reference.childArtifactDigest),oldBodies=new Set<string>();
  for(const child of complete.children)for(const [sha,bytes]of blocks)if(Buffer.from(bytes).equals(Buffer.from(child.exactSealedArtifactBytes)))oldBodies.add(sha);
  const oldMedia=r.createImportedProofSourceCustody();await oldMedia.exportBlocks(prior.reference,async(ref:{sha256:string})=>{oldBodies.add(ref.sha256);});
@@ -70,7 +71,11 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  expect(r.publicationOutbox.readLocalSignedActionOutbox().entries[pending.actionId]).toBeDefined();
  const before={seals,reads:reads.length};interrupt=false;
  // A fresh runtime replays the durable signed append instead of constructing another one.
+ const localReads:unknown[]=[],readObject=IDBObjectStore.prototype.get;
+ const readSpy=vi.spyOn(IDBObjectStore.prototype,'get').mockImplementation(function(this:IDBObjectStore,key){if(this.name==='segments')localReads.push(key);return readObject.call(this,key);});
  runtime=await open();expect((await runtime.publish(next.artifact)).status).toBe('published');
+ readSpy.mockRestore();
+ expect(localReads.some(key=>JSON.stringify(key).includes(acceptedPriorHead)),'replaying the same committed append must not reopen an accepted historical head, even from local custody').toBe(false);
  expect(seals).toBe(before.seals);expect(reads).toHaveLength(before.reads);
  expect(reads.some(sha=>oldBodies.has(sha))).toBe(false);
  expect(complete.children).toHaveLength(priorChildren.length+1);

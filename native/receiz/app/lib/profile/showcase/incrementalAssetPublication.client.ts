@@ -1,6 +1,5 @@
 "use client";
-import {readReceizIdentityPublicBinding,admitReceizProfileShowcaseSuccessorWithPredecessorContext,createReceizArtifactAdmissionEngine,rederiveReceizBoundedProfileShowcaseCarrierFromAdmission} from '../../../../packages/receiz-sdk/src/artifactAdmission';
-import {verifyReceizArtifact} from '../../../../packages/receiz-sdk/src/artifactVerification';
+import {readReceizIdentityPublicBinding,admitReceizProfileShowcaseSuccessorWithPredecessorContext,rederiveReceizBoundedProfileShowcaseCarrierFromAdmission} from '../../../../packages/receiz-sdk/src/artifactAdmission';
 import {createReceizBrowserAdmissionStore} from '../../../../packages/receiz-sdk/src/browserAdmissionStore';
 import {readImportedSourceTransportReference} from './importedSourceProjection';
 import {jcsCanonicalize} from '../../../utils/jcs';
@@ -14,7 +13,7 @@ import {admitProfileShowcaseAppendTransport} from './appendTransportAdmission';
 import {publishProfileShowcaseTransport,type ProfileShowcasePublicProjectionPublicationResult} from './publicProjectionPublication';
 import {createImportedProofSourceCustody} from './importedSourceCustody.client';
 import {sealAndAdmitImportedSourcePlacement} from './importedSourcePlacement.client';
-import {readExactByteBlocks,reconstructExactByteBlocks,type ExactByteBlockReference,type ExactByteBlockWriter} from '../../transport/exactByteBlocks';
+import {readExactByteBlocks,type ExactByteBlockReference,type ExactByteBlockWriter} from '../../transport/exactByteBlocks';
 import {readLocalSignedActionOutbox,enqueueSourceBoundPublicationAction} from '../../offline/localSignedActionOutbox';
 import type {OpenedImportedProofSource,ImportedProofSourceReference} from './importedSource';
 import type {ProfileShowcaseArtifactId} from './types';
@@ -57,23 +56,15 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    if(body.action!=='finalize'||body.publicationSourceArtifactSha256!==reference.artifactSha256||body.scope?.profileIdentity!==input.uid
     ||body.scope.username!==input.username||body.scope.artifactId!==input.artifactId||! /^[a-f0-9]{64}$/.test(body.publicationPredecessorArtifactDigest??''))continue;
    const committed=await readCommit(body.publicationPredecessorArtifactDigest);
-   // Outbox entries may be prepared before commit. Never send a staged-only
-   // candidate. The store is a locator; exact SDK admission below is authority.
+   // The existing SDK commit and durable signed action identify this exact
+   // delivery attempt. Retrying transport creates no local transition or new
+   // admission; the receiver still admits the exact source and signed consent.
    if((committed?.state as any)?.artifactDigest!==body.scope.artifactDigest)continue;
    const context=await readProfileShowcaseAppendTransport(body.transport,custody.resolveBlock);
-   const prior=await admitProfileShowcaseAppendTransport({context,artifactId:input.artifactId,resolveBlock:resolve});
-   if(prior.admission.artifactSha256!==body.scope.artifactDigest||committed?.headDigest!==prior.admission.proofHistoryHead?.headDigest)throw TypeError('PROFILE_SHOWCASE_PREPARED_COMMIT_MISMATCH');
+   if(context.transport.artifactDigest!==body.scope.artifactDigest)throw TypeError('PROFILE_SHOWCASE_PREPARED_COMMIT_MISMATCH');
    const child=context.children.find(child=>child.reference.childArtifactDigest===body.publicationChildArtifactDigest);
-   const head=prior.carrier['profile-showcase'];
-   const membership=await deriveReceizProfileShowcasePersistentMembershipV114({state:{schema:'receiz.profile-showcase.persistent-state.v114',placementRoot:head.placementRoot as string,
-    orderRoot:head.orderRoot as string,counts:head.counts as any,maximumKaiUpulse:head.headKaiUpulse as string},io:prior.io});
-   if(!child||!membership.placements.some(member=>jcsCanonicalize(member.reference)===jcsCanonicalize(child.reference)))throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
-   const bytes=await reconstructExactByteBlocks(child.bytes,custody.resolveBlock,{component:'prepared child',maxContentBytes:64*1024*1024,maxBlockReads:131072});
-   const admitted=await createReceizArtifactAdmissionEngine()(await verifyReceizArtifact(new File([bytes.slice().buffer as ArrayBuffer],'child.receizbundle')),{profile:'portable-state',ownerConstraint:input.owner});
-   if(admitted.profile!=='portable-state'||admitted.artifactSha256!==child.reference.childArtifactDigest
-    ||admitted.artifactId!==child.reference.stableChildArtifactId||admitted.payloadSha256!==child.reference.contentDigest
-    ||jcsCanonicalize(await readImportedSourceTransportReference(bytes))!==jcsCanonicalize(reference))throw TypeError('PROFILE_SHOWCASE_PREPARED_SOURCE_MISMATCH');
-   input.assertCurrent();return{body,context,prior};
+   if(!child)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
+   input.assertCurrent();return{body,context};
   }return null;
  };
  const emitTree=async(ref:ExactByteBlockReference,write:ExactByteBlockWriter)=>{
