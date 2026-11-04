@@ -13,7 +13,9 @@ import {admitProfileShowcaseAppendTransport} from './appendTransportAdmission';
 import {publishProfileShowcaseTransport,type ProfileShowcasePublicProjectionPublicationResult} from './publicProjectionPublication';
 import {createImportedProofSourceCustody} from './importedSourceCustody.client';
 import {sealAndAdmitImportedSourcePlacement} from './importedSourcePlacement.client';
-import {readExactByteBlocks,type ExactByteBlockReference,type ExactByteBlockWriter} from '../../transport/exactByteBlocks';
+import {decodeReceizBundleEnvelope} from '../../documentSeal/bundleContainer';
+import {decodeProfileOriginalRouteProjectionAppend} from './routeProjectionEncoding';
+import {readExactByteBlocks,reconstructExactByteBlocks,type ExactByteBlockReference,type ExactByteBlockWriter} from '../../transport/exactByteBlocks';
 import {readLocalSignedActionOutbox,enqueueSourceBoundPublicationAction} from '../../offline/localSignedActionOutbox';
 import type {OpenedImportedProofSource,ImportedProofSourceReference} from './importedSource';
 import type {ProfileShowcaseArtifactId} from './types';
@@ -49,7 +51,8 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
  const commitDomain={scheme:'receiz-commit-domain.v1' as const,value:`profile-showcase:${input.owner}:local`};
  const readCommit=(predecessor:string)=>createReceizBrowserAdmissionStore({databaseName,namespace:`profile-showcase-local:${predecessor}`})
   .readAggregate(`${commitDomain.value}\u0000${input.artifactId}`);
- const readPreparedAction=async(reference:ImportedProofSourceReference)=>{
+ const readPreparedAction=async(reference:ImportedProofSourceReference,authorshipProof?:import('./importedSourceAuthorship').ImportedSourceAuthorshipProof)=>{
+  let fallback:{body:any;context:ProfileShowcaseAppendTransport;pbiReceiptHash?:string}|null=null;
   for(const entry of Object.values(readLocalSignedActionOutbox().entries)){
    if(entry.envelope.actor.uid!==input.uid||entry.envelope.actor.receizKeyId!==input.keyFile.keyId||entry.envelope.request.path!=='/api/profile/showcase/publication')continue;
    let body;try{body=JSON.parse(entry.envelope.request.bodyReplayText??'');}catch{continue;}
@@ -64,8 +67,18 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    if(context.transport.artifactDigest!==body.scope.artifactDigest)throw TypeError('PROFILE_SHOWCASE_PREPARED_COMMIT_MISMATCH');
    const child=context.children.find(child=>child.reference.childArtifactDigest===body.publicationChildArtifactDigest);
    if(!child)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
-   input.assertCurrent();return{body,context};
-  }return null;
+   input.assertCurrent();
+   if(!authorshipProof)return{body,context};
+   const exact=await reconstructExactByteBlocks(child.bytes,custody.resolveBlock,{component:'prepared signed Original',maxContentBytes:16*1024*1024,maxBlockReads:131072}),envelope=decodeReceizBundleEnvelope(exact);
+   if(!envelope)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
+   const document=JSON.parse(new TextDecoder().decode(envelope.originalBytes));
+   const row=document.provenance?.appends?.map((append:unknown)=>decodeProfileOriginalRouteProjectionAppend(append,document.payload?.sha256)).find((row:any)=>row&&row.pbiReceiptHash===authorshipProof.pbiReceiptHash);
+   const selected={body,context,pbiReceiptHash:row?.pbiReceiptHash};
+   // A completed unsigned delivery may precede this source's signed action in
+   // the same outbox. Prefer the exact requested proof before replaying it.
+   if(selected.pbiReceiptHash===authorshipProof.pbiReceiptHash)return selected;
+   fallback??=selected;
+  }return fallback;
  };
  const emitTree=async(ref:ExactByteBlockReference,write:ExactByteBlockWriter)=>{
   for await(const _ of readExactByteBlocks(ref,async node=>{const bytes=await custody.resolveBlock(node);await write(node,bytes);return bytes;},{component:'prepared append transport',maxContentBytes:512*1024*1024,maxBlockReads:131072})){/* Existing byte-tree decoder verifies every exact block. */}
@@ -84,15 +97,20 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    binding:{username:input.username,profileIdentity:input.uid,locator:{acceptedArtifactDigest:body.transport.artifactDigest}}};}
   return result;
  };
- return {async publish(opened:{source:OpenedImportedProofSource;reference:ImportedProofSourceReference}):Promise<ProfileShowcasePublicProjectionPublicationResult|null>{
+ return {async publish(opened:{source:OpenedImportedProofSource;reference:ImportedProofSourceReference},authorshipProof?:import('./importedSourceAuthorship').ImportedSourceAuthorshipProof):Promise<ProfileShowcasePublicProjectionPublicationResult|null>{
   input.assertCurrent();
-  const known=published.get(opened.reference.artifactSha256);if(known)return known;
-  const replay=await readPreparedAction(opened.reference);
+  const publicationKey=opened.reference.artifactSha256+(authorshipProof?':'+authorshipProof.pbiReceiptHash:'');
+  const known=published.get(publicationKey);if(known)return known;
+  const replay=await readPreparedAction(opened.reference,authorshipProof);
   if(replay){
    const {body,context:prepared}=replay;
    // Replay transport only: the saved signature and unchanged server verifier
    // still govern acceptance. No persisted projection is promoted to proof.
-   return deliverPrepared(body,prepared,opened.reference);
+   const result=await deliverPrepared(body,prepared,opened.reference);
+   if(!authorshipProof||result.status!=='published')return result;
+   // A prior unsigned append may be the interrupted delivery. Settle it once,
+   // then sign its admitted current head; it is never a signed acknowledgment.
+   if(replay.pbiReceiptHash===authorshipProof.pbiReceiptHash){published.set(publicationKey,result);return result;}
   }
   accepted??=await input.readAccepted();
   if((accepted as any)?.status==='unmigrated')return null;
@@ -109,7 +127,7 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
   const committed=await readCommit(heldHead.prior.admission.artifactSha256);
   if(committed?.headDigest&&committed.headDigest!==heldHead.prior.admission.proofHistoryHead!.headDigest){
    accepted=await input.readAccepted(true);input.assertCurrent();if(!validAccepted(accepted))throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
-   const next=await readHead();if(!next)return null;
+   let next=await readHead();if(!next)return null;
    if(next.prior.admission.artifactSha256===heldHead.prior.admission.artifactSha256){
     // Earlier publishers committed before preparing a delivery action. Locate
     // that exact candidate, then admit its direct succession and carried child.
@@ -147,14 +165,20 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
      publicationChildArtifactDigest:childAdmission.artifactSha256,publicationPredecessorArtifactDigest:prior.admission.artifactSha256,identityBinding:signer.binding};
     const action=await enqueueSourceBoundPublicationAction(JSON.stringify(body),signer.custody),held=action&&readLocalSignedActionOutbox().entries[action.actionId];
     if(!action||held?.signatureB64Url!==action.signatureB64Url||held.envelope.request.bodyReplayText!==action.envelope.request.bodyReplayText)throw TypeError('PROFILE_SHOWCASE_PUBLICATION_ACTION_NOT_RETAINED');
-    input.assertCurrent();return deliverPrepared(body,prepared,opened.reference);
+    input.assertCurrent();const recovered=await deliverPrepared(body,prepared,opened.reference);
+    if(!authorshipProof||recovered.status!=='published')return recovered;
+    // That exact interrupted commit may be the unsigned placement. Its
+    // acknowledgment settles delivery only; now append the requested PBI
+    // addition to the same already admitted head, without reading history.
+    next={context:prepared,prior:{admission,carrier,io:prior.io,
+     resolveHistorical:count=>count===head.resultingOperationCount?admission.artifactSha256:prior.resolveHistorical(count)}};
    }
    heldHead=next;
   }
   const {context,prior}=heldHead;input.assertCurrent();
   if(!opened.source.projection.pulse)throw TypeError('PROFILE_SHOWCASE_SOURCE_KAI_REQUIRED');
   const placement=await sealAndAdmitImportedSourcePlacement({source:opened.source,reference:opened.reference,ownerReceizId:input.owner,
-   immutableVersion:opened.source.projection.pulse,seal:input.childSealer});input.assertCurrent();
+   immutableVersion:opened.source.projection.pulse,seal:input.childSealer,authorshipProof});input.assertCurrent();
   const store=createReceizBrowserArtifactTransitionStore({databaseName,namespace:`profile-showcase-local:${prior.admission.artifactSha256}`,commitDomain});
   await store.ensureHead(input.artifactId,{algorithm:'sha-256',binds:'verified-proof-history',value:prior.admission.proofHistoryHead!.headDigest});
   let prepared:ProfileShowcaseAppendTransport|undefined;
@@ -193,7 +217,7 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    },association);
   if(result.status==='published'){heldHead={context:prepared,prior:{admission,carrier,io:prior.io,
    resolveHistorical:count=>count===head.resultingOperationCount?admission.artifactSha256:prior.resolveHistorical(count)}};
-   published.set(opened.reference.artifactSha256,result);accepted={status:'accepted',artifactId:input.artifactId,transport,
+   published.set(publicationKey,result);accepted={status:'accepted',artifactId:input.artifactId,transport,
    binding:{username:input.username,profileIdentity:input.uid,locator:{acceptedArtifactDigest:transport.artifactDigest}}};}
   return result;
  }};

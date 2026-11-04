@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { parseSharedWallet } from '../src/receiz/shared-wallet';
+import {readFileSync} from 'node:fs';
 const input = { ok: true, wallet: { userId: 'same-owner', balanceUsd: '92233720368547758.09', balancePhiMicro: '198123', valueStates: { settledBalanceUsdCents: '103', ecosystemBalanceUsdCents: '9223372036854775706', livePortfolioValueUsdCents: null, unrealizedPnlUsdCents: null, withdrawableNowUsdCents: null }, sync: { projectionComplete: true }, rollup: { lastEntryKaiPulse: '14920000', lastEntryKaiUpulse: '14920000000123' } } };
 it('reads exact Reserve, Settlement and total from the same native wallet without counting assets twice', () => {
   const wallet = parseSharedWallet(input, 'same-owner');
@@ -40,4 +41,22 @@ it('carries fixed funded Phi units through the same held-source revaluation with
  expect(projectUnchangedWalletPhiSplit(before,{...before,balancePhiMicro:'2200000',reserveUsdCents:'101'})).toEqual({reservePhiMicro:null,settlementPhiMicro:null});
  expect(projectUnchangedWalletPhiSplit(before,{...before,reserveUsdCents:'101'})).toEqual({reservePhiMicro:null,settlementPhiMicro:null});
  expect(projectUnchangedWalletPhiSplit(before,{...before,userId:'foreign'})).toEqual({reservePhiMicro:null,settlementPhiMicro:null});
+});
+it('recovers omitted rail aliases from the same carried current source without changing any balance',()=>{
+ const raw=JSON.parse(readFileSync(new URL('./fixtures/current-balance/mixed.json',import.meta.url),'utf8'));
+ delete raw.wallet.reservePhiMicro;delete raw.wallet.settlementPhiMicro;delete raw.wallet.bankNoteValueProjection;
+ expect(parseSharedWallet(raw,raw.wallet.userId)).toMatchObject({totalUsdCents:'27529',reserveUsdCents:'1900',settlementUsdCents:'25629',balancePhiMicro:'10259540',reservePhiMicro:'8000000',settlementPhiMicro:'2259540'});
+ for(const patch of [{userId:'foreign'},{balancePhiMicro:'10259541'},{balanceUsdCents:'27530'},{reserveUsdCents:'1901'},{settlementUsdCents:'25630'},{historicalContextOnly:true}]){
+  expect(parseSharedWallet({...raw,wallet:{...raw.wallet,currentBalanceSource:{...raw.wallet.currentBalanceSource,...patch}}},raw.wallet.userId).reservePhiMicro).toBeUndefined();
+ }
+ expect(parseSharedWallet({...raw,wallet:{...raw.wallet,bankNoteValueProjection:{schema:'receiz.bank.local-rail-value.v1',reserveBackingPhiMicro:'1',settlementPhiMicro:'1'}}},raw.wallet.userId)).toMatchObject({reservePhiMicro:null,settlementPhiMicro:null});
+});
+it('reuses exact carried funded units when both current-source rail aliases were omitted',()=>{
+ const raw=JSON.parse(readFileSync(new URL('./fixtures/current-balance/mixed.json',import.meta.url),'utf8'));
+ raw.wallet.reservePhiMicro=null;raw.wallet.settlementPhiMicro=null;delete raw.wallet.bankNoteValueProjection;
+ raw.wallet.currentBalanceSource.reservePhiMicro=null;raw.wallet.currentBalanceSource.settlementPhiMicro=null;
+ const wallet=parseSharedWallet(raw,raw.wallet.userId);
+ expect(wallet).toMatchObject({totalUsdCents:'27529',reserveUsdCents:'1900',balancePhiMicro:'10259540',reservePhiMicro:'8000000',settlementPhiMicro:'2259540',currentBalanceSource:{reservePhiMicro:'8000000',settlementPhiMicro:'2259540'}});
+ const mismatched=structuredClone(raw);mismatched.wallet.currentBalanceSource.accountBalancePhiMicro='8000001';
+ expect(parseSharedWallet(mismatched,mismatched.wallet.userId)).toMatchObject({reservePhiMicro:null,settlementPhiMicro:null});
 });

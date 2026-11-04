@@ -54,6 +54,7 @@ try {
   // browser composition uses the included pinned roots, not a Node global or
   // the build machine's environment. Proof and publication rules stay native.
   const publicationBrowserDefines = {
+    'process.env.PBI_ALLOWED_ORIGINS': '""',
     'process.env.NEXT_PUBLIC_RECEIZ_SIGNING_V4_ROOT_PUBLIC_KEYS_JSON': '""',
     'process.env.NEXT_PUBLIC_RECEIZ_SIGNING_V4_PUBLIC_KEYS_JSON': '""',
     'process.env.NEXT_PUBLIC_SW_VERSION': JSON.stringify(manifest.receizVersion),

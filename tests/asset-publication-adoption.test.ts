@@ -10,6 +10,32 @@ const admission={username:'artist',original,sourceReference:reference,firstPaint
 const owner={identityDigest:'d'.repeat(64),accountUid:'owner'};
 const profile:PublicProfile={schema:'bankeiz.public-profile.v1',userId:'owner',username:'artist',displayName:'An artist',bio:null,location:null,websiteUrl:null,avatarUrl:null,bannerUrl:null,socialLinks:[],links:[],authorshipVerified:false,pbiReceiptHash:null,createdAt:null,stats:{originals:0,views:null,plays:null,seconds:null,completion:null},items:[],nextCursor:null};
 afterEach(()=>{adoption.forgetAssetPublicationAdmissions();forgetPublicProfile('artist');vi.restoreAllMocks();});
+it('leaves an unobserved owner portrait available for the later public profile',()=>{
+ adoption.retainAssetPublicationAdmission(admission,owner);
+ const item=adoption.admittedAssetPublicationItem(reference.artifactSha256,'artist')!;
+ expect(item.ownerAvatarUrl).toBeUndefined();
+ const portrait='https://receiz.com/artwork/artist.webp';
+ retainPublicProfile({...profile,avatarUrl:portrait});
+ expect(retainedPublicProfile('artist')?.items[0].ownerAvatarUrl).toBe(portrait);
+ expect(adoption.admittedAssetPublicationItem(reference.artifactSha256,'artist')?.ownerAvatarUrl).toBe(portrait);
+});
+it('repairs a restored local admission portrait from the same current owner profile',async()=>{
+ adoption.retainAssetPublicationAdmission(admission,owner);
+ const key='bankeiz-admitted-public-assets-v1',saved=JSON.parse(localStorage.getItem(key)!);
+ saved[0].row.ownerAvatarUrl=null;adoption.forgetAssetPublicationAdmissions();localStorage.setItem(key,JSON.stringify(saved));
+ vi.resetModules();const restored=await import('../src/receiz/asset-publication-adoption'),profiles=await import('../src/receiz/public-profile');
+ try{
+  const portrait='https://receiz.com/artwork/current-artist.webp';profiles.retainPublicProfile({...profile,avatarUrl:portrait});
+  expect(restored.admittedAssetPublicationItem(reference.artifactSha256,'artist')?.ownerAvatarUrl).toBe(portrait);
+  expect(restored.mergeAdmittedPublicAssets(parsePublicMarket({ok:true,transport:{publicOriginals:[]}})).items[0].ownerAvatarUrl).toBe(portrait);
+  profiles.retainPublicProfile({...profile,avatarUrl:null});expect(restored.admittedAssetPublicationItem(reference.artifactSha256,'artist')?.ownerAvatarUrl).toBeNull();
+  profiles.retainPublicProfile({...profile,userId:'another-owner',avatarUrl:portrait});expect(restored.admittedAssetPublicationItem(reference.artifactSha256,'artist')?.ownerAvatarUrl).toBeNull();
+ }finally{restored.forgetAssetPublicationAdmissions();profiles.forgetPublicProfile('artist');}
+});
+it('preserves an explicitly absent portrait from the observed public profile',()=>{
+ retainPublicProfile(profile);adoption.retainAssetPublicationAdmission(admission,owner);
+ expect(adoption.admittedAssetPublicationItem(reference.artifactSha256,'artist')?.ownerAvatarUrl).toBeNull();
+});
 it('keeps local membership through quote clones until actual discovery acknowledges it',()=>{
  adoption.retainAssetPublicationAdmission(admission,owner);adoption.acknowledgeAssetPublication(reference.artifactSha256,{status:'published',artifactDigest:'f'.repeat(64),operationCount:1,visibleChildCount:1});
  const empty=parsePublicMarket({ok:true,transport:{publicOriginals:[]}}),first=adoption.mergeAdmittedPublicAssets(empty);
@@ -70,4 +96,18 @@ it('displays a canonically admitted local Original before Showcase delivery with
  expect(adoption.assetPublicationFreshnessHint()).toBeUndefined();
  adoption.acknowledgeAssetPublication(reference.artifactSha256,{status:'published',artifactDigest:'f'.repeat(64),operationCount:1,visibleChildCount:1});
  expect(adoption.admittedAssetPublicationDelivery(reference.artifactSha256,'artist')).toEqual({status:'published',showcaseArtifactDigest:'f'.repeat(64)});
+});
+
+it('keeps locally pending signing unavailable until its existing receipt or public observation arrives',()=>{
+ const request=vi.spyOn(globalThis,'fetch'),digest=reference.artifactSha256;
+ expect(adoption.locallyPendingAssetPublication(digest,'artist')).toBe(false);
+ adoption.retainAssetPublicationAdmission({...admission,firstPaint:null},owner);
+ expect(adoption.locallyPendingAssetPublication(digest,'artist')).toBe(true);
+ expect(adoption.locallyPendingAssetPublication(digest,'another')).toBe(false);
+ const published=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:imported-new',receizId:'imported-new',title:'A complete work',ownerUsername:'artist',profileOriginal:{media:original.media}}]}});
+ adoption.acceptDiscoveredPublicAssets(published);
+ expect(adoption.locallyPendingAssetPublication(digest,'artist')).toBe(false);
+ adoption.forgetAssetPublicationAdmissions();adoption.retainAssetPublicationAdmission({...admission,firstPaint:null},owner);
+ adoption.acknowledgeAssetPublication(digest,{status:'published',artifactDigest:'f'.repeat(64),operationCount:1,visibleChildCount:1});
+ expect(adoption.locallyPendingAssetPublication(digest,'artist')).toBe(false);expect(request).not.toHaveBeenCalled();
 });

@@ -1,6 +1,8 @@
 import { expect, it } from 'vitest';
 import { readWalletObservation } from '../src/receiz/wallet-observation';
 import { BANK_APPLICATION_ID } from '../src/receiz/config';
+import {readFileSync} from 'node:fs';
+import {parseSharedWallet} from '../src/receiz/shared-wallet';
 it('restores only the exact identity-bound, consistent private source observation', () => {
   const binding = { keyId: 'key-a', artifactSha256: 'a'.repeat(64) }, input = { schema: 'receiz.bank.private-wallet-observation.v1', authority: 'read-only-observation', applicationId: BANK_APPLICATION_ID, ...binding, observedAt: '2026-10-13T20:00:00Z', wallet: { userId: 'same-user', totalUsdCents: '300', reserveUsdCents: '100', settlementUsdCents: '200', balancePhiMicro: '1000' } };
   expect(readWalletObservation(input, binding)?.wallet.totalUsdCents).toBe('300');
@@ -58,4 +60,13 @@ it('projects source-known native split immediately from a complete retained basi
  const input={schema:'receiz.bank.private-wallet-observation.v1',authority:'read-only-observation',applicationId:BANK_APPLICATION_ID,...binding,observedAt:'2026-10-13T20:00:00Z',wallet,walletScope:'native-full',history,historyBasis:{schema:'bank.account-history-display.v1',startKaiUPulse:'1000000',endKaiUPulse:'2000000',settlementPhiMicro:'2000001',balancePhiMicro:'2100002',reserveUsdCents:'100',retainedStateSha256:'b'.repeat(64)}};
  expect(readWalletObservation(input,binding)?.wallet).toMatchObject({settlementPhiMicro:'2000001',reservePhiMicro:'100001'});
  expect(readWalletObservation({...input,historyBasis:{...input.historyBasis,balancePhiMicro:'2100003'}},binding)?.wallet.settlementPhiMicro).toBeUndefined();
+});
+it('restores omitted display aliases from the matching exact source already retained in the private observation',()=>{
+ const raw=JSON.parse(readFileSync(new URL('./fixtures/current-balance/mixed.json',import.meta.url),'utf8')),wallet=parseSharedWallet(raw,raw.wallet.userId),binding={keyId:'key',artifactSha256:'a'.repeat(64)};
+ delete wallet.reservePhiMicro;delete wallet.settlementPhiMicro;
+ const saved={schema:'receiz.bank.private-wallet-observation.v1',authority:'read-only-observation',applicationId:BANK_APPLICATION_ID,...binding,observedAt:'2026-10-27T19:43:50.372Z',wallet};
+ const restored=readWalletObservation(saved,binding)!;
+ expect(restored.wallet).toMatchObject({totalUsdCents:'27529',reserveUsdCents:'1900',balancePhiMicro:'10259540',reservePhiMicro:'8000000',settlementPhiMicro:'2259540'});
+ expect(saved.wallet.reservePhiMicro).toBeUndefined();
+ expect(readWalletObservation({...saved,wallet:{...wallet,totalUsdCents:'27530',settlementUsdCents:'25630'}},binding)?.wallet.reservePhiMicro).toBeUndefined();
 });

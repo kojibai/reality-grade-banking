@@ -133,8 +133,10 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  expect(complete.children.some((child:any)=>child.reference.childArtifactDigest===hiddenChild.childArtifactDigest)).toBe(false);
  expect(reads.some(sha=>oldBodies.has(sha))).toBe(false);
  let failedReads=0;
- await expect(r.connectedComposer.createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,
+ const failed=await r.connectedComposer.createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,
   account:{uid:'a-current-account-with-no-cached-placement',username:'service_failure'},assertCurrent(){},sealDocument:seal,
-  fetchImpl:async()=>{failedReads++;throw Error('BANK_ASSET_PUBLICATION_SERVICE_UNAVAILABLE');}})).rejects.toThrow('BANK_ASSET_PUBLICATION_SERVICE_UNAVAILABLE');
+  fetchImpl:async()=>{failedReads++;throw Error('BANK_ASSET_PUBLICATION_SERVICE_UNAVAILABLE');}});
+ expect(failedReads).toBe(0);
+ await expect(failed.publish(quota.artifact)).rejects.toThrow('BANK_ASSET_PUBLICATION_SERVICE_UNAVAILABLE');
  expect(failedReads).toBe(1);
 },60000);

@@ -62,7 +62,7 @@ it.each(['buy','sell']as const)('keeps the investment chart beneath a %s trade',
  }finally{act(()=>root.unmount());host.remove();vi.unstubAllGlobals();}
 });
 it.each(['buy','sell']as const)('keeps the Showcase object beneath a connected Market %s trade',async side=>{
- const onOpen=vi.fn(),identity={listDeposits:async()=>[]} as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);document.body.append(host);const request=vi.fn();vi.stubGlobal('fetch',request);
+ const onOpen=vi.fn(),identity={binding:{keyId:'synthetic-owner'},listDeposits:async()=>[]} as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);document.body.append(host);const request=vi.fn();vi.stubGlobal('fetch',request);
  try{
   await act(async()=>root.render(<LiveAssets identity={identity} active revision={0} showcase={catalog().items} onOpen={onOpen}/>));await act(()=>host.querySelector<HTMLButtonElement>('.market-rows .asset-row')!.click());const dialog=host.querySelector('dialog')!;
   await act(()=>[...dialog.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent===(side==='buy'?'Buy ownership':'Take cash'))!.click());

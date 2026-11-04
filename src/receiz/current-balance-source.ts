@@ -30,7 +30,16 @@ export function readCurrentBalanceSource(input:unknown,userId:string):CurrentBal
  const glyphs:{id:string;livePulseSeed:MarketPulseSeed}[]=[],ids=new Set<string>();
  for(const row of input.glyphs){if(!record(row)||typeof row.id!=='string'||!row.id||row.id.length>512||ids.has(row.id)||!record(row.livePulseSeed))return;const seed=publicMarketPulseSeed(row.livePulseSeed,String(row.livePulseSeed.claimPulse));if(!seed)return;ids.add(row.id);glyphs.push({id:row.id,livePulseSeed:seed});}
  const originalProofReferences=readBalanceOriginalProofReferences(input.originalProofReferences),reserveFundingSource=readReserveFundingSource(input.reserveFundingSource,userId,input.reserveUsdCents as string);
+ let reservePhiMicro=input.reservePhiMicro,settlementPhiMicro=input.settlementPhiMicro;
+ // Older display packets omit the aliases while retaining their exact funded
+ // backing. Reuse only the funding operands of this same account frame.
+ if(input.historicalContextOnly!==true&&reserveFundingSource&&reserveFundingSource.displayCap.accountBalancePhiMicro===input.accountBalancePhiMicro
+  &&reserveFundingSource.displayCap.usdPerPhiMicrocents===input.usdPerPhiMicrocents&&reserveFundingSource.recordedReserveUsdCents===input.ledgerSettledUsdCents
+  &&BigInt(reserveFundingSource.reservePhiMicro)<=BigInt(input.balancePhiMicro as string)){
+  const reserve=reserveFundingSource.reservePhiMicro,settlement=(BigInt(input.balancePhiMicro as string)-BigInt(reserve)).toString();
+  if((reservePhiMicro===null||reservePhiMicro===reserve)&&(settlementPhiMicro===null||settlementPhiMicro===settlement)){reservePhiMicro=reserve;settlementPhiMicro=settlement;}
+ }
  const scalar=Object.fromEntries(unsigned.map(key=>[key,input[key]])) as Pick<CurrentBalanceSource,typeof unsigned[number]>;
- return freeze({userId,...(input.historicalContextOnly===true?{historicalContextOnly:true}:{}),...(cashBasis?{cashBasis,cashBasisAccepted:input.cashBasisAccepted as boolean}:{}),...(input.sourceSha256?{sourceSha256:input.sourceSha256 as string}:{}),earningMembershipPolicy:'public-pbi-original-v1',creationSigilBenefitsEnabled:true,computedPulse:Number(input.computedPulse),computedAt:input.computedAt,glyphs,...scalar,transactionDeltaPhiMicro:input.transactionDeltaPhiMicro,transactionDeltaUsdCents:input.transactionDeltaUsdCents,reservePhiMicro:input.reservePhiMicro,settlementPhiMicro:input.settlementPhiMicro,...(originalProofReferences?{originalProofReferences}:{}),...(reserveFundingSource?{reserveFundingSource}:{})} as CurrentBalanceSource);
+ return freeze({userId,...(input.historicalContextOnly===true?{historicalContextOnly:true}:{}),...(cashBasis?{cashBasis,cashBasisAccepted:input.cashBasisAccepted as boolean}:{}),...(input.sourceSha256?{sourceSha256:input.sourceSha256 as string}:{}),earningMembershipPolicy:'public-pbi-original-v1',creationSigilBenefitsEnabled:true,computedPulse:Number(input.computedPulse),computedAt:input.computedAt,glyphs,...scalar,transactionDeltaPhiMicro:input.transactionDeltaPhiMicro,transactionDeltaUsdCents:input.transactionDeltaUsdCents,reservePhiMicro,settlementPhiMicro,...(originalProofReferences?{originalProofReferences}:{}),...(reserveFundingSource?{reserveFundingSource}:{})} as CurrentBalanceSource);
 }
 export const currentBalanceCaptureKai=(source:CurrentBalanceSource)=>(BigInt(source.computedPulse)*1_000_000n).toString();

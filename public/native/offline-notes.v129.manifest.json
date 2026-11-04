@@ -1018,6 +1018,27 @@
       "baseSha256": "aa681c14cb1e8b91ce80622d8730dd82e1312f6cb515a5a21354db5045baa819",
       "sha256": "94c07dc09eb1bae18f8846720f959bcc7f643830f5d9116df70dd41f51290b15",
       "purpose": "Pass the exact description claim SHA through the existing document sealer option; preserve sealed payload, local creation and existing proof objects."
+    },
+    {
+      "id": "bankeiz-direct-pbi-connectedAssetPublication.client",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "93efc347ca0e1d464452711df1ea1912b4a613558189e2a303f499525257fb76",
+      "sha256": "9c9b94764e81e3ad29778a801da6f3a01ede3c0a57ce0765cec17325bdde9b7d",
+      "purpose": "Use existing Showcase PBI action, canonical opened Source and durable PBI outbox before connected delivery. Preserve actual signature verification, original bytes, exact retry, native entry and financial primitives."
+    },
+    {
+      "id": "bankeiz-direct-pbi-importedSourceAuthorship",
+      "path": "receiz/app/lib/profile/showcase/importedSourceAuthorship.ts",
+      "baseSha256": "93f2c9fea78f1caa5d463e8e47d7cf968724c8ca40a6cbe163bd15e1f46f9537",
+      "sha256": "d3f28df5c6e161cd5c2dd3787dce7812981abd0f821a5304220376bdd21fcb25",
+      "purpose": "Use existing Showcase PBI action, canonical opened Source and durable PBI outbox before connected delivery. Preserve actual signature verification, original bytes, exact retry, native entry and financial primitives."
+    },
+    {
+      "id": "bankeiz-direct-pbi-incrementalAssetPublication.client",
+      "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
+      "baseSha256": "0b235648281b4f529cf51ef3a4dd3d003ce2cce112793d3ba76a39c14e2304f2",
+      "sha256": "35d65a77e85c91b9e1f5d474134e96c2acd8af055cd17bec0bd11aedec3d9af7",
+      "purpose": "Use existing Showcase PBI action, canonical opened Source and durable PBI outbox before connected delivery. Preserve actual signature verification, original bytes, exact retry, native entry and financial primitives."
     }
   ]
 }

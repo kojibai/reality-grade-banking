@@ -4,7 +4,7 @@ import type {PublicMarketItem} from '../../receiz/public-market';
 import {useEffect,useRef,useState} from 'react';
 import {Fingerprint} from 'lucide-react';
 import {InlineOpening} from '../../components/InlineOpening';
-import {retainedAssetPublicationSource} from '../../receiz/asset-publication-adoption';
+import {retainedAssetPublicationSource,locallyPendingAssetPublication} from '../../receiz/asset-publication-adoption';
 import {resolvePublicOriginalUrl,PublicOriginalPurchaseRequired} from '../../receiz/public-original';
 import {readPublicLedgerBytes} from '../../receiz/public-ledger-transfer';
 import './original-signing.css';
@@ -13,7 +13,7 @@ import './original-signing.css';
  * PBI work happen until the owner explicitly chooses this control. */
 export function OriginalSigning({identity,source,item}:{identity:OpenIdentity;source?:HeldDeposit;item?:PublicMarketItem}){
  const username=identity.accountUsername?.()??identity.username,digest=source?.digest??item?.originalDigest;
- if(!digest||(source?.pbiSigned??item?.hasPbiSignature)!==false||item?.hasPbiSignature||source?.nativeAsset||source?.kind==='intake'
+ if(!username||!digest||locallyPendingAssetPublication(digest,username)||(source?.pbiSigned??item?.hasPbiSignature)!==false||item?.hasPbiSignature||source?.nativeAsset||source?.kind==='intake'
   ||item&&item.ownerUsername!==username)return null;
  return <UnsignedOriginalSigning key={identity.binding.keyId+digest} identity={identity} source={source} item={item} digest={digest}/>;
 }

@@ -27,7 +27,7 @@ it('does not read while its retained application surface is suspended and resume
  try{await act(async()=>{root.render(<MerchantCounter identity={identity} onBack={()=>{}} visible={false}/>);await new Promise(resolve=>setTimeout(resolve,20));});await act(async()=>{await new Promise(resolve=>setTimeout(resolve,20));});expect(check).not.toHaveBeenCalled();await act(async()=>root.render(<MerchantCounter identity={identity} onBack={()=>{}} visible/>));await act(async()=>{await new Promise(resolve=>setTimeout(resolve,20));});expect(check).toHaveBeenCalledOnce();}finally{await act(async()=>root.unmount());controller.dispose();}
 });
 
-it('lets an older unpaid saved checkout cancel through the existing contract and keeps it closed after reopening',async()=>{
+it('confirms cancellation once and reopens at a new sale while the exact cancelled record stays selectable',async()=>{
  const uid='10000000-0000-4000-8000-000000000002';let stored:unknown=null;
  const dependencies={identityDigest:'a'.repeat(64),accountUid:uid,username:'merchant',assertCurrent(){},receive:{check:vi.fn(async()=>[]),remember(){},unresolved:()=>false},store:{read:async()=>structuredClone(stored),write:async(next:unknown,expected:unknown)=>{expect(stored).toEqual(expected);stored=structuredClone(next);}},lock:<T,>(work:()=>Promise<T>)=>work()};
  const old=createMerchantCounter(dependencies);await old.ready;await old.create('1000');const request=old.snapshot().active!.request;expect(old.snapshot().active!.requestStatus).toBeUndefined();old.dispose();
@@ -37,9 +37,15 @@ it('lets an older unpaid saved checkout cancel through the existing contract and
  try{
   await act(async()=>root.render(<MerchantCounter identity={identity} onBack={()=>{}} visible={false}/>));expect(host.querySelector('[aria-label="Checkout QR"]')).not.toBeNull();expect(button('Cancel checkout')).toBeDefined();
   await act(async()=>button('Cancel checkout')!.click());expect(host.textContent).toContain('Cancel this checkout?');await act(async()=>button('Keep open')!.click());expect(lifecycle.cancel).not.toHaveBeenCalled();
-  await act(async()=>button('Cancel checkout')!.click());await act(async()=>button('Cancel checkout')!.click());expect(lifecycle.cancel).toHaveBeenCalledExactlyOnceWith(request);expect(lifecycle.open).not.toHaveBeenCalled();expect(controller.snapshot().active!.requestStatus).toBe('cancelled');expect(host.querySelector('[aria-label="Checkout QR"]')).toBeNull();
-  await act(async()=>root.unmount());controller.dispose();const reopened=createMerchantCounter({...dependencies,lifecycle});await reopened.ready;const reopenedRoot=createRoot(host);
-  try{await act(async()=>reopenedRoot.render(<MerchantCounter identity={{...identity,merchantCounter:async()=>reopened}} onBack={()=>{}} visible={false}/>));expect(host.querySelector('[aria-label="Checkout QR"]')).toBeNull();expect(host.textContent).toContain('Checkout cancelled');expect(button('Cancel checkout')).toBeUndefined();await act(async()=>button('Next sale')!.click());expect(host.querySelector('[aria-label="Sale total"]')).not.toBeNull();expect(reopened.snapshot().sales).toHaveLength(1);}finally{await act(async()=>reopenedRoot.unmount());reopened.dispose();}
+  await act(async()=>button('Cancel checkout')!.click());await act(async()=>button('Cancel checkout')!.click());expect(lifecycle.cancel).toHaveBeenCalledExactlyOnceWith(request);expect(lifecycle.open).not.toHaveBeenCalled();expect(controller.snapshot().active!.requestStatus).toBe('cancelled');expect(host.querySelector('[aria-label="Checkout QR"]')).toBeNull();expect(host.textContent).toContain('Checkout cancelled');const cancelled=structuredClone(stored);
+  await act(async()=>root.render(<MerchantCounter identity={identity} onBack={()=>{}} visible/>));expect(host.querySelector('[aria-label="Sale total"]')).not.toBeNull();expect(host.textContent).not.toContain('Checkout cancelled');expect(stored).toEqual(cancelled);
+  await act(async()=>root.unmount());const sameRoot=createRoot(host);
+  try{await act(async()=>sameRoot.render(<MerchantCounter identity={identity} onBack={()=>{}} visible={false}/>));expect(host.querySelector('[aria-label="Sale total"]')).not.toBeNull();expect(host.textContent).not.toContain('Checkout cancelled');expect(stored).toEqual(cancelled);}finally{await act(async()=>sameRoot.unmount());controller.dispose();}
+  const reopened=createMerchantCounter({...dependencies,lifecycle});await reopened.ready;const reopenedRoot=createRoot(host);
+  try{
+   await act(async()=>reopenedRoot.render(<MerchantCounter identity={{...identity,merchantCounter:async()=>reopened}} onBack={()=>{}} visible={false}/>));expect(host.querySelector('[aria-label="Checkout QR"]')).toBeNull();expect(host.textContent).not.toContain('Checkout cancelled');expect(host.querySelector('[aria-label="Sale total"]')).not.toBeNull();expect(stored).toEqual(cancelled);
+   const historical=host.querySelector<HTMLButtonElement>('.counter-history button');expect(historical?.textContent).toContain('Cancelled');await act(async()=>historical!.click());expect(host.textContent).toContain('Checkout cancelled');expect(host.querySelector('[aria-label="Sale total"]')).toBeNull();expect(button('Cancel checkout')).toBeUndefined();expect(reopened.snapshot().active!.request).toEqual(request);expect(reopened.snapshot().sales).toHaveLength(1);
+  }finally{await act(async()=>reopenedRoot.unmount());reopened.dispose();}
  }finally{await act(async()=>root.unmount());host.remove();controller.dispose();}
 });
 

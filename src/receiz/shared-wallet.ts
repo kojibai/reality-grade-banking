@@ -34,9 +34,19 @@ export function readWalletPhiSplit(input:unknown,balancePhiMicro:string):Pick<Sh
    ||BigInt(projection.reserveBackingPhiMicro)+BigInt(projection.settlementPhiMicro)!==BigInt(balancePhiMicro))return unknown;
   return {reservePhiMicro:projection.reserveBackingPhiMicro,settlementPhiMicro:projection.settlementPhiMicro};
  }
- if(value.reservePhiMicro===undefined&&value.settlementPhiMicro===undefined)return {};
  const reserve=uint(value.reservePhiMicro)?value.reservePhiMicro:null,settlement=uint(value.settlementPhiMicro)?value.settlementPhiMicro:null,total=BigInt(balancePhiMicro);
  if(reserve!==null&&BigInt(reserve)>total||settlement!==null&&BigInt(settlement)>total||reserve!==null&&settlement!==null&&BigInt(reserve)+BigInt(settlement)!==total)return unknown;
+ if((reserve===null||settlement===null)&&[value.reservePhiMicro,value.settlementPhiMicro].every(v=>v==null||uint(v))&&typeof value.userId==='string'){
+  const source=readCurrentBalanceSource(value.currentBalanceSource,value.userId),states=value.valueStates as Record<string,unknown>|undefined;
+  let totalUsdCents=value.totalUsdCents;try{if(totalUsdCents===undefined)totalUsdCents=usdCents(value.balanceUsd);}catch{/* A partial object cannot establish a matching source frame. */}
+  if(source&&!source.historicalContextOnly&&source.balancePhiMicro===balancePhiMicro&&source.balanceUsdCents===totalUsdCents
+   &&source.reserveUsdCents===(value.reserveUsdCents??states?.settledBalanceUsdCents)&&source.settlementUsdCents===(value.settlementUsdCents??states?.ecosystemBalanceUsdCents)
+   &&source.reservePhiMicro!==null&&source.settlementPhiMicro!==null&&BigInt(source.reservePhiMicro)+BigInt(source.settlementPhiMicro)===total){
+   if(reserve!==null&&reserve!==source.reservePhiMicro||settlement!==null&&settlement!==source.settlementPhiMicro)return unknown;
+   return {reservePhiMicro:source.reservePhiMicro,settlementPhiMicro:source.settlementPhiMicro};
+  }
+ }
+ if(value.reservePhiMicro===undefined&&value.settlementPhiMicro===undefined)return {};
  return {reservePhiMicro:reserve,settlementPhiMicro:settlement};
 }
 /** The same retained source is only repriced, not funded again. Preserve its

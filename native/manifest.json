@@ -6027,9 +6027,39 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/auth/bridgeClient.ts",
+      "sha256": "0cbc99a88b786b91f142ef652672cd0bc4edf1e80a7f41ee6ee2f05e033e8610",
+      "bytes": 12501,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/auth/identityCustodyNavigationSettlement.ts",
       "sha256": "b560fcc9d1092cf627919f1929194bb73ed510ed6ac7edf3e156d82feb09e40c",
       "bytes": 740,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/auth/immediateIdentityKeySessionRecovery.ts",
+      "sha256": "6eaaafe94a1c3984f0d0cc5e0cb67e5f3f0d92b490fcbf7d10363bd9d6c3a4e6",
+      "bytes": 4561,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/auth/localIdentityBinding.ts",
+      "sha256": "94a9c6deff336bdb75eb6a844dd1bf74d8fa3ddca6e1ff9aa568ae9928e57eb3",
+      "bytes": 1018,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/auth/localIdentityBindingRegister.ts",
+      "sha256": "0965f13261d2ff2357dcf8db9de9fcb36452b239eaa02a22aa6e1dccc54dba7d",
+      "bytes": 5038,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/auth/localIdentityPublishOutbox.ts",
+      "sha256": "1980ae49881987f515a0b9d3f8968e39360082dc6f923b17bfc383e07d437132",
+      "bytes": 15773,
       "mode": 420
     },
     {
@@ -6084,6 +6114,12 @@
       "path": "receiz/app/lib/auth/receizSelectedAccountSource.ts",
       "sha256": "c1df2a3051bbabb62e8abdb6aa5820b94b2ebad975611c0f4d324746864e3469",
       "bytes": 1758,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/auth/relatedOrigins.ts",
+      "sha256": "358342c242b722b4c0d07c362e24693a2af496917a815837686d5895f7a167bc",
+      "bytes": 524,
       "mode": 420
     },
     {
@@ -6627,6 +6663,36 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/pbi/localAuthorship.ts",
+      "sha256": "e0a12e3dfd9ab7b56cb233291d92ff43fc0b779fc639b8685efbd69a562f97bf",
+      "bytes": 1095,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/pbi/localAuthorshipOutbox.ts",
+      "sha256": "2e92e36920768a609f586917cc991852d45d3565090b14cdfb634e0a22123f7a",
+      "bytes": 30484,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/pbi/localVerifier.ts",
+      "sha256": "c5bf9298c3eaa60cdbef35c743671064c405a9d2e3e0bba0122d42da34add8c7",
+      "bytes": 604,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/pbi/proofObjectAuthorshipReconciliation.ts",
+      "sha256": "73a4a617a1614525344826542a2d4d5fc1cf0b0ea3f9ac5a852f89d17e5b386c",
+      "bytes": 20552,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/pbi/realm.ts",
+      "sha256": "94d21dc97ae2388fb60a32f35d1ed24f3d5fab0feb5a99a5eb159e6017a81d0c",
+      "bytes": 976,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/premium/plan.ts",
       "sha256": "5d6128fa44941b0e1501037d58067dbb04b05acc0c87f2645c7888f5964d72b3",
       "bytes": 3819,
@@ -6760,7 +6826,7 @@
     {
       "path": "receiz/app/lib/profile/profileIdentityCreationCoordinate.ts",
       "sha256": "9f16c626597ec0686d85011714856bb98a16fdee2a26d7b012c65b7a5929dfae",
-      "bytes": 5465,
+      "bytes": 5468,
       "mode": 420
     },
     {
@@ -6938,8 +7004,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "93efc347ca0e1d464452711df1ea1912b4a613558189e2a303f499525257fb76",
-      "bytes": 16563,
+      "sha256": "9c9b94764e81e3ad29778a801da6f3a01ede3c0a57ce0765cec17325bdde9b7d",
+      "bytes": 19509,
       "mode": 420
     },
     {
@@ -6974,9 +7040,9 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSourceAuthorship.ts",
-      "sha256": "93f2c9fea78f1caa5d463e8e47d7cf968724c8ca40a6cbe163bd15e1f46f9537",
+      "sha256": "d3f28df5c6e161cd5c2dd3787dce7812981abd0f821a5304220376bdd21fcb25",
       "mode": 420,
-      "bytes": 2673
+      "bytes": 3541
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
@@ -7022,8 +7088,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
-      "sha256": "0b235648281b4f529cf51ef3a4dd3d003ce2cce112793d3ba76a39c14e2304f2",
-      "bytes": 20982,
+      "sha256": "35d65a77e85c91b9e1f5d474134e96c2acd8af055cd17bec0bd11aedec3d9af7",
+      "bytes": 23350,
       "mode": 420
     },
     {
@@ -7077,7 +7143,7 @@
     {
       "path": "receiz/app/lib/profile/showcase/publicProjectionPublication.ts",
       "sha256": "41db18707a658f43b2f011d48384cee144e73b2167090b4bde42c955f494fa15",
-      "bytes": 12400,
+      "bytes": 12956,
       "mode": 420
     },
     {
@@ -7399,7 +7465,7 @@
     {
       "path": "receiz/app/lib/wallet/bankNotes/connectedNote.ts",
       "sha256": "8166ba0fe97430ccee7683a380f0983d9beec99a071d932aee06e9b7f08dbb04",
-      "bytes": 32058,
+      "bytes": 36343,
       "mode": 420
     },
     {
@@ -7697,6 +7763,12 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/utils/cbor.ts",
+      "sha256": "d36c6155ff2e53566017a6ef35d7dc2ec1c55fe54da70658ba893eb8a606ab09",
+      "bytes": 2545,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/utils/dataUrl.ts",
       "sha256": "145a9ef953b1bd925f765c94daaf2994f997282c17e075b2aa9888e23b392e43",
       "bytes": 900,
@@ -7712,6 +7784,12 @@
       "path": "receiz/app/utils/kai_pulse.ts",
       "sha256": "c1d9a1ff780681946935389d94ada11df3245e96782dca1183e2675b0ef14954",
       "bytes": 53541,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/utils/pbi/webauthn.ts",
+      "sha256": "5ac5fd4ab2253db378d96c563e322b5eaba2430cde5109c1e12e7fc87246ecc2",
+      "bytes": 21539,
       "mode": 420
     },
     {
@@ -17143,6 +17221,27 @@
       "baseSha256": "aa681c14cb1e8b91ce80622d8730dd82e1312f6cb515a5a21354db5045baa819",
       "sha256": "94c07dc09eb1bae18f8846720f959bcc7f643830f5d9116df70dd41f51290b15",
       "purpose": "Pass the exact description claim SHA through the existing document sealer option; preserve sealed payload, local creation and existing proof objects."
+    },
+    {
+      "id": "bankeiz-direct-pbi-connectedAssetPublication.client",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "93efc347ca0e1d464452711df1ea1912b4a613558189e2a303f499525257fb76",
+      "sha256": "9c9b94764e81e3ad29778a801da6f3a01ede3c0a57ce0765cec17325bdde9b7d",
+      "purpose": "Use existing Showcase PBI action, canonical opened Source and durable PBI outbox before connected delivery. Preserve actual signature verification, original bytes, exact retry, native entry and financial primitives."
+    },
+    {
+      "id": "bankeiz-direct-pbi-importedSourceAuthorship",
+      "path": "receiz/app/lib/profile/showcase/importedSourceAuthorship.ts",
+      "baseSha256": "93f2c9fea78f1caa5d463e8e47d7cf968724c8ca40a6cbe163bd15e1f46f9537",
+      "sha256": "d3f28df5c6e161cd5c2dd3787dce7812981abd0f821a5304220376bdd21fcb25",
+      "purpose": "Use existing Showcase PBI action, canonical opened Source and durable PBI outbox before connected delivery. Preserve actual signature verification, original bytes, exact retry, native entry and financial primitives."
+    },
+    {
+      "id": "bankeiz-direct-pbi-incrementalAssetPublication.client",
+      "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
+      "baseSha256": "0b235648281b4f529cf51ef3a4dd3d003ce2cce112793d3ba76a39c14e2304f2",
+      "sha256": "35d65a77e85c91b9e1f5d474134e96c2acd8af055cd17bec0bd11aedec3d9af7",
+      "purpose": "Use existing Showcase PBI action, canonical opened Source and durable PBI outbox before connected delivery. Preserve actual signature verification, original bytes, exact retry, native entry and financial primitives."
     }
   ],
   "historicalValuation": {
@@ -17210,8 +17309,28 @@
       "sha256": "11e0c79cd8ed0be77cd6c7ec0ef23adb985bd9b6ac4bc256dd13ff50a87f9b0b"
     },
     {
+      "path": "app/lib/auth/bridgeClient.ts",
+      "sha256": "0cbc99a88b786b91f142ef652672cd0bc4edf1e80a7f41ee6ee2f05e033e8610"
+    },
+    {
       "path": "app/lib/auth/identityCustodyNavigationSettlement.ts",
       "sha256": "b560fcc9d1092cf627919f1929194bb73ed510ed6ac7edf3e156d82feb09e40c"
+    },
+    {
+      "path": "app/lib/auth/immediateIdentityKeySessionRecovery.ts",
+      "sha256": "6eaaafe94a1c3984f0d0cc5e0cb67e5f3f0d92b490fcbf7d10363bd9d6c3a4e6"
+    },
+    {
+      "path": "app/lib/auth/localIdentityBinding.ts",
+      "sha256": "94a9c6deff336bdb75eb6a844dd1bf74d8fa3ddca6e1ff9aa568ae9928e57eb3"
+    },
+    {
+      "path": "app/lib/auth/localIdentityBindingRegister.ts",
+      "sha256": "0965f13261d2ff2357dcf8db9de9fcb36452b239eaa02a22aa6e1dccc54dba7d"
+    },
+    {
+      "path": "app/lib/auth/localIdentityPublishOutbox.ts",
+      "sha256": "1980ae49881987f515a0b9d3f8968e39360082dc6f923b17bfc383e07d437132"
     },
     {
       "path": "app/lib/auth/offlineIdentitySession.ts",
@@ -17248,6 +17367,10 @@
     {
       "path": "app/lib/auth/receizSelectedAccountSource.ts",
       "sha256": "c1df2a3051bbabb62e8abdb6aa5820b94b2ebad975611c0f4d324746864e3469"
+    },
+    {
+      "path": "app/lib/auth/relatedOrigins.ts",
+      "sha256": "358342c242b722b4c0d07c362e24693a2af496917a815837686d5895f7a167bc"
     },
     {
       "path": "app/lib/calendar/calendarAccountBrainSeed.ts",
@@ -17582,6 +17705,26 @@
       "sha256": "27fe62e141213036c01386f785247e69328cf95f5e5a3b008b72f38926bac2ad"
     },
     {
+      "path": "app/lib/pbi/localAuthorship.ts",
+      "sha256": "e0a12e3dfd9ab7b56cb233291d92ff43fc0b779fc639b8685efbd69a562f97bf"
+    },
+    {
+      "path": "app/lib/pbi/localAuthorshipOutbox.ts",
+      "sha256": "2e92e36920768a609f586917cc991852d45d3565090b14cdfb634e0a22123f7a"
+    },
+    {
+      "path": "app/lib/pbi/localVerifier.ts",
+      "sha256": "c5bf9298c3eaa60cdbef35c743671064c405a9d2e3e0bba0122d42da34add8c7"
+    },
+    {
+      "path": "app/lib/pbi/proofObjectAuthorshipReconciliation.ts",
+      "sha256": "73a4a617a1614525344826542a2d4d5fc1cf0b0ea3f9ac5a852f89d17e5b386c"
+    },
+    {
+      "path": "app/lib/pbi/realm.ts",
+      "sha256": "94d21dc97ae2388fb60a32f35d1ed24f3d5fab0feb5a99a5eb159e6017a81d0c"
+    },
+    {
       "path": "app/lib/premium/plan.ts",
       "sha256": "5d6128fa44941b0e1501037d58067dbb04b05acc0c87f2645c7888f5964d72b3"
     },
@@ -17779,7 +17922,7 @@
     },
     {
       "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "93efc347ca0e1d464452711df1ea1912b4a613558189e2a303f499525257fb76"
+      "sha256": "9c9b94764e81e3ad29778a801da6f3a01ede3c0a57ce0765cec17325bdde9b7d"
     },
     {
       "path": "app/lib/profile/showcase/economyRetry.ts",
@@ -17803,7 +17946,7 @@
     },
     {
       "path": "app/lib/profile/showcase/importedSourceAuthorship.ts",
-      "sha256": "93f2c9fea78f1caa5d463e8e47d7cf968724c8ca40a6cbe163bd15e1f46f9537"
+      "sha256": "d3f28df5c6e161cd5c2dd3787dce7812981abd0f821a5304220376bdd21fcb25"
     },
     {
       "path": "app/lib/profile/showcase/importedSourceCustody.client.ts",
@@ -17835,7 +17978,7 @@
     },
     {
       "path": "app/lib/profile/showcase/incrementalAssetPublication.client.ts",
-      "sha256": "0b235648281b4f529cf51ef3a4dd3d003ce2cce112793d3ba76a39c14e2304f2"
+      "sha256": "35d65a77e85c91b9e1f5d474134e96c2acd8af055cd17bec0bd11aedec3d9af7"
     },
     {
       "path": "app/lib/profile/showcase/legacyMigrationPayload.ts",
@@ -18186,6 +18329,10 @@
       "sha256": "dbc2a60507d540e05d9dfb9c394949dfe161f0aaa1e889b7980a1bf61e77975e"
     },
     {
+      "path": "app/utils/cbor.ts",
+      "sha256": "d36c6155ff2e53566017a6ef35d7dc2ec1c55fe54da70658ba893eb8a606ab09"
+    },
+    {
       "path": "app/utils/dataUrl.ts",
       "sha256": "145a9ef953b1bd925f765c94daaf2994f997282c17e075b2aa9888e23b392e43"
     },
@@ -18196,6 +18343,10 @@
     {
       "path": "app/utils/kai_pulse.ts",
       "sha256": "c1d9a1ff780681946935389d94ada11df3245e96782dca1183e2675b0ef14954"
+    },
+    {
+      "path": "app/utils/pbi/webauthn.ts",
+      "sha256": "5ac5fd4ab2253db378d96c563e322b5eaba2430cde5109c1e12e7fc87246ecc2"
     },
     {
       "path": "app/utils/phi-issuance.ts",

@@ -1444,14 +1444,21 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     if(!enrollment||!sealingResources)throw Error('Your device sealing key is unavailable.');
     return native.createBankNativeNoteSealer({enrollment,resources:sealingResources});
   }
-  async function openAssetPublicationRuntime(artwork?:Blob,preparedSealer?:Promise<Awaited<ReturnType<typeof assetDocumentSealer>>>){
-    const [adoption,{createAssetPublicationFetch},username]=await Promise.all([import('./asset-publication-adoption'),import('./asset-publication-runtime'),prepareReceivingUsername()]);
+  async function openAssetPublicationRuntime(artwork?:Blob,preparedSealer?:Promise<Awaited<ReturnType<typeof assetDocumentSealer>>>,localFirst=false){
+    // Signing uses the already-held account route. Preparing a receiving
+    // address can connect/read presentation; it belongs only to delivery.
+    const heldUsername=localFirst?publicAccountUsername(presentationUsername??keyFile.owner.username):null;
+    const [adoption,{createAssetPublicationFetch},username]=await Promise.all([import('./asset-publication-adoption'),import('./asset-publication-runtime'),heldUsername?Promise.resolve(heldUsername):prepareReceivingUsername()]);
     const connectPublication=()=>connectClient([...BANK_READ_SCOPES,'profile','receiz:record','receiz:seal'],'Seal the original I choose and publish its exact verified source, media and full text on my public profile and in Market. This does not authorize a payment or asset funding.');
-      const connected=await connectPublication(),account=clientAccounts.get(connected),request=clientFetches.get(connected);
-      if(!account||!request||account.applicationId!==BANK_APPLICATION_ID)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');
-      const assertCurrent=()=>{lifetime.signal.throwIfAborted();if(clientAccounts.get(connected)?.accountUid!==account.accountUid||presentationUsername&&presentationUsername!==username)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');};
-      const [publication,sealDocument]=await Promise.all([(await import('./asset-publication-runtime')).loadAssetPublicationRuntime(),preparedSealer??assetDocumentSealer()]);
-      return publication.createConnectedAssetPublicationRuntime({identity:new Uint8Array(bytes),passphrase:phrase,account:{uid:account.accountUid,username},sealDocument,assertCurrent,onLocalAdmission:admission=>{assertCurrent();adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:account.accountUid,isCurrent:()=>!lifetime.signal.aborted&&clientAccounts.get(connected)?.accountUid===account.accountUid&&(!presentationUsername||presentationUsername===username),artwork:artwork??admission.artwork});},fetchImpl:createAssetPublicationFetch({applicationId:BANK_APPLICATION_ID,username,assertCurrent,request:async(path,init)=>{const current=await connectPublication(),currentAccount=clientAccounts.get(current),currentRequest=clientFetches.get(current);assertCurrent();if(currentAccount?.accountUid!==account.accountUid||!currentRequest)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');const held=await loadDeviceIdentity();if(!held||await sdk.sha256ReceizBytes(held.bytes)!==binding.artifactSha256)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');return currentRequest(path,init);}})});
+    const expectedUid=accountUid??knownWallet?.wallet.userId;
+    const connected=localFirst&&expectedUid?null:await connectPublication(),account=connected?clientAccounts.get(connected):null;
+    const uid=account?.accountUid??expectedUid;
+    if(!uid||connected&&(!account||account.applicationId!==BANK_APPLICATION_ID||!clientFetches.get(connected)))throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');
+    const assertCurrent=()=>{lifetime.signal.throwIfAborted();if((accountUid??knownWallet?.wallet.userId)!==uid||presentationUsername&&presentationUsername!==username)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');};
+    const publication=await(await import('./asset-publication-runtime')).loadAssetPublicationRuntime();
+    let signer=preparedSealer;
+    const sealDocument:Parameters<import('./offline-notes').BankNoteRuntimeFactory>[0]['sealDocument']=async args=>(await(signer??=assetDocumentSealer()))(args);
+    return publication.createConnectedAssetPublicationRuntime({identity:new Uint8Array(bytes),passphrase:phrase,account:{uid,username},sealDocument,assertCurrent,onLocalAdmission:admission=>{assertCurrent();adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:uid,isCurrent:()=>!lifetime.signal.aborted&&(accountUid??knownWallet?.wallet.userId)===uid&&(!presentationUsername||presentationUsername===username),artwork:artwork??admission.artwork});},fetchImpl:createAssetPublicationFetch({applicationId:BANK_APPLICATION_ID,username,assertCurrent,request:async(path,init)=>{const current=await connectPublication(),currentAccount=clientAccounts.get(current),currentRequest=clientFetches.get(current);assertCurrent();if(currentAccount?.accountUid!==uid||!currentRequest)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');const held=await loadDeviceIdentity();if(!held||await sdk.sha256ReceizBytes(held.bytes)!==binding.artifactSha256)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');return currentRequest(path,init);}})});
   }
   // One publisher retains its canonically admitted head for this open ID.
   // Rebuilding it on each Create discarded reusable custody and recovery work.
@@ -1534,10 +1541,13 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const deposit=heldDeposit??await projectOwnedSource(new Uint8Array(await result.file.arrayBuffer()),result.file.name);
     return Object.assign(deposit,{publication:result.publication});
   }
-  async function publishAssetToMarket(source:HeldDeposit):Promise<HeldDeposit>{
-    noteOpen();let held:Awaited<ReturnType<typeof loadDepositSources>>[number]|undefined;for(const value of await loadDepositSources(binding))if(await sdk.sha256ReceizBytes(value.bytes)===source.digest){held=value;break;}
+  const assetSigningFlights=new Map<string,Promise<HeldDeposit>>();
+  function publishAssetToMarket(source:HeldDeposit):Promise<HeldDeposit>{
+    noteOpen();const held=assetSigningFlights.get(source.digest);if(held)return held;
+    const signing=(async()=>{
+    noteOpen();const [held]=await loadDepositSources(binding,{digests:[source.digest],requireComplete:true});
     if(!held||await sdk.sha256ReceizBytes(held.bytes)!==source.digest)throw Error('BANK_ASSET_PUBLICATION_SOURCE_UNAVAILABLE');
-    const file=new File([new Uint8Array(held.bytes)],source.filename,{type:'application/vnd.receiz.bundle+json'}),runtime=await openAssetPublicationRuntime();noteOpen();
+    const file=new File([new Uint8Array(held.bytes)],source.filename,{type:'application/vnd.receiz.bundle+json'}),runtime=await openAssetPublicationRuntime(undefined,undefined,true);noteOpen();
     const receipt=await runtime.publish(file,async input=>{
       const {readAssetPbiCredential}=await import('./asset-pbi-credential'),{signAssetMarketPublication}=await import('./asset-market-pbi');noteOpen();
       const uid=accountUid??knownWallet?.wallet.userId;if(!uid)throw Error('PBI_ACCOUNT_MISMATCH');let credential=readAssetPbiCredential(binding.keyId,uid);
@@ -1549,6 +1559,9 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     if(receipt.status==='published')void adoption.refreshAssetPublicationCatalog(source.digest);
     const delivery:import('./asset-publication').AssetPublicationDelivery=receipt.status==='published'?{status:'published',showcaseArtifactDigest:receipt.artifactDigest}:{status:receipt.status,code:receipt.code};
     return {...source,pbiSigned:true,publication:source.publication?.status==='published'?source.publication:delivery,marketPublication:delivery};
+    })();assetSigningFlights.set(source.digest,signing);
+    void signing.finally(()=>{if(assetSigningFlights.get(source.digest)===signing)assetSigningFlights.delete(source.digest);}).catch(()=>{});
+    return signing;
   }
   let backedPublicationPromise:Promise<import('./backed-asset-client').BackedAssetClient>|undefined;
   const backedAssetPublication=()=>backedPublicationPromise??=import('./backed-asset-client').then(async({createBackedAssetClient})=>{
