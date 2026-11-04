@@ -43,7 +43,7 @@ it('opens Reserve with its carried Phi and full calculation disclosure without f
   await act(async()=>root.render(<BalanceDetails wallet={wallet}/>));
   await act(async()=>host.querySelector<HTMLElement>('.balance-source-details > summary')!.click());
   await act(async()=>host.querySelector<HTMLElement>('[data-balance-rail="reserve"] > summary')!.click());
-  expect(host.querySelector('[data-balance-rail="reserve"] [data-rail-phi]')?.textContent).toBe('0.027219 Φ');
+  expect(host.querySelector('[data-balance-rail="reserve"] [data-rail-phi]')?.textContent).toBe('Reserve total · 0.027219 Φ');
   expect(host.textContent).not.toContain('Exact Φ unavailable');
   await act(async()=>{await vi.dynamicImportSettled();});
   await act(async()=>host.querySelector<HTMLElement>('[data-balance-rail="reserve"] .balance-calculation > summary')!.click());
@@ -55,7 +55,7 @@ it('opens Reserve with its carried Phi and full calculation disclosure without f
   expect(host.querySelector('[data-balance-rail="reserve"]')?.textContent).not.toContain('Exact calculation source not carried');
   const thin=packet();delete (thin.wallet as Partial<typeof thin.wallet>).reserveUnitAttribution;
   await act(async()=>root.render(<BalanceDetails wallet={retainWalletPhiSplit(wallet,parseSharedWallet(thin,uid))}/>));
-  expect(host.querySelector('[data-balance-rail="reserve"] [data-rail-phi]')?.textContent).toBe('0.027219 Φ');
+  expect(host.querySelector('[data-balance-rail="reserve"] [data-rail-phi]')?.textContent).toBe('Reserve total · 0.027219 Φ');
   expect(host.querySelector('[aria-label="Recorded Reserve unit attribution"]')).not.toBeNull();
   expect(calculation).not.toHaveBeenCalled();
   expect(fetch).not.toHaveBeenCalled();

@@ -102,9 +102,12 @@ export function retainPublicArtwork(item:PublicMarketItem,previous?:PublicMarket
 /** A legacy public image remains viewable independently of the separate
  * sealed-download endpoint. This does not verify its original or grant it. */
 export function publicAssetImagePreviewUrl(item:PublicMarketItem):string|null{
-  if(item.mediaKind!=='image'||!item.originalUrl)return null;
-  const original=safeReceizPublicUrl(item.originalUrl,'original'),image=safeReceizArtworkUrl(item.artworkUrl);
-  if(!original||!image||new URL(original).pathname!=='/api/profile/originals/download'||new URL(image).pathname==='/api/receiz/download')return null;
+  if(item.mediaKind!=='image')return null;
+  const image=safeReceizArtworkUrl(item.artworkUrl);
+  if(!image||new URL(image).pathname==='/api/receiz/download')return null;
+  // A carried public image does not require a separate downloadable Original.
+  // Self-contained proof packages continue through their canonical opener.
+  if(item.originalUrl){const original=safeReceizPublicUrl(item.originalUrl,'original');if(!original||new URL(original).pathname!=='/api/profile/originals/download')return null;}
   return image;
 }
 export function safeReceizPublicUrl(input: unknown, kind: 'source' | 'proof' | 'original' = 'source'): string | null {

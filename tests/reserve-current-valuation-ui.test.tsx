@@ -20,9 +20,9 @@ it('opens the retained exact Reserve after a local valuation and reopen, keeping
   await act(async()=>root.render(<BalanceDetails wallet={restored.wallet} observation={restored}/>));
   await act(async()=>host.querySelector<HTMLDetailsElement>('.balance-source-details')!.querySelector('summary')!.click());
   const reserve=host.querySelector<HTMLDetailsElement>('[data-balance-rail="reserve"]')!;
-  await act(async()=>reserve.querySelector('summary')!.click());expect(reserve.querySelector('[data-rail-phi]')?.textContent).toBe('8 Φ');expect(reserve.querySelector('summary')?.textContent).toContain('$19.00');
+  await act(async()=>reserve.querySelector('summary')!.click());expect(reserve.querySelector('[data-rail-phi]')?.textContent).toBe('Reserve total · 8 Φ');expect(reserve.querySelector('summary')?.textContent).toContain('$19.00');
   const next=advanceCurrentWalletObservation(restored,String(kai+2_000_000n))!;
   await act(async()=>root.render(<BalanceDetails wallet={next.wallet} observation={next}/>));
-  expect(reserve.open).toBe(true);expect(reserve.querySelector('[data-rail-phi]')?.textContent).toBe('8 Φ');expect(fetch).not.toHaveBeenCalled();
+  expect(reserve.open).toBe(true);expect(reserve.querySelector('[data-rail-phi]')?.textContent).toBe('Reserve total · 8 Φ');expect(fetch).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());fetch.mockRestore();}
 });
