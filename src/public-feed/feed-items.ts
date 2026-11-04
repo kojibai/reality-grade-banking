@@ -17,6 +17,10 @@ export function orderFeedItems(items:readonly PublicMarketItem[]):PublicMarketIt
  return out;
 }
 export function appendFeedItems(held:readonly PublicMarketItem[],discovered:readonly PublicMarketItem[]){const ids=new Set(held.map(item=>item.id));return [...held,...orderFeedItems(discovered).filter(item=>{if(ids.has(item.id))return false;ids.add(item.id);return true;})];}
+/** Replace display fields only beneath the same exact source coordinates. */
+export const sameFeedSource=(held:PublicMarketItem,next:PublicMarketItem)=>held.id===next.id&&held.assetId===next.assetId&&held.category===next.category&&held.originalDigest===next.originalDigest&&held.pulse===next.pulse&&held.cardClaimHash===next.cardClaimHash&&(held.originalDigest!==null||held.verifyUrl===next.verifyUrl);
+/** An accepted public successor refreshes details without reordering held rows. */
+export function refreshFeedItems(held:readonly PublicMarketItem[],discovered:readonly PublicMarketItem[]){const current=new Map(discovered.map(item=>[item.id,item]));return appendFeedItems(held.map(item=>{const next=current.get(item.id);return next&&sameFeedSource(item,next)?next:item;}),discovered);}
 /** Public HTML carries display projections only, with the same URL restrictions. */
 export function readFeedSeed(input:string|null|undefined):PublicMarketItem[]{
  try{const rows:unknown=JSON.parse(input??'null');if(!Array.isArray(rows)||rows.length>24)return [];

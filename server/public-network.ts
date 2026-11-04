@@ -5,11 +5,12 @@ import type { PublicSource } from '../src/receiz/public-network';
 import {createHash} from 'node:crypto';
 
 const PATH = '/api/bank/public-network';
-export function parsePublicNetworkRequest(requestUrl: string): { source: PublicSource; cursor?: string } | null {
-  const url = new URL(requestUrl, 'http://localhost'), source = url.searchParams.get('source'), cursor = url.searchParams.get('cursor');
-  if (url.pathname !== PATH || [...url.searchParams.keys()].some(key => !['source', 'cursor'].includes(key)) || url.searchParams.getAll('source').length !== 1 || url.searchParams.getAll('cursor').length > 1 || !['wallet', 'actions', 'graph', 'proofs'].includes(source ?? '')) return null;
+export function parsePublicNetworkRequest(requestUrl: string): { source: PublicSource; cursor?: string;afterPublication?:string } | null {
+  const url = new URL(requestUrl, 'http://localhost'), source = url.searchParams.get('source'), cursor = url.searchParams.get('cursor'),afterPublication=url.searchParams.get('afterPublication');
+  if (url.pathname !== PATH || [...url.searchParams.keys()].some(key => !['source', 'cursor','afterPublication'].includes(key)) || url.searchParams.getAll('source').length !== 1 || url.searchParams.getAll('cursor').length > 1 ||url.searchParams.getAll('afterPublication').length>1|| !['wallet', 'actions', 'graph', 'proofs'].includes(source ?? '')) return null;
   if (cursor !== null && (!/^[a-zA-Z0-9_-]{1,2048}$/.test(cursor) || !['wallet', 'actions'].includes(source!))) return null;
-  return { source: source as PublicSource, ...(cursor ? { cursor } : {}) };
+  if(afterPublication!==null&&(source!=='proofs'||!/^[a-f0-9]{64}$/.test(afterPublication)))return null;
+  return { source: source as PublicSource, ...(cursor ? { cursor } : {}),...(afterPublication?{afterPublication}:{}) };
 }
 async function publicFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
   const url = new URL(typeof input === 'string' || input instanceof URL ? String(input) : input.url);
@@ -26,10 +27,11 @@ async function publicFetch(input: string | URL | Request, init?: RequestInit): P
 let sdkClient: Promise<ReturnType<typeof import('@receiz/sdk').createReceizClient>> | undefined;
 function client() { return sdkClient ??= import('@receiz/sdk').then(sdk => sdk.createReceizClient({ baseUrl: 'https://receiz.com', fetchImpl: publicFetch })); }
 const pending = new Map<string, Promise<unknown>>();
-export async function readSharedPublicSource(source: PublicSource, cursor?: string): Promise<unknown> {
-  const key = `${source}:${cursor ?? ''}`, existing = pending.get(key); if (existing) return existing;
+export async function readSharedPublicSource(source: PublicSource, cursor?: string,afterPublication?:string): Promise<unknown> {
+  if(afterPublication!==undefined&&(source!=='proofs'||cursor!==undefined||!/^[a-f0-9]{64}$/.test(afterPublication)))throw Error('Unsupported publication freshness reference.');
+  const key = `${source}:${cursor ?? ''}:${afterPublication??''}`, existing = pending.get(key); if (existing) return existing;
   const request = (async () => {
-    if (source === 'proofs') return readReceizPublicMarketSource('membership');
+    if (source === 'proofs') return readReceizPublicMarketSource('membership',afterPublication);
     if (source === 'graph') { const response = await publicFetch('https://receiz.com/api/proof-graph/ledger'); if (!response.ok) throw new Error('Public graph unavailable.'); return response.json(); }
     const sdk = await client();
     if(source==='wallet')return sdk.wallet.publicLedger({limit:256,cursor});
@@ -51,7 +53,7 @@ export async function publicNetworkMiddleware(req: IncomingMessage, res: ServerR
   res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Content-Type-Options', 'nosniff');
   if (req.method !== 'GET') { res.writeHead(405, { Allow: 'GET' }); res.end(); return; }
   const parsed = parsePublicNetworkRequest(req.url); if (!parsed) { res.writeHead(400); res.end(); return; }
-  try { const result = await readSharedPublicSource(parsed.source, parsed.cursor); res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(result)); }
+  try { const result = await readSharedPublicSource(parsed.source, parsed.cursor,parsed.afterPublication); res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(result)); }
   catch { res.writeHead(503, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'Public source temporarily unavailable.' })); }
 }
 export function publicNetworkPlugin(): Plugin { return { name: 'receiz-shared-public-network', configureServer(server) { server.middlewares.use((req, res, next) => { void publicNetworkMiddleware(req, res, next); }); }, configurePreviewServer(server) { server.middlewares.use((req, res, next) => { void publicNetworkMiddleware(req, res, next); }); } }; }

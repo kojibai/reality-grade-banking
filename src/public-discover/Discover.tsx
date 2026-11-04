@@ -11,7 +11,8 @@ import {PublicCollectibleArtwork} from '../features/collectibles/PublicCollectib
 import {readAccountAppearance,subscribeAccountAppearance} from '../receiz/account-appearance';
 import {safeReceizArtworkUrl,type PublicMarketItem} from '../receiz/public-market';
 import {profilePagePath} from '../receiz/public-profile';
-import {appendFeedItems,feedKind,feedText} from '../public-feed/feed-items';
+import {appendFeedItems,feedKind,feedText,refreshFeedItems} from '../public-feed/feed-items';
+import {subscribeAssetPublicationAdmissions} from '../receiz/asset-publication-adoption';
 import {prepareFeedItems,prepareFeedCollectibles} from '../public-feed/feed-source';
 import {buildDiscoveryIndex,searchDiscovery,discoveryOwnerName,type DiscoveryFilter,type DiscoveryPerson} from './discovery-index';
 import './discover.css';
@@ -32,10 +33,17 @@ function Work({item,onOpen,eager,active}:{item:PublicMarketItem;onOpen():void;ea
 }
 export function Discover({seed,active=true}:{seed:PublicMarketItem[];active?:boolean}){
  const [items,setItems]=useState(seed),[query,setQuery]=useState(''),[filter,setFilter]=useState<DiscoveryFilter>('All'),[shown,setShown]=useState(20),[selected,setSelected]=useState<{id?:string}|null>(null),[collecting,setCollecting]=useState(false);
+ const publicationAt=useRef(-Infinity);
  const scrollTools=useScrollReveal(active,'.discover-search');
  const appearance=useSyncExternalStore(subscribeAccountAppearance,readAccountAppearance,()=>null),index=useMemo(()=>buildDiscoveryIndex(items),[items]),results=useMemo(()=>searchDiscovery(index,query,filter),[index,query,filter]),more=useRef<HTMLDivElement>(null);
  const searched=query.trim().length>0,rows=results.items.slice(0,shown),initial=!searched&&filter==='All',people=results.people;
  useEffect(()=>{if(!active)return;const abort=new AbortController();void prepareFeedItems(abort.signal).then(found=>{if(!abort.signal.aborted)setItems(held=>appendFeedItems(held,found));}).catch(()=>{});return()=>abort.abort();},[active]);
+ useEffect(()=>subscribeAssetPublicationAdmissions(catalog=>{
+  // Undefined notifications are local admission/delivery changes. This surface
+  // adopts only a dated public response, never the pending local overlay.
+  if(!catalog)return;const observedAt=Date.parse(catalog.observedAt??'');if(!Number.isFinite(observedAt)||observedAt<=publicationAt.current)return;
+  publicationAt.current=observedAt;setItems(held=>refreshFeedItems(held,catalog.items));
+ }),[]);
  useEffect(()=>{setShown(20);},[query,filter]);
  useEffect(()=>{if(!active||shown>=results.items.length||!more.current||typeof IntersectionObserver==='undefined')return;const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))setShown(count=>count+20);},{rootMargin:'500px'});observer.observe(more.current);return()=>observer.disconnect();},[active,shown,results.items.length]);
  const select=(next:DiscoveryFilter)=>{setFilter(next);if(next!=='collectible'||items.some(item=>item.category==='sports')||collecting)return;setCollecting(true);void prepareFeedCollectibles().then(found=>setItems(held=>appendFeedItems(held,found))).catch(()=>{}).finally(()=>setCollecting(false));};

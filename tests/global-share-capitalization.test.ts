@@ -59,6 +59,16 @@ it('retains a complete share-cap publication when a weaker response omits the kn
  const weaker={...held,items:held.items.map(({shareInventory:_inventory,...item})=>item)};
  expect(await buildMarketHistory(source,previous,undefined,undefined,{catalog:weaker,pulse:end+1,capitalization:true})).toBeNull();
 });
+it('continues known capitalization when a newly admitted Original awaits public share operands over an older valuation capture',async()=>{
+ const staleSource={...source,generatedAt:new Date(marketPulseTime(end-1000)).toISOString()},held=catalog();
+ const previous=(await buildMarketHistory(staleSource,null,undefined,undefined,{catalog:held,pulse:end,capitalization:true}))!;
+ const pending={...held,complete:false,items:[...held.items,{...held.items[0],id:'profile:artist:imported-pending',assetId:'imported-pending',title:'New Original',shareInventory:undefined,valuationBinding:{itemId:'profile:artist:imported-pending',assetId:'imported-pending'}}]};
+ const next=await buildMarketHistory(staleSource,previous,undefined,undefined,{catalog:pending,pulse:end+1,capitalization:true});
+ expect(next).not.toBeNull();expect(next!.summary.serverPulse).toBe(end+1);expect(next!.summary.shareCapitalization).toMatchObject({listed:2,covered:1,complete:false});
+ const expected=publicShareCapitalization(publicCatalogAtPulse(pending,staleSource,end+1));expect(next!.summary.shareCapitalization?.usdCents).toBe(expected.usdCents);
+ for(const points of Object.values(next!.series))expect(points.at(-1)?.usdCents).toBe(expected.usdCents);
+ expect(pending.items[1].shareInventory).toBeUndefined();
+});
 it('preserves the legacy unit-value history separately from the share-cap publication',async()=>{
  const legacy=(await buildMarketHistory(source))!;
  expect(legacy.summary.shareCapitalization).toBeUndefined();expect(legacy.series.ALL.at(-1)?.usdCents).toBe('10000');expect(()=>parseMarketHistory(legacy)).not.toThrow();

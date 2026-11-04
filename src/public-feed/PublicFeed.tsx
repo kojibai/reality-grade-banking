@@ -8,7 +8,7 @@ import {InlineOpening} from '../components/InlineOpening';
 import {beginPublicAssetTrade,closePublicAssetTrade,readPublicAssetTrade,subscribePublicAssetTrade} from '../receiz/public-asset-trade';
 import {assetPagePath,retainPublicAsset} from '../receiz/public-asset-page';
 import type {PublicMarketItem} from '../receiz/public-market';
-import {appendFeedItems,feedKind} from './feed-items';
+import {appendFeedItems,feedKind,refreshFeedItems,sameFeedSource} from './feed-items';
 import {prepareFeedCollectibles,prepareFeedItems} from './feed-source';
 import {FeedStage} from './FeedStage';
 import './feed.css';
@@ -18,8 +18,14 @@ const filters=['All','image','video','audio','book','essay','moment','document',
 export function PublicFeed({seed,initialFilter='All',selectedItemId,musicContinuation,active=true,discover=true,onClose,onDiscover,onViewAsset,onBuy,onPay,discoveries,onMore,hasMore=false,continuationKey,moreBusy=false}:{seed:PublicMarketItem[];initialFilter?:'All'|'audio';selectedItemId?:string;musicContinuation?:()=>Promise<readonly PublicMarketItem[]>;active?:boolean;discover?:boolean;onClose?():void;onDiscover?():void;onViewAsset?(item:PublicMarketItem):void;onBuy?(item:PublicMarketItem):void;onPay?(item:PublicMarketItem):void;discoveries?:readonly PublicMarketItem[];onMore?():void;hasMore?:boolean;continuationKey?:string;moreBusy?:boolean}){
  const [items,setItems]=useState(seed),[filter,setFilter]=useState<string>(initialFilter),[index,setIndex]=useState(0),[controls,setControls]=useState(true),[muted,setMuted]=useState(true),[visible,setVisible]=useState(true),[panel,setPanel]=useState<Panel>(null),[notice,setNotice]=useState(''),[refreshing,setRefreshing]=useState(false),[collecting,setCollecting]=useState(false);
  const trade=useSyncExternalStore(subscribePublicAssetTrade,readPublicAssetTrade,()=>null),tradeActive=!!trade&&active&&/^\/(?:feed|discover)\/?$/.test(trade.pathname);
- const filterRequest=useRef(0),knownCount=useRef(discoveries?.length??seed.length),more=useRef(onMore);more.current=onMore;
- useEffect(()=>{if(discoveries&&discoveries.length>knownCount.current){knownCount.current=discoveries.length;setItems(held=>appendFeedItems(held,discoveries));}},[discoveries?.length]);
+ const filterRequest=useRef(0),more=useRef(onMore);more.current=onMore;
+ useEffect(()=>{
+  if(!discoveries)return;const current=new Map(discoveries.map(item=>[item.id,item])),refresh=(item:PublicMarketItem)=>{const next=current.get(item.id);return next&&sameFeedSource(item,next)?next:item;};
+  // The parent already holds the accepted Market projection. Refresh exact
+  // source fields in place; its unchanged item count is not an update boundary.
+  setItems(held=>refreshFeedItems(held,discoveries));
+  setPanel(held=>held&&held.kind!=='browse'?{...held,item:refresh(held.item)}:held);
+ },[discoveries]);
  const requestedMore=useRef<string|null>(null);
  const scroller=useRef<HTMLDivElement>(null),frame=useRef(0),current=useRef(0),noticeTimer=useRef<ReturnType<typeof setTimeout>>(undefined);
  const musicItemId=useSyncExternalStore(subscribeFeedMusic,feedMusicItemId,()=>null);

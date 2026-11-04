@@ -123,9 +123,10 @@ export async function publicMarketMiddleware(request: IncomingMessage, response:
   catch (cause) { const purchase=cause instanceof OriginalPurchaseRefusal;response.writeHead(purchase?402:503, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ ok: false, error: purchase?'original_purchase_required':'Receiz public source is temporarily unavailable.' })); }
 }
 /** Build-time public discovery seed. Report-only projection, never a held account. */
-export async function readReceizPublicMarketSource(kind: 'membership' | 'quotes' | 'sports' | 'capitalization'): Promise<unknown> {
+export async function readReceizPublicMarketSource(kind: 'membership' | 'quotes' | 'sports' | 'capitalization',afterPublication?:string): Promise<unknown> {
+  if(afterPublication!==undefined&&(kind!=='membership'||!/^[a-f0-9]{64}$/.test(afterPublication)))throw new Error('Unsupported publication freshness reference.');
   const target = resolvePublicMarketTarget(`${PREFIX}${kind}`); if (!target) throw new Error('Unsupported public source.');
-  return JSON.parse(new TextDecoder().decode((await loadPublicResponse(target)).bytes));
+  return JSON.parse(new TextDecoder().decode((await loadPublicResponse(target,afterPublication)).bytes));
 }
 /** Only public fields used by the canonical display projector cross this boundary. */
 export function curatePublicCapitalization(input: Record<string, unknown>) {

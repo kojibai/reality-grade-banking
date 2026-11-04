@@ -2,6 +2,7 @@ import {parsePublicMarket,type PublicMarketCatalog,type PublicMarketItem} from '
 import {retainedPublicProfile,retainPublicProfile,type PublicProfile} from './public-profile.js';
 import {safeImportedSourceUrl} from './imported-source-url.js';
 import {readAccountAppearance} from './account-appearance.js';
+import {compatibleShareInventory} from './market-share-inventory.js';
 import type {AssetPublicationReceipt} from './asset-publication';
 import type {ConnectedAssetLocalAdmission} from './asset-publication-runtime';
 type Owner=Readonly<{identityDigest:string;accountUid:string;isCurrent?():boolean;artwork?:Blob}>;
@@ -32,6 +33,13 @@ function displayItem(entry:Addition,profile=retainedPublicProfile(entry.username
   if(appearance?.accountUid===entry.owner.accountUid&&appearance.avatarUrl)item={...item,ownerAvatarUrl:appearance.avatarUrl};
  }
  return artwork(item);
+}
+/** Signing changes this Original's authorship append, not its existing share
+ * observation. Reuse it only for the identical source and canonical asset. */
+function retainObservedShares(item:PublicMarketItem,entry:Addition,observed:PublicMarketItem|undefined):PublicMarketItem{
+ if(!observed||!matches(observed,entry))return item;
+ const shareInventory=compatibleShareInventory(item,observed.shareInventory);
+ return shareInventory?{...item,shareInventory}:item;
 }
 /** Navigate the exact admitted Original; this display selector grants no trade authority. */
 export function admittedAssetPublicationItem(sourceDigest:string,username:string,accountUid?:string):PublicMarketItem|null{restore();const entry=additions.get(sourceDigest);return entry?.username===username&&(accountUid===undefined||entry.owner.accountUid===accountUid)?displayItem(entry):null;}
@@ -81,10 +89,10 @@ export function acceptDiscoveredPublicAssets(catalog:PublicMarketCatalog):void{r
 export function acceptDiscoveredProfileAssets(profile:PublicProfile):void{restore();let changed=false;for(const entry of additions.values())if(entry.username===profile.username&&entry.owner.accountUid===profile.userId&&profile.items.some(item=>matches(item,entry)&&matchesSignature(item,entry))&&!entry.profileSeen){entry.profileSeen=true;changed=true;}if(changed)save();}
 /** Accepted discovery retires the display overlay independently per surface. */
 export function mergeAdmittedPublicAssets(catalog:PublicMarketCatalog):PublicMarketCatalog{restore();let mutated=false;const fresh:PublicMarketItem[]=[];for(const entry of additions.values()){
- const present=catalog.items.some(item=>matches(item,entry));if(!entry.marketSeen&&(!present||entry.item.hasPbiSignature===true&&!catalog.items.some(item=>matches(item,entry)&&matchesSignature(item,entry))))fresh.push(displayItem(entry));if(entry.marketSeen&&entry.profileSeen){drop(entry.sourceDigest);mutated=true;}
+ const observed=catalog.items.find(item=>matches(item,entry));if(!entry.marketSeen&&(!observed||entry.item.hasPbiSignature===true&&!catalog.items.some(item=>matches(item,entry)&&matchesSignature(item,entry))))fresh.push(retainObservedShares(displayItem(entry),entry,observed));if(entry.marketSeen&&entry.profileSeen){drop(entry.sourceDigest);mutated=true;}
  }if(mutated)save();return fresh.length?{...catalog,items:[...fresh.reverse(),...catalog.items.filter(item=>!fresh.some(addition=>addition.id===item.id))],sourceCount:catalog.sourceCount+fresh.filter(item=>!catalog.items.some(previous=>previous.id===item.id)).length,complete:false}:{...catalog,items:catalog.items.map(artwork)};}
 export function mergeAdmittedProfileAssets(profile:PublicProfile):PublicProfile{restore();const fresh:PublicMarketItem[]=[];let mutated=false;for(const entry of additions.values()){
- if(entry.username!==profile.username||entry.owner.accountUid!==profile.userId)continue;const present=profile.items.some(item=>matches(item,entry));if(!entry.profileSeen&&(!present||entry.item.hasPbiSignature===true&&!profile.items.some(item=>matches(item,entry)&&matchesSignature(item,entry)))){fresh.push(displayItem(entry,profile));};if(entry.marketSeen&&entry.profileSeen){drop(entry.sourceDigest);mutated=true;}
+ if(entry.username!==profile.username||entry.owner.accountUid!==profile.userId)continue;const observed=profile.items.find(item=>matches(item,entry));if(!entry.profileSeen&&(!observed||entry.item.hasPbiSignature===true&&!profile.items.some(item=>matches(item,entry)&&matchesSignature(item,entry)))){fresh.push(retainObservedShares(displayItem(entry,profile),entry,observed));};if(entry.marketSeen&&entry.profileSeen){drop(entry.sourceDigest);mutated=true;}
  }if(mutated)save();return fresh.length?{...profile,items:[...fresh.reverse(),...profile.items.filter(item=>!fresh.some(addition=>addition.id===item.id))],stats:{...profile.stats,originals:profile.stats.originals===null?null:profile.stats.originals+fresh.filter(item=>!profile.items.some(previous=>previous.id===item.id)).length}}:profile;}
 export function forgetAssetPublicationAdmissions(username?:string){restore();if(!username)sourceFiles.clear();else for(const [digest,entry]of additions)if(entry.username===username)sourceFiles.delete(digest);for(const[digest,preview]of previews)if(!username||preview.username===username){URL.revokeObjectURL(preview.url);previews.delete(digest);}for(const [digest,entry]of additions)if(!username||entry.username===username)drop(digest);changed();}
 

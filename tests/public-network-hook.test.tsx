@@ -4,17 +4,21 @@ import { createRoot } from 'react-dom/client';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { usePublicNetwork } from '../src/receiz/usePublicNetwork';
 import { parsePublicNetworkPage, PUBLIC_NETWORK_INSPECTION_VERSION, type PublicSource } from '../src/receiz/public-network';
+import {parsePublicMarket,type PublicMarketCatalog} from '../src/receiz/public-market';
 const network = vi.hoisted(() => ({ read: vi.fn() }));
 const cache = vi.hoisted(() => ({ load: vi.fn(), seed: vi.fn(), save: vi.fn() }));
 const originals = vi.hoisted(() => ({ restore: vi.fn(), sync: vi.fn(), rows: vi.fn() }));
+const publications=vi.hoisted(()=>({hint:undefined as string|undefined,listeners:new Set<(catalog?:PublicMarketCatalog)=>void>()}));
+vi.mock('../src/receiz/asset-publication-adoption',async original=>({...await original<typeof import('../src/receiz/asset-publication-adoption')>(),assetPublicationFreshnessHint:()=>publications.hint,subscribeAssetPublicationAdmissions:(listener:(catalog?:PublicMarketCatalog)=>void)=>{publications.listeners.add(listener);return()=>publications.listeners.delete(listener);}}));
 vi.mock('../src/receiz/public-ledger-continuity',()=>({readHeldPublicLedger:originals.restore,synchronizePublicLedger:originals.sync,publicLedgerDisplayRows:originals.rows}));
 vi.mock('../src/receiz/public-network', async original => ({ ...await original<typeof import('../src/receiz/public-network')>(), readPublicNetworkPage: network.read }));
 vi.mock('../src/receiz/public-network-cache', () => ({ loadPublicNetworkCache: cache.load, loadPublicNetworkSeed: cache.seed, savePublicNetworkCache: cache.save }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-beforeEach(() => { network.read.mockReset(); cache.load.mockReset().mockResolvedValue(null); cache.seed.mockReset().mockResolvedValue(null); cache.save.mockReset().mockResolvedValue(undefined); originals.restore.mockReset().mockResolvedValue(null);originals.sync.mockReset().mockResolvedValue(null);originals.rows.mockReset().mockImplementation(async(_review,known)=>known); });
+beforeEach(() => { publications.hint=undefined;publications.listeners.clear();network.read.mockReset(); cache.load.mockReset().mockResolvedValue(null); cache.seed.mockReset().mockResolvedValue(null); cache.save.mockReset().mockResolvedValue(undefined); originals.restore.mockReset().mockResolvedValue(null);originals.sync.mockReset().mockResolvedValue(null);originals.rows.mockReset().mockImplementation(async(_review,known)=>known); });
 function page(source: PublicSource, ids: string[] = [], cursor: string | null = null) {
   return { source, records: parsePublicNetworkPage('actions', { ok: true, actions: ids.map(id => ({ id, actionKind: 'record', summary: `Record ${id}`, pulse: 100 })), nextCursor: cursor }).records.map(item => ({ ...item, source, id: `${source}:${item.sourceId}` })), nextCursor: cursor, total: null, complete: cursor === null };
 }
+const proofInput=(at:string|null,ids:string[],complete=true)=>({ok:true,transport:{generatedAt:at,publicMembership:{version:1,scope:'whole-market-visible-showcase',source:complete?'canonical-complete':'partial',isComplete:complete,itemCount:ids.length},publicOriginals:ids.map(id=>({id,receizId:id,title:id,pulse:'14955302'}))}});
 async function observe(run: (read: () => ReturnType<typeof usePublicNetwork>) => Promise<void>) {
   let state!: ReturnType<typeof usePublicNetwork>; const root = createRoot(document.createElement('div'));
   function Probe() { state = usePublicNetwork(); return null; }
@@ -23,6 +27,103 @@ async function observe(run: (read: () => ReturnType<typeof usePublicNetwork>) =>
 it('updates other public sources when one is unavailable', async () => {
   network.read.mockImplementation(async (source: PublicSource) => { if (source === 'wallet') throw new Error('Unavailable'); return page(source, [source]); });
   await observe(async read => { expect(read().records).toHaveLength(3); expect(read().sources.wallet.status).toBe('error'); expect(read().sources.actions.status).toBe('live'); });
+});
+it('refreshes only Ledger proofs when native publication is acknowledged, while pending local admission does not claim public discovery',async()=>{
+ let published=false;network.read.mockImplementation(async(source:PublicSource)=>page(source,source==='proofs'&&published?['published-original']:[]));
+ await observe(async read=>{
+  await act(async()=>{for(const listener of publications.listeners)listener();});expect(network.read).toHaveBeenCalledTimes(4);
+  published=true;publications.hint='a'.repeat(64);
+  await act(async()=>{for(const listener of publications.listeners)listener();});
+  expect(read().records.map(row=>row.sourceId)).toContain('published-original');expect(network.read).toHaveBeenCalledTimes(5);expect(network.read.mock.calls.at(-1)?.[0]).toBe('proofs');
+ });
+ expect(publications.listeners.size).toBe(0);
+});
+it('adopts a confirmed public publication catalog immediately and ignores an older in-flight proof response',async()=>{
+ let finish!:(value:ReturnType<typeof page>)=>void;network.read.mockImplementation((source:PublicSource)=>source==='proofs'?new Promise(resolve=>{finish=resolve;}):Promise.resolve(page(source,[source])));
+ const catalog=parsePublicMarket({ok:true,transport:{publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1},publicOriginals:[{id:'published-original',receizId:'published-original',title:'Published Original',pulse:'14955302',profileOriginal:{media:{originalDownloadSha256Hex:'e'.repeat(64)}}}]}});
+ await observe(async read=>{
+  await act(async()=>{for(const listener of publications.listeners)listener(catalog);});
+  expect(read().records.find(row=>row.source==='proofs')).toMatchObject({sourceId:'published-original',title:'Published Original',evidence:{artifactDigest:'e'.repeat(64)}});
+  await act(async()=>finish(page('proofs')));
+  expect(read().records.find(row=>row.source==='proofs')?.sourceId).toBe('published-original');expect(read().sources.proofs.complete).toBe(true);expect(network.read).toHaveBeenCalledTimes(4);
+ });
+});
+it('keeps confirmed public publication freshness when an older proof request rejects',async()=>{
+ let reject!:(cause:Error)=>void;network.read.mockImplementation((source:PublicSource)=>source==='proofs'?new Promise((_resolve,fail)=>{reject=fail;}):Promise.resolve(page(source,[source])));
+ const catalog=parsePublicMarket({ok:true,transport:{publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1},publicOriginals:[{id:'published-original',receizId:'published-original',title:'Published Original',pulse:'14955302',profileOriginal:{media:{originalDownloadSha256Hex:'e'.repeat(64)}}}]}});
+ await observe(async read=>{
+  await act(async()=>{for(const listener of publications.listeners)listener(catalog);});
+  const observedAt=read().sources.proofs.observedAt;
+  await act(async()=>reject(Error('Older request unavailable')));
+  expect(read().records.find(row=>row.source==='proofs')?.sourceId).toBe('published-original');
+  expect(read().sources.proofs).toMatchObject({status:'live',complete:true,error:null,busy:false,observedAt});
+ });
+});
+it('preserves a newer public publication catalog while retaining partial additions when earlier catalogs finish late',async()=>{
+ network.read.mockImplementation(async(source:PublicSource)=>page(source));
+ const catalog=(at:string,ids:string[],complete=true)=>parsePublicMarket({ok:true,transport:{generatedAt:at,publicMembership:{version:1,scope:'whole-market-visible-showcase',source:complete?'canonical-complete':'partial',isComplete:complete,itemCount:ids.length},publicOriginals:ids.map(id=>({id,receizId:id,title:id,pulse:'14955302'}))}});
+ await observe(async read=>{
+  await act(async()=>{for(const listener of publications.listeners)listener(catalog('2026-11-04T12:00:02Z',['existing','published-original']));});
+  await act(async()=>{for(const listener of publications.listeners)listener(catalog('2026-11-04T12:00:03Z',['partial-original'],false));});
+  await act(async()=>{for(const listener of publications.listeners)listener(catalog('2026-11-04T12:00:01Z',['existing']));});
+  expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(expect.arrayContaining(['existing','published-original','partial-original']));
+  await act(async()=>{for(const listener of publications.listeners)listener(catalog('2026-11-04T12:00:04Z',['published-original']));});
+  expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(['published-original']);
+  expect(read().sources.proofs).toMatchObject({status:'live',complete:true,error:null});
+ });
+});
+it.each([['older','2026-11-04T12:00:00Z'],['undated',null]]as const)('retains newer dated public membership when an %s proof page arrives on a later read',async(_kind,at)=>{
+ let input=proofInput('2026-11-04T12:00:00Z',['existing','removed-original']);
+ network.read.mockImplementation(async(source:PublicSource)=>source==='proofs'?parsePublicNetworkPage('proofs',input):page(source));
+ await observe(async read=>{
+  await act(async()=>{for(const listener of publications.listeners)listener(parsePublicMarket(proofInput('2026-11-04T12:00:02Z',['existing','published-original'])));});
+  input=proofInput(at,['existing','removed-original']);
+  await act(async()=>read().refresh());
+  expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(['existing','published-original']);
+  expect(read().sources.proofs).toMatchObject({status:'live',complete:true,error:null});
+  input=proofInput('2026-11-04T12:00:04Z',['existing','newer-original']);
+  await act(async()=>read().refresh());
+  await act(async()=>{for(const listener of publications.listeners)listener(parsePublicMarket(proofInput('2026-11-04T12:00:03Z',['existing','removed-original'])));});
+  expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(['existing','newer-original']);
+ });
+});
+it.each([['older','2026-11-04T12:00:00Z'],['undated',null]]as const)('does not re-add removed public Originals or downgrade coverage from an %s partial publication catalog',async(_kind,at)=>{
+ network.read.mockImplementation(async(source:PublicSource)=>page(source));
+ await observe(async read=>{
+  await act(async()=>{for(const listener of publications.listeners)listener(parsePublicMarket(proofInput('2026-11-04T12:00:02Z',['published-original'])));});
+  await act(async()=>{for(const listener of publications.listeners)listener(parsePublicMarket(proofInput(at,['removed-original'],false)));});
+  expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(['published-original']);
+  expect(read().sources.proofs).toMatchObject({status:'live',complete:true,error:null});
+ });
+});
+it('carries the public membership capture time into the Ledger proof page',()=>{
+ expect(parsePublicNetworkPage('proofs',proofInput('2026-11-04T12:00:02Z',['published-original']))).toMatchObject({observedAt:'2026-11-04T12:00:02Z'});
+});
+it('queues the acknowledged publication read behind an already-running proof request without repeating other sources',async()=>{
+ let finish!:(value:ReturnType<typeof page>)=>void,reads=0;
+ network.read.mockImplementation((source:PublicSource)=>source==='proofs'&&++reads===1?new Promise(resolve=>{finish=resolve;}):Promise.resolve(page(source,source==='proofs'?['published-original']:[])));
+ await observe(async read=>{
+  publications.hint='b'.repeat(64);await act(async()=>{for(const listener of publications.listeners)listener();});expect(network.read).toHaveBeenCalledTimes(4);
+  await act(async()=>finish(page('proofs')));
+  expect(read().records.find(row=>row.source==='proofs')?.sourceId).toBe('published-original');expect(network.read).toHaveBeenCalledTimes(5);
+ });
+});
+it('sends the existing publication freshness reference only on the client proof membership request',async()=>{
+ const {readPublicNetworkPage}=await vi.importActual<typeof import('../src/receiz/public-network')>('../src/receiz/public-network');
+ const fetcher=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>String(input).includes('source=proofs')?Response.json({ok:true,transport:{publicOriginals:[]}}):Response.json({ok:true,ledgerRows:[]}));
+ publications.hint='c'.repeat(64);
+ try{await readPublicNetworkPage('proofs');await readPublicNetworkPage('graph');expect(String(fetcher.mock.calls[0][0])).toBe('/api/bank/public-network?source=proofs&afterPublication='+'c'.repeat(64));expect(String(fetcher.mock.calls[1][0])).toBe('/api/bank/public-network?source=graph');}finally{fetcher.mockRestore();}
+});
+it('preserves accepted publication membership and coverage when an older cold cache finishes later',async()=>{
+ let finish!:(value:unknown)=>void;cache.load.mockReturnValue(new Promise(resolve=>{finish=resolve;}));
+ network.read.mockReturnValue(new Promise(()=>{}));
+ await observe(async read=>{
+  await act(async()=>{for(const listener of publications.listeners)listener(parsePublicMarket(proofInput('2026-11-04T12:00:02Z',['published-original'])));});
+  await act(async()=>finish({records:[...parsePublicNetworkPage('proofs',proofInput('2026-11-04T12:00:00Z',['removed-original'])).records,...page('actions',['retained-action']).records],capturedAt:null,inspectionVersion:PUBLIC_NETWORK_INSPECTION_VERSION,coverage:[{source:'proofs',complete:false},{source:'actions',complete:true}]}));
+  expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(['published-original']);
+  expect(read().sources.proofs).toMatchObject({status:'live',complete:true,error:null});
+  expect(read().records.some(row=>row.source==='actions'&&row.sourceId==='retained-action')).toBe(true);
+ });
 });
 it('preloads retained public rows before the Ledger is clicked, without a live request or a second cache read',async()=>{
  const records=page('actions',['retained-head','retained-old']).records;

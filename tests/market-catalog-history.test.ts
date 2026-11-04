@@ -19,6 +19,13 @@ it('keeps the retained inventory when a partial collection cannot establish a re
  const result=(await buildMarketHistory(source,null,undefined,undefined,{catalog:catalog([original('new-a')],false),pulse:14720000}))!;
  expect(result.summary.marketAssetsPriced).toBe(1);expect(result.summary.serverPulse).toBe(14720000);
 });
+it('refreshes a known model from a partial collection without removing absent source rows or adding an unpriced local Original',async()=>{
+ const {currentMarketDisplayModel}=await import('../src/receiz/market-projection/catalog-source');
+ const known={...row,seed:'known',marketItem:{...row.marketItem!,id:'known'}},absent={...row,id:'absent-row',seed:'absent',marketItem:{...row.marketItem!,id:'profile:owner:absent'}};
+ const retained={...source,generatedAt:'2026-10-14T00:00:00Z',marketAssetsPriced:2,valueRows:[known,absent]};
+ const partial=catalog([original('known'),original('local-pending')],false),result=currentMarketDisplayModel(retained,partial,14720000);
+ expect(result.marketAssetsPriced).toBe(2);expect(result.valueRows.some(value=>value.id===absent.id)).toBe(true);expect(result.valueRows.some(value=>value.seed==='local-pending')).toBe(false);expect(result.generatedAt).toBe(partial.observedAt);
+});
 it('counts one asset once across aliases and a retained non-profile market row',async()=>{
  const old={...row,seed:'same-asset',marketItem:{...row.marketItem!,id:'asset:same-asset'}};
  const collection=catalog([{...original('profile:owner:same-asset'),receizId:'same-asset'},{...original('profile:other:same-asset'),receizId:'same-asset'}]);

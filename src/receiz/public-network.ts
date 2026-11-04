@@ -6,6 +6,7 @@ import { ledgerUsdCents, readLedgerValueOperands, type LedgerValueOperands } fro
 import {readLedgerDetails,type LedgerFields} from './ledger-inspection';
 import {mergeLedgerCausalProjection} from './ledger-causal-source';
 import {retainLedgerAssetTrade} from './ledger-asset-trade';
+import {assetPublicationFreshnessHint} from './asset-publication-adoption';
 
 export const PUBLIC_SOURCES = ['actions', 'wallet', 'graph', 'proofs'] as const;
 export const PUBLIC_NETWORK_INSPECTION_VERSION = 5;
@@ -21,7 +22,7 @@ export interface PublicRecord {
   accountFlow?:import('./account-history-direction').AccountHistoryFlow;
   accountFlowConflict?:true;
 }
-export interface PublicNetworkPage { source: PublicSource; records: PublicRecord[]; nextCursor: string | null; total: string | null; complete: boolean; }
+export interface PublicNetworkPage { source: PublicSource; records: PublicRecord[]; nextCursor: string | null; total: string | null; complete: boolean; observedAt?:string|null; }
 /** Same public source projection used by the Ledger and standalone asset. */
 export function publicMarketRecord(item:import('./public-market').PublicMarketItem):PublicRecord{
  return {id:`proofs:${item.id}`,sourceId:item.id,source:'proofs',kind:'proof recorded',title:item.title,detail:item.summary||'Public showcase proof',time:item.sealedAt,actor:null,sender:null,recipient:null,amountUsdCents:null,kaiUpulse:null,pulse:item.pulse,sourceUrl:item.sourceUrl??item.verifyUrl,evidence:digestEvidence(item.originalDigest),valueOperands:{assetId:item.assetId,marketItemId:item.id,proofValueUsdCents:ledgerUsdCents(item.priceUsd),...(item.livePulseSeed?{proofValuation:{assetId:item.assetId,marketItemId:item.id,seed:item.livePulseSeed}}:{})},details:readLedgerDetails({assetId:item.assetId,marketItemId:item.id,originalUrl:item.originalUrl,readingUrl:item.readingUrl,hasLongForm:item.hasLongForm,owner:{username:item.ownerUsername,displayName:item.ownerDisplayName}}),authority:'public-source-projection'};
@@ -55,7 +56,7 @@ export function parsePublicNetworkPage(source: PublicSource, input: unknown): Pu
   const envelope = object(input);
   if (source === 'proofs') {
     const catalog = parsePublicMarket(input);
-    return { source, nextCursor: null, complete: catalog.complete, total: String(catalog.sourceCount), records: catalog.items.map(publicMarketRecord) };
+    return { source, nextCursor: null, complete: catalog.complete, total: String(catalog.sourceCount), observedAt:catalog.observedAt, records: catalog.items.map(publicMarketRecord) };
   }
   if (envelope.source && envelope.source !== source || envelope.ok !== true && envelope.source !== source) throw new Error('Public source returned an unsupported response.');
   const rows = envelope.rows ?? (source === 'actions' ? envelope.actions ?? envelope.events : source === 'wallet' ? envelope.events : envelope.ledgerRows);
@@ -144,6 +145,7 @@ function mergeTransferEvidence(known: PublicRecord | undefined, incoming: Public
 }
 export async function readPublicNetworkPage(source: PublicSource, cursor?: string, signal?: AbortSignal): Promise<PublicNetworkPage> {
   const query = new URLSearchParams({ source }); if (cursor) query.set('cursor', cursor);
+  const afterPublication=source==='proofs'?assetPublicationFreshnessHint():undefined;if(afterPublication)query.set('afterPublication',afterPublication);
   const response = await fetch(`/api/bank/public-network?${query}`, { credentials: 'omit', signal });
   if (!response.ok) throw new Error('This public source is temporarily unavailable.');
   return parsePublicNetworkPage(source, await response.json());

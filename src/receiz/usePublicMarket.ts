@@ -28,6 +28,38 @@ function publishPublicCatalog(next:SetStateAction<PublicMarketCatalog|null>){
   const updated=adoptCatalog(candidate);
   if(updated===current)return;retainedCatalog=updated;for(const listener of catalogListeners)listener();
 }
+let shippedCatalog:Promise<void>|undefined,shippedSports:Promise<void>|undefined;
+/** Shipped inputs belong to this document, not to a mounted surface. Parse and
+ * adopt each once; closing one consumer cannot cancel another's preparation. */
+function prepareShippedCatalog():Promise<void>{
+  if(shippedCatalog)return shippedCatalog;
+  const attempt=(async()=>{
+    const response=await fetch('/receiz-public-market.json',{credentials:'omit'});
+    if(!response.ok)throw Error('Public collection snapshot unavailable.');
+    const input=await response.json(),cached=parsePublicMarket(input,input.snapshot);rememberPublicOriginalLocators(cached);
+    publishPublicCatalog(current=>{
+      if(!current||cached.complete&&(!Number.isFinite(Date.parse(current.observedAt??''))||Date.parse(cached.observedAt??'')>Date.parse(current.observedAt??'')))return mergePublicSports(cached,retainedSports);
+      const hints=new Map(cached.items.map(item=>[item.id,item]));
+      return {...current,items:current.items.map(item=>{
+        const hint=hints.get(item.id);
+        if(!hint||hint.assetId!==item.assetId||hint.pulse!==item.pulse||hint.originalDigest!==item.originalDigest||hint.verifyUrl!==item.verifyUrl)return item;
+        const presented=item.mediaKind===undefined&&hint.mediaKind!==undefined?{...item,mediaKind:hint.mediaKind}:item;
+        return {...retainPublicMomentManifest(retainPublicArtwork(presented,hint),hint),shareInventory:mergeShareInventory(compatibleShareInventory(item,item.shareInventory),compatibleShareInventory(item,hint.shareInventory)??null),...(item.hasLongForm===undefined?{hasLongForm:hint.hasLongForm,readingUrl:hint.readingUrl}:{}),...(!item.livePulseSeed&&hint.livePulseSeed?{livePulseSeed:hint.livePulseSeed,valuationBinding:hint.valuationBinding}:{})};
+      })};
+    });
+  })();
+  shippedCatalog=attempt;void attempt.catch(()=>{if(shippedCatalog===attempt)shippedCatalog=undefined;});return attempt;
+}
+function prepareShippedSports():Promise<void>{
+  if(shippedSports)return shippedSports;
+  const attempt=(async()=>{
+    const response=await fetch('/receiz-public-sports.json',{credentials:'omit'});
+    if(!response.ok)throw Error('Public collectible snapshot unavailable.');
+    const data=await response.json(),next=retainedSports?retainPublicSportsInput(data,retainedSports):data;
+    if(next===retainedSports)return;retainedSports=next;publishPublicCatalog(current=>current?mergePublicSports(current,next):current);
+  })();
+  shippedSports=attempt;void attempt.catch(()=>{if(shippedSports===attempt)shippedSports=undefined;});return attempt;
+}
 export function usePublicMarket(active = true, displayActive = active, selectedItemId?:string|null) {
   const pricingSource=useMarketDisplaySource(),[pulse,setPulse]=useState(()=>receizKaiNow().pulse);
   const catalog=useSyncExternalStore(active?subscribeCatalog:inactiveCatalog,readPublicCatalog,()=>null),setCatalog=publishPublicCatalog;
@@ -103,27 +135,14 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
   useEffect(()=>{if(!active)return;const changed=(event:Event)=>{const nonce=(event as CustomEvent<{clientNonce?:unknown}>).detail?.clientNonce;if(typeof nonce!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(nonce))return;pendingMarketChange.current=nonce;void refresh(true);};addEventListener('bankeiz:market-shares-changed',changed);return()=>removeEventListener('bankeiz:market-shares-changed',changed);},[active,refresh]);
   useEffect(() => {
     if (!active) return;
-    const seed = new AbortController();
-    void fetch('/receiz-public-sports.json', { signal: seed.signal, credentials: 'omit' }).then(async response => { if (!response.ok) return; const data = await response.json(); if(seed.signal.aborted)return;const next=retainedSports?retainPublicSportsInput(data,retainedSports):data;if(next===retainedSports)return;retainedSports=next;setSportsStatus('retained');setCatalog(current=>current?mergePublicSports(current,next):current); }).catch(() => {});
-    void fetch('/receiz-public-market.json', { signal: seed.signal, credentials: 'omit' }).then(async response => {
-      if (!response.ok) return; const input = await response.json(); const cached = parsePublicMarket(input, input.snapshot); rememberPublicOriginalLocators(cached);
-      if (seed.signal.aborted) return;
-      setCatalog(current => {
-        if(!current||cached.complete&&(!Number.isFinite(Date.parse(current.observedAt??''))||Date.parse(cached.observedAt??'')>Date.parse(current.observedAt??'')))return mergePublicSports(cached,retainedSports);
-        const hints=new Map(cached.items.map(item=>[item.id,item]));
-        return {...current,items:current.items.map(item=>{
-          const hint=hints.get(item.id);
-          if(!hint||hint.assetId!==item.assetId||hint.pulse!==item.pulse||hint.originalDigest!==item.originalDigest||hint.verifyUrl!==item.verifyUrl)return item;
-          const presented=item.mediaKind===undefined&&hint.mediaKind!==undefined?{...item,mediaKind:hint.mediaKind}:item;
-          return {...retainPublicMomentManifest(retainPublicArtwork(presented,hint),hint),shareInventory:mergeShareInventory(compatibleShareInventory(item,item.shareInventory),compatibleShareInventory(item,hint.shareInventory)??null),...(item.hasLongForm===undefined?{hasLongForm:hint.hasLongForm,readingUrl:hint.readingUrl}:{}),...(!item.livePulseSeed&&hint.livePulseSeed?{livePulseSeed:hint.livePulseSeed,valuationBinding:hint.valuationBinding}:{})};
-        })};
-      });
-    }).catch(() => {});
+    let alive=true;
+    void prepareShippedSports().then(()=>{if(alive&&retainedSports)setSportsStatus(current=>current==='fresh'?current:'retained');}).catch(()=>{});
+    void prepareShippedCatalog().catch(()=>{});
     void refresh();
     const interval = setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 60_000);
     const wake = () => { if (document.visibilityState === 'visible') void refresh(); };
     document.addEventListener('visibilitychange', wake); window.addEventListener('online', wake);
-    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); seed.abort(); running.current?.abort(); running.current = null;quoteRead.current?.controller.abort();quoteRead.current=null;sportsRunning.current?.abort();sportsRunning.current=null; };
+    return () => { alive=false;clearInterval(interval); document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); running.current?.abort(); running.current = null;quoteRead.current?.controller.abort();quoteRead.current=null;sportsRunning.current?.abort();sportsRunning.current=null; };
   }, [active, refresh]);
   useEffect(()=>{if(!displayActive)return;const update=()=>{if(document.visibilityState==='visible')setPulse(previous=>Math.max(previous,receizKaiNow().pulse));};update();const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);window.addEventListener('pageshow',update);window.addEventListener('focus',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update);window.removeEventListener('pageshow',update);window.removeEventListener('focus',update);};},[displayActive]);
   const pricedCatalog=useMemo(()=>active?publicCatalogAtPulse(catalog,pricingSource,pulse,selectedItemId):catalog,[catalog,pricingSource,pulse,active,selectedItemId]);

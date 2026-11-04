@@ -17,6 +17,34 @@ beforeEach(async () => { vi.resetModules();network.membership.mockReset(); netwo
 afterEach(() => { vi.unstubAllGlobals(); localStorage.clear();vi.useRealTimers();clock.pulse=14710100; });
 const sourceInput = (items = ['a', 'b'], complete = true) => ({ ok: true, transport: { publicMembership: { version: 1, scope: 'whole-market-visible-showcase', source: complete ? 'canonical-complete' : 'partial', isComplete: complete, itemCount: items.length, revision: 'r1' }, publicOriginals: items.map(id => ({ id, receizId: id, title: id, valueUsd: 10 })) } });
 const quoteInput = (priceUsd = 10) => ({ ok: true, data: { schema: 'receiz.market.public-snapshot.v1', generatedAt: '2026-10-13T12:00:00Z', liveMarkets: [{ itemId: 'a', visibility: 'public', priceUsd, quoteUsdPerPhi: 1, chart: [{ value: 9 }, { value: priceUsd }] }] } });
+it('reuses the shipped collection across warm surface reopen without downloading it again',async()=>{
+ network.membership.mockResolvedValue(parsePublicMarket(sourceInput()));network.quotes.mockResolvedValue(quoteInput());
+ const decoded=vi.fn(),fetch=vi.fn(async(input:RequestInfo|URL)=>{if(input!=='/receiz-public-market.json')return new Response('',{status:404});const response=Response.json(sourceInput()),json=response.json.bind(response);vi.spyOn(response,'json').mockImplementation(async()=>{decoded();return json();});return response;});vi.stubGlobal('fetch',fetch);
+ let state!:ReturnType<typeof usePublicMarket>;function Probe(){state=usePublicMarket();return null;}
+ const first=createRoot(document.createElement('div')),second=createRoot(document.createElement('div'));
+ await act(async()=>first.render(<Probe/>));expect(state.catalog?.items).toHaveLength(2);act(()=>first.unmount());
+ try{await act(async()=>second.render(<Probe/>));expect(state.catalog?.items).toHaveLength(2);expect(fetch.mock.calls.filter(([url])=>url==='/receiz-public-market.json')).toHaveLength(1);expect(decoded).toHaveBeenCalledOnce();}
+ finally{act(()=>second.unmount());}
+});
+it('shares a pending shipped collection across consumers and preserves it after one closes',async()=>{
+ network.membership.mockRejectedValue(Error('unavailable'));network.quotes.mockRejectedValue(Error('unavailable'));
+ let finish!:(response:Response)=>void;
+ const fetch=vi.fn((input:RequestInfo|URL)=>input==='/receiz-public-market.json'?new Promise<Response>(resolve=>{finish=resolve;}):Promise.resolve(new Response('',{status:404})));vi.stubGlobal('fetch',fetch);
+ const first=createRoot(document.createElement('div')),second=createRoot(document.createElement('div'));
+ let state!:ReturnType<typeof usePublicMarket>;function Probe(){state=usePublicMarket();return null;}
+ try{await act(async()=>{first.render(<Probe/>);second.render(<Probe/>);});act(()=>first.unmount());await act(async()=>finish(Response.json(sourceInput())));
+  expect(fetch.mock.calls.filter(([url])=>url==='/receiz-public-market.json')).toHaveLength(1);expect(state.catalog?.items).toHaveLength(2);
+ }finally{act(()=>second.unmount());}
+});
+it('can retry an unavailable shipped collection on reopen instead of retaining its failure',async()=>{
+ network.membership.mockRejectedValue(Error('unavailable'));network.quotes.mockRejectedValue(Error('unavailable'));let available=false;
+ const fetch=vi.fn(async(input:RequestInfo|URL)=>input==='/receiz-public-market.json'&&available?Response.json(sourceInput()):new Response('',{status:503}));vi.stubGlobal('fetch',fetch);
+ let state!:ReturnType<typeof usePublicMarket>;function Probe(){state=usePublicMarket();return null;}
+ const first=createRoot(document.createElement('div')),second=createRoot(document.createElement('div'));
+ await act(async()=>first.render(<Probe/>));act(()=>first.unmount());available=true;
+ try{await act(async()=>second.render(<Probe/>));expect(state.catalog?.items).toHaveLength(2);expect(fetch.mock.calls.filter(([url])=>url==='/receiz-public-market.json')).toHaveLength(2);}
+ finally{act(()=>second.unmount());}
+});
 it('retains carried album artwork across a thinner refresh of the exact same public artifact',async()=>{
  const row={id:'a',receizId:'a',title:'Album',pulse:'123',profileOriginal:{mediaKind:'audio',artworkUrl:'https://receiz.com/artwork/album.jpg',media:{originalDownloadSha256Hex:'a'.repeat(64)}}};
  const source={...sourceInput(['a']),transport:{...sourceInput(['a']).transport,publicOriginals:[row]}},thin={...source,transport:{...source.transport,publicOriginals:[{...row,profileOriginal:{...row.profileOriginal,artworkUrl:null}}]}};

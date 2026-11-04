@@ -5,24 +5,32 @@ import type{MarketCapSource,MarketValueRow}from'./source';
 import {marketPulseAtOrAfterTime}from'./sealed-copies';
 import {mergeMarketCopyObservations,type MarketCopyObservationTape}from'./copy-observations';
 import {boundSportsHistoryObservation,sameSportsPricingOperands}from'./sports-observations';
+import {compatibleShareInventory}from'../market-share-inventory';
 
 /** The complete public inventory supplies membership; its existing operands
  * supply valuation. Neither this projection nor its digest grants authority. */
 export function currentMarketDisplayModel(source:MarketCapSource,catalog:PublicMarketCatalog|null,pulse:number,copyObservations?:MarketCopyObservationTape):MarketCapSource{
  if(!Number.isSafeInteger(pulse)||pulse<source.serverPulse||pulse>1e10)throw Error('Public market evaluation pulse is invalid.');
  let rows=source.valueRows;
- const currentCollection=catalog?.complete&&Date.parse(catalog.observedAt??'')>=Date.parse(source.generatedAt);
- if(currentCollection){
+ const currentProjection=!!catalog&&Date.parse(catalog.observedAt??'')>=Date.parse(source.generatedAt);
+ let generatedAt=source.generatedAt;
+ if(currentProjection){
   // The asset is the economic unit; profile aliases do not issue it twice.
-  const assets=new Map(catalog.items.filter(item=>item.category==='proof').map(item=>[item.assetId,item]));
+  // A partial collection can refresh existing models and bound share operands,
+  // but cannot remove absent assets or invent supply for a pending Original.
+  const knownAssets=new Set(rows.map(row=>row.seed)),knownIds=new Set(rows.flatMap(row=>row.marketItem?[row.marketItem.id]:[]));
+  const assets=new Map(catalog!.items.filter(item=>item.category==='proof'&&(catalog!.complete||knownAssets.has(item.assetId)||knownIds.has(item.id)||compatibleShareInventory(item,item.shareInventory))).map(item=>[item.assetId,item]));
   const ids=new Set([...assets.values()].map(item=>item.id));
-  const current:MarketValueRow[]=source.valueRows.filter(row=>row.source==='sports-economy-card'||!row.marketItem?.id.startsWith('profile:')&&!assets.has(row.seed)&&!ids.has(row.marketItem?.id??''));
+  const current:MarketValueRow[]=source.valueRows.filter(row=>row.source==='sports-economy-card'||(!catalog!.complete||!row.marketItem?.id.startsWith('profile:'))&&!assets.has(row.seed)&&!ids.has(row.marketItem?.id??''));
+  let refreshed=0;
   for(const item of assets.values()){
    const seed=publicAssetPulseSeed(item,source);if(!seed||seed.claimPulse>pulse)continue;
    const birth=publicSigilQuoteAtPulse(seed,seed.claimPulse);
    current.push({id:`public-market:${item.id}`,source:'market-desk-live-asset',seed:item.assetId,baseUsdValue:birth.priceUsd,birthUsdValue:birth.priceUsd,marketUsdValue:birth.priceUsd,proofTotalValueUsd:birth.priceUsd,scoreDelta:0,quoteUsdPerPhi:birth.quoteUsdPerPhi,marketItem:{id:item.id,source:'profile',...birth,changePct:0,livePulseSeed:seed}});
+   refreshed++;
   }
   rows=current;
+  if(catalog!.complete||refreshed)generatedAt=catalog!.observedAt!;
  }
  const cards=catalog?.items.filter(item=>item.category==='sports'&&item.sportsValuation)??[];
  if(cards.length){
@@ -76,5 +84,5 @@ export function currentMarketDisplayModel(source:MarketCapSource,catalog:PublicM
  }
  if(sportsHistorySnapshot)undatedHistory=undefined;
  return {...source,undatedHistory,unpricedSealedBirths,sportsHistorySnapshot,sportsHistoryEvaluationPulse,sourceEvaluation:sportsHistorySnapshot?source.sourceEvaluation??{pulse:source.serverPulse,usdValue:source.currentUsd,sourceHash:source.proofObjectHash}:source.sourceEvaluation,valueRows:rows,firstIssuancePulse:rows.reduce((first,row)=>Math.min(first,row.marketItem?.livePulseSeed?.claimPulse??first,...(row.sealedCopies??row.sealedBirths??[]).map(copy=>marketPulseAtOrAfterTime(copy.sealedAt))),Math.min(source.firstIssuancePulse,...(unpricedSealedBirths??[]).map(copy=>marketPulseAtOrAfterTime(copy.sealedAt)))),serverPulse:pulse,currentUsd:marketRowsUsdAtPulse(rows,pulse),marketAssetsPriced:rows.filter(row=>row.source==='market-desk-live-asset').length,sportsCardsPriced:rows.filter(row=>row.source==='sports-economy-card').length,cardsInCirculation:Math.max(source.cardsInCirculation,cards.reduce((sum,item)=>sum+(item.circulationCount??0),0)),
-  generatedAt:currentCollection?catalog.observedAt!:source.generatedAt};
+  generatedAt};
 }

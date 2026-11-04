@@ -2,6 +2,7 @@
 import {afterEach,expect,it,vi} from 'vitest';
 import {parsePublicMarket,mergePublicQuotes} from '../src/receiz/public-market';
 import {retainPublicProfile,retainedPublicProfile,forgetPublicProfile,type PublicProfile} from '../src/receiz/public-profile';
+import {publicShareCapitalization,readPublicShareInventory} from '../src/receiz/market-share-inventory';
 import * as adoption from '../src/receiz/asset-publication-adoption';
 const reference={schema:'receiz.imported-proof-source.v1',artifactSha256:'a'.repeat(64),byteLength:2,filename:'asset.receizbundle',mimeType:'application/vnd.receiz.bundle+json',bytes:{kind:'bytes',sha256:'b'.repeat(64),byteLength:2,contentByteLength:2,height:0}};
 const source='/api/profile/showcase/imported-source?'+new URLSearchParams({reference:JSON.stringify(reference)});
@@ -145,4 +146,33 @@ it('keeps an exact later signed intent pending through an older signed discovery
  expect(adoption.mergeAdmittedProfileAssets({...profile,items:discovered(a).items}).items[0].pbiReceiptHash).toBe(b);
  adoption.acceptDiscoveredPublicAssets(discovered(b));
  expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid,'artist')).toEqual([]);
+});
+
+it('keeps already-carried shares and capitalization when signing the same discovered Original',()=>{
+ const fetch=vi.spyOn(globalThis,'fetch');
+ adoption.retainAssetPublicationAdmission(admission,owner);
+ const discovered=adoption.mergeAdmittedPublicAssets(parsePublicMarket({ok:true,transport:{publicOriginals:[]}})),item=discovered.items[0];
+ const inventory=readPublicShareInventory({schema:'receiz.market.share-inventory.v1',marketItemId:item.id,assetId:item.assetId,family:'generic',quantityScope:'canonical-asset',observedAtKaiUPulse:'14710000000000',outstandingShareQuantityMicro:'1000000',availableShareQuantityMicro:'2000000',positionsMicro:'1000000',certificatesMicro:'0',reservedBuyMicro:'0',availability:'quote-capacity'},item)!;
+ discovered.items=[{...item,priceUsd:10,shareInventory:inventory}];
+ adoption.acceptDiscoveredPublicAssets(discovered);
+ adoption.retainAssetPublicationAdmission({...admission,original:{...original,marketPreview:{priceUsd:10},hasPbiSignature:true,pbiReceiptHash:'e'.repeat(64)}},owner);
+ const updated=adoption.mergeAdmittedPublicAssets(discovered),updatedProfile=adoption.mergeAdmittedProfileAssets({...profile,items:discovered.items});
+ expect(updated.items).toHaveLength(1);
+ for(const next of [updated.items[0],updatedProfile.items[0]]){
+  expect(next.hasPbiSignature).toBe(true);expect(next.shareInventory).toBe(inventory);
+ }
+ expect(publicShareCapitalization(updated).usdCents).toBe(publicShareCapitalization(discovered).usdCents);
+ expect(publicShareCapitalization(updated).covered).toBe(1);expect(fetch).not.toHaveBeenCalled();
+ const changedSource={...discovered,items:[{...discovered.items[0],originalDigest:'b'.repeat(64)}]};
+ expect(adoption.mergeAdmittedPublicAssets(changedSource).items[0].shareInventory).toBeUndefined();
+ expect(adoption.mergeAdmittedProfileAssets({...profile,items:changedSource.items}).items[0].shareInventory).toBeUndefined();
+ const changedAsset={...discovered,items:[{...discovered.items[0],assetId:'another'}]};
+ expect(adoption.mergeAdmittedPublicAssets(changedAsset).items[0].shareInventory).toBeUndefined();
+ expect(adoption.mergeAdmittedProfileAssets({...profile,items:changedAsset.items}).items[0].shareInventory).toBeUndefined();
+ const wrongInventory={...discovered,items:[{...discovered.items[0],shareInventory:{...inventory,assetId:'another'}}]};
+ expect(adoption.mergeAdmittedPublicAssets(wrongInventory).items[0].shareInventory).toBeUndefined();
+ const wrongScope={...discovered,items:[{...discovered.items[0],shareInventory:{...inventory,quantityScope:undefined}}]};
+ expect(adoption.mergeAdmittedPublicAssets(wrongScope).items[0].shareInventory).toBeUndefined();
+ expect(adoption.mergeAdmittedProfileAssets({...profile,items:wrongScope.items}).items[0].shareInventory).toBeUndefined();
+ expect(adoption.mergeAdmittedProfileAssets({...profile,userId:'another-owner',items:discovered.items}).items[0]).toBe(discovered.items[0]);
 });

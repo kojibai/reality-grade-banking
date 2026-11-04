@@ -1,6 +1,7 @@
 import {ledgerAssetTradeSide,ledgerAssetTrade} from './ledger-asset-trade';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PUBLIC_SOURCES, PUBLIC_NETWORK_INSPECTION_VERSION, mergePublicRecords, readPublicNetworkPage, type PublicRecord, type PublicSource } from './public-network';
+import { PUBLIC_SOURCES, PUBLIC_NETWORK_INSPECTION_VERSION, mergePublicRecords, publicMarketRecord, readPublicNetworkPage, type PublicRecord, type PublicSource } from './public-network';
+import {assetPublicationFreshnessHint,subscribeAssetPublicationAdmissions} from './asset-publication-adoption';
 import { loadPublicNetworkCache, loadPublicNetworkSeed, savePublicNetworkCache } from './public-network-cache';
 import {restorePublicNetworkRows} from './public-network-bootstrap';
 import {subscribePublicLedgerSync} from './public-ledger-sync';
@@ -22,12 +23,22 @@ export function usePublicNetwork(active = true) {
   const deferredRepairs=useRef(new Set<PublicSource>());
   const inspectionVersion=useRef(0);
   const sourceReads=useRef(new Map<PublicSource,{controller:AbortController;promise:Promise<void>}>());
+  const proofRevision=useRef(0),publicationRefresh=useRef<Promise<void>|null>(null);
+  const proofObservedAt=useRef<number|null>(null);
   const activeTradeRepair=useRef<{targets:Set<string>;seen:Set<string>}|null>(null);
   const originalProjection=useRef<{digest:string;records:PublicRecord[]}|null>(null);
   const saved=useRef<{records:PublicRecord[];capturedAt:string|null;coverage:string;inspectionVersion:number}|null>(null);
   const retainedCache=useRef<Promise<PublicNetworkCache|null>|null>(null);
   const completeAnchors = useRef<Partial<Record<PublicSource, Set<string>>>>({});
   const historyCursors = useRef<Record<PublicSource, Set<string>>>({ actions: new Set(), wallet: new Set(), graph: new Set(), proofs: new Set() });
+  // Source capture dates order public display membership only. An older or
+  // undated response cannot reopen visibility removed by a newer dated read.
+  const acceptsProofCapture=useCallback((value:string|null|undefined)=>{
+    const observedAt=Date.parse(value??'');
+    if(proofObservedAt.current!==null&&(!Number.isFinite(observedAt)||observedAt<proofObservedAt.current))return false;
+    if(Number.isFinite(observedAt))proofObservedAt.current=observedAt;
+    return true;
+  },[]);
   const update = (source: PublicSource, patch: Partial<PublicSourceState>) => { const next = { ...sourceState.current, [source]: { ...sourceState.current[source], ...patch } }; sourceState.current = next; setSources(next); };
   const append = (source: PublicSource, incoming: PublicRecord[], replace = false) => {
     const incomingIds = new Set(incoming.map(row => row.id));
@@ -48,11 +59,16 @@ export function usePublicNetwork(active = true) {
     const visited = phase === 'head' ? new Set<string>() : historyCursors.current[source];
     update(source, { busy: true, error: null });
     let cursor = phase === 'older' ? before.cursor! : undefined;
+    const revision=proofRevision.current;
     try {
       for (;;) {
         if (cursor && visited.has(cursor)) throw new Error('Public source repeated a cursor.');
         const page = await readPublicNetworkPage(source, cursor, controller.signal);
         if (controller.signal.aborted) return;
+        // A confirmed membership delivered by the publication reader is newer
+        // than an already-running pre-publication proof request.
+        if(source==='proofs'&&revision!==proofRevision.current)return;
+        if(source==='proofs'&&!acceptsProofCapture(page.observedAt))return;
         if (cursor) visited.add(cursor);
         if (page.nextCursor && (page.nextCursor === cursor || visited.has(page.nextCursor))) throw new Error('Public source repeated a cursor.');
         const reachedHeld = page.records.some(row => existing.has(row.id));
@@ -69,9 +85,9 @@ export function usePublicNetwork(active = true) {
         break;
       }
     } catch (cause) {
-      if (!controller.signal.aborted) update(source, { busy: false, status: rows.current.some(row => row.source === source) ? 'stale' : 'error', error: cause instanceof Error ? cause.message : 'Public source unavailable.' });
+      if (!controller.signal.aborted&&(source!=='proofs'||revision===proofRevision.current)) update(source, { busy: false, status: rows.current.some(row => row.source === source) ? 'stale' : 'error', error: cause instanceof Error ? cause.message : 'Public source unavailable.' });
     } finally { if(repairCycle&&activeTradeRepair.current===repairCycle)activeTradeRepair.current=null; if (!controller.signal.aborted && sourceState.current[source].busy) update(source, { busy: false }); }
-  }, []);
+  }, [acceptsProofCapture]);
   const readSource=useCallback((source:PublicSource,phase:'head'|'older')=>{
     const controller=lifetime.current;if(!controller||controller.signal.aborted)return Promise.resolve();
     const held=sourceReads.current.get(source);if(held?.controller===controller&&sourceState.current[source].busy)return held.promise;
@@ -107,7 +123,10 @@ export function usePublicNetwork(active = true) {
     let opened=false;
     const restore=(held:PublicNetworkCache|null,seed:PublicNetworkCache|null)=>{
         inspectionVersion.current=Math.max(inspectionVersion.current,held?.inspectionVersion??0,seed?.inspectionVersion??0);
-        rows.current = mergePublicRecords(restorePublicNetworkRows(held,seed),rows.current);
+        // Publication can settle while the initial cache is still opening.
+        // That older display cache cannot reopen accepted proof membership.
+        const retainProofs=proofRevision.current>0,restoredRows=restorePublicNetworkRows(held,seed);
+        rows.current = mergePublicRecords(retainProofs?restoredRows.filter(row=>row.source!=='proofs'):restoredRows,rows.current);
         const oldTradeIds=new Set([held,seed].flatMap(value=>value&&(value.inspectionVersion??0)<5?value.records.filter(row=>row.source==='actions'&&ledgerAssetTradeSide(row)).map(row=>row.id):[]));
         for(const row of rows.current)if(oldTradeIds.has(row.id)&&!ledgerAssetTrade(row)?.tradeId){
           inspectionVersion.current=Math.min(inspectionVersion.current,4);
@@ -115,6 +134,7 @@ export function usePublicNetwork(active = true) {
         }
         setRecords(rows.current);capture(held?.capturedAt??null);capture(seed?.capturedAt??null);
         for (const source of PUBLIC_SOURCES) {
+          if(source==='proofs'&&retainProofs)continue;
           const cachedComplete = held?.coverage.some(item => item.source === source && item.complete);
           const seededComplete = seed?.coverage.some(item => item.source === source && item.complete);
           const anchor = cachedComplete ? held : seededComplete ? seed : null;
@@ -160,6 +180,27 @@ export function usePublicNetwork(active = true) {
     };
     return()=>{controller.abort();if(lifetime.current===controller){lifetime.current=null;activate.current=null;}for(const source of PUBLIC_SOURCES)sourceState.current[source]={...sourceState.current[source],busy:false};};
   }, [refresh,adoptOriginal,readSource]);
+  useEffect(()=>subscribeAssetPublicationAdmissions(catalog=>{
+    const controller=lifetime.current;if(!controller||controller.signal.aborted)return;
+    if(catalog){
+      if(!acceptsProofCapture(catalog.observedAt))return;
+      proofRevision.current++;
+      append('proofs',catalog.items.map(publicMarketRecord),catalog.complete);
+      capture(catalog.observedAt);
+      update('proofs',{status:catalog.complete?'live':'stale',complete:catalog.complete,observedAt:catalog.complete?Date.now():sourceState.current.proofs.observedAt,cursor:null,error:catalog.complete?null:'Public showcase collection is incomplete.'});
+      if(catalog.complete)completeAnchors.current.proofs=new Set(catalog.items.map(item=>`proofs:${item.id}`));
+      return;
+    }
+    // A pending local preview is not a public proof. Only the existing native
+    // publication acknowledgment triggers a fresh public membership read.
+    if(!assetPublicationFreshnessHint())return;
+    if(!enabled.current){deferredRepairs.current.add('proofs');return;}
+    if(publicationRefresh.current)return;
+    const inflight=sourceReads.current.get('proofs')?.promise;
+    const refreshProofs=(async()=>{if(inflight)await inflight;if(lifetime.current===controller&&!controller.signal.aborted)await readSource('proofs','head');})();
+    publicationRefresh.current=refreshProofs;
+    void refreshProofs.finally(()=>{if(publicationRefresh.current===refreshProofs)publicationRefresh.current=null;}).catch(()=>{});
+  }),[readSource,acceptsProofCapture]);
   useEffect(()=>{
     if(!active)return;
     void activate.current?.();
