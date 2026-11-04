@@ -2,10 +2,12 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import type {MarketPortfolio} from '../market-portfolio';
 import type {PublicMarketItem} from '../public-market';
 import type {MarketCapSource} from './source';
-import {investmentHistoryRows,type InvestmentHistory} from './investment-history';
+import {investmentHistoryRows,retainInvestmentHistoryTiming,type InvestmentHistory} from './investment-history';
 export function useInvestmentHistory(portfolio:MarketPortfolio|null,items:PublicMarketItem[],source:MarketCapSource|null,pulse:number,active:boolean,visible:boolean){
  // Pricing seeds and position records are stable between live display ticks.
- const rows=useMemo(()=>investmentHistoryRows(portfolio,items,source,pulse),[portfolio,items,source]);
+ const timing=useRef<MarketPortfolio|null>(null),historyPortfolio=useMemo(()=>portfolio?retainInvestmentHistoryTiming(timing.current,portfolio):null,[portfolio]);
+ useEffect(()=>{timing.current=historyPortfolio;},[historyPortfolio]);
+ const rows=useMemo(()=>investmentHistoryRows(historyPortfolio,items,source,pulse),[historyPortfolio,items,source]);
  // Equivalent account/catalog refreshes must not replace a completed curve with
  // the current-value fallback. Bind the worker and view to their exact inputs.
  const basis=useMemo(()=>JSON.stringify([portfolio?.accountUid??null,rows]),[portfolio?.accountUid,rows]);

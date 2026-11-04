@@ -42,7 +42,7 @@ function publicOriginalItems(rows:unknown[],p:Record<string,unknown>,collection=
   if(collection&&typeof row.hasLongForm!=='boolean')throw Error('PROFILE_COLLECTION_READER_METADATA_INVALID');
   return {id:`profile:${username}:${id}`,receizId:id,title:text(row.claim,8192)??text(long.title,500)??'Original',summary:text(row.claim,8192)??'',ownerUsername:username,ownerDisplayName:displayName,ownerUserId:p.userId,ownerCreatedAt:p.createdAt,
    canonicalHref:`https://receiz.com/${username}/verified/${encodeURIComponent(id??'')}`,verifyHref:row.verifyUrl??row.verifyPath,pulse:row.pulse,createdAt:row.createdAt,valueUsd:market.priceUsd,livePulseSeed:market.livePulseSeed,
-   profileOriginal:{...row,media,hasLongForm:typeof row.hasLongForm==='boolean'?row.hasLongForm:Boolean(long.text),longForm:row.longForm}};
+   profileOriginal:{...row,media,hasLongForm:collection?row.hasLongForm:Boolean(long.text),longForm:row.longForm}};
  });
  return parsePublicMarket({ok:true,transport:{publicOriginals:originals}}).items.map(item=>p.avatarUrl===undefined?item:{...item,ownerAvatarUrl:profileAvatarUrl(p.avatarUrl)}).sort(compareProfileOriginals);
 }

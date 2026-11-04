@@ -1,7 +1,7 @@
 import {enrichLedgerCertificateReferences} from './ledger-share-certificate';
 import {applyLedgerFundingContext,retainLedgerFundingContext} from './ledger-funding-context';
 import {safeLedgerSourceUrl} from './ledger-receipts';
-import {mergePublicQuotes,readPublicProofPresentation,type PublicMarketItem,parsePublicMarket } from './public-market.ts';
+import { parsePublicMarket } from './public-market.ts';
 import { ledgerUsdCents, readLedgerValueOperands, type LedgerValueOperands } from './ledger-value';
 import {readLedgerDetails,type LedgerFields} from './ledger-inspection';
 import {mergeLedgerCausalProjection} from './ledger-causal-source';
@@ -25,20 +25,7 @@ export interface PublicRecord {
 export interface PublicNetworkPage { source: PublicSource; records: PublicRecord[]; nextCursor: string | null; total: string | null; complete: boolean; observedAt?:string|null; }
 /** Same public source projection used by the Ledger and standalone asset. */
 export function publicMarketRecord(item:import('./public-market').PublicMarketItem):PublicRecord{
- return {id:`proofs:${item.id}`,sourceId:item.id,source:'proofs',kind:'proof recorded',title:item.title,detail:item.summary||'Public showcase proof',time:item.sealedAt,actor:null,sender:null,recipient:null,amountUsdCents:null,kaiUpulse:null,pulse:item.pulse,sourceUrl:item.sourceUrl??item.verifyUrl,evidence:digestEvidence(item.originalDigest),valueOperands:{assetId:item.assetId,marketItemId:item.id,proofValueUsdCents:ledgerUsdCents(item.priceUsd),...(item.livePulseSeed?{proofValuation:{assetId:item.assetId,marketItemId:item.id,seed:item.livePulseSeed}}:{})},details:readLedgerDetails({assetId:item.assetId,marketItemId:item.id,originalUrl:item.originalUrl,readingUrl:item.readingUrl,hasLongForm:item.hasLongForm,publicAsset:item.category==='proof'?item:undefined,owner:{username:item.ownerUsername,displayName:item.ownerDisplayName},creator:item.originalCreator}),authority:'public-source-projection'};
-}
-/** Hydrate held proof display facts from the shared public quote observation.
- * Recorded event operands and Source evidence remain exactly as received. */
-export function mergePublicProofQuotes(records:PublicRecord[],snapshot:unknown,previous:readonly PublicRecord[]=[]):PublicRecord[]{
- const prior=new Map(previous.map(row=>[row.id,row])),assets=new Map<string,PublicMarketItem>();
- const bound=(row:PublicRecord)=>{const item=readPublicProofPresentation(row.details?.publicAsset);return row.source==='proofs'&&item&&item.id===row.sourceId&&item.assetId===row.valueOperands?.assetId&&item.originalDigest===row.evidence.artifactDigest&&item.pulse===row.pulse?item:null;};
- for(const row of records){const item=bound(row);if(!item)continue;const held=prior.get(row.id),old=held?bound(held):null;
-  assets.set(item.id,old&&old.id===item.id&&old.assetId===item.assetId&&old.originalDigest===item.originalDigest&&old.pulse===item.pulse&&old.verifyUrl===item.verifyUrl&&old.shareInventory?{...item,priceUsd:old.priceUsd,changePct:old.changePct,chart:old.chart,shareInventory:old.shareInventory}:item);
- }
- const envelope=object(snapshot),data=object(envelope.data);if(envelope.ok!==true||!Array.isArray(data.liveMarkets))return records;
- const quotes=data.liveMarkets.filter(raw=>{const row=object(raw),asset=typeof row.itemId==='string'?assets.get(row.itemId):null;return asset&&row.assetId===asset.assetId;});
- const quoted=mergePublicQuotes({items:[...assets.values()],complete:false,revision:'held-ledger',observedAt:null,sourceCount:assets.size},{...envelope,data:{...data,liveMarkets:quotes}}),byId=new Map(quoted.items.map(item=>[item.id,item]));
- return records.map(row=>{const source=bound(row);if(!source)return row;const item=byId.get(row.sourceId);if(!item||item.assetId!==source.assetId||item.originalDigest!==source.originalDigest||item.pulse!==source.pulse||item.verifyUrl!==source.verifyUrl||item===source)return row;return{...row,details:readLedgerDetails({...row.details,publicAsset:item})};});
+ return {id:`proofs:${item.id}`,sourceId:item.id,source:'proofs',kind:'proof recorded',title:item.title,detail:item.summary||'Public showcase proof',time:item.sealedAt,actor:null,sender:null,recipient:null,amountUsdCents:null,kaiUpulse:null,pulse:item.pulse,sourceUrl:item.sourceUrl??item.verifyUrl,evidence:digestEvidence(item.originalDigest),valueOperands:{assetId:item.assetId,marketItemId:item.id,proofValueUsdCents:ledgerUsdCents(item.priceUsd),...(item.livePulseSeed?{proofValuation:{assetId:item.assetId,marketItemId:item.id,seed:item.livePulseSeed}}:{})},details:readLedgerDetails({assetId:item.assetId,marketItemId:item.id,originalUrl:item.originalUrl,readingUrl:item.readingUrl,hasLongForm:item.hasLongForm,owner:{username:item.ownerUsername,displayName:item.ownerDisplayName}}),authority:'public-source-projection'};
 }
 function object(input: unknown): Record<string, unknown> { return input !== null && typeof input === 'object' && !Array.isArray(input) ? input as Record<string, unknown> : {}; }
 function text(input: unknown, max = 2048): string | null { return typeof input === 'string' && input.length > 0 && input.length <= max ? input : null; }
@@ -68,7 +55,7 @@ function row(source: PublicSource, raw: unknown): PublicRecord {
 export function parsePublicNetworkPage(source: PublicSource, input: unknown): PublicNetworkPage {
   const envelope = object(input);
   if (source === 'proofs') {
-    const catalog = parsePublicMarket(input,envelope.snapshot);
+    const catalog = parsePublicMarket(input);
     return { source, nextCursor: null, complete: catalog.complete, total: String(catalog.sourceCount), observedAt:catalog.observedAt, records: catalog.items.map(publicMarketRecord) };
   }
   if (envelope.source && envelope.source !== source || envelope.ok !== true && envelope.source !== source) throw new Error('Public source returned an unsupported response.');

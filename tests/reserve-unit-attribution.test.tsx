@@ -61,3 +61,41 @@ it('opens Reserve with its carried Phi and full calculation disclosure without f
   expect(fetch).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());fetch.mockRestore();calculation.mockRestore();}
 });
+it('shows Settlement-only Phi beside the already-held Reserve attribution without changing either source',async()=>{
+ const wallet={...parseSharedWallet(packet(),uid),balancePhiMicro:'143753582614'},before=JSON.stringify(wallet),host=document.createElement('div'),root=createRoot(host),fetch=vi.spyOn(globalThis,'fetch').mockImplementation(()=>{throw Error('NETWORK_FORBIDDEN');});
+ try{
+  await act(async()=>root.render(<BalanceDetails wallet={wallet} focusSettlement/>));
+  await act(async()=>host.querySelector<HTMLElement>('[data-balance-rail="reserve"] > summary')!.click());
+  expect(host.querySelector('[data-balance-rail="settlement"] [data-rail-phi]')?.textContent).toBe('Settlement total · 143753.555395 Φ');
+  expect(host.querySelector('[data-balance-rail="reserve"] [data-rail-phi]')?.textContent).toBe('Reserve total · 0.027219 Φ');
+  expect(host.textContent).not.toContain('Account total (includes Reserve)');
+  expect(wallet.settlementPhiMicro).toBeNull();expect(wallet.reservePhiMicro).toBeNull();expect(JSON.stringify(wallet)).toBe(before);expect(fetch).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());fetch.mockRestore();}
+});
+it.each([
+ {userId:'another-account'},
+ {lastEntryAt:'2026-11-04T01:06:35Z'},
+ {kaiUpulse:'14978960035737'},
+ {reserveUsdCents:'193'},
+ {currentBalanceSource:{userId:'another-account'}},
+ {balancePhiMicro:'27218'},
+])('does not disclose an attributed Settlement split across a changed or negative unit frame %s',async patch=>{
+ const wallet={...parseSharedWallet(packet(),uid),...patch} as ReturnType<typeof parseSharedWallet>,host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<BalanceDetails wallet={wallet} focusSettlement/>));
+  expect(host.querySelector('[data-balance-rail="settlement"] [data-rail-phi]')?.textContent).toBe('Exact Φ unavailable');
+  expect(host.querySelector('[data-balance-rail="settlement"]')?.textContent).not.toContain('Account total');
+ }finally{act(()=>root.unmount());}
+});
+it('keeps directly carried native units above the optional attribution and refuses conflicting partial units',async()=>{
+ const wallet={...parseSharedWallet(packet(),uid),balancePhiMicro:'143753582614',reservePhiMicro:'30000',settlementPhiMicro:'143753552614'},host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<BalanceDetails wallet={wallet} focusSettlement/>));
+  await act(async()=>host.querySelector<HTMLElement>('[data-balance-rail="reserve"] > summary')!.click());
+  expect(host.querySelector('[data-balance-rail="settlement"] [data-rail-phi]')?.textContent).toBe('Settlement total · 143753.552614 Φ');
+  expect(host.querySelector('[data-balance-rail="reserve"] [data-rail-phi]')?.textContent).toBe('Reserve total · 0.03 Φ');
+  await act(async()=>root.render(<BalanceDetails wallet={{...wallet,reservePhiMicro:null}} focusSettlement/>));
+  expect(host.querySelector('[data-balance-rail="settlement"] [data-rail-phi]')?.textContent).toBe('Settlement total · 143753.552614 Φ');
+  expect(host.querySelector('[data-balance-rail="reserve"] [data-rail-phi]')?.textContent).toBe('Exact Φ unavailable');
+ }finally{act(()=>root.unmount());}
+});

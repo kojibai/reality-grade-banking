@@ -34,13 +34,13 @@ it.each(['market','explorer'] as const)('displays signed and unsigned public Ori
  expect(held.catalog!.items[1]).toMatchObject({hasPbiSignature:false,priceUsd:5,assetId:'asset-1'});
  expect(fetcher).not.toHaveBeenCalled();expect(held.refresh).not.toHaveBeenCalled();
 });
-it('reveals the retained Explorer search and categories on upward scroll and focus without rereading its source',()=>{
+it.each(['market','explorer'] as const)('reveals the retained %s search and categories on upward scroll and focus without rereading its source',mode=>{
  const refresh=vi.fn(async()=>{}),fetcher=vi.fn(),held=loadedSource(2,refresh),frames=new Map<number,FrameRequestCallback>();let frame=0;
  vi.stubGlobal('fetch',fetcher);vi.stubGlobal('requestAnimationFrame',(read:FrameRequestCallback)=>{frames.set(++frame,read);return frame;});vi.stubGlobal('cancelAnimationFrame',(id:number)=>frames.delete(id));Object.defineProperty(window,'scrollY',{value:0,configurable:true});
  const host=document.createElement('div'),root=createRoot(host);document.body.append(host);roots.push(root);
  const scroll=(y:number)=>act(()=>{Object.defineProperty(window,'scrollY',{value:y,configurable:true});dispatchEvent(new Event('scroll'));for(const[id,read]of frames){frames.delete(id);read(0);}});
  try{
-  act(()=>root.render(<Market mode="explorer" source={held}/>));const input=host.querySelector<HTMLInputElement>('[aria-label="Search proof objects"]')!,categories=host.querySelector('[aria-label="Asset categories"]'),tools=input.closest('.market-explorer-tools');
+  act(()=>root.render(<Market mode={mode} source={held}/>));const input=host.querySelector<HTMLInputElement>(mode==='explorer'?'[aria-label="Search proof objects"]':'[aria-label="Search assets or currencies"]')!,categories=host.querySelector('[aria-label="Asset categories"]'),tools=input.closest('.market-explorer-tools');
   expect(tools).not.toBeNull();expect(tools!.children).toHaveLength(2);expect(tools!.querySelector('h1,.market-source-status,.market-layout,.app-header')).toBeNull();expect(tools!.contains(categories)).toBe(true);
   act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'Public object 0');input.dispatchEvent(new Event('input',{bubbles:true}));});const row=host.querySelector('.asset-row');
   scroll(450);expect(tools!.classList.contains('is-away')).toBe(true);scroll(400);expect(tools!.classList.contains('is-away')).toBe(false);scroll(470);expect(tools!.classList.contains('is-away')).toBe(true);
@@ -53,9 +53,9 @@ it('removes the Explorer scroll listener and cancels its pending frame when the 
  const host=document.createElement('div'),root=createRoot(host);document.body.append(host);roots.push(root);
  try{act(()=>root.render(<Market mode="explorer" active source={held}/>));const input=host.querySelector('input'),listener=add.mock.calls.find(([event])=>event==='scroll');expect(listener).toEqual(['scroll',expect.any(Function),{passive:true}]);act(()=>dispatchEvent(new Event('scroll')));expect(request).toHaveBeenCalledTimes(1);act(()=>root.render(<Market mode="explorer" active={false} source={held}/>));expect(remove).toHaveBeenCalledWith('scroll',listener![1]);expect(cancel).toHaveBeenCalledWith(19);act(()=>dispatchEvent(new Event('scroll')));expect(request).toHaveBeenCalledTimes(1);expect(host.querySelector('input')).toBe(input);expect(held.refresh).not.toHaveBeenCalled();}finally{add.mockRestore();remove.mockRestore();}
 });
-it.each([{mode:'market' as const,active:true,overviewOnly:false},{mode:'explorer' as const,active:false,overviewOnly:false},{mode:'explorer' as const,active:true,overviewOnly:true}])('does not add scroll work for $mode with active=$active and overviewOnly=$overviewOnly',props=>{
+it.each([{mode:'market' as const,active:false,overviewOnly:false},{mode:'explorer' as const,active:false,overviewOnly:false},{mode:'explorer' as const,active:true,overviewOnly:true},{mode:'market' as const,active:true,overviewOnly:true}])('does not add scroll work for $mode with active=$active and overviewOnly=$overviewOnly',props=>{
  const add=vi.spyOn(window,'addEventListener'),held=loadedSource(),host=document.createElement('div'),root=createRoot(host);roots.push(root);document.body.append(host);
- try{act(()=>root.render(<Market {...props} source={held}/>));expect(add.mock.calls.filter(([event])=>event==='scroll')).toHaveLength(0);if(props.mode==='market'){expect(host.querySelector('.market-explorer-tools')).toBeNull();expect(host.querySelector('[aria-label="Search assets or currencies"]')).not.toBeNull();}expect(held.refresh).not.toHaveBeenCalled();}finally{add.mockRestore();}
+ try{act(()=>root.render(<Market {...props} source={held}/>));expect(add.mock.calls.filter(([event])=>event==='scroll')).toHaveLength(0);if(props.overviewOnly)expect(host.querySelector('.market-explorer-tools')).toBeNull();else{expect(host.querySelector('.market-explorer-tools')).not.toBeNull();expect(host.querySelector(props.mode==='market'?'[aria-label="Search assets or currencies"]':'[aria-label="Search proof objects"]')).not.toBeNull();}expect(held.refresh).not.toHaveBeenCalled();}finally{add.mockRestore();}
 });
 it('prioritizes leading artwork without eagerly loading the whole retained list or replacing images on a value update',()=>{
  const held=catalog(50);held.items=held.items.map((item,index)=>({...item,artworkUrl:`https://receiz.com/artwork/list-${index}.png`}));source.value={catalog:held,status:'live',error:null,refresh:vi.fn()};

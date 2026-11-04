@@ -65,3 +65,17 @@ it('does not keep a completed history when the refreshed records cannot account 
  try{await h.render(p);await act(async()=>h.workers[0].complete());await h.render({...p,trades:[]});expect(h.path()).not.toContain('C');expect(h.host.querySelectorAll('.periods button')).toHaveLength(0);}
  finally{act(()=>h.root.unmount());}
 });
+
+
+it('keeps a completed exact curve when an equivalent refresh declares only legacy UTC certificate timing',async()=>{
+ const h=harness(),p=portfolio();p.positions[0].shareQuantityMicro='2000000';p.trades[0].kaiUPulse='14000100000000';p.shareMovements=[{id:'certificate-export',marketItemId:item.id,kind:'certificate-export',shareQuantityMicroDelta:'-500000',kaiUPulse:'14000150123456',at:new Date(marketPulseTime(14000150)).toISOString()}];
+ try{await h.render(p);await act(async()=>h.workers[0].complete());const path=h.path();expect(path).toContain('C');h.frames.length=0;
+  const thinner=structuredClone(p);thinner.shareMovements=[{...p.shareMovements[0],kaiUPulse:null,kaiBasis:'legacy-chronos-projection'}];
+  await h.render(thinner);expect(h.frames.every(frame=>frame===path)).toBe(true);expect(h.workers).toHaveLength(1);expect(thinner.shareMovements[0].kaiUPulse).toBeNull();expect(h.host.textContent).not.toContain('Legacy UTC');
+ }finally{act(()=>h.root.unmount());}
+});
+it('renders a full explicitly legacy UTC curve when exact certificate time has never been retained',async()=>{
+ const h=harness(),p=portfolio();p.positions[0].shareQuantityMicro='2000000';p.trades[0].kaiUPulse='14000100000000';p.shareMovements=[{id:'certificate-export',marketItemId:item.id,kind:'certificate-export',shareQuantityMicroDelta:'-500000',kaiUPulse:null,kaiBasis:'legacy-chronos-projection',at:new Date(marketPulseTime(14000150)).toISOString()}];
+ try{await h.render(p);expect(h.workers).toHaveLength(1);await act(async()=>h.workers[0].complete());expect(h.path()).toContain('C');expect(h.host.querySelectorAll('.periods button')).toHaveLength(6);expect(h.host.textContent).toContain('Legacy UTC history');expect(h.workers[0].rows[0]).toHaveProperty('timeBasis','legacy-chronos-projection');}
+ finally{act(()=>h.root.unmount());}
+});

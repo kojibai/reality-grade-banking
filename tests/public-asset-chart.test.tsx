@@ -2,7 +2,7 @@
 import {act} from 'react';import {createRoot} from 'react-dom/client';import {afterEach,expect,it,vi} from 'vitest';
 import sourceFile from '../public/receiz-public-capitalization.json';import input from '../public/receiz-public-market.json';
 import {PublicAssetDetail} from '../src/features/market/PublicAssetDetail';import {parseMarketCapSource} from '../src/receiz/market-projection/source';import {publishMarketDisplaySource} from '../src/receiz/market-projection/display-source';import {parsePublicMarket} from '../src/receiz/public-market';
-const clock=vi.hoisted(()=>({pulse:0}));vi.mock('../native/receiz/packages/receiz-sdk/src/v124Kai',async original=>({...await original<typeof import('../native/receiz/packages/receiz-sdk/src/v124Kai')>(),receizKaiNow:()=>({pulse:clock.pulse,uPulse:clock.pulse*1_000_000})}));
+const clock=vi.hoisted(()=>({pulse:0}));vi.mock('@receiz/sdk',async original=>({...await original<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({pulse:clock.pulse,uPulse:clock.pulse*1_000_000})}));
 const open=vi.hoisted(()=>vi.fn());vi.mock('../src/receiz/proof-media',()=>({openProofMedia:open,retainedPublicMedia:()=>null}));
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const source=parseMarketCapSource(sourceFile);

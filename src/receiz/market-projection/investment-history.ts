@@ -6,17 +6,33 @@ import type {PublicMarketItem,PublicMarketCatalog} from '../public-market';
 import {publicAssetPulseSeed} from './asset';
 import type {MarketCapSource,MarketPulseSeed} from './source';
 import {marketPeriodPulses,marketPulseTime,publicSigilQuoteAtPulse} from './project';
-export interface InvestmentHistoryRow {seed:MarketPulseSeed;events:{pulse:number;quantity:string}[]}
-export interface InvestmentHistory {pulse:number;series:Record<ChartPeriod,{pulse:number;at:string;usdCents:string}[]>}
+export interface InvestmentHistoryRow {seed:MarketPulseSeed;events:{pulse:number;quantity:string}[];timeBasis?:'legacy-chronos-projection'}
+export interface InvestmentHistory {pulse:number;series:Record<ChartPeriod,{pulse:number;at:string;usdCents:string}[]>;timeBasis?:'legacy-chronos-projection'}
 /** A UTC display bridge only; execution order and ownership remain with Receiz. */
 function atPulse(at:string){const time=Date.parse(at);let pulse=Math.max(0,Math.floor((time-marketPulseTime(0))/((3+Math.sqrt(5))*1000)));while(marketPulseTime(pulse)<time)pulse++;return pulse;}
+/** Retain only an already observed exact coordinate for the same complete
+ * quantity history. This is chart input reuse; the incoming portfolio and its
+ * declared legacy timing remain untouched. */
+export function retainInvestmentHistoryTiming(previous:MarketPortfolio|null,next:MarketPortfolio):MarketPortfolio{
+ if(!previous||previous.accountUid!==next.accountUid)return next;
+ const scope=(p:MarketPortfolio)=>JSON.stringify([
+  p.positions.map(row=>[row.id,row.marketItemId,row.assetId,row.shareQuantityMicro,row.costBasisUsdCents,row.openedAt,row.lastTradeAt]).sort(),
+  p.trades.map(row=>[row.id,row.marketItemId,row.side,row.shareQuantityMicro,row.executedAt,row.kaiUPulse,row.affectsPosition]).sort(),
+  (p.shareMovements??[]).map(row=>[row.id,row.marketItemId,row.kind,row.shareQuantityMicroDelta,row.at]).sort(),
+ ]);
+ if(scope(previous)!==scope(next))return next;
+ const held=new Map((previous.shareMovements??[]).map(row=>[row.id,row]));let retained=false;
+ const shareMovements=next.shareMovements?.map(row=>{const known=held.get(row.id);if(row.kaiUPulse===null&&known?.kaiUPulse!=null){retained=true;return known;}return row;});
+ return retained?{...next,shareMovements}:next;
+}
 export function investmentHistoryRows(portfolio:MarketPortfolio|null,items:PublicMarketItem[],source:MarketCapSource|null,pulse:number):InvestmentHistoryRow[]|null{
  if(!portfolio?.positions.length||!Number.isSafeInteger(pulse)||pulse<0)return null;
  const trades=new Map<string,typeof portfolio.trades>();for(const t of portfolio.trades){if(t.affectsPosition===false)continue;const group=trades.get(t.marketItemId)??[];group.push(t);trades.set(t.marketItemId,group);}
- try{return portfolio.positions.map(position=>{const item=portfolioItem(position,{items} as PublicMarketCatalog),seed=publicAssetPulseSeed(item,source);if(!seed)throw Error('No bound pricing');let quantity=0n;
-  const movements=[...(trades.get(position.marketItemId)??[]).map(t=>({id:t.id,kai:t.kaiUPulse?BigInt(t.kaiUPulse):BigInt(atPulse(t.executedAt))*1000000n,delta:(t.side==='buy'?1n:-1n)*BigInt(t.shareQuantityMicro)})),...(portfolio.shareMovements??[]).filter(m=>m.marketItemId===position.marketItemId).map(m=>({id:m.id,kai:BigInt(m.kaiUPulse),delta:BigInt(m.shareQuantityMicroDelta)}))];
-  const events=movements.sort((a,b)=>a.kai<b.kai?-1:a.kai>b.kai?1:a.id.localeCompare(b.id)).map(m=>{const at=Number(m.kai/1000000n);quantity+=m.delta;if(quantity<0n||at<seed.claimPulse)throw Error('Incomplete position history');return{pulse:at,quantity:quantity.toString()};});
-  if(!events.length||quantity!==BigInt(position.shareQuantityMicro))throw Error('Incomplete position history');return{seed,events};
+ try{return portfolio.positions.map(position=>{const item=portfolioItem(position,{items} as PublicMarketCatalog),seed=publicAssetPulseSeed(item,source);if(!seed)throw Error('No bound pricing');let quantity=0n,legacy=false;
+  const displayTime=(kai:string|null|undefined,at:string)=>{if(kai!=null){const exact=BigInt(kai);return{pulse:Number(exact/1000000n),fraction:Number(exact%1000000n)};}legacy=true;return{pulse:atPulse(at),fraction:0};};
+  const movements=[...(trades.get(position.marketItemId)??[]).map(t=>({id:t.id,...displayTime(t.kaiUPulse,t.executedAt),delta:(t.side==='buy'?1n:-1n)*BigInt(t.shareQuantityMicro)})),...(portfolio.shareMovements??[]).filter(m=>m.marketItemId===position.marketItemId).map(m=>({id:m.id,...displayTime(m.kaiUPulse,m.at),delta:BigInt(m.shareQuantityMicroDelta)}))];
+  const events=movements.sort((a,b)=>a.pulse-b.pulse||a.fraction-b.fraction||a.id.localeCompare(b.id)).map(m=>{const at=m.pulse;quantity+=m.delta;if(quantity<0n||at<seed.claimPulse)throw Error('Incomplete position history');return{pulse:at,quantity:quantity.toString()};});
+  if(!events.length||quantity!==BigInt(position.shareQuantityMicro))throw Error('Incomplete position history');return{seed,events,...(legacy?{timeBasis:'legacy-chronos-projection' as const}:{})};
  });}catch{return null;}
 }
 /** Runs off the UI thread, with bounded samples and no source reads. Historical
@@ -29,5 +45,5 @@ export async function buildInvestmentHistory(rows:InvestmentHistoryRow[],pulse:n
  for(const period of CHART_PERIODS){const pulses=marketPeriodPulses({firstIssuancePulse:first,serverPulse:pulse},period,64);series[period]=[];
   if(previous&&previous.pulse<=pulse){const opening=await point(pulses[0]),closing=await point(pulse);if(!opening||!closing)return null;series[period]=retainMarketInterval(previous.series[period],opening,closing);}
   else for(const at of pulses){const value=await point(at);if(!value)return null;series[period].push(value);}
- }return{pulse,series};
+ }return{pulse,series,...(rows.some(row=>row.timeBasis==='legacy-chronos-projection')?{timeBasis:'legacy-chronos-projection' as const}:{})};
 }

@@ -1,4 +1,4 @@
-import {expect,it} from 'vitest';import {investmentHistoryRows,buildInvestmentHistory} from '../src/receiz/market-projection/investment-history';import {parseMarketPortfolio} from '../src/receiz/market-portfolio';import {parsePublicMarket} from '../src/receiz/public-market';import {marketPulseTime,publicSigilQuoteAtPulse} from '../src/receiz/market-projection/project';
+import {expect,it} from 'vitest';import {investmentHistoryRows,buildInvestmentHistory,retainInvestmentHistoryTiming} from '../src/receiz/market-projection/investment-history';import {parseMarketPortfolio} from '../src/receiz/market-portfolio';import {parsePublicMarket} from '../src/receiz/public-market';import {marketPulseTime,publicSigilQuoteAtPulse} from '../src/receiz/market-projection/project';
 const seed={kind:'sigil',claimPulse:14000000,beat:2,stepIndex:3,creatorVerified:true},item=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'grain',receizId:'grain',title:'Grain',pulse:'14000000',livePulseSeed:seed}]}}).items[0],uid='owner';
 const at=(pulse:number)=>new Date(marketPulseTime(pulse)).toISOString();
 function portfolio(remaining='7500000',events:unknown[]=[{id:'export',marketItemId:item.id,kind:'certificate-export',shareQuantityMicroDelta:'-2500000',kaiUPulse:'14000150123456',at:at(14000150)}]){return parseMarketPortfolio({ok:true,schema:'receiz.market.portfolio.v1',authority:'market-observation',actorUserId:uid,observedAt:at(14000200),positions:[{id:'position',marketItemId:item.id,title:item.title,summary:'',shareQuantityMicro:remaining,costBasisUsdCents:'75000',lastPriceUsdCents:'10000',openedAt:at(14000100)}],trades:[{id:'buy',marketItemId:item.id,side:'buy',shareQuantityMicro:'10000000',executedAt:at(14000100)}],shareMovements:events},uid);}
@@ -7,3 +7,31 @@ it('replays several certificate exports and partial deposits in exact KKS order 
 it('rejects duplicate movement ids, malformed quantities and inconsistent directions',()=>{const movement={id:'export',marketItemId:item.id,kind:'certificate-export',shareQuantityMicroDelta:'-2500000',kaiUPulse:'14000150123456',at:at(14000150)};for(const changes of [{shareQuantityMicroDelta:'2500000'},{kaiUPulse:'not-kai'},{shareQuantityMicroDelta:'1e6'}])expect(()=>portfolio('7500000',[{...movement,...changes}])).toThrow();expect(()=>portfolio('7500000',[movement,movement])).toThrow();});
 
 it('keeps certificate additions and certificate-only sales separate from shares remaining in investments',()=>{const p=portfolio();p.trades.push({...p.trades[0],id:'certificate-buy',kaiUPulse:'14000160000000',shareQuantityMicro:'1000000',executedAt:at(14000160)},{...p.trades[0],id:'certificate-sale',side:'sell',affectsPosition:false,kaiUPulse:'14000170000000',shareQuantityMicro:'500000',executedAt:at(14000170)});p.shareMovements!.push({id:'certificate-allocation',marketItemId:item.id,kind:'certificate-purchase',shareQuantityMicroDelta:'-1000000',kaiUPulse:'14000160999999',at:at(14000160)});expect(investmentHistoryRows(p,[item],null,14000200)?.[0].events.at(-1)?.quantity).toBe('7500000');});
+
+
+it('retains nine explicit legacy-time certificate movements without blocking holdings and marks UTC pricing as legacy presentation',async()=>{
+ const base={marketItemId:item.id,kaiUPulse:null,kaiBasis:'legacy-chronos-projection',at:at(14000130)};
+ const events=[...Array.from({length:3},(_,i)=>({...base,id:`legacy-export-${i}`,kind:'certificate-export',shareQuantityMicroDelta:'-1000000'})),...Array.from({length:6},(_,i)=>({...base,id:`legacy-deposit-${i}`,kind:'certificate-deposit',shareQuantityMicroDelta:'500000'})),{...base,id:'native-export',kind:'certificate-export',shareQuantityMicroDelta:'-500000',kaiBasis:'KKSv1.0',kaiUPulse:'14000150123456'},{...base,id:'native-deposit',kind:'certificate-deposit',shareQuantityMicroDelta:'500000',kaiBasis:'KKSv1.0',kaiUPulse:'14000150999999'}];
+ const p=portfolio('10000000',events);
+ expect(p.positions).toHaveLength(1);expect(p.positions[0].shareQuantityMicro).toBe('10000000');expect(p.trades).toHaveLength(1);expect(p.complete).toBeUndefined();expect(p.shareMovements).toHaveLength(11);
+ expect(p.shareMovements!.slice(0,9).map(row=>({id:row.id,kaiUPulse:row.kaiUPulse,at:row.at,shareQuantityMicroDelta:row.shareQuantityMicroDelta}))).toEqual(events.slice(0,9).map(({id,kaiUPulse,at,shareQuantityMicroDelta})=>({id,kaiUPulse,at,shareQuantityMicroDelta})));
+ expect(p.shareMovements!.slice(0,9).every(row=>'kaiBasis' in row&&row.kaiBasis==='legacy-chronos-projection')).toBe(true);
+ const rows=investmentHistoryRows(p,[item],null,14000200);expect(rows).not.toBeNull();expect(rows![0]).toHaveProperty('timeBasis','legacy-chronos-projection');const history=await buildInvestmentHistory(rows!,14000200);expect(history).toHaveProperty('timeBasis','legacy-chronos-projection');expect(history!.series.ALL).toHaveLength(64);expect(history!.series.ALL.at(-1)?.usdCents).toBe(String(10000000n*BigInt(Math.round(publicSigilQuoteAtPulse(seed,14000200).priceUsd*100))/1000000n));
+ expect(parseMarketPortfolio(p,uid).shareMovements).toEqual(p.shareMovements);
+ expect(()=>parseMarketPortfolio(p,'another-owner')).toThrow(/ACCOUNT_MISMATCH/);
+});
+it('rejects missing, mixed, or unknown time declarations rather than treating malformed native coordinates as legacy',()=>{
+ const movement={id:'legacy',marketItemId:item.id,kind:'certificate-export',shareQuantityMicroDelta:'-2500000',kaiUPulse:null,kaiBasis:'legacy-chronos-projection',at:at(14000150)};
+ for(const changes of [{kaiBasis:undefined},{kaiBasis:'unknown'},{kaiBasis:'KKSv1.0'},{kaiUPulse:'14000150123456'},{kaiUPulse:''},{at:'invalid'},{shareQuantityMicroDelta:'2500000'},{shareQuantityMicroDelta:'0'},{shareQuantityMicroDelta:'1e6'}])expect(()=>portfolio('7500000',[{...movement,...changes}])).toThrow();
+ expect(()=>portfolio('7500000',[{...movement,kaiUPulse:'14000150123456',kaiBasis:'unknown'}])).toThrow();
+});
+
+it('retains exact timing only for the same owner and complete matching quantity history, while a newer exact coordinate wins',()=>{
+ const original=portfolio();original.trades[0].kaiUPulse='14000100000000';
+ const next=structuredClone(original);next.shareMovements=[{...original.shareMovements![0],kaiUPulse:null,kaiBasis:'legacy-chronos-projection'}];
+ const held=retainInvestmentHistoryTiming(original,next);expect(held.shareMovements![0]).toBe(original.shareMovements![0]);expect(next.shareMovements[0].kaiUPulse).toBeNull();
+ const variants=[structuredClone(next),structuredClone(next),structuredClone(next),structuredClone(next),structuredClone(next),structuredClone(next),structuredClone(next),structuredClone(next),structuredClone(next)];
+ variants[0].accountUid='another-owner';variants[1].positions[0].shareQuantityMicro='7000000';variants[2].positions[0].assetId='another-object';variants[3].trades[0].shareQuantityMicro='9999999';variants[4].trades[0].executedAt=at(14000101);variants[5].shareMovements![0].shareQuantityMicroDelta='-2000000';variants[6].shareMovements![0].at=at(14000151);variants[7].shareMovements![0].id='different-event';variants[8].shareMovements=[];
+ for(const changed of variants)expect(retainInvestmentHistoryTiming(original,changed)).toBe(changed);
+ const newer=structuredClone(original);newer.shareMovements![0].kaiUPulse='14000150999999';expect(retainInvestmentHistoryTiming(original,newer)).toBe(newer);expect(investmentHistoryRows(newer,[item],null,14000200)![0].timeBasis).toBeUndefined();
+});

@@ -1,4 +1,3 @@
-import {usePublicProofQuotes} from '../receiz/usePublicQuotes';
 import {CopyFeedbackIcon,useCopyFeedback} from '../components/CopyFeedback';
 import {LedgerExecutionRecords} from '../features/ledger/LedgerExecutionRecords';
 import {groupLedgerPaymentRecords,ledgerRecordTitle} from '../receiz/ledger-payment-records';
@@ -23,7 +22,6 @@ import { LedgerValue } from '../features/ledger/LedgerValue';
 import { useLedgerValueSource } from '../features/ledger/useLedgerValueSource';
 import {indexLedgerRelations,ledgerCurrentAssetValue,ledgerValuationContext} from '../receiz/ledger-economy';
 import {enrichWalletFundingContext} from '../receiz/ledger-wallet-enrichment';
-import {PublicAssetTradeHost} from '../public-explorer/PublicAssetTradeHost';
 
 const sourceNames:Record<PublicSource,string>={actions:'Actions',wallet:'Transactions',graph:'Proof Graph',proofs:'Proof objects'};
 const PublicRow=memo(function PublicRow({record,valueSource,relations,capture,executionRecords=[],selected=false}:{selected?:boolean;executionRecords?:PublicRecord[];record:PublicRecord;valueSource:LedgerValueIndex|null;capture?:LocalLedgerDisplay;relations:ReturnType<typeof indexLedgerRelations>}){
@@ -45,8 +43,7 @@ const PublicRow=memo(function PublicRow({record,valueSource,relations,capture,ex
 export function PublicLedgerApp({active=true}:{active?:boolean}){
   const [captured,setCaptured]=useState<PublicLedgerFileReview|null>(null),archive=captured?.archive;
   const liveValueSource=useLedgerValueSource(active&&!archive),valueSource=archive?null:liveValueSource,liveLedger=usePublicNetwork(active&&!archive);
-  const quotedRecords=usePublicProofQuotes(liveLedger.records,active&&!archive);
-  const enrichedRecords=useMemo(()=>archive?archive.records:enrichWalletFundingContext(quotedRecords,quotedRecords),[archive,quotedRecords]);
+  const enrichedRecords=useMemo(()=>archive?archive.records:enrichWalletFundingContext(liveLedger.records,liveLedger.records),[archive,liveLedger.records]);
   const ledger=useMemo(()=>archive?{...liveLedger,records:enrichedRecords,capturedAt:archive.capturedAt,bootstrap:false,sources:Object.fromEntries(PUBLIC_SOURCES.map(source=>[source,{status:'stale' as const,complete:archive.coverage.find(item=>item.source===source)?.complete===true,busy:false,cursor:null,error:null}]))}:{...liveLedger,records:enrichedRecords},[archive,liveLedger,enrichedRecords]);
   const [selection,setSelection]=useState(()=>readPublicLedgerSelection(location.href));
   useEffect(()=>{const changed=()=>{const next=readPublicLedgerSelection(location.href);setSelection(next);if(next){setSearch(next.search);setFilter('all');setShown(60);}};addEventListener('popstate',changed);addEventListener('hashchange',changed);addEventListener('receiz-bank:surface',changed);return()=>{removeEventListener('popstate',changed);removeEventListener('hashchange',changed);removeEventListener('receiz-bank:surface',changed);};},[]);
@@ -76,6 +73,6 @@ export function PublicLedgerApp({active=true}:{active?:boolean}){
         <div className="public-ledger-table-heading" aria-hidden="true"><span>Activity</span><span>Source</span><span>Coordinate</span><span>Amount</span><span>Receipt</span></div><div className="public-ledger-records">{records.slice(0,shown).map(({record,executionRecords})=><PublicRow selected={selection?.key===record.source+':'+record.sourceId||executionRecords.some(row=>selection?.key===row.source+':'+row.sourceId)} executionRecords={executionRecords} key={record.id} record={record} valueSource={valueSource} relations={relations} capture={capturedValues.get(record.id)}/>)}{!records.length&&<p className="public-ledger-empty">{ledger.bootstrap?'Opening public history…':search?'No matching public records.':'Public activity is unavailable. Refresh to try again.'}</p>}</div>
         {(shown<records.length||!complete&&!archive)&&<button className="public-ledger-more" disabled={shown>=records.length&&busy} onClick={()=>shown<records.length?setShown(count=>count+60):void ledger.loadMore()}>{shown<records.length?'Show more activity':busy?'Reading sources…':'Read earlier history'}<ChevronDown size={15}/></button>}
       </section><p className="public-ledger-scope">This view brings together public source projections. A listed amount, record or receipt image is not an independently verified balance. Inspect the original proof for its supported claims.</p>
-    </main><SiteFooter/>{active&&!archive&&<PublicAssetTradeHost/>}
+    </main><SiteFooter/>
   </div>;
 }

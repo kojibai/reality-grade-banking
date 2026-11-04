@@ -17,8 +17,6 @@ import {publicBookSource,type PublicBookSource} from './public-book.js';
 import {profileAvatarUrl} from './profile-avatar.js';
 /** Public discovery and quotes are display projections; they grant no ownership. */
 export interface PublicMarketItem {
-  originalCreator?:Readonly<{userId:string|null;username:string|null;displayName:string|null}>;
-  sourceProvenance?:Readonly<{sourceArtifactSha256:string;payloadSha256?:string;artifactId?:string;namespace?:string;genesisOwnerReceizId?:string;sourceProofHead?:string}>;
   shareInventory?:PublicShareInventory;
   /** Existing Original authorship projection; never ownership or funding authority. */
   hasPbiSignature?:boolean;
@@ -68,18 +66,6 @@ export function publicMediaKind(value:unknown):PublicMediaKind|undefined {
 function record(input: unknown): RecordValue { return input !== null && typeof input === 'object' && !Array.isArray(input) ? input as RecordValue : {}; }
 function text(input: unknown, max = 4096): string | null { return typeof input === 'string' && input.length > 0 && input.length <= max ? input : null; }
 function nonnegative(input: unknown): number | null { return typeof input === 'number' && Number.isFinite(input) && input >= 0 && input <= 1e18 ? input : null; }
-/** Selected facts already public on the Original; no profile/custody lookup. */
-export function publicOriginalCreator(input:unknown):PublicMarketItem['originalCreator']{
- const value=record(input);if(value.isPrivate===true)return;const username=text(value.username,64),displayName=text(value.displayName,128),userId=text(value.userId,128);
- if(!username&&!displayName&&!userId)return;return{userId,username:username&&/^[a-zA-Z0-9_-]{1,64}$/.test(username)?username:null,displayName};
-}
-export function publicOriginalProvenance(input:unknown):PublicMarketItem['sourceProvenance']{
- const value=record(input),identity=record(value.sourceIdentity??input),sourceArtifactSha256=text(value.sourceArtifactSha256,64),payloadSha256=text(value.payloadSha256,64);
- if(!sourceArtifactSha256||!/^[a-f0-9]{64}$/i.test(sourceArtifactSha256))return;const result:NonNullable<PublicMarketItem['sourceProvenance']>={sourceArtifactSha256:sourceArtifactSha256.toLowerCase()};
- if(payloadSha256&&/^[a-f0-9]{64}$/i.test(payloadSha256))Object.assign(result,{payloadSha256:payloadSha256.toLowerCase()});
- for(const key of ['artifactId','namespace','genesisOwnerReceizId']as const){const field=text(identity[key],256);if(field&&!/[\x00-\x1f\x7f]/.test(field))Object.assign(result,{[key]:field});}
- const head=text(value.sourceProofHead,128);if(head&&/^[a-f0-9]{16,128}$/i.test(head))Object.assign(result,{sourceProofHead:head});return result;
-}
 /** Display artwork only. This never identifies or verifies an original artifact. */
 export function safeReceizArtworkUrl(input:unknown):string|null {
   const value=text(input,8192);if(!value||/[\x00-\x20\x7f\\]/.test(value))return null;
@@ -179,7 +165,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
     const ownerUsername = publicUsername && /^[a-zA-Z0-9_-]{1,64}$/.test(publicUsername) ? publicUsername : null;
     const ownerUserId=text(source.ownerUserId,64),ownerCreatedAt=text(source.ownerCreatedAt,64),rawOwnerName=text(source.ownerDisplayName,128);
     const ownerDisplayName=rawOwnerName&&rawOwnerName!=='Receiz ID'?rawOwnerName:ownerCreatedAt?publicAccountDisplayName({displayName:rawOwnerName,username:ownerUsername,createdAt:ownerCreatedAt},ownerUsername??''):rawOwnerName;
-    items.push({ id, assetId, title,...(publicOriginalCreator(profile.originalCreator)?{originalCreator:publicOriginalCreator(profile.originalCreator)}:{}),...(publicOriginalProvenance(profile.sourceProvenance??profile.importedSource)?.sourceArtifactSha256===digest?.toLowerCase()?{sourceProvenance:publicOriginalProvenance(profile.sourceProvenance??profile.importedSource)}:{}),...(typeof profile.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)?{pbiReceiptHash:profile.pbiReceiptHash.toLowerCase()}:{}), hasPbiSignature:profile.hasPbiSignature===true||typeof profile.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)||typeof profile.signedArtifactDownloadUrl==='string'&&Boolean(safeReceizPublicUrl(profile.signedArtifactDownloadUrl,'original')), summary: text(source.summary, 8192) ?? '', category: 'proof',
+    items.push({ id, assetId, title,...(typeof profile.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)?{pbiReceiptHash:profile.pbiReceiptHash.toLowerCase()}:{}), hasPbiSignature:profile.hasPbiSignature===true||typeof profile.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)||typeof profile.signedArtifactDownloadUrl==='string'&&Boolean(safeReceizPublicUrl(profile.signedArtifactDownloadUrl,'original')), summary: text(source.summary, 8192) ?? '', category: 'proof',
       sourceUrl: safeReceizPublicUrl(source.canonicalHref, 'source'), verifyUrl,readingUrl,
       originalUrl: materialOriginal ?? safeReceizPublicUrl(media.originalDownloadSrc, 'original'), originalDigest: digest && /^[a-f0-9]{64}$/i.test(digest) ? digest.toLowerCase() : null,
       ...(publicNativeAssetBinding(profile.nativeAsset)?{nativeAsset:publicNativeAssetBinding(profile.nativeAsset)}:{}),
@@ -202,24 +188,6 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
   const catalog: PublicMarketCatalog = { items, complete: meta.version === 1 && meta.scope === 'whole-market-visible-showcase' && meta.source === 'canonical-complete' && meta.isComplete === true && meta.itemCount === items.length,
     revision: text(meta.revision, 256) ?? '', observedAt: text(transport.generatedAt, 64), sourceCount: Number.isSafeInteger(meta.itemCount) && Number(meta.itemCount) >= 0 ? Number(meta.itemCount) : items.length };
   return mergePublicQuotes(catalog, snapshot);
-}
-/** Curated proof presentation carried by Ledger records and receipts. Reuse the
- * public URL/model/quantity readers; never transport full works or authority. */
-const publicProofPresentations=new WeakSet<object>();
-export function readPublicProofPresentation(input:unknown):PublicMarketItem|null{
- if(input&&typeof input==='object'&&publicProofPresentations.has(input))return input as PublicMarketItem;
- const value=record(input);if(value.category!=='proof'||value.authority!=='projection-only'||value.canTrade!==false||!text(value.id,256)||!text(value.assetId,256)||!text(value.title,4096))return null;
- const manifest=record(value.proofManifestSource),manifestMedia=record(manifest.media),owner=record(value.ownerIdentity),book=record(value.book);
- const profile={...manifest,assetTitle:value.title,mediaKind:value.mediaKind,artworkUrl:value.artworkUrl,hasLongForm:value.hasLongForm,hasPbiSignature:value.hasPbiSignature,pbiReceiptHash:value.pbiReceiptHash,nativeAsset:value.nativeAsset,originalCreator:publicOriginalCreator(value.originalCreator),sourceProvenance:publicOriginalProvenance(value.sourceProvenance),playback:value.playback,documentUrl:value.documentUrl,media:{...manifestMedia,kind:value.mediaKind,sha256Hex:manifestMedia.sha256Hex??(book.assetId===value.assetId?book.payloadDigest:undefined),originalDownloadSrc:value.originalUrl,originalDownloadSha256Hex:value.originalDigest}};
- const item=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:value.id,receizId:value.assetId,title:value.title,summary:value.summary,canonicalHref:value.sourceUrl,verifyHref:value.verifyUrl,pulse:value.pulse,createdAt:value.sealedAt,valueUsd:value.priceUsd,livePulseSeed:value.livePulseSeed,ownerUsername:value.ownerUsername,ownerDisplayName:value.ownerDisplayName,...(value.ownerAvatarUrl!==undefined?{ownerAvatarUrl:value.ownerAvatarUrl}:{}),ownerUserId:owner.userId,ownerCreatedAt:owner.createdAt,profileOriginal:profile}]}}).items[0];
- if(!item||item.originalDigest!==value.originalDigest||item.pulse!==value.pulse)return null;
- const reading=safeReceizPublicUrl(value.readingUrl,'proof');if(reading&&item.verifyUrl&&new URL(reading).pathname===new URL(item.verifyUrl).pathname)item.readingUrl=reading;
- const inventory=readPublicShareInventory(value.shareInventory,item);if(inventory)item.shareInventory=inventory;
- if(Array.isArray(value.chart)&&value.chart.length<=256&&value.chart.every(point=>typeof point==='number'&&Number.isFinite(point)&&point>=0))item.chart=[...value.chart];
- if(typeof value.changePct==='number'&&Number.isFinite(value.changePct)&&Math.abs(value.changePct)<=1e6)item.changePct=value.changePct;
- // Reuse this exact curated display result through inspection/receipt passes.
- // Only this module's immutable result qualifies; a claimed digest does not.
- const freeze=(value:object)=>{for(const child of Object.values(value))if(child&&typeof child==='object'&&!Object.isFrozen(child))freeze(child);Object.freeze(value);};freeze(item);publicProofPresentations.add(item);return item;
 }
 // Locators are public display projections, retained only for the exact artifact
 // digest. They never replace verification of bytes returned by that locator.
@@ -260,67 +228,9 @@ export async function fetchPublicMarket(signal?: AbortSignal,afterPublication=as
   if (catalog.complete) try { localStorage.setItem('receiz-bank-public-discovery-v2', JSON.stringify(input)); } catch { /* Storage capacity does not change source availability. */ }
   return catalog;
 }
-export interface PublicQuoteObservation {snapshot:unknown;receivedAt:number;}
-interface PublicQuoteRead {controller:AbortController;epoch:number;pending:Promise<unknown>;consumers:Set<symbol>;}
-const quoteReads=new Map<string,PublicQuoteRead>(),quoteListeners=new Set<()=>void>();
-let quoteEpoch=0,retainedQuotes:PublicQuoteObservation|null=null,pendingTrade:string|undefined;
-export function readRetainedPublicQuotes():PublicQuoteObservation|null{return retainedQuotes;}
-export function subscribePublicQuotes(listener:()=>void):()=>void{quoteListeners.add(listener);return()=>{quoteListeners.delete(listener);};}
-const tradeNonce=(value?:string)=>value&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(value)?value:undefined;
-const selectQuoteFields=(input:unknown,keys:readonly string[])=>{const source=record(input);return Object.fromEntries(keys.filter(key=>source[key]===null||typeof source[key]==='boolean'||typeof source[key]==='string'&&(source[key] as string).length<=8192||typeof source[key]==='number'&&Number.isFinite(source[key])).map(key=>[key,source[key]]));};
-/** Retain only the existing public quote operands, never account/owner payloads.
- * Full inventory validation still occurs against the actual held public asset. */
-function publicQuoteObservation(input:unknown):unknown{
- const envelope=record(input),data=record(envelope.data);
- return{ok:true,data:{...selectQuoteFields(data,['schema','generatedAt','serverPulse']),liveMarkets:(data.liveMarkets as unknown[]).filter(raw=>record(raw).visibility==='public').map(raw=>{
-  const quote=record(raw),inventory=record(quote.shareInventory),selected=selectQuoteFields(quote,['itemId','assetId','visibility','priceUsd','changePct','quoteUsdPerPhi']);
-  if(Array.isArray(quote.chart))selected.chart=quote.chart.slice(-256).map(point=>selectQuoteFields(point,['value']));
-  if(Object.keys(inventory).length){const stock=selectQuoteFields(inventory,['schema','marketItemId','assetId','family','quantityScope','observedAtKaiUPulse','outstandingShareQuantityMicro','availableShareQuantityMicro','maxPurchaseShareQuantityMicro','availability','originalIssuedShareQuantityMicro','positionsMicro','certificatesMicro','reservedBuyMicro','nativeAssetId','issuanceSourceSha256','sourceHeadSha256','historyBasis']);
-   if(inventory.capacity)stock.capacity=selectQuoteFields(inventory.capacity,['askPriceUsdCents','hardCapUsdCents','openInterestUsdCents','maxSingleTradeUsdCents']);
-   const pointFields=['kaiUPulse','unitPriceUsdCents','outstandingShareQuantityMicro','availableShareQuantityMicro'];
-   if(inventory.releaseCapitalization)stock.releaseCapitalization=selectQuoteFields(inventory.releaseCapitalization,[...pointFields,'modelVersion']);
-   for(const key of ['history','capitalizationHistory'])if(Array.isArray(inventory[key])&&inventory[key].length<=10001)stock[key]=inventory[key].map(point=>selectQuoteFields(point,pointFields));
-   selected.shareInventory=stock;
-  }return selected;
- })}};
-}
-function olderQuoteSnapshot(next:unknown,previous:unknown):boolean{
- const a=record(record(next).data),b=record(record(previous).data),pulse=(value:unknown)=>typeof value==='string'&&/^\d{1,24}$/.test(value)?BigInt(value):typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?BigInt(value):null;
- const ap=pulse(a.serverPulse),bp=pulse(b.serverPulse),at=Date.parse(String(a.generatedAt??'')),bt=Date.parse(String(b.generatedAt??''));
- return bp!==null&&(ap===null||ap<bp)||Number.isFinite(bt)&&(!Number.isFinite(at)||at<bt);
-}
-/** One public request/decode per intent. Cancellation belongs to a consumer;
- * a closing surface cannot cancel another surface's pending observation. */
-export async function fetchPublicQuotes(signal?:AbortSignal,afterTrade?:string):Promise<unknown>{
- if(signal?.aborted)return Promise.reject(new DOMException('The operation was aborted.','AbortError'));
- const nonce=tradeNonce(afterTrade);if(nonce)pendingTrade=nonce;
- const key=nonce??pendingTrade??'';let read=quoteReads.get(key);
- if(!read||read.controller.signal.aborted||read.epoch!==quoteEpoch){
-  const controller=new AbortController(),epoch=++quoteEpoch;
-  const pending=fetch('/api/bank/public-market/quotes'+(key?'?afterTrade='+key:''),{signal:controller.signal,credentials:'omit'}).then(async response=>{
-   if(!response.ok)throw new Error('Public quotes could not be refreshed.');
-   const value=validatePublicQuotes(await response.json());
-   if(!controller.signal.aborted&&epoch===quoteEpoch){
-    if(!retainedQuotes||!olderQuoteSnapshot(value,retainedQuotes.snapshot)){
-     retainedQuotes={snapshot:publicQuoteObservation(value),receivedAt:Date.now()};
-     if(pendingTrade===key)pendingTrade=undefined;
-     for(const listener of quoteListeners)listener();
-    }
-   }return retainedQuotes&&(epoch!==quoteEpoch||olderQuoteSnapshot(value,retainedQuotes.snapshot))?retainedQuotes.snapshot:value;
-  }).finally(()=>{if(quoteReads.get(key)?.epoch===epoch)quoteReads.delete(key);});
-  read={controller,epoch,pending,consumers:new Set()};quoteReads.set(key,read);
- }
- const shared=read,consumer=Symbol();shared.consumers.add(consumer);
- return new Promise((resolve,reject)=>{
-  let settled=false;const finish=(callback:()=>void)=>{if(settled)return;settled=true;signal?.removeEventListener('abort',abort);shared.consumers.delete(consumer);callback();};
-  const abort=()=>finish(()=>{if(!shared.consumers.size)shared.controller.abort();reject(new DOMException('The operation was aborted.','AbortError'));});
-  signal?.addEventListener('abort',abort,{once:true});shared.pending.then(value=>finish(()=>resolve(value)),cause=>finish(()=>reject(cause)));
- });
-}
-/** A fresh already-held Market read needs no second Ledger request. */
-export function preparePublicQuotes(signal?:AbortSignal):Promise<unknown>{
- const age=retainedQuotes?Date.now()-retainedQuotes.receivedAt:Infinity;
- if(!pendingTrade&&retainedQuotes&&age>=0&&age<60_000)return signal?.aborted?Promise.reject(new DOMException('The operation was aborted.','AbortError')):Promise.resolve(retainedQuotes.snapshot);
- return fetchPublicQuotes(signal);
+export async function fetchPublicQuotes(signal?: AbortSignal,afterTrade?:string): Promise<unknown> {
+  const response = await fetch('/api/bank/public-market/quotes'+(afterTrade&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(afterTrade)?'?afterTrade='+afterTrade:''), { signal, credentials: 'omit' });
+  if (!response.ok) throw new Error('Public quotes could not be refreshed.');
+  return validatePublicQuotes(await response.json());
 }
 export function formatPublicPrice(value: number | null): string { return value === null ? 'Value unavailable' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value); }

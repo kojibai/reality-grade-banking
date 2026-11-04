@@ -50,13 +50,28 @@ it('keeps an open rail on the same live wallet frame as the dollar header withou
  expect(v.host.querySelector('.balance-sheet-amount')?.textContent).toBe('$11.00');expect(settlement.open).toBe(true);expect(settlement.querySelector('summary')?.textContent).toContain('$10.00');expect(settlement.querySelector('[data-rail-phi]')?.textContent).toBe('Settlement total · 2.1 Φ');expect(v.fetch).not.toHaveBeenCalled();
 });
 
-it('shows the already-carried exact account Phi total when an older frame omits its rail-unit aliases',async()=>{
+it('keeps an unknown Settlement split distinct from the account Phi total when both rails are present',async()=>{
  const v=view({...base,reservePhiMicro:null,settlementPhiMicro:null}),settlement=v.rail('settlement');
  await act(async()=>settlement.querySelector('summary')!.click());
- expect(settlement.querySelector('[data-rail-phi]')?.textContent).toBe('Account total (includes Reserve) · 2.1 Φ');
+ expect(settlement.querySelector('[data-rail-phi]')?.textContent).toBe('Exact Φ unavailable');
  expect(settlement.querySelector('summary')?.textContent).toContain('$9.00');
  v.render({...base,balancePhiMicro:'2200000',reservePhiMicro:null,settlementPhiMicro:null});
- expect(settlement.querySelector('[data-rail-phi]')?.textContent).toBe('Account total (includes Reserve) · 2.2 Φ');expect(v.fetch).not.toHaveBeenCalled();
+ expect(settlement.querySelector('[data-rail-phi]')?.textContent).toBe('Exact Φ unavailable');expect(v.fetch).not.toHaveBeenCalled();
+});
+it.each([
+ {rail:'settlement',reserveUsdCents:'0',settlementUsdCents:'1000'},
+ {rail:'reserve',reserveUsdCents:'1000',settlementUsdCents:'0'},
+])('labels held account Phi as Account total only when $rail is the one visible value state',async input=>{
+ const wallet={...base,...input,reservePhiMicro:null,settlementPhiMicro:null},before=JSON.stringify(wallet),v=view(wallet);
+ expect(v.host.querySelectorAll('[data-balance-rail]')).toHaveLength(1);
+ const rail=v.rail(input.rail);await act(async()=>rail.querySelector('summary')!.click());
+ expect(rail.querySelector('[data-rail-phi]')?.textContent).toBe('Account total · 2.1 Φ');
+ expect(JSON.stringify(wallet)).toBe(before);expect(v.fetch).not.toHaveBeenCalled();
+});
+it('does not borrow an account total from a foreign Source in a single visible value state',async()=>{
+ const v=view({...base,reserveUsdCents:'0',settlementUsdCents:'1000',reservePhiMicro:null,settlementPhiMicro:null,currentBalanceSource:{userId:'foreign'} as SharedWallet['currentBalanceSource']}),rail=v.rail('settlement');
+ await act(async()=>rail.querySelector('summary')!.click());
+ expect(rail.querySelector('[data-rail-phi]')?.textContent).toBe('Exact Φ unavailable');expect(v.fetch).not.toHaveBeenCalled();
 });
 it('repaints an open $1.92 Reserve with its already-held units after same-head enrichment and no read',async()=>{
  const held={...base,totalUsdCents:'392',reserveUsdCents:'192',settlementUsdCents:'200',balancePhiMicro:'5000000',reservePhiMicro:'4000000',settlementPhiMicro:'1000000'},missing={...held,reservePhiMicro:null,settlementPhiMicro:null},v=view(missing),reserve=v.rail('reserve');

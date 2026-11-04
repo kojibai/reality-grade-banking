@@ -22,7 +22,7 @@ export function Market(props: MarketProps) { return props.source ? <MarketView {
 function ConnectedMarket(props: MarketProps) { const source = usePublicMarket(props.active); return <MarketView {...props} source={source} />; }
 function MarketView({ mode='market',active = true, sourceActive=active, onAction, source,publicCategory,overviewOnly=false,overview }: MarketProps & { source: ReturnType<typeof usePublicMarket> }) {
   const explorer=mode==='explorer',prefix=explorer?'#object/':'#market/public/';
-  const scrollTools=useScrollReveal(explorer&&active&&!overviewOnly,'.market-explorer-tools .search-field');
+  const scrollTools=useScrollReveal(active&&!overviewOnly,'.market-explorer-tools .search-field');
   const bank = useContext(BankContext); const open = onAction ?? bank?.open ?? (() => {}); const { catalog, historyCatalog, status, quoteStatus, error, refresh } = source;
   const [feedOpen,setFeedOpen]=useState(false),feedMounted=useRef(false);
   useEffect(()=>{if(!active)setFeedOpen(false);},[active]);
@@ -52,7 +52,7 @@ function MarketView({ mode='market',active = true, sourceActive=active, onAction
     <label className="search-field"><Search size={19} /><input placeholder={explorer?'Search proof objects':'Search assets or currencies'} value={query} onChange={event => setQuery(event.target.value)} aria-label={explorer?'Search proof objects':'Search assets or currencies'} /></label>
     <div className="filters" role="group" aria-label="Asset categories">{MARKET_CONTENT_FILTERS.map(label => explorer?<a key={label} className={filter===label?'active':''} aria-current={filter===label?'page':undefined} href={label==='All'?'/explore/':`/explore/${label.toLowerCase()}/`}>{label}</a>:<button key={label} className={filter === label ? 'active' : ''} aria-pressed={filter === label} onClick={() => setFilter(label)}>{label}</button>)}</div></>;
   return <section><h1>{overviewOnly?'Global Market Cap':publicCategory?.label??(explorer?'Explore proof objects':'Market')}</h1><p className="page-subtitle">{overviewOnly?'The public valuation universe. Connected to its sources.':publicCategory?.description??(explorer?'Sealed moments. Public value. Connected history.':'Put your value to work.')}</p>
-    {explorer&&!overviewOnly?<div className={'market-explorer-tools'+(scrollTools.away?' is-away':'')} onFocusCapture={scrollTools.reveal}>{controls}</div>:controls}
+    {!overviewOnly?<div className={'market-explorer-tools'+(scrollTools.away?' is-away':'')} onFocusCapture={scrollTools.reveal}>{controls}</div>:controls}
     <div className="market-source-status"><span role="status">{sourceLabel}</span><button className="icon-button" onClick={() => void refresh()} aria-label="Refresh public Market"><RefreshCw size={15} /></button></div>
     {error && <p className="body-copy small-copy market-error" role="status">{localPricing?'Collection refresh is unavailable. Retained pricing inputs continue at the live Kai pulse.':error}{catalog&&!localPricing ? ' Your last public collection remains available.' : ''}</p>}
     <div className={overviewOnly||publicCategory?'market-layout market-single':'market-layout'}><div>{!publicCategory&&(overview??<MarketOverview catalog={catalog} historyCatalog={historyCatalog} active={active} sourceActive={sourceActive} onExplore={() => overviewOnly?document.querySelector<HTMLAnchorElement>('[data-cap-explore]')?.click():collection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />)}
