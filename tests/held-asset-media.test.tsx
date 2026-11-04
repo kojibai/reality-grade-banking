@@ -6,6 +6,7 @@ import {createRoot} from 'react-dom/client';
 import {afterEach,expect,it,vi} from 'vitest';
 import type {HeldDeposit} from '../src/receiz/deposit-source';
 import type {OpenIdentity} from '../src/receiz/native-identity';
+import type {PublicMarketItem} from '../src/receiz/public-market';
 
 const {readArtifact}=vi.hoisted(()=>({readArtifact:vi.fn()}));
 vi.mock('../src/receiz/ledger-offline-proof',()=>({loadOfflineProofVerifier:async()=>({readArtifact})}));
@@ -15,7 +16,7 @@ Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const digest='a'.repeat(64),sealedBytes=new Uint8Array([1,2,3]);
 const imageBytes=Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7XkAAAAASUVORK5CYII='),character=>character.charCodeAt(0));
 
-async function mount(kind:'image'|'audio'|'video'|'text',pbiSigned=false){
+async function mount(kind:'image'|'audio'|'video'|'text',pbiSigned=false,options:{marketItems?:PublicMarketItem[];onTrade?:(side:'buy'|'sell',id:string)=>void}={}){
  const payload={bytes:kind==='image'?imageBytes:new TextEncoder().encode(kind==='text'?'Exact carried document.':kind==='audio'?'ID3audio-fixture':'0000ftypvideo-fixture'),filename:{image:'Original.png',audio:'Song.mp3',video:'Movie.mp4',text:'Essay.txt'}[kind],mimeType:{image:'image/png',audio:'audio/mpeg',video:'video/mp4',text:'text/plain'}[kind],sha256:'b'.repeat(64)};
  readArtifact.mockResolvedValue({report:{schema:'bankeiz.offline-proof-inspection.v1',sdk:'129.0.0',artifactSha256:digest,payloadSha256:payload.sha256},payload});
  const source:HeldDeposit={digest,bytes:sealedBytes,filename:'original.receiz',title:'A held Original',kind:'proof',status:'held-proof',pulse:'14955302',pbiSigned};
@@ -26,7 +27,7 @@ async function mount(kind:'image'|'audio'|'video'|'text',pbiSigned=false){
  vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
  const play=vi.spyOn(HTMLMediaElement.prototype,'play').mockResolvedValue(undefined);
  const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
- await act(async()=>root.render(<LiveAssetDetail identity={identity} digest={digest}/>));
+ await act(async()=>root.render(<LiveAssetDetail identity={identity} digest={digest} {...options}/>));
  return {host,root,payload,identity,listDeposits,fetcher,createUrl,play,unmount:()=>{act(()=>root.unmount());host.remove();}};
 }
 
@@ -69,5 +70,26 @@ it('opens a held document in the existing reader with no separate download',asyn
   expect(view.host.querySelector('.proof-reading-text')?.textContent).toBe('Exact carried document.');
   expect(view.host.querySelector('.proof-object-cover')).toBeNull();
   expect(readArtifact).toHaveBeenCalledExactlyOnceWith(sealedBytes,'original.receiz');expect(view.fetcher).not.toHaveBeenCalled();
+ }finally{view.unmount();}
+});
+
+it('does not offer backed-asset controls for an ordinary held Original',async()=>{
+ const view=await mount('image');try{
+  const labels=[...view.host.querySelectorAll('button')].map(button=>button.textContent);
+  expect(labels).toContain('Save original proof');
+  expect(labels).not.toContain('Send ownership');expect(labels).not.toContain('Sell a share');
+  expect(labels).not.toContain('Buy back ownership');expect(labels).not.toContain('Redeem');
+  expect(view.fetcher).not.toHaveBeenCalled();
+ }finally{view.unmount();}
+});
+
+it('routes a plain Original’s shares through its exact existing Market entry with no rail selector',async()=>{
+ const onTrade=vi.fn(),marketItems=[{id:'profile:owner:exact-original',originalDigest:digest},{id:'profile:owner:other-original',originalDigest:'f'.repeat(64)}] as PublicMarketItem[];
+ const view=await mount('image',false,{marketItems,onTrade});try{
+  await act(async()=>{[...view.host.querySelectorAll('button')].find(button=>button.textContent==='Buy ownership')!.click();});
+  expect(onTrade).toHaveBeenLastCalledWith('buy','profile:owner:exact-original');
+  await act(async()=>{[...view.host.querySelectorAll('button')].find(button=>button.textContent==='Take cash')!.click();});
+  expect(onTrade).toHaveBeenLastCalledWith('sell','profile:owner:exact-original');
+  expect(view.host.querySelector('select')).toBeNull();expect(view.fetcher).not.toHaveBeenCalled();
  }finally{view.unmount();}
 });

@@ -111,3 +111,38 @@ it('keeps locally pending signing unavailable until its existing receipt or publ
  adoption.acknowledgeAssetPublication(digest,{status:'published',artifactDigest:'f'.repeat(64),operationCount:1,visibleChildCount:1});
  expect(adoption.locallyPendingAssetPublication(digest,'artist')).toBe(false);expect(request).not.toHaveBeenCalled();
 });
+
+it('retains only this account’s unacknowledged signed additions for exact-proof resume',()=>{
+ const request=vi.spyOn(globalThis,'fetch'),digest=reference.artifactSha256;
+ adoption.retainAssetPublicationAdmission(admission,owner);
+ adoption.acknowledgeAssetPublication(digest,{status:'published',artifactDigest:'c'.repeat(64),operationCount:1,visibleChildCount:1});
+ expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid,'artist')).toEqual([]);
+ adoption.retainAssetPublicationAdmission({...admission,original:{...original,hasPbiSignature:true,pbiReceiptHash:'e'.repeat(64)}},owner);
+ expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid,'artist')).toEqual([digest]);
+ expect(adoption.pendingAssetPublicationSignatures('f'.repeat(64),owner.accountUid,'artist')).toEqual([]);
+ expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,'another','artist')).toEqual([]);
+ expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid,'another')).toEqual([]);
+ adoption.acknowledgeAssetPublication(digest,{status:'pending',code:'DELIVERY_PENDING'});
+ expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid,'artist')).toEqual([digest]);
+ adoption.acknowledgeAssetPublication(digest,{status:'published',artifactDigest:'f'.repeat(64),operationCount:2,visibleChildCount:1});
+ expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid,'artist')).toEqual([]);
+ expect(request).not.toHaveBeenCalled();
+});
+
+it('keeps an exact later signed intent pending through an older signed discovery and preserves source delivery',()=>{
+ const digest=reference.artifactSha256,a='e'.repeat(64),b='f'.repeat(64);
+ const signed=(hash:string)=>({...admission,original:{...original,hasPbiSignature:true,pbiReceiptHash:hash}});
+ const discovered=(hash:string)=>parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:imported-new',receizId:'imported-new',title:original.assetTitle,ownerUsername:'artist',profileOriginal:{...original,hasPbiSignature:true,pbiReceiptHash:hash}}]}});
+ adoption.retainAssetPublicationAdmission(signed(a),owner);
+ adoption.acknowledgeAssetPublication(digest,{status:'published',artifactDigest:'1'.repeat(64),operationCount:1,visibleChildCount:1});
+ adoption.acceptDiscoveredPublicAssets(discovered(a));
+ adoption.retainAssetPublicationAdmission(signed(b),owner);
+ expect(adoption.admittedAssetPublicationDelivery(digest,'artist')).toMatchObject({status:'published',showcaseArtifactDigest:'1'.repeat(64)});
+ expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid,'artist')).toEqual([digest]);
+ adoption.acceptDiscoveredPublicAssets(discovered(a));
+ expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid,'artist')).toEqual([digest]);
+ expect(adoption.mergeAdmittedPublicAssets(discovered(a)).items[0].pbiReceiptHash).toBe(b);
+ expect(adoption.mergeAdmittedProfileAssets({...profile,items:discovered(a).items}).items[0].pbiReceiptHash).toBe(b);
+ adoption.acceptDiscoveredPublicAssets(discovered(b));
+ expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid,'artist')).toEqual([]);
+});

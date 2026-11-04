@@ -10,6 +10,7 @@ const text=(v:unknown)=>typeof v==='string'&&v.length>0&&v.length<=512?v:null;
  * titles, approximate time and matching amounts never identify a transaction. */
 export function calendarRecord(event:OrganizerEvent,owner:string,held:readonly PublicRecord[]):PublicRecord|null{
  if(event.ownerUserId!==owner||event.source!=='system')return null;
+ if(event.sourceProof?.kind==='ledger'){const record=held.find(row=>row.authority==='account-source-projection'&&!row.accountFlowConflict&&row.id===event.sourceProof!.sourceId&&row.amountUsdCents===event.metadata.amountUsdCents&&(!row.pulse||row.pulse===event.metadata.pulse)&&(!row.kaiUpulse||row.kaiUpulse===event.metadata.kaiUpulse));if(record)return record;}
  const m=event.metadata,kind=text(m.actionKind);if(!kind||!(/^(?:market\.share\.(?:buy|sell)|market_(?:buy|sell)|wallet\.transfer\.connect|receiz\.wallet\.(?:transfer|note_mint|note_claim|market_buy|market_sell))$/.test(kind)))return null;
  const amount=uint(m.settlementUsdCents??m.amountUsdCents),entryId=text(m.ledgerEntryId),hash=typeof m.entryHash==='string'&&/^[a-f0-9]{64}$/i.test(m.entryHash)?m.entryHash:null,transferId=text(m.transferId);
  const matching=held.filter(row=>row.authority==='account-source-projection'&&(amount===null||row.amountUsdCents===amount)&&

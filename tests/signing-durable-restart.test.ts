@@ -6,7 +6,7 @@ import {conformanceOfflineFixture} from './helpers/conformance-offline-sealer.ts
 
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
 
-it('a fresh runtime reuses the durable PBI proof without another ceremony or seal',async()=>{
+it('a fresh runtime resumes a pending signed publication without another ceremony or seal',async()=>{
  const f=await conformanceOfflineFixture({composer:true}),r=f.runtime;
  vi.stubGlobal('indexedDB',new IDBFactory());
  const values=new Map<string,string>(),events=new EventTarget();
@@ -70,7 +70,17 @@ it('a fresh runtime reuses the durable PBI proof without another ceremony or sea
   const client=new TextEncoder().encode(JSON.stringify({type:'webauthn.get',challenge:challengeB64Url,origin:'https://bankeiz.com',crossOrigin:false})),payload=new Uint8Array(69);payload.set(auth);payload.set(new Uint8Array(await crypto.subtle.digest('SHA-256',client)),37);
   return{credIdB64Url,pubKeyPem,authenticatorDataB64Url:encode(auth),clientDataJSONB64Url:encode(client),signatureB64Url:encode(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},keys.privateKey,payload))};
  },verifyAssertion:args=>verifyLocalPbiAssertion({...args,policy:{rpId:'receiz.com',originAllowList:['https://bankeiz.com'],requireUP:true,requireUV:true}})}});};
- expect((await runtime.publish(next.artifact,authorize)).status).toBe('published');
+ interrupt=true;
+ expect((await runtime.publish(next.artifact,authorize)).status).toBe('pending');
+ expect(admissions.at(-1).hasPbiSignature).toBe(true);
+ const pendingCounts={seals,ceremonies};
+ runtime=await open();interrupt=false;
+ expect((await runtime.resumeSignedPublication(next.artifact))?.status).toBe('published');
+ expect({seals,ceremonies}).toEqual(pendingCounts);
+ const resumedFinalizations=finalizations;
+ expect(await runtime.resumeSignedPublication(prior.artifact)).toBeNull();
+ expect(finalizations).toBe(resumedFinalizations);
+
  expect(admissions.at(-1).hasPbiSignature).toBe(true);
  const beforeRestart={seals,ceremonies,artifactDigest:complete.artifactDigest,childCount:complete.children.length};runtime=await open();expect((await runtime.publish(next.artifact,authorize).catch((error:Error)=>{throw Error(error.message);})).status).toBe('published');expect({seals,ceremonies,artifactDigest:complete.artifactDigest,childCount:complete.children.length}).toEqual(beforeRestart);expect(ceremonies).toBe(1);
  expect(admissions.at(-1).hasPbiSignature,'A delivery retry cannot erase the completed local PBI proof').toBe(true);

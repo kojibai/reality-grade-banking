@@ -1,6 +1,6 @@
 "use client";
 import {computeLocalPbiAuthorshipActionHash} from '../../../../packages/receiz-sdk/src/pbiLocalAuthorship';
-import {peekLocalPbiAuthorshipPublication,enqueueLocalPbiAuthorshipPublication} from '../../pbi/localAuthorshipOutbox';
+import {peekLocalPbiAuthorshipPublication,peekLocalPbiAuthorshipPublicationsForSource,enqueueLocalPbiAuthorshipPublication} from '../../pbi/localAuthorshipOutbox';
 import {createIncrementalAssetPublisher} from "./incrementalAssetPublication.client";
 import {prepareConnectedComposerSource,prepareConnectedComposerContent,sealConnectedComposerContent} from "../composerPreparation.client";
 import type {ComposerAssetDraft} from "../composerPreparation";
@@ -59,18 +59,22 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
  const signedSources=new Map<string,import("./importedSourceAuthorship").ImportedSourceAuthorshipProof>();
  let publisher:ReturnType<typeof openConnectedAssetPublisher>|undefined;
  const publication=()=>publisher??=openConnectedAssetPublisher(input,admitted,keyFile).catch(error=>{publisher=undefined;throw error;});
- return {
-  async stage(file:File){return(await publication()).stage(file);},
-  prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:admitted.ownerReceizId!,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),
-  sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),
-  prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:admitted.ownerReceizId!,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),
-  async publish(file:File,authorizeMarket?:(input:import("../../../../packages/receiz-sdk/src/pbiLocalAuthorship").LocalPbiAuthorshipInput)=>Promise<import("./importedSourceAuthorship").ImportedSourceAuthorshipProof>){
+ type AuthorizeMarket=(input:import("../../../../packages/receiz-sdk/src/pbiLocalAuthorship").LocalPbiAuthorshipInput)=>Promise<import("./importedSourceAuthorship").ImportedSourceAuthorshipProof>;
+ async function publish(file:File,authorizeMarket?:AuthorizeMarket):Promise<ProfileShowcasePublicProjectionPublicationResult>;
+ async function publish(file:File,authorizeMarket:undefined,requireSavedSignature:true):Promise<ProfileShowcasePublicProjectionPublicationResult|null>;
+ async function publish(file:File,authorizeMarket?:AuthorizeMarket,requireSavedSignature=false):Promise<ProfileShowcasePublicProjectionPublicationResult|null>{
    const opened=await admitConnectedComposerSource({file,ownerReceizId:admitted.ownerReceizId!,username,assertCurrent:input.assertCurrent});
    const pbi=await import("./importedSourceAuthorship");let action:import("../../../../packages/receiz-sdk/src/pbiLocalAuthorship").LocalPbiAuthorshipInput|undefined;
    try{action=await pbi.importedSourceAuthorshipInput(opened.source,admitted.actor.actorId,profileShowcaseLiveKaiUpulse());}catch(error){if(authorizeMarket||!(error instanceof TypeError)||error.message!=='IMPORTED_SOURCE_PBI_SOURCE_REQUIRED')throw error;}
-   const actionHash=action?await computeLocalPbiAuthorshipActionHash(action):null,held=actionHash?peekLocalPbiAuthorshipPublication(actionHash):null;
+   const actionHash=action?await computeLocalPbiAuthorshipActionHash(action):null;
+   let held=actionHash?peekLocalPbiAuthorshipPublication(actionHash):null;
+   if(!held&&action)for(const saved of peekLocalPbiAuthorshipPublicationsForSource(action,opened.reference.artifactSha256)){
+    try{await pbi.projectPbiSignedImportedSourceOriginal(opened.source,opened.reference,saved.proof);held=saved;break;}
+    catch(error){if(!(error instanceof TypeError)||!['IMPORTED_SOURCE_PBI_PROOF_REQUIRED','IMPORTED_SOURCE_PBI_PROOF_INVALID'].includes(error.message))throw error;}
+   }
    let authorshipProof=signedSources.get(opened.reference.artifactSha256)??held?.proof;
    if(!authorshipProof&&authorizeMarket){if(!action)throw TypeError('IMPORTED_SOURCE_PBI_SOURCE_REQUIRED');authorshipProof=await authorizeMarket(action);}
+   if(requireSavedSignature&&!authorshipProof)return null;
    input.assertCurrent();
    let original=opened.original;
    if(authorshipProof){
@@ -81,7 +85,16 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
    retainImportedProfileOriginalMaterial(original,username,opened.source);
    await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,opened.source,username,input.account.uid),sourceReference:opened.reference,firstPaint:null,artwork:sourceArtwork(opened.source)}));input.assertCurrent();
    return(await publication()).publishOpened(opened,authorshipProof);
-  }
+ }
+ return {
+  async stage(file:File){return(await publication()).stage(file);},
+  prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:admitted.ownerReceizId!,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),
+  sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),
+  prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:admitted.ownerReceizId!,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),
+  publish,
+  // Reuse the exact durable PBI proof. A background resume can never open a
+  // ceremony or publish an unsigned placement in place of the saved signature.
+  resumeSignedPublication:(file:File)=>publish(file,undefined,true)
  };
 }
 /** Publication starts only after local admission and an explicitly requested

@@ -37,10 +37,12 @@ it('starts an asset at the top after its retained React view commits, then resto
   const unlock=lockDocumentScroll();position=0;addEventListener('receiz-bank:surface',unlock,{once:true});
   await act(async()=>document.querySelector<HTMLAnchorElement>('a[href^="/asset/"]')!.click());
   expect(location.pathname).toBe('/asset/profile%3Aartist%3Asong/');
+  expect(document.querySelector('.profile-footer nav[aria-label="Profile footer"]')).not.toBeNull();
   expect(paints).toContainEqual({top:0,heading:'Song title'});
   position=760;
   await act(async()=>document.querySelector<HTMLAnchorElement>('article a')!.click());
   expect(location.pathname).toBe('/explore/music/');expect(position).toBe(1340);expect(document.querySelector('[aria-label="Retained search"]')).toBe(search);expect(search.value).toBe('A saved search');
+  expect(document.querySelector('.profile-footer')).toBeNull();
   position=1650;
   await act(async()=>document.querySelector<HTMLAnchorElement>('a[href^="/asset/"]')!.click());
   expect(position).toBe(0);

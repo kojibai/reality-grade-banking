@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { parseSharedWallet } from '../src/receiz/shared-wallet';
+import { parseSharedWallet,retainWalletPhiSplit,type SharedWallet } from '../src/receiz/shared-wallet';
 import {readFileSync} from 'node:fs';
 const input = { ok: true, wallet: { userId: 'same-owner', balanceUsd: '92233720368547758.09', balancePhiMicro: '198123', valueStates: { settledBalanceUsdCents: '103', ecosystemBalanceUsdCents: '9223372036854775706', livePortfolioValueUsdCents: null, unrealizedPnlUsdCents: null, withdrawableNowUsdCents: null }, sync: { projectionComplete: true }, rollup: { lastEntryKaiPulse: '14920000', lastEntryKaiUpulse: '14920000000123' } } };
 it('reads exact Reserve, Settlement and total from the same native wallet without counting assets twice', () => {
@@ -59,4 +59,14 @@ it('reuses exact carried funded units when both current-source rail aliases were
  expect(wallet).toMatchObject({totalUsdCents:'27529',reserveUsdCents:'1900',balancePhiMicro:'10259540',reservePhiMicro:'8000000',settlementPhiMicro:'2259540',currentBalanceSource:{reservePhiMicro:'8000000',settlementPhiMicro:'2259540'}});
  const mismatched=structuredClone(raw);mismatched.wallet.currentBalanceSource.accountBalancePhiMicro='8000001';
  expect(parseSharedWallet(mismatched,mismatched.wallet.userId)).toMatchObject({reservePhiMicro:null,settlementPhiMicro:null});
+});
+it('retains known units through a same-head dollar quote without back-converting, and refuses changed heads or conflicts',()=>{
+ const previous={userId:'owner',totalUsdCents:'392',reserveUsdCents:'192',settlementUsdCents:'200',balancePhiMicro:'5000000',reservePhiMicro:'4000000',settlementPhiMicro:'1000000',kaiUpulse:'100000002',pulse:'100'} as SharedWallet;
+ const next={...previous,totalUsdCents:'592',settlementUsdCents:'400',reservePhiMicro:null,settlementPhiMicro:null};
+ expect(retainWalletPhiSplit(previous,next)).toMatchObject({...next,reservePhiMicro:'4000000',settlementPhiMicro:'1000000'});
+ for(const patch of [{userId:'foreign'},{balancePhiMicro:'5000001'},{reserveUsdCents:'193'},{kaiUpulse:'100000003'},{kaiUpulse:null},{pulse:'101'},{reservePhiMicro:'1'},{settlementPhiMicro:'1'}]){
+  const changed={...next,...patch};expect(retainWalletPhiSplit(previous,changed)).toBe(changed);
+ }
+ expect(retainWalletPhiSplit(previous,previous)).toBe(previous);
+ expect(retainWalletPhiSplit({...previous,reservePhiMicro:null,settlementPhiMicro:null},next)).toBe(next);
 });

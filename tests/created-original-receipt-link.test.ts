@@ -1,0 +1,21 @@
+import {afterEach,expect,it,vi} from 'vitest';
+import {IDBFactory} from 'fake-indexeddb';
+import {conformanceOfflineFixture} from './helpers/conformance-offline-sealer';
+afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
+it('projects the existing proof-bearing receipt from a canonically opened local Original without a lookup or second verification',async()=>{
+ vi.stubGlobal('indexedDB',new IDBFactory());
+ const f=await conformanceOfflineFixture({composer:true}),r=f.runtime;
+ const admitted=await r.createReceizArtifactAdmissionEngine()(await r.verifyReceizArtifact(f.identity.bytes),{profile:'identity',identityPassphrase:f.identity.phrase});
+ const owner=(await r.readReceizIdentityPublicBinding(admitted)).artifactOwnerReceizId,enrollment=await f.store.load(),sealDocument=await r.createBankNativeNoteSealer({enrollment,resources:f.resources});
+ const custody=r.createImportedProofSourceCustody();
+ const prepared=await r.composer.prepareConnectedComposerSource({draft:{title:'Exact locally created Original',description:'The source claim.',kind:'image',longForm:'Complete public reading.',files:[{id:'photo',role:'primary',file:new File([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jQmcAAAAASUVORK5CYII=','base64')],'original.png',{type:'image/png'})}]},ownerReceizId:owner,sealDocument,writeBlock:custody.writeBlock,assertCurrent(){}});
+ const request=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('No request expected'));
+ let original:any;
+ await r.connectedComposer.admitConnectedComposerSource({file:prepared.artifact,ownerReceizId:owner,username:'fixture_author',assertCurrent(){},onLocalAdmission:(value:any)=>{original=value.original;}});
+ const url=new URL(original.verifyUrl),token=url.searchParams.get('c');
+ expect(token).toMatch(/^rpb2:/);
+ expect(url.pathname).toBe(`/v/${original.slug}/${original.code}/${original.pulse}`);
+ expect(original.importedSource.ownerReceizId).toBe(owner);
+ expect(original.importedSource.reference.artifactSha256).toBe(prepared.reference.artifactSha256);
+ expect(request).not.toHaveBeenCalled();
+},30000);

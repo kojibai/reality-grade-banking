@@ -4,6 +4,8 @@ import { projectVerifierIdentityDisplay } from "@/app/verify/identityDisplay";
 import { jcsCanonicalize } from "@/app/utils/jcs";
 import { requireOpenedImportedProofSource, type OpenedImportedProofSource } from "./importedSource";
 import { projectImportedSourceOriginal } from "./importedSourceProjection";
+import {buildProofBearingReceizVPathFromBundle} from "../../documentSeal/proofBearingVLink";
+import {coerceReceizProofBundle} from "../../../utils/receizProofBundle";
 
 // Canonically evaluated absence is immutable for these exact Source bytes.
 // Retain only tiny display facts, never proof blobs, accounts or access grants.
@@ -25,7 +27,7 @@ export function attachImportedSourceMarketPreviews(input: Readonly<{
     sources.set(source.descriptor.artifactSha256, source);
   }
   return input.originals.map(original => {
-    if (!original.showOnProfile || original.marketPreview || !original.importedSource) return original;
+    if (!original.showOnProfile || !original.importedSource) return original;
     const source = sources.get(original.importedSource.reference.artifactSha256);
     if (!source) return original;
     const canonical = projectImportedSourceOriginal(source, original.importedSource.reference);
@@ -33,6 +35,11 @@ export function attachImportedSourceMarketPreviews(input: Readonly<{
       || jcsCanonicalize(canonical.importedSource) !== jcsCanonicalize(original.importedSource)) return original;
     let terminal = source;
     while (terminal.referencedSources?.[0]) terminal = terminal.referencedSources[0];
+    // Same receipt projector as Receiz's public display, beneath the already
+    // opened exact Source. No recovery, lookup or second verification enters.
+    const bundle=terminal.projection.bankAsset?coerceReceizProofBundle(terminal.verification.bundle):null;
+    if(bundle){const verifyPath=buildProofBearingReceizVPathFromBundle(bundle);original={...original,verifyPath,verifyUrl:new URL(verifyPath,'https://receiz.com').href};}
+    if(original.marketPreview)return original;
     const creator = projectVerifierIdentityDisplay(terminal.verification).originalCreator;
     if (!creator.receizId || !creator.username) {
       withoutDisplayCreator.add(source.descriptor.artifactSha256);

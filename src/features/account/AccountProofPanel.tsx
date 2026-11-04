@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Download } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
-import { isVerifiedAccountProof, type VerifiedAccountProof } from '../../receiz/account-proof';
+import { heldAccountProofBytes, isVerifiedAccountProof, type VerifiedAccountProof } from '../../receiz/account-proof';
 import { AccountProofDetails } from '../../components/AccountProofDetails';
 import { accountProofError } from '../../receiz/account-proof-errors';
 import type { AccountProofSharingStatus } from '../../receiz/account-proof-sharing';
@@ -42,6 +42,17 @@ export function AccountProofPanel({ identity }: { identity: OpenIdentity }) {
     } catch (cause) { if (ticket === generation.current) setError(cause instanceof Error&&/LOCAL_CUSTODY_SOURCE_REQUIRED/.test(cause.message)?accountProofError(cause):'Public sharing or image delivery could not be confirmed. The link may already be public. Check public sharing before trying again; this did not authorize a payment.'); }
     finally { if (ticket === generation.current) { running.current = false; setBusy(false); } }
   };
+  const saveOriginal=()=>{
+    if(!proof||running.current)return;
+    setError('');setNotice('');
+    try{
+      const bytes=heldAccountProofBytes(proof);
+      const url=URL.createObjectURL(new Blob([new Uint8Array(bytes)],{type:'application/json'}));
+      try{const link=document.createElement('a');link.href=url;link.download=`bankeiz-account-proof-${proof.sourceDigest.slice(0,16)}.json`;link.click();}
+      finally{setTimeout(()=>URL.revokeObjectURL(url),3000);}
+      setNotice('Account proof saved on this device. Nothing was published.');
+    }catch(cause){setError(accountProofError(cause));}
+  };
   const manageSharing = async (disable = false) => {
     if (running.current) return; const ticket = generation.current; running.current = true; setBusy(true); setError('');
     try { if (!identity.accountProofSharing) throw Error('ACCOUNT_PROOF_SOURCE_UNAVAILABLE'); const api = await identity.accountProofSharing(); if (ticket !== generation.current) return; const next = disable ? await api.disable() : await api.status(); if (ticket === generation.current) setSharing(next); }
@@ -61,7 +72,7 @@ export function AccountProofPanel({ identity }: { identity: OpenIdentity }) {
   return <section className="account-proof-share" aria-label="Shareable account proof">
     <h3>Share an account proof</h3><p className="body-copy small-copy">Let someone verify your identity, balances, holdings and transaction history without access to your account.</p>
     <button className="secondary-button" disabled={busy} onClick={() => void review()}>{busy ? 'Verifying account source…' : 'Review account proof'}</button>
-    {proof && <><AccountProofDetails proof={proof} /><p className="body-copy small-copy">The image carries this exact proof. Its QR and public link let anyone inspect balances, holdings and every disclosed transaction. Signing keys and login access stay private.</p><label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event => setApproved(event.target.checked)} /><span>I approve publishing this proof’s balances, holdings and full transaction history.</span></label><label className="consent-option"><input type="checkbox" checked={live} disabled={busy} onChange={event => setLive(event.target.checked)} /><span>Keep this link updated with future balances, holdings and transactions until I turn live updates off.</span></label><button className="primary-button" disabled={busy || !approved} onClick={() => void save()}><Download size={16} />Create proof image &amp; link</button></>}
+    {proof && <><AccountProofDetails proof={proof} /><button className="secondary-button" disabled={busy} onClick={saveOriginal}><Download size={16}/>Save account proof</button><p className="body-copy small-copy">Save the exact verified statement on this device. Public sharing is a separate choice.</p><p className="body-copy small-copy">The image carries this exact proof. Its QR and public link let anyone inspect balances, holdings and every disclosed transaction. Signing keys and login access stay private.</p><label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event => setApproved(event.target.checked)} /><span>I approve publishing this proof’s balances, holdings and full transaction history.</span></label><label className="consent-option"><input type="checkbox" checked={live} disabled={busy} onChange={event => setLive(event.target.checked)} /><span>Keep this link updated with future balances, holdings and transactions until I turn live updates off.</span></label><button className="primary-button" disabled={busy || !approved} onClick={() => void save()}><Download size={16} />Create proof image &amp; link</button></>}
     {link && <a className="account-proof-published-link" href={link} target="_blank" rel="noreferrer">{link}</a>}
     {image && <img className="issued-account-proof-image" src={image} alt="Original account proof image with its verification QR code and exact embedded source" />}
     <details className="account-proof-sharing-controls"><summary>Public sharing</summary><button className="text-button" disabled={busy} onClick={() => void manageSharing()}>Check public sharing</button>{sharing && <><p className="body-copy small-copy">Live updates {(sharing.liveUpdates || sharing.otherLiveUpdates) ? 'on' : 'off'}. Previously shared snapshots and downloaded copies remain readable.</p>{(sharing.liveUpdates || sharing.otherLiveUpdates) && <button className="secondary-button" disabled={busy} onClick={() => void manageSharing(true)}>Turn off live updates</button>}</>}</details>

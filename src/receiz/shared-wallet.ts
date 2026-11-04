@@ -37,7 +37,12 @@ export function readWalletPhiSplit(input:unknown,balancePhiMicro:string):Pick<Sh
  const reserve=uint(value.reservePhiMicro)?value.reservePhiMicro:null,settlement=uint(value.settlementPhiMicro)?value.settlementPhiMicro:null,total=BigInt(balancePhiMicro);
  if(reserve!==null&&BigInt(reserve)>total||settlement!==null&&BigInt(settlement)>total||reserve!==null&&settlement!==null&&BigInt(reserve)+BigInt(settlement)!==total)return unknown;
  if((reserve===null||settlement===null)&&[value.reservePhiMicro,value.settlementPhiMicro].every(v=>v==null||uint(v))&&typeof value.userId==='string'){
-  const source=readCurrentBalanceSource(value.currentBalanceSource,value.userId),states=value.valueStates as Record<string,unknown>|undefined;
+  const packet=value.currentBalanceSource as Record<string,unknown>|null;
+  // The selected wallet may retain the original funded Source while an older
+  // calculation omits its duplicate reference. Its existing reader still
+  // requires the exact account/cash/rate/Reserve frame before deriving aliases.
+  const source=readCurrentBalanceSource(packet&&typeof packet==='object'&&!Array.isArray(packet)&&packet.reserveFundingSource===undefined&&value.reserveFundingSource!==undefined
+   ?{...packet,reserveFundingSource:value.reserveFundingSource}:packet,value.userId),states=value.valueStates as Record<string,unknown>|undefined;
   let totalUsdCents=value.totalUsdCents;try{if(totalUsdCents===undefined)totalUsdCents=usdCents(value.balanceUsd);}catch{/* A partial object cannot establish a matching source frame. */}
   if(source&&!source.historicalContextOnly&&source.balancePhiMicro===balancePhiMicro&&source.balanceUsdCents===totalUsdCents
    &&source.reserveUsdCents===(value.reserveUsdCents??states?.settledBalanceUsdCents)&&source.settlementUsdCents===(value.settlementUsdCents??states?.ecosystemBalanceUsdCents)
@@ -48,6 +53,17 @@ export function readWalletPhiSplit(input:unknown,balancePhiMicro:string):Pick<Sh
  }
  if(value.reservePhiMicro===undefined&&value.settlementPhiMicro===undefined)return {};
  return {reservePhiMicro:reserve,settlementPhiMicro:settlement};
+}
+/** Fill omitted display aliases only beneath the exact same financial head.
+ * A dollar quote never supplies units or replaces a conflicting carried split. */
+export function retainWalletPhiSplit(previous:SharedWallet,next:SharedWallet):SharedWallet{
+ if(!next.kaiUpulse||!/^\d{1,30}$/.test(next.kaiUpulse)||!(['userId','balancePhiMicro','reserveUsdCents','kaiUpulse','pulse'] as const).every(key=>previous[key]===next[key]))return next;
+ const split=readWalletPhiSplit(previous,previous.balancePhiMicro);
+ if(split.reservePhiMicro==null||split.settlementPhiMicro==null
+  ||next.reservePhiMicro!=null&&next.reservePhiMicro!==split.reservePhiMicro
+  ||next.settlementPhiMicro!=null&&next.settlementPhiMicro!==split.settlementPhiMicro
+  ||next.reservePhiMicro===split.reservePhiMicro&&next.settlementPhiMicro===split.settlementPhiMicro)return next;
+ return {...next,...split};
 }
 /** The same retained source is only repriced, not funded again. Preserve its
  * exact fixed backing units; an altered backing claim needs new source units. */

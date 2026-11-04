@@ -1,5 +1,6 @@
 import type {AccountPresentation} from './account-presentation';
 import type {BookingOffer} from './booking-offers';
+import {mergeCalendarSourceEvents,projectCalendarPortableOriginals,type CalendarSourceProof} from './calendar-source-projection';
 export interface OrganizerContact {
  id:string;linkedUserId:string;fullName:string;email:string;phone:string;
  company?:string;role?:string;location?:string;notes?:string;tags?:string[];
@@ -8,6 +9,7 @@ export interface OrganizerContact {
  [key:string]:unknown;
 }
 export interface OrganizerEvent {
+ sourceProof?:CalendarSourceProof;
  id:string;ownerUserId:string;createdByUserId?:string|null;title:string;kind:string;source:string;
  startAt:string;endAt:string;location:string;note:string;attendees:string[];metadata:Record<string,unknown>;
  createdAt:string;updatedAt:string;
@@ -63,7 +65,7 @@ export function readOrganizerDisplay(value:unknown,owner:string):OrganizerDispla
  }catch{return null;}
 }
 
-export const orderOrganizerEvents=(events:OrganizerEvent[])=>{const rows=new Map<string,OrganizerEvent>();for(const event of events){const held=rows.get(event.id);if(!held||Date.parse(event.updatedAt)>=Date.parse(held.updatedAt))rows.set(event.id,event);}return [...rows.values()].sort((a,b)=>a.startAt.localeCompare(b.startAt)||a.id.localeCompare(b.id));};
+export const orderOrganizerEvents=(events:OrganizerEvent[])=>mergeCalendarSourceEvents([],events).sort((a,b)=>a.startAt.localeCompare(b.startAt)||a.id.localeCompare(b.id));
 
 /** The same admitted local/carried projection feeds first paint and the
  * existing organizer. It grants no transport or write authority. */
@@ -75,6 +77,7 @@ export function projectOrganizerDisplay(accountUid:string,retained?:unknown,carr
  if(carried){const state=organizerRecord(carried),contacts=organizerRecord(state.contactsProjection).contacts??state.contacts,calendar=organizerRecord(state.calendar),events=calendar.events??state.calendarEvents;
   if(display.contacts===null&&Array.isArray(contacts))try{display={...display,contacts:contacts.map(organizerContact),contactsComplete:true};}catch{/* Partial carried domains never erase a stronger held view. */}
   if(display.events===null&&Array.isArray(events))try{display={...display,events:orderOrganizerEvents(events.map(v=>organizerEvent(v,accountUid)))};}catch{/* Available admitted domains remain independent. */}
+  const originals=projectCalendarPortableOriginals(accountUid,state);if(originals.length)display={...display,events:orderOrganizerEvents([...(display.events??[]),...originals])};
  }
  return display;
 }

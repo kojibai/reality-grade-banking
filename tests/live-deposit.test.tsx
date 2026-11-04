@@ -82,7 +82,7 @@ it('retains the carried delivery destination in Assets with its actual artifact 
     expect(host.textContent).toContain('fixture.receiz.id');
     expect(host.textContent).not.toContain('receiz_device_fixture');
     expect(host.textContent).toContain('Awaiting verified receipt');
-    expect([...host.querySelectorAll('button')].find(button => button.textContent === 'Sell a share')?.disabled).toBe(true);
+    expect([...host.querySelectorAll('button')].find(button => button.textContent === 'Sell a share')).toBeUndefined();
   } finally { act(() => root.unmount()); }
 });
 it.each(['credited', 'expired', 'unpaid'])('returns to a new amount after a confirmed terminal %s checkout', async status => {

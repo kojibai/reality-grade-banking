@@ -4,6 +4,7 @@ import {createRoot} from 'react-dom/client';
 import {afterEach,expect,it,vi} from 'vitest';
 import {LiveActions} from '../src/features/account/LiveActions';
 import type {SharedWallet} from '../src/receiz/shared-wallet';
+import {retainWalletPhiSplit} from '../src/receiz/shared-wallet';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const roots:ReturnType<typeof createRoot>[]=[];
@@ -56,4 +57,11 @@ it('shows the already-carried exact account Phi total when an older frame omits 
  expect(settlement.querySelector('summary')?.textContent).toContain('$9.00');
  v.render({...base,balancePhiMicro:'2200000',reservePhiMicro:null,settlementPhiMicro:null});
  expect(settlement.querySelector('[data-rail-phi]')?.textContent).toBe('Account total · 2.2 Φ');expect(v.fetch).not.toHaveBeenCalled();
+});
+it('repaints an open $1.92 Reserve with its already-held units after same-head enrichment and no read',async()=>{
+ const held={...base,totalUsdCents:'392',reserveUsdCents:'192',settlementUsdCents:'200',balancePhiMicro:'5000000',reservePhiMicro:'4000000',settlementPhiMicro:'1000000'},missing={...held,reservePhiMicro:null,settlementPhiMicro:null},v=view(missing),reserve=v.rail('reserve');
+ await act(async()=>reserve.querySelector('summary')!.click());expect(reserve.querySelector('[data-rail-phi]')?.textContent).toBe('Exact Φ unavailable');
+ v.render(retainWalletPhiSplit(held,missing));
+ expect(reserve.open).toBe(true);expect(reserve.querySelector('summary')?.textContent).toContain('$1.92');expect(reserve.querySelector('[data-rail-phi]')?.textContent).toBe('4 Φ');
+ expect(v.host.querySelector('.balance-sheet-amount')?.textContent).toBe('$3.92');expect(v.fetch).not.toHaveBeenCalled();
 });

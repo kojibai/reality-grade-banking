@@ -1,8 +1,16 @@
 // @vitest-environment happy-dom
 import {act} from 'react';import {createRoot} from 'react-dom/client';import {expect,it,vi} from 'vitest';
 import {CalendarRecordDetails} from '../src/features/messages/organizer/CalendarRecordDetails';
+import {projectCalendarOriginal} from '../src/receiz/calendar-source-projection';
 import type {OrganizerEvent,NativeOrganizer} from '../src/receiz/native-organizer';import type {OpenIdentity} from '../src/receiz/native-identity';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+it('opens the exact already-held Original proof without offering or requesting a synthetic Calendar bundle',async()=>{
+ const href='https://receiz.com/v/20261102_0942/21188918/14955302?c=held-proof';
+ const event=projectCalendarOriginal('owner',{id:'imported-'+'a'.repeat(64),slug:'20261102_0942',code:'21188918',pulse:'14955302',createdAt:'2026-11-02T14:42:03.163Z',verifyUrl:href})[0];
+ const eventProof=vi.fn(),api={accountUid:'owner',eventProof} as unknown as NativeOrganizer,host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<CalendarRecordDetails event={event} identity={{} as OpenIdentity} api={api}/>));expect(host.querySelector('a')?.getAttribute('href')).toBe(href);expect(host.textContent).toContain('View original proof');expect(host.textContent).not.toContain('Calendar proof');expect(eventProof).not.toHaveBeenCalled();}
+ finally{act(()=>root.unmount());}
+});
 it('shows recorded sale results and a receipt immediately without starting an unrequested proof lookup',async()=>{
  const event:OrganizerEvent={id:'00000000-0000-4000-8000-000000000003',ownerUserId:'owner',title:'Market share sell',kind:'traction',source:'system',startAt:'2026-10-26T15:00:00Z',endAt:'2026-10-26T15:10:00Z',location:'',note:'',attendees:[],createdAt:'2026-10-26T15:00:00Z',updatedAt:'2026-10-26T15:00:00Z',metadata:{actionKind:'market.share.sell',ledgerEntryId:'entry-1',pulse:'100',title:'A source object',side:'sell',shareQuantityMicro:'2000000',priceUsdCents:'300',settlementUsdCents:'590',feeUsdCents:'10',realizedCostBasisUsdCents:'400'}};
  let finish:((value:never)=>void)|undefined;const eventProof=vi.fn(()=>new Promise<never>(resolve=>{finish=resolve;})),api={accountUid:'owner',eventProof} as unknown as NativeOrganizer,host=document.createElement('div'),root=createRoot(host);

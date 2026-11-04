@@ -4,12 +4,12 @@ import {openCanonicalIdentity,importNativeIdentity} from '../src/receiz/native-i
 import type {WalletObservation} from '../src/receiz/wallet-observation';
 import {parsePrivateHistoryPage} from '../src/receiz/private-history';
 const moneyHistory=vi.hoisted(()=>({cache:null as import('../src/receiz/identity-vault').PrivateHistoryCache|null}));
-vi.mock('../src/receiz/private-history-restore',()=>({preloadPrivateHistory:async()=>moneyHistory.cache,updatePrivateHistory:(_identity:unknown,_uid:string,value:import('../src/receiz/identity-vault').PrivateHistoryCache)=>{moneyHistory.cache=value;return true;}}));
+vi.mock('../src/receiz/private-history-restore',()=>({peekPrivateHistory:(_identity:unknown,uid:string)=>moneyHistory.cache?.accountUid===uid?moneyHistory.cache:null,preloadPrivateHistory:async()=>moneyHistory.cache,updatePrivateHistory:(_identity:unknown,_uid:string,value:import('../src/receiz/identity-vault').PrivateHistoryCache)=>{moneyHistory.cache=value;return true;}}));
 // Integration sequencing only. The independent Chrome test opens real v129
 // native originals with the actual verifier and encrypted IndexedDB store.
-const p=vi.hoisted(()=>({pulse:100,organizerDisplay:null as unknown,saveOrganizerDisplay:vi.fn(),messagingDisplay:null as unknown,saveMessagingDisplay:vi.fn(),messagingConsent:null as unknown,saveMessaging:vi.fn(),scopes:[] as string[],known:null as WalletObservation|null,projection:null as unknown,device:vi.fn(),restore:vi.fn(),retain:vi.fn(),original:vi.fn(),proof:vi.fn(),continueId:vi.fn(),wallet:vi.fn(),save:vi.fn(),request:vi.fn(),library:vi.fn(),heldFetch:undefined as typeof fetch|undefined}));
+const p=vi.hoisted(()=>({pulse:100,organizerDisplay:null as unknown,saveOrganizerDisplay:vi.fn(),messagingDisplay:null as unknown,saveMessagingDisplay:vi.fn(),messagingConsent:null as unknown,saveMessaging:vi.fn(),scopes:[] as string[],known:null as WalletObservation|null,projection:null as unknown,device:vi.fn(),restore:vi.fn(),retain:vi.fn(),original:vi.fn(),knownOriginal:vi.fn(),proof:vi.fn(),continueId:vi.fn(),wallet:vi.fn(),save:vi.fn(),request:vi.fn(),library:vi.fn(),heldFetch:undefined as typeof fetch|undefined}));
 vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>p.known,saveWalletObservation:p.save,loadOrganizerDisplay:async()=>p.organizerDisplay,saveOrganizerDisplay:p.saveOrganizerDisplay,saveDeviceIdentity:p.device,loadMessagingDisplay:async()=>p.messagingDisplay,saveMessagingDisplay:p.saveMessagingDisplay,loadMessagingConsent:async()=>p.messagingConsent,saveMessagingConsent:p.saveMessaging}));
-vi.mock('../src/receiz/account-ledger',async original=>({...await original<typeof import('../src/receiz/account-ledger')>(),createLocalAccountLedger:()=>({restore:p.restore,retain:p.retain,original:p.original})}));
+vi.mock('../src/receiz/account-ledger',async original=>({...await original<typeof import('../src/receiz/account-ledger')>(),createLocalAccountLedger:()=>({restore:p.restore,retain:p.retain,original:p.original,knownOriginal:p.knownOriginal})}));
 vi.mock('../src/receiz/proof-library',()=>({createProofLibrary:p.library}));
 vi.mock('../src/receiz/account-proof',async original=>({...await original<typeof import('../src/receiz/account-proof')>(),readAccountProof:p.proof}));
 vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({
@@ -21,6 +21,14 @@ vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({
 })}));
 const observation=(reserve='600',kai='100000002'):WalletObservation=>({observedAt:'2026-10-18T12:00:00Z',wallet:{userId:'bound-user',totalUsdCents:reserve,reserveUsdCents:reserve,settlementUsdCents:'0',balancePhiMicro:'3000000',portfolioUsdCents:null,pnlUsdCents:null,withdrawableUsdCents:null,projectionComplete:true,pulse:'100',kaiUpulse:kai}});
 const proof={sourceDigest:'b'.repeat(64),statement:{schema:'bankeiz.public-account-statement.v2'}};
+it('composes the already-held financial activity into Calendar before organizer preparation without another read',async()=>{
+ p.known=observation();
+ const page=parsePrivateHistoryPage({ok:true,accountUserId:'bound-user',nextCursor:null,events:[{id:'wallet_ledger:held-credit',kind:'reserve_credit',createdAt:'2026-11-03T13:00:00Z',amountUsdCents:'20000'}]},'bound-user');
+ moneyHistory.cache={schema:'bank.private-history-cache.v1',accountUid:'bound-user',observedAt:'2026-11-03T13:00:00Z',records:page.records,nextCursor:null};
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const display=identity.knownOrganizerDisplay!();expect(display?.events).toHaveLength(1);expect(display?.events?.[0].startAt).toBe('2026-11-03T13:00:00Z');expect(p.request).not.toHaveBeenCalled();expect(p.proof).not.toHaveBeenCalled();expect(p.original).not.toHaveBeenCalled();}
+ finally{identity.dispose();}
+});
 it('reuses My history for financial recaps when the separate complete account-proof source is unavailable',async()=>{
  p.scopes=[...BANK_READ_SCOPES,...BANK_MESSAGING_SCOPES];p.proof.mockRejectedValue(Object.assign(Error('account_proof_source_unavailable'),{status:503}));
  const page=parsePrivateHistoryPage({ok:true,accountUserId:'bound-user',nextCursor:null,events:[{id:'receipt:1',kind:'reserve_credit',createdAt:'2026-11-01T13:00:00Z',amountUsdCents:'20000'}]},'bound-user');
@@ -47,7 +55,7 @@ const carriedProjection=()=> ({authority:'verified-identity-portable-state',port
 beforeEach(()=>{
  moneyHistory.cache=null;
  p.pulse=100;p.organizerDisplay=null;p.saveOrganizerDisplay.mockReset().mockResolvedValue(undefined);p.messagingDisplay=null;p.saveMessagingDisplay.mockReset().mockResolvedValue(undefined);p.messagingConsent=null;p.saveMessaging.mockReset().mockResolvedValue(undefined);p.scopes=[...BANK_READ_SCOPES];p.known=null;p.projection=null;p.device.mockReset().mockResolvedValue(undefined);p.restore.mockReset().mockResolvedValue(null);p.retain.mockReset().mockResolvedValue({proof,observation:observation()});p.proof.mockReset().mockImplementation(async({request})=>{await request('/account-source');return proof;});
- p.original.mockReset().mockResolvedValue(null);p.library.mockReset().mockImplementation(options=>options);
+ p.original.mockReset().mockResolvedValue(null);p.knownOriginal.mockReset().mockReturnValue(null);p.library.mockReset().mockImplementation(options=>options);
  p.continueId.mockReset().mockResolvedValue({ok:true,session:{uid:'bound-user'}});p.wallet.mockReset().mockResolvedValue({ok:true,wallet:{userId:'bound-user',balanceUsd:'8.00',balancePhiMicro:'4000000',valueStates:{settledBalanceUsdCents:'800',ecosystemBalanceUsdCents:'0'},sync:{projectionComplete:true},rollup:{lastEntryKaiUpulse:'100000003'}}});p.save.mockReset().mockResolvedValue(undefined);p.request.mockReset().mockResolvedValue({});
 });
 it('keeps the stream deadline and caller cancellation inside the identity lifetime',async()=>{
@@ -140,6 +148,38 @@ it('adds verified source history after entry without rewinding a later wallet re
   expect(identity.knownWallet()?.wallet.totalUsdCents).toBe('800');
  }finally{identity.dispose();}
 });
+it('reviews the exact retained account proof without a transport grant or source rebuild',async()=>{
+ p.known=observation('600','100000002');p.original.mockResolvedValue(proof);p.proof.mockRejectedValue(Error('ACCOUNT_PROOF_NETWORK_FORBIDDEN'));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  expect(await identity.accountProof!()).toBe(proof);
+  expect(p.proof).not.toHaveBeenCalled();expect(p.continueId).not.toHaveBeenCalled();expect(p.request).not.toHaveBeenCalled();expect(p.retain).not.toHaveBeenCalled();
+  expect(identity.knownWallet()?.wallet.reserveUsdCents).toBe('600');
+ }finally{identity.dispose();}
+});
+it('reuses the already-opened proof capability without storage, history, network or post-disposal access',async()=>{
+ p.known=observation('600','100000002');p.knownOriginal.mockReturnValue(proof);p.original.mockRejectedValue(Error('STORAGE_REOPEN_FORBIDDEN'));p.proof.mockRejectedValue(Error('NETWORK_FORBIDDEN'));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  expect(await identity.accountProof!()).toBe(proof);expect(await identity.accountProof!()).toBe(proof);
+  expect(p.original).not.toHaveBeenCalled();expect(p.proof).not.toHaveBeenCalled();expect(p.request).not.toHaveBeenCalled();expect(p.retain).not.toHaveBeenCalled();
+  identity.dispose();await expect(identity.accountProof!()).rejects.toThrow('IDENTITY_CLOSED');
+ }finally{identity.dispose();}
+});
+it('opens only the selected retained Calendar proof on explicit saving without requesting a current statement',async()=>{
+ p.known=observation();p.original.mockResolvedValue(proof);p.proof.mockRejectedValue(Error('NETWORK_FORBIDDEN'));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  expect(await identity.calendarAccountProof!(proof.sourceDigest)).toBe(proof);expect(p.original).toHaveBeenCalledWith('bound-user');expect(p.proof).not.toHaveBeenCalled();expect(p.request).not.toHaveBeenCalled();
+  expect(await identity.calendarAccountProof!('c'.repeat(64))).toBeNull();identity.dispose();await expect(identity.calendarAccountProof!(proof.sourceDigest)).rejects.toThrow();
+ }finally{identity.dispose();}
+});
+it('refuses a held proof when a different exact financial source is already known',async()=>{
+ p.known={...observation(),wallet:{...observation().wallet,balanceSourceSha256:'c'.repeat(64)}};p.knownOriginal.mockReturnValue(proof);
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{await expect(identity.accountProof!()).rejects.toThrow('ACCOUNT_PROOF_HELD_SOURCE_SUPERSEDED');expect(p.proof).not.toHaveBeenCalled();expect(p.request).not.toHaveBeenCalled();}
+ finally{identity.dispose();}
+});
 it('retains the authenticated full source and paints its newer same-account balance',async()=>{
  p.known=observation('1000','100000001');
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
@@ -185,6 +225,54 @@ it('uses a newer retained complete Ledger when reopening with an older cached wa
  p.known=observation('1000','100000001');p.restore.mockResolvedValue({proof,observation:observation()});
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
  try{expect(identity.knownWallet()?.wallet.reserveUsdCents).toBe('600');expect(p.continueId).not.toHaveBeenCalled();}finally{identity.dispose();}
+});
+it('paints already-held exact Reserve units when a restored Ledger has the same amount and transaction head as an older display',async()=>{
+ const retained=observation('192','100000002');
+ retained.walletScope='native-full';
+ retained.wallet={...retained.wallet,reservePhiMicro:'3000000',settlementPhiMicro:'0'};
+ p.known={...retained,wallet:{...retained.wallet,reservePhiMicro:null,settlementPhiMicro:null}};
+ p.restore.mockResolvedValue({proof,observation:retained});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  expect(identity.knownWallet()?.wallet).toMatchObject({reserveUsdCents:'192',balancePhiMicro:'3000000',reservePhiMicro:'3000000',settlementPhiMicro:'0'});
+  expect(p.continueId).not.toHaveBeenCalled();expect(p.wallet).not.toHaveBeenCalled();expect(p.proof).not.toHaveBeenCalled();expect(p.request).not.toHaveBeenCalled();
+ }finally{identity.dispose();}
+});
+it('keeps known exact Reserve units through the ordinary same-head wallet response and its retained observation',async()=>{
+ p.known=observation('192','100000002');
+ p.known.wallet={...p.known.wallet,reservePhiMicro:'3000000',settlementPhiMicro:'0'};
+ p.wallet.mockResolvedValue({ok:true,wallet:{userId:'bound-user',balanceUsd:'1.92',balancePhiMicro:'3000000',reservePhiMicro:null,settlementPhiMicro:null,valueStates:{settledBalanceUsdCents:'192',ecosystemBalanceUsdCents:'0'},sync:{projectionComplete:true},rollup:{lastEntryKaiPulse:'100',lastEntryKaiUpulse:'100000002'}}});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  const wallet=await identity.readWallet();
+  expect(wallet).toMatchObject({reserveUsdCents:'192',balancePhiMicro:'3000000',reservePhiMicro:'3000000',settlementPhiMicro:'0'});
+  expect(identity.knownWallet()?.wallet).toMatchObject({reservePhiMicro:'3000000',settlementPhiMicro:'0'});
+  expect(p.wallet).toHaveBeenCalledTimes(1);expect(p.proof).not.toHaveBeenCalled();expect(p.request).not.toHaveBeenCalled();
+ }finally{identity.dispose();}
+});
+it('retains known exact units when the same ordinary response also supplies its account-only chart',async()=>{
+ p.known=observation('192','100000002');p.known.wallet={...p.known.wallet,reservePhiMicro:'3000000',settlementPhiMicro:'0'};
+ const chartSource={schema:'receiz.wallet.chart-source.v129',authority:'authenticated-display-source',composition:'account-only',userId:'bound-user',throughKaiUPulse:'100000002',objects:[],lawfulValues:[],movements:[{id:'funded',kaiUPulse:'100000002',direction:'credit',phiMicro:'3000000',usdCents:'192',reserveSliceUsdCents:'192',profileSeed:false}]};
+ p.wallet.mockResolvedValue({ok:true,wallet:{userId:'bound-user',balanceUsd:'1.92',balancePhiMicro:'3000000',reservePhiMicro:null,settlementPhiMicro:null,valueStates:{settledBalanceUsdCents:'192',ecosystemBalanceUsdCents:'0'},sync:{projectionComplete:true},rollup:{lastEntryKaiPulse:'100',lastEntryKaiUpulse:'100000002'},chartSource}});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  const wallet=await identity.readWallet();expect(identity.knownWallet()?.historyBasis?.kind).toBe('portfolio-model-v129');
+  expect(wallet).toMatchObject({reserveUsdCents:'192',balancePhiMicro:'3000000',reservePhiMicro:'3000000',settlementPhiMicro:'0'});
+  expect(identity.knownWallet()?.wallet).toMatchObject({reservePhiMicro:'3000000',settlementPhiMicro:'0'});
+  expect(p.wallet).toHaveBeenCalledTimes(1);expect(p.proof).not.toHaveBeenCalled();expect(p.request).not.toHaveBeenCalled();
+ }finally{identity.dispose();}
+});
+it('does not reject an in-flight same-head quote when the ledger only fills missing exact units',async()=>{
+ const current=observation('192','100000002');current.wallet={...current.wallet,totalUsdCents:'392',settlementUsdCents:'200',balancePhiMicro:'5000000',reservePhiMicro:null,settlementPhiMicro:null};p.known=current;
+ p.retain.mockResolvedValue({proof,observation:{...current,walletScope:'native-full',wallet:{...current.wallet,reservePhiMicro:'4000000',settlementPhiMicro:'1000000'}}});
+ let finish!:(value:unknown)=>void;p.wallet.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{
+  const pending=identity.readWallet();await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));await identity.accountProof!();
+  finish({ok:true,wallet:{userId:'bound-user',balanceUsd:'5.92',balancePhiMicro:'5000000',reservePhiMicro:null,settlementPhiMicro:null,valueStates:{settledBalanceUsdCents:'192',ecosystemBalanceUsdCents:'400'},sync:{projectionComplete:true},rollup:{lastEntryKaiPulse:'100',lastEntryKaiUpulse:'100000002'}}});
+  expect(await pending).toMatchObject({totalUsdCents:'592',reserveUsdCents:'192',settlementUsdCents:'400',reservePhiMicro:'4000000',settlementPhiMicro:'1000000'});
+  expect(p.wallet).toHaveBeenCalledTimes(1);
+ }finally{identity.dispose();}
 });
 it('keeps a newer local note balance when reopening beside an older shared Ledger',async()=>{
  p.known={...observation('400','100000005'),source:'local-note-head',localHeadDigest:'c'.repeat(64)};p.restore.mockResolvedValue({proof,observation:observation()});

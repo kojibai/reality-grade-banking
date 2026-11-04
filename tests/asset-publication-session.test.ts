@@ -51,7 +51,7 @@ it('coalesces signing from independent controls before any delivery read or seal
   const source={digest:'b'.repeat(64),filename:'original.receizbundle',title:'First',kind:'proof',status:'held-proof',pulse:'100',bytes:new Uint8Array([1,2]),publication:{status:'published',showcaseArtifactDigest:'d'.repeat(64)}} as HeldDeposit;
   const first=identity.publishAssetToMarket(source),second=identity.publishAssetToMarket(source);
   expect(first).toBe(second);await vi.waitFor(()=>expect(p.ceremonies).toBe(1));
-  expect(p.grants).toBe(grants);expect(p.tokens.length).toBe(requests);expect(p.sourceReads).toBe(1);expect(p.publishers.length).toBe(publishers+1);
+  expect(p.grants).toBe(grants);expect(p.tokens.length).toBe(requests);expect(p.sourceReads).toBe(1);expect(p.publishers.length).toBe(publishers);
   finish();expect((await first).pbiSigned).toBe(true);expect(await second).toEqual(await first);expect(p.ceremonies).toBe(1);
  }finally{identity.dispose();}
 });

@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  normalizeLocalPbiAuthorshipInput,
   normalizeLocalPbiAuthorshipProof,
   verifyLocalPbiAuthorshipProof,
+  type LocalPbiAuthorshipInput,
   type LocalPbiAuthorshipProofV1,
 } from "@/app/lib/pbi/localAuthorship";
 import {
@@ -412,6 +414,25 @@ export function peekLocalPbiAuthorshipPublication(actionHashHexValue: string): L
   const actionHashHex = normalizeText(actionHashHexValue).toLowerCase();
   if (!HEX64_RE.test(actionHashHex)) return null;
   return readOutbox().entries[actionHashHex] ?? null;
+}
+
+/** Read the existing durable proof without changing its signed action. A
+ * source opener must still verify the exact proof before using the entry. */
+export function peekLocalPbiAuthorshipPublicationsForSource(
+  inputValue: LocalPbiAuthorshipInput,
+  artifactSha256: string,
+): readonly LocalPbiAuthorshipPublicationEntry[] {
+  const input = normalizeLocalPbiAuthorshipInput(inputValue);
+  if (!input || !HEX64_RE.test(artifactSha256)) return [];
+  // Unlike readOutbox(), this lookup does not start a migration or write.
+  const snapshot = readDurableLocalTruthAtomicSnapshot(LOCAL_PBI_AUTHORSHIP_OUTBOX_STORAGE_KEY);
+  const outbox = parseOutbox(snapshot.entry?.payload ?? null).outbox;
+  return Object.values(outbox.entries).filter(entry => {
+    const held = entry.proof.input;
+    return held.slug === input.slug && held.code === input.code
+      && held.pulse === input.pulse && held.claimHashHex === input.claimHashHex
+      && (!held.proofObjectScope || held.proofObjectScope.predecessorArtifactSha256 === artifactSha256);
+  });
 }
 
 export function peekLocalPbiProofObjectAuthorshipReconciliationReceipt(

@@ -40,11 +40,11 @@ function publicOriginalItems(rows:unknown[],p:Record<string,unknown>,collection=
  const originals=rows.filter(row=>object(row).showOnProfile===true).map(value=>{
   const row=object(value),market=object(row.marketPreview),media=row.media===null?null:object(row.media),id=text(row.id,128),long=object(row.longForm);
   if(collection&&typeof row.hasLongForm!=='boolean')throw Error('PROFILE_COLLECTION_READER_METADATA_INVALID');
-  return {id:`profile:${username}:${id}`,receizId:id,title:text(row.claim,8192)??text(long.title,500)??'Original',summary:text(row.claim,8192)??'',ownerUsername:username,ownerDisplayName:displayName,
+  return {id:`profile:${username}:${id}`,receizId:id,title:text(row.claim,8192)??text(long.title,500)??'Original',summary:text(row.claim,8192)??'',ownerUsername:username,ownerDisplayName:displayName,ownerUserId:p.userId,ownerCreatedAt:p.createdAt,
    canonicalHref:`https://receiz.com/${username}/verified/${encodeURIComponent(id??'')}`,verifyHref:row.verifyUrl??row.verifyPath,pulse:row.pulse,createdAt:row.createdAt,valueUsd:market.priceUsd,livePulseSeed:market.livePulseSeed,
    profileOriginal:{...row,media,hasLongForm:collection?row.hasLongForm:Boolean(long.text),longForm:row.longForm}};
  });
- return parsePublicMarket({ok:true,transport:{publicOriginals:originals}}).items.map(item=>({...item,ownerAvatarUrl:profileAvatarUrl(p.avatarUrl)})).sort(compareProfileOriginals);
+ return parsePublicMarket({ok:true,transport:{publicOriginals:originals}}).items.map(item=>p.avatarUrl===undefined?item:{...item,ownerAvatarUrl:profileAvatarUrl(p.avatarUrl)}).sort(compareProfileOriginals);
 }
 /** The anonymous verified-viewer route admits the selected public Original.
  * This is a display projection; it adds no ownership or trading authority. */

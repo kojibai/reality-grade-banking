@@ -109,6 +109,25 @@ it('merges restored financial history even when a later genuine wallet already h
  expect(mergeAccountLedgerObservation(merged,next)).toBe(merged);
 });
 
+it.each([null,undefined])('fills omitted exact rail units from a matching retained checkpoint after same-amount adoption (%s)',async missing=>{
+ const next=await accountLedgerObservation(proof(2,'192','1000000','200000000'),'bound-user','2026-10-18T12:00:00Z');
+ const current={...next,observedAt:'2026-10-18T12:05:00Z',wallet:{...next.wallet,reservePhiMicro:missing,settlementPhiMicro:missing}};
+ const before=structuredClone(current),merged=mergeAccountLedgerObservation(current,next);
+ expect(canAdoptAccountLedgerObservation(current,next)).toBe(true);
+ expect(merged.wallet).toMatchObject({totalUsdCents:'392',reserveUsdCents:'192',settlementUsdCents:'200',balancePhiMicro:'5000000',reservePhiMicro:'4000000',settlementPhiMicro:'1000000'});
+ expect(merged.observedAt).toBe(current.observedAt);expect(merged.history).toEqual(current.history);expect(current).toEqual(before);
+ expect(mergeAccountLedgerObservation(merged,next)).toBe(merged);
+});
+
+it('does not borrow rail units from a different transaction coordinate or overwrite a conflicting carried split',async()=>{
+ const next=await accountLedgerObservation(proof(2,'192','1000000','200000000'),'bound-user','2026-10-18T12:00:00Z');
+ const wallet={...next.wallet,reservePhiMicro:null,settlementPhiMicro:null};
+ for(const patch of [{kaiUpulse:'100000003'},{pulse:'101'},{reservePhiMicro:'1',settlementPhiMicro:'4999999'}]){
+  const current={...next,wallet:{...wallet,...patch}},merged=mergeAccountLedgerObservation(current,next);
+  expect(merged.wallet).toBe(current.wallet);
+ }
+});
+
 it('checks durable source freshness before reusing a complete display cache',async()=>{
  const s=setup(),old=proof(1),newer=proof(2,'600');
  const cached=(await s.ledger.retain(old,'bound-user')).observation;
@@ -162,4 +181,20 @@ it('keeps a quote hold scoped to its exact UID when a verified placement changes
  expect(mergeAccountLedgerObservation(previous,placed).quoteHold).toBeUndefined();
  const placedHold=createWalletQuoteHold(placed.wallet);
  expect(mergeAccountLedgerObservation(previous,{...placed,quoteHold:placedHold}).quoteHold).toBe(placedHold);
+});
+
+// Retention/custody mechanics at the already-admitted source seam above. This
+// does not qualify the test issuer or replace the independent real SDK refusals.
+it('keeps the exact admitted proof available for review without reopening storage or repricing history',async()=>{
+ const value=proof(1),owner={keyId:'a'.repeat(64),artifactOwnerReceizId:'owner.receiz.id'};
+ let state:unknown=null,blocked=false,closed=false;
+ const read=vi.fn(async()=>{if(blocked)throw Error('STORAGE_REOPEN_FORBIDDEN');return state;});
+ const ledger=createLocalAccountLedger({owner,read,write:async next=>{state=next;},assertOpen(){if(closed)throw Error('IDENTITY_CLOSED');}});
+ expect(Reflect.get(ledger,'knownOriginal')?.()).toBeNull();
+ await ledger.retain(value,'bound-user');blocked=true;read.mockClear();
+ const known=Reflect.get(ledger,'knownOriginal');expect(known).toBeTypeOf('function');
+ expect(known('bound-user')).toBe(value);expect(known('bound-user')).toBe(value);expect(read).not.toHaveBeenCalled();
+ expect(()=>known('foreign-user')).toThrow('ACCOUNT_MISMATCH');
+ owner.keyId='b'.repeat(64);expect(()=>known('bound-user')).toThrow('OWNER_MISMATCH');owner.keyId='a'.repeat(64);
+ closed=true;expect(()=>known()).toThrow('IDENTITY_CLOSED');
 });

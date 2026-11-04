@@ -6670,8 +6670,8 @@
     },
     {
       "path": "receiz/app/lib/pbi/localAuthorshipOutbox.ts",
-      "sha256": "2e92e36920768a609f586917cc991852d45d3565090b14cdfb634e0a22123f7a",
-      "bytes": 30484,
+      "sha256": "04d33248544059502effe49f3cac1debce9d4456d629ecfa21dc95e6f7a6974c",
+      "bytes": 31595,
       "mode": 420
     },
     {
@@ -7004,8 +7004,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "9c9b94764e81e3ad29778a801da6f3a01ede3c0a57ce0765cec17325bdde9b7d",
-      "bytes": 19509,
+      "sha256": "40c318c8e0a55cb225b7255fffc42f7245175ebb6470b14e9dae610e84a433bd",
+      "bytes": 20687,
       "mode": 420
     },
     {
@@ -7058,8 +7058,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSourceMarketPreview.ts",
-      "sha256": "3bc3ea2c79eca9322a24b099a7439499aa6cfb76a2befe4fa5a9fea84353eed4",
-      "bytes": 6214,
+      "sha256": "1667e953dbe734959e8caf73c050f066ce99d2c37a93c0f738f08d6dcbd334a9",
+      "bytes": 6837,
       "mode": 420
     },
     {
@@ -17242,6 +17242,27 @@
       "baseSha256": "0b235648281b4f529cf51ef3a4dd3d003ce2cce112793d3ba76a39c14e2304f2",
       "sha256": "35d65a77e85c91b9e1f5d474134e96c2acd8af055cd17bec0bd11aedec3d9af7",
       "purpose": "Use existing Showcase PBI action, canonical opened Source and durable PBI outbox before connected delivery. Preserve actual signature verification, original bytes, exact retry, native entry and financial primitives."
+    },
+    {
+      "id": "bankeiz-saved-original-presentation-and-authorship",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "9c9b94764e81e3ad29778a801da6f3a01ede3c0a57ce0765cec17325bdde9b7d",
+      "sha256": "40c318c8e0a55cb225b7255fffc42f7245175ebb6470b14e9dae610e84a433bd",
+      "purpose": "Resume the exact saved PBI authorship publication without another ceremony or an unsigned substitution. SDK proof admission remains unchanged."
+    },
+    {
+      "id": "bankeiz-saved-original-presentation-and-authorship",
+      "path": "receiz/app/lib/profile/showcase/importedSourceMarketPreview.ts",
+      "baseSha256": "3bc3ea2c79eca9322a24b099a7439499aa6cfb76a2befe4fa5a9fea84353eed4",
+      "sha256": "1667e953dbe734959e8caf73c050f066ce99d2c37a93c0f738f08d6dcbd334a9",
+      "purpose": "Reuse the existing full proof receipt link from the exact admitted source; no new fetch or proof rewrite."
+    },
+    {
+      "id": "bankeiz-saved-original-scoped-outbox",
+      "path": "receiz/app/lib/pbi/localAuthorshipOutbox.ts",
+      "baseSha256": "2e92e36920768a609f586917cc991852d45d3565090b14cdfb634e0a22123f7a",
+      "sha256": "04d33248544059502effe49f3cac1debce9d4456d629ecfa21dc95e6f7a6974c",
+      "purpose": "Look up the exact existing source-bound PBI proof without changing its signed action, starting a ceremony or migrating storage; canonical source and signature verification remain authoritative."
     }
   ],
   "historicalValuation": {
@@ -17710,7 +17731,7 @@
     },
     {
       "path": "app/lib/pbi/localAuthorshipOutbox.ts",
-      "sha256": "2e92e36920768a609f586917cc991852d45d3565090b14cdfb634e0a22123f7a"
+      "sha256": "04d33248544059502effe49f3cac1debce9d4456d629ecfa21dc95e6f7a6974c"
     },
     {
       "path": "app/lib/pbi/localVerifier.ts",
@@ -17922,7 +17943,7 @@
     },
     {
       "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "9c9b94764e81e3ad29778a801da6f3a01ede3c0a57ce0765cec17325bdde9b7d"
+      "sha256": "40c318c8e0a55cb225b7255fffc42f7245175ebb6470b14e9dae610e84a433bd"
     },
     {
       "path": "app/lib/profile/showcase/economyRetry.ts",
@@ -17958,7 +17979,7 @@
     },
     {
       "path": "app/lib/profile/showcase/importedSourceMarketPreview.ts",
-      "sha256": "3bc3ea2c79eca9322a24b099a7439499aa6cfb76a2befe4fa5a9fea84353eed4"
+      "sha256": "1667e953dbe734959e8caf73c050f066ce99d2c37a93c0f738f08d6dcbd334a9"
     },
     {
       "path": "app/lib/profile/showcase/importedSourcePlacement.client.ts",

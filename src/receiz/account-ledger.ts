@@ -7,6 +7,7 @@ import type { WalletObservation } from './wallet-observation';
 import { appendWalletPoint, mergeWalletPoints, walletPointTime, type WalletPoint } from './wallet-series';
 import { hasSettledAccountView } from './account-view';
 import {projectHistoricalWallet} from './historical-wallet';
+import {retainWalletPhiSplit} from './shared-wallet';
 
 type State = { schema: 'bank.account-ledger.v1'; accountUid: string; observedAt: string; sourceJson: string };
 type Owner = Pick<ReceizIdentityPublicBinding, 'keyId' | 'artifactOwnerReceizId'>;
@@ -35,7 +36,10 @@ export function mergeAccountLedgerObservation(current: WalletObservation | null,
   if (current && current.wallet.userId === next.wallet.userId && (['totalUsdCents', 'reserveUsdCents', 'settlementUsdCents', 'balancePhiMicro'] as const).every(key => current.wallet[key] === next.wallet[key])) {
     const quoteHold = current.quoteHold ?? next.quoteHold;
     const walletScope = current.walletScope === 'native-cash-only' || next.walletScope === 'native-cash-only' ? 'native-cash-only' : next.historyBasis ? next.walletScope : current.walletScope;
-    return history.length === (current.history?.length ?? 0) && history.every((point, index) => point === current.history?.[index]) && !!current.historyBasis && current.walletScope === walletScope && current.quoteHold === quoteHold ? current : { ...current, quoteHold, walletScope, history, historyBasis: next.historyBasis ?? current.historyBasis };
+    // This admitted checkpoint may carry exact units omitted by the aggregate
+    // display. Equal dollars alone cannot bind them to the same financial head.
+    const wallet=next.walletScope==='native-full'||next.walletScope==='native-cash-only'?retainWalletPhiSplit(next.wallet,current.wallet):current.wallet;
+    return wallet===current.wallet&&history.length === (current.history?.length ?? 0) && history.every((point, index) => point === current.history?.[index]) && !!current.historyBasis && current.walletScope === walletScope && current.quoteHold === quoteHold ? current : { ...current, wallet, quoteHold, walletScope, history, historyBasis: next.historyBasis ?? current.historyBasis };
   }
   const observedAt = current && Date.parse(current.observedAt) >= Date.parse(next.observedAt)
     ? new Date(Math.max(Date.now(), Date.parse(current.observedAt) + 1)).toISOString() : next.observedAt;
@@ -74,13 +78,24 @@ export async function accountLedgerObservation(proof: VerifiedAccountProof, acco
  * it is display routing, never ownership, funding or execution authority. */
 export function createLocalAccountLedger(input: { owner: Owner; read(): Promise<unknown>; write(value: State, expected: unknown): Promise<void>; assertOpen(): void }) {
   let pending: Promise<unknown> = Promise.resolve();
+  let knownSource: {accountUid:string;sourceJson:string;proof:VerifiedAccountProof}|null = null;
+  function knownOriginal(accountUid?:string):VerifiedAccountProof|null {
+    input.assertOpen();
+    if(knownSource&&(!isVerifiedAccountProof(knownSource.proof)
+      ||knownSource.proof.statement.account.keyId!==input.owner.keyId
+      ||knownSource.proof.statement.account.receizId!==input.owner.artifactOwnerReceizId))throw Error('ACCOUNT_LEDGER_OWNER_MISMATCH');
+    if(knownSource&&accountUid&&knownSource.accountUid!==accountUid)throw Error('ACCOUNT_LEDGER_ACCOUNT_MISMATCH');
+    return knownSource?.proof??null;
+  }
   async function stateDigest(value: unknown) { const sdk = await loadReceiz(); return sdk.sha256ReceizBytes(new TextEncoder().encode(JSON.stringify(value))); }
   async function openSource(value: unknown) {
     if (value === null || value === undefined) return null;
     const s = value as State;
     if (!s || typeof s !== 'object' || Object.keys(s).sort().join(',') !== 'accountUid,observedAt,schema,sourceJson' || s.schema !== 'bank.account-ledger.v1' || typeof s.sourceJson !== 'string' || typeof s.accountUid !== 'string' || typeof s.observedAt !== 'string') throw Error('ACCOUNT_LEDGER_SOURCE_REQUIRED');
-    const proof = await verifyAccountProof(new File([s.sourceJson], 'account-ledger.json', { type: 'application/json' }), input.owner);
+    const proof = knownSource?.sourceJson === s.sourceJson ? knownOriginal()!
+      : await verifyAccountProof(new File([s.sourceJson], 'account-ledger.json', { type: 'application/json' }), input.owner);
     input.assertOpen();
+    knownSource = {accountUid:s.accountUid,sourceJson:s.sourceJson,proof};
     return { proof, state: s };
   }
   async function open(value: unknown): Promise<LocalAccountLedger | null> {
@@ -105,7 +120,7 @@ export function createLocalAccountLedger(input: { owner: Owner; read(): Promise<
       const observedAt = new Date().toISOString(), observation = await accountLedgerObservation(proof, accountUid, observedAt);
       const state: State = { schema: 'bank.account-ledger.v1', accountUid, observedAt, sourceJson: new TextDecoder('utf-8', { fatal: true }).decode(heldAccountProofBytes(proof)) };
       input.assertOpen();
-      try { await input.write(state, previous); input.assertOpen(); observation.historyBasis!.retainedStateSha256 = await stateDigest(state); return { proof, observation }; }
+      try { await input.write(state, previous); input.assertOpen(); knownSource = {accountUid,sourceJson:state.sourceJson,proof}; observation.historyBasis!.retainedStateSha256 = await stateDigest(state); return { proof, observation }; }
       catch (cause) {
         input.assertOpen();
         // A competing tab may have kept another genuine extension. Reopen it
@@ -116,9 +131,13 @@ export function createLocalAccountLedger(input: { owner: Owner; read(): Promise<
     throw Error('ACCOUNT_LEDGER_RETENTION_CHANGED');
   }
   return {
-    async original(): Promise<VerifiedAccountProof | null> {
+    /** The exact canonical handle already opened for this owner. This does not
+     * observe a newer account head or promote historical evidence to live state. */
+    knownOriginal,
+    async original(accountUid?:string): Promise<VerifiedAccountProof | null> {
       input.assertOpen(); await pending.catch(() => {});
       const source = await openSource(await input.read()); input.assertOpen();
+      if(source&&accountUid&&source.state.accountUid!==accountUid)throw Error('ACCOUNT_LEDGER_ACCOUNT_MISMATCH');
       return source?.proof ?? null;
     },
     async restore(current?: WalletObservation | null) {
