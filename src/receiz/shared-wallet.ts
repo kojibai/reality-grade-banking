@@ -56,9 +56,16 @@ export function readWalletPhiSplit(input:unknown,balancePhiMicro:string):Pick<Sh
  if(value.reservePhiMicro===undefined&&value.settlementPhiMicro===undefined)return {};
  return {reservePhiMicro:reserve,settlementPhiMicro:settlement};
 }
-/** Fill omitted display aliases only beneath the exact same financial head.
- * A dollar quote never supplies units or replaces a conflicting carried split. */
+/** Retain carried display data only beneath its unchanged account/funding head.
+ * A thin chart update need not repeat the funding lots. Quotes never supply
+ * units or replace a conflicting carried native split. */
 export function retainWalletPhiSplit(previous:SharedWallet,next:SharedWallet):SharedWallet{
+ if(next.reserveUnitAttribution===undefined&&previous.reserveUnitAttribution){
+  const reserveUnitAttribution=readWalletReserveUnitAttribution(previous.reserveUnitAttribution,{userId:next.userId,
+   reserveUsdCents:next.currentBalanceSource?.ledgerSettledUsdCents??next.reserveUsdCents,
+   lastEntryAt:next.lastEntryAt??null,lastEntryKaiUpulse:next.kaiUpulse});
+  if(reserveUnitAttribution)next={...next,reserveUnitAttribution};
+ }
  if(!next.kaiUpulse||!/^\d{1,30}$/.test(next.kaiUpulse)||!(['userId','balancePhiMicro','reserveUsdCents','kaiUpulse','pulse'] as const).every(key=>previous[key]===next[key]))return next;
  const split=readWalletPhiSplit(previous,previous.balancePhiMicro);
  if(split.reservePhiMicro==null||split.settlementPhiMicro==null

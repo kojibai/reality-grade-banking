@@ -36,6 +36,7 @@ it('publishes the first Original normally and signs its admitted head from a new
   if(body.action==='initialize-blocks')return Response.json({status:'uploads',scope:body.scope,uploads:body.references.map((reference:{sha256:string})=>({reference,alreadyStored:blocks.has(reference.sha256),signedUrl:`https://storage.test/${reference.sha256}`,stagingObjectName:reference.sha256}))});
   if(body.action==='commit-blocks'){for(const item of body.blocks){const bytes=staged.get(item.stagingObjectName);if(!bytes)throw Error('Missing staged bytes');blocks.set(item.reference.sha256,bytes);}return Response.json({status:'stored',scope:body.scope});}
   expect(body.action).toBe('finalize');finalizations++;timeline.push('finalize');
+  if(complete&&body.scope.artifactDigest!==complete.artifactDigest&&body.publicationPredecessorArtifactDigest&&body.publicationPredecessorArtifactDigest!==complete.artifactDigest)return Response.json({status:'pending',code:'PROFILE_SHOWCASE_COMPLETE_TRANSPORT_PREDECESSOR_MISMATCH'});
   if(finalHTTPStatus)return Response.json({error:'access_denied'},{status:finalHTTPStatus});
   const source=await r.showcaseTransport.reconstructProfileShowcaseCompleteSourceTransport(body.transport,async(ref:{sha256:string})=>blocks.get(ref.sha256)??null);
   const vault=r.showcaseVault.createProfileShowcaseBoundedEdgeVault({databaseName:`independent-receiver-${finalizations}`});
@@ -65,4 +66,19 @@ it('publishes the first Original normally and signs its admitted head from a new
  const receipt=await runtime.publish(next.artifact,authorize).catch((error:Error)=>{expect(ceremonies).toBe(1);expect(requests).not.toContain(`/api/profile/${username}/originals`);throw Error(error.message);});expect(receipt.status).toBe('published');expect(receipt.artifactDigest).not.toBe(unsignedHead);expect(ceremonies).toBe(1);expect(requests).not.toContain(`/api/profile/${username}/originals`);
  const last=complete.children.at(-1),source=await r.openImportedProofSource(new File([last.exactSealedArtifactBytes],'placement.receizbundle',{type:'application/vnd.receiz.bundle+json'}),{resolveSourceBlock:r.createImportedProofSourceCustody().resolveBlock});
  expect(source.projection.carriedOriginal?.hasPbiSignature,'A successful Sign now must publish the signed placement, not acknowledge the pending unsigned placement').toBe(true);
+ // Keep both completed local commits. Sign the selected second Original only
+ // after a third append has advanced the globally accepted head.
+ const older=await runtime.prepare({kind:'image',title:'Already public unsigned Original',description:'',longForm:'Exact selected source',files:[{id:'photo',role:'primary',file:image}]});
+ expect((await runtime.publish(older.artifact)).status).toBe('published');
+ const later=await runtime.prepare({kind:'image',title:'Later public Original',description:'',longForm:'Advance the accepted head',files:[{id:'photo',role:'primary',file:image}]});
+ expect((await runtime.publish(later.artifact)).status).toBe('published');
+ const beforeSignedRetry={ceremonies,seals};runtime=await open();requests.length=0;
+ expect((await runtime.publish(older.artifact,authorize)).status).toBe('published');
+ expect(ceremonies).toBe(beforeSignedRetry.ceremonies+1);
+ const signedOlder=complete.children.at(-1),signedOlderSource=await r.openImportedProofSource(new File([signedOlder.exactSealedArtifactBytes],'signed-older.receizbundle',{type:'application/vnd.receiz.bundle+json'}),{resolveSourceBlock:r.createImportedProofSourceCustody().resolveBlock});
+ expect(signedOlderSource.projection.carriedOriginal?.importedSource?.reference.artifactSha256).toBe(older.reference.artifactSha256);
+ expect(signedOlderSource.projection.carriedOriginal?.hasPbiSignature).toBe(true);
+ const beforeResume={ceremonies,seals,artifactDigest:complete.artifactDigest};runtime=await open();
+ expect((await runtime.resumeSignedPublication(older.artifact))?.status).toBe('published');
+ expect({ceremonies,seals,artifactDigest:complete.artifactDigest}).toEqual(beforeResume);
 },60000);

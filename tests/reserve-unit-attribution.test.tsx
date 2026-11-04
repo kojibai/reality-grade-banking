@@ -2,7 +2,7 @@
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {expect,it,vi} from 'vitest';
-import {parseSharedWallet} from '../src/receiz/shared-wallet';
+import {parseSharedWallet,retainWalletPhiSplit} from '../src/receiz/shared-wallet';
 import {readWalletObservation} from '../src/receiz/wallet-observation';
 import {BANK_APPLICATION_ID} from '../src/receiz/config';
 import {BalanceDetails} from '../src/features/account/BalanceDetails';
@@ -12,6 +12,22 @@ const attribution={basis:'calculated-attribution',rule:'receiz-card-fifo-cent-in
 const packet=()=>({ok:true,wallet:{userId:uid,balancePhiMicro:'143714996830',balanceUsd:'10009511.52',reservePhiMicro:null,settlementPhiMicro:null,
  reserveUnitAttribution:attribution,valueStates:{settledBalanceUsdCents:'192',ecosystemBalanceUsdCents:'1000950960'},sync:{projectionComplete:true},rollup:{lastEntryAt:at,lastEntryKaiUpulse:kai,lastEntryKaiPulse:'14978960'}}});
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+it('keeps the recorded Reserve units when a same-head chart update omits duplicate funding data',()=>{
+ const previous=parseSharedWallet(packet(),uid),thin=packet();
+ delete (thin.wallet as Partial<typeof thin.wallet>).reserveUnitAttribution;
+ const next=parseSharedWallet(thin,uid);
+ expect(next.reserveUnitAttribution).toBeUndefined();
+ const retained=retainWalletPhiSplit(previous,next);
+ expect(retained.reserveUnitAttribution).toEqual(previous.reserveUnitAttribution);
+ expect(retained.reservePhiMicro).toBeNull();
+ expect(retained.settlementPhiMicro).toBeNull();
+ const repriced={...next,totalUsdCents:'1000951153',settlementUsdCents:'1000950961',balancePhiMicro:'143714996831'};
+ expect(retainWalletPhiSplit(previous,repriced).reserveUnitAttribution).toEqual(previous.reserveUnitAttribution);
+ for(const changed of [{...next,userId:'another-account'},{...next,reserveUsdCents:'193'},
+  {...next,lastEntryAt:'2026-11-04T01:06:35Z'},{...next,kaiUpulse:'14978960035737'}]){
+  expect(retainWalletPhiSplit(previous,changed).reserveUnitAttribution).toBeUndefined();
+ }
+});
 it('retains recorded Reserve unit attribution across a private observation reopen without changing native units',()=>{
  const wallet=parseSharedWallet(packet(),uid);expect(wallet.reserveUnitAttribution?.reservePhiMicro).toBe('27219');
  expect(wallet.reservePhiMicro).toBeNull();expect(wallet.settlementPhiMicro).toBeNull();
@@ -37,6 +53,10 @@ it('opens Reserve with its carried Phi and full calculation disclosure without f
   expect(bindings.textContent).toContain(kai);
   expect(bindings.textContent).toContain('Recorded funding allocation');
   expect(host.querySelector('[data-balance-rail="reserve"]')?.textContent).not.toContain('Exact calculation source not carried');
+  const thin=packet();delete (thin.wallet as Partial<typeof thin.wallet>).reserveUnitAttribution;
+  await act(async()=>root.render(<BalanceDetails wallet={retainWalletPhiSplit(wallet,parseSharedWallet(thin,uid))}/>));
+  expect(host.querySelector('[data-balance-rail="reserve"] [data-rail-phi]')?.textContent).toBe('0.027219 Φ');
+  expect(host.querySelector('[aria-label="Recorded Reserve unit attribution"]')).not.toBeNull();
   expect(calculation).not.toHaveBeenCalled();
   expect(fetch).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());fetch.mockRestore();calculation.mockRestore();}

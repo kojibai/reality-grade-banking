@@ -7088,7 +7088,7 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
-      "sha256": "35d65a77e85c91b9e1f5d474134e96c2acd8af055cd17bec0bd11aedec3d9af7",
+      "sha256": "da0b7a71a1bf40f96fbc2c9b96be97ff999829e185da0db6b6282565e007bd1c",
       "bytes": 23350,
       "mode": 420
     },
@@ -17263,6 +17263,13 @@
       "baseSha256": "2e92e36920768a609f586917cc991852d45d3565090b14cdfb634e0a22123f7a",
       "sha256": "04d33248544059502effe49f3cac1debce9d4456d629ecfa21dc95e6f7a6974c",
       "purpose": "Look up the exact existing source-bound PBI proof without changing its signed action, starting a ceremony or migrating storage; canonical source and signature verification remain authoritative."
+    },
+    {
+      "id": "bankeiz-signed-original-current-head-selection",
+      "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
+      "baseSha256": "35d65a77e85c91b9e1f5d474134e96c2acd8af055cd17bec0bd11aedec3d9af7",
+      "sha256": "da0b7a71a1bf40f96fbc2c9b96be97ff999829e185da0db6b6282565e007bd1c",
+      "purpose": "Replay the exact saved PBI addition; an unsigned delivery is a prerequisite only when it directly extends the already-captured accepted head. No extra account/history reads or changes to SDK admission."
     }
   ],
   "historicalValuation": {
@@ -17999,7 +18006,7 @@
     },
     {
       "path": "app/lib/profile/showcase/incrementalAssetPublication.client.ts",
-      "sha256": "35d65a77e85c91b9e1f5d474134e96c2acd8af055cd17bec0bd11aedec3d9af7"
+      "sha256": "da0b7a71a1bf40f96fbc2c9b96be97ff999829e185da0db6b6282565e007bd1c"
     },
     {
       "path": "app/lib/profile/showcase/legacyMigrationPayload.ts",

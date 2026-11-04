@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.0.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "385ef3095617a9f29ad884df826f2e5c15692da5fd7e13bc6c56573d73eea231",
-  "sourceTreeSha256": "7cd02ba83d046126fd543669a9f6c48ca15e1e7117fd658e5baa317c81df9bb4",
+  "moduleSha256": "aa2a52ede180a047a6acd3fe787590111c796d7d614430b9002deed3b26c3151",
+  "sourceTreeSha256": "b0a7f8efbace678f7e4e267fd5bf8cc1089993b3dcf0fb72dd2ddafc83522a63",
   "inputs": 517,
-  "bytes": 3010922,
+  "bytes": 3010995,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -1061,6 +1061,13 @@
       "baseSha256": "2e92e36920768a609f586917cc991852d45d3565090b14cdfb634e0a22123f7a",
       "sha256": "04d33248544059502effe49f3cac1debce9d4456d629ecfa21dc95e6f7a6974c",
       "purpose": "Look up the exact existing source-bound PBI proof without changing its signed action, starting a ceremony or migrating storage; canonical source and signature verification remain authoritative."
+    },
+    {
+      "id": "bankeiz-signed-original-current-head-selection",
+      "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
+      "baseSha256": "35d65a77e85c91b9e1f5d474134e96c2acd8af055cd17bec0bd11aedec3d9af7",
+      "sha256": "da0b7a71a1bf40f96fbc2c9b96be97ff999829e185da0db6b6282565e007bd1c",
+      "purpose": "Replay the exact saved PBI addition; an unsigned delivery is a prerequisite only when it directly extends the already-captured accepted head. No extra account/history reads or changes to SDK admission."
     }
   ],
   "browserDefines": {
