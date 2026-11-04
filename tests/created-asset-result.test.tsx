@@ -23,7 +23,7 @@ it.each([{signed:false,label:'Retry public delivery',action:'retry'},{signed:tru
 });
 
 it('keeps signed public results openable and preserves the save and close actions',()=>{
- const view=render({...result,pbiSigned:true},{publicItem:{id:'profile:artist:song'}});
+ const view=render({...result,pbiSigned:true,marketPublication:{status:'published'}},{publicItem:{id:'profile:artist:song'}});
  const link=view.host.querySelector<HTMLAnchorElement>('a.primary-button')!;
  expect(link.getAttribute('href')).toBe('/asset/profile%3Aartist%3Asong/');
  link.addEventListener('click',event=>event.preventDefault());act(()=>link.click());
@@ -42,25 +42,28 @@ it('preserves the profile destination and prevents a busy unsigned result from s
  act(()=>view.button('Signing your Original…').click());expect(view.actions).toEqual([]);
 });
 
-it('shows sealed accrual before this Original’s own Sign action unlocks its value',()=>{
+it('shows sealed accrual and this Original’s own authorship action without claiming spend authority',()=>{
  const view=render(result);
  expect(view.host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');
  expect(view.host.textContent).toContain('Your Original is already earning.');
  expect(view.host.textContent).toContain('Your Original is already public on Receiz');
  expect(view.host.textContent).not.toMatch(/Sign this Original with PBI to publish|PBI signing displays|same action publishes/i);
- expect(view.host.querySelector('a[href="/learn/earn-from-originals/"]')?.textContent).toContain('Sign this Original to unlock its value');
+ expect(view.host.querySelector('a[href="/learn/earn-from-originals/"]')?.textContent).toContain('Inspect this Original’s value');
  expect(view.host.textContent).not.toMatch(/enable earning|earning turns on|start earning/i);
  act(()=>view.button('Sign').click());expect(view.actions).toEqual(['publish']);
 });
 
-it('keeps existing Receiz publication distinct from pending Market listing after signing',()=>{
- const view=render({...result,pbiSigned:true,marketPublication:{status:'pending',code:'DELIVERY_PENDING'}});
- expect(view.host.querySelector('h1')?.textContent).toBe('Your Original is signed and public.');
+it.each(['pending','rejected'] as const)('keeps Finish publishing available when the Source is public but signature delivery is $status',status=>{
+ const view=render({...result,pbiSigned:true,marketPublication:{status,code:'SIGNATURE_DELIVERY_PENDING'}});
+ expect(view.host.querySelector('h1')?.textContent).toBe('Your Original is signed.');
  expect(view.host.textContent).toContain('Your Original is public on Receiz.');
- expect(view.host.textContent).toContain('Market listing delivery is pending.');
+ expect(view.host.textContent).toContain(status==='pending'?'Market listing delivery is pending.':'Market listing delivery needs attention.');
  expect(view.host.textContent).not.toContain('public on your profile and in Market');
+ expect(view.host.textContent).not.toContain('signature unlocks its accrued value');
+ expect(view.host.querySelector('details')?.textContent).toContain('SIGNATURE_DELIVERY_PENDING');
  expect(view.button('Sign')).toBeUndefined();
  expect(view.host.querySelector('a.primary-button')?.getAttribute('href')).toBe('/artist/');
+ act(()=>view.button('Finish publishing').click());expect(view.actions).toEqual(['publish']);
 });
 
 it('shows the held delivery result inside Asset details without another request',()=>{
@@ -76,4 +79,10 @@ it('keeps the admitted artwork in the sealed result while public delivery is pen
  const view=render({...result,publication:{status:'pending'}},{publicItem:{id:'profile:artist:song',artworkUrl:'blob:already-held-artwork'}});
  expect(view.host.querySelector('.asset-studio-cover')?.getAttribute('src')).toBe('blob:already-held-artwork');
  expect(view.host.querySelector('.asset-studio-empty')).toBeNull();
+});
+
+it('describes confirmed PBI delivery without claiming executable funding',()=>{
+ const view=render({...result,pbiSigned:true,publication:{status:'published',showcaseArtifactDigest:'b'.repeat(64)},marketPublication:{status:'published',showcaseArtifactDigest:'c'.repeat(64)}});
+ expect(view.host.textContent).toContain('Its PBI signature is accepted.');expect(view.host.textContent).not.toMatch(/unlocks its accrued value|unlocked value/);expect(view.host.querySelector('a[href="/learn/earn-from-originals/"]')?.textContent).toContain('Inspect this signed Original’s value');
+
 });

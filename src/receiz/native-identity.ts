@@ -1490,7 +1490,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const publication=await(await import('./asset-publication-runtime')).loadAssetPublicationRuntime();
     let signer=preparedSealer;
     const sealDocument:Parameters<import('./offline-notes').BankNoteRuntimeFactory>[0]['sealDocument']=async args=>(await(signer??=assetDocumentSealer()))(args);
-    return publication.createConnectedAssetPublicationRuntime({identity:new Uint8Array(bytes),passphrase:phrase,account:{uid,username},sealDocument,assertCurrent,onLocalAdmission:admission=>{assertCurrent();retainCalendarOriginal(uid,admission.original);adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:uid,isCurrent:()=>!lifetime.signal.aborted&&(accountUid??knownWallet?.wallet.userId)===uid&&(!presentationUsername||presentationUsername===username),artwork:artwork??admission.artwork});},fetchImpl:createAssetPublicationFetch({applicationId:BANK_APPLICATION_ID,username,assertCurrent,request:async(path,init)=>{const current=await connectPublication(),currentAccount=clientAccounts.get(current),currentRequest=clientFetches.get(current);assertCurrent();if(currentAccount?.accountUid!==uid||!currentRequest)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');const held=await loadDeviceIdentity();if(!held||await sdk.sha256ReceizBytes(held.bytes)!==binding.artifactSha256)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');return currentRequest(path,init);}})});
+    return publication.createConnectedAssetPublicationRuntime({identity:new Uint8Array(bytes),passphrase:phrase,account:{uid,username},sealDocument,assertCurrent,onLocalAdmission:admission=>{assertCurrent();retainCalendarOriginal(uid,admission.original);adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:uid,isCurrent:()=>!lifetime.signal.aborted&&(accountUid??knownWallet?.wallet.userId)===uid&&(!presentationUsername||presentationUsername===username),artwork:artwork??admission.artwork});recordAssetSignatureAdmission(admission);},fetchImpl:createAssetPublicationFetch({applicationId:BANK_APPLICATION_ID,username,assertCurrent,request:async(path,init)=>{const current=await connectPublication(),currentAccount=clientAccounts.get(current),currentRequest=clientFetches.get(current);assertCurrent();if(currentAccount?.accountUid!==uid||!currentRequest)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');const held=await loadDeviceIdentity();if(!held||await sdk.sha256ReceizBytes(held.bytes)!==binding.artifactSha256)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');return currentRequest(path,init);}})});
   }
   // One publisher retains its canonically admitted head for this open ID.
   // Rebuilding it on each Create discarded reusable custody and recovery work.
@@ -1573,7 +1573,13 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const deposit=heldDeposit??await projectOwnedSource(new Uint8Array(await result.file.arrayBuffer()),result.file.name);
     return Object.assign(deposit,{publication:result.publication});
   }
-  const assetSigningFlights=new Map<string,{receipt:Promise<import('./asset-publication').AssetPublicationReceipt|null>;result?:Promise<HeldDeposit>}>();
+  type AssetSigningFlight={receipt:Promise<import('./asset-publication').AssetPublicationReceipt|null>;result?:Promise<HeldDeposit>;signaturePbiReceiptHash?:string};
+  const assetSigningFlights=new Map<string,AssetSigningFlight>();
+  function recordAssetSignatureAdmission(admission:import('./asset-publication-runtime').ConnectedAssetLocalAdmission){
+    const reference=admission.sourceReference as {artifactSha256?:unknown},original=admission.original as {hasPbiSignature?:unknown;pbiReceiptHash?:unknown};
+    const flight=typeof reference.artifactSha256==='string'?assetSigningFlights.get(reference.artifactSha256):undefined;
+    if(flight&&original.hasPbiSignature===true&&typeof original.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/.test(original.pbiReceiptHash))flight.signaturePbiReceiptHash=original.pbiReceiptHash;
+  }
   function publishAssetSignature(digest:string,resumeOnly=false):Promise<import('./asset-publication').AssetPublicationReceipt|null>{
     noteOpen();const held=assetSigningFlights.get(digest);if(held)return held.receipt;
     const signing=(async()=>{
@@ -1588,10 +1594,12 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       return signAssetMarketPublication(input,credential,noteOpen);
     });noteOpen();
     if(!receipt)return null;
-    const adoption=await import('./asset-publication-adoption');adoption.acknowledgeAssetPublication(digest,receipt);
+    const signaturePbiReceiptHash=assetSigningFlights.get(digest)?.signaturePbiReceiptHash;
+    if(!signaturePbiReceiptHash)throw Error('BANK_ASSET_SIGNATURE_ADMISSION_REQUIRED');
+    const adoption=await import('./asset-publication-adoption');adoption.acknowledgeAssetPublication(digest,receipt,signaturePbiReceiptHash);
     if(receipt.status==='published')void adoption.refreshAssetPublicationCatalog(digest);
     return receipt;
-    })();const flight={receipt:signing};assetSigningFlights.set(digest,flight);
+    })();const flight:AssetSigningFlight={receipt:signing};assetSigningFlights.set(digest,flight);
     void signing.finally(()=>{if(assetSigningFlights.get(digest)===flight)assetSigningFlights.delete(digest);}).catch(()=>{});
     return signing;
   }
