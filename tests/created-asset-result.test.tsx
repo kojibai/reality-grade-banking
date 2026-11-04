@@ -23,7 +23,7 @@ it.each([{signed:false,label:'Retry public delivery',action:'retry'},{signed:tru
 });
 
 it('keeps signed public results openable and preserves the save and close actions',()=>{
- const view=render({...result,pbiSigned:true},{publicItem:{id:'profile:artist:song'}});
+ const view=render({...result,pbiSigned:true,marketPublication:{status:'published'}},{publicItem:{id:'profile:artist:song'}});
  const link=view.host.querySelector<HTMLAnchorElement>('a.primary-button')!;
  expect(link.getAttribute('href')).toBe('/asset/profile%3Aartist%3Asong/');
  link.addEventListener('click',event=>event.preventDefault());act(()=>link.click());
@@ -53,14 +53,17 @@ it('shows sealed accrual before this Original’s own Sign action unlocks its va
  act(()=>view.button('Sign').click());expect(view.actions).toEqual(['publish']);
 });
 
-it('keeps existing Receiz publication distinct from pending Market listing after signing',()=>{
- const view=render({...result,pbiSigned:true,marketPublication:{status:'pending',code:'DELIVERY_PENDING'}});
- expect(view.host.querySelector('h1')?.textContent).toBe('Your Original is signed and public.');
+it.each(['pending','rejected'] as const)('keeps Finish publishing available when the Source is public but signature delivery is $status',status=>{
+ const view=render({...result,pbiSigned:true,marketPublication:{status,code:'SIGNATURE_DELIVERY_PENDING'}});
+ expect(view.host.querySelector('h1')?.textContent).toBe('Your Original is signed.');
  expect(view.host.textContent).toContain('Your Original is public on Receiz.');
- expect(view.host.textContent).toContain('Market listing delivery is pending.');
+ expect(view.host.textContent).toContain(status==='pending'?'Market listing delivery is pending.':'Market listing delivery needs attention.');
  expect(view.host.textContent).not.toContain('public on your profile and in Market');
+ expect(view.host.textContent).not.toContain('signature unlocks its accrued value');
+ expect(view.host.querySelector('details')?.textContent).toContain('SIGNATURE_DELIVERY_PENDING');
  expect(view.button('Sign')).toBeUndefined();
  expect(view.host.querySelector('a.primary-button')?.getAttribute('href')).toBe('/artist/');
+ act(()=>view.button('Finish publishing').click());expect(view.actions).toEqual(['publish']);
 });
 
 it('shows the held delivery result inside Asset details without another request',()=>{

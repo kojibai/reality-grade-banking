@@ -4,7 +4,7 @@ import {RECEIZ_VERSION} from './client';
 import type {PublicRecord} from './public-network';
 import type {LedgerValueDisplay} from './ledger-value';
 import {readLedgerValueOperands} from './ledger-value';
-import {safeReceizPublicUrl} from './public-market';
+import {readPublicProofPresentation,safeReceizPublicUrl} from './public-market';
 import {DEFAULT_ISSUANCE_POLICY} from './canonical-market-issuance';
 import {publicSportsHistoryObservation} from './market-projection/sports-observations';
 import {marketPulseAtOrAfterTime} from './market-projection/sealed-copies';
@@ -75,6 +75,8 @@ export function readLedgerDetails(raw:unknown):LedgerFields {
  if(Object.keys(chart).length)result.marketAssetChart=chart;
  const original=safeReceizPublicUrl(source.originalUrl,'original');if(original)result.originalUrl=original;
  const reading=safeReceizPublicUrl(source.readingUrl,'proof');if(reading){result.readingUrl=reading;if(typeof source.hasLongForm==='boolean')result.hasLongForm=source.hasLongForm;}
+ const publicAsset=readPublicProofPresentation(source.publicAsset);
+ if(publicAsset&&publicAsset.id===result.marketItemId&&publicAsset.assetId===result.assetId&&publicAsset.originalUrl===original)result.publicAsset=publicAsset as unknown as LedgerFields;
  return result;
 }
 export function readLedgerValuationTrace(raw:unknown):LedgerFields|null {

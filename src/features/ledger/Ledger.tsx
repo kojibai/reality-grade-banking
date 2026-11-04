@@ -1,3 +1,4 @@
+import {usePublicProofQuotes} from '../../receiz/usePublicQuotes';
 import {isCertificateMovement,ledgerShareCertificate} from '../../receiz/ledger-share-certificate';
 import {formatUnits} from '../../core/money';
 import {InlineOpening} from '../../components/InlineOpening';
@@ -23,6 +24,7 @@ import type { PersonalHistory } from '../../receiz/personal-history';
 import { usePublicNetwork } from '../../receiz/usePublicNetwork';
 import {enrichWalletFundingContext} from '../../receiz/ledger-wallet-enrichment';
 import type { usePrivateHistory } from '../../receiz/usePrivateHistory';
+import {PublicAssetTradeHost} from '../../public-explorer/PublicAssetTradeHost';
 
 const sourceLabels = { actions: 'Recorded actions', wallet: 'Wallet movements', graph: 'Proof Graph', proofs: 'Showcase proofs' };
 const noRecords:PublicRecord[]=[];
@@ -56,7 +58,8 @@ export function Ledger({ active = true, personalHistory = null, privateHistory,i
   const [prepareMine,setPrepareMine]=useState(initialTab==='mine');
   const toggleExpanded=useCallback((id:string)=>setExpanded(current=>current===id?null:id),[]);
   const { records:sourceRecords, sources, bootstrap, capturedAt, refresh, loadMore } = usePublicNetwork(active && tab === 'public');
-  const records=useMemo(()=>enrichWalletFundingContext(sourceRecords,sourceRecords),[sourceRecords]);
+  const quotedRecords=usePublicProofQuotes(sourceRecords,active&&tab==='public');
+  const records=useMemo(()=>enrichWalletFundingContext(quotedRecords,quotedRecords),[quotedRecords]);
   const sentinel = useRef<HTMLDivElement | null>(null), privateSentinel = useRef<HTMLDivElement | null>(null);
   // Prepare private history on its first opening, then retain it across tabs.
   // A tab switch changes the view, not the already held source relationships.
@@ -93,5 +96,5 @@ export function Ledger({ active = true, personalHistory = null, privateHistory,i
       <nav className="ledger-activity-filters" aria-label="Activity type">{ACTIVITY_FILTERS.map(value=><button key={value} aria-pressed={value===filter} onClick={()=>{setFilter(value);setShown(50);setExpanded(null);}}>{value==='all'?'All activity':value[0].toUpperCase()+value.slice(1)}</button>)}</nav><div className="rows-surface ledger-public-rows">{filtered.slice(0, shown).map(({record,executionRecords}) => <LedgerRow executionRecords={executionRecords} key={record.id} record={record} valueSource={valueSource} relations={relations} expanded={expanded === record.id} onExpand={toggleExpanded} />)}{!filtered.length && <div className="empty-state">{bootstrap || busy ? <InlineOpening label="Preparing public activity"/> : records.length ? 'No matching activity in the loaded sources.' : 'Public activity could not be retrieved. Refresh to try again.'}</div>}</div>
       <div ref={sentinel} className="public-market-sentinel" aria-hidden="true" />{(typeof IntersectionObserver === 'undefined'||!!queries.public.trim()&&shown<filtered.length) && <button className="text-button public-market-more" onClick={() => shown < filtered.length ? setShown(count => count + 50) : void loadMore()}>Show more activity</button>}
     </> : personalHistory?.available || privateHistory?.cache ? <><div className="ledger-public-header"><span>{privateHistory?.cache ? 'Your private activity' : privateHistory ? 'Your private activity' : 'History carried by your Identity Record'}</span>{privateHistory && <button onClick={() => void privateHistory.refresh()} disabled={privateHistory.busy}><RefreshCw size={14} />Refresh</button>}</div>{privateHistory?.error && <p className="body-copy small-copy" role="status">{privateHistory.error}</p>}<nav className="ledger-activity-filters" aria-label="Your activity direction">{(['all','out','in'] as const).map(direction=><button key={direction} aria-pressed={historyFilter===direction} onClick={()=>{setHistoryFilter(direction);setShown(50);setExpanded(null);}}>{direction==='all'?'All':direction==='out'?'Sent':'Received'}</button>)}</nav><div className="rows-surface ledger-personal-rows">{visibleMine.slice(0, shown).map(({record,executionRecords}) => <LedgerRow personal executionRecords={executionRecords} key={record.id} record={record} valueSource={valueSource} relations={relations} expanded={expanded === record.id} onExpand={toggleExpanded} />)}{!visibleMine.length && <div className="empty-state">{privateHistory?.busy ? <InlineOpening label="Preparing your activity"/> : privateHistory?.error ? 'Your activity could not be loaded. Refresh to try again.' : queries.mine.trim() ? 'No matching activity in your loaded history.' : historyFilter!=='all' ? `No ${historyFilter==='in'?'received':'sent'} activity in the loaded history.` : privateHistory?.cache ? 'No account activity recorded yet.' : 'Previous activity is not available yet.'}</div>}</div><div ref={privateSentinel} className="public-market-sentinel" aria-hidden="true" />{(shown < visibleMine.length || privateHistory?.canLoadMore) && <button className="text-button" disabled={privateHistory?.busy} onClick={() => shown < visibleMine.length ? setShown(count => count + 50) : void privateHistory?.loadMore()}>{privateHistory?.busy ? 'Loading activity…' : 'Show more activity'}</button>}</> : <div className="empty-state"><h2>Your history</h2><p>{privateHistory?.busy ? <InlineOpening label="Preparing your private activity"/> : personalHistory ? 'Your account is open. Previous activity is not available yet.' : 'Open your account to see your transactions and receipts.'}</p>{privateHistory?.error && <p className="body-copy small-copy" role="status">{privateHistory.error}</p>}{privateHistory && <button className="secondary-button" onClick={() => void privateHistory.refresh()} disabled={privateHistory.busy}>Retry history</button>}</div>}
-  </section>;
+  {active&&<PublicAssetTradeHost/>}</section>;
 }

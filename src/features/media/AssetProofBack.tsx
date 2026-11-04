@@ -15,7 +15,8 @@ export function AssetProofBack({item}:{item:PublicMarketItem}){
  const record=useMemo(()=>publicMarketRecord(item),[item]);
  const rows=useMemo(()=>{
   if(item.category==='sports')return publicCollectibleManifest(item);
-  const manifest=item.proofManifest??publicAssetManifest(item.proofManifestSource??{mediaKind:item.mediaKind,media:{originalDownloadSha256Hex:item.originalDigest}},item),bundle=inspection?.report.verification.bundle as Record<string,unknown>|undefined;
+  const supplied=item.proofManifest??publicAssetManifest(item.proofManifestSource??{mediaKind:item.mediaKind,media:{originalDownloadSha256Hex:item.originalDigest}},item),provenance=item.sourceProvenance;
+  const manifest=[...supplied,...(provenance?Object.entries(provenance).map(([key,value])=>({label:({sourceArtifactSha256:'Source artifact SHA-256',payloadSha256:'Payload SHA-256',artifactId:'Original artifact ID',namespace:'Original namespace',genesisOwnerReceizId:'Genesis owner',sourceProofHead:'Carried proof head'}as Record<string,string>)[key]??key,value})):[])],bundle=inspection?.report.verification.bundle as Record<string,unknown>|undefined;
   if(!bundle)return manifest;
   // Older retained catalogues lack display manifest fields. Exact successful
   // SDK inspection can fill only the fields it actually carries.

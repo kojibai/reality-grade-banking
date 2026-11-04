@@ -12,6 +12,7 @@ it('a cold runtime resumes a valid saved legacy-scoped PBI proof for the exact s
  const values=new Map<string,string>(),events=new EventTarget();
  let rejectOutboxWrite=false;
  const storage={getItem:(key:string)=>values.get(key)??null,setItem:(key:string,value:string)=>{if(rejectOutboxWrite&&key==='receiz.local.signed-action-outbox.v1')throw Error('Quota exceeded');values.set(key,value);},removeItem:(key:string)=>{values.delete(key);},key:(i:number)=>[...values.keys()][i]??null,get length(){return values.size;}};
+ vi.stubGlobal('localStorage',storage);
  vi.stubGlobal('window',{localStorage:storage,sessionStorage:storage,location:{origin:'https://bankeiz.test',pathname:'/',href:'https://bankeiz.test/'},setTimeout,clearTimeout,dispatchEvent:events.dispatchEvent.bind(events),addEventListener:events.addEventListener.bind(events),removeEventListener:events.removeEventListener.bind(events)});
  vi.stubGlobal('document',{visibilityState:'visible',addEventListener:events.addEventListener.bind(events),removeEventListener:events.removeEventListener.bind(events)});
  const identity=new File([new Uint8Array(f.identity.bytes)],'identity.png');
@@ -19,7 +20,7 @@ it('a cold runtime resumes a valid saved legacy-scoped PBI proof for the exact s
  const owner=(await r.readReceizIdentityPublicBinding(actor)).artifactOwnerReceizId,username='sdk_artist',uid='sdk-account',artifactId=`profile-showcase:${owner}`;
  const enrollment=await f.store.load(),seal=await r.createBankNativeNoteSealer({enrollment,resources:f.resources});
  const blocks=new Map<string,Uint8Array>(),staged=new Map<string,Uint8Array>(),reads:string[]=[],timeline:string[]=[];
- let ceremonies=0;
+ let ceremonies=0,pendingSignedSource:any;
  let accepted:Record<string,unknown>={status:'unmigrated'},complete:any,finalizations=0,seals=0,finalHTTPStatus=0,interrupt=false,attemptDigest:string|undefined,active=true,switchOnUpload=false,interruptBeforeUpload=false;
  const roots=new Map(f.roots.map((root:{kid:string})=>[root.kid,root]));
  const request:typeof fetch=async(input,init)=>{
@@ -41,15 +42,15 @@ it('a cold runtime resumes a valid saved legacy-scoped PBI proof for the exact s
   const vault=r.showcaseVault.createProfileShowcaseBoundedEdgeVault({databaseName:`independent-receiver-${finalizations}`});
   const admitted=await r.showcaseRetainer.retainAcceptedShowcasePredecessor({source,artifactId,vault,canonicalSignatureV4RootPublicKeys:roots});
   expect(admitted.artifactSha256).toBe(body.transport.artifactDigest);
-  if(interrupt){attemptDigest=body.transport.artifactDigest;return Response.json({status:'pending',code:'PROFILE_SHOWCASE_PUBLIC_DELIVERY_PENDING'});}
+  if(interrupt){pendingSignedSource=source;attemptDigest=body.transport.artifactDigest;return Response.json({status:'pending',code:'PROFILE_SHOWCASE_PUBLIC_DELIVERY_PENDING'});}
   if(attemptDigest)expect(body.transport.artifactDigest).toBe(attemptDigest);
   complete=source;
   accepted={status:'accepted',artifactId,transport:body.transport,binding:{schema:'receiz.profile-showcase.route-migration-binding.v1',status:'accepted',username,profileIdentity:uid,proofIdentity:owner,locator:{tenantId:'receiz.com',showcaseArtifactId:artifactId,acceptedArtifactDigest:body.transport.artifactDigest,acceptedImmutableObjectVersion:body.transport.artifactDigest,projectionVersion:2}}};
   return Response.json({status:'published',publicationVersion:2,scope:body.scope,artifactDigest:body.transport.artifactDigest,operationCount:admitted.proofHistoryHead.nodeCount,visibleChildCount:source.children.length});
  };
  vi.stubGlobal('fetch',request);
- const admissions:any[]=[];
- const open=(previous=false)=>(previous?r.previousConnectedComposer:r.connectedComposer).createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,account:{uid,username},assertCurrent(){if(!active)throw Error('ACCOUNT_CLOSED');},fetchImpl:request,onLocalAdmission:(value:any)=>{expect(value.original.marketPreview?.quote?.priceUsd??value.original.marketPreview).toBeDefined();timeline.push('local');admissions.push(value.original);},sealDocument:async(args:any)=>{seals++;return seal(args);}});
+ const admissions:any[]=[],localAdmissions:any[]=[];
+ const open=(previous=false)=>(previous?r.previousConnectedComposer:r.connectedComposer).createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,account:{uid,username},assertCurrent(){if(!active)throw Error('ACCOUNT_CLOSED');},fetchImpl:request,onLocalAdmission:(value:any)=>{expect(value.original.marketPreview?.quote?.priceUsd??value.original.marketPreview).toBeDefined();timeline.push('local');admissions.push(value.original);localAdmissions.push(value);},sealDocument:async(args:any)=>{seals++;return seal(args);}});
  const image=new File([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jQmcAAAAASUVORK5CYII=','base64')],'original.png',{type:'image/png'});
  let runtime=await open();
  const prior=await runtime.prepare({kind:'image',title:'First exact image',description:'',longForm:'First full essay',files:[{id:'photo',role:'primary',file:image}]});
@@ -70,12 +71,46 @@ it('a cold runtime resumes a valid saved legacy-scoped PBI proof for the exact s
   const client=new TextEncoder().encode(JSON.stringify({type:'webauthn.get',challenge:challengeB64Url,origin:'https://bankeiz.com',crossOrigin:false})),payload=new Uint8Array(69);payload.set(auth);payload.set(new Uint8Array(await crypto.subtle.digest('SHA-256',client)),37);
   return{credIdB64Url,pubKeyPem,authenticatorDataB64Url:encode(auth),clientDataJSONB64Url:encode(client),signatureB64Url:encode(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},keys.privateKey,payload))};
  },verifyAssertion:args=>verifyLocalPbiAssertion({...args,policy:{rpId:'receiz.com',originAllowList:['https://bankeiz.com'],requireUP:true,requireUV:true}})}});};
+ const unsignedReceipt=await runtime.publish(next.artifact);expect(unsignedReceipt.status).toBe('published');
  interrupt=true;
  expect((await runtime.publish(next.artifact,authorize)).status).toBe('pending');
  expect(admissions.at(-1).hasPbiSignature).toBe(true);
  const pendingCounts={seals,ceremonies};
+ // A later real receiver-derived public observation completes delivery display
+ // without another publish, signature ceremony, seal, or invented head receipt.
+ {
+  const adoption=await import('../src/receiz/asset-publication-adoption'),{parsePublicMarket}=await import('../src/receiz/public-market');
+  const identityDigest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(f.identity.bytes)))].map(value=>value.toString(16).padStart(2,'0')).join('');
+  adoption.retainAssetPublicationAdmission(localAdmissions.at(-1),{identityDigest,accountUid:uid});
+  adoption.acknowledgeAssetPublication(next.reference.artifactSha256,{status:'pending',code:'PROFILE_SHOWCASE_PUBLIC_DELIVERY_PENDING'},localAdmissions.at(-1).original.pbiReceiptHash);
+  const child=pendingSignedSource.children.at(-1),opened=await r.openImportedProofSource(new File([child.exactSealedArtifactBytes],'placement.receizbundle',{type:'application/vnd.receiz.bundle+json'}),{resolveSourceBlock:r.createImportedProofSourceCustody().resolveBlock});
+  const row=opened.projection.carriedOriginal;expect(row.hasPbiSignature).toBe(true);
+  const catalog=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:`profile:${username}:${row.id}`,receizId:row.id,title:row.assetTitle,ownerUsername:username,ownerUserId:uid,ownerCreatedAt:'2026-01-01T00:00:00Z',profileOriginal:row}]}});
+  expect(catalog.items[0].originalDigest).toBe(next.reference.artifactSha256);
+  const before={seals,ceremonies,finalizations};adoption.acceptDiscoveredPublicAssets(catalog);
+  expect(adoption.admittedAssetPublicationSignatureDelivery(next.reference.artifactSha256,username)).toEqual({status:'published'});
+  expect(adoption.pendingAssetPublicationSignatures(identityDigest,uid,username)).toEqual([]);
+  expect({seals,ceremonies,finalizations}).toEqual(before);adoption.forgetAssetPublicationAdmissions();
+ }
+
+ // Reproduce the Bank display checkpoint from before signature-specific
+ // acknowledgment: the exact local signature survived, but Source completion
+ // flags would otherwise prevent account-open sync from selecting its retry.
+ const identityDigest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(f.identity.bytes)))].map(value=>value.toString(16).padStart(2,'0')).join(''),adoption=await import('../src/receiz/asset-publication-adoption');
+ adoption.retainAssetPublicationAdmission(localAdmissions.at(-1),{identityDigest,accountUid:uid});
+ const retentionKey='bankeiz-admitted-public-assets-v1',legacy=JSON.parse(storage.getItem(retentionKey)!);
+ legacy[0].receipt=unsignedReceipt;legacy[0].sourceReceipt=unsignedReceipt;legacy[0].marketSeen=true;legacy[0].profileSeen=true;delete legacy[0].signatureDeliveryHash;
+ adoption.forgetAssetPublicationAdmissions();storage.setItem(retentionKey,JSON.stringify(legacy));vi.resetModules();
+ const restored=await import('../src/receiz/asset-publication-adoption');
+ expect(restored.pendingAssetPublicationSignatures(identityDigest,uid,username)).toEqual([next.reference.artifactSha256]);
  runtime=await open();interrupt=false;
- expect((await runtime.resumeSignedPublication(next.artifact))?.status).toBe('published');
+ for(const digest of restored.pendingAssetPublicationSignatures(identityDigest,uid,username)){
+  expect(digest).toBe(next.reference.artifactSha256);
+  const receipt=await runtime.resumeSignedPublication(next.artifact);expect(receipt?.status).toBe('published');
+  restored.acknowledgeAssetPublication(digest,receipt!,localAdmissions.at(-1).original.pbiReceiptHash);
+ }
+ expect(restored.pendingAssetPublicationSignatures(identityDigest,uid,username)).toEqual([]);
+ restored.forgetAssetPublicationAdmissions();
  expect({seals,ceremonies}).toEqual(pendingCounts);
  const resumedFinalizations=finalizations;
  expect(await runtime.resumeSignedPublication(prior.artifact)).toBeNull();

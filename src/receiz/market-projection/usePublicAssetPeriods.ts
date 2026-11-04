@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {receizKaiNow} from '@receiz/sdk';
+import {receizKaiNow} from '../../../native/receiz/packages/receiz-sdk/src/v124Kai';
 import type {PublicMarketItem} from '../public-market';
 import {publicAssetPulseSeed,publicAssetCardHistory,projectPublicAssetPeriods,type PublicAssetPeriods} from './asset';
 import {prepareMarketDisplaySource,useMarketDisplaySource} from './display-source';
