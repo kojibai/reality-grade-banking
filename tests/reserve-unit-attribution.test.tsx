@@ -1,0 +1,43 @@
+// @vitest-environment happy-dom
+import {act} from 'react';
+import {createRoot} from 'react-dom/client';
+import {expect,it,vi} from 'vitest';
+import {parseSharedWallet} from '../src/receiz/shared-wallet';
+import {readWalletObservation} from '../src/receiz/wallet-observation';
+import {BANK_APPLICATION_ID} from '../src/receiz/config';
+import {BalanceDetails} from '../src/features/account/BalanceDetails';
+import * as calculations from '../src/receiz/balance-calculation';
+const uid='11111111-1111-4111-8111-111111111111',at='2026-11-04T01:06:34.867364+00:00',kai='14978960035736';
+const attribution={basis:'calculated-attribution',rule:'receiz-card-fifo-cent-intervals',accountId:uid,lastEntryId:'22222222-2222-4222-8222-222222222222',lastEntryAt:at,lastEntryKaiUpulse:kai,recordedReserveUsdCents:'192',reservePhiMicro:'27219',lots:[{ledgerId:'33333333-3333-4333-8333-333333333333',amountPhiMicro:'8506085386',amountUsdCents:'60000000',reserveUsdCents:'192',usedReserveUsdCents:'0',creditReservePhiMicro:'27219',remainingReservePhiMicro:'27219'}]};
+const packet=()=>({ok:true,wallet:{userId:uid,balancePhiMicro:'143714996830',balanceUsd:'10009511.52',reservePhiMicro:null,settlementPhiMicro:null,
+ reserveUnitAttribution:attribution,valueStates:{settledBalanceUsdCents:'192',ecosystemBalanceUsdCents:'1000950960'},sync:{projectionComplete:true},rollup:{lastEntryAt:at,lastEntryKaiUpulse:kai,lastEntryKaiPulse:'14978960'}}});
+Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+it('retains recorded Reserve unit attribution across a private observation reopen without changing native units',()=>{
+ const wallet=parseSharedWallet(packet(),uid);expect(wallet.reserveUnitAttribution?.reservePhiMicro).toBe('27219');
+ expect(wallet.reservePhiMicro).toBeNull();expect(wallet.settlementPhiMicro).toBeNull();
+ const binding={keyId:'existing-observation',artifactSha256:'a'.repeat(64)};
+ const restored=readWalletObservation(JSON.parse(JSON.stringify({schema:'receiz.bank.private-wallet-observation.v1',authority:'read-only-observation',applicationId:BANK_APPLICATION_ID,...binding,wallet,observedAt:'2026-11-04T02:00:00Z'})),binding);
+ expect(restored?.wallet.reserveUnitAttribution).toEqual(wallet.reserveUnitAttribution);
+ const stale=packet();stale.wallet.rollup.lastEntryKaiUpulse='14978960035737';
+ expect(parseSharedWallet(stale,uid).reserveUnitAttribution).toBeUndefined();
+});
+it('opens Reserve with its carried Phi and full calculation disclosure without fetching',async()=>{
+ const wallet=parseSharedWallet(packet(),uid),host=document.createElement('div'),root=createRoot(host),fetch=vi.spyOn(globalThis,'fetch').mockImplementation(()=>{throw Error('NETWORK_FORBIDDEN');}),calculation=vi.spyOn(calculations,'readBalanceCalculation');
+ try{
+  await act(async()=>root.render(<BalanceDetails wallet={wallet}/>));
+  await act(async()=>host.querySelector<HTMLElement>('.balance-source-details > summary')!.click());
+  await act(async()=>host.querySelector<HTMLElement>('[data-balance-rail="reserve"] > summary')!.click());
+  expect(host.querySelector('[data-balance-rail="reserve"] [data-rail-phi]')?.textContent).toBe('0.027219 Φ');
+  expect(host.textContent).not.toContain('Exact Φ unavailable');
+  await act(async()=>{await vi.dynamicImportSettled();});
+  await act(async()=>host.querySelector<HTMLElement>('[data-balance-rail="reserve"] .balance-calculation > summary')!.click());
+  expect(host.querySelector('[aria-label="Recorded Reserve unit attribution"]')).not.toBeNull();
+  const bindings=host.querySelector('[data-balance-rail="reserve"] .balance-calculation-bindings')!;
+  expect(bindings.textContent).toContain('Displayed Reserve$1.92');
+  expect(bindings.textContent).toContain(kai);
+  expect(bindings.textContent).toContain('Recorded funding allocation');
+  expect(host.querySelector('[data-balance-rail="reserve"]')?.textContent).not.toContain('Exact calculation source not carried');
+  expect(calculation).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());fetch.mockRestore();calculation.mockRestore();}
+});

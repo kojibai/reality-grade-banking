@@ -1,8 +1,10 @@
 import {readCurrentBalanceSource,type CurrentBalanceSource} from './current-balance-source';
+import {readWalletReserveUnitAttribution,type WalletReserveUnitAttribution} from './reserve-unit-attribution';
 import {readBalanceOriginalProofReferences,readReserveFundingSource,type BalanceOriginalProofReference,type ReserveFundingSource} from './balance-source-references';
 export interface SharedWallet {
   currentBalanceSource?:CurrentBalanceSource;balanceSourceSha256?:string;
   originalProofReferences?:Readonly<Record<string,BalanceOriginalProofReference>>;reserveFundingSource?:ReserveFundingSource;
+  reserveUnitAttribution?:WalletReserveUnitAttribution;lastEntryAt?:string|null;
   userId: string; totalUsdCents: string; reserveUsdCents: string; settlementUsdCents: string; balancePhiMicro: string;
   settlementPhiMicro?: string | null; reservePhiMicro?: string | null;
   portfolioUsdCents: string | null; pnlUsdCents: string | null; withdrawableUsdCents: string | null;
@@ -83,7 +85,9 @@ export function parseSharedWallet(input: unknown, expectedUserId: string): Share
   if (!hasNativeWalletUsdComposition({reserveUsdCents,settlementUsdCents,totalUsdCents})) throw new Error('Receiz wallet value states are inconsistent. Refresh to retrieve the current source.');
   const currentBalanceSource=readCurrentBalanceSource(wallet.currentBalanceSource,expectedUserId);
   const sync = object(wallet.sync), rollup = object(wallet.rollup),originalProofReferences=readBalanceOriginalProofReferences(wallet.originalProofReferences),reserveFundingSource=readReserveFundingSource(wallet.reserveFundingSource,expectedUserId,reserveUsdCents);
-  return { userId: expectedUserId,...(currentBalanceSource?{currentBalanceSource}:{}),...(originalProofReferences?{originalProofReferences}:{}),...(reserveFundingSource?{reserveFundingSource}:{}), reserveUsdCents, settlementUsdCents, totalUsdCents, balancePhiMicro: exact(wallet.balancePhiMicro), ...readWalletPhiSplit(wallet,exact(wallet.balancePhiMicro)),
+  const lastEntryAt=typeof rollup.lastEntryAt==='string'&&Number.isFinite(Date.parse(rollup.lastEntryAt))?rollup.lastEntryAt:null;
+  const reserveUnitAttribution=readWalletReserveUnitAttribution(wallet.reserveUnitAttribution,{userId:expectedUserId,reserveUsdCents:currentBalanceSource?.ledgerSettledUsdCents??reserveUsdCents,lastEntryAt,lastEntryKaiUpulse:nullable(rollup.lastEntryKaiUpulse)});
+  return { userId: expectedUserId,lastEntryAt,...(reserveUnitAttribution?{reserveUnitAttribution}:{}),...(currentBalanceSource?{currentBalanceSource}:{}),...(originalProofReferences?{originalProofReferences}:{}),...(reserveFundingSource?{reserveFundingSource}:{}), reserveUsdCents, settlementUsdCents, totalUsdCents, balancePhiMicro: exact(wallet.balancePhiMicro), ...readWalletPhiSplit(wallet,exact(wallet.balancePhiMicro)),
     portfolioUsdCents: nullable(value.livePortfolioValueUsdCents), pnlUsdCents: nullableSigned(value.unrealizedPnlUsdCents), withdrawableUsdCents: nullable(value.withdrawableNowUsdCents),
     projectionComplete: sync.projectionComplete === true, ...(wallet.creationSigilEntitlementEnabled===false&&sync.source==='account_only'&&sync.lawfulActionProjectionAvailable===true?{accountOnlyComplete:true as const}:{}), pulse: nullable(rollup.lastEntryKaiPulse), kaiUpulse: nullable(rollup.lastEntryKaiUpulse) };
 }

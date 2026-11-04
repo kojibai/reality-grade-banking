@@ -1,4 +1,5 @@
 import {readCurrentBalanceSource} from './current-balance-source';
+import {readWalletReserveUnitAttribution} from './reserve-unit-attribution';
 import {readBalanceOriginalProofReferences,readReserveFundingSource} from './balance-source-references';
 import {hasSettledAccountView} from './account-view';
 import {readCompositeWalletSource} from './composite-wallet-source';
@@ -29,6 +30,7 @@ export function readWalletObservation(input: unknown, binding: { keyId: string; 
   const originalProofReferences=readBalanceOriginalProofReferences(wallet.originalProofReferences),reserveFundingSource=readReserveFundingSource(wallet.reserveFundingSource,wallet.userId,wallet.reserveUsdCents);
   if(wallet.originalProofReferences!==undefined||wallet.reserveFundingSource!==undefined){wallet={...wallet};delete wallet.originalProofReferences;delete wallet.reserveFundingSource;if(originalProofReferences)wallet.originalProofReferences=originalProofReferences;if(reserveFundingSource)wallet.reserveFundingSource=reserveFundingSource;}
   if(wallet.currentBalanceSource!==undefined){const currentBalanceSource=readCurrentBalanceSource(wallet.currentBalanceSource,wallet.userId);wallet={...wallet};delete wallet.currentBalanceSource;if(currentBalanceSource)wallet.currentBalanceSource=currentBalanceSource;}
+  if(wallet.reserveUnitAttribution!==undefined){const reserveUnitAttribution=readWalletReserveUnitAttribution(wallet.reserveUnitAttribution,{userId:wallet.userId,reserveUsdCents:wallet.currentBalanceSource?.ledgerSettledUsdCents??wallet.reserveUsdCents,lastEntryAt:wallet.lastEntryAt??null,lastEntryKaiUpulse:wallet.kaiUpulse});wallet={...wallet};delete wallet.reserveUnitAttribution;if(reserveUnitAttribution)wallet.reserveUnitAttribution=reserveUnitAttribution;}
   const quoteHold = value.quoteHold as WalletQuoteHold | undefined;
   if (value.quoteHold !== undefined && (!quoteHold || typeof quoteHold !== 'object' || Object.keys(quoteHold).sort().join('|') !== 'balancePhiMicro|kaiUpulse|pulse|reserveUsdCents|schema|userId'
     || quoteHold.schema !== 'bank.wallet-quote-hold.v1' || quoteHold.userId !== wallet.userId
