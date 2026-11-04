@@ -1,0 +1,68 @@
+{
+  "observedAt": "2026-11-04T12:00:00.000Z",
+  "original": {
+    "id": "proof:synthetic-new-original",
+    "receizId": "synthetic-new-original",
+    "title": "Synthetic new Original",
+    "pulse": "14940000",
+    "valueUsd": 95,
+    "livePulseSeed": {
+      "kind": "sigil",
+      "claimPulse": 14940000,
+      "beat": 0,
+      "stepIndex": 12,
+      "creatorVerified": true,
+      "frequencyHz": 528,
+      "chakraDay": "Heart",
+      "kaiSignature": "synthetic-valuation-seed",
+      "userPhiKey": "synthetic-valuation-key"
+    },
+    "profileOriginal": {
+      "hasPbiSignature": true
+    }
+  },
+  "shareInventory": {
+    "schema": "receiz.market.share-inventory.v1",
+    "marketItemId": "proof:synthetic-new-original",
+    "assetId": "synthetic-new-original",
+    "family": "generic",
+    "quantityScope": "canonical-asset",
+    "observedAtKaiUPulse": "14990000123456",
+    "outstandingShareQuantityMicro": "0",
+    "availableShareQuantityMicro": "12000000",
+    "maxPurchaseShareQuantityMicro": "3000000",
+    "releaseCapitalization": {
+      "kaiUPulse": "14940000000000",
+      "unitPriceUsdCents": "2500",
+      "outstandingShareQuantityMicro": "0",
+      "availableShareQuantityMicro": "10000000",
+      "modelVersion": "market-share-quote-v1"
+    },
+    "capitalizationHistory": [
+      {
+        "kaiUPulse": "14990000123456",
+        "unitPriceUsdCents": "9500",
+        "outstandingShareQuantityMicro": "0",
+        "availableShareQuantityMicro": "12000000"
+      }
+    ],
+    "availability": "quote-capacity",
+    "positionsMicro": "0",
+    "certificatesMicro": "0",
+    "reservedBuyMicro": "0",
+    "historyBasis": "observations",
+    "history": [
+      {
+        "kaiUPulse": "14990000123456",
+        "outstandingShareQuantityMicro": "0",
+        "unitPriceUsdCents": "9500"
+      }
+    ],
+    "capacity": {
+      "askPriceUsdCents": "9600",
+      "hardCapUsdCents": "115200",
+      "openInterestUsdCents": "0",
+      "maxSingleTradeUsdCents": "28800"
+    }
+  }
+}
