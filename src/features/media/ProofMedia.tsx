@@ -1,4 +1,5 @@
 import {InlineOpening} from '../../components/InlineOpening';
+import {retainedAssetPublicationArtwork} from '../../receiz/asset-publication-adoption';
 import {lazy,Suspense,useEffect,useLayoutEffect,useMemo,useRef,useState,type PointerEvent} from 'react';
 import {ArrowUpRight,BookOpen,Check,ChevronLeft,ChevronRight,Download,File,FileText,Image,Maximize2,Music2,Play,ShieldCheck,Video} from 'lucide-react';
 import {openProofMedia,retainedPublicMedia,type MediaFile,type OpenedProofMedia,type ProofMediaSource} from '../../receiz/proof-media';
@@ -41,8 +42,9 @@ export function ProofMedia(props:ProofMediaProps){return props.source.kind==='pu
 function OriginalProofMedia({title,source,autoOpen=false,artworkUrl,publicImageUrl,publicAudio,publicVideo,publicDocument,allowMediaDownload=true,playVideoOnOpen=false}:ProofMediaProps){
  const [opened,setOpened]=useState<OpenedProofMedia|null>(()=>retainedPublicMedia(source)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[index,setIndex]=useState(0),[expanded,setExpanded]=useState(false),[urlState,setUrl]=useState<{file:MediaFile;url:string}|null>(null),[chapter,setChapter]=useState(0),[font,setFont]=useState(17);
  const [reading,setReading]=useState<ProofReading|null>(()=>source.kind==='public'&&source.postUrl?retainedPublicReading(source.postUrl,source.digest):null),[readingOpen,setReadingOpen]=useState(false),[readingBusy,setReadingBusy]=useState(false),[readingUrl,setReadingUrl]=useState('');
- const [failedArtwork,setFailedArtwork]=useState<string|null>(null),safeArtwork=safeReceizArtworkUrl(artworkUrl),artwork=safeArtwork!==failedArtwork?safeArtwork:null;
- const publicPreviewUrl=source.kind==='public'?safeReceizArtworkUrl(publicImageUrl):null,publicImage=!opened?publicPreviewUrl:null;
+ const localArtwork=source.kind==='public'?retainedAssetPublicationArtwork(source.digest):null;
+ const [failedArtwork,setFailedArtwork]=useState<string|null>(null),safeArtwork=localArtwork??safeReceizArtworkUrl(artworkUrl),artwork=safeArtwork!==failedArtwork?safeArtwork:null;
+ const publicPreviewUrl=source.kind==='public'&&publicImageUrl?(localArtwork??safeReceizArtworkUrl(publicImageUrl)):null,publicImage=!opened?publicPreviewUrl:null;
  const videoStream=source.kind==='public'&&publicVideo?publicMediaPlayback({receizId:publicVideo.assetId,profileOriginal:{mediaKind:'video',playback:publicVideo,media:{gateAudioPlayback:false,originalDownloadMime:publicVideo.mimeType,originalDownloadSha256Hex:source.digest,material:{sealedArtifactSha256Hex:source.digest}}}},source.url):null;
  const audioStream=source.kind==='public'&&publicAudio?publicMediaPlayback({receizId:publicAudio.assetId,profileOriginal:{mediaKind:'audio',playback:publicAudio,media:{gateAudioPlayback:false,originalDownloadMime:publicAudio.mimeType,originalDownloadSha256Hex:source.digest,material:{sealedArtifactSha256Hex:source.digest}}}},source.url):null;
  const [failedDocument,setFailedDocument]=useState<string|null>(null);

@@ -1,0 +1,9 @@
+.original-unlock-row{display:flex;align-items:center;min-width:0;border-bottom:1px solid var(--line,#e3e7ef)}
+.original-unlock-row:last-child{border-bottom:0}
+.original-unlock-row>.asset-row{flex:1;min-width:0;border-bottom:0}
+.original-unlock-control{display:flex;flex:none;align-items:center;gap:6px;margin-inline-end:12px}
+.original-unlock-button{display:grid;place-items:center;flex:none;width:38px;height:38px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--muted,#7d8ba0);cursor:pointer}
+.original-unlock-button:hover{background:var(--soft,#f1f4fa);color:var(--blue,#264bd3)}
+.original-unlock-button:focus-visible{outline:2px solid var(--blue,#264bd3);outline-offset:2px}
+.original-unlock-button:disabled{cursor:progress}
+.original-unlock-error{max-width:13rem;font-size:12px;line-height:1.4;color:var(--negative,#b84a5a)}
