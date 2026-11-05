@@ -8,7 +8,7 @@ import {InlineOpening} from '../components/InlineOpening';
 import {beginPublicAssetTrade,closePublicAssetTrade,readPublicAssetTrade,subscribePublicAssetTrade} from '../receiz/public-asset-trade';
 import {assetPagePath,retainPublicAsset} from '../receiz/public-asset-page';
 import type {PublicMarketItem} from '../receiz/public-market';
-import {appendFeedItems,feedKind,isFeedReadingItem,matchesFeedKind,refreshFeedItems,sameFeedSource} from './feed-items';
+import {appendFeedItems,feedKind,feedSequenceItems,isFeedReadingItem,matchesFeedKind,refreshFeedItems,sameFeedSource} from './feed-items';
 import {completeFeedItems,prepareFeedItems,subscribePreparedFeedCatalog} from './feed-source';
 import {FeedStage} from './FeedStage';
 import './feed.css';
@@ -34,7 +34,7 @@ export function PublicFeed({seed,initialFilter='All',selectedItemId,musicContinu
  const requestedMore=useRef<string|null>(null);
  const scroller=useRef<HTMLDivElement>(null),frame=useRef(0),current=useRef(0),noticeTimer=useRef<ReturnType<typeof setTimeout>>(undefined);
  const musicItemId=useSyncExternalStore(subscribeFeedMusic,feedMusicItemId,()=>null);
- const rows=useMemo(()=>filter==='All'?items:items.filter(item=>matchesFeedKind(item,filter)),[items,filter]),start=Math.max(0,index-1),end=Math.min(rows.length,index+2);
+ const rows=useMemo(()=>{const sequence=feedSequenceItems(items,selectedItemId);return filter==='All'?sequence:sequence.filter(item=>matchesFeedKind(item,filter));},[items,filter,selectedItemId]),start=Math.max(0,index-1),end=Math.min(rows.length,index+2);
  useEffect(()=>{if(!active||!hasMore||moreBusy||!more.current||!(index>0||filter!=='All'||rows.length<=1)||rows.length-index>3)return;const boundary=continuationKey??String(items.length);if(requestedMore.current===boundary)return;requestedMore.current=boundary;more.current();},[active,hasMore,moreBusy,index,filter,rows.length,items.length,continuationKey]);
  useLayoutEffect(()=>{cancelAnimationFrame(frame.current);frame.current=0;current.current=0;if(scroller.current)scroller.current.scrollTop=0;setIndex(0);},[filter]);
  useLayoutEffect(()=>{if(initialFilter==='audio'&&selectedItemId)selectFeedMusic(rows,rows.findIndex(item=>item.id===selectedItemId));},[]);

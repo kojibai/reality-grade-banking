@@ -127,12 +127,17 @@
   let renderedPublicPath = pathname(new URL(document.querySelector('link[rel="canonical"]')?.href||location.href).pathname);
   const hide = root => { if (root) { root.hidden = true; root.setAttribute('inert', ''); } };
   const show = root => { root.hidden = false; root.removeAttribute('inert'); };
+  const ensurePublicRuntime = page => {
+    let root=runtimeRoots.get(page.runtime);
+    if(!root){root=document.createElement('div');root.id='public-'+page.runtime+'-root';root.dataset.publicRuntime=page.runtime;root.innerHTML=page.content;hide(root);runtimeRoots.set(page.runtime,root);document.body.append(root);}
+    return root;
+  };
   const loadRuntime = (page, root) => {
     if (loaded.has(page.runtime)) return;
     loaded.add(page.runtime);
     // Markup and exact CSS paint synchronously. Execute only the selected
     // public workspace; retained workspaces never remount on return.
-    void import(page.entry).catch(() => {
+    void import(page.entry).then(module=>module?.mountPublicDocument?.(root)).catch(() => {
       loaded.delete(page.runtime);
       const status = document.createElement('p'), retry = document.createElement('button');
       status.setAttribute('role', 'status'); status.textContent = 'This workspace could not open. ';
@@ -152,10 +157,6 @@
     const bankPanel=source.pathname==='/'&&/^#(account|market|assets|ledger)(?:\/|$)/.exec(source.hash)?.[1];
     for(const value of new Set([url,...(bankPanel?['/#'+bankPanel]:[]),...(pageAt(source.pathname)?.runtime==='explore'&&!/^\/asset\//.test(source.pathname)?[key]:[])])){positions.delete(value);positions.set(value,scroll);}
     while(positions.size>96)positions.delete(positions.keys().next().value);
-  };
-  const remember = () => {
-    const current=snapshot();rememberPosition(current.url,current.scroll);
-    history.replaceState({ ...history.state, publicNavigation: current }, '');
   };
   const restoreHead = head => {
     const template = document.createElement('template'); template.innerHTML = head;
@@ -230,11 +231,7 @@
       hide(bankRoot);
       if (page.runtime) {
         hide(publicRoot);
-        let root = runtimeRoots.get(page.runtime);
-        if (!root) {
-          root = document.createElement('div'); root.id = 'public-' + page.runtime + '-root'; root.dataset.publicRuntime = page.runtime;
-          root.innerHTML = page.content; runtimeRoots.set(page.runtime, root); document.body.append(root);
-        }
+        const root=ensurePublicRuntime(page);
         show(root); destination = root; focusPublic = true;
       } else {
         if (!publicRoot) { publicRoot = document.createElement('div'); publicRoot.id = 'public-learn-root'; document.body.append(publicRoot); }
@@ -271,22 +268,12 @@
     const returning = leavingAsset && (pageAt(target)?.runtime === 'explore' && !enteringAsset || /^\/#(?:account|market|assets|ledger)$/.test(target));
     const panel=location.pathname==='/'&&/^#(account|market|assets|ledger)(?:\/|$)/.exec(location.hash)?.[1];
     const assetReturnPath=enteringAsset?(leavingAsset?history.state?.assetReturnPath:panel?'/#'+panel:location.pathname):undefined;
-    remember(); history.pushState({ ...(assetReturnPath?{assetReturnPath}:{}),publicNavigation: { url: target, scroll: returning ? positions.get(target) ?? 0 : 0 } }, '', target); void render(returning);
+    const current=snapshot();rememberPosition(current.url,current.scroll);history.replaceState({...history.state,publicNavigation:current},'');
+    if(location.pathname==='/'&&bankRoot&&!bankRoot.hidden)bankUrl=current.url;
+    history.pushState({ ...(assetReturnPath?{assetReturnPath}:{}),publicNavigation: { url: target, scroll: returning ? positions.get(target) ?? 0 : 0 } }, '', target); void render(returning);
   };
   // Lazy public destinations reuse this retained router and catalog by reference.
-  Object.assign(element,{pages,navigate});
-  // Missing prepared destinations use the same retained router. Loading the
-  // tiny navigation module is separate from opening an account or Source.
-  document.addEventListener('click',event=>{
-    if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
-    const link=event.target.closest?.('a[href]');if(!link||link.download||link.target&&link.target!=='_self')return;
-    const url=new URL(link.href,location.href),path=pathname(url.pathname),page=pageAt(path);
-    if(url.origin!==location.origin||url.search||path===pathname(location.pathname)||(page?page.content||runtimeRoots.has(page.runtime):!/^\/(?:feed|discover)\/$/.test(path)))return;
-    event.preventDefault();url.pathname=path;
-    const open=element.openPreparedDiscovery;
-    if(typeof open==='function')void open(url);
-    else void import('/learn/discover.js').then(module=>module.init(pages,navigate)?.(url)).catch(()=>{});
-  });
+  Object.assign(element,{pages,navigate,ensurePublicRuntime:page=>page&&(page===pages['/explore/']||page===pages['/feed/']||page===pages['/discover/'])?ensurePublicRuntime(page):undefined});
   addEventListener('bankeiz:navigate-public',event=>{const path=event.detail?.path;if(typeof path==='string'&&path.length<100&&profileName(path)){navigate(path);}});
   // Retained call controls can return from a public workspace without a
   // synthetic link, a second router, or a document navigation.
@@ -299,8 +286,14 @@
   });
   document.addEventListener('click', event => {
     const link = event.target.closest?.('a[href]'); if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.download || link.target && link.target !== '_self') return;
-    const url = new URL(link.href, location.href); if (url.origin !== location.origin || url.search || !pageAt(url.pathname) && url.pathname !== '/' || !pageAt(location.pathname) && location.pathname !== '/') return;
-    if (pathname(url.pathname) === pathname(location.pathname) && pageAt(url.pathname)) {
+    const url=new URL(link.href,location.href);if(url.origin!==location.origin||url.search)return;
+    const path=pathname(url.pathname),currentPath=pathname(location.pathname),page=pageAt(path),current=pageAt(currentPath);
+    if(path!==currentPath&&(page?!page.content&&!runtimeRoots.has(page.runtime):/^\/(?:feed|discover)\/$/.test(path))){
+      event.preventDefault();url.pathname=path;void import('/learn/discover.js').then(module=>module.init(pages,navigate)?.(url)).catch(()=>{});
+      return;
+    }
+    if(!page&&url.pathname!=='/'||!current&&location.pathname!=='/')return;
+    if (path === currentPath && page) {
       if (url.hash) {
         // An explicit repeat click must reach the existing destination even when
         // the URL anchor is unchanged. Keep the conversation and history intact.
@@ -312,8 +305,7 @@
       }
       if (!location.hash) { event.preventDefault(); scrollTo({top:0,behavior:'instant'}); return; }
     }
-    if (!pageAt(location.pathname)) bankUrl = location.pathname + location.search + location.hash;
-    const target = url.pathname === '/' && !url.hash && pageAt(location.pathname) && bankLoaded ? bankUrl : url.pathname + url.hash;
+    const target = url.pathname === '/' && !url.hash && current && bankLoaded ? bankUrl : url.pathname + url.hash;
     event.preventDefault(); navigate(target);
   });
   // popstate already exposes the destination URL. Save the view being left

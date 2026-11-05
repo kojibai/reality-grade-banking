@@ -44,6 +44,21 @@ let opener=null;
 export function init(pages=document.getElementById('receiz-navigation')?.pages,navigate=document.getElementById('receiz-navigation')?.navigate){
  if(opener)return opener;if(!pages||typeof navigate!=='function')return null;
  const pending=new Map();let attempt=0;
+ const heldPublicFamily=()=>{
+  const marker=document.getElementById('receiz-navigation'),bank=marker?.publicMarketDocument?.(),discovery=marker?.publicDiscoveryDocument?.();
+  const usable=value=>HEX.test(value?.generation??'')&&value.catalog?.complete===true&&Array.isArray(value.catalog.items);
+  return usable(bank)?bank:usable(discovery)?discovery:null;
+ };
+ const reusable=(page,held)=>['discover','feed','explore'].includes(page?.runtime)&&page.head&&page.entry&&held&&(page.runtime!=='explore'||held.capitalization&&held.history&&held.format);
+ const reuse=(path,page,build)=>{
+  const marker=document.getElementById('receiz-navigation');
+  if(typeof marker?.ensurePublicRuntime!=='function'||!reusable(page,heldPublicFamily()))return null;
+  return import(page.entry).then(module=>{
+   const held=heldPublicFamily();if(!reusable(page,held))return load(path,page,build);
+   if(typeof module.mountHeldPublicDocument!=='function')throw Error('DISCOVERY_RUNTIME_UNAVAILABLE');
+   module.mountHeldPublicDocument(marker.ensurePublicRuntime(pages['/'+page.runtime+'/']??page),held,path);return page;
+  });
+ };
  const descriptor=path=>/^\/verify\/[a-f0-9]{64}\/$/.test(path)?'/verify/':path;
  const known=path=>Object.hasOwn(pages,descriptor(path))||path==='/feed/'||path==='/discover/';
  const needs=path=>{const page=pages[descriptor(path)];return known(path)&&!(page?.content||page?.runtime&&document.querySelector(`[data-public-runtime="${page.runtime}"]`));};
@@ -55,13 +70,13 @@ export function init(pages=document.getElementById('receiz-navigation')?.pages,n
   path=path?.replace(/\/?$/,'/');if(!known(path))return Promise.resolve();
   const target=path;path=descriptor(path);
   const from=location.href,selected=url?++attempt:attempt,build=pages[path]?.preparedBuild??Object.values(pages).find(page=>page.preparedBuild)?.preparedBuild;
-  let ready=pending.get(path);if(!ready){ready=load(path,pages[path],build).then(page=>pages[path]=page).finally(()=>pending.delete(path));pending.set(path,ready);}
+  let ready=pending.get(path);if(!ready){ready=(reuse(path,pages[path],build)??load(path,pages[path],build)).then(page=>pages[path]=page).finally(()=>pending.delete(path));pending.set(path,ready);}
   return ready.then(page=>{if(url&&selected===attempt&&location.href===from){document.getElementById('public-navigation-status')?.remove();if(page.preparedRoot){dispatchEvent(new CustomEvent('bankeiz:prepared-discovery',{detail:{root:page.preparedRoot,path:page.runtime}}));delete page.preparedRoot;}navigate(target+url.hash);}}).catch(()=>{if(url&&selected===attempt&&location.href===from){
    document.getElementById('public-navigation-status')?.remove();const status=document.createElement('p'),retry=document.createElement('button');status.id='public-navigation-status';status.setAttribute('role','status');status.textContent='This page could not open. ';retry.textContent='Try again';retry.onclick=()=>{status.remove();void prepare(url);};status.append(retry);(document.querySelector('main:not([hidden])')??document.body).append(status);
   }});
  };
  opener=url=>prepare(url);const element=document.getElementById('receiz-navigation');if(element)element.openPreparedDiscovery=opener;
  document.addEventListener('click',event=>{if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;const url=destination(event);if(url&&needs(url.pathname.replace(/\/?$/,'/'))){event.preventDefault();void prepare(url);}});
- const warm=event=>{const url=destination(event);if(url&&needs(url.pathname.replace(/\/?$/,'/')))void prepare(undefined,url.pathname);};
+ const warm=event=>{const url=destination(event);if(!url)return;const path=url.pathname.replace(/\/?$/,'/');if(path!=='/discover/'&&!reusable(pages[descriptor(path)],heldPublicFamily())&&needs(path))void prepare(undefined,url.pathname);};
  document.addEventListener('pointerover',warm,{passive:true});document.addEventListener('focusin',warm);return opener;
 }

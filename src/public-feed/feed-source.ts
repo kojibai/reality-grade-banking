@@ -5,6 +5,9 @@ let held:PublicMarketItem[]|null=null,pending:Promise<PublicMarketItem[]>|null=n
 let preparedGeneration:string|null=null,revision=0;
 let preparedCatalog:PublicMarketCatalog|null=null;
 const preparedListeners=new Set<(catalog:PublicMarketCatalog)=>void>();
+function publicDiscoveryDocument(){return preparedCatalog&&preparedGeneration?{catalog:preparedCatalog,generation:preparedGeneration}:null;}
+function exposeDiscoveryDocument(){const marker=document.getElementById('receiz-navigation');if(marker)Object.assign(marker,{publicDiscoveryDocument});}
+if(typeof document!=='undefined'){exposeDiscoveryDocument();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',exposeDiscoveryDocument,{once:true});}
 const preparedEvent=(event:Event)=>{const value=(event as CustomEvent<{root?:Element;path?:unknown}>).detail;if(value?.root instanceof Element&&(value.path==='feed'||value.path==='discover'))readPreparedFeedCatalog(value.root,value.path);};
 export function subscribePreparedFeedCatalog(listener:(catalog:PublicMarketCatalog)=>void){
  if(!preparedListeners.size)window.addEventListener('bankeiz:prepared-discovery',preparedEvent);preparedListeners.add(listener);
@@ -13,6 +16,11 @@ export function subscribePreparedFeedCatalog(listener:(catalog:PublicMarketCatal
 }
 /** The complete current document cohort replaces an older shipped expansion.
  * These are presentation bytes, never proof or account admission. */
+export function reusePreparedFeedCatalog(catalog:PublicMarketCatalog,generation:string):PublicMarketCatalog{
+ if(preparedCatalog===catalog&&preparedGeneration===generation)return preparedCatalog;
+ preparedGeneration=generation;preparedCatalog=catalog;revision++;held=orderFeedItems(catalog.items);for(const listener of preparedListeners)listener(catalog);
+ return catalog;
+}
 export function readPreparedFeedCatalog(root:Element,path:'feed'|'discover'){
  const element=root.querySelector('#public-market-seed');if(!element)return null;
  // The saved transport names the identical material generation across these
@@ -20,8 +28,8 @@ export function readPreparedFeedCatalog(root:Element,path:'feed'|'discover'){
  if(preparedCatalog&&element.textContent?.startsWith(`{"schema":"bank.public-market.document.v1","generation":"${preparedGeneration}","path":"${path}",`)){element.remove();return preparedCatalog;}
  const seed=readPublicMarketDocumentSeed({getElementById:id=>root.querySelector<HTMLElement>(`[id="${id}"]`)});
  if(!seed||seed.path!==path)throw Error('PUBLIC_DISCOVERY_PREPARED_SEED_INVALID');
- if(preparedGeneration!==seed.generation){preparedGeneration=seed.generation;preparedCatalog=seed.catalog;revision++;held=orderFeedItems(seed.catalog.items);for(const listener of preparedListeners)listener(seed.catalog);}
- element.remove();return seed.catalog;
+ const catalog=reusePreparedFeedCatalog(seed.catalog,seed.generation);
+ element.remove();return catalog;
 }
 /** A complete public cohort may withdraw a row; keep the order of survivors. */
 export function completeFeedItems(current:readonly PublicMarketItem[],next:readonly PublicMarketItem[]){

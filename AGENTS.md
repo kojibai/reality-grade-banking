@@ -8,3 +8,5 @@ Account entry is frozen to the exact working creation path preserved in `tests/f
 - Run `npm run test:account-entry-freeze` for any shared identity/storage change and before releasing an entry repair. Every production build also enforces the frozen creation function.
 - Never replace the real SDK guard with a permissive mock or update the frozen fixture/tests to ratify a regression. An intentional entry change requires an explicit user request and passing real SDK and end-to-end evidence.
 - Preserve existing identities and other agents' changes. Do not reset the branch, erase device custody or weaken artifact verification to make entry pass.
+
+Public rendering and navigation must follow [docs/held-state-navigation-invariants.md](docs/held-state-navigation-invariants.md). Read it before changing public delivery, saved HTML, worker navigation or runtime handoff. Static entry and already-held public views must not wait for Source freshness or duplicate document/catalog reads. Repair accepted publication and its saved projections at the state transition; never compensate by blocking page opening.

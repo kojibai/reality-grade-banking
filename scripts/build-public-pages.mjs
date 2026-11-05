@@ -158,7 +158,7 @@ const bankCss = Object.fromEntries(await Promise.all(bankStyles.map(async url =>
 const bankContent = bankHtml.match(/<div id="root">([\s\S]*?)<\/div><noscript>/)[1];
 const bankHead = bankHtml.match(/<head>([\s\S]+)<\/head>/)[1];
 const exampleBanks=packExampleBanks(publicPages);Object.assign(publicPages,exampleBanks.pages);
-const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({ reserved:feedState.profileNames, pages: Object.fromEntries(Object.entries(publicPages).filter(([path])=>!['/feed/','/discover/'].includes(path))), aliases:publicRouteAliases, bank: { head: bankHead, entry: bankEntry, styles: bankStyles,css:bankCss,content:bankContent } })).replaceAll('<', '\\u003c')}</script>`+exampleBanks.shared;
+const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({ reserved:feedState.profileNames, pages: Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,['/feed/','/discover/'].includes(path)?{...page,content:''}:page])), aliases:publicRouteAliases, bank: { head: bankHead, entry: bankEntry, styles: bankStyles,css:bankCss,content:bankContent } })).replaceAll('<', '\\u003c')}</script>`+exampleBanks.shared;
 await writeFile('dist/learn/learn.css', publicCss);
 await writeFile('dist/learn/learn.js', publicJs);
 let entryHtml = bankHtml.replace('</head>', `<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>', () => `${bundle}</body>`);
@@ -176,7 +176,7 @@ await writeFile('dist/index.html', withReadingLink(entryHtml,'/'));
 const runtimeDocumentHtml=(html,runtime)=>earlyPublicRuntimeDocument(html).replace('<body>',`<body data-bank-surface="${runtime}">`).replace('</head>',`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>',()=>`${bundle}</body>`);
 await writeFile('dist/discover/navigation.json',JSON.stringify(publicPages['/discover/']));
 const sharedExampleSha256=createHash('sha256').update(exampleBanks.shared).digest('hex');
-const navigationMetadata=Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,{...page,content:'',...(!page.runtime?{title:undefined}:{}),...(!['explore','ledger'].includes(page.runtime)?{head:''}:{}),...(!page.runtime?{head:'',headSha256:createHash('sha256').update(page.head).digest('hex'),headLength:page.head.length,contentSha256:createHash('sha256').update(page.content).digest('hex'),...(page.content.includes('data-example-views')?{sharedExampleSha256}:{})}:{})}]));
+const navigationMetadata=Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,{...page,content:'',...(!page.runtime?{title:undefined}:{}),...(!['explore','ledger','feed','discover'].includes(page.runtime)?{head:''}:{}),...(!page.runtime?{head:'',headSha256:createHash('sha256').update(page.head).digest('hex'),headLength:page.head.length,contentSha256:createHash('sha256').update(page.content).digest('hex'),...(page.content.includes('data-example-views')?{sharedExampleSha256}:{})}:{})}]));
 const documents={...publicPages,...Object.fromEntries(Object.entries(publicRouteAliases).map(([alias,path])=>[alias,publicPages[path]]))};
 for (const [path, page] of Object.entries(documents)) {
   await mkdir(`dist${path}`, { recursive: true });

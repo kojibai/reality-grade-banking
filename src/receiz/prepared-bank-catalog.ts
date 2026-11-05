@@ -116,7 +116,7 @@ const reader=createPreparedBankCatalogReader(undefined,carriedDocumentInput());
 export const prepareCarriedBankCatalog=reader.bootstrap;
 export const adoptPublicDocumentCatalog=reader.adoptDocument;
 export const publicMarketIdentity=reader.identity;
-function exposeIdentity(){const marker=document.getElementById('receiz-navigation');if(marker)Object.assign(marker,{publicMarketIdentity});}
+function exposeIdentity(){const marker=document.getElementById('receiz-navigation');if(marker)Object.assign(marker,{publicMarketIdentity,publicMarketDocument:()=>{const state=reader.getSnapshot();return(state.value??state.carried)?.seed??null;},subscribePublicMarketDocument:reader.subscribe});}
 if(typeof document!=='undefined'){exposeIdentity();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',exposeIdentity,{once:true});}
 export const readPreparedBankCatalog=reader.read;
 export const preparedBankCatalogState=reader.getSnapshot;

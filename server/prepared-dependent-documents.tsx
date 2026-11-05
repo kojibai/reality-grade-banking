@@ -10,7 +10,7 @@ import {PublicLedgerApp} from '../src/public-ledger/PublicLedgerApp';
 import {alignPreparedPublicNavigation} from './prepared-public-navigation';
 import {PublicFeed} from '../src/public-feed/PublicFeed';
 import {Discover} from '../src/public-discover/Discover';
-import {orderFeedItems} from '../src/public-feed/feed-items';
+import {feedSequenceItems,orderFeedItems} from '../src/public-feed/feed-items';
 import {orderDiscoveryItems} from '../src/public-discover/discovery-index';
 import {publicMarketDocumentSeedScript} from '../src/receiz/public-market-document-seed';
 type Input={material:string;generation:string;path:string;template:string;renderBuild?:string};
@@ -61,7 +61,7 @@ export async function renderPreparedDependentDocument({material,generation,path,
  if(Buffer.byteLength(material)>32*1024*1024||!/^[a-f0-9]{64}$/.test(generation)||createHash('sha256').update(material).digest('hex')!==generation)throw Error('PUBLIC_DEPENDENT_RENDER_INPUT_INVALID');
  if(path==='feed'||path==='discover'){
   const {catalog,asOfPulse}=discoveryCatalog(material,generation);
-  const visibleCount=Math.min(path==='feed'?8:12,catalog.items.length),seed=(path==='feed'?orderFeedItems(catalog.items):orderDiscoveryItems(catalog.items)).slice(0,visibleCount),format=new Intl.DateTimeFormat().resolvedOptions();
+  const ordered=path==='feed'?orderFeedItems(feedSequenceItems(catalog.items)):orderDiscoveryItems(catalog.items),visibleCount=Math.min(path==='feed'?8:12,ordered.length),seed=ordered.slice(0,visibleCount),format=new Intl.DateTimeFormat().resolvedOptions();
   const content=renderToString(path==='feed'?<PublicFeed seed={seed} active={false} completeCatalog/>:<Discover seed={seed} active={false} completeCatalog/>,{identifierPrefix:path==='feed'?'public-feed-':'public-discover-'});
   const script=publicMarketDocumentSeedScript({schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount,asOfPulse,format:{locale:format.locale,timeZone:format.timeZone}});
   // Keep the current complete cohort next to its own runtime, never an older

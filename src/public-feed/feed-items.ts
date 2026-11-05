@@ -13,6 +13,12 @@ export function isFeedReadingItem(item:PublicMarketItem):boolean{const kind=feed
 export function matchesFeedKind(item:PublicMarketItem,filter:FeedKind|'All'):boolean{
  if(filter==='All')return true;const kind=feedKind(item);return kind===filter||filter==='essay'&&kind==='image'&&item.hasLongForm===true;
 }
+/** Feed sequences omit sports. An explicitly selected work can still be
+ * inspected through the shared Discover/Market viewer without admitting peers. */
+export function feedSequenceItems(items:readonly PublicMarketItem[],selectedItemId?:string):readonly PublicMarketItem[]{
+ const include=(item:PublicMarketItem)=>item.category!=='sports'||item.id===selectedItemId;
+ return items.every(include)?items:items.filter(include);
+}
 export const feedText=(item:PublicMarketItem)=>item.summary||item.title;
 /** Diversity is a local presentation order, never a claim about proof or value. */
 export function orderFeedItems(items:readonly PublicMarketItem[]):PublicMarketItem[]{
