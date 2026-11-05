@@ -1,7 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "buildCommand": "npm run build",
+  "installCommand": "node scripts/vercel-npm.mjs install",
+  "buildCommand": "node scripts/vercel-npm.mjs build",
   "outputDirectory": "dist-public",
   "functions": {
     "api/index.ts": {

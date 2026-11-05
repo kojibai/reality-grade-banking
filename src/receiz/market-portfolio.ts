@@ -18,6 +18,13 @@ function trade(input:unknown):MarketPositionTrade{
  if(!id||!marketItemId||!['buy','sell'].includes(String(t.side))||quantity===null||!executedAt)throw Error('MARKET_PORTFOLIO_TRADE_INVALID');
  return{id,marketItemId,...(t.affectsPosition===false?{affectsPosition:false as const}:{}),...(typeof t.kaiUPulse==='string'&&/^\d{1,17}$/.test(t.kaiUPulse)?{kaiUPulse:t.kaiUPulse}:{}),title:text(t.title,8192)??'Investment',side:t.side as 'buy'|'sell',shareQuantityMicro:quantity,executionPriceUsdCents:exact(t.executionPriceUsdCents)??marketDisplayCents(t.executionPriceUsd),settlementUsdCents:exact(t.settlementUsdCents)??marketDisplayCents(t.settlementUsd),feeUsdCents:exact(t.feeUsdCents)??marketDisplayCents(t.feeUsd),realizedPnlUsdCents:exact(t.realizedPnlUsdCents,true)??marketDisplayCents(t.realizedPnlUsd,true),executedAt};
 }
+const sameTrade=(a:MarketPositionTrade,b:MarketPositionTrade)=>(['id','marketItemId','title','side','shareQuantityMicro','executionPriceUsdCents','settlementUsdCents','feeUsdCents','realizedPnlUsdCents','executedAt','affectsPosition'] as const).every(key=>a[key]===b[key]);
+function retainTradeTiming(previous:MarketPortfolio|null,next:MarketPortfolio):MarketPortfolio{
+ if(!previous||previous.accountUid!==next.accountUid)return next;
+ const known=new Map(previous.trades.map(row=>[row.id,row]));let retained=false;
+ const trades=next.trades.map(row=>{const held=known.get(row.id);if(row.kaiUPulse===undefined&&held?.kaiUPulse!==undefined&&sameTrade(held,row)){retained=true;return{...row,kaiUPulse:held.kaiUPulse};}return row;});
+ return retained?{...next,trades}:next;
+}
 /** Private read-only position presentation, never a balance or trade authority. */
 export function parseMarketPortfolio(input:unknown,accountUid:string):MarketPortfolio{
  const v=object(input),retained=v.schema==='bankeiz.market-portfolio.v1',observedAt=date(v.observedAt);
@@ -28,12 +35,19 @@ export function parseMarketPortfolio(input:unknown,accountUid:string):MarketPort
 }
 // Preserve PostgreSQL sub-millisecond ordering when two trades share a frame.
 const preciseTime=(at:string)=>BigInt(Date.parse(at))*1000000n+BigInt((at.match(/\.(\d{1,9})/)?.[1]??'').padEnd(9,'0').slice(3));
-function recordedPortfolio(previous:MarketPortfolio|null,raw:unknown,uid:string):MarketPortfolio{
+function recordedPortfolio(previous:MarketPortfolio|null,raw:unknown,uid:string):{portfolio:MarketPortfolio;timingOnly?:true}{
  const r=object(raw),source=object(r.source),p=object(source.position),t=object(source.trade);
  if(r.ok!==true||r.authority!=='market-observation'||r.actorUserId!==uid||r.found!==true||r.recorded!==true||p.owner_user_id!==uid||t.owner_user_id!==uid||t.market_type!=='asset'||p.id!==t.position_id||p.market_item_id!==t.market_item_id)throw Error('MARKET_PORTFOLIO_ORIGINAL_MISMATCH');
  const nextPosition=position({id:p.id,marketItemId:p.market_item_id,assetId:p.asset_id,title:p.title,summary:p.summary,shareQuantityMicro:p.share_quantity_micro,costBasisUsdCents:p.cost_basis_usd_cents,lastPriceUsdCents:p.last_price_usd_cents,openedAt:p.opened_at,lastTradeAt:p.last_trade_at});
- const nextTrade=trade({id:t.id,marketItemId:t.market_item_id,title:t.title,side:t.side,shareQuantityMicro:t.share_quantity_micro,executionPriceUsdCents:t.price_usd_cents,settlementUsdCents:t.settlement_usd_cents,feeUsdCents:t.fee_usd_cents,executedAt:t.created_at});
- if(previous?.trades.some(row=>row.id===nextTrade.id))return previous;
+ const rawKai=typeof t.kai_upulse==='number'&&Number.isSafeInteger(t.kai_upulse)?String(t.kai_upulse):t.kai_upulse;
+ const kaiUPulse=t.kai_basis==='KKSv1.0'&&typeof rawKai==='string'&&/^\d{1,17}$/.test(rawKai)&&(t.pulse==null||String(t.pulse)===String(BigInt(rawKai)/1000000n))?rawKai:undefined;
+ const nextTrade=trade({id:t.id,marketItemId:t.market_item_id,title:t.title,side:t.side,kaiUPulse,shareQuantityMicro:t.share_quantity_micro,executionPriceUsdCents:t.price_usd_cents,settlementUsdCents:t.settlement_usd_cents,feeUsdCents:t.fee_usd_cents,executedAt:t.created_at});
+ const duplicate=previous?.trades.find(row=>row.id===nextTrade.id);
+ if(previous&&duplicate){
+  // Add timing only to the same retained event; never replay its position.
+  if(duplicate.kaiUPulse===undefined&&nextTrade.kaiUPulse!==undefined&&sameTrade(duplicate,nextTrade))return{portfolio:{...previous,trades:previous.trades.map(row=>row===duplicate?{...row,kaiUPulse:nextTrade.kaiUPulse}:row)},timingOnly:true};
+  return{portfolio:previous};
+ }
  const held=previous?.positions.find(row=>row.marketItemId===nextPosition.marketItemId);
  const latest=held?.lastTradeAt??previous?.trades.reduce<string|null>((at,row)=>row.marketItemId===nextPosition.marketItemId&&(!at||preciseTime(row.executedAt)>preciseTime(at))?row.executedAt:at,null);
  const newer=!latest||preciseTime(nextPosition.lastTradeAt??nextTrade.executedAt)>preciseTime(latest);
@@ -41,7 +55,7 @@ function recordedPortfolio(previous:MarketPortfolio|null,raw:unknown,uid:string)
  if(newer&&BigInt(nextPosition.shareQuantityMicro)>0n&&!previous?.positions.some(row=>row.marketItemId===nextPosition.marketItemId))positions.push(nextPosition);
  const observedAt=[previous?.observedAt,nextPosition.lastTradeAt,nextTrade.executedAt,date(p.updated_at)].filter((v):v is string=>!!v).sort((a,b)=>preciseTime(a)>preciseTime(b)?-1:preciseTime(a)<preciseTime(b)?1:0)[0];
  const trades=[...(previous?.trades??[])],at=preciseTime(nextTrade.executedAt),index=trades.findIndex(row=>preciseTime(row.executedAt)<=at);trades.splice(index<0?trades.length:index,0,nextTrade);
- return{schema:'bankeiz.market-portfolio.v1',authority:'market-observation',accountUid:uid,observedAt,source:'connected',...(!previous||previous.complete===false?{complete:false as const}:{}),positions,trades,...(previous?.shareMovements?{shareMovements:previous.shareMovements}:{})};
+ return{portfolio:{schema:'bankeiz.market-portfolio.v1',authority:'market-observation',accountUid:uid,observedAt,source:'connected',...(!previous||previous.complete===false?{complete:false as const}:{}),positions,trades,...(previous?.shareMovements?{shareMovements:previous.shareMovements}:{})}};
 }
 export function readSealedMarketPortfolio(projection:ReceizIdentityAccountProjection,uid:string):MarketPortfolio|null{
  if(!projection.portableStateVerified)return null;
@@ -58,7 +72,7 @@ export function createMarketPortfolio(input:{accountUid:string;initial?:MarketPo
   try{input.assertOpen();}catch(cause){return Promise.reject(cause);}
   if(pending)return pending;if(!force&&!dirty&&current&&Date.now()-observed<60_000)return Promise.resolve(current);
   const ticket=revision;dirty=false;
-  const attempt=input.request().then(value=>{input.assertOpen();const next=parseMarketPortfolio(value,input.accountUid);if(ticket!==revision)throw Error('MARKET_PORTFOLIO_SUPERSEDED');
+  const attempt=input.request().then(value=>{input.assertOpen();const next=retainTradeTiming(current,parseMarketPortfolio(value,input.accountUid));if(ticket!==revision)throw Error('MARKET_PORTFOLIO_SUPERSEDED');
    if(current&&Date.parse(next.observedAt)<Date.parse(current.observedAt))throw Error('MARKET_PORTFOLIO_OLDER_OBSERVATION');
    const nextTrades=new Set(next.trades.map(row=>row.id));if(current?.trades.some(row=>!nextTrades.has(row.id)))throw Error('MARKET_PORTFOLIO_HISTORY_INCOMPLETE');
    if(current?.shareMovements?.some(row=>!next.shareMovements?.some(nextRow=>row.id===nextRow.id)))throw Error('MARKET_PORTFOLIO_HISTORY_INCOMPLETE');
@@ -68,7 +82,7 @@ export function createMarketPortfolio(input:{accountUid:string;initial?:MarketPo
  return{known:()=>current,subscribe:(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};},refresh,
   /** Display only: the caller has already retained and admitted this original.
    * Its absolute position updates every open surface before background sync. */
-  adoptRecorded(raw:unknown){input.assertOpen();const next=recordedPortfolio(current,raw,input.accountUid);if(next===current)return;revision++;dirty=true;current=next;for(const listener of listeners)listener();saving=saving.catch(()=>{}).then(async()=>{input.assertOpen();await input.save?.(next);}).catch(()=>{});},
+  adoptRecorded(raw:unknown){input.assertOpen();const {portfolio:next,timingOnly}=recordedPortfolio(current,raw,input.accountUid);if(next===current)return;if(!timingOnly){revision++;dirty=true;}current=next;for(const listener of listeners)listener();saving=saving.catch(()=>{}).then(async()=>{input.assertOpen();await input.save?.(next);}).catch(()=>{});},
   invalidate(){revision++;dirty=true;if(!pending)void refresh(true).catch(()=>{});}};
 }
 export type MarketPortfolioClient=ReturnType<typeof createMarketPortfolio>;
