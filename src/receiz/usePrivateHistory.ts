@@ -8,9 +8,11 @@ export function usePrivateHistory(identity: OpenIdentity | null, accountUid: str
   const [frame, setCache] = useState<{ identity: OpenIdentity; accountUid: string; value: PrivateHistoryCache } | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
   const [failureCode, setFailureCode] = useState<string | null>(null);
   const refreshQueued=useRef(false);
+  const lastHeadRead=useRef<{at:number;failed:boolean}|null>(null);
   const held = useRef<PrivateHistoryCache | null>(null), generation = useRef(0), pending = useRef(false), paused = useRef(false), seen = useRef(new Set<string>()), restoring = useRef(Promise.resolve()), scope = useRef({ identity, accountUid });
   useEffect(() => {
     const ticket = ++generation.current; scope.current = { identity, accountUid };
+    lastHeadRead.current=null;
     const retained = peekPrivateHistory(identity, accountUid);
     held.current = retained; pending.current = false;refreshQueued.current=false; paused.current = false; seen.current.clear(); setCache(identity && accountUid && retained ? { identity, accountUid, value: retained } : null); setBusy(false); setError(null); setFailureCode(null);
     restoring.current = identity && accountUid ? preloadPrivateHistory(identity, accountUid).then(value => {
@@ -42,6 +44,7 @@ export function usePrivateHistory(identity: OpenIdentity | null, accountUid: str
     if (scope.current.identity !== identity || scope.current.accountUid !== accountUid) return;
     if (!identity?.readPrivateHistory || !accountUid || pending.current || older && paused.current) return;
     const ticket = generation.current; pending.current = true; setBusy(true);
+    let attempt:{at:number;failed:boolean}|null=null;
     try {
       // Preserve already retained pages before merging a freshly read head.
       await restoring.current;
@@ -52,6 +55,7 @@ export function usePrivateHistory(identity: OpenIdentity | null, accountUid: str
       if (cursor && seen.current.has(cursor)) throw new Error('Repeated private history cursor.');
       if (cursor) seen.current.add(cursor);
       setError(null); setFailureCode(null);
+      if(!older){attempt={at:Date.now(),failed:false};lastHeadRead.current=attempt;}
       const page = await identity.readPrivateHistory(cursor);
       if (ticket !== generation.current) return;
       if (page.accountUid !== accountUid) throw new Error('PRIVATE_HISTORY_ACCOUNT_MISMATCH');
@@ -69,6 +73,7 @@ export function usePrivateHistory(identity: OpenIdentity | null, accountUid: str
         }
       } catch { if (ticket === generation.current) setError('Activity loaded. This device could not retain it for offline access.'); }
     } catch (cause) {
+      if(attempt)attempt.failed=true;
       if (ticket === generation.current) { paused.current = true; setFailureCode(privateHistoryFailureCode(cause)); setError('Your activity could not be loaded. Retained activity stays available. Refresh to try again.'); }
     } finally { if (ticket === generation.current) { pending.current = false; setBusy(false);if(refreshQueued.current){refreshQueued.current=false;void read();} } }
   }, [identity, accountUid]);
@@ -76,17 +81,23 @@ export function usePrivateHistory(identity: OpenIdentity | null, accountUid: str
   useEffect(() => {
     let alive = true, queued = false;
     const foreground = () => alive && active && Boolean(identity && accountUid) && document.visibilityState === 'visible' && location.pathname === '/';
+    // Reopening the surface resumes its successful head read; older cursor
+    // pages and explicit or committed-action refreshes remain independent.
+    const age=()=>lastHeadRead.current?Date.now()-lastHeadRead.current.at:60_000;
+    const due=()=>!held.current||!lastHeadRead.current||lastHeadRead.current.failed||age()<0||age()>=60_000;
+    const canRead=()=>foreground()&&due();
     const wake = () => {
       if (!foreground() || queued) return;
       queued = true;
-      queueMicrotask(() => { queued = false; if (foreground()) void read(false, foreground); });
+      queueMicrotask(() => { queued = false; if (canRead()) void read(false, canRead); });
     };
-    if (foreground()) void read(false, foreground);
-    const timer = setInterval(wake, 60_000);
+    if (canRead()) void read(false, canRead);
+    const delay=()=>!due()?60_000-age():60_000;
+    let timer=setTimeout(function poll(){wake();timer=setTimeout(poll,delay());},delay());
     const events = ['online', 'focus', 'pageshow', 'popstate', 'receiz-bank:surface'] as const;
     for (const event of events) addEventListener(event, wake);
     document.addEventListener('visibilitychange', wake);
-    return () => { alive = false; clearInterval(timer); for (const event of events) removeEventListener(event, wake); document.removeEventListener('visibilitychange', wake); };
+    return () => { alive = false; clearTimeout(timer); for (const event of events) removeEventListener(event, wake); document.removeEventListener('visibilitychange', wake); };
   }, [active, identity, accountUid, read]);
   useEffect(()=>{const changed=(event:Event)=>{const detail=(event as CustomEvent).detail;if(identity&&detail?.identityDigest===identity.binding.artifactSha256&&detail?.accountUid===accountUid)void refresh();};addEventListener('bankeiz:wallet-send-recorded',changed);return()=>removeEventListener('bankeiz:wallet-send-recorded',changed);},[identity,accountUid,refresh]);
   const cache = frame?.identity === identity && frame.accountUid === accountUid ? frame.value : peekPrivateHistory(identity, accountUid);

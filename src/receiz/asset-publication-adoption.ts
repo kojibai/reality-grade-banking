@@ -19,7 +19,7 @@ function restore(){if(restored)return;restored=true;try{const values:unknown=JSO
  // local row. Resume its saved native proof unless this exact append was seen.
  const signed=item.hasPbiSignature&&hex(item.pbiReceiptHash),confirmed=!signed||v.signatureDeliveryHash===item.pbiReceiptHash;
  additions.set(v.sourceDigest,{owner:{identityDigest:owner.identityDigest,accountUid:owner.accountUid},username:v.username,sourceDigest:v.sourceDigest,showcaseDigest:v.showcaseDigest,row:object(v.row),item,...(confirmed&&v.receipt&&object(v.receipt).status==='published'&&hex(object(v.receipt).artifactDigest)?{receipt:v.receipt as AssetPublicationReceipt}:{}),...(object(v.sourceReceipt).status==='published'&&hex(object(v.sourceReceipt).artifactDigest)?{sourceReceipt:v.sourceReceipt as Extract<AssetPublicationReceipt,{status:'published'}>}:object(v.receipt).status==='published'&&hex(object(v.receipt).artifactDigest)?{sourceReceipt:v.receipt as Extract<AssetPublicationReceipt,{status:'published'}>}:{}),...(signed&&confirmed?{signatureDeliveryHash:item.pbiReceiptHash}:{}),marketSeen:confirmed&&v.marketSeen===true,profileSeen:confirmed&&v.profileSeen===true});}}catch{/* Malformed display retention never admits an original. */}}
-function artwork(item:PublicMarketItem){const preview=item.originalDigest?previews.get(item.originalDigest):undefined;return preview?{...item,artworkUrl:preview.url}:item;}
+function artwork(item:PublicMarketItem){const preview=item.originalDigest?previews.get(item.originalDigest):undefined;return preview&&item.artworkUrl!==preview.url?{...item,artworkUrl:preview.url}:item;}
 /** Only this module's exact locally created preview, bound to its public owner
  * and source. Remote artwork fields cannot introduce an arbitrary blob URL. */
 export function retainedAssetPublicationArtwork(sourceDigest:string,username?:string):string|null{const preview=previews.get(sourceDigest);return preview&&(!username||preview.username===username)?preview.url:null;}
@@ -99,16 +99,23 @@ export function acceptDiscoveredProfileAssets(profile:PublicProfile):void{restor
 /** Accepted discovery retires the display overlay independently per surface. */
 export function mergeAdmittedPublicAssets(catalog:PublicMarketCatalog):PublicMarketCatalog{restore();let mutated=false;const fresh:PublicMarketItem[]=[];for(const entry of additions.values()){
  const observed=catalog.items.find(item=>matches(item,entry));if(!entry.marketSeen&&(!observed||entry.item.hasPbiSignature===true&&!catalog.items.some(item=>matches(item,entry)&&matchesSignature(item,entry))))fresh.push(retainObservedShares(displayItem(entry),entry,observed));if(entry.marketSeen&&entry.profileSeen&&(!entry.item.hasPbiSignature||entry.receipt?.status==='published')){drop(entry.sourceDigest);mutated=true;}
- }if(mutated)save();return fresh.length?{...catalog,items:[...fresh.reverse(),...catalog.items.filter(item=>!fresh.some(addition=>addition.id===item.id))],sourceCount:catalog.sourceCount+fresh.filter(item=>!catalog.items.some(previous=>previous.id===item.id)).length,complete:false}:{...catalog,items:catalog.items.map(artwork)};}
+ }if(mutated)save();if(fresh.length)return {...catalog,items:[...fresh.reverse(),...catalog.items.filter(item=>!fresh.some(addition=>addition.id===item.id))],sourceCount:catalog.sourceCount+fresh.filter(item=>!catalog.items.some(previous=>previous.id===item.id)).length,complete:false};
+ let changed=false;const items=catalog.items.map(item=>{const next=artwork(item);if(next!==item)changed=true;return next;});return changed?{...catalog,items}:catalog;}
 export function mergeAdmittedProfileAssets(profile:PublicProfile):PublicProfile{restore();const fresh:PublicMarketItem[]=[];let mutated=false;for(const entry of additions.values()){
  if(entry.username!==profile.username||entry.owner.accountUid!==profile.userId)continue;const observed=profile.items.find(item=>matches(item,entry));if(!entry.profileSeen&&(!observed||entry.item.hasPbiSignature===true&&!profile.items.some(item=>matches(item,entry)&&matchesSignature(item,entry)))){fresh.push(retainObservedShares(displayItem(entry,profile),entry,observed));};if(entry.marketSeen&&entry.profileSeen&&(!entry.item.hasPbiSignature||entry.receipt?.status==='published')){drop(entry.sourceDigest);mutated=true;}
  }if(mutated)save();return fresh.length?{...profile,items:[...fresh.reverse(),...profile.items.filter(item=>!fresh.some(addition=>addition.id===item.id))],stats:{...profile.stats,originals:profile.stats.originals===null?null:profile.stats.originals+fresh.filter(item=>!profile.items.some(previous=>previous.id===item.id)).length}}:profile;}
 export function forgetAssetPublicationAdmissions(username?:string){restore();if(!username)sourceFiles.clear();else for(const [digest,entry]of additions)if(entry.username===username)sourceFiles.delete(digest);for(const[digest,preview]of previews)if(!username||preview.username===username){URL.revokeObjectURL(preview.url);previews.delete(digest);}for(const [digest,entry]of additions)if(!username||entry.username===username)drop(digest);changed();}
 
+/** Share a freshly read public projection with the existing display consumers.
+ * This does not qualify a prepared document or create ownership authority. */
+let discoveredPublicCatalog:PublicMarketCatalog|null=null;
+/** The exact accepted display projection may precede its first mounted owner. */
+export const retainedDiscoveredPublicCatalog=()=>discoveredPublicCatalog;
+export function publishDiscoveredPublicCatalog(catalog:PublicMarketCatalog):void{if(catalog.complete)discoveredPublicCatalog=catalog;mergeAdmittedPublicAssets(catalog);for(const listener of listeners)listener(catalog);}
 const publicationRefreshes=new Map<string,Promise<void>>();
 export function refreshAssetPublicationCatalog(sourceDigest:string):Promise<void>{
  const existing=publicationRefreshes.get(sourceDigest);if(existing)return existing;
- const read=import('./public-market.js').then(module=>module.fetchPublicMarket(undefined,sourceDigest)).then(catalog=>{mergeAdmittedPublicAssets(catalog);for(const listener of listeners)listener(catalog);}).catch(()=>{/* The admitted object remains visible; normal refresh retries the same hint. */}).finally(()=>publicationRefreshes.delete(sourceDigest));
+ const read=import('./public-market.js').then(module=>module.fetchPublicMarket(undefined,sourceDigest)).then(publishDiscoveredPublicCatalog).catch(()=>{/* The admitted object remains visible; normal refresh retries the same hint. */}).finally(()=>publicationRefreshes.delete(sourceDigest));
  publicationRefreshes.set(sourceDigest,read);return read;
 }
 

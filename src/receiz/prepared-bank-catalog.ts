@@ -1,3 +1,4 @@
+import {browserPreparedBankCache,type PreparedBankCache} from './prepared-bank-cache';
 import {preparePublicMarketSeedText,publicMarketDocumentHistory,type PublicMarketDocumentSeed} from './public-market-document-seed';
 import {parseMarketCapSource,type MarketCapSource} from './market-projection/source';
 import {SHARE_MARKET_HISTORY_POLICY,type MarketHistorySnapshot} from './market-projection/history';
@@ -38,27 +39,54 @@ async function body(response:Response,signal:AbortSignal){
  const cancel=()=>{void reader.cancel(signal.reason).catch(()=>{});};signal.addEventListener('abort',cancel,{once:true});
  try{for(;;){signal.throwIfAborted();const next=await untilAborted(reader.read(),signal);signal.throwIfAborted();if(next.done)break;size+=next.value.length;if(size>MAX)throw Error('PREPARED_PUBLIC_CATALOG_CAPACITY');chunks.push(next.value);text+=decoder.decode(next.value,{stream:true});}text+=decoder.decode();}finally{signal.removeEventListener('abort',cancel);void reader.cancel().catch(()=>{});reader.releaseLock();}
  const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
- const sha256=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');return{text,sha256};
+ const sha256=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');return{text,sha256,bytes};
+}
+/** Parse one exact complete public data response through the existing guards.
+ * A disk restore uses its receipt as an identity hint, never as currentness. */
+async function openedResponse(response:Response,signal:AbortSignal){
+ const accepted=receipt(response),document=await body(response,signal);
+ if(document.sha256!==accepted.bodySha256)throw Error('PREPARED_PUBLIC_CATALOG_DIGEST_MISMATCH');
+ const scripts=[...document.text.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)].filter(match=>/(?:^|\s)id\s*=\s*(?:"public-market-seed"|'public-market-seed')(?=\s|$)/i.test(match[1])&&/(?:^|\s)type\s*=\s*(?:"application\/json"|'application\/json')(?=\s|$)/i.test(match[1]));
+ if(scripts.length!==1)throw Error('PREPARED_PUBLIC_CATALOG_INVALID');
+ const seed=await preparePublicMarketSeedText(scripts[0][2]);
+ if(!seed||seed.path!=='bank'||seed.generation!==accepted.generation||!seed.capitalization)throw Error('PREPARED_PUBLIC_CATALOG_INVALID');
+ const history=publicMarketDocumentHistory(seed),capitalization=parseMarketCapSource({ok:true,marketCapProjection:seed.capitalization});
+ if(!history||history.historyPolicy!==SHARE_MARKET_HISTORY_POLICY||seed.asOfPulse<history.summary.serverPulse)throw Error('PREPARED_PUBLIC_CATALOG_INVALID');
+ return{seed,history,capitalization,receipt:accepted,bytes:document.bytes};
+}
+function retainedResponse(value:Awaited<ReturnType<typeof openedResponse>>){
+ const r=value.receipt;
+ return new Response(value.bytes,{headers:{'content-type':'text/html; charset=utf-8','content-length':String(value.bytes.byteLength),'x-receiz-public-material-revision':r.generation,'x-receiz-public-render-build':r.build,'x-receiz-public-html-sha256':r.bodySha256,'x-receiz-public-html-state':r.state,'x-receiz-public-state-coordinate':r.coordinate,...(r.pendingCoordinate?{'x-receiz-public-pending-state-coordinate':r.pendingCoordinate}:{})}});
 }
 /** One public display generation, never a financial Source. Read-only API
  * bytes are decoded in the background; account entry never awaits this work. */
-export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fetch(path,init),input?:CarriedBankCatalogInput){
+export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fetch(path,init),input?:CarriedBankCatalogInput,storage?:PreparedBankCache){
  let state:PreparedBankCatalogState=immutable({phase:'idle',value:null,error:null}),held:PreparedBankCatalog|null=null,flight:Promise<PreparedBankCatalog|null>|undefined,controller:AbortController|undefined,epoch=0;
- const listeners=new Set<()=>void>();let carried:CarriedBankCatalog|null=null,bootstrapping=!!input,displayRevision=0,acceptedIdentity:PublicMarketDocumentSeed|null=null,acceptedAt=0;const observedDocuments=new Set<string>(),appliedFamilies=new WeakSet<PublicMarketDocumentSeed>();
+ const listeners=new Set<()=>void>();let carried:CarriedBankCatalog|null=null,bootstrapping=!!input||!!storage,carriedBodyVerified=false,displayRevision=0,acceptedIdentity:PublicMarketDocumentSeed|null=null,acceptedAt=0;const observedDocuments=new Set<string>(),appliedFamilies=new WeakSet<PublicMarketDocumentSeed>();
  const publish=(next:PreparedBankCatalogState,beforeNotify?:()=>void)=>{const value={...next,...(carried?{carried}:{}),...(bootstrapping?{bootstrapping:true as const}:{})};if(value.phase===state.phase&&value.value===state.value&&value.error===state.error&&state.carried===value.carried&&state.bootstrapping===value.bootstrapping)return;state=immutable(value);beforeNotify?.();for(const listener of listeners)listener();};
  // Capture all caller-owned input before asynchronous decode. This identity is
  // a cache hint only; only a later actual HEAD can supply a receipt/verdict.
  const seedText=input?.seedText,hint=input?.hint as Partial<PreparedBankIdentity>|undefined,identity=hint?{generation:hint.generation,build:hint.build,bodySha256:hint.bodySha256}:null;
+ let scheduledCacheIdentity:string|null=null;
+ const retain=(value:Awaited<ReturnType<typeof openedResponse>>)=>{if(!storage)return;const key=value.receipt.generation+':'+value.receipt.bodySha256;if(scheduledCacheIdentity===key)return;scheduledCacheIdentity=key;void Promise.resolve().then(()=>storage.write(retainedResponse(value))).catch(()=>{if(scheduledCacheIdentity===key)scheduledCacheIdentity=null;});};
  if(bootstrapping)publish({phase:'pending',value:null,error:null});
  const bootRevision=displayRevision;
- const bootstrap:Promise<CarriedBankCatalog|null>=input?(async()=>{try{
+ const bootstrap:Promise<CarriedBankCatalog|null>=input||storage?(async()=>{let cached:Response|null=null;try{
+  if(!input){
+   cached=await storage!.read();if(displayRevision!==bootRevision)return carried;
+   if(!cached){bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;}
+   const value=await openedResponse(cached,AbortSignal.timeout(15000));if(displayRevision!==bootRevision)return carried;
+   const length=cached.headers.get('content-length');if(length!==null&&(!/^\d+$/.test(length)||Number(length)!==value.bytes.byteLength))throw Error('PREPARED_PUBLIC_CATALOG_SIZE_MISMATCH');
+   const r=value.receipt;carried=immutable({seed:value.seed,capitalization:value.capitalization,history:value.history,identity:{generation:r.generation,build:r.build,bodySha256:r.bodySha256},receivedAt:Date.now()});
+   carriedBodyVerified=true;scheduledCacheIdentity=r.generation+':'+r.bodySha256;observedDocuments.add(r.generation);bootstrapping=false;publish({phase:flight?'pending':'carried',value:held,error:null});return carried;
+  }
   if(typeof seedText!=='string'||!identity||![identity.generation,identity.build,identity.bodySha256].every(value=>typeof value==='string'&&HEX.test(value)))throw Error('PREPARED_PUBLIC_CARRIED_INVALID');
   const seed=await preparePublicMarketSeedText(seedText);if(displayRevision!==bootRevision)return carried;
   if(!seed||seed.path!=='bank'||seed.generation!==identity.generation||!seed.capitalization)throw Error('PREPARED_PUBLIC_CARRIED_INVALID');
   const history=publicMarketDocumentHistory(seed),capitalization=parseMarketCapSource({ok:true,marketCapProjection:seed.capitalization});
   if(!history||history.historyPolicy!==SHARE_MARKET_HISTORY_POLICY||seed.asOfPulse<history.summary.serverPulse)throw Error('PREPARED_PUBLIC_CARRIED_INVALID');
   observedDocuments.add(seed.generation);carried=immutable({seed,capitalization,history,identity:identity as PreparedBankIdentity,receivedAt:Date.now()});bootstrapping=false;publish({phase:flight?'pending':'carried',value:held,error:null});return carried;
- }catch{if(displayRevision!==bootRevision)return carried;bootstrapping=false;publish({phase:'fallback',value:held,error:'Carried public collection unavailable.'});return null;}})():Promise.resolve(null);
+ }catch{if(displayRevision!==bootRevision)return carried;if(cached)void Promise.resolve().then(()=>storage!.discard(cached!)).catch(()=>{});bootstrapping=false;publish({phase:input?'fallback':flight?'pending':'idle',value:held,error:input?'Carried public collection unavailable.':null});return null;}})():Promise.resolve(null);
  function read(options:{restart?:boolean}={}):Promise<PreparedBankCatalog|null>{
   if(flight&&!options.restart)return flight;
   controller?.abort();const selected=new AbortController(),ticket=++epoch;controller=selected;
@@ -70,23 +98,13 @@ export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fet
    let head:PreparedBankReceipt|undefined;
    if(held||carried?.identity){const response=await request('HEAD');head=receipt(response);void response.body?.cancel().catch(()=>{});if(!current())return null;
     if(held&&sameBody(head,held.receipt)){held=sameReceipt(head,held.receipt)?held:immutable({...held,receipt:head});acceptedIdentity=held.seed;acceptedAt=Date.now();publish({phase:'ready',value:held,error:null});return held;}
-    if(!held&&carried?.identity&&head.generation===carried.identity.generation&&head.build===carried.identity.build&&head.bodySha256===carried.identity.bodySha256){held=immutable({seed:carried.seed,capitalization:carried.capitalization,history:carried.history,receipt:head});carried=null;acceptedIdentity=held.seed;acceptedAt=Date.now();publish({phase:'ready',value:held,error:null});return held;}
+    if(!held&&carried?.identity&&head.generation===carried.identity.generation&&(head.build===carried.identity.build||carriedBodyVerified)&&head.bodySha256===carried.identity.bodySha256){held=immutable({seed:carried.seed,capitalization:carried.capitalization,history:carried.history,receipt:head});carried=null;acceptedIdentity=held.seed;acceptedAt=Date.now();publish({phase:'ready',value:held,error:null});return held;}
     publish({phase:'pending',value:held,error:null});
    }
-   const response=await request('GET'),accepted=receipt(response);
-   // HEAD is an invalidation hint. A newer transition may finish before GET;
-   // that GET must qualify its own complete receipt and bytes below.
-   const document=await body(response,signal);if(!current())return null;
-   if(document.sha256!==accepted.bodySha256)throw Error('PREPARED_PUBLIC_CATALOG_DIGEST_MISMATCH');
-   const scripts=[...document.text.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)].filter(match=>/(?:^|\s)id\s*=\s*(?:"public-market-seed"|'public-market-seed')(?=\s|$)/i.test(match[1])&&/(?:^|\s)type\s*=\s*(?:"application\/json"|'application\/json')(?=\s|$)/i.test(match[1]));
-   if(scripts.length!==1)throw Error('PREPARED_PUBLIC_CATALOG_INVALID');
-   // Consume only the existing inert JSON script. No DOMParser, HTML adoption,
-   // executable code, arbitrary URL or account request enters this data path.
-   const seed=await preparePublicMarketSeedText(scripts[0][2]);if(!current())return null;
-   if(!seed||seed.path!=='bank'||seed.generation!==accepted.generation||!seed.capitalization)throw Error('PREPARED_PUBLIC_CATALOG_INVALID');
-   const history=publicMarketDocumentHistory(seed),capitalization=parseMarketCapSource({ok:true,marketCapProjection:seed.capitalization});
-   if(!history||history.historyPolicy!==SHARE_MARKET_HISTORY_POLICY||seed.asOfPulse<history.summary.serverPulse)throw Error('PREPARED_PUBLIC_CATALOG_INVALID');
-   held=immutable({seed,capitalization,history,receipt:accepted});carried=null;acceptedIdentity=held.seed;acceptedAt=Date.now();publish({phase:'ready',value:held,error:null});return held;
+   const response=await request('GET');
+   // HEAD is an invalidation hint. GET qualifies its own exact complete bytes.
+   const value=await openedResponse(response,signal);if(!current())return null;
+   held=immutable({seed:value.seed,capitalization:value.capitalization,history:value.history,receipt:value.receipt});carried=null;carriedBodyVerified=false;acceptedIdentity=held.seed;acceptedAt=Date.now();publish({phase:'ready',value:held,error:null});retain(value);return held;
   }catch{if(selectedRead())publish({phase:'fallback',value:held,error:'Prepared public collection unavailable.'});return null;}
   })();flight=job;void job.finally(()=>{if(flight===job){flight=undefined;controller=undefined;}}).catch(()=>{});return job;
  }
@@ -101,7 +119,7 @@ export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fet
   const history=publicMarketDocumentHistory(seed);if(!seed.catalog.complete||!seed.capitalization||!history||history.historyPolicy!==SHARE_MARKET_HISTORY_POLICY||seed.asOfPulse<history.summary.serverPulse)return null;
   const capitalization=parseMarketCapSource({ok:true,marketCapProjection:seed.capitalization}),display=immutable({seed,history,capitalization,receivedAt:Date.now()});
   // No Bank data-body hint or Source currentness verdict is manufactured.
-  if(identity?.generation&&HEX.test(identity.generation))observedDocuments.add(identity.generation);if(held)observedDocuments.add(held.seed.generation);if(carried)observedDocuments.add(carried.seed.generation);observedDocuments.add(seed.generation);appliedFamilies.add(seed);++displayRevision;++epoch;controller?.abort();controller=undefined;flight=undefined;held=null;carried=display;bootstrapping=false;acceptedIdentity=seed;acceptedAt=display.receivedAt;
+  if(identity?.generation&&HEX.test(identity.generation))observedDocuments.add(identity.generation);if(held)observedDocuments.add(held.seed.generation);if(carried)observedDocuments.add(carried.seed.generation);observedDocuments.add(seed.generation);appliedFamilies.add(seed);++displayRevision;++epoch;controller?.abort();controller=undefined;flight=undefined;held=null;carried=display;carriedBodyVerified=false;bootstrapping=false;acceptedIdentity=seed;acceptedAt=display.receivedAt;
   publish({phase:'carried',value:null,error:null},()=>accept(display));return display;
  }
  return{getSnapshot:()=>state,subscribe(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};},read,bootstrap:()=>bootstrap,adoptDocument,identity:()=>acceptedIdentity};
@@ -112,7 +130,7 @@ function carriedDocumentInput():CarriedBankCatalogInput|undefined{
  seed?.remove();hint?.remove();
  if(!seedText||!text||text.length>1024)return;try{return{seedText,hint:JSON.parse(text)};}catch{return;}
 }
-const reader=createPreparedBankCatalogReader(undefined,carriedDocumentInput());
+const reader=createPreparedBankCatalogReader(undefined,carriedDocumentInput(),browserPreparedBankCache(PREPARED_BANK_CATALOG_PATH));
 export const prepareCarriedBankCatalog=reader.bootstrap;
 export const adoptPublicDocumentCatalog=reader.adoptDocument;
 export const publicMarketIdentity=reader.identity;

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {openProofMedia,retainedPublicMedia,type ProofMediaSource} from '../src/receiz/proof-media';
+import {retainProofInspection,trackProofInspection} from '../src/receiz/proof-inspection';
 const ports=vi.hoisted(()=>({load:vi.fn(),read:vi.fn()}));
 vi.mock('../src/receiz/ledger-offline-proof',()=>({loadOfflineProofVerifier:ports.load}));
 const deferred=<T,>()=>{let resolve!:(v:T)=>void,reject!:(e:unknown)=>void;return{promise:new Promise<T>((a,b)=>{resolve=a;reject=b;}),resolve,reject};};
@@ -13,6 +14,21 @@ it('loads the existing verifier beside the same exact-byte download',async()=>{
  const selected=source(),gate=deferred<Response>(),fetch=vi.spyOn(globalThis,'fetch').mockReturnValue(gate.promise);ports.read.mockResolvedValue(original(selected.digest));
  const opening=openProofMedia(selected);try{await vi.waitFor(()=>expect(fetch).toHaveBeenCalledOnce());expect(ports.load).toHaveBeenCalledOnce();expect(ports.read).not.toHaveBeenCalled();}finally{gate.resolve(new Response(new Uint8Array([1])));await opening;}
  expect((await opening).files[0].text).toBe('Exact original content');expect(ports.read).toHaveBeenCalledOnce();
+});
+it('opens media from an already-inspected exact Original without downloading its bytes again',async()=>{
+ const selected=source(),bytes=new Uint8Array([7,8,9]),opened=original(selected.digest),fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async()=>new Response(bytes));
+ retainProofInspection(opened.report,bytes,'inspected-original.receiz',false,true);ports.read.mockResolvedValue(opened);
+ const media=await openProofMedia(selected);expect(media.files[0].text).toBe('Exact original content');expect(fetch).not.toHaveBeenCalled();expect(ports.read).toHaveBeenCalledExactlyOnceWith(bytes,'inspected-original.receiz');
+});
+it('awaits the existing exact Original inspection before choosing a network read',async()=>{
+ const selected=source(),gate=deferred<void>(),bytes=new Uint8Array([4,5,6]),opened=original(selected.digest),fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async()=>new Response(bytes));
+ const inspection=trackProofInspection(selected.digest,gate.promise.then(()=>retainProofInspection(opened.report,bytes,'pending-original.receiz',false,true)));ports.read.mockResolvedValue(opened);
+ const media=openProofMedia(selected);await Promise.resolve();gate.resolve();await inspection;expect((await media).files[0].text).toBe('Exact original content');expect(fetch).not.toHaveBeenCalled();expect(ports.read).toHaveBeenCalledExactlyOnceWith(bytes,'pending-original.receiz');
+});
+it('does not publish bytes from a private held inspection into an anonymous public media cache',async()=>{
+ const selected=source(),privateBytes=new Uint8Array([9,8,7]),publicBytes=new Uint8Array([1]),opened=original(selected.digest),fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async()=>new Response(publicBytes));
+ retainProofInspection(opened.report,privateBytes,'private.receiz');ports.read.mockResolvedValue(opened);
+ expect((await openProofMedia(selected)).files[0].text).toBe('Exact original content');expect(fetch).toHaveBeenCalledOnce();expect(ports.read).toHaveBeenCalledExactlyOnceWith(publicBytes,'original.receiz');
 });
 it('shares two simultaneous identical public opens and reuses their settled projection',async()=>{
  const selected=source(),gate=deferred<void>(),fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async()=>{await gate.promise;return new Response(new Uint8Array([1]));});ports.read.mockResolvedValue(original(selected.digest));
@@ -42,9 +58,9 @@ it('shares a failure without retaining it or preventing an explicit retry',async
  const results=await Promise.allSettled([openProofMedia(selected),openProofMedia(selected)]);expect(results.every(row=>row.status==='rejected')).toBe(true);expect(retainedPublicMedia(selected)).toBeNull();expect(fetch).toHaveBeenCalledOnce();
  fetch.mockResolvedValue(new Response(new Uint8Array([1])));ports.read.mockResolvedValue(original(selected.digest));expect((await openProofMedia(selected)).files[0].text).toBe('Exact original content');expect(fetch).toHaveBeenCalledTimes(2);
 });
-it('never shares a private held source or a different public reading context',async()=>{
+it('keeps prepared reading contexts and private media separate while reusing exact public artifact bytes',async()=>{
  const selected=source(),fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async()=>new Response(new Uint8Array([1])));ports.read.mockResolvedValue(original(selected.digest));
- await Promise.all([openProofMedia(selected),openProofMedia({...selected,postUrl:'https://receiz.com/post/first'}),openProofMedia({...selected,hasLongForm:true}),openProofMedia({...selected,url:'https://receiz.com/api/proof-material/packages/'+'e'.repeat(64)+'/artifact'})]);expect(fetch).toHaveBeenCalledTimes(4);
+ const contexts=await Promise.all([openProofMedia(selected),openProofMedia({...selected,postUrl:'https://receiz.com/post/first'}),openProofMedia({...selected,hasLongForm:true}),openProofMedia({...selected,url:'https://receiz.com/api/proof-material/packages/'+'e'.repeat(64)+'/artifact'})]);expect(fetch).toHaveBeenCalledOnce();expect(new Set(contexts).size).toBe(4);expect(ports.read).toHaveBeenCalledTimes(4);
  const held={kind:'held' as const,bytes:new Uint8Array([1]),filename:'private.receiz',digest:selected.digest};await Promise.all([openProofMedia(held),openProofMedia(held)]);expect(ports.read).toHaveBeenCalledTimes(6);
 });
 it('preserves digest mismatch and malformed-source rejection before exposing media',async()=>{

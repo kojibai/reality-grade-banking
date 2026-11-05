@@ -4,7 +4,7 @@ import {resolvePublicOriginalUrl,PublicOriginalPurchaseRequired} from './public-
 import {readPublicLedgerBytes} from './public-ledger-transfer';
 import {readPublicProofReading,type ProofReading} from './proof-reading';
 import type {ReceizVerifiedPayload} from '@receiz/sdk';
-import {retainProofInspection,trackProofInspection} from './proof-inspection';
+import {retainProofInspection,reuseProofInspection,trackProofInspection} from './proof-inspection';
 import {loadOfflineProofVerifier} from './ledger-offline-proof';
 import {readAssetMoment,type MomentMetadata} from './asset-moment';
 import {readComposerAssetContent,readComposerCapacity,type ComposerAssetFile,type ComposerAssetContent} from './asset-composer';
@@ -110,8 +110,9 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
  signal?.throwIfAborted();const retained=source.kind==='public'?retainedAssetPublicationSource(source.digest):null;
  if(source.kind==='held'&&(!source.bytes.length||source.bytes.length>originalReadLimit(source.bytes,MAX)))throw Error('This original exceeds the supported reader capacity.');
  if(source.kind==='public'&&!retained&&!safeReceizPublicUrl(source.url,'original'))throw Error('This original source is not supported.');
+ const inspected=source.kind==='public'&&!retained?await reuseProofInspection(source.digest,true):null;signal?.throwIfAborted();
  const readBytes=async()=>{let bytes:Uint8Array,filename:string;
- if(source.kind==='held'){bytes=new Uint8Array(source.bytes);filename=source.filename;}else if(retained){bytes=new Uint8Array(await retained.arrayBuffer());filename=retained.name;}else{
+ if(source.kind==='held'){bytes=new Uint8Array(source.bytes);filename=source.filename;}else if(retained){bytes=new Uint8Array(await retained.arrayBuffer());filename=retained.name;}else if(inspected){bytes=new Uint8Array(inspected.bytes);filename=inspected.filename;}else{
   const timeout=AbortSignal.timeout(90_000),publicSignal=signal?AbortSignal.any([signal,timeout]):timeout;
   const url=new URL(await resolvePublicOriginalUrl(source.url,source.digest,publicSignal));publicSignal.throwIfAborted();
   // Immutable public material already supports anonymous CORS. Use its exact
@@ -135,7 +136,7 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
  // Append/admission custody is separate and is never relaxed by this reader.
  let opened;try{opened=await verifier.readArtifact(bytes,filename);}catch{throw Error('This original could not be opened as verified media. Inspect its proof source for details.');}signal?.throwIfAborted();
  if(opened.report.artifactSha256.toLowerCase()!==source.digest.toLowerCase())throw Error('This original does not match the selected proof.');
- retainProofInspection(opened.report,bytes,filename);
+ retainProofInspection(opened.report,bytes,filename,false,source.kind==='public');
  const json=readMediaJson(opened.payload);
  const verification=opened.report.verification as {bundle?:{nativeRecordSeal?:{ownerReceizId?:string}}};
  const composer:ComposerMediaContext|undefined=json?.value?.schema==='receiz.bank.asset-content.v2'?{
@@ -160,7 +161,7 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
   if(typeof linked==='string'&&/^[a-f0-9]{64}$/.test(linked)&&linked!==source.digest){
    let held=source.related?.find(item=>item.digest===linked);const carried=value.linkedSource;
    if(!held&&carried?.digest===linked&&typeof carried.filename==='string'&&carried.filename.length<=240&&typeof carried.exactArtifactB64u==='string'&&carried.exactArtifactB64u.length<=Math.ceil(MAX*4/3)&&/^[A-Za-z0-9_-]+$/u.test(carried.exactArtifactB64u))held={digest:linked,filename:cleanName(carried.filename),bytes:(await import('@receiz/sdk')).receizBase64UrlDecode(carried.exactArtifactB64u)};
-   if(held){const media=await openProofMedia({kind:'held',...held},signal);return {artifactDigest:source.digest,linkedArtifactDigest:linked,files:[...media.files,...files]};}
+   if(held){const media=await openProofMedia({kind:'held',digest:held.digest,bytes:held.bytes,filename:held.filename},signal);return {artifactDigest:source.digest,linkedArtifactDigest:linked,files:[...media.files,...files]};}
   }
  }
  // The canonical read already binds authored text to this exact Original.

@@ -2,11 +2,17 @@ import {loadReceiz} from './client';
 import type {ReceizIdentityPublicBinding} from '@receiz/sdk';
 import {verifyNativeAssetHoldingSignature,type NativeAssetHolding} from './native-asset-holding-protocol';
 import type {HeldDeposit} from './deposit-source';
+import {openCanonicalProofFile} from './proof-capture';
 export interface VerifiedNativeHolding {certificate:NativeAssetHolding;deposit:HeldDeposit;}
 /** An accepted position certificate is read beneath canonical v129 verification.
  * It cannot confer title or replace current execution-source admission. */
 export async function openNativeAssetHolding(bytes:Uint8Array,filename:string,owner:Pick<ReceizIdentityPublicBinding,'keyId'|'artifactOwnerReceizId'>):Promise<VerifiedNativeHolding>{
- const sdk=await loadReceiz(),opened=await sdk.createReceizClient().artifacts.verifyAndOpen(new File([new Uint8Array(bytes)],filename,{type:'application/vnd.receiz.bundle+json'}));
+ return openNativeAssetHoldingFile(new File([new Uint8Array(bytes)],filename,{type:'application/vnd.receiz.bundle+json'}),owner);
+}
+/** The same immutable File may already have its real SDK open retained by the
+ * general source reader. Native signature and owner checks still run here. */
+export async function openNativeAssetHoldingFile(file:File,owner:Pick<ReceizIdentityPublicBinding,'keyId'|'artifactOwnerReceizId'>):Promise<VerifiedNativeHolding>{
+ const sdk=await loadReceiz(),opened=await openCanonicalProofFile(file),bytes=new Uint8Array(await file.arrayBuffer()),filename=file.name;
  const raw=new TextDecoder('utf-8',{fatal:true}).decode(opened.verifiedPayload.bytes),parsed=JSON.parse(raw),certificate=await verifyNativeAssetHoldingSignature(parsed);
  if(!certificate||sdk.canonicalizeReceizV122(certificate)!==raw||opened.sealedArtifact.kind!=='receiz.native-record-seal'||opened.sealedArtifact.continuity.ownerReceizId!==owner.artifactOwnerReceizId||certificate.holder.receizId!==owner.artifactOwnerReceizId||certificate.holder.keyId!==owner.keyId||opened.sealedArtifact.continuity.recordId!==`record:${opened.verifiedPayload.sha256}`||String(opened.verification.bundle?.kaiPulseEternal)!==(BigInt(certificate.issuedAtKaiUPulse)/1000000n).toString()||BigInt(certificate.issuedAtKaiUPulse)>BigInt(sdk.receizKaiNow().uPulse))throw Error('BANK_ASSET_HOLDING_UNVERIFIED');
  const a=certificate.asset;

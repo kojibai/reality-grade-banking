@@ -16,14 +16,16 @@ function setup(active=true){
  held.records=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'sent',actionKind:'market.share.sell',summary:'Blue Horizon',amountUsdCents:'100'},{id:'received',actionKind:'contacts.import',summary:'People imported'}]}).records;
  const personal={available:true,completeAtSealedHead:true,records:held.records.map((row,index)=>({...row,authority:'account-source-projection' as const,accountFlow:index?'in' as const:'out' as const}))};
  const privateRefresh=vi.fn(async()=>{}),privateHistory={cache:null,busy:false,error:'Retained account history.',failureCode:'SYNTHETIC',canLoadMore:false,refresh:privateRefresh,loadMore:vi.fn(async()=>{})};
- let y=0,id=0;const frames=new Map<number,FrameRequestCallback>();
+ let y=0,id=0,naturalTop=0;const frames=new Map<number,FrameRequestCallback>();
+ const rect=HTMLElement.prototype.getBoundingClientRect;
+ vi.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockImplementation(function(this:HTMLElement){return this.hasAttribute('data-ledger-scroll-anchor')?{...rect.call(this),top:naturalTop-y} as DOMRect:rect.call(this);});
  vi.spyOn(window,'scrollY','get').mockImplementation(()=>y);
  const raf=vi.fn((callback:FrameRequestCallback)=>{frames.set(++id,callback);return id;});vi.stubGlobal('requestAnimationFrame',raf);vi.stubGlobal('cancelAnimationFrame',(frame:number)=>frames.delete(frame));
  vi.stubGlobal('IntersectionObserver',undefined);const request=vi.fn();vi.stubGlobal('fetch',request);
  held.refresh.mockClear();held.more.mockClear();const host=document.createElement('div');document.body.append(host);const root=createRoot(host);roots.push(root);
  const render=(visible:boolean)=>act(()=>root.render(<Ledger active={visible} initialTab="mine" personalHistory={personal} privateHistory={privateHistory}/>));render(active);
  const button=(name:string)=>[...host.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent===name)!;
- return{host,render,button,request,privateRefresh,raf,frames,scroll(at:number,flush=true){y=at;act(()=>window.dispatchEvent(new Event('scroll')));if(flush)act(()=>{const waiting=[...frames.values()];frames.clear();for(const callback of waiting)callback(performance.now());});}};
+ return{host,render,button,request,privateRefresh,raf,frames,naturalAt(at:number){naturalTop=at;},scroll(at:number,flush=true){y=at;act(()=>window.dispatchEvent(new Event('scroll')));if(flush)act(()=>{const waiting=[...frames.values()];frames.clear();for(const callback of waiting)callback(performance.now());});}};
 }
 async function type(input:HTMLInputElement,value:string){await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}));});}
 it('groups retained My history controls, tucks down and reveals up, and pins focused search without rebuilding rows or reading data',async()=>{
@@ -59,4 +61,14 @@ it('uses the existing safe-area transform pattern with a reduced-motion override
  expect(css).toMatch(/\.ledger-scroll-tools\{[^}]*transition:transform \.2s ease/);
  expect(css).toMatch(/\.ledger-scroll-tools\.is-away\{transform:translateY\(calc\(-100% - 20px - env\(safe-area-inset-top\)\)\)\}/);
  expect(css).toMatch(/@media\(prefers-reduced-motion:reduce\)\{\.ledger-scroll-tools\{transition:none\}\}/);
+});
+it('keeps controls visible until their own natural position is passed and restores them on an earlier-position reopen',()=>{
+ const view=setup(),tools=view.host.querySelector('.ledger-scroll-tools')!;view.naturalAt(1200);
+ view.scroll(500);expect(tools.classList.contains('is-away')).toBe(false);
+ view.scroll(1200);expect(tools.classList.contains('is-away')).toBe(false);
+ view.scroll(1210);expect(tools.classList.contains('is-away')).toBe(true);
+ view.scroll(1202);expect(tools.classList.contains('is-away')).toBe(false);
+ view.scroll(1300);expect(tools.classList.contains('is-away')).toBe(true);
+ view.render(false);view.scroll(500);view.render(true);expect(tools.classList.contains('is-away')).toBe(false);
+ expect(view.request).not.toHaveBeenCalled();expect(view.privateRefresh).not.toHaveBeenCalled();
 });

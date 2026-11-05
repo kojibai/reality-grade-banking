@@ -9,6 +9,24 @@ Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const source={kind:'held' as const,digest:'a'.repeat(64),filename:'source.receiz',bytes:new Uint8Array([1])};
 const media={artifactDigest:source.digest,files:[{kind:'text',filename:'Essay.html',mimeType:'text/html',bytes:new TextEncoder().encode('<p>Bound text</p>'),payloadDigest:'b'.repeat(64),text:'Bound text'}]};
 afterEach(()=>{open.mockReset();readPublic.mockReset();retained.mockReset();vi.restoreAllMocks();});
+it('opens complete carried public text without rereading it or claiming independent verification',async()=>{
+ const publicSource={kind:'public' as const,digest:source.digest,url:'https://receiz.com/api/proof-material/packages/'+'b'.repeat(64)+'/artifact',postUrl:'https://receiz.com/v/20261105_1234/ABCDEFGH/123?a=public&ms=1',hasLongForm:true};
+ const carriedText={title:'A carried essay',text:'Already present in the selected public object.',sha256Hex:'c'.repeat(64)};
+ vi.spyOn(HTMLDialogElement.prototype,'showModal').mockImplementation(function(this:HTMLDialogElement){this.open=true;});vi.spyOn(HTMLDialogElement.prototype,'close').mockImplementation(function(this:HTMLDialogElement){this.open=false;});vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:carried-text');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+ const host=document.createElement('div'),root=createRoot(host);try{
+  await act(async()=>root.render(<ProofMedia source={publicSource} title="Essay" carriedText={carriedText} publicImageUrl={publicSource.url} autoOpen/>));
+  expect(host.querySelector('.proof-carried-reading')?.textContent).toContain(carriedText.text);expect(readPublic).not.toHaveBeenCalled();expect(open).not.toHaveBeenCalled();
+  await act(async()=>host.querySelector<HTMLButtonElement>('.proof-carried-reading')!.click());expect(host.querySelector('dialog .proof-reading-text')?.textContent).toBe(carriedText.text);expect(host.querySelector('dialog')?.textContent).toContain('Public carried text');expect(host.textContent).not.toContain('Verified carried text');expect(host.textContent).not.toContain('Original verified');
+ }finally{act(()=>root.unmount());}
+});
+it('opens a changed selected public source without retaining the previous source media',async()=>{
+ const first={kind:'public' as const,digest:source.digest,url:'https://receiz.com/api/proof-material/packages/'+'1'.repeat(64)+'/artifact'},next={...first,digest:'2'.repeat(64),url:'https://receiz.com/api/proof-material/packages/'+'2'.repeat(64)+'/artifact'};
+ open.mockResolvedValueOnce(media).mockResolvedValueOnce({...media,artifactDigest:next.digest,files:[{...media.files[0],text:'The next exact source.'}]});vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:source-revision');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+ const host=document.createElement('div'),root=createRoot(host);try{
+  await act(async()=>root.render(<ProofMedia source={first} title="First" autoOpen/>));expect(host.querySelector('.proof-reading-text')?.textContent).toBe('Bound text');
+  await act(async()=>root.render(<ProofMedia source={next} title="Next" autoOpen/>));expect(host.querySelector('.proof-reading-text')?.textContent).toBe('The next exact source.');expect(open).toHaveBeenCalledTimes(2);expect(open).toHaveBeenLastCalledWith(next,expect.any(AbortSignal));
+ }finally{act(()=>root.unmount());}
+});
 it('keeps passive audio metadata out of document loading while Play remains immediate on the same element',async()=>{
  const ready=vi.spyOn(document,'readyState','get').mockReturnValue('loading');
  const play=vi.spyOn(HTMLMediaElement.prototype,'play').mockResolvedValue(undefined),reload=vi.spyOn(HTMLMediaElement.prototype,'load').mockImplementation(()=>{});

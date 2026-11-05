@@ -11,10 +11,12 @@ vi.mock('../src/receiz/usePublicNetwork',()=>({usePublicNetwork:()=>held.ledger}
 vi.mock('../src/features/ledger/useLedgerValueSource',()=>({useLedgerValueSource:()=>null}));
 vi.mock('../src/public-ledger/LedgerProofControls',()=>({LedgerProofControls:()=>null}));
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
-let host:HTMLDivElement,root:Root,y:number,frames:Map<number,FrameRequestCallback>,nextFrame:number;
+let host:HTMLDivElement,root:Root,y:number,naturalTop:number,frames:Map<number,FrameRequestCallback>,nextFrame:number;
 const refresh=vi.fn(),loadMore=vi.fn(),fetcher=vi.fn();
 beforeEach(()=>{
- history.replaceState({},'','/ledger/');y=0;frames=new Map();nextFrame=0;refresh.mockClear();loadMore.mockClear();fetcher.mockClear();
+ history.replaceState({},'','/ledger/');y=0;naturalTop=300;frames=new Map();nextFrame=0;refresh.mockClear();loadMore.mockClear();fetcher.mockClear();
+ const rect=HTMLElement.prototype.getBoundingClientRect;
+ vi.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockImplementation(function(this:HTMLElement){return this.hasAttribute('data-ledger-scroll-anchor')?{...rect.call(this),top:naturalTop-y} as DOMRect:rect.call(this);});
  const records=[...parsePublicNetworkPage('actions',{ok:true,actions:[{id:'kept-action',actionKind:'profile.created',summary:'Kept action',pulse:100}]}).records,...parsePublicNetworkPage('wallet',{ok:true,events:[{id:'kept-note',kind:'note_mint',amountUsdCents:'100',summary:'Kept payment',pulse:101}]}).records];
  held.ledger={records,sources:Object.fromEntries(PUBLIC_SOURCES.map(source=>[source,{status:'live',complete:true,busy:false,cursor:null,error:null}])),bootstrap:false,capturedAt:null,refresh,loadMore};
  vi.spyOn(window,'scrollY','get').mockImplementation(()=>y);
@@ -56,4 +58,18 @@ it('listens only while the retained Ledger route is active and cancels a queued 
 it('keeps the initial server-rendered tools and rows visible before scroll effects',()=>{
  const doc=new DOMParser().parseFromString(renderToStaticMarkup(<PublicLedgerApp active={false}/>),'text/html'),bar=doc.querySelector('.public-ledger-tools');
  expect(bar).not.toBeNull();expect(bar?.classList.contains('is-away')).toBe(false);expect(bar?.querySelector('[aria-label="Search public activity"]')).not.toBeNull();expect(bar?.querySelectorAll('[aria-label="Activity type"] button')).toHaveLength(5);expect(doc.querySelectorAll('.public-ledger-row')).toHaveLength(2);
+});
+it('waits for the public workspace natural position, including reduced-motion focus and retained reopen',async()=>{
+ naturalTop=1400;vi.stubGlobal('matchMedia',()=>({matches:true,media:'(prefers-reduced-motion: reduce)',addEventListener(){},removeEventListener(){}}));
+ await act(()=>root.render(<PublicLedgerApp/>));const input=search();
+ await scroll(500);expect(tools().classList.contains('is-away')).toBe(false);
+ await scroll(1300);expect(tools().classList.contains('is-away')).toBe(false);
+ await scroll(1400);expect(tools().classList.contains('is-away')).toBe(false);
+ await scroll(1410);expect(tools().classList.contains('is-away')).toBe(true);
+ await scroll(1402);expect(tools().classList.contains('is-away')).toBe(false);
+ await scroll(1500);expect(tools().classList.contains('is-away')).toBe(true);
+ await act(()=>input.focus());await scroll(1700);expect(tools().classList.contains('is-away')).toBe(false);
+ await act(()=>input.blur());await scroll(1800);expect(tools().classList.contains('is-away')).toBe(true);
+ await act(()=>root.render(<PublicLedgerApp active={false}/>));await scroll(500);await act(()=>root.render(<PublicLedgerApp/>));expect(tools().classList.contains('is-away')).toBe(false);expect(search()).toBe(input);
+ expect(refresh).not.toHaveBeenCalled();expect(loadMore).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();
 });

@@ -7,7 +7,7 @@ import { AmountInput } from '../../components/AmountInput';
 import { NativeOperation } from '../account/NativeOperation';
 
 export function LiveOwnership({ identity, mode = 'send', initialDigest = '', nativeAssetId, onRefresh }: { identity: OpenIdentity; mode?: 'send' | 'sell' | 'buy' | 'redeem'; initialDigest?: string; nativeAssetId?:string; onRefresh(): void }) {
-  const [sources, setSources] = useState<HeldDeposit[]>([]), [assetDigest, setDigest] = useState(initialDigest), [quantity, setQuantity] = useState('1'), [recipient, setRecipient] = useState(''), [rail, setRail] = useState<BankRail>('reserve'), [buyer, setBuyer] = useState<'bank' | 'market'>(nativeAssetId?'market':'bank');
+  const [sources, setSources] = useState<readonly HeldDeposit[]>([]), [assetDigest, setDigest] = useState(initialDigest), [quantity, setQuantity] = useState('1'), [recipient, setRecipient] = useState(''), [rail, setRail] = useState<BankRail>('reserve'), [buyer, setBuyer] = useState<'bank' | 'market'>(nativeAssetId?'market':'bank');
   useEffect(() => { let alive = true; const read=()=>{void identity.listDeposits().then(items => { if (alive) setSources(items); }).catch(() => {});}; read();addEventListener('bankeiz:asset-sources',read);return () => { alive = false;removeEventListener('bankeiz:asset-sources',read); }; }, [identity]);
   const title = { send: 'Ownership transfer', sell: 'Sale', buy: 'Purchase', redeem: 'Redemption' }[mode];
   const input = (): BankOperationInput => {

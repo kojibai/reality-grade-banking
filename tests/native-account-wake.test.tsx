@@ -131,3 +131,15 @@ it('checks visible local valuations without increasing the network refresh frequ
   await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
   expect(identity.refreshLocalValuation).toHaveBeenCalledTimes(5); expect(identity.readWallet).not.toHaveBeenCalled();
 });
+
+it('resumes the healthy wallet refresh deadline across completed returns while explicit refresh and failure still read',async()=>{
+ vi.useFakeTimers();const identity=held(),view=await mount(identity);
+ await act(async()=>wake('focus'));expect(identity.readWallet).toHaveBeenCalledTimes(1);
+ await act(async()=>vi.advanceTimersByTimeAsync(100));await act(async()=>wake('popstate'));await act(async()=>wake('receiz-bank:surface'));
+ expect(identity.readWallet).toHaveBeenCalledTimes(1);expect(view.read().wallet?.totalUsdCents).toBe('100');
+ await act(async()=>view.read().refresh());expect(identity.readWallet).toHaveBeenCalledTimes(2);
+ vi.mocked(identity.readWallet).mockRejectedValueOnce(Error('OUTAGE'));await act(async()=>view.read().refresh());expect(view.read().syncPending).toBe(true);
+ await act(async()=>wake('online'));expect(identity.readWallet).toHaveBeenCalledTimes(4);expect(view.read().syncPending).toBe(false);
+ await act(async()=>vi.advanceTimersByTimeAsync(59_999));expect(identity.readWallet).toHaveBeenCalledTimes(4);
+ await act(async()=>vi.advanceTimersByTimeAsync(1));expect(identity.readWallet).toHaveBeenCalledTimes(5);
+});

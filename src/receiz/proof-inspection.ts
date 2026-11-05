@@ -4,7 +4,7 @@ import type {LedgerProofHistory} from './ledger-proof-history';
 import type {ReceizOpenedArtifact} from '@receiz/sdk';
 
 export type ProofInspection={schema:string;sdk:string;artifactSha256:string;artifactBytes:number;payloadSha256:string;payloadBytes:number;payloadFilename:string;payloadMimeType:string;verification:Record<string,unknown>;groth16:Record<string,unknown>|null;verificationMaterial?:Record<string,unknown>;scope:string;proofHistory?:LedgerProofHistory;causalLineage?:LedgerCausalLineage};
-type OriginalInspection={report:ProofInspection;bytes:Uint8Array;filename:string;retained:boolean};
+type OriginalInspection={report:ProofInspection;bytes:Uint8Array;filename:string;retained:boolean;publiclyAvailable:boolean};
 const originals=new Map<string,OriginalInspection>(),pending=new Map<string,Promise<OriginalInspection|null>>(),listeners=new Set<()=>void>();
 const admitted=new WeakMap<ProofInspection,OriginalInspection>(),MAX=64*1024*1024;
 export const subscribeProofInspections=(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};};
@@ -12,9 +12,10 @@ export const retainedProofInspection=(digest:string|undefined)=>digest?originals
 export const admittedProofInspection=(report:ProofInspection)=>admitted.get(report);
 
 /** Only successful canonical inspection/open paths publish here. Exact bytes
- * remain attached to the report so arbitrary JSON cannot enter an offline kit. */
-export function retainProofInspection(report:ProofInspection,bytes:Uint8Array,filename:string,retained=false):OriginalInspection{
- const digest=report.artifactSha256.toLowerCase(),entry={report,bytes:bytes.slice(),filename,retained};
+ * remain attached to the report so arbitrary JSON cannot enter an offline kit.
+ * Anonymous public readers alone mark bytes reusable by public media caches. */
+export function retainProofInspection(report:ProofInspection,bytes:Uint8Array,filename:string,retained=false,publiclyAvailable=false):OriginalInspection{
+ const digest=report.artifactSha256.toLowerCase(),entry={report,bytes:bytes.slice(),filename,retained,publiclyAvailable:publiclyAvailable||originals.get(digest)?.publiclyAvailable===true};
  originals.delete(digest);
  while(originals.size&&(originals.size>=16||[...originals.values()].reduce((sum,item)=>sum+item.bytes.length,0)+bytes.length>MAX))originals.delete(originals.keys().next().value!);
  originals.set(digest,entry);admitted.set(report,entry);for(const listener of listeners)listener();return entry;
@@ -26,7 +27,7 @@ export function trackProofInspection<T>(digest:string,work:Promise<T>):Promise<T
  if(!existing){const observation=work.then(()=>retainedProofInspection(key),()=>retainedProofInspection(key));pending.set(key,observation);void observation.finally(()=>{if(pending.get(key)===observation)pending.delete(key);});}
  return work;
 }
-export async function reuseProofInspection(digest:string){return retainedProofInspection(digest)??await pending.get(digest.toLowerCase())??null;}
+export async function reuseProofInspection(digest:string,publicOnly=false){const held=retainedProofInspection(digest);if(held&&(!publicOnly||held.publiclyAvailable))return held;const prepared=await pending.get(digest.toLowerCase())??null;return prepared&&(!publicOnly||prepared.publiclyAvailable)?prepared:null;}
 
 /** Display decoding of an already verified bundle. Keep the crypto runtime
  * lazy: JSON/base64 decoding does not import snarkjs or perform verification. */

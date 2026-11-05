@@ -19,19 +19,22 @@ async function mount(id: OpenIdentity, active = true) {
   return { read: () => state, active: async (value: boolean) => { await act(async () => root!.render(<Probe active={value} />)); } };
 }
 function wake(event: string) { (event === 'visibilitychange' ? document : window).dispatchEvent(new Event(event)); }
+function expireHead(){vi.spyOn(Date,'now').mockReturnValue(Date.now()+60_000);}
 beforeEach(() => {
   visible = true; history.replaceState(null, '', '/'); vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visible ? 'visible' : 'hidden');
   vault.load.mockReset().mockResolvedValue(cache()); vault.save.mockReset().mockImplementation(async (_binding, value) => value);
 });
 afterEach(() => { if (root) act(() => root!.unmount()); root = undefined; vi.useRealTimers(); vi.restoreAllMocks(); history.replaceState(null, '', '/'); });
-it.each(['focus', 'pageshow', 'visibilitychange', 'online'])('refreshes private head on %s while retained records stay visible through 503', async event => {
+it.each(['focus', 'pageshow', 'visibilitychange', 'online'])('refreshes the expired private head on %s while retained records stay visible through 503', async event => {
   const id = identity(), view = await mount(id); vi.mocked(id.readPrivateHistory).mockRejectedValue(Object.assign(Error('outage'), { status: 503 }));
+  expireHead();
   await act(async () => wake(event));
   expect(id.readPrivateHistory).toHaveBeenCalledTimes(2); expect(view.read().cache?.records.map(row => row.sourceId)).toContain('retained'); expect(view.read().failureCode).toBe('HTTP_503');
 });
 it('coalesces wake bursts and overlapping pending reads into one head request', async () => {
   const id = identity(), view = await mount(id); let finish!: (value: ReturnType<typeof page>) => void;
   vi.mocked(id.readPrivateHistory).mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  expireHead();
   await act(async () => { wake('pageshow'); wake('focus'); wake('online'); wake('visibilitychange'); });
   await act(async () => { wake('focus'); wake('pageshow'); });
   expect(id.readPrivateHistory).toHaveBeenCalledTimes(2); expect(view.read().cache?.records.map(row => row.sourceId)).toContain('retained');
@@ -40,6 +43,7 @@ it('coalesces wake bursts and overlapping pending reads into one head request', 
 it('queues a committed-action head refresh behind an older in-flight request',async()=>{
  const id=identity(),view=await mount(id);let finish!:(value:ReturnType<typeof page>)=>void;
  vi.mocked(id.readPrivateHistory).mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;})).mockResolvedValueOnce(page('committed-send'));
+ expireHead();
  await act(async()=>wake('focus'));await act(async()=>view.read().refresh());
  await act(async()=>finish(page('earlier-head')));
  expect(id.readPrivateHistory).toHaveBeenCalledTimes(3);expect(view.read().cache?.records.map(row=>row.sourceId)).toContain('committed-send');expect(view.read().cache?.records.map(row=>row.sourceId)).toContain('retained');
@@ -67,8 +71,19 @@ it('does not start an automatic network read if the page hides while local resto
 it('cleans up timers and queued wakes and ignores a request completing after unmount', async () => {
   vi.useFakeTimers(); const id = identity(); await mount(id); let finish!: (value: ReturnType<typeof page>) => void;
   vi.mocked(id.readPrivateHistory).mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  vi.setSystemTime(Date.now()+60_000);
   await act(async () => wake('focus')); expect(id.readPrivateHistory).toHaveBeenCalledTimes(2);
   act(() => { wake('pageshow'); root!.unmount(); root = undefined; });
   await act(async () => { finish(page('too-late')); wake('focus'); await vi.advanceTimersByTimeAsync(120_000); });
   expect(id.readPrivateHistory).toHaveBeenCalledTimes(2); expect(vault.save).toHaveBeenCalledTimes(1); expect(vi.getTimerCount()).toBe(0);
+});
+
+it('resumes a healthy private-head deadline on quick returns and retries explicit or failed reads immediately',async()=>{
+ vi.useFakeTimers();const id=identity(),view=await mount(id);expect(id.readPrivateHistory).toHaveBeenCalledTimes(1);
+ await act(async()=>wake('popstate'));await act(async()=>wake('focus'));await view.active(false);
+ await act(async()=>vi.advanceTimersByTimeAsync(20_000));await view.active(true);expect(id.readPrivateHistory).toHaveBeenCalledTimes(1);
+ await act(async()=>vi.advanceTimersByTimeAsync(39_999));expect(id.readPrivateHistory).toHaveBeenCalledTimes(1);
+ await act(async()=>vi.advanceTimersByTimeAsync(1));expect(id.readPrivateHistory).toHaveBeenCalledTimes(2);
+ vi.mocked(id.readPrivateHistory).mockRejectedValueOnce(Object.assign(Error('OUTAGE'),{status:503}));await act(async()=>view.read().refresh());expect(view.read().failureCode).toBe('HTTP_503');
+ await act(async()=>wake('online'));expect(id.readPrivateHistory).toHaveBeenCalledTimes(4);expect(view.read().failureCode).toBeNull();expect(view.read().cache?.records.map(row=>row.sourceId)).toContain('retained');
 });

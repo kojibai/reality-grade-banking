@@ -1,9 +1,11 @@
 import {fetchPublicMarket,parsePublicMarket,rememberPublicOriginalLocators,type PublicMarketItem,type PublicMarketCatalog} from '../receiz/public-market';
 import {appendFeedItems,orderFeedItems,refreshFeedItems} from './feed-items';
+import {publishDiscoveredPublicCatalog} from '../receiz/asset-publication-adoption';
 import {readPublicMarketDocumentSeed} from '../receiz/public-market-document-seed';
+type PublicCatalogMarker=HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null;publicMarketDocument?:()=>{catalog:PublicMarketCatalog;generation:string}|null};
 let held:PublicMarketItem[]|null=null,pending:Promise<PublicMarketItem[]>|null=null;
 let preparedGeneration:string|null=null,revision=0;
-let preparedCatalog:PublicMarketCatalog|null=null;
+let preparedCatalog:PublicMarketCatalog|null=null,replacedPreparedCatalog:PublicMarketCatalog|null=null;
 const preparedListeners=new Set<(catalog:PublicMarketCatalog)=>void>();
 function publicDiscoveryDocument(){return preparedCatalog&&preparedGeneration?{catalog:preparedCatalog,generation:preparedGeneration}:null;}
 function exposeDiscoveryDocument(){const marker=document.getElementById('receiz-navigation');if(marker)Object.assign(marker,{publicDiscoveryDocument});}
@@ -16,10 +18,23 @@ export function subscribePreparedFeedCatalog(listener:(catalog:PublicMarketCatal
 }
 /** The complete current document cohort replaces an older shipped expansion.
  * These are presentation bytes, never proof or account admission. */
-export function reusePreparedFeedCatalog(catalog:PublicMarketCatalog,generation:string):PublicMarketCatalog{
+export function reusePreparedFeedCatalog(catalog:PublicMarketCatalog,generation:string|null):PublicMarketCatalog{
  if(preparedCatalog===catalog&&preparedGeneration===generation)return preparedCatalog;
+ if(generation&&catalog!==replacedPreparedCatalog)replacedPreparedCatalog=null;
  preparedGeneration=generation;preparedCatalog=catalog;revision++;held=orderFeedItems(catalog.items);for(const listener of preparedListeners)listener(catalog);
  return catalog;
+}
+/** Public membership can be selected after the prepared document was accepted.
+ * Reuse that projection without borrowing the older document's generation. */
+export function readHeldFeedCatalog():PublicMarketCatalog|null{
+ if(typeof document==='undefined')return null;
+ const marker=document.getElementById('receiz-navigation') as PublicCatalogMarker|null;
+ const selected=marker?.publicMarketCatalog?.(),family=marker?.publicMarketDocument?.();
+ // An explicit bare successor replaces this exact older prepared projection,
+ // even before the optional shared Market selection module has loaded.
+ if((!selected?.complete||selected===replacedPreparedCatalog)&&family?.catalog===replacedPreparedCatalog&&preparedCatalog&&preparedGeneration===null)return preparedCatalog;
+ const catalog=selected?.complete?selected:family?.catalog.complete?family.catalog:null;
+ return catalog?reusePreparedFeedCatalog(catalog,family?.catalog===catalog&&/^[a-f0-9]{64}$/.test(family.generation)?family.generation:null):null;
 }
 export function readPreparedFeedCatalog(root:Element,path:'feed'|'discover'){
  const element=root.querySelector('#public-market-seed');if(!element)return null;
@@ -42,11 +57,20 @@ async function shippedSource(){
 /** Read the existing shipped public projection once, without any hosted writer,
  * quotes, account or media work. Explicit Refresh uses existing live discovery. */
 export function prepareFeedItems(signal?:AbortSignal,refresh=false):Promise<PublicMarketItem[]>{
- signal?.throwIfAborted();if(held&&!refresh)return Promise.resolve(held);
+ signal?.throwIfAborted();if(!refresh){readHeldFeedCatalog();if(held)return Promise.resolve(held);}
  if(!pending){const started=revision,work=(refresh?fetchPublicMarket(AbortSignal.timeout(12000)):shippedSource()).then(catalog=>{
   if(started!==revision&&held)return held;
-  if(preparedGeneration&&!catalog.complete)throw Error('PUBLIC_FEED_COMPLETE_CATALOG_REQUIRED');
-  held=held?(preparedGeneration?completeFeedItems(held,catalog.items):appendFeedItems(held,catalog.items)):orderFeedItems(catalog.items);return held;
+  if(refresh&&catalog.complete){
+   publishDiscoveredPublicCatalog(catalog);
+   const marker=typeof document==='undefined'?null:document.getElementById('receiz-navigation') as PublicCatalogMarker|null;
+   if(marker?.publicMarketCatalog?.()?.complete){readHeldFeedCatalog();return held!;}
+  }
+  if(preparedCatalog&&!catalog.complete)throw Error('PUBLIC_FEED_COMPLETE_CATALOG_REQUIRED');
+  if(refresh&&catalog.complete){
+   const marker=typeof document==='undefined'?null:document.getElementById('receiz-navigation') as PublicCatalogMarker|null;
+   replacedPreparedCatalog=marker?.publicMarketDocument?.()?.catalog??preparedCatalog;reusePreparedFeedCatalog(catalog,null);return held!;
+  }
+  held=held?(preparedCatalog?completeFeedItems(held,catalog.items):appendFeedItems(held,catalog.items)):orderFeedItems(catalog.items);return held;
  });pending=work;void work.finally(()=>{if(pending===work)pending=null;}).catch(()=>{});}
  const work=pending;if(!signal)return work;
  return new Promise((resolve,reject)=>{const abort=()=>{signal.removeEventListener('abort',abort);reject(signal.reason);};signal.addEventListener('abort',abort,{once:true});void work.then(value=>{signal.removeEventListener('abort',abort);if(!signal.aborted)resolve(value);},error=>{signal.removeEventListener('abort',abort);if(!signal.aborted)reject(error);});});
@@ -54,6 +78,10 @@ export function prepareFeedItems(signal?:AbortSignal,refresh=false):Promise<Publ
 let collectibles:PublicMarketItem[]|null=null,collectiblesPending:Promise<PublicMarketItem[]>|null=null;
 /** Collectible inventory is a different existing source, opened only on intent. */
 export function prepareFeedCollectibles():Promise<PublicMarketItem[]>{
+ const selected=readHeldFeedCatalog(),family=typeof document==='undefined'?null:(document.getElementById('receiz-navigation') as PublicCatalogMarker|null)?.publicMarketDocument?.()?.catalog;
+ // Originals-only membership does not withdraw the independently held sports.
+ const source=selected?.items.some(item=>item.category==='sports')||selected?.sportsCoverage==='complete'?selected:family,sports=source?.items.filter(item=>item.category==='sports');
+ if(sports?.length||source?.sportsCoverage==='complete')return Promise.resolve(orderFeedItems(sports??[]));
  if(collectibles)return Promise.resolve(collectibles);if(collectiblesPending)return collectiblesPending;
  const work=(async()=>{const response=await fetch('/receiz-public-sports.json',{credentials:'omit',cache:'force-cache',signal:AbortSignal.timeout(12000)});if(!response.ok)throw Error('PUBLIC_COLLECTIBLES_SOURCE_UNAVAILABLE');const input=await response.json(),{mergePublicSports}=await import('../receiz/public-sports');const catalog=mergePublicSports({items:[],complete:true,revision:'feed-collectibles',observedAt:null,sourceCount:0},input);collectibles=orderFeedItems(catalog.items);return collectibles;})();collectiblesPending=work;void work.finally(()=>{if(collectiblesPending===work)collectiblesPending=null;}).catch(()=>{});return work;
 }

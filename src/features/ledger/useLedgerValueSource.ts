@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {loadReceiz} from '../../receiz/client';
 import { indexLedgerValues,sameLedgerValueInputs,type LedgerValueIndex } from '../../receiz/ledger-value';
 import {readMarketDisplaySource,retainedMarketDisplaySource,useMarketDisplaySource} from '../../receiz/market-projection/display-source';
+import {preparedBankCatalogEnabled,preparedBankCatalogState} from '../../receiz/prepared-bank-catalog';
 
 const refreshInterval=60_000;
 
 /** One existing public projection for the ledger, with no original-file requests per row. */
 export function useLedgerValueSource(active: boolean) {
   const source=useMarketDisplaySource(active),[pulse,setPulse]=useState<number|null>(null);
+  const bank=preparedBankCatalogState(),bankOwnsRefresh=preparedBankCatalogEnabled()&&(bank.value??bank.carried)?.seed.catalog.complete===true;
   const heldIndex=useRef<LedgerValueIndex|null>(null),heldValue=useRef<LedgerValueIndex|null>(null);
   const lastLiveRead=useRef<{at:number;failed:boolean}|null>(null);
   useEffect(()=>{
@@ -18,7 +20,9 @@ export function useLedgerValueSource(active: boolean) {
     return()=>{alive=false;clearInterval(timer);};
   },[active]);
   useEffect(() => {
-    if (!active) return;
+    // The complete selected Bank family already has its own bounded refresh
+    // owner. A separate capitalization reply cannot replace that operand.
+    if (!active || bankOwnsRefresh) return;
     const controller = new AbortController(); let pending = false;
     const read = async (path: string, live: boolean) => {
       if (controller.signal.aborted || pending && live) return;
@@ -39,7 +43,7 @@ export function useLedgerValueSource(active: boolean) {
     let timer=setTimeout(function poll(){refresh();timer=setTimeout(poll,refreshInterval);},resume?refreshInterval-age:refreshInterval);
     window.addEventListener('online', refresh);
     return () => { controller.abort(); clearTimeout(timer); window.removeEventListener('online', refresh); };
-  }, [active]);
+  }, [active,bankOwnsRefresh]);
   const index=useMemo(()=>{if(!source)return null;if(!heldIndex.current||!sameLedgerValueInputs(heldIndex.current.source,source))heldIndex.current=indexLedgerValues(source);return heldIndex.current;},[source]);
   return useMemo(()=>{
     if(!active)return heldValue.current;

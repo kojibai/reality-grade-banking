@@ -10,6 +10,10 @@ import {curatePublicMarketMembership} from '../server/public-market';
 import {preparePublicMarketRenderMaterial} from '../server/public-market-preparation';
 import {parsePublicMarket} from '../src/receiz/public-market';
 import {FeedReading} from '../src/public-feed/FeedReading';
+import {ProfileCollection} from '../src/public-explorer/ProfileCollection';
+import {PublicAssetDetail} from '../src/features/market/PublicAssetDetail';
+import FeedExperience from '../src/public-feed/FeedExperience';
+import type {PublicProfile} from '../src/receiz/public-profile';
 import * as proofReading from '../src/receiz/proof-reading';
 import * as client from '../src/receiz/client';
 
@@ -25,6 +29,18 @@ it('first paints the complete actual carried essay and opens no network or proof
  expect(html.querySelector('.feed-reading-paper>div')?.textContent).toBe(text);expect(html.body.textContent).not.toContain('Open full text');
  const fetcher=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('Known carried essay must not be fetched again.')),open=vi.spyOn(proofReading,'readPublicProofReading'),sdk=vi.spyOn(client,'loadReceiz');
  const root=createRoot(document.createElement('div'));try{await act(async()=>root.render(<FeedReading item={item}/>));expect(fetcher).not.toHaveBeenCalled();expect(open).not.toHaveBeenCalled();expect(sdk).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
+});
+it.each(['profile','asset','feed'] as const)('keeps complete selected text available through the %s media entry without another record read',async entry=>{
+ const item=selected(entry==='feed'?'audio':'image'),fetcher=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('Selected text is already carried')),open=vi.spyOn(proofReading,'readPublicProofReading'),sdk=vi.spyOn(client,'loadReceiz');
+ if(entry==='feed')item.playback={url:'https://receiz.com/audio/essay.mp3',mimeType:'audio/mpeg'};
+ vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:carried-essay');vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});vi.spyOn(HTMLDialogElement.prototype,'showModal').mockImplementation(function(this:HTMLDialogElement){this.open=true;});vi.spyOn(HTMLDialogElement.prototype,'close').mockImplementation(function(this:HTMLDialogElement){this.open=false;});vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+ const host=document.createElement('div'),root=createRoot(host),profile={userId:'essay-owner',items:[item],nextCursor:null} as PublicProfile;
+ try{
+  await act(async()=>root.render(entry==='profile'?<ProfileCollection profile={profile} items={[item]} active/>:entry==='asset'?<PublicAssetDetail item={item} readOnly/>:<FeedExperience item={item}/>));
+  if(entry==='profile')await act(async()=>host.querySelector<HTMLButtonElement>('.profile-asset-cover')!.click());
+  expect(host.querySelector('.proof-carried-reading')?.textContent).toContain(text.slice(0,240));
+  await act(async()=>host.querySelector<HTMLButtonElement>('.proof-carried-reading')!.click());expect(host.querySelector('dialog .proof-reading-text')?.textContent).toBe(text);expect(host.querySelector('dialog')?.textContent).toContain('Public carried text');expect(open).not.toHaveBeenCalled();expect(sdk).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
 });
 it.each(['image','audio','video','pdf','epub','file'])('retains only valid public text through repeated %s curation',kind=>{
  const first=curatePublicMarketMembership(membership(kind));expect(parsePublicMarket(first).items[0].carriedText).toEqual(longForm);expect(curatePublicMarketMembership(structuredClone(first))).toEqual(first);

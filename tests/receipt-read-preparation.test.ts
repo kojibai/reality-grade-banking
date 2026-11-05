@@ -7,6 +7,17 @@ it('shares an exact pending receipt read, keeping the full integrity-checked rec
  const {receipt,bytes,digest}=await fixture('shared-receipt');let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve),fetcher=vi.fn(async()=>{await gate;return new Response(bytes);});
  const a=readReceiptSnapshot(digest,fetcher),b=readReceiptSnapshot(digest,fetcher);release();expect(await a).toEqual(receipt);expect(await b).toEqual(receipt);expect(fetcher).toHaveBeenCalledOnce();
 });
+it('reuses the exact successful receipt on reopen without fetching, hashing or parsing it again',async()=>{
+ const {bytes,digest}=await fixture('settled-receipt'),fetcher=vi.fn(async()=>new Response(bytes));
+ const first=await readReceiptSnapshot(digest,fetcher),hash=vi.spyOn(crypto.subtle,'digest'),parse=vi.spyOn(JSON,'parse');
+ try{expect(await readReceiptSnapshot(digest,fetcher)).toBe(first);expect(fetcher).toHaveBeenCalledOnce();expect(hash).not.toHaveBeenCalled();expect(parse).not.toHaveBeenCalled();}finally{hash.mockRestore();parse.mockRestore();}
+});
+it('bounds settled receipts and keeps the most recently reopened exact receipt',async()=>{
+ const values=await Promise.all(Array.from({length:25},(_,i)=>fixture('bounded-receipt-'+i))),byDigest=new Map(values.map(value=>[value.digest,value.bytes])),fetcher=vi.fn(async(url:RequestInfo|URL)=>new Response(byDigest.get(String(url).split('/').pop()!)!));
+ const first=await readReceiptSnapshot(values[0].digest,fetcher);for(const value of values.slice(1))await readReceiptSnapshot(value.digest,fetcher);
+ const recent=await readReceiptSnapshot(values[24].digest,fetcher);expect(await readReceiptSnapshot(values[24].digest,fetcher)).toBe(recent);expect(fetcher).toHaveBeenCalledTimes(25);
+ expect(await readReceiptSnapshot(values[0].digest,fetcher)).not.toBe(first);expect(fetcher).toHaveBeenCalledTimes(26);
+});
 it('keeps different transports isolated even for the same requested digest',async()=>{
  const {receipt,bytes,digest}=await fixture('isolated-receipt'),good=vi.fn(async()=>new Response(bytes)),bad=vi.fn(async()=>new Response('changed'));
  const [accepted,refused]=await Promise.allSettled([readReceiptSnapshot(digest,good),readReceiptSnapshot(digest,bad)]);expect(accepted).toEqual({status:'fulfilled',value:receipt});expect(refused).toMatchObject({status:'rejected',reason:Error('RECEIPT_INTEGRITY_FAILED')});expect(good).toHaveBeenCalledOnce();expect(bad).toHaveBeenCalledOnce();

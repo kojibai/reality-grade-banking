@@ -20,6 +20,7 @@ export function useNativeAccount(custody = nativeCustody) {
   const [opening, setOpening] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [observedAt, setObservedAt] = useState<string | null>(null);
   const [syncPending, setSyncPending] = useState(false);
   const refreshQueued=useRef(false);
+  const lastRead=useRef<{at:number;failed:boolean}|null>(null);
   const held = useRef<OpenIdentity | null>(null), generation = useRef(0), pending = useRef(false), openingOperation = useRef(false), hasObservation = useRef(false);
   const publishObservation = useCallback((known: WalletObservation) => {
     hasObservation.current = true; setWallet(known.wallet); setObservedAt(known.observedAt); setWalletHistory(known.history ?? []); setHistoryComplete(hasSettledAccountView(known));
@@ -46,13 +47,18 @@ export function useNativeAccount(custody = nativeCustody) {
     if (known) publishObservation(known);
     if (background) await refreshLocal();
     if (ticket !== generation.current || held.current !== current) return;
+    // Automatic returns reuse a healthy head's deadline. Explicit Refresh and
+    // recorded actions still enter the same request/revision choreography.
+    const age=lastRead.current?Date.now()-lastRead.current.at:60_000;
+    if(background&&hasSettledAccountView(current.knownWallet?.()??null)&&lastRead.current&&!lastRead.current.failed&&age>=0&&age<60_000)return;
     if(pending.current){if(!background){refreshQueued.current=true;setBusy(true);}return;}
     pending.current = true; if (!background) setBusy(true);
     try {
       do{
         refreshQueued.current=false;
+        const attempt={at:Date.now(),failed:false};lastRead.current=attempt;
         try{const value=await current.readWallet();if(ticket===generation.current&&!refreshQueued.current){const observed=current.knownWallet?.();hasObservation.current=true;setWallet(value);setObservedAt(observed?.observedAt??new Date().toISOString());setWalletHistory(observed?.history??[]);setHistoryComplete(hasSettledAccountView(observed??null));setError(null);setSyncPending(false);}}
-        catch(cause){if(ticket===generation.current&&!refreshQueued.current){setSyncPending(true);if(current.knownWallet?.()?.source!=='account-genesis')setError(walletReadMessage(cause,hasObservation.current));}}
+        catch(cause){attempt.failed=true;if(ticket===generation.current&&!refreshQueued.current){setSyncPending(true);if(current.knownWallet?.()?.source!=='account-genesis')setError(walletReadMessage(cause,hasObservation.current));}}
       }while(ticket===generation.current&&held.current===current&&refreshQueued.current);
     }
     finally { if (ticket === generation.current) { pending.current = false; setBusy(false); } }
@@ -76,6 +82,7 @@ export function useNativeAccount(custody = nativeCustody) {
       await retainedRows;
       if (ticket !== generation.current) { next.dispose(); return; }
       held.current?.dispose(); held.current = next; pending.current = false;refreshQueued.current=false;
+      lastRead.current=null;
       setReceivedNotes(next.knownReceivedNotes?.()??[]);
       // One React commit: no admitted account shell with an absent chart.
       hasObservation.current = true; setWallet(known.wallet); setObservedAt(known.observedAt); setWalletHistory(known.history ?? []); setHistoryComplete(hasSettledAccountView(known));
@@ -107,7 +114,8 @@ export function useNativeAccount(custody = nativeCustody) {
       wakeQueued = true;
       queueMicrotask(() => { wakeQueued = false; if (foreground()) void refresh(true); });
     };
-    const timer = setInterval(wake, 60_000);
+    const delay=()=>{const age=lastRead.current?Date.now()-lastRead.current.at:60_000;return lastRead.current&&!lastRead.current.failed&&age>=0&&age<60_000?60_000-age:60_000;};
+    let timer=setTimeout(function poll(){wake();timer=setTimeout(poll,delay());},delay());
     const localTimer = setInterval(() => { if (foreground()) void refreshLocal(); }, 1_000);
     const repaint = () => { const current=held.current,known = current?.knownWallet?.(); if (current) setReceivedNotes(current.knownReceivedNotes?.()??[]); if (known) { hasObservation.current=true; setWallet(known.wallet); setObservedAt(known.observedAt); setWalletHistory(known.history ?? []); setHistoryComplete(hasSettledAccountView(known)); setError(null); setSyncPending(false); } };
     const paymentRecorded=(event:Event)=>{const current=held.current,detail=(event as CustomEvent).detail;if(current&&detail?.identityDigest===current.binding.artifactSha256)void refresh();};
@@ -116,7 +124,7 @@ export function useNativeAccount(custody = nativeCustody) {
     const wakeEvents = ['online', 'focus', 'pageshow', 'popstate', 'receiz-bank:surface'] as const;
     for (const event of wakeEvents) addEventListener(event, wake);
     document.addEventListener('visibilitychange', wake);
-    return () => { alive = false; entering.current?.dispose(); held.current?.dispose(); held.current = null; generation.current++; clearInterval(timer); clearInterval(localTimer);removeEventListener('bankeiz:wallet-send-recorded',paymentRecorded); removeEventListener('bankeiz:account-observation', repaint); for (const event of wakeEvents) removeEventListener(event, wake); document.removeEventListener('visibilitychange', wake); };
+    return () => { alive = false; entering.current?.dispose(); held.current?.dispose(); held.current = null; generation.current++; clearTimeout(timer); clearInterval(localTimer);removeEventListener('bankeiz:wallet-send-recorded',paymentRecorded); removeEventListener('bankeiz:account-observation', repaint); for (const event of wakeEvents) removeEventListener(event, wake); document.removeEventListener('visibilitychange', wake); };
   }, [accept, refresh, refreshLocal, custody]);
   const open = async (operation: (identityPrepared:()=>void) => Promise<OpenIdentity>, reusePrepared = false) => {
     if (openingOperation.current) return;
@@ -155,6 +163,7 @@ export function useNativeAccount(custody = nativeCustody) {
     }
     await forgetPushSubscription().catch(()=>{});await custody.forgetDeviceIdentity();
     entering.current?.dispose();held.current?.dispose();held.current=null;generation.current++;pending.current=false;hasObservation.current=false;
+    lastRead.current=null;
     setIdentity(null);setWallet(null);setWalletHistory([]);setReceivedNotes([]);setHistoryComplete(false);setObservedAt(null);setOpeningStage('identity');setOpening(false);setBusy(false);setSyncPending(false);
   };
   return { identity, wallet, walletHistory, receivedNotes, historyComplete, opening, openingStage, busy, error, observedAt, syncPending, refresh, create, pbi, importId, forget };

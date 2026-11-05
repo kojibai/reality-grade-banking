@@ -39,7 +39,7 @@ async function inspectOriginal(record:PublicRecord,signal?:AbortSignal){
  if(await verifier.sha256Hex(bytes)!==digest.toLowerCase())throw Error('SELECTED_RECORD_DIGEST_MISMATCH');
  const report=await verifier.inspectArtifact(bytes,filename);signal?.throwIfAborted();
  if(report.artifactSha256!==digest.toLowerCase())throw Error('SELECTED_RECORD_DIGEST_MISMATCH');
- const retained=await retain(digest,bytes);signal?.throwIfAborted();retainProofInspection(report,bytes,filename,retained);return {report,retained};
+ const retained=await retain(digest,bytes);signal?.throwIfAborted();retainProofInspection(report,bytes,filename,retained,true);return {report,retained};
 }
 /** Save the actual canonical Original, independently of its optional verifier
  * kit. A selected mutable byte view is checked once, then its immutable File
