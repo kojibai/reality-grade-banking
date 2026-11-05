@@ -11,3 +11,11 @@ it('routes canonical pages through the prepared wrapper and keeps direct immutab
  const v=JSON.parse(readFileSync('vercel.json','utf8')),route=(source:string)=>v.rewrites.find((r:{source:string})=>r.source===source)?.destination;
  expect(v.outputDirectory).toBe('dist-public');expect(route('/')).toBe('/api/explore?path=bank-entry&entry=1');expect(route('/explore/')).toBe('/api/explore?path=explore&entry=1');expect(route('/index.html')).toBe('/__bank_static_entry/bank/index.html');expect(route('/explore/index.html')).toBe('/__bank_static_entry/explore/index.html');expect(route('/receive/')).toBe('/__bank_static_entry/bank/index.html');expect(route('/auth/receiz/callback')).toBe('/__bank_static_entry/bank/index.html');expect(v.functions['api/explore.ts'].includeFiles).toContain('dist/index.html');
 });
+it('keeps function packaging globs within the Vercel schema length limit',()=>{
+ const config=JSON.parse(readFileSync('vercel.json','utf8'));
+ for(const [name,entry]of Object.entries(config.functions) as Array<[string,Record<string,unknown>]>)for(const key of ['includeFiles','excludeFiles'])if(entry[key]!==undefined){expect(typeof entry[key],name+'.'+key).toBe('string');expect((entry[key] as string).length,name+'.'+key).toBeLessThanOrEqual(256);}
+});
+it('retains the exact prepared public entry and data packaging selection',async()=>{
+ const {createRequire}=await import('node:module'),{braceExpand}=createRequire(import.meta.url)('minimatch'),config=JSON.parse(readFileSync('vercel.json','utf8'));
+ expect(braceExpand(config.functions['api/explore.ts'].includeFiles).sort()).toEqual(['dist/index.html','dist/explore/**','dist/market-cap/index.html','dist/ledger/index.html','dist/feed/index.html','dist/discover/index.html','server/profile-runtime/**','public/receiz-public-ledger.json.gz.bin','public/receiz-public-share-chart-history.json','public/receiz-public-sports.json'].sort());
+});

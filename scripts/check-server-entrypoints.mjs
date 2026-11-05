@@ -3,6 +3,9 @@
 import ts from 'typescript';
 import {mkdtemp,readFile,writeFile,mkdir,symlink,rm,stat,cp,copyFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';import {resolve,dirname,relative,join,extname} from 'node:path';import {pathToFileURL} from 'node:url';import {spawnSync} from 'node:child_process';
+const config=JSON.parse(await readFile('vercel.json','utf8'));
+// Vercel validates these deployment-only glob strings before starting a build.
+for(const [name,entry]of Object.entries(config.functions??{}))for(const key of ['includeFiles','excludeFiles'])if(entry[key]!==undefined&&(typeof entry[key]!=='string'||entry[key].length>256))throw Error('VERCEL_FUNCTION_GLOB_INVALID:'+name+':'+key);
 const root=process.cwd(),stage=await mkdtemp(join(tmpdir(),'bank-node-entry-')),seen=new Set();
 async function exists(p){try{return(await stat(p)).isFile()}catch{return false}}
 async function emit(source){
@@ -20,7 +23,7 @@ try{
  await emit(resolve(root,'tests/fixtures/public-profile.ts'));
  await cp(resolve(root,'server/profile-runtime'),resolve(stage,'server/profile-runtime'),{recursive:true});
  await mkdir(resolve(stage,'dist/explore'),{recursive:true});await copyFile(resolve(root,'dist/explore/index.html'),resolve(stage,'dist/explore/index.html'));
- const included=JSON.parse(await readFile(resolve(root,'vercel.json'),'utf8')).functions?.['api/index.ts']?.includeFiles??'';
+ const included=config.functions?.['api/index.ts']?.includeFiles??'';
  for(const name of ['market','sports'])if(!included.includes(`public/receiz-public-${name}.json`))throw Error('CERTIFICATE_DEPLOYED_PUBLIC_SOURCE_MISSING:'+name);
  await mkdir(resolve(stage,'public'),{recursive:true});for(const name of ['market','sports','share-chart-history'])await copyFile(resolve(root,`public/receiz-public-${name}.json`),resolve(stage,`public/receiz-public-${name}.json`));
  const program=`

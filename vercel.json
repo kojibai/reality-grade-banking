@@ -32,7 +32,7 @@
     },
     "api/explore.ts": {
       "maxDuration": 120,
-      "includeFiles": "{dist/index.html,dist/explore/**,dist/market-cap/index.html,dist/ledger/index.html,dist/feed/index.html,dist/discover/index.html,server/profile-runtime/**,public/receiz-public-ledger.json.gz.bin,public/receiz-public-share-chart-history.json,public/receiz-public-sports.json}"
+      "includeFiles": "{dist/index.html,dist/explore/**,dist/{market-cap,ledger,feed,discover}/index.html,server/profile-runtime/**,public/receiz-public-{ledger.json.gz.bin,share-chart-history.json,sports.json}}"
     }
   },
   "redirects": [
