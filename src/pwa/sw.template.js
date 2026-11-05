@@ -7,7 +7,7 @@ const PAGES = __PAGE_ROUTES__;
 const PUBLIC_RENDER_BUILD = '__PUBLIC_RENDER_BUILD__';
 const PUBLIC_CACHE = 'bankeiz-public-pages-__CACHE_VERSION__';
 const PUBLIC_LIMIT = 32 * 1024 * 1024;
-const PUBLIC_PATHS = ['explore','ledger','ledger/proofs','explore/music','explore/images','explore/videos','explore/books','explore/essays','explore/moments','explore/collectibles','explore/documents','market-cap','feed','discover'];
+const PUBLIC_PATHS = ['explore','ledger','ledger/proofs','explore/music','explore/images','explore/videos','explore/books','explore/essays','explore/moments','explore/collectibles','explore/documents','market-cap','feed'];
 const publicRequests = new Map(), publicWrites = new Map(), publicBodies = new Map();
 let publicBodyBytes = 0;
 function discardPublicBody(path) {

@@ -219,11 +219,11 @@
     },
     {
       "source": "/discover",
-      "destination": "/api/explore?path=discover&entry=1"
+      "destination": "/__bank_static_entry/discover/index.html"
     },
     {
       "source": "/discover/",
-      "destination": "/api/explore?path=discover&entry=1"
+      "destination": "/__bank_static_entry/discover/index.html"
     },
     {
       "source": "/explorer",

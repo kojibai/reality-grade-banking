@@ -1,6 +1,15 @@
 // Read the existing saved public document on navigation intent. Reuse the
 // mounted router and public roots; this never reconstructs financial history.
-const MAX=32*1024*1024,HEX=/^[a-f0-9]{64}$/,prepared=new Set(['explore','ledger','feed','discover']);
+const MAX=32*1024*1024,HEX=/^[a-f0-9]{64}$/,prepared=new Set(['explore','ledger','feed']);
+// Restore the original static Discover intent without changing the other
+// destinations that now share this module.
+async function loadDiscovery(){
+ const response=await fetch('/discover/navigation.json',{credentials:'omit',redirect:'error',signal:AbortSignal.timeout(15000)});
+ if(!response.ok||Number(response.headers.get('content-length'))>600000)throw Error('DISCOVERY_DOCUMENT_UNAVAILABLE');
+ const text=await response.text();if(text.length>600000)throw Error('DISCOVERY_DOCUMENT_TOO_LARGE');const page=JSON.parse(text);
+ if(page?.runtime!=='discover'||typeof page.title!=='string'||typeof page.head!=='string'||typeof page.content!=='string'||!/^\/(?:assets\/discover-[\w-]+\.js|src\/public-discover\/main\.tsx)$/.test(page.entry)||!page.content.includes('public-discovery-seed'))throw Error('DISCOVERY_DOCUMENT_INVALID');
+ return page;
+}
 const fields=['x-receiz-public-material-revision','x-receiz-public-render-build','x-receiz-public-html-sha256'];
 function coordinate(response,build){
  const values=fields.map(key=>response.headers.get(key)),state=response.headers.get('x-receiz-public-html-state'),at=response.headers.get('x-receiz-public-state-coordinate'),pending=response.headers.get('x-receiz-public-pending-state-coordinate');
@@ -49,7 +58,7 @@ export function init(pages=document.getElementById('receiz-navigation')?.pages,n
   const usable=value=>HEX.test(value?.generation??'')&&value.catalog?.complete===true&&Array.isArray(value.catalog.items);
   return usable(bank)?bank:usable(discovery)?discovery:null;
  };
- const reusable=(page,held)=>['discover','feed','explore'].includes(page?.runtime)&&page.head&&page.entry&&held&&(page.runtime!=='explore'||held.capitalization&&held.history&&held.format);
+ const reusable=(page,held)=>['feed','explore'].includes(page?.runtime)&&page.head&&page.entry&&held&&(page.runtime!=='explore'||held.capitalization&&held.history&&held.format);
  const reuse=(path,page,build)=>{
   const marker=document.getElementById('receiz-navigation');
   if(typeof marker?.ensurePublicRuntime!=='function'||!reusable(page,heldPublicFamily()))return null;
@@ -68,6 +77,12 @@ export function init(pages=document.getElementById('receiz-navigation')?.pages,n
  };
  const prepare=(url,path=url?.pathname)=>{
   path=path?.replace(/\/?$/,'/');if(!known(path))return Promise.resolve();
+  if(path==='/discover/'){
+   const from=location.href,selected=url?++attempt:attempt,page=pages[path];
+   if(page?.content){if(url)navigate('/discover/'+url.hash);return Promise.resolve(page);}
+   let ready=pending.get(path);if(!ready){ready=loadDiscovery().then(page=>pages[path]=page).finally(()=>pending.delete(path));pending.set(path,ready);}
+   return ready.then(()=>{if(url&&selected===attempt&&location.href===from)navigate('/discover/'+url.hash);}).catch(()=>{if(url&&selected===attempt&&location.href===from)location.assign(url.href);});
+  }
   const target=path;path=descriptor(path);
   const from=location.href,selected=url?++attempt:attempt,build=pages[path]?.preparedBuild??Object.values(pages).find(page=>page.preparedBuild)?.preparedBuild;
   let ready=pending.get(path);if(!ready){ready=(reuse(path,pages[path],build)??load(path,pages[path],build)).then(page=>pages[path]=page).finally(()=>pending.delete(path));pending.set(path,ready);}
@@ -77,6 +92,6 @@ export function init(pages=document.getElementById('receiz-navigation')?.pages,n
  };
  opener=url=>prepare(url);const element=document.getElementById('receiz-navigation');if(element)element.openPreparedDiscovery=opener;
  document.addEventListener('click',event=>{if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;const url=destination(event);if(url&&needs(url.pathname.replace(/\/?$/,'/'))){event.preventDefault();void prepare(url);}});
- const warm=event=>{const url=destination(event);if(!url)return;const path=url.pathname.replace(/\/?$/,'/');if(path!=='/discover/'&&!reusable(pages[descriptor(path)],heldPublicFamily())&&needs(path))void prepare(undefined,url.pathname);};
+ const warm=event=>{const url=destination(event);if(!url)return;const path=url.pathname.replace(/\/?$/,'/');if(path==='/discover/'){if(needs(path))void prepare(undefined,path);return;}if(!reusable(pages[descriptor(path)],heldPublicFamily())&&needs(path))void prepare(undefined,url.pathname);};
  document.addEventListener('pointerover',warm,{passive:true});document.addEventListener('focusin',warm);return opener;
 }

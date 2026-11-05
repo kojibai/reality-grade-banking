@@ -19,3 +19,9 @@ it('retains the exact prepared public entry and data packaging selection',async(
  const {createRequire}=await import('node:module'),{braceExpand}=createRequire(import.meta.url)('minimatch'),config=JSON.parse(readFileSync('vercel.json','utf8'));
  expect(braceExpand(config.functions['api/explore.ts'].includeFiles).sort()).toEqual(['dist/index.html','dist/explore/**','dist/market-cap/index.html','dist/ledger/index.html','dist/feed/index.html','dist/discover/index.html','server/profile-runtime/**','public/receiz-public-ledger.json.gz.bin','public/receiz-public-share-chart-history.json','public/receiz-public-sports.json'].sort());
 });
+
+it('serves both canonical Discover links from the existing static alias without a Source gate',()=>{
+ const config=JSON.parse(readFileSync('vercel.json','utf8'));
+ for(const path of ['/discover','/discover/'])expect(config.rewrites.find((route:{source:string})=>route.source===path).destination).toBe('/__bank_static_entry/discover/index.html');
+ expect(config.functions['api/explore.ts'].includeFiles).toContain('discover');
+});

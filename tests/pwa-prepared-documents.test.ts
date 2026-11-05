@@ -41,8 +41,8 @@ it('qualifies one cached full body with fresh HEAD and attaches only fresh curre
  const display=[...env.stores].filter(([key])=>key!=='receiz-bank-A');expect(display).toHaveLength(1);expect(display[0]![1].size).toBe(1);
 });
 it('uses a fresh complete GET when HEAD selects new material and restores an evicted display body without another install',async()=>{
- const {env,worker}=await installed();let body='<html>B</html>';env.api(async()=>prepared(body));await worker.load('/discover/');body='<html>C</html>';expect(await(await worker.load('/discover/'))!.text()).toBe(body);expect(env.reads().map(request=>request.method)).toEqual(['GET','HEAD','GET']);
- const display=[...env.stores].find(([name])=>name!=='receiz-bank-A')![1];display.clear();const restored=env.worker('A');expect(await(await restored.load('/discover/'))!.text()).toBe(body);expect(env.reads().at(-1)!.method).toBe('GET');expect(env.stores.get('receiz-bank-A')!.size).toBe(7);
+ const {env,worker}=await installed();let body='<html>B</html>';env.api(async()=>prepared(body));await worker.load('/ledger/');body='<html>C</html>';expect(await(await worker.load('/ledger/'))!.text()).toBe(body);expect(env.reads().map(request=>request.method)).toEqual(['GET','HEAD','GET']);
+ const display=[...env.stores].find(([name])=>name!=='receiz-bank-A')![1];display.clear();const restored=env.worker('A');expect(await(await restored.load('/ledger/'))!.text()).toBe(body);expect(env.reads().at(-1)!.method).toBe('GET');expect(env.stores.get('receiz-bank-A')!.size).toBe(7);
 });
 it('uses historical installed A on Source503 without qualifying cached B or overwriting either closure',async()=>{
  const {env,worker}=await installed();env.api(async()=>prepared());await worker.load('/explore/');env.api(async()=>new Response(null,{status:503}));const response=await worker.load('/explore/');expect(await response!.text()).toBe('<html>Explore A</html>');expect(response!.headers.has('x-receiz-public-html-state')).toBe(false);expect(env.reads().map(request=>request.method)).toEqual(['GET','HEAD']);
@@ -56,7 +56,7 @@ it.each([
  const {env,worker}=await installed();env.api(async()=>prepared('<html>not selected</html>',headers));expect(await(await worker.load('/feed/',{navigate:true}))!.text()).toBe('<html>Feed A</html>');expect([...env.stores].filter(([name])=>name!=='receiz-bank-A').every(([,store])=>store.size===0)).toBe(true);
 });
 it.each(['foreign','redirected','opaque'])('refuses %s prepared transport',async(kind)=>{
- const {env,worker}=await installed();env.api(async()=>{const response=prepared();Object.defineProperty(response,kind==='foreign'?'url':kind==='redirected'?'redirected':'type',{value:kind==='foreign'?'https://other.test/api/explore':kind==='redirected'?true:'opaque'});return response;});expect(await(await worker.load('/discover/'))!.text()).toBe('<html>Discover A</html>');
+ const {env,worker}=await installed();env.api(async()=>{const response=prepared();Object.defineProperty(response,kind==='foreign'?'url':kind==='redirected'?'redirected':'type',{value:kind==='foreign'?'https://other.test/api/explore':kind==='redirected'?true:'opaque'});return response;});expect(await(await worker.load('/ledger/'))!.text()).toBe('<html>Ledger A</html>');
 });
 it('does not commit after successful headers if the body fails, and bounds actual chunks without Content-Length',async()=>{
  const {env,worker}=await installed();let cancelled=false;env.api(async()=>{const response=prepared();return new Response(new ReadableStream({start(controller){controller.enqueue(new TextEncoder().encode('<html>'));controller.error(Error('TRUNCATED'));},cancel(){cancelled=true;}}),{headers:response.headers});});expect(await(await worker.load('/feed/'))!.text()).toBe('<html>Feed A</html>');
@@ -70,7 +70,7 @@ it('preserves incoming cancellation before headers and during body without deliv
  const stopped=new AbortController();stopped.abort();const before=env.reads().length;await expect(worker.load('/feed/',{signal:stopped.signal})).rejects.toMatchObject({name:'AbortError'});expect(env.reads()).toHaveLength(before);
 });
 it('delivers closed helper GET/HEAD and keeps ledger proof view distinct from All Activity',async()=>{
- const {env,worker}=await installed();env.api(async request=>request.method==='HEAD'?new Response(null,{headers:prepared().headers}):prepared());expect((await worker.load('/feed/'))!.status).toBe(200);const head=await worker.load('/discover/',{method:'HEAD'});expect(head!.status).toBe(200);expect(head!.body).toBe(null);
+ const {env,worker}=await installed();env.api(async request=>request.method==='HEAD'?new Response(null,{headers:prepared().headers}):prepared());expect((await worker.load('/feed/'))!.status).toBe(200);const head=await worker.load('/ledger/',{method:'HEAD'});expect(head!.status).toBe(200);expect(head!.body).toBe(null);
  await worker.load('/ledger/proofs?source='+'1'.repeat(64),{navigate:true});expect(new URL(env.reads().at(-1)!.url).searchParams.get('path')).toBe('ledger/proofs');expect(new URL(env.reads().at(-1)!.url).searchParams.get('source')).toBe('1'.repeat(64));env.api(async()=>new Response(null,{status:503}));expect((await worker.load('/ledger/proofs',{navigate:true}))!.status).toBe(503);
 });
 it('keeps root account queries on the exact installed entry and leaves all private APIs, assets and non-GET methods alone',async()=>{
@@ -83,7 +83,7 @@ it('refuses a same-origin response for a different endpoint instead of treating 
 });
 it('bounds stalled headers as well as body and refuses invalid UTF8 even when the byte digest matches',async()=>{
  vi.useFakeTimers();try{const {env,worker}=await installed();let fetched!:()=>void;const called=new Promise<void>(resolve=>{fetched=resolve;});env.api(async()=>{fetched();return new Promise<Response>(()=>{});});const pending=worker.load('/feed/');await called;await vi.advanceTimersByTimeAsync(15001);expect(await(await pending)!.text()).toBe('<html>Feed A</html>');}finally{vi.useRealTimers();}
- const {env,worker}=await installed(),bytes=new Uint8Array([255]);env.api(async()=>new Response(bytes,{headers:prepared(null,{'x-receiz-public-html-sha256':sha(bytes)}).headers}));expect(await(await worker.load('/discover/'))!.text()).toBe('<html>Discover A</html>');
+ const {env,worker}=await installed(),bytes=new Uint8Array([255]);env.api(async()=>new Response(bytes,{headers:prepared(null,{'x-receiz-public-html-sha256':sha(bytes)}).headers}));expect(await(await worker.load('/ledger/'))!.text()).toBe('<html>Ledger A</html>');
 });
 it('does not commit a response cancelled while the actual byte digest is completing',async()=>{
  const env=platform();let stop=false,hashed!:()=>void,resume!:()=>void;const reached=new Promise<void>(resolve=>{hashed=resolve;}),release=new Promise<void>(resolve=>{resume=resolve;});
@@ -94,7 +94,7 @@ it('keeps concurrent request cancellation independent and never overwrites a lat
  const {env,worker}=await installed();let first!:()=>void,resume!:()=>void;const reached=new Promise<void>(resolve=>{first=resolve;}),release=new Promise<void>(resolve=>{resume=resolve;});let calls=0;
  env.api(async request=>{if(request.method==='HEAD')return prepared(null,{'x-receiz-public-html-sha256':sha('<html>C</html>')});if(++calls===1){first();await release;return prepared('<html>B</html>');}return prepared('<html>C</html>');});
  const before=worker.load('/feed/');await reached;expect(await(await worker.load('/feed/'))!.text()).toBe('<html>C</html>');resume();expect(await(await before)!.text()).toBe('<html>B</html>');expect(await(await worker.load('/feed/'))!.text()).toBe('<html>C</html>');expect(env.reads().map(request=>request.method)).toEqual(['GET','GET','HEAD']);
- let cancel!:()=>void;const waiting=new Promise<void>(resolve=>{cancel=resolve;});env.api(async request=>{if(new URL(request.url).searchParams.get('path')==='discover'){cancel();return new Promise<Response>((_,reject)=>request.signal.addEventListener('abort',()=>reject(request.signal.reason),{once:true}));}return prepared();});const controller=new AbortController(),stopped=worker.load('/discover/',{signal:controller.signal});const rejected=expect(stopped).rejects.toMatchObject({name:'AbortError'});await waiting;expect((await worker.load('/explore/'))!.status).toBe(200);controller.abort();await rejected;
+ let cancel!:()=>void;const waiting=new Promise<void>(resolve=>{cancel=resolve;});env.api(async request=>{if(new URL(request.url).searchParams.get('path')==='ledger'){cancel();return new Promise<Response>((_,reject)=>request.signal.addEventListener('abort',()=>reject(request.signal.reason),{once:true}));}return prepared();});const controller=new AbortController(),stopped=worker.load('/ledger/',{signal:controller.signal});const rejected=expect(stopped).rejects.toMatchObject({name:'AbortError'});await waiting;expect((await worker.load('/explore/'))!.status).toBe(200);controller.abort();await rejected;
 });
 it('fails closed on an absent renderer mapping and does not reuse a newer display cache after normal activation',async()=>{
  const env=platform(),missing=env.worker('A','invalid');await missing.install();env.api(async()=>prepared());expect(await(await missing.load('/',{navigate:true}))!.text()).toBe('<html>Bank A</html>');expect(env.reads()).toHaveLength(0);
@@ -109,7 +109,7 @@ it('admits a restored disk body once and reuses exact private immutable bytes wi
  const env=platform();let hashes=0;const crypto=new Proxy(webcrypto,{get(target,key){if(key!=='subtle')return Reflect.get(target,key);return new Proxy(target.subtle,{get(subtle,name){if(name==='digest')return async(...args:Parameters<typeof webcrypto.subtle.digest>)=>{hashes++;return subtle.digest(...args);};const value=Reflect.get(subtle,name);return typeof value==='function'?value.bind(subtle):value;}});}});
  const worker=env.worker('A',renderA,crypto);await worker.install();const body='<html>New accepted public state</html>';env.api(async request=>request.method==='HEAD'?prepared(null,{'x-receiz-public-html-sha256':sha(body)}):prepared());await worker.load('/feed/');const admitted=hashes;await worker.load('/feed/');expect(hashes,'fresh HEAD must not hash the exact owned Blob again').toBe(admitted);
  const restored=env.worker('A',renderA,crypto);await restored.load('/feed/');expect(hashes,'untrusted disk body receives one actual SHA check').toBe(admitted+1);await restored.load('/feed/');expect(hashes).toBe(admitted+1);
- await restored.load('/explore/');await restored.load('/discover/');const before=hashes;await restored.load('/feed/');expect(hashes,'the oldest of three visited bodies was evicted from the two-body RAM bound').toBe(before+1);expect(env.reads().filter(request=>request.method==='GET'),'RAM eviction restores disk, not network or history').toHaveLength(3);
+ await restored.load('/explore/');await restored.load('/ledger/');const before=hashes;await restored.load('/feed/');expect(hashes,'the oldest of three visited bodies was evicted from the two-body RAM bound').toBe(before+1);expect(env.reads().filter(request=>request.method==='GET'),'RAM eviction restores disk, not network or history').toHaveLength(3);
 });
 it('bounds private retained body bytes independently of the two-page count',async()=>{
  const env=platform();let hashes=0;const crypto=new Proxy(webcrypto,{get(target,key){if(key!=='subtle')return Reflect.get(target,key);return new Proxy(target.subtle,{get(subtle,name){if(name==='digest')return async(...args:Parameters<typeof webcrypto.subtle.digest>)=>{hashes++;return subtle.digest(...args);};const value=Reflect.get(subtle,name);return typeof value==='function'?value.bind(subtle):value;}});}});
@@ -138,4 +138,13 @@ it('restores an evicted static entrance only from exact immutable build bytes an
 it('keeps Root HEAD and the existing prepared Bank data endpoint outside worker interception',async()=>{
  const {env,worker}=await installed();expect(await worker.load('/',{method:'HEAD'})).toBeUndefined();expect(await worker.load('/api/explore?path=bank')).toBeUndefined();expect(env.reads()).toHaveLength(0);
  env.api(async()=>prepared('<html>Existing qualified public collection</html>'));const response=await worker.load('/explore/',{navigate:true});expect(await response!.text()).toBe('<html>Existing qualified public collection</html>');expect(env.reads().map(request=>new URL(request.url).searchParams.get('path'))).toEqual(['explore']);
+});
+
+it('opens Discover from the immutable static closure without any Source qualification, even when Source stalls',async()=>{
+ const {env,worker}=await installed();env.api(async()=>new Promise<Response>(()=>{}));
+ const response=await worker.load('/discover/',{navigate:true});
+ expect(await response!.text()).toBe('<html>Discover A</html>');expect(env.reads()).toHaveLength(0);
+ expect(response!.headers.has('x-receiz-public-html-state')).toBe(false);
+ env.network.delete(origin+'/discover/index.html');
+ expect(await(await worker.load('/discover/',{navigate:true}))!.text()).toBe('<html>Discover A</html>');expect(env.reads()).toHaveLength(0);
 });

@@ -32,20 +32,20 @@ it('refuses an unsupported prepared-state schema even when its display pulse and
 });
 for(const path of ['feed','discover'] as const)it(`hydrates the current ${path} DOM without the older shipped catalog or withdrawn rows`,async()=>{
  const html=await renderPreparedDependentDocument(input(path,[row('new','New accepted Original')]));document.body.innerHTML=new DOMParser().parseFromString(html,'text/html').body.innerHTML;
- const host=document.getElementById(`public-${path}-root`)!,first=host.firstElementChild,catalog=readPreparedFeedCatalog(host,path)!;
- const seed=(path==='feed'?orderFeedItems(catalog.items):orderDiscoveryItems(catalog.items)).slice(0,path==='feed'?8:12),fetcher=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NO_OLD_SHIPPED_OR_SOURCE_READ')),errors=vi.spyOn(console,'error').mockImplementation(()=>{});
+ const host=document.getElementById(`public-${path}-root`)!,first=host.firstElementChild,catalog=path==='feed'?readPreparedFeedCatalog(host,path)!:null;
+ const seed=path==='feed'?orderFeedItems(catalog!.items).slice(0,8):JSON.parse(document.getElementById('public-discovery-seed')!.textContent!),fetcher=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NO_OLD_SHIPPED_OR_SOURCE_READ')),errors=vi.spyOn(console,'error').mockImplementation(()=>{});
  let root:ReturnType<typeof hydrateRoot>|undefined;
  try{
-  await act(async()=>{root=hydrateRoot(host,path==='feed'?<PublicFeed seed={seed} active completeCatalog/>:<Discover seed={seed} active completeCatalog/>,{identifierPrefix:path==='feed'?'public-feed-':'public-discover-'});await new Promise(resolve=>setTimeout(resolve,40));});
-  expect(host.firstElementChild).toBe(first);expect(host.textContent).toContain('New accepted Original');expect(host.textContent).not.toContain('Existing public Original');expect((await prepareFeedItems()).map(item=>item.assetId)).toEqual(['new']);expect(fetcher).not.toHaveBeenCalled();expect(errors).not.toHaveBeenCalled();
+  await act(async()=>{root=hydrateRoot(host,path==='feed'?<PublicFeed seed={seed} active completeCatalog/>:<Discover seed={seed} active={false}/>,{identifierPrefix:path==='feed'?'public-feed-':'public-discover-'});await new Promise(resolve=>setTimeout(resolve,40));});
+  expect(host.firstElementChild).toBe(first);expect(host.textContent).toContain('New accepted Original');expect(host.textContent).not.toContain('Existing public Original');if(path==='feed')expect((await prepareFeedItems()).map(item=>item.assetId)).toEqual(['new']);else expect(seed.map((item:{assetId:string})=>item.assetId)).toEqual(['new']);expect(fetcher).not.toHaveBeenCalled();expect(errors).not.toHaveBeenCalled();
  }finally{if(root)await act(()=>root!.unmount());fetcher.mockRestore();errors.mockRestore();document.body.innerHTML='';}
 });
-for(const path of ['feed','discover'] as const)it(`updates a retained ${path} from a new saved cohort without reviving withdrawals or replacing its root`,async()=>{
+for(const path of ['feed'] as Array<'feed'|'discover'>)it(`updates a retained ${path} from a new saved cohort without reviving withdrawals or replacing its root`,async()=>{
  document.body.innerHTML=new DOMParser().parseFromString(await renderPreparedDependentDocument(input(path)),'text/html').body.innerHTML;
  const host=document.getElementById(`public-${path}-root`)!,first=host.firstElementChild,catalog=readPreparedFeedCatalog(host,path)!,seed=(path==='feed'?orderFeedItems(catalog.items):orderDiscoveryItems(catalog.items)).slice(0,path==='feed'?8:12);
  const fetcher=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NO_SHIPPED_READ')),errors=vi.spyOn(console,'error').mockImplementation(()=>{});let root:ReturnType<typeof hydrateRoot>|undefined;
  try{
-  await act(async()=>{root=hydrateRoot(host,path==='feed'?<PublicFeed seed={seed} active completeCatalog/>:<Discover seed={seed} active completeCatalog/>,{identifierPrefix:path==='feed'?'public-feed-':'public-discover-'});await new Promise(resolve=>setTimeout(resolve,30));});
+  await act(async()=>{root=hydrateRoot(host,path==='feed'?<PublicFeed seed={seed} active completeCatalog/>:<Discover seed={seed} active={false}/>,{identifierPrefix:path==='feed'?'public-feed-':'public-discover-'});await new Promise(resolve=>setTimeout(resolve,30));});
   const retained=path==='discover'?host.querySelector<HTMLInputElement>('input[type="search"]'):host.querySelector<HTMLElement>('.feed-scroll');
   if(retained&&path==='discover')await act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(retained,'New');retained.dispatchEvent(new Event('input',{bubbles:true}));});
   const next=new DOMParser().parseFromString(await renderPreparedDependentDocument(input(path,[row('new','New accepted Original')])),'text/html').getElementById(`public-${path}-root`)!;
@@ -54,4 +54,18 @@ for(const path of ['feed','discover'] as const)it(`updates a retained ${path} fr
   if(path==='discover'){expect(host.querySelector('input')).toBe(retained);expect((retained as HTMLInputElement).value).toBe('New');}
   expect(fetcher).not.toHaveBeenCalled();expect(errors).not.toHaveBeenCalled();
  }finally{if(root)await act(()=>root!.unmount());fetcher.mockRestore();errors.mockRestore();document.body.innerHTML='';}
+});
+
+it('keeps passive Discover producer data complete while the old runtime hydrates exactly its 12 visible SSR items',async()=>{
+ const originals=Array.from({length:16},(_,index)=>row('item-'+index,'Public Original '+index)),value=input('discover',originals);
+ const fetcher=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NO_SOURCE_READ'));
+ try{
+  const html=await renderPreparedDependentDocument(value),doc=new DOMParser().parseFromString(html,'text/html'),host=doc.getElementById('public-discover-root')!;
+  const full=JSON.parse(doc.getElementById('public-market-seed')!.textContent!),legacy=JSON.parse(doc.getElementById('public-discovery-seed')!.textContent!);
+  expect(full.generation).toBe(value.generation);expect(full.catalog.complete).toBe(true);expect(full.catalog.items).toHaveLength(16);
+  expect(legacy).toHaveLength(12);expect(legacy.map((item:{assetId:string})=>item.assetId)).toEqual(orderDiscoveryItems(full.catalog.items).slice(0,12).map(item=>item.assetId));
+  expect(host.querySelectorAll('.discover-work')).toHaveLength(12);expect(host.querySelector('script')).toBeNull();
+  const navigation=JSON.parse(doc.getElementById('receiz-navigation')!.textContent!);expect(navigation.pages['/discover/'].content).toContain('public-discovery-seed');
+  expect(navigation.pages['/discover/'].preparedBuild).toBeUndefined();expect(navigation.pages['/discover/'].preparedRevision).toBeUndefined();expect(fetcher).not.toHaveBeenCalled();
+ }finally{fetcher.mockRestore();}
 });

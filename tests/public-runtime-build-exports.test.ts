@@ -7,7 +7,7 @@ import {build} from 'vite';
 import {expect,it,vi} from 'vitest';
 import {publicRuntimeExportsPlugin} from '../scripts/public-runtime-exports.mjs';
 
-it('keeps both mount APIs on the actual three HTML-script entries, with CSS and one cached startup, without changing Bank exports',async()=>{
+it('keeps both mount APIs on the actual Feed/Explorer HTML-script entries, with CSS and one cached startup, without changing restored Discover or Bank exports',async()=>{
  const root=await realpath(await mkdtemp(join(tmpdir(),'bank-public-runtime-exports-'))),names=['discover','feed','explore'],input:Record<string,string>={};
  try{
   await writeFile(join(root,'package.json'),'{"type":"module"}');await writeFile(join(root,'shared.js'),'export const exact=value=>value;');await writeFile(join(root,'shared.css'),'.held-runtime{color:navy}');
@@ -27,7 +27,7 @@ it('keeps both mount APIs on the actual three HTML-script entries, with CSS and 
    const html=await readFile(join(root,'dist',name==='bank'?'index.html':name+'/index.html'),'utf8'),script=html.match(/<script\b[^>]*src="([^"]+)"/)!;
    expect(script).not.toBeNull();const url=pathToFileURL(join(root,'dist',script[1].slice(1))).href,module=await import(/* @vite-ignore */url);
    expect(html).toMatch(/<link rel="stylesheet"[^>]*href="\/assets\//);
-   if(name==='bank'){expect(module.mountHeldPublicDocument).toBeUndefined();expect(module.mountPublicDocument).toBeUndefined();}
+   if(name==='bank'||name==='discover'){expect(module.mountHeldPublicDocument).toBeUndefined();expect(module.mountPublicDocument).toBeUndefined();}
    else{expect(Object.keys(module)).toEqual(expect.arrayContaining(['mountHeldPublicDocument','mountPublicDocument']));const target:Record<string,unknown>={},held={catalog:{items:[]},generation:'a'.repeat(64)};expect(module.mountHeldPublicDocument(target,held)).toBe(target);expect(target.held).toBe(held);expect(module.mountPublicDocument(target)).toBe(target);expect(target.documentMounts).toBe(1);}
    expect(await import(/* @vite-ignore */url)).toBe(module);expect(starts[name]).toBe(1);
   }

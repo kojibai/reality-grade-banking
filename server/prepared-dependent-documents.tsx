@@ -62,14 +62,16 @@ export async function renderPreparedDependentDocument({material,generation,path,
  if(path==='feed'||path==='discover'){
   const {catalog,asOfPulse}=discoveryCatalog(material,generation);
   const ordered=path==='feed'?orderFeedItems(feedSequenceItems(catalog.items)):orderDiscoveryItems(catalog.items),visibleCount=Math.min(path==='feed'?8:12,ordered.length),seed=ordered.slice(0,visibleCount),format=new Intl.DateTimeFormat().resolvedOptions();
-  const content=renderToString(path==='feed'?<PublicFeed seed={seed} active={false} completeCatalog/>:<Discover seed={seed} active={false} completeCatalog/>,{identifierPrefix:path==='feed'?'public-feed-':'public-discover-'});
+  const content=renderToString(path==='feed'?<PublicFeed seed={seed} active={false} completeCatalog/>:<Discover seed={seed} active={false}/>,{identifierPrefix:path==='feed'?'public-feed-':'public-discover-'});
+  const legacySeed=path==='discover'?`<script id="public-discovery-seed" type="application/json">${JSON.stringify(seed).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`:'';
   const script=publicMarketDocumentSeedScript({schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount,asOfPulse,format:{locale:format.locale,timeZone:format.timeZone}});
-  // Keep the current complete cohort next to its own runtime, never an older
-  // document's global seed. The reader removes it before hydrating the DOM.
+  // Feed keeps its existing complete cohort reader. Passive Discover retains
+  // the producer's full source-bound seed beside the legacy 12-item hydration seed.
   const clean=template.replace(/<script id="public-(?:feed|discovery)-seed" type="application\/json">[\s\S]*?<\/script>/g,'');let replaced=false;
-  const html=clean.replace(new RegExp(`(<div id="public-${path}-root"[^>]*>)[\\s\\S]*?(<\\/div>\\s*(?:<noscript>[\\s\\S]*?<\\/noscript>\\s*)?<script id="receiz-navigation")`),(_all,start,end)=>{replaced=true;return start+content+script+end;});
+  let html=clean.replace(new RegExp(`(<div id="public-${path}-root"[^>]*>)[\\s\\S]*?(<\\/div>\\s*(?:<noscript>[\\s\\S]*?<\\/noscript>\\s*)?<script id="receiz-navigation")`),(_all,start,end)=>{replaced=true;return start+content+(path==='feed'?script:'')+end;});
   if(!replaced)throw Error('PUBLIC_DISCOVERY_PREPARED_TEMPLATE_INVALID');
-  return alignPreparedPublicNavigation(html,path,content,generation,renderBuild);
+  if(path==='discover')html=html.replace('<script id="receiz-navigation"',()=>legacySeed+script+'<script id="receiz-navigation"');
+  return alignPreparedPublicNavigation(html,path,content+legacySeed,generation,renderBuild);
  }
  const {snapshot,packets}=await prepare(material,generation);
  const format=new Intl.DateTimeFormat().resolvedOptions(),seed:PublicLedgerDocumentSeed={schema:'bank.public-ledger.document.v1',generation,path:path as PublicLedgerDocumentSeed['path'],locale:format.locale,timeZone:format.timeZone,snapshot};

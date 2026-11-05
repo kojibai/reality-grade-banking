@@ -188,8 +188,12 @@ assert.ok(/<script type="module" async[^>]*src="\/assets\/feed-/.test(feedDocume
 assert.ok(!feedOpening.includes('site-footer')&&!feedOpening.includes('account-opening-screen'),'Feed first paint is the actual content, with no global footer or account-entry work.');
 const feedNavigation=JSON.parse(feedDocument.match(navigationPattern)[1]);
 assert.deepEqual(Object.keys(feedNavigation.pages).sort(),[...new Set([...Object.keys(navigation.pages),'/feed/','/discover/'])].sort(),'Feed retains every known destination for the existing instant controller.');
-for(const [path,page]of Object.entries(feedNavigation.pages))if(!['/explore/','/feed/'].includes(path)){assert.equal(page.content,'','Only the selected Feed and existing Explore return carry full bodies.');if(!page.runtime){if(path==='/legal/')assert.equal(page.head,navigation.pages[path].head,'The final legal generator keeps its exact current notices head.');else{assert.equal(page.head,'','Unvisited static heads remain compact.');assert.match(page.headSha256,/^[a-f0-9]{64}$/);}assert.match(page.contentSha256,/^[a-f0-9]{64}$/);}}
+for(const [path,page]of Object.entries(feedNavigation.pages))if(!['/explore/','/feed/','/discover/'].includes(path)){assert.equal(page.content,'','Only the existing Explore return carries a full body in the immersive Feed.');if(!page.runtime){if(path==='/legal/')assert.equal(page.head,navigation.pages[path].head,'The final legal generator keeps its exact current notices head.');else{assert.equal(page.head,'','Unvisited static heads remain compact.');assert.match(page.headSha256,/^[a-f0-9]{64}$/);}assert.match(page.contentSha256,/^[a-f0-9]{64}$/);}}
 assert.equal(feedNavigation.pages['/feed/'].content,'','The current Feed body is already present in its retained runtime root.');
+const expandFeedPart=value=>Array.isArray(value)?value.map(part=>typeof part==='number'?feedNavigation.styles[part]:part).join(''):value;
+const carriedDiscover=feedNavigation.pages['/discover/'];
+assert.deepEqual({...carriedDiscover,head:expandFeedPart(carriedDiscover.head),content:expandFeedPart(carriedDiscover.content)},{...navigation.pages['/discover/'],content:''},'Feed retains exact static Discover metadata and its original cached JSON fallback without duplicating the body.');
+assert.ok(navigation.pages['/discover/'].content.includes('id="public-discovery-seed"'),'The global restored Discover descriptor retains its matching static seed.');
 assert.ok(feedNavigation.reserved?.includes('learn')&&feedNavigation.reserved?.includes('ledger'),'The shipped lean navigation carries the existing reserved route projection.');
 assert.ok(feedDocument.length<600000,'The dedicated feed document stays under 600 kB uncompressed.');
 const feedImports=new Set();
