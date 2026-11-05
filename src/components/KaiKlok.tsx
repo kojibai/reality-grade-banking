@@ -58,8 +58,8 @@ function KaiMomentReading({ moment }: { moment: KaiKlokMoment }) {
   </div>;
 }
 
-export function KaiKlok({ active = true }: { active?: boolean }) {
-  const { pulse, boundary, visible, revision, readPulseMotion } = useKaiKlok(active);
+export function KaiKlok({ active = true, initialPulse }: { active?: boolean; initialPulse?:number }) {
+  const { pulse, boundary, visible, revision, readPulseMotion } = useKaiKlok(active,initialPulse);
   const moment = useMemo(() => projectKaiKlok(pulse), [pulse]);
   const lightTones = bankKaiMomentTones(moment, 'light');
   const arkIndex = Math.floor(moment.beat / 6);

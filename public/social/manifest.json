@@ -1,6 +1,14 @@
 {
   "schema": "bankeiz.public-social-images.v1",
   "images": {
+    "/accept/": {
+      "url": "/social/accept-the-money-62d0c48092d33fb4.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "62d0c48092d33fb490d64a962aeb8b0c51bd6ebcffd88a1973d3e10f048763e1",
+      "bytes": 471447,
+      "alt": "Bankeiz. Accept the money. Keep it moving. The money carries its proof. An engraved receipt motif on layered cobalt, clear glass and navy forms."
+    },
     "/merchant/": {
       "url": "/social/merchant-5c51288ac3010d85.png",
       "width": 1730,

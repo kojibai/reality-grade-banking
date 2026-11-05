@@ -11,7 +11,7 @@ it('shows the actual Bank creation and PBI unlock screens with a direct Create a
  const action=doc.querySelector<HTMLAnchorElement>('[data-create-original]')!;expect(action.textContent).toContain('Create an asset');expect(action.getAttribute('href')).toBe('/#account/currency');
  expect(doc.querySelector('.originals-hero a.learn-button')?.getAttribute('href')).toBe('/#account/currency');
  const faq=[...doc.querySelectorAll('details')].find(node=>node.querySelector('summary')?.textContent==='Where do I sign my Original?')!;
- expect(faq.querySelector('a')?.getAttribute('href')).toBe('https://receiz.com/profile?manage=1');
+ expect(faq.querySelector('a')?.getAttribute('href')).toBe('/#assets');
  expect(doc.querySelector('a[href="https://receiz.com/profile?compose=1"]')).toBeNull();
 });
 

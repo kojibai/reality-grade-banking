@@ -6,6 +6,7 @@ import {feedPageDevPlugin} from './scripts/feed-page.mjs';
 import {momentsPageDevPlugin} from './scripts/moments-page-dev.mjs';
 import {userGuidePageDevPlugin} from './scripts/user-guide-page-dev.mjs';
 import {meetingPageDevPlugin} from './scripts/meeting-page-dev.mjs';
+import {acceptMoneyDevPlugin} from './scripts/accept-money-assets.mjs';
 import {originalsQualificationDevPlugin} from './scripts/originals-qualification-assets.mjs';
 import {handleOriginalsQualification} from './server/originals-qualification';
 import { defineConfig } from 'vitest/config';
@@ -36,7 +37,7 @@ export default defineConfig({
     if (!context.server || !['/', '/index.html'].includes(context.path)) return html;
     const { AccountOpening } = await context.server.ssrLoadModule('/src/features/identity/AccountOpening.tsx');
     return openingShellHtml(html, AccountOpening);
-  }}, {name:'bankeiz-opaque-ledger-seed',configureServer(server){server.middlewares.use((req,_res,next)=>{if(req.url==='/receiz-public-ledger.json.gz')req.url='/receiz-public-ledger.json.gz.bin';next();});},configurePreviewServer(server){server.middlewares.use((req,_res,next)=>{if(req.url==='/receiz-public-ledger.json.gz')req.url='/receiz-public-ledger.json.gz.bin';next();});}},react(), originalsQualificationDevPlugin(), valueExplainerDevPlugin(), publicLedgerProofPlugin(), publicMarketPlugin(), publicNetworkPlugin(), nativeAccountPlugin(), accountProofPublicPlugin(), {
+  }}, {name:'bankeiz-opaque-ledger-seed',configureServer(server){server.middlewares.use((req,_res,next)=>{if(req.url==='/receiz-public-ledger.json.gz')req.url='/receiz-public-ledger.json.gz.bin';next();});},configurePreviewServer(server){server.middlewares.use((req,_res,next)=>{if(req.url==='/receiz-public-ledger.json.gz')req.url='/receiz-public-ledger.json.gz.bin';next();});}},react(), acceptMoneyDevPlugin(), originalsQualificationDevPlugin(), valueExplainerDevPlugin(), publicLedgerProofPlugin(), publicMarketPlugin(), publicNetworkPlugin(), nativeAccountPlugin(), accountProofPublicPlugin(), {
     name: 'receiz-receiver-build-provenance',
     resolveId(id) { if (id === 'virtual:receiz-receiver-build') return '\0receiz-receiver-build'; },
     load(id) {

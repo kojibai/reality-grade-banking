@@ -2,7 +2,7 @@ import {loadReceiz} from './client';
 import {withDeviceIdentityEntry} from './device-identity-entry';
 import {runPbiAccountInline,recoverPbiAccountInline,closePbiAccount} from './pbi-account-inline';
 import {admitPbiAccountBinding} from './pbi-account-source';
-import {openCanonicalIdentity,type OpenIdentity} from './native-identity';
+import {openCanonicalIdentity,restoreNativeIdentity,type OpenIdentity} from './native-identity';
 import {loadBankProofResources} from './proof-resource-continuity';
 import {certificateTimeSafeStore,certificateTimeSafeFetch} from './device-signer-time';
 import {nativeFetch} from './native-transport';
@@ -15,7 +15,29 @@ export async function openPbiAccount(consentApproved:boolean,onIdentityPrepared?
  try{
   if(!consentApproved)throw Error('Approve account access before continuing with PBI.');
   return await withDeviceIdentityEntry(async()=>{
-   const recovery=recoverPbiAccountInline();void recovery.catch(()=>{});
+   return createRecoveredAccountDevice(recoverPbiAccountInline(),onIdentityPrepared);
+  });
+ }finally{await closePbiAccount();}
+}
+
+/** Email possession has already been consumed and checked against the exact
+ * committed recipient by the closed server transport. Canonical device bind
+ * still verifies that session; a UID alone cannot select a different account. */
+export async function openVerifiedEmailAccount(accountUid:string,onIdentityPrepared?:()=>void):Promise<OpenIdentity>{
+ try{return await withDeviceIdentityEntry(async()=>{
+  const saved=await(await import('./identity-vault')).loadDeviceIdentity();
+  if(saved){
+   const held=await restoreNativeIdentity();
+   if(!held)throw Error('EMAIL_PAYMENT_SAVED_ACCOUNT_REQUIRED');
+   try{const view=await held.prepareAccountView();if(view.wallet.userId!==accountUid)throw Error('EMAIL_PAYMENT_DIFFERENT_ACCOUNT');onIdentityPrepared?.();return held;}
+   catch(error){held.dispose();throw error;}
+  }
+  return createRecoveredAccountDevice(Promise.resolve({accountUid}),onIdentityPrepared);
+ });}finally{await closePbiAccount();}
+}
+
+async function createRecoveredAccountDevice(recovery:Promise<{accountUid:string;credentialId?:string}>,onIdentityPrepared?:()=>void):Promise<OpenIdentity>{
+   void recovery.catch(()=>{});
    const [sdk,resources,{createReceizOfflineSealer,createReceizIndexedDbSealStore}]=await Promise.all([loadReceiz(),loadBankProofResources(fetch),import('@receiz/sdk/offline')]);
    const store=certificateTimeSafeStore(createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer'));
    const sealer=createReceizOfflineSealer({store,resources,fetch:certificateTimeSafeFetch(nativeFetch)});
@@ -48,6 +70,4 @@ export async function openPbiAccount(consentApproved:boolean,onIdentityPrepared?
     const view=await identity.prepareAccountView();if(view.wallet.userId!==source.accountUid)throw Error('PBI_ACCOUNT_MISMATCH');
     await identity.persistDeviceCustody(true);return identity;
    }catch(error){identity.dispose();throw error;}
-  });
- }finally{await closePbiAccount();}
 }

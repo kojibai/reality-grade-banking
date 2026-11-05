@@ -1,3 +1,4 @@
+import {publicMarketSeedQuotes} from '../server/public-market-preparation.ts';
 import { readFile,writeFile } from 'node:fs/promises';
 import { readReceizPublicMarketSource } from '../server/public-market.ts';
 import { parsePublicMarket } from '../src/receiz/public-market.ts';
@@ -12,7 +13,7 @@ const [membership, snapshot, sports, capitalization] = await Promise.all([
 const catalog = parsePublicMarket(membership, snapshot);
 if (!catalog.complete) throw new Error('The public source did not return its complete collection; seed not replaced.');
 const wanted = new Set(catalog.items.map(item => item.id));
-const quotes = { ...snapshot, data: { schema: snapshot.data.schema, liveMarkets: snapshot.data.liveMarkets.filter(item => wanted.has(item.itemId)).map(item => ({ itemId: item.itemId, visibility: item.visibility, priceUsd: item.priceUsd, quoteUsdPerPhi: item.quoteUsdPerPhi, changePct: item.changePct,...(item.shareInventory?{shareInventory:item.shareInventory}:{}), chart: item.chart?.slice(-48).map(point => ({ value: point.value })) })) } };
+const quotes = publicMarketSeedQuotes(snapshot,wanted);
 // A thinner membership response must not discard an already-carried receipt
 // basis. Reuse the same exact binding checks as the live catalog.
 let previous=null;try{const held=JSON.parse(await readFile(new URL('../public/receiz-public-market.json',import.meta.url),'utf8'));previous=new Map(parsePublicMarket(held,held.snapshot).items.map(item=>[item.id,item]));}catch{/* First capture has no retained public inputs. */}

@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import type {MarketHistorySnapshot} from '../../receiz/market-projection/history';
+import { useContext,useState } from 'react';
+import {PublicDocumentFormatContext} from '../../core/public-document-format';
 import { ArrowRight, Info } from 'lucide-react';
 import { ValueChart, Periods, type ChartPeriod } from '../../components/ValueChart';
 import { formatMoney } from '../../core/money';
@@ -7,14 +9,15 @@ import type { PublicMarketCatalog } from '../../receiz/public-market';
 import './share-inventory.css';
 import { useMarketCapitalization } from '../../receiz/market-projection/useMarketCapitalization';
 import {MarketCalculationDetails} from './MarketCalculationDetails';
-type OverviewProps={catalog:PublicMarketCatalog|null;historyCatalog?:PublicMarketCatalog|null;active?:boolean;sourceActive?:boolean;onExplore():void};
-export function MarketOverview({catalog,historyCatalog,active=true,sourceActive=active,onExplore}:OverviewProps){
+type OverviewProps={initialHistory?:MarketHistorySnapshot;catalog:PublicMarketCatalog|null;historyCatalog?:PublicMarketCatalog|null;active?:boolean;sourceActive?:boolean;onExplore():void};
+export function MarketOverview({initialHistory,catalog,historyCatalog,active=true,sourceActive=active,onExplore}:OverviewProps){
  const [period,setPeriod]=useState<ChartPeriod>('ALL');
- const projection=useMarketCapitalization(period,active,historyCatalog??catalog,sourceActive);
+ const projection=useMarketCapitalization(period,active,historyCatalog??catalog,sourceActive,initialHistory);
  return <MarketOverviewView catalog={catalog} projection={projection} period={period} onPeriodChange={setPeriod} onExplore={onExplore}/>;
 }
 /** The same chart presentation, independent of account and discovery effects. */
 export function MarketOverviewView({catalog,projection,period,onPeriodChange,onExplore}:{catalog:PublicMarketCatalog|null;projection:Pick<ReturnType<typeof useMarketCapitalization>,'source'|'points'|'status'>&Partial<Pick<ReturnType<typeof useMarketCapitalization>,'calculation'|'inspectCalculation'>>;period:ChartPeriod;onPeriodChange(value:ChartPeriod):void;onExplore():void}){
+ const format=useContext(PublicDocumentFormatContext);
  const [info,setInfo]=useState(false),[protocol,setProtocol]=useState(false);
  const {source,status}=projection;
  const points=source?.shareCapitalization?projection.points:[];
@@ -41,7 +44,7 @@ export function MarketOverviewView({catalog,projection,period,onPeriodChange,onE
     {change && <div className={`chart-period-change ${change.trend === 'down' ? 'negative' : change.trend === 'up' ? 'positive' : 'muted'}`}><strong>{change.trend === 'up' ? '↗' : change.trend === 'down' ? '↘' : '→'} {BigInt(change.deltaCents) > 0n ? '+' : ''}{formatMoney(change.deltaCents)} {change.percent !== null && `(${change.percent > 0 ? '+' : ''}${change.percent.toFixed(2)}%)`}</strong><span>{period === 'ALL' ? 'Since first issuance' : period} · market cap</span></div>}
     <ValueChart interpolation="step" key={period} times={points.map(point => Date.parse(point.at))} timeRange={timeRange} color={change?.trend === 'down' ? 'red' : change?.trend === 'up' ? 'green' : 'blue'} values={points.map(point => Number(point.usdCents) / 100)} label={`Global share market cap · ${period === 'ALL'?'All history':period}`} tooltip={index => ({ value: formatMoney(points[index].usdCents), label: `${new Date(points[index].at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })} · ☤KAI ${points[index].pulse.toLocaleString()}` })} />
     <Periods value={period} onChange={onPeriodChange} />
-    {timeRange && <div className="chart-date-range"><span>{chartDateLabel(timeRange.start,period,timeRange)}</span><span>{chartDateLabel(timeRange.end,period,timeRange)}</span></div>}
+    {timeRange && <div className="chart-date-range"><span>{chartDateLabel(timeRange.start,period,timeRange,format)}</span><span>{chartDateLabel(timeRange.end,period,timeRange,format)}</span></div>}
     <button className="market-view-assets" onClick={onExplore}>View assets<ArrowRight size={16} /></button>
   </div>;
 }

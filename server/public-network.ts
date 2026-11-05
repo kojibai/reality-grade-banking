@@ -12,10 +12,10 @@ export function parsePublicNetworkRequest(requestUrl: string): { source: PublicS
   if(afterPublication!==null&&(source!=='proofs'||!/^[a-f0-9]{64}$/.test(afterPublication)))return null;
   return { source: source as PublicSource, ...(cursor ? { cursor } : {}),...(afterPublication?{afterPublication}:{}) };
 }
-async function publicFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
+async function publicFetch(input: string | URL | Request, init?: RequestInit,fresh=false): Promise<Response> {
   const url = new URL(typeof input === 'string' || input instanceof URL ? String(input) : input.url);
   if (url.origin !== 'https://receiz.com' || !['/api/wallet/ledger/public', '/api/ledger/actions/public', '/api/proof-graph/ledger'].includes(url.pathname) || init?.method && init.method !== 'GET') throw new Error('Public source path required.');
-  const response = await fetch(url, { method: 'GET', credentials: 'omit', redirect: 'error', headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(30_000) });
+  const response = await fetch(url, { method: 'GET', credentials: 'omit', redirect: 'error',...(fresh?{cache:'no-store' as const}:{}), headers: { Accept: 'application/json',...(fresh?{'Cache-Control':'no-cache'}:{}) }, signal: AbortSignal.timeout(30_000) });
   if (Number(response.headers.get('content-length')) > 32 * 1024 * 1024) throw new Error('Public source exceeds supported capacity.');
   const reader = response.body?.getReader(); if (!reader) throw new Error('Public source returned no bytes.');
   const chunks: Uint8Array[] = []; let size = 0;
@@ -25,15 +25,21 @@ async function publicFetch(input: string | URL | Request, init?: RequestInit): P
   return new Response(bytes, { status: response.status, headers: { 'Content-Type': response.headers.get('content-type') ?? 'application/json' } });
 }
 let sdkClient: Promise<ReturnType<typeof import('@receiz/sdk').createReceizClient>> | undefined;
-function client() { return sdkClient ??= import('@receiz/sdk').then(sdk => sdk.createReceizClient({ baseUrl: 'https://receiz.com', fetchImpl: publicFetch })); }
+let freshSdkClient:typeof sdkClient;
+function client(fresh=false) {
+ if(fresh)return freshSdkClient??=import('@receiz/sdk').then(sdk=>sdk.createReceizClient({baseUrl:'https://receiz.com',fetchImpl:(input,init)=>publicFetch(input,init,true)}));
+ return sdkClient ??= import('@receiz/sdk').then(sdk => sdk.createReceizClient({ baseUrl: 'https://receiz.com', fetchImpl: publicFetch }));
+}
 const pending = new Map<string, Promise<unknown>>();
-export async function readSharedPublicSource(source: PublicSource, cursor?: string,afterPublication?:string): Promise<unknown> {
+export async function readSharedPublicSource(source: PublicSource, cursor?: string,afterPublication?:string,options?:{fresh:true}): Promise<unknown> {
   if(afterPublication!==undefined&&(source!=='proofs'||cursor!==undefined||!/^[a-f0-9]{64}$/.test(afterPublication)))throw Error('Unsupported publication freshness reference.');
-  const key = `${source}:${cursor ?? ''}:${afterPublication??''}`, existing = pending.get(key); if (existing) return existing;
+  const fresh=options?.fresh===true;
+  if(options!==undefined&&(!fresh||source==='proofs'))throw Error('Unsupported background public source freshness.');
+  const key = `${source}:${cursor ?? ''}:${afterPublication??''}${fresh?':fresh':''}`, existing = pending.get(key); if (existing) return existing;
   const request = (async () => {
     if (source === 'proofs') return readReceizPublicMarketSource('membership',afterPublication);
-    if (source === 'graph') { const response = await publicFetch('https://receiz.com/api/proof-graph/ledger'); if (!response.ok) throw new Error('Public graph unavailable.'); return response.json(); }
-    const sdk = await client();
+    if (source === 'graph') { const response = await publicFetch('https://receiz.com/api/proof-graph/ledger',undefined,fresh); if (!response.ok) throw new Error('Public graph unavailable.'); return response.json(); }
+    const sdk = await client(fresh);
     if(source==='wallet')return sdk.wallet.publicLedger({limit:256,cursor});
     const response=await sdk.wallet.actionLedger({limit:256,cursor});
     // The two public feeds name the same transfer differently. Derive the

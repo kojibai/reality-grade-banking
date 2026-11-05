@@ -7,7 +7,7 @@ const object=(value:unknown):value is Record<string,unknown>=>!!value&&typeof va
 /** Reuse the existing lean public-navigation contract. Profile workspaces,
  * footer and identity destinations keep their exact carried bytes; other
  * guides remain ordinary links to their existing complete documents. */
-export function profileNavigationHtml(html:string):string {
+export function profileNavigationHtml(html:string,extraDestinations:readonly string[]=[]):string {
  const match=navigation.exec(html);if(!match)return html;
  try{
   const source:unknown=JSON.parse(match[1]);
@@ -18,7 +18,7 @@ export function profileNavigationHtml(html:string):string {
    if(!Number.isSafeInteger(part)||part<0||typeof blocks[part]!=='string')throw Error('PROFILE_NAVIGATION_INVALID');
    let index=indices.get(part);if(index===undefined){index=styles.length;indices.set(part,index);styles.push(blocks[part]);}return index;
   })]));
-  const selected=Object.fromEntries(destinations.filter(path=>object(pages[path])).map(path=>[path,compact(pages[path] as Record<string,unknown>)]));
+  const selected=Object.fromEntries([...new Set([...destinations,...extraDestinations])].filter(path=>object(pages[path])).map(path=>[path,compact(pages[path] as Record<string,unknown>)]));
   const selectedBank={...compact(bank),...(object(bank.css)?{css:compact(bank.css)}:{})};
   // A future linked destination with examples must keep its referenced table.
   // Do not remove another surface's content merely to meet a delivery budget.

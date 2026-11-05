@@ -19,17 +19,28 @@ function validCheckoutContext(value:CheckoutContext,nonce:string|undefined,booki
  if(!sameBookingCheckout(value.booking,booking)||Object.keys(value).sort().join('|')!=='booking|bookingOptions|checkoutId|username'||!value.bookingOptions||Object.values(value.bookingOptions).some(v=>typeof v!=='string'))return false;
  try{return bookingOverrides(new URLSearchParams(value.bookingOptions)).size===Object.keys(value.bookingOptions).length;}catch{return false;}
 }
-export type WalletSendReview=Readonly<{schema:'bank.wallet-send-review.v1';ownerReceizId:string;accountUid:string;recipientUserId:string;recipientLabel:string;recipientAvatarUrl?:string;conversationId?:string;amountUsdCents:string;clientNonce:string;note?:string;fundingPreference?:'card';cardFundingLimitUsdCents?:string;checkoutContext?:CheckoutContext;booking?:BookingCheckoutContext;quote:Readonly<WalletSendQuote>;digest:string}>;
+type WalletSendRecipient={recipientUserId:string;recipientEmail?:undefined}|{recipientUserId?:undefined;recipientEmail:string};
+export type WalletSendReview=Readonly<WalletSendRecipient&{schema:'bank.wallet-send-review.v1';ownerReceizId:string;accountUid:string;recipientLabel:string;recipientAvatarUrl?:string;conversationId?:string;amountUsdCents:string;clientNonce:string;note?:string;fundingPreference?:'card';cardFundingLimitUsdCents?:string;checkoutContext?:CheckoutContext;booking?:BookingCheckoutContext;quote:Readonly<WalletSendQuote>;digest:string}>;
 type Funding={stage:'reviewing'|'creating'|'ready'|'credited';amountUsdCents:string;shortfallUsdCents?:string;checkout?:CardCheckout;approvalDigest?:string;refusal?:{status:'not-submitted';clientNonce:string;error:'wallet_insufficient_funds'}};
 export interface WalletSendReceipt {transferId:string;clientNonce:string;senderUserId:string;recipientUserId:string;amountUsdCents:string;recordedAt:string|null;}
 export type WalletSendContext=Readonly<{conversationId:string;accountUid:string;recipientUserId:string;recipientLabel:string;amountUsdCents:string;clientNonce:string}>;
 export type WalletSendOutcome={status:'unknown';clientNonce:string}|{status:'recorded';clientNonce:string;transferId:string}|{status:'not-sent';clientNonce:string;reason:string}|{status:'funding';clientNonce:string;stage:Funding['stage'];amountUsdCents:string;cardAmountUsdCents?:string;shortfallUsdCents?:string;recipientLabel:string;checkout?:CardCheckout};
-type Checkpoint={review:WalletSendReview;body:WalletTransferBody;status:WalletSendOutcome['status'];record?:unknown;reason?:string;funding?:Funding};
+type RecipientResolution={email:string;userId:string;conversationId:string};
+type Checkpoint={review:WalletSendReview;body:WalletTransferBody;recipientResolution?:RecipientResolution;status:WalletSendOutcome['status'];record?:unknown;reason?:string;funding?:Funding};
 export type WalletSendState={schema:'bank.wallet-sends.v1';authority:'wallet-observation';current:Checkpoint;history:Checkpoint[]};
 const uuid=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(v);
 const integer=(v:unknown,positive=false):v is string=>typeof v==='string'&&/^(0|[1-9]\d{0,19})$/.test(v)&&(!positive||v!=='0');
 const object=(v:unknown):Json=>{if(!v||typeof v!=='object'||Array.isArray(v))throw Error('BANK_WALLET_SOURCE_INVALID');return v as Json;};
 const normalizeNote=(value:unknown)=>{if(value===undefined)return undefined;if(typeof value!=='string')throw Error('BANK_WALLET_NOTE_INVALID');const note=value.replace(/\s+/g,' ').trim();if(note.length>280)throw Error('Use a note of 280 characters or fewer.');return note||undefined;};
+function recipientEmail(value:unknown):string|null{if(typeof value!=='string')return null;const email=value.trim().toLowerCase();return email.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)?email:null;}
+function checkpointRecipient(review:WalletSendReview,body:Json,resolution:unknown):string{
+ if(review.recipientEmail!==undefined){
+  const value=object(resolution);
+  if(recipientEmail(review.recipientEmail)!==review.recipientEmail||review.recipientUserId!==undefined||review.conversationId!==undefined||review.booking!==undefined||Object.keys(value).sort().join('|')!=='conversationId|email|userId'||value.email!==review.recipientEmail||!uuid(value.userId)||value.userId!==body.recipientUserId||value.conversationId!==body.conversationId)throw Error('BANK_WALLET_CHECKPOINT_INVALID');
+  return value.userId;
+ }
+ if(resolution!==undefined||!uuid(review.recipientUserId))throw Error('BANK_WALLET_CHECKPOINT_INVALID');return review.recipientUserId;
+}
 const dollars=(cents:string)=>`${BigInt(cents)/100n}.${(BigInt(cents)%100n).toString().padStart(2,'0')}`;
 function quote(v:unknown,amount:string):WalletSendQuote{
  const q=object(v);for(const field of ['amountUsdCents','amountPhiMicro','usdPerPhiMicrocents','settledUsdCents','ecosystemUsdCents'])if(!integer(q[field],['amountUsdCents','amountPhiMicro','usdPerPhiMicrocents'].includes(field)))throw Error('BANK_WALLET_QUOTE_INVALID');
@@ -52,8 +63,8 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
  async function read(){
   input.assertOpen();const raw=await input.store.read();input.assertOpen();if(raw==null)return null;const s=object(raw);
   if(s.schema!=='bank.wallet-sends.v1'||s.authority!=='wallet-observation'||!Array.isArray(s.history)||s.history.length>1000)throw Error('BANK_WALLET_CHECKPOINT_INVALID');
-  for(const item of [...s.history,s.current]){const c=object(item),r=object(c.review) as WalletSendReview,b=object(c.body);
-   if(r.schema!=='bank.wallet-send-review.v1'||r.ownerReceizId!==input.ownerReceizId||!uuid(r.accountUid)||!uuid(r.recipientUserId)||r.accountUid===r.recipientUserId||!uuid(r.clientNonce)||!integer(r.amountUsdCents,true)||r.digest!==await digest(withoutDigest(r))||!uuid(b.conversationId)||(r.conversationId!==undefined&&(!uuid(r.conversationId)||r.conversationId!==b.conversationId))||b.clientNonce!==r.clientNonce||b.recipientUserId!==r.recipientUserId||b.unit!=='usd'||b.amountUsd!==dollars(r.amountUsdCents)||Object.keys(b).sort().join('|')!==['amountUsd','clientNonce','conversationId','recipientUserId','unit',...(r.note===undefined?[]:['note','noteVisibility']),...(r.booking?['booking']:[])].sort().join('|')||normalizeNote(r.note)!==r.note||b.note!==r.note||(r.note!==undefined&&b.noteVisibility!=='public')||!['unknown','recorded','not-sent','funding'].includes(c.status))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
+  for(const item of [...s.history,s.current]){const c=object(item),r=object(c.review) as WalletSendReview,b=object(c.body),recipientId=checkpointRecipient(r,b,c.recipientResolution);
+   if(r.schema!=='bank.wallet-send-review.v1'||r.ownerReceizId!==input.ownerReceizId||!uuid(r.accountUid)||!uuid(recipientId)||r.accountUid===recipientId||!uuid(r.clientNonce)||!integer(r.amountUsdCents,true)||r.digest!==await digest(withoutDigest(r))||!uuid(b.conversationId)||(r.conversationId!==undefined&&(!uuid(r.conversationId)||r.conversationId!==b.conversationId))||b.clientNonce!==r.clientNonce||b.recipientUserId!==recipientId||b.unit!=='usd'||b.amountUsd!==dollars(r.amountUsdCents)||Object.keys(b).sort().join('|')!==['amountUsd','clientNonce','conversationId','recipientUserId','unit',...(r.note===undefined?[]:['note','noteVisibility']),...(r.booking?['booking']:[])].sort().join('|')||normalizeNote(r.note)!==r.note||b.note!==r.note||(r.note!==undefined&&b.noteVisibility!=='public')||!['unknown','recorded','not-sent','funding'].includes(c.status))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
    if(r.booking!==undefined&&(!sameBookingCheckout(r.booking,b.booking)||readBookingCheckoutContext(r.booking).operationId!==r.clientNonce||!r.note))throw Error('BANK_WALLET_BOOKING_MISMATCH');
    if(r.cardFundingLimitUsdCents!==undefined&&(!integer(r.cardFundingLimitUsdCents)||BigInt(r.cardFundingLimitUsdCents)>10000000n))throw Error('BANK_WALLET_FUNDING_INVALID');
    if(r.fundingPreference!==undefined&&r.fundingPreference!=='card'||r.checkoutContext&&!validCheckoutContext(r.checkoutContext,r.clientNonce,r.booking))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
@@ -142,7 +153,7 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
   try{return await lookup(s,context,acknowledgement);}catch{return{status:'unknown',clientNonce:body.clientNonce};}
  }
  return Object.freeze({
-  async status():Promise<(WalletSendOutcome&{context?:WalletSendContext})|null>{const s=await read();if(!s)return null;const {review,body}=s.current;return{...outcome(s.current),...(review.conversationId?{context:{conversationId:body.conversationId,accountUid:review.accountUid,recipientUserId:review.recipientUserId,recipientLabel:review.recipientLabel,amountUsdCents:review.amountUsdCents,clientNonce:body.clientNonce}}:{})};},
+  async status():Promise<(WalletSendOutcome&{context?:WalletSendContext})|null>{const s=await read();if(!s)return null;const {review,body}=s.current;return{...outcome(s.current),...(review.conversationId?{context:{conversationId:body.conversationId,accountUid:review.accountUid,recipientUserId:body.recipientUserId,recipientLabel:review.recipientLabel,amountUsdCents:review.amountUsdCents,clientNonce:body.clientNonce}}:{})};},
   async prepare(value:{recipient:string;amountUsdCents:string;note?:string},options?:{conversationId?:string;clientNonce?:string;fundingPreference?:'card';cardFundingLimitUsdCents?:string;checkoutContext?:CheckoutContext;booking?:BookingCheckoutContext}):Promise<WalletSendReview>{return input.lock(async()=>{
    if(options?.conversationId!==undefined&&!uuid(options.conversationId))throw Error('BANK_WALLET_CONVERSATION_INVALID');
    const note=normalizeNote(value.note),booking=options?.booking===undefined?undefined:readBookingCheckoutContext(options.booking);if(booking&&(booking.operationId!==options?.clientNonce||!note))throw Error('BANK_WALLET_BOOKING_MISMATCH');await input.assertNoOtherPending(booking?.operationId);const state=await read();if(state&&['unknown','funding'].includes(state.current.status))throw Error('BANK_EXECUTION_PENDING');if(!integer(value.amountUsdCents,true))throw Error('Enter an amount greater than zero.');
@@ -151,32 +162,36 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
    if(options?.fundingPreference!==undefined&&options.fundingPreference!=='card')throw Error('BANK_WALLET_FUNDING_INVALID');
    if(options?.fundingPreference==='card'){if(!input.funding)throw Error('BANK_WALLET_FUNDING_UNAVAILABLE');parseDepositDollars(dollars(value.amountUsdCents));}
    if(options?.checkoutContext&&!validCheckoutContext(options.checkoutContext,options.clientNonce,booking))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
-   const alias=value.recipient.trim().replace(/\.receiz\.id$/i,'').replace(/^@/,'').toLowerCase();
-   if(!/^[a-z0-9_]{3,24}$/.test(alias)&&!uuid(alias))throw Error('Enter a Receiz ID.');
+   const email=recipientEmail(value.recipient),alias=email??value.recipient.trim().replace(/\.receiz\.id$/i,'').replace(/^@/,'').toLowerCase();
+   if(!email&&!/^[a-z0-9_]{3,24}$/.test(alias)&&!uuid(alias))throw Error('Enter a Receiz ID or email.');
+   if(email&&(options?.conversationId!==undefined||booking))throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');
    const context=await input.connect();input.assertOpen();if(!uuid(context.accountUid))throw Error('BANK_WALLET_IDENTITY_CHANGED');
    if(uuid(alias)&&alias===context.accountUid)throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');
    // Both reads use already validated, independent inputs. A quote is advisory;
    // it never submits a payment, creates a conversation or changes funding.
    const quoteRead=context.client.request(`/api/connect/transfers?amountUsd=${dollars(value.amountUsdCents)}`,{method:'GET'}).then(value=>({value}),error=>({error}));
-   let userId=alias,label=alias,avatarUrl:string|null=null;
-   if(!uuid(alias)){const found=object(await context.client.request(`/api/chat/users/search?q=${encodeURIComponent(alias)}`,{method:'GET'}));input.assertOpen();
+   let userId:string|undefined=email?undefined:alias,label=alias,avatarUrl:string|null=null;
+   if(!email&&!uuid(alias)){const found=object(await context.client.request(`/api/chat/users/search?q=${encodeURIComponent(alias)}`,{method:'GET'}));input.assertOpen();
     const matches=found.ok===true&&Array.isArray(found.users)?found.users.filter((u:Json)=>u.kind==='user'&&typeof u.username==='string'&&u.username.toLowerCase()===alias&&uuid(u.userId)):[];
     if(matches.length!==1)throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');userId=matches[0].userId;label=`@${matches[0].username}`;avatarUrl=profileAvatarUrl(matches[0].avatarUrl);
    }
    if(userId===context.accountUid)throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');
    const quoted=await quoteRead;if('error'in quoted)throw quoted.error;const raw=object(quoted.value);input.assertOpen();if(raw.ok!==true||raw.senderUserId!==context.accountUid)throw Error('BANK_WALLET_IDENTITY_CHANGED');if(note&&raw.capabilities?.publicTransferNotes!==true)throw Error('BANK_WALLET_PUBLIC_NOTE_UNAVAILABLE');
-   const preview={schema:'bank.wallet-send-review.v1' as const,ownerReceizId:input.ownerReceizId,accountUid:context.accountUid,recipientUserId:userId,recipientLabel:label,...(options?.conversationId?{conversationId:options.conversationId}:{}),...(avatarUrl?{recipientAvatarUrl:avatarUrl}:{}),amountUsdCents:value.amountUsdCents,clientNonce:options?.clientNonce??crypto.randomUUID(),...(note?{note}:{}),...(options?.fundingPreference?{fundingPreference:options.fundingPreference}:{}),...(options?.cardFundingLimitUsdCents!==undefined?{cardFundingLimitUsdCents:options.cardFundingLimitUsdCents}:{}),...(options?.checkoutContext?{checkoutContext:Object.freeze({...options.checkoutContext})}:{}),...(booking?{booking}:{}),quote:Object.freeze(quote(raw.quote,value.amountUsdCents))};
+   const recipient:WalletSendRecipient=email?{recipientEmail:email}:{recipientUserId:userId!};
+   const preview={schema:'bank.wallet-send-review.v1' as const,ownerReceizId:input.ownerReceizId,accountUid:context.accountUid,...recipient,recipientLabel:label,...(options?.conversationId?{conversationId:options.conversationId}:{}),...(avatarUrl?{recipientAvatarUrl:avatarUrl}:{}),amountUsdCents:value.amountUsdCents,clientNonce:options?.clientNonce??crypto.randomUUID(),...(note?{note}:{}),...(options?.fundingPreference?{fundingPreference:options.fundingPreference}:{}),...(options?.cardFundingLimitUsdCents!==undefined?{cardFundingLimitUsdCents:options.cardFundingLimitUsdCents}:{}),...(options?.checkoutContext?{checkoutContext:Object.freeze({...options.checkoutContext})}:{}),...(booking?{booking}:{}),quote:Object.freeze(quote(raw.quote,value.amountUsdCents))};
    const review=Object.freeze({...preview,digest:await digest(preview)});input.assertOpen();held.add(review);return review;
   });},
   async execute(review:WalletSendReview,confirmation:string):Promise<WalletSendOutcome>{return input.lock(async()=>{
    input.assertOpen();if(!held.has(review)||confirmation!==review.digest)throw Error('BANK_WALLET_EXACT_CONFIRMATION_REQUIRED');await input.assertNoOtherPending(review.booking?.operationId);const previous=await read();if(previous&&['unknown','funding'].includes(previous.current.status))throw Error('BANK_EXECUTION_PENDING');
    const context=await input.connect();input.assertOpen();if(context.accountUid!==review.accountUid)throw Error('BANK_WALLET_IDENTITY_CHANGED');
-   let conversationId=review.conversationId;
-   if(!conversationId){const response=object(await context.client.request('/api/chat/conversations',{method:'POST',body:{kind:'dm',participantUserIds:[review.recipientUserId],participantEmails:[],aiAgentIds:[],defaultAiId:null,title:null}}));input.assertOpen();
-    if(response.ok!==true||!uuid(response.conversation?.id))throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');conversationId=response.conversation.id;}
-   const body:WalletTransferBody={conversationId:conversationId!,recipientUserId:review.recipientUserId,unit:'usd',amountUsd:dollars(review.amountUsdCents),clientNonce:review.clientNonce,...(review.note?{note:review.note,noteVisibility:'public' as const}:{}),...(review.booking?{booking:review.booking}:{})};
+   let conversationId=review.conversationId,recipientUserId=review.recipientUserId,recipientResolution:RecipientResolution|undefined;
+   if(!conversationId){const response=object(await context.client.request('/api/chat/conversations',{method:'POST',body:{kind:'dm',participantUserIds:review.recipientEmail?[]:[review.recipientUserId],participantEmails:review.recipientEmail?[review.recipientEmail]:[],aiAgentIds:[],defaultAiId:null,title:null}}));input.assertOpen();
+    if(response.ok!==true||!uuid(response.conversation?.id))throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');conversationId=response.conversation.id;
+    if(review.recipientEmail){const resolved=object(response.recipient);if(resolved.email!==review.recipientEmail||!uuid(resolved.userId)||resolved.userId===context.accountUid)throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');recipientUserId=resolved.userId;recipientResolution={email:review.recipientEmail,userId:resolved.userId,conversationId:conversationId!};}}
+   if(!uuid(recipientUserId)||recipientUserId===context.accountUid)throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');
+   const body:WalletTransferBody={conversationId:conversationId!,recipientUserId,unit:'usd',amountUsd:dollars(review.amountUsdCents),clientNonce:review.clientNonce,...(review.note?{note:review.note,noteVisibility:'public' as const}:{}),...(review.booking?{booking:review.booking}:{})};
    const card=review.fundingPreference==='card';
-   const next:WalletSendState={schema:'bank.wallet-sends.v1',authority:'wallet-observation',current:{review,body,status:card?'funding':'unknown',...(card?{funding:{stage:'creating' as const,amountUsdCents:review.amountUsdCents,shortfallUsdCents:review.amountUsdCents,approvalDigest:review.digest}}:{})},history:previous?[...previous.history,previous.current]:[]};if(next.history.length>1000)throw Error('BANK_WALLET_CAPACITY');
+   const next:WalletSendState={schema:'bank.wallet-sends.v1',authority:'wallet-observation',current:{review,body,...(recipientResolution?{recipientResolution}:{}),status:card?'funding':'unknown',...(card?{funding:{stage:'creating' as const,amountUsdCents:review.amountUsdCents,shortfallUsdCents:review.amountUsdCents,approvalDigest:review.digest}}:{})},history:previous?[...previous.history,previous.current]:[]};if(next.history.length>1000)throw Error('BANK_WALLET_CAPACITY');
    await input.store.write(next,previous);input.assertOpen();held.delete(review);
    return card?openFunding(next,context):submit(next,context);
   });},
@@ -203,7 +218,7 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
   async exportRecord(){const s=await read();if(!s||s.current.status!=='recorded')throw Error('BANK_WALLET_RECORDED_RESULT_REQUIRED');return{bytes:new TextEncoder().encode(JSON.stringify({schema:s.schema,authority:s.authority,current:s.current})),filename:`wallet-${s.current.body.clientNonce}.receiz-wallet-observation.json`};},
   async retainedResult(clientNonce:string){if(!uuid(clientNonce))throw Error('BANK_WALLET_NONCE_INVALID');const s=await read(),c=s&&[s.current,...s.history].find(c=>c.body.clientNonce===clientNonce);if(!c)return null;
    const result=outcome(c);let receipt:WalletSendReceipt|null=null;
-   if(result.status==='recorded'){const source=object(c.record),at=source.transfer?.createdAt??source.source?.transfer?.created_at;receipt={transferId:result.transferId,clientNonce,senderUserId:c.review.accountUid,recipientUserId:c.review.recipientUserId,amountUsdCents:c.review.amountUsdCents,recordedAt:typeof at==='string'&&Number.isFinite(Date.parse(at))?at:null};}
+   if(result.status==='recorded'){const source=object(c.record),at=source.transfer?.createdAt??source.source?.transfer?.created_at;receipt={transferId:result.transferId,clientNonce,senderUserId:c.review.accountUid,recipientUserId:c.body.recipientUserId,amountUsdCents:c.review.amountUsdCents,recordedAt:typeof at==='string'&&Number.isFinite(Date.parse(at))?at:null};}
    return{outcome:result,receipt,fundingSessionId:c.funding?.checkout?.sessionId,...(c.review.note?{note:c.review.note}:{}),...(c.review.booking?{booking:c.review.booking}:{})};},
   discard(review:WalletSendReview){held.delete(review);},
  });

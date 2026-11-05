@@ -40,3 +40,11 @@ export const productExampleInvestmentHistory:InvestmentHistory={pulse:3,series:O
 // These rows populate the existing held-object renderer only. Empty bytes and
 // non-digest IDs deliberately cannot be mistaken for an admitted sealed source.
 export const productExampleHeldSources:HeldDeposit[]=[['workshop-agreement','Workshop service agreement'],['photo-edition','Landscape print edition']].map(([id,title])=>({digest:'illustrative-'+id,filename:'example-'+id+'.png',title,kind:'proof',status:'held-proof',pulse:null,bytes:new Uint8Array()}));
+
+// Presentation state only: neither state contains Original bytes, a proof hash,
+// a receipt or an executable signing method. The real Assets controls render it.
+export function productOriginalSigningExample(signed=false){
+ const item={...productExampleCatalog.items[0],id:'illustrative-original-signing',assetId:'illustrative-original-signing',title:'Example field notes',summary:'Synthetic example Original for this signing guide.',originalDigest:'illustrative-original-not-a-proof',ownerUsername:'example',hasPbiSignature:signed,originalUrl:null,verifyUrl:null,shareInventory:undefined};
+ const source:HeldDeposit={digest:item.originalDigest,filename:'example-field-notes.png',title:item.title,kind:'proof',status:'held-proof',pulse:null,bytes:new Uint8Array(),pbiSigned:signed};
+ return{items:[item],sources:[source]};
+}

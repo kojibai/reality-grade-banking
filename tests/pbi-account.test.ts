@@ -1,16 +1,18 @@
 import {beforeEach,expect,it,vi} from 'vitest';
-import {openPbiAccount} from '../src/receiz/pbi-account';
+import {openPbiAccount,openVerifiedEmailAccount} from '../src/receiz/pbi-account';
 const p=vi.hoisted(()=>({bridge:vi.fn(),recover:vi.fn(),admit:vi.fn(),enroll:vi.fn(),createIdentity:vi.fn(),seal:vi.fn(),append:vi.fn(),open:vi.fn(),persist:vi.fn(),prepare:vi.fn(),dispose:vi.fn(),fresh:vi.fn(),sdk:vi.fn(),resources:vi.fn()}));
 const key={keyId:'key',alg:'Ed25519',issuedAt:'2026-10-24T00:00:00Z',owner:{uid:'local-device'},crypto:{publicKeyRawB64u:'public'}};
+const email=vi.hoisted(()=>({load:vi.fn(),restore:vi.fn()}));
+vi.mock('../src/receiz/identity-vault',()=>({loadDeviceIdentity:email.load}));
 vi.mock('../src/receiz/device-identity-entry',()=>({withDeviceIdentityEntry:async(run:()=>Promise<unknown>)=>run()}));
 vi.mock('../src/receiz/pbi-account-inline',()=>({runPbiAccountInline:p.bridge,recoverPbiAccountInline:p.recover,closePbiAccount:async()=>{}}));
 vi.mock('../src/receiz/pbi-account-source',()=>({admitPbiAccountBinding:p.admit}));
-vi.mock('../src/receiz/native-identity',()=>({openCanonicalIdentity:p.open,createNativeIdentity:p.fresh}));
+vi.mock('../src/receiz/native-identity',()=>({openCanonicalIdentity:p.open,createNativeIdentity:p.fresh,restoreNativeIdentity:email.restore}));
 vi.mock('../src/receiz/proof-resource-continuity',()=>({loadBankProofResources:p.resources}));
 vi.mock('../src/receiz/identity-protection',()=>({unprotectIdentityKeyFile:async(value:unknown)=>value}));
 vi.mock('@receiz/sdk/offline',()=>({createReceizIndexedDbSealStore:()=>({}),createReceizOfflineSealer:()=>({enroll:p.enroll,createIdentity:p.createIdentity,seal:p.seal})}));
 vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>{await p.sdk();return {receizBase64UrlEncode:()=> 'random-protection',readReceizIdentityArtifact:async()=>key,verifyReceizArtifact:async()=>({status:'verified-artifact'}),createReceizArtifactAdmissionEngine:()=>async()=>({verdict:'canonical-identity'}),isSdkIssuedReceizArtifactAdmission:()=>true,readReceizIdentityPublicBinding:async()=>({keyId:'key',artifactOwnerReceizId:'local-device'}),signReceizIdentityLoginProof:async()=>({signatureB64Url:'signature'}),appendReceizIdentityPortableState:p.append,serializeReceizIdentityArtifact:()=> 'portable-original'};}}));
-beforeEach(()=>{for(const fn of Object.values(p))fn.mockReset();p.resources.mockResolvedValue({});p.recover.mockResolvedValue({accountUid:'original-account'});p.createIdentity.mockResolvedValue({artifactBytes:new Uint8Array([1])});p.bridge.mockResolvedValue({accountUid:'original-account',sourceB64u:'original-source',sourceMode:'native-history',request:{}});p.admit.mockResolvedValue({accountUid:'original-account',sourceB64u:'original-source',sourceDigest:'native-digest'});p.append.mockResolvedValue(key);p.seal.mockResolvedValue({artifactBytes:new Uint8Array([2]),filename:'same-device.receizkey'});p.prepare.mockResolvedValue({wallet:{userId:'original-account',totalUsdCents:'45123'},history:[{kaiUPulse:'0'},{kaiUPulse:'100'}]});p.open.mockResolvedValue({binding:{keyId:'key',artifactOwnerReceizId:'local-device'},prepareAccountView:p.prepare,persistDeviceCustody:p.persist,dispose:p.dispose});});
+beforeEach(()=>{email.load.mockReset();email.restore.mockReset();for(const fn of Object.values(p))fn.mockReset();p.resources.mockResolvedValue({});p.recover.mockResolvedValue({accountUid:'original-account'});p.createIdentity.mockResolvedValue({artifactBytes:new Uint8Array([1])});p.bridge.mockResolvedValue({accountUid:'original-account',sourceB64u:'original-source',sourceMode:'native-history',request:{}});p.admit.mockResolvedValue({accountUid:'original-account',sourceB64u:'original-source',sourceDigest:'native-digest'});p.append.mockResolvedValue(key);p.seal.mockResolvedValue({artifactBytes:new Uint8Array([2]),filename:'same-device.receizkey'});p.prepare.mockResolvedValue({wallet:{userId:'original-account',totalUsdCents:'45123'},history:[{kaiUPulse:'0'},{kaiUPulse:'100'}]});p.open.mockResolvedValue({binding:{keyId:'key',artifactOwnerReceizId:'local-device'},prepareAccountView:p.prepare,persistDeviceCustody:p.persist,dispose:p.dispose});});
 it('opens only the original recovered account after source admission and retains the original source under the new local key',async()=>{
  await openPbiAccount(true);expect(p.admit).toHaveBeenCalledOnce();expect(p.append).toHaveBeenCalledWith(expect.objectContaining({schema:'receiz.account.state.v3',snapshot:expect.objectContaining({account:{userId:'original-account'},pbiAccountBinding:expect.objectContaining({sourceB64u:'original-source'})})}));
  expect(p.prepare).toHaveBeenCalledOnce();expect(p.persist).toHaveBeenCalledWith(true);expect(p.fresh).not.toHaveBeenCalled();
@@ -42,4 +44,17 @@ it('reports the admitted identity checkpoint before account history preparation 
  let release!:(value:unknown)=>void;p.prepare.mockImplementation(()=>new Promise(resolve=>{release=resolve;}));
  const checkpoint=vi.fn(),opening=openPbiAccount(true,checkpoint);await vi.waitFor(()=>expect(p.prepare).toHaveBeenCalled());
  try{expect(checkpoint).toHaveBeenCalledOnce();expect(p.persist).not.toHaveBeenCalled();}finally{release({wallet:{userId:'original-account'}});await opening;}
+});
+it('uses the same recovered-device admission for a verified email recipient without a passkey or fresh account genesis',async()=>{
+ email.load.mockResolvedValue(null);await openVerifiedEmailAccount('original-account');
+ expect(p.recover).not.toHaveBeenCalled();await expect(p.bridge.mock.calls[0][2]).resolves.toEqual({accountUid:'original-account'});expect(p.prepare).toHaveBeenCalledOnce();expect(p.persist).toHaveBeenCalledWith(true);expect(p.fresh).not.toHaveBeenCalled();
+});
+it('reuses the exact saved recipient custody without a new key, seal or bind',async()=>{
+ const held={prepareAccountView:vi.fn(async()=>({wallet:{userId:'original-account'}})),dispose:vi.fn()};email.load.mockResolvedValue({readConsent:true});email.restore.mockResolvedValue(held);
+ expect(await openVerifiedEmailAccount('original-account')).toBe(held);expect(p.createIdentity).not.toHaveBeenCalled();expect(p.bridge).not.toHaveBeenCalled();expect(p.persist).not.toHaveBeenCalled();
+});
+it('preserves a different or unreadable held account instead of silently switching custody',async()=>{
+ const held={prepareAccountView:vi.fn(async()=>({wallet:{userId:'other-account'}})),dispose:vi.fn()};email.load.mockResolvedValue({readConsent:true});email.restore.mockResolvedValue(held);
+ await expect(openVerifiedEmailAccount('original-account')).rejects.toThrow('EMAIL_PAYMENT_DIFFERENT_ACCOUNT');expect(held.dispose).toHaveBeenCalledOnce();expect(p.createIdentity).not.toHaveBeenCalled();expect(p.persist).not.toHaveBeenCalled();
+ email.restore.mockResolvedValue(null);await expect(openVerifiedEmailAccount('original-account')).rejects.toThrow('EMAIL_PAYMENT_SAVED_ACCOUNT_REQUIRED');expect(p.createIdentity).not.toHaveBeenCalled();
 });

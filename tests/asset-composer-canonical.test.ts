@@ -5,6 +5,7 @@ afterEach(()=>{vi.unstubAllGlobals();vi.restoreAllMocks();forgetAssetPublication
 import {appendFileSync} from 'node:fs';
 import {conformanceOfflineFixture} from './helpers/conformance-offline-sealer';
 import {createAssetPublication,type AssetPublicationState} from '../src/receiz/asset-publication';
+import {composerDraftWithLink} from '../src/receiz/asset-composer';
 
 it('seals one image essay locally, preserves its exact media and Kai, and delivers the same proof after interruption',async()=>{
  vi.stubGlobal('indexedDB',composerCustodyIdb());
@@ -16,7 +17,7 @@ it('seals one image essay locally, preserves its exact media and Kai, and delive
  const sealDocument=async(args:{options?:{claimSha256Hex?:string|null}})=>{claimSha256Hex=args.options?.claimSha256Hex??undefined;return nativeSeal(args);};
  const custody=r.createImportedProofSourceCustody(),blocks=new Map<string,Uint8Array>(),writeBlock=async(reference:{sha256:string},bytes:Uint8Array)=>{blocks.set(reference.sha256,new Uint8Array(bytes));await custody.writeBlock(reference,bytes);};
  const image=new File([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jQmcAAAAASUVORK5CYII=','base64')],'original.png',{type:'image/png'});
- const draft={kind:'image',title:'The original image essay',description:'A complete work',longForm:'Its exact image and full essay stay together.',files:[{id:'photo',role:'primary',file:image}]};
+ const draft=composerDraftWithLink({kind:'image',title:'The original image essay',description:'A complete work',longForm:'Its exact image and full essay stay together.',files:[{id:'photo',role:'primary',file:image}]},'example.com/work');
  const started=performance.now(),content=await r.composer.prepareConnectedComposerContent({draft,ownerReceizId:owner,writeBlock,assertCurrent(){}});
  const preparedAt=performance.now(),prepared=await r.composer.sealConnectedComposerContent({content,sealDocument,writeBlock,assertCurrent(){}}),sealedAt=performance.now();
  expect(claimSha256Hex).toBe(Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(draft.description))).toString('hex'));
@@ -24,6 +25,7 @@ it('seals one image essay locally, preserves its exact media and Kai, and delive
  const bundle=opened.verification.bundle,anchorInput=`${bundle.code}:${bundle.kaiPulseEternal}:${claimSha256Hex}:${bundle.artifactSha256Basis}`,anchor=Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(anchorInput))).toString('hex').slice(0,8);
  expect(bundle.anchorId).toBe(anchor);
  expect(opened.projection.bankAsset.composer.title).toBe(draft.title);expect(opened.projection.bankAsset.composer.longForm).toBe(draft.longForm);
+ expect(opened.projection.bankAsset.composer.description).toBe('A complete work\nLink https://example.com/work');
  expect(new Uint8Array(await opened.payload.arrayBuffer())).toEqual(new Uint8Array(await image.arrayBuffer()));
  expect(opened.projection.ownerReceizId).toBe(owner);expect(opened.projection.pulse).toMatch(/^\d+$/);
  const digest=prepared.reference.artifactSha256,artifactBytes=new Uint8Array(await prepared.artifact.arrayBuffer());

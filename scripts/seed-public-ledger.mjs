@@ -2,6 +2,7 @@ import { readFile, writeFile, rename, rm } from 'node:fs/promises';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import { PUBLIC_NETWORK_INSPECTION_VERSION, mergePublicRecords, parsePublicNetworkPage } from '../src/receiz/public-network.ts';
 import {parsePublicNetworkCache} from '../src/receiz/public-network-cache.ts';
+import {publicNetworkCacheWire} from '../src/receiz/public-network-cache-wire.ts';
 
 const reference = process.argv[2];
 if (!reference) throw new Error('Pass the selected public Mind capture path; private Memory Crystals are not supported.');
@@ -22,15 +23,7 @@ const records = mergePublicRecords([], pages.flatMap(page => page.records)).map(
  const prior=priorById.get(row.id),record=prior?mergePublicRecords([prior],[row])[0]:row;
  return {...record,details:{...record.details,sourceObservedAt:record.source==='proofs'?membership.transport.generatedAt:capture.capturedAt}};
 });
-// Repeated public identity context is carried once, preserving every exact
-// field while keeping the first-open payload inside the existing reader limit.
-const contextKeys=new Set(['sourceObservedAt','actorUserId','subjectUserId','actorKaiSignature','subjectKaiSignature','actorCreatedAt','subjectCreatedAt','actorPulse','subjectPulse','actorChakraDay','subjectChakraDay','actor','subject','sender','recipient','owner','creator','fromActor','toActor','previousOwner','newOwner']);
-const contexts=new Map();
-for(const row of records){const fields=Object.fromEntries(Object.entries(row.details??{}).filter(([key])=>contextKeys.has(key)));const key=JSON.stringify(fields);const prior=contexts.get(key);if(prior)prior.count++;else contexts.set(key,{fields,count:1,index:-1});}
-const detailContexts=[];for(const context of contexts.values())if(context.count>1&&Object.keys(context.fields).length){context.index=detailContexts.length;detailContexts.push(context.fields);}
-const compactRecords=records.map(row=>{const common=Object.fromEntries(Object.entries(row.details??{}).filter(([key])=>contextKeys.has(key))),context=contexts.get(JSON.stringify(common));return context?.index>=0?{...row,details:Object.fromEntries(Object.entries(row.details??{}).filter(([key])=>!contextKeys.has(key))),detailsRef:context.index}:row;});
-const compactWire=compactRecords.map(row=>Object.fromEntries(Object.entries(row).filter(([key,value])=>value!==null&&!(key==='valueOperands'&&Object.keys(value??{}).length===0))));
-const bytes = Buffer.from(JSON.stringify({ schema: 'receiz.bank.public-ledger-cache.v1', authority: 'public-source-projection',inspectionVersion:PUBLIC_NETWORK_INSPECTION_VERSION,capturedAt: capture.capturedAt, records:compactWire,detailContexts,coverage: pages.map(page => ({ source: page.source, complete: true, count: page.records.length })) }));
+const bytes=Buffer.from(JSON.stringify(publicNetworkCacheWire({records,inspectionVersion:PUBLIC_NETWORK_INSPECTION_VERSION,capturedAt:capture.capturedAt,coverage:pages.map(page=>({source:page.source,complete:true,count:page.records.length}))})));
 if(bytes.length>32*1024*1024)throw Error(`PUBLIC_LEDGER_SEED_DECODED_CAPACITY_EXCEEDED:${bytes.length}`);
 const compressed = gzipSync(bytes, { level: 9 });
 const target=new URL('../public/receiz-public-ledger.json.gz.bin',import.meta.url),temporary=new URL(`../public/.receiz-public-ledger-${process.pid}.tmp`,import.meta.url);

@@ -20,6 +20,7 @@ import {togetherPages} from '../src/content/together.mjs';
 import {cooperativePages} from '../src/content/cooperatives.mjs';
 // Public discovery only. Existing routes and native authorities are unchanged.
 const solutionGuides=[
+ {slug:'accept-the-money',path:'/accept/',group:'The standard',title:'Accept the money',description:'Experience payment providers and proof-native receiving side by side. Follow value into its next payment.'},
  {...momentsPage,group:'Assets',title:'Your moments, your value'},
  ...portabilityPages.map(page=>({...page,group:'Assets',title:page.key==='crypto'?'Crypto holdings':'NFTs & collections'})),
  ...standardPages.map(page=>({...page,group:page.key.startsWith('market')?'Markets':'The standard'})),

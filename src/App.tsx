@@ -38,7 +38,12 @@ import {PublicProfilePortal} from './features/account/PublicProfilePortal';
 import {consumeProfileAccountAction,readProfileAccountAction,subscribeProfileActions} from './receiz/profile-actions';
 import {vaultLocation} from './receiz/vault/location';
 const VaultPage=lazy(()=>import('./features/vault/VaultPage').then(module=>({default:module.VaultPage})));
+const EmailPaymentEntry=lazy(()=>import('./features/account/EmailPaymentEntry').then(module=>({default:module.EmailPaymentEntry})));
 export default function App() {
+ if(['/receive','/receive/'].includes(location.pathname))return <Suspense fallback={<InlineOpening label="Opening your payment"/>}><EmailPaymentEntry/></Suspense>;
+ return <MainApp/>;
+}
+function MainApp() {
  const [receipt,setReceipt]=useState(location.pathname==='/receipt/'?location.href:null);
  const [vault,setVault]=useState(()=>vaultLocation(location.href));
  const bankMounted=useRef(!receipt&&!vault);

@@ -58,6 +58,7 @@ function completeBody(output: Uint8Array) {
 /** Same bounded, cookie-free transport in development and production. Exact
  * message/call effects and authorization remain in the existing Receiz host. */
 export async function relayNativeAccount(request: Request): Promise<Response> {
+  if(new URL(request.url).pathname.startsWith(PREFIX+'/email-payment/'))return(await import('./email-payment-entry.js')).handleEmailPaymentEntry(request);
   if(new URL(request.url).pathname.startsWith(PREFIX+'/pbi/'))return(await import('./pbi-account-transport.js')).relayPbiAccount(request);
   if(new URL(request.url).pathname===PREFIX+'/twin-upgrade')return relayTwinUpgrade(request);
   const url = new URL(request.url), path = nativeRequestPath(url.pathname + url.search, request.method);
@@ -130,7 +131,9 @@ export async function nativeAccountMiddleware(req: IncomingMessage, res: ServerR
     const body = ['POST','PATCH'].includes(req.method ?? '') || req.method==='DELETE' && req.url?.split('?')[0]===PREFIX+'/api/chat/notifications/push' ? Readable.toWeb(req) as unknown as ReadableStream<Uint8Array> : undefined;
     const request = new Request(`${scheme}://${host}${req.url}`,{method:req.method,headers:Object.fromEntries(Object.entries(req.headers).filter((entry):entry is [string,string]=>typeof entry[1]==='string')),body,signal:controller.signal,...body?{duplex:'half'}:{}});
     const response = await (new URL(request.url).pathname==='/api/bank/twin-workspace'?relayTwinWorkspace(request):new URL(request.url).pathname==='/api/bank/business/setup'?relayBusinessSetup(request):new URL(request.url).pathname==='/api/bank/business/dns'?relayBusinessDns(request):new URL(request.url).pathname==='/api/bank/business/dns-return'&&request.method==='GET'?dnsConnectionReturn(request):relayNativeAccount(request));
-    res.writeHead(response.status,Object.fromEntries(response.headers));
+    const responseHeaders:Record<string,string|string[]>=Object.fromEntries(response.headers),setCookies=response.headers.getSetCookie();
+    if(setCookies.length)responseHeaders['set-cookie']=setCookies;
+    res.writeHead(response.status,responseHeaders);
     reader = response.body?.getReader();
     if (reader) for (;;) { const part = await reader.read(); if (part.done) break; if (!res.write(part.value)) await once(res,'drain',{signal:controller.signal}); }
     res.end();

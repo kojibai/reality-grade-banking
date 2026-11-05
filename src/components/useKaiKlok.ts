@@ -11,14 +11,14 @@ function liveSource() {
 }
 
 /** Only this small header subtree ticks; one boundary timer, no network. */
-export function useKaiKlok(active = true) {
+export function useKaiKlok(active = true, initialPulse?: number) {
   const sourceRef = useRef<KaiTimeSource | null>(null);
   if (!sourceRef.current) sourceRef.current = liveSource();
   const readPulseMotion = useCallback(() => {
     const before = performance.now(), micro = sourceRef.current!.nowMicroPulses(), after = performance.now();
     return { ...kaiPulseMotionFromMicro(micro), sampledAt: (before + after) / 2 };
   }, []);
-  const [sample, setSample] = useState(() => ({ pulse: sourceRef.current!.nowPulse(), boundary: 'none' as KaiBoundary, visible: typeof document === 'undefined' || document.visibilityState !== 'hidden', revision: 0 }));
+  const [sample, setSample] = useState(() => ({ pulse: initialPulse!==undefined&&Number.isSafeInteger(initialPulse)&&initialPulse>=0?initialPulse:sourceRef.current!.nowPulse(), boundary: 'none' as KaiBoundary, visible: typeof document === 'undefined' || document.visibilityState !== 'hidden', revision: 0 }));
   useEffect(() => {
     if (!active) return;
     let source = liveSource(), timer: ReturnType<typeof setTimeout> | undefined;

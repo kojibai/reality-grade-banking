@@ -28,10 +28,10 @@ it('provides eight different transparent vector explanations with three audience
  }
  expect(scenes.size).toBe(8);expect(stageCopy.size).toBe(8);
 });
-it('changes the selected audience explanation and visual stage without network or financial work',()=>{
- const pages=audience();expect(pages).toHaveLength(8);const enhancements=readFileSync('public/learn/learn.js','utf8').split('// Guide enhancements')[1];
+it('changes the selected audience explanation and visual stage without network or financial work',async()=>{
+ const pages=audience();expect(pages).toHaveLength(8);const enhancements=readFileSync('public/learn/economy.js','utf8').split('// Guide enhancements')[1];
  expect(enhancements).not.toMatch(/fetch\(|\.request\(|navigator\.credentials|requestAnimationFrame/);
- new Function('document','// Guide enhancements'+enhancements)(document);
+ const {init}=await import('../public/learn/economy.js');init();
  for(const page of pages){document.body.innerHTML=learnArticle(page,learningPages,escape);const region=document.querySelector<HTMLElement>('.learning-visual')!,buttons=[...region.querySelectorAll<HTMLButtonElement>('[data-learning-step]')];
   buttons[2].click();expect(region.dataset.learningStage).toBe('2');expect(buttons.map(button=>button.getAttribute('aria-pressed'))).toEqual(['false','false','true']);
   expect([...region.querySelectorAll<HTMLElement>('[data-learning-panel]')].map(panel=>panel.hidden)).toEqual([true,true,false]);

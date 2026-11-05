@@ -39,3 +39,16 @@ it('joins each new public transfer to its exact execution using the existing sin
   expect(action).not.toHaveProperty('publicTransferId');
  }finally{vi.unstubAllGlobals();}
 });
+it('keeps background fresh SDK reads separate from pending ordinary readers without changing their transport',async()=>{
+ vi.resetModules();const {readSharedPublicSource:read}=await import('../server/public-network');
+ const waiting:Array<()=>void>=[],request=vi.fn<typeof fetch>((_url,_init)=>new Promise<Response>(resolve=>waiting.push(()=>resolve(Response.json({ok:true,events:[],nextCursor:null})))));vi.stubGlobal('fetch',request);
+ try{
+  const ordinary=read('wallet'),fresh=read('wallet',undefined,undefined,{fresh:true});
+  await vi.waitFor(()=>expect(request).toHaveBeenCalledTimes(2));
+  const normal=request.mock.calls.find(([,init])=>init?.cache!=='no-store')!,background=request.mock.calls.find(([,init])=>init?.cache==='no-store')!;
+  expect(String(normal[0])).toBe(String(background[0]));expect(normal[1]).not.toHaveProperty('cache');expect(new Headers(normal[1]?.headers).get('cache-control')).toBeNull();
+  expect(background[1]).toMatchObject({cache:'no-store',credentials:'omit',redirect:'error'});expect(new Headers(background[1]?.headers).get('cache-control')).toBe('no-cache');
+  for(const [,init] of request.mock.calls){const headers=new Headers(init?.headers);expect(headers.has('authorization')).toBe(false);expect(headers.has('cookie')).toBe(false);}
+  waiting.forEach(resolve=>resolve());await Promise.all([ordinary,fresh]);
+ }finally{waiting.forEach(resolve=>resolve());vi.unstubAllGlobals();}
+});

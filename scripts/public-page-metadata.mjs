@@ -23,6 +23,7 @@ import {canonicalPublicPath} from '../src/content/public-routes.mjs';
 import {protectionPage} from './vault-protection-page.mjs';
 export const publicOrigin = 'https://bankeiz.com';
 export const publicPages = [
+ {path:'/accept/',id:'accept-the-money',title:'Accept the money. Keep it moving. | Reality-Grade Banking',description:'See the difference between a payment notification and independently verifiable financial value. Explore receiving, ownership and onward payments through working demonstrations.',lines:['Accept the money.','Keep it moving.'],caption:'The money carries its proof.',motif:'receipt'},
  {path:'/merchant/',id:'merchant',title:'Counter: your products, stock and payments | Bankeiz',description:'Bring your offerings, prices and stock together. Tap to build a sale, share one checkout and keep the complete payment record.',lines:['Your Counter.','Ready for business.'],caption:'Your offerings. Your stock. Your next sale.',motif:'bank'},
  {...momentsPage,id:'moments',motif:'layers',faq:momentsFaq},
  {...bankingPage,id:'banking',motif:'bank'},

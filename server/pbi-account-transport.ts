@@ -22,6 +22,11 @@ function recentSession(token:string){
  }catch{return false;}
 }
 const cookie=(token:string,age:number)=>`${cookieName}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/api/bank/native/pbi; Max-Age=${age}`;
+/** Only an already verified canonical session may enter this closed transport. */
+export function temporaryPbiSessionCookie(token:string):string{
+ if(!recentSession(token))throw Error('PBI_ACCOUNT_TRANSPORT_UNAVAILABLE');
+ return cookie(token,Math.max(0,Math.min(300,300-(Math.floor(Date.now()/1000)-JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString('utf8')).iat))));
+}
 async function bounded(body:ReadableStream<Uint8Array>|null,limit:number){
  if(!body)return new Uint8Array();const reader=body.getReader(),parts:Uint8Array[]=[];let size=0;
  try{for(;;){const next=await reader.read();if(next.done)break;size+=next.value.length;if(size>limit)throw Error('PBI_CAPACITY');parts.push(next.value);}return Buffer.concat(parts);}finally{await reader.cancel().catch(()=>{});}

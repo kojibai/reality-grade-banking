@@ -31,7 +31,7 @@ it('explains connected creation and offline receipt without implying device qual
 });
 
 it('keeps public guide interactions free of account transport and financial execution',()=>{
- const js=readFileSync('public/learn/learn.js','utf8').split('// Guide enhancements')[1];
+ const js=readFileSync('public/learn/economy.js','utf8').split('// Guide enhancements')[1];
  expect(js).toContain('data-learning-step');expect(js).toContain('data-example-input');
  expect(js).not.toMatch(/fetch\(|navigator\.credentials|\.request\(/);
 });

@@ -37,7 +37,8 @@
   };
   configureMotion();
   window.addEventListener('receiz-learn:page', configureMotion);
-  const loadPublic=file=>file&&import('/learn/'+file+'.js').then(module=>module.init()).catch(()=>{});const fit=()=>{loadPublic(document.querySelector('[data-public-script]')?.dataset.publicScript||(document.querySelector('.meet-public')?'meet':document.querySelector('[data-coop]')?'cooperatives':document.querySelector('.moments-page')?'moments':''));loadPublic(document.querySelector('[data-economy-interfaces],[data-economy-circle],[data-economy-numbers]')?'economy':'');};fit();addEventListener('receiz-learn:page',fit);
+  let learningReady=false;const loadPublic=file=>file&&import('/learn/'+file+'.js').then(module=>{module.init();if(file==='economy')learningReady=true;}).catch(()=>{});const fit=()=>{loadPublic(document.querySelector('[data-public-script]')?.dataset.publicScript||(document.querySelector('.meet-public')?'meet':document.querySelector('[data-coop]')?'cooperatives':document.querySelector('.moments-page')?'moments':''));loadPublic(document.querySelector('[data-economy-interfaces],[data-economy-circle],[data-economy-numbers],[data-learning-step],[data-example-input]')?'economy':'');};fit();addEventListener('receiz-learn:page',fit);
+  const learnFirst=event=>{if(!learningReady&&event.target.closest?.('[data-learning-step],[data-example-input]')){const target=event.target;void loadPublic('economy').then(()=>{if(learningReady)target.dispatchEvent(new Event(event.type,{bubbles:true}));});}};document.addEventListener('click',learnFirst);document.addEventListener('input',learnFirst);
   reducedMotion.addEventListener?.('change', configureMotion);
   addEventListener('hashchange', () => {
     // Restrict selectors to a DOM id, including malformed user-supplied hashes.
@@ -274,6 +275,18 @@
   };
   // Lazy public destinations reuse this retained router and catalog by reference.
   Object.assign(element,{pages,navigate});
+  // Missing prepared destinations use the same retained router. Loading the
+  // tiny navigation module is separate from opening an account or Source.
+  document.addEventListener('click',event=>{
+    if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+    const link=event.target.closest?.('a[href]');if(!link||link.download||link.target&&link.target!=='_self')return;
+    const url=new URL(link.href,location.href),path=pathname(url.pathname);
+    if(url.origin!==location.origin||url.search||!/^\/(?:feed|discover)\/$/.test(path)||path===pathname(location.pathname)||pages[path]&&!pages[path].preparedRevision)return;
+    event.preventDefault();
+    const open=element.openPreparedDiscovery;
+    if(typeof open==='function')void open(url);
+    else void import('/learn/discover.js').then(module=>module.init(pages,navigate)?.(url)).catch(()=>location.assign(url.href));
+  });
   addEventListener('bankeiz:navigate-public',event=>{const path=event.detail?.path;if(typeof path==='string'&&path.length<100&&profileName(path)){navigate(path);}});
   // Retained call controls can return from a public workspace without a
   // synthetic link, a second router, or a document navigation.
@@ -321,20 +334,3 @@
   document.addEventListener('pointerover', preload, { passive: true });
   document.addEventListener('focusin', preload);
 })();
-// Guide enhancements operate only on carried public markup. They never read an
-// identity, fetch account data or execute an illustrative financial action.
-document.addEventListener('click',event=>{
- const button=event.target.closest?.('[data-learning-step]');if(!button)return;
- const region=button.closest('.learning-visual'),selected=button.dataset.learningStep;
- region.dataset.learningStage=selected;
- region.querySelectorAll('[data-learning-step]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
- region.querySelectorAll('[data-learning-panel]').forEach(item=>{item.hidden=item.dataset.learningPanel!==selected;});
-});
-document.addEventListener('input',event=>{
- if(!event.target.matches?.('[data-example-input]'))return;
- const region=event.target.closest('[data-learning-funding]'),amount=Number(event.target.value),reserve=Math.min(amount,60),settlement=amount-reserve;
- region.querySelector('[data-example-amount]').textContent=`$${amount}`;
- region.querySelector('[data-example-title]').textContent='Settlement Note';
- region.querySelector('[data-example-reserve]').textContent=`$${reserve}`;
- region.querySelector('[data-example-settlement]').textContent=`$${settlement}`;
-});

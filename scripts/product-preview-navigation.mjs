@@ -10,6 +10,7 @@ export async function exampleNavigation(html,screen){
  for(const button of frame.querySelectorAll('button')){
   const label=(button.getAttribute('aria-label')||button.querySelector('strong')?.textContent||button.textContent).replace(/\s+/g,' ').trim();
   let next=routes[label];
+  if(label==='Unlock value with PBI')next='assets-originals-approval';
   if(label==='Close'||button.classList.contains('bank-home-mark'))next='account';
   if(label==='Account settings')next='identity';if(label==='Open your agent and messages')next='messages';
   if(label==='Create an asset instead')next='create-asset';if(label==='View all activity'||label==='View all'||label==='View investments')next=label==='View all activity'?'ledger':'assets';

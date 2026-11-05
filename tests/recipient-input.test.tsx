@@ -11,7 +11,7 @@ const peer:ChatPerson={kind:'user',userId:'22222222-2222-4222-8222-222222222222'
 function fixture(){
  const api={accountUid:'11111111-1111-4111-8111-111111111111',knownConversations:()=>[{members:[peer],lastMessageAt:'2026-10-19T12:00:00Z'}]as ChatConversation[],conversations:vi.fn(),search:vi.fn(async(_q:string,_signal?:AbortSignal)=>[peer])};
  const identity={messaging:vi.fn(async()=>api)}as unknown as OpenIdentity,onSelect=vi.fn(),onChange=vi.fn(),host=document.createElement('div'),root=createRoot(host);document.body.appendChild(host);
- const render=(value='',owner=identity)=>act(async()=>root.render(<RecipientInput identity={owner} value={value} onChange={onChange} onSelect={onSelect}/>));
+ const render=(value='',owner=identity,allowEmail=false)=>act(async()=>root.render(<RecipientInput identity={owner} value={value} allowEmail={allowEmail} onChange={onChange} onSelect={onSelect}/>));
  const focus=()=>act(async()=>host.querySelector('input')!.focus());
  return{api,identity,onSelect,onChange,host,render,focus,unmount(){act(()=>root.unmount());host.remove();}};
 }
@@ -26,4 +26,7 @@ it('keeps manual entry available when optional messaging access is unavailable',
 });
 it('discards a delayed directory response after switching identities',async()=>{
  vi.useFakeTimers();const f=fixture();let finish!:(people:ChatPerson[])=>void;f.api.search.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));try{await f.render('old');await f.focus();await act(async()=>vi.advanceTimersByTimeAsync(300));const identity={messaging:async()=>({...f.api,knownConversations:()=>[],conversations:async()=>[]})}as unknown as OpenIdentity;await f.render('',identity);await act(async()=>finish([peer]));expect(f.host.textContent).not.toContain('Mira West');}finally{f.unmount();}
+});
+it('accepts manual payment email input without converting it into a directory query or suggesting another account',async()=>{
+ vi.useFakeTimers();const f=fixture();try{await f.render('supplier@example.test',f.identity,true);await f.focus();await act(async()=>vi.advanceTimersByTimeAsync(300));expect(f.host.querySelector<HTMLInputElement>('input')!.placeholder).toBe('Receiz ID or email');expect(f.host.querySelector<HTMLInputElement>('input')!.maxLength).toBe(254);expect(f.api.search).not.toHaveBeenCalled();expect(f.host.querySelector('[role=listbox]')).toBeNull();}finally{f.unmount();}
 });

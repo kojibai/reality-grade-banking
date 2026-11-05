@@ -29,6 +29,10 @@
     },
     "api/read.ts": {
       "maxDuration": 30
+    },
+    "api/explore.ts": {
+      "maxDuration": 120,
+      "includeFiles": "{dist/explore/**,dist/market-cap/index.html,dist/ledger/index.html,dist/feed/index.html,dist/discover/index.html,server/profile-runtime/**,public/receiz-public-ledger.json.gz.bin,public/receiz-public-share-chart-history.json}"
     }
   },
   "redirects": [
@@ -44,6 +48,22 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/accept",
+      "destination": "/accept/index.html"
+    },
+    {
+      "source": "/accept/",
+      "destination": "/accept/index.html"
+    },
+    {
+      "source": "/receive",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/receive/",
+      "destination": "/index.html"
+    },
     {
       "source": "/read/assets/:asset/",
       "destination": "/api/read?kind=asset&id=:asset"

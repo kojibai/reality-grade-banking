@@ -12,24 +12,25 @@ import type {PublicNetworkCache} from './public-network-cache';
 export interface PublicSourceState { status: 'loading' | 'live' | 'stale' | 'error'; cursor: string | null; complete: boolean; busy: boolean; error: string | null; observedAt?: number; }
 type Sources = Record<PublicSource, PublicSourceState>;
 function initialSources(): Sources { return Object.fromEntries(PUBLIC_SOURCES.map(source => [source, { status: 'loading', cursor: null, complete: false, busy: false, error: null }])) as Sources; }
-export function usePublicNetwork(active = true) {
-  const [records, setRecords] = useState<PublicRecord[]>([]), rows = useRef(records);
-  const [sources, setSources] = useState<Sources>(initialSources), sourceState = useRef(sources);
-  const [bootstrap, setBootstrap] = useState(true), [capturedAt, setCapturedAt] = useState<string | null>(null);
+export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCache) {
+  const [records, setRecords] = useState<PublicRecord[]>(()=>initialSnapshot?.records??[]), rows = useRef(records);
+  const [sources, setSources] = useState<Sources>(()=>{const initial=initialSources();for(const covered of initialSnapshot?.coverage??[])initial[covered.source]={status:'stale',cursor:null,complete:covered.complete,busy:false,error:null,observedAt:covered.observedAt};return initial;}), sourceState = useRef(sources);
+  const [bootstrap, setBootstrap] = useState(!initialSnapshot), [capturedAt, setCapturedAt] = useState<string | null>(initialSnapshot?.capturedAt??null);
   const capture = (value:string|null) => { if(value)setCapturedAt(previous=>!previous||Date.parse(value)>Date.parse(previous)?value:previous); };
   const lifetime = useRef<AbortController | null>(null);
   const enabled=useRef(active);enabled.current=active;
   const activate=useRef<(()=>Promise<void>)|null>(null),lastRefresh=useRef<number|null>(null);
   const deferredRepairs=useRef(new Set<PublicSource>());
-  const inspectionVersion=useRef(0);
+  const inspectionVersion=useRef(initialSnapshot?.inspectionVersion??0);
   const sourceReads=useRef(new Map<PublicSource,{controller:AbortController;promise:Promise<void>}>());
   const proofRevision=useRef(0),publicationRefresh=useRef<Promise<void>|null>(null);
-  const proofObservedAt=useRef<number|null>(null);
+  const proofObservedAt=useRef<number|null>(initialSnapshot?.coverage.find(row=>row.source==='proofs')?.observedAt??null);
   const activeTradeRepair=useRef<{targets:Set<string>;seen:Set<string>}|null>(null);
   const originalProjection=useRef<{digest:string;records:PublicRecord[]}|null>(null);
   const saved=useRef<{records:PublicRecord[];capturedAt:string|null;coverage:string;inspectionVersion:number}|null>(null);
   const retainedCache=useRef<Promise<PublicNetworkCache|null>|null>(null);
-  const completeAnchors = useRef<Partial<Record<PublicSource, Set<string>>>>({});
+  const [initialAnchors]=useState(()=>Object.fromEntries((initialSnapshot?.coverage??[]).filter(row=>row.complete).map(row=>[row.source,new Set(row.anchorIds??initialSnapshot!.records.filter(record=>record.source===row.source).map(record=>record.id))])) as Partial<Record<PublicSource,Set<string>>>);
+  const completeAnchors = useRef(initialAnchors);
   const historyCursors = useRef<Record<PublicSource, Set<string>>>({ actions: new Set(), wallet: new Set(), graph: new Set(), proofs: new Set() });
   // Source capture dates order public display membership only. An older or
   // undated response cannot reopen visibility removed by a newer dated read.
@@ -125,8 +126,12 @@ export function usePublicNetwork(active = true) {
         inspectionVersion.current=Math.max(inspectionVersion.current,held?.inspectionVersion??0,seed?.inspectionVersion??0);
         // Publication can settle while the initial cache is still opening.
         // That older display cache cannot reopen accepted proof membership.
-        const retainProofs=proofRevision.current>0,restoredRows=restorePublicNetworkRows(held,seed);
-        rows.current = mergePublicRecords(retainProofs?restoredRows.filter(row=>row.source!=='proofs'):restoredRows,rows.current);
+        // Complete server-selected public membership outranks an older local
+        // discovery cache. Cache observation clocks cannot revive a withdrawn
+        // object; immutable account-independent history may still append.
+        const retainedMembership=new Set(initialSnapshot?.coverage.filter(item=>item.complete&&['proofs','graph'].includes(item.source)).map(item=>item.source)??[]);if(proofRevision.current>0)retainedMembership.add('proofs');
+        const restoredRows=restorePublicNetworkRows(held,seed);
+        rows.current = mergePublicRecords(restoredRows.filter(row=>!retainedMembership.has(row.source)),rows.current);
         const oldTradeIds=new Set([held,seed].flatMap(value=>value&&(value.inspectionVersion??0)<5?value.records.filter(row=>row.source==='actions'&&ledgerAssetTradeSide(row)).map(row=>row.id):[]));
         for(const row of rows.current)if(oldTradeIds.has(row.id)&&!ledgerAssetTrade(row)?.tradeId){
           inspectionVersion.current=Math.min(inspectionVersion.current,4);
@@ -134,30 +139,38 @@ export function usePublicNetwork(active = true) {
         }
         setRecords(rows.current);capture(held?.capturedAt??null);capture(seed?.capturedAt??null);
         for (const source of PUBLIC_SOURCES) {
-          if(source==='proofs'&&retainProofs)continue;
+          if(retainedMembership.has(source))continue;
           const cachedComplete = held?.coverage.some(item => item.source === source && item.complete);
           const seededComplete = seed?.coverage.some(item => item.source === source && item.complete);
           const anchor = cachedComplete ? held : seededComplete ? seed : null;
           const anchorCoverage = anchor?.coverage.find(item => item.source === source);
-          if (anchor) completeAnchors.current[source] = new Set(anchorCoverage?.anchorIds ?? anchor.records.filter(row => row.source === source).map(row => row.id));
-          update(source, { status: sourceState.current[source].status==='live'?'live':'stale', complete: Boolean(anchor), observedAt: anchorCoverage?.observedAt });
+          if (anchor) completeAnchors.current[source] = new Set([...(completeAnchors.current[source]??[]),...(anchorCoverage?.anchorIds ?? anchor.records.filter(row => row.source === source).map(row => row.id))]);
+          const observedAt=Math.max(sourceState.current[source].observedAt??0,anchorCoverage?.observedAt??0);
+          update(source, { status: sourceState.current[source].status==='live'?'live':'stale', complete: sourceState.current[source].complete||Boolean(anchor), observedAt:observedAt||undefined });
         }
     };
     const restored=(async()=>{
-      const cache=rows.current.length?null:await(retainedCache.current??=loadPublicNetworkCache());
+      const cache=!initialSnapshot&&rows.current.length?null:await(retainedCache.current??=loadPublicNetworkCache());
       if(controller.signal.aborted)return false;
-      const needsSeed=Math.max(inspectionVersion.current,cache?.inspectionVersion??0)<PUBLIC_NETWORK_INSPECTION_VERSION||!rows.current.length&&(!cache||PUBLIC_SOURCES.some(source=>!cache.coverage.some(item=>item.source===source&&item.complete)));
+      const needsSeed=!initialSnapshot&&(Math.max(inspectionVersion.current,cache?.inspectionVersion??0)<PUBLIC_NETWORK_INSPECTION_VERSION||!rows.current.length&&(!cache||PUBLIC_SOURCES.some(source=>!cache.coverage.some(item=>item.source===source&&item.complete))));
       if(cache)restore(cache,null);setBootstrap(false);return needsSeed;
     })();
     activate.current=async()=>{
-      const needsSeed=await restored;
+      // A complete prepared document already supplies its history anchors.
+      // Opening newer local rows must not postpone a fresh bounded head read.
+      const needsSeed=initialSnapshot?false:await restored;
       if(controller.signal.aborted||!enabled.current)return;
       if(opened){
         if(lastRefresh.current===null||Date.now()-lastRefresh.current>=60_000||PUBLIC_SOURCES.some(source=>sourceState.current[source].error)){deferredRepairs.current.clear();void refresh();}
         else for(const source of deferredRepairs.current){deferredRepairs.current.delete(source);void readSource(source,'head');}
         return;
       }
-      opened=true;void refresh();
+      opened=true;
+      // The cold document was already selected beneath current public state.
+      // Keep it visible and retain newer local rows without repeating four
+      // complete feed reads or reopening a Ledger original on first paint.
+      if(initialSnapshot){lastRefresh.current=Date.now();return;}
+      void refresh();
       void readHeldPublicLedger().then(review=>adoptOriginal(review,controller)).catch(()=>{});
       // Seed enrichment must not delay the newest durable head or source polling.
       const seed=needsSeed?await loadPublicNetworkSeed(controller.signal):null;
@@ -179,7 +192,7 @@ export function usePublicNetwork(active = true) {
       })().catch(()=>{});
     };
     return()=>{controller.abort();if(lifetime.current===controller){lifetime.current=null;activate.current=null;}for(const source of PUBLIC_SOURCES)sourceState.current[source]={...sourceState.current[source],busy:false};};
-  }, [refresh,adoptOriginal,readSource]);
+  }, [refresh,adoptOriginal,readSource,initialSnapshot]);
   useEffect(()=>subscribeAssetPublicationAdmissions(catalog=>{
     const controller=lifetime.current;if(!controller||controller.signal.aborted)return;
     if(catalog){

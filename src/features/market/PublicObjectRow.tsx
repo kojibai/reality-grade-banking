@@ -1,4 +1,5 @@
-import {useState} from 'react';
+import {useContext,useState} from 'react';
+import {PublicDocumentFormatContext} from '../../core/public-document-format';
 import {ArrowDownRight,ArrowUpRight} from 'lucide-react';
 import {AssetMark} from '../../components/AssetMark';
 import {MomentCard} from '../media/MomentCard';
@@ -16,10 +17,11 @@ export function PublicObjectArtwork({artworkUrl,item,eager=true}:{artworkUrl:Pub
  return artwork?<span className="asset-mark market-object-artwork"><img src={artwork} alt="" loading={eager?'eager':'lazy'} decoding="async" referrerPolicy="no-referrer" crossOrigin={artwork.includes('/api/proof-material/packages/')?'anonymous':undefined} onError={()=>setFailedArtwork(artwork)}/></span>:item?.mediaKind==='moment'?<span className="asset-mark market-object-moment"><MomentCard item={item} thumbnail/></span>:<AssetMark kind="proof"/>;
 }
 function PublicObjectProvenance({item}:{item:PublicMarketItem}){
+ const format=useContext(PublicDocumentFormatContext),locale=format?.locale,options=format?{timeZone:format.timeZone}:undefined;
  const copies=item.category==='sports'&&(item.circulationCount??1)>1;
  const carried=item.sealedCopies??[],owners=[...new Set(carried.map(copy=>copy.ownerUsername?`@${copy.ownerUsername}`:copy.ownerDisplayName).filter((owner):owner is string=>!!owner))],times=carried.map(copy=>Date.parse(copy.sealedAt)).filter(Number.isFinite),first=times.length?Math.min(...times):null,last=times.length?Math.max(...times):null;
  const owner=copies&&owners.length?`${owners[0]}${owners.length>1?` +${owners.length-1} ${owners.length===2?'owner':'owners'}`:''}`:copies?'Owners vary by copy':item.ownerUsername?`@${item.ownerUsername}`:item.ownerDisplayName??'Owner not supplied';
- const sealed=copies&&first!==null?`Sealed ${first===last?new Date(first).toLocaleString():`${new Date(first).toLocaleDateString()}–${new Date(last!).toLocaleDateString()}`}`:copies?'Sealed times vary by copy':item.sealedAt?`Sealed ${new Date(item.sealedAt).toLocaleString()}`:'Sealed time not supplied';
+ const sealed=copies&&first!==null?`Sealed ${first===last?new Date(first).toLocaleString(locale,options):`${new Date(first).toLocaleDateString(locale,options)}–${new Date(last!).toLocaleDateString(locale,options)}`}`:copies?'Sealed times vary by copy':item.sealedAt?`Sealed ${new Date(item.sealedAt).toLocaleString(locale,options)}`:'Sealed time not supplied';
  return <span className="market-object-provenance"><span>{owner}</span><span>{sealed}</span></span>;
 }
 /** Shared discovery/showcase row. Pricing and ownership remain the supplied

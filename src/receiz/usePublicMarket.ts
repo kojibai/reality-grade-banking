@@ -1,3 +1,4 @@
+import {readPublicMarketDocumentSeed} from './public-market-document-seed';
 import {compatibleShareInventory,mergeShareInventory} from './market-share-inventory';
 import {retainPublicMomentManifest} from './public-asset-manifest';
 import { useCallback, useEffect, useMemo, useRef, useState,useSyncExternalStore,type SetStateAction } from 'react';
@@ -12,11 +13,12 @@ function adoptCatalog(catalog:PublicMarketCatalog|null){const next=mergeAdmitted
 export const PUBLIC_MARKET_CACHE_KEY = 'receiz-bank-public-discovery-v2';
 // Public workspaces share the settled source already in this document. Optional
 // browser storage can be too small for the complete collection and card input.
-let retainedCatalog:PublicMarketCatalog|null=null,retainedSports:unknown=null,restored=false;
+let retainedCatalog:PublicMarketCatalog|null=null,retainedSports:unknown=null,restored=false,preparedDocument=false;
 const catalogListeners=new Set<()=>void>();
 const subscribeCatalog=(listener:()=>void)=>{catalogListeners.add(listener);return()=>{catalogListeners.delete(listener);};};
 const inactiveCatalog=()=>()=>{};
 function restorePublicCatalog(): PublicMarketCatalog | null {
+  const carried=readPublicMarketDocumentSeed();if(carried){preparedDocument=true;rememberPublicOriginalLocators(carried.catalog);return carried.catalog;}
   try{retainedSports=JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1')??'null');}catch{/* Optional public inventory. */}
   try { const saved = localStorage.getItem(PUBLIC_MARKET_CACHE_KEY); const input = saved ? JSON.parse(saved) : null; const catalog = input ? parsePublicMarket(input, input.snapshot) : null; if (!catalog) return null; rememberPublicOriginalLocators(catalog); return mergePublicSports(catalog,retainedSports); } catch { return null; }
 }
@@ -136,9 +138,11 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
   useEffect(() => {
     if (!active) return;
     let alive=true;
+    if(!preparedDocument){
     void prepareShippedSports().then(()=>{if(alive&&retainedSports)setSportsStatus(current=>current==='fresh'?current:'retained');}).catch(()=>{});
     void prepareShippedCatalog().catch(()=>{});
     void refresh();
+    }
     const interval = setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 60_000);
     const wake = () => { if (document.visibilityState === 'visible') void refresh(); };
     document.addEventListener('visibilitychange', wake); window.addEventListener('online', wake);

@@ -9,11 +9,11 @@ export function chartPeriodBounds(points: readonly { at: string }[], period: Cha
   const start = period === 'ALL' ? first : Math.max(first, end - spans[period] * 86_400_000);
   return Number.isFinite(start)&&Number.isFinite(end)&&end>=start?{start,end}:undefined;
 }
-export function chartDateLabel(at: number, period: ChartPeriod, range?: ChartTimeRange): string {
+export function chartDateLabel(at: number, period: ChartPeriod, range?: ChartTimeRange,format?:{locale:string;timeZone:string}): string {
   const intraday = period === '1D' || !!range && range.end - range.start < 86_400_000;
   const options: Intl.DateTimeFormatOptions = intraday ? {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'} : {month:'short',day:'numeric',year:'numeric'};
   if (range && range.end > range.start && range.end - range.start < 60_000) options.second = '2-digit';
-  return new Date(at).toLocaleString(undefined, options);
+  return new Date(at).toLocaleString(format?.locale, {...options,...(format?{timeZone:format.timeZone}:{})});
 }
 export function chartPeriodPoints<T extends { at: string }>(points: readonly T[], period: ChartPeriod): T[] {
   if (period === 'ALL' || points.length < 2) return [...points];

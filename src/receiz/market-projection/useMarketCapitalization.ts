@@ -17,8 +17,8 @@ function restore(): MarketHistorySnapshot {
   return shipped;
 }
 type WorkerInput={source:{ok:true;marketCapProjection:MarketCapSource};history:MarketHistorySnapshot;catalog:PublicMarketCatalog|null;pulse:number};
-export function useMarketCapitalization(period: ChartPeriod, active: boolean,catalog:PublicMarketCatalog|null=null,sourceActive=active) {
-  const [history,setHistory]=useState<MarketHistorySnapshot>(restore),[fullSource,setFullSource]=useState<MarketCapSource|null>(retainedMarketDisplaySource),[pulse,setPulse]=useState(now),[status,setStatus]=useState<'cached'|'live'|'unavailable'>('cached');
+export function useMarketCapitalization(period: ChartPeriod, active: boolean,catalog:PublicMarketCatalog|null=null,sourceActive=active,initialHistory?:MarketHistorySnapshot) {
+  const [history,setHistory]=useState<MarketHistorySnapshot>(()=>initialHistory??restore()),[fullSource,setFullSource]=useState<MarketCapSource|null>(retainedMarketDisplaySource),[pulse,setPulse]=useState(now),[status,setStatus]=useState<'cached'|'live'|'unavailable'>('cached');
   const heldHistory=useRef(history),worker=useRef<Worker|null>(null),request=useRef(0),acceptedSource=useRef<MarketCapSource|null>(null),busy=useRef(false),queued=useRef<WorkerInput|null>(null),latestInput=useRef<WorkerInput|null>(null),restartWorker=useRef<(()=>void)|null>(null);
   const workerInputs=useRef<{source:MarketCapSource;catalog:PublicMarketCatalog|null}|null>(null);
   const [calculation,setCalculation]=useState<GlobalMarketCalculation|null>(null),heldCalculation=useRef<GlobalMarketCalculation|null>(null),inspecting=useRef(false);
@@ -55,7 +55,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
       } catch { if (live && !controller.signal.aborted) setStatus('unavailable'); }
       finally { if (live) pending = false; }
     };
-    void read('/receiz-public-capitalization.json', false); void read('/api/bank/public-market/capitalization', true);
+    if(!initialHistory||!retainedMarketDisplaySource()){void read('/receiz-public-capitalization.json', false);void read('/api/bank/public-market/capitalization', true);}
     const interval = setInterval(() => { if (document.visibilityState === 'visible') void read('/api/bank/public-market/capitalization', true); }, 60000);
     return () => { controller.abort(); clearInterval(interval); };
   }, [sourceActive]);

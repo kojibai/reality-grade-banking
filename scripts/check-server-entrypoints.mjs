@@ -16,27 +16,36 @@ async function emit(source){
 }
 try{
  await writeFile(join(stage,'package.json'),'{"type":"module"}');await symlink(resolve(root,'node_modules'),join(stage,'node_modules'),'dir');
- for(const name of ['index','profile','asset','receipt','book','cooperatives','read'])await emit(resolve(root,'api/'+name+'.ts'));
+ for(const name of ['index','profile','asset','receipt','book','cooperatives','read','explore'])await emit(resolve(root,'api/'+name+'.ts'));
  await emit(resolve(root,'tests/fixtures/public-profile.ts'));
  await cp(resolve(root,'server/profile-runtime'),resolve(stage,'server/profile-runtime'),{recursive:true});
  await mkdir(resolve(stage,'dist/explore'),{recursive:true});await copyFile(resolve(root,'dist/explore/index.html'),resolve(stage,'dist/explore/index.html'));
  const included=JSON.parse(await readFile(resolve(root,'vercel.json'),'utf8')).functions?.['api/index.ts']?.includeFiles??'';
  for(const name of ['market','sports'])if(!included.includes(`public/receiz-public-${name}.json`))throw Error('CERTIFICATE_DEPLOYED_PUBLIC_SOURCE_MISSING:'+name);
- await mkdir(resolve(stage,'public'),{recursive:true});for(const name of ['market','sports'])await copyFile(resolve(root,`public/receiz-public-${name}.json`),resolve(stage,`public/receiz-public-${name}.json`));
+ await mkdir(resolve(stage,'public'),{recursive:true});for(const name of ['market','sports','share-chart-history'])await copyFile(resolve(root,`public/receiz-public-${name}.json`),resolve(stage,`public/receiz-public-${name}.json`));
  const program=`
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';import {gzipSync} from 'node:zlib';
 const {profileFixture}=await import('./tests/fixtures/public-profile.js');
-let calls=0,certificateCalls=0;
+let calls=0,certificateCalls=0,materialCalls=0;
+const membership={ok:true,transport:{publicMembership:{version:1,source:'canonical-complete',scope:'whole-market-visible-showcase',isComplete:true,itemCount:0,revision:'plain-node-display'},publicOriginals:[]}};
+const ledgerHeads={actions:{count:'0',lastSeq:'0'},wallet:{count:'0',lastKaiUpulse:null}},heldMaterial=JSON.stringify({membership,preparedLedger:{schema:'bank.public-ledger.preparation.v1',financialOnly:true,ledgerCacheGzipB64u:'unchanged-display-packet-not-decoded',heads:ledgerHeads}}),materialGeneration=createHash('sha256').update(heldMaterial).digest('hex');
 globalThis.fetch=async(url,init)=>{
+ if(String(url)==='https://receiz.com/api/market/prepared-material?generation='+materialGeneration){materialCalls++;return new Response(gzipSync(Buffer.from(heldMaterial)),{headers:{'content-type':'application/gzip'}});}
  if(String(url)==='https://receiz.com/api/market/share-certificates/share_deployed_certificate_test'){certificateCalls++;return Response.json({ok:true,state:{note:{noteToken:'share_deployed_certificate_test',remainingShareQuantityMicro:'2500000'},item:{id:'profile:bjklock:d1d5a3f4-5db9-444e-88f5-95443fb70598',assetId:'d1d5a3f4-5db9-444e-88f5-95443fb70598',livePulseSeed:null}}});}
  assert.equal(String(url),'https://receiz.com/api/profile/alexmorgan?surface=public-route&representation=collection-v2');
  assert.equal(init.credentials,'omit');calls++;return Response.json(profileFixture());
 };
-for(const name of ['index','profile','asset','receipt','book','cooperatives','read']){
+for(const name of ['index','profile','asset','receipt','book','cooperatives','read','explore']){
  const {default:api}=await import('./api/'+name+'.js');
  assert.equal(typeof api.fetch,'function',name+' must boot in plain Node');console.log('BOOT',name);
 }
 assert.equal(calls,0,'Function imports must not request upstream data.');
+const {default:explore}=await import('./api/explore.js');
+assert.equal((await explore.fetch(new Request('https://bankeiz.com/api/explore?prepare=1',{method:'HEAD'}))).status,204);
+const preparedResponse=await explore.fetch(new Request('https://bankeiz.com/api/explore?prepare=input',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({selectionKey:'a'.repeat(64),previousGeneration:materialGeneration,currentLedgerHeads:ledgerHeads})}));
+assert.equal(preparedResponse.status,200,'Default dynamic preparation graph must run in plain Node.');const prepared=await preparedResponse.json();assert.equal(prepared.schema,'bank.public-market.render-material.v1');assert.equal(JSON.parse(prepared.material).preparedLedger.ledgerCacheGzipB64u,'unchanged-display-packet-not-decoded');assert.equal(materialCalls,1);assert.equal(calls,0);
+const {preparePublicMarketState}=await import('./server/profile-runtime/public-page-preparation.mjs');const marketState=await preparePublicMarketState({membership,snapshot:{ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[]}}});assert.ok(Number.isSafeInteger(marketState.asOfPulse));assert.equal(calls,0);
 const {default:profile}=await import('./api/profile.js');
 assert.equal((await profile.fetch(new Request('https://bankeiz.com/api/profile?username=alexmorgan',{method:'HEAD'}))).status,200);
 assert.equal(calls,0,'HEAD must not request a profile.');

@@ -1,6 +1,9 @@
+import {PublicDocumentCapabilitiesContext,PublicDocumentFormatContext} from '../core/public-document-format';
+import {publishMarketDisplaySource} from '../receiz/market-projection/display-source';
+import {publicMarketDocumentHistory,readPublicMarketDocumentSeed} from '../receiz/public-market-document-seed';
 import {startPublicDocumentRuntime} from '../core/public-document-entry';
-import {StrictMode} from 'react';
-import {createRoot} from 'react-dom/client';
+import {StrictMode,useEffect,useState} from 'react';
+import {createRoot,hydrateRoot} from 'react-dom/client';
 import {PublicExplorer} from './PublicExplorer';
 import {profilePageUsername} from '../receiz/public-profile';
 import {startProfileDocumentRuntime} from './profile-document-entry';
@@ -8,6 +11,10 @@ import '../styles/tokens.css';
 import '../styles/app.css';
 import '../styles/features.css';
 import {publicRuntimeRoot,usePublicRuntimeActive} from '../core/public-runtime';
-function PublicExplorerRoot(){return <PublicExplorer active={usePublicRuntimeActive('explore')}/>;}
-const start=()=>createRoot(publicRuntimeRoot('explore'),{identifierPrefix:'public-explore-'}).render(<StrictMode><PublicExplorerRoot/></StrictMode>);
+const prepared=readPublicMarketDocumentSeed();
+if(prepared?.capitalization)publishMarketDisplaySource(prepared.capitalization);
+const preparedHistory=prepared?publicMarketDocumentHistory(prepared):undefined;
+const preparedSource=prepared?{catalog:prepared.catalog,historyCatalog:prepared.catalog,pulse:prepared.asOfPulse,quoteStatus:'stale' as const,sportsStatus:prepared.catalog.items.some(item=>item.category==='sports')?'retained' as const:'missing' as const,status:'stale' as const,error:null,refresh:async()=>{}}:undefined;
+function PublicExplorerRoot(){const active=usePublicRuntimeActive('explore'),[initial,setInitial]=useState(!!prepared);useEffect(()=>setInitial(false),[]);return <PublicDocumentCapabilitiesContext.Provider value={initial?{intersectionObserver:false}:undefined}><PublicDocumentFormatContext.Provider value={initial?prepared?.format:undefined}><PublicExplorer active={active&&!initial} initialPath={prepared?'/'+prepared.path+'/':undefined} initialSource={initial?preparedSource:undefined} initialVisibleCount={prepared?.visibleCount} initialHistory={preparedHistory} initialAsOfPulse={initial?prepared?.asOfPulse:undefined}/></PublicDocumentFormatContext.Provider></PublicDocumentCapabilitiesContext.Provider>;}
+const start=()=>{const root=publicRuntimeRoot('explore'),content=<StrictMode><PublicExplorerRoot/></StrictMode>;if(prepared)hydrateRoot(root,content,{identifierPrefix:'public-explore-'});else createRoot(root,{identifierPrefix:'public-explore-'}).render(content);};
 if(profilePageUsername(location.pathname))startProfileDocumentRuntime(start);else startPublicDocumentRuntime('explore',start);
