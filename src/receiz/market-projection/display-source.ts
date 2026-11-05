@@ -1,4 +1,6 @@
+import {preparedBankCatalogEnabled,preparedBankCatalogState,subscribePreparedBankCatalog,readPreparedBankCatalog} from '../prepared-bank-catalog';
 import {useSyncExternalStore} from 'react';
+import {readPublicMarketDocumentSeed} from '../public-market-document-seed';
 import {parseMarketCapSource,retainMarketSourceHistory,type MarketCapSource} from './source';
 let source:MarketCapSource|null=null;
 let sourceKind:'live'|'shipped'='shipped';
@@ -12,9 +14,12 @@ export function publishMarketDisplaySource(next:MarketCapSource,kind:'live'|'shi
  try{localStorage.setItem(KEY,JSON.stringify({ok:true,marketCapProjection:next,displaySourceKind:kind}));}catch{/* Optional display retention. */}
  for(const listener of listeners)listener();
 }
-const subscribe=(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};};
+const subscribe=(listener:()=>void)=>{listeners.add(listener);const unsubscribe=subscribePreparedBankCatalog(listener);return()=>{listeners.delete(listener);unsubscribe();};};
 export function retainedMarketDisplaySource(){
- if(!restored){restored=true;try{const input=JSON.parse(localStorage.getItem(KEY)??'null'),cached=parseMarketCapSource(input);if(!source||cached.serverPulse>source.serverPulse){source=cached;sourceKind=input.displaySourceKind==='shipped'?'shipped':'live';}}catch{/* No qualified public cache. */}}
+ if(preparedBankCatalogEnabled()){const prepared=preparedBankCatalogState();if(prepared.value)return prepared.value.capitalization;if(prepared.phase!=='fallback')return null;}
+ if(!restored){restored=true;const prepared=readPublicMarketDocumentSeed()?.capitalization;
+  if(prepared){source=prepared;sourceKind='live';}
+  else try{const input=JSON.parse(localStorage.getItem(KEY)??'null'),cached=parseMarketCapSource(input);if(!source||cached.serverPulse>source.serverPulse){source=cached;sourceKind=input.displaySourceKind==='shipped'?'shipped':'live';}}catch{/* No qualified public cache. */}}
  return source;
 }
 /** Coalesce the existing overview and object readers, including cold deep links. */
@@ -24,6 +29,7 @@ export function readMarketDisplaySource(path:string):Promise<MarketCapSource>{
  reads.set(path,attempt);void attempt.finally(()=>{if(reads.get(path)===attempt)reads.delete(path);}).catch(()=>{});return attempt;
 }
 export function prepareMarketDisplaySource(refreshMissing=false):Promise<void>{
+ if(preparedBankCatalogEnabled()&&(preparedBankCatalogState().phase!=='fallback'||preparedBankCatalogState().value))return readPreparedBankCatalog().then(()=>{});
  const held=retainedMarketDisplaySource();if(held&&!refreshMissing)return Promise.resolve();
  if(initialRead)return initialRead;
  const attempt=(async()=>{await Promise.allSettled([...(held?[]:[readMarketDisplaySource('/receiz-public-capitalization.json')]),readMarketDisplaySource('/api/bank/public-market/capitalization')]);})();

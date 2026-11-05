@@ -49,6 +49,126 @@
   ],
   "rewrites": [
     {
+      "source": "/explore",
+      "destination": "/api/explore?path=explore&entry=1"
+    },
+    {
+      "source": "/explore/",
+      "destination": "/api/explore?path=explore&entry=1"
+    },
+    {
+      "source": "/ledger",
+      "destination": "/api/explore?path=ledger&entry=1"
+    },
+    {
+      "source": "/ledger/",
+      "destination": "/api/explore?path=ledger&entry=1"
+    },
+    {
+      "source": "/ledger/proofs",
+      "destination": "/api/explore?path=ledger/proofs&entry=1"
+    },
+    {
+      "source": "/ledger/proofs/",
+      "destination": "/api/explore?path=ledger/proofs&entry=1"
+    },
+    {
+      "source": "/explore/music",
+      "destination": "/api/explore?path=explore/music&entry=1"
+    },
+    {
+      "source": "/explore/music/",
+      "destination": "/api/explore?path=explore/music&entry=1"
+    },
+    {
+      "source": "/explore/images",
+      "destination": "/api/explore?path=explore/images&entry=1"
+    },
+    {
+      "source": "/explore/images/",
+      "destination": "/api/explore?path=explore/images&entry=1"
+    },
+    {
+      "source": "/explore/videos",
+      "destination": "/api/explore?path=explore/videos&entry=1"
+    },
+    {
+      "source": "/explore/videos/",
+      "destination": "/api/explore?path=explore/videos&entry=1"
+    },
+    {
+      "source": "/explore/books",
+      "destination": "/api/explore?path=explore/books&entry=1"
+    },
+    {
+      "source": "/explore/books/",
+      "destination": "/api/explore?path=explore/books&entry=1"
+    },
+    {
+      "source": "/explore/essays",
+      "destination": "/api/explore?path=explore/essays&entry=1"
+    },
+    {
+      "source": "/explore/essays/",
+      "destination": "/api/explore?path=explore/essays&entry=1"
+    },
+    {
+      "source": "/explore/moments",
+      "destination": "/api/explore?path=explore/moments&entry=1"
+    },
+    {
+      "source": "/explore/moments/",
+      "destination": "/api/explore?path=explore/moments&entry=1"
+    },
+    {
+      "source": "/explore/collectibles",
+      "destination": "/api/explore?path=explore/collectibles&entry=1"
+    },
+    {
+      "source": "/explore/collectibles/",
+      "destination": "/api/explore?path=explore/collectibles&entry=1"
+    },
+    {
+      "source": "/explore/documents",
+      "destination": "/api/explore?path=explore/documents&entry=1"
+    },
+    {
+      "source": "/explore/documents/",
+      "destination": "/api/explore?path=explore/documents&entry=1"
+    },
+    {
+      "source": "/market-cap",
+      "destination": "/api/explore?path=market-cap&entry=1"
+    },
+    {
+      "source": "/market-cap/",
+      "destination": "/api/explore?path=market-cap&entry=1"
+    },
+    {
+      "source": "/feed",
+      "destination": "/api/explore?path=feed&entry=1"
+    },
+    {
+      "source": "/feed/",
+      "destination": "/api/explore?path=feed&entry=1"
+    },
+    {
+      "source": "/discover",
+      "destination": "/api/explore?path=discover&entry=1"
+    },
+    {
+      "source": "/discover/",
+      "destination": "/api/explore?path=discover&entry=1"
+    },
+    {
+      "source": "/explorer",
+      "destination": "/api/explore?path=explore&entry=1"
+    },
+    {
+      "source": "/explorer/",
+      "destination": "/api/explore?path=explore&entry=1"
+    },
+    {
       "source": "/build",
       "destination": "/build/index.html"
     },
@@ -103,22 +223,6 @@
     {
       "source": "/book/",
       "destination": "/book/index.html"
-    },
-    {
-      "source": "/discover",
-      "destination": "/discover/index.html"
-    },
-    {
-      "source": "/discover/",
-      "destination": "/discover/index.html"
-    },
-    {
-      "source": "/feed",
-      "destination": "/feed/index.html"
-    },
-    {
-      "source": "/feed/",
-      "destination": "/feed/index.html"
     },
     {
       "source": "/moments/",
@@ -893,14 +997,6 @@
     {
       "source": "/asset/:asset",
       "destination": "/api/asset?asset=:asset"
-    },
-    {
-      "source": "/explorer",
-      "destination": "/explore/index.html"
-    },
-    {
-      "source": "/explorer/",
-      "destination": "/explore/index.html"
     },
     {
       "source": "/receiz-public-ledger.json.gz",

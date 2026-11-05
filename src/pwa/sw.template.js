@@ -2,6 +2,128 @@ const CACHE = 'receiz-bank-__CACHE_VERSION__';
 const SHELL = __SHELL_ASSETS__;
 const RESOURCES = __RESOURCE_HASHES__;
 const PAGES = __PAGE_ROUTES__;
+// Derived by the offline builder from the actual public renderer inputs. The
+// offline version and this renderer digest are different coordinates.
+const PUBLIC_RENDER_BUILD = '__PUBLIC_RENDER_BUILD__';
+const PUBLIC_CACHE = 'bankeiz-public-pages-__CACHE_VERSION__';
+const PUBLIC_LIMIT = 32 * 1024 * 1024;
+const PUBLIC_PATHS = ['explore','ledger','ledger/proofs','explore/music','explore/images','explore/videos','explore/books','explore/essays','explore/moments','explore/collectibles','explore/documents','market-cap','feed','discover'];
+const publicRequests = new Map(), publicWrites = new Map(), publicBodies = new Map();
+let publicBodyBytes = 0;
+function retainPublicBody(path, value) {
+  const previous = publicBodies.get(path); if (previous) { publicBodyBytes -= previous.blob.size; publicBodies.delete(path); }
+  publicBodies.set(path, value); publicBodyBytes += value.blob.size;
+  while (publicBodies.size > 2 || publicBodyBytes > PUBLIC_LIMIT) { const key = publicBodies.keys().next().value, prior = publicBodies.get(key); publicBodies.delete(key); publicBodyBytes -= prior.blob.size; }
+}
+let publicSequence = 0;
+const publicDigest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+function publicPath(url) {
+  if (url.pathname === '/') return null; // The exact installed private entry is unchanged; public data refresh is separate.
+  const path = url.pathname.replace(/^\//, '').replace(/\/$/, '').replace(/^explorer$/, 'explore');
+  if (!PUBLIC_PATHS.includes(path)) return null;
+  const keys = [...url.searchParams.keys()];
+  if (keys.length && (!(path === 'ledger' || path === 'ledger/proofs') || keys.length !== 1 || keys[0] !== 'source' || !publicDigest(url.searchParams.get('source')))) return null;
+  return path;
+}
+function publicReceipt(response) {
+  const header = name => response.headers.get('x-receiz-public-' + name);
+  const generation = header('material-revision'), build = header('render-build'), digest = header('html-sha256'), state = header('html-state'), selected = header('state-coordinate'), pending = header('pending-state-coordinate');
+  if (response.status !== 200 || !/^text\/html(?:;|$)/i.test(response.headers.get('content-type') || '') || !publicDigest(generation) || build !== PUBLIC_RENDER_BUILD || !publicDigest(digest) || !publicDigest(selected)
+    || !(state === 'current' && pending === null || state === 'retained' && publicDigest(pending) && selected !== pending)) throw Error('PUBLIC_DOCUMENT_RECEIPT_INVALID');
+  return { generation, build, digest };
+}
+function publicHeaders(response) {
+  const headers = new Headers(response.headers);
+  // fetch exposes decoded bytes. Wire compression/length must not be attached
+  // to the newly buffered public body or a cached body's fresh HEAD receipt.
+  for (const key of ['content-encoding','content-length','transfer-encoding']) headers.delete(key);
+  return headers;
+}
+async function publicDocument(request, path, installedPath) {
+  if (request.signal.aborted) throw request.signal.reason;
+  const controller = new AbortController(), abort = () => controller.abort(request.signal.reason);
+  const timer = setTimeout(() => controller.abort(new DOMException('Public document delivery timed out.', 'TimeoutError')), 15000);
+  request.signal.addEventListener('abort', abort, { once: true });
+  let rejectAbort;
+  const cancelled = new Promise((_, reject) => { rejectAbort = () => reject(controller.signal.reason); controller.signal.addEventListener('abort', rejectAbort, { once: true }); });
+  const check = () => { if (controller.signal.aborted) throw controller.signal.reason; };
+  const url = new URL('/api/explore', self.location.origin); url.searchParams.set('path', path); url.searchParams.set('build', PUBLIC_RENDER_BUILD);
+  const source = new URL(request.url).searchParams.get('source'); if (path.startsWith('ledger') && source) url.searchParams.set('source', source);
+  const key = new URL('/api/explore', self.location.origin); key.searchParams.set('path', path); key.searchParams.set('build', PUBLIC_RENDER_BUILD);
+  const sequence = ++publicSequence; publicRequests.set(path, sequence);
+  const get = async method => {
+    check();
+    const response = await fetch(new Request(url, { method, credentials: 'omit', cache: 'no-store', redirect: 'error', signal: controller.signal, headers: { accept: 'text/html' } }));
+    if (controller.signal.aborted) { await response.body?.cancel(); check(); }
+    if (response.type === 'opaque' || response.type === 'opaqueredirect' || response.redirected || response.url !== url.href) { await response.body?.cancel(); throw Error('PUBLIC_DOCUMENT_TRANSPORT_INVALID'); }
+    try { publicReceipt(response); } catch (error) { await response.body?.cancel(); throw error; }
+    return response;
+  };
+  const completeBody = async (response, expected) => {
+    // Native fetch may retain compressed wire headers after exposing decoded
+    // bytes. Only an unencoded length is a decoded-body size assertion.
+    const length = response.headers.has('content-encoding') ? null : response.headers.get('content-length');
+    if (length !== null && (!/^\d+$/.test(length) || Number(length) > PUBLIC_LIMIT)) { await response.body?.cancel(); throw Error('PUBLIC_DOCUMENT_CAPACITY'); }
+    const reader = response.body?.getReader(); if (!reader) throw Error('PUBLIC_DOCUMENT_BODY_REQUIRED');
+    const parts = []; let size = 0;
+    const cancelBody = () => { void reader.cancel(controller.signal.reason).catch(() => {}); };
+    controller.signal.addEventListener('abort', cancelBody, { once: true });
+    try { for (;;) { check(); const chunk = await reader.read(); check(); if (chunk.done) break; size += chunk.value.byteLength; if (size > PUBLIC_LIMIT) throw Error('PUBLIC_DOCUMENT_CAPACITY'); parts.push(chunk.value); } }
+    finally { controller.signal.removeEventListener('abort', cancelBody); await reader.cancel().catch(() => {}); reader.releaseLock(); }
+    if (!size || length !== null && Number(length) !== size) throw Error('PUBLIC_DOCUMENT_SIZE_MISMATCH');
+    const bytes = new Uint8Array(size); let offset = 0; for (const part of parts) { bytes.set(part, offset); offset += part.byteLength; }
+    new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(value => value.toString(16).padStart(2, '0')).join(''); check();
+    if (digest !== expected.digest) throw Error('PUBLIC_DOCUMENT_BODY_MISMATCH');
+    return new Blob([bytes]);
+  };
+  const work = (async () => {
+    let cache, cached; const held = publicBodies.get(path);
+    try { cache = await caches.open(PUBLIC_CACHE); if (!held) cached = await cache.match(key.href); } catch { /* An unavailable display cache does not invalidate a complete network response. */ }
+    check();
+    if (request.method === 'HEAD') { const response = await get('HEAD'); await response.body?.cancel(); check(); return new Response(null, { headers: publicHeaders(response) }); }
+    if (held || cached) {
+      const response = await get('HEAD'); await response.body?.cancel(); check();
+      let previous = held?.receipt; try { previous ||= publicReceipt(cached); } catch { /* Only this worker's verified complete response is reusable. */ }
+      const current = publicReceipt(response);
+      if (previous && previous.generation === current.generation && previous.build === current.build && previous.digest === current.digest) {
+        try {
+          // CacheStorage is not an admission marker. Verify a restored body
+          // once, then retain an immutable private Blob for this worker only.
+          const blob = held?.blob || await completeBody(cached, current); check();
+          if (publicRequests.get(path) === sequence) retainPublicBody(path, { blob, receipt: current });
+          return new Response(blob, { headers: publicHeaders(response) });
+        } catch (error) { check(); if (cache && publicRequests.get(path) === sequence) await cache.delete(key.href).catch(() => {}); }
+      }
+    }
+    const response = await get('GET'), expected = publicReceipt(response), blob = await completeBody(response, expected);
+    const result = new Response(blob, { headers: publicHeaders(response) });
+    if (cache) {
+      // Serialize only CacheStorage commits for this visited path. A delayed
+      // earlier request cannot replace a later request's completed display.
+      const prior = publicWrites.get(path) || Promise.resolve();
+      const writing = prior.catch(() => {}).then(async () => {
+        check(); if (publicRequests.get(path) !== sequence) return;
+        try { await cache.put(key.href, result.clone()); } catch { /* The verified immutable body can still be held locally. */ }
+        if (controller.signal.aborted && publicRequests.get(path) === sequence) await cache.delete(key.href);
+        check(); if (publicRequests.get(path) === sequence) retainPublicBody(path, { blob, receipt: expected });
+      });
+      publicWrites.set(path, writing);
+      try { await writing; } catch (error) { check(); /* Display persistence failure cannot turn a verified body into Source authority. */ }
+      finally { if (publicWrites.get(path) === writing) publicWrites.delete(path); }
+    } else if (publicRequests.get(path) === sequence) { check(); retainPublicBody(path, { blob, receipt: expected }); }
+    check(); return result;
+  })();
+  try { return await Promise.race([work, cancelled]); }
+  catch (error) {
+    if (request.signal.aborted) throw request.signal.reason;
+    // Source503 is NOT retention permission. This exact installed document is
+    // a historical offline closure, with no manufactured currentness receipt.
+    const response = installedPath ? await fromBuild(installedPath) : new Response('Public document unavailable.', { status: 503, headers: { 'cache-control': 'no-store' } });
+    if (request.signal.aborted) throw request.signal.reason;
+    return request.method === 'HEAD' ? new Response(null, { status: response.status, headers: response.headers }) : response;
+  } finally { clearTimeout(timer); request.signal.removeEventListener('abort', abort); controller.signal.removeEventListener('abort', rejectAbort); }
+}
 
 async function verifiedFetch(path) {
   const expected = RESOURCES[path];
@@ -32,7 +154,7 @@ async function fromBuild(path) {
   const response = await verifiedFetch(path); await cache.put(path, response.clone()); return response;
 }
 self.addEventListener('install', event => { event.waitUntil(install()); });
-self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('receiz-bank-') && key !== CACHE).map(key => caches.delete(key))))); });
+self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('receiz-bank-') && key !== CACHE || key.startsWith('bankeiz-public-pages-') && key !== PUBLIC_CACHE).map(key => caches.delete(key))))); });
 self.addEventListener('message', event => {
   if (event.data?.type === 'BANK_PUSH_BIND' && event.data.version === 1 && event.source?.url && new URL(event.source.url).origin === self.location.origin) {
     if (event.data.accountUid !== null && !pushUuid(event.data.accountUid)) return;
@@ -96,7 +218,10 @@ self.addEventListener('notificationclick', event => {
 });
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-  if (event.request.method !== 'GET' || url.origin !== self.location.origin || url.pathname === '/api' || url.pathname.startsWith('/api/')) return;
+  if (!['GET','HEAD'].includes(event.request.method) || url.origin !== self.location.origin || url.pathname === '/api' || url.pathname.startsWith('/api/')) return;
+  const publicPage = publicDigest(PUBLIC_RENDER_BUILD) && publicPath(url);
+  if (publicPage) { event.respondWith(publicDocument(event.request, publicPage, PAGES[url.pathname])); return; }
+  if (event.request.method !== 'GET') return;
   const page = event.request.mode === 'navigate' && (PAGES[url.pathname] || (/^\/vault\/[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\/?$/i.test(url.pathname) && (PAGES['/vault/index.html'] || PAGES['/'])) || (/^\/pay\/[a-z0-9_]{3,24}\/?$/.test(url.pathname) && PAGES['/pay/checkout.html']) || (/^\/verify\/[a-f0-9]{64}\/?$/.test(url.pathname) && PAGES['/verify/']) || (/^\/asset\/[^/]+\/?$/.test(url.pathname) && PAGES['/explore/']));
   const nativeBuild = (url.pathname.startsWith('/native/') || url.pathname === '/proof-verifier/v129/verifier.js') && url.searchParams.size === 1 && url.searchParams.get('build') === RESOURCES[url.pathname]?.sha256;
   const path = page || (RESOURCES[url.pathname + url.search] ? url.pathname + url.search : nativeBuild ? url.pathname : undefined);

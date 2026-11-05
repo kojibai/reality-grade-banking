@@ -20,7 +20,7 @@ it('opens held calculation details without refetching or requesting another valu
  vi.stubGlobal('Worker',WorkerStub);let state!:ReturnType<typeof useMarketCapitalization>;const root=createRoot(document.createElement('div'));
  function Probe(){state=useMarketCapitalization('ALL',true,null,false);return null;}
  try{
-  await act(async()=>root.render(<Probe/>));const worker=workers[0],summary=state.source;
+  await act(async()=>root.render(<Probe/>));const worker=workers[0],summary=state.source!;
   act(()=>state.inspectCalculation(true));expect(worker.messages.at(-1)).toEqual({marketInspect:true,readCalculation:true});
   const calculation={basisSha256:shippedHistory.basisSha256,pulse:summary.serverPulse,sourceHash:summary.proofObjectHash,generatedAt:summary.generatedAt,...summary.shareCapitalization!,assets:[]};
   act(()=>state.inspectCalculation(false));
@@ -38,7 +38,7 @@ it('discards the former signed-only chart even when its retained endpoint is cur
  localStorage.setItem('receiz-bank-pbi-market-share-graph-history-v1',JSON.stringify(old));
  let state!:ReturnType<typeof useMarketCapitalization>;const root=createRoot(document.createElement('div'));
  function Probe(){state=useMarketCapitalization('ALL',false);return null;}
- try{await act(async()=>root.render(<Probe/>));expect(state.source.proofObjectHash).toBe(historyFile.summary.proofObjectHash);}finally{act(()=>root.unmount());}
+ try{await act(async()=>root.render(<Probe/>));expect(state.source!.proofObjectHash).toBe(historyFile.summary.proofObjectHash);}finally{act(()=>root.unmount());}
 });
 it('feeds live membership to the chart worker and publishes all periods and their amount together',async()=>{
  // This tests worker publication and membership handoff. The complete shipped
@@ -56,10 +56,10 @@ it('feeds live membership to the chart worker and publishes all periods and thei
  let state!:ReturnType<typeof useMarketCapitalization>,renders=0;const root=createRoot(document.createElement('div'));
  function Probe({period='ALL'}:{period?:ChartPeriod}){renders++;state=useMarketCapitalization(period,true,catalog);return null;}
  try{await act(async()=>root.render(<Probe/>));const request=[...messages].reverse().find(message=>message.source);expect(request.catalog).toBe(catalog);expect(request.pulse).toBe(clock.pulse);
-  const old=state.source;expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(old.currentUsd*100)));
+  const old=state.source!;expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(old.currentUsd*100)));
   const sent=messages.length;clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));expect(messages).toHaveLength(sent);
   const history=(await buildMarketHistory(parseMarketCapSource(input),null,undefined,undefined,{catalog,pulse:request.pulse,capitalization:true}))!;
-  act(()=>worker.onmessage!({data:{id:request.id,history}}));expect(state.source.marketAssetsPriced).toBe(1);expect(state.source.serverPulse).toBe(request.pulse);expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(state.source.currentUsd*100)));
+  act(()=>worker.onmessage!({data:{id:request.id,history}}));expect(state.source!.marketAssetsPriced).toBe(1);expect(state.source!.serverPulse).toBe(request.pulse);expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(state.source!.currentUsd*100)));
   // The acknowledged worker already owns these exact inputs and complete
   // history. A new pulse must not clone that payload onto the UI thread again.
   expect(messages.at(-1)).toEqual({id:expect.any(Number),marketTick:true,pulse:clock.pulse});
@@ -134,7 +134,7 @@ it.each(['onerror','onmessageerror'] as const)('recovers a visible failed worker
   clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));expect(workers).toHaveLength(2);
   const next=workers.at(-1)!,request=next.messages.find(message=>message.source);expect(request.pulse).toBe(clock.pulse);
   const history=(await buildMarketHistory(request.source.marketCapProjection,null,undefined,undefined,{catalog,pulse:clock.pulse,capitalization:true}))!;
-  act(()=>next.onmessage!({data:{id:request.id,history}}));expect(state.source.serverPulse).toBe(clock.pulse);expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(state.source.currentUsd*100)));
+  act(()=>next.onmessage!({data:{id:request.id,history}}));expect(state.source!.serverPulse).toBe(clock.pulse);expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(state.source!.currentUsd*100)));
  }finally{act(()=>root.unmount());}
 });
 it('keeps the existing capitalization reader through a hidden asset page while pausing chart work',async()=>{
@@ -148,7 +148,7 @@ it('paints the share-inclusive total and all six matching intervals before disco
  const host=document.createElement('div'),root=createRoot(host);let state!:ReturnType<typeof useMarketCapitalization>;
  function Probe({period}:{period:ChartPeriod}){state=useMarketCapitalization(period,false);return null;}
  try{
-  for(const period of CHART_PERIODS){act(()=>root.render(<Probe period={period}/>));const cap=state.source.shareCapitalization;expect(cap?.covered).toBeGreaterThan(0);expect(state.points.at(-1)?.usdCents).toBe(cap?.usdCents);expect(state.points.length).toBeGreaterThan(2);}
+  for(const period of CHART_PERIODS){act(()=>root.render(<Probe period={period}/>));const cap=state.source!.shareCapitalization;expect(cap?.covered).toBeGreaterThan(0);expect(state.points.at(-1)?.usdCents).toBe(cap?.usdCents);expect(state.points.length).toBeGreaterThan(2);}
   expect(fetch).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());}
 });

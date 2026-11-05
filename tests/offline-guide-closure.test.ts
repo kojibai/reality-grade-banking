@@ -12,17 +12,18 @@ async function fixture(){
  await put('.vite/manifest.json',JSON.stringify({'index.html':{file:'assets/app.js'}}));await put('assets/app.js','installed bank');await put('proof-verifier/v129/verifier.js','verifier');
  const pages={'/learn/':{content:'All guides'},'/learn/guides/':{content:'Guide directory'}};
  await put('index.html',`<script id="receiz-navigation" type="application/json">${JSON.stringify({pages})}</script>`);await put('learn/index.html','<html>Learn</html>');await put('learn/guides/index.html','<html>All guides</html>');await put('learn/contact.js','contact');await put('learn/guide-directory.js',await readFile('public/learn/guide-directory.js','utf8'));
- return {root,put,dispose:()=>rm(root,{recursive:true,force:true})};
+ const renderBuildFile=join(root,'render-build.json');await put('render-build.json',JSON.stringify({schema:'bank.public-market.render-build.v1',sha256:'a'.repeat(64)}));
+ return {root,put,renderBuildFile,dispose:()=>rm(root,{recursive:true,force:true})};
 }
 it('retains the existing guide directory module when its route participates in the installed public shell',async()=>{
- const f=await fixture();try{const report=await buildOfflineShell(f.root,{fixed:[]}),bytes=await readFile(join(f.root,'learn/guide-directory.js'));expect(report.resources.find(row=>row.url==='/learn/guide-directory.js')).toEqual({url:'/learn/guide-directory.js',bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')});}finally{await f.dispose();}
+ const f=await fixture();try{const report=await buildOfflineShell(f.root,{fixed:[],renderBuildFile:f.renderBuildFile}),bytes=await readFile(join(f.root,'learn/guide-directory.js'));expect(report.resources.find(row=>row.url==='/learn/guide-directory.js')).toEqual({url:'/learn/guide-directory.js',bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')});}finally{await f.dispose();}
 });
 it('retains the real producer entry and every emitted lazy module, refusing altered metadata and excluding stale files',async()=>{
  const f=await fixture();try{
   const result=await writeOriginalsQualificationAssets(f.root);await f.put('learn/index.html','<html><head>'+result.head+'</head><body>Guide</body></html>');await f.put('learn/originals-qualification-main-STALE.js','unrelated stale output');
   const manifest=JSON.parse(await readFile(join(f.root,'learn/originals-qualification.modules.json'),'utf8')) as {version:number;entry:string;resources:{url:string;sha256:string;bytes:number}[]};expect(manifest.resources.some(row=>row.url===manifest.entry)).toBe(true);
-  const report=await buildOfflineShell(f.root,{fixed:[]});for(const row of manifest.resources){const bytes=await readFile(join(f.root,row.url.slice(1)));expect(report.resources.find(value=>value.url===row.url)).toEqual({url:row.url,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')});}expect(report.resources.some(row=>row.url.includes('STALE'))).toBe(false);
-  const saved=structuredClone(manifest);manifest.resources[0]!.sha256='f'.repeat(64);await f.put('learn/originals-qualification.modules.json',JSON.stringify(manifest));await expect(buildOfflineShell(f.root,{fixed:[]})).rejects.toThrow('OFFLINE_PUBLIC_MODULE_MISMATCH');
-  saved.resources[0]!.url='/api/private';await f.put('learn/originals-qualification.modules.json',JSON.stringify(saved));await expect(buildOfflineShell(f.root,{fixed:[]})).rejects.toThrow('OFFLINE_PUBLIC_MODULE_MISMATCH');
+  const report=await buildOfflineShell(f.root,{fixed:[],renderBuildFile:f.renderBuildFile});for(const row of manifest.resources){const bytes=await readFile(join(f.root,row.url.slice(1)));expect(report.resources.find(value=>value.url===row.url)).toEqual({url:row.url,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')});}expect(report.resources.some(row=>row.url.includes('STALE'))).toBe(false);
+  const saved=structuredClone(manifest);manifest.resources[0]!.sha256='f'.repeat(64);await f.put('learn/originals-qualification.modules.json',JSON.stringify(manifest));await expect(buildOfflineShell(f.root,{fixed:[],renderBuildFile:f.renderBuildFile})).rejects.toThrow('OFFLINE_PUBLIC_MODULE_MISMATCH');
+  saved.resources[0]!.url='/api/private';await f.put('learn/originals-qualification.modules.json',JSON.stringify(saved));await expect(buildOfflineShell(f.root,{fixed:[],renderBuildFile:f.renderBuildFile})).rejects.toThrow('OFFLINE_PUBLIC_MODULE_MISMATCH');
  }finally{await f.dispose();}
 });

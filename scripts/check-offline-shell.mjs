@@ -5,7 +5,10 @@ import { createHash } from 'node:crypto';
 const manifest = JSON.parse(await readFile('dist/offline-build.json', 'utf8'));
 assert.equal(manifest.schema, 'bankeiz.offline-build.v1');
 assert.match(manifest.version, /^[a-f0-9]{24}$/);
+assert.match(manifest.publicRenderBuild, /^[a-f0-9]{64}$/);
 const sw = await readFile('dist/sw.js', 'utf8');
+assert.ok(sw.includes("const PUBLIC_RENDER_BUILD = '"+manifest.publicRenderBuild+"'"),'Worker and offline closure must bind the actual same renderer.');
+assert.equal(manifest.publicRenderBuild,JSON.parse(await readFile('server/profile-runtime/public-market-render-build.json','utf8')).sha256);
 const shell = JSON.parse(sw.match(/const SHELL = (\[[\s\S]*?\]);/)[1]);
 assert.deepEqual(shell, manifest.resources.map(entry => entry.url));
 assert.equal(new Set(shell).size, shell.length);
@@ -15,10 +18,12 @@ for (const url of ['/index.html', '/native/offline-notes.v129.mjs', '/native/rec
 assert.ok(shell.some(url => url.includes('qr-decoder')), 'The lazy camera decoder must also be available offline.');
 assert.ok(shell.includes('/snarkjs.min.js'),'The canonical proof browser verifier must be available at its SDK default URL offline.');
 assert.ok(shell.includes('/verify/'), 'The public account-proof reader must be available offline after installation.');
-assert.ok(shell.includes('/ledger/'), 'Public Ledger has a complete retained offline read entry.');
-assert.equal(manifest.pages['/ledger/'], '/ledger/', 'Public Ledger links reopen their own entry offline.');
-assert.ok(shell.includes('/explore/'),'Public explorer has a retained read-only entry.');
-for(const path of ['/explore','/explore/','/explorer','/explorer/'])assert.equal(manifest.pages[path],'/explore/','Explorer aliases reopen the same public entry offline.');
+assert.ok(shell.includes('/ledger/index.html'), 'Public Ledger has a complete retained physical offline read entry.');
+assert.equal(manifest.pages['/ledger/'], '/ledger/index.html', 'Public Ledger links reopen their own immutable entry offline.');
+assert.ok(shell.includes('/explore/index.html'),'Public explorer has a retained physical read-only entry.');
+for(const path of ['/explore','/explore/','/explorer','/explorer/'])assert.equal(manifest.pages[path],'/explore/index.html','Explorer aliases reopen the same physical entry offline.');
+for(const path of ['explore','ledger','feed','discover']){assert.ok(shell.includes('/'+path+'/index.html'));assert.ok(!shell.includes('/'+path+'/'),'Mutable canonical public documents cannot be immutable installer resources.');}
+assert.ok(shell.includes('/learn/guide-directory.js'),'All guides search is part of the retained public runtime.');
 for(const [alias,path] of Object.entries(publicRouteAliases)){
  const retained=path==='/learn/reality-grade-banking/'?path:'/learn/';
  for(const route of [alias,alias.slice(0,-1),path,path.slice(0,-1)])assert.equal(manifest.pages[route],retained,'Public aliases reopen their established retained document offline');
@@ -55,4 +60,4 @@ assert.equal(manifest.pages['/pay/checkout.html'],'/pay/checkout.html');
 assert.equal(manifest.pages['/moments/'],'/learn/','Moments reuses the retained public shell offline.');
 for(const path of ['/learn/moments.js','/learn/moments-model.mjs'])assert.ok(shell.includes(path),'The Moments presentation is available offline.');
 
-assert.ok(shell.includes('/discover/'),'Discovery has its own source-bound offline document.');for(const path of ['/discover','/discover/'])assert.equal(manifest.pages[path],'/discover/');
+assert.ok(shell.includes('/discover/index.html'),'Discovery has its own source-bound physical offline document.');for(const path of ['/discover','/discover/'])assert.equal(manifest.pages[path],'/discover/index.html');

@@ -30,7 +30,8 @@ it('versions complete final pages and fixed-path native resources and includes l
     await writeFile(join(dir,'proof-verifier/v129/verifier.js'),'read-only canonical verifier');
     await writeFile(join(dir,'proof-verifier/v129/verifier.js.map'),'public complete source');
     await writeFile(join(dir,'proof-verifier/v129/verifier.js.map.bin'),'public complete source');
-    const first = await buildOfflineShell(dir, { fixed: [native] });
+    const renderBuildFile=join(dir,'render-build.json');await writeFile(renderBuildFile,JSON.stringify({schema:'bank.public-market.render-build.v1',sha256:'a'.repeat(64)}));
+    const first = await buildOfflineShell(dir, { fixed: [native],renderBuildFile });
     expect(first.resources.filter(resource=>resource.url==='/learn/contact.js')).toEqual([expect.objectContaining({bytes:Buffer.byteLength('shared in-place contact'),sha256:expect.stringMatching(/^[a-f0-9]{64}$/)})]);
     for(const path of ['economy','farmers','fuel','repairs','grocers','housing','workers'])expect(first.pages['/'+path+'/']).toBe('/learn/');
     for(const url of ['/learn/economy.js','/learn/economy-model.mjs'])expect(first.resources.some((resource:{url:string})=>resource.url===url)).toBe(true);
@@ -43,7 +44,7 @@ it('versions complete final pages and fixed-path native resources and includes l
     expect(first.pages['/pay/checkout.html']).toBe('/pay/checkout.html');
     expect(first.pages).toMatchObject({ '/learn/': '/learn/', '/legal/': '/legal/', '/your-twin/':'/learn/','/your-twin':'/learn/','/in-action/':'/learn/','/in-action':'/learn/' });
     expect(first.resources.filter(resource=>['/your-twin/','/in-action/'].includes(resource.url))).toHaveLength(0);
-    expect(first.pages).toMatchObject({'/business/':'/learn/','/business':'/learn/','/learn/notes/':'/learn/','/standards/':'/learn/','/market-cap/':'/explore/','/explore/music/':'/explore/'});
+    expect(first.pages).toMatchObject({'/business/':'/learn/','/business':'/learn/','/learn/notes/':'/learn/','/standards/':'/learn/','/market-cap/':'/explore/index.html','/explore/music/':'/explore/index.html'});
     expect(first.pages).toMatchObject({'/guide/':'/learn/','/guide':'/learn/'});
     expect(first.resources.some(resource=>resource.url==='/guide/')).toBe(false);
     expect(first.pages).toMatchObject({'/protect/':'/learn/','/protect':'/learn/','/vaults/':'/learn/','/vaults':'/learn/','/fit/':'/learn/','/fit':'/learn/','/coops/':'/learn/','/coops':'/learn/'});
@@ -57,14 +58,14 @@ it('versions complete final pages and fixed-path native resources and includes l
     expect(first.resources.some((v:{url:string})=>['/learn/notes/','/standards/','/market-cap/','/explore/music/'].includes(v.url))).toBe(false);
     expect(first.pages).toMatchObject({ '/verify/': '/verify/', '/verify': '/verify/' });
     expect(first.resources.some((v: { url: string }) => v.url === '/assets/verify.js')).toBe(true);
-    expect(first.pages).toMatchObject({ '/ledger/': '/ledger/', '/ledger': '/ledger/' });
-    for (const url of ['/ledger/', '/assets/ledger.js', '/assets/ledger.css', '/assets/ledger-reader.js']) expect(first.resources.some((v: { url: string }) => v.url === url), url).toBe(true);
-    await writeFile(join(dir, native), 'native B'); const second = await buildOfflineShell(dir, { fixed: [native] });
+    expect(first.pages).toMatchObject({ '/ledger/': '/ledger/index.html', '/ledger': '/ledger/index.html' });
+    for (const url of ['/ledger/index.html', '/assets/ledger.js', '/assets/ledger.css', '/assets/ledger-reader.js']) expect(first.resources.some((v: { url: string }) => v.url === url), url).toBe(true);
+    await writeFile(join(dir, native), 'native B'); const second = await buildOfflineShell(dir, { fixed: [native],renderBuildFile });
     expect(second.version).not.toBe(first.version);
-    await writeFile(join(dir, 'legal/index.html'), 'updated final notices'); const third = await buildOfflineShell(dir, { fixed: [native] });
+    await writeFile(join(dir, 'legal/index.html'), 'updated final notices'); const third = await buildOfflineShell(dir, { fixed: [native],renderBuildFile });
     expect(third.version).not.toBe(second.version);
     expect(JSON.parse(await readFile(join(dir, 'offline-build.json'), 'utf8'))).toEqual(third);
-    await writeFile(join(dir,'learn/contact.js'),'updated shared in-place contact');const fourth=await buildOfflineShell(dir,{fixed:[native]});
+    await writeFile(join(dir,'learn/contact.js'),'updated shared in-place contact');const fourth=await buildOfflineShell(dir,{fixed:[native],renderBuildFile});
     expect(fourth.version).not.toBe(third.version);expect(fourth.resources.find(resource=>resource.url==='/learn/contact.js')?.sha256).not.toBe(first.resources.find(resource=>resource.url==='/learn/contact.js')?.sha256);
     const sw = await readFile(join(dir, 'sw.js'), 'utf8'); expect(sw).not.toContain('__RESOURCE_HASHES__'); expect(sw).toContain(native);
   } finally { await rm(dir, { recursive: true, force: true }); }

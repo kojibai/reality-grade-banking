@@ -15,7 +15,7 @@ it('keeps the completed headline and chart together while retaining a newer sour
   let state!: ReturnType<typeof useMarketCapitalization>; const root = createRoot(document.createElement('div'));
   function Probe() { state = useMarketCapitalization('ALL', true); return null; }
   try {
-    await act(async () => root.render(<Probe />)); const completed=state.source;expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(completed.currentUsd*100)));
+    await act(async () => root.render(<Probe />)); const completed=state.source!;expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(completed.currentUsd*100)));
     await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
     expect(state.source).toBe(completed); expect(state.historyUpdating).toBe(true);expect(retainedMarketDisplaySource()?.serverPulse).toBe(pulse+20);
   } finally { act(() => root.unmount()); }
@@ -27,6 +27,6 @@ it('keeps a same-pulse revised public source visibly retained until its complete
   vi.stubGlobal('Worker', class { onmessage: unknown; postMessage() {} terminate() {} });
   let state!: ReturnType<typeof useMarketCapitalization>; const root = createRoot(document.createElement('div'));
   function Probe() { state = useMarketCapitalization('ALL', true); return null; }
-  try { await act(async () => root.render(<Probe />)); expect(state.historyUpdating).toBe(true);expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(state.source.currentUsd*100))); }
+  try { await act(async () => root.render(<Probe />)); expect(state.historyUpdating).toBe(true);expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(state.source!.currentUsd*100))); }
   finally { act(() => root.unmount()); }
 });

@@ -40,8 +40,14 @@ const fixedResources = [
 
 // Run after public/notice generation: their final HTML and embedded navigation
 // payloads are part of the same executable build, rather than fetched later.
-export async function buildOfflineShell(directory = 'dist', { fixed = fixedResources } = {}) {
+export async function buildOfflineShell(directory = 'dist', { fixed = fixedResources, renderBuildFile = new URL('../server/profile-runtime/public-market-render-build.json',import.meta.url) } = {}) {
   const root = resolve(directory), urls = new Set(['/index.html', ...fixed]);
+  const renderBuild = JSON.parse(await readFile(renderBuildFile,'utf8'));
+  if(renderBuild?.schema!=='bank.public-market.render-build.v1'||!/^[a-f0-9]{64}$/.test(renderBuild.sha256??''))throw Error('OFFLINE_PUBLIC_RENDER_BUILD_REQUIRED');
+  const publicRenderBuild=renderBuild.sha256;
+  // Immutable installation URLs stay physical when canonical public URLs
+  // advance to accepted prepared material between deployments.
+  const physical=path=>['/explore/','/ledger/','/feed/','/discover/'].includes(path)?path+'index.html':path;
   // This self-contained verifier, corresponding source and local entry points
   // also form the independently downloadable offline evidence kit.
   for(const name of await readdir(resolve(root,'proof-verifier/v129')))if(!name.endsWith('.map'))urls.add('/proof-verifier/v129/'+name);
@@ -57,10 +63,10 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   if(manifest['pay/checkout.html']){visit('pay/checkout.html');urls.add('/pay/checkout.html');}
   if (manifest['verify/index.html']) { visit('verify/index.html'); urls.add('/verify/'); }
   if (manifest['receipt/index.html']) {visit('receipt/index.html');urls.add('/receipt/');}
-  if (manifest['ledger/index.html']) {visit('ledger/index.html');urls.add('/ledger/');}
-  if (manifest['explore/index.html']) {visit('explore/index.html');urls.add('/explore/');}
-  if (manifest['feed/index.html']) {visit('feed/index.html');urls.add('/feed/');}
-  if (manifest['discover/index.html']) {visit('discover/index.html');urls.add('/discover/');}
+  if (manifest['ledger/index.html']) {visit('ledger/index.html');urls.add('/ledger/index.html');}
+  if (manifest['explore/index.html']) {visit('explore/index.html');urls.add('/explore/index.html');}
+  if (manifest['feed/index.html']) {visit('feed/index.html');urls.add('/feed/index.html');}
+  if (manifest['discover/index.html']) {visit('discover/index.html');urls.add('/discover/index.html');}
   // Vite emits module-worker files outside the entry's manifest dependency list.
   for (const name of await readdir(resolve(root, 'assets'))) if (/^worker-[\w-]+\.js$/.test(name)) urls.add('/assets/' + name);
   // The public calculator is emitted separately from Vite's app manifest.
@@ -78,10 +84,10 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   if(manifest['pay/checkout.html'])pages['/pay/checkout.html']='/pay/checkout.html';
   if (manifest['verify/index.html']) { pages['/verify/'] = '/verify/'; pages['/verify'] = '/verify/'; }
   if (manifest['receipt/index.html']) pages['/receipt/']='/receipt/';
-  if (manifest['ledger/index.html']) {pages['/ledger/']='/ledger/';pages['/ledger']='/ledger/';}
-  if (manifest['feed/index.html'])for(const path of ['/feed','/feed/'])pages[path]='/feed/';
-  if (manifest['discover/index.html'])for(const path of ['/discover','/discover/'])pages[path]='/discover/';
-  if (manifest['explore/index.html'])for(const path of ['/explore','/explore/','/explorer','/explorer/'])pages[path]='/explore/';
+  if (manifest['ledger/index.html']) {pages['/ledger/']='/ledger/index.html';pages['/ledger']='/ledger/index.html';}
+  if (manifest['feed/index.html'])for(const path of ['/feed','/feed/'])pages[path]='/feed/index.html';
+  if (manifest['discover/index.html'])for(const path of ['/discover','/discover/'])pages[path]='/discover/index.html';
+  if (manifest['explore/index.html'])for(const path of ['/explore','/explore/','/explorer','/explorer/'])pages[path]='/explore/index.html';
   for (const path of Object.keys(navigation.pages)) {
     // Conformance remains an on-demand console, outside the bank installation
     // cache. Its retained online navigation does not add verifier work at boot.
@@ -104,7 +110,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     // New routes reuse an existing shell instead of installing dozens of
     // identical copies of that catalog and all its embedded workspace CSS.
     const originalGuide=['/learn/receiz-id/','/learn/proof-objects/','/learn/reserve-and-settlement/'].includes(path);
-    const retained=(category||path==='/market-cap/')?'/explore/':knownGuide&&!originalGuide?'/learn/':path;
+    const retained=physical((category||path==='/market-cap/')?'/explore/':knownGuide&&!originalGuide?'/learn/':path);
     urls.add(retained); pages[path] = retained; if (path !== '/') pages[path.slice(0, -1)] = retained;
   }
   for(const [alias,path] of Object.entries(publicRouteAliases)){
@@ -134,11 +140,11 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     resources.push({ url, sha256: hash(bytes), bytes: bytes.length });
   }
   const template = await readFile(new URL('../src/pwa/sw.template.js', import.meta.url), 'utf8');
-  const version = hash(JSON.stringify({ resources, pages }) + template).slice(0, 24);
-  const report = { schema: 'bankeiz.offline-build.v1', version, resources, pages };
+  const version = hash(JSON.stringify({ resources, pages, publicRenderBuild }) + template).slice(0, 24);
+  const report = { schema: 'bankeiz.offline-build.v1', version, publicRenderBuild, resources, pages };
   const integrity = Object.fromEntries(resources.map(({ url, ...entry }) => [url, entry]));
   const worker = template.replaceAll('__CACHE_VERSION__', version).replace('__SHELL_ASSETS__', JSON.stringify(resources.map(entry => entry.url)))
-    .replace('__RESOURCE_HASHES__', JSON.stringify(integrity)).replace('__PAGE_ROUTES__', JSON.stringify(pages));
+    .replace('__RESOURCE_HASHES__', JSON.stringify(integrity)).replace('__PAGE_ROUTES__', JSON.stringify(pages)).replaceAll('__PUBLIC_RENDER_BUILD__',publicRenderBuild);
   await writeFile(resolve(root, 'sw.js'), worker); await writeFile(resolve(root, 'offline-build.json'), JSON.stringify(report, null, 2) + '\n');
   return report;
 }

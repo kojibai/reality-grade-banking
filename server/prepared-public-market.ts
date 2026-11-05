@@ -36,20 +36,22 @@ async function bounded(request:Request):Promise<string>{
  return Buffer.concat(chunks).toString('utf8');
 }
 async function render(input:RenderInput):Promise<string>{
- const market=publicMarketPreparedPath(input.path),module=market?'public-market-document':'prepared-dependent-documents';
+ const bank=input.path==='bank',market=publicMarketPreparedPath(input.path),module=bank||market?'public-market-document':'prepared-dependent-documents';
  const templatePath=market?input.path:input.path==='ledger'||input.path==='ledger/proofs'?'ledger':input.path==='feed'||input.path==='discover'?input.path:input.path.startsWith('receipt/')?'receipt':'explore';
  const [{readFile},runtime]=await Promise.all([import('node:fs/promises'),import(pathToFileURL(resolve('server/profile-runtime/'+module+'.mjs')).href)]);
- const value={...input,renderBuild:await publicRenderBuild(),template:await readFile('dist/'+templatePath+'/index.html','utf8')};
- return market?runtime.renderPublicMarketDocument(value satisfies PublicMarketRenderInput):runtime.renderPreparedDependentDocument(value satisfies PreparedPublicPageRenderInput);
+ const value={...input,renderBuild:await publicRenderBuild(),template:bank?'':await readFile('dist/'+templatePath+'/index.html','utf8')};
+ return bank?runtime.renderPreparedBankDocument(value satisfies PublicMarketRenderInput):market?runtime.renderPublicMarketDocument(value satisfies PublicMarketRenderInput):runtime.renderPreparedDependentDocument(value satisfies PreparedPublicPageRenderInput);
 }
 /** Public display rendering cannot store, promote, admit or sign anything. */
 export async function handlePreparedPublicMarket(request:Request,provided?:Dependencies):Promise<Response>{
  const url=new URL(request.url),operation=url.searchParams.get('prepare'),prepare=url.pathname==='/api/explore'&&operation==='1',inputPreparation=url.pathname==='/api/explore'&&operation==='input';
  const selectedPath=preparedPublicPagePath(url.searchParams.get('path')??(url.pathname==='/api/explore'?'explore':url.pathname.replace(/^\//,'').replace(/\/$/,'').replace(/^explorer$/,'explore')));
- const deps=provided??{prepared:(method:'GET'|'HEAD',path:string,build:string)=>fetch('https://receiz.com/api/market/prepared-page?'+new URLSearchParams({path,build}),{method,credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(8000),headers:{accept:'text/html'}}),render};
+ const deps=provided??{prepared:(method:'GET'|'HEAD',path:string,build:string)=>fetch('https://receiz.com/api/market/prepared-page?'+new URLSearchParams({path,build}),{method,credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.any([request.signal,AbortSignal.timeout(8000)]),headers:{accept:'text/html'}}),render};
  let build:string;try{build=provided?provided.build??'local':await publicRenderBuild();}catch{return new Response(null,{status:503,headers});}
+ const passiveBuild=!url.searchParams.has('prepare')&&url.pathname==='/api/explore'&&['GET','HEAD'].includes(request.method)&&url.searchParams.getAll('build').length===1&&DIGEST.test(url.searchParams.get('build')??'');
  const linkedLedger=!url.searchParams.has('prepare')&&['GET','HEAD'].includes(request.method)&&(selectedPath==='ledger'||selectedPath==='ledger/proofs');
- if(!selectedPath||[...url.searchParams.keys()].some(key=>!['prepare','path'].includes(key)&&!(linkedLedger&&key==='source'))||url.searchParams.getAll('path').length>1||url.searchParams.getAll('prepare').length>1||url.searchParams.has('source')&&(url.searchParams.getAll('source').length!==1||!DIGEST.test(url.searchParams.get('source')!)))return new Response(null,{status:404,headers});
+ if(!selectedPath||[...url.searchParams.keys()].some(key=>!['prepare','path'].includes(key)&&!(linkedLedger&&key==='source')&&!(passiveBuild&&key==='build'))||url.searchParams.getAll('path').length>1||url.searchParams.getAll('prepare').length>1||url.searchParams.has('source')&&(url.searchParams.getAll('source').length!==1||!DIGEST.test(url.searchParams.get('source')!)))return new Response(null,{status:404,headers});
+ if(passiveBuild)build=url.searchParams.get('build')!;
  if(inputPreparation){
   const jsonHeaders={...headers,'content-type':'application/json; charset=utf-8',[materialHeaders[1]]:build};
   if(request.method==='HEAD')return new Response(null,{status:204,headers:jsonHeaders});

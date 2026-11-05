@@ -21,7 +21,7 @@ for(const path of paths){const bytes=await include('dist/'+path+'/index.html');f
 const manifest=JSON.parse(await readFile('dist/.vite/manifest.json','utf8')),seen=new Set();
 async function browser(key){if(seen.has(key))return;seen.add(key);const entry=manifest[key];if(!entry)throw Error('PUBLIC_MARKET_RENDER_BROWSER_GRAPH_INVALID');await include('dist/'+entry.file);for(const css of entry.css??[])await include('dist/'+css);for(const child of [...(entry.imports??[]),...(entry.dynamicImports??[])])await browser(child);}
 await browser('explore/index.html');
-for(const entry of ['ledger/index.html'])if(manifest[entry]){await include('dist/'+entry);await browser(entry);}
+for(const entry of ['index.html','ledger/index.html','feed/index.html','discover/index.html'])if(manifest[entry]){await include('dist/'+entry);await browser(entry);}
 const inputs=[...files.values()].sort((a,b)=>a.path.localeCompare(b.path)),digest=sha(JSON.stringify(inputs));
 await writeFile('server/profile-runtime/public-market-render-build.json',JSON.stringify({schema:'bank.public-market.render-build.v1',sha256:digest,files:inputs}));
 console.log(JSON.stringify({schema:'bank.public-market.render-build.v1',sha256:digest,files:inputs.length}));
