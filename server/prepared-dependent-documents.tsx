@@ -77,6 +77,6 @@ export async function renderPreparedDependentDocument({material,generation,path,
  let replaced=false;
  const html=template.replace(/(<div id="public-ledger-root"[^>]*>)[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_all,start,end)=>{replaced=true;return start+content+end;});
  if(!replaced)throw Error('PUBLIC_LEDGER_PREPARED_TEMPLATE_INVALID');
- const aligned=alignPreparedPublicNavigation(html,path,content);
+ const aligned=alignPreparedPublicNavigation(html,path,content,generation,renderBuild);
  return aligned.replace('<script id="receiz-navigation"',()=>script+'<script id="receiz-navigation"');
 }

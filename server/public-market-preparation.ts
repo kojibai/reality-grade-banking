@@ -1,11 +1,16 @@
 import {createHash} from 'node:crypto';
+import {readFile} from 'node:fs/promises';
 import {mergePublicQuotes,parsePublicMarket} from '../src/receiz/public-market.js';
 import {compatibleShareInventory} from '../src/receiz/market-share-inventory.js';
-import {mergePublicSports} from '../src/receiz/public-sports.js';
+import {mergePublicSports,retainPublicSportsInput} from '../src/receiz/public-sports.js';
 import {curatePublicMarketMembership,readReceizPublicMarketSource} from './public-market.js';
 
 export type PublicMarketOperand='membership'|'quotes'|'sports'|'capitalization';
 const MAX=32*1024*1024;
+export const PUBLIC_DISPLAY_POLICY='bank.public-market.curated-display.v2';
+let shippedSports:Promise<unknown>|undefined;
+function retainedSports(){return shippedSports??=readFile('public/receiz-public-sports.json').then(bytes=>{if(bytes.length>MAX)throw Error('PUBLIC_MARKET_RENDER_CAPACITY');return JSON.parse(bytes.toString('utf8')) as unknown;}).catch(error=>{shippedSports=undefined;throw error;});}
+async function completeSports(input:unknown,previous?:unknown){return retainPublicSportsInput(previous??await retainedSports(),input);}
 function ledgerPacketFields(preparedLedger:unknown):Record<string,unknown>{
  if(!preparedLedger)return {};
  const packet=preparedLedger as {heads?:{actions?:{count:string;lastSeq:string;entryHash?:string|null};wallet?:{count:string;lastKaiUpulse:string|null}}};
@@ -24,12 +29,19 @@ export function publicMarketSeedQuotes(snapshot:unknown,wanted:ReadonlySet<strin
 export type PublicMarketMaterialPreparation={read?:(kind:PublicMarketOperand)=>Promise<unknown>;selectionKey?:string;history?:unknown;ledgerCacheGzipB64u?:string;previousMaterial?:string;refreshMarket?:true;membership?:Record<string,unknown>;changedQuotes?:Array<Record<string,unknown>>;prepareLedger?:(previous:unknown)=>Promise<unknown>;prepareMarket?:(input:Record<string,unknown>)=>Promise<{history:unknown;asOfPulse:number}>};
 async function materialResult(value:Record<string,unknown>,prepare?:PublicMarketMaterialPreparation['prepareMarket']){
  if(prepare){const state=await prepare(value);value={...value,history:state.history,marketPrepared:{schema:'bank.public-market.prepared.v1',asOfPulse:state.asOfPulse}};}
- const material=JSON.stringify(value);if(Buffer.byteLength(material)>MAX)throw Error('PUBLIC_MARKET_RENDER_CAPACITY');return {material,generation:createHash('sha256').update(material).digest('hex')};
+ const material=JSON.stringify({...value,publicDisplayPolicy:PUBLIC_DISPLAY_POLICY});if(Buffer.byteLength(material)>MAX)throw Error('PUBLIC_MARKET_RENDER_CAPACITY');return {material,generation:createHash('sha256').update(material).digest('hex')};
 }
 export async function preparePublicMarketRenderMaterial(input:PublicMarketMaterialPreparation={}):Promise<{material:string;generation:string}>{
  if(input.previousMaterial!==undefined&&Buffer.byteLength(input.previousMaterial)>MAX)throw Error('PUBLIC_MARKET_RENDER_INPUT_INVALID');
  const previous=input.previousMaterial===undefined?undefined:JSON.parse(input.previousMaterial);
  if(input.refreshMarket&&!previous)throw Error('PUBLIC_MARKET_RENDER_INPUT_INVALID');
+ if(previous&&previous.publicDisplayPolicy!==PUBLIC_DISPLAY_POLICY&&previous.sports)previous.sports=await completeSports(previous.sports);
+ if(previous&&previous.publicDisplayPolicy!==PUBLIC_DISPLAY_POLICY&&!input.refreshMarket){
+  // A prior projection lost normalized display fields. Refresh only its public
+  // membership, preserving the held financial operands and accepted prefix.
+  const read=input.read??(kind=>readReceizPublicMarketSource(kind,undefined,{fresh:true,selectionKey:input.selectionKey}));
+  input={...input,membership:await read('membership') as Record<string,unknown>};
+ }
  if(previous&&!input.membership&&!input.refreshMarket){
   // The Source coordinator qualifies the unchanged proof/privacy vector.
   // This operation refreshes only the already held public financial packet.
@@ -56,7 +68,8 @@ export async function preparePublicMarketRenderMaterial(input:PublicMarketMateri
   return materialResult({...previous,membership,snapshot,priorCatalogSelection,...ledgerPacketFields(preparedLedger),...(input.history?{history:input.history}:{})},input.prepareMarket);
  }
  const read=input.read??(kind=>readReceizPublicMarketSource(kind,undefined,{fresh:true,selectionKey:input.selectionKey}));
- const [membership,snapshot,sports,capitalization,preparedLedger]=await Promise.all([read('membership'),read('quotes'),read('sports'),read('capitalization'),input.prepareLedger?.(previous?.preparedLedger)]);
+ const [membership,snapshot,incomingSports,capitalization,preparedLedger]=await Promise.all([read('membership'),read('quotes'),read('sports'),read('capitalization'),input.prepareLedger?.(previous?.preparedLedger)]);
+ const sports=await completeSports(incomingSports,previous?.sports);
  const catalog=parsePublicMarket(membership,snapshot);if(!catalog.complete)throw Error('PUBLIC_MARKET_RENDER_COMPLETE_REQUIRED');
  const quotes=publicMarketSeedQuotes(snapshot,new Set(catalog.items.map(item=>item.id)));
  const history=input.history??previous?.history;

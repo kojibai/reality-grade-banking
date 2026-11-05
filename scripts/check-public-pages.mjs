@@ -187,7 +187,9 @@ assert.ok(feedOpening.includes('<style data-public-page-style="feed">')&&!/<link
 assert.ok(/<script type="module" async[^>]*src="\/assets\/feed-/.test(feedDocument),'Feed starts before its unrelated navigation payload.');
 assert.ok(!feedOpening.includes('site-footer')&&!feedOpening.includes('account-opening-screen'),'Feed first paint is the actual content, with no global footer or account-entry work.');
 const feedNavigation=JSON.parse(feedDocument.match(navigationPattern)[1]);
-assert.deepEqual(Object.keys(feedNavigation.pages).sort(),['/explore/','/feed/'],'Feed carries only its existing return/asset runtime and the Bank action host, not the marketing/example catalog.');
+assert.deepEqual(Object.keys(feedNavigation.pages).sort(),[...new Set([...Object.keys(navigation.pages),'/feed/','/discover/'])].sort(),'Feed retains every known destination for the existing instant controller.');
+for(const [path,page]of Object.entries(feedNavigation.pages))if(!['/explore/','/feed/'].includes(path)){assert.equal(page.content,'','Only the selected Feed and existing Explore return carry full bodies.');if(!page.runtime){if(path==='/legal/')assert.equal(page.head,navigation.pages[path].head,'The final legal generator keeps its exact current notices head.');else{assert.equal(page.head,'','Unvisited static heads remain compact.');assert.match(page.headSha256,/^[a-f0-9]{64}$/);}assert.match(page.contentSha256,/^[a-f0-9]{64}$/);}}
+assert.equal(feedNavigation.pages['/feed/'].content,'','The current Feed body is already present in its retained runtime root.');
 assert.ok(feedNavigation.reserved?.includes('learn')&&feedNavigation.reserved?.includes('ledger'),'The shipped lean navigation carries the existing reserved route projection.');
 assert.ok(feedDocument.length<600000,'The dedicated feed document stays under 600 kB uncompressed.');
 const feedImports=new Set();

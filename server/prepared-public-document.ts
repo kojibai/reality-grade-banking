@@ -4,7 +4,7 @@ import {preparedPublicPagePath} from '../src/receiz/prepared-public-page-path.js
 
 const templates=new Map<string,Promise<Uint8Array>>();
 function entry(path:string){
- const file=path==='bank'?'dist/index.html':'dist/'+path+'/index.html';
+ const file=path==='bank'||path==='bank-entry'?'dist/index.html':'dist/'+path+'/index.html';
  let pending=templates.get(file);if(!pending){pending=readFile(file).then(bytes=>new Uint8Array(bytes));templates.set(file,pending);void pending.catch(()=>{if(templates.get(file)===pending)templates.delete(file);});}return pending;
 }
 function stream(bytes:Uint8Array){let offset=0;return new ReadableStream<Uint8Array>({pull(controller){if(offset===bytes.length){controller.close();return;}const end=Math.min(offset+32768,bytes.length);controller.enqueue(bytes.subarray(offset,end));offset=end;}});}

@@ -27,7 +27,8 @@ it('carries the complete profile with its linked destinations instead of unrelat
  const result=rendered(),held=readNavigation(result);
  expect(result.length).toBeLessThan(30_000);
  expect(result).not.toContain('UNRELATED_GUIDE');expect(result).not.toContain('UNRELATED_STYLE');expect(result).not.toContain('UNRELATED_EXAMPLE');
- expect(Object.keys(held.pages).sort()).toEqual(['/discover/','/explore/','/feed/','/learn/account-access/','/legal/','/standards/']);
+ expect(Object.keys(held.pages).sort()).toEqual(Object.keys(navigation.pages).sort());
+ expect(held.pages['/schemas/']).toMatchObject({content:'',head:'',contentSha256:expect.stringMatching(/^[a-f0-9]{64}$/),headSha256:expect.stringMatching(/^[a-f0-9]{64}$/)});
  expect(held.aliases).toEqual({'/explorer/':'/explore/'});
  expect(held.reserved).toEqual(expect.arrayContaining([...publicProfileReservedNames,'schemas']));
  const seed=JSON.parse(/<script id="public-profile-seed" type="application\/json">([\s\S]*?)<\/script>/.exec(result)![1]);
@@ -38,19 +39,19 @@ it('carries the complete profile with its linked destinations instead of unrelat
  expect(decode(held.bank.css['/bank.css'])).toBe('.bank{color:navy}');
 });
 
-it('retains the same profile through its carried footer destination and leaves omitted system routes as normal links',()=>{
+it('retains the same profile through its carried footer and routes known omitted bodies through the existing intent loader',async()=>{
  const result=rendered();history.replaceState({},'','/alexmorgan/');
  document.head.innerHTML=/<head>([\s\S]*?)<\/head>/.exec(result)![1];document.body.innerHTML=/<body>([\s\S]*?)<\/body>/.exec(result)![1];
- const root=document.getElementById('public-explore-root')!,input=root.querySelector('input'),load=vi.fn(),scroll=vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+ const root=document.getElementById('public-explore-root')!,input=root.querySelector('input'),open=vi.fn(),load=vi.fn().mockResolvedValue({init:()=>open}),scroll=vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
  const source='// All public guides'+readFileSync('public/learn/learn.js','utf8').split('// All public guides')[1];
  new Function('loadModule',source.replaceAll('import(','loadModule('))(load);
  const schemas=root.querySelector<HTMLAnchorElement>('a[href="/schemas/"]')!;let intercepted:boolean|undefined;
  const observe=(event:Event)=>{intercepted=event.defaultPrevented;event.preventDefault();};document.addEventListener('click',observe);
- try{schemas.click();expect(intercepted).toBe(false);expect(location.pathname).toBe('/alexmorgan/');}finally{document.removeEventListener('click',observe);}
+ try{schemas.click();expect(intercepted).toBe(true);await Promise.resolve();expect(load).toHaveBeenCalledExactlyOnceWith('/learn/discover.js');expect(open).toHaveBeenCalledOnce();expect(open.mock.calls[0][0].pathname).toBe('/schemas/');expect(location.pathname).toBe('/alexmorgan/');}finally{document.removeEventListener('click',observe);}
  root.querySelector<HTMLAnchorElement>('a[href="/standards/"]')!.click();
  expect(location.pathname).toBe('/standards/');expect(document.querySelector('#public-learn-root h1')?.textContent).toBe('Standards');
  expect(document.querySelector('style[data-public-page-style="standards"]')?.textContent).toBe('.standard{color:blue}');
  document.querySelector<HTMLAnchorElement>('#public-learn-root a')!.click();
  expect(location.pathname).toBe('/alexmorgan/');expect(document.getElementById('public-explore-root')).toBe(root);expect(root.querySelector('input')).toBe(input);expect(input?.value).toBe('Retained search');expect(root.hidden).toBe(false);
- expect(load).not.toHaveBeenCalled();scroll.mockRestore();
+ expect(load).toHaveBeenCalledOnce();scroll.mockRestore();
 });

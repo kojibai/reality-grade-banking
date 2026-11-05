@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {publicProfileReservedNames} from '../src/receiz/public-profile.js';
 
 const navigation=/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/;
@@ -5,8 +6,8 @@ const destinations=['/explore/','/feed/','/discover/','/standards/','/legal/','/
 const object=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 
 /** Reuse the existing lean public-navigation contract. Profile workspaces,
- * footer and identity destinations keep their exact carried bytes; other
- * guides remain ordinary links to their existing complete documents. */
+ * footer and identity destinations keep their exact carried bytes. Other
+ * known destinations retain metadata for the same lazy public router. */
 export function profileNavigationHtml(html:string,extraDestinations:readonly string[]=[]):string {
  const match=navigation.exec(html);if(!match)return html;
  try{
@@ -18,7 +19,9 @@ export function profileNavigationHtml(html:string,extraDestinations:readonly str
    if(!Number.isSafeInteger(part)||part<0||typeof blocks[part]!=='string')throw Error('PROFILE_NAVIGATION_INVALID');
    let index=indices.get(part);if(index===undefined){index=styles.length;indices.set(part,index);styles.push(blocks[part]);}return index;
   })]));
-  const selected=Object.fromEntries([...new Set([...destinations,...extraDestinations])].filter(path=>object(pages[path])).map(path=>[path,compact(pages[path] as Record<string,unknown>)]));
+  const carried=new Set([...destinations,...extraDestinations]),shared=html.match(/<template data-shared-example-views>[^<]*<\/template>/)?.[0],hash=(value:string)=>createHash('sha256').update(value).digest('hex');
+  const lightweight=(entry:Record<string,unknown>)=>{const body=Array.isArray(entry.content)?entry.content.map(part=>typeof part==='number'?blocks[part]:part).join(''):entry.content,head=Array.isArray(entry.head)?entry.head.map(part=>typeof part==='number'?blocks[part]:part).join(''):entry.head;return {...entry,...(!entry.runtime?{title:undefined}:{}),...(typeof head==='string'&&head&&!['explore','ledger'].includes(String(entry.runtime))?{head:'',...(!entry.runtime?{headSha256:hash(head),headLength:head.length}:{})}:{}),content:'',...(!entry.runtime&&typeof body==='string'&&body?{contentSha256:hash(body),...(body.includes('data-example-views')&&shared?{sharedExampleSha256:hash(shared)}:{})}:{})};};
+  const selected=Object.fromEntries(Object.entries(pages).filter(([,entry])=>object(entry)).map(([path,entry])=>[path,compact(carried.has(path)?entry as Record<string,unknown>:lightweight(entry as Record<string,unknown>))]));
   const selectedBank={...compact(bank),...(object(bank.css)?{css:compact(bank.css)}:{})};
   // A future linked destination with examples must keep its referenced table.
   // Do not remove another surface's content merely to meet a delivery budget.

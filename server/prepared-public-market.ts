@@ -36,11 +36,11 @@ async function bounded(request:Request):Promise<string>{
  return Buffer.concat(chunks).toString('utf8');
 }
 async function render(input:RenderInput):Promise<string>{
- const bank=input.path==='bank',market=publicMarketPreparedPath(input.path),module=bank||market?'public-market-document':'prepared-dependent-documents';
+ const bank=input.path==='bank',bankEntry=input.path==='bank-entry',market=publicMarketPreparedPath(input.path),module=bank||bankEntry||market?'public-market-document':'prepared-dependent-documents';
  const templatePath=market?input.path:input.path==='ledger'||input.path==='ledger/proofs'?'ledger':input.path==='feed'||input.path==='discover'?input.path:input.path.startsWith('receipt/')?'receipt':'explore';
  const [{readFile},runtime]=await Promise.all([import('node:fs/promises'),import(pathToFileURL(resolve('server/profile-runtime/'+module+'.mjs')).href)]);
- const value={...input,renderBuild:await publicRenderBuild(),template:bank?'':await readFile('dist/'+templatePath+'/index.html','utf8')};
- return bank?runtime.renderPreparedBankDocument(value satisfies PublicMarketRenderInput):market?runtime.renderPublicMarketDocument(value satisfies PublicMarketRenderInput):runtime.renderPreparedDependentDocument(value satisfies PreparedPublicPageRenderInput);
+ const value={...input,renderBuild:await publicRenderBuild(),template:bank?'':await readFile(bankEntry?'dist/index.html':'dist/'+templatePath+'/index.html','utf8')};
+ return bank?runtime.renderPreparedBankDocument(value satisfies PublicMarketRenderInput):bankEntry?runtime.renderPreparedBankEntryDocument(value satisfies PublicMarketRenderInput):market?runtime.renderPublicMarketDocument(value satisfies PublicMarketRenderInput):runtime.renderPreparedDependentDocument(value satisfies PreparedPublicPageRenderInput);
 }
 /** Public display rendering cannot store, promote, admit or sign anything. */
 export async function handlePreparedPublicMarket(request:Request,provided?:Dependencies):Promise<Response>{

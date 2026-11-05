@@ -280,12 +280,12 @@
   document.addEventListener('click',event=>{
     if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
     const link=event.target.closest?.('a[href]');if(!link||link.download||link.target&&link.target!=='_self')return;
-    const url=new URL(link.href,location.href),path=pathname(url.pathname);
-    if(url.origin!==location.origin||url.search||!/^\/(?:feed|discover)\/$/.test(path)||path===pathname(location.pathname)||pages[path]&&!pages[path].preparedRevision)return;
-    event.preventDefault();
+    const url=new URL(link.href,location.href),path=pathname(url.pathname),page=pageAt(path);
+    if(url.origin!==location.origin||url.search||path===pathname(location.pathname)||(page?page.content||runtimeRoots.has(page.runtime):!/^\/(?:feed|discover)\/$/.test(path)))return;
+    event.preventDefault();url.pathname=path;
     const open=element.openPreparedDiscovery;
     if(typeof open==='function')void open(url);
-    else void import('/learn/discover.js').then(module=>module.init(pages,navigate)?.(url)).catch(()=>location.assign(url.href));
+    else void import('/learn/discover.js').then(module=>module.init(pages,navigate)?.(url)).catch(()=>{});
   });
   addEventListener('bankeiz:navigate-public',event=>{const path=event.detail?.path;if(typeof path==='string'&&path.length<100&&profileName(path)){navigate(path);}});
   // Retained call controls can return from a public workspace without a

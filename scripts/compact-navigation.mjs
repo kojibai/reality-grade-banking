@@ -8,7 +8,7 @@ export function compactNavigation(input) {
   // Intern repeated HTML tokens at build time. Destinations remain exact;
   // the browser joins only a visited destination, never the whole catalog.
   const counts=new Map(),parts=value=>value.split(/(<[^>]+>)/g);
-  for(const page of [...Object.values(input.pages),input.bank])if(typeof page.content==='string')for(const part of parts(page.content))if(part.length>=32)counts.set(part,(counts.get(part)??0)+1);
+  for(const page of [...Object.values(input.pages),input.bank])for(const value of [page.content,page.head])if(typeof value==='string')for(const part of parts(value))if(part.length>=32)counts.set(part,(counts.get(part)??0)+1);
   const content=value=>{
     if(typeof value!=='string')return value;
     const result=[];let referenced=false;
@@ -30,8 +30,8 @@ export function compactNavigation(input) {
     const parts = value.split(/(<style\b[^>]*>[\s\S]*?<\/style>)/gi);
     if (parts.length === 1) return value;
     return parts.flatMap((part, index) => {
-      if (index % 2 === 0) return part;
-      return cssReferences(part);
+      if (index % 2 === 0) return content(part);
+      return cssReferences(part).map(piece=>typeof piece==='string'&&piece.length>=512?intern(piece):piece);
     });
   };
   const page = value => ({ ...value, head: head(value.head),...(typeof value.content==='string'?{content:content(value.content)}:{}) });

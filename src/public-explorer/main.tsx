@@ -1,4 +1,6 @@
+import {preparedBankCatalogState} from '../receiz/prepared-bank-catalog';
 import {PublicDocumentCapabilitiesContext,PublicDocumentFormatContext} from '../core/public-document-format';
+import {adoptPublicMarketDocument} from '../receiz/usePublicMarket';
 import {publishMarketDisplaySource} from '../receiz/market-projection/display-source';
 import {publicMarketDocumentHistory,readPublicMarketDocumentSeed} from '../receiz/public-market-document-seed';
 import {startPublicDocumentRuntime} from '../core/public-document-entry';
@@ -12,7 +14,9 @@ import '../styles/app.css';
 import '../styles/features.css';
 import {publicRuntimeRoot,usePublicRuntimeActive} from '../core/public-runtime';
 const prepared=readPublicMarketDocumentSeed();
-if(prepared?.capitalization)publishMarketDisplaySource(prepared.capitalization);
+const navigation=document.getElementById('receiz-navigation') as (HTMLElement&{pages?:Record<string,{preparedRevision?:string;preparedState?:string;preparedBankIdentity?:unknown}>})|null,page=navigation?.pages?.[location.pathname.replace(/\/?$/,'/')];
+if(prepared)adoptPublicMarketDocument(prepared,page?.preparedRevision===prepared.generation&&(page.preparedState==='current'||page.preparedState==='retained')?{state:page.preparedState,identity:page.preparedBankIdentity}:undefined);
+if(prepared?.capitalization&&!preparedBankCatalogState().value&&!preparedBankCatalogState().carried)publishMarketDisplaySource(prepared.capitalization);
 const preparedHistory=prepared?publicMarketDocumentHistory(prepared):undefined;
 const preparedSource=prepared?{catalog:prepared.catalog,historyCatalog:prepared.catalog,pulse:prepared.asOfPulse,quoteStatus:'stale' as const,sportsStatus:prepared.catalog.items.some(item=>item.category==='sports')?'retained' as const:'missing' as const,status:'stale' as const,error:null,refresh:async()=>{}}:undefined;
 function PublicExplorerRoot(){const active=usePublicRuntimeActive('explore'),[initial,setInitial]=useState(!!prepared);useEffect(()=>setInitial(false),[]);return <PublicDocumentCapabilitiesContext.Provider value={initial?{intersectionObserver:false}:undefined}><PublicDocumentFormatContext.Provider value={initial?prepared?.format:undefined}><PublicExplorer active={active&&!initial} initialPath={prepared?'/'+prepared.path+'/':undefined} initialSource={initial?preparedSource:undefined} initialVisibleCount={prepared?.visibleCount} initialHistory={preparedHistory} initialAsOfPulse={initial?prepared?.asOfPulse:undefined}/></PublicDocumentFormatContext.Provider></PublicDocumentCapabilitiesContext.Provider>;}

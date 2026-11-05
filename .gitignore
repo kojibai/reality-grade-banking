@@ -27,3 +27,5 @@ test-results/
 /server/booking-runtime/*.mjs
 /server/reading-runtime/*.mjs
 /public/build-demo/
+
+/dist-public/

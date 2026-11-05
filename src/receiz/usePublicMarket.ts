@@ -1,12 +1,12 @@
-import {preparedBankCatalogEnabled,preparedBankCatalogState,subscribePreparedBankCatalog,readPreparedBankCatalog,type PreparedBankCatalog} from './prepared-bank-catalog';
-import {readPublicMarketDocumentSeed} from './public-market-document-seed';
+import {preparedBankCatalogEnabled,preparedBankCatalogState,subscribePreparedBankCatalog,readPreparedBankCatalog,prepareCarriedBankCatalog,adoptPublicDocumentCatalog,type PublicDocumentHandoff,type PreparedBankCatalog} from './prepared-bank-catalog';
+import {readPublicMarketDocumentSeed,type PublicMarketDocumentSeed} from './public-market-document-seed';
 import {compatibleShareInventory,mergeShareInventory} from './market-share-inventory';
 import {retainPublicMomentManifest} from './public-asset-manifest';
 import { useCallback, useEffect, useMemo, useRef, useState,useSyncExternalStore,type SetStateAction } from 'react';
 import {receizKaiNow} from '@receiz/sdk';
 import { fetchPublicSports, mergePublicSports,retainPublicSportsInput } from './public-sports';
 import { fetchPublicMarket, fetchPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, retainPublicArtwork, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
-import {prepareMarketDisplaySource,useMarketDisplaySource} from './market-projection/display-source';
+import {prepareMarketDisplaySource,useMarketDisplaySource,adoptMarketDisplaySource} from './market-projection/display-source';
 import {publicCatalogAtPulse} from './market-projection/catalog-prices';
 
 import {mergeAdmittedPublicAssets,subscribeAssetPublicationAdmissions} from './asset-publication-adoption';
@@ -24,16 +24,31 @@ function restorePublicCatalog(): PublicMarketCatalog | null {
   try{retainedSports=JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1')??'null');}catch{/* Optional public inventory. */}
   try { const saved = localStorage.getItem(PUBLIC_MARKET_CACHE_KEY); const input = saved ? JSON.parse(saved) : null; const catalog = input ? parsePublicMarket(input, input.snapshot) : null; if (!catalog) return null; rememberPublicOriginalLocators(catalog); return mergePublicSports(catalog,retainedSports); } catch { return null; }
 }
-let adoptedPrepared:PreparedBankCatalog['seed']|null=null;
+let adoptedPrepared:PreparedBankCatalog['seed']|null=null,adoptedCarried:PreparedBankCatalog['seed']|null=null;
 function readPublicCatalog(){
- if(preparedBankCatalogEnabled()){const prepared=preparedBankCatalogState();
-  if(prepared.value){const value=prepared.value;if(adoptedPrepared!==value.seed){adoptedPrepared=value.seed;restored=true;retainedCatalog=adoptCatalog(value.seed.catalog);rememberPublicOriginalLocators(retainedCatalog!);}return retainedCatalog;}
+ const prepared=preparedBankCatalogState();
+  if(prepared.value){const value=prepared.value;if(adoptedPrepared!==value.seed){adoptedPrepared=value.seed;if(value.seed!==adoptedCarried){restored=true;retainedCatalog=adoptCatalog(value.seed.catalog);rememberPublicOriginalLocators(retainedCatalog!);}}return retainedCatalog;}
+ if(preparedBankCatalogEnabled()){
+  if(prepared.carried){const value=prepared.carried;if(adoptedCarried!==value.seed){adoptedCarried=value.seed;
+   // A boot display cannot roll back a newer public discovery that completed
+   // while this document's compressed seed was being decoded.
+   if(!retainedCatalog||retainedCatalog.revision==='local-admission'){restored=true;retainedCatalog=adoptCatalog(value.seed.catalog);rememberPublicOriginalLocators(retainedCatalog!);}
+   if(!lastRefreshAt)lastRefreshAt=value.receivedAt;
+  }return retainedCatalog;}
   if(prepared.phase!=='fallback'){
    if(!retainedCatalog){const admitted=adoptCatalog(null);if(admitted){retainedCatalog=admitted;restored=true;}}
    return retainedCatalog;
   }
  }
  if(!restored){restored=true;retainedCatalog=adoptCatalog(restorePublicCatalog());}return retainedCatalog;}
+/** The existing public entry has already qualified its saved document. Adopt
+ * its parsed family once; no new Bank receipt or caller funding is inferred. */
+export function adoptPublicMarketDocument(seed:PublicMarketDocumentSeed,qualification?:PublicDocumentHandoff){
+ const adopted=adoptPublicDocumentCatalog(seed,display=>{retainedCatalog=adoptCatalog(display.seed.catalog);restored=true;preparedDocument=true;adoptedCarried=display.seed;lastRefreshAt=display.receivedAt;adoptMarketDisplaySource(display.capitalization);},qualification);
+ const held=preparedBankCatalogState();if(adopted||(held.value??held.carried)?.seed.generation===seed.generation)preparedDocument=true;
+ if(adopted){rememberPublicOriginalLocators(retainedCatalog!);for(const listener of catalogListeners)listener();}
+ return adopted;
+}
 function publishPublicCatalog(next:SetStateAction<PublicMarketCatalog|null>){
   const current=readPublicCatalog(),candidate=typeof next==='function'?next(current):next;
   const currentAt=Date.parse(current?.observedAt??''),candidateAt=Date.parse(candidate?.observedAt??'');
@@ -113,11 +128,12 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     if(quotesOnly){await refreshQuotes(pendingMarketChange.current);return;}
     if (running.current) return;
     lastRefreshAt=Date.now();
-    if(!existingFallback&&preparedBankCatalogEnabled()&&readPublicCatalog()?.revision!=='local-admission'){
+    if(!existingFallback&&(preparedBankCatalogEnabled()||preparedBankCatalogState().value||preparedBankCatalogState().carried)&&readPublicCatalog()?.revision!=='local-admission'){
       const prepared=await readPreparedBankCatalog();
       if(prepared){setStatus(prepared.receipt.state==='current'?'live':'stale');setQuoteStatus(prepared.receipt.state==='current'?'fresh':'stale');setSportsStatus(prepared.seed.catalog.items.some(item=>item.category==='sports')?(prepared.receipt.state==='current'?'fresh':'retained'):'missing');setError(null);return;}
       const held=preparedBankCatalogState();
-      if(held.value){setStatus('stale');setQuoteStatus('stale');setSportsStatus(held.value.seed.catalog.items.some(item=>item.category==='sports')?'retained':'missing');setError(held.error);return;}
+      const retained=held.value??held.carried;
+      if(retained){setStatus('stale');setQuoteStatus('stale');setSportsStatus(retained.seed.catalog.items.some(item=>item.category==='sports')?'retained':'missing');setError(held.error);return;}
       void prepareShippedSports().catch(()=>{});void prepareShippedCatalog().catch(()=>{});
     }
     // Prepare pricing operands beside discovery, before an object is opened.
@@ -158,9 +174,13 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
   useEffect(() => {
     if (!active) return;
     let alive=true;
-    const bank=preparedBankCatalogEnabled(),prepared=preparedBankCatalogState();
-    const age=Date.now()-lastRefreshAt,heldFamily=bank&&(!!prepared.value||prepared.phase==='fallback'&&readPublicCatalog()?.complete===true)&&lastRefreshAt>0;
-    if(heldFamily){
+    const prepared=preparedBankCatalogState(),bank=preparedBankCatalogEnabled()||!!prepared.value||!!prepared.carried;
+    const age=Date.now()-lastRefreshAt,heldFamily=bank&&(!!prepared.value||!!prepared.carried||prepared.phase==='fallback'&&readPublicCatalog()?.complete===true)&&lastRefreshAt>0;
+    if(bank&&prepared.bootstrapping){
+      // Account entry and its custody lifecycle run independently. The first
+      // Market paint can wait for this already-carried public display only.
+      void prepareCarriedBankCatalog().then(value=>{if(!alive)return;if(value){readPublicCatalog();setStatus('stale');}else void refresh();});
+    }else if(heldFamily){
       if(age<0||age>=refreshInterval)void refresh();
     }else if(bank&&!(prepared.phase==='fallback'&&!prepared.value)&&readPublicCatalog()?.revision!=='local-admission'){
       void refresh();
@@ -178,6 +198,6 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
   }, [active, refresh]);
   useEffect(()=>{if(!displayActive)return;const update=()=>{if(document.visibilityState==='visible')setPulse(previous=>Math.max(previous,receizKaiNow().pulse));};update();const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);window.addEventListener('pageshow',update);window.addEventListener('focus',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update);window.removeEventListener('pageshow',update);window.removeEventListener('focus',update);};},[displayActive]);
   const pricedCatalog=useMemo(()=>active?publicCatalogAtPulse(catalog,pricingSource,pulse,selectedItemId):catalog,[catalog,pricingSource,pulse,active,selectedItemId]);
-  const prepared=preparedBankCatalogEnabled()?preparedSnapshot:null,accepted=prepared?.phase==='ready'?prepared.value:null,historical=!!prepared&&prepared.phase!=='ready'&&!!(prepared.value||prepared.phase!=='fallback'&&catalog);
+  const prepared=preparedBankCatalogEnabled()||preparedSnapshot.value||preparedSnapshot.carried?preparedSnapshot:null,accepted=prepared?.phase==='ready'?prepared.value:null,historical=!!prepared&&prepared.phase!=='ready'&&!!(prepared.value||prepared.carried||prepared.phase!=='fallback'&&catalog);
   return { catalog:pricedCatalog, historyCatalog:catalog, pulse, quoteStatus:historical?'stale' as const:quoteStatus, sportsStatus:historical&&sportsStatus==='fresh'?'retained' as const:sportsStatus, status:historical?'stale' as const:accepted?(accepted.receipt.state==='current'?'live' as const:'stale' as const): !catalog && status === 'stale' ? 'error' as const : status, error, refresh };
 }

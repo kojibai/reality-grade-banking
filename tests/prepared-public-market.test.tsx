@@ -97,7 +97,7 @@ it('renders input material only in the background producer branch and never on a
 
 it('uses only a qualified new membership delta over the retained operands without rereading old sources or dropping shares',async()=>{
  const inventory={schema:'receiz.market.share-inventory.v1',marketItemId:target,assetId:'original-0',family:'generic',quantityScope:'canonical-asset',observedAtKaiUPulse:'14955302000000',outstandingShareQuantityMicro:'0',availableShareQuantityMicro:'1000000',maxPurchaseShareQuantityMicro:'1000000',availability:'quote-capacity',positionsMicro:'0',certificatesMicro:'0',reservedBuyMicro:'0',history:[{kaiUPulse:'14955302000000',outstandingShareQuantityMicro:'0'}]};
- const previousMaterial=JSON.stringify({membership:input,snapshot:{ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[{itemId:target,visibility:'public',priceUsd:10,shareInventory:inventory,chart:[{value:10}]}]}},sports:{held:'same-sports'},capitalization:{held:'same-cap'},history:{held:'same-history'},ledgerCacheGzipB64u:'same-ledger'});
+ const previousMaterial=JSON.stringify({publicDisplayPolicy:'bank.public-market.curated-display.v2',membership:input,snapshot:{ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[{itemId:target,visibility:'public',priceUsd:10,shareInventory:inventory,chart:[{value:10}]}]}},sports:{held:'same-sports'},capitalization:{held:'same-cap'},history:{held:'same-history'},ledgerCacheGzipB64u:'same-ledger'});
  const added={id:'new-source-original',receizId:'new-source-original',title:'New accepted public Original',visibility:'public',valueUsd:5};
  const membership={ok:true,transport:{...input.transport,publicMembership:{...input.transport.publicMembership,itemCount:53,revision:'accepted-C'},publicOriginals:[added,...originals]}};
  const read=vi.fn(async()=>{throw Error('Older Source must not be rediscovered.');});
@@ -140,7 +140,7 @@ it('bounds simultaneous material transport before preparation while coalescing a
 });
 
 it('keeps market operands exact on a Ledger-only append and updates only the held financial packet',async()=>{
- const prior={membership:input,snapshot:{held:'same-quotes'},sports:{held:'same-sports'},capitalization:{held:'same-cap'},...preparedState,preparedLedger:{schema:'bank.public-ledger.preparation.v1',financialOnly:true,ledgerCacheGzipB64u:'old-financial-packet',heads:{actions:{count:'1',lastSeq:'1'}}}};
+ const prior={publicDisplayPolicy:'bank.public-market.curated-display.v2',membership:input,snapshot:{held:'same-quotes'},sports:{held:'same-sports'},capitalization:{held:'same-cap'},...preparedState,preparedLedger:{schema:'bank.public-ledger.preparation.v1',financialOnly:true,ledgerCacheGzipB64u:'old-financial-packet',heads:{actions:{count:'1',lastSeq:'1'}}}};
  const nextLedger={...prior.preparedLedger,ledgerCacheGzipB64u:'new-financial-packet',heads:{actions:{count:'2',lastSeq:'2'}}},read=vi.fn(async()=>{throw Error('Market inputs must not be read.');}),prepareLedger=vi.fn(async previous=>{expect(previous).toEqual(prior.preparedLedger);return nextLedger;});
  const prepareMarket=vi.fn(async()=>{throw Error('Ledger-only append must not prepare a new chart.');});
  const result=JSON.parse((await preparePublicMarketRenderMaterial({previousMaterial:JSON.stringify(prior),read,prepareLedger,prepareMarket})).material);
