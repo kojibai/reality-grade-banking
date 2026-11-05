@@ -1,6 +1,14 @@
 {
   "schema": "bankeiz.public-social-images.v1",
   "images": {
+    "/build/": {
+      "url": "/social/build-independent-bank-47120ad0ee1dda1f.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "47120ad0ee1dda1f4dea3a7b5aa08f9c491e1db18a282c6d73906b39747fba86",
+      "bytes": 470147,
+      "alt": "Bankeiz. Build your own bank. Receive the same money. Different applications. The same necessary evidence. An engraved code motif on layered cobalt, clear glass and navy forms."
+    },
     "/accept/": {
       "url": "/social/accept-the-money-62d0c48092d33fb4.png",
       "width": 1730,

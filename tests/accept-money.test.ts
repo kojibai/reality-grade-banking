@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {readFileSync} from 'node:fs';
-import {economyState,chainState,formatMoney,comparisonSteps,evidenceLayers} from '../public/learn/accept-money-model.js';
+import {economyState,chainState,formatMoney,comparisonSteps,evidenceLayers,emailSteps} from '../public/learn/accept-money-model.js';
 import {acceptMoneyContent,acceptMoneyPage} from '../scripts/accept-money-page.mjs';
 
 describe('deterministic receiving demonstration',()=>{
@@ -41,4 +41,10 @@ describe('deterministic receiving demonstration',()=>{
   expect(html).not.toContain('onclick=');
   expect(html).toContain('data-public-script="accept-money"');
  });
+});
+
+it('frames the email as a recorded payment to review and accept, with the Identity Record quietly keeping its proof',()=>{
+ const html=acceptMoneyContent(),section=html.slice(html.indexOf('id="email-payments"'),html.indexOf('id="the-original"'));
+ expect(section).toContain('already recorded');expect(section).toContain('review and accept');expect(section).toContain('Identity Record');expect(section).not.toMatch(/create or restore|opens the verified recipient|open.*account/i);
+ expect(emailSteps.map(step=>step.caption).join(' ')).toMatch(/review and accept/i);expect(emailSteps.map(step=>step.caption).join(' ')).not.toMatch(/establishes or restores|opens the matching funded account/);
 });

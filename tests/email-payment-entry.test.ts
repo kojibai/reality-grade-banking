@@ -61,3 +61,12 @@ it('keeps a supported long canonical session within browser cookie capacity with
  const staged=await handleEmailPaymentEntry(new Request(base+'start?'+query)),opened=await handleEmailPaymentEntry(post(cookies(staged)));expect(opened.status).toBe(200);expect(opened.headers.getSetCookie().every(value=>value.length<4096)).toBe(true);expect(await opened.text()).not.toContain(jwt);
  const resumed=await handleEmailPaymentEntry(post(cookies(opened)));expect(resumed.status).toBe(200);expect(send.mock.calls.filter(([input])=>String(input).includes('/auth/verify?'))).toHaveLength(1);
 });
+
+it('returns the public invitation-free state only when no payment-entry cookie names are present',async()=>{
+ const send=vi.fn();vi.stubGlobal('fetch',send);
+ for(const cookie of ['', 'unrelated=public']){const response=await handleEmailPaymentEntry(new Request(base+'state',{headers:{'sec-fetch-site':'same-origin',cookie}}));expect(response.status).toBe(200);expect(await response.json()).toEqual({ok:true,invitation:false});expect(response.headers.getSetCookie()).toEqual([]);}
+ const expired=Buffer.from(JSON.stringify({token,transferId:id,clientNonce:nonce,expiresAt:Date.now()-1,autoContinue:false})).toString('base64url');
+ for(const cookie of ['__Secure-bankeiz-payment-pending=bad','__Secure-bankeiz-payment-session=','__Secure-bankeiz-payment-context=bad','__Secure-bankeiz-payment-pending','__Secure-bankeiz-payment-pending =bad','__Secure-bankeiz-payment-pending='+expired]){const response=await handleEmailPaymentEntry(new Request(base+'state',{headers:{'sec-fetch-site':'same-origin',cookie}}));expect(response.status).toBe(401);expect(await response.json()).not.toHaveProperty('invitation');}
+ const duplicate=await handleEmailPaymentEntry(new Request(base+'state',{headers:{'sec-fetch-site':'same-origin',cookie:'__Secure-bankeiz-payment-session=bad; __Secure-bankeiz-payment-session=other'}}));expect(duplicate.status).toBe(409);
+ expect((await handleEmailPaymentEntry(post(''))).status).toBe(401);expect(send).not.toHaveBeenCalled();
+});

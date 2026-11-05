@@ -15,3 +15,13 @@ it('does not open custody for a failed receipt and retries the canonical tempora
 it('a pending scanner state never consumes email authority or opens an identity',async()=>{
  const send=vi.fn(async(_input:RequestInfo|URL)=>Response.json({ok:true,pending:true,autoContinue:false}));vi.stubGlobal('fetch',send);expect(await readEmailPaymentEntry()).toEqual({ok:true,pending:true,autoContinue:false});expect(send.mock.calls[0][0]).toBe('/api/bank/native/email-payment/state');expect(account.open).not.toHaveBeenCalled();
 });
+
+it('recognizes only the explicit invitation-free state and never turns receipt errors into a public landing',async()=>{
+ const send=vi.fn().mockResolvedValueOnce(Response.json({ok:true,invitation:false})).mockResolvedValueOnce(Response.json({ok:false},{status:401})).mockResolvedValueOnce(Response.json({ok:true,invitation:false,pending:true}));vi.stubGlobal('fetch',send);
+ expect(await readEmailPaymentEntry()).toEqual({ok:true,invitation:false});await expect(readEmailPaymentEntry()).rejects.toThrow();await expect(readEmailPaymentEntry()).rejects.toThrow();expect(account.open).not.toHaveBeenCalled();
+});
+
+it('normalizes the real verified state wire to the declared observation without a pending transport flag',async()=>{
+ const wire={...payment,pending:false};const send=vi.fn(async()=>Response.json(wire));vi.stubGlobal('fetch',send);
+ const observed=await readEmailPaymentEntry();expect(observed).toEqual(payment);expect('pending' in observed).toBe(false);expect('invitation' in observed).toBe(false);expect(send).toHaveBeenCalledOnce();expect(account.open).not.toHaveBeenCalled();
+});

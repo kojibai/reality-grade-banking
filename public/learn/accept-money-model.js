@@ -41,8 +41,8 @@ export const evidenceLayers=Object.freeze([
  {key:'verification',title:'Verification',description:'Check authenticity, current authority and the accepted transition separately. An inspection report cannot mint spend authority.',binding:'verifyTransitionSet → qualified commit → receiveReserve / receiveSettlement',contract:'receiving-standard.md'},
 ]);
 export const emailSteps=Object.freeze([
- {title:'Send',caption:'An email delivers the invitation. It is not an ownership credential.'},
- {title:'Invitation',caption:'The invitation identifies the sender and the payment already recorded for the recipient account.'},
- {title:'Receive',caption:'The legitimate recipient establishes or restores their Identity Record. The verified handoff opens the matching funded account.'},
- {title:'Use the value',caption:'The same recorded value is available under that account’s supported financial contract; opening the invitation does not credit it twice.'},
+ {title:'Send',caption:'An email brings the recorded payment to its recipient.'},
+ {title:'Invitation',caption:'The invitation shows who paid, the amount and the reference.'},
+ {title:'Accept',caption:'Review and accept the payment. Your Identity Record keeps the payment and its proof with you.'},
+ {title:'Use the value',caption:'Your payment is ready to use under its existing financial contract. Acceptance keeps the same recorded payment.'},
 ]);

@@ -56,7 +56,7 @@ it('retains the selected original and refuses a generic funding fallback if the 
   await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));
   await select(host,new File(['evidence'],'evidence.txt',{type:'text/plain'}));
   act(()=>click(host,'Add backing'));await act(async()=>click(host,'Review asset creation'));
-  expect(operations).not.toHaveBeenCalled();expect(host.textContent).toContain('Verified transaction terms are unavailable');
+  expect(operations).not.toHaveBeenCalled();expect(host.querySelector('.error-message[role="status"]')?.textContent?.trim()).toBeTruthy();expect(host.textContent).toContain('BANK_OPERATION_UNAVAILABLE');expect(host.textContent).toContain('evidence.txt');
   act(()=>click(host,'Remove backing'));expect(host.textContent).toContain('evidence.txt');
  }finally{act(()=>root.unmount());}
 });

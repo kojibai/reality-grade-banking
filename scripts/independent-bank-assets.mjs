@@ -1,0 +1,5 @@
+import {independentBankContent,independentBankPage,independentBankStyles} from './independent-bank-page.mjs';
+export function independentBankDevPlugin(){return {name:'bankeiz-independent-bank',configureServer(server){server.middlewares.use(async(req,res,next)=>{
+ if(new URL(req.url??'/','http://localhost').pathname.replace(/\/$/,'')!=='/build')return next();
+ try{const html=`<!doctype html><html lang="en" class="learn-surface"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${independentBankPage.title} | Bankeiz</title><link rel="stylesheet" href="/learn/learn.css"><link rel="stylesheet" href="/src/styles/site-footer.css"><style data-public-page-style="independent-bank">${independentBankStyles}</style><script src="/learn/learn.js" defer></script></head><body data-bank-surface="learn"><div id="public-learn-root">${independentBankContent()}</div></body></html>`;res.setHeader('content-type','text/html; charset=utf-8');res.end(await server.transformIndexHtml(req.url,html));}catch(error){next(error);}
+ });}};}

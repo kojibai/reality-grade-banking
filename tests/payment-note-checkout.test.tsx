@@ -5,6 +5,7 @@ import {expect,it,vi} from 'vitest';
 import {LiveReceive,LiveSend} from '../src/features/account/LivePayments';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+const recipientField=(host:HTMLElement)=>[...host.querySelectorAll('label')].find(label=>label.querySelector('span')?.textContent==='Recipient')!.querySelector('input') as HTMLInputElement;
 const click=(host:HTMLElement,label:string)=>[...host.querySelectorAll('button')].find(button=>button.textContent?.trim()===label)!.click();
 
 it.each(['reserve','settlement','composite'] as const)('receives the same original %s Note before a separately approved payment',async rail=>{
@@ -27,7 +28,7 @@ it.each(['reserve','settlement','composite'] as const)('receives the same origin
   await act(async()=>click(host,'Done'));
   await act(async()=>root.render(<LiveSend identity={identity} wallet={null} initialRequest={{recipient:'merchant',amount:'12.30'}} onRefresh={refresh} onClose={()=>{}}/>));
   expect(host.querySelector<HTMLInputElement>('[aria-label="Amount to send"]')?.value).toBe('12.30');
-  expect(host.querySelector<HTMLInputElement>('[placeholder="Receiz ID"]')?.value).toBe('merchant');
+  expect(recipientField(host).value).toBe('merchant');
   await act(async()=>click(host,'Review payment'));
   expect(prepare).toHaveBeenCalledExactlyOnceWith({recipient:'merchant',amountUsdCents:'1230',note:''});
   expect(execute).not.toHaveBeenCalled();expect(create).not.toHaveBeenCalled();

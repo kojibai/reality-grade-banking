@@ -9,6 +9,9 @@ export const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 export async function sourceFiles() {
   const paths = [];
   async function visit(path) {
+    // Reproduced after the final legal navigation is written. Archiving this
+    // derived cache coordinate would make the source-download URL circular.
+    if (path === 'server/profile-runtime/public-market-render-build.json') return;
     const stat = await lstat(path);
     if (stat.isSymbolicLink()) throw Error(`Source archive rejects symlink: ${path}`);
     const name = path.split('/').at(-1);

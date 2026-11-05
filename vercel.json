@@ -49,6 +49,14 @@
   ],
   "rewrites": [
     {
+      "source": "/build",
+      "destination": "/build/index.html"
+    },
+    {
+      "source": "/build/",
+      "destination": "/build/index.html"
+    },
+    {
       "source": "/accept",
       "destination": "/accept/index.html"
     },

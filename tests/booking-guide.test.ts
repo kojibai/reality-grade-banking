@@ -35,7 +35,7 @@ it('explains the complete real guest/host flow, optional Twin, payment and conti
  const html=bookingGuideContent(await renderBookingExamples(server));
  expect(bookingGuidePage.path).toBe('/book/');
  for(const text of ['Make time.','Choose a time','Free','per guest','shortfall','timezone','Business','Calendar only','invitation','meeting','Questions for your guest'])expect(html.toLowerCase()).toContain(text.toLowerCase());
- for(const href of ['/meet/','/guide/#calendar-booking','/your-twin/','/book/bjklock/'])expect(html).toContain('href="'+href+'"');
+ for(const href of ['/meet/','https://docs.bankeiz.com/calendar-booking/','/your-twin/','/book/bjklock/'])expect(html).toContain('href="'+href+'"');
  expect(html).toContain('data-booking-guide');expect(html).toContain('data-public-script="book"');expect(html).toContain('data-booking-demo-bank');
  expect(html).not.toContain('<script type="module"');
 });

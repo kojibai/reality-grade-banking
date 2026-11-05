@@ -18,12 +18,17 @@ import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
 import {twinSalesPages} from '../src/content/twin-pages.mjs';
 import {togetherPages} from '../src/content/together.mjs';
 import {cooperativePages} from '../src/content/cooperatives.mjs';
+import {paymentGuidePage} from '../src/content/payment-guide.mjs';
+import {matterPage} from '../src/content/digital-matter.mjs';
 // Public discovery only. Existing routes and native authorities are unchanged.
 const solutionGuides=[
- {slug:'accept-the-money',path:'/accept/',group:'The standard',title:'Accept the money',description:'Experience payment providers and proof-native receiving side by side. Follow value into its next payment.'},
+ {slug:'accept-the-money',path:'/accept/',group:'Standards',title:'Accept the money',description:'Experience payment providers and proof-native receiving side by side. Follow value into its next payment.'},
+ {slug:'build-independent-bank',path:'/build/',group:'Standards',title:'Build your own bank',description:'Build an independent bank, wallet or merchant receiver. Follow the proof, receiving requirements and existing SDK.'},
+ {...paymentGuidePage,group:'Banking',title:'The payment experience'},
+ {...matterPage,group:'Assets'},
  {...momentsPage,group:'Assets',title:'Your moments, your value'},
  ...portabilityPages.map(page=>({...page,group:'Assets',title:page.key==='crypto'?'Crypto holdings':'NFTs & collections'})),
- ...standardPages.map(page=>({...page,group:page.key.startsWith('market')?'Markets':'The standard'})),
+ ...standardPages.map(page=>({...page,group:page.key.startsWith('market')?'Markets':'Standards'})),
  ...outcomePages.map(page=>({...page,group:page.key==='proof'?'Assets':'Banking',title:({agent:'Your agent',fraud:'Payment fraud',recover:'Recover your identity','get-paid':'Get paid. Keep the story.',proof:'Open the proof'})[page.key]})),
  {slug:'identity-continuity',path:'/id/',group:'Banking',title:'Identity continuity',description:'Open Bankeiz with the Receiz identity you already hold. Authentication, recovery and supported history stay connected.'},
  {...meetingPage,group:'Banking',title:'Meetings, connected'},
@@ -44,8 +49,8 @@ const relatedSolutions={
  'price-history':['/market/value/'],
  'security':['/fraud/','/proof/','/protect/','/vaults/','/id/'],
  'receiz-id':['/recover/','/vaults/','/protect/','/id/'],
- 'proof-objects':['/proof/','/vaults/','/crypto/','/nfts/'],'ownership':['/proof/','/vaults/','/nfts/'],
- 'get-paid':['/get-paid/'],'payment-requests':['/get-paid/','/fraud/'],'receipts':['/proof/','/get-paid/'],
+ 'proof-objects':['/proof/','/vaults/','/crypto/','/nfts/','/matter/'],'ownership':['/proof/','/vaults/','/nfts/'],
+ 'get-paid':['/get-paid/','/pay/'],'payment-requests':['/get-paid/','/fraud/'],'receipts':['/proof/','/get-paid/'],
  'physical-assets':['/coops/'],'asset-rights-and-backing':['/cooperatives/infrastructure/'],
  'proof-native-economy':['/coops/','/together/'],'institutions':['/cooperatives/infrastructure/'],
  'messages':['/agent/','/business/','/fit/','/your-twin/','/action/'],
@@ -97,7 +102,7 @@ export function learnHome() {
     ['05','Your Vaults','Hold your money and originals separately. Share the proof without sharing access.','/vaults/'],
     ['06','Protect your value','See the protection behind separate Vault authority and optional passkey encryption.','/protect/'],
     ['07','The cooperative economy','Put what your members already produce to work through defined rights and connected proof.','/coops/']
-  ].map(([number,title,copy,slug])=>`<a class="guide-row reveal" href="${slug.startsWith('/')?slug:'/learn/'+slug+'/'}"><span class="guide-number">${number}</span><div><h3>${title}</h3><p>${copy}</p></div>${arrow}</a>`).join('')}</div></section>
+  ].map(([number,title,copy,slug])=>`<a class="guide-row reveal" href="${slug.startsWith('/')?slug:'/learn/'+slug+'/'}"><span class="guide-number">${number}</span><div><h3>${title}</h3><p>${copy}</p></div>${arrow}</a>`).join('')}</div><a class="underlined-action" href="/learn/guides/">Browse all guides ${arrow}</a></section>
   <section class="learn-shell learn-business-offer"><div><h2>Less time managing money.<br>More time running your business.</h2><p>Know what came in, what went out and what needs attention. Prepare payment requests, follow-ups and the next money decision with the client, the work and the record together.</p></div><div><strong>Less chasing. Less financial admin.</strong><p>Ask your agent to work through the money question, prepare the next step and keep the useful context for later. Set up answers and payment routes so repeat client questions take less of your day.</p><small>Your account, originals and supported value stay available without Business. This optional addition supplies extra financial intelligence, automation and business tools.</small><a class="learn-button button-cobalt" href="/business/">See what Business takes off your plate ${arrow}</a></div></section>
   <section class="learn-finale motion-region"><div class="learn-shell"><div class="reveal"><h2>A familiar place.<br>A new kind of possibility.</h2><a class="learn-button button-paper" href="/">Enter bank ${arrow}</a></div></div></section></main>${siteFooterHtml('/learn/')}`;
 }
@@ -132,7 +137,16 @@ export function learnArticle(page, pages, escape) {
   ${siteFooterHtml(learningPath(page))}`;
 }
 
+const guideIntents={
+ '/accept/':{terms:'send money email payment receive receiving',target:'/accept/#email-payments'},
+ '/learn/earn-from-originals/':{terms:'sign signing fingerprint pbi original originals get paid earning earn'},
+ '/learn/proof-objects/':{terms:'proof asset assets'},
+ '/matter/':{terms:'proof asset assets physical'},
+ '/build/':{terms:'build integrate integration independent bank developer receiving'},
+ '/developers/':{terms:'integrate integration developer receiving'}
+};
 export function learningDirectoryPage(){
  const guides=[...learningPages,...solutionGuides];
  const groups=[...learningGroups.slice(0,2),'Business by your work','Cooperatives','Together',...learningGroups.slice(2)];
- return `${learnHeader()}<main id="main"><section class="learn-shell learning-directory"><p class="section-intro">The complete picture.</p><h1>All guides.</h1><p class="directory-intro">Start with what you want to do. Follow the evidence as far as you need. <a href="/guide/">Use the practical user guide ↗</a></p><nav class="learning-group-links" aria-label="Guide subjects">${groups.map(group=>`<a href="#guides-${sectionId(group)}">${group}</a>`).join('')}</nav>${groups.map(group=>`<section id="guides-${sectionId(group)}" class="learning-group"><h2>${group}</h2><div>${guides.filter(page=>page.group===group).map(page=>`<a href="${learningPath(page)}"><h3>${brandText(page.title)}</h3><p>${brandText(page.description)}</p>${arrow}</a>`).join('')}</div></section>`).join('')}<div class="learning-category-links"><h2>Explore by content</h2><nav aria-label="Public asset categories">${assetCategories.map(category=>`<a href="${category.path}">${category.label} ${arrow}</a>`).join('')}</nav></div></section></main>${siteFooterHtml('/learn/guides/')}`;}
+ const card=page=>{const path=learningPath(page),intent=guideIntents[path];return `<a data-guide-card data-search="${brandText([page.title,page.description,page.intro,page.group,path,intent?.terms].filter(Boolean).join(' '))}"${intent?.target?` data-guide-target="${intent.target}"`:''} href="${path}"><h3>${brandText(page.title)}</h3><p>${brandText(page.description)}</p>${arrow}</a>`;};
+ return `${learnHeader()}<main id="main" data-guide-directory data-public-script="guide-directory"><section class="learn-shell learning-directory"><p class="section-intro">The complete picture.</p><h1>All guides.</h1><p class="directory-intro">Start with what you want to do. Follow the evidence as far as you need. <a href="/guide/">Use the practical user guide ↗</a></p><form class="guide-search" role="search" data-guide-search><label for="guide-search">Find a guide</label><div><input id="guide-search" type="search" name="q" disabled placeholder="Try signing an Original or getting paid…" aria-label="Find a guide" aria-controls="guide-results" autocomplete="off"><button type="reset" disabled>Clear search</button></div><p data-guide-count role="status" aria-live="polite">${guides.length} guides</p></form><nav class="learning-group-links" aria-label="Guide subjects">${groups.map(group=>`<a data-guide-subject="guides-${sectionId(group)}" href="#guides-${sectionId(group)}">${group}</a>`).join('')}</nav><div id="guide-results">${groups.map(group=>`<section id="guides-${sectionId(group)}" class="learning-group" data-guide-group><h2>${group}</h2><div>${guides.filter(page=>page.group===group).map(card).join('')}</div></section>`).join('')}</div><p class="guide-search-empty" data-guide-empty hidden>No guides match those words yet. Try a shorter phrase or clear the search to explore everything.</p><div class="learning-category-links"><h2>Explore by content</h2><nav aria-label="Public asset categories">${assetCategories.map(category=>`<a href="${category.path}">${category.label} ${arrow}</a>`).join('')}</nav></div></section></main>${siteFooterHtml('/learn/guides/')}`;}

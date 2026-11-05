@@ -71,6 +71,7 @@ export async function handleEmailPaymentEntry(request:Request):Promise<Response>
  const pending=readCookie<Pending>(request,pendingName),held=session(request);
  if(pending&&held&&(pending.transferId!==held.transferId||pending.clientNonce!==held.clientNonce))return fail(409);
  if(operation==='state'&&request.method==='GET'){
+  if(![pendingName,sessionName,contextName].some(name=>names.some(value=>value.trim()===name)))return Response.json({ok:true,invitation:false},{headers:base});
   if(held?.verified)try{return Response.json({...await observe(request,held),pending:false},{headers:base});}catch{return fail(401);}
   if(held)return Response.json({ok:true,pending:true,autoContinue:true},{headers:base});
   return pending?Response.json({ok:true,pending:true,autoContinue:pending.autoContinue===true},{headers:base}):fail(401);

@@ -10,13 +10,14 @@ import { createWalletSend } from '../src/receiz/wallet-send';
 import {paymentQr,paymentQrPath} from '../src/receiz/payment-qr';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 afterEach(() => vi.unstubAllGlobals());
+const recipientField=(host:HTMLElement)=>[...host.querySelectorAll('label')].find(label=>label.querySelector('span')?.textContent==='Recipient')!.querySelector('input') as HTMLInputElement;
 it('shows a chat username while reviewing payment against that selected stable account',async()=>{
  const target={userId:'22222222-2222-4222-8222-222222222222',username:'mira'},prepare=vi.fn().mockRejectedValue(Error('Stop at preparation')),execute=vi.fn();
  const identity={walletSend:async()=>({status:async()=>null,prepare,execute,discard:vi.fn()})} as unknown as OpenIdentity;
  const host=document.createElement('div'),root=createRoot(host);
  try{
   await act(async()=>root.render(<LiveSend identity={identity} wallet={null} initialRecipient={target} onClose={()=>{}}/>));
-  const recipient=host.querySelector<HTMLInputElement>('input[placeholder="Receiz ID"]')!;
+  const recipient=recipientField(host);
   expect(recipient.value).toBe('mira');expect(host.textContent).not.toContain(target.userId);
   const amount=host.querySelector<HTMLInputElement>('input[aria-label="Amount to send"]')!;
   await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(amount,'1');amount.dispatchEvent(new Event('input',{bubbles:true}));});
@@ -38,7 +39,7 @@ it('generates the bank QR and writes only the public request URL to NFC on expli
 it('a scanned/shared request preloads the in-bank form without auto-executing a transfer', () => {
   const host = document.createElement('div'), root = createRoot(host);
   try { act(() => root.render(<LiveSend wallet={null} initialRequest={{ recipient: 'public-coordinate', amount: '12.30' }} onClose={vi.fn()} />));
-    expect((host.querySelector('input[placeholder="Receiz ID"]') as HTMLInputElement).value).toBe('public-coordinate');
+    expect(recipientField(host).value).toBe('public-coordinate');
     expect(host.textContent).toContain('Review payment'); expect(host.querySelector('a[href*="receiz.com/wallet"]')).toBeNull(); expect(host.textContent).not.toContain('Value sent');
   } finally { act(() => root.unmount()); }
 });
@@ -51,7 +52,7 @@ it('shares a clickable username link through the clipboard fallback and preserve
   const url=host.querySelector<HTMLAnchorElement>('.payment-link')!.href;expect(url).toBe('https://bankeiz.com/?to=klok&amount=12.30');
   await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Share payment request')!.click());expect(copy).toHaveBeenLastCalledWith(url);
   await act(async()=>root.render(<LiveSend wallet={null} initialRequest={parsePaymentRequest(url)} onClose={()=>{}}/>));
-  expect(host.querySelector<HTMLInputElement>('[placeholder="Receiz ID"]')!.value).toBe('klok');expect(host.querySelector<HTMLInputElement>('[aria-label="Amount to send"]')!.value).toBe('12.30');expect(host.textContent).toContain('Review payment');expect(host.textContent).not.toContain('Money sent');
+  expect(recipientField(host).value).toBe('klok');expect(host.querySelector<HTMLInputElement>('[aria-label="Amount to send"]')!.value).toBe('12.30');expect(host.textContent).toContain('Review payment');expect(host.textContent).not.toContain('Money sent');
  }finally{act(()=>root.unmount());}
 });
 it('a provider return is only an exact session signal, never payment proof', () => {
