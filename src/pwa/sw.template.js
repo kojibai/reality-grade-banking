@@ -21,9 +21,9 @@ function retainPublicBody(path, value) {
 let publicSequence = 0, rootRetirement = 0;
 const publicDigest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 function publicPath(url) {
-  // Only the public, query-free entry may use the existing same-render
-  // prepared delivery. Private entry selectors keep the installed document.
-  if (url.pathname === '/') return url.searchParams.size === 0 ? 'bank-entry' : null;
+  // The native Bank entrance uses its exact installed static document.
+  // Public data and proof views keep their separate prepared delivery.
+  if (url.pathname === '/') return null;
   const path = url.pathname.replace(/^\//, '').replace(/\/$/, '').replace(/^explorer$/, 'explore');
   if (!PUBLIC_PATHS.includes(path)) return null;
   const keys = [...url.searchParams.keys()];
