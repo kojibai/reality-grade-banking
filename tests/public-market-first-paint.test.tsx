@@ -48,7 +48,7 @@ it.each(['new','already-mounted'] as const)('paints the whole settled public cat
   fetcher.mockImplementation(()=>new Promise<Response>(()=>{}));const reads=fetcher.mock.calls.length;paints.length=0;
   act(()=>secondRoot.render(<Second active={lifetime==='already-mounted'}/>));
   expect(paints[0]).toEqual(['signed','unsigned','sports:rsc_0123456789abcdef']);expect(secondHost.textContent).toBe('3 assets');expect(second.historyCatalog).toBe(first.historyCatalog);
-  expect(fetcher.mock.calls.slice(reads).map(call=>String(call[0]))).toEqual(lifetime==='new'?[]:['/receiz-public-sports.json','/receiz-public-market.json','/api/bank/public-market/quotes','/api/bank/public-market/membership','/api/bank/public-market/sports']);
+  expect(fetcher.mock.calls.slice(reads).map(call=>String(call[0]))).toEqual([]);
   expect(second.catalog?.items.map(item=>item.hasPbiSignature)).toEqual([true,false,undefined]);expect(second.catalog?.items.every(item=>item.authority==='projection-only'&&item.canTrade===false)).toBe(true);
  }finally{act(()=>firstRoot.unmount());act(()=>secondRoot.unmount());}
 });

@@ -16,7 +16,7 @@ export function publishMarketDisplaySource(next:MarketCapSource,kind:'live'|'shi
 }
 const subscribe=(listener:()=>void)=>{listeners.add(listener);const unsubscribe=subscribePreparedBankCatalog(listener);return()=>{listeners.delete(listener);unsubscribe();};};
 export function retainedMarketDisplaySource(){
- if(preparedBankCatalogEnabled()){const prepared=preparedBankCatalogState();if(prepared.value)return prepared.value.capitalization;if(prepared.phase!=='fallback')return null;}
+ if(preparedBankCatalogEnabled()){const prepared=preparedBankCatalogState();if(prepared.value)return prepared.value.capitalization;}
  if(!restored){restored=true;const prepared=readPublicMarketDocumentSeed()?.capitalization;
   if(prepared){source=prepared;sourceKind='live';}
   else try{const input=JSON.parse(localStorage.getItem(KEY)??'null'),cached=parseMarketCapSource(input);if(!source||cached.serverPulse>source.serverPulse){source=cached;sourceKind=input.displaySourceKind==='shipped'?'shipped':'live';}}catch{/* No qualified public cache. */}}
@@ -29,8 +29,8 @@ export function readMarketDisplaySource(path:string):Promise<MarketCapSource>{
  reads.set(path,attempt);void attempt.finally(()=>{if(reads.get(path)===attempt)reads.delete(path);}).catch(()=>{});return attempt;
 }
 export function prepareMarketDisplaySource(refreshMissing=false):Promise<void>{
- if(preparedBankCatalogEnabled()&&(preparedBankCatalogState().phase!=='fallback'||preparedBankCatalogState().value))return readPreparedBankCatalog().then(()=>{});
  const held=retainedMarketDisplaySource();if(held&&!refreshMissing)return Promise.resolve();
+ if(preparedBankCatalogEnabled()&&(preparedBankCatalogState().phase!=='fallback'||preparedBankCatalogState().value))return readPreparedBankCatalog().then(value=>{if(!value&&!preparedBankCatalogState().value)return prepareMarketDisplaySource(refreshMissing);});
  if(initialRead)return initialRead;
  const attempt=(async()=>{await Promise.allSettled([...(held?[]:[readMarketDisplaySource('/receiz-public-capitalization.json')]),readMarketDisplaySource('/api/bank/public-market/capitalization')]);})();
  initialRead=attempt;void attempt.finally(()=>{if(initialRead===attempt)initialRead=undefined;});return attempt;

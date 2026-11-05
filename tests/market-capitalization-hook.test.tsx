@@ -10,6 +10,7 @@ import{parseMarketHistory}from'../src/receiz/market-projection/history';
 const shippedHistory=parseMarketHistory(historyFile);
 import{parsePublicMarket}from'../src/receiz/public-market';
 import{parseMarketCapSource}from'../src/receiz/market-projection/source';
+import{publishMarketDisplaySource,retainedMarketDisplaySource}from'../src/receiz/market-projection/display-source';
 import{buildMarketHistory}from'../src/receiz/market-projection/build-history';
 const clock=vi.hoisted(()=>({pulse:14720000}));vi.mock('@receiz/sdk',async original=>({...await original<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -85,6 +86,7 @@ it('replaces worker inputs when collection membership changes instead of treatin
  }finally{act(()=>root.unmount());}
 });
 it('switches every range and restores the market instantly without a worker or a network result', async () => {
+  publishMarketDisplaySource(parseMarketCapSource(sourceFile));
   vi.stubGlobal('Worker', undefined); const fetch = vi.fn().mockRejectedValue(new Error('offline')); vi.stubGlobal('fetch', fetch);
   let state!: ReturnType<typeof useMarketCapitalization>; const root = createRoot(document.createElement('div'));
   function Probe({ period, active }: { period: ChartPeriod; active: boolean }) { state = useMarketCapitalization(period, active); return null; }
@@ -94,7 +96,7 @@ it('switches every range and restores the market instantly without a worker or a
     for (const period of CHART_PERIODS) { await act(async () => root.render(<Probe period={period} active />)); expect(state.points.length).toBeGreaterThanOrEqual(64);expect(state.points.length).toBeLessThanOrEqual(96+(shippedHistory.eventPulses?.length??0)); }
     await act(async () => root.render(<Probe period="ALL" active={false} />));
     await act(async () => root.render(<Probe period="ALL" active />));
-    expect(state.points).toBe(initial); expect(state.status).toBe('unavailable');
+    expect(state.points).toBe(initial); expect(state.status).toBe('cached');expect(fetch).not.toHaveBeenCalled();
   } finally { act(() => root.unmount()); }
 });
 it('restarts a suspended PWA worker and samples the canonical pulse immediately on foreground',async()=>{
@@ -138,9 +140,19 @@ it.each(['onerror','onmessageerror'] as const)('recovers a visible failed worker
  }finally{act(()=>root.unmount());}
 });
 it('keeps the existing capitalization reader through a hidden asset page while pausing chart work',async()=>{
- vi.stubGlobal('Worker',undefined);const fetch=vi.fn(async()=>Response.json(sourceFile));vi.stubGlobal('fetch',fetch);
+ vi.useFakeTimers();publishMarketDisplaySource(parseMarketCapSource(sourceFile));vi.stubGlobal('Worker',undefined);const fetch=vi.fn(async()=>Response.json(sourceFile));vi.stubGlobal('fetch',fetch);
  const root=createRoot(document.createElement('div'));function Probe({active}:{active:boolean}){useMarketCapitalization('ALL',active,null,true);return null;}
- try{await act(async()=>root.render(<Probe active/>));const count=fetch.mock.calls.length;expect(count).toBe(2);await act(async()=>root.render(<Probe active={false}/>));await act(async()=>root.render(<Probe active/>));expect(fetch).toHaveBeenCalledTimes(count);}finally{act(()=>root.unmount());}
+ try{await act(async()=>root.render(<Probe active/>));const count=fetch.mock.calls.length;expect(count).toBe(0);await act(async()=>root.render(<Probe active={false}/>));await act(async()=>root.render(<Probe active/>));expect(fetch).toHaveBeenCalledTimes(count);await act(async()=>vi.advanceTimersByTimeAsync(59999));expect(fetch).not.toHaveBeenCalled();await act(async()=>vi.advanceTimersByTimeAsync(1));expect(fetch).toHaveBeenCalledExactlyOnceWith('/api/bank/public-market/capitalization',expect.objectContaining({credentials:'omit'}));}finally{act(()=>root.unmount());}
+});
+
+it('uses a source published while inactive as the first worker input on activation without fetching it again',async()=>{
+ vi.useFakeTimers();const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);const messages:any[]=[];
+ class WorkerStub{onmessage:((event:any)=>void)|null=null;postMessage(value:any){messages.push(value);}terminate(){}}
+ vi.stubGlobal('Worker',WorkerStub);const root=createRoot(document.createElement('div'));
+ function Probe({active}:{active:boolean}){useMarketCapitalization('ALL',active,null,active);return null;}
+ try{await act(async()=>root.render(<Probe active={false}/>));const prior=retainedMarketDisplaySource(),next={...parseMarketCapSource(sourceFile),serverPulse:Math.max(prior?.serverPulse??0,sourceFile.marketCapProjection.serverPulse)+1};publishMarketDisplaySource(next);const held=retainedMarketDisplaySource();expect(held).not.toBe(prior);
+  await act(async()=>root.render(<Probe active/>));expect(messages.find(message=>message.source)?.source.marketCapProjection).toBe(held);expect(fetcher).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
 });
 
 it('paints the share-inclusive total and all six matching intervals before discovery, network or worker execution',()=>{

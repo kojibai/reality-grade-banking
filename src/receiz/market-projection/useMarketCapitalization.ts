@@ -24,10 +24,12 @@ function restore(): MarketHistorySnapshot {
 }
 type WorkerInput={source:{ok:true;marketCapProjection:MarketCapSource};history:MarketHistorySnapshot;catalog:PublicMarketCatalog|null;pulse:number};
 export function useMarketCapitalization(period: ChartPeriod, active: boolean,catalog:PublicMarketCatalog|null=null,sourceActive=active,initialHistory?:MarketHistorySnapshot) {
-  const preparedState=useSyncExternalStore(subscribePreparedBankCatalog,preparedBankCatalogState,preparedBankCatalogState),bank=preparedBankCatalogEnabled()&&(sourceActive||preparedState.phase!=='idle'),packet=bank?preparedState.value:null,pendingPrepared=bank&&preparedState.phase!=='fallback'&&!packet;
+  const preparedState=useSyncExternalStore(subscribePreparedBankCatalog,preparedBankCatalogState,preparedBankCatalogState),bank=preparedBankCatalogEnabled()&&(sourceActive||preparedState.phase!=='idle'),packet=bank?preparedState.value:null,awaitingPrepared=bank&&preparedState.phase!=='fallback'&&!packet;
   const preparedHistory=initialHistory??packet?.history??(()=>{const seed=readPublicMarketDocumentSeed(),carried=seed&&publicMarketDocumentHistory(seed);return carried?.historyPolicy===SHARE_MARKET_HISTORY_POLICY?carried:undefined;})();
-  const [history,setHistory]=useState<MarketHistorySnapshot|null>(()=>preparedHistory??(pendingPrepared?null:restore())),[fallbackSource,setFullSource]=useState<MarketCapSource|null>(retainedMarketDisplaySource),[pulse,setPulse]=useState(now),[status,setStatus]=useState<'cached'|'live'|'unavailable'>('cached');
-  const appliedPrepared=useRef(packet?.seed??null),newPrepared=!!packet&&appliedPrepared.current!==packet.seed,visibleHistory=pendingPrepared?null:newPrepared?packet!.history:history,fullSource=pendingPrepared?null:packet?.capitalization??fallbackSource;
+  const [history,setHistory]=useState<MarketHistorySnapshot|null>(()=>preparedHistory??(awaitingPrepared?null:restore())),[fallbackSource,setFullSource]=useState<MarketCapSource|null>(retainedMarketDisplaySource),[pulse,setPulse]=useState(now),[status,setStatus]=useState<'cached'|'live'|'unavailable'>('cached');
+  const pendingPrepared=awaitingPrepared&&(!history||!catalog);
+  // Another public reader may have published a held source while this view was inactive.
+  const appliedPrepared=useRef(packet?.seed??null),newPrepared=!!packet&&appliedPrepared.current!==packet.seed,visibleHistory=pendingPrepared?null:newPrepared?packet!.history:history,fullSource=pendingPrepared?null:packet?.capitalization??retainedMarketDisplaySource()??fallbackSource;
   const heldHistory=useRef(visibleHistory),worker=useRef<Worker|null>(null),request=useRef(0),acceptedSource=useRef<MarketCapSource|null>(null),busy=useRef(false),queued=useRef<WorkerInput|null>(null),latestInput=useRef<WorkerInput|null>(null),restartWorker=useRef<(()=>void)|null>(null);
   const workerInputs=useRef<{source:MarketCapSource;catalog:PublicMarketCatalog|null}|null>(null);
   const [calculation,setCalculation]=useState<GlobalMarketCalculation|null>(null),heldCalculation=useRef<GlobalMarketCalculation|null>(null),inspecting=useRef(false);
@@ -72,7 +74,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
       } catch { if (live && !controller.signal.aborted) setStatus('unavailable'); }
       finally { if (live) pending = false; }
     };
-    if(!preparedHistory||!retainedMarketDisplaySource()){void read('/receiz-public-capitalization.json', false);void read('/api/bank/public-market/capitalization', true);}
+    if(!retainedMarketDisplaySource()){void read('/receiz-public-capitalization.json', false);void read('/api/bank/public-market/capitalization', true);}
     const interval = setInterval(() => { if (document.visibilityState === 'visible') void read('/api/bank/public-market/capitalization', true); }, 60000);
     return () => { controller.abort(); clearInterval(interval); };
   }, [sourceActive,bank,preparedState.phase]);

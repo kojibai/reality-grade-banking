@@ -14,7 +14,8 @@ function adoptCatalog(catalog:PublicMarketCatalog|null){const next=mergeAdmitted
 export const PUBLIC_MARKET_CACHE_KEY = 'receiz-bank-public-discovery-v2';
 // Public workspaces share the settled source already in this document. Optional
 // browser storage can be too small for the complete collection and card input.
-let retainedCatalog:PublicMarketCatalog|null=null,retainedSports:unknown=null,restored=false,preparedDocument=false;
+let retainedCatalog:PublicMarketCatalog|null=null,retainedSports:unknown=null,restored=false,preparedDocument=false,lastRefreshAt=0;
+const refreshInterval=60_000;
 const catalogListeners=new Set<()=>void>();
 const subscribeCatalog=(listener:()=>void)=>{catalogListeners.add(listener);const unsubscribe=subscribePreparedBankCatalog(listener);return()=>{catalogListeners.delete(listener);unsubscribe();};};
 const inactiveCatalog=()=>()=>{};
@@ -27,7 +28,10 @@ let adoptedPrepared:PreparedBankCatalog['seed']|null=null;
 function readPublicCatalog(){
  if(preparedBankCatalogEnabled()){const prepared=preparedBankCatalogState();
   if(prepared.value){const value=prepared.value;if(adoptedPrepared!==value.seed){adoptedPrepared=value.seed;restored=true;retainedCatalog=adoptCatalog(value.seed.catalog);rememberPublicOriginalLocators(retainedCatalog!);}return retainedCatalog;}
-  if(prepared.phase!=='fallback')return null;
+  if(prepared.phase!=='fallback'){
+   if(!retainedCatalog){const admitted=adoptCatalog(null);if(admitted){retainedCatalog=admitted;restored=true;}}
+   return retainedCatalog;
+  }
  }
  if(!restored){restored=true;retainedCatalog=adoptCatalog(restorePublicCatalog());}return retainedCatalog;}
 function publishPublicCatalog(next:SetStateAction<PublicMarketCatalog|null>){
@@ -70,7 +74,7 @@ function prepareShippedSports():Promise<void>{
   shippedSports=attempt;void attempt.catch(()=>{if(shippedSports===attempt)shippedSports=undefined;});return attempt;
 }
 export function usePublicMarket(active = true, displayActive = active, selectedItemId?:string|null) {
-  const preparedSnapshot=useSyncExternalStore(subscribePreparedBankCatalog,preparedBankCatalogState,preparedBankCatalogState);
+  const preparedSnapshot=useSyncExternalStore(active?subscribePreparedBankCatalog:inactiveCatalog,preparedBankCatalogState,preparedBankCatalogState);
   const pricingSource=useMarketDisplaySource(),[pulse,setPulse]=useState(()=>receizKaiNow().pulse);
   const catalog=useSyncExternalStore(active?subscribeCatalog:inactiveCatalog,readPublicCatalog,()=>null),setCatalog=publishPublicCatalog;
   const [status, setStatus] = useState<'loading' | 'live' | 'stale' | 'error'>(catalog ? 'stale' : 'loading');
@@ -105,10 +109,11 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     });
     quoteRead.current={controller,nonce:afterTrade,pending};return pending;
   },[setCatalog]);
-  const refresh = useCallback(async (quotesOnly=false) => {
+  const refresh = useCallback(async (quotesOnly=false,existingFallback=false) => {
     if(quotesOnly){await refreshQuotes(pendingMarketChange.current);return;}
     if (running.current) return;
-    if(preparedBankCatalogEnabled()){
+    lastRefreshAt=Date.now();
+    if(!existingFallback&&preparedBankCatalogEnabled()&&readPublicCatalog()?.revision!=='local-admission'){
       const prepared=await readPreparedBankCatalog();
       if(prepared){setStatus(prepared.receipt.state==='current'?'live':'stale');setQuoteStatus(prepared.receipt.state==='current'?'fresh':'stale');setSportsStatus(prepared.seed.catalog.items.some(item=>item.category==='sports')?(prepared.receipt.state==='current'?'fresh':'retained'):'missing');setError(null);return;}
       const held=preparedBankCatalogState();
@@ -153,20 +158,26 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
   useEffect(() => {
     if (!active) return;
     let alive=true;
-    if(!preparedDocument&&preparedBankCatalogEnabled()){
+    const bank=preparedBankCatalogEnabled(),prepared=preparedBankCatalogState();
+    const age=Date.now()-lastRefreshAt,heldFamily=bank&&(!!prepared.value||prepared.phase==='fallback'&&readPublicCatalog()?.complete===true)&&lastRefreshAt>0;
+    if(heldFamily){
+      if(age<0||age>=refreshInterval)void refresh();
+    }else if(bank&&!(prepared.phase==='fallback'&&!prepared.value)&&readPublicCatalog()?.revision!=='local-admission'){
       void refresh();
-    }else if(!preparedDocument){
+    }else if(!preparedDocument||bank){
     void prepareShippedSports().then(()=>{if(alive&&retainedSports)setSportsStatus(current=>current==='fresh'?current:'retained');}).catch(()=>{});
     void prepareShippedCatalog().catch(()=>{});
-    void refresh();
+    void refresh(false,true);
     }
-    const interval = setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 60_000);
+    let timer:ReturnType<typeof setTimeout>;
+    const poll=()=>{const age=Date.now()-lastRefreshAt;if(lastRefreshAt>0&&age>=0&&age<refreshInterval){timer=setTimeout(poll,refreshInterval-age);return;}if(document.visibilityState==='visible')void refresh();timer=setTimeout(poll,refreshInterval);};
+    const elapsed=Date.now()-lastRefreshAt;timer=setTimeout(poll,lastRefreshAt>0&&elapsed>=0&&elapsed<refreshInterval?refreshInterval-elapsed:refreshInterval);
     const wake = () => { if (document.visibilityState === 'visible') void refresh(); };
     document.addEventListener('visibilitychange', wake); window.addEventListener('online', wake);
-    return () => { alive=false;clearInterval(interval); document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); running.current?.abort(); running.current = null;quoteRead.current?.controller.abort();quoteRead.current=null;sportsRunning.current?.abort();sportsRunning.current=null; };
+    return () => { alive=false;clearTimeout(timer); document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); running.current?.abort(); running.current = null;quoteRead.current?.controller.abort();quoteRead.current=null;sportsRunning.current?.abort();sportsRunning.current=null; };
   }, [active, refresh]);
   useEffect(()=>{if(!displayActive)return;const update=()=>{if(document.visibilityState==='visible')setPulse(previous=>Math.max(previous,receizKaiNow().pulse));};update();const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);window.addEventListener('pageshow',update);window.addEventListener('focus',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update);window.removeEventListener('pageshow',update);window.removeEventListener('focus',update);};},[displayActive]);
   const pricedCatalog=useMemo(()=>active?publicCatalogAtPulse(catalog,pricingSource,pulse,selectedItemId):catalog,[catalog,pricingSource,pulse,active,selectedItemId]);
-  const prepared=preparedBankCatalogEnabled()?preparedSnapshot:null,accepted=prepared?.phase==='ready'?prepared.value:null,historical=!!prepared?.value&&prepared.phase!=='ready';
+  const prepared=preparedBankCatalogEnabled()?preparedSnapshot:null,accepted=prepared?.phase==='ready'?prepared.value:null,historical=!!prepared&&prepared.phase!=='ready'&&!!(prepared.value||prepared.phase!=='fallback'&&catalog);
   return { catalog:pricedCatalog, historyCatalog:catalog, pulse, quoteStatus:historical?'stale' as const:quoteStatus, sportsStatus:historical&&sportsStatus==='fresh'?'retained' as const:sportsStatus, status:historical?'stale' as const:accepted?(accepted.receipt.state==='current'?'live' as const:'stale' as const): !catalog && status === 'stale' ? 'error' as const : status, error, refresh };
 }

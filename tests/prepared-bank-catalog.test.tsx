@@ -46,7 +46,16 @@ it('reuses accepted RAM on reopen and matching positive HEAD without any catalog
  const first=createRoot(document.createElement('div'));await act(async()=>{first.render(<Probe/>);});await act(async()=>{await readPreparedBankCatalog();});const catalog=held;act(()=>first.unmount());
  const publicWorkspace=document.createElement('div');publicWorkspace.dataset.publicRuntime='explore';publicWorkspace.hidden=true;publicWorkspace.innerHTML='<script id="public-market-seed" type="application/json">{"schema":"old hidden public page"}</script>';document.body.append(publicWorkspace);
  const parse=vi.spyOn(JSON,'parse'),hash=vi.spyOn(crypto.subtle,'digest'),second=createRoot(document.createElement('div'));
- try{await act(async()=>{second.render(<Probe/>);});expect(held).toBe(catalog);expect(fetcher.mock.calls.map(([,init])=>init?.method)).toEqual(['GET','HEAD']);expect(parse).not.toHaveBeenCalled();expect(hash).not.toHaveBeenCalled();}finally{act(()=>second.unmount());}
+ try{await act(async()=>{second.render(<Probe/>);});expect(held).toBe(catalog);expect(fetcher.mock.calls.map(([,init])=>init?.method)).toEqual(['GET']);await act(async()=>{await readPreparedBankCatalog();});expect(held).toBe(catalog);expect(fetcher.mock.calls.map(([,init])=>init?.method)).toEqual(['GET','HEAD']);expect(parse).not.toHaveBeenCalled();expect(hash).not.toHaveBeenCalled();}finally{act(()=>second.unmount());}
+});
+it('reopens a prepared family without requests before its existing sixty-second refresh deadline',async()=>{
+ const p=await packet('Held prepared B'),fetcher=vi.fn(async(_path:RequestInfo|URL,init?:RequestInit)=>p.response(init?.method));vi.stubGlobal('fetch',fetcher);vi.useFakeTimers();
+ const {usePublicMarket}=await import('../src/receiz/usePublicMarket'),{readPreparedBankCatalog}=await import('../src/receiz/prepared-bank-catalog'),root=createRoot(document.createElement('div'));let latest!:ReturnType<typeof usePublicMarket>;
+ function Probe({active}:{active:boolean}){latest=usePublicMarket(active,false);return null;}
+ try{await act(async()=>root.render(<Probe active/>));await act(async()=>{await readPreparedBankCatalog();});const held=latest.historyCatalog;expect(held?.items[0].title).toBe('Held prepared B');expect(fetcher.mock.calls.map(([,init])=>init?.method)).toEqual(['GET']);
+  await act(async()=>root.render(<Probe active={false}/>));await act(async()=>vi.advanceTimersByTimeAsync(20000));await act(async()=>root.render(<Probe active/>));expect(latest.historyCatalog).toBe(held);expect(fetcher.mock.calls.map(([,init])=>init?.method)).toEqual(['GET']);
+  await act(async()=>vi.advanceTimersByTimeAsync(39999));expect(fetcher.mock.calls.map(([,init])=>init?.method)).toEqual(['GET']);await act(async()=>vi.advanceTimersByTimeAsync(1));expect(fetcher.mock.calls.map(([,init])=>init?.method)).toEqual(['GET','HEAD']);expect(latest.historyCatalog).toBe(held);
+ }finally{act(()=>root.unmount());vi.useRealTimers();}
 });
 it('wakes into changed C as one catalog/chart generation and keeps unavailable preparation on the legacy fallback',async()=>{
  const b=await packet('B'),c=await packet('C','e'.repeat(64));let changed=false;const fetcher=vi.fn(async(path:RequestInfo|URL,init?:RequestInit)=>{expect(path).toBe('/api/explore?path=bank');return(changed?c:b).response(init?.method);});vi.stubGlobal('fetch',fetcher);
