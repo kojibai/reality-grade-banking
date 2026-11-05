@@ -2,6 +2,8 @@ import { loadReceiz } from './client';
 import { BANK_APPLICATION_ID, isBankNativeApplicationId } from './config';
 import { projectHeldDeposit } from './deposit-source';
 import { inspectNoteProof } from './note-proof-portability';
+import {openCanonicalProofFile,hasProofCaptureCarrier,isProofPng} from './proof-capture';
+import {extractAccountProofPng} from './account-proof-png';
 import type { VerifiedAccountProof } from './account-proof';
 
 export type ProofKind = 'owned-source' | 'received-original' | 'account-source' | 'execution-recovery' | 'note-image' | 'note-deposit' | 'payment-receipt' | 'asset-receipt';
@@ -26,6 +28,18 @@ const utf8 = (v: Uint8Array) => new TextDecoder('utf-8', { fatal: true }).decode
 function validateSource(source: ProofSource) {
   if (!kinds.includes(source.kind) || !filename(source.filename) || !source.bytes.length || source.bytes.length > MAX_SOURCE) throw Error('PROOF_SOURCE_INVALID');
 }
+function json(bytes:Uint8Array):unknown{try{return JSON.parse(utf8(bytes));}catch{return null;}}
+const accountStatement=(value:unknown)=>object(value)&&['bankeiz.public-account-statement.v1','bankeiz.public-account-statement.v2','bankeiz.public-account-statement.v3','bankeiz.public-account-statement.v4'].includes(String(value.schema));
+function rawKind(value:unknown):ProofKind|null{
+ if(!object(value))return null;
+ if(value.schema==='bankeiz.account-proof.v1')return 'account-source';
+ if(value.schema==='receiz.bank.native-asset-result.v1')return 'asset-receipt';
+ if(value.schema==='receiz.bank.native-payment-result.v1')return 'payment-receipt';
+ if(value.schema==='receiz.portable-execution-transition-recovery.v124')return 'execution-recovery';
+ if(['receiz.bank.note-deposit-receipt.v1','receiz.bank.note-redemption-source.v1','receiz.bank.note-redemption-source.v2','receiz.bank.connected-note.receipt.v1','receiz.bank.connected-note.handover-source.v1'].includes(String(value.schema)))return 'note-deposit';
+ return null;
+}
+function accountPng(bytes:Uint8Array):Uint8Array|null{if(!isProofPng(bytes))return null;try{return extractAccountProofPng(bytes);}catch{return null;}}
 export async function proofDigest(bytes: Uint8Array): Promise<string> {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(bytes)))].map(v => v.toString(16).padStart(2, '0')).join('');
 }
@@ -39,23 +53,41 @@ export function createProofLibrary(input: {
   readAccount?(): Promise<ProofSource[]>;
   commit(sources: ProofSource[]): Promise<ProofRetention>;
   restoreAccounts?(proofs: readonly VerifiedAccountProof[]): Promise<boolean>;
+  sealRecordExport?:(input:import('./record-proof-export').RecordProofExportInput)=>Promise<File>;
 }): ProofLibrary {
   const binding = Object.freeze({ ...input.binding });
   const reviews = new WeakMap<ProofReview, { sources: readonly ProofSource[]; accounts: readonly VerifiedAccountProof[] }>();
   let busy = false;
-  async function verify(source: ProofSource, accounts?: VerifiedAccountProof[], knownDigest?: string): Promise<ProofSummary> {
+  const verifiedSources=new WeakMap<ProofSource,{canonical:boolean;account?:VerifiedAccountProof}>();
+  const fileFor=(source:ProofSource)=>new File([new Uint8Array(source.bytes)],source.filename);
+  async function nativeInput(source:ProofSource,file:File,digest:string){
+    const parsed=json(source.bytes),raw=rawKind(parsed);
+    if((raw===source.kind||source.kind==='note-image'&&isProofPng(source.bytes))&&!hasProofCaptureCarrier(source.bytes))return{file,bytes:source.bytes,canonical:false};
+    const opened=await openCanonicalProofFile(file);if(opened.sealedArtifact.artifactSha256!==digest)throw Error('PROOF_SOURCE_DIGEST_MISMATCH');
+    const bytes=new Uint8Array(opened.verifiedPayload.bytes),payload=json(bytes);
+    // A canonical Account Original is itself the admitted source. Its naked
+    // statement must never replace that Source at the strict account reader.
+    if(source.kind==='account-source'&&accountStatement(payload))return{file,bytes:source.bytes,canonical:true};
+    const embedded=source.kind==='account-source'?accountPng(bytes):null;
+    if(!embedded&&rawKind(payload)!==source.kind&&source.kind!=='note-image')throw Error('PROOF_SOURCE_KIND_CONFLICT');
+    const exact=embedded??bytes;
+    return{file:new File([new Uint8Array(exact)],opened.verifiedPayload.filename,{type:opened.verifiedPayload.mimeType}),bytes:exact,canonical:true};
+  }
+  async function verify(source: ProofSource, accounts?: VerifiedAccountProof[], knownDigest?: string, heldFile?:File): Promise<ProofSummary> {
     input.assertOpen();
     validateSource(source);
     const sdk = await loadReceiz(), digest = knownDigest ?? await proofDigest(source.bytes);
+    const file=heldFile??fileFor(source);
+    let canonical=false,account:VerifiedAccountProof|undefined;
     let title: string, extra: Pick<ProofSummary, 'operationId' | 'participantCount'> = {};
     if (source.kind === 'account-source') {
       const { verifyAccountProof } = await import('./account-proof');
-      const proof = await verifyAccountProof(new File([new Uint8Array(source.bytes)], source.filename), binding);
+      const native=await nativeInput(source,file,digest);canonical=native.canonical;
+      const proof = await verifyAccountProof(native.file, binding);account=proof;
       accounts?.push(proof);
       title = 'Verified account history';
     } else if (source.kind === 'owned-source') {
-      const client = sdk.createReceizClient();
-      const opened = await client.artifacts.verifyAndOpen(new File([new Uint8Array(source.bytes)], source.filename));
+      const opened = await openCanonicalProofFile(file);canonical=true;
       if (opened.sealedArtifact.artifactSha256 !== digest) throw Error('PROOF_SOURCE_DIGEST_MISMATCH');
       let payload: unknown;
       try { payload = JSON.parse(utf8(opened.verifiedPayload.bytes)); } catch { /* An owned original may have a non-JSON payload. */ }
@@ -64,19 +96,22 @@ export function createProofLibrary(input: {
         title = (await openNativeAssetHolding(source.bytes, source.filename, binding)).deposit.title;
       } else title = projectHeldDeposit(opened, source.bytes, source.filename, binding.artifactOwnerReceizId).title;
     } else if(source.kind==='received-original'){
-      const opened=await sdk.createReceizClient().artifacts.verifyAndOpen(new File([new Uint8Array(source.bytes)],source.filename));
+      const opened=await openCanonicalProofFile(file);canonical=true;
       if(opened.sealedArtifact.artifactSha256!==digest)throw Error('PROOF_SOURCE_DIGEST_MISMATCH');
       title=`Received original · ${opened.verifiedPayload.filename}`;
     } else if(source.kind==='payment-receipt'){
-      const {verifyNativePaymentSource}=await import('./native-payment');const {receipt}=await verifyNativePaymentSource(JSON.parse(utf8(source.bytes)));
+      const native=await nativeInput(source,file,digest);canonical=native.canonical;
+      const {verifyNativePaymentSource}=await import('./native-payment');const {receipt}=await verifyNativePaymentSource(JSON.parse(utf8(native.bytes)));
       if(receipt.review.keyId!==binding.keyId||receipt.review.request.actorReceizId!==binding.artifactOwnerReceizId)throw Error('PROOF_BACKUP_IDENTITY_MISMATCH');
       title=receipt.schema==='receiz.bank.native-payment-receipt.v1'?'Payment receipt':'Payment expiry proof';extra={operationId:receipt.review.request.requestId};
     } else if(source.kind==='asset-receipt'){
-      const {verifyNativeAssetSource}=await import('./native-asset');const {receipt}=await verifyNativeAssetSource(JSON.parse(utf8(source.bytes)));
+      const native=await nativeInput(source,file,digest);canonical=native.canonical;
+      const {verifyNativeAssetSource}=await import('./native-asset');const {receipt}=await verifyNativeAssetSource(JSON.parse(utf8(native.bytes)));
       if(receipt.review.keyId!==binding.keyId||receipt.review.request.actorReceizId!==binding.artifactOwnerReceizId)throw Error('PROOF_BACKUP_IDENTITY_MISMATCH');
       title=receipt.schema==='receiz.bank.native-asset-receipt.v1'?'Asset receipt':'Asset expiry proof';extra={operationId:receipt.review.request.requestId};
     } else if (source.kind === 'execution-recovery') {
-      const recovery: unknown = JSON.parse(utf8(source.bytes));
+      const native=await nativeInput(source,file,digest);canonical=native.canonical;
+      const recovery: unknown = JSON.parse(utf8(native.bytes));
       const applicationId = (recovery as import('@receiz/sdk').ReceizPortableExecutionTransitionRecoveryV124)?.transitionSet?.applicationId;
       if (!isBankNativeApplicationId(applicationId)) throw Error('PROOF_RECOVERY_APPLICATION_MISMATCH');
       await sdk.recoverReceizPortableExecutionTransitionSetV124(recovery, { audience: applicationId });
@@ -86,13 +121,19 @@ export function createProofLibrary(input: {
       if (!plan || plan.applicationId !== applicationId || !value.members.length) throw Error('PROOF_RECOVERY_APPLICATION_MISMATCH');
       title = 'Transaction recovery'; extra = { operationId: plan.attemptId, participantCount: value.members.length };
     } else {
-      const note = await inspectNoteProof(source, binding.keyId);
+      const native=await nativeInput(source,file,digest);canonical=native.canonical;
+      let note:{title:string};
+      if(canonical&&source.kind==='note-image'&&isProofPng(source.bytes)){
+        // A funded Note can itself be a canonical PNG. Its native Source is
+        // inspected intact; an enclosing record capture instead carries it.
+        try{note=await inspectNoteProof(source,binding.keyId);}catch{note=await inspectNoteProof({...source,bytes:native.bytes},binding.keyId);}
+      }else note=await inspectNoteProof({...source,bytes:native.bytes}, binding.keyId);
       title = note.title;
     }
-    input.assertOpen();
+    input.assertOpen();verifiedSources.set(source,{canonical,account});
     return Object.freeze({ kind: source.kind, digest, filename: source.filename, title, size: source.bytes.length, ...extra });
   }
-  async function admit(sources: ProofSource[]) {
+  async function admit(sources: ProofSource[],files?:Map<string,File>) {
     const summaries: ProofSummary[] = [], held: ProofSource[] = [], accounts: VerifiedAccountProof[] = [], seen = new Map<string, ProofKind>(); let total = 0;
     for (const raw of sources) {
       const source = copy(raw); validateSource(source);
@@ -101,7 +142,7 @@ export function createProofLibrary(input: {
       if (!prior) {
         total += source.bytes.length;
         if (held.length >= MAX_COUNT || total > MAX_TOTAL) throw Error('PROOF_BACKUP_CAPACITY');
-        const summary = await verify(source, accounts, digest); held.push(source); summaries.push(summary); seen.set(summary.digest, source.kind);
+        const summary = await verify(source, accounts, digest,files?.get(digest)); held.push(source); summaries.push(summary); seen.set(summary.digest, source.kind);
       }
     }
     return { held, summaries, accounts, totalBytes: held.reduce((n, value) => n + value.bytes.length, 0) };
@@ -124,6 +165,7 @@ export function createProofLibrary(input: {
   }
   async function inspect(file: File): Promise<ProofReview> {
     input.assertOpen(); if (!file.size || file.size > MAX_WIRE) throw Error('PROOF_BACKUP_CAPACITY');
+    const name=file.name,mime=file.type;
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (!bytes.length || bytes.length > MAX_WIRE) throw Error('PROOF_BACKUP_CAPACITY');
     let parsed: unknown; try { parsed = JSON.parse(utf8(bytes)); } catch { /* Native binary originals are verified below. */ }
@@ -143,18 +185,26 @@ export function createProofLibrary(input: {
         sources.push({ kind: value.kind as ProofKind, filename: value.filename, bytes: original });
       }
     } else {
-      const kind: ProofKind = object(parsed) && parsed.schema === 'bankeiz.account-proof.v1' ? 'account-source' : object(parsed) && parsed.schema === 'receiz.bank.native-asset-result.v1' ? 'asset-receipt' : object(parsed) && parsed.schema === 'receiz.bank.native-payment-result.v1' ? 'payment-receipt' : object(parsed) && parsed.schema === 'receiz.portable-execution-transition-recovery.v124' ? 'execution-recovery'
-        : object(parsed) && ['receiz.bank.note-deposit-receipt.v1','receiz.bank.note-redemption-source.v1','receiz.bank.note-redemption-source.v2'].includes(String(parsed.schema)) ? 'note-deposit'
-        : bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71 ? 'note-image' : 'owned-source';
-      // A PNG may also be an ordinary owned Original; classify via canonical
-      // note verification first, then independently verify the owned source.
-      sources = [{ kind, filename: file.name, bytes }];
-      if (kind === 'note-image') {
-        try { await inspectNoteProof(sources[0], binding.keyId); }
-        catch { sources[0].kind = 'owned-source'; }
+      file=new File([new Uint8Array(bytes)],name,{type:mime});
+      const carrier=hasProofCaptureCarrier(bytes);
+      let kind=rawKind(parsed);
+      if(!kind&&isProofPng(bytes)&&!carrier){
+        try{await inspectNoteProof({kind:'note-image',filename:file.name,bytes},binding.keyId);kind='note-image';}catch{/* Canonical ownership below remains required. */}
       }
+      if(!kind||carrier){
+        const opened=await openCanonicalProofFile(file),payload=opened.verifiedPayload.bytes,value=json(payload);
+        kind=accountStatement(value)||accountPng(payload)?'account-source':rawKind(value);
+        if(!kind&&(isProofPng(payload)||isProofPng(bytes))){
+          // Complete native verification distinguishes a Note image from an
+          // ordinary canonical PNG; neither classification certifies ownership.
+          const noteBytes=isProofPng(payload)?payload:bytes;
+          try{await inspectNoteProof({kind:'note-image',filename:file.name,bytes:noteBytes},binding.keyId);kind='note-image';}catch{/* The owned Original path still checks its actual owner. */}
+        }
+        kind??='owned-source';
+      }
+      sources=[{kind,filename:file.name,bytes}];
     }
-    const accepted = await admit(sources);
+    const accepted = await admit(sources,new Map([[await proofDigest(bytes),file]]));
     const review = Object.freeze({ items: Object.freeze(accepted.summaries), totalBytes: accepted.totalBytes });
     reviews.set(review, { sources: accepted.held, accounts: accepted.accounts }); return review;
   }
@@ -183,7 +233,18 @@ export function createProofLibrary(input: {
     const found = await Promise.all(sources.map(async source => ({ source, digest: await proofDigest(source.bytes) })));
     const source = found.find(value => value.digest === digest)?.source;
     if (!source) throw Error('PROOF_SOURCE_NOT_HELD');
-    await verify(source); return { bytes: new Uint8Array(source.bytes), filename: source.filename };
+    await verify(source);const verified=verifiedSources.get(source)!;
+    if(source.kind==='account-source'){
+      const {heldAccountProofOriginal}=await import('./account-proof');
+      // A captured image/packet remains the exact enclosing proof. Legacy
+      // Account backup wrappers expose their already-admitted inner Original.
+      if(verified.canonical)return{bytes:new Uint8Array(source.bytes),filename:source.filename};
+      const original=heldAccountProofOriginal(verified.account!);return{bytes:original.bytes,filename:original.filename};
+    }
+    if(verified.canonical)return{bytes:new Uint8Array(source.bytes),filename:source.filename};
+    if(!input.sealRecordExport)throw Error('PROOF_EXPORT_SEAL_REQUIRED');
+    const file=await input.sealRecordExport({bytes:new Uint8Array(source.bytes),filename:source.filename,mimeType:'application/octet-stream'});input.assertOpen();
+    const filename=file.name,bytes=new Uint8Array(await file.arrayBuffer());input.assertOpen();return{bytes,filename};
   }
   return Object.freeze({ exportBackup, inspect, retain, list, exportProof });
 }

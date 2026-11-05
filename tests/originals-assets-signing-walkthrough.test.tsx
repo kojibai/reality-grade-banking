@@ -25,3 +25,9 @@ it('follows Assets, fingerprint, device-approval explanation and signed state wi
  choose('assets-originals-signed');expect(active().textContent).toContain('Example field notes');expect(active().querySelector('[aria-label="Unlock value with PBI"]')).toBeNull();expect(fetch).not.toHaveBeenCalled();
  }finally{document.body.replaceChildren();vi.unstubAllGlobals();}
 });
+
+it('starts with the Original visible and uses the real disabled signing indicator for device approval',()=>{
+ const doc=new DOMParser().parseFromString(originalsQualificationContent(),'text/html'),tour=doc.querySelector('[data-originals-signing-tour]')!;
+ expect(tour.querySelector('[data-product-panel]:not([hidden])')?.getAttribute('data-product-panel')).toBe('assets-originals');const approval=tour.querySelector('[data-product-panel="assets-originals-approval"]')!;expect(approval.querySelector('button[aria-label="Signing Original"][disabled] .inline-opening[role="status"]')?.getAttribute('aria-label')).toBe('Signing Original');expect(approval.querySelector('[aria-label="Unlock value with PBI"]')).toBeNull();expect(tour.querySelector('[data-signing-play]')?.hasAttribute('disabled')).toBe(true);expect(tour.textContent).toContain('No signing is performed');
+ const ids=[...tour.querySelectorAll('[id]')].map(node=>node.id);expect(new Set(ids).size).toBe(ids.length);
+});

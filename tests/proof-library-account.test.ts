@@ -5,7 +5,7 @@ import type {VerifiedAccountProof} from '../src/receiz/account-proof';
 // Portability choreography beneath account-proof's independently tested
 // canonical verifier. These fixtures do not qualify balances or issuer keys.
 const admitted=vi.hoisted(()=>new Map<string,VerifiedAccountProof>());
-vi.mock('../src/receiz/account-proof',()=>({verifyAccountProof:async(file:File,owner:{keyId:string;artifactOwnerReceizId:string})=>{
+vi.mock('../src/receiz/account-proof',()=>({heldAccountProofOriginal:()=>({bytes:new TextEncoder().encode('synthetic canonical account Original'),filename:'account-original.receiz',mimeType:'application/octet-stream'}),verifyAccountProof:async(file:File,owner:{keyId:string;artifactOwnerReceizId:string})=>{
   const proof=admitted.get(await file.text());
   if(!proof)throw Error('ACCOUNT_PROOF_NATIVE_STATEMENT_UNVERIFIED');
   if(proof.statement.account.keyId!==owner.keyId||proof.statement.account.receizId!==owner.artifactOwnerReceizId)throw Error('ACCOUNT_PROOF_OWNER_MISMATCH');
@@ -30,7 +30,7 @@ it('backs up the exact retained account original and restores only after explici
  expect(review.items[0]).toMatchObject({kind:'account-source',title:'Verified account history'});expect(s.commit).not.toHaveBeenCalled();expect(s.restoreAccounts).not.toHaveBeenCalled();
  expect(await s.api.retain(review)).toMatchObject({added:1,accountHistory:'restored'});
  expect(s.held[0].bytes).toEqual(s.source.bytes);expect(s.restoreAccounts).toHaveBeenCalledExactlyOnceWith([s.proof]);
- const saved=await s.api.exportProof(review.items[0].digest);expect(saved.bytes).toEqual(s.source.bytes);
+ const saved=await s.api.exportProof(review.items[0].digest);expect(saved.bytes).toEqual(new TextEncoder().encode('synthetic canonical account Original'));expect(saved.filename).toBe('account-original.receiz');
  expect((await s.api.list())[0].kind).toBe('account-source');
  // An imported original and its retained-ledger copy are one backup member.
  expect(JSON.parse(new TextDecoder().decode((await s.api.exportBackup()).bytes)).sources).toHaveLength(1);

@@ -1,5 +1,6 @@
 import type { ReceizIdentityPublicBinding, ReceizPortableSealedArtifactV124 } from '@receiz/sdk';
 import { loadReceiz } from './client';
+import {openCanonicalProofFile} from './proof-capture';
 import { BANK_APPLICATION_ID, isBankNativeApplicationId } from './config';
 import { ACCOUNT_PROOF_EXPORT_AGE_PULSES, ACCOUNT_PROOF_MAX_BYTES, ACCOUNT_PROOF_WRITERS, ACCOUNT_PROOF_PATH } from './account-proof-policy';
 
@@ -7,10 +8,14 @@ import {inspectAccountStatement as inspectNativeAccountStatement,type AccountSta
 export type {AccountStatement,AccountProofTransaction} from './account-proof-statement';
 export interface VerifiedAccountProof { readonly statement: AccountStatement; readonly sourceDigest: string; readonly writer: string; }
 const held = new WeakMap<VerifiedAccountProof, Uint8Array>();
+const originals = new WeakMap<VerifiedAccountProof, {bytes:Uint8Array;filename:string;mimeType:string}>();
 export function isVerifiedAccountProof(value: unknown): value is VerifiedAccountProof { return !!value && typeof value === 'object' && held.has(value as VerifiedAccountProof); }
 /** Exact original custody for local historical restoration. Public export
  * freshness remains separately enforced by exportAccountProof. */
 export function heldAccountProofBytes(proof:VerifiedAccountProof):Uint8Array {const bytes=held.get(proof);if(!bytes)throw Error('ACCOUNT_PROOF_VERIFIED_SOURCE_REQUIRED');return new Uint8Array(bytes);}
+/** Standalone canonical Original, distinct from the compatible Bank backup wire.
+ * Its exact bytes were opened by the existing verifier before custody issued. */
+export function heldAccountProofOriginal(proof:VerifiedAccountProof):{bytes:Uint8Array;filename:string;mimeType:string}{const source=originals.get(proof);if(!source)fail('VERIFIED_SOURCE_REQUIRED');return{...source,bytes:new Uint8Array(source.bytes)};}
 const digest = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{64}$/u.test(v);
 const text = (v: unknown, limit = 512): v is string => typeof v === 'string' && v.length > 0 && v.length <= limit && !/[\x00-\x1f\x7f]/u.test(v);
 function fail(code = 'INVALID'): never { throw Error(`ACCOUNT_PROOF_${code}`); }
@@ -34,10 +39,22 @@ function parseWire(bytes: Uint8Array) {
  * cached balance, or verified:true field can be supplied by the source. */
 export async function verifyAccountProof(file: File, expected?: Pick<ReceizIdentityPublicBinding, 'keyId' | 'artifactOwnerReceizId'>): Promise<VerifiedAccountProof> {
   if (!file.size || file.size > ACCOUNT_PROOF_MAX_BYTES) fail('CAPACITY');
-  const bytes = new Uint8Array(await file.arrayBuffer()), source = parseWire(bytes), sdk = await loadReceiz();
-  const exact = sdk.receizBase64UrlDecode(source.exactBytesB64u);
-  if (sdk.receizBase64UrlEncode(exact) !== source.exactBytesB64u) fail();
-  const opened = await sdk.createReceizClient().artifacts.verifyAndOpen(new File([new Uint8Array(exact)], source.filename, { type: source.mimeType }));
+  const bytes = new Uint8Array(await file.arrayBuffer()), sdk = await loadReceiz();
+  let wrapper=false;
+  try{wrapper=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes))?.schema==='bankeiz.account-proof.v1';}catch{/* The canonical reader below must authenticate a non-wrapper file. */}
+  let source:ReceizPortableSealedArtifactV124,exact:Uint8Array,wire:Uint8Array=bytes;
+  let opened:Awaited<ReturnType<ReturnType<typeof sdk.createReceizClient>['artifacts']['verifyAndOpen']>>;
+  if(wrapper){
+    source=parseWire(bytes);exact=sdk.receizBase64UrlDecode(source.exactBytesB64u);
+    if(sdk.receizBase64UrlEncode(exact)!==source.exactBytesB64u)fail();
+    opened=await openCanonicalProofFile(new File([new Uint8Array(exact)],source.filename,{type:source.mimeType}));
+  }else{
+    // A downloaded canonical Original roundtrips without a second admission.
+    // Naked statement JSON fails this same canonical open before projection.
+    exact=bytes;opened=await openCanonicalProofFile(file);
+    wire=new TextEncoder().encode(JSON.stringify({schema:'bankeiz.account-proof.v1',sdkVersion:'129.0.0',source:{schema:'receiz.sealed-artifact-bytes.v124',exactBytesB64u:sdk.receizBase64UrlEncode(exact),filename:opened.sealedArtifact.filename,mimeType:opened.sealedArtifact.mimeType,artifactSha256:opened.sealedArtifact.artifactSha256,payloadSha256:opened.verifiedPayload.sha256}}));
+    source=parseWire(wire);
+  }
   if (opened.sealedArtifact.kind !== 'receiz.native-record-seal' || opened.sealedArtifact.artifactSha256 !== source.artifactSha256 || opened.verifiedPayload.sha256 !== source.payloadSha256) fail('SOURCE_MISMATCH');
   const writer = opened.sealedArtifact.continuity.ownerReceizId;
   if (!writer) fail('WRITER_NOT_PINNED');
@@ -54,7 +71,7 @@ export async function verifyAccountProof(file: File, expected?: Pick<ReceizIdent
   const now = BigInt(sdk.receizKaiNow().uPulse);
   if (BigInt(statement.checkpoint.kaiUPulse) > now) fail('FUTURE_SOURCE');
   const verified = Object.freeze({ statement, sourceDigest: source.artifactSha256, writer });
-  held.set(verified, new Uint8Array(bytes)); return verified;
+  held.set(verified, new Uint8Array(wire));originals.set(verified,{bytes:new Uint8Array(exact),filename:source.filename,mimeType:source.mimeType});return verified;
 }
 export async function exportAccountProof(proof: VerifiedAccountProof): Promise<{ bytes: Uint8Array; filename: string }> {
   const bytes = held.get(proof); if (!bytes) fail('VERIFIED_SOURCE_REQUIRED');

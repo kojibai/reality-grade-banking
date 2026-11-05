@@ -1,3 +1,4 @@
+import {initOriginalSigningTours} from './signing-tour';
 const mounted=new WeakSet<HTMLElement>();
 const escape=(v:unknown)=>String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 export function mountOriginalExample(root:HTMLElement){
@@ -25,5 +26,5 @@ export function mountOriginalExample(root:HTMLElement){
  }
  verify.addEventListener('click',()=>void run(false));tamper.addEventListener('click',()=>void run(true));verify.disabled=false;tamper.disabled=false;
 }
-function boot(){document.querySelectorAll<HTMLElement>('[data-originals-example]').forEach(mountOriginalExample);}
+function boot(){initOriginalSigningTours();document.querySelectorAll<HTMLElement>('[data-originals-example]').forEach(mountOriginalExample);}
 if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();window.addEventListener('receiz-learn:page',boot);}

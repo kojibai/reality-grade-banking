@@ -18,6 +18,7 @@ if(process.argv[1]?.endsWith('build-product-previews.mjs')){
  const server=await createServer({server:{middlewareMode:true,hmr:false,ws:false},optimizeDeps:{noDiscovery:true,include:[]},appType:'custom'});
  try{
   const {ProductScreen,productScreenNames}=await server.ssrLoadModule('/src/presentation/ProductScreen.tsx');
+  const {InlineOpening}=await server.ssrLoadModule('/src/components/InlineOpening.tsx'),signingIndicator=renderToStaticMarkup(createElement(InlineOpening,{compact:true,label:'Signing Original'}));
   const importedStyles=[...server.environments.ssr.moduleGraph.idToModuleMap.values()].map(module=>module.file).filter(file=>file?.endsWith('.css')&&file.startsWith(resolve('src')+'/')).map(file=>relative(process.cwd(),file)).filter(file=>!styles.includes(file)).sort();
   const previewStyles=[...styles,...new Set(importedStyles)];
   const {paymentQr,paymentQrPath}=await server.ssrLoadModule('/src/receiz/payment-qr.ts');
@@ -27,7 +28,7 @@ if(process.argv[1]?.endsWith('build-product-previews.mjs')){
    // make its illustrative receiving QR resolve to a reserved invalid domain.
    html=html.replace(/<video\b[^>]*>[\s\S]*?<\/video>/g,'').replace(/<dialog /g,'<dialog open ').replace(/\bid="([^"]+)"/g,(_,id)=>`id="example-${name}-${id}"`).replace(/\b(aria-labelledby|aria-describedby|aria-controls)="([^"]+)"/g,(_,attr,ids)=>`${attr}="${ids.split(' ').map(id=>'example-'+name+'-'+id).join(' ')}"`).replace(/url\(#([^)]+)\)/g,(_,id)=>`url(#example-${name}-${id})`);
    if(name==='receive')html=html.replace(/(<svg[^>]*class="[^"]*payment-qr[^>]*>[\s\S]*?<path[^>]*d=")[^"]+/,`$1${paymentQrPath(paymentQr('https://example.invalid/'))}`);
-   screens[example?name+':'+example+(financialStage==='after'?':after':''):name]=await exampleNavigation(scrollableProductPreview(html,name),name);
+   screens[example?name+':'+example+(financialStage==='after'?':after':''):name]=await exampleNavigation(scrollableProductPreview(html,name),name,{signingIndicator});
   }}finally{Date.now=now;}
   const css=(await transform(scopeProductCss((await Promise.all(previewStyles.map(path=>readFile(path,'utf8')))).join('\n')),{loader:'css',minify:true,target:['safari16','chrome100']})).code;
   const output=JSON.stringify({notice:'Actual product components rendered as read-only examples. No proof, identity or financial authority.',screens,css})+'\n';

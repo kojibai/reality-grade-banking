@@ -3,7 +3,7 @@ import {Window} from 'happy-dom';
 import {exampleAssets} from '../src/content/product-example-assets.mjs';
 const routes={'Create asset':'created-asset','Sign':'signed-asset',Enter:'account','Remove ID from this device':'entry','Use existing account':'account','Continue with PBI':'account',Account:'account',Market:'market',Add:'deposit',Deposit:'deposit',Assets:'assets',Ledger:'ledger',Send:'send',Receive:'receive','Create note':'note-create','Deposit note':'note-deposit','Pay with a Note':'note-deposit','Send money':'send','Send ownership':'send-ownership','Review payment':'send-review','Edit details':'send','Send another payment':'send','Send payment':'send-complete','All send options':'send','All receive options':'receive','Back to payment':'send','All deposits':'deposit',Counter:'counter','Back to Receive':'receive','Send link':'receive','Checkout link':'receive-checkout','Payment button':'receive','Embedded checkout':'receive-embedded','Review note':'note-review','Edit amount':'note-create','Add money':'add-money','An asset':'create-asset','Settlement Note':'note-deposit','Use an existing proof':'deposit-asset','Create an asset':'create-asset','View assets':'assets','Your history':'ledger'};
 /** Static illustration controls only. No event handlers, account APIs or financial sources survive SSR. */
-export async function exampleNavigation(html,screen){
+export async function exampleNavigation(html,screen,{signingIndicator}={}){
  const window=new Window({settings:{disableIframePageLoading:true,disableCSSFileLoading:true,disableJavaScriptFileLoading:true}}),doc=window.document;doc.body.innerHTML=html;
  const frame=doc.querySelector('.product-screen');frame.dataset.exampleView=screen;
  const allow=node=>{node.removeAttribute('inert');node.removeAttribute('aria-disabled');node.setAttribute('tabindex','0');};
@@ -41,6 +41,10 @@ export async function exampleNavigation(html,screen){
  }
  if(['receive','receive-checkout','receive-embedded'].includes(screen)){
   const tools=frame.querySelector('.payment-tools');if(screen==='receive-embedded'&&tools)tools.open=true;
+ }
+ if(screen==='assets-originals-approval'){
+  if(!signingIndicator)throw Error('PRODUCT_SIGNING_INDICATOR_REQUIRED');
+  for(const button of frame.querySelectorAll('[aria-label="Unlock value with PBI"]')){button.innerHTML=signingIndicator;button.disabled=true;button.removeAttribute('data-example-action');button.setAttribute('aria-label','Signing Original');}
  }
  // Trusted local display art for labeled examples; never Original bytes or ownership evidence.
  for(const row of frame.querySelectorAll('.market-rows .asset-row')){const asset=exampleAssets.find(asset=>asset.title===row.querySelector('strong')?.textContent),mark=row.querySelector('.asset-mark');if(!asset||!mark)continue;mark.classList.add('market-object-artwork');const image=doc.createElement('img');image.src=asset.image;image.alt='';image.loading='lazy';image.decoding='async';image.width=60;image.height=60;mark.replaceChildren(image);}

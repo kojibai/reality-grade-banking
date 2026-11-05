@@ -9,33 +9,38 @@ export function BankExecutionRecoveryPanel({ identity, onRefresh = () => {} }: {
   const [status, setStatus] = useState<BankExecutionStatus | null>(null);
   const [outcome, setOutcome] = useState<BankExecutionResult | import('../../receiz/native-payment').NativePaymentResult | import('../../receiz/native-asset').NativeAssetResult | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
-  const alive = useRef(false), submitting = useRef(false);
+  const alive = useRef(false), submitting = useRef(false), generation = useRef(0);
   useEffect(() => {
-    alive.current = true; let current = true;
-    setStatus(null); setOutcome(null); setError('');
+    alive.current = true; generation.current++; submitting.current = false; let current = true;
+    setStatus(null); setOutcome(null); setBusy(false); setError('');
     void identity.executionRecovery?.().status().then(value => { if (current) setStatus(value); }).catch(() => { if (current) setError('Retained transaction details could not be opened. Keep this device and try again.'); });
-    return () => { current = false; alive.current = false; };
+    return () => { current = false; alive.current = false; generation.current++; };
   }, [identity]);
   const check = async () => {
     if (submitting.current || !identity.executionRecovery) return;
+    const ticket = generation.current;
     submitting.current = true; setBusy(true); setError('');
     try {
       const value = await identity.executionRecovery().resolve(true);
-      if (alive.current) { setOutcome(value); if (value?.status === 'committed') onRefresh(); }
-    } catch { if (alive.current) setError('The outcome could not be read. This attempt stays retained; checking again will not send another payment.'); }
-    finally { submitting.current = false; if (alive.current) setBusy(false); }
+      if (alive.current && ticket === generation.current) { setOutcome(value); if (value?.status === 'committed') onRefresh(); }
+    } catch { if (alive.current && ticket === generation.current) setError('The outcome could not be read. This attempt stays retained; checking again will not send another payment.'); }
+    finally { if (ticket === generation.current) { submitting.current = false; if (alive.current) setBusy(false); } }
   };
   const save = async () => {
     if (submitting.current || !identity.executionRecovery) return;
+    const ticket = generation.current;
     submitting.current = true; setBusy(true); setError('');
     try {
       const original = await identity.executionRecovery().exportRecovery();
-      if (!alive.current) return;
-      const url = URL.createObjectURL(new Blob([new Uint8Array(original.bytes)], { type: 'application/json' }));
-      const link = document.createElement('a'); link.href = url; link.download = original.filename; link.click();
+      if (!alive.current || ticket !== generation.current) return;
+      if (!identity.sealRecordExport) throw Error('RECORD_PROOF_EXPORT_UNAVAILABLE');
+      const file = await identity.sealRecordExport({ bytes: original.bytes, filename: original.filename, mimeType: 'application/json' });
+      if (!alive.current || ticket !== generation.current) return;
+      const url = URL.createObjectURL(file);
+      const link = document.createElement('a'); link.href = url; link.download = file.name; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch { if (alive.current) setError('The complete recovery proof could not be verified for export. Its original remains held on this device.'); }
-    finally { submitting.current = false; if (alive.current) setBusy(false); }
+    } catch { if (alive.current && ticket === generation.current) setError('The complete recovery proof could not be verified for export. Its original remains held on this device.'); }
+    finally { if (ticket === generation.current) { submitting.current = false; if (alive.current) setBusy(false); } }
   };
   if (!status && !error) return null;
   const state = outcome?.status ?? status?.state;

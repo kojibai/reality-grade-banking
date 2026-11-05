@@ -885,6 +885,11 @@ const meetingFamily=(id:string)=>{if(!/^[a-f0-9-]{36}$/i.test(id))throw Error('M
 export const loadMeetingCapture=(binding:{artifactSha256:string},id:string)=>loadNoteState(binding,meetingFamily(id));
 export const saveMeetingCapture=(binding:{artifactSha256:string},id:string,value:unknown,expected:unknown)=>saveNoteState(binding,meetingFamily(id),value,expected);
 
+// Local export references only; immutable bytes use existing encrypted blob custody.
+const recordExportFamily=(key:string)=>{if(!/^[a-f0-9]{64}$/.test(key))throw Error('RECORD_PROOF_REFERENCE_INVALID');return 'record-proof-export:'+key;};
+export const loadRecordProofExport=(binding:{artifactSha256:string},key:string)=>loadNoteState(binding,recordExportFamily(key));
+export const saveRecordProofExport=(binding:{artifactSha256:string},key:string,value:import('./record-proof-export').RecordProofExportCheckpoint,expected:unknown)=>saveNoteState(binding,recordExportFamily(key),value,expected);
+
 // Register work points to an immutable encrypted catalog. Cart edits do not
 // serialize or re-encrypt the full catalog or any payment-original history.
 export const loadCounterRegisterWork=(binding:{artifactSha256:string})=>loadNoteState(binding,'counter-register');

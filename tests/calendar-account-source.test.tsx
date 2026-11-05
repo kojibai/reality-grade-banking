@@ -12,7 +12,7 @@ import type {PublicRecord} from '../src/receiz/public-network';
 const held=vi.hoisted(()=>new WeakMap<object,Uint8Array>());
 // Admitted-capability/file wiring only, matching the existing account-ledger
 // harness. Unmocked SDK refusal and conformance tests remain separate evidence.
-vi.mock('../src/receiz/account-proof',async original=>({...await original<typeof import('../src/receiz/account-proof')>(),isVerifiedAccountProof:(v:object)=>held.has(v),heldAccountProofBytes:(v:object)=>{const bytes=held.get(v);if(!bytes)throw Error('ACCOUNT_PROOF_VERIFIED_SOURCE_REQUIRED');return bytes.slice();}}));
+vi.mock('../src/receiz/account-proof',async original=>({...await original<typeof import('../src/receiz/account-proof')>(),isVerifiedAccountProof:(v:object)=>held.has(v),heldAccountProofBytes:(v:object)=>{const bytes=held.get(v);if(!bytes)throw Error('ACCOUNT_PROOF_VERIFIED_SOURCE_REQUIRED');return bytes.slice();},heldAccountProofOriginal:(v:object)=>{const bytes=held.get(v);if(!bytes)throw Error('ACCOUNT_PROOF_VERIFIED_SOURCE_REQUIRED');return{bytes:bytes.slice(),filename:'exact-held-account.receized.json',mimeType:'application/json'};}}));
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const owner={keyId:'a'.repeat(64),artifactOwnerReceizId:'owner.receiz.id'},uid='owner';
 function proof(){
@@ -37,7 +37,7 @@ it('saves the exact held account-proof file only on request and never asks for a
   await act(async()=>root.render(<CalendarRecordDetails event={events[0]} identity={identity} api={api}/>));
   expect(host.textContent).toContain('$1.25');expect(host.textContent).toContain('0.000007 Φ');expect(host.textContent).not.toContain('Calendar proof');expect(create).not.toHaveBeenCalled();
   const save=[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Save account proof'))!;expect(save).toBeTruthy();await act(async()=>save.click());
-  const blob=create.mock.calls[0][0] as Blob;expect(await blob.text()).toBe('exact-existing-held-account-proof-wire');expect(click).toHaveBeenCalledOnce();expect(accountProof).not.toHaveBeenCalled();expect(request).not.toHaveBeenCalled();
+  const blob=create.mock.calls[0][0] as Blob;expect(await blob.text()).toBe('exact-existing-held-account-proof-wire');expect(click).toHaveBeenCalledOnce();expect((click.mock.instances[0] as HTMLAnchorElement).download).toBe('exact-held-account.receized.json');expect(accountProof).not.toHaveBeenCalled();expect(request).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());create.mockRestore();revoke.mockRestore();click.mockRestore();}
 });
 it('keeps carried account movement details after reopen and opens only its exact retained file when saving',async()=>{

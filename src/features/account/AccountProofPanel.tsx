@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Download } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
-import { heldAccountProofBytes, isVerifiedAccountProof, type VerifiedAccountProof } from '../../receiz/account-proof';
+import { heldAccountProofOriginal, isVerifiedAccountProof, type VerifiedAccountProof } from '../../receiz/account-proof';
 import { AccountProofDetails } from '../../components/AccountProofDetails';
 import { accountProofError } from '../../receiz/account-proof-errors';
 import type { AccountProofSharingStatus } from '../../receiz/account-proof-sharing';
@@ -34,7 +34,8 @@ export function AccountProofPanel({ identity }: { identity: OpenIdentity }) {
       const publication = await api.publish(proof, { approved, liveUpdates: live }); if (ticket !== generation.current) return;
       setSharing(publication.status); setLink(publication.url);
       const { createAccountProofImage } = await import('../../receiz/account-proof-image');
-      const file = await createAccountProofImage(proof); if (ticket !== generation.current) return;
+      if(!identity.sealRecordExport)throw Error('ACCOUNT_PROOF_EXPORT_REQUIRED');
+      const file = await createAccountProofImage(proof,input=>identity.sealRecordExport!(input)); if (ticket !== generation.current) return;
       const url = URL.createObjectURL(new Blob([new Uint8Array(file.bytes)], { type: 'image/png' }));
       if (imageUrl.current) URL.revokeObjectURL(imageUrl.current); imageUrl.current = url; setImage(url);
       const link = document.createElement('a'); link.href = url; link.download = file.filename; link.click();
@@ -46,9 +47,9 @@ export function AccountProofPanel({ identity }: { identity: OpenIdentity }) {
     if(!proof||running.current)return;
     setError('');setNotice('');
     try{
-      const bytes=heldAccountProofBytes(proof);
-      const url=URL.createObjectURL(new Blob([new Uint8Array(bytes)],{type:'application/json'}));
-      try{const link=document.createElement('a');link.href=url;link.download=`bankeiz-account-proof-${proof.sourceDigest.slice(0,16)}.json`;link.click();}
+      const file=heldAccountProofOriginal(proof);
+      const url=URL.createObjectURL(new Blob([new Uint8Array(file.bytes)],{type:file.mimeType}));
+      try{const link=document.createElement('a');link.href=url;link.download=file.filename;link.click();}
       finally{setTimeout(()=>URL.revokeObjectURL(url),3000);}
       setNotice('Account proof saved on this device. Nothing was published.');
     }catch(cause){setError(accountProofError(cause));}

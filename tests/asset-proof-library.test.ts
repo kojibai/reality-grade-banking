@@ -13,10 +13,11 @@ beforeEach(()=>{boundary.owner='sender.receiz.id';boundary.keyId='a'.repeat(64);
 const binding={artifactOwnerReceizId:'sender.receiz.id',keyId:'a'.repeat(64)};
 const bytes=(value:unknown)=>new TextEncoder().encode(JSON.stringify(value));
 function fixture(){
+ const selected=new File(['sdk-selected-capture'],'asset.receized.bin',{type:'application/octet-stream'}),sealRecordExport=vi.fn(async()=>selected);
  let archive:ProofSource[]=[];
  const commit=vi.fn(async(rows:ProofSource[])=>{archive=structuredClone(rows);return{added:rows.length,alreadyHeld:0};});
- const make=(recoveries:ProofSource[]=[])=>createProofLibrary({binding,assertOpen(){},readOwned:async()=>[],readArchive:async()=>archive,readRecoveries:async()=>recoveries,readNotes:async()=>[],commit});
- return{make,commit};
+ const make=(recoveries:ProofSource[]=[])=>createProofLibrary({binding,assertOpen(){},readOwned:async()=>[],readArchive:async()=>archive,readRecoveries:async()=>recoveries,readNotes:async()=>[],commit,sealRecordExport});
+ return{make,commit,selected,sealRecordExport};
 }
 it.each(['committed','zero-write'] as const)('roundtrips an admitted %s asset receipt through backup and individual import',async status=>{
  const source:ProofSource={kind:'asset-receipt' as ProofSource['kind'],filename:'asset.receiz-asset.json',bytes:bytes({schema:'receiz.bank.native-asset-result.v1',status})};
@@ -24,7 +25,7 @@ it.each(['committed','zero-write'] as const)('roundtrips an admitted %s asset re
  const review=await library.inspect(new File([new Uint8Array(backup.bytes)],backup.filename));
  expect(review.items[0]).toMatchObject({kind:'asset-receipt',title:status==='committed'?'Asset receipt':'Asset expiry proof',operationId:'asset-test-0001'});
  expect(f.commit).not.toHaveBeenCalled();await library.retain(review);
- const reopened=await library.list();expect((await library.exportProof(reopened[0].digest)).bytes).toEqual(source.bytes);
+ const reopened=await library.list();expect((await library.exportProof(reopened[0].digest)).bytes).toEqual(new Uint8Array(await f.selected.arrayBuffer()));expect(f.sealRecordExport).toHaveBeenCalledExactlyOnceWith({bytes:source.bytes,filename:source.filename,mimeType:'application/octet-stream'});
  expect((await library.inspect(new File([new Uint8Array(source.bytes)],source.filename))).items[0].kind).toBe('asset-receipt');
 });
 it.each(['owner','key'] as const)('refuses a verified asset receipt for a foreign %s before retention',async mismatch=>{

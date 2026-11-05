@@ -1,4 +1,5 @@
 import {paymentQr,paymentQrPath} from './payment-qr';
+import {sealPublicDocument as sealPublicImage} from './public-record-export';
 import {heldPublicLedgerFile,inspectPublicLedgerFile,type PublicLedgerFileReview} from './public-ledger-proof';
 import {embedPublicLedgerPng,isPublicLedgerPng,PUBLIC_LEDGER_PNG_MAX_BYTES,PUBLIC_LEDGER_PNG_SOURCE_MAX_BYTES} from './public-ledger-png';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
@@ -49,17 +50,6 @@ export function localLedgerCrystalArtwork(archive:LocalLedgerArchive){
 type SealInput=Readonly<{bytes:Uint8Array;filename:string;mimeType:string}>;
 type SealOutput=Readonly<{artifactBytes:Uint8Array;filename:string;mimeType?:string}>;
 type CrystalRuntime=Readonly<{render?:(review:PublicLedgerFileReview)=>Promise<Uint8Array>;seal?:(input:SealInput)=>Promise<SealOutput>}>;
-let publicSealer:Promise<ReturnType<typeof import('@receiz/sdk/offline').createReceizOfflineSealer>>|undefined;
-async function sealPublicImage(input:SealInput):Promise<SealOutput>{
- // Public document custody is independent of every account and Identity Seal.
- // Only public proving resources and the canonical device enrollment are used.
- publicSealer??=(async()=>{
-  const [{createReceizOfflineSealer,createReceizIndexedDbSealStore},{loadBankProofResources},{nativeFetch},{certificateTimeSafeStore,certificateTimeSafeFetch}]=await Promise.all([import('@receiz/sdk/offline'),import('./proof-resource-continuity'),import('./native-transport'),import('./device-signer-time')]);
-  const resources=await loadBankProofResources(fetch),sealer=createReceizOfflineSealer({store:certificateTimeSafeStore(createReceizIndexedDbSealStore('bankeiz-public-ledger-device-signer')),resources,fetch:certificateTimeSafeFetch(nativeFetch)});
-  if(!await sealer.ready())await sealer.enroll();return sealer;
- })().catch(error=>{publicSealer=undefined;throw error;});
- return(await publicSealer).seal(input);
-}
 export async function createPublicLedgerCrystal(review:PublicLedgerFileReview,runtime:CrystalRuntime={}){
  const source=heldPublicLedgerFile(review).source,snapshot=review.snapshot;if(!source||!snapshot)throw Error('PUBLIC_LEDGER_SOURCE_REQUIRED');
  const carrier=new TextEncoder().encode(JSON.stringify({kind:'receiz.ledger_proof_bundle',version:'v3',source}));

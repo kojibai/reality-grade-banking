@@ -16,6 +16,7 @@ declare global{var ReceizOfflineVerifier:OfflineProofVerifier;}
 const BASE='/proof-verifier/v129/',MAX=24*1024*1024;
 let runtime:Promise<OfflineProofVerifier>|undefined;
 const inspections=new Map<string,Promise<{report:OfflineProofReport;retained:boolean}>>();
+const originalDownloads=new WeakMap<OfflineProofReport,{digest:string;file:Promise<File>}>();
 export function loadOfflineProofVerifier(){return runtime??=import(/* @vite-ignore */ new URL(BASE+'verifier.js?build='+offlineProofVerifierDigest,location.origin).href).then(()=>globalThis.ReceizOfflineVerifier).catch(error=>{runtime=undefined;throw error;});}
 function database(){return new Promise<IDBDatabase>((resolve,reject)=>{try{const r=indexedDB.open('bankeiz.public-proof-inspection.v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('originals');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);}catch(error){reject(error);}});}
 async function cached(digest:string):Promise<Uint8Array|null>{let db:IDBDatabase|undefined;try{db=await database();return await new Promise((resolve,reject)=>{const r=db!.transaction('originals').objectStore('originals').get(digest);r.onsuccess=()=>resolve(r.result instanceof Uint8Array?r.result:null);r.onerror=()=>reject(r.error);});}catch{return null;}finally{db?.close();}}
@@ -39,6 +40,26 @@ async function inspectOriginal(record:PublicRecord,signal?:AbortSignal){
  const report=await verifier.inspectArtifact(bytes,filename);signal?.throwIfAborted();
  if(report.artifactSha256!==digest.toLowerCase())throw Error('SELECTED_RECORD_DIGEST_MISMATCH');
  const retained=await retain(digest,bytes);signal?.throwIfAborted();retainProofInspection(report,bytes,filename,retained);return {report,retained};
+}
+/** Save the actual canonical Original, independently of its optional verifier
+ * kit. A selected mutable byte view is checked once, then its immutable File
+ * is reused. No resealing, proof reconstruction or history verification runs. */
+export async function downloadLedgerOriginal(record:PublicRecord,report?:OfflineProofReport|null,signal?:AbortSignal):Promise<File>{
+ const expected=record.evidence.artifactDigest?.toLowerCase();
+ if(!expected||!/^[a-f0-9]{64}$/.test(expected))throw Error('ORIGINAL_NOT_SUPPLIED');
+ const selected=report??(await inspectLedgerOriginal(record,signal)).report;signal?.throwIfAborted();
+ const admitted=admittedProofInspection(selected);
+ if(!admitted||selected.artifactSha256!==expected)throw Error('ORIGINAL_INSPECTION_REQUIRED');
+ const held=originalDownloads.get(selected);
+ if(held){if(held.digest!==expected)throw Error('ORIGINAL_INSPECTION_REQUIRED');const file=await held.file;signal?.throwIfAborted();return file;}
+ const bytes=new Uint8Array(admitted.bytes),filename=admitted.filename,size=selected.artifactBytes;
+ const file=(async()=>{
+  const sha=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(value=>value.toString(16).padStart(2,'0')).join('');
+  if(bytes.length!==size||sha!==expected)throw Error('ORIGINAL_INSPECTION_REQUIRED');
+  return new File([bytes],filename,{type:'application/octet-stream'});
+ })();
+ originalDownloads.set(selected,{digest:expected,file});void file.catch(()=>{if(originalDownloads.get(selected)?.file===file)originalDownloads.delete(selected);});
+ const result=await file;signal?.throwIfAborted();return result;
 }
 /** Exact original is admitted only through canonical inspection or SDK open.
  * A caller-supplied JSON report cannot substitute for its bytes. */

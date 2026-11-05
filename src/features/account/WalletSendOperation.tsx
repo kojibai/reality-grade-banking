@@ -15,7 +15,7 @@ export function WalletSendRecovery({identity,onRefresh=()=>{}}:{identity:OpenIde
  async function act(action:'read'|'save'){
   if(running.current||!identity.walletSend)return;const ticket=generation.current;running.current=true;setBusy(true);setError('');
   try{const api=await identity.walletSend();if(action==='read'){const next=await api.resolve(true);if(ticket===generation.current){setOutcome(next);if(next?.status==='recorded')onRefresh();}}
-   else{const file=await api.exportRecord();if(ticket!==generation.current)return;const url=URL.createObjectURL(new Blob([new Uint8Array(file.bytes)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download=file.filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}
+   else{const original=await api.exportRecord();if(ticket!==generation.current)return;if(!identity.sealRecordExport)throw Error('RECORD_PROOF_EXPORT_UNAVAILABLE');const file=await identity.sealRecordExport({bytes:original.bytes,filename:original.filename,mimeType:'application/json'});if(ticket!==generation.current)return;const url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}
   catch{if(ticket===generation.current)setError('The payment record could not be opened. The original request stays saved; checking never sends another payment.');}
   finally{if(ticket===generation.current){running.current=false;setBusy(false);}}
  }

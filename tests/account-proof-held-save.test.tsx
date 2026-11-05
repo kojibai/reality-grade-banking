@@ -6,7 +6,7 @@ import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {expect,it,vi} from 'vitest';
 import * as sdk from '@receiz/sdk';
-import {verifyAccountProof,heldAccountProofBytes,type AccountStatement} from '../src/receiz/account-proof';
+import {verifyAccountProof,heldAccountProofBytes,heldAccountProofOriginal,type AccountStatement} from '../src/receiz/account-proof';
 import {AccountProofPanel} from '../src/features/account/AccountProofPanel';
 import {BANK_APPLICATION_ID} from '../src/receiz/config';
 import type {OpenIdentity} from '../src/receiz/native-identity';
@@ -35,8 +35,8 @@ it('reviews and saves the complete held statement locally without public consent
   expect(host.textContent).toContain('Account source verified');expect(host.textContent).toContain('Later activity is not checked by this file.');
   const save=[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Save account proof'));expect(save).toBeDefined();expect(save!.disabled).toBe(false);
   await act(async()=>save!.click());
-  expect(click).toHaveBeenCalledOnce();const anchor=click.mock.instances[0];expect(anchor).toBeInstanceOf(HTMLAnchorElement);expect((anchor as HTMLAnchorElement).download).toBe('bankeiz-account-proof-aaaaaaaaaaaaaaaa.json');
-  const blob=url.mock.calls[0][0] as Blob;expect(new Uint8Array(await blob.arrayBuffer())).toEqual(heldAccountProofBytes(proof));
+  expect(click).toHaveBeenCalledOnce();const anchor=click.mock.instances[0];expect(anchor).toBeInstanceOf(HTMLAnchorElement);expect((anchor as HTMLAnchorElement).download).toBe(heldAccountProofOriginal(proof).filename);
+  const blob=url.mock.calls[0][0] as Blob;expect(new Uint8Array(await blob.arrayBuffer())).toEqual(heldAccountProofOriginal(proof).bytes);expect(heldAccountProofBytes(proof)).toEqual(new TextEncoder().encode(wire));
   expect(publicSharing).not.toHaveBeenCalled();expect(fetch).not.toHaveBeenCalled();expect(host.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).toBe(false);
  }finally{act(()=>root.unmount());url.mockRestore();revoke.mockRestore();click.mockRestore();fetch.mockRestore();}
 });

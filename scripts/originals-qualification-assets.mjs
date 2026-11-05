@@ -15,6 +15,7 @@ export async function writeOriginalsQualificationAssets(directory='dist'){
  const jsUrl=`/learn/originals-qualification.js?v=${hash(js)}`,cssUrl=`/learn/originals-qualification.css?v=${hash(css)}`;
  await mkdir(resolve(directory,'learn'),{recursive:true});await writeFile(resolve(directory,'learn/originals-qualification.js'),js);await writeFile(resolve(directory,'learn/originals-qualification.css'),css);
  await Promise.all(modules.map(file=>writeFile(resolve(directory,'learn',file.name),file.bytes)));
+ await writeFile(resolve(directory,'learn/originals-qualification.modules.json'),JSON.stringify({version:1,entry:'/learn/'+entry.name,resources:modules.map(file=>({url:'/learn/'+file.name,sha256:createHash('sha256').update(file.bytes).digest('hex'),bytes:file.bytes.length}))})+'\n');
  return {head:`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" type="module"></script>`};
 }
 export function originalsQualificationDevPlugin(){return {name:'bankeiz-originals-qualification',configureServer(server){server.middlewares.use(async(req,res,next)=>{

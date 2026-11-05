@@ -3,7 +3,7 @@ import {ArrowUpRight,Download,ShieldCheck,RotateCw} from 'lucide-react';
 import type {OpenIdentity} from '../../../receiz/native-identity';
 import type {OrganizerEvent,NativeOrganizer} from '../../../receiz/native-organizer';
 import {organizerRecord} from '../../../receiz/organizer-types';
-import type {CalendarProof} from '../../../receiz/calendar-proof';
+import {calendarProofExportInput,type CalendarProof} from '../../../receiz/calendar-proof';
 import {calendarRecord} from '../../../receiz/calendar-record';
 import {heldCalendarRecords,isCalendarSourceEvent,calendarSourceProofUrl} from '../../../receiz/calendar-source-projection';
 import {ledgerAssetTrade} from '../../../receiz/ledger-asset-trade';
@@ -12,7 +12,7 @@ import {ledgerValueForRecord} from '../../../receiz/ledger-value';
 import {LedgerTradeDetails} from '../../ledger/LedgerTradeDetails';
 import {LedgerFundingTrace} from '../../ledger/LedgerFundingTrace';
 import {formatMoney,formatUnits} from '../../../core/money';
-import {heldAccountProofBytes,isVerifiedAccountProof} from '../../../receiz/account-proof';
+import {heldAccountProofOriginal,isVerifiedAccountProof} from '../../../receiz/account-proof';
 import './calendar-record.css';
 /** Selected record only. All visible financial facts reuse the event or held
  * Ledger; independent proof retrieval never holds up this first frame. */
@@ -39,13 +39,23 @@ export function CalendarRecordDetails({event,identity,api}:{event:OrganizerEvent
    const proof=identity.knownCalendarAccountProof?.(accountSource)??await identity.calendarAccountProof?.(accountSource);
    if(ticket!==accountGeneration.current)return;
    if(!proof||!isVerifiedAccountProof(proof)||proof.sourceDigest!==accountSource)throw Error('CALENDAR_ACCOUNT_SOURCE_NOT_HELD');
-   const href=URL.createObjectURL(new Blob([new Uint8Array(heldAccountProofBytes(proof))],{type:'application/json'}));try{const link=document.createElement('a');link.href=href;link.download=`bankeiz-account-proof-${proof.sourceDigest.slice(0,16)}.json`;link.click();}finally{setTimeout(()=>URL.revokeObjectURL(href),3000);}
+   const original=heldAccountProofOriginal(proof),href=URL.createObjectURL(new Blob([new Uint8Array(original.bytes)],{type:original.mimeType}));try{const link=document.createElement('a');link.href=href;link.download=original.filename;link.click();}finally{setTimeout(()=>URL.revokeObjectURL(href),3000);}
   }catch{if(ticket===accountGeneration.current)setAccountError('This event’s exact account proof is not available on this device. Its recorded details are preserved.');}
   finally{if(ticket===accountGeneration.current){accountSaving.current=false;setSavingAccount(false);}}
  };
- const [proof,setProof]=useState<CalendarProof|null>(null),[error,setError]=useState(false),[download,setDownload]=useState(''),[inspect,setInspect]=useState(false),[attempt,setAttempt]=useState(0);
+ const [proof,setProof]=useState<CalendarProof|null>(null),[error,setError]=useState(false),[inspect,setInspect]=useState(false),[attempt,setAttempt]=useState(0);
  useEffect(()=>{if(!inspect||sourceOnly)return;let current=true;setProof(null);setError(false);void api.eventProof(event).then(value=>{if(current)setProof(value);}).catch(()=>{if(current)setError(true);});return()=>{current=false;};},[event,api,inspect,attempt,sourceOnly]);
- useEffect(()=>{if(!proof)return;const href=URL.createObjectURL(new Blob([JSON.stringify(proof)],{type:'application/json'}));setDownload(href);return()=>{URL.revokeObjectURL(href);};},[proof]);
+ const [savingRecord,setSavingRecord]=useState(false),[recordError,setRecordError]=useState(''),recordGeneration=useRef(0),recordSaving=useRef(false);
+ useEffect(()=>{recordGeneration.current++;recordSaving.current=false;setSavingRecord(false);setRecordError('');return()=>{recordGeneration.current++;};},[identity,event,api]);
+ const saveRecordProof=async()=>{
+  if(!proof||recordSaving.current)return;const ticket=recordGeneration.current;recordSaving.current=true;setSavingRecord(true);setRecordError('');
+  try{
+   if(!identity.sealRecordExport)throw Error('RECORD_PROOF_EXPORT_UNAVAILABLE');
+   const file=await identity.sealRecordExport(calendarProofExportInput(proof,event,api.accountUid));if(ticket!==recordGeneration.current)return;
+   const href=URL.createObjectURL(file);try{const link=document.createElement('a');link.href=href;link.download=file.name;link.click();}finally{setTimeout(()=>URL.revokeObjectURL(href),3000);}
+  }catch{if(ticket===recordGeneration.current)setRecordError('This proof record could not be prepared. Your recorded details are preserved. Try the same download again.');}
+  finally{if(ticket===recordGeneration.current){recordSaving.current=false;setSavingRecord(false);}}
+ };
  const context=useMemo(()=>{const m=event.metadata,conversation=organizerRecord(proof?.conversation),visitor=organizerRecord(m.visitorIdentity),verifiedVisitor=organizerRecord(proof?.visitor),text=(v:unknown,max=64000)=>typeof v==='string'&&v.trim()&&v.length<=max?v:null;
   const fields:Array<[string,string]>=[],labels:Record<string,string>={status:'Status',channel:'Channel',stage:'Stage',nextAction:'Next step',contactCount:'Contacts',importedCount:'Contacts imported',deliveredCount:'Delivered',bookedCount:'Appointments',targetCount:'Target',durationMinutes:'Duration (minutes)'};
   for(const[key,label]of Object.entries(labels)){const value=m[key];if(typeof value==='string'&&value.length<=1000)fields.push([label,key==='status'?value.replaceAll('_',' ').replace(/^./,v=>v.toUpperCase()):value]);else if(typeof value==='number'&&Number.isFinite(value))fields.push([label,String(value)]);}
@@ -60,6 +70,6 @@ export function CalendarRecordDetails({event,identity,api}:{event:OrganizerEvent
   {facts&&<>{facts.record.amountUsdCents!==null&&<p className="organizer-record-amount">{formatMoney(facts.record.amountUsdCents)}</p>}<LedgerTradeDetails trade={facts.trade}/>{!facts.trade&&<dl>{facts.record.sender&&<div><dt>From</dt><dd>{facts.record.sender}</dd></div>}{facts.record.recipient&&<div><dt>To</dt><dd>{facts.record.recipient}</dd></div>}{facts.record.pulse&&<div><dt>Recorded ☤KAI</dt><dd className="organizer-record-number">{facts.record.pulse}</dd></div>}</dl>}<LedgerFundingTrace record={facts.record}/>{facts.href&&<a className="organizer-record-link" aria-label="View receipt" href={facts.href} onClick={click=>openLedgerReceipt(click,facts.href!,{record:facts.record,value:facts.value})}>View receipt<ArrowUpRight size={14}/></a>}</>}
   {transaction&&<><dl><div><dt>Reserve change</dt><dd>{formatMoney(transaction.reserveDeltaUsdCents)}</dd></div><div><dt>Settlement change</dt><dd>{phi(transaction.settlementDeltaPhiMicro)}</dd></div><div><dt>Recorded ☤µKAI</dt><dd>{transaction.kaiUPulse}</dd></div></dl>{(accountProof||identity.calendarAccountProof)&&<button type="button" disabled={savingAccount} className="organizer-record-link" onClick={()=>void saveAccountProof()}><Download size={14}/>{savingAccount?'Opening saved proof…':'Save account proof'}</button>}{accountError&&<p className="organizer-sub" role="status">{accountError}</p>}</>}
   {sourceProofUrl&&<a className="organizer-record-link" href={sourceProofUrl}>View original proof<ArrowUpRight size={14}/></a>}
-  {!sourceOnly&&<details className="organizer-record-proof" onToggle={event=>{if(event.currentTarget.open)setInspect(true);}}><summary><ShieldCheck size={14}/>Calendar proof</summary>{inspect&&<><p className="organizer-proof-status">{proof?'Record integrity checked':error?'Calendar proof check failed':'Checking this record’s proof…'}</p>{error&&<button type="button" className="organizer-proof-retry" aria-label="Retry Calendar proof check" onClick={()=>setAttempt(value=>value+1)}><RotateCw size={12}/>Retry</button>}{proof&&download&&<a className="organizer-record-link" href={download} download={'calendar-'+event.id+'.receiz-calendar-bundle.json'}><Download size={14}/>Download proof record</a>}{proof&&<details className="organizer-details"><summary>Record continuity</summary><dl><div><dt>Record SHA-256</dt><dd>{proof.bundleHash}</dd></div>{facts?.record.evidence.entryHash&&<div><dt>Ledger entry</dt><dd>{facts.record.evidence.entryHash}</dd></div>}</dl><p>Integrity of this Calendar record and its carried provenance. Current ownership and available funds remain established by their originals.</p></details>}</>}</details>}
+  {!sourceOnly&&<details className="organizer-record-proof" onToggle={event=>{if(event.currentTarget.open)setInspect(true);}}><summary><ShieldCheck size={14}/>Calendar proof</summary>{inspect&&<><p className="organizer-proof-status">{proof?'Record integrity checked':error?'Calendar proof check failed':'Checking this record’s proof…'}</p>{error&&<button type="button" className="organizer-proof-retry" aria-label="Retry Calendar proof check" onClick={()=>setAttempt(value=>value+1)}><RotateCw size={12}/>Retry</button>}{proof&&<button type="button" disabled={savingRecord} className="organizer-record-link" onClick={()=>void saveRecordProof()}><Download size={14}/>{savingRecord?'Preparing proof record…':'Download proof record'}</button>}{recordError&&<p className="organizer-sub" role="status">{recordError}</p>}{proof&&<details className="organizer-details"><summary>Record continuity</summary><dl><div><dt>Record SHA-256</dt><dd>{proof.bundleHash}</dd></div>{facts?.record.evidence.entryHash&&<div><dt>Ledger entry</dt><dd>{facts.record.evidence.entryHash}</dd></div>}</dl><p>Integrity of this Calendar record and its carried provenance. Current ownership and available funds remain established by their originals.</p></details>}</>}</details>}
  </section>;
 }

@@ -2,9 +2,11 @@ import {beforeEach,expect,it,vi} from 'vitest';
 import {BANK_APPLICATION_ID,BANK_READ_SCOPES} from '../src/receiz/config';
 import {openCanonicalIdentity} from '../src/receiz/native-identity';
 // Transport/entry sequencing only; canonical admission is covered separately.
-const p=vi.hoisted(()=>({enroll:vi.fn(),seal:vi.fn(),continueId:vi.fn(),grant:vi.fn(),persist:vi.fn(),foreign:false}));
+const p=vi.hoisted(()=>({enroll:vi.fn(),seal:vi.fn(),continueId:vi.fn(),grant:vi.fn(),persist:vi.fn(),recordExport:vi.fn(),foreign:false}));
 const original=()=>({owner:{uid:'fixture-owner',username:'fixture'},issuedAt:'2026-10-13T00:00:00Z',keyId:'fixture-key',alg:'Ed25519',crypto:{privateKeyPkcs8B64u:'private-device-only',publicKeyRawB64u:'fixture-public'}});
 vi.mock('../src/receiz/identity-vault',async original=>({...await original<typeof import('../src/receiz/identity-vault')>(),loadWalletObservation:async()=>null,loadOfflineNoteState:async()=>null,loadPreparedNoteState:async()=>null,loadConnectedNoteState:async()=>null,saveProtectedIdentityTransport:p.persist}));
+// Local port sequencing only; real SDK sealing and owner custody have separate unmocked tests.
+vi.mock('../src/receiz/record-proof-export',()=>({createRecordProofExports:()=>({export:p.recordExport})}));
 vi.mock('../src/receiz/proof-resource-continuity',()=>({loadBankProofResources:async()=>({wasm:new Uint8Array([1]),zkey:new Uint8Array([1])})}));
 vi.mock('../src/receiz/identity-protection',()=>({protectIdentityKeyFile:async(key:ReturnType<typeof original>)=>({...key,crypto:{...key.crypto,privateKeyPkcs8B64u:null}})}));
 vi.mock('@receiz/sdk/offline',()=>({createReceizIndexedDbSealStore:()=>({}),createReceizOfflineSealer:()=>({enroll:p.enroll,seal:p.seal})}));
@@ -60,4 +62,9 @@ it('refuses a substituted protected identity before continuation or grant exchan
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);p.foreign=true;
  try{await expect(identity.readWallet()).rejects.toThrow('same identity');expect(p.continueId).not.toHaveBeenCalled();expect(p.grant).not.toHaveBeenCalled();expect(p.persist).not.toHaveBeenCalled();}
  finally{identity.dispose();}
+});
+
+it('captures record-export input before the lazy controller initialization yields',async()=>{
+ p.recordExport.mockReset().mockResolvedValue(new File(['synthetic'],'sdk-output.receized.json',{type:'application/json'}));const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{const source={bytes:new Uint8Array([1,2,3]),filename:'original.json',mimeType:'application/json',recordHash:'a'.repeat(64)},pending=identity.sealRecordExport!(source);source.bytes[0]=9;source.filename='changed.json';source.mimeType='text/plain';source.recordHash='b'.repeat(64);await pending;expect(p.recordExport).toHaveBeenCalledExactlyOnceWith({bytes:new Uint8Array([1,2,3]),filename:'original.json',mimeType:'application/json',recordHash:'a'.repeat(64)});expect(p.enroll).not.toHaveBeenCalled();expect(p.continueId).not.toHaveBeenCalled();}finally{identity.dispose();}
 });

@@ -95,6 +95,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     if(canonicalPath==='/pay/')urls.add('/learn/pay.js');
     if(canonicalPath==='/accept/'){urls.add('/learn/accept-money.js');urls.add('/learn/accept-money-model.js');}
     if(canonicalPath==='/build/'){urls.add('/learn/independent-bank.js');urls.add('/learn/independent-bank-model.js');urls.add('/learn/accept-money-model.js');}
+    if(path==='/learn/guides/')urls.add('/learn/guide-directory.js');
     if(canonicalPath===matterPage.path){urls.add('/learn/matter.js');urls.add('/learn/product-walkthrough.js');}
     const knownGuide=['/build/','/accept/','/pay/',bookingGuidePage.path,matterPage.path].includes(canonicalPath)||canonicalPath===momentsPage.path||canonicalPath===meetingPage.path||standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/merchant/','/protect/','/vaults/','/id/','/guide/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
     if(canonicalPath===directoryPage.path)urls.add('/learn/business-fit.js');
@@ -115,6 +116,16 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
       const url = new URL(match[1], 'https://bankeiz.com');
       if (/\.(css|js|webp|png|svg)$/.test(url.pathname)) urls.add(url.pathname + url.search);
     }
+  }
+  if([...urls].some(url=>new URL(url,'https://bankeiz.com').pathname==='/learn/originals-qualification.js')){
+    const name='/learn/originals-qualification.modules.json',modules=JSON.parse(await readFile(resolve(root,name.slice(1)),'utf8'));
+    const modulePath=/^\/learn\/originals-qualification-(?:main|chunk)-[A-Za-z0-9]+\.js$/;
+    if(modules?.version!==1||!/^\/learn\/originals-qualification-main-[A-Za-z0-9]+\.js$/.test(modules.entry??'')||!Array.isArray(modules.resources)||!modules.resources.length||modules.resources.length>256||new Set(modules.resources.map(row=>row.url)).size!==modules.resources.length||!modules.resources.some(row=>row.url===modules.entry))throw Error('OFFLINE_PUBLIC_MODULE_MISMATCH');
+    for(const row of modules.resources){
+      if(!modulePath.test(row.url??'')||!/^[a-f0-9]{64}$/.test(row.sha256??'')||!Number.isSafeInteger(row.bytes)||row.bytes<1)throw Error('OFFLINE_PUBLIC_MODULE_MISMATCH');
+      const bytes=await readFile(resolve(root,row.url.slice(1)));if(bytes.length!==row.bytes||hash(bytes)!==row.sha256)throw Error('OFFLINE_PUBLIC_MODULE_MISMATCH');urls.add(row.url);
+    }
+    urls.add(name);
   }
   const resources = [];
   for (const url of [...urls].sort()) {
