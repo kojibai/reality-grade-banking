@@ -7,6 +7,12 @@ export function feedKind(item:PublicMarketItem):FeedKind {
  if(item.mediaKind==='pdf'||item.mediaKind==='file')return 'document';
  return item.hasLongForm?'essay':'moment';
 }
+/** The existing reading experience opens prose without a media decoder. */
+export function isFeedReadingItem(item:PublicMarketItem):boolean{const kind=feedKind(item);return kind==='essay'||kind==='moment'||kind==='image'&&item.hasLongForm===true;}
+/** A cover image can accompany an essay without changing its media identity. */
+export function matchesFeedKind(item:PublicMarketItem,filter:FeedKind|'All'):boolean{
+ if(filter==='All')return true;const kind=feedKind(item);return kind===filter||filter==='essay'&&kind==='image'&&item.hasLongForm===true;
+}
 export const feedText=(item:PublicMarketItem)=>item.summary||item.title;
 /** Diversity is a local presentation order, never a claim about proof or value. */
 export function orderFeedItems(items:readonly PublicMarketItem[]):PublicMarketItem[]{

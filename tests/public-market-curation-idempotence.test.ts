@@ -1,6 +1,6 @@
 import {expect,it,vi} from 'vitest';
 import {curatePublicMarketMembership} from '../server/public-market';
-import {preparePublicMarketRenderMaterial} from '../server/public-market-preparation';
+import {PUBLIC_DISPLAY_POLICY,preparePublicMarketRenderMaterial} from '../server/public-market-preparation';
 import {parsePublicMarket} from '../src/receiz/public-market';
 
 const digest='a'.repeat(64),claim='b'.repeat(64),receipt='c'.repeat(64),artifact=`https://receiz.com/api/proof-material/packages/${digest}/artifact`;
@@ -20,7 +20,7 @@ it('keeps existing document, playback, creator, claim, provenance, valuation and
  const inventory={schema:'receiz.market.share-inventory.v1',marketItemId:'public-audio',assetId:'public-audio',family:'generic',quantityScope:'canonical-asset',observedAtKaiUPulse:'14710000000000',outstandingShareQuantityMicro:'5000000',positionsMicro:'3000000',certificatesMicro:'2000000',reservedBuyMicro:'0',availableShareQuantityMicro:'7000000',availability:'quote-capacity',releaseCapitalization:{kaiUPulse:'14700000000000',unitPriceUsdCents:'25000',outstandingShareQuantityMicro:'0',availableShareQuantityMicro:'12000000',modelVersion:'market-share-quote-v1'}};
  const membership=selected(),snapshot={ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[{itemId:'public-audio',visibility:'public',priceUsd:250,quoteUsdPerPhi:2,changePct:5,chart:[{value:2},{value:3}],shareInventory:inventory}]}},before=parsePublicMarket(membership,snapshot),read=vi.fn(()=>{throw Error('UNEXPECTED_PUBLIC_READ');});
  expect(before.items.find(x=>x.assetId==='public-audio')).toMatchObject({priceUsd:250,chart:[4,6],shareInventory:inventory});
- const next=await preparePublicMarketRenderMaterial({previousMaterial:JSON.stringify({publicDisplayPolicy:'bank.public-market.curated-display.v2',membership,snapshot}),membership:structuredClone(membership),read}),value=JSON.parse(next.material);
+ const next=await preparePublicMarketRenderMaterial({previousMaterial:JSON.stringify({publicDisplayPolicy:PUBLIC_DISPLAY_POLICY,membership,snapshot}),membership:structuredClone(membership),read}),value=JSON.parse(next.material);
  expect(value.membership).toEqual(membership);expect(parsePublicMarket(value.membership,value.snapshot)).toEqual(before);expect(read).not.toHaveBeenCalled();expect(JSON.stringify(value)).not.toContain('omit-private-field');
 });
 it('revalidates normalized media locators without copying arbitrary hosts or private fields',()=>{

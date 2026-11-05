@@ -4,6 +4,8 @@ import {flushSync} from 'react-dom';
 import {Sheet} from '../components/Sheet';
 import {attachPublicAssetTrade, beginPublicAssetTrade, closePublicAssetTrade, readPublicAssetTrade, requestPublicAssetBankRuntime, subscribePublicAssetTrade} from '../receiz/public-asset-trade';
 import {publicPurchaseAtLocation, publicPurchaseBudget} from '../receiz/public-purchase-checkpoint';
+import '../components/form-controls.css';
+import '../features/deposit/deposit.css';
 import './public-asset-trade.css';
 
 /** Public UI owns the dialog; the retained BankApp supplies its account content. */

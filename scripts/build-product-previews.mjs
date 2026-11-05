@@ -8,9 +8,9 @@ import {exampleNavigation} from './product-preview-navigation.mjs';
 import {scrollableProductPreview} from './product-preview-readonly.mjs';
 import {moneyExamples} from '../src/content/money-examples.mjs';
 import {transform} from 'esbuild';
-const styles=['src/styles/tokens.css','src/styles/app.css','src/styles/features.css','src/components/kai-klok.css','src/features/messages/messages.css','src/features/ledger/ledger-inspector.css','src/features/ledger/ledger-value.css','src/features/vault/vault.css','src/features/deposit/deposit.css','src/features/account/payment-tools.css','src/features/account/merchant-counter.css','src/features/market/market.css'];
+const styles=['src/styles/tokens.css','src/components/form-controls.css','src/styles/app.css','src/styles/features.css','src/components/kai-klok.css','src/features/messages/messages.css','src/features/ledger/ledger-inspector.css','src/features/ledger/ledger-value.css','src/features/vault/vault.css','src/features/deposit/deposit.css','src/features/account/payment-tools.css','src/features/account/merchant-counter.css','src/features/market/market.css'];
 export {scopeProductCss} from './scope-product-css.mjs';
-import {scopeProductCss} from './scope-product-css.mjs';
+import {bundleCssFiles,scopeProductCss} from './scope-product-css.mjs';
 if(process.argv[1]?.endsWith('build-product-previews.mjs')){
  // Fixed reference examples must render identically on developer machines and CI.
  // This build-only process never changes the running app's local-time display.
@@ -30,7 +30,7 @@ if(process.argv[1]?.endsWith('build-product-previews.mjs')){
    if(name==='receive')html=html.replace(/(<svg[^>]*class="[^"]*payment-qr[^>]*>[\s\S]*?<path[^>]*d=")[^"]+/,`$1${paymentQrPath(paymentQr('https://example.invalid/'))}`);
    screens[example?name+':'+example+(financialStage==='after'?':after':''):name]=await exampleNavigation(scrollableProductPreview(html,name),name,{signingIndicator});
   }}finally{Date.now=now;}
-  const css=(await transform(scopeProductCss((await Promise.all(previewStyles.map(path=>readFile(path,'utf8')))).join('\n')),{loader:'css',minify:true,target:['safari16','chrome100']})).code;
+  const css=(await transform(scopeProductCss(await bundleCssFiles(previewStyles)),{loader:'css',minify:true,target:['safari16','chrome100']})).code;
   const output=JSON.stringify({notice:'Actual product components rendered as read-only examples. No proof, identity or financial authority.',screens,css})+'\n';
   const file='src/content/product-ui.generated.json';if(process.argv.includes('--check')){if(await readFile(file,'utf8')!==output)throw Error('PRODUCT_UI_PREVIEW_OUT_OF_DATE');}else await writeFile(file,output);
   console.log('Rendered '+productScreenNames.length+' source-bound product screens and '+Object.keys(moneyExamples).length+' distinct read-only money conversations.');

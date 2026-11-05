@@ -7,7 +7,7 @@ import sportsFile from '../public/receiz-public-sports.json';
 import capitalizationFile from '../public/receiz-public-capitalization.json';
 import historyFile from '../public/receiz-public-share-chart-history.json';
 
-const policy='bank.public-market.curated-display.v2';
+const policy='bank.public-market.curated-display.v3';
 const membership=curatePublicMarketMembership(structuredClone(membershipFile));
 const quotes=membershipFile.snapshot;
 const heldSports=sportsFile.cards.find(card=>card.valuationRow&&card.sealedBirths?.length)!;

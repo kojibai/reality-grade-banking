@@ -1,3 +1,4 @@
+@import '../components/form-controls.css';
 .console { background: var(--bg); max-width: 1160px; min-height: 100dvh; margin: 0 auto; position: relative; }
 .app-header { height: 64px; padding: 12px 22px; display: flex; align-items: center; justify-content: space-between; }
 .bank-home-mark { width: 35px; height: 35px; padding: 0; display: grid; place-items: center; border-radius: 7px; color: #30445d; }
@@ -58,9 +59,6 @@ html.public-navigation-instant .main-panel { animation: none; }
 .sheet-header h2 { font-size: 17px; }
 .icon-button { height: 34px; width: 34px; display: inline-grid; place-items: center; background: #eeeff2; border-radius: 50%; padding: 0; }
 .sheet-body { padding: 21px; }
-.primary-button, .secondary-button { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 49px; width: 100%; border-radius: 12px; font-size: 14px; font-weight: 600; padding: 12px 18px; margin-top: 17px; }
-.primary-button { background: var(--blue); color: white; }
-.secondary-button { background: transparent; color: var(--navy); border: 1px solid #dce0e8; }
 @media (max-width: 719px) { .account-primary > .value-chart svg { height: 112px; } .account-secondary .asset-row { min-height: 58px; padding-top: 9px; padding-bottom: 9px; } .account-secondary .asset-mark { width: 36px; height: 36px; } }
 @keyframes reveal { from { opacity: .5; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @media (min-width: 720px) { .console { min-height: calc(100dvh - 32px); margin: 16px auto; border-radius: 22px 22px 0 0; box-shadow: 0 15px 70px #24354e09; } .app-header { height: 101px; padding: 28px 40px; } .bank-home-mark { width: 42px; height: 42px; } .avatar { width: 42px; height: 42px; font-size: 14px; } .main-panel { padding: 22px 40px 125px; } .account-layout { display: grid; grid-template-columns: 1.15fr 1fr; gap: 65px; } .balance-amount { font-size: 60px; } .balance-label { font-size: 19px; } .balance-change { font-size: 18px; } .account-secondary .section-heading:first-child { margin-top: 6px; } .account-secondary section + section { margin-top: 38px; } .asset-row { padding: 17px 16px; min-height: 83px; } .row-copy strong, .row-value { font-size: 15px; } .row-copy > span { font-size: 12px; } .asset-mark { width: 47px; height: 47px; } .growth-panel { margin-top: 24px; padding: 22px; } .bottom-nav { height: 82px; padding: 0 max(40px, 10%); } .nav-item { font-size: 12px; } .nav-deposit .nav-icon { width: 45px; height: 45px; } .value-chart { margin-top: 25px; } .periods { margin-bottom: 26px; } .money-actions button { height: 83px; font-size: 17px; } .sheet { margin: auto; max-height: calc(100dvh - 48px); } }

@@ -1,4 +1,4 @@
-import {feedKind,type FeedKind} from '../public-feed/feed-items';
+import {feedKind,matchesFeedKind,type FeedKind} from '../public-feed/feed-items';
 import {publicAccountDisplayName} from '../receiz/account-name';
 import {profileUsername,profilePageUsername} from '../receiz/public-profile';
 import type {PublicMarketItem} from '../receiz/public-market';
@@ -19,7 +19,7 @@ export function buildDiscoveryIndex(rows:readonly PublicMarketItem[]){
 export type DiscoveryIndex=ReturnType<typeof buildDiscoveryIndex>;
 export function searchDiscovery(index:DiscoveryIndex,query:string,filter:DiscoveryFilter){
  const words=normalize(query.trim()).split(/\s+/).filter(Boolean).map(word=>word.replace(/^@(?=[a-z0-9_])/,'')),matches=(text:string)=>words.every(word=>text.includes(word));
- const matchesKind=(item:PublicMarketItem)=>{if(filter==='All')return true;const kind=feedKind(item);return kind===filter||filter==='essay'&&kind==='image'&&item.hasLongForm===true;};
+ const matchesKind=(item:PublicMarketItem)=>filter!=='People'&&matchesFeedKind(item,filter);
  const items=filter==='People'?[]:index.items.filter(item=>matchesKind(item)&&matches(index.entries.get(item.id)!));
  const people=index.people.filter(person=>(filter==='All'||filter==='People'||person.items.some(matchesKind))&&matches(normalize(`${person.name} @${person.username}`)));
  return {items,people};

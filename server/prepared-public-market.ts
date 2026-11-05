@@ -62,9 +62,9 @@ export async function handlePreparedPublicMarket(request:Request,provided?:Depen
    input.requestOptionsSha256=createHash('sha256').update(requestOptions).digest('hex');
    if(input.previousGeneration)input.previousMaterial=await (provided?.readMaterial??readMaterial)(input.previousGeneration);
    if(input.membershipGeneration)input.membership=JSON.parse(await (provided?.readMaterial??readMaterial)(input.membershipGeneration));
-   const result=await (provided?.prepareInput??prepareInput)(input),body=JSON.stringify({schema:'bank.public-market.render-material.v1',...result,build});
+   const result=await (provided?.prepareInput??prepareInput)(input),raw=request.headers.get('accept')==='application/octet-stream',body=raw?result.material:JSON.stringify({schema:'bank.public-market.render-material.v1',...result,build});
    if(Buffer.byteLength(body)>MAX)throw Error('PUBLIC_MARKET_RENDER_CAPACITY');
-   return new Response(streamedText(body),{headers:{...jsonHeaders,[materialHeaders[0]]:result.generation}});
+   return new Response(streamedText(body),{headers:{...jsonHeaders,...(raw?{'content-type':'application/octet-stream'}:{}),[materialHeaders[0]]:result.generation}});
   }catch(error){return new Response(null,{status:error instanceof SyntaxError?400:error instanceof Error&&error.message==='PUBLIC_MARKET_RENDER_CAPACITY'?413:503,headers:jsonHeaders});}
  }
  if(prepare){

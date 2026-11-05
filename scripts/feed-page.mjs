@@ -1,3 +1,4 @@
+import {bundleCssFiles} from './scope-product-css.mjs';
 import {publicOwnerThumbnails} from './public-owner-thumbnails.mjs';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
@@ -14,7 +15,7 @@ export async function renderFeedState(server){
 }
 export function applyFeedState(html,state){return html.replace('<div id="root"></div>',()=>`<div id="public-feed-root" data-public-runtime="feed">${state.content}</div>${feedSeedScript(state.seed)}`);}
 export function feedPageDevPlugin(){return{name:'bankeiz-feed-first-paint',async transformIndexHtml(html,context){if(!context.server||!/^\/feed\/(?:index\.html)?$/.test(context.path))return html;const state=await renderFeedState(context.server),{AccountOpening}=await context.server.ssrLoadModule('/src/features/identity/AccountOpening.tsx');
- const styles=['/src/styles/tokens.css','/src/styles/app.css','/src/styles/features.css'],css=Object.fromEntries(await Promise.all(styles.map(async url=>[url,await readFile(url.slice(1),'utf8')]))),feed={runtime:'feed',title:'For you | Bankeiz',entry:'/src/public-feed/main.tsx',head:'<title>For you | Bankeiz</title>',content:state.navigationContent};
+ const styles=['/src/styles/tokens.css','/src/styles/app.css'],css={[styles[0]]:await readFile(styles[0].slice(1),'utf8'),[styles[1]]:await bundleCssFiles(['src/styles/app.css','src/styles/features.css'])},feed={runtime:'feed',title:'For you | Bankeiz',entry:'/src/public-feed/main.tsx',head:'<title>For you | Bankeiz</title>',content:state.navigationContent};
  const exploreHead=(await readFile('explore/index.html','utf8')).match(/<head>([\s\S]*?)<\/head>/)[1];
  const navigation=compactNavigation({reserved:state.profileNames,pages:{'/feed/':feed,'/explore/':{runtime:'explore',title:'Explore | Bankeiz',entry:'/src/public-explorer/main.tsx',head:exploreHead,content:'<main><h1>Explore</h1></main>'}},bank:{head:'<title>Bankeiz</title>',entry:'/src/main.tsx',styles,css,content:renderToStaticMarkup(createElement(AccountOpening,{resuming:true}))}});
  return applyFeedState(html,state).replace('</body>',()=>`<script src="/learn/learn.js" defer></script><script id="receiz-navigation" type="application/json">${JSON.stringify(navigation).replaceAll('<','\\u003c')}</script></body>`);}};}

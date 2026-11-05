@@ -1,8 +1,7 @@
 import{createElement}from'react';
 import{renderToStaticMarkup}from'react-dom/server';
-import{readFile}from'node:fs/promises';
 import{transform}from'esbuild';
-import{scopeProductCss}from'./scope-product-css.mjs';
+import{bundleCssFiles,scopeProductCss}from'./scope-product-css.mjs';
 import{learnHeader}from'./learn-template.mjs';
 import{siteFooterHtml}from'./site-footer.mjs';
 import{guideArticleUrl}from'../src/content/user-guide.mjs';
@@ -21,7 +20,7 @@ export async function renderBookingExamples(server){
  const{BookingPreview,bookingPreviewNames}=await server.ssrLoadModule('/src/presentation/BookingPreview.tsx');
  const screens={};for(const screen of bookingPreviewNames){let html=renderToStaticMarkup(createElement(BookingPreview,{screen}));if(screen==='guest-twin')html=html.replace(/(<p class="booking-chat-intro">[\s\S]*?<\/p>)/,'$1<div class="booking-chat-message booking-chat-message-user">Thursday afternoon works for me.</div><div class="booking-chat-message booking-chat-message-assistant">Maya has 2:00 PM available on Thursday. Shall I reserve that for your project review?</div>');screens[screen]=inertBookingPreview(html).replaceAll('booking-example-','booking-example-'+screen+'-');}
  const files=['src/styles/tokens.css','src/styles/app.css','src/styles/features.css','src/components/sheet-navigation.css','src/features/messages/messages.css','src/features/messages/organizer/organizer.css','src/features/booking/booking.css','src/components/copy-feedback.css'];
- const css=(await transform(scopeProductCss((await Promise.all(files.map(file=>readFile(file,'utf8')))).join('\n')).replaceAll('.product-screen','.booking-guide-preview').replaceAll('@container product-screen','@container booking-guide'),{loader:'css',minify:true,target:['safari16','chrome100']})).code;
+ const css=(await transform(scopeProductCss(await bundleCssFiles(files)).replaceAll('.product-screen','.booking-guide-preview').replaceAll('@container product-screen','@container booking-guide'),{loader:'css',minify:true,target:['safari16','chrome100']})).code;
  return{screens,css};
 }
 const demo=(preview,key,steps,id)=>`<div class="book-guide-demo" data-booking-walkthrough="${id}" data-booking-current="${key}" data-booking-sequence="${steps.map(s=>s[0]).join(',')}"><div class="book-guide-demo-top"><span>THE ACTUAL INTERFACE · EXAMPLE DATA</span><button type="button" data-booking-autoplay aria-label="Pause walkthrough" aria-pressed="false">Pause</button></div><div class="book-guide-demo-view">${preview.screens[key]}</div><nav class="book-guide-steps" aria-label="${id==='guest'?'Guest booking':'Your calendar'} walkthrough">${steps.map(([key,label],i)=>`<button type="button" data-booking-step="${key}" aria-label="${label}" aria-pressed="${key===steps[0][0]}"><span>${String(i+1).padStart(2,'0')}</span>${label}</button>`).join('')}</nav><div class="book-guide-captions" aria-live="off">${steps.map(([key,,title,body],i)=>`<article data-booking-copy="${key}"${i?' hidden':''}><h3>${title}</h3><p>${body}</p></article>`).join('')}</div><p class="book-guide-demo-note">Explore the controls. This scripted example creates no appointments or payments.</p></div>`;

@@ -7,7 +7,7 @@ import {curatePublicMarketMembership,readReceizPublicMarketSource} from './publi
 
 export type PublicMarketOperand='membership'|'quotes'|'sports'|'capitalization';
 const MAX=32*1024*1024;
-export const PUBLIC_DISPLAY_POLICY='bank.public-market.curated-display.v2';
+export const PUBLIC_DISPLAY_POLICY='bank.public-market.curated-display.v3';
 let shippedSports:Promise<unknown>|undefined;
 function retainedSports(){return shippedSports??=readFile('public/receiz-public-sports.json').then(bytes=>{if(bytes.length>MAX)throw Error('PUBLIC_MARKET_RENDER_CAPACITY');return JSON.parse(bytes.toString('utf8')) as unknown;}).catch(error=>{shippedSports=undefined;throw error;});}
 async function completeSports(input:unknown,previous?:unknown){return retainPublicSportsInput(previous??await retainedSports(),input);}
