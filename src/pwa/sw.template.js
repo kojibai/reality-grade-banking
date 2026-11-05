@@ -45,8 +45,16 @@ function publicHeaders(response) {
   for (const key of ['content-encoding','content-length','transfer-encoding']) headers.delete(key);
   return headers;
 }
+function localHistoricalPublicBody(blob) {
+  return new Response(blob, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'x-receiz-public-html-state': 'historical' } });
+}
 async function publicDocument(request, path, installedPath) {
   if (request.signal.aborted) throw request.signal.reason;
+  const nativeNavigation = request.method === 'GET' && request.mode === 'navigate';
+  const known = nativeNavigation && publicBodies.get(path);
+  // This exact immutable Blob was already admitted in this worker. Opening
+  // local historical display needs no disk read, hash or Source renewal.
+  if (known) return localHistoricalPublicBody(known.blob);
   const controller = new AbortController(), abort = () => controller.abort(request.signal.reason);
   const timer = setTimeout(() => controller.abort(new DOMException('Public document delivery timed out.', 'TimeoutError')), 15000);
   request.signal.addEventListener('abort', abort, { once: true });
@@ -115,6 +123,23 @@ async function publicDocument(request, path, installedPath) {
     let cache, cached, held = publicBodies.get(path);
     try { cache = await caches.open(PUBLIC_CACHE); if (!held) cached = await cache.match(key.href); } catch { /* An unavailable display cache does not invalidate a complete network response. */ }
     check();
+    if (nativeNavigation) {
+      const current = publicBodies.get(path);
+      if (current) return localHistoricalPublicBody(current.blob);
+      if (cached) try {
+        // A restored disk body is admitted once with the same build, bounded
+        // complete UTF-8 and byte digest checks. It supplies no current verdict.
+        const previous = publicReceipt(cached), blob = await completeBody(cached, previous); check();
+        const newer = publicBodies.get(path);
+        if (newer) return localHistoricalPublicBody(newer.blob);
+        if (publicRequests.get(path) === sequence) retainPublicBody(path, { blob, receipt: previous });
+        return localHistoricalPublicBody(blob);
+      } catch (error) {
+        check();
+        if (cache && publicRequests.get(path) === sequence) await cache.delete(key.href).catch(() => {});
+        cached = undefined;
+      }
+    }
     if (path === 'bank-entry') {
       // Only the private Root may retain a previously checked local display
       // while offline. Disk bytes need their one bounded integrity check

@@ -26,6 +26,7 @@ import {twinSalesPages,twinPageContent} from './twin-page.mjs';
 import {togetherPages,togetherContent} from './together-page.mjs';
 import {publicRouteAliases} from '../src/content/public-routes.mjs';
 import {compactNavigation} from './compact-navigation.mjs';
+import {bankOwnedStyles} from './public-bank-styles.mjs';
 import {withPageFooter} from './site-footer.mjs';
 import {cooperativePages,cooperativeContent} from './cooperative-page.mjs';
 import {vaultPage,vaultContent,vaultStyles} from './vault-page.mjs';
@@ -154,11 +155,13 @@ for(const path of ['/market-cap/',...assetCategories.map(category=>category.path
  runtimeDocuments.set(path,`<!doctype html><html lang="en"><head>${head}<script type="module" src="${base.entry}"></script></head><body><div id="public-explore-root" data-public-runtime="explore">${content}</div></body></html>`);
 }
 const bankStyles = [...bankHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^"]+)"/g)].map(match => match[1]);
+const styleManifest = JSON.parse(await readFile('dist/.vite/manifest.json','utf8'));
+const privateBankStyles = bankOwnedStyles(bankStyles,styleManifest);
 const bankCss = Object.fromEntries(await Promise.all(bankStyles.map(async url => [url,await readFile('dist'+url,'utf8')])));
 const bankContent = bankHtml.match(/<div id="root">([\s\S]*?)<\/div><noscript>/)[1];
 const bankHead = bankHtml.match(/<head>([\s\S]+)<\/head>/)[1];
 const exampleBanks=packExampleBanks(publicPages);Object.assign(publicPages,exampleBanks.pages);
-const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({ reserved:feedState.profileNames, pages: Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,path==='/feed/'?{...page,content:''}:page])), aliases:publicRouteAliases, bank: { head: bankHead, entry: bankEntry, styles: bankStyles,css:bankCss,content:bankContent } })).replaceAll('<', '\\u003c')}</script>`+exampleBanks.shared;
+const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({ reserved:feedState.profileNames, pages: Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,path==='/feed/'?{...page,content:''}:page])), aliases:publicRouteAliases, bank: { head: bankHead, entry: bankEntry, styles: privateBankStyles,css:bankCss,content:bankContent } })).replaceAll('<', '\\u003c')}</script>`+exampleBanks.shared;
 await writeFile('dist/learn/learn.css', publicCss);
 await writeFile('dist/learn/learn.js', publicJs);
 let entryHtml = bankHtml.replace('</head>', `<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>', () => `${bundle}</body>`);
@@ -181,7 +184,7 @@ const documents={...publicPages,...Object.fromEntries(Object.entries(publicRoute
 for (const [path, page] of Object.entries(documents)) {
   await mkdir(`dist${path}`, { recursive: true });
   const runtimeHtml = runtimeDocuments.get(path);
-  const feedBundle=['feed','discover'].includes(page.runtime)?`<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({reserved:feedState.profileNames,pages:{...navigationMetadata, '/feed/':{...publicPages['/feed/'],...(page.runtime==='feed'?{content:''}:{})},'/explore/':publicPages['/explore/'],'/discover/':{...publicPages['/discover/'],content:''}},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:bankStyles,css:bankCss,content:bankContent}})).replaceAll('<','\\u003c')}</script>`:null;
+  const feedBundle=['feed','discover'].includes(page.runtime)?`<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({reserved:feedState.profileNames,pages:{...navigationMetadata, '/feed/':{...publicPages['/feed/'],...(page.runtime==='feed'?{content:''}:{})},'/explore/':publicPages['/explore/'],'/discover/':{...publicPages['/discover/'],content:''}},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:privateBankStyles,css:bankCss,content:bankContent}})).replaceAll('<','\\u003c')}</script>`:null;
   const feedHtml=['feed','discover'].includes(page.runtime)?earlyPublicRuntimeDocument(runtimeHtml).replace('</head>',`<script src="${jsUrl}" defer></script></head>`).replace('</body>',()=>`${feedBundle}</body>`):null;
   await writeFile(`dist${path}index.html`, withReadingLink(feedHtml??(runtimeHtml ? runtimeDocumentHtml(runtimeHtml,page.runtime) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`),path));
 }

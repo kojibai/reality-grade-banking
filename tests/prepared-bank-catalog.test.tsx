@@ -30,13 +30,13 @@ it('keeps main entry synchronous and serves only the existing compressed display
  const p=await packet('Prepared B'),doc=new DOMParser().parseFromString(p.html,'text/html'),seed=await preparePublicMarketDocumentSeed(doc);
  expect(seed?.catalog.items[0].title).toBe('Prepared B');expect(seed?.path).toBe('bank');expect(p.html).not.toContain('/assets/bank-held.js');expect(doc.getElementById('root')).toBeNull();expect(p.html).not.toContain('receiz-navigation');expect(p.html).toContain('catalogGzip');
 });
-it('mounts Account while the saved read is pending, then gives first Market paint one coherent B without shipped/API discovery',async()=>{
+it('mounts Account with accepted historical disk A while the background saved read is pending, then adopts coherent qualified B without shipped/API discovery',async()=>{
  const p=await packet('Current B');let finish!:(response:Response)=>void;
  const fetcher=vi.fn((_path:RequestInfo|URL,_init?:RequestInit)=>new Promise<Response>(resolve=>{finish=resolve;}));vi.stubGlobal('fetch',fetcher);
- localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify({ok:true,transport:{publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1,revision:'old-A'},publicOriginals:[{id:'old-A',receizId:'old-A',title:'Old shipped A'}]}}));
+ localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify({ok:true,transport:{generatedAt:'2026-11-03T12:00:00Z',publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1,revision:'accepted-A'},publicOriginals:[{id:'accepted-A',receizId:'accepted-A',title:'Previously accepted A'}]}}));
  const {readPreparedBankCatalog}=await import('../src/receiz/prepared-bank-catalog'),{usePublicMarket}=await import('../src/receiz/usePublicMarket'),{useMarketCapitalization}=await import('../src/receiz/market-projection/useMarketCapitalization'),host=document.createElement('div'),root=createRoot(host),renders:Array<[string,string|null]>=[];
  function Probe(){const market=usePublicMarket(true,false),chart=useMarketCapitalization('ALL',false,market.historyCatalog,true),title=market.catalog?.items[0].title??'pending';renders.push([title,chart.source?.proofObjectHash??null]);return <><h1>Account mounted</h1><span>{title}</span></>;}
- try{await act(async()=>root.render(<Probe/>));expect(host.textContent).toBe('Account mountedpending');expect(renders.every(row=>row[0]==='pending'&&row[1]===null)).toBe(true);expect(fetcher).toHaveBeenCalledOnce();
+ try{await act(async()=>root.render(<Probe/>));expect(host.textContent).toBe('Account mountedPreviously accepted A');expect(renders.every(row=>row[0]==='Previously accepted A'&&row[1]===null)).toBe(true);expect(fetcher).toHaveBeenCalledOnce();
   await act(async()=>{finish(p.response());await readPreparedBankCatalog();});expect(host.textContent).toBe('Account mountedCurrent B');expect(renders.filter(row=>row[0]!=='pending')).toEqual(expect.arrayContaining([['Current B','b'.repeat(64)]]));expect(renders.some(([title,hash])=>title==='Current B'&&hash!=='b'.repeat(64))).toBe(false);expect(fetcher).toHaveBeenCalledExactlyOnceWith('/api/explore?path=bank',expect.objectContaining({credentials:'omit',method:'GET'}));
  }finally{act(()=>root.unmount());}
 });

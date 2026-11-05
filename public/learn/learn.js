@@ -191,10 +191,11 @@
     publicRoot.append(template.content);
   };
   const styles = on => {
+    const css = bank.css;
     const critical = document.getElementById('bankeiz-opening-critical'); if (critical) critical.media = on ? 'all' : 'not all';
-    for (const url of bank.styles) {
+    for (const url of on&&css?Object.keys(css):bank.styles) {
       let embedded = [...document.head.querySelectorAll('style[data-bank-stylesheet]')].find(item => item.dataset.bankStylesheet === url);
-      if (!embedded && on && bank.css?.[url]) { embedded = document.createElement('style'); embedded.dataset.bankStylesheet = url; embedded.textContent = bank.css[url]; document.head.append(embedded); }
+      if (!embedded && on && css?.[url]) { embedded = document.createElement('style'); embedded.dataset.bankStylesheet = url; embedded.textContent = css[url]; document.head.append(embedded); }
       if (embedded) { embedded.media = on ? 'all' : 'not all'; continue; }
       let link = [...document.head.querySelectorAll('link[rel="stylesheet"]')].find(item => item.getAttribute('href') === url);
       if (!link && on) { link = document.createElement('link'); link.rel = 'stylesheet'; link.href = url; document.head.append(link); }

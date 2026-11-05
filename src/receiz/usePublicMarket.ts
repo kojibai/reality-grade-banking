@@ -14,6 +14,7 @@ function adoptCatalog(catalog:PublicMarketCatalog|null){const next=mergeAdmitted
 export const PUBLIC_MARKET_CACHE_KEY = 'receiz-bank-public-discovery-v2';
 // Public workspaces share the settled source already in this document. Optional
 // browser storage can be too small for the complete collection and card input.
+let restoredDiskCatalog:PublicMarketCatalog|null=null;
 let retainedCatalog:PublicMarketCatalog|null=null,retainedSports:unknown=null,restored=false,preparedDocument=false,lastRefreshAt=0;
 const refreshInterval=60_000;
 const catalogListeners=new Set<()=>void>();
@@ -22,25 +23,28 @@ const inactiveCatalog=()=>()=>{};
 function restorePublicCatalog(): PublicMarketCatalog | null {
   const carried=readPublicMarketDocumentSeed();if(carried){preparedDocument=true;rememberPublicOriginalLocators(carried.catalog);return carried.catalog;}
   try{retainedSports=JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1')??'null');}catch{/* Optional public inventory. */}
-  try { const saved = localStorage.getItem(PUBLIC_MARKET_CACHE_KEY); const input = saved ? JSON.parse(saved) : null; const catalog = input ? parsePublicMarket(input, input.snapshot) : null; if (!catalog) return null; rememberPublicOriginalLocators(catalog); return mergePublicSports(catalog,retainedSports); } catch { return null; }
+  try { const saved = localStorage.getItem(PUBLIC_MARKET_CACHE_KEY); const input = saved ? JSON.parse(saved) : null; const catalog = input ? parsePublicMarket(input, input.snapshot) : null; if (!catalog) return null; rememberPublicOriginalLocators(catalog); const disk=mergePublicSports(catalog,retainedSports);restoredDiskCatalog=disk;return disk; } catch { return null; }
 }
+// Only this exact disk-restored display may yield to the complete carried
+// family. A subsequent RAM publication has a different reference.
+function restoreAdoptedCatalog(){const cached=restorePublicCatalog(),catalog=adoptCatalog(cached);if(cached&&cached===restoredDiskCatalog)restoredDiskCatalog=catalog;return catalog;}
 let adoptedPrepared:PreparedBankCatalog['seed']|null=null,adoptedCarried:PreparedBankCatalog['seed']|null=null;
 function readPublicCatalog(){
  const prepared=preparedBankCatalogState();
   if(prepared.value){const value=prepared.value;if(adoptedPrepared!==value.seed){adoptedPrepared=value.seed;if(value.seed!==adoptedCarried){restored=true;retainedCatalog=adoptCatalog(value.seed.catalog);rememberPublicOriginalLocators(retainedCatalog!);}}return retainedCatalog;}
  if(preparedBankCatalogEnabled()){
-  if(prepared.carried){const value=prepared.carried;if(adoptedCarried!==value.seed){adoptedCarried=value.seed;
+  if(prepared.carried){const value=prepared.carried;if(adoptedCarried!==value.seed){
    // A boot display cannot roll back a newer public discovery that completed
    // while this document's compressed seed was being decoded.
-   if(!retainedCatalog||retainedCatalog.revision==='local-admission'){restored=true;retainedCatalog=adoptCatalog(value.seed.catalog);rememberPublicOriginalLocators(retainedCatalog!);}
+   if(!retainedCatalog||retainedCatalog===restoredDiskCatalog||retainedCatalog.revision==='local-admission'){adoptedCarried=value.seed;restored=true;retainedCatalog=adoptCatalog(value.seed.catalog);rememberPublicOriginalLocators(retainedCatalog!);}
    if(!lastRefreshAt)lastRefreshAt=value.receivedAt;
   }return retainedCatalog;}
   if(prepared.phase!=='fallback'){
-   if(!retainedCatalog){const admitted=adoptCatalog(null);if(admitted){retainedCatalog=admitted;restored=true;}}
+   if(!retainedCatalog&&!restored){restored=true;retainedCatalog=restoreAdoptedCatalog();}
    return retainedCatalog;
   }
  }
- if(!restored){restored=true;retainedCatalog=adoptCatalog(restorePublicCatalog());}return retainedCatalog;}
+ if(!restored){restored=true;retainedCatalog=restoreAdoptedCatalog();}return retainedCatalog;}
 /** The existing public entry has already qualified its saved document. Adopt
  * its parsed family once; no new Bank receipt or caller funding is inferred. */
 export function adoptPublicMarketDocument(seed:PublicMarketDocumentSeed,qualification?:PublicDocumentHandoff){

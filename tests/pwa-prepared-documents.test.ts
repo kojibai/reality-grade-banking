@@ -71,7 +71,10 @@ it('preserves incoming cancellation before headers and during body without deliv
 });
 it('delivers closed helper GET/HEAD and keeps ledger proof view distinct from All Activity',async()=>{
  const {env,worker}=await installed();env.api(async request=>request.method==='HEAD'?new Response(null,{headers:prepared().headers}):prepared());expect((await worker.load('/feed/'))!.status).toBe(200);const head=await worker.load('/ledger/',{method:'HEAD'});expect(head!.status).toBe(200);expect(head!.body).toBe(null);
- await worker.load('/ledger/proofs?source='+'1'.repeat(64),{navigate:true});expect(new URL(env.reads().at(-1)!.url).searchParams.get('path')).toBe('ledger/proofs');expect(new URL(env.reads().at(-1)!.url).searchParams.get('source')).toBe('1'.repeat(64));env.api(async()=>new Response(null,{status:503}));expect((await worker.load('/ledger/proofs',{navigate:true}))!.status).toBe(503);
+ await worker.load('/ledger/proofs?source='+'1'.repeat(64),{navigate:true});expect(new URL(env.reads().at(-1)!.url).searchParams.get('path')).toBe('ledger/proofs');expect(new URL(env.reads().at(-1)!.url).searchParams.get('source')).toBe('1'.repeat(64));env.api(async()=>new Response(null,{status:503}));const before=env.reads().length,held=(await worker.load('/ledger/proofs',{navigate:true}))!;expect(await held.text()).toBe('<html>New accepted public state</html>');expect(held.headers.get('x-receiz-public-html-state')).toBe('historical');expect(env.reads()).toHaveLength(before);
+});
+it('does not substitute All Activity when a fresh Ledger proof view has no held body and Source refuses',async()=>{
+ const {env,worker}=await installed();env.api(async()=>new Response(null,{status:503}));const response=(await worker.load('/ledger/proofs',{navigate:true}))!;expect(response.status).toBe(503);expect(await response.text()).not.toContain('Ledger A');expect(env.reads().map(request=>request.method)).toEqual(['GET']);
 });
 it('keeps root account queries on the exact installed entry and leaves all private APIs, assets and non-GET methods alone',async()=>{
  const {env,worker}=await installed();env.api(async()=>prepared());expect(await(await worker.load('/?bankNotification=1&conversation=private#account/messages',{navigate:true}))!.text()).toBe('<html>Bank A</html>');expect(env.reads()).toHaveLength(0);
