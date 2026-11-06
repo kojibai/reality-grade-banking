@@ -5,7 +5,7 @@ import {retainPublicMomentManifest} from './public-asset-manifest';
 import { useCallback, useEffect, useMemo, useRef, useState,useSyncExternalStore,type SetStateAction } from 'react';
 import {receizKaiNow} from '@receiz/sdk';
 import { fetchPublicSports, mergePublicSports,retainPublicSportsInput,readStoredPublicSportsInput,restorePublicSportsInput,retainSelectedPublicSportsInput } from './public-sports';
-import { fetchPublicMarket, rememberPublicMarketResponse, retainPublicMarket, reusePublicMarketResponse, fetchPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, retainPublicArtwork, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
+import { fetchPublicMarket, rememberPublicMarketResponse, retainPublicMarket, retainPublicProfileHeaders, reusePublicMarketResponse, fetchPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, retainPublicArtwork, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
 import {prepareMarketDisplaySource,useMarketDisplaySource,adoptMarketDisplaySource} from './market-projection/display-source';
 import {publicCatalogAtPulse} from './market-projection/catalog-prices';
 
@@ -64,7 +64,7 @@ function publishPublicCatalog(next:SetStateAction<PublicMarketCatalog|null>){
   const current=readPublicCatalog(),candidate=typeof next==='function'?next(current):next;
   const currentAt=Date.parse(current?.observedAt??''),candidateAt=Date.parse(candidate?.observedAt??'');
   if(candidate?.complete&&Number.isFinite(currentAt)&&Number.isFinite(candidateAt)&&candidateAt<currentAt)return current;
-  const updated=adoptCatalog(candidate);
+  const updated=adoptCatalog(candidate?retainPublicProfileHeaders(candidate,current):candidate);
   if(updated===current)return current;retainedCatalog=updated;for(const listener of catalogListeners)listener();return updated;
 }
 // The accepted public projection belongs to the document, even when its last

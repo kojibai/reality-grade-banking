@@ -1,3 +1,4 @@
+import {curatePublicProfileHead,readPublicProfileHeads,type PublicProfileHead} from './public-profile-header.js';
 import {preparedPublicCatalogCache} from './prepared-bank-cache.js';
 import {publicAccountDisplayName} from './account-name.js';
 import {publicCarriedText,type PublicCarriedText} from './public-carried-text.js';
@@ -59,7 +60,7 @@ export interface PublicMarketItem {
   priceUsd: number | null; changePct: number | null; chart: number[];
   authority: 'projection-only'; canTrade: false;
 }
-export interface PublicMarketCatalog { items: PublicMarketItem[]; complete: boolean; revision: string; observedAt: string | null; sourceCount: number; sportsCoverage?: 'complete' | 'partial' | 'missing'; sportsObservedAt?:string|null;sportsSealedBirthsObservedAt?:string|null;sportsHistorySnapshot?:SportsHistorySnapshot; }
+export interface PublicMarketCatalog { publicProfileHeads?:readonly PublicProfileHead[];publicProfileHeadsRevision?:string;items: PublicMarketItem[]; complete: boolean; revision: string; observedAt: string | null; sourceCount: number; sportsCoverage?: 'complete' | 'partial' | 'missing'; sportsObservedAt?:string|null;sportsSealedBirthsObservedAt?:string|null;sportsHistorySnapshot?:SportsHistorySnapshot; }
 type RecordValue = Record<string, unknown>;
 export type PublicMediaKind='image'|'video'|'audio'|'pdf'|'epub'|'file'|'moment';
 const mediaKinds=new Set(['image','video','audio','pdf','epub','file','moment']);
@@ -200,10 +201,30 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
       ...(ownerUserId&&ownerUsername&&ownerCreatedAt&&Number.isFinite(Date.parse(ownerCreatedAt))?{ownerIdentity:{userId:ownerUserId,username:ownerUsername,createdAt:ownerCreatedAt}}:{}),
       priceUsd: nonnegative(source.valueUsd), changePct: null, chart: [], authority: 'projection-only', canTrade: false });
   }
-  const catalog: PublicMarketCatalog = { items, complete: meta.version === 1 && meta.scope === 'whole-market-visible-showcase' && meta.source === 'canonical-complete' && meta.isComplete === true && meta.itemCount === items.length,
+  const publicProfileHeads=readPublicProfileHeads(transport.publicProfileHeads),headRevision=text(transport.publicProfileHeadsRevision,64);
+  const catalog: PublicMarketCatalog = { ...(publicProfileHeads.length?{publicProfileHeads}:{}),...(headRevision&&/^[a-f0-9]{64}$/.test(headRevision)?{publicProfileHeadsRevision:headRevision}:{}),items, complete: meta.version === 1 && meta.scope === 'whole-market-visible-showcase' && meta.source === 'canonical-complete' && meta.isComplete === true && meta.itemCount === items.length,
     revision: text(meta.revision, 256) ?? '', observedAt: text(transport.generatedAt, 64), sourceCount: Number.isSafeInteger(meta.itemCount) && Number(meta.itemCount) >= 0 ? Number(meta.itemCount) : items.length };
   return mergePublicQuotes(catalog, snapshot);
 }
+/** A thinner public refresh cannot erase metadata already held for the same
+ * still-public account. An absent/rebound owner never inherits another head. */
+export function retainPublicProfileHeaders(catalog:PublicMarketCatalog,previous:PublicMarketCatalog|null|undefined):PublicMarketCatalog{
+ if(!previous?.publicProfileHeads?.length)return catalog;
+ const keys=new Set(catalog.publicProfileHeads?.map(head=>head.profile.userId+':'+head.profile.username)),owners=new Set(catalog.items.flatMap(item=>item.ownerIdentity?[item.ownerIdentity.userId+':'+item.ownerIdentity.username]:[]));
+ const retained=previous.publicProfileHeads.filter(head=>!keys.has(head.profile.userId+':'+head.profile.username)&&owners.has(head.profile.userId+':'+head.profile.username));
+ return retained.length?{...catalog,publicProfileHeads:[...(catalog.publicProfileHeads??[]),...retained]}:catalog;
+}
+function carryPublicProfileHeaders(input:unknown,catalog:PublicMarketCatalog,previous?:PublicMarketCatalog|null):unknown{
+ const source=record(input),transport=record(source.transport),prior=previous?.publicProfileHeads??[],selected=catalog.publicProfileHeads??[];
+ if(!prior.length&&!selected.length)return input;
+ const raw=Array.isArray(transport.publicProfileHeads)?transport.publicProfileHeads:[],keys=new Set(raw.flatMap(value=>{const head=curatePublicProfileHead(value);return head?[head.profile.userId+':'+head.profile.username]:[];})),owners=new Set(catalog.items.flatMap(item=>item.ownerIdentity?[item.ownerIdentity.userId+':'+item.ownerIdentity.username]:[]));
+ const missing=[...prior,...selected].filter(head=>owners.has(head.profile.userId+':'+head.profile.username)&&!keys.has(head.profile.userId+':'+head.profile.username));
+ if(!missing.length)return input;
+ const heads=new Map<string,NonNullable<ReturnType<typeof curatePublicProfileHead>>>();
+ for(const value of [...missing,...raw]){const head=curatePublicProfileHead(value);if(head&&owners.has(head.profile.userId+':'+head.profile.username))heads.set(head.profile.userId+':'+head.profile.username,head);}
+ return{...source,transport:{...transport,publicProfileHeads:[...heads.values()]}};
+}
+
 // Locators are public display projections, retained only for the exact artifact
 // digest. They never replace verification of bytes returned by that locator.
 const originalLocators = new Map<string, string>();
@@ -271,7 +292,7 @@ export function reusePublicMarketResponse(previous:PublicMarketCatalog,selected:
 export function retainPublicMarket(catalog:PublicMarketCatalog,snapshot?:unknown,selected=catalog,previousCatalog?:PublicMarketCatalog|null):void{
  const inherited=previousCatalog?publicMarketResponses.get(previousCatalog)?.quotes:undefined;snapshot??=inherited;
  const held=publicMarketResponses.get(catalog);if(!held)return;publicMarketResponses.set(selected,held);
- const input=carriedMomentInput(held.input,held.basis,selected),changed=input!==held.input;if(changed){held.input=input;void held.response?.body?.cancel().catch(()=>{});held.response=null;}
+ const carried=carryPublicProfileHeaders(held.input,selected,previousCatalog),input=carriedMomentInput(carried,held.basis,selected),changed=input!==held.input;if(changed){held.input=input;void held.response?.body?.cancel().catch(()=>{});held.response=null;}
  if(!changed&&held.retained&&(!snapshot||held.snapshot===snapshot))return;
  const quotes=snapshot?publicQuoteSnapshot(snapshot,selected,held.quotes??inherited):held.quotes,retainedInput=quotes?{...record(held.input),snapshot:quotes}:held.input,serialized=JSON.stringify(retainedInput);
  let previous:string|null|undefined,saved=false;

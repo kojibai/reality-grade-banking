@@ -15,7 +15,7 @@ import {useProfileGrowth} from '../receiz/market-projection/useProfileGrowth';
 import {CHART_PERIODS,type ChartPeriod} from '../core/chart-history';
 import {PublicAssetTradeHost} from './PublicAssetTradeHost';
 import {profileCollectionPrices,profileCollectionSummary,profileCollectionCapitalization} from './profile-prices';
-import {fetchPublicProfile,profilePagePath,publicProfilePageError,selectHeldPublicProfile,publicProfileHasHeader,fetchPublicProfileHeader,publicProfilesRevision,subscribePublicProfiles,retainedPublicProfile,retainPublicProfile,type PublicProfile} from '../receiz/public-profile';
+import {fetchPublicProfile,profilePagePath,publicProfilePageError,selectHeldPublicProfile,publicProfileHasHeader,publicProfilesRevision,subscribePublicProfiles,retainedPublicProfile,retainPublicProfile,type PublicProfile} from '../receiz/public-profile';
 import {buildCheckoutRequest} from '../receiz/checkout-request';
 import {beginProfileAccountAction,beginProfileEdit,closeProfileEdit,attachProfileEdit,readProfileEdit,readProfileOwner,readProfileOwnerHeader,subscribeProfileActions,signProfileWithPbi} from '../receiz/profile-actions';
 import type {usePublicMarket} from '../receiz/usePublicMarket';
@@ -42,8 +42,8 @@ export function PublicProfilePage({username,source,active,initialProfile,collect
  const profileRevision=useSyncExternalStore(subscribePublicProfiles,publicProfilesRevision,publicProfilesRevision);
  const heldProfile=useMemo(()=>initialProfile??selectHeldPublicProfile(username,source.historyCatalog??source.catalog),[initialProfile,username,source.historyCatalog??source.catalog,profileRevision]);
  const owner=useSyncExternalStore(subscribeProfileActions,readProfileOwner,()=>null),ownerHeader=useSyncExternalStore(subscribeProfileActions,readProfileOwnerHeader,()=>null);
- // The already-admitted owner header remains within the active owner scope.
- // Do not retain the owner presentation into anonymous Market/profile caches.
+ // The owner's admitted compact header stays in this mounted owner scope.
+ // It is never retained into the anonymous profile or public Market caches.
  const profile=useMemo(()=>heldProfile&&!publicProfileHasHeader(heldProfile)&&owner===heldProfile.userId&&ownerHeader?.userId===owner&&ownerHeader.username===heldProfile.username?{...heldProfile,...ownerHeader,stats:heldProfile.stats,items:heldProfile.items,nextCursor:heldProfile.nextCursor,...(heldProfile.authorshipVerified?{authorshipVerified:true,pbiReceiptHash:heldProfile.pbiReceiptHash}:{})}:heldProfile,[heldProfile,owner,ownerHeader]);
  useLayoutEffect(()=>{if(heldProfile&&!initialProfile&&retainedPublicProfile(username)!==heldProfile)retainPublicProfile(heldProfile);},[username,heldProfile,initialProfile]);
  const [error,setError]=useState(()=>profile?'':publicProfilePageError(username,source.historyCatalog??source.catalog)),[retry,setRetry]=useState(0),[tab,setTab]=useState<'assets'|'activity'>('assets'),[insights,setInsights]=useState<'unopened'|'open'|'closed'>('unopened'),[growthOpen,setGrowthOpen]=useState(false),[image,setImage]=useState<{url:string;title:string}|null>(null),[more,setMore]=useState(false);
@@ -55,9 +55,9 @@ export function PublicProfilePage({username,source,active,initialProfile,collect
  const cycleGrowth=(direction:number)=>setGrowthPeriod(period=>CHART_PERIODS[(CHART_PERIODS.indexOf(period)+direction+CHART_PERIODS.length)%CHART_PERIODS.length]);
  const profileInputPending=!profile&&source.displayLocalPending===true;
  useEffect(()=>{
-  if(!active||initialProfile||profileInputPending||profile&&publicProfileHasHeader(profile)||publicProfilePageError(username,source.historyCatalog??source.catalog)&&!retry)return;
+  if(!active||initialProfile||profileInputPending||profile||publicProfilePageError(username,source.historyCatalog??source.catalog)&&!retry)return;
   let alive=true;
-  const request=profile?fetchPublicProfileHeader(profile):fetchPublicProfile(username);
+  const request=fetchPublicProfile(username);
   void request.then(()=>{if(alive)setError('');},cause=>{if(alive&&(!profile||['PROFILE_PRIVATE','PROFILE_NOT_FOUND','PROFILE_CHANGED'].includes(cause.message)))setError(cause.message);});
   return()=>{alive=false;};
  },[username,active,profile,initialProfile,retry,profileInputPending]);
