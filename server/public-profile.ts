@@ -1,4 +1,4 @@
-import {parsePublicProfile,parsePublicOriginal,profileUsername,type PublicProfile} from '../src/receiz/public-profile.js';
+import {parsePublicProfile,parsePublicOriginal,profileUsername,type PublicProfile,type PublicProfileHeader} from '../src/receiz/public-profile.js';
 import {reuseShippedProfileShareHistory} from './profile-share-history.js';
 import {profileAvatarUrl} from '../src/receiz/profile-avatar.js';
 export class PublicProfileError extends Error {constructor(message:string,public status:number){super(message);}}
@@ -36,6 +36,25 @@ export function createPublicProfileReader(fetchImpl:typeof fetch=fetch,enrich:(p
  };
 }
 export const readPublicProfile=createPublicProfileReader();
+/** Public metadata for a collection already held by the caller. The manifest
+ * supplies its real viewer and account binding; it does not select membership. */
+export function createPublicProfileHeaderReader(fetchImpl:typeof fetch=fetch){
+ const pending=new Map<string,Promise<PublicProfileHeader>>();
+ return(username:string):Promise<PublicProfileHeader>=>{
+  if(!profileUsername(username))return Promise.reject(new PublicProfileError('PROFILE_USERNAME_INVALID',400));
+  const held=pending.get(username);if(held)return held;
+  const attempt=(async()=>{
+   const response=await fetchImpl(`https://receiz.com/api/profile/${username}/manifest`,{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(8000),headers:{accept:'application/json'}});
+   if(!response.ok){await response.body?.cancel().catch(()=>{});throw new PublicProfileError(response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE',[403,404].includes(response.status)?response.status:503);}
+   const input=await readBody(response,512*1024);
+   try{
+    const {items:_items,nextCursor:_cursor,...header}=parsePublicProfile({ok:input?.ok,profile:input?.head},username);
+    return header;
+   }catch(cause){throw new PublicProfileError(cause instanceof Error?cause.message:'PROFILE_UNAVAILABLE',cause instanceof Error&&cause.message==='PROFILE_PRIVATE'?403:503);}
+  })();pending.set(username,attempt);void attempt.finally(()=>{if(pending.get(username)===attempt)pending.delete(username);}).catch(()=>{});return attempt;
+ };
+}
+export const readPublicProfileHeader=createPublicProfileHeaderReader();
 type OriginalReader<T>=(username:string,originalId:string)=>Promise<T|null>;
 export function createPublicOriginalReader(fetchImpl?:typeof fetch):OriginalReader<ReturnType<typeof parsePublicOriginal>>;
 export function createPublicOriginalReader<T extends ReturnType<typeof parsePublicOriginal>>(fetchImpl:typeof fetch,project:(input:unknown,username:string,originalId:string)=>T):OriginalReader<T>;
@@ -62,9 +81,10 @@ function readPublicPortrait(username:string){
 export async function handlePublicProfile(request:Request){
  const url=new URL(request.url),match=/^\/api\/bank\/public-profile\/([a-z0-9_]{3,24})$/.exec(url.pathname),headers={'Cache-Control':'no-store','Content-Type':'application/json','X-Content-Type-Options':'nosniff'};
  if(request.method!=='GET')return new Response(null,{status:405,headers:{...headers,Allow:'GET'}});
- const portrait=url.searchParams.get('view')==='portrait';
- if(!match||url.hash||[...url.searchParams.keys()].some(key=>(portrait?key!=='view':key!=='cursor')||url.searchParams.getAll(key).length!==1))return Response.json({error:'PROFILE_REQUEST_INVALID'},{status:400,headers});
+ const view=url.searchParams.get('view'),portrait=view==='portrait',head=view==='head';
+ if(!match||url.hash||[...url.searchParams.keys()].some(key=>(portrait||head?key!=='view':key!=='cursor')||url.searchParams.getAll(key).length!==1))return Response.json({error:'PROFILE_REQUEST_INVALID'},{status:400,headers});
  if(portrait)try{return Response.json(await readPublicPortrait(match[1]),{headers});}catch(cause){return Response.json({error:'PROFILE_UNAVAILABLE'},{status:cause instanceof PublicProfileError?cause.status:503,headers});}
+ if(head)try{return Response.json(await readPublicProfileHeader(match[1]),{headers});}catch(cause){return Response.json({error:cause instanceof PublicProfileError?cause.message:'PROFILE_UNAVAILABLE'},{status:cause instanceof PublicProfileError?cause.status:503,headers});}
  try{return Response.json(await readPublicProfile(match[1],url.searchParams.get('cursor')??undefined),{headers});}
  catch(cause){return Response.json({error:cause instanceof PublicProfileError?cause.message:'PROFILE_UNAVAILABLE'},{status:cause instanceof PublicProfileError?cause.status:503,headers});}
 }

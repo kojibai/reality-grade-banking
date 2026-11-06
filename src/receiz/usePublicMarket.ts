@@ -1,4 +1,4 @@
-import {preparedBankCatalogEnabled,preparedBankCatalogState,subscribePreparedBankCatalog,readPreparedBankCatalog,prepareCarriedBankCatalog,adoptPublicDocumentCatalog,type PublicDocumentHandoff,type PreparedBankCatalog} from './prepared-bank-catalog';
+import {untilAborted,preparedBankCatalogEnabled,preparedBankCatalogState,subscribePreparedBankCatalog,readPreparedBankCatalog,prepareCarriedBankCatalog,adoptPublicDocumentCatalog,type PublicDocumentHandoff,type PreparedBankCatalog} from './prepared-bank-catalog';
 import {readPublicMarketDocumentSeed,type PublicMarketDocumentSeed} from './public-market-document-seed';
 import {compatibleShareInventory,mergeShareInventory} from './market-share-inventory';
 import {retainPublicMomentManifest} from './public-asset-manifest';
@@ -81,9 +81,9 @@ let shippedCatalog:Promise<void>|undefined,shippedSports:Promise<void>|undefined
 function prepareShippedCatalog():Promise<void>{
   if(shippedCatalog)return shippedCatalog;
   const attempt=(async()=>{
-    const response=await fetch('/receiz-public-market.json',{credentials:'omit'});
+    const signal=AbortSignal.timeout(15000),response=await untilAborted(fetch('/receiz-public-market.json',{credentials:'omit',signal}),signal);
     if(!response.ok)throw Error('Public collection snapshot unavailable.');
-    const input=await response.json(),cached=parsePublicMarket(input,input.snapshot);rememberPublicOriginalLocators(cached);
+    const input=await untilAborted(response.json(),signal),cached=parsePublicMarket(input,input.snapshot);rememberPublicOriginalLocators(cached);
     publishPublicCatalog(current=>{
       if(!current||cached.complete&&(!Number.isFinite(Date.parse(current.observedAt??''))||Date.parse(cached.observedAt??'')>Date.parse(current.observedAt??'')))return mergePublicSports(cached,retainedSports);
       const hints=new Map(cached.items.map(item=>[item.id,item]));
@@ -109,10 +109,16 @@ function prepareShippedSports():Promise<void>{
   })();
   shippedSports=attempt;void attempt.catch(()=>{if(shippedSports===attempt)shippedSports=undefined;});return attempt;
 }
-export function usePublicMarket(active = true, displayActive = active, selectedItemId?:string|null) {
-  const preparedSnapshot=useSyncExternalStore(active?subscribePreparedBankCatalog:inactiveCatalog,preparedBankCatalogState,preparedBankCatalogState);
+export function usePublicMarket(active = true, displayActive = active, selectedItemId?:string|null, prepareProfileDisplay=false) {
+  const preparedSnapshot=useSyncExternalStore(active||displayActive?subscribePreparedBankCatalog:inactiveCatalog,preparedBankCatalogState,preparedBankCatalogState);
   const pricingSource=useMarketDisplaySource(),[pulse,setPulse]=useState(()=>receizKaiNow().pulse);
-  const catalog=useSyncExternalStore(active?subscribeCatalog:inactiveCatalog,readPublicCatalog,()=>null),setCatalog=publishPublicCatalog;
+  // Profile display subscribes to existing public state without activating
+  // Market polling. A genuinely missing local collection uses its shipped
+  // reader once; available RAM/cache state never waits for this restoration.
+  const catalog=useSyncExternalStore(active||displayActive?subscribeCatalog:inactiveCatalog,readPublicCatalog,()=>null),setCatalog=publishPublicCatalog;
+  const [displayLocalSettled,setDisplayLocalSettled]=useState(false);
+  const displayLocalPending=prepareProfileDisplay&&!active&&displayActive&&!catalog?.complete&&!displayLocalSettled;
+  useEffect(()=>{if(!displayLocalPending)return;let alive=true;void prepareCarriedBankCatalog().then(async()=>{if(alive&&!readPublicCatalog()?.complete)await prepareShippedCatalog();}).catch(()=>{}).finally(()=>{if(alive)setDisplayLocalSettled(true);});return()=>{alive=false;};},[displayLocalPending]);
   const [status, setStatus] = useState<'loading' | 'live' | 'stale' | 'error'>(catalog ? 'stale' : 'loading');
   const [quoteStatus, setQuoteStatus] = useState<'loading' | 'fresh' | 'stale'>(()=>preparedBankCatalogEnabled()&&preparedBankCatalogState().value?.receipt.state==='current'?'fresh':'stale');
   const [sportsStatus, setSportsStatus] = useState<'loading' | 'fresh' | 'retained' | 'missing'>(catalog?.items.some(item => item.category === 'sports') ? 'retained' : 'loading');
@@ -242,5 +248,5 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
  const selectedFamily=!!family&&catalog===family.seed.catalog,accepted=prepared?.phase==='ready'&&selectedFamily?prepared.value:null;
  const historical=!!prepared&&(!!family&&!selectedFamily||prepared.phase!=='ready'&&!!(family||prepared.phase!=='fallback'&&catalog));
  const visibleSportsStatus=(sportsStatus==='loading'||sportsStatus==='missing')&&(catalog?.sportsCoverage==='complete'||catalog?.items.some(item=>item.category==='sports'))?'retained' as const:sportsStatus;
-  return { catalog:pricedCatalog, historyCatalog:catalog, pulse, quoteStatus:historical?'stale' as const:quoteStatus, sportsStatus:historical&&visibleSportsStatus==='fresh'?'retained' as const:visibleSportsStatus, status:historical?'stale' as const:accepted?(accepted.receipt.state==='current'?'live' as const:'stale' as const): !catalog && status === 'stale' ? 'error' as const : status, error, refresh };
+  return { catalog:pricedCatalog, historyCatalog:catalog, pulse, quoteStatus:historical?'stale' as const:quoteStatus, sportsStatus:historical&&visibleSportsStatus==='fresh'?'retained' as const:visibleSportsStatus, status:historical?'stale' as const:accepted?(accepted.receipt.state==='current'?'live' as const:'stale' as const): !catalog && status === 'stale' ? 'error' as const : status, error, ...(displayLocalPending?{displayLocalPending:true as const}:{}), refresh };
 }

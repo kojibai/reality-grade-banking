@@ -10,14 +10,14 @@ import {formatMoney} from '../core/money';
 
 const percent=(value:number)=>(value>0?'+':'')+value.toLocaleString(undefined,{maximumFractionDigits:2})+'%';
 const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2});
-export function ProfileGrowthPeek({name,total,currentValue=null,history,calculationRows,originals,unavailable,onClose,active,initialPeriod='ALL'}:{name:string;total:number|null;currentValue?:number|null;history:ProfileGrowthHistory|null;calculationRows?:ProfileGrowthRow[]|null;originals?:Pick<PublicMarketItem,'id'|'assetId'|'title'|'originalDigest'>[];unavailable:boolean;onClose():void;active:boolean;initialPeriod?:ChartPeriod}){
+export function ProfileGrowthPeek({name,total,currentValue=null,currentCapitalizationUsdCents=null,history,calculationRows,originals,unavailable,onClose,active,initialPeriod='ALL'}:{name:string;total:number|null;currentValue?:number|null;currentCapitalizationUsdCents?:string|null;history:ProfileGrowthHistory|null;calculationRows?:ProfileGrowthRow[]|null;originals?:Pick<PublicMarketItem,'id'|'assetId'|'title'|'originalDigest'>[];unavailable:boolean;onClose():void;active:boolean;initialPeriod?:ChartPeriod}){
  const [period,setPeriod]=useState<ChartPeriod>(initialPeriod),[measure,setMeasure]=useState<'originals'|'capitalization'>('originals'),points=history?.series[period];
  const chart=useMemo(()=>{
   if(!points?.length)return null;
   if(measure==='capitalization'&&points.some(point=>point.capitalizationUsdCents===null||point.capitalizationUsdCents===undefined))return null;
   return {values:points.map(point=>measure==='originals'?point.usd:Number(point.capitalizationUsdCents)/100),times:points.map(point=>Date.parse(point.at)),range:chartPeriodBounds(points,period)};
  },[points,period,measure]);
- const last=points?.at(-1),cap=last?.capitalizationUsdCents,amount=measure==='originals'?(last?.usd??currentValue):cap===null||cap===undefined?null:Number(cap)/100;
+ const last=points?.at(-1),cap=last?.capitalizationUsdCents??currentCapitalizationUsdCents,amount=measure==='originals'?(last?.usd??currentValue):cap===null||cap===undefined?null:Number(cap)/100;
  const change=measure==='originals'?(last?.percent??total):chart&&chart.values[0]>0?(chart.values.at(-1)!/chart.values[0]-1)*100:null;
  const label=measure==='originals'?'Originals value':'Market capitalization';
  return <Sheet title="Profile value" onClose={onClose} active={active}><div className="profile-value-peek profile-growth-peek">

@@ -29,17 +29,19 @@ it('does not let a profile function claim reserved public routes',async()=>{
 it('keeps the public page shell on a source failure and carries only its safe retry state',async()=>{
  const {PublicProfileError}=await import('../server/public-profile');const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/'),{profile:async()=>{throw new PublicProfileError('upstream diagnostic not for public output',503);},page:async()=>html});const body=await response.text();expect(response.status).toBe(503);expect(body).toContain('public-profile-error');expect(body).toContain('PROFILE_UNAVAILABLE');expect(body).not.toContain('upstream diagnostic');expect(body).not.toContain('public-profile-seed');
 });
-it('streams static resources immediately while its single public source read runs in parallel',async()=>{
- let resolve!:(value:ReturnType<typeof parsePublicProfile>)=>void;const held=new Promise<ReturnType<typeof parsePublicProfile>>(done=>{resolve=done;});const profile=vi.fn(()=>held),page=vi.fn(async()=>html);
- const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Profile browser'}}),{profile,page});const reader=response.body!.getReader(),first=await reader.read();expect(new TextDecoder().decode(first.value)).toContain('<head>');expect(new TextDecoder().decode(first.value)).not.toContain('public-profile-seed');expect(profile).toHaveBeenCalledTimes(1);expect(page).toHaveBeenCalledTimes(1);
- resolve(parsePublicProfile(profileFixture(),'alexmorgan'));const second=await reader.read(),body=new TextDecoder().decode(first.value)+new TextDecoder().decode(second.value);expect(body).toContain('Alex Morgan | Bankeiz');expect(body).toContain('public-profile-seed');expect(body).toContain('rel="preload" as="image"');expect(body).not.toContain('<title>Explore');expect((await reader.read()).done).toBe(true);
+it('completes browser profile entry before starting any remote profile or SSR work',async()=>{
+ const profile=vi.fn(()=>new Promise<ReturnType<typeof parsePublicProfile>>(()=>{})),page=vi.fn(async()=>html),render=vi.fn(),prepareRender=vi.fn();
+ const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Profile browser'}}),{profile,page,render,prepareRender});
+ const reader=response.body!.getReader();try{const first=new TextDecoder().decode((await reader.read()).value);
+  expect(first).toContain('</html>');expect(first).toContain('id="public-explore-root"');expect(first).toContain('id="receiz-navigation"');expect(first).toContain('href="https://bankeiz.com/alexmorgan/"');
+  expect(first).not.toContain('Old collection');expect(first).not.toContain('public-profile-seed');expect(first).not.toContain('public-profile-error');expect(first).toContain('content="noindex,follow"');
+  expect(profile).not.toHaveBeenCalled();expect(render).not.toHaveBeenCalled();expect(prepareRender).not.toHaveBeenCalled();expect(page).toHaveBeenCalledOnce();expect((await reader.read()).done).toBe(true);
+ }finally{await reader.cancel();}
 });
-it('keeps early profile image preparation within the first visible collection rows',async()=>{
- let resolve!:(value:ReturnType<typeof parsePublicProfile>)=>void;const held=new Promise<ReturnType<typeof parsePublicProfile>>(done=>{resolve=done;});
- const response=await handleProfilePreview(new Request('https://bankeiz.com/bjklock/',{headers:{accept:'text/html','user-agent':'Profile browser'}}),{profile:()=>held,page:async()=>html});
- const reader=response.body!.getReader(),first=new TextDecoder().decode((await reader.read()).value);
- expect([...first.matchAll(/<link rel="preload" as="image"/g)]).toHaveLength(2);
- resolve({...parsePublicProfile(profileFixture(),'alexmorgan'),username:'bjklock'});await reader.read();expect((await reader.read()).done).toBe(true);
+it('does not read or preload a profile collection for the static browser entry',async()=>{
+ const profile=vi.fn(()=>new Promise<ReturnType<typeof parsePublicProfile>>(()=>{}));
+ const response=await handleProfilePreview(new Request('https://bankeiz.com/bjklock/',{headers:{accept:'text/html','user-agent':'Profile browser'}}),{profile,page:async()=>html});
+ const reader=response.body!.getReader();try{const first=new TextDecoder().decode((await reader.read()).value);expect(first).toContain('</html>');expect(first).not.toContain('rel="preload" as="image"');expect(profile).not.toHaveBeenCalled();expect((await reader.read()).done).toBe(true);}finally{await reader.cancel();}
 });
 it('keeps crawler status and metadata exact instead of streaming a success before a missing profile',async()=>{
  const {PublicProfileError}=await import('../server/public-profile');const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Twitterbot'}}),{profile:async()=>{throw new PublicProfileError('PROFILE_NOT_FOUND',404);},page:async()=>html});expect(response.status).toBe(404);expect(await response.text()).toContain('PROFILE_NOT_FOUND');
@@ -74,12 +76,10 @@ it('keeps conflicting selectors and unknown controls invalid even beside attribu
  }
  expect(profile).not.toHaveBeenCalled();expect(page).not.toHaveBeenCalled();
 });
-it('streams tracked browser entry immediately with one source read and preserves crawler refusals',async()=>{
- let resolve!:(value:ReturnType<typeof parsePublicProfile>)=>void;const pending=new Promise<ReturnType<typeof parsePublicProfile>>(done=>{resolve=done;});
- const profile=vi.fn(()=>pending),page=vi.fn(async()=>html);
+it('completes tracked browser entry without a source read and preserves crawler refusals',async()=>{
+ const profile=vi.fn(()=>new Promise<ReturnType<typeof parsePublicProfile>>(()=>{})),page=vi.fn(async()=>html);
  const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan?fbclid=click&igsh=share',{headers:{accept:'text/html','user-agent':'Instagram'}}),{profile,page});
- expect(response.status).toBe(200);const reader=response.body!.getReader(),first=await reader.read();expect(new TextDecoder().decode(first.value)).toContain('<head>');expect(profile).toHaveBeenCalledExactlyOnceWith('alexmorgan');
- resolve(parsePublicProfile(profileFixture(),'alexmorgan'));await reader.read();expect((await reader.read()).done).toBe(true);
+ expect(response.status).toBe(200);const reader=response.body!.getReader();try{const first=new TextDecoder().decode((await reader.read()).value);expect(first).toContain('</html>');expect(profile).not.toHaveBeenCalled();expect((await reader.read()).done).toBe(true);}finally{await reader.cancel();}
  const {PublicProfileError}=await import('../server/public-profile');
  for(const status of [403,404]){
   const refusal=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan?fbclid=click',{headers:{accept:'text/html','user-agent':'facebookexternalhit/1.1'}}),{profile:async()=>{throw new PublicProfileError(status===403?'PROFILE_PRIVATE':'PROFILE_NOT_FOUND',status);},page});
@@ -87,16 +87,13 @@ it('streams tracked browser entry immediately with one source read and preserves
  }
 });
 
-it('prepares the real renderer alongside the single source read without delaying early resources',async()=>{
+it('prepares the crawler renderer alongside its single authoritative profile read',async()=>{
  let sourceReady!:(value:ReturnType<typeof parsePublicProfile>)=>void,rendererReady!:()=>void;
  const source=new Promise<ReturnType<typeof parsePublicProfile>>(done=>{sourceReady=done;}),prepared=new Promise<void>(done=>{rendererReady=done;});
  const prepareRender=vi.fn(()=>prepared),profile=vi.fn(()=>source),render=vi.fn(async()=>'<article>Complete public profile</article>');
- const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Browser'}}),{profile,page:async()=>html,render,prepareRender});
- const reader=response.body!.getReader();expect(new TextDecoder().decode((await reader.read()).value)).toContain('<head>');
- expect(prepareRender).toHaveBeenCalledOnce();expect(profile).toHaveBeenCalledOnce();expect(render).not.toHaveBeenCalled();
- rendererReady();sourceReady(parsePublicProfile(profileFixture(),'alexmorgan'));
- expect(new TextDecoder().decode((await reader.read()).value)).toContain('Complete public profile');expect(render).toHaveBeenCalledOnce();
- expect((await reader.read()).done).toBe(true);
+ const response=handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Twitterbot'}}),{profile,page:async()=>html,render,prepareRender});
+ await Promise.resolve();expect(prepareRender).toHaveBeenCalledOnce();expect(profile).toHaveBeenCalledOnce();expect(render).not.toHaveBeenCalled();
+ rendererReady();sourceReady(parsePublicProfile(profileFixture(),'alexmorgan'));expect(await(await response).text()).toContain('Complete public profile');expect(render).toHaveBeenCalledOnce();
 });
 it('starts the same profile module asynchronously while preserving its complete carried source and navigation',()=>{
  const profile=parsePublicProfile(profileFixture(),'alexmorgan'),page=html.replace('</head>','<script type="module" crossorigin src="/assets/explore-test.js"></script></head>');

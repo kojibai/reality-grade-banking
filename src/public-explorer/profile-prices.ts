@@ -4,7 +4,7 @@ import {publicAssetPulseSeed} from '../receiz/market-projection/asset';
 import {publicSigilQuoteAtPulse,marketPeriodPulses} from '../receiz/market-projection/project';
 import {publicProfileMovement} from '../receiz/public-profile';
 import type {ChartPeriod} from '../core/chart-history';
-import {compatibleShareInventory,mergeShareInventory,publicCapitalizationAssets} from '../receiz/market-share-inventory';
+import {compatibleShareInventory,mergeShareInventory,publicCapitalizationAssets,publicShareCapitalization} from '../receiz/market-share-inventory';
 /** The current collection's one shared local clock/pricing operands; no
  * timers, history graphs, network reads or per-card subscriptions. */
 export function profileCollectionPrices(items:PublicMarketItem[],catalog:PublicMarketCatalog|null,source:MarketCapSource|null,pulse:number){
@@ -39,4 +39,18 @@ export function profileCollectionSummary(items:PublicMarketItem[],source:MarketC
 /** A weighted collection return, never an average of per-object percentages. */
 export function profileCollectionReturn(items:PublicMarketItem[],source:MarketCapSource|null,period:ChartPeriod='ALL'):number|null{
  return profileCollectionSummary(items,source,period).returnPct;
+}
+
+/** Current display amount only. Every displayed Original must carry valid
+ * supply; the existing selector handles canonical duplicates and conflicts. */
+export function profileCollectionCapitalization(items:PublicMarketItem[]):string|null{
+ if(!items.length)return null;
+ const bound:PublicMarketItem[]=[];
+ for(const item of items){
+  if(item.priceUsd===null||!Number.isFinite(item.priceUsd)||item.priceUsd<0||!Number.isSafeInteger(Math.round(item.priceUsd*100)))return null;
+  const shareInventory=compatibleShareInventory(item,item.shareInventory);if(!shareInventory)return null;
+  bound.push(shareInventory===item.shareInventory?item:{...item,shareInventory});
+ }
+ const result=publicShareCapitalization({items:bound,complete:true,revision:'',observedAt:null,sourceCount:bound.length});
+ return result.complete?result.usdCents:null;
 }

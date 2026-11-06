@@ -29,7 +29,7 @@ const sameReceipt=(a:PreparedBankReceipt,b:PreparedBankReceipt)=>sameBody(a,b)&&
 function immutable<T>(value:T):T{
  if(value&&typeof value==='object'&&!Object.isFrozen(value)){for(const child of Object.values(value))immutable(child);Object.freeze(value);}return value;
 }
-function untilAborted<T>(operation:Promise<T>,signal:AbortSignal):Promise<T>{
+export function untilAborted<T>(operation:Promise<T>,signal:AbortSignal):Promise<T>{
  signal.throwIfAborted();return new Promise<T>((resolve,reject)=>{
   const abort=()=>reject(signal.reason);signal.addEventListener('abort',abort,{once:true});
   operation.then(value=>{signal.removeEventListener('abort',abort);resolve(value);},error=>{signal.removeEventListener('abort',abort);reject(error);});
@@ -80,19 +80,21 @@ export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fet
  const bootRevision=displayRevision;
  const bootstrap:Promise<CarriedBankCatalog|null>=input||storage?(async()=>{let cached:Response|null=null;try{
   if(!input){
-   cached=await storage!.read();if(displayRevision!==bootRevision)return carried;
+   // One local-read budget covers cache lookup and body decoding together.
+   const signal=AbortSignal.timeout(15000);
+   cached=await untilAborted(storage!.read(),signal);if(displayRevision!==bootRevision)return carried;
    if(!cached){bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;}
    const marker=typeof document==='undefined'?null:document.getElementById('receiz-navigation') as (HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null})|null;
    // Neither historical response form can replace the complete selected view.
    if(retainedDiscoveredPublicCatalog()||marker?.publicMarketCatalog?.()?.complete){void cached.body?.cancel().catch(()=>{});bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;}
    if(/^application\/json(?:;|$)/i.test(cached.headers.get('content-type')??'')){
     if(!cached.ok||Number(cached.headers.get('content-length'))>MAX)throw Error('PREPARED_PUBLIC_CATALOG_INVALID');
-    const input=await untilAborted(cached.json(),AbortSignal.timeout(15000));if(displayRevision!==bootRevision)return carried;
+    const input=await untilAborted(cached.json(),signal);if(displayRevision!==bootRevision)return carried;
     if(retainedDiscoveredPublicCatalog()||marker?.publicMarketCatalog?.()?.complete){bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;}
     const catalog=parsePublicMarket(input,input?.snapshot);if(!catalog.complete)throw Error('PREPARED_PUBLIC_CATALOG_INCOMPLETE');
     rememberPublicMarketResponse(catalog,input);bareCatalog=immutable(catalog);bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;
    }
-   const value=await openedResponse(cached,AbortSignal.timeout(15000));if(displayRevision!==bootRevision)return carried;
+   const value=await untilAborted(openedResponse(cached,signal),signal);if(displayRevision!==bootRevision)return carried;
    const length=cached.headers.get('content-length');if(length!==null&&(!/^\d+$/.test(length)||Number(length)!==value.bytes.byteLength))throw Error('PREPARED_PUBLIC_CATALOG_SIZE_MISMATCH');
    const r=value.receipt;carried=immutable({seed:value.seed,capitalization:value.capitalization,history:value.history,identity:{generation:r.generation,build:r.build,bodySha256:r.bodySha256},receivedAt:Date.now(),fromCache:true});
    carriedBodyVerified=true;scheduledCacheIdentity=r.generation+':'+r.bodySha256;observedDocuments.add(r.generation);bootstrapping=false;publish({phase:flight?'pending':'carried',value:held,error:null});return carried;

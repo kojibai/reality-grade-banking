@@ -19,7 +19,7 @@ import {AssetPageLinks} from '../../components/AssetPageLinks';
 import {AssetObject} from '../media/AssetObject';
 import {AssetProofBack} from '../media/AssetProofBack';
 import {marketContentLabel} from '../../receiz/market-categories';
-import {preparePublicProfile,profilePagePath,profileUsername,retainedPublicProfile,subscribePublicProfiles} from '../../receiz/public-profile';
+import {profilePagePath,profileUsername,retainedPublicProfile,subscribePublicProfiles} from '../../receiz/public-profile';
 import {AccountProfileLink} from '../../components/AccountProfileLink';
 import {PublicOwnerAvatar} from '../../public-explorer/PublicOwnerAvatar';
 import {PublicCollectibleArtwork} from '../collectibles/PublicCollectibleArtwork';
@@ -27,16 +27,6 @@ import {admittedAssetPublicationItem} from '../../receiz/asset-publication-adopt
 
 export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=false }: { item: PublicMarketItem; onTrade?: (mode: 'buy' | 'sell', digest: string) => void;readOnly?:boolean;standalone?:boolean }) {
   const owner=profileUsername(item.ownerUsername),profile=useSyncExternalStore(subscribePublicProfiles,()=>owner?retainedPublicProfile(owner):null,()=>null);
-  useEffect(()=>{
-    if(!standalone||!owner)return;
-    let frame=0,idle:number|undefined,timer:ReturnType<typeof setTimeout>|undefined;
-    const prepare=()=>{void preparePublicProfile(owner).catch(()=>{});};
-    // The carried portrait paints immediately. Preparing its linked profile
-    // starts after document loading and a frame, outside asset loading work.
-    const settled=()=>{frame=requestAnimationFrame(()=>{if(typeof window.requestIdleCallback==='function')idle=window.requestIdleCallback(prepare);else timer=setTimeout(prepare,0);});};
-    if(document.readyState==='complete')settled();else window.addEventListener('load',settled,{once:true});
-    return()=>{window.removeEventListener('load',settled);cancelAnimationFrame(frame);if(idle!==undefined)window.cancelIdleCallback(idle);if(timer!==undefined)clearTimeout(timer);};
-  },[standalone,owner]);
   // A selected local row may predate its owner's carried public metadata.
   // Reuse that same admission's current display without resolving it again.
   const canonicalOwnerUid=item.ownerIdentity?.userId,ownerUid=canonicalOwnerUid??item.admittedOwnerUserId,ownerProfile=!ownerUid||profile?.userId===ownerUid?profile:null;

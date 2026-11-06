@@ -1,8 +1,6 @@
 import {isShareTrackingKey} from './share-tracking.js';
 import {publicProfileSocialImage,profilePagePath,profilePageUsername,profileUsername,type PublicProfile} from '../src/receiz/public-profile.js';
 import {readPublicProfile,PublicProfileError} from './public-profile.js';
-import {publicProfileArtwork} from '../src/content/public-asset-titles.js';
-import {safeReceizArtworkUrl} from '../src/receiz/public-market.js';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {publicReadingLinks} from './public-reading-links.js';
@@ -30,23 +28,14 @@ export async function handleProfilePreview(request:Request,deps?:Dependencies){
  if(!username||url.hash||[...url.searchParams.keys()].some(key=>!isShareTrackingKey(key)&&(key!=='username'||url.searchParams.getAll(key).length!==1))||url.searchParams.has('username')&&url.searchParams.get('username')!==username)return new Response('Profile not found.',{status:404,headers});
  if(request.method==='HEAD')return new Response(null,{headers});
  const dependencies=deps??{profile:readPublicProfile,page:async()=>(await import('node:fs/promises')).readFile('dist/explore/index.html','utf8'),render:renderProfileDocument,prepareRender:prepareProfileDocument};
- // Start independent reads together. Settle the rejection immediately so a
- // source refusal cannot become unhandled while the static document is read.
- const renderer=dependencies.prepareRender?.();void renderer?.catch(()=>{});
- const source=dependencies.profile(username).then(async profile=>{await renderer;return {profile,content:await dependencies.render?.(profile),error:null};}).catch(error=>({profile:null,content:undefined,error}));
- let html:string;try{html=await dependencies.page();}catch{return new Response('This profile could not be opened. Please try again.',{status:503,headers});}
- const render=(result:Awaited<typeof source>)=>{const status=result.error instanceof PublicProfileError?result.error.status:result.error?503:200,code=status===403?'PROFILE_PRIVATE':status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE';return {status,html:profilePreviewHtml(html,username,result.profile,result.error?code:undefined,result.content)};};
+ // Browser entry uses the complete existing document. Its public reader can
+ // show local state immediately and resolve only missing metadata afterward.
  const browser=request.headers.get('accept')?.includes('text/html')&&!/bot|crawler|spider|slurp|facebookexternalhit|whatsapp|telegram|discord|slack/i.test(request.headers.get('user-agent')??'');
- if(!browser){const result=render(await source);return new Response(result.html,{status:result.status,headers});}
- // Stream only the settled static head before the source arrives. This starts
- // CSS/module downloads immediately, with no fabricated profile or second read.
- // Exact metadata, public seed and body follow within this same document.
- const template=profilePageTemplate(html),end=template.indexOf('</head>');
- if(end<0){const result=render(await source);return new Response(result.html,{status:result.status,headers});}
- const prefix=template.slice(0,end),encoder=new TextEncoder();let closed=false;
- // Known public Market media can prepare during the profile read. These hints
- // confer no identity/visibility authority and are never painted as a profile.
- const earlyImages=(publicProfileArtwork[username]??[]).slice(0,2).map(safeReceizArtworkUrl).filter((url):url is string=>!!url);
- const earlyHints=earlyImages.map(src=>`<link rel="preload" as="image" href="${escape(src)}" referrerpolicy="no-referrer"${src.includes('/api/proof-material/packages/')?' crossorigin="anonymous"':''}>`).join('');
- return new Response(new ReadableStream<Uint8Array>({start(controller){controller.enqueue(encoder.encode(prefix+earlyHints));void source.then(value=>{if(closed)return;controller.enqueue(encoder.encode(render(value).html.slice(prefix.length)));controller.close();closed=true;}).catch(()=>{if(!closed){closed=true;controller.error(Error('Profile stream interrupted.'));}});},cancel(){closed=true;}}),{headers:{...headers,'X-Accel-Buffering':'no'}});
+ const renderer=browser?undefined:dependencies.prepareRender?.();void renderer?.catch(()=>{});
+ const source=browser?null:dependencies.profile(username).then(async profile=>{await renderer;return {profile,content:await dependencies.render?.(profile),error:null};}).catch(error=>({profile:null,content:undefined,error}));
+ let html:string;try{html=await dependencies.page();}catch{return new Response('This profile could not be opened. Please try again.',{status:503,headers});}
+ if(!source)return new Response(profilePreviewHtml(html,username,null),{headers});
+ // Crawlers keep one exact public profile, its rendered body and refusal status.
+ const result=await source,status=result.error instanceof PublicProfileError?result.error.status:result.error?503:200,code=status===403?'PROFILE_PRIVATE':status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE';
+ return new Response(profilePreviewHtml(html,username,result.profile,result.error?code:undefined,result.content),{status,headers});
 }
