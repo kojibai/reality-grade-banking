@@ -2,35 +2,35 @@
   "schema": "bankeiz.public-social-images.v1",
   "images": {
     "/registry/": {
-      "url": "/social/institution-scorecard-e372524a7ad670c0.png",
+      "url": "/social/institution-scorecard-201c9691a3981ee3.png",
       "width": 1730,
       "height": 909,
-      "sha256": "e372524a7ad670c0ec7fd6b2677bc9c1b74f364991723267ae98c2458a547727",
-      "bytes": 471446,
+      "sha256": "201c9691a3981ee35ab55985533ca1b4ea3e66da99263bfbe60461b91b4a4271",
+      "bytes": 472829,
       "alt": "Reality-Grade Banking Conformance Register. Money. Original proof. Continuous history. An engraved badge motif on layered cobalt, clear glass and navy forms."
     },
     "/build/": {
-      "url": "/social/build-independent-bank-47120ad0ee1dda1f.png",
+      "url": "/social/build-independent-bank-6f2e1d8ea8059ee6.png",
       "width": 1730,
       "height": 909,
-      "sha256": "47120ad0ee1dda1f4dea3a7b5aa08f9c491e1db18a282c6d73906b39747fba86",
-      "bytes": 470147,
-      "alt": "Bankeiz. Build your own bank. Receive the same money. Different applications. The same necessary evidence. An engraved code motif on layered cobalt, clear glass and navy forms."
+      "sha256": "6f2e1d8ea8059ee674bd4c7329fad7d34149f5c3b522434bd85e49b3d5d1f6ab",
+      "bytes": 470116,
+      "alt": "Reality-Grade Banking. Build your own bank. Receive the same money. Different applications. The same necessary evidence. An engraved code motif on layered cobalt, clear glass and navy forms."
     },
     "/accept/": {
-      "url": "/social/accept-the-money-62d0c48092d33fb4.png",
+      "url": "/social/accept-the-money-2febf456e874fe5e.png",
       "width": 1730,
       "height": 909,
-      "sha256": "62d0c48092d33fb490d64a962aeb8b0c51bd6ebcffd88a1973d3e10f048763e1",
-      "bytes": 471447,
-      "alt": "Bankeiz. Accept the money. Keep it moving. The money carries its proof. An engraved receipt motif on layered cobalt, clear glass and navy forms."
+      "sha256": "2febf456e874fe5ed044cc6fb0fb5c6ec82cc484c16f652317bdedf49d127008",
+      "bytes": 471397,
+      "alt": "Reality-Grade Banking. Accept the money. Keep it moving. The money carries its proof. An engraved receipt motif on layered cobalt, clear glass and navy forms."
     },
     "/merchant/": {
-      "url": "/social/merchant-5c51288ac3010d85.png",
+      "url": "/social/merchant-dcea2feb421f89ae.png",
       "width": 1730,
       "height": 909,
-      "sha256": "5c51288ac3010d855d99970448ffff6de86e477b9750620cc9d4caa9510b5287",
-      "bytes": 468057,
+      "sha256": "dcea2feb421f89ae934be94cb870ea834968dcf1e1506fc6969f3ad45c410f6d",
+      "bytes": 463569,
       "alt": "Bankeiz. Your Counter. Ready for business. Your offerings. Your stock. Your next sale. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/moments/": {
@@ -66,19 +66,19 @@
       "alt": "Be here. Keep everything connected. The actual meeting interface shows sending money beside the conversation, with the recorded payment and meeting context together. Illustrative participant and scripted example."
     },
     "/book/": {
-      "url": "/social/book-56905f30002f770b.png",
+      "url": "/social/book-85ea0a818a1c4e98.png",
       "width": 1730,
       "height": 909,
-      "sha256": "56905f30002f770b8cf6b4191be57c7da6c63c117a9802a4d9c6bde61974d211",
-      "bytes": 472200,
+      "sha256": "85ea0a818a1c4e98419476054abe43b0d074db3d9ec707030a03a2a5c1b8c243",
+      "bytes": 467684,
       "alt": "Bankeiz. Make time. Keep everything connected. Your calendar. Your people. Your next appointment. An engraved calendar motif on layered cobalt, clear glass and navy forms."
     },
     "/pay/": {
-      "url": "/social/pay-65b17c2ecc542141.png",
+      "url": "/social/pay-a8efde47271e9244.png",
       "width": 1730,
       "height": 909,
-      "sha256": "65b17c2ecc542141989600064bf8a069871947db1fcd683dba02741ffa36dd79",
-      "bytes": 460619,
+      "sha256": "a8efde47271e92445a5d31ae48b1bd789fa0c3a75600242ebf2b1c3c30413b96",
+      "bytes": 456057,
       "alt": "Bankeiz. A link. A payment. Done. Pay simply. Keep the whole story. An engraved receipt motif on layered cobalt, clear glass and navy forms."
     },
     "/matter/": {
@@ -162,148 +162,148 @@
       "alt": "Your work is real. Make the next step useful. Reality-Grade Banking for Workers Custom objects show what this participant already has and needs next. Illustrative exchange."
     },
     "/trust/": {
-      "url": "/social/standard-trust-9e111e7a30a381bd.png",
+      "url": "/social/standard-trust-5bfba32a36f76f0c.png",
       "width": 1730,
       "height": 909,
-      "sha256": "9e111e7a30a381bd04bbcc56afcc7d8a88e4806dedbd6a5850e31e11bc011a62",
-      "bytes": 303436,
-      "alt": "Bankeiz. Hold the source. Keep the authority. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "5bfba32a36f76f0ca8db23aba76de81040b753373a72159ed2df2053d71761b7",
+      "bytes": 303356,
+      "alt": "Reality-Grade Banking. Hold the source. Keep the authority. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/money/": {
-      "url": "/social/standard-money-e248900c7fca3c7e.png",
+      "url": "/social/standard-money-744d4b81e2780eb5.png",
       "width": 1730,
       "height": 909,
-      "sha256": "e248900c7fca3c7ebce30150a1b4212f3e8eaadc81152e63b24559a618efdffb",
-      "bytes": 299104,
-      "alt": "Bankeiz. Your value. Its source, intact. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "744d4b81e2780eb53baa6fc30e6e5a05f4c365867f82650758e7d07bc64ad998",
+      "bytes": 299591,
+      "alt": "Reality-Grade Banking. Your value. Its source, intact. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/deposit/": {
-      "url": "/social/standard-deposit-1d52dff81aa68731.png",
+      "url": "/social/standard-deposit-00e5503d4bf6c3e3.png",
       "width": 1730,
       "height": 909,
-      "sha256": "1d52dff81aa687312b41fc12e0a2373facf38d928e6edb0fe74708416b5faa49",
-      "bytes": 305280,
-      "alt": "Bankeiz. Bring value in. Keep its origin. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "00e5503d4bf6c3e3cd3608a285548ae601215d51037e48bd8d07f7685a11bf2d",
+      "bytes": 305276,
+      "alt": "Reality-Grade Banking. Bring value in. Keep its origin. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/fees/": {
-      "url": "/social/standard-fees-e8684941479f0971.png",
+      "url": "/social/standard-fees-06b98bb1a236cc6a.png",
       "width": 1730,
       "height": 909,
-      "sha256": "e8684941479f097141143e18b87e5ccc94a1b94e10ac9274f102efe3e8c33673",
-      "bytes": 302921,
-      "alt": "Bankeiz. Know the amount. Approve the action. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "06b98bb1a236cc6a547e35ad6730e70900b4cc8d15de0ab0fa9fed41f9eccbb7",
+      "bytes": 302885,
+      "alt": "Reality-Grade Banking. Know the amount. Approve the action. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/help/": {
-      "url": "/social/standard-help-aa5048db8032b270.png",
+      "url": "/social/standard-help-dcac6aef80b6d090.png",
       "width": 1730,
       "height": 909,
-      "sha256": "aa5048db8032b270dd94c1590fd28903eb1d97dc0c7c7ca28ac7a59aca190960",
-      "bytes": 302621,
-      "alt": "Bankeiz. Keep the reference. Find the real result. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "dcac6aef80b6d090165ee31c7b4040018dfca81f51a8c6650da3e4d1816a416e",
+      "bytes": 302664,
+      "alt": "Reality-Grade Banking. Keep the reference. Find the real result. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/about/": {
-      "url": "/social/standard-about-88066410423096e3.png",
+      "url": "/social/standard-about-afffa5a6e0e15522.png",
       "width": 1730,
       "height": 909,
-      "sha256": "88066410423096e36c0e4c0c9cc12d8c2e784cf64a362d3ceea1fe637f52e4ae",
-      "bytes": 307309,
-      "alt": "Bankeiz. A standard. Open to everyone. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "afffa5a6e0e15522ace520c8cfbc9f2071563ccf94901f93ced9a14ff07053ad",
+      "bytes": 307385,
+      "alt": "Reality-Grade Banking. A standard. Open to everyone. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/in-practice/": {
-      "url": "/social/standard-in-practice-f9801b49ac5ca20d.png",
+      "url": "/social/standard-in-practice-bbe0d673409feb76.png",
       "width": 1730,
       "height": 909,
-      "sha256": "f9801b49ac5ca20d519042a5a063abfa93d64c2e53c29e48fb0cb85774a2bd54",
-      "bytes": 303772,
-      "alt": "Bankeiz. Own the source. Live with continuity. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "bbe0d673409feb76d83db3f2f52c36723f5895c781af2ebab34350b876370a06",
+      "bytes": 303926,
+      "alt": "Reality-Grade Banking. Own the source. Live with continuity. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/accept-payments/": {
-      "url": "/social/standard-accept-payments-15009341c20935b4.png",
+      "url": "/social/standard-accept-payments-4f9d133ae3ad1b2b.png",
       "width": 1730,
       "height": 909,
-      "sha256": "15009341c20935b4f490db8a942b5f6161b39f4b88c901b0b0118c3bacbf5d75",
-      "bytes": 311722,
-      "alt": "Bankeiz. One payment page. The whole record. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "4f9d133ae3ad1b2bfb4ce26a159fdf1f0f1d9a43fee9a63a247bc0b7e6f9b041",
+      "bytes": 311798,
+      "alt": "Reality-Grade Banking. One payment page. The whole record. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/start/": {
-      "url": "/social/standard-start-af00ba8e0177d63e.png",
+      "url": "/social/standard-start-b4aba57c389c9a36.png",
       "width": 1730,
       "height": 909,
-      "sha256": "af00ba8e0177d63ee2bee2038e732bd9b2df8bb39ffa9125da23f036440434c8",
-      "bytes": 306876,
-      "alt": "Bankeiz. Start as yourself. Keep what is yours. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "b4aba57c389c9a3622d6fd8f1b12d82114d9713a6909436911fff69d8b9d1152",
+      "bytes": 306985,
+      "alt": "Reality-Grade Banking. Start as yourself. Keep what is yours. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/privacy/": {
-      "url": "/social/standard-privacy-6f00ebe7414547ae.png",
+      "url": "/social/standard-privacy-4d82821b120c7ef7.png",
       "width": 1730,
       "height": 909,
-      "sha256": "6f00ebe7414547ae9121144f7f839f2400b3fcbc93e1918692364af2a0e43ef3",
-      "bytes": 307691,
-      "alt": "Bankeiz. Your context. Chosen by you. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "4d82821b120c7ef79cc1a7b114c2653475ef1ed0ccfdedd1294ac35532702dae",
+      "bytes": 307671,
+      "alt": "Reality-Grade Banking. Your context. Chosen by you. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/terms/": {
-      "url": "/social/standard-terms-e8c3725137815786.png",
+      "url": "/social/standard-terms-4e790a915510fbd1.png",
       "width": 1730,
       "height": 909,
-      "sha256": "e8c37251378157865bfbd9deee4013405668d1ca5be44cb7e3220abfa65ac7f8",
-      "bytes": 302103,
-      "alt": "Bankeiz. Use the standard. Keep the responsibilities. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "4e790a915510fbd146e4846daa22a4ebe38e24a7e0da17ace3a93c536c966d96",
+      "bytes": 302176,
+      "alt": "Reality-Grade Banking. Use the standard. Keep the responsibilities. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/market/": {
-      "url": "/social/standard-market-cbdc033d3d707e53.png",
+      "url": "/social/standard-market-0cce51a89fc7fc04.png",
       "width": 1730,
       "height": 909,
-      "sha256": "cbdc033d3d707e53b7ca45d311e67264a597ba545741cc64e113eab51c4966e5",
-      "bytes": 302772,
-      "alt": "Bankeiz. The asset. The rights. The whole record. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "0cce51a89fc7fc04eae388ce1ade5c7fad09869e1495dd5ac47d66d0d832e9a1",
+      "bytes": 302712,
+      "alt": "Reality-Grade Banking. The asset. The rights. The whole record. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/market/buy/": {
-      "url": "/social/standard-market-buy-2f6f7678ce122a28.png",
+      "url": "/social/standard-market-buy-664ad4116a42e5c5.png",
       "width": 1730,
       "height": 909,
-      "sha256": "2f6f7678ce122a288c34e6d8b0f73c2c0a73f4dedc8b33a60da4bda272eee4d1",
-      "bytes": 309069,
-      "alt": "Bankeiz. Know what you buy. Keep what happened. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "664ad4116a42e5c5ace39dffdaaf76e1b4ca6ea70ae5537470734ffcb62f475a",
+      "bytes": 309118,
+      "alt": "Reality-Grade Banking. Know what you buy. Keep what happened. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/market/sell/": {
-      "url": "/social/standard-market-sell-e30e4b8b08b8776a.png",
+      "url": "/social/standard-market-sell-68adfba6df18a8a3.png",
       "width": 1730,
       "height": 909,
-      "sha256": "e30e4b8b08b8776a5a7b01c32aeb4771010e902304fa76b1788b3c352e6d0e24",
-      "bytes": 305790,
-      "alt": "Bankeiz. Choose what to sell. Follow the proceeds. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "68adfba6df18a8a3fba8d4b6cb7540898aadf9071b8c39fad2a09606e6283c8c",
+      "bytes": 305823,
+      "alt": "Reality-Grade Banking. Choose what to sell. Follow the proceeds. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/market/value/": {
-      "url": "/social/standard-market-value-bd6a5d894111ebf6.png",
+      "url": "/social/standard-market-value-0daebaf24800d6fb.png",
       "width": 1730,
       "height": 909,
-      "sha256": "bd6a5d894111ebf683cc87ce73698d7d41b9ab34bab78f870d55772f54e44136",
-      "bytes": 307383,
-      "alt": "Bankeiz. Read the value. Know the basis. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "0daebaf24800d6fb301579ca8668442fbfb0dc1f3fffeb07d6801882176dd49b",
+      "bytes": 307444,
+      "alt": "Reality-Grade Banking. Read the value. Know the basis. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/market/ownership/": {
-      "url": "/social/standard-market-ownership-08fa3e170f27862b.png",
+      "url": "/social/standard-market-ownership-05921f5b402fb6cd.png",
       "width": 1730,
       "height": 909,
-      "sha256": "08fa3e170f27862b5f753e381ed039ff8c84cf6d1fdc562a3ec8e3bea4c25d9b",
-      "bytes": 304664,
-      "alt": "Bankeiz. Buy defined rights. Inspect their source. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "05921f5b402fb6cdc08f31424b5c774ecb310beb3a545e4945d9fa5a4fa074db",
+      "bytes": 304712,
+      "alt": "Reality-Grade Banking. Buy defined rights. Inspect their source. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/market/history/": {
-      "url": "/social/standard-market-history-792362713d153060.png",
+      "url": "/social/standard-market-history-374c71fb6224239b.png",
       "width": 1730,
       "height": 909,
-      "sha256": "792362713d1530607b954686cfdb8fc89a3debdbc93bd9d73dee9b0afc83ea37",
-      "bytes": 300551,
-      "alt": "Bankeiz. Every trade. A result you can follow. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "374c71fb6224239b2e5db59ea42957d29a3e992be4f0b695eaae8bd065b21270",
+      "bytes": 300497,
+      "alt": "Reality-Grade Banking. Every trade. A result you can follow. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/market/costs/": {
-      "url": "/social/standard-market-costs-a5f6f478af941892.png",
+      "url": "/social/standard-market-costs-d441e1920568f620.png",
       "width": 1730,
       "height": 909,
-      "sha256": "a5f6f478af9418927fa2fc0f7538e2e2a4384fddc738430e7f6edcfcb18233b3",
-      "bytes": 303157,
-      "alt": "Bankeiz. Know the route. Understand the result. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "d441e1920568f6209faaaffb329711845a77524fbde72c427316b4b3323b5e09",
+      "bytes": 303154,
+      "alt": "Reality-Grade Banking. Know the route. Understand the result. The standard of the proof-native economy. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/agent/": {
       "url": "/social/solution-agent-73df612d940a3490.png",
@@ -439,7 +439,7 @@
       "height": 909,
       "sha256": "2f092ea99ae5d86d8d0c2266c639908f234b192b6421a8437798f1fece2c5236",
       "bytes": 282151,
-      "alt": "Your Members Already Produce the Value. Why Are They Borrowing Just to Move It? | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+      "alt": "Your Members Already Produce the Value. Why Are They Borrowing Just to Move It? | Reality-Grade Banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/producers/": {
       "url": "/social/cooperatives-producers-c9afb0d91b53ad12.png",
@@ -447,7 +447,7 @@
       "height": 909,
       "sha256": "c9afb0d91b53ad122d0b7744d8e2cc46e541cf0fa7f6f8ef62a3a613ea9ddb52",
       "bytes": 278506,
-      "alt": "The harvest is ready. Your next move should be, too. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+      "alt": "The harvest is ready. Your next move should be, too. | Reality-Grade Banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/manufacturing/": {
       "url": "/social/cooperatives-manufacturing-2d4279c5f03d9eda.png",
@@ -455,7 +455,7 @@
       "height": 909,
       "sha256": "2d4279c5f03d9edab2ab5f53c09cafae320440c144e3aadef01b90ef2170a509",
       "bytes": 266862,
-      "alt": "Finished goods. Waiting for dollars. Another production run on hold. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+      "alt": "Finished goods. Waiting for dollars. Another production run on hold. | Reality-Grade Banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/distribution/": {
       "url": "/social/cooperatives-distribution-63b6c924bd4d8561.png",
@@ -463,7 +463,7 @@
       "height": 909,
       "sha256": "63b6c924bd4d8561d9336cfa6a26736d19a857ce9e17dc0a5992ac2d8ce0e7b5",
       "bytes": 241300,
-      "alt": "Your stock moves. Your dollars get stuck in the middle. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+      "alt": "Your stock moves. Your dollars get stuck in the middle. | Reality-Grade Banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/workers/": {
       "url": "/social/cooperatives-workers-1a7df7674be97d1b.png",
@@ -471,7 +471,7 @@
       "height": 909,
       "sha256": "1a7df7674be97d1b61fb619fc6a9fd6243f3a6145c42aa79fef70f8c2185c886",
       "bytes": 266985,
-      "alt": "The work is done. The cooperative still needs paying. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+      "alt": "The work is done. The cooperative still needs paying. | Reality-Grade Banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/energy/": {
       "url": "/social/cooperatives-energy-48ac0a553edc39ae.png",
@@ -479,7 +479,7 @@
       "height": 909,
       "sha256": "48ac0a553edc39ae78310e527c9ec619c8addcbf2b155a2ac334ac47e0da5af7",
       "bytes": 262467,
-      "alt": "You produce the power. Keep its records connected. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+      "alt": "You produce the power. Keep its records connected. | Reality-Grade Banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/housing/": {
       "url": "/social/cooperatives-housing-a1077b806be405be.png",
@@ -487,7 +487,7 @@
       "height": 909,
       "sha256": "a1077b806be405be948e74b16591318888885b9d44de325db705165d8d9a9c16",
       "bytes": 255838,
-      "alt": "Keep the homes cared for. Keep the decisions clear. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+      "alt": "Keep the homes cared for. Keep the decisions clear. | Reality-Grade Banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/federations/": {
       "url": "/social/cooperatives-federations-c9551d8359389066.png",
@@ -495,7 +495,7 @@
       "height": 909,
       "sha256": "c9551d83593890667893ba38e3200e953e6d89078c825100fc288d2457e77db4",
       "bytes": 267846,
-      "alt": "Your members already trade. Give the network continuity. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+      "alt": "Your members already trade. Give the network continuity. | Reality-Grade Banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/infrastructure/": {
       "url": "/social/cooperatives-infrastructure-e5f0d1876d0438c1.png",
@@ -503,7 +503,7 @@
       "height": 909,
       "sha256": "e5f0d1876d0438c155efe9ec44b59ea03cdded373568828232aad53cd90fda5e",
       "bytes": 275517,
-      "alt": "See the exchange. Inspect the infrastructure. | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+      "alt": "See the exchange. Inspect the infrastructure. | Reality-Grade Banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/cooperatives/connect/": {
       "url": "/social/cooperatives-connect-3b4067c0de332d34.png",
@@ -511,30 +511,30 @@
       "height": 909,
       "sha256": "3b4067c0de332d3488a9d7590dfdeb4eb6c5775015edc144cffcd07259a2c178",
       "bytes": 284039,
-      "alt": "What do your members have that others need? | Reality-grade banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
+      "alt": "What do your members have that others need? | Reality-Grade Banking Real goods and work connect to defined rights, original proof and the next willing participant. Illustrative exchange."
     },
     "/vaults/": {
-      "url": "/social/vaults-f71028ffd9d02c0e.png",
+      "url": "/social/vaults-4dfce316157be052.png",
       "width": 1730,
       "height": 909,
-      "sha256": "f71028ffd9d02c0e896a0b5309c3efb5df3f9ec9d48ddd1f30f701610c4cb1b1",
-      "bytes": 462806,
+      "sha256": "4dfce316157be052be908c757b997cdf476d9969ad0760f9aaa372158999ce54",
+      "bytes": 461392,
       "alt": "Bankeiz. Yours to hold. Yours to unlock. Your money. Your originals. Their proof. An engraved key motif on layered cobalt, clear glass and navy forms."
     },
     "/business/": {
-      "url": "/social/business-ca464175848f50e0.png",
+      "url": "/social/business-522c948cd07e40df.png",
       "width": 1730,
       "height": 909,
-      "sha256": "ca464175848f50e07e35f50d6915704d135d03c04f259dc5ae1b19126a650911",
-      "bytes": 466549,
+      "sha256": "522c948cd07e40df14dbb1ccd340bc313dcf4b8951da53e34998604994fd758e",
+      "bytes": 465142,
       "alt": "Bankeiz. Your money, clearer. Your day, easier. Less chasing. Less financial admin. Your final say. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/fit/": {
-      "url": "/social/business-for-d2c7b66caec0f2c4.png",
+      "url": "/social/business-for-97927d048fc837f0.png",
       "width": 1730,
       "height": 909,
-      "sha256": "d2c7b66caec0f2c400ec748efce7a70117013eacf06b23e48df8a53ff237f36b",
-      "bytes": 462283,
+      "sha256": "97927d048fc837f04b7583122e4ff1bbb6afc0feb56bc50bb31252abd64e1ec7",
+      "bytes": 460873,
       "alt": "Bankeiz. Your money. Less on your plate. Make the money side of your work easier. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/business/for/agencies/": {
@@ -786,515 +786,515 @@
       "alt": "Bankeiz. Your value. More possibilities. Layered blue and glass forms on warm white."
     },
     "/learn/": {
-      "url": "/social/learn-8dc04449a73273fa.png",
+      "url": "/social/learn-16e5b633fedcca5b.png",
       "width": 1730,
       "height": 909,
-      "sha256": "8dc04449a73273fa16b17c18cb3ad463e04b3338f3db9bcadc50ef3c04506678",
-      "bytes": 463384,
-      "alt": "Bankeiz. Your value. Connected. The foundations of reality-grade banking. An engraved layers motif on layered cobalt, clear glass and navy forms."
+      "sha256": "16e5b633fedcca5b48910d25bf00a6d8656503104ccc2469056984973fdff7f8",
+      "bytes": 463327,
+      "alt": "Reality-Grade Banking. Your value. Connected. The foundations of reality-grade banking. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/guides/": {
-      "url": "/social/guides-c060eb51185bad09.png",
+      "url": "/social/guides-d0f9f1ed69b286c2.png",
       "width": 1730,
       "height": 909,
-      "sha256": "c060eb51185bad0932a90d232e497dd5640b0c71017e026ad947c4612de2efe1",
-      "bytes": 463408,
-      "alt": "Bankeiz. The complete picture. Banking. Assets. Markets. History. Standards. An engraved book motif on layered cobalt, clear glass and navy forms."
+      "sha256": "d0f9f1ed69b286c22e8c1b4ea044fdc623ca7c0e0025c0eb91309b4688ef2d9a",
+      "bytes": 463352,
+      "alt": "Reality-Grade Banking. The complete picture. Banking. Assets. Markets. History. Standards. An engraved book motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/receiz-id/": {
-      "url": "/social/receiz-id-f11999a7768ebaee.png",
+      "url": "/social/receiz-id-6d6ee79faf8be115.png",
       "width": 1730,
       "height": 909,
-      "sha256": "f11999a7768ebaee87dc63af6694577e3d95b81af9afb88d053c2716d6e8b3f7",
-      "bytes": 465033,
+      "sha256": "6d6ee79faf8be115ef99212adf787e67771d762dbbfcd588396e57eeefb52644",
+      "bytes": 460558,
       "alt": "Bankeiz. Receiz ID and Identity Records. The complete picture. One identity. Your account and its continuity. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/proof-objects/": {
-      "url": "/social/proof-objects-7af737d80ad992db.png",
+      "url": "/social/proof-objects-0803929834888d03.png",
       "width": 1730,
       "height": 909,
-      "sha256": "7af737d80ad992dba200d8c5c509af07cc7fad3bfdc9c860fccc3892a18cddf2",
-      "bytes": 465763,
-      "alt": "Bankeiz. Proof objects and ownership. The complete picture. An asset with its evidence attached. An engraved cube motif on layered cobalt, clear glass and navy forms."
+      "sha256": "0803929834888d03e310107675722af27e71dc094cbd062655c7c95295c325e6",
+      "bytes": 465714,
+      "alt": "Reality-Grade Banking. Proof objects and ownership. The complete picture. An asset with its evidence attached. An engraved cube motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/reserve-and-settlement/": {
-      "url": "/social/reserve-and-settlement-5dff5317bd381b8c.png",
+      "url": "/social/reserve-and-settlement-02c5c2d1d8ba69ed.png",
       "width": 1730,
       "height": 909,
-      "sha256": "5dff5317bd381b8cc94006fc89a0c94328df17f89908935c17738de459107bb4",
-      "bytes": 470964,
-      "alt": "Bankeiz. One balance. Complete continuity. Your funds. Their complete history. An engraved globe motif on layered cobalt, clear glass and navy forms."
+      "sha256": "02c5c2d1d8ba69ed46b15d83a8c4136978eaa60b819bbd19dac1703ee22bf4a3",
+      "bytes": 470915,
+      "alt": "Reality-Grade Banking. One balance. Complete continuity. Your funds. Their complete history. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/account-access/": {
-      "url": "/social/account-access-60fa6365d04123ab.png",
+      "url": "/social/account-access-ce7972d3c8ca0c79.png",
       "width": 1730,
       "height": 909,
-      "sha256": "60fa6365d04123abaf1ae4f0f963d04060e0745d1a912b25d69b4226f9da8101",
-      "bytes": 467228,
+      "sha256": "ce7972d3c8ca0c799b45866577e318278b8a67ac224cc0bc0f268c86a25f65a2",
+      "bytes": 462716,
       "alt": "Bankeiz. Your account. Your permission. Clear access. Deliberate authorization. An engraved shield motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/signing-key/": {
-      "url": "/social/signing-key-642fb0e2e3858dda.png",
+      "url": "/social/signing-key-994c5434c61d746d.png",
       "width": 1730,
       "height": 909,
-      "sha256": "642fb0e2e3858dda5223e28141d16c3808edade1cc0b6d67efd8dc985656d014",
-      "bytes": 465074,
+      "sha256": "994c5434c61d746d7aa578a3aa0fcf87e58623f3da7306b0feeb440e172c6775",
+      "bytes": 460561,
       "alt": "Bankeiz. Your authority. Held by you. Device-held signing. Protected originals. An engraved key motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/reality-grade-banking/": {
-      "url": "/social/reality-grade-banking-7633d89b829c6b11.png",
+      "url": "/social/reality-grade-banking-c629c701c7b31f3e.png",
       "width": 1730,
       "height": 909,
-      "sha256": "7633d89b829c6b1109aa11fdf9786da5d0e1b26465f0413fc3b62d68412baff6",
-      "bytes": 462176,
-      "alt": "Bankeiz. Reality-Grade Banking. Value. Ownership. Continuity. An engraved bank motif on layered cobalt, clear glass and navy forms."
+      "sha256": "c629c701c7b31f3ea141ee91993492e04a40b0e52901a122a4f1301960399339",
+      "bytes": 462119,
+      "alt": "Reality-Grade Banking. Reality-Grade Banking. Value. Ownership. Continuity. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/how-value-works/": {
-      "url": "/social/how-value-works-0e2ddb082afc907a.png",
+      "url": "/social/how-value-works-bd85ee1ce59ff277.png",
       "width": 1730,
       "height": 909,
-      "sha256": "0e2ddb082afc907ab0d01234e73163927aa9e3accecb4229f7972d97c56a6913",
-      "bytes": 465418,
-      "alt": "Bankeiz. Value. By exact rules. Deterministic valuation. Inspectable math. An engraved valuation motif on layered cobalt, clear glass and navy forms."
+      "sha256": "bd85ee1ce59ff2777db1265cdafee1f626cab5b544327d81ce4499173a931429",
+      "bytes": 465358,
+      "alt": "Reality-Grade Banking. Value. By exact rules. Deterministic valuation. Inspectable math. An engraved valuation motif on layered cobalt, clear glass and navy forms."
     },
     "/conformance/": {
-      "url": "/social/conformance-f0ef9b1e89217575.png",
+      "url": "/social/conformance-c056f84f55c6be91.png",
       "width": 1730,
       "height": 909,
-      "sha256": "f0ef9b1e8921757546b816e0280997b99f5f991d6daf4469689b4f692075ef86",
-      "bytes": 464994,
-      "alt": "Bankeiz. Verification. Without compromise. The proof-continuity standard. An engraved badge motif on layered cobalt, clear glass and navy forms."
+      "sha256": "c056f84f55c6be91a3c050696c41ea9c00889a61848b58f939b06f40ad1378cc",
+      "bytes": 464934,
+      "alt": "Reality-Grade Banking. Verification. Without compromise. The proof-continuity standard. An engraved badge motif on layered cobalt, clear glass and navy forms."
     },
     "/verify/": {
-      "url": "/social/verify-f371687772758a48.png",
+      "url": "/social/verify-77ec4cb4944c0b19.png",
       "width": 1730,
       "height": 909,
-      "sha256": "f371687772758a48ec6ce272d885c36193299e8a6884f5305ee098a8a91553b1",
-      "bytes": 466910,
+      "sha256": "77ec4cb4944c0b19bf5ab79c4c7ea8fc10cbbef347611e4b4c866ae1c4f99d41",
+      "bytes": 462371,
       "alt": "Bankeiz. Open the proof. See the evidence. Original source. Local verification. An engraved scan motif on layered cobalt, clear glass and navy forms."
     },
     "/ledger/": {
-      "url": "/social/ledger-c5dd10fef5d75ad6.png",
+      "url": "/social/ledger-6a86a64ac42cc274.png",
       "width": 1730,
       "height": 909,
-      "sha256": "c5dd10fef5d75ad67cb1340fa07a87a9f4c5cd16062709200cce726128d5442c",
-      "bytes": 461052,
+      "sha256": "6a86a64ac42cc27497b3b5a73c245a3a5bcce775a826f10d764719293893113d",
+      "bytes": 456534,
       "alt": "Bankeiz. History. In the open. The public Ledger. Connected to source. An engraved ledger motif on layered cobalt, clear glass and navy forms."
     },
     "/discover/": {
-      "url": "/social/discover-728d42456a8bde14.png",
+      "url": "/social/discover-d8c2b70d0ec1f85b.png",
       "width": 1730,
       "height": 909,
-      "sha256": "728d42456a8bde14ecc60ab75a349eb24de104080bdda71c35fd2990fb4b3a23",
-      "bytes": 468338,
+      "sha256": "d8c2b70d0ec1f85bff8763934bf72ee2ecc450d7eadcc4a57f875605c55aa9e6",
+      "bytes": 463882,
       "alt": "Bankeiz. Find your next discovery. People. Originals. Possibilities. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/feed/": {
-      "url": "/social/feed-e042fde48769b111.png",
+      "url": "/social/feed-8f2677a4fd310356.png",
       "width": 1730,
       "height": 909,
-      "sha256": "e042fde48769b1110c8689d60cfaf4e6a0630659a70582a23881239f63ec9fd6",
-      "bytes": 458518,
+      "sha256": "8f2677a4fd310356cc7bbee3f2760787c6f663e3cf8843ae7239e3a22dc3e0b6",
+      "bytes": 454273,
       "alt": "Bankeiz. Something new. For you. Watch. Listen. Read. Connect. An engraved play motif on layered cobalt, clear glass and navy forms."
     },
     "/booking/": {
-      "url": "/social/booking-1a3247fab5d425f2.png",
+      "url": "/social/booking-fd15641ea5e73587.png",
       "width": 1730,
       "height": 909,
-      "sha256": "1a3247fab5d425f26dab1feb6129acea72183bd03725618d7aee4463b64f74df",
-      "bytes": 462420,
+      "sha256": "fd15641ea5e7358749ea5dbb734311452f1aef044a41305d7c0736a4c3f5e2e6",
+      "bytes": 457888,
       "alt": "Bankeiz. A little time. Set aside. Choose a time. Keep life connected. An engraved calendar motif on layered cobalt, clear glass and navy forms."
     },
     "/explore/": {
-      "url": "/social/explore-ad9236b89fa95e71.png",
+      "url": "/social/explore-3f90db194733212d.png",
       "width": 1730,
       "height": 909,
-      "sha256": "ad9236b89fa95e718a91420b69d3b14dc62bdfc0069b8273f60ad9f3a880834d",
-      "bytes": 473965,
+      "sha256": "3f90db194733212daf117e9a79b4156cfeea336678b4185e9743c015110c557c",
+      "bytes": 469481,
       "alt": "Bankeiz. A world of value. Open to explore. Sealed moments. Public value. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/schemas/": {
-      "url": "/social/schemas-d4c84d82d8b403c1.png",
+      "url": "/social/schemas-c42ca6fe380c8666.png",
       "width": 1730,
       "height": 909,
-      "sha256": "d4c84d82d8b403c1f746d26be462bc82b8cd1f713a4043df317bff3a3f5dd46a",
-      "bytes": 468094,
-      "alt": "Bankeiz. The standard. Down to the byte. Original schemas. Open implementation. An engraved code motif on layered cobalt, clear glass and navy forms."
+      "sha256": "c42ca6fe380c86660139399e90a05abb67fb4574afa9e27ac4ee05ad631e6d67",
+      "bytes": 468323,
+      "alt": "Receiz. Receiz schemas. Down to the byte. Original schemas. Open implementation. An engraved code motif on layered cobalt, clear glass and navy forms."
     },
     "/legal/": {
-      "url": "/social/legal-0ca695430c0f6646.png",
+      "url": "/social/legal-103ca9ac3d46798d.png",
       "width": 1730,
       "height": 909,
-      "sha256": "0ca695430c0f66460c34cfbc5e5e65b646f84afd7a3de54a7c21e2618a831651",
-      "bytes": 464160,
+      "sha256": "103ca9ac3d46798dfebdc55725c05a8f4908b69c278a0dcd86cd5e5902afe7c2",
+      "bytes": 459642,
       "alt": "Bankeiz. Open source. Clear foundations. Source. License. Attribution. An engraved book motif on layered cobalt, clear glass and navy forms."
     },
     "/receipt/": {
-      "url": "/social/receipt-b2e5d13f62015004.png",
+      "url": "/social/receipt-dc12adbdc9c9ccb5.png",
       "width": 1730,
       "height": 909,
-      "sha256": "b2e5d13f62015004568bbe323cb5ee7bb5035be37bd94a4c7c1e0a139ae6fb3d",
-      "bytes": 467815,
+      "sha256": "dc12adbdc9c9ccb50f6397f834242207735a90b7461e881a15894f5e139e287d",
+      "bytes": 463337,
       "alt": "Bankeiz. The record. Stays connected. Transaction evidence. Preserved. An engraved receipt motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/earn-from-originals/": {
-      "url": "/social/earn-from-originals-35b48f3159cd03ec.png",
+      "url": "/social/earn-from-originals-15d9152f0ac765b2.png",
       "width": 1730,
       "height": 909,
-      "sha256": "35b48f3159cd03ec99c8eb992d1362444ba3e0136a8935914b940cafd2f5e0f4",
-      "bytes": 472937,
+      "sha256": "15d9152f0ac765b2743f22bc1be2889a0b083b5719a5bd0971adcd973a5ce1df",
+      "bytes": 468452,
       "alt": "Bankeiz. Earn from Originals. The complete picture. The value is already there. Your signature unlocks its use. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/for/people/": {
-      "url": "/social/for-people-379f5043af9d5e2b.png",
+      "url": "/social/for-people-6d6b3aab22a4b4f0.png",
       "width": 1730,
       "height": 909,
-      "sha256": "379f5043af9d5e2b88d04490b90e9efe2a9e86a523ab236a3e1f115067dbe844",
-      "bytes": 474673,
-      "alt": "Bankeiz. Send your share. Keep the receipt. Send your share. See it arrive. Keep the receipt. An engraved fingerprint motif on layered cobalt, clear glass and navy forms."
+      "sha256": "6d6b3aab22a4b4f066ae24ce2f8f95acc873c10ff93df652f73ecf71778611f7",
+      "bytes": 474614,
+      "alt": "Reality-Grade Banking. Send your share. Keep the receipt. Send your share. See it arrive. Keep the receipt. An engraved fingerprint motif on layered cobalt, clear glass and navy forms."
     },
     "/for/businesses/": {
-      "url": "/social/for-businesses-2d3c4b5ce8e73ab0.png",
+      "url": "/social/for-businesses-91699e9b7a09b35e.png",
       "width": 1730,
       "height": 909,
-      "sha256": "2d3c4b5ce8e73ab0780c005d7d7e7078aa99b00b38dfa5b219963dae719b2915",
-      "bytes": 472067,
-      "alt": "Bankeiz. Take a payment. Keep the record. Take a payment. Pay someone. Keep the record. An engraved bank motif on layered cobalt, clear glass and navy forms."
+      "sha256": "91699e9b7a09b35e1a9d8267a07b91b5da538fb5beab65b2750cf369f3133b20",
+      "bytes": 472011,
+      "alt": "Reality-Grade Banking. Take a payment. Keep the record. Take a payment. Pay someone. Keep the record. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/for/independent-work/": {
-      "url": "/social/for-independent-work-fd7214fcd2ad59c2.png",
+      "url": "/social/for-independent-work-b08d05bd46f44e27.png",
       "width": 1730,
       "height": 909,
-      "sha256": "fd7214fcd2ad59c264e23f4f8109d742b54b6770262ed59227d840654910001f",
-      "bytes": 466888,
-      "alt": "Bankeiz. Finish the work. Get paid. Finish the work. Get paid. Keep the context. An engraved receipt motif on layered cobalt, clear glass and navy forms."
+      "sha256": "b08d05bd46f44e27aff57fe903dc9bdbd0ecad72291e9ea3b7ae3e8deb3f26fd",
+      "bytes": 466835,
+      "alt": "Reality-Grade Banking. Finish the work. Get paid. Finish the work. Get paid. Keep the context. An engraved receipt motif on layered cobalt, clear glass and navy forms."
     },
     "/for/creators/": {
-      "url": "/social/for-creators-e3a7a9d75f9b9131.png",
+      "url": "/social/for-creators-453a30233219a080.png",
       "width": 1730,
       "height": 909,
-      "sha256": "e3a7a9d75f9b9131fe57eed25e45e771a15c681c79218357fd9cf36c71338732",
-      "bytes": 463200,
-      "alt": "Bankeiz. Your work. Its original. Your work. Its original. A clear path to the next owner. An engraved cube motif on layered cobalt, clear glass and navy forms."
+      "sha256": "453a30233219a080174fda81195aae386edefb8210b5e021d204820b21f4b8c0",
+      "bytes": 463141,
+      "alt": "Reality-Grade Banking. Your work. Its original. Your work. Its original. A clear path to the next owner. An engraved cube motif on layered cobalt, clear glass and navy forms."
     },
     "/for/communities/": {
-      "url": "/social/for-communities-d9fd8730c573623f.png",
+      "url": "/social/for-communities-9f2d96428e1c5479.png",
       "width": 1730,
       "height": 909,
-      "sha256": "d9fd8730c573623f821fd71cbae8e49ae7bcfe84c09b0a90e6bd2d4f8b130bf5",
-      "bytes": 477718,
-      "alt": "Bankeiz. A shared plan. Clear payments. A shared plan. Clear payments. Records you can show. An engraved globe motif on layered cobalt, clear glass and navy forms."
+      "sha256": "9f2d96428e1c5479802770e4324972fbdcc8546049e1470125e2e90f8d5569ef",
+      "bytes": 477676,
+      "alt": "Reality-Grade Banking. A shared plan. Clear payments. A shared plan. Clear payments. Records you can show. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/for/institutions/": {
-      "url": "/social/for-institutions-d130ffadfbee1e8e.png",
+      "url": "/social/for-institutions-0fa17873999a7592.png",
       "width": 1730,
       "height": 909,
-      "sha256": "d130ffadfbee1e8eb67de1bfed83610169afe347ec78fea5eb35c146c285e725",
-      "bytes": 474591,
-      "alt": "Bankeiz. Open the receipt. Follow the source. Open the receipt. Follow the source. Resolve the difference. An engraved ledger motif on layered cobalt, clear glass and navy forms."
+      "sha256": "0fa17873999a75924c80d67740cd9df5f9ef44d643f4d010531d1ac8cc84e1c4",
+      "bytes": 474530,
+      "alt": "Reality-Grade Banking. Open the receipt. Follow the source. Open the receipt. Follow the source. Resolve the difference. An engraved ledger motif on layered cobalt, clear glass and navy forms."
     },
     "/for/public-finance/": {
-      "url": "/social/for-public-finance-6e253625832762ae.png",
+      "url": "/social/for-public-finance-f822fcdcbc3a6b06.png",
       "width": 1730,
       "height": 909,
-      "sha256": "6e253625832762ae30c39da665ea5f896b3c8b9bd17bab637fb16514b74ca034",
-      "bytes": 475295,
-      "alt": "Bankeiz. Show what was paid. Keep the evidence. Show what was paid. Keep the evidence behind it. An engraved badge motif on layered cobalt, clear glass and navy forms."
+      "sha256": "f822fcdcbc3a6b061cd7c35ad34fd5553d1aa97017ef03a047579a8fe581ff19",
+      "bytes": 475249,
+      "alt": "Reality-Grade Banking. Show what was paid. Keep the evidence. Show what was paid. Keep the evidence behind it. An engraved badge motif on layered cobalt, clear glass and navy forms."
     },
     "/for/platforms/": {
-      "url": "/social/for-platforms-0319c78fbb770358.png",
+      "url": "/social/for-platforms-72b9eb30487b1265.png",
       "width": 1730,
       "height": 909,
-      "sha256": "0319c78fbb770358ed0856565b6eeb2d81bdf69947791f143a1c8e398775259b",
-      "bytes": 469458,
-      "alt": "Bankeiz. Build the experience. Keep the result. Build the experience. Keep each action and its result connected. An engraved code motif on layered cobalt, clear glass and navy forms."
+      "sha256": "72b9eb30487b1265e9930694799d7f689db1ac299ab50f5a5c9e05aabed4c6d6",
+      "bytes": 469398,
+      "alt": "Reality-Grade Banking. Build the experience. Keep the result. Build the experience. Keep each action and its result connected. An engraved code motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/your-account/": {
-      "url": "/social/your-account-8f5d30fa4794e58a.png",
+      "url": "/social/your-account-3f8a262ddb3fda97.png",
       "width": 1730,
       "height": 909,
-      "sha256": "8f5d30fa4794e58a95104e3c0a6eca45c2594314a7c3c858eb226c2218c138d7",
-      "bytes": 467059,
+      "sha256": "3f8a262ddb3fda972e124932c98e78f6b3ab4e978b5088620d1782a3bffe4a1f",
+      "bytes": 462578,
       "alt": "Bankeiz. Your account. The complete picture. One balance. A clear view of what you can use. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/payments/": {
-      "url": "/social/payments-2aff7f2717cd073c.png",
+      "url": "/social/payments-3d412931688efd6a.png",
       "width": 1730,
       "height": 909,
-      "sha256": "2aff7f2717cd073c47ccf22404a9752b77064b62d54f112149fc79763cf7a85c",
-      "bytes": 466375,
+      "sha256": "3d412931688efd6a3cf67ffae9e5e88c5d57cbb5253022aa4d8d77220f00865b",
+      "bytes": 461881,
       "alt": "Bankeiz. Payments. The complete picture. Choose who. Choose how much. Keep the receipt. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/get-paid/": {
-      "url": "/social/get-paid-7f44b0c745e956f3.png",
+      "url": "/social/get-paid-dda1ce16e755f3e5.png",
       "width": 1730,
       "height": 909,
-      "sha256": "7f44b0c745e956f32d5d91f3deb15eeca44bd0e594c7a63ac9bb781e3aaba0b3",
-      "bytes": 464150,
+      "sha256": "dda1ce16e755f3e520cc0be73a927555f1735bebd057e07fae1c19cdd9a03ff6",
+      "bytes": 459613,
       "alt": "Bankeiz. Get paid. Keep the proof. A link. A button. Money to your account. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/payment-requests/": {
-      "url": "/social/payment-requests-cdf472331a837ef0.png",
+      "url": "/social/payment-requests-4c8c6172cb01bec3.png",
       "width": 1730,
       "height": 909,
-      "sha256": "cdf472331a837ef0805c44f37f2ff7950a8b1049f3b3520a0936c966f7648c11",
-      "bytes": 468494,
+      "sha256": "4c8c6172cb01bec33121ba8cb09e529da589a241f360ff987440311135453baf",
+      "bytes": 464018,
       "alt": "Bankeiz. A clear request. A deliberate payment. A clear destination. A deliberate payment. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/deposits/": {
-      "url": "/social/deposits-cef9650edfc027b8.png",
+      "url": "/social/deposits-51bf2e0c6132d62a.png",
       "width": 1730,
       "height": 909,
-      "sha256": "cef9650edfc027b80dba3074a9dacd96ed894b3c4d24bb9e66753d4aa7f4fb08",
-      "bytes": 461621,
+      "sha256": "51bf2e0c6132d62aaff0f26f2c0506afe4b616ae5bb07cd9db7f28b1081e5ff6",
+      "bytes": 457082,
       "alt": "Bankeiz. Deposits. The complete picture. Bring your money into proof. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/notes/": {
-      "url": "/social/notes-60d4f9f9a24d6efc.png",
+      "url": "/social/notes-d96d3dfb530b924e.png",
       "width": 1730,
       "height": 909,
-      "sha256": "60d4f9f9a24d6efc3b12105dc788846f34480c191061f6ed9f4406329aa80364",
-      "bytes": 459500,
+      "sha256": "d96d3dfb530b924e5a8b66bb123593f01ccba6fefae64c134c5b84496ee391b4",
+      "bytes": 454962,
       "alt": "Bankeiz. Notes. The complete picture. Your money. Ready to carry. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/messages/": {
-      "url": "/social/messages-e66a570dd4446479.png",
+      "url": "/social/messages-fff7d123b3db23a9.png",
       "width": 1730,
       "height": 909,
-      "sha256": "e66a570dd44464796406cace71ede743283f8d0a2d1b32c515475c88f4d7f383",
-      "bytes": 469907,
+      "sha256": "fff7d123b3db23a94e561926e93158ff2a34245ef0c7e9cdf32409d19bb6d964",
+      "bytes": 465491,
       "alt": "Bankeiz. Messages and your agent. The complete picture. Your conversations. In the same account. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/creating-an-asset/": {
-      "url": "/social/creating-an-asset-447502362481501f.png",
+      "url": "/social/creating-an-asset-c7066f74c74cbe4b.png",
       "width": 1730,
       "height": 909,
-      "sha256": "447502362481501f99ef3a7418f258b391af0138b73df01daf23bf7a161f539d",
-      "bytes": 468109,
+      "sha256": "c7066f74c74cbe4b417dcfb15bead9fad677af1ee96500f8d02c4bff65a78c77",
+      "bytes": 463638,
       "alt": "Bankeiz. Create an asset. The complete picture. Seal a moment. Make its claim explicit. An engraved cube motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/ownership/": {
-      "url": "/social/ownership-15cadbf4567e6d11.png",
+      "url": "/social/ownership-7a4b7927888dfb23.png",
       "width": 1730,
       "height": 909,
-      "sha256": "15cadbf4567e6d11871b13208e41b1c2d61e339115c4f635791341382e8da31f",
-      "bytes": 467177,
-      "alt": "Bankeiz. Ownership. The complete picture. Ownership moves. Its history stays connected. An engraved cube motif on layered cobalt, clear glass and navy forms."
+      "sha256": "7a4b7927888dfb235c16d01b611cbe29216b4dcc8f395d0bb8b53c8ad139c07d",
+      "bytes": 467118,
+      "alt": "Reality-Grade Banking. Ownership. The complete picture. Ownership moves. Its history stays connected. An engraved cube motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/fractional-ownership/": {
-      "url": "/social/fractional-ownership-7143dc4b6a5fb30d.png",
+      "url": "/social/fractional-ownership-7db41476f1d2c120.png",
       "width": 1730,
       "height": 909,
-      "sha256": "7143dc4b6a5fb30ddf616985b7f98331246d99f56b73af3b5fb5066aed344d48",
-      "bytes": 468853,
-      "alt": "Bankeiz. A defined share. An inspectable whole. A defined share. An inspectable whole. An engraved cube motif on layered cobalt, clear glass and navy forms."
+      "sha256": "7db41476f1d2c1203ddd1a3540a08b6d0a044944df264d1bd0c20d36ba0fc061",
+      "bytes": 468798,
+      "alt": "Reality-Grade Banking. A defined share. An inspectable whole. A defined share. An inspectable whole. An engraved cube motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/physical-assets/": {
-      "url": "/social/physical-assets-40cb2d3d8c264bf7.png",
+      "url": "/social/physical-assets-7a32c5dbf46e987d.png",
       "width": 1730,
       "height": 909,
-      "sha256": "40cb2d3d8c264bf7845eb736098021df2b456707f729801ed0099fed70f84357",
-      "bytes": 467734,
-      "alt": "Bankeiz. Physical assets. The complete picture. The item. Its custody. Your evidence. An engraved cube motif on layered cobalt, clear glass and navy forms."
+      "sha256": "7a32c5dbf46e987d19de2d48e2949ca90822c9f69ff68afd5e0409e0ee5dae0d",
+      "bytes": 467677,
+      "alt": "Reality-Grade Banking. Physical assets. The complete picture. The item. Its custody. Your evidence. An engraved cube motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/asset-rights-and-backing/": {
-      "url": "/social/asset-rights-and-backing-085dfa3e2a0fd261.png",
+      "url": "/social/asset-rights-and-backing-4ca7f1099986c1cd.png",
       "width": 1730,
       "height": 909,
-      "sha256": "085dfa3e2a0fd2615f282daccf5225375688905402339b9b5cbc7eef83fcecac",
-      "bytes": 473469,
-      "alt": "Bankeiz. Defined rights. Visible backing. Know exactly what the proof establishes. An engraved cube motif on layered cobalt, clear glass and navy forms."
+      "sha256": "4ca7f1099986c1cd48c7f67d7704b42bd74df57c1369f529b7c3e86d64a23f83",
+      "bytes": 473430,
+      "alt": "Reality-Grade Banking. Defined rights. Visible backing. Know exactly what the proof establishes. An engraved cube motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/proof-native-economy/": {
-      "url": "/social/proof-native-economy-803a60b031c5278e.png",
+      "url": "/social/proof-native-economy-eee627af5bdb9d27.png",
       "width": 1730,
       "height": 909,
-      "sha256": "803a60b031c5278e02e7105704ac55d9f3d4ccc6204fc95156ac60d04dd5ad87",
-      "bytes": 480429,
-      "alt": "Bankeiz. Value. Connected to source. The economic system. Reality-grade banking is how you interact with it. Receiz is the reality-grade infrastructure. An engraved globe motif on layered cobalt, clear glass and navy forms."
+      "sha256": "eee627af5bdb9d27228617540c61ea0755908b83bc21c48f8f8ad8ecd9012207",
+      "bytes": 480365,
+      "alt": "Reality-Grade Banking. Value. Connected to source. The economic system. Reality-grade banking is how you interact with it. Receiz is the reality-grade infrastructure. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/markets/": {
-      "url": "/social/markets-940be1a08cb599d6.png",
+      "url": "/social/markets-6f3715faf12b9779.png",
       "width": 1730,
       "height": 909,
-      "sha256": "940be1a08cb599d6a72c14b6dd6c6f809028662085de8bef85e7df6bd0a70a46",
-      "bytes": 468265,
+      "sha256": "6f3715faf12b97795319bc4380d007c7cbeca9eb70193fdcb40c4f25e8544c12",
+      "bytes": 463825,
       "alt": "Bankeiz. Markets. The complete picture. Discover an asset. Examine its source. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/market-cap/": {
-      "url": "/social/global-market-cap-908fe7e676690267.png",
+      "url": "/social/global-market-cap-81793ae8d645b305.png",
       "width": 1730,
       "height": 909,
-      "sha256": "908fe7e6766902674f3580548f15f2083ea498563445e18beb656334b6f2e6f1",
-      "bytes": 469216,
-      "alt": "Bankeiz. Global Market Cap. One market view. Every included source accounted for. An engraved globe motif on layered cobalt, clear glass and navy forms."
+      "sha256": "81793ae8d645b305ec00dbbed2a322bf033e601bee454916a0ce7bd0a5e7705f",
+      "bytes": 469165,
+      "alt": "Reality-Grade Banking. Global Market Cap. One market view. Every included source accounted for. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/circulation/": {
-      "url": "/social/circulation-aee3a91ca29abb63.png",
+      "url": "/social/circulation-15d6f55ace69d8ce.png",
       "width": 1730,
       "height": 909,
-      "sha256": "aee3a91ca29abb63610f11a78338a5db895aae1299f875c97930b45d4236c452",
-      "bytes": 471988,
-      "alt": "Bankeiz. Circulation and listings. The complete picture. A clear count starts with a defined universe. An engraved globe motif on layered cobalt, clear glass and navy forms."
+      "sha256": "15d6f55ace69d8ce6680df3cea0136122c4e4bb8b6bf3c51500fb04362a09d8d",
+      "bytes": 471928,
+      "alt": "Reality-Grade Banking. Circulation and listings. The complete picture. A clear count starts with a defined universe. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/price-history/": {
-      "url": "/social/price-history-1e157a421b055d2e.png",
+      "url": "/social/price-history-02d04cd482337f20.png",
       "width": 1730,
       "height": 909,
-      "sha256": "1e157a421b055d2e77e21b49196c1071cebf0f99752ac99cfb4af5fe20e7fe17",
-      "bytes": 470678,
-      "alt": "Bankeiz. Value over time. The complete picture. The right value. At the right moment. An engraved globe motif on layered cobalt, clear glass and navy forms."
+      "sha256": "02d04cd482337f206343114f50d8cef6d1cee479f9abc9cf41770faf65dd26ba",
+      "bytes": 470613,
+      "alt": "Reality-Grade Banking. Value over time. The complete picture. The right value. At the right moment. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/receipts/": {
-      "url": "/social/receipts-563ee366c217c13a.png",
+      "url": "/social/receipts-99504a8108826ac2.png",
       "width": 1730,
       "height": 909,
-      "sha256": "563ee366c217c13aa2eb5b9dbb1b72b5a83e8fa1736e5498fd62e0cae3df6698",
-      "bytes": 470324,
+      "sha256": "99504a8108826ac2fe9d6577c5f5c74ee5ee1b7340e67f097691ed1ca719eff8",
+      "bytes": 465889,
       "alt": "Bankeiz. Transaction receipts. The complete picture. The event. Its source. Its result. An engraved ledger motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/source-of-funds/": {
-      "url": "/social/source-of-funds-bc5dd5de400118ba.png",
+      "url": "/social/source-of-funds-43ebf5eb34408ccf.png",
       "width": 1730,
       "height": 909,
-      "sha256": "bc5dd5de400118ba731aab618807d6fa91e780d47207b1f70cff58f8396494d0",
-      "bytes": 468709,
+      "sha256": "43ebf5eb34408ccf5638858fe4ae6f4325d79512f0b597cf34a4736031e25a93",
+      "bytes": 464256,
       "alt": "Bankeiz. Every payment. Connected to source. Trace the payment back to its source. An engraved ledger motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/memory-crystals/": {
-      "url": "/social/memory-crystals-7ede0fdc01db743b.png",
+      "url": "/social/memory-crystals-61fffedd48915a4c.png",
       "width": 1730,
       "height": 909,
-      "sha256": "7ede0fdc01db743b5e8b6e54dc23f26a1a9ba951d4a88ba244f0cbad585a2e09",
-      "bytes": 470517,
+      "sha256": "61fffedd48915a4c2d24b1ff150d8ecbbea4cda785e8b6c80a885cf29aa1ca69",
+      "bytes": 466069,
       "alt": "Bankeiz. Memory Crystals. The complete picture. Keep the record with its evidence. An engraved ledger motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/time-and-ordering/": {
-      "url": "/social/time-and-ordering-b5736961716eb1aa.png",
+      "url": "/social/time-and-ordering-a2ea01acdd53b770.png",
       "width": 1730,
       "height": 909,
-      "sha256": "b5736961716eb1aa0208862f7c70b6f6ab8decdf9faaa7bcc22fe215531645a1",
-      "bytes": 472202,
-      "alt": "Bankeiz. A familiar time. An exact moment. A familiar time. An exact coordinate underneath. An engraved ledger motif on layered cobalt, clear glass and navy forms."
+      "sha256": "a2ea01acdd53b77060103374397025ba5e062350ef86cd32ce0f288307a32b08",
+      "bytes": 472149,
+      "alt": "Reality-Grade Banking. A familiar time. An exact moment. A familiar time. An exact coordinate underneath. An engraved ledger motif on layered cobalt, clear glass and navy forms."
     },
     "/standards/": {
-      "url": "/social/standards-738bef21605451dc.png",
+      "url": "/social/standards-2b0fb029c82c1c86.png",
       "width": 1730,
       "height": 909,
-      "sha256": "738bef21605451dc0ca4a28fe26a65b03c66ada2e76364ff3140155bd27d422f",
-      "bytes": 465844,
-      "alt": "Bankeiz. Proof-native economic standards. The complete picture. Defined requirements. Demonstrated results. An engraved badge motif on layered cobalt, clear glass and navy forms."
+      "sha256": "2b0fb029c82c1c866078bc52cbd64a636fb004fb4b9d8f91d81d4298f0a7f75a",
+      "bytes": 465783,
+      "alt": "Reality-Grade Banking. Proof-native economic standards. The complete picture. Defined requirements. Demonstrated results. An engraved badge motif on layered cobalt, clear glass and navy forms."
     },
     "/institutions/": {
-      "url": "/social/institutions-488ffb3535009ff1.png",
+      "url": "/social/institutions-c677fe6592804f37.png",
       "width": 1730,
       "height": 909,
-      "sha256": "488ffb3535009ff153a16e90c3ef399a05d3d9e7aa8fc42125fbd1f733d9e656",
-      "bytes": 468086,
-      "alt": "Bankeiz. For institutions. The complete picture. Integrate the capability. Demonstrate the result. An engraved badge motif on layered cobalt, clear glass and navy forms."
+      "sha256": "c677fe6592804f378cede7535b00b646fc127ab200c9878ae3e0054f7eb22197",
+      "bytes": 468032,
+      "alt": "Reality-Grade Banking. For institutions. The complete picture. Integrate the capability. Demonstrate the result. An engraved badge motif on layered cobalt, clear glass and navy forms."
     },
     "/developers/": {
-      "url": "/social/developers-6b8b9da69b141a9d.png",
+      "url": "/social/developers-89989909d6c06aa6.png",
       "width": 1730,
       "height": 909,
-      "sha256": "6b8b9da69b141a9ddba7e487663f08dd16bc96ded7c9dcaa5d3ac740d3ccf41b",
-      "bytes": 466715,
-      "alt": "Bankeiz. For developers. The complete picture. Build the experience. Preserve the protocol. An engraved badge motif on layered cobalt, clear glass and navy forms."
+      "sha256": "89989909d6c06aa6133a916fcc2ee81f074daa724bf023f52c07bf56e8eaedfe",
+      "bytes": 466664,
+      "alt": "Reality-Grade Banking. For developers. The complete picture. Build the experience. Preserve the protocol. An engraved badge motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/security/": {
-      "url": "/social/security-9b5202b087f93709.png",
+      "url": "/social/security-eecb09b7f57843f6.png",
       "width": 1730,
       "height": 909,
-      "sha256": "9b5202b087f937095f8125acdd9ed8f404372f296c5d4450d9ad13727a247403",
-      "bytes": 470240,
-      "alt": "Bankeiz. Security and authority. The complete picture. Authority stays explicit. Evidence stays connected. An engraved badge motif on layered cobalt, clear glass and navy forms."
+      "sha256": "eecb09b7f57843f6c93072042c87338c9e606df3de33bf56d651c4625dbdd556",
+      "bytes": 470194,
+      "alt": "Reality-Grade Banking. Security and authority. The complete picture. Authority stays explicit. Evidence stays connected. An engraved badge motif on layered cobalt, clear glass and navy forms."
     },
     "/releases/": {
-      "url": "/social/releases-09bdd4cc9c25671e.png",
+      "url": "/social/releases-7a3c383690fa107f.png",
       "width": 1730,
       "height": 909,
-      "sha256": "09bdd4cc9c25671e75be66190ee64bed8f4b21d1b986f06847afe755effb071f",
-      "bytes": 467373,
-      "alt": "Bankeiz. Releases and qualification. The complete picture. Value. Proof. Continuity. Independently verifiable. An engraved badge motif on layered cobalt, clear glass and navy forms."
+      "sha256": "7a3c383690fa107fd43e18e5d7bf42e7909aeb05439f82b24fa7122338c10509",
+      "bytes": 467320,
+      "alt": "Reality-Grade Banking. Releases and qualification. The complete picture. Value. Proof. Continuity. Independently verifiable. An engraved badge motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/glossary/": {
-      "url": "/social/glossary-3a8ad0ff3be9da03.png",
+      "url": "/social/glossary-d27224d13901ea6d.png",
       "width": 1730,
       "height": 909,
-      "sha256": "3a8ad0ff3be9da030abee13638b63e46f6ddab92b7dcdb38d33c462860e33b43",
-      "bytes": 462473,
-      "alt": "Bankeiz. Glossary. The complete picture. Familiar words. Precise meanings. An engraved badge motif on layered cobalt, clear glass and navy forms."
+      "sha256": "d27224d13901ea6d91b0f66e964820201d7be970c87b1d86dc676f7adcc1c954",
+      "bytes": 462419,
+      "alt": "Reality-Grade Banking. Glossary. The complete picture. Familiar words. Precise meanings. An engraved badge motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/questions/": {
-      "url": "/social/questions-084f71becff126ae.png",
+      "url": "/social/questions-7647f09e9b8859e1.png",
       "width": 1730,
       "height": 909,
-      "sha256": "084f71becff126aea02fcd10fa24a1caa1fbc2e56d8cdc8bd585c99a52275f5c",
-      "bytes": 471016,
-      "alt": "Bankeiz. Questions and answers. The complete picture. The details you need. When you need them. An engraved badge motif on layered cobalt, clear glass and navy forms."
+      "sha256": "7647f09e9b8859e1eaa5ede6ecbbd2b50dde9b0e948ceee3aad5d2210c987a11",
+      "bytes": 470952,
+      "alt": "Reality-Grade Banking. Questions and answers. The complete picture. The details you need. When you need them. An engraved badge motif on layered cobalt, clear glass and navy forms."
     },
     "/explore/music/": {
-      "url": "/social/explore-music-9ae9e0d8b57fe66a.png",
+      "url": "/social/explore-music-e2bfb4b277125c2e.png",
       "width": 1730,
       "height": 909,
-      "sha256": "9ae9e0d8b57fe66ae9844e3ab1603ec8a11b5115111c1b3d51cc3dfaf0746b4d",
-      "bytes": 468978,
+      "sha256": "e2bfb4b277125c2e6821d89814c13855256801a9124b37fd152a4c2803fffc10",
+      "bytes": 464504,
       "alt": "Bankeiz. Music. Open to explore. Original sources. Verifiable ownership. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/explore/images/": {
-      "url": "/social/explore-images-2074c3abf52f705e.png",
+      "url": "/social/explore-images-111d6b42414bacef.png",
       "width": 1730,
       "height": 909,
-      "sha256": "2074c3abf52f705e185f8f57370f8d0b7d8dc4e7b82ca0efcea4f6aed00d4315",
-      "bytes": 469497,
+      "sha256": "111d6b42414bacef5fe02afd8f4e3ff7b5df92bc3e090768cc5a606b4f043982",
+      "bytes": 465038,
       "alt": "Bankeiz. Images. Open to explore. Original sources. Verifiable ownership. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/explore/videos/": {
-      "url": "/social/explore-videos-a9f15ef1f13d0139.png",
+      "url": "/social/explore-videos-c5a1d7b9b56869e2.png",
       "width": 1730,
       "height": 909,
-      "sha256": "a9f15ef1f13d0139689df3812ac33c2b35c4d06472f5c09cce7afc31f0a8ace0",
-      "bytes": 469413,
+      "sha256": "c5a1d7b9b56869e222e827063d4ff6da7d56b65406ec9ec772a9f5535d8a56f1",
+      "bytes": 464946,
       "alt": "Bankeiz. Videos. Open to explore. Original sources. Verifiable ownership. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/explore/books/": {
-      "url": "/social/explore-books-5696de4ae26b56a4.png",
+      "url": "/social/explore-books-6f05762df51176a2.png",
       "width": 1730,
       "height": 909,
-      "sha256": "5696de4ae26b56a4ff3e57f8cbbf079afb6d3e252f6f113a7bce3811bb4181be",
-      "bytes": 468334,
+      "sha256": "6f05762df51176a2b1127a6223df711bc5f7f1e0bce08dd9f91d48976c9fd1c9",
+      "bytes": 463877,
       "alt": "Bankeiz. Books. Open to explore. Original sources. Verifiable ownership. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/explore/essays/": {
-      "url": "/social/explore-essays-84e5f44784db19a0.png",
+      "url": "/social/explore-essays-5c115cf9d7e4c727.png",
       "width": 1730,
       "height": 909,
-      "sha256": "84e5f44784db19a0559210b38d11b4f4117031247716ad919ceef595b411b05b",
-      "bytes": 469038,
+      "sha256": "5c115cf9d7e4c72719b81419f94f94b83ab68a8fb4305b234e5215e87dacba60",
+      "bytes": 464575,
       "alt": "Bankeiz. Essays. Open to explore. Original sources. Verifiable ownership. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/explore/moments/": {
-      "url": "/social/explore-moments-00acf87685b43658.png",
+      "url": "/social/explore-moments-5eb91aac568aad7c.png",
       "width": 1730,
       "height": 909,
-      "sha256": "00acf87685b43658b66e1cc0d47a428bc124dc486a12c0cc2b9ec992d0a89934",
-      "bytes": 471515,
+      "sha256": "5eb91aac568aad7ca730cc87a53c0fd82a44fe762ec7021f94e6345527425225",
+      "bytes": 466991,
       "alt": "Bankeiz. Moments. Open to explore. Original sources. Verifiable ownership. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/explore/collectibles/": {
-      "url": "/social/explore-collectibles-d4179b2c14683562.png",
+      "url": "/social/explore-collectibles-34dac5d4d79fe359.png",
       "width": 1730,
       "height": 909,
-      "sha256": "d4179b2c146835624ee5f9fb330d1eb3516fd8662ecc38b8cdef679173f98905",
-      "bytes": 473775,
+      "sha256": "34dac5d4d79fe3595c8e5b09fe2e7a1c39832eb4c52290c9b4545166a1b905d9",
+      "bytes": 469299,
       "alt": "Bankeiz. Collectibles. Open to explore. Original sources. Verifiable ownership. An engraved globe motif on layered cobalt, clear glass and navy forms."
     },
     "/explore/documents/": {
-      "url": "/social/explore-documents-09da2971c4c8b719.png",
+      "url": "/social/explore-documents-764a6c39ac823a5e.png",
       "width": 1730,
       "height": 909,
-      "sha256": "09da2971c4c8b7193a600c01d6da67780702e14179eda395a3b043fda979de73",
-      "bytes": 471876,
+      "sha256": "764a6c39ac823a5e46ecfb8976ab4cabcdda9bbebce59818a344df8aa513ca7b",
+      "bytes": 467374,
       "alt": "Bankeiz. Documents. Open to explore. Original sources. Verifiable ownership. An engraved globe motif on layered cobalt, clear glass and navy forms."
     }
   }

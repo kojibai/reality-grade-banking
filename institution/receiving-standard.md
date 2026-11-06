@@ -1,6 +1,6 @@
-# Receiving standard
+# Reality-Grade Banking receiving standard
 
-Profile: `receiz.bank.receiver-profile.v1`, version 1.0.0. This document specifies this reference's receiving requirements. It does not amend the canonical Receiz registry, replace its verifier, or establish a statutory banking standard.
+Profile: `receiz.bank.receiver-profile.v1`, version 1.0.0. This document specifies the shared Reality-Grade Banking receiving requirements. Bankeiz is a reference application; independent implementations are assessed against the same applicable requirements. This profile does not amend the canonical Receiz registry, replace its verifier, or establish a statutory banking standard.
 
 **Verify the value. Verify ownership. Inspect history. Preserve continuity.** Conformance applies to a named receiver implementation, capability, rail, build and operating environment. Assessment must identify each of these; a result for one route does not cover every transaction or institution system.
 

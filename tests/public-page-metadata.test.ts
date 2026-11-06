@@ -4,6 +4,7 @@ import {applyPublicMetadata,publicPage,publicEntryFallback,publicPages} from '..
 import social from '../public/social/manifest.json';
 import {readFile} from 'node:fs/promises';
 import {publicMetadataPlugin} from '../scripts/public-metadata-plugin.mjs';
+import {shareCardSvg} from '../scripts/social/share-card-art.mjs';
 const image=(path:string)=>social.images[path as keyof typeof social.images];
 it('replaces generic preview metadata while preserving private-reader security and executable entry tags',()=>{
  const source='<html><head><title>Old</title><meta name="robots" content="index,follow"><meta name="referrer" content="no-referrer"><link rel="canonical" href="https://old.example/"><meta property="og:image" content="old.png"><meta name="twitter:image" content="old.png"><style>body{color:#172b45}</style></head><body><div id="root"></div><script type="module" src="/receipt.js"></script></body></html>';
@@ -47,4 +48,46 @@ it('presents the Registry under the standard in sharing metadata while preservin
  expect(doc.title).toBe('Reality-Grade Banking Conformance Register');
  expect(doc.querySelector('meta[property="og:site_name"]')?.getAttribute('content')).toBe('Reality-Grade Banking');
  expect(doc.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe('https://bankeiz.com/registry/');
+});
+
+it.each([
+ ['/learn/','Reality-Grade Banking'],
+ ['/learn/guides/','Reality-Grade Banking'],
+ ['/learn/reality-grade-banking/','Reality-Grade Banking'],
+ ['/learn/proof-native-economy/','Reality-Grade Banking'],
+ ['/standards/','Reality-Grade Banking'],
+ ['/institutions/','Reality-Grade Banking'],
+ ['/developers/','Reality-Grade Banking'],
+ ['/build/','Reality-Grade Banking'],
+ ['/accept/','Reality-Grade Banking'],
+ ['/conformance/','Reality-Grade Banking'],
+ ['/schemas/','Receiz'],
+ ['/guide/','Bankeiz'],
+ ['/merchant/','Bankeiz'],
+ ['/learn/your-account/','Bankeiz'],
+ ['/learn/payments/','Bankeiz'],
+ ['/learn/creating-an-asset/','Bankeiz'],
+ ['/receipt/','Bankeiz'],
+ ['/','Bankeiz'],
+])('attributes the %s preview to its subject instead of the hosting application', (path,subject)=>{
+ const page=publicPage(path)!,html=applyPublicMetadata('<html><head></head><body></body></html>',page,image(path));
+ const doc=new DOMParser().parseFromString(html,'text/html');
+ expect(doc.querySelector('meta[property="og:site_name"]')?.getAttribute('content')).toBe(subject);
+ expect(doc.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe('https://bankeiz.com'+path);
+ if(subject!=='Bankeiz')expect(doc.title).not.toContain('| Bankeiz');
+});
+
+it.each([
+ ['/build/','REALITY-GRADE BANKING'],
+ ['/accept/','REALITY-GRADE BANKING'],
+ ['/conformance/','REALITY-GRADE BANKING'],
+ ['/schemas/','RECEIZ SDK'],
+ ['/merchant/',null],
+ ['/registry/','REALITY-GRADE BANKING'],
+])('uses the %s subject and preserves the bank logo in its generated sharing artwork', (path,subject)=>{
+ const doc=new DOMParser().parseFromString(shareCardSvg(publicPage(path)!),'image/svg+xml');
+ const labels=[...doc.querySelectorAll('text')].map(node=>node.textContent);
+ if(subject)expect(labels).toContain(subject);
+ expect(doc.querySelector('svg[viewBox="112 112 288 288"] path')).not.toBeNull();
+ expect(labels).not.toContain('Bankeiz');
 });

@@ -1,1 +1,36 @@
-[data-guide-directory] [hidden]{display:none!important}.guide-search{max-width:720px;margin-top:30px}.guide-search label{display:block;font-size:13px;font-weight:600;color:#172b45;margin-bottom:10px}.guide-search>div{display:flex;gap:12px;align-items:center}.guide-search input{min-width:0;flex:1;border:1px solid #bdcbdc;border-radius:8px;padding:13px 15px;font:inherit;font-size:15px;color:#172b45;background:#fff}.guide-search button{border:0;background:transparent;color:#274cdb;white-space:nowrap;font:inherit;font-size:13px;padding:12px 4px;cursor:pointer}.guide-search :focus-visible{outline:2px solid #274cdb;outline-offset:4px}.guide-search p,.guide-search-empty{font-size:13px;color:#60718a;line-height:1.6}.guide-search-empty{padding:18px 0 30px}.guide-search+[aria-label="Guide subjects"]{margin-top:24px}@media(max-width:430px){.guide-search>div{align-items:stretch;flex-direction:column;gap:5px}.guide-search button{align-self:flex-start}}
+[data-guide-directory] [hidden]{display:none!important}
+.learning-directory{padding-block:64px 90px}
+.directory-heading{display:flex;justify-content:space-between;align-items:end;gap:40px}
+.directory-heading .section-intro{font-size:13px;margin-bottom:16px}
+.directory-heading h1{font-size:clamp(44px,5.5vw,74px);line-height:1.06}
+.directory-copy{max-width:410px;padding-bottom:4px}
+.directory-intro{font-size:17px;line-height:1.6}
+.directory-user-guide{display:inline-flex;align-items:center;gap:14px;margin-top:16px;font-size:14px;font-weight:550;color:var(--cobalt)}
+.directory-user-guide svg{width:17px;height:17px}
+.guide-search{max-width:720px;margin-top:38px}
+.guide-search-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.guide-search label{font-size:13px;font-weight:600}
+.guide-search p{font-size:12px}
+.guide-search-field{display:flex;align-items:center;gap:12px;padding:5px 8px 5px 16px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.guide-search-field>svg{color:var(--muted)}
+.guide-search-field:focus-within{border-color:var(--cobalt);box-shadow:0 0 0 3px #244cdb0b}
+.guide-search input{flex:1;min-width:0;width:100%;height:44px;padding:0;border:0;outline:0;background:none;color:var(--ink);font:inherit;font-size:16px}
+.guide-search input::placeholder{color:var(--muted);opacity:1}
+.guide-search button{display:flex;align-items:center;gap:10px;min-height:36px;padding:8px 12px;border:0;border-radius:7px;background:#f1f4f9;color:var(--muted);font:inherit;font-size:12px;cursor:pointer}
+.guide-search button span{font-size:19px;line-height:1}
+.guide-search button:hover{color:var(--cobalt);background:#eaf0fd}
+.guide-search :focus-visible{outline:2px solid var(--cobalt);outline-offset:4px}
+.learning-group-links{flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:24px 0 32px;padding-bottom:12px;scrollbar-width:thin}
+.learning-group-links a{white-space:nowrap;border:0;border-radius:7px;padding:10px 13px;background:#eef2f8;font-size:12px}
+.learning-group-links a:hover{background:#e4ebfb;color:var(--cobalt)}
+.learning-group{gap:40px;padding:32px 0;grid-template-columns:180px minmax(0,1fr)}
+.learning-group>h2{font-size:21px}
+.learning-group>div{gap:0 40px}
+.learning-group a{border-bottom:1px solid #e5eaf2;padding:20px 28px 22px 0}
+.learning-group a h3{font-size:18px;line-height:1.35;margin-bottom:8px}
+.learning-group p{font-size:14px;line-height:1.6}
+.learning-group a>svg{top:24px;color:var(--cobalt)}
+.learning-category-links h2{font-size:28px;margin-bottom:24px}
+.guide-search-empty{font-size:15px;padding:24px 0 48px}
+@media(max-width:800px){.learning-directory{padding-block:36px 64px}.directory-heading{display:block}.directory-heading h1{font-size:44px}.directory-copy{margin-top:20px;max-width:440px}.directory-intro{font-size:16px}.directory-user-guide{margin-top:14px}.guide-search{margin-top:30px}.learning-group{grid-template-columns:1fr;gap:8px;padding:25px 0}.learning-group-links{margin:20px 0 14px}.learning-group>h2{font-size:21px;margin:0}.learning-group>div{gap:0 28px}}
+@media(max-width:640px){.learning-group>div{grid-template-columns:minmax(0,1fr)}.learning-group a{padding-block:20px}.learning-group p{max-width:48ch}.learning-category-links nav{gap:16px 24px}}

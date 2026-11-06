@@ -1,11 +1,12 @@
 # Note continuity standard
 
-**Implementation specification · Receiz 129.0.0 · Ruleset 127.0.0**
+**Application integration specification · Reality-Grade Banking · Receiz 129.0.0 · Ruleset 127.0.0**
 **Release status: development candidate. Financial qualification incomplete.**
 
-This specification defines the Bankeiz application contract beneath the pinned
-Receiz registry. It does not amend that registry, certify a manufacturer or
-establish a public 1.0.0 release. Conformance is demonstrated by inspectable
+This specification documents the Bankeiz application contract for Note
+continuity within the shared Reality-Grade Banking framework, beneath the
+pinned Receiz registry. It does not amend that registry, certify a manufacturer
+or establish a public 1.0.0 release. Conformance is demonstrated by inspectable
 source, exact implementation scope and reproducible evidence.
 
 ## User contract
