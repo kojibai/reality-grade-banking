@@ -284,11 +284,13 @@
 .institution-scorecard .isc-proof-upload-heading .isc-eyebrow{font-size:9px;color:var(--isc-muted);letter-spacing:.13em}
 .institution-scorecard .isc-proof-upload-heading h4{font-family:Georgia,'Times New Roman',serif;font-size:25px;font-weight:400;letter-spacing:-.035em;margin:10px 0 0}
 .institution-scorecard .isc-proof-upload>p{max-width:760px;font-size:12px;line-height:1.8;margin:13px 0 0}
-.institution-scorecard .isc-proof-origin{font-size:11px;line-height:1.8;color:var(--isc-muted);margin-top:14px;min-width:0}
-.institution-scorecard .isc-proof-origin summary{padding:0!important;font-size:11px!important;list-style:none;cursor:pointer;text-decoration:underline;text-underline-offset:4px;display:inline}
-.institution-scorecard .isc-proof-origin summary::after{display:none!important}
-.institution-scorecard .isc-proof-origin p{margin:12px 0 8px;font-size:11px}
-.institution-scorecard .isc-proof-origin a{overflow-wrap:anywhere;font-size:11px;text-decoration:underline;text-underline-offset:3px}
+.institution-scorecard .isc-proof-steps{list-style:none;counter-reset:proof-step;margin:20px 0 0;padding:0;display:grid;gap:17px;max-width:760px}
+.institution-scorecard .isc-proof-steps>li{counter-increment:proof-step;display:grid;grid-template-columns:24px minmax(0,1fr);gap:12px;margin:0;padding:0;font-size:11px;line-height:1.8}
+.institution-scorecard .isc-proof-steps>li::before{content:counter(proof-step,decimal-leading-zero);font-variant-numeric:tabular-nums;color:var(--isc-muted);white-space:nowrap}
+.institution-scorecard .isc-proof-steps>li>div{min-width:0}
+.institution-scorecard .isc-proof-steps strong{font-weight:600;color:var(--isc-ink)}
+.institution-scorecard .isc-proof-steps p{margin:4px 0 0;font-size:inherit;line-height:inherit;color:var(--isc-muted)}
+.institution-scorecard .isc-proof-steps .isc-proof-origin{display:block;margin-top:8px;overflow-wrap:anywhere;color:var(--isc-ink);font-size:inherit;text-decoration:underline;text-underline-offset:3px}
 .institution-scorecard .isc-proof-upload-actions{display:flex;align-items:center;flex-wrap:wrap;gap:20px 28px;margin-top:21px}
 .institution-scorecard .isc-proof-picker{min-width:0;flex:1 1 280px}
 .institution-scorecard .isc-proof-picker label{display:block;font-size:11px;line-height:1.6;font-weight:600;color:var(--isc-ink);margin-bottom:9px}
