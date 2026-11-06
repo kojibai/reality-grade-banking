@@ -1,14 +1,19 @@
 # Release process
 
-The current Bankeiz product release candidate identifies **4.0.0**, separately
-from the pinned Receiz SDK/MCP/AI Skills versions. Its
-[full release record](releases/4.0.0.md) describes the product and open
-implementation; the matching [qualification record](releases/4.0.0-qualification.md)
-records evidence and publication steps. The [release index](releases/README.md)
-retains every version and links the concise changelog. Retained **3.0.0**, **2.0.0** and
-published **1.0.0** remain unchanged. Source preparation, deployed capability assessment and GitHub
-publication are recorded separately. A tag identifies source; it does not grant
-an unassessed financial or device capability.
+The current repository release is **5.0.0**,
+[published November 6, 2026](https://github.com/kojibai/reality-grade-banking/releases/tag/v5.0.0)
+from `10b5fd1694d2c287361e3e29c28251359b73cee5`. Its
+[full release record](releases/5.0.0.md) describes the product and open
+implementation; the matching [qualification record](releases/5.0.0-qualification.md)
+records its exact source, checks and publication. The tagged package/lockfile
+metadata remains 4.0.0 and the Receiz SDK/MCP/AI Skills remain 129.0.0.
+This documentation update does not rewrite that tagged source.
+
+The [release index](releases/README.md) retains every version and links the
+concise changelog. Earlier release records remain unchanged. Source preparation,
+deployed capability assessment and GitHub publication are recorded separately.
+A tag identifies source; it does not grant an unassessed financial or device
+capability.
 
 Record the Bank commit, exact lockfile, coordinated Receiz package versions, registry/operation digests and generated module hashes. Read the current capability matrix in the root README and `institution/receiver-profile.json`.
 

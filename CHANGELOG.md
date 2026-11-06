@@ -4,13 +4,17 @@ Reality-Grade Banking repository releases include the Bankeiz financial
 application. Its product versions are independent of Receiz protocol/package versions.
 Full release records and qualification evidence live in [docs/releases](docs/releases/README.md).
 
-## 5.0.0 — release recap
+## 5.0.0 — Keep your work, value and proof connected
 
-The v5 recap covers 122 committed changes since `v4.0.0` through `3756797`.
+Published [November 6, 2026](https://github.com/kojibai/reality-grade-banking/releases/tag/v5.0.0)
+from `10b5fd1`. The tag contains 123 commits since `v4.0.0`: 122 through the
+implementation checkpoint `3756797`, followed by its release documentation.
 Learn now leads with How it works, The standard and Guides, with Business
-available in context and guide preview prices removed. Local cold-publication qualification is complete; deployed acceptance remains
-pending. Package metadata remains 4.0.0; Receiz SDK, MCP and AI Skills
-remain pinned together at 129.0.0. No v5 tag, publication or deployment is claimed.
+available in context and guide preview prices removed. Local cold-publication
+qualification is complete; deployed acceptance remains separately recorded.
+The tagged package metadata remains 4.0.0; Receiz SDK, MCP and AI Skills remain
+pinned together at 129.0.0. This documentation follow-up does not move the tag
+or establish a new deployment.
 [Full recap](docs/releases/5.0.0.md) ·
 [Qualification and publication record](docs/releases/5.0.0-qualification.md).
 

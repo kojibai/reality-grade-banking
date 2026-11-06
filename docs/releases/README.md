@@ -7,7 +7,7 @@ MCP and AI Skills versions it uses.
 
 | Version | State | Receiz | Release record |
 | --- | --- | --- | --- |
-| 5.0.0 | Recap ready; local code qualified; deployment/publication pending; package version remains 4.0.0 | 129.0.0 | [Full recap](5.0.0.md) · [qualification record](5.0.0-qualification.md) |
+| 5.0.0 | [Published November 6, 2026](https://github.com/kojibai/reality-grade-banking/releases/tag/v5.0.0) · `10b5fd1` | 129.0.0 | [Full recap](5.0.0.md) · [qualification record](5.0.0-qualification.md) |
 | 4.0.0 | [Versioned source and qualification](4.0.0-qualification.md) | 129.0.0 | [Full release notes](4.0.0.md) · [qualification record](4.0.0-qualification.md) |
 | 3.0.0 | [Published October 22, 2026](https://github.com/kojibai/reality-grade-banking/releases/tag/v3.0.0) · `dcfb7ed` | 129.0.0 | [Full release notes](3.0.0.md) · [qualification record](3.0.0-qualification.md) |
 | 2.0.0 | Retained source tag `v2.0.0` · `3368876` | 129.0.0 | [Full release notes](2.0.0.md) · [qualification record](2.0.0-qualification.md) |
@@ -17,9 +17,10 @@ The live application remains available at [Bankeiz.com](https://bankeiz.com/).
 Publication records identify the actual tag and source. Capability-specific
 assessment remains documented separately.
 
-The v5 documents recap committed changes since v4 and record local qualification and pending deployed
-acceptance. Preparing those documents does not bump a package version,
-publish a tag or release, deploy the application or relabel earlier evidence.
+The v5 documents recap the tagged changes since v4 and record local qualification
+separately from deployed acceptance. The tag identifies `10b5fd1`; its package
+metadata remains 4.0.0. This publication record does not move the tag, deploy the
+application or relabel earlier evidence.
 
 ## Release materials
 

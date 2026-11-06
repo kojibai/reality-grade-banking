@@ -62,6 +62,10 @@ retain their actual meaning.
 
 ## Product and release evidence
 
+- [Reality-Grade Banking 5.0.0 full recap](releases/5.0.0.md)
+- [5.0.0 qualification and publication record](releases/5.0.0-qualification.md)
+- [Reality-Grade Banking 4.0.0 full notes](releases/4.0.0.md)
+- [4.0.0 qualification and publication record](releases/4.0.0-qualification.md)
 - [Reality-grade banking 3.0.0 full recap](releases/3.0.0.md)
 - [3.0.0 qualification and publication record](releases/3.0.0-qualification.md)
 - [Reality-Grade Banking 2.0.0 full notes](releases/2.0.0.md)

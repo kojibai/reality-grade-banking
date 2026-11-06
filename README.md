@@ -4,7 +4,7 @@
 
 [![Verify reference](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml)
 [![GPL-3.0-only](https://img.shields.io/badge/License-GPL--3.0--only-2349d8.svg)](LICENSE)
-[![Version 4.0.0](https://img.shields.io/badge/Release-4.0.0-2349d8.svg)](docs/releases/4.0.0.md)
+[![Version 5.0.0](https://img.shields.io/badge/Release-5.0.0-2349d8.svg)](https://github.com/kojibai/reality-grade-banking/releases/tag/v5.0.0)
 [![Receiz v129](https://img.shields.io/badge/Receiz-129.0.0-2349d8.svg)](package.json)
 
 Reality-Grade Banking is an open banking architecture and receiving standard for money
@@ -284,7 +284,17 @@ See the [origin contract](docs/bankeiz-origin-activation.md),
 
 ## Release evidence
 
-**[Version 4.0.0](docs/releases/4.0.0.md) — Money that shows its work.**
+**[Version 5.0.0](https://github.com/kojibai/reality-grade-banking/releases/tag/v5.0.0) — Keep your work, value and proof connected.**
+Published November 6, 2026 from `10b5fd1`. The release brings immersive Feed,
+Discover and People, fuller Original creation and PBI signing, complete carried
+public state, the merchant Counter, email payment handoff, connected Notes and
+expanded independent receiving and Registry tools together.
+The [full recap](docs/releases/5.0.0.md) covers the changes since v4.
+The [qualification record](docs/releases/5.0.0-qualification.md) records the
+production build, 6,064 passing tests with zero failures or skips, desktop/mobile
+checks and the separate deployment and live-acceptance evidence.
+
+[Version 4.0.0](docs/releases/4.0.0.md) — Money that shows its work.
 One connected account brings money, Originals, shares, a financial agent, contacts,
 Calendar, booking and full-screen meetings together. The practical guide and
 populated interactive walkthroughs show the controls, results and evidence.
