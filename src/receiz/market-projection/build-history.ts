@@ -2,7 +2,7 @@ import { CHART_PERIODS, type ChartPeriod } from '../../core/chart-history';
 import { marketPeriodPulses, marketPulseTime } from './project';
 import { marketCapSummary, marketHistoryBasis,marketHistoryMembership,retainMarketInterval,MARKET_HISTORY_POLICY,SHARE_MARKET_HISTORY_POLICY, type CapitalizationPoint, type MarketHistorySnapshot } from './history';
 import type { MarketCapSource } from './source';
-import type{PublicMarketCatalog}from'../public-market';
+import type{PublicMarketPricingCatalog}from'./pricing-inputs';
 import{currentMarketDisplayModel}from'./catalog-source';
 import {marketPulseAtOrAfterTime}from'./sealed-copies';
 import {mergeMarketCopyObservations}from'./copy-observations';
@@ -34,7 +34,7 @@ function significantEventPulses(source:MarketCapSource):{ranked:number[];observe
  return {ranked:[...events].sort((a,b)=>b[1]-a[1]||a[0]-b[0]).map(([pulse])=>pulse),observed:[...observed].sort((a,b)=>a-b)};
 }
 /** Run at build time or in the worker; never calculate these curves on the UI thread. */
-export async function buildMarketHistory(source: MarketCapSource, previous: MarketHistorySnapshot | null = null, continuing: () => boolean = () => true, yieldSample: () => Promise<void> = async () => {},current?:{catalog:PublicMarketCatalog|null;pulse:number;capitalization?:boolean;onCalculation?:(value:GlobalMarketCalculation)=>void;priorInput?:{source:MarketCapSource;catalog:PublicMarketCatalog}}): Promise<MarketHistorySnapshot | null> {
+export async function buildMarketHistory(source: MarketCapSource, previous: MarketHistorySnapshot | null = null, continuing: () => boolean = () => true, yieldSample: () => Promise<void> = async () => {},current?:{catalog:PublicMarketPricingCatalog|null;pulse:number;capitalization?:boolean;onCalculation?:(value:GlobalMarketCalculation)=>void;priorInput?:{source:MarketCapSource;catalog:PublicMarketPricingCatalog}}): Promise<MarketHistorySnapshot | null> {
   if(current?.capitalization&&current.catalog){const scoped=globalMarketCapitalizationInputs(source,current.catalog);source=scoped.source;current={...current,catalog:scoped.catalog};}
   if(current)source=currentMarketDisplayModel(source,current.catalog,current.pulse,previous?.copyObservations);
   const mergedCopies=mergeMarketCopyObservations(source,previous?.copyObservations);source=mergedCopies.source;

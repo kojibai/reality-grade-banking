@@ -41,7 +41,7 @@ export function resolvePublicMarketTarget(requestUrl: string): URL | null {
   const target = new URL(path, 'https://receiz.com');
   return (local.pathname===`${PREFIX}resource`?safeImportedSourceUrl(target.href,'media'):safeReceizPublicUrl(target.href,'original')) ? target : null;
 }
-interface CachedResponse { bytes: Uint8Array; type: string; etag: string | null; fetchedAt: number; }
+interface CachedResponse { bytes: Uint8Array; type: string; etag: string | null; fetchedAt: number; profileHeads?:readonly unknown[]; }
 class OriginalPurchaseRefusal extends Error {}
 const epochs=new Map<string,number>();
 const cache = new Map<string, CachedResponse>(), pending = new Map<string, Promise<CachedResponse>>();
@@ -65,7 +65,7 @@ async function loadPublicResponse(target: URL,afterPublication?:string): Promise
     if (response.status === 304 && previous) { const current = { ...previous, fetchedAt: Date.now() }; if(epochs.get(key)===epoch)cache.set(key, current); return current; }
     if(response.status===402&&target.pathname==='/api/profile/originals/download'){await response.body?.cancel().catch(()=>{});throw new OriginalPurchaseRefusal();}
     if (!response.ok) throw new Error(`Receiz public source returned ${response.status}.`);
-    let bytes = await readBounded(response);
+    let bytes = await readBounded(response);let profileHeads:readonly unknown[]|undefined;
     const type = response.headers.get('content-type') ?? 'application/octet-stream';
     if (!original) {
       if (!type.includes('application/json')) throw new Error('Receiz public source returned an unsupported response.');
@@ -77,6 +77,7 @@ async function loadPublicResponse(target: URL,afterPublication?:string): Promise
         const projected={ok:true,cardId:input.cardId,claimHash:input.claimHash,count:input.count,provenance:input.provenance.map((row:Record<string,unknown>)=>{const owner=row.owner as Record<string,unknown>|null;return {eventKind:row.eventKind,collectibleId:row.collectibleId,claimHash:row.claimHash,appendHash:row.appendHash,occurredAt:row.occurredAt,owner:owner?{username:owner.username,displayName:owner.displayName}:null};})};
         for(const key of Object.keys(input))delete input[key];Object.assign(input,projected);
       } else if (target.pathname.endsWith('public-membership')) {
+        const raw=input?.transport?.publicProfileHeads;if(Array.isArray(raw)&&raw.every((head:Record<string,unknown>)=>{const profile=head?.profile as Record<string,unknown>|undefined,viewer=head?.viewer as Record<string,unknown>|undefined,stats=head?.stats as Record<string,unknown>|undefined;return profile?.isPrivate===false&&typeof profile.userId==='string'&&typeof profile.username==='string'&&viewer?.canView===true&&viewer.isOwner===false&&viewer.isSignedIn===false&&viewer.canEdit===false&&Number.isSafeInteger(stats?.originals)&&Number(stats?.originals)>=0&&Number.isSafeInteger(stats?.signedOriginals)&&Number(stats?.signedOriginals)>=0&&Number(stats?.signedOriginals)<=Number(stats?.originals);}))profileHeads=raw.map(({profile,viewer,stats}:Record<string,unknown>)=>({profile,viewer,stats}));
         curatePublicMarketMembership(input);
       } else if (target.pathname === '/api/game/sports/economy') {
         if (input.ok !== true || input.schema !== 'receiz.sports_economy.live_inventory.v1' || !Array.isArray(input.cards) || input.cards.length > 100000) throw new Error('Public sports inventory is unavailable.');
@@ -103,7 +104,7 @@ async function loadPublicResponse(target: URL,afterPublication?:string): Promise
       } else if (input.data) { input.data = { schema: input.data.schema, liveMarkets: input.data.liveMarkets }; }
       bytes = new TextEncoder().encode(JSON.stringify(input));
     }
-    const current = { bytes, type, etag: response.headers.get('etag'), fetchedAt: Date.now() };
+    const current = { bytes, type, etag: response.headers.get('etag'), fetchedAt: Date.now(),...(profileHeads?{profileHeads}:{}) };
     if (!original) if(epochs.get(key)===epoch)cache.set(key, current); return current;
   })().finally(() => pending.delete(pendingKey));
   pending.set(pendingKey, attempt); return attempt;
@@ -117,11 +118,11 @@ export async function publicMarketMiddleware(request: IncomingMessage, response:
   catch (cause) { const purchase=cause instanceof OriginalPurchaseRefusal;response.writeHead(purchase?402:503, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ ok: false, error: purchase?'original_purchase_required':'Receiz public source is temporarily unavailable.' })); }
 }
 /** Build-time public discovery seed. Report-only projection, never a held account. */
-export async function readReceizPublicMarketSource(kind: 'membership' | 'quotes' | 'sports' | 'capitalization',afterPublication?:string,options?:{fresh?:true;selectionKey?:string}): Promise<unknown> {
+export async function readReceizPublicMarketSource(kind: 'membership' | 'quotes' | 'sports' | 'capitalization',afterPublication?:string,options?:{fresh?:true;selectionKey?:string;onPublicProfileHeads?:(heads:readonly unknown[])=>void}): Promise<unknown> {
   if(afterPublication!==undefined&&(kind!=='membership'||!/^[a-f0-9]{64}$/.test(afterPublication)))throw new Error('Unsupported publication freshness reference.');
   if(options?.selectionKey!==undefined&&!/^[a-f0-9]{64}$/.test(options.selectionKey))throw Error('Unsupported public preparation coordinate.');
   const target = resolvePublicMarketTarget(`${PREFIX}${kind}`); if (!target) throw new Error('Unsupported public source.');
-  return JSON.parse(new TextDecoder().decode((await loadPublicResponse(target,afterPublication??(options?.fresh?'prepared-public-material:'+(options.selectionKey??'initial'):undefined))).bytes));
+  const response=await loadPublicResponse(target,afterPublication??(options?.fresh?'prepared-public-material:'+(options.selectionKey??'initial'):undefined));if(kind==='membership'&&response.profileHeads)options?.onPublicProfileHeads?.(response.profileHeads);return JSON.parse(new TextDecoder().decode(response.bytes));
 }
 /** Only public fields used by the canonical display projector cross this boundary. */
 export function curatePublicCapitalization(input: Record<string, unknown>) {

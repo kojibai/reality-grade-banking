@@ -32,3 +32,9 @@ The accepted anonymous Market transport carries each public profile header once 
 An owner-bound held collection must not trigger a separate profile manifest lookup. Missing header metadata is unknown, not an unsigned profile or an invitation to sign again. A thinner refresh cannot erase an available header for the same still-public owner. Actual privacy, handle and UID changes retain their existing refusal boundaries.
 
 The active owner's already-admitted compact public header may fill missing display fields only within that owner's mounted lifetime. Never copy the owner-only portable export, stats or Original history into anonymous public caches. Entry, custody, profile signing and Original signing retain their separate existing authority checks.
+
+## Preserve Bankeiz application adaptations
+
+Receiz application files and the Bankeiz native composition can have different working baselines. Apply an upstream change against its exact recorded preimage, carrying forward Bankeiz's existing application patches. Replacing a Bankeiz file with an upstream after-image is insufficient when those baselines differ. Preserve PBI ceremony order, local admission, durable signed delivery, recovery, HTTP error mapping and account entry.
+
+A successful native build establishes compilation and source consistency. Qualify the actual signing, cancellation, retry and interrupted-delivery behavior separately. Reopening a publisher in the same bundled module does not establish cold recovery: durable accepted SDK state must survive a fresh module and browser restart, using the existing SDK custody and verification contracts. A module memo is not durable custody.

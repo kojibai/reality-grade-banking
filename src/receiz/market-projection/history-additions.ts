@@ -1,5 +1,5 @@
 import {publicCapitalizationAssets,type PublicShareInventory} from '../market-share-inventory';
-import type {PublicMarketCatalog,PublicMarketItem} from '../public-market';
+import type {PublicMarketPricingCatalog,PublicMarketPricingItem} from './pricing-inputs';
 import {publicAssetPulseSeed} from './asset';
 import type {MarketCapSource} from './source';
 import {publicCatalogAtPulse} from './catalog-prices';
@@ -21,11 +21,11 @@ function inventoryPrefix(inventory:PublicShareInventory,last:number){
  const intervals:[string,string|null][]=[];for(const [at,quantity]of [...points].sort((a,b)=>a[0]<b[0]?-1:1))if(!intervals.length||intervals.at(-1)![1]!==quantity)intervals.push([String(at),quantity]);
  return {family:inventory.family,quantityScope:inventory.quantityScope,nativeAssetId:inventory.nativeAssetId,issuanceSourceSha256:inventory.issuanceSourceSha256,intervals,anchors:[...anchors].map(([at,price])=>[String(at),price])};
 }
-const identity=(item:PublicMarketItem)=>item.nativeAsset?'native:'+item.nativeAsset.id:'asset:'+item.assetId;
+const identity=(item:PublicMarketPricingItem)=>item.nativeAsset?'native:'+item.nativeAsset.id:'asset:'+item.assetId;
 /** A new public Original can add to exact completed samples. Every former
  * membership, pricing model and share prefix must still be present. This is a
  * display optimization; no input, quantity, coverage or law is manufactured. */
-export function marketHistoryOriginalAdditions(beforeSource:MarketCapSource,source:MarketCapSource,before:PublicMarketCatalog,catalog:PublicMarketCatalog,last:number):PublicMarketCatalog|null{
+export function marketHistoryOriginalAdditions(beforeSource:MarketCapSource,source:MarketCapSource,before:PublicMarketPricingCatalog,catalog:PublicMarketPricingCatalog,last:number):PublicMarketPricingCatalog|null{
  if(!before.complete||!catalog.complete||source.firstIssuancePulse!==beforeSource.firstIssuancePulse)return null;
  // Global shares rebuild the sports-only residual from these same rows; the
  // full-universe residual/sourceEvaluation is deliberately cleared there.

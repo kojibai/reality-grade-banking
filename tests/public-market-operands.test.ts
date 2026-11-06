@@ -1,0 +1,27 @@
+import {expect,it,vi} from 'vitest';
+import {createPublicMarketOperandPreparer} from '../server/public-market-operands';
+import {handlePreparedPublicMarket} from '../server/prepared-public-market';
+it('reads each missing public bootstrap family once and never joins financial history to membership',async()=>{
+ const read=vi.fn(async(kind:string)=>({kind})),ledger=vi.fn(async()=>({schema:'bank.public-ledger.preparation.v1',financialOnly:true})),prepare=createPublicMarketOperandPreparer({read,prepareLedger:ledger});
+ const a=await prepare({selectionKey:'a'.repeat(64),projectOperand:'membership'}),again=await prepare({selectionKey:'a'.repeat(64),projectOperand:'membership'});
+ expect(a).toBe(again);expect(a.body).toEqual({kind:'membership'});expect(read.mock.calls).toEqual([['membership','a'.repeat(64)]]);expect(ledger).not.toHaveBeenCalled();
+ const financial=await prepare({selectionKey:'a'.repeat(64),projectOperand:'preparedLedger'});expect(financial.body).toMatchObject({financialOnly:true});expect(read).toHaveBeenCalledOnce();expect(ledger).toHaveBeenCalledOnce();
+});
+it('uses the exact previously selected component generations for history across fresh workers without another family capture',async()=>{
+ const read=vi.fn(async()=>{throw Error('A second capture is forbidden');}),operands={membership:'a'.repeat(64),quotes:'b'.repeat(64),sports:'c'.repeat(64),capitalization:'d'.repeat(64)},selected={membership:{member:'exact'},quotes:{quote:'exact'},sports:{cards:'exact'},capitalization:{cap:'exact'}},prepare=createPublicMarketOperandPreparer({read,parseHistory:value=>value,prepareMarket:async input=>{expect(input).toEqual({membership:selected.membership,snapshot:selected.quotes,sports:selected.sports,capitalization:selected.capitalization});return{history:{unchangedCapture:true},asOfPulse:12345};}});
+ const result=await prepare({selectionKey:'e'.repeat(64),projectOperand:'history',operands},selected);expect(result.operands).toEqual(operands);expect(result.body).toEqual({unchangedCapture:true});expect(read).not.toHaveBeenCalled();
+});
+it('reuses the same bootstrap operands when the existing history calculator needs them',async()=>{
+ const read=vi.fn(async(kind:string)=>({kind})),prepareMarket=vi.fn(async(input:Record<string,unknown>)=>{expect(Object.keys(input).sort()).toEqual(['capitalization','membership','snapshot','sports']);return {history:{retained:true},asOfPulse:12345};}),prepare=createPublicMarketOperandPreparer({read,completeSports:async value=>value,prepareMarket,parseHistory:value=>value});
+ await prepare({selectionKey:'a'.repeat(64),projectOperand:'membership'});const result=await prepare({selectionKey:'a'.repeat(64),projectOperand:'history'});expect(read.mock.calls.map(([kind])=>kind).sort()).toEqual(['capitalization','membership','quotes','sports']);expect(prepareMarket).toHaveBeenCalledOnce();expect(result.body).toEqual({retained:true});expect(result.asOfPulse).toBe(12345);
+});
+it('returns one requested bootstrap operand through the existing endpoint without creating a flattened material',async()=>{
+ const prepareOperand=vi.fn(async()=>({schema:'bank.public-market.operand.v1' as const,selectionKey:'a'.repeat(64),operand:'membership' as const,body:{ok:true}})),untouched=vi.fn(async()=>{throw Error('not requested');});
+ const response=await handlePreparedPublicMarket(new Request('https://bankeiz.com/api/explore?prepare=input',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({selectionKey:'a'.repeat(64),projectOperand:'membership'})}),{build:'fixture',prepared:untouched,render:untouched,readMaterial:untouched,prepareInput:untouched,prepareOperand});
+ expect(response.status).toBe(200);expect(await response.json()).toMatchObject({schema:'bank.public-market.operand.v1',operand:'membership',body:{ok:true},build:'fixture'});expect(untouched).not.toHaveBeenCalled();
+});
+it('prepares only numerical checkpoint inputs from exact selected bootstrap generations, without financial history or another capture',async()=>{
+ const membership={ok:true,transport:{generatedAt:'2026-11-02T10:00:00Z',publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1,revision:'fixture'},publicOriginals:[{id:'profile:alice:original',receizId:'original',ownerUserId:'owner',ownerCreatedAt:'2026-10-20T10:00:00Z',ownerUsername:'alice',title:'Do not retain this title',profileOriginal:{}}]}},selected={membership,quotes:{ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[]}},sports:{},capitalization:{}},read=vi.fn(async()=>{throw Error('No second capture');}),history=vi.fn(async()=>{throw Error('No financial history reconstruction');}),prepare=createPublicMarketOperandPreparer({read,prepareMarket:history}),operands={membership:'a'.repeat(64),quotes:'b'.repeat(64),sports:'c'.repeat(64),capitalization:'d'.repeat(64)};
+ const result=await prepare({selectionKey:'e'.repeat(64),projectOperand:'pricing',operands},selected);
+ expect(result.body).toMatchObject({schema:'bank.public-market.pricing-input.v1',entries:[{logicalKey:JSON.stringify(['owner','original']),pricingCheckpoint:{schema:'bank.public-market.pricing-checkpoint.v1',item:{assetId:'original'}}}]});expect(JSON.stringify(result.body)).not.toContain('Do not retain this title');expect(result.operands).toEqual(operands);expect(read).not.toHaveBeenCalled();expect(history).not.toHaveBeenCalled();
+});

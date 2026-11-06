@@ -23,3 +23,14 @@ export async function readPreparedPublicMaterial(generation:string,fetchImpl:typ
  if(shared){pending.set(generation,job);void job.finally(()=>{if(pending.get(generation)===job)pending.delete(generation);}).catch(()=>{});}
  return job;
 }
+
+const checking=new Map<string,Promise<void>>();
+/** Recheck permission for bytes already parsed and held by this exact reader.
+ * Source qualifies current role/reachability before304. No historical body is
+ * requested again and its checksum never substitutes for that qualification. */
+export async function recheckPreparedPublicMaterial(generation:string,fetchImpl:typeof fetch=fetch):Promise<void>{
+ if(!DIGEST.test(generation))throw Error('PUBLIC_MATERIAL_GENERATION_INVALID');
+ const shared=fetchImpl===fetch,held=shared?checking.get(generation):undefined;if(held)return held;
+ const job=(async()=>{const response=await fetchImpl('https://receiz.com/api/market/prepared-material?'+new URLSearchParams({generation}),{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(30000),headers:{accept:'application/gzip','if-none-match':'"'+generation+'"'}});await response.body?.cancel();if(response.status!==304)throw Error('PUBLIC_MATERIAL_UNAVAILABLE');})();
+ if(shared){checking.set(generation,job);void job.finally(()=>{if(checking.get(generation)===job)checking.delete(generation);}).catch(()=>{});}return job;
+}

@@ -33,7 +33,7 @@ it('routes direct canonical and legacy documents in preview and deployment witho
  for(const [old,path] of Object.entries(publicRouteAliases))for(const input of [old,old.slice(0,-1),path,path.slice(0,-1)]){
   const req={url:input+'?ref=retained'};middleware(req,null,()=>{});expect(req.url).toBe(path+'index.html?ref=retained');
  }
- for(const path of Object.values(publicRouteAliases))for(const input of [path,path.slice(0,-1)])expect(deployment.rewrites.find((r:{source:string})=>r.source===input)?.destination).toBe(path+'index.html');
+ for(const path of Object.values(publicRouteAliases))for(const input of [path,path.slice(0,-1)])expect(deployment.rewrites.find((r:{source:string})=>r.source===input)?.destination).toBe(path==='/registry/'?'/api/registry?document=1':path+'index.html');
  for(const input of ['/agents','/agents/'])expect(deployment.rewrites.find((r:{source:string})=>r.source===input)?.destination).toBe('/agent/index.html');
  const proof={url:'/vault/held-proof/'};middleware(proof,null,()=>{});expect(proof.url).toBe('/vault/held-proof/');
 });

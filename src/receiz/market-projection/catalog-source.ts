@@ -1,4 +1,4 @@
-import type{PublicMarketCatalog}from'../public-market';
+import type{PublicMarketPricingCatalog}from'./pricing-inputs';
 import{publicAssetPulseSeed}from'./asset';
 import{publicSigilQuoteAtPulse,marketRowsUsdAtPulse}from'./project';
 import type{MarketCapSource,MarketValueRow}from'./source';
@@ -9,7 +9,7 @@ import {compatibleShareInventory}from'../market-share-inventory';
 
 /** The complete public inventory supplies membership; its existing operands
  * supply valuation. Neither this projection nor its digest grants authority. */
-export function currentMarketDisplayModel(source:MarketCapSource,catalog:PublicMarketCatalog|null,pulse:number,copyObservations?:MarketCopyObservationTape):MarketCapSource{
+export function currentMarketDisplayModel(source:MarketCapSource,catalog:PublicMarketPricingCatalog|null,pulse:number,copyObservations?:MarketCopyObservationTape):MarketCapSource{
  if(!Number.isSafeInteger(pulse)||pulse<source.serverPulse||pulse>1e10)throw Error('Public market evaluation pulse is invalid.');
  let rows=source.valueRows;
  const currentProjection=!!catalog&&Date.parse(catalog.observedAt??'')>=Date.parse(source.generatedAt);

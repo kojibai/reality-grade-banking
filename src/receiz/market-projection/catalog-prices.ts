@@ -1,11 +1,11 @@
-import type {PublicMarketCatalog} from '../public-market';
+import type {PublicMarketPricingCatalog} from './pricing-inputs';
 import type {MarketCapSource} from './source';
 import {publicAssetPulseSeed} from './asset';
 import {publicSigilQuoteAtPulse,publicSportsQuoteAtPulse,publicSportsCapitalizationUsdAtPulse,marketQuoteMovementAtPulse} from './project';
 import type {MarketUnitCalculation,MarketQuoteMovementCalculation} from './calculation';
 /** Revalue retained public operands locally. A failed collection read cannot
  * freeze supported object prices, and an unsupported object gains no model. */
-export function publicCatalogAtPulse(catalog:PublicMarketCatalog|null,source:MarketCapSource|null,pulse:number,selectedItemId?:string|null,explain?:(id:string,value:MarketUnitCalculation)=>void,explainMovement?:(value:MarketQuoteMovementCalculation)=>void):PublicMarketCatalog|null{
+export function publicCatalogAtPulse<T extends PublicMarketPricingCatalog|null>(catalog:T,source:MarketCapSource|null,pulse:number,selectedItemId?:string|null,explain?:(id:string,value:MarketUnitCalculation)=>void,explainMovement?:(value:MarketQuoteMovementCalculation)=>void):T{
  if(!catalog||!Number.isSafeInteger(pulse)||pulse<0)return catalog;
  let quoteMove:number|undefined;
  return {...catalog,items:catalog.items.map(item=>{
@@ -17,5 +17,5 @@ export function publicCatalogAtPulse(catalog:PublicMarketCatalog|null,source:Mar
    if(item.category==='sports'&&item.sportsValuation){quoteMove??=marketQuoteMovementAtPulse(pulse,explainMovement);const updated=priced(Math.round(publicSportsQuoteAtPulse(item.sportsValuation,pulse,quoteMove)*100)/100),cap=Math.round(publicSportsCapitalizationUsdAtPulse(item.sportsValuation,pulse,quoteMove,explain?value=>explain(item.id,value):undefined)*100);return Number.isSafeInteger(cap)&&cap>=0?{...updated,capitalizationUsdCents:String(cap)}:updated;}
   }catch{/* Keep the observed price when this source lacks supported operands. */}
   return item;
- })};
+ })} as T;
 }

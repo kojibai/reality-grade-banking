@@ -25,6 +25,47 @@ export type ProfileShowcaseCompleteSourceTransport = Readonly<{
   artifactDigest: string;
   root: ExactByteBlockReference;
 }>;
+export type ProfileShowcaseAcceptedTransitionSource=Readonly<{artifactDigest:string;exactSealedArtifactBytes:Uint8Array;
+ child?:Readonly<{reference:ProfileShowcaseChildReference;exactSealedArtifactBytes:Uint8Array}>;predecessor?:ProfileShowcaseAcceptedTransitionSource}>;
+/** Sparse APP delivery beneath an already accepted SDK prefix. This is not a
+ * complete Source or an SDK format. Complete/export readers reject its mode. */
+export async function writeProfileShowcaseAcceptedTransitionTransport(source:ProfileShowcaseAcceptedTransitionSource,writeBlock:ExactByteBlockWriter,
+ options:Readonly<{exportImportedSource?:(reference:ImportedProofSourceReference,write:ExactByteBlockWriter)=>Promise<void>}>={}){
+ const suffix:ProfileShowcaseAcceptedTransitionSource[]=[],seen=new Set<object>();
+ for(let current:ProfileShowcaseAcceptedTransitionSource|undefined=source;current;current=current.predecessor){
+  if(seen.has(current)||!digest(current.artifactDigest)||!current.exactSealedArtifactBytes.length)invalid();seen.add(current);
+  suffix.push({artifactDigest:current.artifactDigest,exactSealedArtifactBytes:current.exactSealedArtifactBytes.slice(),
+   ...(current.child?{child:{reference:parseReference(current.child.reference),exactSealedArtifactBytes:current.child.exactSealedArtifactBytes.slice()}}:{})});
+ }
+ let predecessor:ProfileShowcaseCompleteSourceTransport|undefined;
+ for(const current of suffix.reverse()){
+  const carrier=await writeExactByteBlocks(blob(current.exactSealedArtifactBytes),writeBlock);
+  if(current.child){const imported=await readImportedSourceTransportReference(current.child.exactSealedArtifactBytes);if(imported){
+   if(!options.exportImportedSource)throw new TypeError('IMPORTED_SOURCE_EXPORT_REQUIRED');await options.exportImportedSource(imported,writeBlock);}}
+  const child=current.child?{reference:parseReference(current.child.reference),bytes:await writeExactByteBlocks(blob(current.child.exactSealedArtifactBytes),writeBlock)}:undefined;
+  const root=await writeExactByteBlocks(new Blob([JSON.stringify({schema:SCHEMA,artifactDigest:current.artifactDigest,singleTransition:true,carrier,...(child?{child}:{}),...(predecessor?{predecessor}:{})})]),writeBlock);
+  predecessor=Object.freeze({transportVersion:2 as const,artifactDigest:current.artifactDigest,root});
+ }
+ return predecessor!;
+}
+/** Current carrier only. Never opens old children, complete metadata inventory
+ * or ancestry. The actual SDK successor verifier owns every proof/root check. */
+export async function readProfileShowcaseCarrierTransport(input:ProfileShowcaseCompleteSourceTransport,resolve:ExactByteBlockResolver,
+ capacity:CompleteSourceExecutionCapacity=COMPLETE_SOURCE_EXECUTION_CAPACITY){
+ const transport=parseCompleteSourceTransport(input),bytes=await reconstructExactByteBlocks(transport.root,resolve,
+  {component:'accepted Source envelope',maxContentBytes:capacity.envelopeBytes,maxBlockReads:capacity.blockReads});
+ let value:unknown;try{value=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));}catch{return invalid();}
+ if(!object(value)||value.schema!==SCHEMA||value.artifactDigest!==transport.artifactDigest)invalid();
+ const sparse=value.singleTransition===true;
+ const envelope=sparse?value:completeSourceEnvelope(value,transport.artifactDigest);
+ if(sparse&&!exactKeys(value,['schema','artifactDigest','singleTransition','carrier',...('child' in value?['child']:[]),...('predecessor' in value?['predecessor']:[])]))invalid();
+ let child:ProfileShowcaseCompleteSourceChildDescriptor|undefined;
+ if(sparse&&value.child!==undefined){if(!object(value.child)||!exactKeys(value.child,['reference','bytes']))invalid();child={reference:parseReference(value.child.reference),bytes:parseExactByteBlockReference(value.child.bytes)};}
+ const carrier=parseExactByteBlockReference(envelope.carrier),exactSealedArtifactBytes=await reconstructExactByteBlocks(carrier,resolve,
+  {component:'accepted current Source carrier',maxContentBytes:capacity.artifactBytes,maxBlockReads:capacity.blockReads});
+ const predecessor=sparse&&value.predecessor!==undefined?{transportVersion:2 as const,...parseCompleteSourceTransport(value.predecessor as ProfileShowcaseCompleteSourceTransport)}:undefined;
+ return {transport:{transportVersion:2 as const,...transport},envelope,carrier,exactSealedArtifactBytes,child,singleTransition:sparse,predecessor};
+}
 
 /** Capacities of this aggregate publication consumer, not proof validity rules.
  * A denial retains caller/source-block custody for retry by a capable executor.

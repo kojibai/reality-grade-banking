@@ -1,4 +1,4 @@
-import { buildSeedProfile, buildProfileRouteDeterministicSnapshot, profileRouteSnapshotFromWholeMarketPublicProof } from "./publicInventoryRouteProjection";
+import { PROFILE_ROUTE_PLACEHOLDER_TIMESTAMP, buildSeedProfile, buildProfileRouteDeterministicSnapshot, profileRouteSnapshotFromWholeMarketPublicProof } from "./publicInventoryRouteProjection";
 import type { ProfileRouteHydrationSeedInput, ProfileRouteDeterministicSnapshotInput, ProfileRouteSnapshot, ProfileCurrentPublicMembership } from "./publicInventoryRouteProjection";
 export { profileRouteSnapshotFromWholeMarketPublicProof } from "./publicInventoryRouteProjection";
 export type { ProfileRouteHydrationSeedInput, ProfileRouteDeterministicSnapshotInput, ProfileRouteSnapshot, ProfileCurrentPublicMembership } from "./publicInventoryRouteProjection";
@@ -51,7 +51,7 @@ import {
   type ProfileShowcaseBoundedEdgeVault,
   type ProfileShowcaseCompleteSource,
 } from "@/app/lib/profile/showcase/boundedEdgeVault";
-import { settleOwnerShowcaseRestore } from "@/app/lib/profile/showcase/ownerSourceProjection";
+import { projectOwnerShowcaseOriginals, settleOwnerShowcaseOriginals, settleOwnerShowcaseRestore } from "@/app/lib/profile/showcase/ownerSourceProjection";
 import type { VerifiedProfileShowcase } from "@/app/lib/profile/showcase/artifact";
 import type { ProfileShowcaseHandoffV1 } from "@/app/lib/profile/showcase/handoff";
 import type { ProfileShowcaseArtifactId } from "@/app/lib/profile/showcase/types";
@@ -92,6 +92,7 @@ const PROFILE_ROUTE_KAI_TRUTH_RANK_MAX_HEAD = BigInt(Math.floor(
 ));
 
 const profileRouteSnapshotCache = new Map<string, { snapshot: ProfileRouteSnapshot; createdAtMs: number }>();
+const profileRouteSnapshotListeners = new Set<(username: string) => void>();
 const profileShowcaseRouteTruth = new Map<ProfileShowcaseArtifactId, ProfileShowcaseHandoffV1>();
 const boundedProfileShowcaseRouteTruth =
   new WeakMap<ProfileShowcaseBoundedEdgeVault, Map<ProfileShowcaseArtifactId, ProfileShowcaseBoundedFirstPaint>>();
@@ -173,6 +174,9 @@ export function projectBoundedProfileShowcaseWindow(
       }
       const original = sanitizeProfileRouteOriginal(projectedOriginal);
       if (!original) return [];
+      // The enclosing imported Original already supplies its exact projection.
+      // Its placement reference cannot manufacture an Original media digest.
+      if (original.importedSource) return [{ ...original, showOnProfile: true }];
       const stableChildArtifactId = child.reference?.stableChildArtifactId ?? "";
       const stableRecordMediaSha256Hex = (
         original.media === null
@@ -212,7 +216,7 @@ export function settleProfileRouteFirstPaint(
   // A verified complete source carries exact visibility membership, including
   // hidden children outside the bounded presentation window. It can lawfully
   // lower the visible count after hide and raise it after unhide.
-  if (truth && completeSource && completeSource.artifactDigest === truth.artifactDigest) {
+  if (completeSource && profileShowcaseCompleteSourceCanAdvanceRouteTruth(completeSource, truth)) {
     return settleOwnerShowcaseRestore(profile, completeSource, { retainedHiddenOnly: true });
   }
   if (!truth || !("visibleChildren" in truth)) return profile;
@@ -567,11 +571,158 @@ export async function hydrateProductionProfileShowcaseRoute(input: Readonly<{
 
 export async function readCompleteProductionProfileShowcaseRoute(
   username: string,
+  selectedArtifactId?: ProfileShowcaseArtifactId,
+  options?: Readonly<{ retainedHiddenOnly?: boolean }>,
 ): Promise<ProfileShowcaseCompleteSource | null> {
   const ownerReceizIdentity = canonicalReceizOwnerId(username);
   const vault = routeBoundedShowcaseVault();
   if (!ownerReceizIdentity || !vault) return null;
-  return vault.readCompleteSource(`profile-showcase:${ownerReceizIdentity}` as ProfileShowcaseArtifactId);
+  return vault.readCompleteSource(selectedArtifactId ?? `profile-showcase:${ownerReceizIdentity}` as ProfileShowcaseArtifactId, undefined, options);
+}
+
+/** Existing verified route receipts and SDK export closure are the same
+ * admitted Source lineage; an asynchronously retained index is not required. */
+export function profileShowcaseCompleteSourceHasVerifiedAncestor(
+  complete: ProfileShowcaseCompleteSource,
+  ancestorDigest: string,
+): boolean {
+  if (complete.artifactDigest === ancestorDigest) return true;
+  const artifactId = complete.carrier.artifactId as ProfileShowcaseArtifactId;
+  if (peekBoundedProfileShowcaseVerifiedAncestor(artifactId, complete.artifactDigest, ancestorDigest)) return true;
+  const held = peekHeldProfileShowcasePublicSource(artifactId);
+  if (!held || held.complete.artifactDigest !== complete.artifactDigest
+    || held.source.artifactDigest !== complete.artifactDigest) return false;
+  return held.source.ancestry?.some((ancestor) => ancestor.artifactDigest === ancestorDigest) === true
+    || held.source.checkpointBoundary?.artifactDigest === ancestorDigest
+    || held.source.legacyPredecessor?.artifactDigest === ancestorDigest;
+}
+
+/** The route index may still name an ancestor after SDK complete custody has
+ * advanced. Counts, pulse, or a route digest by itself cannot authorize a fork
+ * or ancestor rewind; reuse only the existing verified causal closure. */
+export function profileShowcaseCompleteSourceCanAdvanceRouteTruth(
+  complete: ProfileShowcaseCompleteSource,
+  current: ProfileShowcaseRouteTruth | null,
+): boolean {
+  if (!current || current.artifactDigest === complete.artifactDigest) return true;
+  const currentArtifactId = "carrier" in current ? current.carrier.artifactId : current.artifactId;
+  return currentArtifactId === complete.carrier.artifactId
+    && profileShowcaseCompleteSourceHasVerifiedAncestor(complete, current.artifactDigest);
+}
+
+/** Descriptive route identity cannot rename an admitted Source's principal.
+ * A recovered legacy account reuses its existing accepted account/source
+ * relationship, scoped to this sealed proof identity and exact Source lineage. */
+export function profileShowcaseCompleteSourceBindsHeldProfile(
+  username: string,
+  held: ProfileViewData,
+  complete: ProfileShowcaseCompleteSource,
+): boolean {
+  const proofIdentity = complete.carrier["profile-showcase"].profileIdentity;
+  if (!proofIdentity || held.profile.username !== username || !held.profile.userId) return false;
+  if (held.profile.userId === proofIdentity) return true;
+  const artifactId = complete.carrier.artifactId as ProfileShowcaseArtifactId;
+  const binding = peekRecoveredAccountShowcaseScope({ username, accountId: held.profile.userId, artifactId });
+  return binding?.proofIdentity === proofIdentity
+    && profileShowcaseCompleteSourceHasVerifiedAncestor(complete, binding.locator.acceptedArtifactDigest);
+}
+
+/** A missing server projection cannot veto existing local complete custody.
+ * Identity/display fields are reused from held route truth; membership comes
+ * only from the existing vault's admitted complete Source. No owner capability
+ * or hidden Original is projected through this public recovery boundary. */
+export async function recoverCompleteProductionPublicProfileRoute(
+  usernameRaw: string,
+  selectedArtifactId?: ProfileShowcaseArtifactId,
+): Promise<ProfileViewData | null> {
+  const username = parseProfileUsername(usernameRaw);
+  const ownerReceizIdentity = username ? canonicalReceizOwnerId(username) : null;
+  if (!username || !ownerReceizIdentity) return null;
+  // Read descriptive fields without borrowing a pending owner's authorization.
+  // The cached current privacy decision takes precedence over an older stored
+  // public description. This does not admit a session or expose its inventory.
+  const cached = profileRouteSnapshotCache.get(username)?.snapshot ?? null;
+  const stored = cached ? null : parseStoredSnapshot(
+    readDurableLocalTruthItem(durableSnapshotStorageKey(username))
+      ?? readDurableLocalTruthItem(`${PROFILE_ROUTE_DURABLE_SNAPSHOT_STORAGE_KEY_PREFIX_BASE}.${username}`)
+      ?? "",
+  );
+  const held = cached?.profile ?? stored?.profile ?? null;
+  if (!held || held.profile.username !== username || !held.profile.userId
+    || held.profile.isPrivate !== false || !held.viewer.canView
+    || held.profile.updatedAt === PROFILE_ROUTE_PLACEHOLDER_TIMESTAMP) return null;
+  // The accepted stable subject survives recovered account/route renaming.
+  // Reuse that retained relationship before opening any Source; a route name
+  // cannot discover or rewrite another account's sealed subject.
+  const scope = peekRecoveredAccountShowcaseScope({ username, accountId: held.profile.userId,
+    ...(selectedArtifactId ? { artifactId: selectedArtifactId } : {}) });
+  const artifactId = selectedArtifactId ?? scope?.locator.showcaseArtifactId
+    ?? `profile-showcase:${ownerReceizIdentity}` as ProfileShowcaseArtifactId;
+  let complete = await readCompleteProductionProfileShowcaseRoute(username, artifactId, { retainedHiddenOnly: true });
+  if (!complete || complete.carrier.artifactId !== artifactId) return null;
+  const current = peekProfileShowcaseRouteTruth(artifactId);
+  let verifiedRouteAncestor: string | null = null;
+  if (!profileShowcaseCompleteSourceCanAdvanceRouteTruth(complete, current)) {
+    const vault = routeBoundedShowcaseVault();
+    if (!current || !vault || !await vault.isVerifiedPublicationAncestor(
+      artifactId, current.artifactDigest, complete.artifactDigest,
+    ).catch(() => false)) return null;
+    verifiedRouteAncestor = current.artifactDigest;
+  }
+  if (!profileShowcaseCompleteSourceBindsHeldProfile(username, held, complete)) {
+    const binding = peekRecoveredAccountShowcaseScope({ username, accountId: held.profile.userId, artifactId });
+    const vault = routeBoundedShowcaseVault();
+    if (!binding || binding.proofIdentity !== complete.carrier["profile-showcase"].profileIdentity
+      || !vault || !await vault.isVerifiedPublicationAncestor(
+        artifactId, binding.locator.acceptedArtifactDigest, complete.artifactDigest,
+      ).catch(() => false)) return null;
+  }
+  // Verified ancestry lookup is asynchronous. A privacy/identity decision or
+  // stronger active Source accepted during that lookup still outranks this
+  // public description; an earlier export cannot rewind either boundary.
+  let verifiedExportAncestor: string | null = null;
+  for (;;) {
+    const newlyHeld = peekHeldProfileShowcasePublicSource(artifactId);
+    if (!newlyHeld || newlyHeld.complete.artifactDigest === complete.artifactDigest) break;
+    // A Source admitted while local ancestry was awaiting is already known.
+    // Its verified descent and unchanged proof principal inherit the accepted
+    // account/index association above; do not reopen or strand that successor.
+    if (newlyHeld.complete.carrier.artifactId !== artifactId
+      || newlyHeld.source.artifactDigest !== newlyHeld.complete.artifactDigest
+      || newlyHeld.complete.carrier["profile-showcase"].profileIdentity !== complete.carrier["profile-showcase"].profileIdentity) return null;
+    if (profileShowcaseCompleteSourceHasVerifiedAncestor(newlyHeld.complete, complete.artifactDigest)) {
+      complete = newlyHeld.complete;
+      break;
+    }
+    // Reusable export custody may still name an older admitted ancestor while
+    // the vault's current complete read has advanced. Keep the stronger read
+    // only through an existing receipt or the existing vault ancestry check.
+    const exportDigest = newlyHeld.complete.artifactDigest;
+    if (exportDigest === verifiedExportAncestor
+      || profileShowcaseCompleteSourceHasVerifiedAncestor(complete, exportDigest)) break;
+    const vault = routeBoundedShowcaseVault();
+    if (!vault || !await vault.isVerifiedPublicationAncestor(
+      artifactId, exportDigest, complete.artifactDigest,
+    ).catch(() => false)) return null;
+    verifiedExportAncestor = exportDigest;
+    // The await may have published another complete Source. Select it again
+    // before the fresh profile/privacy/current-head checks below.
+  }
+  const latestProfile = profileRouteSnapshotCache.get(username)?.snapshot.profile ?? held;
+  const latestSource = peekProfileShowcaseRouteTruth(artifactId);
+  if (latestProfile.profile.userId !== held.profile.userId || latestProfile.profile.isPrivate !== false
+    || !latestProfile.viewer.canView
+    || (!profileShowcaseCompleteSourceCanAdvanceRouteTruth(complete, latestSource)
+      && latestSource?.artifactDigest !== verifiedRouteAncestor)) return null;
+
+  return settleOwnerShowcaseOriginals({
+    ...held,
+    viewer: { isSignedIn: false, isOwner: false, canEdit: false, canView: true,
+      isFollowing: false, followsYou: false, connection: "none" },
+    originals: held.originals.filter((original) => original.showOnProfile),
+    feedExperimentAnalytics: null,
+    glyphValuationRollup: null,
+  }, projectOwnerShowcaseOriginals(complete, { publicOnly: true }));
 }
 
 type ProfileRouteHydrationSeedStored = {
@@ -1509,6 +1660,11 @@ function serializeProfileRouteSnapshotPayload(payload: ProfileRouteSnapshotStore
   }
 }
 
+export function subscribeProfileRouteSnapshot(listener: (username: string) => void): () => void {
+  profileRouteSnapshotListeners.add(listener);
+  return () => { profileRouteSnapshotListeners.delete(listener); };
+}
+
 function persistProfileRouteSnapshot(
   key: string,
   snapshot: ProfileRouteSnapshot,
@@ -1582,6 +1738,9 @@ function persistProfileRouteSnapshot(
 
     profileRouteSnapshotCache.delete(oldestKey);
   }
+  // Wake waiting route readers only after the existing admission path has
+  // retained the projection. This notification supplies no proof authority.
+  for (const listener of profileRouteSnapshotListeners) listener(key);
 }
 
 export function writeProfileRouteHydrationSeed(input: ProfileRouteHydrationSeedInput): void {

@@ -14,6 +14,7 @@ export async function recoverAcceptedShowcasePredecessor(input: Readonly<{
 }>) {
   const held = await input.vault.reopenHead(input.artifactId);
   if (held) {
+    if(!input.retainImportedSources)return held;
     try {
       const complete=await input.vault.exportCompleteSource(input.artifactId);
       if(complete){await input.retainImportedSources?.(complete);return held;}

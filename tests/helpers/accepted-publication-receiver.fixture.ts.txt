@@ -1,0 +1,60 @@
+import type * as SourceSdk from '../../native/receiz/packages/receiz-sdk/src/artifactAdmission';
+import type * as Persistent from '../../native/receiz/packages/receiz-sdk/src/profileShowcasePersistentState';
+import type * as Transport from '../../native/receiz/app/lib/profile/showcase/completeSourceTransport';
+import type * as Retainer from '../../native/receiz/app/lib/profile/showcase/acceptedPredecessorCustody';
+import type * as Vault from '../../native/receiz/app/lib/profile/showcase/boundedEdgeVault';
+import type {ReceizSignatureV4RootPublicKey} from '../../native/receiz/packages/receiz-sdk/src/verifier/signatureV4';
+import type {ProfileShowcaseArtifactId} from '../../native/receiz/app/lib/profile/showcase/types';
+import {reconstructExactByteBlocks} from '../../native/receiz/app/lib/transport/exactByteBlocks';
+import type {verifyReceizArtifact} from '../../native/receiz/packages/receiz-sdk/src/artifactVerification';
+import type {ExactByteBlockReference} from '../../native/receiz/app/lib/transport/exactByteBlocks';
+
+/** Actual installed-SDK receiver for publication protocol tests. The complete
+ * genesis reader stays unchanged. Sparse tails require a genuinely admitted
+ * parent and pass the unchanged SDK successor and complete-evidence guards.
+ * The final full source is assertion evidence, never a sparse transport cast. */
+export function createAcceptedPublicationReceiver(runtime:{profileSourceSdk:typeof SourceSdk;profilePersistentState:typeof Persistent;
+ verifyReceizArtifact:typeof verifyReceizArtifact;showcaseTransport:typeof Transport;showcaseRetainer:typeof Retainer;showcaseVault:typeof Vault},
+ artifactId:string,rootsInput:ReadonlyMap<string,unknown>,resolve:(ref:ExactByteBlockReference)=>Promise<Uint8Array|null>){
+ function assertArtifactId(value:string):asserts value is ProfileShowcaseArtifactId{if(!value.startsWith('profile-showcase:')||value.length==='profile-showcase:'.length)throw TypeError('FIXTURE_SOURCE_ID_REQUIRED');}assertArtifactId(artifactId);const selectedArtifactId=artifactId;
+ const roots=new Map<string,ReceizSignatureV4RootPublicKey>();for(const [kid,value]of rootsInput){if(!value||typeof value!=='object'||!('kid'in value)||!('alg'in value)||!('status'in value)||!('publicKeyRawB64u'in value)||value.kid!==kid||value.alg!=='Ed25519'||value.status!=='active'||typeof value.publicKeyRawB64u!=='string')throw TypeError('FIXTURE_EXACT_ROOT_POLICY_REQUIRED');roots.set(kid,{kid,alg:value.alg,status:value.status,publicKeyRawB64u:value.publicKeyRawB64u});}
+ type Source=Vault.ProfileShowcaseCompletePublicSource;
+ type Admission=Awaited<ReturnType<typeof runtime.showcaseRetainer.retainAcceptedShowcasePredecessor>>;
+ type Carrier=Awaited<ReturnType<typeof runtime.profileSourceSdk.rederiveReceizBoundedProfileShowcaseCarrierFromAdmission>>;
+ type Accepted={source:Source;admission:Admission;carrier:Carrier;transport:Transport.ProfileShowcaseCompleteSourceTransport;sparse:boolean};
+ const accepted=new Map<string,Accepted>(),children=new Map<string,Source['children'][number]>();
+ const historical=new Map<number,string>();
+ const file=(bytes:Uint8Array)=>new File([bytes.slice().buffer as ArrayBuffer],'source.receizbundle',{type:'application/vnd.receiz.bundle+json'});
+ const key=(reference:Source['children'][number]['reference'])=>JSON.stringify([reference.stableChildArtifactId,reference.immutableVersion,reference.childArtifactDigest]);
+ async function receive(transport:Transport.ProfileShowcaseCompleteSourceTransport):Promise<Accepted>{
+  const known=accepted.get(transport.artifactDigest);if(known){if(JSON.stringify(known.transport)!==JSON.stringify(transport))throw TypeError('FIXTURE_SOURCE_TRANSPORT_CONFLICT');return known;}
+  const current=await runtime.showcaseTransport.readProfileShowcaseCarrierTransport(transport,resolve);let source:Source;
+  if(!current.singleTransition)source=await runtime.showcaseTransport.reconstructProfileShowcaseCompleteSourceTransport(transport,resolve);
+  else{
+   // This inspected signature supplies only a parent locator. No inspection or
+   // persisted descriptor is converted to a Source admission.
+   const inspection=await runtime.profileSourceSdk.inspectReceizBoundedProfileShowcaseV114({verification:await runtime.verifyReceizArtifact(file(current.exactSealedArtifactBytes)),ownerConstraint:artifactId.slice('profile-showcase:'.length),dependencies:{canonicalSignatureV4RootPublicKeys:roots}});
+   const carrier=runtime.profileSourceSdk.readReceizBoundedProfileShowcaseInspectionCarrier(inspection),parents=carrier.receizProofHistory.parentRefs;
+   if(carrier.artifactId!==artifactId||inspection.artifactSha256!==transport.artifactDigest||parents.length!==1)throw TypeError('FIXTURE_EXACT_SOURCE_PARENT_REQUIRED');
+   let prior=accepted.get(parents[0]!.artifactDigest);if(!prior&&current.predecessor){prior=await receive(current.predecessor);}
+   if(!prior||prior.admission.artifactSha256!==parents[0]!.artifactDigest)throw TypeError('FIXTURE_EXACT_SOURCE_PARENT_REQUIRED');
+   const admission=await runtime.profileSourceSdk.admitReceizProfileShowcaseSuccessorWithPredecessorContext({predecessorAdmission:prior.admission,candidateArtifact:{artifact:file(current.exactSealedArtifactBytes)},resolveVerifiedHistoricalArtifactDigest:async count=>historical.get(count)??null});
+   if(admission.artifactSha256!==transport.artifactDigest)throw TypeError('FIXTURE_EXACT_SOURCE_MISMATCH');
+   const head=carrier['profile-showcase'],io=runtime.profilePersistentState.createReceizProfileShowcasePersistentMemoryStoreV114([...prior.source.witnessNodes,
+    ...head.firstPaintWitnessNodes as Persistent.ReceizProfileShowcasePersistentNodeV114[],...head.stateTransitionWitnessNodes as Persistent.ReceizProfileShowcasePersistentNodeV114[]]);
+   const membership=await runtime.profilePersistentState.deriveReceizProfileShowcasePersistentMembershipV114({state:{schema:'receiz.profile-showcase.persistent-state.v114',placementRoot:String(head.placementRoot),orderRoot:String(head.orderRoot),counts:head.counts as Persistent.ReceizProfileShowcasePersistentStateV114['counts'],maximumKaiUpulse:String(head.headKaiUpulse)},io});
+   if(current.child){const exactSealedArtifactBytes=await reconstructExactByteBlocks(current.child.bytes,resolve,{component:'actual new sparse child evidence',maxContentBytes:64*1024*1024,maxBlockReads:131072});children.set(key(current.child.reference),{reference:current.child.reference,exactSealedArtifactBytes});}
+   const visible:Source['children'][number][]=[];for(const placement of membership.placements){if(placement.visibility!=='visible')continue;
+    const raw=placement.reference;if(typeof raw.stableChildArtifactId!=='string'||typeof raw.immutableVersion!=='string'||![raw.childArtifactDigest,raw.admissionEvidenceRoot,raw.contentDigest].every(value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value)))throw TypeError('FIXTURE_EXACT_CHILD_REFERENCE_REQUIRED');
+    const reference={stableChildArtifactId:raw.stableChildArtifactId,immutableVersion:raw.immutableVersion,childArtifactDigest:String(raw.childArtifactDigest),admissionEvidenceRoot:String(raw.admissionEvidenceRoot),contentDigest:String(raw.contentDigest)},child=children.get(key(reference));if(!child||JSON.stringify(child.reference)!==JSON.stringify(reference))throw TypeError('FIXTURE_GENUINE_CHILD_EVIDENCE_REQUIRED');visible.push(child);}
+   const ancestry=new Map((prior.source.ancestry??[]).map(value=>[value.artifactDigest,value]));ancestry.set(prior.source.artifactDigest,{artifactDigest:prior.source.artifactDigest,exactSealedArtifactBytes:prior.source.exactSealedArtifactBytes});
+   source={artifactDigest:transport.artifactDigest,exactSealedArtifactBytes:current.exactSealedArtifactBytes,witnessNodes:membership.witnessNodes,children:visible,ancestry:[...ancestry.values()]};
+  }
+  const vault=runtime.showcaseVault.createProfileShowcaseBoundedEdgeVault({databaseName:'actual-publication-receiver-'+crypto.randomUUID()});
+  const admission=await runtime.showcaseRetainer.retainAcceptedShowcasePredecessor({source,artifactId:selectedArtifactId,vault,canonicalSignatureV4RootPublicKeys:roots}),carrier=await runtime.profileSourceSdk.rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission);
+  if(admission.artifactSha256!==transport.artifactDigest)throw TypeError('FIXTURE_EXACT_SOURCE_MISMATCH');
+  for(const child of source.children)children.set(key(child.reference),child);historical.set(Number(carrier['profile-showcase'].resultingOperationCount),admission.artifactSha256);
+  const value={source,admission,carrier,transport,sparse:current.singleTransition};accepted.set(source.artifactDigest,value);return value;
+ }
+ return receive;
+}

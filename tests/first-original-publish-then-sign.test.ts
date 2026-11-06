@@ -22,6 +22,7 @@ it('publishes the first Original normally and signs its admitted head from a new
  let signing=false,ceremonies=0;const requests:string[]=[];
  let accepted:Record<string,unknown>={status:'unmigrated'},complete:any,finalizations=0,seals=0,finalHTTPStatus=0,interrupt=false,attemptDigest:string|undefined,active=true,switchOnUpload=false,interruptBeforeUpload=false;
  const roots=new Map(f.roots.map((root:{kid:string})=>[root.kid,root]));
+ const receiveActual=r.createAcceptedPublicationReceiver(r,artifactId,roots,async(ref:{sha256:string})=>blocks.get(ref.sha256)??null);
  const request:typeof fetch=async(input,init)=>{
   const url=new URL(String(input),'https://bankeiz.test');requests.push(url.pathname);
   if(url.origin==='https://storage.test'){staged.set(url.pathname.slice(1),new Uint8Array(await new Response(init?.body).arrayBuffer()));if(switchOnUpload){switchOnUpload=false;active=false;}return new Response(null,{status:200});}
@@ -38,9 +39,7 @@ it('publishes the first Original normally and signs its admitted head from a new
   expect(body.action).toBe('finalize');finalizations++;timeline.push('finalize');
   if(complete&&body.scope.artifactDigest!==complete.artifactDigest&&body.publicationPredecessorArtifactDigest&&body.publicationPredecessorArtifactDigest!==complete.artifactDigest)return Response.json({status:'pending',code:'PROFILE_SHOWCASE_COMPLETE_TRANSPORT_PREDECESSOR_MISMATCH'});
   if(finalHTTPStatus)return Response.json({error:'access_denied'},{status:finalHTTPStatus});
-  const source=await r.showcaseTransport.reconstructProfileShowcaseCompleteSourceTransport(body.transport,async(ref:{sha256:string})=>blocks.get(ref.sha256)??null);
-  const vault=r.showcaseVault.createProfileShowcaseBoundedEdgeVault({databaseName:`independent-receiver-${finalizations}`});
-  const admitted=await r.showcaseRetainer.retainAcceptedShowcasePredecessor({source,artifactId,vault,canonicalSignatureV4RootPublicKeys:roots});
+  const {source,admission:admitted}=await receiveActual(body.transport);
   expect(admitted.artifactSha256).toBe(body.transport.artifactDigest);
   if(interrupt){attemptDigest=body.transport.artifactDigest;return Response.json({status:'pending',code:'PROFILE_SHOWCASE_PUBLIC_DELIVERY_PENDING'});}
   if(attemptDigest)expect(body.transport.artifactDigest).toBe(attemptDigest);

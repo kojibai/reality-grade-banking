@@ -3,9 +3,9 @@
 import { readReceizIdentityPublicBinding } from "../../../../packages/receiz-sdk/src/artifactAdmission";
 import { enqueueSourceBoundPublicationAction, deliverSourceBoundPublicationAction } from "@/app/lib/offline/localSignedActionOutbox";
 import { resolvePublicationIdentityCustody } from "./publicationIdentityCustody";
-import type { ProfileShowcaseCompletePublicSource } from "./boundedEdgeVault";
+import type { ProfileShowcaseCompletePublicSource,ProfileShowcasePublicationSource } from "./boundedEdgeVault";
 import type { ExactByteBlockReference } from "@/app/lib/transport/exactByteBlocks";
-import { writeProfileShowcaseCompleteSourceTransport } from "./completeSourceTransport";
+import { writeProfileShowcaseCompleteSourceTransport,writeProfileShowcaseAcceptedTransitionTransport } from "./completeSourceTransport";
 import { parseProfileShowcaseCompletePublicationScope, profileShowcaseCompletePublicationScopeKey, type ProfileShowcaseCompletePublicationScope } from "./publicProjectionScope";
 import { readProfileShowcasePublicationRoute } from "./publicProjectionScope.client";
 import { createImportedProofSourceCustody } from "./importedSourceCustody.client";
@@ -69,7 +69,7 @@ class PublicationPending extends Error {}
 
 /** Immediate servant distribution of an already-settled local proof object. */
 export async function publishProfileShowcasePublicProjection(
-  source: ProfileShowcaseCompletePublicSource,
+  source: ProfileShowcasePublicationSource,
   ownerReceizId: string,
   fetchImpl: typeof fetch = fetch,
   profileUsername?: string,
@@ -81,8 +81,8 @@ export async function publishProfileShowcasePublicProjection(
 ): Promise<ProfileShowcasePublicProjectionPublicationResult> {
   return publishProfileShowcaseTransport(source.artifactDigest, ownerReceizId, fetchImpl, profileUsername,
     capturedScope, readRoute, () => resolveIdentity(source), refreshDocument,
-    write => writeProfileShowcaseCompleteSourceTransport(source, write, {exportImportedSource: delivery.exportImportedSource
-      ?? ((reference, writer) => createImportedProofSourceCustody().exportBlocks(reference, writer))}));
+    write => {const options={exportImportedSource:delivery.exportImportedSource??((reference:import('./importedSourceReference').ImportedProofSourceReference,writer:import('../../transport/exactByteBlocks').ExactByteBlockWriter)=>createImportedProofSourceCustody().exportBlocks(reference,writer))};
+      return 'witnessNodes'in source?writeProfileShowcaseCompleteSourceTransport(source,write,options):writeProfileShowcaseAcceptedTransitionTransport(source,write,options);} );
 }
 
 /** Same authenticated v2 publisher; callers may reuse immutable byte references

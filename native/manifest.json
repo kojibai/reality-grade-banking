@@ -6225,6 +6225,12 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/documentSeal/materialSourcePublication.client.ts",
+      "sha256": "391d3892875f2547b3287242084bb75a1df69af8c577b46e93142fdb8c2fbee2",
+      "bytes": 6887,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/documentSeal/offlineSdkSource.ts",
       "sha256": "9644af78c955de9750c174ae47e6868a8ee90d7692d1566cb6b4ed188171fce2",
       "bytes": 448,
@@ -6890,8 +6896,8 @@
     },
     {
       "path": "receiz/app/lib/profile/routeHydration.ts",
-      "sha256": "50b3f81fa0e1921a49b93a8e1e5a8501888d557df7a12a1effe41f83518e9132",
-      "bytes": 73930,
+      "sha256": "a7587e786b01d709800ac72d51757abab2f55bf2f851beacbdc0e5dbc0478b22",
+      "bytes": 83795,
       "mode": 420
     },
     {
@@ -6902,8 +6908,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/acceptedPredecessorRecovery.client.ts",
-      "sha256": "c2b673e28b391ab88ed1be14d05ec3d916d1c64a2966f13900c97eb13fcc3d8f",
-      "bytes": 3152,
+      "sha256": "78209077b563998744fa69558af82f1cf69240c1195fdc6fec26f3afbe7be428",
+      "bytes": 3201,
       "mode": 420
     },
     {
@@ -6932,8 +6938,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/boundedEdgeVault.ts",
-      "sha256": "34a0c121252c1fdfc92afd262f4e3680cc2d7356522da73e29e3edd60cd5609b",
-      "bytes": 207114,
+      "sha256": "feb5daa626ad5b7da483f01302bb314187b8995df0b73b287bd1d2524e5de674",
+      "bytes": 237224,
       "mode": 420
     },
     {
@@ -6968,8 +6974,14 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/completeSourceTransport.ts",
-      "sha256": "79af5b6eddbba449be86f2cf0f8371e73ea6f772369dfab2e5b9664da887a62b",
-      "bytes": 28339,
+      "sha256": "0872f255264b584c6afd4f62e6b5cbcec17423bcd3096e1710fda76edc5a7250",
+      "bytes": 32711,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/profile/showcase/composerBoundedSettlement.ts",
+      "sha256": "82f04c53e26e05796c505e282be712523e46d0a85c40b15b79f46dc647be2ad1",
+      "bytes": 10263,
       "mode": 420
     },
     {
@@ -6992,8 +7004,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/composerPublication.ts",
-      "sha256": "499ea5db4ef4a99fe15b8bb153325ea5b67833e45d59fde19b1a51fffdc6f2e6",
-      "bytes": 40793,
+      "sha256": "77914878cdc09a9b7207a9b6f6e56e70b95edc6dcced95f301e0ac999169aad5",
+      "bytes": 41166,
       "mode": 420
     },
     {
@@ -7004,8 +7016,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "40c318c8e0a55cb225b7255fffc42f7245175ebb6470b14e9dae610e84a433bd",
-      "bytes": 20687,
+      "sha256": "40b2e496043a155c88a2fd384babe192949dcd2c99748368c791838ed55ec00f",
+      "bytes": 22724,
       "mode": 420
     },
     {
@@ -7088,8 +7100,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
-      "sha256": "da0b7a71a1bf40f96fbc2c9b96be97ff999829e185da0db6b6282565e007bd1c",
-      "bytes": 23350,
+      "sha256": "eba44f0ff83f0aa5634ac46b3c16fe47835f01b5bbe9986fcb5daa17643f160a",
+      "bytes": 34212,
       "mode": 420
     },
     {
@@ -7123,6 +7135,18 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/profile/showcase/originalChildIndexCustody.client.ts",
+      "sha256": "2e3cb7b21ba2179d07d86883da758fe8d82c61544d416bcb0b1cac80ac02f3f7",
+      "bytes": 12323,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/lib/profile/showcase/ownedProfilePublicHeadReconciliation.ts",
+      "sha256": "8d26e3e8450cc6f5f2b41225facb489ef6ce47a3396886e53960cc1b7285cc89",
+      "bytes": 20096,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/profile/showcase/ownerSourceOriginals.ts",
       "sha256": "bb369d4c5d5b3898ef318d0b8926e16c293b572cb7f31a3087828181a8980312",
       "bytes": 1869,
@@ -7142,14 +7166,14 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/publicProjectionPublication.ts",
-      "sha256": "41db18707a658f43b2f011d48384cee144e73b2167090b4bde42c955f494fa15",
-      "bytes": 12956,
+      "sha256": "adc0debf40dcf232ca6a1db7991d4e032e8821bb54dd56d68f0ddf3187d25ab0",
+      "bytes": 13281,
       "mode": 420
     },
     {
       "path": "receiz/app/lib/profile/showcase/publicProjectionRetry.ts",
-      "sha256": "b93da734fe041cf683697a31b6ce1de01b40e692e4fdac2f9290a38b3d7d5361",
-      "bytes": 20361,
+      "sha256": "807c2f71b0bbd98e90a4b27b669c62bf3b1aae3406337fdb9d5c25d60e8676b3",
+      "bytes": 22799,
       "mode": 420
     },
     {
@@ -7165,9 +7189,15 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/profile/showcase/publicSourceMaterialPublication.client.ts",
+      "sha256": "df7fab8c11be6b2d90f6ad58c0a5215fdf6dec2abcbc5f249f232cf6ceca1a76",
+      "bytes": 6532,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/profile/showcase/publicationIdentityCustody.ts",
-      "sha256": "b8520c47c719d55b698c3dd7868af0b47a4c31219e65411d0fb80940a3cbe5ba",
-      "bytes": 2932,
+      "sha256": "a0124bf3d52d1b2110ebbd74fddf2c67f0be2f5e437c554751e02f2fc673f67c",
+      "bytes": 3017,
       "mode": 420
     },
     {
@@ -16523,19 +16553,21 @@
     {
       "id": "bankeiz-connected-showcase-publication-v129",
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "baseSha256": null,
-      "sha256": "bfa31c1d2f933c6c308e9c04b720a693c0be10ab6f2fc8cb4f048cf3bf4f6731",
-      "purpose": "Compose the existing v129 exact imported source, sealed Showcase placement, causal custody and complete-source block publisher for an explicitly selected public Bank moment. Keeps source verification, complete media/text, current account access and exact-source retries. SDK, MCP and AI skill packages remain unchanged.",
+      "baseSha256": "dcf2818ad43d0bb2e9ecdf16b966d461dba4dad8386bf4dfc875306fbe0ecbe4",
+      "sha256": "40b2e496043a155c88a2fd384babe192949dcd2c99748368c791838ed55ec00f",
+      "purpose": "Apply existing SDK bounded accepted-transition delivery while preserving Bankeiz PBI ceremony, durable signing/outbox/retry, local admission, identity/account entry and exact Source/ownership/integrity guards. Reuse held SDK context and immutable predecessor evidence; no SDK package changes.",
       "sourceCommit": "0a4eca945",
-      "additionalSourceFiles": 438
+      "additionalSourceFiles": 438,
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
     },
     {
       "id": "bankeiz-connected-showcase-custody-v129",
       "path": "receiz/app/lib/profile/showcase/acceptedPredecessorRecovery.client.ts",
-      "baseSha256": "4cee3331d97593b2263aa294c5035870209bfb68a4723dc4db47dac709861466",
-      "sha256": "c2b673e28b391ab88ed1be14d05ec3d916d1c64a2966f13900c97eb13fcc3d8f",
-      "purpose": "Retain missing exact imported-original predecessor bytes only after canonical Showcase source admission on a newly connected Bank origin. Known custody remains immediate.",
-      "sourceCommit": "0a4eca945"
+      "baseSha256": "4063e6abe5b1c47ae1e98135a699e1587185c0faf72601a27c9ade150253e520",
+      "sha256": "78209077b563998744fa69558af82f1cf69240c1195fdc6fec26f3afbe7be428",
+      "purpose": "Apply existing SDK bounded accepted-transition delivery while preserving Bankeiz PBI ceremony, durable signing/outbox/retry, local admission, identity/account entry and exact Source/ownership/integrity guards. Reuse held SDK context and immutable predecessor evidence; no SDK package changes.",
+      "sourceCommit": "0a4eca945",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
     },
     {
       "id": "bankeiz-connected-showcase-custody-v129",
@@ -16981,9 +17013,10 @@
     {
       "id": "bankeiz-pbi-market-publication-v129",
       "path": "receiz/app/lib/profile/showcase/composerPublication.ts",
-      "baseSha256": "405abf7db484d280a25279489721635dba76add46a1ccfa232dd7f5c25fe9eae",
-      "sha256": "499ea5db4ef4a99fe15b8bb153325ea5b67833e45d59fde19b1a51fffdc6f2e6",
-      "purpose": "Compose the existing local PBI authorship verifier with exact imported source and the existing sealed Showcase child. Preserve original source, account entry, ownership, chronology and public-profile creation. No new issuer or registry."
+      "baseSha256": "62ac026f1987d18bd5d52b7698b6757a342e09af534c1eb9cdb281ae39a9ed2f",
+      "sha256": "77914878cdc09a9b7207a9b6f6e56e70b95edc6dcced95f301e0ac999169aad5",
+      "purpose": "Apply existing SDK bounded accepted-transition delivery while preserving Bankeiz PBI ceremony, durable signing/outbox/retry, local admission, identity/account entry and exact Source/ownership/integrity guards. Reuse held SDK context and immutable predecessor evidence; no SDK package changes.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
     },
     {
       "id": "bank-original-frequency-app-lib-market-types.ts",
@@ -17132,10 +17165,10 @@
     {
       "id": "bankeiz-source-first-boundedEdgeVault",
       "path": "receiz/app/lib/profile/showcase/boundedEdgeVault.ts",
-      "baseSha256": "1834ec41d021c6bdb62fa43cb93a524a8b038aacdbb6ee9d2e98c18820d25fe9",
-      "sha256": "34a0c121252c1fdfc92afd262f4e3680cc2d7356522da73e29e3edd60cd5609b",
-      "purpose": "Reuse current canonical Source preparations and public export beneath the same selected head; release superseded derived work. Reuse the existing native implementation without changing proof admission.",
-      "sourceCommit": "0bd41fb8d"
+      "baseSha256": "34a0c121252c1fdfc92afd262f4e3680cc2d7356522da73e29e3edd60cd5609b",
+      "sha256": "feb5daa626ad5b7da483f01302bb314187b8995df0b73b287bd1d2524e5de674",
+      "purpose": "Retain exact admitted Source successor and only newly supplied proof material across cold publication, preserving Bank PBI, active complete presentation and unchanged SDK admission/currentness. Reopen exact SDK context through existing proof guards, without old Original-body or settled-history scans.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
     },
     {
       "id": "bankeiz-source-first-connectedAssetPublication.client",
@@ -17147,9 +17180,10 @@
     {
       "id": "bankeiz-source-first-publicProjectionPublication",
       "path": "receiz/app/lib/profile/showcase/publicProjectionPublication.ts",
-      "baseSha256": "614e052d061c36e5a0c2f86dc8610435796c51a7d7749d6515498c21c7747a48",
-      "sha256": "41db18707a658f43b2f011d48384cee144e73b2167090b4bde42c955f494fa15",
-      "purpose": "Reuse exact immutable source closures from an acknowledged publication while the unchanged finalizer verifies the successor. New/unacknowledged sources still export every committed byte."
+      "baseSha256": "06d9b924bf88438b647690d9036add8f21ecf63e822c11ef58273acde2bde3c3",
+      "sha256": "adc0debf40dcf232ca6a1db7991d4e032e8821bb54dd56d68f0ddf3187d25ab0",
+      "purpose": "Apply existing SDK bounded accepted-transition delivery while preserving Bankeiz PBI ceremony, durable signing/outbox/retry, local admission, identity/account entry and exact Source/ownership/integrity guards. Reuse held SDK context and immutable predecessor evidence; no SDK package changes.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
     },
     {
       "id": "bankeiz-source-first-accepted-predecessor",
@@ -17176,9 +17210,10 @@
     {
       "id": "bankeiz-incremental-original-delivery",
       "path": "receiz/app/lib/profile/showcase/completeSourceTransport.ts",
-      "baseSha256": "38840bbe92bc10ec4ea600c7579045ebd2d553fbde68c8aa32cedd9c51a0e555",
-      "sha256": "79af5b6eddbba449be86f2cf0f8371e73ea6f772369dfab2e5b9664da887a62b",
-      "purpose": "Use existing SDK exact-predecessor admission, append capability, atomic commit and v2 publication while retaining immutable historical byte references. Reuse runtime-admitted context and the existing signed outbox; preserve exact source, media, Kai, consent, signing and account entry."
+      "baseSha256": "c5d47a699072a41cc32e3021f62627367942454b6d050b91299f927de405f768",
+      "sha256": "0872f255264b584c6afd4f62e6b5cbcec17423bcd3096e1710fda76edc5a7250",
+      "purpose": "Apply existing SDK bounded accepted-transition delivery while preserving Bankeiz PBI ceremony, durable signing/outbox/retry, local admission, identity/account entry and exact Source/ownership/integrity guards. Reuse held SDK context and immutable predecessor evidence; no SDK package changes.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
     },
     {
       "id": "bankeiz-incremental-original-delivery",
@@ -17205,8 +17240,9 @@
       "id": "bankeiz-incremental-original-delivery",
       "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
       "baseSha256": null,
-      "sha256": "0b235648281b4f529cf51ef3a4dd3d003ce2cce112793d3ba76a39c14e2304f2",
-      "purpose": "Use existing SDK exact-predecessor admission, append capability, atomic commit and v2 publication while retaining immutable historical byte references. Reuse runtime-admitted context and the existing signed outbox; preserve exact source, media, Kai, consent, signing and account entry."
+      "sha256": "eba44f0ff83f0aa5634ac46b3c16fe47835f01b5bbe9986fcb5daa17643f160a",
+      "purpose": "Apply existing SDK bounded accepted-transition delivery while preserving Bankeiz PBI ceremony, durable signing/outbox/retry, local admission, identity/account entry and exact Source/ownership/integrity guards. Reuse held SDK context and immutable predecessor evidence; no SDK package changes.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
     },
     {
       "id": "bankeiz-pending-publication-retention",
@@ -17270,6 +17306,118 @@
       "baseSha256": "35d65a77e85c91b9e1f5d474134e96c2acd8af055cd17bec0bd11aedec3d9af7",
       "sha256": "da0b7a71a1bf40f96fbc2c9b96be97ff999829e185da0db6b6282565e007bd1c",
       "purpose": "Replay the exact saved PBI addition; an unsigned delivery is a prerequisite only when it directly extends the already-captured accepted head. No extra account/history reads or changes to SDK admission."
+    },
+    {
+      "id": "bankeiz-bounded-showcase-append-v129",
+      "path": "receiz/app/lib/profile/showcase/acceptedPredecessorRecovery.client.ts",
+      "baseSha256": "c2b673e28b391ab88ed1be14d05ec3d916d1c64a2966f13900c97eb13fcc3d8f",
+      "sha256": "b04cc01cd3a0f704f1d1bf54fc655e27a9af1625577b772713a1ce23b63c53d6",
+      "purpose": "Reuse exact accepted SDK Showcase custody and bounded append, witness/frontier and pending-suffix state; preserve SDK guards, financial authority and frozen account entry. Published SDK package sources and outputs remain unchanged.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
+    },
+    {
+      "id": "bankeiz-bounded-showcase-append-v129",
+      "path": "receiz/app/lib/profile/showcase/boundedEdgeVault.ts",
+      "baseSha256": "34a0c121252c1fdfc92afd262f4e3680cc2d7356522da73e29e3edd60cd5609b",
+      "sha256": "ae1a5161fd0db5e6dab89916f1f3f7ee2eba38a4dc75e5020d362ffe950d7368",
+      "purpose": "Reuse exact accepted SDK Showcase custody and bounded append, witness/frontier and pending-suffix state; preserve SDK guards, financial authority and frozen account entry. Published SDK package sources and outputs remain unchanged.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
+    },
+    {
+      "id": "bankeiz-bounded-showcase-append-v129",
+      "path": "receiz/app/lib/profile/showcase/completeSourceTransport.ts",
+      "baseSha256": "79af5b6eddbba449be86f2cf0f8371e73ea6f772369dfab2e5b9664da887a62b",
+      "sha256": "5d822b81042f954f2a5b717a685fe61c2b3c2335004487476f37b9a699e9e06f",
+      "purpose": "Reuse exact accepted SDK Showcase custody and bounded append, witness/frontier and pending-suffix state; preserve SDK guards, financial authority and frozen account entry. Published SDK package sources and outputs remain unchanged.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
+    },
+    {
+      "id": "bankeiz-bounded-showcase-append-v129",
+      "path": "receiz/app/lib/profile/showcase/composerPublication.ts",
+      "baseSha256": "499ea5db4ef4a99fe15b8bb153325ea5b67833e45d59fde19b1a51fffdc6f2e6",
+      "sha256": "0f7a558917aa86260946e1998b4116e117ab82d268b21415922748ab705f8a57",
+      "purpose": "Reuse exact accepted SDK Showcase custody and bounded append, witness/frontier and pending-suffix state; preserve SDK guards, financial authority and frozen account entry. Published SDK package sources and outputs remain unchanged.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
+    },
+    {
+      "id": "bankeiz-bounded-showcase-append-v129",
+      "path": "receiz/app/lib/profile/showcase/composerBoundedSettlement.ts",
+      "baseSha256": null,
+      "sha256": "82f04c53e26e05796c505e282be712523e46d0a85c40b15b79f46dc647be2ad1",
+      "purpose": "Reuse exact accepted SDK Showcase custody and bounded append, witness/frontier and pending-suffix state; preserve SDK guards, financial authority and frozen account entry. Published SDK package sources and outputs remain unchanged.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
+    },
+    {
+      "id": "bankeiz-bounded-showcase-append-v129",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "40c318c8e0a55cb225b7255fffc42f7245175ebb6470b14e9dae610e84a433bd",
+      "sha256": "dadf433ff5ea456ce6f290e9f2daeb38ee2f8da040ac764251d8137d191464ac",
+      "purpose": "Reuse exact accepted SDK Showcase custody and bounded append, witness/frontier and pending-suffix state; preserve SDK guards, financial authority and frozen account entry. Published SDK package sources and outputs remain unchanged.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
+    },
+    {
+      "id": "bankeiz-bounded-showcase-append-v129",
+      "path": "receiz/app/lib/profile/showcase/ownedProfilePublicHeadReconciliation.ts",
+      "baseSha256": null,
+      "sha256": "8d26e3e8450cc6f5f2b41225facb489ef6ce47a3396886e53960cc1b7285cc89",
+      "purpose": "Reuse exact accepted SDK Showcase custody and bounded append, witness/frontier and pending-suffix state; preserve SDK guards, financial authority and frozen account entry. Published SDK package sources and outputs remain unchanged.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
+    },
+    {
+      "id": "bankeiz-bounded-showcase-append-v129",
+      "path": "receiz/app/lib/profile/showcase/publicationIdentityCustody.ts",
+      "baseSha256": "4c384bc23864ee06a3d77f79631a319dcdf07ab536b1b665879cf008dcad2b54",
+      "sha256": "a0124bf3d52d1b2110ebbd74fddf2c67f0be2f5e437c554751e02f2fc673f67c",
+      "purpose": "Apply existing SDK bounded accepted-transition delivery while preserving Bankeiz PBI ceremony, durable signing/outbox/retry, local admission, identity/account entry and exact Source/ownership/integrity guards. Reuse held SDK context and immutable predecessor evidence; no SDK package changes.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
+    },
+    {
+      "id": "bankeiz-bounded-showcase-append-v129",
+      "path": "receiz/app/lib/profile/showcase/publicProjectionPublication.ts",
+      "baseSha256": "41db18707a658f43b2f011d48384cee144e73b2167090b4bde42c955f494fa15",
+      "sha256": "cdbd7387984e0632497dcea7e7de2c4cdb70f674b684e7e41eea59cb1fe1a676",
+      "purpose": "Reuse exact accepted SDK Showcase custody and bounded append, witness/frontier and pending-suffix state; preserve SDK guards, financial authority and frozen account entry. Published SDK package sources and outputs remain unchanged.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
+    },
+    {
+      "id": "bankeiz-bounded-showcase-append-v129",
+      "path": "receiz/app/lib/profile/showcase/publicProjectionRetry.ts",
+      "baseSha256": "d250a1c4f6ee1014c5f5ec50a2229e915a21aaf021fadea9e8786583e4b43624",
+      "sha256": "807c2f71b0bbd98e90a4b27b669c62bf3b1aae3406337fdb9d5c25d60e8676b3",
+      "purpose": "Apply existing SDK bounded accepted-transition delivery while preserving Bankeiz PBI ceremony, durable signing/outbox/retry, local admission, identity/account entry and exact Source/ownership/integrity guards. Reuse held SDK context and immutable predecessor evidence; no SDK package changes.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
+    },
+    {
+      "id": "bankeiz-bounded-showcase-append-v129",
+      "path": "receiz/app/lib/profile/showcase/publicSourceMaterialPublication.client.ts",
+      "baseSha256": null,
+      "sha256": "df7fab8c11be6b2d90f6ad58c0a5215fdf6dec2abcbc5f249f232cf6ceca1a76",
+      "purpose": "Reuse exact accepted SDK Showcase custody and bounded append, witness/frontier and pending-suffix state; preserve SDK guards, financial authority and frozen account entry. Published SDK package sources and outputs remain unchanged.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
+    },
+    {
+      "id": "bankeiz-bounded-showcase-append-v129",
+      "path": "receiz/app/lib/profile/showcase/originalChildIndexCustody.client.ts",
+      "baseSha256": null,
+      "sha256": "2e3cb7b21ba2179d07d86883da758fe8d82c61544d416bcb0b1cac80ac02f3f7",
+      "purpose": "Reuse exact accepted SDK Showcase custody and bounded append, witness/frontier and pending-suffix state; preserve SDK guards, financial authority and frozen account entry. Published SDK package sources and outputs remain unchanged.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
+    },
+    {
+      "id": "bankeiz-bounded-showcase-append-v129-dependency",
+      "path": "receiz/app/lib/documentSeal/materialSourcePublication.client.ts",
+      "baseSha256": null,
+      "sha256": "391d3892875f2547b3287242084bb75a1df69af8c577b46e93142fdb8c2fbee2",
+      "purpose": "Include the unchanged canonical app material-delivery dependency used by the bounded publication adapter. SDK package sources and outputs remain unchanged.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
+    },
+    {
+      "id": "bankeiz-bounded-showcase-append-v129-dependency",
+      "path": "receiz/app/lib/profile/routeHydration.ts",
+      "baseSha256": "50b3f81fa0e1921a49b93a8e1e5a8501888d557df7a12a1effe41f83518e9132",
+      "sha256": "a7587e786b01d709800ac72d51757abab2f55bf2f851beacbdc0e5dbc0478b22",
+      "purpose": "Reuse the unchanged canonical held-profile/Source binding dependency required by the bounded publication adapter; SDK package sources and outputs remain unchanged.",
+      "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
     }
   ],
   "historicalValuation": {
@@ -17874,7 +18022,7 @@
     },
     {
       "path": "app/lib/profile/routeHydration.ts",
-      "sha256": "50b3f81fa0e1921a49b93a8e1e5a8501888d557df7a12a1effe41f83518e9132"
+      "sha256": "a7587e786b01d709800ac72d51757abab2f55bf2f851beacbdc0e5dbc0478b22"
     },
     {
       "path": "app/lib/profile/showcase/acceptedPredecessorCustody.ts",
@@ -17882,7 +18030,7 @@
     },
     {
       "path": "app/lib/profile/showcase/acceptedPredecessorRecovery.client.ts",
-      "sha256": "c2b673e28b391ab88ed1be14d05ec3d916d1c64a2966f13900c97eb13fcc3d8f"
+      "sha256": "78209077b563998744fa69558af82f1cf69240c1195fdc6fec26f3afbe7be428"
     },
     {
       "path": "app/lib/profile/showcase/appendTransportAdmission.ts",
@@ -17902,7 +18050,7 @@
     },
     {
       "path": "app/lib/profile/showcase/boundedEdgeVault.ts",
-      "sha256": "34a0c121252c1fdfc92afd262f4e3680cc2d7356522da73e29e3edd60cd5609b"
+      "sha256": "feb5daa626ad5b7da483f01302bb314187b8995df0b73b287bd1d2524e5de674"
     },
     {
       "path": "app/lib/profile/showcase/boundedTransitionPublication.ts",
@@ -17926,7 +18074,7 @@
     },
     {
       "path": "app/lib/profile/showcase/completeSourceTransport.ts",
-      "sha256": "79af5b6eddbba449be86f2cf0f8371e73ea6f772369dfab2e5b9664da887a62b"
+      "sha256": "0872f255264b584c6afd4f62e6b5cbcec17423bcd3096e1710fda76edc5a7250"
     },
     {
       "path": "app/lib/profile/showcase/composerChild.ts",
@@ -17942,7 +18090,7 @@
     },
     {
       "path": "app/lib/profile/showcase/composerPublication.ts",
-      "sha256": "499ea5db4ef4a99fe15b8bb153325ea5b67833e45d59fde19b1a51fffdc6f2e6"
+      "sha256": "77914878cdc09a9b7207a9b6f6e56e70b95edc6dcced95f301e0ac999169aad5"
     },
     {
       "path": "app/lib/profile/showcase/composerResources.ts",
@@ -17950,7 +18098,7 @@
     },
     {
       "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "40c318c8e0a55cb225b7255fffc42f7245175ebb6470b14e9dae610e84a433bd"
+      "sha256": "40b2e496043a155c88a2fd384babe192949dcd2c99748368c791838ed55ec00f"
     },
     {
       "path": "app/lib/profile/showcase/economyRetry.ts",
@@ -18006,7 +18154,7 @@
     },
     {
       "path": "app/lib/profile/showcase/incrementalAssetPublication.client.ts",
-      "sha256": "da0b7a71a1bf40f96fbc2c9b96be97ff999829e185da0db6b6282565e007bd1c"
+      "sha256": "eba44f0ff83f0aa5634ac46b3c16fe47835f01b5bbe9986fcb5daa17643f160a"
     },
     {
       "path": "app/lib/profile/showcase/legacyMigrationPayload.ts",
@@ -18029,6 +18177,10 @@
       "sha256": "0304104584b0485962f19bbd440d3af93b356016f19dee6ead89e6d171591490"
     },
     {
+      "path": "app/lib/profile/showcase/originalChildIndexCustody.client.ts",
+      "sha256": "2e3cb7b21ba2179d07d86883da758fe8d82c61544d416bcb0b1cac80ac02f3f7"
+    },
+    {
       "path": "app/lib/profile/showcase/ownerSourceOriginals.ts",
       "sha256": "bb369d4c5d5b3898ef318d0b8926e16c293b572cb7f31a3087828181a8980312"
     },
@@ -18042,11 +18194,11 @@
     },
     {
       "path": "app/lib/profile/showcase/publicProjectionPublication.ts",
-      "sha256": "41db18707a658f43b2f011d48384cee144e73b2167090b4bde42c955f494fa15"
+      "sha256": "adc0debf40dcf232ca6a1db7991d4e032e8821bb54dd56d68f0ddf3187d25ab0"
     },
     {
       "path": "app/lib/profile/showcase/publicProjectionRetry.ts",
-      "sha256": "b93da734fe041cf683697a31b6ce1de01b40e692e4fdac2f9290a38b3d7d5361"
+      "sha256": "807c2f71b0bbd98e90a4b27b669c62bf3b1aae3406337fdb9d5c25d60e8676b3"
     },
     {
       "path": "app/lib/profile/showcase/publicProjectionScope.client.ts",
@@ -18058,7 +18210,7 @@
     },
     {
       "path": "app/lib/profile/showcase/publicationIdentityCustody.ts",
-      "sha256": "b8520c47c719d55b698c3dd7868af0b47a4c31219e65411d0fb80940a3cbe5ba"
+      "sha256": "a0124bf3d52d1b2110ebbd74fddf2c67f0be2f5e437c554751e02f2fc673f67c"
     },
     {
       "path": "app/lib/profile/showcase/recoveredAccountScope.client.ts",

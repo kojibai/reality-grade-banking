@@ -425,7 +425,7 @@ export async function ensureProfileShowcaseBoundedFirstPaintIfAuthorized(
     knownOriginals?: readonly ProfileOriginal[];
     loadCompleteLegacyShowcase: () => Promise<readonly ProfileOriginal[]>;
     publishPublicProjection?: (
-      firstPaint: import("./boundedEdgeVault").ProfileShowcaseCompletePublicSource,
+      firstPaint: import("./boundedEdgeVault").ProfileShowcasePublicationSource,
       ownerReceizId: string,
     ) => Promise<ProfileShowcasePublicProjectionPublicationResult>;
     /** Visibility backfill waits to publish its final sealed successor. */
@@ -566,7 +566,7 @@ export type PublishComposerBoundedShowcaseInput = Readonly<{
   childSealer?: import("./composerChild").ComposerProfileOriginalChildSealer;
   loadCompleteLegacyShowcase: () => Promise<readonly ProfileOriginal[]>;
   publishPublicProjection?: (
-    firstPaint: import("./boundedEdgeVault").ProfileShowcaseCompletePublicSource,
+    firstPaint: import("./boundedEdgeVault").ProfileShowcasePublicationSource,
     ownerReceizId: string,
   ) => Promise<ProfileShowcasePublicProjectionPublicationResult>;
   economyEnqueue?: (
@@ -658,7 +658,9 @@ async function publishComposerBoundedShowcaseFromCausalHead(
     predecessorAdmission = await boundedVault.reopenHead(artifactId);
     if (!predecessorAdmission) throw TypeError("PROFILE_SHOWCASE_BACKFILL_CUSTODY_REQUIRED");
   }
-  if (input.importedPlacement && predecessorAdmission) {
+  const duplicateIdentity=predecessorAdmission&&boundedVault.lookupOriginalChildIdentity
+    ?await boundedVault.lookupOriginalChildIdentity(predecessorAdmission,input.routeProjection):{status:'unknown' as const};
+  if (input.importedPlacement && predecessorAdmission&&duplicateIdentity.status!=='absent'&&!(duplicateIdentity.status==='present'&&duplicateIdentity.kind==='migration')) {
     const existing = await boundedVault.resolveOriginalChildCustody(artifactId, input.importedPlacement.original.id);
     if (existing) {
       if (existing.verifiedPayloadMimeType !== IMPORTED_SOURCE_REFERENCE_MIME) throw new TypeError("IMPORTED_SOURCE_IDENTITY_CONFLICT");
@@ -770,16 +772,15 @@ async function publishComposerBoundedShowcaseFromCausalHead(
   }
   // The admitted head already carries its complete history. Server inventory
   // is migration input, never a prerequisite for extending held local proof.
-  const heldSource = await boundedVault.readCompleteSource(artifactId, undefined, { retainedHiddenOnly: true });
-  if (!heldSource || heldSource.artifactDigest !== predecessorAdmission.artifactSha256) {
-    throw new TypeError("PROFILE_SHOWCASE_HELD_SOURCE_REQUIRED");
+  let backfillCarriesPublishedOriginal=duplicateIdentity.status==='present';
+  if(duplicateIdentity.status==='unknown'){
+    const heldSource = await boundedVault.readCompleteSource(artifactId, undefined, { retainedHiddenOnly: true });
+    if (!heldSource || heldSource.artifactDigest !== predecessorAdmission.artifactSha256) {
+      throw new TypeError("PROFILE_SHOWCASE_HELD_SOURCE_REQUIRED");
+    }
+    backfillCarriesPublishedOriginal=completeLegacyShowcaseCarriesProfileOriginal(
+      projectOwnerShowcaseOriginals(heldSource,{retainedHiddenOnly:true}),input.routeProjection);
   }
-  const completeLegacyShowcase = projectOwnerShowcaseOriginals(heldSource, { retainedHiddenOnly: true });
-  const backfillCarriesPublishedOriginal =
-    completeLegacyShowcaseCarriesProfileOriginal(
-      completeLegacyShowcase,
-      input.routeProjection,
-    );
   const enqueueEconomy = input.economyEnqueue ?? (async () =>
     enqueueProfileShowcaseIntoBrowserEconomy({
       artifactId,

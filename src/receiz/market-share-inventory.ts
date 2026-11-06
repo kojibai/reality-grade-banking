@@ -1,4 +1,5 @@
-import type {PublicMarketCatalog,PublicMarketItem} from './public-market';
+import type {PublicMarketItem} from './public-market';
+import type {PublicMarketPricingItem,PublicMarketPricingCatalog} from './market-projection/pricing-inputs';
 /** Public display observations only. These fields neither issue ownership nor authorize a trade. */
 export type PublicShareInventory=Readonly<{
  schema:'receiz.market.share-inventory.v1';marketItemId:string;assetId:string;family:'generic'|'native';quantityScope?:'canonical-asset';observedAtKaiUPulse:string;
@@ -14,7 +15,7 @@ export type PublicShareInventory=Readonly<{
 }>;
 const uint=(value:unknown):value is string=>typeof value==='string'&&/^(0|[1-9][0-9]{0,38})$/.test(value);
 const hex=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
-export function readPublicShareInventory(raw:unknown,item:PublicMarketItem):PublicShareInventory|null{
+export function readPublicShareInventory(raw:unknown,item:PublicMarketPricingItem):PublicShareInventory|null{
  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
  const v=raw as Record<string,unknown>;
  if(v.schema!=='receiz.market.share-inventory.v1'||v.marketItemId!==item.id||v.assetId!==item.assetId||!uint(v.observedAtKaiUPulse)||v.observedAtKaiUPulse==='0'||BigInt(v.observedAtKaiUPulse)>10000000000000000n||!uint(v.outstandingShareQuantityMicro)||(v.availableShareQuantityMicro!==null&&!uint(v.availableShareQuantityMicro)))return null;
@@ -63,10 +64,10 @@ export function shareQuantityAtPulse(inventory:PublicShareInventory,pulse:number
  for(const point of history){if(BigInt(point.kaiUPulse)>at)break;if(inventory.family==='native'||inventory.historyBasis==='recorded-transactions'||BigInt(point.kaiUPulse)===at)quantity=point.outstandingShareQuantityMicro;}return quantity;
 }
 /** Select one current, compatible observation for each canonical asset. */
-export function publicCapitalizationAssets(catalog:PublicMarketCatalog|null){
- const groups=new Map<string,PublicMarketItem[]>();
+export function publicCapitalizationAssets<T extends PublicMarketPricingItem>(catalog:(Omit<PublicMarketPricingCatalog,'items'>&{items:T[]})|null){
+ const groups=new Map<string,T[]>();
  for(const item of catalog?.items??[]){const key=item.nativeAsset?'native:'+item.nativeAsset.id:'asset:'+item.assetId;const values=groups.get(key)??[];values.push(item);groups.set(key,values);}
- const selected:PublicMarketItem[]=[];
+ const selected:T[]=[];
  for(const items of groups.values()){
   const sports=items.find(item=>item.category==='sports');if(sports){selected.push(sports);continue;}
   const candidates=items.filter(item=>item.shareInventory&&item.shareInventory.assetId===item.assetId&&item.shareInventory.marketItemId===item.id).sort((a,b)=>BigInt(a.shareInventory!.observedAtKaiUPulse)>BigInt(b.shareInventory!.observedAtKaiUPulse)?-1:1),item=candidates[0];
@@ -76,8 +77,8 @@ export function publicCapitalizationAssets(catalog:PublicMarketCatalog|null){
  }
  return {items:selected,listed:groups.size};
 }
-export type PublicShareContribution={item:PublicMarketItem;basis:'share-supply'|'carried-collectible-aggregate'|'unit-times-copies';unitPriceUsdCents:string|null;quantityMicro:string|null;usdCents:string;runningTotalUsdCents:string};
-export function publicShareCapitalization(catalog:PublicMarketCatalog|null,explain?:(row:PublicShareContribution)=>void){
+export type PublicShareContribution<T extends PublicMarketPricingItem=PublicMarketItem>={item:T;basis:'share-supply'|'carried-collectible-aggregate'|'unit-times-copies';unitPriceUsdCents:string|null;quantityMicro:string|null;usdCents:string;runningTotalUsdCents:string};
+export function publicShareCapitalization<T extends PublicMarketPricingItem>(catalog:(Omit<PublicMarketPricingCatalog,'items'>&{items:T[]})|null,explain?:(row:PublicShareContribution<T>)=>void){
  const {items,listed}=publicCapitalizationAssets(catalog);let total=0n,covered=0,shares=0n;
  for(const item of items){
   if(item.category==='sports'){
@@ -117,7 +118,7 @@ export function mergeShareInventory(previous:PublicShareInventory|undefined,next
  return Object.freeze({...next,history:Object.freeze(history),...(capitalizationHistory?{capitalizationHistory}:{})});
 }
 
-export function compatibleShareInventory(item:PublicMarketItem,inventory:PublicShareInventory|undefined){
+export function compatibleShareInventory(item:PublicMarketPricingItem,inventory:PublicShareInventory|undefined){
  if(!inventory)return;const parsed=readPublicShareInventory({...inventory,marketItemId:item.id},item);return parsed?(inventory.marketItemId===item.id?inventory:parsed):undefined;
 }
 

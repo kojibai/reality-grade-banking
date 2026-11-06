@@ -6,13 +6,13 @@ import type { ReceizKeyFile } from "../../../../packages/receiz-sdk/src/identity
 import { peekActiveIdentityCustodyContext } from "@/app/lib/auth/activeIdentityCustodyContext";
 import { createReceizIdentityArtifactCustody, type ReceizIdentityArtifactCustody } from "@/app/lib/auth/receizIdentityArtifactCustody";
 import { readReceizKeyFileFromBlob } from "@/app/utils/receizIdentityKey";
-import { readProfileShowcasePublicSourceActorCustody, type ProfileShowcaseCompletePublicSource } from "./boundedEdgeVault";
+import { readProfileShowcasePublicSourceActorCustody, type ProfileShowcaseCompletePublicSource,type ProfileShowcaseAcceptedTransitionExport } from "./boundedEdgeVault";
 
 export type PublicationIdentityCustody = Readonly<{ actorAdmission: ReceizVerifiedIdentityArtifactAdmission; keyFile: ReceizKeyFile; passphrase?: string }>;
 
 /** Reuse the selected source's held identity; do not switch the visible account
  * or create/reseal an identity to make optional publication possible. */
-export async function resolvePublicationIdentityCustody(source: ProfileShowcaseCompletePublicSource,
+export async function resolvePublicationIdentityCustody(source: ProfileShowcaseCompletePublicSource|ProfileShowcaseAcceptedTransitionExport,
   dependencies: Readonly<{ readActive?: () => PublicationIdentityCustody | null; custody?: ReceizIdentityArtifactCustody }> = {},
 ): Promise<PublicationIdentityCustody | null> {
   const selected = readProfileShowcasePublicSourceActorCustody(source);

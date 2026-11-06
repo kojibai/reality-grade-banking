@@ -1,3 +1,4 @@
+import {prepareSelectedPublicReferenceState} from './public-reference-state';
 import {alignPreparedPublicNavigation} from './prepared-public-navigation';
 import {PublicDocumentCapabilitiesContext,PublicDocumentFormatContext} from '../src/core/public-document-format';
 import {createHash} from 'node:crypto';
@@ -24,7 +25,7 @@ function compressedCatalog(catalog:PublicMarketDocumentSeed['catalog']){
 async function prepare(material:string,generation:string){
  const held=prepared.get(generation);if(held)return held;
  const job=(async()=>{
-  const input=JSON.parse(material),base=parsePublicMarket(input.membership,input.snapshot),catalog=input.sports?mergePublicSports(base,input.sports):base;
+  const input=JSON.parse(material);if(input.schema==='bank.public-market.render-material.refs.v1'){const {catalog,history,capitalization,asOfPulse}=await prepareSelectedPublicReferenceState({material,generation});return{catalog,history,capitalization,asOfPulse};}const base=parsePublicMarket(input.membership,input.snapshot),catalog=input.sports?mergePublicSports(base,input.sports):base;
   if(!base.complete||catalog.items.length>10000)throw Error('PUBLIC_MARKET_RENDER_COMPLETE_REQUIRED');
   const state=input.marketPrepared;
   if(state?.schema!=='bank.public-market.prepared.v1'||!Number.isSafeInteger(state.asOfPulse)||state.asOfPulse<0||state.asOfPulse>1e10)throw Error('PUBLIC_MARKET_RENDER_STATE_REQUIRED');

@@ -19,6 +19,7 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  const blocks=new Map<string,Uint8Array>(),staged=new Map<string,Uint8Array>(),reads:string[]=[],timeline:string[]=[];
  let accepted:Record<string,unknown>={status:'unmigrated'},complete:any,finalizations=0,seals=0,finalHTTPStatus=0,interrupt=false,attemptDigest:string|undefined,active=true,switchOnUpload=false,interruptBeforeUpload=false;
  const roots=new Map(f.roots.map((root:{kid:string})=>[root.kid,root]));
+ const receiveActual=r.createAcceptedPublicationReceiver(r,artifactId,roots,async(ref:{sha256:string})=>blocks.get(ref.sha256)??null);
  const request:typeof fetch=async(input,init)=>{
   const url=new URL(String(input),'https://bankeiz.test');
   if(url.origin==='https://storage.test'){staged.set(url.pathname.slice(1),new Uint8Array(await new Response(init?.body).arrayBuffer()));if(switchOnUpload){switchOnUpload=false;active=false;}return new Response(null,{status:200});}
@@ -34,9 +35,8 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
   if(body.action==='commit-blocks'){for(const item of body.blocks){const bytes=staged.get(item.stagingObjectName);if(!bytes)throw Error('Missing staged bytes');blocks.set(item.reference.sha256,bytes);}return Response.json({status:'stored',scope:body.scope});}
   expect(body.action).toBe('finalize');finalizations++;timeline.push('finalize');
   if(finalHTTPStatus)return Response.json({error:'access_denied'},{status:finalHTTPStatus});
-  const source=await r.showcaseTransport.reconstructProfileShowcaseCompleteSourceTransport(body.transport,async(ref:{sha256:string})=>blocks.get(ref.sha256)??null);
-  const vault=r.showcaseVault.createProfileShowcaseBoundedEdgeVault({databaseName:`independent-receiver-${finalizations}`});
-  const admitted=await r.showcaseRetainer.retainAcceptedShowcasePredecessor({source,artifactId,vault,canonicalSignatureV4RootPublicKeys:roots});
+  const {source,admission:admitted,sparse}=await receiveActual(body.transport);
+  if(body.publicationSourceArtifactSha256)expect(sparse,'the actual incremental SDK publisher carries only its changed successor').toBe(true);
   expect(admitted.artifactSha256).toBe(body.transport.artifactDigest);
   if(interrupt){attemptDigest=body.transport.artifactDigest;return Response.json({status:'pending',code:'PROFILE_SHOWCASE_PUBLIC_DELIVERY_PENDING'});}
   if(attemptDigest)expect(body.transport.artifactDigest).toBe(attemptDigest);
@@ -45,11 +45,11 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
   return Response.json({status:'published',publicationVersion:2,scope:body.scope,artifactDigest:body.transport.artifactDigest,operationCount:admitted.proofHistoryHead.nodeCount,visibleChildCount:source.children.length});
  };
  vi.stubGlobal('fetch',request);
- const open=(previous=false)=>(previous?r.previousConnectedComposer:r.connectedComposer).createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,account:{uid,username},assertCurrent(){if(!active)throw Error('ACCOUNT_CLOSED');},fetchImpl:request,onLocalAdmission:(value:any)=>{expect(value.original.marketPreview?.quote?.priceUsd??value.original.marketPreview).toBeDefined();timeline.push('local');},sealDocument:async(args:any)=>{seals++;return seal(args);}});
+ const open=(previous=false,module=r)=>(previous?module.previousConnectedComposer:module.connectedComposer).createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,account:{uid,username},assertCurrent(){if(!active)throw Error('ACCOUNT_CLOSED');},fetchImpl:request,onLocalAdmission:(value:any)=>{expect(value.original.marketPreview?.quote?.priceUsd??value.original.marketPreview).toBeDefined();timeline.push('local');},sealDocument:async(args:any)=>{seals++;return seal(args);}});
  const image=new File([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jQmcAAAAASUVORK5CYII=','base64')],'original.png',{type:'image/png'});
  let runtime=await open();
  const prior=await runtime.prepare({kind:'image',title:'First exact image',description:'',longForm:'First full essay',files:[{id:'photo',role:'primary',file:image}]});
- expect((await runtime.publish(prior.artifact)).status).toBe('published');
+ const firstResult=await runtime.publish(prior.artifact);expect(firstResult.status,JSON.stringify(firstResult)).toBe('published');
  expect(timeline.indexOf('local')).toBeLessThan(timeline.indexOf('finalize'));
  const acceptedPriorHead=complete.artifactDigest;
  const priorChildren=complete.children.map((child:any)=>child.reference.childArtifactDigest),oldBodies=new Set<string>();
@@ -57,7 +57,7 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  const oldMedia=r.createImportedProofSourceCustody();await oldMedia.exportBlocks(prior.reference,async(ref:{sha256:string})=>{oldBodies.add(ref.sha256);});
  // Cold app: only exact accepted transport is remote; no prior child/media is held locally.
  vi.stubGlobal('indexedDB',new IDBFactory());runtime=await open();reads.length=0;timeline.length=0;
- const next=await runtime.prepare({kind:'image',title:'Next exact image',description:'',longForm:'Next full essay',files:[{id:'photo',role:'primary',file:image}]});
+ const next=await runtime.prepare({kind:'image',title:'Next exact image',description:'',longForm:'Next full essay '+'n'.repeat(30*1024),files:[{id:'photo',role:'primary',file:image}]});
  interrupt=true;expect((await runtime.publish(next.artifact)).status).toBe('pending');
  finalHTTPStatus=403;expect(await runtime.publish(next.artifact)).toEqual({status:'pending',code:'PROFILE_SHOWCASE_PUBLICATION_HTTP_403'});finalHTTPStatus=0;
  expect(timeline.indexOf('local')).toBeLessThan(timeline.indexOf('finalize'));
@@ -139,4 +139,51 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  expect(failedReads).toBe(0);
  await expect(failed.publish(quota.artifact)).rejects.toThrow('BANK_ASSET_PUBLICATION_SERVICE_UNAVAILABLE');
  expect(failedReads).toBe(1);
+ // A fresh bundled module has none of the publisher's in-memory SDK context;
+ // the exact existing device vault, identity, source bytes and action outbox stay.
+ const beforeReload=await open();const lastWarm=await beforeReload.prepare({kind:'image',title:'Last sparse head before reload',description:'',longForm:'The newly coherent successor must survive its publishing module',files:[{id:'photo',role:'primary',file:image}]});expect((await beforeReload.publish(lastWarm.artifact)).status).toBe('published');
+ const reloadedModule=await f.reloadRuntime(),reloaded=await open(false,reloadedModule);
+ const oldChildDigests=new Set(complete.children.map((child:any)=>child.reference.childArtifactDigest));let coldOldChildReads=0,coldHistoryScans=0,coldActiveWrites=0;const put=IDBObjectStore.prototype.put,get=IDBObjectStore.prototype.get,all=IDBObjectStore.prototype.getAll;
+ const coldPut=vi.spyOn(IDBObjectStore.prototype,'put').mockImplementation(function(this:IDBObjectStore,...args){if(this.name==='bounded-active-heads')coldActiveWrites++;return put.apply(this,args);});
+ const coldGet=vi.spyOn(IDBObjectStore.prototype,'get').mockImplementation(function(this:IDBObjectStore,key){if(this.name==='bounded-immutable-children'&&oldChildDigests.has(key))coldOldChildReads++;return get.call(this,key);});
+ const coldAll=vi.spyOn(IDBObjectStore.prototype,'getAll').mockImplementation(function(this:IDBObjectStore,...args){if(['bounded-immutable-heads','bounded-immutable-history-nodes','segments'].includes(this.name))coldHistoryScans++;return all.apply(this,args);});
+ const coldAsset=await reloaded.prepare({kind:'image',title:'After actual module reload',description:'',longForm:'New input after device-held source coherence',files:[{id:'photo',role:'primary',file:image}]});
+ try{const coldResult=await reloaded.publish(coldAsset.artifact);expect(coldResult.status,JSON.stringify(coldResult)).toBe('published');}finally{coldGet.mockRestore();coldAll.mockRestore();coldPut.mockRestore();}
+ expect(coldActiveWrites,'retaining an accepted SDK proof never selects a partial Source as the active full presentation').toBe(0);
+ expect(coldOldChildReads,'a fresh SDK module does not reopen old Original bodies to append one new source').toBe(0);expect(coldHistoryScans,'cold cohere follows retained SDK paths rather than scanning its settled history').toBe(0);
+ const proofVault=reloadedModule.showcaseVault.createProfileShowcaseBoundedEdgeVault(),retainedDigest=complete.artifactDigest;
+ const retained=await proofVault.reopenRetainedHead(artifactId,retainedDigest);expect(retained?.artifactSha256).toBe(retainedDigest);
+ expect(await proofVault.reopenRetainedHead('wrong-artifact',retainedDigest)).toBeNull();
+ await expect(proofVault.createTransitionPersistentStateIO(artifactId,retainedDigest,{...retained})).rejects.toThrow();
+ // Stored proof locators are never admission. A new vault must reject exact
+ // byte corruption and owner substitution rather than use its small head row.
+ const db=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('receiz-profile-showcase-bounded-edge-v114');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+ const readArtifact=()=>new Promise<any>((resolve,reject)=>{const request=db.transaction('bounded-immutable-artifacts','readonly').objectStore('bounded-immutable-artifacts').get(retainedDigest);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+ const putArtifact=(value:unknown)=>new Promise<void>((resolve,reject)=>{const tx=db.transaction('bounded-immutable-artifacts','readwrite');tx.objectStore('bounded-immutable-artifacts').put(value);tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);});
+ const exact=await readArtifact();
+ try{
+  const corrupt=structuredClone(exact);corrupt.exactSealedArtifactBytes[0]^=1;await putArtifact(corrupt);
+  expect(await reloadedModule.showcaseVault.createProfileShowcaseBoundedEdgeVault().reopenRetainedHead(artifactId,retainedDigest)).toBeNull();
+  await putArtifact({...exact,ownerReceizIdentity:'wrong-owner'});
+  expect(await reloadedModule.showcaseVault.createProfileShowcaseBoundedEdgeVault().reopenRetainedHead(artifactId,retainedDigest)).toBeNull();
+ }finally{await putArtifact(exact);db.close();}
+ // Inject device failure AFTER the real atomic SDK commit, at its first
+ // retained proof write. The durable signed action must survive this boundary.
+ const interrupted=await reloaded.prepare({kind:'image',title:'Committed before local proof retention',description:'',longForm:'An exact durable retry must also prepare the next accepted successor',files:[{id:'photo',role:'primary',file:image}]});
+ const beforeInterrupted=finalizations,previousDigest=complete.artifactDigest;let proofWriteFailed=false;
+ const failProof=vi.spyOn(IDBObjectStore.prototype,'put').mockImplementation(function(this:IDBObjectStore,value,...args){if(this.name==='bounded-immutable-artifacts'&&(value as any).artifactDigest!==previousDigest&&!proofWriteFailed){proofWriteFailed=true;throw Error('FIXTURE_PROOF_RETENTION_INTERRUPTED');}return put.call(this,value,...args);});
+ try{await expect(reloaded.publish(interrupted.artifact)).rejects.toThrow('FIXTURE_PROOF_RETENTION_INTERRUPTED');}finally{failProof.mockRestore();}
+ expect(proofWriteFailed).toBe(true);expect(finalizations).toBe(beforeInterrupted);
+ const afterCommitSeals=seals,pendingModule=await f.reloadRuntime(),coldPending=await open(false,pendingModule),oldPendingChildren=new Set(complete.children.map((child:any)=>child.reference.childArtifactDigest));
+ let pendingOldReads=0,pendingScans=0,pendingActiveWrites=0;
+ const pendingGet=vi.spyOn(IDBObjectStore.prototype,'get').mockImplementation(function(this:IDBObjectStore,key){if(this.name==='bounded-immutable-children'&&oldPendingChildren.has(key))pendingOldReads++;return get.call(this,key);});
+ const pendingAll=vi.spyOn(IDBObjectStore.prototype,'getAll').mockImplementation(function(this:IDBObjectStore,...args){if(['bounded-immutable-heads','bounded-immutable-history-nodes','segments'].includes(this.name))pendingScans++;return all.apply(this,args);});
+ const pendingPut=vi.spyOn(IDBObjectStore.prototype,'put').mockImplementation(function(this:IDBObjectStore,...args){if(this.name==='bounded-active-heads')pendingActiveWrites++;return put.apply(this,args);});
+ try{
+  expect((await coldPending.publish(interrupted.artifact)).status,'fresh module must replay the exact SDK-committed signed action').toBe('published');expect(seals,'retry reuses exact committed seal bytes').toBe(afterCommitSeals);
+  const following=await coldPending.prepare({kind:'image',title:'After durable cold retry',description:'',longForm:'The accepted retried head remains genuine mutation input',files:[{id:'photo',role:'primary',file:image}]});
+  expect((await coldPending.publish(following.artifact)).status,'replayed sparse head must retain its genuine SDK context for the next new input').toBe('published');
+ }finally{pendingGet.mockRestore();pendingAll.mockRestore();pendingPut.mockRestore();}
+ expect({pendingOldReads,pendingScans,pendingActiveWrites}).toEqual({pendingOldReads:0,pendingScans:0,pendingActiveWrites:0});
+
 },60000);

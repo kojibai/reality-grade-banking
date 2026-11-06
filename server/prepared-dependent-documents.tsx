@@ -1,3 +1,4 @@
+import {prepareSelectedPublicReferenceCatalog} from './public-reference-state';
 import {createHash} from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {renderToString} from 'react-dom/server';
@@ -17,9 +18,9 @@ type Input={material:string;generation:string;path:string;template:string;render
 type Prepared={snapshot:PublicNetworkCache;packets:readonly PublicLedgerCompressedSnapshot[]};
 const prepared=new Map<string,Promise<Prepared>>(),history=new Map<string,{snapshot:PublicNetworkCache;packet:PublicLedgerCompressedSnapshot}>();
 const discoveryCatalogs=new Map<string,{catalog:ReturnType<typeof parsePublicMarket>;asOfPulse:number}>();
-function discoveryCatalog(material:string,generation:string){
+async function discoveryCatalog(material:string,generation:string){
  const cached=discoveryCatalogs.get(generation);if(cached)return cached;
- const input=JSON.parse(material),catalog=parsePublicMarket(input.membership,input.snapshot),asOfPulse=input.marketPrepared?.asOfPulse;
+ const input=JSON.parse(material);if(input.schema==='bank.public-market.render-material.refs.v1'){const {catalog,asOfPulse}=await prepareSelectedPublicReferenceCatalog({material,generation},false);const value={catalog,asOfPulse};discoveryCatalogs.set(generation,value);return value;}const catalog=parsePublicMarket(input.membership,input.snapshot),asOfPulse=input.marketPrepared?.asOfPulse;
  if(!catalog.complete||catalog.items.length>10000||input.marketPrepared?.schema!=='bank.public-market.prepared.v1'||!Number.isSafeInteger(asOfPulse)||asOfPulse<0||asOfPulse>1e10)throw Error('PUBLIC_DISCOVERY_COMPLETE_CATALOG_REQUIRED');
  const value={catalog,asOfPulse};discoveryCatalogs.set(generation,value);while(discoveryCatalogs.size>2)discoveryCatalogs.delete(discoveryCatalogs.keys().next().value!);return value;
 }
@@ -47,8 +48,8 @@ function retainedFinancialHistory(input:Record<string,unknown>){
 }
 function prepare(material:string,generation:string):Promise<Prepared>{
  const cached=prepared.get(generation);if(cached)return cached;
- const job=Promise.resolve().then(()=>{
-  const input=JSON.parse(material),retained=retainedFinancialHistory(input),catalog=parsePublicMarket(input.membership,input.snapshot);if(!catalog.complete)throw Error('PUBLIC_LEDGER_COMPLETE_MEMBERSHIP_REQUIRED');
+ const job=Promise.resolve().then(async()=>{
+  const input=JSON.parse(material),references=input.schema==='bank.public-market.render-material.refs.v1'?await prepareSelectedPublicReferenceCatalog({material,generation},false):null,ledger=references?.reader.root.preparedLedger?await references.reader.readPart(references.reader.root.preparedLedger):null,retained=retainedFinancialHistory(ledger?{preparedLedger:ledger}:input),catalog=references?.catalog??parsePublicMarket(input.membership,input.snapshot);if(!catalog.complete)throw Error('PUBLIC_LEDGER_COMPLETE_MEMBERSHIP_REQUIRED');
   const proofs=catalog.items.map(publicMarketRecord),observedAt=Date.parse(catalog.observedAt??''),proofSnapshot:PublicNetworkCache={records:proofs,capturedAt:catalog.observedAt??retained.snapshot.capturedAt,inspectionVersion:retained.snapshot.inspectionVersion,coverage:[{source:'proofs',complete:true,anchorIds:proofs.map(row=>row.id),...(Number.isFinite(observedAt)?{observedAt}:{})}]},capturedAt=[retained.snapshot.capturedAt,proofSnapshot.capturedAt].filter((time):time is string=>time!==null).sort((a,b)=>Date.parse(b)-Date.parse(a))[0]??null,snapshot={...proofSnapshot,capturedAt,records:mergePublicRecords(retained.snapshot.records,proofs),coverage:[...retained.snapshot.coverage,...proofSnapshot.coverage]},packets=[retained.packet,packed(proofSnapshot)];
   if(packets.reduce((total,packet)=>total+packet.bytes,0)>64*1024*1024||packets.reduce((total,packet)=>total+packet.gzipB64u.length,0)>Math.ceil(12*1024*1024*4/3))throw Error('PUBLIC_LEDGER_DOCUMENT_CAPACITY');return {snapshot,packets};
  });prepared.set(generation,job);while(prepared.size>2)prepared.delete(prepared.keys().next().value!);void job.catch(()=>{if(prepared.get(generation)===job)prepared.delete(generation);});return job;
@@ -60,7 +61,7 @@ export async function renderPreparedDependentDocument({material,generation,path,
  if(!['ledger','ledger/proofs','feed','discover'].includes(path))throw Error('PUBLIC_DEPENDENT_RENDER_PATH_UNSUPPORTED');
  if(Buffer.byteLength(material)>32*1024*1024||!/^[a-f0-9]{64}$/.test(generation)||createHash('sha256').update(material).digest('hex')!==generation)throw Error('PUBLIC_DEPENDENT_RENDER_INPUT_INVALID');
  if(path==='feed'||path==='discover'){
-  const {catalog,asOfPulse}=discoveryCatalog(material,generation);
+  const {catalog,asOfPulse}=await discoveryCatalog(material,generation);
   const ordered=path==='feed'?orderFeedItems(feedSequenceItems(catalog.items)):orderDiscoveryItems(catalog.items),visibleCount=Math.min(path==='feed'?8:12,ordered.length),seed=ordered.slice(0,visibleCount),format=new Intl.DateTimeFormat().resolvedOptions();
   const content=renderToString(path==='feed'?<PublicFeed seed={seed} active={false} completeCatalog/>:<Discover seed={seed} active={false}/>,{identifierPrefix:path==='feed'?'public-feed-':'public-discover-'});
   const legacySeed=path==='discover'?`<script id="public-discovery-seed" type="application/json">${JSON.stringify(seed).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`:'';

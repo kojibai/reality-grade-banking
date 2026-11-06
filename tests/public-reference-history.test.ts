@@ -1,0 +1,17 @@
+import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {expect,it} from 'vitest';
+import {fixture} from './fixtures/public-material-parts';
+import {readPublicReferenceHistory} from '../server/public-reference-history';
+import {createPublicMaterialWindowReader} from '../server/public-material-window';
+import {parseMarketHistory} from '../src/receiz/market-projection/history';
+it('uses one accepted history body and current changed points rather than replaying prior transitions or fetching every old point',async()=>{
+ const before=parseMarketHistory(JSON.parse(readFileSync('public/receiz-public-share-chart-history.json','utf8'))),parts=fixture([]),series=Object.fromEntries(Object.entries(before.series).map(([period,points])=>[period,points.map((point,i)=>i===points.length-1?{...point,usdCents:String(BigInt(point.usdCents)+1n)}:point)])) as typeof before.series,next={...before,basisSha256:'a'.repeat(64),summary:{...before.summary,currentUsd:before.summary.currentUsd+0.01,shareCapitalization:{...before.summary.shareCapitalization!,usdCents:String(BigInt(before.summary.shareCapitalization!.usdCents)+1n)}},series};
+ const {series:_series,eventPulses:_events,...header}=next,baseline=parts.put(before),forbidden=parts.put({oldPointTree:'must not be opened'}),root={...parts.root,history:{header:parts.put(header),events:{root:forbidden,count:before.eventPulses!.length},series:Object.fromEntries(Object.keys(series).map(period=>[period,{root:forbidden,count:series[period as keyof typeof series].length}])) as typeof parts.root.history.series,baseline:{generation:baseline},baselineChanges:Object.fromEntries(Object.entries(series).map(([period,points])=>[period,parts.index([[String(points.at(-1)!.pulse),JSON.stringify({baseline:parts.put(before.series[period as keyof typeof before.series].at(-1)),value:parts.put(points.at(-1))}) ]])])) as typeof parts.root.history.series,eventBaselineChanges:{root:null,count:0}}},material=JSON.stringify(root),reader=createPublicMaterialWindowReader({material,generation:createHash('sha256').update(material).digest('hex'),readPart:parts.readPart});
+ const actual=await readPublicReferenceHistory(reader);expect(actual).toEqual(next);expect(parts.reads.has(forbidden)).toBe(false);expect(parts.reads.size).toBeLessThan(10);
+});
+it('retains existing observation coordinates by baseline reference and applies only current added/removed coordinates',async()=>{
+ const before=parseMarketHistory(JSON.parse(readFileSync('public/receiz-public-share-chart-history.json','utf8'))),parts=fixture([]),removed=before.observationPulses![0],added=before.summary.serverPulse+1,observationPulses=[...before.observationPulses!.slice(1),added].sort((a,b)=>a-b),next={...before,observationPulses}, {series:_series,eventPulses:_events,observationPulses:_observations,...header}=next;
+ const root={...parts.root,history:{...parts.root.history,header:parts.put(header),baseline:{generation:parts.put(before)},observationBaselineChanges:parts.index([[String(removed),JSON.stringify({baseline:true,value:false})],[String(added),JSON.stringify({baseline:false,value:true})]])}},material=JSON.stringify(root),reader=createPublicMaterialWindowReader({material,generation:createHash('sha256').update(material).digest('hex'),readPart:parts.readPart});
+ expect(await readPublicReferenceHistory(reader)).toEqual(next);expect(JSON.stringify(header)).not.toContain('observationPulses');expect(parts.reads.size).toBeLessThan(6);
+});

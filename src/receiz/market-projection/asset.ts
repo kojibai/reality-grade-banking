@@ -1,5 +1,6 @@
 import {CHART_PERIODS,type ChartPeriod} from '../../core/chart-history';
 import type {PublicMarketItem} from '../public-market';
+import type {PublicMarketPricingItem} from './pricing-inputs';
 import {publicMarketPulseSeed,type MarketCapSource,type MarketValueRow} from './source';
 import {retainMarketInterval,type CapitalizationPoint} from './history';
 import {publicSigilUsdAtPulse,publicSportsQuoteAtPulse,marketPeriodPulses,marketPulseTime} from './project';
@@ -7,13 +8,13 @@ import {prepareSportsCopyHistory,sportsCopyHistoryUsdAtPulse} from './interpolat
 export type PublicAssetPeriods=Record<ChartPeriod,CapitalizationPoint[]>;
 const issuedPeriods=new WeakMap<PublicAssetPeriods,{basis:string;pulse:number}>();
 /** This public contract identifies a display model, not a verified artifact or holding. */
-export function matchPublicAssetRow(item:PublicMarketItem,source:MarketCapSource|null):MarketValueRow|null{
+export function matchPublicAssetRow(item:PublicMarketPricingItem,source:MarketCapSource|null):MarketValueRow|null{
  if(!source||item.category!=='proof'||!item.pulse||!/^\d{1,10}$/.test(item.pulse))return null;
  const candidates=source.valueRows.filter(row=>row.source==='market-desk-live-asset'&&(row.marketItem?.id===item.id||row.seed===item.assetId));
  if(candidates.length!==1)return null;const row=candidates[0],meta=row.marketItem?.livePulseSeed;
  return row.marketItem?.id===item.id&&row.seed===item.assetId&&meta?.kind==='sigil'&&meta.claimPulse===Number(item.pulse)&&meta.claimPulse<=source.serverPulse?row:null;
 }
-export function publicAssetPulseSeed(item:PublicMarketItem,source:MarketCapSource|null){
+export function publicAssetPulseSeed(item:PublicMarketPricingItem,source:MarketCapSource|null){
  if(item.category!=='proof')return null;
  const own=item.valuationBinding?.itemId===item.id&&item.valuationBinding.assetId===item.assetId?publicMarketPulseSeed(item.livePulseSeed,item.pulse):undefined;
  return own??matchPublicAssetRow(item,source)?.marketItem?.livePulseSeed??null;

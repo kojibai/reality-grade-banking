@@ -1,6 +1,7 @@
 "use client";
 
 import type { ProfileOriginal } from "@/app/lib/profile/types";
+import {createOriginalChildIndexCustody,type OriginalChildIndexLookup} from "./originalChildIndexCustody.client";
 import {
   admitReceizLegacyProfileShowcaseMigrationWithInspectionContext,
   admitReceizProfileShowcaseCheckpointBundleV114,
@@ -85,7 +86,7 @@ const CHECKPOINT_STORE = "bounded-immutable-checkpoints";
 const CHECKPOINT_SEGMENT_INDEX_STORE = "bounded-checkpoint-segment-index";
 const RECONCILIATION_OUTBOX_STORE = "bounded-reconciliation-outbox";
 const PERSISTENT_NODE_STORE = "bounded-immutable-persistent-nodes";
-const DATABASE_VERSION = 11;
+const DATABASE_VERSION = 12;
 const RETRIABLE_PUBLICATION_REJECTION_CODES = new Set([
   "PROFILE_SHOWCASE_PUBLICATION_SAME_ORIGIN_REQUIRED",
 ]);
@@ -224,8 +225,40 @@ const publicSourceActorCustody = new WeakMap<object, Readonly<{
   currentActorEvidenceRoots: readonly string[];
 }>>();
 
+type AcceptedTransitionDescriptor=Readonly<{artifactId:string;ownerReceizId:string;profileIdentity:string;predecessorDigest:string;carrier:ReceizBoundedProfileShowcaseCarrierV114;childReference?:ProfileShowcaseChildReference;readOriginal?:()=>Promise<ProfileOriginal|null>}>;
+const acceptedTransitionDescriptors=new WeakMap<object,AcceptedTransitionDescriptor>();
+export function readAcceptedProfileShowcaseTransitionPredecessor(source:ProfileShowcaseAcceptedTransitionExport):string{
+ const held=acceptedTransitionDescriptors.get(source);if(!held)throw new TypeError('PROFILE_SHOWCASE_PUBLIC_SOURCE_CUSTODY_REQUIRED');return held.predecessorDigest;
+}
+/** Only actual admitted/inspected adjacent steps may supply this servant suffix.
+ * The receiver still admits every edge with the unchanged SDK successor law. */
+export function attachAcceptedProfileShowcaseTransitionPredecessor(source:ProfileShowcaseAcceptedTransitionExport,predecessor:ProfileShowcaseAcceptedTransitionExport):ProfileShowcaseAcceptedTransitionExport{
+ const current=acceptedTransitionDescriptors.get(source),prior=acceptedTransitionDescriptors.get(predecessor),actor=publicSourceActorCustody.get(source);
+ if(!current||!prior||!actor||current.predecessorDigest!==predecessor.artifactDigest||current.artifactId!==prior.artifactId
+  ||current.ownerReceizId!==prior.ownerReceizId||current.profileIdentity!==prior.profileIdentity)throw new TypeError('PROFILE_SHOWCASE_PUBLIC_SOURCE_CUSTODY_REQUIRED');
+ const value=Object.freeze({...source,predecessor});acceptedTransitionDescriptors.set(value,current);publicSourceActorCustody.set(value,actor);return value;
+}
+
+/** New media operands only, beneath actual SDK admissions/inspections and
+ * final SDK placement membership. This never claims complete profile data or
+ * financial/current Account authority. Copied/caller-authored objects refuse. */
+export async function readAcceptedProfileShowcaseTransitionDisplay(source:ProfileShowcaseAcceptedTransitionExport){
+ const final=acceptedTransitionDescriptors.get(source);if(!final)throw TypeError('PROFILE_SHOWCASE_PUBLIC_SOURCE_CUSTODY_REQUIRED');
+ const steps:AcceptedTransitionDescriptor[]=[],seen=new Set<object>();let cursor:ProfileShowcaseAcceptedTransitionExport|undefined=source;
+ while(cursor){if(seen.has(cursor))throw TypeError('PROFILE_SHOWCASE_PUBLIC_SOURCE_CUSTODY_REQUIRED');seen.add(cursor);const value=acceptedTransitionDescriptors.get(cursor);if(!value)throw TypeError('PROFILE_SHOWCASE_PUBLIC_SOURCE_CUSTODY_REQUIRED');steps.push(value);cursor=cursor.predecessor;}
+ const nodes=steps.flatMap(value=>{const head=value.carrier['profile-showcase'];return[...head.firstPaintWitnessNodes as readonly ReceizProfileShowcasePersistentNodeV114[],...head.stateTransitionWitnessNodes as readonly ReceizProfileShowcasePersistentNodeV114[]];});
+ const {deriveReceizProfileShowcasePersistentPlacementV114}=await import('../../../../packages/receiz-sdk/src/profileShowcasePersistentState');
+ const io=createReceizProfileShowcasePersistentMemoryStoreV114(nodes),originals:ProfileOriginal[]=[];
+ for(const value of steps){if(!value.childReference)continue;const placement=await deriveReceizProfileShowcasePersistentPlacementV114({placementRoot:final.carrier['profile-showcase'].placementRoot as string,io,child:value.childReference});
+  if(!placement||!sameSealedChildReference(placement.reference as ProfileShowcaseChildReference,value.childReference))throw TypeError('PROFILE_SHOWCASE_PUBLIC_SOURCE_CUSTODY_REQUIRED');
+  if(placement.visibility==='visible'){const original=await value.readOriginal?.();if(!original)throw TypeError('PROFILE_SHOWCASE_PUBLICATION_NEW_CHILD_MISSING');originals.push(original);}}
+ return Object.freeze({artifactId:final.artifactId,ownerReceizId:final.ownerReceizId,profileIdentity:final.profileIdentity,originals:Object.freeze(originals)});
+}
+
 /** Identity selection beneath an already admitted local source, not admission. */
-export function readProfileShowcasePublicSourceActorCustody(source: ProfileShowcaseCompletePublicSource) {
+export type ProfileShowcaseAcceptedTransitionExport=import('./completeSourceTransport').ProfileShowcaseAcceptedTransitionSource;
+export type ProfileShowcasePublicationSource=ProfileShowcaseCompletePublicSource|ProfileShowcaseAcceptedTransitionExport;
+export function readProfileShowcasePublicSourceActorCustody(source: ProfileShowcaseCompletePublicSource|ProfileShowcaseAcceptedTransitionExport) {
   return publicSourceActorCustody.get(source) ?? null;
 }
 
@@ -424,6 +457,9 @@ export type ProfileShowcaseBoundedEdgeVault = Readonly<{
     code: null | "PROFILE_SHOWCASE_BOUNDED_INACTIVE_CAUSAL_BRANCH";
   }>>;
   selectOwnerRestoreHead(admission: ReceizVerifiedProfileShowcaseAdmission, expectedCurrentArtifactDigest: string | null, isCurrent?: () => boolean, preservedSourceArtifactDigest?: string, boundedPublicRestore?: boolean): Promise<void>;
+  hasRetainedHead(artifactId:ProfileShowcaseArtifactId,artifactDigest:string):Promise<boolean>;
+  /** Exact retained proof only; never currentness or a complete presentation. */
+  reopenRetainedHead(artifactId:ProfileShowcaseArtifactId,artifactDigest:string):Promise<ReceizVerifiedProfileShowcaseAdmission|null>;
   reopenHead(
     artifactId: ProfileShowcaseArtifactId,
     retainedArtifactDigest?: string,
@@ -435,14 +471,16 @@ export type ProfileShowcaseBoundedEdgeVault = Readonly<{
     descendantArtifactDigest: string,
     operationCount: number,
   ): Promise<string | null>;
-  createTransitionPersistentStateIO(artifactId: ProfileShowcaseArtifactId, predecessorArtifactDigest: string): Promise<ReceizProfileShowcasePersistentStateIOV114>;
+  createTransitionPersistentStateIO(artifactId: ProfileShowcaseArtifactId, predecessorArtifactDigest: string, admission?: ReceizVerifiedProfileShowcaseAdmission): Promise<ReceizProfileShowcasePersistentStateIOV114>;
   readFirstPaint(artifactId: ProfileShowcaseArtifactId): Promise<ProfileShowcaseBoundedFirstPaint | null>;
   readCompleteSource(artifactId: ProfileShowcaseArtifactId, retainedArtifactDigest?: string,
     options?: Readonly<{ retainedHiddenOnly?: boolean }>): Promise<ProfileShowcaseCompleteSource | null>;
-  exportCompleteSource(artifactId: ProfileShowcaseArtifactId, ancestorArtifactDigest?: string): Promise<ProfileShowcaseCompletePublicSource | null>;
+  exportAcceptedTransition(artifactId:ProfileShowcaseArtifactId,ancestorArtifactDigest?:string):Promise<ProfileShowcaseAcceptedTransitionExport|null>;
+  exportCompleteSource(artifactId: ProfileShowcaseArtifactId, ancestorArtifactDigest?: string,options?:Readonly<{initialOnly?:boolean}>): Promise<ProfileShowcaseCompletePublicSource | null>;
   exportOwnerSource(artifactId: ProfileShowcaseArtifactId, retainedArtifactDigest?: string): Promise<ProfileShowcaseOwnerSource | null>;
   readPublicationHead(artifactId: ProfileShowcaseArtifactId): Promise<Readonly<{ artifactId: ProfileShowcaseArtifactId; artifactDigest: string; headKaiUpulse: string; operationCount?: number }> | null>;
   isVerifiedPublicationAncestor(artifactId: ProfileShowcaseArtifactId, ancestorDigest: string, descendantDigest: string): Promise<boolean>;
+  lookupOriginalChildIdentity?(admission:ReceizVerifiedProfileShowcaseAdmission,original:ProfileOriginal):Promise<OriginalChildIndexLookup>;
   resolveOriginalChildReference(
     artifactId: ProfileShowcaseArtifactId,
     originalId: string,
@@ -512,6 +550,7 @@ export type ProfileShowcaseBoundedEdgeVault = Readonly<{
     actualReadRequestsByStore: Readonly<Record<string, number>>;
     actualWriteRequestsByStore: Readonly<Record<string, number>>;
     serializedRecordBytes: number;
+    runtimeAdmittedSourceHeads:number;runtimeAdmittedSourcePresentations:number;runtimeAcceptedTransitionSources:number;
     runtimeCompleteSourcePreparations: number;
     runtimePersistentSourcePreparations: number;
     runtimeHistoricalIndexes: number;
@@ -593,6 +632,12 @@ function openDatabase(factory: IDBFactory, name: string): Promise<IDBDatabase> {
           request.result.createObjectStore(store, { keyPath });
         }
       }
+      const outbox=request.transaction!.objectStore(RECONCILIATION_OUTBOX_STORE);
+      for(const field of ['status','economyStatus'])if(!outbox.indexNames.contains(field))outbox.createIndex(field,field,{unique:false});
+      if(!outbox.indexNames.contains('publicationRejection'))outbox.createIndex('publicationRejection',['status','lastError'],{unique:false});
+      // The existing legacy default was pending. Materialize only that same
+      // default once during this SourceVault-only upgrade, preserving all rows.
+      const cursor=outbox.openCursor();cursor.onsuccess=()=>{const row=cursor.result;if(!row)return;if(row.value.economyStatus===undefined)row.update(withEconomyAttemptDefaults(row.value));row.continue();};
       const visibilityStore =
         request.transaction!.objectStore(VISIBILITY_TRANSITION_STORE);
       if (!visibilityStore.indexNames.contains("artifactId")) {
@@ -1003,7 +1048,50 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
   };
   // Only canonical child projection can enter this runtime custody. A stored
   // projection digest is an integrity check, not evidence of that admission.
+  // Servant bytes of an actual single SDK admission. This never constructs a
+  // complete Source or an admission from persisted DTOs/checksums.
+  const acceptedTransitions=new Map<string,ProfileShowcaseAcceptedTransitionExport>();
+  const holdAcceptedTransition=(artifactDigest:string,carrier:ReceizBoundedProfileShowcaseCarrierV114,artifact:Pick<ArtifactRecord,'exactSealedArtifactBytes'>,child?:ChildRecord)=>{
+    const head=carrier['profile-showcase'],delta=head.directDelta as readonly Record<string,unknown>[],parents=head.parentHeads as readonly {artifactDigest:string}[];
+    if(delta.length!==1||!['showcase.append','showcase.visibility.set'].includes(String(delta[0]?.kind))||!Array.isArray(parents)||parents.length!==1)return null;
+    const operation=delta[0]!;
+    if(operation.kind==='showcase.append'&&(!child||!sameSealedChildReference(operation.child as ProfileShowcaseChildReference,child.reference)))return null;
+    const source=Object.freeze({artifactDigest,exactSealedArtifactBytes:artifact.exactSealedArtifactBytes.slice(),
+      ...(operation.kind==='showcase.append'?{child:Object.freeze({reference:structuredClone(child!.reference),exactSealedArtifactBytes:child!.exactSealedArtifactBytes.slice()})}:{})});
+    const actorRoots=new Set<string>();if(typeof operation.authorityEvidenceRoot==='string')actorRoots.add(operation.authorityEvidenceRoot);
+    const event=carrier.receizProofHistory.currentNode.event;if(event.type==='profile-showcase.transition'&&event.actorEvidenceRoot)actorRoots.add(event.actorEvidenceRoot);
+    publicSourceActorCustody.set(source,Object.freeze({actorId:head.profileIdentity as string,roots:Object.freeze([...actorRoots]),currentActorEvidenceRoots:Object.freeze([...actorRoots])}));
+    acceptedTransitionDescriptors.set(source,Object.freeze({artifactId:carrier.artifactId,ownerReceizId:carrier.ownerReceizIdentity,profileIdentity:head.profileIdentity as string,predecessorDigest:parents[0]!.artifactDigest,carrier,
+      ...(operation.kind==='showcase.append'?{childReference:child!.reference,readOriginal:async()=>{const key=childSourceKey(child!.reference),known=canonicalChildOriginals.get(key);if(known)return known;
+        const admission=await reopenWithRoots({...child!,profile:'portable-state',roots});if(!admission||!exactChildReference(child!.reference,admission))throw TypeError('PROFILE_SHOWCASE_PUBLICATION_NEW_CHILD_MISSING');
+        await projectAdmittedChild({reference:child!.reference,admittedArtifact:admission},admission);return canonicalChildOriginals.get(key)??null;}}:{})}));
+    acceptedTransitions.set(artifactDigest,source);return source;
+  };
+  const copyAcceptedTransition=(source:ProfileShowcaseAcceptedTransitionExport)=>{
+    const copy=Object.freeze(structuredClone(source)),actor=publicSourceActorCustody.get(source),descriptor=acceptedTransitionDescriptors.get(source);if(actor)publicSourceActorCustody.set(copy,actor);if(descriptor)acceptedTransitionDescriptors.set(copy,descriptor);return copy;
+  };
+  const originalChildIndex=createOriginalChildIndexCustody(database);
+  const admittedHeads=new Map<string,ReceizVerifiedProfileShowcaseAdmission>();
+  const pendingOriginalCoverage=new Set<string>();
+  const pendingTransitionSources=new Set<string>();
+  const runtimeFrontiers=new Map<ProfileShowcaseArtifactId,Readonly<{digest:string;heads:ReadonlySet<string>;presentations:ReadonlySet<string>}>>();
+  const pruneRuntimeCustody=(artifactId:ProfileShowcaseArtifactId)=>{
+    const frontier=runtimeFrontiers.get(artifactId);if(!frontier)return;
+    for(const [digest,admission]of admittedHeads)if(admission.artifactId===artifactId){if(digest!==frontier.digest)pendingOriginalCoverage.delete(digest);if(!frontier.heads.has(digest))admittedHeads.delete(digest);}
+    for(const [digest,source]of admittedFirstPaints)if(source.carrier.artifactId===artifactId&&!frontier.presentations.has(digest))admittedFirstPaints.delete(digest);
+    for(const [digest,source]of acceptedTransitions)if(acceptedTransitionDescriptors.get(source)?.artifactId===artifactId&&digest!==frontier.digest&&!pendingTransitionSources.has(digest))acceptedTransitions.delete(digest);
+  };
+  const retainRuntimeFrontier=(carrier:ReceizBoundedProfileShowcaseCarrierV114,digest:string,selected?:ActiveRecord)=>{
+    const head=carrier['profile-showcase'],parents=(head.parentHeads as readonly{artifactDigest:string}[]).map(value=>value.artifactDigest);
+    const heads=new Set([digest,...parents,...(head.fibonacci as {checkpoints:readonly{artifactDigest:string}[]}).checkpoints.map(value=>value.artifactDigest)]);
+    const presentations=new Set([digest,...parents]);const hold=selected?.replacementPresentationHold;if(hold){presentations.add(hold.artifactDigest);presentations.add(hold.intermediateArtifactDigest);heads.add(hold.artifactDigest);heads.add(hold.intermediateArtifactDigest);}
+    runtimeFrontiers.set(carrier.artifactId as ProfileShowcaseArtifactId,{digest,heads,presentations});pruneRuntimeCustody(carrier.artifactId as ProfileShowcaseArtifactId);
+  };
+  const admittedFirstPaints=new Map<string,ProfileShowcaseBoundedFirstPaint>();
+  const copyAdmittedFirstPaint=(source:ProfileShowcaseBoundedFirstPaint)=>{const copy=Object.freeze(structuredClone(source));boundedFirstPaintRuntimeCustody.add(copy);return copy;};
   const canonicalChildSources = new Map<string, ChildRecord>();
+  const canonicalChildOriginals=new Map<string,ProfileOriginal>();
+  const durablyRetainedChildren=new Set<string>();
   const canonicalChildAdmissions = new Map<string, ProfileShowcaseBoundedEdgeChild>();
   const childSourceKey = (reference: ProfileShowcaseChildReference) =>
     canonicalizeReceizConstitution(reference as never);
@@ -1054,6 +1142,43 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
     });
     verifiedHistoricalParents.set(key, pending);
     return pending;
+  };
+
+  // An actual admitted head, or the exact canonically inspected predecessor
+  // supplied only inside SDK admission, locates sparse checkpoint references.
+  // These lookups never create SDK custody or select a current/public view.
+  const resolveAdmittedCheckpointDigest=async(artifactId:ProfileShowcaseArtifactId,descendantDigest:string,target:number,retainedCarrier?:ReceizBoundedProfileShowcaseCarrierV114):Promise<string|null|undefined>=>{
+    const admission=admittedHeads.get(descendantDigest);
+    let initial:ReceizBoundedProfileShowcaseCarrierV114;
+    try{initial=admission?await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission):retainedCarrier!;}catch{return undefined;}
+    if(!initial)return undefined;
+    const identity=initial['profile-showcase'].profileIdentity;
+    let carrier=initial,digest=descendantDigest;const seen=new Set<string>();
+    while(!seen.has(digest)){
+      seen.add(digest);const head=carrier['profile-showcase'],count=head.resultingOperationCount as number;
+      if(carrier.artifactId!==artifactId||carrier.ownerReceizIdentity!==initial.ownerReceizIdentity||head.profileIdentity!==identity)return null;
+      if(count===target)return digest;if(target<1)return undefined;if(target>=count)return null;
+      if((head.parentHeads as readonly unknown[]).length>1)return undefined;
+      const fibonacci=head.fibonacci as {basis:string;checkpoints:readonly{operationCount:number;artifactDigest:string}[]};
+      if(fibonacci.basis!=='sparse-checkpoint/v1')return undefined;
+      const point=fibonacci.checkpoints.filter(value=>value.operationCount>=target&&value.operationCount<count).sort((a,b)=>a.operationCount-b.operationCount)[0];if(!point)return undefined;
+      if(point.operationCount===target)return point.artifactDigest;
+      const actual=admittedHeads.get(point.artifactDigest);
+      if(actual)carrier=await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(actual);
+      else{
+        const artifact=await readObject<ArtifactRecord>(ARTIFACT_STORE,point.artifactDigest,'PROFILE_SHOWCASE_BOUNDED_HISTORICAL_ARTIFACT_MISSING',descendantDigest);
+        if(!artifact||artifact.ownerReceizIdentity!==initial.ownerReceizIdentity||await sha256(artifact.exactSealedArtifactBytes)!==point.artifactDigest)return null;
+        try{
+          const inspection=await inspectReceizBoundedProfileShowcaseV114({verification:await verifyReceizArtifactWithCanonicalRoots(exactArtifactFile(artifact),roots),ownerConstraint:initial.ownerReceizIdentity,dependencies:{canonicalSignatureV4RootPublicKeys:roots}});
+          if(inspection.artifactSha256!==point.artifactDigest)return null;
+          carrier=readReceizBoundedProfileShowcaseInspectionCarrier(inspection);
+          await assertReceizBoundedProfileShowcaseCarriedHeadSemanticsV114(carrier);
+        }catch{return undefined;}
+      }
+      if(carrier['profile-showcase'].resultingOperationCount!==point.operationCount)return null;
+      digest=point.artifactDigest;
+    }
+    return null;
   };
 
   const buildVerifiedHistoricalIndex = async (
@@ -1197,7 +1322,9 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
     descendantArtifactDigest: string,
     operationCount: number,
     retainedIndex?: () => Promise<VerifiedHistoricalIndex | null>,
+    retainedCarrier?: ReceizBoundedProfileShowcaseCarrierV114,
   ): Promise<string | null> => {
+    const sparse=await resolveAdmittedCheckpointDigest(artifactId,descendantArtifactDigest,operationCount,retainedCarrier);if(sparse!==undefined)return sparse;
     const key = `${artifactId}:${descendantArtifactDigest}`;
     activeHistoricalResolutions.set(key, (activeHistoricalResolutions.get(key) ?? 0) + 1);
     requestHistoricalWorkspace(artifactId, descendantArtifactDigest);
@@ -1245,7 +1372,7 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
   // The existing SDK may request ancestry in multiple admission phases.
   // Its callback owns this index across those phases, independently of global
   // workspace eviction; nothing retains it after that admission returns.
-  const createHistoricalResolver = (artifactId: ProfileShowcaseArtifactId, digest: string) => {
+  const createHistoricalResolver = (artifactId: ProfileShowcaseArtifactId, digest: string, retainedCarrier?: ReceizBoundedProfileShowcaseCarrierV114) => {
     let index: Promise<VerifiedHistoricalIndex | null> | undefined;
     const retainedIndex = () => {
       if (!index) index = verifiedHistoricalIndex(artifactId, digest).then(value => {
@@ -1254,7 +1381,7 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
       }, error => { index = undefined; throw error; });
       return index;
     };
-    return (count: number) => resolveFromVerifiedHistoricalIndex(artifactId, digest, count, retainedIndex);
+    return (count: number) => resolveFromVerifiedHistoricalIndex(artifactId, digest, count, retainedIndex,retainedCarrier);
   };
 
   const admitExactStoredMergeHead = async (input: Readonly<{
@@ -1348,7 +1475,10 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         ? knownObservation?.key === selectionKey(activePointer) ? knownObservation : undefined
         : observeSelection(artifactId, activePointer);
       const active = retainedArtifactDigest ? { ...activePointer, artifactDigest: retainedArtifactDigest } : activePointer;
+      if(active.artifactId!==artifactId)return null;
       noteRequest(active.artifactDigest, "reads", ACTIVE_STORE);
+      const heldSource=admittedFirstPaints.get(active.artifactDigest);
+      if(heldSource?.carrier.artifactId===artifactId)return copyAdmittedFirstPaint(heldSource);
       const head = await readObject<HeadRecord>(
         HEAD_STORE,
         active.artifactDigest,
@@ -1662,7 +1792,8 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         && !("replacementPresentationHold" in activePointer)) {
         pinVerifiedPreparation(artifactId, observation, firstPaint.artifactDigest);
       }
-      return Object.freeze(firstPaint);
+      if(activePointer.artifactDigest===firstPaint.artifactDigest||activePointer.replacementPresentationHold?.artifactDigest===firstPaint.artifactDigest||activePointer.replacementPresentationHold?.intermediateArtifactDigest===firstPaint.artifactDigest)admittedFirstPaints.set(firstPaint.artifactDigest,Object.freeze(firstPaint));
+      return copyAdmittedFirstPaint(firstPaint);
   }
 
   const projectAdmittedChild = async (
@@ -1755,6 +1886,7 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
           },
         } satisfies ChildRecord;
         canonicalChildSources.set(childSourceKey(child.reference), projected);
+        if(routeProjection)canonicalChildOriginals.set(childSourceKey(child.reference),routeProjection as ProfileOriginal);
         canonicalChildAdmissions.set(childSourceKey(child.reference), { reference: child.reference, admittedArtifact: reopened });
         return projected;
   };
@@ -2042,6 +2174,15 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
     }
   };
 
+  const repairOriginalCoverage=async(source:ProfileShowcaseBoundedFirstPaint,prepared:ProfileShowcaseCompleteSource)=>{
+    if(!pendingOriginalCoverage.has(prepared.artifactDigest))return;
+    const admission=admittedHeads.get(prepared.artifactDigest);if(!admission)return;
+    try{
+      const children=prepared.placements.map(row=>canonicalChildAdmissions.get(childSourceKey(row.reference as ProfileShowcaseChildReference)));
+      if(children.every(Boolean)&&await originalChildIndex.cohere({admission,children:children as ProfileShowcaseBoundedEdgeChild[],persistentStateIO:(await readPersistentSource(source)).io}))pendingOriginalCoverage.delete(prepared.artifactDigest);
+    }catch{/* Optional coverage stays unknown; canonical Source is unchanged. */}
+  };
+
   // Complete-source preparation and bounded presentation share exactly the
   // same effective-head selection, quarantine and replacement-hold rules.
   // Observe the existing current selection and pending visibility boundary once.
@@ -2108,6 +2249,273 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
       }
   };
 
+  const reopenStoredProof=async(artifactId:ProfileShowcaseArtifactId,digest:string,head:HeadRecord,artifact:ArtifactRecord,
+    carrier:ReceizBoundedProfileShowcaseCarrierV114,selected?:ActiveRecord):Promise<ReceizVerifiedProfileShowcaseAdmission|null>=>{
+      try {
+        const candidateArtifact = exactArtifactFile(artifact);
+        let admission: ReceizVerifiedProfileShowcaseAdmission | null = null;
+        const parentArtifactDigests = exactHeadParentArtifactDigests(head);
+        if (parentArtifactDigests.length === 0) {
+          const verification = await verifyReceizArtifactWithCanonicalRoots(
+            candidateArtifact,
+            roots,
+          );
+          const candidate = await createReceizArtifactAdmissionEngine({
+            canonicalSignatureV4RootPublicKeys: roots,
+          })(verification, {
+            profile: "profile-showcase",
+            ownerConstraint: artifact.ownerReceizIdentity,
+          });
+          admission = candidate.profile === "profile-showcase"
+            && candidate.verdict === "bearer-recovery"
+            ? candidate
+            : null;
+        } else if (parentArtifactDigests.length === 2) {
+          admission = await admitExactStoredMergeHead({
+            head,
+            candidateArtifact,
+            carrier: carrier,
+            accountingDigest: digest,
+          });
+        } else if (parentArtifactDigests.length === 1) {
+          const predecessorArtifactDigest = parentArtifactDigests[0]!;
+          const historyParent = carrier.receizProofHistory.parentRefs[0];
+          const [predecessorArtifact, predecessorHead, predecessorHistoryNode] =
+            await Promise.all([
+              readObject<ArtifactRecord>(
+                ARTIFACT_STORE,
+                predecessorArtifactDigest,
+                "PROFILE_SHOWCASE_BOUNDED_PREDECESSOR_ARTIFACT_MISSING",
+                digest,
+              ),
+              readObject<HeadRecord>(
+                HEAD_STORE,
+                predecessorArtifactDigest,
+                "PROFILE_SHOWCASE_BOUNDED_PREDECESSOR_HEAD_MISSING",
+                digest,
+              ),
+              historyParent
+                ? readObject<Record<string, unknown>>(
+                    HISTORY_NODE_STORE,
+                    historyParent.nodeDigest,
+                    "PROFILE_SHOWCASE_BOUNDED_PREDECESSOR_HISTORY_MISSING",
+                    digest,
+                  )
+                : Promise.resolve(null),
+            ]);
+          /*
+           * Checkpoint and legacy migration boundaries remain governed by
+           * their stronger dedicated SDK admissions. A generic projection
+           * must never be fabricated when that runtime custody is absent.
+           */
+          if (
+            !predecessorArtifact
+            || !predecessorHistoryNode
+            || !historyParent
+          ) return null;
+          if (predecessorHead) {
+            if (predecessorHead.historyNodeDigest !== historyParent.nodeDigest) {
+              return null;
+            }
+            // Canonical inspection locates only the predecessor's sparse
+            // references. It is not inserted into admission/current-view maps;
+            // the unchanged SDK opener below still verifies both exact sources.
+            const predecessorInspection = await inspectReceizBoundedProfileShowcaseV114({
+              verification: await verifyReceizArtifactWithCanonicalRoots(exactArtifactFile(predecessorArtifact), roots),
+              ownerConstraint: artifact.ownerReceizIdentity,
+              dependencies: { canonicalSignatureV4RootPublicKeys: roots },
+            });
+            const predecessorCarrier = readReceizBoundedProfileShowcaseInspectionCarrier(predecessorInspection);
+            if (predecessorInspection.artifactSha256 !== predecessorArtifactDigest
+              || predecessorCarrier.artifactId !== artifactId
+              || predecessorCarrier.ownerReceizIdentity !== carrier.ownerReceizIdentity
+              || predecessorCarrier["profile-showcase"].profileIdentity !== carrier["profile-showcase"].profileIdentity
+              || predecessorCarrier.receizProofHistory.currentNode.nodeDigest !== historyParent.nodeDigest
+              || predecessorCarrier["profile-showcase"].resultingOperationCount !== (carrier["profile-showcase"].parentHeads as readonly Record<string, unknown>[])[0]?.operationCount) return null;
+            await assertReceizBoundedProfileShowcaseCarriedHeadSemanticsV114(predecessorCarrier);
+            admission =
+              await admitReceizProfileShowcaseSuccessorWithExactPredecessorContext({
+                predecessorArtifact: exactArtifactFile(predecessorArtifact),
+                candidateArtifact,
+                predecessorHistoryNode,
+                resolveVerifiedHistoricalArtifactDigest: createHistoricalResolver(artifactId, predecessorArtifactDigest,predecessorCarrier),
+                canonicalSignatureV4RootPublicKeys: roots,
+              });
+          } else {
+            const checkpointRecord = await readObject<CheckpointRecord>(
+              CHECKPOINT_STORE,
+              digest,
+              "PROFILE_SHOWCASE_CHECKPOINT_BOUNDARY_MISSING",
+              digest,
+            );
+            if (!checkpointRecord) {
+              const predecessorVerification =
+                await verifyReceizArtifactWithCanonicalRoots(
+                  exactArtifactFile(predecessorArtifact),
+                  roots,
+                );
+              const legacyInspection =
+                await inspectReceizLegacyProfileShowcaseV114({
+                  verification: predecessorVerification,
+                  ownerConstraint: predecessorArtifact.ownerReceizIdentity,
+                  dependencies: {
+                    canonicalSignatureV4RootPublicKeys: roots,
+                  },
+                });
+              if (
+                legacyInspection.historyHeadDigest !== historyParent.nodeDigest
+                || canonicalizeReceizConstitution(
+                  predecessorHistoryNode as never,
+                ) !== canonicalizeReceizConstitution(
+                  readReceizLegacyProfileShowcaseInspectionCustody(
+                    legacyInspection,
+                  ).history.nodes.find(
+                    (node) => node.nodeDigest === historyParent.nodeDigest,
+                  ) as never,
+                )
+              ) return null;
+              admission =
+                await admitReceizLegacyProfileShowcaseMigrationWithInspectionContext({
+                  inspection: legacyInspection,
+                  candidateArtifact: { artifact: candidateArtifact },
+                  expectedHead: carrier["profile-showcase"],
+                });
+            } else {
+              if (checkpointRecord.checkpointArtifactDigest
+                !== predecessorArtifactDigest
+              || checkpointRecord.checkpointHistoryNodeDigest
+                !== historyParent.nodeDigest
+              || (!options.resolveVerifiedCheckpointActorEvidence && !checkpointRecord.actorPublicBinding)) {
+                return null;
+              }
+              const [
+                checkpointArtifact,
+                checkpointPredecessorArtifact,
+                actorEvidence,
+                checkpointChildren,
+              ] = await Promise.all([
+                readObject<ArtifactRecord>(
+                  ARTIFACT_STORE,
+                  checkpointRecord.checkpointArtifactDigest,
+                  "PROFILE_SHOWCASE_CHECKPOINT_BOUNDARY_MISSING",
+                  digest,
+                ),
+                readObject<ArtifactRecord>(
+                  ARTIFACT_STORE,
+                  checkpointRecord.predecessorArtifactDigest,
+                  "PROFILE_SHOWCASE_CHECKPOINT_PREDECESSOR_MISSING",
+                  digest,
+                ),
+                options.resolveVerifiedCheckpointActorEvidence?.(
+                  checkpointRecord.actorArtifactDigest,
+                ) ?? Promise.resolve(null),
+                Promise.all(checkpointRecord.childArtifactDigests.map((digest) =>
+                  readObject<ChildRecord>(
+                    CHILD_STORE,
+                    digest,
+                    "PROFILE_SHOWCASE_CHECKPOINT_CHILD_MISSING",
+                    digest,
+                  ))),
+              ]);
+              if (
+                !checkpointArtifact
+                || !checkpointPredecessorArtifact
+                || (!actorEvidence && !checkpointRecord.actorPublicBinding)
+                || checkpointChildren.some((child) => child === null)
+              ) return null;
+              const checkpointPredecessorAdmission = await reopenWithRoots({
+                ...checkpointPredecessorArtifact,
+                profile: "profile-showcase",
+                roots,
+              });
+              if (!checkpointPredecessorAdmission
+                || checkpointPredecessorAdmission.artifactSha256
+                  !== checkpointRecord.predecessorArtifactDigest) {
+                return null;
+              }
+              const admittedChildren = await Promise.all(
+                checkpointChildren.map((child) => child
+                  ? reopenWithRoots({
+                      ...child,
+                      profile: "portable-state",
+                      roots,
+                    })
+                  : Promise.resolve(null)),
+              );
+              if (admittedChildren.some((child) => child === null)) return null;
+              const resolveSegment = async (segmentIndex: number) => {
+                if (!Number.isSafeInteger(segmentIndex) || segmentIndex < 0) {
+                  return null;
+                }
+                const indexRecord =
+                  await readObject<CheckpointSegmentIndexRecord>(
+                    CHECKPOINT_SEGMENT_INDEX_STORE,
+                    `${checkpointRecord.checkpointArtifactDigest}:${segmentIndex}`,
+                    "PROFILE_SHOWCASE_CHECKPOINT_SEGMENT_INDEX_MISSING",
+                    digest,
+                  );
+                if (!indexRecord || indexRecord.segmentIndex !== segmentIndex) {
+                  return null;
+                }
+                if (options.checkpointContentStore) {
+                  return options.checkpointContentStore.get(
+                    indexRecord.segmentId,
+                  );
+                }
+                const segment = await readObject<SegmentRecord>(
+                  SEGMENT_STORE,
+                  indexRecord.segmentId,
+                  "PROFILE_SHOWCASE_CHECKPOINT_SEGMENT_MISSING",
+                  digest,
+                );
+                return segment && await verifyStoredSegment(segment)
+                  ? checkpointSegmentMechanics(segment)
+                  : null;
+              };
+              const checkpointInput = {
+                  checkpointArtifact: exactArtifactFile(checkpointArtifact),
+                  canonicalSignatureV4RootPublicKeys: roots,
+                  verifiedActorEvidence: actorEvidence,
+                  admittedChildren: admittedChildren.filter(
+                    (child): child is ReceizVerifiedArtifactAdmission =>
+                      child !== null,
+                  ),
+                  resolvePredecessorAdmission: async (artifactDigest: string) =>
+                    artifactDigest === checkpointRecord.predecessorArtifactDigest
+                      ? checkpointPredecessorAdmission
+                      : null,
+                  resolveSegment,
+                  ...(options.checkpointPersistentStateIO
+                    ? {
+                        persistentStateIO: options.checkpointPersistentStateIO,
+                        auditMode: "bounded-snapshot" as const,
+                      }
+                    : {}),
+                };
+              const checkpoint = actorEvidence
+                ? await admitReceizProfileShowcaseCheckpointBundleV114(checkpointInput)
+                : await admitReceizProfileShowcaseCheckpointBundleWithSourceActorBindingV114({
+                  ...checkpointInput, actorPublicBinding: checkpointRecord.actorPublicBinding,
+                });
+              admission =
+                await admitReceizProfileShowcaseCheckpointCarrierWithContextV114({
+                  checkpoint,
+                  candidateArtifact,
+                });
+            }
+          }
+        } else return null;
+        const verified = admission;
+        if(verified?.profile==="profile-showcase"&&verified.artifactSha256===digest&&selected?.artifactDigest===digest){admittedHeads.set(digest,verified);retainRuntimeFrontier(carrier,digest,selected);}
+        return verified
+          && verified.profile === "profile-showcase"
+          && verified.artifactSha256 === digest
+          ? verified
+          : null;
+      } catch {
+        return null;
+      }
+  };
   return Object.freeze({
     async admit(input) {
       if (input.retainHistoryOnly && !input.retainOnly) throw new TypeError("PROFILE_SHOWCASE_HISTORY_STAGING_ONLY_REQUIRED");
@@ -2183,7 +2591,10 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
       ) {
         throw new TypeError("PROFILE_SHOWCASE_BOUNDED_SEGMENT_REFERENCE_MISMATCH");
       }
-      const verifiedSegments = await Promise.all(references.map(async (
+      const retainedReferences = input.retainHistoryOnly
+        ? references.filter(reference => incomingSegments.has(reference.segmentId as string))
+        : references;
+      const verifiedSegments = await Promise.all(retainedReferences.map(async (
         reference,
       ): Promise<ProfileShowcaseCommittedSegment> => {
         const segmentId = reference.segmentId;
@@ -2256,6 +2667,8 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         const reference =
           carriedChild.reference as ProfileShowcaseChildReference;
         const incoming = incomingChildren.get(reference.childArtifactDigest);
+        const held=durablyRetainedChildren.has(childSourceKey(reference))?canonicalChildSources.get(childSourceKey(reference)):undefined;
+        if(!incoming&&held&&sameSealedChildReference(reference,held.reference))return held;
         const child = incoming
           ?? await readObject<ChildRecord>(
             CHILD_STORE,
@@ -2338,7 +2751,10 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
           parent.artifactDigest as string).sort(),
         historyNodeDigest: carrier.receizProofHistory.currentNode.nodeDigest,
         childArtifactDigests: windowChildren.map(child => (child.reference as ProfileShowcaseChildReference).childArtifactDigest),
-        segmentIds: verifiedSegments.map((segment) => segment.commitment.segmentId),
+        // Keep exact sealed locators even for proof-only retention. Missing
+        // presentation bodies still make a full-view read refuse; a concurrent
+        // full retention cannot lose its same-head locator list.
+        segmentIds: references.map((reference) => reference.segmentId as string),
       };
       const checkpointBoundary = input.checkpointBoundary;
       const checkpointCustody = checkpointBoundary !== undefined
@@ -2594,6 +3010,9 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
       // Head presentation references stay bounded to the verified window.
       const retainedChildren = new Map([...verifiedChildren, ...incomingVerifiedChildren].map(child => [child.artifactDigest, child]));
       for (const child of retainedChildren.values()) {
+        // Existing immutable bytes were already durably admitted. A new Source
+        // references them; it does not rewrite their body or Original alias.
+        if(!incomingChildren.has(child.artifactDigest)||durablyRetainedChildren.has(childSourceKey(child.reference)))continue;
         transaction.objectStore(CHILD_STORE).put(child);
         noteRequest(showcaseAdmission.artifactSha256, "writes", CHILD_STORE);
         if (child.verifiedProjection.routeOriginalId) {
@@ -2631,7 +3050,8 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
       );
       outboxRequest.onsuccess = () => {
         if (input.retainHistoryOnly) return;
-        if (outboxRequest.result !== undefined) return;
+        if (outboxRequest.result !== undefined) {const row=outboxRequest.result as ProfileShowcaseBoundedReconciliationAttempt;if(row.status==='network-pending'||row.status==='rejected'&&row.lastError&&RETRIABLE_PUBLICATION_REJECTION_CODES.has(row.lastError))pendingTransitionSources.add(showcaseAdmission.artifactSha256);return;}
+        pendingTransitionSources.add(showcaseAdmission.artifactSha256);
         outboxStore.put({
           attemptId,
           artifactId: carrier.artifactId,
@@ -2653,7 +3073,7 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
           RECONCILIATION_OUTBOX_STORE,
         );
       };
-      let activated = false;
+      let activated = false;let selectedAfterAdmission:ActiveRecord|undefined;
       const activeRequest = transaction.objectStore(ACTIVE_STORE).get(carrier.artifactId);
       noteRequest(showcaseAdmission.artifactSha256, "reads", ACTIVE_STORE);
       activeRequest.onsuccess = () => {
@@ -2689,16 +3109,42 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
           }
         }
         activated = true;
-        transaction.objectStore(ACTIVE_STORE).put({
-          artifactId: carrier.artifactId,
-          artifactDigest: showcaseAdmission.artifactSha256,
-          headKaiUpulse: headRecord.headKaiUpulse,
-          ...(replacementPresentationHold ? { replacementPresentationHold } : {}),
-        } satisfies ActiveRecord);
+        selectedAfterAdmission={artifactId:carrier.artifactId as ProfileShowcaseArtifactId,artifactDigest:showcaseAdmission.artifactSha256,headKaiUpulse:headRecord.headKaiUpulse,...(replacementPresentationHold?{replacementPresentationHold}:{})};
+        transaction.objectStore(ACTIVE_STORE).put(selectedAfterAdmission);
         noteRequest(showcaseAdmission.artifactSha256, "writes", ACTIVE_STORE);
       };
       await transactionComplete(transaction);
+      const firstPaint=Object.freeze({artifactDigest:showcaseAdmission.artifactSha256,exactSealedArtifactBytes:artifactRecord.exactSealedArtifactBytes.slice(),carrier:structuredClone(carrier),
+        visibleChildren:verifiedChildren.map(child=>Object.freeze({reference:child.reference,exactSealedArtifactBytes:child.exactSealedArtifactBytes,verifiedPayloadMimeType:child.verifiedProjection.payloadMimeType,
+          verifiedPayloadBytes:child.verifiedProjection.payloadBytes,verifiedRouteProjectionBytes:child.verifiedProjection.routeProjectionBytes})),segments:verifiedSegments});
+      boundedFirstPaintRuntimeCustody.add(firstPaint);
+      if(activated)admittedFirstPaints.set(showcaseAdmission.artifactSha256,firstPaint);
+      // Servant node cache under this actual admitted SDK root. Persist only
+      // missing witnessed paths; current roots still validate every later use.
+      let nodeRetention:Promise<void>|undefined;
+      try{
+        const nodes=new Map<string,ReceizProfileShowcasePersistentNodeV114>();
+        for(const name of ['firstPaintWitnessNodes','stateTransitionWitnessNodes'])for(const node of (carrier['profile-showcase'][name]??[])as ReceizProfileShowcasePersistentNodeV114[])nodes.set(node.digest,node);
+        createReceizProfileShowcasePersistentMemoryStoreV114([...nodes.values()]);
+        const tx=db.transaction(PERSISTENT_NODE_STORE,'readwrite'),store=tx.objectStore(PERSISTENT_NODE_STORE),entries=[...nodes.values()];nodeRetention=transactionComplete(tx);
+        const present=await Promise.all(entries.map(node=>requestResult(store.getKey(node.digest),'PROFILE_SHOWCASE_PERSISTENT_NODE_READ_FAILED')));
+        for(let i=0;i<entries.length;i++)if(present[i]===undefined){store.put(entries[i]!);noteRequest(showcaseAdmission.artifactSha256,'writes',PERSISTENT_NODE_STORE);}
+        await nodeRetention;
+      }catch{await nodeRetention?.catch(()=>undefined);/* Losing an optional node cache cannot revoke sealed admission. */}
+      if(activated)admittedHeads.set(showcaseAdmission.artifactSha256,showcaseAdmission);
+      if(activated)try{
+        const parent=parents.length===1?admittedHeads.get(parents[0]!.artifactDigest as string):undefined;
+        if(parent)await originalChildIndex.advance({predecessor:parent,admission:showcaseAdmission,children:input.children});
+        else if(parents.length===0){
+          const io=createReceizProfileShowcasePersistentMemoryStoreV114();
+          for(const name of ['firstPaintWitnessNodes','stateTransitionWitnessNodes'])for(const node of (carrier['profile-showcase'][name]??[])as ReceizProfileShowcasePersistentNodeV114[])await io.writeNode(node);
+          await originalChildIndex.cohere({admission:showcaseAdmission,children:input.children,persistentStateIO:io});
+        }
+      }catch{/* Optional duplicate-discovery metadata never changes canonical admission. */}
       if (checkpointCustody) checkpointSources.set(showcaseAdmission.artifactSha256, checkpointCustody);
+      for(const child of retainedChildren.values())durablyRetainedChildren.add(childSourceKey(child.reference));
+      const direct=(carrier['profile-showcase'].directDelta as readonly Record<string,unknown>[])[0];
+      if(activated){holdAcceptedTransition(showcaseAdmission.artifactSha256,carrier,artifactRecord,direct?.kind==='showcase.append'?retainedChildren.get((direct.child as ProfileShowcaseChildReference).childArtifactDigest):undefined);retainRuntimeFrontier(carrier,showcaseAdmission.artifactSha256,selectedAfterAdmission);}
       return Object.freeze({
         status: activated ? "active" : "inactive",
         code: activated ? null : "PROFILE_SHOWCASE_BOUNDED_INACTIVE_CAUSAL_BRANCH",
@@ -2708,10 +3154,11 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
     async pendingReconciliationAttempts() {
       const db = await database;
       const transaction = db.transaction(RECONCILIATION_OUTBOX_STORE, "readonly");
-      const attempts = await requestResult(
-        transaction.objectStore(RECONCILIATION_OUTBOX_STORE).getAll(),
-        "PROFILE_SHOWCASE_BOUNDED_OUTBOX_READ_FAILED",
-      ) as ProfileShowcaseBoundedReconciliationAttempt[];
+      const index=transaction.objectStore(RECONCILIATION_OUTBOX_STORE).index('status');
+      const rejected=transaction.objectStore(RECONCILIATION_OUTBOX_STORE).index('publicationRejection');
+      const ranges=await Promise.all([requestResult(index.getAll('network-pending'),'PROFILE_SHOWCASE_BOUNDED_OUTBOX_READ_FAILED'),...[...RETRIABLE_PUBLICATION_REJECTION_CODES].map(code=>requestResult(rejected.getAll(['rejected',code]),'PROFILE_SHOWCASE_BOUNDED_OUTBOX_READ_FAILED'))]);
+      const attempts=ranges.flat()as ProfileShowcaseBoundedReconciliationAttempt[];
+      for(const attempt of attempts)if(attempt.status==='network-pending'||attempt.status==='rejected'&&attempt.lastError&&RETRIABLE_PUBLICATION_REJECTION_CODES.has(attempt.lastError))pendingTransitionSources.add(attempt.artifactDigest);
       return attempts
         .map(withEconomyAttemptDefaults)
         .filter((attempt) =>
@@ -2728,7 +3175,7 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
       const db = await database;
       const transaction = db.transaction(RECONCILIATION_OUTBOX_STORE, "readonly");
       const attempts = await requestResult(
-        transaction.objectStore(RECONCILIATION_OUTBOX_STORE).getAll(),
+        transaction.objectStore(RECONCILIATION_OUTBOX_STORE).index('economyStatus').getAll('pending'),
         "PROFILE_SHOWCASE_BOUNDED_ECONOMY_OUTBOX_READ_FAILED",
       ) as ProfileShowcaseBoundedReconciliationAttempt[];
       return attempts
@@ -2770,6 +3217,8 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
       const transaction = db.transaction(RECONCILIATION_OUTBOX_STORE, "readwrite");
       transaction.objectStore(RECONCILIATION_OUTBOX_STORE).put(next);
       await transactionComplete(transaction);
+      if(next.status==='network-pending'||next.status==='rejected'&&next.lastError&&RETRIABLE_PUBLICATION_REJECTION_CODES.has(next.lastError))pendingTransitionSources.add(next.artifactDigest);else pendingTransitionSources.delete(next.artifactDigest);
+      pruneRuntimeCustody(next.artifactId);
       return next;
     },
 
@@ -2805,7 +3254,24 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
       return next;
     },
 
-    async createTransitionPersistentStateIO(artifactId, predecessorArtifactDigest) {
+    async createTransitionPersistentStateIO(artifactId, predecessorArtifactDigest, admission) {
+      if (admission) {
+        // Actual SDK custody binds this root. The store supplies only requested
+        // immutable nodes; the SDK checks their digest and path before use.
+        const carrier = await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission);
+        if (admission.artifactSha256 !== predecessorArtifactDigest || carrier.artifactId !== artifactId) {
+          throw new TypeError("PROFILE_SHOWCASE_TRANSITION_SOURCE_REQUIRED");
+        }
+        const memory = createReceizProfileShowcasePersistentMemoryStoreV114();
+        for (const name of ["firstPaintWitnessNodes", "stateTransitionWitnessNodes"]) {
+          for (const node of (carrier["profile-showcase"][name] ?? []) as ReceizProfileShowcasePersistentNodeV114[]) await memory.writeNode(node);
+        }
+        return Object.freeze({
+          writeNode: memory.writeNode,
+          resolveNode: async (digest: string) => await memory.resolveNode(digest)
+            ?? await readObject<ReceizProfileShowcasePersistentNodeV114>(PERSISTENT_NODE_STORE, digest, "PROFILE_SHOWCASE_COMPLETE_SOURCE_INCOMPLETE"),
+        });
+      }
       // Bind traversal to the exact admitted predecessor, including a held
       // replacement source. The SDK checks every requested node against its
       // sealed root/path; global storage membership is never admission.
@@ -2861,13 +3327,10 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
 
     async reopenHead(artifactId, retainedArtifactDigest?: string) {
       /*
-       * A durable pointer is never promoted into proof authority. Reuse the
-       * complete source closure check first, then rebuild SDK runtime
-       * custody from the exact active artifact, exact predecessor artifact,
-       * and exact predecessor history node stored by the vault.
+       * A durable pointer never supplies SDK custody. After checking current
+       * selection, reuse an actual admission already held by this vault;
+       * otherwise reopen exact current/predecessor proof inputs as before.
        */
-      const settled = await readVerifiedSourceProjection(artifactId, retainedArtifactDigest);
-      if (!settled) return null;
       const selected = await readObject<ActiveRecord>(
         ACTIVE_STORE,
         artifactId,
@@ -2876,7 +3339,11 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
       const active = selected && retainedArtifactDigest
         ? { ...selected, artifactDigest: retainedArtifactDigest }
         : selected;
-      if (!active || active.artifactDigest !== settled.artifactDigest) return null;
+      if(!active||active.artifactId!==artifactId)return null;
+      const heldAdmission=admittedHeads.get(active.artifactDigest);
+      if(heldAdmission?.artifactId===artifactId)return heldAdmission;
+      const settled = await readVerifiedSourceProjection(artifactId, retainedArtifactDigest,selected??undefined);
+      if (!settled||active.artifactDigest!==settled.artifactDigest) return null;
       const [head, artifact] = await Promise.all([
         readObject<HeadRecord>(
           HEAD_STORE,
@@ -2892,253 +3359,33 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         ),
       ]);
       if (!head || !artifact) return null;
-      try {
-        const candidateArtifact = exactArtifactFile(artifact);
-        let admission: ReceizVerifiedProfileShowcaseAdmission | null = null;
-        const parentArtifactDigests = exactHeadParentArtifactDigests(head);
-        if (parentArtifactDigests.length === 0) {
-          const verification = await verifyReceizArtifactWithCanonicalRoots(
-            candidateArtifact,
-            roots,
-          );
-          const candidate = await createReceizArtifactAdmissionEngine({
-            canonicalSignatureV4RootPublicKeys: roots,
-          })(verification, {
-            profile: "profile-showcase",
-            ownerConstraint: artifact.ownerReceizIdentity,
-          });
-          admission = candidate.profile === "profile-showcase"
-            && candidate.verdict === "bearer-recovery"
-            ? candidate
-            : null;
-        } else if (parentArtifactDigests.length === 2) {
-          admission = await admitExactStoredMergeHead({
-            head,
-            candidateArtifact,
-            carrier: settled.carrier,
-            accountingDigest: active.artifactDigest,
-          });
-        } else if (parentArtifactDigests.length === 1) {
-          const predecessorArtifactDigest = parentArtifactDigests[0]!;
-          const historyParent = settled.carrier.receizProofHistory.parentRefs[0];
-          const [predecessorArtifact, predecessorHead, predecessorHistoryNode] =
-            await Promise.all([
-              readObject<ArtifactRecord>(
-                ARTIFACT_STORE,
-                predecessorArtifactDigest,
-                "PROFILE_SHOWCASE_BOUNDED_PREDECESSOR_ARTIFACT_MISSING",
-                active.artifactDigest,
-              ),
-              readObject<HeadRecord>(
-                HEAD_STORE,
-                predecessorArtifactDigest,
-                "PROFILE_SHOWCASE_BOUNDED_PREDECESSOR_HEAD_MISSING",
-                active.artifactDigest,
-              ),
-              historyParent
-                ? readObject<Record<string, unknown>>(
-                    HISTORY_NODE_STORE,
-                    historyParent.nodeDigest,
-                    "PROFILE_SHOWCASE_BOUNDED_PREDECESSOR_HISTORY_MISSING",
-                    active.artifactDigest,
-                  )
-                : Promise.resolve(null),
-            ]);
-          /*
-           * Checkpoint and legacy migration boundaries remain governed by
-           * their stronger dedicated SDK admissions. A generic projection
-           * must never be fabricated when that runtime custody is absent.
-           */
-          if (
-            !predecessorArtifact
-            || !predecessorHistoryNode
-            || !historyParent
-          ) return null;
-          if (predecessorHead) {
-            if (predecessorHead.historyNodeDigest !== historyParent.nodeDigest) {
-              return null;
-            }
-            admission =
-              await admitReceizProfileShowcaseSuccessorWithExactPredecessorContext({
-                predecessorArtifact: exactArtifactFile(predecessorArtifact),
-                candidateArtifact,
-                predecessorHistoryNode,
-                resolveVerifiedHistoricalArtifactDigest: createHistoricalResolver(artifactId, predecessorArtifactDigest),
-                canonicalSignatureV4RootPublicKeys: roots,
-              });
-          } else {
-            const checkpointRecord = await readObject<CheckpointRecord>(
-              CHECKPOINT_STORE,
-              active.artifactDigest,
-              "PROFILE_SHOWCASE_CHECKPOINT_BOUNDARY_MISSING",
-              active.artifactDigest,
-            );
-            if (!checkpointRecord) {
-              const predecessorVerification =
-                await verifyReceizArtifactWithCanonicalRoots(
-                  exactArtifactFile(predecessorArtifact),
-                  roots,
-                );
-              const legacyInspection =
-                await inspectReceizLegacyProfileShowcaseV114({
-                  verification: predecessorVerification,
-                  ownerConstraint: predecessorArtifact.ownerReceizIdentity,
-                  dependencies: {
-                    canonicalSignatureV4RootPublicKeys: roots,
-                  },
-                });
-              if (
-                legacyInspection.historyHeadDigest !== historyParent.nodeDigest
-                || canonicalizeReceizConstitution(
-                  predecessorHistoryNode as never,
-                ) !== canonicalizeReceizConstitution(
-                  readReceizLegacyProfileShowcaseInspectionCustody(
-                    legacyInspection,
-                  ).history.nodes.find(
-                    (node) => node.nodeDigest === historyParent.nodeDigest,
-                  ) as never,
-                )
-              ) return null;
-              admission =
-                await admitReceizLegacyProfileShowcaseMigrationWithInspectionContext({
-                  inspection: legacyInspection,
-                  candidateArtifact: { artifact: candidateArtifact },
-                  expectedHead: settled.carrier["profile-showcase"],
-                });
-            } else {
-              if (checkpointRecord.checkpointArtifactDigest
-                !== predecessorArtifactDigest
-              || checkpointRecord.checkpointHistoryNodeDigest
-                !== historyParent.nodeDigest
-              || (!options.resolveVerifiedCheckpointActorEvidence && !checkpointRecord.actorPublicBinding)) {
-                return null;
-              }
-              const [
-                checkpointArtifact,
-                checkpointPredecessorArtifact,
-                actorEvidence,
-                checkpointChildren,
-              ] = await Promise.all([
-                readObject<ArtifactRecord>(
-                  ARTIFACT_STORE,
-                  checkpointRecord.checkpointArtifactDigest,
-                  "PROFILE_SHOWCASE_CHECKPOINT_BOUNDARY_MISSING",
-                  active.artifactDigest,
-                ),
-                readObject<ArtifactRecord>(
-                  ARTIFACT_STORE,
-                  checkpointRecord.predecessorArtifactDigest,
-                  "PROFILE_SHOWCASE_CHECKPOINT_PREDECESSOR_MISSING",
-                  active.artifactDigest,
-                ),
-                options.resolveVerifiedCheckpointActorEvidence?.(
-                  checkpointRecord.actorArtifactDigest,
-                ) ?? Promise.resolve(null),
-                Promise.all(checkpointRecord.childArtifactDigests.map((digest) =>
-                  readObject<ChildRecord>(
-                    CHILD_STORE,
-                    digest,
-                    "PROFILE_SHOWCASE_CHECKPOINT_CHILD_MISSING",
-                    active.artifactDigest,
-                  ))),
-              ]);
-              if (
-                !checkpointArtifact
-                || !checkpointPredecessorArtifact
-                || (!actorEvidence && !checkpointRecord.actorPublicBinding)
-                || checkpointChildren.some((child) => child === null)
-              ) return null;
-              const checkpointPredecessorAdmission = await reopenWithRoots({
-                ...checkpointPredecessorArtifact,
-                profile: "profile-showcase",
-                roots,
-              });
-              if (!checkpointPredecessorAdmission
-                || checkpointPredecessorAdmission.artifactSha256
-                  !== checkpointRecord.predecessorArtifactDigest) {
-                return null;
-              }
-              const admittedChildren = await Promise.all(
-                checkpointChildren.map((child) => child
-                  ? reopenWithRoots({
-                      ...child,
-                      profile: "portable-state",
-                      roots,
-                    })
-                  : Promise.resolve(null)),
-              );
-              if (admittedChildren.some((child) => child === null)) return null;
-              const resolveSegment = async (segmentIndex: number) => {
-                if (!Number.isSafeInteger(segmentIndex) || segmentIndex < 0) {
-                  return null;
-                }
-                const indexRecord =
-                  await readObject<CheckpointSegmentIndexRecord>(
-                    CHECKPOINT_SEGMENT_INDEX_STORE,
-                    `${checkpointRecord.checkpointArtifactDigest}:${segmentIndex}`,
-                    "PROFILE_SHOWCASE_CHECKPOINT_SEGMENT_INDEX_MISSING",
-                    active.artifactDigest,
-                  );
-                if (!indexRecord || indexRecord.segmentIndex !== segmentIndex) {
-                  return null;
-                }
-                if (options.checkpointContentStore) {
-                  return options.checkpointContentStore.get(
-                    indexRecord.segmentId,
-                  );
-                }
-                const segment = await readObject<SegmentRecord>(
-                  SEGMENT_STORE,
-                  indexRecord.segmentId,
-                  "PROFILE_SHOWCASE_CHECKPOINT_SEGMENT_MISSING",
-                  active.artifactDigest,
-                );
-                return segment && await verifyStoredSegment(segment)
-                  ? checkpointSegmentMechanics(segment)
-                  : null;
-              };
-              const checkpointInput = {
-                  checkpointArtifact: exactArtifactFile(checkpointArtifact),
-                  canonicalSignatureV4RootPublicKeys: roots,
-                  verifiedActorEvidence: actorEvidence,
-                  admittedChildren: admittedChildren.filter(
-                    (child): child is ReceizVerifiedArtifactAdmission =>
-                      child !== null,
-                  ),
-                  resolvePredecessorAdmission: async (artifactDigest: string) =>
-                    artifactDigest === checkpointRecord.predecessorArtifactDigest
-                      ? checkpointPredecessorAdmission
-                      : null,
-                  resolveSegment,
-                  ...(options.checkpointPersistentStateIO
-                    ? {
-                        persistentStateIO: options.checkpointPersistentStateIO,
-                        auditMode: "bounded-snapshot" as const,
-                      }
-                    : {}),
-                };
-              const checkpoint = actorEvidence
-                ? await admitReceizProfileShowcaseCheckpointBundleV114(checkpointInput)
-                : await admitReceizProfileShowcaseCheckpointBundleWithSourceActorBindingV114({
-                  ...checkpointInput, actorPublicBinding: checkpointRecord.actorPublicBinding,
-                });
-              admission =
-                await admitReceizProfileShowcaseCheckpointCarrierWithContextV114({
-                  checkpoint,
-                  candidateArtifact,
-                });
-            }
-          }
-        } else return null;
-        const verified = admission;
-        return verified
-          && verified.profile === "profile-showcase"
-          && verified.artifactSha256 === active.artifactDigest
-          ? verified
-          : null;
-      } catch {
-        return null;
-      }
+      return reopenStoredProof(artifactId,active.artifactDigest,head,artifact,settled.carrier,selected??undefined);
+    },
+
+    async hasRetainedHead(artifactId,digest){
+      if(!SHA256_HEX_RE.test(digest))return false;
+      const head=await readObject<HeadRecord>(HEAD_STORE,digest,'PROFILE_SHOWCASE_BOUNDED_EDGE_HEAD_READ_FAILED');
+      const artifact=await readObject<ArtifactRecord>(ARTIFACT_STORE,digest,'PROFILE_SHOWCASE_BOUNDED_EDGE_ARTIFACT_READ_FAILED');
+      return Boolean(head?.artifactId===artifactId&&artifact?.artifactDigest===digest);
+    },
+
+    async reopenRetainedHead(artifactId,digest){
+      if(!SHA256_HEX_RE.test(digest))return null;
+      const actual=admittedHeads.get(digest);if(actual?.artifactId===artifactId)return actual;
+      const [head,artifact]=await Promise.all([readObject<HeadRecord>(HEAD_STORE,digest,'PROFILE_SHOWCASE_BOUNDED_EDGE_HEAD_READ_FAILED',digest),
+        readObject<ArtifactRecord>(ARTIFACT_STORE,digest,'PROFILE_SHOWCASE_BOUNDED_EDGE_ARTIFACT_READ_FAILED',digest)]);
+      if(!head||!artifact||head.artifactId!==artifactId||artifact.artifactDigest!==digest||await sha256(artifact.exactSealedArtifactBytes)!==digest)return null;
+      try{
+        // Inspection supplies exact carrier fields to the unchanged SDK opener;
+        // it never supplies an admission or a selected/current view.
+        const inspection=await inspectReceizBoundedProfileShowcaseV114({verification:await verifyReceizArtifactWithCanonicalRoots(exactArtifactFile(artifact),roots),
+          ownerConstraint:artifact.ownerReceizIdentity,dependencies:{canonicalSignatureV4RootPublicKeys:roots}});
+        const carrier=readReceizBoundedProfileShowcaseInspectionCarrier(inspection);
+        if(inspection.artifactSha256!==digest||carrier.artifactId!==artifactId||carrier.receizProofHistory.currentNode.nodeDigest!==head.historyNodeDigest)return null;
+        const admission=await reopenStoredProof(artifactId,digest,head,artifact,carrier);
+        if(admission){admittedHeads.set(digest,admission);retainRuntimeFrontier(carrier,digest);}
+        return admission;
+      }catch{return null;}
     },
 
     async resolveRetainedSegment(segmentId) {
@@ -3198,7 +3445,7 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         const held = completeSources.get(retainedKey);
         if (held) {
           noteRequest(active.artifactDigest, "reads", ACTIVE_STORE);
-          return structuredClone(await held.complete);
+          const prepared=await held.complete;await repairOriginalCoverage(held.firstPaint,prepared);return structuredClone(prepared);
         }
       }
       const source = retainedArtifactDigest
@@ -3226,7 +3473,8 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         completeSources.set(key, record);
         complete = record;
       }
-      return structuredClone(await complete.complete);
+      const prepared=await complete.complete;await repairOriginalCoverage(source,prepared);
+      return structuredClone(prepared);
     },
 
     async readPublicationHead(artifactId) {
@@ -3376,7 +3624,37 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         history: Object.freeze([...history.values()]), historyNodes: Object.freeze([...historyNodes.values()]), segments: Object.freeze([...segments.values()]) });
     },
 
-    async exportCompleteSource(artifactId, ancestorArtifactDigest) {
+    async exportAcceptedTransition(artifactId,ancestorArtifactDigest){
+      const selected=await this.readPublicationHead(artifactId);if(!selected)return null;
+      const digest=ancestorArtifactDigest??selected.artifactDigest;
+      if(digest!==selected.artifactDigest&&!await this.isVerifiedPublicationAncestor(artifactId,digest,selected.artifactDigest))return null;
+      const held=acceptedTransitions.get(digest);if(held)return copyAcceptedTransition(held);
+      const [head,artifact]=await Promise.all([
+        readObject<HeadRecord>(HEAD_STORE,digest,'PROFILE_SHOWCASE_BOUNDED_EDGE_HEAD_READ_FAILED',digest),
+        readObject<ArtifactRecord>(ARTIFACT_STORE,digest,'PROFILE_SHOWCASE_BOUNDED_EDGE_ARTIFACT_READ_FAILED',digest)]);
+      if(!head||!artifact||head.artifactId!==artifactId||artifact.artifactDigest!==digest||await sha256(artifact.exactSealedArtifactBytes)!==digest)return null;
+      // A cold transfer verifies only this actual new sealed input. Its exact
+      // predecessor and membership are admitted by the receiving SDK reader;
+      // no history/child-window reconstruction is an export prerequisite.
+      const inspection=await inspectReceizBoundedProfileShowcaseV114({verification:await verifyReceizArtifactWithCanonicalRoots(exactArtifactFile(artifact),roots),
+        ownerConstraint:artifact.ownerReceizIdentity,dependencies:{canonicalSignatureV4RootPublicKeys:roots}});
+      if(inspection.artifactSha256!==digest)return null;
+      const carrier=readReceizBoundedProfileShowcaseInspectionCarrier(inspection),delta=carrier['profile-showcase'].directDelta as readonly Record<string,unknown>[];
+      if(carrier.artifactId!==artifactId||delta.length!==1)return null;
+      let child:ChildRecord|undefined;
+      if(delta[0]?.kind==='showcase.append'){
+        const reference=delta[0].child as ProfileShowcaseChildReference;
+        child=await readObject<ChildRecord>(CHILD_STORE,reference.childArtifactDigest,'PROFILE_SHOWCASE_PUBLICATION_NEW_CHILD_MISSING',digest)??undefined;
+        if(!child||!sameSealedChildReference(reference,child.reference)||await sha256(child.exactSealedArtifactBytes)!==reference.childArtifactDigest)return null;
+      }
+      const source=holdAcceptedTransition(digest,carrier,artifact,child);return source?copyAcceptedTransition(source):null;
+    },
+
+    async exportCompleteSource(artifactId, ancestorArtifactDigest,exportOptions) {
+      if(exportOptions?.initialOnly){const head=await this.readPublicationHead(artifactId),digest=ancestorArtifactDigest??head?.artifactDigest;if(!digest)return null;
+        const record=await readObject<HeadRecord>(HEAD_STORE,digest,'PROFILE_SHOWCASE_BOUNDED_EDGE_HEAD_READ_FAILED');
+        if(!record||record.artifactId!==artifactId||exactHeadParentArtifactDigests(record).length!==0)return null;}
+
       const selection = ancestorArtifactDigest ? undefined : await readEffectiveSourceSelection(artifactId);
       const active = selection?.active;
       const reusable = active?.artifactId === artifactId && !("replacementPresentationHold" in active);
@@ -3865,6 +4143,11 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         })));
     },
 
+    async lookupOriginalChildIdentity(admission,original){
+      try{const result=await originalChildIndex.lookup({admission,original});if(result.status==='unknown'&&admittedHeads.get(admission.artifactSha256)===admission)pendingOriginalCoverage.add(admission.artifactSha256);return result;}
+      catch{return {status:'unknown'};}
+    },
+
     async resolveOriginalChildReference(artifactId, originalId) {
       const normalizedOriginalId = originalId.trim();
       if (!normalizedOriginalId) return null;
@@ -4190,6 +4473,7 @@ export function createProfileShowcaseBoundedEdgeVault(options: Readonly<{
         actualReadRequestsByStore: Object.freeze({ ...counts.reads }),
         actualWriteRequestsByStore: Object.freeze({ ...counts.writes }),
         serializedRecordBytes: headReferenceBytes,
+        runtimeAdmittedSourceHeads:admittedHeads.size,runtimeAdmittedSourcePresentations:admittedFirstPaints.size,runtimeAcceptedTransitionSources:acceptedTransitions.size,
         runtimeCompleteSourcePreparations: completeSources.size,
         runtimePersistentSourcePreparations: persistentSources.size,
         runtimeHistoricalIndexes: verifiedHistoricalIndexes.size,

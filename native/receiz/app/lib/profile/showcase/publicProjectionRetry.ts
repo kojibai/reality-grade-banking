@@ -1,6 +1,8 @@
 "use client";
 
+import {readAcceptedProfileShowcaseTransitionPredecessor,attachAcceptedProfileShowcaseTransitionPredecessor,readProfileShowcasePublicSourceActorCustody} from "./boundedEdgeVault";
 import type {
+  ProfileShowcaseAcceptedTransitionExport,ProfileShowcasePublicationSource,
   ProfileShowcaseBoundedEdgeVault,
   ProfileShowcaseCompletePublicSource,
 } from "./boundedEdgeVault";
@@ -24,9 +26,10 @@ import {
 import { peekProfileRouteHydrationSeed, peekProfileRouteSnapshot } from "../routeHydration";
 import type { ProfileShowcaseArtifactId } from "./types";
 import { refreshAcceptedPublicProfileDocument } from "./publicProfileDocumentRefresh.client";
+import {peekRecoveredAccountShowcaseScope} from "./recoveredAccountScope.client";
 
 export type PublicProjectionPublisher = (
-  source: ProfileShowcaseCompletePublicSource,
+  source: ProfileShowcasePublicationSource,
   ownerReceizId: string,
 ) => Promise<ProfileShowcasePublicProjectionPublicationResult>;
 
@@ -214,6 +217,28 @@ function scopeFor(
   });
 }
 
+async function pendingAcceptedTransitionSource(vault:ProfileShowcaseBoundedEdgeVault,scope:ProfileShowcaseCompletePublicationScope,historical:boolean){
+ const source=await vault.exportAcceptedTransition(scope.artifactId,historical?scope.artifactDigest:undefined);if(!source)return null;
+ const pending=new Set((await vault.pendingReconciliationAttempts()).filter(attempt=>attempt.artifactId===scope.artifactId).map(attempt=>attempt.artifactDigest));
+ // This existing held relationship is only a scheduling boundary. The server
+ // still admits the exact SDK predecessor and signed destination; it is not a
+ // delivery ACK, currentness claim, or permission to invent a missing prefix.
+ const accepted=peekRecoveredAccountShowcaseScope({username:scope.username,accountId:scope.profileIdentity,artifactId:scope.artifactId});
+ const acceptedDigest=accepted?.proofIdentity===readProfileShowcasePublicSourceActorCustody(source)?.actorId?accepted?.locator.acceptedArtifactDigest:null;
+ const suffix:ProfileShowcaseAcceptedTransitionExport[]=[source],seen=new Set<string>([source.artifactDigest]);
+ let current=source;
+ while(pending.size){
+  const digest=readAcceptedProfileShowcaseTransitionPredecessor(current);
+  if(digest===acceptedDigest||!pending.has(digest)||alreadyPublished({...scope,artifactDigest:digest}))break;
+  if(seen.has(digest))throw new TypeError('PROFILE_SHOWCASE_PUBLICATION_ANCESTRY_UNCONFIRMED');seen.add(digest);
+  const prior=await vault.exportAcceptedTransition(scope.artifactId,digest);if(!prior)throw new TypeError('PROFILE_SHOWCASE_PUBLIC_SOURCE_CAUSAL_INTERMEDIATE_REQUIRED');
+  suffix.push(prior);current=prior;
+ }
+ let selected=suffix.pop()!;
+ while(suffix.length)selected=attachAcceptedProfileShowcaseTransitionPredecessor(suffix.pop()!,selected);
+ return selected;
+}
+
 async function publishCaptured(
   vault: ProfileShowcaseBoundedEdgeVault,
   scope: ProfileShowcaseCompletePublicationScope,
@@ -233,14 +258,17 @@ async function publishCaptured(
 
   const operation = (async (): Promise<CapturedOutcome> => {
     if (!routeMatches(readRoute(), scope)) return pending(ACCOUNT_CHANGED);
-    const source = await vault.exportCompleteSource(scope.artifactId,
-      historical ? scope.artifactDigest : undefined);
+    const source = typeof vault.exportAcceptedTransition==='function'
+      ? await pendingAcceptedTransitionSource(vault,scope,historical)
+        ??await vault.exportCompleteSource(scope.artifactId,historical?scope.artifactDigest:undefined,{initialOnly:true})
+      : await vault.exportCompleteSource(scope.artifactId,historical?scope.artifactDigest:undefined);
     if (!routeMatches(readRoute(), scope)) return pending(ACCOUNT_CHANGED);
     if (!source) return pending("PROFILE_SHOWCASE_PUBLICATION_SOURCE_UNAVAILABLE");
     // An advance during export belongs to the next captured publication.
     if (source.artifactDigest !== scope.artifactDigest) {
       return pending("PROFILE_SHOWCASE_PUBLICATION_HEAD_CHANGED");
     }
+
     const result = publish === publishProfileShowcasePublicProjection
       ? await publishProfileShowcasePublicProjection(
           source, scope.ownerReceizId, fetch, scope.username, scope, readRoute,
@@ -308,7 +336,8 @@ export async function flushPendingProfileShowcasePublicProjections(
           scope = scopeFor(artifactId, head.artifactDigest, route);
           outcome = await publishCaptured(vault, scope, publish, readRoute, false, options.refreshDocument);
           if (outcome.status !== "published"
-            && outcome.code === "PROFILE_SHOWCASE_PUBLIC_SOURCE_CAUSAL_INTERMEDIATE_REQUIRED") {
+            && outcome.code === "PROFILE_SHOWCASE_PUBLIC_SOURCE_CAUSAL_INTERMEDIATE_REQUIRED"
+            &&typeof vault.exportAcceptedTransition!=='function') {
             // The accepted public head requires each exact sealed parent source.
             // Replay only outbox heads proven ancestral to the captured head;
             // Kai ordering alone cannot promote a sibling or a representation.
