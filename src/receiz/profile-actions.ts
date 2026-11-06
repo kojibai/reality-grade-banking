@@ -1,12 +1,13 @@
-import type {PublicProfile} from './public-profile';
+import type {PublicProfile,PublicProfileHeader} from './public-profile';
 import {requestBankNavigation} from '../core/bank-navigation';
 type AccountAction={id:number;kind:'send'|'messages';profile:PublicProfile};
 export type ProfileEditRequest={id:number;profile:PublicProfile;slot:HTMLElement|null};
-let owner:string|null=null,edit:ProfileEditRequest|null=null,action:AccountAction|null=null,sequence=0;
+let owner:string|null=null,ownerHeader:PublicProfileHeader|null=null,edit:ProfileEditRequest|null=null,action:AccountAction|null=null,sequence=0;
 const listeners=new Set<()=>void>();const notify=()=>listeners.forEach(fn=>fn());
 export const subscribeProfileActions=(fn:()=>void)=>{listeners.add(fn);return()=>{listeners.delete(fn);};};
 export const readProfileOwner=()=>owner;
-export function publishProfileOwner(uid:string|null){if(owner!==uid){owner=uid;if(edit?.profile.userId!==uid)edit=null;notify();}}
+export const readProfileOwnerHeader=()=>ownerHeader;
+export function publishProfileOwner(uid:string|null,header?:PublicProfileHeader|null){const next=uid&&header?.userId===uid?header:null;if(owner!==uid||ownerHeader!==next){owner=uid;ownerHeader=next;if(edit?.profile.userId!==uid)edit=null;notify();}}
 export const readProfileEdit=()=>edit;
 export function beginProfileEdit(profile:PublicProfile){if(profile.userId!==owner)return;edit={id:++sequence,profile,slot:null};notify();}
 export function closeProfileEdit(id=edit?.id){if(edit?.id===id){edit=null;notify();}}
