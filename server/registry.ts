@@ -3,14 +3,21 @@ import {Readable} from 'node:stream';
 import type {ReadableStream as NodeReadableStream} from 'node:stream/web';
 import type {Plugin} from 'vite';
 import {institutionDirectoryRecords} from '../src/content/institution-scorecard.mjs';
-import {REGISTRY_MAX_PROOF_BYTES} from '../src/registry/types.js';
-import {registryStore,type RegistryStore} from './registry-store.js';
+import {REGISTRY_MAX_PROOF_BYTES,REGISTRY_NATIVE_PART_BYTES} from '../src/registry/types.js';
+import {registryStore,RegistryStoreError,type RegistryStore} from './registry-store.js';
 import {admitRegistryProof,boundedRegistryBytes,RegistryProofError} from './registry-proof.js';
 import {registryDocumentResponse} from './registry-document.js';
 const PREFIX='/api/bank/registry';
 const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const messages:Record<string,string>={
- REGISTRY_PUBLICATION_UNAVAILABLE:'Public record updates are temporarily unavailable. Your institution’s current record has been preserved.',
+ REGISTRY_PUBLICATION_UNAVAILABLE:'Publication could not be confirmed. Check the public record or retry this same Original.',
+ REGISTRY_PUBLISH_SIGNATURE_REQUIRED:'Authorize publication with your existing Receiz Identity Record. Private identity material stays on the device.',
+ REGISTRY_NATIVE_PUBLICATION_UNCONFIRMED:'Publication could not be confirmed. Check the public record or retry this same Original.',
+ REGISTRY_NATIVE_PUBLICATION_REFUSED:'Receiz refused this signed publication. The shared conformance record has not been updated.',
+ REGISTRY_NATIVE_SOURCE_INVALID:'The published source parts do not reconstruct this institution’s exact conformance Original.',
+ REGISTRY_NATIVE_SOURCE_CONFLICT:'A source with this identifier contains different bytes. The conflicting source has not replaced the Original.',
+ REGISTRY_NATIVE_AUTHORIZATION_REQUIRED:'Receiz could not authorize this publication. Reopen your existing publisher identity and retry the same Original.',
+ REGISTRY_NATIVE_PAYLOAD_CAPACITY:'The signed publication exceeds the supported transport limit. Retry using the Registry’s bounded Original parts.',
  REGISTRY_PROOF_INVALID:'This file is not a verified passing conformance Original. Upload the original PNG certificate with its complete evidence and canonical seal.',
  REGISTRY_INSTITUTION_MISMATCH:'The Original names a different assessed implementation. Upload the passing Original for this institution’s exact registered name.',
  REGISTRY_PASSING_PROOF_REQUIRED:'A complete passing conformance Original is required for this assessed scope.',
@@ -20,6 +27,12 @@ const messages:Record<string,string>={
  REGISTRY_PROOF_REQUIRED:'Choose the original passing PNG certificate.',
 };
 function failure(code:string,status:number){return Response.json({ok:false,code,message:messages[code]??'The Registry could not accept this request. The current record has been preserved.'},{status,headers});}
+async function signedPublication(request:Request):Promise<unknown>{
+ if(Number(request.headers.get('content-length'))>2*1024*1024)throw new RegistryProofError('REGISTRY_NATIVE_PAYLOAD_CAPACITY',413);
+ const bytes=await boundedRegistryBytes(request.body,request.signal);
+ if(bytes.length>2*1024*1024)throw new RegistryProofError('REGISTRY_NATIVE_PAYLOAD_CAPACITY',413);
+ try{const value=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));if(!value||typeof value!=='object'||Object.keys(value).join('|')!=='signed')throw Error();return value.signed;}catch{throw new RegistryProofError('REGISTRY_NATIVE_SOURCE_INVALID',400);}
+}
 export function createRegistryHandler(ports:{store?:()=>RegistryStore|null}={}) {
  return async function handle(request:Request):Promise<Response> {
   const url=new URL(request.url),path=url.pathname.replace(/\/$/,'');
@@ -30,14 +43,16 @@ export function createRegistryHandler(ports:{store?:()=>RegistryStore|null}={}) 
   if(path!==PREFIX&&!path.startsWith(PREFIX+'/'))return failure('REGISTRY_NOT_FOUND',404);
   if(!['GET','HEAD','POST'].includes(request.method))return failure('REGISTRY_METHOD_NOT_ALLOWED',405);
   const suffix=path.slice(PREFIX.length),originalMatch=/^\/original\/([a-z0-9-]+)\/([a-f0-9]{64})$/.exec(suffix);
-  const institution=suffix&&!originalMatch?institutionDirectoryRecords.find(row=>'/'+row.id===suffix):undefined;
+  const institutionMatch=/^\/([a-z0-9-]+)(\/parts)?$/.exec(suffix),parts=!!institutionMatch?.[2];
+  const institution=institutionMatch?institutionDirectoryRecords.find(row=>row.id===institutionMatch[1]):undefined;
+  const media=request.headers.get('content-type')?.split(';')[0].trim().toLowerCase(),prepare=url.searchParams.get('prepare')==='1';
   if(suffix&&!originalMatch&&!institution)return failure('REGISTRY_NOT_FOUND',404);
   if(originalMatch&&!institutionDirectoryRecords.some(row=>row.id===originalMatch[1]))return failure('REGISTRY_NOT_FOUND',404);
   if(request.method==='POST'&&!institution||request.method!=='POST'&&institution)return failure('REGISTRY_METHOD_NOT_ALLOWED',405);
   if(request.method==='POST'){
    if(request.headers.has('origin')&&request.headers.get('origin')!==url.origin)return failure('REGISTRY_ORIGIN_REFUSED',403);
-   if(request.headers.get('content-type')?.split(';')[0].trim().toLowerCase()!=='image/png')return failure('REGISTRY_MEDIA_TYPE_REFUSED',415);
-   if(Number(request.headers.get('content-length'))>REGISTRY_MAX_PROOF_BYTES)return failure('REGISTRY_PROOF_CAPACITY',413);
+   if(!['image/png','application/json'].includes(media??'')||parts&&media!=='application/json'||prepare&&media!=='image/png')return failure('REGISTRY_MEDIA_TYPE_REFUSED',415);
+   if(media==='image/png'&&Number(request.headers.get('content-length'))>REGISTRY_MAX_PROOF_BYTES)return failure('REGISTRY_PROOF_CAPACITY',413);
   }
   try {
    const store=(ports.store??registryStore)();
@@ -52,12 +67,21 @@ export function createRegistryHandler(ports:{store?:()=>RegistryStore|null}={}) 
    }
    if(request.method==='HEAD')return new Response(null,{status:200,headers});
    if(!suffix)return Response.json({schema:'bank.registry.public.v1',publishingAvailable:true,records:await store.list()},{headers});
-   const bytes=await boundedRegistryBytes(request.body,request.signal);
-   const record=await admitRegistryProof(institution!,bytes);
-   const entry=await store.append(record,bytes);
-   return Response.json({ok:true,entry},{headers});
+   if(media==='application/json'){
+    const signed=await signedPublication(request);
+    const state=(signed as {storeStateRecord?:{institutionId?:unknown;publication?:{institutionId?:unknown}}}|null)?.storeStateRecord;
+    if((parts?state?.institutionId:state?.publication?.institutionId)!==institution!.id)throw new RegistryProofError('REGISTRY_INSTITUTION_MISMATCH');
+    if(parts){await store.publishPart(signed);return Response.json({ok:true},{headers});}
+    const entry=await store.publishProof(signed);
+    if(entry.institutionId!==institution!.id)throw new RegistryProofError('REGISTRY_INSTITUTION_MISMATCH');
+    return Response.json({ok:true,entry},{headers});
+   }
+   if(!prepare)return failure('REGISTRY_PUBLISH_SIGNATURE_REQUIRED',428);
+   const bytes=await boundedRegistryBytes(request.body,request.signal),publication=await admitRegistryProof(institution!,bytes);
+   return Response.json({ok:true,plan:{publication,originalBytes:bytes.length,partCount:Math.ceil(bytes.length/REGISTRY_NATIVE_PART_BYTES)}},{headers});
   }catch(cause){
    if(cause instanceof RegistryProofError)return failure(cause.code,cause.status);
+   if(cause instanceof RegistryStoreError)return failure(cause.code,cause.status);
    return failure('REGISTRY_PUBLICATION_UNAVAILABLE',503);
   }
  };

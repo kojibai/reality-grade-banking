@@ -7,6 +7,24 @@ const resources=[
  ['fonts/Inter-Regular.ttf','40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82'],
 ] as const;
 let prepared:Promise<{engine:typeof import('@resvg/resvg-wasm');fonts:Uint8Array[]}>|undefined;
+type RendererEngine=typeof import('@resvg/resvg-wasm');
+type EngineInitialization={wasmSha256:string;ready:Promise<void>};
+const initializationKey=Symbol.for('bankeiz.conformance.pinned-renderer-initializations.v1');
+const rendererGlobals=globalThis as typeof globalThis&{[initializationKey]?:WeakMap<RendererEngine['initWasm'],EngineInitialization>};
+function initialize(engine:RendererEngine,bytes:Uint8Array):Promise<void>{
+ // Vite may reload this module while its external engine stays initialized.
+ // Share only our pinned initialization, keyed by that actual engine function;
+ // an unrelated engine or an initialization error is never treated as verified.
+ const initializations=rendererGlobals[initializationKey]??=new WeakMap();
+ let held=initializations.get(engine.initWasm);
+ if(held&&held.wasmSha256!==resources[0][1])throw Error('CONFORMANCE_RENDER_RESOURCE_CHANGED');
+ if(!held){
+  held={wasmSha256:resources[0][1],ready:engine.initWasm(bytes)};initializations.set(engine.initWasm,held);
+  const attempt=held;
+  void attempt.ready.catch(()=>{if(initializations.get(engine.initWasm)===attempt)initializations.delete(engine.initWasm);});
+ }
+ return held.ready;
+}
 async function load(){
  const values=await Promise.all(resources.map(async([path,expected])=>{
   let bytes:Uint8Array;
@@ -24,7 +42,7 @@ async function load(){
   if(digest!==expected)throw Error('CONFORMANCE_RENDER_RESOURCE_CHANGED');
   return bytes;
  }));
- const engine=await import('@resvg/resvg-wasm');await engine.initWasm(new Uint8Array(values[0]));
+ const engine=await import('@resvg/resvg-wasm');await initialize(engine,new Uint8Array(values[0]));
  return{engine,fonts:values.slice(1)};
 }
 export async function renderConformanceEvidencePng(svg:string):Promise<Uint8Array>{

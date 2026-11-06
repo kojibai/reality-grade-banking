@@ -7,6 +7,7 @@ const originalPath=(id,digest)=>`/api/bank/registry/original/${id}/${digest}`;
 const maxProofBytes=4*1024*1024;
 const pngHeader=[137,80,78,71,13,10,26,10];
 const displayCacheName='bankeiz-registry-display-v1',displayCacheKey='/api/bank/registry';
+const publisherModuleUrl='/registry/publish.js';
 const publicationFields=['schema','institutionId','name','scope','cases','artifactSha256','evidenceSha256','holderReceizId','implementationBuildSha256','officialProofUrl','acceptedAt','url'];
 const publicationSnapshot=value=>Object.fromEntries(publicationFields.map(key=>[key,value[key]]));
 const entrySnapshot=entry=>({institutionId:entry.institutionId,revision:entry.revision,current:publicationSnapshot(entry.current),history:entry.history.map(publicationSnapshot)});
@@ -70,7 +71,7 @@ function renderPublication(record,entry){
  record.status='pass';record.accepted=entry;
 }
 
-export function init(root=document){
+export function init(root=document,ports={}){
  const directories=root.matches?.('[data-institution-directory]')?[root]:root.querySelectorAll('[data-institution-directory]');
  for(const directory of directories){
   if(mounted.has(directory))continue;
@@ -162,12 +163,25 @@ export function init(root=document){
    const form=record.element.querySelector('[data-registry-proof-form]');
    const input=form?.querySelector('input[type="file"]'),button=form?.querySelector('button[type="submit"]'),message=form?.querySelector('[data-registry-proof-status]');
    if(!form||!input||!button||!message)continue;
-   let busy=false;
+   const checkPublisher=form.querySelector('[data-registry-check-publisher]'),publisherStatus=form.querySelector('[data-registry-publisher-status]');
+   let busy=false,checkingPublisher=false,expectedPublisherReceizId;
    const announce=(text,state='')=>{message.textContent=text;message.dataset.state=state;};
-   const refresh=()=>{button.disabled=busy||!input.files?.length||!publishingAvailable;input.disabled=busy;form.setAttribute('aria-busy',String(busy));};
+   const announcePublisher=(text,state='')=>{const target=publisherStatus??message;target.textContent=text;target.dataset.state=state;};
+   const refresh=()=>{button.disabled=busy||checkingPublisher||!input.files?.length||!publishingAvailable;input.disabled=busy||checkingPublisher;if(checkPublisher)checkPublisher.disabled=busy||checkingPublisher;form.setAttribute('aria-busy',String(busy||checkingPublisher));};
+   checkPublisher?.addEventListener('click',async event=>{
+    event.preventDefault();if(busy||checkingPublisher)return;
+    checkingPublisher=true;refresh();announcePublisher('Checking this device’s publisher…');
+    try{
+     const publisher=await(ports.loadPublisher??(()=>import(/* @vite-ignore */publisherModuleUrl)))();
+     const binding=await publisher.inspectRegistryPublisher();
+     if(!binding||typeof binding.receizId!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._:@-]{0,159}$/.test(binding.receizId)||typeof binding.keyId!=='string'||!binding.keyId||binding.keyId.length>512)throw Error('The publisher could not be confirmed. Open your existing Receiz Identity Record and check again.');
+     expectedPublisherReceizId=binding.receizId;announcePublisher('Publisher: '+binding.receizId,'success');
+    }catch(cause){announcePublisher(cause instanceof Error&&cause.name!=='TypeError'?cause.message:'The publisher could not be confirmed. Open your existing Receiz Identity Record and check again.','error');}
+    finally{checkingPublisher=false;refresh();}
+   });
    input.addEventListener('change',()=>{if(publishingAvailable)announce(input.files?.length?'Ready to verify. The public record changes only after the proof is accepted.':'');refresh();});
    form.addEventListener('submit',async event=>{
-    event.preventDefault();const file=input.files?.[0];if(busy||!file||!publishingAvailable)return;
+    event.preventDefault();const file=input.files?.[0];if(busy||checkingPublisher||!file||!publishingAvailable)return;
     busy=true;mutation++;refresh();announce('Verifying the Original and its institution binding…');
     let publicationRequested=false,definitiveRefusal=false,bytes;
     try{
@@ -175,12 +189,18 @@ export function init(root=document){
      bytes=new Uint8Array(await file.arrayBuffer());
      if(bytes.length!==file.size||!pngHeader.every((value,index)=>bytes[index]===value))throw Error('Choose the original conformance certificate as a PNG file.');
      publicationRequested=true;
-     const response=await fetch('/api/bank/registry/'+encodeURIComponent(record.id),{method:'POST',headers:{'Content-Type':'image/png','Accept':'application/json'},body:bytes,credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(60000)});
+     const response=await fetch('/api/bank/registry/'+encodeURIComponent(record.id)+'?prepare=1',{method:'POST',headers:{'Content-Type':'image/png','Accept':'application/json'},body:bytes,credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(60000)});
      const value=await response.json();
      if(!response.ok||value?.ok!==true){definitiveRefusal=response.status>=400&&response.status<500&&response.status!==408;const supplied=value?.message??value?.error;const reason=typeof supplied==='string'&&supplied.length<=500?supplied:'The proof was not accepted.';throw Error(reason);}
-     if(!apply(value.entry))throw Error('REGISTRY_PUBLICATION_UNCONFIRMED');
+     const plan=value.plan;
+     if(!plan||!validPublication(plan.publication,record)||plan.originalBytes!==bytes.length||!Number.isSafeInteger(plan.partCount)||plan.partCount<1||plan.partCount>64)throw Error('REGISTRY_PUBLICATION_UNCONFIRMED');
+     announce('Original verified. Authorizing publication on this device…');
+     const publisher=await(ports.loadPublisher??(()=>import(/* @vite-ignore */publisherModuleUrl)))();
+     const entry=await publisher.publishRegistryOriginal({institutionId:record.id,bytes,plan,expectedPublisherReceizId,onStatus:message=>announce(String(message))});
+     if(!apply(entry))throw Error('REGISTRY_PUBLICATION_UNCONFIRMED');
      input.value='';announce('Proof verified and published. The Registry record now shows PASS for the assessed scope.','success');
     }catch(cause){
+     if(cause?.uncertain===false)definitiveRefusal=true;
      if(publicationRequested&&!definitiveRefusal){
       announce('Publication could not be confirmed. Check the public record or retry this same Original.','error');
       try{
@@ -200,7 +220,7 @@ export function init(root=document){
    const readMutation=mutation;
    void readPublicRecords().then(value=>{
     for(const entry of value.records)apply(entry);
-    if(readMutation===mutation){publishingAvailable=value.publishingAvailable;if(!publishingAvailable)for(const form of forms)form.announce('Public publishing is not connected yet. Existing records remain available.');for(const form of forms)form.refresh();}
+    if(readMutation===mutation){publishingAvailable=value.publishingAvailable;if(!publishingAvailable)for(const form of forms)form.announce('The native publication service is temporarily unavailable. Existing records remain available.');for(const form of forms)form.refresh();}
    }).catch(()=>{if(readMutation===mutation)for(const form of forms)form.announce('Public Registry updates are temporarily unavailable. Existing records remain available.');});
   }
  }

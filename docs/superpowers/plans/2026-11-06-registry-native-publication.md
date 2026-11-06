@@ -1,0 +1,15 @@
+# Registry native Receiz publication correction
+
+The user explicitly directs use of the installed Receiz SDK, MCP and AI Skills instead of connecting a separate durable store. The installed SDK's public app-state documentation expressly supports directories without an application database. Redis was an unnecessary application dependency.
+
+Preserve the verified Original, institution association, exact scope, accepted history, immediate available rendering and offline public display. Do not change account creation or move private signing material to a server. Public app-state is distribution and lookup beneath proof, never conformance authority.
+
+Use `publicStore.signPublish` with the device's existing admitted publisher identity, and `publicStore.publishSigned` through the fixed Receiz transport. The publisher remains distinct from the conformance credential holder; posting the public fact does not transfer ownership. No new signer, identity export, server bearer, Redis, or new database is required. MCP's generic app-state publisher remains a delegated adapter; its availability is not a substitute for actual authorization. Private identity signing is the installed SDK host boundary.
+
+Each exact Original is carried in immutable, hash-addressed app-state parts, each at most 128 KiB before base64 encoding, so signed envelopes fit the documented 2 MiB native feed limit. The institution/proof index is published last after all parts are recoverable and the complete certificate passes the existing opener and institution checks. Retry uses retained publisher-scoped part/index transport identity and retains unknown outcomes for lookup, never automatic duplicate signing after a pending outcome.
+
+Public lookup uses `appState.byNamespace` and `appState.byId`. A newly discovered projection must reconstruct and hash the complete Original and run canonical verification before it contributes a PASS. Reuse already admitted exact sources without redoing verification on navigation. The current official publication identifies the institution's selected Original; retain other verified Originals as evidence history without making timestamps proof authority. Bankeiz's known holder and existing Original remain valid.
+
+The existing upload first prepares/verifies the public Original. A lazy SDK publisher signs the exact bounded public transport on the device; the server relays public signed parts and final index only. No private Identity Record, key or passphrase crosses this publication boundary. Only confirmed native acceptance and a public readback change the Registry result.
+
+Required checks cover actual SDK signatures, missing publisher identity and changed publisher custody, source substitution, oversized envelope limits, partial writes, failed/unknown publication, same-proof retry, public cold read and exact Original recovery, retained history, existing Bankeiz PASS, and frozen account entry. Report actual native/live publication separately from source and fixture results.

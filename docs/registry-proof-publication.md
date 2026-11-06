@@ -1,46 +1,51 @@
 # Registry proof publication
 
-The Registry accepts a public passing conformance Original from an institution's expanded record. An accepted submission updates its shared record automatically for the Original's exact assessed scope. There is no manual approval queue, new account, private Identity Record upload or financial action.
+The Registry uses the installed Receiz SDK’s public publication and lookup rails. It requires no separate Redis service, application database, server signing key or publication token. A person submits an institution’s public passing Original from its expanded record, authorizes publication with their own existing device-held Identity Record, and receives a scoped PASS only after native acceptance and public readback.
 
-## What is verified
+## Proof and institution association
 
-The server reuses the existing sealed conformance opener and installed SDK. It verifies the canonical PNG seal, native holder continuity, carried source, complete passing test transcript and reproduced certificate artwork. The institution name and exact implementation build must match the published assessment. A passing public integration contract remains that scope; it does not become a claim of production receiving qualification.
+The existing canonical conformance opener verifies the exact PNG, native holder continuity, carried source, complete passing transcript and reproduced artwork. Institution name, holder, scope, build, evidence digest and artifact digest must agree. A passing Public integration contract retains that exact scope.
 
-Existing Originals bind their holder but do not independently bind a corporate name or website. To establish that association automatically, the institution publishes the **identical Original** at this fixed address on its listed official HTTPS origin:
+Existing Originals bind a holder rather than an official corporate domain. The identical Original is therefore checked at this fixed address on the institution’s listed official HTTPS origin:
 
 ```text
 https://<listed-official-origin>/.well-known/reality-grade-banking/conformance.png
 ```
 
-The server chooses that origin from the curated directory, refuses redirects, and compares the complete Original's SHA-256. This convention establishes the institution's publication of that exact proof. It is not an additional conformance test. Bankeiz retains the known holder binding already used for its published Original. Anyone may submit an institution's already-public qualifying Original; its private identity never needs to leave the institution.
+This automatically associates the institution with that proof; it is not another conformance test or a manual approval queue. Bankeiz retains the known holder binding of its published Original and its separate reference evidence.
 
-Only a fully verified, institution-associated Original reaches the accepted publication store. The Original and record are saved before the HTTP response reports success. Invalid evidence, unavailable official publication or a storage failure does not change a FAIL to PASS.
+## Native publication and authorization
 
-## Durable production configuration
+The application composes the installed `publicStore.signPublish` and `publicStore.publishSigned` SDK operations, with `appState.byNamespace` and `appState.byId` for public recovery. These are the existing public app-state rails documented for directories and other applications without a separate database.
 
-The server requires a Redis HTTPS REST endpoint compatible with the Upstash command API and `EVAL`. Set these **server-only** environment variables:
+Native projection schemas follow the hosted app-state contract: `receiz.app.bank.registry.original-part.v1` and `receiz.app.bank.registry.original-index.v1`. Transport addresses and namespaces remain independently versioned. Native schema or authorization refusals are reported as refusals; unavailable transport and unresolved acknowledgements remain unconfirmed.
 
-```text
-REGISTRY_REDIS_REST_URL=https://<redis-rest-host>
-REGISTRY_REDIS_REST_TOKEN=<server-write-token>
-```
+Signing happens only after the explicit upload action. The SDK verifies and admits the already-held Identity Record, checks the admitted publisher and its public key, and signs the exact public transport. Private Identity Record bytes, private keys and phrases remain on the device. No identity is created, replaced or enrolled by publication. A missing publisher identity produces an authorization refusal rather than a false conformance failure. The publisher may differ from the credential holder: publishing a public fact does not transfer or reseal the Original’s ownership.
 
-Do not use `VITE_` prefixes or expose the token in public documents. Use a dedicated persistent database with sufficient request capacity for a 4 MiB Original encoded as base64, no data eviction, and appropriate backups. The server never sets an expiration on accepted records or Originals. Deployment and store provisioning are separate from local implementation; an unconfigured deployment cannot publish new accepted records.
+The optional **Check publisher** control admits the existing Identity Record read-only and displays its public Receiz ID. It does not sign, publish, enroll or create an identity. Once checked, that upload attempt requires the same publisher; a changed identity is refused before signing or transport.
 
-The adapter sends a single Lua `EVAL` command to append the Original and its public record atomically. Keys use the `{bank.registry.v1}` cluster hash tag. A distinct accepted proof increments the institution revision and retains its preceding record in history. Repeating an already-accepted hash returns the current state without changing the first acceptance time, duplicating history or promoting an old proof over a newer one. Original download verifies the saved bytes against the requested SHA-256.
+The generic MCP `receiz_app_state_publish` adapter uses existing delegated Receiz authority. It does not replace the SDK’s device-held identity signing boundary. AI Skills identify the supported operations and required evidence; MCP, skill text, metadata and database projections are never conformance authority.
 
-The REST envelope and Lua semantics follow the official [Upstash REST API](https://upstash.com/docs/redis/features/restapi), [Upstash EVAL reference](https://upstash.com/docs/redis/sdks/ts/commands/scripts/eval) and [Redis scripting documentation](https://redis.io/docs/latest/develop/interact/programmability/eval-intro/).
+## Exact Original transport and history
 
-With explicit `NODE_ENV=development` or `NODE_ENV=test` only, the adapter writes one atomic snapshot per institution beneath `.registry-data/`. A snapshot contains its record, complete history and exact Originals. Reopening the local server reads those saved records. This directory is ignored by Git and is never selected with an unspecified environment, in production or on Vercel. It is not a production storage fallback.
+An Original of up to 4 MiB is carried unchanged in content-addressed parts of at most 128 KiB before base64 encoding. Actual SDK envelope measurements establish that this stays inside the native feed’s 2 MiB limit, including the canonical signed challenge and duplicate feed representation. Up to 32 parts preserve the complete file.
 
-## Public projection and recovery
+Part identifiers bind institution, artifact SHA-256, publisher key and source order. Independent random transport coordinates for each part and index prevent another publisher from preoccupying predictable source identifiers. The coordinates stay fixed in the retained publication intent; verified Originals are deduplicated by their actual artifact hash. The native index is published last, after every part can be recovered, the complete source hash matches, and canonical proof and institution admission pass. A metadata-only projection, partial source, altered part, foreign namespace or invalid signature cannot provide PASS.
 
-The canonical Registry response streams the existing header and hero immediately, then renders accepted scoped records, counts and history as ordinary HTML for people and crawlers without JavaScript. It reads only saved, already-admitted display metadata, never Source freshness, private identity or proof verification during page opening. A stalled saved-metadata read has a two-second bound and displays the existing snapshot with an explicit notice. Static build and offline documents remain available.
+The server stores no independent publication database. It uses the existing SDK transport and reopens newly discovered complete Originals before projecting results. Previously admitted exact source and selected history are reused. Official publication selects an external institution’s current Original; timestamps never replace that association. Earlier independently verified certificates from the same established holder remain inspectable. An old retry cannot remove already-held history or replace the selected current proof.
 
-The public Registry reader applies accepted revisions in the background. Successful uploads update the durable accepted record before changing the visible entry, exact scope, counts and search filters. Earlier accepted evidence remains inspectable. Selected public metadata is retained in a dedicated display-only CacheStorage entry so offline reopening can preserve a previously accepted result. Cache or background responses cannot replace a higher selected revision or discard its accepted history. Cached display supplies no admission or financial authority.
+## Interrupted publication and public rendering
 
-Definitive verification refusals preserve the public record. A lost acknowledgement or timeout leaves publication uncertain: the interface checks the public record and allows retrying the same Original. It does not assert that a possibly completed save never happened. The append is keyed by institution and exact artifact hash, so retrying is safe. Never substitute a browser-only PASS, runtime map or serverless temporary file for accepted public persistence.
+The device retains only the exact public signed requests in a dedicated publication-intent CacheStorage entry before transport. An uncertain outcome is reported as unconfirmed. Explicit retry first checks the public record and reuses the same retained envelopes and deterministic identities; it does not silently create a new signature or replace the Original. Public download reconstructs and hashes the exact file.
 
-The cookie-free API exposes `GET /api/bank/registry`, raw PNG `POST /api/bank/registry/<institution-id>`, and immutable exact Original downloads at `/api/bank/registry/original/<institution-id>/<sha256>`. Browser writes require the page's own origin. The production function, Vite handler and compiled runtime check use the same implementation. Run `node scripts/check-registry-runtime.mjs` to exercise the emitted function with the real published Bankeiz Original in an isolated local store; it performs no external publication.
+Canonical HTML includes independently admitted native records, counts and evidence for non-JavaScript readers. The available header and hero stream before a bounded saved-publication read. Held accepted display and its public history survive offline reopening through the separate display cache. Neither page opening nor cached display acquires financial authority or changes account entry.
 
-The Registry's records describe conformance evidence. They supply no payment authorization, account credit, ownership transfer or financial authority.
+## API and checks
+
+- `GET /api/bank/registry` reads accepted native publications.
+- Raw PNG `POST /api/bank/registry/<institution-id>?prepare=1` verifies the Original and returns a publication plan, without publishing PASS.
+- Signed JSON `POST /api/bank/registry/<institution-id>/parts` publishes a bounded public source part.
+- Signed JSON `POST /api/bank/registry/<institution-id>` admits the complete Original, publishes its native index and confirms public recovery before returning the accepted entry.
+- `/api/bank/registry/original/<institution-id>/<sha256>` serves the exact recovered Original.
+
+Browser writes are same-origin. `node scripts/build-registry-publisher.mjs` builds the lazy device SDK module; `node scripts/check-registry-runtime.mjs` checks the emitted server in an isolated root with real Original verification and fixture native reads. The SDK signature and publication suites separately exercise genuine identity admission, signature verification, part/index ordering, conflicts, retained history, cold recovery and lost acknowledgements. Fixture results are not evidence of a live hosted publish. A live completion claim additionally requires the actual publisher’s native publish, public readback and another visitor’s rendered result.

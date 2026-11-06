@@ -1,5 +1,7 @@
 # Registry proof upload implementation plan
 
+Superseded by [the native Receiz publication correction](2026-11-06-registry-native-publication.md). Redis was an application implementation choice and is no longer a dependency.
+
 **Goal:** Let anyone submit an institution's public passing Original from its expanded Registry record and publish a scoped PASS automatically after verification.
 
 **Approved interaction:** The user requested a tasteful upload inside each institution dropdown that verifies the proof and updates its record on success. Preserve the existing directory, header, search and mobile layout.

@@ -299,6 +299,9 @@
 .institution-scorecard .isc-proof-upload button:disabled{opacity:.45;cursor:default}
 .institution-scorecard .isc-proof-upload input:focus-visible,.institution-scorecard .isc-proof-upload button:focus-visible{outline:2px solid #365b79;outline-offset:4px}
 .institution-scorecard .isc-proof-upload .isc-proof-status{font-size:11px;line-height:1.8;min-height:0;margin-top:13px}
+.institution-scorecard .isc-proof-publisher{display:flex;flex-wrap:wrap;align-items:center;gap:5px 18px;margin-top:15px;font-size:11px;line-height:1.7}
+.institution-scorecard .isc-proof-publisher p{margin:0;overflow-wrap:anywhere}
+.institution-scorecard .isc-proof-upload .isc-proof-publisher button{padding:0;min-height:32px;border:0;background:transparent;color:var(--isc-ink);text-decoration:underline;text-underline-offset:4px;font-size:11px;white-space:nowrap}
 .institution-scorecard .isc-proof-status:empty{display:none}
 .institution-scorecard .isc-proof-status[data-state="error"]{color:#ac231c}
 .institution-scorecard .isc-proof-status[data-state="success"]{color:#17623d}

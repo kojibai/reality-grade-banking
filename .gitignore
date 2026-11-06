@@ -30,7 +30,8 @@ test-results/
 
 /dist-public/
 
-# Local development Registry proof publications; production uses durable Redis.
+# Legacy local Registry snapshots; publication now uses the existing Receiz SDK rails.
 /.registry-data/
 /server/registry-runtime/*.mjs
 /server/registry-runtime/document-head.html
+/public/registry/

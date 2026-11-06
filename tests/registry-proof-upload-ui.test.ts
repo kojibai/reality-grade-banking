@@ -3,6 +3,7 @@ import {Window} from 'happy-dom';
 import {institutionScorecardContent} from '../scripts/institution-scorecard-page.mjs';
 import {bankeizRecordedConformance,type InstitutionRecord} from '../src/content/institution-scorecard.mjs';
 import type {RegistryInstitutionState,RegistryPublication} from '../src/registry/types';
+import type {RegistryPublishInput} from '../src/registry/publish';
 
 const windows:Window[]=[];
 afterEach(()=>{vi.unstubAllGlobals();for(const window of windows.splice(0)){window.happyDOM.abort();window.close();}});
@@ -12,12 +13,23 @@ const records:InstitutionRecord[]=[
 ];
 const publication=(hash='a'):RegistryPublication=>({schema:'bank.registry.publication.v1',institutionId:'wells-fargo',name:'Wells Fargo',scope:'Public integration contract',cases:33,artifactSha256:hash.repeat(64),evidenceSha256:'b'.repeat(64),holderReceizId:'holder.receiz.id',implementationBuildSha256:'c'.repeat(64),officialProofUrl:'https://www.wellsfargo.com/.well-known/reality-grade-banking/conformance.png',acceptedAt:'2026-11-05T22:00:00.000Z',url:'/api/bank/registry/original/wells-fargo/'+hash.repeat(64)});
 const entry=(revision=1):RegistryInstitutionState=>({institutionId:'wells-fargo',revision,current:publication(revision===1?'a':'d'),history:revision===1?[]:[publication()]});
-async function setup(fetcher:(...args:Parameters<typeof fetch>)=>Promise<Response>=async()=>Response.json({schema:'bank.registry.public.v1',publishingAvailable:true,records:[]})){
- vi.stubGlobal('fetch',vi.fn(fetcher));
+async function setup(fetcher:(...args:Parameters<typeof fetch>)=>Promise<Response>=async()=>Response.json({schema:'bank.registry.public.v1',publishingAvailable:true,records:[]}),publish?:(value:RegistryPublishInput)=>Promise<RegistryInstitutionState>,inspect?:()=>Promise<{receizId:string;keyId:string}>){
+ let prepared:RegistryInstitutionState;
+ vi.stubGlobal('fetch',vi.fn(async(...args:Parameters<typeof fetch>)=>{
+  const response=await fetcher(...args);
+  if(args[1]?.method==='POST'&&response.ok){
+   const value=await response.clone().json();
+   if(value?.entry){prepared=value.entry;return Response.json({ok:true,plan:{publication:prepared.current,originalBytes:(args[1].body as Uint8Array).length,partCount:1}});}
+  }
+  return response;
+ }));
  const window=new Window();windows.push(window);const document=window.document as unknown as Document;
  document.body.innerHTML=institutionScorecardContent(records);
  const path='../public/learn/institution-scorecard.js';
- const module=await import(/* @vite-ignore */path) as {init(root?:Document|Element):void};
+ const original=await import(/* @vite-ignore */path) as {init(root?:Document|Element,ports?:{loadPublisher:()=>Promise<{publishRegistryOriginal:(value:RegistryPublishInput)=>Promise<RegistryInstitutionState>;inspectRegistryPublisher?:()=>Promise<{receizId:string;keyId:string}>}>}):void};
+ const publishRegistryOriginal=vi.fn(publish??(async()=>prepared));
+ const loadPublisher=vi.fn(async()=>({publishRegistryOriginal,...inspect?{inspectRegistryPublisher:inspect}:{}}));
+ const module={init:(root?:Document|Element)=>original.init(root,{loadPublisher})};
  const row=document.querySelector<HTMLElement>('[data-institution-id="wells-fargo"]')!;
  const form=row.querySelector<HTMLFormElement>('[data-registry-proof-form]')!;
  const choose=(bytes=new Uint8Array([137,80,78,71,13,10,26,10]))=>{
@@ -27,7 +39,7 @@ async function setup(fetcher:(...args:Parameters<typeof fetch>)=>Promise<Respons
   input.dispatchEvent(new window.Event('change',{bubbles:true}) as unknown as Event);
  };
  const submit=()=>form.dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}) as unknown as Event);
- return{window,document,module,row,form,choose,submit};
+ return{window,document,module,row,form,choose,submit,loadPublisher,publishRegistryOriginal};
 }
 
 it('places a progressively enhanced public-proof upload inside every existing evidence disclosure',async()=>{
@@ -44,8 +56,8 @@ it('places a progressively enhanced public-proof upload inside every existing ev
  expect(f.document.querySelector('#how-to-qualify a[href="#institution-register"]')).not.toBeNull();
  f.module.init(f.document);
  expect(forms.every(form=>!form.hidden)).toBe(true);
- expect(f.form.querySelector('button')?.textContent).toBe('Verify and update record');
- expect(f.form.querySelector('button')?.disabled).toBe(true);
+ expect(f.form.querySelector<HTMLButtonElement>('button[type="submit"]')?.textContent).toBe('Verify and update record');
+ expect(f.form.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
 });
 
 it('keeps FAIL until the server durably accepts the exact proof, then updates verdict, totals and active filters without remounting',async()=>{
@@ -54,7 +66,7 @@ it('keeps FAIL until the server durably accepts the exact proof, then updates ve
  f.module.init(f.document);const details=f.row.querySelector('details')!;details.open=true;
  const filter=f.document.querySelector<HTMLSelectElement>('[data-directory-status-filter]')!;filter.value='fail';filter.dispatchEvent(new f.window.Event('change') as unknown as Event);
  f.choose();f.submit();await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));
- expect(f.row.dataset.qualification).toBe('FAIL');expect(f.form.querySelector('button')?.disabled).toBe(true);
+ expect(f.row.dataset.qualification).toBe('FAIL');expect(f.form.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
  finish(Response.json({ok:true,entry:entry()}));
  await vi.waitFor(()=>expect(f.row.dataset.qualification).toBe('PASS'));
  expect(f.row.classList.contains('isc-green')).toBe(true);expect(f.row.querySelector('[data-qualification-verdict]')?.textContent).toBe('PASS');
@@ -64,7 +76,36 @@ it('keeps FAIL until the server durably accepts the exact proof, then updates ve
  expect(f.row.querySelector('[data-qualification-context]')?.textContent).toContain('Public integration contract');
  expect(f.row.querySelector('[data-published-conformance]')?.textContent).toContain('holder.receiz.id');
  const request=(fetch as ReturnType<typeof vi.fn>).mock.calls.find(call=>call[1]?.method==='POST')!;
- expect(request[0]).toBe('/api/bank/registry/wells-fargo');expect(request[1].headers['Content-Type']).toBe('image/png');expect(request[1].body).toBeInstanceOf(Uint8Array);
+ expect(request[0]).toBe('/api/bank/registry/wells-fargo?prepare=1');expect(request[1].headers['Content-Type']).toBe('image/png');expect(request[1].body).toBeInstanceOf(Uint8Array);
+});
+
+it('loads device publication only after explicit submission and keeps FAIL until native acceptance is confirmed',async()=>{
+ let finish!:(value:RegistryInstitutionState)=>void;
+ const f=await setup(async(_url,options)=>Response.json(options?.method==='POST'?{ok:true,entry:entry()}:{schema:'bank.registry.public.v1',publishingAvailable:true,records:[]}),async value=>{value.onStatus?.('Publishing Original part 1 of 1…');return new Promise(resolve=>{finish=resolve;});});
+ f.module.init(f.document);expect(f.loadPublisher).not.toHaveBeenCalled();
+ f.choose();f.submit();await vi.waitFor(()=>expect(f.publishRegistryOriginal).toHaveBeenCalledTimes(1));
+ expect(f.row.dataset.qualification).toBe('FAIL');expect(f.form.querySelector('[data-registry-proof-status]')?.textContent).toContain('Publishing Original part');
+ finish(entry());await vi.waitFor(()=>expect(f.row.dataset.qualification).toBe('PASS'));
+});
+
+it('asks for your existing Identity Record when device publication cannot open its identity',async()=>{
+ const f=await setup(async(_url,options)=>Response.json(options?.method==='POST'?{ok:true,entry:entry()}:{schema:'bank.registry.public.v1',publishingAvailable:true,records:[]}),async()=>{throw Object.assign(new Error('Open your existing Receiz Identity Record on this device, then retry this Original.'),{code:'REGISTRY_IDENTITY_REQUIRED',uncertain:false});});
+ f.module.init(f.document);f.choose();f.submit();
+ await vi.waitFor(()=>expect(f.form.querySelector('[data-registry-proof-status]')?.textContent).toContain('your existing Receiz Identity Record'));
+ expect(f.row.dataset.qualification).toBe('FAIL');
+});
+
+it('checks the actual device publisher only on request and pins that explicitly previewed public ID for publication',async()=>{
+ const inspect=vi.fn(async()=>({receizId:'bjklock.receiz.id',keyId:'preview-key'}));
+ const f=await setup(async(_url,options)=>Response.json(options?.method==='POST'?{ok:true,entry:entry()}:{schema:'bank.registry.public.v1',publishingAvailable:true,records:[]}),undefined,inspect);
+ if(!f.form.querySelector('[data-registry-check-publisher]')){const button=f.document.createElement('button');button.type='button';button.dataset.registryCheckPublisher='';button.textContent='Check publisher';f.form.append(button);}
+ if(!f.form.querySelector('[data-registry-publisher-status]')){const status=f.document.createElement('p');status.dataset.registryPublisherStatus='';f.form.append(status);}
+ f.module.init(f.document);expect(inspect).not.toHaveBeenCalled();expect(f.loadPublisher).not.toHaveBeenCalled();
+ f.form.querySelector<HTMLButtonElement>('[data-registry-check-publisher]')!.click();
+ await vi.waitFor(()=>expect(f.form.querySelector('[data-registry-publisher-status]')?.textContent).toBe('Publisher: bjklock.receiz.id'));
+ expect((fetch as ReturnType<typeof vi.fn>).mock.calls.some(call=>call[1]?.method==='POST')).toBe(false);expect(f.row.dataset.qualification).toBe('FAIL');
+ f.choose();f.submit();await vi.waitFor(()=>expect(f.row.dataset.qualification).toBe('PASS'));
+ expect(f.publishRegistryOriginal.mock.calls[0][0].expectedPublisherReceizId).toBe('bjklock.receiz.id');
 });
 
 it('refuses malformed files and failed publication without an optimistic PASS or loss of the prior evidence',async()=>{
@@ -160,10 +201,10 @@ it('keeps held proof history if a newer public response omits a previously accep
  expect(links[0]?.getAttribute('href')).toBe(entry(2).current.url);expect(links.some(link=>link.getAttribute('href')===entry().current.url)).toBe(true);
 });
 
-it('announces disconnected public publishing without hiding the available static directory',async()=>{
+it('announces a temporarily unavailable publication service without hiding the available static directory',async()=>{
  const f=await setup(async()=>Response.json({schema:'bank.registry.public.v1',publishingAvailable:false,records:[]}));
- f.module.init(f.document);await vi.waitFor(()=>expect(f.form.querySelector('[data-registry-proof-status]')?.textContent).toMatch(/not connected|unavailable/i));
- f.choose();expect(f.form.querySelector('button')?.disabled).toBe(true);
+ f.module.init(f.document);await vi.waitFor(()=>expect(f.form.querySelector('[data-registry-proof-status]')?.textContent).toContain('publication service is temporarily unavailable'));
+ f.choose();expect(f.form.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
  expect(f.row.dataset.qualification).toBe('FAIL');expect(f.document.querySelector<HTMLElement>('[data-directory-controls]')?.hidden).toBe(false);
 });
 

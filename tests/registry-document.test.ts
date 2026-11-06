@@ -14,7 +14,7 @@ function publication(overrides:Partial<RegistryPublication>={}):RegistryPublicat
  return {schema:'bank.registry.publication.v1',institutionId:'chase',name:'Chase · JPMorgan Chase',scope:'Public integration contract',cases:33,artifactSha256:'a'.repeat(64),evidenceSha256:'b'.repeat(64),holderReceizId:'chase.receiz.id',implementationBuildSha256:'c'.repeat(64),officialProofUrl:'https://www.jpmorganchase.com/.well-known/reality-grade-banking/conformance.png',acceptedAt:'2026-11-06T01:00:00.000Z',url:'/api/bank/registry/original/chase/'+'a'.repeat(64),...overrides};
 }
 const state=(current=publication(),history:RegistryPublication[]=[]):RegistryInstitutionState=>({institutionId:current.institutionId,revision:history.length+1,current,history});
-function store(list:()=>Promise<RegistryInstitutionState[]>):RegistryStore {return{list,append:async()=>{throw Error('Document rendering cannot publish');},original:async()=>{throw Error('Document rendering cannot reopen Originals');}};}
+function store(list:()=>Promise<RegistryInstitutionState[]>):RegistryStore {return{list,publishPart:async()=>{throw Error('Document rendering cannot publish');},publishProof:async()=>{throw Error('Document rendering cannot publish');},append:async()=>{throw Error('Document rendering cannot publish');},original:async()=>{throw Error('Document rendering cannot reopen Originals');}};}
 const article=(html:string,id:string)=>html.match(new RegExp('<article[^>]*data-institution-id="'+id+'"[^>]*>[\\s\\S]*?</article>'))?.[0]??'';
 
 it('renders accepted scoped PASS and updated totals in raw HTML for another visitor',async()=>{
