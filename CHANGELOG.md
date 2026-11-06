@@ -1,8 +1,44 @@
 # Changelog
 
-Reality-Grade Banking repository releases include the Bankeiz reference
+Reality-Grade Banking repository releases include the Bankeiz financial
 application. Its product versions are independent of Receiz protocol/package versions.
 Full release records and qualification evidence live in [docs/releases](docs/releases/README.md).
+
+## 5.0.0 — release recap
+
+The v5 recap covers 122 committed changes since `v4.0.0` through `3756797`.
+Learn now leads with How it works, The standard and Guides, with Business
+available in context and guide preview prices removed. Local cold-publication qualification is complete; deployed acceptance remains
+pending. Package metadata remains 4.0.0; Receiz SDK, MCP and AI Skills
+remain pinned together at 129.0.0. No v5 tag, publication or deployment is claimed.
+[Full recap](docs/releases/5.0.0.md) ·
+[Qualification and publication record](docs/releases/5.0.0-qualification.md).
+
+- Immersive Feed, searchable Discover and People, persistent user-started Feed
+  music, lyrics, public books, essays, documents and complete Original artwork.
+- Full-screen content-aware creation, locally retained sealed Originals,
+  same-reference publication recovery, bounded appends and the existing PBI
+  signing flow without changing an Original's origin.
+- Static public entry, retained Market/Ledger/history families, complete carried
+  profile facts and media, and reuse across cold opening and in-app navigation.
+- Counter offerings, variants, imports, stock, saved carts and immutable fixed
+  sales, accepted-payment activity and cancellation of unpaid checkouts.
+- Recorded-email payment invitations and verified Identity Record handoff;
+  direct connected Note delivery with optional stable recipient binding.
+- Exact Reserve/Phi and capitalization disclosures, chart catch-up after
+  suspension, retained share observations and local Ledger search.
+- Free/paid appointment offers, per-guest meeting checkout, held Calendar and
+  Contacts, and overlapping independent preparation after explicit intent.
+- Exact Original downloads and separate verification kits, canonical record
+  exports, semantic public reading views, receiving/build guides and the
+  searchable Registry's verified publication through existing Receiz rails.
+- Real-SDK frozen account-entry enforcement and expanded production source,
+  server-entrypoint, public runtime, offline and distribution checks.
+
+The 39 independently owned uncommitted ownership, Ledger, Vault, quotes and PWA
+changes remain excluded. Existing supported transfers remain included. Broader
+offline consumer qualification, abandoned adapter work and a coordinated Receiz
+v130 release are separate from this documentation preparation.
 
 ## 4.0.0 — Money that shows its work
 
