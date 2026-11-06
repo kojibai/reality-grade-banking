@@ -90,6 +90,15 @@ export const institutionRecords=[
  {id:'banco-do-brasil',name:'Banco do Brasil',website:'https://ri.bb.com.br/en/',country:'Brazil',region:'Latin America',kind:'Banking institution',assessment:null},
  {id:'banorte',name:'Banorte',website:'https://investors.banorte.com/en',country:'Mexico',region:'Latin America',kind:'Banking institution',aliases:['Grupo Financiero Banorte','Banco Mercantil del Norte','GFNorte'],assessment:null},
  {id:'bancolombia',name:'Bancolombia',website:'https://www.grupobancolombia.com/corporate',country:'Colombia',region:'Latin America',kind:'Banking institution',aliases:['Grupo Bancolombia'],assessment:null},
+ {id:'federal-reserve',name:'Federal Reserve System',website:'https://www.federalreserve.gov/aboutthefed.htm',country:'United States',region:'North America',kind:'Central bank',aliases:['Federal Reserve','The Fed','Fed','FRS'],assessment:null},
+ {id:'european-central-bank',name:'European Central Bank',website:'https://www.ecb.europa.eu/',country:'Euro area',region:'Europe',kind:'Central bank',aliases:['ECB','BCE','EZB'],assessment:null},
+ {id:'bank-of-england',name:'Bank of England',website:'https://www.bankofengland.co.uk/',country:'United Kingdom',region:'Europe',kind:'Central bank',aliases:['BoE'],assessment:null},
+ {id:'bank-of-japan',name:'Bank of Japan',website:'https://www.boj.or.jp/en/',country:'Japan',region:'Asia Pacific',kind:'Central bank',aliases:['BoJ','Nippon Ginko','日本銀行'],assessment:null},
+ {id:'swiss-national-bank',name:'Swiss National Bank',website:'https://www.snb.ch/en/',country:'Switzerland',region:'Europe',kind:'Central bank',aliases:['SNB','Schweizerische Nationalbank','Banque nationale suisse','Banca nazionale svizzera'],assessment:null},
+ {id:'peoples-bank-of-china',name:'People’s Bank of China',website:'https://www.pbc.gov.cn/english/130437/index.html',country:'China',region:'Asia Pacific',kind:'Central bank',aliases:['PBOC',"People's Bank of China",'Peoples Bank of China','中国人民银行'],assessment:null},
+ {id:'bank-of-canada',name:'Bank of Canada',website:'https://www.bankofcanada.ca/',country:'Canada',region:'North America',kind:'Central bank',aliases:['BoC','Banque du Canada'],assessment:null},
+ {id:'reserve-bank-of-india',name:'Reserve Bank of India',website:'https://www.rbi.org.in/',country:'India',region:'Asia Pacific',kind:'Central bank',aliases:['RBI'],assessment:null},
+ {id:'bank-for-international-settlements',name:'Bank for International Settlements',website:'https://www.bis.org/',country:'Switzerland',region:'Europe',kind:'International financial institution',aliases:['BIS','Bank for central banks'],assessment:null},
 ];
 
 export const institutionDirectoryRecords=[

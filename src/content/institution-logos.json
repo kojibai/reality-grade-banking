@@ -303,5 +303,60 @@
     "sourceUrl": "https://www.grupobancolombia.com/favicon.svg",
     "sourcePage": "https://www.grupobancolombia.com/es",
     "kind": "icon"
+  },
+  "federal-reserve": {
+    "src": "/institution-logos/federal-reserve.png",
+    "sourceUrl": "https://www.federalreserve.gov/css/icons.data.svg.css",
+    "sourcePage": "https://www.federalreserve.gov/",
+    "kind": "logo",
+    "sourceSelector": ".icon-frb-logo-black"
+  },
+  "bank-of-canada": {
+    "src": "/institution-logos/bank-of-canada.png",
+    "sourceUrl": "https://www.bankofcanada.ca/wp-content/themes/ews-build-2024/img/favicon/android-chrome-192x192.png",
+    "sourcePage": "https://www.bankofcanada.ca/",
+    "kind": "icon"
+  },
+  "bank-for-international-settlements": {
+    "src": "/institution-logos/bank-for-international-settlements.png",
+    "sourceUrl": "https://www.bis.org/themes/custom/bis/favicon.ico",
+    "sourcePage": "https://www.bis.org/",
+    "kind": "icon"
+  },
+  "european-central-bank": {
+    "src": "/institution-logos/european-central-bank.png",
+    "sourceUrl": "https://www.ecb.europa.eu/shared/img/logo/logo_only.svg",
+    "sourcePage": "https://www.ecb.europa.eu/home/html/index.en.html",
+    "kind": "logo"
+  },
+  "bank-of-england": {
+    "src": "/institution-logos/bank-of-england.png",
+    "sourceUrl": "https://www.bankofengland.co.uk/-/media/boe/images/logo/footer-logo.svg?h=50&iar=0&mh=50&mw=240&w=50&hash=21937D63AC8E857977043CB73AE10F74",
+    "sourcePage": "https://www.bankofengland.co.uk/",
+    "kind": "logo"
+  },
+  "swiss-national-bank": {
+    "src": "/institution-logos/swiss-national-bank.png",
+    "sourceUrl": "https://www.snb.ch/.resources/frontend/assets/default/img/icon/apple-touch-icon~e0a4d23a~2026-11-03-17-58-44-000~cache.png",
+    "sourcePage": "https://www.snb.ch/en/",
+    "kind": "icon"
+  },
+  "bank-of-japan": {
+    "src": "/institution-logos/bank-of-japan.png",
+    "sourceUrl": "https://www.boj.or.jp/common2/img/common/logo_s.jpg",
+    "sourcePage": "https://www.boj.or.jp/en/",
+    "kind": "logo"
+  },
+  "peoples-bank-of-china": {
+    "src": "/institution-logos/peoples-bank-of-china.png",
+    "sourceUrl": "https://www.pbc.gov.cn/english/template/page/index/index_r1_c1.jpg",
+    "sourcePage": "https://www.pbc.gov.cn/",
+    "kind": "logo"
+  },
+  "reserve-bank-of-india": {
+    "src": "/institution-logos/reserve-bank-of-india.png",
+    "sourceUrl": "https://www.rbi.org.in/images/rbi-company-logo.jpg",
+    "sourcePage": "https://www.rbi.org.in/",
+    "kind": "logo"
   }
 }

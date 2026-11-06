@@ -17,13 +17,29 @@ it('keeps an unqualified receiver red without inventing an observed technical fa
 it('includes Chase and Wells Fargo and gives neither a qualification exemption',()=>{
  expect(institutionRecords.find(r=>r.id==='chase')?.name).toContain('Chase');
  expect(institutionRecords.find(r=>r.id==='wells-fargo')?.name).toBe('Wells Fargo');
- expect(institutionRecords).toHaveLength(50);
+ expect(institutionRecords).toHaveLength(59);
  expect(institutionRecords.every(r=>r.assessment===null&&institutionQualification(r).basis==='missing-assessment'&&institutionQualification(r).status==='FAIL')).toBe(true);
+});
+it('applies the same receiving controls to central banks and the BIS without category exemptions',()=>{
+ const centralIds=['federal-reserve','european-central-bank','bank-of-england','bank-of-japan','swiss-national-bank','peoples-bank-of-china','bank-of-canada','reserve-bank-of-india'];
+ const ids=[...centralIds,'bank-for-international-settlements'];
+ for(const id of ids){
+  const record=institutionRecords.find(record=>record.id===id)!;
+  expect(record,id).toBeDefined();
+  expect(record.kind).toBe(centralIds.includes(id)?'Central bank':'International financial institution');
+  expect(institutionQualification(record)).toMatchObject({status:'FAIL',basis:'missing-assessment'});
+  const assessment={...reviewed(),institutionId:id};
+  expect(institutionQualification({...record,assessment})).toMatchObject({status:'PASS',basis:'reviewed-pass'});
+  assessment.controls=assessment.controls.slice(1);
+  expect(institutionQualification({...record,assessment})).toMatchObject({status:'FAIL',basis:'incomplete-evidence'});
+ }
+ expect(institutionRecords.find(record=>record.id==='federal-reserve')?.aliases).toContain('The Fed');
+ expect(institutionRecords.find(record=>record.id==='european-central-bank')).toMatchObject({country:'Euro area',aliases:expect.arrayContaining(['ECB'])});
 });
 it('retains the original subjects and supplies unique searchable records across the major regions',()=>{
  const originalIds=['chase','wells-fargo','bank-of-america','citi','goldman-sachs','hsbc','morgan-stanley','ubs','barclays','deutsche-bank','bnp-paribas','santander','standard-chartered','rbc','td-bank-group','mufg','icbc','bny'];
  expect(institutionRecords.map(record=>record.id)).toEqual(expect.arrayContaining(originalIds));
- expect(new Set(institutionRecords.map(record=>record.id)).size).toBe(50);
+ expect(new Set(institutionRecords.map(record=>record.id)).size).toBe(59);
  expect(new Set(institutionRecords.map(record=>record.region))).toEqual(new Set(['North America','Europe','Asia Pacific','Middle East & Africa','Latin America']));
  for(const record of institutionRecords){
   expect(record.country?.trim()).toBeTruthy();
@@ -42,8 +58,8 @@ it('includes the actual Bankeiz Original as a scoped PASS in directory results',
  expect(scorecard.institutionDirectoryRecords).toEqual(expect.arrayContaining([expect.objectContaining({id:'bankeiz',name:'Bankeiz',country:'Global',region:'Global',kind:'Reference implementation'})]));
  const bankeiz=scorecard.institutionDirectoryRecords.find(record=>record.id==='bankeiz')!;
  expect(institutionQualification(bankeiz)).toMatchObject({status:'PASS',tone:'green',basis:'recorded-conformance',scope:'Public integration contract',conformance:'conforming-for-assessed-capability',recordedConformance:{recorded:true,cases:33,url:'/conformance/bankeiz-public-conformance.png',artifactSha256:'42639bee60e2650d4f58901ab9e66456ed2421a88330621c88d26e4e1889d75f',referenceChecks:12,referencePassedCount:12}});
- expect(scorecard.institutionDirectoryRecords).toHaveLength(51);
- expect(new Set(scorecard.institutionDirectoryRecords.map(record=>record.id)).size).toBe(51);
+ expect(scorecard.institutionDirectoryRecords).toHaveLength(60);
+ expect(new Set(scorecard.institutionDirectoryRecords.map(record=>record.id)).size).toBe(60);
  expect(scorecard.institutionDirectoryRecords.filter(record=>institutionQualification(record).status==='PASS').map(record=>record.id)).toEqual(['bankeiz']);
 });
 it('keeps the published Original scope independent of a different receiving assessment and separate reference checks',()=>{

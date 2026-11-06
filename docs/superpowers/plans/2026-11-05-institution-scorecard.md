@@ -9,7 +9,7 @@ The initial scorecard evolved, with the user's approval, into the searchable `/r
 - Receiving money must preserve its original proof, provenance, ownership and complete history through the next transfer.
 - Qualification remains FAIL until the applicable conformance evidence passes. Missing evidence and documented technical failure retain separate explanations; no institution-specific trial is invented.
 - Bankeiz's existing conformance Original remains PASS for its exact recorded Public integration contract scope. Its 33 contract cases and separate 12 reference results retain their evidence identities and scopes.
-- All 51 institutions appear in the same directory. There is no separate featured Bankeiz panel or extra assessment gate overriding its recorded PASS.
+- All 60 institutions appear in the same directory. There is no separate featured Bankeiz panel or extra assessment gate overriding its recorded PASS.
 - No account state, financial authority, custody, SDK guard or frozen creation behavior changes. Preserve held public navigation and all unrelated agents' work.
 
 ## Completed
